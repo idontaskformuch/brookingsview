@@ -1,0 +1,8 @@
+.env
+.ai_budget.json
+__pycache__/
+*.pyc
+# Astro/Node (site/)
+node_modules/
+dist/
+.astro/

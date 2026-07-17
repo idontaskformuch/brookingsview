@@ -1,0 +1,253 @@
+{
+  "town_id": "brookings_sd",
+  "display_name": "Brookings",
+  "state": "SD",
+  "county": "Brookings County",
+  "population": 25000,
+  "timezone": "America/Chicago",
+  "domain": "brookings311.com",
+  "coordinates": { "lat": 44.3114, "lon": -96.7984 },
+
+  "_domain_note": "brookings311.com funkar, men '311' drar mot en civik/klagomåls-känsla. Om sajten ska kännas 'kul och härlig' finns lättare alternativ (t.ex. hellobrookings.com, brookingstoday.com, brookingsbuzz.com). Din kallelse – bara en flagga.",
+
+  "positioning": {
+    "question_we_answer": "Vad händer i Brookings?",
+    "feeling": "positivt, välkomnande, stolt-över-sin-stad",
+    "one_liner": "Din vänliga guide till allt som händer i Brookings – matcher, evenemang, nybyggen, väder och stadsbeslut, på ren och begriplig svenska... nej, engelska."
+  },
+
+  "editorial": {
+    "tone": ["warm", "light", "friendly", "plain-language", "celebratory-where-natural"],
+    "must_be": ["factually accurate", "neutral on contested civic matters", "never invents names, numbers, quotes or charges"],
+    "never_publish": [
+      "arrest / jail / booking data om namngivna personer",
+      "mugshots",
+      "sex offender registry",
+      "verbatim obituaries (upphovsrätt) – endast ev. länkindex, se nedan",
+      "negativt/anklagande innehåll om namngivna privatpersoner",
+      "politisk vinkling eller åsikt"
+    ],
+    "principle": "Vi beskriver händelser, lag, platser och trender – aldrig anklagelser mot enskilda. Om något kan tvinga fram en borttagning senare bygger vi inte in det från början."
+  },
+
+  "compliance": {
+    "publish_named_private_individuals": false,
+    "removal_contact_email": "hello@brookings311.com",
+    "_note": "Med jail/obits borttagna finns i praktiken ingen disposition-/borttagningsmaskin att bygga. Kontakten finns ändå som god sed."
+  },
+
+  "ai": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-5",
+    "mode": "batch",
+    "batch_cadence_minutes": 60,
+    "monthly_budget_usd": 20,
+    "tone_guidelines": "Skriv som en påläst, glad granne. Kort, konkret, välkomnande. Fira det som är kul (nyöppningar, segrar, evenemang) utan att överdriva. Håll dig strikt till fakta i källdatan – hitta aldrig på detaljer, namn eller siffror. Ingen åsikt om politik/beslut, bara vad som händer och vad det betyder i klarspråk.",
+    "guardrails": {
+      "extractive_for_structured_fields": true,
+      "no_opinion_on_contested_topics": true,
+      "reject_if_output_contains_facts_not_in_source": true
+    }
+  },
+
+  "output": {
+    "prefer_digests_over_single_item_pages": true,
+    "_note": "Undvik en tunn indexerad sida per post (permit/arrest/etc). Väv ihop till läsbara digests med kontext – bättre för läsaren OCH för AdSense (information gain istället för scaled content)."
+  },
+
+  "data_sources": {
+
+    "sdsu_athletics": {
+      "type": "sports",
+      "enabled": true,
+      "providers": {
+        "schedule_scrape": { "url": "https://gojacks.com", "parser": "gojacks_v1" },
+        "ncaa_data": { "leagues": ["ncaafb", "ncaamb", "ncaawb"] }
+      },
+      "refresh_minutes": 180,
+      "output": { "format": "digest_plus_gameday", "voice": "celebratory" },
+      "_notes": "Din bästa återbesöks-motor. Fotboll spelas på Dana J. Dykhouse Stadium i Brookings (topp-FCS, slutspel, nationell TV). Höj refresh på matchdagar. Lägg till fler sporter (basket, volleyball, friidrott) i takt med säsong.",
+      "_return_driver": true
+    },
+
+    "city_permits": {
+      "type": "html_scrape",
+      "enabled": true,
+      "url": "https://www.cityofbrookings-sd.gov/214/Past-Building-Permits",
+      "smartgov_portal": "https://ci-brookings-sd.smartgovcommunity.com/",
+      "parser": "brookings_permits_v1",
+      "refresh_minutes": 10080,
+      "output": { "format": "monthly_digest", "voice": "what-is-being-built" },
+      "_notes": "Månadsvis bygglovsrapport på stadssajten; SmartGov (Granicus) har strukturerad permit-/licensdata. Ram: 'Nybyggen och renoveringar i Brookings denna månad'. Handlar om adresser/projekt, inte personer.",
+      "_return_driver": false
+    },
+
+    "business_licenses": {
+      "type": "smartgov",
+      "enabled": true,
+      "url": "https://ci-brookings-sd.smartgovcommunity.com/",
+      "parser": "smartgov_licenses_v1",
+      "refresh_minutes": 1440,
+      "output": { "format": "digest", "voice": "new-in-town" },
+      "_notes": "Nya affärs-/spritlicenser = 'ny restaurang/butik på väg'. Populärt och positivt. Verifiera att licensflödet är publikt läsbart i SmartGov utan inloggning."
+    },
+
+    "city_meetings": {
+      "type": "legistar",
+      "enabled": true,
+      "client_id": "cityofbrookings",
+      "base_url": "https://cityofbrookings.legistar.com",
+      "prefer_api": "https://webapi.legistar.com/v1/cityofbrookings",
+      "refresh_minutes": 1440,
+      "output": { "format": "plain_language_preview", "voice": "what-your-city-is-deciding" },
+      "_notes": "VERIFIERA legistar client_id (stadssajten är cityofbrookings-sd.gov). Testa webapi.legistar.com först – stabilare än att skrapa HTML. Institution/policy, ej anklagelser = låg risk."
+    },
+
+    "county_meetings": {
+      "type": "civicengage_agenda_center",
+      "enabled": true,
+      "url": "https://www.brookingscountysd.gov/AgendaCenter",
+      "parser": "civicengage_pdf_v1",
+      "refresh_minutes": 1440,
+      "output": { "format": "plain_language_preview", "voice": "neutral-civic" },
+      "_notes": "VERIFIERA exakt AgendaCenter-sökväg på brookingscountysd.gov."
+    },
+
+    "school_board": {
+      "type": "html_scrape_or_boarddocs",
+      "enabled": false,
+      "url": null,
+      "platform": "ic-board.com",
+      "platform_base_url": "https://brookingspublic.ic-board.com/",
+      "refresh_minutes": 1440,
+      "output": { "format": "plain_language_preview", "voice": "neutral-civic" },
+      "_notes": "BLOCKERAD (403 Forbidden), samma kategori som SmartGov/SD511 -- inte en kodfråga. Plattform identifierad: 'Electronic School Board' (ic-board.com), samma SaaS som flera andra distrikt (t.ex. Providence RI) -> återanvändningsvärde för framtida orter om den öppnas upp. Testat och bekräftat 403 på: (1) https://brookingspublic.ic-board.com/ rot, (2) samma via distriktets egen 'Agenda, Minutes, & Policies'-knapp på brookings.k12.sd.us/page/school-board, (3) en tidigare fungerande djuplänk (public_agendaview.aspx?mtgId=1217). Mejl skickat till Brookings.Webmaster@k12.sd.us 2026-07-17 och flaggar 403:an. enabled=false tills svar kommer -- lämna av så runner.py inte försöker köra den i onödan."
+    },
+
+    "events": {
+      "type": "multi",
+      "enabled": true,
+      "sources": [
+        {
+          "name": "city_parks_rec",
+          "kind": "blocked",
+          "url": "https://www.cityofbrookings-sd.gov/calendar.aspx",
+          "_note": "POLICYBLOCKERAD: robots.txt på cityofbrookings-sd.gov nekar automatiserad åtkomst till calendar.aspx (bekräftat via fetch-test 2026-07-17). Skrapa INTE. Fråga staden om RSS/iCal/API-åtkomst i samma kontakt som SmartGov."
+        },
+        {
+          "name": "library",
+          "kind": "ical",
+          "url": "https://brookingslibrary.libcal.com/ical_subscribe.php?src=p&cid=19943",
+          "_note": "BEKRÄFTAD 2026-07-17. LibCal öppet iCal-abonnemangsflöde (src=p = publikt, ingen hemlig nyckel). Byggd och klar."
+        },
+        {
+          "name": "sdsu_events",
+          "kind": "unconfirmed",
+          "url": "https://www.sdstate.edu/events",
+          "_note": "VERIFIERA: hitta SDSU:s publika iCal-/ICS-export för evenemangskalendern (troligen en Localist/Concept3D-plattform) innan denna byggs. Sidans generella URL räcker inte -- behöver ett faktiskt exportflöde likt bibliotekets."
+        }
+      ],
+      "refresh_minutes": 1440,
+      "output": { "format": "this_week_in_brookings", "voice": "fun-friendly" },
+      "_notes": "Kärnan i 'Vad händer i Brookings?'. Veckovis 'This Week in Brookings'-digest. Ren återbesöksmotor.",
+      "_return_driver": true
+    },
+
+    "weather": {
+      "type": "api",
+      "enabled": true,
+      "provider": "noaa",
+      "endpoint": "https://api.weather.gov",
+      "lat": 44.3114,
+      "lon": -96.7984,
+      "refresh_minutes": 180,
+      "user_agent_required": true,
+      "output": { "format": "daily_snapshot", "voice": "friendly" }
+    },
+
+    "weather_alerts": {
+      "type": "api",
+      "enabled": true,
+      "provider": "nws",
+      "endpoint": "https://api.weather.gov/alerts/active",
+      "area": "SDC011",
+      "refresh_minutes": 30,
+      "output": { "format": "alert_banner", "voice": "calm-clear" },
+      "_notes": "VERIFIERA NWS zone/county-kod för Brookings County (SDC011 är gissning för FIPS 46011). Keyless, kräver User-Agent."
+    },
+
+    "road_conditions": {
+      "type": "api_or_scrape",
+      "enabled": true,
+      "provider": "sd_dot_511",
+      "url": null,
+      "refresh_minutes": 60,
+      "seasonal": "winter_priority",
+      "output": { "format": "status_line", "voice": "practical" },
+      "_notes": "South Dakota 511 (SDDOT). Hitta exakt data-endpoint/URL (troligen sd511.org). Vinterväglag = daglig nytta i SD."
+    },
+
+    "county_alerts": {
+      "type": "html_scrape",
+      "enabled": true,
+      "url": "https://www.brookingscountysd.gov",
+      "parser": "civic_alert_banner_v1",
+      "refresh_minutes": 60,
+      "output": { "format": "alert_banner", "voice": "calm-clear" },
+      "_notes": "County-sidan kör CivicPlus emergency alerts (red flag warnings m.m.). Skrapa alert-bannern."
+    },
+
+    "ag_markets": {
+      "type": "api",
+      "enabled": true,
+      "provider": "usda",
+      "endpoints": {
+        "quick_stats": "https://quickstats.nass.usda.gov/api",
+        "market_news": "https://mymarketnews.ams.usda.gov/mymarketnews-api"
+      },
+      "commodities": ["corn", "soybeans", "cattle"],
+      "refresh_minutes": 1440,
+      "output": { "format": "daily_prices", "voice": "matter-of-fact" },
+      "_notes": "Farm-country har en daglig 'kolla priserna'-vana. USDA NASS Quick Stats kräver gratis API-nyckel. Trevlig återbesöks-drivare.",
+      "_return_driver": true
+    },
+
+    "river_gauges": {
+      "type": "api",
+      "enabled": false,
+      "provider": "usgs",
+      "endpoint": "https://waterservices.usgs.gov/nwis/iv/",
+      "site_ids": [],
+      "refresh_minutes": 180,
+      "output": { "format": "status_line", "voice": "practical" },
+      "_notes": "Fas 2. Big Sioux River nära Brookings – välj närmaste USGS-mätstation (site number)."
+    },
+
+    "recalls": {
+      "type": "rss",
+      "enabled": false,
+      "sources": ["fda", "usda_fsis", "cpsc"],
+      "refresh_minutes": 720,
+      "output": { "format": "digest", "voice": "helpful-heads-up" },
+      "_notes": "Fas 2. Nationella återkallelser filtrerade på relevans. Säkerhet utan att peka ut någon."
+    },
+
+    "obituaries_link_index": {
+      "type": "link_index_only",
+      "enabled": false,
+      "url": null,
+      "output": { "format": "outbound_links_only", "voice": "respectful" },
+      "_notes": "AVSTÅNGD som default. Vi återpublicerar ALDRIG dödsannonstext (upphovsrätt + känsligt). Om den ändå slås på: endast namn+datum som ren fakta + utgående länk till begravningsbyråns notis. Enklast: lämna av."
+    }
+  },
+
+  "_verify_before_launch": [
+    "Legistar client_id för Brookings (webapi.legistar.com/v1/<id>)",
+    "SDSU events-kalenderns publika URL / iCal-feed",
+    "NWS county/zone-kod för Brookings County",
+    "SD DOT 511 data-URL/endpoint",
+    "SmartGov: att permit-/licensdata är läsbar utan inloggning",
+    "Brookings School District styrelseagenda-källa",
+    "USDA NASS API-nyckel (gratis)"
+  ]
+}

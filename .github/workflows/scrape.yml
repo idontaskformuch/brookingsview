@@ -1,0 +1,37 @@
+name: scrape-and-publish
+# Kör scrapers + AI-formatering schemalagt, pinga sen Cloudflare Pages deploy hook
+# så Astro bygger om med färsk data. Händelsestyrt underhåll via alerting i runner.py.
+
+on:
+  schedule:
+    - cron: "0 * * * *"      # varje timme (justera per behov)
+  workflow_dispatch: {}       # tillåt manuell körning
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:       ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
+      NASS_API_KEY:       ${{ secrets.NASS_API_KEY }}
+      USER_AGENT:         "brookingsview.com (contact: hello@brookingsview.com)"
+      ALERT_WEBHOOK:      ${{ secrets.ALERT_WEBHOOK }}
+      ALERT_AFTER_FAILURES: "3"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Kör scrapers (skriver rådata till DB)
+        run: python -m scrapers.runner --config configs/brookings_sd.json
+      - name: Formatera och publicera stories (Stage 3 -> stories)
+        run: python -m ai_pipeline.publish --config configs/brookings_sd.json
+      - name: Trigga Cloudflare Pages-rebuild
+        if: success()
+        run: |
+          if [ -n "${{ secrets.PAGES_DEPLOY_HOOK }}" ]; then
+            curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK }}"
+          else
+            echo "PAGES_DEPLOY_HOOK ej satt — hoppar över rebuild"
+          fi

@@ -1,0 +1,145 @@
+# Brookings View — komplett byggplan (gör rätt från grunden)
+
+**Mål:** en varm, positiv, config-driven lokalsajt för Brookings på `brookingsview.com`
+som besvarar *"Vad händer i Brookings?"* — kul och härlig, aldrig snaskig, aldrig
+jail-/arrest-/obituary-innehåll. Byggd för att skala till 10+ orter där varje ny ort är
+en config-fil, inte kodändring.
+
+**Filosofi:** inga genvägar, inget slit-och-släng. Vi bygger varje lager på riktigt och
+i rätt beroendeordning, och går live först när det är genuint bra. Ingen tidspress.
+
+**Retrofit-fällor vi bygger rätt DIREKT** (billigt nu, smärtsamt senare):
+proveniens/källspårning · dedup · full config-drivenhet · hallucinations-guardrails ·
+trust/E-E-A-T-sidor · SEO-schema · tillgänglighet · cookie-consent.
+
+---
+
+## Arkitektur (låst innan bygge)
+
+- **Frontend:** Astro, statiskt genererat, hostat på Cloudflare Pages.
+- **Scrapers + AI-pipeline:** Python, körs schemalagt via **GitHub Actions cron** (samma
+  mönster som Holizon). Python valt för att scraping/PDF-parsing (CivicEngage, Legistar)
+  är mycket starkare där än i Workers.
+- **Databas:** **Neon** (serverless Postgres, generös gratisnivå, riktig JSONB, skalar till
+  fler orter). Alt: Supabase. Cloudflare D1/SQLite är möjligt om du vill 100 % Cloudflare-
+  native, men tappar JSONB och Python-scraping — rekommenderas ej här.
+- **Färskhet:** scrapers+AI skriver till DB → Actions pingar en **Cloudflare Pages deploy
+  hook** → Astro bygger om och hämtar från DB vid build-time. Fullt statiskt, snabbt, bra
+  SEO, billigt. Rebuild-kadens = innehållskadens (t.ex. varje timme).
+- **Config-drivet:** all ort-specifik data i `configs/brookings_sd.json`. Ingen ort-logik
+  hårdkodas i scraper-, AI- eller frontend-lagret.
+
+## Mappstruktur
+```
+/configs
+  brookings_sd.json
+/scrapers
+  /parsers        legistar_v1.py, civicengage_pdf_v1.py, smartgov_v1.py,
+                  noaa.py, nws_alerts.py, sd511.py, usda.py, gojacks_v1.py, events.py
+  /sources        (tunna wrappers som mappar config → parser → DB)
+  runner.py       (läser config, kör aktiverade källor, loggar scrape_runs)
+/ai_pipeline
+  format_prompt.py
+  guardrails.py
+/db
+  schema.sql
+/site             (Astro-projektet)
+/.github/workflows
+  scrape.yml, build.yml
+PLAN.md
+```
+
+---
+
+## Stage 0 — Foundations & verifiering (INNAN parsers byggs)
+Parsers beror på riktiga endpoints, så lös detta först:
+1. Skapa repo, monorepo-struktur enligt ovan, lägg in configen.
+2. Provisionera Neon-databas. Lägg secrets i GitHub Actions + Cloudflare env:
+   `ANTHROPIC_API_KEY`, `DATABASE_URL`, `NASS_API_KEY`, `PAGES_DEPLOY_HOOK`.
+3. **Verifiera källorna** (från configens `_verify_before_launch`):
+   Legistar client_id (testa `webapi.legistar.com/v1/<id>`) · SDSU events-URL/iCal ·
+   NWS county/zone-kod för Brookings County · SD 511-endpoint · SmartGov publik läsbarhet ·
+   skolstyrelsens agendakälla · USDA NASS-nyckel.
+   *Done när:* varje aktiverad källa har en bekräftad, hämtningsbar URL/endpoint.
+
+## Stage 1 — Datalager (byggs innan scrapers skriver till det)
+Postgres-schema, med det som är dyrt att retrofitta inbyggt:
+- Kärntabeller: `towns`, `stories` (title, slug, body, source_type, published_at,
+  town_id, **source_url**, **snapshot_id**, **generated_by**, **verified**).
+- Innehåll per källa: `meetings`, `permits`, `events`, `sports_games`, `weather_snapshots`,
+  `ag_prices`. (Ingen jail-/obituary-tabell — medvetet.)
+- **`scrape_runs`** (source, started_at, status, http_code, items_found, error) — driver
+  alerting.
+- **`source_snapshots`** (raw HTML/PDF, hash, fetched_at) — bevis på vad källan sa +
+  upptäcker när .gov-sajter ändrar struktur.
+- **Dedup:** unik constraint / content-hash på meetings, permits, events, sports.
+- Index på `(town_id, published_at)`.
+
+## Stage 2 — Scrapers (var och en byggd + testad mot RIKTIG data)
+Byggs plattformskeyade så de återanvänds för ort #2. Varje parser: hämta → snapshot →
+skriv rådata → dedup → logga `scrape_run`.
+- `legistar_v1` (city meetings, via webapi) — återanvänds direkt för alla Legistar-orter.
+- `civicengage_pdf_v1` (county meetings).
+- `smartgov_v1` (permits + business licenses).
+- `noaa` (väder), `nws_alerts` (varningar), `sd511` (väglag), `county_alerts` (banner).
+- `gojacks_v1` + NCAA-data (SDSU-sport).
+- `events` (multi: parks&rec, bibliotek, SDSU-kalender).
+- `usda` (råvarupriser).
+*Done när:* varje aktiverad källa fyller sin tabell med korrekt, deduplicerad riktig data.
+
+## Stage 3 — AI-formateringslager
+- `format_prompt.py`: per-källa-mallar, batchad, varm/vänlig men strikt faktabunden ton
+  enligt `configs → ai.tone_guidelines`. Ren strukturerad data (väder, matchtider,
+  priser) templateras utan AI där det räcker; AI väver ihop till läsbara digests med kontext.
+- `guardrails.py`: **extraktiv validering** — avvisa output som innehåller egennamn,
+  siffror eller påståenden som inte finns i källdatan; ingen åsikt om kontroversiella
+  civik-frågor; blockera allt som rör `editorial.never_publish`.
+- Kostnadskontroll: batch, cache, månadsbudget-tak (`ai.monthly_budget_usd`).
+*Done när:* en testkörning ger vänliga, korrekta digests och guardrail avvisar en
+medvetet planterad hallucination.
+
+## Stage 4 — Frontend (Astro, config-drivet, matad av DB)
+- Designsystem enligt `frontend-design`: varm, ljus, EN glad accentfärg, mobile-first,
+  tillgängligt (semantisk HTML, kontrast, alt-texter) från start.
+- Sidor: startsida (Hero → Today/väder → Jackrabbits → This Week/events → New in Town/
+  permits) · sektions-indexsidor · digest-/story-sidor · **trust-sidor**: About, Contact,
+  Privacy, Cookie, **Methodology** (E-E-A-T: hur datan samlas in, namngiven ansvarig,
+  rättelsepolicy).
+- SEO: `@astrojs/sitemap`, `NewsArticle` + `LocalBusiness` schema, `robots.txt`, OG-bilder,
+  **RSS-feed**, favicon.
+- PWA: `manifest.json` + service worker (offline-cache). Push förbereds men aktiveras i
+  Stage 7 (iOS kräver "Add to Home Screen" först).
+- Cookie-consent-banner (integritetsvänlig default), kopplad till framtida AdSense.
+
+## Stage 5 — Automation & ops
+- `.github/workflows/scrape.yml`: cron per källkadens → `runner.py` → AI-batch → ping
+  deploy hook.
+- **Alerting:** mejl när en scraper failar N gånger i rad (händelsestyrt underhåll, inte
+  daglig övervakning).
+- AI-spend-monitor mot budgettaket.
+
+## Stage 6 — QA & compliance (innan launch)
+- Innehållsgranskning + guardrail-audit (planterad-hallucination-test).
+- Juridisk koll: bekräfta att INGET namngivet-privatperson-negativt innehåll finns någonstans.
+- Cookie-consent + privacy policy faktakoll.
+- Lighthouse (prestanda/tillgänglighet/SEO), mobil-QA.
+
+## Stage 7 — Launch, sen AdSense
+- Gå live på `brookingsview.com`. Aktivera PWA-push.
+- **Låt innehållet ackumuleras i några veckor** — ansök om AdSense FÖRST därefter
+  (vertoq-lärdomen: substantiellt innehåll + trust-sidor på plats före ansökan).
+
+## Stage 8 — Skala till ort #2
+- Klona configen (`configs/<town>.json`), återanvänd plattforms-parsers rakt av
+  (Legistar m.fl.). Bygg bara ort-specifika, jail-fria källor. Den begränsande faktorn är
+  antalet *unika plattformar*, inte antalet orter.
+
+---
+
+## Permanenta guardrails (alla stadier)
+- Publicera ALDRIG arrest/jail/mugshot/obituary/anklagande innehåll om namngivna
+  privatpersoner. Vi beskriver händelser, lag, platser och trender — aldrig anklagelser
+  mot enskilda.
+- Allt faktiskt korrekt. AI-lagret hittar aldrig på namn, siffror eller citat — det väver
+  bara ihop det som finns i källdatan, i en varm och vänlig ton.
+- Om något kan tvinga fram en borttagning senare bygger vi inte in det från början.
