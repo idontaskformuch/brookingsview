@@ -1,5 +1,6 @@
 ---
-/** Liten mätarruta för strukturerad data: väder, antal, priser. */
+/** Mätarruta för strukturerad data -- väder, antal, priser. Motsvarar
+ *  tidningens väderruta och börstabell: liten, tät, siffertung. */
 interface Props { label: string; value: string; note?: string; }
 const { label, value, note } = Astro.props;
 ---
@@ -10,24 +11,16 @@ const { label, value, note } = Astro.props;
 </div>
 
 <style>
-.tile {
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 1rem 1.125rem;
-}
+.tile { border-left: 1px solid var(--rule); padding: 0 0 0 0.875rem; }
 .tile__label {
-  margin: 0 0 0.25rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.03em;
+  margin: 0 0 0.1875rem;
+  font-family: var(--font-ui);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-soft);
 }
-.tile__value {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-}
-.tile__note { margin: 0.125rem 0 0; font-size: 0.875rem; color: var(--ink-soft); }
+.tile__value { margin: 0; font-size: 1.375rem; font-weight: 500; letter-spacing: -0.02em; line-height: 1.1; }
+.tile__note { margin: 0.125rem 0 0; font-size: 0.8125rem; color: var(--ink-soft); line-height: 1.35; }
 </style>

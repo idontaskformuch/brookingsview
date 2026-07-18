@@ -10,7 +10,7 @@ const sportName = game.sport === 'mbb' ? "men's basketball"
   : game.sport.replace(/_/g, ' ');
 ---
 <div class:list={['game', feature && 'game--feature']}>
-  <p class="game__meta data">{home ? 'Home' : 'Away'} · {sportName}</p>
+  <p class="game__meta"><span class="kicker">{home ? 'Home' : 'Away'} &middot; {sportName}</span></p>
   <p class="game__title">Jackrabbits {home ? 'vs' : 'at'} {game.opponent}</p>
   <p class="game__when data">
     {formatDate(game.starts_at)}{game.starts_at && ` · ${formatTime(game.starts_at)}`}
@@ -20,28 +20,22 @@ const sportName = game.sport === 'mbb' ? "men's basketball"
 </div>
 
 <style>
-.game {
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 1.125rem 1.25rem;
+.game { border-bottom: 1px solid var(--rule); padding-block: 0.75rem; }
+.game--feature {
+  border: 0;
+  border-left: 4px solid var(--sky);
+  background: var(--sky-tint);
+  padding: 0.875rem 1rem;
 }
-.game--feature { background: var(--sky-tint); border-color: var(--sky); }
-.game__meta {
-  margin: 0 0 0.375rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-.game--feature .game__meta { color: var(--sky); }
+.game__meta { margin: 0 0 0.25rem; }
 .game__title {
-  margin: 0 0 0.375rem;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.125rem;
+  margin: 0 0 0.25rem;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1.1875rem;
   letter-spacing: -0.01em;
+  line-height: 1.15;
 }
-.game__when { margin: 0; font-size: 0.8125rem; color: var(--ink-soft); line-height: 1.5; }
-.game__result { margin: 0.5rem 0 0; font-size: 0.875rem; font-weight: 500; }
+.game__when { margin: 0; font-size: 0.75rem; color: var(--ink-soft); line-height: 1.45; }
+.game__result { margin: 0.375rem 0 0; font-size: 0.8125rem; font-weight: 500; }
 </style>

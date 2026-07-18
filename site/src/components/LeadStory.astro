@@ -1,0 +1,64 @@
+---
+/** Ettan. Dominerar sidan i skala -- det är så en tidning uttrycker redaktionell
+ *  bedömning visuellt, i stället för att ge varje post lika stor vikt. */
+import type { Story } from '../lib/db';
+import { formatDate, formatTime, formatCalendarDate } from '../lib/db';
+
+interface Props { story: Story; }
+const { story } = Astro.props;
+
+const isMeeting = story.source_type === 'meeting';
+const isAlert = story.source_type === 'alert';
+const when = story.occurs_at;
+const timeLabel = !when
+  ? ''
+  : isMeeting
+    ? formatCalendarDate(when)
+    : `${formatDate(when)}${!isAlert && formatTime(when) ? ` · ${formatTime(when)}` : ''}`;
+const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall' : 'Events';
+---
+<article class="lead">
+  <p class="lead__kicker">
+    <span class="kicker">{kicker}</span>
+    {timeLabel && <span class="lead__when data">{timeLabel}</span>}
+  </p>
+  <h2 class="lead__title"><a href={`/s/${story.slug}`}>{story.title}</a></h2>
+  <p class="lead__body">{story.body}</p>
+  <a class="lead__more" href={`/s/${story.slug}`}>Read more &rarr;</a>
+</article>
+
+<style>
+.lead { border-bottom: 2px solid var(--rule-strong); padding-bottom: 1.25rem; }
+.lead__kicker {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 0.5rem 0.75rem; margin: 0 0 0.5rem;
+}
+.lead__when {
+  font-size: 0.6875rem; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--ink-soft);
+}
+.lead__title {
+  font-size: clamp(1.75rem, 4.2vw, 2.625rem);
+  line-height: 1.05;
+  margin: 0 0 0.625rem;
+}
+.lead__title a { color: inherit; text-decoration: none; }
+.lead__title a:hover { color: var(--sky); }
+.lead__body {
+  margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.55;
+  max-width: 38rem;
+}
+.lead__more {
+  display: inline-block;
+  margin-top: 0.625rem;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.lead__more:hover { text-decoration: underline; }
+</style>

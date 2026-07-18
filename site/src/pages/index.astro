@@ -1,14 +1,20 @@
 ---
 /**
- * Startsidan, byggd kring TID i stället för ämne.
+ * Förstasidan, byggd som en tidningsförstasida.
  *
- * De flesta lokalsajter sorterar efter kategori (Sport / Politik / Nöje). Men
- * frågan sajten svarar på -- "what's happening in Brookings?" -- handlar om när,
- * inte om vad. Därför: I dag -> Den här veckan -> Runt om i stan.
+ * Strukturen är TID, inte ämne: I dag -> Den här veckan -> Framöver. Frågan
+ * sajten svarar på ("what's happening in Brookings?") handlar om när, inte om
+ * vad -- de flesta lokalsajter sorterar efter kategori och blir svårare att
+ * skanna för det.
+ *
+ * Hierarkin är avsiktlig: en etta som dominerar, ett högerfält med siffror
+ * (väder, nästa match, råvarupriser -- tidningens väderruta och börstabell),
+ * och därunder en spaltström avdelad med hårfina linjer.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
+import LeadStory from '../components/LeadStory.astro';
 import GameCard from '../components/GameCard.astro';
 import Tile from '../components/Tile.astro';
 import {
@@ -18,52 +24,48 @@ import {
 
 const [alerts, upcoming, games, periods, prices] = await Promise.all([
   getActiveAlerts(),
-  getUpcomingStories(['event', 'meeting'], 24),
-  getUpcomingGames(4),
+  getUpcomingStories(['event', 'meeting'], 40),
+  getUpcomingGames(3),
   getWeather(),
   getAgPrices(),
 ]);
 
 const today = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
 
+// Ettan är närmast förestående post. Enkel, försvarbar, alltid färsk regel --
+// ingen dold viktning som skulle behöva underhållas.
+const [lead, ...rest] = upcoming;
+
 const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
 const endOfDay = new Date(startOfDay); endOfDay.setDate(endOfDay.getDate() + 1);
 const weekEnd = new Date(startOfDay); weekEnd.setDate(weekEnd.getDate() + 8);
 
-const isWithin = (iso: string | null, from: Date, to: Date) =>
+const within = (iso: string | null, from: Date, to: Date) =>
   !!iso && new Date(iso) >= from && new Date(iso) < to;
 
-const todayStories = upcoming.filter((s) => isWithin(s.occurs_at, startOfDay, endOfDay));
-const weekStories = upcoming.filter((s) => isWithin(s.occurs_at, endOfDay, weekEnd));
-const laterStories = upcoming.filter((s) => s.occurs_at && new Date(s.occurs_at) >= weekEnd);
+const todayStories = rest.filter((s) => within(s.occurs_at, startOfDay, endOfDay));
+const weekStories = rest.filter((s) => within(s.occurs_at, endOfDay, weekEnd));
+const laterStories = rest.filter((s) => s.occurs_at && new Date(s.occurs_at) >= weekEnd);
 
 const nextGame = games[0] ?? null;
-const priceLine = prices
-  .map((p) => `${p.commodity} ${p.price !== null ? Number(p.price).toFixed(2) : '—'}`)
-  .join('   ');
 ---
 
 <BaseLayout title="Brookings View — what's happening in Brookings, SD" wide>
-  <header class="lede">
-    <h1>What's happening in Brookings</h1>
-    <p>
-      Meetings, events, Jackrabbits games, weather and market prices — gathered
-      every hour from public sources, with a link back to every one.
-    </p>
-  </header>
 
   {alerts.length > 0 && (
-    <section aria-label="Active alerts">
-      <SectionRule label="Right now" />
-      <div class="stack">
-        {alerts.map((story) => <StoryCard story={story} />)}
-      </div>
+    <section aria-label="Active alerts" class="alerts">
+      {alerts.map((story) => <StoryCard story={story} />)}
     </section>
   )}
 
-  <section aria-label="Today">
-    <SectionRule label="Today" />
-    <div class="grid grid--tiles">
+  <div class="front">
+    <div class="front__lead">
+      {lead ? <LeadStory story={lead} /> : (
+        <p class="empty">Nothing scheduled right now. This page rebuilds every hour.</p>
+      )}
+    </div>
+
+    <aside class="rail" aria-label="Conditions and numbers">
       {today && (
         <Tile
           label="Weather"
@@ -71,58 +73,68 @@ const priceLine = prices
           note={today.short}
         />
       )}
-      <Tile
-        label="Happening today"
-        value={String(todayStories.length)}
-        note={todayStories.length === 1 ? 'event or meeting' : 'events and meetings'}
-      />
-      {prices.length > 0 && (
-        <Tile label="Markets" value={prices.length === 0 ? '—' : `${prices.length}`} note={priceLine} />
+      {nextGame && (
+        <div class="rail__game">
+          <GameCard game={nextGame} />
+        </div>
       )}
-    </div>
-    {todayStories.length > 0 && (
-      <div class="stack stack--top">
+      {prices.length > 0 && (
+        <div class="rail__prices">
+          <p class="rail__label">Markets</p>
+          <table class="prices data">
+            <tbody>
+              {prices.map((p) => (
+                <tr>
+                  <th scope="row">{p.commodity}</th>
+                  <td>{p.price !== null ? Number(p.price).toFixed(2) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </aside>
+  </div>
+
+  {todayStories.length > 0 && (
+    <section aria-label="Today">
+      <SectionRule label="Today" />
+      <div class="river">
         {todayStories.map((story) => <StoryCard story={story} />)}
       </div>
-    )}
-  </section>
+    </section>
+  )}
 
   <section aria-label="This week">
     <SectionRule label="This week" href="/events" />
-    {nextGame && (
-      <div class="feature">
-        <GameCard game={nextGame} feature />
-      </div>
-    )}
     {weekStories.length > 0 ? (
-      <div class="grid grid--cards">
+      <div class="river">
         {weekStories.map((story) => <StoryCard story={story} />)}
       </div>
     ) : (
-      <p class="empty">Nothing scheduled in the next week yet. Check back — this
-      page rebuilds every hour.</p>
+      <p class="empty">Nothing scheduled in the next week yet.</p>
     )}
   </section>
 
   {laterStories.length > 0 && (
     <section aria-label="Coming up">
       <SectionRule label="Coming up" href="/events" />
-      <div class="grid grid--cards">
-        {laterStories.slice(0, 6).map((story) => <StoryCard story={story} compact />)}
+      <div class="river">
+        {laterStories.slice(0, 9).map((story) => <StoryCard story={story} compact />)}
       </div>
     </section>
   )}
 
-  <section aria-label="Around town">
-    <SectionRule label="Around town" />
-    <div class="grid grid--cards">
+  <section aria-label="Sections">
+    <SectionRule label="More from Brookings" />
+    <div class="panels">
       <a class="panel" href="/jackrabbits">
         <h3>Jackrabbits</h3>
         <p>Full schedules and results for SDSU football, basketball and volleyball.</p>
       </a>
       <a class="panel" href="/city-hall">
         <h3>City hall</h3>
-        <p>What the city council, county commission and committees are deciding.</p>
+        <p>What the council, county commission and committees are deciding.</p>
       </a>
       <a class="panel" href="/farm-report">
         <h3>Farm report</h3>
@@ -133,37 +145,58 @@ const priceLine = prices
 </BaseLayout>
 
 <style>
-.lede { max-width: 40rem; margin-bottom: 0.5rem; }
-.lede p { color: var(--ink-soft); font-size: 1.125rem; margin: 0.75rem 0 0; }
+.alerts { margin-bottom: 1.25rem; }
 
-.stack { display: grid; gap: 0.75rem; }
-.stack--top { margin-top: 1rem; }
-
-.grid { display: grid; gap: 0.75rem; }
-.grid--tiles { grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
-.grid--cards { grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
-
-.feature { margin-bottom: 0.75rem; }
-
-.empty {
-  color: var(--ink-soft);
-  background: var(--surface);
-  border: 1px dashed var(--rule);
-  border-radius: 4px;
-  padding: 1.25rem;
-  margin: 0;
+/* Etta + högerfält */
+.front { display: grid; gap: 1.5rem; margin-bottom: 0.5rem; }
+@media (min-width: 56rem) {
+  .front { grid-template-columns: minmax(0, 2.15fr) minmax(0, 1fr); gap: 2rem; }
+  .front__lead { border-right: 1px solid var(--rule); padding-right: 2rem; }
 }
 
+.rail { display: grid; gap: 1.125rem; align-content: start; }
+.rail__game { border-top: 1px solid var(--rule); padding-top: 0.25rem; }
+.rail__prices { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
+.rail__label {
+  margin: 0 0 0.375rem;
+  font-family: var(--font-ui);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.prices { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.prices th {
+  text-align: left; font-weight: 400; text-transform: capitalize;
+  padding: 0.1875rem 0; color: var(--ink-soft);
+}
+.prices td { text-align: right; padding: 0.1875rem 0; font-variant-numeric: tabular-nums; }
+
+/* Spaltström: hårfina vertikala linjer mellan spalterna, som i en tidning. */
+.river { display: grid; gap: 0 1.5rem; }
+@media (min-width: 40rem) {
+  .river { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .river > :global(*) { border-left: 1px solid var(--rule); padding-left: 1.5rem; }
+  .river > :global(*:nth-child(2n + 1)) { border-left: 0; padding-left: 0; }
+}
+@media (min-width: 62rem) {
+  .river { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .river > :global(*:nth-child(2n + 1)) { border-left: 1px solid var(--rule); padding-left: 1.5rem; }
+  .river > :global(*:nth-child(3n + 1)) { border-left: 0; padding-left: 0; }
+}
+
+.empty { color: var(--ink-soft); margin: 0; padding: 1rem 0; }
+
+.panels { display: grid; gap: 0 1.5rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
 .panel {
   display: block;
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 1.125rem 1.25rem;
+  border-top: 1px solid var(--rule);
+  padding: 0.875rem 0 1rem;
   text-decoration: none;
   color: inherit;
 }
-.panel:hover { border-color: var(--sky); }
-.panel h3 { margin: 0 0 0.375rem; color: var(--sky); }
-.panel p { margin: 0; font-size: 0.9375rem; color: var(--ink-soft); }
+.panel h3 { margin: 0 0 0.25rem; color: var(--sky); }
+.panel:hover h3 { text-decoration: underline; }
+.panel p { margin: 0; font-size: 0.9375rem; color: var(--ink-soft); line-height: 1.45; }
 </style>

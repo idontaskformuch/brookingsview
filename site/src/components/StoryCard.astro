@@ -1,4 +1,6 @@
 ---
+/** En post i nyhetsströmmen. Avdelad med hårfin linje, inte inramad som ett
+ *  kort -- kortramar plattar ut hierarkin och får allt att se lika viktigt ut. */
 import type { Story } from '../lib/db';
 import { formatDate, formatTime, formatCalendarDate } from '../lib/db';
 
@@ -13,36 +15,53 @@ const timeLabel = !when
   : isMeeting
     ? formatCalendarDate(when)  // datum-utan-klockslag -- se db.ts
     : `${formatDate(when)}${!isAlert && formatTime(when) ? ` · ${formatTime(when)}` : ''}`;
+
+const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall' : 'Events';
 ---
-<article class:list={['card', isAlert && 'card--alert']}>
-  {timeLabel && <p class="card__when data">{timeLabel}</p>}
-  <h3 class="card__title">
-    <a href={`/s/${story.slug}`}>{story.title}</a>
-  </h3>
-  {!compact && <p class="card__body">{story.body}</p>}
+<article class:list={['item', isAlert && 'item--alert']}>
+  <p class="item__kicker">
+    <span class="kicker">{kicker}</span>
+    {timeLabel && <span class="item__when data">{timeLabel}</span>}
+  </p>
+  <h3 class="item__title"><a href={`/s/${story.slug}`}>{story.title}</a></h3>
+  {!compact && <p class="item__body">{story.body}</p>}
 </article>
 
 <style>
-.card {
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  padding: 1.125rem 1.25rem;
+.item {
+  border-bottom: 1px solid var(--rule);
+  padding-block: 0.875rem;
 }
-.card--alert {
-  border-color: var(--wheat);
+.item:first-child { padding-top: 0; }
+.item--alert {
+  border-left: 4px solid var(--wheat);
   background: var(--wheat-tint);
+  padding: 0.875rem 1rem;
+  border-bottom: 0;
+  margin-bottom: 0.75rem;
 }
-.card__when {
-  margin: 0 0 0.375rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.03em;
+.item--alert .kicker { color: var(--wheat); }
+
+.item__kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  margin: 0 0 0.3125rem;
+}
+.item__when {
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-soft);
 }
-.card--alert .card__when { color: var(--wheat); }
-.card__title { margin: 0 0 0.5rem; }
-.card__title a { color: inherit; text-decoration: none; }
-.card__title a:hover { color: var(--sky); text-decoration: underline; }
-.card__body { margin: 0; font-size: 1rem; color: var(--ink); }
+.item__title { margin: 0; font-size: 1.1875rem; line-height: 1.15; }
+.item__title a { color: inherit; text-decoration: none; }
+.item__title a:hover { color: var(--sky); text-decoration: underline; }
+.item__body {
+  margin: 0.375rem 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
 </style>
