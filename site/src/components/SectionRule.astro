@@ -1,0 +1,35 @@
+---
+/** Sektionsrubrik: etikett + linje. Etiketten anger tidshorisont, inte ämne --
+ *  sajtens fråga ("what's happening") handlar om när, inte om vad. */
+interface Props { label: string; href?: string; }
+const { label, href } = Astro.props;
+---
+<div class="rule">
+  <span class="rule__label">{label}</span>
+  <span class="rule__line" aria-hidden="true"></span>
+  {href && <a class="rule__more" href={href}>See all</a>}
+</div>
+
+<style>
+.rule {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  margin: 2.5rem 0 1rem;
+}
+.rule__label {
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.rule__line { flex: 1; height: 1px; background: var(--rule); }
+.rule__more {
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+.rule__more:hover { text-decoration: underline; }
+</style>

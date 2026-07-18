@@ -1,0 +1,40 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="About — Brookings View"
+  description="Why Brookings View exists and how it's put together.">
+  <article class="prose">
+    <h1>About Brookings View</h1>
+
+    <p>Brookings Register, the town's newspaper, closed in August 2025. Since
+    then, there's been no single place to find out what the city council
+    decided, what's happening at the library this week, or when the Jackrabbits
+    play next. Brookings View is an attempt to fill that gap.</p>
+
+    <h2>How it works</h2>
+    <p>The site is built and updated automatically. Every hour, it checks the
+    city's and county's public meeting agendas, the library's event calendar,
+    SDSU's athletics schedule, the National Weather Service, and USDA market
+    data. New information is summarized in plain language and published — no
+    person reviews each item before it goes live.</p>
+    <p>Read the full breakdown, source by source, on
+    <a href="/how-we-gather-this">how we gather this</a>.</p>
+
+    <h2>What you won't find here</h2>
+    <p>Brookings View doesn't cover arrests, court records, or obituaries.
+    That's a deliberate choice, not an oversight: this site exists to tell you
+    what's happening in your town, not to follow anyone through a hard moment
+    in their life. If you're looking for that kind of coverage, you won't find
+    it — by design.</p>
+
+    <h2>Corrections</h2>
+    <p>Automated summaries occasionally get something wrong. If you spot an
+    error, <a href="/contact">let us know</a> and we'll fix it.</p>
+  </article>
+</BaseLayout>
+
+<style>
+.prose { max-width: 38rem; }
+.prose h2 { margin-top: 2.25rem; margin-bottom: 0.75rem; }
+.prose p { margin: 0 0 1rem; }
+</style>

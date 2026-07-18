@@ -1,0 +1,43 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Tile from '../components/Tile.astro';
+import { getAgPrices } from '../lib/db';
+
+const prices = await getAgPrices();
+---
+<BaseLayout title="Farm report — Brookings View"
+  description="Corn, soybean and cattle prices for South Dakota from USDA National Agricultural Statistics Service.">
+  <header class="lede">
+    <h1>Farm report</h1>
+    <p>Prices received, from the USDA National Agricultural Statistics Service.
+    Corn and soybeans are South Dakota figures; cattle is the national series.</p>
+  </header>
+
+  {prices.length > 0 ? (
+    <div class="grid">
+      {prices.map((p) => (
+        <Tile
+          label={p.commodity}
+          value={p.price !== null ? Number(p.price).toFixed(2) : '—'}
+          note={p.unit ?? undefined}
+        />
+      ))}
+    </div>
+  ) : (
+    <p class="empty">Prices are not available right now.</p>
+  )}
+
+  <p class="note">
+    USDA publishes these monthly, so the most recent figure may lag the current
+    month. Always check the <a href="https://quickstats.nass.usda.gov/" rel="noopener">USDA
+    Quick Stats database</a> before making a decision that depends on the number.
+  </p>
+</BaseLayout>
+
+<style>
+.lede { max-width: 40rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); margin-top: 1.5rem; }
+.note { margin-top: 2rem; font-size: 0.9375rem; color: var(--ink-soft); }
+.empty { color: var(--ink-soft); }
+</style>

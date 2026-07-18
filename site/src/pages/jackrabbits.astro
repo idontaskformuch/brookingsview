@@ -1,0 +1,79 @@
+---
+/** Sport som TABELL, aldrig som 109 enskilda sidor -- se lib/db.ts om varför. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import GameCard from '../components/GameCard.astro';
+import { getSeasonGames, getUpcomingGames, formatDate, formatTime } from '../lib/db';
+
+const [next, all] = await Promise.all([getUpcomingGames(1), getSeasonGames()]);
+const nextGame = next[0] ?? null;
+
+const bySport = new Map<string, typeof all>();
+for (const game of all) {
+  if (!bySport.has(game.sport)) bySport.set(game.sport, []);
+  bySport.get(game.sport)!.push(game);
+}
+const label = (s: string) =>
+  s === 'mbb' ? "Men's basketball"
+  : s === 'wbb' ? "Women's basketball"
+  : s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ');
+---
+<BaseLayout title="SDSU Jackrabbits schedules and results — Brookings View" wide
+  description="Full SDSU Jackrabbits schedules and results for football, basketball and volleyball.">
+  <header class="lede">
+    <h1>Jackrabbits</h1>
+    <p>Schedules and results for SDSU football, basketball and volleyball, straight
+    from the athletics department's own listings.</p>
+  </header>
+
+  {nextGame && (
+    <>
+      <SectionRule label="Next up" />
+      <GameCard game={nextGame} feature />
+    </>
+  )}
+
+  {[...bySport.entries()].map(([sport, games]) => (
+    <>
+      <SectionRule label={label(sport)} />
+      <table class="sched">
+        <thead>
+          <tr><th scope="col">Date</th><th scope="col">Opponent</th>
+              <th scope="col">Where</th><th scope="col">Result</th></tr>
+        </thead>
+        <tbody>
+          {games.map((game) => (
+            <tr>
+              <td class="data">{formatDate(game.starts_at)}<span class="t">{formatTime(game.starts_at)}</span></td>
+              <td>{game.home_away === 'home' ? 'vs' : 'at'} {game.opponent}</td>
+              <td class="where">{game.venue ?? '—'}</td>
+              <td class="data">{game.result ?? '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  ))}
+</BaseLayout>
+
+<style>
+.lede { max-width: 40rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.sched { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.9375rem; }
+.sched th {
+  text-align: left;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 600;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--rule);
+}
+.sched td { padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.sched tr:last-child td { border-bottom: 0; }
+.sched .t { display: block; font-size: 0.75rem; color: var(--ink-soft); }
+.where { color: var(--ink-soft); font-size: 0.875rem; }
+@media (max-width: 40rem) { .where { display: none; } }
+</style>

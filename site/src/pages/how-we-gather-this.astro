@@ -1,0 +1,100 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const sources = [
+  {
+    name: 'City council & city meetings',
+    from: 'City of Brookings, via Legistar',
+    detail: "Agendas and the items on them — permits, ordinances, appointments — pulled directly from the city's own meeting management system.",
+  },
+  {
+    name: 'County meetings',
+    from: 'Brookings County, via its Agenda Center',
+    detail: 'County commission, planning & zoning, and committee agendas, including the text of posted PDF documents where available.',
+  },
+  {
+    name: 'Weather & alerts',
+    from: 'National Weather Service / NOAA',
+    detail: 'Forecasts and active advisories for Brookings County, straight from the federal weather API.',
+  },
+  {
+    name: 'Road & emergency alerts',
+    from: 'Brookings County Alert Center',
+    detail: "Closures, hazards, and public notices, shown only while they're still in effect.",
+  },
+  {
+    name: 'Library events',
+    from: 'Brookings Public Library',
+    detail: "Classes, programs, and events from the library's own public calendar.",
+  },
+  {
+    name: 'Jackrabbits schedules & results',
+    from: 'SDSU Athletics',
+    detail: 'Game times, opponents, and final scores for SDSU football, basketball, and volleyball.',
+  },
+  {
+    name: 'Farm report',
+    from: 'USDA National Agricultural Statistics Service',
+    detail: 'Corn, soybean, and cattle prices, published monthly by USDA.',
+  },
+];
+---
+<BaseLayout title="How we gather this — Brookings View"
+  description="Every source Brookings View draws from, and how the AI summaries are checked.">
+  <article class="prose">
+    <h1>How we gather this</h1>
+    <p>Brookings View doesn't have a newsroom. It has a set of public data
+    sources, checked every hour, and a language model that turns raw agendas
+    and calendars into short, readable summaries. Here's exactly how that
+    works.</p>
+
+    <h2>The sources</h2>
+    <dl class="sources">
+      {sources.map((s) => (
+        <div class="source">
+          <dt>{s.name}</dt>
+          <dd class="source__from">{s.from}</dd>
+          <dd>{s.detail}</dd>
+        </div>
+      ))}
+    </dl>
+
+    <h2>How the summaries are written</h2>
+    <p>Each item is summarized by Claude, an AI model made by Anthropic, working
+    only from the source text — the actual agenda, the actual calendar listing.
+    It's instructed to use only facts present in that source and never to add
+    names, numbers, or details that aren't there. Every summary is checked
+    against its source before publishing; if a check fails, the item is either
+    rewritten or held back rather than published incomplete.</p>
+    <p>Every story links back to its original source, so you can always read
+    the full agenda or listing yourself.</p>
+
+    <h2>What we choose not to name</h2>
+    <p>Meeting agendas sometimes include the names of private individuals —
+    someone applying for a variance, say, or a permit. We refer to people by
+    role instead ("an applicant in Preston Township") rather than by name.
+    Organizations, businesses, and public officials acting in their official
+    capacity are named normally.</p>
+
+    <h2>Corrections</h2>
+    <p>If a summary gets something wrong, <a href="/contact">tell us</a> and
+    we'll fix it — usually within the hour, since the site rebuilds
+    automatically.</p>
+  </article>
+</BaseLayout>
+
+<style>
+.prose { max-width: 40rem; }
+.prose h2 { margin-top: 2.25rem; margin-bottom: 0.75rem; }
+.prose p { margin: 0 0 1rem; }
+
+.sources { display: grid; gap: 1.25rem; margin: 0; }
+.source dt {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1rem;
+}
+.source__from { color: var(--sky); font-size: 0.875rem; margin: 0.125rem 0 0.375rem; }
+.source dd:last-child { margin: 0; color: var(--ink-soft); font-size: 0.9375rem; }
+.source dd { margin-inline-start: 0; }
+</style>

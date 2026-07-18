@@ -1,0 +1,297 @@
+/**
+ * Enda filen som pratar med databasen.
+ *
+ * Allt annat i site/ tar emot färdig data och behöver aldrig veta varifrån den
+ * kom -- samma princip som scraper-lagret, där ingen parser vet vilken ort den
+ * kör för. Vill vi byta datalager senare är det den här filen som ändras.
+ *
+ * Två sorters innehåll, medvetet åtskilda:
+ *
+ *   REDAKTIONELLT (stories)  möten, evenemang, varningar. AI-formaterade,
+ *                            guardrail-validerade, en sida var.
+ *   STRUKTURERAT (källtabeller)  matcher, väder, råvarupriser. Läses direkt och
+ *                            renderas som tabeller och rutor -- ALDRIG som egna
+ *                            sidor. 109 nästan identiska matchsidor vore precis
+ *                            den "scaled content"-signal som fällde vertoq.net.
+ *
+ * Alla frågor filtreras på town_id från configen, så samma kod betjänar nästa
+ * ort utan ändring.
+ */
+import { neon } from '@neondatabase/serverless';
+
+const sql = neon(import.meta.env.DATABASE_URL);
+
+export const TOWN_ID = import.meta.env.TOWN_ID ?? 'brookings_sd';
+
+export type SourceType = 'meeting' | 'event' | 'alert';
+
+export interface Story {
+  id: number;
+  title: string;
+  slug: string;
+  body: string;
+  source_type: SourceType;
+  source_url: string | null;
+  occurs_at: string | null;
+  published_at: string;
+  generated_by: string;
+}
+
+export interface Game {
+  id: number;
+  sport: string;
+  opponent: string;
+  home_away: string | null;
+  starts_at: string | null;
+  venue: string | null;
+  result: string | null;
+}
+
+export interface WeatherPeriod {
+  name: string;
+  start: string;
+  temp: number | null;
+  unit: string;
+  short: string;
+  wind: string;
+  is_daytime: boolean;
+}
+
+export interface AgPrice {
+  commodity: string;
+  price: number | null;
+  unit: string | null;
+  as_of: string | null;
+}
+
+/* ------------------------------------------------------------------ stories */
+
+/** Kommande och pågående -- det startsidan och sektionssidorna visar. */
+export async function getUpcomingStories(
+  sourceTypes: SourceType[],
+  limit = 20,
+): Promise<Story[]> {
+  return (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND source_type = ANY(${sourceTypes})
+       AND occurs_at >= now() - interval '12 hours'
+     ORDER BY occurs_at ASC
+     LIMIT ${limit}
+  `) as Story[];
+}
+
+/** Passerat innehåll, nyast först. Arkiv -- inte det sajten leder med. */
+export async function getPastStories(
+  sourceTypes: SourceType[],
+  limit = 20,
+): Promise<Story[]> {
+  return (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND source_type = ANY(${sourceTypes})
+       AND occurs_at < now() - interval '12 hours'
+     ORDER BY occurs_at DESC
+     LIMIT ${limit}
+  `) as Story[];
+}
+
+export async function getStoryBySlug(slug: string): Promise<Story | null> {
+  const rows = (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by
+      FROM stories
+     WHERE town_id = ${TOWN_ID} AND slug = ${slug}
+     LIMIT 1
+  `) as Story[];
+  return rows[0] ?? null;
+}
+
+/** Alla slugs -- används av getStaticPaths för att generera storysidorna. */
+export async function getAllStories(): Promise<Story[]> {
+  return (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+     ORDER BY occurs_at DESC NULLS LAST
+  `) as Story[];
+}
+
+/**
+ * Varningar som fortfarande gäller.
+ *
+ * publish.py vägrar redan publicera inaktuella varningar, men den kör bara varje
+ * timme -- en varning kan löpa ut mellan två körningar. Dubbelkollen här gör att
+ * sajten aldrig visar en utgången varning, oavsett när bygget skedde.
+ */
+export async function getActiveAlerts(): Promise<Story[]> {
+  return (await sql`
+    SELECT s.id, s.title, s.slug, s.body, s.source_type, s.source_url,
+           s.occurs_at, s.published_at, s.generated_by
+      FROM stories s
+      LEFT JOIN events e ON e.town_id = s.town_id AND s.slug = 'alert-' || e.id
+     WHERE s.town_id = ${TOWN_ID}
+       AND s.source_type = 'alert'
+       AND (e.ends_at IS NULL OR e.ends_at >= now())
+       AND s.occurs_at >= now() - interval '14 days'
+     ORDER BY s.occurs_at DESC
+  `) as Story[];
+}
+
+/* -------------------------------------------------- strukturerad data ------ */
+
+export async function getUpcomingGames(limit = 10): Promise<Game[]> {
+  return (await sql`
+    SELECT id, sport, opponent, home_away, starts_at, venue, result
+      FROM sports_games
+     WHERE town_id = ${TOWN_ID} AND starts_at >= now()
+     ORDER BY starts_at ASC
+     LIMIT ${limit}
+  `) as Game[];
+}
+
+export async function getRecentResults(limit = 5): Promise<Game[]> {
+  return (await sql`
+    SELECT id, sport, opponent, home_away, starts_at, venue, result
+      FROM sports_games
+     WHERE town_id = ${TOWN_ID} AND starts_at < now() AND result IS NOT NULL
+     ORDER BY starts_at DESC
+     LIMIT ${limit}
+  `) as Game[];
+}
+
+export async function getSeasonGames(sport?: string): Promise<Game[]> {
+  if (sport) {
+    return (await sql`
+      SELECT id, sport, opponent, home_away, starts_at, venue, result
+        FROM sports_games
+       WHERE town_id = ${TOWN_ID} AND sport = ${sport}
+       ORDER BY starts_at ASC
+    `) as Game[];
+  }
+  return (await sql`
+    SELECT id, sport, opponent, home_away, starts_at, venue, result
+      FROM sports_games
+     WHERE town_id = ${TOWN_ID}
+     ORDER BY starts_at ASC
+  `) as Game[];
+}
+
+export async function getWeather(): Promise<WeatherPeriod[]> {
+  const rows = (await sql`
+    SELECT payload
+      FROM weather_snapshots
+     WHERE town_id = ${TOWN_ID}
+     ORDER BY observed_for DESC
+     LIMIT 1
+  `) as { payload: { periods?: WeatherPeriod[] } }[];
+  return rows[0]?.payload?.periods ?? [];
+}
+
+export async function getAgPrices(): Promise<AgPrice[]> {
+  return (await sql`
+    SELECT DISTINCT ON (commodity) commodity, price, unit, as_of
+      FROM ag_prices
+     WHERE town_id = ${TOWN_ID}
+     ORDER BY commodity, created_at DESC
+  `) as AgPrice[];
+}
+
+/* ------------------------------------------------------------ skyltremsan -- */
+
+export interface SignData {
+  temp: number | null;
+  unit: string;
+  conditions: string | null;
+  alert: string | null;
+  nextGame: Game | null;
+  eventsToday: number;
+}
+
+/** Datan till skyltremsan högst upp. En fråga per fält, körs vid build. */
+export async function getSignData(): Promise<SignData> {
+  const [periods, alerts, games, todayRows] = await Promise.all([
+    getWeather(),
+    getActiveAlerts(),
+    getUpcomingGames(1),
+    sql`
+      SELECT count(*)::int AS n
+        FROM stories
+       WHERE town_id = ${TOWN_ID}
+         AND source_type = 'event'
+         AND occurs_at::date = (now() AT TIME ZONE 'America/Chicago')::date
+    ` as unknown as Promise<{ n: number }[]>,
+  ]);
+
+  const current = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
+
+  return {
+    temp: current?.temp ?? null,
+    unit: current?.unit ?? 'F',
+    conditions: current?.short ?? null,
+    alert: alerts[0]?.title ?? null,
+    nextGame: games[0] ?? null,
+    eventsToday: todayRows[0]?.n ?? 0,
+  };
+}
+
+/* ------------------------------------------------------------- formatering - */
+
+const TZ = 'America/Chicago';
+
+export function formatDate(value: string | null): string {
+  if (!value) return '';
+  return new Date(value).toLocaleDateString('en-US', {
+    weekday: 'short', month: 'long', day: 'numeric', timeZone: TZ,
+  });
+}
+
+export function formatTime(value: string | null): string {
+  if (!value) return '';
+  return new Date(value).toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit', timeZone: TZ,
+  });
+}
+
+export function formatDateTime(value: string | null): string {
+  if (!value) return '';
+  return `${formatDate(value)} at ${formatTime(value)}`;
+}
+
+/**
+ * meeting_date lagras som ett rent kalenderdatum (midnatt UTC) -- Legistar och
+ * CivicEngage ger bara ETT datum, ingen tillförlitlig klockslag (Legistars
+ * EventTime hämtas inte än). Körs ett sådant värde genom formatDate/formatTime
+ * (som applicerar America/Chicago, UTC-5) skiftas det bakåt en dag: midnatt UTC
+ * blir 19:00 föregående dag lokalt. Möten formateras därför direkt ur UTC-
+ * komponenterna, ingen tidszon, inget klockslag som inte finns.
+ *
+ * Events och alerts har riktiga tidsstämplar och ska ALDRIG gå genom denna --
+ * de använder formatDate/formatTime/formatDateTime som vanligt.
+ */
+export function formatCalendarDate(value: string | null): string {
+  if (!value) return '';
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short', month: 'long', day: 'numeric', timeZone: 'UTC',
+  }).format(new Date(value));
+}
+
+/** Rätt formatering av story.occurs_at givet KÄLLTYP -- enda stället den
+ *  distinktionen behöver göras, så inget anropsställe kan glömma den. */
+export function formatOccursAt(story: Pick<Story, 'source_type' | 'occurs_at'>): string {
+  if (!story.occurs_at) return '';
+  if (story.source_type === 'meeting') return formatCalendarDate(story.occurs_at);
+  return formatDateTime(story.occurs_at);
+}
+
+/** "in 6 days" / "tomorrow" / "today" -- för skyltremsan. */
+export function countdown(value: string | null): string {
+  if (!value) return '';
+  const days = Math.ceil(
+    (new Date(value).getTime() - Date.now()) / 86_400_000,
+  );
+  if (days <= 0) return 'today';
+  if (days === 1) return 'tomorrow';
+  return `in ${days} days`;
+}

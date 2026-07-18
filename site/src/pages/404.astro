@@ -1,0 +1,22 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Page not found — Brookings View">
+  <div class="notfound">
+    <h1>Page not found</h1>
+    <p>That page doesn't exist, or the story it pointed to has aged out of the
+    listing. Try the homepage, or one of the sections below.</p>
+    <nav class="notfound__links">
+      <a href="/">Home</a>
+      <a href="/events">Events</a>
+      <a href="/city-hall">City hall</a>
+      <a href="/jackrabbits">Jackrabbits</a>
+    </nav>
+  </div>
+</BaseLayout>
+
+<style>
+.notfound { max-width: 32rem; padding-block: 2rem; }
+.notfound p { color: var(--ink-soft); margin: 0.75rem 0 1.5rem; }
+.notfound__links { display: flex; flex-wrap: wrap; gap: 1.25rem; font-family: var(--font-display); }
+</style>

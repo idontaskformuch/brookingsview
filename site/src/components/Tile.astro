@@ -1,0 +1,33 @@
+---
+/** Liten mätarruta för strukturerad data: väder, antal, priser. */
+interface Props { label: string; value: string; note?: string; }
+const { label, value, note } = Astro.props;
+---
+<div class="tile">
+  <p class="tile__label">{label}</p>
+  <p class="tile__value data">{value}</p>
+  {note && <p class="tile__note">{note}</p>}
+</div>
+
+<style>
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 1rem 1.125rem;
+}
+.tile__label {
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.tile__value {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.tile__note { margin: 0.125rem 0 0; font-size: 0.875rem; color: var(--ink-soft); }
+</style>

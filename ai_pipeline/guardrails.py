@@ -46,9 +46,16 @@ _STOPWORDS = {
 }
 
 
+_POSSESSIVE_RE = re.compile(r"(\w)['’]s\b")
+
+
 def _norm(s: str) -> str:
     s = unicodedata.normalize("NFKD", s)
     s = s.replace(",", "").replace("$", "").replace("%", "")
+    # possessiv-'s läggs ofta till/tas bort när AI:n skriver om en mening ("...the
+    # U.S. Department of Transportation)" -> "Transportation's Build America Bureau")
+    # utan att sakinnehållet ändras -- strippa den innan jämförelse.
+    s = _POSSESSIVE_RE.sub(r"\1", s)
     return s.casefold().strip()
 
 

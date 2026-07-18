@@ -1,0 +1,285 @@
+---
+/**
+ * Sidmallen: designsystem, header, skyltremsa, footer.
+ *
+ * Skyltremsan hämtar sin egen data vid build, så ingen sida behöver skicka in
+ * den. Den är sajtens signaturelement -- tid-och-temperatur-skylten utanför
+ * banken i varje amerikansk småstad -- och byter färgläge när en varning gäller.
+ */
+import { getSignData, countdown } from '../lib/db';
+import CookieBanner from '../components/CookieBanner.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  wide?: boolean;
+}
+
+const {
+  title,
+  description = 'Meetings, events, Jackrabbits games, weather and market prices in Brookings, South Dakota. Updated every hour.',
+  wide = false,
+} = Astro.props;
+
+const sign = await getSignData();
+const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://brookingsview.com');
+const year = new Date().getFullYear();
+
+const nav = [
+  { href: '/events', label: 'Events' },
+  { href: '/jackrabbits', label: 'Jackrabbits' },
+  { href: '/city-hall', label: 'City hall' },
+  { href: '/farm-report', label: 'Farm report' },
+];
+const path = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{title}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonical.href} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Brookings View" />
+<meta property="og:url" content={canonical.href} />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="alternate" type="application/rss+xml" title="Brookings View" href="/rss.xml" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=IBM+Plex+Mono:wght@400;500&display=swap"
+/>
+
+<script type="application/ld+json" is:inline set:html={JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'NewsMediaOrganization',
+  name: 'Brookings View',
+  url: 'https://brookingsview.com',
+  areaServed: { '@type': 'City', name: 'Brookings', addressRegion: 'SD', addressCountry: 'US' },
+})} />
+
+<style is:global>
+:root {
+  --paper: #eff3f5;
+  --surface: #ffffff;
+  --ink: #191713;
+  --ink-soft: #56626d;
+  --sky: #1a4e7a;
+  --sky-tint: #e2ebf3;
+  --wheat: #8f5f12;
+  --wheat-tint: #faf0da;
+  --rule: #d2dbe1;
+
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body: 'Newsreader', Georgia, serif;
+  --font-data: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --measure: 68rem;
+  --measure-narrow: 42rem;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 0;
+}
+h1 { font-size: clamp(1.75rem, 4vw, 2.5rem); }
+h2 { font-size: 1.375rem; }
+h3 { font-size: 1.0625rem; }
+
+a { color: var(--sky); }
+a:hover { text-decoration-thickness: 2px; }
+
+:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.shell {
+  max-width: var(--measure);
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+.shell--narrow { max-width: var(--measure-narrow); }
+
+.skip {
+  position: absolute;
+  left: -9999px;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0.75rem 1rem;
+  z-index: 10;
+}
+.skip:focus { left: 1rem; top: 1rem; }
+
+.data { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+</style>
+
+<style>
+.masthead {
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
+}
+.masthead__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  padding-block: 1rem;
+}
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.375rem;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  text-decoration: none;
+}
+.wordmark span { color: var(--sky); }
+
+.nav { display: flex; flex-wrap: wrap; gap: 1.25rem; }
+.nav a {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+.nav a:hover { color: var(--sky); }
+.nav a[aria-current='page'] {
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 var(--sky);
+}
+
+/* Skyltremsan -- signaturelementet. Guld normalt, blått när inget nytt finns. */
+.sign {
+  background: var(--wheat-tint);
+  border-bottom: 1px solid var(--rule);
+  color: var(--wheat);
+}
+.sign--quiet { background: var(--sky-tint); color: var(--sky); }
+.sign__inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 2rem;
+  padding-block: 0.625rem;
+  font-family: var(--font-data);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+.sign__item { display: inline-flex; align-items: center; gap: 0.4rem; }
+.sign__alert { font-weight: 500; }
+
+main { padding-block: 2.5rem 4rem; }
+
+.colophon {
+  border-top: 1px solid var(--rule);
+  background: var(--surface);
+  padding-block: 2rem;
+  font-size: 0.9375rem;
+  color: var(--ink-soft);
+}
+.colophon__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin-bottom: 0.875rem;
+  font-family: var(--font-display);
+}
+.colophon p { margin: 0; max-width: 46rem; }
+</style>
+</head>
+
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="masthead">
+  <div class="shell masthead__inner">
+    <a class="wordmark" href="/">Brookings<span>View</span></a>
+    <nav class="nav" aria-label="Sections">
+      {nav.map((item) => (
+        <a href={item.href} aria-current={path.startsWith(item.href) ? 'page' : undefined}>
+          {item.label}
+        </a>
+      ))}
+    </nav>
+  </div>
+</header>
+
+<div class:list={['sign', !sign.alert && 'sign--quiet']}>
+  <div class="shell sign__inner">
+    {sign.temp !== null && (
+      <span class="sign__item">
+        {Math.round(sign.temp)}&deg;{sign.unit}
+        {sign.conditions && <>&nbsp;{sign.conditions.toLowerCase()}</>}
+      </span>
+    )}
+    {sign.alert && <span class="sign__item sign__alert">{sign.alert}</span>}
+    {sign.eventsToday > 0 && (
+      <span class="sign__item">
+        {sign.eventsToday} {sign.eventsToday === 1 ? 'event' : 'events'} today
+      </span>
+    )}
+    {sign.nextGame?.starts_at && (
+      <span class="sign__item">
+        Jacks {sign.nextGame.home_away === 'home' ? 'vs' : 'at'} {sign.nextGame.opponent}
+        &nbsp;{countdown(sign.nextGame.starts_at)}
+      </span>
+    )}
+  </div>
+</div>
+
+<main id="main">
+  <div class:list={['shell', !wide && 'shell--narrow']}>
+    <slot />
+  </div>
+</main>
+
+<footer class="colophon">
+  <div class="shell">
+    <nav class="colophon__links" aria-label="About this site">
+      <a href="/about">About</a>
+      <a href="/how-we-gather-this">How we gather this</a>
+      <a href="/contact">Contact</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/cookies">Cookies</a>
+    </nav>
+    <p>
+      Brookings View gathers public information from the City of Brookings, Brookings
+      County, South Dakota State University, and Brookings Public Library. Every item
+      links to its original source. Corrections are welcome.
+    </p>
+    <p class="data" style="margin-top:0.75rem; font-size:0.8125rem;">&copy; {year} Brookings View</p>
+  </div>
+</footer>
+
+<CookieBanner />
+</body>
+</html>

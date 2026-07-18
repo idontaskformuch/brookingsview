@@ -1,0 +1,81 @@
+---
+/** Enskild story. Varje sida länkar tillbaka till sin primärkälla -- det är både
+ *  hederligt mot läsaren och det som gör E-E-A-T-anspråket på metodsidan sant. */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ShareButtons from '../../components/ShareButtons.astro';
+import { getAllStories, formatOccursAt, formatDate } from '../../lib/db';
+import type { Story } from '../../lib/db';
+
+export async function getStaticPaths() {
+  const stories = await getAllStories();
+  return stories.map((story) => ({ params: { slug: story.slug }, props: { story } }));
+}
+
+const { story } = Astro.props as { story: Story };
+const isAlert = story.source_type === 'alert';
+const kind = isAlert ? 'Alert' : story.source_type === 'meeting' ? 'Meeting' : 'Event';
+const when = formatOccursAt(story) || null;
+const canonicalUrl = new URL(`/s/${story.slug}/`, Astro.site ?? 'https://brookingsview.com').href;
+---
+
+<BaseLayout title={`${story.title} — Brookings View`} description={story.body.slice(0, 155)}>
+  <article class="story">
+    <p class="story__kind data">{kind}</p>
+    <h1>{story.title}</h1>
+    {when && <p class="story__when data">{when}</p>}
+
+    <div class="story__body">
+      {story.body.split('\n').filter(Boolean).map((para) => <p>{para}</p>)}
+    </div>
+
+    <ShareButtons url={canonicalUrl} title={story.title} />
+
+    <footer class="story__source">
+      {story.source_url ? (
+        <p>
+          Source: <a href={story.source_url} rel="noopener">the original agenda or listing</a>.
+          Read it if you need the full detail — this summary is deliberately short.
+        </p>
+      ) : (
+        <p>Compiled from public records published by the City of Brookings, Brookings
+        County, or Brookings Public Library.</p>
+      )}
+      <p class="data">
+        Published {formatDate(story.published_at)} ·
+        <a href="/how-we-gather-this">How we gather this</a>
+      </p>
+    </footer>
+  </article>
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: story.title,
+    datePublished: story.published_at,
+    articleBody: story.body,
+    publisher: { '@type': 'Organization', name: 'Brookings View' },
+  })} />
+</BaseLayout>
+
+<style>
+.story { max-width: 38rem; }
+.story__kind {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sky);
+}
+.story__when { margin: 0.75rem 0 0; color: var(--ink-soft); font-size: 0.875rem; }
+.story__body { margin-top: 1.75rem; font-size: 1.125rem; }
+.story__body p { margin: 0 0 1rem; }
+.story__source {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.9375rem;
+  color: var(--ink-soft);
+}
+.story__source p { margin: 0 0 0.5rem; }
+.story__source .data { font-size: 0.8125rem; }
+</style>

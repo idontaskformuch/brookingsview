@@ -1,0 +1,38 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import StoryCard from '../components/StoryCard.astro';
+import { getUpcomingStories, getPastStories } from '../lib/db';
+
+const upcoming = await getUpcomingStories(['meeting'], 40);
+const past = await getPastStories(['meeting'], 20);
+---
+<BaseLayout title="City hall — Brookings View" wide
+  description="City council, county commission and committee meetings in Brookings, South Dakota, in plain language.">
+  <header class="lede">
+    <h1>City hall</h1>
+    <p>What the city council, county commission and committees are deciding —
+    summarised from the published agendas, in plain language, without taking sides.</p>
+  </header>
+
+  <SectionRule label="Coming up" />
+  {upcoming.length > 0 ? (
+    <div class="stack">{upcoming.map((story) => <StoryCard story={story} />)}</div>
+  ) : (
+    <p class="empty">No meetings scheduled at the moment.</p>
+  )}
+
+  {past.length > 0 && (
+    <>
+      <SectionRule label="Recent meetings" />
+      <div class="stack">{past.map((story) => <StoryCard story={story} />)}</div>
+    </>
+  )}
+</BaseLayout>
+
+<style>
+.lede { max-width: 42rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.stack { display: grid; gap: 0.75rem; max-width: 44rem; }
+.empty { color: var(--ink-soft); }
+</style>

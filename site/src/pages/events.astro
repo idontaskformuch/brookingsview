@@ -1,0 +1,38 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import StoryCard from '../components/StoryCard.astro';
+import { getUpcomingStories, getPastStories } from '../lib/db';
+
+const upcoming = await getUpcomingStories(['event'], 60);
+const past = await getPastStories(['event'], 12);
+---
+<BaseLayout title="Events in Brookings — Brookings View" wide
+  description="Library programs, city events and community happenings in Brookings, South Dakota.">
+  <header class="lede">
+    <h1>Events</h1>
+    <p>Library programs, classes and community happenings. Times and registration
+    details come straight from the organiser's own calendar.</p>
+  </header>
+
+  <SectionRule label="Coming up" />
+  {upcoming.length > 0 ? (
+    <div class="grid">{upcoming.map((story) => <StoryCard story={story} />)}</div>
+  ) : (
+    <p class="empty">No upcoming events listed right now.</p>
+  )}
+
+  {past.length > 0 && (
+    <>
+      <SectionRule label="Recently" />
+      <div class="grid">{past.map((story) => <StoryCard story={story} compact />)}</div>
+    </>
+  )}
+</BaseLayout>
+
+<style>
+.lede { max-width: 40rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+.empty { color: var(--ink-soft); }
+</style>

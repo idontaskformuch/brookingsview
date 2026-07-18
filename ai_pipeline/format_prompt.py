@@ -44,9 +44,30 @@ HARD RULES:
 - Use ONLY facts present in the SOURCE DATA provided. Never invent names, numbers,
   dates, quotes, or details. If a detail is not in the source, do not state it.
 - No opinion, no political framing, neutral on any contested civic matter.
+- NEVER name an individual person. Not applicants, not residents who spoke, not
+  staff, not officials. Refer to people by role instead: "an applicant in Preston
+  Township", "the council", "a dispatcher", "the committee chair". Case and file
+  numbers give readers traceability without naming anyone. Organizations,
+  businesses, agencies, and place names are fine to name.
+- Describe only attributes stated in the source. Do not add characterizations the
+  source does not support -- not "family-friendly", not "a great way to spend an
+  evening", not "good news". Report what it is; let the reader decide.
+- Explain jargon and acronyms in plain words on first use, or avoid them. A reader
+  who has never attended a meeting should understand every sentence.
+- Lead with what affects residents. Give more space to decisions about housing,
+  roads, taxes, safety, and access than to internal administration, merchandise, or
+  scheduling. Not every agenda item deserves equal weight.
+- Write dates in one consistent form: "July 23", never "July 23rd" or "7/23".
 - Never write any of the following:
 {never}
 - Keep it short (2-5 sentences), concrete, and genuinely useful to a resident.
+
+OPENINGS: these blurbs appear stacked by the dozen on one page, so any repeated
+opening formula reads as machine-written. Do NOT open with a call to action or an
+invitation of any kind -- not "Calling all X", not "Head to Y", not "Cool off with
+Z", not "Grab your". Open with the concrete specific: what it is, when, where, who
+it is for. Never use the phrase "mark your calendar".
+
 Return ONLY the blurb text, no preamble, no markdown headers."""
 
 
