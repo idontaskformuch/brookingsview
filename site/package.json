@@ -2,22 +2,21 @@
   "name": "brookingsview-site",
   "type": "module",
   "version": "0.1.0",
-  "engines": {
-    "node": ">=22.12.0"
-  },
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview"
   },
   "dependencies": {
-    "@astrojs/rss": "^4.0.19",
-    "@astrojs/sitemap": "^3.7.3",
-    "@neondatabase/serverless": "^1.1.0",
-    "astro": "^7.1.1"
+    "@astrojs/rss": "^4.0.0",
+    "@astrojs/sitemap": "^3.2.0",
+    "@neondatabase/serverless": "^0.10.0",
+    "astro": "^5.0.0",
+    "satori": "^0.28.0",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
-    "typescript": "^6.0.3"
+    "typescript": "^5.9.3"
   }
 }

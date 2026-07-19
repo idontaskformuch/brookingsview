@@ -1,0 +1,90 @@
+---
+/**
+ * Annonsplats -- INAKTIV tills PUBLIC_ADSENSE_CLIENT är satt.
+ *
+ * Två spärrar, båda måste passeras innan något visas:
+ *
+ *   1. BYGGTID: utan PUBLIC_ADSENSE_CLIENT i miljön renderas ingenting alls --
+ *      ingen tom ruta, inget skript, ingen markup. Komponenten kan alltså
+ *      placeras ut i sidorna långt innan AdSense är godkänt.
+ *   2. KLIENTTID: skriptet laddas först när besökaren aktivt samtyckt via
+ *      cookie-bannern (window.bvConsent === 'accepted'). Samtycket sparas i
+ *      localStorage, se CookieBanner.astro.
+ *
+ * Detta uppfyller löftet på /cookies och /privacy: inga spårningscookies utan
+ * samtycke. Kom ihåg att UPPDATERA de två sidorna innan annonser går live --
+ * de säger i dag att sajten inte visar annonser, och det måste stämma.
+ */
+interface Props {
+  slot?: string;
+  layout?: 'in-article' | 'display';
+}
+const { slot, layout = 'display' } = Astro.props;
+
+const client = import.meta.env.PUBLIC_ADSENSE_CLIENT;
+const enabled = Boolean(client && slot);
+---
+{enabled && (
+  <aside class="adslot" aria-label="Advertisement" data-ad-client={client} data-ad-slot={slot}>
+    <p class="adslot__label">Advertisement</p>
+    <ins
+      class="adsbygoogle"
+      style="display:block"
+      data-ad-client={client}
+      data-ad-slot={slot}
+      data-ad-format={layout === 'in-article' ? 'fluid' : 'auto'}
+      data-full-width-responsive="true"
+    ></ins>
+  </aside>
+
+  <script is:inline>
+    (function () {
+      var host = document.currentScript.previousElementSibling;
+      if (!host) return;
+
+      function load() {
+        if (window.__bvAdsLoaded) return initSlot();
+        window.__bvAdsLoaded = true;
+        var s = document.createElement('script');
+        s.async = true;
+        s.crossOrigin = 'anonymous';
+        s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client='
+          + encodeURIComponent(host.dataset.adClient);
+        s.onload = initSlot;
+        document.head.appendChild(s);
+      }
+
+      function initSlot() {
+        try {
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+        } catch (e) { /* blockerare eller nätverksfel -- platsen förblir tom */ }
+      }
+
+      if (window.bvConsent === 'accepted') {
+        load();
+      } else {
+        // vänta in ett senare samtycke utan att ladda något i förväg
+        window.addEventListener('bv:consent', function (e) {
+          if (e.detail && e.detail.choice === 'accepted') load();
+        }, { once: true });
+      }
+    })();
+  </script>
+)}
+
+<style>
+.adslot {
+  margin: 1.5rem 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--rule);
+}
+.adslot__label {
+  margin: 0 0 0.375rem;
+  font-family: var(--font-ui);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+</style>

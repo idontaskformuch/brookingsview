@@ -1,0 +1,38 @@
+name: weekly-roundup
+# Veckosammanfattningen. Körs måndag morgon lokal tid (11:00 UTC = 06:00 CDT),
+# när veckans agendor och evenemang hunnit publiceras av källorna men veckan
+# fortfarande ligger framför läsaren.
+#
+# Körs även varje kväll: underlaget hashas i weekly.py, så en körning där inget
+# tillkommit gör INGET AI-anrop alls. Läggs ett nytt biblioteksevenemang till på
+# onsdagen skrivs artikeln om -- annars vore den inaktuell resten av veckan.
+
+on:
+  schedule:
+    - cron: "0 11 * * 1"    # måndag morgon -- första versionen
+    - cron: "0 23 * * *"    # varje kväll -- skriver bara om vid ändrat underlag
+  workflow_dispatch: {}
+
+jobs:
+  roundup:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:      ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      USER_AGENT:        "brookingsview.com (contact: hello@brookingsview.com)"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Generera veckosammanfattning
+        run: python -m ai_pipeline.weekly --config configs/brookings_sd.json
+      - name: Trigga Cloudflare Pages-rebuild
+        if: success()
+        run: |
+          if [ -n "${{ secrets.PAGES_DEPLOY_HOOK }}" ]; then
+            curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK }}"
+          else
+            echo "PAGES_DEPLOY_HOOK ej satt -- hoppar över rebuild"
+          fi

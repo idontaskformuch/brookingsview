@@ -23,16 +23,20 @@ interface Props {
   title: string;
   description?: string;
   wide?: boolean;
+  /** Slug att hämta delningsbild för. Utelämnad -> sajtens standardbild. */
+  ogSlug?: string;
 }
 
 const {
   title,
   description = 'Meetings, events, Jackrabbits games, weather and market prices in Brookings, South Dakota. Updated every hour.',
   wide = false,
+  ogSlug,
 } = Astro.props;
 
 const sign = await getSignData();
 const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://brookingsview.com');
+const ogImage = new URL(`/og/${ogSlug ?? 'default'}.png`, Astro.site ?? 'https://brookingsview.com').href;
 const now = new Date();
 const year = now.getFullYear();
 // Datumraden byggs om varje timme tillsammans med resten av sajten.
@@ -63,7 +67,12 @@ const path = Astro.url.pathname;
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Brookings View" />
 <meta property="og:url" content={canonical.href} />
+<meta property="og:image" content={ogImage} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:locale" content="en_US" />
 <meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content={ogImage} />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="alternate" type="application/rss+xml" title="Brookings View" href="/rss.xml" />
 
@@ -88,10 +97,16 @@ const path = Astro.url.pathname;
   --surface: #ffffff;
   --ink: #14120f;
   --ink-soft: #4d5862;
-  --sky: #14456d;
-  --sky-tint: #e4edf4;
-  --wheat: #8a5a10;
-  --wheat-tint: #f9eed8;
+  /* Marinblå bär struktur och förtroende (12.6:1 mot papperet).
+     Orange är enbart CTA -- "läs mer", knappar, aktiva lägen.
+     Rött enbart varningar, skilt från CTA så en värmevarning aldrig ser ut
+     som en länk. Kontrastvärden kontrollerade mot WCAG AA. */
+  --navy: #0b2e55;
+  --navy-tint: #e7edf4;
+  --accent: #c2410c;
+  --accent-tint: #fbede4;
+  --alert: #b91c1c;
+  --alert-tint: #fbeaea;
   --rule: #c9d3da;
   --rule-strong: #14120f;
 
@@ -128,9 +143,9 @@ h1 { font-size: clamp(2rem, 5vw, 3rem); }
 h2 { font-size: 1.5rem; }
 h3 { font-size: 1.125rem; font-weight: 600; }
 
-a { color: var(--sky); text-underline-offset: 2px; }
+a { color: var(--navy); text-underline-offset: 2px; }
 
-:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
 
 .shell {
   max-width: var(--measure);
@@ -155,7 +170,7 @@ a { color: var(--sky); text-underline-offset: 2px; }
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--sky);
+  color: var(--navy);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -179,7 +194,7 @@ a { color: var(--sky); text-underline-offset: 2px; }
   color: var(--ink);
   text-decoration: none;
 }
-.masthead__name em { font-style: normal; color: var(--sky); }
+.masthead__name em { font-style: normal; color: var(--navy); }
 
 .dateline {
   border-top: 1px solid var(--rule);
@@ -211,16 +226,16 @@ a { color: var(--sky); text-underline-offset: 2px; }
   text-decoration: none;
   padding-block: 0.125rem;
 }
-.nav a:hover { color: var(--sky); }
-.nav a[aria-current='page'] { box-shadow: inset 0 -3px 0 var(--sky); }
+.nav a:hover { color: var(--navy); }
+.nav a[aria-current='page'] { box-shadow: inset 0 -3px 0 var(--navy); }
 
 /* --- Skyltremsan: nu en ticker ------------------------------------------ */
 .sign {
-  background: var(--sky);
+  background: var(--navy);
   color: #fff;
   border-bottom: 1px solid var(--rule-strong);
 }
-.sign--alert { background: var(--wheat); }
+.sign--alert { background: var(--alert); }
 .sign__inner {
   display: flex;
   flex-wrap: wrap;
@@ -261,7 +276,7 @@ main { padding-block: 1.75rem 3.5rem; }
   text-transform: uppercase;
 }
 .colophon__links a { color: var(--ink); text-decoration: none; }
-.colophon__links a:hover { color: var(--sky); text-decoration: underline; }
+.colophon__links a:hover { color: var(--navy); text-decoration: underline; }
 .colophon p { margin: 0; max-width: 44rem; font-size: 0.9375rem; }
 </style>
 </head>

@@ -78,8 +78,53 @@ def _time_variants(source_text: str) -> str:
     return " ".join(extra)
 
 
+# USPS-stil adressförkortningar. Källor skriver ofta "22nd Ave. S.", en varm
+# omskrivning skriver naturligt ut det som "22nd Avenue South" -- samma adress,
+# men guardrails textmatchning känner inte igen förkortning och fullform som
+# samma sak. Ensiffriga väderstreck (N/S/E/W) är riskabla att blint expandera
+# överallt, men eftersom vi bara LÄGGER TILL fullformer i haystacken (aldrig tar
+# bort något) är felkostnaden låg -- värsta fallet är att haystacken blir något
+# mer tillåtande, vilket bara minskar antalet falska avslag.
+_ADDRESS_ABBR = {
+    "ave": "avenue", "st": "street", "rd": "road", "dr": "drive",
+    "blvd": "boulevard", "ln": "lane", "ct": "court", "pl": "place",
+    "hwy": "highway", "cir": "circle", "pkwy": "parkway",
+    "n": "north", "s": "south", "e": "east", "w": "west",
+}
+_ADDR_ABBR_RE = re.compile(
+    r"\b(" + "|".join(_ADDRESS_ABBR) + r")\b\.?", re.IGNORECASE
+)
+
+
+def _address_variants(source_text: str) -> str:
+    return " ".join(
+        _ADDRESS_ABBR[m.group(1).lower()] for m in _ADDR_ABBR_RE.finditer(source_text)
+    )
+
+
+_CAPWORD_SEQ_RE = re.compile(r"\b([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*){1,4})\b")
+
+
+def _compound_variants(source_text: str) -> str:
+    """Källor och en varm omskrivning kan sär- eller hopskriva samma namn olika
+    ("Next Era Energy" i agendan vs det officiella "NextEra Energy"). Lägg till
+    hopskrivna varianter av intilliggande versalordspar som bonus-tokens --
+    räcker för att per-ord-fallbacken i validate() ska hitta båda formerna,
+    utan att behöva slå ihop hela haystacken (för riskabelt: skulle kunna limma
+    ihop ord från helt orelaterade meningar till en falsk träff)."""
+    extra: list[str] = []
+    for m in _CAPWORD_SEQ_RE.finditer(source_text):
+        words = m.group(1).split()
+        for i in range(len(words) - 1):
+            extra.append(words[i] + words[i + 1])
+    return " ".join(extra)
+
+
 def _source_haystack(source_text: str) -> str:
-    return _norm(source_text + " " + _time_variants(source_text))
+    return _norm(
+        source_text + " " + _time_variants(source_text) + " "
+        + _address_variants(source_text) + " " + _compound_variants(source_text)
+    )
 
 
 def _numbers(text: str) -> set[str]:
@@ -137,6 +182,26 @@ def _proper_nouns(text: str) -> set[str]:
     return out
 
 
+def _is_spelled_out_acronym(phrase: str, haystack: str) -> bool:
+    """Är `phrase` en utskriven akronym som förekommer FÖRKORTAD i källan?
+
+    Civik-text är full av förkortningar ("PSAP", "HRC", "ADA") som en varm
+    formulering naturligt skriver ut ("Public Safety Answering Point"). Det är
+    samma sakinnehåll, inte en hallucination -- men textmatchning känner inte
+    igen förkortning och fullform som samma sak. Generellt (självuppdaterande,
+    ingen hårdkodad ordlista): ta initialerna ur frasen och kolla om DE
+    förekommer som ett fristående ord i källan. Kräver minst 3 bokstäver för
+    att hålla nere risken för att råka matcha en slumpartad 2-bokstavsbit.
+    """
+    words = [w for w in phrase.split() if w and w[0].isalpha()]
+    if len(words) < 2:
+        return False
+    initials = "".join(w[0] for w in words).lower()
+    if len(initials) < 3:
+        return False
+    return re.search(rf"\b{re.escape(initials)}\b", haystack) is not None
+
+
 # --- huvud-API --------------------------------------------------------------
 
 def validate(generated_text: str, source_text: str, cfg: dict) -> GuardrailResult:
@@ -167,7 +232,7 @@ def validate(generated_text: str, source_text: str, cfg: dict) -> GuardrailResul
         if _norm(name) not in haystack:
             # tillåt om varje meningsbärande ord i namnet finns (ignorera funktionsord)
             words = [_norm(w) for w in name.split() if _norm(w) not in _FUNCTION_WORDS]
-            if not all(w in haystack for w in words):
+            if not all(w in haystack for w in words) and not _is_spelled_out_acronym(name, haystack):
                 violations.append(f"namn/entitet saknas i källa: {name}")
 
     # 3. åsiktsmarkörer (flagga, avvisa inte hårt för icke-civik)

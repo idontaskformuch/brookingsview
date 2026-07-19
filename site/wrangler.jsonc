@@ -1,9 +1,15 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+  // Rent statiskt Astro-bygge (astro.config.mjs -> output: 'static') --
+  // inget Worker-skript behövs, bara filerna i dist/. Ingen "main"-nyckel,
+  // ingen "binding": den kombinationen kräver ett Worker-skript, se
+  // Cloudflares egen migreringsguide Pages -> Workers.
   "name": "brookingsview",
   "compatibility_date": "2026-07-18",
   "assets": {
     "directory": "./dist",
+    // Sajten är flersidig (inte en SPA), så en riktig 404-sida ska serveras
+    // för okända rutter -- matchar vår 404.astro som byggs till dist/404.html.
     "not_found_handling": "404-page"
   }
 }

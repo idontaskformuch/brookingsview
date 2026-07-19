@@ -23,7 +23,7 @@ const sql = neon(import.meta.env.DATABASE_URL);
 
 export const TOWN_ID = import.meta.env.TOWN_ID ?? 'brookings_sd';
 
-export type SourceType = 'meeting' | 'event' | 'alert';
+export type SourceType = 'meeting' | 'event' | 'alert' | 'weekly';
 
 export interface Story {
   id: number;
@@ -139,6 +139,69 @@ export async function getActiveAlerts(): Promise<Story[]> {
   `) as Story[];
 }
 
+/**
+ * Veckosammanfattningen för innevarande vecka.
+ *
+ * Den enda story som väver ihop möten, evenemang, matcher och priser till en
+ * sammanhängande text -- och därmed sajtens starkaste innehåll. Hämtas separat
+ * i stället för att blandas in i strömmen, eftersom den ska ha en egen plats
+ * högst upp och aldrig konkurrera med enskilda notiser.
+ */
+export async function getLatestWeekly(): Promise<Story | null> {
+  const rows = (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND source_type = 'weekly'
+       AND occurs_at >= now() - interval '8 days'
+     ORDER BY occurs_at DESC
+     LIMIT 1
+  `) as Story[];
+  return rows[0] ?? null;
+}
+
+/**
+ * Relaterade artiklar till en given story.
+ *
+ * Strategi utan taggning eller ämnesmodell: samma källtyp först (ett möte leder
+ * till andra möten, ett evenemang till andra evenemang), sorterat på närhet i
+ * TID snarare än publiceringsdatum -- det är så en läsare uppfattar relevans på
+ * en sajt som handlar om vad som händer. Räcker inte det fylls resten på med
+ * närliggande poster oavsett typ, så listan aldrig blir tom.
+ */
+export async function getRelatedStories(
+  story: Pick<Story, 'slug' | 'source_type' | 'occurs_at'>,
+  limit = 3,
+): Promise<Story[]> {
+  const anchor = story.occurs_at ?? new Date().toISOString();
+
+  const sameType = (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND slug <> ${story.slug}
+       AND source_type = ${story.source_type}
+       AND occurs_at IS NOT NULL
+     ORDER BY abs(extract(epoch FROM (occurs_at - ${anchor}::timestamptz)))
+     LIMIT ${limit}
+  `) as Story[];
+
+  if (sameType.length >= limit) return sameType;
+
+  const seen = [story.slug, ...sameType.map((s) => s.slug)];
+  const filler = (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND slug <> ALL(${seen})
+       AND occurs_at IS NOT NULL
+     ORDER BY abs(extract(epoch FROM (occurs_at - ${anchor}::timestamptz)))
+     LIMIT ${limit - sameType.length}
+  `) as Story[];
+
+  return [...sameType, ...filler];
+}
+
 /* -------------------------------------------------- strukturerad data ------ */
 
 export async function getUpcomingGames(limit = 10): Promise<Game[]> {
@@ -221,7 +284,7 @@ export async function getSignData(): Promise<SignData> {
        WHERE town_id = ${TOWN_ID}
          AND source_type = 'event'
          AND occurs_at::date = (now() AT TIME ZONE 'America/Chicago')::date
-    ` as unknown as Promise<{ n: number }[]>,
+    ` as Promise<{ n: number }[]>,
   ]);
 
   const current = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;

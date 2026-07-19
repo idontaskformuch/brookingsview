@@ -3,7 +3,8 @@
  *  hederligt mot läsaren och det som gör E-E-A-T-anspråket på metodsidan sant. */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ShareButtons from '../../components/ShareButtons.astro';
-import { getAllStories, formatOccursAt, formatDate } from '../../lib/db';
+import RelatedStories from '../../components/RelatedStories.astro';
+import { getAllStories, getRelatedStories, formatOccursAt, formatDate } from '../../lib/db';
 import type { Story } from '../../lib/db';
 
 export async function getStaticPaths() {
@@ -16,9 +17,10 @@ const isAlert = story.source_type === 'alert';
 const kind = isAlert ? 'Alert' : story.source_type === 'meeting' ? 'Meeting' : 'Event';
 const when = formatOccursAt(story) || null;
 const canonicalUrl = new URL(`/s/${story.slug}/`, Astro.site ?? 'https://brookingsview.com').href;
+const related = await getRelatedStories(story, 3);
 ---
 
-<BaseLayout title={`${story.title} — Brookings View`} description={story.body.slice(0, 155)}>
+<BaseLayout title={`${story.title} — Brookings View`} description={story.body.slice(0, 155)} ogSlug={story.slug}>
   <article class="story">
     <p class="story__kind data">{kind}</p>
     <h1>{story.title}</h1>
@@ -47,6 +49,8 @@ const canonicalUrl = new URL(`/s/${story.slug}/`, Astro.site ?? 'https://brookin
     </footer>
   </article>
 
+  <RelatedStories stories={related} />
+
   <script type="application/ld+json" is:inline set:html={JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'NewsArticle',
@@ -64,7 +68,7 @@ const canonicalUrl = new URL(`/s/${story.slug}/`, Astro.site ?? 'https://brookin
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--sky);
+  color: var(--navy);
 }
 .story__when { margin: 0.75rem 0 0; color: var(--ink-soft); font-size: 0.875rem; }
 .story__body { margin-top: 1.75rem; font-size: 1.125rem; }

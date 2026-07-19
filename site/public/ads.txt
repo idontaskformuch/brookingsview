@@ -1,0 +1,16 @@
+# Authorized Digital Sellers (IAB Tech Lab ads.txt)
+#
+# INAKTIV -- ingen giltig post ännu.
+#
+# Raden nedan aktiveras genom att ta bort brädgården OCH ersätta
+# pub-0000000000000000 med ditt riktiga publisher-ID från AdSense.
+#
+# Du får ID:t när du REGISTRERAR AdSense-kontot, inte när du blir godkänd,
+# så det här kan fyllas i före ansökan om granskning.
+# Hittas i AdSense: Konto -> Inställningar -> Kontoinformation.
+#
+# VIKTIGT: ett felaktigt eller påhittat ID är sämre än ingen fil alls --
+# det gör filen ogiltig och kan flagga kontot. Fyll i det riktiga eller
+# lämna raden bortkommenterad.
+#
+# google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0

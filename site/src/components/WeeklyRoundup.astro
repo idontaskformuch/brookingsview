@@ -1,0 +1,61 @@
+---
+/** Veckosammanfattningen på förstasidan. Får en egen, tydligt avvikande plats
+ *  högst upp -- den är sajtens enda sammanhängande text och ska inte konkurrera
+ *  med enskilda notiser i strömmen. */
+import type { Story } from '../lib/db';
+
+interface Props { story: Story; }
+const { story } = Astro.props;
+
+// Första stycket som ingress, resten bakom länken.
+const paragraphs = story.body.split('\n').map((p) => p.trim()).filter(Boolean);
+const standfirst = paragraphs[0] ?? '';
+const words = story.body.split(/\s+/).length;
+---
+<article class="roundup">
+  <p class="roundup__kicker"><span class="kicker">The week ahead</span></p>
+  <h2 class="roundup__title"><a href={`/s/${story.slug}`}>{story.title}</a></h2>
+  <p class="roundup__standfirst">{standfirst}</p>
+  <a class="roundup__more" href={`/s/${story.slug}`}>
+    Read the full roundup &rarr; <span class="roundup__words data">{words} words</span>
+  </a>
+</article>
+
+<style>
+.roundup {
+  border-top: 3px solid var(--rule-strong);
+  border-bottom: 3px solid var(--rule-strong);
+  padding: 1.125rem 0 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.roundup__kicker { margin: 0 0 0.4375rem; }
+.roundup__kicker .kicker { color: var(--alert); }
+.roundup__title {
+  font-size: clamp(1.5rem, 3.4vw, 2.125rem);
+  line-height: 1.08;
+  margin: 0 0 0.5rem;
+  max-width: 34rem;
+}
+.roundup__title a { color: inherit; text-decoration: none; }
+.roundup__title a:hover { color: var(--navy); }
+.roundup__standfirst {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  max-width: 42rem;
+  color: var(--ink);
+}
+.roundup__more {
+  display: inline-block;
+  margin-top: 0.625rem;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.roundup__more { color: var(--accent); }
+.roundup__more:hover { text-decoration: underline; }
+.roundup__words { color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+</style>

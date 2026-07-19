@@ -1,0 +1,8 @@
+# Brookings View — brookingsview.com
+# Allt innehåll är avsett att indexeras. Sajten aggregerar offentlig information
+# och länkar alltid tillbaka till primärkällan.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://brookingsview.com/sitemap-index.xml
