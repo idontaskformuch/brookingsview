@@ -22,6 +22,10 @@ const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall' : 'Events';
     <span class="kicker">{kicker}</span>
     {timeLabel && <span class="lead__when data">{timeLabel}</span>}
   </p>
+  <a class="lead__image-link" href={`/s/${story.slug}`} tabindex="-1" aria-hidden="true">
+    <img class="lead__image" src={`/og/${story.slug}.png`} width="1200" height="630"
+         alt="" loading="eager" />
+  </a>
   <h2 class="lead__title"><a href={`/s/${story.slug}`}>{story.title}</a></h2>
   <p class="lead__body">{story.body}</p>
   <a class="lead__more" href={`/s/${story.slug}`}>Read more &rarr;</a>
@@ -36,6 +40,13 @@ const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall' : 'Events';
 .lead__when {
   font-size: 0.6875rem; letter-spacing: 0.04em;
   text-transform: uppercase; color: var(--ink-soft);
+}
+.lead__image-link { display: block; }
+.lead__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0.875rem 0 1.125rem;
 }
 .lead__title {
   font-size: clamp(1.75rem, 4.2vw, 2.625rem);

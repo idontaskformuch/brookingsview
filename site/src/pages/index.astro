@@ -71,19 +71,21 @@ const nextGame = games[0] ?? null;
 
     <aside class="rail" aria-label="Conditions and numbers">
       {today && (
-        <Tile
-          label="Weather"
-          value={`${today.temp !== null ? Math.round(today.temp) : '—'}°${today.unit}`}
-          note={today.short}
-        />
+        <a class="rail__link" href="/weather">
+          <Tile
+            label="Weather"
+            value={`${today.temp !== null ? Math.round(today.temp) : '—'}°${today.unit}`}
+            note={`${today.short} · 5-day forecast`}
+          />
+        </a>
       )}
       {nextGame && (
-        <div class="rail__game">
+        <a class="rail__link rail__game" href="/jackrabbits">
           <GameCard game={nextGame} />
-        </div>
+        </a>
       )}
       {prices.length > 0 && (
-        <div class="rail__prices">
+        <a class="rail__link rail__prices" href="/farm-report">
           <p class="rail__label">Markets</p>
           <table class="prices data">
             <tbody>
@@ -95,8 +97,9 @@ const nextGame = games[0] ?? null;
               ))}
             </tbody>
           </table>
-        </div>
+        </a>
       )}
+      <p class="rail__hint">Tap a panel for the full picture &rarr;</p>
     </aside>
   </div>
 
@@ -159,6 +162,20 @@ const nextGame = games[0] ?? null;
 }
 
 .rail { display: grid; gap: 1.125rem; align-content: start; }
+.rail__link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 3px;
+  transition: background-color 0.12s ease;
+}
+.rail__link:hover { background: var(--navy-tint); }
+.rail__hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  font-style: italic;
+}
 .rail__game { border-top: 1px solid var(--rule); padding-top: 0.25rem; }
 .rail__prices { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
 .rail__label {

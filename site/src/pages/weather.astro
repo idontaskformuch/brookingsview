@@ -1,0 +1,69 @@
+---
+/**
+ * Väder-sidan -- gör en statisk ruta till en riktig destination.
+ *
+ * Datan (flera dagars prognos) hämtades redan av getWeather() för
+ * förstasidans ruta, men bara första perioden visades där. Att lägga upp
+ * resten som en egen sida är i praktiken gratis -- ingen ny datakälla,
+ * ingen ny hämtning -- och ger rutan på förstasidan en riktig plats att
+ * leda till istället för att vara en död siffra.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import { getWeather } from '../lib/db';
+
+const periods = await getWeather();
+---
+<BaseLayout title="Weather — Brookings View"
+  description="5-day forecast for Brookings, South Dakota, from the National Weather Service.">
+  <header class="lede">
+    <h1>Weather</h1>
+    <p>Straight from the National Weather Service, updated every hour along
+    with the rest of the site.</p>
+  </header>
+
+  <SectionRule label="Forecast" />
+  {periods.length > 0 ? (
+    <ul class="forecast">
+      {periods.map((p) => (
+        <li class="forecast__row">
+          <span class="forecast__name">{p.name}</span>
+          <span class="forecast__temp data">
+            {p.temp !== null ? Math.round(p.temp) : '—'}&deg;{p.unit}
+          </span>
+          <span class="forecast__short">{p.short}</span>
+          <span class="forecast__wind data">{p.wind}</span>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty">Forecast is not available right now.</p>
+  )}
+</BaseLayout>
+
+<style>
+.lede { max-width: 38rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.forecast { list-style: none; margin: 0; padding: 0; }
+.forecast__row {
+  display: grid;
+  grid-template-columns: 9rem 4rem 1fr 6rem;
+  gap: 1rem;
+  align-items: baseline;
+  padding-block: 0.625rem;
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.9375rem;
+}
+.forecast__name { font-family: var(--font-ui); font-weight: 600; }
+.forecast__temp { font-weight: 500; }
+.forecast__short { color: var(--ink-soft); }
+.forecast__wind { color: var(--ink-soft); font-size: 0.8125rem; text-align: right; }
+.empty { color: var(--ink-soft); }
+@media (max-width: 32rem) {
+  .forecast__row { grid-template-columns: 1fr auto; grid-template-areas: "name temp" "short wind"; }
+  .forecast__name { grid-area: name; }
+  .forecast__temp { grid-area: temp; text-align: right; }
+  .forecast__short { grid-area: short; }
+  .forecast__wind { grid-area: wind; }
+}
+</style>

@@ -50,6 +50,7 @@ const nav = [
   { href: '/jackrabbits', label: 'Jackrabbits' },
   { href: '/city-hall', label: 'City hall' },
   { href: '/farm-report', label: 'Farm report' },
+  { href: '/weather', label: 'Weather' },
 ];
 const path = Astro.url.pathname;
 ---
@@ -106,7 +107,7 @@ const path = Astro.url.pathname;
   --accent: #c2410c;
   --accent-tint: #fbede4;
   --alert: #b91c1c;
-  --alert-tint: #fbeaea;
+  --alert-tint: #d3e2f2;
   --rule: #c9d3da;
   --rule-strong: #14120f;
 
@@ -235,7 +236,11 @@ a { color: var(--navy); text-underline-offset: 2px; }
   color: #fff;
   border-bottom: 1px solid var(--rule-strong);
 }
-.sign--alert { background: var(--alert); }
+/* Rött är ENDAST en accent -- tickern fylls aldrig röd, den förblir navy.
+   Det signalerar akut genom TEXTFÄRG på varningsraden, inte genom en stor
+   röd yta. Korallfärgen (inte --alert direkt) väljs för att klara kontrast
+   mot navy -- ren --alert-röd gav bara 2.11:1 på mörk botten, under AA. */
+.sign__item--alert { color: #ff7a5c; font-weight: 600; }
 .sign__inner {
   display: flex;
   flex-wrap: wrap;
@@ -300,14 +305,14 @@ main { padding-block: 1.75rem 3.5rem; }
   </div>
 </header>
 
-<div class:list={['sign', sign.alert && 'sign--alert']}>
+<div class="sign">
   <div class="shell sign__inner">
     {sign.temp !== null && (
       <span class="sign__item">
         {Math.round(sign.temp)}&deg;{sign.unit}{sign.conditions && <>&nbsp;{sign.conditions.toLowerCase()}</>}
       </span>
     )}
-    {sign.alert && <span class="sign__item">{sign.alert}</span>}
+    {sign.alert && <span class="sign__item sign__item--alert">{sign.alert}</span>}
     {sign.eventsToday > 0 && (
       <span class="sign__item">{sign.eventsToday} {sign.eventsToday === 1 ? 'event' : 'events'} today</span>
     )}

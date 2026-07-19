@@ -26,6 +26,14 @@ const related = await getRelatedStories(story, 3);
     <h1>{story.title}</h1>
     {when && <p class="story__when data">{when}</p>}
 
+    <img
+      class="story__hero"
+      src={`/og/${story.slug}.png`}
+      width="1200" height="630"
+      alt=""
+      loading="eager"
+    />
+
     <div class="story__body">
       {story.body.split('\n').filter(Boolean).map((para) => <p>{para}</p>)}
     </div>
@@ -71,6 +79,14 @@ const related = await getRelatedStories(story, 3);
   color: var(--navy);
 }
 .story__when { margin: 0.75rem 0 0; color: var(--ink-soft); font-size: 0.875rem; }
+.story__hero {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 1.25rem;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 1.25rem;
+}
 .story__body { margin-top: 1.75rem; font-size: 1.125rem; }
 .story__body p { margin: 0 0 1rem; }
 .story__source {

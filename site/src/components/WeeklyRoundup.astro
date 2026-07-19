@@ -15,6 +15,10 @@ const words = story.body.split(/\s+/).length;
 <article class="roundup">
   <p class="roundup__kicker"><span class="kicker">The week ahead</span></p>
   <h2 class="roundup__title"><a href={`/s/${story.slug}`}>{story.title}</a></h2>
+  <a class="roundup__image-link" href={`/s/${story.slug}`} tabindex="-1" aria-hidden="true">
+    <img class="roundup__image" src={`/og/${story.slug}.png`} width="1200" height="630"
+         alt="" loading="eager" />
+  </a>
   <p class="roundup__standfirst">{standfirst}</p>
   <a class="roundup__more" href={`/s/${story.slug}`}>
     Read the full roundup &rarr; <span class="roundup__words data">{words} words</span>
@@ -38,6 +42,13 @@ const words = story.body.split(/\s+/).length;
 }
 .roundup__title a { color: inherit; text-decoration: none; }
 .roundup__title a:hover { color: var(--navy); }
+.roundup__image-link { display: block; }
+.roundup__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 0 1rem;
+}
 .roundup__standfirst {
   margin: 0;
   font-size: 1.0625rem;
