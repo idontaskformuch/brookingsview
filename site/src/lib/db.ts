@@ -284,7 +284,7 @@ export async function getSignData(): Promise<SignData> {
        WHERE town_id = ${TOWN_ID}
          AND source_type = 'event'
          AND occurs_at::date = (now() AT TIME ZONE 'America/Chicago')::date
-    ` as Promise<{ n: number }[]>,
+    ` as unknown as Promise<{ n: number }[]>,
   ]);
 
   const current = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;

@@ -302,6 +302,9 @@ def main() -> int:
                     help="generera om även när underlaget är oförändrat")
     ap.add_argument("--next-week", action="store_true",
                     help="bygg för nästa vecka i stället för innevarande")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="generera och skriv ut, men skriv INTE till stories "
+                         "(gör ett riktigt AI-anrop -- kostar samma som en publicering)")
     args = ap.parse_args()
 
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
@@ -331,12 +334,23 @@ def main() -> int:
                 (town_id, slug))
             row = cur.fetchone()
 
-        if row and row[0] == new_hash and not args.force:
+        if row and row[0] == new_hash and not args.force and not args.dry_run:
             print("  underlaget oförändrat -- hoppar över (inget AI-anrop)")
             return 0
 
         text, generated_by, verified = generate(data, label, cfg)
         title = f"This week in {cfg['display_name']}: {label}"
+
+        if args.dry_run:
+            print("\n" + "=" * 70)
+            print(f"TITEL: {title}")
+            print(f"GENERATED_BY: {generated_by}  |  VERIFIED: {verified}  |  "
+                  f"{len(text.split())} ord")
+            print("=" * 70)
+            print(text)
+            print("=" * 70)
+            print("\n(dry-run -- INGET skrevs till stories)")
+            return 0
 
         with conn.cursor() as cur:
             cur.execute(

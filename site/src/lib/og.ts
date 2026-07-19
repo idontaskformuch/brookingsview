@@ -17,11 +17,15 @@
  */
 import satori from 'satori';
 import sharp from 'sharp';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+// Typsnitten som base64, bakade in i en committad fil -- se kommentaren i
+// fonts-embedded.ts för varför två tidigare försök (runtime-filsökväg via
+// import.meta.url, sedan Vites ?arraybuffer-suffix) båda visade sig bero på
+// miljön och gick sönder i Cloudflares byggmiljö trots att de fungerade
+// lokalt. Base64-konstanter i en vanlig .ts-fil har inget sådant beroende.
+import { LORA_BOLD_BASE64, INSTRUMENT_SANS_BOLD_BASE64 } from './fonts-embedded';
 
-const serif = readFileSync(fileURLToPath(new URL('../fonts/Lora-Bold.ttf', import.meta.url)));
-const sans = readFileSync(fileURLToPath(new URL('../fonts/InstrumentSans-Bold.ttf', import.meta.url)));
+const serif = Buffer.from(LORA_BOLD_BASE64, 'base64');
+const sans = Buffer.from(INSTRUMENT_SANS_BOLD_BASE64, 'base64');
 
 // Måtten Facebook, LinkedIn och X alla hanterar utan att beskära.
 const WIDTH = 1200;
