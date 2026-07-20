@@ -30,8 +30,8 @@ jobs:
       - name: Trigga Cloudflare Pages-rebuild
         if: success()
         run: |
-          if [ -n "${{ secrets.PAGES_DEPLOY_HOOK }}" ]; then
-            curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK }}"
-          else
-            echo "PAGES_DEPLOY_HOOK ej satt — hoppar över rebuild"
+          if [ -z "${{ secrets.PAGES_DEPLOY_HOOK }}" ]; then
+            echo "::error::PAGES_DEPLOY_HOOK saknas — rebuild kan inte triggas"
+            exit 1
           fi
+          curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK }}"
