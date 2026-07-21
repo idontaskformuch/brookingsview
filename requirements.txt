@@ -10,3 +10,5 @@ civic-scraper>=0.4      # strukturerad metadata från AgendaCenter-sajter
 pdfplumber>=0.11        # extraherar text ur agenda-PDF:er
 # För kommande parsers (Stage 0/2):
 beautifulsoup4>=4.12    # HTML-scraping (SmartGov, county alerts)
+# Innehållsspår v1: artikel-illustrationer
+Pillow>=10.0            # normaliserar leverantörsbilder (t.ex. fal.ai:s JPEG) till PNG

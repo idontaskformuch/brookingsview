@@ -1,0 +1,56 @@
+name: daily-content
+# Innehållsspår v1, Steg 4. Körs en gång/dag: dagens typ ur weekly_rotation,
+# underlag ur redan skrapad och guardrail-godkänd data, genererar via rätt
+# content/kronikor-modul, skriver till stories vid pass. Steg 3.5: en matchande
+# illustration genereras samtidigt och sparas i site/public/assets/images/.
+#
+# Endast kultur_essa och ledare är kopplade in ännu (se PLAN.md Steg 5) --
+# landar rotationen på en annan typ avslutas körningen rent utan AI-anrop.
+#
+# Illustrationen är en fil, inte en DB-rad -- Cloudflare Pages bygger från git,
+# så bilden måste committas tillbaka till repot innan rebuild-hooken triggas,
+# annars finns den bara på Actions-körarens efemära filsystem och försvinner.
+
+on:
+  schedule:
+    - cron: "0 12 * * *"   # varje morgon, 12:00 UTC (07:00 CDT)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  daily-content:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:      ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      FAL_KEY:           ${{ secrets.FAL_KEY }}
+      USER_AGENT:        "brookingsview.com (contact: hello@brookingsview.com)"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Generera dagens innehåll + illustration
+        run: python -m ai_pipeline.daily_content --config configs/brookings_sd.json
+      - name: Committa genererad illustration
+        run: |
+          git config user.name "brookingsview-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add site/public/assets/images
+          if git diff --cached --quiet; then
+            echo "ingen ny illustration -- inget att committa"
+          else
+            git commit -m "Daily content: add illustration for today's article"
+            git push
+          fi
+      - name: Trigga Cloudflare Pages-rebuild
+        if: success()
+        run: |
+          if [ -n "${{ secrets.PAGES_DEPLOY_HOOK }}" ]; then
+            curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK }}"
+          else
+            echo "PAGES_DEPLOY_HOOK ej satt -- hoppar över rebuild"
+          fi

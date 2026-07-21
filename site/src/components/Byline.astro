@@ -1,0 +1,31 @@
+---
+/** Dämpad "AI-genererad"-rad för krönikor/recensioner/recept. Ett enda ställe att
+ *  justera stilen på, i stället för upprepad markup i varje sida som visar
+ *  genererat innehåll. Renderas bara där story.byline finns -- scraped nyheter
+ *  har byline = NULL och berörs inte. */
+interface Props {
+  category: string;
+  byline: string;
+  date: string;
+}
+const { category, byline, date } = Astro.props;
+---
+<p class="byline data">
+  <span>{category}</span>
+  <span class="byline__sep" aria-hidden="true">&middot;</span>
+  <span>{byline}</span>
+  <span class="byline__sep" aria-hidden="true">&middot;</span>
+  <span>{date}</span>
+</p>
+
+<style>
+.byline {
+  margin: 0.5rem 0 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+}
+.byline__sep { margin: 0 0.4rem; }
+</style>

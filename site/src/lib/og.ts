@@ -41,6 +41,12 @@ const KICKERS: Record<string, string> = {
   meeting: 'City hall',
   event: 'Events',
   alert: 'Alert',
+  kultur_essa: 'Kulturessä',
+  ledare: 'Ledare',
+  vetenskap_kronika: 'Vetenskap',
+  kvick_essa: 'Kåseri',
+  media_recension: 'Recension',
+  vardagsmiddag: 'Recept',
 };
 
 /** Rubrikstorleken krymper med längden så långa rubriker inte spränger ytan. */

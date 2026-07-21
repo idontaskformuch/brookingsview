@@ -23,7 +23,21 @@ const sql = neon(import.meta.env.DATABASE_URL);
 
 export const TOWN_ID = import.meta.env.TOWN_ID ?? 'brookings_sd';
 
-export type SourceType = 'meeting' | 'event' | 'alert' | 'weekly';
+export type SourceType =
+  | 'meeting' | 'event' | 'alert' | 'weekly'
+  | 'kultur_essa' | 'ledare' | 'vetenskap_kronika' | 'kvick_essa'
+  | 'media_recension' | 'vardagsmiddag';
+
+/** Presentation-layer label per source_type, för Byline-raden. Ingen egen DB-kolumn --
+ *  category är en ren funktion av source_type, inget som behöver lagras separat. */
+export const CATEGORY_LABELS: Partial<Record<SourceType, string>> = {
+  kultur_essa: 'Kulturessä',
+  ledare: 'Ledare',
+  vetenskap_kronika: 'Vetenskap',
+  kvick_essa: 'Kåseri',
+  media_recension: 'Recension',
+  vardagsmiddag: 'Recept',
+};
 
 export interface Story {
   id: number;
@@ -35,6 +49,9 @@ export interface Story {
   occurs_at: string | null;
   published_at: string;
   generated_by: string;
+  byline: string | null;
+  image_path: string | null;
+  rating: number | null;
 }
 
 export interface Game {
@@ -72,7 +89,8 @@ export async function getUpcomingStories(
   limit = 20,
 ): Promise<Story[]> {
   return (await sql`
-    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
+           byline, image_path, rating
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
@@ -88,7 +106,8 @@ export async function getPastStories(
   limit = 20,
 ): Promise<Story[]> {
   return (await sql`
-    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
+           byline, image_path, rating
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
@@ -100,7 +119,8 @@ export async function getPastStories(
 
 export async function getStoryBySlug(slug: string): Promise<Story | null> {
   const rows = (await sql`
-    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
+           byline, image_path, rating
       FROM stories
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
      LIMIT 1
@@ -111,7 +131,8 @@ export async function getStoryBySlug(slug: string): Promise<Story | null> {
 /** Alla slugs -- används av getStaticPaths för att generera storysidorna. */
 export async function getAllStories(): Promise<Story[]> {
   return (await sql`
-    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
+           byline, image_path, rating
       FROM stories
      WHERE town_id = ${TOWN_ID}
      ORDER BY occurs_at DESC NULLS LAST
@@ -128,7 +149,8 @@ export async function getAllStories(): Promise<Story[]> {
 export async function getActiveAlerts(): Promise<Story[]> {
   return (await sql`
     SELECT s.id, s.title, s.slug, s.body, s.source_type, s.source_url,
-           s.occurs_at, s.published_at, s.generated_by
+           s.occurs_at, s.published_at, s.generated_by,
+           s.byline, s.image_path, s.rating
       FROM stories s
       LEFT JOIN events e ON e.town_id = s.town_id AND s.slug = 'alert-' || e.id
      WHERE s.town_id = ${TOWN_ID}
@@ -149,7 +171,8 @@ export async function getActiveAlerts(): Promise<Story[]> {
  */
 export async function getLatestWeekly(): Promise<Story | null> {
   const rows = (await sql`
-    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
+           byline, image_path, rating
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = 'weekly'
@@ -176,7 +199,8 @@ export async function getRelatedStories(
   const anchor = story.occurs_at ?? new Date().toISOString();
 
   const sameType = (await sql`
-    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
+           byline, image_path, rating
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND slug <> ${story.slug}
@@ -190,7 +214,8 @@ export async function getRelatedStories(
 
   const seen = [story.slug, ...sameType.map((s) => s.slug)];
   const filler = (await sql`
-    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
+           byline, image_path, rating
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND slug <> ALL(${seen})

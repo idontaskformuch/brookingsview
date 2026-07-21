@@ -136,6 +136,112 @@ medvetet planterad hallucination.
 
 ---
 
+---
+
+## Innehållsspår v1 — schemalagda krönikor/recensioner/recept
+
+**Mål:** automatiserad, schemalagd innehållsgenerering ovanpå befintlig scrape-pipeline.
+Publicera live så snart guardrails + minst 2 innehållstyper fungerar end-to-end.
+
+**Justeringar mot ursprungsplanen** (beslutade innan bygge):
+- `style_filter.clean()` är allmän stil-/läsbarhetspolering (konsekvent skiljetecken,
+  whitespace, tonjustering) — INTE ett verktyg för att dölja AI-ursprung eller undvika
+  AI-detektion. Sajten kan öppet ange att kolumnerna är AI-genererade.
+- Inga innehållstyper namnges efter en riktig, namngiven offentlig person (t.ex. inte
+  "stephen_fry_stil"). Stiltyper beskrivs generiskt (t.ex. "kvick, brittisk essästil"),
+  aldrig kopplade till en identifierbar individ.
+
+### Steg 1 — Guardrails (måste finnas innan något innehåll publiceras)
+- `guardrails/style_filter.py`
+  - `clean(text: str) -> str`: allmän stil-/läsbarhetspolering (skiljetecken, whitespace).
+- `guardrails/originality_check.py`
+  - `is_original(text: str, existing_corpus: list[str]) -> bool`: jämför ny artikel mot
+    tidigare publicerade texter (n-gram/likhetscheck) för att undvika oavsiktlig
+    nästan-dubblett-publicering — inte för att kringgå extern plagiatdetektion.
+- Acceptanskriterium: kör båda mot 2-3 exempeltexter, verifiera att polering sker och att
+  en nästan identisk text flaggas som icke-original.
+
+### Steg 2 — Rotationsschema
+- `scheduler/weekly_rotation.py`
+  - Definierar vilken innehållstyp som körs vilken veckodag.
+  - Enkel config-dict, lätt att ändra utan kodändring:
+```python
+    ROTATION = {
+        "monday": "kultur_essa",
+        "tuesday": "ledare",
+        "wednesday": "media_recension",
+        "thursday": "vardagsmiddag",
+        "friday": "vetenskap_kronika",
+        "saturday": "kvick_essa",
+        "sunday": "kultur_essa",
+    }
+```
+- Acceptanskriterium: funktion som givet ett datum returnerar rätt innehållstyp.
+
+### Steg 3 — Innehållsgenerering (bygg 2 typer först för snabbast live-lansering)
+Prioritera i denna ordning:
+1. `content/kronikor/kultur_essa.py` — DN Kultur-stil, tredjeperson, ingen personlig anekdot
+2. `content/kronikor/ledare.py` — NYT-argumenterande stil
+
+Sen (kan komma efter första livegång):
+3. `content/kronikor/vetenskap.py` — tillgänglig, lekfull vetenskaplig förklararröst (generisk)
+4. `content/kronikor/kvick_essa.py` — kvick, brittisk essästil (generisk)
+5. `content/recensioner/media_recension.py`
+6. `content/recept/vardagsmiddag.py`
+
+Varje modul:
+- Egen promptmall (systemprompt med stilregler inbyggda)
+- Tar lokal vinkel/kontext som input där relevant
+- Kör output genom `style_filter.clean()` och `originality_check.is_original()` innan den returneras
+- Om `is_original()` == False → logga och skippa publicering, larma i Action-loggen
+
+### Steg 3.5 — Tecknade bilder till artiklar
+- `content/illustrations/generate_illustration.py`
+  - Genererar en tecknad/illustrerad bild per artikel (krönika/recension), matchat till
+    textens tema. Körs efter textgenerering + guardrails, innan commit.
+  - Bildstil: konsekvent tecknad stil över hela sajten via en delad `STYLE_PROMPT`
+    (`config/image_model.py`) — ingen fotorealism, inga riktiga identifierbara personer
+    (samma princip som textinnehållets permanenta guardrails).
+  - Output: sparas i `assets/images/{slug}.png`.
+- `config/image_model.py`: `IMAGE_MODEL` ("flux"/"sdxl") och `IMAGE_API_PROVIDER`
+  ("fal"/"replicate") + `MODEL_IDS`-tabell + `STYLE_PROMPT`, separat från modellvalet.
+  Byte av modell/leverantör kräver bara en config-ändring, ingen kodändring i
+  `generate_illustration.py`.
+- Kräver `FAL_KEY` eller `REPLICATE_API_TOKEN` (beroende på `IMAGE_API_PROVIDER`) som
+  secret — saknas ännu i `.env`/GitHub Actions, måste sättas upp innan Steg 3.5 kan
+  köras live.
+- Acceptanskriterium: en genererad artikel har en matchande bild committad och renderad
+  på sajten efter full cykel. Modellbyte flux→sdxl kräver ingen kodändring, bara config.
+- **Status:** klart och live från och med 2026-07-21. `[slug].astro` faller tillbaka på
+  `/og/{slug}.png` (OG-kortet) som hero när `image_path` är NULL — det är avsett, inte
+  ett buggigt mellanläge.
+- **Beslut (2026-07-21): illustrationer gäller endast framåt.** Artiklar publicerade innan
+  Steg 3.5 kopplades in (t.ex. `ledare-2026-07-21`) förblir PERMANENT utan bild.
+  `image_path IS NULL` på dem är avsett, inte en lucka att fylla i efterhand — skriv
+  ingen backfill-migrering eller batch-jobb som genererar bilder retroaktivt för
+  historiska artiklar.
+
+### Steg 4 — Integrering i GitHub Actions
+- Ny separat workflow (INTE i den befintliga hourly scrape-Action):
+  - `.github/workflows/daily-content.yml`
+  - Körs 1 gång/dag, kollar `weekly_rotation` för dagens typ, genererar, kör guardrails, committar/publicerar
+  - Använder samma `PAGES_DEPLOY_HOOK`-secret som redan är på plats
+  - Fail loudly om secret saknas (samma mönster som scrape-fixet)
+
+### Steg 5 — Go-live
+- Kör steg 1-4 med bara kultur_essa + ledare live först
+- Verifiera en full cykel (generering → guardrails → commit → Cloudflare rebuild → syns på sajten)
+- Lägg till resterande innehållstyper i egen takt utan att blockera lansering
+
+### Definition of Done för v1-lansering
+- [ ] Guardrails körs och blockerar korrekt icke-original text
+- [ ] Minst 2 innehållstyper (kultur_essa, ledare) genererar och publicerar automatiskt
+- [ ] Söndagsrotation bekräftad i schemat
+- [ ] Ny daily-content workflow committad och grön i Actions
+- [ ] Sajten visar nytt innehåll efter en full körning
+
+---
+
 ## Permanenta guardrails (alla stadier)
 - Publicera ALDRIG arrest/jail/mugshot/obituary/anklagande innehåll om namngivna
   privatpersoner. Vi beskriver händelser, lag, platser och trender — aldrig anklagelser

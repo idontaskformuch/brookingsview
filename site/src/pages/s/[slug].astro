@@ -4,7 +4,8 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ShareButtons from '../../components/ShareButtons.astro';
 import RelatedStories from '../../components/RelatedStories.astro';
-import { getAllStories, getRelatedStories, formatOccursAt, formatDate } from '../../lib/db';
+import Byline from '../../components/Byline.astro';
+import { getAllStories, getRelatedStories, formatOccursAt, formatDate, CATEGORY_LABELS } from '../../lib/db';
 import type { Story } from '../../lib/db';
 
 export async function getStaticPaths() {
@@ -15,21 +16,33 @@ export async function getStaticPaths() {
 const { story } = Astro.props as { story: Story };
 const isAlert = story.source_type === 'alert';
 const kind = isAlert ? 'Alert' : story.source_type === 'meeting' ? 'Meeting' : 'Event';
-const when = formatOccursAt(story) || null;
+// Genererat innehåll (krönikor m.fl.) har alltid byline satt -- scraped nyheter
+// har byline = NULL. Byline.astro ersätter story__kind-raden när den finns, i
+// stället för att visa båda (kind skulle ändå bara säga "Event" fel för dessa).
+const hasByline = Boolean(story.byline);
+const category = CATEGORY_LABELS[story.source_type] ?? story.source_type;
+const when = hasByline ? null : (formatOccursAt(story) || null);
 const canonicalUrl = new URL(`/s/${story.slug}/`, Astro.site ?? 'https://brookingsview.com').href;
 const related = await getRelatedStories(story, 3);
+// Steg 3.5: en tecknad illustration matchad till artikeln, om en sådan finns.
+// Har inte samma mått som OG-korten (1200x630) -- inga hårdkodade width/height
+// för den, bara CSS-skalning. Saknas image_path (scraped content, eller om
+// bildgenereringen misslyckades den dagen) faller sidan tillbaka på OG-kortet.
+const heroSrc = story.image_path ?? `/og/${story.slug}.png`;
 ---
 
 <BaseLayout title={`${story.title} — Brookings View`} description={story.body.slice(0, 155)} ogSlug={story.slug}>
   <article class="story">
-    <p class="story__kind data">{kind}</p>
+    {!hasByline && <p class="story__kind data">{kind}</p>}
     <h1>{story.title}</h1>
+    {hasByline && (
+      <Byline category={category} byline={story.byline!} date={formatDate(story.published_at)} />
+    )}
     {when && <p class="story__when data">{when}</p>}
 
     <img
       class="story__hero"
-      src={`/og/${story.slug}.png`}
-      width="1200" height="630"
+      src={heroSrc}
       alt=""
       loading="eager"
     />
