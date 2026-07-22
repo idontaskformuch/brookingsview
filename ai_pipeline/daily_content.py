@@ -33,7 +33,7 @@ load_dotenv()
 
 import psycopg
 
-from content import local_context, media_watchlist, seasonal_ingredients
+from content import local_context, now_playing, seasonal_ingredients
 from content._base import DEFAULT_MODEL, illustration_theme
 from content.illustrations.generate_illustration import generate_illustration
 from content.kronikor import culture_essay, editorial, kvick_essa, vetenskap
@@ -78,9 +78,12 @@ def _build_local_input(conn, town_id: str, content_type: str,
     nothing to build from (local_context's civic-data path).
     """
     if content_type == "media_recension":
-        pick = media_watchlist.next_pick(today)
-        return (media_watchlist.build_local_input(pick),
-                f"watchlist pick: {pick['title']} ({pick['year']})")
+        recent_reviews = _existing_corpus(conn, town_id, "media_recension")
+        movie = now_playing.next_pick(today, recent_reviews)
+        if movie is None:
+            return None, "no recent release found (or none had a fetchable summary/wasn't already reviewed)"
+        return (now_playing.build_local_input(movie),
+                f"recent release: {movie['title']} ({movie['release_date']})")
 
     if content_type == "vardagsmiddag":
         ingredient = seasonal_ingredients.next_pick(today)

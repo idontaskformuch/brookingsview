@@ -1,12 +1,14 @@
 """Curated källa för vardagsmiddag: vilken huvudingrediens som föreslås varje torsdag.
 
-Samma enkla ansats som media_watchlist.py: ingen scraper för lokala matbutikers
+Samma enkla ansats som media_recension tidigare hade (nu content/now_playing.py,
+ett live TMDb-API): ingen scraper för lokala matbutikers
 utbud, bara en säsongslista grundad i vad som faktiskt växer/skördas i South
 Dakotas klimatzon (ungefär zon 4b/5a, Upper Midwest-odlingssäsong) månad för
 månad. Deterministisk pick per dag-i-året, ingen tillståndsspårning behövs.
 
-UNDERHÅLL: listan är statisk och kräver ingen påfyllning på samma sätt som
-media_watchlist.py -- säsongerna återkommer likadant varje år. Justera bara om
+UNDERHÅLL: listan är statisk och kräver ingen manuell påfyllning (till skillnad
+från now_playing.py, som är en live källa) -- säsongerna återkommer likadant
+varje år. Justera bara om
 den lokala odlingskalendern faktiskt ändras (klimat, nya lokala grödor osv).
 """
 from __future__ import annotations

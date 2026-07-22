@@ -196,6 +196,22 @@ Sen (kan komma efter första livegång):
 5. `content/recensioner/media_recension.py`
 6. `content/recept/vardagsmiddag.py`
 
+**(2026-07-22) media_recension:s underlagskälla bytt från statisk lista till
+live Wikidata + Wikipedia.** `content/media_watchlist.py` (handkurerad,
+cyklade om och blev daterad -- innehöll bl.a. Oppenheimer 2023, Nomadland
+2020) ersatt av `content/now_playing.py`. TMDb övervägdes först men dess
+API-villkor blev för dyra/restriktiva för en sajt med annonsplaner (AdSense,
+se Stage 7) -- Wikidata är CC0, ingen kommersiell begränsning, ingen
+API-nyckel behövs alls. Frågar Wikidata SPARQL efter engelskspråkiga filmer
+med releasedatum senaste ~75 dagarna (ingen "aktuellt på bio"-koncept finns,
+så det är den bästa tillgängliga proxyn), väljer den med flest Wikipedia-
+språkversioner (`wikibase:sitelinks`, en grov popularitetsproxy) som inte
+redan recenserats, hämtar sammanfattning via Wikipedias REST-API (CC-BY-SA,
+källan anges i underlaget). Verifierat live mot skarpt data 2026-07-22 --
+gav bl.a. "The Odyssey" (Nolan, 2026), riktiga aktuella titlar. Begränsning:
+nationellt/språkligt urval, inte specifikt Brookings Cinema 8 -- den teatern
+saknar egen skrapbar bokningssajt (verifierat via sökning).
+
 Varje modul:
 - Egen promptmall (systemprompt med stilregler inbyggda)
 - Tar lokal vinkel/kontext som input där relevant
