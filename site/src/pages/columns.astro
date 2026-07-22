@@ -1,0 +1,36 @@
+---
+/** Arkiv för de tre krönike-typerna (kultur_essa, kvick_essa, vetenskap_kronika)
+ *  -- en gemensam sida i stället för tre tunna, samma tanke som getContentByType
+ *  tillåter. Dagens krönika flyttar hit dagen efter att den varit ettan på
+ *  förstasidan (se index.astro / getTodaysFeature). Varje kort visar sin egen
+ *  kategorietikett (Kulturessä/Kåseri/Vetenskap) via StoryCard, så blandningen
+ *  är läsbar trots en gemensam sida. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import StoryCard from '../components/StoryCard.astro';
+import { getContentByType } from '../lib/db';
+
+const stories = await getContentByType(['kultur_essa', 'kvick_essa', 'vetenskap_kronika'], 60);
+---
+<BaseLayout title="Columns — Brookings View" wide
+  description="Culture essays, light essays and science columns, AI-written and clearly labeled as such.">
+  <header class="lede">
+    <h1>Columns</h1>
+    <p>Culture, science and light essays -- a change of pace from the news, written
+    by AI and disclosed as such on every piece below.</p>
+  </header>
+
+  <SectionRule label="Latest" />
+  {stories.length > 0 ? (
+    <div class="grid">{stories.map((story) => <StoryCard story={story} />)}</div>
+  ) : (
+    <p class="empty">Nothing published yet.</p>
+  )}
+</BaseLayout>
+
+<style>
+.lede { max-width: 40rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+.empty { color: var(--ink-soft); }
+</style>

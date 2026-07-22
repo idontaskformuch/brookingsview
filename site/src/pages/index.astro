@@ -20,16 +20,17 @@ import GameCard from '../components/GameCard.astro';
 import Tile from '../components/Tile.astro';
 import {
   getUpcomingStories, getActiveAlerts, getUpcomingGames,
-  getWeather, getAgPrices, getLatestWeekly,
+  getWeather, getAgPrices, getLatestWeekly, getTodaysFeature, CATEGORY_HREFS,
 } from '../lib/db';
 
-const [alerts, upcoming, games, periods, prices, weekly] = await Promise.all([
+const [alerts, upcoming, games, periods, prices, weekly, feature] = await Promise.all([
   getActiveAlerts(),
   getUpcomingStories(['event', 'meeting'], 40),
   getUpcomingGames(3),
   getWeather(),
   getAgPrices(),
   getLatestWeekly(),
+  getTodaysFeature(),
 ]);
 
 const today = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
@@ -103,6 +104,13 @@ const nextGame = games[0] ?? null;
     </aside>
   </div>
 
+  {feature && (
+    <section aria-label="Today's read">
+      <SectionRule label="Today's read" href={CATEGORY_HREFS[feature.source_type]} />
+      <LeadStory story={feature} />
+    </section>
+  )}
+
   {todayStories.length > 0 && (
     <section aria-label="Today">
       <SectionRule label="Today" />
@@ -146,6 +154,22 @@ const nextGame = games[0] ?? null;
       <a class="panel" href="/farm-report">
         <h3>Farm report</h3>
         <p>Corn, soybean and cattle prices from USDA.</p>
+      </a>
+      <a class="panel" href="/reviews">
+        <h3>Reviews</h3>
+        <p>What's playing right now, reviewed and clearly labeled as AI-written.</p>
+      </a>
+      <a class="panel" href="/recipes">
+        <h3>Recipes</h3>
+        <p>Simple weeknight dinners built around what's in season.</p>
+      </a>
+      <a class="panel" href="/editorials">
+        <h3>Editorials</h3>
+        <p>Opinion pieces on issues facing Brookings.</p>
+      </a>
+      <a class="panel" href="/columns">
+        <h3>Columns</h3>
+        <p>Culture, science and light essays -- a change of pace from the news.</p>
       </a>
     </div>
   </section>

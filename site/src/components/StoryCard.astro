@@ -2,21 +2,28 @@
 /** En post i nyhetsströmmen. Avdelad med hårfin linje, inte inramad som ett
  *  kort -- kortramar plattar ut hierarkin och får allt att se lika viktigt ut. */
 import type { Story } from '../lib/db';
-import { formatDate, formatTime, formatCalendarDate } from '../lib/db';
+import { formatDate, formatTime, formatCalendarDate, CATEGORY_LABELS } from '../lib/db';
 
 interface Props { story: Story; compact?: boolean; }
 const { story, compact = false } = Astro.props;
 
 const isAlert = story.source_type === 'alert';
 const isMeeting = story.source_type === 'meeting';
+// Content Track-innehåll (krönikor, recensioner, recept m.fl.) har alltid byline
+// satt -- occurs_at är bara now() vid genereringstillfället för de typerna, så
+// den ska aldrig användas som tidsangivelse. Publiceringsdatum är den rätta.
+const hasByline = Boolean(story.byline);
 const when = story.occurs_at;
-const timeLabel = !when
-  ? ''
-  : isMeeting
-    ? formatCalendarDate(when)  // datum-utan-klockslag -- se db.ts
-    : `${formatDate(when)}${!isAlert && formatTime(when) ? ` · ${formatTime(when)}` : ''}`;
+const timeLabel = hasByline
+  ? formatDate(story.published_at)
+  : !when
+    ? ''
+    : isMeeting
+      ? formatCalendarDate(when)  // datum-utan-klockslag -- se db.ts
+      : `${formatDate(when)}${!isAlert && formatTime(when) ? ` · ${formatTime(when)}` : ''}`;
 
-const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall' : 'Events';
+const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall'
+  : hasByline ? (CATEGORY_LABELS[story.source_type] ?? 'Feature') : 'Events';
 ---
 <article class:list={['item', isAlert && 'item--alert']}>
   <p class="item__kicker">

@@ -39,6 +39,24 @@ export const CATEGORY_LABELS: Partial<Record<SourceType, string>> = {
   vardagsmiddag: 'Recept',
 };
 
+/** De sex innehållstyperna från Content Track v1 -- en sammanhållen lista så att
+ *  nya sidor/frågor inte behöver skriva om den varje gång. */
+export const CONTENT_TRACK_TYPES: SourceType[] = [
+  'kultur_essa', 'ledare', 'vetenskap_kronika', 'kvick_essa', 'media_recension', 'vardagsmiddag',
+];
+
+/** Vilken kategori-sida en Content Track-story hör hemma på när den arkiveras
+ *  bort från förstasidan. kultur_essa/vetenskap_kronika/kvick_essa delar
+ *  /columns -- tre krönike-varianter i en sektion, inte tre tunna sidor. */
+export const CATEGORY_HREFS: Partial<Record<SourceType, string>> = {
+  kultur_essa: '/columns',
+  kvick_essa: '/columns',
+  vetenskap_kronika: '/columns',
+  ledare: '/editorials',
+  media_recension: '/reviews',
+  vardagsmiddag: '/recipes',
+};
+
 export interface Story {
   id: number;
   title: string;
@@ -113,6 +131,45 @@ export async function getPastStories(
        AND source_type = ANY(${sourceTypes})
        AND occurs_at < now() - interval '12 hours'
      ORDER BY occurs_at DESC
+     LIMIT ${limit}
+  `) as Story[];
+}
+
+/**
+ * Dagens krönika/recension/recept -- den från Content Track v1 som publicerats
+ * sedan midnatt lokal tid (America/Chicago, samma som resten av sajten).
+ *
+ * Visas pushigt på förstasidan bara publiceringsdagen. Efter det hittas den
+ * bara via sin kategori-sida (getContentByType) -- precis som andra
+ * nyhetssajter kör "dagens ledare/recension" på ettan och arkiverar den till
+ * en sektion när nästa dags innehåll tar över.
+ */
+export async function getTodaysFeature(): Promise<Story | null> {
+  const rows = (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
+           byline, image_path, rating
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND source_type = ANY(${CONTENT_TRACK_TYPES})
+       AND published_at::date = (now() AT TIME ZONE 'America/Chicago')::date
+     ORDER BY published_at DESC
+     LIMIT 1
+  `) as Story[];
+  return rows[0] ?? null;
+}
+
+/** Fullt arkiv för en kategori-sida (recept, recensioner, ledare, krönikor),
+ *  nyast först. Till skillnad från getTodaysFeature filtreras inte på dagens
+ *  datum -- kategori-sidan är den permanenta hemvisten för allt innehåll av
+ *  den typen, inte bara det som nyss publicerades. */
+export async function getContentByType(sourceTypes: SourceType[], limit = 40): Promise<Story[]> {
+  return (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
+           byline, image_path, rating
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND source_type = ANY(${sourceTypes})
+     ORDER BY published_at DESC
      LIMIT ${limit}
   `) as Story[];
 }

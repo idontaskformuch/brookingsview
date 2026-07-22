@@ -2,20 +2,34 @@
 /** Ettan. Dominerar sidan i skala -- det är så en tidning uttrycker redaktionell
  *  bedömning visuellt, i stället för att ge varje post lika stor vikt. */
 import type { Story } from '../lib/db';
-import { formatDate, formatTime, formatCalendarDate } from '../lib/db';
+import { formatDate, formatTime, formatCalendarDate, CATEGORY_LABELS } from '../lib/db';
 
 interface Props { story: Story; }
 const { story } = Astro.props;
 
 const isMeeting = story.source_type === 'meeting';
 const isAlert = story.source_type === 'alert';
+// Se StoryCard.astro för samma resonemang: byline betyder Content Track-innehåll,
+// och då är occurs_at inte en riktig tidsangivelse -- publiceringsdatum är rätt.
+const hasByline = Boolean(story.byline);
 const when = story.occurs_at;
-const timeLabel = !when
-  ? ''
-  : isMeeting
-    ? formatCalendarDate(when)
-    : `${formatDate(when)}${!isAlert && formatTime(when) ? ` · ${formatTime(when)}` : ''}`;
-const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall' : 'Events';
+const timeLabel = hasByline
+  ? formatDate(story.published_at)
+  : !when
+    ? ''
+    : isMeeting
+      ? formatCalendarDate(when)
+      : `${formatDate(when)}${!isAlert && formatTime(when) ? ` · ${formatTime(when)}` : ''}`;
+const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall'
+  : hasByline ? (CATEGORY_LABELS[story.source_type] ?? 'Feature') : 'Events';
+// Content Track-artiklar har en egen tecknad illustration (image_path) --
+// scraped events/meetings har ingen och faller tillbaka på OG-kortet, precis
+// som på story-sidan (s/[slug].astro).
+const heroSrc = story.image_path ?? `/og/${story.slug}.png`;
+// OG-korten är alltid 1200x630 -- illustrationerna har egna mått (CSS skalar
+// dem ändå till width:100%/height:auto), så hårdkodade attribut skulle bara
+// ge en missvisande aspect-ratio-hint för dem.
+const heroDims = story.image_path ? {} : { width: 1200, height: 630 };
 ---
 <article class="lead">
   <p class="lead__kicker">
@@ -23,7 +37,7 @@ const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall' : 'Events';
     {timeLabel && <span class="lead__when data">{timeLabel}</span>}
   </p>
   <a class="lead__image-link" href={`/s/${story.slug}`} tabindex="-1" aria-hidden="true">
-    <img class="lead__image" src={`/og/${story.slug}.png`} width="1200" height="630"
+    <img class="lead__image" src={heroSrc} {...heroDims}
          alt="" loading="eager" />
   </a>
   <h2 class="lead__title"><a href={`/s/${story.slug}`}>{story.title}</a></h2>

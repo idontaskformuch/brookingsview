@@ -1,0 +1,32 @@
+---
+/** Arkiv för vardagsmiddag -- dagens recept flyttar hit dagen efter att det
+ *  varit ettan på förstasidan (se index.astro / getTodaysFeature). */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import StoryCard from '../components/StoryCard.astro';
+import { getContentByType } from '../lib/db';
+
+const stories = await getContentByType(['vardagsmiddag'], 60);
+---
+<BaseLayout title="Recipes — Brookings View" wide
+  description="Simple weeknight dinner recipes built around what's in season, AI-written and clearly labeled as such.">
+  <header class="lede">
+    <h1>Recipes</h1>
+    <p>Simple weeknight dinners built around what's in season, written by AI and
+    disclosed as such on every piece below.</p>
+  </header>
+
+  <SectionRule label="Latest" />
+  {stories.length > 0 ? (
+    <div class="grid">{stories.map((story) => <StoryCard story={story} />)}</div>
+  ) : (
+    <p class="empty">Nothing published yet.</p>
+  )}
+</BaseLayout>
+
+<style>
+.lede { max-width: 40rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+.empty { color: var(--ink-soft); }
+</style>
