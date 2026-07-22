@@ -26,6 +26,11 @@ const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall'
   : hasByline ? (CATEGORY_LABELS[story.source_type] ?? 'Feature') : 'Events';
 ---
 <article class:list={['item', isAlert && 'item--alert']}>
+  {!compact && story.image_path && (
+    <a class="item__image-link" href={`/s/${story.slug}`} tabindex="-1" aria-hidden="true">
+      <img class="item__image" src={story.image_path} alt="" loading="lazy" />
+    </a>
+  )}
   <p class="item__kicker">
     <span class="kicker">{kicker}</span>
     {timeLabel && <span class="item__when data">{timeLabel}</span>}
@@ -48,6 +53,9 @@ const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall'
   margin-bottom: 0.75rem;
 }
 .item--alert .kicker { color: var(--alert); }
+
+.item__image-link { display: block; margin-bottom: 0.5rem; }
+.item__image { display: block; width: 100%; height: auto; }
 
 .item__kicker {
   display: flex;
