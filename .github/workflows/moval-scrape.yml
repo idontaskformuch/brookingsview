@@ -1,0 +1,38 @@
+name: moval-scrape-and-publish
+# Moreno Valley-motsvarigheten till scrape.yml. Egen config, egen USER_AGENT,
+# egen AI_BUDGET_STATE. PAGES_DEPLOY_HOOK_MOVAL är ett eget secret --
+# återanvänd ALDRIG Brookings PAGES_DEPLOY_HOOK, då triggar det fel sajts bygge.
+
+on:
+  schedule:
+    - cron: "0 * * * *"      # varje timme (justera per behov)
+  workflow_dispatch: {}       # tillåt manuell körning
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:       ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
+      USER_AGENT:         "morenovalleyview.com (contact: hello@morenovalleyview.com)"
+      AI_BUDGET_STATE:    ".ai_budget_moreno_valley_ca.json"
+      ALERT_WEBHOOK:      ${{ secrets.ALERT_WEBHOOK }}
+      ALERT_AFTER_FAILURES: "3"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Kör scrapers (skriver rådata till DB)
+        run: python -m scrapers.runner --config configs/moreno_valley_ca.json
+      - name: Formatera och publicera stories (Stage 3 -> stories)
+        run: python -m ai_pipeline.publish --config configs/moreno_valley_ca.json
+      - name: Trigga Cloudflare Pages-rebuild
+        if: success()
+        run: |
+          if [ -z "${{ secrets.PAGES_DEPLOY_HOOK_MOVAL }}" ]; then
+            echo "::error::PAGES_DEPLOY_HOOK_MOVAL saknas — rebuild kan inte triggas"
+            exit 1
+          fi
+          curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK_MOVAL }}"

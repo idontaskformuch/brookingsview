@@ -22,6 +22,9 @@ import {
   getUpcomingStories, getActiveAlerts, getUpcomingGames,
   getWeather, getAgPrices, getLatestWeekly, getTodaysFeature, CATEGORY_HREFS,
 } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
+
+const isBrookings = siteConfig.townId === 'brookings_sd';
 
 const [alerts, upcoming, games, periods, prices, weekly, feature] = await Promise.all([
   getActiveAlerts(),
@@ -53,7 +56,7 @@ const laterStories = rest.filter((s) => s.occurs_at && new Date(s.occurs_at) >= 
 const nextGame = games[0] ?? null;
 ---
 
-<BaseLayout title="Brookings View — what's happening in Brookings, SD" wide>
+<BaseLayout title={`${siteConfig.siteName} — what's happening in ${siteConfig.cityName}, ${siteConfig.stateAbbr}`} wide>
 
   {alerts.length > 0 && (
     <section aria-label="Active alerts" class="alerts">
@@ -141,20 +144,24 @@ const nextGame = games[0] ?? null;
   )}
 
   <section aria-label="Sections">
-    <SectionRule label="More from Brookings" />
+    <SectionRule label={`More from ${siteConfig.cityName}`} />
     <div class="panels">
-      <a class="panel" href="/jackrabbits">
-        <h3>Jackrabbits</h3>
-        <p>Full schedules and results for SDSU football, basketball and volleyball.</p>
-      </a>
+      {isBrookings && (
+        <a class="panel" href="/jackrabbits">
+          <h3>Jackrabbits</h3>
+          <p>Full schedules and results for SDSU football, basketball and volleyball.</p>
+        </a>
+      )}
       <a class="panel" href="/city-hall">
         <h3>City hall</h3>
         <p>What the council, county commission and committees are deciding.</p>
       </a>
-      <a class="panel" href="/farm-report">
-        <h3>Farm report</h3>
-        <p>Corn, soybean and cattle prices from USDA.</p>
-      </a>
+      {isBrookings && (
+        <a class="panel" href="/farm-report">
+          <h3>Farm report</h3>
+          <p>Corn, soybean and cattle prices from USDA.</p>
+        </a>
+      )}
       <a class="panel" href="/reviews">
         <h3>Reviews</h3>
         <p>What's playing right now, reviewed and clearly labeled as AI-written.</p>
@@ -165,7 +172,7 @@ const nextGame = games[0] ?? null;
       </a>
       <a class="panel" href="/editorials">
         <h3>Editorials</h3>
-        <p>Opinion pieces on issues facing Brookings.</p>
+        <p>Opinion pieces on issues facing {siteConfig.cityName}.</p>
       </a>
       <a class="panel" href="/columns">
         <h3>Columns</h3>

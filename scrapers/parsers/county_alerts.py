@@ -44,6 +44,7 @@ egen post -- annars skulle en uppdaterad varning dubbelräknas.
 """
 from __future__ import annotations
 
+import os
 from datetime import datetime
 
 import requests
@@ -58,7 +59,7 @@ class CountyAlertsParser(BaseParser):
     platform = "civicplus_alerts"
 
     def _headers(self) -> dict:
-        return {"User-Agent": "brookingsview.com (contact: hello@brookingsview.com)"}
+        return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
 
     def fetch(self) -> FetchResult:
         url = self.source_cfg.get("url", "https://www.brookingscountysd.gov") \

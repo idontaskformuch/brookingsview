@@ -23,6 +23,8 @@ STATUS 2026-07-17:
 """
 from __future__ import annotations
 
+import os
+
 from datetime import datetime, timezone
 
 import requests
@@ -36,7 +38,7 @@ class EventsParser(BaseParser):
     platform = "multi_events"
 
     def _headers(self) -> dict:
-        return {"User-Agent": "brookingsview.com (contact: hello@brookingsview.com)"}
+        return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
 
     def fetch(self) -> FetchResult:
         sources = self.source_cfg.get("sources", [])

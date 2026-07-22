@@ -1,0 +1,176 @@
+{
+  "town_id": "moreno_valley_ca",
+  "display_name": "Moreno Valley",
+  "state": "CA",
+  "county": "Riverside County",
+  "population": 209000,
+  "timezone": "America/Los_Angeles",
+  "domain": "morenovalleyview.com",
+  "coordinates": { "lat": 33.9425, "lon": -117.2297 },
+
+  "_domain_note": "morenovalleyview.com — matchar 'View'-varumärket (Brookings View). Konsekvent med fleet-namngivningen.",
+
+  "positioning": {
+    "question_we_answer": "Vad händer i Moreno Valley?",
+    "feeling": "positivt, välkomnande, stolt-över-sin-stad",
+    "one_liner": "Din vänliga guide till allt som händer i Moreno Valley – stadsbeslut, evenemang, nybyggen, väder och lokala nyheter, i klarspråk."
+  },
+
+  "editorial": {
+    "tone": ["warm", "light", "friendly", "plain-language", "celebratory-where-natural"],
+    "must_be": ["factually accurate", "neutral on contested civic matters", "never invents names, numbers, quotes or charges"],
+    "never_publish": [
+      "arrest / jail / booking data om namngivna personer",
+      "mugshots",
+      "sex offender registry",
+      "verbatim obituaries (upphovsrätt) – endast ev. länkindex",
+      "negativt/anklagande innehåll om namngivna privatpersoner",
+      "politisk vinkling eller åsikt"
+    ],
+    "principle": "Vi beskriver händelser, lag, platser och trender – aldrig anklagelser mot enskilda. Om något kan tvinga fram en borttagning senare bygger vi inte in det från början."
+  },
+
+  "compliance": {
+    "publish_named_private_individuals": false,
+    "removal_contact_email": "hello@morenovalleyview.com",
+    "_note": "Med jail/obits borttagna finns i praktiken ingen borttagningsmaskin att bygga. Kontakten finns ändå som god sed."
+  },
+
+  "ai": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-5",
+    "mode": "batch",
+    "batch_cadence_minutes": 60,
+    "monthly_budget_usd": 20,
+    "tone_guidelines": "Skriv som en påläst, glad granne. Kort, konkret, välkomnande. Fira det som är kul (nyöppningar, evenemang) utan att överdriva. Håll dig strikt till fakta i källdatan – hitta aldrig på detaljer, namn eller siffror. Ingen åsikt om politik/beslut, bara vad som händer och vad det betyder i klarspråk.",
+    "guardrails": {
+      "extractive_for_structured_fields": true,
+      "no_opinion_on_contested_topics": true,
+      "reject_if_output_contains_facts_not_in_source": true
+    }
+  },
+
+  "output": {
+    "prefer_digests_over_single_item_pages": true,
+    "_note": "Undvik en tunn indexerad sida per post. Väv ihop till läsbara digests med kontext – bättre för läsaren OCH för AdSense (information gain istället för scaled content)."
+  },
+
+  "data_sources": {
+
+    "city_meetings": {
+      "type": "legistar",
+      "enabled": true,
+      "client_id": "moval",
+      "base_url": "https://moval.legistar.com",
+      "prefer_api": "https://webapi.legistar.com/v1/moval",
+      "refresh_minutes": 1440,
+      "output": { "format": "plain_language_preview", "voice": "what-your-city-is-deciding" },
+      "_notes": "OLÖST 2026-07-22: moval.legistar.com/Calendar.aspx svarar HTTP 200 (portalen finns), men webapi.legistar.com/v1/<id>/bodies gav 'LegistarConnectionString setting is not set up in InSite for client' för ALLA testade client_id: moval, morenovalley, cityofmorenovalley, moreno, MorenoValleyCA, morenovalleyca, cityofmoval, moval-ca, movalca, ca_moval. WebAPI-klientkoden matchar alltså inte portal-subdomänen (vanligt hos Legistar). Kräver antingen (a) inspektera moval.legistar.com i en riktig webbläsare/devtools för att se vilket klient-id sidans egna AJAX-anrop använder, eller (b) fråga staden/Granicus-supporten direkt. Institution/policy, ej anklagelser = låg risk när client_id väl är rätt. DETTA är kärnkällan (unmet local-news function = ingen granskar stadsfullmäktige)."
+    },
+
+    "county_meetings": {
+      "type": "legistar",
+      "enabled": false,
+      "client_id": "rivco",
+      "base_url": "https://rivco.legistar.com",
+      "prefer_api": "https://webapi.legistar.com/v1/rivco",
+      "refresh_minutes": 1440,
+      "output": { "format": "plain_language_preview", "voice": "neutral-civic" },
+      "_notes": "VERIFIERA. Riverside County Board of Supervisors. client_id 'rivco' är gissning. Fas 2 – slå på när stadsfullmäktige-flödet är stabilt."
+    },
+
+    "city_permits": {
+      "type": "html_scrape",
+      "enabled": false,
+      "url": null,
+      "parser": "moreno_valley_permits_v1",
+      "refresh_minutes": 10080,
+      "output": { "format": "monthly_digest", "voice": "what-is-being-built" },
+      "_notes": "VERIFIERA bygglovs-/permit-portal. Moreno Valley använder troligen Accela/eTRAKiT för permits. Hitta publik läsbar endpoint utan inloggning innan bygge. Ram: 'Nybyggen och renoveringar denna månad' – adresser/projekt, inte personer."
+    },
+
+    "business_licenses": {
+      "type": "html_scrape",
+      "enabled": false,
+      "url": null,
+      "refresh_minutes": 1440,
+      "output": { "format": "digest", "voice": "new-in-town" },
+      "_notes": "VERIFIERA om nya affärslicenser är publikt läsbara. Nya licenser = 'ny restaurang/butik på väg'. Positivt och populärt. Fas 2."
+    },
+
+    "events": {
+      "type": "multi",
+      "enabled": true,
+      "sources": [
+        {
+          "name": "city_events",
+          "kind": "ical",
+          "url": "https://tockify.com/api/feeds/ics/city.of.moreno.valley",
+          "_note": "VERIFIERAD 2026-07-22: moval.org/mymoval/calendar.html embeddar Tockify (data-tockify-calendar=\"city.of.moreno.valley\"). ICS-feed testad live, HTTP 200, riktiga events (t.ex. 'Free Food Giveaway'). robots.txt på moval.org har ingen Disallow som träffar kalendersidor; Tockifys /api/feeds/ics/ är en avsedd publik exportendpoint, inte ett skrap-workaround."
+        },
+        {
+          "name": "library",
+          "kind": "ical",
+          "url": "https://tockify.com/api/feeds/ics/moreno.valley.library",
+          "_note": "VERIFIERAD 2026-07-22: moval.org/mv-library/library-calendar.html embeddar samma plattform, egen kalender (data-tockify-calendar=\"moreno.valley.library\"). ICS-feed testad live, HTTP 200, riktiga events (t.ex. 'IRIS PLAZA: Toddler Time'). Inte LibCal som i Brookings -- staden kör hela kalenderutbudet på Tockify."
+        }
+      ],
+      "refresh_minutes": 1440,
+      "output": { "format": "this_week_in_moreno_valley", "voice": "fun-friendly" },
+      "_notes": "Kärnan i 'Vad händer i Moreno Valley?'. Veckovis digest. Återbesöksmotor.",
+      "_return_driver": true
+    },
+
+    "weather": {
+      "type": "api",
+      "enabled": true,
+      "provider": "noaa",
+      "endpoint": "https://api.weather.gov",
+      "lat": 33.9425,
+      "lon": -117.2297,
+      "refresh_minutes": 180,
+      "user_agent_required": true,
+      "output": { "format": "daily_snapshot", "voice": "friendly" }
+    },
+
+    "weather_alerts": {
+      "type": "nws",
+      "enabled": true,
+      "provider": "nws",
+      "endpoint": "https://api.weather.gov/alerts/active",
+      "area": "CAC065",
+      "refresh_minutes": 30,
+      "output": { "format": "alert_banner", "voice": "calm-clear" },
+      "_notes": "VERIFIERAD 2026-07-22: api.weather.gov/points/33.9425,-117.2297 returnerar county=.../zones/county/CAC065 -- gissningen var korrekt, ingen ändring behövd. Keyless, kräver User-Agent. Heat advisories/Santa Ana-vindar/red flag är relevant lokal nytta här."
+    },
+
+    "road_conditions": {
+      "type": "api_or_scrape",
+      "enabled": false,
+      "provider": "caltrans_quickmap",
+      "url": null,
+      "refresh_minutes": 60,
+      "output": { "format": "status_line", "voice": "practical" },
+      "_notes": "Caltrans QuickMap / District 8 (Riverside/San Bernardino). SR-60 och I-215 går genom Moreno Valley – trafikstatus = daglig nytta. Fas 2, hitta data-endpoint."
+    },
+
+    "obituaries_link_index": {
+      "type": "link_index_only",
+      "enabled": false,
+      "url": null,
+      "output": { "format": "outbound_links_only", "voice": "respectful" },
+      "_notes": "AVSTÄNGD som default. Återpublicerar ALDRIG dödsannonstext. Lämna av."
+    }
+  },
+
+  "_verify_before_launch": [
+    "OLÖST: Legistar client_id för Moreno Valley -- 11 kandidater testade och misslyckade mot webapi.legistar.com, se city_meetings._notes. Enda kvarvarande källan som blockerar launch.",
+    "KLART: stadens evenemangskalender = Tockify (city.of.moreno.valley), ICS-feed verifierad live.",
+    "KLART: biblioteket = Tockify (moreno.valley.library), ICS-feed verifierad live.",
+    "KLART: NWS zone/county-kod CAC065 bekräftad via api.weather.gov/points.",
+    "KLART: robots.txt på moval.org blockerar inget som rör kalendrar/events.",
+    "Permit-portal (Accela/eTRAKiT?) – publikt läsbar utan inloggning? (fortfarande overifierad, Fas 2/disabled)"
+  ],
+
+  "_no_ag_markets_note": "Till skillnad från Brookings finns ingen jordbruksmarknad/USDA-vana här, och ingen SDSU-motsvarighet som sport-återbesöksmotor. Stadsfullmäktige + events + väder blir kärnan. Överväg senare: MVUSD skolstyrelse (BoardDocs?), samt lokal community college (Moreno Valley College) events som mjuk återbesöksdrivare."
+}

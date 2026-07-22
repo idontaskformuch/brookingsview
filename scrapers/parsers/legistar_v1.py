@@ -19,6 +19,8 @@ Fältnamn verifierade mot Granicus egen API-dokumentation (webapi.legistar.com/H
 """
 from __future__ import annotations
 
+import os
+
 import json
 import time
 from datetime import datetime, timedelta
@@ -51,7 +53,7 @@ class LegistarParser(BaseParser):
     def _headers(self) -> dict:
         return {
             "Accept": "application/json",
-            "User-Agent": "brookingsview.com (contact: hello@brookingsview.com)",
+            "User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)"),
         }
 
     def fetch(self) -> FetchResult:

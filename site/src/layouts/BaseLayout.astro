@@ -17,6 +17,7 @@
  * bär rubrikerna, grotesken är degraderad till kickers och metadata.
  */
 import { getSignData, countdown } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
 import CookieBanner from '../components/CookieBanner.astro';
 
 interface Props {
@@ -29,27 +30,28 @@ interface Props {
 
 const {
   title,
-  description = 'Meetings, events, Jackrabbits games, weather and market prices in Brookings, South Dakota. Updated every hour.',
+  description = siteConfig.description,
   wide = false,
   ogSlug,
 } = Astro.props;
 
 const sign = await getSignData();
-const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://brookingsview.com');
-const ogImage = new URL(`/og/${ogSlug ?? 'default'}.png`, Astro.site ?? 'https://brookingsview.com').href;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl);
+const ogImage = new URL(`/og/${ogSlug ?? 'default'}.png`, Astro.site ?? siteConfig.siteUrl).href;
 const now = new Date();
 const year = now.getFullYear();
 // Datumraden byggs om varje timme tillsammans med resten av sajten.
 const dateline = now.toLocaleDateString('en-US', {
   weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-  timeZone: 'America/Chicago',
+  timeZone: siteConfig.timezone,
 });
 
+const isBrookings = siteConfig.townId === 'brookings_sd';
 const nav = [
   { href: '/events', label: 'Events' },
-  { href: '/jackrabbits', label: 'Jackrabbits' },
+  ...(isBrookings ? [{ href: '/jackrabbits', label: 'Jackrabbits' }] : []),
   { href: '/city-hall', label: 'City hall' },
-  { href: '/farm-report', label: 'Farm report' },
+  ...(isBrookings ? [{ href: '/farm-report', label: 'Farm report' }] : []),
   { href: '/reviews', label: 'Reviews' },
   { href: '/recipes', label: 'Recipes' },
   { href: '/editorials', label: 'Editorials' },
@@ -70,7 +72,7 @@ const path = Astro.url.pathname;
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
 <meta property="og:type" content="website" />
-<meta property="og:site_name" content="Brookings View" />
+<meta property="og:site_name" content={siteConfig.siteName} />
 <meta property="og:url" content={canonical.href} />
 <meta property="og:image" content={ogImage} />
 <meta property="og:image:width" content="1200" />
@@ -79,14 +81,14 @@ const path = Astro.url.pathname;
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content={ogImage} />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-<link rel="alternate" type="application/rss+xml" title="Brookings View" href="/rss.xml" />
+<link rel="alternate" type="application/rss+xml" title={siteConfig.siteName} href="/rss.xml" />
 
 <link rel="manifest" href="/manifest.webmanifest" />
 <meta name="theme-color" content="#0b2e55" />
 <link rel="apple-touch-icon" href="/icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Brookings View" />
+<meta name="apple-mobile-web-app-title" content={siteConfig.siteName} />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -98,9 +100,9 @@ const path = Astro.url.pathname;
 <script type="application/ld+json" is:inline set:html={JSON.stringify({
   '@context': 'https://schema.org',
   '@type': 'NewsMediaOrganization',
-  name: 'Brookings View',
-  url: 'https://brookingsview.com',
-  areaServed: { '@type': 'City', name: 'Brookings', addressRegion: 'SD', addressCountry: 'US' },
+  name: siteConfig.siteName,
+  url: siteConfig.siteUrl,
+  areaServed: { '@type': 'City', name: siteConfig.cityName, addressRegion: siteConfig.stateAbbr, addressCountry: 'US' },
 })} />
 
 <style is:global>
@@ -302,9 +304,9 @@ main { padding-block: 1.75rem 3.5rem; }
 
 <header class="masthead">
   <div class="shell">
-    <a class="masthead__name" href="/">Brookings <em>View</em></a>
+    <a class="masthead__name" href="/">{siteConfig.brandLead} <em>{siteConfig.brandTail}</em></a>
   </div>
-  <div class="dateline">{dateline} &middot; Brookings, South Dakota</div>
+  <div class="dateline">{dateline} &middot; {siteConfig.cityName}, {siteConfig.stateName}</div>
   <div class="shell">
     <nav class="nav" aria-label="Sections">
       {nav.map((item) => (
@@ -352,11 +354,10 @@ main { padding-block: 1.75rem 3.5rem; }
       <a href="/rss.xml">RSS</a>
     </nav>
     <p>
-      Brookings View gathers public information from the City of Brookings, Brookings
-      County, South Dakota State University, and Brookings Public Library. Every item
+      {siteConfig.sourceBlurb} Every item
       links to its original source. Corrections are welcome.
     </p>
-    <p class="data" style="margin-top:0.75rem; font-size:0.75rem;">&copy; {year} Brookings View</p>
+    <p class="data" style="margin-top:0.75rem; font-size:0.75rem;">&copy; {year} {siteConfig.siteName}</p>
   </div>
 </footer>
 

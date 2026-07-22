@@ -20,6 +20,7 @@ via webbsökning/fetch, men INTE körd live i sandlådan. Kör Stage 2-testet
 """
 from __future__ import annotations
 
+import os
 import re
 from datetime import date, datetime
 
@@ -58,7 +59,7 @@ class GoJacksParser(BaseParser):
         return self.source_cfg.get("sports") or DEFAULT_SPORTS
 
     def _headers(self) -> dict:
-        return {"User-Agent": "brookingsview.com (contact: hello@brookingsview.com)"}
+        return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
 
     def fetch(self) -> FetchResult:
         pages: dict[str, str] = {}

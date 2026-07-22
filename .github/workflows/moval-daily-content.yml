@@ -1,0 +1,49 @@
+name: moval-daily-content
+# Moreno Valley-motsvarigheten till daily-content.yml. Samma pipeline, egen
+# config + egen USER_AGENT (identitetshygien, se MORENO_VALLEY_SETUP.md) +
+# egen AI_BUDGET_STATE-fil så budgettaket inte delas med Brookings-körningen.
+
+on:
+  schedule:
+    - cron: "0 14 * * *"   # varje morgon, 14:00 UTC (07:00 PDT) -- Moreno Valley ligger i Pacific, inte Central
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  daily-content:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:      ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      FAL_KEY:           ${{ secrets.FAL_KEY }}
+      USER_AGENT:        "morenovalleyview.com (contact: hello@morenovalleyview.com)"
+      AI_BUDGET_STATE:   ".ai_budget_moreno_valley_ca.json"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Generera dagens innehåll + illustration
+        run: python -m ai_pipeline.daily_content --config configs/moreno_valley_ca.json
+      - name: Committa genererad illustration
+        run: |
+          git config user.name "morenovalleyview-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add site/public/assets/images
+          if git diff --cached --quiet; then
+            echo "ingen ny illustration -- inget att committa"
+          else
+            git commit -m "Daily content (Moreno Valley): add illustration for today's article"
+            git push
+          fi
+      - name: Trigga Cloudflare Pages-rebuild
+        if: success()
+        run: |
+          if [ -n "${{ secrets.PAGES_DEPLOY_HOOK_MOVAL }}" ]; then
+            curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK_MOVAL }}"
+          else
+            echo "PAGES_DEPLOY_HOOK_MOVAL ej satt -- hoppar över rebuild"
+          fi

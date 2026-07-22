@@ -1,0 +1,35 @@
+name: moval-weekly-roundup
+# Moreno Valley-motsvarigheten till weekly-roundup.yml. Samma hashning i
+# weekly.py gör att en körning utan nya agendor/evenemang inte gör något
+# AI-anrop alls -- se kommentaren i originalfilen.
+
+on:
+  schedule:
+    - cron: "0 13 * * 1"    # måndag morgon Pacific -- första versionen
+    - cron: "0 23 * * *"    # varje kväll -- skriver bara om vid ändrat underlag
+  workflow_dispatch: {}
+
+jobs:
+  roundup:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:      ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      USER_AGENT:        "morenovalleyview.com (contact: hello@morenovalleyview.com)"
+      AI_BUDGET_STATE:   ".ai_budget_moreno_valley_ca.json"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Generera veckosammanfattning
+        run: python -m ai_pipeline.weekly --config configs/moreno_valley_ca.json
+      - name: Trigga Cloudflare Pages-rebuild
+        if: success()
+        run: |
+          if [ -n "${{ secrets.PAGES_DEPLOY_HOOK_MOVAL }}" ]; then
+            curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK_MOVAL }}"
+          else
+            echo "PAGES_DEPLOY_HOOK_MOVAL ej satt -- hoppar över rebuild"
+          fi

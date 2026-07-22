@@ -18,10 +18,15 @@
  * ort utan ändring.
  */
 import { neon } from '@neondatabase/serverless';
+import { siteConfig } from './site-config';
 
 const sql = neon(import.meta.env.DATABASE_URL);
 
-export const TOWN_ID = import.meta.env.TOWN_ID ?? 'brookings_sd';
+// Härleds från siteConfig (SITE_CITY), inte en egen env-variabel -- en separat
+// TOWN_ID att komma ihåg att sätta i synk med SITE_CITY är precis den sortens
+// fallgrop som gör att en stads build visar en annan stads branding över en
+// tredje stads data. Ett enda reglage (SITE_CITY) styr både identitet och data.
+export const TOWN_ID = siteConfig.townId;
 
 export type SourceType =
   | 'meeting' | 'event' | 'alert' | 'weekly'
