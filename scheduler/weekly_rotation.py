@@ -9,13 +9,13 @@ from __future__ import annotations
 import datetime
 
 ROTATION: dict[str, str] = {
-    "monday": "kultur_essa",
-    "tuesday": "ledare",
+    "monday": "culture_essay",
+    "tuesday": "editorial",
     "wednesday": "media_recension",
     "thursday": "vardagsmiddag",
     "friday": "vetenskap_kronika",
     "saturday": "kvick_essa",
-    "sunday": "kultur_essa",
+    "sunday": "culture_essay",
 }
 
 _WEEKDAY_NAMES = (

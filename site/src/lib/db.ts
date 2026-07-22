@@ -25,14 +25,14 @@ export const TOWN_ID = import.meta.env.TOWN_ID ?? 'brookings_sd';
 
 export type SourceType =
   | 'meeting' | 'event' | 'alert' | 'weekly'
-  | 'kultur_essa' | 'ledare' | 'vetenskap_kronika' | 'kvick_essa'
+  | 'culture_essay' | 'editorial' | 'vetenskap_kronika' | 'kvick_essa'
   | 'media_recension' | 'vardagsmiddag';
 
 /** Presentation-layer label per source_type, för Byline-raden. Ingen egen DB-kolumn --
  *  category är en ren funktion av source_type, inget som behöver lagras separat. */
 export const CATEGORY_LABELS: Partial<Record<SourceType, string>> = {
-  kultur_essa: 'Kulturessä',
-  ledare: 'Ledare',
+  culture_essay: 'Culture essay',
+  editorial: 'Editorial',
   vetenskap_kronika: 'Vetenskap',
   kvick_essa: 'Kåseri',
   media_recension: 'Recension',
@@ -42,17 +42,17 @@ export const CATEGORY_LABELS: Partial<Record<SourceType, string>> = {
 /** De sex innehållstyperna från Content Track v1 -- en sammanhållen lista så att
  *  nya sidor/frågor inte behöver skriva om den varje gång. */
 export const CONTENT_TRACK_TYPES: SourceType[] = [
-  'kultur_essa', 'ledare', 'vetenskap_kronika', 'kvick_essa', 'media_recension', 'vardagsmiddag',
+  'culture_essay', 'editorial', 'vetenskap_kronika', 'kvick_essa', 'media_recension', 'vardagsmiddag',
 ];
 
 /** Vilken kategori-sida en Content Track-story hör hemma på när den arkiveras
- *  bort från förstasidan. kultur_essa/vetenskap_kronika/kvick_essa delar
+ *  bort från förstasidan. culture_essay/vetenskap_kronika/kvick_essa delar
  *  /columns -- tre krönike-varianter i en sektion, inte tre tunna sidor. */
 export const CATEGORY_HREFS: Partial<Record<SourceType, string>> = {
-  kultur_essa: '/columns',
+  culture_essay: '/columns',
   kvick_essa: '/columns',
   vetenskap_kronika: '/columns',
-  ledare: '/editorials',
+  editorial: '/editorials',
   media_recension: '/reviews',
   vardagsmiddag: '/recipes',
 };

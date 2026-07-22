@@ -1,16 +1,16 @@
 ---
-/** Arkiv för de tre krönike-typerna (kultur_essa, kvick_essa, vetenskap_kronika)
+/** Arkiv för de tre krönike-typerna (culture_essay, kvick_essa, vetenskap_kronika)
  *  -- en gemensam sida i stället för tre tunna, samma tanke som getContentByType
  *  tillåter. Dagens krönika flyttar hit dagen efter att den varit ettan på
  *  förstasidan (se index.astro / getTodaysFeature). Varje kort visar sin egen
- *  kategorietikett (Kulturessä/Kåseri/Vetenskap) via StoryCard, så blandningen
+ *  kategorietikett (Culture essay/Kåseri/Vetenskap) via StoryCard, så blandningen
  *  är läsbar trots en gemensam sida. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import { getContentByType } from '../lib/db';
 
-const stories = await getContentByType(['kultur_essa', 'kvick_essa', 'vetenskap_kronika'], 60);
+const stories = await getContentByType(['culture_essay', 'kvick_essa', 'vetenskap_kronika'], 60);
 ---
 <BaseLayout title="Columns — Brookings View" wide
   description="Culture essays, light essays and science columns, AI-written and clearly labeled as such.">

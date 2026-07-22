@@ -1,9 +1,13 @@
-"""Kulturessä i DN Kultur-anda. Se PLAN.md (Innehållsspår v1, Steg 3) och CONTENT_MODULES.md."""
+"""Culture essay i DN Kultur-anda. Se PLAN.md (Innehållsspår v1, Steg 3) och CONTENT_MODULES.md.
+
+Modulnamn/source_type/CATEGORY är engelska (bytt från kultur_essa/"Kulturessä") --
+sajten är English-language rakt igenom, se PLAN.md permanenta guardrails om
+konsekvent engelska publiceringsspråk."""
 from __future__ import annotations
 
 from content._base import GeneratedArticle, generate_article
 
-CATEGORY = "Kulturessä"
+CATEGORY = "Culture essay"
 
 SYSTEM_PROMPT = """Du är kulturskribent för en lokal nyhetssajt som riktar sig till Brookings, South Dakota, och regionen kring den. Du skriver en kulturessä i den svenska kvalitetspressens anda (tänk DN Kultur): analytisk, beläst, och med en tydlig tes.
 

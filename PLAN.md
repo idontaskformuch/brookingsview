@@ -150,6 +150,13 @@ Publicera live så snart guardrails + minst 2 innehållstyper fungerar end-to-en
 - Inga innehållstyper namnges efter en riktig, namngiven offentlig person (t.ex. inte
   "stephen_fry_stil"). Stiltyper beskrivs generiskt (t.ex. "kvick, brittisk essästil"),
   aldrig kopplade till en identifierbar individ.
+- **(2026-07-22) Modulnamn/source_type/kategorietiketter är engelska.** `kultur_essa`
+  → `culture_essay`, `ledare` → `editorial` (inkl. CATEGORY-etiketterna "Kulturessä"
+  → "Culture essay", "Ledare" → "Editorial"). Sajten är English-language rakt
+  igenom (samma princip som språkfixet för AI-genererad text) — ett internt
+  modulnamn eller en synlig kategorietikett på svenska är samma sorts avvikelse.
+  `vetenskap_kronika`/`kvick_essa`/`media_recension`/`vardagsmiddag` är fortfarande
+  svenska interna namn (flaggat, inte ännu åtgärdat på användarens begäran).
 
 ### Steg 1 — Guardrails (måste finnas innan något innehåll publiceras)
 - `guardrails/style_filter.py`
@@ -167,21 +174,21 @@ Publicera live så snart guardrails + minst 2 innehållstyper fungerar end-to-en
   - Enkel config-dict, lätt att ändra utan kodändring:
 ```python
     ROTATION = {
-        "monday": "kultur_essa",
-        "tuesday": "ledare",
+        "monday": "culture_essay",
+        "tuesday": "editorial",
         "wednesday": "media_recension",
         "thursday": "vardagsmiddag",
         "friday": "vetenskap_kronika",
         "saturday": "kvick_essa",
-        "sunday": "kultur_essa",
+        "sunday": "culture_essay",
     }
 ```
 - Acceptanskriterium: funktion som givet ett datum returnerar rätt innehållstyp.
 
 ### Steg 3 — Innehållsgenerering (bygg 2 typer först för snabbast live-lansering)
 Prioritera i denna ordning:
-1. `content/kronikor/kultur_essa.py` — DN Kultur-stil, tredjeperson, ingen personlig anekdot
-2. `content/kronikor/ledare.py` — NYT-argumenterande stil
+1. `content/kronikor/culture_essay.py` — DN Kultur-stil, tredjeperson, ingen personlig anekdot
+2. `content/kronikor/editorial.py` — NYT-argumenterande stil
 
 Sen (kan komma efter första livegång):
 3. `content/kronikor/vetenskap.py` — tillgänglig, lekfull vetenskaplig förklararröst (generisk)
@@ -216,7 +223,8 @@ Varje modul:
   `/og/{slug}.png` (OG-kortet) som hero när `image_path` är NULL — det är avsett, inte
   ett buggigt mellanläge.
 - **Beslut (2026-07-21): illustrationer gäller endast framåt.** Artiklar publicerade innan
-  Steg 3.5 kopplades in (t.ex. `ledare-2026-07-21`) förblir PERMANENT utan bild.
+  Steg 3.5 kopplades in (t.ex. `editorial-2026-07-21`, då publicerad som `ledare-2026-07-21`
+  -- se namnbytet till engelska ovan) förblir PERMANENT utan bild.
   `image_path IS NULL` på dem är avsett, inte en lucka att fylla i efterhand — skriv
   ingen backfill-migrering eller batch-jobb som genererar bilder retroaktivt för
   historiska artiklar.
@@ -229,13 +237,13 @@ Varje modul:
   - Fail loudly om secret saknas (samma mönster som scrape-fixet)
 
 ### Steg 5 — Go-live
-- Kör steg 1-4 med bara kultur_essa + ledare live först
+- Kör steg 1-4 med bara culture_essay + editorial live först
 - Verifiera en full cykel (generering → guardrails → commit → Cloudflare rebuild → syns på sajten)
 - Lägg till resterande innehållstyper i egen takt utan att blockera lansering
 
 ### Definition of Done för v1-lansering
 - [ ] Guardrails körs och blockerar korrekt icke-original text
-- [ ] Minst 2 innehållstyper (kultur_essa, ledare) genererar och publicerar automatiskt
+- [ ] Minst 2 innehållstyper (culture_essay, editorial) genererar och publicerar automatiskt
 - [ ] Söndagsrotation bekräftad i schemat
 - [ ] Ny daily-content workflow committad och grön i Actions
 - [ ] Sajten visar nytt innehåll efter en full körning

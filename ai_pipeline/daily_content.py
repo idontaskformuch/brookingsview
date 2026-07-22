@@ -10,7 +10,7 @@ peka på en typ utan MODULES-post skrivs det ut och körningen avslutas rent (in
 AI-anrop, inget fel kastat) -- men se _missing-kontrollen nedan, som redan fångar
 den situationen vid import om ROTATION och MODULES går isär.
 
-Idempotens: sluggen är deterministisk per dag ("kultur_essa-2026-07-21"), så en
+Idempotens: sluggen är deterministisk per dag ("editorial-2026-07-21"), så en
 omkörning samma dag skriver över samma rad i stället för att duplicera.
 
 Körning:
@@ -36,7 +36,7 @@ import psycopg
 from content import local_context, media_watchlist, seasonal_ingredients
 from content._base import DEFAULT_MODEL, illustration_theme
 from content.illustrations.generate_illustration import generate_illustration
-from content.kronikor import kultur_essa, kvick_essa, ledare, vetenskap
+from content.kronikor import culture_essay, editorial, kvick_essa, vetenskap
 from content.recensioner import media_recension
 from content.recept import vardagsmiddag
 from scheduler.weekly_rotation import ROTATION, content_type_for
@@ -48,8 +48,8 @@ PUBLIC_DIR = Path("site/public")
 # "vetenskap". En felskriven nyckel här gör att en veckodag tyst hoppar över sig
 # själv för alltid ("ingen modul kopplad") utan att något fel någonsin syns.
 MODULES = {
-    "kultur_essa": (kultur_essa.write, kultur_essa.CATEGORY),
-    "ledare": (ledare.write, ledare.CATEGORY),
+    "culture_essay": (culture_essay.write, culture_essay.CATEGORY),
+    "editorial": (editorial.write, editorial.CATEGORY),
     "vetenskap_kronika": (vetenskap.write, vetenskap.CATEGORY),
     "kvick_essa": (kvick_essa.write, kvick_essa.CATEGORY),
     "media_recension": (media_recension.write, media_recension.CATEGORY),

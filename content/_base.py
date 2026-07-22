@@ -1,6 +1,6 @@
 """Delad genereringshelper för Steg 3-innehållsmodulerna (krönikor/recensioner/recept).
 
-Varje modul (kultur_essa, ledare, ...) är tunn: sin egen SYSTEM_PROMPT-konstant + ett
+Varje modul (culture_essay, editorial, ...) är tunn: sin egen SYSTEM_PROMPT-konstant + ett
 anrop hit. Delat här: AI-anrop, budgettak (samma spårning som ai_pipeline.format_prompt,
 så AI-spendering delar ett gemensamt tak oavsett om det går till nyhetsformatering eller
 krönikor), style_filter.clean(), originality_check.is_original().
@@ -25,7 +25,7 @@ from guardrails.style_filter import clean
 
 DEFAULT_MODEL = "claude-sonnet-5"
 # Svensk text kostar ~4 tokens/ord med den här modellens tokenizer (mätt: 701 ord =
-# 2783 output-tokens), mot engelskans ~1.3. 900 ord (kultur_essa, längsta målet) kan
+# 2783 output-tokens), mot engelskans ~1.3. 900 ord (culture_essay, längsta målet) kan
 # därför kosta ~3600 tokens redan innan icke-deterministisk variation räknas in --
 # ett verkligt observerat fall (vetenskap_kronika, 2026-07-24) körde över 4096 och
 # trunkerades tyst på en annars identisk prompt/underlag som lyckades fint vid
