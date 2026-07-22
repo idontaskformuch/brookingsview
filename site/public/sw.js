@@ -1,11 +1,13 @@
-// Brookings View service worker.
+// Service worker -- shared across all cities built from this codebase (see
+// site/src/lib/site-config.ts). The cache name is just a local browser-storage
+// label, scoped per-origin already, so it doesn't need to be city-specific.
 //
 // News here updates every hour, so pages must never be served stale-first.
 // Strategy: network-first for navigations (HTML), cache-first for static
 // assets (icons, fonts). Bump CACHE_NAME on deploys that change static
 // asset paths; otherwise old caches are pruned automatically on activate.
 
-const CACHE_NAME = 'brookingsview-static-v1';
+const CACHE_NAME = 'site-static-v1';
 const OFFLINE_URL = '/offline';
 
 const PRECACHE_URLS = [

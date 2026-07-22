@@ -1,9 +1,20 @@
 ---
-/** Sport som TABELL, aldrig som 109 enskilda sidor -- se lib/db.ts om varför. */
+/** Sport som TABELL, aldrig som 109 enskilda sidor -- se lib/db.ts om varför.
+ *
+ * SDSU-specifikt, existerar bara meningsfullt för Brookings. Andra städer
+ * redirectar till förstasidan i stället för att visa en tom/felaktig sida --
+ * output:'static' kan inte hoppa över att emittera en statisk route helt,
+ * så en redirect-stub är det närmaste. Nav-länken är redan isBrookings-gated
+ * i BaseLayout, så den här sidan nås annars bara via en gammal länk/bokmärke. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import GameCard from '../components/GameCard.astro';
 import { getSeasonGames, getUpcomingGames, formatDate, formatTime } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
+
+if (siteConfig.townId !== 'brookings_sd') {
+  return Astro.redirect('/', 302);
+}
 
 const [next, all] = await Promise.all([getUpcomingGames(1), getSeasonGames()]);
 const nextGame = next[0] ?? null;
@@ -18,7 +29,7 @@ const label = (s: string) =>
   : s === 'wbb' ? "Women's basketball"
   : s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ');
 ---
-<BaseLayout title="SDSU Jackrabbits schedules and results — Brookings View" wide
+<BaseLayout title={`SDSU Jackrabbits schedules and results — ${siteConfig.siteName}`} wide
   description="Full SDSU Jackrabbits schedules and results for football, basketball and volleyball.">
   <header class="lede">
     <h1>Jackrabbits</h1>

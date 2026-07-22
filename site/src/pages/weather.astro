@@ -11,11 +11,12 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import { getWeather } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
 
 const periods = await getWeather();
 ---
-<BaseLayout title="Weather — Brookings View"
-  description="5-day forecast for Brookings, South Dakota, from the National Weather Service.">
+<BaseLayout title={`Weather — ${siteConfig.siteName}`}
+  description={`5-day forecast for ${siteConfig.cityName}, ${siteConfig.stateName}, from the National Weather Service.`}>
   <header class="lede">
     <h1>Weather</h1>
     <p>Straight from the National Weather Service, updated every hour along

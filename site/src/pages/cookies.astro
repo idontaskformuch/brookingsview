@@ -1,12 +1,13 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../lib/site-config';
 ---
-<BaseLayout title="Cookies — Brookings View" description="Brookings View's current cookie use.">
+<BaseLayout title={`Cookies — ${siteConfig.siteName}`} description={`${siteConfig.siteName}'s current cookie use.`}>
   <article class="prose">
     <h1>Cookies</h1>
     <p><em>Last updated July 2026.</em></p>
 
-    <p>Brookings View does not currently set any tracking or advertising
+    <p>{siteConfig.siteName} does not currently set any tracking or advertising
     cookies. Cloudflare, our hosting provider, may use a small number of
     strictly necessary cookies to keep the site secure and running smoothly;
     these aren't used to track you across other sites.</p>

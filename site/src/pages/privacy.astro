@@ -1,12 +1,13 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../lib/site-config';
 ---
-<BaseLayout title="Privacy — Brookings View" description="What Brookings View does and doesn't collect.">
+<BaseLayout title={`Privacy — ${siteConfig.siteName}`} description={`What ${siteConfig.siteName} does and doesn't collect.`}>
   <article class="prose">
     <h1>Privacy</h1>
     <p><em>Last updated July 2026.</em></p>
 
-    <p>Brookings View is a simple, static website. There are no user accounts,
+    <p>{siteConfig.siteName} is a simple, static website. There are no user accounts,
     no logins, and no forms that collect personal information beyond an email
     you choose to send us.</p>
 

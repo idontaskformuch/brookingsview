@@ -8,6 +8,7 @@
 import type { APIRoute } from 'astro';
 import { getAllStories, formatDate } from '../../lib/db';
 import { renderOgImage } from '../../lib/og';
+import { siteConfig } from '../../lib/site-config';
 
 export async function getStaticPaths() {
   const stories = await getAllStories();
@@ -15,9 +16,9 @@ export async function getStaticPaths() {
     {
       params: { slug: 'default' },
       props: {
-        title: "What's happening in Brookings",
+        title: `What's happening in ${siteConfig.cityName}`,
         sourceType: 'weekly',
-        dateline: 'Brookings, South Dakota',
+        dateline: `${siteConfig.cityName}, ${siteConfig.stateName}`,
       },
     },
     ...stories.map((story) => ({

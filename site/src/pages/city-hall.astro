@@ -3,12 +3,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import { getUpcomingStories, getPastStories } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
 
 const upcoming = await getUpcomingStories(['meeting'], 40);
 const past = await getPastStories(['meeting'], 20);
 ---
-<BaseLayout title="City hall — Brookings View" wide
-  description="City council, county commission and committee meetings in Brookings, South Dakota, in plain language.">
+<BaseLayout title={`City hall — ${siteConfig.siteName}`} wide
+  description={`City council, county commission and committee meetings in ${siteConfig.cityName}, ${siteConfig.stateName}, in plain language.`}>
   <header class="lede">
     <h1>City hall</h1>
     <p>What the city council, county commission and committees are deciding —

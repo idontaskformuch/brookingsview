@@ -11,11 +11,12 @@
  * Ren vanilla JS, inget klientbibliotek -- konsekvent med resten av sajten,
  * som medvetet inte kör tunga ramverk för enkla saker.
  */
+import { siteConfig } from '../lib/site-config';
 ---
 <div id="cookie-banner" class="banner" role="region" aria-label="Cookie notice" hidden>
   <div class="banner__inner">
     <p>
-      Brookings View doesn't use tracking cookies today. If that changes, we'll
+      {siteConfig.siteName} doesn't use tracking cookies today. If that changes, we'll
       ask again — this just lets us remember your choice.
       <a href="/cookies">Read more</a>
     </p>

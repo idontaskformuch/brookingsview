@@ -5,10 +5,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import { getContentByType } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
 
 const stories = await getContentByType(['vardagsmiddag'], 60);
 ---
-<BaseLayout title="Recipes — Brookings View" wide
+<BaseLayout title={`Recipes — ${siteConfig.siteName}`} wide
   description="Simple weeknight dinner recipes built around what's in season, AI-written and clearly labeled as such.">
   <header class="lede">
     <h1>Recipes</h1>

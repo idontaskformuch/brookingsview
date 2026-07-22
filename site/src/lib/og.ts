@@ -23,6 +23,7 @@ import sharp from 'sharp';
 // miljön och gick sönder i Cloudflares byggmiljö trots att de fungerade
 // lokalt. Base64-konstanter i en vanlig .ts-fil har inget sådant beroende.
 import { LORA_BOLD_BASE64, INSTRUMENT_SANS_BOLD_BASE64 } from './fonts-embedded';
+import { siteConfig } from './site-config';
 
 const serif = Buffer.from(LORA_BOLD_BASE64, 'base64');
 const sans = Buffer.from(INSTRUMENT_SANS_BOLD_BASE64, 'base64');
@@ -64,7 +65,7 @@ export interface OgInput {
 }
 
 export async function renderOgImage({ title, sourceType = 'event', dateline }: OgInput): Promise<Buffer> {
-  const kicker = KICKERS[sourceType] ?? 'Brookings View';
+  const kicker = KICKERS[sourceType] ?? siteConfig.siteName;
   const accentColour = sourceType === 'alert' ? ALERT : ACCENT;
 
   const svg = await satori(
@@ -116,7 +117,7 @@ export async function renderOgImage({ title, sourceType = 'event', dateline }: O
                   type: 'div',
                   props: {
                     style: { display: 'flex', fontSize: 36, color: '#ffffff', letterSpacing: '-0.02em' },
-                    children: 'Brookings View',
+                    children: siteConfig.siteName,
                   },
                 },
                 {
@@ -126,7 +127,7 @@ export async function renderOgImage({ title, sourceType = 'event', dateline }: O
                       display: 'flex', fontFamily: 'Instrument Sans', fontSize: 22,
                       color: 'rgba(255,255,255,0.66)', letterSpacing: '0.06em',
                     },
-                    children: dateline ?? 'Brookings, South Dakota',
+                    children: dateline ?? `${siteConfig.cityName}, ${siteConfig.stateName}`,
                   },
                 },
               ],

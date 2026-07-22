@@ -7,6 +7,7 @@ import RelatedStories from '../../components/RelatedStories.astro';
 import Byline from '../../components/Byline.astro';
 import { getAllStories, getRelatedStories, formatOccursAt, formatDate, CATEGORY_LABELS } from '../../lib/db';
 import type { Story } from '../../lib/db';
+import { siteConfig } from '../../lib/site-config';
 
 export async function getStaticPaths() {
   const stories = await getAllStories();
@@ -22,7 +23,7 @@ const kind = isAlert ? 'Alert' : story.source_type === 'meeting' ? 'Meeting' : '
 const hasByline = Boolean(story.byline);
 const category = CATEGORY_LABELS[story.source_type] ?? story.source_type;
 const when = hasByline ? null : (formatOccursAt(story) || null);
-const canonicalUrl = new URL(`/s/${story.slug}/`, Astro.site ?? 'https://brookingsview.com').href;
+const canonicalUrl = new URL(`/s/${story.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
 const related = await getRelatedStories(story, 3);
 // Steg 3.5: en tecknad illustration matchad till artikeln, om en sådan finns.
 // Har inte samma mått som OG-korten (1200x630) -- inga hårdkodade width/height
@@ -31,7 +32,7 @@ const related = await getRelatedStories(story, 3);
 const heroSrc = story.image_path ?? `/og/${story.slug}.png`;
 ---
 
-<BaseLayout title={`${story.title} — Brookings View`} description={story.body.slice(0, 155)} ogSlug={story.slug}>
+<BaseLayout title={`${story.title} — ${siteConfig.siteName}`} description={story.body.slice(0, 155)} ogSlug={story.slug}>
   <article class="story">
     {!hasByline && <p class="story__kind data">{kind}</p>}
     <h1>{story.title}</h1>
@@ -60,8 +61,7 @@ const heroSrc = story.image_path ?? `/og/${story.slug}.png`;
           Read it if you need the full detail — this summary is deliberately short.
         </p>
       ) : (
-        <p>Compiled from public records published by the City of Brookings, Brookings
-        County, or Brookings Public Library.</p>
+        <p>{siteConfig.sourceBlurb}</p>
       )}
       <p class="data">
         Published {formatDate(story.published_at)} ·
@@ -78,7 +78,7 @@ const heroSrc = story.image_path ?? `/og/${story.slug}.png`;
     headline: story.title,
     datePublished: story.published_at,
     articleBody: story.body,
-    publisher: { '@type': 'Organization', name: 'Brookings View' },
+    publisher: { '@type': 'Organization', name: siteConfig.siteName },
   })} />
 </BaseLayout>
 

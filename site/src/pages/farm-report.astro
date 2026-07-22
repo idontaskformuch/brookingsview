@@ -1,12 +1,19 @@
 ---
+/** USDA-ag-marknad, meningsfull bara för Brookings (se configs/moreno_valley_ca.json
+ *  _no_ag_markets_note). Samma redirect-mönster som jackrabbits.astro. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Tile from '../components/Tile.astro';
 import { getAgPrices } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
+
+if (siteConfig.townId !== 'brookings_sd') {
+  return Astro.redirect('/', 302);
+}
 
 const prices = await getAgPrices();
 ---
-<BaseLayout title="Farm report — Brookings View"
-  description="Corn, soybean and cattle prices for South Dakota from USDA National Agricultural Statistics Service.">
+<BaseLayout title={`Farm report — ${siteConfig.siteName}`}
+  description={`Corn, soybean and cattle prices for ${siteConfig.stateName} from USDA National Agricultural Statistics Service.`}>
   <header class="lede">
     <h1>Farm report</h1>
     <p>Prices received, from the USDA National Agricultural Statistics Service.

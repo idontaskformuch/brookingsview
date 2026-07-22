@@ -50,7 +50,7 @@ const CITIES: Record<string, SiteConfig> = {
       'Meetings, events, Jackrabbits games, weather and market prices in Brookings, South Dakota. Updated every hour.',
     sourceBlurb:
       'Brookings View gathers public information from the City of Brookings, Brookings County, South Dakota State University, and Brookings Public Library.',
-    removalEmail: 'hello@brookings311.com',
+    removalEmail: 'hello@brookingsview.com',
   },
 
   moreno_valley_ca: {

@@ -1,5 +1,13 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../lib/site-config';
+
+// De faktiska källorna skiljer sig strukturellt per stad (olika plattformar,
+// olika institutioner), inte bara i namn -- siteConfig har inte (och ska inte
+// ha) den granulariteten. Den detaljerade tabellen är därför Brookings-
+// specifik och äkta; andra städer får sourceBlurb-sammanfattningen i stället
+// för en påhittad men strukturellt fel tabell.
+const isBrookings = siteConfig.townId === 'brookings_sd';
 
 const sources = [
   {
@@ -39,25 +47,29 @@ const sources = [
   },
 ];
 ---
-<BaseLayout title="How we gather this — Brookings View"
-  description="Every source Brookings View draws from, and how the AI summaries are checked.">
+<BaseLayout title={`How we gather this — ${siteConfig.siteName}`}
+  description={`Every source ${siteConfig.siteName} draws from, and how the AI summaries are checked.`}>
   <article class="prose">
     <h1>How we gather this</h1>
-    <p>Brookings View doesn't have a newsroom. It has a set of public data
+    <p>{siteConfig.siteName} doesn't have a newsroom. It has a set of public data
     sources, checked every hour, and a language model that turns raw agendas
     and calendars into short, readable summaries. Here's exactly how that
     works.</p>
 
     <h2>The sources</h2>
-    <dl class="sources">
-      {sources.map((s) => (
-        <div class="source">
-          <dt>{s.name}</dt>
-          <dd class="source__from">{s.from}</dd>
-          <dd>{s.detail}</dd>
-        </div>
-      ))}
-    </dl>
+    {isBrookings ? (
+      <dl class="sources">
+        {sources.map((s) => (
+          <div class="source">
+            <dt>{s.name}</dt>
+            <dd class="source__from">{s.from}</dd>
+            <dd>{s.detail}</dd>
+          </div>
+        ))}
+      </dl>
+    ) : (
+      <p>{siteConfig.sourceBlurb} Every item links back to its original source.</p>
+    )}
 
     <h2>How the summaries are written</h2>
     <p>Each item is summarized by Claude, an AI model made by Anthropic, working

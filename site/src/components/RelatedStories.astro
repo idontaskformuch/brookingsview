@@ -3,7 +3,7 @@
  *  nästa klick i stället för en återvändsgränd -- de flesta besökare landar via
  *  en delad länk och ser annars aldrig resten av sajten. */
 import type { Story } from '../lib/db';
-import { formatOccursAt } from '../lib/db';
+import { formatOccursAt, CATEGORY_LABELS } from '../lib/db';
 
 interface Props { stories: Story[]; }
 const { stories } = Astro.props;
@@ -16,13 +16,13 @@ const KICKER: Record<string, string> = {
 };
 ---
 {stories.length > 0 && (
-  <nav class="related" aria-label="More from Brookings View">
+  <nav class="related" aria-label="More to read">
     <h2 class="related__head">Read next</h2>
     <ul class="related__list">
       {stories.map((s) => (
         <li class="related__item">
           <p class="related__meta">
-            <span class="kicker">{KICKER[s.source_type] ?? 'Brookings'}</span>
+            <span class="kicker">{KICKER[s.source_type] ?? CATEGORY_LABELS[s.source_type] ?? 'Feature'}</span>
             {s.occurs_at && <span class="related__when data">{formatOccursAt(s)}</span>}
           </p>
           <a class="related__link" href={`/s/${s.slug}`}>{s.title}</a>

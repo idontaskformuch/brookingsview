@@ -1,27 +1,43 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
----
-<BaseLayout title="About — Brookings View"
-  description="Why Brookings View exists and how it's put together.">
-  <article class="prose">
-    <h1>About Brookings View</h1>
+import { siteConfig } from '../lib/site-config';
 
-    <p>Brookings Register, the town's newspaper, closed in August 2025. Since
-    then, there's been no single place to find out what the city council
-    decided, what's happening at the library this week, or when the Jackrabbits
-    play next. Brookings View is an attempt to fill that gap.</p>
+const isBrookings = siteConfig.townId === 'brookings_sd';
+
+// Vad som faktiskt hämtas skiljer sig per stad (SDSU/USDA finns bara för
+// Brookings, se configs/<town>.json) -- generisk formulering för andra
+// städer i stället för att påstå källor som inte finns.
+const sourcesList = isBrookings
+  ? "the city's and county's public meeting agendas, the library's event calendar, SDSU's athletics schedule, the National Weather Service, and USDA market data"
+  : "public meeting agendas, the local library's event calendar, and the National Weather Service";
+---
+<BaseLayout title={`About — ${siteConfig.siteName}`}
+  description={`Why ${siteConfig.siteName} exists and how it's put together.`}>
+  <article class="prose">
+    <h1>About {siteConfig.siteName}</h1>
+
+    {isBrookings ? (
+      <p>Brookings Register, the town's newspaper, closed in August 2025. Since
+      then, there's been no single place to find out what the city council
+      decided, what's happening at the library this week, or when the Jackrabbits
+      play next. {siteConfig.siteName} is an attempt to fill that gap.</p>
+    ) : (
+      <p>Local newspapers have been closing or shrinking all over the country,
+      and small and mid-sized cities are often the first places to lose the
+      kind of coverage that keeps residents in the loop. {siteConfig.siteName}
+      is an attempt to give {siteConfig.cityName} a single place to find out
+      what the city council decided and what's happening around town.</p>
+    )}
 
     <h2>How it works</h2>
-    <p>The site is built and updated automatically. Every hour, it checks the
-    city's and county's public meeting agendas, the library's event calendar,
-    SDSU's athletics schedule, the National Weather Service, and USDA market
-    data. New information is summarized in plain language and published — no
-    person reviews each item before it goes live.</p>
+    <p>The site is built and updated automatically. Every hour, it checks
+    {' '}{sourcesList}. New information is summarized in plain language and
+    published — no person reviews each item before it goes live.</p>
     <p>Read the full breakdown, source by source, on
     <a href="/how-we-gather-this">how we gather this</a>.</p>
 
     <h2>What you won't find here</h2>
-    <p>Brookings View doesn't cover arrests, court records, or obituaries.
+    <p>{siteConfig.siteName} doesn't cover arrests, court records, or obituaries.
     That's a deliberate choice, not an oversight: this site exists to tell you
     what's happening in your town, not to follow anyone through a hard moment
     in their life. If you're looking for that kind of coverage, you won't find
