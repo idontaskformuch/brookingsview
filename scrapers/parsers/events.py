@@ -24,6 +24,7 @@ STATUS 2026-07-17:
 from __future__ import annotations
 
 import os
+import re
 
 from datetime import datetime, timezone
 
@@ -31,6 +32,16 @@ import requests
 
 from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
+
+# Tockify-exporterade ICS-flöden (t.ex. Moreno Valleys city_events/library) innehåller
+# X-PUBLISHED-TTL/REFRESH-INTERVAL:P15M -- avsett som "15 minuter" men saknar
+# T-designatorn (RFC 5545 kräver "PT15M"; "P15M" utan T betyder 15 MÅNADER, vilket
+# duration-grammatiken inte ens tillåter). Detta får icalendar att kasta ett
+# InvalidCalendar-undantag för HELA dokumentet, inte bara den trasiga posten --
+# verifierat 2026-07-23 mot båda Moreno Valley-flödena. Vi använder ändå inte dessa
+# fält (vårt eget refresh_minutes styr hur ofta vi hämtar), så de kan strippas bort
+# innan parsning utan informationsförlust.
+_BAD_REFRESH_PROPS = re.compile(rb"^(X-PUBLISHED-TTL|REFRESH-INTERVAL):.*\r?\n", re.MULTILINE)
 
 
 class EventsParser(BaseParser):
@@ -99,7 +110,7 @@ class EventsParser(BaseParser):
             return []
 
         try:
-            cal = Calendar.from_ical(ics_bytes)
+            cal = Calendar.from_ical(_BAD_REFRESH_PROPS.sub(b"", ics_bytes))
         except Exception as exc:  # noqa: BLE001 — trasig ICS ska inte krascha hela körningen
             print(f"    [events:{source_name}] kunde inte tolka ICS: {exc}")
             return []
