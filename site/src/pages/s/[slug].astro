@@ -30,6 +30,7 @@ const related = await getRelatedStories(story, 3);
 // för den, bara CSS-skalning. Saknas image_path (scraped content, eller om
 // bildgenereringen misslyckades den dagen) faller sidan tillbaka på OG-kortet.
 const heroSrc = story.image_path ?? `/og/${story.slug}.png`;
+const heroUrl = new URL(heroSrc, Astro.site ?? siteConfig.siteUrl).href;
 ---
 
 <BaseLayout title={`${story.title} — ${siteConfig.siteName}`} description={story.body.slice(0, 155)} ogSlug={story.slug}>
@@ -44,7 +45,7 @@ const heroSrc = story.image_path ?? `/og/${story.slug}.png`;
     <img
       class="story__hero"
       src={heroSrc}
-      alt=""
+      alt={`Illustration for “${story.title}”`}
       loading="eager"
     />
 
@@ -77,7 +78,17 @@ const heroSrc = story.image_path ?? `/og/${story.slug}.png`;
     '@type': 'NewsArticle',
     headline: story.title,
     datePublished: story.published_at,
+    dateModified: story.published_at,
     articleBody: story.body,
+    image: [heroUrl],
+    // story.byline är alltid den bokstavliga strängen "AI-genererad" (se
+    // content/_base.py:to_metadata) -- en transparensmarkering, inte ett
+    // riktigt namn. Att sätta '@type':'Person', name:'AI-genererad' skulle
+    // hävda att en person med det namnet skrev texten, exakt den sortens
+    // påhittade uppgift projektets egna regler annars aldrig tillåter.
+    // Ingen story har en riktig mänsklig författare i nuläget, så
+    // Organization gäller för alla.
+    author: { '@type': 'Organization', name: siteConfig.siteName },
     publisher: { '@type': 'Organization', name: siteConfig.siteName },
   })} />
 </BaseLayout>
