@@ -34,6 +34,7 @@ REGISTRY: dict[str, str] = {
     "noaa":            "scrapers.parsers.noaa:NoaaParser",
     "nws":             "scrapers.parsers.nws_alerts:NwsAlertsParser",
     "legistar":        "scrapers.parsers.legistar_v1:LegistarParser",
+    "escribe":         "scrapers.parsers.escribe_v1:EscribeParser",
     "usda":            "scrapers.parsers.usda:UsdaParser",
     # stubbar (väntar på Stage 0-verifiering av källstruktur)
     "smartgov":        "scrapers.parsers.smartgov_v1:SmartGovParser",

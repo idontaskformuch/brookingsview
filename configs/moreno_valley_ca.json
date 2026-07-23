@@ -58,14 +58,12 @@
   "data_sources": {
 
     "city_meetings": {
-      "type": "legistar",
+      "type": "escribe",
       "enabled": true,
-      "client_id": "moval",
-      "base_url": "https://moval.legistar.com",
-      "prefer_api": "https://webapi.legistar.com/v1/moval",
+      "base_url": "https://pub-morenovalley.escribemeetings.com",
       "refresh_minutes": 1440,
       "output": { "format": "plain_language_preview", "voice": "what-your-city-is-deciding" },
-      "_notes": "OLÖST 2026-07-22: moval.legistar.com/Calendar.aspx svarar HTTP 200 (portalen finns), men webapi.legistar.com/v1/<id>/bodies gav 'LegistarConnectionString setting is not set up in InSite for client' för ALLA testade client_id: moval, morenovalley, cityofmorenovalley, moreno, MorenoValleyCA, morenovalleyca, cityofmoval, moval-ca, movalca, ca_moval. WebAPI-klientkoden matchar alltså inte portal-subdomänen (vanligt hos Legistar). Kräver antingen (a) inspektera moval.legistar.com i en riktig webbläsare/devtools för att se vilket klient-id sidans egna AJAX-anrop använder, eller (b) fråga staden/Granicus-supporten direkt. Institution/policy, ej anklagelser = låg risk när client_id väl är rätt. DETTA är kärnkällan (unmet local-news function = ingen granskar stadsfullmäktige)."
+      "_notes": "VERIFIED 2026-07-23: eSCRIBE, not Legistar. moval.legistar.com/Calendar.aspx being reachable was a red herring -- Moreno Valley's actual public meeting portal is pub-morenovalley.escribemeetings.com (eSCRIBE), which is why no Legistar client_id ever worked. See escribe_v1.py for the parser (POST MeetingsCalendarView.aspx/GetCalendarMeetings for the list, Meeting.aspx?Id=...&Agenda=Agenda for per-meeting HTML agenda text). Confirmed live: real meetings with substantive agenda_text (e.g. Planning Commission consent-calendar items with recommendations), no robots.txt restriction."
     },
 
     "county_meetings": {
@@ -164,7 +162,7 @@
   },
 
   "_verify_before_launch": [
-    "OLÖST: Legistar client_id för Moreno Valley -- 11 kandidater testade och misslyckade mot webapi.legistar.com, se city_meetings._notes. Enda kvarvarande källan som blockerar launch.",
+    "KLART: stadsfullmäktige = eSCRIBE (pub-morenovalley.escribemeetings.com), inte Legistar -- verifierat 2026-07-23, se city_meetings._notes och escribe_v1.py.",
     "KLART: stadens evenemangskalender = Tockify (city.of.moreno.valley), ICS-feed verifierad live.",
     "KLART: biblioteket = Tockify (moreno.valley.library), ICS-feed verifierad live.",
     "KLART: NWS zone/county-kod CAC065 bekräftad via api.weather.gov/points.",
