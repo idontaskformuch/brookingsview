@@ -1,0 +1,74 @@
+---
+/** Husförsäljningar som TABELL, aldrig som en story per rad -- se
+ *  lib/db.ts (getRecentPropertySales) för varför, samma resonemang som
+ *  /jackrabbits för sport.
+ *
+ * moreno_valley_ca-specifikt (Riverside County-datan täcker bara den orten).
+ * Andra städer redirectar till förstasidan, samma mönster som jackrabbits.astro
+ * använder för Brookings-specifikt innehåll. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import { getRecentPropertySales, formatCalendarDate, formatPrice } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
+
+if (siteConfig.townId !== 'moreno_valley_ca') {
+  return Astro.redirect('/', 302);
+}
+
+const sales = await getRecentPropertySales();
+---
+<BaseLayout title={`Recent home sales — ${siteConfig.siteName}`} wide
+  description="Recently recorded home sales in Moreno Valley: address, price, and date, from Riverside County's public assessor data.">
+  <header class="lede">
+    <h1>Recent home sales</h1>
+    <p>Recently recorded home sales in Moreno Valley, straight from Riverside
+    County's public assessor data.</p>
+  </header>
+
+  <SectionRule label={`${sales.length} most recent`} />
+  {sales.length > 0 ? (
+    <table class="sales">
+      <thead>
+        <tr><th scope="col">Date</th><th scope="col">Address</th><th scope="col">Price</th></tr>
+      </thead>
+      <tbody>
+        {sales.map((sale) => (
+          <tr>
+            <td class="data">{formatCalendarDate(sale.sale_date)}</td>
+            <td>{sale.address ?? '—'}</td>
+            <td class="data price">{formatPrice(sale.sale_price)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ) : (
+    <p class="empty">No sales data available yet.</p>
+  )}
+
+  <p class="source">
+    Source: <a href="https://www.rivcoacr.org/property-sales-report" rel="noopener">Riverside County Assessor's Property Sales Report</a>,
+    updated quarterly.
+  </p>
+</BaseLayout>
+
+<style>
+.lede { max-width: 40rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.sales { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.9375rem; }
+.sales th {
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 600;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--rule);
+}
+.sales td { padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.sales tr:last-child td { border-bottom: 0; }
+.price { white-space: nowrap; }
+.empty { color: var(--ink-soft); }
+.source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }
+</style>

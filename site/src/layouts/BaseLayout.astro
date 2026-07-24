@@ -47,11 +47,13 @@ const dateline = now.toLocaleDateString('en-US', {
 });
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
+const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const nav = [
   { href: '/events', label: 'Events' },
   ...(isBrookings ? [{ href: '/jackrabbits', label: 'Jackrabbits' }] : []),
   { href: '/city-hall', label: 'City hall' },
   ...(isBrookings ? [{ href: '/farm-report', label: 'Farm report' }] : []),
+  ...(isMorenoValley ? [{ href: '/home-sales', label: 'Home sales' }] : []),
   { href: '/reviews', label: 'Reviews' },
   { href: '/recipes', label: 'Recipes' },
   { href: '/editorials', label: 'Editorials' },

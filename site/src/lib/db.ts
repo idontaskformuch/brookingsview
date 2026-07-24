@@ -107,6 +107,12 @@ export interface AgPrice {
   as_of: string | null;
 }
 
+export interface PropertySale {
+  address: string | null;
+  sale_price: number | null;
+  sale_date: string | null;
+}
+
 /* ------------------------------------------------------------------ stories */
 
 /** Kommande och pågående -- det startsidan och sektionssidorna visar. */
@@ -351,6 +357,27 @@ export async function getAgPrices(): Promise<AgPrice[]> {
   `) as AgPrice[];
 }
 
+/**
+ * Husförsäljningar -- STRUKTURERAD DATA, precis som sport/väder/råvarupriser
+ * (se publish.py-docstringen, punkt 4): en story per rad hade gett tusentals
+ * nästan identiska sidor, samma "scaled content"-signal som redan flaggades
+ * där. property_sales läses därför direkt härifrån och renderas som tabell
+ * på /home-sales, aldrig via ai_pipeline.publish/stories.
+ *
+ * sale_date är ett rent kalenderdatum (samma lagringsform som meeting_date)
+ * -- formatera med formatCalendarDate(), inte formatDate(), annars skiftar
+ * datumet bakåt en dag. Se kommentaren vid formatCalendarDate() nedan.
+ */
+export async function getRecentPropertySales(limit = 250): Promise<PropertySale[]> {
+  return (await sql`
+    SELECT address, sale_price, sale_date
+      FROM property_sales
+     WHERE town_id = ${TOWN_ID}
+     ORDER BY sale_date DESC
+     LIMIT ${limit}
+  `) as PropertySale[];
+}
+
 /* ------------------------------------------------------------ skyltremsan -- */
 
 export interface SignData {
@@ -410,6 +437,14 @@ export function formatTime(value: string | null): string {
 export function formatDateTime(value: string | null): string {
   if (!value) return '';
   return `${formatDate(value)} at ${formatTime(value)}`;
+}
+
+/** Husförsäljningspris -- "$350,000", inga decimaler (öre är aldrig relevant här). */
+export function formatPrice(value: number | null): string {
+  if (value == null) return '—';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: 'USD', maximumFractionDigits: 0,
+  }).format(value);
 }
 
 /**
