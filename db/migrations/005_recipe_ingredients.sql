@@ -1,15 +1,16 @@
--- 005_content_track_ingredients.sql
+-- 005_recipe_ingredients.sql
 --
--- Lägger till `ingredients` på `stories` för vardagsmiddag (recept):
--- ingredienslistan bryts nu ut som en egen strukturerad lista i stället för
--- att stå som löptext i body (se content/_base.py:extract_marked_list()
--- och content/recept/vardagsmiddag.py). TEXT[] eftersom det är en enkel lista
--- av rader ("400 g kycklinglår, i bitar"), ingen egen struktur per rad.
+-- Lägger till `ingredients` på `stories`: en strukturerad ingredienslista för
+-- vardagsmiddag-recept, separat från `body` (som numera bara innehåller
+-- inledning + numrerade instruktioner -- se content/recept/vardagsmiddag.py).
 --
--- NULL för allt annat innehåll (möten/event/varningar/krönikor/recensioner) --
--- inget att bryta ut, ingen ändring för dem.
+-- Samma "ett bord, inte ett nytt"-princip som 004: NULL för allt utom
+-- vardagsmiddag, ingen ny parallell tabell eller väg.
 --
--- Körs en gång:  psql "$DATABASE_URL" -f db/migrations/005_content_track_ingredients.sql
+-- ingredients  TEXT[], en rad per ingrediens (t.ex. "400 g kycklinglår, i
+--              bitar"), NULL för allt innehåll som inte är recept.
+--
+-- Körs en gång:  psql "$DATABASE_URL" -f db/migrations/005_recipe_ingredients.sql
 
 BEGIN;
 
