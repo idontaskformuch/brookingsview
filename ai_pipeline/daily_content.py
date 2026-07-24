@@ -176,17 +176,19 @@ def main() -> int:
                 """
                 INSERT INTO stories
                     (town_id, title, slug, body, source_type, occurs_at,
-                     generated_by, verified, published_at, byline, image_path, rating)
-                VALUES (%s,%s,%s,%s,%s, now(), %s, true, now(), 'AI-genererad', %s, %s)
+                     generated_by, verified, published_at, byline, image_path, rating,
+                     ingredients)
+                VALUES (%s,%s,%s,%s,%s, now(), %s, true, now(), 'AI-genererad', %s, %s, %s)
                 ON CONFLICT (town_id, slug) DO UPDATE SET
                     title = EXCLUDED.title,
                     body = EXCLUDED.body,
                     published_at = now(),
                     image_path = EXCLUDED.image_path,
-                    rating = EXCLUDED.rating
+                    rating = EXCLUDED.rating,
+                    ingredients = EXCLUDED.ingredients
                 """,
                 (town_id, article.title, slug, article.body, content_type,
-                 f"ai:{DEFAULT_MODEL}", image_path, article.rating),
+                 f"ai:{DEFAULT_MODEL}", image_path, article.rating, article.ingredients),
             )
         conn.commit()
 

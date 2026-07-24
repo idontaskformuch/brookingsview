@@ -54,6 +54,10 @@ class GeneratedArticle:
     # Endast media_recension sätter detta (se content/recensioner/media_recension.py).
     # None för alla andra modultyper -- inget att fylla i, inget att flagga.
     rating: float | None = None
+    # Endast vardagsmiddag sätter detta (se content/recept/vardagsmiddag.py och
+    # extract_marked_list() nedan). None för alla andra modultyper -- body
+    # innehåller då som vanligt all text, ingen del bryts ut.
+    ingredients: list[str] | None = None
 
 
 def _split_title_body(text: str) -> tuple[str, str]:
@@ -115,6 +119,61 @@ def generate_article(
     return GeneratedArticle(title=title, body=body)
 
 
+_MARKED_BLOCK_RE_CACHE: dict[tuple[str, str], re.Pattern] = {}
+
+
+def extract_marked_list(body: str, start_marker: str, end_marker: str) -> tuple[list[str], str]:
+    """Pull a bullet-point block out of `body` and return (items, remaining_body).
+
+    Modellen instrueras (se t.ex. vardagsmiddag.SYSTEM_PROMPT) att skriva en
+    strukturerad lista mellan två markörrader, t.ex.:
+
+        <<<INGREDIENTS>>>
+        - 400 g kycklinglår, i bitar
+        - 2 vitlöksklyftor, finhackade
+        <<<END INGREDIENTS>>>
+
+    Den här funktionen bryter ut raderna mellan markörerna som en lista
+    (ledande "- " strippat), och tar bort hela blocket -- markörer inklusive --
+    ur body, så att kvarvarande text (inledning + instruktioner) är oförändrad
+    förklarande text, precis som innan listan bröts ut.
+
+    Om markörerna saknas (modellen följde inte formatet) returneras en tom
+    lista och body orörd -- samma fail-soft-princip som resten av modulen:
+    hellre ostrukturerad text än en trasig sida.
+    """
+    key = (start_marker, end_marker)
+    pattern = _MARKED_BLOCK_RE_CACHE.get(key)
+    if pattern is None:
+        pattern = re.compile(
+            re.escape(start_marker) + r"\s*\n(.*?)\n\s*" + re.escape(end_marker),
+            re.DOTALL,
+        )
+        _MARKED_BLOCK_RE_CACHE[key] = pattern
+
+    match = pattern.search(body)
+    if match is None:
+        return [], body
+
+    items = []
+    for line in match.group(1).splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("- "):
+            line = line[2:].strip()
+        elif line.startswith("-"):
+            line = line[1:].strip()
+        if line:
+            items.append(line)
+
+    remaining = (body[:match.start()] + body[match.end():])
+    # Städa bort blankradsskräp som blocket kan lämna efter sig.
+    remaining = re.sub(r"\n{3,}", "\n\n", remaining).strip()
+
+    return items, remaining
+
+
 def illustration_theme(article: GeneratedArticle, max_words: int = 40) -> str:
     """Title + a short thematic summary for generate_illustration().
 
@@ -137,4 +196,5 @@ def to_metadata(article: GeneratedArticle, category: str, slug: str,
         "date": datetime.date.today().isoformat(),
         "slug": slug,
         "image": image_path or f"/assets/images/{slug}.png",
+        "ingredients": article.ingredients,
     }
