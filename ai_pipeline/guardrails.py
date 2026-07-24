@@ -243,6 +243,19 @@ def validate(generated_text: str, source_text: str, cfg: dict) -> GuardrailResul
     return GuardrailResult(passed=len(violations) == 0, violations=violations)
 
 
+# Ord som skulle plockas ut av regexen nedan men som är för generiska/vanliga
+# för att fungera som ett eget förbjudet nyckelord -- de råkar bara stå i en
+# never_publish-beskrivning tillsammans med det faktiskt känsliga ordet
+# (t.ex. "arrest / jail / booking data om namngivna personer": avsikten är att
+# blockera bookingregister, inte ordet "data" i sig). Upptäckt när
+# home_sales_digest.py:s legitima "assessor data" alltid föll tillbaka på
+# mallen -- "data" är samma ord på engelska och svenska, så det slank med som
+# ett skyddsord av misstag. Övriga ord i de svenska beskrivningarna är
+# svenskspecifika (personer/namngivna/eller/endast) och riskerar aldrig samma
+# falska träff eftersom AI-texten alltid skrivs på engelska.
+_TOO_GENERIC_FOR_BANLIST = {"data"}
+
+
 def _banned_hits(text: str, cfg: dict) -> list[str]:
     """Matcha mot editorial.never_publish + hårdkodade skyddsord."""
     low = text.casefold()
@@ -252,7 +265,9 @@ def _banned_hits(text: str, cfg: dict) -> list[str]:
     for item in cfg.get("editorial", {}).get("never_publish", []):
         # plocka nyckelord ur de svenska beskrivningarna
         for kw in re.findall(r"[a-zA-Z]{4,}", item):
-            configured.append(kw.casefold())
+            kw = kw.casefold()
+            if kw not in _TOO_GENERIC_FOR_BANLIST:
+                configured.append(kw)
     hits = []
     for kw in set(hard) | set(configured):
         if kw in low:

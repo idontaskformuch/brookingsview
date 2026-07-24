@@ -8,14 +8,18 @@
  * använder för Brookings-specifikt innehåll. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
-import { getRecentPropertySales, formatCalendarDate, formatPrice } from '../lib/db';
+import StoryCard from '../components/StoryCard.astro';
+import { getRecentPropertySales, getContentByType, formatCalendarDate, formatPrice } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
 }
 
-const sales = await getRecentPropertySales();
+const [sales, digests] = await Promise.all([
+  getRecentPropertySales(),
+  getContentByType(['home_sales_digest'], 12),
+]);
 ---
 <BaseLayout title={`Recent home sales — ${siteConfig.siteName}`} wide
   description="Recently recorded home sales in Moreno Valley: address, price, and date, from Riverside County's public assessor data.">
@@ -24,6 +28,13 @@ const sales = await getRecentPropertySales();
     <p>Recently recorded home sales in Moreno Valley, straight from Riverside
     County's public assessor data.</p>
   </header>
+
+  {digests.length > 0 && (
+    <>
+      <SectionRule label="Monthly digest" />
+      <div class="grid">{digests.map((story) => <StoryCard story={story} />)}</div>
+    </>
+  )}
 
   <SectionRule label={`${sales.length} most recent`} />
   {sales.length > 0 ? (
@@ -54,6 +65,7 @@ const sales = await getRecentPropertySales();
 <style>
 .lede { max-width: 40rem; }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); margin-bottom: 0.5rem; }
 .sales { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.9375rem; }
 .sales th {
   text-align: left;

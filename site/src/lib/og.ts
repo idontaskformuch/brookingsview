@@ -48,6 +48,7 @@ const KICKERS: Record<string, string> = {
   kvick_essa: 'Commentary',
   media_recension: 'Review',
   vardagsmiddag: 'Recipe',
+  home_sales_digest: 'Market digest',
 };
 
 /** Rubrikstorleken krymper med längden så långa rubriker inte spränger ytan. */

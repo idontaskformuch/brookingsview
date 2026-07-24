@@ -31,7 +31,7 @@ export const TOWN_ID = siteConfig.townId;
 export type SourceType =
   | 'meeting' | 'event' | 'alert' | 'weekly'
   | 'culture_essay' | 'editorial' | 'vetenskap_kronika' | 'kvick_essa'
-  | 'media_recension' | 'vardagsmiddag';
+  | 'media_recension' | 'vardagsmiddag' | 'home_sales_digest';
 
 /** Presentation-layer label per source_type, för Byline-raden. Ingen egen DB-kolumn --
  *  category är en ren funktion av source_type, inget som behöver lagras separat. */
@@ -42,17 +42,22 @@ export const CATEGORY_LABELS: Partial<Record<SourceType, string>> = {
   kvick_essa: 'Commentary',
   media_recension: 'Review',
   vardagsmiddag: 'Recipe',
+  home_sales_digest: 'Market digest',
 };
 
 /** De sex innehållstyperna från Content Track v1 -- en sammanhållen lista så att
- *  nya sidor/frågor inte behöver skriva om den varje gång. */
+ *  nya sidor/frågor inte behöver skriva om den varje gång. home_sales_digest är
+ *  INTE med här -- egen månadscadence via ai_pipeline/home_sales_digest.py, inte
+ *  del av den dagliga rotationen (weekly_rotation.py), samma undantag som 'weekly'. */
 export const CONTENT_TRACK_TYPES: SourceType[] = [
   'culture_essay', 'editorial', 'vetenskap_kronika', 'kvick_essa', 'media_recension', 'vardagsmiddag',
 ];
 
 /** Vilken kategori-sida en Content Track-story hör hemma på när den arkiveras
  *  bort från förstasidan. culture_essay/vetenskap_kronika/kvick_essa delar
- *  /columns -- tre krönike-varianter i en sektion, inte tre tunna sidor. */
+ *  /columns -- tre krönike-varianter i en sektion, inte tre tunna sidor.
+ *  home_sales_digest pekar till /home-sales trots att den inte är i
+ *  CONTENT_TRACK_TYPES ovan -- href-uppslaget är oberoende av rotationslistan. */
 export const CATEGORY_HREFS: Partial<Record<SourceType, string>> = {
   culture_essay: '/columns',
   kvick_essa: '/columns',
@@ -60,6 +65,7 @@ export const CATEGORY_HREFS: Partial<Record<SourceType, string>> = {
   editorial: '/editorials',
   media_recension: '/reviews',
   vardagsmiddag: '/recipes',
+  home_sales_digest: '/home-sales',
 };
 
 export interface Story {

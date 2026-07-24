@@ -1,0 +1,41 @@
+name: moval-home-sales-digest
+# Kör home_sales_digest.py, som i sig itererar över VARJE kalendermånad som har
+# data i property_sales (inte bara "förra månaden") -- se moduldocstringen i
+# ai_pipeline/home_sales_digest.py för varför. Körs månadsvis, men eftersom
+# property_sales bara fylls på manuellt/kvartalsvis (rivcoacr.org blockerar
+# AI-agenter) gör de flesta körningarna ingenting: content_hash-kollen i
+# skriptet skippar redan oförändrade månader utan AI-anrop.
+#
+# Kör gärna manuellt (workflow_dispatch) direkt efter att en ny kvartalsfil
+# har laddats ner och körts genom rivco_property_sales_v1.py, i stället för
+# att vänta på nästa schemalagda körning.
+
+on:
+  schedule:
+    - cron: "0 15 1 * *"   # första i varje månad, 15:00 UTC (08:00 PDT)
+  workflow_dispatch: {}
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:      ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      USER_AGENT:        "morenovalleyview.com (contact: hello@morenovalleyview.com)"
+      AI_BUDGET_STATE:   ".ai_budget_moreno_valley_ca.json"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Generera/uppdatera home sales-digestar
+        run: python -m ai_pipeline.home_sales_digest --config configs/moreno_valley_ca.json
+      - name: Trigga Cloudflare Pages-rebuild
+        if: success()
+        run: |
+          if [ -n "${{ secrets.PAGES_DEPLOY_HOOK_MOVAL }}" ]; then
+            curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK_MOVAL }}"
+          else
+            echo "PAGES_DEPLOY_HOOK_MOVAL ej satt -- hoppar över rebuild"
+          fi
