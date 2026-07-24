@@ -91,6 +91,17 @@ _INTERNAL_FIELDS = {"id", "town_id", "content_hash", "snapshot_id", "created_at"
 # gamla poster, så en vägavstängning från 2023 låg kvar och lästes som aktuell.
 _ALERT_MAX_AGE_DAYS = 14
 
+# Skydd mot stora engångsbackfyllningar (t.ex. en nyaktiverad källa med historik,
+# eller en bugfix i en parser som plötsligt släpper igenom hundratals rader som
+# tidigare tystades -- exakt vad som hände när Tockify-ICS-buggen fixades för
+# Moreno Valley: 0 -> 1004 events i en enda scrape-körning). Utan tak blir varje
+# NY rad ett synkront AI-anrop i en enkel for-loop -- en körning kan då ta väldigt
+# lång tid och kosta mycket på en gång, och riskerar att GitHub Actions-jobbet
+# time:ar ut. Kvarvarande rader är inte förlorade: known_slugs uppdateras bara
+# för faktiskt publicerade rader, så nästa schemalagda körning fortsätter där
+# denna slutade -- självläkande över tid, inte en engångsgräns som tappar data.
+DEFAULT_MAX_NEW_PER_RUN = 50
+
 
 def strip_slot(title: str) -> tuple[str, bool]:
     """Returnerar (bastitel, var_en_slot)."""
@@ -260,7 +271,9 @@ def existing_slugs(conn, town_id: str) -> set[str]:
         return {r[0] for r in cur.fetchall()}
 
 
-def publish_table(conn, cfg: dict, table: str, known_slugs: set[str]) -> tuple[int, int, int, int]:
+def publish_table(
+    conn, cfg: dict, table: str, known_slugs: set[str], max_new: int = DEFAULT_MAX_NEW_PER_RUN
+) -> tuple[int, int, int, int, int]:
     town_id = cfg["town_id"]
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(f"SELECT * FROM {table} WHERE town_id = %s ORDER BY id", (town_id,))
@@ -269,7 +282,7 @@ def publish_table(conn, cfg: dict, table: str, known_slugs: set[str]) -> tuple[i
     if table == "events":
         rows = group_event_slots(rows)
 
-    published = skipped = thin = stale = 0
+    published = skipped = thin = stale = remaining = 0
     for row in rows:
         if not has_substance(table, row):
             thin += 1
@@ -287,6 +300,14 @@ def publish_table(conn, cfg: dict, table: str, known_slugs: set[str]) -> tuple[i
         slug = f"{source_type}-{row['id']}"
         if slug in known_slugs:
             skipped += 1
+            continue
+
+        # TAK PER KÖRNING (se DEFAULT_MAX_NEW_PER_RUN): redan publicerade rader
+        # ovan fortsätter skippas korrekt oavsett tak. Bara NYA rader räknas mot
+        # det, och de som inte hinner med i denna körning lämnas orörda (INTE i
+        # known_slugs) så nästa schemalagda körning plockar upp dem.
+        if published >= max_new:
+            remaining += 1
             continue
 
         # SELECT * (se moduldocstring) drar med sig databas-bokföring (id,
@@ -329,17 +350,27 @@ def publish_table(conn, cfg: dict, table: str, known_slugs: set[str]) -> tuple[i
             )
         known_slugs.add(slug)
         published += 1
-    return published, skipped, thin, stale
+    return published, skipped, thin, stale, remaining
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
     ap.add_argument("--only", nargs="*", help="begränsa till dessa tabeller")
+    ap.add_argument(
+        "--max-new-per-table", type=int, default=None,
+        help=f"tak per tabell och körning (default {DEFAULT_MAX_NEW_PER_RUN}, "
+             "eller ai.max_new_per_run_per_table i configen om satt)",
+    )
     args = ap.parse_args()
 
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
     town_id = cfg["town_id"]
+    max_new = (
+        args.max_new_per_table
+        if args.max_new_per_table is not None
+        else cfg.get("ai", {}).get("max_new_per_run_per_table", DEFAULT_MAX_NEW_PER_RUN)
+    )
 
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
@@ -349,22 +380,29 @@ def main() -> int:
         known = existing_slugs(conn, town_id)
         print(f"{len(known)} stories finns redan för {town_id}\n")
 
-        tot_pub = tot_skip = tot_thin = tot_stale = 0
+        tot_pub = tot_skip = tot_thin = tot_stale = tot_remaining = 0
         for table in SOURCES:
             if args.only and table not in args.only:
                 continue
-            pub, skip, thin, stale = publish_table(conn, cfg, table, known)
+            pub, skip, thin, stale, remaining = publish_table(conn, cfg, table, known, max_new=max_new)
             extra = f", {thin} för tunna (ej publicerade)" if thin else ""
             extra += f", {stale} inaktuella (ej publicerade)" if stale else ""
             print(f"  {table:20} -> {pub} nya, {skip} redan publicerade{extra}")
+            if remaining:
+                # tydlig signal att detta är en STOR BACKFYLLNING som fortsätter
+                # över flera körningar, inte att pipelinen hängt sig -- se
+                # DEFAULT_MAX_NEW_PER_RUN.
+                print(f"    (tak {max_new} nådd: {remaining} kvar, fortsätter nästa körning)")
             tot_pub += pub
             tot_skip += skip
             tot_thin += thin
             tot_stale += stale
+            tot_remaining += remaining
         conn.commit()
 
     print(f"\nTotalt: {tot_pub} nya stories, {tot_skip} hoppade, "
-          f"{tot_thin} för tunna, {tot_stale} inaktuella")
+          f"{tot_thin} för tunna, {tot_stale} inaktuella"
+          + (f", {tot_remaining} kvar till nästa körning" if tot_remaining else ""))
     return 0
 
 
