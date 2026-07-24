@@ -13,7 +13,7 @@ from dataclasses import replace
 
 from content._base import GeneratedArticle, generate_article
 
-CATEGORY = "Recension"
+CATEGORY = "Review"
 
 SYSTEM_PROMPT = """Du skriver en recension av film eller TV för en lokal nyhetssajt som riktar sig till Brookings, South Dakota, och regionen kring den. Tonen är den kunniga men tillgängliga kulturkritikerns: en tydlig bedömning, byggd på konkreta observationer om verket.
 

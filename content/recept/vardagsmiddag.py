@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from content._base import GeneratedArticle, extract_marked_list, generate_article
 
-CATEGORY = "Recept"
+CATEGORY = "Recipe"
 
 _INGREDIENTS_START = "<<<INGREDIENTS>>>"
 _INGREDIENTS_END = "<<<END INGREDIENTS>>>"

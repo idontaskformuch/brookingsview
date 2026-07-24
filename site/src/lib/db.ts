@@ -38,10 +38,10 @@ export type SourceType =
 export const CATEGORY_LABELS: Partial<Record<SourceType, string>> = {
   culture_essay: 'Culture essay',
   editorial: 'Editorial',
-  vetenskap_kronika: 'Vetenskap',
-  kvick_essa: 'Kåseri',
-  media_recension: 'Recension',
-  vardagsmiddag: 'Recept',
+  vetenskap_kronika: 'Science',
+  kvick_essa: 'Commentary',
+  media_recension: 'Review',
+  vardagsmiddag: 'Recipe',
 };
 
 /** De sex innehållstyperna från Content Track v1 -- en sammanhållen lista så att

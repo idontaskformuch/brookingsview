@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from content._base import GeneratedArticle, generate_article
 
-CATEGORY = "Vetenskap"
+CATEGORY = "Science"
 
 SYSTEM_PROMPT = """Du skriver en vetenskapskrönika för en lokal nyhetssajt som riktar sig till Brookings, South Dakota, och regionen kring den. Tonen är tillgänglig och nyfiken populärvetenskap: kvick, klar, och driven av äkta förundran, utan att tumma på det sakliga.
 

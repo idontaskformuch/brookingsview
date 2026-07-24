@@ -44,10 +44,10 @@ const KICKERS: Record<string, string> = {
   alert: 'Alert',
   culture_essay: 'Culture essay',
   editorial: 'Editorial',
-  vetenskap_kronika: 'Vetenskap',
-  kvick_essa: 'Kåseri',
-  media_recension: 'Recension',
-  vardagsmiddag: 'Recept',
+  vetenskap_kronika: 'Science',
+  kvick_essa: 'Commentary',
+  media_recension: 'Review',
+  vardagsmiddag: 'Recipe',
 };
 
 /** Rubrikstorleken krymper med längden så långa rubriker inte spränger ytan. */

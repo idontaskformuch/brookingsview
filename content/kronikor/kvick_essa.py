@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from content._base import GeneratedArticle, generate_article
 
-CATEGORY = "Kåseri"
+CATEGORY = "Commentary"
 
 SYSTEM_PROMPT = """Du skriver en kvick kåserikrönika för en lokal nyhetssajt som riktar sig till Brookings, South Dakota, och regionen kring den. Tonen är beläst, lekfull och språkligt lekfylld: den lätta men intelligenta essän, där glädjen i språket är en del av poängen.
 
