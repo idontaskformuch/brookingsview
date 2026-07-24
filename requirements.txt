@@ -12,3 +12,5 @@ pdfplumber>=0.11        # extraherar text ur agenda-PDF:er
 beautifulsoup4>=4.12    # HTML-scraping (SmartGov, county alerts)
 # Innehållsspår v1: artikel-illustrationer
 Pillow>=10.0            # normaliserar leverantörsbilder (t.ex. fal.ai:s JPEG) till PNG
+# Property_sales (Riverside County Assessor, manuellt nedladdad kvartalsfil)
+openpyxl>=3.1           # läser .xlsx utan Excel/pandas
