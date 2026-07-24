@@ -2,6 +2,12 @@
 .ai_budget.json
 __pycache__/
 *.pyc
+
+# Manuellt nedladdade källfiler (t.ex. rivcoacr.org:s kvartalsfil -- deras
+# robots.txt blockerar AI-agenter explicit, så den filen hämtas av en människa,
+# aldrig av scrapern). Innehållet hör inte hemma i git-historiken (stor,
+# omdöps varje kvartal, ingen anledning att versionshantera den).
+data/
 # Astro/Node (site/)
 node_modules/
 dist/

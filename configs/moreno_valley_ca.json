@@ -96,6 +96,18 @@
       "_notes": "VERIFIERA om nya affärslicenser är publikt läsbara. Nya licenser = 'ny restaurang/butik på väg'. Positivt och populärt. Fas 2."
     },
 
+    "property_sales": {
+      "type": "rivco_assessor",
+      "enabled": true,
+      "url": "https://www.rivcoacr.org/property-sales-report",
+      "local_dir": "data/property_sales/moreno_valley_ca",
+      "city": "MORENO VALLEY",
+      "parser": "rivco_property_sales_v1",
+      "refresh_minutes": 10080,
+      "output": { "format": "digest", "voice": "what-is-selling" },
+      "_notes": "VERIFIERAD 2026-07-24: rivcoacr.org/robots.txt blockerar AI-agenter uttryckligen vid namn (anthropic-ai/ClaudeBot/Claude-Web -- Disallow: / för hela sajten), så filen hämtas ALDRIG automatiskt -- en människa laddar ner kvartalsfilen manuellt och lägger den i local_dir (parsern läser senaste .xlsx där). Testad mot en riktig fil (447569.xlsx, 161 353 rader countywide, 2610 filtrerade Moreno Valley-bostadsförsäljningar med verklig adress/pris/datum, inga köpar-/säljarnamn i källan). Se scrapers/parsers/rivco_property_sales_v1.py för filtreringslogik (bara bebodda bostadstyper, Consideration > 0)."
+    },
+
     "events": {
       "type": "multi",
       "enabled": true,
