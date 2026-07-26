@@ -14,8 +14,10 @@ IMAGE_API_PROVIDER = "fal"    # "fal" | "replicate" -- båda hostar flux och sdx
 # med artikelns tema tillagt av generate_illustration.py. Inga riktiga, identifierbara
 # personer -- samma princip som gäller textinnehållet (se PLAN.md, permanenta guardrails).
 STYLE_PROMPT = (
-    "editorial cartoon illustration, warm muted color palette, clean flat linework, "
-    "consistent recurring visual style for a small-town newspaper, no text, no logos, "
+    "riso print illustration, visible grain and paper texture, limited 3-color ink "
+    "palette with slight misregistration between layers, rough hand-inked linework with "
+    "imperfect line weight, muted newsprint colors, small-town local newspaper aesthetic, "
+    "no smooth digital gradients, no glossy vector look, no text, no logos, "
     "no photorealistic faces, no depiction of real identifiable people"
 )
 
