@@ -1,0 +1,41 @@
+{
+  "_notes": "Handkurerat 2026-08-03 mot cityofbrookings-sd.gov och brookingslibrary.org. Library-timmar bekräftade mot två oberoende källor (Yelp och countyoffice.org), samstämmiga. City Hall/Parks & Rec-timmar från cityofbrookings-sd.gov facility- och directory-sidor. Inga personnamn utom offentliga tjänstemän i officiell roll.",
+  "facilities": [
+    {
+      "slug": "public-library",
+      "name": "Brookings Public Library",
+      "category": "library",
+      "address": "515 3rd St, Brookings, SD 57006",
+      "phone": "(605) 692-9407",
+      "website": "https://www.brookingslibrary.org/",
+      "hours_text": "Mon–Thu 9:30am–9pm, Fri–Sat 9:30am–5:30pm, Sun 1pm–5pm",
+      "description": "The city's public library, located one block east of downtown and adjacent to the Children's Museum of South Dakota. Offers books, DVDs, audiobooks, board games, video games, maker kits, and a full calendar of community programs. Open roughly 66 hours a week.",
+      "source_url": "https://www.cityofbrookings-sd.gov/facilities/facility/details/Brookings-Public-Library-8",
+      "verified_date": "2026-08-03"
+    },
+    {
+      "slug": "city-hall",
+      "name": "Brookings City Hall (City & County Government Center)",
+      "category": "city_hall",
+      "address": "520 3rd St, Suite 230, Brookings, SD 57006",
+      "phone": "(605) 692-6281",
+      "website": "https://www.cityofbrookings-sd.gov/",
+      "hours_text": "Mon–Thu 7am–5pm, Fri 7am–noon",
+      "description": "Houses the City Clerk's Office, City Manager's Office, Community Development, Engineering, Finance, Human Resources, and Parks & Recreation departments. Shares the building with Brookings County offices; City Council and County Commission meetings are held in the third-floor chambers.",
+      "source_url": "https://www.cityofbrookings-sd.gov/facilities/facility/details/City-and-County-Government-Center-16",
+      "verified_date": "2026-08-03"
+    },
+    {
+      "slug": "dakota-nature-park",
+      "name": "Dakota Nature Park",
+      "category": "park",
+      "address": "22nd Ave S and 32nd St S, Brookings, SD 57006",
+      "phone": "(605) 692-2708",
+      "website": "https://www.cityofbrookings-sd.gov/313/Dakota-Nature-Park",
+      "hours_text": "Daily 6am–11pm",
+      "description": "A 135-acre park on a former landfill site, restored into trails, ponds, and wildlife habitat. Open for fishing, canoeing/kayaking, hiking, biking, bird-watching, and — in winter — snowshoeing and cross-country skiing. Includes the Larson Nature Center, run by the Brookings Parks, Recreation & Forestry Department.",
+      "source_url": "https://www.cityofbrookings-sd.gov/facilities/facility/details/45",
+      "verified_date": "2026-08-03"
+    }
+  ]
+}

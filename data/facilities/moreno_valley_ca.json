@@ -1,0 +1,65 @@
+{
+  "_notes": "Handkurerat 2026-08-03 mot moval.org/moval.gov och sekundära källor (Yelp, kommunala pressmeddelanden) där officiella sidan var tunn. Öppettider för Main/Iris Plaza-branch hämtade från äldre moval.org-undersidor (location-main.html, location-iris.html) -- kan vara inaktuella, flagga för omverifiering var 6:e månad. City Hall-timmar från moval.org footer (mer tillförlitlig än Yelp, som visade orimliga tider). Inga personnamn utom offentliga tjänstemän i officiell roll.",
+  "facilities": [
+    {
+      "slug": "main-library",
+      "name": "Moreno Valley Public Library — Main Branch",
+      "category": "library",
+      "address": "25480 Alessandro Blvd, Moreno Valley, CA 92553",
+      "phone": "(951) 413-3880",
+      "website": "https://www.moval.org/mv-library/location-main.html",
+      "hours_text": "Mon–Thu 9am–8pm, Fri 9am–6pm, Sat 9am–5pm, Sun noon–5pm",
+      "description": "The main branch of the Moreno Valley Public Library, operated under contract to Library Systems & Services, LLC on behalf of the City of Moreno Valley. Offers books, DVDs, public computers, free Wi-Fi, and a Veterans' Resources Center. Library cards are free to Riverside and San Bernardino County residents.",
+      "source_url": "https://www.moval.org/mv-library/",
+      "verified_date": "2026-08-03"
+    },
+    {
+      "slug": "mall-branch-library",
+      "name": "Moreno Valley Public Library — Mall Branch",
+      "category": "library",
+      "address": "22500 Town Circle, Moreno Valley, CA 92553 (2nd floor, Moreno Valley Mall, above Crunch Fitness)",
+      "phone": "(951) 413-3761",
+      "website": "https://www.moval.org/mv-library/location-mallhtml.html",
+      "hours_text": "Mon–Fri 10am–8pm, Sat 10am–6pm, closed Sunday",
+      "description": "A modern library branch inside Moreno Valley Mall, opened December 2017. Includes a children's area, technology center with public computers, teen section, and self-checkout. Since opening, the branch has drawn over 200,000 visitors and hosted thousands of community programs.",
+      "source_url": "https://moval.gov/news/news_23/012723-library.html",
+      "verified_date": "2026-08-03"
+    },
+    {
+      "slug": "iris-plaza-branch-library",
+      "name": "Moreno Valley Public Library — Iris Plaza Branch",
+      "category": "library",
+      "address": "16170 Perris Blvd, Moreno Valley, CA 92551 (Iris Ave. and Perris Blvd.)",
+      "phone": "(951) 413-3670",
+      "website": "https://www.moval.org/mv-library/location-iris.html",
+      "hours_text": "Mon–Fri 10am–8pm, Sat 10am–6pm, closed Sunday",
+      "description": "Opened September 2020, the Iris Plaza branch features a dedicated technology area with gaming stations, virtual reality and robotics kits, six public computers, free Wi-Fi, and a self-checkout kiosk.",
+      "source_url": "https://www.moval.org/mv-library/",
+      "verified_date": "2026-08-03"
+    },
+    {
+      "slug": "lasselle-sports-park",
+      "name": "Lasselle Sports Park",
+      "category": "park",
+      "address": "17155 Lasselle St, Moreno Valley, CA 92551",
+      "phone": "(951) 413-3000",
+      "website": "https://www.moval.org/resident_services/park_rec/index_park-rec.shtml",
+      "hours_text": "Daily 6am–10pm",
+      "description": "A 12.8-acre city park with three natural-turf football fields, an exercise/walking track, a playground with separate areas for ages 2–5 and 5–12, picnic shelters, restrooms, security lighting, and parking for roughly 200 vehicles. Opened in 2014 as the city's first new park in over two decades.",
+      "source_url": "https://www.moval.org/resident_services/park_rec/index_park-rec.shtml",
+      "verified_date": "2026-08-03"
+    },
+    {
+      "slug": "city-hall",
+      "name": "Moreno Valley City Hall",
+      "category": "city_hall",
+      "address": "14177 Frederick St, Moreno Valley, CA 92552",
+      "phone": "(951) 413-3000",
+      "website": "https://www.moval.org/city_hall/",
+      "hours_text": "Mon–Thu 7:30am–5:30pm, Fri 7:30am–4:30pm (some Development Services counters follow separate Friday hours)",
+      "description": "Home to the Moreno Valley City Council, City Manager's office, and most city administrative departments. Agendas, public records, permits, and department contacts are handled here or through the city's online portals.",
+      "source_url": "https://www.moval.org/city_hall/contacts.html",
+      "verified_date": "2026-08-03"
+    }
+  ]
+}

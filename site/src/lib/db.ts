@@ -528,11 +528,31 @@ export function formatPrice(value: number | null): string {
  * Events och alerts har riktiga tidsstämplar och ska ALDRIG gå genom denna --
  * de använder formatDate/formatTime/formatDateTime som vanligt.
  */
-export function formatCalendarDate(value: string | null): string {
+export function formatCalendarDate(value: string | Date | null): string {
   if (!value) return '';
+  // Drivern ger ibland en riktig sträng ("2026-08-03"), ibland redan ett
+  // Date-objekt konstruerat med new Date(y, m, d) -- LOKAL tidszon, inte UTC.
+  // new Date(value) + timeZone:'UTC' antar att value REPRESENTERAR UTC-midnatt,
+  // vilket bara stämmer för strängfallet. Ett redan-konstruerat lokalt Date
+  // tolkat om som UTC skiftar bakåt en dag så fort byggmaskinens lokala
+  // tidszon ligger före UTC (upptäckt när verified_date visade "Sun, August 2"
+  // för ett sparat 2026-08-03 på en UTC+2-maskin -- GitHub Actions kör i UTC
+  // så det syns aldrig i produktion, men är samma latenta bugg som
+  // meeting_date/sale_date riskerade). Läs därför ut år/månad/dag EXPLICIT ur
+  // vad vi fick (sträng-split eller lokala Date-komponenter), och bygg om till
+  // UTC-midnatt själva -- oberoende av byggmaskinens egen tidszon.
+  let year: number, month: number, day: number;
+  if (value instanceof Date) {
+    year = value.getFullYear();
+    month = value.getMonth();
+    day = value.getDate();
+  } else {
+    const [y, m, d] = value.slice(0, 10).split('-').map(Number);
+    year = y; month = m - 1; day = d;
+  }
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'short', month: 'long', day: 'numeric', timeZone: 'UTC',
-  }).format(new Date(value));
+  }).format(new Date(Date.UTC(year, month, day)));
 }
 
 /** Rätt formatering av story.occurs_at givet KÄLLTYP -- enda stället den

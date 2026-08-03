@@ -8,7 +8,7 @@
  *  townId-gate, eftersom facilities-tabellen redan är town_id-filtrerad via
  *  getFacilities()/getFacilityBySlug(). */
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { getFacilities, getFacilityBySlug, FACILITY_CATEGORY_LABELS } from '../../lib/db';
+import { getFacilities, getFacilityBySlug, FACILITY_CATEGORY_LABELS, formatCalendarDate } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 
 export async function getStaticPaths() {
@@ -53,7 +53,7 @@ const description = facility.description
     {facility.source_url && (
       <p class="source">
         Source: <a href={facility.source_url} rel="noopener">{siteConfig.cityName} official site</a>
-        {facility.verified_date && <> — checked {facility.verified_date}</>}
+        {facility.verified_date && <> — checked {formatCalendarDate(facility.verified_date)}</>}
       </p>
     )}
 

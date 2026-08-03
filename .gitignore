@@ -3,11 +3,14 @@
 __pycache__/
 *.pyc
 
-# Manuellt nedladdade källfiler (t.ex. rivcoacr.org:s kvartalsfil -- deras
-# robots.txt blockerar AI-agenter explicit, så den filen hämtas av en människa,
-# aldrig av scrapern). Innehållet hör inte hemma i git-historiken (stor,
-# omdöps varje kvartal, ingen anledning att versionshantera den).
-data/
+# Manuellt nedladdad kvartalsfil (rivcoacr.org:s robots.txt blockerar
+# AI-agenter explicit, så filen hämtas av en människa, aldrig av scrapern).
+# Innehållet hör inte hemma i git-historiken (stor, omdöps varje kvartal,
+# ingen anledning att versionshantera den). OBS: bara den här undermappen --
+# data/facilities/*.json är tvärtom SMÅ, handskrivna referensdata som SKA
+# versionshanteras (upptäckt när en bredare "data/"-regel tyst hade uteslutit
+# dem också).
+data/property_sales/
 # Astro/Node (site/)
 node_modules/
 dist/
