@@ -1,0 +1,60 @@
+---
+/** Katalogsida: alla lokala anläggningar (bibliotek, parker, city hall, ...)
+ *  för den aktuella orten, grupperade per category. Länkar vidare till
+ *  [slug].astro för respektive anläggnings egen sida.
+ *
+ *  Bakgrund: Search Console visade att sökningar som "moreno valley library"
+ *  och "lasselle sports park" stod för nästan alla exponeringar sajten fick,
+ *  men gav noll klick -- ingen sida besvarade frågan direkt. Se
+ *  lib/db.ts (getFacilities) för det fullständiga resonemanget. */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SectionRule from '../../components/SectionRule.astro';
+import { getFacilities, FACILITY_CATEGORY_LABELS } from '../../lib/db';
+import { siteConfig } from '../../lib/site-config';
+
+const facilities = await getFacilities();
+
+const byCategory = new Map<string, typeof facilities>();
+for (const f of facilities) {
+  if (!byCategory.has(f.category)) byCategory.set(f.category, []);
+  byCategory.get(f.category)!.push(f);
+}
+const categoryOrder = ['library', 'park', 'city_hall', 'community_center', 'other'];
+const categories = [...byCategory.keys()].sort(
+  (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b)
+);
+---
+<BaseLayout title={`Local facilities — ${siteConfig.siteName}`} wide
+  description={`Addresses, phone numbers and hours for libraries, parks, city hall and other public facilities in ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
+  <header class="lede">
+    <h1>Local facilities</h1>
+    <p>Addresses, phone numbers and hours for libraries, parks, city hall and
+    other public places in {siteConfig.cityName} — the basics, in one place.</p>
+  </header>
+
+  {categories.length > 0 ? categories.map((cat) => (
+    <>
+      <SectionRule label={FACILITY_CATEGORY_LABELS[cat] ?? cat} />
+      <ul class="list">
+        {byCategory.get(cat)!.map((f) => (
+          <li>
+            <a href={`/facilities/${f.slug}/`}>{f.name}</a>
+            {f.address && <span class="addr"> — {f.address}</span>}
+          </li>
+        ))}
+      </ul>
+    </>
+  )) : (
+    <p class="empty">No facility information available yet.</p>
+  )}
+</BaseLayout>
+
+<style>
+.lede { max-width: 42rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.list { list-style: none; margin: 0 0 0.5rem; padding: 0; display: grid; gap: 0.5rem; max-width: 44rem; }
+.list li { padding: 0.5rem 0; border-bottom: 1px solid var(--rule); }
+.list a { font-weight: 600; }
+.addr { color: var(--ink-soft); font-size: 0.9375rem; }
+.empty { color: var(--ink-soft); }
+</style>

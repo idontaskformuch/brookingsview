@@ -384,6 +384,70 @@ export async function getRecentPropertySales(limit = 250): Promise<PropertySale[
   `) as PropertySale[];
 }
 
+/**
+ * Lokala anläggningar (bibliotek, parker, city hall, ...) -- HANDKURERAD FAKTA,
+ * inte skrapad. Se db/migrations/007_facilities.sql och scripts/seed_facilities.py
+ * för varifrån datat kommer.
+ *
+ * Till skillnad från property_sales ovan FÅR varje anläggning en egen sida
+ * (site/src/pages/facilities/[slug].astro). Det är medvetet, inte en
+ * inkonsekvens med "en story per rad är scaled content"-principen: en
+ * husförsäljning är en av tusentals identiska rader utan egen identitet,
+ * men "Moreno Valley Main Library" är en specifik, namngiven plats som
+ * folk faktiskt söker efter vid namn (bekräftat i Search Console: sökningar
+ * som "moreno valley main library", "lasselle sports park", "mv library"
+ * stod för nästan alla exponeringar sajten fick, men gav noll klick eftersom
+ * ingen sida besvarade frågan). Fem-åtta sådana sidor med genuin, unik text
+ * per anläggning är en normal katalogsida, inte skalat innehåll.
+ */
+export interface Facility {
+  slug: string;
+  name: string;
+  category: string;
+  address: string | null;
+  phone: string | null;
+  website: string | null;
+  hours_text: string | null;
+  description: string | null;
+  source_url: string | null;
+  verified_date: string | null;
+}
+
+/** Alla anläggningar för den aktuella orten, grupperat på category av
+ *  anroparen (t.ex. /facilities/index.astro). Sorterat på category sen namn
+ *  så renderingen blir stabil utan att varje sida behöver egen ORDER BY. */
+export async function getFacilities(): Promise<Facility[]> {
+  return (await sql`
+    SELECT slug, name, category, address, phone, website,
+           hours_text, description, source_url, verified_date
+      FROM facilities
+     WHERE town_id = ${TOWN_ID}
+     ORDER BY category, name
+  `) as Facility[];
+}
+
+/** En anläggning via dess slug, för /facilities/[slug].astro. Slug är bara
+ *  unikt inom en ort (UNIQUE(town_id, slug)), samma mönster som Story-slugs. */
+export async function getFacilityBySlug(slug: string): Promise<Facility | null> {
+  const rows = (await sql`
+    SELECT slug, name, category, address, phone, website,
+           hours_text, description, source_url, verified_date
+      FROM facilities
+     WHERE town_id = ${TOWN_ID} AND slug = ${slug}
+     LIMIT 1
+  `) as Facility[];
+  return rows[0] ?? null;
+}
+
+/** Läsbar rubrik per category-värde, för gruppering på /facilities. */
+export const FACILITY_CATEGORY_LABELS: Record<string, string> = {
+  library: 'Libraries',
+  park: 'Parks',
+  city_hall: 'City hall',
+  community_center: 'Community centers',
+  other: 'Other',
+};
+
 /* ------------------------------------------------------------ skyltremsan -- */
 
 export interface SignData {
