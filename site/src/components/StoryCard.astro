@@ -3,9 +3,12 @@
  *  kort -- kortramar plattar ut hierarkin och får allt att se lika viktigt ut. */
 import type { Story } from '../lib/db';
 import { formatDate, formatTime, formatCalendarDate, CATEGORY_LABELS } from '../lib/db';
+import ShareButtons from './ShareButtons.astro';
+import { siteConfig } from '../lib/site-config';
 
 interface Props { story: Story; compact?: boolean; }
 const { story, compact = false } = Astro.props;
+const shareUrl = new URL(`/s/${story.slug}/`, siteConfig.siteUrl).href;
 
 const isAlert = story.source_type === 'alert';
 const isMeeting = story.source_type === 'meeting';
@@ -37,6 +40,9 @@ const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall'
   </p>
   <h3 class="item__title"><a href={`/s/${story.slug}`}>{story.title}</a></h3>
   {!compact && <p class="item__body">{story.body}</p>}
+  {!compact && hasByline && (
+    <ShareButtons url={shareUrl} title={story.title} />
+  )}
 </article>
 
 <style>
