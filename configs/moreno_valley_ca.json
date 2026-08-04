@@ -138,6 +138,18 @@
           "kind": "ical",
           "url": "https://tockify.com/api/feeds/ics/moreno.valley.library",
           "_note": "VERIFIERAD 2026-07-22: moval.org/mv-library/library-calendar.html embeddar samma plattform, egen kalender (data-tockify-calendar=\"moreno.valley.library\"). ICS-feed testad live, HTTP 200, riktiga events (t.ex. 'IRIS PLAZA: Toddler Time'). Inte LibCal som i Brookings -- staden kör hela kalenderutbudet på Tockify."
+        },
+        {
+          "name": "civic_amphitheater",
+          "kind": "unconfirmed",
+          "url": "https://ci.moreno-valley.ca.us/amphitheater/event-calendar.html",
+          "_note": "OVERIFIERAD 2026-08-04: MoVal Rocks (gratis sommarkonsertserie) + andra shower på stadens Civic Amphitheater. Schemasidan är en statisk HTML-sida utan synligt datalager -- biljetter/listning sker via stadens Eventbrite-organisatörssida (eventbrite.com/o/city-of-moreno-valley-17152911732), som INTE har någon offentlig bulk-iCal-export (bara per-event \"lägg till i kalender\"). Två vägar in: (1) Eventbrite API mot organizer_id, kräver API-nyckel + att verifiera rate limits/ToS, eller (2) fråga staden direkt om RSS/iCal när ni ändå kontaktar dem om permit-portalen. robots.txt på ci.moreno-valley.ca.us INTE kontrollerad denna session -- gör det innan något byggs mot html-sidan direkt."
+        },
+        {
+          "name": "farm_house_collective",
+          "kind": "unconfirmed",
+          "url": "https://farmhousecollective.com/",
+          "_note": "OVERIFIERAD 2026-08-04: privat regional spelplats i centrala Riverside (grundad av en familj med Moreno Valley-rötter), konserter + marknader + food events, matchar den beslutade regionala/'allt är intressant'-scopen bättre än de rena kommunkällorna. Ingen offentlig iCal/RSS hittad än -- egna WordPress-sajten behöver undersökas för en dold feed (t.ex. /events/feed/ om den kör The Events Calendar-pluginet) innan man bygger en html_scrape-parser mot den. Tredjepartssajter (Bandsintown/JamBase) listar deras program men är själva inte lämpliga att skrapa som primärkälla."
         }
       ],
       "refresh_minutes": 1440,
@@ -145,7 +157,7 @@
         "format": "this_week_in_moreno_valley",
         "voice": "fun-friendly"
       },
-      "_notes": "Kärnan i 'Vad händer i Moreno Valley?'. Veckovis digest. Återbesöksmotor.",
+      "_notes": "Kärnan i 'Vad händer i Moreno Valley?'. Veckovis digest. Återbesöksmotor. UTÖKAD 2026-08-04 med två regionala 'unconfirmed'-kandidater (amphitheater, Farm House Collective) efter beslut att bredda scopet bortom ren kommun-/biblioteksdata -- se _verify_before_launch.",
       "_return_driver": true
     },
     "weather": {
@@ -217,7 +229,9 @@
     "KLART: biblioteket = Tockify (moreno.valley.library), ICS-feed verifierad live.",
     "KLART: NWS zone/county-kod CAC065 bekräftad via api.weather.gov/points.",
     "KLART: robots.txt på moval.org blockerar inget som rör kalendrar/events.",
-    "Permit-portal (Accela/eTRAKiT?) – publikt läsbar utan inloggning? (fortfarande overifierad, Fas 2/disabled)"
+    "Permit-portal (Accela/eTRAKiT?) – publikt läsbar utan inloggning? (fortfarande overifierad, Fas 2/disabled)",
+    "NYTT: Civic Amphitheater (MoVal Rocks) – hitta faktiskt datalager bakom Eventbrite-organisatörssidan, eller fråga staden om RSS/iCal.",
+    "NYTT: Farm House Collective (Riverside, regional) – undersöka farmhousecollective.com för dold events-feed innan html_scrape-parser byggs."
   ],
   "_no_ag_markets_note": "Till skillnad från Brookings finns ingen jordbruksmarknad/USDA-vana här, och ingen SDSU-motsvarighet som sport-återbesöksmotor. Stadsfullmäktige + events + väder blir kärnan. Överväg senare: MVUSD skolstyrelse (BoardDocs?), samt lokal community college (Moreno Valley College) events som mjuk återbesöksdrivare."
 }
