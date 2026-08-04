@@ -171,6 +171,12 @@
           "kind": "unconfirmed",
           "url": "https://www.sdstate.edu/events",
           "_note": "VERIFIERA: hitta SDSU:s publika iCal-/ICS-export för evenemangskalendern (troligen en Localist/Concept3D-plattform) innan denna byggs. Sidans generella URL räcker inte -- behöver ett faktiskt exportflöde likt bibliotekets."
+        },
+        {
+          "name": "visit_brookings",
+          "kind": "unconfirmed",
+          "url": "https://visitbrookingssd.com/events/",
+          "_note": "STARK KANDIDAT, overifierad 2026-08-04. Brookings Area Chamber/turistbyråns egen 'Things to Do'-kalender -- precis den regionala nöjesbredd som beslutet om utökad scope efterfrågar (Comedy Room-shower på Wooden Legs, Brookings Farmers Market, Downtown at Sundown-musikfestival, Brookings Bonanza, Frost Fest, Garden Glow m.fl. -- se kategorierna 'Bars & Nightlife', 'Live Music', 'Festivals' på sajten). Sajten kör synligt The Events Calendar (Modern Tribe/StellarWP) -- varje eventsida har 'Subscribe to calendar: Google Calendar / iCalendar / Outlook / Export .ics file'-länkar, och månadsvyn har query-parametern tribe_redirected=1 som är pluginets signatur. Det pekar mot en standard sajtomfattande export på https://visitbrookingssd.com/events/?ical=1 (TEC:s vanliga mönster), men URL:en är INTE testad live än, och robots.txt på visitbrookingssd.com är INTE kontrollerad -- gör båda innan parser byggs. Om det håller är detta troligen den enskilt bästa nya källan: en redan mänskligt kuraterad kalender istället för råa Eventbrite-listor som behöver filtreras."
         }
       ],
       "refresh_minutes": 1440,
@@ -178,7 +184,7 @@
         "format": "this_week_in_brookings",
         "voice": "fun-friendly"
       },
-      "_notes": "Kärnan i 'Vad händer i Brookings?'. Veckovis 'This Week in Brookings'-digest. Ren återbesöksmotor.",
+      "_notes": "Kärnan i 'Vad händer i Brookings?'. Veckovis 'This Week in Brookings'-digest. Ren återbesöksmotor. UTÖKAD 2026-08-04 med visit_brookings-kandidaten efter beslut om bredare regional scope.",
       "_return_driver": true
     },
     "weather": {
@@ -313,6 +319,7 @@
     "SD DOT 511 data-URL/endpoint",
     "SmartGov: att permit-/licensdata är läsbar utan inloggning",
     "Brookings School District styrelseagenda-källa",
-    "USDA NASS API-nyckel (gratis)"
+    "USDA NASS API-nyckel (gratis)",
+    "NYTT: visitbrookingssd.com -- testa https://visitbrookingssd.com/events/?ical=1 live + kolla robots.txt innan parser byggs."
   ]
 }

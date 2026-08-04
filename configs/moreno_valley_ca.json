@@ -148,8 +148,8 @@
         {
           "name": "farm_house_collective",
           "kind": "unconfirmed",
-          "url": "https://farmhousecollective.com/",
-          "_note": "OVERIFIERAD 2026-08-04: privat regional spelplats i centrala Riverside (grundad av en familj med Moreno Valley-rötter), konserter + marknader + food events, matchar den beslutade regionala/'allt är intressant'-scopen bättre än de rena kommunkällorna. Ingen offentlig iCal/RSS hittad än -- egna WordPress-sajten behöver undersökas för en dold feed (t.ex. /events/feed/ om den kör The Events Calendar-pluginet) innan man bygger en html_scrape-parser mot den. Tredjepartssajter (Bandsintown/JamBase) listar deras program men är själva inte lämpliga att skrapa som primärkälla."
+          "url": "https://farmhousecollective.com/calendar/",
+          "_note": "UPPGRADERAD 2026-08-04 (var ren gissning tidigare): bekräftat att farmhousecollective.com/calendar/ kör The Events Calendar (samma plugin som visit_brookings-kandidaten i Brookings-configen) -- sidan visar synligt 'Subscribe to calendar: Google Calendar / iCalendar / Outlook / Export .ics file'. Privat regional spelplats i centrala Riverside (grundad av en familj med Moreno Valley-rötter), konserter + marknader + food events, matchar den beslutade regionala/'allt är intressant'-scopen bättre än de rena kommunkällorna. Trolig sajtomfattande export: https://farmhousecollective.com/events/?ical=1 (TEC:s standardmönster) -- INTE testad live än, och robots.txt INTE kontrollerad. Tredjepartssajter (Bandsintown/JamBase) listar deras program men är själva inte lämpliga att skrapa som primärkälla."
         }
       ],
       "refresh_minutes": 1440,
