@@ -2,24 +2,85 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
+import type { Story } from '../lib/db';
 import { getUpcomingStories, getPastStories } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
-const upcoming = await getUpcomingStories(['event'], 60);
+const upcoming = await getUpcomingStories(['event'], 120);
 const past = await getPastStories(['event'], 12);
+
+/**
+ * Bucket upcoming events by time horizon rather than showing one flat list.
+ * "This weekend" is the bucket the whole feature exists for (see
+ * news-aggregator return-visit reasoning) -- Fri/Sat/Sun relative to the
+ * site's own local "today", not the visitor's, so the grouping matches the
+ * dateline the site already prints on every story.
+ *
+ * All arithmetic below extracts Y/M/D via Intl.DateTimeFormat (correct for
+ * siteConfig.timezone, deterministic regardless of the machine building the
+ * site) and re-anchors to UTC midnight for comparisons -- never round-trips
+ * through a Date's own implicit LOCAL-timezone constructor or .toLocaleString
+ * re-parse. An earlier version did the latter for weekdayOfToday specifically
+ * (re-applying a timezone conversion to an already-converted value instead of
+ * reading it once) and got the weekend window off by one day EVERY build,
+ * since the site's timezone never matches GitHub Actions' UTC build machine
+ * either -- confirmed live (Tue Aug 4, 2026 computed as Monday) and verified
+ * to reproduce identically under TZ=UTC, so this wasn't a local-only quirk.
+ */
+function localDateParts(instant: Date): { y: number; m: number; d: number } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: siteConfig.timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(instant);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)!.value);
+  return { y: get('year'), m: get('month'), d: get('day') };
+}
+
+function utcMidnight({ y, m, d }: { y: number; m: number; d: number }): Date {
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+function dayIndex(story: Story, today: Date): number {
+  const eventDay = utcMidnight(localDateParts(new Date(story.occurs_at!)));
+  return Math.round((eventDay.getTime() - today.getTime()) / 86_400_000);
+}
+
+const today = utcMidnight(localDateParts(new Date()));
+const weekdayOfToday = today.getUTCDay(); // 0=Sun -- today is already UTC-anchored, read it directly
+const daysToFriday = (5 - weekdayOfToday + 7) % 7;
+
+const buckets = { today: [] as Story[], weekend: [] as Story[], nextWeek: [] as Story[], later: [] as Story[] };
+for (const story of upcoming) {
+  if (!story.occurs_at) { buckets.later.push(story); continue; }
+  const offset = dayIndex(story, today);
+  if (offset <= 0) buckets.today.push(story);
+  else if (offset >= daysToFriday && offset <= daysToFriday + 2) buckets.weekend.push(story);
+  else if (offset < 14) buckets.nextWeek.push(story);
+  else buckets.later.push(story);
+}
+
+const sections = (
+  [
+    ['Today', buckets.today],
+    ['This weekend', buckets.weekend],
+    ['Coming up', buckets.nextWeek],
+    ['Further out', buckets.later],
+  ] as [string, Story[]][]
+).filter(([, list]) => list.length > 0);
 ---
 <BaseLayout title={`Events in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide
-  description={`Library programs, city events and community happenings in ${siteConfig.cityName}, ${siteConfig.stateName}.`}>
+  description={`What's on this weekend in ${siteConfig.cityName}, ${siteConfig.stateName} — library programs, city events and community happenings.`}>
   <header class="lede">
-    <h1>Events</h1>
-    <p>Library programs, classes and community happenings. Times and registration
-    details come straight from the organiser's own calendar.</p>
+    <h1>What's on</h1>
+    <p>Times and registration details come straight from each organiser's own calendar.
+    Check back — this updates daily.</p>
   </header>
 
-  <SectionRule label="Coming up" />
-  {upcoming.length > 0 ? (
-    <div class="grid">{upcoming.map((story) => <StoryCard story={story} />)}</div>
-  ) : (
+  {sections.length > 0 ? sections.map(([label, list]) => (
+    <>
+      <SectionRule label={label} />
+      <div class="grid">{list.map((story) => <StoryCard story={story} />)}</div>
+    </>
+  )) : (
     <p class="empty">No upcoming events listed right now.</p>
   )}
 
