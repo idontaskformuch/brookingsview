@@ -60,16 +60,27 @@ class GeneratedArticle:
     ingredients: list[str] | None = None
 
 
+_STATE_NAMES = {
+    "SD": "South Dakota",
+    "CA": "California",
+    # lägg till fler här när fler delstater tillkommer
+}
+
+
 def town_label(cfg: dict | None) -> str:
-    """Bygg strängen 'Ortsnamn, delstat' från en orts config-dict.
+    """Bygg strängen 'Ortsnamn, Delstat' från en orts config-dict.
 
     Central källa till ortsnamnet i prompts -- ingen kronika-modul ska mer
-    hårdkoda en specifik ort. Faller tillbaka snällt om cfg saknas/ofullständig,
-    så en trasig config ger ett vagt men ofarligt resultat, inte fel ort.
+    hårdkoda en specifik ort. Expanderar delstatsförkortningen till fullt namn
+    (configens 'state'-fält är bara "SD"/"CA" etc.) eftersom förkortningen läser
+    sämre i en svenskspråkig prompt. Faller tillbaka snällt om cfg saknas/
+    ofullständig eller delstaten inte finns i _STATE_NAMES, så en trasig eller
+    ofullständig config ger ett vagt men ofarligt resultat, inte fel ort.
     """
     cfg = cfg or {}
     name = cfg.get("display_name")
-    state = cfg.get("state")
+    state_abbr = cfg.get("state")
+    state = _STATE_NAMES.get(state_abbr, state_abbr)
     if name and state:
         return f"{name}, {state}"
     return name or "its coverage area"
