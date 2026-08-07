@@ -34,7 +34,7 @@ load_dotenv()
 import psycopg
 
 from content import local_context, now_playing, seasonal_ingredients
-from content._base import DEFAULT_MODEL, illustration_theme
+from content._base import DEFAULT_MODEL, illustration_theme, town_label
 from content.illustrations.generate_illustration import generate_illustration
 from content.kronikor import culture_essay, editorial, kvick_essa, vetenskap
 from content.recensioner import media_recension
@@ -67,7 +67,7 @@ ORIGINALITY_LOOKBACK_DAYS = 60
 
 
 def _build_local_input(conn, town_id: str, content_type: str,
-                        today: datetime.date) -> tuple[str | None, str]:
+                        today: datetime.date, cfg: dict) -> tuple[str | None, str]:
     """Content-type-aware underlag sourcing.
 
     media_recension and vardagsmiddag need a different KIND of underlag (a
@@ -91,7 +91,7 @@ def _build_local_input(conn, town_id: str, content_type: str,
                 f"seasonal ingredient: {ingredient}")
 
     stories = local_context.recent_local_stories(conn, town_id)
-    local_input = local_context.build_local_input(stories)
+    local_input = local_context.build_local_input(stories, town_label(cfg))
     return local_input, f"{len(stories)} lokala poster"
 
 
@@ -137,7 +137,7 @@ def main() -> int:
         raise RuntimeError("DATABASE_URL saknas i .env")
 
     with psycopg.connect(database_url) as conn:
-        local_input, source_desc = _build_local_input(conn, town_id, content_type, today)
+        local_input, source_desc = _build_local_input(conn, town_id, content_type, today, cfg)
         if local_input is None:
             print(f"  inget underlag ({source_desc}) -- hoppar över")
             return 0

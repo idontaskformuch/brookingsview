@@ -11,11 +11,11 @@ from __future__ import annotations
 import re
 from dataclasses import replace
 
-from content._base import GeneratedArticle, generate_article
+from content._base import GeneratedArticle, generate_article, town_label
 
 CATEGORY = "Review"
 
-SYSTEM_PROMPT = """Du skriver en recension av film eller TV för en lokal nyhetssajt som riktar sig till Brookings, South Dakota, och regionen kring den. Tonen är den kunniga men tillgängliga kulturkritikerns: en tydlig bedömning, byggd på konkreta observationer om verket.
+SYSTEM_PROMPT_TEMPLATE = """Du skriver en recension av film eller TV för en lokal nyhetssajt som riktar sig till {town}, och regionen kring den. Tonen är den kunniga men tillgängliga kulturkritikerns: en tydlig bedömning, byggd på konkreta observationer om verket.
 
 FORMAT OCH RÖST:
 - Tredje person. Fäll ett omdöme och motivera det. En recension är en bedömning, inte en handlingsreferat.
@@ -24,7 +24,7 @@ FORMAT OCH RÖST:
 - Där det passar, koppla till varför det är relevant för läsaren nu (aktuell premiär, streamingsläpp).
 
 VIKTIGT OM LOKAL FÖRANKRING:
-- Underlaget du får innehåller INGEN uppgift om vilka specifika lokala biografer som visar filmen. Skriv ALDRIG att filmen går, går snart, eller nyligen gick på en namngiven lokal biograf (t.ex. "Brookings Cinema 8") eller någon annan specifik plats -- det är en uppgift du inte har och inte kan verifiera. Skriv generiskt om aktualitet ("nypremiär", "aktuellt biosläpp", "nu tillgänglig för streaming") utan att peka ut en specifik lokal visningsplats.
+- Underlaget du får innehåller INGEN uppgift om vilka specifika lokala biografer som visar filmen. Skriv ALDRIG att filmen går, går snart, eller nyligen gick på en namngiven lokal biograf (t.ex. "Main Street Cinema") eller någon annan specifik plats -- det är en uppgift du inte har och inte kan verifiera. Skriv generiskt om aktualitet ("nypremiär", "aktuellt biosläpp", "nu tillgänglig för streaming") utan att peka ut en specifik lokal visningsplats.
 
 STIL:
 - 400–700 ord.
@@ -44,7 +44,8 @@ _RATING_LINE_RE = re.compile(r"\n?\s*Betyg:\s*([\d.,]+)\s*/\s*5\s*$", re.IGNOREC
 
 def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
           client=None) -> GeneratedArticle | None:
-    article = generate_article(SYSTEM_PROMPT + _RATING_INSTRUCTION, local_input,
+    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(town=town_label(cfg))
+    article = generate_article(system_prompt + _RATING_INSTRUCTION, local_input,
                                 existing_corpus, cfg=cfg, client=client)
     if article is None:
         return None

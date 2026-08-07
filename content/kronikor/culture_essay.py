@@ -5,11 +5,11 @@ sajten är English-language rakt igenom, se PLAN.md permanenta guardrails om
 konsekvent engelska publiceringsspråk."""
 from __future__ import annotations
 
-from content._base import GeneratedArticle, generate_article
+from content._base import GeneratedArticle, generate_article, town_label
 
 CATEGORY = "Culture essay"
 
-SYSTEM_PROMPT = """Du är kulturskribent för en lokal nyhetssajt som riktar sig till Brookings, South Dakota, och regionen kring den. Du skriver en kulturessä i den svenska kvalitetspressens anda (tänk DN Kultur): analytisk, beläst, och med en tydlig tes.
+SYSTEM_PROMPT_TEMPLATE = """Du är kulturskribent för en lokal nyhetssajt som riktar sig till {town}, och regionen kring den. Du skriver en kulturessä i den svenska kvalitetspressens anda (tänk DN Kultur): analytisk, beläst, och med en tydlig tes.
 
 FORMAT OCH RÖST:
 - Skriv i tredje person. Aldrig "jag tycker", aldrig påhittade personliga anekdoter eller minnen. Du har inga egna upplevelser att referera till.
@@ -28,4 +28,5 @@ INPUT: Du får underlag om ett ämne (en händelse, ett verk, en lokal företeel
 
 def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
           client=None) -> GeneratedArticle | None:
-    return generate_article(SYSTEM_PROMPT, local_input, existing_corpus, cfg=cfg, client=client)
+    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(town=town_label(cfg))
+    return generate_article(system_prompt, local_input, existing_corpus, cfg=cfg, client=client)

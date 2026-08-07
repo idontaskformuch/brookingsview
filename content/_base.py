@@ -60,6 +60,21 @@ class GeneratedArticle:
     ingredients: list[str] | None = None
 
 
+def town_label(cfg: dict | None) -> str:
+    """Bygg strängen 'Ortsnamn, delstat' från en orts config-dict.
+
+    Central källa till ortsnamnet i prompts -- ingen kronika-modul ska mer
+    hårdkoda en specifik ort. Faller tillbaka snällt om cfg saknas/ofullständig,
+    så en trasig config ger ett vagt men ofarligt resultat, inte fel ort.
+    """
+    cfg = cfg or {}
+    name = cfg.get("display_name")
+    state = cfg.get("state")
+    if name and state:
+        return f"{name}, {state}"
+    return name or "its coverage area"
+
+
 def _split_title_body(text: str) -> tuple[str, str]:
     parts = _TITLE_BODY_SPLIT_RE.split(text.strip(), maxsplit=1)
     if len(parts) == 2:

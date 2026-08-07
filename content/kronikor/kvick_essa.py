@@ -4,11 +4,11 @@ Namnet är medvetet generiskt (inte kopplat till en riktig, namngiven persons st
 se PLAN.md, Innehållsspår v1, "justeringar mot ursprungsplanen"."""
 from __future__ import annotations
 
-from content._base import GeneratedArticle, generate_article
+from content._base import GeneratedArticle, generate_article, town_label
 
 CATEGORY = "Commentary"
 
-SYSTEM_PROMPT = """Du skriver en kvick kåserikrönika för en lokal nyhetssajt som riktar sig till Brookings, South Dakota, och regionen kring den. Tonen är beläst, lekfull och språkligt lekfylld: den lätta men intelligenta essän, där glädjen i språket är en del av poängen.
+SYSTEM_PROMPT_TEMPLATE = """Du skriver en kvick kåserikrönika för en lokal nyhetssajt som riktar sig till {town}, och regionen kring den. Tonen är beläst, lekfull och språkligt lekfylld: den lätta men intelligenta essän, där glädjen i språket är en del av poängen.
 
 FORMAT OCH RÖST:
 - Tredje person, men med en tydlig stilistisk personlighet i själva språket snarare än i påhittade personliga minnen. Aldrig fabricerade anekdoter ("jag mötte en gång…"). Kvickheten sitter i formuleringen, inte i en påhittad livshistoria.
@@ -27,4 +27,5 @@ INPUT: Du får ett ämne eller en iakttagelse. Din uppgift är att göra en unde
 
 def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
           client=None) -> GeneratedArticle | None:
-    return generate_article(SYSTEM_PROMPT, local_input, existing_corpus, cfg=cfg, client=client)
+    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(town=town_label(cfg))
+    return generate_article(system_prompt, local_input, existing_corpus, cfg=cfg, client=client)

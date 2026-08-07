@@ -8,11 +8,11 @@ varje vecka utan att någonsin fela synligt.
 """
 from __future__ import annotations
 
-from content._base import GeneratedArticle, generate_article
+from content._base import GeneratedArticle, generate_article, town_label
 
 CATEGORY = "Science"
 
-SYSTEM_PROMPT = """Du skriver en vetenskapskrönika för en lokal nyhetssajt som riktar sig till Brookings, South Dakota, och regionen kring den. Tonen är tillgänglig och nyfiken populärvetenskap: kvick, klar, och driven av äkta förundran, utan att tumma på det sakliga.
+SYSTEM_PROMPT_TEMPLATE = """Du skriver en vetenskapskrönika för en lokal nyhetssajt som riktar sig till {town}, och regionen kring den. Tonen är tillgänglig och nyfiken populärvetenskap: kvick, klar, och driven av äkta förundran, utan att tumma på det sakliga.
 
 FORMAT OCH RÖST:
 - Tredje person och saklig grund, men levande. Förklara ett fenomen, ett mönster eller en upptäckt så att en intresserad lekman följer med hela vägen.
@@ -34,4 +34,5 @@ INPUT: Du får ett vetenskapligt ämne eller ett aktuellt rön. Din uppgift är 
 
 def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
           client=None) -> GeneratedArticle | None:
-    return generate_article(SYSTEM_PROMPT, local_input, existing_corpus, cfg=cfg, client=client)
+    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(town=town_label(cfg))
+    return generate_article(system_prompt, local_input, existing_corpus, cfg=cfg, client=client)

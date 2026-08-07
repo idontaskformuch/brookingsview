@@ -10,14 +10,18 @@ extract_marked_list() i content/_base.py. body innehåller därefter bara
 förklarande text (inledning + numrerade instruktioner), precis som förut."""
 from __future__ import annotations
 
-from content._base import GeneratedArticle, extract_marked_list, generate_article
+from content._base import GeneratedArticle, extract_marked_list, generate_article, town_label
 
 CATEGORY = "Recipe"
 
 _INGREDIENTS_START = "<<<INGREDIENTS>>>"
 _INGREDIENTS_END = "<<<END INGREDIENTS>>>"
 
-SYSTEM_PROMPT = f"""Du skriver ett vardagsmiddagsrecept för en lokal nyhetssajt som riktar sig till Brookings, South Dakota, och regionen kring den. Tonen är praktisk, varm och pålitlig: en middag som faktiskt går att laga en vanlig vardagskväll.
+# Inte en f-sträng: {town} måste fyllas i vid write()-anrop (town_label(cfg)
+# behöver cfg, som inte finns på modulnivå), medan {ingredients_start}/
+# {ingredients_end} är rena modulkonstanter -- båda fylls i tillsammans via
+# .format() i write() i stället för att blanda tidpunkter för interpolering.
+SYSTEM_PROMPT_TEMPLATE = """Du skriver ett vardagsmiddagsrecept för en lokal nyhetssajt som riktar sig till {town}, och regionen kring den. Tonen är praktisk, varm och pålitlig: en middag som faktiskt går att laga en vanlig vardagskväll.
 
 FORMAT OCH RÖST:
 - Skriv för verkligheten: begränsad tid, vanliga ingredienser, en trött kock. Fokus på genomförbarhet.
@@ -27,8 +31,8 @@ FORMAT OCH RÖST:
 
 INGREDIENSMARKÖRER:
 - Ingredienslistan ska stå för sig själv, omgiven av exakt dessa två markörrader (skriv dem exakt så här, oöversatta, en rad var för sig):
-  {_INGREDIENTS_START}
-  {_INGREDIENTS_END}
+  {ingredients_start}
+  {ingredients_end}
 - Mellan markörerna: en ingrediens per rad, varje rad inledd med "- ", inklusive mängd (t.ex. "- 400 g kycklinglår, i bitar"). Inget annat på de raderna -- ingen rubrik, ingen extra text.
 - Blocket placeras efter inledningen och före instruktionerna.
 
@@ -42,7 +46,10 @@ INPUT: Du får ett rättkoncept eller en huvudingrediens. Din uppgift är att sk
 
 def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
           client=None) -> GeneratedArticle | None:
-    article = generate_article(SYSTEM_PROMPT, local_input, existing_corpus, cfg=cfg, client=client)
+    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
+        town=town_label(cfg), ingredients_start=_INGREDIENTS_START, ingredients_end=_INGREDIENTS_END,
+    )
+    article = generate_article(system_prompt, local_input, existing_corpus, cfg=cfg, client=client)
     if article is None:
         return None
 

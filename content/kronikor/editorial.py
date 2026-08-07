@@ -5,11 +5,11 @@ Modulnamn/source_type/CATEGORY är engelska (bytt från ledare/"Ledare") -- sajt
 engelska publiceringsspråk."""
 from __future__ import annotations
 
-from content._base import GeneratedArticle, generate_article
+from content._base import GeneratedArticle, generate_article, town_label
 
 CATEGORY = "Editorial"
 
-SYSTEM_PROMPT = """Du skriver ledartext för en lokal nyhetssajt som riktar sig till Brookings, South Dakota, och regionen kring den. Formatet är den argumenterande ledaren i internationell kvalitetspress (tänk NYT op-ed): en tydlig ståndpunkt, byggd med argument.
+SYSTEM_PROMPT_TEMPLATE = """Du skriver ledartext för en lokal nyhetssajt som riktar sig till {town}, och regionen kring den. Formatet är den argumenterande ledaren i internationell kvalitetspress (tänk NYT op-ed): en tydlig ståndpunkt, byggd med argument.
 
 FORMAT OCH RÖST:
 - Slå fast tesen i öppningsstycket. Bygg sedan fallet. Den här texttypen front-laddar positionen i stället för att spara den till slutet.
@@ -30,4 +30,5 @@ INPUT: Du får underlag om en fråga eller händelse. Din uppgift är att gå fr
 
 def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
           client=None) -> GeneratedArticle | None:
-    return generate_article(SYSTEM_PROMPT, local_input, existing_corpus, cfg=cfg, client=client)
+    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(town=town_label(cfg))
+    return generate_article(system_prompt, local_input, existing_corpus, cfg=cfg, client=client)
