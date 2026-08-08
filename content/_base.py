@@ -58,6 +58,11 @@ class GeneratedArticle:
     # extract_marked_list() nedan). None för alla andra modultyper -- body
     # innehåller då som vanligt all text, ingen del bryts ut.
     ingredients: list[str] | None = None
+    # Endast vardagsmiddag sätter detta, samma extract_marked_list()-mekanism
+    # som ingredients men med en egen <<<INSTRUCTIONS>>>-markör. body innehåller
+    # efter extraktion bara inledningen -- varken ingredienser eller
+    # instruktioner ligger kvar som löptext.
+    instructions: list[str] | None = None
 
 
 _STATE_NAMES = {
@@ -223,4 +228,5 @@ def to_metadata(article: GeneratedArticle, category: str, slug: str,
         "slug": slug,
         "image": image_path or f"/assets/images/{slug}.png",
         "ingredients": article.ingredients,
+        "instructions": article.instructions,
     }
