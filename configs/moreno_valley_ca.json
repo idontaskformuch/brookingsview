@@ -221,6 +221,98 @@
         "voice": "n/a (facts only, no AI generation)"
       },
       "_notes": "VERIFIERAD 2026-08-03: fakta om lokala anläggningar (bibliotek, parker, city hall) finns inte i något maskinläsbart flöde och ändras sällan, så samma mönster som property_sales -- manuellt kuraterad fil, ingen scraper. Kör 'python -m scripts.seed_facilities {town_id}' efter att ha redigerat data/facilities/{town_id}.json. Se db/migrations/007_facilities.sql för motivet: Search Console visade att search queries efter specifika anläggningar (t.ex. 'moreno valley library', 'lasselle sports park') stod för nästan alla exponeringar men gav noll klick, eftersom ingen sida svarade direkt på frågan."
+    },
+    "pro_sports": {
+      "type": "pro_sports",
+      "enabled": true,
+      "url": "https://statsapi.mlb.com",
+      "parser": "regional_sports_v1",
+      "refresh_minutes": 180,
+      "teams": [
+        {
+          "name": "ie_66ers",
+          "kind": "mlb_statsapi",
+          "league": "milb",
+          "team_name": "Inland Empire 66ers",
+          "team_abbr": "IE",
+          "team_id": 401,
+          "sport_id": 14,
+          "relevance_tier": "primary",
+          "_note": "VERIFIERAD 2026-08-10: team_id 401 bekräftad live mot statsapi.mlb.com/api/v1/teams?sportId=14 (parentOrgName='Seattle Mariners'). Single-A, California League."
+        },
+        {
+          "name": "angels",
+          "kind": "mlb_statsapi",
+          "league": "mlb",
+          "team_name": "Los Angeles Angels",
+          "team_abbr": "LAA",
+          "team_id": 108,
+          "sport_id": 1,
+          "relevance_tier": "primary",
+          "_note": "VERIFIERAD 2026-08-10: team_id 108 bekräftad live mot statsapi.mlb.com/api/v1/teams?sportId=1."
+        },
+        {
+          "name": "dodgers",
+          "kind": "mlb_statsapi",
+          "league": "mlb",
+          "team_name": "Los Angeles Dodgers",
+          "team_abbr": "LAD",
+          "team_id": 119,
+          "sport_id": 1,
+          "relevance_tier": "secondary",
+          "_note": "VERIFIERAD 2026-08-10: team_id 119 bekräftad live mot statsapi.mlb.com/api/v1/teams?sportId=1."
+        },
+        {
+          "name": "ducks",
+          "kind": "unconfirmed",
+          "league": "nhl",
+          "team_name": "Anaheim Ducks",
+          "team_abbr": "ANA",
+          "relevance_tier": "primary",
+          "_note": "OVERIFIERAD 2026-08-10: ESPN:s scoreboard-JSON (site.api.espn.com) sitter bakom Akamai-botskydd -- ett anrop med ärlig, identifierande User-Agent blockeras med 403 (Server: AkamaiGHost) direkt från Akamai, ett anrop utan User-Agent släpps igenom. Byggs inte mot -- att medvetet utelämna identifiering för att kringgå en aktiv WAF-blockering är samma sorts kringgående i sak som webbläsarmaskering, vilket den här kodbasen konsekvent avstått från. Kräver en riktig, offentlig NHL-API utan sådan blockering innan denna kan byggas (NHL har historiskt haft en öppen api-web.nhle.com -- overifierad denna session)."
+        },
+        {
+          "name": "lakers",
+          "kind": "unconfirmed",
+          "league": "nba",
+          "team_name": "Los Angeles Lakers",
+          "team_abbr": "LAL",
+          "relevance_tier": "secondary",
+          "_note": "OVERIFIERAD 2026-08-10: samma Akamai-blockering som Ducks/ESPN ovan gäller alla ESPN-sportscoreboards, inte bara MLB. Ingen alternativ offentlig NBA-API undersökt än denna session."
+        },
+        {
+          "name": "clippers",
+          "kind": "unconfirmed",
+          "league": "nba",
+          "team_name": "LA Clippers",
+          "team_abbr": "LAC",
+          "relevance_tier": "secondary",
+          "_note": "OVERIFIERAD 2026-08-10: samma skäl som Lakers ovan."
+        },
+        {
+          "name": "rams",
+          "kind": "unconfirmed",
+          "league": "nfl",
+          "team_name": "Los Angeles Rams",
+          "team_abbr": "LAR",
+          "relevance_tier": "secondary",
+          "_note": "OVERIFIERAD 2026-08-10: samma Akamai-blockering som Ducks/ESPN ovan. NFL saknar en känd, officiell publik data-API motsvarande MLB Stats API -- troligen svårast av de fyra att lösa lagligt."
+        },
+        {
+          "name": "chargers",
+          "kind": "unconfirmed",
+          "league": "nfl",
+          "team_name": "Los Angeles Chargers",
+          "team_abbr": "LAC",
+          "relevance_tier": "secondary",
+          "_note": "OVERIFIERAD 2026-08-10: samma skäl som Rams ovan."
+        }
+      ],
+      "output": {
+        "format": "structured_data_no_ai",
+        "voice": "n/a (fakta, ingen AI-generering -- samma princip som property_sales/facilities)"
+      },
+      "_notes": "VERIFIERAD 2026-08-10: MLB Stats API (statsapi.mlb.com) är en riktig, offentligt dokumenterad API, ingen robots.txt-begränsning, fungerar med sajtens vanliga User-Agent-konvention. Täcker bara MLB-affilierade lag (66ers/Angels/Dodgers) -- ESPN:s motsvarande scoreboard-JSON för NHL/NBA/NFL sitter bakom Akamai-botskydd som blockerar identifierade anrop, se _note per lag ovan. 5 av 8 konfigurerade lag är därför 'unconfirmed' tills en icke-blockerad källa hittas per liga. MEDVETET annan tabell (regional_sports_games) och annan REGISTRY-nyckel (pro_sports) än den befintliga sports_games/'sports'-nyckeln som SDSU Jackrabbits (Brookings) använder -- olika form, ingen kollision."
     }
   },
   "_verify_before_launch": [
@@ -231,7 +323,9 @@
     "KLART: robots.txt på moval.org blockerar inget som rör kalendrar/events.",
     "Permit-portal (Accela/eTRAKiT?) – publikt läsbar utan inloggning? (fortfarande overifierad, Fas 2/disabled)",
     "NYTT: Civic Amphitheater (MoVal Rocks) – hitta faktiskt datalager bakom Eventbrite-organisatörssidan, eller fråga staden om RSS/iCal.",
-    "NYTT: Farm House Collective (Riverside, regional) – undersöka farmhousecollective.com för dold events-feed innan html_scrape-parser byggs."
+    "NYTT: Farm House Collective (Riverside, regional) – undersöka farmhousecollective.com för dold events-feed innan html_scrape-parser byggs.",
+    "KLART: pro_sports (66ers/Angels/Dodgers) = MLB Stats API, verifierad live 2026-08-10, se pro_sports._notes.",
+    "NYTT: pro_sports Ducks/Lakers/Clippers/Rams/Chargers – ESPN:s scoreboard-JSON är Akamai-blockerad för identifierade anrop, kringgås inte. Behöver en riktig, icke-blockerad publik API per liga (NHL/NBA/NFL) innan de kan byggas."
   ],
   "_no_ag_markets_note": "Till skillnad från Brookings finns ingen jordbruksmarknad/USDA-vana här, och ingen SDSU-motsvarighet som sport-återbesöksmotor. Stadsfullmäktige + events + väder blir kärnan. Överväg senare: MVUSD skolstyrelse (BoardDocs?), samt lokal community college (Moreno Valley College) events som mjuk återbesöksdrivare."
 }

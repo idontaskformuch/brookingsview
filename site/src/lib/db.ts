@@ -31,7 +31,7 @@ export const TOWN_ID = siteConfig.townId;
 export type SourceType =
   | 'meeting' | 'event' | 'alert' | 'weekly'
   | 'culture_essay' | 'editorial' | 'vetenskap_kronika' | 'kvick_essa'
-  | 'media_recension' | 'vardagsmiddag' | 'home_sales_digest';
+  | 'media_recension' | 'vardagsmiddag' | 'home_sales_digest' | 'sports_digest';
 
 /** Presentation-layer label per source_type, för Byline-raden. Ingen egen DB-kolumn --
  *  category är en ren funktion av source_type, inget som behöver lagras separat. */
@@ -43,12 +43,15 @@ export const CATEGORY_LABELS: Partial<Record<SourceType, string>> = {
   media_recension: 'Review',
   vardagsmiddag: 'Recipe',
   home_sales_digest: 'Market digest',
+  sports_digest: 'Sports digest',
 };
 
 /** De sex innehållstyperna från Content Track v1 -- en sammanhållen lista så att
- *  nya sidor/frågor inte behöver skriva om den varje gång. home_sales_digest är
- *  INTE med här -- egen månadscadence via ai_pipeline/home_sales_digest.py, inte
- *  del av den dagliga rotationen (weekly_rotation.py), samma undantag som 'weekly'. */
+ *  nya sidor/frågor inte behöver skriva om den varje gång. home_sales_digest/
+ *  sports_digest är INTE med här -- egen cadence (månadsvis respektive
+ *  veckovis) via ai_pipeline/home_sales_digest.py och
+ *  ai_pipeline/sports_weekly_digest.py, inte del av den dagliga rotationen
+ *  (weekly_rotation.py), samma undantag som 'weekly'. */
 export const CONTENT_TRACK_TYPES: SourceType[] = [
   'culture_essay', 'editorial', 'vetenskap_kronika', 'kvick_essa', 'media_recension', 'vardagsmiddag',
 ];
@@ -56,8 +59,9 @@ export const CONTENT_TRACK_TYPES: SourceType[] = [
 /** Vilken kategori-sida en Content Track-story hör hemma på när den arkiveras
  *  bort från förstasidan. culture_essay/vetenskap_kronika/kvick_essa delar
  *  /columns -- tre krönike-varianter i en sektion, inte tre tunna sidor.
- *  home_sales_digest pekar till /home-sales trots att den inte är i
- *  CONTENT_TRACK_TYPES ovan -- href-uppslaget är oberoende av rotationslistan. */
+ *  home_sales_digest/sports_digest pekar till sina respektive tabellsidor
+ *  trots att de inte är i CONTENT_TRACK_TYPES ovan -- href-uppslaget är
+ *  oberoende av rotationslistan. */
 export const CATEGORY_HREFS: Partial<Record<SourceType, string>> = {
   culture_essay: '/columns',
   kvick_essa: '/columns',
@@ -66,6 +70,7 @@ export const CATEGORY_HREFS: Partial<Record<SourceType, string>> = {
   media_recension: '/reviews',
   vardagsmiddag: '/recipes',
   home_sales_digest: '/home-sales',
+  sports_digest: '/sports',
 };
 
 export interface Story {
@@ -120,6 +125,27 @@ export interface PropertySale {
   address: string | null;
   sale_price: number | null;
   sale_date: string | null;
+}
+
+/** En rad ur regional_sports_games -- se db/migrations/009_regional_sports.sql.
+ *  Namnet skiljer sig medvetet från Game/sports_games ovan: det är ett annat
+ *  bord med annan form (flera lag, status/resultat som ÄNDRAS över tid) för
+ *  städer utan ett eget lokalt lag att bevaka, t.ex. Moreno Valleys
+ *  Inland Empire 66ers/Angels/Dodgers via /sports. Blandas aldrig ihop med
+ *  Jackrabbits/sports_games/jackrabbits.astro. */
+export interface RegionalGame {
+  league: string;
+  team_name: string;
+  team_abbr: string | null;
+  opponent_name: string;
+  home_away: string | null;
+  game_date: string | null;
+  game_time_utc: string | null;
+  status: string;
+  team_score: number | null;
+  opponent_score: number | null;
+  venue: string | null;
+  relevance_tier: string;
 }
 
 /* ------------------------------------------------------------------ stories */
@@ -344,6 +370,39 @@ export async function getSeasonGames(sport?: string): Promise<Game[]> {
      WHERE town_id = ${TOWN_ID}
      ORDER BY starts_at ASC
   `) as Game[];
+}
+
+/** Alla matcher för orten, primary-lag (t.ex. 66ers för Moreno Valley) före
+ *  secondary (LA-lagen i stort), sen datumordning -- sidan grupperar per
+ *  team_name och Map-insättningsordningen följer denna sortering, så primary
+ *  lag renderas överst utan att /sports.astro behöver sortera själv. */
+export async function getRegionalSports(): Promise<RegionalGame[]> {
+  return (await sql`
+    SELECT league, team_name, team_abbr, opponent_name, home_away, game_date,
+           game_time_utc, status, team_score, opponent_score, venue, relevance_tier
+      FROM regional_sports_games
+     WHERE town_id = ${TOWN_ID}
+     ORDER BY relevance_tier, team_name, game_date ASC
+  `) as RegionalGame[];
+}
+
+/** Nästa ospelade/pågående match bland primary-lagen -- till förstasidans
+ *  högerfält (samma roll som getUpcomingGames(1) fyller för Jackrabbits,
+ *  se index.astro). Ett separat, smalt query i stället för att hämta hela
+ *  getRegionalSports() och filtrera i Astro-lagret -- förstasidan behöver
+ *  bara en rad, inte hela ortens säsong. */
+export async function getNextRegionalGame(): Promise<RegionalGame | null> {
+  const rows = (await sql`
+    SELECT league, team_name, team_abbr, opponent_name, home_away, game_date,
+           game_time_utc, status, team_score, opponent_score, venue, relevance_tier
+      FROM regional_sports_games
+     WHERE town_id = ${TOWN_ID}
+       AND relevance_tier = 'primary'
+       AND status IN ('scheduled', 'live')
+     ORDER BY game_date ASC
+     LIMIT 1
+  `) as RegionalGame[];
+  return rows[0] ?? null;
 }
 
 export async function getWeather(): Promise<WeatherPeriod[]> {

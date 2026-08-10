@@ -77,11 +77,25 @@ def save_snapshot(conn, town_id: str, source_key: str, url: str | None,
 
 
 def upsert_records(conn, table: str, town_id: str, records: Iterable[dict],
-                   snapshot_id: int | None = None) -> int:
-    """Dedup-säker insert. Varje record MÅSTE ha 'content_hash'.
+                   snapshot_id: int | None = None,
+                   conflict_columns: tuple[str, ...] | None = None,
+                   update_columns: list[str] | None = None) -> int:
+    """Dedup-säker insert. Varje record MÅSTE ha 'content_hash' (om inte
+    conflict_columns anger något annat).
 
-    ON CONFLICT (town_id, content_hash) DO NOTHING → inga dubbletter.
-    Returnerar antalet NYA rader.
+    Som standard: ON CONFLICT (town_id, content_hash) DO NOTHING → inga
+    dubbletter, källdata antas oföränderlig en gång skrapad (möten, event,
+    fastighetsförsäljningar, ...).
+
+    conflict_columns/update_columns finns för data som legitimt ÄNDRAS över
+    tid för SAMMA post -- t.ex. en sportmatch vars status/resultat går
+    scheduled -> live -> final. content_hash skulle då ändras varje gång
+    (resultatet är en del av hashen), vilket får ON CONFLICT DO NOTHING att
+    aldrig matcha samma rad två gånger och dubblettrader att staplas upp i
+    stället för att uppdateras. Ange då en stabil identitet från källan som
+    conflict_columns (t.ex. ("town_id", "external_game_id")) och vilka fält
+    som ska skrivas över vid en omkörning som update_columns. Standardbeteendet
+    (inga argument) är oförändrat för alla befintliga anropare.
     """
     records = list(records)
     if not records:
@@ -103,10 +117,19 @@ def upsert_records(conn, table: str, town_id: str, records: Iterable[dict],
             cols = list(rec.keys())
             placeholders = ", ".join(["%s"] * len(cols))
             collist = ", ".join(cols)
-            conflict = "(town_id, content_hash)" if "content_hash" in cols else "(town_id, observed_for)"
+            if conflict_columns is not None:
+                conflict = "(" + ", ".join(conflict_columns) + ")"
+            else:
+                conflict = "(town_id, content_hash)" if "content_hash" in cols else "(town_id, observed_for)"
+
+            if update_columns:
+                action = "DO UPDATE SET " + ", ".join(f"{c} = EXCLUDED.{c}" for c in update_columns)
+            else:
+                action = "DO NOTHING"
+
             cur.execute(
                 f"INSERT INTO {table} ({collist}) VALUES ({placeholders}) "
-                f"ON CONFLICT {conflict} DO NOTHING",
+                f"ON CONFLICT {conflict} {action}",
                 [rec[c] for c in cols],
             )
             new_count += cur.rowcount

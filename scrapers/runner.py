@@ -36,6 +36,11 @@ REGISTRY: dict[str, str] = {
     "legistar":        "scrapers.parsers.legistar_v1:LegistarParser",
     "escribe":         "scrapers.parsers.escribe_v1:EscribeParser",
     "rivco_assessor":  "scrapers.parsers.rivco_property_sales_v1:PropertySalesParser",
+    # OBS: "pro_sports" är MEDVETET en annan nyckel än "sports" (=gojacks_v1,
+    # SDSU Jackrabbits/Brookings) -- olika tabell (regional_sports_games vs
+    # sports_games), olika form. Att återanvända "sports" hade tyst skrivit
+    # över Jackrabbits registrering i den här dicten.
+    "pro_sports":      "scrapers.parsers.regional_sports_v1:RegionalSportsParser",
     "usda":            "scrapers.parsers.usda:UsdaParser",
     # stubbar (väntar på Stage 0-verifiering av källstruktur)
     "smartgov":        "scrapers.parsers.smartgov_v1:SmartGovParser",
@@ -100,7 +105,9 @@ def run_source(conn, cfg: dict, source_key: str, source_cfg: dict) -> None:
                 conn, town_id, source_key, fetched.url, fetched.raw, fetched.content_type
             )
         records = parser.parse(fetched)
-        new = db.upsert_records(conn, parser.table, town_id, records, snapshot_id)
+        new = db.upsert_records(conn, parser.table, town_id, records, snapshot_id,
+                                 conflict_columns=parser.conflict_columns,
+                                 update_columns=parser.update_columns)
         db.finish_run(conn, run_id, status="ok", http_code=fetched.http_code,
                       items_found=len(records), items_new=new)
         print(f"  [{source_key}] ok — {len(records)} poster, {new} nya")

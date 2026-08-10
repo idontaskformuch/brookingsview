@@ -33,6 +33,14 @@ class BaseParser(abc.ABC):
     source_key: str = ""
     #: plattformsnamn för återanvändning ("legistar", "noaa", ...)
     platform: str = ""
+    #: valfri override av upsert-konfliktmål/uppdateringskolumner (se
+    #: db.upsert_records()) -- lämnade som None är standardbeteendet
+    #: (content_hash + DO NOTHING) oförändrat för alla befintliga parsers.
+    #: Sätt dessa bara för källor vars poster legitimt ÄNDRAS över tid för
+    #: SAMMA rad (t.ex. en sportmatch vars status/resultat uppdateras),
+    #: till skillnad från oföränderlig källdata som möten/event/försäljningar.
+    conflict_columns: tuple[str, ...] | None = None
+    update_columns: list[str] | None = None
 
     def __init__(self, cfg: dict, source_cfg: dict):
         self.cfg = cfg                    # hela town-configen

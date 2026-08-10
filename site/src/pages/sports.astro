@@ -1,0 +1,146 @@
+---
+/** Regionala pro-/MiLB-lag som TABELL, aldrig som egna sidor -- se
+ *  lib/db.ts (getRegionalSports) för resonemanget, samma princip som
+ *  /jackrabbits och /home-sales.
+ *
+ * moreno_valley_ca-specifikt (configens data_sources.pro_sports finns bara
+ * där; brookings_sd har ett eget lokalt lag och använder /jackrabbits i
+ * stället, se scrapers/parsers/regional_sports_v1.py). Andra städer
+ * redirectar till förstasidan, samma mönster som home-sales.astro/
+ * jackrabbits.astro använder för ort-specifikt innehåll. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import StoryCard from '../components/StoryCard.astro';
+import { getRegionalSports, getContentByType, formatCalendarDate, formatTime } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
+
+if (siteConfig.townId !== 'moreno_valley_ca') {
+  return Astro.redirect('/', 302);
+}
+
+const [games, digests] = await Promise.all([
+  getRegionalSports(),
+  getContentByType(['sports_digest'], 12),
+]);
+
+const byTeam = new Map<string, typeof games>();
+for (const game of games) {
+  if (!byTeam.has(game.team_name)) byTeam.set(game.team_name, []);
+  byTeam.get(game.team_name)!.push(game);
+}
+
+// Nästa ospelade/pågående match bland primary-lagen (66ers) -- games är redan
+// sorterad relevance_tier, team_name, game_date så första träffen räcker.
+const nextGame = games.find(
+  (g) => g.relevance_tier === 'primary' && (g.status === 'scheduled' || g.status === 'live'),
+) ?? null;
+
+const resultText = (g: (typeof games)[number]) => {
+  if (g.status === 'final') return `Final: ${g.team_score}–${g.opponent_score}`;
+  if (g.status === 'live') return `Live: ${g.team_score ?? 0}–${g.opponent_score ?? 0}`;
+  if (g.status === 'postponed') return 'Postponed';
+  return g.game_time_utc ? formatTime(g.game_time_utc) : '—';
+};
+
+const leagueLabel = (l: string) => l.toUpperCase();
+---
+<BaseLayout title={`Regional sports — ${siteConfig.siteName}`} wide
+  description={`Schedules and results for pro and minor-league teams that matter in ${siteConfig.cityName}: the Inland Empire 66ers, Angels and Dodgers.`}>
+  <header class="lede">
+    <h1>Regional sports</h1>
+    <p>Schedules and results for the Inland Empire 66ers, plus the Angels and
+    Dodgers — straight from MLB's own stats feed.</p>
+  </header>
+
+  {digests.length > 0 && (
+    <>
+      <SectionRule label="Weekly recap" />
+      <div class="grid">{digests.map((story) => <StoryCard story={story} />)}</div>
+    </>
+  )}
+
+  {nextGame && (
+    <>
+      <SectionRule label="Next up" />
+      <div class="next">
+        <p class="next__meta">
+          <span class="kicker">{nextGame.home_away === 'home' ? 'Home' : 'Away'} &middot; {leagueLabel(nextGame.league)}</span>
+        </p>
+        <p class="next__title">{nextGame.team_name} {nextGame.home_away === 'home' ? 'vs' : 'at'} {nextGame.opponent_name}</p>
+        <p class="next__when data">
+          {formatCalendarDate(nextGame.game_date)}{nextGame.game_time_utc && ` · ${formatTime(nextGame.game_time_utc)}`}
+          {nextGame.venue && <><br />{nextGame.venue}</>}
+        </p>
+      </div>
+    </>
+  )}
+
+  {byTeam.size > 0 ? [...byTeam.entries()].map(([team, teamGames]) => (
+    <>
+      <SectionRule label={team} />
+      <table class="sched">
+        <thead>
+          <tr><th scope="col">Date</th><th scope="col">Opponent</th>
+              <th scope="col">Where</th><th scope="col">Result</th></tr>
+        </thead>
+        <tbody>
+          {teamGames.map((game) => (
+            <tr>
+              <td class="data">{formatCalendarDate(game.game_date)}</td>
+              <td>{game.home_away === 'home' ? 'vs' : 'at'} {game.opponent_name}</td>
+              <td class="where">{game.venue ?? '—'}</td>
+              <td class="data">{resultText(game)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  )) : (
+    <p class="empty">No games scheduled right now.</p>
+  )}
+
+  <p class="source">
+    Source: <a href="https://statsapi.mlb.com" rel="noopener">MLB Stats API</a>, refreshed regularly.
+  </p>
+</BaseLayout>
+
+<style>
+.lede { max-width: 40rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); margin-bottom: 0.5rem; }
+.next {
+  border: 0;
+  border-left: 4px solid var(--navy);
+  background: var(--navy-tint);
+  padding: 0.875rem 1rem;
+  margin-bottom: 0.5rem;
+}
+.next__meta { margin: 0 0 0.25rem; }
+.next__title {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1.1875rem;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+.next__when { margin: 0; font-size: 0.75rem; color: var(--ink-soft); line-height: 1.45; }
+.sched { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.9375rem; margin-bottom: 0.5rem; }
+.sched th {
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 600;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--rule);
+}
+.sched td { padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.sched tr:last-child td { border-bottom: 0; }
+.where { color: var(--ink-soft); font-size: 0.875rem; }
+@media (max-width: 40rem) { .where { display: none; } }
+.empty { color: var(--ink-soft); }
+.source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }
+</style>

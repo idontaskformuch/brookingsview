@@ -1,0 +1,38 @@
+name: moval-sports-digest
+# Kör sports_weekly_digest.py, som sammanfattar den senast AVSLUTADE
+# måndag-söndag-veckan i regional_sports_games (66ers/Angels/Dodgers, se
+# scrapers/parsers/regional_sports_v1.py). Till skillnad från
+# moval-weekly-roundup.yml (som täcker en vecka som fortfarande pågår och
+# därför kör om varje kväll) är förra veckans matcher redan slutgiltiga när
+# det här körs -- en enda måndagskörning räcker. content_hash-kollen i
+# skriptet skippar ändå AI-anropet om något manuellt kört om samma vecka.
+
+on:
+  schedule:
+    - cron: "0 15 * * 1"   # måndag 15:00 UTC (08:00 PDT) -- efter helgens matcher
+  workflow_dispatch: {}
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:      ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      USER_AGENT:        "morenovalleyview.com (contact: hello@morenovalleyview.com)"
+      AI_BUDGET_STATE:   ".ai_budget_moreno_valley_ca.json"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Generera veckans sportsammanfattning
+        run: python -m ai_pipeline.sports_weekly_digest --config configs/moreno_valley_ca.json
+      - name: Trigga Cloudflare Pages-rebuild
+        if: success()
+        run: |
+          if [ -n "${{ secrets.PAGES_DEPLOY_HOOK_MOVAL }}" ]; then
+            curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK_MOVAL }}"
+          else
+            echo "PAGES_DEPLOY_HOOK_MOVAL ej satt -- hoppar över rebuild"
+          fi

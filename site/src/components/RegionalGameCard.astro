@@ -1,0 +1,41 @@
+---
+/** Rail-kortet för nästa regionala match (66ers/Angels/Dodgers, ...) på
+ *  förstasidan -- samma roll och stil som GameCard.astro fyller för
+ *  Jackrabbits, men mot RegionalGame-formen (flera lag, se lib/db.ts:
+ *  getNextRegionalGame). Ett eget komponentnamn i stället för att grena
+ *  GameCard på fältnamn: formerna delar utseende men inte data-kontrakt. */
+import type { RegionalGame } from '../lib/db';
+import { formatCalendarDate, formatTime } from '../lib/db';
+
+interface Props { game: RegionalGame; feature?: boolean; }
+const { game, feature = false } = Astro.props;
+const home = game.home_away === 'home';
+---
+<div class:list={['game', feature && 'game--feature']}>
+  <p class="game__meta"><span class="kicker">{home ? 'Home' : 'Away'} &middot; {game.league.toUpperCase()}</span></p>
+  <p class="game__title">{game.team_name} {home ? 'vs' : 'at'} {game.opponent_name}</p>
+  <p class="game__when data">
+    {formatCalendarDate(game.game_date)}{game.game_time_utc && ` · ${formatTime(game.game_time_utc)}`}
+    {game.venue && <><br />{game.venue}</>}
+  </p>
+</div>
+
+<style>
+.game { border-bottom: 1px solid var(--rule); padding-block: 0.75rem; }
+.game--feature {
+  border: 0;
+  border-left: 4px solid var(--navy);
+  background: var(--navy-tint);
+  padding: 0.875rem 1rem;
+}
+.game__meta { margin: 0 0 0.25rem; }
+.game__title {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1.1875rem;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+.game__when { margin: 0; font-size: 0.75rem; color: var(--ink-soft); line-height: 1.45; }
+</style>

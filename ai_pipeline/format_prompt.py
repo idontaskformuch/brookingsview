@@ -135,6 +135,7 @@ CONTENT_TYPE_MODELS: dict[str, str] = {
     # Haiku -- strukturerad/extraktiv, hög volym, lägre kreativitetskrav
     "vardagsmiddag": "claude-haiku-4-5-20251001",
     "home_sales_digest": "claude-haiku-4-5-20251001",
+    "sports_digest": "claude-haiku-4-5-20251001",
     "weekly": "claude-haiku-4-5-20251001",
     "meeting": "claude-haiku-4-5-20251001",
     "event": "claude-haiku-4-5-20251001",
