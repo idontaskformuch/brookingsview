@@ -150,6 +150,21 @@
       },
       "_notes": "BLOCKERAD (403 Forbidden), samma kategori som SmartGov/SD511 -- inte en kodfråga. Plattform identifierad: 'Electronic School Board' (ic-board.com), samma SaaS som flera andra distrikt (t.ex. Providence RI) -> återanvändningsvärde för framtida orter om den öppnas upp. Testat och bekräftat 403 på: (1) https://brookingspublic.ic-board.com/ rot, (2) samma via distriktets egen 'Agenda, Minutes, & Policies'-knapp på brookings.k12.sd.us/page/school-board, (3) en tidigare fungerande djuplänk (public_agendaview.aspx?mtgId=1217). Mejl skickat till Brookings.Webmaster@k12.sd.us 2026-07-17 och flaggar 403:an. enabled=false tills svar kommer -- lämna av så runner.py inte försöker köra den i onödan."
     },
+    "school_alerts": {
+      "type": "school_alerts",
+      "enabled": true,
+      "source": "thrillshare_live_feed",
+      "district": "Brookings School District 05-1",
+      "url": "https://thrillshare-cmsv2.services.thrillshare.com/api/v2/s/256681/live_feeds",
+      "public_url": "https://www.brookings.k12.sd.us/",
+      "parser": "school_alerts_v1",
+      "refresh_minutes": 60,
+      "output": {
+        "format": "structured_data_no_ai",
+        "voice": "n/a (distriktets egen ordalydelse, ingen AI-generering eller omskrivning)"
+      },
+      "_notes": "VERIFIERAD 2026-08-10: till skillnad från school_board ovan (403, ic-board.com) är den här källan HELT ÖPPEN -- brookings.k12.sd.us är byggd på Apptegy/Thrillshare (Nuxt SPA), och sidans egen __NUXT_DATA__ avslöjade en publik JSON-API för distriktets 'Live Feed' (deras allmänna meddelandeström, inte en dedikerad closures-sida). 200 OK med sajtens vanliga User-Agent, ingen robots.txt-begränsning (404, inget deklarerat), inget Akamai-liknande bot-skydd. section_id 256681 är specifikt för org-id 15084 (Brookings School District 05-1) i Thrillshares system -- en annan Apptegy-driven ort skulle behöva sitt eget section_id. is_closure flaggas via nyckelordsmatchning i parsern (deterministiskt, ingen AI)."
+    },
     "events": {
       "type": "multi",
       "enabled": true,
@@ -320,6 +335,7 @@
     "SmartGov: att permit-/licensdata är läsbar utan inloggning",
     "Brookings School District styrelseagenda-källa",
     "USDA NASS API-nyckel (gratis)",
-    "NYTT: visitbrookingssd.com -- testa https://visitbrookingssd.com/events/?ical=1 live + kolla robots.txt innan parser byggs."
+    "NYTT: visitbrookingssd.com -- testa https://visitbrookingssd.com/events/?ical=1 live + kolla robots.txt innan parser byggs.",
+    "KLART: school_alerts = Thrillshare live_feeds API (thrillshare-cmsv2.services.thrillshare.com), verifierad live 2026-08-10, se school_alerts._notes."
   ]
 }

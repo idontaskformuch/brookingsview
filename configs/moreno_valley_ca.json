@@ -313,6 +313,21 @@
         "voice": "n/a (fakta, ingen AI-generering -- samma princip som property_sales/facilities)"
       },
       "_notes": "VERIFIERAD 2026-08-10: MLB Stats API (statsapi.mlb.com) är en riktig, offentligt dokumenterad API, ingen robots.txt-begränsning, fungerar med sajtens vanliga User-Agent-konvention. Täcker bara MLB-affilierade lag (66ers/Angels/Dodgers) -- ESPN:s motsvarande scoreboard-JSON för NHL/NBA/NFL sitter bakom Akamai-botskydd som blockerar identifierade anrop, se _note per lag ovan. 5 av 8 konfigurerade lag är därför 'unconfirmed' tills en icke-blockerad källa hittas per liga. MEDVETET annan tabell (regional_sports_games) och annan REGISTRY-nyckel (pro_sports) än den befintliga sports_games/'sports'-nyckeln som SDSU Jackrabbits (Brookings) använder -- olika form, ingen kollision."
+    },
+    "school_alerts": {
+      "type": "school_alerts",
+      "enabled": true,
+      "source": "finalsite_news",
+      "district": "Moreno Valley Unified School District",
+      "url": "https://www.mvusd.net/engage/news",
+      "public_url": "https://www.mvusd.net/engage/news",
+      "parser": "school_alerts_v1",
+      "refresh_minutes": 60,
+      "output": {
+        "format": "structured_data_no_ai",
+        "voice": "n/a (distriktets egen ordalydelse, ingen AI-generering eller omskrivning)"
+      },
+      "_notes": "VERIFIERAD 2026-08-10: mvusd.net kör Finalsite. Ingen dedikerad closures-sida eller RSS-feed hittad -- /engage/news är distriktets allmänna nyhetslista, server-renderad HTML, robots.txt tillåter uttryckligen '/fs/pages/news' (samma underliggande innehåll) med Crawl-delay: 5 (respekteras i school_alerts_v1.py). Varje post har ett stabilt data-post-id i DOM:en. is_closure flaggas via nyckelordsmatchning i parsern (deterministiskt, ingen AI) -- de flesta posterna är vanliga notiser (utmärkelser, evenemang), inte stängningar."
     }
   },
   "_verify_before_launch": [
@@ -325,7 +340,8 @@
     "NYTT: Civic Amphitheater (MoVal Rocks) – hitta faktiskt datalager bakom Eventbrite-organisatörssidan, eller fråga staden om RSS/iCal.",
     "NYTT: Farm House Collective (Riverside, regional) – undersöka farmhousecollective.com för dold events-feed innan html_scrape-parser byggs.",
     "KLART: pro_sports (66ers/Angels/Dodgers) = MLB Stats API, verifierad live 2026-08-10, se pro_sports._notes.",
-    "NYTT: pro_sports Ducks/Lakers/Clippers/Rams/Chargers – ESPN:s scoreboard-JSON är Akamai-blockerad för identifierade anrop, kringgås inte. Behöver en riktig, icke-blockerad publik API per liga (NHL/NBA/NFL) innan de kan byggas."
+    "NYTT: pro_sports Ducks/Lakers/Clippers/Rams/Chargers – ESPN:s scoreboard-JSON är Akamai-blockerad för identifierade anrop, kringgås inte. Behöver en riktig, icke-blockerad publik API per liga (NHL/NBA/NFL) innan de kan byggas.",
+    "KLART: school_alerts (MVUSD) = Finalsite /engage/news, verifierad live 2026-08-10, se school_alerts._notes."
   ],
   "_no_ag_markets_note": "Till skillnad från Brookings finns ingen jordbruksmarknad/USDA-vana här, och ingen SDSU-motsvarighet som sport-återbesöksmotor. Stadsfullmäktige + events + väder blir kärnan. Överväg senare: MVUSD skolstyrelse (BoardDocs?), samt lokal community college (Moreno Valley College) events som mjuk återbesöksdrivare."
 }

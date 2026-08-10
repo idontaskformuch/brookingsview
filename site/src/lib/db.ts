@@ -386,6 +386,38 @@ export async function getRegionalSports(): Promise<RegionalGame[]> {
   `) as RegionalGame[];
 }
 
+/** En rad ur school_alerts -- se db/migrations/010_school_alerts.sql och
+ *  scrapers/parsers/school_alerts_v1.py. message är distriktets EGEN
+ *  ordalydelse, oparafraserad -- rendera den rakt av, kör den aldrig genom
+ *  någon AI-formatering. is_closure är förberäknad (nyckelordsmatchning) i
+ *  parsern, inte här. */
+export interface SchoolAlert {
+  district: string;
+  title: string | null;
+  message: string;
+  url: string | null;
+  posted_at: string;
+  is_closure: boolean;
+}
+
+/** Skolstängningar/förseningar/nödmeddelanden från de senaste dagarna --
+ *  bannern på förstasidan visar bara DESSA (is_closure=true), inte hela
+ *  distriktets allmänna meddelandeflöde (se school_alerts_v1.py:s
+ *  moduldocstring för varför tabellen ändå innehåller alla poster).
+ *  max_age_days är kort (3) med flit -- en stängningsnotis är bara relevant
+ *  runt själva händelsen, till skillnad från NWS/county-varningar
+ *  (getActiveAlerts, 14 dagar) som kan gälla en längre pågående situation. */
+export async function getActiveSchoolAlerts(maxAgeDays = 3): Promise<SchoolAlert[]> {
+  return (await sql`
+    SELECT district, title, message, url, posted_at, is_closure
+      FROM school_alerts
+     WHERE town_id = ${TOWN_ID}
+       AND is_closure = true
+       AND posted_at >= now() - (${maxAgeDays} || ' days')::interval
+     ORDER BY posted_at DESC
+  `) as SchoolAlert[];
+}
+
 /** Nästa ospelade/pågående match bland primary-lagen -- till förstasidans
  *  högerfält (samma roll som getUpcomingGames(1) fyller för Jackrabbits,
  *  se index.astro). Ett separat, smalt query i stället för att hämta hela

@@ -1,0 +1,45 @@
+---
+/** Banner för aktiva skolstängningar/förseningar/nödmeddelanden -- se
+ *  lib/db.ts (getActiveSchoolAlerts) och scrapers/parsers/school_alerts_v1.py.
+ *  message är distriktets EGEN ordalydelse, renderas rakt av utan någon
+ *  AI-formatering -- se moduldocstringen för varför.
+ *
+ *  Villkorad rendering ägs av ANROPAREN (index.astro), samma mönster som
+ *  RegionalGameCard/getNextRegionalGame -- tomt läge ska vara "ingen
+ *  banner", inte ett tomt kort. */
+import type { SchoolAlert } from '../lib/db';
+
+interface Props { alerts: SchoolAlert[]; }
+const { alerts } = Astro.props;
+---
+<section aria-label="School alerts" class="school-alerts">
+  {alerts.map((alert) => (
+    <div class="school-alert">
+      <p class="school-alert__meta"><span class="kicker">{alert.district}</span></p>
+      {alert.title && <p class="school-alert__title">{alert.title}</p>}
+      <p class="school-alert__message">{alert.message}</p>
+      {alert.url && <a class="school-alert__link" href={alert.url} rel="noopener">Read more &rarr;</a>}
+    </div>
+  ))}
+</section>
+
+<style>
+.school-alerts { display: grid; gap: 0.75rem; margin-bottom: 1.25rem; }
+.school-alert {
+  border-left: 4px solid var(--alert);
+  background: var(--alert-tint);
+  padding: 0.875rem 1rem;
+}
+.school-alert__meta { margin: 0 0 0.25rem; }
+.school-alert__meta .kicker { color: var(--alert); }
+.school-alert__title {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.school-alert__message { margin: 0; font-size: 0.9375rem; line-height: 1.45; }
+.school-alert__link { display: inline-block; margin-top: 0.375rem; font-size: 0.875rem; }
+</style>

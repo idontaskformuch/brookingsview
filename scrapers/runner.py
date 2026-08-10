@@ -41,6 +41,7 @@ REGISTRY: dict[str, str] = {
     # sports_games), olika form. Att återanvända "sports" hade tyst skrivit
     # över Jackrabbits registrering i den här dicten.
     "pro_sports":      "scrapers.parsers.regional_sports_v1:RegionalSportsParser",
+    "school_alerts":   "scrapers.parsers.school_alerts_v1:SchoolAlertsParser",
     "usda":            "scrapers.parsers.usda:UsdaParser",
     # stubbar (väntar på Stage 0-verifiering av källstruktur)
     "smartgov":        "scrapers.parsers.smartgov_v1:SmartGovParser",
