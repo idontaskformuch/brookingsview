@@ -480,10 +480,19 @@ export async function getRecentJobs(limit = 100): Promise<Job[]> {
   `) as Job[];
 }
 
-/** En rad ur sdsu_events -- se db/migrations/013_sdsu_events.sql och
+/** En rad ur sdsu_events -- se db/migrations/013_sdsu_events.sql,
+ *  db/migrations/015_sdsu_events_bucket.sql och
  *  scrapers/parsers/sdsu_events_v1.py. teaser är källans EGEN korta
  *  sammanfattning, aldrig en fullständig eventbeskrivning -- se parserns
- *  moduldocstring för upphovsrättsresonemanget. */
+ *  moduldocstring för upphovsrättsresonemanget.
+ *
+ *  bucket avgör vilken sida en rad hör hemma på ("university" -> /university,
+ *  "arts_culture" -> /events, se sdsu_events_v1.py:s BUCKET_MAP) --
+ *  is_filtered/filter_reason flaggar internt/icke-publikt brus (invite-only,
+ *  pensionsmottagningar) som INTE ska visas någonstans men som ändå finns
+ *  kvar i tabellen, se parserns moduldocstring "BORTFILTRERING". Alla
+ *  frågor nedan filtrerar därför uttryckligen på bucket och
+ *  `NOT is_filtered` -- ingen fråga mot den här tabellen ska glömma det. */
 export interface SdsuEvent {
   external_event_id: string;
   title: string;
@@ -496,8 +505,10 @@ export interface SdsuEvent {
   event_url: string;
 }
 
-/** Kommande SDSU-evenemang, tidigast först. En liten "redan börjat men inte
- *  slut"-marginal (3 h) i stället för strikt now() -- annars försvinner ett
+/** Kommande SDSU-evenemang för /university (bucket="university": Athletics +
+ *  Camps/Conferences -- se sdsu_events_v1.py:s BUCKET_MAP för
+ *  arts_culture-uppdelningen). En liten "redan börjat men inte slut"-
+ *  marginal (3 h) i stället för strikt now() -- annars försvinner ett
  *  pågående evenemang ur listan mitt under tiden det äger rum. */
 export async function getUpcomingSdsuEvents(limit = 60): Promise<SdsuEvent[]> {
   return (await sql`
@@ -505,6 +516,27 @@ export async function getUpcomingSdsuEvents(limit = 60): Promise<SdsuEvent[]> {
            categories, primary_category, event_url
       FROM sdsu_events
      WHERE town_id = ${TOWN_ID}
+       AND bucket = 'university'
+       AND NOT is_filtered
+       AND starts_at >= now() - interval '3 hours'
+     ORDER BY starts_at ASC
+     LIMIT ${limit}
+  `) as SdsuEvent[];
+}
+
+/** Kommande "Arts & Culture"-evenemang för /events (bucket="arts_culture":
+ *  Music + Special Events + Theatre/Dance, plus museum-/trädgårdsvenue-
+ *  överstyrning -- se sdsu_events_v1.py). Renderas där via samma
+ *  StoryCard-komponent som stadens övriga events, med en href/kicker-
+ *  override eftersom de inte har en egen /s/[slug]-sida (se StoryCard.astro). */
+export async function getUpcomingArtsEvents(limit = 40): Promise<SdsuEvent[]> {
+  return (await sql`
+    SELECT external_event_id, title, teaser, location, starts_at, ends_at,
+           categories, primary_category, event_url
+      FROM sdsu_events
+     WHERE town_id = ${TOWN_ID}
+       AND bucket = 'arts_culture'
+       AND NOT is_filtered
        AND starts_at >= now() - interval '3 hours'
      ORDER BY starts_at ASC
      LIMIT ${limit}
@@ -537,19 +569,22 @@ export async function getUpcomingAcademicDates(limit = 2): Promise<AcademicDate[
   `) as AcademicDate[];
 }
 
-/** Nästa "marquee"-evenemang (Athletics/Music -- de kategorier som drar
- *  flest läsare) -- till förstasidans rail, samma roll som
- *  getNextRegionalGame() fyller för regional sport. Konkurrerar om SAMMA
- *  rail-slot som Jackrabbits nästa match för Brookings (se index.astro) --
- *  ett eget, smalt query i stället för att hämta alla getUpcomingSdsuEvents()
- *  bara för förstasidans enda rad. */
+/** Nästa "marquee"-evenemang -- ATHLETICS-ONLY (Music flyttades till
+ *  arts_culture/-events i editorial-omorganiseringen, se
+ *  sdsu_events_v1.py:s moduldocstring "EDITORIAL-OMORGANISERING") -- till
+ *  förstasidans rail, samma roll som getNextRegionalGame() fyller för
+ *  regional sport. Konkurrerar om SAMMA rail-slot som Jackrabbits nästa
+ *  match för Brookings (se index.astro) -- ett eget, smalt query i stället
+ *  för att hämta alla getUpcomingSdsuEvents() bara för förstasidans enda rad. */
 export async function getNextSdsuMarqueeEvent(): Promise<SdsuEvent | null> {
   const rows = (await sql`
     SELECT external_event_id, title, teaser, location, starts_at, ends_at,
            categories, primary_category, event_url
       FROM sdsu_events
      WHERE town_id = ${TOWN_ID}
-       AND primary_category IN ('Athletics', 'Music')
+       AND bucket = 'university'
+       AND NOT is_filtered
+       AND primary_category = 'Athletics'
        AND starts_at >= now() - interval '3 hours'
      ORDER BY starts_at ASC
      LIMIT 1

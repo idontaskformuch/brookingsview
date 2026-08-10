@@ -33,6 +33,29 @@ brus. Health/Wellness (10906) och Lectures/Speakers (10911) fanns som
 kategorier men stod inte med i den ursprungliga prioriteringslistan --
 lämnade utanför tills vidare, lätt att lägga till (bara ett ID i dicten).
 
+EDITORIAL-OMORGANISERING (Fix Round 1, 2026-08-11): alla fem kategorier
+skrapas fortfarande i EN gemensam hämtning (ingen ny källfråga), men
+routas nu till TVÅ olika sidor via bucket-fältet (se migration 015):
+  bucket="university"     Athletics + Camps/Conferences -> /university
+  bucket="arts_culture"   Music + Special Events + Theatre/Dance -> /events
+                          (taggade "Arts & Culture" där, se events.astro)
+Museum-/trädgårdsvenues (South Dakota Art Museum, McCrory Gardens) tvingas
+till arts_culture via platsnamn (_ARTS_VENUE_KEYWORDS) oavsett kategori-ID
+-- verifierat live att båda redan ligger under Special Events (alltså
+redan arts_culture ändå), men regeln är ett medvetet skyddsnät om ett
+framtida museum-/trädgårdsevent skulle taggas annorlunda.
+
+BORTFILTRERING AV ICKE-PUBLIKT BRUS (Fix Round 1): även inom de skrapade
+kategorierna finns interna poster ingen allmän läsare bryr sig om --
+verifierat live: "Nursing Induction Ceremony" (x4 samma dag) vars EGEN
+teaser säger "Public Calendar Includes Faculty, Staff & Students Invite
+Only", och pensionsmottagningar ("Dudash Retirement Reception", "Bob's
+Retirement Reception"). is_filtered/filter_reason flaggar dessa
+deterministiskt (nyckelordsmatchning, ingen AI -- se _filter_reason(),
+samma "flagga i stället för att kasta"-princip som is_closure i
+school_alerts_v1.py) så frontend kan hoppa över dem utan att posten
+försvinner ur tabellen -- justerbart senare utan omskrapning.
+
 SIDGRÄNS: ~233 events matchar whitelisten av totalt ~481 -- listan är
 redan datumsorterad stigande (dagens datum -> framåt), så bara de första
 sidorna (max_pages i configen) hämtas. "This week/coming up"-vyerna behöver
@@ -71,9 +94,52 @@ CATEGORY_WHITELIST: dict[str, str] = {
     "10896": "Camps/Conferences",
 }
 
+# label -> vilken sida eventet routas till, se moduldocstring
+# "EDITORIAL-OMORGANISERING".
+BUCKET_MAP: dict[str, str] = {
+    "Athletics": "university",
+    "Camps/Conferences": "university",
+    "Music": "arts_culture",
+    "Special Events": "arts_culture",
+    "Theatre/Dance": "arts_culture",
+}
+
+# platsnamn som tvingar arts_culture oavsett kategori -- skyddsnät för
+# museum-/trädgårdsevent utan en egen ren kategori-ID, se moduldocstring.
+_ARTS_VENUE_KEYWORDS = ("south dakota art museum", "mccrory gardens")
+
+# Nyckelordsmatchning mot titel+teaser -- exakta fraser, inte lösa ord, för
+# att INTE råka fånga legitima publika event som bara nämner "faculty" eller
+# "invited" i förbigående (verifierat mot riktig data: "Dr. Anna DeGraff
+# Faculty Recital" och "CAFES Block Party" -- "...Faculty and Staff... are
+# invited to attend" -- ska INTE fastna, till skillnad från "Faculty, Staff &
+# Students Invite Only").
+_INVITE_ONLY_RE = re.compile(
+    r"invite[\s-]only|invitation[\s-]only|by invitation|faculty,\s*staff",
+    re.IGNORECASE,
+)
+_RETIREMENT_RE = re.compile(r"retirement reception", re.IGNORECASE)
+
 _SD_TZ = ZoneInfo("America/Chicago")
 
 _MONTH_DAY_RE = re.compile(r"^[A-Za-z]{3}$")
+
+
+def _bucket_for(primary_category: str | None, location: str | None) -> str:
+    loc_low = (location or "").lower()
+    if any(kw in loc_low for kw in _ARTS_VENUE_KEYWORDS):
+        return "arts_culture"
+    return BUCKET_MAP.get(primary_category, "university")
+
+
+def _filter_reason(title: str, teaser: str | None) -> str | None:
+    """Deterministisk (ingen AI) -- se moduldocstring "BORTFILTRERING"."""
+    if _RETIREMENT_RE.search(title):
+        return "retirement_reception"
+    haystack = f"{title} {teaser or ''}"
+    if _INVITE_ONLY_RE.search(haystack):
+        return "invite_only"
+    return None
 
 
 class SdsuEventsParser(BaseParser):
@@ -83,7 +149,8 @@ class SdsuEventsParser(BaseParser):
     # post i stället för att vara oföränderlig källdata.
     conflict_columns = ("town_id", "external_event_id")
     update_columns = ["title", "teaser", "location", "starts_at", "ends_at",
-                       "categories", "primary_category", "raw_data", "content_hash"]
+                       "categories", "primary_category", "bucket", "is_filtered",
+                       "filter_reason", "raw_data", "content_hash"]
 
     def _headers(self) -> dict:
         return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
@@ -156,6 +223,8 @@ def _parse_event_block(block) -> dict | None:
 
     categories = [a.get_text(strip=True) for a in block.select(".sds-ec__date-item--tags a")]
     primary_category = next((c for c in categories if c in CATEGORY_WHITELIST.values()), None)
+    bucket = _bucket_for(primary_category, location)
+    filter_reason = _filter_reason(title, teaser)
 
     # VIKTIGT: URL:en ensam är INTE ett stabilt dedup-nyckel -- verifierat
     # live 2026-08-10 att SDSU återanvänder samma slug (t.ex.
@@ -175,6 +244,9 @@ def _parse_event_block(block) -> dict | None:
         "ends_at": ends_at,
         "categories": categories,
         "primary_category": primary_category,
+        "bucket": bucket,
+        "is_filtered": filter_reason is not None,
+        "filter_reason": filter_reason,
         "event_url": f"https://www.sdstate.edu{href}",
         "source": "sdsu_event_calendar",
         "raw_data": {"title": title, "time_text": time_txt, "teaser": teaser, "categories": categories},

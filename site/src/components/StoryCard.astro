@@ -6,8 +6,22 @@ import { formatDate, formatTime, formatCalendarDate, CATEGORY_LABELS } from '../
 import ShareButtons from './ShareButtons.astro';
 import { siteConfig } from '../lib/site-config';
 
-interface Props { story: Story; compact?: boolean; }
-const { story, compact = false } = Astro.props;
+interface Props {
+  story: Story;
+  compact?: boolean;
+  /** Extern länk-override -- för adapterade icke-story-poster (t.ex. SDSU
+   *  arts_culture-events, se events.astro) som inte har en egen /s/[slug]-
+   *  sida att länka till. Satt: titel/bild länkar hit i stället, och
+   *  ShareButtons (som delar sajtens EGEN /s/slug-URL) hoppas över, se
+   *  nedan. */
+  href?: string;
+  /** Kicker-override -- för samma adapterade poster, som inte har en
+   *  meningsfull source_type att härleda en kicker-etikett ur. */
+  kicker?: string;
+}
+const { story, compact = false, href: hrefOverride, kicker: kickerOverride } = Astro.props;
+const href = hrefOverride ?? `/s/${story.slug}`;
+const isExternal = Boolean(hrefOverride);
 const shareUrl = new URL(`/s/${story.slug}/`, siteConfig.siteUrl).href;
 
 const isAlert = story.source_type === 'alert';
@@ -25,12 +39,12 @@ const timeLabel = hasByline
       ? formatCalendarDate(when)  // datum-utan-klockslag -- se db.ts
       : `${formatDate(when)}${!isAlert && formatTime(when) ? ` · ${formatTime(when)}` : ''}`;
 
-const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall'
-  : hasByline ? (CATEGORY_LABELS[story.source_type] ?? 'Feature') : 'Events';
+const kicker = kickerOverride ?? (isAlert ? 'Alert' : isMeeting ? 'City hall'
+  : hasByline ? (CATEGORY_LABELS[story.source_type] ?? 'Feature') : 'Events');
 ---
 <article class:list={['item', isAlert && 'item--alert']}>
   {!compact && story.image_path && (
-    <a class="item__image-link" href={`/s/${story.slug}`} tabindex="-1" aria-hidden="true">
+    <a class="item__image-link" href={href} rel={isExternal ? 'noopener' : undefined} tabindex="-1" aria-hidden="true">
       <img class="item__image" src={story.image_path} alt="" loading="lazy" />
     </a>
   )}
@@ -38,9 +52,9 @@ const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall'
     <span class="kicker">{kicker}</span>
     {timeLabel && <span class="item__when data">{timeLabel}</span>}
   </p>
-  <h3 class="item__title"><a href={`/s/${story.slug}`}>{story.title}</a></h3>
+  <h3 class="item__title"><a href={href} rel={isExternal ? 'noopener' : undefined}>{story.title}</a></h3>
   {!compact && <p class="item__body">{story.body}</p>}
-  {!compact && hasByline && (
+  {!compact && hasByline && !isExternal && (
     <ShareButtons url={shareUrl} title={story.title} />
   )}
 </article>

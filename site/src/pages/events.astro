@@ -2,12 +2,58 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
-import type { Story } from '../lib/db';
-import { getUpcomingStories, getPastStories } from '../lib/db';
+import type { Story, SdsuEvent } from '../lib/db';
+import { getUpcomingStories, getPastStories, getUpcomingArtsEvents } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
-const upcoming = await getUpcomingStories(['event'], 120);
-const past = await getPastStories(['event'], 12);
+const [upcoming, past, artsEvents] = await Promise.all([
+  getUpcomingStories(['event'], 120),
+  getPastStories(['event'], 12),
+  // Brookings-specifikt (SDSU) -- tom lista för andra orter, samma
+  // ofarliga "town-scoped, naturally empty elsewhere"-mönster som
+  // getNextRegionalGame/getUpcomingSdsuEvents. Musik/Special Events/
+  // Theatre-Dance från SDSU:s kalender taggas "Arts & Culture" här i
+  // stället för att visas på /university, se
+  // scrapers/parsers/sdsu_events_v1.py:s "EDITORIAL-OMORGANISERING".
+  getUpcomingArtsEvents(40),
+]);
+
+/** SDSU arts_culture-events har ingen egen /s/[slug]-sida (deras länk är
+ *  event_url, ut till sdstate.edu) -- adapteras till Story-formen bara så
+ *  StoryCard kan återanvändas, men renderas ALLTID med href/kicker-override
+ *  (se StoryCard.astro) så titeln/bilden länkar externt och ShareButtons
+ *  (som annars delar sajtens egen /s/slug-URL) hoppas över. */
+function artsEventAsStory(event: SdsuEvent): Story {
+  return {
+    id: 0,
+    title: event.title,
+    slug: event.external_event_id,
+    body: event.teaser ?? '',
+    source_type: 'event',
+    source_url: event.event_url,
+    occurs_at: event.starts_at,
+    published_at: event.starts_at ?? new Date().toISOString(),
+    generated_by: 'sdsu_event_calendar',
+    byline: null,
+    image_path: null,
+    rating: null,
+    ingredients: null,
+    instructions: null,
+  };
+}
+
+type FeedItem =
+  | { kind: 'story'; occurs_at: string | null; story: Story }
+  | { kind: 'arts'; occurs_at: string | null; event: SdsuEvent };
+
+const items: FeedItem[] = [
+  ...upcoming.map((story): FeedItem => ({ kind: 'story', occurs_at: story.occurs_at, story })),
+  ...artsEvents.map((event): FeedItem => ({ kind: 'arts', occurs_at: event.starts_at, event })),
+].sort((a, b) => {
+  if (!a.occurs_at) return 1;
+  if (!b.occurs_at) return -1;
+  return new Date(a.occurs_at).getTime() - new Date(b.occurs_at).getTime();
+});
 
 /**
  * Bucket upcoming events by time horizon rather than showing one flat list.
@@ -39,8 +85,8 @@ function utcMidnight({ y, m, d }: { y: number; m: number; d: number }): Date {
   return new Date(Date.UTC(y, m - 1, d));
 }
 
-function dayIndex(story: Story, today: Date): number {
-  const eventDay = utcMidnight(localDateParts(new Date(story.occurs_at!)));
+function dayIndex(occursAt: string, today: Date): number {
+  const eventDay = utcMidnight(localDateParts(new Date(occursAt)));
   return Math.round((eventDay.getTime() - today.getTime()) / 86_400_000);
 }
 
@@ -48,14 +94,14 @@ const today = utcMidnight(localDateParts(new Date()));
 const weekdayOfToday = today.getUTCDay(); // 0=Sun -- today is already UTC-anchored, read it directly
 const daysToFriday = (5 - weekdayOfToday + 7) % 7;
 
-const buckets = { today: [] as Story[], weekend: [] as Story[], nextWeek: [] as Story[], later: [] as Story[] };
-for (const story of upcoming) {
-  if (!story.occurs_at) { buckets.later.push(story); continue; }
-  const offset = dayIndex(story, today);
-  if (offset <= 0) buckets.today.push(story);
-  else if (offset >= daysToFriday && offset <= daysToFriday + 2) buckets.weekend.push(story);
-  else if (offset < 14) buckets.nextWeek.push(story);
-  else buckets.later.push(story);
+const buckets = { today: [] as FeedItem[], weekend: [] as FeedItem[], nextWeek: [] as FeedItem[], later: [] as FeedItem[] };
+for (const item of items) {
+  if (!item.occurs_at) { buckets.later.push(item); continue; }
+  const offset = dayIndex(item.occurs_at, today);
+  if (offset <= 0) buckets.today.push(item);
+  else if (offset >= daysToFriday && offset <= daysToFriday + 2) buckets.weekend.push(item);
+  else if (offset < 14) buckets.nextWeek.push(item);
+  else buckets.later.push(item);
 }
 
 const sections = (
@@ -64,7 +110,7 @@ const sections = (
     ['This weekend', buckets.weekend],
     ['Coming up', buckets.nextWeek],
     ['Further out', buckets.later],
-  ] as [string, Story[]][]
+  ] as [string, FeedItem[]][]
 ).filter(([, list]) => list.length > 0);
 ---
 <BaseLayout title={`Events in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide
@@ -78,7 +124,12 @@ const sections = (
   {sections.length > 0 ? sections.map(([label, list]) => (
     <>
       <SectionRule label={label} />
-      <div class="grid">{list.map((story) => <StoryCard story={story} />)}</div>
+      <div class="grid">
+        {list.map((item) => item.kind === 'story'
+          ? <StoryCard story={item.story} />
+          : <StoryCard story={artsEventAsStory(item.event)} href={item.event.event_url} kicker="Arts & Culture" />
+        )}
+      </div>
     </>
   )) : (
     <p class="empty">No upcoming events listed right now.</p>
