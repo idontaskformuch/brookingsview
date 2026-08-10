@@ -108,10 +108,87 @@ TEMPLATERS = {
 }
 
 
-# --- budget-spårning --------------------------------------------------------
+# --- modellval per content-typ -----------------------------------------------
+#
+# Central, enda källan till "vilken modell skriver den här content-typen" --
+# ändra HÄR för att flytta en typ mellan Haiku/Sonnet, inget annat ställe
+# behöver röras. content/_base.py:s generate_article() och de tre
+# ai_pipeline-skripten (format_prompt/home_sales_digest/weekly) läser alla
+# härifrån via resolve_model().
+#
+# Innan detta fanns lästes modellen från cfg["ai"]["model"] (configs/*.json)
+# i de tre ai_pipeline-skripten, men de sex content/-modulerna (kronikor,
+# recension, recept) ignorerade configen helt och körde alltid DEFAULT_MODEL
+# nedan -- så per-typ-styrning fanns i praktiken inte. resolve_model() nedan
+# är nu den enda vägen in, och faller tillbaka till cfg["ai"]["model"] och
+# sedan DEFAULT_MODEL för typer som inte finns i dicten.
+#
+# Uppdelning 2026-08-10 (kostnadssänkning): strukturerad/extraktiv text
+# (recept, home-sales-digest, veckodigest, möten/event/varningar-formatering)
+# på Haiku -- lägre kostnad, och kvalitetskravet är "korrekt och tydlig", inte
+# "en distinkt röst". Tolkande/kreativ text (ledare, kulturessä, vetenskap,
+# kåseri, recension) kvar på Sonnet -- kåseriet är om något MER känsligt för
+# modellkvalitet än vetenskapskrönikan (ordlekar som inte landar är sämre än
+# neutral text), och en recension bygger på samma trovärdiga-röst-krav som en
+# ledare.
+CONTENT_TYPE_MODELS: dict[str, str] = {
+    # Haiku -- strukturerad/extraktiv, hög volym, lägre kreativitetskrav
+    "vardagsmiddag": "claude-haiku-4-5-20251001",
+    "home_sales_digest": "claude-haiku-4-5-20251001",
+    "weekly": "claude-haiku-4-5-20251001",
+    "meeting": "claude-haiku-4-5-20251001",
+    "event": "claude-haiku-4-5-20251001",
+    "alert": "claude-haiku-4-5-20251001",
+    # Sonnet -- tolkande/kreativ text, röst- och kvalitetskänslig
+    "editorial": "claude-sonnet-5",
+    "culture_essay": "claude-sonnet-5",
+    "vetenskap_kronika": "claude-sonnet-5",
+    "kvick_essa": "claude-sonnet-5",
+    "media_recension": "claude-sonnet-5",
+}
+
+DEFAULT_MODEL = "claude-sonnet-5"
+
+
+def resolve_model(content_type: str | None, cfg: dict | None = None) -> str:
+    """Vilken modell en given content-typ ska skriva med.
+
+    Ordning: CONTENT_TYPE_MODELS (explicit per-typ-styrning) -> cfg["ai"]["model"]
+    (stadens egen configinställning, om satt) -> DEFAULT_MODEL. En config med
+    en avvikande modell vinner ALDRIG över en explicit CONTENT_TYPE_MODELS-post
+    -- den senare är ett medvetet kostnads-/kvalitetsval per innehållstyp,
+    inte något en stads config ska kunna råka skriva över.
+    """
+    if content_type and content_type in CONTENT_TYPE_MODELS:
+        return CONTENT_TYPE_MODELS[content_type]
+    return (cfg or {}).get("ai", {}).get("model", DEFAULT_MODEL)
+
+
+# USD per token, per modell -- håller budgetspårningen (_record_spend nedan)
+# korrekt oavsett vilken modell en viss körning faktiskt använde. Innan detta
+# antog varje _record_spend-anrop Sonnets pris rakt av, vilket hade fått
+# Haiku-körningar att se dyrare ut i spårningen än de faktiskt är -- och
+# därmed underminerat hela poängen med att flytta billig content dit.
+# Prislistan är Anthropics publika per 2026-08 -- kontrollera mot
+# anthropic.com/pricing om den ändras.
+MODEL_PRICING: dict[str, tuple[float, float]] = {
+    "claude-sonnet-5": (3.0 / 1_000_000, 15.0 / 1_000_000),
+    "claude-haiku-4-5-20251001": (1.0 / 1_000_000, 5.0 / 1_000_000),
+}
+
+
+def pricing_for(model: str) -> tuple[float, float]:
+    """(usd_per_input_token, usd_per_output_token) för en given modell.
+
+    Okänd modell -> Sonnets pris (säkert att överskatta kostnad, aldrig
+    underskatta den mot det faktiska budgettaket)."""
+    return MODEL_PRICING.get(model, MODEL_PRICING["claude-sonnet-5"])
+
 
 _BUDGET_FILE = os.environ.get("AI_BUDGET_STATE", ".ai_budget.json")
-# grov prisuppskattning (USD per token) — justera mot aktuell prislista
+# Sonnets pris specifikt -- kvar för bakåtkompatibilitet (flera moduler
+# importerar dessa två namn direkt). Ny kod ska använda pricing_for(model)
+# ovan i stället, som ger rätt pris oavsett modell.
 _USD_PER_INPUT_TOKEN = 3.0 / 1_000_000
 _USD_PER_OUTPUT_TOKEN = 15.0 / 1_000_000
 
@@ -168,7 +245,8 @@ def format_record(record: dict, source_type: str, cfg: dict,
             return _fallback(record, source_type, cfg, reason="anthropic-paket saknas")
         client = anthropic.Anthropic()  # läser ANTHROPIC_API_KEY
 
-    model = ai_cfg.get("model", "claude-sonnet-5")
+    model = resolve_model(source_type, cfg)
+    price_in, price_out = pricing_for(model)
     source_text = guardrails.source_to_text(record)
     system = build_system_prompt(cfg)
 
@@ -181,8 +259,7 @@ def format_record(record: dict, source_type: str, cfg: dict,
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text"), msg.usage
 
     text, usage = _call()
-    _record_spend(usage.input_tokens * _USD_PER_INPUT_TOKEN
-                  + usage.output_tokens * _USD_PER_OUTPUT_TOKEN)
+    _record_spend(usage.input_tokens * price_in + usage.output_tokens * price_out)
 
     result = guardrails.validate(text, source_text, cfg)
     if not result.passed:
@@ -190,8 +267,7 @@ def format_record(record: dict, source_type: str, cfg: dict,
         strict = ("\n\nYour previous attempt included details not found in the source. "
                   "Rewrite using ONLY facts explicitly present in the SOURCE DATA.")
         text, usage = _call(strict)
-        _record_spend(usage.input_tokens * _USD_PER_INPUT_TOKEN
-                      + usage.output_tokens * _USD_PER_OUTPUT_TOKEN)
+        _record_spend(usage.input_tokens * price_in + usage.output_tokens * price_out)
         result = guardrails.validate(text, source_text, cfg)
 
     if result.passed:

@@ -49,16 +49,13 @@ from ai_pipeline import guardrails
 # Samma budgetliggare som format_prompt -- två separata räknare skulle göra
 # taket i configen meningslöst.
 from ai_pipeline.format_prompt import (
-    build_system_prompt, _spent_this_month, _record_spend,
+    build_system_prompt, _spent_this_month, _record_spend, resolve_model, pricing_for,
 )
 
 try:
     import anthropic
 except ImportError:  # pragma: no cover
     anthropic = None
-
-_USD_PER_INPUT_TOKEN = 3.0 / 1_000_000
-_USD_PER_OUTPUT_TOKEN = 15.0 / 1_000_000
 
 
 # Windows saknar strftime-flaggorna %-d och %-I (samma bugg som redan fixats en
@@ -263,7 +260,8 @@ def generate(data: dict, label: str, cfg: dict, client=None) -> tuple[str, str, 
             return template_fallback(data, label, cfg), "template_fallback", True
         client = anthropic.Anthropic()
 
-    model = ai_cfg.get("model", "claude-sonnet-5")
+    model = resolve_model("weekly", cfg)
+    price_in, price_out = pricing_for(model)
     system = build_prompt(cfg, label)
 
     def call(extra: str = "") -> str:
@@ -271,8 +269,7 @@ def generate(data: dict, label: str, cfg: dict, client=None) -> tuple[str, str, 
             model=model, max_tokens=1600, system=system + extra,
             messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}],
         )
-        _record_spend(msg.usage.input_tokens * _USD_PER_INPUT_TOKEN
-                      + msg.usage.output_tokens * _USD_PER_OUTPUT_TOKEN)
+        _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
 
     text = call()

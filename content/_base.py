@@ -19,10 +19,15 @@ try:
 except ImportError:  # pragma: no cover
     anthropic = None
 
-from ai_pipeline.format_prompt import _record_spend, _spent_this_month, _USD_PER_INPUT_TOKEN, _USD_PER_OUTPUT_TOKEN
+from ai_pipeline.format_prompt import _record_spend, _spent_this_month, pricing_for, resolve_model
 from guardrails.originality_check import is_original
 from guardrails.style_filter import clean
 
+# Kvar som den modell generate_article() faller tillbaka på när ingen
+# content_type ges (eller när content_type saknas i CONTENT_TYPE_MODELS och
+# cfg inte heller anger något) -- den faktiska per-typ-styrningen sker via
+# resolve_model()/CONTENT_TYPE_MODELS i ai_pipeline/format_prompt.py, enda
+# källan att ändra vid ett modellbyte.
 DEFAULT_MODEL = "claude-sonnet-5"
 # Svensk text kostar ~4 tokens/ord med den här modellens tokenizer (mätt: 701 ord =
 # 2783 output-tokens), mot engelskans ~1.3. 900 ord (culture_essay, längsta målet) kan
@@ -106,10 +111,17 @@ def generate_article(
     existing_corpus: list[str],
     cfg: dict | None = None,
     client=None,
-    model: str = DEFAULT_MODEL,
+    content_type: str | None = None,
+    model: str | None = None,
     max_tokens: int = DEFAULT_MAX_TOKENS,
 ) -> GeneratedArticle | None:
     """Generate one article: AI call -> style_filter.clean() -> originality_check.
+
+    Model selection: an explicit `model=` always wins (kept for direct overrides/
+    tests); otherwise resolved from `content_type` via
+    ai_pipeline.format_prompt.CONTENT_TYPE_MODELS -- pass the module's own
+    dispatch key (e.g. "editorial", "vardagsmiddag") so a model change for that
+    content type only requires editing CONTENT_TYPE_MODELS, not this call site.
 
     Returns None if the monthly budget cap is hit, the anthropic package/client is
     unavailable, or the result fails is_original() -- callers should log and skip
@@ -125,15 +137,17 @@ def generate_article(
             return None
         client = anthropic.Anthropic()
 
+    resolved_model = model or resolve_model(content_type, cfg)
+    price_in, price_out = pricing_for(resolved_model)
+
     msg = client.messages.create(
-        model=model,
+        model=resolved_model,
         max_tokens=max_tokens,
         system=system_prompt + _OUTPUT_FORMAT_INSTRUCTION,
         messages=[{"role": "user", "content": local_input}],
     )
     text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
-    _record_spend(msg.usage.input_tokens * _USD_PER_INPUT_TOKEN
-                  + msg.usage.output_tokens * _USD_PER_OUTPUT_TOKEN)
+    _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
 
     # En text avkapad mitt i meningen är samma sorts fel som ett underkänt
     # originality_check: hellre ingen artikel idag än en trasig.

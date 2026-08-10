@@ -35,4 +35,9 @@ INPUT: Du får ett vetenskapligt ämne eller ett aktuellt rön. Din uppgift är 
 def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
           client=None) -> GeneratedArticle | None:
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(town=town_label(cfg))
-    return generate_article(system_prompt, local_input, existing_corpus, cfg=cfg, client=client)
+    # content_type="vetenskap_kronika", inte "vetenskap" -- måste matcha
+    # rotationsvärdet/MODULES-nyckeln (se moduldocstringen ovan om filnamn vs
+    # rotationsvärde), annars faller CONTENT_TYPE_MODELS-uppslaget tyst
+    # tillbaka på cfg/DEFAULT_MODEL i stället för den avsedda modellen.
+    return generate_article(system_prompt, local_input, existing_corpus, cfg=cfg, client=client,
+                             content_type="vetenskap_kronika")

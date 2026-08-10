@@ -46,7 +46,8 @@ def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
           client=None) -> GeneratedArticle | None:
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(town=town_label(cfg))
     article = generate_article(system_prompt + _RATING_INSTRUCTION, local_input,
-                                existing_corpus, cfg=cfg, client=client)
+                                existing_corpus, cfg=cfg, client=client,
+                                content_type="media_recension")
     if article is None:
         return None
 

@@ -68,7 +68,8 @@ def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
         ingredients_start=_INGREDIENTS_START, ingredients_end=_INGREDIENTS_END,
         instructions_start=_INSTRUCTIONS_START, instructions_end=_INSTRUCTIONS_END,
     )
-    article = generate_article(system_prompt, local_input, existing_corpus, cfg=cfg, client=client)
+    article = generate_article(system_prompt, local_input, existing_corpus, cfg=cfg, client=client,
+                                content_type="vardagsmiddag")
     if article is None:
         return None
 

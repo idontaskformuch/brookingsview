@@ -28,4 +28,5 @@ INPUT: Du får ett ämne eller en iakttagelse. Din uppgift är att göra en unde
 def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
           client=None) -> GeneratedArticle | None:
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(town=town_label(cfg))
-    return generate_article(system_prompt, local_input, existing_corpus, cfg=cfg, client=client)
+    return generate_article(system_prompt, local_input, existing_corpus, cfg=cfg, client=client,
+                             content_type="kvick_essa")
