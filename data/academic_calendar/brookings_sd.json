@@ -1,0 +1,178 @@
+{
+  "_notes": "Handkurerat 2026-08-10 mot https://www.sdstate.edu/academics/academic-calendar (Fall 2026 + Spring 2027, de två närmast kommande terminerna vid skrivandet). Uppdatera 2x/år -- läs av sidan igen och redigera denna fil, kör sedan 'python -m scripts.seed_academic_calendar brookings_sd'. Inga personnamn.",
+  "dates": [
+    {
+      "label": "Fall classes begin",
+      "term": "Fall 2026",
+      "category": "term_start",
+      "starts_on": "2026-08-24"
+    },
+    {
+      "label": "Last day to drop or add and adjust final fees",
+      "term": "Fall 2026",
+      "category": "deadline",
+      "starts_on": "2026-09-03"
+    },
+    {
+      "label": "Fall tuition and fees payment due; 'W' grade begins",
+      "term": "Fall 2026",
+      "category": "deadline",
+      "starts_on": "2026-09-04"
+    },
+    {
+      "label": "Labor Day holiday",
+      "term": "Fall 2026",
+      "category": "holiday",
+      "starts_on": "2026-09-07"
+    },
+    {
+      "label": "Last day to submit a graduation application for fall 2026",
+      "term": "Fall 2026",
+      "category": "deadline",
+      "starts_on": "2026-09-11"
+    },
+    {
+      "label": "Native American Day holiday",
+      "term": "Fall 2026",
+      "category": "holiday",
+      "starts_on": "2026-10-12"
+    },
+    {
+      "label": "First half fall term ends",
+      "term": "Fall 2026",
+      "category": "deadline",
+      "starts_on": "2026-10-16"
+    },
+    {
+      "label": "Midterm grades due",
+      "term": "Fall 2026",
+      "category": "deadline",
+      "starts_on": "2026-10-21"
+    },
+    {
+      "label": "Last day to drop a course",
+      "term": "Fall 2026",
+      "category": "deadline",
+      "starts_on": "2026-11-06"
+    },
+    {
+      "label": "Veterans' Day holiday",
+      "term": "Fall 2026",
+      "category": "holiday",
+      "starts_on": "2026-11-11"
+    },
+    {
+      "label": "Thanksgiving recess",
+      "term": "Fall 2026",
+      "category": "break",
+      "starts_on": "2026-11-25",
+      "ends_on": "2026-11-29"
+    },
+    {
+      "label": "No classes; final exam preparation",
+      "term": "Fall 2026",
+      "category": "deadline",
+      "starts_on": "2026-12-09"
+    },
+    {
+      "label": "Fall final exams",
+      "term": "Fall 2026",
+      "category": "exam",
+      "starts_on": "2026-12-10",
+      "ends_on": "2026-12-16"
+    },
+    {
+      "label": "Fall grades due",
+      "term": "Fall 2026",
+      "category": "deadline",
+      "starts_on": "2026-12-21"
+    },
+    {
+      "label": "Spring classes begin",
+      "term": "Spring 2027",
+      "category": "term_start",
+      "starts_on": "2027-01-11"
+    },
+    {
+      "label": "Martin Luther King Day holiday",
+      "term": "Spring 2027",
+      "category": "holiday",
+      "starts_on": "2027-01-18"
+    },
+    {
+      "label": "Last day to drop or add and adjust final fees",
+      "term": "Spring 2027",
+      "category": "deadline",
+      "starts_on": "2027-01-20"
+    },
+    {
+      "label": "Spring tuition and fees payment due; 'W' grade begins",
+      "term": "Spring 2027",
+      "category": "deadline",
+      "starts_on": "2027-01-21"
+    },
+    {
+      "label": "Last day to submit a graduation application for spring 2027",
+      "term": "Spring 2027",
+      "category": "deadline",
+      "starts_on": "2027-01-29"
+    },
+    {
+      "label": "Presidents' Day holiday",
+      "term": "Spring 2027",
+      "category": "holiday",
+      "starts_on": "2027-02-15"
+    },
+    {
+      "label": "First half spring term ends",
+      "term": "Spring 2027",
+      "category": "deadline",
+      "starts_on": "2027-03-08"
+    },
+    {
+      "label": "Midterm grades due",
+      "term": "Spring 2027",
+      "category": "deadline",
+      "starts_on": "2027-03-11"
+    },
+    {
+      "label": "Spring break",
+      "term": "Spring 2027",
+      "category": "break",
+      "starts_on": "2027-03-15",
+      "ends_on": "2027-03-19"
+    },
+    {
+      "label": "Easter recess",
+      "term": "Spring 2027",
+      "category": "break",
+      "starts_on": "2027-03-26",
+      "ends_on": "2027-03-28"
+    },
+    {
+      "label": "Last day to drop a course",
+      "term": "Spring 2027",
+      "category": "deadline",
+      "starts_on": "2027-04-06"
+    },
+    {
+      "label": "Spring final exams",
+      "term": "Spring 2027",
+      "category": "exam",
+      "starts_on": "2027-05-03",
+      "ends_on": "2027-05-07"
+    },
+    {
+      "label": "Commencement",
+      "term": "Spring 2027",
+      "category": "commencement",
+      "starts_on": "2027-05-08"
+    },
+    {
+      "label": "Spring grades due",
+      "term": "Spring 2027",
+      "category": "deadline",
+      "starts_on": "2027-05-12"
+    }
+  ]
+}

@@ -50,6 +50,7 @@ const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const nav = [
   { href: '/events', label: 'Events' },
+  ...(isBrookings ? [{ href: '/university', label: 'University' }] : []),
   ...(isBrookings ? [{ href: '/jackrabbits', label: 'Jackrabbits' }] : []),
   { href: '/city-hall', label: 'City hall' },
   { href: '/facilities', label: 'Facilities' },

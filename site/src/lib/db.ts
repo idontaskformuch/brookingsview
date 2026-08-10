@@ -31,7 +31,7 @@ export const TOWN_ID = siteConfig.townId;
 export type SourceType =
   | 'meeting' | 'event' | 'alert' | 'weekly'
   | 'culture_essay' | 'editorial' | 'vetenskap_kronika' | 'kvick_essa'
-  | 'media_recension' | 'vardagsmiddag' | 'home_sales_digest' | 'sports_digest';
+  | 'media_recension' | 'vardagsmiddag' | 'home_sales_digest' | 'sports_digest' | 'university_digest';
 
 /** Presentation-layer label per source_type, för Byline-raden. Ingen egen DB-kolumn --
  *  category är en ren funktion av source_type, inget som behöver lagras separat. */
@@ -44,6 +44,7 @@ export const CATEGORY_LABELS: Partial<Record<SourceType, string>> = {
   vardagsmiddag: 'Recipe',
   home_sales_digest: 'Market digest',
   sports_digest: 'Sports digest',
+  university_digest: 'University digest',
 };
 
 /** De sex innehållstyperna från Content Track v1 -- en sammanhållen lista så att
@@ -71,6 +72,7 @@ export const CATEGORY_HREFS: Partial<Record<SourceType, string>> = {
   vardagsmiddag: '/recipes',
   home_sales_digest: '/home-sales',
   sports_digest: '/sports',
+  university_digest: '/university',
 };
 
 export interface Story {
@@ -476,6 +478,83 @@ export async function getRecentJobs(limit = 100): Promise<Job[]> {
      ORDER BY posted_at DESC NULLS LAST
      LIMIT ${limit}
   `) as Job[];
+}
+
+/** En rad ur sdsu_events -- se db/migrations/013_sdsu_events.sql och
+ *  scrapers/parsers/sdsu_events_v1.py. teaser är källans EGEN korta
+ *  sammanfattning, aldrig en fullständig eventbeskrivning -- se parserns
+ *  moduldocstring för upphovsrättsresonemanget. */
+export interface SdsuEvent {
+  external_event_id: string;
+  title: string;
+  teaser: string | null;
+  location: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  categories: string[];
+  primary_category: string | null;
+  event_url: string;
+}
+
+/** Kommande SDSU-evenemang, tidigast först. En liten "redan börjat men inte
+ *  slut"-marginal (3 h) i stället för strikt now() -- annars försvinner ett
+ *  pågående evenemang ur listan mitt under tiden det äger rum. */
+export async function getUpcomingSdsuEvents(limit = 60): Promise<SdsuEvent[]> {
+  return (await sql`
+    SELECT external_event_id, title, teaser, location, starts_at, ends_at,
+           categories, primary_category, event_url
+      FROM sdsu_events
+     WHERE town_id = ${TOWN_ID}
+       AND starts_at >= now() - interval '3 hours'
+     ORDER BY starts_at ASC
+     LIMIT ${limit}
+  `) as SdsuEvent[];
+}
+
+/** En rad ur academic_calendar_dates -- se db/migrations/014_academic_calendar.sql
+ *  och data/academic_calendar/<town_id>.json (handkuraterat, se
+ *  scripts/seed_academic_calendar.py). */
+export interface AcademicDate {
+  label: string;
+  term: string | null;
+  category: string | null;
+  starts_on: string;
+  ends_on: string | null;
+}
+
+/** De närmaste akademiska nyckeldatumen -- bara "next up"-ribbon, inte en
+ *  full terminskalender (se /university.astro). Ett datumintervall som
+ *  redan börjat men inte slutat (t.ex. pågående lovvecka) räknas som
+ *  fortfarande relevant, inte förbi. */
+export async function getUpcomingAcademicDates(limit = 2): Promise<AcademicDate[]> {
+  return (await sql`
+    SELECT label, term, category, starts_on, ends_on
+      FROM academic_calendar_dates
+     WHERE town_id = ${TOWN_ID}
+       AND COALESCE(ends_on, starts_on) >= CURRENT_DATE
+     ORDER BY starts_on ASC
+     LIMIT ${limit}
+  `) as AcademicDate[];
+}
+
+/** Nästa "marquee"-evenemang (Athletics/Music -- de kategorier som drar
+ *  flest läsare) -- till förstasidans rail, samma roll som
+ *  getNextRegionalGame() fyller för regional sport. Konkurrerar om SAMMA
+ *  rail-slot som Jackrabbits nästa match för Brookings (se index.astro) --
+ *  ett eget, smalt query i stället för att hämta alla getUpcomingSdsuEvents()
+ *  bara för förstasidans enda rad. */
+export async function getNextSdsuMarqueeEvent(): Promise<SdsuEvent | null> {
+  const rows = (await sql`
+    SELECT external_event_id, title, teaser, location, starts_at, ends_at,
+           categories, primary_category, event_url
+      FROM sdsu_events
+     WHERE town_id = ${TOWN_ID}
+       AND primary_category IN ('Athletics', 'Music')
+       AND starts_at >= now() - interval '3 hours'
+     ORDER BY starts_at ASC
+     LIMIT 1
+  `) as SdsuEvent[];
+  return rows[0] ?? null;
 }
 
 /** Nästa ospelade/pågående match bland primary-lagen -- till förstasidans

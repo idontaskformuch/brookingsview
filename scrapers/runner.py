@@ -44,6 +44,7 @@ REGISTRY: dict[str, str] = {
     # över Jackrabbits registrering i den här dicten.
     "pro_sports":      "scrapers.parsers.regional_sports_v1:RegionalSportsParser",
     "school_alerts":   "scrapers.parsers.school_alerts_v1:SchoolAlertsParser",
+    "sdsu_events":     "scrapers.parsers.sdsu_events_v1:SdsuEventsParser",
     "traffic":         "scrapers.parsers.traffic_v1:TrafficParser",
     "usda":            "scrapers.parsers.usda:UsdaParser",
     # stubbar (väntar på Stage 0-verifiering av källstruktur)

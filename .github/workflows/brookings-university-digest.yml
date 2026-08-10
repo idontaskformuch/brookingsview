@@ -1,0 +1,37 @@
+name: brookings-university-digest
+# Kör sdsu_weekly_digest.py, som sammanfattar INNEVARANDE måndag-söndag-vecka
+# i sdsu_events (SDSU:s publika event-kalender, se
+# scrapers/parsers/sdsu_events_v1.py). Till skillnad från
+# moval-sports-digest.yml (som täcker en REDAN SPELAD vecka) är det här
+# framåtblickande -- körs måndag morgon så veckans events redan är kända.
+# content_hash-kollen i skriptet skippar AI-anropet om samma vecka körs om
+# utan att underlaget ändrats.
+
+on:
+  schedule:
+    - cron: "0 13 * * 1"   # måndag 13:00 UTC (08:00 Central)
+  workflow_dispatch: {}
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:      ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      USER_AGENT:        "brookingsview.com (contact: hello@brookingsview.com)"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Generera veckans SDSU-sammanfattning
+        run: python -m ai_pipeline.sdsu_weekly_digest --config configs/brookings_sd.json
+      - name: Trigga Cloudflare Pages-rebuild
+        if: success()
+        run: |
+          if [ -z "${{ secrets.PAGES_DEPLOY_HOOK }}" ]; then
+            echo "::error::PAGES_DEPLOY_HOOK saknas — rebuild kan inte triggas"
+            exit 1
+          fi
+          curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK }}"

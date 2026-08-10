@@ -192,6 +192,18 @@
       },
       "_notes": "VERIFIERAD 2026-08-10 live mot Adzuna Job Search API med riktiga ADZUNA_APP_ID/ADZUNA_APP_KEY (ENDAST i .env/GitHub-secrets, aldrig i denna fil) -- 'Brookings, SD' gav riktiga träffar. Gratisnivå ~1000 anrop/månad (~33/dag) -- refresh_minutes: 1440 (ett dygn) garanterar ETT anrop/ort/dag trots att scrape.yml kör varje timme, se runner.py:s nya refresh_minutes-spärr (db.last_run_at) och jobs_v1.py:s moduldocstring."
     },
+    "sdsu_events": {
+      "type": "sdsu_events",
+      "enabled": true,
+      "max_pages": 6,
+      "parser": "sdsu_events_v1",
+      "refresh_minutes": 360,
+      "output": {
+        "format": "structured_data_no_ai",
+        "voice": "n/a (fakta, ingen AI-generering -- se sdsu_weekly_digest.py för den skrivna delen)"
+      },
+      "_notes": "VERIFIERAD 2026-08-10: den gamla 'sdsu_events'-overifierade-poster i events.sources (nedan, tagen bort) gissade fel plattform (Localist/Concept3D) och fel URL (/events). Riktiga källan: sdstate.edu/event-calendar, Drupal 11, helt server-renderad, robots.txt tillåter uttryckligen /event-calendar och /events/ för User-agent: * (ClaudeBot är begränsad till andra sökvägar, men den här skrapan kör under projektets egen User-Agent, se sdsu_events_v1.py:s moduldocstring för det fulla resonemanget). Alla 12 kategori-ID:n lästa live av kalenderns kryssrutor; bara Athletics/Music/Special Events/Theatre-Dance/Camps-Conferences skrapas (233 av 481 events), se CATEGORY_WHITELIST i parsern. Live-testad: 25 verkliga events landade korrekt, inklusive en bekräftad bugg (samma URL-slug återanvänds för flera olika matcher på olika datum -- dedup-nyckeln är URL+starttid, inte URL ensam)."
+    },
     "events": {
       "type": "multi",
       "enabled": true,
@@ -207,12 +219,6 @@
           "kind": "ical",
           "url": "https://brookingslibrary.libcal.com/ical_subscribe.php?src=p&cid=19943",
           "_note": "BEKRÄFTAD 2026-07-17. LibCal öppet iCal-abonnemangsflöde (src=p = publikt, ingen hemlig nyckel). Byggd och klar."
-        },
-        {
-          "name": "sdsu_events",
-          "kind": "unconfirmed",
-          "url": "https://www.sdstate.edu/events",
-          "_note": "VERIFIERA: hitta SDSU:s publika iCal-/ICS-export för evenemangskalendern (troligen en Localist/Concept3D-plattform) innan denna byggs. Sidans generella URL räcker inte -- behöver ett faktiskt exportflöde likt bibliotekets."
         },
         {
           "name": "visit_brookings",
@@ -356,7 +362,7 @@
   },
   "_verify_before_launch": [
     "Legistar client_id för Brookings (webapi.legistar.com/v1/<id>)",
-    "SDSU events-kalenderns publika URL / iCal-feed",
+    "KLART: SDSU events-kalendern = sdstate.edu/event-calendar (Drupal 11, ej Localist som tidigare gissat), verifierad live 2026-08-10, se sdsu_events._notes.",
     "NWS county/zone-kod för Brookings County",
     "SD DOT 511 data-URL/endpoint",
     "SmartGov: att permit-/licensdata är läsbar utan inloggning",

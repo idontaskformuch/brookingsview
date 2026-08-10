@@ -18,25 +18,27 @@ import LeadStory from '../components/LeadStory.astro';
 import WeeklyRoundup from '../components/WeeklyRoundup.astro';
 import GameCard from '../components/GameCard.astro';
 import RegionalGameCard from '../components/RegionalGameCard.astro';
+import SdsuEventCard from '../components/SdsuEventCard.astro';
 import SchoolAlertBanner from '../components/SchoolAlertBanner.astro';
 import TrafficWidget from '../components/TrafficWidget.astro';
 import Tile from '../components/Tile.astro';
 import {
   getUpcomingStories, getActiveAlerts, getUpcomingGames, getNextRegionalGame,
-  getActiveSchoolAlerts, getActiveTrafficIncidents, getWeather, getAgPrices,
-  getLatestWeekly, getTodaysFeature, CATEGORY_HREFS,
+  getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
+  getWeather, getAgPrices, getLatestWeekly, getTodaysFeature, CATEGORY_HREFS,
 } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 
-const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, periods, prices, weekly, feature] = await Promise.all([
+const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, feature] = await Promise.all([
   getActiveAlerts(),
   getActiveSchoolAlerts(),
   getActiveTrafficIncidents(),
   getUpcomingStories(['event', 'meeting'], 40),
   getUpcomingGames(3),
   getNextRegionalGame(),
+  getNextSdsuMarqueeEvent(),
   getWeather(),
   getAgPrices(),
   getLatestWeekly(),
@@ -61,6 +63,21 @@ const weekStories = rest.filter((s) => within(s.occurs_at, endOfDay, weekEnd));
 const laterStories = rest.filter((s) => s.occurs_at && new Date(s.occurs_at) >= weekEnd);
 
 const nextGame = games[0] ?? null;
+
+// Jackrabbits nästa match och SDSU:s nästa "marquee"-evenemang (Athletics/
+// Music) konkurrerar om SAMMA rail-slot för Brookings -- "mutually
+// exclusive" enligt spec, inte två samtidiga rutor. Whichever is
+// chronologically sooner vinner slotten; det finns inget "rätt" svar när
+// båda finns (en Jackrabbits-match ÄR ofta redan med i SDSU:s egen
+// Athletics-kategori), så tidsordning är den enda regeln som inte kräver
+// att gissa vilken källa som "äger" sanningen.
+const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
+  nextGame && nextSdsuEvent
+    ? (new Date(nextGame.starts_at ?? 0) <= new Date(nextSdsuEvent.starts_at ?? 0) ? 'jackrabbits' : 'sdsu')
+    : nextGame ? 'jackrabbits'
+    : nextSdsuEvent ? 'sdsu'
+    : nextRegionalGame ? 'regional'
+    : null;
 ---
 
 <BaseLayout title={`${siteConfig.siteName} — what's happening in ${siteConfig.cityName}, ${siteConfig.stateAbbr}`} wide>
@@ -92,11 +109,15 @@ const nextGame = games[0] ?? null;
           />
         </a>
       )}
-      {nextGame ? (
+      {gameSlot === 'jackrabbits' && nextGame ? (
         <a class="rail__link rail__game" href="/jackrabbits">
           <GameCard game={nextGame} />
         </a>
-      ) : nextRegionalGame && (
+      ) : gameSlot === 'sdsu' && nextSdsuEvent ? (
+        <a class="rail__link rail__game" href="/university">
+          <SdsuEventCard event={nextSdsuEvent} />
+        </a>
+      ) : gameSlot === 'regional' && nextRegionalGame && (
         <a class="rail__link rail__game" href="/sports">
           <RegionalGameCard game={nextRegionalGame} />
         </a>
@@ -164,6 +185,12 @@ const nextGame = games[0] ?? null;
   <section aria-label="Sections">
     <SectionRule label={`More from ${siteConfig.cityName}`} />
     <div class="panels">
+      {isBrookings && (
+        <a class="panel" href="/university">
+          <h3>University</h3>
+          <p>Games, concerts, shows and campus events at South Dakota State.</p>
+        </a>
+      )}
       {isBrookings && (
         <a class="panel" href="/jackrabbits">
           <h3>Jackrabbits</h3>
