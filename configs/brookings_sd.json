@@ -165,6 +165,18 @@
       },
       "_notes": "VERIFIERAD 2026-08-10: till skillnad från school_board ovan (403, ic-board.com) är den här källan HELT ÖPPEN -- brookings.k12.sd.us är byggd på Apptegy/Thrillshare (Nuxt SPA), och sidans egen __NUXT_DATA__ avslöjade en publik JSON-API för distriktets 'Live Feed' (deras allmänna meddelandeström, inte en dedikerad closures-sida). 200 OK med sajtens vanliga User-Agent, ingen robots.txt-begränsning (404, inget deklarerat), inget Akamai-liknande bot-skydd. section_id 256681 är specifikt för org-id 15084 (Brookings School District 05-1) i Thrillshares system -- en annan Apptegy-driven ort skulle behöva sitt eget section_id. is_closure flaggas via nyckelordsmatchning i parsern (deterministiskt, ingen AI)."
     },
+    "traffic": {
+      "type": "traffic",
+      "enabled": false,
+      "source": null,
+      "parser": "traffic_v1",
+      "refresh_minutes": 20,
+      "output": {
+        "format": "structured_data_no_ai",
+        "voice": "n/a (fakta, ingen AI-generering)"
+      },
+      "_notes": "OVERIFIERAD 2026-08-10: ingen öppen källa hittad än. SD511.org har ingen publik developer/API-sida (till skillnad från flera andra staters 511-tjänster som körs på ibi511.com-plattformen -- t.ex. 511GA, som HAR en kontobaserad utvecklarnyckel-portal på 511ga.org/developers/doc; SD511 verkar inte köra på samma plattform, sd.ibi511.com finns inte). South Dakota DOT:s egen ArcGIS-tjänst (sdgis.sd.gov/dot/rest/services) SÅG lovande ut (en TIM/-namnrymd hittades via sökning) men kunde inte nås från den här miljön -- anslutningen vägrades/timeoutade både via curl och WebFetch, oklart om det är en tillfällig nätverksbegränsning här eller en riktig blockering källsidan. enabled=false tills endera (a) sdgis.sd.gov-anslutningen kan verifieras från en annan miljö, eller (b) en riktig SD511-utvecklarnyckel skaffas (kontakt: SD511@iteris.com nämns i offentliga källor) -- samma 'enabled=false + tydlig _notes'-princip som school_board ovan."
+    },
     "events": {
       "type": "multi",
       "enabled": true,
@@ -336,6 +348,7 @@
     "Brookings School District styrelseagenda-källa",
     "USDA NASS API-nyckel (gratis)",
     "NYTT: visitbrookingssd.com -- testa https://visitbrookingssd.com/events/?ical=1 live + kolla robots.txt innan parser byggs.",
-    "KLART: school_alerts = Thrillshare live_feeds API (thrillshare-cmsv2.services.thrillshare.com), verifierad live 2026-08-10, se school_alerts._notes."
+    "KLART: school_alerts = Thrillshare live_feeds API (thrillshare-cmsv2.services.thrillshare.com), verifierad live 2026-08-10, se school_alerts._notes.",
+    "NYTT: traffic (SD511) -- ingen öppen källa hittad, sdgis.sd.gov ArcGIS-tjänst kunde inte nås från denna miljö. enabled=false tills utrett, se traffic._notes."
   ]
 }

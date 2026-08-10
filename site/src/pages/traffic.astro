@@ -1,0 +1,79 @@
+---
+/** Trafikincidenter som TABELL, ingen AI -- se lib/db.ts (getActiveTrafficIncidents)
+ *  och scrapers/parsers/traffic_v1.py.
+ *
+ *  Till skillnad från /sports eller /home-sales är den här sidan INTE
+ *  ort-gated med en redirect -- traffic är konceptuellt en funktion som kan
+ *  gälla vilken ort som helst, det är bara KÄLLAN som (ännu) saknas för
+ *  Brookings (se traffic._notes i configs/brookings_sd.json). En redirect
+ *  hade felaktigt sagt "den här funktionen finns inte för din ort" när det
+ *  rätta är "ingen data ännu" -- samma princip som /facilities//weather,
+ *  som också bara renderar vad som finns i DB:n utan att gissa bort orter. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import { getActiveTrafficIncidents, formatTime } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
+
+const incidents = await getActiveTrafficIncidents();
+
+const typeLabel = (t: string) => (t === 'lane_closure' ? 'Lane closure / construction' : 'Incident');
+---
+<BaseLayout title={`Traffic — ${siteConfig.siteName}`} wide
+  description={`Current road incidents and lane closures affecting ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
+  <header class="lede">
+    <h1>Traffic</h1>
+    <p>Current road incidents, closures and construction near {siteConfig.cityName} —
+    straight from the state's own public traffic feed.</p>
+  </header>
+
+  <SectionRule label={incidents.length > 0 ? `${incidents.length} active` : 'Current incidents'} />
+  {incidents.length > 0 ? (
+    <table class="incidents">
+      <thead>
+        <tr><th scope="col">Type</th><th scope="col">Road</th><th scope="col">Details</th><th scope="col">Last updated</th></tr>
+      </thead>
+      <tbody>
+        {incidents.map((incident) => (
+          <tr>
+            <td class="type">{typeLabel(incident.incident_type)}</td>
+            <td>{incident.road ?? '—'}</td>
+            <td>
+              {incident.title}
+              {incident.description && <span class="desc">{incident.description}</span>}
+            </td>
+            <td class="data">{formatTime(incident.last_seen_at)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ) : (
+    <p class="empty">No active incidents reported right now.</p>
+  )}
+
+  <p class="source">
+    Source: <a href="https://quickmap.dot.ca.gov" rel="noopener">Caltrans QuickMap</a>, refreshed regularly.
+  </p>
+</BaseLayout>
+
+<style>
+.lede { max-width: 40rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.incidents { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.9375rem; }
+.incidents th {
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 600;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--rule);
+}
+.incidents td { padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.incidents tr:last-child td { border-bottom: 0; }
+.type { color: var(--alert); font-weight: 600; white-space: nowrap; }
+.desc { display: block; margin-top: 0.25rem; font-size: 0.8125rem; color: var(--ink-soft); }
+.empty { color: var(--ink-soft); }
+.source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }
+</style>

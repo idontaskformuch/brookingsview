@@ -418,6 +418,35 @@ export async function getActiveSchoolAlerts(maxAgeDays = 3): Promise<SchoolAlert
   `) as SchoolAlert[];
 }
 
+/** En rad ur traffic_incidents -- se db/migrations/011_traffic_incidents.sql
+ *  och scrapers/parsers/traffic_v1.py. Strukturerad data, ingen AI. */
+export interface TrafficIncident {
+  incident_type: string;
+  title: string;
+  description: string | null;
+  road: string | null;
+  lat: number | null;
+  lon: number | null;
+  ends_at: string | null;
+  last_seen_at: string;
+}
+
+/** Trafikincidenter som fortfarande verkar aktuella -- (a) ingen känd
+ *  sluttid ELLER sluttiden är i framtiden, OCH (b) källan har rapporterat
+ *  incidenten nyligen (senaste 3 timmarna). Del (b) behövs eftersom många
+ *  CHP-incidenter aldrig får en explicit sluttid -- utan den skulle en
+ *  incident från igår kväll fortsätta visas som "aktuell" för evigt. */
+export async function getActiveTrafficIncidents(maxAgeHours = 3): Promise<TrafficIncident[]> {
+  return (await sql`
+    SELECT incident_type, title, description, road, lat, lon, ends_at, last_seen_at
+      FROM traffic_incidents
+     WHERE town_id = ${TOWN_ID}
+       AND (ends_at IS NULL OR ends_at >= now())
+       AND last_seen_at >= now() - (${maxAgeHours} || ' hours')::interval
+     ORDER BY last_seen_at DESC
+  `) as TrafficIncident[];
+}
+
 /** Nästa ospelade/pågående match bland primary-lagen -- till förstasidans
  *  högerfält (samma roll som getUpcomingGames(1) fyller för Jackrabbits,
  *  se index.astro). Ett separat, smalt query i stället för att hämta hela
