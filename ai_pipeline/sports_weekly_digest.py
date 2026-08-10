@@ -51,7 +51,8 @@ from psycopg.rows import dict_row
 
 from ai_pipeline import guardrails
 from ai_pipeline.format_prompt import (
-    build_system_prompt, _spent_this_month, _record_spend, resolve_model, pricing_for,
+    GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
+    resolve_model, pricing_for, safe_create,
 )
 
 try:
@@ -216,21 +217,29 @@ def generate(team_stats: list[dict], label: str, cfg: dict, client=None) -> tupl
     system = build_prompt(cfg, label)
 
     def call(extra: str = "") -> str:
-        msg = client.messages.create(
+        msg = safe_create(
+            client,
             model=model, max_tokens=800, system=system + extra,
             messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}],
         )
         _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
 
-    text = call()
-    result = guardrails.validate(text, src, cfg)
-
-    if not result.passed:
-        text = call("\n\nYour previous attempt included details not found in the "
-                    "source, or speculated beyond the results given. Rewrite using "
-                    "ONLY facts explicitly present in the SOURCE DATA, and report only.")
+    # GenerationUnavailable (API-fel) -> mall-fallback, samma som ett
+    # guardrail-avslag. Se GenerationUnavailable-docstringen i format_prompt.py
+    # för incidenten (2026-08-09) det här skyddar mot.
+    try:
+        text = call()
         result = guardrails.validate(text, src, cfg)
+
+        if not result.passed:
+            text = call("\n\nYour previous attempt included details not found in the "
+                        "source, or speculated beyond the results given. Rewrite using "
+                        "ONLY facts explicitly present in the SOURCE DATA, and report only.")
+            result = guardrails.validate(text, src, cfg)
+    except GenerationUnavailable as exc:
+        print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
+        return template_fallback(team_stats, label), "template_fallback", True
 
     if result.passed and len(text.split()) >= MIN_WORDS:
         return text, f"ai:{model}", True

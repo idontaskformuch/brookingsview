@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from dataclasses import dataclass
 
 from ai_pipeline import guardrails
@@ -22,6 +23,39 @@ try:
     import anthropic
 except ImportError:  # pragma: no cover
     anthropic = None
+
+
+class GenerationUnavailable(Exception):
+    """AI-anropet kunde inte genomföras -- ett API-fel (kreditsaldo, rate
+    limit, överbelastning, anslutning), inte ett kvalitets-/guardrail-avslag.
+
+    Incident 2026-08-09 (~14:25-21:23 UTC): ett kreditsaldofel på Anthropic-
+    kontot fick VARENDA scrape-and-publish-körning (båda orterna) att
+    krascha okontrollerat i publish.py:s Stage 3-steg, eftersom inget
+    anropsställe fångade client.messages.create()-fel -- felet propagerade
+    rakt ut ur processen i stället för att falla tillbaka på mall som ett
+    guardrail-avslag redan gjorde. Varje anropare ska fånga
+    GenerationUnavailable och göra EXAKT samma sak som vid ett guardrail-
+    avslag (falla tillbaka på mall/None, logga, fortsätt köra resten av
+    batchen) -- aldrig låta den propagera."""
+
+
+def safe_create(client, **kwargs):
+    """client.messages.create(), men med ETT delat felfång i stället för att
+    varje pipeline-modul (upptäckt: alla fem gjorde det) anropar Anthropic
+    direkt utan try/except alls.
+
+    Fångar anthropic.APIStatusError (täcker kreditsaldo, rate limit,
+    överbelastning, auktorisering -- alla "API:et svarade men med ett fel"-
+    varianter) och APIConnectionError (nätverket svarade inte alls), och gör
+    om dem till GenerationUnavailable. Guardrail-/originalitetsavslag är INTE
+    detta -- de är redan separat hanterade av respektive anropsställe och
+    ska fortsätta vara det.
+    """
+    try:
+        return client.messages.create(**kwargs)
+    except (anthropic.APIStatusError, anthropic.APIConnectionError) as exc:
+        raise GenerationUnavailable(str(exc)) from exc
 
 
 # --- systemprompt byggd ur configen ----------------------------------------
@@ -252,24 +286,36 @@ def format_record(record: dict, source_type: str, cfg: dict,
     system = build_system_prompt(cfg)
 
     def _call(extra: str = "") -> tuple[str, object]:
-        msg = client.messages.create(
+        msg = safe_create(
+            client,
             model=model, max_tokens=400, system=system + extra,
             messages=[{"role": "user",
                        "content": f"SOURCE DATA (source_type={source_type}):\n{source_text}"}],
         )
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text"), msg.usage
 
-    text, usage = _call()
-    _record_spend(usage.input_tokens * price_in + usage.output_tokens * price_out)
-
-    result = guardrails.validate(text, source_text, cfg)
-    if not result.passed:
-        # ett striktare omförsök
-        strict = ("\n\nYour previous attempt included details not found in the source. "
-                  "Rewrite using ONLY facts explicitly present in the SOURCE DATA.")
-        text, usage = _call(strict)
+    # GenerationUnavailable (API-fel: kreditsaldo, rate limit, överbelastning,
+    # anslutning) hanteras EXAKT som ett guardrail-avslag -- mall-fallback,
+    # aldrig en okontrollerad krasch. Se GenerationUnavailable-docstringen för
+    # incidenten (2026-08-09) det här skyddar mot: utan detta kraschar hela
+    # publish.py-processen på FÖRSTA raden som råkar formateras när kontot
+    # saknar kredit, i stället för att bara falla tillbaka på mall för den
+    # raden och fortsätta med resten av batchen.
+    try:
+        text, usage = _call()
         _record_spend(usage.input_tokens * price_in + usage.output_tokens * price_out)
+
         result = guardrails.validate(text, source_text, cfg)
+        if not result.passed:
+            # ett striktare omförsök
+            strict = ("\n\nYour previous attempt included details not found in the source. "
+                      "Rewrite using ONLY facts explicitly present in the SOURCE DATA.")
+            text, usage = _call(strict)
+            _record_spend(usage.input_tokens * price_in + usage.output_tokens * price_out)
+            result = guardrails.validate(text, source_text, cfg)
+    except GenerationUnavailable as exc:
+        print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall", file=sys.stderr)
+        return _fallback(record, source_type, cfg, reason=f"AI ej tillgängligt: {exc}")
 
     if result.passed:
         return FormatResult(text=text, generated_by=f"ai:{model}", verified=True)

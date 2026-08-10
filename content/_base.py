@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime
 import re
+import sys
 from dataclasses import dataclass
 
 try:
@@ -19,7 +20,9 @@ try:
 except ImportError:  # pragma: no cover
     anthropic = None
 
-from ai_pipeline.format_prompt import _record_spend, _spent_this_month, pricing_for, resolve_model
+from ai_pipeline.format_prompt import (
+    GenerationUnavailable, _record_spend, _spent_this_month, pricing_for, resolve_model, safe_create,
+)
 from guardrails.originality_check import is_original
 from guardrails.style_filter import clean
 
@@ -124,8 +127,10 @@ def generate_article(
     content type only requires editing CONTENT_TYPE_MODELS, not this call site.
 
     Returns None if the monthly budget cap is hit, the anthropic package/client is
-    unavailable, or the result fails is_original() -- callers should log and skip
-    publication for today rather than force out a weaker or duplicate piece.
+    unavailable, the API call itself fails (credit balance, rate limit, overload,
+    connection -- see ai_pipeline.format_prompt.GenerationUnavailable), or the
+    result fails is_original() -- callers should log and skip publication for
+    today rather than force out a weaker or duplicate piece.
     """
     ai_cfg = (cfg or {}).get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
@@ -140,12 +145,22 @@ def generate_article(
     resolved_model = model or resolve_model(content_type, cfg)
     price_in, price_out = pricing_for(resolved_model)
 
-    msg = client.messages.create(
-        model=resolved_model,
-        max_tokens=max_tokens,
-        system=system_prompt + _OUTPUT_FORMAT_INSTRUCTION,
-        messages=[{"role": "user", "content": local_input}],
-    )
+    # GenerationUnavailable (API-fel) hanteras som VILKEN ANNAN anledning att
+    # inte publicera i dag som helst -- returnera None, samma som budgettak/
+    # saknat paket/misslyckad originalitetskoll ovan/nedan. Se
+    # GenerationUnavailable-docstringen för incidenten (2026-08-09) det här
+    # skyddar mot.
+    try:
+        msg = safe_create(
+            client,
+            model=resolved_model,
+            max_tokens=max_tokens,
+            system=system_prompt + _OUTPUT_FORMAT_INSTRUCTION,
+            messages=[{"role": "user", "content": local_input}],
+        )
+    except GenerationUnavailable as exc:
+        print(f"  AI-anrop misslyckades ({exc}) -- ingen artikel idag", file=sys.stderr)
+        return None
     text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
     _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
 
