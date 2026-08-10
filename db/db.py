@@ -161,6 +161,32 @@ def finish_run(conn, run_id: int, status: str, http_code: int | None = None,
         )
 
 
+def last_run_at(conn, town_id: str, source_key: str) -> datetime | None:
+    """Starttiden för senaste körningen av en källa, oavsett utfall.
+
+    Driver refresh_minutes-spärren i runner.py:run_source() -- utan den
+    kördes VARJE aktiverad källa om vid VARJE schemalagd scrape.yml-körning
+    (en gång/timme), oavsett vad configen råkade ange för refresh_minutes
+    (fältet lästes aldrig av koden, bara dokumenterande). Ofarligt för gratis-
+    /högtak-API:er (MLB Stats API, Caltrans, Thrillshare -- content_hash-
+    dedupen gjorde de flesta om-körningarna till no-ops ändå), men förödande
+    för en nyckelbegränsad betal-/kvot-API som Adzuna (~33 anrop/dag på
+    gratisnivån) -- upptäckt 2026-08-10 innan jobs_v1.py byggdes, se
+    scrapers/parsers/jobs_v1.py.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT started_at FROM scrape_runs
+             WHERE town_id=%s AND source_key=%s
+             ORDER BY started_at DESC LIMIT 1
+            """,
+            (town_id, source_key),
+        )
+        row = cur.fetchone()
+    return row[0] if row else None
+
+
 def consecutive_failures(conn, town_id: str, source_key: str) -> int:
     """Hur många av de senaste körningarna som failat i följd — driver alerting."""
     with conn.cursor() as cur:

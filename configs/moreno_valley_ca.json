@@ -344,6 +344,21 @@
         "voice": "n/a (fakta, ingen AI-generering)"
       },
       "_notes": "VERIFIERAD 2026-08-10: ett tidigt utkast antog att IE511/Caltrans kräver en gratis utvecklarnyckel (samma mönster som Adzuna/gas-pris-källorna) -- research visade i stället att Caltrans QuickMaps egna KML-feeder (lane closures + CHP-incidenter) är HELT ÖPPNA, ingen nyckel, ingen inloggning, 200 OK med sajtens vanliga User-Agent, inget robots.txt-förbud. Delstatstäckande filer, filtreras geografiskt till en boundingbox runt orten i parsern (traffic_v1.py:_bbox) -- annars hade varenda Caltrans-incident i hela Kalifornien kommit med. Live-testad 2026-08-10: 3 verkliga CHP-incidenter nära I-215/Washington St och I-10 hittades inom boundingboxen."
+    },
+    "jobs": {
+      "type": "jobs",
+      "enabled": true,
+      "country": "us",
+      "where": "Moreno Valley, CA",
+      "results_per_page": 50,
+      "max_pages": 1,
+      "parser": "jobs_v1",
+      "refresh_minutes": 1440,
+      "output": {
+        "format": "structured_data_no_ai",
+        "voice": "n/a (fakta, ingen AI-generering)"
+      },
+      "_notes": "VERIFIERAD 2026-08-10 live mot Adzuna Job Search API (api.adzuna.com) med riktiga ADZUNA_APP_ID/ADZUNA_APP_KEY (ENDAST i .env/GitHub-secrets, aldrig i denna fil). Gratisnivå ~1000 anrop/månad (~33/dag) -- refresh_minutes: 1440 (ett dygn) garanterar ETT anrop/ort/dag trots att scrape.yml/moval-scrape.yml kör varje timme, se runner.py:s nya refresh_minutes-spärr (db.last_run_at) och jobs_v1.py:s moduldocstring. results_per_page/max_pages hålls lågt av samma kvotskäl."
     }
   },
   "_verify_before_launch": [
@@ -358,7 +373,8 @@
     "KLART: pro_sports (66ers/Angels/Dodgers) = MLB Stats API, verifierad live 2026-08-10, se pro_sports._notes.",
     "NYTT: pro_sports Ducks/Lakers/Clippers/Rams/Chargers – ESPN:s scoreboard-JSON är Akamai-blockerad för identifierade anrop, kringgås inte. Behöver en riktig, icke-blockerad publik API per liga (NHL/NBA/NFL) innan de kan byggas.",
     "KLART: school_alerts (MVUSD) = Finalsite /engage/news, verifierad live 2026-08-10, se school_alerts._notes.",
-    "KLART: traffic = Caltrans QuickMap KML-feeder (helt öppna, ingen nyckel), verifierad live 2026-08-10, se traffic._notes."
+    "KLART: traffic = Caltrans QuickMap KML-feeder (helt öppna, ingen nyckel), verifierad live 2026-08-10, se traffic._notes.",
+    "KLART: jobs = Adzuna Job Search API, verifierad live 2026-08-10, se jobs._notes. runner.py fick en refresh_minutes-spärr samtidigt (tidigare aldrig avläst av koden)."
   ],
   "_no_ag_markets_note": "Till skillnad från Brookings finns ingen jordbruksmarknad/USDA-vana här, och ingen SDSU-motsvarighet som sport-återbesöksmotor. Stadsfullmäktige + events + väder blir kärnan. Överväg senare: MVUSD skolstyrelse (BoardDocs?), samt lokal community college (Moreno Valley College) events som mjuk återbesöksdrivare."
 }

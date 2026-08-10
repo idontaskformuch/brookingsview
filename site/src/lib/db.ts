@@ -447,6 +447,37 @@ export async function getActiveTrafficIncidents(maxAgeHours = 3): Promise<Traffi
   `) as TrafficIncident[];
 }
 
+/** En rad ur jobs -- se db/migrations/012_jobs.sql och
+ *  scrapers/parsers/jobs_v1.py. Strukturerad data (Adzuna), ingen AI. */
+export interface Job {
+  external_job_id: string;
+  title: string;
+  company: string | null;
+  location: string | null;
+  category: string | null;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_is_predicted: boolean | null;
+  description: string | null;
+  redirect_url: string | null;
+  posted_at: string | null;
+}
+
+/** Senaste jobbannonserna, nyast först. Ingen "aktiv"-filtrering som
+ *  trafik/skolvarningar -- Adzuna slutar själv lista en annons när den tas
+ *  bort, så allt som finns i tabellen är redan det senaste kända läget. */
+export async function getRecentJobs(limit = 100): Promise<Job[]> {
+  return (await sql`
+    SELECT external_job_id, title, company, location, category,
+           salary_min, salary_max, salary_is_predicted, description,
+           redirect_url, posted_at
+      FROM jobs
+     WHERE town_id = ${TOWN_ID}
+     ORDER BY posted_at DESC NULLS LAST
+     LIMIT ${limit}
+  `) as Job[];
+}
+
 /** Nästa ospelade/pågående match bland primary-lagen -- till förstasidans
  *  högerfält (samma roll som getUpcomingGames(1) fyller för Jackrabbits,
  *  se index.astro). Ett separat, smalt query i stället för att hämta hela

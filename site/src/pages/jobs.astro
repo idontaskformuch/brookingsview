@@ -1,0 +1,88 @@
+---
+/** Lokala jobbannonser som TABELL, ingen AI -- se lib/db.ts (getRecentJobs)
+ *  och scrapers/parsers/jobs_v1.py (Adzuna Job Search API).
+ *
+ *  Ingen ort-redirect (samma resonemang som /traffic.astro): jobs gäller
+ *  konceptuellt vilken ort som helst -- Adzuna täcker båda, så sidan
+ *  renderar bara vad som finns för aktuell TOWN_ID i stället för att gissa
+ *  bort en ort. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import { getRecentJobs, formatDate, formatPrice } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
+
+const jobs = await getRecentJobs();
+
+const salaryText = (job: (typeof jobs)[number]) => {
+  if (job.salary_min == null && job.salary_max == null) return '—';
+  const range = job.salary_min === job.salary_max || job.salary_max == null
+    ? formatPrice(job.salary_min)
+    : `${formatPrice(job.salary_min)}–${formatPrice(job.salary_max)}`;
+  return job.salary_is_predicted ? `${range} (est.)` : range;
+};
+---
+<BaseLayout title={`Jobs — ${siteConfig.siteName}`} wide
+  description={`Recent job listings near ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
+  <header class="lede">
+    <h1>Jobs</h1>
+    <p>Recent job listings near {siteConfig.cityName} — pulled from Adzuna's job search.
+    Salaries marked "est." are Adzuna's own estimate, not the employer's listed figure.</p>
+  </header>
+
+  <SectionRule label={jobs.length > 0 ? `${jobs.length} listings` : 'Listings'} />
+  {jobs.length > 0 ? (
+    <table class="jobs">
+      <thead>
+        <tr><th scope="col">Title</th><th scope="col">Company</th>
+            <th scope="col">Category</th><th scope="col">Salary</th><th scope="col">Posted</th></tr>
+      </thead>
+      <tbody>
+        {jobs.map((job) => (
+          <tr>
+            <td>
+              {job.redirect_url ? (
+                <a href={job.redirect_url} rel="noopener nofollow">{job.title}</a>
+              ) : job.title}
+              {job.location && <span class="loc">{job.location}</span>}
+            </td>
+            <td>{job.company ?? '—'}</td>
+            <td class="cat">{job.category ?? '—'}</td>
+            <td class="data">{salaryText(job)}</td>
+            <td class="data">{job.posted_at ? formatDate(job.posted_at) : '—'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ) : (
+    <p class="empty">No job listings available yet.</p>
+  )}
+
+  <p class="source">
+    Source: <a href="https://www.adzuna.com" rel="noopener">Adzuna</a>, refreshed daily.
+  </p>
+</BaseLayout>
+
+<style>
+.lede { max-width: 42rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.jobs { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.9375rem; }
+.jobs th {
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 600;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--rule);
+}
+.jobs td { padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.jobs tr:last-child td { border-bottom: 0; }
+.loc { display: block; font-size: 0.8125rem; color: var(--ink-soft); }
+.cat { color: var(--ink-soft); font-size: 0.875rem; }
+.data { white-space: nowrap; }
+.empty { color: var(--ink-soft); }
+.source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }
+@media (max-width: 40rem) { .cat { display: none; } }
+</style>

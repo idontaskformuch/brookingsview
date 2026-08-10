@@ -177,6 +177,21 @@
       },
       "_notes": "OVERIFIERAD 2026-08-10: ingen öppen källa hittad än. SD511.org har ingen publik developer/API-sida (till skillnad från flera andra staters 511-tjänster som körs på ibi511.com-plattformen -- t.ex. 511GA, som HAR en kontobaserad utvecklarnyckel-portal på 511ga.org/developers/doc; SD511 verkar inte köra på samma plattform, sd.ibi511.com finns inte). South Dakota DOT:s egen ArcGIS-tjänst (sdgis.sd.gov/dot/rest/services) SÅG lovande ut (en TIM/-namnrymd hittades via sökning) men kunde inte nås från den här miljön -- anslutningen vägrades/timeoutade både via curl och WebFetch, oklart om det är en tillfällig nätverksbegränsning här eller en riktig blockering källsidan. enabled=false tills endera (a) sdgis.sd.gov-anslutningen kan verifieras från en annan miljö, eller (b) en riktig SD511-utvecklarnyckel skaffas (kontakt: SD511@iteris.com nämns i offentliga källor) -- samma 'enabled=false + tydlig _notes'-princip som school_board ovan."
     },
+    "jobs": {
+      "type": "jobs",
+      "enabled": true,
+      "country": "us",
+      "where": "Brookings, SD",
+      "results_per_page": 50,
+      "max_pages": 1,
+      "parser": "jobs_v1",
+      "refresh_minutes": 1440,
+      "output": {
+        "format": "structured_data_no_ai",
+        "voice": "n/a (fakta, ingen AI-generering)"
+      },
+      "_notes": "VERIFIERAD 2026-08-10 live mot Adzuna Job Search API med riktiga ADZUNA_APP_ID/ADZUNA_APP_KEY (ENDAST i .env/GitHub-secrets, aldrig i denna fil) -- 'Brookings, SD' gav riktiga träffar. Gratisnivå ~1000 anrop/månad (~33/dag) -- refresh_minutes: 1440 (ett dygn) garanterar ETT anrop/ort/dag trots att scrape.yml kör varje timme, se runner.py:s nya refresh_minutes-spärr (db.last_run_at) och jobs_v1.py:s moduldocstring."
+    },
     "events": {
       "type": "multi",
       "enabled": true,
@@ -349,6 +364,7 @@
     "USDA NASS API-nyckel (gratis)",
     "NYTT: visitbrookingssd.com -- testa https://visitbrookingssd.com/events/?ical=1 live + kolla robots.txt innan parser byggs.",
     "KLART: school_alerts = Thrillshare live_feeds API (thrillshare-cmsv2.services.thrillshare.com), verifierad live 2026-08-10, se school_alerts._notes.",
-    "NYTT: traffic (SD511) -- ingen öppen källa hittad, sdgis.sd.gov ArcGIS-tjänst kunde inte nås från denna miljö. enabled=false tills utrett, se traffic._notes."
+    "NYTT: traffic (SD511) -- ingen öppen källa hittad, sdgis.sd.gov ArcGIS-tjänst kunde inte nås från denna miljö. enabled=false tills utrett, se traffic._notes.",
+    "KLART: jobs = Adzuna Job Search API, verifierad live 2026-08-10, se jobs._notes. runner.py fick en refresh_minutes-spärr samtidigt (tidigare aldrig avläst av koden)."
   ]
 }

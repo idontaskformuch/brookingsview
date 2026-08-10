@@ -17,6 +17,7 @@ import json
 import os
 import sys
 import traceback
+from datetime import datetime, timezone
 from pathlib import Path
 
 # gör paketimport möjlig oavsett var scriptet körs ifrån
@@ -35,6 +36,7 @@ REGISTRY: dict[str, str] = {
     "nws":             "scrapers.parsers.nws_alerts:NwsAlertsParser",
     "legistar":        "scrapers.parsers.legistar_v1:LegistarParser",
     "escribe":         "scrapers.parsers.escribe_v1:EscribeParser",
+    "jobs":            "scrapers.parsers.jobs_v1:JobsParser",
     "rivco_assessor":  "scrapers.parsers.rivco_property_sales_v1:PropertySalesParser",
     # OBS: "pro_sports" är MEDVETET en annan nyckel än "sports" (=gojacks_v1,
     # SDSU Jackrabbits/Brookings) -- olika tabell (regional_sports_games vs
@@ -88,6 +90,23 @@ def run_source(conn, cfg: dict, source_key: str, source_cfg: dict) -> None:
         run_id = db.start_run(conn, town_id, source_key)
         db.finish_run(conn, run_id, status="skipped")
         return
+
+    # refresh_minutes-spärr: scrape.yml/moval-scrape.yml kör VARJE aktiverad
+    # källa en gång/timme oavsett vad den här källan själv anger -- utan
+    # spärren skulle en nyckelbegränsad betal-/kvot-API (t.ex. Adzuna, ~33
+    # anrop/dag på gratisnivån) tömmas på några timmar. Ofarligt att hoppa
+    # över tyst (inget scrape_run-rad, ingen konsekvens för
+    # consecutive_failures) -- det här är ett rutinmässigt "inte dags än",
+    # inte ett fel. Källor utan refresh_minutes körs som förut, varje gång.
+    refresh_minutes = source_cfg.get("refresh_minutes")
+    if refresh_minutes:
+        last = db.last_run_at(conn, town_id, source_key)
+        if last is not None:
+            elapsed = (datetime.now(timezone.utc) - last).total_seconds() / 60
+            if elapsed < refresh_minutes:
+                print(f"  [{source_key}] hoppar över -- kördes för {elapsed:.0f} min sedan "
+                      f"(refresh_minutes={refresh_minutes})")
+                return
 
     parser = _load_parser(REGISTRY[reg_key], cfg, source_cfg)
     parser.source_key = source_key
