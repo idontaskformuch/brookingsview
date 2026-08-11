@@ -6,6 +6,14 @@ import type { Story, SdsuEvent } from '../lib/db';
 import { getUpcomingStories, getPastStories, getUpcomingArtsEvents } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
+// "Arts & Culture" (SDSU) / "Around Town" (library, city, chamber, ...) --
+// bara Brookings har den här campus-vs-townwide-uppdelningen att göra (se
+// scrapers/parsers/sdsu_events_v1.py:s "EDITORIAL-OMORGANISERING"). Andra
+// orter (Moreno Valley) har inget SDSU-motstycke, så deras events behåller
+// StoryCard.astro:s vanliga generiska "Events"-kicker oförändrad.
+const isBrookings = siteConfig.townId === 'brookings_sd';
+const townwideKicker = isBrookings ? 'Around Town' : undefined;
+
 const [upcoming, past, artsEvents] = await Promise.all([
   getUpcomingStories(['event'], 120),
   getPastStories(['event'], 12),
@@ -46,14 +54,97 @@ type FeedItem =
   | { kind: 'story'; occurs_at: string | null; story: Story }
   | { kind: 'arts'; occurs_at: string | null; event: SdsuEvent };
 
-const items: FeedItem[] = [
+function itemTitle(item: FeedItem): string {
+  return item.kind === 'story' ? item.story.title : item.event.title;
+}
+function itemUrl(item: FeedItem): string | null {
+  return item.kind === 'story' ? item.story.source_url : item.event.event_url;
+}
+
+/** "Downtown @ Sundown" (Chamber) / "Downtown at Sundown" (SDSU) -- "@" is
+ *  common shorthand for "at" in event titles, so it's expanded BEFORE
+ *  stripping punctuation. Without this the two titles diverge instead of
+ *  converging (stripping "@" outright leaves nothing where "at" appears in
+ *  the other spelling) -- this is still a single, deterministic character
+ *  substitution, not similarity scoring. */
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/@/g, ' at ')
+    .replace(/[^\w\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Cross-source duplicate reconciliation -- e.g. "Downtown at Sundown" listed
+ * independently by both SDSU's calendar and the Chamber's calendar. Narrow
+ * and deterministic on purpose (see spec): same calendar date + EXACT
+ * normalized-title match, no partial/substring matching, no similarity
+ * scoring.
+ *
+ * Restricted to matches ACROSS kind ('story' vs 'arts') -- i.e. only across
+ * genuinely different calendar systems, never within the same one. Verified
+ * live against the real dataset: the library legitimately lists the same
+ * class title twice on one day for two different session times ("Teens in
+ * the Kitchen", "Felt Pennant Craft Class", ...) and SDSU legitimately lists
+ * the same show title twice for a matinee/evening pair -- same-kind,
+ * same-date, same-title, but genuinely different events. A same-kind match
+ * would have wrongly collapsed those. Cross-kind + same-date + exact-title
+ * had exactly one hit in the real dataset: the actual Downtown at Sundown
+ * case.
+ *
+ * No architectural "shared insert path" exists between these two sources
+ * (events.py writes to `events`, sdsu_events_v1.py writes to its own
+ * `sdsu_events` table -- they've never shared one) -- reconciling here, at
+ * the one place both streams are already loaded together before rendering,
+ * avoids deleting/mutating either source table and doesn't require
+ * coordinating insert order across two independently-scheduled scrapers.
+ */
+const rawItems: FeedItem[] = [
   ...upcoming.map((story): FeedItem => ({ kind: 'story', occurs_at: story.occurs_at, story })),
   ...artsEvents.map((event): FeedItem => ({ kind: 'arts', occurs_at: event.starts_at, event })),
-].sort((a, b) => {
+];
+
+const canonicalByKey = new Map<string, FeedItem>();
+const alsoListedBy = new Map<FeedItem, string[]>();
+const items: FeedItem[] = [];
+for (const item of rawItems) {
+  const dateKey = item.occurs_at ? localDateParts(new Date(item.occurs_at)) : null;
+  const key = dateKey ? `${dateKey.y}-${dateKey.m}-${dateKey.d}|${item.kind === 'arts' ? 'arts' : 'story'}|${normalizeTitle(itemTitle(item))}` : null;
+  // matchande nyckel för DEN ANDRA kind -- se doc ovan för varför bara
+  // cross-kind-matchningar tillåts
+  const crossKey = dateKey && key
+    ? `${dateKey.y}-${dateKey.m}-${dateKey.d}|${item.kind === 'arts' ? 'story' : 'arts'}|${normalizeTitle(itemTitle(item))}`
+    : null;
+  const canonical = crossKey ? canonicalByKey.get(crossKey) : undefined;
+
+  if (canonical) {
+    const url = itemUrl(item);
+    if (url) {
+      const host = new URL(url).hostname.replace(/^www\./, '');
+      const list = alsoListedBy.get(canonical) ?? [];
+      if (!list.includes(host)) list.push(host);
+      alsoListedBy.set(canonical, list);
+    }
+    continue; // redan täckt av den kanoniska posten -- inget eget kort
+  }
+  if (key) canonicalByKey.set(key, item);
+  items.push(item);
+}
+
+items.sort((a, b) => {
   if (!a.occurs_at) return 1;
   if (!b.occurs_at) return -1;
   return new Date(a.occurs_at).getTime() - new Date(b.occurs_at).getTime();
 });
+
+function withAttribution(body: string, item: FeedItem): string {
+  const hosts = alsoListedBy.get(item);
+  if (!hosts || hosts.length === 0) return body;
+  const suffix = `Also listed by ${hosts.join(', ')}.`;
+  return body ? `${body} ${suffix}` : suffix;
+}
 
 /**
  * Bucket upcoming events by time horizon rather than showing one flat list.
@@ -126,8 +217,8 @@ const sections = (
       <SectionRule label={label} />
       <div class="grid">
         {list.map((item) => item.kind === 'story'
-          ? <StoryCard story={item.story} />
-          : <StoryCard story={artsEventAsStory(item.event)} href={item.event.event_url} kicker="Arts & Culture" />
+          ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item) }} kicker={townwideKicker} />
+          : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item) }} href={item.event.event_url} kicker="Arts & Culture" />
         )}
       </div>
     </>
@@ -138,7 +229,7 @@ const sections = (
   {past.length > 0 && (
     <>
       <SectionRule label="Recently" />
-      <div class="grid">{past.map((story) => <StoryCard story={story} compact />)}</div>
+      <div class="grid">{past.map((story) => <StoryCard story={story} compact kicker={townwideKicker} />)}</div>
     </>
   )}
 </BaseLayout>

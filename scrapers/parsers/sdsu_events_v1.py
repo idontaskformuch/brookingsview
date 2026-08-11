@@ -45,6 +45,29 @@ till arts_culture via platsnamn (_ARTS_VENUE_KEYWORDS) oavsett kategori-ID
 redan arts_culture ändå), men regeln är ett medvetet skyddsnät om ett
 framtida museum-/trädgårdsevent skulle taggas annorlunda.
 
+ARTS & CULTURE-KLUSTRET (2026-08-11): fyra venues -- South Dakota Art
+Museum, South Dakota Agricultural Heritage Museum, McCrory Gardens, Oscar
+Larson Performing Arts Center -- har event som INTE alltid faller inom de
+fem whitelistade kategorierna (t.ex. Ag Heritage Museums "Make & Take
+Monday" är taggad Workshops/Training, som annars är helt uteslutet). I
+stället för att bredda hela kategori-whitelisten (skulle dra in mängder av
+internt/administrativt Workshops/Training-brus) hämtas dessa fyra venues
+SEPARAT via kalenderns "Areas/Departments"-filter (en egen, ren dropdown,
+skild från Category-kryssrutorna) -- se _ARTS_VENUE_DEPARTMENTS. Verifierat
+live 2026-08-11: department-filtret är en <select name="departments">,
+alltså EN värde åt gången (inte en kryssruteuppsättning som category), så
+varje venue hämtas i en egen sidnumrerad hämtning. Resultatstorlek per
+venue (live 2026-08-11): Art Museum 1, Ag Heritage Museum 3, McCrory
+Gardens 17, Oscar Larson 139 (!) -- Oscar Larson har på riktigt en hel
+säsongs volym, se max_pages_per_department för hur det begränsas.
+
+Dedup mellan de två hämtningsvägarna (kategori-whitelist vs. venue-
+department) sker automatiskt via samma seen_ids-mekanism i parse() --
+samma event (t.ex. en Oscar Larson-konsert taggad Music, som alltså redan
+täcks av kategori-hämtningen OCH venue-hämtningen) får samma
+occurrence_key (href+starttid) oavsett vilken hämtning som råkade hitta
+den först, så den räknas bara en gång.
+
 BORTFILTRERING AV ICKE-PUBLIKT BRUS (Fix Round 1): även inom de skrapade
 kategorierna finns interna poster ingen allmän läsare bryr sig om --
 verifierat live: "Nursing Induction Ceremony" (x4 samma dag) vars EGEN
@@ -106,7 +129,23 @@ BUCKET_MAP: dict[str, str] = {
 
 # platsnamn som tvingar arts_culture oavsett kategori -- skyddsnät för
 # museum-/trädgårdsevent utan en egen ren kategori-ID, se moduldocstring.
-_ARTS_VENUE_KEYWORDS = ("south dakota art museum", "mccrory gardens")
+_ARTS_VENUE_KEYWORDS = (
+    "south dakota art museum",
+    "agricultural heritage museum",
+    "mccrory gardens",
+    "oscar larson",
+)
+
+# label -> department-ID, läst live av kalenderns "Areas/Departments"-
+# dropdown (<select name="departments">) 2026-08-11. Se moduldocstring
+# "ARTS & CULTURE-KLUSTRET" för varför dessa fyra venues hämtas separat
+# i stället för att bredda kategori-whitelisten.
+_ARTS_VENUE_DEPARTMENTS: dict[str, str] = {
+    "262866": "South Dakota Art Museum",
+    "262871": "South Dakota Agricultural Heritage Museum",
+    "261506": "McCrory Gardens",
+    "261561": "Oscar Larson Performing Arts Center",
+}
 
 # Nyckelordsmatchning mot titel+teaser -- exakta fraser, inte lösa ord, för
 # att INTE råka fånga legitima publika event som bara nämner "faculty" eller
@@ -158,21 +197,33 @@ class SdsuEventsParser(BaseParser):
     def fetch(self) -> FetchResult:
         max_pages = int(self.source_cfg.get("max_pages", 6))
         category_params = [("category[%s]" % cid, cid) for cid in CATEGORY_WHITELIST]
+        pages_html = self._fetch_paginated(category_params, max_pages)
 
-        pages_html: list[str] = []
-        for page in range(max_pages):
-            params = list(category_params) + [("page", str(page))]
-            r = requests.get(_BASE_URL, params=params, headers=self._headers(), timeout=20)
-            r.raise_for_status()
-            pages_html.append(r.text)
-            if len(_extract_event_blocks(r.text)) < _RESULTS_PER_PAGE:
-                break  # sista sidan
+        # Arts & Culture-klustret (se moduldocstring): fyra venues hämtas
+        # SEPARAT via departments-filtret, eftersom deras event inte alltid
+        # ligger i de fem whitelistade kategorierna. Egen, lägre sidgräns --
+        # Oscar Larson ensam har ~139 träffar totalt (en hel säsong), och
+        # "This week/coming up" behöver bara de närmaste, inte allt.
+        dept_max_pages = int(self.source_cfg.get("max_pages_per_department", 3))
+        for dept_id in _ARTS_VENUE_DEPARTMENTS:
+            pages_html += self._fetch_paginated([("departments", dept_id)], dept_max_pages)
 
         self._pages_html = pages_html
         raw = "\n<!-- PAGE BREAK -->\n".join(pages_html).encode("utf-8")
         return FetchResult(raw=raw, content_type="text/html",
                            url=f"{_BASE_URL}?{'&'.join(f'{k}={v}' for k, v in category_params)}",
                            http_code=200)
+
+    def _fetch_paginated(self, base_params: list[tuple[str, str]], max_pages: int) -> list[str]:
+        pages: list[str] = []
+        for page in range(max_pages):
+            params = list(base_params) + [("page", str(page))]
+            r = requests.get(_BASE_URL, params=params, headers=self._headers(), timeout=20)
+            r.raise_for_status()
+            pages.append(r.text)
+            if len(_extract_event_blocks(r.text)) < _RESULTS_PER_PAGE:
+                break  # sista sidan
+        return pages
 
     def parse(self, fetched: FetchResult) -> list[dict]:
         pages_html = getattr(self, "_pages_html", None)

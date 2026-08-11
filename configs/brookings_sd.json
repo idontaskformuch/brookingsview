@@ -196,13 +196,14 @@
       "type": "sdsu_events",
       "enabled": true,
       "max_pages": 6,
+      "max_pages_per_department": 3,
       "parser": "sdsu_events_v1",
       "refresh_minutes": 360,
       "output": {
         "format": "structured_data_no_ai",
         "voice": "n/a (fakta, ingen AI-generering -- se sdsu_weekly_digest.py för den skrivna delen)"
       },
-      "_notes": "VERIFIERAD 2026-08-10: den gamla 'sdsu_events'-overifierade-poster i events.sources (nedan, tagen bort) gissade fel plattform (Localist/Concept3D) och fel URL (/events). Riktiga källan: sdstate.edu/event-calendar, Drupal 11, helt server-renderad, robots.txt tillåter uttryckligen /event-calendar och /events/ för User-agent: * (ClaudeBot är begränsad till andra sökvägar, men den här skrapan kör under projektets egen User-Agent, se sdsu_events_v1.py:s moduldocstring för det fulla resonemanget). Alla 12 kategori-ID:n lästa live av kalenderns kryssrutor; bara Athletics/Music/Special Events/Theatre-Dance/Camps-Conferences skrapas (233 av 481 events), se CATEGORY_WHITELIST i parsern. Live-testad: 25 verkliga events landade korrekt, inklusive en bekräftad bugg (samma URL-slug återanvänds för flera olika matcher på olika datum -- dedup-nyckeln är URL+starttid, inte URL ensam)."
+      "_notes": "VERIFIERAD 2026-08-10: den gamla 'sdsu_events'-overifierade-poster i events.sources (nedan, tagen bort) gissade fel plattform (Localist/Concept3D) och fel URL (/events). Riktiga källan: sdstate.edu/event-calendar, Drupal 11, helt server-renderad, robots.txt tillåter uttryckligen /event-calendar och /events/ för User-agent: * (ClaudeBot är begränsad till andra sökvägar, men den här skrapan kör under projektets egen User-Agent, se sdsu_events_v1.py:s moduldocstring för det fulla resonemanget). Alla 12 kategori-ID:n lästa live av kalenderns kryssrutor; bara Athletics/Music/Special Events/Theatre-Dance/Camps-Conferences skrapas (233 av 481 events), se CATEGORY_WHITELIST i parsern. Live-testad: 25 verkliga events landade korrekt, inklusive en bekräftad bugg (samma URL-slug återanvänds för flera olika matcher på olika datum -- dedup-nyckeln är URL+starttid, inte URL ensam). UTÖKAD 2026-08-11 (Arts & Culture-klustret): South Dakota Art Museum/Ag Heritage Museum/McCrory Gardens/Oscar Larson PAC hämtas nu SEPARAT via kalenderns departments-filter (ren dropdown, egna ID:n) eftersom deras event inte alltid ligger i de fem whitelistade kategorierna -- se _ARTS_VENUE_DEPARTMENTS i parsern. Live-testad: 100 unika events totalt (81 arts_culture, 19 university), inklusive 'Make & Take Monday' (tidigare osynlig, taggad Workshops/Training) och en bekräftad DST-korrekt tidszonsövergång (CDT -05:00 i augusti, CST -06:00 i november för samma återkommande möte)."
     },
     "events": {
       "type": "multi",
@@ -221,10 +222,10 @@
           "_note": "BEKRÄFTAD 2026-07-17. LibCal öppet iCal-abonnemangsflöde (src=p = publikt, ingen hemlig nyckel). Byggd och klar."
         },
         {
-          "name": "visit_brookings",
-          "kind": "unconfirmed",
-          "url": "https://visitbrookingssd.com/events/",
-          "_note": "STARK KANDIDAT, overifierad 2026-08-04. Brookings Area Chamber/turistbyråns egen 'Things to Do'-kalender -- precis den regionala nöjesbredd som beslutet om utökad scope efterfrågar (Comedy Room-shower på Wooden Legs, Brookings Farmers Market, Downtown at Sundown-musikfestival, Brookings Bonanza, Frost Fest, Garden Glow m.fl. -- se kategorierna 'Bars & Nightlife', 'Live Music', 'Festivals' på sajten). Sajten kör synligt The Events Calendar (Modern Tribe/StellarWP) -- varje eventsida har 'Subscribe to calendar: Google Calendar / iCalendar / Outlook / Export .ics file'-länkar, och månadsvyn har query-parametern tribe_redirected=1 som är pluginets signatur. Det pekar mot en standard sajtomfattande export på https://visitbrookingssd.com/events/?ical=1 (TEC:s vanliga mönster), men URL:en är INTE testad live än, och robots.txt på visitbrookingssd.com är INTE kontrollerad -- gör båda innan parser byggs. Om det håller är detta troligen den enskilt bästa nya källan: en redan mänskligt kuraterad kalender istället för råa Eventbrite-listor som behöver filtreras."
+          "name": "chamber",
+          "kind": "ical",
+          "url": "https://visitbrookingssd.com/events/?ical=1",
+          "_note": "BEKRÄFTAD live 2026-08-11: robots.txt på visitbrookingssd.com (User-agent: *) nekar bara /events/*/page/ och ?eventDate=/?paged= (med Crawl-delay: 2, respekteras via samma refresh_minutes-spärr som övriga källor) -- ?ical=1 är INTE blockerat. 200 OK, Content-Type text/calendar, riktig The Events Calendar-export (ECPv6.16.3) med korrekt VTIMEZONE (America/Chicago). 30 riktiga events manuellt genomlästa (Farmers Market, Downtown @ Sundown, Trivia Tuesday, Fine Art Exhibition m.fl.) -- inget overifierat/icke-publikt brus hittat, ingen filtrering behövdes (till skillnad från SDSU-kalendern). source='chamber' på varje rad ger frontend en tydlig tagg skild från SDSU-innehållet, se events.astro."
         }
       ],
       "refresh_minutes": 1440,
