@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>JACKRABBIT</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+  :root{
+    --sdsu-blue:#0033A0;
+    --sdsu-blue-light:#3358C4;
+    --sdsu-gold:#FFC629;
+    --sdsu-gold-deep:#D99A00;
+    --outline:#161428;
+    --cream:#FFF3D6;
+    --red:#E4402C;
+    --panel:#221F3D;
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; height:100%;
+    background:radial-gradient(ellipse at center, #1c1a3a 0%, #08070f 100%);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Press Start 2P', monospace;
+    color:var(--cream);
+    -webkit-tap-highlight-color: transparent;
+    overflow:hidden;
+  }
+  .cabinet{
+    background:linear-gradient(180deg,#28254a,#141228);
+    border:5px solid var(--outline);
+    border-radius:16px;
+    padding:16px 16px 20px;
+    box-shadow:
+      inset 0 0 0 3px rgba(255,255,255,0.06),
+      0 0 0 4px var(--sdsu-gold-deep),
+      0 0 0 7px var(--outline),
+      0 24px 50px rgba(0,0,0,.65);
+  }
+  .marquee{
+    text-align:center;
+    letter-spacing:2px;
+    font-size:20px;
+    color:var(--sdsu-gold);
+    text-shadow:3px 3px 0 var(--sdsu-blue), 0 0 16px rgba(255,198,41,.55);
+    margin-bottom:4px;
+  }
+  .marquee span{
+    color:var(--cream); font-size:8px; display:block; margin-top:8px;
+    letter-spacing:1px; opacity:.75; font-family:'Press Start 2P';
+  }
+  canvas{
+    display:block;
+    border:4px solid var(--outline);
+    border-radius:6px;
+    image-rendering:pixelated;
+    touch-action:none;
+    margin-top:10px;
+    box-shadow: inset 0 0 24px rgba(0,0,0,.35);
+  }
+  .hud-row{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:9px; margin-top:10px; color:var(--cream);
+    background:var(--panel);
+    border:2px solid var(--outline);
+    border-radius:6px;
+    padding:8px 10px;
+  }
+  .hud-row .dot{ color:var(--sdsu-gold); }
+  .footer-hint{
+    text-align:center; font-size:7px; margin-top:9px; opacity:.6; line-height:1.7;
+  }
+  .menu-controls{
+    display:flex; gap:8px; margin-top:10px;
+  }
+  .menu-controls button{
+    font-family:'Press Start 2P', monospace;
+    font-size:10px;
+    color:var(--cream);
+    background:var(--panel);
+    border:2px solid var(--sdsu-gold-deep);
+    border-radius:6px;
+    padding:12px 10px;
+    cursor:pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action:manipulation;
+  }
+  .menu-controls button:active{
+    background:var(--sdsu-blue);
+  }
+  .menu-controls #startBtn{
+    flex:1;
+    background:var(--sdsu-blue);
+    border-color:var(--sdsu-gold);
+    color:var(--sdsu-gold);
+  }
+  .menu-controls #startBtn:disabled{
+    background:#333047; color:#77738f; border-color:#4a4666; cursor:not-allowed;
+  }
+  .menu-controls #prevBtn, .menu-controls #nextBtn{ width:52px; }
+</style>
+</head>
+<body>
+<div class="cabinet">
+  <div class="marquee">JACKRABBIT
+    <span>a flappy hare from Brookings, SD</span>
+  </div>
+  <canvas id="game" width="384" height="576"></canvas>
+  <div class="menu-controls" id="menuControls">
+    <button id="prevBtn" type="button">◀</button>
+    <button id="startBtn" type="button">START</button>
+    <button id="nextBtn" type="button">▶</button>
+  </div>
+  <div class="hud-row">
+    <div><span class="dot">●</span> SCORE: <span id="scoreOut">0</span></div>
+    <div>BEST (<span id="courseOut">-</span>): <span id="bestOut">0</span></div>
+  </div>
+  <div class="footer-hint">TAP SCREEN TO HOP &nbsp;·&nbsp; ◀ START ▶ TO PICK A COURSE</div>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const scoreOut = document.getElementById('scoreOut');
+const bestOut = document.getElementById('bestOut');
+const courseOut = document.getElementById('courseOut');
+
+// ---------- Courses ----------
+const COURSES = [
+  {
+    key:'prairie', name:'PRAIRIE', unlock:0,
+    skyTop:'#7EC8F2', skyMid:'#A9DDF7', skyLow:'#D9F1E4',
+    ground:'#C8963E', groundHi:'#E0B15E', groundDark:'#8f6a2c',
+    obstacle:'#6FA548', obstacleHi:'#8FC466', obstacleDark:'#456b2c',
+    cloud:'#FFFFFF',
+    deco:'silo', gap:152, speed:2.15, spawnGap:205
+  },
+  {
+    key:'campus', name:'SDSU CAMPUS', unlock:20,
+    skyTop:'#1B3C9C', skyMid:'#3358C4', skyLow:'#8FA8E8',
+    ground:'#9A9AA6', groundHi:'#C0C0CC', groundDark:'#5f5f6b',
+    obstacle:'#0033A0', obstacleHi:'#3358C4', obstacleDark:'#001c5c',
+    cloud:'#E9EEFF',
+    deco:'pillar', gap:140, speed:2.55, spawnGap:195
+  },
+  {
+    key:'downtown', name:'MAIN STREET', unlock:30,
+    skyTop:'#100C24', skyMid:'#2A2158', skyLow:'#5A3F84',
+    ground:'#413A63', groundHi:'#5C5389', groundDark:'#26213e',
+    obstacle:'#9A3B3B', obstacleHi:'#C25A5A', obstacleDark:'#5c1f1f',
+    cloud:'#4A3F78',
+    deco:'lamp', gap:132, speed:2.95, spawnGap:185
+  }
+  // Add a 4th course here later with unlock:40 to require 40 on Main Street.
+];
+
+let best = {prairie:0, campus:0, downtown:0};
+
+function isUnlocked(i){
+  if(i === 0) return true;
+  return best[COURSES[i-1].key] >= COURSES[i].unlock;
+}
+
+// ---------- State ----------
+let state = 'menu';
+let menuIndex = 0;
+let course = COURSES[0];
+let rabbit, obstacles, frame, score, groundX, clouds;
+
+function resetGame(){
+  rabbit = { x: 92, y: H/2, vy: 0 };
+  obstacles = [];
+  clouds = Array.from({length:4}, (_,i)=>({x:i*140+40, y:40+i*36, s:0.6+Math.random()*0.6}));
+  frame = 0;
+  score = 0;
+  groundX = 0;
+}
+
+// ---------- Input ----------
+const menuControls = document.getElementById('menuControls');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const startBtn = document.getElementById('startBtn');
+
+function startSelected(){
+  if(!isUnlocked(menuIndex)) return;
+  course = COURSES[menuIndex];
+  resetGame();
+  state = 'play';
+}
+function flapOrSelect(){
+  if(state === 'menu'){
+    startSelected();
+  } else if(state === 'play'){
+    rabbit.vy = -6.3;
+  } else if(state === 'dead'){
+    state = 'menu';
+  }
+}
+prevBtn.addEventListener('click', ()=>{
+  menuIndex = (menuIndex - 1 + COURSES.length) % COURSES.length;
+});
+nextBtn.addEventListener('click', ()=>{
+  menuIndex = (menuIndex + 1) % COURSES.length;
+});
+startBtn.addEventListener('click', startSelected);
+
+window.addEventListener('keydown', e=>{
+  if(e.code === 'Escape'){ state = 'menu'; return; }
+  if(state === 'menu' && (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight')){
+    const dir = (e.code==='ArrowUp' || e.code==='ArrowLeft') ? -1 : 1;
+    menuIndex = (menuIndex + dir + COURSES.length) % COURSES.length;
+    return;
+  }
+  if(e.code === 'Space' || e.code === 'Enter'){ e.preventDefault(); flapOrSelect(); }
+});
+canvas.addEventListener('pointerdown', ()=>{
+  if(state === 'menu') return; // use the buttons below the screen
+  flapOrSelect();
+});
+
+// ---------- Pixel helpers ----------
+function px(x,y,w,h,color){
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.round(x), Math.round(y), w, h);
+}
+function circleBlock(cx,cy,r,color){
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.fill();
+}
+
+// ---------- Rabbit sprite (SNES-ish, layered shading) ----------
+function drawRabbit(r){
+  ctx.save();
+  ctx.translate(r.x, r.y);
+  const tilt = Math.max(-0.45, Math.min(0.85, r.vy/9));
+  ctx.rotate(tilt);
+
+  const bob = Math.sin(frame/4)*1.2;
+  const earFlap = Math.sin(frame/5) * 5;
+
+  // shadow blob under body (depth)
+  ctx.globalAlpha = 0.18;
+  circleBlock(0, 14, 15, '#000');
+  ctx.globalAlpha = 1;
+
+  // back ear (darker, behind)
+  px(1, -30+earFlap*0.3, 6, 20, '#8B5A2B');
+  px(2, -28+earFlap*0.3, 3, 12, '#E9A7B0');
+
+  // tail
+  circleBlock(-15, 4+bob, 4.5, '#FFF3D6');
+  circleBlock(-15, 4+bob, 2.2, '#E8D3A6');
+
+  // body base + shading
+  ctx.fillStyle = '#D48A45';
+  roundRectPath(-13, -9+bob, 27, 20, 8);
+  ctx.fill();
+  ctx.fillStyle = '#B96F30';
+  roundRectPath(-13, 3+bob, 27, 8, 5);
+  ctx.fill();
+  // belly highlight
+  ctx.fillStyle = '#FFF3D6';
+  roundRectPath(-8, -2+bob, 17, 12, 6);
+  ctx.fill();
+
+  // head
+  ctx.fillStyle = '#D48A45';
+  roundRectPath(6, -16+bob, 16, 16, 6);
+  ctx.fill();
+  ctx.fillStyle = '#C27A38';
+  roundRectPath(6, -6+bob, 16, 6, 4);
+  ctx.fill();
+  // muzzle
+  ctx.fillStyle = '#FFF3D6';
+  circleBlock(20, -5+bob, 4.5, '#FFF3D6');
+  circleBlock(23, -5+bob, 1, '#3A2418');
+  // eye with highlight (SNES sparkle)
+  circleBlock(19.5, -10+bob, 2.4, '#161428');
+  circleBlock(20.3, -10.8+bob, 0.8, '#FFFFFF');
+  // cheek blush
+  ctx.globalAlpha = 0.35;
+  circleBlock(15, -6+bob, 2.4, '#E9A7B0');
+  ctx.globalAlpha = 1;
+
+  // front ear (SDSU gold tip)
+  px(-2, -32+earFlap, 6, 22, '#D48A45');
+  px(-1, -30+earFlap, 4, 14, '#F4C6CE');
+  px(-2, -32+earFlap, 6, 5, '#FFC629');
+
+  // feet
+  const footY = Math.sin(frame/3) > 0 ? 12 : 10;
+  ctx.fillStyle = '#B96F30';
+  roundRectPath(-9, footY+bob, 8, 5, 3); ctx.fill();
+  roundRectPath(3, footY+bob, 8, 5, 3); ctx.fill();
+
+  ctx.restore();
+}
+function roundRectPath(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+// ---------- Obstacles ----------
+function drawObstacleDeco(x, topH, botY, c){
+  const gapW = 46;
+  if(c.deco === 'silo'){
+    px(x, 0, gapW, topH, c.obstacle);
+    px(x, 0, 8, topH, c.obstacleHi);
+    px(x+gapW-8, 0, 8, topH, c.obstacleDark);
+    px(x-4, topH-16, gapW+8, 16, c.obstacleDark);
+    px(x, botY, gapW, H-botY, c.obstacle);
+    px(x, botY, 8, H-botY, c.obstacleHi);
+    px(x+gapW-8, botY, 8, H-botY, c.obstacleDark);
+    px(x-4, botY, gapW+8, 16, c.obstacleDark);
+  } else if(c.deco === 'pillar'){
+    px(x+8, 0, gapW-16, topH, c.obstacle);
+    px(x+8, 0, 5, topH, c.obstacleHi);
+    px(x+gapW-13, 0, 5, topH, c.obstacleDark);
+    px(x, topH-12, gapW, 12, c.obstacleDark);
+    px(x+8, botY, gapW-16, H-botY, c.obstacle);
+    px(x+8, botY, 5, H-botY, c.obstacleHi);
+    px(x+gapW-13, botY, 5, H-botY, c.obstacleDark);
+    px(x, botY, gapW, 12, c.obstacleDark);
+    px(x+8, 0, 5, topH, c.cloud === '#E9EEFF' ? '#FFC629' : '#FFC629');
+  } else {
+    px(x+gapW/2-4, 0, 8, topH, c.obstacle);
+    px(x+gapW/2-10, topH-18, 20, 18, c.obstacleDark);
+    circleBlock(x+gapW/2, topH-22, 8, '#FFE9A8');
+    ctx.globalAlpha = .35; circleBlock(x+gapW/2, topH-22, 14, '#FFE9A8'); ctx.globalAlpha = 1;
+    px(x+gapW/2-4, botY, 8, H-botY, c.obstacle);
+    px(x+gapW/2-10, botY, 20, 16, c.obstacleDark);
+  }
+}
+
+// ---------- Background ----------
+function drawBackground(c){
+  const grad = ctx.createLinearGradient(0,0,0,H-60);
+  grad.addColorStop(0, c.skyTop);
+  grad.addColorStop(0.55, c.skyMid);
+  grad.addColorStop(1, c.skyLow);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,H-60);
+
+  // clouds / stars
+  for(const cl of clouds){
+    const cx = ((cl.x - frame*0.25) % (W+120) + (W+120)) % (W+120) - 60;
+    ctx.globalAlpha = 0.85;
+    circleBlock(cx, cl.y, 14*cl.s, c.cloud);
+    circleBlock(cx+14*cl.s, cl.y+4*cl.s, 10*cl.s, c.cloud);
+    circleBlock(cx-13*cl.s, cl.y+4*cl.s, 9*cl.s, c.cloud);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.globalAlpha = 0.55;
+  if(c.deco === 'silo'){
+    for(let i=0;i<4;i++){
+      const bx = ((i*140) - (frame*0.4)%140 + W)%(W+140) - 70;
+      px(bx, H-170, 20, 110, c.obstacleDark);
+      circleBlock(bx+10, H-172, 12, c.obstacleDark);
+    }
+  } else if(c.deco === 'pillar'){
+    for(let i=0;i<3;i++){
+      const bx = ((i*180) - (frame*0.4)%180 + W)%(W+180) - 90;
+      px(bx, H-230, 76, 170, '#101c4d');
+      for(let wRow=0; wRow<5; wRow++) px(bx+10, H-210+wRow*30, 12, 16, '#FFC629');
+    }
+  } else {
+    for(let i=0;i<5;i++){
+      const bx = ((i*90) - (frame*0.4)%90 + W)%(W+90) - 45;
+      px(bx, H-210, 42, 150, '#241f3d');
+      px(bx+6, H-200, 10, 12, '#FFD98A');
+      px(bx+24, H-180, 10, 12, '#FFD98A');
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // ground with highlight strip
+  px(0, H-60, W, 60, c.ground);
+  px(0, H-60, W, 6, c.groundHi);
+  const gx = -(groundX % 24);
+  for(let x=gx; x<W; x+=24){ px(x, H-46, 12, 8, c.groundDark); }
+}
+
+// ---------- Loop mechanics ----------
+function spawnObstacle(){
+  const gap = course.gap;
+  const margin = 60;
+  const topH = margin + Math.random()*(H-60-2*margin-gap);
+  obstacles.push({ x: W+20, topH, botY: topH+gap, passed:false });
+}
+
+function update(){
+  if(state !== 'play') return;
+  frame++;
+  groundX += course.speed;
+
+  rabbit.vy += 0.37;
+  rabbit.y += rabbit.vy;
+
+  if(frame % course.spawnGap === 0) spawnObstacle();
+
+  for(const o of obstacles) o.x -= course.speed;
+  while(obstacles.length && obstacles[0].x < -60) obstacles.shift();
+
+  for(const o of obstacles){
+    if(!o.passed && o.x+46 < rabbit.x){
+      o.passed = true;
+      score++;
+    }
+    const inX = rabbit.x+10 > o.x && rabbit.x-10 < o.x+46;
+    const hitY = rabbit.y-12 < o.topH || rabbit.y+12 > o.botY;
+    if(inX && hitY) die();
+  }
+
+  if(rabbit.y+12 > H-60 || rabbit.y-16 < 0) die();
+}
+
+function die(){
+  state = 'dead';
+  if(score > best[course.key]) best[course.key] = score;
+}
+
+// ---------- Screens ----------
+function panel(x,y,w,h){
+  ctx.fillStyle = 'rgba(20,17,40,0.78)';
+  roundRectPath(x,y,w,h,10); ctx.fill();
+  ctx.strokeStyle = '#FFC629';
+  ctx.lineWidth = 2;
+  roundRectPath(x+1,y+1,w-2,h-2,9); ctx.stroke();
+}
+
+function drawMenu(){
+  const c = COURSES[menuIndex];
+  drawBackground(c);
+  ctx.fillStyle = 'rgba(8,7,18,0.35)';
+  ctx.fillRect(0,0,W,H);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#FFC629';
+  ctx.font = '14px "Press Start 2P"';
+  ctx.fillText('SELECT COURSE', W/2, 76);
+
+  COURSES.forEach((cc, i)=>{
+    const y = 130 + i*88;
+    const active = i === menuIndex;
+    const unlocked = isUnlocked(i);
+    panel(W/2-140, y-30, 280, 62);
+    if(!unlocked) { ctx.globalAlpha = 0.5; }
+    ctx.fillStyle = active ? '#FFF3D6' : '#8a86a8';
+    ctx.font = (active ? '11px' : '9px') + ' "Press Start 2P"';
+    ctx.fillText((active?'▶ ':'') + (unlocked ? cc.name : '🔒 ' + cc.name), W/2, y+2);
+    ctx.font = '7px "Press Start 2P"';
+    if(unlocked){
+      ctx.fillStyle = '#FFC629';
+      ctx.fillText('BEST: ' + best[cc.key], W/2, y+20);
+    } else {
+      ctx.fillStyle = '#E4402C';
+      ctx.fillText('CLEAR ' + cc.unlock + ' ON ' + COURSES[i-1].name, W/2, y+20);
+    }
+    ctx.globalAlpha = 1;
+  });
+
+  ctx.font = '8px "Press Start 2P"';
+  ctx.fillStyle = '#FFF3D6';
+  ctx.fillText('USE THE BUTTONS BELOW', W/2, H-50);
+  ctx.textAlign = 'left';
+}
+
+function courseIndex(c){ return COURSES.findIndex(cc => cc.key === c.key); }
+function nextUnlockTarget(c){
+  const i = courseIndex(c);
+  return (i+1 < COURSES.length) ? COURSES[i+1].unlock : null;
+}
+function drawRainbowText(text, cx, y, px){
+  ctx.font = px + 'px "Press Start 2P"';
+  const widths = [...text].map(ch => ctx.measureText(ch).width);
+  const total = widths.reduce((a,b)=>a+b,0);
+  let x = cx - total/2;
+  ctx.textAlign = 'left';
+  [...text].forEach((ch,i)=>{
+    const hue = (frame*6 + i*45) % 360;
+    ctx.fillStyle = `hsl(${hue},90%,62%)`;
+    ctx.fillText(ch, x, y);
+    x += widths[i];
+  });
+  ctx.textAlign = 'left';
+}
+
+function drawPlay(){
+  drawBackground(course);
+  for(const o of obstacles) drawObstacleDeco(o.x, o.topH, o.botY, course);
+  drawRabbit(rabbit);
+
+  const target = nextUnlockTarget(course);
+  const goalReached = target !== null && score >= target;
+
+  ctx.textAlign = 'center';
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.font = '18px "Press Start 2P"';
+  ctx.strokeText(score, W/2, 52);
+  if(goalReached){
+    drawRainbowText(String(score), W/2, 52, 18);
+  } else {
+    ctx.fillStyle = '#FFF3D6';
+    ctx.fillText(score, W/2, 52);
+  }
+
+  if(target !== null){
+    ctx.font = '7px "Press Start 2P"';
+    ctx.textAlign = 'center';
+    if(goalReached){
+      drawRainbowText('NEXT COURSE UNLOCKED!', W/2, 70, 7);
+    } else {
+      ctx.fillStyle = 'rgba(255,243,214,0.75)';
+      ctx.fillText('GOAL: ' + target, W/2, 70);
+    }
+  }
+  ctx.textAlign = 'left';
+}
+
+function drawDead(){
+  drawPlay();
+  ctx.fillStyle = 'rgba(8,7,18,0.55)';
+  ctx.fillRect(0,0,W,H);
+  panel(W/2-140, H/2-70, 280, 150);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#E4402C';
+  ctx.font = '15px "Press Start 2P"';
+  ctx.fillText('GAME OVER', W/2, H/2 - 32);
+  ctx.fillStyle = '#FFF3D6';
+  ctx.font = '10px "Press Start 2P"';
+  ctx.fillText('SCORE: ' + score, W/2, H/2 - 2);
+  ctx.fillStyle = '#FFC629';
+  ctx.fillText('BEST: ' + best[course.key], W/2, H/2 + 22);
+  ctx.font = '8px "Press Start 2P"';
+  ctx.fillStyle = '#8a86a8';
+  ctx.fillText('PRESS FOR MENU', W/2, H/2 + 56);
+  ctx.textAlign = 'left';
+}
+
+function loop(){
+  update();
+  if(state === 'menu') drawMenu();
+  else if(state === 'play') drawPlay();
+  else if(state === 'dead') drawDead();
+
+  menuControls.style.display = state === 'menu' ? 'flex' : 'none';
+  if(state === 'menu'){
+    const unlocked = isUnlocked(menuIndex);
+    startBtn.disabled = !unlocked;
+    startBtn.textContent = unlocked ? 'START' : 'LOCKED';
+  }
+
+  scoreOut.textContent = score || 0;
+  courseOut.textContent = course ? course.name : '-';
+  bestOut.textContent = course ? best[course.key] : 0;
+
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+loop();
+</script>
+</body>
+</html>

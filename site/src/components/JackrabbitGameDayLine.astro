@@ -1,0 +1,24 @@
+---
+// Game-day tie-in line, rendered inside index.astro's rail game tile only
+// when gameSlot === 'jackrabbits' (an actual Jackrabbits sports game, not a
+// general SDSU marquee event or a Moreno Valley regional game) -- see
+// index.astro's gameSlot tie-break logic.
+---
+
+<a href="/play" class="gameday-line">
+  🐇 Feeling game-day energy? Play our Jackrabbit game →
+</a>
+
+<style>
+  .gameday-line {
+    display: inline-block;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: #FFC629;
+    text-decoration: none;
+    border-bottom: 1px dashed #FFC629;
+  }
+  .gameday-line:hover {
+    color: #FFF3D6;
+  }
+</style>

@@ -1,0 +1,35 @@
+---
+// Front-page promo card for the Jackrabbit arcade game, see /play.
+---
+
+<a href="/play" class="jackrabbit-widget" aria-label="Play the Jackrabbit arcade game">
+  <div class="jr-icon">🐇</div>
+  <div class="jr-text">
+    <div class="jr-title">Play Jackrabbit</div>
+    <div class="jr-sub">Our free arcade game — can you beat 20?</div>
+  </div>
+  <div class="jr-arrow">→</div>
+</a>
+
+<style>
+  .jackrabbit-widget {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0033A0, #3358C4);
+    color: #FFF3D6;
+    text-decoration: none;
+    border: 2px solid #FFC629;
+    transition: transform 0.15s ease;
+  }
+  .jackrabbit-widget:hover {
+    transform: translateY(-2px);
+  }
+  .jr-icon { font-size: 1.6rem; }
+  .jr-text { flex: 1; }
+  .jr-title { font-weight: 700; font-size: 0.95rem; }
+  .jr-sub { font-size: 0.78rem; opacity: 0.85; }
+  .jr-arrow { color: #FFC629; font-weight: 700; }
+</style>

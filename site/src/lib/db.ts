@@ -31,7 +31,8 @@ export const TOWN_ID = siteConfig.townId;
 export type SourceType =
   | 'meeting' | 'event' | 'alert' | 'weekly'
   | 'culture_essay' | 'editorial' | 'vetenskap_kronika' | 'kvick_essa'
-  | 'media_recension' | 'vardagsmiddag' | 'home_sales_digest' | 'sports_digest' | 'university_digest';
+  | 'media_recension' | 'vardagsmiddag' | 'home_sales_digest' | 'sports_digest' | 'university_digest'
+  | 'announcement';
 
 /** Presentation-layer label per source_type, för Byline-raden. Ingen egen DB-kolumn --
  *  category är en ren funktion av source_type, inget som behöver lagras separat. */
@@ -45,6 +46,11 @@ export const CATEGORY_LABELS: Partial<Record<SourceType, string>> = {
   home_sales_digest: 'Market digest',
   sports_digest: 'Sports digest',
   university_digest: 'University digest',
+  // Handskrivet, inte skrapat eller AI-genererat -- t.ex. sajtnyheter som
+  // "vi lanserade ett arkadspel". byline sätts (se StoryCard.astro:s
+  // hasByline-villkor) så den här kickern faktiskt används i stället för
+  // att falla tillbaka på "Events".
+  announcement: 'Announcement',
 };
 
 /** De sex innehållstyperna från Content Track v1 -- en sammanhållen lista så att

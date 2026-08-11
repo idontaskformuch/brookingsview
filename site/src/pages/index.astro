@@ -19,6 +19,8 @@ import WeeklyRoundup from '../components/WeeklyRoundup.astro';
 import GameCard from '../components/GameCard.astro';
 import RegionalGameCard from '../components/RegionalGameCard.astro';
 import SdsuEventCard from '../components/SdsuEventCard.astro';
+import JackrabbitWidget from '../components/JackrabbitWidget.astro';
+import JackrabbitGameDayLine from '../components/JackrabbitGameDayLine.astro';
 import SchoolAlertBanner from '../components/SchoolAlertBanner.astro';
 import TrafficWidget from '../components/TrafficWidget.astro';
 import Tile from '../components/Tile.astro';
@@ -35,7 +37,10 @@ const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame
   getActiveAlerts(),
   getActiveSchoolAlerts(),
   getActiveTrafficIncidents(),
-  getUpcomingStories(['event', 'meeting'], 40),
+  // 'announcement' (t.ex. spellanseringen) ska in i SAMMA Today/This week-
+  // ström som event/meeting -- inte en egen sektion för en enstaka
+  // handskriven post, se lib/db.ts:SourceType.
+  getUpcomingStories(['event', 'meeting', 'announcement'], 40),
   getUpcomingGames(3),
   getNextRegionalGame(),
   getNextSdsuMarqueeEvent(),
@@ -110,9 +115,15 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
         </a>
       )}
       {gameSlot === 'jackrabbits' && nextGame ? (
-        <a class="rail__link rail__game" href="/jackrabbits">
-          <GameCard game={nextGame} />
-        </a>
+        <>
+          <a class="rail__link rail__game" href="/jackrabbits">
+            <GameCard game={nextGame} />
+          </a>
+          {/* Bara vid en RIKTIG Jackrabbits-match, inte ett allmänt SDSU-
+              marquee-event eller en Moreno Valley-match -- se gameSlot
+              ovan. Egen <a>, inte nästlad i länken ovan (ogiltig HTML). */}
+          <JackrabbitGameDayLine />
+        </>
       ) : gameSlot === 'sdsu' && nextSdsuEvent ? (
         <a class="rail__link rail__game" href="/university">
           <SdsuEventCard event={nextSdsuEvent} />
@@ -122,6 +133,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
           <RegionalGameCard game={nextRegionalGame} />
         </a>
       )}
+      {isBrookings && <JackrabbitWidget />}
       {trafficIncidents.length > 0 && (
         <a class="rail__link" href="/traffic">
           <TrafficWidget incidents={trafficIncidents} />
