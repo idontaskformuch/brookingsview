@@ -5,7 +5,11 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ShareButtons from '../../components/ShareButtons.astro';
 import RelatedStories from '../../components/RelatedStories.astro';
 import Byline from '../../components/Byline.astro';
-import { getAllStories, getRelatedStories, formatOccursAt, formatDate, CATEGORY_LABELS } from '../../lib/db';
+import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
+import {
+  getAllStories, getRelatedStories, formatOccursAt, formatDate, CATEGORY_LABELS,
+  getWorkerPulseComments,
+} from '../../lib/db';
 import type { Story } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 
@@ -31,6 +35,12 @@ const related = await getRelatedStories(story, 3);
 // bildgenereringen misslyckades den dagen) faller sidan tillbaka på OG-kortet.
 const heroSrc = story.image_path ?? `/og/${story.slug}.png`;
 const heroUrl = new URL(heroSrc, Astro.site ?? siteConfig.siteUrl).href;
+
+// Kommentarer bara på Worker Pulse-digester (se WorkerPulseComments.astro-
+// docstringen) -- source_type existerar bara för Moreno Valley-storys, så
+// det här blir aldrig sant på en Brookings-build.
+const isWorkerPulseDigest = story.source_type === 'workplace_watch_digest';
+const comments = isWorkerPulseDigest ? await getWorkerPulseComments(story.slug) : [];
 ---
 
 <BaseLayout title={`${story.title} — ${siteConfig.siteName}`} description={story.body.slice(0, 155)} ogSlug={story.slug}>
@@ -90,6 +100,8 @@ const heroUrl = new URL(heroSrc, Astro.site ?? siteConfig.siteUrl).href;
   </article>
 
   <RelatedStories stories={related} />
+
+  {isWorkerPulseDigest && <WorkerPulseComments pageSlug={story.slug} comments={comments} />}
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify({
     '@context': 'https://schema.org',

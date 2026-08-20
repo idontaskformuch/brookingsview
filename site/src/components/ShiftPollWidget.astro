@@ -1,0 +1,142 @@
+---
+// No-login shift poll for Worker Pulse -- fixed question, four fixed
+// options, no free text (see db/migrations/017_shift_poll.sql). Renders
+// the build-time tally (SSR, like everything else on this site), then a
+// client-side script POSTs to /api/shift-poll-vote (Cloudflare Pages
+// Function) and swaps in the LIVE result from that response -- no page
+// reload, no separate GET endpoint needed.
+import { SHIFT_POLL_OPTIONS, type ShiftPollResult } from '../lib/db';
+
+interface Props {
+  results: ShiftPollResult[];
+}
+const { results } = Astro.props;
+
+const total = results.reduce((sum, r) => sum + r.count, 0);
+const pct = (count: number) => (total > 0 ? Math.round((count / total) * 100) : 0);
+---
+
+<div class="shift-poll" id="shift-poll">
+  <p class="shift-poll__question">How was your shift today?</p>
+
+  <div class="shift-poll__buttons" data-poll-buttons>
+    {SHIFT_POLL_OPTIONS.map((opt) => (
+      <button type="button" class="shift-poll__btn" data-option={opt}>{opt}</button>
+    ))}
+  </div>
+
+  <div class="shift-poll__results" data-poll-results hidden>
+    {SHIFT_POLL_OPTIONS.map((opt) => {
+      const count = results.find((r) => r.option === opt)?.count ?? 0;
+      return (
+        <div class="shift-poll__row" data-option-row={opt}>
+          <span class="shift-poll__label">{opt}</span>
+          <div class="shift-poll__track">
+            <div class="shift-poll__fill" data-fill style={`width: ${pct(count)}%`}></div>
+          </div>
+          <span class="shift-poll__count" data-count>{count}</span>
+        </div>
+      );
+    })}
+    <p class="shift-poll__total" data-poll-total>{total} {total === 1 ? 'response' : 'responses'} today</p>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'workerpulse_shift_poll_vote';
+
+  function todayStamp(): string {
+    // Matchar poll_date-tidszonen (Los Angeles) i site/functions/_shared.ts
+    // -- bara till för att avgöra om ett SPARAT val är från idag eller en
+    // tidigare dag, inte den auktoritativa källan (den är servern).
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
+  }
+
+  function showResults(root: HTMLElement) {
+    root.querySelector<HTMLElement>('[data-poll-buttons]')?.setAttribute('hidden', '');
+    root.querySelector<HTMLElement>('[data-poll-results]')?.removeAttribute('hidden');
+  }
+
+  function applyResults(root: HTMLElement, results: { option: string; count: number }[]) {
+    const total = results.reduce((sum, r) => sum + r.count, 0);
+    for (const r of results) {
+      const row = root.querySelector<HTMLElement>(`[data-option-row="${CSS.escape(r.option)}"]`);
+      if (!row) continue;
+      const pct = total > 0 ? Math.round((r.count / total) * 100) : 0;
+      row.querySelector<HTMLElement>('[data-fill]')!.style.width = `${pct}%`;
+      row.querySelector<HTMLElement>('[data-count]')!.textContent = String(r.count);
+    }
+    const totalEl = root.querySelector<HTMLElement>('[data-poll-total]');
+    if (totalEl) totalEl.textContent = `${total} ${total === 1 ? 'response' : 'responses'} today`;
+  }
+
+  function init() {
+    const root = document.getElementById('shift-poll');
+    if (!root) return;
+
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const { date } = JSON.parse(saved);
+        if (date === todayStamp()) showResults(root);
+      } catch {
+        /* corrupt value, ignore -- treat as not-voted */
+      }
+    }
+
+    root.querySelectorAll<HTMLButtonElement>('[data-option]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        root.querySelectorAll<HTMLButtonElement>('[data-option]').forEach((b) => (b.disabled = true));
+        try {
+          const resp = await fetch('/api/shift-poll-vote', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ option: btn.dataset.option }),
+          });
+          if (resp.ok) {
+            const { results } = await resp.json();
+            applyResults(root, results);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: todayStamp() }));
+          }
+        } catch {
+          /* nätverksfel -- lämna knapparna aktiva igen, ingen felruta för en icke-kritisk widget */
+          root.querySelectorAll<HTMLButtonElement>('[data-option]').forEach((b) => (b.disabled = false));
+          return;
+        }
+        showResults(root);
+      });
+    });
+  }
+
+  init();
+</script>
+
+<style>
+  .shift-poll {
+    max-width: 60rem;
+    margin: 0 auto 1.5rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+  }
+  .shift-poll__question { font-weight: 700; margin: 0 0 0.75rem; }
+  .shift-poll__buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .shift-poll__btn {
+    padding: 0.5rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .shift-poll__btn:hover:not(:disabled) { border-color: #2FD9C4; }
+  .shift-poll__btn:disabled { opacity: 0.5; cursor: default; }
+
+  .shift-poll__row { display: grid; grid-template-columns: 6rem 1fr 2.5rem; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; }
+  .shift-poll__label { font-size: 0.85rem; }
+  .shift-poll__track { height: 0.6rem; border-radius: 999px; background: var(--rule); overflow: hidden; }
+  .shift-poll__fill { height: 100%; background: #2FD9C4; transition: width 0.3s ease; }
+  .shift-poll__count { font-size: 0.8rem; color: var(--ink-soft); text-align: right; }
+  .shift-poll__total { font-size: 0.78rem; color: var(--ink-soft); margin: 0.5rem 0 0; }
+</style>

@@ -1,0 +1,93 @@
+---
+// Daglig hetta/damm-status för Worker Pulse (site/src/pages/workplace-watch)
+// -- den faktiska "kolla innan skiftet"-anledningen att komma tillbaka varje
+// dag, till skillnad från arbetsgivarbetygen som bara ändras månadsvis.
+//
+// Ingen ny DB-tabell, ingen Python-ändring: härleds direkt ur data som
+// redan finns (getWeather()/getActiveAlerts() i lib/db.ts). En aktiv
+// NWS-varning vinner alltid över den härledda temperaturgränsen, eftersom
+// dess titel (t.ex. "Excessive Heat Warning") ÄR den mest exakta tillgängliga
+// uppgiften -- se nws_alerts.py, som skriver NWS:s eget "event"-namn rakt av
+// som story-titel.
+interface Props {
+  tempF: number | null;
+  activeAlertTitles: string[];
+}
+const { tempF, activeAlertTitles } = Astro.props;
+
+type Tier = 'safe' | 'caution' | 'high-risk';
+
+const heatAlert = activeAlertTitles.find((t) =>
+  /excessive heat|heat warning|heat advisory|extreme heat/i.test(t)
+);
+const dustAlert = activeAlertTitles.find((t) => /dust/i.test(t));
+
+let tier: Tier;
+let label: string;
+if (heatAlert) {
+  tier = 'high-risk';
+  label = heatAlert;
+} else if (dustAlert) {
+  tier = 'caution';
+  label = dustAlert;
+} else if (tempF !== null && tempF >= 105) {
+  tier = 'high-risk';
+  label = `${Math.round(tempF)}°F -- high heat risk`;
+} else if (tempF !== null && tempF >= 90) {
+  tier = 'caution';
+  label = `${Math.round(tempF)}°F -- use caution outdoors`;
+} else {
+  tier = 'safe';
+  label = tempF !== null ? `${Math.round(tempF)}°F -- safe conditions` : 'No advisory in effect';
+}
+
+const TIER_TEXT: Record<Tier, string> = {
+  safe: 'Safe',
+  caution: 'Caution',
+  'high-risk': 'High risk',
+};
+---
+
+<div class={`heat-advisory heat-advisory--${tier}`}>
+  <div class="heat-advisory__dot" aria-hidden="true"></div>
+  <div class="heat-advisory__text">
+    <div class="heat-advisory__tier">{TIER_TEXT[tier]} for outdoor &amp; loading-dock work</div>
+    <div class="heat-advisory__label">{label}</div>
+  </div>
+</div>
+
+<style>
+  .heat-advisory {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    border: 2px solid var(--ha-border);
+    background: var(--ha-bg);
+    color: var(--ha-fg);
+    max-width: 60rem;
+    margin: 0 auto 1.25rem;
+  }
+  .heat-advisory--safe {
+    --ha-border: #1a9850; --ha-bg: rgba(26, 152, 80, 0.1); --ha-fg: #1a9850;
+  }
+  .heat-advisory--caution {
+    --ha-border: #d9a441; --ha-bg: rgba(217, 164, 65, 0.12); --ha-fg: #a3711b;
+  }
+  .heat-advisory--high-risk {
+    --ha-border: #d73027; --ha-bg: rgba(215, 48, 39, 0.12); --ha-fg: #d73027;
+  }
+  .heat-advisory__dot {
+    width: 0.85rem; height: 0.85rem; border-radius: 50%;
+    background: var(--ha-fg); flex-shrink: 0;
+  }
+  .heat-advisory__tier { font-weight: 700; font-size: 0.9rem; }
+  .heat-advisory__label { font-size: 0.85rem; opacity: 0.9; }
+
+  @media (prefers-color-scheme: dark) {
+    .heat-advisory--safe { --ha-bg: rgba(26, 152, 80, 0.18); --ha-fg: #6ee7b7; }
+    .heat-advisory--caution { --ha-bg: rgba(217, 164, 65, 0.2); --ha-fg: #fbbf24; }
+    .heat-advisory--high-risk { --ha-bg: rgba(215, 48, 39, 0.2); --ha-fg: #fca5a5; }
+  }
+</style>

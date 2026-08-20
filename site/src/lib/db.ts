@@ -821,6 +821,58 @@ export async function getLatestEmployerRatings(): Promise<EmployerRating[]> {
   }));
 }
 
+/**
+ * Skiftundersökning ("hur var skiftet idag?") -- fast fråga, fyra fasta
+ * alternativ, ingen fritext (se db/migrations/017_shift_poll.sql och
+ * site/functions/api/shift-poll-vote.ts, som är den enda platsen som
+ * SKRIVER röster -- denna funktion läser bara dagens läge vid build-tid,
+ * samma som allt annat på sajten). Röstningswidgeten uppdaterar sig sedan
+ * LIVE i klienten från Function-anropets svar utan att sidan byggs om.
+ */
+export const SHIFT_POLL_OPTIONS = ['Calm', 'Okay', 'Tough', 'Really tough'] as const;
+
+export interface ShiftPollResult {
+  option: string;
+  count: number;
+}
+
+export async function getShiftPollResults(): Promise<ShiftPollResult[]> {
+  const rows = (await sql`
+    SELECT option, count(*)::int AS count
+      FROM shift_poll_votes
+     WHERE town_id = ${TOWN_ID}
+       AND poll_date = (now() AT TIME ZONE 'America/Los_Angeles')::date
+     GROUP BY option
+  `) as ShiftPollResult[];
+
+  return SHIFT_POLL_OPTIONS.map((option) => ({
+    option,
+    count: rows.find((r) => r.option === option)?.count ?? 0,
+  }));
+}
+
+/**
+ * AI-modererade kommentarer på Worker Pulse-sidor (se db/migrations/
+ * 018_worker_pulse_comments.sql och site/functions/api/comment.ts, som
+ * modererar och SKRIVER -- denna funktion läser bara redan publicerade
+ * rader vid build-tid). page_slug är antingen 'workplace-watch' (jämförelse-
+ * sidan) eller en enskild digest-storys egen slug.
+ */
+export interface WorkerPulseComment {
+  id: number;
+  body: string;
+  created_at: string;
+}
+
+export async function getWorkerPulseComments(pageSlug: string): Promise<WorkerPulseComment[]> {
+  return (await sql`
+    SELECT id, body, created_at
+      FROM worker_pulse_comments
+     WHERE town_id = ${TOWN_ID} AND page_slug = ${pageSlug} AND status = 'published'
+     ORDER BY created_at ASC
+  `) as WorkerPulseComment[];
+}
+
 /* ------------------------------------------------------------ skyltremsan -- */
 
 export interface SignData {

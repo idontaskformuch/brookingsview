@@ -7,14 +7,28 @@
  *  stjärnbetyg visas bara om det uttryckligen hittades i sökträffarna, annars
  *  "rating pending" i stället för en gissning. */
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { getLatestEmployerRatings } from '../../lib/db';
+import HeatAdvisoryWidget from '../../components/HeatAdvisoryWidget.astro';
+import ShiftPollWidget from '../../components/ShiftPollWidget.astro';
+import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
+import {
+  getLatestEmployerRatings, getWeather, getActiveAlerts,
+  getShiftPollResults, getWorkerPulseComments,
+} from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
 }
 
-const employers = await getLatestEmployerRatings();
+const [employers, weatherPeriods, alerts, pollResults, comments] = await Promise.all([
+  getLatestEmployerRatings(),
+  getWeather(),
+  getActiveAlerts(),
+  getShiftPollResults(),
+  getWorkerPulseComments('workplace-watch'),
+]);
+
+const todayPeriod = weatherPeriods.find((p) => p.is_daytime) ?? weatherPeriods[0] ?? null;
 
 function trend(delta: number | null): { symbol: string; cls: string } {
   if (delta === null) return { symbol: '—', cls: 'flat' };
@@ -37,6 +51,12 @@ function trend(delta: number | null): { symbol: string; cls: string } {
       always attributed to what reviews say, never stated as settled fact.
     </p>
   </header>
+
+  <HeatAdvisoryWidget
+    tempF={todayPeriod?.temp ?? null}
+    activeAlertTitles={alerts.map((a) => a.title)}
+  />
+  <ShiftPollWidget results={pollResults} />
 
   {employers.length > 0 ? (
     <div class="wp-table" role="table">
@@ -81,6 +101,8 @@ function trend(delta: number | null): { symbol: string; cls: string } {
   ) : (
     <p class="empty">No employer data available yet.</p>
   )}
+
+  <WorkerPulseComments pageSlug="workplace-watch" comments={comments} />
 </BaseLayout>
 
 <style>

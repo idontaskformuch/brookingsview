@@ -1,0 +1,151 @@
+---
+// AI-moderated, no-login comments -- scoped to Worker Pulse pages only
+// (see db/migrations/018_worker_pulse_comments.sql and
+// site/functions/api/comment.ts, which does the actual moderation+write).
+// This component only renders already-published comments (build time,
+// like everything else) plus a submit form whose client-side script talks
+// to the Function directly.
+import type { WorkerPulseComment } from '../lib/db';
+
+interface Props {
+  pageSlug: string;
+  comments: WorkerPulseComment[];
+}
+const { pageSlug, comments } = Astro.props;
+
+// created_at är en TIMESTAMPTZ (ett exakt ögonblick, inte en kalenderdag
+// utan klockslag) -- till skillnad från Fas 1:s period_ym-bugg är detta
+// säkert att formatera direkt via toLocaleDateString utan tidszons-
+// ambiguitet, det är bara ETT ögonblick oavsett vilken tidszon man läser det i.
+function formatCommentDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+---
+
+<section class="wp-comments" id="wp-comments" data-page-slug={pageSlug}>
+  <h2 class="wp-comments__heading">Comments</h2>
+
+  <ul class="wp-comments__list" data-comments-list>
+    {comments.map((c) => (
+      <li class="wp-comments__item">
+        <p class="wp-comments__body">{c.body}</p>
+        <p class="wp-comments__meta">{formatCommentDate(c.created_at)}</p>
+      </li>
+    ))}
+    {comments.length === 0 && (
+      <li class="wp-comments__empty" data-empty-state>Nothing here yet -- be the first to comment.</li>
+    )}
+  </ul>
+
+  <form class="wp-comments__form" data-comment-form>
+    <textarea
+      name="body"
+      class="wp-comments__textarea"
+      maxlength="1000"
+      rows="3"
+      placeholder="Share a comment -- every comment is reviewed before it appears."
+      required
+    ></textarea>
+    <div class="wp-comments__form-row">
+      <button type="submit" class="wp-comments__submit">Post comment</button>
+      <span class="wp-comments__status" data-comment-status role="status" aria-live="polite"></span>
+    </div>
+  </form>
+</section>
+
+<script>
+  function init() {
+    const root = document.getElementById('wp-comments');
+    if (!root) return;
+    const pageSlug = root.dataset.pageSlug ?? '';
+    const form = root.querySelector<HTMLFormElement>('[data-comment-form]');
+    const textarea = root.querySelector<HTMLTextAreaElement>('textarea');
+    const statusEl = root.querySelector<HTMLElement>('[data-comment-status]');
+    const list = root.querySelector<HTMLElement>('[data-comments-list]');
+    const submitBtn = root.querySelector<HTMLButtonElement>('.wp-comments__submit');
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!textarea || !statusEl || !list || !submitBtn) return;
+      const body = textarea.value.trim();
+      if (!body) return;
+
+      submitBtn.disabled = true;
+      statusEl.textContent = 'Submitting...';
+
+      try {
+        const resp = await fetch('/api/comment', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ page_slug: pageSlug, body }),
+        });
+
+        if (resp.status === 429) {
+          statusEl.textContent = "You've hit today's comment limit -- try again tomorrow.";
+        } else {
+          const data = await resp.json();
+          if (data.status === 'published') {
+            root.querySelector('[data-empty-state]')?.remove();
+            const item = document.createElement('li');
+            item.className = 'wp-comments__item';
+            const p = document.createElement('p');
+            p.className = 'wp-comments__body';
+            p.textContent = body;
+            const meta = document.createElement('p');
+            meta.className = 'wp-comments__meta';
+            meta.textContent = 'just now';
+            item.append(p, meta);
+            list.appendChild(item);
+            textarea.value = '';
+            statusEl.textContent = 'Posted.';
+          } else if (data.status === 'pending_review') {
+            statusEl.textContent = "Thanks -- this is being reviewed before it appears.";
+            textarea.value = '';
+          } else {
+            statusEl.textContent = "This comment couldn't be posted.";
+          }
+        }
+      } catch {
+        statusEl.textContent = 'Something went wrong -- please try again.';
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
+  init();
+</script>
+
+<style>
+  .wp-comments { max-width: 60rem; margin: 2rem auto 0; }
+  .wp-comments__heading { font-size: 1.1rem; margin-bottom: 0.75rem; }
+  .wp-comments__list { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: 0.75rem; }
+  .wp-comments__item { padding: 0.75rem 0; border-top: 1px solid var(--rule); }
+  .wp-comments__body { margin: 0 0 0.25rem; white-space: pre-wrap; }
+  .wp-comments__meta { margin: 0; font-size: 0.78rem; color: var(--ink-soft); }
+  .wp-comments__empty { color: var(--ink-soft); font-size: 0.9rem; padding: 0.5rem 0; }
+
+  .wp-comments__form { border-top: 1px solid var(--rule); padding-top: 1rem; }
+  .wp-comments__textarea {
+    width: 100%;
+    font: inherit;
+    padding: 0.6rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: inherit;
+    resize: vertical;
+  }
+  .wp-comments__form-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; }
+  .wp-comments__submit {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: none;
+    background: #2FD9C4;
+    color: #06282a;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .wp-comments__submit:disabled { opacity: 0.6; cursor: default; }
+  .wp-comments__status { font-size: 0.8rem; color: var(--ink-soft); }
+</style>

@@ -1,0 +1,13 @@
+# Kopiera till .dev.vars (gitignorad) för lokal `wrangler pages dev`-testning
+# av site/functions/api/*.ts. I PRODUKTION sätts samma tre variabler i
+# Cloudflare Pages-projektets egna miljövariabel-inställningar (dashboarden)
+# -- INTE via GitHub Actions secrets, de styr bara Python-pipelinen.
+
+DATABASE_URL=postgresql://...
+ANTHROPIC_API_KEY=sk-ant-...
+IP_HASH_SALT=any-random-string-used-only-to-hash-voter-ips
+
+# Endast för lokal dev där hostname är localhost i stället för
+# morenovalleyview.com -- avgör town_id manuellt så /api/-funktionerna
+# inte 404:ar mot en Moreno Valley-gated route lokalt.
+DEV_TOWN_ID=moreno_valley_ca
