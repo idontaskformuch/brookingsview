@@ -1,8 +1,0 @@
-# Lokal testning av site/functions/api/*.ts (Cloudflare Pages Functions)
-# via `npx wrangler pages dev` -- rör INTE hur sajten faktiskt byggs eller
-# deployas (det sköts fortfarande av `astro build` + Cloudflare Pages' egen
-# git-integration/deploy-hook, se .github/workflows/*.yml). Se
-# .dev.vars.example för vilka miljövariabler som behövs lokalt.
-name = "brookingsview-site"
-pages_build_output_dir = "dist"
-compatibility_date = "2024-09-23"

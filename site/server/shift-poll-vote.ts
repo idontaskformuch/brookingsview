@@ -3,14 +3,18 @@
 // that IS the entire anti-spam design (see db/migrations/017_shift_poll.sql).
 // UNIQUE(town_id, poll_date, ip_hash) does the one-vote-per-day dedup at the
 // DB level; a repeat vote from the same hashed IP is a silent no-op.
-import type { PagesFunction } from '@cloudflare/workers-types';
+//
+// Runs inside the site's single Worker entry (server/worker.ts) -- see the
+// comment at the top of worker.ts for why this moved out of site/functions/
+// (that was a Cloudflare Pages Functions convention that this project's
+// actual deploy method never invokes).
 import { neon } from '@neondatabase/serverless';
-import { type Env, townFromHostname, sha256Hex, todayInTimezone, jsonResponse } from '../_shared';
+import { type Env, townFromHostname, sha256Hex, todayInTimezone, jsonResponse } from './_shared';
 
 const ALLOWED_OPTIONS = ['Calm', 'Okay', 'Tough', 'Really tough'] as const;
 const TOWN_TZ: Record<string, string> = { moreno_valley_ca: 'America/Los_Angeles' };
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export async function handleShiftPollVote(request: Request, env: Env): Promise<Response> {
   const townId = townFromHostname(request.url, env.DEV_TOWN_ID);
   if (townId !== 'moreno_valley_ca') {
     return new Response('Not found', { status: 404 });
@@ -52,4 +56,4 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }));
 
   return jsonResponse({ results });
-};
+}

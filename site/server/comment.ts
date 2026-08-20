@@ -2,8 +2,13 @@
 // Pulse pages only (Moreno Valley). Every comment passes a moderation gate
 // BEFORE it's ever visible.
 //
-// This runs as a Cloudflare Pages Function (TypeScript, edge runtime) --
-// it does NOT go through ai_pipeline/guardrails.py, which is Python and
+// This runs inside the site's single Worker entry (server/worker.ts), which
+// is the ONLY thing Cloudflare actually invokes in production (see the
+// comment at the top of worker.ts for why -- this used to live under
+// site/functions/ as a Cloudflare Pages Function, which is a dead code path
+// for this project's deploy method and never ran in production).
+//
+// It does NOT go through ai_pipeline/guardrails.py, which is Python and
 // only runs in GitHub Actions batch jobs and has no reachable path from
 // here. This is a deliberately separate implementation that mirrors the
 // same PHILOSOPHY as that module (cheap heuristic pre-filter first, then a
@@ -27,9 +32,8 @@
 // (.ai_budget.json) is a file on the GitHub Actions runner's filesystem --
 // unreachable from a stateless Worker, so this endpoint's spend isn't
 // tracked against it. A per-IP daily submission cap stands in for that here.
-import type { PagesFunction } from '@cloudflare/workers-types';
 import { neon } from '@neondatabase/serverless';
-import { type Env, townFromHostname, sha256Hex, jsonResponse } from '../_shared';
+import { type Env, townFromHostname, sha256Hex, jsonResponse } from './_shared';
 
 const MIN_LEN = 3;
 const MAX_LEN = 1000;
@@ -110,7 +114,7 @@ Respond with ONLY a JSON object: {"decision": "publish"|"hold"|"reject", "reason
   }
 }
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export async function handleComment(request: Request, env: Env): Promise<Response> {
   const townId = townFromHostname(request.url, env.DEV_TOWN_ID);
   if (townId !== 'moreno_valley_ca') {
     return new Response('Not found', { status: 404 });
@@ -182,4 +186,4 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   `;
 
   return jsonResponse({ status });
-};
+}

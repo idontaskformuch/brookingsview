@@ -46,7 +46,7 @@ const pct = (count: number) => (total > 0 ? Math.round((count / total) * 100) : 
   const STORAGE_KEY = 'workerpulse_shift_poll_vote';
 
   function todayStamp(): string {
-    // Matchar poll_date-tidszonen (Los Angeles) i site/functions/_shared.ts
+    // Matchar poll_date-tidszonen (Los Angeles) i site/server/_shared.ts
     // -- bara till för att avgöra om ett SPARAT val är från idag eller en
     // tidigare dag, inte den auktoritativa källan (den är servern).
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());

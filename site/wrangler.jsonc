@@ -1,15 +1,50 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // Rent statiskt Astro-bygge (astro.config.mjs -> output: 'static') --
-  // inget Worker-skript behövs, bara filerna i dist/. Ingen "main"-nyckel,
-  // ingen "binding": den kombinationen kräver ett Worker-skript, se
-  // Cloudflares egen migreringsguide Pages -> Workers.
+  // "Advanced Mode": ett riktigt Worker-skript (server/worker.ts) som
+  // routar /api/comment + /api/shift-poll-vote själv och annars ber
+  // ASSETS-bindningen servera site/dist. TIDIGARE (utan "main") kördes det
+  // här som ett rent asset-only Worker -- då gick /api/* aldrig genom
+  // server/comment.ts eller server/shift-poll-vote.ts (de låg då i en
+  // functions/-mapp, en Cloudflare *Pages*-konvention som `wrangler deploy`
+  // aldrig läser av). Se kommentaren överst i server/worker.ts för hela
+  // resonemanget -- det var grundorsaken till att kommentarsformuläret på
+  // /workplace-watch aldrig fungerade i produktion.
+  // Delad grundconfig -- "main", "assets" och "compatibility_date" är
+  // identiska för båda städerna, bara vilket Cloudflare Workers-projekt
+  // koden ska deployas till skiljer sig (se "env" nedan). Bas-"name" här
+  // är bara Wrangler-CLI:ns fallback när inget --env anges (lokal `wrangler
+  // dev` t.ex.) -- produktionsdeploys måste alltid ange --env explicit.
   "name": "brookingsview",
   "compatibility_date": "2026-07-18",
+  "main": "server/worker.ts",
   "assets": {
     "directory": "./dist",
+    // Krävs så snart "main" finns -- namnet Worker-skriptet använder för
+    // att komma åt de statiska filerna (env.ASSETS.fetch(...)).
+    "binding": "ASSETS",
     // Sajten är flersidig (inte en SPA), så en riktig 404-sida ska serveras
     // för okända rutter -- matchar vår 404.astro som byggs till dist/404.html.
     "not_found_handling": "404-page"
+  },
+  // VIKTIGT: en enda wrangler.jsonc delas av båda städernas Cloudflare-
+  // projekt (samma repo, skiljs bara åt av SITE_CITY vid Astro-bygget).
+  // Utan namngivna miljöer här har Moreno Valley-projektets faktiska
+  // Worker-namn ("morenovalleyview", bekräftat av Cloudflares egen
+  // auto-fix-varning) INTE matchat bas-"name" ovan ("brookingsview") --
+  // att bara skriva över bas-"name" till "morenovalleyview" (vilket
+  // Cloudflares auto-genererade PR föreslog) hade bara flyttat exakt
+  // samma mismatch till att drabba Brookings-projektet istället.
+  // Varje Cloudflare-projekts Deploy command MÅSTE peka ut rätt miljö
+  // explicit, t.ex. "npx wrangler deploy --env brookings" respektive
+  // "npx wrangler deploy --env moreno_valley" -- kontrollera/uppdatera
+  // detta i respektive projekts inställningar i Cloudflare-dashboarden,
+  // annars faller båda tillbaka på bas-"name" ovan och kolliderar igen.
+  "env": {
+    "brookings": {
+      "name": "brookingsview"
+    },
+    "moreno_valley": {
+      "name": "morenovalleyview"
+    }
   }
 }
