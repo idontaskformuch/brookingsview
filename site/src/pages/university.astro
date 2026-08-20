@@ -16,6 +16,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
+import RelatedContent from '../components/RelatedContent.astro';
 import type { SdsuEvent } from '../lib/db';
 import {
   getUpcomingSdsuEvents, getUpcomingAcademicDates, getContentByType,
@@ -167,6 +168,8 @@ const nextAcademicDate = academicDates[0];
   <p class="source">
     Source: <a href="https://www.sdstate.edu/event-calendar" rel="noopener">SDSU Event Calendar</a>, refreshed regularly.
   </p>
+
+  <RelatedContent pageType="university" />
 </BaseLayout>
 
 <style>

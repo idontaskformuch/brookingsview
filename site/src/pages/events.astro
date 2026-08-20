@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
+import RelatedContent from '../components/RelatedContent.astro';
 import type { Story, SdsuEvent } from '../lib/db';
 import { getUpcomingStories, getPastStories, getUpcomingArtsEvents } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
@@ -232,6 +233,8 @@ const sections = (
       <div class="grid">{past.map((story) => <StoryCard story={story} compact kicker={townwideKicker} />)}</div>
     </>
   )}
+
+  <RelatedContent pageType="events" />
 </BaseLayout>
 
 <style>

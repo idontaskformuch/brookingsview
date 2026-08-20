@@ -10,6 +10,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import HeatAdvisoryWidget from '../../components/HeatAdvisoryWidget.astro';
 import ShiftPollWidget from '../../components/ShiftPollWidget.astro';
 import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
+import RelatedContent from '../../components/RelatedContent.astro';
 import {
   getLatestEmployerRatings, getWeather, getActiveAlerts,
   getShiftPollResults, getWorkerPulseComments,
@@ -103,6 +104,8 @@ function trend(delta: number | null): { symbol: string; cls: string } {
   )}
 
   <WorkerPulseComments pageSlug="workplace-watch" comments={comments} />
+
+  <RelatedContent pageType="workplace_watch" />
 </BaseLayout>
 
 <style>

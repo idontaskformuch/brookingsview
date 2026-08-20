@@ -343,6 +343,99 @@ export async function getRelatedStories(
   return [...sameType, ...filler];
 }
 
+/**
+ * "You might also like" -- site/src/components/RelatedContent.astro. Unlike
+ * getRelatedStories() above (which finds OTHER stories near the same date),
+ * this is for pages that AREN'T a single story -- section landing pages
+ * like /traffic, /events, /university, /workplace-watch -- where the "next
+ * click" is a small, deliberately curated set of OTHER SECTIONS and the
+ * town's own game, not a database query result. Purely rule-based, no AI
+ * call: every branch below is either a fixed link or a plain `stories`/
+ * `school_alerts` lookup already used elsewhere in this file.
+ *
+ * town-gating is implicit, not an explicit parameter: TOWN_ID (module-level,
+ * derived from siteConfig/SITE_CITY) already determines which game and
+ * which of University/Workplace Watch apply, and 'university'/
+ * 'workplace_watch' are only ever passed in by pages that are ALREADY
+ * town-gated by redirect (university.astro/workplace-watch/index.astro) --
+ * same pattern as everywhere else in this codebase, not a new mechanism.
+ */
+export type RelatedPageType = 'traffic' | 'events' | 'university' | 'workplace_watch';
+
+export interface RelatedItem {
+  href: string;
+  title: string;
+  kicker: string;
+  description?: string | null;
+}
+
+async function latestStoryByType(sourceType: SourceType): Promise<RelatedItem | null> {
+  const rows = (await sql`
+    SELECT title, slug, body, published_at
+      FROM stories
+     WHERE town_id = ${TOWN_ID} AND source_type = ${sourceType}
+     ORDER BY published_at DESC
+     LIMIT 1
+  `) as { title: string; slug: string; body: string }[];
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    href: `/s/${row.slug}`,
+    title: row.title,
+    kicker: CATEGORY_LABELS[sourceType] ?? sourceType,
+    description: row.body.length > 90 ? row.body.slice(0, 90) + '…' : row.body,
+  };
+}
+
+export async function getRelatedContent(pageType: RelatedPageType): Promise<RelatedItem[]> {
+  const isBrookings = TOWN_ID === 'brookings_sd';
+  const isMorenoValley = TOWN_ID === 'moreno_valley_ca';
+  const items: RelatedItem[] = [];
+
+  // Arkadspelet -- olika spel per ort (Fas 1/2-arbetet denna session), inte
+  // via CATEGORY_HREFS eftersom spelen inte är egna stories.
+  const gameItem: RelatedItem | null = isBrookings
+    ? { href: '/play', title: 'Play Jackrabbit', kicker: 'Play', description: 'Our free arcade game — how far can you get?' }
+    : isMorenoValley
+      ? { href: '/burro-bonanza', title: 'Play Burro Bonanza', kicker: 'Play', description: "Our free match-3 game — help Dusty clear the trail." }
+      : null;
+
+  if (pageType === 'traffic') {
+    const [nextEvent] = await getUpcomingStories(['event'], 1);
+    if (nextEvent) {
+      items.push({ href: `/s/${nextEvent.slug}`, title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
+    }
+    const [closure] = await getActiveSchoolAlerts();
+    if (closure) {
+      items.push({ href: closure.url || '/events', title: closure.title || 'School closure alert', kicker: 'School alert', description: closure.district });
+    }
+    if (gameItem) items.push(gameItem);
+  } else if (pageType === 'events') {
+    items.push({ href: '/traffic', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
+    const weekly = await getLatestWeekly();
+    if (weekly) items.push({ href: `/s/${weekly.slug}`, title: weekly.title, kicker: 'This week', description: null });
+    if (isBrookings) {
+      items.push({ href: '/university', title: "What's on at SDSU", kicker: 'University', description: 'Athletics, music and more.' });
+    } else if (isMorenoValley) {
+      items.push({ href: '/workplace-watch', title: 'Worker Pulse', kicker: 'Worker Pulse', description: 'Employer review trends for Moreno Valley.' });
+    }
+  } else if (pageType === 'university') {
+    const [nextEvent] = await getUpcomingStories(['event'], 1);
+    if (nextEvent) {
+      items.push({ href: `/s/${nextEvent.slug}`, title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
+    }
+    items.push({ href: '/traffic', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
+    if (gameItem) items.push(gameItem);
+  } else if (pageType === 'workplace_watch') {
+    const homeSales = await latestStoryByType('home_sales_digest');
+    if (homeSales) items.push(homeSales);
+    items.push({ href: '/events', title: "What's on", kicker: 'Events', description: 'This week in Moreno Valley.' });
+    if (gameItem) items.push(gameItem);
+  }
+
+  return items;
+}
+
 /* -------------------------------------------------- strukturerad data ------ */
 
 export async function getUpcomingGames(limit = 10): Promise<Game[]> {
