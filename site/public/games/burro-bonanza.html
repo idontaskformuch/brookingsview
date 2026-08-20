@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BURRO BONANZA</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap');
+
+  :root{
+    --terracotta:#C16E4F;
+    --terracotta-deep:#9C4E33;
+    --ocotillo:#5B8C5A;
+    --sand:#F2D9A8;
+    --sand-deep:#E4BE7C;
+    --cactus-pink:#E58AA6;
+    --burro-brown:#6B4A34;
+    --sky-teal:#7FBFB0;
+    --cream:#FFF7E8;
+    --ink:#3A2A20;
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; height:100%;
+    background:radial-gradient(ellipse at top, #F7E3BC 0%, #E4BE7C 60%, #C1946B 100%);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fredoka', sans-serif;
+    color:var(--ink);
+    -webkit-tap-highlight-color: transparent;
+    overflow:hidden;
+  }
+  .cabinet{
+    background:linear-gradient(180deg,var(--sand),var(--sand-deep));
+    border:5px solid var(--burro-brown);
+    border-radius:20px;
+    padding:12px 12px 16px;
+    max-width:100%;
+    box-shadow:
+      inset 0 0 0 3px rgba(255,255,255,0.35),
+      0 0 0 4px var(--terracotta),
+      0 0 0 7px var(--burro-brown),
+      0 20px 44px rgba(80,50,20,.35);
+  }
+  .marquee{
+    text-align:center;
+    font-weight:700;
+    letter-spacing:1px;
+    font-size:20px;
+    color:var(--terracotta-deep);
+    text-shadow:1px 1px 0 rgba(255,255,255,.5);
+  }
+  .marquee span{
+    display:block; font-weight:500; font-size:11px; margin-top:4px;
+    color:var(--burro-brown); opacity:.8;
+  }
+  canvas{
+    display:block;
+    width:420px; max-width:100%;
+    border:4px solid var(--burro-brown);
+    border-radius:12px;
+    touch-action:none;
+    margin-top:10px;
+    box-shadow: inset 0 0 20px rgba(80,50,20,.25);
+  }
+  .controls{
+    display:flex; gap:8px; margin-top:10px; justify-content:center;
+  }
+  .controls button{
+    font-family:'Fredoka', sans-serif;
+    font-weight:700;
+    font-size:13px;
+    color:var(--cream);
+    background:var(--terracotta);
+    border:2px solid var(--terracotta-deep);
+    border-radius:10px;
+    padding:9px 14px;
+    cursor:pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .controls button:active{ background:var(--terracotta-deep); }
+  .controls button.ghost{
+    background:transparent; color:var(--burro-brown); border-color:var(--burro-brown);
+  }
+  .footnote{
+    text-align:center; font-size:10px; margin-top:8px; opacity:.65; line-height:1.5;
+  }
+</style>
+</head>
+<body>
+<div class="cabinet">
+  <div class="marquee">🐴 BURRO BONANZA
+    <span>help Dusty clear the trail</span>
+  </div>
+  <canvas id="game" width="420" height="700"></canvas>
+  <div class="controls" id="controls"></div>
+  <div class="footnote">Progress saves in this browser only -- clearing site data resets it.</div>
+</div>
+
+<script>
+'use strict';
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const controlsEl = document.getElementById('controls');
+
+// ---------------------------------------------------------------- constants
+const GRID = 8;
+const BOARD_TOP = 96;
+const BOARD_SIZE = 336;
+const CELL = BOARD_SIZE / GRID;
+const BOARD_LEFT = (W - BOARD_SIZE) / 2;
+
+const TILE_TYPES = ['burro', 'cactus', 'citrus', 'sunflower', 'chili', 'horseshoe'];
+const TILE_COLORS = {
+  burro: '#6B4A34', cactus: '#5B8C5A', citrus: '#E8A33D',
+  sunflower: '#F2C438', chili: '#C1432A', horseshoe: '#7A7A85',
+};
+const TILE_LABELS = {
+  burro: 'Burro', cactus: 'Cactus', citrus: 'Citrus',
+  sunflower: 'Sunflower', chili: 'Chili', horseshoe: 'Horseshoe',
+};
+
+const STORAGE_KEY = 'burro_bonanza_progress';
+const MUTE_KEY = 'burro_bonanza_muted';
+
+// ---------------------------------------------------------------- levels
+// goal: 'score' | 'collect' | 'dust' | 'score_collect' | 'dust_collect'
+const LEVELS = [
+  { id: 1,  goal: 'score', target: 500,  moves: 20 },
+  { id: 2,  goal: 'score', target: 800,  moves: 20 },
+  { id: 3,  goal: 'score', target: 1100, moves: 18 },
+  { id: 4,  goal: 'score', target: 1400, moves: 16 },
+  { id: 5,  goal: 'score', target: 1200, moves: 20 },
+  { id: 6,  goal: 'score', target: 1800, moves: 16 },
+  { id: 7,  goal: 'score', target: 1500, moves: 20 },
+  { id: 8,  goal: 'collect', collectType: 'burro', target: 15, moves: 18 },
+  { id: 9,  goal: 'collect', collectType: 'citrus', target: 12, moves: 22 },
+  { id: 10, goal: 'score', target: 2400, moves: 16 },
+  { id: 11, goal: 'dust', target: 8, moves: 18, dustLayout: 'cluster' },
+  { id: 12, goal: 'dust', target: 6, moves: 22, dustLayout: 'cluster' },
+  { id: 13, goal: 'collect', collectType: 'sunflower', target: 18, moves: 16 },
+  { id: 14, goal: 'score', target: 3000, moves: 18 },
+  { id: 15, goal: 'dust', target: 12, moves: 16, dustLayout: 'cluster' },
+  { id: 16, goal: 'score_collect', target: 3200, collectType: 'chili', collectTarget: 10, moves: 18 },
+  { id: 17, goal: 'dust', target: 10, moves: 15, dustLayout: 'scattered' },
+  { id: 18, goal: 'score', target: 4200, moves: 16 },
+  { id: 19, goal: 'dust_collect', target: 8, collectType: 'horseshoe', collectTarget: 14, moves: 17, dustLayout: 'scattered' },
+  { id: 20, goal: 'score', target: 6000, moves: 20 },
+];
+
+// ---------------------------------------------------------------- audio
+let audioCtx = null;
+let muted = localStorage.getItem(MUTE_KEY) === '1';
+function ensureAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch { audioCtx = null; }
+  }
+  return audioCtx;
+}
+function tone(freq, dur, type = 'sine', gain = 0.15, delay = 0) {
+  if (muted) return;
+  const ac = ensureAudio();
+  if (!ac) return;
+  const osc = ac.createOscillator();
+  const g = ac.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  g.gain.value = gain;
+  osc.connect(g); g.connect(ac.destination);
+  const t0 = ac.currentTime + delay;
+  g.gain.setValueAtTime(gain, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  osc.start(t0);
+  osc.stop(t0 + dur);
+}
+function playPop(multiplier) {
+  tone(440 + Math.min(multiplier, 3) * 90, 0.14, 'triangle', 0.13);
+}
+function playWhoosh() {
+  tone(180, 0.3, 'sawtooth', 0.08);
+  tone(90, 0.35, 'sawtooth', 0.06, 0.05);
+}
+function playBadSwap() {
+  tone(160, 0.12, 'square', 0.08);
+}
+function playWin() {
+  [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, 'triangle', 0.14, i * 0.11));
+}
+function playLose() {
+  [392, 330].forEach((f, i) => tone(f, 0.3, 'sine', 0.1, i * 0.15));
+}
+function playCombo() {
+  [660, 880, 1100].forEach((f, i) => tone(f, 0.18, 'square', 0.1, i * 0.07));
+}
+
+// ---------------------------------------------------------------- progress
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+function saveProgress(p) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch { /* storage unavailable, silently skip */ }
+}
+let progress = loadProgress();
+
+function isUnlocked(levelIndex) {
+  if (levelIndex === 0) return true;
+  return !!progress[LEVELS[levelIndex - 1].id];
+}
+
+// ---------------------------------------------------------------- state
+let screen = 'map'; // 'map' | 'playing' | 'win' | 'lose'
+let currentLevel = null;
+let board = [];      // board[r][c] = {type, special: null|{kind,dir}} | null while animating
+let dust = [];        // dust[r][c] = boolean
+let dustRemaining = 0;
+let score = 0;
+let movesLeft = 0;
+let collected = {};   // type -> count this level
+let cascadeMultiplier = 1;
+let selected = null;  // {r,c}
+let dragStart = null; // {r,c,x,y}
+let animLock = false; // true while a resolve/cascade animation is running
+let toastText = '';
+let toastTimer = 0;
+let cascadeText = '';
+let cascadeTimer = 0;
+let firstComboSeen = localStorage.getItem('burro_bonanza_combo_seen') === '1';
+let blinkTimer = 0;
+let mapScroll = 0;
+
+// ---------------------------------------------------------------- board helpers
+function randomType() {
+  return TILE_TYPES[(Math.random() * TILE_TYPES.length) | 0];
+}
+
+function makeBoard() {
+  const b = [];
+  for (let r = 0; r < GRID; r++) {
+    b.push([]);
+    for (let c = 0; c < GRID; c++) {
+      let t;
+      let guard = 0;
+      do {
+        t = randomType();
+        guard++;
+      } while (
+        guard < 20 && (
+          (c >= 2 && b[r][c - 1].type === t && b[r][c - 2].type === t) ||
+          (r >= 2 && b[r - 1][c].type === t && b[r - 2][c].type === t)
+        )
+      );
+      b[r].push({ type: t, special: null });
+    }
+  }
+  return b;
+}
+
+function makeDust(layout, count) {
+  const d = Array.from({ length: GRID }, () => Array(GRID).fill(false));
+  if (!layout || !count) return d;
+  const cells = [];
+  if (layout === 'cluster') {
+    const cr = 3, cc = 3;
+    for (let r = 0; r < GRID; r++) for (let c = 0; c < GRID; c++) {
+      cells.push([r, c, Math.abs(r - cr) + Math.abs(c - cc)]);
+    }
+    cells.sort((a, b) => a[2] - b[2]);
+  } else {
+    for (let r = 0; r < GRID; r++) for (let c = 0; c < GRID; c++) cells.push([r, c, 0]);
+    // scattered: stride through cells for spread-out placement
+    cells.sort(() => Math.random() - 0.5);
+  }
+  for (let i = 0; i < Math.min(count, cells.length); i++) {
+    d[cells[i][0]][cells[i][1]] = true;
+  }
+  return d;
+}
+
+function inBounds(r, c) { return r >= 0 && r < GRID && c >= 0 && c < GRID; }
+
+function scanMatches(b) {
+  const groups = [];
+  for (let r = 0; r < GRID; r++) {
+    let c = 0;
+    while (c < GRID) {
+      const t = b[r][c] && b[r][c].type;
+      if (!t) { c++; continue; }
+      let len = 1;
+      while (c + len < GRID && b[r][c + len] && b[r][c + len].type === t) len++;
+      if (len >= 3) {
+        const cells = [];
+        for (let k = 0; k < len; k++) cells.push([r, c + k]);
+        groups.push({ cells, type: t, dir: 'h', len });
+      }
+      c += len;
+    }
+  }
+  for (let c = 0; c < GRID; c++) {
+    let r = 0;
+    while (r < GRID) {
+      const t = b[r][c] && b[r][c].type;
+      if (!t) { r++; continue; }
+      let len = 1;
+      while (r + len < GRID && b[r + len][c] && b[r + len][c].type === t) len++;
+      if (len >= 3) {
+        const cells = [];
+        for (let k = 0; k < len; k++) cells.push([r + k, c]);
+        groups.push({ cells, type: t, dir: 'v', len });
+      }
+      r += len;
+    }
+  }
+  for (let r = 0; r < GRID - 1; r++) {
+    for (let c = 0; c < GRID - 1; c++) {
+      const t = b[r][c] && b[r][c].type;
+      if (!t) continue;
+      if (b[r][c + 1] && b[r][c + 1].type === t &&
+          b[r + 1][c] && b[r + 1][c].type === t &&
+          b[r + 1][c + 1] && b[r + 1][c + 1].type === t) {
+        groups.push({ cells: [[r, c], [r, c + 1], [r + 1, c], [r + 1, c + 1]], type: t, dir: 'block', len: 4 });
+      }
+    }
+  }
+  return groups;
+}
+
+function resolveGroups(groups) {
+  const clearSet = new Map(); // "r,c" -> type
+  for (const g of groups) for (const [r, c] of g.cells) clearSet.set(r + ',' + c, g.type);
+
+  const specials = new Map(); // "r,c" -> {kind, dir, type}
+  for (const g of groups) {
+    if (g.dir !== 'block') continue;
+    const [r, c] = g.cells[0];
+    specials.set(r + ',' + c, { kind: 'saddlebag', type: g.type });
+  }
+  for (const g of groups) {
+    if (g.dir === 'block') continue;
+    if (g.len === 4) {
+      const [r, c] = g.cells[Math.floor(g.cells.length / 2)];
+      specials.set(r + ',' + c, { kind: 'stampede', dir: g.dir, type: g.type });
+    } else if (g.len >= 5) {
+      const [r, c] = g.cells[Math.floor(g.cells.length / 2)];
+      specials.set(r + ',' + c, { kind: 'sandstorm', type: g.type });
+    }
+  }
+  const hRuns = groups.filter((g) => g.dir === 'h' && g.len >= 3);
+  const vRuns = groups.filter((g) => g.dir === 'v' && g.len >= 3);
+  for (const h of hRuns) {
+    for (const v of vRuns) {
+      const shared = h.cells.find(([hr, hc]) => v.cells.some(([vr, vc]) => vr === hr && vc === hc));
+      if (shared) specials.set(shared[0] + ',' + shared[1], { kind: 'sandstorm', type: h.type });
+    }
+  }
+
+  for (const key of specials.keys()) clearSet.delete(key);
+
+  return { clearSet, specials };
+}
+
+function areaCells(r, c, radius) {
+  const out = [];
+  for (let dr = -radius; dr <= radius; dr++) for (let dc = -radius; dc <= radius; dc++) {
+    if (inBounds(r + dr, c + dc)) out.push([r + dr, c + dc]);
+  }
+  return out;
+}
+function rowCells(r) { const out = []; for (let c = 0; c < GRID; c++) out.push([r, c]); return out; }
+function colCells(c) { const out = []; for (let r = 0; r < GRID; r++) out.push([r, c]); return out; }
+
+function clearDustNear(cells) {
+  for (const [r, c] of cells) {
+    for (const [dr, dc] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const rr = r + dr, cc = c + dc;
+      if (inBounds(rr, cc) && dust[rr][cc]) {
+        dust[rr][cc] = false;
+        dustRemaining = Math.max(0, dustRemaining - 1);
+      }
+    }
+  }
+}
+
+function tallyClears(cellsWithType) {
+  for (const [, type] of cellsWithType) {
+    collected[type] = (collected[type] || 0) + 1;
+    score += 10 * cascadeMultiplier;
+  }
+}
+
+function applyGravityAndRefill() {
+  for (let c = 0; c < GRID; c++) {
+    let write = GRID - 1;
+    for (let r = GRID - 1; r >= 0; r--) {
+      if (board[r][c]) {
+        if (write !== r) { board[write][c] = board[r][c]; board[r][c] = null; }
+        write--;
+      }
+    }
+    for (let r = write; r >= 0; r--) board[r][c] = { type: randomType(), special: null };
+  }
+}
+
+function boardHasMoves() {
+  for (let r = 0; r < GRID; r++) for (let c = 0; c < GRID; c++) {
+    if (c + 1 < GRID && wouldMatch(r, c, r, c + 1)) return true;
+    if (r + 1 < GRID) { if (wouldMatch(r, c, r + 1, c)) return true; }
+  }
+  return false;
+}
+function wouldMatch(r1, c1, r2, c2) {
+  swapCells(r1, c1, r2, c2);
+  const groups = scanMatches(board);
+  swapCells(r1, c1, r2, c2);
+  return groups.length > 0;
+}
+function swapCells(r1, c1, r2, c2) {
+  const tmp = board[r1][c1];
+  board[r1][c1] = board[r2][c2];
+  board[r2][c2] = tmp;
+}
+function reshuffleBoard() {
+  const flat = [];
+  for (let r = 0; r < GRID; r++) for (let c = 0; c < GRID; c++) flat.push(board[r][c].type);
+  for (let i = flat.length - 1; i > 0; i--) {
+    const j = (Math.random() * (i + 1)) | 0;
+    [flat[i], flat[j]] = [flat[j], flat[i]];
+  }
+  let i = 0;
+  for (let r = 0; r < GRID; r++) for (let c = 0; c < GRID; c++) board[r][c] = { type: flat[i++], special: null };
+}
+
+// ---------------------------------------------------------------- special activation
+const activationQueue = [];
+
+function activateSpecial(r, c, special) {
+  if (!special) return [];
+  playWhoosh();
+  if (special.kind === 'stampede') {
+    return special.dir === 'h' ? rowCells(r) : colCells(c);
+  }
+  if (special.kind === 'saddlebag') {
+    return areaCells(r, c, 1);
+  }
+  if (special.kind === 'sandstorm') {
+    const cells = [];
+    for (let rr = 0; rr < GRID; rr++) for (let cc = 0; cc < GRID; cc++) {
+      if (board[rr][cc] && board[rr][cc].type === special.type) cells.push([rr, cc]);
+    }
+    return cells;
+  }
+  return [];
+}
+
+function comboEffect(r, c, a, b) {
+  playCombo();
+  const kinds = [a.kind, b.kind].sort();
+  const key = kinds.join('+');
+  if (!firstComboSeen) {
+    firstComboSeen = true;
+    localStorage.setItem('burro_bonanza_combo_seen', '1');
+    showToast('Combo! Dusty is impressed.');
+  }
+  if (key === 'stampede+stampede') return [...rowCells(r), ...colCells(c)];
+  if (key === 'saddlebag+stampede') return [...rowCells(r - 1 >= 0 ? r - 1 : r), ...rowCells(r), ...rowCells(r + 1 < GRID ? r + 1 : r)];
+  if (key === 'sandstorm+stampede') return [...rowCells(r - 1 >= 0 ? r - 1 : r), ...rowCells(r), ...rowCells(r + 1 < GRID ? r + 1 : r)];
+  if (key === 'saddlebag+saddlebag') return areaCells(r, c, 2);
+  if (key === 'saddlebag+sandstorm') {
+    const wipeType = TILE_TYPES[(Math.random() * TILE_TYPES.length) | 0];
+    const cells = areaCells(r, c, 1);
+    for (let rr = 0; rr < GRID; rr++) for (let cc = 0; cc < GRID; cc++) {
+      if (board[rr][cc] && board[rr][cc].type === wipeType) cells.push([rr, cc]);
+    }
+    return cells;
+  }
+  if (key === 'sandstorm+sandstorm') {
+    const [t1, t2] = [TILE_TYPES[(Math.random() * TILE_TYPES.length) | 0], TILE_TYPES[(Math.random() * TILE_TYPES.length) | 0]];
+    const cells = [];
+    for (let rr = 0; rr < GRID; rr++) for (let cc = 0; cc < GRID; cc++) {
+      if (board[rr][cc] && (board[rr][cc].type === t1 || board[rr][cc].type === t2)) cells.push([rr, cc]);
+    }
+    return cells;
+  }
+  return [];
+}
+
+function showToast(text) {
+  toastText = text;
+  toastTimer = 150;
+}
+function showCascadeText(mult) {
+  cascadeText = `CASCADE x${mult}!`;
+  cascadeTimer = 45;
+}
+
+// ---------------------------------------------------------------- goal / win-lose
+function goalDescription(level) {
+  if (level.goal === 'score') return `Score ${level.target}`;
+  if (level.goal === 'collect') return `Collect ${level.target} ${TILE_LABELS[level.collectType]}`;
+  if (level.goal === 'dust') return `Clear ${level.target} dust patches`;
+  if (level.goal === 'score_collect') return `Score ${level.target} + ${level.collectTarget} ${TILE_LABELS[level.collectType]}`;
+  if (level.goal === 'dust_collect') return `Clear ${level.target} dust + ${level.collectTarget} ${TILE_LABELS[level.collectType]}`;
+  return '';
+}
+function goalMet(level) {
+  if (level.goal === 'score') return score >= level.target;
+  if (level.goal === 'collect') return (collected[level.collectType] || 0) >= level.target;
+  if (level.goal === 'dust') return dustRemaining <= 0;
+  if (level.goal === 'score_collect') return score >= level.target && (collected[level.collectType] || 0) >= level.collectTarget;
+  if (level.goal === 'dust_collect') return dustRemaining <= 0 && (collected[level.collectType] || 0) >= level.collectTarget;
+  return false;
+}
+function goalProgressText(level) {
+  if (level.goal === 'score') return `${Math.min(score, level.target)} / ${level.target}`;
+  if (level.goal === 'collect') return `${Math.min(collected[level.collectType] || 0, level.target)} / ${level.target}`;
+  if (level.goal === 'dust') return `${level.target - dustRemaining} / ${level.target}`;
+  if (level.goal === 'score_collect') return `${Math.min(score, level.target)}/${level.target} + ${Math.min(collected[level.collectType] || 0, level.collectTarget)}/${level.collectTarget}`;
+  if (level.goal === 'dust_collect') return `${level.target - dustRemaining}/${level.target} + ${Math.min(collected[level.collectType] || 0, level.collectTarget)}/${level.collectTarget}`;
+  return '';
+}
+function computeStars(level) {
+  // Ett enhetligt mått (andel omgångar kvar) i stället för "överträffa målet
+  // med 50%" -- det senare gick aldrig att uppnå för dust-mål, där
+  // primaryValue===primaryTarget per definition så fort goalMet() är sant
+  // (rensat är rensat, inget att "överträffa"). Samma tröskel för alla
+  // måltyper är enklare och faktiskt nåbar oavsett goal.
+  if (!goalMet(level)) return 0;
+  const spare = movesLeft / level.moves;
+  if (spare >= 0.5) return 3;
+  if (spare >= 0.2) return 2;
+  return 1;
+}
+
+function startLevel(index) {
+  currentLevel = index;
+  const level = LEVELS[index];
+  board = makeBoard();
+  dust = makeDust(level.dustLayout, level.target && (level.goal === 'dust' || level.goal === 'dust_collect') ? level.target : 0);
+  dustRemaining = level.goal === 'dust' || level.goal === 'dust_collect' ? level.target : 0;
+  score = 0;
+  movesLeft = level.moves;
+  collected = {};
+  selected = null;
+  cascadeMultiplier = 1;
+  screen = 'playing';
+  renderControls();
+}
+
+function endLevel(won) {
+  screen = won ? 'win' : 'lose';
+  if (won) {
+    const level = LEVELS[currentLevel];
+    const stars = computeStars(level);
+    const prev = progress[level.id] || { stars: 0, bestScore: 0 };
+    progress[level.id] = { stars: Math.max(prev.stars, stars), bestScore: Math.max(prev.bestScore, score) };
+    saveProgress(progress);
+    playWin();
+  } else {
+    playLose();
+  }
+  renderControls();
+}
+
+// ---------------------------------------------------------------- move resolution
+function resolveBoardOnce() {
+  const groups = scanMatches(board);
+  if (groups.length === 0) return false;
+
+  const { clearSet, specials } = resolveGroups(groups);
+
+  // aktivera EVENTUELLA befintliga specialbrickor som blev instängda i denna
+  // matchning (fångade i en senare kedjereaktion) -- deras område läggs till
+  // clearSet innan brickorna faktiskt tas bort.
+  const extra = [];
+  for (const key of clearSet.keys()) {
+    const [r, c] = key.split(',').map(Number);
+    const cell = board[r][c];
+    if (cell && cell.special) {
+      for (const [er, ec] of activateSpecial(r, c, cell.special)) extra.push([er, ec, board[er][ec] ? board[er][ec].type : null]);
+    }
+  }
+  for (const [er, ec, t] of extra) if (inBounds(er, ec)) clearSet.set(er + ',' + ec, t || (board[er][ec] && board[er][ec].type));
+
+  const clearedWithType = [...clearSet.entries()].map(([key, type]) => [key, type]);
+  tallyClears(clearedWithType);
+  clearDustNear([...clearSet.keys()].map((k) => k.split(',').map(Number)));
+
+  for (const key of clearSet.keys()) {
+    const [r, c] = key.split(',').map(Number);
+    board[r][c] = null;
+  }
+  for (const [key, sp] of specials.entries()) {
+    const [r, c] = key.split(',').map(Number);
+    board[r][c] = { type: sp.type, special: sp };
+  }
+
+  playPop(cascadeMultiplier);
+  if (cascadeMultiplier > 1) showCascadeText(cascadeMultiplier);
+
+  applyGravityAndRefill();
+  cascadeMultiplier = Math.min(cascadeMultiplier + 0.5, 3);
+  return true;
+}
+
+function settleBoard() {
+  animLock = true;
+  let guard = 0;
+  while (resolveBoardOnce() && guard < 40) guard++;
+  cascadeMultiplier = 1;
+  if (!boardHasMoves()) reshuffleBoard();
+  animLock = false;
+
+  const level = LEVELS[currentLevel];
+  if (goalMet(level)) { endLevel(true); return; }
+  if (movesLeft <= 0) { endLevel(false); return; }
+}
+
+function attemptSwap(r1, c1, r2, c2) {
+  if (animLock || screen !== 'playing') return;
+  if (!inBounds(r2, c2)) return;
+  const a = board[r1][c1], b = board[r2][c2];
+  if (!a || !b) return;
+
+  const bothSpecial = a.special && b.special;
+  const oneSpecial = (a.special && !b.special) || (!a.special && b.special);
+
+  if (bothSpecial) {
+    swapCells(r1, c1, r2, c2);
+    movesLeft--;
+    const cells = comboEffect(r2, c2, a.special, b.special);
+    const withType = cells.filter(([r, c]) => board[r][c]).map(([r, c]) => [r + ',' + c, board[r][c].type]);
+    tallyClears(withType);
+    clearDustNear(cells);
+    for (const [r, c] of cells) board[r][c] = null;
+    applyGravityAndRefill();
+    settleBoard();
+    return;
+  }
+
+  if (oneSpecial) {
+    swapCells(r1, c1, r2, c2);
+    movesLeft--;
+    const special = a.special || b.special;
+    const [sr, sc] = a.special ? [r2, c2] : [r1, c1]; // it moved to the other's old slot
+    const cells = activateSpecial(sr, sc, special);
+    const withType = cells.filter(([r, c]) => board[r] && board[r][c]).map(([r, c]) => [r + ',' + c, board[r][c].type]);
+    tallyClears(withType);
+    clearDustNear(cells);
+    for (const [r, c] of cells) if (board[r] && board[r][c]) board[r][c] = null;
+    applyGravityAndRefill();
+    settleBoard();
+    return;
+  }
+
+  swapCells(r1, c1, r2, c2);
+  const groups = scanMatches(board);
+  if (groups.length === 0) {
+    swapCells(r1, c1, r2, c2);
+    playBadSwap();
+    return;
+  }
+  movesLeft--;
+  settleBoard();
+}
+
+// ---------------------------------------------------------------- level-map layout
+function nodePositions() {
+  const positions = [];
+  const marginX = 60;
+  const usable = W - marginX * 2;
+  for (let i = 0; i < LEVELS.length; i++) {
+    const row = Math.floor(i / 4);
+    const col = i % 4;
+    const zig = row % 2 === 0 ? col : 3 - col;
+    const x = marginX + (usable / 3) * zig;
+    const y = 130 + row * 110;
+    positions.push({ x, y });
+  }
+  return positions;
+}
+
+// ---------------------------------------------------------------- drawing: tiles
+function drawTileIcon(type, cx, cy, size) {
+  const s = size;
+  ctx.save();
+  ctx.translate(cx, cy);
+  const color = TILE_COLORS[type];
+  ctx.fillStyle = color;
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = Math.max(1.5, s * 0.05);
+
+  if (type === 'burro') {
+    ctx.beginPath();
+    ctx.ellipse(0, s * 0.05, s * 0.3, s * 0.24, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(-s * 0.16, -s * 0.28, s * 0.09, s * 0.16, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(s * 0.16, -s * 0.28, s * 0.09, s * 0.16, 0.3, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#FFF7E8';
+    ctx.beginPath(); ctx.ellipse(0, s * 0.1, s * 0.1, s * 0.08, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2A1B12';
+    ctx.beginPath(); ctx.arc(-s * 0.09, 0, s * 0.035, 0, Math.PI * 2); ctx.arc(s * 0.09, 0, s * 0.035, 0, Math.PI * 2); ctx.fill();
+  } else if (type === 'cactus') {
+    ctx.beginPath();
+    ctx.roundRect(-s * 0.1, -s * 0.32, s * 0.2, s * 0.6, s * 0.1);
+    ctx.roundRect(-s * 0.28, -s * 0.08, s * 0.16, s * 0.3, s * 0.08);
+    ctx.roundRect(s * 0.12, -s * 0.18, s * 0.16, s * 0.3, s * 0.08);
+    ctx.fill(); ctx.stroke();
+  } else if (type === 'citrus') {
+    ctx.beginPath(); ctx.arc(0, 0, s * 0.3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#5B8C5A';
+    ctx.beginPath(); ctx.ellipse(0, -s * 0.32, s * 0.09, s * 0.06, 0.3, 0, Math.PI * 2); ctx.fill();
+  } else if (type === 'sunflower') {
+    ctx.fillStyle = TILE_COLORS.sunflower;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a) * s * 0.22, Math.sin(a) * s * 0.22, s * 0.14, s * 0.08, a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#6B4A34';
+    ctx.beginPath(); ctx.arc(0, 0, s * 0.13, 0, Math.PI * 2); ctx.fill();
+  } else if (type === 'chili') {
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.05, -s * 0.3);
+    ctx.quadraticCurveTo(s * 0.32, -s * 0.05, s * 0.05, s * 0.32);
+    ctx.quadraticCurveTo(-s * 0.22, s * 0.28, -s * 0.05, -s * 0.3);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#5B8C5A'; ctx.lineWidth = s * 0.06;
+    ctx.beginPath(); ctx.moveTo(-s * 0.05, -s * 0.3); ctx.lineTo(-s * 0.02, -s * 0.4); ctx.stroke();
+  } else if (type === 'horseshoe') {
+    ctx.lineWidth = s * 0.12;
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.arc(0, 0, s * 0.24, Math.PI * 0.15, Math.PI * 0.85, false);
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(-s * 0.24, -s * 0.02, s * 0.045, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(s * 0.24, -s * 0.02, s * 0.045, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawSpecialOverlay(special, cx, cy, size) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  const pulse = 0.85 + 0.15 * Math.sin(Date.now() / 220);
+  ctx.globalAlpha = pulse;
+  ctx.strokeStyle = '#FFF7E8';
+  ctx.lineWidth = Math.max(2, size * 0.06);
+  if (special.kind === 'stampede') {
+    ctx.beginPath();
+    if (special.dir === 'h') { ctx.moveTo(-size * 0.36, 0); ctx.lineTo(size * 0.36, 0); }
+    else { ctx.moveTo(0, -size * 0.36); ctx.lineTo(0, size * 0.36); }
+    ctx.stroke();
+  } else if (special.kind === 'saddlebag') {
+    ctx.strokeRect(-size * 0.3, -size * 0.3, size * 0.6, size * 0.6);
+  } else if (special.kind === 'sandstorm') {
+    ctx.beginPath();
+    for (let i = 0; i < 3; i++) ctx.arc(0, 0, size * (0.14 + i * 0.08), 0, Math.PI * 1.3);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawDust(cx, cy, size) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.fillStyle = 'rgba(196,160,110,0.55)';
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.ellipse((i - 1) * size * 0.18, size * 0.08 * (i % 2 === 0 ? 1 : -1), size * 0.22, size * 0.15, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawDusty(cx, cy, scale, mood) {
+  const s = scale;
+  ctx.save();
+  ctx.translate(cx, cy);
+  const blink = Math.sin(blinkTimer / 30) > 0.96;
+  ctx.fillStyle = '#8B5A2B';
+  ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(0, s * 0.15, s * 0.42, s * 0.34, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  const earWiggle = Math.sin(Date.now() / 400) * 0.08;
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.22, -s * 0.42, s * 0.12, s * 0.24, -0.3 + earWiggle, 0, Math.PI * 2);
+  ctx.ellipse(s * 0.22, -s * 0.42, s * 0.12, s * 0.24, 0.3 - earWiggle, 0, Math.PI * 2);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#FFF7E8';
+  ctx.beginPath(); ctx.ellipse(0, s * 0.2, s * 0.16, s * 0.12, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2A1B12';
+  if (blink) {
+    ctx.lineWidth = 2; ctx.strokeStyle = '#2A1B12';
+    ctx.beginPath(); ctx.moveTo(-s * 0.16, 0); ctx.lineTo(-s * 0.06, 0); ctx.moveTo(s * 0.06, 0); ctx.lineTo(s * 0.16, 0); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.arc(-s * 0.11, 0, s * 0.06, 0, Math.PI * 2); ctx.arc(s * 0.11, 0, s * 0.06, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.strokeStyle = '#2A1B12'; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  if (mood === 'happy') ctx.arc(0, s * 0.12, s * 0.1, 0.15 * Math.PI, 0.85 * Math.PI);
+  else if (mood === 'sad') ctx.arc(0, s * 0.28, s * 0.1, 1.15 * Math.PI, 1.85 * Math.PI);
+  else ctx.moveTo(-s * 0.08, s * 0.16), ctx.lineTo(s * 0.08, s * 0.16);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- drawing: screens
+function drawMap() {
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#7FBFB0'); grad.addColorStop(0.35, '#F2D9A8'); grad.addColorStop(1, '#E4BE7C');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = '#3A2A20';
+  ctx.textAlign = 'center';
+  ctx.font = '700 20px Fredoka';
+  ctx.fillText('Dusty\'s Trail', W / 2, 40);
+  ctx.font = '500 11px Fredoka';
+  ctx.fillStyle = 'rgba(58,42,32,0.75)';
+  ctx.fillText('Tap an unlocked stop to play', W / 2, 60);
+
+  const positions = nodePositions();
+  ctx.strokeStyle = 'rgba(107,74,52,0.45)';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([2, 10]);
+  ctx.beginPath();
+  positions.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  positions.forEach((p, i) => {
+    const level = LEVELS[i];
+    const unlocked = isUnlocked(i);
+    const prog = progress[level.id];
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 26, 0, Math.PI * 2);
+    ctx.fillStyle = unlocked ? '#C16E4F' : '#B9A78A';
+    ctx.fill();
+    ctx.strokeStyle = '#6B4A34'; ctx.lineWidth = 3; ctx.stroke();
+
+    ctx.fillStyle = '#FFF7E8';
+    ctx.font = '700 16px Fredoka';
+    ctx.fillText(String(level.id), p.x, p.y + 6);
+
+    if (!unlocked) {
+      ctx.font = '14px Fredoka';
+      ctx.fillText('🔒', p.x, p.y - 32);
+    } else if (prog) {
+      const stars = '★★★'.slice(0, prog.stars) + '☆☆☆'.slice(0, 3 - prog.stars);
+      ctx.font = '11px Fredoka';
+      ctx.fillStyle = '#E8A33D';
+      ctx.fillText(stars, p.x, p.y - 34);
+    }
+  });
+
+  drawDusty(W - 55, H - 55, 60, 'happy');
+}
+
+function cellCenter(r, c) {
+  return { x: BOARD_LEFT + c * CELL + CELL / 2, y: BOARD_TOP + r * CELL + CELL / 2 };
+}
+
+function drawPlaying() {
+  ctx.fillStyle = '#F2D9A8';
+  ctx.fillRect(0, 0, W, H);
+
+  const level = LEVELS[currentLevel];
+  ctx.fillStyle = '#3A2A20';
+  ctx.textAlign = 'left';
+  ctx.font = '700 15px Fredoka';
+  ctx.fillText(`Level ${level.id}`, 14, 24);
+  ctx.textAlign = 'right';
+  ctx.fillText(`Moves: ${movesLeft}`, W - 14, 24);
+  ctx.textAlign = 'center';
+  ctx.font = '500 12px Fredoka';
+  ctx.fillText(goalDescription(level), W / 2, 44);
+  ctx.font = '700 13px Fredoka';
+  ctx.fillText(goalProgressText(level), W / 2, 62);
+  ctx.textAlign = 'left';
+  ctx.font = '500 11px Fredoka';
+  ctx.fillText(`Score: ${score}`, 14, 80);
+
+  ctx.fillStyle = 'rgba(107,74,52,0.15)';
+  ctx.fillRect(BOARD_LEFT - 6, BOARD_TOP - 6, BOARD_SIZE + 12, BOARD_SIZE + 12);
+
+  for (let r = 0; r < GRID; r++) {
+    for (let c = 0; c < GRID; c++) {
+      const { x, y } = cellCenter(r, c);
+      ctx.fillStyle = (r + c) % 2 === 0 ? 'rgba(255,247,232,0.5)' : 'rgba(255,247,232,0.25)';
+      ctx.fillRect(BOARD_LEFT + c * CELL, BOARD_TOP + r * CELL, CELL, CELL);
+      if (dust[r] && dust[r][c]) drawDust(x, y, CELL);
+      const cell = board[r][c];
+      if (cell) {
+        const isSel = selected && selected.r === r && selected.c === c;
+        if (isSel) {
+          ctx.strokeStyle = '#E8A33D'; ctx.lineWidth = 3;
+          ctx.strokeRect(BOARD_LEFT + c * CELL + 2, BOARD_TOP + r * CELL + 2, CELL - 4, CELL - 4);
+        }
+        drawTileIcon(cell.type, x, y, CELL * 0.82);
+        if (cell.special) drawSpecialOverlay(cell.special, x, y, CELL * 0.82);
+      }
+    }
+  }
+
+  if (cascadeTimer > 0) {
+    cascadeTimer--;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(193,67,42,${Math.min(1, cascadeTimer / 20)})`;
+    ctx.font = '700 22px Fredoka';
+    ctx.fillText(cascadeText, W / 2, BOARD_TOP + BOARD_SIZE / 2);
+  }
+  if (toastTimer > 0) {
+    toastTimer--;
+    ctx.fillStyle = 'rgba(58,42,32,0.85)';
+    ctx.fillRect(W / 2 - 110, H - 46, 220, 30);
+    ctx.fillStyle = '#FFF7E8';
+    ctx.font = '600 12px Fredoka';
+    ctx.textAlign = 'center';
+    ctx.fillText(toastText, W / 2, H - 26);
+  }
+}
+
+function drawModal(won) {
+  drawPlaying();
+  ctx.fillStyle = 'rgba(58,42,32,0.55)';
+  ctx.fillRect(0, 0, W, H);
+  const cx = W / 2, cy = H / 2;
+  ctx.fillStyle = '#FFF7E8';
+  ctx.beginPath(); ctx.roundRect(cx - 150, cy - 130, 300, 260, 16); ctx.fill();
+  ctx.strokeStyle = '#6B4A34'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.roundRect(cx - 150, cy - 130, 300, 260, 16); ctx.stroke();
+
+  drawDusty(cx, cy - 60, 55, won ? 'happy' : 'sad');
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#3A2A20';
+  ctx.font = '700 20px Fredoka';
+  ctx.fillText(won ? 'Trail Cleared!' : 'So Close!', cx, cy + 15);
+
+  if (won) {
+    const level = LEVELS[currentLevel];
+    const stars = progress[level.id] ? progress[level.id].stars : 0;
+    ctx.font = '22px Fredoka';
+    ctx.fillStyle = '#E8A33D';
+    ctx.fillText('★★★'.slice(0, stars) + '☆☆☆'.slice(0, 3 - stars), cx, cy + 45);
+  } else {
+    ctx.font = '500 12px Fredoka';
+    ctx.fillStyle = 'rgba(58,42,32,0.75)';
+    ctx.fillText('Dusty thinks you\'ll get it next time.', cx, cy + 45);
+  }
+}
+
+// ---------------------------------------------------------------- controls (DOM)
+function renderControls() {
+  controlsEl.innerHTML = '';
+  const addBtn = (label, onClick, ghost) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    if (ghost) b.className = 'ghost';
+    b.addEventListener('click', onClick);
+    controlsEl.appendChild(b);
+    return b;
+  };
+  if (screen === 'map') {
+    addBtn(muted ? '🔇 Sound off' : '🔊 Sound on', () => {
+      muted = !muted;
+      localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
+      renderControls();
+    }, true);
+  } else if (screen === 'playing') {
+    addBtn('← Trail map', () => { screen = 'map'; renderControls(); }, true);
+  } else if (screen === 'win') {
+    const nextIdx = currentLevel + 1;
+    if (nextIdx < LEVELS.length) {
+      addBtn('Next level →', () => startLevel(nextIdx));
+    }
+    addBtn('Trail map', () => { screen = 'map'; renderControls(); }, true);
+  } else if (screen === 'lose') {
+    addBtn('Retry', () => startLevel(currentLevel));
+    addBtn('Trail map', () => { screen = 'map'; renderControls(); }, true);
+  }
+}
+
+// ---------------------------------------------------------------- input
+function pointToCell(x, y) {
+  const c = Math.floor((x - BOARD_LEFT) / CELL);
+  const r = Math.floor((y - BOARD_TOP) / CELL);
+  if (!inBounds(r, c)) return null;
+  return { r, c };
+}
+function canvasPoint(e) {
+  const rect = canvas.getBoundingClientRect();
+  return { x: (e.clientX - rect.left) * (W / rect.width), y: (e.clientY - rect.top) * (H / rect.height) };
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  ensureAudio();
+  const { x, y } = canvasPoint(e);
+  if (screen === 'map') {
+    const positions = nodePositions();
+    for (let i = 0; i < positions.length; i++) {
+      const p = positions[i];
+      if (Math.hypot(p.x - x, p.y - y) < 28 && isUnlocked(i)) { startLevel(i); return; }
+    }
+    return;
+  }
+  if (screen === 'win' || screen === 'lose') return;
+  if (screen !== 'playing' || animLock) return;
+  const cell = pointToCell(x, y);
+  if (!cell) return;
+  if (!selected) {
+    selected = cell;
+    dragStart = { ...cell, x, y };
+  } else if (selected.r === cell.r && selected.c === cell.c) {
+    selected = null;
+  } else {
+    const dr = Math.abs(selected.r - cell.r), dc = Math.abs(selected.c - cell.c);
+    if (dr + dc === 1) {
+      attemptSwap(selected.r, selected.c, cell.r, cell.c);
+      selected = null;
+    } else {
+      selected = cell;
+      dragStart = { ...cell, x, y };
+    }
+  }
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  if (!dragStart || screen !== 'playing' || animLock) return;
+  const { x, y } = canvasPoint(e);
+  const dx = x - dragStart.x, dy = y - dragStart.y;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < CELL * 0.55) return;
+  let r2 = dragStart.r, c2 = dragStart.c;
+  if (Math.abs(dx) > Math.abs(dy)) c2 += dx > 0 ? 1 : -1;
+  else r2 += dy > 0 ? 1 : -1;
+  attemptSwap(dragStart.r, dragStart.c, r2, c2);
+  selected = null;
+  dragStart = null;
+});
+
+canvas.addEventListener('pointerup', () => { dragStart = null; });
+
+// ---------------------------------------------------------------- loop
+function loop() {
+  blinkTimer++;
+  if (screen === 'map') drawMap();
+  else if (screen === 'playing') drawPlaying();
+  else if (screen === 'win') drawModal(true);
+  else if (screen === 'lose') drawModal(false);
+  requestAnimationFrame(loop);
+}
+
+renderControls();
+loop();
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+---
+/** Moreno-Valley-gated (samma mönster som play.astro/workplace-watch) --
+ *  spelet är uttryckligen Moreno Valley-tematiserat (vilda åsnor/"burros"
+ *  är en lokal kändis-detalj för orten), skulle inte göra sajtmässig
+ *  mening på brookingsview.com. Ersätter det aldrig-ihopkopplade
+ *  HopBox Rush-försöket (site/public/games/hopbox-rush.html, borttagen). */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../lib/site-config';
+
+if (siteConfig.townId !== 'moreno_valley_ca') {
+  return Astro.redirect('/', 302);
+}
+---
+
+<BaseLayout
+  title={`Play Burro Bonanza — ${siteConfig.siteName}`}
+  description="A free match-3 puzzle game starring Moreno Valley's wild burros. 20 hand-tuned levels, special tiles, and a trail map to clear."
+>
+  <section class="play-hero">
+    <h1>🐴 Burro Bonanza</h1>
+    <p class="tagline">
+      A little side project: <strong>Burro Bonanza</strong>, a match-3 puzzle
+      game starring Dusty the burro and 20 levels along a desert trail.
+      Match three (or more) to clear the board, unlock special tiles, and
+      chain cascades for bonus points.
+    </p>
+
+    <div class="game-frame">
+      <iframe
+        src="/games/burro-bonanza.html"
+        title="Burro Bonanza game"
+        loading="lazy"
+        allow="autoplay"
+      ></iframe>
+    </div>
+
+    <p class="more-games">
+      More mini-games are on the way. Got a suggestion? Let us know.
+    </p>
+  </section>
+</BaseLayout>
+
+<style>
+  .play-hero { max-width: 720px; margin: 0 auto; padding: 2rem 1rem 3rem; text-align: center; }
+  .play-hero h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+  .tagline { opacity: 0.85; max-width: 560px; margin: 0 auto 1.5rem; line-height: 1.6; }
+  .game-frame { display: flex; justify-content: center; }
+  .game-frame iframe { width: 440px; max-width: 100%; height: 900px; border: none; border-radius: 12px; }
+  .more-games { margin-top: 1.5rem; font-size: 0.9rem; opacity: 0.7; }
+</style>

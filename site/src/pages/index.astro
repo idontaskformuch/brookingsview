@@ -22,6 +22,7 @@ import SdsuEventCard from '../components/SdsuEventCard.astro';
 import JackrabbitWidget from '../components/JackrabbitWidget.astro';
 import JackrabbitGameDayLine from '../components/JackrabbitGameDayLine.astro';
 import WorkplaceWatchWidget from '../components/WorkplaceWatchWidget.astro';
+import BurroBonanzaWidget from '../components/BurroBonanzaWidget.astro';
 import SchoolAlertBanner from '../components/SchoolAlertBanner.astro';
 import TrafficWidget from '../components/TrafficWidget.astro';
 import Tile from '../components/Tile.astro';
@@ -147,6 +148,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
         </a>
       )}
       {isBrookings && <JackrabbitWidget />}
+      {isMorenoValley && <BurroBonanzaWidget />}
       {isMorenoValley && topEmployer && (
         <WorkplaceWatchWidget
           topName={topEmployer.name}
