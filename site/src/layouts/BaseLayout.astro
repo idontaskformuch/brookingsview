@@ -115,6 +115,45 @@ const path = Astro.url.pathname;
   areaServed: { '@type': 'City', name: siteConfig.cityName, addressRegion: siteConfig.stateAbbr, addressCountry: 'US' },
 })} />
 
+{isMorenoValley && (
+  /* AdSense site-level script, Moreno Valley only for now. Deliberately NOT
+     a raw <script async src="...adsbygoogle.js?client=..."> tag -- that
+     would load Google's ad script on every pageview regardless of cookie
+     consent, contradicting both /cookies.astro's current "no tracking or
+     advertising without consent" promise and the exact same bvConsent-gated
+     pattern components/AdSlot.astro already uses for per-slot ad loading.
+     This mirrors that same pattern instead: only fires after a visitor has
+     actively accepted cookies (see CookieBanner.astro), and shares AdSlot's
+     window.__bvAdsLoaded guard so the two never double-inject the script if
+     a page ends up using both. Client ID is hardcoded here rather than
+     routed through PUBLIC_ADSENSE_CLIENT (which AdSlot.astro reads and
+     which is currently unset) -- this is the account-level/site-
+     verification script, a separate concern from individual AdSlot ad
+     units, and unlike those this was handed over as a specific, already-
+     live client ID meant to go out now. */
+  <script is:inline data-adsense-client="ca-pub-9173970727436631">
+    (function () {
+      var CLIENT = document.currentScript.dataset.adsenseClient;
+      function load() {
+        if (window.__bvAdsLoaded) return;
+        window.__bvAdsLoaded = true;
+        var s = document.createElement('script');
+        s.async = true;
+        s.crossOrigin = 'anonymous';
+        s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + encodeURIComponent(CLIENT);
+        document.head.appendChild(s);
+      }
+      if (window.bvConsent === 'accepted') {
+        load();
+      } else {
+        window.addEventListener('bv:consent', function (e) {
+          if (e.detail && e.detail.choice === 'accepted') load();
+        }, { once: true });
+      }
+    })();
+  </script>
+)}
+
 <style is:global>
 :root {
   --paper: #f4f6f7;
