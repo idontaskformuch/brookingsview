@@ -1,0 +1,53 @@
+---
+// Front-page promo card for Worker Pulse / Workplace Watch, see /workplace-watch.
+// Caller (index.astro) decides whether to render at all and passes the two
+// headline figures -- same convention as TrafficWidget.astro.
+interface Props {
+  topName: string;
+  topRating: number | null;
+  moverName: string | null;
+  moverDelta: number | null;
+}
+const { topName, topRating, moverName, moverDelta } = Astro.props;
+
+const moverSymbol = moverDelta === null ? null : moverDelta > 0 ? '▲' : moverDelta < 0 ? '▼' : '▬';
+---
+
+<a href="/workplace-watch" class="wpw-widget" aria-label="See Worker Pulse: local employer review trends">
+  <div class="wpw-icon">📦</div>
+  <div class="wpw-text">
+    <div class="wpw-title">Worker Pulse</div>
+    <div class="wpw-sub">
+      Top this month: {topName}{topRating !== null && ` (${topRating.toFixed(1)})`}
+      {moverName && moverSymbol && (
+        <> · Biggest mover: {moverName} <span class:list={['wpw-symbol', { up: moverDelta! > 0, down: moverDelta! < 0 }]}>{moverSymbol}</span></>
+      )}
+    </div>
+  </div>
+  <div class="wpw-arrow">→</div>
+</a>
+
+<style>
+  .wpw-widget {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0f3d3e, #146b6d);
+    color: #E8FFFB;
+    text-decoration: none;
+    border: 2px solid #2FD9C4;
+    transition: transform 0.15s ease;
+  }
+  .wpw-widget:hover {
+    transform: translateY(-2px);
+  }
+  .wpw-icon { font-size: 1.6rem; }
+  .wpw-text { flex: 1; min-width: 0; }
+  .wpw-title { font-weight: 700; font-size: 0.95rem; }
+  .wpw-sub { font-size: 0.78rem; opacity: 0.85; }
+  .wpw-symbol.up { color: #6EE7B7; }
+  .wpw-symbol.down { color: #FCA5A5; }
+  .wpw-arrow { color: #2FD9C4; font-weight: 700; }
+</style>

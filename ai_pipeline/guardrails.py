@@ -46,7 +46,19 @@ _STOPWORDS = {
 }
 
 
-_POSSESSIVE_RE = re.compile(r"(\w)['’]s\b")
+
+# (\w) missade possessiv direkt efter en punkt-förkortning ("Skechers
+# U.S.A.'s Moreno Valley" -- tecknet före 's är en punkt, inte \w), vilket
+# fick Worker Pulse-digesten att avvisa varje omnämning av "Skechers U.S.A."
+# eftersom den possessiva formen aldrig normaliserades bort. [.\w] täcker
+# båda fallen.
+_POSSESSIVE_RE = re.compile(r"([.\w])['’]s\b")
+# Pluralpossessiv utan efterföljande "s" ("Deckers Brands' Moreno Valley")
+# fångas inte av _POSSESSIVE_RE ovan (inget "s" efter apostrofen) -- samma
+# upptäckt (2026-08, Worker Pulse-livetest). (?!\w) säkerställer att detta
+# bara träffar en apostrof i ordslutet, aldrig mitt i en kontraktion som
+# "don't".
+_TRAILING_APOSTROPHE_RE = re.compile(r"([.\w])['’](?!\w)")
 
 
 def _norm(s: str) -> str:
@@ -56,6 +68,7 @@ def _norm(s: str) -> str:
     # U.S. Department of Transportation)" -> "Transportation's Build America Bureau")
     # utan att sakinnehållet ändras -- strippa den innan jämförelse.
     s = _POSSESSIVE_RE.sub(r"\1", s)
+    s = _TRAILING_APOSTROPHE_RE.sub(r"\1", s)
     return s.casefold().strip()
 
 
@@ -239,6 +252,73 @@ def validate(generated_text: str, source_text: str, cfg: dict) -> GuardrailResul
     opinion = _opinion_hits(generated_text)
     if opinion:
         violations.append(f"möjlig åsikt/vinkling: {', '.join(opinion)}")
+
+    return GuardrailResult(passed=len(violations) == 0, violations=violations)
+
+
+# --- employer-hedging (Worker Pulse / Workplace Watch) ----------------------
+
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+
+# Maskeringstecken för punkter INUTI ett spårat arbetsgivarnamn ("Skechers
+# U.S.A.") innan meningsdelning -- annars tolkas namnets egna punkter som
+# meningsgränser och en mening kapas mitt i ("Employees at the Skechers
+# U.S.A." blir en egen "mening" utan verb, alltid ohedgad). Samma klass av
+# problem som _proper_nouns() ovan löser för "PM. Teens", fast här känner vi
+# namnet i förväg så vi kan maskera det specifikt i stället för att gissa.
+_ABBREV_PLACEHOLDER = "§"
+
+# Live-testad 2026-08 mot riktiga Brave-träffar: en fast fraslista
+# ("reviews mention", "employees describe", ...) missade nästan alla
+# naturliga omskrivningar (t.ex. "Employees ... give the company a 3.2",
+# "Reviews ... show mixed sentiment") och fällde varenda digest till
+# mall-fallback. Ord-baserad matchning i stället: en mening som nämner
+# arbetsgivaren måste innehålla BÅDE ett käll-ord (review/employee/...) OCH
+# ett omdömesverb (mention/describe/show/...) någonstans i meningen -- mer
+# permissivt än en exakt fras, men fångar fortfarande en bar, ohedgad
+# påstående-mening som "ALDI is understaffed." (varken käll-ord eller verb).
+_REVIEW_SOURCE_WORDS = {
+    "review", "reviews", "reviewer", "reviewers", "employee", "employees",
+    "worker", "workers", "staff", "glassdoor", "indeed",
+}
+_ATTRIBUTION_VERBS = {
+    "mention", "mentions", "mentioned", "describe", "describes", "described",
+    "note", "notes", "noted", "report", "reports", "reported", "say", "says",
+    "said", "cite", "cites", "cited", "indicate", "indicates", "indicated",
+    "suggest", "suggests", "give", "gives", "rate", "rates", "rated",
+    "recommend", "recommends", "according", "show", "shows", "reflect",
+    "reflects", "highlight", "highlights", "point", "points", "describe",
+}
+
+
+def validate_employer_hedging(text: str, employer_names: list[str]) -> GuardrailResult:
+    """Varje mening som nämner en spårad arbetsgivare måste förbehålla sitt
+    påstående (ett käll-ord + ett omdömesverb, se ovan) snarare än påstå det
+    som etablerat faktum. Namngivna FÖRETAG är på riktigt här -- viktigare än
+    för recept/evenemang. Se ai_pipeline/workplace_watch_digest.py.
+
+    Snävt avgränsad: anropas bara av workplace_watch_digest.py, UTÖVER den
+    vanliga faktakollen i validate() ovan -- rör inte beteendet för någon
+    annan innehållstyp.
+    """
+    violations: list[str] = []
+    low_names = [n.casefold() for n in employer_names if n]
+    if not low_names:
+        return GuardrailResult(passed=True)
+
+    masked = text
+    for name in employer_names:
+        if name and "." in name:
+            masked = masked.replace(name, name.replace(".", _ABBREV_PLACEHOLDER))
+
+    for chunk in _SENTENCE_SPLIT_RE.split(masked):
+        sentence = chunk.replace(_ABBREV_PLACEHOLDER, ".")
+        low = sentence.casefold()
+        if not any(name in low for name in low_names):
+            continue
+        words = set(re.findall(r"[a-z']+", low))
+        if not (words & _REVIEW_SOURCE_WORDS and words & _ATTRIBUTION_VERBS):
+            violations.append(f"unhedged employer claim: {sentence.strip()}")
 
     return GuardrailResult(passed=len(violations) == 0, violations=violations)
 

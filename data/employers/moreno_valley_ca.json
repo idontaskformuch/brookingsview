@@ -1,0 +1,45 @@
+{
+  "_notes": "v1 employer list for Worker Pulse / Workplace Watch (site/src/pages/workplace-watch), see db/migrations/016_workplace_watch.sql. Hand-curated the same way as data/facilities/<town_id>.json -- Glassdoor/Indeed have no public API and block scraping, so review-trend data comes from a monthly search-and-summarize pass (ai_pipeline/workplace_watch_digest.py), not a live feed keyed off this file. accent_color is used consistently across the widget, comparison table and digest pages for quick visual recognition. facility_type is free text describing the physical operation, not an employment classification.",
+  "employers": [
+    {
+      "slug": "amazon",
+      "name": "Amazon",
+      "facility_type": "fulfillment",
+      "glassdoor_url": "https://www.glassdoor.com/Overview/Working-at-Amazon-EI_IE6036.11,17.htm",
+      "indeed_url": "https://www.indeed.com/cmp/Amazon.com",
+      "accent_color": "#FF9900"
+    },
+    {
+      "slug": "skechers",
+      "name": "Skechers U.S.A.",
+      "facility_type": "distribution",
+      "glassdoor_url": "https://www.glassdoor.com/Overview/Working-at-Skechers-EI_IE12718.11,19.htm",
+      "indeed_url": "https://www.indeed.com/cmp/Skechers",
+      "accent_color": "#1A1A1A"
+    },
+    {
+      "slug": "ross-dress-for-less",
+      "name": "Ross Dress for Less",
+      "facility_type": "distribution",
+      "glassdoor_url": "https://www.glassdoor.com/Overview/Working-at-Ross-Stores-EI_IE3838.11,21.htm",
+      "indeed_url": "https://www.indeed.com/cmp/Ross-Stores",
+      "accent_color": "#004B87"
+    },
+    {
+      "slug": "deckers-brands",
+      "name": "Deckers Brands",
+      "facility_type": "distribution",
+      "glassdoor_url": "https://www.glassdoor.com/Overview/Working-at-Deckers-Brands-EI_IE12930.11,25.htm",
+      "indeed_url": "https://www.indeed.com/cmp/Deckers-Outdoor-Corporation",
+      "accent_color": "#7A1F2B"
+    },
+    {
+      "slug": "aldi",
+      "name": "ALDI",
+      "facility_type": "distribution",
+      "glassdoor_url": "https://www.glassdoor.com/Overview/Working-at-ALDI-EI_IE3164.11,15.htm",
+      "indeed_url": "https://www.indeed.com/cmp/Aldi",
+      "accent_color": "#00447C"
+    }
+  ]
+}

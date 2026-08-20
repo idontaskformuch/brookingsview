@@ -171,6 +171,7 @@ CONTENT_TYPE_MODELS: dict[str, str] = {
     "home_sales_digest": "claude-haiku-4-5-20251001",
     "sports_digest": "claude-haiku-4-5-20251001",
     "university_digest": "claude-haiku-4-5-20251001",
+    "workplace_watch_digest": "claude-haiku-4-5-20251001",
     "weekly": "claude-haiku-4-5-20251001",
     "meeting": "claude-haiku-4-5-20251001",
     "event": "claude-haiku-4-5-20251001",

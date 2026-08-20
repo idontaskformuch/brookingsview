@@ -32,7 +32,7 @@ export type SourceType =
   | 'meeting' | 'event' | 'alert' | 'weekly'
   | 'culture_essay' | 'editorial' | 'vetenskap_kronika' | 'kvick_essa'
   | 'media_recension' | 'vardagsmiddag' | 'home_sales_digest' | 'sports_digest' | 'university_digest'
-  | 'announcement';
+  | 'announcement' | 'workplace_watch_digest';
 
 /** Presentation-layer label per source_type, för Byline-raden. Ingen egen DB-kolumn --
  *  category är en ren funktion av source_type, inget som behöver lagras separat. */
@@ -51,6 +51,7 @@ export const CATEGORY_LABELS: Partial<Record<SourceType, string>> = {
   // hasByline-villkor) så den här kickern faktiskt används i stället för
   // att falla tillbaka på "Events".
   announcement: 'Announcement',
+  workplace_watch_digest: 'Worker Pulse',
 };
 
 /** De sex innehållstyperna från Content Track v1 -- en sammanhållen lista så att
@@ -79,6 +80,7 @@ export const CATEGORY_HREFS: Partial<Record<SourceType, string>> = {
   home_sales_digest: '/home-sales',
   sports_digest: '/sports',
   university_digest: '/university',
+  workplace_watch_digest: '/workplace-watch',
 };
 
 export interface Story {
@@ -721,6 +723,103 @@ export const FACILITY_CATEGORY_LABELS: Record<string, string> = {
   community_center: 'Community centers',
   other: 'Other',
 };
+
+/**
+ * Worker Pulse / Workplace Watch (site/src/pages/workplace-watch) -- Moreno
+ * Valley-specifikt, se db/migrations/016_workplace_watch.sql. `employers` är
+ * HANDKURERAD FAKTA (som facilities ovan, se scripts/seed_employers.py);
+ * `employer_ratings` skrivs månadsvis av ai_pipeline/workplace_watch_digest.py
+ * via sök-och-sammanfatta (Glassdoor/Indeed skrapas aldrig direkt).
+ *
+ * overall_rating är `number | null` -- null betyder "ingen siffra hittades i
+ * sökträffarna den månaden", renderas som "rating pending", ALDRIG en
+ * uppskattning. Samma "hellre ingen uppgift än en påhittad"-princip som
+ * facilities.verified_date.
+ */
+export interface Employer {
+  slug: string;
+  name: string;
+  facility_type: string;
+  glassdoor_url: string | null;
+  indeed_url: string | null;
+  accent_color: string | null;
+}
+
+export interface EmployerRating extends Employer {
+  /** "YYYY-MM", eller null om arbetsgivaren ännu inte fått en digest. Hämtas
+   *  som text direkt från Postgres (to_char) -- se getLatestEmployerRatings
+   *  för varför, ALDRIG via new Date(period) i frontend-koden. */
+  period_ym: string | null;
+  /** Läsbar "August 2026"-etikett, samma anledning som period_ym. */
+  period_label: string | null;
+  overall_rating: number | null;
+  rating_source_note: string | null;
+  theme_summary: string | null;
+  rating_delta_vs_last_month: number | null;
+  /** Slug för digestens /s/<digest_slug>-permalink (workplace_watch_digest.py:s
+   *  slug-format), eller null om arbetsgivaren ännu inte fått en digest. */
+  digest_slug: string | null;
+}
+
+export async function getEmployers(): Promise<Employer[]> {
+  return (await sql`
+    SELECT slug, name, facility_type, glassdoor_url, indeed_url, accent_color
+      FROM employers
+     WHERE town_id = ${TOWN_ID}
+     ORDER BY name
+  `) as Employer[];
+}
+
+/** Varje spårad arbetsgivare + dess SENASTE månads betyg/tema (LEFT JOIN
+ *  LATERAL, så en nytillagd arbetsgivare utan digest än fortfarande syns,
+ *  med overall_rating=null, i stället för att falla bort helt). Driver både
+ *  /workplace-watch:s jämförelsetabell och startsido-widgeten.
+ *
+ *  period formateras till text MED to_char() I SQL, inte i JS: period är en
+ *  ren kalenderdag (DATE, ingen klockslagsbetydelse), men neons drivrutin
+ *  ger tillbaka DATE-kolumner som JS Date-objekt ankrade i den körande
+ *  processens LOKALA tidszon -- new Date(period)/.toISOString() i frontend
+ *  skiftar då kalendermånaden fel så fort byggmaskinens lokala tidszon inte
+ *  är UTC (upptäckt live 2026-08: "2026-08-01" blev "July 2026" på en
+ *  icke-UTC dev-maskin). to_char() i Postgres kringgår hela problemet --
+ *  samma klass av bugg som _fmt()-kommentaren i sdsu_weekly_digest.py. */
+export async function getLatestEmployerRatings(): Promise<EmployerRating[]> {
+  const rows = (await sql`
+    SELECT e.slug, e.name, e.facility_type, e.glassdoor_url, e.indeed_url, e.accent_color,
+           to_char(r.period, 'YYYY-MM') AS period_ym,
+           to_char(r.period, 'FMMonth YYYY') AS period_label,
+           r.overall_rating, r.rating_source_note, r.theme_summary,
+           r.rating_delta_vs_last_month
+      FROM employers e
+      LEFT JOIN LATERAL (
+        SELECT * FROM employer_ratings er
+         WHERE er.employer_id = e.id AND er.town_id = e.town_id
+         ORDER BY er.period DESC
+         LIMIT 1
+      ) r ON true
+     WHERE e.town_id = ${TOWN_ID}
+     ORDER BY r.overall_rating DESC NULLS LAST, e.name
+  `) as Record<string, any>[];
+
+  return rows.map((row) => ({
+    slug: row.slug,
+    name: row.name,
+    facility_type: row.facility_type,
+    glassdoor_url: row.glassdoor_url,
+    indeed_url: row.indeed_url,
+    accent_color: row.accent_color,
+    period_ym: row.period_ym,
+    period_label: row.period_label,
+    overall_rating: row.overall_rating === null ? null : Number(row.overall_rating),
+    rating_source_note: row.rating_source_note,
+    theme_summary: row.theme_summary,
+    rating_delta_vs_last_month:
+      row.rating_delta_vs_last_month === null ? null : Number(row.rating_delta_vs_last_month),
+    digest_slug: row.period_ym
+      ? `workplace-watch-${row.slug}-${row.period_ym}`
+      : null,
+  }));
+}
 
 /* ------------------------------------------------------------ skyltremsan -- */
 

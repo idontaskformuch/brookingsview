@@ -1,0 +1,138 @@
+---
+/** Worker Pulse / Workplace Watch -- Moreno Valley-gated (samma mönster som
+ *  play.astro/facilities), den "check before your shift" anchor-sidan för
+ *  Moreno Valley: en jämförelsetabell över review-trender hos de större
+ *  logistik-/lagerarbetsgivarna i orten. Se lib/db.ts (getLatestEmployerRatings)
+ *  och ai_pipeline/workplace_watch_digest.py för varifrån datat kommer -- ett
+ *  stjärnbetyg visas bara om det uttryckligen hittades i sökträffarna, annars
+ *  "rating pending" i stället för en gissning. */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getLatestEmployerRatings } from '../../lib/db';
+import { siteConfig } from '../../lib/site-config';
+
+if (siteConfig.townId !== 'moreno_valley_ca') {
+  return Astro.redirect('/', 302);
+}
+
+const employers = await getLatestEmployerRatings();
+
+function trend(delta: number | null): { symbol: string; cls: string } {
+  if (delta === null) return { symbol: '—', cls: 'flat' };
+  if (delta > 0) return { symbol: '▲', cls: 'up' };
+  if (delta < 0) return { symbol: '▼', cls: 'down' };
+  return { symbol: '▬', cls: 'flat' };
+}
+---
+<BaseLayout
+  title={`Worker Pulse — ${siteConfig.siteName}`}
+  wide
+  description="Monthly review-trend digests for Moreno Valley's major warehouse and logistics employers — check before your shift."
+>
+  <header class="wp-hero">
+    <h1>📦 Worker Pulse</h1>
+    <p class="tagline">
+      A monthly, plain-language look at review trends for {siteConfig.cityName}'s
+      major warehouse and logistics employers — Amazon, Skechers, Ross, Deckers
+      and ALDI. Themes are summarized from recent Glassdoor/Indeed search results,
+      always attributed to what reviews say, never stated as settled fact.
+    </p>
+  </header>
+
+  {employers.length > 0 ? (
+    <div class="wp-table" role="table">
+      <div class="wp-row wp-row--head" role="row">
+        <span role="columnheader">Employer</span>
+        <span role="columnheader">Rating</span>
+        <span role="columnheader">Trend</span>
+        <span role="columnheader">This month</span>
+      </div>
+      {employers.map((e) => {
+        const t = trend(e.rating_delta_vs_last_month);
+        const label = e.period_label;
+        return (
+          <div class="wp-row" role="row" style={`--accent: ${e.accent_color ?? '#4b5563'}`}>
+            <span class="wp-name" role="cell">
+              <span class="wp-dot" aria-hidden="true"></span>
+              <span>
+                {e.name}
+                <small>{e.facility_type}</small>
+              </span>
+            </span>
+            <span class="wp-rating" role="cell">
+              {e.overall_rating !== null ? e.overall_rating.toFixed(1) : 'Rating pending'}
+            </span>
+            <span class={`wp-trend wp-trend--${t.cls}`} role="cell">{t.symbol}</span>
+            <span class="wp-summary" role="cell">
+              {e.theme_summary ? (
+                <>
+                  <span class="excerpt">{e.theme_summary}</span>
+                  {e.digest_slug && (
+                    <a href={`/s/${e.digest_slug}/`}>Read the full {label} digest →</a>
+                  )}
+                </>
+              ) : (
+                <span class="excerpt muted">No digest published yet — check back next month.</span>
+              )}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  ) : (
+    <p class="empty">No employer data available yet.</p>
+  )}
+</BaseLayout>
+
+<style>
+.wp-hero { max-width: 46rem; margin: 0 auto 1.5rem; text-align: center; }
+.wp-hero h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+.tagline { color: var(--ink-soft); line-height: 1.6; }
+
+.wp-table {
+  display: grid;
+  max-width: 60rem;
+  margin: 0 auto;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.wp-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr 0.4fr 2.2fr;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.9rem 1rem;
+  border-top: 1px solid var(--rule);
+}
+.wp-row:first-child { border-top: none; }
+.wp-row--head {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  background: var(--panel, rgba(127, 127, 127, 0.06));
+}
+.wp-name { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; }
+.wp-dot {
+  width: 0.65rem; height: 0.65rem; border-radius: 50%;
+  background: var(--accent); flex-shrink: 0;
+}
+.wp-name small { display: block; font-weight: 400; color: var(--ink-soft); font-size: 0.75rem; }
+.wp-rating { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); }
+.wp-trend { font-size: 1.1rem; }
+.wp-trend--up { color: #1a9850; }
+.wp-trend--down { color: #d73027; }
+.wp-trend--flat { color: var(--ink-soft); }
+.wp-summary { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
+.excerpt { color: var(--ink-soft); }
+.excerpt.muted { font-style: italic; }
+.wp-summary a { font-weight: 600; font-size: 0.85rem; }
+
+.empty { text-align: center; color: var(--ink-soft); }
+
+@media (max-width: 640px) {
+  .wp-row { grid-template-columns: 1fr; row-gap: 0.35rem; }
+  .wp-row--head { display: none; }
+  .wp-rating::before { content: 'Rating: '; font-weight: 400; color: var(--ink-soft); }
+}
+</style>

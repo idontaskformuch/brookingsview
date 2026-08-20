@@ -222,6 +222,19 @@
       },
       "_notes": "VERIFIERAD 2026-08-03: fakta om lokala anläggningar (bibliotek, parker, city hall) finns inte i något maskinläsbart flöde och ändras sällan, så samma mönster som property_sales -- manuellt kuraterad fil, ingen scraper. Kör 'python -m scripts.seed_facilities {town_id}' efter att ha redigerat data/facilities/{town_id}.json. Se db/migrations/007_facilities.sql för motivet: Search Console visade att search queries efter specifika anläggningar (t.ex. 'moreno valley library', 'lasselle sports park') stod för nästan alla exponeringar men gav noll klick, eftersom ingen sida svarade direkt på frågan."
     },
+    "workplace_watch": {
+      "type": "search_summary",
+      "enabled": true,
+      "provider": "brave_search",
+      "local_dir": "data/employers/moreno_valley_ca",
+      "loader": "scripts/seed_employers.py",
+      "refresh_minutes": 43200,
+      "output": {
+        "format": "monthly_digest",
+        "voice": "reviews-mention"
+      },
+      "_notes": "Worker Pulse / Workplace Watch (site/src/pages/workplace-watch): review-trend digests for the town's major warehouse/logistics employers (Amazon, Skechers, Ross, Deckers, ALDI -- see data/employers/moreno_valley_ca.json). Glassdoor and Indeed have no public API and both block scraping (robots.txt + anti-bot), so this does NOT scrape either site directly -- it issues search queries via the Brave Search API ('{employer} Moreno Valley Glassdoor reviews {month} {year}') and has the AI paraphrase an AGGREGATED, hedged summary of the snippet results ('reviews mention...'), never reproducing review text verbatim. Requires BRAVE_API_KEY (GitHub secret, provisioned manually -- see .github/workflows/moval-workplace-watch-digest.yml). refresh_minutes is monthly (43200): review volume doesn't change fast enough to justify more, and it keeps Brave API usage trivial (5 employers x 2 queries x monthly = 10 queries/month, well inside the free tier). See ai_pipeline/workplace_watch_digest.py and guardrails.validate_employer_hedging() -- named real companies, so every generated claim about one must be attributed to reviews/employees, never stated as settled fact."
+    },
     "pro_sports": {
       "type": "pro_sports",
       "enabled": true,

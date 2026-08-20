@@ -1,0 +1,40 @@
+name: moval-workplace-watch-digest
+# Kör scripts.seed_employers (säkert att köra om -- upsertar på (town_id, slug))
+# följt av ai_pipeline.workplace_watch_digest, som söker (Brave Search --
+# Glassdoor/Indeed har ingen publik API och blockerar skrapning) och skriver
+# månadens Worker Pulse-digest per arbetsgivare. Månatlig cadence: review-
+# volym ändras inte snabbt nog för att motivera oftare körningar, och håller
+# Brave-kvoten trivial (5 arbetsgivare x 2 sökningar = 10 anrop/månad).
+
+on:
+  schedule:
+    - cron: "0 15 1 * *"   # 1:a varje månad, 15:00 UTC (08:00 PDT)
+  workflow_dispatch: {}
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:      ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      BRAVE_API_KEY:     ${{ secrets.BRAVE_API_KEY }}
+      USER_AGENT:        "morenovalleyview.com (contact: hello@morenovalleyview.com)"
+      AI_BUDGET_STATE:   ".ai_budget_moreno_valley_ca.json"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Uppdatera arbetsgivarlistan
+        run: python -m scripts.seed_employers moreno_valley_ca
+      - name: Generera månadens Worker Pulse-digest
+        run: python -m ai_pipeline.workplace_watch_digest --config configs/moreno_valley_ca.json
+      - name: Trigga Cloudflare Pages-rebuild
+        if: success()
+        run: |
+          if [ -n "${{ secrets.PAGES_DEPLOY_HOOK_MOVAL }}" ]; then
+            curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK_MOVAL }}"
+          else
+            echo "PAGES_DEPLOY_HOOK_MOVAL ej satt -- hoppar över rebuild"
+          fi
