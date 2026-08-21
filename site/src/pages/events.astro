@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import RelatedContent from '../components/RelatedContent.astro';
+import ShareButton from '../components/ShareButton.astro';
 import type { Story, SdsuEvent } from '../lib/db';
 import { getUpcomingStories, getPastStories, getUpcomingArtsEvents } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
@@ -211,6 +212,7 @@ const sections = (
     <h1>What's on</h1>
     <p>Times and registration details come straight from each organiser's own calendar.
     Check back — this updates daily.</p>
+    <ShareButton title={`Events in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
   </header>
 
   {sections.length > 0 ? sections.map(([label, list]) => (

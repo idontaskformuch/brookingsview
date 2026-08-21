@@ -9,6 +9,7 @@
  *  lib/db.ts (getFacilities) för det fullständiga resonemanget. */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import SectionRule from '../../components/SectionRule.astro';
+import ShareButton from '../../components/ShareButton.astro';
 import { getFacilities, FACILITY_CATEGORY_LABELS } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 
@@ -30,6 +31,7 @@ const categories = [...byCategory.keys()].sort(
     <h1>Local facilities</h1>
     <p>Addresses, phone numbers and hours for libraries, parks, city hall and
     other public places in {siteConfig.cityName} — the basics, in one place.</p>
+    <ShareButton title={`Local facilities — ${siteConfig.siteName}`} />
   </header>
 
   {categories.length > 0 ? categories.map((cat) => (

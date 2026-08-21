@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
+import ShareButton from '../components/ShareButton.astro';
 import { getUpcomingStories, getPastStories } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
@@ -14,6 +15,7 @@ const past = await getPastStories(['meeting'], 20);
     <h1>City hall</h1>
     <p>What the city council, county commission and committees are deciding —
     summarised from the published agendas, in plain language, without taking sides.</p>
+    <ShareButton title={`City hall — ${siteConfig.siteName}`} />
   </header>
 
   <SectionRule label="Coming up" />

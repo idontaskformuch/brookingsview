@@ -1,0 +1,129 @@
+---
+/** Lightweight share affordance for section/listing pages (traffic, events,
+ *  city hall, ...) -- distinct from ShareButtons.astro, which sits at the
+ *  bottom of individual /s/[slug] story pages as a fuller row of Facebook/
+ *  SMS/email/copy links. A visitor who reads an entire section page without
+ *  ever clicking into a story currently has no share affordance at all;
+ *  this fills that gap without competing visually with the page's main
+ *  content, so it's a single low-key icon+label, not a multi-link bar.
+ *
+ *  Same two-path behavior as ShareButtons.astro's native/copy logic (Web
+ *  Share API primary, clipboard-copy fallback) -- intentionally a separate,
+ *  smaller component rather than reusing that one directly, since its
+ *  multi-link layout is the wrong visual weight for "near a section
+ *  heading." */
+interface Props {
+  title: string;
+  url?: string;
+  variant?: 'inline' | 'sticky';
+}
+const { title, url: urlProp, variant = 'inline' } = Astro.props;
+const url = urlProp ?? Astro.url.href;
+---
+
+<div class={`share-button share-button--${variant}`} data-share-url={url} data-share-title={title}>
+  <button type="button" class="share-button__btn" data-share-trigger aria-label={`Share: ${title}`}>
+    <svg class="share-button__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M18 8a3 3 0 1 0-2.83-4H15a3 3 0 0 0 .09 2.6l-6.2 3.6a3 3 0 1 0 0 3.6l6.2 3.6A3 3 0 1 0 18 16a2.98 2.98 0 0 0-1.83.63l-6.2-3.6a3 3 0 0 0 0-2.06l6.2-3.6c.52.4 1.17.63 1.83.63Z" />
+    </svg>
+    <span class="share-button__label">Share</span>
+  </button>
+  <span class="share-button__toast" data-share-toast hidden>Link copied!</span>
+</div>
+
+<style>
+  .share-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .share-button--sticky {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 20;
+  }
+  .share-button__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    color: var(--ink-soft);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 0.3rem 0.7rem;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  .share-button__btn:hover,
+  .share-button__btn:focus-visible {
+    color: var(--navy);
+    border-color: var(--navy);
+  }
+  .share-button--sticky .share-button__btn {
+    background: var(--surface);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+    opacity: 0.7;
+  }
+  .share-button--sticky .share-button__btn:hover,
+  .share-button--sticky .share-button__btn:focus-visible {
+    opacity: 1;
+  }
+  .share-button__icon {
+    width: 0.9rem;
+    height: 0.9rem;
+    fill: currentColor;
+  }
+  .share-button__toast {
+    position: absolute;
+    top: calc(100% + 0.375rem);
+    left: 0;
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    color: var(--surface);
+    background: var(--ink);
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .share-button--sticky .share-button__toast {
+    left: auto;
+    right: 0;
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-share-url]').forEach((root) => {
+    const url = root.dataset.shareUrl!;
+    const title = root.dataset.shareTitle!;
+    const btn = root.querySelector<HTMLButtonElement>('[data-share-trigger]');
+    const toast = root.querySelector<HTMLElement>('[data-share-toast]');
+    let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+    btn?.addEventListener('click', async () => {
+      if (typeof navigator.share === 'function') {
+        try {
+          await navigator.share({ title, url });
+        } catch {
+          /* visitor cancelled the native share sheet -- nothing to do */
+        }
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        if (toast) {
+          toast.hidden = false;
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(() => {
+            toast.hidden = true;
+          }, 2000);
+        }
+      } catch {
+        /* clipboard API unavailable (e.g. insecure context) -- URL is in the address bar */
+      }
+    });
+  });
+</script>

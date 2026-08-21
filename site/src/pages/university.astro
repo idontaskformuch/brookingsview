@@ -17,6 +17,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import RelatedContent from '../components/RelatedContent.astro';
+import ShareButton from '../components/ShareButton.astro';
 import type { SdsuEvent } from '../lib/db';
 import {
   getUpcomingSdsuEvents, getUpcomingAcademicDates, getContentByType,
@@ -99,6 +100,7 @@ const nextAcademicDate = academicDates[0];
     <h1>University</h1>
     <p>What's on at South Dakota State University this week — games, concerts, shows
     and campus happenings, straight from SDSU's own event calendar.</p>
+    <ShareButton title={`University — ${siteConfig.siteName}`} />
   </header>
 
   {digests.length > 0 && (

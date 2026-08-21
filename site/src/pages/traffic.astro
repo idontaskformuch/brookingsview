@@ -12,6 +12,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
+import ShareButton from '../components/ShareButton.astro';
 import { getActiveTrafficIncidents, formatTime } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
@@ -25,6 +26,7 @@ const typeLabel = (t: string) => (t === 'lane_closure' ? 'Lane closure / constru
     <h1>Traffic</h1>
     <p>Current road incidents, closures and construction near {siteConfig.cityName} —
     straight from the state's own public traffic feed.</p>
+    <ShareButton title={`Traffic — ${siteConfig.siteName}`} />
   </header>
 
   <SectionRule label={incidents.length > 0 ? `${incidents.length} active` : 'Current incidents'} />

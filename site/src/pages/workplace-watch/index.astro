@@ -11,6 +11,7 @@ import HeatAdvisoryWidget from '../../components/HeatAdvisoryWidget.astro';
 import ShiftPollWidget from '../../components/ShiftPollWidget.astro';
 import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
 import RelatedContent from '../../components/RelatedContent.astro';
+import ShareButton from '../../components/ShareButton.astro';
 import {
   getLatestEmployerRatings, getWeather, getActiveAlerts,
   getShiftPollResults, getWorkerPulseComments,
@@ -51,6 +52,7 @@ function trend(delta: number | null): { symbol: string; cls: string } {
       and ALDI. Themes are summarized from recent Glassdoor/Indeed search results,
       always attributed to what reviews say, never stated as settled fact.
     </p>
+    <ShareButton title={`Worker Pulse — ${siteConfig.siteName}`} />
   </header>
 
   <HeatAdvisoryWidget
