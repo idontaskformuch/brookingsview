@@ -111,7 +111,7 @@ function monthYear(occursAt: string | null): string {
         </thead>
         <tbody>
           {sales.map((sale) => (
-            <tr data-zip={extractZip(sale.address)} data-price={sale.sale_price ?? ''} data-date={sale.sale_date ?? ''}>
+            <tr data-zip={extractZip(sale.address)} data-price={sale.sale_price ?? ''} data-date={sale.sale_date ? new Date(sale.sale_date).getTime() : ''}>
               <td class="data">{sale.sale_date ? new Date(sale.sale_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—'}</td>
               <td>{titleCaseAddress(sale.address)}</td>
               <td class="data price">
@@ -138,63 +138,26 @@ function monthYear(occursAt: string | null): string {
 </BaseLayout>
 
 <script>
+  import { initDataTable } from '../lib/data-table';
+
   function init() {
-    const table = document.getElementById('sales-table');
-    if (!table) return;
-    const tbody = table.querySelector('tbody')!;
-    const rows = Array.from(tbody.querySelectorAll<HTMLTableRowElement>('tr'));
-    const zipFilter = document.getElementById('zip-filter') as HTMLSelectElement;
-    const pageSize = document.getElementById('page-size') as HTMLSelectElement;
-    const status = document.getElementById('pager-status');
-    let sortKey: 'date' | 'price' | null = null;
-    let sortDir: 1 | -1 = -1;
-
-    function apply() {
-      const zip = zipFilter.value;
-      const limit = parseInt(pageSize.value, 10);
-
-      let visible = rows.filter((r) => !zip || r.dataset.zip === zip);
-
-      if (sortKey) {
-        visible = visible.slice().sort((a, b) => {
-          const av = Number(a.dataset[sortKey!] || 0);
-          const bv = Number(b.dataset[sortKey!] || 0);
-          return (av - bv) * sortDir;
-        });
-      }
-
-      rows.forEach((r) => (r.hidden = true));
-      visible.slice(0, limit).forEach((r) => {
-        r.hidden = false;
-        tbody.appendChild(r); // re-order into current sort/filter order
-      });
-
-      if (status) {
-        status.textContent = `Showing ${Math.min(limit, visible.length)} of ${visible.length} matching sales.`;
-      }
-    }
-
-    zipFilter?.addEventListener('change', apply);
-    pageSize?.addEventListener('change', apply);
-    table.querySelectorAll<HTMLElement>('.sortable').forEach((th) => {
-      th.style.cursor = 'pointer';
-      th.addEventListener('click', () => {
-        const key = th.dataset.sort as 'date' | 'price';
-        if (sortKey === key) sortDir = sortDir === 1 ? -1 : 1;
-        else { sortKey = key; sortDir = -1; }
-        apply();
-      });
-    });
-
     // ?zip=92553 pre-selects the filter -- the cross-link target from
     // city-hall meeting stories that mention a ZIP (see [slug].astro's
     // "development near you" link and NEEDS-HUMAN-REVIEW.md, "3.2 City hall").
+    const zipFilter = document.getElementById('zip-filter') as HTMLSelectElement | null;
     const requestedZip = new URLSearchParams(location.search).get('zip');
     if (requestedZip && zipFilter && [...zipFilter.options].some((o) => o.value === requestedZip)) {
       zipFilter.value = requestedZip;
     }
 
-    apply();
+    initDataTable({
+      tableId: 'sales-table',
+      filters: [{ selectId: 'zip-filter', attr: 'zip' }],
+      sortableHeaders: true,
+      pageSizeId: 'page-size',
+      statusId: 'pager-status',
+      statusText: (shown, total) => `Showing ${shown} of ${total} matching sales.`,
+    });
   }
   init();
 </script>

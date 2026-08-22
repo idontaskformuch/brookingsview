@@ -34,14 +34,29 @@ const SEVERITY_LABELS: Record<string, string> = {
   </header>
 
   <SectionRule label={incidents.length > 0 ? `${incidents.length} active` : 'Current incidents'} />
+
+  {incidents.length > 0 && (
+    <div class="controls">
+      <label>
+        Severity
+        <select id="severity-filter">
+          <option value="">All</option>
+          {[...new Set(incidents.map((i) => i.severity ?? 'incident'))].map((s) => (
+            <option value={s}>{SEVERITY_LABELS[s] ?? s}</option>
+          ))}
+        </select>
+      </label>
+    </div>
+  )}
+
   {incidents.length > 0 ? (
-    <table class="incidents">
+    <table class="incidents" id="incidents-table">
       <thead>
         <tr><th scope="col">Severity</th><th scope="col">Road</th><th scope="col">Details</th><th scope="col">Last updated</th></tr>
       </thead>
       <tbody>
         {incidents.map((incident) => (
-          <tr>
+          <tr data-severity={incident.severity ?? 'incident'}>
             <td class={`sev sev--${incident.severity ?? 'incident'}`}>
               {SEVERITY_LABELS[incident.severity ?? 'incident']}
             </td>
@@ -72,9 +87,24 @@ const SEVERITY_LABELS: Record<string, string> = {
   <RelatedContent pageType="traffic" />
 </BaseLayout>
 
+<script>
+  import { initDataTable } from '../lib/data-table';
+
+  function init() {
+    initDataTable({
+      tableId: 'incidents-table',
+      filters: [{ selectId: 'severity-filter', attr: 'severity' }],
+    });
+  }
+  init();
+</script>
+
 <style>
 .lede { max-width: 40rem; }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.controls { display: flex; gap: 1.25rem; margin: 0.5rem 0 1rem; font-size: 0.875rem; }
+.controls label { display: flex; align-items: center; gap: 0.4rem; color: var(--ink-soft); }
+.controls select { font: inherit; padding: 0.2rem 0.4rem; }
 .incidents { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.9375rem; }
 .incidents th {
   text-align: left;

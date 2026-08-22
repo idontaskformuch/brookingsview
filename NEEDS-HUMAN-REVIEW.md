@@ -738,6 +738,35 @@ replacing an earlier never-connected attempt per the page's own comment).
 "Got a suggestion? Let us know" now links to `/contact` instead of being
 inert text.
 
+### 4.1 Shared table component — built as a shared behavior module
+
+Built `site/src/lib/data-table.ts` and adopted it in Home sales, Jobs, and
+Traffic. Deliberately a shared **behavior** module (sort/filter/pagination
+logic + accessible keyboard handling), not a single Astro component
+rendering all three tables — the three tables' columns genuinely differ
+(Home sales: date/address/price; Jobs: title/company/category/salary/
+posted; Traffic: severity/road/details/updated), and forcing one generic
+column set would make the table worse for all three rather than better.
+Each page still owns its own markup/columns; only the interactive behavior
+(and its JS) is shared, which is what was actually duplicated three times
+before.
+
+- **Home sales**: click-to-sort headers + ZIP filter + page size, now via
+  the shared module. Fixed a real, pre-existing bug while refactoring:
+  the "Date" column sort compared raw date strings as numbers
+  (`Number("2026-08-13")` = `NaN`), so clicking it silently did nothing —
+  now sorts on the row's actual timestamp.
+- **Jobs**: category filter + "sort by" dropdown, same behavior as before,
+  now shared code.
+- **Traffic**: had *no* interactivity before this — added a severity filter
+  (All/Closure/Injury reported/Incident/Planned closure) as a genuine new
+  capability while adopting the shared module, not just a refactor.
+- **Accessibility**: sortable column headers are real `role="button"`,
+  `tabindex="0"` elements with both click and Enter/Space keyboard
+  handlers — not a bare `click` listener on a `<th>`, which a keyboard or
+  screen-reader user could never trigger. `<th scope="col">` was already
+  correct on all three tables before this change.
+
 ## 8. Not addressed yet
 
 Nothing outstanding as of this line — updated as Phase 3/4 sub-sections

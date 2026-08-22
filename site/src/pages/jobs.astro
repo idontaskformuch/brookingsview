@@ -144,33 +144,20 @@ for (const job of jobs) {
 </BaseLayout>
 
 <script>
+  import { initDataTable } from '../lib/data-table';
+
   function init() {
-    const table = document.getElementById('jobs-table');
-    if (!table) return;
-    const tbody = table.querySelector('tbody')!;
-    const rows = Array.from(tbody.querySelectorAll<HTMLTableRowElement>('tr'));
-    const categoryFilter = document.getElementById('category-filter') as HTMLSelectElement | null;
-    const sortBy = document.getElementById('sort-by') as HTMLSelectElement | null;
-
-    function apply() {
-      const category = categoryFilter?.value ?? '';
-      const key = sortBy?.value ?? 'date';
-
-      let ordered = rows.filter((r) => !category || r.dataset.category === category);
-      ordered = ordered.slice().sort((a, b) => {
-        if (key === 'salary') return Number(b.dataset.salary || 0) - Number(a.dataset.salary || 0);
-        return String(b.dataset.posted || '').localeCompare(String(a.dataset.posted || ''));
-      });
-
-      rows.forEach((r) => (r.hidden = true));
-      ordered.forEach((r) => {
-        r.hidden = false;
-        tbody.appendChild(r);
-      });
-    }
-
-    categoryFilter?.addEventListener('change', apply);
-    sortBy?.addEventListener('change', apply);
+    initDataTable({
+      tableId: 'jobs-table',
+      filters: [{ selectId: 'category-filter', attr: 'category' }],
+      sortSelect: {
+        selectId: 'sort-by',
+        keys: {
+          date: { attr: 'posted', dir: -1 },
+          salary: { attr: 'salary', dir: -1 },
+        },
+      },
+    });
   }
   init();
 </script>
