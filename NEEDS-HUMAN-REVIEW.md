@@ -631,6 +631,32 @@ published (every content type's idempotency depends on that), so the one
 existing `vardagsmiddag-*` URL keeps working under its original slug
 forever — the rename only applies going forward.
 
+### 3.5 Columns & Editorials — local-anchor pre-publish gate, built
+
+Added `ai_pipeline/town_guard.py:has_local_anchor()`, wired into
+`content/_base.py:generate_article()` right alongside the existing town-
+identity gate, for `culture_essay`/`editorial`/`kvick_essa`/
+`vetenskap_kronika` only (`vardagsmiddag`/`media_recension` already have
+their own stricter local-source rules from 3.3/3.4). Deterministic
+keyword/regex matching (town name, street address, specific date, named
+civic body), same "transparent and auditable, not an AI judgment call about
+its own output" philosophy as `is_closure()`/`is_suspicious()` elsewhere.
+
+**Flag-for-review implemented as retry-then-skip, not publish-then-flag.**
+The brief's "flag for review, don't hard-fail, on ambiguous cases" is met by
+reusing the exact retry pattern the town-identity gate already established:
+a first-draft miss gets one retry with an explicit instruction to include a
+real, checkable local detail; only a SECOND miss skips publication for that
+day (logged clearly) rather than shipping a location-less piece. A false
+negative (a real local reference in a form the regex doesn't recognize)
+costs one retry, not a wrongly-blocked article — matches the brief's "don't
+hard-fail on ambiguous cases" without needing a separate human review queue
+for something this codebase's existing pattern already handles gracefully.
+
+5 new regression tests in `tests/test_town_guard.py` (blocks a genuinely
+placeless think-piece; passes on town name, street address, specific date,
+named civic body respectively).
+
 ## 8. Not addressed yet
 
 Nothing outstanding as of this line — updated as Phase 3/4 sub-sections

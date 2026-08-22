@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, _record_spend, _spent_this_month, pricing_for, resolve_model, safe_create,
 )
-from ai_pipeline.town_guard import validate_town_identity
+from ai_pipeline.town_guard import has_local_anchor, validate_town_identity
 from guardrails.originality_check import is_original
 from guardrails.style_filter import clean
 
@@ -42,6 +42,14 @@ DEFAULT_MODEL = "claude-sonnet-5"
 # text. Trunkeringen hanteras ändå alltid (se stop_reason-kontrollen nedan) -- det
 # här minskar bara hur ofta den triggas, det tar inte bort behovet av den.
 DEFAULT_MAX_TOKENS = 6144
+
+# content_type dispatch keys (see ai_pipeline/format_prompt.py's
+# CONTENT_TYPE_MODELS for the canonical list of these) that must contain a
+# concrete local specific -- see has_local_anchor() usage below and
+# NEEDS-HUMAN-REVIEW.md "3.5 Columns & Editorials". vardagsmiddag/
+# media_recension excluded: they have their own, stricter local-anchor
+# rules already (never naming an unverified specific venue/market).
+_LOCAL_ANCHOR_REQUIRED_TYPES = {"culture_essay", "editorial", "kvick_essa", "vetenskap_kronika"}
 
 _OUTPUT_FORMAT_INSTRUCTION = (
     "\n\nOUTPUT FORMAT: return a single title line, then one blank line, then the "
@@ -215,6 +223,33 @@ def generate_article(
             # Granska-nivå (t.ex. "prairie") blockerar inte, men loggas så det
             # syns i körningsloggen om mönstret skulle bli vanligt.
             print(f"  ort-identitet: granska ({', '.join(gate.reviews)})", file=sys.stderr)
+
+    # Local-anchor-spärren (se ai_pipeline/town_guard.py:has_local_anchor,
+    # NEEDS-HUMAN-REVIEW.md "3.5 Columns & Editorials") -- bara för
+    # kolumn-/krönike-typerna, INTE vardagsmiddag/media_recension (som redan
+    # har egna, striktare regler för lokal förankring, se respektive modul).
+    # Samma försök-en-gång-sen-hoppa-över-mönster som ort-identitetsspärren
+    # ovan, inte ett hårdstopp på första försöket -- en riktig lokal
+    # förankring i en form regexen inte känner igen kostar bara ett omförsök,
+    # inte en felaktigt blockerad text.
+    if content_type in _LOCAL_ANCHOR_REQUIRED_TYPES and not has_local_anchor(f"{title}\n\n{body}", cfg):
+        print("  lokal förankring saknas -- försöker igen en gång", file=sys.stderr)
+        retry_text = _call(
+            "\n\nIMPORTANT CORRECTION: your previous draft had no concrete, "
+            f"verifiable local specific -- no mention of {town_label(cfg)} by "
+            "name, no street address, no specific date, no named civic body. "
+            "Rewrite it to include at least one real, checkable local detail "
+            "that ties it to this place, not a generic piece that could run "
+            "anywhere."
+        )
+        if retry_text is None:
+            return None
+        title, body = _split_title_body(retry_text)
+        body = clean(body)
+        title = clean(title)
+        if not has_local_anchor(f"{title}\n\n{body}", cfg):
+            print("  lokal förankring saknas fortfarande -- ingen artikel idag", file=sys.stderr)
+            return None
 
     if not is_original(body, existing_corpus):
         return None

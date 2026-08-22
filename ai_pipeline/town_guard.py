@@ -101,6 +101,53 @@ def validate_town_identity(text: str, town_id: str) -> GuardrailResult:
     return GuardrailResult(passed=len(violations) == 0, violations=violations, reviews=reviews)
 
 
+# A concrete, checkable local specific -- the OPPOSITE direction from
+# HARD_BLOCKLIST above (that guards against the wrong town's identity
+# leaking in; this guards against NO town's identity being present at all,
+# a location-less think-piece that could run on any site). Added 2026-08-23
+# for columns/editorials, see NEEDS-HUMAN-REVIEW.md "3.5 Columns &
+# Editorials". Deterministic keyword/regex matching, same philosophy as
+# is_closure()/is_suspicious() elsewhere in this codebase -- transparent and
+# auditable, not an AI judgment call about its own output.
+_STREET_ANCHOR_RE = re.compile(
+    r"\b[A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+){0,2}\s"
+    r"(?:Street|St|Avenue|Ave|Boulevard|Blvd|Drive|Dr|Road|Rd|Lane|Ln|Way|Circle|Cir)\b"
+)
+_DATE_ANCHOR_RE = re.compile(
+    r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)"
+    r"\s+\d{1,2}\b"
+)
+_CIVIC_BODY_ANCHOR_RE = re.compile(
+    r"\b(?:City Council|Planning Commission|County Commission|School Board|County Board)\b"
+)
+
+
+def has_local_anchor(text: str, cfg: dict | None) -> bool:
+    """Does `text` contain at least one concrete, verifiable local specific:
+    the town's own name, a street address, a specific date, or a named civic
+    body? Used to gate columns/editorials against a location-less think-
+    piece that never actually engages with the place it's supposedly about --
+    see generate_article()'s retry-then-skip use of this in content/_base.py.
+
+    Deliberately permissive (any ONE match passes) -- the bar is "at least
+    one thing a reader could verify," not a minimum count. A false negative
+    (a real local reference in a form this regex doesn't recognize) just
+    costs one retry with an explicit instruction to include something
+    checkable, not a wrongly-blocked piece -- see the retry pattern in
+    content/_base.py.
+    """
+    display_name = (cfg or {}).get("display_name")
+    if display_name and _word_boundary_pattern(display_name).search(text):
+        return True
+    if _STREET_ANCHOR_RE.search(text):
+        return True
+    if _DATE_ANCHOR_RE.search(text):
+        return True
+    if _CIVIC_BODY_ANCHOR_RE.search(text):
+        return True
+    return False
+
+
 def addressed_reader_hits(text: str, matched_terms: list[str]) -> list[str]:
     """Which of `matched_terms` appear in a sentence that ALSO contains a
     first-person-locality marker? Used only by the retroactive scanner to

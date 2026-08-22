@@ -7,8 +7,10 @@ Fixture articles below are hand-written, not pulled from the DB, so these
 tests never depend on live data or network/DB access.
 """
 from ai_pipeline.town_guard import (
-    ALL_TOWN_IDS, addressed_reader_hits, validate_town_identity,
+    ALL_TOWN_IDS, addressed_reader_hits, has_local_anchor, validate_town_identity,
 )
+
+MORENO_VALLEY_CFG = {"display_name": "Moreno Valley"}
 
 MORENO_VALLEY_CLEAN = """
 This Week in Moreno Valley: Library Programs Return
@@ -116,3 +118,32 @@ def test_all_town_ids_have_a_blocklist():
     from ai_pipeline.town_guard import HARD_BLOCKLIST
     for town_id in ALL_TOWN_IDS:
         assert HARD_BLOCKLIST.get(town_id), f"{town_id} has no hard blocklist"
+
+
+# --- has_local_anchor (3.5 Columns & Editorials, NEEDS-HUMAN-REVIEW.md) ----
+
+def test_local_anchor_blocks_a_placeless_think_piece():
+    text = ("Libraries everywhere are adapting to new technology. This is a "
+            "trend worth watching as institutions modernize their services "
+            "for a new generation of patrons.")
+    assert has_local_anchor(text, MORENO_VALLEY_CFG) is False
+
+
+def test_local_anchor_passes_on_town_name():
+    text = "Moreno Valley residents will notice the change starting next month."
+    assert has_local_anchor(text, MORENO_VALLEY_CFG) is True
+
+
+def test_local_anchor_passes_on_street_address():
+    text = "The proposal concerns a vacant lot on Frederick Street."
+    assert has_local_anchor(text, MORENO_VALLEY_CFG) is True
+
+
+def test_local_anchor_passes_on_specific_date():
+    text = "The commission is scheduled to take up the item on July 23."
+    assert has_local_anchor(text, MORENO_VALLEY_CFG) is True
+
+
+def test_local_anchor_passes_on_named_civic_body():
+    text = "The Planning Commission reviewed the application at its last meeting."
+    assert has_local_anchor(text, MORENO_VALLEY_CFG) is True
