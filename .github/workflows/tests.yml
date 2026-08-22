@@ -40,3 +40,10 @@ jobs:
           node-version: "20"
       - run: npm ci
       - run: npm run check
+      # Structural fixture tests for Event JSON-LD emission (see
+      # NEEDS-HUMAN-REVIEW.md, "JSON-LD CI test gap"): one resolvable
+      # physical event, one unresolved venue, one virtual event -- asserts
+      # the actual emitted shape, not just that types line up. Also runs
+      # with no real DATABASE_URL (see vitest.config.ts) -- pure-function
+      # tests, no DB access, same principle as the Python suite.
+      - run: npm run test

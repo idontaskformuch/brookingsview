@@ -195,49 +195,55 @@ the code deliberately does NOT decide on its own.
     structured source (correctly out of scope per the brief: narrative
     color only, copyright means summarize-never-reproduce, not something a
     parser reads directly).
-  - **Recommendation: primary = the existing fallback for now; a real
-    upgrade path exists but needs one human-in-browser step.**
-    `ai_pipeline/local_sports_weekly_digest.py` stays the shipped source —
-    nothing here is ready to replace it yet. But the HomeCampus lead
-    followed up (2026-08-22) turned into a genuinely promising, permitted
-    path, not just an open question:
-    - **HomeCampus's own Terms of Service explicitly forbid scraping**
-      (fetched `homecampus.com/terms-and-conditions` directly: Section 12
-      prohibits "spam, phish, pharm, pretext, spider, crawl, or scrape") —
-      confirming HTML scraping stays off-limits, same as MaxPreps.
-    - **But every in-scope HomeCampus site has a "Sync Schedule" page**
-      whose own copy says: "add the iCal URL to your online calendar ...
-      updates and changes automatically sync." That's the vendor
-      deliberately publishing a machine-readable feed for outside
-      consumption — categorically different from scraping the site, the
-      same distinction this codebase already relies on for the library's
-      iCal feeds in `scrapers/parsers/events.py`. Subscribing to a feed a
-      site hands out for that exact purpose isn't "spider, crawl, or
-      scrape" under any ordinary reading of that clause.
-    - **Confirmed live**: all 4 in-scope MVUSD schools have a HomeCampus
-      site — `canyonsprings.homecampus.com`, `morenovalley.homecampus.com`
-      (Moreno Valley HS), `valleyview.homecampus.com`,
-      `vistadellago.homecampus.com`. **Confirmed NOT present**: both Val
-      Verde USD schools — `ranchoverde.homecampus.com` and
-      `citrushill.homecampus.com` both redirect to HomeCampus's own
-      `wp-signup.php?new=...` page, meaning the subdomain was never
-      claimed. Val Verde stays sourceless for now, consistent with its own
-      `robots.txt` blocking `/feed`/`/schoolfeed` found earlier.
-    - **The actual iCal URLs are not extractable by automated fetch.**
-      Every HomeCampus schedule page (checked directly, e.g.
-      `canyonsprings.homecampus.com/varsity/football/`) renders its game
-      table client-side (the server HTML shows a loading spinner, no data),
-      and the "Sync Schedule" page's iCal link is generated the same way —
-      no static `href` present anywhere in the server-rendered markup. This
-      needs a human in a real browser (open the page, use the browser's
-      copy-link/dev-tools, not a scripted fetch) to actually get the URL(s).
-    - **Next step, concretely**: a human opens each of the 4 MVUSD
-      HomeCampus sites' `/sync-schedule/` page per sport/team, copies the
-      iCal URL(s), and hands them over. Once in hand, wiring them into the
-      existing `.ics` parser (`scrapers/parsers/events.py` already parses
-      RFC 5545 calendars) is a small, low-risk addition — no new scraper
-      class needed, just new feed URLs in config. Until then, the AI
-      fallback digest keeps running as-is.
+  - ~~**Recommendation: primary = existing fallback, HomeCampus needs a
+    human-in-browser step.**~~ **Chased to the raw data (2026-08-22) and
+    deprioritized — decision made, no further action pending.**
+    `ai_pipeline/local_sports_weekly_digest.py` stays the shipped source.
+    - **HomeCampus's Terms of Service explicitly forbid scraping**
+      ("spider, crawl, or scrape") — confirmed directly, same as MaxPreps.
+      HTML scraping stays closed.
+    - **But CIF-SS/HomeCampus does expose an official per-school iCal
+      subscribe feed** — not on `homecampus.com` itself, but on
+      `cifsshome.org` (HomeCampus's white-labeled CIF Southern Section
+      platform; confirmed real via an indexed `/widget/bracket/...` URL and
+      a fully permissive `robots.txt`), served at
+      `cifsshome.org/widget/subscribe-ical?h=<hash>`. This is a vendor-
+      published "sync your calendar" feature, not scraping — a real feed
+      URL was obtained for one in-scope school (Vista del Lago HS) and
+      confirmed to download a clean, parseable `.ics` file.
+    - **The raw feed content doesn't hold up as a sports source.**
+      Inspecting real `VEVENT` blocks: it's a room-booking/department
+      calendar, not a sports feed — a single day mixes JV Softball
+      Practice, an English Dept. writing lab, a dinner, athletic-facility
+      cleaning, 8th-grade promotion setup, IB meetings, a choir banquet.
+      Actual games are a small minority; most sports entries are practices,
+      not competitions. **No entry ever carries a result** — the one real
+      game found (`Baseball JV @ Orange Vista`) had no score, past or
+      future. `SUMMARY` text is inconsistent (a leading clock time baked
+      into the string — the same "trust `DTSTART`, never the summary text"
+      lesson already learned from the `/events/` timezone bug — plus
+      trailing codes like `Softball VR`) with no reliable game-vs-practice
+      marker to filter on.
+    - **Why this loses to the fallback**: making it usable would need an
+      aggressive, permanently-incomplete keyword blacklist (Practice,
+      Field, Cleaning, Meeting, Banquet, Dinner, Lab, Promotion, Routine,
+      ... — never complete, every new event type the school enters can
+      leak through), and even then the output is schedule-only — "who's
+      playing when," never "who won." Same raw-noisy-source trap as the
+      unfiltered CHP traffic feed this codebase already learned to filter
+      hard against: looks structured, is mostly noise, costs more to
+      maintain than it returns.
+    - **Confirmed presence, recorded for whoever revisits this**: all 4
+      in-scope MVUSD schools have a live HomeCampus site
+      (`canyonsprings`, `morenovalley` [Moreno Valley HS], `valleyview`,
+      `vistadellago` — all `.homecampus.com`); both Val Verde USD schools
+      (`ranchoverde`, `citrushill`) redirect to HomeCampus's own signup
+      page, meaning neither subdomain was ever claimed — consistent with
+      Val Verde's own `robots.txt` blocking `/feed`/`/schoolfeed`.
+    - **Decision: do not wire the iCal feed into `/sports/`.** Deprioritized
+      on data quality, not on terms — if a genuinely game-and-result-bearing
+      local feed ever surfaces, revisit, but this specific one isn't it. No
+      further action pending; nobody needs to re-chase this lead.
 - ~~**Jobs backfill not yet run.**~~ **Done** — `python -m
   scripts.backfill_jobs_categories` ran against the live DB, 40 rows
   corrected. Along the way it caught a real bug in the classifier itself
@@ -385,19 +391,23 @@ brief.
     cancelled, which is not harmful, just less rich. Scope this as its own
     deliberate project if/when event volume and freshness make it worth
     it — don't bolt it on.
-  - **JSON-LD fixture/CI gate — reviewed 2026-08-22, worth closing as a
-    follow-up, not urgent.** `astro check` (TypeScript type-checking,
-    catches wrong prop shapes/missing columns) is wired into CI as a new
-    job, but that's not the same as the brief's requested structural
-    fixture tests (one resolvable event / one unresolved venue / one
-    virtual event, asserting exact JSON-LD shape). The Python-side
-    algorithm (`ai_pipeline/venue_registry.py`) has exactly those fixture
-    cases in `tests/test_venue_registry.py`, but the TypeScript emission
-    logic in `[slug].astro` doesn't, because this project has no JS test
-    runner configured at all (no vitest/jest in `site/package.json`).
-    Clean follow-up: bootstrap vitest in `site/`, add the 3 structural
-    fixtures. Reasonable to do next time the events vertical is touched;
-    not a blocker.
+  - ~~**JSON-LD fixture/CI gate**~~ **Closed (2026-08-22).** Pulled the
+    decision-tree logic out of `[slug].astro`'s frontmatter into a plain,
+    testable function (`site/src/lib/event-jsonld.ts:buildEventJsonLd()`)
+    -- the `.astro` file now just wires real props into it and renders the
+    result. Bootstrapped vitest (`site/vitest.config.ts`, `npm run test`)
+    and wrote the 3 structural fixtures the brief asked for plus a few more
+    edge cases, in `site/src/lib/event-jsonld.test.ts` (12 tests): a
+    resolvable physical event (asserts full `Place`/`PostalAddress` shape,
+    correct `-07:00` offset), an unresolved venue (asserts `null` -- no
+    markup at all, including the case of a facility that resolves by name
+    but is missing a verified address), a virtual event (asserts
+    `VirtualLocation` with no placeholder `Place`) plus a hybrid case and
+    the non-event/recurring-series/no-`occurs_at` short-circuits. Wired
+    into CI as a step in the `astro-check` job -- runs with a fake
+    `DATABASE_URL` (these are pure-function tests, no DB access, same
+    principle as the Python suite). All 12 pass; `astro check` and a real
+    `astro build` both still pass after the refactor.
   - **Rich Results Test validation**: no access to Google's tool from this
     environment (same limitation noted for the original town-level markup).
     Worth running a resolved event page (e.g. any `main-library` event)
