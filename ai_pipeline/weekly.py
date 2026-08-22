@@ -65,7 +65,16 @@ def _day(dt) -> str:
     return str(dt.day)
 
 
-def _clock(dt) -> str:
+def _clock(dt, tz: ZoneInfo | None = None) -> str:
+    # FAS 2-FIX (augusti 2026): läste tidigare dt.hour/dt.minute rakt av på
+    # ett UTC-medvetet datetime-objekt, samma buggklass som redan fixats i
+    # publish.py:_fmt_hour_min -- ett kvällsevent som passerar UTC-midnatt
+    # skrevs ut med fel klockslag i veckosammanfattningen. Konvertera till
+    # ortens tidszon FÖRST, om en angetts (meeting_date skickar aldrig in
+    # tz, se _fmt/source_text -- samma "inget tillförlitligt klockslag"-skäl
+    # som collect()s docstring redan förklarar för datumdelen).
+    if tz is not None:
+        dt = dt.astimezone(tz)
     hour = dt.hour % 12 or 12
     return f"{hour}:{dt.minute:02d} {'AM' if dt.hour < 12 else 'PM'}"
 
@@ -144,16 +153,16 @@ def content_hash(data: dict) -> str:
     return hashlib.sha256("|".join(ids).encode()).hexdigest()
 
 
-def _fmt(dt, with_time: bool = True) -> str:
+def _fmt(dt, with_time: bool = True, tz: ZoneInfo | None = None) -> str:
     if dt is None:
         return ""
     if isinstance(dt, str):
         return dt
     base = f"{dt.strftime('%A %B')} {_day(dt)}"
-    return f"{base}, {_clock(dt)}" if with_time else base
+    return f"{base}, {_clock(dt, tz)}" if with_time else base
 
 
-def source_text(data: dict, label: str) -> str:
+def source_text(data: dict, label: str, tz: ZoneInfo) -> str:
     """Platta ut underlaget till den text AI:n (och guardrails) arbetar mot."""
     parts = [f"WEEK: {label}"]
 
@@ -175,7 +184,7 @@ def source_text(data: dict, label: str) -> str:
         parts.append("\nCOMMUNITY EVENTS THIS WEEK:")
         for e in data["events"]:
             venue = f" at {e['venue']}" if e.get("venue") else ""
-            parts.append(f"- {e.get('title')} on {_fmt(e.get('starts_at'))}{venue}")
+            parts.append(f"- {e.get('title')} on {_fmt(e.get('starts_at'), tz=tz)}{venue}")
             raw = e.get("raw_data") or {}
             if isinstance(raw, dict) and raw.get("description"):
                 parts.append(f"  {str(raw['description'])[:400]}")
@@ -188,7 +197,7 @@ def source_text(data: dict, label: str) -> str:
             result = f" Result: {g['result']}." if g.get("result") else ""
             parts.append(
                 f"- {g.get('sport')} vs {g.get('opponent')} ({where}) "
-                f"on {_fmt(g.get('starts_at'))}{venue}.{result}"
+                f"on {_fmt(g.get('starts_at'), tz=tz)}{venue}.{result}"
             )
 
     return "\n".join(parts)
@@ -226,6 +235,7 @@ Return ONLY the article text. No preamble, no title."""
 def template_fallback(data: dict, label: str, cfg: dict) -> str:
     """Ren, korrekt lista när AI-vägen inte håller. Torr men sann."""
     town = cfg["display_name"]
+    tz = ZoneInfo(cfg.get("timezone", "America/Chicago"))
     lines = [f"Here is what is on the calendar in {town} for the week of {label}."]
     if data["meetings"]:
         lines.append("\nPublic meetings:")
@@ -233,14 +243,14 @@ def template_fallback(data: dict, label: str, cfg: dict) -> str:
                   for m in data["meetings"]]
     if data["events"]:
         lines.append("\nCommunity events:")
-        lines += [f"{e.get('title')}, {_fmt(e.get('starts_at'))}"
+        lines += [f"{e.get('title')}, {_fmt(e.get('starts_at'), tz=tz)}"
                   + (f", {e['venue']}" if e.get("venue") else "") + "."
                   for e in data["events"]]
     if data["games"]:
         lines.append("\nSDSU Jackrabbits:")
         lines += [f"{g.get('sport')} "
                   + ("vs " if g.get("home_away") == "home" else "at ")
-                  + f"{g.get('opponent')}, {_fmt(g.get('starts_at'))}."
+                  + f"{g.get('opponent')}, {_fmt(g.get('starts_at'), tz=tz)}."
                   for g in data["games"]]
     lines.append("\nEvery item above comes from a public source. See the section "
                  "pages for full agendas, schedules and registration details.")
@@ -249,7 +259,8 @@ def template_fallback(data: dict, label: str, cfg: dict) -> str:
 
 def generate(data: dict, label: str, cfg: dict, client=None) -> tuple[str, str, bool]:
     """Returnerar (text, generated_by, verified)."""
-    src = source_text(data, label)
+    tz = ZoneInfo(cfg.get("timezone", "America/Chicago"))
+    src = source_text(data, label, tz)
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
 

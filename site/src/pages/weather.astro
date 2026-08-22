@@ -7,28 +7,103 @@
  * resten som en egen sida är i praktiken gratis -- ingen ny datakälla,
  * ingen ny hämtning -- och ger rutan på förstasidan en riktig plats att
  * leda till istället för att vara en död siffra.
+ *
+ * FAS 2:
+ *  - Periodnamnen ("Today"/"Tonight"/veckodag) etiketteras nu HÄR, från
+ *    varje periods egna `start`-tidsstämpel jämfört med sajtens lokala
+ *    "idag" -- INTE NWS:s egen `name`-sträng, som kan bli fel om byggmiljön
+ *    eller snapshoten inte matchar läsarens dag (samma landmina som
+ *    husreglernas "ingen läckt UTC-sträng").
+ *  - getActiveAlerts() (redan använd på förstasidan/Worker Pulse) hade
+ *    ALDRIG kopplats hit -- den enda sidan om just väder saknade helt
+ *    varningsmedvetenhet. Samma banner-mönster som SchoolAlertBanner.astro.
+ *  - Timprognos (getHourlyWeather) är genuint ny data, se
+ *    scrapers/parsers/noaa.py -- inget annat ställe på sajten visade
+ *    timupplösning innan detta.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
-import { getWeather } from '../lib/db';
+import { getWeather, getHourlyWeather, getActiveAlerts } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
-const periods = await getWeather();
+const [periods, hourly, alerts] = await Promise.all([
+  getWeather(),
+  getHourlyWeather(),
+  getActiveAlerts(),
+]);
+
+function localYMD(instant: Date): { y: number; m: number; d: number } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: siteConfig.timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(instant);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)!.value);
+  return { y: get('year'), m: get('month'), d: get('day') };
+}
+function daysBetween(a: { y: number; m: number; d: number }, b: { y: number; m: number; d: number }): number {
+  return Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(a.y, a.m - 1, a.d)) / 86_400_000);
+}
+const todayYMD = localYMD(new Date());
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/** Ersätter NWS:s egen `name` med en etikett räknad från sajtens lokala
+ *  "idag" -- se moduldocstringen ovan. Utan ett giltigt `start` (skulle
+ *  inte hända i praktiken, men inget krascher värt) faller den tillbaka på
+ *  källans egen sträng hellre än att gissa. */
+function relabelPeriod(p: { start: string; is_daytime: boolean; name: string }): string {
+  if (!p.start) return p.name;
+  const periodYMD = localYMD(new Date(p.start));
+  const offset = daysBetween(todayYMD, periodYMD);
+  if (offset === 0) return p.is_daytime ? 'Today' : 'Tonight';
+  if (offset === 1) return p.is_daytime ? 'Tomorrow' : 'Tomorrow Night';
+  if (offset < 0) return p.name;
+  const dow = WEEKDAYS[new Date(Date.UTC(periodYMD.y, periodYMD.m - 1, periodYMD.d)).getUTCDay()];
+  return p.is_daytime ? dow : `${dow} Night`;
+}
+
+function hourLabel(start: string): string {
+  return new Date(start).toLocaleTimeString('en-US', { hour: 'numeric', timeZone: siteConfig.timezone });
+}
 ---
 <BaseLayout title={`Weather — ${siteConfig.siteName}`}
-  description={`5-day forecast for ${siteConfig.cityName}, ${siteConfig.stateName}, from the National Weather Service.`}>
+  description={`Forecast for ${siteConfig.cityName}, ${siteConfig.stateName}, from the National Weather Service.`}>
   <header class="lede">
     <h1>Weather</h1>
     <p>Straight from the National Weather Service, updated every hour along
     with the rest of the site.</p>
   </header>
 
+  {alerts.length > 0 && (
+    <section aria-label="Active weather alerts" class="alerts">
+      {alerts.map((alert) => (
+        <div class="alert">
+          <p class="alert__kicker">Active alert</p>
+          <p class="alert__title"><a href={`/s/${alert.slug}/`}>{alert.title}</a></p>
+        </div>
+      ))}
+    </section>
+  )}
+
+  {hourly.length > 0 && (
+    <>
+      <SectionRule label="Next 24 hours" />
+      <div class="hourly">
+        {hourly.map((h) => (
+          <div class="hour">
+            <p class="hour__time data">{hourLabel(h.start)}</p>
+            <p class="hour__temp data">{h.temp !== null ? Math.round(h.temp) : '—'}&deg;{h.unit}</p>
+            <p class="hour__short">{h.short}</p>
+          </div>
+        ))}
+      </div>
+    </>
+  )}
+
   <SectionRule label="Forecast" />
   {periods.length > 0 ? (
     <ul class="forecast">
       {periods.map((p) => (
         <li class="forecast__row">
-          <span class="forecast__name">{p.name}</span>
+          <span class="forecast__name">{relabelPeriod(p)}</span>
           <span class="forecast__temp data">
             {p.temp !== null ? Math.round(p.temp) : '—'}&deg;{p.unit}
           </span>
@@ -45,6 +120,15 @@ const periods = await getWeather();
 <style>
 .lede { max-width: 38rem; }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.alerts { display: grid; gap: 0.75rem; margin: 1rem 0; }
+.alert { border-left: 4px solid var(--alert); background: var(--alert-tint); padding: 0.875rem 1rem; }
+.alert__kicker { margin: 0 0 0.25rem; font-family: var(--font-ui); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--alert); }
+.alert__title { margin: 0; font-family: var(--font-head); font-weight: 700; font-size: 1.0625rem; }
+.hourly { display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem; margin-bottom: 0.5rem; }
+.hour { flex: 0 0 5.5rem; text-align: center; border: 1px solid var(--rule); padding: 0.625rem 0.5rem; }
+.hour__time { font-weight: 600; margin: 0 0 0.25rem; font-size: 0.8125rem; }
+.hour__temp { font-size: 1.0625rem; font-weight: 700; margin: 0 0 0.25rem; }
+.hour__short { margin: 0; font-size: 0.75rem; color: var(--ink-soft); line-height: 1.3; }
 .forecast { list-style: none; margin: 0; padding: 0; }
 .forecast__row {
   display: grid;

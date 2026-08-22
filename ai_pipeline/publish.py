@@ -58,6 +58,7 @@ import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -68,6 +69,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline.format_prompt import format_record, TEMPLATERS
+from db.db import content_hash
 
 SOURCES: dict[str, str] = {
     "meetings": "meeting",
@@ -109,8 +111,18 @@ def strip_slot(title: str) -> tuple[str, bool]:
     return (base or title or "", base != (title or "").strip())
 
 
-def fmt_dt(value, with_time: bool = False) -> str | None:
-    """Formatera datum läsbart. Tar datetime ELLER sträng."""
+def fmt_dt(value, with_time: bool = False, tz: ZoneInfo | None = None) -> str | None:
+    """Formatera datum läsbart. Tar datetime ELLER sträng.
+
+    `tz`: appliceras ENDAST på klockslags-delen (via _fmt_hour_min), aldrig
+    på datumdelen. meeting_date lagras som en ren kalenderdag (midnatt UTC,
+    inget tillförlitligt klockslag -- se moduldocstringen för build_title())
+    -- att tidszonskonvertera DATUMET skulle återinföra exakt den
+    "midnatt UTC blir föregående dag lokalt"-bugg som redan är löst på
+    frontend-sidan (site/src/lib/db.ts:formatCalendarDate). Riktiga
+    tidsstämplar (events/alerts) ska alltid skicka in ett `tz` när
+    with_time=True.
+    """
     if value is None:
         return None
     dt = value
@@ -125,10 +137,10 @@ def fmt_dt(value, with_time: bool = False) -> str | None:
     # -- kraschar med ValueError på Windows. Bygg strängen manuellt istället, så det
     # fungerar lika bra lokalt (Windows) som i GitHub Actions (ubuntu-latest).
     date_part = f"{dt.strftime('%a, %b')} {dt.day}, {dt.year}"
-    return f"{date_part} at {_fmt_hour_min(dt)}" if with_time else date_part
+    return f"{date_part} at {_fmt_hour_min(dt, tz)}" if with_time else date_part
 
 
-def fmt_time(value) -> str | None:
+def fmt_time(value, tz: ZoneInfo | None = None) -> str | None:
     if value is None:
         return None
     dt = value
@@ -139,10 +151,17 @@ def fmt_time(value) -> str | None:
             return dt
     if not isinstance(dt, datetime):
         return str(dt)
-    return _fmt_hour_min(dt)
+    return _fmt_hour_min(dt, tz)
 
 
-def _fmt_hour_min(dt: datetime) -> str:
+def _fmt_hour_min(dt: datetime, tz: ZoneInfo | None = None) -> str:
+    # FAS 2-FIX (augusti 2026): läste tidigare dt.hour rakt av på ett UTC-
+    # medvetet datetime-objekt utan NÅGON konvertering -- ett kvällsevent som
+    # passerar UTC-midnatt (t.ex. 19:30 Central = 00:30 UTC) skrevs ut som
+    # "12:30 AM" i publicerad text. Konvertera till ortens egen tidszon
+    # FÖRST, om en angetts.
+    if tz is not None:
+        dt = dt.astimezone(tz)
     hour12 = dt.hour % 12 or 12
     return f"{hour12}:{dt.strftime('%M %p')}"
 
@@ -153,16 +172,34 @@ def has_substance(table: str, row: dict) -> bool:
     Hellre ingen story än en innehållslös. Tunt innehåll skadar både läsaren och
     sidkvaliteten (jfr. AdSense 'low value content').
     """
-    if table != "meetings":
-        return True
-    raw = row.get("raw_data") or {}
-    if isinstance(raw, str):
-        try:
-            raw = json.loads(raw)
-        except ValueError:
-            raw = {}
-    agenda = (raw.get("agenda_text") or "").strip()
-    return len(agenda) >= _MIN_AGENDA_CHARS
+    if table == "meetings":
+        raw = row.get("raw_data") or {}
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except ValueError:
+                raw = {}
+        agenda = (raw.get("agenda_text") or "").strip()
+        return len(agenda) >= _MIN_AGENDA_CHARS
+    if table == "events" and not row.get("is_recurring_series"):
+        # FAS 2: ett event utan beskrivning är fortfarande publicerbart OM
+        # det har både plats och tid -- en kort, ärlig text går att skriva
+        # av det (samma generella AI-väg som allt annat, ingen särskild
+        # kod). Bara ett rent "bara en titel"-event (varken beskrivning,
+        # plats eller tid) är för tunt för en egen sida -- 113/1035
+        # Moreno Valley-event saknade beskrivning vid revisionen, men de
+        # allra flesta hade plats+tid och behöver alltså inte fångas här.
+        raw = row.get("raw_data") or {}
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except ValueError:
+                raw = {}
+        description = (raw.get("description") or "").strip()
+        if description:
+            return True
+        return bool(row.get("venue")) and bool(row.get("starts_at"))
+    return True
 
 
 def resolve_source_type(table: str, row: dict) -> str:
@@ -233,18 +270,24 @@ def build_source_url(table: str, row: dict) -> str | None:
     return None
 
 
-def group_event_slots(rows: list[dict]) -> list[dict]:
+def group_event_slots(rows: list[dict], tz: ZoneInfo) -> list[dict]:
     """Kollapsa flera tidsluckor av samma event samma dag till en post.
 
     Grupperingsnyckel: (bastitel, datum, källa). Olika DATUM förblir separata
     stories -- samma escape room i juni och i september är två händelser.
+
+    FAS 2-FIX: `day` togs tidigare fram med `starts.date()` rakt på det
+    UTC-medvetna datetime-objektet, INNAN konvertering till ortens tidszon --
+    ett sent kvällsevent (t.ex. 23:00 Pacific = 06:00 UTC nästa dag) grupperades
+    då under fel kalenderdag. Konvertera till `tz` FÖRST, precis som
+    _fmt_hour_min nedan gör för klockslaget.
     """
     groups: dict[tuple, list[dict]] = {}
     order: list[tuple] = []
     for row in rows:
         base, _ = strip_slot(row.get("title") or "")
         starts = row.get("starts_at")
-        day = starts.date().isoformat() if isinstance(starts, datetime) else str(starts)[:10]
+        day = starts.astimezone(tz).date().isoformat() if isinstance(starts, datetime) else str(starts)[:10]
         key = (base.lower(), day, row.get("source"))
         if key not in groups:
             groups[key] = []
@@ -257,10 +300,63 @@ def group_event_slots(rows: list[dict]) -> list[dict]:
         base_row = dict(members[0])
         base_row["id"] = min(m["id"] for m in members)
         if len(members) > 1:
-            times = [t for t in (fmt_time(m.get("starts_at")) for m in members) if t]
+            times = [t for t in (fmt_time(m.get("starts_at"), tz) for m in members) if t]
             base_row["slot_times"] = times
             base_row["slot_count"] = len(members)
             base_row["title"], _ = strip_slot(base_row.get("title") or "")
+        merged.append(base_row)
+    return merged
+
+
+# FAS 2: samma "scaled content"-princip som slot-gruppering ovan, fast för
+# ett STÖRRE mönster -- ett återkommande program ("MAIN LIBRARY: Toddler
+# Time") publicerades tidigare som EN story PER instans (upp mot 50 nästan
+# identiska sidor för samma program över 90 dagar). Ett program som
+# upprepas minst så här många gånger slås ihop till EN kanonisk serie-story
+# (programmet, schemat, återkommande platser) i stället för en sida per
+# datum. Ett engångsevent som råkar dela titel med något annat berörs inte
+# (färre förekomster än så lämnas orörda av group_event_slots ovan).
+_MIN_RECURRING_OCCURRENCES = 3
+# Hur många kommande datum som listas i seriens egen story-text.
+_MAX_SERIES_DATES_SHOWN = 8
+
+
+def group_recurring_events(rows: list[dict], tz: ZoneInfo) -> list[dict]:
+    """Kollapsa ett återkommande programs många nästan identiska instanser
+    till EN kanonisk serie-rad. Körs EFTER group_event_slots (som bara
+    slår ihop tidsluckor SAMMA DAG) -- den här grupperar över HELA
+    tidsfönstret, oavsett datum.
+    """
+    groups: dict[tuple, list[dict]] = {}
+    order: list[tuple] = []
+    for row in rows:
+        base, _ = strip_slot(row.get("title") or "")
+        key = (base.lower(), row.get("source"))
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(row)
+
+    merged: list[dict] = []
+    for key in order:
+        members = groups[key]
+        if len(members) < _MIN_RECURRING_OCCURRENCES:
+            merged.extend(members)
+            continue
+
+        members = sorted(members, key=lambda r: (r.get("starts_at") or datetime.max, r["id"]))
+        base_row = dict(members[0])
+        # Stabil serie-slug: hash på (källa, bastitel) -- INTE en specifik
+        # instans-id, som skulle driva iväg sluggen så fort just den äldsta
+        # instansen rullar ur fönstret eller tas bort ur events-tabellen.
+        series_hash = content_hash("event-series", key[1] or "", key[0])[:16]
+        base_row["id"] = f"series-{series_hash}"
+        base_row["title"], _ = strip_slot(base_row.get("title") or "")
+        base_row["is_recurring_series"] = True
+        base_row["series_dates"] = [
+            fmt_dt(m.get("starts_at"), with_time=True, tz=tz) for m in members[:_MAX_SERIES_DATES_SHOWN]
+        ]
+        base_row["series_count"] = len(members)
         merged.append(base_row)
     return merged
 
@@ -271,16 +367,38 @@ def existing_slugs(conn, town_id: str) -> set[str]:
         return {r[0] for r in cur.fetchall()}
 
 
+def _localize_datetime_fields(record: dict, tz: ZoneInfo) -> dict:
+    """Ersätt rå UTC-datetime-fält (starts_at/ends_at -- INTE meeting_date,
+    se fmt_dt-docstringen för varför) med lokaliserade textsträngar innan
+    posten flattenas till AI-promptens SOURCE DATA.
+
+    FAS 2-FIX: guardrails.source_to_text() gör str(v) på VARJE fält i
+    ai_record, inklusive rå datetime-objekt -- modellen fick alltså se t.ex.
+    "starts_at: 2026-09-09 06:00:00+00:00" med ingen lokaliserad tid att
+    utgå från, och skrev ibland av UTC-tiden rakt in i publicerad text
+    ("starting 11 p.m. UTC..."). Ge modellen bara en korrekt, redan
+    lokaliserad sträng att arbeta med, aldrig ett rått tidsstämpel-objekt.
+    """
+    out = dict(record)
+    for field in ("starts_at", "ends_at"):
+        value = out.get(field)
+        if isinstance(value, datetime):
+            out[field] = fmt_dt(value, with_time=True, tz=tz)
+    return out
+
+
 def publish_table(
     conn, cfg: dict, table: str, known_slugs: set[str], max_new: int = DEFAULT_MAX_NEW_PER_RUN
 ) -> tuple[int, int, int, int, int]:
     town_id = cfg["town_id"]
+    tz = ZoneInfo(cfg.get("timezone", "America/Chicago"))
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(f"SELECT * FROM {table} WHERE town_id = %s ORDER BY id", (town_id,))
         rows = [dict(r) for r in cur.fetchall()]
 
     if table == "events":
-        rows = group_event_slots(rows)
+        rows = group_event_slots(rows, tz)
+        rows = group_recurring_events(rows, tz)
 
     published = skipped = thin = stale = remaining = 0
     for row in rows:
@@ -316,6 +434,7 @@ def publish_table(
         # en rå sha256-hash och tidsstämpel hamnade bokstavligen i SOURCE DATA.
         # Ren brus för modellen, och gör outputen mindre förutsägbar.
         ai_record = {k: v for k, v in row.items() if k not in _INTERNAL_FIELDS}
+        ai_record = _localize_datetime_fields(ai_record, tz)
         result = format_record(ai_record, source_type, cfg)
 
         # SUBSTANSKRAV, del 2: has_substance() ovan skyddar bara mot tunn

@@ -5,11 +5,18 @@
  *
  * moreno_valley_ca-specifikt (Riverside County-datan täcker bara den orten).
  * Andra städer redirectar till förstasidan, samma mönster som jackrabbits.astro
- * använder för Brookings-specifikt innehåll. */
+ * använder för Brookings-specifikt innehåll.
+ *
+ * FAS 2: digest-korten byggs INTE längre via StoryCard -- StoryCard:s
+ * hasByline-gren visar alltid published_at (dagen digesten skrevs/
+ * uppdaterades, t.ex. bulk-backfyllningsdagen 2026-07-24 för alla 21
+ * historiska månader) i stället för occurs_at (rätt månad digesten
+ * FAKTISKT täcker, redan korrekt lagrad men aldrig visad). Ändra inte
+ * StoryCard:s delade logik för detta -- andra innehållstyper (kåserier,
+ * recept) vill genuint ha published_at. Ett litet eget kort här i stället. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
-import StoryCard from '../components/StoryCard.astro';
-import { getRecentPropertySales, getContentByType, formatCalendarDate, formatPrice } from '../lib/db';
+import { getRecentPropertySales, getContentByType } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
@@ -20,6 +27,34 @@ const [sales, digests] = await Promise.all([
   getRecentPropertySales(),
   getContentByType(['home_sales_digest'], 12),
 ]);
+
+// Titel-case istället för sajtens vanliga formatPrice/formatCalendarDate --
+// 6 av 2610 rader (0.2%) kom in blandat skiftläge från samma importbatch
+// ("10426 Sparrow CT" i stället för "10426 SPARROW CT"); normalisera vid
+// rendering i stället för en datamigrering för en så liten andel.
+function titleCaseAddress(address: string | null): string {
+  if (!address) return '—';
+  return address.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
+// $150,000-tröskeln matchar ai_pipeline/home_sales_digest.py:OUTLIER_PRICE_FLOOR
+// -- samma gräns i båda ändar, prosan och den råa tabellen, så de aldrig
+// säger olika saker om samma försäljning.
+const OUTLIER_PRICE_FLOOR = 150_000;
+function isOutlier(price: number | null): boolean {
+  return price != null && price > 0 && price < OUTLIER_PRICE_FLOOR;
+}
+
+function extractZip(address: string | null): string {
+  const match = address?.match(/\b(\d{5})\b\s*$/);
+  return match ? match[1] : '';
+}
+const zips = [...new Set(sales.map((s) => extractZip(s.address)).filter(Boolean))].sort();
+
+function monthYear(occursAt: string | null): string {
+  if (!occursAt) return '';
+  return new Date(occursAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
 ---
 <BaseLayout title={`Recent home sales — ${siteConfig.siteName}`} wide
   description="Recently recorded home sales in Moreno Valley: address, price, and date, from Riverside County's public assessor data.">
@@ -32,26 +67,66 @@ const [sales, digests] = await Promise.all([
   {digests.length > 0 && (
     <>
       <SectionRule label="Monthly digest" />
-      <div class="grid">{digests.map((story) => <StoryCard story={story} />)}</div>
+      <div class="grid">
+        {digests.map((story) => (
+          <a class="digest-card" href={`/s/${story.slug}/`}>
+            <p class="digest-card__covering">Covering {monthYear(story.occurs_at)}</p>
+            <p class="digest-card__title">{story.title}</p>
+          </a>
+        ))}
+      </div>
     </>
   )}
 
   <SectionRule label={`${sales.length} most recent`} />
+
+  <div class="controls">
+    <label>
+      ZIP
+      <select id="zip-filter">
+        <option value="">All</option>
+        {zips.map((z) => <option value={z}>{z}</option>)}
+      </select>
+    </label>
+    <label>
+      Show
+      <select id="page-size">
+        <option value="25">25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="99999">All</option>
+      </select>
+    </label>
+  </div>
+
   {sales.length > 0 ? (
-    <table class="sales">
-      <thead>
-        <tr><th scope="col">Date</th><th scope="col">Address</th><th scope="col">Price</th></tr>
-      </thead>
-      <tbody>
-        {sales.map((sale) => (
+    <>
+      <table class="sales" id="sales-table">
+        <thead>
           <tr>
-            <td class="data">{formatCalendarDate(sale.sale_date)}</td>
-            <td>{sale.address ?? '—'}</td>
-            <td class="data price">{formatPrice(sale.sale_price)}</td>
+            <th scope="col" data-sort="date" class="sortable">Date</th>
+            <th scope="col">Address</th>
+            <th scope="col" data-sort="price" class="sortable">Price</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {sales.map((sale) => (
+            <tr data-zip={extractZip(sale.address)} data-price={sale.sale_price ?? ''} data-date={sale.sale_date ?? ''}>
+              <td class="data">{sale.sale_date ? new Date(sale.sale_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—'}</td>
+              <td>{titleCaseAddress(sale.address)}</td>
+              <td class="data price">
+                {sale.sale_price != null ? `$${sale.sale_price.toLocaleString('en-US')}` : '—'}
+                {isOutlier(sale.sale_price) && (
+                  <span class="outlier-flag" title="Likely non-market transfer (family transfer, partial interest, or a recording artifact) -- excluded from the monthly digest's price statistics.">†</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p class="footnote">† Likely non-market transfer (family transfer, partial interest, or a recording artifact) — excluded from the monthly digest's median/range figures.</p>
+      <p class="pager-status" id="pager-status" aria-live="polite"></p>
+    </>
   ) : (
     <p class="empty">No sales data available yet.</p>
   )}
@@ -62,10 +137,92 @@ const [sales, digests] = await Promise.all([
   </p>
 </BaseLayout>
 
+<script>
+  function init() {
+    const table = document.getElementById('sales-table');
+    if (!table) return;
+    const tbody = table.querySelector('tbody')!;
+    const rows = Array.from(tbody.querySelectorAll<HTMLTableRowElement>('tr'));
+    const zipFilter = document.getElementById('zip-filter') as HTMLSelectElement;
+    const pageSize = document.getElementById('page-size') as HTMLSelectElement;
+    const status = document.getElementById('pager-status');
+    let sortKey: 'date' | 'price' | null = null;
+    let sortDir: 1 | -1 = -1;
+
+    function apply() {
+      const zip = zipFilter.value;
+      const limit = parseInt(pageSize.value, 10);
+
+      let visible = rows.filter((r) => !zip || r.dataset.zip === zip);
+
+      if (sortKey) {
+        visible = visible.slice().sort((a, b) => {
+          const av = Number(a.dataset[sortKey!] || 0);
+          const bv = Number(b.dataset[sortKey!] || 0);
+          return (av - bv) * sortDir;
+        });
+      }
+
+      rows.forEach((r) => (r.hidden = true));
+      visible.slice(0, limit).forEach((r) => {
+        r.hidden = false;
+        tbody.appendChild(r); // re-order into current sort/filter order
+      });
+
+      if (status) {
+        status.textContent = `Showing ${Math.min(limit, visible.length)} of ${visible.length} matching sales.`;
+      }
+    }
+
+    zipFilter?.addEventListener('change', apply);
+    pageSize?.addEventListener('change', apply);
+    table.querySelectorAll<HTMLElement>('.sortable').forEach((th) => {
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', () => {
+        const key = th.dataset.sort as 'date' | 'price';
+        if (sortKey === key) sortDir = sortDir === 1 ? -1 : 1;
+        else { sortKey = key; sortDir = -1; }
+        apply();
+      });
+    });
+
+    apply();
+  }
+  init();
+</script>
+
 <style>
 .lede { max-width: 40rem; }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
 .grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); margin-bottom: 0.5rem; }
+.digest-card {
+  display: block;
+  border: 1px solid var(--rule);
+  padding: 0.75rem 0.875rem;
+  color: inherit;
+  text-decoration: none;
+}
+.digest-card__covering {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-ui);
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.digest-card__title {
+  margin: 0;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  line-height: 1.25;
+}
+.digest-card:hover .digest-card__title { text-decoration: underline; }
+
+.controls { display: flex; gap: 1.25rem; margin: 0.5rem 0 1rem; font-size: 0.875rem; }
+.controls label { display: flex; align-items: center; gap: 0.4rem; color: var(--ink-soft); }
+.controls select { font: inherit; padding: 0.2rem 0.4rem; }
+
 .sales { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.9375rem; }
 .sales th {
   text-align: left;
@@ -81,6 +238,9 @@ const [sales, digests] = await Promise.all([
 .sales td { padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
 .sales tr:last-child td { border-bottom: 0; }
 .price { white-space: nowrap; }
+.outlier-flag { margin-left: 0.25rem; color: var(--ink-soft); cursor: help; }
+.footnote { margin-top: 0.5rem; font-size: 0.8125rem; color: var(--ink-soft); }
+.pager-status { margin-top: 0.25rem; font-size: 0.8125rem; color: var(--ink-soft); }
 .empty { color: var(--ink-soft); }
 .source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }
 </style>

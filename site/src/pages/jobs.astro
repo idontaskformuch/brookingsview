@@ -5,7 +5,13 @@
  *  Ingen ort-redirect (samma resonemang som /traffic.astro): jobs gäller
  *  konceptuellt vilken ort som helst -- Adzuna täcker båda, så sidan
  *  renderar bara vad som finns för aktuell TOWN_ID i stället för att gissa
- *  bort en ort. */
+ *  bort en ort.
+ *
+ *  FAS 2: getRecentJobs() filtrerar nu bort annonser äldre än 45 dagar (se
+ *  db.ts) och salary_min/category saneras redan vid skrapning (se
+ *  jobs_v1.py) -- den här sidan behöver bara (a) visa saneringens
+ *  resultat rätt (salaryText nedan hanterar ensidiga intervall) och
+ *  (b) begränsa en enskild arbetsgivares andel av listan, se EMPLOYER_CAP. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import { getRecentJobs, formatDate, formatPrice } from '../lib/db';
@@ -14,34 +20,86 @@ import { siteConfig } from '../lib/site-config';
 const jobs = await getRecentJobs();
 
 const salaryText = (job: (typeof jobs)[number]) => {
-  if (job.salary_min == null && job.salary_max == null) return '—';
-  const range = job.salary_min === job.salary_max || job.salary_max == null
-    ? formatPrice(job.salary_min)
-    : `${formatPrice(job.salary_min)}–${formatPrice(job.salary_max)}`;
-  return job.salary_is_predicted ? `${range} (est.)` : range;
+  const { salary_min: lo, salary_max: hi, salary_is_predicted: predicted } = job;
+  let range: string;
+  if (lo == null && hi == null) return '—';
+  else if (lo == null) range = `up to ${formatPrice(hi)}`;
+  else if (hi == null || lo === hi) range = formatPrice(lo);
+  else range = `${formatPrice(lo)}–${formatPrice(hi)}`;
+  return predicted ? `${range} (est.)` : range;
 };
+
+// FAS 2: en enda arbetsgivare (en bemanningsfirma) stod för 52% av alla
+// annonser vid research -- listan blev i praktiken "en firmas alla
+// annonser plus lite annat". Cap:a en arbetsgivares SYNLIGA rader till
+// ~30% av totalen (minst 3), resten döljs bakom en egen "More from
+// <employer>"-expander i stället för att tas bort helt.
+const EMPLOYER_CAP_RATIO = 0.3;
+const employerCap = Math.max(3, Math.ceil(jobs.length * EMPLOYER_CAP_RATIO));
+
+const visible: typeof jobs = [];
+const overflowByCompany = new Map<string, typeof jobs>();
+const seenCount = new Map<string, number>();
+for (const job of jobs) {
+  const key = job.company ?? '';
+  const count = seenCount.get(key) ?? 0;
+  seenCount.set(key, count + 1);
+  if (!key || count < employerCap) {
+    visible.push(job);
+  } else {
+    if (!overflowByCompany.has(key)) overflowByCompany.set(key, []);
+    overflowByCompany.get(key)!.push(job);
+  }
+}
 ---
 <BaseLayout title={`Jobs — ${siteConfig.siteName}`} wide
-  description={`Recent job listings near ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
+  description={`Recent job listings in and near ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
   <header class="lede">
     <h1>Jobs</h1>
-    <p>Recent job listings near {siteConfig.cityName} — pulled from Adzuna's job search.
-    Salaries marked "est." are Adzuna's own estimate, not the employer's listed figure.</p>
+    <p>Recent listings in and near {siteConfig.cityName}, pulled daily from
+    <a href="https://www.adzuna.com" rel="noopener">Adzuna</a>'s job search — some
+    are in surrounding towns, not {siteConfig.cityName} itself; each listing's
+    location is shown alongside it. Salaries marked "est." are Adzuna's own
+    estimate, not the employer's listed figure. We earn a small commission if
+    you apply through a listing here — it never affects which jobs are shown
+    or how they're ordered.</p>
   </header>
 
   <SectionRule label={jobs.length > 0 ? `${jobs.length} listings` : 'Listings'} />
+
+  {jobs.length > 0 && (
+    <div class="controls">
+      <label>
+        Category
+        <select id="category-filter">
+          <option value="">All</option>
+          {[...new Set(jobs.map((j) => j.category).filter((c): c is string => Boolean(c)))].sort().map((c) => (
+            <option value={c}>{c}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Sort by
+        <select id="sort-by">
+          <option value="date">Newest first</option>
+          <option value="salary">Highest salary first</option>
+        </select>
+      </label>
+    </div>
+  )}
+
   {jobs.length > 0 ? (
-    <table class="jobs">
+    <table class="jobs" id="jobs-table">
       <thead>
         <tr><th scope="col">Title</th><th scope="col">Company</th>
             <th scope="col">Category</th><th scope="col">Salary</th><th scope="col">Posted</th></tr>
       </thead>
       <tbody>
-        {jobs.map((job) => (
-          <tr>
+        {visible.map((job) => (
+          <tr data-category={job.category ?? ''} data-salary={job.salary_max ?? job.salary_min ?? ''} data-posted={job.posted_at ?? ''}>
             <td>
               {job.redirect_url ? (
-                <a href={job.redirect_url} rel="noopener nofollow">{job.title}</a>
+                <a href={job.redirect_url} rel="noopener nofollow sponsored">{job.title}</a>
               ) : job.title}
               {job.location && <span class="loc">{job.location}</span>}
             </td>
@@ -57,14 +115,72 @@ const salaryText = (job: (typeof jobs)[number]) => {
     <p class="empty">No job listings available yet.</p>
   )}
 
+  {[...overflowByCompany.entries()].map(([company, extra]) => (
+    <details class="overflow">
+      <summary>{extra.length} more from {company}</summary>
+      <table class="jobs">
+        <tbody>
+          {extra.map((job) => (
+            <tr>
+              <td>
+                {job.redirect_url ? (
+                  <a href={job.redirect_url} rel="noopener nofollow sponsored">{job.title}</a>
+                ) : job.title}
+                {job.location && <span class="loc">{job.location}</span>}
+              </td>
+              <td class="cat">{job.category ?? '—'}</td>
+              <td class="data">{salaryText(job)}</td>
+              <td class="data">{job.posted_at ? formatDate(job.posted_at) : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
+  ))}
+
   <p class="source">
-    Source: <a href="https://www.adzuna.com" rel="noopener">Adzuna</a>, refreshed daily.
+    Source: <a href="https://www.adzuna.com" rel="noopener">Adzuna</a>, refreshed daily. Listings older than 45 days are removed automatically.
   </p>
 </BaseLayout>
+
+<script>
+  function init() {
+    const table = document.getElementById('jobs-table');
+    if (!table) return;
+    const tbody = table.querySelector('tbody')!;
+    const rows = Array.from(tbody.querySelectorAll<HTMLTableRowElement>('tr'));
+    const categoryFilter = document.getElementById('category-filter') as HTMLSelectElement | null;
+    const sortBy = document.getElementById('sort-by') as HTMLSelectElement | null;
+
+    function apply() {
+      const category = categoryFilter?.value ?? '';
+      const key = sortBy?.value ?? 'date';
+
+      let ordered = rows.filter((r) => !category || r.dataset.category === category);
+      ordered = ordered.slice().sort((a, b) => {
+        if (key === 'salary') return Number(b.dataset.salary || 0) - Number(a.dataset.salary || 0);
+        return String(b.dataset.posted || '').localeCompare(String(a.dataset.posted || ''));
+      });
+
+      rows.forEach((r) => (r.hidden = true));
+      ordered.forEach((r) => {
+        r.hidden = false;
+        tbody.appendChild(r);
+      });
+    }
+
+    categoryFilter?.addEventListener('change', apply);
+    sortBy?.addEventListener('change', apply);
+  }
+  init();
+</script>
 
 <style>
 .lede { max-width: 42rem; }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.controls { display: flex; gap: 1.25rem; margin: 0.5rem 0 1rem; font-size: 0.875rem; }
+.controls label { display: flex; align-items: center; gap: 0.4rem; color: var(--ink-soft); }
+.controls select { font: inherit; padding: 0.2rem 0.4rem; }
 .jobs { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.9375rem; }
 .jobs th {
   text-align: left;
@@ -83,6 +199,8 @@ const salaryText = (job: (typeof jobs)[number]) => {
 .cat { color: var(--ink-soft); font-size: 0.875rem; }
 .data { white-space: nowrap; }
 .empty { color: var(--ink-soft); }
+.overflow { margin-top: 0.75rem; font-size: 0.9375rem; }
+.overflow summary { cursor: pointer; color: var(--ink-soft); padding: 0.5rem 0; }
 .source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }
 @media (max-width: 40rem) { .cat { display: none; } }
 </style>

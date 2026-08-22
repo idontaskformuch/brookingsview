@@ -76,7 +76,7 @@ class TrafficParser(BaseParser):
     # Se moduldocstring: en incident uppdateras (loggrad/sluttid) för SAMMA
     # post i stället för att vara oföränderlig källdata som möten/event.
     conflict_columns = ("town_id", "external_incident_id")
-    update_columns = ["description", "ends_at", "last_seen_at", "raw_data", "content_hash"]
+    update_columns = ["description", "road", "severity", "ends_at", "last_seen_at", "raw_data", "content_hash"]
 
     def _headers(self) -> dict:
         return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
@@ -199,7 +199,7 @@ class TrafficParser(BaseParser):
                 "title": title,
                 "description": description,
                 "road": _road_from_title(title),
-                "severity": None,
+                "severity": _classify_severity(incident_type, title, description),
                 "lat": lat,
                 "lon": lon,
                 "starts_at": None,
@@ -213,9 +213,49 @@ class TrafficParser(BaseParser):
         return rows
 
 
+# FAS 2: "Route \d+" matchade nästan ingenting live -- riktiga Caltrans-
+# titlar ser ut som "Northbound 215 Off Ramp Full Closure" eller
+# "C74-R12 WB 91 FROM ADAMS TO VB 3/4 LNS CLOSED", aldrig "Route 60".
+# Bredare mönster: riktning+ruttnummer, I-/SR-/US-prefix, eller ett namngivet
+# gatunamn precis före "Ramp"/"Ave"/"Blvd"/"St". Ingen träff -> None (döljs i
+# tabellen i stället för att visa "—", se husregel 4).
+_DIRECTIONAL_ROUTE_RE = re.compile(
+    r"\b((?:North|South|East|West)bound\s+\d+[A-Z]?)\b", re.IGNORECASE
+)
+_HIGHWAY_PREFIX_RE = re.compile(r"\b((?:I|SR|US)-\d+[A-Z]?)\b", re.IGNORECASE)
+_ROUTE_WORD_RE = re.compile(r"\b(Route\s+\d+)\b", re.IGNORECASE)
+_NAMED_STREET_RE = re.compile(
+    r"\b([A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+)?\s(?:Ave|Blvd|St|Rd|Dr|Ramp|Fwy|Hwy))\b"
+)
+
+
 def _road_from_title(title: str) -> str | None:
-    m = re.match(r"(Route\s+\d+)", title, re.IGNORECASE)
-    return m.group(1) if m else None
+    for pattern in (_DIRECTIONAL_ROUTE_RE, _HIGHWAY_PREFIX_RE, _ROUTE_WORD_RE, _NAMED_STREET_RE):
+        m = pattern.search(title)
+        if m:
+            return m.group(1)
+    return None
+
+
+# FAS 2: severity fanns som kolumn (se migration 011) men skrevs aldrig --
+# alltid None. Caltrans/CHP ger ingen egen allvarlighetsgrad, så det här är
+# regelbaserad klassificering på titel/beskrivning, i fallande allvar:
+# closure > injury > incident > planned. Används för sortering + en
+# statuschip i frontend (se lib/db.ts/traffic.astro).
+_INJURY_KEYWORDS = ("INJ", "TC", "OVERTURNED", "FATAL", "AMBULANCE")
+_CLOSURE_KEYWORDS = ("CLOSED", "CLOSURE", "FULL CLOSURE")
+_PLANNED_KEYWORDS = ("SCHEDULED", "PLANNED", "UPCOMING")
+
+
+def _classify_severity(incident_type: str, title: str, description: str | None) -> str:
+    text = f"{title} {description or ''}".upper()
+    if any(k in text for k in _CLOSURE_KEYWORDS):
+        return "closure"
+    if incident_type == "chp_incident" and any(k in text for k in _INJURY_KEYWORDS):
+        return "injury"
+    if any(k in text for k in _PLANNED_KEYWORDS):
+        return "planned"
+    return "incident"
 
 
 def _parse_caltrans_dt(s: str, fmt: str) -> datetime | None:

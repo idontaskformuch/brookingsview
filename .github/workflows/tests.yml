@@ -1,0 +1,23 @@
+name: tests
+# Kör pytest-svit vid varje push/PR -- se tests/. Innehåller bl.a. den
+# obligatoriska ort-kontamineringsspärren (tests/test_town_guard.py,
+# tests/test_content_prompts.py), tillagd efter juli-augusti 2026-incidenten
+# där Brookings-identitet läckte in i Moreno Valley-publicerat innehåll (se
+# ai_pipeline/town_guard.py). Kräver ingen DATABASE_URL/ANTHROPIC_API_KEY --
+# alla tester kör mot fixtur-data, ingen nätverks-/DB-åtkomst.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests/ -v

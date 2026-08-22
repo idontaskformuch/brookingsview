@@ -31,7 +31,7 @@ export const TOWN_ID = siteConfig.townId;
 export type SourceType =
   | 'meeting' | 'event' | 'alert' | 'weekly'
   | 'culture_essay' | 'editorial' | 'vetenskap_kronika' | 'kvick_essa'
-  | 'media_recension' | 'vardagsmiddag' | 'home_sales_digest' | 'sports_digest' | 'university_digest'
+  | 'media_recension' | 'vardagsmiddag' | 'home_sales_digest' | 'sports_digest' | 'local_sports_digest' | 'university_digest'
   | 'announcement' | 'workplace_watch_digest';
 
 /** Presentation-layer label per source_type, för Byline-raden. Ingen egen DB-kolumn --
@@ -45,6 +45,7 @@ export const CATEGORY_LABELS: Partial<Record<SourceType, string>> = {
   vardagsmiddag: 'Recipe',
   home_sales_digest: 'Market digest',
   sports_digest: 'Sports digest',
+  local_sports_digest: 'Local sports notes',
   university_digest: 'University digest',
   // Handskrivet, inte skrapat eller AI-genererat -- t.ex. sajtnyheter som
   // "vi lanserade ett arkadspel". byline sätts (se StoryCard.astro:s
@@ -116,6 +117,19 @@ export interface Game {
 
 export interface WeatherPeriod {
   name: string;
+  start: string;
+  temp: number | null;
+  unit: string;
+  short: string;
+  wind: string;
+  is_daytime: boolean;
+}
+
+/** FAS 2: en rad ur weather_snapshots.payload.hourly -- se scrapers/parsers/
+ *  noaa.py. Skiljer sig från WeatherPeriod genom att INTE ha `name` (NWS
+ *  timprognos ger alltid en tom sträng där -- frontend etiketterar varje
+ *  timme själv från `start`, se weather.astro). */
+export interface HourlyWeatherPeriod {
   start: string;
   temp: number | null;
   unit: string;
@@ -196,7 +210,10 @@ export async function getPastStories(
 
 /**
  * Dagens krönika/recension/recept -- den från Content Track v1 som publicerats
- * sedan midnatt lokal tid (America/Chicago, samma som resten av sajten).
+ * sedan midnatt lokal tid (ortens EGEN tidszon, siteConfig.timezone -- INTE
+ * hårdkodat till en ort. Se formatDate/formatTime nedan för samma fix och
+ * varför: fram till denna ändring visade Moreno Valley-bygget allt i
+ * America/Chicago, ~2 timmar fel).
  *
  * Visas pushigt på förstasidan bara publiceringsdagen. Efter det hittas den
  * bara via sin kategori-sida (getContentByType) -- precis som andra
@@ -210,7 +227,7 @@ export async function getTodaysFeature(): Promise<Story | null> {
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${CONTENT_TRACK_TYPES})
-       AND published_at::date = (now() AT TIME ZONE 'America/Chicago')::date
+       AND published_at::date = (now() AT TIME ZONE ${siteConfig.timezone})::date
      ORDER BY published_at DESC
      LIMIT 1
   `) as Story[];
@@ -528,6 +545,7 @@ export interface TrafficIncident {
   title: string;
   description: string | null;
   road: string | null;
+  severity: string | null;
   lat: number | null;
   lon: number | null;
   ends_at: string | null;
@@ -538,16 +556,63 @@ export interface TrafficIncident {
  *  sluttid ELLER sluttiden är i framtiden, OCH (b) källan har rapporterat
  *  incidenten nyligen (senaste 3 timmarna). Del (b) behövs eftersom många
  *  CHP-incidenter aldrig får en explicit sluttid -- utan den skulle en
- *  incident från igår kväll fortsätta visas som "aktuell" för evigt. */
+ *  incident från igår kväll fortsätta visas som "aktuell" för evigt.
+ *
+ *  FAS 2: sorterar nu på severity (closure > injury > incident > planned,
+ *  se traffic_v1.py:_classify_severity) före last_seen_at, så det
+ *  allvarligaste ligger överst i stället för bara senast sedd. */
 export async function getActiveTrafficIncidents(maxAgeHours = 3): Promise<TrafficIncident[]> {
   return (await sql`
-    SELECT incident_type, title, description, road, lat, lon, ends_at, last_seen_at
+    SELECT incident_type, title, description, road, severity, lat, lon, ends_at, last_seen_at
       FROM traffic_incidents
      WHERE town_id = ${TOWN_ID}
        AND (ends_at IS NULL OR ends_at >= now())
        AND last_seen_at >= now() - (${maxAgeHours} || ' hours')::interval
-     ORDER BY last_seen_at DESC
+     ORDER BY
+       CASE severity WHEN 'closure' THEN 0 WHEN 'injury' THEN 1 WHEN 'incident' THEN 2 WHEN 'planned' THEN 3 ELSE 4 END,
+       last_seen_at DESC
   `) as TrafficIncident[];
+}
+
+/** FAS 2: rå CHP/Caltrans-text ("C74-R12 WB 91 FROM ADAMS TO VB 3/4 LNS
+ *  CLOSED") är genuint svårläst för en vanlig läsare. Ordlistan expanderar
+ *  bara TERMER VI ÄR SÄKRA PÅ (riktningsförkortningar, "LNS"->"lanes" osv)
+ *  -- allt annat (vägnummer, tvetydiga förkortningar som "VB", gatunamn)
+ *  lämnas orört i stället för att gissa vad de betyder (husregel: attribuera,
+ *  påstå aldrig). Källtexten finns alltid kvar oförändrad bredvid (se
+ *  traffic.astro:s "view source" expander) så ingen information göms. */
+const _TRAFFIC_GLOSSARY: Record<string, string> = {
+  WB: 'Westbound', EB: 'Eastbound', NB: 'Northbound', SB: 'Southbound',
+  LNS: 'lanes', LN: 'lane', RAMP: 'ramp', XING: 'crossing', SHLDR: 'shoulder',
+  TC: 'traffic collision', INJ: 'with injuries reported', VEH: 'vehicle',
+  CONST: 'construction', MAINT: 'maintenance', DEBRIS: 'debris in roadway',
+  OVERTURNED: 'overturned vehicle', SIGALERT: 'Sig-alert (major delay expected)',
+};
+
+export function plainLanguageTraffic(text: string | null): string | null {
+  if (!text) return text;
+  return text
+    .split(/(\s+)/)
+    .map((token) => {
+      const bare = token.replace(/[.,;:]+$/, '');
+      const upper = bare.toUpperCase();
+      if (_TRAFFIC_GLOSSARY[upper]) {
+        return token.replace(bare, _TRAFFIC_GLOSSARY[upper]);
+      }
+      return token;
+    })
+    .join('');
+}
+
+/** Samma som formatTime men med explicit tidszonsförkortning ("3:45 PM PDT")
+ *  -- traffic.astro-specifikt (se husreglerna: "raw scanner jargon" gäller
+ *  även en tyst, oetiketterad tidszon). Inte i formatTime självt: skulle
+ *  ändra utseendet på bylines/datumstämplar sitewide utan att det bads om. */
+export function formatTimeWithZone(value: string | null): string {
+  if (!value) return '';
+  return new Date(value).toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit', timeZone: TZ, timeZoneName: 'short',
+  });
 }
 
 /** En rad ur jobs -- se db/migrations/012_jobs.sql och
@@ -566,9 +631,16 @@ export interface Job {
   posted_at: string | null;
 }
 
-/** Senaste jobbannonserna, nyast först. Ingen "aktiv"-filtrering som
- *  trafik/skolvarningar -- Adzuna slutar själv lista en annons när den tas
- *  bort, så allt som finns i tabellen är redan det senaste kända läget. */
+// FAS 2: jobs ÄR append-only (se migration 012, ON CONFLICT DO NOTHING) --
+// men det betyder INTE att en annons försvinner härifrån när Adzuna
+// slutar lista den uppströms. Utan en egen åldersgräns låg annonser kvar
+// synliga i upp till 7 månader (liveverifierat). MAX_AGE_DAYS matchar
+// Adzunas egen ungefärliga "aktiv annons"-livslängd.
+const JOBS_MAX_AGE_DAYS = 45;
+
+/** Senaste jobbannonserna, nyast först, max JOBS_MAX_AGE_DAYS gamla (se
+ *  ovan). posted_at IS NULL hålls kvar (Adzuna anger nästan alltid created,
+ *  men om den saknas är det hellre synlig-utan-datum än tyst borttagen). */
 export async function getRecentJobs(limit = 100): Promise<Job[]> {
   return (await sql`
     SELECT external_job_id, title, company, location, category,
@@ -576,6 +648,7 @@ export async function getRecentJobs(limit = 100): Promise<Job[]> {
            redirect_url, posted_at
       FROM jobs
      WHERE town_id = ${TOWN_ID}
+       AND (posted_at IS NULL OR posted_at >= now() - (${JOBS_MAX_AGE_DAYS} || ' days')::interval)
      ORDER BY posted_at DESC NULLS LAST
      LIMIT ${limit}
   `) as Job[];
@@ -721,6 +794,20 @@ export async function getWeather(): Promise<WeatherPeriod[]> {
      LIMIT 1
   `) as { payload: { periods?: WeatherPeriod[] } }[];
   return rows[0]?.payload?.periods ?? [];
+}
+
+/** FAS 2: timprognos (~24h framåt) -- se scrapers/parsers/noaa.py. Samma rad/
+ *  snapshot som getWeather(), bara ett annat fält i samma payload -- ingen
+ *  extra fråga mot en egen tabell. */
+export async function getHourlyWeather(): Promise<HourlyWeatherPeriod[]> {
+  const rows = (await sql`
+    SELECT payload
+      FROM weather_snapshots
+     WHERE town_id = ${TOWN_ID}
+     ORDER BY observed_for DESC
+     LIMIT 1
+  `) as { payload: { hourly?: HourlyWeatherPeriod[] } }[];
+  return rows[0]?.payload?.hourly ?? [];
 }
 
 export async function getAgPrices(): Promise<AgPrice[]> {
@@ -988,7 +1075,7 @@ export async function getSignData(): Promise<SignData> {
         FROM stories
        WHERE town_id = ${TOWN_ID}
          AND source_type = 'event'
-         AND occurs_at::date = (now() AT TIME ZONE 'America/Chicago')::date
+         AND occurs_at::date = (now() AT TIME ZONE ${siteConfig.timezone})::date
     ` as unknown as Promise<{ n: number }[]>,
   ]);
 
@@ -1006,7 +1093,14 @@ export async function getSignData(): Promise<SignData> {
 
 /* ------------------------------------------------------------- formatering - */
 
-const TZ = 'America/Chicago';
+// FAS 2-FIX (augusti 2026): var hårdkodat till 'America/Chicago' för BÅDA
+// orterna -- varje tidsstämpel på Moreno Valley-sajten (events, traffic,
+// möten) visades i fel tidszon, ~2 timmar fel jämfört med korrekt
+// America/Los_Angeles. siteConfig.timezone är redan korrekt per ort
+// (site-config.ts), bara aldrig använt här. formatCalendarDate() nedan är
+// MEDVETET annorlunda (ingen tidszon alls) -- rör den inte, se dess egen
+// kommentar för varför.
+const TZ = siteConfig.timezone;
 
 export function formatDate(value: string | null): string {
   if (!value) return '';
@@ -1059,18 +1153,23 @@ export function formatCalendarDate(value: string | Date | null): string {
   // meeting_date/sale_date riskerade). Läs därför ut år/månad/dag EXPLICIT ur
   // vad vi fick (sträng-split eller lokala Date-komponenter), och bygg om till
   // UTC-midnatt själva -- oberoende av byggmaskinens egen tidszon.
-  let year: number, month: number, day: number;
-  if (value instanceof Date) {
-    year = value.getFullYear();
-    month = value.getMonth();
-    day = value.getDate();
-  } else {
-    const [y, m, d] = value.slice(0, 10).split('-').map(Number);
-    year = y; month = m - 1; day = d;
-  }
+  const { y, m, d } = calendarDateParts(value)!;
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'short', month: 'long', day: 'numeric', timeZone: 'UTC',
-  }).format(new Date(Date.UTC(year, month, day)));
+  }).format(new Date(Date.UTC(y, m, d)));
+}
+
+/** Delad extraktionslogik bakom formatCalendarDate -- se dess kommentar för
+ *  varför sträng/Date måste hanteras olika. Egen export så andra sidor (t.ex.
+ *  events.astro:s "matchar dagens datum mot en spelad hemmamatch") kan jämföra
+ *  ett kalenderdatum mot "idag" utan att själva återuppfinna samma landmina. */
+export function calendarDateParts(value: string | Date | null): { y: number; m: number; d: number } | null {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return { y: value.getFullYear(), m: value.getMonth(), d: value.getDate() };
+  }
+  const [y, m, d] = value.slice(0, 10).split('-').map(Number);
+  return { y, m: m - 1, d };
 }
 
 /** Rätt formatering av story.occurs_at givet KÄLLTYP -- enda stället den

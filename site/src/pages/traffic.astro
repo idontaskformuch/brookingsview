@@ -13,12 +13,16 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
-import { getActiveTrafficIncidents, formatTime } from '../lib/db';
+import { getActiveTrafficIncidents, formatTimeWithZone, plainLanguageTraffic } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
 const incidents = await getActiveTrafficIncidents();
 
 const typeLabel = (t: string) => (t === 'lane_closure' ? 'Lane closure / construction' : 'Incident');
+
+const SEVERITY_LABELS: Record<string, string> = {
+  closure: 'Closure', injury: 'Injury reported', incident: 'Incident', planned: 'Planned closure',
+};
 ---
 <BaseLayout title={`Traffic — ${siteConfig.siteName}`} wide
   description={`Current road incidents and lane closures affecting ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
@@ -33,18 +37,26 @@ const typeLabel = (t: string) => (t === 'lane_closure' ? 'Lane closure / constru
   {incidents.length > 0 ? (
     <table class="incidents">
       <thead>
-        <tr><th scope="col">Type</th><th scope="col">Road</th><th scope="col">Details</th><th scope="col">Last updated</th></tr>
+        <tr><th scope="col">Severity</th><th scope="col">Road</th><th scope="col">Details</th><th scope="col">Last updated</th></tr>
       </thead>
       <tbody>
         {incidents.map((incident) => (
           <tr>
-            <td class="type">{typeLabel(incident.incident_type)}</td>
+            <td class={`sev sev--${incident.severity ?? 'incident'}`}>
+              {SEVERITY_LABELS[incident.severity ?? 'incident']}
+            </td>
             <td>{incident.road ?? '—'}</td>
             <td>
-              {incident.title}
-              {incident.description && <span class="desc">{incident.description}</span>}
+              <p class="plain">{plainLanguageTraffic(incident.title)}</p>
+              {incident.description && <p class="plain desc">{plainLanguageTraffic(incident.description)}</p>}
+              <details class="raw">
+                <summary>View source detail</summary>
+                <p class="type">{typeLabel(incident.incident_type)}</p>
+                <p>{incident.title}</p>
+                {incident.description && <p>{incident.description}</p>}
+              </details>
             </td>
-            <td class="data">{formatTime(incident.last_seen_at)}</td>
+            <td class="data">{formatTimeWithZone(incident.last_seen_at)}</td>
           </tr>
         ))}
       </tbody>
@@ -78,7 +90,16 @@ const typeLabel = (t: string) => (t === 'lane_closure' ? 'Lane closure / constru
 .incidents td { padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
 .incidents tr:last-child td { border-bottom: 0; }
 .type { color: var(--alert); font-weight: 600; white-space: nowrap; }
-.desc { display: block; margin-top: 0.25rem; font-size: 0.8125rem; color: var(--ink-soft); }
+.sev { font-weight: 600; white-space: nowrap; }
+.sev--closure { color: var(--alert); }
+.sev--injury { color: var(--alert); }
+.sev--incident { color: var(--ink); }
+.sev--planned { color: var(--ink-soft); }
+.plain { margin: 0; }
+.desc { margin-top: 0.25rem; font-size: 0.9375rem; color: var(--ink-soft); }
+.raw { margin-top: 0.375rem; font-size: 0.8125rem; }
+.raw summary { cursor: pointer; color: var(--ink-soft); }
+.raw p { margin: 0.25rem 0 0; color: var(--ink-soft); }
 .empty { color: var(--ink-soft); }
 .source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }
 </style>

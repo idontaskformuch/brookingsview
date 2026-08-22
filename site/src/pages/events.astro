@@ -5,7 +5,7 @@ import StoryCard from '../components/StoryCard.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
 import type { Story, SdsuEvent } from '../lib/db';
-import { getUpcomingStories, getPastStories, getUpcomingArtsEvents } from '../lib/db';
+import { getUpcomingStories, getPastStories, getUpcomingArtsEvents, getRegionalSports, calendarDateParts } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
 // "Arts & Culture" (SDSU) / "Around Town" (library, city, chamber, ...) --
@@ -27,6 +27,15 @@ const [upcoming, past, artsEvents] = await Promise.all([
   // scrapers/parsers/sdsu_events_v1.py:s "EDITORIAL-OMORGANISERING".
   getUpcomingArtsEvents(40),
 ]);
+
+// FAS 2: en primary-lags (66ers) HEMMAmatch idag hör hemma i "Today"-bucketen
+// -- den fanns tidigare bara på /sports, aldrig cross-linkad härifrån.
+// moreno_valley_ca-specifikt (getRegionalSports() ger bara raderna för
+// aktuell town_id ändå, samma "naturligt tom på andra orter"-mönster som
+// getUpcomingArtsEvents). game_date är ett rent kalenderdatum (samma
+// meeting_date-landmina som formatCalendarDate skyddar mot) -- jämförs här
+// via calendarDateParts, ALDRIG genom en tidszonskonvertering.
+const regionalGames = siteConfig.townId === 'moreno_valley_ca' ? await getRegionalSports() : [];
 
 /** SDSU arts_culture-events har ingen egen /s/[slug]-sida (deras länk är
  *  event_url, ut till sdstate.edu) -- adapteras till Story-formen bara så
@@ -184,6 +193,15 @@ function dayIndex(occursAt: string, today: Date): number {
 }
 
 const today = utcMidnight(localDateParts(new Date()));
+
+const todaysHomeGame = regionalGames.find((g) => {
+  if (g.relevance_tier !== 'primary' || g.home_away !== 'home') return false;
+  if (g.status !== 'scheduled' && g.status !== 'live') return false;
+  const parts = calendarDateParts(g.game_date);
+  if (!parts) return false;
+  return parts.y === today.getUTCFullYear() && parts.m === today.getUTCMonth() && parts.d === today.getUTCDate();
+}) ?? null;
+
 const weekdayOfToday = today.getUTCDay(); // 0=Sun -- today is already UTC-anchored, read it directly
 const daysToFriday = (5 - weekdayOfToday + 7) % 7;
 
@@ -204,7 +222,10 @@ const sections = (
     ['Coming up', buckets.nextWeek],
     ['Further out', buckets.later],
   ] as [string, FeedItem[]][]
-).filter(([, list]) => list.length > 0);
+// "Today" stays even with zero library/city events when there's still a
+// home game to surface (see todaysHomeGame below) -- every other bucket
+// keeps the original "hide if empty" rule.
+).filter(([label, list]) => list.length > 0 || (label === 'Today' && todaysHomeGame));
 ---
 <BaseLayout title={`Events in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide
   description={`What's on this weekend in ${siteConfig.cityName}, ${siteConfig.stateName} — library programs, city events and community happenings.`}>
@@ -218,12 +239,21 @@ const sections = (
   {sections.length > 0 ? sections.map(([label, list]) => (
     <>
       <SectionRule label={label} />
-      <div class="grid">
-        {list.map((item) => item.kind === 'story'
-          ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item) }} kicker={townwideKicker} />
-          : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item) }} href={item.event.event_url} kicker="Arts & Culture" />
-        )}
-      </div>
+      {label === 'Today' && todaysHomeGame && (
+        <p class="game-note">
+          🏟️ {todaysHomeGame.team_name} play {todaysHomeGame.opponent_name} at home today
+          {todaysHomeGame.venue && ` at ${todaysHomeGame.venue}`}.
+          <a href="/sports">See the schedule</a>
+        </p>
+      )}
+      {list.length > 0 && (
+        <div class="grid">
+          {list.map((item) => item.kind === 'story'
+            ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item) }} kicker={townwideKicker} />
+            : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item) }} href={item.event.event_url} kicker="Arts & Culture" />
+          )}
+        </div>
+      )}
     </>
   )) : (
     <p class="empty">No upcoming events listed right now.</p>
@@ -243,5 +273,13 @@ const sections = (
 .lede { max-width: 40rem; }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
 .grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+.game-note {
+  margin: 0 0 0.75rem;
+  padding: 0.625rem 0.875rem;
+  background: var(--navy-tint);
+  border-left: 4px solid var(--navy);
+  font-size: 0.9375rem;
+}
+.game-note a { margin-left: 0.375rem; }
 .empty { color: var(--ink-soft); }
 </style>

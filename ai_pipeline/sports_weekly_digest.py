@@ -178,9 +178,12 @@ STRUCTURE:
   shutout, a team that went winless) -- not necessarily the first team listed.
 - Cover every team in the source data, but don't give them all equal weight;
   a team with no notable result can get a single sentence.
+- State each team's win-loss(-tie) record for the week explicitly (e.g.
+  "2-1 this week"), not just a narrative description of it.
 - Report results only. Do not speculate about standings, playoff chances, or
-  what a result means for the rest of the season -- that information is not
-  in the source data.
+  what a result means for the rest of the season, and do not name or credit
+  any individual player -- that information is not in the source data (this
+  digest only has final scores, not box scores).
 
 Return ONLY the article text. No preamble, no title."""
 

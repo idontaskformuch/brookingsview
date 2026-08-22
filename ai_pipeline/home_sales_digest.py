@@ -72,6 +72,14 @@ MIN_WORDS = 150
 # samma "extraktivt, inte påhittat"-princip som resten av pipelinen.
 TOP_N_SALES = 5
 
+# FAS 2: försäljningar under detta pris är nästan säkert inte en marknads-
+# transaktion (familjeöverlåtelse, delägarandel, eller ett fel i
+# inspelningen) -- t.ex. verifierade rader på $500 och $97 500. Exkluderas
+# från median/min/max/"top sales" (ska aldrig framställas som "lägsta pris"
+# i löptext), men syns fortfarande i den råa tabellen med en fotnot -- vi
+# GÖMMER inget, vi bara låter det inte snedvrida statistiken.
+OUTLIER_PRICE_FLOOR = 150_000
+
 
 def _fmt_price(value) -> str:
     if value is None:
@@ -115,6 +123,31 @@ def collect_month(conn, town_id: str, year: int, month: int) -> list[dict]:
         return [dict(r) for r in cur.fetchall()]
 
 
+def missing_trailing_months(conn, town_id: str) -> list[tuple[int, int]]:
+    """Månader UTAN property_sales-data, strikt EFTER den senaste månad som
+    har data, fram till och med innevarande månad. Tar MEDVETET inte med en
+    lucka mitt i annars sammanhängande data (t.ex. sep 2025 mellan aug och
+    okt 2025) -- en sådan lucka är mer sannolikt ett riktigt inläsnings-
+    problem än "länet har inte publicerat än", och en automatgenererad
+    "inte tillgängligt än"-notis där vore missvisande. Se NEEDS-HUMAN-
+    REVIEW.md för den distinktionen."""
+    months = months_with_sales(conn, town_id)
+    if not months:
+        return []
+    y, m = months[-1]
+    now = datetime.now(timezone.utc)
+    out: list[tuple[int, int]] = []
+    while True:
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+        if (y, m) > (now.year, now.month):
+            break
+        out.append((y, m))
+    return out
+
+
 def content_hash(sales: list[dict]) -> str:
     ids = sorted(str(s["id"]) for s in sales)
     return hashlib.sha256("|".join(ids).encode()).hexdigest()
@@ -132,7 +165,15 @@ def _postal_code(sale: dict) -> str | None:
 
 
 def compute_stats(sales: list[dict]) -> dict:
-    priced = [s["sale_price"] for s in sales if s.get("sale_price") is not None]
+    # FAS 2: statistik och "top sales" räknas bara på MARKNADS-försäljningar
+    # (>= OUTLIER_PRICE_FLOOR) -- annars drar en enstaka $500-överlåtelse ner
+    # "lägsta pris" till något som ser ut som en riktig marknadsuppgift.
+    # `count` ovan är fortfarande TOTALT antal (outliers räknas, de bara
+    # exkluderas från prisstatistiken), så ingen försäljning "försvinner".
+    market_sales = [s for s in sales if (s.get("sale_price") or 0) >= OUTLIER_PRICE_FLOOR]
+    outlier_sales = [s for s in sales
+                      if s.get("sale_price") is not None and s["sale_price"] < OUTLIER_PRICE_FLOOR]
+    priced = [s["sale_price"] for s in market_sales if s.get("sale_price") is not None]
     by_zip: dict[str, int] = {}
     for s in sales:
         zip_code = _postal_code(s)
@@ -146,7 +187,8 @@ def compute_stats(sales: list[dict]) -> dict:
         "max_price": max(priced) if priced else None,
         "priced_count": len(priced),
         "by_zip": dict(sorted(by_zip.items(), key=lambda kv: -kv[1])),
-        "top_sales": sales[:TOP_N_SALES],
+        "top_sales": market_sales[:TOP_N_SALES],
+        "outlier_count": len(outlier_sales),
     }
 
 
@@ -175,6 +217,14 @@ def source_text(stats: dict, label: str) -> str:
         parts.append(
             f"PRICE RANGE: {_fmt_price(stats['min_price'])} to {_fmt_price(stats['max_price'])} "
             f"({stats['priced_count']} of {stats['count']} sales had a recorded price)"
+        )
+
+    if stats.get("outlier_count"):
+        parts.append(
+            f"EXCLUDED FROM THE ABOVE: {stats['outlier_count']} recorded sale(s) under "
+            f"${OUTLIER_PRICE_FLOOR:,} -- these are likely non-market transfers (family "
+            "transfer, partial interest, or a recording artifact), not real market activity, "
+            "so they are not part of the median/range/top-sales figures above."
         )
 
     if stats["by_zip"]:
@@ -213,6 +263,9 @@ HARD RULE SPECIFIC TO THIS FORMAT:
 - This is a report of what was recorded, never investment or buying advice.
   Do not suggest whether it's a good time to buy or sell, do not speculate on
   future prices, do not use words like "should" about a reader's decisions.
+- If the source data mentions sales excluded as likely non-market transfers,
+  never call one of them the "lowest price" or otherwise fold it into the
+  price range -- report the range as already computed in the source data.
 
 Return ONLY the article text. No preamble, no title."""
 
@@ -298,7 +351,13 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true",
                     help="generera och skriv ut, men skriv INTE till stories "
                          "(gör riktiga AI-anrop för ändrade månader -- kostar samma som publicering)")
+    ap.add_argument("--month", action="append", default=None, metavar="YYYY-MM",
+                     help="begränsa körningen till specifika månader (kan upprepas) -- "
+                          "t.ex. för att med --force regenerera bara de månader som "
+                          "föll tillbaka på mallformatet, utan att spendera AI-anrop "
+                          "på alla andra redan-oförändrade månader")
     args = ap.parse_args()
+    only_months = {tuple(int(p) for p in m.split("-")) for m in args.month} if args.month else None
 
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
     town_id = cfg["town_id"]
@@ -309,6 +368,8 @@ def main() -> int:
 
     with psycopg.connect(database_url) as conn:
         months = months_with_sales(conn, town_id)
+        if only_months is not None:
+            months = [m for m in months if m in only_months]
         if not months:
             print("  ingen property_sales-data för den här orten -- inget att sammanfatta")
             return 0
@@ -371,8 +432,50 @@ def main() -> int:
                 created += 1
                 print(f"  {slug}: skapad ({len(sales)} försäljningar, {generated_by})")
 
+        # FAS 2: publicera en kort, ärlig "inte tillgängligt än"-notis för
+        # varje månad EFTER den senaste med riktig data, fram till
+        # innevarande månad -- annars är sidan en tyst lucka i stället för
+        # ett svar. Ingen AI, ingen gissning: samma mönster som
+        # template_fallback ovan.
+        pending = 0
+        for year, month in missing_trailing_months(conn, town_id):
+            label = f"{month_name[month]} {year}"
+            slug = f"home-sales-digest-{year}-{month:02d}"
+            with conn.cursor() as cur:
+                cur.execute("SELECT id FROM stories WHERE town_id=%s AND slug=%s", (town_id, slug))
+                if cur.fetchone():
+                    continue  # redan publicerad (t.ex. riktig data landade sedan)
+            if args.dry_run:
+                print(f"  (dry-run) skulle publicera 'data pending'-notis för {label}")
+                continue
+            text = (
+                f"County records for {label} have not yet been released. "
+                f"{cfg['display_name']}'s home sales digests are built from Riverside "
+                "County's public assessor Property Sales Report, which is updated "
+                "quarterly, not in real time. This page will update once that data "
+                "is available."
+            )
+            title = f"{cfg['display_name']} home sales: {label}"
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO stories
+                        (town_id, title, slug, body, source_type, occurs_at,
+                         generated_by, verified, published_at, byline, content_hash)
+                    VALUES (%s,%s,%s,%s,%s,%s,'data_pending',true,now(),'AI-genererad',%s)
+                    ON CONFLICT (town_id, slug) DO NOTHING
+                    """,
+                    (town_id, title, slug, text, SOURCE_TYPE,
+                     datetime(year, month, 1, tzinfo=timezone.utc),
+                     hashlib.sha256(b"pending").hexdigest()),
+                )
+            conn.commit()
+            pending += 1
+            print(f"  {slug}: 'data pending'-notis publicerad")
+
         if not args.dry_run:
-            print(f"\nTotalt: {created} nya, {updated} uppdaterade, {unchanged} oförändrade")
+            print(f"\nTotalt: {created} nya, {updated} uppdaterade, {unchanged} oförändrade, "
+                  f"{pending} 'pending'-notiser")
 
     return 0
 

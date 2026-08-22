@@ -32,6 +32,7 @@ import requests
 
 from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
+from scrapers.text_sanity import is_suspicious
 
 # Tockify-exporterade ICS-flöden (t.ex. Moreno Valleys city_events/library) innehåller
 # X-PUBLISHED-TTL/REFRESH-INTERVAL:P15M -- avsett som "15 minuter" men saknar
@@ -109,8 +110,10 @@ class EventsParser(BaseParser):
             print("    [events] paketet 'icalendar' saknas -- lägg till i requirements.txt")
             return []
 
+        ics_text = _decode_ics(source_name, _BAD_REFRESH_PROPS.sub(b"", ics_bytes))
+
         try:
-            cal = Calendar.from_ical(_BAD_REFRESH_PROPS.sub(b"", ics_bytes))
+            cal = Calendar.from_ical(ics_text)
         except Exception as exc:  # noqa: BLE001 — trasig ICS ska inte krascha hela körningen
             print(f"    [events:{source_name}] kunde inte tolka ICS: {exc}")
             return []
@@ -122,6 +125,17 @@ class EventsParser(BaseParser):
             if not title:
                 continue
 
+            # Text-sanity-koll (se scrapers/text_sanity.py) -- fångar en
+            # felaktigt avkodad post INNAN den når databasen/AI-pipelinen,
+            # inte efteråt. En trasig TITEL gör hela posten oanvändbar
+            # (rubriken är det enda garanterat synliga fältet) så den
+            # posten hoppas över helt; en trasig plats/beskrivning nollas
+            # bara ut -- resten av posten är fortfarande användbar.
+            if is_suspicious(title):
+                print(f"    [events:{source_name}] misstänkt text i titel, hoppar över post "
+                      f"(uid={uid}): {title[:80]!r}")
+                continue
+
             dtstart = component.get("DTSTART")
             dtend = component.get("DTEND")
             starts_at = _to_iso(dtstart.dt) if dtstart else None
@@ -130,6 +144,13 @@ class EventsParser(BaseParser):
             location = str(component.get("LOCATION", "")).strip() or None
             description = str(component.get("DESCRIPTION", "")).strip() or None
             url = str(component.get("URL", "")).strip() or None
+
+            if is_suspicious(location):
+                print(f"    [events:{source_name}] misstänkt text i plats (uid={uid}), nollar fältet")
+                location = None
+            if is_suspicious(description):
+                print(f"    [events:{source_name}] misstänkt text i beskrivning (uid={uid}), nollar fältet")
+                description = None
 
             records.append({
                 "title": title,
@@ -142,6 +163,29 @@ class EventsParser(BaseParser):
                 "content_hash": content_hash("events", source_name, uid, starts_at, title),
             })
         return records
+
+
+def _decode_ics(source_name: str, ics_bytes: bytes) -> str:
+    """Decode ICS bytes to text OURSELVES, explicitly, instead of handing raw
+    bytes to icalendar.Calendar.from_ical() and letting its internal
+    to_unicode() decide -- that helper assumes utf-8-sig and, on a
+    UnicodeDecodeError, silently retries with errors="replace", swallowing
+    a bad charset into replacement characters (or a wrong-charset feed into
+    outright garbled text) with no warning surfaced anywhere. Try utf-8
+    strict first (correct for every confirmed source so far), then cp1252
+    (the realistic real-world case: a library staffer pasting Windows-
+    authored text -- smart quotes, en-dashes -- into a calendar tool that
+    doesn't re-encode it). Only fall back to lossy replacement, loudly
+    logged, if neither succeeds -- so a truly broken feed is visible in the
+    run log instead of silently degrading a published event description."""
+    for encoding in ("utf-8", "cp1252"):
+        try:
+            return ics_bytes.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    print(f"    [events:{source_name}] kunde inte avkoda som utf-8 eller cp1252 -- "
+          "faller tillbaka på utf-8 med ersättningstecken (kontrollera källans charset)")
+    return ics_bytes.decode("utf-8", errors="replace")
 
 
 def _to_iso(dt) -> str | None:

@@ -23,11 +23,19 @@ DEDUP: append-only (se migration 012) -- en jobbannons antas oföränderlig
 källdata en gång skrapad, samma resonemang som möten/event, till skillnad
 från regional_sports_games/traffic_incidents. Standard
 ON CONFLICT (town_id, external_job_id) DO NOTHING.
+
+FAS 2: category/salary_min/salary_max saneras nu vid parse (se
+_classify_category/_sanitize_salary) INNAN raden skrivs. Eftersom DEDUP är
+append-only (ON CONFLICT DO NOTHING) rättar detta bara rader som skrapas
+FRAMÅT -- redan lagrade rader med Adzunas råa kategori/nollor uppdateras
+inte automatiskt av en vanlig körning. Se scripts/backfill_jobs_categories.py
+för en engångskörning som sanerar befintliga rader med exakt samma logik.
 """
 from __future__ import annotations
 
 import json
 import os
+import re
 
 import requests
 
@@ -40,6 +48,67 @@ _API_BASE = "https://api.adzuna.com/v1/api/jobs"
 # annonstexten -- redirect_url pekar dit), men trunkeras ändå hårt här så en
 # ovanligt lång sammanfattning aldrig dominerar /jobs-tabellen.
 _MAX_DESCRIPTION_CHARS = 500
+
+# FAS 2: Adzunas eget category.label missklassificerar regelbundet (t.ex.
+# lagerjobb hamnade under "Other/General Jobs" vid liveverifiering 2026-08).
+# Nyckelordslistan nedan matchas mot titeln FÖRST -- den är smalare men
+# träffsäkrare än Adzunas bredare maskinella bucket. Bara om INGET nyckelord
+# träffar faller vi tillbaka på Adzunas egen etikett, och bara om den etiketten
+# inte är en av de kända "säger ingenting"-buckets. Annars: ingen kategori
+# alls (None) -- en tom cell är ärligare än en gissning, se husregel 4.
+_CATEGORY_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "Healthcare & Nursing": ("nurse", "rn", "lpn", "cna", "medical assistant",
+                             "physician", "caregiver", "home health", "phlebotomist"),
+    "Warehouse & Logistics": ("warehouse", "forklift", "picker", "packer", "logistics",
+                              "shipping", "receiving", "distribution center", "loader"),
+    "Retail": ("cashier", "retail sales", "store associate", "stocker", "sales associate"),
+    "Food Service": ("cook", "server", "barista", "food service", "restaurant",
+                      "dishwasher", "line cook", "kitchen"),
+    "Customer Service": ("customer service", "call center", "customer support"),
+    "Education & Childcare": ("teacher", "childcare", "daycare", "preschool",
+                               "tutor", "instructional aide"),
+    "Construction & Trades": ("electrician", "plumber", "hvac", "carpenter",
+                              "construction", "welder", "roofer"),
+    "Transportation & Driving": ("driver", "cdl", "delivery driver", "truck driver"),
+    "Administrative & Office": ("administrative assistant", "office assistant",
+                                "receptionist", "data entry", "clerk"),
+    "Security": ("security guard", "security officer"),
+    "Manufacturing & Production": ("assembler", "production worker", "machine operator",
+                                    "manufacturing"),
+}
+_GENERIC_ADZUNA_LABELS = {"Other/General Jobs", "Unknown"}
+
+
+def _classify_category(title: str, adzuna_label: str | None) -> str | None:
+    # FAS 2-FIX: en tidigare `kw in lowered`-substrängmatchning missklassade
+    # t.ex. "...Microvascular Reconstruction Fellowship" som Construction &
+    # Trades, eftersom "construction" är en substräng av "reconstruction"
+    # (upptäckt av scripts/backfill_jobs_categories.py --dry-run mot riktig
+    # data innan den här backfillen kördes på riktigt). Ordgräns-regex i
+    # stället, samma princip som ai_pipeline/town_guard.py:s blocklista.
+    lowered = title.lower()
+    for category, keywords in _CATEGORY_KEYWORDS.items():
+        for kw in keywords:
+            if re.search(r"\b" + re.escape(kw) + r"\b", lowered):
+                return category
+    if adzuna_label and adzuna_label not in _GENERIC_ADZUNA_LABELS:
+        return adzuna_label
+    return None
+
+
+# FAS 2: liveverifiering hittade salary_min=0-rader ("$0-$45,000" i praktiken
+# "upp till $45,000", inte att jobbet betalar noll) och några rader där
+# min/max-förhållandet var orimligt (annons-brus, inte en riktig spännvidd).
+# Sanera hellre till en ärlig halv-siffra/"ej angiven" än att visa nonsens.
+_MAX_SALARY_RATIO = 15
+
+
+def _sanitize_salary(salary_min, salary_max) -> tuple[float | None, float | None]:
+    lo = salary_min or None
+    hi = salary_max or None
+    if lo and hi and hi / lo > _MAX_SALARY_RATIO:
+        return None, None
+    return lo, hi
 
 
 class JobsParser(BaseParser):
@@ -99,15 +168,17 @@ class JobsParser(BaseParser):
                     continue
 
                 description = (job.get("description") or "")[:_MAX_DESCRIPTION_CHARS]
+                adzuna_label = (job.get("category") or {}).get("label")
+                salary_min, salary_max = _sanitize_salary(job.get("salary_min"), job.get("salary_max"))
 
                 rows.append({
                     "external_job_id": external_id,
                     "title": title,
                     "company": (job.get("company") or {}).get("display_name"),
                     "location": (job.get("location") or {}).get("display_name"),
-                    "category": (job.get("category") or {}).get("label"),
-                    "salary_min": job.get("salary_min"),
-                    "salary_max": job.get("salary_max"),
+                    "category": _classify_category(title, adzuna_label),
+                    "salary_min": salary_min,
+                    "salary_max": salary_max,
                     "salary_is_predicted": job.get("salary_is_predicted") == "1",
                     "description": description,
                     "redirect_url": job.get("redirect_url"),

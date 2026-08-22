@@ -18,9 +18,15 @@ if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
 }
 
-const [games, digests] = await Promise.all([
+const [games, digests, localDigests] = await Promise.all([
   getRegionalSports(),
   getContentByType(['sports_digest'], 12),
+  // FAS 2: se ai_pipeline/local_sports_weekly_digest.py -- skoldistriktets
+  // egna ALLMÄNNA meddelandeflöde, inte en dedikerad sportkälla, därför en
+  // egen sektion i stället för att blandas in bland de regionala recapsen
+  // (annan epistemisk status: slutgiltiga MLB-resultat vs. "distriktet
+  // nämnde att...").
+  getContentByType(['local_sports_digest'], 8),
 ]);
 
 const byTeam = new Map<string, typeof games>();
@@ -56,6 +62,16 @@ const leagueLabel = (l: string) => l.toUpperCase();
     <>
       <SectionRule label="Weekly recap" />
       <div class="grid">{digests.map((story) => <StoryCard story={story} />)}</div>
+    </>
+  )}
+
+  {localDigests.length > 0 && (
+    <>
+      <SectionRule label="Local school sports notes" />
+      <p class="local-note">Sourced from Moreno Valley Unified School District's own
+      announcements, not a dedicated results service — treat these as informal notes,
+      not official scores.</p>
+      <div class="grid">{localDigests.map((story) => <StoryCard story={story} />)}</div>
     </>
   )}
 
@@ -108,6 +124,7 @@ const leagueLabel = (l: string) => l.toUpperCase();
 .lede { max-width: 40rem; }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
 .grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); margin-bottom: 0.5rem; }
+.local-note { margin: -0.25rem 0 0.75rem; font-size: 0.875rem; color: var(--ink-soft); }
 .next {
   border: 0;
   border-left: 4px solid var(--navy);

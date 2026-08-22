@@ -121,6 +121,33 @@ const comments = isWorkerPulseDigest ? await getWorkerPulseComments(story.slug) 
     author: { '@type': 'Organization', name: siteConfig.siteName },
     publisher: { '@type': 'Organization', name: siteConfig.siteName },
   })} />
+
+  {story.source_type === 'event' && story.occurs_at && (
+    /* Fas 2: schema.org/Event fanns inte alls tidigare. VIKTIG BEGRÄNSNING:
+       `stories` lagrar ingen specifik anläggning/adress (den informationen
+       finns bara i käll-tabellen events, inte kopierad hit) -- location
+       nedan pekar därför på ORTEN i stort, inte den faktiska platsen. Ärligt
+       men ofullständigt: detta är INTE validerat mot Googles Rich Results
+       Test (ingen sådan åtkomst i den här miljön) och kvalar sannolikt inte
+       in för full rich-result-behandling utan en riktig adress -- värt att
+       köra genom testet manuellt och överväga en events.venue-kolumn på
+       stories om rich results visar sig kräva det. */
+    <script type="application/ld+json" is:inline set:html={JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: story.title,
+      startDate: story.occurs_at,
+      description: story.body.slice(0, 300),
+      eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+      eventStatus: 'https://schema.org/EventScheduled',
+      location: {
+        '@type': 'Place',
+        name: siteConfig.cityName,
+        address: { '@type': 'PostalAddress', addressLocality: siteConfig.cityName, addressRegion: siteConfig.stateAbbr },
+      },
+      organizer: { '@type': 'Organization', name: siteConfig.siteName },
+    })} />
+  )}
 </BaseLayout>
 
 <style>
