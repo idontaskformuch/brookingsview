@@ -8,17 +8,20 @@ import Byline from '../../components/Byline.astro';
 import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
 import {
   getAllStories, getRelatedStories, formatOccursAt, formatDate, CATEGORY_LABELS,
-  getWorkerPulseComments,
+  getWorkerPulseComments, getFacilities, buildVenueIndex, resolveVenue,
+  hasResolvedAddress, isVirtualVenue, toZonedISOString,
 } from '../../lib/db';
-import type { Story } from '../../lib/db';
+import type { Story, Facility } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 
 export async function getStaticPaths() {
-  const stories = await getAllStories();
-  return stories.map((story) => ({ params: { slug: story.slug }, props: { story } }));
+  // Fetched once for the whole build, not per-page -- the facilities set is
+  // small (a handful of rows) and doesn't vary per story.
+  const [stories, facilities] = await Promise.all([getAllStories(), getFacilities()]);
+  return stories.map((story) => ({ params: { slug: story.slug }, props: { story, facilities } }));
 }
 
-const { story } = Astro.props as { story: Story };
+const { story, facilities } = Astro.props as { story: Story; facilities: Facility[] };
 const isAlert = story.source_type === 'alert';
 const kind = isAlert ? 'Alert' : story.source_type === 'meeting' ? 'Meeting' : 'Event';
 // Genererat innehåll (krönikor m.fl.) har alltid byline satt -- scraped nyheter
@@ -59,6 +62,79 @@ const heroUrl = new URL(heroSrc, Astro.site ?? siteConfig.siteUrl).href;
 // det här blir aldrig sant på en Brookings-build.
 const isWorkerPulseDigest = story.source_type === 'workplace_watch_digest';
 const comments = isWorkerPulseDigest ? await getWorkerPulseComments(story.slug) : [];
+
+// Event JSON-LD emission decision tree -- see NEEDS-HUMAN-REVIEW.md, "Event
+// JSON-LD venue resolution & emission rules". Every event resolves into
+// exactly one branch; a Place with no real resolved PostalAddress must never
+// ship (Google requires one for rich-result eligibility, and a placeholder
+// reads as spam/an error, not a courtesy).
+const isEvent = story.source_type === 'event' && story.occurs_at;
+const venueIndex = isEvent ? buildVenueIndex(facilities) : null;
+const resolvedVenue = venueIndex ? resolveVenue(venueIndex, story.venue_raw) : null;
+const venueResolved = hasResolvedAddress(resolvedVenue);
+const eventIsVirtual = isEvent && isVirtualVenue(story.venue_raw, story.body);
+// A "series" story (ai_pipeline.publish.group_recurring_events) is ONE URL
+// standing in for MANY real-world occurrences -- Google's one-event-one-URL
+// rule means it can't honestly carry a single Event object, and this
+// codebase deliberately has no per-occurrence URL to hang one on instead
+// (that's the whole point of collapsing a recurring program into one page --
+// see publish.py's moduldocstring on "scaled content"). Rather than emit an
+// eventSchedule/Schedule object built from loosely-formatted display strings
+// (series_dates is already human-formatted text, not structured data),
+// series pages skip Event JSON-LD entirely and render as plain HTML.
+const emitEventJsonLd = Boolean(isEvent) && !story.is_recurring_series && (venueResolved || eventIsVirtual);
+
+function eventJsonLd() {
+  const startDate = toZonedISOString(story.occurs_at!, siteConfig.timezone);
+  const endDate = story.ends_at ? toZonedISOString(story.ends_at, siteConfig.timezone) : undefined;
+
+  const physicalLocation = venueResolved ? {
+    '@type': 'Place',
+    name: resolvedVenue!.name,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: resolvedVenue!.street_address,
+      addressLocality: siteConfig.cityName,
+      addressRegion: siteConfig.stateAbbr,
+      postalCode: resolvedVenue!.postal_code,
+      addressCountry: 'US',
+    },
+    ...(resolvedVenue!.lat != null && resolvedVenue!.lon != null
+      ? { geo: { '@type': 'GeoCoordinates', latitude: resolvedVenue!.lat, longitude: resolvedVenue!.lon } }
+      : {}),
+  } : null;
+  const virtualLocation = eventIsVirtual ? { '@type': 'VirtualLocation', url: canonicalUrl } : null;
+
+  const location = physicalLocation && virtualLocation
+    ? [physicalLocation, virtualLocation]
+    : (physicalLocation ?? virtualLocation);
+  const eventAttendanceMode = physicalLocation && virtualLocation
+    ? 'https://schema.org/MixedEventAttendanceMode'
+    : virtualLocation
+      ? 'https://schema.org/OnlineEventAttendanceMode'
+      : 'https://schema.org/OfflineEventAttendanceMode';
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    '@id': canonicalUrl,
+    url: canonicalUrl,
+    name: story.title,
+    startDate,
+    ...(endDate ? { endDate } : {}),
+    eventStatus: 'https://schema.org/EventScheduled',
+    eventAttendanceMode,
+    location,
+    description: story.body.slice(0, 300),
+    image: [heroUrl],
+    // The resolved venue is the most defensible organizer we can state
+    // without inventing a fact (a library/park/city-hall event is
+    // reasonably organized by the place hosting it); a virtual-only event
+    // with no resolved physical venue falls back to the site itself rather
+    // than guess.
+    organizer: { '@type': 'Organization', name: resolvedVenue?.name ?? siteConfig.siteName },
+  };
+}
 ---
 
 <BaseLayout title={`${story.title} — ${siteConfig.siteName}`} description={story.body.slice(0, 155)} ogSlug={story.slug} noindex={isNoindex}>
@@ -140,31 +216,16 @@ const comments = isWorkerPulseDigest ? await getWorkerPulseComments(story.slug) 
     publisher: { '@type': 'Organization', name: siteConfig.siteName },
   })} />
 
-  {story.source_type === 'event' && story.occurs_at && (
-    /* Fas 2: schema.org/Event fanns inte alls tidigare. VIKTIG BEGRÄNSNING:
-       `stories` lagrar ingen specifik anläggning/adress (den informationen
-       finns bara i käll-tabellen events, inte kopierad hit) -- location
-       nedan pekar därför på ORTEN i stort, inte den faktiska platsen. Ärligt
-       men ofullständigt: detta är INTE validerat mot Googles Rich Results
-       Test (ingen sådan åtkomst i den här miljön) och kvalar sannolikt inte
-       in för full rich-result-behandling utan en riktig adress -- värt att
-       köra genom testet manuellt och överväga en events.venue-kolumn på
-       stories om rich results visar sig kräva det. */
-    <script type="application/ld+json" is:inline set:html={JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'Event',
-      name: story.title,
-      startDate: story.occurs_at,
-      description: story.body.slice(0, 300),
-      eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-      eventStatus: 'https://schema.org/EventScheduled',
-      location: {
-        '@type': 'Place',
-        name: siteConfig.cityName,
-        address: { '@type': 'PostalAddress', addressLocality: siteConfig.cityName, addressRegion: siteConfig.stateAbbr },
-      },
-      organizer: { '@type': 'Organization', name: siteConfig.siteName },
-    })} />
+  {emitEventJsonLd && (
+    /* Resolved against the curated facilities registry -- see
+       ai_pipeline/venue_registry.py and the emitEventJsonLd/eventJsonLd()
+       logic above. Never ships a Place without a real resolved
+       PostalAddress (the previous version of this block always claimed
+       town-level location regardless of whether a real venue was known,
+       which is exactly the kind of unverified claim Google's rich-result
+       terms treat as spam). Unresolved-venue and recurring-series events
+       render as plain HTML with no Event markup at all. */
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(eventJsonLd())} />
   )}
 </BaseLayout>
 

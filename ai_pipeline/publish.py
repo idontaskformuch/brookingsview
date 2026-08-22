@@ -69,6 +69,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline.format_prompt import format_record, TEMPLATERS
+from ai_pipeline.venue_registry import load_registry, queue_for_review, resolve_venue
 from db.db import content_hash
 
 SOURCES: dict[str, str] = {
@@ -400,6 +401,12 @@ def publish_table(
         rows = group_event_slots(rows, tz)
         rows = group_recurring_events(rows, tz)
 
+    # Event JSON-LD venue resolution (see ai_pipeline/venue_registry.py):
+    # loaded once per publish_table() call, not per row -- facilities don't
+    # change mid-run. Only relevant for "events"; harmless no-op cost for
+    # "meetings" (empty dict, resolve_venue() always misses).
+    venue_registry = load_registry(conn, town_id) if table == "events" else {}
+
     published = skipped = thin = stale = remaining = 0
     for row in rows:
         if not has_substance(table, row):
@@ -453,19 +460,38 @@ def publish_table(
         source_url = build_source_url(table, row)
         snapshot_id = row.get("snapshot_id")
         occurs_at = build_occurs_at(table, row)
+        venue_raw = row.get("venue") if table == "events" else None
+        is_recurring_series = bool(row.get("is_recurring_series")) if table == "events" else False
+        # A grouped/series row's ends_at belongs to members[0] alone (same
+        # caveat as its starts_at/occurs_at) -- fine for a single event, not
+        # meaningful for a series, so left NULL there rather than implying
+        # one occurrence's end time covers the whole program.
+        ends_at = row.get("ends_at") if (table == "events" and not is_recurring_series) else None
+
+        # Resolve once, at publish time, purely to decide whether to queue
+        # for human review -- the RESOLUTION ITSELF is re-done at every site
+        # build against the live registry (site/src/lib/db.ts), never
+        # cached on the row, so a later alias addition heals this event
+        # automatically without touching `stories` again. See
+        # ai_pipeline/venue_registry.py's module docstring.
+        if table == "events" and venue_raw and not is_recurring_series:
+            if resolve_venue(venue_registry, venue_raw) is None:
+                queue_for_review(conn, town_id, venue_raw)
 
         with conn.cursor() as cur:
             cur.execute(
                 """
                 INSERT INTO stories
                     (town_id, title, slug, body, source_type, source_url,
-                     snapshot_id, generated_by, verified, published_at, occurs_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                     snapshot_id, generated_by, verified, published_at, occurs_at,
+                     venue_raw, is_recurring_series, ends_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT (town_id, slug) DO NOTHING
                 """,
                 (town_id, title, slug, result.text, source_type, source_url,
                  snapshot_id, result.generated_by, result.verified,
-                 datetime.now(timezone.utc), occurs_at),
+                 datetime.now(timezone.utc), occurs_at,
+                 venue_raw, is_recurring_series, ends_at),
             )
         known_slugs.add(slug)
         published += 1

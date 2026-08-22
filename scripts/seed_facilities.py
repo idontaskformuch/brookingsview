@@ -47,28 +47,33 @@ def seed_town(conn, town_id: str) -> tuple[int, int]:
             cur.execute(
                 """
                 INSERT INTO facilities
-                    (town_id, slug, name, category, address, phone, website,
-                     hours_text, description, lat, lon, source_url,
-                     verified_date, content_hash, updated_at)
+                    (town_id, slug, name, category, address, street_address,
+                     postal_code, aliases, phone, website, hours_text,
+                     description, lat, lon, source_url, verified_date,
+                     content_hash, updated_at)
                 VALUES
                     (%(town_id)s, %(slug)s, %(name)s, %(category)s, %(address)s,
+                     %(street_address)s, %(postal_code)s, %(aliases)s,
                      %(phone)s, %(website)s, %(hours_text)s, %(description)s,
                      %(lat)s, %(lon)s, %(source_url)s, %(verified_date)s,
                      %(content_hash)s, now())
                 ON CONFLICT (town_id, slug) DO UPDATE SET
-                    name          = EXCLUDED.name,
-                    category      = EXCLUDED.category,
-                    address       = EXCLUDED.address,
-                    phone         = EXCLUDED.phone,
-                    website       = EXCLUDED.website,
-                    hours_text    = EXCLUDED.hours_text,
-                    description   = EXCLUDED.description,
-                    lat           = EXCLUDED.lat,
-                    lon           = EXCLUDED.lon,
-                    source_url    = EXCLUDED.source_url,
-                    verified_date = EXCLUDED.verified_date,
-                    content_hash  = EXCLUDED.content_hash,
-                    updated_at    = now()
+                    name           = EXCLUDED.name,
+                    category       = EXCLUDED.category,
+                    address        = EXCLUDED.address,
+                    street_address = EXCLUDED.street_address,
+                    postal_code    = EXCLUDED.postal_code,
+                    aliases        = EXCLUDED.aliases,
+                    phone          = EXCLUDED.phone,
+                    website        = EXCLUDED.website,
+                    hours_text     = EXCLUDED.hours_text,
+                    description    = EXCLUDED.description,
+                    lat            = EXCLUDED.lat,
+                    lon            = EXCLUDED.lon,
+                    source_url     = EXCLUDED.source_url,
+                    verified_date  = EXCLUDED.verified_date,
+                    content_hash   = EXCLUDED.content_hash,
+                    updated_at     = now()
                 RETURNING (xmax = 0) AS inserted
                 """,
                 {
@@ -77,6 +82,9 @@ def seed_town(conn, town_id: str) -> tuple[int, int]:
                     "name": f["name"],
                     "category": f["category"],
                     "address": f.get("address"),
+                    "street_address": f.get("street_address"),
+                    "postal_code": f.get("postal_code"),
+                    "aliases": f.get("aliases") or [],
                     "phone": f.get("phone"),
                     "website": f.get("website"),
                     "hours_text": f.get("hours_text"),

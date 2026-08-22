@@ -21,3 +21,22 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: python -m pytest tests/ -v
+
+  # Type-checks site/src -- catches the class of regression this was added
+  # for (Event JSON-LD venue resolution, see NEEDS-HUMAN-REVIEW.md): a wrong
+  # prop shape or a missing DB column reference fails here instead of
+  # silently shipping. Pure static analysis, same as `astro check` run
+  # locally -- no DATABASE_URL needed, sql`` template calls are never
+  # executed during type-checking.
+  astro-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npm run check

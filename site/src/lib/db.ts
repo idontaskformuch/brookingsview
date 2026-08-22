@@ -103,6 +103,21 @@ export interface Story {
   // Endast vardagsmiddag, samma mönster som ingredients men för steg-för-steg-
   // instruktionerna. NULL för allt annat innehåll, se db/migrations/008.
   instructions: string[] | null;
+  // Endast source_type='event' -- den skrapade, rå LOCATION-strängen (se
+  // scrapers/parsers/events.py), aldrig sluggad/normaliserad. Resolvas mot
+  // `facilities` HÄR vid render/build, aldrig cachad som ett facility-id på
+  // raden -- se resolveVenue() nedan och ai_pipeline/venue_registry.py:s
+  // moduldocstring för varför. Optional (inte bara `| null`) eftersom
+  // frågor som inte behöver den (t.ex. getActiveAlerts) inte selectar den.
+  venue_raw?: string | null;
+  // Sant för en "series"-story byggd av ai_pipeline.publish.group_recurring_
+  // events -- en enda URL som representerar MÅNGA instanser, så den kan
+  // aldrig peka på EN verklig plats/tid utan att bryta Googles en-URL-per-
+  // event-regel. Se [slug].astro för hur det här styr JSON-LD-emission.
+  is_recurring_series?: boolean;
+  // Endast source_type='event', enkla (icke-serie) rader -- se
+  // ai_pipeline/publish.py. Optional för samma skäl som venue_raw ovan.
+  ends_at?: string | null;
 }
 
 export interface Game {
@@ -181,7 +196,8 @@ export async function getUpcomingStories(
 ): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions
+           byline, image_path, rating, ingredients, instructions,
+           venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
@@ -198,7 +214,8 @@ export async function getPastStories(
 ): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions
+           byline, image_path, rating, ingredients, instructions,
+           venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
@@ -223,7 +240,8 @@ export async function getPastStories(
 export async function getTodaysFeature(): Promise<Story | null> {
   const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions
+           byline, image_path, rating, ingredients, instructions,
+           venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${CONTENT_TRACK_TYPES})
@@ -241,7 +259,8 @@ export async function getTodaysFeature(): Promise<Story | null> {
 export async function getContentByType(sourceTypes: SourceType[], limit = 40): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions
+           byline, image_path, rating, ingredients, instructions,
+           venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
@@ -253,7 +272,8 @@ export async function getContentByType(sourceTypes: SourceType[], limit = 40): P
 export async function getStoryBySlug(slug: string): Promise<Story | null> {
   const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions
+           byline, image_path, rating, ingredients, instructions,
+           venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
      LIMIT 1
@@ -265,7 +285,8 @@ export async function getStoryBySlug(slug: string): Promise<Story | null> {
 export async function getAllStories(): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions
+           byline, image_path, rating, ingredients, instructions,
+           venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}
      ORDER BY occurs_at DESC NULLS LAST
@@ -305,7 +326,8 @@ export async function getActiveAlerts(): Promise<Story[]> {
 export async function getLatestWeekly(): Promise<Story | null> {
   const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions
+           byline, image_path, rating, ingredients, instructions,
+           venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = 'weekly'
@@ -333,7 +355,8 @@ export async function getRelatedStories(
 
   const sameType = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions
+           byline, image_path, rating, ingredients, instructions,
+           venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND slug <> ${story.slug}
@@ -348,7 +371,8 @@ export async function getRelatedStories(
   const seen = [story.slug, ...sameType.map((s) => s.slug)];
   const filler = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions
+           byline, image_path, rating, ingredients, instructions,
+           venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND slug <> ALL(${seen})
@@ -867,6 +891,16 @@ export interface Facility {
   description: string | null;
   source_url: string | null;
   verified_date: string | null;
+  // Added by db/migrations/020_event_venue_resolution.sql for Event
+  // JSON-LD venue resolution (see ai_pipeline/venue_registry.py) -- aliases
+  // are every raw scraped venue string seen for this facility; street_address
+  // + postal_code must BOTH be present for a resolved facility to count as
+  // rich-result-eligible, see hasResolvedAddress().
+  aliases: string[];
+  street_address: string | null;
+  postal_code: string | null;
+  lat: number | null;
+  lon: number | null;
 }
 
 /** Alla anläggningar för den aktuella orten, grupperat på category av
@@ -875,7 +909,8 @@ export interface Facility {
 export async function getFacilities(): Promise<Facility[]> {
   return (await sql`
     SELECT slug, name, category, address, phone, website,
-           hours_text, description, source_url, verified_date
+           hours_text, description, source_url, verified_date,
+           aliases, street_address, postal_code, lat, lon
       FROM facilities
      WHERE town_id = ${TOWN_ID}
      ORDER BY category, name
@@ -887,7 +922,8 @@ export async function getFacilities(): Promise<Facility[]> {
 export async function getFacilityBySlug(slug: string): Promise<Facility | null> {
   const rows = (await sql`
     SELECT slug, name, category, address, phone, website,
-           hours_text, description, source_url, verified_date
+           hours_text, description, source_url, verified_date,
+           aliases, street_address, postal_code, lat, lon
       FROM facilities
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
      LIMIT 1
@@ -1189,4 +1225,96 @@ export function countdown(value: string | null): string {
   if (days <= 0) return 'today';
   if (days === 1) return 'tomorrow';
   return `in ${days} days`;
+}
+
+/* ---------------------------------------------------- event venue / JSON-LD */
+
+// Venue resolution for Event JSON-LD reuses getFacilities()/Facility above
+// (see db/migrations/020_event_venue_resolution.sql for the aliases/
+// street_address/postal_code columns added for this) -- resolution happens
+// fresh on every build against the live `facilities` table, so adding an
+// alias re-resolves every previously-unmatched event on the next rebuild
+// with no pipeline re-run. See ai_pipeline/venue_registry.py's module
+// docstring for the full design.
+
+/** Same algorithm as ai_pipeline.venue_registry.normalize_venue() -- kept as
+ *  a small duplicated function rather than a cross-language shared module,
+ *  same tradeoff this codebase already makes for OUTLIER_PRICE_FLOOR (see
+ *  ai_pipeline/home_sales_digest.py + home-sales.astro). Scraped LOCATION
+ *  strings are "Name,Street, City, ST ZIP, USA" -- only the name part
+ *  (before the first comma) is ever what a curated alias would list. */
+export function normalizeVenue(raw: string | null | undefined): string | null {
+  if (!raw || !raw.trim()) return null;
+  const namePart = raw.split(',')[0].replace(/^[A-Z0-9 .'-]+:\s*/, '');
+  const normalized = namePart.replace(/\s+/g, ' ').trim().toLowerCase();
+  return normalized || null;
+}
+
+/** Build once per page render (or once per events-listing render) and reuse
+ *  across many resolveVenue() calls -- avoids rebuilding the alias map per
+ *  event. */
+export function buildVenueIndex(facilities: Facility[]): Map<string, Facility> {
+  const index = new Map<string, Facility>();
+  for (const facility of facilities) {
+    for (const candidate of [facility.name, ...(facility.aliases ?? [])]) {
+      const norm = normalizeVenue(candidate);
+      if (norm) index.set(norm, facility);
+    }
+  }
+  return index;
+}
+
+export function resolveVenue(index: Map<string, Facility>, rawVenue: string | null | undefined): Facility | null {
+  const norm = normalizeVenue(rawVenue);
+  if (norm === null) return null;
+  return index.get(norm) ?? null;
+}
+
+/** BOTH street_address and postal_code must be present for a resolved
+ *  facility to count as rich-result-eligible -- a facility seeded without a
+ *  verified structured address (see data/facilities/*.json) still resolves
+ *  for display purposes elsewhere, but must never emit a Place claiming an
+ *  address it doesn't actually have. */
+export function hasResolvedAddress(facility: Facility | null): boolean {
+  return Boolean(facility && facility.street_address && facility.postal_code);
+}
+
+const VIRTUAL_VENUE_KEYWORDS = [
+  'virtual', 'online event', 'zoom', 'webinar', 'livestream', 'webex',
+  'google meet', 'microsoft teams', 'teams meeting', 'via video',
+];
+
+/** Same keyword set as ai_pipeline.venue_registry.is_virtual() -- see that
+ *  module for why this stays deliberately conservative (a false negative
+ *  just falls through to normal venue resolution, never a wrong address). */
+export function isVirtualVenue(...texts: (string | null | undefined)[]): boolean {
+  const joined = texts.filter(Boolean).join(' ').toLowerCase();
+  return VIRTUAL_VENUE_KEYWORDS.some((kw) => joined.includes(kw));
+}
+
+/**
+ * Format a UTC ISO timestamp with an explicit local offset (e.g.
+ * "2026-09-08T23:00:00-07:00") instead of "Z" -- Google's Event structured-
+ * data guidance calls for an explicit offset on startDate/endDate. Postgres
+ * TIMESTAMPTZ columns come back from Neon as UTC; both represent the same
+ * instant, but an offset is what's actually asked for. Dependency-free
+ * (no date library in this project) via Intl.DateTimeFormat, which has
+ * IANA-zone support in both Node (build) and the Cloudflare Pages runtime.
+ */
+export function toZonedISOString(utcIso: string, timeZone: string): string {
+  const date = new Date(utcIso);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone, hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    timeZoneName: 'shortOffset',
+  }).formatToParts(date);
+
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  const offsetMatch = get('timeZoneName').match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/);
+  const offset = offsetMatch
+    ? `${offsetMatch[1]}${offsetMatch[2].padStart(2, '0')}:${(offsetMatch[3] ?? '00').padStart(2, '0')}`
+    : '+00:00';
+
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}${offset}`;
 }

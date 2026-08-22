@@ -181,15 +181,121 @@ the code deliberately does NOT decide on its own.
   to write 250+ words about, not a bug. As a side effect of the same run,
   10 "data pending" placeholder stories were published for Nov 2025–Aug
   2026 (the missing-trailing-months feature, `ON CONFLICT DO NOTHING`, safe).
-- **Event JSON-LD has no real venue/address.** `stories` doesn't carry the
-  specific venue (only the source `events` table does), so the new
-  `schema.org/Event` markup in `s/[slug].astro` falls back to town-level
-  location. Honest but likely insufficient for Google's full Event rich
-  result — worth running through the Rich Results Test manually (no access
-  to it from this environment) and considering a `stories.venue` column if
-  rich results turn out to require a real address.
+- ~~**Event JSON-LD has no real venue/address.**~~ **Resolved (2026-08-22)
+  — see section 6 below.**
 
-## 5. Not addressed yet
+## 6. Event JSON-LD venue resolution & emission rules — built 2026-08-22
+
+Replaces the town-level-fallback Event markup flagged above with a curated
+venue registry, following the "never synthesize an address, only claim
+rich-result eligibility when a venue actually resolves" principle from the
+brief.
+
+- **Registry**: reused `facilities` (db/migrations/007) rather than a new
+  table, per the brief's own preference for one source of truth. Migration
+  020 added `aliases[]`, `street_address`, `postal_code` to it. The 5
+  existing Moreno Valley facilities (3 library branches, Lasselle Sports
+  Park, City Hall) got `street_address`/`postal_code` split mechanically out
+  of their already-verified `address` field (no new claims), plus aliases
+  taken directly from real `events.venue` strings observed in the database
+  (e.g. `"Main Library"` → `main-library`). See
+  `data/facilities/moreno_valley_ca.json`.
+- **Resolution**: `ai_pipeline/venue_registry.py` (Python, used by
+  `publish.py` at publish time to decide what to queue) and a duplicated
+  equivalent in `site/src/lib/db.ts` (TypeScript, used at every site build
+  to decide emission) — same tradeoff already established in this codebase
+  for `OUTLIER_PRICE_FLOOR`. Resolution is never cached on a `stories` row;
+  it's redone fresh on every build, so adding an alias to the registry
+  re-resolves every previously-unmatched event on the next rebuild with no
+  pipeline re-run.
+- **Emission decision tree** (`site/src/pages/s/[slug].astro`): physical
+  venue resolves (both `street_address` and `postal_code` present) → full
+  `Place`/`PostalAddress` Event JSON-LD; unresolved venue → **no** Event
+  markup at all (renders as plain HTML, preferred option per the brief over
+  a non-rich placeholder); virtual keywords detected (`zoom`, `webinar`,
+  `livestream`, ...) → `VirtualLocation` Event; both → `MixedEventAttendance
+  Mode`. `startDate`/`endDate` use a new `toZonedISOString()` helper so they
+  carry an explicit `America/Los_Angeles` offset instead of `Z`.
+- **Recurring series get NO Event JSON-LD.** The brief's preferred design
+  (Event markup on each dated occurrence's own URL, series page just
+  describing the program) doesn't fit this codebase: `group_recurring_events`
+  (already shipped, Phase 2) deliberately collapses a recurring program into
+  **one** URL with no per-occurrence pages at all — that collapsing is
+  itself a deliberate anti-thin-content decision, not something to undo for
+  this feature. The brief's documented fallback (`eventSchedule`/`Schedule`)
+  was considered and rejected: the only data available for a series
+  (`series_dates`) is already human-formatted display text, not structured
+  start times, so building a `Schedule` object from it would mean
+  re-parsing loosely-formatted strings into something claiming to be
+  structured data — exactly the kind of fragile inference the "never
+  synthesize" principle is against. Plain HTML only for series pages.
+  **Currently moot in practice**: checked directly against the live DB
+  before building this — zero recurring-series stories have ever actually
+  been published (`group_recurring_events` only applies to newly-published
+  events; the ~1035 already-published event stories predate that feature).
+  Worth revisiting if/when per-occurrence URLs are ever built.
+- **Backfill**: `publish.py` only fills `venue_raw`/`ends_at` for newly
+  published stories going forward (existing rows are never re-touched, by
+  design). Ran a one-time `scripts/backfill_event_venues.py` against the
+  live DB for the 1035 already-published event stories: **673 resolved
+  against the registry, 357 queued for human review.** Verified with a real
+  `SITE_CITY=moreno_valley_ca astro build` (1189 pages) before and after:
+  0 pages emitted Event JSON-LD pre-backfill, exactly 673 do post-backfill
+  (matching the resolved count exactly), and spot-checked both a resolved
+  page (full `Place`/`PostalAddress`, correct `-07:00` startDate/endDate
+  offset) and an unresolved one (`Building Up Lives Foundation`, zero Event
+  markup, as designed).
+- **Review queue** (`venue_review_queue`, ordered by occurrence count):
+  worth a human's time roughly in this order —
+  - `Building Up Lives Foundation` / `Building Up Lives Foundation (Suite
+    A)` — 226 + 113 = 339 events, a real third-party nonprofit host with a
+    full street address already in the scraped source
+    (`23185 Hemlock Ave suite a/Suite A, Moreno Valley, CA 92557`), just
+    never independently verified against an official source the way the 5
+    seeded facilities were. By far the highest-value addition if verified —
+    likely worth aliasing both name variants to the same registry entry.
+  - `Celebration Park` (9), `Shadow Mountain Park` (6), `Moreno Valley
+    Community Park` (3) — real city parks with addresses already in the
+    scraped source, same "needs official verification, not yet in the
+    registry" situation as above, just lower volume.
+  - No garbage/non-venue strings ended up in the queue (the NWS weather-zone
+    lists spotted during earlier investigation turn out to never attach to
+    `source_type='event'` stories, so they never reach this path).
+- **Decisions made without waiting for review** (both reversible, noted here
+  per the brief's "pick one, apply it consistently" instruction):
+  - Virtual-only events emit `VirtualLocation` Event JSON-LD (not omitted
+    entirely) — low-cost, and the brief itself suggested it's useful for
+    non-Google/AI consumers even with zero Google rich-result eligibility.
+  - `offers` (price/availability) is **not emitted at all**, for any event.
+    The brief's spec assumed free library events could get a `"$0"` Offer,
+    but nothing in the scraped source actually states an event is free —
+    asserting that would be an unverified claim, the same class of problem
+    this whole feature exists to avoid on the address side.
+- **Not built — genuinely needs a human decision or bigger surgery, not a
+  guess**:
+  - **Status maintenance (`EventCancelled`/`EventRescheduled`)**: requires
+    knowing when a previously-seen event disappears from the source feed,
+    which needs a "last seen" diff against prior scrapes. `publish.py`
+    currently only ever inserts new stories (`ON CONFLICT DO NOTHING`) and
+    never revisits published rows — adding update-in-place tracking is a
+    real architecture change, not a small addition alongside this feature.
+  - **JSON-LD fixture/CI gate**: added `astro check` (TypeScript
+    type-checking, catches wrong prop shapes/missing columns) as a new CI
+    job — genuinely useful but not the same as the brief's requested
+    structural fixture tests (one resolvable event / one unresolved venue /
+    one virtual event, asserting exact JSON-LD shape). The Python-side
+    algorithm (`ai_pipeline/venue_registry.py`) has exactly those fixture
+    cases in `tests/test_venue_registry.py`, but the TypeScript emission
+    logic in `[slug].astro` doesn't, because this project has no JS test
+    runner configured at all (no vitest/jest in `site/package.json`).
+    Bootstrapping one is a reasonable follow-up, not something to add as a
+    side effect of this feature.
+  - **Rich Results Test validation**: no access to Google's tool from this
+    environment (same limitation noted for the original town-level markup).
+    Worth running a resolved event page (e.g. any `main-library` event)
+    through it manually once deployed.
+
+## 7. Not addressed yet
 
 Phases 3–4 of the brief (editorial quality/thin sections, site-wide
 UX/SEO/polish) — gated behind Phase 2 review, per the brief's own
