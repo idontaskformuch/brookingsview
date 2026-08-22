@@ -2,14 +2,25 @@
 
 Samma enkla ansats som media_recension tidigare hade (nu content/now_playing.py,
 ett live TMDb-API): ingen scraper för lokala matbutikers
-utbud, bara en säsongslista grundad i vad som faktiskt växer/skördas i South
-Dakotas klimatzon (ungefär zon 4b/5a, Upper Midwest-odlingssäsong) månad för
-månad. Deterministisk pick per dag-i-året, ingen tillståndsspårning behövs.
+utbud, bara en säsongslista grundad i vad som faktiskt växer/skördas i orten
+klimatzon, månad för månad. Deterministisk pick per dag-i-året, ingen
+tillståndsspårning behövs.
 
-UNDERHÅLL: listan är statisk och kräver ingen manuell påfyllning (till skillnad
-från now_playing.py, som är en live källa) -- säsongerna återkommer likadant
-varje år. Justera bara om
-den lokala odlingskalendern faktiskt ändras (klimat, nya lokala grödor osv).
+TVÅ SÄSONGSLISTOR, EN PER KLIMAT (2026-08-23, se NEEDS-HUMAN-REVIEW.md "3.4
+Recipes"): Phase 1:s dekontaminering tog bort de FELAKTIGA "South Dakota"-
+strängarna ur Moreno Valley-publicerat innehåll, men den ENDA säsongslistan
+som fanns kvar var fortfarande South Dakotas eget odlingskalender (zon 4b/5a,
+Upper Midwest, kort växtsäsong, tydliga fyra årstider) -- rätt för Brookings,
+FEL för Moreno Valley oavsett att delstatsnamnet var bortstädat. Riverside
+County/Inland Empire ligger i Sunset-zon 18/19: långt, milt växtsäsong,
+minimal frost, historiskt citrusdistrikt. SOCAL_SEASONAL_INGREDIENTS nedan är
+den motsvarande listan för det klimatet -- en annan lista, inte en
+sträng-och-ersätt av samma data.
+
+UNDERHÅLL: listorna är statiska och kräver ingen manuell påfyllning (till
+skillnad från now_playing.py, som är en live källa) -- säsongerna återkommer
+likadant varje år. Justera bara om den lokala odlingskalendern faktiskt
+ändras (klimat, nya lokala grödor osv).
 """
 from __future__ import annotations
 
@@ -32,16 +43,62 @@ SEASONAL_INGREDIENTS: dict[int, list[str]] = {
     12: ["root vegetables", "stored apples", "dried beans"],
 }
 
+# Inland Empire / Riverside County (Sunset zone 18/19): long warm season,
+# minimal frost, a real citrus-growing region -- deliberately NOT a copy of
+# the Upper Midwest list above with names swapped. Citrus and avocado carry
+# through winter (the opposite of a Midwest "root vegetables in January"
+# pattern); summer stone fruit and melons arrive earlier and run longer.
+SOCAL_SEASONAL_INGREDIENTS: dict[int, list[str]] = {
+    1: ["navel oranges", "avocado", "leafy greens (chard, kale)"],
+    2: ["mandarins", "artichokes", "leafy greens"],
+    3: ["strawberries (early)", "artichokes", "snap peas"],
+    4: ["strawberries", "asparagus", "spring onions"],
+    5: ["strawberries", "apricots", "cherries"],
+    6: ["peaches", "cherries", "zucchini"],
+    7: ["tomatoes", "sweet corn", "bell peppers"],
+    8: ["tomatoes", "melons", "bell peppers"],
+    9: ["grapes", "figs", "bell peppers"],
+    10: ["pomegranates", "persimmons", "winter squash"],
+    11: ["persimmons", "sweet potatoes", "navel oranges (early)"],
+    12: ["navel oranges", "avocado", "winter greens"],
+}
 
-def next_pick(today: datetime.date) -> str:
+_REGIONS: dict[str, tuple[dict[int, list[str]], str]] = {
+    "socal": (SOCAL_SEASONAL_INGREDIENTS, "Southern California's Inland Empire"),
+    "midwest": (SEASONAL_INGREDIENTS, "South Dakota"),
+}
+
+# town_id -> region key. New towns default to "midwest" (the original list)
+# unless added here -- an explicit mapping instead of inferring from state
+# abbreviation, since climate zone doesn't follow state lines cleanly enough
+# to guess safely.
+_TOWN_REGION: dict[str, str] = {
+    "moreno_valley_ca": "socal",
+    "brookings_sd": "midwest",
+}
+
+
+def _region_for(cfg: dict | None) -> tuple[dict[int, list[str]], str]:
+    town_id = (cfg or {}).get("town_id")
+    key = _TOWN_REGION.get(town_id, "midwest")
+    return _REGIONS[key]
+
+
+def next_pick(today: datetime.date, cfg: dict | None = None) -> str:
     """Deterministic pick within today's month -- same pick if rerun the same day,
     rotates across the month's candidates by day-of-month."""
-    candidates = SEASONAL_INGREDIENTS[today.month]
+    ingredients, _ = _region_for(cfg)
+    candidates = ingredients[today.month]
     return candidates[today.day % len(candidates)]
 
 
-def build_local_input(ingredient: str) -> str:
+def build_local_input(ingredient: str, cfg: dict | None = None) -> str:
+    _, region_label = _region_for(cfg)
     return (
-        f"Main ingredient: {ingredient}, in season now in South Dakota. "
-        f"Write a weeknight dinner recipe centered on it."
+        f"Main ingredient: {ingredient}, in season now in {region_label}. "
+        f"Write a weeknight dinner recipe centered on it. Do not name a "
+        f"specific farmers market, grocery store, or produce stand -- you "
+        f"have no verified information about which ones currently carry "
+        f"this ingredient or when they're open. Describe the ingredient as "
+        f"being in season for the region generally."
     )

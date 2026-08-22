@@ -587,6 +587,50 @@ the type is still legible in the merged listing). Revisit if Moreno
 Valley's review output picks up — nothing structural blocks moving it back
 to its own section later.
 
+### 3.4 Recipes — real climate fix, template already enforced, slug renamed
+
+**Seasonality — the real bug, now fixed.** `content/seasonal_ingredients.py`
+had exactly one seasonal-ingredient calendar, South Dakota's (Upper Midwest,
+zone 4b/5a) — Phase 1 removed the literal "South Dakota" string from
+published Moreno Valley text, but the underlying *logic* (what's in season
+each month) was still the Midwest's, just with the state name scrubbed
+out — e.g. "root vegetables in January" instead of citrus, which is
+backwards for a Sunset zone 18/19 region. Added a second, independently-
+built list (`SOCAL_SEASONAL_INGREDIENTS`, Riverside County/Inland Empire:
+citrus and avocado through winter, stone fruit/melons earlier and longer in
+summer) and a `town_id -> region` mapping so each town gets its own actual
+climate, not a relabeled copy of the other's. Verified both towns pick
+correctly (checked January: Moreno Valley → navel oranges, Brookings →
+butternut squash).
+
+**Unverified local sources** — added an explicit instruction (same pattern
+as the Reviews local-theater fix): the recipe prompt now tells the model
+never to name a specific farmers market, grocery store, or produce stand,
+since there's no verified data on which ones carry a given ingredient or
+when they're open.
+
+**One template — already enforced, no live violations found.**
+`content/recept/vardagsmiddag.py` already fails loud (returns `None`,
+publishes nothing) if ingredient or instruction markers don't extract
+cleanly — added 2026-08-08 after finding 2 of 4 already-published recipes
+were teaser-only. Checked current Moreno Valley recipe stories directly: 3
+of the 4 ever published are already unpublished (all were among the 11
+Phase-1 contamination rows, for that reason, not this one), and every one of
+those 3 happens to be teaser/broken-template — so removing them already
+incidentally cleared out every structurally-broken recipe. The one still
+live (`vardagsmiddag-2026-08-13`) has both ingredients and instructions.
+Nothing left to backfill or unpublish for this specifically.
+
+**Slug prefix renamed, no redirects needed.** New recipes now get
+`recipe-YYYY-MM-DD` slugs instead of `vardagsmiddag-YYYY-MM-DD`
+(`ai_pipeline/daily_content.py`) — `source_type` stays `vardagsmiddag`
+internally (too much else keys off that exact string: `CONTENT_TRACK_TYPES`,
+`MODULES`, `CONTENT_TYPE_MODELS`, ...) so this is a URL-only rename. No
+redirect table was needed: this codebase never renames a slug once
+published (every content type's idempotency depends on that), so the one
+existing `vardagsmiddag-*` URL keeps working under its original slug
+forever — the rename only applies going forward.
+
 ## 8. Not addressed yet
 
 Nothing outstanding as of this line — updated as Phase 3/4 sub-sections

@@ -86,8 +86,8 @@ def _build_local_input(conn, town_id: str, content_type: str,
                 f"recent release: {movie['title']} ({movie['release_date']})")
 
     if content_type == "vardagsmiddag":
-        ingredient = seasonal_ingredients.next_pick(today)
-        return (seasonal_ingredients.build_local_input(ingredient),
+        ingredient = seasonal_ingredients.next_pick(today, cfg)
+        return (seasonal_ingredients.build_local_input(ingredient, cfg),
                 f"seasonal ingredient: {ingredient}")
 
     stories = local_context.recent_local_stories(conn, town_id)
@@ -130,7 +130,15 @@ def main() -> int:
         return 0
 
     write, category = MODULES[content_type]
-    slug = f"{content_type}-{today.isoformat()}"
+    # Slug prefix renamed 2026-08-23 (vardagsmiddag -> recipe) for new
+    # content only -- see NEEDS-HUMAN-REVIEW.md "3.4 Recipes". source_type
+    # stays "vardagsmiddag" internally (CONTENT_TRACK_TYPES, MODULES,
+    # CONTENT_TYPE_MODELS etc. all key off it) -- only the reader-facing URL
+    # prefix changes. Existing vardagsmiddag-* rows keep their slug as-is
+    # permanently (slugs are never renamed post-publish anywhere in this
+    # codebase), so old URLs keep working without needing a redirect table.
+    slug_prefix = "recipe" if content_type == "vardagsmiddag" else content_type
+    slug = f"{slug_prefix}-{today.isoformat()}"
 
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
