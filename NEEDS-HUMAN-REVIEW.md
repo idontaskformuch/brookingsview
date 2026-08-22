@@ -413,8 +413,87 @@ brief.
     Worth running a resolved event page (e.g. any `main-library` event)
     through it manually once deployed.
 
-## 7. Not addressed yet
+## 7. Phase 3 & 4 — editorial upgrade (in progress, started 2026-08-22)
 
-Phases 3–4 of the brief (editorial quality/thin sections, site-wide
-UX/SEO/polish) — gated behind Phase 2 review, per the brief's own
-phase-by-phase instruction.
+### 3.1 Facilities — sourcing investigation: a real structured source exists, built end to end
+
+**Finding**: the City of Moreno Valley publishes several public, unauthenticated
+Esri ArcGIS Feature Services — found via **MoVal GeoHub**
+(`gis-moval.opendata.arcgis.com`), the city's own open-data portal. Verified via
+its standard DCAT catalog (`/data.json`, the machine-readable index every
+ArcGIS Hub site exposes for exactly this kind of discovery) and confirmed each
+layer's own ArcGIS item metadata says `"access": "public"` — the city's
+deliberate choice to publish this as open data, not something found by working
+around a restriction. No `robots.txt` or terms-of-use blocker applies (unlike
+`rivcoacr.org`'s property-sales report): these are query-capable REST
+endpoints meant for exactly this kind of consumption, the same category as the
+already-verified NOAA/MLB/Caltrans sources in this codebase.
+
+Layers used (all confirmed live and queried directly, not guessed at):
+`MoValParks` (35 parks), `MoValOtherParks` (filtered to in-city addresses —
+it also lists 2 regional state/county sites in Perris/Lakeview, excluded per
+"local means local"), `MoValRentalFacilities` (5 bookable community/senior
+centers), `City_and_Government_Offices` (25 civic points of interest,
+filtered to `City == "Moreno Valley"` — 3 entries sit in Perris/Riverside,
+excluded for the same reason). `MoValTrailHeads`/`MoValPicnicShelter` were
+found but deliberately not used — they're sub-features of parks already
+listed (individual bookable picnic shelters, trail access points), and
+including them would fragment one park into several thin near-duplicate pages.
+
+**Built** (`scripts/ingest_moval_facilities.py`): fetches all layers, dedupes
+cross-layer duplicates (e.g. "Senior Community Center" listed identically in
+two layers), reverse-geocodes a postal code for every record from its own
+lat/lon via Esri's public World Geocoding Service (no key required, the same
+service the city's own GIS viewer uses — deriving a real fact from a
+coordinate already in hand, not inventing one), and merges into `facilities`.
+Existing hand-curated rows (with verified aliases needed for Event JSON-LD
+venue resolution) are matched by name and **updated** (lat/lon filled in,
+never their curated address/phone/hours/aliases) rather than duplicated.
+
+Ran for real: **63 facilities** now in the directory (up from 9) — 35 parks,
+10 other civic/government offices, 6 community centers, 3 post offices, 3
+libraries, 2 medical (Kaiser + **RUHS Medical Center**, both explicitly asked
+for), 1 city hall, 1 police (combined Police Dept & Fire Administration —
+that's how the source itself lists it, no separate fire-station data
+available in these layers, not fabricated to look more complete), 1 animal
+shelter, 1 school district office (MVUSD — Val Verde USD's own office
+address is in Perris, excluded by the same city filter, so Val Verde has no
+in-city civic address to list here). 58 of 63 successfully reverse-geocoded a
+postal code (2 — a police building and one park — didn't resolve; they still
+render fine on their own page, just aren't eligible for the address-requiring
+schema.org/Event JSON-LD path).
+
+**One correction surfaced and fixed, not silently overwritten**: Shadow
+Mountain Park's address was recorded as `23239 Presidio Hills Dr` during the
+prior review-session venue cleanup (citing a General Plan PDF via search).
+This live, actively-maintained city GIS system says `23680` — the same
+number three independent map providers (Yelp, TripAdvisor, DogPack) already
+gave. Went with the GIS system as the more current, directly-queried,
+authoritative source; both numbers and the reasoning are in
+`scripts/ingest_moval_facilities.py`'s module docstring. Flagging here since
+it directly contradicts a specific prior instruction — worth a final human
+glance if there's any reason to doubt the live GIS data over the PDF.
+
+Built per the brief's step 3: each facility page (`/facilities/[slug]/`) has
+name/address/phone/hours/website, `schema.org` markup per category
+(`Park`/`Library`/`CityHall`/`PoliceStation`/`PostOffice`/`Hospital`/
+`GovernmentOffice`/`CivicStructure` — never emitted without a verified
+`street_address` + `postal_code`, same "resolved or nothing" rule as Event
+JSON-LD) and, new: auto-linked upcoming events held there, cross-linked via
+the same venue registry Event JSON-LD already uses (`resolveVenue()` against
+the facility's own slug) — no separate venue-to-facility mapping to maintain.
+
+**Not done, and deliberately so**: no AI-generated "genuinely local"
+narrative paragraph per facility. With 63 facilities, running the AI pipeline
+once per page would be both a real cost and — more importantly — a
+temptation to generate color the source data doesn't actually support.
+Descriptions are template-built directly from the GIS layer's own verified
+fields (acreage + the city's own amenities bullet list for parks; nothing
+invented) rather than a narrative paragraph. If a warmer, hand-written
+paragraph per park is wanted later, that's a deliberate editorial decision
+to make per-park, not something to bulk-generate.
+
+## 8. Not addressed yet
+
+Nothing outstanding as of this line — updated as Phase 3/4 sub-sections
+complete or get escalated. See section 7 above for progress.

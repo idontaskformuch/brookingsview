@@ -8,7 +8,10 @@
  *  townId-gate, eftersom facilities-tabellen redan är town_id-filtrerad via
  *  getFacilities()/getFacilityBySlug(). */
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { getFacilities, getFacilityBySlug, FACILITY_CATEGORY_LABELS, formatCalendarDate } from '../../lib/db';
+import {
+  getFacilities, getFacilityBySlug, FACILITY_CATEGORY_LABELS, FACILITY_SCHEMA_TYPE,
+  formatCalendarDate, getUpcomingStories, buildVenueIndex, resolveVenue, formatOccursAt,
+} from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 
 export async function getStaticPaths() {
@@ -27,6 +30,19 @@ const categoryLabel = FACILITY_CATEGORY_LABELS[facility.category] ?? facility.ca
 const description = facility.description
   ? facility.description.slice(0, 155)
   : `Address, phone number and hours for ${facility.name} in ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`;
+
+// Cross-link upcoming events held at this facility -- the venue registry
+// (ai_pipeline/venue_registry.py, site/src/lib/event-jsonld.ts) is the join
+// key: an event's venue_raw resolves against the SAME facilities table this
+// page renders, so no separate venue-to-facility mapping needs maintaining.
+const allUpcoming = await getUpcomingStories(['event'], 200);
+const venueIndex = buildVenueIndex(await getFacilities());
+const upcomingHere = allUpcoming
+  .filter((s) => resolveVenue(venueIndex, s.venue_raw)?.slug === facility.slug)
+  .slice(0, 8);
+
+const hasFullAddress = Boolean(facility.street_address && facility.postal_code);
+const schemaType = FACILITY_SCHEMA_TYPE[facility.category] ?? 'CivicStructure';
 ---
 <BaseLayout title={`${facility.name} — ${siteConfig.siteName}`} description={description}>
   <article class="facility">
@@ -50,6 +66,20 @@ const description = facility.description
 
     {facility.description && <p class="description">{facility.description}</p>}
 
+    {upcomingHere.length > 0 && (
+      <>
+        <h2 class="section-label">Upcoming events here</h2>
+        <ul class="events">
+          {upcomingHere.map((s) => (
+            <li>
+              <a href={`/s/${s.slug}/`}>{s.title}</a>
+              <span class="when data">{formatOccursAt(s)}</span>
+            </li>
+          ))}
+        </ul>
+      </>
+    )}
+
     {facility.source_url && (
       <p class="source">
         Source: <a href={facility.source_url} rel="noopener">{siteConfig.cityName} official site</a>
@@ -59,6 +89,30 @@ const description = facility.description
 
     <p class="back"><a href="/facilities/">← All local facilities</a></p>
   </article>
+
+  {hasFullAddress && (
+    /* Never claims a schema.org address for a facility that doesn't have a
+       verified one -- same "resolved or nothing" rule as Event JSON-LD, see
+       site/src/lib/event-jsonld.ts. */
+    <script type="application/ld+json" is:inline set:html={JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': schemaType,
+      name: facility.name,
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: facility.street_address,
+        addressLocality: siteConfig.cityName,
+        addressRegion: siteConfig.stateAbbr,
+        postalCode: facility.postal_code,
+        addressCountry: 'US',
+      },
+      ...(facility.lat != null && facility.lon != null
+        ? { geo: { '@type': 'GeoCoordinates', latitude: facility.lat, longitude: facility.lon } }
+        : {}),
+      ...(facility.phone ? { telephone: facility.phone } : {}),
+      ...(facility.website ? { url: facility.website } : {}),
+    })} />
+  )}
 </BaseLayout>
 
 <style>
@@ -69,6 +123,11 @@ const description = facility.description
 .fact dt { font-family: var(--font-ui); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
 .fact dd { margin: 0; }
 .description { margin: 1.25rem 0; line-height: 1.6; }
+.section-label { margin: 1.75rem 0 0.75rem; font-size: 1.0625rem; }
+.events { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.events li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--rule); }
+.events a { font-weight: 600; }
+.events .when { color: var(--ink-soft); white-space: nowrap; font-size: 0.8125rem; }
 .source { font-size: 0.875rem; color: var(--ink-soft); margin-top: 1.5rem; }
 .back { margin-top: 1rem; }
 </style>

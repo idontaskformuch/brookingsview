@@ -932,12 +932,38 @@ export async function getFacilityBySlug(slug: string): Promise<Facility | null> 
 }
 
 /** Läsbar rubrik per category-värde, för gruppering på /facilities. */
+// Expanded 2026-08-22 (scripts/ingest_moval_facilities.py) from the
+// original 5 to cover the City of Moreno Valley's real civic footprint --
+// see db/migrations/007_facilities.sql and NEEDS-HUMAN-REVIEW.md, "3.1
+// Facilities sourcing".
 export const FACILITY_CATEGORY_LABELS: Record<string, string> = {
   library: 'Libraries',
   park: 'Parks',
   city_hall: 'City hall',
   community_center: 'Community centers',
+  police: 'Public safety',
+  animal_shelter: 'Animal shelter',
+  post_office: 'Post offices',
+  medical: 'Medical',
+  school_district: 'School district offices',
   other: 'Other',
+};
+
+// schema.org @type per facility category, for JSON-LD on the facility's own
+// page (site/src/pages/facilities/[slug].astro). Deliberately conservative
+// -- CivicStructure is schema.org's real fallback for a civic building
+// whose more specific type isn't a clean fit, not a guess.
+export const FACILITY_SCHEMA_TYPE: Record<string, string> = {
+  library: 'Library',
+  park: 'Park',
+  city_hall: 'CityHall',
+  community_center: 'CivicStructure',
+  police: 'PoliceStation',
+  animal_shelter: 'CivicStructure',
+  post_office: 'PostOffice',
+  medical: 'Hospital',
+  school_district: 'GovernmentOffice',
+  other: 'CivicStructure',
 };
 
 /**
