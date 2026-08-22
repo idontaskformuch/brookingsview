@@ -25,7 +25,7 @@ const isExternal = Boolean(hrefOverride);
 const shareUrl = new URL(`/s/${story.slug}/`, siteConfig.siteUrl).href;
 
 const isAlert = story.source_type === 'alert';
-const isMeeting = story.source_type === 'meeting';
+const isMeeting = story.source_type === 'meeting' || story.source_type === 'meeting_followup';
 // Content Track-innehåll (krönikor, recensioner, recept m.fl.) har alltid byline
 // satt -- occurs_at är bara now() vid genereringstillfället för de typerna, så
 // den ska aldrig användas som tidsangivelse. Publiceringsdatum är den rätta.

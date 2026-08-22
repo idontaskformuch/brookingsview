@@ -29,7 +29,7 @@ const sql = neon(import.meta.env.DATABASE_URL);
 export const TOWN_ID = siteConfig.townId;
 
 export type SourceType =
-  | 'meeting' | 'event' | 'alert' | 'weekly'
+  | 'meeting' | 'meeting_followup' | 'event' | 'alert' | 'weekly'
   | 'culture_essay' | 'editorial' | 'vetenskap_kronika' | 'kvick_essa'
   | 'media_recension' | 'vardagsmiddag' | 'home_sales_digest' | 'sports_digest' | 'local_sports_digest' | 'university_digest'
   | 'announcement' | 'workplace_watch_digest';
@@ -1238,7 +1238,7 @@ export function calendarDateParts(value: string | Date | null): { y: number; m: 
  *  distinktionen behöver göras, så inget anropsställe kan glömma den. */
 export function formatOccursAt(story: Pick<Story, 'source_type' | 'occurs_at'>): string {
   if (!story.occurs_at) return '';
-  if (story.source_type === 'meeting') return formatCalendarDate(story.occurs_at);
+  if (story.source_type === 'meeting' || story.source_type === 'meeting_followup') return formatCalendarDate(story.occurs_at);
   return formatDateTime(story.occurs_at);
 }
 

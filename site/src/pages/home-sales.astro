@@ -186,6 +186,14 @@ function monthYear(occursAt: string | null): string {
       });
     });
 
+    // ?zip=92553 pre-selects the filter -- the cross-link target from
+    // city-hall meeting stories that mention a ZIP (see [slug].astro's
+    // "development near you" link and NEEDS-HUMAN-REVIEW.md, "3.2 City hall").
+    const requestedZip = new URLSearchParams(location.search).get('zip');
+    if (requestedZip && zipFilter && [...zipFilter.options].some((o) => o.value === requestedZip)) {
+      zipFilter.value = requestedZip;
+    }
+
     apply();
   }
   init();

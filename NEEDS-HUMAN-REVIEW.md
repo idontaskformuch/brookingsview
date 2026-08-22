@@ -493,6 +493,65 @@ invented) rather than a narrative paragraph. If a warmer, hand-written
 paragraph per park is wanted later, that's a deliberate editorial decision
 to make per-park, not something to bulk-generate.
 
+### 3.2 City hall — expanded coverage, follow-ups, ZIP cross-links
+
+**Body coverage — already broader than it looked, one real gap found.**
+`scrapers/parsers/escribe_v1.py` was already body-agnostic (it processes
+every meeting eSCRIBE's calendar returns, no Planning-Commission-only
+filter) — checked the live calendar directly for all of 2026 to confirm what
+actually publishes public meetings through this portal: **only City Council
+(regular/special/study-session/closed) and Planning Commission.** No Parks &
+Community Services Commission, no Library Commission/Board on their own
+calendar entries. *However*: extracting real minutes text (see below) from a
+City Council Special Meeting turned up a joint session including the
+"Moreno Valley ... Board of Library Trustees" and several other boards
+(Housing Authority, Public Financing Corporation/Authority, Community
+Foundation) meeting **jointly** with the City Council rather than on
+separate calendar entries. So those bodies do exist and do meet — just not
+as their own eSCRIBE calendar items this codebase's source can see
+separately. Nothing to fix in code; flagging in case a human knows of a
+separate portal/calendar for those specific boards worth adding as its own
+source.
+
+**Built: "what happened" follow-ups** (`ai_pipeline/meeting_followups.py`).
+The existing meeting story previews the agenda; this adds a second, later
+story summarizing what the body actually decided, built from eSCRIBE's
+"PostMinutes" PDF (`scrapers/parsers/escribe_v1.py`, extracted with
+`pdfplumber`, same tool already used for agenda PDFs elsewhere). Two real
+bugs found and fixed while getting this working end to end: (1) minutes take
+longer to post than the scraper's original 14-day lookback window — widened
+to 60 days after confirming live that a 2026-07-30 meeting's minutes still
+weren't posted 3 weeks later but were by 2026-08-22; (2) the PostMinutes
+document URL comes back relative
+(`/FileStream.ashx?DocumentId=...`), unlike what the existing agenda-URL
+helper expected — fixed the same way the agenda helper already handles it.
+Ran for real end to end: published `meeting-followup-2497` (the July 30
+special session), genuinely useful content extracted from real minutes (a
+State of the City address + Community Leadership Awards, correctly noting
+"No votes or policy decisions were recorded" since the prompt requires that
+honesty for procedural-only minutes).
+
+**Built: ZIP cross-links to home-sales.** Meeting story bodies are scanned
+for a mention of one of Moreno Valley's 5 real ZIP codes;
+`/home-sales/` gained `?zip=` URL-param support so the link lands
+pre-filtered to that ZIP. Deliberately matches against a fixed known-ZIP
+list rather than a bare 5-digit regex (meeting text already contains case/
+file numbers that would false-positive).
+
+**Not built: explicit body-tag filter UI, street-level tagging.** The
+existing title format ("Planning Commission — Thu, Aug 13") and the
+"City hall" kicker already communicate which body a story is about; a
+dedicated filter dropdown (matching home-sales' ZIP filter pattern) would be
+a small, purely additive follow-up if wanted, not done here for time. Street-
+level tagging (vs. ZIP-level) was skipped as lower value than the ZIP
+cross-link for the same reason — ZIP-level was explicitly named as the
+target in the brief and directly maps to the existing home-sales filter.
+
+**Closed-session minimization**: already effectively met by the existing
+guardrail-constrained generation (checked a real example: one honest
+sentence — "confer with legal counsel about a potential legal case" — no
+fabricated substance). No change needed.
+
 ## 8. Not addressed yet
 
 Nothing outstanding as of this line — updated as Phase 3/4 sub-sections

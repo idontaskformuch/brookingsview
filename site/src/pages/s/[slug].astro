@@ -23,7 +23,8 @@ export async function getStaticPaths() {
 
 const { story, facilities } = Astro.props as { story: Story; facilities: Facility[] };
 const isAlert = story.source_type === 'alert';
-const kind = isAlert ? 'Alert' : story.source_type === 'meeting' ? 'Meeting' : 'Event';
+const isMeeting = story.source_type === 'meeting' || story.source_type === 'meeting_followup';
+const kind = isAlert ? 'Alert' : isMeeting ? 'Meeting' : 'Event';
 // Genererat innehåll (krönikor m.fl.) har alltid byline satt -- scraped nyheter
 // har byline = NULL. Byline.astro ersätter story__kind-raden när den finns, i
 // stället för att visa båda (kind skulle ändå bara säga "Event" fel för dessa).
@@ -48,6 +49,16 @@ const when = hasByline
 // ai_pipeline/home_sales_digest.py's main()). "zero_sales" is genuinely
 // substantive (a confirmed reporting fact), so it stays indexable.
 const isNoindex = story.generated_by === 'data_pending';
+// City-hall development items often name a ZIP directly ("...in the 92553
+// area...") -- cross-link to the home-sales table pre-filtered to it, per
+// NEEDS-HUMAN-REVIEW.md "3.2 City hall". Deliberately scoped to Moreno
+// Valley's actual ZIP codes (a fixed, known list, see home-sales.astro's own
+// zip-filter options) rather than a bare \d{5} match, which would also catch
+// case/file numbers already common in meeting text.
+const MOVAL_ZIPS = ['92551', '92552', '92553', '92555', '92557'];
+const mentionedZips = isMeeting
+  ? [...new Set(MOVAL_ZIPS.filter((z) => story.body.includes(z)))]
+  : [];
 const canonicalUrl = new URL(`/s/${story.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
 const related = await getRelatedStories(story, 3);
 // Steg 3.5: en tecknad illustration matchad till artikeln, om en sådan finns.
@@ -94,6 +105,17 @@ const eventJsonLdObject = buildEventJsonLd(
     <div class="story__body">
       {story.body.split('\n').filter(Boolean).map((para) => <p>{para}</p>)}
     </div>
+
+    {mentionedZips.length > 0 && (
+      <p class="story__zip-links data">
+        See recent home sales in {mentionedZips.map((zip, i) => (
+          <>
+            {i > 0 && ', '}
+            <a href={`/home-sales/?zip=${zip}`}>{zip}</a>
+          </>
+        ))}
+      </p>
+    )}
 
     {story.ingredients && story.ingredients.length > 0 && (
       <>
@@ -208,6 +230,7 @@ const eventJsonLdObject = buildEventJsonLd(
 .story__instructions li { margin: 0 0 0.75rem; padding-left: 0.25rem; }
 .story__body { margin-top: 1.75rem; font-size: 1.125rem; }
 .story__body p { margin: 0 0 1rem; }
+.story__zip-links { color: var(--ink-soft); font-size: 0.875rem; margin: -0.5rem 0 1.25rem; }
 .story__source {
   margin-top: 2.5rem;
   padding-top: 1.25rem;

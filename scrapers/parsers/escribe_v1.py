@@ -57,7 +57,16 @@ from scrapers.base_parser import BaseParser, FetchResult
 # Möten hämtas för ett fönster runt idag, likt civicengage_pdf_v1 (Legistars
 # API strömmar redan färskt framåt via sortering, men eSCRIBE:s kalenderanrop
 # vill ha ett explicit datumintervall).
-DAYS_BACK = 14
+#
+# DAYS_BACK vidgades 60 (från 14) 2026-08-22 för att fånga PostMinutes (se
+# _find_minutes_pdf_url och ai_pipeline/meeting_followups.py): verifierat
+# live att en 2026-07-30-möte fortfarande INTE hade minutes postade så sent
+# som 2026-08-18 (14 dagar back-fönstret hade redan tappat mötet då), men
+# HADE det senast 2026-08-22 -- minutes-eftersläpningen är alltså längre än
+# 14 dagar men mindre än ~3 veckor för den här kommunen, så 60 dagars marginal
+# är rejält säkert utan att svälla möteslistan orimligt (eSCRIBE har typiskt
+# < 2 möten/vecka för Moreno Valley).
+DAYS_BACK = 60
 DAYS_FORWARD = 45
 
 # hur många möten vi hämtar agenda-HTML för per körning -- artigt mot servern,
@@ -70,6 +79,16 @@ MAX_AGENDA_TEXT_CHARS = 20_000
 class EscribeParser(BaseParser):
     table = "meetings"
     platform = "escribe"
+    # content_hash is stable per meeting (see content_hash() call in parse()
+    # -- built from meeting_id + date only, never from agenda/minutes text),
+    # so it doubles as a safe identity for DO UPDATE. Needed so a meeting
+    # already inserted with an agenda gets its raw_data refreshed once
+    # PostMinutes shows up days later within the DAYS_BACK re-fetch window
+    # -- the default (town_id, content_hash) DO NOTHING would otherwise
+    # silently freeze that row at its agenda-only state forever. See
+    # ai_pipeline/meeting_followups.py, which reads minutes_text from here.
+    conflict_columns = ("town_id", "content_hash")
+    update_columns = ["body", "meeting_date", "agenda_url", "minutes_url", "raw_data", "snapshot_id"]
 
     def _base_url(self) -> str:
         base = self.source_cfg.get("base_url")
@@ -113,6 +132,31 @@ class EscribeParser(BaseParser):
             fetched_count += 1
             time.sleep(FETCH_DELAY_SECONDS)
 
+        # PostMinutes ("what actually happened", see ai_pipeline/
+        # meeting_followups.py) dyker upp DAGAR efter mötet -- separat
+        # räknare/gräns från agendan ovan så en sen minutes-körning aldrig
+        # konkurrerar med agenda-hämtningen om samma MAX_AGENDA_FETCHES-tak.
+        minutes_fetched = 0
+        for m in meetings:
+            if minutes_fetched >= MAX_AGENDA_FETCHES:
+                break
+            minutes_url = _find_minutes_pdf_url(m, base)
+            if not minutes_url:
+                continue
+            try:
+                mr = requests.get(minutes_url, headers=self._headers(), timeout=30)
+                if mr.status_code == 200:
+                    # Extracted to text HERE, not carried as raw bytes --
+                    # the fetch()-level snapshot below is JSON (bytes
+                    # aren't serializable, and a mid-size PDF would bloat
+                    # source_snapshots for no benefit over the text itself).
+                    m["_minutes_text"] = _extract_pdf_text(mr.content)
+                    m["_minutes_url"] = minutes_url
+            except Exception as exc:  # noqa: BLE001 -- trasiga minutes ska inte fälla mötet
+                print(f"    [escribe] kunde inte hämta minutes för möte {m.get('ID')}: {exc}")
+            minutes_fetched += 1
+            time.sleep(FETCH_DELAY_SECONDS)
+
         self._meetings = meetings
         raw = json.dumps(meetings, default=str).encode("utf-8")
         return FetchResult(raw=raw, content_type="application/json", url=url, http_code=r.status_code)
@@ -127,6 +171,8 @@ class EscribeParser(BaseParser):
         for m in meetings:
             meeting_id = m.get("ID")
             agenda_html = m.pop("_agenda_html", None)
+            minutes_text = m.pop("_minutes_text", None)
+            minutes_url = m.pop("_minutes_url", None)
             meeting_dt = _parse_escribe_date(m.get("StartDate"))
 
             raw_data = dict(m)
@@ -137,18 +183,53 @@ class EscribeParser(BaseParser):
                     text = _items_to_text(items)
                     if text:
                         raw_data["agenda_text"] = text[:MAX_AGENDA_TEXT_CHARS]
+            if minutes_text:
+                raw_data["minutes_text"] = minutes_text[:MAX_AGENDA_TEXT_CHARS]
 
             out.append({
                 "body": m.get("MeetingName"),
                 "meeting_date": meeting_dt,
                 "agenda_url": _find_public_agenda_url(m, base),
-                "minutes_url": None,
+                "minutes_url": minutes_url,
                 "raw_data": raw_data,
                 "content_hash": content_hash(
                     "escribe", meeting_id, meeting_dt.isoformat() if meeting_dt else m.get("StartDate")
                 ),
             })
         return out
+
+
+_MAX_MINUTES_TEXT_CHARS = 20_000
+
+
+def _find_minutes_pdf_url(meeting: dict, base: str) -> str | None:
+    """"PostMinutes" is eSCRIBE's document type for approved/posted minutes --
+    verified live 2026-08-22 against a real past meeting (2026/07/30 City
+    Council Special Meeting): shows up in MeetingDocumentLink days after the
+    meeting, once staff post it, same as HasAgenda flips on when an agenda
+    is ready. Unlike the Agenda documents there's no HTML rendition offered,
+    only PDF -- extracted with pdfplumber, same as civicengage_pdf_v1.py.
+    Url comes back relative ("/FileStream.ashx?DocumentId=...") -- same
+    base-prefixing _find_html_agenda_url already does for Agenda links."""
+    for doc in meeting.get("MeetingDocumentLink") or []:
+        if doc.get("Type") == "PostMinutes":
+            url = doc.get("Url")
+            if url:
+                return url if url.startswith("http") else f"{base}{url}"
+    return None
+
+
+def _extract_pdf_text(raw: bytes) -> str | None:
+    import pdfplumber
+    from io import BytesIO
+
+    try:
+        with pdfplumber.open(BytesIO(raw)) as pdf:
+            pages = [page.extract_text() or "" for page in pdf.pages]
+        text = "\n".join(pages).strip()
+        return text[:_MAX_MINUTES_TEXT_CHARS] or None
+    except Exception:  # noqa: BLE001 -- a malformed PDF is a real data-source limitation, not a bug
+        return None
 
 
 def _parse_escribe_date(value: str | None) -> datetime | None:

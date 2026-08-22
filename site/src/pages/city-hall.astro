@@ -7,7 +7,7 @@ import { getUpcomingStories, getPastStories } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
 const upcoming = await getUpcomingStories(['meeting'], 40);
-const past = await getPastStories(['meeting'], 20);
+const past = await getPastStories(['meeting', 'meeting_followup'], 30);
 ---
 <BaseLayout title={`City hall — ${siteConfig.siteName}`} wide
   description={`City council, county commission and committee meetings in ${siteConfig.cityName}, ${siteConfig.stateName}, in plain language.`}>
