@@ -36,6 +36,7 @@ import glob
 import json
 import os
 
+from dataclasses import dataclass, field
 from datetime import date, datetime
 
 from db.db import content_hash
@@ -60,9 +61,114 @@ _HEADER = [
 ]
 
 
+@dataclass
+class ParsedSales:
+    """Resultatet av en hel-fil-parse: de filtrerade Moreno Valley-raderna PLUS
+    hela filens (countywide, ofiltrerade) täckningsfönster.
+
+    window_start/window_end byggs på RecordDate över ALLA rader i filen, inte
+    bara de Moreno Valley-matchande -- annars ser täckningen ut att sluta vid
+    den senaste RIKTIGA lokala försäljningen i stället för vid var länets data
+    faktiskt når, vilket gör en genuint tom månad omöjlig att skilja från en
+    månad länet ännu inte hunnit publicera. Se
+    ai_pipeline/home_sales_state.py för hur det här fönstret används."""
+    records: list[dict] = field(default_factory=list)
+    rows_seen: int = 0
+    window_start: date | None = None
+    window_end: date | None = None
+
+    @property
+    def rows_matched(self) -> int:
+        return len(self.records)
+
+
+def latest_file(local_dir: str) -> str:
+    candidates = sorted(glob.glob(os.path.join(local_dir, "*.xlsx")), key=os.path.getmtime)
+    if not candidates:
+        raise FileNotFoundError(
+            f"ingen .xlsx-fil hittad i {local_dir} -- ladda ner kvartalsfilen från "
+            "rivcoacr.org/property-sales-report manuellt (se moduldocstring för varför)"
+        )
+    return candidates[-1]
+
+
+def parse_workbook(path: str, target_city: str) -> ParsedSales:
+    """Läs HELA kvartalsfilen: filtrerade Moreno Valley-poster + countywide
+    täckningsfönster. Delad av både PropertySalesParser (den generiska
+    scrapers.runner-vägen) och scripts/reconcile_property_sales.py (den
+    kvartalsvisa reconcile-körningen med full ingest-rapportering)."""
+    import openpyxl  # tung importerad bara här -- endast denna parser behöver den
+
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    ws = wb["SalesListing"]
+
+    result = ParsedSales()
+    target_city_upper = target_city.upper()
+
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        record = dict(zip(_HEADER, row))
+        result.rows_seen += 1
+
+        record_date = _to_date(record.get("RecordDate"))
+        if record_date is not None:
+            if result.window_start is None or record_date < result.window_start:
+                result.window_start = record_date
+            if result.window_end is None or record_date > result.window_end:
+                result.window_end = record_date
+
+        city = record.get("City")
+        if not isinstance(city, str) or city.strip().upper() != target_city_upper:
+            continue
+
+        if record.get("PropertyUse") not in _RESIDENTIAL_PROPERTY_USES:
+            continue
+
+        consideration = record.get("Consideration") or 0
+        if not consideration:
+            continue
+
+        address = _build_address(record)
+        if address is None:
+            continue
+
+        sale_date = _to_date(record.get("DocumentDate"))
+        doc_number = record.get("DocumentNumber")
+        pin = record.get("PIN")
+
+        result.records.append({
+            "address": address,
+            "sale_price": consideration,
+            "sale_date": sale_date,
+            "pin": _clean_str(pin) or None,
+            "doc_number": _clean_str(doc_number) or None,
+            "record_date": record_date,
+            "raw_data": {k: _jsonable(v) for k, v in record.items()},
+            # DocumentNumber ENSAMT räcker inte: en enda inspelad handling kan
+            # täcka flera separata parceller/enheter (t.ex. en flerbostadsfastighet
+            # såld som en transaktion, verifierat i verkliga data -- 8 olika
+            # LASSELLE ST-adresser delade samma DocumentNumber). Adressen med i
+            # hashen så varje distinkt enhet får sin egen rad i stället för att
+            # dedupen tyst slänger alla utom den första. (pin, doc_number) är
+            # den riktiga identiteten sedan migration 019 -- content_hash lever
+            # kvar för bakåtkompatibilitet med rader skrivna innan den migrationen.
+            "content_hash": content_hash("rivco_property_sales", doc_number, address),
+        })
+    wb.close()
+    return result
+
+
 class PropertySalesParser(BaseParser):
     table = "property_sales"
     platform = "rivco_assessor"
+    # Migration 019: (town_id, pin, doc_number) är en verifierat unik identitet
+    # per fysisk enhet såld (0 kollisioner mot alla 2610 befintliga rader). Med
+    # DO UPDATE blir en omkörning mot samma eller en överlappande kvartalsfil
+    # en riktig reconcile i stället för att bara droppa allt som redan har en
+    # matchande content_hash -- en rad vars uppgifter korrigerats i en senare
+    # fil (t.ex. Consideration) uppdateras då i stället för att tyst ignoreras.
+    conflict_columns = ("town_id", "pin", "doc_number")
+    update_columns = ["address", "sale_price", "sale_date", "record_date", "raw_data",
+                       "content_hash", "snapshot_id"]
 
     def _local_dir(self) -> str:
         local_dir = self.source_cfg.get("local_dir")
@@ -70,67 +176,15 @@ class PropertySalesParser(BaseParser):
             raise ValueError("property_sales local_dir saknas i config (mänskligt nedladdad fil förväntas)")
         return local_dir
 
-    def _latest_file(self) -> str:
-        local_dir = self._local_dir()
-        candidates = sorted(glob.glob(os.path.join(local_dir, "*.xlsx")), key=os.path.getmtime)
-        if not candidates:
-            raise FileNotFoundError(
-                f"ingen .xlsx-fil hittad i {local_dir} -- ladda ner kvartalsfilen från "
-                "rivcoacr.org/property-sales-report manuellt (se moduldocstring för varför)"
-            )
-        return candidates[-1]
-
     def fetch(self) -> FetchResult:
-        path = self._latest_file()
+        path = latest_file(self._local_dir())
         with open(path, "rb") as f:
             raw = f.read()
         return FetchResult(raw=raw, content_type="application/vnd.openxmlformats", url=path, http_code=200)
 
     def parse(self, fetched: FetchResult) -> list[dict]:
-        import openpyxl  # tung importerad bara här -- endast denna parser behöver den
-
-        wb = openpyxl.load_workbook(fetched.url, read_only=True, data_only=True)
-        ws = wb["SalesListing"]
-
-        target_city = (self.source_cfg.get("city") or self.cfg.get("display_name") or "").upper()
-
-        out: list[dict] = []
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            record = dict(zip(_HEADER, row))
-
-            city = record.get("City")
-            if not isinstance(city, str) or city.strip().upper() != target_city:
-                continue
-
-            if record.get("PropertyUse") not in _RESIDENTIAL_PROPERTY_USES:
-                continue
-
-            consideration = record.get("Consideration") or 0
-            if not consideration:
-                continue
-
-            address = _build_address(record)
-            if address is None:
-                continue
-
-            sale_date = _to_date(record.get("DocumentDate"))
-            doc_number = record.get("DocumentNumber")
-
-            out.append({
-                "address": address,
-                "sale_price": consideration,
-                "sale_date": sale_date,
-                "raw_data": {k: _jsonable(v) for k, v in record.items()},
-                # DocumentNumber ENSAMT räcker inte: en enda inspelad handling kan
-                # täcka flera separata parceller/enheter (t.ex. en flerbostadsfastighet
-                # såld som en transaktion, verifierat i verkliga data -- 8 olika
-                # LASSELLE ST-adresser delade samma DocumentNumber). Adressen med i
-                # hashen så varje distinkt enhet får sin egen rad i stället för att
-                # ON CONFLICT DO NOTHING tyst slänger alla utom den första.
-                "content_hash": content_hash("rivco_property_sales", doc_number, address),
-            })
-        wb.close()
-        return out
+        target_city = (self.source_cfg.get("city") or self.cfg.get("display_name") or "")
+        return parse_workbook(fetched.url, target_city).records
 
 
 def _clean_str(value) -> str:

@@ -88,14 +88,61 @@ home sales, jobs, traffic, sports, weather) and covered by 38 new regression
 tests (`pytest tests/` — 68 total, all green). The items below are things
 the code deliberately does NOT decide on its own.
 
-- **Sept 2025 home-sales gap.** `missing_trailing_months()` only auto-notes
-  months strictly *after* the latest month with data (a real "county hasn't
-  published yet" situation). Sept 2025 sits *between* Aug and Oct 2025, which
-  otherwise have data — that shape looks more like a real ingestion problem
-  than a publishing lag, and an automated "not yet available" note would be
-  misleading if the data actually exists upstream. Needs a human to check
-  Riverside County's assessor file directly for that month before deciding
-  whether to backfill or leave it.
+- ~~**Sept 2025 home-sales gap.**~~ **Resolved (2026-08-22): quarterly-aware
+  ingestion + reconcile, not a pipeline bug.** Riverside County's Property
+  Sales Report is a rolling 2-year window published quarterly, not monthly
+  files — a mid-window scrape can make a real month look empty when the
+  county just hasn't reached it yet, and late-recorded deeds can land in a
+  *later* file than the month they belong to. Built to design around this:
+  - `db/migrations/019_property_sales_ingest_metadata.sql`: explicit
+    `pin`/`doc_number`/`record_date` columns (verified-unique identity, 0
+    collisions across all 2610 existing rows) plus a new
+    `property_sales_ingests` table recording each reconcile's countywide
+    RecordDate coverage window.
+  - `scripts/reconcile_property_sales.py`: upserts by `(town_id, pin,
+    doc_number)` — a re-pull now heals/corrects existing rows instead of
+    only adding new ones — and records the ingest window. Idempotent (ran
+    twice against the same file: 0 inserted / 2610 updated / 2610 total
+    both times, no dupes).
+  - `ai_pipeline/home_sales_state.py`: classifies every month into
+    `released_with_data` / `released_zero` / `not_yet_released` purely from
+    the ingest window, never hardcoded dates — replaces the old
+    `missing_trailing_months()`, which only checked *after* the latest
+    month with data and so couldn't see an interior gap at all.
+  - Ran the reconcile against the existing quarterly file
+    (`data/property_sales/moreno_valley_ca/447569.xlsx`, still the most
+    recent one on disk — see the sourcing question below) and re-ran
+    `home_sales_digest.py`. **Finding: Sept 2025 is genuinely zero, not
+    missing.** The file's countywide RecordDate coverage reaches
+    2025-12-24, well past September, and direct inspection of the raw file
+    confirms only one Moreno Valley residential row with a Sept 2025
+    DocumentDate, and it has `Consideration = 0` (a non-arms-length
+    transfer, correctly filtered like every other month). The site now
+    shows an honest "County records show no qualifying home sales recorded
+    ... for September 2025" note instead of silence. **Nov 2025 turned out
+    to have the same situation** (also genuinely zero, also now flagged)
+    — invisible under the old logic since Oct 2025 already had data and
+    Nov was never checked as an interior month either.
+  - Every month Dec 2024 → present now resolves to one of the three states
+    (confirmed via direct query): 19 real digests unchanged (same
+    underlying rows, no wasted AI spend), 2 `zero_sales` notices (Sept +
+    Nov 2025), 9 `data_pending` notices (Dec 2025 → Aug 2026). Pending
+    pages are `noindex` (`site/src/layouts/BaseLayout.astro`); they flip to
+    indexable automatically the moment real data lands, since the digest
+    slug gets overwritten in place.
+  - **Sourcing decision needed**: this whole pass ran against the file
+    already on disk (downloaded 2026-07-23) — I did not fetch a newer one.
+    `rivcoacr.org/robots.txt` explicitly disallows AI agents by name
+    (`anthropic-ai`, `ClaudeBot`, `Claude-Web`), so pulling a fresher
+    quarterly file requires a human to download it manually into
+    `data/property_sales/moreno_valley_ca/` (same as every prior pull) —
+    re-running `scripts.reconcile_property_sales` afterward will
+    auto-heal any month that's since been published, no code changes
+    needed. Separately: confirm the free quarterly Property Sales Report
+    is the right artifact to keep treating as canonical, vs. Riverside
+    County's paid Bulk Data Sales product (likely shorter latency and
+    finer granularity) — a sourcing/cost decision, not something to pick
+    without knowing the price and how much home-sales traffic matters.
 - **MaxPreps / CIF-SS accessibility — unresearched.** Every other scraped
   source in this codebase (MLB Stats API, Caltrans QuickMap, Adzuna, NWS,
   Thrillshare/Finalsite) has a documented live-verification note before any

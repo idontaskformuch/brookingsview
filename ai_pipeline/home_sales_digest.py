@@ -56,6 +56,7 @@ from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
     resolve_model, pricing_for, safe_create,
 )
+from ai_pipeline.home_sales_state import MonthState, classify_month, month_bounds, months_in_range
 
 try:
     import anthropic
@@ -87,12 +88,6 @@ def _fmt_price(value) -> str:
     return f"${value:,.0f}"
 
 
-def month_bounds(year: int, month: int) -> tuple[date, date]:
-    start = date(year, month, 1)
-    end = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
-    return start, end
-
-
 def months_with_sales(conn, town_id: str) -> list[tuple[int, int]]:
     """Varje (år, månad) som redan har minst en försäljning i property_sales."""
     with conn.cursor() as cur:
@@ -121,31 +116,6 @@ def collect_month(conn, town_id: str, year: int, month: int) -> list[dict]:
             (town_id, start, end),
         )
         return [dict(r) for r in cur.fetchall()]
-
-
-def missing_trailing_months(conn, town_id: str) -> list[tuple[int, int]]:
-    """Månader UTAN property_sales-data, strikt EFTER den senaste månad som
-    har data, fram till och med innevarande månad. Tar MEDVETET inte med en
-    lucka mitt i annars sammanhängande data (t.ex. sep 2025 mellan aug och
-    okt 2025) -- en sådan lucka är mer sannolikt ett riktigt inläsnings-
-    problem än "länet har inte publicerat än", och en automatgenererad
-    "inte tillgängligt än"-notis där vore missvisande. Se NEEDS-HUMAN-
-    REVIEW.md för den distinktionen."""
-    months = months_with_sales(conn, town_id)
-    if not months:
-        return []
-    y, m = months[-1]
-    now = datetime.now(timezone.utc)
-    out: list[tuple[int, int]] = []
-    while True:
-        m += 1
-        if m > 12:
-            m = 1
-            y += 1
-        if (y, m) > (now.year, now.month):
-            break
-        out.append((y, m))
-    return out
 
 
 def content_hash(sales: list[dict]) -> str:
@@ -367,12 +337,13 @@ def main() -> int:
         raise RuntimeError("DATABASE_URL saknas i .env")
 
     with psycopg.connect(database_url) as conn:
-        months = months_with_sales(conn, town_id)
-        if only_months is not None:
-            months = [m for m in months if m in only_months]
-        if not months:
+        all_months_with_data = months_with_sales(conn, town_id)
+        if not all_months_with_data:
             print("  ingen property_sales-data för den här orten -- inget att sammanfatta")
             return 0
+        months = all_months_with_data
+        if only_months is not None:
+            months = [m for m in months if m in only_months]
 
         created = updated = unchanged = 0
         for year, month in months:
@@ -432,50 +403,90 @@ def main() -> int:
                 created += 1
                 print(f"  {slug}: skapad ({len(sales)} försäljningar, {generated_by})")
 
-        # FAS 2: publicera en kort, ärlig "inte tillgängligt än"-notis för
-        # varje månad EFTER den senaste med riktig data, fram till
-        # innevarande månad -- annars är sidan en tyst lucka i stället för
-        # ett svar. Ingen AI, ingen gissning: samma mönster som
-        # template_fallback ovan.
-        pending = 0
-        for year, month in missing_trailing_months(conn, town_id):
+        # FAS 3 (kvartalsmedveten): varje månad som INTE har rader i
+        # property_sales -- inte bara de som ligger EFTER senaste riktiga
+        # månaden (den gamla missing_trailing_months()-heuristiken missade en
+        # lucka MITT I data, se ai_pipeline/home_sales_state.py:s moduldocstring
+        # för sep 2025-fallet det här ersätter) -- klassificeras explicit i
+        # ett av två icke-tysta lägen. Alltid DO UPDATE, aldrig DO NOTHING:
+        # en tidigare "inte publicerat än"-notis måste kunna gå om till en
+        # "genuint noll"-notis (eller tvärtom, om en reconcile-körning
+        # senare visar att fönstret krympt) utan att fastna på sin första text.
+        pending = zero_flagged = 0
+        no_data_months = [
+            (y, m) for y, m in months_in_range(conn, town_id)
+            if (y, m) not in set(all_months_with_data)
+        ]
+        if only_months is not None:
+            no_data_months = [m for m in no_data_months if m in only_months]
+
+        for year, month in no_data_months:
             label = f"{month_name[month]} {year}"
             slug = f"home-sales-digest-{year}-{month:02d}"
-            with conn.cursor() as cur:
-                cur.execute("SELECT id FROM stories WHERE town_id=%s AND slug=%s", (town_id, slug))
-                if cur.fetchone():
-                    continue  # redan publicerad (t.ex. riktig data landade sedan)
+            state = classify_month(conn, town_id, year, month, sales_count=0)
+
+            if state == MonthState.RELEASED_ZERO:
+                text = (
+                    f"County records show no qualifying home sales recorded in "
+                    f"{cfg['display_name']} for {label}. This reflects Riverside "
+                    "County's public assessor Property Sales Report as most recently "
+                    "reconciled; if that changes in a future county release, this page "
+                    "will update automatically."
+                )
+                generated_by = "zero_sales"
+                # Task-mandated: a whole month with zero qualifying sales is rare
+                # enough to be worth a human's attention, even though it's not an
+                # error the pipeline can act on by itself.
+                print(f"  FLAG FOR HUMAN REVIEW: {slug} -- genuinely zero qualifying "
+                      f"sales for {label} (county data confirmed to cover this month)")
+            else:
+                text = (
+                    f"Sales data for {label} has not yet been released by Riverside "
+                    "County. County data is published quarterly on a rolling basis; "
+                    "this page will update automatically when the figures are available."
+                )
+                generated_by = "data_pending"
+
             if args.dry_run:
-                print(f"  (dry-run) skulle publicera 'data pending'-notis för {label}")
+                print(f"  (dry-run) would publish '{generated_by}' notice for {label}")
                 continue
-            text = (
-                f"County records for {label} have not yet been released. "
-                f"{cfg['display_name']}'s home sales digests are built from Riverside "
-                "County's public assessor Property Sales Report, which is updated "
-                "quarterly, not in real time. This page will update once that data "
-                "is available."
-            )
+
             title = f"{cfg['display_name']} home sales: {label}"
+            row_hash = hashlib.sha256(generated_by.encode()).hexdigest()
             with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT content_hash FROM stories WHERE town_id=%s AND slug=%s",
+                    (town_id, slug))
+                existing = cur.fetchone()
+                if existing and existing[0] == row_hash:
+                    continue  # already reflects this exact state, nothing to do
                 cur.execute(
                     """
                     INSERT INTO stories
                         (town_id, title, slug, body, source_type, occurs_at,
                          generated_by, verified, published_at, byline, content_hash)
-                    VALUES (%s,%s,%s,%s,%s,%s,'data_pending',true,now(),'AI-genererad',%s)
-                    ON CONFLICT (town_id, slug) DO NOTHING
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,true,now(),'AI-genererad',%s)
+                    ON CONFLICT (town_id, slug) DO UPDATE SET
+                        title = EXCLUDED.title,
+                        body = EXCLUDED.body,
+                        generated_by = EXCLUDED.generated_by,
+                        published_at = now(),
+                        content_hash = EXCLUDED.content_hash
                     """,
                     (town_id, title, slug, text, SOURCE_TYPE,
                      datetime(year, month, 1, tzinfo=timezone.utc),
-                     hashlib.sha256(b"pending").hexdigest()),
+                     generated_by, row_hash),
                 )
             conn.commit()
-            pending += 1
-            print(f"  {slug}: 'data pending'-notis publicerad")
+            if generated_by == "zero_sales":
+                zero_flagged += 1
+            else:
+                pending += 1
+            print(f"  {slug}: '{generated_by}' notice published")
 
         if not args.dry_run:
             print(f"\nTotalt: {created} nya, {updated} uppdaterade, {unchanged} oförändrade, "
-                  f"{pending} 'pending'-notiser")
+                  f"{pending} 'pending'-notiser, {zero_flagged} 'genuint noll'-notiser")
 
     return 0
 

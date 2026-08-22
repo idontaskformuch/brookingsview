@@ -26,6 +26,12 @@ interface Props {
   wide?: boolean;
   /** Slug att hämta delningsbild för. Utelämnad -> sajtens standardbild. */
   ogSlug?: string;
+  /** True för sidor som ännu inte har substans (t.ex. en "inte publicerat
+   *  än"-notis för en home-sales-månad) -- se home-sales-state-designen i
+   *  ai_pipeline/home_sales_state.py. Måste flippas till false (utelämnas)
+   *  igen så fort sidan får riktigt innehåll, annars fastnar den i
+   *  noindex permanent. */
+  noindex?: boolean;
 }
 
 const {
@@ -33,6 +39,7 @@ const {
   description = siteConfig.description,
   wide = false,
   ogSlug,
+  noindex = false,
 } = Astro.props;
 
 const sign = await getSignData();
@@ -78,6 +85,7 @@ const path = Astro.url.pathname;
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>{title}</title>
 <meta name="description" content={description} />
+{noindex && <meta name="robots" content="noindex,follow" />}
 <link rel="canonical" href={canonical.href} />
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />

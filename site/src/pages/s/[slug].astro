@@ -26,7 +26,25 @@ const kind = isAlert ? 'Alert' : story.source_type === 'meeting' ? 'Meeting' : '
 // stället för att visa båda (kind skulle ändå bara säga "Event" fel för dessa).
 const hasByline = Boolean(story.byline);
 const category = CATEGORY_LABELS[story.source_type] ?? story.source_type;
-const when = hasByline ? null : (formatOccursAt(story) || null);
+// Home sales digests keep a byline (AI-genererad) like other generated
+// content, so the generic `when` slot below is normally empty for them --
+// reuse it for an explicit "Covering <Month Year>" label instead, since
+// occurs_at already stores the digest's covered month (see
+// ai_pipeline/home_sales_digest.py) and was previously only surfaced on the
+// /home-sales listing card, never on the digest's own page.
+const isHomeSalesDigest = story.source_type === 'home_sales_digest';
+const coveringMonth = isHomeSalesDigest && story.occurs_at
+  ? new Date(story.occurs_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+  : null;
+const when = hasByline
+  ? (coveringMonth ? `Covering ${coveringMonth}` : null)
+  : (formatOccursAt(story) || null);
+// "not yet released" placeholders are real, but thin and temporary --
+// noindex until a later reconcile fills them in (generated_by flips away
+// from 'data_pending' automatically once real sales data lands, see
+// ai_pipeline/home_sales_digest.py's main()). "zero_sales" is genuinely
+// substantive (a confirmed reporting fact), so it stays indexable.
+const isNoindex = story.generated_by === 'data_pending';
 const canonicalUrl = new URL(`/s/${story.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
 const related = await getRelatedStories(story, 3);
 // Steg 3.5: en tecknad illustration matchad till artikeln, om en sådan finns.
@@ -43,7 +61,7 @@ const isWorkerPulseDigest = story.source_type === 'workplace_watch_digest';
 const comments = isWorkerPulseDigest ? await getWorkerPulseComments(story.slug) : [];
 ---
 
-<BaseLayout title={`${story.title} — ${siteConfig.siteName}`} description={story.body.slice(0, 155)} ogSlug={story.slug}>
+<BaseLayout title={`${story.title} — ${siteConfig.siteName}`} description={story.body.slice(0, 155)} ogSlug={story.slug} noindex={isNoindex}>
   <article class="story">
     {!hasByline && <p class="story__kind data">{kind}</p>}
     <h1>{story.title}</h1>
