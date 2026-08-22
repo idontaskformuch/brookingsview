@@ -130,19 +130,20 @@ the code deliberately does NOT decide on its own.
     pages are `noindex` (`site/src/layouts/BaseLayout.astro`); they flip to
     indexable automatically the moment real data lands, since the digest
     slug gets overwritten in place.
-  - **Sourcing decision needed**: this whole pass ran against the file
-    already on disk (downloaded 2026-07-23) — I did not fetch a newer one.
-    `rivcoacr.org/robots.txt` explicitly disallows AI agents by name
-    (`anthropic-ai`, `ClaudeBot`, `Claude-Web`), so pulling a fresher
-    quarterly file requires a human to download it manually into
-    `data/property_sales/moreno_valley_ca/` (same as every prior pull) —
-    re-running `scripts.reconcile_property_sales` afterward will
-    auto-heal any month that's since been published, no code changes
-    needed. Separately: confirm the free quarterly Property Sales Report
-    is the right artifact to keep treating as canonical, vs. Riverside
-    County's paid Bulk Data Sales product (likely shorter latency and
-    finer granularity) — a sourcing/cost decision, not something to pick
-    without knowing the price and how much home-sales traffic matters.
+  - ~~**Sourcing decision needed**~~ **Decided (2026-08-22), see
+    `OPERATIONS.md`.** Fresh quarterly pulls stay a manual human step
+    (download into `data/property_sales/moreno_valley_ca/`, then run
+    `scripts.reconcile_property_sales` — auto-heals any month that's since
+    been published, no code changes needed) — documented as the standing
+    runbook procedure in `OPERATIONS.md` rather than left as a one-off note
+    here. And: **stay on the free quarterly Property Sales Report**, do not
+    buy Bulk Data Sales. The quarterly report already produces correct
+    digests once reconciled, and the three-state gap handling means a
+    lagging month shows an honest "not yet released" note instead of a
+    silent hole — the main downside of slower data is already mitigated.
+    Revisit only if home-sales becomes a flagship traffic driver *and* the
+    free report's latency proves to be a real user-facing problem, with
+    evidence, not by default.
 - ~~**MaxPreps / CIF-SS accessibility — unresearched.**~~ **Researched
   (2026-08-22) — no source cleared for scraping; the existing fallback
   stays as the shipped solution.** Schools in scope: **MVUSD**
@@ -194,17 +195,49 @@ the code deliberately does NOT decide on its own.
     structured source (correctly out of scope per the brief: narrative
     color only, copyright means summarize-never-reproduce, not something a
     parser reads directly).
-  - **Recommendation: primary = the existing fallback, no scraper built.**
-    `ai_pipeline/local_sports_weekly_digest.py` (already shipped, sourced
-    from the district's own `school_alerts` announcement feed, keyword-
-    filtered, AI summarizes only text that's actually present) remains the
-    right answer — nothing assessed here clears the bar to replace it. The
-    one lead worth a human's five minutes: open
-    `morenovalley.homecampus.com` in a browser, check its actual Terms of
-    Service, and see whether "Sync Schedule" exposes a real iCal URL per
-    team. If it does and the terms allow it, that's a clean upgrade path
-    (structured schedule data, permitted access) without ever touching
-    MaxPreps or Val Verde's blocked feed endpoints.
+  - **Recommendation: primary = the existing fallback for now; a real
+    upgrade path exists but needs one human-in-browser step.**
+    `ai_pipeline/local_sports_weekly_digest.py` stays the shipped source —
+    nothing here is ready to replace it yet. But the HomeCampus lead
+    followed up (2026-08-22) turned into a genuinely promising, permitted
+    path, not just an open question:
+    - **HomeCampus's own Terms of Service explicitly forbid scraping**
+      (fetched `homecampus.com/terms-and-conditions` directly: Section 12
+      prohibits "spam, phish, pharm, pretext, spider, crawl, or scrape") —
+      confirming HTML scraping stays off-limits, same as MaxPreps.
+    - **But every in-scope HomeCampus site has a "Sync Schedule" page**
+      whose own copy says: "add the iCal URL to your online calendar ...
+      updates and changes automatically sync." That's the vendor
+      deliberately publishing a machine-readable feed for outside
+      consumption — categorically different from scraping the site, the
+      same distinction this codebase already relies on for the library's
+      iCal feeds in `scrapers/parsers/events.py`. Subscribing to a feed a
+      site hands out for that exact purpose isn't "spider, crawl, or
+      scrape" under any ordinary reading of that clause.
+    - **Confirmed live**: all 4 in-scope MVUSD schools have a HomeCampus
+      site — `canyonsprings.homecampus.com`, `morenovalley.homecampus.com`
+      (Moreno Valley HS), `valleyview.homecampus.com`,
+      `vistadellago.homecampus.com`. **Confirmed NOT present**: both Val
+      Verde USD schools — `ranchoverde.homecampus.com` and
+      `citrushill.homecampus.com` both redirect to HomeCampus's own
+      `wp-signup.php?new=...` page, meaning the subdomain was never
+      claimed. Val Verde stays sourceless for now, consistent with its own
+      `robots.txt` blocking `/feed`/`/schoolfeed` found earlier.
+    - **The actual iCal URLs are not extractable by automated fetch.**
+      Every HomeCampus schedule page (checked directly, e.g.
+      `canyonsprings.homecampus.com/varsity/football/`) renders its game
+      table client-side (the server HTML shows a loading spinner, no data),
+      and the "Sync Schedule" page's iCal link is generated the same way —
+      no static `href` present anywhere in the server-rendered markup. This
+      needs a human in a real browser (open the page, use the browser's
+      copy-link/dev-tools, not a scripted fetch) to actually get the URL(s).
+    - **Next step, concretely**: a human opens each of the 4 MVUSD
+      HomeCampus sites' `/sync-schedule/` page per sport/team, copies the
+      iCal URL(s), and hands them over. Once in hand, wiring them into the
+      existing `.ics` parser (`scrapers/parsers/events.py` already parses
+      RFC 5545 calendars) is a small, low-risk addition — no new scraper
+      class needed, just new feed URLs in config. Until then, the AI
+      fallback digest keeps running as-is.
 - ~~**Jobs backfill not yet run.**~~ **Done** — `python -m
   scripts.backfill_jobs_categories` ran against the live DB, 40 rows
   corrected. Along the way it caught a real bug in the classifier itself
@@ -285,32 +318,50 @@ brief.
 - **Backfill**: `publish.py` only fills `venue_raw`/`ends_at` for newly
   published stories going forward (existing rows are never re-touched, by
   design). Ran a one-time `scripts/backfill_event_venues.py` against the
-  live DB for the 1035 already-published event stories: **673 resolved
-  against the registry, 357 queued for human review.** Verified with a real
+  live DB for the 1035 already-published event stories: 673 resolved
+  against the registry, 357 queued for human review. Verified with a real
   `SITE_CITY=moreno_valley_ca astro build` (1189 pages) before and after:
   0 pages emitted Event JSON-LD pre-backfill, exactly 673 do post-backfill
   (matching the resolved count exactly), and spot-checked both a resolved
   page (full `Place`/`PostalAddress`, correct `-07:00` startDate/endDate
   offset) and an unresolved one (`Building Up Lives Foundation`, zero Event
   markup, as designed).
-- **Review queue** (`venue_review_queue`, ordered by occurrence count):
-  worth a human's time roughly in this order —
-  - `Building Up Lives Foundation` / `Building Up Lives Foundation (Suite
-    A)` — 226 + 113 = 339 events, a real third-party nonprofit host with a
-    full street address already in the scraped source
-    (`23185 Hemlock Ave suite a/Suite A, Moreno Valley, CA 92557`), just
-    never independently verified against an official source the way the 5
-    seeded facilities were. By far the highest-value addition if verified —
-    likely worth aliasing both name variants to the same registry entry.
-  - `Celebration Park` (9), `Shadow Mountain Park` (6), `Moreno Valley
-    Community Park` (3) — real city parks with addresses already in the
-    scraped source, same "needs official verification, not yet in the
-    registry" situation as above, just lower volume.
-  - No garbage/non-venue strings ended up in the queue (the NWS weather-zone
-    lists spotted during earlier investigation turn out to never attach to
-    `source_type='event'` stories, so they never reach this path).
-- **Decisions made without waiting for review** (both reversible, noted here
-  per the brief's "pick one, apply it consistently" instruction):
+- ~~**Review queue**~~ **Cleared (2026-08-22) — all 5 addresses verified and
+  added.** See `data/facilities/moreno_valley_ca.json` for the 4 new
+  entries (`celebration-park`, `shadow-mountain-park`,
+  `moreno-valley-community-park`, `building-up-lives-foundation`):
+  - Three parks added directly — addresses cross-checked against official
+    `moval.gov`/`moval.org` sources (the city's General Plan and Parks &
+    Community Services budget handbook, not just aggregators). One real
+    discrepancy surfaced and resolved: third-party sites (Yelp, TripAdvisor)
+    say Shadow Mountain Park is at 23680 Presidio Hills Dr, but the city's
+    own General Plan says **23239** — went with the official source.
+  - `Building Up Lives Foundation` (339 events, the highest-volume entry)
+    needed one extra check before mapping, since the org runs 3+ locations
+    (Hemlock Ave HQ, a Perris Blvd thrift store, a Sunnymead Blvd food
+    site): ran `SELECT DISTINCT venue FROM events WHERE venue ILIKE
+    'Building Up Lives%'` first. Both raw variants in the DB explicitly
+    name Hemlock Ave and nothing else — so mapping both aliases to the
+    verified Hemlock Ave address (Charity Navigator, EIN 831682841) is
+    safe, not a guess. Noted directly in the facility's registry entry so
+    a future alias addition doesn't silently assume the same thing without
+    re-checking.
+  - Result: **all 1030 event stories with a venue now resolve** (up from
+    673) — confirmed via `SITE_CITY=moreno_valley_ca astro build`, pages
+    with Event JSON-LD went from 673 to exactly 1030, matching the DB
+    query's prediction exactly. Zero unresolved venues remain in the queue.
+- **Real-world validation of the recurring-series decision.** Ran
+  `python -m ai_pipeline.publish --config configs/moreno_valley_ca.json
+  --only events` for real (2026-08-22): 26 new stories published, and
+  **every single one of them is a recurring series** (`group_recurring_
+  events` collapsing repeated programs, per Phase 2) — the first series
+  stories this codebase has ever actually published. Rebuilt the site
+  afterward and confirmed they render as plain HTML with no Event JSON-LD,
+  exactly as designed (see "Recurring series get NO Event JSON-LD" above) —
+  this was previously a theoretical case (zero series existed when that
+  decision was made); it's now been exercised for real with no errors.
+- **Decisions made without waiting for review — reviewed 2026-08-22,
+  confirmed, keep as shipped**:
   - Virtual-only events emit `VirtualLocation` Event JSON-LD (not omitted
     entirely) — low-cost, and the brief itself suggested it's useful for
     non-Google/AI consumers even with zero Google rich-result eligibility.
@@ -318,26 +369,35 @@ brief.
     The brief's spec assumed free library events could get a `"$0"` Offer,
     but nothing in the scraped source actually states an event is free —
     asserting that would be an unverified claim, the same class of problem
-    this whole feature exists to avoid on the address side.
+    this whole feature exists to avoid on the address side. If a source
+    ever does explicitly state a price or "free" status, revisit
+    per-source — but never synthesize it.
 - **Not built — genuinely needs a human decision or bigger surgery, not a
   guess**:
-  - **Status maintenance (`EventCancelled`/`EventRescheduled`)**: requires
-    knowing when a previously-seen event disappears from the source feed,
-    which needs a "last seen" diff against prior scrapes. `publish.py`
-    currently only ever inserts new stories (`ON CONFLICT DO NOTHING`) and
-    never revisits published rows — adding update-in-place tracking is a
-    real architecture change, not a small addition alongside this feature.
-  - **JSON-LD fixture/CI gate**: added `astro check` (TypeScript
-    type-checking, catches wrong prop shapes/missing columns) as a new CI
-    job — genuinely useful but not the same as the brief's requested
-    structural fixture tests (one resolvable event / one unresolved venue /
-    one virtual event, asserting exact JSON-LD shape). The Python-side
+  - **Status maintenance (`EventCancelled`/`EventRescheduled`) — reviewed
+    2026-08-22, confirmed deferred, not a bug.** Requires knowing when a
+    previously-seen event disappears from the source feed, which needs a
+    "last seen" diff against prior scrapes. `publish.py` currently only
+    ever inserts new stories (`ON CONFLICT DO NOTHING`) and never revisits
+    published rows — adding update-in-place tracking is a real
+    architecture change, not a small addition alongside this feature. A
+    stale event simply ages out rather than being falsely marked
+    cancelled, which is not harmful, just less rich. Scope this as its own
+    deliberate project if/when event volume and freshness make it worth
+    it — don't bolt it on.
+  - **JSON-LD fixture/CI gate — reviewed 2026-08-22, worth closing as a
+    follow-up, not urgent.** `astro check` (TypeScript type-checking,
+    catches wrong prop shapes/missing columns) is wired into CI as a new
+    job, but that's not the same as the brief's requested structural
+    fixture tests (one resolvable event / one unresolved venue / one
+    virtual event, asserting exact JSON-LD shape). The Python-side
     algorithm (`ai_pipeline/venue_registry.py`) has exactly those fixture
     cases in `tests/test_venue_registry.py`, but the TypeScript emission
     logic in `[slug].astro` doesn't, because this project has no JS test
     runner configured at all (no vitest/jest in `site/package.json`).
-    Bootstrapping one is a reasonable follow-up, not something to add as a
-    side effect of this feature.
+    Clean follow-up: bootstrap vitest in `site/`, add the 3 structural
+    fixtures. Reasonable to do next time the events vertical is touched;
+    not a blocker.
   - **Rich Results Test validation**: no access to Google's tool from this
     environment (same limitation noted for the original town-level markup).
     Worth running a resolved event page (e.g. any `main-library` event)

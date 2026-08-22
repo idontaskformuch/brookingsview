@@ -75,6 +75,66 @@
       "description": "Home to the Moreno Valley City Council, City Manager's office, and most city administrative departments. Agendas, public records, permits, and department contacts are handled here or through the city's online portals.",
       "source_url": "https://www.moval.org/city_hall/contacts.html",
       "verified_date": "2026-08-03"
+    },
+    {
+      "slug": "celebration-park",
+      "name": "Celebration Park",
+      "category": "park",
+      "address": "14965 Morgan Ave, Moreno Valley, CA 92555",
+      "street_address": "14965 Morgan Ave",
+      "postal_code": "92555",
+      "aliases": ["Celebration Park"],
+      "phone": "(951) 413-3280",
+      "website": "https://www.moval.org/resident_services/park_rec/index_park-rec.shtml",
+      "hours_text": "Mon–Fri 10am–6pm, Sat 9am–9pm, Sun 10am onward",
+      "description": "A 7.3-acre city park with walking trails, picnic shelters, and a playground. Hosts a walking/running club on the first and third Saturday of the month.",
+      "source_url": "https://www.moval.org/resident_services/park_rec/index_park-rec.shtml",
+      "verified_date": "2026-08-22"
+    },
+    {
+      "slug": "shadow-mountain-park",
+      "name": "Shadow Mountain Park",
+      "category": "park",
+      "address": "23239 Presidio Hills Dr, Moreno Valley, CA 92557",
+      "street_address": "23239 Presidio Hills Dr",
+      "postal_code": "92557",
+      "aliases": ["Shadow Mountain Park"],
+      "phone": "(951) 413-3000",
+      "website": "https://www.moval.org/resident_services/park_rec/index_park-rec.shtml",
+      "hours_text": null,
+      "description": "A 10-acre city park at the base of Shadow Mountain, in Council District 2, with lit softball/baseball fields, picnic areas, and barbecues.",
+      "source_url": "https://moval.gov/cdd/documents/general-plan2040/05-ParksPublicServices.pdf",
+      "verified_date": "2026-08-22"
+    },
+    {
+      "slug": "moreno-valley-community-park",
+      "name": "Moreno Valley Community Park",
+      "category": "park",
+      "address": "13380 Frederick St, Moreno Valley, CA 92553",
+      "street_address": "13380 Frederick St",
+      "postal_code": "92553",
+      "aliases": ["Moreno Valley Community Park"],
+      "phone": "(951) 413-3000",
+      "website": "https://www.moval.org/resident_services/park_rec/index_park-rec.shtml",
+      "hours_text": null,
+      "description": "A city park with 4 lighted soccer fields, a skate park, walking path, picnic shelters, playground, and snack bar.",
+      "source_url": "https://moval.gov/departments/financial-mgmt-svcs/fin-pdf/budget-25-26/PCS-NewCouncilmemberHandbook.pdf",
+      "verified_date": "2026-08-22"
+    },
+    {
+      "slug": "building-up-lives-foundation",
+      "name": "Building Up Lives Foundation",
+      "category": "community_center",
+      "address": "23185 Hemlock Ave Suite A, Moreno Valley, CA 92557",
+      "street_address": "23185 Hemlock Ave Suite A",
+      "postal_code": "92557",
+      "aliases": ["Building Up Lives Foundation", "Building Up Lives Foundation (Suite A)"],
+      "phone": "(951) 550-5466",
+      "website": "https://buildinguplivesfoundation.org/",
+      "hours_text": null,
+      "description": "A 501(c)(3) nonprofit community support center offering food, clothing, hygiene supplies, and homelessness/rapid re-housing assistance. NOT a City of Moreno Valley facility -- an independent third-party organization that hosts recurring public events at this address. Verified DISTINCT against every scraped raw venue string attributed to this org (both existing variants explicitly name '23185 Hemlock Ave' -- neither the org's other locations, a Perris Blvd thrift store or a Sunnymead Blvd food distribution site, appear in any scraped event's venue text), so both aliases safely resolve to this single address; do not widen this alias list to cover the org name alone without re-checking that assumption if a new raw venue string ever appears without a street name.",
+      "source_url": "https://www.charitynavigator.org/ein/831682841",
+      "verified_date": "2026-08-22"
     }
   ]
 }
