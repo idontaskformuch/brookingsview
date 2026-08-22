@@ -143,20 +143,68 @@ the code deliberately does NOT decide on its own.
     County's paid Bulk Data Sales product (likely shorter latency and
     finer granularity) — a sourcing/cost decision, not something to pick
     without knowing the price and how much home-sales traffic matters.
-- **MaxPreps / CIF-SS accessibility — unresearched.** Every other scraped
-  source in this codebase (MLB Stats API, Caltrans QuickMap, Adzuna, NWS,
-  Thrillshare/Finalsite) has a documented live-verification note before any
-  parser was built against it. No equivalent verification exists for
-  MaxPreps or CIF-SS (real high-school sports results/schedules), and
-  MaxPreps in particular is a commercial site likely behind bot protection
-  (same category as the ESPN scoreboard API this codebase already declined
-  to scrape, see `regional_sports_v1.py`'s docstring). Rather than guess at
-  a scraper against an unverified source, Phase 2 shipped the achievable v1
-  — `ai_pipeline/local_sports_weekly_digest.py`, sourced from the school
-  district's own general announcement feed (`school_alerts`, already live)
-  filtered to sports-relevant keywords. A human needs to research whether
-  MaxPreps/CIF-SS offer any legitimate account-based or licensed feed before
-  a real local-sports-results source can be built.
+- ~~**MaxPreps / CIF-SS accessibility — unresearched.**~~ **Researched
+  (2026-08-22) — no source cleared for scraping; the existing fallback
+  stays as the shipped solution.** Schools in scope: **MVUSD**
+  (Moreno Valley HS, Valley View HS, Canyon Springs HS, Vista del Lago HS)
+  and **Val Verde USD** (Rancho Verde HS, Citrus Hill HS — Val Verde HS is
+  continuation-only, no CIF-SS athletics). Assessed every candidate on
+  coverage/access method/terms, per the brief:
+  - **MaxPreps — confirmed NO-GO.** Fetched `maxpreps.com/terms-of-use/`
+    directly: "Use any robot, spider, scraper, or other automatic or manual
+    means to access, monitor, or copy the Platform or its Content or data"
+    and "unauthorized spidering, 'scraping,' data mining, or harvesting" are
+    both explicitly prohibited, with no disclosed API or licensed-feed
+    alternative. `robots.txt` also blocks most sport-specific paths outright
+    for general crawlers. Same category as the ESPN scoreboard API this
+    codebase already declined (`regional_sports_v1.py`'s docstring) — a
+    clear policy signal, not a technical obstacle to route around.
+  - **CIF-SS (cifss.org / scores.cifss.org) — inconclusive, not usable as
+    specified.** `cifss.org/robots.txt` is fully permissive, but
+    `/schedules-and-scores/` is just a navigation page with no actual data —
+    it links out to `scores.cifss.org`, a separate portal that returned no
+    fetchable content (very likely a JS-rendered widget, platform
+    unconfirmed — CIF-SS's own officials page references Arbiter for game
+    management, but nothing ties `scores.cifss.org` to a documented public
+    feed). No evidence of a structured, school-filterable data source here.
+  - **District/school athletic pages — mixed, and NOT the clean win the
+    brief expected.** MVUSD's own site (`mvusd.net`, Finalsite) has a
+    permissive `robots.txt` (`Crawl-delay: 5`, explicit `Allow` for
+    athletics/calendar paths) — but that's the same site already verified
+    and scraped for `school_alerts`, and it turns out the actual athletics
+    *schedules* have moved off `mvusd.net` entirely onto a third-party
+    vendor, **HomeCampus.com** (`morenovalley.homecampus.com`), reached via
+    a 301 redirect. HomeCampus's `robots.txt` doesn't block general
+    crawling and no explicit anti-scraping terms turned up in a search, but
+    that's "not found," not "confirmed permitted" — genuinely unverified,
+    not something to build against without a human first reading its actual
+    Terms of Service (not surfaced by search) and checking whether its
+    "Sync Schedule" button is a real per-team iCal subscription link (would
+    be the ideal outcome per the brief's own "prefer a permitted feed over
+    scraping HTML" preference, but WebFetch's HTML conversion didn't
+    resolve the button's target — needs a human in an actual browser).
+    Val Verde USD (`valverde.edu`, SchoolBlocks/SchoolFeed platform, a
+    different CMS from MVUSD) is a firmer no for now: its own `robots.txt`
+    explicitly disallows `/feed` and `/schoolfeed` — the exact endpoints
+    that would carry structured data — so its two schools (Rancho Verde,
+    Citrus Hill) have no permitted machine-readable source at all right
+    now, only general athletics pages with no visible schedule data in
+    what's fetchable.
+  - **Local reporting (Press-Enterprise, etc.)** — not assessed as a
+    structured source (correctly out of scope per the brief: narrative
+    color only, copyright means summarize-never-reproduce, not something a
+    parser reads directly).
+  - **Recommendation: primary = the existing fallback, no scraper built.**
+    `ai_pipeline/local_sports_weekly_digest.py` (already shipped, sourced
+    from the district's own `school_alerts` announcement feed, keyword-
+    filtered, AI summarizes only text that's actually present) remains the
+    right answer — nothing assessed here clears the bar to replace it. The
+    one lead worth a human's five minutes: open
+    `morenovalley.homecampus.com` in a browser, check its actual Terms of
+    Service, and see whether "Sync Schedule" exposes a real iCal URL per
+    team. If it does and the terms allow it, that's a clean upgrade path
+    (structured schedule data, permitted access) without ever touching
+    MaxPreps or Val Verde's blocked feed endpoints.
 - ~~**Jobs backfill not yet run.**~~ **Done** — `python -m
   scripts.backfill_jobs_categories` ran against the live DB, 40 rows
   corrected. Along the way it caught a real bug in the classifier itself
