@@ -4,14 +4,25 @@
  *  tillåter. Dagens krönika flyttar hit dagen efter att den varit ettan på
  *  förstasidan (se index.astro / getTodaysFeature). Varje kort visar sin egen
  *  kategorietikett (Culture essay/Commentary/Science) via StoryCard, så blandningen
- *  är läsbar trots en gemensam sida. */
+ *  är läsbar trots en gemensam sida.
+ *
+ *  media_recension vikt in HÄR för Moreno Valley (2026-08-23, se
+ *  NEEDS-HUMAN-REVIEW.md "3.3 Reviews"): den ortens Reviews-produktion (1
+ *  publicerad recension över flera veckor) håller inte ~en/vecka-takten en
+ *  egen navflik antyder (husregel 4) -- reviews.astro redirectar dit för den
+ *  orten i stället för att visa en nästan tom sida. Brookings har bättre
+ *  historisk takt (3 publicerade) och behåller sin egen /reviews-sida. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import { getContentByType } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
-const stories = await getContentByType(['culture_essay', 'kvick_essa', 'vetenskap_kronika'], 60);
+const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
+const types = isMorenoValley
+  ? ['culture_essay', 'kvick_essa', 'vetenskap_kronika', 'media_recension'] as const
+  : ['culture_essay', 'kvick_essa', 'vetenskap_kronika'] as const;
+const stories = await getContentByType([...types], 60);
 ---
 <BaseLayout title={`Columns — ${siteConfig.siteName}`} wide
   description="Culture essays, light essays and science columns, AI-written and clearly labeled as such.">

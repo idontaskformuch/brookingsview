@@ -32,6 +32,13 @@ export interface SiteConfig {
   /** Rader i footerns "var informationen kommer ifrån" */
   sourceBlurb: string;
   removalEmail: string;
+  /** Verified local movie theaters, for Reviews' "showing locally" anchor
+   *  (see NEEDS-HUMAN-REVIEW.md "3.3 Reviews") -- names/links only, never
+   *  showtimes (no permitted showtimes feed found; theater chains' own
+   *  showtimes aren't publicly scrapable/licensed the same way MaxPreps/
+   *  HomeCampus weren't). Optional: only populate for a town once its
+   *  theaters are actually verified, never guessed. */
+  localTheaters?: { name: string; url: string }[];
 }
 
 const CITIES: Record<string, SiteConfig> = {
@@ -69,6 +76,14 @@ const CITIES: Record<string, SiteConfig> = {
     sourceBlurb:
       'Moreno Valley View gathers public information from the City of Moreno Valley, Riverside County, and the Moreno Valley Public Library.',
     removalEmail: 'hello@morenovalleyview.com',
+    // Verified 2026-08-23 (search + each theater's own site): the two
+    // first-run theaters actually in Moreno Valley. Not an exhaustive
+    // regional list (Riverside/Redlands/Perris have more) -- deliberately
+    // scoped to what's genuinely local.
+    localTheaters: [
+      { name: 'Harkins Moreno Valley 16', url: 'https://harkins.com/theatres/moreno-valley' },
+      { name: 'Regency Theatres — Towngate 8', url: 'https://www.regencymovies.com/movie-theatres/california/moreno-valley/towngate-8' },
+    ],
   },
 };
 

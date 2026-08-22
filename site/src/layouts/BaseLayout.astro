@@ -69,7 +69,10 @@ const nav = [
   ...(isMorenoValley ? [{ href: '/burro-bonanza', label: '🐴 Play' }] : []),
   { href: '/traffic', label: 'Traffic' },
   { href: '/jobs', label: 'Jobs' },
-  { href: '/reviews', label: 'Reviews' },
+  // Moreno Valley: folded into /columns/ -- see columns.astro/reviews.astro
+  // and NEEDS-HUMAN-REVIEW.md "3.3 Reviews" (cadence too thin for its own
+  // nav slot). Brookings keeps its own tab.
+  ...(!isMorenoValley ? [{ href: '/reviews', label: 'Reviews' }] : []),
   { href: '/recipes', label: 'Recipes' },
   { href: '/editorials', label: 'Editorials' },
   { href: '/columns', label: 'Columns' },

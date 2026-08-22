@@ -135,6 +135,24 @@ const eventJsonLdObject = buildEventJsonLd(
       </>
     )}
 
+    {story.source_type === 'media_recension' && siteConfig.localTheaters && siteConfig.localTheaters.length > 0 && (
+      /* The local anchor a review needs to justify running on a local site
+         at all -- see NEEDS-HUMAN-REVIEW.md "3.3 Reviews". Names/links only,
+         never showtimes: no permitted showtimes feed exists for these
+         chains (same category as MaxPreps/HomeCampus -- proprietary,
+         ticketing-partner-gated, not open data), so this points the reader
+         to the theater's own site rather than asserting what's playing when. */
+      <div class="story__theaters">
+        <h2 class="story__section-label">Showing locally</h2>
+        <p>Check current showtimes at theaters in {siteConfig.cityName}:</p>
+        <ul>
+          {siteConfig.localTheaters.map((t) => (
+            <li><a href={t.url} rel="noopener">{t.name}</a></li>
+          ))}
+        </ul>
+      </div>
+    )}
+
     <ShareButtons url={canonicalUrl} title={story.title} />
 
     <footer class="story__source">
@@ -231,6 +249,10 @@ const eventJsonLdObject = buildEventJsonLd(
 .story__body { margin-top: 1.75rem; font-size: 1.125rem; }
 .story__body p { margin: 0 0 1rem; }
 .story__zip-links { color: var(--ink-soft); font-size: 0.875rem; margin: -0.5rem 0 1.25rem; }
+.story__theaters { margin: 1.75rem 0; }
+.story__theaters p { color: var(--ink-soft); margin: 0.5rem 0; }
+.story__theaters ul { margin: 0.5rem 0 0; padding-left: 1.25rem; }
+.story__theaters li { margin: 0.25rem 0; }
 .story__source {
   margin-top: 2.5rem;
   padding-top: 1.25rem;

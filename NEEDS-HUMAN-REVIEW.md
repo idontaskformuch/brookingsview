@@ -552,6 +552,41 @@ guardrail-constrained generation (checked a real example: one honest
 sentence — "confer with legal counsel about a potential legal case" — no
 fabricated substance). No change needed.
 
+### 3.3 Reviews — already deduped, local theaters added, folded into Columns
+
+**Duplicate Odyssey reviews — already resolved, no action needed.** Checked
+directly: `media_recension-2026-07-29` (one of the two) is already
+unpublished — it was one of the 11 rows unpublished in the Phase 1
+contamination cleanup (section 1 above), for the same reason as the rest,
+not because of duplication. Only `media_recension-2026-08-12` is live. No
+redirect needed since the other was never a public URL collision to begin
+with (unpublished, not deleted, still in the DB for audit).
+
+**Local theater anchor — built.** Verified (search + each theater's own
+site) the two real first-run theaters in Moreno Valley: Harkins Moreno
+Valley 16 (at the Mall) and Regency Theatres Towngate 8. No permitted
+showtimes feed exists for either (same category as MaxPreps/HomeCampus —
+proprietary, ticketing-partner-gated, not open data), so review pages now
+show a "Showing locally" block naming both with links to their own sites
+(`siteConfig.localTheaters`, `site/src/lib/site-config.ts`) rather than
+asserting specific showtimes. `content/recensioner/media_recension.py`
+already explicitly instructed the model never to claim a specific local
+theater or showtime it can't verify — this adds the honest version of that
+same information at the template level instead.
+
+**Cadence decision: folded into `/columns/` for Moreno Valley.** Checked
+actual production: 1 published review total across several weeks of live
+operation — well short of "~one a week," the bar the brief itself set for
+keeping a dedicated nav slot (house rule 4: a nav slot implies a cadence).
+Brookings has 3 published and keeps its own `/reviews` tab; this is a
+per-town call, not a global one — `/reviews` now 301-redirects to
+`/columns/` for Moreno Valley only, and `/columns/` includes
+`media_recension` in its mix for that town (each card still shows its own
+"Review" label via the existing `StoryCard`/`CATEGORY_LABELS` mechanism, so
+the type is still legible in the merged listing). Revisit if Moreno
+Valley's review output picks up — nothing structural blocks moving it back
+to its own section later.
+
 ## 8. Not addressed yet
 
 Nothing outstanding as of this line — updated as Phase 3/4 sub-sections

@@ -7,6 +7,13 @@ import StoryCard from '../components/StoryCard.astro';
 import { getContentByType } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
+// Folded into /columns/ for Moreno Valley -- see columns.astro's comment
+// and NEEDS-HUMAN-REVIEW.md "3.3 Reviews" for why (cadence too thin for a
+// dedicated nav slot, house rule 4).
+if (siteConfig.townId === 'moreno_valley_ca') {
+  return Astro.redirect('/columns/', 301);
+}
+
 const stories = await getContentByType(['media_recension'], 60);
 ---
 <BaseLayout title={`Reviews — ${siteConfig.siteName}`} wide
