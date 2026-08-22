@@ -705,6 +705,39 @@ brief's own "gate behind ≥1 response" bar literally — nothing changed here.
 Worth revisiting only if response volume ever suggests the reveal-after-
 voting mechanic isn't enough on its own.
 
+### 3.7 Burro Bonanza — local claim verified, real, kept in nav
+
+**The wild-burro claim is real** — verified via multiple independent local
+news sources (Redlands Community News, ABC7, NBC, CBS LA) plus a real
+nonprofit sanctuary (DonkeyLand Rescue) operating in Reche Canyon: wild
+burros have roamed the hills between Moreno Valley and Colton (Reche
+Canyon, San Timoteo Canyon, Pigeon Pass Road) for 70+ years, likely
+descendants of miners' pack burros from the early 1900s, and they're
+protected under a 2026 state law. Added a short verified paragraph to the
+page with this history. Since the claim checked out, the page **stays** in
+the editorial nav (the brief's "move it out" instruction was conditional on
+the claim NOT verifying).
+
+**Fixed a real, and more serious than cosmetic, URL problem.** The actual
+game file (`site/public/games/burro-bonanza.html`, loaded in an iframe by
+the real `/burro-bonanza/` page) is a full standalone HTML document under
+`public/` — meaning it's independently crawlable/indexable at its own URL,
+a genuine near-duplicate competing with the real page, not just an
+implementation detail. Added `noindex` + a canonical link back to
+`/burro-bonanza/` inside that file. **Caught and reverted one bad idea before
+shipping it**: a meta-refresh redirect from the game file to the main page
+would have created an infinite loop, since the main page embeds the game
+file in an iframe — a redirect fired from inside that iframe would just
+reload the parent page's iframe into itself. `noindex` + canonical alone is
+the safe fix; no redirect needed since the file was never meant to be
+navigated to directly, only embedded.
+
+**Dead text removed.** "More mini-games are on the way" deleted (no
+evidence more are actually planned — this is currently the only game,
+replacing an earlier never-connected attempt per the page's own comment).
+"Got a suggestion? Let us know" now links to `/contact` instead of being
+inert text.
+
 ## 8. Not addressed yet
 
 Nothing outstanding as of this line — updated as Phase 3/4 sub-sections

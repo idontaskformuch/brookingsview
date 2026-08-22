@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>BURRO BONANZA</title>
+<!-- This file is the embedded game itself, loaded in an iframe by
+     /burro-bonanza/ (see site/src/pages/burro-bonanza.astro) -- it's not
+     meant to be its own indexable page (no site chrome, no metadata,
+     would compete with /burro-bonanza/ as a near-duplicate). noindex only
+     -- deliberately NOT a meta-refresh redirect to /burro-bonanza/, which
+     would loop forever (that page embeds THIS file in an iframe, so a
+     redirect fired from inside the iframe would just reload the parent
+     page's iframe into itself). See NEEDS-HUMAN-REVIEW.md "3.7 Burro
+     Bonanza". -->
+<meta name="robots" content="noindex">
+<link rel="canonical" href="/burro-bonanza/">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap');
 
