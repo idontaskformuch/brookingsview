@@ -32,8 +32,19 @@ const [employers, weatherPeriods, alerts, pollResults, comments] = await Promise
 
 const todayPeriod = weatherPeriods.find((p) => p.is_daytime) ?? weatherPeriods[0] ?? null;
 
+// Hide the Trend column entirely until at least one employer has a real
+// month-over-month comparison (house rule 4: don't render an empty
+// feature). rating_delta_vs_last_month is null for an employer's first-ever
+// tracked month -- with 5 employers each 1 month in as of 2026-08-23, every
+// cell would currently read the same flat "—" for everyone, which looks
+// like "nothing changed" (a real signal) rather than "no prior month to
+// compare" (not a signal at all) -- see NEEDS-HUMAN-REVIEW.md "3.6 Worker
+// Pulse". Once true, an employer still on its first tracked month shows
+// "New" instead of a dash, so those two states never look identical.
+const hasTrendHistory = employers.some((e) => e.rating_delta_vs_last_month !== null);
+
 function trend(delta: number | null): { symbol: string; cls: string } {
-  if (delta === null) return { symbol: '—', cls: 'flat' };
+  if (delta === null) return { symbol: 'New', cls: 'new' };
   if (delta > 0) return { symbol: '▲', cls: 'up' };
   if (delta < 0) return { symbol: '▼', cls: 'down' };
   return { symbol: '▬', cls: 'flat' };
@@ -55,6 +66,19 @@ function trend(delta: number | null): { symbol: string; cls: string } {
     <ShareButton title={`Worker Pulse — ${siteConfig.siteName}`} />
   </header>
 
+  <p class="wp-methodology">
+    <strong>How this works:</strong> ratings and themes below are
+    <strong>company-wide</strong> figures (as reported in public review-site
+    search results), not specific to any one {siteConfig.cityName} facility —
+    Glassdoor and Indeed have no public API and don't allow automated
+    scraping, so nothing here comes from directly accessing either site.
+    Instead, a search API is used to find what's publicly indexed about each
+    employer, and an AI summarizes the recurring themes from those search
+    result snippets — paraphrased, never a verbatim review quote. A missing
+    star rating means one wasn't reliably found in the search results that
+    month, not that the employer has no reviews.
+  </p>
+
   <HeatAdvisoryWidget
     tempF={todayPeriod?.temp ?? null}
     activeAlertTitles={alerts.map((a) => a.title)}
@@ -63,17 +87,17 @@ function trend(delta: number | null): { symbol: string; cls: string } {
 
   {employers.length > 0 ? (
     <div class="wp-table" role="table">
-      <div class="wp-row wp-row--head" role="row">
+      <div class={`wp-row wp-row--head ${!hasTrendHistory ? 'wp-row--no-trend' : ''}`} role="row">
         <span role="columnheader">Employer</span>
         <span role="columnheader">Rating</span>
-        <span role="columnheader">Trend</span>
+        {hasTrendHistory && <span role="columnheader">Trend</span>}
         <span role="columnheader">This month</span>
       </div>
       {employers.map((e) => {
         const t = trend(e.rating_delta_vs_last_month);
         const label = e.period_label;
         return (
-          <div class="wp-row" role="row" style={`--accent: ${e.accent_color ?? '#4b5563'}`}>
+          <div class={`wp-row ${!hasTrendHistory ? 'wp-row--no-trend' : ''}`} role="row" style={`--accent: ${e.accent_color ?? '#4b5563'}`}>
             <span class="wp-name" role="cell">
               <span class="wp-dot" aria-hidden="true"></span>
               <span>
@@ -84,7 +108,7 @@ function trend(delta: number | null): { symbol: string; cls: string } {
             <span class="wp-rating" role="cell">
               {e.overall_rating !== null ? e.overall_rating.toFixed(1) : 'Rating pending'}
             </span>
-            <span class={`wp-trend wp-trend--${t.cls}`} role="cell">{t.symbol}</span>
+            {hasTrendHistory && <span class={`wp-trend wp-trend--${t.cls}`} role="cell">{t.symbol}</span>}
             <span class="wp-summary" role="cell">
               {e.theme_summary ? (
                 <>
@@ -114,6 +138,11 @@ function trend(delta: number | null): { symbol: string; cls: string } {
 .wp-hero { max-width: 46rem; margin: 0 auto 1.5rem; text-align: center; }
 .wp-hero h1 { font-size: 2rem; margin-bottom: 0.5rem; }
 .tagline { color: var(--ink-soft); line-height: 1.6; }
+.wp-methodology {
+  max-width: 46rem; margin: 0 auto 1.75rem; padding: 0.75rem 1rem;
+  border: 1px solid var(--rule); border-radius: 8px;
+  font-size: 0.8125rem; line-height: 1.6; color: var(--ink-soft);
+}
 
 .wp-table {
   display: grid;
@@ -131,6 +160,7 @@ function trend(delta: number | null): { symbol: string; cls: string } {
   padding: 0.9rem 1rem;
   border-top: 1px solid var(--rule);
 }
+.wp-row--no-trend { grid-template-columns: 1.4fr 0.6fr 2.2fr; }
 .wp-row:first-child { border-top: none; }
 .wp-row--head {
   font-size: 0.8rem;
@@ -150,6 +180,7 @@ function trend(delta: number | null): { symbol: string; cls: string } {
 .wp-trend--up { color: #1a9850; }
 .wp-trend--down { color: #d73027; }
 .wp-trend--flat { color: var(--ink-soft); }
+.wp-trend--new { font-size: 0.75rem; color: var(--ink-soft); font-style: italic; }
 .wp-summary { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
 .excerpt { color: var(--ink-soft); }
 .excerpt.muted { font-style: italic; }

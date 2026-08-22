@@ -657,6 +657,54 @@ for something this codebase's existing pattern already handles gracefully.
 placeless think-piece; passes on town name, street address, specific date,
 named civic body respectively).
 
+### 3.6 Worker Pulse — sourcing already clean, methodology box + empty-feature gating added
+
+**Sourcing — checked, no exposure to flag.** Read `ai_pipeline/search_client.py`
+and `ai_pipeline/workplace_watch_digest.py` directly: this was already built
+correctly, not something needing a new decision. Data comes from the Brave
+Search API (title + snippet only, never the page's own full text), which an
+AI then paraphrases into a theme summary — never a verbatim review quote,
+and never a direct request to glassdoor.com or indeed.com. That's a
+materially different thing from scraping either site directly (same
+distinction already established for the HomeCampus iCal feed in section 7's
+local-sports writeup): using a licensed third-party search API to find and
+summarize what's already publicly indexed isn't the ToS violation systematic
+site-scraping would be. `db/migrations/016_workplace_watch.sql`'s own
+comment already documented this reasoning at build time.
+
+**Comment moderation — already built, not missing.** Checked
+`db/migrations/018_worker_pulse_comments.sql` and
+`getWorkerPulseComments()`: comments are already pre-moderated before ever
+being visible (`status` starts `pending_review`/gets set by an edge
+Function, and the read query filters to `status = 'published'` only — a
+rejected or still-pending comment is never served to a reader). The brief's
+concern (an unmoderated named-employer comment wall) doesn't apply to what's
+actually shipped.
+
+**Built: methodology box.** Added a standing explainer above the ratings
+table: ratings/themes are explicitly labeled company-wide (not
+{cityName}-facility-specific), the sourcing method (search-and-summarize,
+not scraping) is stated plainly, and a missing star rating is explained as
+"not reliably found," not "no reviews exist."
+
+**Built: Trend column gated.** All 5 tracked employers currently have
+exactly 1 month of history each, so `rating_delta_vs_last_month` is `null`
+for every row — the old rendering showed the same flat "—" for "no prior
+month to compare" as it would for "genuinely unchanged," which is a real
+house-rule-4 violation (looks like data, isn't). The column is now hidden
+entirely until at least one employer has a real month-over-month delta; once
+that's true, an employer still on its first tracked month shows "New"
+instead of a dash so the two states never look identical again.
+
+**Shift poll — checked, left as built.** The results panel is already
+`hidden` by default in the server-rendered markup and only reveals after the
+visitor's own vote (or a same-day localStorage record of having voted) —
+a fresh visitor never sees an "0 responses" panel by default. There is
+exactly 1 real vote in the table as of this check, which already clears the
+brief's own "gate behind ≥1 response" bar literally — nothing changed here.
+Worth revisiting only if response volume ever suggests the reveal-after-
+voting mechanic isn't enough on its own.
+
 ## 8. Not addressed yet
 
 Nothing outstanding as of this line — updated as Phase 3/4 sub-sections
