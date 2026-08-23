@@ -34,6 +34,7 @@ import {
   CATEGORY_HREFS, CATEGORY_LABELS,
 } from '../lib/db';
 import { selectWorthKnowing, selectLatestFrom, firstSentence } from '../lib/homepage-curation';
+import { todayUtcMidnight } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
@@ -84,6 +85,18 @@ const weekStories = rest.filter((s) => within(s.occurs_at, endOfDay, weekEnd));
 const laterStories = rest.filter((s) => s.occurs_at && new Date(s.occurs_at) >= weekEnd);
 
 const nextGame = games[0] ?? null;
+
+// Homepage teaser into the Week 2 event landing pages (see
+// NEEDS-HUMAN-REVIEW.md "Week 2 -- Event Landing Pages") -- picks whichever
+// of Today/This-weekend is the more relevant search intent for the site's
+// own local "today" (not the visitor's, not the build machine's), same
+// timezone-correct primitive events.astro and the landing pages themselves
+// use. Free/Kids stay evergreen regardless of the day.
+const eventTeaserWeekday = todayUtcMidnight(siteConfig.timezone).getUTCDay(); // 0=Sun..6=Sat
+const isEventTeaserWeekend = eventTeaserWeekday === 5 || eventTeaserWeekday === 6 || eventTeaserWeekday === 0;
+const timelyEventTeaser = isEventTeaserWeekend
+  ? { href: '/events/this-weekend/', label: 'This weekend' }
+  : { href: '/events/today/', label: 'Today' };
 
 // Cross-link a Jackrabbits HOME game happening today into the same "Today"
 // river as events/meetings (see NEEDS-HUMAN-REVIEW.md "University Coverage
@@ -248,6 +261,11 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 
   <section aria-label="This week">
     <SectionRule label="This week" href="/events/" />
+    <p class="event-teasers">
+      <a href={timelyEventTeaser.href}>{timelyEventTeaser.label}</a> ·
+      <a href="/events/free/">Free</a> ·
+      <a href="/events/kids/">Kids &amp; family</a>
+    </p>
     {weekStories.length > 0 ? (
       // Homepage/vertical redundancy (NEEDS-HUMAN-REVIEW.md "4.4"): a short
       // teaser here, /events is the canonical complete view -- SectionRule's
@@ -392,6 +410,15 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 }
 
 .empty { color: var(--ink-soft); margin: 0; padding: 1rem 0; }
+
+.event-teasers {
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin: -0.25rem 0 0.75rem;
+}
+.event-teasers a { color: inherit; }
 
 .panels { display: grid; gap: 0 1.5rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
 .panel {

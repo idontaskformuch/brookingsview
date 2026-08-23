@@ -1707,3 +1707,138 @@ data lands), with `noindex,follow` so link equity still passes through.
 robots.txt was checked and is clean (non-blocking, correct per-town sitemap
 reference, already dynamically generated to avoid a cross-domain bug fixed
 earlier this session).
+
+## 18. Week 2 — Event Landing Pages (2026-08-23)
+
+Five shared facet landing pages (Today / This Weekend / Free / Kids & Family
+/ Library) plus a Brookings-only SDSU Campus facet, at `/events/<slug>/`,
+built via one dynamic route (`pages/events/[facet].astro`) driven by a
+shared facet-metadata list (`lib/event-facets.ts`) rather than six
+near-identical files. All the cross-source merge/dedup/timezone-bucketing
+logic that events.astro already had was extracted, unchanged, into
+`lib/events.ts` (and events.astro now imports it) so the main /events page
+and the new landing pages compute identical results from one source of
+truth — never two independently maintained copies of the timezone-sensitive
+date math that caused a real off-by-one-day bug earlier. 22 new unit tests
+in `lib/events.test.ts` cover the date bucketing (including a pinned
+reconstruction of that exact regression), cross-source dedup, and all four
+facet predicates.
+
+### Step 1 — facet reliability, verified against real data, not assumed
+
+**Today / This Weekend: solid, both towns.** Pure re-use of events.astro's
+already-battle-tested `siteConfig.timezone` + `Intl.DateTimeFormat`
+arithmetic. The two facet predicates are deliberately *inclusive*, not
+mutually exclusive the way events.astro's own sequential bucket loop is — a
+Friday event correctly appears on both `/events/today/` and
+`/events/this-weekend/`, since each is an independent page a visitor might
+land on from a different search query, not a partition of one list.
+
+**Free: real structural gap, handled conservatively, not guessed.** Neither
+`events` nor `stories` carries a cost/price field anywhere in the pipeline
+(checked `scrapers/parsers/events.py` and `ai_pipeline/publish.py` directly).
+The raw feed name that WOULD distinguish a reliably-free civic calendar
+('library'/'city_events') from a mixed one ('chamber') is captured in
+`configs/*.json` but is **never persisted past the `events` table** — it
+doesn't survive into the `stories` row `publish.py` writes, so the site
+build genuinely cannot see it. `isFreeEvent()` instead uses the one signal
+that *is* reliably known at render time: the event's venue resolves (via the
+existing venue registry) to a town-run `library`/`park`/`community_center`
+facility. A text-based safety net (`PAID_LANGUAGE_RE`) excludes-only, never
+includes, for the low-probability case of a paid event at a public venue —
+asymmetric on purpose, since a false-positive exclusion just omits a real
+free event from this one page (it still has its own `/s/[slug]/` page),
+while a false-positive inclusion would mislabel a paid event as free, the
+one failure mode the brief explicitly forbids.
+
+**Library: the mechanism is sound, but its real-world yield is town-
+dependent — verified by direct DB query, not assumed:**
+- **Moreno Valley: works well.** 1,062 of 1,068 upcoming events (99.4%)
+  carry a populated `venue_raw`, and the town's library-facility aliases
+  (`Main Library`, `Iris Plaza Branch`, `Mall Branch`, ...) match the
+  Tockify feed's LOCATION strings cleanly. Verified in the real build:
+  178 events on `/events/library/`, all 178 with a full nested Event
+  JSON-LD object (real resolved address, not a fallback).
+- **Brookings: currently near-empty, and it's a real upstream data gap, not
+  a bug in this pass.** Only 4 of 136 upcoming events (2.9%) carry a
+  populated `venue_raw`. Pulled the live LibCal iCal feed directly
+  (`brookingslibrary.libcal.com/ical_subscribe.php`) to confirm: **the feed
+  itself never emits a `LOCATION:` property on any VEVENT** — this isn't a
+  parser bug (`scrapers/parsers/events.py` reads `LOCATION` correctly when
+  present), the field simply isn't in Brookings Public Library's LibCal
+  export. Consequence, confirmed directly against the built pages: **this
+  also means most Brookings `/s/[slug]/` event pages carry no Event JSON-LD
+  at all today** (`buildEventJsonLd` requires a resolved venue or a virtual-
+  event signal; neither is present) — a pre-existing gap this investigation
+  surfaced, not something Week 2 introduced, and directly relevant to Week
+  1's Priority 3 "valid Event schema" check.
+  - `/events/free/` and `/events/library/` correctly render their honest
+    empty-state message for Brookings right now ("No free/library events
+    listed this week — check back") rather than a broken or misleading
+    page — this is the empty-state handling working exactly as specified,
+    not a defect.
+  - **A real, scoped follow-up worth doing** (not attempted in this pass —
+    it's a pipeline change, not a landing-page change): the LibCal feed
+    used for Brookings is *entirely* the library's own calendar (its own
+    `X-WR-CALNAME` says so), so defaulting `venue_raw` to "Brookings Public
+    Library" specifically for rows from that one source, when `venue_raw`
+    is null, would be filling in a known fact — not a guess, unlike Free's
+    text-based inference — and would recover both the Library/Free facets
+    and Event JSON-LD on the individual Brookings event pages. Flagged, not
+    built: it touches `scrapers/parsers/events.py`/`ai_pipeline/publish.py`
+    and deserves its own review, not to ride along with 70+ mechanical
+    landing-page edits.
+
+**Kids & Family: keyword rule, spot-checked against real listed events, no
+false positives found.** Sample from the real Brookings build: "Downtown @
+Sundown" matched because its body genuinely says "Kids can enjoy activities
+and booths"; "Insect Festival" matched because its body says "this
+family-friendly festival." Real cost of the conservative Free rule visible
+in the same sample: "Downtown at Sundown" 's body also says "No admiss[ion
+fee]" but it's excluded from `/events/free/` anyway, since its venue (Main
+Avenue) doesn't resolve to a town facility — an accepted trade-off given the
+alternative is guessing, which the brief forbids.
+
+**Campus (Brookings only):** deliberately scoped to just the `arts_culture`
+SDSU bucket already shown (deduped) on the townwide `/events` page — NOT a
+re-listing of `/university`'s athletics/camps content, which already has
+its own page and its own SEO surface. Duplicating that here would be the
+near-duplicate-content problem the Week 1 GSC data confirmed this site does
+NOT currently have ("Crawled — not indexed" was only 2 pages on Brookings).
+
+### Steps 2-4 — built and verified
+
+- Unique title/meta per facet, keyword-front-loaded per the brief's own
+  example ("Free Events in Brookings This Week — Brookings View"), real
+  1-2 sentence intro copy (not a bare heading over a list), self-canonical
+  confirmed via `Astro.url.pathname` (automatic — no override needed, same
+  as every other page), Event + ItemList JSON-LD, honest empty states.
+- ItemList nests the *same* `buildEventJsonLd()` result s/[slug].astro
+  already emits per event (never a second, drifting copy of the venue-
+  resolution decision tree) when that event is JSON-LD-eligible; a
+  lightweight `{position, url, name}` ListItem otherwise (e.g. recurring-
+  series rows, which never carry Event markup by design — see
+  `event-jsonld.ts`'s own doc) — never a fabricated address/date to force
+  one in.
+  Verified live: Moreno Valley's `/events/library/` — 178/178 items with a
+  full nested Event object; Brookings' `/events/today/` — 0/15, consistent
+  with the venue-data gap above, not a bug in this page.
+- New `og/events-<slug>.png` OG images added to `og/[slug].png.ts`'s
+  `SECTION_CARDS` (one per facet, Brookings-gated for `events-campus`) —
+  without this, every shared landing-page link would have silently reused
+  `/og/default.png`, exactly the "all links look identical" problem this
+  codebase already fixed once for every other section.
+- Cross-linked: `/events` now has a facet-nav pill row (all 5-6 facets);
+  each facet page links back to `/events` ("All events →") plus its
+  siblings; the homepage's "This week" section gets a small teaser row
+  (Today-or-This-weekend, chosen by the same timezone-correct "today" —
+  never the visitor's or the build machine's — plus evergreen Free and
+  Kids & family links).
+- Sitemap: automatic (real Astro static routes), confirmed present for both
+  towns after a real build.
+- Real builds: Brookings 305 pages (+6), Moreno Valley 1,291 pages (+5, no
+  Campus — correctly gated). All 77 unit tests pass (55 pre-existing + 22
+  new). Contamination scan clean on both fresh builds. Full site-wide
+  `href` sweep on both towns' `dist/` confirms zero non-trailing-slash
+  internal links anywhere in the new pages — no regression on `449cdf2`'s
+  fix.

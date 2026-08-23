@@ -4,9 +4,13 @@ import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
-import type { Story, SdsuEvent } from '../lib/db';
 import { getUpcomingStories, getPastStories, getUpcomingArtsEvents, getRegionalSports, calendarDateParts } from '../lib/db';
+import {
+  buildEventFeed, artsEventAsStory, withAttribution, localDateParts, utcMidnight,
+  type FeedItem,
+} from '../lib/events';
 import { siteConfig } from '../lib/site-config';
+import { EVENT_FACETS } from '../lib/event-facets';
 
 // "Arts & Culture" (SDSU) / "Around Town" (library, city, chamber, ...) --
 // bara Brookings har den här campus-vs-townwide-uppdelningen att göra (se
@@ -37,162 +41,38 @@ const [upcoming, past, artsEvents] = await Promise.all([
 // via calendarDateParts, ALDRIG genom en tidszonskonvertering.
 const regionalGames = siteConfig.townId === 'moreno_valley_ca' ? await getRegionalSports() : [];
 
-/** SDSU arts_culture-events har ingen egen /s/[slug]-sida (deras länk är
- *  event_url, ut till sdstate.edu) -- adapteras till Story-formen bara så
- *  StoryCard kan återanvändas, men renderas ALLTID med href/kicker-override
- *  (se StoryCard.astro) så titeln/bilden länkar externt och ShareButtons
- *  (som annars delar sajtens egen /s/slug-URL) hoppas över. */
-function artsEventAsStory(event: SdsuEvent): Story {
-  return {
-    id: 0,
-    title: event.title,
-    slug: event.external_event_id,
-    body: event.teaser ?? '',
-    source_type: 'event',
-    source_url: event.event_url,
-    occurs_at: event.starts_at,
-    published_at: event.starts_at ?? new Date().toISOString(),
-    generated_by: 'sdsu_event_calendar',
-    byline: null,
-    image_path: null,
-    rating: null,
-    ingredients: null,
-    instructions: null,
-  };
-}
-
-type FeedItem =
-  | { kind: 'story'; occurs_at: string | null; story: Story }
-  | { kind: 'arts'; occurs_at: string | null; event: SdsuEvent };
-
-function itemTitle(item: FeedItem): string {
-  return item.kind === 'story' ? item.story.title : item.event.title;
-}
-function itemUrl(item: FeedItem): string | null {
-  return item.kind === 'story' ? item.story.source_url : item.event.event_url;
-}
-
-/** "Downtown @ Sundown" (Chamber) / "Downtown at Sundown" (SDSU) -- "@" is
- *  common shorthand for "at" in event titles, so it's expanded BEFORE
- *  stripping punctuation. Without this the two titles diverge instead of
- *  converging (stripping "@" outright leaves nothing where "at" appears in
- *  the other spelling) -- this is still a single, deterministic character
- *  substitution, not similarity scoring. */
-function normalizeTitle(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/@/g, ' at ')
-    .replace(/[^\w\s]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 /**
- * Cross-source duplicate reconciliation -- e.g. "Downtown at Sundown" listed
- * independently by both SDSU's calendar and the Chamber's calendar. Narrow
- * and deterministic on purpose (see spec): same calendar date + EXACT
- * normalized-title match, no partial/substring matching, no similarity
- * scoring.
- *
- * Restricted to matches ACROSS kind ('story' vs 'arts') -- i.e. only across
- * genuinely different calendar systems, never within the same one. Verified
- * live against the real dataset: the library legitimately lists the same
- * class title twice on one day for two different session times ("Teens in
- * the Kitchen", "Felt Pennant Craft Class", ...) and SDSU legitimately lists
- * the same show title twice for a matinee/evening pair -- same-kind,
- * same-date, same-title, but genuinely different events. A same-kind match
- * would have wrongly collapsed those. Cross-kind + same-date + exact-title
- * had exactly one hit in the real dataset: the actual Downtown at Sundown
- * case.
- *
- * No architectural "shared insert path" exists between these two sources
- * (events.py writes to `events`, sdsu_events_v1.py writes to its own
- * `sdsu_events` table -- they've never shared one) -- reconciling here, at
- * the one place both streams are already loaded together before rendering,
- * avoids deleting/mutating either source table and doesn't require
- * coordinating insert order across two independently-scheduled scrapers.
+ * Cross-source merge + dedup + timezone-correct date bucketing all live in
+ * lib/events.ts now (see NEEDS-HUMAN-REVIEW.md, "Week 2 -- Event Landing
+ * Pages") so this page and the new /events/[facet]/ landing pages compute
+ * IDENTICAL results from IDENTICAL logic -- never two independently
+ * maintained copies of timezone-sensitive date math (see that file's
+ * module docstring for the real off-by-one-day bug this guards against).
+ * This page's own "Today / This weekend / Coming up / Further out"
+ * sequential bucket loop below is unchanged and stays page-local.
  */
-const rawItems: FeedItem[] = [
-  ...upcoming.map((story): FeedItem => ({ kind: 'story', occurs_at: story.occurs_at, story })),
-  ...artsEvents.map((event): FeedItem => ({ kind: 'arts', occurs_at: event.starts_at, event })),
-];
-
-const canonicalByKey = new Map<string, FeedItem>();
-const alsoListedBy = new Map<FeedItem, string[]>();
-const items: FeedItem[] = [];
-for (const item of rawItems) {
-  const dateKey = item.occurs_at ? localDateParts(new Date(item.occurs_at)) : null;
-  const key = dateKey ? `${dateKey.y}-${dateKey.m}-${dateKey.d}|${item.kind === 'arts' ? 'arts' : 'story'}|${normalizeTitle(itemTitle(item))}` : null;
-  // matchande nyckel för DEN ANDRA kind -- se doc ovan för varför bara
-  // cross-kind-matchningar tillåts
-  const crossKey = dateKey && key
-    ? `${dateKey.y}-${dateKey.m}-${dateKey.d}|${item.kind === 'arts' ? 'story' : 'arts'}|${normalizeTitle(itemTitle(item))}`
-    : null;
-  const canonical = crossKey ? canonicalByKey.get(crossKey) : undefined;
-
-  if (canonical) {
-    const url = itemUrl(item);
-    if (url) {
-      const host = new URL(url).hostname.replace(/^www\./, '');
-      const list = alsoListedBy.get(canonical) ?? [];
-      if (!list.includes(host)) list.push(host);
-      alsoListedBy.set(canonical, list);
-    }
-    continue; // redan täckt av den kanoniska posten -- inget eget kort
-  }
-  if (key) canonicalByKey.set(key, item);
-  items.push(item);
-}
-
-items.sort((a, b) => {
-  if (!a.occurs_at) return 1;
-  if (!b.occurs_at) return -1;
-  return new Date(a.occurs_at).getTime() - new Date(b.occurs_at).getTime();
-});
-
-function withAttribution(body: string, item: FeedItem): string {
-  const hosts = alsoListedBy.get(item);
-  if (!hosts || hosts.length === 0) return body;
-  const suffix = `Also listed by ${hosts.join(', ')}.`;
-  return body ? `${body} ${suffix}` : suffix;
-}
+const { items, alsoListedBy } = buildEventFeed(upcoming, artsEvents, siteConfig.timezone);
 
 /**
  * Bucket upcoming events by time horizon rather than showing one flat list.
  * "This weekend" is the bucket the whole feature exists for (see
  * news-aggregator return-visit reasoning) -- Fri/Sat/Sun relative to the
  * site's own local "today", not the visitor's, so the grouping matches the
- * dateline the site already prints on every story.
- *
- * All arithmetic below extracts Y/M/D via Intl.DateTimeFormat (correct for
- * siteConfig.timezone, deterministic regardless of the machine building the
- * site) and re-anchors to UTC midnight for comparisons -- never round-trips
- * through a Date's own implicit LOCAL-timezone constructor or .toLocaleString
- * re-parse. An earlier version did the latter for weekdayOfToday specifically
- * (re-applying a timezone conversion to an already-converted value instead of
- * reading it once) and got the weekend window off by one day EVERY build,
- * since the site's timezone never matches GitHub Actions' UTC build machine
- * either -- confirmed live (Tue Aug 4, 2026 computed as Monday) and verified
- * to reproduce identically under TZ=UTC, so this wasn't a local-only quirk.
+ * dateline the site already prints on every story. localDateParts/
+ * utcMidnight (imported from lib/events.ts) are the same primitives the
+ * /events/[facet]/ landing pages use -- see that file's module docstring
+ * for the real off-by-one-day timezone bug they guard against. This page's
+ * OWN sequential "Today / Weekend / Coming up / Further out" bucketing
+ * below is deliberately mutually-exclusive (unlike the standalone landing
+ * pages' inclusive isToday()/isThisWeekend() predicates) since this is one
+ * flat list being partitioned into non-overlapping sections.
  */
-function localDateParts(instant: Date): { y: number; m: number; d: number } {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: siteConfig.timezone, year: 'numeric', month: '2-digit', day: '2-digit',
-  }).formatToParts(instant);
-  const get = (t: string) => Number(parts.find((p) => p.type === t)!.value);
-  return { y: get('year'), m: get('month'), d: get('day') };
-}
-
-function utcMidnight({ y, m, d }: { y: number; m: number; d: number }): Date {
-  return new Date(Date.UTC(y, m - 1, d));
-}
-
 function dayIndex(occursAt: string, today: Date): number {
-  const eventDay = utcMidnight(localDateParts(new Date(occursAt)));
+  const eventDay = utcMidnight(localDateParts(new Date(occursAt), siteConfig.timezone));
   return Math.round((eventDay.getTime() - today.getTime()) / 86_400_000);
 }
 
-const today = utcMidnight(localDateParts(new Date()));
+const today = utcMidnight(localDateParts(new Date(), siteConfig.timezone));
 
 const todaysHomeGame = regionalGames.find((g) => {
   if (g.relevance_tier !== 'primary' || g.home_away !== 'home') return false;
@@ -236,6 +116,12 @@ const sections = (
     <ShareButton title={`Events in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
   </header>
 
+  <nav class="facet-nav" aria-label="Event filters">
+    {EVENT_FACETS.filter((f) => !f.brookingsOnly || isBrookings).map((f) => (
+      <a href={`/events/${f.slug}/`}>{f.navLabel}</a>
+    ))}
+  </nav>
+
   {sections.length > 0 ? sections.map(([label, list]) => (
     <>
       <SectionRule label={label} />
@@ -249,8 +135,8 @@ const sections = (
       {list.length > 0 && (
         <div class="grid">
           {list.map((item) => item.kind === 'story'
-            ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item) }} kicker={townwideKicker} />
-            : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item) }} href={item.event.event_url} kicker="Arts & Culture" />
+            ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={townwideKicker} />
+            : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" />
           )}
         </div>
       )}
@@ -272,6 +158,17 @@ const sections = (
 <style>
 .lede { max-width: 40rem; }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.facet-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0 1.5rem; }
+.facet-nav a {
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--navy-tint);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+}
+.facet-nav a:hover, .facet-nav a:focus-visible { background: var(--navy); color: var(--surface); }
 .grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
 .game-note {
   margin: 0 0 0.75rem;

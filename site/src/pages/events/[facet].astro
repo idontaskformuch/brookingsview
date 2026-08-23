@@ -1,0 +1,151 @@
+---
+/** Week 2 -- SEO landing pages for how people actually search for local
+ *  events ("free events in moreno valley this weekend," never "morenovalley
+ *  view events"). One dynamic route generates all facets from the shared
+ *  EVENT_FACETS list (lib/event-facets.ts) rather than five to six
+ *  near-identical .astro files, so the page shape (title/meta, intro,
+ *  filtered list, Event+ItemList schema, self-canonical, empty state,
+ *  cross-links) is defined exactly once. See NEEDS-HUMAN-REVIEW.md,
+ *  "Week 2 -- Event Landing Pages" for the facet-reliability reasoning
+ *  (especially why Free is scoped to library/park/community-center venues
+ *  only, never guessed from event text).
+ *
+ *  Same merged, deduped event feed as events.astro (lib/events.ts's
+ *  buildEventFeed) -- Today/This-weekend/Free/Kids/Library/Campus are all
+ *  independent filtered views of the SAME underlying list, not separate
+ *  queries that could silently drift apart. */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SectionRule from '../../components/SectionRule.astro';
+import StoryCard from '../../components/StoryCard.astro';
+import ShareButton from '../../components/ShareButton.astro';
+import {
+  getUpcomingStories, getUpcomingArtsEvents, getFacilities, type Facility,
+} from '../../lib/db';
+import {
+  buildEventFeed, artsEventAsStory, withAttribution, todayUtcMidnight, type FeedItem,
+} from '../../lib/events';
+import { buildEventJsonLd } from '../../lib/event-jsonld';
+import { EVENT_FACETS, type EventFacet } from '../../lib/event-facets';
+import { siteConfig } from '../../lib/site-config';
+
+export async function getStaticPaths() {
+  const isBrookings = siteConfig.townId === 'brookings_sd';
+  const [upcoming, artsEvents, facilities] = await Promise.all([
+    getUpcomingStories(['event'], 200),
+    getUpcomingArtsEvents(60),
+    getFacilities(),
+  ]);
+  const { items, alsoListedBy } = buildEventFeed(upcoming, artsEvents, siteConfig.timezone);
+  const today = todayUtcMidnight(siteConfig.timezone);
+  const ctx = { facilities, today, timezone: siteConfig.timezone };
+
+  return EVENT_FACETS
+    .filter((f) => !f.brookingsOnly || isBrookings)
+    .map((facet) => ({
+      params: { facet: facet.slug },
+      props: {
+        facet,
+        items: items.filter((item) => facet.matches(item, ctx)),
+        alsoListedBy,
+        facilities,
+      },
+    }));
+}
+
+const { facet, items, alsoListedBy, facilities } = Astro.props as {
+  facet: EventFacet;
+  items: FeedItem[];
+  alsoListedBy: Map<FeedItem, string[]>;
+  facilities: Facility[];
+};
+
+const title = facet.titleTemplate(siteConfig.cityName, siteConfig.siteName);
+const description = facet.descriptionTemplate(siteConfig.cityName);
+const canonicalUrl = new URL(`/events/${facet.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
+
+function eventJsonLdFor(item: FeedItem): Record<string, unknown> | null {
+  const asStory = item.kind === 'arts' ? artsEventAsStory(item.event) : item.story;
+  const itemUrl = item.kind === 'arts' ? item.event.event_url : new URL(`/s/${item.story.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
+  const heroUrl = new URL(asStory.image_path ?? `/og/${asStory.slug}.png`, Astro.site ?? siteConfig.siteUrl).href;
+  return buildEventJsonLd(
+    asStory, facilities,
+    { cityName: siteConfig.cityName, stateAbbr: siteConfig.stateAbbr, siteName: siteConfig.siteName, timezone: siteConfig.timezone },
+    itemUrl, heroUrl,
+  );
+}
+
+function listItemUrl(item: FeedItem): string {
+  return item.kind === 'arts' ? item.event.event_url : new URL(`/s/${item.story.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
+}
+
+// Full Event JSON-LD nested per listed event where it's eligible (reusing
+// the exact same builder/decision-tree s/[slug].astro uses -- never a
+// second, drifting copy of the venue-resolution rules); a lightweight
+// name+url ListItem for the rest (e.g. recurring-series rows, which never
+// carry Event markup -- see buildEventJsonLd's own doc), never a fabricated
+// address/date to force one.
+const itemListJsonLd = items.length > 0 ? {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: title,
+  itemListElement: items.map((item, i) => {
+    const eventJsonLd = eventJsonLdFor(item);
+    return {
+      '@type': 'ListItem',
+      position: i + 1,
+      url: listItemUrl(item),
+      name: item.kind === 'arts' ? item.event.title : item.story.title,
+      ...(eventJsonLd ? { item: eventJsonLd } : {}),
+    };
+  }),
+} : null;
+
+const siblingFacets = EVENT_FACETS.filter(
+  (f) => f.slug !== facet.slug && (!f.brookingsOnly || siteConfig.townId === 'brookings_sd')
+);
+---
+<BaseLayout title={title} wide ogSlug={`events-${facet.slug}`} description={description}>
+  <header class="lede">
+    <h1>{facet.heading}</h1>
+    <p>{facet.intro(siteConfig.cityName)}</p>
+    <ShareButton title={title} url={canonicalUrl} />
+  </header>
+
+  <nav class="facet-nav" aria-label="Other event filters">
+    <a href="/events/">All events →</a>
+    {siblingFacets.map((f) => <a href={`/events/${f.slug}/`}>{f.navLabel}</a>)}
+  </nav>
+
+  {items.length > 0 ? (
+    <div class="grid">
+      {items.map((item) => item.kind === 'story'
+        ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} />
+        : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" />
+      )}
+    </div>
+  ) : (
+    <p class="empty">{facet.emptyMessage}</p>
+  )}
+
+  {itemListJsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
+  )}
+</BaseLayout>
+
+<style>
+.lede { max-width: 40rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.facet-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0 1.5rem; }
+.facet-nav a {
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--navy-tint);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+}
+.facet-nav a:hover, .facet-nav a:focus-visible { background: var(--navy); color: var(--surface); }
+.grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+.empty { color: var(--ink-soft); }
+</style>

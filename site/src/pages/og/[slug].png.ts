@@ -22,6 +22,16 @@ const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 // by each page's own `ogSlug` prop.
 const SECTION_CARDS: { slug: string; title: string; kicker: string }[] = [
   { slug: 'section-events', title: `Events in ${siteConfig.cityName}`, kicker: 'Events' },
+  // Week 2 event landing pages (see NEEDS-HUMAN-REVIEW.md, "Week 2 -- Event
+  // Landing Pages") -- each needs its own og:image for the same reason
+  // every other section got one above: a shared image makes every shared
+  // link look identical.
+  { slug: 'events-today', title: `Today's events — ${siteConfig.cityName}`, kicker: 'Events today' },
+  { slug: 'events-this-weekend', title: `Events this weekend — ${siteConfig.cityName}`, kicker: 'This weekend' },
+  { slug: 'events-free', title: `Free events — ${siteConfig.cityName}`, kicker: 'Free events' },
+  { slug: 'events-kids', title: `Kids & family events — ${siteConfig.cityName}`, kicker: 'Kids & family' },
+  { slug: 'events-library', title: `Library events — ${siteConfig.cityName}`, kicker: 'Library' },
+  ...(isBrookings ? [{ slug: 'events-campus', title: `SDSU campus events — ${siteConfig.cityName}`, kicker: 'Campus events' }] : []),
   { slug: 'section-city-hall', title: `City hall — ${siteConfig.cityName}`, kicker: 'City hall' },
   { slug: 'section-weather', title: `Weather — ${siteConfig.cityName}`, kicker: 'Weather' },
   { slug: 'section-traffic', title: `Traffic — ${siteConfig.cityName}`, kicker: 'Traffic' },
