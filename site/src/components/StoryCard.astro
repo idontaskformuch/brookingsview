@@ -20,7 +20,7 @@ interface Props {
   kicker?: string;
 }
 const { story, compact = false, href: hrefOverride, kicker: kickerOverride } = Astro.props;
-const href = hrefOverride ?? `/s/${story.slug}`;
+const href = hrefOverride ?? `/s/${story.slug}/`;
 const isExternal = Boolean(hrefOverride);
 const shareUrl = new URL(`/s/${story.slug}/`, siteConfig.siteUrl).href;
 

@@ -56,27 +56,27 @@ const dateline = now.toLocaleDateString('en-US', {
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const nav = [
-  { href: '/events', label: 'Events' },
-  ...(isBrookings ? [{ href: '/university', label: 'University' }] : []),
-  ...(isBrookings ? [{ href: '/jackrabbits', label: 'Jackrabbits' }] : []),
-  ...(isBrookings ? [{ href: '/play', label: '🐇 Play' }] : []),
-  { href: '/city-hall', label: 'City hall' },
-  { href: '/facilities', label: 'Facilities' },
-  ...(isBrookings ? [{ href: '/farm-report', label: 'Farm report' }] : []),
-  ...(isMorenoValley ? [{ href: '/home-sales', label: 'Home sales' }] : []),
-  ...(isMorenoValley ? [{ href: '/sports', label: 'Sports' }] : []),
-  ...(isMorenoValley ? [{ href: '/workplace-watch', label: '📦 Worker Pulse' }] : []),
-  ...(isMorenoValley ? [{ href: '/burro-bonanza', label: '🐴 Play' }] : []),
-  { href: '/traffic', label: 'Traffic' },
-  { href: '/jobs', label: 'Jobs' },
+  { href: '/events/', label: 'Events' },
+  ...(isBrookings ? [{ href: '/university/', label: 'University' }] : []),
+  ...(isBrookings ? [{ href: '/jackrabbits/', label: 'Jackrabbits' }] : []),
+  ...(isBrookings ? [{ href: '/play/', label: '🐇 Play' }] : []),
+  { href: '/city-hall/', label: 'City hall' },
+  { href: '/facilities/', label: 'Facilities' },
+  ...(isBrookings ? [{ href: '/farm-report/', label: 'Farm report' }] : []),
+  ...(isMorenoValley ? [{ href: '/home-sales/', label: 'Home sales' }] : []),
+  ...(isMorenoValley ? [{ href: '/sports/', label: 'Sports' }] : []),
+  ...(isMorenoValley ? [{ href: '/workplace-watch/', label: '📦 Worker Pulse' }] : []),
+  ...(isMorenoValley ? [{ href: '/burro-bonanza/', label: '🐴 Play' }] : []),
+  { href: '/traffic/', label: 'Traffic' },
+  { href: '/jobs/', label: 'Jobs' },
   // Moreno Valley: folded into /columns/ -- see columns.astro/reviews.astro
   // and NEEDS-HUMAN-REVIEW.md "3.3 Reviews" (cadence too thin for its own
   // nav slot). Brookings keeps its own tab.
-  ...(!isMorenoValley ? [{ href: '/reviews', label: 'Reviews' }] : []),
-  { href: '/recipes', label: 'Recipes' },
-  { href: '/editorials', label: 'Editorials' },
-  { href: '/columns', label: 'Columns' },
-  { href: '/weather', label: 'Weather' },
+  ...(!isMorenoValley ? [{ href: '/reviews/', label: 'Reviews' }] : []),
+  { href: '/recipes/', label: 'Recipes' },
+  { href: '/editorials/', label: 'Editorials' },
+  { href: '/columns/', label: 'Columns' },
+  { href: '/weather/', label: 'Weather' },
 ];
 const path = Astro.url.pathname;
 ---
@@ -406,17 +406,17 @@ main { padding-block: 1.75rem 3.5rem; }
 <footer class="colophon">
   <div class="shell">
     <nav class="colophon__links" aria-label="About this site">
-      <a href="/about">About</a>
-      <a href="/how-we-gather-this">How we gather this</a>
-      <a href="/corrections">Corrections</a>
-      <a href="/contact">Contact</a>
-      <a href="/privacy">Privacy</a>
-      <a href="/cookies">Cookies</a>
+      <a href="/about/">About</a>
+      <a href="/how-we-gather-this/">How we gather this</a>
+      <a href="/corrections/">Corrections</a>
+      <a href="/contact/">Contact</a>
+      <a href="/privacy/">Privacy</a>
+      <a href="/cookies/">Cookies</a>
       <a href="/rss.xml">RSS</a>
     </nav>
     <p>
       {siteConfig.sourceBlurb} Every item
-      links to its original source. <a href="/corrections">Corrections are welcome</a>.
+      links to its original source. <a href="/corrections/">Corrections are welcome</a>.
     </p>
     <p class="data" style="margin-top:0.75rem; font-size:0.75rem;">&copy; {year} {siteConfig.siteName}</p>
   </div>

@@ -143,7 +143,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 
     <aside class="rail" aria-label="Conditions and numbers">
       {today && (
-        <a class="rail__link" href="/weather">
+        <a class="rail__link" href="/weather/">
           <Tile
             label="Weather"
             value={`${today.temp !== null ? Math.round(today.temp) : '—'}°${today.unit}`}
@@ -153,7 +153,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       )}
       {gameSlot === 'jackrabbits' && nextGame ? (
         <>
-          <a class="rail__link rail__game" href="/jackrabbits">
+          <a class="rail__link rail__game" href="/jackrabbits/">
             <GameCard game={nextGame} />
           </a>
           {/* Bara vid en RIKTIG Jackrabbits-match, inte ett allmänt SDSU-
@@ -162,11 +162,11 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
           <JackrabbitGameDayLine />
         </>
       ) : gameSlot === 'sdsu' && nextSdsuEvent ? (
-        <a class="rail__link rail__game" href="/university">
+        <a class="rail__link rail__game" href="/university/">
           <SdsuEventCard event={nextSdsuEvent} />
         </a>
       ) : gameSlot === 'regional' && nextRegionalGame && (
-        <a class="rail__link rail__game" href="/sports">
+        <a class="rail__link rail__game" href="/sports/">
           <RegionalGameCard game={nextRegionalGame} />
         </a>
       )}
@@ -181,12 +181,12 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
         />
       )}
       {trafficIncidents.length > 0 && (
-        <a class="rail__link" href="/traffic">
+        <a class="rail__link" href="/traffic/">
           <TrafficWidget incidents={trafficIncidents} />
         </a>
       )}
       {prices.length > 0 && (
-        <a class="rail__link rail__prices" href="/farm-report">
+        <a class="rail__link rail__prices" href="/farm-report/">
           <p class="rail__label">Markets</p>
           <table class="prices data">
             <tbody>
@@ -227,7 +227,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 
   {(todayStories.length > 0 || todayHomeGame) && (
     <section aria-label="Today">
-      <SectionRule label="Today" href="/events" />
+      <SectionRule label="Today" href="/events/" />
       {todayHomeGame && (
         <div class="river">
           <GameCard game={todayHomeGame} feature />
@@ -247,7 +247,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   )}
 
   <section aria-label="This week">
-    <SectionRule label="This week" href="/events" />
+    <SectionRule label="This week" href="/events/" />
     {weekStories.length > 0 ? (
       // Homepage/vertical redundancy (NEEDS-HUMAN-REVIEW.md "4.4"): a short
       // teaser here, /events is the canonical complete view -- SectionRule's
@@ -263,7 +263,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 
   {laterStories.length > 0 && (
     <section aria-label="Coming up">
-      <SectionRule label="Coming up" href="/events" />
+      <SectionRule label="Coming up" href="/events/" />
       <div class="river">
         {laterStories.slice(0, 5).map((story) => <StoryCard story={story} compact />)}
       </div>
@@ -279,7 +279,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       <SectionRule label={`Latest from ${siteConfig.siteName}`} />
       <div class="latest-from__grid">
         {latestFromSelection.map((story) => (
-          <a class="latest-from__card" href={`/s/${story.slug}`}>
+          <a class="latest-from__card" href={`/s/${story.slug}/`}>
             <p class="latest-from__kicker">{CATEGORY_LABELS[story.source_type] ?? 'Feature'}</p>
             <h3 class="latest-from__title">{story.title}</h3>
             <p class="latest-from__excerpt">{firstSentence(story.body)}</p>
@@ -294,40 +294,40 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     <SectionRule label={`More from ${siteConfig.cityName}`} />
     <div class="panels">
       {isBrookings && (
-        <a class="panel" href="/university">
+        <a class="panel" href="/university/">
           <h3>University</h3>
           <p>Games, concerts, shows and campus events at South Dakota State.</p>
         </a>
       )}
       {isBrookings && (
-        <a class="panel" href="/jackrabbits">
+        <a class="panel" href="/jackrabbits/">
           <h3>Jackrabbits</h3>
           <p>Full schedules and results for SDSU football, basketball and volleyball.</p>
         </a>
       )}
-      <a class="panel" href="/city-hall">
+      <a class="panel" href="/city-hall/">
         <h3>City hall</h3>
         <p>What the council, county commission and committees are deciding.</p>
       </a>
       {isBrookings && (
-        <a class="panel" href="/farm-report">
+        <a class="panel" href="/farm-report/">
           <h3>Farm report</h3>
           <p>Corn, soybean and cattle prices from USDA.</p>
         </a>
       )}
-      <a class="panel" href="/reviews">
+      <a class="panel" href="/reviews/">
         <h3>Reviews</h3>
         <p>What's playing right now, reviewed and clearly labeled as AI-written.</p>
       </a>
-      <a class="panel" href="/recipes">
+      <a class="panel" href="/recipes/">
         <h3>Recipes</h3>
         <p>Simple weeknight dinners built around what's in season.</p>
       </a>
-      <a class="panel" href="/editorials">
+      <a class="panel" href="/editorials/">
         <h3>Editorials</h3>
         <p>Opinion pieces on issues facing {siteConfig.cityName}.</p>
       </a>
-      <a class="panel" href="/columns">
+      <a class="panel" href="/columns/">
         <h3>Columns</h3>
         <p>Culture, science and light essays -- a change of pace from the news.</p>
       </a>

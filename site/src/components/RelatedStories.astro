@@ -25,7 +25,7 @@ const KICKER: Record<string, string> = {
             <span class="kicker">{KICKER[s.source_type] ?? CATEGORY_LABELS[s.source_type] ?? 'Feature'}</span>
             {s.occurs_at && <span class="related__when data">{formatOccursAt(s)}</span>}
           </p>
-          <a class="related__link" href={`/s/${s.slug}`}>{s.title}</a>
+          <a class="related__link" href={`/s/${s.slug}/`}>{s.title}</a>
         </li>
       ))}
     </ul>

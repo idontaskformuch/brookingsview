@@ -72,16 +72,16 @@ export const CONTENT_TRACK_TYPES: SourceType[] = [
  *  trots att de inte är i CONTENT_TRACK_TYPES ovan -- href-uppslaget är
  *  oberoende av rotationslistan. */
 export const CATEGORY_HREFS: Partial<Record<SourceType, string>> = {
-  culture_essay: '/columns',
-  kvick_essa: '/columns',
-  vetenskap_kronika: '/columns',
-  editorial: '/editorials',
-  media_recension: '/reviews',
-  vardagsmiddag: '/recipes',
-  home_sales_digest: '/home-sales',
-  sports_digest: '/sports',
-  university_digest: '/university',
-  workplace_watch_digest: '/workplace-watch',
+  culture_essay: '/columns/',
+  kvick_essa: '/columns/',
+  vetenskap_kronika: '/columns/',
+  editorial: '/editorials/',
+  media_recension: '/reviews/',
+  vardagsmiddag: '/recipes/',
+  home_sales_digest: '/home-sales/',
+  sports_digest: '/sports/',
+  university_digest: '/university/',
+  workplace_watch_digest: '/workplace-watch/',
 };
 
 export interface Story {
@@ -506,7 +506,7 @@ async function latestStoryByType(sourceType: SourceType): Promise<RelatedItem | 
   const row = rows[0];
   if (!row) return null;
   return {
-    href: `/s/${row.slug}`,
+    href: `/s/${row.slug}/`,
     title: row.title,
     kicker: CATEGORY_LABELS[sourceType] ?? sourceType,
     description: row.body.length > 90 ? row.body.slice(0, 90) + '…' : row.body,
@@ -521,41 +521,41 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
   // Arkadspelet -- olika spel per ort (Fas 1/2-arbetet denna session), inte
   // via CATEGORY_HREFS eftersom spelen inte är egna stories.
   const gameItem: RelatedItem | null = isBrookings
-    ? { href: '/play', title: 'Play Jackrabbit', kicker: 'Play', description: 'Our free arcade game — how far can you get?' }
+    ? { href: '/play/', title: 'Play Jackrabbit', kicker: 'Play', description: 'Our free arcade game — how far can you get?' }
     : isMorenoValley
-      ? { href: '/burro-bonanza', title: 'Play Burro Bonanza', kicker: 'Play', description: "Our free match-3 game — help Dusty clear the trail." }
+      ? { href: '/burro-bonanza/', title: 'Play Burro Bonanza', kicker: 'Play', description: "Our free match-3 game — help Dusty clear the trail." }
       : null;
 
   if (pageType === 'traffic') {
     const [nextEvent] = await getUpcomingStories(['event'], 1);
     if (nextEvent) {
-      items.push({ href: `/s/${nextEvent.slug}`, title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
+      items.push({ href: `/s/${nextEvent.slug}/`, title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
     }
     const [closure] = await getActiveSchoolAlerts();
     if (closure) {
-      items.push({ href: closure.url || '/events', title: closure.title || 'School closure alert', kicker: 'School alert', description: closure.district });
+      items.push({ href: closure.url || '/events/', title: closure.title || 'School closure alert', kicker: 'School alert', description: closure.district });
     }
     if (gameItem) items.push(gameItem);
   } else if (pageType === 'events') {
-    items.push({ href: '/traffic', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
+    items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
     const weekly = await getLatestWeekly();
-    if (weekly) items.push({ href: `/s/${weekly.slug}`, title: weekly.title, kicker: 'This week', description: null });
+    if (weekly) items.push({ href: `/s/${weekly.slug}/`, title: weekly.title, kicker: 'This week', description: null });
     if (isBrookings) {
-      items.push({ href: '/university', title: "What's on at SDSU", kicker: 'University', description: 'Athletics, music and more.' });
+      items.push({ href: '/university/', title: "What's on at SDSU", kicker: 'University', description: 'Athletics, music and more.' });
     } else if (isMorenoValley) {
-      items.push({ href: '/workplace-watch', title: 'Worker Pulse', kicker: 'Worker Pulse', description: 'Employer review trends for Moreno Valley.' });
+      items.push({ href: '/workplace-watch/', title: 'Worker Pulse', kicker: 'Worker Pulse', description: 'Employer review trends for Moreno Valley.' });
     }
   } else if (pageType === 'university') {
     const [nextEvent] = await getUpcomingStories(['event'], 1);
     if (nextEvent) {
-      items.push({ href: `/s/${nextEvent.slug}`, title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
+      items.push({ href: `/s/${nextEvent.slug}/`, title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
     }
-    items.push({ href: '/traffic', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
+    items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
     if (gameItem) items.push(gameItem);
   } else if (pageType === 'workplace_watch') {
     const homeSales = await latestStoryByType('home_sales_digest');
     if (homeSales) items.push(homeSales);
-    items.push({ href: '/events', title: "What's on", kicker: 'Events', description: 'This week in Moreno Valley.' });
+    items.push({ href: '/events/', title: "What's on", kicker: 'Events', description: 'This week in Moreno Valley.' });
     if (gameItem) items.push(gameItem);
   }
 

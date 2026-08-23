@@ -1607,3 +1607,103 @@ will self-correct as new columns/editorials publish on their normal
 cadence and age past the reviews. No action needed, noted so the
 discrepancy from the brief's specific example isn't mistaken for a bug
 during review.
+
+## 17. SEO Foundation — trailing-slash redirect fix (2026-08-23)
+
+**Context**: real GSC coverage exports (2026-08-21/23) showed both sites are
+healthy on indexing (Brookings 47%, Moreno Valley 76%) but near-zero
+impressions — a new-domain authority problem, not an indexing problem. The
+one clearly actionable technical item was the "Page with redirect" bucket:
+189 pages on Moreno Valley (52% of its not-indexed pages), 63 on Brookings
+(35%) — 252 combined.
+
+**Root cause, confirmed live before touching anything**: Cloudflare Workers
+Static Assets (the actual deploy target — `wrangler.jsonc` shows Advanced
+Mode with an `ASSETS` binding and a real `server/worker.ts`, not Cloudflare
+Pages as the originating brief assumed) serves folder pages under
+`html_handling: auto-trailing-slash` (its default, already in effect and
+already correct — folder pages *should* be served with a trailing slash).
+Requesting `/city-hall` returns a real `307` to `/city-hall/`, confirmed via
+curl on both a static page and a dynamic `/s/[slug]/` page. **The 307 status
+code itself is fixed by the platform and not configurable** — confirmed
+against current Cloudflare docs, not assumed from memory. So the only lever
+available is eliminating the redirect hops entirely: never link internally to
+the no-slash form in the first place.
+
+**Scale of the bug, found by an exhaustive repo-wide sweep (not a spot check)**:
+this was not a handful of stray links. It was systemic, hitting the two
+components that render on nearly every page of the site:
+- `layouts/BaseLayout.astro`'s primary header **nav array** (rendered on
+  every single page) — every entry (`/events`, `/city-hall`, `/university`,
+  `/traffic`, `/jobs`, `/columns`, etc.) was missing the trailing slash.
+- `components/StoryCard.astro` line 23 — the href for **every story card
+  sitewide** (`index.astro`, `city-hall.astro`, `events.astro`,
+  `university.astro`, `sports.astro`, `editorials.astro`, `columns.astro`,
+  `recipes.astro`, `reviews.astro`) was built as `` `/s/${story.slug}` ``,
+  no slash. Tellingly, the same file's `shareUrl` two lines below (line 25,
+  feeding `ShareButtons`) *did* already include the trailing slash — a live
+  internal inconsistency, not a deliberate choice, which is why this reads
+  as an overlooked default rather than an intentional URL scheme.
+- `lib/db.ts`'s `CATEGORY_HREFS` map and `getRelatedContent()` (feeding
+  `components/RelatedContent.astro`, rendered on `events.astro`,
+  `university.astro`, `traffic.astro`, `workplace-watch/index.astro`) — every
+  literal and templated href in both, ~15 entries.
+- `components/LeadStory.astro`, `RelatedStories.astro`, `WeeklyRoundup.astro`
+  — all built `/s/${slug}` story links with no trailing slash.
+- The site-wide footer (`BaseLayout.astro`) plus ~20 individual page/widget
+  files (`404.astro`, `about.astro`, `privacy.astro`, `contact.astro`,
+  `cookies.astro`, `corrections.astro`, `how-we-gather-this.astro`,
+  `burro-bonanza.astro`, `weather.astro`, `traffic.astro`, `university.astro`,
+  `BurroBonanzaWidget.astro`, `JackrabbitWidget.astro`,
+  `JackrabbitGameDayLine.astro`, `CookieBanner.astro`,
+  `WorkplaceWatchWidget.astro`) each had one or two more.
+
+Given `/s/[slug]/` story pages are by far the site's largest URL category,
+and `StoryCard`/`RelatedContent`/the header nav appear on nearly every page,
+this plausibly accounts for the bulk of both sites' redirect buckets —
+consistent with the brief's own note that 189 + 63 across a shared codebase
+"almost certainly the same config issue... one fix recovers pages on BOTH
+sites."
+
+**Fix**: every internal `href` now consistently uses the trailing-slash form
+that Cloudflare actually serves — matching the sitemap, which
+(`@astrojs/sitemap`, no custom config) was already correct and never part of
+the problem. Left alone, correctly: links to real files (`/favicon.svg`,
+`/rss.xml`, `/manifest.webmanifest`, `/icon-192.png`), the root `/`, external
+URLs, and the handful of legitimate `Astro.redirect()` gate pages (already
+targeting `/` or an already-slashed path, so no chain risk). RSS feed
+(`rss.xml.ts`) and canonical-tag generation (`BaseLayout.astro`'s
+`Astro.url.pathname`-derived canonical, `s/[slug].astro`'s explicit
+`canonicalUrl`) were both already correct — confirmed via curl against
+production, not assumed.
+
+**Verified, not assumed**: full `astro build` for both towns succeeded, all
+55 existing unit tests still pass unchanged (no test hardcoded an href
+literal), and a post-build grep of the homepage, a story page, an events
+listing page, and the 404 page for every `href="/...")` confirmed zero
+remaining no-slash internal links outside the real-file exceptions above.
+
+**Still open, deliberately not built in this pass**: Priority 2 of the brief
+asked to "confirm sitemap `<lastmod>` is accurate." It isn't inaccurate —
+it's **entirely absent**: `@astrojs/sitemap` with no config (the current
+setup) emits no `<lastmod>` at all, confirmed via the live production
+sitemap. Adding accurate per-URL `<lastmod>` would need the sitemap
+integration's `serialize()` hook to look up each story's `published_at`,
+which means wiring real DB access into `astro.config.mjs` at build-config
+time — a materially bigger and riskier change than a mechanical href fix,
+and not the "one probable redirect fix" this pass was scoped around. Flagging
+for a deliberate follow-up rather than rushing it in alongside 70+ mechanical
+edits.
+
+**Not done (human/relationship, out of Code's scope, per the brief itself)**:
+Request Indexing in GSC for both homepages + top pages; the Moreno Valley
+Matters and SDSU/local-Brookings-source outreach for external links/authority;
+Rich Results Test spot-check on 2-3 live event pages; re-checking GSC
+Performance in 2-4 weeks to see whether impressions actually move. The 1
+Brookings noindex page was checked and is intentional — `s/[slug].astro`
+noindexes home-sales digest placeholders while `generated_by === 'data_pending'`
+(a real, temporary thin-content state that resolves itself once real sales
+data lands), with `noindex,follow` so link equity still passes through.
+robots.txt was checked and is clean (non-blocking, correct per-town sitemap
+reference, already dynamically generated to avoid a cross-domain bug fixed
+earlier this session).
