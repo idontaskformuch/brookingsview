@@ -12,6 +12,7 @@ import {
 } from '../../lib/db';
 import type { Story, Facility } from '../../lib/db';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
+import { buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
 
 export async function getStaticPaths() {
@@ -175,24 +176,25 @@ const eventJsonLdObject = buildEventJsonLd(
 
   {isWorkerPulseDigest && <WorkerPulseComments pageSlug={story.slug} comments={comments} />}
 
-  <script type="application/ld+json" is:inline set:html={JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'NewsArticle',
-    headline: story.title,
-    datePublished: story.published_at,
-    dateModified: story.published_at,
-    articleBody: story.body,
-    image: [heroUrl],
-    // story.byline är alltid den bokstavliga strängen "AI-genererad" (se
-    // content/_base.py:to_metadata) -- en transparensmarkering, inte ett
-    // riktigt namn. Att sätta '@type':'Person', name:'AI-genererad' skulle
-    // hävda att en person med det namnet skrev texten, exakt den sortens
-    // påhittade uppgift projektets egna regler annars aldrig tillåter.
-    // Ingen story har en riktig mänsklig författare i nuläget, så
-    // Organization gäller för alla.
-    author: { '@type': 'Organization', name: siteConfig.siteName },
-    publisher: { '@type': 'Organization', name: siteConfig.siteName },
-  })} />
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildArticleJsonLd(story, heroUrl, siteConfig.siteName)
+  )} />
+
+  {(() => {
+    const recipeJsonLd = buildRecipeJsonLd(story, heroUrl, siteConfig.siteName);
+    return recipeJsonLd && (
+      <script type="application/ld+json" is:inline set:html={JSON.stringify(recipeJsonLd)} />
+    );
+  })()}
+
+  {(() => {
+    const datasetJsonLd = story.source_type === 'home_sales_digest'
+      ? buildDatasetJsonLd(story, canonicalUrl, siteConfig.cityName, siteConfig.siteName)
+      : null;
+    return datasetJsonLd && (
+      <script type="application/ld+json" is:inline set:html={JSON.stringify(datasetJsonLd)} />
+    );
+  })()}
 
   {eventJsonLdObject && (
     /* Resolved against the curated facilities registry -- see

@@ -1,0 +1,128 @@
+import { describe, expect, it } from 'vitest';
+import { buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd } from './article-jsonld';
+
+const SITE_NAME = 'Moreno Valley View';
+const HERO_URL = 'https://morenovalleyview.com/og/culture_essay-2026-08-01.png';
+const CANONICAL_URL = 'https://morenovalleyview.com/s/home-sales-digest-2026-07/';
+
+function baseStory(overrides: Partial<Parameters<typeof buildArticleJsonLd>[0]>) {
+  return {
+    title: 'Test Story',
+    published_at: '2026-08-01T15:00:00.000Z',
+    body: 'Body text.',
+    source_type: 'culture_essay' as const,
+    rating: null,
+    ...overrides,
+  };
+}
+
+describe('buildArticleJsonLd -- type selection', () => {
+  it('uses OpinionNewsArticle for editorials', () => {
+    const result = buildArticleJsonLd(baseStory({ source_type: 'editorial' }), HERO_URL, SITE_NAME);
+    expect(result['@type']).toBe('OpinionNewsArticle');
+  });
+
+  it('uses ReviewNewsArticle for reviews', () => {
+    const result = buildArticleJsonLd(baseStory({ source_type: 'media_recension' }), HERO_URL, SITE_NAME);
+    expect(result['@type']).toBe('ReviewNewsArticle');
+  });
+
+  it('uses the generic Article type for columns/essays', () => {
+    for (const sourceType of ['culture_essay', 'kvick_essa', 'vetenskap_kronika'] as const) {
+      const result = buildArticleJsonLd(baseStory({ source_type: sourceType }), HERO_URL, SITE_NAME);
+      expect(result['@type']).toBe('Article');
+    }
+  });
+
+  it('falls back to NewsArticle for factual reporting types (meeting, event, ...)', () => {
+    const result = buildArticleJsonLd(baseStory({ source_type: 'meeting' }), HERO_URL, SITE_NAME);
+    expect(result['@type']).toBe('NewsArticle');
+  });
+
+  it('always attributes authorship to the publication Organization, never a fabricated Person', () => {
+    const result = buildArticleJsonLd(baseStory({}), HERO_URL, SITE_NAME);
+    expect(result.author).toEqual({ '@type': 'Organization', name: SITE_NAME });
+    expect(result.publisher).toEqual({ '@type': 'Organization', name: SITE_NAME });
+  });
+
+  it('carries a structured reviewRating only when a real rating was extracted', () => {
+    const withRating = buildArticleJsonLd(baseStory({ source_type: 'media_recension', rating: 4 }), HERO_URL, SITE_NAME);
+    expect(withRating.reviewRating).toEqual({ '@type': 'Rating', ratingValue: 4, bestRating: 5, worstRating: 1 });
+
+    const withoutRating = buildArticleJsonLd(baseStory({ source_type: 'media_recension', rating: null }), HERO_URL, SITE_NAME);
+    expect(withoutRating.reviewRating).toBeUndefined();
+  });
+});
+
+describe('buildRecipeJsonLd', () => {
+  it('emits Recipe markup with structured ingredients/instructions', () => {
+    const story = {
+      title: 'Weeknight Chicken',
+      body: 'A quick one.',
+      published_at: '2026-08-01T15:00:00.000Z',
+      ingredients: ['400 g chicken thighs', '2 cloves garlic'],
+      instructions: ['Heat the pan.', 'Cook the chicken.'],
+    };
+    const result = buildRecipeJsonLd(story, HERO_URL, SITE_NAME);
+    expect(result).not.toBeNull();
+    expect(result!['@type']).toBe('Recipe');
+    expect(result!.recipeIngredient).toEqual(story.ingredients);
+    expect(result!.recipeInstructions).toEqual([
+      { '@type': 'HowToStep', text: 'Heat the pan.' },
+      { '@type': 'HowToStep', text: 'Cook the chicken.' },
+    ]);
+  });
+
+  it('emits nothing when ingredients or instructions are missing', () => {
+    const noIngredients = {
+      title: 'Broken', body: 'x', published_at: '2026-08-01T15:00:00.000Z',
+      ingredients: null, instructions: ['Step one.'],
+    };
+    expect(buildRecipeJsonLd(noIngredients, HERO_URL, SITE_NAME)).toBeNull();
+
+    const noInstructions = {
+      title: 'Broken', body: 'x', published_at: '2026-08-01T15:00:00.000Z',
+      ingredients: ['Something'], instructions: null,
+    };
+    expect(buildRecipeJsonLd(noInstructions, HERO_URL, SITE_NAME)).toBeNull();
+  });
+});
+
+describe('buildDatasetJsonLd', () => {
+  it('emits Dataset markup with the covered month as temporalCoverage', () => {
+    const story = {
+      title: 'Moreno Valley home sales: what sold in July 2026',
+      body: 'One hundred homes sold...',
+      occurs_at: '2026-07-01T00:00:00.000Z',
+      published_at: '2026-08-01T15:00:00.000Z',
+    };
+    const result = buildDatasetJsonLd(story, CANONICAL_URL, 'Moreno Valley', SITE_NAME);
+    expect(result).not.toBeNull();
+    expect(result!['@type']).toBe('Dataset');
+    expect(result!.temporalCoverage).toBe('2026-07');
+    expect(result!.spatialCoverage).toEqual({ '@type': 'Place', name: 'Moreno Valley' });
+  });
+
+  it('emits nothing without a covered month (occurs_at)', () => {
+    const story = {
+      title: 'Untitled', body: 'x', occurs_at: null, published_at: '2026-08-01T15:00:00.000Z',
+    };
+    expect(buildDatasetJsonLd(story, CANONICAL_URL, 'Moreno Valley', SITE_NAME)).toBeNull();
+  });
+
+  it('handles occurs_at coming back as a Date object, not just a string', () => {
+    // Regression test: the Neon driver returns a TIMESTAMPTZ column as
+    // either a string or an already-parsed Date depending on context (same
+    // caveat db.ts's calendarDateParts() already documents) -- a real
+    // `astro build` caught this as a runtime TypeError (`.slice is not a
+    // function`) before this test existed.
+    const story = {
+      title: 'Moreno Valley home sales: what sold in July 2026',
+      body: 'x',
+      occurs_at: new Date('2026-07-01T00:00:00.000Z'),
+      published_at: '2026-08-01T15:00:00.000Z',
+    };
+    const result = buildDatasetJsonLd(story, CANONICAL_URL, 'Moreno Valley', SITE_NAME);
+    expect(result!.temporalCoverage).toBe('2026-07');
+  });
+});

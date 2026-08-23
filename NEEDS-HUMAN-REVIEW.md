@@ -767,6 +767,55 @@ before.
   screen-reader user could never trigger. `<th scope="col">` was already
   correct on all three tables before this change.
 
+### 4.2 Structured data — Article type accuracy, Recipe, Dataset
+
+The previous JSON-LD block emitted a bare `NewsArticle` for every story
+type — accurate for actual news reporting (meetings, events, alerts,
+digests), an overclaim for opinion/review/essay content, the same class of
+"claiming more than the source supports" problem the Event JSON-LD work
+already fixed on the address side. Extracted into
+`site/src/lib/article-jsonld.ts` (same testable-module pattern as
+`event-jsonld.ts`) with a per-`source_type` type mapping: `editorial` →
+`OpinionNewsArticle`, `media_recension` → `ReviewNewsArticle` (with a
+structured `reviewRating` block, but only when a real numeric rating was
+actually extracted — never synthesized), `culture_essay`/`kvick_essa`/
+`vetenskap_kronika` → the generic `Article`, everything else unchanged as
+`NewsArticle`. Author/publisher stayed exactly as before (Organization,
+never a fabricated Person) — the AI-authorship disclosure was already
+correct and is untouched.
+
+**Built: Recipe markup.** `vardagsmiddag` stories already have fully
+structured `ingredients`/`instructions` arrays in the DB (the fail-loud
+gate in `content/recept/vardagsmiddag.py` guarantees it — see 3.4) — this
+was essentially free to wire up: `recipeIngredient`/`recipeInstructions`
+(as `HowToStep` objects) now emitted alongside the Article block whenever
+both are present.
+
+**Built: Dataset markup for home-sales digests**, per the brief's "where
+sensible" — `name`/`description`/`temporalCoverage` (the covered month)/
+`spatialCoverage`/`creator`, alongside (not instead of) the Article block,
+since a monthly digest genuinely is both a written summary and a pointer to
+a real dataset (`property_sales`). No `distribution`/`DataDownload` claimed
+-- there's no downloadable file, just the `/home-sales/` table page.
+
+**Tests extended, not eyeballed**, per the brief's own instruction: 11 new
+fixture tests in `site/src/lib/article-jsonld.test.ts` (type selection per
+source_type, author/publisher always Organization, reviewRating present
+only with a real rating, Recipe emitted only with both structured lists
+present, Dataset emitted only with a real covered month) — 23 total across
+both structured-data test files, all passing.
+
+**A real `astro build` caught a real bug** vitest alone didn't: the first
+build crashed with `story.occurs_at.slice is not a function` on every
+home-sales digest page. The Neon driver returns a `TIMESTAMPTZ` column as
+either a string or an already-parsed `Date` depending on context (the same
+caveat `db.ts`'s own `calendarDateParts()` already handles elsewhere in this
+codebase) — `buildDatasetJsonLd()` assumed always-a-string. Fixed to accept
+both, with a regression test pinning the `Date`-object case specifically.
+This is exactly why the build (not just the type-checker or the unit
+tests) is part of verifying this kind of change — `astro check` and vitest
+both passed on the broken version.
+
 ## 8. Not addressed yet
 
 Nothing outstanding as of this line — updated as Phase 3/4 sub-sections
