@@ -56,3 +56,29 @@ def test_sanitize_absurd_ratio_drops_both():
 
 def test_sanitize_both_none_stays_none():
     assert _sanitize_salary(None, None) == (None, None)
+
+
+def test_sanitize_implausibly_low_flat_salary_dropped():
+    # Real observed row: "General Manager" at a Domino's franchise,
+    # salary_min=salary_max=16208.31 (almost certainly a misparsed hourly
+    # rate stamped as an annual salary) -- ratio=1, so the old ratio-only
+    # check never caught it.
+    assert _sanitize_salary(16_208.31, 16_208.31) == (None, None)
+
+
+def test_sanitize_implausibly_high_flat_salary_dropped():
+    # Real observed row: "Licensed Psychiatrist" at Headway,
+    # salary_min=salary_max=494811 -- identical across 3 different job
+    # titles at the same employer, pointing to a category-average value,
+    # not a real per-listing figure.
+    assert _sanitize_salary(494_811, 494_811) == (None, None)
+
+
+def test_sanitize_plausible_flat_salary_kept():
+    assert _sanitize_salary(65_000, 65_000) == (65_000, 65_000)
+
+
+def test_sanitize_one_sided_implausible_value_drops_both():
+    # A wide-looking range where only the top end is implausible should
+    # still be sanitized away, not silently truncated to just the min.
+    assert _sanitize_salary(40_000, 500_000) == (None, None)

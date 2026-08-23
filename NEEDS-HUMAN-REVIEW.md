@@ -1390,3 +1390,77 @@ outcome, but the write-up should have said so explicitly rather than
 dropping it silently. Net result: **6 kept, not 5** (13 columns remain from
 20), all six genuinely thesis-distinct. No content was deleted outside the
 confirmed 7-item list.
+
+## 14. Brookings P6 — backfill shared fixes to existing content (2026-08-23)
+
+Per-item check was "does the live page render the fix," not "is the code
+present" -- verified with real builds and page spot-checks throughout, not
+`astro check` alone.
+
+**P6.1 Review Writing Standard, regenerated.** The 3 existing Brookings
+reviews (The Odyssey, Michael, Spider-Man: Brand New Day) predated the
+standard and still rendered the old format. Built
+`scripts/regenerate_brookings_reviews.py`: looked up each film's real
+Wikidata QID live (SPARQL, label + P31=film + release-year match, not
+guessed) to rebuild the same real underlag `now_playing.py` would have
+used, then ran it through the current `media_recension.write()` and
+UPDATEd the existing row in place (same slug, same editorial fact — just
+written to the current standard) rather than inserting new rows. All 3
+passed the standard on the first retry (no `review_quality_flags`).
+Verified on the actual built pages: all 3 now show "How to see it in
+Brookings" → Cinema 8, a divided-reception-then-verdict paragraph citing
+real Rotten Tomatoes/Metacritic numbers, and the code-stamped verification
+date — zero Moreno Valley strings. Cadence confirmed unchanged (~1/week);
+Reviews keeps its own Brookings nav slot as before.
+
+**P6.2 Jobs — cap and freshness were ALREADY live; salary sanitation had a
+real gap, now fixed.** Checked the actual page/code before assuming the
+brief's description was current: `jobs.astro`'s employer diversity cap
+(30%, min 3, overflow behind a "More from `<employer>`" expander) and
+`db.ts`'s 45-day freshness filter are both already-shipped, town-agnostic
+code — confirmed live on a real build (Good Samaritan capped to 7 visible
+rows with the rest in an overflow section; 22 of 50 raw DB rows survived
+the freshness filter). The one real, confirmed gap:
+`jobs_v1.py`'s `_sanitize_salary()` only caught a too-*wide* min/max ratio,
+never an implausible *absolute* value when min=max (a flat, non-ranged
+estimate) — exactly the brief's two cited examples, both confirmed live in
+the DB before fixing: a Domino's franchise "General Manager" listing at
+$16,208.31 (an Adzuna estimate implausible for the title, `salary_is_predicted=true`),
+and "Licensed Psychiatrist" at Headway showing $494,811 — identically,
+across 3 different job titles at the same employer, which points to a
+category-average value leaking through as if it were a real per-listing
+figure. Added absolute plausibility bounds ($18,000–$350,000; the floor is
+deliberately above federal minimum wage annualized, just high enough to
+catch the real $16,208 case without guessing at a title-aware check) to
+`_sanitize_salary()`, then re-ran it against the 50 already-stored
+Brookings rows (not just future scrapes) — 4 rows corrected, all 3
+distinct bad values from the brief. Verified live: 0 occurrences of either
+figure on the rebuilt page. **Not built here per the brief's explicit
+scope line**: the SDSU job feed (a real new source — SDSU posts on its own
+portal, not Adzuna, so the city's largest employer is currently absent
+from Jobs entirely) — belongs with the university work.
+
+**P6.3 Weather — day-labeling was already fixed, verified rather than
+assumed.** Read `weather.astro` before doing anything: its own "FAS 2"
+comment already documents the exact fix described in the brief (period
+labels computed from each period's own `start` timestamp compared to the
+site's local "today," never trusted from NWS's raw `name` string) — shared,
+town-agnostic code, no MoVal-specific branching. The one live "Saturday"
+label spotted on the built page is correct, not a regression: today is
+Sunday (2026-08-23), so a period 6 days out correctly reads "Saturday," a
+real future day, not today mislabeled. Also noticed `getActiveAlerts()` is
+already wired into this page (a FAS 2 addition, per the same comment) — so
+NWS alerts (including winter storm/blizzard warnings, since those come
+through the same active-alerts feed) already surface here generically, not
+zero coverage as the brief's framing might suggest. **Not built here per
+the brief's explicit scope line**: a dedicated, styled winter-weather
+editorial layer (No Travel Advisories, wind chill emphasis, the
+Weather↔Traffic↔Farm Report tie-in) — that's real feature work, not a
+backfill, and belongs in a future Weather build-out.
+
+**Contamination scan clean throughout** (0 flagged, re-run after the
+review regeneration specifically, since that's exactly where a wrong-town
+venue could have snuck back in). All Brookings pages confirmed rendering
+`America/Chicago` (Central) via `siteConfig.timezone`, no separate check
+needed since every page reads from the same shared config value already
+verified in the parity audit.

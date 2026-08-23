@@ -102,12 +102,36 @@ def _classify_category(title: str, adzuna_label: str | None) -> str | None:
 # Sanera hellre till en ärlig halv-siffra/"ej angiven" än att visa nonsens.
 _MAX_SALARY_RATIO = 15
 
+# Brookings P6-omverifiering (2026-08-23, se NEEDS-HUMAN-REVIEW.md): den
+# ursprungliga saneringen fångar bara ett för BRETT intervall, inte ett
+# orimligt värde när min=max (en platt uppskattning, kvot=1, aldrig
+# BRETT). Live-data hade båda felen samtidigt: "General Manager" hos en
+# Domino's-franchise, salary_min=salary_max=16 208 (nästan säkert en
+# feltolkad timlön stämplad som årslön), och "Licensed Psychiatrist" hos
+# Headway, salary_min=salary_max=494 811 -- IDENTISKT för tre olika
+# jobbtitlar hos samma arbetsgivare, vilket pekar mot ett kategorisnitt
+# Adzuna returnerar snarare än en riktig per-annons siffra. Ett absolut
+# rimlighetsintervall fångar båda utan att röra en riktig, bred spännvidd.
+# Gränserna är medvetet generösa (18 000, klart över federal minimilön
+# ~15 080/år vid 40h/vecka, men fångar ändå den verkliga observerade raden
+# på 16 208.31 -- en Domino's-franchise "General Manager"-annons vars
+# salary_is_predicted=True Adzuna-uppskattning är orimlig för titeln,
+# oavsett om siffran i sig teoretiskt kunde vara en riktig lön för någon
+# annan roll; 350 000 är ett högt men inte orimligt tak för enstaka
+# specialistroller) -- hellre missa en äkta högavlönad annons än visa fler
+# konstruerade sex- eller femsiffriga tal.
+_MIN_PLAUSIBLE_SALARY = 18_000
+_MAX_PLAUSIBLE_SALARY = 350_000
+
 
 def _sanitize_salary(salary_min, salary_max) -> tuple[float | None, float | None]:
     lo = salary_min or None
     hi = salary_max or None
     if lo and hi and hi / lo > _MAX_SALARY_RATIO:
         return None, None
+    for value in (lo, hi):
+        if value is not None and not (_MIN_PLAUSIBLE_SALARY <= value <= _MAX_PLAUSIBLE_SALARY):
+            return None, None
     return lo, hi
 
 
