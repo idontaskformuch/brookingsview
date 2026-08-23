@@ -1145,3 +1145,49 @@ anything could be built — not attempted here, logged as a lead for whoever
 does the next Brookings-specific content pass. Note again: this doesn't
 render anything wrong for Brookings today, it renders nothing, which is the
 safe failure mode.
+
+## 11. University Coverage Rebuild (2026-08-23) — Part A done, B/C paused
+
+**Part A (fix what exists) is complete and verified**, two commits:
+- `/jackrabbits`: timezone bug fixed at the root (naive datetime silently
+  stored as UTC, ~5-6h off every game — see `scrapers/parsers/gojacks_v1.py`),
+  ranking-prefix duplicates deduped (both the parser going forward and a
+  one-time cleanup of rows already affected, `scripts/dedupe_sports_games.py`),
+  Results/Schedule split per sport, and a new AI-written season-summary
+  editorial layer (`ai_pipeline/jackrabbits_season_digest.py`) — deliberately
+  scoped to real, verifiable facts (season record, wins over opponents
+  gojacks.com itself labels as ranked) since there's no data source for
+  SDSU's own poll ranking, and inventing one would violate house rules.
+- `/university`: the weekly digest now excludes already-filtered rows
+  (retirement receptions), dedupes exact same-title/same-time repeats,
+  deterministically collapses 3+ simultaneous events into one line, and
+  cross-references the academic calendar for hierarchy. Icon mapping now
+  keys off event title (real sport), not the coarse category. Arts/theatre
+  events (already scraped, previously only shown on `/events`) and a full
+  academic-calendar strip (registration/breaks/finals/commencement — the
+  data already had all of this, just never rendered past 2 dates) now
+  appear on the page.
+
+**Part B (institutional/research/town-gown coverage) and Part C (page
+restructuring into strands) were NOT started this pass** — paused to address
+a higher-priority, actively-wrong-data bug the human flagged in the same
+session (`/traffic` querying California's Caltrans for a South Dakota site,
+per the "Brookings Full Audit" P1). Per that audit's own sequencing note:
+broken data before build-outs.
+
+**Still open for a future pass** (brief's Part B/C, source investigation
+mostly not yet started):
+- B.1 SDBOR Regents ingest (PDF agendas/minutes, filtered to SDSU items) —
+  not investigated yet this session.
+- B.2 SDSU newsroom RSS research strand + Farm Report ag-research bridge —
+  not investigated yet.
+- B.3 Town-gown linking layer — not started.
+- B.4 The Collegian as a discover-not-republish lead source — not
+  investigated yet; the sourcing boundary (paraphrase/link only, never
+  republish, always chase to the primary source) is already documented
+  house policy from the news-aggregation rules elsewhere in this codebase,
+  so applying it here is mechanical once the RSS feed itself is wired, but
+  that wiring hasn't happened.
+- Part C restructuring (Lead/Strands layout, `Event` JSON-LD + SDSU venues
+  in the Brookings venue registry) depends on B's strands existing first,
+  so it's also not started.
