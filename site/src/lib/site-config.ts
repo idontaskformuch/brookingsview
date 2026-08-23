@@ -43,6 +43,20 @@ export interface SiteConfig {
    *  Optional: only populate for a town once its theaters are actually
    *  verified, never guessed. */
   localTheaters?: { name: string; url: string; address: string; phone: string; detail: string }[];
+  /** The real, live traffic-incident source /traffic.astro attributes and
+   *  links to -- see NEEDS-HUMAN-REVIEW.md "Traffic wrong-state source fix":
+   *  the page used to hardcode "Source: Caltrans QuickMap" for every town,
+   *  which was actively wrong for Brookings (Caltrans is California-only).
+   *  Undefined = no working public incident feed has been found for this
+   *  town yet (Brookings, as of this writing -- SD511.org has no public
+   *  developer API, and South Dakota DOT's own ArcGIS server at
+   *  sdgis.sd.gov is GIS asset/inventory data, not live incidents; both
+   *  re-verified live). The page must render an honest "no source found
+   *  yet" state in that case, never a silent/misattributed empty table --
+   *  same "never render a silent gap" principle as home-sales.astro.
+   *  scopeNote: what the source does/doesn't cover (e.g. state highways
+   *  only, not city streets) -- shown on the page, not left implicit. */
+  trafficSource?: { name: string; url: string; scopeNote: string };
 }
 
 const CITIES: Record<string, SiteConfig> = {
@@ -95,6 +109,11 @@ const CITIES: Record<string, SiteConfig> = {
     sourceBlurb:
       'Moreno Valley View gathers public information from the City of Moreno Valley, Riverside County, and the Moreno Valley Public Library.',
     removalEmail: 'hello@morenovalleyview.com',
+    trafficSource: {
+      name: 'Caltrans QuickMap',
+      url: 'https://quickmap.dot.ca.gov',
+      scopeNote: 'State highways, freeways, and CHP-logged incidents -- not city or county streets.',
+    },
     // Verified 2026-08-23 (search + each theater's own site): the two
     // first-run theaters actually in Moreno Valley. Not an exhaustive
     // regional list (Riverside/Redlands/Perris have more) -- deliberately

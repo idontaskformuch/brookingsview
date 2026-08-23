@@ -1191,3 +1191,95 @@ mostly not yet started):
 - Part C restructuring (Lead/Strands layout, `Event` JSON-LD + SDSU venues
   in the Brookings venue registry) depends on B's strands existing first,
   so it's also not started.
+
+## 12. Traffic wrong-state source fix (2026-08-23)
+
+**Confirmed and fixed the real bug**: `/traffic.astro`'s footer hardcoded
+`Source: Caltrans QuickMap` (California's DOT) for every town, unconditionally
+— including Brookings, which has zero live traffic data (`traffic.enabled:
+false` in `configs/brookings_sd.json`, confirmed). A Brookings reader saw
+"No active incidents reported right now" attributed to a source that has
+never queried South Dakota and never will, reading as "roads are clear"
+when the true state is "no data source exists for this area." Fixed:
+`site-config.ts` gained an optional `trafficSource` field (name/url/scopeNote),
+populated for Moreno Valley (Caltrans, real and correct there) and left
+undefined for Brookings; `traffic.astro` now attributes conditionally and
+renders an honest "no public live traffic-incident feed has been found for
+Brookings yet" message instead of the misleading empty state, with a link to
+`/weather` (NWS alerts, a real, already-working source that does cover
+winter storm/blizzard warnings — the actual safety-relevant case raised).
+
+**Re-investigated whether a real SD source now exists, rather than assuming
+the prior session's "not found" conclusion was still current** — it is,
+confirmed independently this session with more specific probes than before:
+- `sd511.org` (→ `www.sd511.org`) responds 200, no `robots.txt` restriction,
+  but has no developer/API page — tried `/developers`, `/api/v2/get/event`,
+  `/help/endpoint/event` (the exact path shapes 511GA/511NY's real,
+  documented APIs use on the `ibi511.com` platform family) and `/List`,
+  `/Map`: all 404. SD511 is not on that platform.
+- `sdgis.sd.gov/dot/rest/services` — reachable this session (was
+  unreachable/timed out for the prior investigation; unclear if that was
+  transient or environment-specific, worth retrying again later if this
+  matters). Confirmed 200, no key required, real ArcGIS Server JSON. But its
+  contents are GIS asset/inventory layers (`TIM/DOT_Crashes` — historical
+  crash records, not live; `DOT_Structures`, `DOT_Culverts`,
+  `DOT_MileageReferenceMarkers`, route/road network geometry) and one
+  administrative region-boundary layer under `Operations` — nothing
+  resembling Caltrans QuickMap's live lane-closure/incident feed.
+- Conclusion stands: **no open, live SD traffic-incident API found.**
+  `traffic.enabled` correctly stays `false`; nothing was fabricated to fill
+  the gap. **Needs a decision**: the only remaining path is a real SD511
+  developer key (contact `SD511@iteris.com`, per public mentions) — worth
+  pursuing if traffic data for Brookings is a priority, otherwise the honest
+  empty state is the right long-term behavior, not a placeholder.
+
+### Systematic per-source geography audit
+
+Checked every external data source in `configs/brookings_sd.json` for a
+wrong-state defect (the class of bug Traffic was) — confirmed correct
+unless noted:
+- **Weather**: `lat`/`lon` 44.3114 / -96.7984 — real Brookings, SD
+  coordinates (NWS resolves office/grid from these automatically, so a
+  correct coordinate is sufficient; no separate hardcoded office to check). ✓
+- **Weather alerts**: `area: SDC011` — a South Dakota county alert zone. ✓
+- **Jobs**: `where: "Brookings, SD"`. ✓
+- **Farm Report / ag_markets**: `scrapers/parsers/usda.py` reads
+  `state_alpha` from `cfg.get("state", "SD")` — `configs/brookings_sd.json`
+  has `"state": "SD"` at the top level, so this resolves correctly; the
+  `"SD"` fallback default is also right for this specific default config
+  even without that key, though relying on a shared default across towns
+  would itself be a latent risk if a future third state ever launched
+  without setting `state` explicitly. ✓ (cattle is fetched nationally by
+  design, not state-scoped — a separate, already-flagged concept issue, not
+  a wrong-state bug.)
+- **Events** (city/library/chamber): `cityofbrookings-sd.gov`,
+  `brookingslibrary.libcal.com`, `visitbrookingssd.com` — all real
+  Brookings-specific domains. ✓
+- **City/county meetings**: `cityofbrookings.legistar.com`,
+  `brookingscountysd.gov`. ✓
+- **School alerts**: Brookings School District 05-1, a specific Thrillshare
+  feed ID. ✓
+- **Recipes/seasonality**: already confirmed in the earlier "Brookings
+  Parity Audit" — `brookings_sd → midwest` in `content/seasonal_ingredients.py`'s
+  `_TOWN_REGION` map. ✓
+- **`road_conditions`**: `enabled: true` but `url: null`, `provider:
+  "sd_dot_511"`, and **not registered in `scrapers/runner.py`'s `REGISTRY`
+  at all** — confirmed this is a harmless no-op (`run_source()` logs "no
+  parser registered" and skips cleanly when no registry key resolves), not a
+  crash or wrong-state risk, but it's dead configuration pointing at nothing.
+  Same underlying gap as Traffic (no real SD511 endpoint found) — could be
+  removed or left as a documented placeholder; not urgent either way.
+- **Reviews**: already fixed in the Brookings Parity Audit (Brookings
+  Cinema 8, real address/phone).
+
+**Extended `tests/test_town_parity.py`** with real geography assertions
+(not just the existing cross-town-string check, which wouldn't catch a URL
+like `quickmap.dot.ca.gov` at all — it names no town, just the wrong
+state's agency): town coordinates fall within a real bounding box for their
+own state, `data_sources.weather`'s lat/lon match the town's own
+coordinates, `data_sources.jobs.where` mentions the town's own state, and
+(if a town's traffic source is ever enabled with a `bbox`) that bbox falls
+within the town's own state. Included a deliberately-wrong-state fixture
+test (Moreno Valley's real coordinates asserted against South Dakota's
+bounding box) to prove the check actually fails when it should, not just a
+tautology.

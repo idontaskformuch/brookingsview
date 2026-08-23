@@ -76,12 +76,28 @@ const SEVERITY_LABELS: Record<string, string> = {
         ))}
       </tbody>
     </table>
-  ) : (
+  ) : siteConfig.trafficSource ? (
     <p class="empty">No active incidents reported right now.</p>
+  ) : (
+    // Never render "No active incidents" when there's no actual source
+    // behind it -- that reads as "roads are clear," not the true state
+    // ("we don't have a live feed for this area yet"). See
+    // NEEDS-HUMAN-REVIEW.md "Traffic wrong-state source fix".
+    <p class="empty no-source">
+      No public live traffic-incident feed has been found for {siteConfig.cityName} yet
+      (checked SD511.org and South Dakota DOT's GIS server directly -- neither
+      exposes an open incident API at this time). For winter road safety and
+      closures, <a href="/weather">check active weather alerts</a>, which does
+      cover this area.
+    </p>
   )}
 
   <p class="source">
-    Source: <a href="https://quickmap.dot.ca.gov" rel="noopener">Caltrans QuickMap</a>, refreshed regularly.
+    {siteConfig.trafficSource ? (
+      <>Source: <a href={siteConfig.trafficSource.url} rel="noopener">{siteConfig.trafficSource.name}</a>, refreshed regularly. {siteConfig.trafficSource.scopeNote}</>
+    ) : (
+      <>No traffic data source configured for {siteConfig.cityName} yet.</>
+    )}
   </p>
 
   <RelatedContent pageType="traffic" />
