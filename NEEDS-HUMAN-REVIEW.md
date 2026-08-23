@@ -1372,3 +1372,21 @@ confirmation of the actual keep/cut list rather than executing my own
 read of "best" unilaterally. If confirmed, I'll export the full text of
 every deleted row to a local backup file first, so the exact wording is
 recoverable even after deletion.
+
+**Resolved 2026-08-23**: confirmed by the human — executed the 7-cut list
+above exactly as listed. Full text of all 7 deleted rows backed up first to
+`backups/columns_deleted_2026-08-23.json` (real DB rows including id,
+body, generated_by, timestamps — recoverable by re-inserting if any cut is
+reconsidered). Verified against `stories` before and after: 20 columns → 13
+remain, exactly the 7 target slugs removed, nothing else touched.
+
+**One correction to the analysis above**: `editorial-2026-07-21` "The Quiet
+Virtue of a Boring Notice" was quorum-themed (part of the original 12) but
+never actually placed in either the keep-5 or cut-7 list above — it argues
+a fourth, genuinely distinct thesis (unambiguous praise: "residents should
+recognize it as a model," distinct from both the proximity/scale and
+proportion-critique clusters), so leaving it untouched was the right
+outcome, but the write-up should have said so explicitly rather than
+dropping it silently. Net result: **6 kept, not 5** (13 columns remain from
+20), all six genuinely thesis-distinct. No content was deleted outside the
+confirmed 7-item list.
