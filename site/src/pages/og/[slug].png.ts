@@ -27,6 +27,7 @@ const SECTION_CARDS: { slug: string; title: string; kicker: string }[] = [
   { slug: 'section-traffic', title: `Traffic — ${siteConfig.cityName}`, kicker: 'Traffic' },
   { slug: 'section-jobs', title: `Jobs in and near ${siteConfig.cityName}`, kicker: 'Jobs' },
   { slug: 'section-facilities', title: `Local facilities — ${siteConfig.cityName}`, kicker: 'Facilities' },
+  { slug: 'section-corrections', title: `Corrections — ${siteConfig.siteName}`, kicker: 'Corrections' },
   ...(isMorenoValley ? [
     { slug: 'section-home-sales', title: `Recent home sales — ${siteConfig.cityName}`, kicker: 'Home sales' },
     { slug: 'section-workplace-watch', title: `Worker Pulse — ${siteConfig.cityName}`, kicker: 'Worker Pulse' },

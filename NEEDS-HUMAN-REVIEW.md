@@ -891,6 +891,31 @@ real `astro build` that the new PNG routes render without error (satori/
 sharp failures wouldn't show up in `astro check` or vitest, only at
 build/render time — same lesson as the `occurs_at` Date bug in 4.2).
 
+### 4.6 Corrections page — built, deliberately empty, seeding is a human call
+
+Added `/corrections` (a real transparency log, not another submission
+form — `/contact` already has one of those, and now links to this) and
+wired the footer's existing "Corrections are welcome" line to actually
+point somewhere; it was inert text before this. A hand-edited array in the
+page itself, not a new DB table — this is low-volume editorial content, the
+same "a human decides what goes here" reasoning as the facilities/employers
+seed-file pattern, and a real table would be premature machinery for zero
+starting entries.
+
+**Left genuinely empty — per the brief's own "human's call, flag it"
+instruction.** The obvious first entry would be the Phase 1 contamination
+cleanup (11 rows unpublished for leaking the wrong town's identity) — a
+real correction, honestly. But publicly logging it means writing up, in
+public, that the site published fabricated cross-city content for roughly
+two weeks before it was caught — that's a reputational disclosure decision
+for the site owner to make deliberately, not something to publish as a
+side effect of building the page's plumbing. **Needs a decision**: seed
+`/corrections` with the Phase 1 incident (and if so, how much detail — a
+one-line "some articles briefly had incorrect city references, since
+corrected" reads very differently from the full CONTAMINATION_REPORT.md
+detail), or leave it starting clean going forward. Either is defensible;
+it just isn't a call to make unilaterally.
+
 ## 8. Not addressed yet
 
 Nothing outstanding as of this line — updated as Phase 3/4 sub-sections

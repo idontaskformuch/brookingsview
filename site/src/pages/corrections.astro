@@ -1,0 +1,68 @@
+---
+/** A standing corrections log -- see NEEDS-HUMAN-REVIEW.md "4.6 Corrections
+ *  page". The footer's "Corrections are welcome" line and /contact's own
+ *  "Corrections" section already invite readers to report a mistake; this
+ *  is where that promise actually lives -- not a submission form (that's
+ *  /contact), a public record of what's been corrected and when.
+ *
+ *  CORRECTIONS is a small hand-edited list, not a DB table: this is
+ *  low-volume, editorial content (the kind of thing a human decides to log,
+ *  not something scraped or AI-generated), the same "a human edits a file"
+ *  reasoning already used for facilities/employers seed data -- a real
+ *  database table would be premature machinery for what starts at zero
+ *  entries. Revisit if volume ever makes a flat file awkward to maintain.
+ *
+ *  Empty by design right now -- see NEEDS-HUMAN-REVIEW.md for the open
+ *  question of whether to seed this with the Phase 1 contamination
+ *  unpublishing (a real correction, but a visibility call for a human to
+ *  make, not something to publish unilaterally).
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../lib/site-config';
+
+interface Correction {
+  date: string; // YYYY-MM-DD
+  summary: string;
+  detail: string;
+}
+
+const CORRECTIONS: Correction[] = [];
+---
+<BaseLayout title={`Corrections — ${siteConfig.siteName}`}
+  description={`A public record of corrections made on ${siteConfig.siteName}.`}
+  ogSlug="section-corrections">
+  <article class="prose">
+    <h1>Corrections</h1>
+    <p>{siteConfig.siteName} is written by AI, gathering public information
+    from official sources — and like any newsroom, we sometimes get
+    something wrong. This page is a public record of what's been corrected
+    and when, not just a promise to do it.</p>
+    <p>Spotted a mistake? <a href="/contact">Let us know</a> — a link to the
+    page helps.</p>
+
+    {CORRECTIONS.length > 0 ? (
+      <ul class="log">
+        {CORRECTIONS.map((c) => (
+          <li>
+            <p class="log__date data">{c.date}</p>
+            <p class="log__summary">{c.summary}</p>
+            <p class="log__detail">{c.detail}</p>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p class="empty">No corrections have been logged yet.</p>
+    )}
+  </article>
+</BaseLayout>
+
+<style>
+.prose { max-width: 36rem; }
+.prose p { margin: 0 0 1rem; }
+.log { list-style: none; margin: 1.5rem 0 0; padding: 0; display: grid; gap: 1.25rem; }
+.log li { border-top: 1px solid var(--rule); padding-top: 0.875rem; }
+.log__date { color: var(--ink-soft); font-size: 0.8125rem; margin: 0 0 0.25rem; }
+.log__summary { font-weight: 600; margin: 0 0 0.25rem; }
+.log__detail { color: var(--ink-soft); font-size: 0.9375rem; margin: 0; }
+.empty { color: var(--ink-soft); font-style: italic; }
+</style>
