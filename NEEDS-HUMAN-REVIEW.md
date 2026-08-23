@@ -1464,3 +1464,76 @@ venue could have snuck back in). All Brookings pages confirmed rendering
 `America/Chicago` (Central) via `siteConfig.timezone`, no separate check
 needed since every page reads from the same shared config value already
 verified in the parity audit.
+
+## 15. Brookings — Farm Report Depth (2026-08-23)
+
+**Root cause found before building anything else**: `scrapers/parsers/usda.py`'s
+`parse()` already fetched a real API response covering ~13+ months per
+commodity (`year__GE`), but threw all of it away except `max(rows,
+key=_period_sort_key)` -- one row per commodity, always. Direction/trend
+were structurally impossible before this, not just unbuilt. Fixed with
+`_monthly_rows()`: keeps every real monthly observation (last 13 months),
+drops non-monthly rows (`MARKETING YEAR` annual averages), dedupes by
+period. `ag_prices` already had no unique constraint blocking multiple
+rows per commodity (`UNIQUE (town_id, content_hash)`, and content_hash
+already included year+period) -- no migration needed, purely a parser fix.
+
+**Two real data-quality bugs caught by actually inspecting the live API
+response before wiring a new commodity, not by trusting NASS's field names**:
+- **Wheat** has three distinct `class_desc` values in SD (`ALL CLASSES`,
+  `WINTER`, `SPRING, (EXCL DURUM)`), all the same `$/BU` unit. Left
+  unpinned, the per-period dedup would silently mix wheat classes across
+  different months. Pinned to `ALL CLASSES`.
+- **Hogs** returns the *same* `class_desc` (`ALL CLASSES`) in two unrelated
+  units under `PRICE RECEIVED`: a real `$ / CWT` price and an unrelated
+  `PCT OF PARITY` figure (an old USDA parity-ratio concept, not a dollar
+  price). First test run actually rendered `31.0` where a price should be
+  before this was caught. Pinned `unit_desc="$ / CWT"` explicitly.
+
+Every new commodity (wheat, sunflowers, oats, hogs) was checked live
+against `state_alpha=SD&statisticcat_desc=PRICE RECEIVED` before being
+added, per the brief's explicit ask -- sunflowers uses `class_desc="OIL
+TYPE"` (real SD monthly data through Aug 2025, but genuinely no 2026 row
+yet at verification time -- the `as_of` stamp makes that staleness visible
+on the page rather than hiding it, same house discipline as everywhere
+else). Sorghum-for-silage and alfalfa confirmed NOT price-received series
+(production/yield only) and correctly left out.
+
+**getAgPrices() had a second, independent latent bug**, also fixed:
+`ORDER BY commodity, created_at DESC` picks the most recently-*inserted*
+row, not the most recent *reporting period* -- harmless while only one row
+per commodity ever existed, a real bug the instant `usda.py` started
+storing 13 months in one batch (insert order isn't guaranteed to match
+chronological order). Now `ORDER BY as_of DESC`. This function still
+exists (used by `index.astro`'s small homepage teaser, which only needs
+the single latest price); the new `getAgPriceSeries()` is the richer
+function `farm-report.astro` uses for history/direction.
+
+**MoM/YoY direction is never assumed, always labeled with the real
+compared-to period** — `previous` is whatever the actual immediately-prior
+stored row is (if NASS skipped a month, the label says so honestly rather
+than claiming "last month"), and `yearAgo` is only populated when a row
+exactly 12 calendar months back actually exists (sunflowers' shorter
+history correctly has no YoY line, not a fabricated one). Exact-zero
+deltas render as "No change" text, never a fake ▲/▼ arrow on a real
+$0.00 movement (per the brief's explicit ask) -- verified this actually
+happens by testing the sub-cent-rounds-to-zero case too, not just literal
+equality.
+
+**SDSU ag-research bridge (Fix 5) — confirmed not built, logged as
+pending, not faked.** Checked before assuming: the SDSU newsroom RSS this
+bridge depends on is still only specified in the University Coverage
+Rebuild brief's Part B.2, never actually ingested (no scraper, no table).
+Building a "From SDSU Extension & Research" UI strip against a source that
+doesn't exist would mean inventing the headlines it would show. Left
+entirely out of this pass, exactly as the brief's own out-of-scope note
+directs -- **needs a decision**: this bridge can be built the moment B.2's
+RSS ingest exists (the display logic is the easy half), so it's worth
+sequencing that ingest work with this specific payoff in mind rather than
+losing the connection between the two.
+
+Verified with real builds on both towns: 7 commodity cards render on
+Brookings with real dates/direction/sparklines/range (spot-checked the
+actual HTML, not just `astro check`); `/farm-report` still correctly
+redirects for Moreno Valley (the page remains Brookings-only, per
+`configs/moreno_valley_ca.json`'s existing `_no_ag_markets_note`).

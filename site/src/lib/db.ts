@@ -160,6 +160,32 @@ export interface AgPrice {
   as_of: string | null;
 }
 
+/** One commodity's price with direction/trend context -- see
+ *  NEEDS-HUMAN-REVIEW.md "Brookings — Farm Report Depth". Everything here
+ *  is computed from real stored monthly rows (ag_prices, one row per
+ *  commodity+month -- see scrapers/parsers/usda.py), never estimated or
+ *  interpolated: a missing month is a missing month, not smoothed over. */
+export interface AgPriceSeries {
+  commodity: string;
+  unit: string | null;
+  latest: { price: number; as_of: string } | null;
+  /** The point immediately before `latest` in the stored history --
+   *  labeled with ITS OWN real as_of date, never assumed to be "last
+   *  calendar month" (NASS sometimes skips a month, and this must stay
+   *  honest about a gap rather than mislabel a 2-month-old point as
+   *  "last month"). */
+  previous: { price: number; as_of: string } | null;
+  /** The stored point exactly 12 calendar months before `latest`, if one
+   *  exists -- omitted (not guessed) when the history doesn't reach back
+   *  that far or that specific month is missing. */
+  yearAgo: { price: number; as_of: string } | null;
+  /** Chronological (oldest first), up to 13 months -- see _HISTORY_MONTHS
+   *  in usda.py. */
+  history: { price: number; as_of: string }[];
+  rangeMin: number | null;
+  rangeMax: number | null;
+}
+
 export interface PropertySale {
   address: string | null;
   sale_price: number | null;
@@ -839,8 +865,72 @@ export async function getAgPrices(): Promise<AgPrice[]> {
     SELECT DISTINCT ON (commodity) commodity, price, unit, as_of
       FROM ag_prices
      WHERE town_id = ${TOWN_ID}
-     ORDER BY commodity, created_at DESC
+     ORDER BY commodity, as_of DESC
   `) as AgPrice[];
+}
+
+/** Month-difference between two "YYYY-MM-01"-shaped as_of values -- used
+ *  only to find the real stored row 12 calendar months back, never to
+ *  fabricate one. */
+function monthsBetween(a: string, b: string): number {
+  const da = new Date(a), db_ = new Date(b);
+  return (db_.getUTCFullYear() - da.getUTCFullYear()) * 12 + (db_.getUTCMonth() - da.getUTCMonth());
+}
+
+/** Every stored monthly row per commodity, with direction/trend derived
+ *  from real adjacent rows (never assumed) -- see AgPriceSeries and
+ *  NEEDS-HUMAN-REVIEW.md "Brookings — Farm Report Depth". Previous fix
+ *  (getAgPrices above) also corrected: that query picked the most
+ *  recently-INSERTED row (created_at DESC), not the most recent REPORTING
+ *  PERIOD (as_of DESC) -- harmless when only one row per commodity ever
+ *  existed, a real bug once usda.py started storing full history in one
+ *  batch, where insert order isn't guaranteed to match chronological order. */
+export async function getAgPriceSeries(): Promise<AgPriceSeries[]> {
+  const rows = (await sql`
+    SELECT commodity, price, unit, as_of
+      FROM ag_prices
+     WHERE town_id = ${TOWN_ID} AND price IS NOT NULL AND as_of IS NOT NULL
+     ORDER BY commodity, as_of ASC
+  `) as { commodity: string; price: number; unit: string | null; as_of: string }[];
+
+  const byCommodity = new Map<string, typeof rows>();
+  for (const row of rows) {
+    if (!byCommodity.has(row.commodity)) byCommodity.set(row.commodity, []);
+    byCommodity.get(row.commodity)!.push(row);
+  }
+
+  const series: AgPriceSeries[] = [];
+  for (const [commodity, history] of byCommodity) {
+    if (history.length === 0) continue;
+    const latest = history[history.length - 1];
+    const previous = history.length >= 2 ? history[history.length - 2] : null;
+    const yearAgo = history.slice(0, -1).find((r) => monthsBetween(r.as_of, latest.as_of) === 12) ?? null;
+    const prices = history.map((r) => Number(r.price));
+    series.push({
+      commodity,
+      unit: latest.unit,
+      latest: { price: Number(latest.price), as_of: latest.as_of },
+      previous: previous ? { price: Number(previous.price), as_of: previous.as_of } : null,
+      yearAgo: yearAgo ? { price: Number(yearAgo.price), as_of: yearAgo.as_of } : null,
+      history: history.map((r) => ({ price: Number(r.price), as_of: r.as_of })),
+      rangeMin: Math.min(...prices),
+      rangeMax: Math.max(...prices),
+    });
+  }
+
+  // Matchar usda.py:s DISPLAY_ORDER (SD-relevans, inte alfabetiskt) --
+  // duplicerad här medvetet snarare än importerad, samma "liten delad
+  // algoritm hellre än en cross-language modul"-avvägning som
+  // venue_registry.py/db.ts redan gör på andra ställen i den här kodbasen.
+  // Ett commodity som inte finns i listan (borde inte hända, men inte värt
+  // att krascha på) hamnar sist snarare än att försvinna.
+  const DISPLAY_ORDER = ["corn", "soybeans", "wheat", "sunflowers", "oats", "cattle", "hogs"];
+  series.sort((a, b) => {
+    const ia = DISPLAY_ORDER.indexOf(a.commodity);
+    const ib = DISPLAY_ORDER.indexOf(b.commodity);
+    return (ia === -1 ? DISPLAY_ORDER.length : ia) - (ib === -1 ? DISPLAY_ORDER.length : ib);
+  });
+  return series;
 }
 
 /**
@@ -1218,6 +1308,20 @@ export function formatCalendarDate(value: string | Date | null): string {
   const { y, m, d } = calendarDateParts(value)!;
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'short', month: 'long', day: 'numeric', timeZone: 'UTC',
+  }).format(new Date(Date.UTC(y, m, d)));
+}
+
+/** "July 2026" -- for a value that represents a whole MONTH (e.g. ag_prices'
+ *  as_of, always stored as the 1st of the reporting month), not a specific
+ *  day. Same calendarDateParts()-based UTC-safe extraction as
+ *  formatCalendarDate() above, just a different display format -- see that
+ *  function's comment for why the day/month/year must be read out
+ *  explicitly rather than trusted from a re-parsed Date. */
+export function formatMonthYear(value: string | Date | null): string {
+  if (!value) return '';
+  const { y, m, d } = calendarDateParts(value)!;
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long', year: 'numeric', timeZone: 'UTC',
   }).format(new Date(Date.UTC(y, m, d)));
 }
 

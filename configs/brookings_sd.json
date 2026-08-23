@@ -299,14 +299,18 @@
       "commodities": [
         "corn",
         "soybeans",
-        "cattle"
+        "wheat",
+        "sunflowers",
+        "oats",
+        "cattle",
+        "hogs"
       ],
       "refresh_minutes": 1440,
       "output": {
         "format": "daily_prices",
         "voice": "matter-of-fact"
       },
-      "_notes": "Farm-country har en daglig 'kolla priserna'-vana. USDA NASS Quick Stats kräver gratis API-nyckel. Trevlig återbesöks-drivare.",
+      "_notes": "Farm-country har en daglig 'kolla priserna'-vana. USDA NASS Quick Stats kräver gratis API-nyckel. Trevlig återbesöks-drivare. Utökad 2026-08-23 från 3 till 7 commodities (wheat/sunflowers/oats/hogs) -- se scrapers/parsers/usda.py:s moduldocstring för live-verifieringen av varje ny SD-serie.",
       "_return_driver": true
     },
     "river_gauges": {
