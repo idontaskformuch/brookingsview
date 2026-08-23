@@ -1,5 +1,5 @@
 {
-  "_notes": "Handkurerat 2026-08-03 mot cityofbrookings-sd.gov och brookingslibrary.org. Library-timmar bekräftade mot två oberoende källor (Yelp och countyoffice.org), samstämmiga. City Hall/Parks & Rec-timmar från cityofbrookings-sd.gov facility- och directory-sidor. Inga personnamn utom offentliga tjänstemän i officiell roll.",
+  "_notes": "Handkurerat 2026-08-03 mot cityofbrookings-sd.gov och brookingslibrary.org. Library-timmar bekräftade mot två oberoende källor (Yelp och countyoffice.org), samstämmiga. City Hall/Parks & Rec-timmar från cityofbrookings-sd.gov facility- och directory-sidor. Inga personnamn utom offentliga tjänstemän i officiell roll. SDSU campus-anläggningarna (2026-08-23, se NEEDS-HUMAN-REVIEW.md 'Brookings Full Audit P3') tillagda för att dela venue-registret med Jackrabbits/university-täckningen -- adresser korsverifierade mot minst två oberoende källor (gojacks.com, Wikipedia, SDSU:s egen sdstate.edu/buildings, Waze) vardera. 23 stadsparker tillagda samma dag via scripts/ingest_brookings_facilities.py (GIS-import, se det skriptets docstring), inte i den här handkuraterade filen.",
   "facilities": [
     {
       "slug": "public-library",
@@ -36,6 +36,72 @@
       "description": "A 135-acre park on a former landfill site, restored into trails, ponds, and wildlife habitat. Open for fishing, canoeing/kayaking, hiking, biking, bird-watching, and — in winter — snowshoeing and cross-country skiing. Includes the Larson Nature Center, run by the Brookings Parks, Recreation & Forestry Department.",
       "source_url": "https://www.cityofbrookings-sd.gov/facilities/facility/details/45",
       "verified_date": "2026-08-03"
+    },
+    {
+      "slug": "dana-j-dykhouse-stadium",
+      "name": "Dana J. Dykhouse Stadium",
+      "category": "other",
+      "address": "1396 Stadium Rd, Brookings, SD 57006",
+      "street_address": "1396 Stadium Rd",
+      "postal_code": "57006",
+      "aliases": ["Dykhouse Stadium"],
+      "website": "https://gojacks.com/facilities/dana-j-dykhouse-stadium/2",
+      "description": "SDSU's football stadium, opened 2016, capacity 19,340. Home of the Jackrabbits football team.",
+      "source_url": "https://en.wikipedia.org/wiki/Dana_J._Dykhouse_Stadium",
+      "verified_date": "2026-08-23"
+    },
+    {
+      "slug": "first-bank-trust-arena",
+      "name": "First Bank & Trust Arena",
+      "category": "other",
+      "address": "1165 Jackrabbit Ave, Brookings, SD 57007",
+      "street_address": "1165 Jackrabbit Ave",
+      "postal_code": "57007",
+      "aliases": ["First Bank and Trust Arena", "Frost Arena"],
+      "website": "https://www.sdstate.edu/buildings/first-bank-trust-arena",
+      "description": "SDSU's basketball, volleyball and wrestling arena, capacity 5,000, opened fall 2024.",
+      "source_url": "https://www.sdstate.edu/buildings/first-bank-trust-arena",
+      "verified_date": "2026-08-23"
+    },
+    {
+      "slug": "oscar-larson-performing-arts-center",
+      "name": "Oscar Larson Performing Arts Center",
+      "category": "other",
+      "address": "1601 University Blvd, Brookings, SD 57007",
+      "street_address": "1601 University Blvd",
+      "postal_code": "57007",
+      "aliases": [],
+      "website": "https://www.sdstate.edu/",
+      "description": "SDSU's home stage for music, theatre and dance.",
+      "source_url": "https://www.sdstate.edu/",
+      "verified_date": "2026-08-23"
+    },
+    {
+      "slug": "briggs-library",
+      "name": "Hilton M. Briggs Library",
+      "category": "library",
+      "address": "1300 N Campus Dr, Brookings, SD 57007",
+      "street_address": "1300 N Campus Dr",
+      "postal_code": "57007",
+      "aliases": ["Briggs Library"],
+      "phone": "(605) 688-5107",
+      "website": "https://www.sdstate.edu/hilton-m-briggs-library",
+      "description": "SDSU's main library -- roughly 680,000 bound volumes, 1 million microforms, and over 600,000 government documents, plus electronic journal access. Distinct from the city's public library.",
+      "source_url": "https://www.sdstate.edu/hilton-m-briggs-library",
+      "verified_date": "2026-08-23"
+    },
+    {
+      "slug": "mccrory-gardens",
+      "name": "McCrory Gardens",
+      "category": "park",
+      "address": "631 22nd Ave, Brookings, SD 57007",
+      "street_address": "631 22nd Ave",
+      "postal_code": "57007",
+      "aliases": [],
+      "website": "https://www.sdstate.edu/mccrory-gardens",
+      "description": "SDSU's public garden and arboretum -- part of the South Dakota Arboretum.",
+      "source_url": "https://www.sdstate.edu/mccrory-gardens/plan-your-visit-mccrory",
+      "verified_date": "2026-08-23"
     }
   ]
 }
