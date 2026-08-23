@@ -80,6 +80,13 @@ class GeneratedArticle:
     # efter extraktion bara inledningen -- varken ingredienser eller
     # instruktioner ligger kvar som löptext.
     instructions: list[str] | None = None
+    # Endast media_recension sätter detta (content/recensioner/review_standard.py).
+    # None = passed clean (or the check doesn't apply). A non-empty list means
+    # the article still PUBLISHES -- see media_recension.write()'s flag-for-
+    # review-not-auto-kill handling and NEEDS-HUMAN-REVIEW.md "Review Writing
+    # Standard" -- but daily_content.py also logs it to review_quality_flags
+    # for a human to look at.
+    review_flags: list[str] | None = None
 
 
 _STATE_NAMES = {

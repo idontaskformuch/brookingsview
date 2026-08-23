@@ -33,12 +33,16 @@ export interface SiteConfig {
   sourceBlurb: string;
   removalEmail: string;
   /** Verified local movie theaters, for Reviews' "showing locally" anchor
-   *  (see NEEDS-HUMAN-REVIEW.md "3.3 Reviews") -- names/links only, never
-   *  showtimes (no permitted showtimes feed found; theater chains' own
-   *  showtimes aren't publicly scrapable/licensed the same way MaxPreps/
-   *  HomeCampus weren't). Optional: only populate for a town once its
-   *  theaters are actually verified, never guessed. */
-  localTheaters?: { name: string; url: string }[];
+   *  (see NEEDS-HUMAN-REVIEW.md "3.3 Reviews" and "Review Writing Standard")
+   *  -- names/address/phone/one practical detail, never showtimes (no
+   *  permitted showtimes feed found; theater chains' own showtimes aren't
+   *  publicly scrapable/licensed the same way MaxPreps/HomeCampus weren't).
+   *  address/phone/detail mirrored into configs/<town_id>.json's
+   *  local_theaters for the Python content-generation pipeline (same
+   *  deliberate cross-language duplication as venue_registry.py <-> db.ts).
+   *  Optional: only populate for a town once its theaters are actually
+   *  verified, never guessed. */
+  localTheaters?: { name: string; url: string; address: string; phone: string; detail: string }[];
 }
 
 const CITIES: Record<string, SiteConfig> = {
@@ -81,8 +85,20 @@ const CITIES: Record<string, SiteConfig> = {
     // regional list (Riverside/Redlands/Perris have more) -- deliberately
     // scoped to what's genuinely local.
     localTheaters: [
-      { name: 'Harkins Moreno Valley 16', url: 'https://harkins.com/theatres/moreno-valley' },
-      { name: 'Regency Theatres — Towngate 8', url: 'https://www.regencymovies.com/movie-theatres/california/moreno-valley/towngate-8' },
+      {
+        name: 'Harkins Moreno Valley 16',
+        url: 'https://harkins.com/theatres/moreno-valley',
+        address: '22350 Town Cir, Moreno Valley, CA 92553',
+        phone: '(951) 653-6161',
+        detail: 'Power-reclining stadium seating; free parking in the adjacent Moreno Valley Mall lot.',
+      },
+      {
+        name: 'Regency Theatres — Towngate 8',
+        url: 'https://www.regencymovies.com/movie-theatres/california/moreno-valley/towngate-8',
+        address: '12625 Frederick St Suite L, Moreno Valley, CA 92553',
+        phone: '(951) 653-5500',
+        detail: 'A discount second-run house — tickets run well below first-run prices; free lot parking.',
+      },
     ],
   },
 };

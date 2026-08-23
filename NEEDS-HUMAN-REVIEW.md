@@ -920,3 +920,116 @@ it just isn't a call to make unilaterally.
 
 Nothing outstanding as of this line — updated as Phase 3/4 sub-sections
 complete or get escalated. See section 7 above for progress.
+
+## 9. Review Writing Standard (2026-08-23)
+
+Implemented the five non-negotiables from the brief as (a) a rewritten
+`content/recensioner/media_recension.py` `SYSTEM_PROMPT_TEMPLATE` and (b) a
+new deterministic checker, `content/recensioner/review_standard.py`, wired
+into `write()` with a retry-then-**flag** (not retry-then-skip) pattern: a
+failing draft gets one corrective regeneration, and if it still fails, it
+still publishes — a row goes into the new `review_quality_flags` table
+(`db/migrations/021_review_quality_flags.sql`, same shape and philosophy as
+`venue_review_queue`) for a human to glance at, per the brief's explicit
+"a good review shouldn't die on a false positive."
+
+**Discrepancy found, surfaced here rather than silently resolved either
+way**: the brief cites "The Coyote vs. ACME review (Aug 2026)" as an
+existing "reference exemplar" that "set the bar" — a real, already-published
+piece to hold new reviews to. A direct query of `stories` for
+`town_id='moreno_valley_ca' AND source_type='media_recension'` before any
+of this work started found exactly two rows (both about *The Odyssey*,
+2026-07-29 and 2026-08-12) and zero matches for any title containing
+"coyote"/"acme". **That review does not exist on this site.** *Coyote vs.
+Acme* is a real film (shelved by Warner Bros. as a tax write-off in 2023,
+later rescued after public backlash — the exact backstory the brief
+describes), so the most likely explanation is the brief describes what a
+review built to this standard SHOULD look like, using a real, recognizable
+case study as the illustration, rather than claiming this site already
+published one. Proceeded on that reading — built the standard the
+description implies rather than fabricating a matching review to make the
+premise true, which would have been the actual violation of "verify, don't
+invent." **Needs a decision** only if that reading is wrong: if a Coyote vs.
+Acme review was expected to already exist (published elsewhere and meant to
+be imported, or lost), say so and it can be located or reconstructed
+properly rather than assumed.
+
+**Real critic-reception data source, added rather than left to invention**:
+the existing `content/now_playing.py` (Wikidata SPARQL + Wikipedia summary)
+had no reception data at all — no Rotten Tomatoes score, no named-critic
+quotes, nothing. The brief's non-negotiable #3 wants "RogerEbert/Deadline
+praise weighed honestly against Variety's dissent" — individual named
+critics and paraphrased quotes — which this pipeline has no legitimate
+source for; inventing a quote attributed to a real, named publication about
+a real film is a real liability, not a stylistic shortcut. Wikidata carries
+P444 (review score) qualified by P447 (review score by) / P459
+(determination method) — real, sourced, CC0 aggregate numbers (Rotten
+Tomatoes Tomatometer, Metacritic Metascore, IMDb average) — verified live
+against a real title (Oppenheimer, wd:Q108839994: 93% RT / 90 Metascore /
+8.2 IMDb) before building against it. `now_playing.py` now fetches these and
+`media_recension`'s prompt is instructed to weigh them honestly (a Tomatometer/
+Metascore gap is exactly the kind of "divided reception" the standard wants)
+but explicitly forbidden from inventing a named critic or quote beyond what
+the aggregator numbers themselves say. **This is a deliberate, disclosed
+scope reduction** from the brief's literal "RogerEbert/Deadline/Variety"
+framing — aggregate scores, not individual critic paraphrase — because no
+real per-critic data source exists. If per-critic quotes are genuinely
+wanted, that needs a real licensed/API source (none currently in this
+codebase) before the prompt can honestly ask for them.
+
+**Venue data**: `site/src/lib/site-config.ts`'s `localTheaters` (added in
+3.3 with only name+url) now carries verified address/phone/one practical
+detail for both Moreno Valley theaters (Harkins Moreno Valley 16, Regency
+Theatres — Towngate 8; addresses/phones from each theater's own listing,
+verified 2026-08-23), and `/s/[slug].astro` renders a "How to see it in
+Moreno Valley" section from it instead of names-only. Deliberately did NOT
+add these to the `facilities` table — `db/migrations/007_facilities.sql`
+scopes that table to municipal facilities specifically ("kommunala
+anläggningar"); a private theater chain is a different kind of thing, and
+"the same places data the site already uses" in the brief most literally
+means the *already-existing* `localTheaters` mechanism from 3.3, not a
+repurposed civic-facilities table. Mirrored the same data into
+`configs/moreno_valley_ca.json`'s new `local_theaters` key so the Python
+content pipeline can use it too (deliberate cross-language duplication,
+same tradeoff as `venue_registry.py` / `db.ts`) — `now_playing.build_local_input()`
+includes it in the model's underlag, and the model is instructed to name a
+venue but not restate address/phone (the page renders that separately and
+more reliably than trusting freeform prose with a phone number).
+
+**Plot-summary-ratio check is a coarse proxy, not a real detector.** The
+brief's check #4 ("if the review is >50% plot summary, flag") isn't
+something a regex can genuinely measure — `review_standard.py`'s
+`_plot_summary_ratio()` counts sentences containing a small set of
+narration-marker phrases ("follows", "centers on", "we meet", ...) as a
+stand-in. Documented as a known limitation in the function's own docstring:
+a review that legitimately uses "the film follows" once or twice in its
+angle/verdict sections will read as more plot-heavy than it is. The
+generous >50% threshold (matching the brief) keeps false positives rare in
+practice, but this is a heuristic, not ground truth — treat a flag from
+this specific check with more skepticism than the others.
+
+**Disclosure + verification date (non-negotiable #5) is entirely
+code-driven, not model-written.** `write()` appends a "Facts verified as of
+<today>" line itself after generation, rather than trusting the model with
+today's date (LLMs are unreliable at this, and it's exactly the kind of
+detail the house rules say to verify rather than trust) — so there's no
+probabilistic check for it in `review_standard.py`; it's structurally
+guaranteed present instead. The standing "AI-genererad" byline the site
+already shows on every page (unrelated to this brief) covers the general
+AI-authorship disclosure; this line is specifically about the review's own
+verified facts (release date, cast, runtime).
+
+**Non-film subjects ("aggregate, never first-person") — spec captured, not
+built.** The brief's second half generalizes the standard to restaurants/
+local venues/books with a fundamentally different aggregation-only
+methodology (attributed-to-platform summaries, no first-person experiential
+claims, its own disclosure line). No such content type exists in this
+codebase yet — there is no restaurant/venue review module to wire checks
+into. Building speculative infrastructure for a content type that doesn't
+exist would be exactly the kind of premature machinery this project
+consistently avoids elsewhere (see the corrections-page and facilities-vs-DB
+reasoning above). Recorded here so the full standard is written down
+somewhere durable for whenever that content type is actually built, rather
+than lost. **Needs a decision**: build this now (as a genuinely new content
+module, not a retrofit) if non-film reviews are wanted soon, or leave this
+as forward spec.

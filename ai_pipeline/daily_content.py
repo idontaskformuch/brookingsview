@@ -82,7 +82,12 @@ def _build_local_input(conn, town_id: str, content_type: str,
         movie = now_playing.next_pick(today, recent_reviews)
         if movie is None:
             return None, "no recent release found (or none had a fetchable summary/wasn't already reviewed)"
-        return (now_playing.build_local_input(movie),
+        # cfg["local_theaters"] mirrors site/src/lib/site-config.ts's
+        # localTheaters (see configs/<town_id>.json's _local_theaters_note) --
+        # towns with none yet just get an empty local venue section, same
+        # optionality as the TS side.
+        theaters = cfg.get("local_theaters", [])
+        return (now_playing.build_local_input(movie, theaters=theaters),
                 f"recent release: {movie['title']} ({movie['release_date']})")
 
     if content_type == "vardagsmiddag":
@@ -200,6 +205,24 @@ def main() -> int:
                  f"ai:{DEFAULT_MODEL}", image_path, article.rating, article.ingredients,
                  article.instructions),
             )
+
+            # Flag-for-review, not auto-kill (see content/recensioner/
+            # review_standard.py and db/migrations/021_review_quality_flags.sql):
+            # the story above already published as normal -- this only queues
+            # it for a human to glance at, same non-blocking shape as
+            # ai_pipeline/venue_registry.py's queue_for_review().
+            if article.review_flags:
+                cur.execute(
+                    """
+                    INSERT INTO review_quality_flags (town_id, story_slug, reasons)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (town_id, story_slug) DO UPDATE SET
+                        reasons = EXCLUDED.reasons,
+                        created_at = now(),
+                        resolved = false
+                    """,
+                    (town_id, slug, article.review_flags),
+                )
         conn.commit()
 
     print(f"  publicerad: {slug}")

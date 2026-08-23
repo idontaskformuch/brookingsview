@@ -161,19 +161,24 @@ const eventJsonLdObject = buildEventJsonLd(
 
     {story.source_type === 'media_recension' && siteConfig.localTheaters && siteConfig.localTheaters.length > 0 && (
       /* The local anchor a review needs to justify running on a local site
-         at all -- see NEEDS-HUMAN-REVIEW.md "3.3 Reviews". Names/links only,
+         at all -- see NEEDS-HUMAN-REVIEW.md "3.3 Reviews" and "Review
+         Writing Standard". Address/phone/one practical detail per venue,
          never showtimes: no permitted showtimes feed exists for these
          chains (same category as MaxPreps/HomeCampus -- proprietary,
          ticketing-partner-gated, not open data), so this points the reader
          to the theater's own site rather than asserting what's playing when. */
       <div class="story__theaters">
-        <h2 class="story__section-label">Showing locally</h2>
-        <p>Check current showtimes at theaters in {siteConfig.cityName}:</p>
+        <h2 class="story__section-label">How to see it in {siteConfig.cityName}</h2>
         <ul>
           {siteConfig.localTheaters.map((t) => (
-            <li><a href={t.url} rel="noopener">{t.name}</a></li>
+            <li>
+              <p class="theater__name"><a href={t.url} rel="noopener">{t.name}</a></p>
+              <p class="theater__meta">{t.address} · {t.phone}</p>
+              <p class="theater__detail">{t.detail}</p>
+            </li>
           ))}
         </ul>
+        <p class="theater__note">Check the theater's own site for current showtimes.</p>
       </div>
     )}
 
@@ -276,9 +281,12 @@ const eventJsonLdObject = buildEventJsonLd(
 .story__zip-links { color: var(--ink-soft); font-size: 0.875rem; margin: -0.5rem 0 1.25rem; }
 .story__venue-link { color: var(--ink-soft); font-size: 0.875rem; margin: -0.5rem 0 1.25rem; }
 .story__theaters { margin: 1.75rem 0; }
-.story__theaters p { color: var(--ink-soft); margin: 0.5rem 0; }
-.story__theaters ul { margin: 0.5rem 0 0; padding-left: 1.25rem; }
-.story__theaters li { margin: 0.25rem 0; }
+.story__theaters ul { margin: 0.5rem 0 0; padding: 0; list-style: none; display: grid; gap: 1rem; }
+.story__theaters li { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
+.story__theaters .theater__name { font-weight: 600; margin: 0; }
+.story__theaters .theater__meta { color: var(--ink-soft); font-size: 0.875rem; margin: 0.125rem 0; }
+.story__theaters .theater__detail { color: var(--ink-soft); font-size: 0.875rem; margin: 0; }
+.story__theaters .theater__note { color: var(--ink-soft); font-size: 0.8125rem; margin: 0.75rem 0 0; }
 .story__source {
   margin-top: 2.5rem;
   padding-top: 1.25rem;

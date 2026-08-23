@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import datetime
 import os
+import re
 
 import requests
 
@@ -87,6 +88,7 @@ def _recent_films(today: datetime.date) -> list[dict]:
         return []
     return [
         {
+            "qid": b["film"]["value"].rsplit("/", 1)[-1],
             "title": b["filmLabel"]["value"],
             "release_date": b["minReleaseDate"]["value"][:10],
             "sitelinks": int(b["sampleSitelinks"]["value"]),
@@ -94,6 +96,70 @@ def _recent_films(today: datetime.date) -> list[dict]:
         }
         for b in bindings
     ]
+
+
+_REVIEW_SCORE_QUERY = """
+SELECT ?reviewScore ?reviewScoreByLabel ?determinationMethodLabel WHERE {{
+  wd:{qid} p:P444 ?stmt.
+  ?stmt ps:P444 ?reviewScore.
+  OPTIONAL {{ ?stmt pq:P447 ?reviewScoreBy. }}
+  OPTIONAL {{ ?stmt pq:P459 ?determinationMethod. }}
+  SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
+}}
+"""
+
+
+def _parse_review_score_bindings(bindings: list[dict]) -> list[dict]:
+    """Pure parser for the P444 (review score) SPARQL result shape, split out
+    from the network call so it's unit-testable against a fixture without a
+    live Wikidata request (see tests/test_now_playing.py).
+
+    Wikidata's P447 (review score by) label sometimes fails to resolve to a
+    readable name (observed live 2026-08-23: a bare "Q150248" came back for
+    a Metascore-determination statement) -- when that happens, fall back to
+    determinationMethodLabel ("Metascore", "Tomatometer score"), which did
+    resolve and is self-explanatory of the source. A statement with neither
+    label is dropped rather than shown as a bare, meaningless Q-id.
+    """
+    scores = []
+    for b in bindings:
+        score = b.get("reviewScore", {}).get("value")
+        if not score:
+            continue
+        source = b.get("reviewScoreByLabel", {}).get("value")
+        method = b.get("determinationMethodLabel", {}).get("value")
+        label = source if (source and not re.fullmatch(r"Q\d+", source)) else method
+        if not label:
+            continue
+        scores.append({"source": label, "score": score})
+    return scores
+
+
+def _review_scores(qid: str) -> list[dict]:
+    """Real, sourced aggregate critic-reception numbers from Wikidata (CC0),
+    e.g. [{"source": "Rotten Tomatoes", "score": "93%"}, {"source":
+    "Metascore", "score": "90/100"}]. NOT individual named-critic quotes --
+    Wikidata doesn't carry those, and this project has no other legitimate
+    source for what a specific named critic personally wrote (see
+    NEEDS-HUMAN-REVIEW.md "Review Writing Standard": inventing an attributed
+    quote from a real outlet is exactly the kind of fabrication the house
+    rules exist to prevent). Empty list if the film has no recorded score or
+    the request fails -- callers should write about reception generically
+    rather than block on this, same non-blocking stance as _wikipedia_summary.
+    """
+    try:
+        resp = requests.get(
+            WIKIDATA_SPARQL_URL,
+            params={"query": _REVIEW_SCORE_QUERY.format(qid=qid), "format": "json"},
+            headers={"User-Agent": _user_agent(), "Accept": "application/sparql-results+json"},
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        bindings = resp.json()["results"]["bindings"]
+    except requests.RequestException as exc:
+        print(f"  [now_playing] Wikidata review-score query failed for {qid}: {exc}")
+        return []
+    return _parse_review_score_bindings(bindings)
 
 
 def _wikipedia_summary(article_title: str) -> str | None:
@@ -131,14 +197,54 @@ def next_pick(today: datetime.date, recently_reviewed_bodies: list[str]) -> dict
         if not summary:
             continue
         film["summary"] = summary
+        film["review_scores"] = _review_scores(film["qid"])
         return film
     return None
 
 
-def build_local_input(movie: dict) -> str:
+def build_local_input(movie: dict, theaters: list[dict] | None = None) -> str:
+    """Assemble the media_recension underlag: real plot/context summary, real
+    aggregate reception numbers (if Wikidata has any), and real local venue
+    data -- see NEEDS-HUMAN-REVIEW.md "Review Writing Standard" for why each
+    of these has to be genuinely sourced rather than left for the model to
+    infer or invent.
+
+    theaters: cfg["local_theaters"] (configs/<town_id>.json), mirroring
+    site/src/lib/site-config.ts's localTheaters -- omitted (None/empty) for a
+    town with no verified theaters yet, same optionality as the TS side.
+    """
     year = movie["release_date"][:4]
-    return (
-        f"Title: {movie['title']} ({year}), released {movie['release_date']}.\n\n"
-        f"{movie['summary']}\n\n"
-        f"(Source: Wikipedia, CC BY-SA)"
-    )
+    parts = [
+        f"Title: {movie['title']} ({year}), released {movie['release_date']}.",
+        "",
+        movie["summary"],
+        "",
+        "(Source: Wikipedia, CC BY-SA)",
+    ]
+
+    if movie.get("review_scores"):
+        parts += ["", "Real aggregate critic-reception scores (Source: Wikidata, CC0):"]
+        parts += [f"- {s['source']}: {s['score']}" for s in movie["review_scores"]]
+        parts += [
+            "Use ONLY these real numbers to characterize reception (e.g. a high "
+            "Tomatometer against a lower Metascore is a genuine split worth "
+            "describing honestly). Do NOT invent a named critic, a publication, "
+            "or a quote -- attribute reception to the aggregator by name "
+            "(\"Rotten Tomatoes\", \"Metacritic\"), never to a specific reviewer "
+            "you have not actually been given a quote from.",
+        ]
+    else:
+        parts += [
+            "", "No aggregate critic-reception score is available for this title. "
+            "Do not invent one, a critic's name, or a quote -- write about the "
+            "premise and your own reasoned take without fabricating reception "
+            "data you don't have.",
+        ]
+
+    if theaters:
+        parts += ["", "Real local theaters (hand-verified against each theater's own site "
+                       "and listings -- use exactly as given, never invent a different venue):"]
+        for t in theaters:
+            parts.append(f"- {t['name']}, {t['address']}, {t['phone']} -- {t['detail']}")
+
+    return "\n".join(parts)

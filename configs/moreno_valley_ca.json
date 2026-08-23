@@ -389,5 +389,24 @@
     "KLART: traffic = Caltrans QuickMap KML-feeder (helt öppna, ingen nyckel), verifierad live 2026-08-10, se traffic._notes.",
     "KLART: jobs = Adzuna Job Search API, verifierad live 2026-08-10, se jobs._notes. runner.py fick en refresh_minutes-spärr samtidigt (tidigare aldrig avläst av koden)."
   ],
-  "_no_ag_markets_note": "Till skillnad från Brookings finns ingen jordbruksmarknad/USDA-vana här, och ingen SDSU-motsvarighet som sport-återbesöksmotor. Stadsfullmäktige + events + väder blir kärnan. Överväg senare: MVUSD skolstyrelse (BoardDocs?), samt lokal community college (Moreno Valley College) events som mjuk återbesöksdrivare."
+  "_no_ag_markets_note": "Till skillnad från Brookings finns ingen jordbruksmarknad/USDA-vana här, och ingen SDSU-motsvarighet som sport-återbesöksmotor. Stadsfullmäktige + events + väder blir kärnan. Överväg senare: MVUSD skolstyrelse (BoardDocs?), samt lokal community college (Moreno Valley College) events som mjuk återbesöksdrivare.",
+  "local_theaters": [
+    {
+      "name": "Harkins Moreno Valley 16",
+      "url": "https://harkins.com/theatres/moreno-valley",
+      "address": "22350 Town Cir, Moreno Valley, CA 92553",
+      "phone": "(951) 653-6161",
+      "detail": "Power-reclining stadium seating; free parking in the adjacent Moreno Valley Mall lot.",
+      "verified_date": "2026-08-23"
+    },
+    {
+      "name": "Regency Theatres — Towngate 8",
+      "url": "https://www.regencymovies.com/movie-theatres/california/moreno-valley/towngate-8",
+      "address": "12625 Frederick St Suite L, Moreno Valley, CA 92553",
+      "phone": "(951) 653-5500",
+      "detail": "A discount second-run house — tickets run well below first-run prices; free lot parking.",
+      "verified_date": "2026-08-23"
+    }
+  ],
+  "_local_theaters_note": "Mirrors site/src/lib/site-config.ts's localTheaters for Moreno Valley (deliberate cross-language duplication, same tradeoff as venue_registry.py <-> db.ts) -- used by content/recensioner/media_recension.py via now_playing.build_local_input() to give the review-writing prompt real, verified venue data (see NEEDS-HUMAN-REVIEW.md 'Review Writing Standard'). Update both places together if a theater changes."
 }
