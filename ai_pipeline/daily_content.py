@@ -96,8 +96,14 @@ def _build_local_input(conn, town_id: str, content_type: str,
                 f"seasonal ingredient: {ingredient}")
 
     stories = local_context.recent_local_stories(conn, town_id)
-    local_input = local_context.build_local_input(stories, town_label(cfg))
-    return local_input, f"{len(stories)} lokala poster"
+    # recent_titles spans ALL column types (not just content_type), since a
+    # duplicated thesis can recur across editorial/culture_essay/kvick_essa/
+    # vetenskap_kronika just as easily as within one -- see
+    # content/local_context.py's module docstring ("Columns thematic
+    # repetition").
+    recent_titles = local_context.recent_column_titles(conn, town_id)
+    local_input = local_context.build_local_input(stories, town_label(cfg), recent_titles)
+    return local_input, f"{len(stories)} lokala poster, {len(recent_titles)} nyligen täckta rubriker"
 
 
 def _existing_corpus(conn, town_id: str, source_type: str) -> list[str]:
