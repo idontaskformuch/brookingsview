@@ -846,6 +846,19 @@ brief's own instruction:
   so a reader who lands on the weather page during a heat event finds the
   safety context too, not just the other way around.
 
+### 4.4 Homepage/vertical redundancy — teaser + "All →", not a full second listing
+
+The homepage's "This week" section showed every upcoming-week story in
+full (no cap at all), and "Coming up" already capped at 9 — both
+duplicating `/events` (which fetches up to 120) more than a homepage
+teaser should. Capped both to 5. `SectionRule`'s "All →" link (already
+present, already pointing at `/events`) is the intended path to the
+complete list — the fix was making the homepage actually behave like a
+teaser instead of a second, less-complete copy of the same listing.
+"Today" deliberately stays uncapped: it's the homepage's actual reason to
+exist (a time-scoped "what's happening today" view /events doesn't
+provide the same way), not duplicate content of the vertical page.
+
 ## 8. Not addressed yet
 
 Nothing outstanding as of this line — updated as Phase 3/4 sub-sections

@@ -200,8 +200,12 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   <section aria-label="This week">
     <SectionRule label="This week" href="/events" />
     {weekStories.length > 0 ? (
+      // Homepage/vertical redundancy (NEEDS-HUMAN-REVIEW.md "4.4"): a short
+      // teaser here, /events is the canonical complete view -- SectionRule's
+      // "All →" link (above) is where the rest lives, not a second copy of
+      // the full list on this page too.
       <div class="river">
-        {weekStories.map((story) => <StoryCard story={story} />)}
+        {weekStories.slice(0, 5).map((story) => <StoryCard story={story} />)}
       </div>
     ) : (
       <p class="empty">Nothing scheduled in the next week yet.</p>
@@ -212,7 +216,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     <section aria-label="Coming up">
       <SectionRule label="Coming up" href="/events" />
       <div class="river">
-        {laterStories.slice(0, 9).map((story) => <StoryCard story={story} compact />)}
+        {laterStories.slice(0, 5).map((story) => <StoryCard story={story} compact />)}
       </div>
     </section>
   )}
