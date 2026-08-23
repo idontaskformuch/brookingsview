@@ -1033,3 +1033,115 @@ somewhere durable for whenever that content type is actually built, rather
 than lost. **Needs a decision**: build this now (as a genuinely new content
 module, not a retrofit) if non-film reviews are wanted soon, or leave this
 as forward spec.
+
+## 10. Brookings Parity Audit (2026-08-23)
+
+Audited every Phase 3–4 and Review Writing Standard change (`01fa778`..`f7e96cd`,
+plus the two Phase 1/2 items the brief specifically named — home sales and
+Event JSON-LD venue resolution) for whether it's real shared logic or
+Moreno-Valley-only data wearing a shared-looking build. **Zero wrong-city
+leakage found or introduced** — see the scan below — but two real Category-C
+gaps existed (Brookings had no verified local theater, and the contamination
+scanner never covered structured data), both closed in this pass.
+
+### Classification table
+
+| Change | Category | Brookings status | Risk if left as-is |
+|---|---|---|---|
+| Home sales quarterly-aware ingestion (`a91c30d`) | B — intentionally single-town | `/home-sales` redirects non-MoVal towns to `/` (same pattern as `/jackrabbits` for Brookings-only sports); classification logic in `home_sales_state.py` is itself town_id-parameterized, but Riverside County's report format/ingestion script (`rivco_property_sales_v1.py`) has no Brookings County analog | None — page is gated, nothing renders |
+| Event JSON-LD venue registry (`c054b7e`) | A — shared, confirmed town-parameterized | `load_registry`/`resolve_venue`/`queue_for_review` all take `town_id`; Brookings' 3 `facilities` rows resolve what they can, everything else safely falls back to "no address claimed," never a wrong one | None — fails closed |
+| 3.1 Facilities GIS ingest (`01fa778`) | C — gap | Brookings still has only 3 hand-curated facilities vs. Moreno Valley's 63 post-GIS-import; no GIS ingest ever run for Brookings | None (thin `/facilities/`, not wrong) — see lead below |
+| 3.2 City hall follow-ups (`9ac00ba`) | C — gap (+ operational note) | `meeting_followups.py` keys off `raw_data->>'minutes_text'`, populated only by `escribe_v1.py`; Brookings uses **Legistar**, not eSCRIBE (`configs/brookings_sd.json`), so `find_candidates()` will always return zero rows for Brookings — a safe no-op, not a crash or wrong output. Bonus finding, unrelated to town parity: this script isn't wired into **any** GitHub Actions workflow yet, so it currently produces nothing for Moreno Valley either | None (silently absent) for Brookings; MoVal-side scheduling gap is separate |
+| 3.3 Reviews local theater anchor (`c8619e0`) | C → **fixed this pass** | Was MoVal-only (`localTheaters` unset for Brookings — safe-empty, confirmed the "How to see it" block simply doesn't render, never falls back to the other town's data). Added a verified Brookings theater (see below) | Was none (safe-empty); now has real parity |
+| 3.4 Recipes seasonality (`c41e628`) | A — confirmed correctly mapped | `_TOWN_REGION` explicitly maps `moreno_valley_ca → socal`, `brookings_sd → midwest` | None |
+| 3.5 Local-anchor gate (`6addf85`) | A — confirmed town-agnostic | `has_local_anchor()` reads `cfg["display_name"]`, no hardcoding | None |
+| 3.6 Worker Pulse (`b3b8d08`) | B — intentionally single-town | `/workplace-watch` redirects non-MoVal towns; correct by design (no Brookings employer-review dataset exists or was ever claimed) | None |
+| 3.7 Burro Bonanza (`77edce2`) | B — intentionally single-town | Page redirects non-MoVal towns (verified local claim is Moreno-Valley-specific by nature — wild burros in the Moreno Valley/Colton hills) | None |
+| 4.1 Shared table component (`aecf080`) | A — confirmed city-agnostic | Pure sort/filter/paginate behavior, no data | None |
+| 4.2 Structured data (`edebf75`) | A — confirmed city-agnostic | Dispatches on `source_type`, not town | None |
+| 4.3 Internal linking (`e8ed633`) | A — confirmed correctly gated | Events→facilities is `town_id`-scoped; weather→Worker Pulse link is explicitly `siteConfig.townId === 'moreno_valley_ca'`-gated, so Brookings weather never links to a page it doesn't have | None |
+| 4.4 Homepage cap (`4c0ef7a`) | A | Pure UI cap, no data | None |
+| 4.5 OG image section cards (`f2464cb`) | A — confirmed correctly gated | `SECTION_CARDS` already has `isMorenoValley`/`isBrookings` ternaries per-section | None |
+| 4.6 Corrections page (`f8c546d`) | A/B | Hand-edited array, empty for both towns identically | None |
+| Review Writing Standard (`f7e96cd`) | C → **fixed this pass** | `configs/moreno_valley_ca.json`'s `local_theaters` had no Brookings counterpart; `review_standard.py`'s venue check is a documented no-op when a town's venue list is empty (never required naming a venue that doesn't exist), so no review could have been forced to reference the wrong town — but Brookings reviews would have silently gotten no venue anchor at all | Was none (safe no-op); now has real parity |
+
+### Wrong-city leakage scan (Part 2)
+
+Extended `scripts/scan_contamination.py` (previously `stories` prose only) to
+also scan `facilities` (name/address/description/phone/website) and
+`events` (title/venue) per town against the same `HARD_BLOCKLIST`/
+`REVIEW_BLOCKLIST` town_guard.py already uses — see that script's updated
+docstring for why structured, human-curated data is still worth scanning
+even though it's already structurally isolated by `town_id`. Ran live:
+
+- **0 flagged facilities rows** (66 total, both towns).
+- **0 flagged events rows** (1649 total, both towns).
+- 12 flagged `stories` rows — **all pre-existing, all dated 2026-07-23 to
+  2026-08-03, none touched by Phase 3/4 or the Review Standard work** (Phase
+  3 started 2026-08-22). This is Phase 1/2 residual already tracked
+  elsewhere in this document, not a new finding — regenerating
+  `CONTAMINATION_REPORT.md` surfaced it again because the scan now also
+  covers more tables, not because anything new leaked.
+
+Also directly verified (one-off queries, not part of the permanent scan):
+`venue_review_queue` has 5 rows, all `moreno_valley_ca`, all `resolved=true`
+— zero Brookings entries, consistent with the registry being brand-new
+(`c054b7e` landed 2026-08-22) rather than a sign of a bug.
+
+Added `tests/test_town_parity.py`: a permanent regression guard asserting
+`configs/<town_id>.json`'s `local_theaters` (and, by the same pattern, any
+future per-town config block) never contains the OTHER town's
+`HARD_BLOCKLIST` terms, and that every theater's address contains its own
+state abbreviation. Fast, no DB/network — runs on every push.
+
+### Remediated this pass
+
+**Brookings now has a real, verified local theater**, closing the review
+standard's Category-C gap the same way Moreno Valley's was closed: **Brookings
+Cinema 8**, 219 6th St, Brookings, SD 57006, (605) 692-4412,
+brookingstheatre.com — cross-checked against Yelp, the Brookings Area Chamber
+of Commerce business directory, and IMDb (not a single-source guess). Added to
+`site/src/lib/site-config.ts`'s `localTheaters` and mirrored into
+`configs/brookings_sd.json`'s `local_theaters`, identical shape to Moreno
+Valley's entries. Verified with a real `astro build` for `brookings_sd` that
+all 3 existing Brookings `media_recension` stories now render "How to see it
+in Brookings" → Brookings Cinema 8, with zero Moreno Valley strings anywhere
+in the output.
+
+### Category C, no source built (logged, not fabricated)
+
+**Brookings civic-facilities GIS source — a real, live lead found, not yet
+imported.** Investigated (matching 3.1's own bar: confirm public access
+before building) rather than assumed absent:
+
+- Portal: `https://brookingsopendata-brookingscosd.hub.arcgis.com/` — this
+  **is** a City of Brookings portal, not just the county (confirmed live via
+  its DCAT feed, not guessed from the URL slug, which is ambiguous).
+- `GET /api/feed/dcat-us/1.1.json` returns 200 with 12 real datasets,
+  including **"City Parks"** — a direct analog to one of MoVal's four GIS
+  layers. Also present: Recreation Trails, Historic Districts, Zoning,
+  Annexations, and others — no dataset that obviously reads as "community
+  centers" or "civic offices" the way MoVal's portal had, so this may only
+  ever cover parks, not the full facility mix 3.1 got for Moreno Valley.
+- `robots.txt`: `Crawl-delay: 60`, disallows only `/sites/`, `/admin/`,
+  `/sessions/`, `/groups/`, `/people/`, `/workspace/` — the DCAT/dataset API
+  paths are not blocked.
+
+**Not imported in this pass, deliberately** — a full ingestion script
+(schema investigation per layer, dedup against the existing 3 hand-curated
+rows, reverse-geocoding if needed, ToS confirmation for each layer
+individually) is its own project the same size as 3.1 was, and this audit's
+brief explicitly scoped out building Brookings content depth. Left as a
+verified, actionable lead rather than either fabricating facilities data or
+silently leaving the gap undocumented. **Needs a decision**: worth a
+dedicated "3.1-for-Brookings" pass (mirroring `scripts/ingest_moval_facilities.py`)
+using the portal above, whenever Brookings content depth is next on deck.
+
+**Brookings city_meetings "what happened" follow-ups** — `meeting_followups.py`
+is eSCRIBE-specific (parses `PostMinutes` PDFs); Brookings runs Legistar. A
+Legistar equivalent would need its own investigation (does Legistar expose a
+comparable posted-minutes document, in what format, via what endpoint) before
+anything could be built — not attempted here, logged as a lead for whoever
+does the next Brookings-specific content pass. Note again: this doesn't
+render anything wrong for Brookings today, it renders nothing, which is the
+safe failure mode.

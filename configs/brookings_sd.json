@@ -373,5 +373,16 @@
     "KLART: school_alerts = Thrillshare live_feeds API (thrillshare-cmsv2.services.thrillshare.com), verifierad live 2026-08-10, se school_alerts._notes.",
     "NYTT: traffic (SD511) -- ingen öppen källa hittad, sdgis.sd.gov ArcGIS-tjänst kunde inte nås från denna miljö. enabled=false tills utrett, se traffic._notes.",
     "KLART: jobs = Adzuna Job Search API, verifierad live 2026-08-10, se jobs._notes. runner.py fick en refresh_minutes-spärr samtidigt (tidigare aldrig avläst av koden)."
-  ]
+  ],
+  "local_theaters": [
+    {
+      "name": "Brookings Cinema 8",
+      "url": "https://brookingstheatre.com/",
+      "address": "219 6th St, Brookings, SD 57006",
+      "phone": "(605) 692-4412",
+      "detail": "$5 tickets all day Tuesdays; expanded-legroom seating.",
+      "verified_date": "2026-08-23"
+    }
+  ],
+  "_local_theaters_note": "Mirrors site/src/lib/site-config.ts's localTheaters for Brookings (see NEEDS-HUMAN-REVIEW.md 'Brookings Parity Audit' -- added alongside Moreno Valley's so media_recension's Review Writing Standard has a real venue for both towns, not just one)."
 }

@@ -9,6 +9,17 @@ term(s) in context, a tier (hard/review), and a recommended action --
 `unpublish` / `relocate to sister site` / `rewrite locally` / `false
 positive` -- for a human to act on. See NEEDS-HUMAN-REVIEW.md.
 
+STRUCTURED DATA, NOT JUST PROSE (added 2026-08-23, "Brookings Parity Audit"
+-- see NEEDS-HUMAN-REVIEW.md): `stories` is AI-generated text, where a wrong-
+town leak comes from a model mistake. `facilities` and `events` are human-
+curated or mechanically-scraped and already structurally isolated by
+town_id (every read is `WHERE town_id = %s`, and site-config.ts/
+configs/<town_id>.json key per-town data by object, never by string match)
+-- but "structurally isolated" isn't the same guarantee as "scanned," and a
+future copy-paste into the wrong town's facilities row would be exactly the
+kind of contamination this scanner exists to catch. Scanned here too, same
+blocklist, same report.
+
 Usage:
     python -m scripts.scan_contamination
     python -m scripts.scan_contamination --town moreno_valley_ca
@@ -64,30 +75,90 @@ def recommend_action(hard_hits: list[str], escalated: list[str]) -> str:
     return "relocate to sister site"
 
 
+def _flag_text(full_text: str, town_id: str, label: str, published_at=None) -> dict | None:
+    """Shared classification logic behind scan_town()/scan_facilities()/
+    scan_events() -- `label` is whatever identifies the row in the report
+    (`/s/<slug>`, `facility:<slug>`, `event:<id>`), not necessarily a URL."""
+    gate = validate_town_identity(full_text, town_id)
+    if gate.passed and not gate.reviews:
+        return None
+
+    hard_terms = [v.split(": ", 1)[1] for v in gate.violations]
+    review_terms = [v.split(": ", 1)[1] for v in gate.reviews]
+    escalated = addressed_reader_hits(full_text, hard_terms)
+
+    return {
+        "town_id": town_id,
+        "slug": label,
+        "source_type": "n/a",
+        "published_at": published_at,
+        "hard_terms": hard_terms,
+        "review_terms": review_terms,
+        "escalated": escalated,
+        "excerpts": {t: excerpt(full_text, t) for t in (hard_terms + review_terms)},
+        "recommended_action": recommend_action(hard_terms, escalated),
+    }
+
+
 def scan_town(conn, town_id: str) -> list[dict]:
-    rows = gather_stories(conn, town_id)
     flagged = []
-    for row in rows:
+    for row in gather_stories(conn, town_id):
         full_text = f"{row['title']}\n\n{row['body']}"
-        gate = validate_town_identity(full_text, town_id)
-        if gate.passed and not gate.reviews:
-            continue
+        item = _flag_text(full_text, town_id, f"/s/{row['slug']}", row["published_at"])
+        if item:
+            item["source_type"] = row["source_type"]
+            flagged.append(item)
+    return flagged
 
-        hard_terms = [v.split(": ", 1)[1] for v in gate.violations]
-        review_terms = [v.split(": ", 1)[1] for v in gate.reviews]
-        escalated = addressed_reader_hits(full_text, hard_terms)
 
-        flagged.append({
-            "town_id": town_id,
-            "slug": row["slug"],
-            "source_type": row["source_type"],
-            "published_at": row["published_at"],
-            "hard_terms": hard_terms,
-            "review_terms": review_terms,
-            "escalated": escalated,
-            "excerpts": {t: excerpt(full_text, t) for t in (hard_terms + review_terms)},
-            "recommended_action": recommend_action(hard_terms, escalated),
-        })
+def gather_facilities(conn, town_id: str) -> list[dict]:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT slug, name, address, description, phone, website
+              FROM facilities WHERE town_id = %s
+            """,
+            (town_id,),
+        )
+        cols = [d.name for d in cur.description]
+        return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+
+def scan_facilities(conn, town_id: str) -> list[dict]:
+    """facilities is human-curated, not AI-generated -- see this module's
+    docstring for why it's still worth scanning (a future copy-paste error,
+    not a model hallucination)."""
+    flagged = []
+    for row in gather_facilities(conn, town_id):
+        full_text = " ".join(str(v) for v in
+                              (row["name"], row["address"], row["description"],
+                               row["phone"], row["website"]) if v)
+        item = _flag_text(full_text, town_id, f"facility:{row['slug']}")
+        if item:
+            item["source_type"] = "facility"
+            flagged.append(item)
+    return flagged
+
+
+def gather_events(conn, town_id: str) -> list[dict]:
+    with conn.cursor() as cur:
+        cur.execute("SELECT id, title, venue FROM events WHERE town_id = %s", (town_id,))
+        cols = [d.name for d in cur.description]
+        return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+
+def scan_events(conn, town_id: str) -> list[dict]:
+    """events.venue is scraped verbatim from each town's own source feed
+    (never cross-town by construction -- see runner.py's per-town config
+    dispatch), but scanned anyway for the same reason facilities is: a feed
+    or config mistake should be caught, not assumed impossible."""
+    flagged = []
+    for row in gather_events(conn, town_id):
+        full_text = f"{row['title']} {row['venue'] or ''}"
+        item = _flag_text(full_text, town_id, f"event:{row['id']}")
+        if item:
+            item["source_type"] = "event"
+            flagged.append(item)
     return flagged
 
 
@@ -113,8 +184,8 @@ def render_report(all_flagged: dict[str, list[dict]]) -> str:
             lines.append("")
             continue
         for item in flagged:
-            lines.append(f"### `/s/{item['slug']}` — {item['source_type']}, "
-                         f"published {item['published_at']}")
+            when = f", published {item['published_at']}" if item["published_at"] else ""
+            lines.append(f"### `{item['slug']}` — {item['source_type']}{when}")
             lines.append(f"**Recommended action:** `{item['recommended_action']}`")
             if item["hard_terms"]:
                 lines.append(f"- Hard-blocklist terms: {', '.join(item['hard_terms'])}")
@@ -145,6 +216,8 @@ def main() -> int:
         for town_id in towns:
             print(f"Scanning {town_id}...")
             flagged = scan_town(conn, town_id)
+            flagged += scan_facilities(conn, town_id)
+            flagged += scan_events(conn, town_id)
             all_flagged[town_id] = flagged
             print(f"  {len(flagged)} flagged")
 

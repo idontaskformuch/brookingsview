@@ -62,6 +62,21 @@ const CITIES: Record<string, SiteConfig> = {
     sourceBlurb:
       'Brookings View gathers public information from the City of Brookings, Brookings County, South Dakota State University, and Brookings Public Library.',
     removalEmail: 'hello@brookingsview.com',
+    // Verified 2026-08-23 (Yelp, Brookings Area Chamber of Commerce
+    // directory, IMDb -- cross-checked, not a single-source guess): the
+    // only movie theater in Brookings. See NEEDS-HUMAN-REVIEW.md "Brookings
+    // Parity Audit" -- added alongside Moreno Valley's localTheaters so
+    // Brookings reviews get the same real "how to see it" anchor instead of
+    // silently rendering nothing.
+    localTheaters: [
+      {
+        name: 'Brookings Cinema 8',
+        url: 'https://brookingstheatre.com/',
+        address: '219 6th St, Brookings, SD 57006',
+        phone: '(605) 692-4412',
+        detail: '$5 tickets all day Tuesdays; expanded-legroom seating.',
+      },
+    ],
   },
 
   moreno_valley_ca: {
