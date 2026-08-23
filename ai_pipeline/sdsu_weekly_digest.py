@@ -87,16 +87,60 @@ def gather_events(conn, town_id: str, start: datetime, end: datetime) -> list[di
             SELECT id, title, teaser, location, starts_at, primary_category, event_url
               FROM sdsu_events
              WHERE town_id = %s AND starts_at >= %s AND starts_at < %s
+               AND NOT is_filtered
              ORDER BY starts_at
             """,
             (town_id, start, end),
         )
+        return _dedupe_exact_repeats([dict(r) for r in cur.fetchall()])
+
+
+def _dedupe_exact_repeats(events: list[dict]) -> list[dict]:
+    """SDSU's calendar occasionally lists the exact same real-world event
+    twice under two different landing pages (confirmed live: "Playfair -
+    The Ultimate Icebreaker" appeared as both /events/.../playfair-ultimate-
+    icebreaker and /events/.../yellow-blue-you, same title, same starts_at,
+    same location -- sdsu_events_v1.py's dedup key is the URL+time, which
+    can't catch this). Dropped here on (title, starts_at), keeping the
+    first occurrence -- a real coincidence (two different events sharing a
+    title and hour) is vanishingly unlikely for a single campus's calendar."""
+    seen: set[tuple] = set()
+    out = []
+    for e in events:
+        key = (e["title"], e["starts_at"])
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(e)
+    return out
+
+
+def gather_academic_dates(conn, town_id: str, start: datetime, end: datetime) -> list[dict]:
+    """Academic-calendar dates (term start, breaks, finals, commencement --
+    see data/academic_calendar/<town_id>.json) falling in this digest's
+    week. Cross-referenced into the grounding text so the model can lead
+    with "first week of the semester" context it would otherwise have no
+    way to know -- sdsu_events and academic_calendar_dates were previously
+    never joined anywhere, which is why a routine campus event could
+    outrank convocation/classes-begin in the old digest (see
+    NEEDS-HUMAN-REVIEW.md "University Coverage Rebuild", A.2)."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            """
+            SELECT label, category, starts_on, ends_on
+              FROM academic_calendar_dates
+             WHERE town_id = %s AND starts_on >= %s AND starts_on < %s
+             ORDER BY starts_on
+            """,
+            (town_id, start.date(), end.date()),
+        )
         return [dict(r) for r in cur.fetchall()]
 
 
-def content_hash(events: list[dict]) -> str:
+def content_hash(events: list[dict], academic_dates: list[dict]) -> str:
     ids = sorted(str(e["id"]) for e in events)
-    return hashlib.sha256("|".join(ids).encode()).hexdigest()
+    labels = sorted(f"{d['label']}:{d['starts_on']}" for d in academic_dates)
+    return hashlib.sha256("|".join(ids + labels).encode()).hexdigest()
 
 
 def _fmt(dt, tz: ZoneInfo) -> str:
@@ -114,13 +158,61 @@ def _fmt(dt, tz: ZoneInfo) -> str:
     return f"{local.strftime('%A')} {_day(local)} at {hour12}:{local.strftime('%M %p')}"
 
 
-def build_grounding_text(events: list[dict], label: str, tz: ZoneInfo) -> str:
+# A cluster of this many-or-more events sharing the exact same start time
+# gets collapsed into one grounding-text line instead of listed individually
+# -- see NEEDS-HUMAN-REVIEW.md "University Coverage Rebuild", A.2: real data
+# had eight separate "College of X Welcome Event" rows all at Sunday 3pm,
+# and feeding all eight to the model produced eight near-identical sentences
+# instead of one. This is deterministic preprocessing, not a prompt
+# instruction -- more reliable than trusting the model to notice and
+# collapse the pattern itself.
+SIMULTANEOUS_CLUSTER_THRESHOLD = 3
+
+
+def _collapse_simultaneous(events: list[dict]) -> list[dict | list[dict]]:
+    """Groups consecutive (already starts_at-sorted) events sharing the same
+    starts_at; a group >= SIMULTANEOUS_CLUSTER_THRESHOLD becomes a single
+    list entry (caller renders it as one collapsed line), smaller groups are
+    returned as individual dicts unchanged."""
+    out: list[dict | list[dict]] = []
+    i = 0
+    while i < len(events):
+        j = i + 1
+        while j < len(events) and events[j]["starts_at"] == events[i]["starts_at"]:
+            j += 1
+        group = events[i:j]
+        out.extend(group) if len(group) < SIMULTANEOUS_CLUSTER_THRESHOLD else out.append(group)
+        i = j
+    return out
+
+
+def build_grounding_text(events: list[dict], label: str, tz: ZoneInfo,
+                          academic_dates: list[dict] | None = None) -> str:
     parts = [f"WEEK: {label}"]
+
+    if academic_dates:
+        parts.append("\nSIGNIFICANT ACADEMIC DATES THIS WEEK (lead with these ahead of "
+                      "routine campus events -- these affect the whole university):")
+        for d in academic_dates:
+            span = f" through {d['ends_on']}" if d.get("ends_on") else ""
+            parts.append(f"- {d['label']} ({d['category']}): {d['starts_on']}{span}")
+
     if not events:
-        return "\n".join(parts + ["No tracked SDSU events (athletics, music, theatre/dance, "
-                                   "special events, camps/conferences) this week."])
+        parts.append("\nNo tracked SDSU events (athletics, music, theatre/dance, "
+                      "special events, camps/conferences) this week.")
+        return "\n".join(parts)
+
     parts.append("\nSDSU EVENTS THIS WEEK:")
-    for e in events:
+    for item in _collapse_simultaneous(events):
+        if isinstance(item, list):
+            when = _fmt(item[0].get("starts_at"), tz)
+            names = ", ".join(e["title"] for e in item[:3])
+            more = f" and {len(item) - 3} more" if len(item) > 3 else ""
+            parts.append(f"- {len(item)} events at the same time ({when}): {names}{more} "
+                         "-- describe this as one collapsed item (e.g. \"N campus groups/colleges "
+                         "held events at the same time\"), not N separate sentences.")
+            continue
+        e = item
         where = f" at {e['location']}" if e.get("location") else ""
         cat = f" ({e['primary_category']})" if e.get("primary_category") else ""
         parts.append(f"- {e['title']}{cat}: {_fmt(e.get('starts_at'), tz)}{where}")
@@ -139,10 +231,17 @@ This replaces the "keep it short (2-5 sentences)" instruction above with a
 slightly longer, but still compact, format.
 
 STRUCTURE:
-- Lead with whichever event is the biggest draw (a marquee athletics game,
-  a notable concert or show) -- not necessarily the first one chronologically.
+- If a SIGNIFICANT ACADEMIC DATE is listed (term start, finals, commencement,
+  a major break), lead with it -- it affects the whole university, ahead of
+  any single campus event, even a marquee one.
+- Otherwise, lead with whichever event is the biggest draw (a marquee
+  athletics game, a notable concert or show) -- not necessarily the first
+  one chronologically.
 - Group similar events together (athletics together, arts/music together)
-  so it reads as a preview, not a list.
+  so it reads as a preview, not a list. Where the source data already
+  collapsed several simultaneous events into one item, describe them as a
+  group (e.g. "several colleges held welcome events"), never enumerate them
+  individually.
 - This is a PREVIEW of what's scheduled, not a recap -- do not describe
   outcomes, scores, or how anything went, since these events haven't
   happened yet.
@@ -150,29 +249,38 @@ STRUCTURE:
 Return ONLY the article text. No preamble, no title."""
 
 
-def template_fallback(events: list[dict], label: str, tz: ZoneInfo) -> str:
+def template_fallback(events: list[dict], label: str, tz: ZoneInfo,
+                       academic_dates: list[dict] | None = None) -> str:
     """Ren, korrekt lista när AI-vägen inte håller. Torr men sann."""
-    if not events:
-        return f"No tracked SDSU events for the week of {label}."
     lines = [f"SDSU events for the week of {label}:"]
-    for e in events:
-        where = f", {e['location']}" if e.get("location") else ""
-        lines.append(f"- {e['title']}: {_fmt(e.get('starts_at'), tz)}{where}")
+    for d in (academic_dates or []):
+        lines.append(f"- {d['label']}: {d['starts_on']}")
+    if not events:
+        if not academic_dates:
+            return f"No tracked SDSU events for the week of {label}."
+        return "\n".join(lines)
+    for item in _collapse_simultaneous(events):
+        if isinstance(item, list):
+            lines.append(f"- {len(item)} events at {_fmt(item[0].get('starts_at'), tz)}")
+            continue
+        where = f", {item['location']}" if item.get("location") else ""
+        lines.append(f"- {item['title']}: {_fmt(item.get('starts_at'), tz)}{where}")
     return "\n".join(lines)
 
 
-def generate(events: list[dict], label: str, cfg: dict, tz: ZoneInfo, client=None) -> tuple[str, str, bool]:
+def generate(events: list[dict], label: str, cfg: dict, tz: ZoneInfo, client=None,
+             academic_dates: list[dict] | None = None) -> tuple[str, str, bool]:
     """Returnerar (text, generated_by, verified)."""
-    src = build_grounding_text(events, label, tz)
+    src = build_grounding_text(events, label, tz, academic_dates)
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
 
     if _spent_this_month() >= cap:
-        return template_fallback(events, label, tz), "template_fallback", True
+        return template_fallback(events, label, tz, academic_dates), "template_fallback", True
 
     if client is None:
         if anthropic is None:
-            return template_fallback(events, label, tz), "template_fallback", True
+            return template_fallback(events, label, tz, academic_dates), "template_fallback", True
         client = anthropic.Anthropic()
 
     model = resolve_model(SOURCE_TYPE, cfg)
@@ -201,7 +309,7 @@ def generate(events: list[dict], label: str, cfg: dict, tz: ZoneInfo, client=Non
             result = guardrails.validate(text, src, cfg)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
-        return template_fallback(events, label, tz), "template_fallback", True
+        return template_fallback(events, label, tz, academic_dates), "template_fallback", True
 
     if result.passed and len(text.split()) >= MIN_WORDS:
         return text, f"ai:{model}", True
@@ -211,7 +319,7 @@ def generate(events: list[dict], label: str, cfg: dict, tz: ZoneInfo, client=Non
     if not result.passed:
         for v in result.violations[:5]:
             print(f"    - {v}")
-    return template_fallback(events, label, tz), "template_fallback", True
+    return template_fallback(events, label, tz, academic_dates), "template_fallback", True
 
 
 def main() -> int:
@@ -237,13 +345,14 @@ def main() -> int:
 
     with psycopg.connect(database_url) as conn:
         events = gather_events(conn, town_id, start, end)
-        print(f"  underlag: {len(events)} events")
+        academic_dates = gather_academic_dates(conn, town_id, start, end)
+        print(f"  underlag: {len(events)} events, {len(academic_dates)} academic dates")
 
-        if not events:
-            print("  inga SDSU-events den här veckan -- ingen story skapas")
+        if not events and not academic_dates:
+            print("  inga SDSU-events eller akademiska datum den här veckan -- ingen story skapas")
             return 0
 
-        new_hash = content_hash(events)
+        new_hash = content_hash(events, academic_dates)
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT content_hash FROM stories WHERE town_id=%s AND slug=%s",
@@ -254,7 +363,7 @@ def main() -> int:
             print("  underlaget oförändrat -- hoppar över (inget AI-anrop)")
             return 0
 
-        text, generated_by, verified = generate(events, label, cfg, tz)
+        text, generated_by, verified = generate(events, label, cfg, tz, academic_dates=academic_dates)
         title = f"What's on at SDSU: week of {label}"
 
         if args.dry_run:

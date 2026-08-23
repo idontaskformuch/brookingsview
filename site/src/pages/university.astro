@@ -20,7 +20,7 @@ import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
 import type { SdsuEvent } from '../lib/db';
 import {
-  getUpcomingSdsuEvents, getUpcomingAcademicDates, getContentByType,
+  getUpcomingSdsuEvents, getUpcomingArtsEvents, getUpcomingAcademicDates, getContentByType,
   formatCalendarDate, formatDate, formatTime,
 } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
@@ -29,20 +29,47 @@ if (siteConfig.townId !== 'brookings_sd') {
   return Astro.redirect('/', 302);
 }
 
-const [events, academicDates, digests] = await Promise.all([
+const [events, artsEvents, academicDates, digests] = await Promise.all([
   getUpcomingSdsuEvents(60),
-  getUpcomingAcademicDates(2),
+  getUpcomingArtsEvents(6),
+  // Full remaining calendar for the current/next term, not just a 2-date
+  // ribbon (see NEEDS-HUMAN-REVIEW.md "University Coverage Rebuild", A.2 --
+  // the underlying data already covers registration/breaks/finals/
+  // commencement, the page just wasn't showing more than the next 2).
+  getUpcomingAcademicDates(10),
   getContentByType(['university_digest'], 12),
 ]);
 
 const CATEGORY_ICONS: Record<string, string> = {
-  Athletics: '🏈',
   Music: '🎵',
   'Theatre/Dance': '🎭',
   'Special Events': '🎉',
   'Camps/Conferences': '🏕️',
 };
-const iconFor = (cat: string | null) => (cat ? CATEGORY_ICONS[cat] ?? '📅' : '📅');
+// Athletics used to get a single 🏈 regardless of actual sport (soccer,
+// volleyball, a road race, wrestling all showed a football) -- see
+// NEEDS-HUMAN-REVIEW.md "University Coverage Rebuild", A.2. primary_category
+// is too coarse to distinguish sports (SDSU's calendar has one "Athletics"
+// bucket for all of them), but the title always names the actual sport, so
+// icon selection for Athletics is keyword-matched against the title instead.
+const ATHLETICS_ICONS: [RegExp, string][] = [
+  [/\bfootball\b/i, '🏈'],
+  [/\bsoccer\b/i, '⚽'],
+  [/\bvolleyball\b/i, '🏐'],
+  [/\bbasketball\b|\bvs\b.*\bMBB\b|\bWBB\b/i, '🏀'],
+  [/\bwrestling\b/i, '🤼'],
+  [/\btrack\b|\broad race\b|\bcross country\b|\bXC\b/i, '🏃'],
+  [/\bgolf\b/i, '⛳'],
+  [/\btennis\b/i, '🎾'],
+  [/\bsoftball\b/i, '🥎'],
+  [/\bbaseball\b/i, '⚾'],
+];
+const iconFor = (cat: string | null, title: string = '') => {
+  if (cat === 'Athletics') {
+    return ATHLETICS_ICONS.find(([re]) => re.test(title))?.[1] ?? '🏟️';
+  }
+  return cat ? CATEGORY_ICONS[cat] ?? '📅' : '📅';
+};
 
 // "Marquee" = det som fyller hero-remsan: de närmaste Athletics/Music-
 // evenemangen, eftersom de är det som drar flest läsare (matcher, konserter)
@@ -92,7 +119,6 @@ const sections = (
   ] as [string, SdsuEvent[]][]
 ).filter(([, list]) => list.length > 0);
 
-const nextAcademicDate = academicDates[0];
 ---
 <BaseLayout title={`University — ${siteConfig.siteName}`} wide
   description="What's happening at South Dakota State University -- athletics, music, theatre and campus events, plus key academic dates.">
@@ -120,7 +146,7 @@ const nextAcademicDate = academicDates[0];
               {event.starts_at && formatDate(event.starts_at)}
               {event.starts_at && ` · ${formatTime(event.starts_at)}`}
             </p>
-            <p class="hero-card__title">{iconFor(event.primary_category)} {event.title}</p>
+            <p class="hero-card__title">{iconFor(event.primary_category, event.title)} {event.title}</p>
             {event.location && <p class="hero-card__loc">{event.location}</p>}
             {event.teaser && <p class="hero-card__teaser">{event.teaser}</p>}
           </a>
@@ -129,15 +155,39 @@ const nextAcademicDate = academicDates[0];
     </>
   )}
 
-  {nextAcademicDate && (
-    <p class="academic-ribbon">
-      🎓 <strong>{nextAcademicDate.label}</strong>
-      {' '}{formatCalendarDate(nextAcademicDate.starts_on)}
-      {nextAcademicDate.ends_on && `–${formatCalendarDate(nextAcademicDate.ends_on)}`}
-      {academicDates[1] && (
-        <span class="academic-ribbon__next"> · Next: {academicDates[1].label}, {formatCalendarDate(academicDates[1].starts_on)}</span>
-      )}
-    </p>
+  {artsEvents.length > 0 && (
+    <>
+      <SectionRule label="Arts &amp; culture at SDSU" href="/events" />
+      <div class="grid">
+        {artsEvents.map((event) => (
+          <a class="event-card" href={event.event_url} rel="noopener">
+            <p class="event-card__meta data">
+              {iconFor(event.primary_category, event.title)} {event.primary_category ?? 'Event'}
+              {event.starts_at && ` · ${formatDate(event.starts_at)}`}
+              {event.starts_at && ` · ${formatTime(event.starts_at)}`}
+            </p>
+            <p class="event-card__title">{event.title}</p>
+            {event.location && <p class="event-card__loc">{event.location}</p>}
+          </a>
+        ))}
+      </div>
+    </>
+  )}
+
+  {academicDates.length > 0 && (
+    <>
+      <SectionRule label="Academic calendar" />
+      <ul class="academic-list">
+        {academicDates.map((d) => (
+          <li>
+            <span class="academic-list__date data">
+              {formatCalendarDate(d.starts_on)}{d.ends_on && `–${formatCalendarDate(d.ends_on)}`}
+            </span>
+            <span class="academic-list__label">{d.label}</span>
+          </li>
+        ))}
+      </ul>
+    </>
   )}
 
   <a class="jackrabbits-card" href="/jackrabbits">
@@ -152,7 +202,7 @@ const nextAcademicDate = academicDates[0];
         {list.map((event) => (
           <a class="event-card" href={event.event_url} rel="noopener">
             <p class="event-card__meta data">
-              {iconFor(event.primary_category)} {event.primary_category ?? 'Event'}
+              {iconFor(event.primary_category, event.title)} {event.primary_category ?? 'Event'}
               {event.starts_at && ` · ${formatDate(event.starts_at)}`}
               {event.starts_at && ` · ${formatTime(event.starts_at)}`}
             </p>
@@ -201,15 +251,17 @@ const nextAcademicDate = academicDates[0];
 .hero-card__loc { margin: 0; font-size: 0.8125rem; color: var(--ink-soft); }
 .hero-card__teaser { margin: 0.375rem 0 0; font-size: 0.875rem; line-height: 1.4; }
 
-.academic-ribbon {
-  font-size: 0.9375rem;
-  padding: 0.625rem 0.875rem;
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: 3px;
-  margin: 0 0 1rem;
+.academic-list {
+  list-style: none; margin: 0 0 1.25rem; padding: 0;
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 3px;
 }
-.academic-ribbon__next { color: var(--ink-soft); font-size: 0.875rem; }
+.academic-list li {
+  display: flex; gap: 0.75rem; align-items: baseline;
+  padding: 0.5rem 0.875rem; border-bottom: 1px solid var(--rule); font-size: 0.9375rem;
+}
+.academic-list li:last-child { border-bottom: 0; }
+.academic-list__date { flex: 0 0 auto; color: var(--ink-soft); font-size: 0.8125rem; white-space: nowrap; }
+.academic-list__label { flex: 1; }
 
 .jackrabbits-card {
   display: block;
