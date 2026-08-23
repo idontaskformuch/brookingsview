@@ -1283,3 +1283,92 @@ within the town's own state. Included a deliberately-wrong-state fixture
 test (Moreno Valley's real coordinates asserted against South Dakota's
 bounding box) to prove the check actually fails when it should, not just a
 tautology.
+
+## 13. Columns thematic repetition — pipeline fix done, retroactive cleanup needs a decision
+
+Read all 20 recently-published Brookings columns (`editorial`/`culture_essay`/
+`kvick_essa`/`vetenskap_kronika`) in full before acting, per house discipline
+— the count and the grouping below are read from the actual text, not
+titles alone. **The pipeline-side fix is built, tested, and committed** (see
+the commit "Columns: prevent thematic repetition..."); this section is about
+the already-published content the fix doesn't retroactively touch.
+
+**Actual count: 12 of 20 columns are quorum/Downtown-at-Sundown-themed**, not
+9 — but they're not one undifferentiated mass. They split into three real
+sub-clusters, each reusing one thesis:
+
+- **Proximity/scale cluster** (2): `culture_essay-2026-07-20` "A Quorum on
+  Main Avenue" and `culture_essay-2026-07-27` "The Quorum at Sundown" make
+  the same argument (small-town scale collapses the line between "the
+  government" and "everyone else") almost the same way, down to reusing the
+  identical July 30/Aug 6/13/20/27 date list. "The Quorum at Sundown" is the
+  stronger piece (the explicit Arendt public-square/agora framing).
+- **"Notice format can't signal proportion" cluster** (5): `culture_essay-2026-07-26`
+  "The Quorum That Wasn't There", `editorial-2026-07-28` "When Every Notice
+  Looks the Same, None of Them Do", `culture_essay-2026-08-03` "Brookings
+  Learns to Watch the Wrong Thing", `culture_essay-2026-08-16` "The Meeting
+  That Doesn't Belong on the List", and `culture_essay-2026-08-17` "The
+  Week's Real News Is Hiding in Room 310" all make the identical point
+  (routine quorum notices get the same visual/civic weight as real
+  decisions) against a rotating cast of examples (RTI LLC lease → Legacy
+  Addition plat → the 765kV committee). The last two are the most acute
+  case: published on **consecutive days**, both built entirely around
+  elevating the 765kV committee against a pizza night/pet parade. Of the
+  five, `editorial-2026-07-28` is the most substantive (it's the only one
+  that proposes an actual fix — one seasonal notice instead of six repeats)
+  and `culture_essay-2026-08-16` is the only one that connects the 765kV
+  line to the statewide Summit Carbon Solutions pipeline fight (a real,
+  substantive detail the near-duplicate `culture_essay-2026-08-17` lacks).
+- **Comedic "gathering ≠ governing" cluster** (4, all `kvick_essa`):
+  `kvick_essa-2026-07-25` "Quorum, Interrupted", `kvick_essa-2026-08-01` "A
+  Quorum Walks Into a Barbecue", `kvick_essa-2026-08-15` "The Council That
+  Convenes to Convene", `kvick_essa-2026-08-22` "Brookings Perfects the Art
+  of the Non-Meeting" all run the identical joke (officials assemble but
+  don't legislate) against different specific real votes for contrast. Each
+  has genuinely distinct local color (the Lake Hendricks after-the-fact shed
+  variance in the first; bridge structures #06-240-123/141 in the second),
+  so this is the softest case for cutting, but four run-throughs of one
+  joke in a month is still excessive for any column genre.
+
+**Not part of the repetition problem — already good, matches the brief's own
+examples of what to protect:**
+- `vetenskap_kronika-2026-07-31` "The Accidental Math Behind Brookings'
+  Quorum Notices" — genuinely distinct angle (birthday-paradox statistics).
+- `culture_essay-2026-08-02` "Governance Without a Stage" — touches quorum
+  notices as texture but its actual thesis (a landfill permit and a
+  governor's-race certification on the same agenda) is different.
+- The 765kV series proper: `vetenskap_kronika-2026-08-14` "Why Does a Power
+  Line Need 765,000 Volts?" (physics) and `vetenskap_kronika-2026-08-21`
+  "Why Brookings County's Gopher Bounty Never Quite Wins" (unrelated ecology
+  piece, not actually about the power line despite both being County-level
+  subjects) are both standalone and fine.
+- `vetenskap_kronika-2026-07-24` (heat index), `culture_essay-2026-08-10`
+  (historic preservation), `editorial-2026-08-11` "A Summer Calendar Worth
+  Protecting", `culture_essay-2026-08-23` "The Slow Pizza and the Fast
+  Town" — all distinct, no overlap with anything else.
+
+**My recommended keep/cut, if this proceeds** (5 kept from the 12-item
+quorum cluster, not literally 2-3, because there are 3 real sub-theses, not
+one — collapsing to 2-3 total would cut a genuinely distinct angle just to
+hit a round number):
+- Keep: "The Quorum at Sundown" (proximity/Arendt), "The Accidental Math..."
+  (statistics — already not really "quorum-repetitive" in the first place),
+  "When Every Notice Looks the Same, None of Them Do" (proportion cluster,
+  has the actual fix proposal), "The Meeting That Doesn't Belong on the
+  List" (proportion cluster, has the Summit Carbon connection — the 765kV
+  entry to protect), one `kvick_essa` (recommend "A Quorum Walks Into a
+  Barbecue" for its density of specific local detail).
+- Cut: "A Quorum on Main Avenue", "The Quorum That Wasn't There",
+  "Brookings Learns to Watch the Wrong Thing", "The Week's Real News Is
+  Hiding in Room 310", and 3 of the 4 `kvick_essa` pieces.
+
+**Needs a decision before I act, not proceeding unilaterally**: `stories`
+has no draft/hidden state — the only "unpublish" mechanism in this codebase
+is a real `DELETE` (same mechanism the Phase 1 contamination cleanup used).
+My specific classification differs from the brief's "nine of twelve... keep
+2-3" framing (I found 12 across 3 sub-theses, not 9 in one mass), so before
+deleting live, published, possibly-already-shared content I want explicit
+confirmation of the actual keep/cut list rather than executing my own
+read of "best" unilaterally. If confirmed, I'll export the full text of
+every deleted row to a local backup file first, so the exact wording is
+recoverable even after deletion.
