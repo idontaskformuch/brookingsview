@@ -30,14 +30,16 @@ import {
   getUpcomingStories, getActiveAlerts, getUpcomingGames, getNextRegionalGame,
   getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
   getWeather, getAgPrices, getLatestWeekly, getTodaysFeature, getLatestEmployerRatings,
-  CATEGORY_HREFS,
+  getWorthKnowingCandidates, getLatestFromCandidates,
+  CATEGORY_HREFS, CATEGORY_LABELS,
 } from '../lib/db';
+import { selectWorthKnowing, selectLatestFrom, firstSentence } from '../lib/homepage-curation';
 import { siteConfig } from '../lib/site-config';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 
-const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, feature] = await Promise.all([
+const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, feature, worthKnowingCandidates, latestFromCandidates] = await Promise.all([
   getActiveAlerts(),
   getActiveSchoolAlerts(),
   getActiveTrafficIncidents(),
@@ -52,7 +54,17 @@ const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame
   getAgPrices(),
   getLatestWeekly(),
   getTodaysFeature(),
+  getWorthKnowingCandidates(),
+  getLatestFromCandidates(),
 ]);
+
+// Homepage curation (see NEEDS-HUMAN-REVIEW.md "Homepage Curation"): Latest
+// From is computed FIRST because Worth Knowing's theme-collision check
+// needs to know what Latest From already selected, not the other way
+// around -- see selectWorthKnowing()'s own comment.
+const latestFromSelection = selectLatestFrom(latestFromCandidates);
+const alertBannerSlugs = new Set(alerts.map((a) => a.slug));
+const worthKnowingSelection = selectWorthKnowing(worthKnowingCandidates, alertBannerSlugs, latestFromSelection);
 
 const today = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
 
@@ -199,17 +211,36 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     </section>
   )}
 
+  {worthKnowingSelection.length > 0 && (
+    // Significance, not recency -- the slot that surfaces a civic decision
+    // (or hand-flagged item) that would otherwise be buried past the event
+    // list's cap below. See lib/homepage-curation.ts:selectWorthKnowing()
+    // for the rule-based selection (never AI-picked) and
+    // NEEDS-HUMAN-REVIEW.md "Homepage Curation".
+    <section aria-label="Worth knowing" class="worth-knowing">
+      <SectionRule label="Worth knowing" />
+      <div class="river">
+        {worthKnowingSelection.map((story) => <StoryCard story={story} />)}
+      </div>
+    </section>
+  )}
+
   {(todayStories.length > 0 || todayHomeGame) && (
     <section aria-label="Today">
-      <SectionRule label="Today" />
+      <SectionRule label="Today" href="/events" />
       {todayHomeGame && (
         <div class="river">
           <GameCard game={todayHomeGame} feature />
         </div>
       )}
       {todayStories.length > 0 && (
+        // Capped at 5 (see NEEDS-HUMAN-REVIEW.md "Homepage Curation") --
+        // previously unbounded, which is exactly what let a 30+ item
+        // events list dominate the homepage on a busy day. SectionRule's
+        // "All →" (added above) is the real complete view now, same
+        // pattern "This week"/"Coming up" already used.
         <div class="river">
-          {todayStories.map((story) => <StoryCard story={story} />)}
+          {todayStories.slice(0, 5).map((story) => <StoryCard story={story} />)}
         </div>
       )}
     </section>
@@ -235,6 +266,26 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       <SectionRule label="Coming up" href="/events" />
       <div class="river">
         {laterStories.slice(0, 5).map((story) => <StoryCard story={story} compact />)}
+      </div>
+    </section>
+  )}
+
+  {latestFromSelection.length > 0 && (
+    // The site's editorial verticals (Editorials/Columns/Reviews/Recipes)
+    // -- previously invisible from the homepage entirely, buried below a
+    // 30+ item events list. See lib/homepage-curation.ts:selectLatestFrom()
+    // and NEEDS-HUMAN-REVIEW.md "Homepage Curation".
+    <section aria-label="Latest from" class="latest-from">
+      <SectionRule label={`Latest from ${siteConfig.siteName}`} />
+      <div class="latest-from__grid">
+        {latestFromSelection.map((story) => (
+          <a class="latest-from__card" href={`/s/${story.slug}`}>
+            <p class="latest-from__kicker">{CATEGORY_LABELS[story.source_type] ?? 'Feature'}</p>
+            <h3 class="latest-from__title">{story.title}</h3>
+            <p class="latest-from__excerpt">{firstSentence(story.body)}</p>
+            <span class="latest-from__read">Read &rarr;</span>
+          </a>
+        ))}
       </div>
     </section>
   )}
@@ -353,4 +404,30 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 .panel h3 { margin: 0 0 0.25rem; color: var(--navy); }
 .panel:hover h3 { text-decoration: underline; }
 .panel p { margin: 0; font-size: 0.9375rem; color: var(--ink-soft); line-height: 1.45; }
+
+/* Worth knowing: same StoryCard as the event rivers, with a left-border
+   accent so a reader can tell these were curated, not just next in line. */
+.worth-knowing { border-left: 3px solid var(--navy); padding-left: 1.125rem; }
+
+.latest-from__grid { display: grid; gap: 0 1.5rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+.latest-from__card {
+  display: block;
+  border-top: 1px solid var(--rule);
+  padding: 0.875rem 0 1rem;
+  text-decoration: none;
+  color: inherit;
+}
+.latest-from__kicker {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-ui);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.latest-from__title { margin: 0 0 0.3125rem; font-size: 1.0625rem; line-height: 1.2; color: var(--navy); }
+.latest-from__card:hover .latest-from__title { text-decoration: underline; }
+.latest-from__excerpt { margin: 0; font-size: 0.9375rem; color: var(--ink-soft); line-height: 1.45; }
+.latest-from__read { display: inline-block; margin-top: 0.5rem; font-size: 0.8125rem; color: var(--navy); }
 </style>

@@ -118,6 +118,13 @@ export interface Story {
   // Endast source_type='event', enkla (icke-serie) rader -- se
   // ai_pipeline/publish.py. Optional för samma skäl som venue_raw ovan.
   ends_at?: string | null;
+  // Handkurerad flagga -- förstasidans "Worth knowing"-block (se
+  // NEEDS-HUMAN-REVIEW.md "Homepage Curation" och db/migrations/022) tar in
+  // en rad även om den inte matchar någon regelbaserad kategori. false på
+  // alla befintliga rader; ingen UI att sätta den från än, bara SQL för
+  // hand. Optional av samma skäl som venue_raw/is_recurring_series ovan --
+  // bara frågor som faktiskt behöver den selectar den.
+  featured?: boolean;
 }
 
 export interface Game {
@@ -229,6 +236,58 @@ export async function getUpcomingStories(
        AND source_type = ANY(${sourceTypes})
        AND occurs_at >= now() - interval '12 hours'
      ORDER BY occurs_at ASC
+     LIMIT ${limit}
+  `) as Story[];
+}
+
+/** Candidates for the homepage "Worth knowing" block (see
+ *  NEEDS-HUMAN-REVIEW.md "Homepage Curation"): civic decisions with
+ *  public-testimony opportunities, secondary alerts, and hand-flagged
+ *  items. "city_hall"/"planning" in the brief map to the real source_type
+ *  values that actually exist here (meeting/meeting_followup) -- there is
+ *  no separate "planning" or "city_hall" source_type in this schema, a
+ *  Planning Commission item is just a 'meeting' row like any other civic
+ *  body's. The -24h floor matches the brief's "passed by more than 24
+ *  hours" rule; featured rows bypass it (an evergreen flag, not tied to a
+ *  specific occurs_at). Final selection (cap 3, alert-banner dedup, theme-
+ *  collision check) happens in lib/homepage-curation.ts, not here -- this
+ *  just gathers real, town-scoped candidates.
+ */
+export async function getWorthKnowingCandidates(limit = 12): Promise<Story[]> {
+  return (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at,
+           generated_by, byline, image_path, rating, ingredients, instructions, featured
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND (
+             source_type IN ('meeting', 'meeting_followup', 'alert')
+             OR featured = true
+           )
+       AND (featured = true OR occurs_at IS NULL OR occurs_at >= now() - interval '24 hours')
+     ORDER BY featured DESC, occurs_at ASC NULLS LAST
+     LIMIT ${limit}
+  `) as Story[];
+}
+
+/** Candidates for the homepage "Latest from <site>" strip -- the site's
+ *  editorial verticals (Editorials/Columns/Reviews/Recipes), never events/
+ *  alerts/meetings/the weekly roundup (each of those already has its own
+ *  homepage slot). Priority tiebreak on same-published_at ties is applied
+ *  in lib/homepage-curation.ts, not the SQL ORDER BY -- see
+ *  selectLatestFrom()'s own comment for why a fixed genre order needs real
+ *  code, not something ORDER BY can express directly. Fetches more than
+ *  the final 3 so that tiebreak has real candidates to work with. */
+const EDITORIAL_SOURCE_TYPES: SourceType[] =
+  ['editorial', 'culture_essay', 'kvick_essa', 'vetenskap_kronika', 'media_recension', 'vardagsmiddag'];
+
+export async function getLatestFromCandidates(limit = 8): Promise<Story[]> {
+  return (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at,
+           generated_by, byline, image_path, rating, ingredients, instructions
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND source_type = ANY(${EDITORIAL_SOURCE_TYPES})
+     ORDER BY published_at DESC
      LIMIT ${limit}
   `) as Story[];
 }

@@ -1537,3 +1537,73 @@ Brookings with real dates/direction/sparklines/range (spot-checked the
 actual HTML, not just `astro check`); `/farm-report` still correctly
 redirects for Moreno Valley (the page remains Brookings-only, per
 `configs/moreno_valley_ca.json`'s existing `_no_ag_markets_note`).
+
+## 16. Homepage Curation (2026-08-23)
+
+Shared, town-agnostic implementation (`lib/homepage-curation.ts` +
+`db.ts`'s `getWorthKnowingCandidates()`/`getLatestFromCandidates()`), same
+`TOWN_ID`-scoped query pattern as everything else — no per-town branching
+needed or added.
+
+**Real schema gap resolved rather than assumed away**: the brief's rule
+names `city_hall`/`planning` as `source_type` values, but neither exists
+in this schema (`SourceType` has `meeting`/`meeting_followup`, nothing
+narrower) — a Planning Commission item is stored as an ordinary `meeting`
+row like any other civic body's. Implemented the rule against the real
+types (`meeting`, `meeting_followup`, `alert`, `featured`), mapping the
+brief's intent onto what the database actually has, documented inline in
+`getWorthKnowingCandidates()` rather than silently substituting without a
+trace.
+
+**`featured` column added** (`db/migrations/022_story_featured.sql`),
+`false` on every existing row, no admin UI — exactly the brief's own
+scoping ("just add the field and the render logic").
+
+**Theme-collision check is a real port, not the literal shared infrastructure
+the brief assumed exists.** Re-checked before building: the Columns dedup
+work (`374f218`) never persisted a theme tag on `stories` rows — it only
+used the quorum-notice pattern to (a) collapse recurring source rows before
+they reach the column-writing prompt and (b) list recent titles as
+steering text. There's no stored per-story theme column to query. Rather
+than invent a new persistence layer for this pass, `homepage-curation.ts`
+ports the exact same regex (`content/local_context.py`'s
+`_QUORUM_NOTICE_RE`) to TypeScript and applies it at render time — same
+detection logic, same "one validated theme, not a general classifier"
+scope, just evaluated where it's needed instead of stored. Verified this
+actually suppresses a collision with a dedicated test (a quorum-notice
+meeting dropped from Worth Knowing when a quorum-themed column is already
+in Latest From) and that it does NOT over-suppress an unrelated civic
+item sharing no theme.
+
+**Verified live on both towns with real builds, not assumed from the
+selection logic alone:**
+- Moreno Valley: the brief's own canonical example (the Aug 27 Planning
+  Commission item — truck facility + automated car wash, public testimony)
+  renders in Worth Knowing exactly as described, full real body text, real
+  address. "This week" still correctly capped at 5; "Today" correctly
+  absent (genuinely nothing scheduled for today at build time, not a
+  broken empty section). Weekly roundup and the Heat Advisory alert banner
+  confirmed unaffected — Heat Advisory copy still present, `WeeklyRoundup`
+  still rendering its own markup.
+- Brookings: Worth Knowing correctly surfaces 3 real Aug 24 meetings (Weed
+  & Pest Board, Airport Board, City Council) — no 765kV item, because its
+  own next meeting is genuinely September 10, outside any reasonable
+  "worth knowing right now" window; the rule is honest, not forced to
+  match the brief's illustrative example when the real calendar doesn't
+  currently support it. "Today" (1 item) and "This week" (5 items) both
+  within their caps. Zero Moreno Valley strings anywhere on the Brookings
+  homepage; contamination scan shows the same 12 pre-existing Phase-1-era
+  rows as every prior scan this session, nothing new.
+
+**Known, expected side effect worth flagging, not a bug**: Brookings'
+"Latest from" currently shows all 3 recently-*regenerated* reviews (Odyssey/
+Michael/Spider-Man — see "Brookings P6", item 14) instead of "A Summer
+Calendar Worth Protecting" or a 765kV column, because P6's regeneration
+pass set `published_at = now()` on all three earlier this same session,
+genuinely making them the most-recently-published editorial-vertical
+content by the real timestamp `selectLatestFrom()` sorts on. This is the
+selection rule working correctly against real data, not a defect — it
+will self-correct as new columns/editorials publish on their normal
+cadence and age past the reviews. No action needed, noted so the
+discrepancy from the brief's specific example isn't mistaken for a bug
+during review.
