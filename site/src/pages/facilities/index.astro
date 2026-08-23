@@ -25,7 +25,7 @@ const categories = [...byCategory.keys()].sort(
   (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b)
 );
 ---
-<BaseLayout title={`Local facilities — ${siteConfig.siteName}`} wide
+<BaseLayout title={`Local facilities — ${siteConfig.siteName}`} wide ogSlug="section-facilities"
   description={`Addresses, phone numbers and hours for libraries, parks, city hall and other public facilities in ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
   <header class="lede">
     <h1>Local facilities</h1>

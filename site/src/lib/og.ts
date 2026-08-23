@@ -49,6 +49,7 @@ const KICKERS: Record<string, string> = {
   media_recension: 'Review',
   vardagsmiddag: 'Recipe',
   home_sales_digest: 'Market digest',
+  facility: 'Facilities',
 };
 
 /** Rubrikstorleken krymper med längden så långa rubriker inte spränger ytan. */
@@ -63,10 +64,15 @@ export interface OgInput {
   title: string;
   sourceType?: string;
   dateline?: string | null;
+  /** Explicit kicker text, for cards with no real source_type to look up in
+   *  KICKERS (section pages like /home-sales, /traffic -- see
+   *  og/[slug].png.ts's SECTION_CARDS). Takes priority over the
+   *  sourceType-based lookup when present. */
+  kickerOverride?: string;
 }
 
-export async function renderOgImage({ title, sourceType = 'event', dateline }: OgInput): Promise<Buffer> {
-  const kicker = KICKERS[sourceType] ?? siteConfig.siteName;
+export async function renderOgImage({ title, sourceType = 'event', dateline, kickerOverride }: OgInput): Promise<Buffer> {
+  const kicker = kickerOverride ?? KICKERS[sourceType] ?? siteConfig.siteName;
   const accentColour = sourceType === 'alert' ? ALERT : ACCENT;
 
   const svg = await satori(

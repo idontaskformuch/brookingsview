@@ -64,7 +64,7 @@ function hourLabel(start: string): string {
   return new Date(start).toLocaleTimeString('en-US', { hour: 'numeric', timeZone: siteConfig.timezone });
 }
 ---
-<BaseLayout title={`Weather — ${siteConfig.siteName}`}
+<BaseLayout title={`Weather — ${siteConfig.siteName}`} ogSlug="section-weather"
   description={`Forecast for ${siteConfig.cityName}, ${siteConfig.stateName}, from the National Weather Service.`}>
   <header class="lede">
     <h1>Weather</h1>

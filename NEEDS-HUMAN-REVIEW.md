@@ -859,6 +859,38 @@ teaser instead of a second, less-complete copy of the same listing.
 exist (a time-scoped "what's happening today" view /events doesn't
 provide the same way), not duplicate content of the vertical page.
 
+### 4.5 OG images — every major section now has its own card, not the homepage's
+
+**Audit finding**: only `/s/[slug]/` (individual stories) ever passed an
+`ogSlug` — literally every other page on the site (`/home-sales`, `/jobs`,
+`/traffic`, `/city-hall`, `/events`, `/weather`, `/facilities`, every
+individual facility page, `/workplace-watch`) fell back to
+`/og/default.png`, meaning a shared link to any of them looked identical to
+a shared link to the homepage. `site/src/lib/og.ts`'s own module docstring
+already names this exact failure mode ("a generic logo image makes every
+link identical and therefore invisible") — it just hadn't been applied
+beyond individual stories yet.
+
+**Not a case for "pass the real illustration through" — checked first.**
+The brief's literal ask was to prefer a per-item real image over the
+generic default; read `site/src/lib/og.ts` before changing anything, since
+`/s/[slug]/` already looked like it might be "falling back to default" at a
+glance. It isn't: every story already gets its own generated card (title +
+category + dateline, via satori/sharp), deliberately NOT the story's raw
+AI illustration — the module's docstring explains why: showing the
+headline itself is more informative for a shared link than artwork alone.
+That's a considered design decision already in place, not a gap to fix.
+
+**Built**: extended `/og/[slug].png`'s `getStaticPaths()` with a
+`SECTION_CARDS` list (one real card per major vertical, each with its own
+title and kicker) and one per facility (`facility-<slug>`, using the
+facility's real name) — then wired `ogSlug` into each of those pages.
+`renderOgImage()` gained an optional `kickerOverride` for section cards
+that have no real `source_type` to look up a kicker for. Verified with a
+real `astro build` that the new PNG routes render without error (satori/
+sharp failures wouldn't show up in `astro check` or vitest, only at
+build/render time — same lesson as the `occurs_at` Date bug in 4.2).
+
 ## 8. Not addressed yet
 
 Nothing outstanding as of this line — updated as Phase 3/4 sub-sections

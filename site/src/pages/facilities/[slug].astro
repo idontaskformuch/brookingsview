@@ -44,7 +44,7 @@ const upcomingHere = allUpcoming
 const hasFullAddress = Boolean(facility.street_address && facility.postal_code);
 const schemaType = FACILITY_SCHEMA_TYPE[facility.category] ?? 'CivicStructure';
 ---
-<BaseLayout title={`${facility.name} — ${siteConfig.siteName}`} description={description}>
+<BaseLayout title={`${facility.name} — ${siteConfig.siteName}`} description={description} ogSlug={`facility-${facility.slug}`}>
   <article class="facility">
     <p class="kind data">{categoryLabel}</p>
     <h1>{facility.name}</h1>

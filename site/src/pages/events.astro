@@ -227,7 +227,7 @@ const sections = (
 // keeps the original "hide if empty" rule.
 ).filter(([label, list]) => list.length > 0 || (label === 'Today' && todaysHomeGame));
 ---
-<BaseLayout title={`Events in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide
+<BaseLayout title={`Events in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-events"
   description={`What's on this weekend in ${siteConfig.cityName}, ${siteConfig.stateName} — library programs, city events and community happenings.`}>
   <header class="lede">
     <h1>What's on</h1>
