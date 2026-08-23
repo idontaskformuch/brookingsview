@@ -23,6 +23,7 @@ from __future__ import annotations
 import os
 import re
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 import requests
 from bs4 import BeautifulSoup
@@ -31,6 +32,14 @@ from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
 
 BASE = "https://gojacks.com"
+# gojacks.com's own schedule times are the program's home timezone
+# (Brookings, SD) -- see _parse_datetime()'s docstring for the bug this
+# fixes (2026-08-23, "University Coverage Rebuild"): times were previously
+# stored as naive datetimes with no tzinfo, which Postgres/psycopg then
+# interpreted as UTC on insert -- every game was off by 5-6 hours (DST-
+# dependent) from its real Central time. ZoneInfo (not a fixed UTC offset)
+# so DST transitions across a season are handled automatically.
+_CENTRAL = ZoneInfo("America/Chicago")
 
 # sport-slug -> sports_games.sport-värde. Kan överstyras via config (source_cfg["sports"]).
 DEFAULT_SPORTS = {
@@ -44,6 +53,35 @@ DEFAULT_SPORTS = {
 _HEADER_YEAR_RE = re.compile(r"(\d{4})(?:-(\d{2}))?\s+\S.*Schedule", re.IGNORECASE)
 _DATE_RE = re.compile(r"([A-Za-z]{3})\s+(\d{1,2})")           # "Aug 29 (Sat)"
 _TIME_RE = re.compile(r"(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)", re.IGNORECASE)
+# Some neutral-site games list two zones ("6 p.m. MT / 7 p.m. CT") -- prefer
+# the explicitly-labeled Central figure over whichever comes first in the
+# string (see NEEDS-HUMAN-REVIEW.md "University Coverage Rebuild": a plain
+# time with no zone label is Central by the program's own convention, but a
+# dual-zone listing must not silently grab the Mountain figure).
+_CT_TIME_RE = re.compile(r"(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)\s*CT", re.IGNORECASE)
+
+# Ranking-prefix tokens gojacks.com prepends to a ranked opponent's name
+# ("#1 Nebraska", "RV Villanova", "-/RV No. 1 North Dakota State", "No. 3
+# South Dakota") -- these change week to week as polls update, which
+# previously fed straight into content_hash and produced a duplicate row
+# every time an opponent's ranking changed (see normalize_opponent() below
+# and scripts/dedupe_sports_games.py for the one-time cleanup of rows this
+# already produced).
+_RANK_TOKEN_RE = re.compile(r"^(?:-/RV|RV|#\d+(?:/\d+)?|No\.\s*\d+)\s+", re.IGNORECASE)
+
+
+def normalize_opponent(raw: str) -> str:
+    """Strip leading ranking-poll tokens, repeatedly (a name can carry more
+    than one, e.g. "-/RV No. 1 North Dakota State"). Used for content_hash
+    identity, NOT for display -- the raw, ranked label is still what's shown
+    to the reader."""
+    s = raw.strip()
+    while True:
+        stripped = _RANK_TOKEN_RE.sub("", s, count=1)
+        if stripped == s:
+            return s
+        s = stripped
+
 
 _MONTHS = {
     "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
@@ -54,6 +92,15 @@ _MONTHS = {
 class GoJacksParser(BaseParser):
     table = "sports_games"
     platform = "gojacks"
+    # A game is mutable source data (time can move, a result gets added once
+    # played) -- the default (town_id, content_hash) DO NOTHING would silently
+    # never write a result once a game had already been inserted as upcoming
+    # (content_hash doesn't change on its own). content_hash is now keyed on
+    # the RANK-NORMALIZED opponent (see normalize_opponent()), so a ranking-
+    # prefix change on re-scrape also updates the existing row instead of
+    # inserting a duplicate, rather than only fixing the result-never-lands
+    # problem.
+    update_columns = ["opponent", "home_away", "starts_at", "venue", "result", "raw_data"]
 
     def _sports(self) -> dict[str, str]:
         return self.source_cfg.get("sports") or DEFAULT_SPORTS
@@ -138,7 +185,7 @@ class GoJacksParser(BaseParser):
                 "result": result,
                 "raw_data": vals,
                 "content_hash": content_hash(
-                    "gojacks", sport, opponent, vals.get("date"), base_year
+                    "gojacks", sport, normalize_opponent(opponent), vals.get("date"), base_year
                 ),
             })
         return records
@@ -156,6 +203,9 @@ def _season_year(page_text: str) -> tuple[int, bool]:
 
 def _parse_datetime(date_str: str, time_str: str, base_year: int,
                     spans_two_years: bool) -> str | None:
+    """Returns a tz-AWARE ISO string (Central, DST-correct) -- see module
+    docstring for the bug this fixes (previously naive, silently treated as
+    UTC by Postgres on insert, ~5-6h off for every game)."""
     m = _DATE_RE.search(date_str)
     if not m:
         return None
@@ -168,7 +218,10 @@ def _parse_datetime(date_str: str, time_str: str, base_year: int,
     year = base_year + 1 if (spans_two_years and month <= 6) else base_year
 
     hour, minute = 12, 0  # rimlig default när tiden är "TBA"
-    tm = _TIME_RE.search(time_str or "")
+    # Prefer an explicit "... CT" figure over the first time token found --
+    # a dual-zone listing ("6 p.m. MT / 7 p.m. CT") would otherwise grab the
+    # Mountain figure. A single, unlabeled time is Central by convention.
+    tm = _CT_TIME_RE.search(time_str or "") or _TIME_RE.search(time_str or "")
     if tm:
         hour = int(tm.group(1)) % 12
         minute = int(tm.group(2) or 0)
@@ -176,6 +229,6 @@ def _parse_datetime(date_str: str, time_str: str, base_year: int,
             hour += 12
 
     try:
-        return datetime(year, month, day, hour, minute).isoformat()
+        return datetime(year, month, day, hour, minute, tzinfo=_CENTRAL).isoformat()
     except ValueError:
         return None

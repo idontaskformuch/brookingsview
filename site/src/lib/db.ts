@@ -32,7 +32,7 @@ export type SourceType =
   | 'meeting' | 'meeting_followup' | 'event' | 'alert' | 'weekly'
   | 'culture_essay' | 'editorial' | 'vetenskap_kronika' | 'kvick_essa'
   | 'media_recension' | 'vardagsmiddag' | 'home_sales_digest' | 'sports_digest' | 'local_sports_digest' | 'university_digest'
-  | 'announcement' | 'workplace_watch_digest';
+  | 'announcement' | 'workplace_watch_digest' | 'jackrabbits_season_summary';
 
 /** Presentation-layer label per source_type, för Byline-raden. Ingen egen DB-kolumn --
  *  category är en ren funktion av source_type, inget som behöver lagras separat. */

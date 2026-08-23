@@ -1,0 +1,39 @@
+name: brookings-jackrabbits-season-digest
+# Kör jackrabbits_season_digest.py: ETT standing "season so far"-sammandrag
+# per sport i sports_games (SDSU Jackrabbits, se scrapers/parsers/gojacks_v1.py),
+# uppdaterat i samma slug i stället för en ny story per körning -- se den
+# modulens docstring för varför detta INTE är samma mönster som
+# sports_weekly_digest.py/sdsu_weekly_digest.py (som ackumulerar en story per
+# vecka). Körs efter sdsu_athletics-skrapningen (var 3:e timme, se
+# configs/brookings_sd.json) hunnit plocka upp senaste resultaten -- en gång
+# om dagen räcker, content_hash-kollen i skriptet skippar AI-anropet om
+# underlaget (vilka matcher som spelats) inte ändrats.
+
+on:
+  schedule:
+    - cron: "0 12 * * *"   # varje dag 12:00 UTC (07:00 Central)
+  workflow_dispatch: {}
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:      ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      USER_AGENT:        "brookingsview.com (contact: hello@brookingsview.com)"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Generera Jackrabbits säsongssammanfattningar
+        run: python -m ai_pipeline.jackrabbits_season_digest --config configs/brookings_sd.json
+      - name: Trigga Cloudflare Pages-rebuild
+        if: success()
+        run: |
+          if [ -z "${{ secrets.PAGES_DEPLOY_HOOK }}" ]; then
+            echo "::error::PAGES_DEPLOY_HOOK saknas — rebuild kan inte triggas"
+            exit 1
+          fi
+          curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK }}"

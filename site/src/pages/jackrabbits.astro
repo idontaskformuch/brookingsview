@@ -9,14 +9,16 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import GameCard from '../components/GameCard.astro';
-import { getSeasonGames, getUpcomingGames, formatDate, formatTime } from '../lib/db';
+import { getSeasonGames, getUpcomingGames, getContentByType, formatDate, formatTime } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
 if (siteConfig.townId !== 'brookings_sd') {
   return Astro.redirect('/', 302);
 }
 
-const [next, all] = await Promise.all([getUpcomingGames(1), getSeasonGames()]);
+const [next, all, summaries] = await Promise.all([
+  getUpcomingGames(1), getSeasonGames(), getContentByType(['jackrabbits_season_summary'], 20),
+]);
 const nextGame = next[0] ?? null;
 
 const bySport = new Map<string, typeof all>();
@@ -28,6 +30,15 @@ const label = (s: string) =>
   s === 'mbb' ? "Men's basketball"
   : s === 'wbb' ? "Women's basketball"
   : s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ');
+
+// Latest AI-written summary per sport -- see ai_pipeline/jackrabbits_season_digest.py
+// (source_type "jackrabbits_season_summary", one standing story per sport,
+// slug "jackrabbits-season-summary-<sport>", updated in place as the season
+// progresses rather than one story per week). Map keyed by sport (pulled out
+// of the slug -- the only place that identity lives) for O(1) lookup below.
+const summaryBySport = new Map(
+  summaries.map((s) => [s.slug.replace(/^jackrabbits-season-summary-/, ''), s])
+);
 ---
 <BaseLayout title={`SDSU Jackrabbits schedules and results — ${siteConfig.siteName}`} wide
   description="Full SDSU Jackrabbits schedules and results for football, basketball and volleyball.">
@@ -44,32 +55,84 @@ const label = (s: string) =>
     </>
   )}
 
-  {[...bySport.entries()].map(([sport, games]) => (
-    <>
-      <SectionRule label={label(sport)} />
-      <table class="sched">
-        <thead>
-          <tr><th scope="col">Date</th><th scope="col">Opponent</th>
-              <th scope="col">Where</th><th scope="col">Result</th></tr>
-        </thead>
-        <tbody>
-          {games.map((game) => (
-            <tr>
-              <td class="data">{formatDate(game.starts_at)}<span class="t">{formatTime(game.starts_at)}</span></td>
-              <td>{game.home_away === 'home' ? 'vs' : 'at'} {game.opponent}</td>
-              <td class="where">{game.venue ?? '—'}</td>
-              <td class="data">{game.result ?? '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </>
-  ))}
+  {[...bySport.entries()].map(([sport, games]) => {
+    const summary = summaryBySport.get(sport);
+    // Most-recent-first for results (what just happened matters more the
+    // further the season goes), soonest-first for the schedule -- same
+    // "recency for the past, urgency for the future" split the rest of the
+    // site uses (e.g. home-sales digests vs. upcoming events).
+    const results = games.filter((g) => g.result).reverse();
+    const schedule = games.filter((g) => !g.result);
+    return (
+      <>
+        <SectionRule label={label(sport)} />
+        {summary && (
+          <div class="season-summary">
+            {summary.body.split(/\n\s*\n/).map((para) => <p>{para}</p>)}
+          </div>
+        )}
+        {results.length > 0 && (
+          <>
+            <h3 class="sched-label">Results</h3>
+            <table class="sched">
+              <thead>
+                <tr><th scope="col">Date</th><th scope="col">Opponent</th>
+                    <th scope="col">Where</th><th scope="col">Result</th></tr>
+              </thead>
+              <tbody>
+                {results.map((game) => (
+                  <tr>
+                    <td class="data">{formatDate(game.starts_at)} <span class="t">{formatTime(game.starts_at)}</span></td>
+                    <td>{game.home_away === 'home' ? 'vs' : 'at'} {game.opponent}</td>
+                    <td class="where">{game.venue ?? '—'}</td>
+                    <td class="data">{game.result}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+        {schedule.length > 0 && (
+          <>
+            <h3 class="sched-label">Schedule</h3>
+            <table class="sched">
+              <thead>
+                <tr><th scope="col">Date</th><th scope="col">Opponent</th>
+                    <th scope="col">Where</th><th scope="col">Result</th></tr>
+              </thead>
+              <tbody>
+                {schedule.map((game) => (
+                  <tr>
+                    <td class="data">{formatDate(game.starts_at)} <span class="t">{formatTime(game.starts_at)}</span></td>
+                    <td>{game.home_away === 'home' ? 'vs' : 'at'} {game.opponent}</td>
+                    <td class="where">{game.venue ?? '—'}</td>
+                    <td class="data">—</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </>
+    );
+  })}
 </BaseLayout>
 
 <style>
 .lede { max-width: 40rem; }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.season-summary { max-width: 42rem; margin: 0 0 1.25rem; }
+.season-summary p { margin: 0 0 0.75rem; line-height: 1.5; }
+.sched-label {
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 1.25rem 0 0.5rem;
+}
+.sched-label:first-of-type { margin-top: 0; }
+.sched + .sched-label { margin-top: 1.75rem; }
 .sched { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.9375rem; }
 .sched th {
   text-align: left;

@@ -73,6 +73,17 @@ const laterStories = rest.filter((s) => s.occurs_at && new Date(s.occurs_at) >= 
 
 const nextGame = games[0] ?? null;
 
+// Cross-link a Jackrabbits HOME game happening today into the same "Today"
+// river as events/meetings (see NEEDS-HUMAN-REVIEW.md "University Coverage
+// Rebuild", A.1 -- a game day is exactly the kind of "what's happening
+// today" fact this section exists for, and previously only surfaced in the
+// separate rail widget, never in the main content stream). Home only --
+// an away game doesn't affect anyone's day in Brookings the way a home game
+// does (traffic, parking, foot draw), and the rail widget already covers
+// "next game" regardless of home/away.
+const todayHomeGame = isBrookings && nextGame && nextGame.home_away === 'home'
+  && within(nextGame.starts_at, startOfDay, endOfDay) ? nextGame : null;
+
 // Bara hämtat på Moreno Valley-builds -- ingen anledning att fråga en tabell
 // som alltid är tom på Brookings.
 const employerRatings = isMorenoValley ? await getLatestEmployerRatings() : [];
@@ -188,12 +199,19 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     </section>
   )}
 
-  {todayStories.length > 0 && (
+  {(todayStories.length > 0 || todayHomeGame) && (
     <section aria-label="Today">
       <SectionRule label="Today" />
-      <div class="river">
-        {todayStories.map((story) => <StoryCard story={story} />)}
-      </div>
+      {todayHomeGame && (
+        <div class="river">
+          <GameCard game={todayHomeGame} feature />
+        </div>
+      )}
+      {todayStories.length > 0 && (
+        <div class="river">
+          {todayStories.map((story) => <StoryCard story={story} />)}
+        </div>
+      )}
     </section>
   )}
 
