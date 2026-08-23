@@ -83,6 +83,19 @@ function hourLabel(start: string): string {
     </section>
   )}
 
+  {siteConfig.townId === 'moreno_valley_ca' && alerts.some((a) => /heat/i.test(a.title)) && (
+    // Same heat-risk cross-link Worker Pulse already surfaces the other
+    // direction (HeatAdvisoryWidget, weather -> workplace-watch) --
+    // extended here so a reader who lands on /weather during an active
+    // heat alert also finds the outdoor/loading-dock work guidance, not
+    // just the other way around. See NEEDS-HUMAN-REVIEW.md "4.3 Internal
+    // linking pass".
+    <p class="heat-crosslink">
+      📦 Active heat alert — see <a href="/workplace-watch">Worker Pulse</a> for
+      outdoor and loading-dock work risk guidance.
+    </p>
+  )}
+
   {hourly.length > 0 && (
     <>
       <SectionRule label="Next 24 hours" />
@@ -124,6 +137,7 @@ function hourLabel(start: string): string {
 .alert { border-left: 4px solid var(--alert); background: var(--alert-tint); padding: 0.875rem 1rem; }
 .alert__kicker { margin: 0 0 0.25rem; font-family: var(--font-ui); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--alert); }
 .alert__title { margin: 0; font-family: var(--font-head); font-weight: 700; font-size: 1.0625rem; }
+.heat-crosslink { margin: 0.75rem 0 1.25rem; padding: 0.75rem 1rem; border: 1px solid var(--rule); border-radius: 8px; font-size: 0.9375rem; }
 .hourly { display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem; margin-bottom: 0.5rem; }
 .hour { flex: 0 0 5.5rem; text-align: center; border: 1px solid var(--rule); padding: 0.625rem 0.5rem; }
 .hour__time { font-weight: 600; margin: 0 0 0.25rem; font-size: 0.8125rem; }

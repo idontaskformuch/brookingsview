@@ -8,7 +8,7 @@ import Byline from '../../components/Byline.astro';
 import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
 import {
   getAllStories, getRelatedStories, formatOccursAt, formatDate, CATEGORY_LABELS,
-  getWorkerPulseComments, getFacilities,
+  getWorkerPulseComments, getFacilities, buildVenueIndex, resolveVenue,
 } from '../../lib/db';
 import type { Story, Facility } from '../../lib/db';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
@@ -60,6 +60,17 @@ const MOVAL_ZIPS = ['92551', '92552', '92553', '92555', '92557'];
 const mentionedZips = isMeeting
   ? [...new Set(MOVAL_ZIPS.filter((z) => story.body.includes(z)))]
   : [];
+// Internal linking pass (NEEDS-HUMAN-REVIEW.md "4.3"): a VISIBLE reader-
+// facing link to the /facilities/ page, not just structured data for
+// search engines. Events reuse the exact same venue registry Event JSON-LD
+// already resolves against (site/src/lib/event-jsonld.ts); meetings link
+// to City Hall specifically since eSCRIBE's meeting data doesn't carry a
+// per-meeting venue field the way scraped events do, and in practice every
+// tracked body (City Council, Planning Commission) meets there.
+const venueFacility = story.source_type === 'event' && !story.is_recurring_series
+  ? resolveVenue(buildVenueIndex(facilities), story.venue_raw)
+  : null;
+const cityHallFacility = isMeeting ? facilities.find((f) => f.slug === 'city-hall') ?? null : null;
 const canonicalUrl = new URL(`/s/${story.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
 const related = await getRelatedStories(story, 3);
 // Steg 3.5: en tecknad illustration matchad till artikeln, om en sådan finns.
@@ -115,6 +126,18 @@ const eventJsonLdObject = buildEventJsonLd(
             <a href={`/home-sales/?zip=${zip}`}>{zip}</a>
           </>
         ))}
+      </p>
+    )}
+
+    {venueFacility && (
+      <p class="story__venue-link data">
+        📍 <a href={`/facilities/${venueFacility.slug}/`}>{venueFacility.name}</a>
+      </p>
+    )}
+
+    {cityHallFacility && (
+      <p class="story__venue-link data">
+        📍 Meets at <a href={`/facilities/${cityHallFacility.slug}/`}>{cityHallFacility.name}</a>
       </p>
     )}
 
@@ -251,6 +274,7 @@ const eventJsonLdObject = buildEventJsonLd(
 .story__body { margin-top: 1.75rem; font-size: 1.125rem; }
 .story__body p { margin: 0 0 1rem; }
 .story__zip-links { color: var(--ink-soft); font-size: 0.875rem; margin: -0.5rem 0 1.25rem; }
+.story__venue-link { color: var(--ink-soft); font-size: 0.875rem; margin: -0.5rem 0 1.25rem; }
 .story__theaters { margin: 1.75rem 0; }
 .story__theaters p { color: var(--ink-soft); margin: 0.5rem 0; }
 .story__theaters ul { margin: 0.5rem 0 0; padding-left: 1.25rem; }

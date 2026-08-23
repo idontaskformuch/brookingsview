@@ -816,6 +816,36 @@ This is exactly why the build (not just the type-checker or the unit
 tests) is part of verifying this kind of change — `astro check` and vitest
 both passed on the broken version.
 
+### 4.3 Internal linking pass — contextual links inside the prose, not a widget
+
+Done as an actual linking pass (specific links inside the page where
+they're genuinely relevant), not a bolted-on "related links" box, per the
+brief's own instruction:
+
+- **Events → `/facilities/` venue pages**: a visible "📍 [Venue name]" link
+  now appears on an event's own page whenever its venue resolves against
+  the same registry Event JSON-LD already uses (`resolveVenue()` +
+  `buildVenueIndex()`, reused directly rather than duplicated) — the
+  registry was already the join key for the structured-data version of this
+  link (3.1/section 6); this adds the reader-visible version.
+- **City-hall meetings → `/facilities/city-hall/`**: meetings link to the
+  City Hall facility page. Scoped to City Hall specifically rather than a
+  general venue-resolution pass like events get: eSCRIBE's meeting data
+  doesn't carry a per-meeting venue field the way scraped events do, and in
+  practice every tracked body (City Council, Planning Commission) meets
+  there — see section 7's "3.2 City hall" writeup for the joint-session
+  boards (Library Trustees etc.) that turned up in real minutes text but
+  don't have their own calendar entries to attach a different venue to.
+- **City-hall development items → `/home-sales/` ZIP digests**: already
+  built in 3.2 (see above) — the ZIP cross-link.
+- **Weather alerts → Worker Pulse heat-risk note, extended.** The
+  cross-link already existed one direction (`HeatAdvisoryWidget` surfaces
+  weather data ON the Worker Pulse page). Added the other direction: when
+  an active alert on `/weather` matches a heat pattern, a visible link now
+  points to `/workplace-watch` for the outdoor/loading-dock risk guidance,
+  so a reader who lands on the weather page during a heat event finds the
+  safety context too, not just the other way around.
+
 ## 8. Not addressed yet
 
 Nothing outstanding as of this line — updated as Phase 3/4 sub-sections
