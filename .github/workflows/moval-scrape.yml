@@ -35,8 +35,6 @@ jobs:
       # med den gamla hooken (som lämnas orörd tills det nya sättet är
       # bevisat live, se acceptanskriterierna) -- inte en ersättning än.
       - uses: actions/setup-node@v4
-        with:
-          node-version: 22
       - name: Install site deps
         working-directory: site
         run: npm ci
