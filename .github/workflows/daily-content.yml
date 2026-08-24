@@ -43,7 +43,7 @@ jobs:
             echo "ingen ny illustration -- inget att committa"
           else
             git commit -m "Daily content: add illustration for today's article"
-            git push
+            git pull --rebase origin main && git push
           fi
       - name: Trigga Cloudflare Pages-rebuild
         if: success()
