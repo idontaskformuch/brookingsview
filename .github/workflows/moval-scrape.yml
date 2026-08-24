@@ -36,7 +36,7 @@ jobs:
       # bevisat live, se acceptanskriterierna) -- inte en ersättning än.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - name: Install site deps
         working-directory: site
         run: npm ci
