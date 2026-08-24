@@ -1507,3 +1507,102 @@ export function toZonedISOString(utcIso: string, timeZone: string): string {
 
   return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}${offset}`;
 }
+
+/* ----------------------------------------------------- city hall projects */
+// See db/migrations/023_city_hall_projects.sql and NEEDS-HUMAN-REVIEW.md,
+// "Week 3 -- City Hall Project Pages". Projects are a hand-curated
+// registry (data/projects/<town_id>.json, see scripts/seed_projects.py),
+// threaded with real meeting outcomes by ai_pipeline/project_updates.py --
+// this file only reads what that pipeline already verified, it never
+// derives a status or outcome itself.
+
+export interface Project {
+  slug: string;
+  title: string;
+  description: string;
+  status: string;
+  location_text: string | null;
+  lat: number | null;
+  lon: number | null;
+  home_sales_zip: string | null;
+  updated_at: string;
+}
+
+export interface ProjectUpdate {
+  body: string;
+  meeting_date: string;
+  agenda_counter: string | null;
+  agenda_title: string;
+  agenda_url: string | null;
+  outcome: string;
+  vote_yes: number | null;
+  vote_no: number | null;
+  vote_abstain: number | null;
+  vote_absent: number | null;
+  source_url: string | null;
+}
+
+/** 'pending' isn't a real project status (it's an update-level outcome) --
+ *  every project row itself is always one of these five, recomputed by
+ *  ai_pipeline/project_updates.py from its most recent update's outcome. */
+export const PROJECT_STATUS_LABELS: Record<string, string> = {
+  under_review: 'Under review',
+  approved: 'Approved',
+  permitted: 'Permitted',
+  under_construction: 'Under construction',
+  complete: 'Complete',
+  denied: 'Denied',
+};
+
+export async function getProjects(): Promise<Project[]> {
+  return (await sql`
+    SELECT slug, title, description, status, location_text, lat, lon,
+           home_sales_zip, updated_at
+      FROM projects
+     WHERE town_id = ${TOWN_ID}
+     ORDER BY updated_at DESC
+  `) as Project[];
+}
+
+export async function getProjectBySlug(slug: string): Promise<Project | null> {
+  const rows = (await sql`
+    SELECT slug, title, description, status, location_text, lat, lon,
+           home_sales_zip, updated_at
+      FROM projects
+     WHERE town_id = ${TOWN_ID} AND slug = ${slug}
+     LIMIT 1
+  `) as Project[];
+  return rows[0] ?? null;
+}
+
+/** A project's full sourced timeline, oldest first -- the accumulating
+ *  history a project page renders. */
+export async function getProjectUpdates(slug: string): Promise<ProjectUpdate[]> {
+  return (await sql`
+    SELECT u.body, u.meeting_date, u.agenda_counter, u.agenda_title,
+           u.agenda_url, u.outcome, u.vote_yes, u.vote_no, u.vote_abstain,
+           u.vote_absent, u.source_url
+      FROM project_updates u
+      JOIN projects p ON p.id = u.project_id
+     WHERE p.town_id = ${TOWN_ID} AND p.slug = ${slug}
+     ORDER BY u.meeting_date ASC
+  `) as ProjectUpdate[];
+}
+
+/** Recent milestones across every project, newest first -- for the
+ *  homepage teaser (see index.astro). A "milestone" here is just any
+ *  update within the window, pending or confirmed alike; the homepage
+ *  itself decides how to word each state, this just supplies real rows. */
+export async function getRecentProjectUpdates(limit = 3): Promise<(ProjectUpdate & { project_slug: string; project_title: string })[]> {
+  return (await sql`
+    SELECT u.body, u.meeting_date, u.agenda_counter, u.agenda_title,
+           u.agenda_url, u.outcome, u.vote_yes, u.vote_no, u.vote_abstain,
+           u.vote_absent, u.source_url, p.slug AS project_slug, p.title AS project_title
+      FROM project_updates u
+      JOIN projects p ON p.id = u.project_id
+     WHERE p.town_id = ${TOWN_ID}
+       AND u.meeting_date >= now() - interval '14 days'
+     ORDER BY u.meeting_date DESC
+     LIMIT ${limit}
+  `) as (ProjectUpdate & { project_slug: string; project_title: string })[];
+}

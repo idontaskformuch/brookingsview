@@ -1,0 +1,59 @@
+---
+/** Catalog of active civic projects, grouped by status -- see
+ *  NEEDS-HUMAN-REVIEW.md, "Week 3 -- City Hall Project Pages". The
+ *  discovery/crawl path into every individual project page. */
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import SectionRule from '../../../components/SectionRule.astro';
+import ShareButton from '../../../components/ShareButton.astro';
+import { getProjects, PROJECT_STATUS_LABELS } from '../../../lib/db';
+import { siteConfig } from '../../../lib/site-config';
+
+const projects = await getProjects();
+
+const STATUS_ORDER = ['under_review', 'approved', 'permitted', 'under_construction', 'complete', 'denied'];
+const byStatus = new Map<string, typeof projects>();
+for (const p of projects) {
+  if (!byStatus.has(p.status)) byStatus.set(p.status, []);
+  byStatus.get(p.status)!.push(p);
+}
+const statuses = [...byStatus.keys()].sort((a, b) => STATUS_ORDER.indexOf(a) - STATUS_ORDER.indexOf(b));
+---
+<BaseLayout title={`City hall projects — ${siteConfig.siteName}`} wide ogSlug="section-city-hall"
+  description={`Real development and civic projects in ${siteConfig.cityName}, ${siteConfig.stateAbbr}, tracked from proposal through the meetings that decide them.`}>
+  <header class="lede">
+    <h1>City hall projects</h1>
+    <p>Real developments, ordinances and civic projects in {siteConfig.cityName} —
+    each one tracked through every meeting that touches it, from first review
+    to a final vote. Updated as new meetings happen.</p>
+    <ShareButton title={`City hall projects — ${siteConfig.siteName}`} />
+  </header>
+
+  {statuses.length > 0 ? statuses.map((status) => (
+    <>
+      <SectionRule label={PROJECT_STATUS_LABELS[status] ?? status} />
+      <ul class="list">
+        {byStatus.get(status)!.map((p) => (
+          <li>
+            <a href={`/city-hall/projects/${p.slug}/`}>{p.title}</a>
+            {p.location_text && <span class="loc"> — {p.location_text}</span>}
+          </li>
+        ))}
+      </ul>
+    </>
+  )) : (
+    <p class="empty">No projects tracked yet — check back as new development items come up at meetings.</p>
+  )}
+
+  <p class="back"><a href="/city-hall/">← City hall</a></p>
+</BaseLayout>
+
+<style>
+.lede { max-width: 44rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.list { list-style: none; margin: 0 0 0.5rem; padding: 0; display: grid; gap: 0.5rem; max-width: 44rem; }
+.list li { padding: 0.5rem 0; border-bottom: 1px solid var(--rule); }
+.list a { font-weight: 600; }
+.loc { color: var(--ink-soft); font-size: 0.9375rem; }
+.empty { color: var(--ink-soft); }
+.back { margin-top: 1.5rem; font-size: 0.9375rem; }
+</style>

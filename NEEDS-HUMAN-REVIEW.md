@@ -1842,3 +1842,186 @@ NOT currently have ("Crawled — not indexed" was only 2 pages on Brookings).
   `href` sweep on both towns' `dist/` confirms zero non-trailing-slash
   internal links anywhere in the new pages — no regression on `449cdf2`'s
   fix.
+
+## 19. Week 3 — City Hall Project Pages, Moreno Valley (2026-08-24)
+
+**The brief's "gate cleared" claim was checked against live data and turned
+out to be half-right in an important way.** The brief said Moreno Valley
+posts approved minutes for regular meetings and treated that as clearing
+the gate to build project pages. Checking the actual live eSCRIBE calendar
+(not just the portal's own documentation text) found something more
+specific:
+
+- **City Council Regular Meetings**: confirmed, `PostMinutes` documents do
+  post (with a lag of several weeks) — the brief's premise holds here.
+- **Planning Commission — the body that actually decides development
+  projects like the brief's own flagship example — has NEVER ONCE posted a
+  `PostMinutes` document.** Checked ~21 real Planning Commission meetings
+  spanning October 2025 through August 2026 (the full historical window the
+  eSCRIBE calendar API exposes): zero had one. This is the body that would
+  vote on exactly the kind of "9.1-acre truck facility" project the brief
+  opens with, and its official record simply isn't posted on this platform.
+
+This is a real, verified constraint, not a guess — and it shapes everything
+below: **a project's `outcome` is only ever a confirmed 'Approved' /
+'Denied' / etc. when it comes from a real document. Planning Commission
+items stay honestly 'pending' forever unless the same project later reaches
+City Council**, which many do (see the two real seed projects below).
+Nothing in this system infers an outcome from an agenda item's own staff
+recommendation text ("That the Commission APPROVE...") — that text is
+written *before* the vote, not a record of what happened.
+
+### A better data source than PostMinutes, found while investigating
+
+While confirming the above, found that City Council Regular Meetings also
+carry an **"ACTION SUMMARY"** document (an `AdditionalDocuments` entry,
+identified by title, not by a dedicated `Type`) — one clean, repeating
+block per agenda item (`Agenda Number:` / `Title:` / `Moved by:` /
+`Seconded by:` / a `YES: N NO: N ABSTAIN: N CONFLICT: N ABSENT: N` tally /
+`RESULT: <value>`). This is dramatically easier and safer to parse
+deterministically than PostMinutes' narrative prose, and it's what Step 1
+actually parses (`scrapers/parsers/escribe_v1.py:_parse_action_summary()`)
+— PostMinutes text is still captured for `meeting_followups.py`'s existing
+whole-meeting "what happened" summaries, unchanged.
+
+Two real bugs found and fixed while building this, both by testing against
+real downloaded PDFs before trusting the parser, not by assuming it worked:
+- **Silent truncation**: `_extract_pdf_text` shared the 20,000-character
+  cap built for narrative minutes. A real 38-item Action Summary ran 34,594
+  characters, and the items worth tracking (public-hearing/development
+  items) sort *late* in a meeting's agenda — the cap was silently dropping
+  exactly the items this feature exists to track. Fixed with a separate,
+  generous 80,000-char limit for Action Summary specifically (see
+  `_MAX_ACTION_SUMMARY_TEXT_CHARS`).
+- **Two independent counter-format mismatches** broke matching a real,
+  already-decided item (Village Specific Plan 204 Amendment, PEN26-0019)
+  before being caught: (1) the agenda HTML's own item counter ("K.2") vs.
+  the Action Summary PDF's counter for the same item ("K.2.") differ by a
+  trailing period — normalized in `project_updates._normalize_counter()`.
+  (2) A case number that happens to line-wrap inside the source PDF gets
+  extracted with a stray space after the hyphen ("PEN26- 0019") — a known
+  pdfplumber limitation (it doesn't reconstruct word-wraps) — normalized in
+  `project_registry.match_project()`. Both are covered by regression tests
+  (`tests/test_action_summary.py`, `tests/test_project_registry.py`) using
+  the real strings that exposed them.
+
+### Step 2 — project registry, deliberately hand-curated
+
+`projects` is a small, hand-curated table (`data/projects/<town_id>.json` →
+`scripts/seed_projects.py`), the same pattern as `facilities`/
+`venue_registry.py` — **not** an auto-detection system. Matching
+(`ai_pipeline/project_registry.py`) is case-number-substring-only: no
+keyword/fuzzy matching, and no automatic creation of new project entities
+from raw agenda text. This is a deliberate scope boundary, not a shortcut:
+inventing a project's title/description/status from unstructured agenda
+text is exactly the kind of fabrication risk verify-don't-invent exists to
+prevent. New real projects get added to the registry by hand (or by a
+future Claude session) as they're identified. An ambiguous match (an
+agenda item whose text matches more than one registered project's case
+numbers) is logged to `project_match_review_queue` and skipped, never
+guessed onto either page — same flag-not-kill pattern as
+`venue_review_queue`.
+
+**Seeded with two real, fully-verified projects** (found and cross-checked
+against the live eSCRIBE portal during this work, not fabricated
+examples):
+1. **Convenience Store, Fueling Station & Car Wash — Cactus Ave & Indian
+   St** (PEN25-0098, PEN25-0100). Planning-Commission-only: real,
+   continuous timeline across **three actual meetings** (June 25 → July 23
+   → August 13, 2026), each `[CONTINUANCE]`-tagged in the agenda itself,
+   status `under_review`. Every one of the three updates is honestly
+   `pending` — the Commission's real August 13 recommendation was to
+   *approve* it (Resolution No. 2026-17), but since Planning Commission
+   posts no outcome document, this system does not claim that happened,
+   even though it's the more-likely-than-not real-world outcome. Location
+   (southwest corner of Cactus Ave & Indian St) cross-verified via a real
+   commercial listing for that exact corner; ZIP 92553 confirmed the same
+   way (an earlier guess of 92555 was wrong and corrected before shipping).
+2. **Village Specific Plan 204 Amendment (Ordinance No. 1046)** (PEN26-0019).
+   A genuine four-meeting thread spanning both bodies: Planning Commission
+   recommended approval May 28 (still shown `pending`, per the rule above)
+   → City Council First Reading approved 5-0 June 16 → Second Reading and
+   final adoption approved August 18. Status `approved` (correctly derived
+   from the *most recent* update's outcome). This is the real, verified
+   multi-meeting-thread example the brief's acceptance criteria asked for.
+
+`status` is recomputed by the ingest script from each project's most recent
+update, never hand-set — it only distinguishes what a meeting outcome can
+actually confirm (`under_review` / `approved` / `denied`). `permitted` /
+`under_construction` / `complete` exist as labels but nothing populates
+them yet; the schema is ready for that (see the `permits` table, already
+scraped separately, as the obvious future signal to cross-reference by
+address — not attempted here).
+
+### Step 3 — the project page
+
+`/city-hall/projects/<slug>/`: status pill, description, location with a
+Maps link and (when a real ZIP is known) a `/home-sales/?zip=` cross-link,
+full sourced timeline (date, body, outcome or an honest "outcome not
+available" with the real reason, vote tally when one exists, links to the
+real agenda + Action Summary/PostMinutes documents), self-canonical
+(automatic, same `Astro.url.pathname` derivation every page uses), `Article`
+JSON-LD (`dateModified` tracks the project's real `updated_at`, so it's
+honestly a *living* page) plus an `ItemList` for the timeline.
+
+### Step 4 — index and linking
+
+`/city-hall/projects/` lists by status. Cross-linked from `/city-hall`
+(a real teaser, only rendered when `getProjects()` is non-empty — verified
+absent on the Brookings build, which has zero seeded projects) and from the
+homepage (a new "City hall project updates" section pulling real updates
+from the last 14 days via `getRecentProjectUpdates()` — deliberately kept
+as its own block rather than folded into the existing Story-based Worth
+Knowing pipeline, since projects/project_updates are a different entity
+with no `stories` row of their own; folding them in would have meant either
+inventing a new SourceType end-to-end or auto-generating template stories
+for every update, both bigger and riskier than this pass's real scope).
+
+### The eSCRIBE/Legistar finding for Brookings — verified, not assumed
+
+The brief's "bonus finding" (*"if both towns are actually on eSCRIBE, the
+blocker may not be the platform"*) doesn't hold: checked
+`configs/brookings_sd.json` directly — Brookings' `city_meetings` source is
+`"type": "legistar"` (`webapi.legistar.com/v1/cityofbrookings`), a
+genuinely different platform from Moreno Valley's eSCRIBE. **But the real
+answer is better than the brief's premise, not worse.** Queried the live
+Legistar API directly for real, recent Brookings City Council items
+(`GET /v1/cityofbrookings/events/{id}/eventitems`) and found it already
+returns, per item, in clean structured JSON with zero PDF parsing:
+`EventItemActionText` (the real motion+vote narrative), `EventItemActionName`
+(a short outcome verb, e.g. "approved"), **`EventItemPassedFlagName`** (a
+clean "Pass"/"Fail" flag), and `EventItemMatterFile` (a real matter/case
+number, e.g. "ID 26-0294") — Legistar's own "Matter" concept is already
+close to this system's `project.case_numbers` entity. `scrapers/parsers/
+legistar_v1.py` already fetches these fields into `raw_data.agenda_items`
+today; none of it is currently used for outcome tracking.
+
+One real caveat, also verified live rather than assumed: checked 20 recent
+real Brookings City Council meetings (May-August 2026) and every single one
+had `EventMinutesFile: null` — Brookings' Legistar instance does not appear
+to post a minutes *document* the way Moreno Valley's eSCRIBE does. That
+turns out not to matter here, since the per-item `EventItemPassedFlagName`/
+`EventItemActionName` fields carry the outcome directly, with no minutes
+PDF needed at all.
+
+**Net finding**: Brookings project pages are buildable, and the path is
+arguably *simpler* than Moreno Valley's (no PDF text extraction, no
+regex-based Action Summary parser, no line-wrap/hyphen normalization bugs
+to work around) — but it is a **different implementation**, not a reuse of
+`escribe_v1.py`/`project_registry.py`'s matching logic as-is (case numbers
+come in a different format, "ID 26-0294" vs. "PEN25-0098", and the source
+is a REST API field, not a PDF section header). Per the brief's own
+sequencing ("verify the Brookings minutes source concretely before
+building; don't assume the MoVal path transfers"), this pass ships Moreno
+Valley only and documents the finding, as instructed. Brookings is a real,
+concrete, well-scoped follow-up, not a guess about whether it's possible.
+
+### Verified, not assumed
+
+Real builds both towns: Brookings 306 pages (+1, the empty projects index
+— confirmed zero project rows render zero teasers/sections, not broken
+ones), Moreno Valley (pending verification in this same pass — see build
+output). All Python tests pass (184 + 17 new = 201). Contamination scan
+clean. Full `href` sweep confirms no trailing-slash regressions. The two
+seed projects' full timelines were spot-checked against the live eSCRIBE
+portal by hand, not just trusted from the parser's own output.

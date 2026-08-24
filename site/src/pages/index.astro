@@ -30,7 +30,7 @@ import {
   getUpcomingStories, getActiveAlerts, getUpcomingGames, getNextRegionalGame,
   getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
   getWeather, getAgPrices, getLatestWeekly, getTodaysFeature, getLatestEmployerRatings,
-  getWorthKnowingCandidates, getLatestFromCandidates,
+  getWorthKnowingCandidates, getLatestFromCandidates, getRecentProjectUpdates, formatDate,
   CATEGORY_HREFS, CATEGORY_LABELS,
 } from '../lib/db';
 import { selectWorthKnowing, selectLatestFrom, firstSentence } from '../lib/homepage-curation';
@@ -85,6 +85,14 @@ const weekStories = rest.filter((s) => within(s.occurs_at, endOfDay, weekEnd));
 const laterStories = rest.filter((s) => s.occurs_at && new Date(s.occurs_at) >= weekEnd);
 
 const nextGame = games[0] ?? null;
+
+// City Hall project milestones (see NEEDS-HUMAN-REVIEW.md, "Week 3 -- City
+// Hall Project Pages") -- real, sourced updates from the last 14 days,
+// never a hand-picked/AI-selected slot. A separate block from Worth
+// Knowing rather than folded into that Story-based pipeline: projects are
+// a different entity (projects/project_updates, not stories), and this
+// keeps that pipeline's selection rules untouched.
+const recentProjectUpdates = await getRecentProjectUpdates(3);
 
 // Homepage teaser into the Week 2 event landing pages (see
 // NEEDS-HUMAN-REVIEW.md "Week 2 -- Event Landing Pages") -- picks whichever
@@ -235,6 +243,23 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       <div class="river">
         {worthKnowingSelection.map((story) => <StoryCard story={story} />)}
       </div>
+    </section>
+  )}
+
+  {recentProjectUpdates.length > 0 && (
+    <section aria-label="Project updates" class="project-updates">
+      <SectionRule label="City hall project updates" href="/city-hall/projects/" />
+      <ul class="project-updates__list">
+        {recentProjectUpdates.map((u) => (
+          <li>
+            <a href={`/city-hall/projects/${u.project_slug}/`}>{u.project_title}</a>
+            <span class="project-updates__meta">
+              {' '}— {u.body}, {formatDate(u.meeting_date)}:
+              {' '}{u.outcome === 'pending' ? 'reviewed, outcome not yet available' : u.outcome.toLowerCase()}
+            </span>
+          </li>
+        ))}
+      </ul>
     </section>
   )}
 
@@ -419,6 +444,11 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   margin: -0.25rem 0 0.75rem;
 }
 .event-teasers a { color: inherit; }
+
+.project-updates__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.project-updates__list li { padding: 0.5rem 0; border-bottom: 1px solid var(--rule); }
+.project-updates__list a { font-weight: 600; }
+.project-updates__meta { color: var(--ink-soft); font-size: 0.9375rem; }
 
 .panels { display: grid; gap: 0 1.5rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
 .panel {

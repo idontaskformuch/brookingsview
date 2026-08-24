@@ -1,0 +1,183 @@
+---
+/** One URL per civic project, accumulating a real, sourced timeline as
+ *  meetings touch it -- see NEEDS-HUMAN-REVIEW.md, "Week 3 -- City Hall
+ *  Project Pages". Every timeline entry and the project's own `status`
+ *  come straight from ai_pipeline/project_updates.py's real meeting-
+ *  outcome matching (lib/db.ts:getProjectUpdates() only reads what that
+ *  pipeline already verified) -- this page never infers a status from an
+ *  agenda item's staff recommendation text, only from a confirmed outcome
+ *  document (or shows "pending" honestly when none exists yet). */
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import ShareButton from '../../../components/ShareButton.astro';
+import {
+  getProjects, getProjectBySlug, getProjectUpdates, PROJECT_STATUS_LABELS,
+  formatDate,
+} from '../../../lib/db';
+import type { Project, ProjectUpdate } from '../../../lib/db';
+import { siteConfig } from '../../../lib/site-config';
+
+export async function getStaticPaths() {
+  const projects = await getProjects();
+  return projects.map((p) => ({ params: { slug: p.slug } }));
+}
+
+const { slug } = Astro.params;
+const project = await getProjectBySlug(slug!);
+
+if (!project) {
+  return Astro.redirect('/city-hall/projects/', 302);
+}
+
+const updates = await getProjectUpdates(slug!);
+const statusLabel = PROJECT_STATUS_LABELS[project.status] ?? project.status;
+const canonicalUrl = new URL(`/city-hall/projects/${project.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
+
+function outcomeLabel(u: ProjectUpdate): string {
+  if (u.outcome === 'pending') return 'Reviewed — outcome not available';
+  return u.outcome;
+}
+
+function voteText(u: ProjectUpdate): string | null {
+  if (u.vote_yes == null && u.vote_no == null) return null;
+  const parts = [`${u.vote_yes ?? 0}-${u.vote_no ?? 0}`];
+  if (u.vote_abstain) parts.push(`${u.vote_abstain} abstain`);
+  if (u.vote_absent) parts.push(`${u.vote_absent} absent`);
+  return parts.join(', ');
+}
+
+/** Why "pending" is honest, not a placeholder for a guess -- shown inline
+ *  so a reader (or Google) never mistakes it for missing data. Moreno
+ *  Valley's Planning Commission never posts an outcome document on its
+ *  eSCRIBE portal (verified live against ~20 real meetings); a City
+ *  Council item shows "pending" only until its Action Summary posts. */
+function pendingReason(u: ProjectUpdate): string {
+  return u.body === 'Planning Commission'
+    ? 'Planning Commission does not post an official outcome record for this platform.'
+    : 'Minutes have not been posted for this meeting yet.';
+}
+
+const earliestDate = updates[0]?.meeting_date ?? project.updated_at;
+
+const articleJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  '@id': canonicalUrl,
+  url: canonicalUrl,
+  headline: project.title,
+  description: project.description,
+  datePublished: earliestDate,
+  dateModified: project.updated_at,
+  author: { '@type': 'Organization', name: siteConfig.siteName },
+  publisher: { '@type': 'Organization', name: siteConfig.siteName },
+};
+
+const itemListJsonLd = updates.length > 0 ? {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: `${project.title} — timeline`,
+  itemListElement: updates.map((u, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: `${u.body}, ${formatDate(u.meeting_date)}: ${outcomeLabel(u)}`,
+    url: u.source_url ?? u.agenda_url ?? canonicalUrl,
+  })),
+} : null;
+---
+<BaseLayout title={`${project.title} — ${siteConfig.siteName}`} ogSlug="section-city-hall"
+  description={project.description.slice(0, 155)}>
+  <article class="project">
+    <header class="lede">
+      <p class="status" data-status={project.status}>{statusLabel}</p>
+      <h1>{project.title}</h1>
+      <p class="desc">{project.description}</p>
+      {project.location_text && (
+        <p class="location">
+          📍 {project.location_text}
+          {' '}<a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(project.location_text)}`}
+                 target="_blank" rel="noopener">Map</a>
+          {project.home_sales_zip && (
+            <> · <a href={`/home-sales/?zip=${project.home_sales_zip}`}>Home sales in this ZIP</a></>
+          )}
+        </p>
+      )}
+      <ShareButton title={`${project.title} — ${siteConfig.siteName}`} url={canonicalUrl} />
+    </header>
+
+    <h2 class="timeline-heading">Timeline</h2>
+    {updates.length > 0 ? (
+      <ol class="timeline">
+        {updates.map((u) => (
+          <li class="timeline__item" data-outcome={u.outcome}>
+            <p class="timeline__date">{formatDate(u.meeting_date)} · {u.body}</p>
+            <p class="timeline__title">{u.agenda_title}</p>
+            <p class="timeline__outcome">
+              {u.outcome === 'pending' ? (
+                <>Outcome not available. <span class="reason">{pendingReason(u)}</span></>
+              ) : (
+                <>{outcomeLabel(u)}{voteText(u) && <> — vote {voteText(u)}</>}</>
+              )}
+            </p>
+            <p class="timeline__sources">
+              {u.agenda_url && <a href={u.agenda_url} target="_blank" rel="noopener">Agenda</a>}
+              {u.source_url && u.source_url !== u.agenda_url && (
+                <> · <a href={u.source_url} target="_blank" rel="noopener">
+                  {u.outcome === 'pending' ? 'Source' : 'Minutes / action summary'}
+                </a></>
+              )}
+            </p>
+          </li>
+        ))}
+      </ol>
+    ) : (
+      <p class="empty">No meeting updates recorded yet for this project.</p>
+    )}
+
+    <p class="back"><a href="/city-hall/projects/">← All active projects</a> · <a href="/city-hall/">City hall</a></p>
+  </article>
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(articleJsonLd)} />
+  {itemListJsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
+  )}
+</BaseLayout>
+
+<style>
+.lede { max-width: 42rem; }
+.status {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--navy);
+  background: var(--navy-tint);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  margin: 0 0 0.5rem;
+}
+.status[data-status="approved"], .status[data-status="permitted"],
+.status[data-status="under_construction"], .status[data-status="complete"] {
+  color: #14532d;
+  background: #dcfce7;
+}
+.status[data-status="denied"] { color: #7f1d1d; background: #fee2e2; }
+.desc { color: var(--ink-soft); margin: 0.5rem 0 0; }
+.location { color: var(--ink-soft); font-size: 0.9375rem; margin: 0.75rem 0 0; }
+.timeline-heading { margin-top: 2rem; }
+.timeline { list-style: none; margin: 0; padding: 0; max-width: 44rem; }
+.timeline__item {
+  padding: 0.875rem 0;
+  border-top: 1px solid var(--rule);
+}
+.timeline__date { font-family: var(--font-ui); font-size: 0.8125rem; color: var(--ink-soft); margin: 0; }
+.timeline__title { font-weight: 600; margin: 0.25rem 0; }
+.timeline__outcome { margin: 0.25rem 0; }
+.timeline__item[data-outcome="Approved"] .timeline__outcome { color: #166534; }
+.timeline__item[data-outcome="Denied"] .timeline__outcome,
+.timeline__item[data-outcome="Failed"] .timeline__outcome { color: #b91c1c; }
+.timeline__outcome .reason { color: var(--ink-soft); font-size: 0.875rem; }
+.timeline__sources { font-size: 0.8125rem; margin: 0.25rem 0 0; }
+.empty { color: var(--ink-soft); }
+.back { margin-top: 2rem; font-size: 0.9375rem; }
+</style>

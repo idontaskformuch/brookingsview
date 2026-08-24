@@ -3,11 +3,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import ShareButton from '../components/ShareButton.astro';
-import { getUpcomingStories, getPastStories } from '../lib/db';
+import { getUpcomingStories, getPastStories, getProjects } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
 const upcoming = await getUpcomingStories(['meeting'], 40);
 const past = await getPastStories(['meeting', 'meeting_followup'], 30);
+const projects = await getProjects();
 ---
 <BaseLayout title={`City hall — ${siteConfig.siteName}`} wide ogSlug="section-city-hall"
   description={`City council, county commission and committee meetings in ${siteConfig.cityName}, ${siteConfig.stateName}, in plain language.`}>
@@ -17,6 +18,13 @@ const past = await getPastStories(['meeting', 'meeting_followup'], 30);
     summarised from the published agendas, in plain language, without taking sides.</p>
     <ShareButton title={`City hall — ${siteConfig.siteName}`} />
   </header>
+
+  {projects.length > 0 && (
+    <p class="projects-teaser">
+      Tracking a real development or ordinance through every meeting that
+      touches it? See <a href="/city-hall/projects/">active city hall projects →</a>
+    </p>
+  )}
 
   <SectionRule label="Coming up" />
   {upcoming.length > 0 ? (
@@ -38,4 +46,11 @@ const past = await getPastStories(['meeting', 'meeting_followup'], 30);
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
 .stack { display: grid; gap: 0.75rem; max-width: 44rem; }
 .empty { color: var(--ink-soft); }
+.projects-teaser {
+  margin: 0 0 1.25rem;
+  padding: 0.625rem 0.875rem;
+  background: var(--navy-tint);
+  border-left: 4px solid var(--navy);
+  font-size: 0.9375rem;
+}
 </style>

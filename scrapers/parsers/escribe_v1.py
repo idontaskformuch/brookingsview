@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 from datetime import date, datetime, timedelta
 
@@ -157,6 +158,34 @@ class EscribeParser(BaseParser):
             minutes_fetched += 1
             time.sleep(FETCH_DELAY_SECONDS)
 
+        # "ACTION SUMMARY" (see _find_action_summary_pdf_url) -- a per-
+        # agenda-item outcome record, structured enough to parse
+        # deterministically (see _parse_action_summary), unlike PostMinutes'
+        # narrative prose. Verified live 2026-08-24 against Moreno Valley's
+        # eSCRIBE portal: posted for City Council Regular Meetings alongside
+        # PostMinutes; Planning Commission meetings never carry either
+        # document type there (checked ~20 real Planning Commission
+        # meetings spanning Oct 2025-Aug 2026, zero had one) -- see
+        # NEEDS-HUMAN-REVIEW.md, "Week 3 -- City Hall Project Pages" for the
+        # full verification. Separate counter from the minutes loop above,
+        # same reasoning.
+        action_summary_fetched = 0
+        for m in meetings:
+            if action_summary_fetched >= MAX_AGENDA_FETCHES:
+                break
+            action_summary_url = _find_action_summary_pdf_url(m, base)
+            if not action_summary_url:
+                continue
+            try:
+                asr = requests.get(action_summary_url, headers=self._headers(), timeout=30)
+                if asr.status_code == 200:
+                    m["_action_summary_text"] = _extract_pdf_text(asr.content, max_chars=_MAX_ACTION_SUMMARY_TEXT_CHARS)
+                    m["_action_summary_url"] = action_summary_url
+            except Exception as exc:  # noqa: BLE001 -- ett trasigt action summary-dokument ska inte fälla mötet
+                print(f"    [escribe] kunde inte hämta action summary för möte {m.get('ID')}: {exc}")
+            action_summary_fetched += 1
+            time.sleep(FETCH_DELAY_SECONDS)
+
         self._meetings = meetings
         raw = json.dumps(meetings, default=str).encode("utf-8")
         return FetchResult(raw=raw, content_type="application/json", url=url, http_code=r.status_code)
@@ -173,6 +202,8 @@ class EscribeParser(BaseParser):
             agenda_html = m.pop("_agenda_html", None)
             minutes_text = m.pop("_minutes_text", None)
             minutes_url = m.pop("_minutes_url", None)
+            action_summary_text = m.pop("_action_summary_text", None)
+            action_summary_url = m.pop("_action_summary_url", None)
             meeting_dt = _parse_escribe_date(m.get("StartDate"))
 
             raw_data = dict(m)
@@ -185,6 +216,11 @@ class EscribeParser(BaseParser):
                         raw_data["agenda_text"] = text[:MAX_AGENDA_TEXT_CHARS]
             if minutes_text:
                 raw_data["minutes_text"] = minutes_text[:MAX_AGENDA_TEXT_CHARS]
+            if action_summary_text:
+                action_items = _parse_action_summary(action_summary_text)
+                if action_items:
+                    raw_data["action_summary_items"] = action_items
+                    raw_data["action_summary_url"] = action_summary_url
 
             out.append({
                 "body": m.get("MeetingName"),
@@ -200,6 +236,15 @@ class EscribeParser(BaseParser):
 
 
 _MAX_MINUTES_TEXT_CHARS = 20_000
+# Action Summary is a densely-packed, one-block-per-agenda-item record (see
+# _parse_action_summary) -- a real 38-item meeting ran 34,594 characters,
+# and the items that matter most for project tracking (public-hearing/
+# development items) tend to sort LATE in a meeting's agenda, not early.
+# The 20,000-char minutes limit above would have silently truncated that
+# real meeting mid-document, dropping exactly the items worth tracking --
+# caught in testing, not assumed safe. Generous margin over the observed
+# real-world size.
+_MAX_ACTION_SUMMARY_TEXT_CHARS = 80_000
 
 
 def _find_minutes_pdf_url(meeting: dict, base: str) -> str | None:
@@ -219,7 +264,68 @@ def _find_minutes_pdf_url(meeting: dict, base: str) -> str | None:
     return None
 
 
-def _extract_pdf_text(raw: bytes) -> str | None:
+def _find_action_summary_pdf_url(meeting: dict, base: str) -> str | None:
+    """The "ACTION SUMMARY" document -- an eSCRIBE AdditionalDocuments entry
+    (there's no dedicated Type for it, unlike PostMinutes), identified by
+    its Title. One repeating block per agenda item (Agenda Number/Title/
+    Moved by/Seconded by/vote tally/RESULT), verified live against a real
+    meeting to be far more reliably parseable per-item than PostMinutes'
+    narrative prose -- see _parse_action_summary() and
+    NEEDS-HUMAN-REVIEW.md, "Week 3 -- City Hall Project Pages"."""
+    for doc in meeting.get("MeetingDocumentLink") or []:
+        if doc.get("Type") == "AdditionalDocuments" and "ACTION SUMMARY" in (doc.get("Title") or "").upper():
+            url = doc.get("Url")
+            if url:
+                return url if url.startswith("http") else f"{base}{url}"
+    return None
+
+
+_ACTION_SUMMARY_AGENDA_NUMBER_RE = re.compile(r"Agenda Number:\s*([^\n]+)")
+_ACTION_SUMMARY_TITLE_RE = re.compile(r"Title:\s*(.+?)\n(?=Date:)", re.DOTALL)
+_ACTION_SUMMARY_RESULT_RE = re.compile(r"RESULT:\s*(\S+)")
+_ACTION_SUMMARY_VOTE_RE = re.compile(
+    r"YES:\s*(\d+)\s+NO:\s*(\d+)\s+ABSTAIN:\s*(\d+)\s+CONFLICT:\s*(\d+)\s+ABSENT:\s*(\d+)"
+)
+
+
+def _parse_action_summary(text: str) -> list[dict]:
+    """One dict per agenda item: {counter, title, result, vote}. `result` is
+    None (never guessed) when the block has no RESULT line at all -- some
+    items (e.g. a "receive and file" report) are informational only, with
+    no motion/vote to record. `vote` is only present when the single
+    combined "YES: N NO: N ABSTAIN: N CONFLICT: N ABSENT: N" tally line is
+    found -- the SAME five-number line eSCRIBE always emits once per item,
+    distinct from the per-member roster lines that can follow it (which
+    this regex does not match, since it requires all five labels on one
+    line). Verified against a real 38-item meeting: 38/38 items parsed,
+    including a genuine non-unanimous 4-1 vote and one item with no
+    RESULT/vote at all (correctly left as result=None, not guessed)."""
+    blocks = re.split(r"\n?Action Summary\n", text)
+    items = []
+    for block in blocks:
+        block = block.strip()
+        if not block:
+            continue
+        counter_m = _ACTION_SUMMARY_AGENDA_NUMBER_RE.search(block)
+        title_m = _ACTION_SUMMARY_TITLE_RE.search(block)
+        if not counter_m or not title_m:
+            continue
+        result_m = _ACTION_SUMMARY_RESULT_RE.search(block)
+        vote_m = _ACTION_SUMMARY_VOTE_RE.search(block)
+        item = {
+            "counter": counter_m.group(1).strip(),
+            "title": re.sub(r"\s+", " ", title_m.group(1)).strip(),
+            "result": result_m.group(1).strip() if result_m else None,
+        }
+        if vote_m:
+            item["vote"] = {
+                k: int(v) for k, v in zip(("yes", "no", "abstain", "conflict", "absent"), vote_m.groups())
+            }
+        items.append(item)
+    return items
+
+
+def _extract_pdf_text(raw: bytes, max_chars: int = _MAX_MINUTES_TEXT_CHARS) -> str | None:
     import pdfplumber
     from io import BytesIO
 
@@ -227,7 +333,7 @@ def _extract_pdf_text(raw: bytes) -> str | None:
         with pdfplumber.open(BytesIO(raw)) as pdf:
             pages = [page.extract_text() or "" for page in pdf.pages]
         text = "\n".join(pages).strip()
-        return text[:_MAX_MINUTES_TEXT_CHARS] or None
+        return text[:max_chars] or None
     except Exception:  # noqa: BLE001 -- a malformed PDF is a real data-source limitation, not a bug
         return None
 

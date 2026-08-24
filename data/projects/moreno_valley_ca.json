@@ -1,0 +1,20 @@
+{
+  "_note": "Hand-curated project registry, same pattern as data/facilities/*.json (see scripts/seed_projects.py). case_numbers are the ONLY match key used by ai_pipeline/project_registry.py -- exact substring match against agenda item titles, never fuzzy/keyword matching. Both seeded here 2026-08-24 from real, verified eSCRIBE agenda + Action Summary data -- see NEEDS-HUMAN-REVIEW.md, 'Week 3 -- City Hall Project Pages' for the source verification. New projects are added here by hand as real ones are identified; automatic entity creation from raw agenda text is deliberately not attempted (see that doc for why).",
+  "projects": [
+    {
+      "slug": "cactus-indian-convenience-store-fueling-car-wash",
+      "title": "Convenience Store, Fueling Station & Car Wash — Cactus Ave & Indian St",
+      "description": "A 5,000 sq ft convenience store, a fueling station with 10 dispensers, a drive-through car wash with 8 vacuum stalls, and a 7,000 sq ft retail building on a vacant lot at the southwest corner of Cactus Avenue and Indian Street.",
+      "case_numbers": ["PEN25-0098", "PEN25-0100"],
+      "location_text": "Southwest corner of Cactus Avenue and Indian Street, Moreno Valley, CA (APNs 482-272-052, -053, -054)",
+      "home_sales_zip": "92553"
+    },
+    {
+      "slug": "village-specific-plan-204-amendment",
+      "title": "Village Specific Plan 204 Amendment (Ordinance No. 1046)",
+      "description": "An amendment to the Village Specific Plan 204 (SP 204), a District 1 land-use plan, adopted by the City Council as Ordinance No. 1046.",
+      "case_numbers": ["PEN26-0019"],
+      "location_text": "District 1, Moreno Valley, CA"
+    }
+  ]
+}
