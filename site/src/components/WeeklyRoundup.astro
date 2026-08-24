@@ -3,6 +3,8 @@
  *  högst upp -- den är sajtens enda sammanhängande text och ska inte konkurrera
  *  med enskilda notiser i strömmen. */
 import type { Story } from '../lib/db';
+import { weekInfoForInstant } from '../lib/this-week';
+import { siteConfig } from '../lib/site-config';
 
 interface Props { story: Story; }
 const { story } = Astro.props;
@@ -11,17 +13,24 @@ const { story } = Astro.props;
 const paragraphs = story.body.split('\n').map((p) => p.trim()).filter(Boolean);
 const standfirst = paragraphs[0] ?? '';
 const words = story.body.split(/\s+/).length;
+
+// Länkar till den nya /this-week/<iso-week>/-sidan (dag-för-dag-vyn), inte
+// längre direkt till story-sidan -- se NEEDS-HUMAN-REVIEW.md "This Week".
+// story.occurs_at = veckans måndag (satt av ai_pipeline/weekly.py:s main()).
+const weekHref = story.occurs_at
+  ? `/this-week/${weekInfoForInstant(new Date(story.occurs_at), siteConfig.timezone).slug}/`
+  : `/s/${story.slug}/`;
 ---
 <article class="roundup">
   <p class="roundup__kicker"><span class="kicker">The week ahead</span></p>
-  <h2 class="roundup__title"><a href={`/s/${story.slug}/`}>{story.title}</a></h2>
-  <a class="roundup__image-link" href={`/s/${story.slug}/`} tabindex="-1" aria-hidden="true">
+  <h2 class="roundup__title"><a href={weekHref}>{story.title}</a></h2>
+  <a class="roundup__image-link" href={weekHref} tabindex="-1" aria-hidden="true">
     <img class="roundup__image" src={`/og/${story.slug}.png`} width="1200" height="630"
          alt="" loading="eager" />
   </a>
   <p class="roundup__standfirst">{standfirst}</p>
-  <a class="roundup__more" href={`/s/${story.slug}/`}>
-    Read the full roundup &rarr; <span class="roundup__words data">{words} words</span>
+  <a class="roundup__more" href={weekHref}>
+    Read this week in full &rarr; <span class="roundup__words data">{words} words</span>
   </a>
 </article>
 

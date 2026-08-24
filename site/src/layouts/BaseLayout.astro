@@ -56,6 +56,7 @@ const dateline = now.toLocaleDateString('en-US', {
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const nav = [
+  { href: '/this-week/', label: 'This week' },
   { href: '/events/', label: 'Events' },
   ...(isBrookings ? [{ href: '/university/', label: 'University' }] : []),
   ...(isBrookings ? [{ href: '/jackrabbits/', label: 'Jackrabbits' }] : []),

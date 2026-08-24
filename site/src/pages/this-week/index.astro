@@ -1,0 +1,14 @@
+---
+/** Rolling "latest week" URL -- always redirects to the current ISO week's
+ *  permanent archive page (/this-week/<iso-week>/), which [week].astro
+ *  always generates a static path for (see that file's getStaticPaths).
+ *  This URL itself is never indexed as the canonical home for any one
+ *  week's content -- Google should land on and index the dated archive
+ *  URL, never this one, per the brief's own "rolling /this-week/ points at
+ *  current week; dated archive is what's indexed" requirement. */
+import { currentWeekInfo } from '../../lib/this-week';
+import { siteConfig } from '../../lib/site-config';
+
+const week = currentWeekInfo(siteConfig.timezone);
+return Astro.redirect(`/this-week/${week.slug}/`, 302);
+---

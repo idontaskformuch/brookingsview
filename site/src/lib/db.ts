@@ -433,6 +433,58 @@ export async function getLatestWeekly(): Promise<Story | null> {
   return rows[0] ?? null;
 }
 
+/** Every 'weekly' story ever generated (occurs_at = that week's Monday, see
+ *  ai_pipeline/weekly.py's main()) -- the authoritative list of which weeks
+ *  get a /this-week/<iso-week>/ archive page. Deliberately NOT an
+ *  independent enumeration of ISO weeks: a week only gets a page because
+ *  weekly.py itself already decided it was real and generated content for
+ *  it, never because this file speculatively guessed one into existence. */
+export async function getAllWeeklyStories(): Promise<Story[]> {
+  return (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
+           byline, image_path, rating, ingredients, instructions
+      FROM stories
+     WHERE town_id = ${TOWN_ID} AND source_type = 'weekly'
+     ORDER BY occurs_at ASC
+  `) as Story[];
+}
+
+/** Every story of the given source_type(s), oldest first, no date window --
+ *  for /this-week/[week].astro's day-by-day view (events + meetings), which
+ *  needs to reach arbitrarily far back into the archive. Same "fetch broad
+ *  once, filter in TS" pattern as getSeasonGames/getRegionalSports/
+ *  getAllArtsEvents above. */
+export async function getStoriesForWeekly(sourceTypes: SourceType[]): Promise<Story[]> {
+  return (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
+           byline, image_path, rating, ingredients, instructions,
+           venue_raw, is_recurring_series, ends_at, featured
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND source_type = ANY(${sourceTypes})
+       AND occurs_at IS NOT NULL
+     ORDER BY occurs_at ASC
+  `) as Story[];
+}
+
+/** getWorthKnowingCandidates()'s -24h-floor rolling window doesn't fit an
+ *  ARCHIVED week (past or future relative to now) -- this is the same
+ *  candidate shape (civic decisions + featured items), scoped instead to an
+ *  explicit [start, end) instant range, for lib/this-week.ts's
+ *  selectWeeklyLead() to pick a week's single "worth knowing" lead from. */
+export async function getWorthKnowingCandidatesInRange(start: Date, end: Date, limit = 12): Promise<Story[]> {
+  return (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at,
+           generated_by, byline, image_path, rating, ingredients, instructions, featured
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND source_type IN ('meeting', 'meeting_followup', 'alert')
+       AND occurs_at >= ${start.toISOString()} AND occurs_at < ${end.toISOString()}
+     ORDER BY featured DESC, occurs_at ASC
+     LIMIT ${limit}
+  `) as Story[];
+}
+
 /**
  * Relaterade artiklar till en given story.
  *
@@ -831,6 +883,26 @@ export async function getUpcomingArtsEvents(limit = 40): Promise<SdsuEvent[]> {
        AND bucket = 'arts_culture'
        AND NOT is_filtered
        AND starts_at >= now() - interval '3 hours'
+     ORDER BY starts_at ASC
+     LIMIT ${limit}
+  `) as SdsuEvent[];
+}
+
+/** Every arts_culture SDSU event, no date floor -- unlike
+ *  getUpcomingArtsEvents() above (upcoming-only, for /events), this is for
+ *  /this-week/[week].astro's archive weeks, which need past SDSU events too.
+ *  town-scoped as always -- naturally empty for towns with no SDSU feed
+ *  (e.g. Moreno Valley), same pattern as getRegionalSports() being
+ *  naturally empty for Brookings. Limit is generous headroom, not a real
+ *  cap: confirmed live at 122 rows for Brookings' whole ~5-month feed. */
+export async function getAllArtsEvents(limit = 1000): Promise<SdsuEvent[]> {
+  return (await sql`
+    SELECT external_event_id, title, teaser, location, starts_at, ends_at,
+           categories, primary_category, event_url
+      FROM sdsu_events
+     WHERE town_id = ${TOWN_ID}
+       AND bucket = 'arts_culture'
+       AND NOT is_filtered
      ORDER BY starts_at ASC
      LIMIT ${limit}
   `) as SdsuEvent[];
@@ -1637,5 +1709,25 @@ export async function getRecentProjectUpdates(limit = 3): Promise<(ProjectUpdate
        AND u.meeting_date >= now() - interval '14 days'
      ORDER BY u.meeting_date DESC
      LIMIT ${limit}
+  `) as (ProjectUpdate & { project_slug: string; project_title: string })[];
+}
+
+/** Every project update, oldest first, no date window -- unlike
+ *  getRecentProjectUpdates() above (14 days, DESC, capped), this is for
+ *  /this-week/[week].astro's day-by-day view, which needs to reach
+ *  arbitrarily far back into the archive (see lib/this-week.ts). Same
+ *  "fetch broad once, filter in TS" pattern as getSeasonGames/
+ *  getRegionalSports -- the table is small enough (one row per real,
+ *  hand-curated project's real meeting outcomes) that a second per-week
+ *  query per project would be pure overhead for no accuracy gain. */
+export async function getAllProjectUpdatesForWeekly(): Promise<(ProjectUpdate & { project_slug: string; project_title: string })[]> {
+  return (await sql`
+    SELECT u.body, u.meeting_date, u.agenda_counter, u.agenda_title,
+           u.agenda_url, u.outcome, u.vote_yes, u.vote_no, u.vote_abstain,
+           u.vote_absent, u.source_url, p.slug AS project_slug, p.title AS project_title
+      FROM project_updates u
+      JOIN projects p ON p.id = u.project_id
+     WHERE p.town_id = ${TOWN_ID}
+     ORDER BY u.meeting_date ASC
   `) as (ProjectUpdate & { project_slug: string; project_title: string })[];
 }

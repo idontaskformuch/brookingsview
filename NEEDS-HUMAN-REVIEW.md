@@ -2465,3 +2465,117 @@ zero trailing-slash regressions across the whole build. `lib/jobs.ts`: 8 new
 unit tests (slug collisions, salary-range formatting including the
 one-sided "up to" case, and the employer cap's actual cap-and-overflow
 behavior against a synthetic 8-listing dominant-employer case).
+
+## 24. "This Week in <Town>" — recurring weekly SEO product (2026-08-24)
+
+Built the day-by-day `/this-week/<iso-week>/` archive requested in the
+brief, on top of `ai_pipeline/weekly.py`'s existing narrative pipeline
+rather than replacing it. Two deliberately separate content layers now
+exist for the same week: the 400-600 word AI narrative (unchanged, still
+lives at `/s/weekly-<iso-week>/`) and this new page's structured,
+day-by-day breakdown, computed fresh from raw tables at every site build —
+so unlike the narrative it needs no separate "outcome-filling" step to stay
+current; a rebuild is all it takes. Shipped the "week ahead" version (brief
+explicitly allowed deferring outcome-filling to a later pass) — the current
+week's page renders from real scheduled data even before that week's
+narrative has run.
+
+### New files
+- `site/src/lib/this-week.ts` — week-boundary math (mirrors
+  `ai_pipeline/weekly.py`'s `week_bounds()`/ISO slug exactly), day-by-day
+  bucketing, and `selectWeeklyLead()` (a thin adapter over
+  `homepage-curation.ts`'s `selectWorthKnowing()` — the brief's own "reuse
+  P5 significance logic" ask, applied to a week-wide candidate set instead
+  of the homepage's rolling 24h window).
+- `site/src/lib/this-week.test.ts` — 23 new Vitest cases, focused on the
+  exact bug class this session has hit three times before (see below).
+- `site/src/pages/this-week/index.astro` — 302 redirect to the current
+  ISO week's permanent URL; canonicals to that URL too, not itself, so
+  Google indexes the dated page (brief's explicit requirement).
+- `site/src/pages/this-week/[week].astro` — the day-by-day page itself.
+
+### The timezone/bare-calendar-date split, done twice on purpose
+
+This schema has two genuinely different kinds of "when," and conflating
+them is the exact bug this codebase has already fixed three times
+(events.astro's original weekend-bucketing bug, `weekly.py`'s own
+documented `meeting_date` fix, the Legistar `_date_only_noon_utc()` fix).
+`WeekInfo` therefore carries two boundary pairs instead of one:
+`start`/`end` (real UTC instants of local midnight, via a standard
+two-pass zoned-time conversion — exact for both America/Chicago and
+America/Los_Angeles since neither transitions DST at local midnight) for
+real timestamps (events, `sports_games.starts_at`, `sdsu_events.starts_at`),
+and `civilStart`/`civilEnd` (bare UTC-midnight of the same calendar dates,
+no conversion) for `meeting_date`-style fields (meetings,
+`project_updates.meeting_date`, `regional_sports_games.game_date`). Unit
+tests assert both directions explicitly: a meeting stored as UTC midnight
+Wednesday must land on Wednesday even though naively reading it through
+America/Chicago would put it on Tuesday evening — and a real event
+timestamp must bucket by its true LOCAL day, not the UTC one.
+
+### Data-source gaps found and closed (site-side only — `weekly.py` untouched)
+
+`weekly.py`'s own `collect()` never queried `sdsu_events` or
+`project_updates` — it didn't need to, since the AI narrative only weaves
+together meetings/events/games. The day-by-day view needs all five
+verticals, so `db.ts` gained: `getAllWeeklyStories()` (the authoritative
+list of which weeks get a page — a week only exists here because
+`weekly.py` already generated real content for it, never a speculative
+ISO-week enumeration), `getStoriesForWeekly()`, `getAllArtsEvents()`,
+`getAllProjectUpdatesForWeekly()` (all broad, no date filter — same
+"fetch once, filter in TS per page" pattern as `getSeasonGames`/
+`getRegionalSports`, so `getStaticPaths` doesn't run N nearly-identical
+queries for N weeks), and `getWorthKnowingCandidatesInRange()` (the one
+genuinely per-week query, since it needs an explicit `[start, end)` bound
+that isn't a fixed rolling window).
+
+### Cross-source dedup reused, not reimplemented
+
+Events and SDSU items are run through `lib/events.ts`'s existing
+`buildEventFeed()` before bucketing, so the same cross-source dedup
+already live on `/events` (e.g. "Downtown at Sundown" listed by both SDSU
+and the Chamber) also applies here — an item lands on exactly one day,
+never duplicated across the events/SDSU split. Confirmed live in the
+Brookings build that this dedup has a known, pre-existing limit: "McCrory
+Gardens Community Days" (a story) and "Community Days 2026 at McCrory
+Gardens" (SDSU's own title for the same event) are NOT deduped, because
+`buildEventFeed`'s matching is exact-normalized-title, not fuzzy — this is
+inherited, unchanged behavior from the already-shipped `/events` page, not
+a regression introduced here, so it wasn't "fixed" as part of this pass.
+
+### Verified, not assumed
+
+Real, isolated builds both towns. Brookings: 7 real week pages
+(`2026-w29` through `2026-w35`, i.e. every week `weekly.py` has actually
+generated plus the current week), correct titles ("This Week in Brookings
+— August 24–30, 2026"), correct self-canonicals, `/this-week/` redirect
+canonicals to the current dated URL, valid `ItemList` JSON-LD (34 real
+items on the current week, real SDSU/City-Hall/events items with correct
+day placement — confirmed a real Airport Board meeting landed on Monday
+and a real City Council item was picked as that week's "Worth knowing"
+lead), zero trailing-slash regressions, zero Moreno Valley mentions
+anywhere in the build. Moreno Valley: 6 week pages, correct title/
+canonical, zero "Brookings" or "SDSU" mentions anywhere under
+`/this-week/`, zero `/events/campus/` or `/jackrabbits/` links (uses
+`/sports/` throughout, real regional games like "Los Angeles Angels vs
+Cleveland Guardians" placed correctly), 47-item `ItemList`, zero
+trailing-slash regressions. (A pre-existing, unrelated quirk was noticed
+during the contamination scan and left alone as out of scope: `public/`
+static files — e.g. `games/jackrabbit.html`, Brookings' arcade game —
+are copied into every town's build regardless of `SITE_CITY`, since
+Astro's `public/` passthrough predates the per-town split and isn't
+gated by it. Unreachable in the Moreno Valley build (no nav link, no
+page links to it there) but technically present on disk; not something
+this pass touched or introduced.)
+
+`npm run check`: 0 errors. `npm run test`: 123/123 passing (23 new for
+this feature). Homepage's `WeeklyRoundup.astro` now links to
+`/this-week/<iso-week>/` instead of `/s/<slug>/`; `BaseLayout.astro`'s nav
+gained a "This week" entry (confirmed `aria-current="page"` correctly
+highlights it while on a `/this-week/...` page). Sitemap needs no manual
+registration — `@astrojs/sitemap` auto-discovers `getStaticPaths` output.
+
+### Out of scope, per the brief
+
+Outcome-filling mid-week and an email/newsletter version were both
+explicitly deferred by the brief itself — not attempted here.
