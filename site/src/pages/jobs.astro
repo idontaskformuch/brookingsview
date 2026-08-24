@@ -14,43 +14,16 @@
  *  (b) begränsa en enskild arbetsgivares andel av listan, se EMPLOYER_CAP. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
-import { getRecentJobs, formatDate, formatPrice } from '../lib/db';
+import { getRecentJobs, formatDate } from '../lib/db';
+import { salaryText, capByEmployer, slugifyCategory } from '../lib/jobs';
 import { siteConfig } from '../lib/site-config';
 
 const jobs = await getRecentJobs();
 
-const salaryText = (job: (typeof jobs)[number]) => {
-  const { salary_min: lo, salary_max: hi, salary_is_predicted: predicted } = job;
-  let range: string;
-  if (lo == null && hi == null) return '—';
-  else if (lo == null) range = `up to ${formatPrice(hi)}`;
-  else if (hi == null || lo === hi) range = formatPrice(lo);
-  else range = `${formatPrice(lo)}–${formatPrice(hi)}`;
-  return predicted ? `${range} (est.)` : range;
-};
-
-// FAS 2: en enda arbetsgivare (en bemanningsfirma) stod för 52% av alla
-// annonser vid research -- listan blev i praktiken "en firmas alla
-// annonser plus lite annat". Cap:a en arbetsgivares SYNLIGA rader till
-// ~30% av totalen (minst 3), resten döljs bakom en egen "More from
-// <employer>"-expander i stället för att tas bort helt.
-const EMPLOYER_CAP_RATIO = 0.3;
-const employerCap = Math.max(3, Math.ceil(jobs.length * EMPLOYER_CAP_RATIO));
-
-const visible: typeof jobs = [];
-const overflowByCompany = new Map<string, typeof jobs>();
-const seenCount = new Map<string, number>();
-for (const job of jobs) {
-  const key = job.company ?? '';
-  const count = seenCount.get(key) ?? 0;
-  seenCount.set(key, count + 1);
-  if (!key || count < employerCap) {
-    visible.push(job);
-  } else {
-    if (!overflowByCompany.has(key)) overflowByCompany.set(key, []);
-    overflowByCompany.get(key)!.push(job);
-  }
-}
+// Shared with /jobs/category/[category].astro (see lib/jobs.ts) -- one
+// copy of the salary-formatting and employer-diversity-cap logic, not two
+// that could quietly drift apart.
+const { visible, overflowByCompany } = capByEmployer(jobs);
 ---
 <BaseLayout title={`Jobs — ${siteConfig.siteName}`} wide ogSlug="section-jobs"
   description={`Recent job listings in and near ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
@@ -66,6 +39,14 @@ for (const job of jobs) {
   </header>
 
   <SectionRule label={jobs.length > 0 ? `${jobs.length} listings` : 'Listings'} />
+
+  {jobs.length > 0 && (
+    <p class="category-links">
+      Browse by category: {[...new Set(jobs.map((j) => j.category).filter((c): c is string => Boolean(c)))].sort().map((c, i) => (
+        <>{i > 0 && ' · '}<a href={`/jobs/category/${slugifyCategory(c)}/`}>{c}</a></>
+      ))}
+    </p>
+  )}
 
   {jobs.length > 0 && (
     <div class="controls">
@@ -165,6 +146,7 @@ for (const job of jobs) {
 <style>
 .lede { max-width: 42rem; }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.category-links { font-size: 0.875rem; color: var(--ink-soft); margin: 0.75rem 0 0; }
 .controls { display: flex; gap: 1.25rem; margin: 0.5rem 0 1rem; font-size: 0.875rem; }
 .controls label { display: flex; align-items: center; gap: 0.4rem; color: var(--ink-soft); }
 .controls select { font: inherit; padding: 0.2rem 0.4rem; }

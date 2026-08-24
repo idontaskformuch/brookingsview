@@ -2264,3 +2264,204 @@ a Custom Domain binding gap from the point above), the old hook is still
 there keeping whatever it's been rebuilding alive, and production isn't left
 with zero deploy path at all. Removing it is a deliberate, separate,
 follow-up commit after proof — not part of this one.
+
+## 22. Week 4, Part 1 — Home Sales Address Pages (2026-08-24)
+
+### Step 1 verification — the data structure, before building anything
+
+- **Stable per-property identity: real, already there.** `property_sales.pin`
+  (Riverside County's own parcel identifier) has 100% coverage — checked
+  directly: 0 of 2,610 real rows have a null/empty PIN. `(pin, doc_number)`
+  together were already confirmed unique in an earlier migration (019); PIN
+  alone is NOT unique — 2,409 distinct PINs across 2,610 rows, meaning ~200
+  parcels genuinely sold more than once (one has 4 recorded sales). Pages are
+  keyed on PIN, not a normalized address string — the brief's own fallback
+  concern doesn't apply here.
+- **Sale history is real, not hypothetical**: confirmed the multi-sale case
+  directly rather than assuming the schema merely *allows* it.
+- **Address slugging: checked for collisions before trusting it, not after.**
+  Slugified all 2,409 real distinct-PIN addresses (street portion only, city/
+  ZIP tail dropped): zero collisions. A real street address is unique within
+  a town by construction (same guarantee mail delivery and property records
+  already rely on), so no PIN suffix was appended for readability — a
+  deliberate choice, not an oversight.
+- The mixed-case stragglers the brief mentioned ("10426 Sparrow CT") are
+  real and confirmed (6 of 2,610 rows) — handled the same way the existing
+  `/home-sales` table already did, via `titleCaseAddress()`, now shared
+  instead of duplicated (see below).
+
+### What shipped
+
+- `/home-sales/<slug>/` — one page per parcel: address, full sale history
+  (most recent first, matching the brief's own "sold March 2024; previously
+  sold 2019" framing), the outlier footnote per-sale where the existing
+  `$150,000` floor applies, a link to that month's digest (only when one was
+  actually published — checked against real digest slugs, never assumed),
+  a ZIP cross-link, a `/home-sales/?zip=` cross-link to any tracked City Hall
+  project sharing that ZIP (reusing Week 3's `project.home_sales_zip`), and
+  `Place`/`PostalAddress` JSON-LD (not an active-listing schema type — this
+  is a public record of a past sale, never a for-sale advertisement, and
+  schema.org's real-estate-listing vocabulary is for the latter).
+- `/home-sales/zip/<zip>/` — one landing page per real ZIP present in the
+  data (4 for Moreno Valley today), with `ItemList` schema and cross-links
+  to every address page in that ZIP.
+- The existing `/home-sales` table now links each address to its own
+  permalink page, and gained a "Browse by ZIP" row. `lib/home-sales.ts`
+  centralizes the slug/ZIP/outlier/digest-slug logic all three pages share
+  — extracted from the original page rather than left duplicated three ways.
+- Step 4 (no empty/fabricated pages): structurally guaranteed, not just
+  policy — `getStaticPaths` only ever iterates real `property_sales` rows
+  and real ZIPs derived from them, so there's no code path that could
+  produce a page with nothing behind it.
+
+### A real, pre-existing bug found and fixed along the way
+
+Built the pages, then actually read the rendered output rather than trusting
+the code — a real property page showed **"$620000"** instead of
+**"$620,000"**. Root cause: Postgres `NUMERIC` columns (`sale_price`, and by
+the same mechanism `jobs.salary_min`/`salary_max`) come back from the neon
+serverless driver as JS **strings**, not numbers, despite every TypeScript
+type in this codebase claiming `number`. `value.toLocaleString('en-US')`
+silently no-ops on a string (`String.prototype.toLocaleString` ignores its
+formatting arguments) — so every `` `$${value.toLocaleString('en-US')}` ``
+pattern in the codebase had this bug, including the **existing**
+`/home-sales` table (confirmed: this predates Week 4, not something this
+pass introduced). `db.ts`'s `formatPrice()` — already used correctly by
+`jobs.astro`'s salary column — uses `Intl.NumberFormat().format()` instead,
+which DOES coerce a numeric string correctly; that's why job salaries
+displayed correctly all along while home-sales prices didn't. Fixed by
+replacing every `.toLocaleString()` call-site (home-sales.astro,
+home-sales/[slug].astro, home-sales/zip/[zip].astro, article-jsonld.ts's new
+`buildPropertySaleJsonLd`) with the shared, already-proven-correct
+`formatPrice()` — confirmed zero remaining `.toLocaleString(` calls
+anywhere in `site/src` afterward. Covered by a regression test that pins
+`formatPrice('620000')` (a string, exactly what the driver actually
+returns) to `'$620,000'`.
+
+### Build-time cost, worth knowing
+
+2,409 new static pages pushed Moreno Valley's build from ~1,300 to ~3,700
+pages and roughly tripled build time (from ~9 minutes to ~23 minutes for a
+full rebuild). Not a defect, but a real, growing cost as more quarters of
+sales data accumulate — worth keeping in mind if a future quarterly ingest
+adds thousands more rows at once.
+
+### Verified, not assumed
+
+Real, ISOLATED builds for both towns (a real, self-inflicted race condition
+from running two `astro build` processes concurrently against the same
+shared `dist/` directory corrupted an earlier attempt — caught by a real
+build error, not silently trusted; both towns re-built one at a time
+afterward). Brookings: home-sales correctly renders nothing beyond the
+existing table (zero property_sales data for South Dakota, as expected) —
+confirmed via `dist/home-sales/` containing only `index.html`, no `[slug]`
+or `zip/` output. Moreno Valley: spot-checked a real single-sale page, the
+sitemap, canonical URLs, and the trailing-slash sweep across the *entire*
+build (not just the new pages) — zero non-trailing-slash internal links
+anywhere. Contamination scan clean both directions. All 100 unit tests
+pass (13 new for `lib/home-sales.ts`, 2 more for the price-formatting
+regression).
+
+## 23. Week 4, Part 2 — Jobs (2026-08-24)
+
+### MoVal Jobs fixes: confirmed live in the database, NOT confirmed on the
+### (still-undeployed) live site
+
+Checked the actual database directly rather than trust the frozen production
+page (see §21 — nothing built this session has been deployed, so a live-page
+check for anything built or fixed before this session would only prove
+whether the OLD code had these fixes, not the current code):
+- Diversity cap, freshness filter, salary sanitation, and category
+  reclassification are all correctly implemented in code — confirmed by
+  reading `jobs_v1.py` and `db.ts` directly (all four already shipped in an
+  earlier phase of this session, per their own "FAS 2"/"Brookings
+  P6-omverifiering" docstrings).
+- Checked current data: **zero** `$0`-salary rows, **zero** generic
+  ("Other/General Jobs"/"Unknown") categories in the live `moreno_valley_ca`
+  jobs table today. The freshness filter's SQL clause is confirmed present
+  and correctly excludes the 4 rows currently older than 45 days from ever
+  being queried by `getRecentJobs()`.
+- This will only be *visible* once the deploy fix in §21 actually ships —
+  flagging that dependency explicitly rather than letting "confirmed in the
+  database" get mistaken for "confirmed on the live page," which it isn't
+  yet.
+
+### Brookings SDSU/SDBOR jobs feed: blocked by `robots.txt`, not built
+
+Checked before writing any ingest code, per the brief's own "check terms/
+robots before ingesting" instruction — and it's a real, hard blocker:
+`https://yourfuture.sdbor.edu/robots.txt` is
+
+```
+User-Agent: *
+Disallow: /
+User-agent: Twitterbot
+Allow: /postings
+User-agent: Googlebot
+Allow: /
+User-agent: facebookexternalhit
+Allow: /
+User-agent: LinkedInBot
+Allow: /
+```
+
+This site's own scraper identifies itself honestly (`brookingsview.com
+(contact: hello@brookingsview.com)`), which matches none of the four named
+exceptions — under `User-agent: *`, it is disallowed from the entire site.
+Confirmed the org-tier filter itself is real and correct before concluding
+this (`query_organizational_tier_1_id[]=1258` genuinely filters to "South
+Dakota State University" — verified live: the dropdown option text says so,
+and real postings like "Assistant Director of Graduate and International
+Admissions" and a Mathematics & Statistics department-head search came back
+under it), and that an Atom feed exists (`/postings/all_jobs`) that would
+otherwise have been an even cleaner ingest path than HTML parsing — but the
+same robots.txt block covers it too. Checked `sdbor.edu` (the main
+institutional site, not the ATS) for a less restrictive policy: it's wide
+open (`Disallow:` empty, 10s crawl-delay), but job postings don't live
+there — the open policy on one host doesn't extend to a different host
+(`yourfuture.sdbor.edu`) with its own robots.txt.
+
+**Not attempted as a workaround, and won't be**: spoofing a different
+User-Agent (e.g. claiming to be Twitterbot) to access what's explicitly
+disallowed for this site's real identity. Same policy-respecting discipline
+already established elsewhere in this codebase (see `configs/
+brookings_sd.json`'s `city_parks_rec` source: "POLICYBLOCKERAD... Skrapa
+ALDRIG... Fråga staden om RSS/iCal/API-åtkomst").
+
+**The real path forward, if wanted**: direct outreach to SDBOR/SDSU HR
+asking for a permitted feed or API-key relationship — the same lever
+already used for other blocked sources in this codebase. Until/unless that
+exists, Brookings' largest employer stays absent from Jobs; this is an
+honest, documented gap, not a silently-skipped requirement.
+
+### Jobs landing pages — built, not blocked by the SDBOR finding
+
+`/jobs/category/<slug>/` for both towns, mirroring the Week 2 event-facets
+pattern: one page per real category present in the data (checked live: 5
+for Brookings, e.g. `healthcare-nursing-jobs`), `ItemList` schema, the same
+employer-diversity cap applied within each category's own (smaller) list
+(extracted to `lib/jobs.ts` alongside `salaryText()`, both now shared with
+the existing `/jobs` page instead of duplicated). No "SDSU Jobs" facet was
+built — there's no real SDSU-attributed job data to populate it with, and
+building an empty or fabricated version of it would violate the same
+"show nothing broken" rule as anywhere else. Noted in the page's own code
+comment so a future pass doesn't wonder why it's missing.
+
+One real, minor pre-existing data-vocabulary quirk surfaced while verifying
+this, not introduced by it: Adzuna/this codebase's own `_classify_category()`
+occasionally produces two slightly different spellings for what's really
+the same category ("Healthcare & Nursing" from the keyword-match branch vs.
+"Healthcare & Nursing Jobs" from the Adzuna-label fallback branch) — both
+correctly generate their own landing page since they're treated as
+genuinely distinct strings. Cosmetic, not a scope item for this pass;
+flagged rather than silently fixed out-of-scope.
+
+### Verified, not assumed
+
+Real, isolated builds both towns (same race-condition lesson as §22 applied
+here too). Brookings: 5 real category pages confirmed, correct titles,
+correct trailing-slash canonicals, `ItemList` present, zero contamination,
+zero trailing-slash regressions across the whole build. `lib/jobs.ts`: 8 new
+unit tests (slug collisions, salary-range formatting including the
+one-sided "up to" case, and the employer cap's actual cap-and-overflow
+behavior against a synthetic 8-listing dominant-employer case).

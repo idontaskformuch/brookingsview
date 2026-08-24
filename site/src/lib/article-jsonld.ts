@@ -15,7 +15,7 @@
  * author, never a fabricated Person) -- the honesty about AI authorship IS
  * the trust signal, not something to hide to look more human.
  */
-import type { SourceType, Story } from './db';
+import { formatPrice, type SourceType, type Story, type PropertySale } from './db';
 
 const ARTICLE_TYPE_BY_SOURCE_TYPE: Partial<Record<SourceType, string>> = {
   editorial: 'OpinionNewsArticle',
@@ -132,5 +132,47 @@ export function buildDatasetJsonLd(
     spatialCoverage: { '@type': 'Place', name: cityName },
     creator: { '@type': 'Organization', name: siteName },
     isAccessibleForFree: true,
+  };
+}
+
+/**
+ * A home-sales permalink page (see NEEDS-HUMAN-REVIEW.md, "Week 4 -- Home
+ * Sales Address Pages"). `Place`, not an active-listing type -- this is a
+ * public record of what a property has sold for, never a for-sale
+ * advertisement, and schema.org's real-estate-listing vocabulary is for
+ * the latter. Each recorded sale becomes a PropertyValue fact rather than
+ * a fabricated event/offer type with no clean schema.org fit; `sales` must
+ * already be sorted (most recent first) by the caller, same "this function
+ * doesn't second-guess its input" contract as buildEventJsonLd.
+ */
+export function buildPropertySaleJsonLd(
+  address: string,
+  sales: Pick<PropertySale, 'sale_price' | 'sale_date'>[],
+  canonicalUrl: string,
+  cityName: string,
+  stateAbbr: string,
+  zip: string,
+): Record<string, unknown> | null {
+  if (sales.length === 0) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Place',
+    '@id': canonicalUrl,
+    url: canonicalUrl,
+    name: address,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: address.split(',')[0]?.trim() || address,
+      addressLocality: cityName,
+      addressRegion: stateAbbr,
+      ...(zip ? { postalCode: zip } : {}),
+      addressCountry: 'US',
+    },
+    additionalProperty: sales.map((s) => ({
+      '@type': 'PropertyValue',
+      name: 'Recorded sale',
+      value: s.sale_price != null ? formatPrice(s.sale_price) : 'Price not recorded',
+      description: s.sale_date ?? undefined,
+    })),
   };
 }

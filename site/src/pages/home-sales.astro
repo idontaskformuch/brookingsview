@@ -16,7 +16,8 @@
  * recept) vill genuint ha published_at. Ett litet eget kort här i stället. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
-import { getRecentPropertySales, getContentByType } from '../lib/db';
+import { getRecentPropertySales, getContentByType, formatPrice } from '../lib/db';
+import { titleCaseAddress as sharedTitleCaseAddress, extractZip as sharedExtractZip, slugifyAddress, isOutlierSale } from '../lib/home-sales';
 import { siteConfig } from '../lib/site-config';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
@@ -28,27 +29,12 @@ const [sales, digests] = await Promise.all([
   getContentByType(['home_sales_digest'], 12),
 ]);
 
-// Titel-case istället för sajtens vanliga formatPrice/formatCalendarDate --
-// 6 av 2610 rader (0.2%) kom in blandat skiftläge från samma importbatch
-// ("10426 Sparrow CT" i stället för "10426 SPARROW CT"); normalisera vid
-// rendering i stället för en datamigrering för en så liten andel.
-function titleCaseAddress(address: string | null): string {
-  if (!address) return '—';
-  return address.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-}
-
-// $150,000-tröskeln matchar ai_pipeline/home_sales_digest.py:OUTLIER_PRICE_FLOOR
-// -- samma gräns i båda ändar, prosan och den råa tabellen, så de aldrig
-// säger olika saker om samma försäljning.
-const OUTLIER_PRICE_FLOOR = 150_000;
-function isOutlier(price: number | null): boolean {
-  return price != null && price > 0 && price < OUTLIER_PRICE_FLOOR;
-}
-
-function extractZip(address: string | null): string {
-  const match = address?.match(/\b(\d{5})\b\s*$/);
-  return match ? match[1] : '';
-}
+// Shared with home-sales/[slug].astro and home-sales/zip/[zip].astro (see
+// lib/home-sales.ts) -- one copy of the address/ZIP/outlier logic, not
+// three that could quietly drift apart.
+const titleCaseAddress = sharedTitleCaseAddress;
+const extractZip = sharedExtractZip;
+const isOutlier = isOutlierSale;
 const zips = [...new Set(sales.map((s) => extractZip(s.address)).filter(Boolean))].sort();
 
 function monthYear(occursAt: string | null): string {
@@ -79,6 +65,12 @@ function monthYear(occursAt: string | null): string {
   )}
 
   <SectionRule label={`${sales.length} most recent`} />
+
+  <p class="zip-links">
+    Browse by ZIP: {zips.map((z, i) => (
+      <>{i > 0 && ' · '}<a href={`/home-sales/zip/${z}/`}>{z}</a></>
+    ))}
+  </p>
 
   <div class="controls">
     <label>
@@ -113,9 +105,11 @@ function monthYear(occursAt: string | null): string {
           {sales.map((sale) => (
             <tr data-zip={extractZip(sale.address)} data-price={sale.sale_price ?? ''} data-date={sale.sale_date ? new Date(sale.sale_date).getTime() : ''}>
               <td class="data">{sale.sale_date ? new Date(sale.sale_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—'}</td>
-              <td>{titleCaseAddress(sale.address)}</td>
+              <td>{sale.address
+                ? <a href={`/home-sales/${slugifyAddress(sale.address)}/`}>{titleCaseAddress(sale.address)}</a>
+                : titleCaseAddress(sale.address)}</td>
               <td class="data price">
-                {sale.sale_price != null ? `$${sale.sale_price.toLocaleString('en-US')}` : '—'}
+                {formatPrice(sale.sale_price)}
                 {isOutlier(sale.sale_price) && (
                   <span class="outlier-flag" title="Likely non-market transfer (family transfer, partial interest, or a recording artifact) -- excluded from the monthly digest's price statistics.">†</span>
                 )}
@@ -190,6 +184,7 @@ function monthYear(occursAt: string | null): string {
 }
 .digest-card:hover .digest-card__title { text-decoration: underline; }
 
+.zip-links { font-size: 0.875rem; color: var(--ink-soft); margin: 0.75rem 0 0; }
 .controls { display: flex; gap: 1.25rem; margin: 0.5rem 0 1rem; font-size: 0.875rem; }
 .controls label { display: flex; align-items: center; gap: 0.4rem; color: var(--ink-soft); }
 .controls select { font: inherit; padding: 0.2rem 0.4rem; }

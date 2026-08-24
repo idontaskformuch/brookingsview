@@ -197,6 +197,16 @@ export interface PropertySale {
   address: string | null;
   sale_price: number | null;
   sale_date: string | null;
+  // Riverside County's parcel identifier -- the stable per-property
+  // identity a permalink page keys on (see db/migrations/019 and
+  // NEEDS-HUMAN-REVIEW.md, "Week 4 -- Home Sales Address Pages": verified
+  // zero collisions across all 2,610 real rows, and (pin, doc_number)
+  // together are the real unique-sale identity, so the SAME pin
+  // legitimately repeats across multiple rows -- a genuine sale history,
+  // not a duplicate). Optional for the same reason venue_raw is on
+  // Story -- only queries that need it select it.
+  pin?: string | null;
+  doc_number?: string | null;
 }
 
 /** En rad ur regional_sports_games -- se db/migrations/009_regional_sports.sql.
@@ -1005,11 +1015,34 @@ export async function getAgPriceSeries(): Promise<AgPriceSeries[]> {
  */
 export async function getRecentPropertySales(limit = 250): Promise<PropertySale[]> {
   return (await sql`
-    SELECT address, sale_price, sale_date
+    SELECT address, sale_price, sale_date, pin
       FROM property_sales
      WHERE town_id = ${TOWN_ID}
      ORDER BY sale_date DESC
      LIMIT ${limit}
+  `) as PropertySale[];
+}
+
+/** One row per distinct parcel (its most recently-recorded address
+ *  spelling), for /home-sales/[slug].astro's getStaticPaths -- the full
+ *  set of permalink pages to build. */
+export async function getPropertySaleParcels(): Promise<{ pin: string; address: string }[]> {
+  return (await sql`
+    SELECT DISTINCT ON (pin) pin, address
+      FROM property_sales
+     WHERE town_id = ${TOWN_ID} AND pin IS NOT NULL
+     ORDER BY pin, sale_date DESC
+  `) as { pin: string; address: string }[];
+}
+
+/** A single parcel's full recorded sale history, most recent first -- the
+ *  "sold March 2024; previously sold 2019" timeline an address page shows. */
+export async function getPropertySalesByPin(pin: string): Promise<PropertySale[]> {
+  return (await sql`
+    SELECT address, sale_price, sale_date, pin, doc_number
+      FROM property_sales
+     WHERE town_id = ${TOWN_ID} AND pin = ${pin}
+     ORDER BY sale_date DESC
   `) as PropertySale[];
 }
 

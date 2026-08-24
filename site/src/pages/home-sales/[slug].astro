@@ -1,0 +1,139 @@
+---
+/** One URL per property, with its full recorded sale history -- see
+ *  NEEDS-HUMAN-REVIEW.md, "Week 4 -- Home Sales Address Pages". Riverside
+ *  County's own PIN (parcel identifier) is the stable identity a page is
+ *  keyed on, not the address text -- verified zero collisions across all
+ *  2,610 real rows, and a single parcel legitimately has multiple recorded
+ *  sales over time (pin + doc_number together are the real per-sale
+ *  identity). moreno_valley_ca-only: Brookings has no property_sales data
+ *  (Riverside County's assessor report doesn't cover South Dakota), so
+ *  getStaticPaths below returns nothing there -- same "naturally empty
+ *  elsewhere" pattern as getUpcomingArtsEvents(). */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ShareButton from '../../components/ShareButton.astro';
+import {
+  getPropertySaleParcels, getPropertySalesByPin, getContentByType, getProjects,
+  formatPrice as sharedFormatPrice,
+} from '../../lib/db';
+import type { Project } from '../../lib/db';
+import { buildPropertySaleJsonLd } from '../../lib/article-jsonld';
+import { titleCaseAddress, extractZip, slugifyAddress, isOutlierSale, digestSlugForSaleDate } from '../../lib/home-sales';
+import { siteConfig } from '../../lib/site-config';
+
+export async function getStaticPaths() {
+  if (siteConfig.townId !== 'moreno_valley_ca') return [];
+
+  const [parcels, digests, projects] = await Promise.all([
+    getPropertySaleParcels(),
+    getContentByType(['home_sales_digest'], 999),
+    getProjects(),
+  ]);
+  const digestSlugs = new Set(digests.map((d) => d.slug));
+
+  return parcels.map((p) => ({
+    params: { slug: slugifyAddress(p.address) },
+    props: { pin: p.pin, digestSlugs, projects },
+  }));
+}
+
+const { pin, digestSlugs, projects } = Astro.props as {
+  pin: string;
+  digestSlugs: Set<string>;
+  projects: Project[];
+};
+
+const sales = await getPropertySalesByPin(pin);
+if (sales.length === 0) {
+  return Astro.redirect('/home-sales/', 302);
+}
+
+const address = titleCaseAddress(sales[0].address);
+const zip = extractZip(sales[0].address);
+const canonicalUrl = new URL(`/home-sales/${slugifyAddress(sales[0].address ?? '')}/`, Astro.site ?? siteConfig.siteUrl).href;
+
+const nearbyProject = zip ? projects.find((p) => p.home_sales_zip === zip) ?? null : null;
+
+function formatSaleDate(value: string | null): string {
+  if (!value) return '—';
+  return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+}
+function formatPrice(value: number | null): string {
+  return value != null ? sharedFormatPrice(value) : 'Price not recorded';
+}
+
+const propertyJsonLd = buildPropertySaleJsonLd(
+  address, sales, canonicalUrl, siteConfig.cityName, siteConfig.stateAbbr, zip,
+);
+
+const title = `${address} — Home Sale History — ${siteConfig.siteName}`;
+const latestSale = sales[0];
+const description = latestSale.sale_price != null
+  ? `${address} sold for ${formatPrice(latestSale.sale_price)} on ${formatSaleDate(latestSale.sale_date)}. Recorded sale history from Riverside County's public assessor data.`
+  : `Recorded sale history for ${address}, from Riverside County's public assessor data.`;
+---
+<BaseLayout title={title} ogSlug="section-home-sales" description={description}>
+  <article class="property">
+    <header class="lede">
+      <h1>{address}</h1>
+      {zip && (
+        <p class="sub">
+          ZIP <a href={`/home-sales/zip/${zip}/`}>{zip}</a>
+          {nearbyProject && (
+            <> · Nearby: <a href={`/city-hall/projects/${nearbyProject.slug}/`}>{nearbyProject.title}</a></>
+          )}
+        </p>
+      )}
+      <ShareButton title={title} url={canonicalUrl} />
+    </header>
+
+    <h2 class="history-heading">{sales.length > 1 ? 'Sale history' : 'Recorded sale'}</h2>
+    <ol class="history">
+      {sales.map((s) => (
+        <li class="history__item">
+          <p class="history__price">
+            {formatPrice(s.sale_price)}
+            {isOutlierSale(s.sale_price) && (
+              <span class="outlier-flag" title="Likely non-market transfer (family transfer, partial interest, or a recording artifact).">†</span>
+            )}
+          </p>
+          <p class="history__date">Sold {formatSaleDate(s.sale_date)}</p>
+          {s.sale_date && digestSlugs.has(digestSlugForSaleDate(s.sale_date)) && (
+            <p class="history__digest">
+              <a href={`/s/${digestSlugForSaleDate(s.sale_date)}/`}>See that month's digest →</a>
+            </p>
+          )}
+        </li>
+      ))}
+    </ol>
+    {sales.some((s) => isOutlierSale(s.sale_price)) && (
+      <p class="footnote">† Likely non-market transfer (family transfer, partial interest, or a recording artifact) — excluded from the monthly digest's median/range figures.</p>
+    )}
+
+    <p class="back">
+      <a href="/home-sales/">← All recent home sales</a>
+      {zip && <> · <a href={`/home-sales/zip/${zip}/`}>More sales in {zip}</a></>}
+    </p>
+    <p class="source">
+      Source: <a href="https://www.rivcoacr.org/property-sales-report" rel="noopener">Riverside County Assessor's Property Sales Report</a>, updated quarterly.
+    </p>
+  </article>
+
+  {propertyJsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(propertyJsonLd)} />
+  )}
+</BaseLayout>
+
+<style>
+.lede { max-width: 40rem; }
+.sub { color: var(--ink-soft); font-size: 0.9375rem; margin: 0.5rem 0 0; }
+.history-heading { margin-top: 2rem; }
+.history { list-style: none; margin: 0; padding: 0; max-width: 32rem; }
+.history__item { padding: 0.875rem 0; border-top: 1px solid var(--rule); }
+.history__price { font-family: var(--font-head); font-weight: 700; font-size: 1.375rem; margin: 0; }
+.history__date { color: var(--ink-soft); margin: 0.25rem 0 0; }
+.history__digest { margin: 0.25rem 0 0; font-size: 0.9375rem; }
+.outlier-flag { margin-left: 0.25rem; color: var(--ink-soft); cursor: help; font-size: 1rem; }
+.footnote { margin-top: 0.75rem; font-size: 0.8125rem; color: var(--ink-soft); }
+.back { margin-top: 2rem; font-size: 0.9375rem; }
+.source { margin-top: 0.75rem; font-size: 0.875rem; color: var(--ink-soft); }
+</style>

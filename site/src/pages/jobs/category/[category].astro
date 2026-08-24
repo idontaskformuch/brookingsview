@@ -1,0 +1,151 @@
+---
+/** "<Category> Jobs in <City>" -- one landing page per real category
+ *  present in the data, mirroring the Week 2 event-facets pattern (see
+ *  NEEDS-HUMAN-REVIEW.md, "Week 4 -- Jobs Landing Pages"). Only categories
+ *  that actually appear in real listings generate a page. Built for both
+ *  towns (unlike home-sales, jobs isn't town-restricted -- see jobs.astro's
+ *  own "no town redirect" reasoning). No SDSU/SDBOR-specific facet here:
+ *  yourfuture.sdbor.edu's robots.txt disallows this site's user agent
+ *  site-wide (verified live), so there's no real SDSU job data to build
+ *  that facet from -- see the doc above for the full finding. */
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import ShareButton from '../../../components/ShareButton.astro';
+import { getRecentJobs, formatDate } from '../../../lib/db';
+import { salaryText, capByEmployer, slugifyCategory } from '../../../lib/jobs';
+import { siteConfig } from '../../../lib/site-config';
+
+export async function getStaticPaths() {
+  const jobs = await getRecentJobs();
+  const categories = [...new Set(jobs.map((j) => j.category).filter((c): c is string => Boolean(c)))];
+
+  return categories.map((category) => ({
+    params: { category: slugifyCategory(category) },
+    props: { category, jobs: jobs.filter((j) => j.category === category) },
+  }));
+}
+
+const { category, jobs } = Astro.props as { category: string; jobs: Awaited<ReturnType<typeof getRecentJobs>> };
+const { visible, overflowByCompany } = capByEmployer(jobs);
+
+const canonicalUrl = new URL(`/jobs/category/${slugifyCategory(category)}/`, Astro.site ?? siteConfig.siteUrl).href;
+const title = `${category} in ${siteConfig.cityName} — ${siteConfig.siteName}`;
+const description = `${jobs.length} recent ${category.toLowerCase()} listing${jobs.length === 1 ? '' : 's'} in and near ${siteConfig.cityName}, ${siteConfig.stateAbbr}, from Adzuna's job search.`;
+
+const itemListJsonLd = jobs.length > 0 ? {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: title,
+  itemListElement: jobs.map((j, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: j.company ? `${j.title} — ${j.company}` : j.title,
+    url: j.redirect_url ?? canonicalUrl,
+  })),
+} : null;
+---
+<BaseLayout title={title} wide ogSlug="section-jobs" description={description}>
+  <header class="lede">
+    <h1>{category} in {siteConfig.cityName}</h1>
+    <p>{jobs.length} recent listing{jobs.length === 1 ? '' : 's'}, pulled daily from
+    <a href="https://www.adzuna.com" rel="noopener">Adzuna</a>'s job search — some
+    are in surrounding towns, not {siteConfig.cityName} itself; each listing's
+    location is shown alongside it. We earn a small commission if you apply
+    through a listing here — it never affects which jobs are shown or how
+    they're ordered.</p>
+    <ShareButton title={title} url={canonicalUrl} />
+  </header>
+
+  <nav class="facet-nav" aria-label="Other job views">
+    <a href="/jobs/">All jobs →</a>
+  </nav>
+
+  {jobs.length > 0 ? (
+    <table class="jobs" id="jobs-table">
+      <thead>
+        <tr><th scope="col">Title</th><th scope="col">Company</th><th scope="col">Salary</th><th scope="col">Posted</th></tr>
+      </thead>
+      <tbody>
+        {visible.map((job) => (
+          <tr>
+            <td>
+              {job.redirect_url ? (
+                <a href={job.redirect_url} rel="noopener nofollow sponsored">{job.title}</a>
+              ) : job.title}
+              {job.location && <span class="loc">{job.location}</span>}
+            </td>
+            <td>{job.company ?? '—'}</td>
+            <td class="data">{salaryText(job)}</td>
+            <td class="data">{job.posted_at ? formatDate(job.posted_at) : '—'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ) : (
+    <p class="empty">No {category.toLowerCase()} listings available right now — check back.</p>
+  )}
+
+  {[...overflowByCompany.entries()].map(([company, extra]) => (
+    <details class="overflow">
+      <summary>{extra.length} more from {company}</summary>
+      <table class="jobs">
+        <tbody>
+          {extra.map((job) => (
+            <tr>
+              <td>
+                {job.redirect_url ? (
+                  <a href={job.redirect_url} rel="noopener nofollow sponsored">{job.title}</a>
+                ) : job.title}
+                {job.location && <span class="loc">{job.location}</span>}
+              </td>
+              <td class="data">{salaryText(job)}</td>
+              <td class="data">{job.posted_at ? formatDate(job.posted_at) : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
+  ))}
+
+  <p class="source">
+    Source: <a href="https://www.adzuna.com" rel="noopener">Adzuna</a>, refreshed daily. Listings older than 45 days are removed automatically.
+  </p>
+
+  {itemListJsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
+  )}
+</BaseLayout>
+
+<style>
+.lede { max-width: 42rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.facet-nav { margin: 1rem 0 1.5rem; }
+.facet-nav a {
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--navy-tint);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+}
+.jobs { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.9375rem; }
+.jobs th {
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 600;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--rule);
+}
+.jobs td { padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.jobs tr:last-child td { border-bottom: 0; }
+.loc { display: block; font-size: 0.8125rem; color: var(--ink-soft); }
+.data { white-space: nowrap; }
+.empty { color: var(--ink-soft); }
+.overflow { margin-top: 0.75rem; font-size: 0.9375rem; }
+.overflow summary { cursor: pointer; color: var(--ink-soft); padding: 0.5rem 0; }
+.source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }
+</style>

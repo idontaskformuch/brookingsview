@@ -1,0 +1,120 @@
+---
+/** "Home Sales in <ZIP>" -- one landing page per real ZIP present in the
+ *  data, mirroring the Week 2 event-facets pattern (see
+ *  NEEDS-HUMAN-REVIEW.md, "Week 4 -- Home Sales Address Pages"). Only ZIPs
+ *  that actually appear in real sales generate a page -- there's no way
+ *  for one to exist with zero results, since the ZIP list itself is
+ *  derived from the same data. moreno_valley_ca-only, same reasoning as
+ *  home-sales/[slug].astro. */
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import ShareButton from '../../../components/ShareButton.astro';
+import { getRecentPropertySales, getProjects, formatPrice } from '../../../lib/db';
+import type { Project } from '../../../lib/db';
+import { titleCaseAddress, extractZip, slugifyAddress, isOutlierSale } from '../../../lib/home-sales';
+import { siteConfig } from '../../../lib/site-config';
+
+export async function getStaticPaths() {
+  if (siteConfig.townId !== 'moreno_valley_ca') return [];
+
+  const [sales, projects] = await Promise.all([
+    getRecentPropertySales(5000),
+    getProjects(),
+  ]);
+  const zips = [...new Set(sales.map((s) => extractZip(s.address)).filter(Boolean))];
+
+  return zips.map((zip) => ({
+    params: { zip },
+    props: { sales: sales.filter((s) => extractZip(s.address) === zip), projects },
+  }));
+}
+
+const { zip } = Astro.params;
+const { sales, projects } = Astro.props as { sales: Awaited<ReturnType<typeof getRecentPropertySales>>; projects: Project[] };
+
+const canonicalUrl = new URL(`/home-sales/zip/${zip}/`, Astro.site ?? siteConfig.siteUrl).href;
+const title = `Home Sales in ${zip} — ${siteConfig.siteName}`;
+const description = `${sales.length} recently recorded home sale${sales.length === 1 ? '' : 's'} in ZIP code ${zip}, ${siteConfig.cityName} — from Riverside County's public assessor data.`;
+const nearbyProject = projects.find((p) => p.home_sales_zip === zip) ?? null;
+
+function formatSaleDate(value: string | null): string {
+  if (!value) return '—';
+  return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+}
+
+const itemListJsonLd = sales.length > 0 ? {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: title,
+  itemListElement: sales.slice(0, 200).map((s, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: titleCaseAddress(s.address),
+    url: new URL(`/home-sales/${slugifyAddress(s.address ?? '')}/`, Astro.site ?? siteConfig.siteUrl).href,
+  })),
+} : null;
+---
+<BaseLayout title={title} wide ogSlug="section-home-sales" description={description}>
+  <header class="lede">
+    <h1>Home sales in {zip}</h1>
+    <p>{sales.length} recently recorded home sale{sales.length === 1 ? '' : 's'} in ZIP code {zip}, {siteConfig.cityName} — updated as Riverside County releases new data.</p>
+    {nearbyProject && (
+      <p class="project-teaser">
+        A civic project is tracked nearby: <a href={`/city-hall/projects/${nearbyProject.slug}/`}>{nearbyProject.title}</a>
+      </p>
+    )}
+    <ShareButton title={title} url={canonicalUrl} />
+  </header>
+
+  <nav class="facet-nav" aria-label="Other home sales views">
+    <a href="/home-sales/">All recent sales →</a>
+  </nav>
+
+  {sales.length > 0 ? (
+    <ul class="list">
+      {sales.map((s) => (
+        <li>
+          <a href={`/home-sales/${slugifyAddress(s.address ?? '')}/`}>{titleCaseAddress(s.address)}</a>
+          <span class="meta">
+            {' '}— {formatPrice(s.sale_price)}
+            {isOutlierSale(s.sale_price) && <span class="outlier-flag" title="Likely non-market transfer.">†</span>}
+            {' '}· {formatSaleDate(s.sale_date)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty">No sales recorded for {zip} yet — check back.</p>
+  )}
+
+  {itemListJsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
+  )}
+</BaseLayout>
+
+<style>
+.lede { max-width: 42rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.project-teaser {
+  margin: 0.75rem 0 0;
+  padding: 0.625rem 0.875rem;
+  background: var(--navy-tint);
+  border-left: 4px solid var(--navy);
+  font-size: 0.9375rem;
+}
+.facet-nav { margin: 1rem 0 1.5rem; }
+.facet-nav a {
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--navy-tint);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+}
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; max-width: 44rem; }
+.list li { padding: 0.5rem 0; border-bottom: 1px solid var(--rule); }
+.list a { font-weight: 600; }
+.meta { color: var(--ink-soft); font-size: 0.9375rem; }
+.outlier-flag { margin-left: 0.15rem; color: var(--ink-soft); cursor: help; }
+.empty { color: var(--ink-soft); }
+</style>
