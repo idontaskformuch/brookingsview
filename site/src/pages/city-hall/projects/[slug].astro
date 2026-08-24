@@ -46,14 +46,21 @@ function voteText(u: ProjectUpdate): string | null {
 }
 
 /** Why "pending" is honest, not a placeholder for a guess -- shown inline
- *  so a reader (or Google) never mistakes it for missing data. Moreno
- *  Valley's Planning Commission never posts an outcome document on its
- *  eSCRIBE portal (verified live against ~20 real meetings); a City
- *  Council item shows "pending" only until its Action Summary posts. */
+ *  so a reader (or Google) never mistakes it for missing data. Deliberately
+ *  keyed on town, NOT on body name alone: Moreno Valley's Planning
+ *  Commission never posts an outcome document on its eSCRIBE portal
+ *  (verified live against ~20 real meetings) and this reason is specific
+ *  to that real, verified platform limitation -- but Brookings ALSO has a
+ *  body called "Planning Commission," and its Legistar source DOES carry
+ *  real outcomes for it (see NEEDS-HUMAN-REVIEW.md, "Brookings -- City
+ *  Hall Project Pages"). Matching on body name alone would have wrongly
+ *  claimed the same eSCRIBE limitation for a Brookings item that doesn't
+ *  have it. */
 function pendingReason(u: ProjectUpdate): string {
-  return u.body === 'Planning Commission'
-    ? 'Planning Commission does not post an official outcome record for this platform.'
-    : 'Minutes have not been posted for this meeting yet.';
+  if (siteConfig.townId === 'moreno_valley_ca' && u.body === 'Planning Commission') {
+    return 'Planning Commission does not post an official outcome record for this platform.';
+  }
+  return 'This meeting’s official record does not show an outcome for this item yet.';
 }
 
 const earliestDate = updates[0]?.meeting_date ?? project.updated_at;

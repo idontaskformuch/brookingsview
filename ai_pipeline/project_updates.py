@@ -47,22 +47,12 @@ load_dotenv()
 import psycopg
 from psycopg.rows import dict_row
 
-from ai_pipeline.project_registry import load_projects, match_project, queue_for_review
+from ai_pipeline.project_registry import load_projects, match_project, queue_for_review, status_for_outcome
 
-# outcome -> project status. Deliberately only distinguishes what a meeting
-# outcome can actually confirm (under review / approved / denied) -- later
-# lifecycle stages (permitted, under construction, complete) would need a
-# different data source (e.g. cross-referencing the `permits` table by
-# address) and are NOT claimed here. See NEEDS-HUMAN-REVIEW.md for this as
-# a real, scoped follow-up rather than a guess.
-_STATUS_FOR_OUTCOME = {
-    "Approved": "approved",
-    "Denied": "denied",
-    "Failed": "denied",
-    "Continued": "under_review",
-    "Tabled": "under_review",
-    "pending": "under_review",
-}
+# Later lifecycle stages (permitted, under construction, complete) would
+# need a different data source (e.g. cross-referencing the `permits` table
+# by address) and are NOT claimed here -- see NEEDS-HUMAN-REVIEW.md for
+# this as a real, scoped follow-up rather than a guess.
 
 
 def find_meetings_with_agenda_items(conn, town_id: str) -> list[dict]:
@@ -162,7 +152,7 @@ def recompute_project_status(conn, project_id: int) -> None:
         )
         row = cur.fetchone()
         outcome = row[0] if row else "pending"
-        status = _STATUS_FOR_OUTCOME.get(outcome, "under_review")
+        status = status_for_outcome(outcome)
         cur.execute(
             "UPDATE projects SET status = %s, updated_at = now() WHERE id = %s",
             (status, project_id),

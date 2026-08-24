@@ -43,17 +43,19 @@ def seed_town(conn, town_id: str) -> tuple[int, int]:
                 """
                 INSERT INTO projects
                     (town_id, slug, title, description, case_numbers,
-                     location_text, home_sales_zip, updated_at)
+                     legistar_matter_ids, location_text, home_sales_zip, updated_at)
                 VALUES
                     (%(town_id)s, %(slug)s, %(title)s, %(description)s,
-                     %(case_numbers)s, %(location_text)s, %(home_sales_zip)s, now())
+                     %(case_numbers)s, %(legistar_matter_ids)s,
+                     %(location_text)s, %(home_sales_zip)s, now())
                 ON CONFLICT (town_id, slug) DO UPDATE SET
-                    title           = EXCLUDED.title,
-                    description     = EXCLUDED.description,
-                    case_numbers    = EXCLUDED.case_numbers,
-                    location_text   = EXCLUDED.location_text,
-                    home_sales_zip  = EXCLUDED.home_sales_zip,
-                    updated_at      = now()
+                    title                = EXCLUDED.title,
+                    description          = EXCLUDED.description,
+                    case_numbers         = EXCLUDED.case_numbers,
+                    legistar_matter_ids  = EXCLUDED.legistar_matter_ids,
+                    location_text        = EXCLUDED.location_text,
+                    home_sales_zip       = EXCLUDED.home_sales_zip,
+                    updated_at           = now()
                 RETURNING (xmax = 0) AS inserted
                 """,
                 {
@@ -62,6 +64,7 @@ def seed_town(conn, town_id: str) -> tuple[int, int]:
                     "title": p["title"],
                     "description": p["description"],
                     "case_numbers": p.get("case_numbers") or [],
+                    "legistar_matter_ids": p.get("legistar_matter_ids") or [],
                     "location_text": p.get("location_text"),
                     "home_sales_zip": p.get("home_sales_zip"),
                 },

@@ -2020,8 +2020,155 @@ concrete, well-scoped follow-up, not a guess about whether it's possible.
 
 Real builds both towns: Brookings 306 pages (+1, the empty projects index
 — confirmed zero project rows render zero teasers/sections, not broken
-ones), Moreno Valley (pending verification in this same pass — see build
-output). All Python tests pass (184 + 17 new = 201). Contamination scan
-clean. Full `href` sweep confirms no trailing-slash regressions. The two
-seed projects' full timelines were spot-checked against the live eSCRIBE
-portal by hand, not just trusted from the parser's own output.
+ones), Moreno Valley 1,299 pages (+8: the index + 2 project pages, plus
+content that changed independently between builds). All Python tests pass
+(184 + 17 new = 201). Contamination scan clean. Full `href` sweep confirms
+no trailing-slash regressions. The two seed projects' full timelines were
+spot-checked against the live eSCRIBE portal by hand, not just trusted
+from the parser's own output.
+
+## 20. Brookings — City Hall Project Pages, via Legistar (2026-08-24)
+
+Confirms §19's finding in practice: Brookings' path turned out to need no
+PDF parsing, no case-number/keyword matching, and no ambiguous-match
+handling at all — Legistar's own `Matter` object already threads a
+project's full cross-meeting history, so this ingest
+(`ai_pipeline/project_updates_legistar.py`) is a straight read of
+`GET /matters/{id}/histories`, not a text-matching engine. The `/city-hall/
+projects/[slug].astro` and `index.astro` pages needed **zero changes** —
+they already read from the same town-scoped `projects`/`project_updates`
+tables `getProjects()`/`getProjectUpdates()` query, so Brookings pages just
+worked once real rows existed.
+
+**One real cross-town bug caught before it shipped**: `[slug].astro`'s
+`pendingReason()` hard-matched `u.body === 'Planning Commission'` to show
+Moreno-Valley-specific wording ("Planning Commission does not post an
+official outcome record for this platform"). Brookings *also* has a body
+named "Planning Commission" — and unlike Moreno Valley's, it DOES post
+outcomes via Legistar. Left as-is, a genuinely-pending Brookings Planning
+Commission item would have shown a false claim about its own data source.
+Fixed by keying the specific eSCRIBE-limitation wording on
+`siteConfig.townId === 'moreno_valley_ca'` as well as body name, with a
+generic, still-honest fallback message for every other case.
+
+### The 765kV committee is out of reach here too, but for a different reason
+
+The brief named the 765kV Transmission Line items as an obvious first
+project. Checked the real data before seeding it: `meeting-10763`/
+`meeting-37` in `stories` show it's the **"Brookings County 765kV
+Transmission Line Advisory Committee"** — a *county* body, tracked via
+`civicengage_pdf_v1` (Brookings County's own AgendaCenter), never the
+city's Legistar. This isn't a Legistar-access problem, it's a real
+different-data-source problem, and it's exactly what the brief's own "Out
+of scope" section already excluded ("County Commission... not the city's
+Legistar") — just not obviously the same body as "the 765kV committee"
+until checked. Noted here so a future pass doesn't waste time re-deriving
+this: if 765kV coverage is wanted as a project page, it needs a
+`civicengage_pdf_v1`-based ingest (Brookings County's Matter-equivalent
+data model, not yet investigated), not an extension of this Legistar
+pipeline.
+
+### Two real, verified seed projects instead
+
+1. **Real Property Lease to RTI, LLC** (`legistar_matter_ids: [8570,
+   9266]`) — two separate "Resolution of Intent to Lease" actions over a
+   year apart (RES 25-055, approved May 27, 2025; RES 26-041, approved
+   July 30, 2026), both real, both confirmed `Pass` via
+   `MatterHistoryPassedFlagName`. Neither resolution's text names a
+   specific address — `location_text`/`home_sales_zip` are honestly left
+   null rather than guessed (checked the full `Matter` record for any
+   other location field first; there isn't one).
+2. **Outlot 2 Rezoning, Section 23** (`legistar_matter_ids: [9107, 9145]`)
+   — a genuine three-entry, cross-body timeline: Planning Commission
+   recommends approval (April 7, 2026, `Pass`) → City Council First
+   Reading (April 28 — a real procedural step with **no vote yet**,
+   `MatterHistoryPassedFlagName` is null) → City Council Second
+   Reading/adoption (May 12, `Pass`). The middle entry is the important
+   test case: rather than forcing it into Approved/Denied/pending, it
+   shows the real `MatterHistoryActionName` verbatim ("Read into the
+   record") — true, verified information the source actually recorded,
+   just not a pass/fail vote. `status_for_outcome()` (shared with the
+   Moreno Valley pipeline, refactored out of a per-value dict into a
+   keyword check so both vocabularies stay correct) confirms this stays
+   `under_review`, never misread as `approved` from a stray keyword match.
+   Real public commenter attribution in the source data ("Jacob Mills,
+   Mills Development") confirms this is a genuine private development, not
+   a routine city housekeeping item.
+
+### The citation URL needed live verification, not the obvious guess
+
+The obvious direct link, `LegislationDetail.aspx?ID={MatterId}&GUID=
+{MatterGuid}` using the WebAPI's own IDs, returns **"Invalid parameters!"**
+— checked live before shipping it as a citation link on a public page.
+Legistar's WebAPI MatterId/MatterGuid and its public InSite site's own
+internal ID/GUID pair are different numbering systems. The working, verified
+form is `gateway.aspx?M=L&ID={MatterId}` (a redirector that correctly
+translates the WebAPI's MatterId to the real page) — confirmed by following
+the actual redirect chain to real page content ("RTI, LLC" visible in the
+title), not just a 200 status code. Covered by a regression test
+(`tests/test_project_updates_legistar.py::test_citation_url_uses_the_
+verified_gateway_pattern`) specifically so a future edit can't silently
+revert to the broken direct-link form.
+
+### Two more real bugs, caught only by inspecting a live built page
+
+Neither of these showed up in unit tests or a dry-run — both were only
+visible by actually reading the rendered HTML of a real built page, the
+same "verify against real state" discipline that caught §19's parser bugs.
+
+- **A date-off-by-one, the "meeting_date landmine" again.**
+  `MatterHistoryActionDate` ("2026-04-07T00:00:00") is a pure calendar date
+  from Legistar -- always literal midnight, never a real time-of-day
+  (unlike eSCRIBE's `StartDate`, a genuine evening meeting time). Storing
+  that midnight as UTC and rendering it in Central time shifted it back a
+  full calendar day: a real April 7 Planning Commission item rendered as
+  **"April 6"** on the built page. This is the exact bug class this
+  codebase has hit and guarded against before (see `db.ts`'s
+  `calendarDateParts`/`formatCalendarDate` docs, and events.astro's own
+  scar tissue from a similar timezone regression). Fixed by anchoring
+  date-only Legistar values at noon UTC (`_date_only_noon_utc()`) --
+  survives any real US timezone offset without crossing into the wrong
+  day. Covered by a regression test using the real date string that
+  exposed it.
+- **A silent duplicate-row bug from NULL-based upserts.** Legistar rows
+  set `meeting_id = NULL` (they're not threaded through this codebase's own
+  `meetings` table the way eSCRIBE's are). Postgres never treats two NULLs
+  as equal for uniqueness purposes, so `ON CONFLICT (project_id, meeting_id,
+  agenda_counter)` silently never matched -- a second ingest run (to pick up
+  the date fix above) inserted 5 fresh duplicate rows instead of updating
+  the existing 5, caught by directly querying the table and seeing 10 rows
+  where there should have been 5. Fixed by replacing the `ON CONFLICT` with
+  a manual existence check on `(project_id, agenda_counter)` alone --
+  `agenda_counter` (built from Legistar's own unique `MatterHistoryId`) is
+  already a real key on its own here, unlike eSCRIBE's counters ("I.1"),
+  which genuinely repeat across different real meetings and need
+  `meeting_id` to disambiguate. The stale duplicate rows were deleted by
+  hand before the fix shipped; re-running the corrected script twice in a
+  row was verified to produce "0 new" both times before trusting it.
+
+### Not attempted, honestly
+
+No numeric per-member vote tally (`vote_yes`/`vote_no`/etc. stay null for
+every Legistar-sourced row) — Legistar's roll-call detail lives at
+`/eventitems/{EventItemId}/votes`, keyed by an ID that `MatterHistories`
+doesn't expose directly, and `MatterHistoryEventId` (the meeting-level ID)
+isn't the same key; a working mapping wasn't confirmed live, so this was
+left null rather than guessed at. `MatterHistoryPassedFlagName` and the
+real narrative `MatterHistoryActionText` (visible via the citation link)
+still give a reader the real, confirmed outcome — just not a "5-0" number
+on the page itself.
+
+### Verified, not assumed
+
+Real Brookings build (post-fix): project pages render both seed projects'
+full timelines with the CORRECT calendar dates, including the "Read into
+the record" middle entry rendering as its own real status (not colored as
+approved or denied). Contamination scan confirms zero Moreno Valley
+strings on Brookings project pages and vice versa. `tests/
+test_project_updates_legistar.py` (9 tests, including regression tests for
+both bugs above) plus the existing 193 all pass (202 total). Sitemap
+includes both project pages and the index with correct trailing slashes.
+No API token was needed for `cityofbrookings` — plain HTTPS GET, confirmed
+with a live request before assuming it. Re-ran the corrected ingest script
+twice in a row against the live database to confirm idempotency ("0 new"
+both times) before considering it done.

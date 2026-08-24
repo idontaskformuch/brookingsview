@@ -1,0 +1,21 @@
+{
+  "_note": "Hand-curated project registry, same pattern as data/facilities/*.json and data/projects/moreno_valley_ca.json (see scripts/seed_projects.py). Unlike Moreno Valley's eSCRIBE-sourced projects, Brookings is on Legistar -- match keys here are legistar_matter_ids (real Legistar MatterIds), not case_numbers/text matching, since Legistar's own Matter object already threads a project's history across meetings (see ai_pipeline/project_updates_legistar.py). A real project can span more than one MatterId. Both seeded here 2026-08-24 from real, verified data pulled directly from webapi.legistar.com/v1/cityofbrookings -- see NEEDS-HUMAN-REVIEW.md, 'Brookings -- City Hall Project Pages' for the source verification.",
+  "projects": [
+    {
+      "slug": "rti-llc-real-property-lease",
+      "title": "Real Property Lease to RTI, LLC",
+      "description": "The City of Brookings has twice passed a Resolution of Intent to Lease city-owned real property to RTI, LLC -- once in May 2025 and again in July 2026. Neither resolution specifies the property's location beyond \"real property.\"",
+      "legistar_matter_ids": [8570, 9266],
+      "location_text": null,
+      "home_sales_zip": null
+    },
+    {
+      "slug": "outlot-2-section-23-rezoning",
+      "title": "Outlot 2 Rezoning, Section 23 (R-1A to R-3/B-3)",
+      "description": "Rezoning of portions of Outlot 2 in the SW ¼ of the NW ¼ of Section 23, Township 110 North, Range 50 West, from a Residence R-1A Single-Family District to a Residence R-3 Multi-Family District and a Business B-3 Heavy District -- reviewed by the Planning Commission, then read and adopted by the City Council as Ordinance 26-016.",
+      "legistar_matter_ids": [9107, 9145],
+      "location_text": "Outlot 2, SW ¼ of the NW ¼, Section 23, Township 110N, Range 50W, Brookings, SD",
+      "home_sales_zip": null
+    }
+  ]
+}

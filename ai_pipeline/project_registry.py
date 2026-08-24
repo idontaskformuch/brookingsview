@@ -53,6 +53,24 @@ def match_project(
     return None, None
 
 
+def status_for_outcome(outcome: str) -> str:
+    """A project's overall `status`, derived from its most recent update's
+    outcome text -- shared by both ingest pipelines (eSCRIBE's fixed
+    Approved/Denied/Continued/Tabled/pending vocabulary and Legistar's
+    freer one, e.g. "Read into the record"). Keyword-based rather than an
+    exact-match dict so it doesn't silently misclassify a real outcome
+    string it hasn't seen before as 'under_review' by falling through --
+    it only actually claims 'approved'/'denied', the two states a real
+    outcome can confirm; anything else (including a genuinely unresolved
+    procedural step) stays 'under_review', never guessed further."""
+    lowered = outcome.lower()
+    if "denied" in lowered or "fail" in lowered:
+        return "denied"
+    if "approved" in lowered or "passed" in lowered or "adopted" in lowered:
+        return "approved"
+    return "under_review"
+
+
 def queue_for_review(conn, town_id: str, meeting_id: int | None, counter: str, title: str, reason: str) -> None:
     """Records an ambiguous match for a human to triage -- same flag-not-
     guess pattern as ai_pipeline.venue_registry.queue_for_review()."""
