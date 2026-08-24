@@ -2172,3 +2172,95 @@ No API token was needed for `cityofbrookings` — plain HTTPS GET, confirmed
 with a live request before assuming it. Re-ran the corrected ingest script
 twice in a row against the live database to confirm idempotency ("0 new"
 both times) before considering it done.
+
+## 21. Deploy pipeline fix — the biggest single finding this session (2026-08-24)
+
+**Nothing built since this session started had ever reached a real visitor.**
+Discovered while verifying the Week 4 Jobs fixes live, per the brief's own
+"don't assume, check the real page" instruction — the live `/jobs/` page
+showed none of Phase 2.3's fixes (a visible `$0` salary, a listing dated
+"February 1," raw unclassified categories). Traced it further and it wasn't
+a Jobs bug at all:
+
+- `449cdf2` (the trailing-slash fix, Week 1): live footer links still had no
+  trailing slash — the exact pre-fix bug.
+- `/events/free/`, `/events/today/` (Week 2): **404** on production.
+- `/city-hall/projects/` (Week 3 and the Brookings follow-up): **404**.
+
+**Root cause, confirmed via the GitHub API, not assumed:**
+`.github/workflows/scrape.yml` and `moval-scrape.yml` both run hourly and,
+on success, POST to a `PAGES_DEPLOY_HOOK`/`PAGES_DEPLOY_HOOK_MOVAL` secret.
+Checked the last 5 runs of each via `api.github.com/.../actions/workflows/
+scrape.yml/runs` — every run shows `success`. The hook fires and returns
+success every hour. But `site/wrangler.jsonc` (confirmed: this project has
+no `wrangler.toml` at all, only the JSONC form) shows the real deploy target
+is **Cloudflare Workers**, not Pages — a different product. The hook is
+almost certainly still wired to an abandoned Pages project nobody's domain
+points to anymore, so it has been successfully rebuilding something nobody
+sees, every hour, for the whole session.
+
+### Step 0 verification, before touching either workflow
+
+- `site/wrangler.jsonc`'s `env` block already defines both `brookings`
+  (`name: "brookingsview"`) and `moreno_valley` (`name: "morenovalleyview"`)
+  — correctly named, confirmed against the file's own extensive prior
+  comments about this exact naming pitfall. No changes needed there.
+- `astro.config.mjs` has `output: 'static'` and no `outDir` override, so
+  `astro build`'s default `./dist` matches `wrangler.jsonc`'s
+  `assets.directory: "./dist"` exactly — confirmed, not assumed (no Cloudflare
+  adapter package is used here at all; this is a hand-written `server/
+  worker.ts` in Workers "Advanced Mode," per that file's own docstring about
+  the `/api/comment` bug this same distinction fixed earlier).
+- `wrangler` (`^4.0.0`) is already a `site/` devDependency, and
+  `package-lock.json` exists — `npm ci` has what it needs.
+- **Not verifiable from this environment, flagged rather than assumed
+  correct**: whether each named Worker (`brookingsview`, `morenovalleyview`)
+  already has its Custom Domain trigger bound in the Cloudflare dashboard.
+  `wrangler.jsonc` has no `routes` block, meaning domain binding is
+  dashboard-managed (a normal, valid setup) — but this repo can't confirm
+  that binding is intact. Since the domains are demonstrably live and
+  serving *something* today, some binding exists; worth a quick dashboard
+  glance after the fix to be sure `wrangler deploy` is updating the Worker
+  that's actually bound to brookingsview.com/morenovalleyview.com.
+- **A separate, pre-existing dependency, not part of this fix**: the running
+  Worker needs three of its own runtime secrets bound directly to it in
+  Cloudflare (`DATABASE_URL`, `ANTHROPIC_API_KEY`, `IP_HASH_SALT` — see
+  `server/_shared.ts`'s `Env` interface), for `/api/comment` and `/api/
+  shift-poll-vote` specifically. These are Worker-level secrets, entirely
+  separate from the GitHub Actions repo secrets this fix adds, and
+  `wrangler deploy` never touches already-set Worker secrets. If those
+  routes don't work after this fix ships, that's this separate,
+  independent thing to check — not a sign the deploy fix failed.
+
+### What shipped (safe cutover, not a replacement yet)
+
+Added real build+deploy steps to both workflows, positioned between the
+existing scrape/publish steps and the old hook — **the old
+`PAGES_DEPLOY_HOOK`/`PAGES_DEPLOY_HOOK_MOVAL` step is still in place in
+both files**, deliberately not removed yet. Each new path: `astro build`
+with the correct `SITE_CITY` (`brookings_sd` / `moreno_valley_ca`, matching
+the config filenames exactly, not a guess) and the existing `DATABASE_URL`
+secret, then `wrangler deploy --env brookings` / `--env moreno_valley`
+using two new secrets (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`)
+that don't exist in the repo yet — the owner is adding those outside this
+session. No secret value is printed, echoed, or hard-coded anywhere in
+either workflow.
+
+**This has NOT been verified live** — genuinely can't be, without
+`CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` existing as real secrets,
+which this session doesn't have access to add. Both YAML files were
+validated with `yaml.safe_load()` (correct structure, correct step order,
+old hook still present) — that confirms the workflow is well-formed, not
+that it will succeed. **The real test, once the owner has added the two
+secrets**: after the next run, does `https://morenovalleyview.com/
+city-hall/projects/` return 200 instead of 404? Same for
+`https://brookingsview.com/city-hall/projects/`. That page has never
+existed on the old deploy, so a 200 is unambiguous proof the new path
+shipped current code — not a coincidence or a cache artifact.
+
+**Do not remove the old `PAGES_DEPLOY_HOOK` step until that 200 is
+confirmed.** If the new path fails for any reason (token scope, account ID,
+a Custom Domain binding gap from the point above), the old hook is still
+there keeping whatever it's been rebuilding alive, and production isn't left
+with zero deploy path at all. Removing it is a deliberate, separate,
+follow-up commit after proof — not part of this one.
