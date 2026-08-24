@@ -4,15 +4,16 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ShareButtons from '../../components/ShareButtons.astro';
 import RelatedStories from '../../components/RelatedStories.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Byline from '../../components/Byline.astro';
 import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
 import {
-  getAllStories, getRelatedStories, formatOccursAt, formatDate, CATEGORY_LABELS,
+  getAllStories, getRelatedStories, formatOccursAt, formatDate, CATEGORY_LABELS, CATEGORY_HREFS,
   getWorkerPulseComments, getFacilities, buildVenueIndex, resolveVenue,
 } from '../../lib/db';
 import type { Story, Facility } from '../../lib/db';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
-import { buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd } from '../../lib/article-jsonld';
+import { buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
 
 export async function getStaticPaths() {
@@ -72,6 +73,16 @@ const venueFacility = story.source_type === 'event' && !story.is_recurring_serie
   : null;
 const cityHallFacility = isMeeting ? facilities.find((f) => f.slug === 'city-hall') ?? null : null;
 const canonicalUrl = new URL(`/s/${story.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
+// Fas 2.3 (breadcrumbs): CATEGORY_HREFS doesn't cover every source_type
+// (deliberately -- see that map's own comment on 'alert'), so a story
+// with no known parent section just gets a 2-level trail (Home > Title)
+// rather than a guessed, possibly-wrong middle crumb.
+const sectionHref = CATEGORY_HREFS[story.source_type];
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  ...(sectionHref ? [{ label: category, href: sectionHref }] : []),
+  { label: story.title, href: canonicalUrl },
+];
 const related = await getRelatedStories(story, 3);
 // Steg 3.5: en tecknad illustration matchad till artikeln, om en sådan finns.
 // Har inte samma mått som OG-korten (1200x630) -- inga hårdkodade width/height
@@ -99,6 +110,7 @@ const eventJsonLdObject = buildEventJsonLd(
 ---
 
 <BaseLayout title={`${story.title} — ${siteConfig.siteName}`} description={story.body.slice(0, 155)} ogSlug={story.slug} noindex={isNoindex}>
+  <Breadcrumbs trail={breadcrumbTrail} />
   <article class="story">
     {!hasByline && <p class="story__kind data">{kind}</p>}
     <h1>{story.title}</h1>
@@ -206,6 +218,10 @@ const eventJsonLdObject = buildEventJsonLd(
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildArticleJsonLd(story, heroUrl, siteConfig.siteName)
+  )} />
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
 
   {(() => {

@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import ShareButton from '../components/ShareButton.astro';
+import RelatedContent from '../components/RelatedContent.astro';
 import { getUpcomingStories, getPastStories, getProjects } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
@@ -35,10 +36,12 @@ const projects = await getProjects();
 
   {past.length > 0 && (
     <>
-      <SectionRule label="Recent meetings" />
+      <SectionRule label="Recent meetings" href="/city-hall/archive/" />
       <div class="stack">{past.map((story) => <StoryCard story={story} />)}</div>
     </>
   )}
+
+  <RelatedContent pageType="city_hall" />
 </BaseLayout>
 
 <style>

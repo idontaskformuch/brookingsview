@@ -53,6 +53,16 @@ export const CATEGORY_LABELS: Partial<Record<SourceType, string>> = {
   // att falla tillbaka på "Events".
   announcement: 'Announcement',
   workplace_watch_digest: 'Worker Pulse',
+  // Fas 2.3 (breadcrumbs, see NEEDS-HUMAN-REVIEW.md): the remaining
+  // source_types that get their own /s/[slug]/ page but weren't in this
+  // map before -- StoryCard.astro already computes its own "Events"/"City
+  // hall"/"Alert" kicker for these locally instead of reading this map, so
+  // adding them here is new (for breadcrumbs specifically), not a change
+  // to any existing rendering.
+  event: 'Events',
+  meeting: 'City hall',
+  meeting_followup: 'City hall',
+  weekly: 'This week',
 };
 
 /** De sex innehållstyperna från Content Track v1 -- en sammanhållen lista så att
@@ -82,6 +92,16 @@ export const CATEGORY_HREFS: Partial<Record<SourceType, string>> = {
   sports_digest: '/sports/',
   university_digest: '/university/',
   workplace_watch_digest: '/workplace-watch/',
+  // Fas 2.3 (breadcrumbs) -- see CATEGORY_LABELS' own comment just above
+  // for why these are new here specifically for that purpose. 'alert' is
+  // deliberately NOT included: there's no dedicated alerts section page,
+  // and guessing one (e.g. /events/) would misrepresent an alert's actual
+  // parent section -- its breadcrumb just skips straight to the page
+  // title instead of asserting a wrong middle crumb.
+  event: '/events/',
+  meeting: '/city-hall/',
+  meeting_followup: '/city-hall/',
+  weekly: '/this-week/',
 };
 
 export interface Story {
@@ -548,13 +568,38 @@ export async function getRelatedStories(
  * town-gated by redirect (university.astro/workplace-watch/index.astro) --
  * same pattern as everywhere else in this codebase, not a new mechanism.
  */
-export type RelatedPageType = 'traffic' | 'events' | 'university' | 'workplace_watch';
+export type RelatedPageType =
+  | 'traffic' | 'events' | 'university' | 'workplace_watch'
+  | 'city_hall' | 'jobs' | 'home_sales';
 
 export interface RelatedItem {
   href: string;
   title: string;
   kicker: string;
   description?: string | null;
+}
+
+/** ISO week slug ("2026-w35") for a 'weekly' story's own occurs_at (its
+ *  Monday) -- mirrors lib/this-week.ts's weekInfoForInstant()/isoWeekInfo()
+ *  exactly, but deliberately duplicated rather than imported: this.ts
+ *  imports FROM db.ts (calendarDateParts), so importing this-week.ts back
+ *  here would be a circular module dependency. Same "duplicate across
+ *  layers" tradeoff this codebase already makes for OUTLIER_PRICE_FLOOR /
+ *  normalize_venue() / slugifyAddress() in astro.config.mjs. */
+function isoWeekSlug(occursAt: string, timezone: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date(occursAt));
+  const get = (t: string) => Number(parts.find((p) => p.type === t)!.value);
+  const local = new Date(Date.UTC(get('year'), get('month') - 1, get('day')));
+  const dayNum = (local.getUTCDay() + 6) % 7;
+  local.setUTCDate(local.getUTCDate() - dayNum + 3); // nearest Thursday
+  const isoYear = local.getUTCFullYear();
+  const jan4 = new Date(Date.UTC(isoYear, 0, 4));
+  const jan4DayNum = (jan4.getUTCDay() + 6) % 7;
+  const week1Monday = new Date(jan4.getTime() - jan4DayNum * 86_400_000);
+  const isoWeek = Math.round((local.getTime() - week1Monday.getTime()) / (7 * 86_400_000)) + 1;
+  return `${isoYear}-w${String(isoWeek).padStart(2, '0')}`;
 }
 
 async function latestStoryByType(sourceType: SourceType): Promise<RelatedItem | null> {
@@ -597,11 +642,24 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
     if (closure) {
       items.push({ href: closure.url || '/events/', title: closure.title || 'School closure alert', kicker: 'School alert', description: closure.district });
     }
+    // Fas 2 (SEO hub-linking, see NEEDS-HUMAN-REVIEW.md): roadwork and
+    // closure decisions come out of city council/county commission
+    // meetings -- no keyword classifier exists to pick out a specific
+    // "roadwork" meeting from the rest, so this links the hub itself
+    // rather than guessing at one meeting's relevance.
+    items.push({ href: '/city-hall/', title: 'City hall', kicker: 'City hall', description: 'Council and commission decisions on roads, permits and closures.' });
     if (gameItem) items.push(gameItem);
   } else if (pageType === 'events') {
     items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
     const weekly = await getLatestWeekly();
-    if (weekly) items.push({ href: `/s/${weekly.slug}/`, title: weekly.title, kicker: 'This week', description: null });
+    if (weekly && weekly.occurs_at) {
+      items.push({
+        href: `/this-week/${isoWeekSlug(weekly.occurs_at, siteConfig.timezone)}/`,
+        title: weekly.title, kicker: 'This week', description: null,
+      });
+    }
+    items.push({ href: '/facilities/', title: 'Venues & facilities', kicker: 'Facilities', description: 'Parks, libraries and community centers that host these events.' });
+    items.push({ href: '/events/past/', title: 'Past events', kicker: 'Archive', description: 'Every community event covered here, by month.' });
     if (isBrookings) {
       items.push({ href: '/university/', title: "What's on at SDSU", kicker: 'University', description: 'Athletics, music and more.' });
     } else if (isMorenoValley) {
@@ -612,13 +670,33 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
     if (nextEvent) {
       items.push({ href: `/s/${nextEvent.slug}/`, title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
     }
+    items.push({ href: '/events/campus/', title: 'Arts & culture at SDSU', kicker: 'Events', description: 'Music, theatre and special events on campus.' });
+    items.push({ href: '/jackrabbits/', title: 'Jackrabbits', kicker: 'Sports', description: 'Schedule and results.' });
     items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
     if (gameItem) items.push(gameItem);
   } else if (pageType === 'workplace_watch') {
     const homeSales = await latestStoryByType('home_sales_digest');
     if (homeSales) items.push(homeSales);
+    items.push({ href: '/jobs/', title: 'Jobs', kicker: 'Jobs', description: 'Current listings in and near Moreno Valley.' });
     items.push({ href: '/events/', title: "What's on", kicker: 'Events', description: 'This week in Moreno Valley.' });
     if (gameItem) items.push(gameItem);
+  } else if (pageType === 'city_hall') {
+    items.push({ href: '/city-hall/archive/', title: 'Meeting archive', kicker: 'Archive', description: 'Every past meeting covered here, by month.' });
+    items.push({ href: '/city-hall/projects/', title: 'Active city hall projects', kicker: 'City hall', description: 'Real developments and ordinances, tracked meeting by meeting.' });
+    if (isMorenoValley) {
+      items.push({ href: '/home-sales/', title: 'Recent home sales', kicker: 'Home sales', description: 'See how nearby decisions line up with local sale prices.' });
+    }
+    items.push({ href: '/events/', title: "What's on", kicker: 'Events', description: 'Community events this week.' });
+  } else if (pageType === 'jobs') {
+    if (isMorenoValley) {
+      items.push({ href: '/workplace-watch/', title: 'Worker Pulse', kicker: 'Worker Pulse', description: 'Employer review trends for Moreno Valley.' });
+      const digest = await latestStoryByType('workplace_watch_digest');
+      if (digest) items.push(digest);
+    }
+    if (gameItem) items.push(gameItem);
+  } else if (pageType === 'home_sales') {
+    items.push({ href: '/home-sales/archive/', title: 'Digest archive', kicker: 'Archive', description: 'Every monthly home-sales digest, oldest to newest.' });
+    items.push({ href: '/city-hall/projects/', title: 'City hall projects', kicker: 'City hall', description: 'Developments that may affect nearby home values.' });
   }
 
   return items;

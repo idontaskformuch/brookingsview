@@ -8,10 +8,12 @@
  *  townId-gate, eftersom facilities-tabellen redan är town_id-filtrerad via
  *  getFacilities()/getFacilityBySlug(). */
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import {
   getFacilities, getFacilityBySlug, FACILITY_CATEGORY_LABELS, FACILITY_SCHEMA_TYPE,
   formatCalendarDate, getUpcomingStories, buildVenueIndex, resolveVenue, formatOccursAt,
 } from '../../lib/db';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
 
 export async function getStaticPaths() {
@@ -43,8 +45,15 @@ const upcomingHere = allUpcoming
 
 const hasFullAddress = Boolean(facility.street_address && facility.postal_code);
 const schemaType = FACILITY_SCHEMA_TYPE[facility.category] ?? 'CivicStructure';
+const canonicalUrl = new URL(`/facilities/${facility.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Facilities', href: '/facilities/' },
+  { label: facility.name, href: canonicalUrl },
+];
 ---
 <BaseLayout title={`${facility.name} — ${siteConfig.siteName}`} description={description} ogSlug={`facility-${facility.slug}`}>
+  <Breadcrumbs trail={breadcrumbTrail} />
   <article class="facility">
     <p class="kind data">{categoryLabel}</p>
     <h1>{facility.name}</h1>
@@ -113,6 +122,10 @@ const schemaType = FACILITY_SCHEMA_TYPE[facility.category] ?? 'CivicStructure';
       ...(facility.website ? { url: facility.website } : {}),
     })} />
   )}
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <style>

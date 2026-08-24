@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd } from './article-jsonld';
+import { buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd, buildBreadcrumbJsonLd } from './article-jsonld';
 
 const SITE_NAME = 'Moreno Valley View';
 const HERO_URL = 'https://morenovalleyview.com/og/culture_essay-2026-08-01.png';
@@ -124,5 +124,60 @@ describe('buildDatasetJsonLd', () => {
     };
     const result = buildDatasetJsonLd(story, CANONICAL_URL, 'Moreno Valley', SITE_NAME);
     expect(result!.temporalCoverage).toBe('2026-07');
+  });
+});
+
+describe('buildBreadcrumbJsonLd', () => {
+  it('emits a positioned ListItem per trail entry', () => {
+    const trail = [
+      { label: 'Home', href: 'https://example.com/' },
+      { label: 'City hall', href: 'https://example.com/city-hall/' },
+      { label: 'City Council meets Tuesday', href: 'https://example.com/s/meeting-1/' },
+    ];
+    const result = buildBreadcrumbJsonLd(trail, 'https://example.com/s/meeting-1/');
+    expect(result['@type']).toBe('BreadcrumbList');
+    const items = result.itemListElement as Record<string, unknown>[];
+    expect(items).toHaveLength(3);
+    expect(items[0]).toMatchObject({ position: 1, name: 'Home', item: 'https://example.com/' });
+    expect(items[1]).toMatchObject({ position: 2, name: 'City hall', item: 'https://example.com/city-hall/' });
+  });
+
+  it('the last item always uses the real page URL, even if its own href in the trail differs', () => {
+    // The last crumb's own `href` is never actually used for navigation
+    // (Breadcrumbs.astro renders it as plain text) -- pageUrl is the
+    // single source of truth for what the CURRENT page's URL really is.
+    const trail = [
+      { label: 'Home', href: '/' },
+      { label: 'Current Page', href: '/wrong-or-stale-href/' },
+    ];
+    const result = buildBreadcrumbJsonLd(trail, 'https://example.com/real-canonical/');
+    const items = result.itemListElement as Record<string, unknown>[];
+    expect(items[1].item).toBe('https://example.com/real-canonical/');
+  });
+
+  it('resolves site-relative hrefs to absolute URLs -- every real caller passes relative paths', () => {
+    // Regression test: a real build emitted `"item": "/"` and
+    // `"item": "/city-hall/"` for the first two crumbs before this was
+    // fixed -- schema.org's BreadcrumbList requires an absolute URL per
+    // item, and every actual page (see [slug].astro etc.) builds its
+    // trail with plain root-relative hrefs like '/', '/city-hall/'.
+    const trail = [
+      { label: 'Home', href: '/' },
+      { label: 'City hall', href: '/city-hall/' },
+      { label: 'Library Board — Thu, Aug 13, 2026', href: 'https://brookingsview.com/s/meeting-10703/' },
+    ];
+    const result = buildBreadcrumbJsonLd(trail, 'https://brookingsview.com/s/meeting-10703/');
+    const items = result.itemListElement as Record<string, unknown>[];
+    expect(items[0].item).toBe('https://brookingsview.com/');
+    expect(items[1].item).toBe('https://brookingsview.com/city-hall/');
+  });
+
+  it('a 2-level trail (no known parent section) still produces valid markup', () => {
+    const trail = [
+      { label: 'Home', href: '/' },
+      { label: 'Heat Advisory', href: 'https://example.com/s/alert-1/' },
+    ];
+    const result = buildBreadcrumbJsonLd(trail, 'https://example.com/s/alert-1/');
+    expect((result.itemListElement as unknown[])).toHaveLength(2);
   });
 });

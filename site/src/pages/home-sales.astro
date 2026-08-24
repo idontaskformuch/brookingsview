@@ -16,6 +16,7 @@
  * recept) vill genuint ha published_at. Ett litet eget kort här i stället. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
+import RelatedContent from '../components/RelatedContent.astro';
 import { getRecentPropertySales, getContentByType, formatPrice } from '../lib/db';
 import { titleCaseAddress as sharedTitleCaseAddress, extractZip as sharedExtractZip, slugifyAddress, isOutlierSale } from '../lib/home-sales';
 import { siteConfig } from '../lib/site-config';
@@ -52,7 +53,7 @@ function monthYear(occursAt: string | null): string {
 
   {digests.length > 0 && (
     <>
-      <SectionRule label="Monthly digest" />
+      <SectionRule label="Monthly digest" href="/home-sales/archive/" />
       <div class="grid">
         {digests.map((story) => (
           <a class="digest-card" href={`/s/${story.slug}/`}>
@@ -129,6 +130,8 @@ function monthYear(occursAt: string | null): string {
     Source: <a href="https://www.rivcoacr.org/property-sales-report" rel="noopener">Riverside County Assessor's Property Sales Report</a>,
     updated quarterly.
   </p>
+
+  <RelatedContent pageType="home_sales" />
 </BaseLayout>
 
 <script>

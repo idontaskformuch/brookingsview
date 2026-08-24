@@ -147,7 +147,7 @@ const sections = (
 
   {past.length > 0 && (
     <>
-      <SectionRule label="Recently" />
+      <SectionRule label="Recently" href="/events/past/" />
       <div class="grid">{past.map((story) => <StoryCard story={story} compact kicker={townwideKicker} />)}</div>
     </>
   )}

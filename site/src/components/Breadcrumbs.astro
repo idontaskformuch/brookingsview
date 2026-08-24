@@ -1,0 +1,43 @@
+---
+/** Visible breadcrumb trail for deeper pages (SEO Fas 2.3) -- see
+ *  lib/article-jsonld.ts's buildBreadcrumbJsonLd() for the matching
+ *  structured data, built from this SAME `trail` prop so the two can never
+ *  drift apart. `trail` is Home-first, current-page-last; the last entry
+ *  renders as plain text (not a link), matching how a breadcrumb should
+ *  never link to the page it's already on. */
+import type { BreadcrumbEntry } from '../lib/article-jsonld';
+
+interface Props { trail: BreadcrumbEntry[] }
+const { trail } = Astro.props;
+---
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <ol>
+    {trail.map((item, i) => (
+      <li>
+        {i === trail.length - 1
+          ? <span aria-current="page">{item.label}</span>
+          : <a href={item.href}>{item.label}</a>}
+      </li>
+    ))}
+  </ol>
+</nav>
+
+<style>
+.breadcrumbs { margin-bottom: 0.875rem; }
+.breadcrumbs ol {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+.breadcrumbs li { display: flex; align-items: center; gap: 0.375rem; }
+.breadcrumbs li:not(:last-child)::after { content: '/'; color: var(--rule-strong); }
+.breadcrumbs a { color: var(--ink-soft); }
+.breadcrumbs a:hover { color: var(--navy); text-decoration: underline; }
+.breadcrumbs span[aria-current] { color: var(--ink); }
+</style>

@@ -11,12 +11,13 @@
  *  elsewhere" pattern as getUpcomingArtsEvents(). */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ShareButton from '../../components/ShareButton.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import {
   getPropertySaleParcels, getPropertySalesByPin, getContentByType, getProjects,
   formatPrice as sharedFormatPrice,
 } from '../../lib/db';
 import type { Project } from '../../lib/db';
-import { buildPropertySaleJsonLd } from '../../lib/article-jsonld';
+import { buildPropertySaleJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { titleCaseAddress, extractZip, slugifyAddress, isOutlierSale, digestSlugForSaleDate } from '../../lib/home-sales';
 import { siteConfig } from '../../lib/site-config';
 
@@ -52,6 +53,11 @@ const zip = extractZip(sales[0].address);
 const canonicalUrl = new URL(`/home-sales/${slugifyAddress(sales[0].address ?? '')}/`, Astro.site ?? siteConfig.siteUrl).href;
 
 const nearbyProject = zip ? projects.find((p) => p.home_sales_zip === zip) ?? null : null;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Home sales', href: '/home-sales/' },
+  { label: address, href: canonicalUrl },
+];
 
 function formatSaleDate(value: string | null): string {
   if (!value) return '—';
@@ -72,6 +78,7 @@ const description = latestSale.sale_price != null
   : `Recorded sale history for ${address}, from Riverside County's public assessor data.`;
 ---
 <BaseLayout title={title} ogSlug="section-home-sales" description={description}>
+  <Breadcrumbs trail={breadcrumbTrail} />
   <article class="property">
     <header class="lede">
       <h1>{address}</h1>
@@ -121,6 +128,9 @@ const description = latestSale.sale_price != null
   {propertyJsonLd && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(propertyJsonLd)} />
   )}
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <style>

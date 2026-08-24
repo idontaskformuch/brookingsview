@@ -1,0 +1,118 @@
+---
+/** SEO Fas 2.2 — full past-events archive, month-grouped, same orphan-
+ *  prevention purpose as /city-hall/archive.astro (see that file's comment
+ *  and NEEDS-HUMAN-REVIEW.md §25 -- the same find-orphan-pages.mjs run
+ *  found dozens of real /s/event-N/ pages with zero inbound links once
+ *  they roll off events.astro's 12-item "Recently" cap).
+ *
+ *  UNLIKE city-hall's archive: events.occurs_at is a REAL timestamp, not a
+ *  bare calendar date, so month-grouping here uses localDateParts()
+ *  (lib/events.ts, timezone-aware) rather than calendarDateParts() --
+ *  using the latter here would be the exact "UTC midnight read back in
+ *  the wrong local day" bug this session has fixed three times elsewhere
+ *  (see lib/this-week.ts's module docstring for the full rundown). An
+ *  event just after UTC midnight is still the previous evening locally in
+ *  both this site's timezones (America/Chicago, America/Los_Angeles).
+ *
+ *  getContentByType(), not getPastStories(): a handful of very early rows
+ *  (launch-day scraper runs, 2026-07-18) have occurs_at = NULL and are
+ *  invisible to any occurs_at-based query -- getPastStories' `occurs_at <
+ *  now() - interval` never matches NULL, so they were silently unreachable
+ *  from anywhere on the site (found while verifying this page, see
+ *  NEEDS-HUMAN-REVIEW.md §26). getContentByType has no date filter, so
+ *  they land in the 'undated' bucket instead of vanishing. Filtered to
+ *  exclude genuinely FUTURE events (still shown on events.astro's
+ *  upcoming sections, not duplicated here).
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import StoryCard from '../../components/StoryCard.astro';
+import ShareButton from '../../components/ShareButton.astro';
+import { getContentByType } from '../../lib/db';
+import type { Story } from '../../lib/db';
+import { localDateParts } from '../../lib/events';
+import { siteConfig } from '../../lib/site-config';
+
+const allEvents = await getContentByType(['event'], 5000);
+const events = allEvents.filter((e) => !e.occurs_at || new Date(e.occurs_at) < new Date());
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+function monthKey(story: Story): string {
+  if (!story.occurs_at) return 'undated';
+  const { y, m } = localDateParts(new Date(story.occurs_at), siteConfig.timezone);
+  return `${y}-${String(m).padStart(2, '0')}`;
+}
+function monthLabel(key: string): string {
+  const [y, m] = key.split('-').map(Number);
+  return `${MONTH_NAMES[m - 1]} ${y}`;
+}
+
+const groups = new Map<string, Story[]>();
+for (const e of events) {
+  const key = monthKey(e);
+  if (!groups.has(key)) groups.set(key, []);
+  groups.get(key)!.push(e);
+}
+// "Oldest to newest within each month" per the intro copy below --
+// getContentByType() orders by published_at, not occurs_at.
+for (const group of groups.values()) {
+  group.sort((a, b) => (a.occurs_at ? new Date(a.occurs_at).getTime() : 0) - (b.occurs_at ? new Date(b.occurs_at).getTime() : 0));
+}
+const sortedMonths = [...groups.keys()].sort().reverse();
+
+const title = `Past Events Archive — ${siteConfig.cityName}`;
+const description = `Every past community event covered in ${siteConfig.cityName}, ${siteConfig.stateName}, grouped by month.`;
+const canonicalUrl = new URL('/events/past/', Astro.site ?? siteConfig.siteUrl).href;
+
+const itemListJsonLd = events.length > 0 ? {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: title,
+  itemListElement: events.map((e, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: e.title,
+    url: new URL(`/s/${e.slug}/`, Astro.site ?? siteConfig.siteUrl).href,
+  })),
+} : null;
+---
+<BaseLayout title={title} wide ogSlug="section-events" description={description}>
+  <header class="lede">
+    <h1>Past events</h1>
+    <p>Every community event covered on this site, oldest to newest within
+    each month. Looking for what's coming up? See <a href="/events/">What's on →</a>.</p>
+    <ShareButton title={title} url={canonicalUrl} />
+  </header>
+
+  {sortedMonths.length > 0 ? sortedMonths.map((key) => (
+    <section class="month">
+      <h2 class="month__heading">{key === 'undated' ? 'Undated' : monthLabel(key)}</h2>
+      <div class="grid">
+        {groups.get(key)!.map((story) => <StoryCard story={story} compact />)}
+      </div>
+    </section>
+  )) : (
+    <p class="empty">No past events recorded yet.</p>
+  )}
+
+  {itemListJsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
+  )}
+</BaseLayout>
+
+<style>
+.lede { max-width: 42rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.month { margin-top: 2rem; }
+.month__heading {
+  font-size: 1.0625rem;
+  border-top: 2px solid var(--rule-strong);
+  padding-top: 0.4375rem;
+  margin: 0 0 0.875rem;
+}
+.grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+.empty { color: var(--ink-soft); }
+</style>

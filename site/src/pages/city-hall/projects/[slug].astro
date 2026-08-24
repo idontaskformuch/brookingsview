@@ -9,11 +9,13 @@
  *  document (or shows "pending" honestly when none exists yet). */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ShareButton from '../../../components/ShareButton.astro';
+import Breadcrumbs from '../../../components/Breadcrumbs.astro';
 import {
   getProjects, getProjectBySlug, getProjectUpdates, PROJECT_STATUS_LABELS,
   formatDate,
 } from '../../../lib/db';
 import type { Project, ProjectUpdate } from '../../../lib/db';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../../lib/article-jsonld';
 import { siteConfig } from '../../../lib/site-config';
 
 export async function getStaticPaths() {
@@ -64,6 +66,12 @@ function pendingReason(u: ProjectUpdate): string {
 }
 
 const earliestDate = updates[0]?.meeting_date ?? project.updated_at;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'City hall', href: '/city-hall/' },
+  { label: 'Projects', href: '/city-hall/projects/' },
+  { label: project.title, href: canonicalUrl },
+];
 
 const articleJsonLd = {
   '@context': 'https://schema.org',
@@ -92,6 +100,7 @@ const itemListJsonLd = updates.length > 0 ? {
 ---
 <BaseLayout title={`${project.title} — ${siteConfig.siteName}`} ogSlug="section-city-hall"
   description={project.description.slice(0, 155)}>
+  <Breadcrumbs trail={breadcrumbTrail} />
   <article class="project">
     <header class="lede">
       <p class="status" data-status={project.status}>{statusLabel}</p>
@@ -146,6 +155,9 @@ const itemListJsonLd = updates.length > 0 ? {
   {itemListJsonLd && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
   )}
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <style>

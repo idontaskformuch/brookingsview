@@ -1,0 +1,86 @@
+---
+/** SEO Fas 2.2 — full home-sales monthly digest archive. home-sales.astro
+ *  itself only shows the 12 most recent digests (getContentByType(...,
+ *  12)) -- real history goes back 21 months (see that page's own "bulk-
+ *  backfyllningsdagen" comment), so months 13-21 have no page linking to
+ *  them at all without this. occurs_at for a digest is the covered month,
+ *  stored as a bare calendar date (first of month) -- same
+ *  formatMonthYear()/calendarDateParts() UTC-safe treatment as
+ *  /city-hall/archive.astro, not the timezone-aware path /events/past.astro
+ *  needs (digests don't carry a real time-of-day the way events do).
+ *  moreno_valley_ca-only, matching home-sales.astro's own town gate. */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ShareButton from '../../components/ShareButton.astro';
+import { getContentByType, formatMonthYear } from '../../lib/db';
+import { siteConfig } from '../../lib/site-config';
+
+if (siteConfig.townId !== 'moreno_valley_ca') {
+  return Astro.redirect('/', 302);
+}
+
+const digests = await getContentByType(['home_sales_digest'], 999);
+
+const title = `Home Sales Digest Archive — ${siteConfig.cityName}`;
+const description = `Every monthly home-sales digest for ${siteConfig.cityName}, ${siteConfig.stateAbbr}, oldest to newest.`;
+const canonicalUrl = new URL('/home-sales/archive/', Astro.site ?? siteConfig.siteUrl).href;
+
+const itemListJsonLd = digests.length > 0 ? {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: title,
+  itemListElement: digests.map((d, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: d.title,
+    url: new URL(`/s/${d.slug}/`, Astro.site ?? siteConfig.siteUrl).href,
+  })),
+} : null;
+---
+<BaseLayout title={title} wide ogSlug="section-home-sales" description={description}>
+  <header class="lede">
+    <h1>Home sales digest archive</h1>
+    <p>Every monthly home-sales digest, oldest to newest. Looking for
+    recent individual sales? See <a href="/home-sales/">Recent home sales →</a>.</p>
+    <ShareButton title={title} url={canonicalUrl} />
+  </header>
+
+  {digests.length > 0 ? (
+    <ul class="list">
+      {digests.map((d) => (
+        <li>
+          <span class="covering">{formatMonthYear(d.occurs_at)}</span>
+          <a href={`/s/${d.slug}/`}>{d.title}</a>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty">No digests published yet.</p>
+  )}
+
+  {itemListJsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
+  )}
+</BaseLayout>
+
+<style>
+.lede { max-width: 42rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.list { list-style: none; margin: 1.5rem 0 0; padding: 0; max-width: 40rem; }
+.list li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.625rem 0;
+  border-top: 1px solid var(--rule);
+  font-size: 0.9375rem;
+}
+.covering {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.empty { color: var(--ink-soft); }
+</style>

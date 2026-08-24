@@ -2746,3 +2746,143 @@ scale: 3,668 of 3,734 entries carry a real, distinct `lastmod` — including
 actual most recent recorded `sale_date` (e.g. `/home-sales/8668-pigeon-
 pass-rd/` → `2024-07-11`, not today's build time) rather than the 4
 missing a `pin`/`sale_date` to key off, which are honestly left blank.
+
+## 26. SEO handoff — Fas 2 (2026-08-24)
+
+Hub-page internal linking and archive pages, using Fas 1.5's orphan-page
+findings as direct input (per the brief's own instruction).
+
+### 2.1 — Hub pages extended
+
+`lib/db.ts`'s `getRelatedContent()` (already-established "You might also
+like" pattern, extended rather than replaced, per the brief) gained three
+new page types (`city_hall`, `jobs`, `home_sales`) and real cross-links on
+every existing branch per the brief's own table: `/traffic` now links to
+`/city-hall/` (a generic link, not a specific meeting — no keyword
+classifier exists to reliably pick out "the roadwork meeting" from the
+rest, and guessing one would be worse than a plain section link);
+`/events` gained `/facilities/` (venues) and `/events/past/` (archive);
+`/university` gained explicit `/events/campus/` (corrected from a vaguer
+`/events/` link that already existed) and `/jackrabbits/`; `/workplace-
+watch` gained `/jobs/`; `/jobs` and `/home-sales` had no `RelatedContent`
+at all before this and now do. Small, related fix caught while touching
+this file: `getRelatedContent('events')`'s "This week" card linked to the
+OLD `/s/<weekly-slug>/` URL — missed when §24 updated `WeeklyRoundup.astro`
+to the new `/this-week/<iso-week>/` URL, now consistent (via a small
+`isoWeekSlug()` helper duplicated locally rather than importing
+`lib/this-week.ts`, which itself imports FROM `db.ts` — a real circular-
+import risk avoided rather than hit and fixed).
+
+### 2.2 — Archive pages
+
+Three new pages: `/city-hall/archive/`, `/events/past/`, `/home-sales/
+archive/` (Moreno Valley only, matching `home-sales.astro`'s own gate).
+All month-grouped, single flat pages rather than year-subpages — real data
+only spans a few months since launch, so year-splitting would be
+structure for data that doesn't exist yet (add it later if the archive
+genuinely outgrows one page). Each hub's own "recent" `SectionRule` now
+carries an `href` to its archive (`city-hall.astro`'s "Recent meetings,"
+`events.astro`'s "Recently," `home-sales.astro`'s "Monthly digest").
+Meetings/digests group by `formatMonthYear()`/`calendarDateParts()` (bare
+calendar dates, no timezone conversion); events group by `localDateParts()`
+(real timestamps, timezone-aware) — same split this whole session has
+enforced repeatedly, see `lib/this-week.ts`'s module docstring for the
+full rundown of why conflating the two is a real, previously-hit bug class.
+
+**A second real bug, found only by actually re-running the orphan
+script after building these pages (not assumed fixed just because the
+pages existed)**: the first version used `getPastStories()`, which filters
+on `occurs_at < now() - interval`. A `NULL` `occurs_at` fails that
+comparison in SQL (`NULL < anything` is `NULL`, not true), so it silently
+excludes them — and a live check found exactly that: `event-1`, `event-4`
+through `event-10`, `meeting-37`, `meeting-38`, and others are real launch-
+day rows (`published_at: 2026-07-18`) with `occurs_at: NULL`, invisible to
+EVERY date-based query on the whole site, not just this new one. Confirmed
+directly against the database, not guessed. Switched both archive pages to
+`getContentByType()` (no date filter at all) with a **client-side** filter
+(`!occurs_at || occurs_at < now()`) so past-and-undated rows both qualify
+while genuinely future ones don't get duplicated off the hub's "upcoming"
+section — undated rows land in an explicit "Undated" bucket rather than
+being silently dropped or guessed into a wrong month.
+
+### 2.3 — Breadcrumbs
+
+New `components/Breadcrumbs.astro` (visible trail) + `lib/article-jsonld.ts`
+`buildBreadcrumbJsonLd()` (schema.org `BreadcrumbList`), built from the
+exact same `trail` array so the two can never drift apart. Wired into
+`/s/[slug].astro` (covers every digest permalink too — `home_sales_digest`/
+`workplace_watch_digest` are just `source_type` values on that same route,
+not separate pages), `/facilities/[slug].astro`, `/city-hall/projects/
+[slug].astro`, and `/home-sales/[slug].astro`. `CATEGORY_LABELS`/
+`CATEGORY_HREFS` (already existed, used elsewhere) gained `event`/
+`meeting`/`meeting_followup`/`weekly` entries so `/s/[slug]/`'s breadcrumb
+can look up a real parent section for those too — `alert` deliberately
+excluded (no real parent section exists; a 2-line, Home-only trail is
+honest, a guessed one wouldn't be).
+
+**A third real bug, caught by reading actual build output, not assumed
+correct from the code**: the first version's JSON-LD emitted `"item": "/"`
+and `"item": "/city-hall/"` — site-root-relative paths, which fail
+schema.org's BreadcrumbList validation (every item needs an absolute URL).
+Every real call site passes relative hrefs (correct for the VISIBLE `<a>`
+tags), so the fix resolves them to absolute in `buildBreadcrumbJsonLd()`
+itself, once, using `pageUrl`'s own origin — no call site needed to change.
+Added a regression test asserting this specifically (relative in, absolute
+out), not just a happy-path test that would have passed with the bug
+still present.
+
+### Verified, not assumed
+
+Real, isolated builds both towns, `astro check` (0 errors), `npm run test`
+(127/127, 4 new: 3 breadcrumb JSON-LD cases + the relative-to-absolute
+regression). Brookings orphan count: **52 → 8** after the fix (down from
+the §25 baseline) — every `/s/event-N/`/`/s/meeting-N/` orphan is gone;
+the 8 remaining are the same accepted structural cases from §25 (Search
+Console verification file, PWA offline page, Moreno-Valley-only pages that
+redirect on Brookings) plus two genuinely out-of-scope items left as
+known, documented gaps rather than scope creep: `/s/alert-220/` (an
+expired alert — ephemeral by nature, low value to chase) and `/s/
+jackrabbit-arcade-launch/` (a one-off announcement with no natural
+archive home in this pass's scope). Moreno Valley: **24 → 19** — the
+`/farm-report/`/`/jackrabbits/`/`/play/`/`/university/` structural
+entries and `/home-sales/archive/` (this town-restricted page itself
+redirects on the "wrong" side — wait, this one doesn't apply, see below)
+are the same expected pattern flipped town-to-town. `/home-sales/archive/`
+is NOT in Moreno Valley's orphan list (it's genuinely linked there, unlike
+Brookings where the whole home-sales section redirects away).
+
+**Breadcrumb JSON-LD** spot-checked on real pages, all absolute: a meeting
+(`Home → City hall → Library Board — Thu, Aug 13, 2026`), a facility
+(`Home → Facilities → Arrowhead Park`), a project (`Home → City hall →
+Projects → Outlot 2 Section 23 Rezoning`), and a Moreno Valley home-sales
+address page (`Home → Home sales → 10001 Deep Canyon Rd`). Contamination +
+trailing-slash: clean on every rebuild this phase (four full Brookings
+rebuilds and two Moreno Valley rebuilds were needed to land the bug fixes
+above — each one re-verified end to end, not just the specific file that
+changed).
+
+### A fourth finding — NOT fixed here, needs a decision
+
+Moreno Valley's remaining 19 orphans include 12 `/s/event-N/` pages that
+are **NOT the NULL-occurs_at bug** — confirmed directly against the
+database: these have real, valid `occurs_at` values 2-4 months in the
+future (e.g. `event-15813` → `2026-12-01`). Root cause is different:
+`events.astro` (and `/events/[facet].astro`) fetch upcoming events via
+`getUpcomingStories(['event'], 200)` — a fixed 200-item cap that's more
+than enough for Brookings (21 total upcoming events, confirmed) but far
+too small for Moreno Valley (**733 total upcoming events**, confirmed) —
+roughly 533 real, scheduled Moreno Valley events are currently invisible
+to the events hub and its facet pages purely because they're further out
+than the 200th-nearest event. This cap predates this SEO phase (it's been
+in `events.astro` since Week 2's event-facets work) — Fas 1.5's orphan
+scan just happened to be the first thing to surface it as a concrete,
+measured gap rather than a theoretical one.
+
+**Deliberately not fixed in this pass**: raising the cap is cheap
+mechanically, but it's not a free fix — `events.astro`'s own "Further out"
+bucket renders every upcoming item as a card, so a blind limit increase
+would make that bucket (and the page) balloon to hundreds of cards, which
+is a real UX regression, not just a number to tune. This needs an actual
+decision (raise the fetch limit but cap what's DISPLAYED vs. paginate vs.
+something else), not a unilateral pick — flagged for the owner rather than
+guessed at, same principle as the workers.dev question in §25.

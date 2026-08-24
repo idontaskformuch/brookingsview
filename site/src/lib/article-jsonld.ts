@@ -176,3 +176,39 @@ export function buildPropertySaleJsonLd(
     })),
   };
 }
+
+/**
+ * BreadcrumbList structured data (SEO Fas 2.3) -- shared by every deeper
+ * page's Breadcrumbs.astro rendering, so the visible trail and the JSON-LD
+ * can never drift out of sync (they're built from the exact same `trail`
+ * array). `trail` is Home-first, current-page-last; the current page's own
+ * `href` is optional since the last crumb is never a link in the visible
+ * breadcrumb, but schema.org's BreadcrumbList still wants every item's URL
+ * -- `pageUrl` fills that one gap.
+ *
+ * Every caller passes site-root-relative hrefs in `trail` (`/city-hall/`,
+ * not `https://brookingsview.com/city-hall/`) -- correct for the visible
+ * <a> tags Breadcrumbs.astro renders, but schema.org's BreadcrumbList
+ * requires an ABSOLUTE url per item (a bare "/" fails Google's Rich
+ * Results validator). Resolved here, once, against `pageUrl`'s own origin
+ * -- every call site stays relative and simple, this is the one place that
+ * needs to know the difference.
+ */
+export interface BreadcrumbEntry {
+  label: string;
+  href: string;
+}
+
+export function buildBreadcrumbJsonLd(trail: BreadcrumbEntry[], pageUrl: string): Record<string, unknown> {
+  const origin = new URL(pageUrl).origin;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: trail.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: item.label,
+      item: i === trail.length - 1 ? pageUrl : new URL(item.href, origin).href,
+    })),
+  };
+}

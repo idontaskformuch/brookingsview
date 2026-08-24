@@ -14,6 +14,7 @@
  *  (b) begränsa en enskild arbetsgivares andel av listan, se EMPLOYER_CAP. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
+import RelatedContent from '../components/RelatedContent.astro';
 import { getRecentJobs, formatDate } from '../lib/db';
 import { salaryText, capByEmployer, slugifyCategory } from '../lib/jobs';
 import { siteConfig } from '../lib/site-config';
@@ -122,6 +123,8 @@ const { visible, overflowByCompany } = capByEmployer(jobs);
   <p class="source">
     Source: <a href="https://www.adzuna.com" rel="noopener">Adzuna</a>, refreshed daily. Listings older than 45 days are removed automatically.
   </p>
+
+  <RelatedContent pageType="jobs" />
 </BaseLayout>
 
 <script>
