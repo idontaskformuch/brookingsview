@@ -2579,3 +2579,170 @@ registration — `@astrojs/sitemap` auto-discovers `getStaticPaths` output.
 
 Outcome-filling mid-week and an email/newsletter version were both
 explicitly deferred by the brief itself — not attempted here.
+
+## 25. SEO handoff — Fas 0 and Fas 1 (2026-08-24)
+
+New handoff: make the site maximally legible to Google, no new functionality,
+no new AI cost, rule-based/static only. Working through it phase by phase per
+the brief's own instruction, reporting after each.
+
+### Fas 0 — already-stacked code
+
+`getRelatedContent()`/`RelatedContent.astro` and `ShareButton.astro` were
+already committed to `main` before this phase started (`92a9e3f`, `b2be900`)
+— nothing to commit here. Ran the requested combined verification anyway:
+`npx tsc -p site/server/tsconfig.json` (0 errors), `astro check` (0 errors),
+isolated builds both towns, contamination + trailing-slash sweep on both.
+Both clean. One pre-existing, already-tracked issue reconfirmed (not
+introduced by this phase, not fixed here either — out of scope): a handful
+of AI-generated `culture_essay`/`editorial`/`kvick_essa`/etc. story bodies
+mention "Brookings" inside Moreno Valley's own build (the same incident
+class `tests/test_town_guard.py` exists for) — this time visible on the
+individual `/s/[slug]/` pages themselves, not just the `/columns`/
+`/editorials` listing pages checked before.
+
+### Fas 1.1 — Sitemap coverage + lastmod
+
+**Coverage**: confirmed structurally correct already, not by inspection of
+one page at a time — `getAllStories()` (backing `/s/[slug].astro`'s
+`getStaticPaths`) has no `source_type` filter at all, so every story
+(including `announcement`, `workplace_watch_digest`, `home_sales_digest`,
+`weekly`) already gets a real page and is already in the sitemap via
+`@astrojs/sitemap`'s automatic route discovery — no per-type allowlist to
+maintain or forget. Confirmed `getUpcomingStories(['event', 'meeting',
+'announcement'], 40)` on the homepage already includes `announcement` (the
+brief's specific worry) — already fixed in an earlier phase, not new.
+
+**lastmod (new work)**: `@astrojs/sitemap` with no `serialize()` either
+omits `lastmod` or stamps it with build time — both wrong for a page whose
+real content hasn't changed in weeks. Added a `serialize()` in
+`astro.config.mjs` backed by a `Map<path, date>` built from real columns:
+`stories.published_at` (confirmed via `ai_pipeline/weekly.py`'s own
+`ON CONFLICT ... published_at = now()` that this genuinely reflects the
+last real content change, not just first-insert time), `projects.updated_at`,
+`facilities.verified_date`, and (Moreno Valley only) `property_sales`'
+latest `sale_date` per parcel. Queried directly with `@neondatabase/
+serverless`, not via `lib/db.ts` — that file assumes `import.meta.env`,
+which isn't populated yet at the point `astro.config.mjs` itself loads.
+
+**Real bug hit and fixed while building this**: the first version read
+`process.env.DATABASE_URL` directly and silently produced an EMPTY lastmod
+map on every local build (0 of 323 sitemap entries got a `lastmod`) — CI
+happens to set `DATABASE_URL` as a real step-level env var so it would have
+worked there, but that's exactly the kind of "works in CI, silently no-ops
+locally" gap this session's own house rules exist to catch. Root cause:
+`astro.config.mjs` evaluates before Vite's own env-loading pipeline
+populates anything from `.env` — confirmed by the fact that `lib/db.ts`'s
+`import.meta.env.DATABASE_URL` reads work fine during normal page
+rendering (a later phase of the same build) while a bare `process.env` read
+at config-eval time comes back empty. Fixed with Vite's own documented
+`loadEnv(mode, cwd, '')` (imported from `'vite'`, a real transitive
+dependency here already) instead of a raw `process.env` read — re-verified
+after the fix: 277 of 323 Brookings sitemap entries now carry a real,
+distinct `lastmod` (e.g. `/facilities/briggs-library/` →
+`2026-08-22T22:00:00.000Z`, not a build timestamp); the other 46 are hub/
+section pages that are genuinely always-current, correctly left without a
+fabricated one rather than guessing.
+
+### Fas 1.2 — robots.txt
+
+Already correct, not new: `src/pages/robots.txt.ts` derives the `Sitemap:`
+line from `Astro.site` (per-`SITE_CITY`, not hardcoded) — its own comment
+documents this was already fixed as "a riktig funktionell SEO-bugg, inte
+bara kosmetisk text" in an earlier phase. No `/api/*` or preview-domain
+disallow rules exist or are needed for indexability (see 1.3's open item
+below for the actual preview-domain question).
+
+### Fas 1.3 — Canonical + duplicates
+
+All already correct, confirmed by reading the actual mechanism rather than
+assuming: `BaseLayout.astro`'s canonical is `new URL(Astro.url.pathname,
+Astro.site)` — pathname only, so any `?zip=92553`-style query parameter
+(used by `/home-sales/?zip=...` as a client-side filter on the existing
+listing page) already canonicalizes to the bare URL, never creating an
+indexable variant. The REAL per-ZIP content already lives at its own clean
+URL (`/home-sales/zip/[zip]/`) separately, so nothing is lost. Trailing
+slash: already fixed and re-verified clean end-to-end in every build this
+phase (see NEEDS-HUMAN-REVIEW.md §17 for the original fix). `Astro.site`
+is set per-city in `astro.config.mjs`, so canonicals always carry the real
+production domain regardless of what host the build happens to run under.
+
+**Open item, flagged rather than guessed at (per the brief's own explicit
+instruction on this exact topic)**: whether Cloudflare's default
+`*.workers.dev` subdomain is still publicly routable for either named
+Worker (`brookingsview`, `morenovalleyview`) is Cloudflare-dashboard state,
+not something this repo can see — `wrangler.jsonc` has no `routes` block
+(domain binding is dashboard-managed, already noted in §21). This is a
+low-severity, already-mitigated risk even if it IS routable: every page's
+canonical tag points at the real production domain unconditionally, not
+derived from the request's Host header, so Google seeing a workers.dev URL
+would still be told the real URL is canonical. Worth a dashboard check
+(disable the workers.dev route, or confirm it's already disabled) but not
+something blocking the rest of this phase.
+
+### Fas 1.4 — Status codes
+
+Already correct: `wrangler.jsonc`'s `assets.not_found_handling:
+"404-page"` (its own comment: "en riktig 404-sida ska serveras för okända
+rutter") is a real Cloudflare Workers Static Assets setting that serves
+`dist/404.html` with an actual `404` status, not a `200` with empty body —
+and since this is `output: 'static'` with no SSR, EVERY unknown path
+(mistyped, a deleted story's old slug, anything not in a real
+`getStaticPaths` output) already falls through to this uniformly, with no
+separate case-by-case handling needed for `/s/[slug]`, `/facilities/[slug]`,
+etc. **Caveat carried over from §21, not re-litigated here**: this has
+never been confirmed against the LIVE site, because nothing built this
+session has actually reached production yet (blocked on the
+`CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` secrets the owner still
+needs to add, per §21) — this session has no way to check GitHub secret
+state directly (no `gh` CLI available in this environment).
+
+### Fas 1.5 — Orphan-page script
+
+New: `site/scripts/find-orphan-pages.mjs` — walks a real `dist/` build,
+extracts every page's actual `href="/..."` links (not the sitemap, not
+`getStaticPaths` — what a crawler would really discover by following
+links), and reports every generated page with zero real inbound internal
+links. Deliberately regex-based (no HTML-parser dependency), matching how
+every trailing-slash sweep this session has already scanned `dist/`.
+
+**Brookings run** (327 pages scanned): 52 orphans. Breaks down into three
+real categories, not one undifferentiated list:
+- **Expected, not a bug** (structural, not content): `/google1f70310a17e1b00a.html`
+  (a Search Console verification file — meant to be fetched directly, never
+  linked), `/offline/` (PWA service-worker fallback, shown offline, never
+  navigated to), `/home-sales/`, `/sports/`, `/workplace-watch/` (real pages
+  that exist in every town's build but immediately 302-redirect for the
+  "wrong" town and have no nav entry there either — Astro builds the same
+  page shape for both configs, this is that showing up honestly, not a leak).
+- **One real, standalone gap**: `/s/jackrabbit-arcade-launch/` (the arcade
+  game's launch announcement) has no page linking to it anymore — it was
+  reachable from the front-page feed when fresh and has nothing pointing to
+  it now that it's rolled off.
+- **The real signal, and exactly the input Fas 2 needs**: ~48 `/s/event-N/`
+  and `/s/meeting-N/` (plus one expired `/s/alert-220/`) — real past
+  events/meetings that rolled off `getPastStories()`'s 12-item cap (or the
+  active-alerts 14-day window) with nowhere else linking back to them. This
+  is precisely the archive gap Fas 2.2 (`/city-hall/archive`, `/events/past`)
+  is meant to close — these aren't hypothetical, they're the actual current
+  casualties.
+
+**Moreno Valley run** (3,738 pages scanned — the bulk of the difference
+from Brookings is the ~2,600 home-sales address pages, all correctly
+linked from `/home-sales/`): 24 orphans, the same two categories, scaled
+down and town-flipped: `/farm-report/`, `/jackrabbits/`, `/play/`,
+`/university/` (Brookings-only pages that exist in every build and
+redirect for the "wrong" town — MoVal's mirror of Brookings' `/home-sales/`
++ `/sports/` + `/workplace-watch/` finding above), plus 19 `/s/event-N/`
+archive casualties (no expired alerts or rolled-off meetings this run,
+just events) — the same Fas 2 input, at MoVal's own scale. No
+`workplace_watch_digest`/`home_sales_digest` orphans in this run — those
+digest pages are being linked correctly from their hub pages already.
+
+Both builds' usual contamination + trailing-slash sweeps: clean. Sitemap
+lastmod, same real-date pattern confirmed at Moreno Valley's much larger
+scale: 3,668 of 3,734 entries carry a real, distinct `lastmod` — including
+2,409 of 2,413 home-sales address pages, each stamped with that parcel's
+actual most recent recorded `sale_date` (e.g. `/home-sales/8668-pigeon-
+pass-rd/` → `2024-07-11`, not today's build time) rather than the 4
+missing a `pin`/`sale_date` to key off, which are honestly left blank.
