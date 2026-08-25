@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from ai_pipeline.publish import (
-    _fmt_hour_min, fmt_dt, fmt_time, group_event_slots, group_recurring_events,
+    _fmt_hour_min, fmt_dt, fmt_time, group_event_slots, group_recurring_events, slug_date,
 )
 from ai_pipeline.weekly import _clock
 
@@ -83,3 +83,20 @@ def test_group_recurring_events_series_dates_localized():
     # every listed date/time in the series must reflect Pacific, not raw UTC
     assert all("10:30 PM" in d or "PM" in d or "AM" in d for d in series["series_dates"])
     assert "10:30 PM" in series["series_dates"][0]
+
+
+def test_slug_date_never_shifts_with_timezone():
+    # SEO Fas 5's dated meeting slugs (see NEEDS-HUMAN-REVIEW.md) -- same
+    # rule as fmt_dt's date half above: meeting_date is a bare calendar
+    # date at UTC midnight, so the slug's date part must read the raw UTC
+    # calendar day directly, never reinterpret it through a timezone.
+    midnight_utc = datetime(2026, 8, 25, 0, 0, tzinfo=timezone.utc)
+    assert slug_date(midnight_utc) == "2026-08-25"
+
+
+def test_slug_date_accepts_iso_string():
+    assert slug_date("2026-08-25T00:00:00Z") == "2026-08-25"
+
+
+def test_slug_date_none_for_missing_value():
+    assert slug_date(None) is None

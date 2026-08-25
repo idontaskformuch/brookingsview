@@ -3077,3 +3077,89 @@ with a real resolved `Place` (address + geo coordinates); a facility
 `PostalAddress`; OG images confirmed real files at the expected URLs for
 both a facility and an archive page; orphan count unchanged (**19**);
 contamination and trailing-slash clean.
+
+## 29. SEO handoff — Fas 5, and close (2026-08-24/25)
+
+Long-tail structure — the last phase. "No new generation," just exposing
+what already exists (per the brief's own framing).
+
+**Events already individually addressable**: confirmed structurally, no
+work needed — `getAllStories()` (backing `/s/[slug].astro`) has no
+`source_type` filter, so every event already gets its own real URL.
+
+**Digest archives already fully linked**: home-sales — `/home-sales/
+archive/` (built in §26) already covers every month. Employer digests
+(`workplace_watch_digest`) — checked the real count first rather than
+assuming a gap existed: only **5 rows total** exist right now (one per
+employer, all from the same first month of data), and all 5 are already
+linked directly from `/workplace-watch/`'s own comparison table. Building
+an archive page for a 5-row, single-month dataset would be empty
+scaffolding for data that doesn't exist yet — deliberately not built.
+**Revisit once a second month of digests lands** (12+ rows, multiple
+months per employer) — that's when this actually becomes the same kind
+of orphan risk the other archive pages were built to prevent.
+
+### Dated meeting slugs — the one item that changes the production pipeline
+
+This is different in kind from every other change in this whole handoff:
+everything else touched the static SITE rendering layer, never the Python
+scrape/publish pipeline that runs hourly in production for both towns.
+Flagged this explicitly rather than just doing it, since editing
+`ai_pipeline/publish.py` carries real risk to the live ingest pipeline,
+not just a page's appearance — owner confirmed: change it, forward-only.
+
+`ai_pipeline/publish.py`: meeting slugs were `f"{source_type}-{row['id']}"`
+(e.g. `meeting-10703`) — an opaque numeric ID, no date. New
+`slug_date(value)` extracts `"YYYY-MM-DD"` directly from `meeting_date`'s
+raw UTC value (same "never timezone-convert a bare calendar date" rule as
+`fmt_dt()` in the same file — a real, previously-hit bug class this
+session has now fixed four separate times across two languages).
+`meeting` rows now get `f"{source_type}-{date}-{row['id']}"` (e.g.
+`meeting-2026-08-25-10703`) when a real date is available, falling back
+to the old numeric-only form otherwise (never fabricates a date).
+**Deliberately forward-only**: this only ever executes for a slug that
+doesn't exist in `known_slugs` yet, so no already-published row's slug
+ever changes — no renaming, no 301 redirects needed, zero risk to
+already-indexed URLs. `meeting_followup` keeps its own separate existing
+scheme (`ai_pipeline/meeting_followups.py`), untouched.
+
+Added 3 new unit tests to `tests/test_publish_timezone.py` (the
+established home for this exact bug class): the timezone-non-shift
+regression test, a string-input case, and a `None`-input case. Full
+suite: **206 passed, 1 skipped** (the skip predates this change). No site-
+side change needed or made — `/s/[slug].astro` already builds a page for
+whatever slug a story row actually has, regardless of format, so this
+takes effect automatically on the next real scrape/publish run with no
+separate deploy step.
+
+## Closing this SEO handoff
+
+All five phases done: Fas 0 (pre-existing code confirmed on `main`), Fas 1
+(sitemap lastmod, orphan-page tooling), Fas 2 (hub linking, 3 archive
+pages, breadcrumbs), Fas 3 (title tags/H1s, a 1,360-row production title
+retrofit), Fas 4 (WebSite JSON-LD; confirmed the rest already existed),
+Fas 5 (confirmed two of three items already satisfied; dated meeting
+slugs shipped forward-only). Every phase verified with real, isolated
+builds of both towns — never assumed correct from reading the code alone.
+
+**Two items remain genuinely open, both explicitly flagged rather than
+guessed at**, matching this handoff's own instruction to stop and report
+when something is bigger than expected:
+
+1. Whether Cloudflare's `*.workers.dev` subdomain is still publicly
+   routable for either Worker (§25) — dashboard state this repo can't see;
+   low severity regardless since canonical tags already point at the real
+   domain unconditionally.
+2. Moreno Valley's `events.astro` 200-item upcoming-events fetch cap
+   excludes roughly 533 real, far-future events from the hub (§26) — a
+   pre-existing limit, not introduced by this handoff; owner chose to
+   defer rather than fix now, since raising it isn't free (the page's own
+   "Further out" bucket would need real UX work, not just a bigger number).
+
+**Two real, verified DATA gaps, specific to Brookings, documented but not
+fixed** (both are scraper/data-curation work, not SEO surface work): zero
+Brookings events carry `venue_raw` (vs. 99.5% for Moreno Valley), so zero
+Brookings events currently qualify for `Event` rich results; most
+Brookings facilities (22 of 31) lack a structured street address for the
+same reason — real, worth a follow-up, but require verified source data
+this pass didn't have reason to chase down.

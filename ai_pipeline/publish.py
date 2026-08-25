@@ -252,6 +252,26 @@ def build_occurs_at(table: str, row: dict):
     return None
 
 
+def slug_date(value) -> str | None:
+    """"YYYY-MM-DD" ur meeting_date, för SEO Fas 5's dateradade meeting-
+    slugs (se NEEDS-HUMAN-REVIEW.md, "SEO Fas 5"). Samma "aldrig
+    tidszonskonvertera ett rent kalenderdatum"-regel som fmt_dt() ovan --
+    meeting_date är midnatt UTC utan tillförlitligt klockslag, så
+    datumdelen läses ut direkt ur den råa datetime/strängen, aldrig via en
+    tz-konvertering som skulle kunna flytta datumet en dag."""
+    if value is None:
+        return None
+    dt = value
+    if isinstance(dt, str):
+        try:
+            dt = datetime.fromisoformat(dt.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if not isinstance(dt, datetime):
+        return None
+    return dt.strftime("%Y-%m-%d")
+
+
 def build_title(table: str, row: dict) -> str:
     if table == "meetings":
         body = row.get("body") or "Meeting"
@@ -422,7 +442,19 @@ def publish_table(
             stale += 1
             continue
 
-        slug = f"{source_type}-{row['id']}"
+        # SEO Fas 5: meetings get a dated slug going forward
+        # ("meeting-2026-08-25-10703" instead of "meeting-10703") -- a
+        # more descriptive, indexable URL, per NEEDS-HUMAN-REVIEW.md.
+        # FORWARD-ONLY, deliberately: existing already-published rows keep
+        # their current slug forever (ON CONFLICT (town_id, slug) DO
+        # NOTHING below never touches an existing row's slug, and this
+        # branch only ever runs for a row that doesn't have one yet) --
+        # renaming already-indexed URLs would need real 301 redirects,
+        # which is a separate, much riskier change this pass doesn't make.
+        # meeting_followup keeps its own existing "meeting-followup-{id}"
+        # scheme (ai_pipeline/meeting_followups.py) -- untouched here.
+        date_part = slug_date(row.get("meeting_date")) if source_type == "meeting" else None
+        slug = f"{source_type}-{date_part}-{row['id']}" if date_part else f"{source_type}-{row['id']}"
         if slug in known_slugs:
             skipped += 1
             continue
