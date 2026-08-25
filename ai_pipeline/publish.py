@@ -493,6 +493,19 @@ def publish_table(
         snapshot_id = row.get("snapshot_id")
         occurs_at = build_occurs_at(table, row)
         venue_raw = row.get("venue") if table == "events" else None
+        # Brookings' library calendar (LibCal, source="library") never
+        # populates a LOCATION field at all -- confirmed live: 0 of 88 raw
+        # library-source event rows have `venue` set, vs. 36 of 37 for
+        # "chamber" (see NEEDS-HUMAN-REVIEW.md, "Brookings Venue Registry").
+        # Every event on the LIBRARY'S OWN calendar genuinely happens at the
+        # library building -- a structural fact, not a guess, since
+        # Brookings has exactly one public library (unlike Moreno Valley,
+        # which also has a "library" source but multiple real branches --
+        # see that source's own MAIN LIBRARY / MV MALL LIBRARY venue
+        # prefixes, where this same default would be WRONG). Scoped to
+        # town_id specifically, never a blanket "any library source" rule.
+        if table == "events" and not venue_raw and row.get("source") == "library" and town_id == "brookings_sd":
+            venue_raw = "Brookings Public Library"
         is_recurring_series = bool(row.get("is_recurring_series")) if table == "events" else False
         # A grouped/series row's ends_at belongs to members[0] alone (same
         # caveat as its starts_at/occurs_at) -- fine for a single event, not

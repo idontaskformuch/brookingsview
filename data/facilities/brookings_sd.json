@@ -1,29 +1,39 @@
 {
-  "_notes": "Handkurerat 2026-08-03 mot cityofbrookings-sd.gov och brookingslibrary.org. Library-timmar bekräftade mot två oberoende källor (Yelp och countyoffice.org), samstämmiga. City Hall/Parks & Rec-timmar från cityofbrookings-sd.gov facility- och directory-sidor. Inga personnamn utom offentliga tjänstemän i officiell roll. SDSU campus-anläggningarna (2026-08-23, se NEEDS-HUMAN-REVIEW.md 'Brookings Full Audit P3') tillagda för att dela venue-registret med Jackrabbits/university-täckningen -- adresser korsverifierade mot minst två oberoende källor (gojacks.com, Wikipedia, SDSU:s egen sdstate.edu/buildings, Waze) vardera. 23 stadsparker tillagda samma dag via scripts/ingest_brookings_facilities.py (GIS-import, se det skriptets docstring), inte i den här handkuraterade filen.",
+  "_notes": "Handkurerat 2026-08-03 mot cityofbrookings-sd.gov och brookingslibrary.org. Library-timmar bekräftade mot två oberoende källor (Yelp och countyoffice.org), samstämmiga. City Hall/Parks & Rec-timmar från cityofbrookings-sd.gov facility- och directory-sidor. Inga personnamn utom offentliga tjänstemän i officiell roll. SDSU campus-anläggningarna (2026-08-23, se NEEDS-HUMAN-REVIEW.md 'Brookings Full Audit P3') tillagda för att dela venue-registret med Jackrabbits/university-täckningen -- adresser korsverifierade mot minst två oberoende källor (gojacks.com, Wikipedia, SDSU:s egen sdstate.edu/buildings, Waze) vardera. 23 stadsparker tillagda samma dag via scripts/ingest_brookings_facilities.py (GIS-import, se det skriptets docstring), inte i den här handkuraterade filen. 2026-08-25 (se NEEDS-HUMAN-REVIEW.md, 'Brookings Venue Registry'): street_address/postal_code/aliases tillagda på de befintliga posterna nedan (matchar nu venue-resolution), plus fyra nya venues (Outdoor Adventure Center, Downtown Main Avenue, Edgebrook Golf Course, Good Roots Farm) -- alla adresser oförändrade mot vad som redan var handverifierat, endast maskinläsbar struktur tillagd. lat/lon geokodade via samma publika Esri World Geocoding Service (geocode.arcgis.com, ingen nyckel) som scripts/ingest_moval_facilities.py redan använder -- alla 10 träffar score >= 98.87 (de flesta exakt 100), inga gissade koordinater. Wooden Legs Brewing Company tillagd samma dag efter att ha stått olöst i venue-resolution-passet (1 förekomst) -- adress/aliaser lämnade direkt av ägaren, geokodad samma väg (score 100).",
   "facilities": [
     {
       "slug": "public-library",
       "name": "Brookings Public Library",
       "category": "library",
       "address": "515 3rd St, Brookings, SD 57006",
+      "street_address": "515 3rd St",
+      "postal_code": "57006",
+      "aliases": ["Brookings Public Library", "BPL", "515 3rd St"],
       "phone": "(605) 692-9407",
       "website": "https://www.brookingslibrary.org/",
       "hours_text": "Mon–Thu 9:30am–9pm, Fri–Sat 9:30am–5:30pm, Sun 1pm–5pm",
       "description": "The city's public library, located one block east of downtown and adjacent to the Children's Museum of South Dakota. Offers books, DVDs, audiobooks, board games, video games, maker kits, and a full calendar of community programs. Open roughly 66 hours a week.",
       "source_url": "https://www.cityofbrookings-sd.gov/facilities/facility/details/Brookings-Public-Library-8",
-      "verified_date": "2026-08-03"
+      "verified_date": "2026-08-03",
+      "lat": 44.308250,
+      "lon": -96.796070
     },
     {
       "slug": "city-hall",
       "name": "Brookings City Hall (City & County Government Center)",
       "category": "city_hall",
       "address": "520 3rd St, Suite 230, Brookings, SD 57006",
+      "street_address": "520 3rd St",
+      "postal_code": "57006",
+      "aliases": ["City & County Government Center", "City Council Chambers", "Government Center", "Community Room 300", "Conference Room 241", "520 3rd Street", "520 3rd St"],
       "phone": "(605) 692-6281",
       "website": "https://www.cityofbrookings-sd.gov/",
       "hours_text": "Mon–Thu 7am–5pm, Fri 7am–noon",
       "description": "Houses the City Clerk's Office, City Manager's Office, Community Development, Engineering, Finance, Human Resources, and Parks & Recreation departments. Shares the building with Brookings County offices; City Council and County Commission meetings are held in the third-floor chambers.",
       "source_url": "https://www.cityofbrookings-sd.gov/facilities/facility/details/City-and-County-Government-Center-16",
-      "verified_date": "2026-08-03"
+      "verified_date": "2026-08-03",
+      "lat": 44.307554,
+      "lon": -96.795883
     },
     {
       "slug": "dakota-nature-park",
@@ -44,11 +54,13 @@
       "address": "1396 Stadium Rd, Brookings, SD 57006",
       "street_address": "1396 Stadium Rd",
       "postal_code": "57006",
-      "aliases": ["Dykhouse Stadium"],
+      "aliases": ["Dykhouse Stadium", "Dana J. Dykhouse Stadium", "1396 Stadium Road"],
       "website": "https://gojacks.com/facilities/dana-j-dykhouse-stadium/2",
       "description": "SDSU's football stadium, opened 2016, capacity 19,340. Home of the Jackrabbits football team.",
       "source_url": "https://en.wikipedia.org/wiki/Dana_J._Dykhouse_Stadium",
-      "verified_date": "2026-08-23"
+      "verified_date": "2026-08-23",
+      "lat": 44.322468,
+      "lon": -96.782378
     },
     {
       "slug": "first-bank-trust-arena",
@@ -61,7 +73,9 @@
       "website": "https://www.sdstate.edu/buildings/first-bank-trust-arena",
       "description": "SDSU's basketball, volleyball and wrestling arena, capacity 5,000, opened fall 2024.",
       "source_url": "https://www.sdstate.edu/buildings/first-bank-trust-arena",
-      "verified_date": "2026-08-23"
+      "verified_date": "2026-08-23",
+      "lat": 44.318335,
+      "lon": -96.779247
     },
     {
       "slug": "oscar-larson-performing-arts-center",
@@ -83,12 +97,14 @@
       "address": "1300 N Campus Dr, Brookings, SD 57007",
       "street_address": "1300 N Campus Dr",
       "postal_code": "57007",
-      "aliases": ["Briggs Library"],
+      "aliases": ["Briggs Library", "Hilton M. Briggs Library", "1300 N Campus Dr"],
       "phone": "(605) 688-5107",
       "website": "https://www.sdstate.edu/hilton-m-briggs-library",
       "description": "SDSU's main library -- roughly 680,000 bound volumes, 1 million microforms, and over 600,000 government documents, plus electronic journal access. Distinct from the city's public library.",
       "source_url": "https://www.sdstate.edu/hilton-m-briggs-library",
-      "verified_date": "2026-08-23"
+      "verified_date": "2026-08-23",
+      "lat": 44.319438,
+      "lon": -96.783415
     },
     {
       "slug": "mccrory-gardens",
@@ -97,11 +113,82 @@
       "address": "631 22nd Ave, Brookings, SD 57007",
       "street_address": "631 22nd Ave",
       "postal_code": "57007",
-      "aliases": [],
+      "aliases": ["McCrory Gardens", "McCrory Gardens Education & Visitor Center", "631 22nd Ave"],
       "website": "https://www.sdstate.edu/mccrory-gardens",
       "description": "SDSU's public garden and arboretum -- part of the South Dakota Arboretum.",
       "source_url": "https://www.sdstate.edu/mccrory-gardens/plan-your-visit-mccrory",
-      "verified_date": "2026-08-23"
+      "verified_date": "2026-08-23",
+      "lat": 44.313530,
+      "lon": -96.768987
+    },
+    {
+      "slug": "brookings-county-outdoor-adventure-center",
+      "name": "Brookings County Outdoor Adventure Center",
+      "category": "other",
+      "address": "417 Western Ave, Brookings, SD 57006",
+      "street_address": "417 Western Ave",
+      "postal_code": "57006",
+      "aliases": ["Brookings County Outdoor Adventure Center", "Outdoor Adventure Center"],
+      "website": "https://www.cityofbrookings-sd.gov/",
+      "description": "A city-run outdoor recreation facility offering equipment rentals and programs for hiking, paddling, and other outdoor activities.",
+      "source_url": "https://www.cityofbrookings-sd.gov/",
+      "verified_date": "2026-08-25",
+      "lat": 44.309788,
+      "lon": -96.808745
+    },
+    {
+      "slug": "downtown-main-avenue",
+      "name": "Downtown Brookings — Main Avenue",
+      "category": "other",
+      "address": "Main Avenue, Brookings, SD 57006",
+      "street_address": "Main Avenue",
+      "postal_code": "57006",
+      "aliases": ["Downtown at Sundown", "Main Avenue", "downtown", "Main Ave", "Downtown Brookings"],
+      "description": "Brookings' downtown commercial district along Main Avenue -- home to the recurring \"Downtown at Sundown\" event series and other street-level community events. No single street address: events here happen at various points along Main Avenue, not one fixed building.",
+      "verified_date": "2026-08-25",
+      "lat": 44.310256,
+      "lon": -96.798612
+    },
+    {
+      "slug": "edgebrook-golf-course",
+      "name": "Edgebrook Golf Course",
+      "category": "other",
+      "address": "1004 N 22nd Ave, Brookings, SD 57006",
+      "street_address": "1004 N 22nd Ave",
+      "postal_code": "57006",
+      "aliases": ["Edgebrook Golf Course", "Edgebrook"],
+      "website": "https://www.cityofbrookings-sd.gov/",
+      "description": "The city's public 18-hole golf course, on the north side of town.",
+      "source_url": "https://www.cityofbrookings-sd.gov/",
+      "verified_date": "2026-08-25",
+      "lat": 44.317804,
+      "lon": -96.768174
+    },
+    {
+      "slug": "good-roots-farm",
+      "name": "Good Roots Farm and Gardens",
+      "category": "other",
+      "address": "3712 Medary Ave, Brookings, SD 57006",
+      "street_address": "3712 Medary Ave",
+      "postal_code": "57006",
+      "aliases": ["Good Roots Farm", "Good Roots Farm and Gardens", "3712 Medary Ave"],
+      "description": "A local farm on the north side of Brookings that hosts community events and gatherings.",
+      "verified_date": "2026-08-25",
+      "lat": 44.349108,
+      "lon": -96.787262
+    },
+    {
+      "slug": "wooden-legs-brewing-company",
+      "name": "Wooden Legs Brewing Company",
+      "category": "other",
+      "address": "309 5th Street, Suite 100, Brookings, SD 57006",
+      "street_address": "309 5th Street",
+      "postal_code": "57006",
+      "aliases": ["Wooden Legs Brewing Company", "Wooden Legs Brewing", "WLBC", "309 5th St"],
+      "description": "A local brewery and taproom that hosts recurring community events (trivia nights, live music).",
+      "verified_date": "2026-08-25",
+      "lat": 44.310518,
+      "lon": -96.799605
     }
   ]
 }

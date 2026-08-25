@@ -3163,3 +3163,215 @@ Brookings events currently qualify for `Event` rich results; most
 Brookings facilities (22 of 31) lack a structured street address for the
 same reason — real, worth a follow-up, but require verified source data
 this pass didn't have reason to chase down.
+
+## 30. Advertising & Sponsorship policy page (2026-08-25)
+
+New `/advertising/` on both towns — same static-page shape as `about.astro`/
+`how-we-gather-this.astro`/`corrections.astro` (hand-authored, no dynamic
+data). Content shared between towns; two per-town differences: the
+Worker Pulse conflict-of-interest bullet only renders for Moreno Valley
+(that section doesn't exist for Brookings, so the bullet would be
+nonsensical there — gated the same way `about.astro`'s own `isBrookings`
+ternary already handles per-town content); "Featured job listings"/
+"Featured business listings" are explicitly labeled "(planned, not yet
+available)" rather than implied as live, matching the brief's own
+"don't over-promise what doesn't exist yet" instruction — Section 3
+(pricing) points to `/contact/` instead of a pricing table, for the same
+reason (the self-serve Stripe system isn't built).
+
+New for this page specifically (no existing static page had this):
+`WebPage` JSON-LD with `datePublished`/`dateModified` — a real, hand-set
+date (`2026-08-25`, the day this shipped), not a build-time stand-in;
+update it by hand if the policy's substance ever changes. `WebPage`, not
+`Article`: this is a policy/reference document, not editorial content, so
+`Article`/`NewsArticle` would overclaim the same way it would for a
+recipe or a facility page (see `article-jsonld.ts`'s own "type choice
+matters" module docstring). Footer link added in `BaseLayout.astro`,
+positioned with the existing About/How we gather this/Corrections/
+Contact cluster (not the main nav, per the brief).
+
+### Verified, not assumed
+
+`astro check` (0 errors), `npm run test` (127/127, unchanged — a static
+content page needs no new logic/tests). Real, isolated builds both
+towns. Brookings: confirmed the Worker Pulse bullet does NOT render;
+canonical correct (`https://brookingsview.com/advertising/`); `WebPage`
+JSON-LD valid; footer link present; page appears in `sitemap-0.xml`;
+confirmed via the orphan-page script that `/advertising/` is NOT an
+orphan (linked from every page's footer) and the orphan count is
+otherwise unchanged (**8**, same pages as §28); contamination and
+trailing-slash sweeps clean. Moreno Valley: confirmed the Worker Pulse
+bullet DOES render; canonical correct
+(`https://morenovalleyview.com/advertising/`); footer link present;
+orphan count unchanged (**19**, same pages); contamination and
+trailing-slash sweeps clean.
+
+## 31. Brookings — venue registry + Event JSON-LD (2026-08-25)
+
+Zero Brookings events had a resolved venue → zero were eligible for
+Google's Event rich results, vs. Moreno Valley's 1,030 resolved (see
+§28's own finding, which this task follows up on directly).
+
+### Part 1 — registry
+
+All 10 venues from the brief added/enriched in `data/facilities/
+brookings_sd.json`, then seeded via `python -m scripts.seed_facilities
+brookings_sd`. 5 already existed (Public Library, City Hall, McCrory
+Gardens, Dana J. Dykhouse Stadium, Briggs Library) and only needed
+`street_address`/`postal_code`/`aliases` added; 4 were new (Outdoor
+Adventure Center, Downtown Main Avenue, Edgebrook Golf Course, Good Roots
+Farm). Edgebrook turned out to already exist as one of the 24 GIS-
+imported park rows (see §Facilities GIS below) — enriched in place, not
+duplicated (confirmed via `ON CONFLICT (town_id, slug) DO UPDATE`, and a
+before/after facility count: 31 → 34, not 31 → 35, confirming no
+duplicate was created). All addresses kept exactly as given — no address
+was invented or altered. Coordinates geocoded via the same public Esri
+World Geocoding Service (`geocode.arcgis.com`, no API key) `scripts/
+ingest_moval_facilities.py` already uses — all 10 matches scored ≥98.87
+(most exactly 100); none guessed.
+
+**A real bug found and fixed via actual testing, not assumed correct
+from the table**: "Downtown Brookings, 400 Main Ave, Brookings, SD,
+57006, United States" (a real `venue_raw` value) didn't match the
+`downtown-main-avenue` entry's aliases despite "Main Avenue" being
+listed — `ai_pipeline/venue_registry.py`'s `normalize_venue()` only keeps
+the text before the FIRST COMMA (`raw.split(",", 1)[0]`), so the
+matchable identity of that string is literally `"downtown brookings"`,
+not `"main ave"`. Added `"Downtown Brookings"` as its own literal alias
+rather than assuming the brief's alias list was already sufficient.
+
+### Part 2 — resolution pass
+
+Ran the real resolution logic (`ai_pipeline.venue_registry.resolve_venue`)
+against every actual Brookings event with a `venue_raw` value, not a
+simulated count:
+
+| Step | Resolved |
+|---|---|
+| Before this task | 0 |
+| After Part 1's registry fix alone | 3 of 4 |
+| After adding Wooden Legs Brewing Company (below) | 4 of 4 |
+| After the library-fallback backfill (below) | **88 of 88** |
+
+**The real finding, not assumed from the brief's framing**: only 4 of 137
+Brookings events had ANY `venue_raw` value at all before this task —
+checking the RAW `events` table (not `stories`) by source showed why:
+`chamber` populates `venue` on 36 of 37 rows, but `library` (LibCal, 88
+rows — the majority source) populates it on **zero**. This is a source-
+feed limitation (LibCal's ICS export never includes a LOCATION field for
+these events), not a registry gap — no amount of registry entries alone
+could have fixed it, since resolution only ever runs against a non-null
+`venue_raw` string.
+
+**Fix, confirmed with the owner before touching the pipeline** (same risk
+category as §29's dated-slug change — this edits `ai_pipeline/publish.py`,
+the live hourly pipeline for both towns, not just static-site code):
+added a scoped default — a library-sourced Brookings event with no venue
+now gets `venue_raw = "Brookings Public Library"`. This is a structural
+fact, not a guess: every event on the library's OWN calendar happens at
+the library, and Brookings has exactly one. **Deliberately gated to
+`town_id == "brookings_sd"` specifically**, not "any town's library
+source" — Moreno Valley also has a `library` event source, but multiple
+real branches (its own event titles are prefixed `MAIN LIBRARY:`/`MV MALL
+LIBRARY:`), so the same blanket default would have been actively wrong
+there. Confirmed Moreno Valley's library events already have `venue`
+populated at the source level (unaffected either way, but re-checked to
+be sure the assumption held).
+
+This new default only applies to events published GOING FORWARD (the
+per-row loop skips any slug already in `known_slugs`). New `scripts/
+backfill_brookings_library_venue.py` (dry-run by default, `--apply` to
+write, same safety pattern as `retrofit_story_titles.py`) backfilled the
+84 already-published library-sourced events that were still sitting on
+`venue_raw IS NULL` — joined `stories` back to the raw `events` table via
+the deterministic `event-{id}` slug, scoped to `source='library'` only
+(never touches the ~4 library events grouped into a recurring series,
+which get picked up on their next real publish instead — re-deriving
+their non-`id`-based hash slug here would risk matching the wrong row).
+Dry run first (84 candidates, real titles, e.g. "Triassic Trek Escape
+Room- Slot 7," "Teen Book Club"), then applied: 84 rows updated.
+
+**Wooden Legs Brewing Company** — the one venue left unresolved after
+Part 1 (1 occurrence: "Wooden Legs Brewing Company, 309 5th Street, Ste
+100, Brookings, SD, 57006") wasn't in the brief's table, so per verify-
+don't-invent it was left unresolved rather than trusting the unverified
+scraped address string. The owner supplied a verified address directly
+mid-task (309 5th Street, Suite 100, Brookings, SD 57006, aliases
+"Wooden Legs Brewing Company"/"Wooden Legs Brewing"/"WLBC"/"309 5th St")
+— added to the registry the same way as everything else (geocoded,
+score 100).
+
+3 new Python tests were NOT added for the `publish.py` change specifically
+(unlike §29's `slug_date()`, this is a plain conditional with no date-math
+edge cases to regress) — verified instead via the real resolution-pass
+script and a live build (below). Full Python suite still green: 205
+passed, 1 skipped (unchanged).
+
+### Part 3 — facilities GIS import (deferred, per the owner)
+
+Parks are already done: 24 rows imported via `scripts/
+ingest_brookings_facilities.py` in an earlier pass (documented in that
+script's own docstring) — confirmed live, Brookings currently has 24
+`park`-category facilities. The brief's other requested categories (fire
+stations, senior center, police, animal shelter, post offices) are
+**not available from the GIS source** — already thoroughly investigated
+in that earlier pass: the City of Brookings' ArcGIS Hub DCAT catalog
+(12 datasets) has exactly one usable facility layer ("City Parks");
+everything else is either a sub-feature of parks already covered, a
+planning/infrastructure layer (zoning, trails, annexations), or in one
+case ("Rentals") turned out to be a private-parcel property-assessor
+registry, correctly never used. **Owner's call: defer** — these
+categories would need hand-curation from the city's own website
+(a different research task, not a GIS pull), left as a documented,
+confirmed-real follow-up rather than attempted this pass.
+
+### Verified, not assumed
+
+`astro check` (0 errors), `npm run test` (127/127, unchanged). Full
+Python suite: 205 passed, 1 skipped (unchanged). Real, isolated Brookings
+build. Confirmed a real, complete `Event` JSON-LD on a live page
+(`event-1503`, "Postage Stamp Magnet Workshop"):
+
+```json
+{
+  "@type": "Event",
+  "name": "Brookings: Postage Stamp Magnet Workshop",
+  "startDate": "2026-08-08T10:00:00-05:00",
+  "location": {
+    "@type": "Place",
+    "name": "Brookings Public Library",
+    "address": { "streetAddress": "515 3rd St", "postalCode": "57006", ... },
+    "geo": { "latitude": 44.30825, "longitude": -96.79607 }
+  }
+}
+```
+
+**Site-wide count: 0 → 52 of 137 Brookings events now emit real Event
+JSON-LD** — not 88 (the resolved-venue count), and that gap is fully
+understood, not a bug:
+
+- Of the 88 resolved-venue events, 84 are library-sourced (single
+  events, backfilled) and 4 are chamber-sourced (all four happen to be
+  grouped into `event-series-*` pages: Downtown Brookings ×2, Wooden
+  Legs, Good Roots Farm).
+- **Series pages never get Event markup, by existing, correct, pre-dates-
+  this-task design** (`event-jsonld.ts`: "a series story... can't
+  honestly carry a single Event object" — no per-occurrence URL exists to
+  hang one date on). So all 4 chamber-resolved venues currently
+  contribute 0 to the visible count, even though they're genuinely
+  resolved in the registry — the benefit is invisible today but real:
+  any FUTURE non-series event scraped at these same venues gets full
+  Event markup immediately, no further registry work needed.
+- Of the 84 library-sourced single events, only 52 have a real
+  `occurs_at` value — the other 32 are the SAME pre-existing launch-day
+  rows (`published_at: 2026-07-18`) with `occurs_at: NULL` already
+  documented in §24 (This Week feature) and §26 (archive pages) as a
+  known, separate data gap. `buildEventJsonLd()` already correctly
+  excludes these (`Boolean(story.occurs_at)` gate) — there's no real date
+  to report, so no Event markup is the honest behavior, not a bug this
+  task introduced or should paper over.
+
+So: **52 is the real, defensible number** — every one of them a genuine,
+dated, resolved event with a verified address. Orphan count unchanged
+(**8**, confirming venue resolution has no effect on internal linking, as
+expected); contamination and trailing-slash sweeps clean.
