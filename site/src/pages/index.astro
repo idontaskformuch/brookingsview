@@ -376,6 +376,18 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       </a>
     </div>
   </section>
+
+  {/* SEO Fas 4 -- WebSite, homepage-only (NewsMediaOrganization already
+      renders site-wide via BaseLayout.astro, a distinct @type from this).
+      No potentialAction/SearchAction: the site has no internal search
+      feature, and claiming one would be exactly the kind of unverified
+      capability this project's structured data never asserts. */}
+  <script type="application/ld+json" is:inline set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: siteConfig.siteName,
+    url: siteConfig.siteUrl,
+  })} />
 </BaseLayout>
 
 <style>

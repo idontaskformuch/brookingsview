@@ -2989,3 +2989,91 @@ own call above); every hub `<title>` carries the city name (`"Recent Home
 Sales in Moreno Valley — Moreno Valley View"`, `"Worker Pulse in Moreno
 Valley — Moreno Valley View"`, etc.); orphan count unchanged from §26
 (**19**, same pages); contamination and trailing-slash sweeps both clean.
+
+## 28. SEO handoff — Fas 4 (2026-08-24)
+
+Structured data. Mostly a VERIFICATION pass, not a build pass — checked
+before writing anything, and found NewsArticle/Event/Place/BreadcrumbList
+(the last from §26) already exist, already type-select correctly, and
+already enforce the "never fabricate address/geo/offers" guardrail:
+
+- `buildArticleJsonLd()` (`lib/article-jsonld.ts`) already picks a real
+  schema.org subtype per `source_type` (`OpinionNewsArticle` for
+  editorials, `ReviewNewsArticle` for reviews, `NewsArticle` for meetings/
+  events/alerts — a meeting summary genuinely IS news content, not a
+  category error), already sets `datePublished`/`dateModified` from the
+  one real timestamp `stories` actually has (`published_at` — no separate
+  `updated_at` column exists on that table, and `published_at` IS the
+  real last-changed time even for a re-generated `weekly` story, per
+  `weekly.py`'s own `published_at = now()` on its `ON CONFLICT` update).
+- `buildEventJsonLd()` (`lib/event-jsonld.ts`) already only emits `Event`
+  when a venue actually resolves against the real `facilities` registry.
+- `facilities/[slug].astro` already only emits `Place`/`LocalBusiness`
+  when `street_address` AND `postal_code` are both present.
+- `BreadcrumbList` — built in §26, unaffected by this phase.
+
+**The one real, new gap**: no `WebSite` type existed anywhere (only
+`NewsMediaOrganization`, site-wide via `BaseLayout.astro` — a real
+Organization signal, but a distinct `@type` from `WebSite`). Added a
+minimal `WebSite` block (`name`, `url`, no `potentialAction`/
+`SearchAction` — the site has no internal search feature, and claiming
+one would be exactly the "unverified capability" this project's
+structured data never asserts) to `index.astro` only, alongside the
+existing sitewide Organization markup.
+
+### 4.1 — Open Graph
+
+Already fully covered structurally: every single page in this codebase
+renders through `BaseLayout.astro`, which unconditionally emits
+`og:title`/`og:description`/`og:type`/`og:site_name`/`og:url`/`og:image`
+(+ `1200x630` dimensions) from real per-page `title`/`description`/
+`ogSlug` props — confirmed spot-checking a hub page, an archive page, a
+facility page, and a project page, all correct and none sharing a
+duplicate description. `og:image` URLs are dynamically generated per
+`ogSlug` at build time (`lib/og.ts`, via `satori`/`sharp`) rather than
+pre-baked files that could go missing — confirmed the actual PNG exists
+on disk for every `ogSlug` checked, so there's no broken-image risk from
+reusing a shared `ogSlug` (e.g. the new archive pages reusing
+`section-city-hall`/`section-events`).
+
+### Two real, out-of-scope findings — not fixed here
+
+Neither is an SEO-code problem; both are underlying DATA gaps that limit
+how much of this phase's Event/Place structured data can actually surface
+for Brookings specifically, found only by checking real emitted output
+against the database, not assumed from the code being "correct":
+
+- **Brookings events never carry `venue_raw` at all** — confirmed
+  directly: **0 of 125** single (non-recurring-series) Brookings events
+  have `venue_raw` populated, vs. **1,030 of 1,035** for Moreno Valley
+  (99.5%). Since `Event` JSON-LD requires a resolved venue, this means
+  **zero** Brookings event pages currently emit `Event` markup at all —
+  not a code bug (the honest-omission behavior is working exactly as
+  designed), but a scraper-level data gap specific to Brookings' event
+  source(s). Fixing it means touching `scrapers/parsers/events.py` (or
+  whichever Brookings event source doesn't capture location), which is
+  scraper/ingest work, not SEO surface-layer work — out of scope for this
+  handoff's "no new functionality" boundary, flagged as a real follow-up.
+- **Brookings facilities are mostly missing a structured address**: only
+  **9 of 31** have both `street_address` and `postal_code` set (Moreno
+  Valley: 61 of 63). Facilities are hand-curated (`data/facilities/
+  <town_id>.json`, no scraper involved), so this is a data-entry gap, not
+  a code gap — fixable, but requires looking up and verifying each
+  facility's real address, which this pass didn't do (verify-don't-invent
+  applies here too: guessing addresses to fill the gap would be worse
+  than the current honest omission).
+
+### Verified, not assumed
+
+`astro check` (0 errors), `npm run test` (127/127, unchanged — no new
+logic, this phase is structured-data verification plus one small
+addition). Real, isolated builds both towns. Brookings: homepage now
+emits both `NewsMediaOrganization` and `WebSite`; OG tags spot-checked
+correct across 4 different page types; orphan count unchanged (**8**);
+contamination and trailing-slash clean. Moreno Valley: `Event` JSON-LD
+confirmed working end to end — **296 of 300** sampled event pages emit it,
+with a real resolved `Place` (address + geo coordinates); a facility
+(`Park` subtype) confirmed emitting `Place` with a real, complete
+`PostalAddress`; OG images confirmed real files at the expected URLs for
+both a facility and an archive page; orphan count unchanged (**19**);
+contamination and trailing-slash clean.
