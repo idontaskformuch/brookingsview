@@ -26,7 +26,7 @@ const jobs = await getRecentJobs();
 // that could quietly drift apart.
 const { visible, overflowByCompany } = capByEmployer(jobs);
 ---
-<BaseLayout title={`Jobs — ${siteConfig.siteName}`} wide ogSlug="section-jobs"
+<BaseLayout title={`Jobs in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-jobs"
   description={`Recent job listings in and near ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
   <header class="lede">
     <h1>Jobs</h1>

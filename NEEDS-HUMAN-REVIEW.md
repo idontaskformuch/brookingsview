@@ -2886,3 +2886,106 @@ is a real UX regression, not just a number to tune. This needs an actual
 decision (raise the fetch limit but cap what's DISPLAYED vs. paginate vs.
 something else), not a unilateral pick — flagged for the owner rather than
 guessed at, same principle as the workers.dev question in §25.
+
+## 27. SEO handoff — Fas 3 (2026-08-24)
+
+Landing-page intros, title tags/H1s, and meta descriptions.
+
+### 3.1 — Hub intro copy
+
+Every hub already had a real intro paragraph (not empty headings over a
+list) from earlier phases, but two of the seven — `city-hall.astro` and
+`events.astro` — never named the town anywhere in the VISIBLE copy (only
+in `<title>`/meta, which a reader on the page never sees). Fixed both to
+open with `{siteConfig.cityName}` explicitly, matching the brief's own
+`/events` example (what it covers, what it's sourced from, how often it
+updates). `home-sales.astro` had a literal hardcoded `"Moreno Valley"`
+string in its intro instead of `{siteConfig.cityName}` — harmless today
+(the page is already town-gated to Moreno Valley only) but inconsistent
+with how every other page in this codebase derives place text, fixed for
+when a third town is ever added.
+
+### 3.2 — Title tags and H1
+
+**Hub `<title>` tags**: of the 7 hub pages, only `events.astro` already
+put the city name directly in `<title>` (`Events in Moreno Valley — …`).
+The other six (`city-hall`, `jobs`, `home-sales`, `university`, `traffic`,
+`workplace-watch`) relied only on `siteConfig.siteName` (e.g. "Brookings
+View") to imply place — technically present as a substring, but not in
+the brief's own "place + entity" structure. All six now follow
+`events.astro`'s exact pattern (`"{Topic} in {cityName} — {siteName}"`).
+
+**Retroactive title migration — the big one, ran against production
+data**: checked real title compliance before writing anything (a query
+against the live database, not a guess): only 4 of 136 Brookings event
+titles and 5 of 1,068 Moreno Valley event titles already named their
+town — same gap across most `source_type`s except the ones whose own
+generator script already embeds the town (`weekly`, `home_sales_digest`,
+`sports_digest`). New `scripts/retrofit_story_titles.py`: a deliberately
+minimal, rule-based (no AI) transform — if a title doesn't already contain
+the town's `display_name` (case-insensitive), prepend `"{display_name}: "`
+to it. Idempotent (the same substring check is the skip condition on any
+re-run). Does NOT attempt the brief's own flowery example format ("Moreno
+Valley City Council to Consider [Issue] — August 25, 2026") — reshaping a
+title into that exact narrative requires understanding what's actually
+being decided, which is real content judgment the brief explicitly rules
+out for this pass (no new AI cost).
+
+Defaults to a dry run (prints a report, writes nothing) — required
+`--apply` to write. Ran dry-run first for both towns, reviewed a real
+sample with the owner (two judgment calls: whether to include opinion/
+essay content, and whether the occasional double-colon from an
+already-colon-containing title like `"Worker Pulse: ALDI"` needed a
+different separator — owner confirmed include everything, colon is fine
+as-is), then ran with `--apply --log` for both towns. **Applied: 207
+Brookings rows, 1,153 Moreno Valley rows** — full before/after JSON logs
+saved at `scripts/title-retrofit-brookings_sd.json` and
+`-moreno_valley_ca.json` for review or manual revert if ever needed.
+
+This changes the H1 on every affected `/s/[slug]/` page (the story's
+`title` IS the H1 there), every archive-page listing entry, every
+`ItemList` JSON-LD `name`, and the `<title>` tag (via the existing
+`` `${story.title} — ${siteConfig.siteName}` `` pattern) — one column
+change, propagated everywhere through code that already reads `title`
+from a single source, not many places that needed editing separately.
+
+### 3.3 — Meta descriptions
+
+Already fully compliant, no code change needed: `BaseLayout.astro`'s
+`description` prop defaults to `siteConfig.description` only when a page
+doesn't pass its own — checked every page using `BaseLayout` and found
+exactly two that don't pass a custom one: `404.astro` (correctly generic;
+a 404 doesn't need unique SEO copy) and `index.astro` (correctly uses the
+site-wide description BY DESIGN — that IS the homepage's own description,
+not a fallback misapplied elsewhere). Every content page already has a
+real, unique, hand-or-rule-written description — no duplicate-meta-
+description risk found.
+
+### H1 count check
+
+Spot-checked across every page type this phase touched or reviewed:
+exactly one `<h1>` per page, consistent with how `BaseLayout.astro` itself
+never injects one (only the page template does) — no regression risk from
+that mechanism regardless of what content changes.
+
+### Verified, not assumed
+
+`astro check` (0 errors), `npm run test` (127/127, unchanged this phase —
+no new test surface, this phase is copy/title changes, not new logic).
+Real, isolated builds both towns. Brookings: a retrofitted meeting's H1
+and `<title>` both correctly read `"Brookings: Library Board — Thu, Aug
+13, 2026"` (confirmed the SAME title propagates to both, from the single
+`stories.title` column, exactly as designed); every hub `<title>` now
+carries the city name (`"City Hall in Brookings — Brookings View"`,
+`"SDSU News in Brookings — Brookings View"`, etc.); orphan count
+unchanged from the end of §26 (**8**, same pages — confirms the retrofit
+didn't accidentally break any of the internal links Fas 2 just fixed,
+since a changed `title` could in principle have changed a `slug`-adjacent
+render path, and it didn't); contamination and trailing-slash sweeps both
+clean. Moreno Valley: a retrofitted `workplace_watch_digest`'s H1 and
+`<title>` both correctly read `"Moreno Valley: Worker Pulse: ALDI —
+August 2026"` (the accepted double-colon case, unchanged per the owner's
+own call above); every hub `<title>` carries the city name (`"Recent Home
+Sales in Moreno Valley — Moreno Valley View"`, `"Worker Pulse in Moreno
+Valley — Moreno Valley View"`, etc.); orphan count unchanged from §26
+(**19**, same pages); contamination and trailing-slash sweeps both clean.

@@ -43,12 +43,12 @@ function monthYear(occursAt: string | null): string {
   return new Date(occursAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
 ---
-<BaseLayout title={`Recent home sales — ${siteConfig.siteName}`} wide ogSlug="section-home-sales"
+<BaseLayout title={`Recent Home Sales in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-home-sales"
   description="Recently recorded home sales in Moreno Valley: address, price, and date, from Riverside County's public assessor data.">
   <header class="lede">
     <h1>Recent home sales</h1>
-    <p>Recently recorded home sales in Moreno Valley, straight from Riverside
-    County's public assessor data.</p>
+    <p>Recently recorded home sales in {siteConfig.cityName}, {siteConfig.stateAbbr},
+    straight from Riverside County's public assessor data. Updated quarterly.</p>
   </header>
 
   {digests.length > 0 && (

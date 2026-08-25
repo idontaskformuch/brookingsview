@@ -1,0 +1,1244 @@
+[
+  {
+    "slug": "alert-23435",
+    "source_type": "alert",
+    "old_title": "Heat Advisory",
+    "new_title": "Brookings: Heat Advisory"
+  },
+  {
+    "slug": "alert-258252",
+    "source_type": "alert",
+    "old_title": "Special Weather Statement",
+    "new_title": "Brookings: Special Weather Statement"
+  },
+  {
+    "slug": "alert-45077",
+    "source_type": "alert",
+    "old_title": "Extreme Heat Warning",
+    "new_title": "Brookings: Extreme Heat Warning"
+  },
+  {
+    "slug": "jackrabbit-arcade-launch",
+    "source_type": "announcement",
+    "old_title": "Take a Break: Play Our New Jackrabbit Arcade Game",
+    "new_title": "Brookings: Take a Break: Play Our New Jackrabbit Arcade Game"
+  },
+  {
+    "slug": "culture_essay-2026-07-27",
+    "source_type": "culture_essay",
+    "old_title": "The Quorum at Sundown",
+    "new_title": "Brookings: The Quorum at Sundown"
+  },
+  {
+    "slug": "culture_essay-2026-08-02",
+    "source_type": "culture_essay",
+    "old_title": "Governance Without a Stage",
+    "new_title": "Brookings: Governance Without a Stage"
+  },
+  {
+    "slug": "culture_essay-2026-08-16",
+    "source_type": "culture_essay",
+    "old_title": "The Meeting That Doesn't Belong on the List",
+    "new_title": "Brookings: The Meeting That Doesn't Belong on the List"
+  },
+  {
+    "slug": "culture_essay-2026-08-23",
+    "source_type": "culture_essay",
+    "old_title": "The Slow Pizza and the Fast Town",
+    "new_title": "Brookings: The Slow Pizza and the Fast Town"
+  },
+  {
+    "slug": "culture_essay-2026-08-24",
+    "source_type": "culture_essay",
+    "old_title": "The Library as the Town's Real Community Center",
+    "new_title": "Brookings: The Library as the Town's Real Community Center"
+  },
+  {
+    "slug": "editorial-2026-07-21",
+    "source_type": "editorial",
+    "old_title": "The Quiet Virtue of a Boring Notice",
+    "new_title": "Brookings: The Quiet Virtue of a Boring Notice"
+  },
+  {
+    "slug": "editorial-2026-07-28",
+    "source_type": "editorial",
+    "old_title": "When Every Notice Looks the Same, None of Them Do",
+    "new_title": "Brookings: When Every Notice Looks the Same, None of Them Do"
+  },
+  {
+    "slug": "editorial-2026-08-11",
+    "source_type": "editorial",
+    "old_title": "A Summer Calendar Worth Protecting",
+    "new_title": "Brookings: A Summer Calendar Worth Protecting"
+  },
+  {
+    "slug": "event-1",
+    "source_type": "event",
+    "old_title": "Heat Advisory",
+    "new_title": "Brookings: Heat Advisory"
+  },
+  {
+    "slug": "event-10",
+    "source_type": "event",
+    "old_title": "Triassic Trek Escape Room- Slot 7",
+    "new_title": "Brookings: Triassic Trek Escape Room- Slot 7"
+  },
+  {
+    "slug": "event-11",
+    "source_type": "event",
+    "old_title": "Tween the Pages Book Club - Group 2",
+    "new_title": "Brookings: Tween the Pages Book Club - Group 2"
+  },
+  {
+    "slug": "event-12",
+    "source_type": "event",
+    "old_title": "Laser Printer Certification Training",
+    "new_title": "Brookings: Laser Printer Certification Training"
+  },
+  {
+    "slug": "event-13",
+    "source_type": "event",
+    "old_title": "Laser Printer Certification Training",
+    "new_title": "Brookings: Laser Printer Certification Training"
+  },
+  {
+    "slug": "event-14",
+    "source_type": "event",
+    "old_title": "Teens in the Kitchen",
+    "new_title": "Brookings: Teens in the Kitchen"
+  },
+  {
+    "slug": "event-15",
+    "source_type": "event",
+    "old_title": "Ceramic Painting #2",
+    "new_title": "Brookings: Ceramic Painting #2"
+  },
+  {
+    "slug": "event-1503",
+    "source_type": "event",
+    "old_title": "Postage Stamp Magnet Workshop",
+    "new_title": "Brookings: Postage Stamp Magnet Workshop"
+  },
+  {
+    "slug": "event-16",
+    "source_type": "event",
+    "old_title": "Teens in the Kitchen",
+    "new_title": "Brookings: Teens in the Kitchen"
+  },
+  {
+    "slug": "event-17",
+    "source_type": "event",
+    "old_title": "Teen Book Club",
+    "new_title": "Brookings: Teen Book Club"
+  },
+  {
+    "slug": "event-172389",
+    "source_type": "event",
+    "old_title": "Teen Workshop Wednesday",
+    "new_title": "Brookings: Teen Workshop Wednesday"
+  },
+  {
+    "slug": "event-18",
+    "source_type": "event",
+    "old_title": "Teen Graphic Novel Club",
+    "new_title": "Brookings: Teen Graphic Novel Club"
+  },
+  {
+    "slug": "event-19",
+    "source_type": "event",
+    "old_title": "Spice Club: Coriander Seeds",
+    "new_title": "Brookings: Spice Club: Coriander Seeds"
+  },
+  {
+    "slug": "event-2",
+    "source_type": "event",
+    "old_title": "Teen Summer Reading Program",
+    "new_title": "Brookings: Teen Summer Reading Program"
+  },
+  {
+    "slug": "event-20",
+    "source_type": "event",
+    "old_title": "Summer Mocktail Mixology Class",
+    "new_title": "Brookings: Summer Mocktail Mixology Class"
+  },
+  {
+    "slug": "event-21",
+    "source_type": "event",
+    "old_title": "Puppet Workshop",
+    "new_title": "Brookings: Puppet Workshop"
+  },
+  {
+    "slug": "event-22",
+    "source_type": "event",
+    "old_title": "Bricks and Flicks: Jurassic Park",
+    "new_title": "Brookings: Bricks and Flicks: Jurassic Park"
+  },
+  {
+    "slug": "event-221",
+    "source_type": "event",
+    "old_title": "32nd Street Closure 8/24/2023",
+    "new_title": "Brookings: 32nd Street Closure 8/24/2023"
+  },
+  {
+    "slug": "event-223",
+    "source_type": "event",
+    "old_title": "Railroad Crossbucks Set to be Installed on County Road 33 Beginning September 20",
+    "new_title": "Brookings: Railroad Crossbucks Set to be Installed on County Road 33 Beginning September 20"
+  },
+  {
+    "slug": "event-23",
+    "source_type": "event",
+    "old_title": "Teen Summer Reading Program",
+    "new_title": "Brookings: Teen Summer Reading Program"
+  },
+  {
+    "slug": "event-24",
+    "source_type": "event",
+    "old_title": "Beaded Plant Craft Class",
+    "new_title": "Brookings: Beaded Plant Craft Class"
+  },
+  {
+    "slug": "event-25",
+    "source_type": "event",
+    "old_title": "Beaded Plant Craft Class",
+    "new_title": "Brookings: Beaded Plant Craft Class"
+  },
+  {
+    "slug": "event-258184",
+    "source_type": "event",
+    "old_title": "August Make & Take Monday - Pollinator Hangers",
+    "new_title": "Brookings: August Make & Take Monday - Pollinator Hangers"
+  },
+  {
+    "slug": "event-258185",
+    "source_type": "event",
+    "old_title": "Trivia Tuesday",
+    "new_title": "Brookings: Trivia Tuesday"
+  },
+  {
+    "slug": "event-258186",
+    "source_type": "event",
+    "old_title": "Drive to Donate",
+    "new_title": "Brookings: Drive to Donate"
+  },
+  {
+    "slug": "event-258187",
+    "source_type": "event",
+    "old_title": "Bingo at VFW",
+    "new_title": "Brookings: Bingo at VFW"
+  },
+  {
+    "slug": "event-258188",
+    "source_type": "event",
+    "old_title": "The 51st Annual Fine Art Exhibition",
+    "new_title": "Brookings: The 51st Annual Fine Art Exhibition"
+  },
+  {
+    "slug": "event-258189",
+    "source_type": "event",
+    "old_title": "Downtown @ Sundown",
+    "new_title": "Brookings: Downtown @ Sundown"
+  },
+  {
+    "slug": "event-258190",
+    "source_type": "event",
+    "old_title": "Sensory Friendly Play",
+    "new_title": "Brookings: Sensory Friendly Play"
+  },
+  {
+    "slug": "event-258191",
+    "source_type": "event",
+    "old_title": "Farmers Market",
+    "new_title": "Brookings: Farmers Market"
+  },
+  {
+    "slug": "event-258192",
+    "source_type": "event",
+    "old_title": "Bookstore Romance Day",
+    "new_title": "Brookings: Bookstore Romance Day"
+  },
+  {
+    "slug": "event-258194",
+    "source_type": "event",
+    "old_title": "Good Roots Pizza Nights",
+    "new_title": "Brookings: Good Roots Pizza Nights"
+  },
+  {
+    "slug": "event-258195",
+    "source_type": "event",
+    "old_title": "Soggy Doggy",
+    "new_title": "Brookings: Soggy Doggy"
+  },
+  {
+    "slug": "event-258196",
+    "source_type": "event",
+    "old_title": "Monday Play Day",
+    "new_title": "Brookings: Monday Play Day"
+  },
+  {
+    "slug": "event-258197",
+    "source_type": "event",
+    "old_title": "Paper Creations Camp",
+    "new_title": "Brookings: Paper Creations Camp"
+  },
+  {
+    "slug": "event-258198",
+    "source_type": "event",
+    "old_title": "Books + Banter",
+    "new_title": "Brookings: Books + Banter"
+  },
+  {
+    "slug": "event-258199",
+    "source_type": "event",
+    "old_title": "Trivia Tuesday",
+    "new_title": "Brookings: Trivia Tuesday"
+  },
+  {
+    "slug": "event-258201",
+    "source_type": "event",
+    "old_title": "Pizza Lab",
+    "new_title": "Brookings: Pizza Lab"
+  },
+  {
+    "slug": "event-258202",
+    "source_type": "event",
+    "old_title": "EBC Trivia Night",
+    "new_title": "Brookings: EBC Trivia Night"
+  },
+  {
+    "slug": "event-258203",
+    "source_type": "event",
+    "old_title": "A Morning with Makayla",
+    "new_title": "Brookings: A Morning with Makayla"
+  },
+  {
+    "slug": "event-258204",
+    "source_type": "event",
+    "old_title": "Slime 3.0 Camp",
+    "new_title": "Brookings: Slime 3.0 Camp"
+  },
+  {
+    "slug": "event-258205",
+    "source_type": "event",
+    "old_title": "Downtown @ Sundown",
+    "new_title": "Brookings: Downtown @ Sundown"
+  },
+  {
+    "slug": "event-258206",
+    "source_type": "event",
+    "old_title": "Slime 4.0 Camp",
+    "new_title": "Brookings: Slime 4.0 Camp"
+  },
+  {
+    "slug": "event-258207",
+    "source_type": "event",
+    "old_title": "Farmers Market",
+    "new_title": "Brookings: Farmers Market"
+  },
+  {
+    "slug": "event-258208",
+    "source_type": "event",
+    "old_title": "Karts/Mowers at University Plains Speedway",
+    "new_title": "Brookings: Karts/Mowers at University Plains Speedway"
+  },
+  {
+    "slug": "event-258209",
+    "source_type": "event",
+    "old_title": "SD State Championship at University Plains Speedway",
+    "new_title": "Brookings: SD State Championship at University Plains Speedway"
+  },
+  {
+    "slug": "event-258210",
+    "source_type": "event",
+    "old_title": "Good Roots Pizza Nights",
+    "new_title": "Brookings: Good Roots Pizza Nights"
+  },
+  {
+    "slug": "event-258211",
+    "source_type": "event",
+    "old_title": "Trivia Tuesday",
+    "new_title": "Brookings: Trivia Tuesday"
+  },
+  {
+    "slug": "event-258212",
+    "source_type": "event",
+    "old_title": "McCrory Gardens Community Days",
+    "new_title": "Brookings: McCrory Gardens Community Days"
+  },
+  {
+    "slug": "event-258213",
+    "source_type": "event",
+    "old_title": "Downtown @ Sundown",
+    "new_title": "Brookings: Downtown @ Sundown"
+  },
+  {
+    "slug": "event-258311",
+    "source_type": "event",
+    "old_title": "Pet Parade",
+    "new_title": "Brookings: Pet Parade"
+  },
+  {
+    "slug": "event-258341",
+    "source_type": "event",
+    "old_title": "Farmers Market",
+    "new_title": "Brookings: Farmers Market"
+  },
+  {
+    "slug": "event-259458",
+    "source_type": "event",
+    "old_title": "BARD Little Tournament on the Prairie",
+    "new_title": "Brookings: BARD Little Tournament on the Prairie"
+  },
+  {
+    "slug": "event-26",
+    "source_type": "event",
+    "old_title": "Vintage Afternoon Tea",
+    "new_title": "Brookings: Vintage Afternoon Tea"
+  },
+  {
+    "slug": "event-260542",
+    "source_type": "event",
+    "old_title": "Play Dates",
+    "new_title": "Brookings: Play Dates"
+  },
+  {
+    "slug": "event-260546",
+    "source_type": "event",
+    "old_title": "Play Dates",
+    "new_title": "Brookings: Play Dates"
+  },
+  {
+    "slug": "event-261648",
+    "source_type": "event",
+    "old_title": "Friends of University & Central Historic Neighborhood Block Party",
+    "new_title": "Brookings: Friends of University & Central Historic Neighborhood Block Party"
+  },
+  {
+    "slug": "event-261652",
+    "source_type": "event",
+    "old_title": "14th Annual SDSU Cheer Golf Tournaments",
+    "new_title": "Brookings: 14th Annual SDSU Cheer Golf Tournaments"
+  },
+  {
+    "slug": "event-262765",
+    "source_type": "event",
+    "old_title": "Good Roots Pizza Nights",
+    "new_title": "Brookings: Good Roots Pizza Nights"
+  },
+  {
+    "slug": "event-268125",
+    "source_type": "event",
+    "old_title": "Kid's Tie Pillows",
+    "new_title": "Brookings: Kid's Tie Pillows"
+  },
+  {
+    "slug": "event-27",
+    "source_type": "event",
+    "old_title": "Tween the Pages Book Club - Group 1",
+    "new_title": "Brookings: Tween the Pages Book Club - Group 1"
+  },
+  {
+    "slug": "event-28",
+    "source_type": "event",
+    "old_title": "Color Changing Vinyl Cup Workshop",
+    "new_title": "Brookings: Color Changing Vinyl Cup Workshop"
+  },
+  {
+    "slug": "event-29",
+    "source_type": "event",
+    "old_title": "Color Changing Vinyl Cup Workshop",
+    "new_title": "Brookings: Color Changing Vinyl Cup Workshop"
+  },
+  {
+    "slug": "event-3",
+    "source_type": "event",
+    "old_title": "Teen Workshop Wednesday",
+    "new_title": "Brookings: Teen Workshop Wednesday"
+  },
+  {
+    "slug": "event-30",
+    "source_type": "event",
+    "old_title": "Teen Snack Club",
+    "new_title": "Brookings: Teen Snack Club"
+  },
+  {
+    "slug": "event-31",
+    "source_type": "event",
+    "old_title": "Cooking #1",
+    "new_title": "Brookings: Cooking #1"
+  },
+  {
+    "slug": "event-3160",
+    "source_type": "event",
+    "old_title": "Fall Music Makers",
+    "new_title": "Brookings: Fall Music Makers"
+  },
+  {
+    "slug": "event-32",
+    "source_type": "event",
+    "old_title": "Teen Workshop Wednesday",
+    "new_title": "Brookings: Teen Workshop Wednesday"
+  },
+  {
+    "slug": "event-33",
+    "source_type": "event",
+    "old_title": "Cooking #2",
+    "new_title": "Brookings: Cooking #2"
+  },
+  {
+    "slug": "event-34",
+    "source_type": "event",
+    "old_title": "Cooking #3",
+    "new_title": "Brookings: Cooking #3"
+  },
+  {
+    "slug": "event-35",
+    "source_type": "event",
+    "old_title": "Tween the Pages Book Club - Group 2",
+    "new_title": "Brookings: Tween the Pages Book Club - Group 2"
+  },
+  {
+    "slug": "event-36",
+    "source_type": "event",
+    "old_title": "Embroidery: Leveling Up",
+    "new_title": "Brookings: Embroidery: Leveling Up"
+  },
+  {
+    "slug": "event-37",
+    "source_type": "event",
+    "old_title": "Embroidery: Leveling Up",
+    "new_title": "Brookings: Embroidery: Leveling Up"
+  },
+  {
+    "slug": "event-38",
+    "source_type": "event",
+    "old_title": "Book Nook Tins Craft Class",
+    "new_title": "Brookings: Book Nook Tins Craft Class"
+  },
+  {
+    "slug": "event-39",
+    "source_type": "event",
+    "old_title": "Book Nook Tins Craft Class",
+    "new_title": "Brookings: Book Nook Tins Craft Class"
+  },
+  {
+    "slug": "event-4",
+    "source_type": "event",
+    "old_title": "Triassic Trek Escape Room- Slot 1",
+    "new_title": "Brookings: Triassic Trek Escape Room- Slot 1"
+  },
+  {
+    "slug": "event-40",
+    "source_type": "event",
+    "old_title": "Teens in the Kitchen",
+    "new_title": "Brookings: Teens in the Kitchen"
+  },
+  {
+    "slug": "event-41",
+    "source_type": "event",
+    "old_title": "Teens in the Kitchen",
+    "new_title": "Brookings: Teens in the Kitchen"
+  },
+  {
+    "slug": "event-42",
+    "source_type": "event",
+    "old_title": "Teen Book Club",
+    "new_title": "Brookings: Teen Book Club"
+  },
+  {
+    "slug": "event-43",
+    "source_type": "event",
+    "old_title": "Teen Graphic Novel Club",
+    "new_title": "Brookings: Teen Graphic Novel Club"
+  },
+  {
+    "slug": "event-44",
+    "source_type": "event",
+    "old_title": "Cricut Certification Workshop",
+    "new_title": "Brookings: Cricut Certification Workshop"
+  },
+  {
+    "slug": "event-45",
+    "source_type": "event",
+    "old_title": "Spice Club: Lavender",
+    "new_title": "Brookings: Spice Club: Lavender"
+  },
+  {
+    "slug": "event-46",
+    "source_type": "event",
+    "old_title": "Bricks and Flicks: Raiders of the Lost Ark",
+    "new_title": "Brookings: Bricks and Flicks: Raiders of the Lost Ark"
+  },
+  {
+    "slug": "event-47",
+    "source_type": "event",
+    "old_title": "Barn Quilt Canvas Class",
+    "new_title": "Brookings: Barn Quilt Canvas Class"
+  },
+  {
+    "slug": "event-48",
+    "source_type": "event",
+    "old_title": "Tween the Pages Book Club - Group 1",
+    "new_title": "Brookings: Tween the Pages Book Club - Group 1"
+  },
+  {
+    "slug": "event-49",
+    "source_type": "event",
+    "old_title": "Beaded Plant Craft Class",
+    "new_title": "Brookings: Beaded Plant Craft Class"
+  },
+  {
+    "slug": "event-5",
+    "source_type": "event",
+    "old_title": "Triassic Trek Escape Room- Slot 2",
+    "new_title": "Brookings: Triassic Trek Escape Room- Slot 2"
+  },
+  {
+    "slug": "event-50",
+    "source_type": "event",
+    "old_title": "Beaded Plant Craft Class",
+    "new_title": "Brookings: Beaded Plant Craft Class"
+  },
+  {
+    "slug": "event-51",
+    "source_type": "event",
+    "old_title": "Tween the Pages Book Club - Group 2",
+    "new_title": "Brookings: Tween the Pages Book Club - Group 2"
+  },
+  {
+    "slug": "event-52",
+    "source_type": "event",
+    "old_title": "Felt Pennant Craft Class",
+    "new_title": "Brookings: Felt Pennant Craft Class"
+  },
+  {
+    "slug": "event-53",
+    "source_type": "event",
+    "old_title": "Felt Pennant Craft Class",
+    "new_title": "Brookings: Felt Pennant Craft Class"
+  },
+  {
+    "slug": "event-54",
+    "source_type": "event",
+    "old_title": "Teen Book Club",
+    "new_title": "Brookings: Teen Book Club"
+  },
+  {
+    "slug": "event-55",
+    "source_type": "event",
+    "old_title": "Teen Graphic Novel Club",
+    "new_title": "Brookings: Teen Graphic Novel Club"
+  },
+  {
+    "slug": "event-56",
+    "source_type": "event",
+    "old_title": "Water Bath Canning Basics",
+    "new_title": "Brookings: Water Bath Canning Basics"
+  },
+  {
+    "slug": "event-57",
+    "source_type": "event",
+    "old_title": "Spice Club: Herbes de Provence",
+    "new_title": "Brookings: Spice Club: Herbes de Provence"
+  },
+  {
+    "slug": "event-58",
+    "source_type": "event",
+    "old_title": "Oregon Trail Game- Slot 1",
+    "new_title": "Brookings: Oregon Trail Game- Slot 1"
+  },
+  {
+    "slug": "event-59",
+    "source_type": "event",
+    "old_title": "Oregon Trail Game- Slot 2",
+    "new_title": "Brookings: Oregon Trail Game- Slot 2"
+  },
+  {
+    "slug": "event-6",
+    "source_type": "event",
+    "old_title": "Triassic Trek Escape Room- Slot 3",
+    "new_title": "Brookings: Triassic Trek Escape Room- Slot 3"
+  },
+  {
+    "slug": "event-60",
+    "source_type": "event",
+    "old_title": "Oregon Trail Game- Slot 3",
+    "new_title": "Brookings: Oregon Trail Game- Slot 3"
+  },
+  {
+    "slug": "event-61",
+    "source_type": "event",
+    "old_title": "Oregon Trail Game- Slot 4",
+    "new_title": "Brookings: Oregon Trail Game- Slot 4"
+  },
+  {
+    "slug": "event-62",
+    "source_type": "event",
+    "old_title": "Oregon Trail Game- Slot 1",
+    "new_title": "Brookings: Oregon Trail Game- Slot 1"
+  },
+  {
+    "slug": "event-62195",
+    "source_type": "event",
+    "old_title": "Teen Boba & Origami",
+    "new_title": "Brookings: Teen Boba & Origami"
+  },
+  {
+    "slug": "event-63",
+    "source_type": "event",
+    "old_title": "Oregon Trail Game- Slot 2",
+    "new_title": "Brookings: Oregon Trail Game- Slot 2"
+  },
+  {
+    "slug": "event-63265",
+    "source_type": "event",
+    "old_title": "Teen Snack Club",
+    "new_title": "Brookings: Teen Snack Club"
+  },
+  {
+    "slug": "event-63268",
+    "source_type": "event",
+    "old_title": "Teens in the Kitchen",
+    "new_title": "Brookings: Teens in the Kitchen"
+  },
+  {
+    "slug": "event-64",
+    "source_type": "event",
+    "old_title": "Oregon Trail Game- Slot 3",
+    "new_title": "Brookings: Oregon Trail Game- Slot 3"
+  },
+  {
+    "slug": "event-64366",
+    "source_type": "event",
+    "old_title": "Teen Book Club",
+    "new_title": "Brookings: Teen Book Club"
+  },
+  {
+    "slug": "event-64367",
+    "source_type": "event",
+    "old_title": "Teen Graphic Novel Club",
+    "new_title": "Brookings: Teen Graphic Novel Club"
+  },
+  {
+    "slug": "event-65",
+    "source_type": "event",
+    "old_title": "Oregon Trail Game",
+    "new_title": "Brookings: Oregon Trail Game"
+  },
+  {
+    "slug": "event-66",
+    "source_type": "event",
+    "old_title": "Oregon Trail Game- Slot 1",
+    "new_title": "Brookings: Oregon Trail Game- Slot 1"
+  },
+  {
+    "slug": "event-67",
+    "source_type": "event",
+    "old_title": "Oregon Trail Game- Slot 2",
+    "new_title": "Brookings: Oregon Trail Game- Slot 2"
+  },
+  {
+    "slug": "event-68",
+    "source_type": "event",
+    "old_title": "Oregon Trail Game- Slot 3",
+    "new_title": "Brookings: Oregon Trail Game- Slot 3"
+  },
+  {
+    "slug": "event-69",
+    "source_type": "event",
+    "old_title": "Oregon Trail Game- Slot 4",
+    "new_title": "Brookings: Oregon Trail Game- Slot 4"
+  },
+  {
+    "slug": "event-7",
+    "source_type": "event",
+    "old_title": "Triassic Trek Escape Room- Slot 4",
+    "new_title": "Brookings: Triassic Trek Escape Room- Slot 4"
+  },
+  {
+    "slug": "event-70",
+    "source_type": "event",
+    "old_title": "Book Nook Tins Craft Class",
+    "new_title": "Brookings: Book Nook Tins Craft Class"
+  },
+  {
+    "slug": "event-71",
+    "source_type": "event",
+    "old_title": "Book Nook Tins Craft Class",
+    "new_title": "Brookings: Book Nook Tins Craft Class"
+  },
+  {
+    "slug": "event-72",
+    "source_type": "event",
+    "old_title": "Pie and Puzzles Competition",
+    "new_title": "Brookings: Pie and Puzzles Competition"
+  },
+  {
+    "slug": "event-8",
+    "source_type": "event",
+    "old_title": "Triassic Trek Escape Room- Slot 5",
+    "new_title": "Brookings: Triassic Trek Escape Room- Slot 5"
+  },
+  {
+    "slug": "event-9",
+    "source_type": "event",
+    "old_title": "Triassic Trek Escape Room- Slot 6",
+    "new_title": "Brookings: Triassic Trek Escape Room- Slot 6"
+  },
+  {
+    "slug": "event-97591",
+    "source_type": "event",
+    "old_title": "Tween the Pages Book Club - Group 1",
+    "new_title": "Brookings: Tween the Pages Book Club - Group 1"
+  },
+  {
+    "slug": "event-97601",
+    "source_type": "event",
+    "old_title": "Tween the Pages Book Club - Group 2",
+    "new_title": "Brookings: Tween the Pages Book Club - Group 2"
+  },
+  {
+    "slug": "event-series-1cb5bfa1f6c3618f",
+    "source_type": "event",
+    "old_title": "Teen Book Club",
+    "new_title": "Brookings: Teen Book Club"
+  },
+  {
+    "slug": "event-series-4320c625b7455ee9",
+    "source_type": "event",
+    "old_title": "Teen Workshop Wednesday",
+    "new_title": "Brookings: Teen Workshop Wednesday"
+  },
+  {
+    "slug": "event-series-56f493913c3e4808",
+    "source_type": "event",
+    "old_title": "Teen Graphic Novel Club",
+    "new_title": "Brookings: Teen Graphic Novel Club"
+  },
+  {
+    "slug": "event-series-88cc567a3ae22f85",
+    "source_type": "event",
+    "old_title": "Tween the Pages Book Club - Group 1",
+    "new_title": "Brookings: Tween the Pages Book Club - Group 1"
+  },
+  {
+    "slug": "event-series-a56493baee0555ce",
+    "source_type": "event",
+    "old_title": "Downtown @ Sundown",
+    "new_title": "Brookings: Downtown @ Sundown"
+  },
+  {
+    "slug": "event-series-b41aec73a804b3c3",
+    "source_type": "event",
+    "old_title": "Teens in the Kitchen",
+    "new_title": "Brookings: Teens in the Kitchen"
+  },
+  {
+    "slug": "event-series-ce7d56134880f760",
+    "source_type": "event",
+    "old_title": "Oregon Trail Game",
+    "new_title": "Brookings: Oregon Trail Game"
+  },
+  {
+    "slug": "event-series-d717064367fadbd5",
+    "source_type": "event",
+    "old_title": "Trivia Tuesday",
+    "new_title": "Brookings: Trivia Tuesday"
+  },
+  {
+    "slug": "event-series-eecc6f4fe54f3777",
+    "source_type": "event",
+    "old_title": "Tween the Pages Book Club - Group 2",
+    "new_title": "Brookings: Tween the Pages Book Club - Group 2"
+  },
+  {
+    "slug": "event-series-f9484b784f1872b2",
+    "source_type": "event",
+    "old_title": "Farmers Market",
+    "new_title": "Brookings: Farmers Market"
+  },
+  {
+    "slug": "event-series-fee722e78ec5ce49",
+    "source_type": "event",
+    "old_title": "Good Roots Pizza Nights",
+    "new_title": "Brookings: Good Roots Pizza Nights"
+  },
+  {
+    "slug": "jackrabbits-season-summary-mbb",
+    "source_type": "jackrabbits_season_summary",
+    "old_title": "SDSU Jackrabbits men's basketball: season so far",
+    "new_title": "Brookings: SDSU Jackrabbits men's basketball: season so far"
+  },
+  {
+    "slug": "jackrabbits-season-summary-wbb",
+    "source_type": "jackrabbits_season_summary",
+    "old_title": "SDSU Jackrabbits women's basketball: season so far",
+    "new_title": "Brookings: SDSU Jackrabbits women's basketball: season so far"
+  },
+  {
+    "slug": "kvick_essa-2026-08-01",
+    "source_type": "kvick_essa",
+    "old_title": "A Quorum Walks Into a Barbecue",
+    "new_title": "Brookings: A Quorum Walks Into a Barbecue"
+  },
+  {
+    "slug": "meeting-10703",
+    "source_type": "meeting",
+    "old_title": "Library Board \u2014 Thu, Aug 13, 2026",
+    "new_title": "Brookings: Library Board \u2014 Thu, Aug 13, 2026"
+  },
+  {
+    "slug": "meeting-10737",
+    "source_type": "meeting",
+    "old_title": "Airport Board \u2014 Tue, Aug 18, 2026",
+    "new_title": "Brookings: Airport Board \u2014 Tue, Aug 18, 2026"
+  },
+  {
+    "slug": "meeting-10811",
+    "source_type": "meeting",
+    "old_title": "Human Rights Commission \u2014 Tue, Aug 18, 2026",
+    "new_title": "Brookings: Human Rights Commission \u2014 Tue, Aug 18, 2026"
+  },
+  {
+    "slug": "meeting-10812",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Tue, Aug 18, 2026",
+    "new_title": "Brookings: City Council \u2014 Tue, Aug 18, 2026"
+  },
+  {
+    "slug": "meeting-10835",
+    "source_type": "meeting",
+    "old_title": "Commission \u2014 Tue, Aug 18, 2026",
+    "new_title": "Brookings: Commission \u2014 Tue, Aug 18, 2026"
+  },
+  {
+    "slug": "meeting-10963",
+    "source_type": "meeting",
+    "old_title": "Park & Recreation Advisory Board \u2014 Mon, Sep 14, 2026",
+    "new_title": "Brookings: Park & Recreation Advisory Board \u2014 Mon, Sep 14, 2026"
+  },
+  {
+    "slug": "meeting-10969",
+    "source_type": "meeting",
+    "old_title": "Airport Board \u2014 Mon, Aug 24, 2026",
+    "new_title": "Brookings: Airport Board \u2014 Mon, Aug 24, 2026"
+  },
+  {
+    "slug": "meeting-10973",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Wed, Aug 19, 2026",
+    "new_title": "Brookings: City Council \u2014 Wed, Aug 19, 2026"
+  },
+  {
+    "slug": "meeting-10998",
+    "source_type": "meeting",
+    "old_title": "Local Emergency Planning Committee \u2014 Thu, Aug 20, 2026",
+    "new_title": "Brookings: Local Emergency Planning Committee \u2014 Thu, Aug 20, 2026"
+  },
+  {
+    "slug": "meeting-11005",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Tue, Aug 25, 2026",
+    "new_title": "Brookings: City Council \u2014 Tue, Aug 25, 2026"
+  },
+  {
+    "slug": "meeting-11006",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Tue, Aug 25, 2026",
+    "new_title": "Brookings: City Council \u2014 Tue, Aug 25, 2026"
+  },
+  {
+    "slug": "meeting-11009",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Mon, Aug 24, 2026",
+    "new_title": "Brookings: City Council \u2014 Mon, Aug 24, 2026"
+  },
+  {
+    "slug": "meeting-11038",
+    "source_type": "meeting",
+    "old_title": "Planning & Zoning Commission \u2014 Tue, Sep 1, 2026",
+    "new_title": "Brookings: Planning & Zoning Commission \u2014 Tue, Sep 1, 2026"
+  },
+  {
+    "slug": "meeting-11039",
+    "source_type": "meeting",
+    "old_title": "Weed & Pest Board \u2014 Mon, Aug 24, 2026",
+    "new_title": "Brookings: Weed & Pest Board \u2014 Mon, Aug 24, 2026"
+  },
+  {
+    "slug": "meeting-1203",
+    "source_type": "meeting",
+    "old_title": "Dacotah Bank Center Advisory Board \u2014 Thu, Jul 23, 2026",
+    "new_title": "Brookings: Dacotah Bank Center Advisory Board \u2014 Thu, Jul 23, 2026"
+  },
+  {
+    "slug": "meeting-1313",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Thu, Aug 27, 2026",
+    "new_title": "Brookings: City Council \u2014 Thu, Aug 27, 2026"
+  },
+  {
+    "slug": "meeting-1314",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Thu, Aug 20, 2026",
+    "new_title": "Brookings: City Council \u2014 Thu, Aug 20, 2026"
+  },
+  {
+    "slug": "meeting-1315",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Thu, Aug 13, 2026",
+    "new_title": "Brookings: City Council \u2014 Thu, Aug 13, 2026"
+  },
+  {
+    "slug": "meeting-1316",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Thu, Aug 6, 2026",
+    "new_title": "Brookings: City Council \u2014 Thu, Aug 6, 2026"
+  },
+  {
+    "slug": "meeting-1317",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Thu, Jul 30, 2026",
+    "new_title": "Brookings: City Council \u2014 Thu, Jul 30, 2026"
+  },
+  {
+    "slug": "meeting-210",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Tue, Jul 21, 2026",
+    "new_title": "Brookings: City Council \u2014 Tue, Jul 21, 2026"
+  },
+  {
+    "slug": "meeting-211",
+    "source_type": "meeting",
+    "old_title": "Human Rights Commission \u2014 Tue, Jul 21, 2026",
+    "new_title": "Brookings: Human Rights Commission \u2014 Tue, Jul 21, 2026"
+  },
+  {
+    "slug": "meeting-212",
+    "source_type": "meeting",
+    "old_title": "Utility Board \u2014 2026-07-17 00:00:00+00:00",
+    "new_title": "Brookings: Utility Board \u2014 2026-07-17 00:00:00+00:00"
+  },
+  {
+    "slug": "meeting-213",
+    "source_type": "meeting",
+    "old_title": "East Central Communications Council (E-911) \u2014 Thu, Jul 16, 2026",
+    "new_title": "Brookings: East Central Communications Council (E-911) \u2014 Thu, Jul 16, 2026"
+  },
+  {
+    "slug": "meeting-214",
+    "source_type": "meeting",
+    "old_title": "Library Board \u2014 Thu, Jul 16, 2026",
+    "new_title": "Brookings: Library Board \u2014 Thu, Jul 16, 2026"
+  },
+  {
+    "slug": "meeting-215",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Tue, Jul 14, 2026",
+    "new_title": "Brookings: City Council \u2014 Tue, Jul 14, 2026"
+  },
+  {
+    "slug": "meeting-217",
+    "source_type": "meeting",
+    "old_title": "Sustainability Council \u2014 Wed, Jul 8, 2026",
+    "new_title": "Brookings: Sustainability Council \u2014 Wed, Jul 8, 2026"
+  },
+  {
+    "slug": "meeting-218",
+    "source_type": "meeting",
+    "old_title": "Planning Commission \u2014 Tue, Jul 7, 2026",
+    "new_title": "Brookings: Planning Commission \u2014 Tue, Jul 7, 2026"
+  },
+  {
+    "slug": "meeting-219",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Sat, Jul 4, 2026",
+    "new_title": "Brookings: City Council \u2014 Sat, Jul 4, 2026"
+  },
+  {
+    "slug": "meeting-220",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Sat, Jul 4, 2026",
+    "new_title": "Brookings: City Council \u2014 Sat, Jul 4, 2026"
+  },
+  {
+    "slug": "meeting-222",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Sat, Jun 27, 2026",
+    "new_title": "Brookings: City Council \u2014 Sat, Jun 27, 2026"
+  },
+  {
+    "slug": "meeting-223",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Sat, Jun 27, 2026",
+    "new_title": "Brookings: City Council \u2014 Sat, Jun 27, 2026"
+  },
+  {
+    "slug": "meeting-225",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Tue, Jun 23, 2026",
+    "new_title": "Brookings: City Council \u2014 Tue, Jun 23, 2026"
+  },
+  {
+    "slug": "meeting-226",
+    "source_type": "meeting",
+    "old_title": "Utility Board \u2014 2026-06-22 00:00:00+00:00",
+    "new_title": "Brookings: Utility Board \u2014 2026-06-22 00:00:00+00:00"
+  },
+  {
+    "slug": "meeting-227",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Fri, Jun 19, 2026",
+    "new_title": "Brookings: City Council \u2014 Fri, Jun 19, 2026"
+  },
+  {
+    "slug": "meeting-228",
+    "source_type": "meeting",
+    "old_title": "Airport Board \u2014 Thu, Jun 18, 2026",
+    "new_title": "Brookings: Airport Board \u2014 Thu, Jun 18, 2026"
+  },
+  {
+    "slug": "meeting-2320",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Thu, Jul 30, 2026",
+    "new_title": "Brookings: City Council \u2014 Thu, Jul 30, 2026"
+  },
+  {
+    "slug": "meeting-2428",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Fri, Aug 21, 2026",
+    "new_title": "Brookings: City Council \u2014 Fri, Aug 21, 2026"
+  },
+  {
+    "slug": "meeting-2842",
+    "source_type": "meeting",
+    "old_title": "Planning & Zoning Commission \u2014 Tue, Aug 4, 2026",
+    "new_title": "Brookings: Planning & Zoning Commission \u2014 Tue, Aug 4, 2026"
+  },
+  {
+    "slug": "meeting-34",
+    "source_type": "meeting",
+    "old_title": "Commission \u2014 Tue, Jul 21, 2026",
+    "new_title": "Brookings: Commission \u2014 Tue, Jul 21, 2026"
+  },
+  {
+    "slug": "meeting-35",
+    "source_type": "meeting",
+    "old_title": "Commission \u2014 Thu, Jul 9, 2026",
+    "new_title": "Brookings: Commission \u2014 Thu, Jul 9, 2026"
+  },
+  {
+    "slug": "meeting-36",
+    "source_type": "meeting",
+    "old_title": "Commission \u2014 Tue, Jul 7, 2026",
+    "new_title": "Brookings: Commission \u2014 Tue, Jul 7, 2026"
+  },
+  {
+    "slug": "meeting-3989",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Mon, Jul 27, 2026",
+    "new_title": "Brookings: City Council \u2014 Mon, Jul 27, 2026"
+  },
+  {
+    "slug": "meeting-40",
+    "source_type": "meeting",
+    "old_title": "Planning & Zoning Commission \u2014 Tue, Jul 7, 2026",
+    "new_title": "Brookings: Planning & Zoning Commission \u2014 Tue, Jul 7, 2026"
+  },
+  {
+    "slug": "meeting-4042",
+    "source_type": "meeting",
+    "old_title": "Commission \u2014 Thu, Jul 30, 2026",
+    "new_title": "Brookings: Commission \u2014 Thu, Jul 30, 2026"
+  },
+  {
+    "slug": "meeting-4088",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Tue, Sep 15, 2026",
+    "new_title": "Brookings: City Council \u2014 Tue, Sep 15, 2026"
+  },
+  {
+    "slug": "meeting-4094",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Thu, Aug 6, 2026",
+    "new_title": "Brookings: City Council \u2014 Thu, Aug 6, 2026"
+  },
+  {
+    "slug": "meeting-4846",
+    "source_type": "meeting",
+    "old_title": "Planning Commission \u2014 Tue, Aug 4, 2026",
+    "new_title": "Brookings: Planning Commission \u2014 Tue, Aug 4, 2026"
+  },
+  {
+    "slug": "meeting-5375",
+    "source_type": "meeting",
+    "old_title": "Commission \u2014 Tue, Aug 4, 2026",
+    "new_title": "Brookings: Commission \u2014 Tue, Aug 4, 2026"
+  },
+  {
+    "slug": "meeting-5612",
+    "source_type": "meeting",
+    "old_title": "Park & Recreation Advisory Board \u2014 Mon, Aug 3, 2026",
+    "new_title": "Brookings: Park & Recreation Advisory Board \u2014 Mon, Aug 3, 2026"
+  },
+  {
+    "slug": "meeting-7109",
+    "source_type": "meeting",
+    "old_title": "Sustainability Council \u2014 Wed, Aug 12, 2026",
+    "new_title": "Brookings: Sustainability Council \u2014 Wed, Aug 12, 2026"
+  },
+  {
+    "slug": "meeting-8170",
+    "source_type": "meeting",
+    "old_title": "City Council \u2014 Tue, Aug 11, 2026",
+    "new_title": "Brookings: City Council \u2014 Tue, Aug 11, 2026"
+  },
+  {
+    "slug": "university-digest-2026-w34",
+    "source_type": "university_digest",
+    "old_title": "What's on at SDSU: week of August 17\u201323",
+    "new_title": "Brookings: What's on at SDSU: week of August 17\u201323"
+  },
+  {
+    "slug": "university-digest-2026-w35",
+    "source_type": "university_digest",
+    "old_title": "What's on at SDSU: week of August 24\u201330",
+    "new_title": "Brookings: What's on at SDSU: week of August 24\u201330"
+  },
+  {
+    "slug": "vardagsmiddag-2026-07-23",
+    "source_type": "vardagsmiddag",
+    "old_title": "Skillet Green Beans with Sausage and Potatoes",
+    "new_title": "Brookings: Skillet Green Beans with Sausage and Potatoes"
+  },
+  {
+    "slug": "vardagsmiddag-2026-07-30",
+    "source_type": "vardagsmiddag",
+    "old_title": "Sweet Corn and Kielbasa Skillet",
+    "new_title": "Brookings: Sweet Corn and Kielbasa Skillet"
+  },
+  {
+    "slug": "vardagsmiddag-2026-08-13",
+    "source_type": "vardagsmiddag",
+    "old_title": "Tomato and Chickpea Curry with Rice",
+    "new_title": "Brookings: Tomato and Chickpea Curry with Rice"
+  },
+  {
+    "slug": "vardagsmiddag-2026-08-20",
+    "source_type": "vardagsmiddag",
+    "old_title": "Sheet Pan Sausage and Peppers",
+    "new_title": "Brookings: Sheet Pan Sausage and Peppers"
+  },
+  {
+    "slug": "vetenskap_kronika-2026-07-24",
+    "source_type": "vetenskap_kronika",
+    "old_title": "The Number That Makes 88 Degrees Feel Like 100",
+    "new_title": "Brookings: The Number That Makes 88 Degrees Feel Like 100"
+  },
+  {
+    "slug": "vetenskap_kronika-2026-08-14",
+    "source_type": "vetenskap_kronika",
+    "old_title": "Why Does a Power Line Need 765,000 Volts? The Physics Behind a Local Debate",
+    "new_title": "Brookings: Why Does a Power Line Need 765,000 Volts? The Physics Behind a Local Debate"
+  }
+]

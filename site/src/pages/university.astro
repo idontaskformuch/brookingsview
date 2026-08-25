@@ -120,13 +120,13 @@ const sections = (
 ).filter(([, list]) => list.length > 0);
 
 ---
-<BaseLayout title={`University — ${siteConfig.siteName}`} wide
+<BaseLayout title={`SDSU News in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide
   description="What's happening at South Dakota State University -- athletics, music, theatre and campus events, plus key academic dates.">
   <header class="lede">
     <h1>University</h1>
     <p>What's on at South Dakota State University this week — games, concerts, shows
     and campus happenings, straight from SDSU's own event calendar.</p>
-    <ShareButton title={`University — ${siteConfig.siteName}`} />
+    <ShareButton title={`SDSU News in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
   </header>
 
   {digests.length > 0 && (

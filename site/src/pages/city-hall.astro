@@ -11,13 +11,14 @@ const upcoming = await getUpcomingStories(['meeting'], 40);
 const past = await getPastStories(['meeting', 'meeting_followup'], 30);
 const projects = await getProjects();
 ---
-<BaseLayout title={`City hall — ${siteConfig.siteName}`} wide ogSlug="section-city-hall"
+<BaseLayout title={`City Hall in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-city-hall"
   description={`City council, county commission and committee meetings in ${siteConfig.cityName}, ${siteConfig.stateName}, in plain language.`}>
   <header class="lede">
     <h1>City hall</h1>
-    <p>What the city council, county commission and committees are deciding —
-    summarised from the published agendas, in plain language, without taking sides.</p>
-    <ShareButton title={`City hall — ${siteConfig.siteName}`} />
+    <p>What {siteConfig.cityName}'s city council, county commission and committees
+    are deciding — summarised from the published agendas, in plain language,
+    without taking sides. Updated as new agendas and outcomes are published.</p>
+    <ShareButton title={`City Hall in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
   </header>
 
   {projects.length > 0 && (

@@ -24,13 +24,13 @@ const SEVERITY_LABELS: Record<string, string> = {
   closure: 'Closure', injury: 'Injury reported', incident: 'Incident', planned: 'Planned closure',
 };
 ---
-<BaseLayout title={`Traffic — ${siteConfig.siteName}`} wide ogSlug="section-traffic"
+<BaseLayout title={`Traffic in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-traffic"
   description={`Current road incidents and lane closures affecting ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
   <header class="lede">
     <h1>Traffic</h1>
     <p>Current road incidents, closures and construction near {siteConfig.cityName} —
     straight from the state's own public traffic feed.</p>
-    <ShareButton title={`Traffic — ${siteConfig.siteName}`} />
+    <ShareButton title={`Traffic in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
   </header>
 
   <SectionRule label={incidents.length > 0 ? `${incidents.length} active` : 'Current incidents'} />
