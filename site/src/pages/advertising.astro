@@ -1,0 +1,123 @@
+---
+/** Sponsorship & advertising policy -- a static content page, same shape as
+ *  about.astro/how-we-gather-this.astro/corrections.astro (hand-authored,
+ *  no dynamic data). Exists to protect editorial credibility once
+ *  sponsorship revenue starts, and to give sponsors and readers a clear,
+ *  specific set of rules rather than a vague corporate disclaimer.
+ *
+ *  Content is shared between the two towns (same principles), adapted per
+ *  town via siteConfig -- one Worker Pulse conflict-of-interest rule is
+ *  Moreno Valley-only, since that section doesn't exist for Brookings.
+ *  Self-serve pricing (Stripe) isn't built yet, so Section 3 deliberately
+ *  points to /contact/ instead of a pricing table that doesn't exist --
+ *  replace that section, not the rest of the page, once it ships.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../lib/site-config';
+
+const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
+
+const canonicalUrl = new URL('/advertising/', Astro.site ?? siteConfig.siteUrl).href;
+const title = `Advertising & Sponsorship — ${siteConfig.siteName}`;
+const description = `How sponsorship and advertising work on ${siteConfig.siteName} — what we accept, what we never do, and how it's disclosed.`;
+
+// A hand-authored policy page has no natural "occurs_at"/"published_at"
+// column the way a scraped story does -- set once, by hand, when the page
+// ships. Update PUBLISHED_DATE only if the policy's substance changes;
+// this is a real date, not a build-time stand-in (see article-jsonld.ts's
+// own module docstring on why a story's dateModified is real, not guessed).
+const PUBLISHED_DATE = '2026-08-25';
+
+const webPageJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': canonicalUrl,
+  url: canonicalUrl,
+  name: title,
+  description,
+  datePublished: PUBLISHED_DATE,
+  dateModified: PUBLISHED_DATE,
+  publisher: { '@type': 'Organization', name: siteConfig.siteName },
+};
+---
+<BaseLayout title={title} description={description}>
+  <article class="prose">
+    <h1>Advertising &amp; Sponsorship</h1>
+
+    <p>{siteConfig.siteName} accepts local sponsorship and advertising. This
+    page explains how that works — what it includes, what it never
+    includes, and how to get in touch if you're interested.</p>
+
+    <h2>What we accept</h2>
+    <ul>
+      <li><strong>Sponsored placements.</strong> A local business or
+      organization can sponsor a specific section or recurring product —
+      for example, "This week's events sponsored by [business]," or "This
+      week in {siteConfig.cityName}, brought to you by [business]." The
+      sponsor gets visible attribution. The content itself is never
+      altered.</li>
+      <li><strong>Display advertising.</strong> Standard display ads, via
+      Google AdSense or arranged directly. Every ad is clearly marked as
+      an advertisement.</li>
+      <li><strong>Featured job listings</strong> <em>(planned, not yet
+      available)</em>. Local employers will be able to pay to have a
+      listing featured in the Jobs section. Any featured listing must be
+      real and accurate — the same standard every listing on the site
+      already meets.</li>
+      <li><strong>Featured business listings</strong> <em>(planned, not
+      yet available)</em>. Local businesses will be able to pay to be
+      featured in relevant sections. Any featured business must be real
+      and verifiable.</li>
+    </ul>
+
+    <h2>What we never do</h2>
+    <ul>
+      <li>Sponsored content is always clearly labeled. A reader will never
+      mistake a paid placement for editorial content.</li>
+      <li>Sponsors have no influence over editorial coverage. A business
+      that advertises with us is covered exactly the same way as any
+      other business — we don't soften, suppress, or alter coverage
+      because of a commercial relationship.</li>
+      {isMorenoValley && (
+        <li>We don't accept advertising from businesses in active
+        conflict with our editorial independence. Specifically: an
+        employer featured in <a href="/workplace-watch/">Worker Pulse</a>
+        may not simultaneously purchase sponsored placements in the jobs
+        or worker sections — that conflict is structural, and we avoid
+        it.</li>
+      )}
+      <li>We don't accept advertising that promotes misinformation,
+      discrimination, or content that conflicts with our editorial
+      values.</li>
+      <li>AI-generated content on this site is always labeled as such.
+      Sponsored content, if AI-assisted, is labeled the same way.</li>
+    </ul>
+
+    <h2>Pricing &amp; placements</h2>
+    <p>Sponsorship pricing and placement availability are available on
+    request. <a href="/contact/">Use the contact form</a> to get in
+    touch.</p>
+
+    <h2>Our editorial standards</h2>
+    <p>This page describes our advertising policy. It's a companion to,
+    not a replacement for, our editorial standards — see
+    <a href="/how-we-gather-this/">how we gather this</a> and our
+    <a href="/corrections/">corrections policy</a> for how the rest of the
+    site works. Sponsors agree to this advertising policy; our editorial
+    standards apply regardless of any commercial relationship.</p>
+
+    <h2>Contact</h2>
+    <p>For sponsorship or advertising inquiries, <a href="/contact/">get
+    in touch through our contact page</a>.</p>
+  </article>
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(webPageJsonLd)} />
+</BaseLayout>
+
+<style>
+.prose { max-width: 40rem; }
+.prose h2 { margin-top: 2.25rem; margin-bottom: 0.75rem; }
+.prose p { margin: 0 0 1rem; }
+.prose ul { margin: 0 0 1rem; padding-left: 1.25rem; display: grid; gap: 0.625rem; }
+.prose li { line-height: 1.55; }
+</style>
