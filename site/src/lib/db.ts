@@ -391,6 +391,30 @@ export async function getContentByType(sourceTypes: SourceType[], limit = 40): P
   `) as Story[];
 }
 
+/** Stories eligible for the Google News sitemap (see NEEDS-HUMAN-REVIEW.md,
+ *  "Google News sitemap") -- published within the last 48 hours, every real
+ *  reported/edited content type EXCEPT 'vardagsmiddag' (recipes: evergreen
+ *  content, not news -- the one source_type this codebase's own existing
+ *  JSON-LD type selection already treats as generic 'Article' rather than
+ *  any NewsArticle-flavored type, see article-jsonld.ts's own
+ *  ARTICLE_TYPE_BY_SOURCE_TYPE). Filtered again in lib/news-sitemap.ts's
+ *  pure buildNewsSitemapXml() too (defense in depth / unit-testable without
+ *  a DB), but filtering here first keeps this cheap to run on every hourly
+ *  build -- no reason to fetch the whole stories table just to throw away
+ *  everything older than 2 days. */
+export async function getStoriesForNewsSitemap(): Promise<Story[]> {
+  return (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
+           byline, image_path, image_alt, rating, ingredients, instructions,
+           venue_raw, is_recurring_series, ends_at
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND source_type != 'vardagsmiddag'
+       AND published_at >= now() - interval '48 hours'
+     ORDER BY published_at DESC
+  `) as Story[];
+}
+
 export async function getStoryBySlug(slug: string): Promise<Story | null> {
   const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
