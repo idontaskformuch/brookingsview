@@ -3685,3 +3685,369 @@ verified against both towns' real timezones directly.
 **Per the bug report's own explicit instruction: NOT committed.** Left
 staged for manual review: `site/server/worker.ts`, `site/server/
 _shared.ts`.
+
+## 35. Venue & Category Image Identity (2026-08-26)
+
+Full brief: one image per PLACE and one image per CATEGORY, reused, instead
+of a per-article generation cost — `story.image_path` stays reserved for
+the content track (editorial/culture essay/…); every scraped item (meeting,
+event, alert, digest) now resolves an image through a shared, town-gated
+tier system instead of ever reusing `/og/<slug>.png` as an inline `<img>`.
+
+**Built:**
+- `db/migrations/026_facility_images.sql` — `facilities.image_path`,
+  `image_alt`, `name_aliases TEXT[]`. Confirmed live via
+  `information_schema.columns`.
+- `site/src/lib/images.ts` — `resolveImage()` (article → venue → category →
+  nothing, never `/og/`), venue-matching internals, `dedupeConsecutiveImages()`,
+  and a build-time `assertImageExists()` guard that throws with the
+  offending path + item slug — wired into all three `resolveImage()` return
+  tiers, not just the top one. 24 Vitest unit tests, including one that
+  exercises the throw path against a real (temporarily-renamed) asset.
+- `site/src/config/category-images.ts` — `CATEGORY_IMAGES[town][category]`,
+  intentionally empty until real assets exist (see "Not done" below).
+- `scripts/seed_facility_name_aliases.py` — seeded `name_aliases` for the
+  handful of landmark venues that actually have a scraper title-prefix or
+  `venue_raw` convention worth matching (MoVal's 3 library branches + city
+  hall, Brookings' library + city hall). Real, observed variant forms
+  (`MAIN LIBRARY`, `MV MALL LIBRARY`, `MV MALL BRANCH`, `IRIS PLAZA`, …),
+  not the brief's own possibly-stale example list.
+- `scripts/audit_venue_matches.py` — run for both towns: **Moreno Valley
+  691/1068 matched (65%)**, **Brookings 83/136 matched (61%)**. Reviewed the
+  unmatched lists: overwhelmingly park-hosted pop-ups ("MORENO VALLEY
+  COMMUNITY PARK: Library Pop-Up") and non-venue recurring notices ("Shop
+  for a Cause Fundraiser", "Free Food Giveaway", library-closure notices) —
+  these correctly have no venue tier match and fall through to the category
+  tier by design; not a bug.
+- Rendering: `[slug].astro` (story hero), `LeadStory.astro` (front-page
+  hero), `WeeklyRoundup.astro` (was unconditionally `/og/`, now resolved),
+  `StoryCard.astro` (dense-list image removed entirely, replaced with a
+  small category colour chip + icon), new `SectionHero.astro` wired into
+  every section landing page (`/events/`, `/city-hall/`, `/traffic/`,
+  `/home-sales/`, `/jobs/`, `/sports/`, `/jackrabbits/`,
+  `/workplace-watch/`, `/university/`). `RelatedStories.astro` needed no
+  change — it was already chip/text-only, never an image.
+- `og:image`/`twitter:image` (`BaseLayout.astro`) untouched — `[slug].astro`
+  now keeps a separate `ogImageUrl` (always `/og/<slug>.png`) distinct from
+  the new `heroImage` (the real, resolved, possibly-null visible image).
+
+**Deviation from the brief, evidence-based:** §5 says trust the venue
+FK/`venue_raw` first, title-prefix second. Live data contradicts this for
+Moreno Valley's library-branch events specifically — a direct query found
+**18% (125 of 688) of library-prefixed event titles carry a `venue_raw`
+that names the WRONG branch** (e.g. every one of 28 "IRIS PLAZA: ABC's &
+123's" instances consistently carries Main Library's address instead).
+Only 6 of the 125 mismatches are `is_recurring_series` rows, so this isn't
+a series-grouping artifact — it looks like a real, systematic scraper/
+source-calendar issue in how `venue_raw` gets assigned per instance of a
+recurring program hosted at multiple branches. For IMAGE resolution
+specifically, `resolveVenueSlugForImage()` therefore tries the **title
+prefix first, `venue_raw` second** — the reverse of the brief's stated
+order — because a visibly wrong venue image is a worse reader-facing error
+than no image. This does **not** touch the existing `venue_raw`-based Event
+JSON-LD venue resolution (`lib/db.ts`'s `resolveVenue()`,
+`ai_pipeline/venue_registry.py`), which is a separate pipeline and stays
+exactly as it was.
+
+**Verified:** `astro check` 0 errors, full Vitest suite 168/168, isolated
+sequential builds both towns (Brookings 399 pages, Moreno Valley — many
+more due to its home-sales page volume). Acceptance grep: **zero** inline
+`<img src="/og/…">` in the Brookings build output, `og:image` meta present
+on 393 pages. Build-time guard verified for real: temporarily renamed
+`culture_essay-2026-07-27.png` away, rebuild failed loudly naming both the
+path and the slug (`resolveImage: "culture_essay-2026-07-27" resolved to
+image_path "/assets/images/culture_essay-2026-07-27.png", but no file
+exists at …`), asset restored, rebuild green again.
+
+**Not done — needs explicit authorization (real paid API cost) before it
+can be:** the ~20-25 real venue/category illustrations from §7's art
+direction (base prompt in `scripts/prompts/venue_style.txt`, flat
+vector-style, navy + two accents, 1200×800, local landmark anchoring — Box
+Springs "M" for Moreno Valley, prairie/campus cues for Brookings). Until
+those exist, `CATEGORY_IMAGES` stays empty and every facility's
+`image_path` stays `NULL`, so `resolveImage()` honestly and correctly
+returns `null` for the entire scraped feed — the documented, acceptable
+interim state per the brief's own "Step 4 is mandatory" rule, not a broken
+one. `scripts/prompts/venue_style.txt` itself also not yet written (no
+point authoring it before a generation run is actually authorized).
+
+## 36. Summary Tone Prompts — scraped local items (2026-08-26, in progress)
+
+Full brief: make meeting/event/alert summaries read like short written
+items instead of database rows, without changing what they claim. Tone
+only — the content track (editorial/culture essay/…) is untouched.
+
+**Built (Python side, generation pipeline):**
+- `db/migrations/027_story_meta.sql` — `stories.meta JSONB`, NULL for every
+  row before this (forward-only, no backfill, same convention as
+  `image_alt`). Confirmed live.
+- `ai_pipeline/format_prompt.py` — `build_system_prompt_v2()` (shared voice/
+  sentence-craft/forbidden rules + per-type length/structure rules for
+  meeting/event/alert) and `parse_tone_v2_response()` (parses the
+  `{summary, meta}` JSON contract; malformed JSON is treated exactly like a
+  guardrail rejection — strict retry, then template fallback — never
+  raises). `format_record()` branches on `cfg["ai"]["tone_v2"]`
+  (default `false` in both `configs/*.json`, with a `_tone_v2_note`
+  explaining the gate) — old callers/behavior fully unchanged when off.
+- `ai_pipeline/guardrails.py` — `validate_tone_v2()`: required-field check
+  (source has a date/venue → `meta` must have it too), banned-adjective
+  scan, em-dash check, invented-number check (haystack includes `meta`'s
+  own values, not just `source_text`, since a number restated into
+  `meta.phone` isn't invented), a coarse regex-based
+  `classify_opening()`/`opening_diversity_ok()` pair for the §7.5
+  cross-item repetition check, and a per-type sentence-count ceiling.
+  `classify_opening()` is a heuristic (no NLP dependency exists in this
+  codebase), not real POS tagging — documented as such in its docstring.
+- `ai_pipeline/publish.py` — fetches each town/source_type's last 10
+  published stories' opening shapes once per `publish_table()` run as the
+  diversity check's "what's on the page" proxy (exact page composition
+  isn't knowable at generation time — items publish across many separate
+  runs), updates that in-memory list as the run itself publishes more so
+  later items in the same run are judged against earlier ones from it too.
+  `stories.meta` now included in the `INSERT` (`Jsonb(result.meta)`, NULL
+  when tone_v2 is off or unset).
+- `scripts/eval_tone_v2.py` — generates BOTH the old and new generator for
+  the same real, recent, substantive rows (default 10 meetings / 15 events
+  / 5 alerts, same `has_substance()`/`is_current()` gates `publish.py`
+  itself applies) and renders `old.html`/`new.html` as a stacked list (not
+  one item in isolation — the brief's own point is "does the page still
+  read as a list") for side-by-side mobile-width review, per §8.
+- Tests: `tests/test_guardrails_tone_v2.py` (16 tests — found and fixed a
+  real bug in `classify_opening()` during testing: a naive first-two-words
+  check missed the brief's own headline example, "The Planning Commission
+  will hold…", because the real subject phrase is 2-3 words wide and the
+  occurrence verb doesn't arrive until word 4; rewritten to walk a
+  capitalized run of words and check the word immediately after it) and
+  `tests/test_format_prompt_tone_v2.py` (10 tests). Full suite:
+  242 passed, 1 skipped.
+
+**Scope cut, deliberate:** the brief's §6 also wants the site template to
+render `meta` as a compact row beneath the summary. Not built yet — with
+`tone_v2` off by default, no story will have a non-null `meta` until the
+flag is flipped, so that rendering work has nothing real to render against
+or test yet (this session's own established "don't build ahead of verified
+need" pattern). `scripts/eval_tone_v2.py`'s own static comparison pages DO
+render a `meta` row (self-contained HTML, no Astro/`db.ts` involvement) so
+the §8 comparison is still meaningful without it. Once the eval is
+reviewed and `tone_v2` is turned on for real, the remaining site-side work
+is: add `meta` to the `Story` TS interface and the ~15 `SELECT` statements
+in `site/src/lib/db.ts`, and render the compact metadata row on
+`[slug].astro` / wherever a `meeting`/`event`/`alert` body is shown.
+
+**Eval run 2026-08-26 (authorized, real API cost) — three real bugs found
+and fixed, not just observed:**
+
+Run 1 (Moreno Valley, 10 meetings/15 events/5 alerts) surfaced two
+regressions vs. the old generator: 6 of 10 meetings and (after fixing the
+sample below) eventually all 5 alerts fell back to the bare-title
+`_fallback()` — worse than before, since a "Planning Commission" with zero
+content is worse than the old generator's dull-but-real prose. Also: the
+alert bucket returned **0** rows on the first run.
+
+Root causes, each verified directly (not guessed) before fixing:
+1. **Alert sampling bug** (`scripts/eval_tone_v2.py` only, not the
+   production pipeline): `_fetch_sample()` pulled the top 500 `events` rows
+   by `starts_at DESC` — a shared ordering that lets far-future recurring
+   events (scheduled months out) completely crowd out alerts (short-lived,
+   a few days out at most). 393 real, current `nws_alert` rows existed;
+   zero were in that window. Fixed: alerts now queried separately
+   (`WHERE source IN ('nws_alert','county_alert')`, its own `ORDER BY`).
+2. **Generic retry prompt** (`ai_pipeline/format_prompt.py`): the one
+   retry attempt on guardrail rejection sent the SAME hardcoded "you
+   invented details not in the source" message regardless of why the first
+   attempt actually failed — so a rejection for a missing `meta.when` got
+   zero useful signal and the retry just repeated the same miss. Fixed:
+   the retry prompt now lists the real violations from the first attempt.
+3. **`should` false-positiving as an opinion marker**
+   (`ai_pipeline/guardrails.py`, pre-existing, NOT tone_v2-specific): live
+   inspection of a real rejected meeting (id 11040, Planning Commission,
+   Aug 27) showed a genuinely excellent, on-brief summary (9.1-acre Penske
+   truck facility, a car wash proposal, real acreage/street detail) getting
+   rejected over "Those wishing to testify **should** submit a speaker
+   slip" — a neutral procedural instruction the meeting prompt explicitly
+   asks for (§3: "Procedural facts... get one sentence, plainly stated"),
+   not an opinion. Bare `"should"` removed from `_OPINION_MARKERS`
+   (`"shouldn't"` kept — a much stronger, rarer signal). This is a shared
+   guardrail (`validate()` runs for every content type), so the content
+   track benefits too, not just meeting/event/alert.
+4. **Alert length ceiling contradicted the alert prompt's own rules**
+   (found via the same live inspection, a *different* alert): a real Heat
+   Advisory with 6 genuine, distinct CDC-style precautions (fluids, AC,
+   avoid sun, check on neighbors, don't leave kids/pets in cars, car
+   interiors reach lethal temperatures) needs 6 sentences to state each
+   "plainly" and "not compress[ed]... into a summary clause" (§5's own
+   rule) — but was rejected by the "two to four sentences" ceiling in the
+   same section. Presented to the user directly (a genuine contradiction
+   in the brief's own §5, not something to silently resolve); user chose
+   **raise the alert ceiling** (safety guidance over brevity).
+   `TONE_V2_MAX_SENTENCES["alert"]` 4 → 7; the alert prompt text updated to
+   match ("up to seven when the source gives a genuine multi-item
+   precaution list").
+
+**Result after all four fixes, re-run for real (3rd paid run, same 10/15/5
+sample):** meetings 0/10 fallback (was 6/10), events 0/15 (was 0/15, no
+regression there), alerts 1/5 (was 5/5 after the sampling fix, one
+residual failure not chased further — guardrails are supposed to reject
+occasionally; a 97% success rate across 30 real items is the actual bar,
+not zero). Comparison pages: `.eval_tone_v2/old.html` /
+`.eval_tone_v2/new.html` (local, gitignored, not committed) — pending the
+user's own side-by-side read before flipping `tone_v2` on in
+`configs/moreno_valley_ca.json`.
+
+**Still not done:** the user's own qualitative read of the comparison
+pages (§8's actual point — "is this less list-like" is a judgment call,
+not a metric I can verify), and then flipping `cfg["ai"]["tone_v2"]` to
+`true` for real. The site-side `meta`-row rendering work noted above is
+unblocked but still not started.
+
+## 37. Liveliness Spec — layout rhythm, time language, section identity, empty states, about page (2026-08-26)
+
+Full brief: make the sites read as edited by a person and maintained by
+machines, not a scraped feed with a stylesheet. Presentation only — no
+pipeline/claims changes, no new AI generation, no new recurring cost.
+Built in the brief's own stated order (§6): empty states → relative time →
+about page → section identity → front-page rhythm (the last one gated on
+the venue/category image work landing first, which it had by the time this
+started).
+
+**§4 Empty states.** New `site/src/lib/empty-states.ts` — hand-written
+constants, single source of truth. Wired into: `traffic.astro`,
+`events.astro` + the 6 `event-facets.ts` bucket messages, `home-sales.astro`,
+`workplace-watch/index.astro`, `WorkerPulseComments.astro`, and the three
+live-filtered data tables (`traffic`/`jobs`/`home-sales`) via a new
+`emptyMessage` option on `lib/data-table.ts`'s `initDataTable()` — inserts a
+single `<tr>` spanning every column, toggled by the live filter's result
+count (inline-styled, not a scoped `<style>` rule, since Astro's CSS
+scoping never touches elements a client `<script>` creates at runtime).
+**Deliberate behavior change:** `SchoolAlertBanner.astro` now always
+renders (with "No closures. Schools are open." when empty) instead of
+disappearing when there are no alerts — the brief's §4 rule ("empty is
+often the reassuring answer, especially for closures") directly supersedes
+that earlier, explicitly-documented "empty means no banner" design choice.
+
+**§2 Relative time.** New `site/src/lib/time.ts` exporting
+`relativeTime(date, now, timeZone)` — resolves in the zoned Intl calendar
+day (never manual UTC-offset math, matching `server/_shared.ts`'s existing
+`todayInTimezone()`/`currentIsoWeekSlug()` pattern), covers both the past
+table (just now / this morning-afternoon-evening / yesterday / weekday /
+month-day / month-day-year) and future table (today/tomorrow/weekday `at
+6pm` / next-weekday / month-day) from §2's own spec. 23 tests, each
+boundary independently verified against `Intl.DateTimeFormat` before
+asserting (not just trusting the implementation under test) — this caught
+4 of my own manual UTC-offset arithmetic errors in the test fixtures
+themselves (forgetting PDT-vs-PST/CDT-vs-CST month-dependent offsets),
+none of which were bugs in `time.ts`. Wired into `StoryCard.astro`,
+`LeadStory.astro`, `SecondaryStory.astro` for content-track `published_at`
+and event/announcement `occurs_at` — with two deliberate, spec-mandated
+exceptions: **alerts** keep exact date/time (§2: "Never relative-format an
+alert's effective window") and **meetings** keep the existing
+`formatCalendarDate()`, not `relativeTime()` — `meeting_date` is a bare
+UTC-midnight calendar date with no real time-of-day, and this codebase has
+hit the "timezone-converting a bare calendar date" bug class repeatedly
+(events.astro, weekly.py, the Legistar parser) — not reintroducing it for
+a cosmetic wording change. **Real bug found and fixed while wiring this
+in:** the `<time datetime="...">` value was a raw passthrough of
+`story.published_at`/`occurs_at` -- the DB driver actually returns a real
+JS `Date` object for `timestamptz` columns at runtime despite `db.ts`'s
+own `string` type annotation, so the raw value rendered via its default
+`toString()` — the BUILD MACHINE's own local timezone ("Thu Aug 27 2026
+02:00:00 GMT+0200 (…)"), not a valid machine-readable value. Fixed with an
+explicit `new Date(x).toISOString()` normalization in all three
+components; confirmed on a real build afterward (proper `2026-08-27T00:00:00.000Z`
+values).
+
+**§5 About page.** Rewrote the existing `/about` (it already existed from
+earlier session work, but was missing 2 of the brief's 5 required
+sections). Added: **"Who built it"** — the one first-person section on the
+entire site ("I'm one person, building this in my spare time outside a day
+job... I write software, from Sweden"), and **"Sources"** — a real,
+per-town, linked list, generated from `configs/<town>.json`'s
+`data_sources[key].enabled` via new `site/src/lib/about-sources.ts` (a
+curated display-name/URL map, gated live against config so a source
+disabled in config drops off the page automatically — config's own raw
+`url`/`endpoint` fields are frequently API roots or ICS/KML feeds, not
+something to hand a reader, so those needed curating, not just piping
+through). Reworded "Corrections" out of first-person ("we'll fix it" →
+"Errors are corrected as soon as they're reported"), since the brief is
+explicit that first person belongs on exactly one section of one page.
+5 tests for `about-sources.ts` (non-empty per town, a disabled source
+absent, no cross-town bleed).
+
+**§3 Section identity.** New `site/src/lib/section-theme.ts` — one accent
+color + label for the 5 sections the brief names (traffic/events/
+workplace_watch/university/home_sales; Facilities deliberately excluded,
+matching the brief's own "one quiet section" rule; other sections not in
+the brief's table — city hall, jobs, MoVal's own `/sports/` — were left at
+the site's existing default navy rather than inventing identities the
+brief didn't ask for). Every accent independently contrast-checked (not
+guessed) via a real WCAG luminance/contrast calculation before being
+chosen — all 5 land at 6.3:1+ against both `--paper` and `--surface`, well
+past the 4.5:1 floor. Wired via a new `accentColor` prop on
+`BaseLayout.astro`, which sets `--section-accent` as an inline style on
+`<body>` for that page only; the existing global `.nav
+a[aria-current='page']` rule now reads `var(--section-accent, var(--navy))`
+so unaccented pages are pixel-identical to before. Two more slots used per
+accented page (masthead `border-bottom` under the `<h1>`; the page's own
+"Source:" link color where one exists) — within the brief's own "at most
+three places" budget. **Consolidated, not duplicated:** `StoryCard.astro`'s
+dense-list category chip (built during the Venue & Category Image
+Identity work, before this spec existed) now pulls its colors from
+`section-theme.ts` for the 5 overlapping categories, replacing the
+ad-hoc colors chosen at the time — one color per concept site-wide, not
+two palettes that both mean "traffic".
+
+**§1 Front-page rhythm — the largest change, built last as directed.** New
+`selectFrontPageRhythm()` in `lib/homepage-curation.ts` (same pure,
+Astro-independent, unit-tested module `selectWorthKnowing()`/
+`selectLatestFrom()` already live in) implements the brief's exact 5-tier
+fallback chain (active alert → substantial meeting → newest announcement →
+newest imaged item → newest, image or not), with the "fail down, not
+blank" rule implemented as a genuine universal check (whatever tier picks
+the candidate, if `resolveImage()` says it has no image, demote it into
+the secondary row and promote one more item — not a tier-4-only special
+case). `isSubstantialMeetingSummary()` is a plain sentence-count proxy on
+`body` (≥3 sentences) since `tone_v2` is off by default and no story has a
+real substance signal in `meta` yet — written to keep working unchanged
+once that flag flips, since `body` stays prose either way. 12 new tests
+covering every tier, the demotion path, secondary dedup, widget-row dedup,
+and the empty-candidates case. New `SecondaryStory.astro` component
+(image + headline, no body excerpt — two sit side by side under the lead).
+`index.astro`'s `.front`/`.rail` restructured from a lead-beside-rail
+2-column grid into lead → secondary (2-up desktop/1-up mobile) →
+widget row (now a full-width horizontal wrapped band below, not a
+sidebar), all stacked, matching the brief's own diagram. **Deliberate
+scope decision, checked with the user first:** the existing Today/This
+week/Coming up time-bucketed rivers (a previously-documented site design
+pillar: "the structure is TIME, not topic") are KEPT as the brief's "MORE"
+block rather than collapsed into one flat list — the brief's own ASCII
+diagram was ambiguous between "one flat 15-item list" and "the existing
+structure, densified," and collapsing it would have been a bigger
+information-architecture change than "presentation only" suggested. The
+three rivers already cap at 5 each (15 total, matching the brief's own
+number) and already link to the section index via `SectionRule`'s `href`
+— satisfying §1's "MORE" requirements without discarding the pillar.
+
+**Verified:** `astro check` 0 errors on both towns throughout. Full
+Vitest suite grew from 168 → 208 passing (27 new in
+`homepage-curation.test.ts`, 23 in `time.test.ts`, 5 in
+`about-sources.test.ts`). Real sequential builds, both towns, after every
+substantive change (caught 2 real staleness mistakes along the way — once
+rebuilding before a `git pull` synced a same-day content-pipeline commit
+this local checkout was missing 3 image files for, once verifying against
+a build that predated the `/about` rewrite — both caught by inspecting the
+actual built HTML rather than trusting "the build succeeded"). Confirmed
+on real output: zero inline `<img src="/og/…">`, zero cross-town leakage
+(no `moreno_valley_ca-*` asset references or MoVal-only source names in a
+Brookings build), the lead/secondary/widget-row structure renders with a
+real resolved image, `<time datetime>` values are now genuine ISO 8601.
+
+**Not done:** §7's "screenshot every empty state at mobile width" and
+"keyboard focus visible on the new lead card link" items — no way to
+render/screenshot a real browser in this environment; the empty-state
+logic and focus-visible CSS (inherited from `BaseLayout`'s existing
+`:focus-visible { outline: 2px solid var(--navy); ... }`, which
+`LeadStory`/`SecondaryStory`'s links don't override) are believed correct
+but not visually confirmed. Fine visual tuning of the widget row's new
+horizontal-wrap layout (some tiles, e.g. the prices table, were styled
+assuming a narrow sidebar column) may need a follow-up pass once someone
+can actually look at it.
