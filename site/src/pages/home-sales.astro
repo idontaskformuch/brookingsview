@@ -20,6 +20,7 @@ import RelatedContent from '../components/RelatedContent.astro';
 import { getRecentPropertySales, getContentByType, formatPrice } from '../lib/db';
 import { titleCaseAddress as sharedTitleCaseAddress, extractZip as sharedExtractZip, slugifyAddress, isOutlierSale } from '../lib/home-sales';
 import { siteConfig } from '../lib/site-config';
+import SectionHero from '../components/SectionHero.astro';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
@@ -45,6 +46,7 @@ function monthYear(occursAt: string | null): string {
 ---
 <BaseLayout title={`Recent Home Sales in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-home-sales"
   description="Recently recorded home sales in Moreno Valley: address, price, and date, from Riverside County's public assessor data.">
+  <SectionHero category="home_sales" />
   <header class="lede">
     <h1>Recent home sales</h1>
     <p>Recently recorded home sales in {siteConfig.cityName}, {siteConfig.stateAbbr},

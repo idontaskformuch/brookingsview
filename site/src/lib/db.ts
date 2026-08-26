@@ -1264,6 +1264,18 @@ export interface Facility {
   postal_code: string | null;
   lat: number | null;
   lon: number | null;
+  // Added by db/migrations/026_facility_images.sql for Venue & Category
+  // Image Identity (see lib/images.ts) -- a DIFFERENT alias list than
+  // `aliases` above: `aliases` matches a full scraped LOCATION string,
+  // name_aliases matches a story title's colon-delimited venue PREFIX
+  // specifically (see lib/images.ts's module docstring for why). Both
+  // image_path/image_alt are NULL until a bespoke illustration has
+  // actually been generated and seeded for that facility -- most
+  // facilities (parks, community centers) never get one and fall through
+  // to the category-image tier instead.
+  image_path: string | null;
+  image_alt: string | null;
+  name_aliases: string[];
 }
 
 /** Alla anläggningar för den aktuella orten, grupperat på category av
@@ -1273,7 +1285,8 @@ export async function getFacilities(): Promise<Facility[]> {
   return (await sql`
     SELECT slug, name, category, address, phone, website,
            hours_text, description, source_url, verified_date,
-           aliases, street_address, postal_code, lat, lon
+           aliases, street_address, postal_code, lat, lon,
+           image_path, image_alt, name_aliases
       FROM facilities
      WHERE town_id = ${TOWN_ID}
      ORDER BY category, name
@@ -1286,7 +1299,8 @@ export async function getFacilityBySlug(slug: string): Promise<Facility | null> 
   const rows = (await sql`
     SELECT slug, name, category, address, phone, website,
            hours_text, description, source_url, verified_date,
-           aliases, street_address, postal_code, lat, lon
+           aliases, street_address, postal_code, lat, lon,
+           image_path, image_alt, name_aliases
       FROM facilities
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
      LIMIT 1

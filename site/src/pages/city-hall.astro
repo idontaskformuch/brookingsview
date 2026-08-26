@@ -4,6 +4,7 @@ import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import ShareButton from '../components/ShareButton.astro';
 import RelatedContent from '../components/RelatedContent.astro';
+import SectionHero from '../components/SectionHero.astro';
 import { getUpcomingStories, getPastStories, getProjects } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 
@@ -13,6 +14,7 @@ const projects = await getProjects();
 ---
 <BaseLayout title={`City Hall in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-city-hall"
   description={`City council, county commission and committee meetings in ${siteConfig.cityName}, ${siteConfig.stateName}, in plain language.`}>
+  <SectionHero category="city_hall" />
   <header class="lede">
     <h1>City hall</h1>
     <p>What {siteConfig.cityName}'s city council, county commission and committees

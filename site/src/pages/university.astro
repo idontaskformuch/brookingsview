@@ -23,6 +23,7 @@ import {
   getUpcomingSdsuEvents, getUpcomingArtsEvents, getUpcomingAcademicDates, getContentByType,
   formatCalendarDate, formatDate, formatTime,
 } from '../lib/db';
+import SectionHero from '../components/SectionHero.astro';
 import { siteConfig } from '../lib/site-config';
 
 if (siteConfig.townId !== 'brookings_sd') {
@@ -122,6 +123,7 @@ const sections = (
 ---
 <BaseLayout title={`SDSU News in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide
   description="What's happening at South Dakota State University -- athletics, music, theatre and campus events, plus key academic dates.">
+  <SectionHero category="university" />
   <header class="lede">
     <h1>University</h1>
     <p>What's on at South Dakota State University this week — games, concerts, shows

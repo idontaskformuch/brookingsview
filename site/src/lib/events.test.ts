@@ -21,7 +21,7 @@ function facility(overrides: Partial<Facility>): Facility {
     slug: 'x', name: 'X', category: 'other', address: null, phone: null,
     website: null, hours_text: null, description: null, source_url: null,
     verified_date: null, aliases: [], street_address: null, postal_code: null,
-    lat: null, lon: null,
+    lat: null, lon: null, image_path: null, image_alt: null, name_aliases: [],
     ...overrides,
   };
 }

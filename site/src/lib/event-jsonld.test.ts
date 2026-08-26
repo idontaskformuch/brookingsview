@@ -25,6 +25,9 @@ const MAIN_LIBRARY: Facility = {
   postal_code: '92553',
   lat: null,
   lon: null,
+  image_path: null,
+  image_alt: null,
+  name_aliases: [],
 };
 
 const CITY_HALL_UNVERIFIED_ADDRESS: Facility = {

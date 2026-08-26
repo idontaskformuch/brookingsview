@@ -17,6 +17,8 @@ import type { Story, Facility } from '../../lib/db';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
 import { buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
+import { resolveImage } from '../../lib/images';
+import { CATEGORY_IMAGES } from '../../config/category-images';
 
 export async function getStaticPaths() {
   // Fetched once for the whole build, not per-page -- the facilities set is
@@ -86,20 +88,27 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: story.title, href: canonicalUrl },
 ];
 const related = await getRelatedStories(story, 3);
-// Steg 3.5: en redaktionell/fotorealistisk illustration matchad till
-// artikeln, om en sådan finns. Har inte samma mått som OG-korten
-// (1200x630) -- inga hårdkodade width/height för den, bara CSS-skalning.
-// Saknas image_path (scraped content, eller om bildgenereringen
-// misslyckades den dagen) faller sidan tillbaka på OG-kortet.
-const heroSrc = story.image_path ?? `/og/${story.slug}.png`;
-const heroUrl = new URL(heroSrc, Astro.site ?? siteConfig.siteUrl).href;
+// og:image / JSON-LD `image` -- ALWAYS the auto-generated social card,
+// never resolveImage()'s result. See NEEDS-HUMAN-REVIEW.md "Venue &
+// Category Image Identity": the two are deliberately decoupled now --
+// ogImageUrl backs structured data/social previews (unchanged by this
+// feature), heroImage below backs the actual visible <img> on the page.
+const ogImageUrl = new URL(`/og/${story.slug}.png`, Astro.site ?? siteConfig.siteUrl).href;
 
-// Real alt text (see NEEDS-HUMAN-REVIEW.md "Image pipeline overhaul") --
-// image_alt is only set for stories published after that column existed
-// (forward-only, no retroactive backfill), so a generic-but-honest
-// fallback covers every older row and every scraped story (which never
-// gets an illustration or an image_alt at all).
-const heroAlt = story.image_alt ?? `Illustration for "${story.title}"`;
+// The visible hero image -- one image per PLACE/CATEGORY, reused, resolved
+// via lib/images.ts's resolveImage() (article illustration -> venue
+// illustration -> category illustration -> nothing). Deliberately never
+// falls back to the /og/ social card: a reused social card rendered as an
+// article image is exactly the bug this feature fixes. heroImage is null
+// whenever no tier resolves (still the normal, honest state until the
+// venue/category art direction pass -- see category-images.ts -- actually
+// ships assets), and the <img> below simply doesn't render then.
+const heroImage = resolveImage(story, {
+  town: siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca',
+  cityName: siteConfig.cityName,
+  facilities,
+  categoryImages: CATEGORY_IMAGES[siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca'],
+});
 
 // Additional crop variants (4:3, 1:1) for NewsArticle's image[] -- only
 // included when the FILES actually exist on disk, checked here at build
@@ -127,7 +136,7 @@ const eventJsonLdObject = buildEventJsonLd(
   story, facilities,
   { cityName: siteConfig.cityName, stateAbbr: siteConfig.stateAbbr,
     siteName: siteConfig.siteName, timezone: siteConfig.timezone },
-  canonicalUrl, heroUrl,
+  canonicalUrl, ogImageUrl,
 );
 ---
 
@@ -141,12 +150,17 @@ const eventJsonLdObject = buildEventJsonLd(
     )}
     {when && <p class="story__when data">{when}</p>}
 
-    <img
-      class="story__hero"
-      src={heroSrc}
-      alt={heroAlt}
-      loading="eager"
-    />
+    {heroImage && (
+      <img
+        class="story__hero"
+        src={heroImage.path}
+        alt={heroImage.alt}
+        width={heroImage.width}
+        height={heroImage.height}
+        loading="eager"
+        decoding="async"
+      />
+    )}
 
     <div class="story__body">
       {story.body.split('\n').filter(Boolean).map((para) => <p>{para}</p>)}
@@ -239,7 +253,7 @@ const eventJsonLdObject = buildEventJsonLd(
   {isWorkerPulseDigest && <WorkerPulseComments pageSlug={story.slug} comments={comments} />}
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
-    buildArticleJsonLd(story, heroUrl, siteConfig.siteName, additionalImages)
+    buildArticleJsonLd(story, ogImageUrl, siteConfig.siteName, additionalImages)
   )} />
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
@@ -247,7 +261,7 @@ const eventJsonLdObject = buildEventJsonLd(
   )} />
 
   {(() => {
-    const recipeJsonLd = buildRecipeJsonLd(story, heroUrl, siteConfig.siteName);
+    const recipeJsonLd = buildRecipeJsonLd(story, ogImageUrl, siteConfig.siteName);
     return recipeJsonLd && (
       <script type="application/ld+json" is:inline set:html={JSON.stringify(recipeJsonLd)} />
     );

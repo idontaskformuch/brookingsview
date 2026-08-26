@@ -15,6 +15,7 @@ import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
 import { getActiveTrafficIncidents, formatTimeWithZone, plainLanguageTraffic } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import SectionHero from '../components/SectionHero.astro';
 
 const incidents = await getActiveTrafficIncidents();
 
@@ -26,6 +27,7 @@ const SEVERITY_LABELS: Record<string, string> = {
 ---
 <BaseLayout title={`Traffic in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-traffic"
   description={`Current road incidents and lane closures affecting ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
+  <SectionHero category="traffic" />
   <header class="lede">
     <h1>Traffic</h1>
     <p>Current road incidents, closures and construction near {siteConfig.cityName} —

@@ -1,11 +1,14 @@
 ---
 /** Ettan. Dominerar sidan i skala -- det är så en tidning uttrycker redaktionell
  *  bedömning visuellt, i stället för att ge varje post lika stor vikt. */
-import type { Story } from '../lib/db';
+import type { Story, Facility } from '../lib/db';
 import { formatDate, formatTime, formatCalendarDate, CATEGORY_LABELS } from '../lib/db';
+import { resolveImage } from '../lib/images';
+import { CATEGORY_IMAGES } from '../config/category-images';
+import { siteConfig } from '../lib/site-config';
 
-interface Props { story: Story; }
-const { story } = Astro.props;
+interface Props { story: Story; facilities: Facility[]; }
+const { story, facilities } = Astro.props;
 
 const isMeeting = story.source_type === 'meeting';
 const isAlert = story.source_type === 'alert';
@@ -22,24 +25,35 @@ const timeLabel = hasByline
       : `${formatDate(when)}${!isAlert && formatTime(when) ? ` · ${formatTime(when)}` : ''}`;
 const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall'
   : hasByline ? (CATEGORY_LABELS[story.source_type] ?? 'Feature') : 'Events';
-// Content Track-artiklar har en egen tecknad illustration (image_path) --
-// scraped events/meetings har ingen och faller tillbaka på OG-kortet, precis
-// som på story-sidan (s/[slug].astro).
-const heroSrc = story.image_path ?? `/og/${story.slug}.png`;
-// OG-korten är alltid 1200x630 -- illustrationerna har egna mått (CSS skalar
-// dem ändå till width:100%/height:auto), så hårdkodade attribut skulle bara
-// ge en missvisande aspect-ratio-hint för dem.
-const heroDims = story.image_path ? {} : { width: 1200, height: 630 };
+// Front-page hero: one image per place/category, reused -- see
+// lib/images.ts and NEEDS-HUMAN-REVIEW.md "Venue & Category Image
+// Identity". Never falls back to the /og/ social card; null just means no
+// <img> renders below (honest gap, not a broken one).
+const heroImage = resolveImage(story, {
+  town: siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca',
+  cityName: siteConfig.cityName,
+  facilities,
+  categoryImages: CATEGORY_IMAGES[siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca'],
+});
 ---
 <article class="lead">
   <p class="lead__kicker">
     <span class="kicker">{kicker}</span>
     {timeLabel && <span class="lead__when data">{timeLabel}</span>}
   </p>
-  <a class="lead__image-link" href={`/s/${story.slug}/`} tabindex="-1" aria-hidden="true">
-    <img class="lead__image" src={heroSrc} {...heroDims}
-         alt="" loading="eager" />
-  </a>
+  {heroImage && (
+    <a class="lead__image-link" href={`/s/${story.slug}/`} tabindex="-1" aria-hidden="true">
+      <img
+        class="lead__image"
+        src={heroImage.path}
+        alt={heroImage.alt}
+        width={heroImage.width}
+        height={heroImage.height}
+        loading="eager"
+        decoding="async"
+      />
+    </a>
+  )}
   <h2 class="lead__title"><a href={`/s/${story.slug}/`}>{story.title}</a></h2>
   <p class="lead__body">{story.body}</p>
   <a class="lead__more" href={`/s/${story.slug}/`}>Read more &rarr;</a>

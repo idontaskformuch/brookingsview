@@ -31,7 +31,7 @@ import {
   getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
   getWeather, getAgPrices, getLatestWeekly, getTodaysFeature, getLatestEmployerRatings,
   getWorthKnowingCandidates, getLatestFromCandidates, getRecentProjectUpdates, formatDate,
-  CATEGORY_HREFS, CATEGORY_LABELS,
+  CATEGORY_HREFS, CATEGORY_LABELS, getFacilities,
 } from '../lib/db';
 import { selectWorthKnowing, selectLatestFrom, firstSentence } from '../lib/homepage-curation';
 import { todayUtcMidnight } from '../lib/events';
@@ -40,7 +40,7 @@ import { siteConfig } from '../lib/site-config';
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 
-const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, feature, worthKnowingCandidates, latestFromCandidates] = await Promise.all([
+const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, feature, worthKnowingCandidates, latestFromCandidates, facilities] = await Promise.all([
   getActiveAlerts(),
   getActiveSchoolAlerts(),
   getActiveTrafficIncidents(),
@@ -57,6 +57,7 @@ const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame
   getTodaysFeature(),
   getWorthKnowingCandidates(),
   getLatestFromCandidates(),
+  getFacilities(),
 ]);
 
 // Homepage curation (see NEEDS-HUMAN-REVIEW.md "Homepage Curation"): Latest
@@ -153,11 +154,11 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 
   {schoolAlerts.length > 0 && <SchoolAlertBanner alerts={schoolAlerts} />}
 
-  {weekly && <WeeklyRoundup story={weekly} />}
+  {weekly && <WeeklyRoundup story={weekly} facilities={facilities} />}
 
   <div class="front">
     <div class="front__lead">
-      {lead ? <LeadStory story={lead} /> : (
+      {lead ? <LeadStory story={lead} facilities={facilities} /> : (
         <p class="empty">Nothing scheduled right now. This page rebuilds every hour.</p>
       )}
     </div>
@@ -228,7 +229,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   {feature && (
     <section aria-label="Today's read">
       <SectionRule label="Today's read" href={CATEGORY_HREFS[feature.source_type]} />
-      <LeadStory story={feature} />
+      <LeadStory story={feature} facilities={facilities} />
     </section>
   )}
 

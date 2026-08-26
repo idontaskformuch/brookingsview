@@ -5,6 +5,26 @@ import type { Story } from '../lib/db';
 import { formatDate, formatTime, formatCalendarDate, CATEGORY_LABELS } from '../lib/db';
 import ShareButtons from './ShareButtons.astro';
 import { siteConfig } from '../lib/site-config';
+import { categoryForSourceType, type ImageCategory } from '../lib/images';
+
+// Dense card lists never render a per-item image (see NEEDS-HUMAN-REVIEW.md
+// "Venue & Category Image Identity", rendering-rules table) -- a small
+// colour chip + icon stands in for it instead, cheap enough to repeat 20+
+// times on one page without the weight (or repetitiveness) of 20 identical
+// category images. Deliberately not the same code path as resolveImage()'s
+// tier 3: this is a lightweight visual hint, not a resolved image.
+const CHIP: Partial<Record<ImageCategory, { icon: string; color: string }>> = {
+  city_hall: { icon: '🏛️', color: 'var(--navy)' },
+  events: { icon: '📅', color: 'var(--accent)' },
+  traffic: { icon: '🚗', color: '#b8590a' },
+  home_sales: { icon: '🏠', color: '#2f7a4f' },
+  jobs: { icon: '💼', color: '#5c4a99' },
+  sports: { icon: '🏈', color: '#a1272f' },
+  school_alerts: { icon: '🎒', color: '#a1272f' },
+  weather_alert: { icon: '⚠️', color: 'var(--alert)' },
+  workplace_watch: { icon: '🏭', color: '#5c4a99' },
+  university: { icon: '🎓', color: 'var(--navy)' },
+};
 
 interface Props {
   story: Story;
@@ -41,14 +61,12 @@ const timeLabel = hasByline
 
 const kicker = kickerOverride ?? (isAlert ? 'Alert' : isMeeting ? 'City hall'
   : hasByline ? (CATEGORY_LABELS[story.source_type] ?? 'Feature') : 'Events');
+
+const chip = CHIP[categoryForSourceType(story.source_type) as ImageCategory] ?? null;
 ---
 <article class:list={['item', isAlert && 'item--alert']}>
-  {!compact && story.image_path && (
-    <a class="item__image-link" href={href} rel={isExternal ? 'noopener' : undefined} tabindex="-1" aria-hidden="true">
-      <img class="item__image" src={story.image_path} alt="" loading="lazy" />
-    </a>
-  )}
   <p class="item__kicker">
+    {chip && <span class="item__chip" style={`--chip-color: ${chip.color}`} aria-hidden="true">{chip.icon}</span>}
     <span class="kicker">{kicker}</span>
     {timeLabel && <span class="item__when data">{timeLabel}</span>}
   </p>
@@ -74,15 +92,23 @@ const kicker = kickerOverride ?? (isAlert ? 'Alert' : isMeeting ? 'City hall'
 }
 .item--alert .kicker { color: var(--alert); }
 
-.item__image-link { display: block; margin-bottom: 0.5rem; }
-.item__image { display: block; width: 100%; height: auto; }
-
 .item__kicker {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.5rem 0.75rem;
   margin: 0 0 0.3125rem;
+}
+.item__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--chip-color) 15%, transparent);
 }
 .item__when {
   font-size: 0.6875rem;

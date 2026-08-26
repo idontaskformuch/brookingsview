@@ -11,6 +11,7 @@ import SectionRule from '../components/SectionRule.astro';
 import GameCard from '../components/GameCard.astro';
 import { getSeasonGames, getUpcomingGames, getContentByType, formatDate, formatTime } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import SectionHero from '../components/SectionHero.astro';
 
 if (siteConfig.townId !== 'brookings_sd') {
   return Astro.redirect('/', 302);
@@ -42,6 +43,7 @@ const summaryBySport = new Map(
 ---
 <BaseLayout title={`SDSU Jackrabbits schedules and results — ${siteConfig.siteName}`} wide
   description="Full SDSU Jackrabbits schedules and results for football, basketball and volleyball.">
+  <SectionHero category="sports" />
   <header class="lede">
     <h1>Jackrabbits</h1>
     <p>Schedules and results for SDSU football, basketball and volleyball, straight

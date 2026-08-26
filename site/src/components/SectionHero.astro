@@ -1,0 +1,51 @@
+---
+/** Category-image hero for a section landing page (/events/, /city-hall/,
+ *  /traffic/, /home-sales/, /jobs/, /sports/, /workplace-watch/,
+ *  /university/) -- see NEEDS-HUMAN-REVIEW.md "Venue & Category Image
+ *  Identity", rendering-rules table: "Section landing hero -> Category
+ *  image." Renders nothing until a real asset exists for this
+ *  town/category in config/category-images.ts (Step 4 of resolveImage()'s
+ *  tiers is "nothing", never the /og/ social card) -- an absent hero here
+ *  is the honest, expected state before that art-direction pass ships.
+ */
+import { resolveImage, type ImageCategory } from '../lib/images';
+import { CATEGORY_IMAGES } from '../config/category-images';
+import { siteConfig } from '../lib/site-config';
+
+interface Props { category: ImageCategory; }
+const { category } = Astro.props;
+
+const image = resolveImage(
+  { title: siteConfig.cityName, source_type: 'announcement', image_path: null, image_alt: null, venue_raw: null },
+  {
+    town: siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca',
+    cityName: siteConfig.cityName,
+    facilities: [],
+    categoryImages: CATEGORY_IMAGES[siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca'],
+    category,
+  },
+);
+---
+{image && (
+  <img
+    class="section-hero"
+    src={image.path}
+    alt={image.alt}
+    width={image.width}
+    height={image.height}
+    loading="eager"
+    decoding="async"
+  />
+)}
+
+<style>
+.section-hero {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 22rem;
+  object-fit: cover;
+  border-radius: 0.375rem;
+  margin: 0 0 1.25rem;
+}
+</style>

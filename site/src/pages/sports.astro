@@ -13,6 +13,7 @@ import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import { getRegionalSports, getContentByType, formatCalendarDate, formatTime } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import SectionHero from '../components/SectionHero.astro';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
@@ -52,6 +53,7 @@ const leagueLabel = (l: string) => l.toUpperCase();
 ---
 <BaseLayout title={`Regional sports — ${siteConfig.siteName}`} wide
   description={`Schedules and results for pro and minor-league teams that matter in ${siteConfig.cityName}: the Inland Empire 66ers, Angels and Dodgers.`}>
+  <SectionHero category="sports" />
   <header class="lede">
     <h1>Regional sports</h1>
     <p>Schedules and results for the Inland Empire 66ers, plus the Angels and
