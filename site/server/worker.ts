@@ -23,7 +23,7 @@
 // "main" + "assets.binding" config.
 import { handleComment } from './comment';
 import { handleShiftPollVote } from './shift-poll-vote';
-import type { Env } from './_shared';
+import { type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug } from './_shared';
 
 interface WorkerEnv extends Env {
   // Bound via wrangler.jsonc `assets.binding` -- serves the static Astro
@@ -41,6 +41,31 @@ export default {
     }
     if (request.method === 'POST' && url.pathname === '/api/shift-poll-vote') {
       return handleShiftPollVote(request, env);
+    }
+
+    // /this-week/ -- rolling redirect to the current ISO week's permanent
+    // archive URL (see site/src/pages/this-week/index.astro's own
+    // Astro.redirect()). Handled HERE, at the real HTTP layer, not just in
+    // Astro: `output: 'static'` can't emit a real 301/302 status code from
+    // a prerendered page -- Astro.redirect() there only produces a static
+    // HTML fallback with a 2-second <meta http-equiv="refresh">, which is
+    // exactly the bug this fixes (reported live on mobile Safari: the
+    // fallback page's own plain, unstyled "Redirecting from ... to ..."
+    // text was visible instead of an instant navigation). A real
+    // Response.redirect() here returns before ever reaching ASSETS, so
+    // that static fallback page is never actually served in production
+    // (still built and deployed as a defensive no-op if this ever fails
+    // to match). Town-agnostic: this Worker script is deployed twice (see
+    // wrangler.jsonc's env.brookings/env.moreno_valley), so the town
+    // (and therefore the correct week-boundary timezone) is resolved from
+    // the request's own hostname at request time, exactly like
+    // handleComment/handleShiftPollVote already do -- never assumed from
+    // a build-time SITE_CITY, which this Worker's own separate wrangler
+    // bundle doesn't have.
+    if (url.pathname === '/this-week' || url.pathname === '/this-week/') {
+      const townId = townFromHostname(request.url, env.DEV_TOWN_ID);
+      const slug = currentIsoWeekSlug(timezoneForTown(townId));
+      return Response.redirect(`${url.origin}/this-week/${slug}/`, 302);
     }
 
     return env.ASSETS.fetch(request);

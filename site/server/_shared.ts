@@ -56,6 +56,58 @@ export function todayInTimezone(tz: string): string {
   }).format(new Date());
 }
 
+const TOWN_TIMEZONES: Record<string, string> = {
+  moreno_valley_ca: 'America/Los_Angeles',
+  brookings_sd: 'America/Chicago',
+};
+
+/** IANA timezone for a town_id -- unknown/undefined town_id falls back to
+ *  Brookings' zone, same "never guess, pick the documented default"
+ *  posture as townFromHostname's own devFallback. */
+export function timezoneForTown(townId: string | null): string {
+  return (townId && TOWN_TIMEZONES[townId]) ?? 'America/Chicago';
+}
+
+/** Current ISO-8601 week slug ("2026-w35") in `timeZone` -- e.g. for
+ *  redirecting /this-week/ to its permanent per-week archive URL (see
+ *  worker.ts). Deliberately a self-contained duplicate of site/src/lib/
+ *  this-week.ts's currentWeekInfo()/isoWeekInfo() (same algorithm,
+ *  proven correct by that file's own 23 unit tests) rather than an import
+ *  across the Astro/Worker build boundary: this-week.ts transitively
+ *  imports lib/db.ts, which calls neon(import.meta.env.DATABASE_URL) at
+ *  MODULE LOAD TIME -- a Vite/Astro build-time mechanism this file's own
+ *  wrangler bundle doesn't have (the Worker gets DATABASE_URL via its own
+ *  `env` bindings instead, a completely different mechanism). Importing
+ *  that chain here would either break the Worker's build or silently try
+ *  to construct a DB client with an undefined URL at Worker cold-start.
+ *  Same "duplicate a small pure function across an incompatible runtime
+ *  boundary" tradeoff this codebase already makes for OUTLIER_PRICE_FLOOR/
+ *  normalize_venue()/db.ts's own isoWeekSlug() (added for the exact same
+ *  circular-import reason). */
+export function currentIsoWeekSlug(timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const get = (t: string) => Number(parts.find((p) => p.type === t)!.value);
+  const localMidnight = Date.UTC(get('year'), get('month') - 1, get('day'));
+
+  const weekday = new Date(localMidnight).getUTCDay(); // 0=Sun..6=Sat
+  const daysSinceMonday = (weekday + 6) % 7;
+  const monday = new Date(localMidnight - daysSinceMonday * 86_400_000);
+
+  // Nearest-Thursday ISO week/year algorithm.
+  const thursdayAnchor = new Date(monday.getTime());
+  const mondayDayNum = (thursdayAnchor.getUTCDay() + 6) % 7;
+  thursdayAnchor.setUTCDate(thursdayAnchor.getUTCDate() - mondayDayNum + 3);
+  const isoYear = thursdayAnchor.getUTCFullYear();
+  const jan4 = new Date(Date.UTC(isoYear, 0, 4));
+  const jan4DayNum = (jan4.getUTCDay() + 6) % 7;
+  const week1Monday = new Date(jan4.getTime() - jan4DayNum * 86_400_000);
+  const isoWeek = Math.round((thursdayAnchor.getTime() - week1Monday.getTime()) / (7 * 86_400_000)) + 1;
+
+  return `${isoYear}-w${String(isoWeek).padStart(2, '0')}`;
+}
+
 export function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,

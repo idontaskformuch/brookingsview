@@ -3604,3 +3604,84 @@ handling is genuinely per-town, not hardcoded to Chicago. Orphan count
 unchanged (**19**); contamination clean, including specifically checked
 for zero "Brookings" mentions inside `news-sitemap.xml` itself, not just
 the build as a whole. Trailing-slash clean on both towns.
+
+## 34. Bug fix — `/this-week/` redirect rendered as visible text, not a real redirect
+
+**Reported live**: mobile Safari on `morenovalleyview.com/this-week/`
+showed a raw, unstyled page reading literally "Redirecting from
+`/this-week/` to `/this-week/2026-w35/`" instead of navigating — user
+confirmed Brookings has the identical problem.
+
+**Root cause, confirmed by reading the actual built output, not
+assumed**: `output: 'static'` means `/this-week/index.astro`'s
+`Astro.redirect(...)` call can't emit a real HTTP status code at request
+time — there's no server-side request handling for a prerendered page.
+Astro's own fallback for a static redirect is a plain HTML page with a
+2-second `<meta http-equiv="refresh">` and visible link text — confirmed
+exactly matching the report:
+```html
+<!doctype html><title>Redirecting to: /this-week/2026-w35/</title>
+<meta http-equiv="refresh" content="2;url=/this-week/2026-w35/">
+<body><a href="/this-week/2026-w35/">Redirecting from <code>/this-week/</code>
+to <code>/this-week/2026-w35/</code></a></body>
+```
+Not a code bug in the redirect LOGIC (the target slug was always computed
+correctly) — the mechanism itself can't produce an instant, invisible
+navigation from a static build.
+
+**Fix**: a real `Response.redirect()`, added at the actual HTTP layer —
+`site/server/worker.ts`, the Cloudflare Worker "Advanced Mode" script
+that already runs server-side per request before falling through to the
+static assets binding (already used for `/api/comment`/`/api/shift-poll-
+vote`, see that file's own docstring). Intercepts `/this-week`/
+`/this-week/` and returns a real 302 before ASSETS is ever reached — no
+visible intermediate page, no delay.
+
+**Town-agnostic by construction, not by accident**: `worker.ts` is one
+script deployed twice (`wrangler.jsonc`'s `env.brookings`/
+`env.moreno_valley`), so it can't rely on a build-time `SITE_CITY` the
+way Astro pages do. Resolves the town from the request's own hostname at
+request time (`townFromHostname()`, the exact mechanism `handleComment`/
+`handleShiftPollVote` already use), then picks the matching timezone
+(new `timezoneForTown()` in `_shared.ts`) before computing the current
+ISO week.
+
+**New `currentIsoWeekSlug()` in `_shared.ts`, deliberately NOT an import
+from `lib/this-week.ts`**: that file transitively imports `lib/db.ts`,
+which calls `neon(import.meta.env.DATABASE_URL)` at module load time — a
+Vite/Astro build-time mechanism the Worker's own, separately-bundled
+wrangler build doesn't have (the Worker gets `DATABASE_URL` via its own
+`env` bindings). Importing that chain here would risk breaking the
+Worker's build or constructing a DB client with an undefined URL at
+cold-start. Same "duplicate a small pure function across an incompatible
+runtime boundary" tradeoff this codebase already makes for
+`OUTLIER_PRICE_FLOOR`/`normalize_venue()`/`db.ts`'s own `isoWeekSlug()`.
+
+### Verified, not assumed
+
+`currentIsoWeekSlug()`'s algorithm executed directly (outside the Worker,
+as a standalone script) against the EXACT SAME fixtures already proven
+correct in `this-week.test.ts`'s 23 passing tests — including the
+cross-midnight Los Angeles case (an instant that's already the next UTC
+day but still the previous calendar day in Pacific time) — both produced
+the identical `2026-w35` result the existing test suite already
+guarantees is correct. `npx tsc -p server/tsconfig.json`: 0 errors.
+`astro check`: 0 errors. `npm run test`: 144/144 (unchanged — this fix
+lives entirely in `server/`, outside Astro's own build/test surface).
+
+Real, isolated Brookings build: `/this-week/2026-w35/` (the redirect's
+actual destination) renders correctly with real content — confirms the
+fix isn't masking a second, separate problem where the destination page
+itself was broken. The old static fallback page (`dist/this-week/
+index.html`) still builds as before, unchanged and harmless — it's now
+genuinely unreachable in production (the Worker returns its own redirect
+before `ASSETS.fetch()` is ever called), but nothing about the fix
+requires removing it. Orphan count unchanged (**8**), contamination and
+trailing-slash clean. Moreno Valley not separately rebuilt for this pass
+— the fix is identical shared code deployed to both towns via the same
+`wrangler.jsonc` `main` entry, and the actual redirect math was already
+verified against both towns' real timezones directly.
+
+**Per the bug report's own explicit instruction: NOT committed.** Left
+staged for manual review: `site/server/worker.ts`, `site/server/
+_shared.ts`.
