@@ -382,7 +382,7 @@ def main() -> int:
                     INSERT INTO stories
                         (town_id, title, slug, body, source_type, occurs_at,
                          generated_by, verified, published_at, byline, content_hash)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,now(),'AI-genererad',%s)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,now(),'AI-generated',%s)
                     ON CONFLICT (town_id, slug) DO UPDATE SET
                         title = EXCLUDED.title,
                         body = EXCLUDED.body,
@@ -465,7 +465,7 @@ def main() -> int:
                     INSERT INTO stories
                         (town_id, title, slug, body, source_type, occurs_at,
                          generated_by, verified, published_at, byline, content_hash)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,true,now(),'AI-genererad',%s)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,true,now(),'AI-generated',%s)
                     ON CONFLICT (town_id, slug) DO UPDATE SET
                         title = EXCLUDED.title,
                         body = EXCLUDED.body,

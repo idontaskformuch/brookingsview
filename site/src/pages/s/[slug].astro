@@ -36,7 +36,7 @@ const kind = isAlert ? 'Alert' : isMeeting ? 'Meeting' : 'Event';
 // stället för att visa båda (kind skulle ändå bara säga "Event" fel för dessa).
 const hasByline = Boolean(story.byline);
 const category = CATEGORY_LABELS[story.source_type] ?? story.source_type;
-// Home sales digests keep a byline (AI-genererad) like other generated
+// Home sales digests keep a byline (AI-generated) like other generated
 // content, so the generic `when` slot below is normally empty for them --
 // reuse it for an explicit "Covering <Month Year>" label instead, since
 // occurs_at already stores the digest's covered month (see

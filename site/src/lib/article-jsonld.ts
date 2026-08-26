@@ -50,9 +50,9 @@ export function buildArticleJsonLd(
     dateModified: story.published_at,
     articleBody: story.body,
     image: [heroUrl, ...additionalImages],
-    // story.byline is always the literal string "AI-genererad" (see
+    // story.byline is always the literal string "AI-generated" (see
     // content/_base.py:to_metadata) -- a transparency marker, not a real
-    // name. Setting '@type':'Person', name:'AI-genererad' would claim a
+    // name. Setting '@type':'Person', name:'AI-generated' would claim a
     // person by that name wrote the text, exactly the kind of invented
     // fact this project's own rules otherwise never allow. No story has a
     // real human author today, so Organization applies to all of them.

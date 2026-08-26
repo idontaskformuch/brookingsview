@@ -216,7 +216,7 @@ def main() -> int:
                     (town_id, title, slug, body, source_type, occurs_at,
                      generated_by, verified, published_at, byline, image_path, image_alt,
                      rating, ingredients, instructions)
-                VALUES (%s,%s,%s,%s,%s, now(), %s, true, now(), 'AI-genererad', %s, %s, %s, %s, %s)
+                VALUES (%s,%s,%s,%s,%s, now(), %s, true, now(), 'AI-generated', %s, %s, %s, %s, %s)
                 ON CONFLICT (town_id, slug) DO UPDATE SET
                     title = EXCLUDED.title,
                     body = EXCLUDED.body,

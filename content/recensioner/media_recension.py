@@ -13,8 +13,8 @@ icke-blockerande hållning som bildgenereringen i Steg 3.5.
 "Facts verified as of <date>" (Review Writing Standard non-negotiable #5)
 läggs till av KOD, inte av modellen -- en dagens-datum-rad är inte något en
 LLM ska pålitas att skriva korrekt, samma "verifiera, hitta inte på"-princip
-som resten av huset. Den löpande "AI-genererad"-bylinen sajten redan visar
-på varje sida (se ai_pipeline/daily_content.py's INSERT, byline='AI-genererad')
+som resten av huset. Den löpande "AI-generated"-bylinen sajten redan visar
+på varje sida (se ai_pipeline/daily_content.py's INSERT, byline='AI-generated')
 täcker disclosure-delen; den här raden är specifikt för recensionens EGNA
 sakuppgifter (release, rollista, speltid), inte en andra kopia av bylinen.
 """

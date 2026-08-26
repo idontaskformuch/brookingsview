@@ -17,6 +17,7 @@ User-agent: *
 Allow: /
 
 Sitemap: ${siteUrl}/sitemap-index.xml
+Sitemap: ${siteUrl}/news-sitemap.xml
 `;
   return new Response(body, { headers: { 'Content-Type': 'text/plain' } });
 };

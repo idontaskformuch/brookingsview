@@ -236,7 +236,7 @@ def main() -> int:
                 INSERT INTO stories
                     (town_id, title, slug, body, source_type, occurs_at,
                      generated_by, verified, content_hash, published_at, byline)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,now(),'AI-genererad')
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,now(),'AI-generated')
                 ON CONFLICT (town_id, slug) DO UPDATE SET
                     title = EXCLUDED.title,
                     body = EXCLUDED.body,

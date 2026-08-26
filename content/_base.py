@@ -6,7 +6,10 @@ så AI-spendering delar ett gemensamt tak oavsett om det går till nyhetsformate
 krönikor), style_filter.clean(), originality_check.is_original().
 
 Byline-principen (se PLAN.md/CONTENT_MODULES.md): varje artikel ska kunna renderas med
-en synlig "AI-genererad"-rad. Den byggs i to_metadata(), inte i AI-anropet.
+en synlig "AI-generated"-rad (engelsk text -- sajten är engelskspråkig, se
+NEEDS-HUMAN-REVIEW.md "Publisher Center / News indexing" för fyndet att den
+här strängen visades på svenska på en engelsk sajt fram till 2026-08-26).
+Den byggs i to_metadata(), inte i AI-anropet.
 """
 from __future__ import annotations
 
@@ -337,7 +340,7 @@ def to_metadata(article: GeneratedArticle, category: str, slug: str,
         "title": article.title,
         "body": article.body,
         "category": category,
-        "byline": "AI-genererad",
+        "byline": "AI-generated",
         "date": datetime.date.today().isoformat(),
         "slug": slug,
         "image": image_path or f"/assets/images/{slug}.png",
