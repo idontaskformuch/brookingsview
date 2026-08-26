@@ -89,7 +89,14 @@ const path = Astro.url.pathname;
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>{title}</title>
 <meta name="description" content={description} />
-{noindex && <meta name="robots" content="noindex,follow" />}
+{/* max-image-preview:large -- Google Discover/News eligibility signal (see
+    NEEDS-HUMAN-REVIEW.md "Image pipeline overhaul": confirmed absent from
+    every page before this, direct source check, not an external re-fetch).
+    Combined with noindex,follow on the handful of pages that need it --
+    Google's own guidance allows comma-combining robots directives in one
+    tag, and a noindex page still benefits from a large-image allowance in
+    the rare case it's later flipped back to indexable. */}
+<meta name="robots" content={noindex ? 'noindex,follow,max-image-preview:large' : 'max-image-preview:large'} />
 <link rel="canonical" href={canonical.href} />
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />

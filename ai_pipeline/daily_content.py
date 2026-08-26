@@ -184,32 +184,39 @@ def main() -> int:
         # leverantörsfel) i stället för att kasta -- image_path förblir då NULL och
         # sidan faller tillbaka på /og/{slug}.png som hero, samma som för content
         # utan illustration. En misslyckad bild ska aldrig blockera publiceringen.
+        # image_alt: samma theme-text som redan byggde bildprompten (ingen ny
+        # AI-kostnad) -- ersätter den generiska 'Illustration for "<headline>"'-
+        # mallen på sidan (se NEEDS-HUMAN-REVIEW.md "Image pipeline overhaul").
         image_path = None
-        saved = generate_illustration(illustration_theme(article), slug)
+        image_alt = None
+        theme = illustration_theme(article)
+        saved = generate_illustration(theme, slug, content_type=content_type)
         if saved is not None:
-            image_path = "/" + str(saved.relative_to(PUBLIC_DIR)).replace("\\", "/")
-            print(f"  illustration: {image_path}")
+            image_path = "/" + str(saved.native.relative_to(PUBLIC_DIR)).replace("\\", "/")
+            image_alt = theme
+            print(f"  illustration: {image_path} (+ 4:3, 1:1 crops)")
 
         with conn.cursor() as cur:
             cur.execute(
                 """
                 INSERT INTO stories
                     (town_id, title, slug, body, source_type, occurs_at,
-                     generated_by, verified, published_at, byline, image_path, rating,
-                     ingredients, instructions)
-                VALUES (%s,%s,%s,%s,%s, now(), %s, true, now(), 'AI-genererad', %s, %s, %s, %s)
+                     generated_by, verified, published_at, byline, image_path, image_alt,
+                     rating, ingredients, instructions)
+                VALUES (%s,%s,%s,%s,%s, now(), %s, true, now(), 'AI-genererad', %s, %s, %s, %s, %s)
                 ON CONFLICT (town_id, slug) DO UPDATE SET
                     title = EXCLUDED.title,
                     body = EXCLUDED.body,
                     published_at = now(),
                     image_path = EXCLUDED.image_path,
+                    image_alt = EXCLUDED.image_alt,
                     rating = EXCLUDED.rating,
                     ingredients = EXCLUDED.ingredients,
                     instructions = EXCLUDED.instructions
                 """,
                 (town_id, article.title, slug, article.body, content_type,
-                 f"ai:{DEFAULT_MODEL}", image_path, article.rating, article.ingredients,
-                 article.instructions),
+                 f"ai:{DEFAULT_MODEL}", image_path, image_alt, article.rating,
+                 article.ingredients, article.instructions),
             )
 
             # Flag-for-review, not auto-kill (see content/recensioner/

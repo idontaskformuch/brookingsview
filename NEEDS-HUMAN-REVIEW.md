@@ -3375,3 +3375,126 @@ So: **52 is the real, defensible number** — every one of them a genuine,
 dated, resolved event with a verified address. Orphan count unchanged
 (**8**, confirming venue resolution has no effect on internal linking, as
 expected); contamination and trailing-slash sweeps clean.
+
+## 32. Image pipeline overhaul (2026-08-25)
+
+Discover/News hero-image requirements, both towns, pipeline change only --
+no retroactive backfill of already-published articles/images (per the
+brief's own scope). Two facts corrected from the brief's own background
+section before writing any code, not assumed:
+
+- The image referenced in `NewsArticle`'s `image` field is `story.
+  image_path` -- the NATIVE Flux illustration -- not the 1200×630 OG card.
+  Checked a real saved file: it's **1024×768** (fal.ai's `landscape_4_3`
+  default; no size parameter was ever passed). The 1200×630 the brief
+  flagged is a real, separate asset (`lib/og.ts`'s satori-rendered social-
+  share card), and 1200×630/1.91:1 is actually the CORRECT, standard Open
+  Graph size for that purpose -- left untouched. Only the native
+  illustration needed the resolution bump.
+- Verified fal.ai's actual current API before writing the request (live
+  fetch of `fal.ai/models/fal-ai/flux/dev/api`, not memory): `image_size`
+  accepts a custom `{"width": W, "height": H}` object, confirming
+  1600×900 is directly requestable, not just approximated by an enum
+  preset.
+
+### 1 — Per-content-type photorealistic prompts
+
+`config/image_model.py`: `STYLE_PROMPT` (one shared illustrated-style
+string) replaced with `STYLE_PROMPTS: dict[str, str]` keyed by the same
+`content_type` values already used everywhere else in this pipeline
+(`culture_essay`, `editorial`, `kvick_essa`, `vetenskap_kronika` share a
+documentary-photojournalism style; `media_recension` gets a photo-of-the-
+subject style; `vardagsmiddag` gets food photography), falling back to
+the documentary style for anything unrecognized. The existing "no real
+identifiable people" guardrail is now `_NO_REAL_PEOPLE`, applied to EVERY
+variant unconditionally and made structurally impossible to skip (part of
+`_build_prompt()`'s own return, not something a per-type prompt could
+omit) -- documented as MORE important now than when the style was
+illustrated, since a photorealistic image of a fabricated "identifiable"
+person reads as a real photo in a way cartoon art never did.
+
+### 2 — Resolution
+
+`IMAGE_WIDTH = 1600, IMAGE_HEIGHT = 900` in the same config file, passed
+as fal.ai's `image_size` object in `_generate_fal()`. `_generate_replicate()`
+also updated (`width`/`height` in the input dict, the standard shape
+across most Replicate SD/Flux wrappers) but **flagged, not verified
+live**: Replicate's own schema endpoint requires an API token this
+environment doesn't have, and its docs page is a JS app WebFetch can't
+read parameters from. Not a blocker -- `IMAGE_API_PROVIDER = "fal"` is
+the active provider; the comment tells whoever ever flips it to
+"replicate" to spot-check this first.
+
+### 3 — Three crops, one generation call
+
+New `_center_crop()` (pure, unit-tested) in `generate_illustration.py`:
+crops the single generated 1600×900 image locally (Pillow, zero extra API
+cost) to `{slug}-4x3.png` (1200×900) and `{slug}-1x1.png` (900×900),
+alongside the unchanged `{slug}.png` (native, 16:9). Storage convention:
+same `site/public/assets/images/` directory, simple slug-suffix naming --
+no new path/CDN structure needed.
+
+### 4 — `max-image-preview:large`
+
+Checked actual page source directly (not an external re-fetch, per the
+brief's own instruction) and confirmed it was genuinely absent everywhere.
+Added unconditionally in `BaseLayout.astro`'s `<head>` -- combined with
+the existing conditional `noindex,follow` into one robots meta tag
+(`noindex,follow,max-image-preview:large` vs. just
+`max-image-preview:large`), since Google's own guidance allows comma-
+combining robots directives in a single tag.
+
+### 5 — `NewsArticle` image array
+
+Checked the actual JSON-LD in source (`lib/article-jsonld.ts`) and
+confirmed `image` was `[heroUrl]`, one URL. `buildArticleJsonLd()` gained
+an optional `additionalImages: string[] = []` parameter (backward
+compatible -- every existing call site and test keeps working unchanged).
+`[slug].astro` computes it by checking whether the two crop FILES exist
+on disk (`existsSync`, at build time) -- never assumed from `image_path`
+being set, since old content has a native image but no crops. This is
+the actual mechanism enforcing "no retroactive backfill": nothing links
+to a crop URL that doesn't exist.
+
+### 6 — Real alt text
+
+New `image_alt TEXT` column (`db/migrations/025_image_alt.sql`, applied
+live), populated from `content._base.illustration_theme()` -- the exact
+title + short body-summary text ALREADY generated to build the image
+prompt, at zero new AI cost (confirmed with the owner before adding a DB
+column: reuse existing text over a new captioning call). `[slug].astro`'s
+`alt` attribute now reads `story.image_alt`, falling back to the old
+generic `Illustration for "<headline>"` template when null -- which is
+every row published before this shipped, confirmed live (see Verified
+section).
+
+### Verified, not assumed
+
+7 new Python tests (`tests/test_generate_illustration.py`): per-content-
+type style selection, the fallback for an unrecognized/missing content
+type, the guardrail phrase surviving in every single style variant (not
+just spot-checked), and the crop math (4:3/1:1 dimensions, and a real
+centered-not-left-aligned pixel-level check). 2 new TS tests
+(`article-jsonld.test.ts`): `image` stays `[heroUrl]` with no
+`additionalImages`, becomes `[heroUrl, ...crops]` when given. Full Python
+suite: 212 passed, 1 skipped. `astro check`: 0 errors. `npm run test`:
+129/129.
+
+Real, isolated Brookings build (Moreno Valley build skipped deliberately
+-- this is a pipeline change with no per-town content, and confirming the
+one shared code path once is sufficient; MoVal builds are the slow ones).
+Confirmed live: every page carries `max-image-preview:large`; a real
+content-track page's alt text is still the old generic template (`image_alt`
+is NULL for every pre-existing row, exactly the intended forward-only
+behavior); that same page's `NewsArticle` `image` array is `[heroUrl]`
+only -- no broken crop-URL reference, since no crop files exist for
+pre-existing content. Orphan count unchanged (**8**); contamination and
+trailing-slash sweeps clean.
+
+**Not done in this pass, deliberately**: no real image was generated
+end-to-end through the new pipeline (that would mean a real, paid fal.ai
+API call this session didn't have standing authorization to make) -- the
+generation/crop/size logic is verified via unit tests and a live-fetched
+API contract instead. The next real `daily_content.py` run (existing
+cron, no new job needed) will be the first live end-to-end proof; worth a
+one-time manual spot-check of its output once that happens.

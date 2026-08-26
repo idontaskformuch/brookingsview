@@ -52,6 +52,18 @@ describe('buildArticleJsonLd -- type selection', () => {
     const withoutRating = buildArticleJsonLd(baseStory({ source_type: 'media_recension', rating: null }), HERO_URL, SITE_NAME);
     expect(withoutRating.reviewRating).toBeUndefined();
   });
+
+  it('image is just [heroUrl] when no crop variants are given', () => {
+    const result = buildArticleJsonLd(baseStory({}), HERO_URL, SITE_NAME);
+    expect(result.image).toEqual([HERO_URL]);
+  });
+
+  it('image includes crop variants when the caller confirms they exist', () => {
+    const crop4x3 = 'https://morenovalleyview.com/assets/images/culture_essay-2026-08-01-4x3.png';
+    const crop1x1 = 'https://morenovalleyview.com/assets/images/culture_essay-2026-08-01-1x1.png';
+    const result = buildArticleJsonLd(baseStory({}), HERO_URL, SITE_NAME, [crop4x3, crop1x1]);
+    expect(result.image).toEqual([HERO_URL, crop4x3, crop1x1]);
+  });
 });
 
 describe('buildRecipeJsonLd', () => {

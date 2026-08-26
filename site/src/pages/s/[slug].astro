@@ -1,6 +1,8 @@
 ---
 /** Enskild story. Varje sida länkar tillbaka till sin primärkälla -- det är både
  *  hederligt mot läsaren och det som gör E-E-A-T-anspråket på metodsidan sant. */
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ShareButtons from '../../components/ShareButtons.astro';
 import RelatedStories from '../../components/RelatedStories.astro';
@@ -84,12 +86,32 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: story.title, href: canonicalUrl },
 ];
 const related = await getRelatedStories(story, 3);
-// Steg 3.5: en tecknad illustration matchad till artikeln, om en sådan finns.
-// Har inte samma mått som OG-korten (1200x630) -- inga hårdkodade width/height
-// för den, bara CSS-skalning. Saknas image_path (scraped content, eller om
-// bildgenereringen misslyckades den dagen) faller sidan tillbaka på OG-kortet.
+// Steg 3.5: en redaktionell/fotorealistisk illustration matchad till
+// artikeln, om en sådan finns. Har inte samma mått som OG-korten
+// (1200x630) -- inga hårdkodade width/height för den, bara CSS-skalning.
+// Saknas image_path (scraped content, eller om bildgenereringen
+// misslyckades den dagen) faller sidan tillbaka på OG-kortet.
 const heroSrc = story.image_path ?? `/og/${story.slug}.png`;
 const heroUrl = new URL(heroSrc, Astro.site ?? siteConfig.siteUrl).href;
+
+// Real alt text (see NEEDS-HUMAN-REVIEW.md "Image pipeline overhaul") --
+// image_alt is only set for stories published after that column existed
+// (forward-only, no retroactive backfill), so a generic-but-honest
+// fallback covers every older row and every scraped story (which never
+// gets an illustration or an image_alt at all).
+const heroAlt = story.image_alt ?? `Illustration for "${story.title}"`;
+
+// Additional crop variants (4:3, 1:1) for NewsArticle's image[] -- only
+// included when the FILES actually exist on disk, checked here at build
+// time rather than assumed from image_path being set (content published
+// before the crop pipeline shipped has a native image but no crops).
+// content/illustrations/generate_illustration.py's "{slug}-4x3.png"/
+// "{slug}-1x1.png" naming convention, mirrored here exactly.
+const additionalImages = story.image_path
+  ? [`${story.slug}-4x3.png`, `${story.slug}-1x1.png`]
+      .filter((f) => existsSync(fileURLToPath(new URL(`../../../public/assets/images/${f}`, import.meta.url))))
+      .map((f) => new URL(`/assets/images/${f}`, Astro.site ?? siteConfig.siteUrl).href)
+  : [];
 
 // Kommentarer bara på Worker Pulse-digester (se WorkerPulseComments.astro-
 // docstringen) -- source_type existerar bara för Moreno Valley-storys, så
@@ -122,7 +144,7 @@ const eventJsonLdObject = buildEventJsonLd(
     <img
       class="story__hero"
       src={heroSrc}
-      alt={`Illustration for “${story.title}”`}
+      alt={heroAlt}
       loading="eager"
     />
 
@@ -217,7 +239,7 @@ const eventJsonLdObject = buildEventJsonLd(
   {isWorkerPulseDigest && <WorkerPulseComments pageSlug={story.slug} comments={comments} />}
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
-    buildArticleJsonLd(story, heroUrl, siteConfig.siteName)
+    buildArticleJsonLd(story, heroUrl, siteConfig.siteName, additionalImages)
   )} />
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(

@@ -34,6 +34,13 @@ export function buildArticleJsonLd(
   story: Pick<Story, 'title' | 'published_at' | 'body' | 'source_type' | 'rating'>,
   heroUrl: string,
   siteName: string,
+  // Additional crop URLs (e.g. 4:3, 1:1) alongside heroUrl -- see NEEDS-
+  // HUMAN-REVIEW.md "Image pipeline overhaul". Only populated by the
+  // caller when the crop FILES actually exist on disk (checked via fs at
+  // build time, not assumed from the row's own data) -- content published
+  // before the crop pipeline shipped, or with no illustration at all
+  // (falls back to the single OG card), only ever gets the one heroUrl.
+  additionalImages: string[] = [],
 ): Record<string, unknown> {
   const base: Record<string, unknown> = {
     '@context': 'https://schema.org',
@@ -42,7 +49,7 @@ export function buildArticleJsonLd(
     datePublished: story.published_at,
     dateModified: story.published_at,
     articleBody: story.body,
-    image: [heroUrl],
+    image: [heroUrl, ...additionalImages],
     // story.byline is always the literal string "AI-genererad" (see
     // content/_base.py:to_metadata) -- a transparency marker, not a real
     // name. Setting '@type':'Person', name:'AI-genererad' would claim a

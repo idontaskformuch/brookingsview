@@ -116,6 +116,13 @@ export interface Story {
   generated_by: string;
   byline: string | null;
   image_path: string | null;
+  // Real, content-specific alt text (see db/migrations/025_image_alt.sql) --
+  // NULL for every story published before this column existed (forward-only,
+  // no retroactive backfill, see NEEDS-HUMAN-REVIEW.md "Image pipeline
+  // overhaul") and for all scraped content (meetings/events/alerts never
+  // get an illustration at all). Callers fall back to a generic template
+  // when this is null, never render a blank alt attribute.
+  image_alt: string | null;
   rating: number | null;
   // Endast vardagsmiddag (recept) sätter detta -- strukturerad ingredienslista,
   // en rad per ingrediens. NULL för allt annat innehåll, se db/migrations/005.
@@ -259,7 +266,7 @@ export async function getUpcomingStories(
 ): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions,
+           byline, image_path, image_alt, rating, ingredients, instructions,
            venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}
@@ -286,7 +293,7 @@ export async function getUpcomingStories(
 export async function getWorthKnowingCandidates(limit = 12): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at,
-           generated_by, byline, image_path, rating, ingredients, instructions, featured
+           generated_by, byline, image_path, image_alt, rating, ingredients, instructions, featured
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND (
@@ -313,7 +320,7 @@ const EDITORIAL_SOURCE_TYPES: SourceType[] =
 export async function getLatestFromCandidates(limit = 8): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at,
-           generated_by, byline, image_path, rating, ingredients, instructions
+           generated_by, byline, image_path, image_alt, rating, ingredients, instructions
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${EDITORIAL_SOURCE_TYPES})
@@ -329,7 +336,7 @@ export async function getPastStories(
 ): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions,
+           byline, image_path, image_alt, rating, ingredients, instructions,
            venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}
@@ -355,7 +362,7 @@ export async function getPastStories(
 export async function getTodaysFeature(): Promise<Story | null> {
   const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions,
+           byline, image_path, image_alt, rating, ingredients, instructions,
            venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}
@@ -374,7 +381,7 @@ export async function getTodaysFeature(): Promise<Story | null> {
 export async function getContentByType(sourceTypes: SourceType[], limit = 40): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions,
+           byline, image_path, image_alt, rating, ingredients, instructions,
            venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}
@@ -387,7 +394,7 @@ export async function getContentByType(sourceTypes: SourceType[], limit = 40): P
 export async function getStoryBySlug(slug: string): Promise<Story | null> {
   const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions,
+           byline, image_path, image_alt, rating, ingredients, instructions,
            venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
@@ -400,7 +407,7 @@ export async function getStoryBySlug(slug: string): Promise<Story | null> {
 export async function getAllStories(): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions,
+           byline, image_path, image_alt, rating, ingredients, instructions,
            venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}
@@ -441,7 +448,7 @@ export async function getActiveAlerts(): Promise<Story[]> {
 export async function getLatestWeekly(): Promise<Story | null> {
   const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions,
+           byline, image_path, image_alt, rating, ingredients, instructions,
            venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}
@@ -462,7 +469,7 @@ export async function getLatestWeekly(): Promise<Story | null> {
 export async function getAllWeeklyStories(): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions
+           byline, image_path, image_alt, rating, ingredients, instructions
       FROM stories
      WHERE town_id = ${TOWN_ID} AND source_type = 'weekly'
      ORDER BY occurs_at ASC
@@ -477,7 +484,7 @@ export async function getAllWeeklyStories(): Promise<Story[]> {
 export async function getStoriesForWeekly(sourceTypes: SourceType[]): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions,
+           byline, image_path, image_alt, rating, ingredients, instructions,
            venue_raw, is_recurring_series, ends_at, featured
       FROM stories
      WHERE town_id = ${TOWN_ID}
@@ -495,7 +502,7 @@ export async function getStoriesForWeekly(sourceTypes: SourceType[]): Promise<St
 export async function getWorthKnowingCandidatesInRange(start: Date, end: Date, limit = 12): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at,
-           generated_by, byline, image_path, rating, ingredients, instructions, featured
+           generated_by, byline, image_path, image_alt, rating, ingredients, instructions, featured
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type IN ('meeting', 'meeting_followup', 'alert')
@@ -522,7 +529,7 @@ export async function getRelatedStories(
 
   const sameType = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions,
+           byline, image_path, image_alt, rating, ingredients, instructions,
            venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}
@@ -538,7 +545,7 @@ export async function getRelatedStories(
   const seen = [story.slug, ...sameType.map((s) => s.slug)];
   const filler = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
-           byline, image_path, rating, ingredients, instructions,
+           byline, image_path, image_alt, rating, ingredients, instructions,
            venue_raw, is_recurring_series, ends_at
       FROM stories
      WHERE town_id = ${TOWN_ID}

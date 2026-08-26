@@ -10,7 +10,7 @@ function story(overrides: Partial<Story>): Story {
   return {
     id: 1, title: 'Untitled', slug: 'untitled', body: '', source_type: 'event',
     source_url: null, occurs_at: null, published_at: '2026-08-23T12:00:00Z',
-    generated_by: 'scraper', byline: null, image_path: null, rating: null,
+    generated_by: 'scraper', byline: null, image_path: null, image_alt: null, rating: null,
     ingredients: null, instructions: null,
     ...overrides,
   };

@@ -59,6 +59,7 @@ export function artsEventAsStory(event: SdsuEvent): Story {
     generated_by: 'sdsu_event_calendar',
     byline: null,
     image_path: null,
+    image_alt: null,
     rating: null,
     ingredients: null,
     instructions: null,
