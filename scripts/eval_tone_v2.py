@@ -35,15 +35,17 @@ load_dotenv()
 
 import psycopg
 from psycopg.rows import dict_row
+from datetime import datetime
 
 from ai_pipeline.format_prompt import format_record
 from ai_pipeline.publish import (
-    _INTERNAL_FIELDS, _localize_datetime_fields, has_substance, is_current,
+    _INTERNAL_FIELDS, _localize_datetime_fields, group_event_slots,
+    group_recurring_events, has_substance, is_current,
 )
 from zoneinfo import ZoneInfo
 
 
-def _fetch_sample(conn, town_id: str, n_meetings: int, n_events: int, n_alerts: int) -> dict[str, list[dict]]:
+def _fetch_sample(conn, town_id: str, n_meetings: int, n_events: int, n_alerts: int, tz: ZoneInfo) -> dict[str, list[dict]]:
     """Real, recent, substantive rows -- same has_substance()/is_current()
     gates publish.py itself applies, so the sample is representative of
     what would actually get published, not cherry-picked easy cases."""
@@ -80,13 +82,34 @@ def _fetch_sample(conn, town_id: str, n_meetings: int, n_events: int, n_alerts: 
             if has_substance("events", row) and is_current("alert", row):
                 buckets["alert"].append(row)
 
+        # Grouped the same way publish.py's real pipeline does (slot- then
+        # series-collapse) before sampling, then sorted ASC (nearest-first)
+        # -- NOT a raw `ORDER BY starts_at DESC LIMIT N` fetch. A prolific
+        # weekly series (e.g. "Shop for a Cause") gets pre-expanded ~2 years
+        # out by its upstream Tockify feed; DESC-ordering raw instance rows
+        # let that far-future tail alone fill the whole event sample before
+        # any other real event -- or even that same series' real NEXT
+        # occurrence -- got a chance (confirmed live 2026-08-26: eval output
+        # showed 2028-dated "Shop for a Cause" entries instead of the actual
+        # upcoming one). Grouping first also matches what a real reader
+        # would see: one story per series, not 15 near-duplicate instances.
+        # `starts_at >= now() - 2 days`: the events table has no purge job,
+        # so old rows already published as real stories months ago (via a
+        # separate known_slugs check this eval doesn't do) are still sitting
+        # here -- without this bound, ASC-sorting would surface THOSE as
+        # "nearest" instead of genuinely current/upcoming ones. The 2-day
+        # grace (not a hard `>= now()`) just tolerates today's already-past
+        # occurrences of a same-day series.
         cur.execute(
             "SELECT * FROM events WHERE town_id = %s AND source NOT IN ('nws_alert', 'county_alert') "
-            "ORDER BY starts_at DESC LIMIT 500",
+            "AND starts_at >= now() - interval '2 days' ORDER BY id",
             (town_id,),
         )
-        for row in cur.fetchall():
-            row = dict(row)
+        event_rows = [dict(r) for r in cur.fetchall()]
+        event_rows = group_event_slots(event_rows, tz)
+        event_rows = group_recurring_events(event_rows, tz)
+        event_rows.sort(key=lambda r: r.get("starts_at") or datetime.max)
+        for row in event_rows:
             if len(buckets["event"]) >= n_events:
                 break
             if has_substance("events", row) and is_current("event", row):
@@ -177,7 +200,7 @@ def main() -> int:
     new_entries: list[dict] = []
 
     with psycopg.connect(database_url) as conn:
-        buckets = _fetch_sample(conn, town_id, args.meetings, args.events, args.alerts)
+        buckets = _fetch_sample(conn, town_id, args.meetings, args.events, args.alerts, tz)
 
         for kind, rows in buckets.items():
             print(f"{kind}: {len(rows)} sample row(s)")
