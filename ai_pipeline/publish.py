@@ -283,6 +283,22 @@ def build_title(table: str, row: dict) -> str:
     return "Update"
 
 
+def prefix_town_name(title: str, display_name: str) -> str:
+    """Prepends "{display_name}: " so every published title names its own
+    town, per the SEO title rule -- see scripts/retrofit_story_titles.py
+    (the one-time pass this mirrors exactly) and NEEDS-HUMAN-REVIEW.md
+    "SEO Fas 3". THAT script only fixed rows that already existed; this is
+    the missing other half -- without it here, every meeting/event
+    published after the retrofit quietly loses the prefix again, which is
+    exactly what was found happening live (see "Google News sitemap").
+    Idempotent, same rule as the retrofit script: skips a title that
+    already names the town (case-insensitive substring), so this can never
+    double-prefix on a re-run or a title that already mentions it."""
+    if display_name.lower() in title.lower():
+        return title
+    return f"{display_name}: {title}"
+
+
 def build_source_url(table: str, row: dict) -> str | None:
     if table == "meetings":
         return row.get("agenda_url")
@@ -488,7 +504,7 @@ def publish_table(
             thin += 1
             continue
 
-        title = build_title(table, row)
+        title = prefix_town_name(build_title(table, row), cfg["display_name"])
         source_url = build_source_url(table, row)
         snapshot_id = row.get("snapshot_id")
         occurs_at = build_occurs_at(table, row)

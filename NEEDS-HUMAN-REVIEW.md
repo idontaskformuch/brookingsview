@@ -3498,3 +3498,109 @@ generation/crop/size logic is verified via unit tests and a live-fetched
 API contract instead. The next real `daily_content.py` run (existing
 cron, no new job needed) will be the first live end-to-end proof; worth a
 one-time manual spot-check of its output once that happens.
+
+## 33. Google News sitemap, and a live regression found while building it (2026-08-25/26)
+
+### The sitemap
+
+New `/news-sitemap.xml` per town, a separate file from the general
+`@astrojs/sitemap` one, rolling 48-hour window only. `lib/news-sitemap.ts`
+(pure, no Astro/DB — same testability pattern as `event-jsonld.ts`) does
+the real work; `pages/news-sitemap.xml.ts` (an API route, mirroring
+`robots.txt.ts`'s existing pattern) wires in real data. New
+`getStoriesForNewsSitemap()` in `db.ts` — every source_type except
+`vardagsmiddag` (recipes: evergreen content, not news — the one type this
+codebase's own existing JSON-LD selection already treats as generic
+`Article` rather than any News-flavored type), `published_at` within the
+last 48 hours.
+
+**Date discipline, the brief's core hard requirement**: sitemap
+`<news:publication_date>`, `NewsArticle`'s `datePublished`, and the
+on-page timestamp all derive from the exact same `stories.published_at`
+column — one source of truth, never three independently-tracked dates.
+`toZonedISOString()` (already built and proven for Event JSON-LD's
+`startDate`) is reused unchanged for the W3C-with-offset format, rather
+than writing a second date-formatting function that could drift from the
+first. Added the explicit test the brief asked for — not a one-time
+manual check — that computes the sitemap date and the schema
+`datePublished` from the same fixture and asserts the same real instant
+(`.getTime()` equality, not string equality), plus a test that calling
+the (pure) sitemap builder twice with only `now()` advancing produces the
+identical `publication_date` both times.
+
+`news:title` strips the "{Town}: " prefix Fas 3's retrofit added to most
+titles — new `stripTownPrefix()`, exact-prefix-only (never touches a
+mid-sentence mention). The brief's own reasoning: `news:title` sits
+directly next to `news:publication/news:name` in Google's feed UI, so
+repeating the town name there is exactly the "costs useful space" case
+it explicitly warns about — the prefix still earns its keep on the page's
+own H1/`<title>`, just not here.
+
+**Publication name**: uses `siteConfig.siteName` ("Brookings View" /
+"Moreno Valley View") — the best available source of truth in this repo,
+but flagged explicitly in code and here: this MUST be checked against
+the real Google Publisher Center registration by the owner, since this
+repo has no way to verify that registration itself.
+
+### A live regression, found while investigating this task
+
+Checking real recent Brookings data to verify the sitemap (not
+hypothetically) surfaced that `SEO Fas 3`'s title retrofit
+(`scripts/retrofit_story_titles.py`, §27) was a ONE-TIME pass over
+existing rows — nothing in the actual publishing pipeline was ever
+updated to keep adding the town-name prefix to NEW content. Confirmed
+live: `meeting-2026-08-25-11005` ("City Council — Tue, Aug 25, 2026"),
+published hours AFTER the retrofit ran, already missing its prefix. This
+had been silently eroding Fas 3's own fix every hour since, on every new
+meeting/event AND every new AI-generated article.
+
+Flagged to the owner immediately rather than finishing the sitemap first
+— confirmed: fix it now. New `prefix_town_name()` in `ai_pipeline/
+publish.py` (same idempotent "skip if the town is already named,
+case-insensitive" rule as the original retrofit script — can never
+double-prefix), applied at every title-construction site found across the
+whole pipeline, not just the one that surfaced it:
+
+- `publish.py`'s own `build_title()` call site (meetings/events) — the one
+  that surfaced the bug.
+- `meeting_followups.py` ("What happened at ...")
+- `daily_content.py` (editorial/culture_essay/kvick_essa/vetenskap_kronika/
+  media_recension/vardagsmiddag — the AI-generated content-track articles).
+  Deliberately does NOT prefix the text used for the image-generation theme
+  or `image_alt` (§32) — alt text describes the image, not the page, so it
+  doesn't need the same place-anchoring the H1/`<title>` does.
+- `workplace_watch_digest.py` ("Worker Pulse: ...")
+- `jackrabbits_season_digest.py` / `sdsu_weekly_digest.py` (Brookings-only)
+
+**Confirmed already correct, not touched**: `weekly.py`,
+`home_sales_digest.py`, `sports_weekly_digest.py` already build their
+titles with `cfg['display_name']` directly — these were never part of
+the gap.
+
+### Verified, not assumed
+
+4 new Python tests (`tests/test_publish_titles.py`) for
+`prefix_town_name()` — fresh-prefix, idempotent-on-existing-mention,
+case-insensitive match, both towns. All 6 modified Python modules import
+standalone with no circular-import errors (`meeting_followups`,
+`daily_content`, `workplace_watch_digest`, `jackrabbits_season_digest`,
+`sdsu_weekly_digest`, `publish` itself, each checked individually, not
+just via pytest's own collection order). Full Python suite: 216 passed, 1
+skipped. `astro check`: 0 errors. `npm run test`: 144/144 (15 new).
+
+Real, isolated builds. Brookings: real `/news-sitemap.xml` generated —
+70 real, currently-eligible entries (a genuinely busy recent scraping
+period, not a bug), correct namespaces, `-05:00` offset (CDT), XML-
+escaped titles (`&amp;` for "Weed & Pest Board"), and confirmed the
+NEWEST meeting slugs already carry BOTH this session's forward-only fixes
+live in production at once -- the dated slug from Fas 5 AND (after this
+fix ships) the town-name prefix from Fas 3. Confirmed structurally that
+`news-sitemap.xml` never leaks into the general sitemap (`@astrojs/
+sitemap` already excludes non-page routes; checked directly, not
+assumed). Orphan count unchanged (**8**); contamination clean. Moreno
+Valley: 17 real entries, correct `Moreno Valley View` publication name,
+correct `-07:00` (PDT) offset -- confirming the sitemap's timezone
+handling is genuinely per-town, not hardcoded to Chicago. Orphan count
+unchanged (**19**); contamination clean, including specifically checked
+for zero "Brookings" mentions inside `news-sitemap.xml` itself, not just
+the build as a whole. Trailing-slash clean on both towns.

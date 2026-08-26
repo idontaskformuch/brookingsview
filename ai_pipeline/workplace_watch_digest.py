@@ -51,6 +51,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline import guardrails, search_client
+from ai_pipeline.publish import prefix_town_name
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
     resolve_model, pricing_for, safe_create,
@@ -264,7 +265,7 @@ def main() -> int:
             rating = extract_rating(build_grounding_text(employer["name"], results))
             prev = previous_rating(conn, town_id, employer["id"], period)
             delta = (rating - prev) if (rating is not None and prev is not None) else None
-            title = f"Worker Pulse: {employer['name']} — {period_label}"
+            title = prefix_town_name(f"Worker Pulse: {employer['name']} — {period_label}", cfg["display_name"])
 
             if args.dry_run:
                 print("\n" + "=" * 70)

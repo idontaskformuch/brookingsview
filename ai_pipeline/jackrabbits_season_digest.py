@@ -45,6 +45,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline import guardrails
+from ai_pipeline.publish import prefix_town_name
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
     resolve_model, pricing_for, safe_create,
@@ -257,7 +258,7 @@ def main() -> int:
                 continue
 
             text, generated_by, verified = generate(stats, cfg)
-            title = f"SDSU Jackrabbits {_label(sport)}: season so far"
+            title = prefix_town_name(f"SDSU Jackrabbits {_label(sport)}: season so far", cfg["display_name"])
 
             if args.dry_run:
                 print("\n" + "=" * 70)

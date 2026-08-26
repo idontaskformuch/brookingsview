@@ -41,6 +41,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline import guardrails
+from ai_pipeline.publish import prefix_town_name
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
     resolve_model, pricing_for, safe_create,
@@ -364,7 +365,7 @@ def main() -> int:
             return 0
 
         text, generated_by, verified = generate(events, label, cfg, tz, academic_dates=academic_dates)
-        title = f"What's on at SDSU: week of {label}"
+        title = prefix_town_name(f"What's on at SDSU: week of {label}", cfg["display_name"])
 
         if args.dry_run:
             print("\n" + "=" * 70)

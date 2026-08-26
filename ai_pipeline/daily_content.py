@@ -33,6 +33,7 @@ load_dotenv()
 
 import psycopg
 
+from ai_pipeline.publish import prefix_town_name
 from content import local_context, now_playing, seasonal_ingredients
 from content._base import DEFAULT_MODEL, illustration_theme, town_label
 from content.illustrations.generate_illustration import generate_illustration
@@ -189,12 +190,24 @@ def main() -> int:
         # mallen på sidan (se NEEDS-HUMAN-REVIEW.md "Image pipeline overhaul").
         image_path = None
         image_alt = None
+        # theme (and image_alt) deliberately keep article.title UNPREFIXED --
+        # this feeds the image generation prompt and the alt text, neither of
+        # which benefits from a place-name prefix the way the page's own
+        # title/H1 does (alt text describes the image, not the page -- see
+        # NEEDS-HUMAN-REVIEW.md "Image pipeline overhaul").
         theme = illustration_theme(article)
         saved = generate_illustration(theme, slug, content_type=content_type)
         if saved is not None:
             image_path = "/" + str(saved.native.relative_to(PUBLIC_DIR)).replace("\\", "/")
             image_alt = theme
             print(f"  illustration: {image_path} (+ 4:3, 1:1 crops)")
+
+        # Every published title names its own town going forward -- see
+        # ai_pipeline/publish.py's prefix_town_name() docstring for why this
+        # exists here too (the one-time scripts/retrofit_story_titles.py
+        # pass only fixed rows that already existed; without this, every
+        # new content-track article regenerates the same gap it fixed).
+        published_title = prefix_town_name(article.title, cfg["display_name"])
 
         with conn.cursor() as cur:
             cur.execute(
@@ -214,7 +227,7 @@ def main() -> int:
                     ingredients = EXCLUDED.ingredients,
                     instructions = EXCLUDED.instructions
                 """,
-                (town_id, article.title, slug, article.body, content_type,
+                (town_id, published_title, slug, article.body, content_type,
                  f"ai:{DEFAULT_MODEL}", image_path, image_alt, article.rating,
                  article.ingredients, article.instructions),
             )
