@@ -6,6 +6,7 @@
 // like everything else) plus a submit form whose client-side script talks
 // to the Function directly.
 import type { WorkerPulseComment } from '../lib/db';
+import { EMPTY_STATES } from '../lib/empty-states';
 
 interface Props {
   pageSlug: string;
@@ -33,7 +34,7 @@ function formatCommentDate(iso: string): string {
       </li>
     ))}
     {comments.length === 0 && (
-      <li class="wp-comments__empty" data-empty-state>Nothing here yet -- be the first to comment.</li>
+      <li class="wp-comments__empty" data-empty-state>{EMPTY_STATES.comments}</li>
     )}
   </ul>
 

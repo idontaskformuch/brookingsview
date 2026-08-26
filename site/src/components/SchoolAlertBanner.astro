@@ -4,27 +4,35 @@
  *  message är distriktets EGEN ordalydelse, renderas rakt av utan någon
  *  AI-formatering -- se moduldocstringen för varför.
  *
- *  Villkorad rendering ägs av ANROPAREN (index.astro), samma mönster som
- *  RegionalGameCard/getNextRegionalGame -- tomt läge ska vara "ingen
- *  banner", inte ett tomt kort. */
+ *  Always renders now (see NEEDS-HUMAN-REVIEW.md "Liveliness Spec" §4) --
+ *  a quiet, reassuring "schools are open" line when there's nothing to
+ *  report, rather than the banner disappearing entirely. Supersedes the
+ *  earlier "empty means no banner" design (same reasoning RegionalGameCard/
+ *  getNextRegionalGame still uses for a genuinely optional rail widget --
+ *  school status is different: closures/delays are exactly the kind of
+ *  "empty is the reassuring answer" case §4 calls out). */
 import type { SchoolAlert } from '../lib/db';
+import { EMPTY_STATES } from '../lib/empty-states';
 
 interface Props { alerts: SchoolAlert[]; }
 const { alerts } = Astro.props;
 ---
 <section aria-label="School alerts" class="school-alerts">
-  {alerts.map((alert) => (
+  {alerts.length > 0 ? alerts.map((alert) => (
     <div class="school-alert">
       <p class="school-alert__meta"><span class="kicker">{alert.district}</span></p>
       {alert.title && <p class="school-alert__title">{alert.title}</p>}
       <p class="school-alert__message">{alert.message}</p>
       {alert.url && <a class="school-alert__link" href={alert.url} rel="noopener">Read more &rarr;</a>}
     </div>
-  ))}
+  )) : (
+    <p class="school-alerts__empty">{EMPTY_STATES.schoolClosures}</p>
+  )}
 </section>
 
 <style>
 .school-alerts { display: grid; gap: 0.75rem; margin-bottom: 1.25rem; }
+.school-alerts__empty { margin: 0; color: var(--ink-soft); font-size: 0.9375rem; }
 .school-alert {
   border-left: 4px solid var(--alert);
   background: var(--alert-tint);

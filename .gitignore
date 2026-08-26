@@ -18,3 +18,8 @@ dist/
 site/node_modules/
 site/dist/
 site/.astro/
+
+# Local-only side-by-side comparison pages for a specific eval run (see
+# scripts/eval_tone_v2.py) -- regenerated on demand, never a build artifact
+# the site itself needs, so not versioned.
+.eval_tone_v2/

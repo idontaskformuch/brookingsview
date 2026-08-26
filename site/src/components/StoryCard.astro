@@ -6,6 +6,8 @@ import { formatDate, formatTime, formatCalendarDate, CATEGORY_LABELS } from '../
 import ShareButtons from './ShareButtons.astro';
 import { siteConfig } from '../lib/site-config';
 import { categoryForSourceType, type ImageCategory } from '../lib/images';
+import { SECTION_THEME } from '../lib/section-theme';
+import { relativeTime } from '../lib/time';
 
 // Dense card lists never render a per-item image (see NEEDS-HUMAN-REVIEW.md
 // "Venue & Category Image Identity", rendering-rules table) -- a small
@@ -13,17 +15,23 @@ import { categoryForSourceType, type ImageCategory } from '../lib/images';
 // times on one page without the weight (or repetitiveness) of 20 identical
 // category images. Deliberately not the same code path as resolveImage()'s
 // tier 3: this is a lightweight visual hint, not a resolved image.
+//
+// Colors for the 5 categories that also have a section landing page (see
+// NEEDS-HUMAN-REVIEW.md "Liveliness Spec" §3) are pulled from
+// lib/section-theme.ts -- one color per concept across the site, not two
+// independently-invented palettes that happen to both mean "traffic".
+// Categories with no section identity keep their own standalone color.
 const CHIP: Partial<Record<ImageCategory, { icon: string; color: string }>> = {
   city_hall: { icon: '🏛️', color: 'var(--navy)' },
-  events: { icon: '📅', color: 'var(--accent)' },
-  traffic: { icon: '🚗', color: '#b8590a' },
-  home_sales: { icon: '🏠', color: '#2f7a4f' },
+  events: { icon: '📅', color: SECTION_THEME.events.accent },
+  traffic: { icon: '🚗', color: SECTION_THEME.traffic.accent },
+  home_sales: { icon: '🏠', color: SECTION_THEME.home_sales.accent },
   jobs: { icon: '💼', color: '#5c4a99' },
   sports: { icon: '🏈', color: '#a1272f' },
   school_alerts: { icon: '🎒', color: '#a1272f' },
   weather_alert: { icon: '⚠️', color: 'var(--alert)' },
-  workplace_watch: { icon: '🏭', color: '#5c4a99' },
-  university: { icon: '🎓', color: 'var(--navy)' },
+  workplace_watch: { icon: '🏭', color: SECTION_THEME.workplace_watch.accent },
+  university: { icon: '🎓', color: SECTION_THEME.university.accent },
 };
 
 interface Props {
@@ -51,13 +59,48 @@ const isMeeting = story.source_type === 'meeting' || story.source_type === 'meet
 // den ska aldrig användas som tidsangivelse. Publiceringsdatum är den rätta.
 const hasByline = Boolean(story.byline);
 const when = story.occurs_at;
+const now = new Date();
+// Relative time language (see NEEDS-HUMAN-REVIEW.md "Liveliness Spec" §2):
+// applied to content-track published_at and event/announcement occurs_at,
+// both real timestamptz instants. TWO deliberate exceptions, per §2's own
+// rules:
+//   - alerts keep their exact date/time, never relative-formatted -- §2:
+//     "Never relative-format an alert's effective window."
+//   - meetings keep formatCalendarDate(), NOT relativeTime() -- meeting_date
+//     is a bare UTC-midnight calendar date with no real time-of-day (see
+//     db.ts's own formatCalendarDate docstring), and relativeTime()'s zoned
+//     calendar-day math assumes a genuine instant. Timezone-converting a
+//     bare calendar date has been a repeated real bug in this codebase
+//     (events.astro, weekly.py, the Legistar parser all hit it) -- not
+//     repeating it here for a cosmetic wording change.
+// published_at is typed as always-set (`string`, not `string | null`), but
+// real data has NULL rows for some content-track stories -- confirmed live
+// (2026-08-26): 10+ culture_essay/editorial/vardagsmiddag rows on Moreno
+// Valley alone. The old formatDate(story.published_at) tolerated this
+// silently (its own `if (!value) return ''` guard) -- relativeTime() has
+// no such guard (a null `date` isn't `typeof 'string'`, so it's passed
+// through as null and crashes on `.getTime()`), so the call site needs the
+// same explicit guard formatDate's caller got for free.
 const timeLabel = hasByline
-  ? formatDate(story.published_at)
+  ? (story.published_at ? relativeTime(story.published_at, now, siteConfig.timezone) : '')
   : !when
     ? ''
     : isMeeting
       ? formatCalendarDate(when)  // datum-utan-klockslag -- se db.ts
-      : `${formatDate(when)}${!isAlert && formatTime(when) ? ` · ${formatTime(when)}` : ''}`;
+      : isAlert
+        ? `${formatDate(when)}${formatTime(when) ? ` · ${formatTime(when)}` : ''}`
+        : relativeTime(when, now, siteConfig.timezone);
+// .toISOString(), not a raw passthrough of the source value: the DB driver
+// returns a real Date object for timestamptz columns at runtime despite
+// the `string` type annotation in db.ts. Passed straight into
+// datetime={...}, Astro just calls the value's default toString(), which
+// for a Date renders in the BUILD MACHINE's own local timezone ("Thu Aug
+// 27 2026 02:00:00 GMT+0200 (...)"), not a valid machine-readable value.
+// relativeTime() above already tolerates either shape internally
+// (`typeof date === 'string' ? new Date(date) : date`), so only this raw
+// attribute value needed normalizing.
+const timeSource = hasByline ? story.published_at : when;
+const timeMachineValue = timeSource ? new Date(timeSource).toISOString() : null;
 
 const kicker = kickerOverride ?? (isAlert ? 'Alert' : isMeeting ? 'City hall'
   : hasByline ? (CATEGORY_LABELS[story.source_type] ?? 'Feature') : 'Events');
@@ -68,7 +111,9 @@ const chip = CHIP[categoryForSourceType(story.source_type) as ImageCategory] ?? 
   <p class="item__kicker">
     {chip && <span class="item__chip" style={`--chip-color: ${chip.color}`} aria-hidden="true">{chip.icon}</span>}
     <span class="kicker">{kicker}</span>
-    {timeLabel && <span class="item__when data">{timeLabel}</span>}
+    {timeLabel && timeMachineValue && (
+      <time class="item__when data" datetime={timeMachineValue}>{timeLabel}</time>
+    )}
   </p>
   <h3 class="item__title"><a href={href} rel={isExternal ? 'noopener' : undefined}>{story.title}</a></h3>
   {!compact && <p class="item__body">{story.body}</p>}

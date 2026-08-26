@@ -24,6 +24,7 @@ import {
   formatCalendarDate, formatDate, formatTime,
 } from '../lib/db';
 import SectionHero from '../components/SectionHero.astro';
+import { SECTION_THEME } from '../lib/section-theme';
 import { siteConfig } from '../lib/site-config';
 
 if (siteConfig.townId !== 'brookings_sd') {
@@ -122,7 +123,8 @@ const sections = (
 
 ---
 <BaseLayout title={`SDSU News in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide
-  description="What's happening at South Dakota State University -- athletics, music, theatre and campus events, plus key academic dates.">
+  description="What's happening at South Dakota State University -- athletics, music, theatre and campus events, plus key academic dates."
+  accentColor={SECTION_THEME.university.accent}>
   <SectionHero category="university" />
   <header class="lede">
     <h1>University</h1>
@@ -227,7 +229,11 @@ const sections = (
 </BaseLayout>
 
 <style>
-.lede { max-width: 42rem; }
+.lede {
+  max-width: 42rem;
+  border-bottom: 3px solid var(--section-accent, var(--rule-strong));
+  padding-bottom: 1.125rem;
+}
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
 
 .hero-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin-bottom: 0.5rem; }

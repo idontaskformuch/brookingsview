@@ -19,6 +19,7 @@ import { getRecentJobs, formatDate } from '../lib/db';
 import { salaryText, capByEmployer, slugifyCategory } from '../lib/jobs';
 import { siteConfig } from '../lib/site-config';
 import SectionHero from '../components/SectionHero.astro';
+import { EMPTY_STATES } from '../lib/empty-states';
 
 const jobs = await getRecentJobs();
 
@@ -131,6 +132,7 @@ const { visible, overflowByCompany } = capByEmployer(jobs);
 
 <script>
   import { initDataTable } from '../lib/data-table';
+  import { EMPTY_STATES } from '../lib/empty-states';
 
   function init() {
     initDataTable({
@@ -143,6 +145,7 @@ const { visible, overflowByCompany } = capByEmployer(jobs);
           salary: { attr: 'salary', dir: -1 },
         },
       },
+      emptyMessage: EMPTY_STATES.searchFilter,
     });
   }
   init();

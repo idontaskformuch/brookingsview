@@ -15,6 +15,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import LeadStory from '../components/LeadStory.astro';
+import SecondaryStory from '../components/SecondaryStory.astro';
 import WeeklyRoundup from '../components/WeeklyRoundup.astro';
 import GameCard from '../components/GameCard.astro';
 import RegionalGameCard from '../components/RegionalGameCard.astro';
@@ -33,9 +34,11 @@ import {
   getWorthKnowingCandidates, getLatestFromCandidates, getRecentProjectUpdates, formatDate,
   CATEGORY_HREFS, CATEGORY_LABELS, getFacilities,
 } from '../lib/db';
-import { selectWorthKnowing, selectLatestFrom, firstSentence } from '../lib/homepage-curation';
+import { selectWorthKnowing, selectLatestFrom, firstSentence, selectFrontPageRhythm } from '../lib/homepage-curation';
 import { todayUtcMidnight } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
+import { resolveImage } from '../lib/images';
+import { CATEGORY_IMAGES } from '../config/category-images';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
@@ -70,9 +73,30 @@ const worthKnowingSelection = selectWorthKnowing(worthKnowingCandidates, alertBa
 
 const today = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
 
-// Ettan är närmast förestående post. Enkel, försvarbar, alltid färsk regel --
-// ingen dold viktning som skulle behöva underhållas.
-const [lead, ...rest] = upcoming;
+// Front-page rhythm (see NEEDS-HUMAN-REVIEW.md "Liveliness Spec" §1): a
+// rule-based lead + secondary selection, not just "closest upcoming item"
+// -- see lib/homepage-curation.ts's own docstring for the full fallback
+// chain (active alert -> substantial meeting -> announcement -> newest
+// imaged item -> newest, image or not). hasImage() reuses the SAME
+// resolveImage() tier the actual <img> rendering uses, so the selection
+// can never pick something LeadStory/SecondaryStory then fail to render an
+// image for.
+const hasImage = (story: (typeof upcoming)[number]) => resolveImage(story, {
+  town: siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca',
+  cityName: siteConfig.cityName,
+  facilities,
+  categoryImages: CATEGORY_IMAGES[siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca'],
+}) !== null;
+
+// No story-based widget today overlaps the front-page candidate pool (the
+// rail's game/weather/traffic tiles all come from other tables, not
+// `stories`) -- kept as a real Set, not hardcoded empty, so the rule stays
+// enforced if that ever changes.
+const widgetSlugs = new Set<string>();
+
+const { fullWidthLead, secondary, usedSlugs } = selectFrontPageRhythm(upcoming, alerts, { hasImage, widgetSlugs });
+
+const rest = upcoming.filter((s) => !usedSlugs.has(s.slug));
 
 const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
 const endOfDay = new Date(startOfDay); endOfDay.setDate(endOfDay.getDate() + 1);
@@ -152,18 +176,25 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     </section>
   )}
 
-  {schoolAlerts.length > 0 && <SchoolAlertBanner alerts={schoolAlerts} />}
+  <SchoolAlertBanner alerts={schoolAlerts} />
 
   {weekly && <WeeklyRoundup story={weekly} facilities={facilities} />}
 
   <div class="front">
-    <div class="front__lead">
-      {lead ? <LeadStory story={lead} facilities={facilities} /> : (
-        <p class="empty">Nothing scheduled right now. This page rebuilds every hour.</p>
-      )}
-    </div>
+    {fullWidthLead ? (
+      <LeadStory story={fullWidthLead} facilities={facilities} />
+    ) : secondary.length === 0 && (
+      <p class="empty">Nothing scheduled right now. This page rebuilds every hour.</p>
+    )}
 
-    <aside class="rail" aria-label="Conditions and numbers">
+    {secondary.length > 0 && (
+      <div class="front__secondary">
+        {secondary.map((story) => <SecondaryStory story={story} facilities={facilities} />)}
+      </div>
+    )}
+  </div>
+
+  <aside class="rail" aria-label="Conditions and numbers">
       {today && (
         <a class="rail__link" href="/weather/">
           <Tile
@@ -223,8 +254,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
         </a>
       )}
       <p class="rail__hint">Tap a panel for the full picture &rarr;</p>
-    </aside>
-  </div>
+  </aside>
 
   {feature && (
     <section aria-label="Today's read">
@@ -394,14 +424,32 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 <style>
 .alerts { margin-bottom: 1.25rem; }
 
-/* Etta + högerfält */
-.front { display: grid; gap: 1.5rem; margin-bottom: 0.5rem; }
-@media (min-width: 56rem) {
-  .front { grid-template-columns: minmax(0, 2.15fr) minmax(0, 1fr); gap: 2rem; }
-  .front__lead { border-right: 1px solid var(--rule); padding-right: 2rem; }
+/* Front-page rhythm (Liveliness Spec §1): lead -> secondary -> widget row
+   -> dense rivers, all stacked full-width, not a lead-beside-rail grid. */
+.front { margin-bottom: 1.75rem; }
+.front__secondary {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 1.75rem;
+}
+@media (min-width: 40rem) {
+  .front__secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-.rail { display: grid; gap: 1.125rem; align-content: start; }
+/* Widget row -- a horizontal band of tiles below lead+secondary, not a
+   sidebar column beside them. Each tile wraps at its own natural width. */
+.rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: stretch;
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+.rail__link { flex: 1 1 14rem; }
+.rail__prices { flex-basis: 16rem; }
+.rail__hint { flex-basis: 100%; }
 .rail__link {
   display: block;
   color: inherit;

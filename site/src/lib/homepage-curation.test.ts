@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { firstSentence, hasQuorumNoticeSignal, selectLatestFrom, selectWorthKnowing } from './homepage-curation';
+import {
+  firstSentence, hasQuorumNoticeSignal, selectLatestFrom, selectWorthKnowing,
+  isSubstantialMeetingSummary, selectFrontPageRhythm, type FrontPageRhythmOptions,
+} from './homepage-curation';
 import type { Story } from './db';
 
 function story(overrides: Partial<Story>): Story {
@@ -127,5 +130,121 @@ describe('selectWorthKnowing', () => {
     const featured = story({ slug: 'featured-item', source_type: 'meeting', featured: true, body: 'Nothing quorum-related here.' });
     const result = selectWorthKnowing([featured], new Set(), []);
     expect(result.map((s) => s.slug)).toEqual(['featured-item']);
+  });
+});
+
+describe('isSubstantialMeetingSummary', () => {
+  it('is false for a routine one-sentence summary', () => {
+    expect(isSubstantialMeetingSummary('The Planning Commission meets Tuesday.')).toBe(false);
+  });
+
+  it('is false for two sentences (still under the substantial threshold)', () => {
+    expect(isSubstantialMeetingSummary('The Planning Commission meets Tuesday. Nothing else is on the agenda.')).toBe(false);
+  });
+
+  it('is true for three or more sentences', () => {
+    expect(isSubstantialMeetingSummary(
+      'The Planning Commission will consider a 9.1-acre truck facility. ' +
+      'A second item proposes a car wash on Pigeon Pass Road. ' +
+      'Public comment is limited to three minutes per speaker.'
+    )).toBe(true);
+  });
+});
+
+describe('selectFrontPageRhythm', () => {
+  const imagedSlugs = new Set<string>();
+  const baseOptions: FrontPageRhythmOptions = {
+    hasImage: (s) => imagedSlugs.has(s.slug),
+    widgetSlugs: new Set(),
+  };
+
+  it('tier 1: an active alert always wins the lead, image or not', () => {
+    const alert = story({ slug: 'alert-1', source_type: 'alert', body: 'Heat advisory in effect.' });
+    const meeting = story({ slug: 'meeting-1', source_type: 'meeting', body: 'a. b. c.' });
+    imagedSlugs.add('alert-1');
+    const result = selectFrontPageRhythm([meeting], [alert], baseOptions);
+    expect(result.fullWidthLead?.slug).toBe('alert-1');
+    imagedSlugs.clear();
+  });
+
+  it('tier 2: a substantial meeting wins over a routine one', () => {
+    const routine = story({ slug: 'routine', source_type: 'meeting', body: 'Nothing on the agenda.' });
+    const substantial = story({
+      slug: 'substantial', source_type: 'meeting',
+      body: 'Item one is substantial. Item two is also substantial. A third sentence closes it out.',
+    });
+    imagedSlugs.add('substantial');
+    const result = selectFrontPageRhythm([routine, substantial], [], baseOptions);
+    expect(result.fullWidthLead?.slug).toBe('substantial');
+    imagedSlugs.clear();
+  });
+
+  it('tier 3: the newest announcement wins when no alert or substantial meeting exists', () => {
+    const routine = story({ slug: 'routine', source_type: 'meeting', body: 'Nothing on the agenda.' });
+    const announcement = story({ slug: 'announcement-1', source_type: 'announcement', body: 'We launched a thing.' });
+    imagedSlugs.add('announcement-1');
+    const result = selectFrontPageRhythm([routine, announcement], [], baseOptions);
+    expect(result.fullWidthLead?.slug).toBe('announcement-1');
+    imagedSlugs.clear();
+  });
+
+  it('tier 4: the newest imaged item wins when nothing else qualifies', () => {
+    const a = story({ slug: 'event-a', source_type: 'event', body: 'a.' });
+    const b = story({ slug: 'event-b', source_type: 'event', body: 'b.' });
+    imagedSlugs.add('event-b');
+    const result = selectFrontPageRhythm([a, b], [], baseOptions);
+    expect(result.fullWidthLead?.slug).toBe('event-b');
+    imagedSlugs.clear();
+  });
+
+  it('tier 5 + fail-down: the newest item wins but demotes to secondary when it has no image anywhere', () => {
+    const a = story({ slug: 'event-a', source_type: 'event', body: 'a.' });
+    const b = story({ slug: 'event-b', source_type: 'event', body: 'b.' });
+    const c = story({ slug: 'event-c', source_type: 'event', body: 'c.' });
+    const result = selectFrontPageRhythm([a, b, c], [], baseOptions);
+    expect(result.fullWidthLead).toBeNull();
+    expect(result.secondary.map((s) => s.slug)).toEqual(['event-a', 'event-b', 'event-c']);
+  });
+
+  it('secondary row is the next two items after the lead, excluding it', () => {
+    const lead = story({ slug: 'lead', source_type: 'announcement', body: 'x' });
+    const second = story({ slug: 'second', source_type: 'event', body: 'x' });
+    const third = story({ slug: 'third', source_type: 'event', body: 'x' });
+    const fourth = story({ slug: 'fourth', source_type: 'event', body: 'x' });
+    imagedSlugs.add('lead');
+    const result = selectFrontPageRhythm([lead, second, third, fourth], [], baseOptions);
+    expect(result.fullWidthLead?.slug).toBe('lead');
+    expect(result.secondary.map((s) => s.slug)).toEqual(['second', 'third']);
+    imagedSlugs.clear();
+  });
+
+  it('usedSlugs covers the lead and every secondary item, for the caller to dedupe against', () => {
+    const lead = story({ slug: 'lead', source_type: 'announcement', body: 'x' });
+    const second = story({ slug: 'second', source_type: 'event', body: 'x' });
+    imagedSlugs.add('lead');
+    const result = selectFrontPageRhythm([lead, second], [], baseOptions);
+    expect(result.usedSlugs).toEqual(new Set(['lead', 'second']));
+    imagedSlugs.clear();
+  });
+
+  it('never picks a candidate whose slug is already in the widget row', () => {
+    const widgetItem = story({ slug: 'widget-item', source_type: 'announcement', body: 'x' });
+    const other = story({ slug: 'other', source_type: 'event', body: 'x' });
+    imagedSlugs.add('widget-item');
+    imagedSlugs.add('other');
+    const result = selectFrontPageRhythm(
+      [widgetItem, other], [],
+      { hasImage: (s) => imagedSlugs.has(s.slug), widgetSlugs: new Set(['widget-item']) },
+    );
+    expect(result.fullWidthLead?.slug).toBe('other');
+    expect(result.secondary.some((s) => s.slug === 'widget-item')).toBe(false);
+    imagedSlugs.clear();
+  });
+
+  it('returns an empty selection when there are no candidates and no alerts', () => {
+    const result = selectFrontPageRhythm([], [], baseOptions);
+    expect(result.fullWidthLead).toBeNull();
+    expect(result.secondary).toEqual([]);
+    expect(result.usedSlugs.size).toBe(0);
   });
 });

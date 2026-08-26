@@ -12,6 +12,8 @@ import {
 import { siteConfig } from '../lib/site-config';
 import { EVENT_FACETS } from '../lib/event-facets';
 import SectionHero from '../components/SectionHero.astro';
+import { EMPTY_STATES } from '../lib/empty-states';
+import { SECTION_THEME } from '../lib/section-theme';
 
 // "Arts & Culture" (SDSU) / "Around Town" (library, city, chamber, ...) --
 // bara Brookings har den här campus-vs-townwide-uppdelningen att göra (se
@@ -109,7 +111,8 @@ const sections = (
 ).filter(([label, list]) => list.length > 0 || (label === 'Today' && todaysHomeGame));
 ---
 <BaseLayout title={`Events in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-events"
-  description={`What's on this weekend in ${siteConfig.cityName}, ${siteConfig.stateName} — library programs, city events and community happenings.`}>
+  description={`What's on this weekend in ${siteConfig.cityName}, ${siteConfig.stateName} — library programs, city events and community happenings.`}
+  accentColor={SECTION_THEME.events.accent}>
   <SectionHero category="events" />
   <header class="lede">
     <h1>What's on</h1>
@@ -146,7 +149,7 @@ const sections = (
       )}
     </>
   )) : (
-    <p class="empty">No upcoming events listed right now.</p>
+    <p class="empty">{EMPTY_STATES.eventsAll}</p>
   )}
 
   {past.length > 0 && (
@@ -160,7 +163,11 @@ const sections = (
 </BaseLayout>
 
 <style>
-.lede { max-width: 40rem; }
+.lede {
+  max-width: 40rem;
+  border-bottom: 3px solid var(--section-accent, var(--rule-strong));
+  padding-bottom: 1.125rem;
+}
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
 .facet-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0 1.5rem; }
 .facet-nav a {

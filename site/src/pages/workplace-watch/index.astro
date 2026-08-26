@@ -18,6 +18,8 @@ import {
 } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 import SectionHero from '../../components/SectionHero.astro';
+import { EMPTY_STATES } from '../../lib/empty-states';
+import { SECTION_THEME } from '../../lib/section-theme';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
@@ -56,6 +58,7 @@ function trend(delta: number | null): { symbol: string; cls: string } {
   wide
   description="Monthly review-trend digests for Moreno Valley's major warehouse and logistics employers — check before your shift."
   ogSlug="section-workplace-watch"
+  accentColor={SECTION_THEME.workplace_watch.accent}
 >
   <SectionHero category="workplace_watch" />
   <header class="wp-hero">
@@ -129,7 +132,7 @@ function trend(delta: number | null): { symbol: string; cls: string } {
       })}
     </div>
   ) : (
-    <p class="empty">No employer data available yet.</p>
+    <p class="empty">{EMPTY_STATES.workplaceWatch}</p>
   )}
 
   <WorkerPulseComments pageSlug="workplace-watch" comments={comments} />
@@ -138,7 +141,11 @@ function trend(delta: number | null): { symbol: string; cls: string } {
 </BaseLayout>
 
 <style>
-.wp-hero { max-width: 46rem; margin: 0 auto 1.5rem; text-align: center; }
+.wp-hero {
+  max-width: 46rem; margin: 0 auto 1.5rem; text-align: center;
+  border-bottom: 3px solid var(--section-accent, var(--rule-strong));
+  padding-bottom: 1.125rem;
+}
 .wp-hero h1 { font-size: 2rem; margin-bottom: 0.5rem; }
 .tagline { color: var(--ink-soft); line-height: 1.6; }
 .wp-methodology {

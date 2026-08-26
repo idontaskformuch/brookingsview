@@ -12,6 +12,7 @@ import GameCard from '../components/GameCard.astro';
 import { getSeasonGames, getUpcomingGames, getContentByType, formatDate, formatTime } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import SectionHero from '../components/SectionHero.astro';
+import { SECTION_THEME } from '../lib/section-theme';
 
 if (siteConfig.townId !== 'brookings_sd') {
   return Astro.redirect('/', 302);
@@ -42,7 +43,8 @@ const summaryBySport = new Map(
 );
 ---
 <BaseLayout title={`SDSU Jackrabbits schedules and results — ${siteConfig.siteName}`} wide
-  description="Full SDSU Jackrabbits schedules and results for football, basketball and volleyball.">
+  description="Full SDSU Jackrabbits schedules and results for football, basketball and volleyball."
+  accentColor={SECTION_THEME.university.accent}>
   <SectionHero category="sports" />
   <header class="lede">
     <h1>Jackrabbits</h1>
@@ -121,7 +123,11 @@ const summaryBySport = new Map(
 </BaseLayout>
 
 <style>
-.lede { max-width: 40rem; }
+.lede {
+  max-width: 40rem;
+  border-bottom: 3px solid var(--section-accent, var(--rule-strong));
+  padding-bottom: 1.125rem;
+}
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
 .season-summary { max-width: 42rem; margin: 0 0 1.25rem; }
 .season-summary p { margin: 0 0 0.75rem; line-height: 1.5; }

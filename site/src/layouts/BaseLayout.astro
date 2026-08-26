@@ -32,6 +32,11 @@ interface Props {
    *  igen så fort sidan får riktigt innehåll, annars fastnar den i
    *  noindex permanent. */
   noindex?: boolean;
+  /** Section identity accent (see NEEDS-HUMAN-REVIEW.md "Liveliness Spec"
+   *  §3 and lib/section-theme.ts) -- sets --section-accent for THIS page
+   *  only, which the active-nav-item rule below reads. Omitted pages keep
+   *  the site's default navy, exactly as before this prop existed. */
+  accentColor?: string;
 }
 
 const {
@@ -40,6 +45,7 @@ const {
   wide = false,
   ogSlug,
   noindex = false,
+  accentColor,
 } = Astro.props;
 
 const sign = await getSignData();
@@ -309,7 +315,7 @@ a { color: var(--navy); text-underline-offset: 2px; }
   padding-block: 0.125rem;
 }
 .nav a:hover { color: var(--navy); }
-.nav a[aria-current='page'] { box-shadow: inset 0 -3px 0 var(--navy); }
+.nav a[aria-current='page'] { box-shadow: inset 0 -3px 0 var(--section-accent, var(--navy)); }
 
 /* --- Skyltremsan: nu en ticker ------------------------------------------ */
 .sign {
@@ -367,7 +373,7 @@ main { padding-block: 1.75rem 3.5rem; }
 </style>
 </head>
 
-<body>
+<body style={accentColor ? `--section-accent: ${accentColor}` : undefined}>
 <a class="skip" href="#main">Skip to content</a>
 
 <header class="masthead">

@@ -37,6 +37,10 @@ export interface DataTableOptions {
   statusId?: string;
   /** Text builder for the status line; defaults to "Showing N of M". */
   statusText?: (shown: number, total: number) => string;
+  /** Shown (as its own <tr> spanning every column) when a live filter leaves
+   *  zero matching rows -- see NEEDS-HUMAN-REVIEW.md "Liveliness Spec" §4.
+   *  Omit if this table's filters can never produce an empty result. */
+  emptyMessage?: string;
 }
 
 export function initDataTable(opts: DataTableOptions): void {
@@ -61,6 +65,27 @@ export function initDataTable(opts: DataTableOptions): void {
 
   let headerSortKey: string | null = null;
   let headerSortDir: 1 | -1 = -1;
+
+  // A single <tr> spanning every column, toggled visible only while a live
+  // filter leaves zero matching rows -- inserted once at setup (never among
+  // `rows`, so the sort/filter loop below never touches it).
+  let emptyRow: HTMLTableRowElement | null = null;
+  if (opts.emptyMessage) {
+    const columnCount = table.querySelectorAll('thead th').length || 1;
+    emptyRow = document.createElement('tr');
+    emptyRow.className = 'dt-empty';
+    emptyRow.hidden = true;
+    const td = document.createElement('td');
+    td.colSpan = columnCount;
+    td.textContent = opts.emptyMessage;
+    // Inline, not a page <style> rule -- Astro's scoped CSS only rewrites
+    // markup present in a component's own template at build time, never
+    // elements a client <script> creates at runtime, so a scoped `.dt-empty`
+    // rule in any of the three pages using this would silently never match.
+    td.style.cssText = 'padding: 0.875rem 0; color: var(--ink-soft);';
+    emptyRow.appendChild(td);
+    tbody.appendChild(emptyRow);
+  }
 
   function apply() {
     let visible = rows.filter((r) =>
@@ -96,6 +121,7 @@ export function initDataTable(opts: DataTableOptions): void {
     });
 
     if (statusEl) statusEl.textContent = statusText(Math.min(limit, visible.length), visible.length);
+    if (emptyRow) emptyRow.hidden = visible.length > 0;
   }
 
   filterSelects.forEach(({ el }) => el?.addEventListener('change', apply));

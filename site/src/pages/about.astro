@@ -1,18 +1,18 @@
 ---
+/** Static, hand-written -- never passes through the content pipeline. See
+ *  NEEDS-HUMAN-REVIEW.md "Liveliness Spec" §5: the one page on the site
+ *  with a first-person voice ("Who built it" below), because the honesty
+ *  the site can't get from claiming human experience in its own content
+ *  has to come from somewhere -- saying plainly what the site is. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
+import { aboutSourcesFor } from '../lib/about-sources';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
-
-// Vad som faktiskt hämtas skiljer sig per stad (SDSU/USDA finns bara för
-// Brookings, se configs/<town>.json) -- generisk formulering för andra
-// städer i stället för att påstå källor som inte finns.
-const sourcesList = isBrookings
-  ? "the city's and county's public meeting agendas, the library's event calendar, SDSU's athletics schedule, the National Weather Service, and USDA market data"
-  : "public meeting agendas, the local library's event calendar, and the National Weather Service";
+const sources = aboutSourcesFor(siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca');
 ---
 <BaseLayout title={`About — ${siteConfig.siteName}`}
-  description={`Why ${siteConfig.siteName} exists and how it's put together.`}>
+  description={`What ${siteConfig.siteName} is, how it's made, and who built it.`}>
   <article class="prose">
     <h1>About {siteConfig.siteName}</h1>
 
@@ -20,21 +20,33 @@ const sourcesList = isBrookings
       <p>Brookings Register, the town's newspaper, closed in August 2025. Since
       then, there's been no single place to find out what the city council
       decided, what's happening at the library this week, or when the Jackrabbits
-      play next. {siteConfig.siteName} is an attempt to fill that gap.</p>
+      play next. {siteConfig.siteName} is an attempt to fill that gap: a local
+      news site for Brookings, assembled automatically from public sources --
+      city and county meeting agendas, the library and city calendars, and
+      official alerts.</p>
     ) : (
       <p>Local newspapers have been closing or shrinking all over the country,
       and small and mid-sized cities are often the first places to lose the
       kind of coverage that keeps residents in the loop. {siteConfig.siteName}
       is an attempt to give {siteConfig.cityName} a single place to find out
-      what the city council decided and what's happening around town.</p>
+      what's happening: a local news site assembled automatically from public
+      sources -- city meeting agendas, the library and city calendars, county
+      records, and official alerts.</p>
     )}
 
-    <h2>How it works</h2>
-    <p>The site is built and updated automatically. Every hour, it checks
-    {' '}{sourcesList}. New information is summarized in plain language and
-    published — no person reviews each item before it goes live.</p>
-    <p>Read the full breakdown, source by source, on
-    <a href="/how-we-gather-this/">how we gather this</a>.</p>
+    <h2>How it is made</h2>
+    <p>Software checks the sources listed below on a schedule -- most hourly,
+    some daily or monthly depending on how often they change. New items are
+    summarized in plain language by an AI language model, working only from
+    what those sources say, and published without a person reviewing each one
+    first.</p>
+    <p>That means no one is reporting from the ground here. Nothing on this
+    site is a firsthand account -- no one attended the meeting, walked the
+    site, or talked to anyone involved. Every summary is a machine-written
+    digest of a public document or feed, always linked back to that original
+    source so you can read the full thing yourself. Read the full,
+    source-by-source breakdown on <a href="/how-we-gather-this/">how we
+    gather this</a>.</p>
 
     <h2>What you won't find here</h2>
     <p>{siteConfig.siteName} doesn't cover arrests, court records, or obituaries.
@@ -43,9 +55,27 @@ const sourcesList = isBrookings
     in their life. If you're looking for that kind of coverage, you won't find
     it — by design.</p>
 
+    <h2>Who built it</h2>
+    <p>I'm one person, building this in my spare time outside a day job,
+    because {siteConfig.cityName} didn't have a site like it. I'm not a
+    journalist and I don't live in {siteConfig.cityName} -- I write software,
+    from Sweden, and this is what that looks like pointed at local news. I'd
+    rather say that plainly than dress up an automated site with a fake
+    masthead.</p>
+
+    <h2>Sources</h2>
+    <p>Everything on this site traces back to one of these, checked on a
+    schedule and never altered beyond the plain-language summary:</p>
+    <ul class="sources">
+      {sources.map((s) => (
+        <li><a href={s.url} rel="noopener">{s.name}</a></li>
+      ))}
+    </ul>
+
     <h2>Corrections</h2>
-    <p>Automated summaries occasionally get something wrong. If you spot an
-    error, <a href="/contact/">let us know</a> and we'll fix it.</p>
+    <p>Automated summaries occasionally get something wrong. Errors are
+    corrected as soon as they're reported -- <a href="/contact/">use the
+    contact form</a> to flag one.</p>
   </article>
 </BaseLayout>
 
@@ -53,4 +83,6 @@ const sourcesList = isBrookings
 .prose { max-width: 38rem; }
 .prose h2 { margin-top: 2.25rem; margin-bottom: 0.75rem; }
 .prose p { margin: 0 0 1rem; }
+.sources { margin: 0 0 1rem; padding-left: 1.25rem; }
+.sources li { margin: 0.25rem 0; }
 </style>

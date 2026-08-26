@@ -81,6 +81,106 @@ export function firstSentence(body: string): string {
   return first;
 }
 
+// --- Front-page rhythm (Liveliness Spec §1) ---------------------------------
+//
+// Lead + secondary + widget row + dense "more" rivers, instead of every
+// item on the front page occupying an identical card. See
+// NEEDS-HUMAN-REVIEW.md "Liveliness Spec" §1 for the full brief.
+
+const SENTENCE_SPLIT_RE = /(?<=[.!?])\s+/;
+
+/** Proxy for "this meeting's summary exceeds the routine length band"
+ *  (Summary Tone Prompts §3: routine = 1 sentence, substantial = 3+). A
+ *  plain sentence count on `body`, since tone_v2 is off by default today
+ *  and no story has `meta` yet to read a real substance signal from --
+ *  works unchanged once tone_v2 ships (body stays prose either way), so
+ *  callers don't need to change when that flag flips. */
+export function isSubstantialMeetingSummary(body: string): boolean {
+  const sentences = body.trim().split(SENTENCE_SPLIT_RE).filter(Boolean);
+  return sentences.length >= 3;
+}
+
+export interface FrontPageRhythmOptions {
+  /** True if this story would resolve a real image (lib/images.ts's
+   *  resolveImage() !== null) -- injected rather than called directly here
+   *  so this module stays a pure function with no Astro/db.ts/fs coupling. */
+  hasImage: (story: Story) => boolean;
+  /** Slugs already shown in the widget row (weather/game/traffic tiles) --
+   *  the lead must never repeat one of these. Story-based widgets are rare
+   *  today (most rail tiles aren't stories at all), but the check is
+   *  cheap and keeps the rule enforced if that ever changes. */
+  widgetSlugs: Set<string>;
+}
+
+export interface FrontPageRhythmSelection {
+  /** The full-width hero, or null when no candidate anywhere had an image
+   *  ("fail down, not blank" -- §1: never render an image-less full-width
+   *  hero). When null, `secondary` has 3 items instead of 2 -- the
+   *  would-be lead is rendered in the secondary style instead, not
+   *  dropped. */
+  fullWidthLead: Story | null;
+  /** 2 items normally; 3 when `fullWidthLead` is null. */
+  secondary: Story[];
+  /** Every slug placed in `fullWidthLead`/`secondary` -- callers exclude
+   *  these from the dense Today/This week/Coming up rivers below so
+   *  nothing renders twice on the page. */
+  usedSlugs: Set<string>;
+}
+
+/** First match wins, per §1's own ordered fallback chain:
+ *    1. an active alert (already town-scoped, see getActiveAlerts())
+ *    2. a meeting whose summary exceeds the routine length band
+ *    3. the newest announcement
+ *    4. the newest item of any type with a resolved image
+ *    5. the newest item, image or not
+ *  `candidates` must already be sorted soonest/newest-first (index.astro's
+ *  existing `upcoming` order) -- this function never re-sorts. */
+function pickLeadCandidate(
+  candidates: Story[], alerts: Story[], options: FrontPageRhythmOptions
+): Story | null {
+  if (alerts[0]) return alerts[0];
+
+  const meeting = candidates.find((s) =>
+    s.source_type === 'meeting' && !options.widgetSlugs.has(s.slug) && isSubstantialMeetingSummary(s.body)
+  );
+  if (meeting) return meeting;
+
+  const announcement = candidates.find((s) =>
+    s.source_type === 'announcement' && !options.widgetSlugs.has(s.slug)
+  );
+  if (announcement) return announcement;
+
+  const imaged = candidates.find((s) => !options.widgetSlugs.has(s.slug) && options.hasImage(s));
+  if (imaged) return imaged;
+
+  return candidates.find((s) => !options.widgetSlugs.has(s.slug)) ?? null;
+}
+
+/** `candidates` -- the events/meetings/announcements pool (index.astro's
+ *  `upcoming`), soonest-first. `alerts` -- active, already town-scoped
+ *  alerts (getActiveAlerts()). Neither list is mutated. */
+export function selectFrontPageRhythm(
+  candidates: Story[], alerts: Story[], options: FrontPageRhythmOptions
+): FrontPageRhythmSelection {
+  const picked = pickLeadCandidate(candidates, alerts, options);
+  if (!picked) return { fullWidthLead: null, secondary: [], usedSlugs: new Set() };
+
+  // Alerts never appear in `candidates` (a separate pool) -- filtering by
+  // slug is a safe no-op when `picked` came from `alerts` instead.
+  const remaining = candidates.filter((s) => s.slug !== picked.slug && !options.widgetSlugs.has(s.slug));
+
+  if (options.hasImage(picked)) {
+    const secondary = remaining.slice(0, 2);
+    return { fullWidthLead: picked, secondary, usedSlugs: new Set([picked.slug, ...secondary.map((s) => s.slug)]) };
+  }
+
+  // Fail down, not blank: demote the picked candidate into the secondary
+  // row instead of rendering it as an image-less hero, and promote one
+  // more item to keep the row's usual count.
+  const secondary = [picked, ...remaining].slice(0, 3);
+  return { fullWidthLead: null, secondary, usedSlugs: new Set(secondary.map((s) => s.slug)) };
+}
+
 export function selectWorthKnowing(
   candidates: Story[],
   alertBannerSlugs: Set<string>,

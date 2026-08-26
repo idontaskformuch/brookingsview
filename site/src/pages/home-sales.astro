@@ -21,6 +21,8 @@ import { getRecentPropertySales, getContentByType, formatPrice } from '../lib/db
 import { titleCaseAddress as sharedTitleCaseAddress, extractZip as sharedExtractZip, slugifyAddress, isOutlierSale } from '../lib/home-sales';
 import { siteConfig } from '../lib/site-config';
 import SectionHero from '../components/SectionHero.astro';
+import { EMPTY_STATES } from '../lib/empty-states';
+import { SECTION_THEME } from '../lib/section-theme';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
@@ -45,7 +47,8 @@ function monthYear(occursAt: string | null): string {
 }
 ---
 <BaseLayout title={`Recent Home Sales in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-home-sales"
-  description="Recently recorded home sales in Moreno Valley: address, price, and date, from Riverside County's public assessor data.">
+  description="Recently recorded home sales in Moreno Valley: address, price, and date, from Riverside County's public assessor data."
+  accentColor={SECTION_THEME.home_sales.accent}>
   <SectionHero category="home_sales" />
   <header class="lede">
     <h1>Recent home sales</h1>
@@ -125,7 +128,7 @@ function monthYear(occursAt: string | null): string {
       <p class="pager-status" id="pager-status" aria-live="polite"></p>
     </>
   ) : (
-    <p class="empty">No sales data available yet.</p>
+    <p class="empty">{EMPTY_STATES.homeSales}</p>
   )}
 
   <p class="source">
@@ -138,6 +141,7 @@ function monthYear(occursAt: string | null): string {
 
 <script>
   import { initDataTable } from '../lib/data-table';
+  import { EMPTY_STATES } from '../lib/empty-states';
 
   function init() {
     // ?zip=92553 pre-selects the filter -- the cross-link target from
@@ -156,13 +160,18 @@ function monthYear(occursAt: string | null): string {
       pageSizeId: 'page-size',
       statusId: 'pager-status',
       statusText: (shown, total) => `Showing ${shown} of ${total} matching sales.`,
+      emptyMessage: EMPTY_STATES.searchFilter,
     });
   }
   init();
 </script>
 
 <style>
-.lede { max-width: 40rem; }
+.lede {
+  max-width: 40rem;
+  border-bottom: 3px solid var(--section-accent, var(--rule-strong));
+  padding-bottom: 1.125rem;
+}
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
 .grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); margin-bottom: 0.5rem; }
 .digest-card {
@@ -214,4 +223,5 @@ function monthYear(occursAt: string | null): string {
 .pager-status { margin-top: 0.25rem; font-size: 0.8125rem; color: var(--ink-soft); }
 .empty { color: var(--ink-soft); }
 .source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }
+.source a { color: var(--section-accent, var(--navy)); }
 </style>

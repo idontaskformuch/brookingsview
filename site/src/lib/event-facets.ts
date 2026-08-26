@@ -12,6 +12,7 @@ import type { Facility } from './db';
 import {
   type FeedItem, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent,
 } from './events';
+import { EMPTY_STATES } from './empty-states';
 
 export interface FacetContext {
   facilities: Facility[];
@@ -47,7 +48,7 @@ export const EVENT_FACETS: EventFacet[] = [
     descriptionTemplate: (cityName) =>
       `What's happening today in ${cityName} — library programs, city events and community happenings, updated daily.`,
     intro: (cityName) => `Everything on the calendar today in ${cityName}, updated daily.`,
-    emptyMessage: 'No events listed for today — check back, or see everything coming up.',
+    emptyMessage: EMPTY_STATES.eventsToday,
     matches: (item, ctx) => isToday(item, ctx.today, ctx.timezone),
   },
   {
@@ -58,7 +59,7 @@ export const EVENT_FACETS: EventFacet[] = [
     descriptionTemplate: (cityName) =>
       `What's on this weekend in ${cityName} — Friday through Sunday, updated daily.`,
     intro: (cityName) => `What's on Friday through Sunday in ${cityName}, updated daily.`,
-    emptyMessage: 'No events listed for this weekend yet — check back, or see everything coming up.',
+    emptyMessage: EMPTY_STATES.eventsWeekend,
     matches: (item, ctx) => isThisWeekend(item, ctx.today, ctx.timezone),
   },
   {
@@ -71,7 +72,7 @@ export const EVENT_FACETS: EventFacet[] = [
     intro: (cityName) =>
       `Free things to do in ${cityName} this week, updated daily. Limited to events at the ` +
       'library, parks and community centers -- the only venues where "free" is a known fact, not a guess.',
-    emptyMessage: 'No free events listed this week — check back.',
+    emptyMessage: EMPTY_STATES.eventsFree,
     matches: (item, ctx) => isFreeEvent(item, ctx.facilities),
   },
   {
@@ -82,7 +83,7 @@ export const EVENT_FACETS: EventFacet[] = [
     descriptionTemplate: (cityName) =>
       `Family-friendly and kids' events in ${cityName} — storytimes, family nights and youth programs, updated daily.`,
     intro: (cityName) => `Storytimes, family nights and youth programs in ${cityName}, updated daily.`,
-    emptyMessage: 'No kids or family events listed this week — check back.',
+    emptyMessage: EMPTY_STATES.eventsKids,
     matches: (item) => isKidsEvent(item),
   },
   {
@@ -93,7 +94,7 @@ export const EVENT_FACETS: EventFacet[] = [
     descriptionTemplate: (cityName) =>
       `What's on at the ${cityName} public library — classes, storytimes and programs, updated daily.`,
     intro: (cityName) => `Everything on the calendar at the ${cityName} public library, updated daily.`,
-    emptyMessage: 'No library events listed this week — check back.',
+    emptyMessage: EMPTY_STATES.eventsLibrary,
     matches: (item, ctx) => isLibraryEvent(item, ctx.facilities),
   },
   {
@@ -104,7 +105,7 @@ export const EVENT_FACETS: EventFacet[] = [
     descriptionTemplate: () =>
       `Arts, culture and campus events at South Dakota State University, updated daily.`,
     intro: () => `Concerts, exhibits and campus happenings at South Dakota State University, updated daily.`,
-    emptyMessage: 'No campus events listed this week — check back.',
+    emptyMessage: EMPTY_STATES.eventsCampus,
     matches: (item) => isCampusEvent(item),
     brookingsOnly: true,
   },
