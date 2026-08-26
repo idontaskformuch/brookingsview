@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass
 
@@ -103,6 +104,160 @@ Z", not "Grab your". Open with the concrete specific: what it is, when, where, w
 it is for. Never use the phrase "mark your calendar".
 
 Return ONLY the blurb text, no preamble, no markdown headers."""
+
+
+# --- Summary Tone Prompts v2 (meeting/event/alert) --------------------------
+#
+# See NEEDS-HUMAN-REVIEW.md "Summary Tone Prompts -- scraped local items".
+# Rewrites meeting/event/alert generation from one prose blob into
+# {summary, meta} JSON, with per-type structure/length rules and shared
+# voice/sentence-craft rules the plain build_system_prompt() above doesn't
+# have. Gated behind cfg["ai"]["tone_v2"] (default off) in format_record()
+# below -- kept until the side-by-side comparison in scripts/eval_tone_v2.py
+# has actually been reviewed, per the brief's own §8. Does NOT touch the
+# content track (editorial/culture_essay/...), which keeps using
+# build_system_prompt() unchanged regardless of this flag.
+
+TONE_V2_SHARED_RULES = """
+VOICE
+- Write for someone who already lives here. Do not explain where local
+  landmarks are, and do not name the state or region inside the body text.
+- Plain, concrete, unhurried. Short words over long ones.
+- Third person. No first person, no "we", no "our city", no direct address
+  to the reader ("you should", "be sure to").
+
+SENTENCE CRAFT
+- Vary opening structure. Do NOT open with the subject's name followed
+  immediately by a verb of occurrence (e.g. "X meets at...", "The Council
+  will hold...") in more than one sentence per item.
+- Vary sentence length deliberately: include at least one short sentence
+  (under ten words) where there is room.
+- Concrete nouns over abstractions. Prefer numbers, sizes, streets, times.
+- No empty lead-ins: "It is worth noting", "In an effort to", "As part of".
+
+FORBIDDEN
+- Evaluative adjectives and adverbs about the subject: long-awaited,
+  controversial, exciting, important, significant, much-anticipated, key,
+  major, popular, beloved, unique.
+- Any claim of consequence, cause, motive, reaction or significance that is
+  not stated in the source.
+- Any sentence beginning "This means", "This comes as", "The move".
+- Speculation about future outcomes beyond dates the source gives.
+- Em dashes. Use commas, periods or parentheses.
+
+REFERENCE DATA
+Address, phone number, room number, registration details and cost do NOT
+belong in the prose. Put them in the `meta` object instead (see the output
+format below) -- never repeat them in `summary`.
+"""
+
+TONE_V2_TYPE_RULES: dict[str, str] = {
+    "meeting": """
+MEETING RULES -- length scales to substance, this is the main thing to get right:
+- Routine agenda, nothing substantive: 1 sentence, then stop.
+- One or two agenda items of consequence: 3-5 sentences.
+- Major land-use, budget or ordinance items: up to 8 sentences.
+- Open with the most consequential agenda item, not with the body's name and
+  meeting time (those go in `meta.venue`/`meta.when`).
+- Describe each substantive item in its own sentence, with the concrete
+  detail the agenda gives: acreage, square footage, unit counts, street
+  boundaries.
+- Procedural facts that constrain the public (comment limits, speaker slips,
+  where the packet is available) get one plain sentence at the end. State
+  the limit; do not characterise it.
+- Do not connect two agenda items into a pattern, note what a decision
+  "could affect", or describe anything as contested -- that is editorial
+  work, not this pipeline's job.
+""",
+    "event": """
+EVENT RULES -- two to four sentences, hard ceiling of four:
+- Open with what actually happens at the event, not its name and
+  meeting-place (those go in `meta.venue`/`meta.when`).
+  Before: "Dragons in the Stacks runs August 25 at the Moreno Valley Public
+  Library Mall Branch, 22500 Town Circle, Suite 2078."
+  Wanted shape: "Tabletop role-playing, adults welcome, dice provided. The
+  Mall branch runs it monthly."
+- State the intended audience (age range, adults, teens, preschool) early --
+  it is the fact that decides relevance to a reader.
+- Recurring events: state the cadence ("Every Tuesday at six") rather than
+  only the single instance date.
+- If the source description is thin, write two sentences. Do not invent
+  atmosphere, and do not describe what attendees will feel or gain.
+- Never write "for more information, call..." in the prose -- that is
+  `meta.phone`.
+""",
+    "alert": """
+ALERT RULES -- flatness is a feature here, keep tone changes minimal:
+- Lead with the practical shape: what, where, how long. Not the issuing body.
+- Keep official safety guidance close to the source wording. Do not
+  paraphrase it for style, and do not compress a list of precautions into a
+  summary clause -- state each precaution its own sentence.
+- Geographic scope must be explicit in the first sentence -- a regional
+  alert covering neighboring areas must name which areas.
+- No reassurance, no alarm, no advice beyond what the source issues.
+- Two to four sentences normally; up to seven when the source gives a
+  genuine multi-item precaution list -- length follows the precaution
+  count, it is never padded.
+""",
+}
+
+# Post-generation length ceiling per type (guardrails.validate_tone_v2()) --
+# meeting's scaling (1-8 sentences, by substance) means only the outer
+# ceiling is checkable mechanically; the "does it actually scale down for a
+# routine meeting" judgment is a prompt-quality question, not a guardrail.
+TONE_V2_MAX_SENTENCES: dict[str, int] = {"meeting": 8, "event": 4, "alert": 7}
+
+
+def build_system_prompt_v2(cfg: dict, source_type: str) -> str:
+    type_rules = TONE_V2_TYPE_RULES.get(source_type, "")
+    return f"""You write short local-news items for {cfg['display_name']}, {cfg['state']}.
+
+HARD RULES (fact/safety, unconditional):
+- ALWAYS write in English, regardless of what language any guidance here is
+  written in -- the site itself is English-language.
+- Use ONLY facts present in the SOURCE DATA provided. Never invent names,
+  numbers, dates, quotes, or details. If a detail is not in the source, do
+  not state it.
+- No opinion, no political framing, neutral on any contested civic matter.
+- NEVER name an individual person. Refer to people by role instead ("an
+  applicant in Preston Township", "the council", "a dispatcher"). Case and
+  file numbers give traceability without naming anyone. Organizations,
+  businesses, agencies, and place names are fine to name.
+- Explain jargon and acronyms in plain words on first use, or avoid them.
+- Write dates in one consistent form: "July 23", never "July 23rd" or "7/23".
+{TONE_V2_SHARED_RULES}
+{type_rules}
+OUTPUT FORMAT -- return ONLY a single JSON object, no markdown fences, no
+preamble, matching exactly this shape (omit a `meta` key entirely if it has
+no real value, never emit an empty string):
+{{"summary": "...", "meta": {{"venue": "...", "address": "...", "phone": "...",
+"when": "...", "recurrence": "...", "audience": "...", "cost": "...",
+"registration": "..."}}}}"""
+
+
+def parse_tone_v2_response(raw: str) -> tuple[str, dict] | None:
+    """Parses the model's {summary, meta} JSON. Returns None (never raises)
+    on anything malformed -- format_record() below treats that exactly like
+    a guardrail rejection: a strict retry, then template fallback. A
+    response that ignored the JSON-only instruction is a generation-quality
+    failure, not a code bug worth crashing the batch over."""
+    text = raw.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+    try:
+        obj = json.loads(text)
+    except ValueError:
+        return None
+    if not isinstance(obj, dict) or not isinstance(obj.get("summary"), str) or not obj["summary"].strip():
+        return None
+    meta = obj.get("meta")
+    if meta is not None and not isinstance(meta, dict):
+        return None
+    # Omit empty-string values silently (§6: "Omit empty fields silently") --
+    # normalize here once so every caller/template can just check truthiness.
+    meta = {k: v for k, v in (meta or {}).items() if v not in (None, "")}
+    return obj["summary"].strip(), meta
 
 
 # --- template-fallbacks (ingen AI) -----------------------------------------
@@ -258,11 +413,37 @@ class FormatResult:
     text: str
     generated_by: str      # "ai:<model>" | "template" | "template_fallback"
     verified: bool
+    # Only ever set on the tone_v2 path (meeting/event/alert, cfg["ai"]["tone_v2"]
+    # true) -- see NEEDS-HUMAN-REVIEW.md "Summary Tone Prompts". None for every
+    # other path, including the old prose-blob generator for the same types.
+    meta: dict | None = None
+
+
+# Field names actually used across meetings/events rows for "does the
+# source have a venue/when at all" (guardrails.validate_tone_v2()'s required-
+# field check, §7.1). Kept as a plain tuple, not a schema -- this only needs
+# to answer "is there something here", not parse the value.
+_VENUE_FIELDS = ("venue", "location", "Location")
+_WHEN_FIELDS = ("meeting_date", "starts_at", "occurs_at")
+
+
+def _source_has_venue(record: dict) -> bool:
+    return any(record.get(f) for f in _VENUE_FIELDS)
+
+
+def _source_has_when(record: dict) -> bool:
+    return any(record.get(f) for f in _WHEN_FIELDS)
 
 
 def format_record(record: dict, source_type: str, cfg: dict,
-                  client=None) -> FormatResult:
-    """Formatera en post till publicerbar text, guardrail-validerad."""
+                  client=None, recent_openings: list[str] | None = None) -> FormatResult:
+    """Formatera en post till publicerbar text, guardrail-validerad.
+
+    `recent_openings`: only meaningful for the tone_v2 path -- the caller's
+    proxy for "what's rendered on one page" for the opening-structure
+    diversity check (guardrails.classify_opening()/opening_diversity_ok()).
+    See ai_pipeline/publish.py for how it's built. Ignored otherwise.
+    """
     ai_cfg = cfg.get("ai", {})
 
     # 1. ren strukturerad data → mall, ingen AI
@@ -286,16 +467,40 @@ def format_record(record: dict, source_type: str, cfg: dict,
     model = resolve_model(source_type, cfg)
     price_in, price_out = pricing_for(model)
     source_text = guardrails.source_to_text(record)
-    system = build_system_prompt(cfg)
+
+    tone_v2 = bool(ai_cfg.get("tone_v2")) and source_type in TONE_V2_TYPE_RULES
+    system = build_system_prompt_v2(cfg, source_type) if tone_v2 else build_system_prompt(cfg)
 
     def _call(extra: str = "") -> tuple[str, object]:
         msg = safe_create(
             client,
-            model=model, max_tokens=400, system=system + extra,
+            model=model, max_tokens=500 if tone_v2 else 400, system=system + extra,
             messages=[{"role": "user",
                        "content": f"SOURCE DATA (source_type={source_type}):\n{source_text}"}],
         )
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text"), msg.usage
+
+    def _validate(raw_text: str) -> tuple[bool, list[str], str, dict | None]:
+        """Returns (passed, violations, summary_text, meta). For tone_v2,
+        malformed JSON is treated exactly like a guardrail rejection (see
+        parse_tone_v2_response()'s own docstring) -- never raises."""
+        if not tone_v2:
+            result = guardrails.validate(raw_text, source_text, cfg)
+            return result.passed, result.violations, raw_text, None
+
+        parsed = parse_tone_v2_response(raw_text)
+        if parsed is None:
+            return False, ["tone_v2: response was not valid {summary, meta} JSON"], raw_text, None
+        summary, meta = parsed
+        fact_result = guardrails.validate(summary, source_text, cfg)
+        tone_result = guardrails.validate_tone_v2(
+            summary, meta, source_text, source_type, cfg,
+            has_venue_in_source=_source_has_venue(record),
+            has_when_in_source=_source_has_when(record),
+            recent_openings=recent_openings,
+        )
+        violations = fact_result.violations + tone_result.violations
+        return not violations, violations, summary, meta
 
     # GenerationUnavailable (API-fel: kreditsaldo, rate limit, överbelastning,
     # anslutning) hanteras EXAKT som ett guardrail-avslag -- mall-fallback,
@@ -305,27 +510,38 @@ def format_record(record: dict, source_type: str, cfg: dict,
     # saknar kredit, i stället för att bara falla tillbaka på mall för den
     # raden och fortsätta med resten av batchen.
     try:
-        text, usage = _call()
+        raw, usage = _call()
         _record_spend(usage.input_tokens * price_in + usage.output_tokens * price_out)
+        passed, violations, text, meta = _validate(raw)
 
-        result = guardrails.validate(text, source_text, cfg)
-        if not result.passed:
-            # ett striktare omförsök
-            strict = ("\n\nYour previous attempt included details not found in the source. "
-                      "Rewrite using ONLY facts explicitly present in the SOURCE DATA.")
-            text, usage = _call(strict)
+        if not passed:
+            # ett striktare omförsök -- måste peka på VAD som faktiskt underkändes.
+            # Tidigare var det här meddelandet ett hårdkodat "du hittade på fakta"
+            # oavsett verklig avslagsorsak. Live-testat (2026-08-26,
+            # scripts/eval_tone_v2.py mot Moreno Valley): tone_v2:s meta.when-krav
+            # (§7.1) slog till på 6 av 10 möten, men det generiska meddelandet gav
+            # modellen noll signal om VAD som saknades -- omförsöket upprepade
+            # samma miss, och möten utan egen TEMPLATERS-mall föll då rakt igenom
+            # till _fallback()'s sista utväg (bara styrelsens namn, ingen substans
+            # alls). Peka på de faktiska violations i stället.
+            strict = (
+                "\n\nYour previous attempt was rejected for these specific reasons:\n"
+                + "\n".join(f"- {v}" for v in violations)
+                + "\nFix exactly these issues. Do not otherwise change what you wrote."
+            )
+            raw, usage = _call(strict)
             _record_spend(usage.input_tokens * price_in + usage.output_tokens * price_out)
-            result = guardrails.validate(text, source_text, cfg)
+            passed, violations, text, meta = _validate(raw)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall", file=sys.stderr)
         return _fallback(record, source_type, cfg, reason=f"AI ej tillgängligt: {exc}")
 
-    if result.passed:
-        return FormatResult(text=text, generated_by=f"ai:{model}", verified=True)
+    if passed:
+        return FormatResult(text=text, generated_by=f"ai:{model}", verified=True, meta=meta)
 
     # 4. gav sig inte → ren mall-fallback
     return _fallback(record, source_type, cfg,
-                     reason=f"guardrail: {'; '.join(result.violations)}")
+                     reason=f"guardrail: {'; '.join(violations)}")
 
 
 def _fallback(record: dict, source_type: str, cfg: dict, reason: str) -> FormatResult:

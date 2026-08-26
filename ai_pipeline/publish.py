@@ -67,7 +67,9 @@ load_dotenv()
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
+from ai_pipeline import guardrails
 from ai_pipeline.format_prompt import format_record, TEMPLATERS
 from ai_pipeline.venue_registry import load_registry, queue_for_review, resolve_venue
 from db.db import content_hash
@@ -404,6 +406,22 @@ def existing_slugs(conn, town_id: str) -> set[str]:
         return {r[0] for r in cur.fetchall()}
 
 
+def _recent_openings(conn, town_id: str, source_type: str, limit: int = 10) -> list[str]:
+    """Opening shapes (guardrails.classify_opening()) of the most recently
+    published same-source_type/town stories -- the proxy for "what's
+    rendered on one page" the tone_v2 diversity check needs (see
+    guardrails.opening_diversity_ok()'s own docstring for why an exact
+    page-level check isn't possible at generation time). Only meaningful
+    for tone_v2; harmless, unused cost otherwise."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT body FROM stories WHERE town_id = %s AND source_type = %s "
+            "ORDER BY published_at DESC LIMIT %s",
+            (town_id, source_type, limit),
+        )
+        return [guardrails.classify_opening(row[0]) for row in cur.fetchall()]
+
+
 def _localize_datetime_fields(record: dict, tz: ZoneInfo) -> dict:
     """Ersätt rå UTC-datetime-fält (starts_at/ends_at -- INTE meeting_date,
     se fmt_dt-docstringen för varför) med lokaliserade textsträngar innan
@@ -442,6 +460,17 @@ def publish_table(
     # change mid-run. Only relevant for "events"; harmless no-op cost for
     # "meetings" (empty dict, resolve_venue() always misses).
     venue_registry = load_registry(conn, town_id) if table == "events" else {}
+
+    # Summary Tone Prompts (see NEEDS-HUMAN-REVIEW.md): the opening-diversity
+    # check needs a "what's already out there" baseline per source_type,
+    # fetched once and then updated in-memory as this run publishes more --
+    # see _recent_openings() and format_prompt.py's format_record(). Only
+    # meaningful under cfg["ai"]["tone_v2"]; a harmless unused dict otherwise.
+    tone_v2 = bool(cfg.get("ai", {}).get("tone_v2"))
+    recent_openings_by_type: dict[str, list[str]] = (
+        {st: _recent_openings(conn, town_id, st) for st in ("meeting", "event", "alert")}
+        if tone_v2 else {}
+    )
 
     published = skipped = thin = stale = remaining = 0
     for row in rows:
@@ -490,7 +519,17 @@ def publish_table(
         # Ren brus för modellen, och gör outputen mindre förutsägbar.
         ai_record = {k: v for k, v in row.items() if k not in _INTERNAL_FIELDS}
         ai_record = _localize_datetime_fields(ai_record, tz)
-        result = format_record(ai_record, source_type, cfg)
+        result = format_record(
+            ai_record, source_type, cfg,
+            recent_openings=recent_openings_by_type.get(source_type),
+        )
+        if result.meta is not None:
+            # Keep this run's own baseline current so the 5th event
+            # published in one run is judged against the 4 that just
+            # preceded it, not only against stories from earlier runs.
+            recent_openings_by_type.setdefault(source_type, []).append(
+                guardrails.classify_opening(result.text)
+            )
 
         # SUBSTANSKRAV, del 2: has_substance() ovan skyddar bara mot tunn
         # KÄLLDATA innan AI-anropet. Men även med gott källunderlag kan
@@ -545,14 +584,15 @@ def publish_table(
                 INSERT INTO stories
                     (town_id, title, slug, body, source_type, source_url,
                      snapshot_id, generated_by, verified, published_at, occurs_at,
-                     venue_raw, is_recurring_series, ends_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                     venue_raw, is_recurring_series, ends_at, meta)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT (town_id, slug) DO NOTHING
                 """,
                 (town_id, title, slug, result.text, source_type, source_url,
                  snapshot_id, result.generated_by, result.verified,
                  datetime.now(timezone.utc), occurs_at,
-                 venue_raw, is_recurring_series, ends_at),
+                 venue_raw, is_recurring_series, ends_at,
+                 Jsonb(result.meta) if result.meta is not None else None),
             )
         known_slugs.add(slug)
         published += 1

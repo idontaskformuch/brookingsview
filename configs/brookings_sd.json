@@ -50,6 +50,8 @@
     "mode": "batch",
     "batch_cadence_minutes": 60,
     "monthly_budget_usd": 20,
+    "tone_v2": false,
+    "_tone_v2_note": "Summary Tone Prompts (meeting/event/alert -> {summary, meta} JSON, see NEEDS-HUMAN-REVIEW.md). Off until scripts/eval_tone_v2.py's old-vs-new comparison has been reviewed, per that feature's own §8.",
     "tone_guidelines": "Skriv som en påläst, glad granne. Kort, konkret, välkomnande. Fira det som är kul (nyöppningar, segrar, evenemang) utan att överdriva. Håll dig strikt till fakta i källdatan – hitta aldrig på detaljer, namn eller siffror. Ingen åsikt om politik/beslut, bara vad som händer och vad det betyder i klarspråk.",
     "guardrails": {
       "extractive_for_structured_fields": true,

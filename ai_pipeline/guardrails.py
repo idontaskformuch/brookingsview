@@ -356,15 +356,185 @@ def _banned_hits(text: str, cfg: dict) -> list[str]:
 
 
 _OPINION_MARKERS = [
-    "should", "shouldn't", "must ", "outrageous", "disgraceful", "wisely",
+    "shouldn't", "must ", "outrageous", "disgraceful", "wisely",
     "unfortunately", "sadly", "thankfully", "controversial", "failed to",
     "refused to", "shocking", "disappointing",
 ]
+# Bare "should" was removed 2026-08-26: live-tested against real Moreno
+# Valley meeting generation (scripts/eval_tone_v2.py), it false-positived on
+# exactly the plain procedural instructions the new tone_v2 meeting prompt
+# explicitly asks for ("Those wishing to testify should submit a speaker
+# slip") -- a neutral instruction to the PUBLIC, not an opinion about what a
+# civic body ought to do. "shouldn't" (kept) is a much stronger, rarer
+# signal and wasn't implicated. This is a shared guardrail (validate() runs
+# for every content type, not just tone_v2), so the fix benefits the
+# content track too, not just meeting/event/alert.
 
 
 def _opinion_hits(text: str) -> list[str]:
     low = text.casefold()
     return [m.strip() for m in _OPINION_MARKERS if m in low]
+
+
+# --- Summary Tone Prompts (meeting/event/alert) -----------------------------
+#
+# See NEEDS-HUMAN-REVIEW.md "Summary Tone Prompts -- scraped local items" and
+# ai_pipeline/format_prompt.py's build_system_prompt_v2(). These checks are
+# ADDITIONAL to validate() above (still runs first -- fact/banned-content/
+# opinion checks are type-agnostic and unaffected by tone). Gated behind
+# cfg["ai"]["tone_v2"] in format_record(); doesn't touch the content track or
+# any other guardrail path (validate_employer_hedging() included).
+
+_BANNED_TONE_ADJECTIVES = {
+    "long-awaited", "controversial", "exciting", "important", "significant",
+    "much-anticipated", "key", "major", "popular", "beloved", "unique",
+}
+_BANNED_ADJECTIVE_RE = re.compile(
+    r"\b(" + "|".join(re.escape(w) for w in _BANNED_TONE_ADJECTIVES) + r")\b",
+    re.IGNORECASE,
+)
+
+_FORBIDDEN_OPENING_RE = re.compile(
+    r"(?:^|[.!?]\s+)(This means|This comes as|The move)\b", re.IGNORECASE,
+)
+
+
+def _banned_adjective_hits(text: str) -> list[str]:
+    return sorted({m.group(1).lower() for m in _BANNED_ADJECTIVE_RE.finditer(text)})
+
+
+def _em_dash_hits(text: str) -> bool:
+    return "—" in text  # em dash (—); commas/periods/parens only, see §2
+
+
+def _forbidden_opening_hits(text: str) -> list[str]:
+    return sorted({m.group(1) for m in _FORBIDDEN_OPENING_RE.finditer(text)})
+
+
+# Coarse, regex-based opening-shape heuristic -- NOT real POS tagging (no NLP
+# dependency exists in this codebase; see guardrails.py's module docstring
+# philosophy of cheap heuristics over heavy machinery). Good enough for its
+# actual job: telling "Subject + verb-of-occurrence" (the pattern the brief
+# flags as the actual problem -- "The Planning Commission will hold...",
+# "ABC's & 123's meets at...") apart from other openings, not a linguistically
+# precise tagger.
+_OCCURRENCE_VERBS = {
+    "meets", "meet", "runs", "run", "holds", "hold", "will", "takes", "take",
+    "hosts", "host", "opens", "open", "begins", "begin", "starts", "start",
+    "features", "feature", "welcomes", "welcome",
+}
+
+
+def classify_opening(text: str) -> str:
+    """A short label for a summary's opening shape, for the cross-item
+    diversity check below. 'subject_verb' is the specific shape the brief's
+    §1 calls out -- an optional leading article, then a capitalized
+    (possibly multi-word) subject phrase, immediately followed by an
+    occurrence verb: "The Planning Commission will...", "Discovery Club
+    meets...". Everything else buckets more coarsely; still a heuristic,
+    not real POS tagging (see the module comment above)."""
+    words = re.findall(r"[A-Za-z]+(?:-[A-Za-z]+)*", text)[:8]
+    if not words:
+        return "other"
+
+    idx = 0
+    has_leading_article = words[0].lower() in ("a", "an", "the")
+    if has_leading_article:
+        idx = 1
+
+    subject_end = idx
+    while subject_end < len(words) and words[subject_end][:1].isupper():
+        subject_end += 1
+
+    if subject_end > idx and subject_end < len(words) and words[subject_end].lower() in _OCCURRENCE_VERBS:
+        return "subject_verb"
+    if has_leading_article:
+        return "article"
+    if len(words) >= 2 and words[1].endswith("ing"):
+        return "gerund"
+    if re.match(r"^\d", words[0]):
+        return "number"
+    return "other"
+
+
+def opening_diversity_ok(shape: str, recent_shapes: list[str], threshold: float = 0.30) -> bool:
+    """False if adding `shape` to `recent_shapes` would push that shape's
+    share of the page above `threshold` -- see §7.5: "no more than 30% may
+    open with the same first two part-of-speech pattern." `recent_shapes`
+    is the caller's own proxy for "what's rendered on one page" (e.g. the
+    last ~10 published same-source_type/town items) -- generation happens
+    one record at a time, long before page composition is known, so an
+    exact page-level check isn't possible at this point in the pipeline;
+    see ai_pipeline/publish.py for how the proxy list is built."""
+    if shape == "other":
+        return True  # 'other' is deliberately not policed -- only the
+        # named repetitive shapes are what the brief is actually about.
+    combined = recent_shapes + [shape]
+    share = combined.count(shape) / len(combined)
+    return share <= threshold
+
+
+def validate_tone_v2(
+    summary: str, meta: dict, source_text: str, source_type: str, cfg: dict,
+    *, has_venue_in_source: bool = False, has_when_in_source: bool = False,
+    recent_openings: list[str] | None = None,
+) -> GuardrailResult:
+    """Post-generation checks specific to the {summary, meta} tone-v2 shape
+    (§7). Runs IN ADDITION to validate(summary, source_text, cfg) -- callers
+    must run both (see format_prompt.py's format_record())."""
+    violations: list[str] = []
+
+    # 1. required fields survived -- NOT applied to alerts. §5's own alert
+    # rules explicitly want the practical shape (what/where/how long) INSIDE
+    # the prose ("Lead with the practical shape"), unlike meeting/event
+    # where §3/§4 explicitly move the time OUT of the prose and into meta.
+    # Live-tested (2026-08-26): requiring meta.when for alerts too rejected
+    # correct, on-brief alert summaries that stated the time window plainly
+    # in the sentence exactly as instructed, just because meta.when wasn't
+    # ALSO redundantly filled -- a real conflict between this check and the
+    # alert-specific prompt rules, not a generation defect.
+    if source_type != "alert":
+        if has_when_in_source and not meta.get("when"):
+            violations.append("tone_v2: source has a date/time but meta.when is missing")
+        if has_venue_in_source and not meta.get("venue"):
+            violations.append("tone_v2: source has a venue but meta.venue is missing")
+
+    # 2. banned-adjective scan
+    banned = _banned_adjective_hits(summary)
+    if banned:
+        violations.append(f"tone_v2: banned adjective(s): {', '.join(banned)}")
+
+    # 3. no em dashes
+    if _em_dash_hits(summary):
+        violations.append("tone_v2: em dash used")
+
+    # 4. no invented numbers -- meta values are extracted FROM the source by
+    # the same generation call, so they count as legitimate haystack, not
+    # just source_text (e.g. a phone number restated in meta.phone and
+    # nowhere else verbatim in source_text due to formatting differences).
+    meta_text = " ".join(str(v) for v in meta.values() if v is not None)
+    haystack = _source_haystack(source_text + " " + meta_text)
+    for num in _numbers(summary):
+        if num and num not in haystack:
+            violations.append(f"tone_v2: number not in source: {num}")
+
+    # 5. opening-structure diversity
+    if recent_openings is not None:
+        shape = classify_opening(summary)
+        if not opening_diversity_ok(shape, recent_openings):
+            violations.append(f"tone_v2: opening shape '{shape}' over 30% of recent {source_type} items")
+
+    # 6. length band per type -- see format_prompt.py's TONE_V2_LENGTH_SENTENCES
+    # for the actual bounds (kept there, not duplicated here, since the bands
+    # are prompt-authoring concerns co-located with the prompt text itself).
+    from ai_pipeline.format_prompt import TONE_V2_MAX_SENTENCES
+    max_sentences = TONE_V2_MAX_SENTENCES.get(source_type)
+    if max_sentences is not None:
+        sentence_count = len([s for s in _SENTENCE_SPLIT_RE.split(summary.strip()) if s])
+        if sentence_count > max_sentences:
+            violations.append(f"tone_v2: {sentence_count} sentences exceeds {source_type} ceiling of {max_sentences}")
+
+    return GuardrailResult(passed=len(violations) == 0, violations=violations)
 
 
 # bekväm sträng-serialisering av källfält för validering
