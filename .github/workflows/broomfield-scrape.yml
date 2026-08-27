@@ -18,6 +18,8 @@ jobs:
       USER_AGENT:         "broomfieldview.com (contact: hello@broomfieldview.com)"
       AI_BUDGET_STATE:    ".ai_budget_broomfield_co.json"
       CDOT_API_KEY:       ${{ secrets.CDOT_API_KEY }}
+      ADZUNA_APP_ID:      ${{ secrets.ADZUNA_APP_ID }}
+      ADZUNA_APP_KEY:     ${{ secrets.ADZUNA_APP_KEY }}
       ALERT_WEBHOOK:      ${{ secrets.ALERT_WEBHOOK }}
       ALERT_AFTER_FAILURES: "3"
     steps:

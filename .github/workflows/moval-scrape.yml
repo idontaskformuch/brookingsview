@@ -16,6 +16,8 @@ jobs:
       ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
       USER_AGENT:         "morenovalleyview.com (contact: hello@morenovalleyview.com)"
       AI_BUDGET_STATE:    ".ai_budget_moreno_valley_ca.json"
+      ADZUNA_APP_ID:      ${{ secrets.ADZUNA_APP_ID }}
+      ADZUNA_APP_KEY:     ${{ secrets.ADZUNA_APP_KEY }}
       ALERT_WEBHOOK:      ${{ secrets.ALERT_WEBHOOK }}
       ALERT_AFTER_FAILURES: "3"
     steps:
