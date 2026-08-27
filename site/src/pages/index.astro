@@ -37,7 +37,7 @@ import {
 import { selectWorthKnowing, selectLatestFrom, firstSentence, selectFrontPageRhythm } from '../lib/homepage-curation';
 import { todayUtcMidnight } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
-import { resolveImage } from '../lib/images';
+import { resolveImage, dedupeConsecutiveImages } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
@@ -95,6 +95,36 @@ const hasImage = (story: (typeof upcoming)[number]) => resolveImage(story, {
 const widgetSlugs = new Set<string>();
 
 const { fullWidthLead, secondary, usedSlugs } = selectFrontPageRhythm(upcoming, alerts, { hasImage, widgetSlugs });
+
+// Real per-place/category photos (see NEEDS-HUMAN-REVIEW.md "Switch venue/
+// category images to real photos") replaced the old, much larger
+// Flux-generated set with ONE photo per category -- so two front-page
+// cards sharing a category (e.g. two "events" items, or WeeklyRoundup
+// colliding with an events lead -- WeeklyRoundup always resolves via
+// 'events', see that component) would otherwise render the exact same
+// photo twice, reading as a bug rather than a deliberate choice.
+// dedupeConsecutiveImages() (added with the original image-identity
+// feature but never actually called from any page until this) is applied
+// here to the front page's image-bearing cards IN THEIR REAL VISUAL ORDER
+// -- weekly roundup, the lead, each secondary card, then the "Today's
+// read" feature further down -- so a repeat is suppressed (an honest "no
+// image" gap, same as any other resolveImage() miss) rather than shown
+// twice. Deliberately only consecutive-in-this-list repeats are
+// suppressed, not any-earlier-in-the-list ones -- see that function's own
+// docstring for why a repeat separated by other images isn't the same
+// "reads as broken" problem.
+const frontPageImageOrder = [weekly, fullWidthLead, ...secondary, feature]
+  .filter((s): s is NonNullable<typeof s> => s != null);
+const frontPageImages = dedupeConsecutiveImages(
+  frontPageImageOrder,
+  (s) => resolveImage(s, {
+    town: siteConfig.townId,
+    cityName: siteConfig.cityName,
+    facilities,
+    categoryImages: categoryImagesFor(siteConfig.townId),
+  }),
+);
+const frontPageImageBySlug = new Map(frontPageImages.map(({ item, image }) => [item.slug, image]));
 
 const rest = upcoming.filter((s) => !usedSlugs.has(s.slug));
 
@@ -178,18 +208,18 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 
   <SchoolAlertBanner alerts={schoolAlerts} />
 
-  {weekly && <WeeklyRoundup story={weekly} facilities={facilities} />}
+  {weekly && <WeeklyRoundup story={weekly} facilities={facilities} image={frontPageImageBySlug.get(weekly.slug)} />}
 
   <div class="front">
     {fullWidthLead ? (
-      <LeadStory story={fullWidthLead} facilities={facilities} />
+      <LeadStory story={fullWidthLead} facilities={facilities} image={frontPageImageBySlug.get(fullWidthLead.slug)} />
     ) : secondary.length === 0 && (
       <p class="empty">Nothing scheduled right now. This page rebuilds every hour.</p>
     )}
 
     {secondary.length > 0 && (
       <div class="front__secondary">
-        {secondary.map((story) => <SecondaryStory story={story} facilities={facilities} />)}
+        {secondary.map((story) => <SecondaryStory story={story} facilities={facilities} image={frontPageImageBySlug.get(story.slug)} />)}
       </div>
     )}
   </div>
@@ -259,7 +289,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   {feature && (
     <section aria-label="Today's read">
       <SectionRule label="Today's read" href={CATEGORY_HREFS[feature.source_type]} />
-      <LeadStory story={feature} facilities={facilities} />
+      <LeadStory story={feature} facilities={facilities} image={frontPageImageBySlug.get(feature.slug)} />
     </section>
   )}
 

@@ -6,14 +6,17 @@
  *  from repeating the same amount of text at a smaller size. */
 import type { Story, Facility } from '../lib/db';
 import { formatDate, formatTime, formatCalendarDate, CATEGORY_LABELS } from '../lib/db';
-import { resolveImage } from '../lib/images';
+import { resolveImage, type ImageRef } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import { siteConfig } from '../lib/site-config';
 import { relativeTime } from '../lib/time';
 import ImageAttribution from './ImageAttribution.astro';
 
-interface Props { story: Story; facilities: Facility[]; }
+// See LeadStory.astro's identical Props comment -- same optional
+// pre-resolved override for index.astro's cross-card repeat suppression.
+interface Props { story: Story; facilities: Facility[]; image?: ImageRef | null; }
 const { story, facilities } = Astro.props;
+const imageOverride = 'image' in Astro.props ? Astro.props.image : undefined;
 
 const isMeeting = story.source_type === 'meeting';
 const isAlert = story.source_type === 'alert';
@@ -45,7 +48,7 @@ const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall'
 // Same resolution as the lead -- a secondary card can be the "fail down"
 // destination for a would-be lead with no image anywhere (§1), so this
 // must degrade the same honest way: no image, no <img> tag, never /og/.
-const heroImage = resolveImage(story, {
+const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(story, {
   town: siteConfig.townId,
   cityName: siteConfig.cityName,
   facilities,

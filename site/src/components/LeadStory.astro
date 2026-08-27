@@ -3,14 +3,22 @@
  *  bedömning visuellt, i stället för att ge varje post lika stor vikt. */
 import type { Story, Facility } from '../lib/db';
 import { formatDate, formatTime, formatCalendarDate, CATEGORY_LABELS } from '../lib/db';
-import { resolveImage } from '../lib/images';
+import { resolveImage, type ImageRef } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import ImageAttribution from './ImageAttribution.astro';
 import { siteConfig } from '../lib/site-config';
 import { relativeTime } from '../lib/time';
 
-interface Props { story: Story; facilities: Facility[]; }
+// `image`: optional pre-resolved override -- undefined (the default, every
+// call site but index.astro's front-page cards) means self-resolve as
+// before. A caller juggling several image-bearing cards on one page (see
+// index.astro's dedupeConsecutiveImages() pass) can pass the ALREADY-
+// deduped result instead, including an explicit null to suppress a repeat
+// -- distinguished from "not passed" via `'image' in Astro.props`, since a
+// plain `image?:` default would treat null and undefined the same.
+interface Props { story: Story; facilities: Facility[]; image?: ImageRef | null; }
 const { story, facilities } = Astro.props;
+const imageOverride = 'image' in Astro.props ? Astro.props.image : undefined;
 
 const isMeeting = story.source_type === 'meeting';
 const isAlert = story.source_type === 'alert';
@@ -45,8 +53,9 @@ const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall'
 // Front-page hero: one image per place/category, reused -- see
 // lib/images.ts and NEEDS-HUMAN-REVIEW.md "Venue & Category Image
 // Identity". Never falls back to the /og/ social card; null just means no
-// <img> renders below (honest gap, not a broken one).
-const heroImage = resolveImage(story, {
+// <img> renders below (honest gap, not a broken one -- also what a
+// suppressed-repeat imageOverride of null means, see Props above).
+const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(story, {
   town: siteConfig.townId,
   cityName: siteConfig.cityName,
   facilities,
