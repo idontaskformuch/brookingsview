@@ -91,7 +91,7 @@
         "format": "structured_data_no_ai",
         "voice": "n/a (distriktets egen ordalydelse, ingen AI-generering eller omskrivning)"
       },
-      "_notes": "Serves Legacy High School ('Lightning'). CMS confirmed as Finalsite (2026-08-26 research), same platform school_alerts_v1.py already parses for Moreno Valley Unified. BUT: no dedicated closures RSS/JSON found -- closure status is posted to an HTML banner/page plus SMS short code 98900 and a district app, none of which are cleanly scrapable the way MVUSD's /engage/news list is. enabled:false until someone actually verifies whether school_alerts_v1.py's existing Finalsite-news-list parsing approach also works against this specific page, or a different scrape target is found."
+      "_notes": "Serves Legacy High School ('Lightning'). CONFIRMED DEAD END 2026-08-27 (direct verification, not just research): adams12.org and its CDN (finalsitecdn.com) are behind an ACTIVE Cloudflare bot-challenge -- a plain curl with an honest User-Agent gets a hard 'Sorry, you have been blocked' / 'Attention Required' page on EVERY path checked, including robots.txt itself. This is the same class of active-WAF block this codebase has already declined to circumvent elsewhere (see regional_sports_v1.py's ESPN/Akamai note) -- not a matter of finding the right URL, the whole origin actively refuses automated requests. Stays disabled until Adams 12 provides another way in (a real feed, or direct contact)."
     },
     "school_alerts_bvsd": {
       "type": "school_alerts",
@@ -106,7 +106,7 @@
         "format": "structured_data_no_ai",
         "voice": "n/a (distriktets egen ordalydelse, ingen AI-generering eller omskrivning)"
       },
-      "_notes": "Serves Broomfield High School ('Eagles'). Research 2026-08-26: parts of bvsd.org run Finalsite, but the district's actual alerting tool is Apptegy (banner + email/text/app push), not exposed as RSS/JSON. Needs real research into whether Apptegy has any public feed before a parser is attempted -- do not assume the MVUSD Finalsite pattern transfers."
+      "_notes": "Serves Broomfield High School ('Eagles'). CONFIRMED DEAD END 2026-08-27 (direct verification): bvsd.org itself is NOT blocked (unlike Adams 12) and genuinely runs Finalsite -- same fsBoard/data-post-id structure school_alerts_v1.py already parses for MVUSD, robots.txt has the identical Allow: /fs/pages/news pattern. But the general news board (board 38) is old/general district news, not closures, and the dedicated /departments/operational-services/weather-closures page (found via bvsd.org/weather's redirect) is a STATIC policy/procedure page, not a live feed -- it just links out to 'Download the BVSD App' (Apptegy) and SchoolMessenger for the actual live status. No embedded widget, iframe, or JSON endpoint found carrying real-time closure state anywhere on the page. The live status genuinely only exists inside Apptegy's mobile app/push notifications, which has no public web feed. Stays disabled -- this is a real platform gap, not an unfound URL."
     },
     "events": {
       "type": "webtrac",
@@ -177,7 +177,7 @@
     },
     "facilities": {
       "type": "manual_curation",
-      "enabled": false,
+      "enabled": true,
       "url": null,
       "local_dir": "data/facilities/broomfield_co",
       "loader": "scripts/seed_facilities.py",
@@ -186,7 +186,7 @@
         "format": "reference_page",
         "voice": "n/a (facts only, no AI generation)"
       },
-      "_notes": "Same manual-curation mechanism as both existing towns (scripts/seed_facilities.py, no scraper). enabled:false because data/facilities/broomfield_co.json has not been hand-curated/verified yet -- do not fabricate library/park/city-hall addresses; someone needs to actually verify them (broomfield.org, library branch pages) before this flips to true, same discipline as the other two towns' 2026-08-03 verification note."
+      "_notes": "Same manual-curation mechanism as both existing towns (scripts/seed_facilities.py, no scraper). VERIFIED 2026-08-27: 5 real facilities hand-curated against broomfield.org directly (City Hall, the library -- Broomfield's only branch, Paul Derda Recreation Center, Broomfield Community Center, County Commons park) -- each fact sourced from its own official page, City Hall address cross-confirmed independently against AgendaLink's own room.address field for Council meetings. City Hall's public hours are not published anywhere checked -- left null, not guessed. Seeded via `python -m scripts.seed_facilities broomfield_co`. No name_aliases yet (needs real scraped venue strings from a live events source, which Broomfield doesn't have yet -- see events.enabled:false)."
     },
     "workplace_watch": {
       "type": "search_summary",
@@ -207,13 +207,14 @@
     }
   },
   "_verify_before_launch": [
-    "CONFIRMED 2026-08-26: city_meetings = AgendaLink, client slug 'broomfield', api.agendalink.app/api/session/all/broomfield live and working. Parser (agendalink_v1.py) still needs to be written.",
+    "DONE 2026-08-27: city_meetings = AgendaLink, client slug 'broomfield'. Parser (agendalink_v1.py) built and verified live: 29 real meetings scraped, a real test-published story confirmed substantive content. enabled:true.",
     "CONFIRMED 2026-08-26: weather/weather_alerts = standard NOAA/NWS, zone COC014, office BOU. Ready to enable as-is.",
     "CONFIRMED 2026-08-26: jobs = Adzuna, direct re-scope of existing jobs_v1.py. Ready to enable as-is.",
+    "DONE 2026-08-27: facilities = 5 real, hand-curated facilities seeded (City Hall, library, Paul Derda Recreation Center, Broomfield Community Center, County Commons park), each sourced from its own broomfield.org page. enabled:true.",
     "CONFIRMED 2026-08-26: Vail Resorts earnings cadence + the specific 2025 WARN Act filing, both independently corroborated. New guardrail/source-type still needs building before earnings_and_warn.enabled can flip.",
-    "PARTIAL 2026-08-26: events = Vermont Systems WebTrac (B-REx), system confirmed live, but real API access needs credentials from the city (or a scrape fallback) before a parser can be built.",
+    "DEAD END 2026-08-27 (confirmed via direct verification, not just research): events = Vermont Systems WebTrac -- the entire cobroomfieldweb.myvscloud.com origin is behind an ACTIVE Cloudflare bot-challenge (hard 403 on every path, including robots.txt). Same 'won't circumvent an active WAF' principle already applied to regional_sports_v1.py's ESPN/Akamai case. Stays disabled until the city provides real API credentials directly.",
     "PARTIAL 2026-08-26: traffic = CDOT/COtrip feeds exist but need a free developer signup (unlike Caltrans' fully open KML) before a parser can be built.",
-    "UNRESOLVED 2026-08-26: school_alerts (Adams 12 / Boulder Valley) -- both districts confirmed to have NO clean RSS/JSON feed for closures (HTML banner + SMS/app push only for both). Needs a scraping approach or should stay disabled at launch.",
+    "DEAD END 2026-08-27 (confirmed via direct verification): school_alerts (Adams 12 / Boulder Valley) -- Adams 12's entire site is Cloudflare-blocked (same as WebTrac above). Boulder Valley's site IS accessible and confirmed running the same Finalsite CMS school_alerts_v1.py already parses for MVUSD, but its actual weather-closures page is a static policy page that only links out to Apptegy's mobile app for live status -- no scrapable feed exists. Both stay disabled; this needs the districts' direct cooperation, not more searching.",
     "UNRESOLVED 2026-08-26: HS sports (Legacy Lightning / Broomfield Eagles) -- real MaxPreps pages exist for both, but MaxPreps has no public API. Not yet added to this config at all -- needs a scraping approach, same tier of effort as school_alerts above, before a data_sources entry is even worth writing.",
     "DESCOPED 2026-08-26 (explicit decision, see NEEDS-HUMAN-REVIEW.md 'Broomfield launch'): property_sales has no bulk-report equivalent for Broomfield (only a per-parcel EagleWeb lookup portal, unlike Riverside County's assessor feed) -- not launching with this feature, no data_sources entry.",
     "OUT OF SCOPE (per Broomfield launch brief): university section (no SDSU-equivalent), ag_markets/USDA (no Brookings-equivalent farming context), a town-specific game (fast-follow, not launch-blocking), heat/dust advisory (Moreno-Valley-specific climate feature)."

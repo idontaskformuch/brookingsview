@@ -1,0 +1,75 @@
+{
+  "_notes": "Handkuraterat 2026-08-27 mot broomfield.org (officiell källa för varje fält, se source_url per post). City Hall-adressen kryssverifierad mot AgendaLink API:ts egna room.address-fält för Council-möten (samma adress, oberoende källa). Öppettider för City Hall INTE publicerade någonstans som kontrollerats -- utelämnat (inte gissat). En ZIP-diskrepans för County Commons Park (80020 vs 80021) hittades i en första forskningsrunda; löst genom att läsa parkens EGEN sida direkt (80021) snarare än en sekundär sida som inte ens listade parken. Inga name_aliases seedade än -- Broomfield har ingen live events-källa (WebTrac blockerad, se configs/broomfield_co.json) att hämta riktiga skrapade venue-strängar ifrån, till skillnad från Moreno Valley/Brookings vars aliases kommer direkt ur verifierad skrapad data. Enda biblioteket i Broomfield -- ingen ytterligare gren att lägga till.",
+  "facilities": [
+    {
+      "slug": "city-hall",
+      "name": "George Di Ciero City and County Building",
+      "category": "city_hall",
+      "address": "One DesCombes Drive, Broomfield, CO 80020",
+      "street_address": "One DesCombes Drive",
+      "postal_code": "80020",
+      "phone": "(303) 469-3301",
+      "website": "https://www.broomfield.org",
+      "hours_text": null,
+      "description": "The seat of Broomfield's consolidated city-county government, named for former City and County Manager George Di Ciero. Houses City Council chambers and administrative offices.",
+      "source_url": "https://www.broomfield.org/409/Contact",
+      "verified_date": "2026-08-27"
+    },
+    {
+      "slug": "library",
+      "name": "Mamie Doud Eisenhower Public Library",
+      "category": "library",
+      "address": "3 Community Park Road, Broomfield, CO 80020",
+      "street_address": "3 Community Park Road",
+      "postal_code": "80020",
+      "phone": "(720) 887-2300",
+      "website": "https://www.broomfield.org/276/Library-Home",
+      "hours_text": "Mon-Thu 9am-9pm, Fri-Sat 9am-5pm, Sun 1pm-5pm",
+      "description": "Broomfield's public library, named for Mamie Doud Eisenhower at the community's request. The current building opened November 10, 2001. Broomfield's only library location.",
+      "source_url": "https://www.broomfield.org/276/Library-Home",
+      "verified_date": "2026-08-27"
+    },
+    {
+      "slug": "paul-derda-recreation-center",
+      "name": "Paul Derda Recreation Center",
+      "category": "community_center",
+      "address": "13201 Lowell Blvd, Broomfield, CO 80020",
+      "street_address": "13201 Lowell Blvd",
+      "postal_code": "80020",
+      "phone": "(303) 460-6900",
+      "website": "https://www.broomfield.org/2664/Paul-Derda-Recreation-Center",
+      "hours_text": "Mon-Thu 5am-10pm, Fri 5am-6:30pm, Sat 7am-8pm, Sun 8am-6pm",
+      "description": "An 85,000-square-foot city-operated indoor recreation facility within Broomfield County Commons Park, with an aquatic park, gymnastics center, gymnasiums, fitness/weight areas, and an indoor track.",
+      "source_url": "https://www.broomfield.org/2664/Paul-Derda-Recreation-Center",
+      "verified_date": "2026-08-27"
+    },
+    {
+      "slug": "broomfield-community-center",
+      "name": "Broomfield Community Center",
+      "category": "community_center",
+      "address": "280 Spader Way, Broomfield, CO 80020",
+      "street_address": "280 Spader Way",
+      "postal_code": "80020",
+      "phone": "(303) 464-5500",
+      "website": "https://www.broomfield.org/2708/Broomfield-Community-Center",
+      "hours_text": "Mon-Thu 5am-10pm, Fri 5am-8pm, Sat 7am-8pm, Sun 8am-6pm",
+      "description": "A 98,000-square-foot city-operated facility combining fitness and aquatics amenities with dedicated space for Broomfield Senior Services and creative-arts programming, including a woodshop and pottery studio.",
+      "source_url": "https://www.broomfield.org/2708/Broomfield-Community-Center",
+      "verified_date": "2026-08-27"
+    },
+    {
+      "slug": "county-commons-park",
+      "name": "Broomfield County Commons",
+      "category": "park",
+      "address": "13200 Sheridan Blvd, Broomfield, CO 80021",
+      "street_address": "13200 Sheridan Blvd",
+      "postal_code": "80021",
+      "phone": "(303) 469-3301",
+      "website": "https://www.broomfield.org/106/Broomfield-County-Commons",
+      "hours_text": null,
+      "description": "A 300-acre city-owned park complex with an 80-acre sports and playing-field area, 237 acres of open space, a cemetery, and the Paul Derda Recreation Center.",
+      "source_url": "https://www.broomfield.org/106/Broomfield-County-Commons",
+      "verified_date": "2026-08-27"
+    }
+  ]
+}
