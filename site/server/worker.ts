@@ -23,7 +23,7 @@
 // "main" + "assets.binding" config.
 import { handleComment } from './comment';
 import { handleShiftPollVote } from './shift-poll-vote';
-import { type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug } from './_shared';
+import { type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug, previousIsoWeekSlug } from './_shared';
 
 interface WorkerEnv extends Env {
   // Bound via wrangler.jsonc `assets.binding` -- serves the static Astro
@@ -65,6 +65,26 @@ export default {
     if (url.pathname === '/this-week' || url.pathname === '/this-week/') {
       const townId = townFromHostname(request.url, env.DEV_TOWN_ID);
       const slug = currentIsoWeekSlug(timezoneForTown(townId));
+
+      // [week].astro's getStaticPaths() always includes the current ISO
+      // week (see that file's own weekInfos.set(current.slug, current)),
+      // but only as of the LAST hourly rebuild -- this Worker computes
+      // "current" fresh on every request. Cross a Monday-midnight rollover
+      // between rebuilds and this redirect would otherwise point at a slug
+      // the last build never generated -- a genuine 404, worse than the
+      // meta-refresh page this whole fix replaced (that one could never
+      // disagree with the static build, since both were computed in the
+      // SAME build). Probe before committing to the redirect, and fall
+      // back to last week's page -- guaranteed to already be built, since
+      // it was itself "current" (and therefore in getStaticPaths()) at
+      // some point during its own 7-day span -- rather than ever sending
+      // someone to a dead end.
+      const primary = `/this-week/${slug}/`;
+      const exists = await env.ASSETS.fetch(new Request(new URL(primary, url.origin), { method: 'HEAD' }))
+        .then((r) => r.status === 200)
+        .catch(() => false);
+      const finalSlug = exists ? slug : (previousIsoWeekSlug(slug) ?? slug);
+
       // 302, not 301 -- the target changes every Monday, and a 301 gets
       // pinned in browser caches indefinitely. Cache-Control is explicit
       // (Response.redirect() doesn't accept custom headers, hence the
@@ -72,7 +92,7 @@ export default {
       // browser ever serves a stale week -- this run_worker_first-gated
       // path already proved that exact failure mode is easy to hit
       // silently (see wrangler.jsonc's own comment).
-      const target = new URL(`/this-week/${slug}/`, url.origin);
+      const target = new URL(`/this-week/${finalSlug}/`, url.origin);
       target.search = url.search;
       return new Response(null, {
         status: 302,

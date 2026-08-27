@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isoWeekSlugForInstant, timezoneForTown, townFromHostname } from './_shared';
+import { isoWeekSlugForInstant, previousIsoWeekSlug, timezoneForTown, townFromHostname } from './_shared';
 
 // Mirrors site/src/lib/this-week.test.ts's own isoWeekInfo coverage --
 // _shared.ts's isoWeekSlugForInstant is a deliberate, self-contained
@@ -55,6 +55,23 @@ describe('isoWeekSlugForInstant', () => {
     const instant = new Date('2026-08-31T05:30:00Z');
     expect(isoWeekSlugForInstant(instant, 'America/Denver')).toBe('2026-w35');
     expect(isoWeekSlugForInstant(instant, 'America/Chicago')).toBe('2026-w36');
+  });
+});
+
+describe('previousIsoWeekSlug', () => {
+  it('steps back one week within the same ISO year', () => {
+    // Verified independently via Python's date.isocalendar() before
+    // writing this assertion: 2026-w35's Monday is 2026-08-24; 7 real days
+    // earlier is 2026-08-17, which is week 34.
+    expect(previousIsoWeekSlug('2026-w35')).toBe('2026-w34');
+  });
+
+  it('crosses a year boundary correctly (2027-w01 -> 2026-w53)', () => {
+    expect(previousIsoWeekSlug('2027-w01')).toBe('2026-w53');
+  });
+
+  it('returns null for a malformed slug rather than guessing', () => {
+    expect(previousIsoWeekSlug('not-a-slug')).toBeNull();
   });
 });
 

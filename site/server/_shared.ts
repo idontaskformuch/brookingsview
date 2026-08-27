@@ -87,11 +87,11 @@ export function timezoneForTown(townId: string | null): string {
  *  boundary" tradeoff this codebase already makes for OUTLIER_PRICE_FLOOR/
  *  normalize_venue()/db.ts's own isoWeekSlug() (added for the exact same
  *  circular-import reason). */
-/** Core, testable version -- takes an explicit instant instead of always
- *  reading the live clock, same split this-week.ts itself makes
- *  (weekInfoForInstant vs. currentWeekInfo) so DST/year-boundary cases can
- *  be asserted deterministically instead of faking the system clock. */
-export function isoWeekSlugForInstant(instant: Date, timeZone: string): string {
+/** UTC-midnight Monday (as a bare calendar date, not a real instant) of the
+ *  ISO week containing `instant`, evaluated in `timeZone`. Shared by
+ *  isoWeekSlugForInstant and previousIsoWeekSlug so there's one place that
+ *  knows "how to find this week's Monday," not two. */
+function mondayOf(instant: Date, timeZone: string): Date {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
   }).formatToParts(instant);
@@ -100,9 +100,13 @@ export function isoWeekSlugForInstant(instant: Date, timeZone: string): string {
 
   const weekday = new Date(localMidnight).getUTCDay(); // 0=Sun..6=Sat
   const daysSinceMonday = (weekday + 6) % 7;
-  const monday = new Date(localMidnight - daysSinceMonday * 86_400_000);
+  return new Date(localMidnight - daysSinceMonday * 86_400_000);
+}
 
-  // Nearest-Thursday ISO week/year algorithm.
+/** ISO year/week slug ("2026-w35") for the week whose Monday is `monday`
+ *  (a UTC-midnight bare calendar date -- see mondayOf). Nearest-Thursday
+ *  algorithm, same as this-week.ts's own isoWeekInfo(). */
+function slugFromMonday(monday: Date): string {
   const thursdayAnchor = new Date(monday.getTime());
   const mondayDayNum = (thursdayAnchor.getUTCDay() + 6) % 7;
   thursdayAnchor.setUTCDate(thursdayAnchor.getUTCDate() - mondayDayNum + 3);
@@ -111,8 +115,37 @@ export function isoWeekSlugForInstant(instant: Date, timeZone: string): string {
   const jan4DayNum = (jan4.getUTCDay() + 6) % 7;
   const week1Monday = new Date(jan4.getTime() - jan4DayNum * 86_400_000);
   const isoWeek = Math.round((thursdayAnchor.getTime() - week1Monday.getTime()) / (7 * 86_400_000)) + 1;
-
   return `${isoYear}-w${String(isoWeek).padStart(2, '0')}`;
+}
+
+/** Core, testable version -- takes an explicit instant instead of always
+ *  reading the live clock, same split this-week.ts itself makes
+ *  (weekInfoForInstant vs. currentWeekInfo) so DST/year-boundary cases can
+ *  be asserted deterministically instead of faking the system clock. */
+export function isoWeekSlugForInstant(instant: Date, timeZone: string): string {
+  return slugFromMonday(mondayOf(instant, timeZone));
+}
+
+/** The slug for the week immediately before `slug`. Used as a fallback
+ *  target (see worker.ts): the "current" week's static archive page only
+ *  exists once the hourly rebuild after this week's Monday-midnight
+ *  rollover has run, but the PREVIOUS week's page is always already built
+ *  -- it was itself "current" (and therefore in [week].astro's
+ *  getStaticPaths()) at some point during its own 7-day span, as long as
+ *  the site has been building continuously. Subtracts 7 real days from
+ *  the week's own Monday (not from "now"), so this is exact regardless of
+ *  which timezone/DST state produced the input slug. */
+export function previousIsoWeekSlug(slug: string): string | null {
+  const m = /^(\d{4})-w(\d{2})$/.exec(slug);
+  if (!m) return null;
+  const isoYear = Number(m[1]);
+  const isoWeek = Number(m[2]);
+  const jan4 = new Date(Date.UTC(isoYear, 0, 4));
+  const jan4DayNum = (jan4.getUTCDay() + 6) % 7;
+  const week1Monday = new Date(jan4.getTime() - jan4DayNum * 86_400_000);
+  const thisMonday = new Date(week1Monday.getTime() + (isoWeek - 1) * 7 * 86_400_000);
+  const prevMonday = new Date(thisMonday.getTime() - 7 * 86_400_000);
+  return slugFromMonday(prevMonday);
 }
 
 /** "Right now" wrapper -- see isoWeekSlugForInstant for the actual algorithm. */
