@@ -23,6 +23,7 @@ import SdsuEventCard from '../components/SdsuEventCard.astro';
 import JackrabbitWidget from '../components/JackrabbitWidget.astro';
 import JackrabbitGameDayLine from '../components/JackrabbitGameDayLine.astro';
 import WorkplaceWatchWidget from '../components/WorkplaceWatchWidget.astro';
+import VailNewsWidget from '../components/VailNewsWidget.astro';
 import BurroBonanzaWidget from '../components/BurroBonanzaWidget.astro';
 import SchoolAlertBanner from '../components/SchoolAlertBanner.astro';
 import TrafficWidget from '../components/TrafficWidget.astro';
@@ -32,7 +33,7 @@ import {
   getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
   getWeather, getAgPrices, getLatestWeekly, getTodaysFeature, getLatestEmployerRatings,
   getWorthKnowingCandidates, getLatestFromCandidates, getRecentProjectUpdates, formatDate,
-  CATEGORY_HREFS, CATEGORY_LABELS, getFacilities,
+  CATEGORY_HREFS, CATEGORY_LABELS, getFacilities, getLatestVailNewsItem,
 } from '../lib/db';
 import { selectWorthKnowing, selectLatestFrom, firstSentence, selectFrontPageRhythm } from '../lib/homepage-curation';
 import { todayUtcMidnight } from '../lib/events';
@@ -42,6 +43,7 @@ import { categoryImagesFor } from '../config/category-images';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
+const isBroomfield = siteConfig.townId === 'broomfield_co';
 
 const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, feature, worthKnowingCandidates, latestFromCandidates, facilities] = await Promise.all([
   getActiveAlerts(),
@@ -175,6 +177,9 @@ const todayHomeGame = isBrookings && nextGame && nextGame.home_away === 'home'
 // Bara hämtat på towns med Workplace Watch enabled -- ingen anledning att
 // fråga en tabell som alltid är tom annars.
 const employerRatings = siteConfig.hasWorkplaceWatch ? await getLatestEmployerRatings() : [];
+// Samma resonemang: bara hämtat för Broomfield, tabellen är alltid tom för
+// de andra två (town_id-scopad, se db/migrations/029_vail_news.sql).
+const latestVailNews = isBroomfield ? await getLatestVailNewsItem() : null;
 const topEmployer = employerRatings[0] ?? null;
 const biggestMover = employerRatings.reduce<typeof employerRatings[number] | null>((best, e) => {
   if (e.rating_delta_vs_last_month === null) return best;
@@ -263,6 +268,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
           moverDelta={biggestMover?.rating_delta_vs_last_month ?? null}
         />
       )}
+      {isBroomfield && latestVailNews && <VailNewsWidget item={latestVailNews} />}
       {trafficIncidents.length > 0 && (
         <a class="rail__link" href="/traffic/">
           <TrafficWidget incidents={trafficIncidents} />

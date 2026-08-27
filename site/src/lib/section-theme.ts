@@ -23,7 +23,7 @@
  * per concept across the site, not two independently-invented palettes
  * that happen to both mean "traffic".
  */
-export type SectionKey = 'traffic' | 'events' | 'workplace_watch' | 'university' | 'home_sales';
+export type SectionKey = 'traffic' | 'events' | 'workplace_watch' | 'university' | 'home_sales' | 'vail_news';
 
 export interface SectionTheme {
   accent: string;
@@ -36,4 +36,11 @@ export const SECTION_THEME: Record<SectionKey, SectionTheme> = {
   workplace_watch: { accent: '#38507a', label: 'Worker Pulse' },
   university: { accent: '#0f3f8c', label: 'University' },
   home_sales: { accent: '#8a3f32', label: 'Home sales' },
+  // #1c5c5c contrast-checked (relative-luminance formula, same method as
+  // this file's other accents): 7.08:1 vs --paper, 7.68:1 vs --surface --
+  // both comfortably past the 4.5:1 floor. Deliberately NOT Vail Resorts'
+  // own brand red -- an accent color match would read as implied
+  // affiliation, exactly what the handoff's "no brand marks" rule warns
+  // against for logos/images.
+  vail_news: { accent: '#1c5c5c', label: 'Vail Resorts' },
 };

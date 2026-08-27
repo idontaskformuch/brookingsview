@@ -12,6 +12,7 @@ import { siteConfig } from '../../lib/site-config';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
+const isBroomfield = siteConfig.townId === 'broomfield_co';
 
 // Section/vertical pages -- distinct from per-story cards below. Before
 // this, none of these passed an ogSlug (see NEEDS-HUMAN-REVIEW.md "4.5 OG
@@ -46,6 +47,9 @@ const SECTION_CARDS: { slug: string; title: string; kicker: string }[] = [
   ] : []),
   ...(isBrookings ? [
     { slug: 'section-farm-report', title: `Farm report — ${siteConfig.cityName}`, kicker: 'Farm report' },
+  ] : []),
+  ...(isBroomfield ? [
+    { slug: 'section-vail-news', title: `Vail Resorts Newsroom — ${siteConfig.cityName}`, kicker: 'Vail Resorts' },
   ] : []),
 ];
 

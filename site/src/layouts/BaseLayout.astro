@@ -61,6 +61,7 @@ const dateline = now.toLocaleDateString('en-US', {
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
+const isBroomfield = siteConfig.townId === 'broomfield_co';
 const nav = [
   { href: '/this-week/', label: 'This week' },
   { href: '/events/', label: 'Events' },
@@ -73,6 +74,7 @@ const nav = [
   ...(isMorenoValley ? [{ href: '/home-sales/', label: 'Home sales' }] : []),
   ...(isMorenoValley ? [{ href: '/sports/', label: 'Sports' }] : []),
   ...(siteConfig.hasWorkplaceWatch ? [{ href: '/workplace-watch/', label: '📦 Worker Pulse' }] : []),
+  ...(isBroomfield ? [{ href: '/vail-resorts/', label: '⛷️ Vail Resorts' }] : []),
   ...(isMorenoValley ? [{ href: '/burro-bonanza/', label: '🐴 Play' }] : []),
   { href: '/traffic/', label: 'Traffic' },
   { href: '/jobs/', label: 'Jobs' },

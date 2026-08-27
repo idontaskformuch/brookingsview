@@ -1,0 +1,71 @@
+---
+/** Front-page promo card for the Vail Resorts newsroom feed, see
+ *  /vail-resorts. Broomfield only -- caller (index.astro) decides whether
+ *  to render at all, same convention as WorkplaceWatchWidget.astro.
+ *
+ *  Unlike StoryCard.astro's dense list (which deliberately never shows a
+ *  per-item image, see that file's own comment), this is a SINGLE item, so
+ *  a thumbnail earns its place. image_url is a hotlinked Vail Resorts CDN
+ *  URL, may be null (rendered text-only when absent -- see vail-resorts.astro
+ *  for why this never falls back to the OG card as a substitute hero). */
+import type { VailNewsItem } from '../lib/db';
+
+interface Props { item: VailNewsItem; }
+const { item } = Astro.props;
+---
+
+<a href="/vail-resorts/" class="vnw-widget" aria-label="See Vail Resorts Newsroom: the company's own news feed">
+  {item.image_url && <img class="vnw-thumb" src={item.image_url} alt="" loading="lazy" />}
+  <div class="vnw-text">
+    <div class="vnw-label">⛷️ Vail Resorts Newsroom</div>
+    <div class="vnw-title">{item.title}</div>
+    <div class="vnw-date data">{item.published_label}</div>
+  </div>
+  <div class="vnw-arrow">→</div>
+</a>
+
+<style>
+  .vnw-widget {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #123c3c, #1c5c5c);
+    color: #E9FBF8;
+    text-decoration: none;
+    border: 2px solid #3f9d95;
+    transition: transform 0.15s ease;
+  }
+  .vnw-widget:hover {
+    transform: translateY(-2px);
+  }
+  .vnw-thumb {
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .vnw-text { flex: 1; min-width: 0; }
+  .vnw-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.85;
+  }
+  .vnw-title {
+    font-weight: 700;
+    font-size: 0.9rem;
+    line-height: 1.25;
+    margin-top: 0.125rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .vnw-date { font-size: 0.75rem; opacity: 0.8; margin-top: 0.1875rem; }
+  .vnw-arrow { color: #3f9d95; font-weight: 700; flex-shrink: 0; }
+</style>

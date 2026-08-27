@@ -601,7 +601,7 @@ export async function getRelatedStories(
  */
 export type RelatedPageType =
   | 'traffic' | 'events' | 'university' | 'workplace_watch'
-  | 'city_hall' | 'jobs' | 'home_sales';
+  | 'city_hall' | 'jobs' | 'home_sales' | 'vail_news';
 
 export interface RelatedItem {
   href: string;
@@ -728,6 +728,13 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
   } else if (pageType === 'home_sales') {
     items.push({ href: '/home-sales/archive/', title: 'Digest archive', kicker: 'Archive', description: 'Every monthly home-sales digest, oldest to newest.' });
     items.push({ href: '/city-hall/projects/', title: 'City hall projects', kicker: 'City hall', description: 'Developments that may affect nearby home values.' });
+  } else if (pageType === 'vail_news') {
+    // Broomfield-only, same as the page itself -- links to the OTHER things
+    // a Vail Resorts employee/investor/local reader would plausibly want
+    // next, not a generic "more sections" grab-bag.
+    items.push({ href: '/workplace-watch/', title: 'Worker Pulse', kicker: 'Worker Pulse', description: "Review-trend digests for Broomfield's major employers, including Vail Resorts." });
+    items.push({ href: '/jobs/', title: 'Jobs', kicker: 'Jobs', description: 'Current listings in and near Broomfield.' });
+    items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
   }
 
   return items;
@@ -1445,6 +1452,49 @@ export async function getLatestEmployerRatings(): Promise<EmployerRating[]> {
       ? `workplace-watch-${row.slug}-${row.period_ym}`
       : null,
   }));
+}
+
+/**
+ * Vail Resorts corporate newsroom feed -- Broomfield only (/vail-resorts,
+ * VailNewsWidget.astro). See db/migrations/029_vail_news.sql and
+ * scrapers/parsers/vail_news_v1.py -- a mirrored feed of the company's own
+ * newsroom, NOT hyperlocal Broomfield reporting (Vail Resorts is
+ * Broomfield's HQ employer-brand, hence the section existing at all).
+ *
+ * published_label formatted via to_char() IN THE QUERY, not new Date() in
+ * frontend code -- published_at is a plain calendar DATE, and neon's driver
+ * anchors DATE columns to the BUILD MACHINE's local timezone, which has
+ * already produced wrong month/day labels elsewhere on this site (see
+ * getLatestEmployerRatings' comment just above for the exact bug).
+ *
+ * is_translation=false is filtered here, in SQL, not in the .astro page --
+ * so every caller (the page itself, the front-page widget) gets the same
+ * "never show a detected Spanish duplicate" guarantee for free, with no
+ * risk of one caller forgetting the filter.
+ */
+export interface VailNewsItem {
+  external_url: string;
+  title: string;
+  published_label: string;
+  categories: string[];
+  teaser: string | null;
+  image_url: string | null;
+}
+
+export async function getVailNews(limit = 30): Promise<VailNewsItem[]> {
+  return (await sql`
+    SELECT external_url, title, categories, teaser, image_url,
+           to_char(published_at, 'FMMonth DD, YYYY') AS published_label
+      FROM vail_news
+     WHERE town_id = ${TOWN_ID} AND is_translation = false
+     ORDER BY published_at DESC
+     LIMIT ${limit}
+  `) as VailNewsItem[];
+}
+
+export async function getLatestVailNewsItem(): Promise<VailNewsItem | null> {
+  const rows = await getVailNews(1);
+  return rows[0] ?? null;
 }
 
 /**

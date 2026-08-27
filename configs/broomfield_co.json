@@ -177,6 +177,18 @@
       },
       "_notes": "Direct port of the existing jobs_v1.py/Adzuna integration, just re-scoped `where`. No new code needed -- same ADZUNA_APP_ID/ADZUNA_APP_KEY secrets, same free-tier quota reasoning as the other two towns."
     },
+    "vail_news": {
+      "type": "vail_news",
+      "enabled": true,
+      "parser": "vail_news_v1",
+      "url": "https://news.vailresorts.com/news-and-stories",
+      "refresh_minutes": 2880,
+      "output": {
+        "format": "structured_data_no_ai",
+        "voice": "n/a (fakta, ingen AI-generering, hotlänkad tredjepartsfeed)"
+      },
+      "_notes": "VERIFIED 2026-08-27: robots.txt on news.vailresorts.com does not exist (302 -> 404 page, no Disallow/Crawl-delay) -- clear to scrape the primary source directly, PR Newswire fallback never needed. Incremental only (see vail_news_v1.py); refresh_minutes=2880 (48h) matches Vail's own publishing cadence of a few releases/month -- hourly polling would be pointless load. Not an article/story source -- never runs through the AI article pipeline, see the copyright guardrail in Handoff: 'Vail Resorts news section (/vail-resorts) — Broomfield only'."
+    },
     "facilities": {
       "type": "manual_curation",
       "enabled": true,
