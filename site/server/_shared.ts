@@ -87,10 +87,14 @@ export function timezoneForTown(townId: string | null): string {
  *  boundary" tradeoff this codebase already makes for OUTLIER_PRICE_FLOOR/
  *  normalize_venue()/db.ts's own isoWeekSlug() (added for the exact same
  *  circular-import reason). */
-export function currentIsoWeekSlug(timeZone: string): string {
+/** Core, testable version -- takes an explicit instant instead of always
+ *  reading the live clock, same split this-week.ts itself makes
+ *  (weekInfoForInstant vs. currentWeekInfo) so DST/year-boundary cases can
+ *  be asserted deterministically instead of faking the system clock. */
+export function isoWeekSlugForInstant(instant: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
-  }).formatToParts(new Date());
+  }).formatToParts(instant);
   const get = (t: string) => Number(parts.find((p) => p.type === t)!.value);
   const localMidnight = Date.UTC(get('year'), get('month') - 1, get('day'));
 
@@ -109,6 +113,11 @@ export function currentIsoWeekSlug(timeZone: string): string {
   const isoWeek = Math.round((thursdayAnchor.getTime() - week1Monday.getTime()) / (7 * 86_400_000)) + 1;
 
   return `${isoYear}-w${String(isoWeek).padStart(2, '0')}`;
+}
+
+/** "Right now" wrapper -- see isoWeekSlugForInstant for the actual algorithm. */
+export function currentIsoWeekSlug(timeZone: string): string {
+  return isoWeekSlugForInstant(new Date(), timeZone);
 }
 
 export function jsonResponse(body: unknown, status = 200): Response {

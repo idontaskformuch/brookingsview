@@ -65,7 +65,19 @@ export default {
     if (url.pathname === '/this-week' || url.pathname === '/this-week/') {
       const townId = townFromHostname(request.url, env.DEV_TOWN_ID);
       const slug = currentIsoWeekSlug(timezoneForTown(townId));
-      return Response.redirect(`${url.origin}/this-week/${slug}/`, 302);
+      // 302, not 301 -- the target changes every Monday, and a 301 gets
+      // pinned in browser caches indefinitely. Cache-Control is explicit
+      // (Response.redirect() doesn't accept custom headers, hence the
+      // manual Response below) so neither Cloudflare's edge nor the
+      // browser ever serves a stale week -- this run_worker_first-gated
+      // path already proved that exact failure mode is easy to hit
+      // silently (see wrangler.jsonc's own comment).
+      const target = new URL(`/this-week/${slug}/`, url.origin);
+      target.search = url.search;
+      return new Response(null, {
+        status: 302,
+        headers: { Location: target.toString(), 'Cache-Control': 'no-store' },
+      });
     }
 
     return env.ASSETS.fetch(request);
