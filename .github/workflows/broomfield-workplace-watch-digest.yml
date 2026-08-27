@@ -1,0 +1,42 @@
+name: broomfield-workplace-watch-digest
+# Broomfield-motsvarigheten till moval-workplace-watch-digest.yml. Kör
+# scripts.seed_employers (säkert att köra om -- upsertar på (town_id, slug))
+# följt av ai_pipeline.workplace_watch_digest, som söker (Brave Search --
+# Glassdoor/Indeed har ingen publik API och blockerar skrapning) och skriver
+# månadens Worker Pulse-digest per arbetsgivare (Vail Resorts, Ball
+# Corporation, Noodles & Company -- se data/employers/broomfield_co.json).
+# Månatlig cadence, samma resonemang som Moreno Valleys egen fil: review-
+# volym ändras inte snabbt nog för att motivera oftare körningar.
+
+on:
+  schedule:
+    - cron: "0 14 1 * *"   # 1:a varje månad, 14:00 UTC (07:00-08:00 Mountain beroende på DST)
+  workflow_dispatch: {}
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:      ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      BRAVE_API_KEY:     ${{ secrets.BRAVE_API_KEY }}
+      USER_AGENT:        "broomfieldview.com (contact: hello@broomfieldview.com)"
+      AI_BUDGET_STATE:   ".ai_budget_broomfield_co.json"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Uppdatera arbetsgivarlistan
+        run: python -m scripts.seed_employers broomfield_co
+      - name: Generera månadens Worker Pulse-digest
+        run: python -m ai_pipeline.workplace_watch_digest --config configs/broomfield_co.json
+      - name: Trigga Cloudflare Pages-rebuild
+        if: success()
+        run: |
+          if [ -n "${{ secrets.PAGES_DEPLOY_HOOK_BROOMFIELD }}" ]; then
+            curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK_BROOMFIELD }}"
+          else
+            echo "PAGES_DEPLOY_HOOK_BROOMFIELD ej satt -- hoppar över rebuild"
+          fi

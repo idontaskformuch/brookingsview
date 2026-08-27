@@ -1,0 +1,35 @@
+name: broomfield-weekly-roundup
+# Broomfield-motsvarigheten till weekly-roundup.yml/moval-weekly-roundup.yml.
+# Samma hashning i weekly.py gör att en körning utan nya agendor/evenemang
+# inte gör något AI-anrop alls -- se kommentaren i originalfilen.
+
+on:
+  schedule:
+    - cron: "0 12 * * 1"    # måndag morgon Mountain -- första versionen
+    - cron: "0 23 * * *"    # varje kväll -- skriver bara om vid ändrat underlag
+  workflow_dispatch: {}
+
+jobs:
+  roundup:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:      ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      USER_AGENT:        "broomfieldview.com (contact: hello@broomfieldview.com)"
+      AI_BUDGET_STATE:   ".ai_budget_broomfield_co.json"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Generera veckosammanfattning
+        run: python -m ai_pipeline.weekly --config configs/broomfield_co.json
+      - name: Trigga Cloudflare Pages-rebuild
+        if: success()
+        run: |
+          if [ -n "${{ secrets.PAGES_DEPLOY_HOOK_BROOMFIELD }}" ]; then
+            curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK_BROOMFIELD }}"
+          else
+            echo "PAGES_DEPLOY_HOOK_BROOMFIELD ej satt -- hoppar över rebuild"
+          fi
