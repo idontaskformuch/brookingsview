@@ -244,13 +244,38 @@ export interface ResolveImageOptions {
   town: string;
   cityName: string;
   facilities: Pick<Facility, 'slug' | 'name_aliases' | 'image_path' | 'image_alt' | 'image_attribution_text' | 'image_attribution_url'>[];
-  categoryImages: Partial<Record<ImageCategory, ImageRef>>;
+  /** A POOL of 1-5 real photos per category (see NEEDS-HUMAN-REVIEW.md
+   *  "Images still repeating across all pages, not just front page") --
+   *  the real-photo migration left exactly one photo per category, which
+   *  meant every card in a category showed the identical image sitewide,
+   *  not just adjacently on one page (dedupeConsecutiveImages() only ever
+   *  solved the adjacent case). resolveImage() now deterministically picks
+   *  ONE image per pool per item -- see pickFromPool(). */
+  categoryImages: Partial<Record<ImageCategory, ImageRef[]>>;
   /** Overrides the source_type-derived category -- for hub/section pages
    *  resolving their own fixed hero image rather than one item's image. */
   category?: ImageCategory | null;
 }
 
 export type ResolvableStory = Pick<Story, 'title' | 'source_type' | 'image_path' | 'image_alt' | 'venue_raw'>;
+
+/** Deterministic pick from a pool, keyed on a stable per-item string (a
+ *  story's slug, or its title when no slug exists -- see resolveImage()'s
+ *  own itemSlug). Same seed always picks the same index, so the SAME story
+ *  gets the SAME category image across rebuilds (no flicker on every
+ *  hourly rebuild) while DIFFERENT stories in the same category spread
+ *  across the pool instead of every single one collapsing onto image #1 --
+ *  deliberately NOT random (Math.random() would reassign an already-
+ *  published story's image on every rebuild for no reason). A plain
+ *  string hash, not cryptographic -- collision resistance across a pool of
+ *  1-5 items doesn't need anything stronger. */
+export function pickFromPool<T>(pool: T[], seed: string): T {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+  }
+  return pool[Math.abs(hash) % pool.length];
+}
 
 /** The single entry point every rendering surface should call. Never
  *  fabricates a return value -- step 4 (null) is a normal, expected
@@ -285,11 +310,13 @@ export function resolveImage(story: ResolvableStory & { slug?: string }, options
     }
   }
 
-  // 3. Category image.
+  // 3. Category image -- deterministically picked from that category's
+  // pool (see pickFromPool()), not always the pool's first/only entry.
   const category = options.category ?? categoryForSourceType(story.source_type);
   if (category) {
-    const categoryImage = options.categoryImages[category];
-    if (categoryImage) {
+    const pool = options.categoryImages[category];
+    if (pool && pool.length > 0) {
+      const categoryImage = pickFromPool(pool, itemSlug);
       assertImageExists(categoryImage.path, itemSlug);
       return categoryImage;
     }

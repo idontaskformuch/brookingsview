@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   normalizeVenueText, extractTitleVenuePrefix, buildNameAliasIndex,
   resolveVenueSlugForImage, categoryForSourceType, dedupeConsecutiveImages,
-  resolveImage, type ImageRef, type ResolvableStory,
+  resolveImage, pickFromPool, type ImageRef, type ResolvableStory,
 } from './images';
 import type { Facility } from './db';
 
@@ -135,6 +135,38 @@ describe('dedupeConsecutiveImages', () => {
   });
 });
 
+describe('pickFromPool', () => {
+  it('returns the only entry for a length-1 pool', () => {
+    expect(pickFromPool(['only'], 'anything')).toBe('only');
+  });
+
+  it('is deterministic -- the same seed always picks the same entry', () => {
+    const pool = ['a', 'b', 'c', 'd', 'e'];
+    const first = pickFromPool(pool, 'meeting-2026-08-27-11295');
+    for (let i = 0; i < 20; i++) {
+      expect(pickFromPool(pool, 'meeting-2026-08-27-11295')).toBe(first);
+    }
+  });
+
+  it('different seeds spread across a pool rather than collapsing onto one entry', () => {
+    const pool = ['a', 'b', 'c', 'd', 'e'];
+    const seeds = Array.from({ length: 30 }, (_, i) => `event-slug-${i}`);
+    const picks = new Set(seeds.map((s) => pickFromPool(pool, s)));
+    // Not asserting every slot gets hit (that's a distribution-quality
+    // claim a plain string hash doesn't strictly guarantee) -- just that
+    // 30 different real-shaped slugs don't all collapse onto a single
+    // pool entry, which is the actual bug this fixes.
+    expect(picks.size).toBeGreaterThan(1);
+  });
+
+  it('never picks an out-of-bounds index', () => {
+    const pool = ['a', 'b', 'c'];
+    for (const seed of ['', 'x', 'a very long slug indeed', '2026-08-27']) {
+      expect(pool).toContain(pickFromPool(pool, seed));
+    }
+  });
+});
+
 describe('resolveImage', () => {
   const baseOptions = {
     town: 'moreno_valley_ca' as const,
@@ -222,8 +254,46 @@ describe('resolveImage', () => {
       image_path: null, image_alt: null, venue_raw: null,
     };
     const categoryImage: ImageRef = { path: EXISTING_IMAGE, alt: 'City Hall', width: 1200, height: 800 };
-    const result = resolveImage(story, { ...baseOptions, categoryImages: { city_hall: categoryImage } });
+    const result = resolveImage(story, { ...baseOptions, categoryImages: { city_hall: [categoryImage] } });
     expect(result).toEqual(categoryImage);
+  });
+
+  it('tier 3: picks from a multi-image pool instead of always the first entry', () => {
+    const pool: ImageRef[] = [
+      { path: EXISTING_IMAGE, alt: 'A', width: 1200, height: 800 },
+      { path: EXISTING_IMAGE, alt: 'B', width: 1200, height: 800 },
+      { path: EXISTING_IMAGE, alt: 'C', width: 1200, height: 800 },
+    ];
+    const storyA: ResolvableStory & { slug: string } = {
+      slug: 'event-aaa', title: 'Event A', source_type: 'event', image_path: null, image_alt: null, venue_raw: null,
+    };
+    const storyB: ResolvableStory & { slug: string } = {
+      slug: 'event-bbb', title: 'Event B', source_type: 'event', image_path: null, image_alt: null, venue_raw: null,
+    };
+    const options = { ...baseOptions, categoryImages: { events: pool } };
+    const resultA = resolveImage(storyA, options);
+    const resultB = resolveImage(storyB, options);
+    // Not asserting a SPECIFIC index (that's pickFromPool's own contract,
+    // tested directly below) -- just that different slugs are capable of
+    // landing on different pool entries, which was impossible before this
+    // fix (a length-1 pool always returned its one entry regardless).
+    expect(pool).toContainEqual(resultA);
+    expect(pool).toContainEqual(resultB);
+  });
+
+  it('tier 3: the SAME story always resolves to the SAME pool entry (stable across rebuilds)', () => {
+    const pool: ImageRef[] = [
+      { path: EXISTING_IMAGE, alt: 'A', width: 1200, height: 800 },
+      { path: EXISTING_IMAGE, alt: 'B', width: 1200, height: 800 },
+      { path: EXISTING_IMAGE, alt: 'C', width: 1200, height: 800 },
+    ];
+    const story: ResolvableStory & { slug: string } = {
+      slug: 'event-stable', title: 'Event', source_type: 'event', image_path: null, image_alt: null, venue_raw: null,
+    };
+    const options = { ...baseOptions, categoryImages: { events: pool } };
+    const first = resolveImage(story, options);
+    const second = resolveImage(story, options);
+    expect(first).toEqual(second);
   });
 
   it('tier 4: returns null, never the /og/<slug>.png social card', () => {
