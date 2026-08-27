@@ -90,7 +90,7 @@
     },
     "city_permits": {
       "type": "html_scrape",
-      "enabled": true,
+      "enabled": false,
       "url": "https://www.cityofbrookings-sd.gov/214/Past-Building-Permits",
       "smartgov_portal": "https://ci-brookings-sd.smartgovcommunity.com/",
       "parser": "brookings_permits_v1",
@@ -99,7 +99,8 @@
         "format": "monthly_digest",
         "voice": "what-is-being-built"
       },
-      "_notes": "Månadsvis bygglovsrapport på stadssajten; SmartGov (Granicus) har strukturerad permit-/licensdata. Ram: 'Nybyggen och renoveringar i Brookings denna månad'. Handlar om adresser/projekt, inte personer.",
+      "_notes": "FOUND 2026-08-27 mismarked: this was enabled:true but scrapers/parsers/brookings_permits_v1.py was never built (doesn't exist on disk) and 'html_scrape'/'brookings_permits_v1' were never added to scrapers/runner.py's REGISTRY -- so this source has always silently done nothing (status='skipped' every run, no data ever written, nothing on the site consumes it). Flipped to enabled:false to match this repo's own convention (every other not-yet-built source uses enabled:false + a _notes explanation) until the parser is actually written and registered. Original notes preserved below.",
+      "_notes_original": "Månadsvis bygglovsrapport på stadssajten; SmartGov (Granicus) har strukturerad permit-/licensdata. Ram: 'Nybyggen och renoveringar i Brookings denna månad'. Handlar om adresser/projekt, inte personer.",
       "_return_driver": false
     },
     "business_licenses": {

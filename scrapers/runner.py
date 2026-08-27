@@ -135,6 +135,18 @@ def run_source(conn, cfg: dict, source_key: str, source_cfg: dict) -> None:
         db.finish_run(conn, run_id, status="ok", http_code=fetched.http_code,
                       items_found=len(records), items_new=new)
         print(f"  [{source_key}] ok — {len(records)} poster, {new} nya")
+    except FileNotFoundError as exc:
+        # Källor som rivco_property_sales_v1.py kräver en MÄNSKLIGT nedladdad
+        # lokal fil (robots.txt blockerar AI-agenter från själva sajten, se
+        # den parserns moduldocstring) -- filen läggs aldrig i git (för stor,
+        # se .gitignore), så den finns per definition ALDRIG i en CI-runners
+        # checkout. Det är väntat, inte ett driftfel: skriv som 'skipped',
+        # inte 'error', så det inte räknas mot consecutive_failures/alerting
+        # -- annars mejlar/webhookar ALERT_WEBHOOK om samma "fel" varje vecka
+        # för evigt (upptäckt 2026-08-27: property_sales/moreno_valley_ca
+        # hade felat i minst 10 körningar i rad, redan över alert-tröskeln).
+        db.finish_run(conn, run_id, status="skipped", error=str(exc))
+        print(f"  [{source_key}] hoppar över -- {exc}")
     except Exception as exc:  # noqa: BLE001
         err = f"{exc.__class__.__name__}: {exc}"
         db.finish_run(conn, run_id, status="error", error=err)
