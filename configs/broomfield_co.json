@@ -66,17 +66,17 @@
   "data_sources": {
     "city_meetings": {
       "type": "agendalink",
-      "enabled": false,
+      "enabled": true,
       "client_id": "broomfield",
       "base_url": "https://api.agendalink.app",
       "session_endpoint": "https://api.agendalink.app/api/session/all/broomfield",
-      "public_viewer": "https://horizon.agendalink.app/engage/broomfield/",
+      "public_viewer": "https://sandbox.agendalink.app/engage/broomfield/",
       "refresh_minutes": 1440,
       "output": {
         "format": "plain_language_preview",
         "voice": "what-your-city-is-deciding"
       },
-      "_notes": "CONFIRMED live 2026-08-26 (Broomfield launch research): City and County of Broomfield's Council meetings run on AgendaLink (Horizon Software), client slug literally 'broomfield'. GET https://api.agendalink.app/api/session/all/broomfield returns real JSON (id, board, room.address, scheduleTime, scheduleIso, clientId, status, agendaUrl), no auth token needed, supports ?month=YYYY-MM. Docs at docs.agendalink.app/docs/agenda-api. Do NOT confuse with broomfield.org/AgendaCenter -- that is a separate, older CivicPlus/CivicEngage module for boards/commissions, not Council itself. enabled:false until a scrapers/parsers/agendalink_v1.py is actually written and this REGISTRY key is wired up in scrapers/runner.py -- source is real, parser code is not yet built."
+      "_notes": "CONFIRMED live 2026-08-26 (Broomfield launch research): City and County of Broomfield's Council meetings run on AgendaLink (Horizon Software), client slug literally 'broomfield'. GET https://api.agendalink.app/api/session/all/broomfield returns real JSON (id, board, room.address, scheduleTime, scheduleIso, clientId, status, agendaUrl), no auth token needed, supports ?month=YYYY-MM. Docs at docs.agendalink.app/docs/agenda-api. Do NOT confuse with broomfield.org/AgendaCenter -- that is a separate, older CivicPlus/CivicEngage module for boards/commissions, not Council itself. public_viewer corrected 2026-08-27: the API's own agendaUrl field returns sandbox.agendalink.app links (not horizon.agendalink.app, despite the earlier research note) -- used the API's own returned URL rather than guessing which domain is canonical. scrapers/parsers/agendalink_v1.py built and verified live 2026-08-27 (real substantive agenda-item content extracted, not just meeting metadata -- see /api/session/agenda/:id) -- enabled:true. Not yet built: /api/session/minutes/:id (approved-minutes follow-up, same idea as escribe_v1's PostMinutes/meeting_followups.py flow)."
     },
     "school_alerts_adams12": {
       "type": "school_alerts",
