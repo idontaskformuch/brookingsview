@@ -7,6 +7,7 @@ import { weekInfoForInstant } from '../lib/this-week';
 import { siteConfig } from '../lib/site-config';
 import { resolveImage } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
+import ImageAttribution from './ImageAttribution.astro';
 
 interface Props { story: Story; facilities: Facility[]; }
 const { story, facilities } = Astro.props;
@@ -52,6 +53,7 @@ const heroImage = resolveImage(story, {
       />
     </a>
   )}
+  {heroImage && <ImageAttribution image={heroImage} />}
   <p class="roundup__standfirst">{standfirst}</p>
   <a class="roundup__more" href={weekHref}>
     Read this week in full &rarr; <span class="roundup__words data">{words} words</span>

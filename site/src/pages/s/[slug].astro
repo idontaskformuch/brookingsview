@@ -19,6 +19,7 @@ import { buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd, buildBreadcr
 import { siteConfig } from '../../lib/site-config';
 import { resolveImage } from '../../lib/images';
 import { categoryImagesFor } from '../../config/category-images';
+import ImageAttribution from '../../components/ImageAttribution.astro';
 
 export async function getStaticPaths() {
   // Fetched once for the whole build, not per-page -- the facilities set is
@@ -161,6 +162,7 @@ const eventJsonLdObject = buildEventJsonLd(
         decoding="async"
       />
     )}
+    {heroImage && <ImageAttribution image={heroImage} />}
 
     <div class="story__body">
       {story.body.split('\n').filter(Boolean).map((para) => <p>{para}</p>)}

@@ -1276,6 +1276,11 @@ export interface Facility {
   image_path: string | null;
   image_alt: string | null;
   name_aliases: string[];
+  // Added by db/migrations/028_facility_image_attribution.sql -- see that
+  // migration's own comment. NULL for a facility with no image, same as
+  // image_path/image_alt above.
+  image_attribution_text: string | null;
+  image_attribution_url: string | null;
 }
 
 /** Alla anläggningar för den aktuella orten, grupperat på category av
@@ -1286,7 +1291,8 @@ export async function getFacilities(): Promise<Facility[]> {
     SELECT slug, name, category, address, phone, website,
            hours_text, description, source_url, verified_date,
            aliases, street_address, postal_code, lat, lon,
-           image_path, image_alt, name_aliases
+           image_path, image_alt, name_aliases,
+           image_attribution_text, image_attribution_url
       FROM facilities
      WHERE town_id = ${TOWN_ID}
      ORDER BY category, name
@@ -1300,7 +1306,8 @@ export async function getFacilityBySlug(slug: string): Promise<Facility | null> 
     SELECT slug, name, category, address, phone, website,
            hours_text, description, source_url, verified_date,
            aliases, street_address, postal_code, lat, lon,
-           image_path, image_alt, name_aliases
+           image_path, image_alt, name_aliases,
+           image_attribution_text, image_attribution_url
       FROM facilities
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
      LIMIT 1

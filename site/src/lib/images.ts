@@ -37,10 +37,51 @@ import { fileURLToPath } from 'node:url';
 import type { Story, Facility, SourceType } from './db';
 
 export interface ImageRef {
+  /** Root-relative local path ("/assets/images/...") for a downloaded and
+   *  self-hosted image (Flux, Wikimedia Commons, Pexels -- everything this
+   *  site has ever served before this feature), OR an absolute "https://"
+   *  URL for a live-hotlinked image (Unsplash only -- its API terms
+   *  prohibit downloading and re-hosting, see scripts/source_venue_images.py
+   *  and NEEDS-HUMAN-REVIEW.md "Switch venue/category images to real
+   *  photos"). assertImageExists() below only file-checks the former. */
   path: string;
   alt: string;
   width: number;
   height: number;
+  /** Required credit line for a licensed real photo (Wikimedia Commons
+   *  CC-BY/CC-BY-SA, Pexels, Unsplash) -- undefined for a Flux-generated
+   *  image (no license/author to credit) or a public-domain Commons photo
+   *  where crediting is good practice but not required (still populated
+   *  when available -- see the migration's own note on never inferring a
+   *  license). Rendered by every resolveImage() consumer as a small credit
+   *  line under the image, not just tracked internally -- Pexels and
+   *  Unsplash both make this a condition of API access, not a courtesy. */
+  attributionText?: string;
+  /** Link target for attributionText -- the photographer's profile
+   *  (Unsplash/Pexels) or the Commons file page. Unsplash also requires
+   *  UTM parameters on this URL (see the sourcing script) and firing a
+   *  one-time "download" tracking ping when the photo is FIRST selected
+   *  for use -- both handled at sourcing time, not on every render. */
+  attributionUrl?: string;
+  /** Pre-built trusted HTML for the rare case attributionText/Url's single
+   *  link can't express -- specifically Unsplash, whose API Guidelines
+   *  require the EXACT format "Photo by [Name] on Unsplash" with BOTH the
+   *  name and "Unsplash" independently clickable (with UTM params on each).
+   *  Built once by the sourcing script itself (never from unsanitized
+   *  input -- this is trusted server-generated markup, same trust level as
+   *  any other build-time-only value in this codebase), rendered via
+   *  set:html. Takes priority over attributionText/Url when both are set. */
+  attributionHtml?: string;
+}
+
+/** An ImageRef's path is either a local root-relative path or an absolute
+ *  hotlink URL -- see ImageRef.path's own comment for why (Unsplash only).
+ *  Every consumer that resolves a src attribute should treat both the same
+ *  way (root-relative paths already resolve correctly as an <img src>, and
+ *  an absolute https:// URL needs no resolution at all), but build-time
+ *  file-existence checking only makes sense for the former. */
+export function isHotlinkedImage(path: string): boolean {
+  return path.startsWith('http://') || path.startsWith('https://');
 }
 
 /** The category vocabulary this feature covers -- see NEEDS-HUMAN-REVIEW.md
@@ -180,6 +221,10 @@ export function resolveVenueSlugForImage(
  *  degrades gracefully by design -- a missing crop is optional, a missing
  *  primary image is not). */
 function assertImageExists(imagePath: string, itemSlug: string): void {
+  // Hotlinked images (Unsplash only, see ImageRef.path's own comment) have
+  // no local file to check -- their existence is the external CDN's
+  // problem, not this build's.
+  if (isHotlinkedImage(imagePath)) return;
   const absolute = fileURLToPath(new URL(`../../public${imagePath}`, import.meta.url));
   if (!existsSync(absolute)) {
     throw new Error(
@@ -198,7 +243,7 @@ export interface ResolveImageOptions {
   // townId doesn't need a false cast to compile.
   town: string;
   cityName: string;
-  facilities: Pick<Facility, 'slug' | 'name_aliases' | 'image_path' | 'image_alt'>[];
+  facilities: Pick<Facility, 'slug' | 'name_aliases' | 'image_path' | 'image_alt' | 'image_attribution_text' | 'image_attribution_url'>[];
   categoryImages: Partial<Record<ImageCategory, ImageRef>>;
   /** Overrides the source_type-derived category -- for hub/section pages
    *  resolving their own fixed hero image rather than one item's image. */
@@ -234,6 +279,8 @@ export function resolveImage(story: ResolvableStory & { slug?: string }, options
         path: facility.image_path,
         alt: facility.image_alt ?? story.title,
         width: 1200, height: 800,
+        attributionText: facility.image_attribution_text ?? undefined,
+        attributionUrl: facility.image_attribution_url ?? undefined,
       };
     }
   }

@@ -10,6 +10,7 @@ import { resolveImage } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import { siteConfig } from '../lib/site-config';
 import { relativeTime } from '../lib/time';
+import ImageAttribution from './ImageAttribution.astro';
 
 interface Props { story: Story; facilities: Facility[]; }
 const { story, facilities } = Astro.props;
@@ -65,6 +66,7 @@ const heroImage = resolveImage(story, {
       />
     </a>
   )}
+  {heroImage && <ImageAttribution image={heroImage} />}
   <p class="secondary__kicker">
     <span class="kicker">{kicker}</span>
     {timeLabel && timeMachineValue && (

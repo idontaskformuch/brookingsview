@@ -16,6 +16,7 @@ function facility(overrides: Partial<Facility> & Pick<Facility, 'slug'>): Facili
     hours_text: null, description: null, source_url: null, verified_date: null,
     aliases: [], street_address: null, postal_code: null, lat: null, lon: null,
     image_path: null, image_alt: null, name_aliases: [],
+    image_attribution_text: null, image_attribution_url: null,
     ...overrides,
   };
 }
@@ -177,6 +178,42 @@ describe('resolveImage', () => {
     const result = resolveImage(story, options);
     expect(result?.path).toBe(EXISTING_IMAGE);
     expect(result?.alt).toBe('Iris Plaza branch library');
+  });
+
+  it('tier 2: propagates a facility\'s image_attribution_text/url onto the resolved ImageRef', () => {
+    const story: ResolvableStory = {
+      title: 'Moreno Valley: City Hall: Council Meeting', source_type: 'event',
+      image_path: null, image_alt: null, venue_raw: null,
+    };
+    const options = {
+      ...baseOptions,
+      facilities: [facility({
+        slug: 'city-hall',
+        name_aliases: ['City Hall'],
+        image_path: EXISTING_IMAGE, image_alt: 'Moreno Valley City Hall',
+        image_attribution_text: 'Photo by Z3lvs / Wikimedia Commons (CC0)',
+        image_attribution_url: 'https://commons.wikimedia.org/wiki/File:Moreno_Valley,_California_City_Hall.jpg',
+      })],
+    };
+    const result = resolveImage(story, options);
+    expect(result?.attributionText).toBe('Photo by Z3lvs / Wikimedia Commons (CC0)');
+    expect(result?.attributionUrl).toBe('https://commons.wikimedia.org/wiki/File:Moreno_Valley,_California_City_Hall.jpg');
+  });
+
+  it('tier 2: attributionText/Url are undefined (not null) when the facility has none', () => {
+    const story: ResolvableStory = {
+      title: 'Moreno Valley: City Hall: Council Meeting', source_type: 'event',
+      image_path: null, image_alt: null, venue_raw: null,
+    };
+    const options = {
+      ...baseOptions,
+      facilities: [facility({
+        slug: 'city-hall', name_aliases: ['City Hall'], image_path: EXISTING_IMAGE,
+      })],
+    };
+    const result = resolveImage(story, options);
+    expect(result?.attributionText).toBeUndefined();
+    expect(result?.attributionUrl).toBeUndefined();
   });
 
   it('tier 3: falls back to the category image when no venue matches', () => {

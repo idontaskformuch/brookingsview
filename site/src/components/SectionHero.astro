@@ -11,6 +11,7 @@
 import { resolveImage, type ImageCategory } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import { siteConfig } from '../lib/site-config';
+import ImageAttribution from './ImageAttribution.astro';
 
 interface Props { category: ImageCategory; }
 const { category } = Astro.props;
@@ -37,6 +38,7 @@ const image = resolveImage(
     decoding="async"
   />
 )}
+{image && <ImageAttribution image={image} />}
 
 <style>
 .section-hero {

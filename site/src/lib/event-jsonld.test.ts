@@ -28,6 +28,8 @@ const MAIN_LIBRARY: Facility = {
   image_path: null,
   image_alt: null,
   name_aliases: [],
+  image_attribution_text: null,
+  image_attribution_url: null,
 };
 
 const CITY_HALL_UNVERIFIED_ADDRESS: Facility = {

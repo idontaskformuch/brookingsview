@@ -5,6 +5,7 @@ import type { Story, Facility } from '../lib/db';
 import { formatDate, formatTime, formatCalendarDate, CATEGORY_LABELS } from '../lib/db';
 import { resolveImage } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
+import ImageAttribution from './ImageAttribution.astro';
 import { siteConfig } from '../lib/site-config';
 import { relativeTime } from '../lib/time';
 
@@ -72,6 +73,7 @@ const heroImage = resolveImage(story, {
       />
     </a>
   )}
+  {heroImage && <ImageAttribution image={heroImage} />}
   <h2 class="lead__title"><a href={`/s/${story.slug}/`}>{story.title}</a></h2>
   <p class="lead__body">{story.body}</p>
   <a class="lead__more" href={`/s/${story.slug}/`}>Read more &rarr;</a>
