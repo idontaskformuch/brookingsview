@@ -192,7 +192,11 @@ function assertImageExists(imagePath: string, itemSlug: string): void {
 /* -------------------------------------------------------- resolveImage */
 
 export interface ResolveImageOptions {
-  town: 'brookings_sd' | 'moreno_valley_ca';
+  // Not read inside resolveImage() itself (categoryImages is already
+  // resolved per-town by the caller via categoryImagesFor()) -- kept as a
+  // plain string rather than a two-town union so a third town's real
+  // townId doesn't need a false cast to compile.
+  town: string;
   cityName: string;
   facilities: Pick<Facility, 'slug' | 'name_aliases' | 'image_path' | 'image_alt'>[];
   categoryImages: Partial<Record<ImageCategory, ImageRef>>;

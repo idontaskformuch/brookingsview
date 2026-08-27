@@ -12,6 +12,7 @@ import { loadEnv } from 'vite';
 const SITE_URLS = {
   brookings_sd: 'https://brookingsview.com',
   moreno_valley_ca: 'https://morenovalleyview.com',
+  broomfield_co: 'https://broomfieldview.com',
 };
 
 // astro.config.mjs itself loads BEFORE Vite's own env pipeline populates

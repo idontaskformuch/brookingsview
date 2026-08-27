@@ -57,6 +57,25 @@ export interface SiteConfig {
    *  scopeNote: what the source does/doesn't cover (e.g. state highways
    *  only, not city streets) -- shown on the page, not left implicit. */
   trafficSource?: { name: string; url: string; scopeNote: string };
+  /** Parenthetical shown on /traffic when trafficSource is undefined --
+   *  what was actually checked and ruled out, so the "no source yet" state
+   *  reads as researched rather than lazy. Town-specific research, so it
+   *  must be town-specific text -- traffic.astro used to hardcode
+   *  Brookings' own research ("checked SD511.org...") in this parenthetical
+   *  UNCONDITIONALLY, which was a real bug: rendered verbatim for ANY town
+   *  with no trafficSource, falsely claiming SD511/South Dakota DOT were
+   *  checked for towns (e.g. Broomfield, CO) where they never were. Found
+   *  2026-08-26 building Broomfield's first real production build.
+   *  Undefined = a generic, still-honest fallback (see traffic.astro). */
+  noTrafficSourceNote?: string;
+  /** Whether this town's config has data_sources.workplace_watch enabled --
+   *  a separate flag from the town-equality checks elsewhere (home-sales,
+   *  pro_sports, burro-bonanza are still genuinely Moreno-Valley-only), so
+   *  Broomfield can carry Workplace Watch (see NEEDS-HUMAN-REVIEW.md
+   *  "Broomfield launch") without also unlocking those unrelated features
+   *  that happen to share the same `isMorenoValley` boolean in BaseLayout/
+   *  index.astro/og/[slug].png.ts. */
+  hasWorkplaceWatch?: boolean;
 }
 
 const CITIES: Record<string, SiteConfig> = {
@@ -76,6 +95,8 @@ const CITIES: Record<string, SiteConfig> = {
     sourceBlurb:
       'Brookings View gathers public information from the City of Brookings, Brookings County, South Dakota State University, and Brookings Public Library.',
     removalEmail: 'hello@brookingsview.com',
+    noTrafficSourceNote:
+      "checked SD511.org and South Dakota DOT's GIS server directly -- neither exposes an open incident API at this time",
     // Verified 2026-08-23 (Yelp, Brookings Area Chamber of Commerce
     // directory, IMDb -- cross-checked, not a single-source guess): the
     // only movie theater in Brookings. See NEEDS-HUMAN-REVIEW.md "Brookings
@@ -98,6 +119,7 @@ const CITIES: Record<string, SiteConfig> = {
     cityName: 'Moreno Valley',
     stateName: 'California',
     stateAbbr: 'CA',
+    hasWorkplaceWatch: true,
     brandLead: 'Moreno Valley',
     brandTail: 'View',
     siteName: 'Moreno Valley View',
@@ -134,6 +156,34 @@ const CITIES: Record<string, SiteConfig> = {
         detail: 'A discount second-run house — tickets run well below first-run prices; free lot parking.',
       },
     ],
+  },
+
+  broomfield_co: {
+    townId: 'broomfield_co',
+    cityName: 'Broomfield',
+    stateName: 'Colorado',
+    stateAbbr: 'CO',
+    hasWorkplaceWatch: true,
+    brandLead: 'Broomfield',
+    brandTail: 'View',
+    siteName: 'Broomfield View',
+    domain: 'broomfieldview.com',
+    siteUrl: 'https://broomfieldview.com',
+    timezone: 'America/Denver',
+    description:
+      'City Council decisions, events, weather and local happenings in Broomfield, Colorado. Updated every hour.',
+    sourceBlurb:
+      'Broomfield View gathers public information from the City and County of Broomfield, Adams 12 Five Star Schools, and Boulder Valley School District.',
+    removalEmail: 'hello@broomfieldview.com',
+    // trafficSource intentionally left undefined: CDOT/COtrip feeds are
+    // confirmed to exist (see configs/broomfield_co.json's traffic._notes)
+    // but require a developer API key and no parser has been built yet --
+    // setting this before real incidents are actually flowing would make
+    // traffic.astro attribute a "refreshed regularly" live feed that isn't
+    // running, exactly the dishonest state its own empty-state comment
+    // warns against. Add this once scrapers/parsers/cdot_v1.py is live.
+    // No verified movie theater yet either -- undefined (never guessed)
+    // until one is cross-checked the way Brookings/Moreno Valley's were.
   },
 };
 

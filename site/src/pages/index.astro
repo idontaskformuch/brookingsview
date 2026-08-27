@@ -38,7 +38,7 @@ import { selectWorthKnowing, selectLatestFrom, firstSentence, selectFrontPageRhy
 import { todayUtcMidnight } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { resolveImage } from '../lib/images';
-import { CATEGORY_IMAGES } from '../config/category-images';
+import { categoryImagesFor } from '../config/category-images';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
@@ -82,10 +82,10 @@ const today = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
 // can never pick something LeadStory/SecondaryStory then fail to render an
 // image for.
 const hasImage = (story: (typeof upcoming)[number]) => resolveImage(story, {
-  town: siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca',
+  town: siteConfig.townId,
   cityName: siteConfig.cityName,
   facilities,
-  categoryImages: CATEGORY_IMAGES[siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca'],
+  categoryImages: categoryImagesFor(siteConfig.townId),
 }) !== null;
 
 // No story-based widget today overlaps the front-page candidate pool (the
@@ -142,9 +142,9 @@ const timelyEventTeaser = isEventTeaserWeekend
 const todayHomeGame = isBrookings && nextGame && nextGame.home_away === 'home'
   && within(nextGame.starts_at, startOfDay, endOfDay) ? nextGame : null;
 
-// Bara hämtat på Moreno Valley-builds -- ingen anledning att fråga en tabell
-// som alltid är tom på Brookings.
-const employerRatings = isMorenoValley ? await getLatestEmployerRatings() : [];
+// Bara hämtat på towns med Workplace Watch enabled -- ingen anledning att
+// fråga en tabell som alltid är tom annars.
+const employerRatings = siteConfig.hasWorkplaceWatch ? await getLatestEmployerRatings() : [];
 const topEmployer = employerRatings[0] ?? null;
 const biggestMover = employerRatings.reduce<typeof employerRatings[number] | null>((best, e) => {
   if (e.rating_delta_vs_last_month === null) return best;
@@ -225,7 +225,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       )}
       {isBrookings && <JackrabbitWidget />}
       {isMorenoValley && <BurroBonanzaWidget />}
-      {isMorenoValley && topEmployer && (
+      {siteConfig.hasWorkplaceWatch && topEmployer && (
         <WorkplaceWatchWidget
           topName={topEmployer.name}
           topRating={topEmployer.overall_rating}

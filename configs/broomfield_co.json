@@ -1,0 +1,224 @@
+{
+  "town_id": "broomfield_co",
+  "display_name": "Broomfield",
+  "state": "CO",
+  "county": "Broomfield County (consolidated city-county)",
+  "population": 78300,
+  "timezone": "America/Denver",
+  "domain": "broomfieldview.com",
+  "coordinates": {
+    "lat": 39.9205,
+    "lon": -105.0866
+  },
+  "_domain_note": "broomfieldview.com -- matchar 'View'-varumärket (Brookings View, Moreno Valley View). Konsekvent med fleet-namngivningen.",
+  "positioning": {
+    "question_we_answer": "Vad händer i Broomfield?",
+    "feeling": "positivt, välkomnande, stolt-över-sin-stad",
+    "one_liner": "PENDING -- håll tillbaka en slutgiltig tagline tills Workplace Watch-vinkeln (Vail Resorts/Ball/Noodles) och de två skoldistrikten är på plats, se Broomfield launch-briefen."
+  },
+  "editorial": {
+    "tone": [
+      "warm",
+      "light",
+      "friendly",
+      "plain-language",
+      "celebratory-where-natural"
+    ],
+    "must_be": [
+      "factually accurate",
+      "neutral on contested civic matters",
+      "never invents names, numbers, quotes or charges"
+    ],
+    "never_publish": [
+      "arrest / jail / booking data om namngivna personer",
+      "mugshots",
+      "sex offender registry",
+      "verbatim obituaries (upphovsrätt) – endast ev. länkindex",
+      "negativt/anklagande innehåll om namngivna privatpersoner",
+      "politisk vinkling eller åsikt"
+    ],
+    "principle": "Vi beskriver händelser, lag, platser och trender – aldrig anklagelser mot enskilda. Om något kan tvinga fram en borttagning senare bygger vi inte in det från början."
+  },
+  "compliance": {
+    "publish_named_private_individuals": false,
+    "removal_contact_email": "hello@broomfieldview.com",
+    "_note": "Med jail/obits borttagna finns i praktiken ingen borttagningsmaskin att bygga. Kontakten finns ändå som god sed."
+  },
+  "ai": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-5",
+    "mode": "batch",
+    "batch_cadence_minutes": 60,
+    "monthly_budget_usd": 20,
+    "tone_v2": true,
+    "_tone_v2_note": "Launched 2026-08-26 already enabled by default -- both existing towns' old-vs-new comparison has already been reviewed and approved (see NEEDS-HUMAN-REVIEW.md), no reason for a third town to launch on the older prompt path.",
+    "tone_guidelines": "Skriv som en påläst, glad granne. Kort, konkret, välkomnande. Fira det som är kul (nyöppningar, evenemang) utan att överdriva. Håll dig strikt till fakta i källdatan – hitta aldrig på detaljer, namn eller siffror. Ingen åsikt om politik/beslut, bara vad som händer och vad det betyder i klarspråk.",
+    "guardrails": {
+      "extractive_for_structured_fields": true,
+      "no_opinion_on_contested_topics": true,
+      "reject_if_output_contains_facts_not_in_source": true
+    }
+  },
+  "output": {
+    "prefer_digests_over_single_item_pages": true,
+    "_note": "Undvik en tunn indexerad sida per post. Väv ihop till läsbara digests med kontext – bättre för läsaren OCH för AdSense (information gain istället för scaled content)."
+  },
+  "data_sources": {
+    "city_meetings": {
+      "type": "agendalink",
+      "enabled": false,
+      "client_id": "broomfield",
+      "base_url": "https://api.agendalink.app",
+      "session_endpoint": "https://api.agendalink.app/api/session/all/broomfield",
+      "public_viewer": "https://horizon.agendalink.app/engage/broomfield/",
+      "refresh_minutes": 1440,
+      "output": {
+        "format": "plain_language_preview",
+        "voice": "what-your-city-is-deciding"
+      },
+      "_notes": "CONFIRMED live 2026-08-26 (Broomfield launch research): City and County of Broomfield's Council meetings run on AgendaLink (Horizon Software), client slug literally 'broomfield'. GET https://api.agendalink.app/api/session/all/broomfield returns real JSON (id, board, room.address, scheduleTime, scheduleIso, clientId, status, agendaUrl), no auth token needed, supports ?month=YYYY-MM. Docs at docs.agendalink.app/docs/agenda-api. Do NOT confuse with broomfield.org/AgendaCenter -- that is a separate, older CivicPlus/CivicEngage module for boards/commissions, not Council itself. enabled:false until a scrapers/parsers/agendalink_v1.py is actually written and this REGISTRY key is wired up in scrapers/runner.py -- source is real, parser code is not yet built."
+    },
+    "school_alerts_adams12": {
+      "type": "school_alerts",
+      "enabled": false,
+      "source": "finalsite_news",
+      "district": "Adams 12 Five Star Schools",
+      "url": "https://www.adams12.org/our-district/communications/weather-delays-and-closures",
+      "public_url": "https://www.adams12.org/our-district/communications/weather-delays-and-closures",
+      "parser": "school_alerts_v1",
+      "refresh_minutes": 60,
+      "output": {
+        "format": "structured_data_no_ai",
+        "voice": "n/a (distriktets egen ordalydelse, ingen AI-generering eller omskrivning)"
+      },
+      "_notes": "Serves Legacy High School ('Lightning'). CMS confirmed as Finalsite (2026-08-26 research), same platform school_alerts_v1.py already parses for Moreno Valley Unified. BUT: no dedicated closures RSS/JSON found -- closure status is posted to an HTML banner/page plus SMS short code 98900 and a district app, none of which are cleanly scrapable the way MVUSD's /engage/news list is. enabled:false until someone actually verifies whether school_alerts_v1.py's existing Finalsite-news-list parsing approach also works against this specific page, or a different scrape target is found."
+    },
+    "school_alerts_bvsd": {
+      "type": "school_alerts",
+      "enabled": false,
+      "source": "unconfirmed",
+      "district": "Boulder Valley School District",
+      "url": "https://www.bvsd.org",
+      "public_url": "https://www.bvsd.org",
+      "parser": "school_alerts_v1",
+      "refresh_minutes": 60,
+      "output": {
+        "format": "structured_data_no_ai",
+        "voice": "n/a (distriktets egen ordalydelse, ingen AI-generering eller omskrivning)"
+      },
+      "_notes": "Serves Broomfield High School ('Eagles'). Research 2026-08-26: parts of bvsd.org run Finalsite, but the district's actual alerting tool is Apptegy (banner + email/text/app push), not exposed as RSS/JSON. Needs real research into whether Apptegy has any public feed before a parser is attempted -- do not assume the MVUSD Finalsite pattern transfers."
+    },
+    "events": {
+      "type": "webtrac",
+      "enabled": false,
+      "base_url": "https://cobroomfieldweb.myvscloud.com/webtrac/web/",
+      "public_program_guide": "https://broomfield.org/ProgramGuide",
+      "refresh_minutes": 1440,
+      "output": {
+        "format": "this_week_in_broomfield",
+        "voice": "fun-friendly"
+      },
+      "_notes": "CONFIRMED live 2026-08-26: Broomfield's recreation/library calendar runs on Vermont Systems WebTrac (city-branded 'B-REx'), confirmed live at cobroomfieldweb.myvscloud.com/webtrac/web/ (search.html, iteminfo.html?Module=AR for activities, Module=FR for facilities). Vermont Systems documents a real JSON API but it requires an Authenticate/Login call with an API key + session ID -- not a bare discoverable endpoint the way Tockify's ICS export is for Moreno Valley. Public HTML pages are scrapable as a fallback if the API access isn't obtained. enabled:false until either (a) WebTrac API credentials are obtained from the city, or (b) an HTML-scrape parser is built and its robots.txt is checked."
+    },
+    "weather": {
+      "type": "api",
+      "enabled": true,
+      "provider": "noaa",
+      "endpoint": "https://api.weather.gov",
+      "lat": 39.9205,
+      "lon": -105.0866,
+      "refresh_minutes": 180,
+      "user_agent_required": true,
+      "output": {
+        "format": "daily_snapshot",
+        "voice": "friendly"
+      },
+      "_notes": "NOAA/NWS is a nationwide API, same integration as both existing towns -- no Broomfield-specific work needed beyond real coordinates."
+    },
+    "weather_alerts": {
+      "type": "nws",
+      "enabled": true,
+      "provider": "nws",
+      "endpoint": "https://api.weather.gov/alerts/active",
+      "area": "COC014",
+      "refresh_minutes": 30,
+      "output": {
+        "format": "alert_banner",
+        "voice": "calm-clear"
+      },
+      "_notes": "VERIFIED 2026-08-26 live: api.weather.gov/points/39.9205,-105.0866 returns county=.../zones/county/COC014 (Broomfield County), forecast office BOU (Boulder). Keyless, requires User-Agent, same as both existing towns."
+    },
+    "traffic": {
+      "type": "cdot",
+      "enabled": false,
+      "provider": "cotrip",
+      "url": null,
+      "refresh_minutes": 20,
+      "output": {
+        "format": "structured_data_no_ai",
+        "voice": "n/a (fakta, ingen AI-generering)"
+      },
+      "_notes": "Research 2026-08-26: unlike Caltrans (fully open KML, no key), CDOT/COtrip's incident feeds (data.cotrip.org/xml/*.xml, catalogued at data.colorado.gov and manage-api.cotrip.org) require free developer registration and an API key/basic-auth-style credential -- confirmed real feeds exist (third-party tools like dfpc-coe/etl-cotrip-incidents already consume them), just not anonymous. enabled:false until the signup is done and a scrapers/parsers/cdot_v1.py is written mirroring traffic_v1.py's bbox-filtering approach."
+    },
+    "jobs": {
+      "type": "jobs",
+      "enabled": true,
+      "country": "us",
+      "where": "Broomfield, CO",
+      "results_per_page": 50,
+      "max_pages": 1,
+      "parser": "jobs_v1",
+      "refresh_minutes": 1440,
+      "output": {
+        "format": "structured_data_no_ai",
+        "voice": "n/a (fakta, ingen AI-generering)"
+      },
+      "_notes": "Direct port of the existing jobs_v1.py/Adzuna integration, just re-scoped `where`. No new code needed -- same ADZUNA_APP_ID/ADZUNA_APP_KEY secrets, same free-tier quota reasoning as the other two towns."
+    },
+    "facilities": {
+      "type": "manual_curation",
+      "enabled": false,
+      "url": null,
+      "local_dir": "data/facilities/broomfield_co",
+      "loader": "scripts/seed_facilities.py",
+      "refresh_minutes": null,
+      "output": {
+        "format": "reference_page",
+        "voice": "n/a (facts only, no AI generation)"
+      },
+      "_notes": "Same manual-curation mechanism as both existing towns (scripts/seed_facilities.py, no scraper). enabled:false because data/facilities/broomfield_co.json has not been hand-curated/verified yet -- do not fabricate library/park/city-hall addresses; someone needs to actually verify them (broomfield.org, library branch pages) before this flips to true, same discipline as the other two towns' 2026-08-03 verification note."
+    },
+    "workplace_watch": {
+      "type": "search_summary",
+      "enabled": true,
+      "provider": "brave_search",
+      "local_dir": "data/employers/broomfield_co",
+      "loader": "scripts/seed_employers.py",
+      "refresh_minutes": 43200,
+      "earnings_and_warn": {
+        "enabled": false,
+        "_notes": "NEW source type, not yet wired into scrapers/runner.py's REGISTRY -- see NEEDS-HUMAN-REVIEW.md 'Broomfield launch, Workplace Watch earnings/WARN citation feature'. Unlike Moreno Valley's employer set, all three seeded Broomfield employers (Vail Resorts, Ball Corporation, Noodles & Company) are public companies -- CONFIRMED 2026-08-26: Vail Resorts (NYSE:MTN) HQ'd at 390 Interlocken Crescent, Broomfield, quarterly earnings releases Broomfield-datelined (e.g. Q1 FY26 released 2025-12-10); Colorado WARN Act notices are public record at cdle.colorado.gov/employers/layoff-separations/layoff-warn-list, and Vail Resorts' 2025-04-04 filing (HR Shared Services unit closure, Broomfield, 64 roles) is independently corroborated by multiple news outlets. This needs its own guardrail (citing a filed fact plainly is the OPPOSITE of validate_employer_hedging()'s job, which exists specifically to hedge aggregated review sentiment) and likely its own small table -- not an extension of the existing hedging pipeline. enabled:false until that guardrail + ingestion path exist."
+      },
+      "output": {
+        "format": "monthly_digest",
+        "voice": "reviews-mention"
+      },
+      "_notes": "Employer set: Vail Resorts, Ball Corporation, Noodles & Company (see data/employers/broomfield_co.json). Same Brave Search + hedging-guardrail mechanism as Moreno Valley's employers (Amazon/Skechers/Ross/Deckers/ALDI) -- reused as-is. ai_pipeline/workplace_watch_digest.py's Brave Search queries and grounding text were hardcoded to 'Moreno Valley' specifically; fixed 2026-08-26 to read the town's own display_name/state from cfg instead, so this works correctly for Broomfield without a Broomfield-specific code branch. Do not use Vail Resorts', Ball's, or Noodles' logos/brand marks anywhere on the site -- factual, attributed news coverage is fine, implying affiliation is not."
+    }
+  },
+  "_verify_before_launch": [
+    "CONFIRMED 2026-08-26: city_meetings = AgendaLink, client slug 'broomfield', api.agendalink.app/api/session/all/broomfield live and working. Parser (agendalink_v1.py) still needs to be written.",
+    "CONFIRMED 2026-08-26: weather/weather_alerts = standard NOAA/NWS, zone COC014, office BOU. Ready to enable as-is.",
+    "CONFIRMED 2026-08-26: jobs = Adzuna, direct re-scope of existing jobs_v1.py. Ready to enable as-is.",
+    "CONFIRMED 2026-08-26: Vail Resorts earnings cadence + the specific 2025 WARN Act filing, both independently corroborated. New guardrail/source-type still needs building before earnings_and_warn.enabled can flip.",
+    "PARTIAL 2026-08-26: events = Vermont Systems WebTrac (B-REx), system confirmed live, but real API access needs credentials from the city (or a scrape fallback) before a parser can be built.",
+    "PARTIAL 2026-08-26: traffic = CDOT/COtrip feeds exist but need a free developer signup (unlike Caltrans' fully open KML) before a parser can be built.",
+    "UNRESOLVED 2026-08-26: school_alerts (Adams 12 / Boulder Valley) -- both districts confirmed to have NO clean RSS/JSON feed for closures (HTML banner + SMS/app push only for both). Needs a scraping approach or should stay disabled at launch.",
+    "UNRESOLVED 2026-08-26: HS sports (Legacy Lightning / Broomfield Eagles) -- real MaxPreps pages exist for both, but MaxPreps has no public API. Not yet added to this config at all -- needs a scraping approach, same tier of effort as school_alerts above, before a data_sources entry is even worth writing.",
+    "DESCOPED 2026-08-26 (explicit decision, see NEEDS-HUMAN-REVIEW.md 'Broomfield launch'): property_sales has no bulk-report equivalent for Broomfield (only a per-parcel EagleWeb lookup portal, unlike Riverside County's assessor feed) -- not launching with this feature, no data_sources entry.",
+    "OUT OF SCOPE (per Broomfield launch brief): university section (no SDSU-equivalent), ag_markets/USDA (no Brookings-equivalent farming context), a town-specific game (fast-follow, not launch-blocking), heat/dust advisory (Moreno-Valley-specific climate feature)."
+  ],
+  "_no_ag_markets_note": "No agricultural-market convention here the way Brookings has USDA ag_markets, and no university-athletics return-driver -- City Council/meetings + Workplace Watch (Vail/Ball/Noodles) + events are the core once their sources are built out.",
+  "local_theaters": [],
+  "_local_theaters_note": "No Broomfield movie theaters verified yet (same 'undefined until verified, never guessed' rule as site-config.ts's localTheaters -- see that file's own comment for the Brookings-at-launch precedent). Add real, cross-checked entries here before Reviews' 'showing locally' anchor can use one."
+}

@@ -1,8 +1,11 @@
 ---
-/** Worker Pulse / Workplace Watch -- Moreno Valley-gated (samma mönster som
- *  play.astro/facilities), den "check before your shift" anchor-sidan för
- *  Moreno Valley: en jämförelsetabell över review-trender hos de större
- *  logistik-/lagerarbetsgivarna i orten. Se lib/db.ts (getLatestEmployerRatings)
+/** Worker Pulse / Workplace Watch -- gated on siteConfig.hasWorkplaceWatch
+ *  (samma mönster som play.astro/facilities), en jämförelsetabell över
+ *  review-trender hos ortens större arbetsgivare. Enabled för Moreno Valley
+ *  (logistik-/lagerarbetsgivare) och Broomfield (publika bolags huvudkontor,
+ *  se data/employers/broomfield_co.json) -- HeatAdvisoryWidget/ShiftPollWidget
+ *  nedan hålls ändå Moreno-Valley-specifika, se den kommentaren för varför.
+ *  Se lib/db.ts (getLatestEmployerRatings)
  *  och ai_pipeline/workplace_watch_digest.py för varifrån datat kommer -- ett
  *  stjärnbetyg visas bara om det uttryckligen hittades i sökträffarna, annars
  *  "rating pending" i stället för en gissning. */
@@ -21,9 +24,21 @@ import SectionHero from '../../components/SectionHero.astro';
 import { EMPTY_STATES } from '../../lib/empty-states';
 import { SECTION_THEME } from '../../lib/section-theme';
 
-if (siteConfig.townId !== 'moreno_valley_ca') {
+if (!siteConfig.hasWorkplaceWatch) {
   return Astro.redirect('/', 302);
 }
+
+// HeatAdvisoryWidget/ShiftPollWidget both assume hourly, shift-based
+// warehouse/logistics work (see their own docstrings) -- true for Moreno
+// Valley's employer set (Amazon/Skechers/Ross/Deckers/ALDI fulfillment and
+// distribution), but a poor fit for Broomfield's, which is three corporate
+// headquarters (Vail Resorts/Ball/Noodles & Company -- see
+// data/employers/broomfield_co.json's facility_type). "How was your shift
+// today?" doesn't read right for office employees. Kept Moreno-Valley-only
+// rather than either hiding the mismatch or inventing new office-worker
+// framing unasked -- worth a deliberate design pass if Broomfield's page
+// wants its own version of this.
+const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 
 const [employers, weatherPeriods, alerts, pollResults, comments] = await Promise.all([
   getLatestEmployerRatings(),
@@ -56,7 +71,7 @@ function trend(delta: number | null): { symbol: string; cls: string } {
 <BaseLayout
   title={`Worker Pulse in ${siteConfig.cityName} — ${siteConfig.siteName}`}
   wide
-  description="Monthly review-trend digests for Moreno Valley's major warehouse and logistics employers — check before your shift."
+  description={`Monthly review-trend digests for ${siteConfig.cityName}'s major employers — check before your shift.`}
   ogSlug="section-workplace-watch"
   accentColor={SECTION_THEME.workplace_watch.accent}
 >
@@ -65,8 +80,8 @@ function trend(delta: number | null): { symbol: string; cls: string } {
     <h1>📦 Worker Pulse</h1>
     <p class="tagline">
       A monthly, plain-language look at review trends for {siteConfig.cityName}'s
-      major warehouse and logistics employers — Amazon, Skechers, Ross, Deckers
-      and ALDI. Themes are summarized from recent Glassdoor/Indeed search results,
+      major employers{employers.length > 0 ? ` — ${employers.map((e) => e.name).join(', ')}` : ''}.
+      Themes are summarized from recent Glassdoor/Indeed search results,
       always attributed to what reviews say, never stated as settled fact.
     </p>
     <ShareButton title={`Worker Pulse in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
@@ -85,11 +100,13 @@ function trend(delta: number | null): { symbol: string; cls: string } {
     month, not that the employer has no reviews.
   </p>
 
-  <HeatAdvisoryWidget
-    tempF={todayPeriod?.temp ?? null}
-    activeAlertTitles={alerts.map((a) => a.title)}
-  />
-  <ShiftPollWidget results={pollResults} />
+  {isMorenoValley && (
+    <HeatAdvisoryWidget
+      tempF={todayPeriod?.temp ?? null}
+      activeAlertTitles={alerts.map((a) => a.title)}
+    />
+  )}
+  {isMorenoValley && <ShiftPollWidget results={pollResults} />}
 
   {employers.length > 0 ? (
     <div class="wp-table" role="table">

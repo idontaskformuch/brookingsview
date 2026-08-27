@@ -7,7 +7,7 @@
 import type { Story, Facility } from '../lib/db';
 import { formatDate, formatTime, formatCalendarDate, CATEGORY_LABELS } from '../lib/db';
 import { resolveImage } from '../lib/images';
-import { CATEGORY_IMAGES } from '../config/category-images';
+import { categoryImagesFor } from '../config/category-images';
 import { siteConfig } from '../lib/site-config';
 import { relativeTime } from '../lib/time';
 
@@ -45,10 +45,10 @@ const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall'
 // destination for a would-be lead with no image anywhere (§1), so this
 // must degrade the same honest way: no image, no <img> tag, never /og/.
 const heroImage = resolveImage(story, {
-  town: siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca',
+  town: siteConfig.townId,
   cityName: siteConfig.cityName,
   facilities,
-  categoryImages: CATEGORY_IMAGES[siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca'],
+  categoryImages: categoryImagesFor(siteConfig.townId),
 });
 ---
 <article class="secondary">

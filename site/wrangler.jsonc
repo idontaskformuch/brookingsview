@@ -45,6 +45,9 @@
     },
     "moreno_valley": {
       "name": "morenovalleyview"
+    },
+    "broomfield": {
+      "name": "broomfieldview"
     }
   }
 }

@@ -40,6 +40,8 @@ const SECTION_CARDS: { slug: string; title: string; kicker: string }[] = [
   { slug: 'section-corrections', title: `Corrections — ${siteConfig.siteName}`, kicker: 'Corrections' },
   ...(isMorenoValley ? [
     { slug: 'section-home-sales', title: `Recent home sales — ${siteConfig.cityName}`, kicker: 'Home sales' },
+  ] : []),
+  ...(siteConfig.hasWorkplaceWatch ? [
     { slug: 'section-workplace-watch', title: `Worker Pulse — ${siteConfig.cityName}`, kicker: 'Worker Pulse' },
   ] : []),
   ...(isBrookings ? [

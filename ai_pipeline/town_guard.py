@@ -44,10 +44,23 @@ HARD_BLOCKLIST: dict[str, list[str]] = {
     "moreno_valley_ca": [
         "Brookings", "South Dakota", "SDSU", "South Dakota State", "Highway 14",
         "De Smet", "Volga", "Elkton", "605 area code", "eastern Dakotas",
+        "Broomfield", "Adams 12", "Boulder Valley", "Interlocken", "Flatirons",
     ],
     "brookings_sd": [
         "Moreno Valley", "Inland Empire", "Riverside County", "Alessandro",
         "Perris Blvd", "MoVal", "951",
+        "Broomfield", "Adams 12", "Boulder Valley", "Interlocken", "Flatirons",
+    ],
+    # Broomfield launch (2026-08-26): both directions matter equally here --
+    # this list guards Broomfield content against the OTHER two towns'
+    # identity leaking in, but Brookings/moreno_valley_ca's own lists above
+    # also needed Broomfield-specific terms added, or a copy-paste leak of
+    # "Broomfield"/"Interlocken" into THEIR content would have gone
+    # undetected by their own guards (see module docstring -- this is a
+    # bidirectional guard, not one town's problem to fix alone).
+    "broomfield_co": [
+        "Brookings", "South Dakota", "SDSU", "South Dakota State",
+        "Moreno Valley", "Inland Empire", "Riverside County", "MoVal",
     ],
 }
 
@@ -57,6 +70,7 @@ HARD_BLOCKLIST: dict[str, list[str]] = {
 REVIEW_BLOCKLIST: dict[str, list[str]] = {
     "moreno_valley_ca": ["prairie", "Sixth Street"],
     "brookings_sd": [],
+    "broomfield_co": [],
 }
 
 ALL_TOWN_IDS = list(HARD_BLOCKLIST.keys())

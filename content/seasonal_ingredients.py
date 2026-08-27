@@ -63,9 +63,34 @@ SOCAL_SEASONAL_INGREDIENTS: dict[int, list[str]] = {
     12: ["navel oranges", "avocado", "winter greens"],
 }
 
+# Colorado Front Range (Broomfield, USDA zone 5b/6a, semi-arid, ~150-day
+# frost-free season) -- added 2026-08-26 for the Broomfield launch.
+# Deliberately NOT reused from SEASONAL_INGREDIENTS: Denver-area elevation/
+# aridity gives a genuinely different pattern than Upper Midwest humidity,
+# and the region's real, well-known agricultural specialties (Western Slope
+# peaches, Arkansas Valley melons, San Luis Valley potatoes -- all shipped
+# into and sold at Front Range markets) are worth naming specifically rather
+# than defaulting to a generic "root vegetables in winter" list that could
+# describe almost anywhere.
+COLORADO_SEASONAL_INGREDIENTS: dict[int, list[str]] = {
+    1: ["Colorado potatoes (San Luis Valley, stored)", "winter squash", "root vegetables"],
+    2: ["stored potatoes", "dried beans", "cabbage"],
+    3: ["spinach", "green onions", "early greens"],
+    4: ["asparagus", "spinach", "radishes"],
+    5: ["asparagus", "rhubarb", "spring greens"],
+    6: ["Western Slope strawberries", "peas", "new potatoes"],
+    7: ["early Palisade peaches", "sweet corn", "zucchini"],
+    8: ["Palisade peaches (peak)", "Olathe sweet corn", "Rocky Ford cantaloupe"],
+    9: ["Pueblo chiles", "apples", "winter squash (early harvest)"],
+    10: ["late-season Pueblo chiles", "pumpkin", "apples"],
+    11: ["winter squash", "sweet potatoes", "stored apples"],
+    12: ["root vegetables", "stored winter squash", "dried beans"],
+}
+
 _REGIONS: dict[str, tuple[dict[int, list[str]], str]] = {
     "socal": (SOCAL_SEASONAL_INGREDIENTS, "Southern California's Inland Empire"),
     "midwest": (SEASONAL_INGREDIENTS, "South Dakota"),
+    "colorado_front_range": (COLORADO_SEASONAL_INGREDIENTS, "Colorado's Front Range"),
 }
 
 # town_id -> region key. New towns default to "midwest" (the original list)
@@ -75,6 +100,7 @@ _REGIONS: dict[str, tuple[dict[int, list[str]], str]] = {
 _TOWN_REGION: dict[str, str] = {
     "moreno_valley_ca": "socal",
     "brookings_sd": "midwest",
+    "broomfield_co": "colorado_front_range",
 }
 
 

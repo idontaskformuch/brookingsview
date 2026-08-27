@@ -1,6 +1,11 @@
 """Worker Pulse / Workplace Watch -- månatlig arbetsgivar-review-digest.
 
-Moreno Valley-specifik (se site/src/pages/workplace-watch). Glassdoor och
+Town-generic (se site/src/pages/workplace-watch) -- körs mot valfri config
+vars data_sources.workplace_watch är enabled (Moreno Valley, Broomfield).
+Sökfrågorna/underlagstexten byggs av cfg["display_name"]/cfg["state"], inte
+hårdkodat -- fixat 2026-08-26 (se NEEDS-HUMAN-REVIEW.md "Broomfield launch"),
+tidigare sökte modulen alltid efter "Moreno Valley" oavsett vilken --config
+som gavs. Glassdoor och
 Indeed har ingen publik API och blockerar aktivt skrapning (robots.txt +
 anti-bot), så det här skriptet skrapar INGET direkt -- det söker via Brave
 Search (ai_pipeline/search_client.py) och låter AI:n väva ihop en
@@ -112,10 +117,11 @@ def results_hash(results: list[dict]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def build_grounding_text(employer_name: str, results: list[dict]) -> str:
+def build_grounding_text(employer_name: str, results: list[dict], cfg: dict) -> str:
+    city, state = cfg["display_name"], cfg["state"]
     if not results:
-        return f"No search results found for {employer_name} Moreno Valley reviews this month."
-    parts = [f"SEARCH RESULTS FOR: {employer_name} (Moreno Valley, CA) reviews"]
+        return f"No search results found for {employer_name} {city} reviews this month."
+    parts = [f"SEARCH RESULTS FOR: {employer_name} ({city}, {state}) reviews"]
     for r in results:
         line = f"- {r['title']}: {r['description']}" if r.get("description") else f"- {r['title']}"
         parts.append(line)
@@ -127,8 +133,8 @@ def build_prompt(cfg: dict, employer_name: str) -> str:
 
 FORMAT OVERRIDE -- WORKER PULSE MONTHLY EMPLOYER DIGEST:
 You are writing a short (3-5 sentence) paragraph summarizing recurring THEMES
-in recent online reviews about {employer_name}'s Moreno Valley facility, based
-on the search result snippets below.
+in recent online reviews about {employer_name}'s {cfg["display_name"]} facility,
+based on the search result snippets below.
 
 HARD RULES SPECIFIC TO THIS FORMAT (in addition to the rules above):
 - {employer_name} is a REAL, NAMED company. Every claim about it must be
@@ -154,7 +160,7 @@ def template_fallback(employer_name: str, results: list[dict]) -> str:
 
 def generate(employer_name: str, results: list[dict], cfg: dict, client=None) -> tuple[str, str, bool]:
     """Returnerar (text, generated_by, verified)."""
-    src = build_grounding_text(employer_name, results)
+    src = build_grounding_text(employer_name, results, cfg)
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
 
@@ -242,9 +248,9 @@ def main() -> int:
             try:
                 results = (
                     search_client.brave_search(
-                        f"{employer['name']} Moreno Valley Glassdoor reviews {period_label}")
+                        f"{employer['name']} {cfg['display_name']} Glassdoor reviews {period_label}")
                     + search_client.brave_search(
-                        f"{employer['name']} Moreno Valley Indeed reviews {period_label}")
+                        f"{employer['name']} {cfg['display_name']} Indeed reviews {period_label}")
                 )
             except search_client.SearchUnavailable as exc:
                 print(f"  sök misslyckades ({exc}) -- hoppar över den här arbetsgivaren")
@@ -262,7 +268,7 @@ def main() -> int:
                 continue
 
             text, generated_by, verified = generate(employer["name"], results, cfg)
-            rating = extract_rating(build_grounding_text(employer["name"], results))
+            rating = extract_rating(build_grounding_text(employer["name"], results, cfg))
             prev = previous_rating(conn, town_id, employer["id"], period)
             delta = (rating - prev) if (rating is not None and prev is not None) else None
             title = prefix_town_name(f"Worker Pulse: {employer['name']} — {period_label}", cfg["display_name"])

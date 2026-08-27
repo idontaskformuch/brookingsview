@@ -95,6 +95,7 @@ class GeneratedArticle:
 _STATE_NAMES = {
     "SD": "South Dakota",
     "CA": "California",
+    "CO": "Colorado",
     # lägg till fler här när fler delstater tillkommer
 }
 

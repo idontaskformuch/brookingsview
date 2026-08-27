@@ -9,7 +9,7 @@
  *  is the honest, expected state before that art-direction pass ships.
  */
 import { resolveImage, type ImageCategory } from '../lib/images';
-import { CATEGORY_IMAGES } from '../config/category-images';
+import { categoryImagesFor } from '../config/category-images';
 import { siteConfig } from '../lib/site-config';
 
 interface Props { category: ImageCategory; }
@@ -18,10 +18,10 @@ const { category } = Astro.props;
 const image = resolveImage(
   { title: siteConfig.cityName, source_type: 'announcement', image_path: null, image_alt: null, venue_raw: null },
   {
-    town: siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca',
+    town: siteConfig.townId,
     cityName: siteConfig.cityName,
     facilities: [],
-    categoryImages: CATEGORY_IMAGES[siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca'],
+    categoryImages: categoryImagesFor(siteConfig.townId),
     category,
   },
 );

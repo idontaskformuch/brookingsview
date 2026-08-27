@@ -9,7 +9,7 @@ import { siteConfig } from '../lib/site-config';
 import { aboutSourcesFor } from '../lib/about-sources';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
-const sources = aboutSourcesFor(siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca');
+const sources = aboutSourcesFor(siteConfig.townId);
 ---
 <BaseLayout title={`About — ${siteConfig.siteName}`}
   description={`What ${siteConfig.siteName} is, how it's made, and who built it.`}>

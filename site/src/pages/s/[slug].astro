@@ -18,7 +18,7 @@ import { buildEventJsonLd } from '../../lib/event-jsonld';
 import { buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
 import { resolveImage } from '../../lib/images';
-import { CATEGORY_IMAGES } from '../../config/category-images';
+import { categoryImagesFor } from '../../config/category-images';
 
 export async function getStaticPaths() {
   // Fetched once for the whole build, not per-page -- the facilities set is
@@ -104,10 +104,10 @@ const ogImageUrl = new URL(`/og/${story.slug}.png`, Astro.site ?? siteConfig.sit
 // venue/category art direction pass -- see category-images.ts -- actually
 // ships assets), and the <img> below simply doesn't render then.
 const heroImage = resolveImage(story, {
-  town: siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca',
+  town: siteConfig.townId,
   cityName: siteConfig.cityName,
   facilities,
-  categoryImages: CATEGORY_IMAGES[siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca'],
+  categoryImages: categoryImagesFor(siteConfig.townId),
 });
 
 // Additional crop variants (4:3, 1:1) for NewsArticle's image[] -- only

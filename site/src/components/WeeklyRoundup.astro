@@ -6,7 +6,7 @@ import type { Story, Facility } from '../lib/db';
 import { weekInfoForInstant } from '../lib/this-week';
 import { siteConfig } from '../lib/site-config';
 import { resolveImage } from '../lib/images';
-import { CATEGORY_IMAGES } from '../config/category-images';
+import { categoryImagesFor } from '../config/category-images';
 
 interface Props { story: Story; facilities: Facility[]; }
 const { story, facilities } = Astro.props;
@@ -30,10 +30,10 @@ const weekHref = story.occurs_at
 // lib/images.ts's CATEGORY_BY_SOURCE_TYPE) -- null renders no image at
 // all rather than the social card.
 const heroImage = resolveImage(story, {
-  town: siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca',
+  town: siteConfig.townId,
   cityName: siteConfig.cityName,
   facilities,
-  categoryImages: CATEGORY_IMAGES[siteConfig.townId as 'brookings_sd' | 'moreno_valley_ca'],
+  categoryImages: categoryImagesFor(siteConfig.townId),
 });
 ---
 <article class="roundup">

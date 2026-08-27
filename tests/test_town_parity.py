@@ -30,6 +30,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 _STATE_BBOX = {
     "SD": {"lat": (42.4, 45.95), "lon": (-104.1, -96.35)},
     "CA": {"lat": (32.4, 42.1), "lon": (-124.5, -114.0)},
+    "CO": {"lat": (36.9, 41.05), "lon": (-109.15, -101.95)},
 }
 
 

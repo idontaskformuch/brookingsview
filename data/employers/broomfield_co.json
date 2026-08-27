@@ -1,0 +1,29 @@
+{
+  "_notes": "v1 employer list for Worker Pulse / Workplace Watch (Broomfield launch, 2026-08-26). Same hand-curated pattern as data/employers/moreno_valley_ca.json. UNLIKE Moreno Valley's warehouse/logistics set, all three of these are PUBLIC companies headquartered in or near Broomfield -- see configs/broomfield_co.json's workplace_watch._notes and earnings_and_warn note for the confirmed Vail Resorts quarterly-earnings-release and Colorado WARN Act filing facts that make this employer set unusually strong material (that citation pipeline is not yet built -- see NEEDS-HUMAN-REVIEW.md). Glassdoor URLs below were cross-referenced via multiple Glassdoor sub-pages sharing the same numeric employer ID (Glassdoor itself blocks direct automated fetches, so these are search-corroborated, not fetch-confirmed -- worth one manual click-check before relying on them). Indeed URLs were fetched directly and content-verified (HQ, industry, business description all match). Do not use any of these three companies' logos or brand marks anywhere on the site -- factual, attributed news/review coverage is fine, implying affiliation is not.",
+  "employers": [
+    {
+      "slug": "vail-resorts",
+      "name": "Vail Resorts",
+      "facility_type": "corporate headquarters",
+      "glassdoor_url": "https://www.glassdoor.com/Overview/Working-at-Vail-Resorts-EI_IE6662.11,23.htm",
+      "indeed_url": "https://www.indeed.com/cmp/Vail-Resorts",
+      "accent_color": "#00263A"
+    },
+    {
+      "slug": "ball-corporation",
+      "name": "Ball Corporation",
+      "facility_type": "corporate headquarters",
+      "glassdoor_url": "https://www.glassdoor.com/Overview/Working-at-Ball-Corporation-EI_IE74.11,27.htm",
+      "indeed_url": "https://www.indeed.com/cmp/Ball-Corporation",
+      "accent_color": "#003DA5"
+    },
+    {
+      "slug": "noodles-and-company",
+      "name": "Noodles & Company",
+      "facility_type": "corporate headquarters",
+      "glassdoor_url": "https://www.glassdoor.com/Overview/Working-at-Noodles-and-Company-EI_IE13609.11,30.htm",
+      "indeed_url": "https://www.indeed.com/cmp/Noodles-&-Company",
+      "accent_color": "#C8102E"
+    }
+  ]
+}

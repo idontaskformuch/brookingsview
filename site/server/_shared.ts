@@ -23,6 +23,8 @@ const TOWN_HOSTNAMES: Record<string, string> = {
   'www.morenovalleyview.com': 'moreno_valley_ca',
   'brookingsview.com': 'brookings_sd',
   'www.brookingsview.com': 'brookings_sd',
+  'broomfieldview.com': 'broomfield_co',
+  'www.broomfieldview.com': 'broomfield_co',
 };
 
 /** town_id från requestens hostname. Okänt hostname (localhost,
@@ -59,6 +61,7 @@ export function todayInTimezone(tz: string): string {
 const TOWN_TIMEZONES: Record<string, string> = {
   moreno_valley_ca: 'America/Los_Angeles',
   brookings_sd: 'America/Chicago',
+  broomfield_co: 'America/Denver',
 };
 
 /** IANA timezone for a town_id -- unknown/undefined town_id falls back to
