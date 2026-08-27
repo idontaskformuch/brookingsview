@@ -175,13 +175,11 @@ const CITIES: Record<string, SiteConfig> = {
     sourceBlurb:
       'Broomfield View gathers public information from the City and County of Broomfield, Adams 12 Five Star Schools, and Boulder Valley School District.',
     removalEmail: 'hello@broomfieldview.com',
-    // trafficSource intentionally left undefined: CDOT/COtrip feeds are
-    // confirmed to exist (see configs/broomfield_co.json's traffic._notes)
-    // but require a developer API key and no parser has been built yet --
-    // setting this before real incidents are actually flowing would make
-    // traffic.astro attribute a "refreshed regularly" live feed that isn't
-    // running, exactly the dishonest state its own empty-state comment
-    // warns against. Add this once scrapers/parsers/cdot_v1.py is live.
+    trafficSource: {
+      name: 'CDOT / COtrip',
+      url: 'https://www.cotrip.org',
+      scopeNote: 'State highways and CDOT-logged incidents -- not city or county streets.',
+    },
     // No verified movie theater yet either -- undefined (never guessed)
     // until one is cross-checked the way Brookings/Moreno Valley's were.
   },
