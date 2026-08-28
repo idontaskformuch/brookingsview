@@ -40,6 +40,21 @@ function slugifyAddress(address) {
     .replace(/^-+|-+$/g, '');
 }
 
+// Mirrors lib/home-sales.ts's HOME_SALES_INDEXABLE_MONTHS /
+// isSaleDateIndexable() exactly -- same duplication tradeoff as
+// slugifyAddress above. Keep both in sync: this is what decides which
+// /home-sales/<slug>/ URLs are excluded from the sitemap, and it must
+// agree with what the page itself puts in its own <meta name="robots">,
+// or a page could end up noindexed but still listed in the sitemap (or
+// the reverse).
+const HOME_SALES_INDEXABLE_MONTHS = 6;
+function isSaleDateIndexable(saleDate, now = new Date()) {
+  if (!saleDate) return false;
+  const cutoff = new Date(now);
+  cutoff.setUTCMonth(cutoff.getUTCMonth() - HOME_SALES_INDEXABLE_MONTHS);
+  return new Date(saleDate) >= cutoff;
+}
+
 /**
  * Real per-page lastmod dates for the sitemap (SEO Fas 1.1). A bare
  * sitemap() with no serialize() either omits lastmod or -- worse --
@@ -53,10 +68,16 @@ function slugifyAddress(address) {
  */
 async function buildLastmodMap(townId, databaseUrl) {
   const map = new Map();
+  // Individual home-sale parcel pages older than the threshold above are
+  // excluded from the sitemap entirely (SEO: age out old home-sales pages)
+  // -- built alongside lastmod since it reuses the exact same parcels
+  // query below. The aggregate /home-sales table, its ZIP facets, and the
+  // monthly digest are untouched -- only per-parcel URLs ever land here.
+  const noindexHomeSaleUrls = new Set();
   // e.g. `astro check`'s CI job deliberately runs with no DATABASE_URL
   // (see tests.yml) -- an empty map just means no lastmod hints, never a
   // build failure.
-  if (!databaseUrl) return map;
+  if (!databaseUrl) return { map, noindexHomeSaleUrls };
   const sql = neon(databaseUrl);
 
   const stories = await sql`SELECT slug, published_at FROM stories WHERE town_id = ${townId}`;
@@ -82,20 +103,24 @@ async function buildLastmodMap(townId, databaseUrl) {
        ORDER BY pin, sale_date DESC
     `;
     for (const p of parcels) {
-      if (p.address && p.sale_date) map.set(`/home-sales/${slugifyAddress(p.address)}/`, p.sale_date);
+      if (!p.address) continue;
+      const pathname = `/home-sales/${slugifyAddress(p.address)}/`;
+      if (p.sale_date) map.set(pathname, p.sale_date);
+      if (!isSaleDateIndexable(p.sale_date)) noindexHomeSaleUrls.add(pathname);
     }
   }
 
-  return map;
+  return { map, noindexHomeSaleUrls };
 }
 
-const lastmodMap = await buildLastmodMap(activeCity, env.DATABASE_URL);
+const { map: lastmodMap, noindexHomeSaleUrls } = await buildLastmodMap(activeCity, env.DATABASE_URL);
 
 export default defineConfig({
   site: SITE_URLS[activeCity] ?? SITE_URLS.brookings_sd,
   output: 'static',
   integrations: [
     sitemap({
+      filter: (page) => !noindexHomeSaleUrls.has(new URL(page).pathname),
       serialize(item) {
         const lastmod = lastmodMap.get(new URL(item.url).pathname);
         return lastmod ? { ...item, lastmod: new Date(lastmod).toISOString() } : item;
