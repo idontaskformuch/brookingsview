@@ -81,6 +81,13 @@ TOP_N_SALES = 5
 # GÖMMER inget, vi bara låter det inte snedvrida statistiken.
 OUTLIER_PRICE_FLOOR = 150_000
 
+# Handoff: Information Hub Tier 1, Feature C, §4.2: "a median of four sales
+# is noise presented as insight." Below this many PRICED (market, non-
+# outlier) sales in a month, compute_stats() suppresses median/min/max
+# entirely -- the reader still sees the real count, just not a statistic
+# built from too few points to mean anything.
+SMALL_SAMPLE_THRESHOLD = 15
+
 
 def _fmt_price(value) -> str:
     if value is None:
@@ -150,19 +157,33 @@ def compute_stats(sales: list[dict]) -> dict:
         if zip_code:
             by_zip[zip_code] = by_zip.get(zip_code, 0) + 1
 
+    # FAS 2/Feature C §4.2: too few priced sales makes a median noise, not
+    # insight -- suppress median/min/max (never the raw count) below the
+    # threshold. Downstream code already treats a None median_price as
+    # "nothing to report here" (see source_text()/template_fallback()), so
+    # this one change is enough to make suppression take effect everywhere,
+    # including MoM/YoY comparisons against a small-sample month.
+    small_sample = len(priced) < SMALL_SAMPLE_THRESHOLD
+
     return {
         "count": len(sales),
-        "median_price": statistics.median(priced) if priced else None,
-        "min_price": min(priced) if priced else None,
-        "max_price": max(priced) if priced else None,
+        "median_price": statistics.median(priced) if priced and not small_sample else None,
+        "min_price": min(priced) if priced and not small_sample else None,
+        "max_price": max(priced) if priced and not small_sample else None,
         "priced_count": len(priced),
+        "small_sample": small_sample,
         "by_zip": dict(sorted(by_zip.items(), key=lambda kv: -kv[1])),
         "top_sales": market_sales[:TOP_N_SALES],
         "outlier_count": len(outlier_sales),
     }
 
 
-def source_text(stats: dict, label: str) -> str:
+def _pct_change(current: float, previous: float) -> float:
+    return (current - previous) / previous * 100
+
+
+def source_text(stats: dict, label: str, mom_stats: dict | None = None, mom_label: str | None = None,
+                 yoy_stats: dict | None = None, yoy_label: str | None = None) -> str:
     """Platta ut underlaget till den text AI:n (och guardrails) arbetar mot.
 
     Bara aggregat och de dyraste försäljningarna skickas, inte hela månaden --
@@ -187,6 +208,30 @@ def source_text(stats: dict, label: str) -> str:
         parts.append(
             f"PRICE RANGE: {_fmt_price(stats['min_price'])} to {_fmt_price(stats['max_price'])} "
             f"({stats['priced_count']} of {stats['count']} sales had a recorded price)"
+        )
+        # Handoff §4.2: "year-over-year comparisons only when a real prior-
+        # year figure exists -- no extrapolation." Gated on the COMPARISON
+        # month having a real, non-suppressed median of its own -- a small-
+        # sample comparison month already has median_price=None (see
+        # compute_stats), so this composes correctly with that suppression
+        # without any extra check here.
+        if mom_stats and mom_stats.get("median_price") is not None and mom_label:
+            pct = _pct_change(stats["median_price"], mom_stats["median_price"])
+            parts.append(
+                f"VS LAST MONTH ({mom_label}): median was {_fmt_price(mom_stats['median_price'])} "
+                f"({pct:+.1f}%)"
+            )
+        if yoy_stats and yoy_stats.get("median_price") is not None and yoy_label:
+            pct = _pct_change(stats["median_price"], yoy_stats["median_price"])
+            parts.append(
+                f"VS SAME MONTH LAST YEAR ({yoy_label}): median was {_fmt_price(yoy_stats['median_price'])} "
+                f"({pct:+.1f}%)"
+            )
+    elif stats.get("small_sample") and stats["priced_count"] > 0:
+        parts.append(
+            f"SAMPLE SIZE NOTE: only {stats['priced_count']} priced sale(s) recorded this month -- "
+            "too small a sample to report a median or price range. Report the count only; do not "
+            "state or estimate a median, and do not compare it to any other month."
         )
 
     if stats.get("outlier_count"):
@@ -221,7 +266,15 @@ You are now writing a monthly home sales digest for {label}: ONE article of
 assessor data. This replaces the "keep it short" instruction above.
 
 STRUCTURE:
-- Open with the headline number: how many sales recorded and the median price.
+- Open with the headline number: how many sales recorded and the median price
+  (or, if the source data has a SAMPLE SIZE NOTE instead of a median, open
+  with the count and say plainly that the sample is too small to summarize
+  with a median -- never invent or estimate one anyway).
+- If VS LAST MONTH and/or VS SAME MONTH LAST YEAR figures are present in the
+  source data, mention how the median moved using those exact figures. If
+  neither is present, do not speculate about a trend at all -- no "the
+  market appears to be [rising/cooling]" without a real prior figure to
+  point to.
 - Use the ZIP code breakdown to say where activity concentrated, if it's
   informative (skip it if one ZIP dominates so heavily there's nothing to say).
 - Reference 2-3 of the top sales by address and price as concrete examples,
@@ -229,10 +282,13 @@ STRUCTURE:
 - Close by noting the data source and its lag (county records, updated
   quarterly) so readers understand this is a look back, not real-time.
 
-HARD RULE SPECIFIC TO THIS FORMAT:
-- This is a report of what was recorded, never investment or buying advice.
-  Do not suggest whether it's a good time to buy or sell, do not speculate on
-  future prices, do not use words like "should" about a reader's decisions.
+HARD RULES SPECIFIC TO THIS FORMAT:
+- This is a report of what was recorded, NEVER investment or buying advice.
+  Do not say or imply it's a good/bad time to buy or sell, do not tell the
+  reader (directly or as "buyers/sellers should...") what to do, do not
+  speculate on future prices, do not call anything a "smart investment," and
+  never use "should" about a reader's decision. Move percentages/dollar
+  changes are fine to report; recommendations based on them are not.
 - If the source data mentions sales excluded as likely non-market transfers,
   never call one of them the "lowest price" or otherwise fold it into the
   price range -- report the range as already computed in the source data.
@@ -240,13 +296,25 @@ HARD RULE SPECIFIC TO THIS FORMAT:
 Return ONLY the article text. No preamble, no title."""
 
 
-def template_fallback(stats: dict, label: str, cfg: dict) -> str:
+def template_fallback(stats: dict, label: str, cfg: dict, mom_stats: dict | None = None,
+                       mom_label: str | None = None, yoy_stats: dict | None = None,
+                       yoy_label: str | None = None) -> str:
     """Ren, korrekt sammanfattning när AI-vägen inte håller. Torr men sann."""
     town = cfg["display_name"]
     lines = [f"Riverside County recorded {stats['count']} home sale(s) in {town} for {label}."]
     if stats["median_price"] is not None:
         lines.append(f"The median recorded sale price was {_fmt_price(stats['median_price'])}, "
                      f"ranging from {_fmt_price(stats['min_price'])} to {_fmt_price(stats['max_price'])}.")
+        if mom_stats and mom_stats.get("median_price") is not None and mom_label:
+            pct = _pct_change(stats["median_price"], mom_stats["median_price"])
+            lines.append(f"That's {pct:+.1f}% versus {mom_label}'s median of {_fmt_price(mom_stats['median_price'])}.")
+        if yoy_stats and yoy_stats.get("median_price") is not None and yoy_label:
+            pct = _pct_change(stats["median_price"], yoy_stats["median_price"])
+            lines.append(f"Versus {yoy_label}, the median moved {pct:+.1f}% "
+                         f"(from {_fmt_price(yoy_stats['median_price'])}).")
+    elif stats.get("small_sample") and stats["priced_count"] > 0:
+        lines.append(f"Only {stats['priced_count']} priced sale(s) were recorded -- too small a "
+                     "sample to report a median or price range.")
     if stats["by_zip"]:
         lines.append("\nSales by ZIP code:")
         lines += [f"{z}: {c}" for z, c in stats["by_zip"].items()]
@@ -259,18 +327,21 @@ def template_fallback(stats: dict, label: str, cfg: dict) -> str:
     return "\n".join(lines)
 
 
-def generate(stats: dict, label: str, cfg: dict, client=None) -> tuple[str, str, bool]:
+def generate(stats: dict, label: str, cfg: dict, client=None, mom_stats: dict | None = None,
+             mom_label: str | None = None, yoy_stats: dict | None = None,
+             yoy_label: str | None = None) -> tuple[str, str, bool]:
     """Returnerar (text, generated_by, verified)."""
-    src = source_text(stats, label)
+    src = source_text(stats, label, mom_stats, mom_label, yoy_stats, yoy_label)
+    fallback = template_fallback(stats, label, cfg, mom_stats, mom_label, yoy_stats, yoy_label)
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
 
     if _spent_this_month() >= cap:
-        return template_fallback(stats, label, cfg), "template_fallback", True
+        return fallback, "template_fallback", True
 
     if client is None:
         if anthropic is None:
-            return template_fallback(stats, label, cfg), "template_fallback", True
+            return fallback, "template_fallback", True
         client = anthropic.Anthropic()
 
     model = resolve_model(SOURCE_TYPE, cfg)
@@ -292,25 +363,28 @@ def generate(stats: dict, label: str, cfg: dict, client=None) -> tuple[str, str,
     try:
         text = call()
         result = guardrails.validate(text, src, cfg)
+        advice_result = guardrails.check_no_financial_advice(text)
 
-        if not result.passed:
-            text = call("\n\nYour previous attempt included details not found in the "
-                        "source, or framed the numbers as advice. Rewrite using ONLY "
-                        "facts explicitly present in the SOURCE DATA, and report only.")
+        if not (result.passed and advice_result.passed):
+            text = call("\n\nYour previous attempt either included details not found in the "
+                        "source, or framed the numbers as advice (a recommendation about "
+                        "buying/selling, or addressed to the reader). Rewrite using ONLY "
+                        "facts explicitly present in the SOURCE DATA, describing what "
+                        "happened, never what a reader should do about it.")
             result = guardrails.validate(text, src, cfg)
+            advice_result = guardrails.check_no_financial_advice(text)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
-        return template_fallback(stats, label, cfg), "template_fallback", True
+        return fallback, "template_fallback", True
 
-    if result.passed and len(text.split()) >= MIN_WORDS:
+    if result.passed and advice_result.passed and len(text.split()) >= MIN_WORDS:
         return text, f"ai:{model}", True
 
-    reason = "guardrail" if not result.passed else "too short"
+    reason = "guardrail" if not result.passed else ("financial advice" if not advice_result.passed else "too short")
     print(f"  faller tillbaka på mall ({reason})")
-    if not result.passed:
-        for v in result.violations[:5]:
-            print(f"    - {v}")
-    return template_fallback(stats, label, cfg), "template_fallback", True
+    for v in (result.violations + advice_result.violations)[:5]:
+        print(f"    - {v}")
+    return fallback, "template_fallback", True
 
 
 def main() -> int:
@@ -364,7 +438,24 @@ def main() -> int:
                 continue
 
             stats = compute_stats(sales)
-            text, generated_by, verified = generate(stats, label, cfg)
+
+            # MoM/YoY comparison points -- Handoff §4.1/§4.2: only ever built
+            # from a REAL prior month's data. collect_month() on a month with
+            # no rows returns [], and compute_stats([]) already yields
+            # median_price=None, so "no data that month" and "data but too
+            # small a sample" both naturally suppress the comparison with no
+            # extra branching here -- see source_text()'s own gating.
+            mom_year, mom_month = (year, month - 1) if month > 1 else (year - 1, 12)
+            mom_stats = compute_stats(collect_month(conn, town_id, mom_year, mom_month))
+            mom_label = f"{month_name[mom_month]} {mom_year}"
+
+            yoy_stats = compute_stats(collect_month(conn, town_id, year - 1, month))
+            yoy_label = f"{month_name[month]} {year - 1}"
+
+            text, generated_by, verified = generate(
+                stats, label, cfg, mom_stats=mom_stats, mom_label=mom_label,
+                yoy_stats=yoy_stats, yoy_label=yoy_label,
+            )
             title = f"{cfg['display_name']} home sales: what sold in {label}"
 
             if args.dry_run:

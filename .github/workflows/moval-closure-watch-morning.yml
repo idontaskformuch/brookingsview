@@ -1,0 +1,47 @@
+name: moval-closure-watch-morning
+# Moreno Valley equivalent of closure-watch-morning.yml -- see that
+# workflow's own comment for the full reasoning (identical here).
+#
+# UTC time equals 5:30 AM Pacific DAYLIGHT Time, same "always at-or-before
+# 5:30 local, never after" logic as the Brookings job (4:30 AM Pacific
+# Standard Time in winter -- early but harmless, not late).
+
+on:
+  schedule:
+    - cron: "30 12 * * 1-5"
+  workflow_dispatch: {}
+
+jobs:
+  closure-watch-morning:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:       ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
+      USER_AGENT:         "morenovalleyview.com (contact: hello@morenovalleyview.com)"
+      AI_BUDGET_STATE:    ".ai_budget_moreno_valley_ca.json"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Refresh only weather_alerts + school_alerts
+        run: python -m scrapers.runner --config configs/moreno_valley_ca.json --only weather_alerts school_alerts
+      - name: Closure Watch (history + Watch-state prose)
+        run: python -m ai_pipeline.closure_watch_digest --config configs/moreno_valley_ca.json
+      - uses: actions/setup-node@v4
+      - name: Install site deps
+        working-directory: site
+        run: npm ci
+      - name: Build (Moreno Valley)
+        working-directory: site
+        env:
+          SITE_CITY: moreno_valley_ca
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx astro build
+      - name: Deploy to Cloudflare Workers (Moreno Valley)
+        working-directory: site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --env moreno_valley

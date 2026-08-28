@@ -35,6 +35,12 @@ jobs:
         run: python -m scrapers.runner --config configs/broomfield_co.json
       - name: Formatera och publicera stories (Stage 3 -> stories)
         run: python -m ai_pipeline.publish --config configs/broomfield_co.json
+      # Closure Watch -- see scrape.yml's identical step for the full
+      # comment. Disabled in configs/broomfield_co.json (see that file's own
+      # note), so this exits immediately here -- kept in the workflow so
+      # enabling the feature later needs no workflow edit.
+      - name: Closure Watch (history + Watch-state prose)
+        run: python -m ai_pipeline.closure_watch_digest --config configs/broomfield_co.json
       - uses: actions/setup-node@v4
       - name: Install site deps
         working-directory: site

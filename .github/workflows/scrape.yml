@@ -39,6 +39,15 @@ jobs:
         run: python -m scrapers.runner --config configs/brookings_sd.json
       - name: Formatera och publicera stories (Stage 3 -> stories)
         run: python -m ai_pipeline.publish --config configs/brookings_sd.json
+      # Closure Watch (Handoff: Information Hub Tier 1, Feature A): records
+      # confirmed-closure history and, only when the town is in the Watch
+      # state, tries a guardrailed AI paragraph. Piggybacks this existing
+      # 6-hour cycle rather than its own hourly cron -- see that workflow's
+      # own comment above for why hourly scraping was deliberately dropped,
+      # and Handoff §8 ("known risks") for why a new hourly job wasn't added
+      # here either. No-ops instantly if features.closure_watch is disabled.
+      - name: Closure Watch (history + Watch-state prose)
+        run: python -m ai_pipeline.closure_watch_digest --config configs/brookings_sd.json
       # DEPLOY FIX (se NEEDS-HUMAN-REVIEW.md): PAGES_DEPLOY_HOOK nedan pekar
       # på ett övergivet Cloudflare Pages-projekt -- sajten deployas numera
       # via Cloudflare Workers (site/wrangler.jsonc), som den gamla hooken

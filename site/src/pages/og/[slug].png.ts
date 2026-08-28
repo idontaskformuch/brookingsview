@@ -45,6 +45,12 @@ const SECTION_CARDS: { slug: string; title: string; kicker: string }[] = [
   ...(siteConfig.hasWorkplaceWatch ? [
     { slug: 'section-workplace-watch', title: `Worker Pulse — ${siteConfig.cityName}`, kicker: 'Worker Pulse' },
   ] : []),
+  ...(siteConfig.hasClosureWatch ? [
+    { slug: 'section-closure-watch', title: `School closures — ${siteConfig.cityName}`, kicker: 'Closure Watch' },
+  ] : []),
+  ...(siteConfig.hasNewInTown ? [
+    { slug: 'section-new-in-town', title: `New in Town — ${siteConfig.cityName}`, kicker: 'New in Town' },
+  ] : []),
   ...(isBrookings ? [
     { slug: 'section-farm-report', title: `Farm report — ${siteConfig.cityName}`, kicker: 'Farm report' },
   ] : []),

@@ -1,0 +1,63 @@
+name: closure-watch-morning
+# Targeted early-morning refresh for /closures (Handoff: Information Hub
+# Tier 1, Feature A) -- Brookings.
+#
+# The 6-hour scrape.yml cycle is right for the rest of the site (see that
+# workflow's own comment), but it's wrong for THIS page specifically: the
+# entire point of Closure Watch is being correct at the moment a parent
+# actually checks it, which is early morning on a school day -- a closure
+# announced at 5:45 AM has no business waiting for a cron boundary that
+# might not land until noon. Rather than moving the whole site to a tighter
+# cadence (the cost/aggressiveness tradeoff in scrape.yml's comment still
+# applies to everything else), this is a narrow, cheap extra run: only the
+# two data sources Closure Watch actually reads (weather_alerts,
+# school_alerts via --only), the digest script, then a normal build+deploy
+# of just this town. No ai_pipeline.publish (meetings/events/etc AI
+# formatting) -- not needed for this page and not worth the AI spend on a
+# second run per day.
+#
+# Schedule: weekdays only (closures only matter on school days), at a UTC
+# time equal to 5:30 AM Central Daylight Time -- deliberately the DAYLIGHT
+# offset, not standard, so the run lands at or BEFORE 5:30 AM local
+# year-round (4:30 AM Central Standard Time in winter, which is early but
+# harmless; the alternative -- picking the standard-time offset -- would run
+# at 6:30 AM local in summer, too late to matter).
+
+on:
+  schedule:
+    - cron: "30 10 * * 1-5"
+  workflow_dispatch: {}
+
+jobs:
+  closure-watch-morning:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:       ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
+      USER_AGENT:         "brookingsview.com (contact: hello@brookingsview.com)"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Refresh only weather_alerts + school_alerts
+        run: python -m scrapers.runner --config configs/brookings_sd.json --only weather_alerts school_alerts
+      - name: Closure Watch (history + Watch-state prose)
+        run: python -m ai_pipeline.closure_watch_digest --config configs/brookings_sd.json
+      - uses: actions/setup-node@v4
+      - name: Install site deps
+        working-directory: site
+        run: npm ci
+      - name: Build (Brookings)
+        working-directory: site
+        env:
+          SITE_CITY: brookings_sd
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx astro build
+      - name: Deploy to Cloudflare Workers (Brookings)
+        working-directory: site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --env brookings

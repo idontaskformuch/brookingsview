@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd, buildBreadcrumbJsonLd } from './article-jsonld';
+import {
+  buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd, buildBreadcrumbJsonLd,
+  buildFaqJsonLd, buildSchoolClosureNewsArticleJsonLd,
+} from './article-jsonld';
 
 const SITE_NAME = 'Moreno Valley View';
 const HERO_URL = 'https://morenovalleyview.com/og/culture_essay-2026-08-01.png';
@@ -191,5 +194,41 @@ describe('buildBreadcrumbJsonLd', () => {
     ];
     const result = buildBreadcrumbJsonLd(trail, 'https://example.com/s/alert-1/');
     expect((result.itemListElement as unknown[])).toHaveLength(2);
+  });
+});
+
+describe('buildFaqJsonLd', () => {
+  it('emits one Question/Answer pair per entry, in order', () => {
+    const result = buildFaqJsonLd([
+      { question: 'Is school closed today in Brookings?', answer: 'No closures have been announced today.' },
+      { question: 'How are closures announced in Brookings?', answer: 'Through the district’s own notification channel.' },
+    ]);
+    expect(result['@type']).toBe('FAQPage');
+    const entities = result.mainEntity as Record<string, unknown>[];
+    expect(entities).toHaveLength(2);
+    expect(entities[0].name).toBe('Is school closed today in Brookings?');
+    expect((entities[0].acceptedAnswer as Record<string, unknown>).text).toBe('No closures have been announced today.');
+  });
+});
+
+describe('buildSchoolClosureNewsArticleJsonLd', () => {
+  it('renders the district message verbatim as articleBody, never re-authored', () => {
+    const result = buildSchoolClosureNewsArticleJsonLd(
+      { title: 'District closed today', message: 'All schools are closed today due to weather.', postedAt: '2026-02-01T12:00:00.000Z' },
+      'https://brookingsview.com/closures/',
+      'Brookings View',
+    );
+    expect(result['@type']).toBe('NewsArticle');
+    expect(result.articleBody).toBe('All schools are closed today due to weather.');
+    expect(result.datePublished).toBe('2026-02-01T12:00:00.000Z');
+  });
+
+  it('falls back to a generic headline when the district gave no title', () => {
+    const result = buildSchoolClosureNewsArticleJsonLd(
+      { title: null, message: 'Two-hour delay today.', postedAt: '2026-02-01T12:00:00.000Z' },
+      'https://brookingsview.com/closures/',
+      'Brookings View',
+    );
+    expect(result.headline).toBe('School closure notice');
   });
 });

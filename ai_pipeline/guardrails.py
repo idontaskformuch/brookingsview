@@ -323,6 +323,181 @@ def validate_employer_hedging(text: str, employer_names: list[str]) -> Guardrail
     return GuardrailResult(passed=len(violations) == 0, violations=violations)
 
 
+# --- business attribution (New in Town) --------------------------------------
+
+def validate_business_attribution(text: str, business_names: list[str]) -> GuardrailResult:
+    """Every sentence naming a tracked local business must attribute its
+    claim to a source -- see Handoff: Information Hub Tier 1, Feature B §3.3
+    ("no sentence may assert a business fact without naming the source
+    publication"). Same word-based sentence-level shape as
+    validate_employer_hedging() above, reusing its _ATTRIBUTION_VERBS
+    directly -- but WITHOUT that function's additional "source word" half
+    (review/employee/glassdoor/...): those are Workplace Watch's fixed
+    review-site vocabulary, and New in Town cites arbitrary named news
+    outlets/blogs with no equivalent fixed list to require alongside the
+    verb. The attribution verb alone (reports, according to, says, notes,
+    ...) is the signal that a source is being cited here.
+
+    A single unattributed sentence claiming a business closed is exactly
+    the kind of error a real owner notices and complains about -- see
+    ai_pipeline/new_in_town_digest.py's own two-source rule for the other
+    half of that same protection.
+    """
+    violations: list[str] = []
+    low_names = [n.casefold() for n in business_names if n]
+    if not low_names:
+        return GuardrailResult(passed=True)
+
+    for sentence in _SENTENCE_SPLIT_RE.split(text):
+        low = sentence.casefold()
+        if not any(name in low for name in low_names):
+            continue
+        words = set(re.findall(r"[a-z']+", low))
+        if not (words & _ATTRIBUTION_VERBS):
+            violations.append(f"unattributed business claim: {sentence.strip()}")
+
+    return GuardrailResult(passed=len(violations) == 0, violations=violations)
+
+
+def check_no_verbatim_source_copy(generated_text: str, source_snippets: list[str],
+                                   min_words: int = 8) -> GuardrailResult:
+    """No MIN_WORDS+-word run from a source search-snippet description may
+    appear verbatim in generated_text -- see Handoff: Information Hub Tier 1,
+    Feature B §3.3 ("never reproduce a source's description verbatim, same
+    copyright rule that governs the events pipeline"). Word-tokenized on
+    both sides before comparing, so punctuation/spacing differences between
+    the source and a re-quoted fragment don't hide a real copy.
+    """
+    violations: list[str] = []
+    gen_words = " ".join(re.findall(r"[a-z']+", generated_text.casefold()))
+    for snippet in source_snippets:
+        if not snippet:
+            continue
+        snip_words = re.findall(r"[a-z']+", snippet.casefold())
+        for i in range(len(snip_words) - min_words + 1):
+            phrase = " ".join(snip_words[i:i + min_words])
+            if phrase and phrase in gen_words:
+                violations.append(f"verbatim copy from source ({min_words}+ words): {phrase!r}")
+                break  # one hit is enough to flag this snippet
+    return GuardrailResult(passed=len(violations) == 0, violations=violations)
+
+
+# --- no-prediction (Closure Watch) -------------------------------------------
+
+# Same word-based-not-fixed-phrase lesson as _REVIEW_SOURCE_WORDS/
+# _ATTRIBUTION_VERBS above: a literal banned-phrase list misses natural
+# rephrasings. Closure Watch's Watch-state text is the single highest-
+# liability content on the site (see Handoff: Information Hub Tier 1) -- a
+# parent acting on a wrong prediction is real harm, so this errs hard toward
+# over-rejecting into the static fallback rather than ever letting a
+# predictive sentence through.
+_PREDICTION_MODAL_WORDS = {
+    "will", "likely", "probably", "expect", "expects", "expecting", "expected",
+    "may", "might", "could", "should", "anticipate", "anticipated", "anticipates",
+}
+_PREDICTION_PHRASES = (
+    "chances are", "good chance", "keep the kids home", "keep kids home",
+    "plan for a snow day", "plan for a closure", "no school tomorrow",
+    "better safe than sorry",
+)
+_CLOSURE_NOUNS = {"school", "schools", "class", "classes", "district"}
+_CLOSURE_VERBS = {
+    "close", "closes", "closing", "closed",
+    "cancel", "cancels", "canceled", "cancelled", "cancelling",
+}
+_NEGATION_WORDS = {"no", "not", "n't", "never"}
+
+
+def check_no_prediction(text: str) -> GuardrailResult:
+    """Closure Watch's Watch-state paragraph must never assert or imply that
+    school WILL close, or hint at odds of closure -- only a real district
+    notice does that (see school_alerts / the page's Confirmed state). This
+    runs IN ADDITION to validate() -- see ai_pipeline/closure_watch_digest.py.
+
+    Two independent triggers per sentence:
+      1. a fixed predictive phrase ("keep the kids home", ...), or
+      2. a closure-topic word (school/class/district) sharing a sentence with
+         EITHER a closure/cancel verb OR a predictive modal (will/likely/
+         may/...), with no negation word anywhere in that sentence.
+
+    The negation check is deliberately coarse (any of no/not/n't/never
+    anywhere in the sentence, not tied grammatically to the closure claim) --
+    false negatives here just mean an over-cautious rejection into the static
+    fallback, which is the safe failure direction for this specific page.
+    """
+    violations: list[str] = []
+    for sentence in _SENTENCE_SPLIT_RE.split(text.strip()):
+        if not sentence:
+            continue
+        low = sentence.casefold()
+        words = set(re.findall(r"[a-z']+", low))
+
+        phrase_hit = next((p for p in _PREDICTION_PHRASES if p in low), None)
+        if phrase_hit:
+            violations.append(f"predictive phrase ({phrase_hit!r}): {sentence.strip()}")
+            continue
+
+        if words & _NEGATION_WORDS:
+            continue
+
+        has_closure_topic = bool(words & _CLOSURE_NOUNS)
+        if has_closure_topic and (words & _CLOSURE_VERBS):
+            violations.append(f"closure assertion: {sentence.strip()}")
+        elif has_closure_topic and (words & _PREDICTION_MODAL_WORDS):
+            violations.append(f"predictive modal near closure topic: {sentence.strip()}")
+
+    return GuardrailResult(passed=len(violations) == 0, violations=violations)
+
+
+# --- no-financial-advice (Housing Market) ------------------------------------
+
+# Same word-based-not-fixed-phrase philosophy as check_no_prediction above,
+# with a fixed-phrase list on top for idioms too specific to catch any other
+# way ("market is heating up" contains no advice verb or reader pronoun by
+# itself). See Handoff: Information Hub Tier 1, Feature C -- describing what
+# happened is fine, telling readers what to do with the largest purchase of
+# their lives is not.
+_FINANCIAL_ADVICE_PHRASES = (
+    "good time to buy", "good time to sell", "great time to buy", "great time to sell",
+    "best time to buy", "best time to sell", "now is the time",
+    "smart investment", "good investment", "worth investing", "solid investment",
+    "market is heating up", "market is cooling down", "market is on fire",
+    "buyers should", "sellers should", "homeowners should", "you'll want to",
+)
+# A sentence that both addresses the reader directly AND uses a decision verb
+# is advice, full stop -- news reporting never tells "you" what to do.
+_READER_PRONOUNS = {"you", "your", "you're", "youre", "yours"}
+# A sentence that pairs a decision verb with a transaction word is
+# recommendation-shaped even without a direct "you" ("sellers should list now").
+_ADVICE_VERBS = {"should", "consider", "considering", "invest", "invests", "investing"}
+_TRANSACTION_WORDS = {"buy", "buying", "sell", "selling", "invest", "investing", "list", "listing"}
+
+
+def check_no_financial_advice(text: str) -> GuardrailResult:
+    """Housing Market's monthly digest must describe what happened, never
+    recommend what a reader should do about it -- see
+    ai_pipeline/home_sales_digest.py. Runs IN ADDITION to validate().
+    """
+    violations: list[str] = []
+    for sentence in _SENTENCE_SPLIT_RE.split(text.strip()):
+        if not sentence:
+            continue
+        low = sentence.casefold()
+        words = set(re.findall(r"[a-z']+", low))
+
+        phrase_hit = next((p for p in _FINANCIAL_ADVICE_PHRASES if p in low), None)
+        if phrase_hit:
+            violations.append(f"financial-advice phrase ({phrase_hit!r}): {sentence.strip()}")
+            continue
+
+        if (words & _READER_PRONOUNS) and (words & _ADVICE_VERBS):
+            violations.append(f"advice directed at the reader: {sentence.strip()}")
+        elif (words & _ADVICE_VERBS) and (words & _TRANSACTION_WORDS):
+            violations.append(f"recommendation-shaped statement: {sentence.strip()}")
+
+    return GuardrailResult(passed=len(violations) == 0, violations=violations)
+
+
 # Ord som skulle plockas ut av regexen nedan men som är för generiska/vanliga
 # för att fungera som ett eget förbjudet nyckelord -- de råkar bara stå i en
 # never_publish-beskrivning tillsammans med det faktiskt känsliga ordet

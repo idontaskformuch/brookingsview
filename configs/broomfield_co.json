@@ -220,6 +220,36 @@
       "_notes": "Employer set: Vail Resorts, Ball Corporation, Noodles & Company (see data/employers/broomfield_co.json). Same Brave Search + hedging-guardrail mechanism as Moreno Valley's employers (Amazon/Skechers/Ross/Deckers/ALDI) -- reused as-is. ai_pipeline/workplace_watch_digest.py's Brave Search queries and grounding text were hardcoded to 'Moreno Valley' specifically; fixed 2026-08-26 to read the town's own display_name/state from cfg instead, so this works correctly for Broomfield without a Broomfield-specific code branch. Do not use Vail Resorts', Ball's, or Noodles' logos/brand marks anywhere on the site -- factual, attributed news coverage is fine, implying affiliation is not."
     }
   },
+  "features": {
+    "closure_watch": {
+      "enabled": false,
+      "districts": [],
+      "weather_zones": ["COC014"],
+      "relevant_alert_events": [
+        "Winter Storm Warning",
+        "Blizzard Warning",
+        "Ice Storm Warning",
+        "Extreme Cold Warning",
+        "Winter Weather Advisory"
+      ],
+      "min_historical_closures_for_watch": { "default": 0 },
+      "_notes": "Handoff: Information Hub Tier 1, Feature A. Stays enabled:false -- both of Broomfield's school-district sources (school_alerts_adams12, school_alerts_bvsd above) are confirmed dead ends (active bot-blocking / no live feed), so there is no real closure data to surface. weather_zones/relevant_alert_events/min_historical_closures_for_watch are pre-filled for shape-consistency with the other two towns, but do NOT read this as 'flip enabled:true when ready' -- that flag is not the actual blocker. The Confirmed and Watch states both depend on a real district notice feed existing at all (school_alerts rows), and neither Adams 12 nor Boulder Valley currently exposes one to this codebase (see the two dead-end sources above). Flipping this flag today would produce a page permanently stuck in the Clear state -- technically not wrong, but pointless. Enabling it for real requires one of those districts to provide a working feed first, not just this edit."
+    },
+    "new_in_town": {
+      "enabled": false,
+      "search_terms": ["new restaurant", "now open", "grand opening", "permanently closed"],
+      "location_qualifiers": ["Broomfield CO", "Broomfield Colorado"],
+      "max_searches_per_run": 8,
+      "monthly_request_ceiling": 40,
+      "run_cadence": "weekly",
+      "_notes": "Handoff: Information Hub Tier 1, Feature B. Config surface only -- the Brave-search-and-summarize pipeline (local_businesses table, weekly digest) isn't built yet. Stays enabled:false until that pipeline exists."
+    },
+    "housing_market": {
+      "enabled": false,
+      "sales_source": null,
+      "_notes": "Handoff: Information Hub Tier 1, Feature C. Descoped per _verify_before_launch above -- no bulk sales-report source for Broomfield, only a per-parcel EagleWeb lookup portal."
+    }
+  },
   "_verify_before_launch": [
     "DONE 2026-08-27: city_meetings = AgendaLink, client slug 'broomfield'. Parser (agendalink_v1.py) built and verified live: 29 real meetings scraped, a real test-published story confirmed substantive content. enabled:true.",
     "CONFIRMED 2026-08-26: weather/weather_alerts = standard NOAA/NWS, zone COC014, office BOU. Ready to enable as-is.",

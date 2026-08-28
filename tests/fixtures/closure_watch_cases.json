@@ -1,0 +1,58 @@
+[
+  {
+    "name": "clear_when_no_closure_and_no_alert",
+    "hasClosure": false,
+    "hasAlert": false,
+    "historicalCount": 0,
+    "minRequired": 0,
+    "expectedState": "clear"
+  },
+  {
+    "name": "watch_when_alert_active_and_threshold_inert",
+    "hasClosure": false,
+    "hasAlert": true,
+    "historicalCount": 0,
+    "minRequired": 0,
+    "expectedState": "watch"
+  },
+  {
+    "name": "confirmed_wins_over_an_active_alert",
+    "hasClosure": true,
+    "hasAlert": true,
+    "historicalCount": 5,
+    "minRequired": 0,
+    "expectedState": "confirmed"
+  },
+  {
+    "name": "zero_correlation_downgrades_watch_to_clear_once_threshold_is_set",
+    "hasClosure": false,
+    "hasAlert": true,
+    "historicalCount": 0,
+    "minRequired": 1,
+    "expectedState": "clear"
+  },
+  {
+    "name": "meeting_the_threshold_stays_in_watch",
+    "hasClosure": false,
+    "hasAlert": true,
+    "historicalCount": 2,
+    "minRequired": 1,
+    "expectedState": "watch"
+  },
+  {
+    "name": "inert_default_threshold_never_suppresses_watch_regardless_of_history",
+    "hasClosure": false,
+    "hasAlert": true,
+    "historicalCount": 0,
+    "minRequired": 0,
+    "expectedState": "watch"
+  },
+  {
+    "name": "confirmed_wins_even_with_no_alert_at_all",
+    "hasClosure": true,
+    "hasAlert": false,
+    "historicalCount": 0,
+    "minRequired": 0,
+    "expectedState": "confirmed"
+  }
+]

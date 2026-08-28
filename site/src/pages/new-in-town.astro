@@ -1,0 +1,121 @@
+---
+/** New in Town -- gated on siteConfig.hasNewInTown (same pattern as
+ *  workplace-watch/index.astro, closures.astro). Lists confirmed local
+ *  business openings/closings from local_businesses -- see
+ *  lib/db.ts:getLocalBusinesses() and ai_pipeline/new_in_town_digest.py.
+ *
+ *  needs_review=true rows are already excluded at the query level
+ *  (getLocalBusinesses' own WHERE clause) -- a 'closed' claim with only one
+ *  source is invisible here until a second, independent source confirms it
+ *  (see that module's two-source rule). This page never second-guesses
+ *  that filter; it has nothing to render for a row it never receives.
+ *
+ *  Individual businesses do NOT get their own pages (Handoff §3.5: "Thin
+ *  pages hurt more than they help at this stage") -- this is the one and
+ *  only page for this feature, plus the weekly roundup story at its normal
+ *  /s/[slug]/ permalink.
+ *
+ *  No SectionHero: none of lib/images.ts's existing ImageCategory pools
+ *  (city_hall/events/jobs/...) are a real thematic fit for "local
+ *  storefronts," and this codebase's own rule is to never guess a photo
+ *  category rather than source a new one carelessly -- see
+ *  config/category-images.ts's sourcing discipline. Revisit once a real
+ *  local_businesses-shaped photo pool exists.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import RelatedContent from '../components/RelatedContent.astro';
+import ShareButton from '../components/ShareButton.astro';
+import { getLocalBusinesses } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
+import { SECTION_THEME } from '../lib/section-theme';
+
+if (!siteConfig.hasNewInTown) {
+  return Astro.redirect('/', 302);
+}
+
+const businesses = await getLocalBusinesses();
+const title = `New in Town — ${siteConfig.cityName}`;
+const description = `Recent local business openings and closings in ${siteConfig.cityName}, each cited to a real published source -- never a guess.`;
+const canonicalUrl = new URL('/new-in-town/', Astro.site ?? siteConfig.siteUrl).href;
+
+const STATUS_LABEL: Record<string, string> = { opened: 'Now open', opening_soon: 'Opening soon', closed: 'Closed' };
+
+const itemListJsonLd = businesses.length > 0 ? {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: title,
+  itemListElement: businesses.map((b, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: b.name,
+  })),
+} : null;
+---
+<BaseLayout title={title} wide description={description} ogSlug="section-new-in-town" accentColor={SECTION_THEME.new_in_town.accent}>
+  <header class="nit-hero">
+    <h1>🏪 New in Town</h1>
+    <p class="tagline">
+      Recent business openings and closings in {siteConfig.cityName}, found via public search
+      and cited to a real, published source -- never a guess. A closure needs two independent
+      sources before it shows up here.
+    </p>
+    <ShareButton title={title} url={canonicalUrl} />
+  </header>
+
+  {businesses.length > 0 ? (
+    <ul class="nit-list">
+      {businesses.map((b) => (
+        <li class={`nit-item nit-item--${b.status}`}>
+          <span class="nit-status">{STATUS_LABEL[b.status]}</span>
+          <span class="nit-name">{b.name}</span>
+          {b.category && <span class="nit-category">{b.category}</span>}
+          {b.address && <span class="nit-address">{b.address}</span>}
+          <a class="nit-source" href={b.source_url} rel="noopener">via {b.source_name} &rarr;</a>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty">No confirmed openings or closings yet -- check back soon.</p>
+  )}
+
+  <RelatedContent pageType="new_in_town" />
+
+  {itemListJsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
+  )}
+</BaseLayout>
+
+<style>
+.nit-hero {
+  max-width: 46rem; margin: 0 auto 1.5rem; text-align: center;
+  border-bottom: 3px solid var(--section-accent, var(--rule-strong));
+  padding-bottom: 1.125rem;
+}
+.nit-hero h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+.tagline { color: var(--ink-soft); line-height: 1.6; }
+
+.nit-list { list-style: none; margin: 0 auto; padding: 0; max-width: 46rem; }
+.nit-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.25rem 0.75rem;
+  align-items: baseline;
+  padding: 0.875rem 0;
+  border-top: 1px solid var(--rule);
+}
+.nit-item:first-child { border-top: none; }
+.nit-status {
+  font-family: var(--font-ui); font-size: 0.6875rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 0.125rem 0.5rem; border-radius: 999px; white-space: nowrap;
+}
+.nit-item--opened .nit-status { background: #146b3622; color: #146b36; }
+.nit-item--opening_soon .nit-status { background: #8a4a0a22; color: #8a4a0a; }
+.nit-item--closed .nit-status { background: #b3261e22; color: #b3261e; }
+.nit-name { font-family: var(--font-head); font-weight: 700; font-size: 1.0625rem; grid-column: 2; }
+.nit-category { grid-column: 2; font-size: 0.8125rem; color: var(--ink-soft); }
+.nit-address { grid-column: 2; font-size: 0.8125rem; color: var(--ink-soft); }
+.nit-source { grid-column: 2; font-size: 0.8125rem; margin-top: 0.125rem; }
+
+.empty { text-align: center; color: var(--ink-soft); max-width: 46rem; margin: 0 auto; }
+</style>

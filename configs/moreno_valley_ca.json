@@ -376,6 +376,34 @@
       "_notes": "VERIFIERAD 2026-08-10 live mot Adzuna Job Search API (api.adzuna.com) med riktiga ADZUNA_APP_ID/ADZUNA_APP_KEY (ENDAST i .env/GitHub-secrets, aldrig i denna fil). Gratisnivå ~1000 anrop/månad (~33/dag) -- refresh_minutes: 1440 (ett dygn) garanterar ETT anrop/ort/dag trots att scrape.yml/moval-scrape.yml kör varje timme, se runner.py:s nya refresh_minutes-spärr (db.last_run_at) och jobs_v1.py:s moduldocstring. results_per_page/max_pages hålls lågt av samma kvotskäl."
     }
   },
+  "features": {
+    "closure_watch": {
+      "enabled": true,
+      "districts": ["Moreno Valley Unified School District"],
+      "weather_zones": ["CAC065"],
+      "relevant_alert_events": [
+        "Red Flag Warning",
+        "Fire Weather Watch",
+        "Air Quality Alert"
+      ],
+      "min_historical_closures_for_watch": { "default": 0, "Air Quality Alert": 1 },
+      "_notes": "Handoff: Information Hub Tier 1, Feature A. Not a new data source -- reads the already-live school_alerts (Finalsite) and weather_alerts (NWS, area CAC065) sources above. NARROWED 2026-08-28: heat and winter-storm events were removed from relevant_alert_events -- MVUSD schools are AC-equipped and don't close for heat, so an Excessive Heat Warning would have put the page in Watch state on nearly every summer day with essentially zero correlated closures, teaching readers to ignore it (worse than no page at all). Fire and smoke/air-quality events are the real closure driver here. Note PSPS (utility power shutoffs) is NOT an NWS alert type and isn't covered by this source at all -- a real gap, not solved by this config, flag for a future dedicated source if it becomes a recurring closure cause. MEASURED 2026-08-28 against the real DB: Air Quality Alert fired on 6 of the last 36 days of actual scrape history (~17%) with zero confirmed closures ever recorded for this district -- the exact same over-triggering risk heat had, just a different event. A severity floor was considered and rejected: every real Air Quality Alert row in this DB has raw_data.severity='Unknown' (NWS/AirNow doesn't populate it meaningfully for this alert type), so there is no usable signal to threshold on. Instead min_historical_closures_for_watch is now a PER-EVENT map (was a single town-wide int) so Air Quality Alert alone requires 1 real closure_history match before it can reach Watch -- with zero history today, it renders Clear until a real correlation is recorded. Red Flag Warning/Fire Weather Watch stay at the 'default' (0, inert) since they're rarer and more clearly actionable even without history yet -- revisit both floors once closure_history actually has rows for this town."
+    },
+    "new_in_town": {
+      "enabled": false,
+      "search_terms": ["new restaurant", "now open", "grand opening", "permanently closed"],
+      "location_qualifiers": ["Moreno Valley CA", "Moreno Valley California"],
+      "max_searches_per_run": 8,
+      "monthly_request_ceiling": 40,
+      "run_cadence": "weekly",
+      "_notes": "Handoff: Information Hub Tier 1, Feature B. Config surface only -- the Brave-search-and-summarize pipeline (local_businesses table, weekly digest) isn't built yet. Stays enabled:false until that pipeline exists."
+    },
+    "housing_market": {
+      "enabled": true,
+      "sales_source": "riverside-county-assessor",
+      "_notes": "Handoff: Information Hub Tier 1, Feature C. Presentation layer over the already-live property_sales data source above (Riverside County Assessor quarterly file) -- the only town with real sales data today. /home-sales stays as the raw table; this adds the narrative monthly read on top."
+    }
+  },
   "_verify_before_launch": [
     "KLART: stadsfullmäktige = eSCRIBE (pub-morenovalley.escribemeetings.com), inte Legistar -- verifierat 2026-07-23, se city_meetings._notes och escribe_v1.py.",
     "KLART: stadens evenemangskalender = Tockify (city.of.moreno.valley), ICS-feed verifierad live.",

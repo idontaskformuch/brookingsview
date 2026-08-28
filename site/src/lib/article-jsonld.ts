@@ -206,6 +206,60 @@ export interface BreadcrumbEntry {
   href: string;
 }
 
+/**
+ * FAQPage structured data -- used by /closures (Handoff: Information Hub
+ * Tier 1, Feature A §2.5) for the literal, urgent questions people search
+ * ("is school closed today in {town}?"). Generic enough for any future page
+ * that wants the same treatment; not closure-specific despite the one
+ * current caller.
+ */
+export interface FaqEntry {
+  question: string;
+  answer: string;
+}
+
+export function buildFaqJsonLd(entries: FaqEntry[]): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: entries.map((e) => ({
+      '@type': 'Question',
+      name: e.question,
+      acceptedAnswer: { '@type': 'Answer', text: e.answer },
+    })),
+  };
+}
+
+/**
+ * NewsArticle markup for a CONFIRMED school closure notice (Closure Watch's
+ * Confirmed state) -- distinct from buildArticleJsonLd above because this
+ * content isn't a `stories` row: it's the district's own school_alerts
+ * message, rendered verbatim (see closures.astro / SchoolAlertBanner.astro),
+ * never AI-formatted. NewsArticle is still the right type -- it's a real,
+ * dated, factual news notice -- just sourced from a different table.
+ */
+export interface SchoolClosureNewsArticleInput {
+  title: string | null;
+  message: string;
+  postedAt: string;
+}
+
+export function buildSchoolClosureNewsArticleJsonLd(
+  closure: SchoolClosureNewsArticleInput, canonicalUrl: string, siteName: string,
+): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: closure.title || 'School closure notice',
+    datePublished: closure.postedAt,
+    dateModified: closure.postedAt,
+    articleBody: closure.message,
+    url: canonicalUrl,
+    author: { '@type': 'Organization', name: siteName },
+    publisher: { '@type': 'Organization', name: siteName },
+  };
+}
+
 export function buildBreadcrumbJsonLd(trail: BreadcrumbEntry[], pageUrl: string): Record<string, unknown> {
   const origin = new URL(pageUrl).origin;
   return {

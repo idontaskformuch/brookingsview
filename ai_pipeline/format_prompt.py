@@ -235,16 +235,27 @@ no real value, never emit an empty string):
 "registration": "..."}}}}"""
 
 
+def strip_json_fence(raw: str) -> str:
+    """Models sometimes wrap a requested-JSON-only response in a ```json ...
+    ``` markdown fence despite explicit instructions not to -- observed
+    repeatedly enough across different prompts/content types that this is
+    pulled out as its own function rather than re-inlined at every new call
+    site that parses a JSON response (see ai_pipeline/new_in_town_digest.py
+    for another caller). Strip before json.loads(), always."""
+    text = raw.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+    return text
+
+
 def parse_tone_v2_response(raw: str) -> tuple[str, dict] | None:
     """Parses the model's {summary, meta} JSON. Returns None (never raises)
     on anything malformed -- format_record() below treats that exactly like
     a guardrail rejection: a strict retry, then template fallback. A
     response that ignored the JSON-only instruction is a generation-quality
     failure, not a code bug worth crashing the batch over."""
-    text = raw.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
+    text = strip_json_fence(raw)
     try:
         obj = json.loads(text)
     except ValueError:
@@ -328,6 +339,9 @@ CONTENT_TYPE_MODELS: dict[str, str] = {
     "jackrabbits_season_summary": "claude-haiku-4-5-20251001",
     "university_digest": "claude-haiku-4-5-20251001",
     "workplace_watch_digest": "claude-haiku-4-5-20251001",
+    "closure_watch": "claude-haiku-4-5-20251001",
+    "new_in_town_extraction": "claude-haiku-4-5-20251001",
+    "new_in_town_digest": "claude-haiku-4-5-20251001",
     "weekly": "claude-haiku-4-5-20251001",
     "meeting": "claude-haiku-4-5-20251001",
     "event": "claude-haiku-4-5-20251001",

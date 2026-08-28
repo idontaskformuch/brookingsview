@@ -19,6 +19,7 @@
  */
 import { neon } from '@neondatabase/serverless';
 import { siteConfig } from './site-config';
+import { computeClosureWatchState, type ClosureWatchStatus, type WeatherAlert } from './closure-watch';
 
 const sql = neon(import.meta.env.DATABASE_URL);
 
@@ -32,7 +33,7 @@ export type SourceType =
   | 'meeting' | 'meeting_followup' | 'event' | 'alert' | 'weekly'
   | 'culture_essay' | 'editorial' | 'vetenskap_kronika' | 'kvick_essa'
   | 'media_recension' | 'vardagsmiddag' | 'home_sales_digest' | 'sports_digest' | 'local_sports_digest' | 'university_digest'
-  | 'announcement' | 'workplace_watch_digest' | 'jackrabbits_season_summary';
+  | 'announcement' | 'workplace_watch_digest' | 'jackrabbits_season_summary' | 'new_in_town_digest';
 
 /** Presentation-layer label per source_type, för Byline-raden. Ingen egen DB-kolumn --
  *  category är en ren funktion av source_type, inget som behöver lagras separat. */
@@ -53,6 +54,7 @@ export const CATEGORY_LABELS: Partial<Record<SourceType, string>> = {
   // att falla tillbaka på "Events".
   announcement: 'Announcement',
   workplace_watch_digest: 'Worker Pulse',
+  new_in_town_digest: 'New in Town',
   // Fas 2.3 (breadcrumbs, see NEEDS-HUMAN-REVIEW.md): the remaining
   // source_types that get their own /s/[slug]/ page but weren't in this
   // map before -- StoryCard.astro already computes its own "Events"/"City
@@ -601,7 +603,7 @@ export async function getRelatedStories(
  */
 export type RelatedPageType =
   | 'traffic' | 'events' | 'university' | 'workplace_watch'
-  | 'city_hall' | 'jobs' | 'home_sales' | 'vail_news';
+  | 'city_hall' | 'jobs' | 'home_sales' | 'vail_news' | 'closure_watch' | 'new_in_town';
 
 export interface RelatedItem {
   href: string;
@@ -673,12 +675,27 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
     if (closure) {
       items.push({ href: closure.url || '/events/', title: closure.title || 'School closure alert', kicker: 'School alert', description: closure.district });
     }
+    if (siteConfig.hasClosureWatch) {
+      items.push({ href: '/closures/', title: 'Closure Watch', kicker: 'Closure Watch', description: 'Active weather alerts and what they mean for school closures.' });
+    }
     // Fas 2 (SEO hub-linking, see NEEDS-HUMAN-REVIEW.md): roadwork and
     // closure decisions come out of city council/county commission
     // meetings -- no keyword classifier exists to pick out a specific
     // "roadwork" meeting from the rest, so this links the hub itself
     // rather than guessing at one meeting's relevance.
     items.push({ href: '/city-hall/', title: 'City hall', kicker: 'City hall', description: 'Council and commission decisions on roads, permits and closures.' });
+    if (gameItem) items.push(gameItem);
+  } else if (pageType === 'closure_watch') {
+    items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
+    items.push({ href: '/events/', title: "What's on", kicker: 'Events', description: 'Community events this week.' });
+    items.push({ href: '/city-hall/', title: 'City hall', kicker: 'City hall', description: 'Council and commission decisions, including school-district-adjacent items.' });
+    if (gameItem) items.push(gameItem);
+  } else if (pageType === 'new_in_town') {
+    const digest = await latestStoryByType('new_in_town_digest');
+    if (digest) items.push(digest);
+    items.push({ href: '/jobs/', title: 'Jobs', kicker: 'Jobs', description: `Current listings in and near ${siteConfig.cityName}.` });
+    items.push({ href: '/events/', title: "What's on", kicker: 'Events', description: 'Community events this week.' });
+    items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
     if (gameItem) items.push(gameItem);
   } else if (pageType === 'events') {
     items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
@@ -823,6 +840,114 @@ export async function getActiveSchoolAlerts(maxAgeDays = 3): Promise<SchoolAlert
        AND posted_at >= now() - (${maxAgeDays} || ' days')::interval
      ORDER BY posted_at DESC
   `) as SchoolAlert[];
+}
+
+/** Active NWS alerts from the raw events table (source='nws_alert'), scoped
+ *  to the alert-event names Closure Watch actually cares about (see
+ *  siteConfig.closureWatch.relevantAlertEvents / configs/<town_id>.json's
+ *  features.closure_watch.relevant_alert_events). Reads the RAW row, not the
+ *  AI-formatted 'alert'-type story (see ai_pipeline/publish.py) -- the state
+ *  machine needs the exact NWS event name for a deterministic match, and
+ *  "not a new data source" (Handoff Feature A §2.2) means no AI in this
+ *  path at all. */
+async function getActiveWeatherAlerts(relevantEvents: string[]): Promise<WeatherAlert[]> {
+  if (relevantEvents.length === 0) return [];
+  const rows = (await sql`
+    SELECT title, venue, url, starts_at, ends_at, raw_data
+      FROM events
+     WHERE town_id = ${TOWN_ID} AND source = 'nws_alert'
+       AND title = ANY(${relevantEvents})
+       AND (ends_at IS NULL OR ends_at >= now())
+     ORDER BY starts_at DESC
+  `) as { title: string; venue: string | null; url: string | null; starts_at: string; ends_at: string | null; raw_data: Record<string, unknown> | null }[];
+  return rows.map((r) => ({
+    event: r.title,
+    areaDesc: r.venue,
+    url: r.url,
+    startsAt: r.starts_at,
+    endsAt: r.ends_at,
+    headline: (r.raw_data?.headline as string) ?? null,
+    description: (r.raw_data?.description as string) ?? null,
+    instruction: (r.raw_data?.instruction as string) ?? null,
+  }));
+}
+
+async function closureHistoryCount(alertEvent: string): Promise<number> {
+  const rows = (await sql`
+    SELECT count(*)::int AS n FROM closure_history
+     WHERE town_id = ${TOWN_ID} AND alert_event = ${alertEvent}
+  `) as { n: number }[];
+  return rows[0]?.n ?? 0;
+}
+
+/** The optional AI-generated Watch-state paragraph for a specific alert --
+ *  see ai_pipeline/closure_watch_digest.py. A missing row (no guardrail-
+ *  passing draft exists yet, or one was tried and rejected) is the expected,
+ *  common case, not an error -- closures.astro falls back to a fully static
+ *  Watch template in that case, see that page's own hardcoded copy. */
+async function getClosureWatchProse(alertUrl: string): Promise<string | null> {
+  const rows = (await sql`
+    SELECT body FROM closure_watch_prose
+     WHERE town_id = ${TOWN_ID} AND alert_url = ${alertUrl}
+     LIMIT 1
+  `) as { body: string }[];
+  return rows[0]?.body ?? null;
+}
+
+/**
+ * Closure Watch's full page-render data: the state (Confirmed/Watch/Clear,
+ * see lib/closure-watch.ts) plus the optional AI prose for a Watch alert.
+ * Callers must already be town-gated (siteConfig.hasClosureWatch), same
+ * pattern as getRelatedContent's 'university'/'workplace_watch' cases --
+ * this throws if siteConfig.closureWatch is missing rather than silently
+ * defaulting, since that would mean the two config systems drifted (see
+ * tests/test_feature_flags.py, which should have already caught that).
+ */
+export async function getClosureWatchStatus(): Promise<ClosureWatchStatus & { prose: string | null }> {
+  const feat = siteConfig.closureWatch;
+  if (!feat) throw new Error('getClosureWatchStatus() called but siteConfig.closureWatch is not set');
+
+  const [closures, alerts] = await Promise.all([
+    getActiveSchoolAlerts(),
+    getActiveWeatherAlerts(feat.relevantAlertEvents),
+  ]);
+  const alert = alerts[0] ?? null;
+  const historicalCount = alert ? await closureHistoryCount(alert.event) : 0;
+  const minRequired = alert
+    ? feat.minHistoricalClosuresForWatch[alert.event] ?? feat.minHistoricalClosuresForWatch.default ?? 0
+    : 0;
+  const status = computeClosureWatchState(closures, alert, historicalCount, minRequired);
+
+  const prose = status.state === 'watch' && status.alert ? await getClosureWatchProse(status.alert.url ?? '') : null;
+  return { ...status, prose };
+}
+
+/** En rad ur local_businesses -- se db/migrations/031_local_businesses.sql
+ *  och ai_pipeline/new_in_town_digest.py. Bara needs_review=false rader
+ *  läses här: en 'closed'-uppgift med bara en källa är avsiktligt osynlig
+ *  för sajten tills en andra, oberoende källa bekräftat den (se den
+ *  modulens moduldocstring för hela tvåkälls-regeln) -- denna funktion är
+ *  den enda platsen render-vägen läser tabellen, så det finns bara ETT
+ *  ställe att komma ihåg det filtret. */
+export interface LocalBusiness {
+  name: string;
+  category: string | null;
+  status: 'opened' | 'opening_soon' | 'closed';
+  address: string | null;
+  source_url: string;
+  source_name: string;
+  reported_date: string | null;
+  first_seen: string;
+}
+
+export async function getLocalBusinesses(limit = 60): Promise<LocalBusiness[]> {
+  return (await sql`
+    SELECT name, category, status, address, source_url, source_name, reported_date, first_seen
+      FROM local_businesses
+     WHERE town_id = ${TOWN_ID} AND needs_review = false
+     ORDER BY first_seen DESC
+     LIMIT ${limit}
+  `) as LocalBusiness[];
 }
 
 /** En rad ur traffic_incidents -- se db/migrations/011_traffic_incidents.sql

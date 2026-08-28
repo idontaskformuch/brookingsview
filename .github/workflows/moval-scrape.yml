@@ -33,6 +33,9 @@ jobs:
         run: python -m scrapers.runner --config configs/moreno_valley_ca.json
       - name: Formatera och publicera stories (Stage 3 -> stories)
         run: python -m ai_pipeline.publish --config configs/moreno_valley_ca.json
+      # Closure Watch -- see scrape.yml's identical step for the full comment.
+      - name: Closure Watch (history + Watch-state prose)
+        run: python -m ai_pipeline.closure_watch_digest --config configs/moreno_valley_ca.json
       # DEPLOY FIX (se NEEDS-HUMAN-REVIEW.md): PAGES_DEPLOY_HOOK_MOVAL nedan
       # pekar på ett övergivet Cloudflare Pages-projekt -- sajten deployas
       # numera via Cloudflare Workers (site/wrangler.jsonc), som den gamla

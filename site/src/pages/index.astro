@@ -51,8 +51,12 @@ const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame
   getActiveTrafficIncidents(),
   // 'announcement' (t.ex. spellanseringen) ska in i SAMMA Today/This week-
   // ström som event/meeting -- inte en egen sektion för en enstaka
-  // handskriven post, se lib/db.ts:SourceType.
-  getUpcomingStories(['event', 'meeting', 'announcement'], 40),
+  // handskriven post, se lib/db.ts:SourceType. 'new_in_town_digest'
+  // (Handoff: Information Hub Tier 1, Feature B) tillagd här av samma skäl
+  // -- utan detta skulle veckans New in Town-roundup vara osynlig på
+  // förstasidan trots att den publiceras korrekt i stories, EXAKT samma
+  // bugg som en gång hände med 'announcement' innan den lades till här.
+  getUpcomingStories(['event', 'meeting', 'announcement', 'new_in_town_digest'], 40),
   getUpcomingGames(3),
   getNextRegionalGame(),
   getNextSdsuMarqueeEvent(),

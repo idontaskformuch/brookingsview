@@ -76,6 +76,45 @@ export interface SiteConfig {
    *  that happen to share the same `isMorenoValley` boolean in BaseLayout/
    *  index.astro/og/[slug].png.ts. */
   hasWorkplaceWatch?: boolean;
+  /** Whether configs/<town_id>.json's features.closure_watch.enabled is true --
+   *  gates the /closures page and its nav link. Same reasoning as
+   *  hasWorkplaceWatch above: a dedicated flag rather than reusing the
+   *  isBrookings/isMorenoValley/isBroomfield booleans, since Closure Watch is
+   *  keyed on "does this town have a real school_alerts + weather_alerts
+   *  source", not on town identity. Keep this in sync with that config file
+   *  by hand -- tests/test_feature_flags.py asserts they match. */
+  hasClosureWatch?: boolean;
+  /** Mirrors configs/<town_id>.json's features.new_in_town.enabled. See
+   *  hasClosureWatch above for the sync requirement. */
+  hasNewInTown?: boolean;
+  /** Mirrors configs/<town_id>.json's features.housing_market.enabled. See
+   *  hasClosureWatch above for the sync requirement. */
+  hasHousingMarket?: boolean;
+  /** Closure Watch's operational parameters -- mirrors configs/<town_id>.json's
+   *  features.closure_watch (districts/weather_zones excluded here since
+   *  school_alerts/events are already scoped by town_id at scrape/query
+   *  time; only what closures.astro's render-time SQL and copy actually
+   *  need are duplicated, same "duplicate across layers" tradeoff as
+   *  localTheaters/home-sales.ts's OUTLIER_PRICE_FLOOR). Present only when
+   *  hasClosureWatch is true -- keep in sync with that config file by hand,
+   *  tests/test_feature_flags.py only checks the enabled/disabled flag
+   *  itself, not these values. districtUrl is the district's own public
+   *  notification channel, used for the page's hardcoded (non-AI)
+   *  "no closure announced" line. */
+  closureWatch?: {
+    relevantAlertEvents: string[];
+    /** Per-alert-event threshold (NWS event name -> required closure_history
+     *  matches before Watch is allowed; 'default' covers any
+     *  relevantAlertEvents entry without its own key). NOT a single number
+     *  -- see configs/<town_id>.json's identical map shape and its own
+     *  comment for why: a single town-wide threshold can't single out one
+     *  over-triggering alert type (Air Quality Alert, measured 2026-08-28)
+     *  without also suppressing a genuinely rarer one (Red Flag Warning)
+     *  that should still reach Watch immediately. */
+    minHistoricalClosuresForWatch: Record<string, number>;
+    districtName: string;
+    districtUrl: string;
+  };
 }
 
 const CITIES: Record<string, SiteConfig> = {
@@ -84,6 +123,16 @@ const CITIES: Record<string, SiteConfig> = {
     cityName: 'Brookings',
     stateName: 'South Dakota',
     stateAbbr: 'SD',
+    hasClosureWatch: true,
+    closureWatch: {
+      relevantAlertEvents: [
+        'Winter Storm Warning', 'Blizzard Warning', 'Ice Storm Warning',
+        'Extreme Cold Warning', 'Winter Weather Advisory',
+      ],
+      minHistoricalClosuresForWatch: { default: 0 },
+      districtName: 'Brookings School District 05-1',
+      districtUrl: 'https://www.brookings.k12.sd.us/',
+    },
     brandLead: 'Brookings',
     brandTail: 'View',
     siteName: 'Brookings View',
@@ -120,6 +169,20 @@ const CITIES: Record<string, SiteConfig> = {
     stateName: 'California',
     stateAbbr: 'CA',
     hasWorkplaceWatch: true,
+    hasClosureWatch: true,
+    closureWatch: {
+      relevantAlertEvents: ['Red Flag Warning', 'Fire Weather Watch', 'Air Quality Alert'],
+      // Measured 2026-08-28 against real scrape history: Air Quality Alert
+      // fired on 6 of the last 36 days (~17%) with zero confirmed closures
+      // ever recorded here -- same over-triggering risk heat had, see
+      // configs/moreno_valley_ca.json's identical note for the full
+      // reasoning (including why a severity floor doesn't work: every real
+      // row has severity='Unknown').
+      minHistoricalClosuresForWatch: { default: 0, 'Air Quality Alert': 1 },
+      districtName: 'Moreno Valley Unified School District',
+      districtUrl: 'https://www.mvusd.net/engage/news',
+    },
+    hasHousingMarket: true,
     brandLead: 'Moreno Valley',
     brandTail: 'View',
     siteName: 'Moreno Valley View',

@@ -23,7 +23,7 @@
  * per concept across the site, not two independently-invented palettes
  * that happen to both mean "traffic".
  */
-export type SectionKey = 'traffic' | 'events' | 'workplace_watch' | 'university' | 'home_sales' | 'vail_news';
+export type SectionKey = 'traffic' | 'events' | 'workplace_watch' | 'university' | 'home_sales' | 'vail_news' | 'closure_watch' | 'new_in_town';
 
 export interface SectionTheme {
   accent: string;
@@ -43,4 +43,16 @@ export const SECTION_THEME: Record<SectionKey, SectionTheme> = {
   // affiliation, exactly what the handoff's "no brand marks" rule warns
   // against for logos/images.
   vail_news: { accent: '#1c5c5c', label: 'Vail Resorts' },
+  // #5b3a8e contrast-checked (relative-luminance formula, same method as
+  // this file's other accents): 8.6:1 vs --surface, 7.9:1 vs --paper.
+  // Deliberately a different hue from --alert (the red used by
+  // SchoolAlertBanner/school_alerts elsewhere) -- Closure Watch surfaces
+  // the SAME underlying data but is a distinct section with its own Clear/
+  // Watch/Confirmed states, not just another alert banner.
+  closure_watch: { accent: '#5b3a8e', label: 'Closure Watch' },
+  // #9c3f6b contrast-checked (relative-luminance formula, same method as
+  // this file's other accents): 6.3:1 vs --surface, 5.78:1 vs --paper. A
+  // warm rose/magenta, deliberately distinct in hue from home_sales' more
+  // brown-terracotta #8a3f32 and closure_watch's blue-violet #5b3a8e.
+  new_in_town: { accent: '#9c3f6b', label: 'New in Town' },
 };

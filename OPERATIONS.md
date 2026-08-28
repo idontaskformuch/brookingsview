@@ -76,3 +76,67 @@ that's a coincidental side effect, not a designed safeguard. If a github.com
 notification ever says a scheduled workflow was disabled, re-enable it from
 the repo's Actions tab (Actions → select the workflow → "Enable workflow")
 — no code change needed, GitHub just needs a human to confirm it back on.
+
+## Two weeks after New in Town go-live: manual fact-check
+
+**Why manual**: this checks whether `ai_pipeline/new_in_town_digest.py`'s
+guardrails (two-source rule, chain-store/location filtering, cost ceiling)
+are holding up against real search results, not synthetic test fixtures —
+that requires actually calling a business or checking its site/socials to
+confirm a claim, which no code in this pipeline can do for itself. See
+Handoff: Information Hub Tier 1, Feature B for the design this is checking.
+
+**Trigger**: run once, roughly two weeks after `features.new_in_town.enabled`
+is first flipped `true` for any town (long enough for a few weekly cycles
+to accrue real data). Re-run the same checklist after any re-enable that
+follows a "systemic errors" pull-back (see Verdict below).
+
+**Steps**:
+
+1. **Volume sanity**
+   - How many businesses were added total, per town? Plausible (not zero,
+     not suspiciously high)?
+   - How many searches actually ran vs. `max_searches_per_run` × weeks
+     elapsed? Confirms the ceiling is being hit or not, and that
+     `search_request_log` behaves the same in real cron runs as it did
+     against the test fake connection in `tests/test_search_budget.py`.
+
+2. **Accuracy spot-check (the actual point of this check)**
+   - Every `status = 'closed'` row: is the business actually closed? (Call,
+     check their site/socials, or a separate search.)
+   - 3-5 random `status = 'opened'` rows, same verification.
+   - For each: does the cited `source_url` actually say what the row
+     claims? (Catches misattribution, not just outright wrong facts.)
+
+3. **`needs_review` queue**
+   - How many rows sit at `needs_review = true`? If it's a large share of
+     total finds, the two-source rule may be filtering out real news too
+     aggressively — not a safety problem, but worth knowing.
+   - Spot-check a few: genuinely ambiguous, or should the second-source
+     logic have caught a real second source and didn't?
+
+4. **Noise filtering**
+   - Any chain stores or wrong-location businesses that slipped through
+     despite the qualifier/punctuation fix (see `_normalize_for_location_match`)?
+   - Any duplicate entries for the same business (name variations not
+     caught by the `(town_id, name, status)` upsert key)?
+
+5. **Rendered output**
+   - Read the actual `/new-in-town` page on each enabled town. Anything
+     that reads as a prediction, an opinion, or verbatim-copied source text?
+   - Confirm the weekly roundup story appears in the homepage river (not
+     just the listing page) — see `index.astro`'s `getUpcomingStories(...)`
+     source_type list, the exact spot the `announcement` regression once
+     hid a real story from the homepage.
+
+6. **Cost**
+   - Actual Brave spend over the two weeks vs. expected, given the ceilings.
+
+**Verdict**:
+- No factual errors found → keep as-is; consider loosening
+  `max_searches_per_run` if budget allows.
+- Minor errors found → identify whether it's a two-source gap or a bad
+  source, and tighten specifically (not a wholesale guardrail rewrite).
+- Systemic errors found → set `features.new_in_town.enabled` back to
+  `false` for the affected town(s) and revisit the extraction prompt/
+  guardrails in `ai_pipeline/new_in_town_digest.py` before re-enabling.

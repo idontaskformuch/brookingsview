@@ -1,0 +1,209 @@
+---
+/** Closure Watch -- gated on siteConfig.hasClosureWatch (same pattern as
+ *  workplace-watch/index.astro). Answers "is school closed today/tomorrow?"
+ *  by SURFACING official information, never by forecasting -- see Handoff:
+ *  Information Hub Tier 1, Feature A for the full spec. Three states, one
+ *  renders:
+ *
+ *    Confirmed -- a real school_alerts closure notice exists (district's
+ *                 own wording, rendered verbatim, NewsArticle JSON-LD).
+ *    Watch     -- a relevant weather alert is active, no notice yet. The
+ *                 "no closure has been announced" line below is HARDCODED,
+ *                 outside any AI path, so a guardrail failure can never
+ *                 remove it -- the optional AI paragraph (prose) is
+ *                 decoration on top of that guarantee, never a replacement
+ *                 for it. See lib/db.ts:getClosureWatchStatus() and
+ *                 ai_pipeline/closure_watch_digest.py.
+ *    Clear     -- neither. Short, static, reassuring.
+ *
+ *  ABSOLUTE RULE: nothing on this page may assert or imply that school WILL
+ *  close. If that ever reads uncertain, treat it as a bug, not a style note.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import RelatedContent from '../components/RelatedContent.astro';
+import ShareButton from '../components/ShareButton.astro';
+import SectionHero from '../components/SectionHero.astro';
+import { getClosureWatchStatus } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
+import { SECTION_THEME } from '../lib/section-theme';
+import { buildFaqJsonLd, buildSchoolClosureNewsArticleJsonLd } from '../lib/article-jsonld';
+
+if (!siteConfig.hasClosureWatch || !siteConfig.closureWatch) {
+  return Astro.redirect('/', 302);
+}
+
+const feat = siteConfig.closureWatch;
+const status = await getClosureWatchStatus();
+const canonicalUrl = new URL('/closures/', Astro.site ?? siteConfig.siteUrl).href;
+
+const now = new Date();
+const lastChecked = now.toLocaleString('en-US', {
+  hour: 'numeric', minute: '2-digit', hour12: true,
+  timeZone: siteConfig.timezone,
+});
+const lastCheckedDate = now.toLocaleDateString('en-US', {
+  weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  timeZone: siteConfig.timezone,
+});
+
+const pageTitle = status.state === 'confirmed'
+  ? `${lastCheckedDate.split(',')[0]}: School closures — ${siteConfig.cityName}`
+  : `School closures — ${siteConfig.cityName}`;
+
+const faqJsonLd = buildFaqJsonLd([
+  {
+    question: `Is school closed today in ${siteConfig.cityName}?`,
+    answer: status.state === 'confirmed'
+      ? (status.closure?.message ?? 'A closure has been announced -- see the district notice above.')
+      : `No closure has been announced as of ${lastChecked} on ${lastCheckedDate}. Check ${feat.districtName}'s own notification channel for the official word.`,
+  },
+  {
+    question: `How are school closures announced in ${siteConfig.cityName}?`,
+    answer: `${feat.districtName} announces closures, delays and cancellations directly through its own notification channel (${feat.districtUrl}). This page reflects that source, not a prediction.`,
+  },
+]);
+
+const newsArticleJsonLd = status.state === 'confirmed' && status.closure
+  ? buildSchoolClosureNewsArticleJsonLd(
+      { title: status.closure.title, message: status.closure.message, postedAt: status.closure.posted_at },
+      canonicalUrl,
+      siteConfig.siteName,
+    )
+  : null;
+---
+<BaseLayout
+  title={pageTitle}
+  description={`Official school-closure status for ${siteConfig.cityName}, sourced from ${feat.districtName} and active weather alerts -- never a prediction.`}
+  ogSlug="section-closure-watch"
+  accentColor={SECTION_THEME.closure_watch.accent}
+>
+  {/* Reuses the existing school_alerts photo pool (real, already-sourced
+      photos of schools for Brookings/Moreno Valley) -- closure_watch isn't
+      its own ImageCategory, and this page's subject is schools, not a new
+      concept that needs its own pool (see lib/images.ts's ImageCategory). */}
+  <SectionHero category="school_alerts" />
+  <header class="cw-hero">
+    <h1>🔔 Closure Watch</h1>
+    <p class="tagline">
+      Official school-closure status for {siteConfig.cityName} -- what's actually
+      been announced, not a guess at what might happen.
+    </p>
+    <p class="cw-checked">Last checked {lastChecked}, {lastCheckedDate}</p>
+    <ShareButton title={`School closures — ${siteConfig.cityName} — ${siteConfig.siteName}`} />
+  </header>
+
+  {status.state === 'confirmed' && status.closure && (
+    <section class="cw-panel cw-panel--confirmed" aria-labelledby="cw-state-heading">
+      <p class="cw-kicker">Confirmed</p>
+      <h2 id="cw-state-heading">{status.closure.title || 'Closure notice'}</h2>
+      <p class="cw-message">{status.closure.message}</p>
+      <p class="cw-source">
+        Source: {feat.districtName}, posted {new Date(status.closure.posted_at).toLocaleString('en-US', {
+          month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: siteConfig.timezone,
+        })}.
+        {status.closure.url && <a href={status.closure.url} rel="noopener">Read the district's own notice &rarr;</a>}
+      </p>
+    </section>
+  )}
+
+  {status.state === 'watch' && status.alert && (
+    <section class="cw-panel cw-panel--watch" aria-labelledby="cw-state-heading">
+      <p class="cw-kicker">Watch</p>
+      <h2 id="cw-state-heading">{status.alert.event} in effect</h2>
+      {status.alert.areaDesc && <p class="cw-area">Affected area: {status.alert.areaDesc}</p>}
+      {status.alert.headline && <p class="cw-message">{status.alert.headline}</p>}
+
+      {status.prose && <p class="cw-prose">{status.prose}</p>}
+
+      {status.historicalCount > 0 && (
+        <p class="cw-history">
+          A {status.alert.event} alert has preceded a confirmed closure here {status.historicalCount} time(s) on record.
+          That's history, not a forecast for today.
+        </p>
+      )}
+
+      {/* Hardcoded, non-negotiable, outside any AI path -- see module docstring. */}
+      <p class="cw-no-announcement">
+        <strong>No closure has been announced.</strong> Check {feat.districtName}'s{' '}
+        <a href={feat.districtUrl} rel="noopener">own notification channel</a> for official notice.
+      </p>
+    </section>
+  )}
+
+  {status.state === 'clear' && (
+    <section class="cw-panel cw-panel--clear" aria-labelledby="cw-state-heading">
+      <p class="cw-kicker">Clear</p>
+      <h2 id="cw-state-heading">No closures announced</h2>
+      <p class="cw-message">
+        No school-closure notice is active for {feat.districtName}, and no weather alert
+        relevant to closures is currently in effect.
+      </p>
+      <p class="cw-source">
+        Official closures are always announced through {feat.districtName}'s{' '}
+        <a href={feat.districtUrl} rel="noopener">own notification channel</a>, not predicted here.
+      </p>
+    </section>
+  )}
+
+  <details class="cw-methodology">
+    <summary>How this page works</summary>
+    <p>
+      This page reads two sources directly: {feat.districtName}'s own closure notices, and
+      active National Weather Service alerts ({feat.relevantAlertEvents.join(', ')}) for
+      this area. It never predicts a closure -- the Watch state only means a relevant
+      alert is active and nothing has been announced yet. An optional short paragraph of
+      context may be shown, generated by AI from the alert's own text and checked against
+      a rule that rejects any predictive language before it can be published; when that
+      check fails, or hasn't run yet, only the plain facts above are shown.
+    </p>
+  </details>
+
+  <RelatedContent pageType="closure_watch" />
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(faqJsonLd)} />
+  {newsArticleJsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(newsArticleJsonLd)} />
+  )}
+</BaseLayout>
+
+<style>
+.cw-hero {
+  max-width: 46rem; margin: 0 auto 1.5rem; text-align: center;
+  border-bottom: 3px solid var(--section-accent, var(--rule-strong));
+  padding-bottom: 1.125rem;
+}
+.cw-hero h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+.tagline { color: var(--ink-soft); line-height: 1.6; }
+.cw-checked { font-size: 0.8125rem; color: var(--ink-soft); margin: 0.5rem 0; }
+
+.cw-panel {
+  max-width: 46rem; margin: 0 auto 1.5rem;
+  border: 1px solid var(--rule); border-left: 4px solid var(--section-accent, var(--rule-strong));
+  border-radius: 8px; padding: 1.25rem 1.5rem;
+}
+.cw-panel--confirmed { border-left-color: #b3261e; }
+.cw-panel--watch { border-left-color: #8a4a0a; }
+.cw-panel--clear { border-left-color: #146b36; }
+.cw-kicker {
+  font-family: var(--font-ui); font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 0.5rem;
+  color: var(--ink-soft);
+}
+.cw-panel h2 { margin: 0 0 0.75rem; font-size: 1.375rem; }
+.cw-message { line-height: 1.6; margin: 0 0 0.75rem; }
+.cw-area { font-size: 0.9375rem; color: var(--ink-soft); margin: 0 0 0.5rem; }
+.cw-prose { line-height: 1.6; margin: 0 0 0.75rem; }
+.cw-history { font-size: 0.875rem; color: var(--ink-soft); margin: 0 0 0.75rem; }
+.cw-source { font-size: 0.875rem; color: var(--ink-soft); margin: 0; }
+.cw-no-announcement {
+  margin: 1rem 0 0; padding: 0.875rem 1rem;
+  background: var(--panel, rgba(127, 127, 127, 0.06)); border-radius: 6px;
+  font-size: 0.9375rem; line-height: 1.5;
+}
+
+.cw-methodology {
+  max-width: 46rem; margin: 0 auto 1.5rem; font-size: 0.8125rem; color: var(--ink-soft);
+}
+.cw-methodology summary { cursor: pointer; font-weight: 600; }
+.cw-methodology p { line-height: 1.6; margin-top: 0.5rem; }
+</style>

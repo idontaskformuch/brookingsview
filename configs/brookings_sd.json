@@ -368,6 +368,36 @@
       "_notes": "VERIFIERAD 2026-08-03: fakta om lokala anläggningar (bibliotek, parker, city hall) finns inte i något maskinläsbart flöde och ändras sällan, så samma mönster som property_sales -- manuellt kuraterad fil, ingen scraper. Kör 'python -m scripts.seed_facilities {town_id}' efter att ha redigerat data/facilities/{town_id}.json. Se db/migrations/007_facilities.sql för motivet: Search Console visade att search queries efter specifika anläggningar (t.ex. 'moreno valley library', 'lasselle sports park') stod för nästan alla exponeringar men gav noll klick, eftersom ingen sida svarade direkt på frågan."
     }
   },
+  "features": {
+    "closure_watch": {
+      "enabled": true,
+      "districts": ["Brookings School District 05-1"],
+      "weather_zones": ["SDC011"],
+      "relevant_alert_events": [
+        "Winter Storm Warning",
+        "Blizzard Warning",
+        "Ice Storm Warning",
+        "Extreme Cold Warning",
+        "Winter Weather Advisory"
+      ],
+      "min_historical_closures_for_watch": { "default": 0 },
+      "_notes": "Handoff: Information Hub Tier 1, Feature A. Not a new data source -- reads the already-live school_alerts (Thrillshare) and weather_alerts (NWS, area SDC011) sources above. This block only flags that /closures should render and scopes which NWS alert events count as closure-relevant for a winter-climate town like Brookings. min_historical_closures_for_watch is a PER-EVENT map (event name -> threshold), 'default' applies to any relevant_alert_events entry without its own key -- stays {default: 0} (inert -- Watch is never downgraded to Clear on correlation grounds) until closure_history has enough rows to show whether a given alert_event actually correlates with closures here; see Moreno Valley's config for a real example of this mattering (heat, then Air Quality Alert, both turned out to have zero correlation and needed a per-event override once measured against real data)."
+    },
+    "new_in_town": {
+      "enabled": false,
+      "search_terms": ["new restaurant", "now open", "grand opening", "permanently closed"],
+      "location_qualifiers": ["Brookings SD", "Brookings South Dakota"],
+      "max_searches_per_run": 8,
+      "monthly_request_ceiling": 40,
+      "run_cadence": "weekly",
+      "_notes": "Handoff: Information Hub Tier 1, Feature B. Config surface only -- the Brave-search-and-summarize pipeline (local_businesses table, weekly digest) isn't built yet. Stays enabled:false until that pipeline exists; unrelated to the still-unbuilt business_licenses.smartgov_licenses_v1 parser above."
+    },
+    "housing_market": {
+      "enabled": false,
+      "sales_source": null,
+      "_notes": "Handoff: Information Hub Tier 1, Feature C. No property-sales data source for Brookings (South Dakota has no Riverside-Assessor-style bulk sales file) -- stays enabled:false until one is found."
+    }
+  },
   "_verify_before_launch": [
     "Legistar client_id för Brookings (webapi.legistar.com/v1/<id>)",
     "KLART: SDSU events-kalendern = sdstate.edu/event-calendar (Drupal 11, ej Localist som tidigare gissat), verifierad live 2026-08-10, se sdsu_events._notes.",
