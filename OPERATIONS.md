@@ -51,3 +51,28 @@ downside of slower data (invisible gaps) is already mitigated. Revisit only
 if home-sales becomes a flagship traffic driver *and* the free report's
 latency proves to be a real user-facing problem, with evidence, not by
 default.
+
+## Ongoing: scheduled GitHub Actions workflows need real activity to survive
+
+**Why this matters**: GitHub automatically disables a repository's
+**scheduled** (`on: schedule`) workflows after **60 days with no repository
+activity** (pushes, PRs, etc. all count). This repo went public 2026-08-27
+— scheduled workflows are free to run on public repos, same as before, but
+the 60-day auto-disable rule applies regardless of visibility. A quiet
+stretch (no commits, but the site otherwise "just running" on its crons)
+is exactly the scenario this rule is designed to catch you out on.
+
+**Symptom if it happens**: every `*-scrape.yml`/`*-daily-content.yml`/etc.
+simply stops firing, with no notification — this looks identical to the
+2026-08-27 pipeline outage (see git history around that date) except the
+cause would be entirely different (GitHub-side auto-disable vs. whatever
+the real 2026-08-27 cause turns out to be).
+
+**Mitigation**: any commit to the repo (from any workflow's own bot commits,
+like `daily-content.yml`'s illustration commits, or a manual push) resets
+the 60-day clock. In practice, the daily illustration commits already do
+this automatically as long as content generation itself is running — but
+that's a coincidental side effect, not a designed safeguard. If a github.com
+notification ever says a scheduled workflow was disabled, re-enable it from
+the repo's Actions tab (Actions → select the workflow → "Enable workflow")
+— no code change needed, GitHub just needs a human to confirm it back on.

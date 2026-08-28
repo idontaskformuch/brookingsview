@@ -2,10 +2,13 @@ name: moval-scrape-and-publish
 # Moreno Valley-motsvarigheten till scrape.yml. Egen config, egen USER_AGENT,
 # egen AI_BUDGET_STATE. PAGES_DEPLOY_HOOK_MOVAL är ett eget secret --
 # återanvänd ALDRIG Brookings PAGES_DEPLOY_HOOK, då triggar det fel sajts bygge.
+#
+# Sänkt från varje timme till var 6:e timme 2026-08-28 -- se scrape.yml:s
+# egen kommentar för hela resonemanget (gäller identiskt här).
 
 on:
   schedule:
-    - cron: "0 * * * *"      # varje timme (justera per behov)
+    - cron: "0 */6 * * *"
   workflow_dispatch: {}       # tillåt manuell körning
 
 jobs:
@@ -60,3 +63,9 @@ jobs:
             exit 1
           fi
           curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK_MOVAL }}"
+      # Se scrape.yml:s egen kommentar för hela resonemanget.
+      - name: Kontrollera att den deployade sajten faktiskt har färskt innehåll
+        if: success()
+        run: |
+          sleep 10
+          python -m scripts.check_deployed_content --config configs/moreno_valley_ca.json

@@ -196,7 +196,20 @@ def main() -> int:
         # title/H1 does (alt text describes the image, not the page -- see
         # NEEDS-HUMAN-REVIEW.md "Image pipeline overhaul").
         theme = illustration_theme(article)
-        saved = generate_illustration(theme, slug, content_type=content_type)
+        # Image filename is town-scoped, the story's own slug (used for its
+        # /s/<slug>/ URL) is NOT -- see db/migrations' UNIQUE(town_id, slug)
+        # on stories, which already makes same-day slugs across towns safe
+        # at the DATA layer. The illustration file lives in site/public/,
+        # a single directory shared by every town's build, with no such
+        # per-town scoping -- found live 2026-08-27: Brookings and
+        # Broomfield both generated "vardagsmiddag" (recipe day, same
+        # weekday rotation) on the same calendar date, and Broomfield's
+        # image silently overwrote Brookings' at the shared path
+        # /assets/images/recipe-2026-08-27.png. Appending town_id to the
+        # FILENAME (not the story slug/URL) fixes the collision without
+        # touching anything URL-facing.
+        image_slug = f"{slug}-{town_id}"
+        saved = generate_illustration(theme, image_slug, content_type=content_type)
         if saved is not None:
             image_path = "/" + str(saved.native.relative_to(PUBLIC_DIR)).replace("\\", "/")
             image_alt = theme

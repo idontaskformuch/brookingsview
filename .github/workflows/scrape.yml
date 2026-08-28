@@ -1,10 +1,20 @@
 name: scrape-and-publish
 # Kör scrapers + AI-formatering schemalagt, pinga sen Cloudflare Pages deploy hook
 # så Astro bygger om med färsk data. Händelsestyrt underhåll via alerting i runner.py.
-
+#
+# Sänkt från varje timme till var 6:e timme 2026-08-28: kostnad var aldrig
+# skälet (Actions är gratis för publika repon), men timvis skrapning av
+# kommunala sajter är onödigt aggressivt och riskerar att bli blockerat --
+# ingen av källorna publicerar/uppdaterar sig snabbt nog för att motivera
+# timvis ändå (möten/permits/löner ändras inte inom en timme). traffic_incidents
+# är det enda genuint tidskänsliga flödet (egen refresh_minutes=20-spärr i
+# configen sedan tidigare) -- men eftersom sajten är statisk gör en tätare
+# DB-skrapning ingenting för läsaren utan en lika tät ombyggnad/redeploy, så
+# att bryta ut den separat är en STÖRRE ändring (egen build+deploy-pipeline,
+# inte bara ett extra scrape-jobb) än vad som görs här -- flaggat, inte byggt.
 on:
   schedule:
-    - cron: "0 * * * *"      # varje timme (justera per behov)
+    - cron: "0 */6 * * *"
   workflow_dispatch: {}       # tillåt manuell körning
 
 jobs:
@@ -59,3 +69,15 @@ jobs:
             exit 1
           fi
           curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK }}"
+      # Kontrollerar den RIKTIGA, deployade sajten -- inte bara att bygget
+      # gick igenom grönt. Se scripts/check_deployed_content.py:s egen
+      # moduldocstring: en grön build maskerade tyst både run_worker_first-
+      # buggen och en flerdagars innehålls-pipeline-utslagning innan detta
+      # fanns, eftersom "inget nytt den här körningen" och "pipelinen är
+      # död" ger identisk exitkod. Kort paus innan anropet för att ge
+      # Cloudflares kant en stund att bli klar med propagering.
+      - name: Kontrollera att den deployade sajten faktiskt har färskt innehåll
+        if: success()
+        run: |
+          sleep 10
+          python -m scripts.check_deployed_content --config configs/brookings_sd.json
