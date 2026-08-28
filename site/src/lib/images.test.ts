@@ -3,7 +3,7 @@ import {
   normalizeVenueText, extractTitleVenuePrefix, buildNameAliasIndex,
   resolveVenueSlugForImage, categoryForSourceType, dedupeConsecutiveImages,
   resolveImage, pickFromPool, requiredCategoriesFor, assertCategoryImagesComplete,
-  findContentTrackRowsMissingImage, withThumbnailCrop,
+  findContentTrackRowsMissingImage, withThumbnailCrop, contentTrackCropPaths,
   type ImageRef, type ResolvableStory,
 } from './images';
 import type { Facility } from './db';
@@ -461,5 +461,36 @@ describe('withThumbnailCrop', () => {
     // reproduce that by taking a slug as input at all.
     const nonExistent: ImageRef = { path: '/assets/images/does-not-exist-anywhere.png', alt: 'x', width: 1600, height: 900 };
     expect(withThumbnailCrop(nonExistent)).toBe(nonExistent);
+  });
+});
+
+describe('contentTrackCropPaths', () => {
+  it('returns both real crop paths, in order, for an image that has them', () => {
+    const paths = contentTrackCropPaths('/assets/images/editorial-2026-07-21-brookings_sd.png');
+    expect(paths).toEqual([
+      '/assets/images/editorial-2026-07-21-brookings_sd-4x3.png',
+      '/assets/images/editorial-2026-07-21-brookings_sd-1x1.png',
+    ]);
+  });
+
+  it('derives from the path itself, correctly handling a town-scoped filename', () => {
+    // Regression guard for the exact bug found in [slug].astro: deriving
+    // from a bare story slug ("recipe-2026-08-27") would miss Broomfield's
+    // real, town-scoped crop files entirely.
+    const paths = contentTrackCropPaths('/assets/images/recipe-2026-08-27-broomfield_co.png');
+    expect(paths.every((p) => p.includes('broomfield_co'))).toBe(true);
+    expect(paths.length).toBeGreaterThan(0);
+  });
+
+  it('returns an empty array when no crop files exist', () => {
+    expect(contentTrackCropPaths('/assets/images/does-not-exist-anywhere.png')).toEqual([]);
+  });
+
+  it('returns an empty array for a hotlinked (Unsplash) path', () => {
+    expect(contentTrackCropPaths('https://images.unsplash.com/photo-123')).toEqual([]);
+  });
+
+  it('returns an empty array for a path with no .png extension', () => {
+    expect(contentTrackCropPaths('/assets/images/something.jpg')).toEqual([]);
   });
 });

@@ -309,32 +309,44 @@ export function assertImageExists(imagePath: string, itemSlug: string): void {
   }
 }
 
+/** Root-relative paths of whichever crop variant(s) of `imagePath` actually
+ *  exist on disk -- "-4x3.png" then "-1x1.png", only the ones that are real
+ *  files -- see content/illustrations/generate_illustration.py's naming
+ *  convention (only content-track/Flux-generated article images get these
+ *  crops; venue and category images don't, and simply have no matching
+ *  file, so this correctly returns [] for them rather than assuming which
+ *  tier resolveImage() used).
+ *
+ *  Derives every crop path from `imagePath` ITSELF, never from a
+ *  separately-passed story slug -- the bug this specifically avoids
+ *  reproducing: [slug].astro's original additionalImages construction
+ *  derived crop filenames from `story.slug` alone, which silently stopped
+ *  matching real files the day image filenames became town-scoped
+ *  ("{slug}-{town_id}.png", see the cross-town collision fix) for any
+ *  content published since. ONE naming-convention implementation here,
+ *  shared by withThumbnailCrop() (below) and [slug].astro's structured-
+ *  data image[], instead of two independently-maintained copies of the
+ *  same "-4x3.png"/"-1x1.png" string logic drifting apart again. */
+export function contentTrackCropPaths(imagePath: string): string[] {
+  if (isHotlinkedImage(imagePath) || !imagePath.endsWith('.png')) return [];
+  const base = imagePath.slice(0, -'.png'.length);
+  return ['-4x3.png', '-1x1.png']
+    .map((suffix) => `${base}${suffix}`)
+    .filter((candidate) => existsSync(fileURLToPath(new URL(`../../public${candidate}`, import.meta.url))));
+}
+
 /** Swaps in the smaller 4:3 crop of an already-resolved image, for list/
  *  card contexts (e.g. index.astro's "Latest from" strip) that want a
- *  thumbnail rather than the full hero-sized image -- see
- *  content/illustrations/generate_illustration.py's "{slug}-4x3.png"
- *  naming convention (only content-track/Flux-generated article images
- *  get this crop; venue and category images don't, and simply have no
- *  matching file, so this deliberately falls back to the original image
- *  unchanged rather than assuming which tier resolveImage() used).
- *
- *  Derives the crop path from the image's OWN resolved `path`, not from a
- *  separately-passed story slug -- [slug].astro's existing additionalImages
- *  construction derives crop filenames from `story.slug` alone, which
- *  silently stopped matching real files the day image filenames became
- *  town-scoped ("{slug}-{town_id}.png", see the cross-town collision fix)
- *  for any content published since. That staleness isn't reproduced here.
- *
- *  Deliberately non-throwing, unlike assertImageExists(): a missing crop
- *  is optional and falls back to the full image, never an error the way a
- *  missing PRIMARY image is -- same "optional asset" discipline
- *  [slug].astro's own existsSync check already established. */
+ *  thumbnail rather than the full hero-sized image. Deliberately non-
+ *  throwing, unlike assertImageExists(): a missing crop is optional and
+ *  falls back to the full image, never an error the way a missing PRIMARY
+ *  image is -- same "optional asset" discipline contentTrackCropPaths()
+ *  (and originally [slug].astro's own existsSync check) already
+ *  established. */
 export function withThumbnailCrop(image: ImageRef): ImageRef {
-  if (isHotlinkedImage(image.path) || !image.path.endsWith('.png')) return image;
-  const cropPath = image.path.replace(/\.png$/, '-4x3.png');
-  const absolute = fileURLToPath(new URL(`../../public${cropPath}`, import.meta.url));
-  if (!existsSync(absolute)) return image;
-  return { ...image, path: cropPath, width: 1200, height: 900 };
+  const crop4x3 = contentTrackCropPaths(image.path).find((p) => p.endsWith('-4x3.png'));
+  if (!crop4x3) return image;
+  return { ...image, path: crop4x3, width: 1200, height: 900 };
 }
 
 /* -------------------------------------------------------- resolveImage */

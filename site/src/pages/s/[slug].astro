@@ -1,8 +1,6 @@
 ---
 /** Enskild story. Varje sida länkar tillbaka till sin primärkälla -- det är både
  *  hederligt mot läsaren och det som gör E-E-A-T-anspråket på metodsidan sant. */
-import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ShareButtons from '../../components/ShareButtons.astro';
 import RelatedStories from '../../components/RelatedStories.astro';
@@ -17,7 +15,7 @@ import type { Story, Facility } from '../../lib/db';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
 import { buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
-import { resolveImage } from '../../lib/images';
+import { resolveImage, contentTrackCropPaths } from '../../lib/images';
 import { categoryImagesFor } from '../../config/category-images';
 import ImageAttribution from '../../components/ImageAttribution.astro';
 
@@ -112,15 +110,20 @@ const heroImage = resolveImage(story, {
 });
 
 // Additional crop variants (4:3, 1:1) for NewsArticle's image[] -- only
-// included when the FILES actually exist on disk, checked here at build
-// time rather than assumed from image_path being set (content published
+// included when the FILES actually exist on disk (content published
 // before the crop pipeline shipped has a native image but no crops).
-// content/illustrations/generate_illustration.py's "{slug}-4x3.png"/
-// "{slug}-1x1.png" naming convention, mirrored here exactly.
+// lib/images.ts's contentTrackCropPaths() derives the crop filenames from
+// story.image_path ITSELF, not story.slug -- FIXED 2026-08-28: the
+// original version here derived from story.slug alone, which silently
+// stopped matching real files the day image filenames became town-scoped
+// ("{slug}-{town_id}.png", see the cross-town collision fix) for any
+// content published since. Confirmed live: this page's own structured
+// data was missing crops for both currently-affected rows (Brookings'
+// backfilled editorial-2026-07-21, Broomfield's recipe-2026-08-27) before
+// this fix.
 const additionalImages = story.image_path
-  ? [`${story.slug}-4x3.png`, `${story.slug}-1x1.png`]
-      .filter((f) => existsSync(fileURLToPath(new URL(`../../../public/assets/images/${f}`, import.meta.url))))
-      .map((f) => new URL(`/assets/images/${f}`, Astro.site ?? siteConfig.siteUrl).href)
+  ? contentTrackCropPaths(story.image_path)
+      .map((f) => new URL(f, Astro.site ?? siteConfig.siteUrl).href)
   : [];
 
 // Kommentarer bara på Worker Pulse-digester (se WorkerPulseComments.astro-
