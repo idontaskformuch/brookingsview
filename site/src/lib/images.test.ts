@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   normalizeVenueText, extractTitleVenuePrefix, buildNameAliasIndex,
   resolveVenueSlugForImage, categoryForSourceType, dedupeConsecutiveImages,
-  resolveImage, pickFromPool, type ImageRef, type ResolvableStory,
+  resolveImage, pickFromPool, requiredCategoriesFor, assertCategoryImagesComplete,
+  type ImageRef, type ResolvableStory,
 } from './images';
 import type { Facility } from './db';
 
@@ -312,5 +313,75 @@ describe('resolveImage', () => {
     // categoryImages intentionally has no 'university' entry (as it wouldn't
     // for moreno_valley_ca, which has no university category at all).
     expect(resolveImage(story, baseOptions)).toBeNull();
+  });
+});
+
+// --- build-time completeness (see handoff "Broomfield has no hero image
+// and no inline article images", Phase 3) --------------------------------
+
+const POOL: ImageRef[] = [{ path: EXISTING_IMAGE, alt: 'x', width: 1, height: 1 }];
+
+describe('requiredCategoriesFor', () => {
+  it('never requires university/sports for Broomfield (structurally unreachable)', () => {
+    const required = requiredCategoriesFor({ townId: 'broomfield_co' });
+    expect(required).not.toContain('university');
+    expect(required).not.toContain('sports');
+  });
+
+  it('requires sports for a town that is not Broomfield', () => {
+    expect(requiredCategoriesFor({ townId: 'brookings_sd' })).toContain('sports');
+    expect(requiredCategoriesFor({ townId: 'moreno_valley_ca' })).toContain('sports');
+  });
+
+  it('only requires university for Brookings', () => {
+    expect(requiredCategoriesFor({ townId: 'brookings_sd' })).toContain('university');
+    expect(requiredCategoriesFor({ townId: 'moreno_valley_ca' })).not.toContain('university');
+  });
+
+  it('requires feature-gated categories only when the corresponding flag is set', () => {
+    const nothingEnabled = requiredCategoriesFor({ townId: 'broomfield_co' });
+    expect(nothingEnabled).not.toContain('workplace_watch');
+    expect(nothingEnabled).not.toContain('school_alerts');
+    expect(nothingEnabled).not.toContain('home_sales');
+    expect(nothingEnabled).not.toContain('traffic');
+
+    const allEnabled = requiredCategoriesFor({
+      townId: 'broomfield_co', hasWorkplaceWatch: true, hasClosureWatch: true,
+      hasHousingMarket: true, trafficSource: { name: 'x', url: 'x', scopeNote: 'x' },
+    });
+    expect(allEnabled).toEqual(expect.arrayContaining(['workplace_watch', 'school_alerts', 'home_sales', 'traffic']));
+  });
+});
+
+describe('assertCategoryImagesComplete', () => {
+  it('throws naming the town and every missing category when the pool is entirely empty', () => {
+    expect(() => assertCategoryImagesComplete({ townId: 'broomfield_co' }, {})).toThrowError(/broomfield_co/);
+  });
+
+  it('throws naming only the specific missing categories, not ones already present', () => {
+    try {
+      assertCategoryImagesComplete({ townId: 'broomfield_co' }, { city_hall: POOL, events: POOL });
+      throw new Error('expected assertCategoryImagesComplete to throw');
+    } catch (e) {
+      const message = (e as Error).message;
+      expect(message).toContain('weather_alert');
+      expect(message).toContain('jobs');
+      expect(message).not.toContain('city_hall');
+      expect(message).not.toContain('events');
+    }
+  });
+
+  it('passes silently once every required category has a non-empty pool', () => {
+    const fullPool: Partial<Record<string, ImageRef[]>> = {
+      city_hall: POOL, events: POOL, weather_alert: POOL, jobs: POOL,
+    };
+    expect(() => assertCategoryImagesComplete({ townId: 'broomfield_co' }, fullPool)).not.toThrow();
+  });
+
+  it('an empty-array pool counts as missing, same as a missing key entirely', () => {
+    expect(() => assertCategoryImagesComplete(
+      { townId: 'broomfield_co' },
+      { city_hall: [], events: POOL, weather_alert: POOL, jobs: POOL },
+    )).toThrowError(/city_hall/);
   });
 });

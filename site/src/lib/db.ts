@@ -1431,6 +1431,26 @@ export async function getFacilities(): Promise<Facility[]> {
   `) as Facility[];
 }
 
+/** Whether this town has AT LEAST ONE story with a real, non-empty
+ *  venue_raw -- the actual input signal resolveVenueSlugForImage() matches
+ *  facilities.name_aliases against (see lib/images.ts). Backs
+ *  build-checks.ts's venue-matching-reachable assertion: a town can have
+ *  perfectly good, real aliases seeded (see scripts/
+ *  seed_facility_name_aliases.py) and the venue tier can STILL be
+ *  structurally dead if no story ever carries the raw signal to match them
+ *  against -- exactly Broomfield's situation, found 2026-08-28 (AgendaLink
+ *  meetings carry a real room/address in their raw scrape data, but
+ *  ai_pipeline/publish.py doesn't yet surface it into stories.venue_raw).
+ *  An aliases-only check would have missed this and gone green. */
+export async function hasAnyStoryWithVenueRaw(): Promise<boolean> {
+  const rows = (await sql`
+    SELECT 1 FROM stories
+     WHERE town_id = ${TOWN_ID} AND venue_raw IS NOT NULL AND venue_raw != ''
+     LIMIT 1
+  `) as unknown[];
+  return rows.length > 0;
+}
+
 /** En anläggning via dess slug, för /facilities/[slug].astro. Slug är bara
  *  unikt inom en ort (UNIQUE(town_id, slug)), samma mönster som Story-slugs. */
 export async function getFacilityBySlug(slug: string): Promise<Facility | null> {

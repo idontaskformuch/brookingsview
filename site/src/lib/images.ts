@@ -35,6 +35,7 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Story, Facility, SourceType } from './db';
+import type { SiteConfig } from './site-config';
 
 export interface ImageRef {
   /** Root-relative local path ("/assets/images/...") for a downloaded and
@@ -116,6 +117,66 @@ const CATEGORY_BY_SOURCE_TYPE: Partial<Record<SourceType, ImageCategory>> = {
 
 export function categoryForSourceType(sourceType: SourceType): ImageCategory | null {
   return CATEGORY_BY_SOURCE_TYPE[sourceType] ?? null;
+}
+
+/* --------------------------------------------- build-time completeness */
+//
+// See handoff "Broomfield has no hero image and no inline article images"
+// (Phase 3): Broomfield's category-image pool was a silently-empty `{}`
+// from the day the town was added until it was actually diagnosed --
+// resolveImage() degrades to `null` on an empty pool with zero warning,
+// which is correct AT THE PER-ARTICLE level (an individual miss is normal)
+// but wrong at the WHOLE-TOWN level (an entire town with nothing to show,
+// ever, for a category it actively needs). requiredCategoriesFor()/
+// assertCategoryImagesComplete() are pure and DB-free on purpose, so they
+// can run in a plain vitest test -- see images.test.ts -- as well as at
+// real build time (called from BaseLayout.astro, see db.ts's
+// runBuildTimeImageChecks()).
+
+/** Every enabled town needs these regardless of feature flags: every town
+ *  has meetings (city_hall), a weekly roundup (events), NOAA/NWS weather
+ *  alerts (weather_alert), and Adzuna jobs (jobs). 'sports' is likewise
+ *  universal today except Broomfield, which has no sports_digest/
+ *  local_sports_digest-producing source at all (see NEEDS-HUMAN-REVIEW.md,
+ *  "Broomfield launch") -- structurally unreachable, not just unpopulated,
+ *  so it's correctly excluded rather than flagged as a gap. */
+const ALWAYS_REQUIRED: ImageCategory[] = ['city_hall', 'events', 'weather_alert', 'jobs'];
+
+/** The category pools an ENABLED town actually needs, derived from real,
+ *  checkable feature flags -- not "every category for every town" (which
+ *  would wrongly demand a 'university' pool for Broomfield, which has no
+ *  SDSU-equivalent and can never produce a university_digest story). */
+export function requiredCategoriesFor(config: Pick<SiteConfig,
+  'townId' | 'hasWorkplaceWatch' | 'hasClosureWatch' | 'hasHousingMarket' | 'trafficSource'>,
+): ImageCategory[] {
+  const required = [...ALWAYS_REQUIRED];
+  if (config.townId !== 'broomfield_co') required.push('sports');
+  if (config.townId === 'brookings_sd') required.push('university');
+  if (config.hasWorkplaceWatch) required.push('workplace_watch');
+  if (config.hasClosureWatch) required.push('school_alerts');
+  if (config.hasHousingMarket) required.push('home_sales');
+  if (config.trafficSource) required.push('traffic');
+  return required;
+}
+
+/** Throws (fails the build) naming both the town and every missing/empty
+ *  required category -- the actual bug this exists for was a whole town
+ *  silently missing its ENTIRE pool with no build signal at all, so "fail
+ *  loud, name everything" beats a vague warning. */
+export function assertCategoryImagesComplete(
+  config: Pick<SiteConfig, 'townId' | 'hasWorkplaceWatch' | 'hasClosureWatch' | 'hasHousingMarket' | 'trafficSource'>,
+  categoryImages: Partial<Record<ImageCategory, ImageRef[]>>,
+): void {
+  const required = requiredCategoriesFor(config);
+  const missing = required.filter((cat) => !categoryImages[cat] || categoryImages[cat]!.length === 0);
+  if (missing.length > 0) {
+    throw new Error(
+      `Build-time image check failed for town "${config.townId}": missing or empty category ` +
+      `image pool(s) for [${missing.join(', ')}]. Add real photo entries to ` +
+      `site/src/config/category-images.ts for this town before building it -- ` +
+      `see lib/images.ts's requiredCategoriesFor() for why each of these is required.`,
+    );
+  }
 }
 
 /* ------------------------------------------------------- venue matching */

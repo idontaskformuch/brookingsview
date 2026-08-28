@@ -18,6 +18,7 @@
  */
 import { getSignData, countdown } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import { runBuildTimeImageChecks } from '../lib/build-checks';
 import CookieBanner from '../components/CookieBanner.astro';
 
 interface Props {
@@ -48,6 +49,7 @@ const {
   accentColor,
 } = Astro.props;
 
+await runBuildTimeImageChecks();
 const sign = await getSignData();
 const canonical = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl);
 const ogImage = new URL(`/og/${ogSlug ?? 'default'}.png`, Astro.site ?? siteConfig.siteUrl).href;
