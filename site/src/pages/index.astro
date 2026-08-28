@@ -38,7 +38,7 @@ import {
 import { selectWorthKnowing, selectLatestFrom, firstSentence, selectFrontPageRhythm } from '../lib/homepage-curation';
 import { todayUtcMidnight } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
-import { resolveImage, dedupeConsecutiveImages } from '../lib/images';
+import { resolveImage, dedupeConsecutiveImages, withThumbnailCrop } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
@@ -392,14 +392,42 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     <section aria-label="Latest from" class="latest-from">
       <SectionRule label={`Latest from ${siteConfig.siteName}`} />
       <div class="latest-from__grid">
-        {latestFromSelection.map((story) => (
-          <a class="latest-from__card" href={`/s/${story.slug}/`}>
-            <p class="latest-from__kicker">{CATEGORY_LABELS[story.source_type] ?? 'Feature'}</p>
-            <h3 class="latest-from__title">{story.title}</h3>
-            <p class="latest-from__excerpt">{firstSentence(story.body)}</p>
-            <span class="latest-from__read">Read &rarr;</span>
-          </a>
-        ))}
+        {latestFromSelection.map((story) => {
+          // Same resolveImage() every other rendering surface uses --
+          // content-track items (the only types that ever land here, see
+          // getLatestFromCandidates()) resolve via the article-image tier
+          // (story.image_path), same as the story page and "Today's read"
+          // hero. withThumbnailCrop() swaps in the smaller 4:3 crop for
+          // this card's compact layout when one exists, falling back to
+          // the full image otherwise -- never a broken <img>, and never
+          // the /og/ social card standing in as an inline hero.
+          const cardImage = resolveImage(story, {
+            town: siteConfig.townId,
+            cityName: siteConfig.cityName,
+            facilities,
+            categoryImages: categoryImagesFor(siteConfig.townId),
+          });
+          const thumbnail = cardImage ? withThumbnailCrop(cardImage) : null;
+          return (
+            <a class="latest-from__card" href={`/s/${story.slug}/`}>
+              {thumbnail && (
+                <img
+                  class="latest-from__image"
+                  src={thumbnail.path}
+                  alt={thumbnail.alt}
+                  width={thumbnail.width}
+                  height={thumbnail.height}
+                  loading="lazy"
+                  decoding="async"
+                />
+              )}
+              <p class="latest-from__kicker">{CATEGORY_LABELS[story.source_type] ?? 'Feature'}</p>
+              <h3 class="latest-from__title">{story.title}</h3>
+              <p class="latest-from__excerpt">{firstSentence(story.body)}</p>
+              <span class="latest-from__read">Read &rarr;</span>
+            </a>
+          );
+        })}
       </div>
     </section>
   )}
@@ -574,6 +602,12 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   padding: 0.875rem 0 1rem;
   text-decoration: none;
   color: inherit;
+}
+.latest-from__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 0 0.625rem;
 }
 .latest-from__kicker {
   margin: 0 0 0.25rem;

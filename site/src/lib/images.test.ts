@@ -3,7 +3,7 @@ import {
   normalizeVenueText, extractTitleVenuePrefix, buildNameAliasIndex,
   resolveVenueSlugForImage, categoryForSourceType, dedupeConsecutiveImages,
   resolveImage, pickFromPool, requiredCategoriesFor, assertCategoryImagesComplete,
-  findContentTrackRowsMissingImage,
+  findContentTrackRowsMissingImage, withThumbnailCrop,
   type ImageRef, type ResolvableStory,
 } from './images';
 import type { Facility } from './db';
@@ -419,5 +419,47 @@ describe('findContentTrackRowsMissingImage', () => {
       { slug: 'c', image_path: null },
     ];
     expect(findContentTrackRowsMissingImage(rows).map((r) => r.slug)).toEqual(['a', 'c']);
+  });
+});
+
+describe('withThumbnailCrop', () => {
+  // Real file on disk (see the "content-track images missing from
+  // landing-page cards" handoff) -- generate_illustration.py's own
+  // -4x3.png crop convention, checked directly rather than assumed.
+  const REAL_IMAGE_WITH_CROP: ImageRef = {
+    path: '/assets/images/editorial-2026-07-21-brookings_sd.png',
+    alt: 'A quiet street.', width: 1600, height: 900,
+  };
+
+  it('swaps in the real 4:3 crop when the file exists', () => {
+    const result = withThumbnailCrop(REAL_IMAGE_WITH_CROP);
+    expect(result.path).toBe('/assets/images/editorial-2026-07-21-brookings_sd-4x3.png');
+    expect(result.width).toBe(1200);
+    expect(result.height).toBe(900);
+  });
+
+  it('preserves alt text from the original image, never blanking or replacing it', () => {
+    const result = withThumbnailCrop(REAL_IMAGE_WITH_CROP);
+    expect(result.alt).toBe('A quiet street.');
+  });
+
+  it('falls back to the original image when no crop file exists (venue/category images)', () => {
+    const categoryImage: ImageRef = { path: EXISTING_IMAGE, alt: 'x', width: 1200, height: 800 };
+    const result = withThumbnailCrop(categoryImage);
+    expect(result).toBe(categoryImage);
+  });
+
+  it('falls back unchanged for a hotlinked (Unsplash) image', () => {
+    const hotlinked: ImageRef = { path: 'https://images.unsplash.com/photo-123', alt: 'x', width: 1200, height: 800 };
+    expect(withThumbnailCrop(hotlinked)).toBe(hotlinked);
+  });
+
+  it('derives the crop path from the resolved image path, not a separately-passed slug', () => {
+    // Regression guard for the exact staleness found in [slug].astro's
+    // additionalImages (which derives from story.slug alone and silently
+    // stopped matching town-scoped filenames) -- this function must never
+    // reproduce that by taking a slug as input at all.
+    const nonExistent: ImageRef = { path: '/assets/images/does-not-exist-anywhere.png', alt: 'x', width: 1600, height: 900 };
+    expect(withThumbnailCrop(nonExistent)).toBe(nonExistent);
   });
 });

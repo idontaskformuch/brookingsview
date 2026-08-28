@@ -309,6 +309,34 @@ export function assertImageExists(imagePath: string, itemSlug: string): void {
   }
 }
 
+/** Swaps in the smaller 4:3 crop of an already-resolved image, for list/
+ *  card contexts (e.g. index.astro's "Latest from" strip) that want a
+ *  thumbnail rather than the full hero-sized image -- see
+ *  content/illustrations/generate_illustration.py's "{slug}-4x3.png"
+ *  naming convention (only content-track/Flux-generated article images
+ *  get this crop; venue and category images don't, and simply have no
+ *  matching file, so this deliberately falls back to the original image
+ *  unchanged rather than assuming which tier resolveImage() used).
+ *
+ *  Derives the crop path from the image's OWN resolved `path`, not from a
+ *  separately-passed story slug -- [slug].astro's existing additionalImages
+ *  construction derives crop filenames from `story.slug` alone, which
+ *  silently stopped matching real files the day image filenames became
+ *  town-scoped ("{slug}-{town_id}.png", see the cross-town collision fix)
+ *  for any content published since. That staleness isn't reproduced here.
+ *
+ *  Deliberately non-throwing, unlike assertImageExists(): a missing crop
+ *  is optional and falls back to the full image, never an error the way a
+ *  missing PRIMARY image is -- same "optional asset" discipline
+ *  [slug].astro's own existsSync check already established. */
+export function withThumbnailCrop(image: ImageRef): ImageRef {
+  if (isHotlinkedImage(image.path) || !image.path.endsWith('.png')) return image;
+  const cropPath = image.path.replace(/\.png$/, '-4x3.png');
+  const absolute = fileURLToPath(new URL(`../../public${cropPath}`, import.meta.url));
+  if (!existsSync(absolute)) return image;
+  return { ...image, path: cropPath, width: 1200, height: 900 };
+}
+
 /* -------------------------------------------------------- resolveImage */
 
 export interface ResolveImageOptions {
