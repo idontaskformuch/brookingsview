@@ -1,8 +1,9 @@
 /** Build-time safety net -- see handoff "Broomfield has no hero image and
- *  no inline article images" (Phase 3). Two independent checks, both fail
- *  the build loudly by design (a whole town silently missing image/venue-
- *  matching coverage is exactly the failure mode neither one ever surfaced
- *  on its own until this was diagnosed by hand):
+ *  no inline article images" (Phase 3) and its follow-up "Build check for
+ *  the article / content-track image tier". Three independent checks, all
+ *  fail the build loudly by design (a whole town silently missing image/
+ *  venue-matching coverage is exactly the failure mode none of them ever
+ *  surfaced on its own until diagnosed by hand):
  *
  *    1. Every category this town's enabled features actually need has a
  *       non-empty photo pool -- see images.ts's assertCategoryImagesComplete().
@@ -16,6 +17,13 @@
  *       signal those aliases would need to match against. An
  *       aliases-only check goes green on exactly the town it exists to
  *       catch.
+ *    3. Every content-track story (recipe, editorial, culture essay,
+ *       science column, review) actually has an image on disk -- see
+ *       assertContentTrackImagesComplete() below. These types resolve
+ *       through the article-image tier alone (story.image_path, written by
+ *       the Flux/fal pipeline at publish time) and have NO category
+ *       fallback by design, so a failed generation is a PERMANENT gap for
+ *       that specific item, silent until this check existed.
  *
  *  Called once from BaseLayout.astro (every real page renders it), guarded
  *  by a module-level flag so a build with hundreds of pages only actually
@@ -24,10 +32,10 @@
  *  executes this file at all (pure type-checking, no runtime), and vitest
  *  has no reason to import it, so neither needs DATABASE_URL just to run.
  */
-import { TOWN_ID, getFacilities, hasAnyStoryWithVenueRaw } from './db';
+import { TOWN_ID, getFacilities, hasAnyStoryWithVenueRaw, getContentTrackImageStatus } from './db';
 import { siteConfig } from './site-config';
 import { categoryImagesFor } from '../config/category-images';
-import { assertCategoryImagesComplete } from './images';
+import { assertCategoryImagesComplete, assertImageExists, findContentTrackRowsMissingImage } from './images';
 
 let checked = false;
 
@@ -111,9 +119,40 @@ async function assertVenueMatchingReachable(): Promise<void> {
   );
 }
 
+/** No known-exception mechanism here, unlike assertVenueMatchingReachable()
+ *  above -- a missing content-track image has no "not fully wired up yet"
+ *  excuse the way Broomfield's venue_raw gap does; it's either a real
+ *  generation failure (see scripts/backfill_content_track_image.py to fix
+ *  it directly, without a full article regeneration) or a path pointing at
+ *  a file that never made it into the build output. Both are always
+ *  actionable, so both always hard-fail. */
+async function assertContentTrackImagesComplete(): Promise<void> {
+  const rows = await getContentTrackImageStatus();
+
+  const missing = findContentTrackRowsMissingImage(rows);
+  if (missing.length > 0) {
+    const list = missing.map((r) => `${TOWN_ID}/${r.slug} (${r.source_type})`).join(', ');
+    throw new Error(
+      `Build-time content-track image check failed: ${missing.length} row(s) with no image_path -- ` +
+      `${list}. Content-track types have no category fallback -- see ` +
+      'scripts/backfill_content_track_image.py to regenerate just the illustration for an existing story.',
+    );
+  }
+
+  // Column is non-null for every row at this point -- also confirm the file
+  // it names actually reached the build output, not just that the DB thinks
+  // it exists. Reuses the SAME check resolveImage() itself uses at render
+  // time (assertImageExists), just called here proactively for every row
+  // instead of only the one a page happens to render.
+  for (const row of rows) {
+    assertImageExists(row.image_path as string, `${TOWN_ID}/${row.slug} (${row.source_type})`);
+  }
+}
+
 export async function runBuildTimeImageChecks(): Promise<void> {
   if (checked) return;
   checked = true;
   assertCategoryImagesComplete(siteConfig, categoryImagesFor(siteConfig.townId));
   await assertVenueMatchingReachable();
+  await assertContentTrackImagesComplete();
 }

@@ -3,6 +3,7 @@ import {
   normalizeVenueText, extractTitleVenuePrefix, buildNameAliasIndex,
   resolveVenueSlugForImage, categoryForSourceType, dedupeConsecutiveImages,
   resolveImage, pickFromPool, requiredCategoriesFor, assertCategoryImagesComplete,
+  findContentTrackRowsMissingImage,
   type ImageRef, type ResolvableStory,
 } from './images';
 import type { Facility } from './db';
@@ -383,5 +384,40 @@ describe('assertCategoryImagesComplete', () => {
       { townId: 'broomfield_co' },
       { city_hall: [], events: POOL, weather_alert: POOL, jobs: POOL },
     )).toThrowError(/city_hall/);
+  });
+});
+
+// --- content-track image coverage (see handoff "Build check for the
+// article / content-track image tier") -------------------------------------
+
+describe('findContentTrackRowsMissingImage', () => {
+  it('returns rows with a null image_path', () => {
+    const rows = [
+      { slug: 'editorial-1', image_path: null },
+      { slug: 'recipe-1', image_path: '/assets/images/recipe-1.png' },
+    ];
+    expect(findContentTrackRowsMissingImage(rows)).toEqual([{ slug: 'editorial-1', image_path: null }]);
+  });
+
+  it('treats an empty-string image_path the same as null', () => {
+    const rows = [{ slug: 'editorial-1', image_path: '' }];
+    expect(findContentTrackRowsMissingImage(rows)).toHaveLength(1);
+  });
+
+  it('returns an empty array when every row has a real image_path', () => {
+    const rows = [
+      { slug: 'editorial-1', image_path: '/assets/images/editorial-1.png' },
+      { slug: 'recipe-1', image_path: '/assets/images/recipe-1.png' },
+    ];
+    expect(findContentTrackRowsMissingImage(rows)).toEqual([]);
+  });
+
+  it('returns every missing row, not just the first', () => {
+    const rows = [
+      { slug: 'a', image_path: null },
+      { slug: 'b', image_path: '/x.png' },
+      { slug: 'c', image_path: null },
+    ];
+    expect(findContentTrackRowsMissingImage(rows).map((r) => r.slug)).toEqual(['a', 'c']);
   });
 });

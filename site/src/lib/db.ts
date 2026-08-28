@@ -1451,6 +1451,24 @@ export async function hasAnyStoryWithVenueRaw(): Promise<boolean> {
   return rows.length > 0;
 }
 
+/** Just enough fields to check image coverage for every content-track row
+ *  this town has published -- see build-checks.ts's
+ *  assertContentTrackImagesComplete() and lib/images.ts's
+ *  findContentTrackRowsMissingImage() (the pure part of this check). */
+export interface ContentTrackImageRow {
+  slug: string;
+  source_type: SourceType;
+  image_path: string | null;
+}
+
+export async function getContentTrackImageStatus(): Promise<ContentTrackImageRow[]> {
+  return (await sql`
+    SELECT slug, source_type, image_path
+      FROM stories
+     WHERE town_id = ${TOWN_ID} AND source_type = ANY(${CONTENT_TRACK_TYPES})
+  `) as ContentTrackImageRow[];
+}
+
 /** En anläggning via dess slug, för /facilities/[slug].astro. Slug är bara
  *  unikt inom en ort (UNIQUE(town_id, slug)), samma mönster som Story-slugs. */
 export async function getFacilityBySlug(slug: string): Promise<Facility | null> {

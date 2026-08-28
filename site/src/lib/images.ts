@@ -159,6 +159,20 @@ export function requiredCategoriesFor(config: Pick<SiteConfig,
   return required;
 }
 
+/** Content-track types (recipe/vardagsmiddag, editorial, culture essay,
+ *  science column, review) resolve their image through story.image_path
+ *  alone -- the article-image tier, see resolveImage()'s tier 1 -- and by
+ *  design have NO category fallback (see CATEGORY_BY_SOURCE_TYPE above: none
+ *  of them appear there). A null/empty image_path on one of these rows is
+ *  therefore a real, PERMANENT gap for that specific item, not a normal
+ *  resolveImage() miss that degrades gracefully -- see handoff "Build check
+ *  for the article / content-track image tier". Pure so it's vitest-
+ *  testable without a DB -- see images.test.ts. The DB query itself lives
+ *  in db.ts's getContentTrackImageStatus(), called from build-checks.ts. */
+export function findContentTrackRowsMissingImage<T extends { image_path: string | null }>(rows: T[]): T[] {
+  return rows.filter((r) => !r.image_path);
+}
+
 /** Throws (fails the build) naming both the town and every missing/empty
  *  required category -- the actual bug this exists for was a whole town
  *  silently missing its ENTIRE pool with no build signal at all, so "fail
@@ -281,7 +295,7 @@ export function resolveVenueSlugForImage(
  *  crop-check for the established pattern this mirrors, though that one
  *  degrades gracefully by design -- a missing crop is optional, a missing
  *  primary image is not). */
-function assertImageExists(imagePath: string, itemSlug: string): void {
+export function assertImageExists(imagePath: string, itemSlug: string): void {
   // Hotlinked images (Unsplash only, see ImageRef.path's own comment) have
   // no local file to check -- their existence is the external CDN's
   // problem, not this build's.
