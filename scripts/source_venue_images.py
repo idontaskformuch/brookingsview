@@ -101,6 +101,52 @@ VENUE_SEARCHES: dict[tuple[str, str], dict] = {
         "query": "Brookings Public Library South Dakota",
         "commons_file": None,  # No good match -- only unrelated soil-survey scans.
     },
+    ("broomfield_co", "city-hall"): {
+        "query": "George Di Ciero City and County Building Broomfield",
+        "commons_file": None,  # Zero search results at all -- no candidate to review.
+    },
+    ("broomfield_co", "broomfield-community-center"): {
+        "query": "Broomfield Community Center Colorado",
+        "commons_file": None,  # Zero relevant results (only unrelated USACE planning-study scans).
+    },
+    ("broomfield_co", "paul-derda-recreation-center"): {
+        "query": "Paul Derda Recreation Center Broomfield",
+        "commons_file": "Recreation Center.JPG",
+        # CORRECTED 2026-08-28 (was initially accepted the same way as the
+        # two verified matches below -- caught in review, see chat): a
+        # generic filename plus Commons' own ImageDescription/category
+        # text ("The Paul Derda Recreation Center", "Buildings in
+        # Broomfield, Colorado") is METADATA, not visual verification --
+        # exactly the class of match the "verify each match against GPS/
+        # signage" rule exists to catch. No legible in-frame signage, no
+        # GPS in the file's metadata. The photo itself shows a plausible,
+        # generic modern rec-center building with nothing contradicting
+        # the claim, so it's kept rather than discarded outright -- but
+        # `needs_review` MUST be forced back to true after apply (see
+        # `needs_review` key below and main()'s write logic), not left at
+        # the script's normal "sourced = verified" default. CC BY-SA 4.0.
+        "needs_review": True,
+    },
+    ("broomfield_co", "library"): {
+        "query": "Mamie Doud Eisenhower Public Library Broomfield",
+        "commons_file": "The entrance to the Broomfield Public Library, also known as the Mamie Doud Eisenhower Public Library.jpg",
+        # Verified 2026-08-28: visually confirmed -- entrance signage reads
+        # "MAMIE DOUD EISENHOWER PUBLIC LIBRARY" and "3 Community Park
+        # Road" directly on the building, matching the facility's real
+        # name exactly. GPS 39.917469,-105.068786 (within Broomfield, CO,
+        # close to the town's own configs/broomfield_co.json coordinates
+        # 39.9205,-105.0866). CC0.
+    },
+    ("broomfield_co", "county-commons-park"): {
+        "query": "Broomfield County Commons Colorado",
+        "commons_file": "Broomfield County Commons Park Sign.jpg",
+        # Verified 2026-08-28: visually confirmed -- monument sign reads
+        # "Broomfield County Commons Park, 13200 Sheridan Blvd" with the
+        # City and County of Broomfield, Colorado seal, exact match to the
+        # facility's name. No GPS in the metadata, but the sign's own text
+        # is unambiguous. CC BY-SA 2.0, credited to the City and County of
+        # Broomfield, CO itself -- an official government-sourced photo.
+    },
 }
 
 
@@ -212,16 +258,29 @@ def main() -> int:
             out_path = VENUES_DIR / f"{town}-{slug}.png"
             _save(image_resp.content, out_path)
             web_path = "/" + str(out_path.relative_to("site/public")).replace("\\", "/")
+            # Normally a sourced-and-applied match means "verified" (see
+            # module docstring) -- needs_review=false. An entry can
+            # override this with "needs_review": True (see paul-derda-
+            # recreation-center above) for a match accepted on Commons'
+            # own description/categorization rather than independent
+            # visual confirmation (signage/GPS): keep the image, but don't
+            # let it silently count as fully verified. Read from the entry
+            # itself (not set once by hand after the fact) so a future
+            # re-run of --apply can never quietly clobber this back to
+            # false.
+            needs_review = entry.get("needs_review", False)
             with conn.cursor() as cur:
                 cur.execute(
                     """UPDATE facilities SET image_path = %s, image_source = 'wikimedia_commons',
                        image_license = %s, image_attribution_text = %s, image_attribution_url = %s,
-                       image_needs_review = false
+                       image_needs_review = %s
                        WHERE town_id = %s AND slug = %s""",
-                    (web_path, license_name, attribution_text, attribution_url, town, slug),
+                    (web_path, license_name, attribution_text, attribution_url, needs_review, town, slug),
                 )
             print(f"  saved {out_path}")
             print(f"  attribution: {attribution_text}")
+            if needs_review:
+                print("  NOTE: needs_review left TRUE (accepted on metadata, not independent visual verification)")
 
         for (town, slug), entry in unresolved.items():
             print(f"[{town}/{slug}] no Commons match -- clearing image_path, flagging for review")

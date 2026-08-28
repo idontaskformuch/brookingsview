@@ -55,6 +55,26 @@ SEED: dict[tuple[str, str], list[str]] = {
     ("brookings_sd", "city-hall"): [
         "City Hall", "Brookings City Hall",
     ],
+    # Broomfield: unlike the entries above, these are NOT yet backed by a
+    # matchable stories.venue_raw or title-prefix -- confirmed live
+    # 2026-08-28 that every Broomfield story has venue_raw = NULL and no
+    # meeting/event title carries a venue-distinguishing prefix (see
+    # NEEDS-HUMAN-REVIEW.md, "Broomfield image gap"). The room names below
+    # are real, observed in meetings.raw_data->'room' (AgendaLink's own
+    # scraped field, e.g. {"name": "Council Chambers", "address": {"street":
+    # "One DesCombes Drive", ...}}) -- confirmed against facilities' own
+    # verified City Hall/Community Center addresses -- but ai_pipeline/
+    # publish.py does not currently surface that field into stories.
+    # venue_raw for AgendaLink-sourced meetings, so these aliases are
+    # correctly seeded and ready, but INERT for image resolution until that
+    # separate pipeline gap is closed. Not fixed here: touches the shared,
+    # cross-town publish.py, out of scope for an image-sourcing task.
+    ("broomfield_co", "city-hall"): [
+        "City Hall", "Council Chambers", "Council Conference Room",
+    ],
+    ("broomfield_co", "broomfield-community-center"): [
+        "Broomfield Community Center",
+    ],
 }
 
 
