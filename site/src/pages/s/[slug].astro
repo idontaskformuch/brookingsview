@@ -19,6 +19,7 @@ import { resolveImage, contentTrackCropPaths } from '../../lib/images';
 import { categoryImagesFor } from '../../config/category-images';
 import ImageAttribution from '../../components/ImageAttribution.astro';
 import { shouldNoindexStory } from '../../lib/noindex';
+import { canonicalUrlForStory } from '../../lib/cross-site-canonical';
 
 export async function getStaticPaths() {
   // Fetched once for the whole build, not per-page -- the facilities set is
@@ -93,7 +94,15 @@ const venueFacility = story.source_type === 'event' && !story.is_recurring_serie
   ? resolveVenue(buildVenueIndex(facilities), story.venue_raw)
   : null;
 const cityHallFacility = isMeeting ? facilities.find((f) => f.slug === 'city-hall') ?? null : null;
+// This page's own real URL -- used for breadcrumbs, JSON-LD, and share
+// buttons below, which all describe THIS page regardless of SEO
+// canonicalization. Never swapped for the cross-site origin URL -- the
+// page still fully exists and is shareable here, only the <link
+// rel="canonical"> signal (pageCanonicalUrl, passed to BaseLayout) differs
+// when this story's type points elsewhere (Phase C: cross-site
+// duplication remediation).
 const canonicalUrl = new URL(`/s/${story.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
+const pageCanonicalUrl = canonicalUrlForStory(story.source_type, story.slug, siteConfig.townId, canonicalUrl);
 // Fas 2.3 (breadcrumbs): CATEGORY_HREFS doesn't cover every source_type
 // (deliberately -- see that map's own comment on 'alert'), so a story
 // with no known parent section just gets a 2-level trail (Home > Title)
@@ -162,7 +171,7 @@ const eventJsonLdObject = buildEventJsonLd(
 );
 ---
 
-<BaseLayout title={`${story.title} — ${siteConfig.siteName}`} description={story.body.slice(0, 155)} ogSlug={story.slug} noindex={isNoindex}>
+<BaseLayout title={`${story.title} — ${siteConfig.siteName}`} description={story.body.slice(0, 155)} ogSlug={story.slug} noindex={isNoindex} canonicalUrl={pageCanonicalUrl}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <article class="story">
     {!hasByline && <p class="story__kind data">{kind}</p>}

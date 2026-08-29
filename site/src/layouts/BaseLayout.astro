@@ -38,6 +38,12 @@ interface Props {
    *  only, which the active-nav-item rule below reads. Omitted pages keep
    *  the site's default navy, exactly as before this prop existed. */
   accentColor?: string;
+  /** Cross-site duplication remediation (Phase C, lib/cross-site-canonical.ts)
+   *  -- overrides the default self-referential canonical for the handful
+   *  of pages whose content is near-identical on another town's domain
+   *  (recipes/reviews/science column). Omitted everywhere else -- the
+   *  computed self-URL below is unchanged for every other page. */
+  canonicalUrl?: string;
 }
 
 const {
@@ -47,11 +53,14 @@ const {
   ogSlug,
   noindex = false,
   accentColor,
+  canonicalUrl,
 } = Astro.props;
 
 await runBuildTimeImageChecks();
 const sign = await getSignData();
-const canonical = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl);
+const canonical = canonicalUrl
+  ? new URL(canonicalUrl)
+  : new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl);
 const ogImage = new URL(`/og/${ogSlug ?? 'default'}.png`, Astro.site ?? siteConfig.siteUrl).href;
 const now = new Date();
 const year = now.getFullYear();

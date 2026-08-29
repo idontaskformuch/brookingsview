@@ -82,6 +82,21 @@ function isThinStory(sourceType, body) {
   return isThinType || wordCount < THIN_CONTENT_WORD_THRESHOLD;
 }
 
+// Mirrors lib/cross-site-canonical.ts's CROSS_SITE_CANONICAL_ORIGINS
+// exactly -- same duplication tradeoff as slugifyAddress above. A
+// non-origin town's page for one of these types carries a cross-domain
+// <link rel="canonical"> (Phase C: cross-site duplication remediation),
+// so it has no business also being advertised as this town's own
+// indexable URL in ITS sitemap -- same "don't contradict the page's own
+// signal" principle as noindexStoryUrls above, just via canonical instead
+// of noindex (Google's own guidance: don't combine the two, one signal is
+// enough).
+const CROSS_SITE_CANONICAL_ORIGINS = {
+  vardagsmiddag: 'brookings_sd',
+  media_recension: 'moreno_valley_ca',
+  vetenskap_kronika: 'broomfield_co',
+};
+
 // AdSense "low value content" remediation, Phase A4: every one of these
 // top-level pages unconditionally or conditionally redirects via
 // `Astro.redirect(...)` in its own frontmatter (grep `Astro\.redirect\(`
@@ -168,12 +183,14 @@ async function buildLastmodMap(townId, databaseUrl) {
   // build failure.
   if (!databaseUrl) {
     return {
-      map, noindexHomeSaleUrls, excludedGatedPages, noindexStoryUrls: new Set(), noindexThinPageUrls,
+      map, noindexHomeSaleUrls, excludedGatedPages, noindexStoryUrls: new Set(),
+      noindexThinPageUrls, crossCanonicalStoryUrls: new Set(),
     };
   }
   const sql = neon(databaseUrl);
 
   const noindexStoryUrls = new Set();
+  const crossCanonicalStoryUrls = new Set();
   const stories = await sql`
     SELECT slug, published_at, source_type, body, generated_by FROM stories WHERE town_id = ${townId}
   `;
@@ -186,6 +203,10 @@ async function buildLastmodMap(townId, databaseUrl) {
     // reflected in the sitemap, not just the new one.
     if (s.generated_by === 'data_pending' || isThinStory(s.source_type, s.body)) {
       noindexStoryUrls.add(`/s/${s.slug}/`);
+    }
+    const canonicalOrigin = CROSS_SITE_CANONICAL_ORIGINS[s.source_type];
+    if (canonicalOrigin && canonicalOrigin !== townId) {
+      crossCanonicalStoryUrls.add(`/s/${s.slug}/`);
     }
   }
 
@@ -258,11 +279,13 @@ async function buildLastmodMap(townId, databaseUrl) {
 
   return {
     map, noindexHomeSaleUrls, excludedGatedPages, noindexStoryUrls, noindexThinPageUrls,
+    crossCanonicalStoryUrls,
   };
 }
 
 const {
   map: lastmodMap, noindexHomeSaleUrls, excludedGatedPages, noindexStoryUrls, noindexThinPageUrls,
+  crossCanonicalStoryUrls,
 } = await buildLastmodMap(activeCity, env.DATABASE_URL);
 
 export default defineConfig({
@@ -275,7 +298,8 @@ export default defineConfig({
         return !noindexHomeSaleUrls.has(pathname)
           && !excludedGatedPages.has(pathname)
           && !noindexStoryUrls.has(pathname)
-          && !noindexThinPageUrls.has(pathname);
+          && !noindexThinPageUrls.has(pathname)
+          && !crossCanonicalStoryUrls.has(pathname);
       },
       serialize(item) {
         const lastmod = lastmodMap.get(new URL(item.url).pathname);
