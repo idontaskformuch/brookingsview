@@ -47,7 +47,6 @@ from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
     resolve_model, pricing_for, safe_create,
 )
-from ai_pipeline.publish import prefix_town_name
 
 try:
     import anthropic
@@ -180,7 +179,9 @@ def main() -> int:
             label = f"{month_name[dt.month]} {dt.day}, {dt.year}" if dt else "recently"
             minutes_text = m["raw_data"]["minutes_text"]
             slug = f"meeting-followup-{m['id']}"
-            title = prefix_town_name(f"What happened at {body}, {label}", cfg["display_name"])
+            # AdSense remediation Phase B2: no town-name prefix -- see
+            # ai_pipeline/daily_content.py's own comment on why.
+            title = f"What happened at {body}, {label}"
 
             text, generated_by, verified = generate(cfg, body, label, minutes_text)
 

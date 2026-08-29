@@ -56,7 +56,6 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline import guardrails, search_client
-from ai_pipeline.publish import prefix_town_name
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
     resolve_model, pricing_for, safe_create,
@@ -271,7 +270,9 @@ def main() -> int:
             rating = extract_rating(build_grounding_text(employer["name"], results, cfg))
             prev = previous_rating(conn, town_id, employer["id"], period)
             delta = (rating - prev) if (rating is not None and prev is not None) else None
-            title = prefix_town_name(f"Worker Pulse: {employer['name']} — {period_label}", cfg["display_name"])
+            # AdSense remediation Phase B2: no town-name prefix -- see
+            # ai_pipeline/daily_content.py's own comment on why.
+            title = f"Worker Pulse: {employer['name']} — {period_label}"
 
             if args.dry_run:
                 print("\n" + "=" * 70)
