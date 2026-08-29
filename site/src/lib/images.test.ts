@@ -18,7 +18,7 @@ function facility(overrides: Partial<Facility> & Pick<Facility, 'slug'>): Facili
     hours_text: null, description: null, source_url: null, verified_date: null,
     aliases: [], street_address: null, postal_code: null, lat: null, lon: null,
     image_path: null, image_alt: null, name_aliases: [],
-    image_attribution_text: null, image_attribution_url: null,
+    image_attribution_text: null, image_attribution_url: null, free_teaser: null,
     ...overrides,
   };
 }

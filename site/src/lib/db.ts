@@ -154,6 +154,13 @@ export interface Story {
   // hand. Optional av samma skäl som venue_raw/is_recurring_series ovan --
   // bara frågor som faktiskt behöver den selectar den.
   featured?: boolean;
+  // Endast source_type='event' rader som ai_pipeline/free_teasers.py har
+  // klassat som gratis (samma venue-kategori + pris-språk-regel som
+  // isFreeEvent() nedan) -- en förgenererad, en gång per event, cachad
+  // rad (db/migrations/036_free_teasers.sql). NULL för allt annat
+  // innehåll OCH för ett gratis-event som ännu inte hunnit genereras.
+  // Optional av samma skäl som venue_raw ovan.
+  free_teaser?: string | null;
 }
 
 export interface Game {
@@ -269,7 +276,7 @@ export async function getUpcomingStories(
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at
+           venue_raw, is_recurring_series, ends_at, free_teaser
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
@@ -603,7 +610,8 @@ export async function getRelatedStories(
  */
 export type RelatedPageType =
   | 'traffic' | 'events' | 'university' | 'workplace_watch'
-  | 'city_hall' | 'jobs' | 'home_sales' | 'vail_news' | 'closure_watch' | 'new_in_town';
+  | 'city_hall' | 'jobs' | 'home_sales' | 'vail_news' | 'closure_watch' | 'new_in_town'
+  | 'facilities';
 
 export interface RelatedItem {
   href: string;
@@ -707,6 +715,7 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
       });
     }
     items.push({ href: '/facilities/', title: 'Venues & facilities', kicker: 'Facilities', description: 'Parks, libraries and community centers that host these events.' });
+    items.push({ href: '/events/free/', title: 'Free things to do', kicker: 'Free', description: 'Always-free facilities and free events, in one place.' });
     items.push({ href: '/events/past/', title: 'Past events', kicker: 'Archive', description: 'Every community event covered here, by month.' });
     if (isBrookings) {
       items.push({ href: '/university/', title: "What's on at SDSU", kicker: 'University', description: 'Athletics, music and more.' });
@@ -752,6 +761,10 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
     items.push({ href: '/workplace-watch/', title: 'Worker Pulse', kicker: 'Worker Pulse', description: "Review-trend digests for Broomfield's major employers, including Vail Resorts." });
     items.push({ href: '/jobs/', title: 'Jobs', kicker: 'Jobs', description: 'Current listings in and near Broomfield.' });
     items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
+  } else if (pageType === 'facilities') {
+    items.push({ href: '/events/free/', title: 'Free things to do', kicker: 'Free', description: 'Always-free facilities and free events, in one place.' });
+    items.push({ href: '/facilities/', title: 'Venues & facilities', kicker: 'Facilities', description: 'Every park, library and civic building we track.' });
+    items.push({ href: '/events/', title: "What's on", kicker: 'Events', description: 'Community events this week.' });
   }
 
   return items;
@@ -1413,6 +1426,13 @@ export interface Facility {
   // image_path/image_alt above.
   image_attribution_text: string | null;
   image_attribution_url: string | null;
+  // Added by db/migrations/036_free_teasers.sql for the /events/free/
+  // "Always free" facilities section -- a short, one-time-generated
+  // paragraph (see ai_pipeline/free_teasers.py) framing this facility for
+  // a free-family-outing reader. Only ever populated for the free-venue
+  // categories that page cares about (library/park/community_center);
+  // NULL for every other facility, and NULL until generation has run.
+  free_teaser: string | null;
 }
 
 /** Alla anläggningar för den aktuella orten, grupperat på category av
@@ -1424,7 +1444,7 @@ export async function getFacilities(): Promise<Facility[]> {
            hours_text, description, source_url, verified_date,
            aliases, street_address, postal_code, lat, lon,
            image_path, image_alt, name_aliases,
-           image_attribution_text, image_attribution_url
+           image_attribution_text, image_attribution_url, free_teaser
       FROM facilities
      WHERE town_id = ${TOWN_ID}
      ORDER BY category, name
@@ -1477,7 +1497,7 @@ export async function getFacilityBySlug(slug: string): Promise<Facility | null> 
            hours_text, description, source_url, verified_date,
            aliases, street_address, postal_code, lat, lon,
            image_path, image_alt, name_aliases,
-           image_attribution_text, image_attribution_url
+           image_attribution_text, image_attribution_url, free_teaser
       FROM facilities
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
      LIMIT 1

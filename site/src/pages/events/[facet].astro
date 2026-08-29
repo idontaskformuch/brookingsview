@@ -20,10 +20,10 @@ import StoryCard from '../../components/StoryCard.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import {
-  getUpcomingStories, getUpcomingArtsEvents, getFacilities, type Facility,
+  getUpcomingStories, getUpcomingArtsEvents, getFacilities, FACILITY_CATEGORY_LABELS, type Facility,
 } from '../../lib/db';
 import {
-  buildEventFeed, artsEventAsStory, withAttribution, todayUtcMidnight, type FeedItem,
+  buildEventFeed, artsEventAsStory, withAttribution, todayUtcMidnight, FREE_VENUE_CATEGORIES, type FeedItem,
 } from '../../lib/events';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
 import { EVENT_FACETS, type EventFacet } from '../../lib/event-facets';
@@ -69,7 +69,41 @@ const canonicalUrl = new URL(`/events/${facet.slug}/`, Astro.site ?? siteConfig.
 // already renders (see this file's own doc comment) -- thin/near-empty,
 // noindex rather than removed, since the facet URL itself is still a
 // real, useful landing page once enough events exist for it again.
-const isNoindex = items.length < 3;
+//
+// 'free' is the one exception, per the "Free Things To Do" handoff:
+// this facet ALWAYS carries the original, synthesized "Always free"
+// facilities section below (see freeFacilities) even on a week with zero
+// qualifying events, so it never counts as thin the way the other facets
+// can -- never noindexed, regardless of item count.
+const isNoindex = facet.slug === 'free' ? false : items.length < 3;
+
+// "Free Things To Do" handoff, Decision 1: extend this existing facet
+// rather than a new page. Same facilities list getStaticPaths already
+// fetched for JSON-LD venue resolution -- filtered to the always-free
+// categories, grouped for display. Only computed for the 'free' facet;
+// every other facet ignores it.
+const freeFacilities = facet.slug === 'free'
+  ? facilities.filter((f) => FREE_VENUE_CATEGORIES.has(f.category))
+  : [];
+const facilityGroups = ['library', 'park', 'community_center']
+  .map((category) => ({
+    category,
+    label: FACILITY_CATEGORY_LABELS[category] ?? category,
+    items: freeFacilities.filter((f) => f.category === category),
+  }))
+  .filter((g) => g.items.length > 0);
+
+const facilitiesItemListJsonLd = freeFacilities.length > 0 ? {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: `Always-free facilities in ${siteConfig.cityName}`,
+  itemListElement: freeFacilities.map((f, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: f.name,
+    url: new URL(`/facilities/${f.slug}/`, Astro.site ?? siteConfig.siteUrl).href,
+  })),
+} : null;
 
 function eventJsonLdFor(item: FeedItem): Record<string, unknown> | null {
   const asStory = item.kind === 'arts' ? artsEventAsStory(item.event) : item.story;
@@ -131,19 +165,60 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
     {siblingFacets.map((f) => <a href={`/events/${f.slug}/`}>{f.navLabel}</a>)}
   </nav>
 
-  {items.length > 0 ? (
-    <div class="grid">
-      {items.map((item) => item.kind === 'story'
-        ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} />
-        : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" />
-      )}
-    </div>
-  ) : (
-    <p class="empty">{facet.emptyMessage}</p>
+  {facet.slug === 'free' && items.length > 0 && <SectionRule label="Free events" />}
+
+  {/* Free Things To Do, Decision 2: if this town's free events come back
+      completely empty (e.g. Broomfield, whose WebTrac source is currently
+      blocked), skip this sub-section entirely rather than force an empty
+      grid or empty-state message onto a page that still has real content
+      below it. Every other facet keeps its existing empty-state behavior. */}
+  {(facet.slug === 'free' ? items.length > 0 : true) && (
+    items.length > 0 ? (
+      <div class="grid">
+        {items.map((item) => (
+          <div class="event-cell">
+            {item.kind === 'story'
+              ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} />
+              : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" />}
+            {facet.slug === 'free' && item.kind === 'story' && item.story.free_teaser && (
+              <p class="free-teaser">{item.story.free_teaser}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    ) : (
+      <p class="empty">{facet.emptyMessage}</p>
+    )
+  )}
+
+  {facilityGroups.length > 0 && (
+    <section class="free-facilities">
+      <SectionRule label="Always free" />
+      {facilityGroups.map((group) => (
+        <div class="facility-group">
+          <h3 class="facility-group__label">{group.label}</h3>
+          <ul class="facility-list">
+            {group.items.map((f) => (
+              <li>
+                <h4><a href={`/facilities/${f.slug}/`}>{f.name}</a></h4>
+                <p>{f.free_teaser ?? `${group.label} in ${siteConfig.cityName}${f.address ? ` — ${f.address}` : ''}.`}</p>
+                {f.category === 'community_center' && (
+                  <p class="caveat">Free to enter — some programs or classes inside may charge a fee.</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </section>
   )}
 
   {itemListJsonLd && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
+  )}
+
+  {facilitiesItemListJsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(facilitiesItemListJsonLd)} />
   )}
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
@@ -166,5 +241,23 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 }
 .facet-nav a:hover, .facet-nav a:focus-visible { background: var(--navy); color: var(--surface); }
 .grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+.event-cell { display: flex; flex-direction: column; gap: 0.375rem; }
+.free-teaser { margin: 0; font-size: 0.875rem; color: var(--ink-soft); line-height: 1.4; }
 .empty { color: var(--ink-soft); }
+.facility-group { margin-top: 1.25rem; }
+.facility-group:first-of-type { margin-top: 0; }
+.facility-group__label {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0 0 0.5rem;
+}
+.facility-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+.facility-list li { border: 1px solid var(--rule); padding: 0.75rem 0.875rem; }
+.facility-list h4 { margin: 0 0 0.375rem; font-size: 1.0625rem; }
+.facility-list p { margin: 0; font-size: 0.875rem; line-height: 1.5; }
+.facility-list .caveat { margin-top: 0.375rem; color: var(--ink-soft); font-size: 0.8125rem; }
 </style>

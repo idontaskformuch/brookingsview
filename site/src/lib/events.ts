@@ -183,7 +183,12 @@ export function withAttribution(body: string, item: FeedItem, alsoListedBy: Map<
  *  event as free, the one failure mode this facet must never produce. */
 const PAID_LANGUAGE_RE = /\$\d|admission fee|cover charge|tickets?\s+(required|on sale)|purchase\s+a\s+ticket/i;
 
-const FREE_VENUE_CATEGORIES = new Set(['library', 'park', 'community_center']);
+// Exported so events/[facet].astro's 'free' facet can pick the SAME
+// always-free facilities (library/park/community_center) out of the
+// facilities list it already has, rather than re-declaring this set a
+// second time in that file (ai_pipeline/free_teasers.py ports it a third
+// time, Python-side -- see that module's own comment on the tradeoff).
+export const FREE_VENUE_CATEGORIES = new Set(['library', 'park', 'community_center']);
 
 /**
  * Events genuinely knowable as free without guessing. Neither `events` nor

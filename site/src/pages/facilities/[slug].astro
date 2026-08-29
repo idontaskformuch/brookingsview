@@ -9,6 +9,7 @@
  *  getFacilities()/getFacilityBySlug(). */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import RelatedContent from '../../components/RelatedContent.astro';
 import {
   getFacilities, getFacilityBySlug, FACILITY_CATEGORY_LABELS, FACILITY_SCHEMA_TYPE,
   formatCalendarDate, getUpcomingStories, buildVenueIndex, resolveVenue, formatOccursAt,
@@ -98,6 +99,8 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 
     <p class="back"><a href="/facilities/">← All local facilities</a></p>
   </article>
+
+  <RelatedContent pageType="facilities" />
 
   {hasFullAddress && (
     /* Never claims a schema.org address for a facility that doesn't have a
