@@ -258,7 +258,8 @@
       "enabled": true,
       "provider": "nws",
       "endpoint": "https://api.weather.gov/alerts/active",
-      "area": "SDC011",
+      "area": "SDZ040",
+      "_area_notes": "AdSense remediation Phase B3, 2026-08-29: was county zone SDC011. Replaced with the precise forecast zone (fire weather zone is the same code, SDZ040, for this area) -- verified via api.weather.gov/points at Brookings' center and both edges, all three return SDZ040, so unlike Broomfield this town does not straddle a zone boundary and a single zone code is sufficient. Real live check found no active Brookings-area alerts to compare against at verification time, so this is a structural fix (removing a source of the same class of bug confirmed live for Moreno Valley), not one with a live before/after diff for this town specifically.",
       "refresh_minutes": 30,
       "output": {
         "format": "alert_banner",
@@ -372,7 +373,7 @@
     "closure_watch": {
       "enabled": true,
       "districts": ["Brookings School District 05-1"],
-      "weather_zones": ["SDC011"],
+      "weather_zones": ["SDZ040"],
       "relevant_alert_events": [
         "Winter Storm Warning",
         "Blizzard Warning",

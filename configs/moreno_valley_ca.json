@@ -181,13 +181,14 @@
       "enabled": true,
       "provider": "nws",
       "endpoint": "https://api.weather.gov/alerts/active",
-      "area": "CAC065",
+      "area": "CAZ048,CAZ248",
+      "_area_notes": "AdSense remediation Phase B3, 2026-08-29: was county zone CAC065 (all of Riverside County -- confirmed live via api.weather.gov/alerts/active?zone=CAC065 returning Coachella Valley and Parker Valley/Yuma AZ-border alerts alongside the one genuinely covering Moreno Valley). Replaced with the precise forecast+fire-weather zone pair for Moreno Valley's own point (verified via api.weather.gov/points/33.9425,-117.2297 and re-checked at Moreno Valley's east/west edges to confirm it doesn't straddle a zone boundary the way Broomfield does). NWS's alerts endpoint accepts a comma-joined zone list in one query -- confirmed live. Re-querying CAZ048 alone returned exactly the one relevant alert, none of the desert noise.",
       "refresh_minutes": 30,
       "output": {
         "format": "alert_banner",
         "voice": "calm-clear"
       },
-      "_notes": "VERIFIERAD 2026-07-22: api.weather.gov/points/33.9425,-117.2297 returnerar county=.../zones/county/CAC065 -- gissningen var korrekt, ingen ändring behövd. Keyless, kräver User-Agent. Heat advisories/Santa Ana-vindar/red flag är relevant lokal nytta här."
+      "_notes": "VERIFIERAD 2026-07-22: api.weather.gov/points/33.9425,-117.2297 returnerar county=.../zones/county/CAC065 -- gissningen var korrekt, ingen ändring behövd. Keyless, kräver User-Agent. Heat advisories/Santa Ana-vindar/red flag är relevant lokal nytta här. UPPDATERAD 2026-08-29 (se _area_notes ovan): CAC065 var rätt COUNTY-kod men fel granularitet för larm -- hela Riverside County spänner från Moreno Valley till Coachella Valley/Arizona-gränsen. area bytt till precisa forecast/fire-zoner (CAZ048,CAZ248)."
     },
     "road_conditions": {
       "type": "api_or_scrape",
@@ -380,14 +381,14 @@
     "closure_watch": {
       "enabled": true,
       "districts": ["Moreno Valley Unified School District"],
-      "weather_zones": ["CAC065"],
+      "weather_zones": ["CAZ048", "CAZ248"],
       "relevant_alert_events": [
         "Red Flag Warning",
         "Fire Weather Watch",
         "Air Quality Alert"
       ],
       "min_historical_closures_for_watch": { "default": 0, "Air Quality Alert": 1 },
-      "_notes": "Handoff: Information Hub Tier 1, Feature A. Not a new data source -- reads the already-live school_alerts (Finalsite) and weather_alerts (NWS, area CAC065) sources above. NARROWED 2026-08-28: heat and winter-storm events were removed from relevant_alert_events -- MVUSD schools are AC-equipped and don't close for heat, so an Excessive Heat Warning would have put the page in Watch state on nearly every summer day with essentially zero correlated closures, teaching readers to ignore it (worse than no page at all). Fire and smoke/air-quality events are the real closure driver here. Note PSPS (utility power shutoffs) is NOT an NWS alert type and isn't covered by this source at all -- a real gap, not solved by this config, flag for a future dedicated source if it becomes a recurring closure cause. MEASURED 2026-08-28 against the real DB: Air Quality Alert fired on 6 of the last 36 days of actual scrape history (~17%) with zero confirmed closures ever recorded for this district -- the exact same over-triggering risk heat had, just a different event. A severity floor was considered and rejected: every real Air Quality Alert row in this DB has raw_data.severity='Unknown' (NWS/AirNow doesn't populate it meaningfully for this alert type), so there is no usable signal to threshold on. Instead min_historical_closures_for_watch is now a PER-EVENT map (was a single town-wide int) so Air Quality Alert alone requires 1 real closure_history match before it can reach Watch -- with zero history today, it renders Clear until a real correlation is recorded. Red Flag Warning/Fire Weather Watch stay at the 'default' (0, inert) since they're rarer and more clearly actionable even without history yet -- revisit both floors once closure_history actually has rows for this town."
+      "_notes": "Handoff: Information Hub Tier 1, Feature A. Not a new data source -- reads the already-live school_alerts (Finalsite) and weather_alerts (NWS, area CAZ048,CAZ248 as of 2026-08-29 -- see weather_alerts._area_notes) sources above. NARROWED 2026-08-28: heat and winter-storm events were removed from relevant_alert_events -- MVUSD schools are AC-equipped and don't close for heat, so an Excessive Heat Warning would have put the page in Watch state on nearly every summer day with essentially zero correlated closures, teaching readers to ignore it (worse than no page at all). Fire and smoke/air-quality events are the real closure driver here. Note PSPS (utility power shutoffs) is NOT an NWS alert type and isn't covered by this source at all -- a real gap, not solved by this config, flag for a future dedicated source if it becomes a recurring closure cause. MEASURED 2026-08-28 against the real DB: Air Quality Alert fired on 6 of the last 36 days of actual scrape history (~17%) with zero confirmed closures ever recorded for this district -- the exact same over-triggering risk heat had, just a different event. A severity floor was considered and rejected: every real Air Quality Alert row in this DB has raw_data.severity='Unknown' (NWS/AirNow doesn't populate it meaningfully for this alert type), so there is no usable signal to threshold on. Instead min_historical_closures_for_watch is now a PER-EVENT map (was a single town-wide int) so Air Quality Alert alone requires 1 real closure_history match before it can reach Watch -- with zero history today, it renders Clear until a real correlation is recorded. Red Flag Warning/Fire Weather Watch stay at the 'default' (0, inert) since they're rarer and more clearly actionable even without history yet -- revisit both floors once closure_history actually has rows for this town."
     },
     "new_in_town": {
       "enabled": false,

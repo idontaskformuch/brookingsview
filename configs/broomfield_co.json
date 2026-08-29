@@ -140,7 +140,8 @@
       "enabled": true,
       "provider": "nws",
       "endpoint": "https://api.weather.gov/alerts/active",
-      "area": "COC014",
+      "area": "COZ039,COZ040,COZ239,COZ240",
+      "_area_notes": "AdSense remediation Phase B3, 2026-08-29: was county zone COC014. Broomfield is a consolidated city-county, but genuinely STRADDLES two NWS forecast-zone boundaries -- confirmed live: api.weather.gov/points at (39.9205,-105.0866), the town's west side, returns forecastZone=COZ039/fireWeatherZone=COZ239 ('...West Broomfield County'), while (39.9401,-104.9878), the east side near the Thornton border, returns COZ040/COZ240. Using only COZ039 (the first zone checked) would have UNDER-covered the town -- missed alerts for the eastern half -- the opposite failure mode from the over-broad county zone this replaces. NWS's alerts endpoint accepts a comma-joined zone list in one query (confirmed live), so all four zone codes are queried together rather than picking just one.",
       "refresh_minutes": 30,
       "output": {
         "format": "alert_banner",
@@ -224,7 +225,7 @@
     "closure_watch": {
       "enabled": false,
       "districts": [],
-      "weather_zones": ["COC014"],
+      "weather_zones": ["COZ039", "COZ040", "COZ239", "COZ240"],
       "relevant_alert_events": [
         "Winter Storm Warning",
         "Blizzard Warning",
