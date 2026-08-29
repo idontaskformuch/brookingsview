@@ -1,12 +1,10 @@
 ---
 /**
- * Cookie-samtycke, byggd innan den strikt behövs.
- *
- * Sajten sätter inga spårningscookies idag (se /privacy och /cookies), så
- * valet styr ingenting ÄN -- men det sparas redan nu (localStorage +
- * window.bvConsent), så när AdSense-kod en dag ska villkoras av samtycke
- * finns kroken på plats. Ingen ombyggnad krävs då, bara ett villkor runt
- * annonsskriptet som läser samma flagga.
+ * Cookie-samtycke. Gate:ar nu på riktigt -- BaseLayout.astro:s AdSense-
+ * skript (Moreno Valley) laddas bara efter window.bvConsent === 'accepted'.
+ * Byggdes ursprungligen innan den strikt behövdes (se git-historik för den
+ * äldre kommentaren); texten nedan uppdaterad 2026-08-29 för att inte
+ * påstå att samtycket "inte styr något än" när det faktiskt redan gör det.
  *
  * Ren vanilla JS, inget klientbibliotek -- konsekvent med resten av sajten,
  * som medvetet inte kör tunga ramverk för enkla saker.
@@ -16,8 +14,8 @@ import { siteConfig } from '../lib/site-config';
 <div id="cookie-banner" class="banner" role="region" aria-label="Cookie notice" hidden>
   <div class="banner__inner">
     <p>
-      {siteConfig.siteName} doesn't use tracking cookies today. If that changes, we'll
-      ask again — this just lets us remember your choice.
+      This site may show ads that use cookies to personalize what you see.
+      Accepting lets those load; declining keeps them off.
       <a href="/cookies/">Read more</a>
     </p>
     <div class="banner__actions">

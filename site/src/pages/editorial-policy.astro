@@ -1,0 +1,132 @@
+---
+/** Editorial policy -- companion to /about (what the site is) and
+ *  /how-we-gather-this (which sources feed it). This page's job is
+ *  narrower and more mechanical: exactly what the automated guardrails
+ *  check before anything publishes. Every check named below is real,
+ *  live code (ai_pipeline/guardrails.py) -- described accurately, not
+ *  aspirationally, so this page stays honest as the guardrails evolve. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../lib/site-config';
+
+const canonicalUrl = new URL('/editorial-policy/', Astro.site ?? siteConfig.siteUrl).href;
+const title = `Editorial Policy — ${siteConfig.siteName}`;
+const description = `How ${siteConfig.siteName} is written, and exactly what its automated fact-checks require before anything publishes.`;
+
+const PUBLISHED_DATE = '2026-08-29';
+
+const webPageJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': canonicalUrl,
+  url: canonicalUrl,
+  name: title,
+  description,
+  datePublished: PUBLISHED_DATE,
+  dateModified: PUBLISHED_DATE,
+  publisher: { '@type': 'Organization', name: siteConfig.siteName },
+};
+---
+<BaseLayout title={title} description={description}>
+  <article class="prose">
+    <h1>Editorial Policy</h1>
+    <p>{siteConfig.siteName} is written by an AI language model, working only
+    from public sources, without a person reviewing each item before it
+    publishes. That's disclosed plainly on <a href="/about/">/about</a> and
+    <a href="/how-we-gather-this/">/how-we-gather-this</a>. This page is
+    about what stands in for that human review: a set of automated checks
+    every piece of generated text has to pass first.</p>
+
+    <h2>What every check has in common</h2>
+    <p>None of this is a style pass. Each check either passes or fails; a
+    failure means the text is rewritten once with a specific correction, and
+    if it fails again, the item is either replaced with a plain, unstyled
+    template restating the source facts directly, or — for the highest-
+    stakes content — not published at all. No failed check is ever silently
+    ignored to get something out the door.</p>
+
+    <h2>The checks themselves</h2>
+    <dl class="checks">
+      <div class="check">
+        <dt>Every fact must be in the source</dt>
+        <dd>Numbers and proper nouns in the generated text are checked
+        against the actual source document or feed item. A name, figure, or
+        detail that doesn't appear in the source fails this check —
+        regardless of whether it happens to be true.</dd>
+      </div>
+      <div class="check">
+        <dt>No verbatim copying</dt>
+        <dd>Generated text is checked against the source for copied
+        phrases of eight words or more. Everything is a paraphrase, never a
+        lift.</dd>
+      </div>
+      <div class="check">
+        <dt>Claims about a named employer or business are always attributed</dt>
+        <dd>Worker Pulse and New in Town summarize what reviews or outlets
+        say about a real, named company — never as settled fact. A sentence
+        naming a tracked business has to say "reviews mention…" or
+        "according to…"; a bare, unhedged claim fails.</dd>
+      </div>
+      <div class="check">
+        <dt>Closure Watch never predicts a closure</dt>
+        <dd>Before an official closure is announced, the Closure Watch page
+        describes the current situation only — what alert is active, and
+        that no announcement has been made. Predictive language ("likely,"
+        "expect," "keep the kids home") fails outright. If a paragraph
+        can't pass this check, nothing publishes for that state at all,
+        rather than risk a wrong guess.</dd>
+      </div>
+      <div class="check">
+        <dt>Home sales coverage is never financial advice</dt>
+        <dd>The monthly home-sales digest reports what was recorded —
+        prices, counts, ZIP-level activity. It never tells a reader it's a
+        good or bad time to buy or sell, and never speculates on future
+        prices beyond a real prior figure already in the data.</dd>
+      </div>
+      <div class="check">
+        <dt>Ongoing local stories never predict an outcome</dt>
+        <dd>A tracked civic project's page can report a real, already-decided
+        outcome (a vote that happened, a permit that was issued) — that's a
+        fact. It can't say a decision is likely, expected, or on track to
+        happen, because that hasn't occurred yet.</dd>
+      </div>
+      <div class="check">
+        <dt>Culture and science columns are third person, no invented experience</dt>
+        <dd>The model has no experiences of its own to draw on, so it's
+        never allowed to write "I think" or invent a personal anecdote.
+        These pieces argue a point about something real and current — a
+        work, a trend, a local angle — grounded in what's actually true
+        about it, not a fabricated first-person voice.</dd>
+      </div>
+      <div class="check">
+        <dt>No arrests, court records, or obituaries</dt>
+        <dd>Covered on <a href="/about/">/about</a> too — this is enforced
+        as a hard content filter, not just a stated intention.</dd>
+      </div>
+    </dl>
+
+    <h2>When a check fails</h2>
+    <p>Every check above runs before publication, not after. A failed
+    check triggers exactly one retry with the specific problem named to the
+    model, then falls back to a safe, minimally-styled restatement of the
+    source facts — or, for Closure Watch specifically, to publishing
+    nothing at all. Readers never see an item that failed its checks
+    presented as if it passed.</p>
+
+    <h2>Corrections</h2>
+    <p>Automated checks catch what they're built to catch, not everything.
+    If something still gets through wrong, <a href="/contact/">tell us</a>
+    — see the <a href="/corrections/">corrections log</a> for what's been
+    fixed and when.</p>
+  </article>
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(webPageJsonLd)} />
+</BaseLayout>
+
+<style>
+.prose { max-width: 40rem; }
+.prose h2 { margin-top: 2.25rem; margin-bottom: 0.75rem; }
+.prose p { margin: 0 0 1rem; }
+.checks { display: grid; gap: 1.25rem; margin: 0; }
+.check dt { font-family: var(--font-head); font-weight: 700; font-size: 1.0625rem; }
+.check dd { margin: 0.25rem 0 0; color: var(--ink-soft); }
+</style>

@@ -1,0 +1,94 @@
+---
+/** Terms of use -- written plainly, matching /about's own "I'd rather say
+ *  that plainly than dress up an automated site with a fake masthead"
+ *  voice. No fabricated corporate/legal specificity (registered entity,
+ *  governing-law jurisdiction) that /about doesn't actually claim -- see
+ *  that page's "Who built it" section for the real, disclosed operator. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../lib/site-config';
+
+const canonicalUrl = new URL('/terms/', Astro.site ?? siteConfig.siteUrl).href;
+const title = `Terms of Use — ${siteConfig.siteName}`;
+const description = `The terms for using ${siteConfig.siteName}.`;
+
+const PUBLISHED_DATE = '2026-08-29';
+
+const webPageJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  '@id': canonicalUrl,
+  url: canonicalUrl,
+  name: title,
+  description,
+  datePublished: PUBLISHED_DATE,
+  dateModified: PUBLISHED_DATE,
+  publisher: { '@type': 'Organization', name: siteConfig.siteName },
+};
+---
+<BaseLayout title={title} description={description}>
+  <article class="prose">
+    <h1>Terms of Use</h1>
+    <p><em>Last updated August 2026.</em></p>
+
+    <p>By using {siteConfig.siteName}, you agree to these terms. They're
+    written plainly on purpose — see <a href="/about/">/about</a> for who
+    runs this site and how.</p>
+
+    <h2>What this site is</h2>
+    <p>{siteConfig.siteName} is an automated local news site: public
+    information — meeting agendas, calendars, official alerts, and similar
+    sources — summarized by an AI language model and published without a
+    person reviewing each item first. Every summary links back to its
+    original source. See <a href="/how-we-gather-this/">how we gather
+    this</a> and our <a href="/editorial-policy/">editorial policy</a> for
+    the specifics.</p>
+
+    <h2>Accuracy</h2>
+    <p>We work to keep summaries accurate and grounded in their sources,
+    and we fix mistakes when they're reported — see the
+    <a href="/corrections/">corrections log</a>. But this is an automated
+    site with no newsroom behind it: content is provided "as is," without a
+    guarantee that it's complete, current, or error-free. Always check the
+    linked original source before relying on anything here for a decision
+    that matters — a permit deadline, a closure, a public meeting time.</p>
+
+    <h2>Using this site</h2>
+    <p>You're welcome to read, link to, and share pages from this site. Don't
+    scrape, republish, or redistribute its content at scale without asking
+    first — <a href="/contact/">get in touch</a> if you want to do something
+    beyond normal reading and sharing.</p>
+    <p>Content that originates elsewhere (linked source documents, embedded
+    material, third-party sites we link to) belongs to whoever made it, not
+    to us.</p>
+
+    <h2>Comments and polls</h2>
+    <p>If a page lets you leave a comment or vote in a poll, don't post
+    anything false, abusive, or intended to mislead other readers.
+    Submissions can be held, edited for length, or removed at our
+    discretion. See <a href="/privacy/">privacy</a> for how that data is
+    handled.</p>
+
+    <h2>Advertising</h2>
+    <p>This site may show advertising, including through Google AdSense.
+    Ads are always distinguishable from editorial content — see our
+    <a href="/advertising/">advertising policy</a>.</p>
+
+    <h2>Links to other sites</h2>
+    <p>Every summary links to its original public source. We don't control
+    those sites and aren't responsible for their content or availability.</p>
+
+    <h2>Changes</h2>
+    <p>These terms may be updated as the site changes. Continuing to use the
+    site after a change means you accept the updated terms.</p>
+
+    <p>Questions? <a href="/contact/">Contact us</a>.</p>
+  </article>
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(webPageJsonLd)} />
+</BaseLayout>
+
+<style>
+.prose { max-width: 40rem; }
+.prose h2 { margin-top: 2.25rem; margin-bottom: 0.75rem; }
+.prose p { margin: 0 0 1rem; }
+</style>

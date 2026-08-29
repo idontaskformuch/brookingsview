@@ -5,27 +5,39 @@ import { siteConfig } from '../lib/site-config';
 <BaseLayout title={`Privacy — ${siteConfig.siteName}`} description={`What ${siteConfig.siteName} does and doesn't collect.`}>
   <article class="prose">
     <h1>Privacy</h1>
-    <p><em>Last updated July 2026.</em></p>
+    <p><em>Last updated August 2026.</em></p>
 
-    <p>{siteConfig.siteName} is a simple, static website. There are no user accounts,
-    no logins, and no forms that collect personal information beyond an email
-    you choose to send us.</p>
+    <p>{siteConfig.siteName} is a simple, static website. There are no user accounts
+    or logins.</p>
 
     <h2>What we collect</h2>
     <p>Our hosting provider, Cloudflare, keeps standard server logs (like IP
     address and browser type) for security and performance, in line with
     <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">Cloudflare's
-    own privacy policy</a>. We don't run our own analytics or tracking scripts
-    beyond what's disclosed on the <a href="/cookies/">cookies page</a>.</p>
+    own privacy policy</a>.</p>
+
+    <h2>Comments and polls</h2>
+    <p>If you leave a Worker Pulse comment or vote in a shift poll, we don't
+    store your raw IP address. It's converted with a one-way hash (combined
+    with a private value we hold, so the hash can't be reversed back into
+    your real IP) and kept only to prevent the same visitor from submitting
+    repeated comments or votes in a short window. That hash isn't linked to
+    anything else about you, and isn't shared with anyone.</p>
+
+    <h2>Advertising</h2>
+    <p>This site may show advertising served by Google AdSense, gated behind
+    the cookie banner — see the <a href="/cookies/">cookies page</a> for
+    exactly what that involves and how to opt out of personalized ads. We
+    don't otherwise run analytics or tracking scripts.</p>
 
     <h2>If you email us</h2>
     <p>We use your email address only to respond to you. We don't add it to a
     mailing list or share it with anyone else.</p>
 
     <h2>Changes</h2>
-    <p>If this site starts running advertising or analytics that collect more
-    information, this page and the <a href="/cookies/">cookies page</a> will be
-    updated to reflect it before that happens.</p>
+    <p>If what we collect changes beyond what's described here, this page
+    and the <a href="/cookies/">cookies page</a> will be updated to reflect
+    it.</p>
 
     <p>Questions? <a href="/contact/">Contact us</a>.</p>
   </article>
