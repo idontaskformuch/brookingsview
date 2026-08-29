@@ -18,6 +18,7 @@ import { siteConfig } from '../../lib/site-config';
 import { resolveImage, contentTrackCropPaths } from '../../lib/images';
 import { categoryImagesFor } from '../../config/category-images';
 import ImageAttribution from '../../components/ImageAttribution.astro';
+import { shouldNoindexStory } from '../../lib/noindex';
 
 export async function getStaticPaths() {
   // Fetched once for the whole build, not per-page -- the facilities set is
@@ -53,7 +54,10 @@ const when = hasByline
 // from 'data_pending' automatically once real sales data lands, see
 // ai_pipeline/home_sales_digest.py's main()). "zero_sales" is genuinely
 // substantive (a confirmed reporting fact), so it stays indexable.
-const isNoindex = story.generated_by === 'data_pending';
+// shouldNoindexStory() adds the AdSense "low value content" remediation on
+// top -- thin/derivative scraped types (meeting, meeting_followup, event,
+// alert) plus a word-count safety net for any type that came out too short.
+const isNoindex = story.generated_by === 'data_pending' || shouldNoindexStory(story);
 // City-hall development items often name a ZIP directly ("...in the 92553
 // area...") -- cross-link to the home-sales table pre-filtered to it, per
 // NEEDS-HUMAN-REVIEW.md "3.2 City hall". Deliberately scoped to Moreno

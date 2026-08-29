@@ -18,7 +18,7 @@ import {
 } from '../../lib/db';
 import type { Project } from '../../lib/db';
 import { buildPropertySaleJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
-import { titleCaseAddress, extractZip, slugifyAddress, isOutlierSale, digestSlugForSaleDate, isSaleDateIndexable } from '../../lib/home-sales';
+import { titleCaseAddress, extractZip, slugifyAddress, isOutlierSale, digestSlugForSaleDate } from '../../lib/home-sales';
 import { siteConfig } from '../../lib/site-config';
 
 export async function getStaticPaths() {
@@ -73,17 +73,17 @@ const propertyJsonLd = buildPropertySaleJsonLd(
 
 const title = `${address} — Home Sale History — ${siteConfig.siteName}`;
 const latestSale = sales[0];
-// Indexable only while the most recent recorded sale is within the
-// threshold -- a parcel page covers full sale history, so it's the
-// NEWEST sale's age that decides this, not the oldest. Recomputed on
-// every build from sale_date vs. now (see isSaleDateIndexable's own doc
-// comment) -- never a flag baked in at insert time.
-const isIndexable = isSaleDateIndexable(latestSale.sale_date);
 const description = latestSale.sale_price != null
   ? `${address} sold for ${formatPrice(latestSale.sale_price)} on ${formatSaleDate(latestSale.sale_date)}. Recorded sale history from Riverside County's public assessor data.`
   : `Recorded sale history for ${address}, from Riverside County's public assessor data.`;
+// Individual per-parcel sale pages are thin, derivative content against
+// Riverside County's own public assessor report (AdSense "low value
+// content" remediation, Phase A2) -- always noindex, regardless of how
+// recent the sale is. The aggregate /home-sales table, its ZIP facets,
+// and the monthly digest stay indexable -- they're the substantial,
+// original-analysis pages.
 ---
-<BaseLayout title={title} ogSlug="section-home-sales" description={description} noindex={!isIndexable}>
+<BaseLayout title={title} ogSlug="section-home-sales" description={description} noindex>
   <Breadcrumbs trail={breadcrumbTrail} />
   <article class="property">
     <header class="lede">

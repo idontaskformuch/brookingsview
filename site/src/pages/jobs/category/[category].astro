@@ -42,8 +42,13 @@ const itemListJsonLd = jobs.length > 0 ? {
     url: j.redirect_url ?? canonicalUrl,
   })),
 } : null;
+// AdSense "low value content" remediation, Phase A4: getStaticPaths above
+// generates a page for every category with at least one job, no minimum --
+// a category sitting at 1-2 listings today is a thin tag page, noindex
+// rather than removed since it's real content once more listings land.
+const isNoindex = jobs.length < 3;
 ---
-<BaseLayout title={title} wide ogSlug="section-jobs" description={description}>
+<BaseLayout title={title} wide ogSlug="section-jobs" description={description} noindex={isNoindex}>
   <header class="lede">
     <h1>{category} in {siteConfig.cityName}</h1>
     <p>{jobs.length} recent listing{jobs.length === 1 ? '' : 's'}, pulled daily from

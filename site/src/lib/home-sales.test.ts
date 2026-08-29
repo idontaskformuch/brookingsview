@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   OUTLIER_PRICE_FLOOR, isOutlierSale, titleCaseAddress, extractZip, slugifyAddress, digestSlugForSaleDate,
-  isSaleDateIndexable, HOME_SALES_INDEXABLE_MONTHS,
 } from './home-sales';
 import { formatPrice } from './db';
 
@@ -83,27 +82,5 @@ describe('digestSlugForSaleDate', () => {
   });
   it('zero-pads single-digit months', () => {
     expect(digestSlugForSaleDate('2026-03-05')).toBe('home-sales-digest-2026-03');
-  });
-});
-
-describe('isSaleDateIndexable', () => {
-  const now = new Date('2026-08-28T00:00:00Z');
-
-  it('stays indexable for a sale within the threshold', () => {
-    expect(isSaleDateIndexable('2026-06-01', now)).toBe(true);
-  });
-
-  it('stays indexable for a sale exactly at the threshold boundary', () => {
-    const boundary = new Date(now);
-    boundary.setUTCMonth(boundary.getUTCMonth() - HOME_SALES_INDEXABLE_MONTHS);
-    expect(isSaleDateIndexable(boundary.toISOString(), now)).toBe(true);
-  });
-
-  it('ages out a sale older than the threshold', () => {
-    expect(isSaleDateIndexable('2025-12-01', now)).toBe(false);
-  });
-
-  it('treats a null sale_date as not indexable', () => {
-    expect(isSaleDateIndexable(null, now)).toBe(false);
   });
 });

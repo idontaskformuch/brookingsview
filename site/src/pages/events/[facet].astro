@@ -62,6 +62,12 @@ const { facet, items, alsoListedBy, facilities } = Astro.props as {
 const title = facet.titleTemplate(siteConfig.cityName, siteConfig.siteName);
 const description = facet.descriptionTemplate(siteConfig.cityName);
 const canonicalUrl = new URL(`/events/${facet.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
+// AdSense "low value content" remediation, Phase A4: a facet with fewer
+// than 3 matching events is functionally the "empty state" this page
+// already renders (see this file's own doc comment) -- thin/near-empty,
+// noindex rather than removed, since the facet URL itself is still a
+// real, useful landing page once enough events exist for it again.
+const isNoindex = items.length < 3;
 
 function eventJsonLdFor(item: FeedItem): Record<string, unknown> | null {
   const asStory = item.kind === 'arts' ? artsEventAsStory(item.event) : item.story;
@@ -104,7 +110,7 @@ const siblingFacets = EVENT_FACETS.filter(
   (f) => f.slug !== facet.slug && (!f.brookingsOnly || siteConfig.townId === 'brookings_sd')
 );
 ---
-<BaseLayout title={title} wide ogSlug={`events-${facet.slug}`} description={description}>
+<BaseLayout title={title} wide ogSlug={`events-${facet.slug}`} description={description} noindex={isNoindex}>
   <header class="lede">
     <h1>{facet.heading}</h1>
     <p>{facet.intro(siteConfig.cityName)}</p>

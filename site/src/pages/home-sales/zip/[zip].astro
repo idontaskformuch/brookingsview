@@ -52,8 +52,12 @@ const itemListJsonLd = sales.length > 0 ? {
     url: new URL(`/home-sales/${slugifyAddress(s.address ?? '')}/`, Astro.site ?? siteConfig.siteUrl).href,
   })),
 } : null;
+// AdSense "low value content" remediation, Phase A4: same thin tag/category
+// treatment as jobs/category/[category].astro and events/[facet].astro --
+// a ZIP with fewer than 3 recorded sales is a near-empty landing page.
+const isNoindex = sales.length < 3;
 ---
-<BaseLayout title={title} wide ogSlug="section-home-sales" description={description}>
+<BaseLayout title={title} wide ogSlug="section-home-sales" description={description} noindex={isNoindex}>
   <header class="lede">
     <h1>Home sales in {zip}</h1>
     <p>{sales.length} recently recorded home sale{sales.length === 1 ? '' : 's'} in ZIP code {zip}, {siteConfig.cityName} — updated as Riverside County releases new data.</p>

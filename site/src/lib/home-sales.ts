@@ -56,28 +56,3 @@ export function digestSlugForSaleDate(saleDate: string): string {
   const month = String(d.getUTCMonth() + 1).padStart(2, '0');
   return `home-sales-digest-${year}-${month}`;
 }
-
-/** Individual per-parcel sale pages age out of indexing after this many
- *  months -- Moreno Valley's sitemap was carrying 3,756 URLs (vs.
- *  Brookings' 471) almost entirely from these pages. A named constant, not
- *  a magic number inline in the page/sitemap logic, so the threshold can
- *  be found and tuned in one place. Mirrored (duplicated, not imported --
- *  see astro.config.mjs) in the sitemap filter, since that file runs
- *  before Vite's module graph exists. Keep both in sync. */
-export const HOME_SALES_INDEXABLE_MONTHS = 6;
-
-/**
- * Whether a per-parcel sale page should stay indexable, based on its MOST
- * RECENT recorded sale (a parcel page shows full sale history, not one
- * page per sale -- see home-sales/[slug].astro's own doc comment -- so
- * "age" is the age of the newest sale at that address, not the oldest).
- * Computed fresh from sale_date vs. now on every build/request -- never a
- * static flag stored at insert time, which would go stale as the page ages
- * without a corresponding rebuild-time recheck.
- */
-export function isSaleDateIndexable(saleDate: string | Date | null, now: Date = new Date()): boolean {
-  if (!saleDate) return false;
-  const cutoff = new Date(now);
-  cutoff.setUTCMonth(cutoff.getUTCMonth() - HOME_SALES_INDEXABLE_MONTHS);
-  return new Date(saleDate) >= cutoff;
-}
