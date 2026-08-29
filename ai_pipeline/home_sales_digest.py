@@ -276,7 +276,10 @@ STRUCTURE:
   market appears to be [rising/cooling]" without a real prior figure to
   point to.
 - Use the ZIP code breakdown to say where activity concentrated, if it's
-  informative (skip it if one ZIP dominates so heavily there's nothing to say).
+  informative (skip it if one ZIP dominates so heavily there's nothing to say)
+  -- state which ZIP(s) led and by how much (e.g. "more than double the next
+  closest ZIP"), a comparison already computable from the source counts,
+  never a claim about WHY a ZIP led (no invented neighborhood characteristics).
 - Reference 2-3 of the top sales by address and price as concrete examples,
   not the full list.
 - Close by noting the data source and its lag (county records, updated

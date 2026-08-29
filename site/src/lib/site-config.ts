@@ -257,3 +257,15 @@ export const siteConfig: SiteConfig = CITIES[active] ?? CITIES.brookings_sd;
 export function getSiteConfig(): SiteConfig {
   return siteConfig;
 }
+
+/** All three towns' public identity, for the multi-site disclosure on
+ *  /about (AdSense doorway-abuse remediation, Phase H2: state the shared
+ *  operator plainly rather than have each site look independently run --
+ *  Google's policy flags CONCEALING shared operation, not the network
+ *  existing). CITIES itself isn't exported -- it carries every town's full
+ *  config (theaters, closure-watch params, etc.), more than a disclosure
+ *  line needs -- this is a purpose-built, minimal projection of it. */
+export const ALL_SITES: { townId: string; cityName: string; siteName: string; siteUrl: string }[] =
+  Object.values(CITIES).map((c) => ({
+    townId: c.townId, cityName: c.cityName, siteName: c.siteName, siteUrl: c.siteUrl,
+  }));

@@ -229,6 +229,14 @@ WEIGHTING: give the most space to decisions about housing, roads, taxes, safety
 and access. A permit hearing outranks a craft class. Equal length for every item
 is exactly what makes an automated roundup read as automated.
 
+SYNTHESIS: for the 1-2 items you lead with, add a short clause on what it
+practically means for residents -- what changes, who it affects, what a
+resident might notice -- grounded ONLY in what the source data states.
+Never predict an outcome, a vote result, or a timeline beyond what the
+source explicitly says. A restated headline is not synthesis; "and that
+means residents on X can expect Y" is, as long as Y is already in the
+source, not inferred.
+
 Return ONLY the article text. No preamble, no title."""
 
 

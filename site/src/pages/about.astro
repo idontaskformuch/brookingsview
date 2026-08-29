@@ -5,11 +5,12 @@
  *  the site can't get from claiming human experience in its own content
  *  has to come from somewhere -- saying plainly what the site is. */
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { siteConfig } from '../lib/site-config';
+import { siteConfig, ALL_SITES } from '../lib/site-config';
 import { aboutSourcesFor } from '../lib/about-sources';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const sources = aboutSourcesFor(siteConfig.townId);
+const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
 ---
 <BaseLayout title={`About — ${siteConfig.siteName}`}
   description={`What ${siteConfig.siteName} is, how it's made, and who built it.`}>
@@ -62,6 +63,11 @@ const sources = aboutSourcesFor(siteConfig.townId);
     from Sweden, and this is what that looks like pointed at local news. I'd
     rather say that plainly than dress up an automated site with a fake
     masthead.</p>
+    <p>I run the same software pointed at a few other towns too: {siblingSites.map((s, i) => (
+      <>{i > 0 && ' and '}<a href={s.siteUrl} rel="noopener">{s.siteName}</a></>
+    ))}. Same pipeline, same sourcing rules, same disclosures -- just a
+    different town's public records feeding it. Saying that plainly here
+    rather than having each site look like an independent operation.</p>
 
     <h2>Sources</h2>
     <p>Everything on this site traces back to one of these, checked on a

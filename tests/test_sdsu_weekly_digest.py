@@ -6,11 +6,27 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from ai_pipeline.sdsu_weekly_digest import (
-    _collapse_simultaneous, _dedupe_exact_repeats, build_grounding_text,
+    _collapse_simultaneous, _dedupe_exact_repeats, build_grounding_text, build_prompt,
     content_hash, template_fallback,
 )
 
 CT = ZoneInfo("America/Chicago")
+CFG = {"display_name": "Test Town", "state": "Test State"}
+
+
+# --- AdSense "low value content" remediation, Phase A6: roundups must read
+# as synthesis, not a re-listing ---------------------------------------------
+
+def test_build_prompt_requests_why_the_lead_item_stands_out():
+    prompt = build_prompt(CFG, "August 24")
+    assert "why it stands out this week" in prompt
+    assert "never invent significance" in prompt
+
+
+def test_build_prompt_still_bans_describing_outcomes():
+    prompt = build_prompt(CFG, "August 24")
+    assert "do not describe" in prompt
+    assert "outcomes, scores, or how anything went" in prompt
 
 
 def _event(title, hour, cat="Special Events", location=None, teaser=None):

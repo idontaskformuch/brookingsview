@@ -11,8 +11,24 @@ from datetime import date
 
 from ai_pipeline.guardrails import check_no_financial_advice, validate
 from ai_pipeline.home_sales_digest import (
-    OUTLIER_PRICE_FLOOR, SMALL_SAMPLE_THRESHOLD, compute_stats, source_text, template_fallback,
+    OUTLIER_PRICE_FLOOR, SMALL_SAMPLE_THRESHOLD, build_prompt, compute_stats, source_text, template_fallback,
 )
+
+CFG = {"display_name": "Test Town", "state": "Test State"}
+
+
+# --- AdSense "low value content" remediation, Phase A6: roundups must read
+# as synthesis, not a re-listing ---------------------------------------------
+
+def test_build_prompt_requests_zip_context_without_inventing_why():
+    prompt = build_prompt(CFG, "June 2026")
+    assert "which ZIP(s) led and by how much" in prompt
+    assert "no invented neighborhood characteristics" in prompt
+
+
+def test_build_prompt_still_bans_financial_advice():
+    prompt = build_prompt(CFG, "June 2026")
+    assert "NEVER investment or buying advice" in prompt
 
 
 def _sale(id_, price, day=1):

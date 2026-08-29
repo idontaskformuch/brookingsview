@@ -323,6 +323,11 @@ HARD RULES SPECIFIC TO THIS FORMAT:
 - Do not mention any business not listed in the source data.
 - If a business has closed, state that plainly, without editorializing or
   speculating about why.
+- If the source data itself frames an item in context (e.g. a second/third
+  location, filling a space vacant since a named prior business, a chain's
+  first location in the area), include that context plainly -- it's real
+  information, not editorializing. Never add context the source doesn't
+  provide.
 
 Return ONLY the paragraph. No title, no preamble."""
 

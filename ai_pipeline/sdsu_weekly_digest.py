@@ -246,6 +246,11 @@ STRUCTURE:
 - This is a PREVIEW of what's scheduled, not a recap -- do not describe
   outcomes, scores, or how anything went, since these events haven't
   happened yet.
+- For the lead item, add a short clause on why it stands out this week (a
+  season opener, the first of the term, a rivalry game, the only ticketed
+  event) ONLY if that stands-out quality is explicitly stated or clearly
+  implied by the source data itself -- never invent significance the
+  source doesn't support.
 
 Return ONLY the article text. No preamble, no title."""
 

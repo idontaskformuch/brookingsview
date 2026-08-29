@@ -11,9 +11,11 @@ import sys
 
 from ai_pipeline import guardrails
 from ai_pipeline.new_in_town_digest import (
-    build_queries, build_roundup_source_text, roundup_template_fallback,
+    build_queries, build_roundup_prompt, build_roundup_source_text, roundup_template_fallback,
     preview_outcome, upsert_business, validate_record, _isoweek_slug, _roundup_hash, main,
 )
+
+ROUNDUP_CFG = {"display_name": "Test Town", "state": "Test State"}
 
 RESULTS = [
     {"title": "The Daily Grind now open in Brookings", "description": "New coffee shop now open on Main Ave in Brookings, SD.", "url": "https://example.com/a"},
@@ -289,6 +291,20 @@ def test_roundup_hash_is_order_independent_but_content_sensitive():
     c = [{"name": "X", "status": "opened", "source_url": "u1"}]
     assert _roundup_hash(a) == _roundup_hash(b)
     assert _roundup_hash(a) != _roundup_hash(c)
+
+
+# --- AdSense "low value content" remediation, Phase A6: roundups must read
+# as synthesis, not a re-listing ---------------------------------------------
+
+def test_build_roundup_prompt_allows_source_provided_context():
+    prompt = build_roundup_prompt(ROUNDUP_CFG)
+    assert "second/third" in prompt
+    assert "Never add context the source doesn't" in prompt
+
+
+def test_build_roundup_prompt_still_bans_speculating_on_closures():
+    prompt = build_roundup_prompt(ROUNDUP_CFG)
+    assert "speculating about why" in prompt
 
 
 # --- missing-key / disabled-feature: graceful skip, never a crash --------
