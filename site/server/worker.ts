@@ -23,6 +23,7 @@
 // "main" + "assets.binding" config.
 import { handleComment } from './comment';
 import { handleShiftPollVote } from './shift-poll-vote';
+import { handleContact } from './contact';
 import {
   type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug, previousIsoWeekSlug,
   resolveLegacyMeetingRedirect,
@@ -45,6 +46,9 @@ export default {
     }
     if (request.method === 'POST' && url.pathname === '/api/shift-poll-vote') {
       return handleShiftPollVote(request, env);
+    }
+    if (request.method === 'POST' && url.pathname === '/api/contact') {
+      return handleContact(request, env);
     }
 
     // Legacy meeting slugs (AdSense remediation Phase B1, see

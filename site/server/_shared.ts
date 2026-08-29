@@ -16,6 +16,25 @@ export interface Env {
   /** Endast för lokal `wrangler pages dev` där hostname är localhost --
    *  produktionsanrop avgör alltid town_id från det riktiga hostnamnet. */
   DEV_TOWN_ID?: string;
+  /** Cloudflare Turnstile's PRIVATE half (see site/server/contact.ts) --
+   *  never shipped to the client, unlike the site key (which is public and
+   *  lives directly in contact.astro's markup). Set per-environment via
+   *  `wrangler secret put TURNSTILE_SECRET_KEY --env <brookings|moreno_valley|broomfield>`. */
+  TURNSTILE_SECRET_KEY: string;
+  /** Optional -- see contact.ts's own comment: a submission is durably
+   *  stored in `contact_messages` regardless of whether this is set or
+   *  Resend's API call succeeds, so this is a best-effort notification
+   *  channel, not a dependency of the form actually working. */
+  RESEND_API_KEY?: string;
+  /** Where a submitted contact message gets emailed -- set per environment
+   *  (`wrangler secret put CONTACT_TO_ADDRESS --env <town>`), NOT derived
+   *  from siteConfig.removalEmail or guessed from the town's domain. An
+   *  earlier version of this file hardcoded a TOWN_CONTACT_EMAIL map
+   *  guessing `hello@<town>view.com` -- removed once it turned out this
+   *  secret already existed in all three environments (set before contact.ts
+   *  was even written), which the hardcoded map would have silently
+   *  ignored forever. */
+  CONTACT_TO_ADDRESS: string;
 }
 
 const TOWN_HOSTNAMES: Record<string, string> = {

@@ -1,14 +1,41 @@
 ---
+// Real contact form (see site/server/contact.ts) -- previously this page
+// only offered a mailto: link. Cloudflare Turnstile guards submission; the
+// site key below is the PUBLIC half and is meant to live directly in this
+// markup (the private half lives only in the Worker's TURNSTILE_SECRET_KEY
+// secret, never shipped to the client -- see _shared.ts's Env interface).
+// Same site key across all three towns' builds: Turnstile widgets are
+// scoped by the domains registered against the key in the Cloudflare
+// dashboard, not by anything build-time here.
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
+const TURNSTILE_SITE_KEY = '0x4AAAAAAEhMDgrHEob53wfv';
 ---
 <BaseLayout title={`Contact — ${siteConfig.siteName}`} description={`Get in touch with ${siteConfig.siteName}.`}>
   <article class="prose">
     <h1>Contact</h1>
     <p>Spotted a mistake, know about an event we're missing, or just want to
-    say hello? Email <a href={`mailto:${siteConfig.removalEmail}`}>{siteConfig.removalEmail}</a>.</p>
+    say hello? Use the form below, or email <a href={`mailto:${siteConfig.removalEmail}`}>{siteConfig.removalEmail}</a> directly.</p>
+
+    <form class="contact-form" id="contact-form" data-contact-form>
+      <label for="contact-name">Name <span class="optional">(optional)</span></label>
+      <input type="text" id="contact-name" name="name" maxlength="200" autocomplete="name" />
+
+      <label for="contact-email">Email <span class="optional">(optional — so we can reply)</span></label>
+      <input type="email" id="contact-email" name="email" maxlength="320" autocomplete="email" />
+
+      <label for="contact-message">Message</label>
+      <textarea id="contact-message" name="message" rows="5" maxlength="4000" required></textarea>
+
+      <div class="cf-turnstile" data-sitekey={TURNSTILE_SITE_KEY}></div>
+
+      <div class="contact-form__row">
+        <button type="submit" class="contact-form__submit">Send</button>
+        <span class="contact-form__status" data-contact-status role="status" aria-live="polite"></span>
+      </div>
+    </form>
 
     <h2>Corrections</h2>
     <p>Tell us what's wrong and where you saw it — a link to the page helps.
@@ -22,8 +49,92 @@ const isBrookings = siteConfig.townId === 'brookings_sd';
   </article>
 </BaseLayout>
 
+<script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script>
+  function init() {
+    const form = document.querySelector<HTMLFormElement>('[data-contact-form]');
+    const statusEl = document.querySelector<HTMLElement>('[data-contact-status]');
+    if (!form || !statusEl) return;
+    const submitBtn = form.querySelector<HTMLButtonElement>('.contact-form__submit');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!submitBtn) return;
+
+      const turnstileToken = (form.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement | null)?.value;
+      if (!turnstileToken) {
+        statusEl.textContent = 'Please complete the verification widget.';
+        return;
+      }
+
+      const name = (form.querySelector('#contact-name') as HTMLInputElement).value;
+      const email = (form.querySelector('#contact-email') as HTMLInputElement).value;
+      const message = (form.querySelector('#contact-message') as HTMLTextAreaElement).value.trim();
+      if (!message) return;
+
+      submitBtn.disabled = true;
+      statusEl.textContent = 'Sending...';
+
+      try {
+        const resp = await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ name, email, message, turnstile_token: turnstileToken }),
+        });
+        const data = await resp.json().catch(() => null);
+
+        if (resp.status === 429) {
+          statusEl.textContent = "You've hit today's message limit — try again tomorrow.";
+        } else if (data?.status === 'ok') {
+          form.reset();
+          if (window.turnstile) window.turnstile.reset();
+          statusEl.textContent = "Thanks — we'll get back to you if you left an email.";
+        } else {
+          statusEl.textContent = "That didn't go through — please try again.";
+          if (window.turnstile) window.turnstile.reset();
+        }
+      } catch {
+        statusEl.textContent = 'Something went wrong — please try again.';
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
+  declare global {
+    interface Window { turnstile?: { reset: () => void } }
+  }
+
+  init();
+</script>
+
 <style>
 .prose { max-width: 36rem; }
 .prose h2 { margin-top: 2rem; margin-bottom: 0.5rem; }
 .prose p { margin: 0 0 1rem; }
+.contact-form { display: grid; gap: 0.375rem; margin: 1.5rem 0 2rem; max-width: 28rem; }
+.contact-form label { font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600; margin-top: 0.5rem; }
+.contact-form label:first-child { margin-top: 0; }
+.contact-form .optional { font-weight: 400; color: var(--ink-soft); }
+.contact-form input, .contact-form textarea {
+  font: inherit;
+  padding: 0.5rem 0.625rem;
+  border-radius: 6px;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: inherit;
+  resize: vertical;
+}
+.contact-form__row { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; }
+.contact-form__submit {
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  border: none;
+  background: var(--navy);
+  color: var(--surface);
+  font-weight: 700;
+  cursor: pointer;
+}
+.contact-form__submit:disabled { opacity: 0.6; cursor: default; }
+.contact-form__status { font-size: 0.8125rem; color: var(--ink-soft); }
 </style>
