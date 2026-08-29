@@ -285,22 +285,6 @@ def build_title(table: str, row: dict) -> str:
     return "Update"
 
 
-def prefix_town_name(title: str, display_name: str) -> str:
-    """Prepends "{display_name}: " so every published title names its own
-    town, per the SEO title rule -- see scripts/retrofit_story_titles.py
-    (the one-time pass this mirrors exactly) and NEEDS-HUMAN-REVIEW.md
-    "SEO Fas 3". THAT script only fixed rows that already existed; this is
-    the missing other half -- without it here, every meeting/event
-    published after the retrofit quietly loses the prefix again, which is
-    exactly what was found happening live (see "Google News sitemap").
-    Idempotent, same rule as the retrofit script: skips a title that
-    already names the town (case-insensitive substring), so this can never
-    double-prefix on a re-run or a title that already mentions it."""
-    if display_name.lower() in title.lower():
-        return title
-    return f"{display_name}: {title}"
-
-
 def build_source_url(table: str, row: dict) -> str | None:
     if table == "meetings":
         return row.get("agenda_url")
@@ -406,6 +390,34 @@ def existing_slugs(conn, town_id: str) -> set[str]:
         return {r[0] for r in cur.fetchall()}
 
 
+def existing_meeting_ids(conn, town_id: str) -> set[int]:
+    """AdSense remediation Phase B1: the real dedup key for meeting-sourced
+    stories is the underlying meetings.id, not the computed slug string --
+    see db/migrations/034_stories_meeting_id.sql's own comment for the bug
+    this fixes (a slug-format change, e.g. the SEO Fas 5 dated-slug
+    rollout, made a row that was already published look "new" again to a
+    slug-string-only check, producing a second row for the same meeting).
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT meeting_id FROM stories WHERE town_id = %s AND source_type = 'meeting' AND meeting_id IS NOT NULL",
+            (town_id,),
+        )
+        return {r[0] for r in cur.fetchall()}
+
+
+def already_has_a_story(source_type: str, row_id: int, known_meeting_ids: set[int]) -> bool:
+    """AdSense remediation Phase B1: the real "has this already been
+    published?" check for a meeting is its meetings.id, checked BEFORE
+    computing a slug -- not the slug string a slug-format change (e.g. the
+    SEO Fas 5 dated-slug rollout) could make look "new" again regardless
+    of what it computes to. See db/migrations/034_stories_meeting_id.sql
+    for the 77-row live bug this fixes. Only meaningful for meetings --
+    every other source_type is still deduped by known_slugs alone,
+    unchanged."""
+    return source_type == "meeting" and row_id in known_meeting_ids
+
+
 def _recent_openings(conn, town_id: str, source_type: str, limit: int = 10) -> list[str]:
     """Opening shapes (guardrails.classify_opening()) of the most recently
     published same-source_type/town stories -- the proxy for "what's
@@ -443,8 +455,10 @@ def _localize_datetime_fields(record: dict, tz: ZoneInfo) -> dict:
 
 
 def publish_table(
-    conn, cfg: dict, table: str, known_slugs: set[str], max_new: int = DEFAULT_MAX_NEW_PER_RUN
+    conn, cfg: dict, table: str, known_slugs: set[str], max_new: int = DEFAULT_MAX_NEW_PER_RUN,
+    known_meeting_ids: set[int] | None = None,
 ) -> tuple[int, int, int, int, int]:
+    known_meeting_ids = known_meeting_ids if known_meeting_ids is not None else set()
     town_id = cfg["town_id"]
     tz = ZoneInfo(cfg.get("timezone", "America/Chicago"))
     with conn.cursor(row_factory=dict_row) as cur:
@@ -487,15 +501,13 @@ def publish_table(
             stale += 1
             continue
 
+        if already_has_a_story(source_type, row["id"], known_meeting_ids):
+            skipped += 1
+            continue
+
         # SEO Fas 5: meetings get a dated slug going forward
         # ("meeting-2026-08-25-10703" instead of "meeting-10703") -- a
         # more descriptive, indexable URL, per NEEDS-HUMAN-REVIEW.md.
-        # FORWARD-ONLY, deliberately: existing already-published rows keep
-        # their current slug forever (ON CONFLICT (town_id, slug) DO
-        # NOTHING below never touches an existing row's slug, and this
-        # branch only ever runs for a row that doesn't have one yet) --
-        # renaming already-indexed URLs would need real 301 redirects,
-        # which is a separate, much riskier change this pass doesn't make.
         # meeting_followup keeps its own existing "meeting-followup-{id}"
         # scheme (ai_pipeline/meeting_followups.py) -- untouched here.
         date_part = slug_date(row.get("meeting_date")) if source_type == "meeting" else None
@@ -543,7 +555,7 @@ def publish_table(
             thin += 1
             continue
 
-        title = prefix_town_name(build_title(table, row), cfg["display_name"])
+        title = build_title(table, row)
         source_url = build_source_url(table, row)
         snapshot_id = row.get("snapshot_id")
         occurs_at = build_occurs_at(table, row)
@@ -578,23 +590,27 @@ def publish_table(
             if resolve_venue(venue_registry, venue_raw) is None:
                 queue_for_review(conn, town_id, venue_raw)
 
+        meeting_id = row["id"] if source_type == "meeting" else None
+
         with conn.cursor() as cur:
             cur.execute(
                 """
                 INSERT INTO stories
                     (town_id, title, slug, body, source_type, source_url,
                      snapshot_id, generated_by, verified, published_at, occurs_at,
-                     venue_raw, is_recurring_series, ends_at, meta)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                     venue_raw, is_recurring_series, ends_at, meta, meeting_id)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT (town_id, slug) DO NOTHING
                 """,
                 (town_id, title, slug, result.text, source_type, source_url,
                  snapshot_id, result.generated_by, result.verified,
                  datetime.now(timezone.utc), occurs_at,
                  venue_raw, is_recurring_series, ends_at,
-                 Jsonb(result.meta) if result.meta is not None else None),
+                 Jsonb(result.meta) if result.meta is not None else None, meeting_id),
             )
         known_slugs.add(slug)
+        if meeting_id is not None:
+            known_meeting_ids.add(meeting_id)
         published += 1
     return published, skipped, thin, stale, remaining
 
@@ -624,13 +640,16 @@ def main() -> int:
 
     with psycopg.connect(database_url) as conn:
         known = existing_slugs(conn, town_id)
+        known_meetings = existing_meeting_ids(conn, town_id)
         print(f"{len(known)} stories finns redan för {town_id}\n")
 
         tot_pub = tot_skip = tot_thin = tot_stale = tot_remaining = 0
         for table in SOURCES:
             if args.only and table not in args.only:
                 continue
-            pub, skip, thin, stale, remaining = publish_table(conn, cfg, table, known, max_new=max_new)
+            pub, skip, thin, stale, remaining = publish_table(
+                conn, cfg, table, known, max_new=max_new, known_meeting_ids=known_meetings,
+            )
             extra = f", {thin} för tunna (ej publicerade)" if thin else ""
             extra += f", {stale} inaktuella (ej publicerade)" if stale else ""
             print(f"  {table:20} -> {pub} nya, {skip} redan publicerade{extra}")

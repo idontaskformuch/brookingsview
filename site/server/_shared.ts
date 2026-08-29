@@ -159,3 +159,18 @@ export function jsonResponse(body: unknown, status = 200): Response {
     headers: { 'content-type': 'application/json' },
   });
 }
+
+/** AdSense remediation Phase B1 -- given a request pathname and the
+ *  legacy-slug -> canonical-slug map (site/server/legacy-meeting-
+ *  redirects.json, generated once by scripts/resolve_duplicate_meeting_
+ *  slugs.py), returns the canonical /s/<slug>/ path to redirect to, or
+ *  null if this pathname isn't a known legacy meeting slug. Pulled out as
+ *  its own pure function so it's directly testable without needing a real
+ *  Request/Response or the JSON import itself (see worker.test.ts). */
+export function resolveLegacyMeetingRedirect(
+  pathname: string, redirectMap: Record<string, string>,
+): string | null {
+  const legacySlug = pathname.replace(/^\/s\/|\/$/g, '');
+  const canonicalSlug = redirectMap[legacySlug];
+  return canonicalSlug ? `/s/${canonicalSlug}/` : null;
+}

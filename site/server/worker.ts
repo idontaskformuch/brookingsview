@@ -23,7 +23,11 @@
 // "main" + "assets.binding" config.
 import { handleComment } from './comment';
 import { handleShiftPollVote } from './shift-poll-vote';
-import { type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug, previousIsoWeekSlug } from './_shared';
+import {
+  type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug, previousIsoWeekSlug,
+  resolveLegacyMeetingRedirect,
+} from './_shared';
+import legacyMeetingRedirects from './legacy-meeting-redirects.json';
 
 interface WorkerEnv extends Env {
   // Bound via wrangler.jsonc `assets.binding` -- serves the static Astro
@@ -41,6 +45,28 @@ export default {
     }
     if (request.method === 'POST' && url.pathname === '/api/shift-poll-vote') {
       return handleShiftPollVote(request, env);
+    }
+
+    // Legacy meeting slugs (AdSense remediation Phase B1, see
+    // db/migrations/034_stories_meeting_id.sql and
+    // scripts/resolve_duplicate_meeting_slugs.py) -- 77 meetings were
+    // published twice under two different slug schemes for the same
+    // meeting; the dated scheme was kept as canonical and the legacy
+    // rows were deleted from `stories`, which on its own would make the
+    // old, already-indexed URLs 404 (Astro's static build has no row
+    // left to generate them from). A real 301 here is what actually
+    // preserves that URL's link equity -- unlike /this-week/ below, a
+    // meeting's canonical slug, once decided, never changes again, so
+    // 301 (not 302) is correct. legacy-meeting-redirects.json is
+    // town-agnostic (slugs already embed no town identity) and generated
+    // once by the cleanup script, not maintained by hand.
+    const legacyRedirectPath = resolveLegacyMeetingRedirect(
+      url.pathname, legacyMeetingRedirects as Record<string, string>,
+    );
+    if (legacyRedirectPath) {
+      const target = new URL(legacyRedirectPath, url.origin);
+      target.search = url.search;
+      return Response.redirect(target.toString(), 301);
     }
 
     // /this-week/ -- rolling redirect to the current ISO week's permanent
