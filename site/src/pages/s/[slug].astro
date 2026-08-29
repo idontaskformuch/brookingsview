@@ -9,7 +9,7 @@ import Byline from '../../components/Byline.astro';
 import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
 import {
   getAllStories, getRelatedStories, formatOccursAt, formatDate, CATEGORY_LABELS, CATEGORY_HREFS,
-  getWorkerPulseComments, getFacilities, buildVenueIndex, resolveVenue,
+  getWorkerPulseComments, getFacilities, buildVenueIndex, resolveVenue, getProjectForMeetingId,
 } from '../../lib/db';
 import type { Story, Facility } from '../../lib/db';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
@@ -31,6 +31,20 @@ const { story, facilities } = Astro.props as { story: Story; facilities: Facilit
 const isAlert = story.source_type === 'alert';
 const isMeeting = story.source_type === 'meeting' || story.source_type === 'meeting_followup';
 const kind = isAlert ? 'Alert' : isMeeting ? 'Meeting' : 'Event';
+// Story Threads: "part of an ongoing story" banner -- gives the underlying
+// noindexed feed item (see lib/noindex.ts) somewhere useful to send its
+// link equity and its readers. Restricted to source_type === 'meeting'
+// specifically (not meeting_followup, which uses its own separate id
+// scheme -- see ai_pipeline/meeting_followups.py -- not meetings.id, so a
+// naive suffix match there could hit the wrong row). The meeting's own id
+// is the slug's trailing number (e.g. "meeting-2026-08-27-11040" ->
+// 11040) -- same established pattern this codebase already uses for
+// alert stories (see db.ts's own getUpcomingAlerts() 'alert-' || e.id
+// join), not a new convention introduced here.
+const meetingIdMatch = story.source_type === 'meeting' ? story.slug.match(/-(\d+)$/) : null;
+const threadProject = meetingIdMatch
+  ? await getProjectForMeetingId(Number(meetingIdMatch[1]))
+  : null;
 // Genererat innehåll (krönikor m.fl.) har alltid byline satt -- scraped nyheter
 // har byline = NULL. Byline.astro ersätter story__kind-raden när den finns, i
 // stället för att visa båda (kind skulle ändå bara säga "Event" fel för dessa).
@@ -170,6 +184,12 @@ const eventJsonLdObject = buildEventJsonLd(
       />
     )}
     {heroImage && <ImageAttribution image={heroImage} />}
+
+    {threadProject && (
+      <p class="thread-banner">
+        Part of an ongoing story: <a href={`/city-hall/projects/${threadProject.slug}/`}>{threadProject.title}</a>
+      </p>
+    )}
 
     <div class="story__body">
       {story.body.split('\n').filter(Boolean).map((para) => <p>{para}</p>)}
@@ -337,6 +357,13 @@ const eventJsonLdObject = buildEventJsonLd(
   line-height: 1.6;
 }
 .story__instructions li { margin: 0 0 0.75rem; padding-left: 0.25rem; }
+.thread-banner {
+  margin: 1rem 0 0;
+  padding: 0.625rem 0.875rem;
+  background: var(--navy-tint);
+  border-left: 4px solid var(--navy);
+  font-size: 0.9375rem;
+}
 .story__body { margin-top: 1.75rem; font-size: 1.125rem; }
 .story__body p { margin: 0 0 1rem; }
 .story__zip-links { color: var(--ink-soft); font-size: 0.875rem; margin: -0.5rem 0 1.25rem; }

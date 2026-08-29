@@ -289,7 +289,7 @@ export function buildWeekDays(
       items.push({
         vertical: 'city_hall', title: `${update.project_title} — ${update.agenda_title}`,
         href: `/city-hall/projects/${update.project_slug}/`, external: false,
-        detail: firstLine(update.body),
+        detail: firstLine(update.body ?? ''),
       });
     }
 

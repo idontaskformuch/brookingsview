@@ -498,6 +498,51 @@ def check_no_financial_advice(text: str) -> GuardrailResult:
     return GuardrailResult(passed=len(violations) == 0, violations=violations)
 
 
+# --- no-outcome-prediction (Story Threads) -----------------------------------
+
+# Deliberately narrower than it might look: a project's outcome VERB in past
+# tense ("the council approved the rezoning Tuesday") is exactly the kind of
+# real, sourced fact a thread's synthesis/summary SHOULD state -- unlike
+# Closure Watch, where ANY closure assertion is wrong pre-announcement, a
+# resolved vote here is genuinely true and worth reporting. What must never
+# appear is a FUTURE-facing claim about that same outcome or its timeline
+# -- so this only flags a prediction-modal word sharing a sentence with an
+# outcome/resolution verb, never the bare past-tense verb alone.
+_PROJECT_OUTCOME_WORDS = {
+    "approve", "approves", "approved", "approval",
+    "deny", "denies", "denied", "denial",
+    "pass", "passes", "passed",
+    "complete", "completes", "completed", "completion",
+    "finish", "finishes", "finished",
+    "open", "opens", "opened", "opening",
+    "vote", "votes", "voted",
+}
+
+
+def check_no_project_outcome_prediction(text: str) -> GuardrailResult:
+    """A Story Threads synthesis line or rolling summary (see
+    ai_pipeline/project_threads.py) must never predict a vote outcome,
+    permit decision, or completion timeline beyond what the source
+    explicitly states -- runs IN ADDITION to validate(). Reuses
+    _PREDICTION_MODAL_WORDS from check_no_prediction above; the negation
+    check is the same deliberately coarse, over-cautious-by-design pattern.
+    """
+    violations: list[str] = []
+    for sentence in _SENTENCE_SPLIT_RE.split(text.strip()):
+        if not sentence:
+            continue
+        low = sentence.casefold()
+        words = set(re.findall(r"[a-z']+", low))
+
+        if words & _NEGATION_WORDS:
+            continue
+
+        if (words & _PREDICTION_MODAL_WORDS) and (words & _PROJECT_OUTCOME_WORDS):
+            violations.append(f"predictive modal near project outcome: {sentence.strip()}")
+
+    return GuardrailResult(passed=len(violations) == 0, violations=violations)
+
+
 # Ord som skulle plockas ut av regexen nedan men som är för generiska/vanliga
 # för att fungera som ett eget förbjudet nyckelord -- de råkar bara stå i en
 # never_publish-beskrivning tillsammans med det faktiskt känsliga ordet

@@ -12,11 +12,12 @@ import ShareButton from '../../../components/ShareButton.astro';
 import Breadcrumbs from '../../../components/Breadcrumbs.astro';
 import {
   getProjects, getProjectBySlug, getProjectUpdates, PROJECT_STATUS_LABELS,
-  formatDate,
+  formatDate, projectActivityState, STALLED_AFTER_DAYS,
 } from '../../../lib/db';
-import type { Project, ProjectUpdate } from '../../../lib/db';
+import type { ProjectUpdate } from '../../../lib/db';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../../lib/article-jsonld';
 import { siteConfig } from '../../../lib/site-config';
+import SectionHero from '../../../components/SectionHero.astro';
 
 export async function getStaticPaths() {
   const projects = await getProjects();
@@ -34,9 +35,25 @@ const updates = await getProjectUpdates(slug!);
 const statusLabel = PROJECT_STATUS_LABELS[project.status] ?? project.status;
 const canonicalUrl = new URL(`/city-hall/projects/${project.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
 
+// Story Threads extension: a project's real-world approval/construction
+// status (project.status, above) and its ACTIVITY state (is anyone still
+// adding to this thread?) are two independent facts -- a project can be
+// 'under_construction' and simultaneously 'stalled' (no new entry in a
+// while). Computed fresh from updated_at every render, never a stored
+// flag -- see projectActivityState()'s own comment in lib/db.ts.
+const activityState = projectActivityState(project);
+
 function outcomeLabel(u: ProjectUpdate): string {
   if (u.outcome === 'pending') return 'Reviewed — outcome not available';
   return u.outcome;
+}
+
+/** The short "what changed" line takes priority when a story-threads
+ *  synthesis exists; older/exact-matched rows fall back to the source's
+ *  own agenda title, which is still real, sourced text, just not a
+ *  purpose-written summary. */
+function entryHeadline(u: ProjectUpdate): string {
+  return u.synthesis ?? u.agenda_title ?? 'Update';
 }
 
 function voteText(u: ProjectUpdate): string | null {
@@ -93,7 +110,7 @@ const itemListJsonLd = updates.length > 0 ? {
   itemListElement: updates.map((u, i) => ({
     '@type': 'ListItem',
     position: i + 1,
-    name: `${u.body}, ${formatDate(u.meeting_date)}: ${outcomeLabel(u)}`,
+    name: `${formatDate(u.entry_date)}: ${entryHeadline(u)}`,
     url: u.source_url ?? u.agenda_url ?? canonicalUrl,
   })),
 } : null;
@@ -101,11 +118,20 @@ const itemListJsonLd = updates.length > 0 ? {
 <BaseLayout title={`${project.title} — ${siteConfig.siteName}`} ogSlug="section-city-hall"
   description={project.description.slice(0, 155)}>
   <Breadcrumbs trail={breadcrumbTrail} />
+  <SectionHero category="city_hall" />
   <article class="project">
     <header class="lede">
       <p class="status" data-status={project.status}>{statusLabel}</p>
+      {activityState !== 'active' && (
+        <p class="activity-state" data-activity={activityState}>
+          {activityState === 'resolved' ? 'Resolved' : `No update in ${STALLED_AFTER_DAYS}+ days`}
+        </p>
+      )}
       <h1>{project.title}</h1>
       <p class="desc">{project.description}</p>
+      {project.rolling_summary && (
+        <p class="rolling-summary">{project.rolling_summary}</p>
+      )}
       {project.location_text && (
         <p class="location">
           📍 {project.location_text}
@@ -124,8 +150,8 @@ const itemListJsonLd = updates.length > 0 ? {
       <ol class="timeline">
         {updates.map((u) => (
           <li class="timeline__item" data-outcome={u.outcome}>
-            <p class="timeline__date">{formatDate(u.meeting_date)} · {u.body}</p>
-            <p class="timeline__title">{u.agenda_title}</p>
+            <p class="timeline__date">{formatDate(u.entry_date)} · {u.body ?? 'Traffic update'}</p>
+            <p class="timeline__title">{entryHeadline(u)}</p>
             <p class="timeline__outcome">
               {u.outcome === 'pending' ? (
                 <>Outcome not available. <span class="reason">{pendingReason(u)}</span></>
@@ -181,7 +207,26 @@ const itemListJsonLd = updates.length > 0 ? {
   background: #dcfce7;
 }
 .status[data-status="denied"] { color: #7f1d1d; background: #fee2e2; }
+.activity-state {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--rule);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  margin: 0 0 0.5rem 0.4rem;
+}
+.activity-state[data-activity="resolved"] { color: #14532d; background: #dcfce7; }
 .desc { color: var(--ink-soft); margin: 0.5rem 0 0; }
+.rolling-summary {
+  margin: 0.75rem 0 0;
+  padding: 0.75rem 0.875rem;
+  background: var(--navy-tint);
+  border-left: 4px solid var(--navy);
+  font-size: 0.9375rem;
+}
 .location { color: var(--ink-soft); font-size: 0.9375rem; margin: 0.75rem 0 0; }
 .timeline-heading { margin-top: 2rem; }
 .timeline { list-style: none; margin: 0; padding: 0; max-width: 44rem; }

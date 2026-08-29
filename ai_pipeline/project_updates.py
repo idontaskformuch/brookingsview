@@ -27,6 +27,17 @@ run that finds a previously-pending item's real outcome (once posted)
 updates that row in place instead of duplicating it. A project's `status`
 is recomputed from its most recent update's outcome after each run.
 
+Story Threads extension (see ai_pipeline/project_threads.py): an item with
+NO exact case-number match is no longer just skipped. If it looks
+thread-worthy (is_candidate_agenda_item), it's checked against every
+currently-open project with an AI-assisted, cited-confidence match
+(ai_match_candidate) -- a confident match appends a synthesis-generated
+update to that EXISTING project; anything else is queued into
+project_new_candidate_queue for a human to review
+(scripts/review_project_candidates.py), never auto-created. The exact-match
+path above is completely unchanged by this -- it's additive, not a
+replacement.
+
 Usage:
     python -m ai_pipeline.project_updates --config configs/moreno_valley_ca.json
     python -m ai_pipeline.project_updates --config configs/moreno_valley_ca.json --dry-run
@@ -48,6 +59,10 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline.project_registry import load_projects, match_project, queue_for_review, status_for_outcome
+from ai_pipeline.project_threads import (
+    ai_match_candidate, generate_synthesis, is_candidate_agenda_item,
+    load_open_projects_for_matching, queue_new_candidate, regenerate_rolling_summary,
+)
 
 # Later lifecycle stages (permitted, under construction, complete) would
 # need a different data source (e.g. cross-referencing the `permits` table
@@ -85,9 +100,12 @@ def action_summary_for_counter(meeting: dict, counter: str) -> dict | None:
     return None
 
 
-def upsert_project_update(conn, project_id: int, meeting: dict, agenda_item: dict) -> bool:
+def upsert_project_update(conn, project_id: int, meeting: dict, agenda_item: dict, synthesis: str | None = None) -> bool:
     """Returns True if this was a newly-inserted row (not a re-run touching
-    an existing one)."""
+    an existing one). synthesis is only ever passed by the AI-matched path
+    below -- the exact-case-number-match path (this function's original
+    caller) has never generated one and doesn't need to; NULL there is
+    correct, not a gap."""
     counter = agenda_item.get("counter") or ""
     action_item = action_summary_for_counter(meeting, counter)
 
@@ -104,20 +122,21 @@ def upsert_project_update(conn, project_id: int, meeting: dict, agenda_item: dic
         cur.execute(
             """
             INSERT INTO project_updates
-                (project_id, meeting_id, body, meeting_date, agenda_counter,
+                (project_id, meeting_id, source_type, entry_date, body, meeting_date, agenda_counter,
                  agenda_title, agenda_url, outcome, vote_yes, vote_no,
-                 vote_abstain, vote_absent, source_url)
+                 vote_abstain, vote_absent, source_url, synthesis)
             VALUES
-                (%(project_id)s, %(meeting_id)s, %(body)s, %(meeting_date)s, %(counter)s,
+                (%(project_id)s, %(meeting_id)s, 'meeting', %(meeting_date)s, %(body)s, %(meeting_date)s, %(counter)s,
                  %(title)s, %(agenda_url)s, %(outcome)s, %(vote_yes)s, %(vote_no)s,
-                 %(vote_abstain)s, %(vote_absent)s, %(source_url)s)
+                 %(vote_abstain)s, %(vote_absent)s, %(source_url)s, %(synthesis)s)
             ON CONFLICT (project_id, meeting_id, agenda_counter) DO UPDATE SET
                 outcome      = EXCLUDED.outcome,
                 vote_yes     = EXCLUDED.vote_yes,
                 vote_no      = EXCLUDED.vote_no,
                 vote_abstain = EXCLUDED.vote_abstain,
                 vote_absent  = EXCLUDED.vote_absent,
-                source_url   = EXCLUDED.source_url
+                source_url   = EXCLUDED.source_url,
+                synthesis    = COALESCE(EXCLUDED.synthesis, project_updates.synthesis)
             RETURNING (xmax = 0) AS inserted
             """,
             {
@@ -134,6 +153,7 @@ def upsert_project_update(conn, project_id: int, meeting: dict, agenda_item: dic
                 "vote_abstain": vote.get("abstain"),
                 "vote_absent": vote.get("absent"),
                 "source_url": source_url,
+                "synthesis": synthesis,
             },
         )
         row = cur.fetchone()
@@ -174,12 +194,18 @@ def main() -> int:
 
     with psycopg.connect(database_url) as conn:
         projects = load_projects(conn, town_id)
-        if not projects:
-            print("  inga projekt registrerade för den här orten (se data/projects/)")
+        meetings = find_meetings_with_agenda_items(conn, town_id)
+        # A town with zero hand-curated projects still needs its meetings
+        # scanned -- that's exactly the case Story Threads' candidate
+        # detection exists for (nothing to exact-match against yet, but a
+        # rezoning item is still worth queuing for review). Only a town
+        # with NEITHER has nothing at all to do here.
+        if not projects and not meetings:
+            print("  inga projekt och inga möten med agenda_items för den här orten")
             return 0
 
-        meetings = find_meetings_with_agenda_items(conn, town_id)
         new_updates = 0
+        new_candidates = 0
         touched_project_ids: set[int] = set()
 
         for meeting in meetings:
@@ -197,6 +223,37 @@ def main() -> int:
                     continue
 
                 if project is None:
+                    # Story Threads extension: no exact case-number match,
+                    # but this might still be a further development of an
+                    # ALREADY-tracked project (AI-assisted, cited, confidence-
+                    # gated -- see project_threads.ai_match_candidate), or a
+                    # brand new story worth queuing for human review. Both
+                    # paths are additive to the exact-match system above,
+                    # never a replacement for it.
+                    if is_candidate_agenda_item(title, description):
+                        candidate_text = f"{title}\n{description}".strip()
+                        if args.dry_run:
+                            print(f"  CANDIDATE (dry-run, no AI call): {meeting['body']} "
+                                  f"{item.get('counter')} -- {title}")
+                            continue
+                        open_projects = load_open_projects_for_matching(conn, town_id)
+                        match = ai_match_candidate(candidate_text, open_projects, cfg)
+                        if match["match_project_id"] is not None:
+                            matched = next(p for p in open_projects if p["id"] == match["match_project_id"])
+                            synthesis, _generated_by, _verified = generate_synthesis(title, candidate_text, cfg)
+                            inserted = upsert_project_update(conn, matched["id"], meeting, item, synthesis=synthesis)
+                            touched_project_ids.add(matched["id"])
+                            if inserted:
+                                new_updates += 1
+                            print(f"  AI-MATCH ({match['confidence']:.2f}): {matched['title']} <- "
+                                  f"{meeting['body']} {item.get('counter')} -- {match['reasoning']}")
+                        else:
+                            queue_new_candidate(
+                                conn, town_id, "meeting", meeting_id=meeting["id"],
+                                candidate_title=title, candidate_summary=description or title,
+                                match_reasoning=match["reasoning"], confidence=match["confidence"],
+                            )
+                            new_candidates += 1
                     continue
 
                 if args.dry_run:
@@ -214,9 +271,11 @@ def main() -> int:
         if not args.dry_run:
             for project_id in touched_project_ids:
                 recompute_project_status(conn, project_id)
+                regenerate_rolling_summary(conn, project_id, cfg)
             conn.commit()
             print(f"\n{new_updates} new project update{'s' if new_updates != 1 else ''}, "
-                  f"{len(touched_project_ids)} project{'s' if len(touched_project_ids) != 1 else ''} touched")
+                  f"{len(touched_project_ids)} project{'s' if len(touched_project_ids) != 1 else ''} touched, "
+                  f"{new_candidates} new candidate{'s' if new_candidates != 1 else ''} queued for review")
     return 0
 
 
