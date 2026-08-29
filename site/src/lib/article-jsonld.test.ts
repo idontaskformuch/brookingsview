@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd, buildBreadcrumbJsonLd,
-  buildFaqJsonLd, buildSchoolClosureNewsArticleJsonLd,
+  buildFaqJsonLd, buildSchoolClosureNewsArticleJsonLd, buildOrganizationJsonLd,
 } from './article-jsonld';
 
 const SITE_NAME = 'Moreno Valley View';
@@ -230,5 +230,33 @@ describe('buildSchoolClosureNewsArticleJsonLd', () => {
       'Brookings View',
     );
     expect(result.headline).toBe('School closure notice');
+  });
+});
+
+describe('buildOrganizationJsonLd', () => {
+  const SITE = { siteName: 'Brookings View', siteUrl: 'https://brookingsview.com', cityName: 'Brookings', stateAbbr: 'SD' };
+  const SIBLINGS = ['https://morenovalleyview.com', 'https://broomfieldview.com'];
+
+  it('is a NewsMediaOrganization with the real site identity', () => {
+    const result = buildOrganizationJsonLd(SITE, SIBLINGS);
+    expect(result['@type']).toBe('NewsMediaOrganization');
+    expect(result.name).toBe('Brookings View');
+    expect(result.url).toBe('https://brookingsview.com');
+  });
+
+  it('links publishingPrinciples to this site\'s own editorial-policy page', () => {
+    const result = buildOrganizationJsonLd(SITE, SIBLINGS);
+    expect(result.publishingPrinciples).toBe('https://brookingsview.com/editorial-policy/');
+  });
+
+  it('lists the sibling sites via sameAs, never including itself', () => {
+    const result = buildOrganizationJsonLd(SITE, SIBLINGS);
+    expect(result.sameAs).toEqual(SIBLINGS);
+    expect(result.sameAs).not.toContain(SITE.siteUrl);
+  });
+
+  it('never fabricates a logo field', () => {
+    const result = buildOrganizationJsonLd(SITE, SIBLINGS);
+    expect(result).not.toHaveProperty('logo');
   });
 });

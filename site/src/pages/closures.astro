@@ -23,10 +23,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
 import SectionHero from '../components/SectionHero.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getClosureWatchStatus } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { SECTION_THEME } from '../lib/section-theme';
-import { buildFaqJsonLd, buildSchoolClosureNewsArticleJsonLd } from '../lib/article-jsonld';
+import { buildFaqJsonLd, buildSchoolClosureNewsArticleJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 
 if (!siteConfig.hasClosureWatch || !siteConfig.closureWatch) {
   return Astro.redirect('/', 302);
@@ -35,6 +36,10 @@ if (!siteConfig.hasClosureWatch || !siteConfig.closureWatch) {
 const feat = siteConfig.closureWatch;
 const status = await getClosureWatchStatus();
 const canonicalUrl = new URL('/closures/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Closure Watch', href: canonicalUrl },
+];
 
 const now = new Date();
 const lastChecked = now.toLocaleString('en-US', {
@@ -77,6 +82,7 @@ const newsArticleJsonLd = status.state === 'confirmed' && status.closure
   ogSlug="section-closure-watch"
   accentColor={SECTION_THEME.closure_watch.accent}
 >
+  <Breadcrumbs trail={breadcrumbTrail} />
   {/* Reuses the existing school_alerts photo pool (real, already-sourced
       photos of schools for Brookings/Moreno Valley) -- closure_watch isn't
       its own ImageCategory, and this page's subject is schools, not a new
@@ -164,6 +170,9 @@ const newsArticleJsonLd = status.state === 'confirmed' && status.closure
   {newsArticleJsonLd && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(newsArticleJsonLd)} />
   )}
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <style>

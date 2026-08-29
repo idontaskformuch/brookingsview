@@ -15,17 +15,25 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getContentByType } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const types = isMorenoValley
   ? ['culture_essay', 'kvick_essa', 'vetenskap_kronika', 'media_recension'] as const
   : ['culture_essay', 'kvick_essa', 'vetenskap_kronika'] as const;
 const stories = await getContentByType([...types], 60);
+const canonicalUrl = new URL('/columns/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Columns', href: canonicalUrl },
+];
 ---
 <BaseLayout title={`Columns — ${siteConfig.siteName}`} wide
   description="Culture essays, light essays and science columns, AI-written and clearly labeled as such.">
+  <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>Columns</h1>
     <p>Culture, science and light essays -- a change of pace from the news, written
@@ -38,6 +46,10 @@ const stories = await getContentByType([...types], 60);
   ) : (
     <p class="empty">Nothing published yet.</p>
   )}
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <style>

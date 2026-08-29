@@ -13,13 +13,20 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getActiveTrafficIncidents, formatTimeWithZone, plainLanguageTraffic } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
 import { SECTION_THEME } from '../lib/section-theme';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 
 const incidents = await getActiveTrafficIncidents();
+const canonicalUrl = new URL('/traffic/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Traffic', href: canonicalUrl },
+];
 
 const typeLabel = (t: string) => (t === 'lane_closure' ? 'Lane closure / construction' : 'Incident');
 
@@ -30,6 +37,7 @@ const SEVERITY_LABELS: Record<string, string> = {
 <BaseLayout title={`Traffic in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-traffic"
   description={`Current road incidents and lane closures affecting ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}
   accentColor={SECTION_THEME.traffic.accent}>
+  <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero category="traffic" />
   <header class="lede">
     <h1>Traffic</h1>
@@ -105,6 +113,10 @@ const SEVERITY_LABELS: Record<string, string> = {
   </p>
 
   <RelatedContent pageType="traffic" />
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <script>

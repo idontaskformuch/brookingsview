@@ -10,9 +10,11 @@
  *  that facet from -- see the doc above for the full finding. */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ShareButton from '../../../components/ShareButton.astro';
+import Breadcrumbs from '../../../components/Breadcrumbs.astro';
 import { getRecentJobs, formatDate } from '../../../lib/db';
 import { salaryText, capByEmployer, slugifyCategory } from '../../../lib/jobs';
 import { siteConfig } from '../../../lib/site-config';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../../lib/article-jsonld';
 
 export async function getStaticPaths() {
   const jobs = await getRecentJobs();
@@ -47,8 +49,15 @@ const itemListJsonLd = jobs.length > 0 ? {
 // a category sitting at 1-2 listings today is a thin tag page, noindex
 // rather than removed since it's real content once more listings land.
 const isNoindex = jobs.length < 3;
+
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Jobs', href: '/jobs/' },
+  { label: category, href: canonicalUrl },
+];
 ---
 <BaseLayout title={title} wide ogSlug="section-jobs" description={description} noindex={isNoindex}>
+  <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>{category} in {siteConfig.cityName}</h1>
     <p>{jobs.length} recent listing{jobs.length === 1 ? '' : 's'}, pulled daily from
@@ -118,6 +127,10 @@ const isNoindex = jobs.length < 3;
   {itemListJsonLd && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
   )}
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <style>

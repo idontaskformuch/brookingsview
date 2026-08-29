@@ -8,10 +8,12 @@
  *  home-sales/[slug].astro. */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ShareButton from '../../../components/ShareButton.astro';
+import Breadcrumbs from '../../../components/Breadcrumbs.astro';
 import { getRecentPropertySales, getProjects, formatPrice } from '../../../lib/db';
 import type { Project } from '../../../lib/db';
 import { titleCaseAddress, extractZip, slugifyAddress, isOutlierSale } from '../../../lib/home-sales';
 import { siteConfig } from '../../../lib/site-config';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../../lib/article-jsonld';
 
 export async function getStaticPaths() {
   if (siteConfig.townId !== 'moreno_valley_ca') return [];
@@ -56,8 +58,15 @@ const itemListJsonLd = sales.length > 0 ? {
 // treatment as jobs/category/[category].astro and events/[facet].astro --
 // a ZIP with fewer than 3 recorded sales is a near-empty landing page.
 const isNoindex = sales.length < 3;
+
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Home sales', href: '/home-sales/' },
+  { label: zip, href: canonicalUrl },
+];
 ---
 <BaseLayout title={title} wide ogSlug="section-home-sales" description={description} noindex={isNoindex}>
+  <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>Home sales in {zip}</h1>
     <p>{sales.length} recently recorded home sale{sales.length === 1 ? '' : 's'} in ZIP code {zip}, {siteConfig.cityName} — updated as Riverside County releases new data.</p>
@@ -93,6 +102,10 @@ const isNoindex = sales.length < 3;
   {itemListJsonLd && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
   )}
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <style>

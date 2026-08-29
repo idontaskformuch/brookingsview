@@ -4,13 +4,21 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getContentByType } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 
 const stories = await getContentByType(['editorial'], 60);
+const canonicalUrl = new URL('/editorials/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Editorials', href: canonicalUrl },
+];
 ---
 <BaseLayout title={`Editorials — ${siteConfig.siteName}`} wide
   description={`Opinion pieces on issues facing ${siteConfig.cityName}, AI-written and clearly labeled as such.`}>
+  <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>Editorials</h1>
     <p>Opinion pieces on issues facing {siteConfig.cityName}, written by AI and disclosed as
@@ -23,6 +31,10 @@ const stories = await getContentByType(['editorial'], 60);
   ) : (
     <p class="empty">Nothing published yet.</p>
   )}
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <style>

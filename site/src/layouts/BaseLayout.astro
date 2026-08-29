@@ -17,8 +17,9 @@
  * bär rubrikerna, grotesken är degraderad till kickers och metadata.
  */
 import { getSignData, countdown } from '../lib/db';
-import { siteConfig } from '../lib/site-config';
+import { siteConfig, ALL_SITES } from '../lib/site-config';
 import { runBuildTimeImageChecks } from '../lib/build-checks';
+import { buildOrganizationJsonLd } from '../lib/article-jsonld';
 import CookieBanner from '../components/CookieBanner.astro';
 
 interface Props {
@@ -62,6 +63,7 @@ const canonical = canonicalUrl
   ? new URL(canonicalUrl)
   : new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl);
 const ogImage = new URL(`/og/${ogSlug ?? 'default'}.png`, Astro.site ?? siteConfig.siteUrl).href;
+const siblingSiteUrls = ALL_SITES.filter((s) => s.townId !== siteConfig.townId).map((s) => s.siteUrl);
 const now = new Date();
 const year = now.getFullYear();
 // Datumraden byggs om varje timme tillsammans med resten av sajten.
@@ -147,13 +149,9 @@ const path = Astro.url.pathname;
   href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=IBM+Plex+Mono:wght@400;500&display=swap"
 />
 
-<script type="application/ld+json" is:inline set:html={JSON.stringify({
-  '@context': 'https://schema.org',
-  '@type': 'NewsMediaOrganization',
-  name: siteConfig.siteName,
-  url: siteConfig.siteUrl,
-  areaServed: { '@type': 'City', name: siteConfig.cityName, addressRegion: siteConfig.stateAbbr, addressCountry: 'US' },
-})} />
+<script type="application/ld+json" is:inline set:html={JSON.stringify(
+  buildOrganizationJsonLd(siteConfig, siblingSiteUrls)
+)} />
 
 {isMorenoValley && (
   /* AdSense site-level script, Moreno Valley only for now. Deliberately NOT

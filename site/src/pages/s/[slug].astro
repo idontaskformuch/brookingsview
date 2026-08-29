@@ -290,9 +290,17 @@ const eventJsonLdObject = buildEventJsonLd(
 
   {isWorkerPulseDigest && <WorkerPulseComments pageSlug={story.slug} comments={comments} />}
 
-  <script type="application/ld+json" is:inline set:html={JSON.stringify(
-    buildArticleJsonLd(story, ogImageUrl, siteConfig.siteName, additionalImages)
-  )} />
+  {/* AdSense remediation Phase E: Article schema only on genuinely
+      original pages, never on a page this same file just marked
+      noindex,follow -- claiming a de-indexed feed item as indexable
+      article content was a real, live contradiction (confirmed: this
+      call was previously unconditional for every source_type, including
+      meeting/event/alert). */}
+  {!isNoindex && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(
+      buildArticleJsonLd(story, ogImageUrl, siteConfig.siteName, additionalImages)
+    )} />
+  )}
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)

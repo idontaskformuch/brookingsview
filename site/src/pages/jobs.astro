@@ -15,11 +15,13 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getRecentJobs, formatDate } from '../lib/db';
 import { salaryText, capByEmployer, slugifyCategory } from '../lib/jobs';
 import { siteConfig } from '../lib/site-config';
 import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 
 const jobs = await getRecentJobs();
 
@@ -27,9 +29,16 @@ const jobs = await getRecentJobs();
 // copy of the salary-formatting and employer-diversity-cap logic, not two
 // that could quietly drift apart.
 const { visible, overflowByCompany } = capByEmployer(jobs);
+
+const canonicalUrl = new URL('/jobs/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Jobs', href: canonicalUrl },
+];
 ---
 <BaseLayout title={`Jobs in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-jobs"
   description={`Recent job listings in and near ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
+  <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero category="jobs" />
   <header class="lede">
     <h1>Jobs</h1>
@@ -128,6 +137,10 @@ const { visible, overflowByCompany } = capByEmployer(jobs);
   </p>
 
   <RelatedContent pageType="jobs" />
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <script>

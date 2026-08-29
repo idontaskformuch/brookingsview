@@ -10,8 +10,10 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import SectionRule from '../../components/SectionRule.astro';
 import ShareButton from '../../components/ShareButton.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { getFacilities, FACILITY_CATEGORY_LABELS } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 
 const facilities = await getFacilities();
 
@@ -24,9 +26,16 @@ const categoryOrder = ['library', 'park', 'city_hall', 'community_center', 'othe
 const categories = [...byCategory.keys()].sort(
   (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b)
 );
+
+const canonicalUrl = new URL('/facilities/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Facilities', href: canonicalUrl },
+];
 ---
 <BaseLayout title={`Local facilities — ${siteConfig.siteName}`} wide ogSlug="section-facilities"
   description={`Addresses, phone numbers and hours for libraries, parks, city hall and other public facilities in ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
+  <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>Local facilities</h1>
     <p>Addresses, phone numbers and hours for libraries, parks, city hall and
@@ -49,6 +58,10 @@ const categories = [...byCategory.keys()].sort(
   )) : (
     <p class="empty">No facility information available yet.</p>
   )}
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <style>

@@ -260,6 +260,39 @@ export function buildSchoolClosureNewsArticleJsonLd(
   };
 }
 
+export interface OrganizationSite {
+  siteName: string;
+  siteUrl: string;
+  cityName: string;
+  stateAbbr: string;
+}
+
+/** AdSense remediation Phase E -- the sitewide NewsMediaOrganization block
+ *  (site/src/layouts/BaseLayout.astro) previously had no link to the
+ *  editorial-policy page or the sibling sites, both real, standard
+ *  schema.org properties for this @type, not custom/invented ones:
+ *  `sameAs` for the sibling sites (same convention as linking an
+ *  organization's other official profiles/properties), and
+ *  `publishingPrinciples` specifically for a link to editorial
+ *  standards/guidelines -- exactly what Google's own guidance on
+ *  NewsMediaOrganization asks publishers to provide. No `logo`: there is
+ *  no real logo asset today (see site-config.ts), and fabricating one
+ *  would violate the same "attribute, don't assert" principle this
+ *  module's own docstring already applies to Article types. */
+export function buildOrganizationJsonLd(
+  site: OrganizationSite, siblingSiteUrls: string[],
+): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'NewsMediaOrganization',
+    name: site.siteName,
+    url: site.siteUrl,
+    areaServed: { '@type': 'City', name: site.cityName, addressRegion: site.stateAbbr, addressCountry: 'US' },
+    publishingPrinciples: new URL('/editorial-policy/', site.siteUrl).href,
+    sameAs: siblingSiteUrls,
+  };
+}
+
 export function buildBreadcrumbJsonLd(trail: BreadcrumbEntry[], pageUrl: string): Record<string, unknown> {
   const origin = new URL(pageUrl).origin;
   return {

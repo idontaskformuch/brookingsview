@@ -18,6 +18,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import SectionRule from '../../components/SectionRule.astro';
 import StoryCard from '../../components/StoryCard.astro';
 import ShareButton from '../../components/ShareButton.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import {
   getUpcomingStories, getUpcomingArtsEvents, getFacilities, type Facility,
 } from '../../lib/db';
@@ -27,6 +28,7 @@ import {
 import { buildEventJsonLd } from '../../lib/event-jsonld';
 import { EVENT_FACETS, type EventFacet } from '../../lib/event-facets';
 import { siteConfig } from '../../lib/site-config';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 
 export async function getStaticPaths() {
   const isBrookings = siteConfig.townId === 'brookings_sd';
@@ -109,8 +111,15 @@ const itemListJsonLd = items.length > 0 ? {
 const siblingFacets = EVENT_FACETS.filter(
   (f) => f.slug !== facet.slug && (!f.brookingsOnly || siteConfig.townId === 'brookings_sd')
 );
+
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Events', href: '/events/' },
+  { label: facet.navLabel, href: canonicalUrl },
+];
 ---
 <BaseLayout title={title} wide ogSlug={`events-${facet.slug}`} description={description} noindex={isNoindex}>
+  <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>{facet.heading}</h1>
     <p>{facet.intro(siteConfig.cityName)}</p>
@@ -136,6 +145,10 @@ const siblingFacets = EVENT_FACETS.filter(
   {itemListJsonLd && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
   )}
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <style>

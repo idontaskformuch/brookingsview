@@ -11,8 +11,10 @@
  *  moreno_valley_ca-only, matching home-sales.astro's own town gate. */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ShareButton from '../../components/ShareButton.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { getContentByType, formatMonthYear } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
@@ -23,6 +25,11 @@ const digests = await getContentByType(['home_sales_digest'], 999);
 const title = `Home Sales Digest Archive — ${siteConfig.cityName}`;
 const description = `Every monthly home-sales digest for ${siteConfig.cityName}, ${siteConfig.stateAbbr}, oldest to newest.`;
 const canonicalUrl = new URL('/home-sales/archive/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Home sales', href: '/home-sales/' },
+  { label: 'Digest archive', href: canonicalUrl },
+];
 
 const itemListJsonLd = digests.length > 0 ? {
   '@context': 'https://schema.org',
@@ -37,6 +44,7 @@ const itemListJsonLd = digests.length > 0 ? {
 } : null;
 ---
 <BaseLayout title={title} wide ogSlug="section-home-sales" description={description}>
+  <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>Home sales digest archive</h1>
     <p>Every monthly home-sales digest, oldest to newest. Looking for
@@ -60,6 +68,10 @@ const itemListJsonLd = digests.length > 0 ? {
   {itemListJsonLd && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
   )}
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <style>

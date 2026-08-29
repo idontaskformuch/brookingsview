@@ -4,6 +4,7 @@ import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getUpcomingStories, getPastStories, getUpcomingArtsEvents, getRegionalSports, calendarDateParts } from '../lib/db';
 import {
   buildEventFeed, artsEventAsStory, withAttribution, localDateParts, utcMidnight,
@@ -14,6 +15,7 @@ import { EVENT_FACETS } from '../lib/event-facets';
 import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
 import { SECTION_THEME } from '../lib/section-theme';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 
 // "Arts & Culture" (SDSU) / "Around Town" (library, city, chamber, ...) --
 // bara Brookings har den här campus-vs-townwide-uppdelningen att göra (se
@@ -109,10 +111,17 @@ const sections = (
 // home game to surface (see todaysHomeGame below) -- every other bucket
 // keeps the original "hide if empty" rule.
 ).filter(([label, list]) => list.length > 0 || (label === 'Today' && todaysHomeGame));
+
+const canonicalUrl = new URL('/events/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Events', href: canonicalUrl },
+];
 ---
 <BaseLayout title={`Events in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-events"
   description={`What's on this weekend in ${siteConfig.cityName}, ${siteConfig.stateName} — library programs, city events and community happenings.`}
   accentColor={SECTION_THEME.events.accent}>
+  <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero category="events" />
   <header class="lede">
     <h1>What's on</h1>
@@ -160,6 +169,10 @@ const sections = (
   )}
 
   <RelatedContent pageType="events" />
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <style>

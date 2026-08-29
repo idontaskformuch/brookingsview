@@ -15,6 +15,7 @@ import ShiftPollWidget from '../../components/ShiftPollWidget.astro';
 import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
 import RelatedContent from '../../components/RelatedContent.astro';
 import ShareButton from '../../components/ShareButton.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import {
   getLatestEmployerRatings, getWeather, getActiveAlerts,
   getShiftPollResults, getWorkerPulseComments,
@@ -23,10 +24,17 @@ import { siteConfig } from '../../lib/site-config';
 import SectionHero from '../../components/SectionHero.astro';
 import { EMPTY_STATES } from '../../lib/empty-states';
 import { SECTION_THEME } from '../../lib/section-theme';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 
 if (!siteConfig.hasWorkplaceWatch) {
   return Astro.redirect('/', 302);
 }
+
+const canonicalUrl = new URL('/workplace-watch/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Worker Pulse', href: canonicalUrl },
+];
 
 // HeatAdvisoryWidget/ShiftPollWidget both assume hourly, shift-based
 // warehouse/logistics work (see their own docstrings) -- true for Moreno
@@ -75,6 +83,7 @@ function trend(delta: number | null): { symbol: string; cls: string } {
   ogSlug="section-workplace-watch"
   accentColor={SECTION_THEME.workplace_watch.accent}
 >
+  <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero category="workplace_watch" />
   <header class="wp-hero">
     <h1>📦 Worker Pulse</h1>
@@ -155,6 +164,10 @@ function trend(delta: number | null): { symbol: string; cls: string } {
   <WorkerPulseComments pageSlug="workplace-watch" comments={comments} />
 
   <RelatedContent pageType="workplace_watch" />
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <style>

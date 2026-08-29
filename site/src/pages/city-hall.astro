@@ -5,15 +5,23 @@ import StoryCard from '../components/StoryCard.astro';
 import ShareButton from '../components/ShareButton.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import SectionHero from '../components/SectionHero.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getUpcomingStories, getPastStories, getProjects } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 
 const upcoming = await getUpcomingStories(['meeting'], 40);
 const past = await getPastStories(['meeting', 'meeting_followup'], 30);
 const projects = await getProjects();
+const canonicalUrl = new URL('/city-hall/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'City hall', href: canonicalUrl },
+];
 ---
 <BaseLayout title={`City Hall in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-city-hall"
   description={`City council, county commission and committee meetings in ${siteConfig.cityName}, ${siteConfig.stateName}, in plain language.`}>
+  <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero category="city_hall" />
   <header class="lede">
     <h1>City hall</h1>
@@ -45,6 +53,10 @@ const projects = await getProjects();
   )}
 
   <RelatedContent pageType="city_hall" />
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <style>

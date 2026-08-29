@@ -4,13 +4,21 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getContentByType } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 
 const stories = await getContentByType(['vardagsmiddag'], 60);
+const canonicalUrl = new URL('/recipes/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Recipes', href: canonicalUrl },
+];
 ---
 <BaseLayout title={`Recipes — ${siteConfig.siteName}`} wide
   description="Simple weeknight dinner recipes built around what's in season, AI-written and clearly labeled as such.">
+  <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>Recipes</h1>
     <p>Simple weeknight dinners built around what's in season, written by AI and
@@ -23,6 +31,10 @@ const stories = await getContentByType(['vardagsmiddag'], 60);
   ) : (
     <p class="empty">Nothing published yet.</p>
   )}
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <style>

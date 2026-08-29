@@ -17,12 +17,14 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getRecentPropertySales, getContentByType, formatPrice } from '../lib/db';
 import { titleCaseAddress as sharedTitleCaseAddress, extractZip as sharedExtractZip, slugifyAddress, isOutlierSale } from '../lib/home-sales';
 import { siteConfig } from '../lib/site-config';
 import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
 import { SECTION_THEME } from '../lib/section-theme';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
@@ -32,6 +34,12 @@ const [sales, digests] = await Promise.all([
   getRecentPropertySales(),
   getContentByType(['home_sales_digest'], 12),
 ]);
+
+const canonicalUrl = new URL('/home-sales/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Home sales', href: canonicalUrl },
+];
 
 // Shared with home-sales/[slug].astro and home-sales/zip/[zip].astro (see
 // lib/home-sales.ts) -- one copy of the address/ZIP/outlier logic, not
@@ -49,6 +57,7 @@ function monthYear(occursAt: string | null): string {
 <BaseLayout title={`Recent Home Sales in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-home-sales"
   description="Recently recorded home sales in Moreno Valley: address, price, and date, from Riverside County's public assessor data."
   accentColor={SECTION_THEME.home_sales.accent}>
+  <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero category="home_sales" />
   <header class="lede">
     <h1>Recent home sales</h1>
@@ -137,6 +146,10 @@ function monthYear(occursAt: string | null): string {
   </p>
 
   <RelatedContent pageType="home_sales" />
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
 </BaseLayout>
 
 <script>
