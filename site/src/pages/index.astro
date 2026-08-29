@@ -112,14 +112,15 @@ const { fullWidthLead, secondary, usedSlugs } = selectFrontPageRhythm(upcoming, 
 // dedupeConsecutiveImages() (added with the original image-identity
 // feature but never actually called from any page until this) is applied
 // here to the front page's image-bearing cards IN THEIR REAL VISUAL ORDER
-// -- weekly roundup, the lead, each secondary card, then the "Today's
-// read" feature further down -- so a repeat is suppressed (an honest "no
-// image" gap, same as any other resolveImage() miss) rather than shown
-// twice. Deliberately only consecutive-in-this-list repeats are
+// -- weekly roundup, then the "Today's read" feature (moved above the
+// scraped lead/secondary hero, Phase F: surface what's actually unique),
+// then the lead, then each secondary card -- so a repeat is suppressed (an
+// honest "no image" gap, same as any other resolveImage() miss) rather
+// than shown twice. Deliberately only consecutive-in-this-list repeats are
 // suppressed, not any-earlier-in-the-list ones -- see that function's own
 // docstring for why a repeat separated by other images isn't the same
 // "reads as broken" problem.
-const frontPageImageOrder = [weekly, fullWidthLead, ...secondary, feature]
+const frontPageImageOrder = [weekly, feature, fullWidthLead, ...secondary]
   .filter((s): s is NonNullable<typeof s> => s != null);
 const frontPageImages = dedupeConsecutiveImages(
   frontPageImageOrder,
@@ -219,6 +220,69 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 
   {weekly && <WeeklyRoundup story={weekly} facilities={facilities} image={frontPageImageBySlug.get(weekly.slug)} />}
 
+  {/* Phase F (surface what's actually unique): original, content-track
+      material -- the daily featured column/recipe/review and the recent-
+      editorial grid -- leads the page, ahead of the scraped meeting/event
+      feed below. Previously both sat well below the fold, the "Latest
+      from" grid specifically buried under three full event rivers (see
+      that section's own comment on the earlier, smaller fix for the same
+      problem). Moved as complete, unmodified sections -- no change to
+      either one's internal design, only where they sit on the page. */}
+  {feature && (
+    <section aria-label="Today's read">
+      <SectionRule label="Today's read" href={CATEGORY_HREFS[feature.source_type]} />
+      <LeadStory story={feature} facilities={facilities} image={frontPageImageBySlug.get(feature.slug)} />
+    </section>
+  )}
+
+  {latestFromSelection.length > 0 && (
+    // The site's editorial verticals (Editorials/Columns/Reviews/Recipes)
+    // -- previously invisible from the homepage entirely, buried below a
+    // 30+ item events list. See lib/homepage-curation.ts:selectLatestFrom()
+    // and NEEDS-HUMAN-REVIEW.md "Homepage Curation".
+    <section aria-label="Latest from" class="latest-from">
+      <SectionRule label={`Latest from ${siteConfig.siteName}`} />
+      <div class="latest-from__grid">
+        {latestFromSelection.map((story) => {
+          // Same resolveImage() every other rendering surface uses --
+          // content-track items (the only types that ever land here, see
+          // getLatestFromCandidates()) resolve via the article-image tier
+          // (story.image_path), same as the story page and "Today's read"
+          // hero. withThumbnailCrop() swaps in the smaller 4:3 crop for
+          // this card's compact layout when one exists, falling back to
+          // the full image otherwise -- never a broken <img>, and never
+          // the /og/ social card standing in as an inline hero.
+          const cardImage = resolveImage(story, {
+            town: siteConfig.townId,
+            cityName: siteConfig.cityName,
+            facilities,
+            categoryImages: categoryImagesFor(siteConfig.townId),
+          });
+          const thumbnail = cardImage ? withThumbnailCrop(cardImage) : null;
+          return (
+            <a class="latest-from__card" href={`/s/${story.slug}/`}>
+              {thumbnail && (
+                <img
+                  class="latest-from__image"
+                  src={thumbnail.path}
+                  alt={thumbnail.alt}
+                  width={thumbnail.width}
+                  height={thumbnail.height}
+                  loading="lazy"
+                  decoding="async"
+                />
+              )}
+              <p class="latest-from__kicker">{CATEGORY_LABELS[story.source_type] ?? 'Feature'}</p>
+              <h3 class="latest-from__title">{story.title}</h3>
+              <p class="latest-from__excerpt">{firstSentence(story.body)}</p>
+              <span class="latest-from__read">Read &rarr;</span>
+            </a>
+          );
+        })}
+      </div>
+    </section>
+  )}
+
   <div class="front">
     {fullWidthLead ? (
       <LeadStory story={fullWidthLead} facilities={facilities} image={frontPageImageBySlug.get(fullWidthLead.slug)} />
@@ -295,13 +359,6 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       )}
       <p class="rail__hint">Tap a panel for the full picture &rarr;</p>
   </aside>
-
-  {feature && (
-    <section aria-label="Today's read">
-      <SectionRule label="Today's read" href={CATEGORY_HREFS[feature.source_type]} />
-      <LeadStory story={feature} facilities={facilities} image={frontPageImageBySlug.get(feature.slug)} />
-    </section>
-  )}
 
   {worthKnowingSelection.length > 0 && (
     // Significance, not recency -- the slot that surfaces a civic decision
@@ -380,54 +437,6 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       <SectionRule label="Coming up" href="/events/" />
       <div class="river">
         {laterStories.slice(0, 5).map((story) => <StoryCard story={story} compact />)}
-      </div>
-    </section>
-  )}
-
-  {latestFromSelection.length > 0 && (
-    // The site's editorial verticals (Editorials/Columns/Reviews/Recipes)
-    // -- previously invisible from the homepage entirely, buried below a
-    // 30+ item events list. See lib/homepage-curation.ts:selectLatestFrom()
-    // and NEEDS-HUMAN-REVIEW.md "Homepage Curation".
-    <section aria-label="Latest from" class="latest-from">
-      <SectionRule label={`Latest from ${siteConfig.siteName}`} />
-      <div class="latest-from__grid">
-        {latestFromSelection.map((story) => {
-          // Same resolveImage() every other rendering surface uses --
-          // content-track items (the only types that ever land here, see
-          // getLatestFromCandidates()) resolve via the article-image tier
-          // (story.image_path), same as the story page and "Today's read"
-          // hero. withThumbnailCrop() swaps in the smaller 4:3 crop for
-          // this card's compact layout when one exists, falling back to
-          // the full image otherwise -- never a broken <img>, and never
-          // the /og/ social card standing in as an inline hero.
-          const cardImage = resolveImage(story, {
-            town: siteConfig.townId,
-            cityName: siteConfig.cityName,
-            facilities,
-            categoryImages: categoryImagesFor(siteConfig.townId),
-          });
-          const thumbnail = cardImage ? withThumbnailCrop(cardImage) : null;
-          return (
-            <a class="latest-from__card" href={`/s/${story.slug}/`}>
-              {thumbnail && (
-                <img
-                  class="latest-from__image"
-                  src={thumbnail.path}
-                  alt={thumbnail.alt}
-                  width={thumbnail.width}
-                  height={thumbnail.height}
-                  loading="lazy"
-                  decoding="async"
-                />
-              )}
-              <p class="latest-from__kicker">{CATEGORY_LABELS[story.source_type] ?? 'Feature'}</p>
-              <h3 class="latest-from__title">{story.title}</h3>
-              <p class="latest-from__excerpt">{firstSentence(story.body)}</p>
-              <span class="latest-from__read">Read &rarr;</span>
-            </a>
-          );
-        })}
       </div>
     </section>
   )}
