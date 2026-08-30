@@ -34,10 +34,21 @@
     // DÖD KOD i produktion trots att den var korrekt skriven och deployad
     // (upptäckt 2026-08-27 genom att den gamla meta-refresh-sidan
     // fortfarande serverades live, även med cache-bustande querysträngar).
-    // Skopat till bara dessa två sökvägar (inte hela sajten) -- allt annat
-    // ska fortfarande servas som statiska filer direkt, ingen anledning att
-    // låta Workern köra för varenda en av de hundratals förrenderade sidorna.
-    "run_worker_first": ["/this-week", "/this-week/"]
+    //
+    // "/api/*" är HÄR av samma skäl, upptäckt 2026-08-30: för en sökväg som
+    // INTE matchar någon riktig fil OCH inte står i den här listan avgör
+    // assets-bindningen requesten SJÄLV -- även för POST, som en statisk fil
+    // aldrig kan svara på -- och returnerar 405 Method Not Allowed direkt
+    // från kanten, återigen utan att någonsin nå Worker-skriptets
+    // fetch()-handler. Bekräftat lokalt med riktig `wrangler dev` + curl:
+    // POST /api/comment och POST /api/contact gav BÅDA 405 innan denna
+    // rad lades till, trots att server/worker.ts:s egen fetch()-kod
+    // explicit routar dem -- koden kördes aldrig. Det här gjorde HELA
+    // /api/*-ytan (kommentarer, skiftomröstning, och det nya kontakt-
+    // formuläret) obrukbar i produktion sedan innan denna upptäckt, utan
+    // att någon befintlig check fångade det (post-deploy-kollen testar
+    // bara hemsidan/sektionssidor, aldrig /api/*).
+    "run_worker_first": ["/this-week", "/this-week/", "/api/*"]
   },
   // VIKTIGT: en enda wrangler.jsonc delas av båda städernas Cloudflare-
   // projekt (samma repo, skiljs bara åt av SITE_CITY vid Astro-bygget).
