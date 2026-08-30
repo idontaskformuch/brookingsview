@@ -9,7 +9,7 @@
 // docstring): this runs inside worker.ts, the single Worker entry Cloudflare
 // actually invokes in production.
 import { neon } from '@neondatabase/serverless';
-import { type Env, townFromHostname, sha256Hex, jsonResponse } from './_shared';
+import { type Env, townFromHostname, sha256Hex, jsonResponse, TOWN_SEND_DOMAIN } from './_shared';
 
 const MAX_MESSAGE_LEN = 4000;
 const MIN_MESSAGE_LEN = 3;
@@ -37,14 +37,15 @@ async function verifyTurnstile(token: string, secret: string, ip: string): Promi
 }
 
 async function sendNotificationEmail(
-  to: string, name: string | null, email: string | null, message: string, apiKey: string,
+  townId: string, to: string, name: string | null, email: string | null, message: string, apiKey: string,
 ): Promise<'sent' | 'failed'> {
+  const sendDomain = TOWN_SEND_DOMAIN[townId];
   try {
     const resp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        from: `Contact form <contact@${to.split('@')[1]}>`,
+        from: `Contact form <contact@${sendDomain}>`,
         to: [to],
         reply_to: email || undefined,
         subject: `New contact form message${name ? ` from ${name}` : ''}`,
@@ -104,7 +105,7 @@ export async function handleContact(request: Request, env: Env): Promise<Respons
   }
 
   const emailStatus = env.RESEND_API_KEY
-    ? await sendNotificationEmail(env.CONTACT_TO_ADDRESS, cleanName, cleanEmail, message.trim(), env.RESEND_API_KEY)
+    ? await sendNotificationEmail(townId, env.CONTACT_TO_ADDRESS, cleanName, cleanEmail, message.trim(), env.RESEND_API_KEY)
     : 'skipped';
 
   await sql`

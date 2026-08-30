@@ -37,6 +37,19 @@ export interface Env {
   CONTACT_TO_ADDRESS: string;
 }
 
+/** The domain Resend sends contact-form notifications FROM -- always the
+ *  town's own website domain (the one actually verified in Resend), NEVER
+ *  derived from CONTACT_TO_ADDRESS's own domain. Found live 2026-08-30:
+ *  CONTACT_TO_ADDRESS points at a Proton Mail inbox for at least one
+ *  town, and an earlier version of contact.ts derived the send-from
+ *  domain from that address's domain instead -- silently failing every
+ *  send, since proton.me was never a domain anyone verified in Resend. */
+export const TOWN_SEND_DOMAIN: Record<string, string> = {
+  brookings_sd: 'brookingsview.com',
+  moreno_valley_ca: 'morenovalleyview.com',
+  broomfield_co: 'broomfieldview.com',
+};
+
 const TOWN_HOSTNAMES: Record<string, string> = {
   'morenovalleyview.com': 'moreno_valley_ca',
   'www.morenovalleyview.com': 'moreno_valley_ca',
