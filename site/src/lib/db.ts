@@ -333,6 +333,13 @@ export async function getLatestFromCandidates(limit = 8): Promise<Story[]> {
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${EDITORIAL_SOURCE_TYPES})
+       -- Postgres sorts NULL first in DESC order, so an unpublished row
+       -- (published_at set back to NULL, e.g. scripts/scan_contamination.py's
+       -- quarantine flow) would otherwise outrank every real published story
+       -- for this exact homepage slot -- confirmed live 2026-09-03, see
+       -- NEEDS-HUMAN-REVIEW.md's "unpublished" rows. Explicit filter, not
+       -- reliance on ORDER BY placement.
+       AND published_at IS NOT NULL
      ORDER BY published_at DESC
      LIMIT ${limit}
   `) as Story[];
@@ -395,6 +402,9 @@ export async function getContentByType(sourceTypes: SourceType[], limit = 40): P
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
+       -- see getLatestFromCandidates' comment: NULL sorts first in DESC,
+       -- so an unpublished row must be filtered explicitly, not just outranked.
+       AND published_at IS NOT NULL
      ORDER BY published_at DESC
      LIMIT ${limit}
   `) as Story[];
@@ -569,6 +579,11 @@ export async function getRelatedStories(
        AND slug <> ${story.slug}
        AND source_type = ${story.source_type}
        AND occurs_at IS NOT NULL
+       -- An unpublished row (e.g. a contamination-quarantine row, see
+       -- NEEDS-HUMAN-REVIEW.md) still carries a real occurs_at from when it
+       -- was generated, so without this it can surface as a "related story"
+       -- link on any live page nearby in time -- confirmed live 2026-09-03.
+       AND published_at IS NOT NULL
      ORDER BY abs(extract(epoch FROM (occurs_at - ${anchor}::timestamptz)))
      LIMIT ${limit}
   `) as Story[];
@@ -584,6 +599,7 @@ export async function getRelatedStories(
      WHERE town_id = ${TOWN_ID}
        AND slug <> ALL(${seen})
        AND occurs_at IS NOT NULL
+       AND published_at IS NOT NULL
      ORDER BY abs(extract(epoch FROM (occurs_at - ${anchor}::timestamptz)))
      LIMIT ${limit - sameType.length}
   `) as Story[];
@@ -648,6 +664,7 @@ async function latestStoryByType(sourceType: SourceType): Promise<RelatedItem | 
     SELECT title, slug, body, published_at
       FROM stories
      WHERE town_id = ${TOWN_ID} AND source_type = ${sourceType}
+       AND published_at IS NOT NULL
      ORDER BY published_at DESC
      LIMIT 1
   `) as { title: string; slug: string; body: string }[];

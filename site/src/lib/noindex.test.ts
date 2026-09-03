@@ -79,4 +79,20 @@ describe('shouldNoindexStory', () => {
     const expected: SourceType[] = ['meeting', 'meeting_followup', 'event', 'alert'];
     expect([...THIN_SCRAPED_SOURCE_TYPES].sort()).toEqual([...expected].sort());
   });
+
+  it('noindexes an otherwise-substantial story whose published_at was reset to null (unpublished)', () => {
+    expect(shouldNoindexStory({ source_type: 'culture_essay', body: longBody(500), published_at: null })).toBe(true);
+  });
+  it('does not noindex a substantial story with a real published_at', () => {
+    expect(shouldNoindexStory({
+      source_type: 'culture_essay', body: longBody(500), published_at: '2026-08-01T00:00:00Z',
+    })).toBe(false);
+  });
+  it('does not treat a test fixture that omits published_at as unpublished', () => {
+    expect(shouldNoindexStory({ source_type: 'culture_essay', body: longBody(500) })).toBe(false);
+  });
+  it('does not tally the word-count counter for an unpublished-only noindex', () => {
+    shouldNoindexStory({ source_type: 'culture_essay', body: longBody(500), published_at: null });
+    expect(getWordCountNoindexTally()).toBe(0);
+  });
 });

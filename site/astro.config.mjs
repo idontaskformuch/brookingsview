@@ -201,7 +201,14 @@ async function buildLastmodMap(townId, databaseUrl) {
     // that page's own comment) -- folded in here alongside the new
     // thin-content rule so both reasons a story can be noindexed are
     // reflected in the sitemap, not just the new one.
-    if (s.generated_by === 'data_pending' || isThinStory(s.source_type, s.body)) {
+    //
+    // s.published_at === null: mirrors lib/noindex.ts's shouldNoindexStory()
+    // published_at check exactly -- an "unpublished" row (see
+    // NEEDS-HUMAN-REVIEW.md's quarantine rows) must not be advertised in the
+    // sitemap as indexable just because it isn't thin. Confirmed live
+    // 2026-09-03 this mirror had drifted from the page's own noindex logic
+    // the same way the module comment above already warns about.
+    if (s.generated_by === 'data_pending' || s.published_at === null || isThinStory(s.source_type, s.body)) {
       noindexStoryUrls.add(`/s/${s.slug}/`);
     }
     const canonicalOrigin = CROSS_SITE_CANONICAL_ORIGINS[s.source_type];

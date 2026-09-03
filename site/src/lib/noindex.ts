@@ -61,13 +61,31 @@ export function getWordCountNoindexTally(): number {
  * inflate the number with non-actionable hits; an unexpectedly thin
  * editorial, essay, or digest is the real signal this safety net exists
  * to catch.
+ *
+ * A third, independent reason: published_at === null. "Unpublishing" a row
+ * (e.g. scripts/scan_contamination.py's quarantine flow, see
+ * NEEDS-HUMAN-REVIEW.md) sets published_at back to NULL, but confirmed live
+ * 2026-09-03 that nothing in getStaticPaths gates page generation on it --
+ * the page still builds and would otherwise stay fully indexable. This is
+ * the ONE signal that actually keeps such a row out of Google once it's
+ * already been crawled; the listing/homepage queries in lib/db.ts separately
+ * filter `published_at IS NOT NULL` to delink it from the front page,
+ * archive, and related-content -- see those queries' own comments. Deliberate
+ * `=== null` (not `!story.published_at`, which would also strip a real but
+ * falsy-looking value) -- see the `published_at?: string | null` widening
+ * below, kept narrow so real Story callers (published_at typed as plain
+ * `string`, though nullable at runtime) still satisfy it, while tests that
+ * omit the field entirely (published_at undefined) are unaffected.
  */
-export function shouldNoindexStory(story: Pick<Story, 'source_type' | 'body'>): boolean {
+export function shouldNoindexStory(
+  story: Pick<Story, 'source_type' | 'body'> & { published_at?: string | null },
+): boolean {
   const isThinType = THIN_SCRAPED_SOURCE_TYPES.includes(story.source_type);
   const isThinByWordCount = countWords(story.body) < THIN_CONTENT_WORD_THRESHOLD;
+  const isUnpublished = story.published_at === null;
   if (isThinByWordCount && !isThinType) {
     wordCountNoindexTally += 1;
     scheduleWordCountSummaryLog();
   }
-  return isThinType || isThinByWordCount;
+  return isThinType || isThinByWordCount || isUnpublished;
 }
