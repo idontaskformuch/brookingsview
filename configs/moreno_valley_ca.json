@@ -11,6 +11,12 @@
     "lon": -117.2297
   },
   "_domain_note": "morenovalleyview.com — matchar 'View'-varumärket (Brookings View). Konsekvent med fleet-namngivningen.",
+  "identity": {
+    "terms": ["Inland Empire", "Alessandro", "Perris Blvd", "MoVal", "951"],
+    "_terms_note": "ai_pipeline/town_guard.py's cross-site contamination guard (Phase 0, check 1): see brookings_sd.json's identity._terms_note for the full explanation. Carried over verbatim from the pre-2026-09-03 hardcoded HARD_BLOCKLIST.",
+    "review_terms": ["prairie", "Sixth Street"],
+    "_review_terms_note": "Soft/false-positive-prone terms specific to THIS town's own content -- 'prairie' (a real street-name word, e.g. Prairie Wind Tr) and 'Sixth Street' (a common street name that also happens to be a real Brookings landmark) flag for human review instead of hard-blocking, since a hard block here would cost more in wrongly-rejected regenerations than it prevents. See CONTAMINATION_REPORT.md's 'false positive' rows for the incidents that established this."
+  },
   "positioning": {
     "question_we_answer": "Vad händer i Moreno Valley?",
     "feeling": "positivt, välkomnande, stolt-över-sin-stad",

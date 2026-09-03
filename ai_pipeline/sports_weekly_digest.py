@@ -50,6 +50,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline import guardrails
+from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
     resolve_model, pricing_for, safe_create,
@@ -231,26 +232,35 @@ def generate(team_stats: list[dict], label: str, cfg: dict, client=None) -> tupl
     # GenerationUnavailable (API-fel) -> mall-fallback, samma som ett
     # guardrail-avslag. Se GenerationUnavailable-docstringen i format_prompt.py
     # för incidenten (2026-08-09) det här skyddar mot.
+    def _checks_pass(candidate: str) -> tuple[bool, list[str]]:
+        result = guardrails.validate(candidate, src, cfg)
+        violations = list(result.violations)
+        if not violations:
+            violations = pre_publish_check(
+                candidate, source_records=team_stats, cfg=cfg, content_type=SOURCE_TYPE,
+            ).violations
+        return not violations, violations
+
     try:
         text = call()
-        result = guardrails.validate(text, src, cfg)
+        passed, violations = _checks_pass(text)
 
-        if not result.passed:
+        if not passed:
             text = call("\n\nYour previous attempt included details not found in the "
                         "source, or speculated beyond the results given. Rewrite using "
                         "ONLY facts explicitly present in the SOURCE DATA, and report only.")
-            result = guardrails.validate(text, src, cfg)
+            passed, violations = _checks_pass(text)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
         return template_fallback(team_stats, label), "template_fallback", True
 
-    if result.passed and len(text.split()) >= MIN_WORDS:
+    if passed and len(text.split()) >= MIN_WORDS:
         return text, f"ai:{model}", True
 
-    reason = "guardrail" if not result.passed else "too short"
+    reason = "guardrail" if not passed else "too short"
     print(f"  faller tillbaka på mall ({reason})")
-    if not result.passed:
-        for v in result.violations[:5]:
+    if not passed:
+        for v in violations[:5]:
             print(f"    - {v}")
     return template_fallback(team_stats, label), "template_fallback", True
 

@@ -11,6 +11,10 @@
     "lon": -105.0866
   },
   "_domain_note": "broomfieldview.com -- matchar 'View'-varumärket (Brookings View, Moreno Valley View). Konsekvent med fleet-namngivningen.",
+  "identity": {
+    "terms": ["Adams 12", "Boulder Valley", "Interlocken", "Flatirons"],
+    "_terms_note": "ai_pipeline/town_guard.py's cross-site contamination guard (Phase 0, check 1): see brookings_sd.json's identity._terms_note for the full explanation. Carried over verbatim from the pre-2026-09-03 hardcoded HARD_BLOCKLIST."
+  },
   "positioning": {
     "question_we_answer": "Vad händer i Broomfield?",
     "feeling": "positivt, välkomnande, stolt-över-sin-stad",

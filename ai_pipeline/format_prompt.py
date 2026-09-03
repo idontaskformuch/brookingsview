@@ -19,6 +19,7 @@ import sys
 from dataclasses import dataclass
 
 from ai_pipeline import guardrails
+from validation import pre_publish_check
 
 try:
     import anthropic
@@ -449,6 +450,20 @@ def _source_has_when(record: dict) -> bool:
     return any(record.get(f) for f in _WHEN_FIELDS)
 
 
+def _record_date(record: dict):
+    """The record's own real-world date, for validation.date_coherence's
+    check 3 -- first of _WHEN_FIELDS that's an actual datetime (publish.py's
+    rows come back from psycopg as real datetime objects for these columns;
+    guarding the type rather than assuming it keeps a malformed/legacy row
+    from crashing the whole batch over a date-coherence nicety)."""
+    from datetime import datetime as _datetime
+    for f in _WHEN_FIELDS:
+        v = record.get(f)
+        if isinstance(v, _datetime):
+            return v
+    return None
+
+
 def format_record(record: dict, source_type: str, cfg: dict,
                   client=None, recent_openings: list[str] | None = None) -> FormatResult:
     """Formatera en post till publicerbar text, guardrail-validerad.
@@ -494,13 +509,35 @@ def format_record(record: dict, source_type: str, cfg: dict,
         )
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text"), msg.usage
 
+    record_date = _record_date(record)
+
+    def _pre_publish(candidate_text: str, meta: dict | None) -> list[str]:
+        """validation.pre_publish_check() (Recurring-traffic layer handoff,
+        Phase 0) -- runs IN ADDITION to guardrails.validate()/validate_tone_v2()
+        above, same retry cycle. A Phase 0 failure here still lands on
+        format_record()'s existing _fallback() path, same as any other
+        rejection -- but that path only ever reads the RECORD's own raw
+        fields (record.get("title")/"body"/"description"), never `meta` or
+        the rejected AI text, so it can't inherit whatever Phase 0 just
+        flagged (wrong town/state/date, a mismatched venue/phone pairing, an
+        incoherent fragment) -- see _fallback()'s own body.
+        """
+        result = pre_publish_check(
+            candidate_text, source_records=record, cfg=cfg, content_type=source_type,
+            record_date=record_date, meta=meta,
+        )
+        return result.violations
+
     def _validate(raw_text: str) -> tuple[bool, list[str], str, dict | None]:
         """Returns (passed, violations, summary_text, meta). For tone_v2,
         malformed JSON is treated exactly like a guardrail rejection (see
         parse_tone_v2_response()'s own docstring) -- never raises."""
         if not tone_v2:
             result = guardrails.validate(raw_text, source_text, cfg)
-            return result.passed, result.violations, raw_text, None
+            violations = list(result.violations)
+            if not violations:
+                violations = _pre_publish(raw_text, None)
+            return not violations, violations, raw_text, None
 
         parsed = parse_tone_v2_response(raw_text)
         if parsed is None:
@@ -514,6 +551,8 @@ def format_record(record: dict, source_type: str, cfg: dict,
             recent_openings=recent_openings,
         )
         violations = fact_result.violations + tone_result.violations
+        if not violations:
+            violations = _pre_publish(summary, meta)
         return not violations, violations, summary, meta
 
     # GenerationUnavailable (API-fel: kreditsaldo, rate limit, överbelastning,

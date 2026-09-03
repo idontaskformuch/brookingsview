@@ -56,6 +56,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline import guardrails, search_client
+from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
     resolve_model, pricing_for, safe_create,
@@ -184,29 +185,37 @@ def generate(employer_name: str, results: list[dict], cfg: dict, client=None) ->
         _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
 
+    def _checks_pass(candidate: str) -> tuple[bool, list[str]]:
+        fact_result = guardrails.validate(candidate, src, cfg)
+        hedge_result = guardrails.validate_employer_hedging(candidate, [employer_name])
+        violations = fact_result.violations + hedge_result.violations
+        if not violations:
+            violations = pre_publish_check(
+                candidate, source_records=results, cfg=cfg, content_type=SOURCE_TYPE,
+            ).violations
+        return not violations, violations
+
     try:
         text = call()
-        fact_result = guardrails.validate(text, src, cfg)
-        hedge_result = guardrails.validate_employer_hedging(text, [employer_name])
+        passed, violations = _checks_pass(text)
 
-        if not (fact_result.passed and hedge_result.passed):
+        if not passed:
             text = call("\n\nYour previous attempt included details not found in the "
                         "source, or stated a claim about the company as settled fact "
                         "instead of attributing it to reviews. Rewrite using ONLY facts "
                         "from the SOURCE DATA, and hedge every claim about the company "
                         "as something reviews/employees say, not as fact.")
-            fact_result = guardrails.validate(text, src, cfg)
-            hedge_result = guardrails.validate_employer_hedging(text, [employer_name])
+            passed, violations = _checks_pass(text)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
         return template_fallback(employer_name, results), "template_fallback", True
 
-    if fact_result.passed and hedge_result.passed and len(text.split()) >= MIN_WORDS:
+    if passed and len(text.split()) >= MIN_WORDS:
         return text, f"ai:{model}", True
 
-    reason = "guardrail" if not fact_result.passed else ("hedging" if not hedge_result.passed else "too short")
+    reason = "guardrail" if not passed else "too short"
     print(f"  faller tillbaka på mall ({reason})")
-    for v in (fact_result.violations + hedge_result.violations)[:5]:
+    for v in violations[:5]:
         print(f"    - {v}")
     return template_fallback(employer_name, results), "template_fallback", True
 

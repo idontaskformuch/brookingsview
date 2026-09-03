@@ -51,6 +51,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline import guardrails
+from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
     resolve_model, pricing_for, safe_create,
@@ -298,9 +299,23 @@ def generate(alert: dict, district: str, district_url: str | None, historical_co
     if text is None:
         return None
 
-    fact_result = guardrails.validate(text, src, cfg)
-    prediction_result = guardrails.check_no_prediction(text)
-    if not (fact_result.passed and prediction_result.passed):
+    def _checks_pass(candidate: str) -> tuple[bool, list[str]]:
+        fact_result = guardrails.validate(candidate, src, cfg)
+        prediction_result = guardrails.check_no_prediction(candidate)
+        violations = fact_result.violations + prediction_result.violations
+        if not violations:
+            # Phase 0 gate (validation/pre_publish_check.py) -- runs only once
+            # the pre-existing checks pass, same retry cycle. This is
+            # highest-liability content (per guardrails.py's own docstring),
+            # so a Phase 0 failure gets exactly the same "write nothing, no
+            # template" answer a prediction-language rejection already gets.
+            violations = pre_publish_check(
+                candidate, source_records=alert, cfg=cfg, content_type=SOURCE_TYPE,
+            ).violations
+        return not violations, violations
+
+    passed, violations = _checks_pass(text)
+    if not passed:
         text = call(
             "\n\nYour previous attempt either included a detail not found in the "
             "source, or stated/implied that school will close. Rewrite it to "
@@ -310,14 +325,13 @@ def generate(alert: dict, district: str, district_url: str | None, historical_co
         )
         if text is None:
             return None
-        fact_result = guardrails.validate(text, src, cfg)
-        prediction_result = guardrails.check_no_prediction(text)
+        passed, violations = _checks_pass(text)
 
-    if fact_result.passed and prediction_result.passed:
+    if passed:
         return text, f"ai:{model}"
 
     print("  guardrail rejection survived retry -- writing nothing, static fallback applies")
-    for v in (fact_result.violations + prediction_result.violations)[:5]:
+    for v in violations[:5]:
         print(f"    - {v}")
     return None
 

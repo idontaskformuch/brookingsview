@@ -52,6 +52,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline import guardrails
+from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
     resolve_model, pricing_for, safe_create,
@@ -363,29 +364,41 @@ def generate(stats: dict, label: str, cfg: dict, client=None, mom_stats: dict | 
     # GenerationUnavailable (API-fel) -> mall-fallback, samma som ett
     # guardrail-avslag. Se GenerationUnavailable-docstringen i format_prompt.py
     # för incidenten (2026-08-09) det här skyddar mot.
+    def _checks_pass(candidate: str) -> tuple[bool, list[str]]:
+        result = guardrails.validate(candidate, src, cfg)
+        advice_result = guardrails.check_no_financial_advice(candidate)
+        violations = result.violations + advice_result.violations
+        if not violations:
+            # Phase 0 gate (validation/pre_publish_check.py). No record_date:
+            # a monthly aggregate digest has no single record date to check
+            # relative-day words against (see content/_base.py's identical
+            # reasoning for essays).
+            violations = pre_publish_check(
+                candidate, source_records=stats, cfg=cfg, content_type=SOURCE_TYPE,
+            ).violations
+        return not violations, violations
+
     try:
         text = call()
-        result = guardrails.validate(text, src, cfg)
-        advice_result = guardrails.check_no_financial_advice(text)
+        passed, violations = _checks_pass(text)
 
-        if not (result.passed and advice_result.passed):
+        if not passed:
             text = call("\n\nYour previous attempt either included details not found in the "
                         "source, or framed the numbers as advice (a recommendation about "
                         "buying/selling, or addressed to the reader). Rewrite using ONLY "
                         "facts explicitly present in the SOURCE DATA, describing what "
                         "happened, never what a reader should do about it.")
-            result = guardrails.validate(text, src, cfg)
-            advice_result = guardrails.check_no_financial_advice(text)
+            passed, violations = _checks_pass(text)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
         return fallback, "template_fallback", True
 
-    if result.passed and advice_result.passed and len(text.split()) >= MIN_WORDS:
+    if passed and len(text.split()) >= MIN_WORDS:
         return text, f"ai:{model}", True
 
-    reason = "guardrail" if not result.passed else ("financial advice" if not advice_result.passed else "too short")
+    reason = "guardrail" if not passed else "too short"
     print(f"  faller tillbaka på mall ({reason})")
-    for v in (result.violations + advice_result.violations)[:5]:
+    for v in violations[:5]:
         print(f"    - {v}")
     return fallback, "template_fallback", True
 

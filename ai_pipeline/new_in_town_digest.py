@@ -49,6 +49,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline import guardrails, search_budget, search_client
+from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, strip_json_fence, _spent_this_month, _record_spend,
     resolve_model, pricing_for, safe_create,
@@ -376,6 +377,10 @@ def generate_roundup(newly_rendered: list[dict], cfg: dict, client=None) -> tupl
             guardrails.check_no_verbatim_source_copy(text, snippets),
         ]
         violations = [v for r in results for v in r.violations]
+        if not violations:
+            violations = pre_publish_check(
+                text, source_records=newly_rendered, cfg=cfg, content_type=ROUNDUP_SOURCE_TYPE,
+            ).violations
         return guardrails.GuardrailResult(passed=not violations, violations=violations)
 
     try:

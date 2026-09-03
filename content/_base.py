@@ -26,9 +26,10 @@ except ImportError:  # pragma: no cover
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, _record_spend, _spent_this_month, pricing_for, resolve_model, safe_create,
 )
-from ai_pipeline.town_guard import has_local_anchor, validate_town_identity
+from ai_pipeline.town_guard import STATE_NAMES, has_local_anchor
 from guardrails.originality_check import is_original
 from guardrails.style_filter import clean
+from validation import pre_publish_check
 
 # Kvar som den modell generate_article() faller tillbaka på när ingen
 # content_type ges (eller när content_type saknas i CONTENT_TYPE_MODELS och
@@ -92,14 +93,6 @@ class GeneratedArticle:
     review_flags: list[str] | None = None
 
 
-_STATE_NAMES = {
-    "SD": "South Dakota",
-    "CA": "California",
-    "CO": "Colorado",
-    # lägg till fler här när fler delstater tillkommer
-}
-
-
 def town_label(cfg: dict | None) -> str:
     """Bygg strängen 'Ortsnamn, Delstat' från en orts config-dict.
 
@@ -107,13 +100,18 @@ def town_label(cfg: dict | None) -> str:
     hårdkoda en specifik ort. Expanderar delstatsförkortningen till fullt namn
     (configens 'state'-fält är bara "SD"/"CA" etc.) eftersom förkortningen läser
     sämre i en svenskspråkig prompt. Faller tillbaka snällt om cfg saknas/
-    ofullständig eller delstaten inte finns i _STATE_NAMES, så en trasig eller
+    ofullständig eller delstaten inte finns i STATE_NAMES, så en trasig eller
     ofullständig config ger ett vagt men ofarligt resultat, inte fel ort.
+
+    STATE_NAMES lives in ai_pipeline.town_guard, not here -- that module's
+    config-derived identity blocklist needs the same abbreviation->full-name
+    expansion (a town's config states "SD", but the blocked term is "South
+    Dakota"), and importing one shared dict beats keeping two in sync.
     """
     cfg = cfg or {}
     name = cfg.get("display_name")
     state_abbr = cfg.get("state")
-    state = _STATE_NAMES.get(state_abbr, state_abbr)
+    state = STATE_NAMES.get(state_abbr, state_abbr)
     if name and state:
         return f"{name}, {state}"
     return name or "its coverage area"
@@ -197,43 +195,58 @@ def generate_article(
     body = clean(body)
     title = clean(title)
 
-    # Ort-identitetsspärren (se ai_pipeline/town_guard.py -- byggd efter
-    # incidenten juli-augusti 2026 där flera modultyper hade "Brookings,
-    # South Dakota" hårdkodat i SYSTEM_PROMPT och läckte fel orts identitet
-    # in i den andra ortens publicerade text). PRE-PUBLISH: körs INNAN
-    # is_original()/retur, inte som en efterhandskontroll -- en hård träff
-    # innebär att utkastet aldrig publiceras. Ett omförsök med en uttrycklig
-    # rättelse i prompten, samma mönster som guardrail-omförsöken i
+    # Pre-publish-gaten (validation/pre_publish_check.py -- "Recurring-traffic
+    # layer" handoff, Phase 0). Byggd efter incidenten juli-augusti 2026 där
+    # flera modultyper hade "Brookings, South Dakota" hårdkodat i
+    # SYSTEM_PROMPT och läckte fel orts identitet in i den andra ortens
+    # publicerade text (den ursprungliga ai_pipeline.town_guard-spärren, nu en
+    # av fem checkar denna modul kör). PRE-PUBLISH: körs INNAN is_original()/
+    # retur, inte som en efterhandskontroll -- ett hårt avslag innebär att
+    # utkastet aldrig publiceras. Ett omförsök med en uttrycklig rättelse i
+    # prompten, samma mönster som guardrail-omförsöken i
     # ai_pipeline/sdsu_weekly_digest.py -- men till skillnad från de
-    # strukturerade digestarna finns ingen vettig mall-fallback för en essä,
-    # så ett andra misslyckande betyder "ingen artikel idag", inte en
-    # urvattnad mall-text.
-    town_id = (cfg or {}).get("town_id")
-    if town_id:
-        gate = validate_town_identity(f"{title}\n\n{body}", town_id)
-        if not gate.passed:
-            print(f"  ort-identitetsspärr ({', '.join(gate.violations)}) -- försöker igen en gång",
-                  file=sys.stderr)
-            retry_text = _call(
-                "\n\nIMPORTANT CORRECTION: your previous draft incorrectly referenced "
-                f"another town's identity. Rewrite it so every place reference, civic "
-                f"detail, and address to the reader belongs ONLY to {town_label(cfg)} -- "
-                "never any other city or state."
-            )
-            if retry_text is None:
-                return None
-            title, body = _split_title_body(retry_text)
-            body = clean(body)
-            title = clean(title)
-            gate = validate_town_identity(f"{title}\n\n{body}", town_id)
-            if not gate.passed:
-                print(f"  ort-identitetsspärr kvarstår ({', '.join(gate.violations)}) "
-                      "-- ingen artikel idag", file=sys.stderr)
-                return None
-        elif gate.reviews:
-            # Granska-nivå (t.ex. "prairie") blockerar inte, men loggas så det
-            # syns i körningsloggen om mönstret skulle bli vanligt.
-            print(f"  ort-identitet: granska ({', '.join(gate.reviews)})", file=sys.stderr)
+    # strukturerade digestarna finns ingen vettig mall-fallback för en essä
+    # (och Phase 0 kräver uttryckligen "do not template-fallback" oavsett
+    # innehållstyp), så ett andra misslyckande betyder "ingen artikel idag",
+    # inte en urvattnad mall-text.
+    #
+    # source_records wraps local_input as a single field rather than passing
+    # the bare string -- flatten_records()/source_to_text() both expect
+    # dict-shaped records, and this keeps the content-track call site
+    # type-uniform with every other generator's retrofit (see
+    # ai_pipeline/format_prompt.py's format_record() for the structured-record
+    # case). record_date is deliberately omitted: a content-track piece is
+    # synthesized from research assembled across possibly many source dates,
+    # not tied to one single record's date the way a meeting/event is, so
+    # date-coherence (check 3) has nothing single-valued to check against
+    # here -- a real, disclosed scope limit, not an oversight.
+    result = pre_publish_check(
+        f"{title}\n\n{body}", source_records={"local_input": local_input}, cfg=cfg,
+        content_type=content_type,
+    )
+    if not result.passed:
+        print(f"  pre-publish-gate ({', '.join(result.violations)}) -- försöker igen en gång",
+              file=sys.stderr)
+        retry_text = _call(
+            "\n\nIMPORTANT CORRECTION: your previous draft failed pre-publish review for "
+            f"these specific reasons:\n" + "\n".join(f"- {v}" for v in result.violations) +
+            f"\nRewrite it so every place reference, civic detail, and address to the reader "
+            f"belongs ONLY to {town_label(cfg)} -- never any other city or state -- and fix "
+            "exactly these issues without otherwise changing what you wrote."
+        )
+        if retry_text is None:
+            return None
+        title, body = _split_title_body(retry_text)
+        body = clean(body)
+        title = clean(title)
+        result = pre_publish_check(
+            f"{title}\n\n{body}", source_records={"local_input": local_input}, cfg=cfg,
+            content_type=content_type,
+        )
+        if not result.passed:
+            print(f"  pre-publish-gate kvarstår ({', '.join(result.violations)}) "
+                  "-- ingen artikel idag", file=sys.stderr)
+            return None
 
     # Local-anchor-spärren (se ai_pipeline/town_guard.py:has_local_anchor,
     # NEEDS-HUMAN-REVIEW.md "3.5 Columns & Editorials") -- bara för

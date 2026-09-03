@@ -57,6 +57,7 @@ load_dotenv()
 import psycopg
 
 from ai_pipeline import guardrails
+from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, pricing_for, resolve_model, safe_create,
     _record_spend, _spent_this_month,
@@ -103,13 +104,21 @@ def _is_complete_sentence(text: str) -> bool:
     return text.rstrip().endswith(('.', '!', '?'))
 
 
-def _guardrails_pass(text: str, source_text: str, cfg: dict) -> guardrails.GuardrailResult:
+def _guardrails_pass(text: str, source_text: str, cfg: dict, *,
+                      source_records, content_type: str) -> guardrails.GuardrailResult:
     # No prediction/financial-advice/hedging concerns here (this isn't a
     # digest about a contested civic matter or a named business) -- the
     # base fact-in-source check is what matters: never a specific detail
     # (a program name, a schedule, a crowd claim) that isn't in the row's
     # own real fields.
-    return guardrails.validate(text, source_text, cfg)
+    result = guardrails.validate(text, source_text, cfg)
+    if result.passed:
+        pre_publish = pre_publish_check(
+            text, source_records=source_records, cfg=cfg, content_type=content_type,
+        )
+        if not pre_publish.passed:
+            return guardrails.GuardrailResult(passed=False, violations=pre_publish.violations)
+    return result
 
 
 def facility_source_text(facility: dict) -> str:
@@ -205,7 +214,7 @@ Return ONLY the paragraph. No preamble, no quotation marks, no bullet points."""
 
     try:
         text = call()
-        result = _guardrails_pass(text, src, cfg)
+        result = _guardrails_pass(text, src, cfg, source_records=facility, content_type="free_teaser_facility")
         complete = _is_complete_sentence(text)
         if not result.passed or not complete:
             extra = (
@@ -218,7 +227,7 @@ Return ONLY the paragraph. No preamble, no quotation marks, no bullet points."""
                 "the space you have."
             )
             text = call(extra)
-            result = _guardrails_pass(text, src, cfg)
+            result = _guardrails_pass(text, src, cfg, source_records=facility, content_type="free_teaser_facility")
             complete = _is_complete_sentence(text)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
@@ -269,13 +278,15 @@ Return ONLY the sentence. No preamble, no quotation marks."""
 
     try:
         text = call()
-        result = _guardrails_pass(text, src, cfg)
+        result = _guardrails_pass(text, src, cfg, source_records={"title": title, "body": body},
+                                   content_type="free_teaser_event")
         complete = _is_complete_sentence(text)
         if not result.passed or not complete:
             text = call("\n\nYour previous attempt included a detail not found in the "
                         "source data, or was cut off mid-sentence. Rewrite using ONLY "
                         "the given facts, shorter if needed to finish cleanly.")
-            result = _guardrails_pass(text, src, cfg)
+            result = _guardrails_pass(text, src, cfg, source_records={"title": title, "body": body},
+                                       content_type="free_teaser_event")
             complete = _is_complete_sentence(text)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc})")

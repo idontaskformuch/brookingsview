@@ -11,6 +11,13 @@
     "lon": -96.7984
   },
   "_domain_note": "brookings311.com funkar, men '311' drar mot en civik/klagomåls-känsla. Om sajten ska kännas 'kul och härlig' finns lättare alternativ (t.ex. hellobrookings.com, brookingstoday.com, brookingsbuzz.com). Din kallelse – bara en flagga.",
+  "identity": {
+    "terms": [
+      "SDSU", "South Dakota State", "Highway 14", "De Smet", "Volga", "Elkton",
+      "605 area code", "eastern Dakotas"
+    ],
+    "_terms_note": "ai_pipeline/town_guard.py's cross-site contamination guard (Phase 0, check 1): the landmarks/institutions/highways that identify THIS town specifically, beyond display_name/county/state (those are read automatically, no need to repeat them here). Every OTHER town's hard blocklist is the union of every town's own list here -- see that module's docstring. Carried over verbatim from the pre-2026-09-03 hardcoded HARD_BLOCKLIST so existing coverage doesn't regress; add new terms here (not in Python) as more get identified."
+  },
   "positioning": {
     "question_we_answer": "Vad händer i Brookings?",
     "feeling": "positivt, välkomnande, stolt-över-sin-stad",

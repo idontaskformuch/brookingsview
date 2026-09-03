@@ -45,6 +45,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline import guardrails
+from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
     resolve_model, pricing_for, safe_create,
@@ -196,25 +197,37 @@ def generate(stats: dict, cfg: dict, client=None) -> tuple[str, str, bool]:
         _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
 
+    def _checks_pass(candidate: str) -> tuple[bool, list[str]]:
+        result = guardrails.validate(candidate, src, cfg)
+        violations = list(result.violations)
+        if not violations:
+            # Phase 0 gate (validation/pre_publish_check.py). No record_date:
+            # a season-to-date summary has no single record date to check
+            # relative-day words against.
+            violations = pre_publish_check(
+                candidate, source_records=stats, cfg=cfg, content_type=SOURCE_TYPE,
+            ).violations
+        return not violations, violations
+
     try:
         text = call()
-        result = guardrails.validate(text, src, cfg)
-        if not result.passed:
+        passed, violations = _checks_pass(text)
+        if not passed:
             text = call("\n\nYour previous attempt included details not found in the "
                         "source, or described SDSU's own ranking (not in the source). "
                         "Rewrite using ONLY facts explicitly present in the SOURCE DATA.")
-            result = guardrails.validate(text, src, cfg)
+            passed, violations = _checks_pass(text)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
         return template_fallback(stats), "template_fallback", True
 
-    if result.passed and len(text.split()) >= MIN_WORDS:
+    if passed and len(text.split()) >= MIN_WORDS:
         return text, f"ai:{model}", True
 
-    reason = "guardrail" if not result.passed else "too short"
+    reason = "guardrail" if not passed else "too short"
     print(f"  faller tillbaka på mall ({reason})")
-    if not result.passed:
-        for v in result.violations[:5]:
+    if not passed:
+        for v in violations[:5]:
             print(f"    - {v}")
     return template_fallback(stats), "template_fallback", True
 

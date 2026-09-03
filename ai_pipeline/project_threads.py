@@ -34,6 +34,7 @@ import re
 from datetime import datetime, timedelta, timezone
 
 from ai_pipeline import guardrails
+from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, pricing_for, resolve_model, safe_create, strip_json_fence,
     _record_spend, _spent_this_month,
@@ -259,11 +260,15 @@ def ai_match_candidate(candidate_text: str, open_projects: list[dict], cfg: dict
 MIN_SYNTHESIS_WORDS = 8
 
 
-def _guardrails_pass(text: str, source_text: str, cfg: dict) -> guardrails.GuardrailResult:
+def _guardrails_pass(text: str, source_text: str, cfg: dict, content_type: str) -> guardrails.GuardrailResult:
     fact = guardrails.validate(text, source_text, cfg)
     prediction = guardrails.check_no_project_outcome_prediction(text)
     violations = fact.violations + prediction.violations
-    return guardrails.GuardrailResult(passed=fact.passed and prediction.passed, violations=violations)
+    if not violations:
+        violations = pre_publish_check(
+            text, source_records={"text": source_text}, cfg=cfg, content_type=content_type,
+        ).violations
+    return guardrails.GuardrailResult(passed=len(violations) == 0, violations=violations)
 
 
 def synthesis_template_fallback(item_title: str) -> str:
@@ -308,13 +313,13 @@ def generate_synthesis(item_title: str, item_text: str, cfg: dict, client=None) 
 
     try:
         text = call()
-        result = _guardrails_pass(text, item_text, cfg)
+        result = _guardrails_pass(text, item_text, cfg, "project_thread_synthesis")
         if not result.passed:
             text = call("\n\nYour previous attempt included details not found in the "
                         "source, or predicted an outcome/timeline the source doesn't "
                         "state. Rewrite using ONLY facts explicitly present in the "
                         "SOURCE DATA, describing the current situation only.")
-            result = _guardrails_pass(text, item_text, cfg)
+            result = _guardrails_pass(text, item_text, cfg, "project_thread_synthesis")
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
         return synthesis_template_fallback(item_title), "template_fallback", True
@@ -364,13 +369,13 @@ def generate_rolling_summary(project_title: str, recent_entries_text: str, cfg: 
 
     try:
         text = call()
-        result = _guardrails_pass(text, recent_entries_text, cfg)
+        result = _guardrails_pass(text, recent_entries_text, cfg, "project_thread_summary")
         if not result.passed:
             text = call("\n\nYour previous attempt included details not found in the "
                         "source, or predicted an outcome/timeline the source doesn't "
                         "state. Rewrite using ONLY facts explicitly present in the "
                         "SOURCE DATA, describing the current situation only.")
-            result = _guardrails_pass(text, recent_entries_text, cfg)
+            result = _guardrails_pass(text, recent_entries_text, cfg, "project_thread_summary")
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
         return rolling_summary_template_fallback(project_title), "template_fallback", True
