@@ -14,8 +14,10 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { getFacilities, FACILITY_CATEGORY_LABELS } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
+import { computeOpenStatus } from '../../lib/facility-hours';
 
 const facilities = await getFacilities();
+const now = new Date();
 
 const byCategory = new Map<string, typeof facilities>();
 for (const f of facilities) {
@@ -47,12 +49,20 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
     <>
       <SectionRule label={FACILITY_CATEGORY_LABELS[cat] ?? cat} />
       <ul class="list">
-        {byCategory.get(cat)!.map((f) => (
-          <li>
-            <a href={`/facilities/${f.slug}/`}>{f.name}</a>
-            {f.address && <span class="addr"> — {f.address}</span>}
-          </li>
-        ))}
+        {byCategory.get(cat)!.map((f) => {
+          const status = computeOpenStatus(f.hours_structured, now, siteConfig.timezone);
+          return (
+            <li>
+              <a href={`/facilities/${f.slug}/`}>{f.name}</a>
+              {f.address && <span class="addr"> — {f.address}</span>}
+              {status.known && (
+                <span class:list={['badge', status.isOpen ? 'badge--open' : 'badge--closed']}>
+                  {status.isOpen ? 'Open now' : `Closed — opens ${status.opensAt} ${status.opensLabel}`}
+                </span>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </>
   )) : (
@@ -72,4 +82,13 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 .list a { font-weight: 600; }
 .addr { color: var(--ink-soft); font-size: 0.9375rem; }
 .empty { color: var(--ink-soft); }
+.badge {
+  display: inline-block; margin-left: 0.5rem; font-family: var(--font-ui);
+  font-size: 0.75rem; font-weight: 600;
+}
+.badge--open { color: #1a9850; }
+.badge--closed { color: var(--ink-soft); }
+@media (prefers-color-scheme: dark) {
+  .badge--open { color: #6ee7b7; }
+}
 </style>

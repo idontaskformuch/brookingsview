@@ -31,6 +31,8 @@ const MAIN_LIBRARY: Facility = {
   image_attribution_text: null,
   image_attribution_url: null,
   free_teaser: null,
+  hours_structured: null,
+  hours_needs_review: false,
 };
 
 const CITY_HALL_UNVERIFIED_ADDRESS: Facility = {

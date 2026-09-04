@@ -1450,6 +1450,37 @@ export interface Facility {
   // categories that page cares about (library/park/community_center);
   // NULL for every other facility, and NULL until generation has run.
   free_teaser: string | null;
+  // Added by db/migrations/038_facility_hours_structured.sql (Recurring-
+  // traffic layer, Phase 2) -- backfilled from hours_text by
+  // ai_pipeline/facility_hours.py's deterministic parser (see
+  // scripts/migrate_facility_hours.py), never hand-written. NULL whenever
+  // hours_text itself is NULL (no data at all) OR the parser couldn't
+  // confidently read it (see hours_needs_review) -- callers must fall back
+  // to rendering hours_text as plain text in both those cases, see
+  // lib/facility-hours.ts's computeOpenStatus() for the "is it open right
+  // now" computation this field actually powers.
+  hours_structured: StructuredHours | null;
+  // True only when hours_text is set but the parser flagged it (an
+  // open-ended time, an unparsed caveat, ...) -- see facility_hours.py's
+  // own docstring. False (the column's default) covers BOTH "no hours_text
+  // at all" and "parsed successfully"; this field only distinguishes the
+  // one state that actually wants a human's attention.
+  hours_needs_review: boolean;
+}
+
+/** One facility's whole week, 24h local "HH:MM" strings -- mirrors
+ *  ai_pipeline/facility_hours.py's ParsedHours.structured shape exactly
+ *  (JSON round-trips a Python tuple as a 2-element array). A day with no
+ *  entry (null) means closed that day, not "unknown" -- see that module's
+ *  own comment on why an unmentioned day defaults to closed. */
+export interface StructuredHours {
+  monday: [string, string] | null;
+  tuesday: [string, string] | null;
+  wednesday: [string, string] | null;
+  thursday: [string, string] | null;
+  friday: [string, string] | null;
+  saturday: [string, string] | null;
+  sunday: [string, string] | null;
 }
 
 /** Alla anläggningar för den aktuella orten, grupperat på category av
@@ -1461,7 +1492,8 @@ export async function getFacilities(): Promise<Facility[]> {
            hours_text, description, source_url, verified_date,
            aliases, street_address, postal_code, lat, lon,
            image_path, image_alt, name_aliases,
-           image_attribution_text, image_attribution_url, free_teaser
+           image_attribution_text, image_attribution_url, free_teaser,
+           hours_structured, hours_needs_review
       FROM facilities
      WHERE town_id = ${TOWN_ID}
      ORDER BY category, name
@@ -1514,7 +1546,8 @@ export async function getFacilityBySlug(slug: string): Promise<Facility | null> 
            hours_text, description, source_url, verified_date,
            aliases, street_address, postal_code, lat, lon,
            image_path, image_alt, name_aliases,
-           image_attribution_text, image_attribution_url, free_teaser
+           image_attribution_text, image_attribution_url, free_teaser,
+           hours_structured, hours_needs_review
       FROM facilities
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
      LIMIT 1

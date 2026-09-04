@@ -16,6 +16,7 @@ import {
 } from '../../lib/db';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
+import { computeOpenStatus } from '../../lib/facility-hours';
 
 export async function getStaticPaths() {
   const facilities = await getFacilities();
@@ -45,6 +46,12 @@ const upcomingHere = allUpcoming
   .slice(0, 8);
 
 const hasFullAddress = Boolean(facility.street_address && facility.postal_code);
+// Recurring-traffic layer, Phase 2: "open now" computed from the
+// structured hours (see lib/facility-hours.ts) -- known:false whenever
+// hours_structured is null (no hours_text at all, or the parser flagged
+// it for review), which the template below renders as no badge at all,
+// never a guessed/false "closed".
+const openStatus = computeOpenStatus(facility.hours_structured, new Date(), siteConfig.timezone);
 const schemaType = FACILITY_SCHEMA_TYPE[facility.category] ?? 'CivicStructure';
 const canonicalUrl = new URL(`/facilities/${facility.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
@@ -67,7 +74,17 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
         <div class="fact"><dt>Phone</dt><dd><a href={`tel:${facility.phone.replace(/[^\d+]/g, '')}`}>{facility.phone}</a></dd></div>
       )}
       {facility.hours_text && (
-        <div class="fact"><dt>Hours</dt><dd>{facility.hours_text}</dd></div>
+        <div class="fact">
+          <dt>Hours</dt>
+          <dd>
+            {openStatus.known && (
+              <span class:list={['open-status', openStatus.isOpen ? 'open-status--open' : 'open-status--closed']}>
+                {openStatus.isOpen ? `Open now — closes ${openStatus.closesAt}` : `Closed — opens ${openStatus.opensAt} ${openStatus.opensLabel}`}
+              </span>
+            )}
+            <span class="hours-text">{facility.hours_text}</span>
+          </dd>
+        </div>
       )}
       {facility.website && (
         <div class="fact"><dt>Website</dt><dd><a href={facility.website} rel="noopener">{facility.website.replace(/^https?:\/\//, '')}</a></dd></div>
@@ -138,6 +155,13 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 .fact { display: grid; grid-template-columns: 6rem 1fr; gap: 0.75rem; padding: 0.375rem 0; border-bottom: 1px solid var(--rule); }
 .fact dt { font-family: var(--font-ui); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
 .fact dd { margin: 0; }
+.open-status { display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.15rem; }
+.open-status--open { color: #1a9850; }
+.open-status--closed { color: var(--ink-soft); }
+.hours-text { display: block; color: var(--ink-soft); font-size: 0.9rem; }
+@media (prefers-color-scheme: dark) {
+  .open-status--open { color: #6ee7b7; }
+}
 .description { margin: 1.25rem 0; line-height: 1.6; }
 .section-label { margin: 1.75rem 0 0.75rem; font-size: 1.0625rem; }
 .events { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }

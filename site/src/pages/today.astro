@@ -17,20 +17,22 @@ import ShareButton from '../components/ShareButton.astro';
 import TodayBlock from '../components/TodayBlock.astro';
 import {
   getWeather, getActiveAlerts, getClosureWatchStatus, getActiveTrafficIncidents,
-  getUpcomingStories, getUpcomingArtsEvents,
+  getUpcomingStories, getUpcomingArtsEvents, getFacilities,
 } from '../lib/db';
 import { buildEventFeed, todayUtcMidnight, isTonight, isTomorrow, selectTodayBucket } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 
-const [periods, alerts, upcomingEvents, artsEvents, trafficIncidents, closureStatus] = await Promise.all([
+const [periods, alerts, upcomingEvents, artsEvents, trafficIncidents, closureStatus, facilities] = await Promise.all([
   getWeather(),
   getActiveAlerts(),
   getUpcomingStories(['event'], 200),
   getUpcomingArtsEvents(60),
   siteConfig.trafficSource ? getActiveTrafficIncidents() : Promise.resolve(null),
   siteConfig.hasClosureWatch ? getClosureWatchStatus() : Promise.resolve(null),
+  getFacilities(),
 ]);
+const cityHallFacility = facilities.find((f) => f.category === 'city_hall') ?? null;
 
 const currentPeriod = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
 const temperature = currentPeriod?.temp ?? null;
@@ -66,6 +68,7 @@ const pageTitle = `Today in ${siteConfig.cityName} — ${siteConfig.siteName}`;
     activeAlerts={alerts}
     closureStatus={closureStatus}
     traffic={trafficIncidents ? { incidents: trafficIncidents } : null}
+    cityHallFacility={cityHallFacility}
     tonight={tonight}
     tomorrow={tomorrow}
     headingLevel="h1"

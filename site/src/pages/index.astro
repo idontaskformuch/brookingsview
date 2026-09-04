@@ -103,6 +103,10 @@ const { items: todayFeedItems } = buildEventFeed(
 );
 const tonightBucket = selectTodayBucket(todayFeedItems, todayDate, siteConfig.timezone, isTonight, 5);
 const tomorrowBucket = selectTodayBucket(todayFeedItems, todayDate, siteConfig.timezone, isTomorrow, 3);
+// Recurring-traffic layer, Phase 2: same city_hall lookup as today.astro --
+// `facilities` is already fetched above for the front-page rhythm image
+// resolution, reused here rather than a second query.
+const cityHallFacility = facilities.find((f) => f.category === 'city_hall') ?? null;
 
 // Front-page rhythm (see NEEDS-HUMAN-REVIEW.md "Liveliness Spec" §1): a
 // rule-based lead + secondary selection, not just "closest upcoming item"
@@ -256,6 +260,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     activeAlerts={alerts}
     closureStatus={closureStatus}
     traffic={siteConfig.trafficSource ? { incidents: trafficIncidents } : null}
+    cityHallFacility={cityHallFacility}
     tonight={tonightBucket}
     tomorrow={tomorrowBucket}
     headingLevel="h2"
