@@ -101,9 +101,39 @@ function dayIndex(occursAt: string, today: Date, timezone: string): number {
   return Math.round((eventDay.getTime() - today.getTime()) / 86_400_000);
 }
 
+/** The item's own local hour-of-day (0-23), for isTonight()'s "after 17:00
+ *  local" cutoff -- Intl.DateTimeFormat again, not Date.getHours() (which
+ *  reads the BUILD MACHINE's local time, not the town's -- the exact class
+ *  of bug this file's own docstring already warns about). */
+function localHour(occursAt: string, timezone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone, hour: 'numeric', hour12: false,
+  }).formatToParts(new Date(occursAt));
+  const hour = Number(parts.find((p) => p.type === 'hour')!.value);
+  return hour === 24 ? 0 : hour; // some locales render midnight as "24"
+}
+
 export function isToday(item: FeedItem, today: Date, timezone: string): boolean {
   if (!item.occurs_at) return false;
   return dayIndex(item.occurs_at, today, timezone) <= 0;
+}
+
+/** /today's TONIGHT bucket (Recurring-traffic layer, Phase 1): today's own
+ *  calendar day AND starting at or after 17:00 local -- deliberately NOT
+ *  "isToday() minus already-passed," since a same-day item that already
+ *  started is still worth knowing about on a page answering "what's
+ *  happening today," just not under TONIGHT specifically if it started
+ *  earlier in the day. */
+export function isTonight(item: FeedItem, today: Date, timezone: string): boolean {
+  if (!item.occurs_at) return false;
+  return dayIndex(item.occurs_at, today, timezone) === 0 && localHour(item.occurs_at, timezone) >= 17;
+}
+
+/** /today's TOMORROW bucket -- exactly the next calendar day, not "within
+ *  24 hours" (which would drift across the day depending on build time). */
+export function isTomorrow(item: FeedItem, today: Date, timezone: string): boolean {
+  if (!item.occurs_at) return false;
+  return dayIndex(item.occurs_at, today, timezone) === 1;
 }
 
 export function isThisWeekend(item: FeedItem, today: Date, timezone: string): boolean {
@@ -112,6 +142,30 @@ export function isThisWeekend(item: FeedItem, today: Date, timezone: string): bo
   const daysToFriday = (5 - weekdayOfToday + 7) % 7;
   const offset = dayIndex(item.occurs_at, today, timezone);
   return offset >= daysToFriday && offset <= daysToFriday + 2;
+}
+
+export interface TodayBucket {
+  /** Capped for display -- see `limit`. */
+  items: FeedItem[];
+  /** The REAL count before capping -- /today shows this alongside the
+   *  capped list ("+N more") rather than silently hiding how many there
+   *  actually are, per the Recurring-traffic layer handoff's Phase 1 spec
+   *  ("TOMORROW: count + max 3 items" -- the count is the point, not just
+   *  the sample). */
+  total: number;
+}
+
+/** One bucket (TONIGHT or TOMORROW) for /today -- `matches` is isTonight or
+ *  isTomorrow, passed in rather than hardcoded so this one function serves
+ *  both buckets instead of two near-identical copies. `items` is assumed
+ *  already date-sorted (buildEventFeed's own output already is). */
+export function selectTodayBucket(
+  items: FeedItem[], today: Date, timezone: string,
+  matches: (item: FeedItem, today: Date, timezone: string) => boolean,
+  limit: number,
+): TodayBucket {
+  const matching = items.filter((item) => matches(item, today, timezone));
+  return { items: matching.slice(0, limit), total: matching.length };
 }
 
 export interface EventFeedResult {

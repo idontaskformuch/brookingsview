@@ -28,15 +28,17 @@ import BurroBonanzaWidget from '../components/BurroBonanzaWidget.astro';
 import SchoolAlertBanner from '../components/SchoolAlertBanner.astro';
 import TrafficWidget from '../components/TrafficWidget.astro';
 import Tile from '../components/Tile.astro';
+import TodayBlock from '../components/TodayBlock.astro';
 import {
   getUpcomingStories, getActiveAlerts, getUpcomingGames, getNextRegionalGame,
   getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
   getWeather, getAgPrices, getLatestWeekly, getTodaysFeature, getLatestEmployerRatings,
   getWorthKnowingCandidates, getLatestFromCandidates, getRecentProjectUpdates, formatDate,
   CATEGORY_HREFS, CATEGORY_LABELS, getFacilities, getLatestVailNewsItem,
+  getClosureWatchStatus, getUpcomingArtsEvents,
 } from '../lib/db';
 import { selectWorthKnowing, selectLatestFrom, firstSentence, selectFrontPageRhythm } from '../lib/homepage-curation';
-import { todayUtcMidnight } from '../lib/events';
+import { todayUtcMidnight, buildEventFeed, isTonight, isTomorrow, selectTodayBucket } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { resolveImage, dedupeConsecutiveImages, withThumbnailCrop } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
@@ -45,7 +47,7 @@ const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const isBroomfield = siteConfig.townId === 'broomfield_co';
 
-const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, feature, worthKnowingCandidates, latestFromCandidates, facilities] = await Promise.all([
+const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, feature, worthKnowingCandidates, latestFromCandidates, facilities, closureStatus, artsEvents] = await Promise.all([
   getActiveAlerts(),
   getActiveSchoolAlerts(),
   getActiveTrafficIncidents(),
@@ -67,6 +69,12 @@ const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame
   getWorthKnowingCandidates(),
   getLatestFromCandidates(),
   getFacilities(),
+  // Recurring-traffic layer, Phase 1 (/today block, mounted at the top of
+  // this page below) -- gated the same way closures.astro itself is,
+  // never called for a town without Closure Watch (see getClosureWatchStatus's
+  // own throw-if-unset guard).
+  siteConfig.hasClosureWatch ? getClosureWatchStatus() : Promise.resolve(null),
+  getUpcomingArtsEvents(60),
 ]);
 
 // Homepage curation (see NEEDS-HUMAN-REVIEW.md "Homepage Curation"): Latest
@@ -78,6 +86,23 @@ const alertBannerSlugs = new Set(alerts.map((a) => a.slug));
 const worthKnowingSelection = selectWorthKnowing(worthKnowingCandidates, alertBannerSlugs, latestFromSelection);
 
 const today = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
+
+// Recurring-traffic layer, Phase 1: /today's TONIGHT/TOMORROW buckets,
+// mounted at the top of this page below (same shared TodayBlock component
+// as pages/today.astro's own route -- "one shared component, two mount
+// points" per that phase's spec). Reuses `upcoming` (already fetched above
+// for the front-page rhythm selection) rather than a second query -- just
+// narrowed to 'event' rows, matching events/[facet].astro's own scope for
+// this exact bucketing (meetings/announcements/New in Town digests don't
+// belong in a "tonight's events" list). `todayDate` (not `today`, already
+// taken by the weather period above) is the UTC-midnight-anchored calendar
+// day isTonight()/isTomorrow() compare against.
+const todayDate = todayUtcMidnight(siteConfig.timezone);
+const { items: todayFeedItems } = buildEventFeed(
+  upcoming.filter((s) => s.source_type === 'event'), artsEvents, siteConfig.timezone,
+);
+const tonightBucket = selectTodayBucket(todayFeedItems, todayDate, siteConfig.timezone, isTonight, 5);
+const tomorrowBucket = selectTodayBucket(todayFeedItems, todayDate, siteConfig.timezone, isTomorrow, 3);
 
 // Front-page rhythm (see NEEDS-HUMAN-REVIEW.md "Liveliness Spec" §1): a
 // rule-based lead + secondary selection, not just "closest upcoming item"
@@ -210,11 +235,31 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 
 <BaseLayout title={`${siteConfig.siteName} — what's happening in ${siteConfig.cityName}, ${siteConfig.stateAbbr}`} wide>
 
-  {alerts.length > 0 && (
-    <section aria-label="Active alerts" class="alerts">
-      {alerts.map((story) => <StoryCard story={story} />)}
-    </section>
-  )}
+  {/* Recurring-traffic layer, Phase 1: the shared /today block, mounted here
+      at the top of the front page (see pages/today.astro for the dedicated
+      route -- same component, same data shape, two mount points). Its own
+      "Right now" active-alerts list supersedes the old standalone StoryCard
+      alert banner that used to render here (removed, not just hidden --
+      `alerts` is still fetched and still feeds selectFrontPageRhythm's lead
+      selection and worthKnowingSelection's theme-collision check below,
+      neither of which depended on the banner actually rendering).
+      SchoolAlertBanner is INTENTIONALLY kept as its own separate element,
+      not replaced: it's a broader, all-three-town, always-rendering feature
+      (Liveliness Spec §4) independent of Closure Watch, while TodayBlock's
+      own school-status row only ever appears where hasClosureWatch is true
+      -- see that component's own docstring. */}
+  <TodayBlock
+    cityName={siteConfig.cityName}
+    timezone={siteConfig.timezone}
+    asOf={new Date()}
+    temperature={today?.temp ?? null}
+    activeAlerts={alerts}
+    closureStatus={closureStatus}
+    traffic={siteConfig.trafficSource ? { incidents: trafficIncidents } : null}
+    tonight={tonightBucket}
+    tomorrow={tomorrowBucket}
+    headingLevel="h2"
+  />
 
   <SchoolAlertBanner alerts={schoolAlerts} />
 
@@ -499,7 +544,6 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 </BaseLayout>
 
 <style>
-.alerts { margin-bottom: 1.25rem; }
 
 /* Front-page rhythm (Liveliness Spec §1): lead -> secondary -> widget row
    -> dense rivers, all stacked full-width, not a lead-beside-rail grid. */

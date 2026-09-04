@@ -1,0 +1,186 @@
+---
+/** The shared "what's happening today" block -- Recurring-traffic layer
+ *  handoff, Phase 1. ONE component, TWO mount points (pages/today.astro's
+ *  own page, and the top of index.astro), per that spec's own instruction.
+ *  Pure presentational: every prop is already-fetched/already-computed data,
+ *  no DB calls in here -- same split this codebase already uses for
+ *  StoryCard/TrafficWidget/HeatAdvisoryWidget, all reused below rather than
+ *  reimplemented.
+ *
+ *  RIGHT NOW / TONIGHT / TOMORROW, each independently omittable:
+ *   - Active alerts: every town has this capability (weather_alerts is
+ *     always on) -- 0 active is a real "quiet" state, shown as a calm line,
+ *     never disappears entirely.
+ *   - Temperature + HeatAdvisoryWidget: shown together whenever a current
+ *     temperature reading exists; omitted (not a misleading "Safe") if
+ *     weather data itself is unavailable.
+ *   - School status: `closureStatus` is null for a town without Closure
+ *     Watch (Broomfield, until its own Phase 2 lands) -- omitted entirely,
+ *     never a fake "no data" row. See rightNowIsEmpty below for what
+ *     happens if EVERY RIGHT NOW row is absent for a given town.
+ *   - Traffic: `traffic` is null when the town has no real source
+ *     (Brookings/Broomfield today) -- omitted entirely, never an empty or
+ *     zeroed row. Present-but-quiet (Moreno Valley, no active incidents)
+ *     renders as an honest "no active incidents" line via TrafficWidget's
+ *     own empty list, not a hidden section -- source presence and a quiet
+ *     day are different states, and must read differently.
+ *  TONIGHT/TOMORROW always render (event-scraping capability is universal
+ *  across all three towns, never "absent" the way traffic/closures can be)
+ *  -- a quiet night/day is a real, honest state, not a missing source.
+ */
+import StoryCard from './StoryCard.astro';
+import TrafficWidget from './TrafficWidget.astro';
+import HeatAdvisoryWidget from './HeatAdvisoryWidget.astro';
+import { artsEventAsStory, type FeedItem, type TodayBucket } from '../lib/events';
+import type { Story, TrafficIncident } from '../lib/db';
+import type { ClosureWatchStatus } from '../lib/closure-watch';
+
+export interface Props {
+  cityName: string;
+  timezone: string;
+  /** Real build/render timestamp -- see module docstring: the hourly
+   *  deploy hook means this can be up to an hour stale, so it must be
+   *  shown, not implied. */
+  asOf: Date;
+  temperature: number | null;
+  activeAlerts: Pick<Story, 'slug' | 'title'>[];
+  /** null = Closure Watch not live for this town yet -- omit the row. */
+  closureStatus: (ClosureWatchStatus & { prose: string | null }) | null;
+  /** null = no real traffic source for this town -- omit the row. Present
+   *  (even with an empty `incidents` array) means the source exists. */
+  traffic: { incidents: TrafficIncident[] } | null;
+  tonight: TodayBucket;
+  tomorrow: TodayBucket;
+  /** The dedicated /today/ page wants its own <h1>+chrome around this
+   *  block; the homepage mount wants a plain heading, no page-level
+   *  semantics duplicated inside a component that isn't the page itself. */
+  headingLevel?: 'h1' | 'h2';
+}
+
+const {
+  cityName, timezone, asOf, temperature, activeAlerts, closureStatus, traffic,
+  tonight, tomorrow, headingLevel = 'h2',
+} = Astro.props;
+
+const Heading = headingLevel;
+
+const asOfLabel = asOf.toLocaleTimeString('en-US', {
+  hour: 'numeric', minute: '2-digit', hour12: true, timeZone: timezone,
+});
+
+const CLOSURE_LABEL: Record<ClosureWatchStatus['state'], string> = {
+  confirmed: 'Schools closed',
+  watch: 'Watch — no closure announced yet',
+  clear: 'Schools open, no closures reported',
+};
+
+function toStory(item: FeedItem): { story: Story; href?: string; kicker?: string } {
+  if (item.kind === 'story') return { story: item.story };
+  return { story: artsEventAsStory(item.event), href: item.event.event_url, kicker: 'Arts & Culture' };
+}
+
+const rightNowIsEmpty = activeAlerts.length === 0 && temperature === null
+  && closureStatus === null && traffic === null;
+---
+
+<section class="today-block" aria-label={`Today in ${cityName}`}>
+  <Heading class="today-block__heading">
+    Today in {cityName} <span class="today-block__asof">as of {asOfLabel} local</span>
+  </Heading>
+
+  {!rightNowIsEmpty && (
+    <div class="today-block__right-now">
+      <p class="today-block__section-label">Right now</p>
+
+      <ul class="today-block__list">
+        {activeAlerts.length > 0 ? (
+          activeAlerts.map((alert) => (
+            <li><a href={`/s/${alert.slug}/`}>{alert.title}</a></li>
+          ))
+        ) : (
+          <li class="today-block__quiet">No active weather alerts</li>
+        )}
+
+        {closureStatus && (
+          <li class:list={[`today-block__closure--${closureStatus.state}`]}>
+            {CLOSURE_LABEL[closureStatus.state]}
+          </li>
+        )}
+      </ul>
+
+      {temperature !== null && (
+        <HeatAdvisoryWidget tempF={temperature} activeAlertTitles={activeAlerts.map((a) => a.title)} />
+      )}
+
+      {traffic && (
+        traffic.incidents.length > 0
+          ? <TrafficWidget incidents={traffic.incidents} limit={3} />
+          : <p class="today-block__quiet">No active traffic incidents reported</p>
+      )}
+    </div>
+  )}
+
+  <div class="today-block__bucket">
+    <p class="today-block__section-label">Tonight</p>
+    {tonight.total > 0 ? (
+      <>
+        <ul class="today-block__cards">
+          {tonight.items.map((item) => {
+            const { story, href, kicker } = toStory(item);
+            return <li><StoryCard story={story} compact href={href} kicker={kicker} /></li>;
+          })}
+        </ul>
+        {tonight.total > tonight.items.length && (
+          <p class="today-block__more">+{tonight.total - tonight.items.length} more tonight</p>
+        )}
+      </>
+    ) : (
+      <p class="today-block__quiet">Nothing scheduled tonight</p>
+    )}
+  </div>
+
+  <div class="today-block__bucket">
+    <p class="today-block__section-label">Tomorrow</p>
+    {tomorrow.total > 0 ? (
+      <>
+        <p class="today-block__count">{tomorrow.total} event{tomorrow.total === 1 ? '' : 's'}</p>
+        <ul class="today-block__cards">
+          {tomorrow.items.map((item) => {
+            const { story, href, kicker } = toStory(item);
+            return <li><StoryCard story={story} compact href={href} kicker={kicker} /></li>;
+          })}
+        </ul>
+      </>
+    ) : (
+      <p class="today-block__quiet">Nothing scheduled tomorrow yet</p>
+    )}
+  </div>
+</section>
+
+<style>
+  .today-block { margin-bottom: 1.5rem; }
+  .today-block__heading {
+    display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap;
+    font-family: var(--font-head); margin: 0 0 0.75rem;
+  }
+  .today-block__asof {
+    font-family: var(--font-ui); font-size: 0.75rem; font-weight: 400;
+    color: var(--ink-soft);
+  }
+  .today-block__section-label {
+    font-family: var(--font-ui); font-size: 0.7rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft);
+    margin: 0 0 0.4rem;
+  }
+  .today-block__right-now { margin-bottom: 1rem; }
+  .today-block__list { list-style: none; margin: 0 0 0.5rem; padding: 0; }
+  .today-block__list li { padding: 0.2rem 0; font-size: 0.9rem; }
+  .today-block__closure--confirmed { color: #b91c1c; font-weight: 600; }
+  .today-block__closure--watch { color: #a3711b; font-weight: 600; }
+  .today-block__closure--clear { color: var(--ink-soft); }
+  .today-block__quiet { color: var(--ink-soft); font-size: 0.9rem; margin: 0.25rem 0; }
+  .today-block__bucket { margin-bottom: 1rem; }
+  .today-block__cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+  .today-block__count { font-size: 0.85rem; color: var(--ink-soft); margin: 0 0 0.4rem; }
+  .today-block__more { font-size: 0.8rem; color: var(--ink-soft); margin: 0.35rem 0 0; }
+</style>

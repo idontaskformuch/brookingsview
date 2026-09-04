@@ -22,6 +22,7 @@ const isBroomfield = siteConfig.townId === 'broomfield_co';
 // sections. slug here becomes the literal /og/<slug>.png filename, matched
 // by each page's own `ogSlug` prop.
 const SECTION_CARDS: { slug: string; title: string; kicker: string }[] = [
+  { slug: 'section-today', title: `Today in ${siteConfig.cityName}`, kicker: 'Today' },
   { slug: 'section-events', title: `Events in ${siteConfig.cityName}`, kicker: 'Events' },
   // Week 2 event landing pages (see NEEDS-HUMAN-REVIEW.md, "Week 2 -- Event
   // Landing Pages") -- each needs its own og:image for the same reason

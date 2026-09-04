@@ -1,0 +1,77 @@
+---
+/** /today -- Recurring-traffic layer handoff, Phase 1: the daily-return
+ *  core product, answering "is anything happening here today?" in five
+ *  seconds. Config-driven from the start (not Moreno-Valley-first): every
+ *  section below is independently gated on real per-town data-source
+ *  availability (siteConfig.hasClosureWatch, siteConfig.trafficSource),
+ *  never on a hardcoded town check -- see TodayBlock.astro's own docstring
+ *  for the full per-section gating rules.
+ *
+ *  This page fetches and composes; TodayBlock.astro renders (shared with
+ *  index.astro's own mount of the same component -- one shared component,
+ *  two mount points, per the handoff's own instruction).
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import ShareButton from '../components/ShareButton.astro';
+import TodayBlock from '../components/TodayBlock.astro';
+import {
+  getWeather, getActiveAlerts, getClosureWatchStatus, getActiveTrafficIncidents,
+  getUpcomingStories, getUpcomingArtsEvents,
+} from '../lib/db';
+import { buildEventFeed, todayUtcMidnight, isTonight, isTomorrow, selectTodayBucket } from '../lib/events';
+import { siteConfig } from '../lib/site-config';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+
+const [periods, alerts, upcomingEvents, artsEvents, trafficIncidents, closureStatus] = await Promise.all([
+  getWeather(),
+  getActiveAlerts(),
+  getUpcomingStories(['event'], 200),
+  getUpcomingArtsEvents(60),
+  siteConfig.trafficSource ? getActiveTrafficIncidents() : Promise.resolve(null),
+  siteConfig.hasClosureWatch ? getClosureWatchStatus() : Promise.resolve(null),
+]);
+
+const currentPeriod = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
+const temperature = currentPeriod?.temp ?? null;
+
+const today = todayUtcMidnight(siteConfig.timezone);
+const { items } = buildEventFeed(upcomingEvents, artsEvents, siteConfig.timezone);
+const tonight = selectTodayBucket(items, today, siteConfig.timezone, isTonight, 5);
+const tomorrow = selectTodayBucket(items, today, siteConfig.timezone, isTomorrow, 3);
+
+const canonicalUrl = new URL('/today/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Today', href: canonicalUrl },
+];
+const breadcrumbJsonLd = buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl);
+
+const pageTitle = `Today in ${siteConfig.cityName} — ${siteConfig.siteName}`;
+---
+
+<BaseLayout title={pageTitle} ogSlug="section-today"
+  description={`What's happening today in ${siteConfig.cityName}, ${siteConfig.stateAbbr} — active alerts, school status, traffic, and tonight's and tomorrow's events, updated hourly.`}>
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumbJsonLd)} />
+  <Breadcrumbs trail={breadcrumbTrail} />
+  <div class="lede">
+    <ShareButton title={pageTitle} />
+  </div>
+
+  <TodayBlock
+    cityName={siteConfig.cityName}
+    timezone={siteConfig.timezone}
+    asOf={new Date()}
+    temperature={temperature}
+    activeAlerts={alerts}
+    closureStatus={closureStatus}
+    traffic={trafficIncidents ? { incidents: trafficIncidents } : null}
+    tonight={tonight}
+    tomorrow={tomorrow}
+    headingLevel="h1"
+  />
+</BaseLayout>
+
+<style>
+  .lede { display: flex; justify-content: flex-end; margin-bottom: 0.5rem; }
+</style>

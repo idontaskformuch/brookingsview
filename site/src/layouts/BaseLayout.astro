@@ -76,6 +76,11 @@ const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const isBroomfield = siteConfig.townId === 'broomfield_co';
 const nav = [
+  // Recurring-traffic layer, Phase 1: the daily-return core product, first
+  // in nav for every town -- universal, config-free gating (unlike most
+  // entries below, this one needs no per-town check; the page itself omits
+  // whatever sections a given town has no source for).
+  { href: '/today/', label: 'Today' },
   { href: '/this-week/', label: 'This week' },
   { href: '/events/', label: 'Events' },
   ...(isBrookings ? [{ href: '/university/', label: 'University' }] : []),

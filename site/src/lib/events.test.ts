@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildEventFeed, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent,
+  buildEventFeed, isToday, isThisWeekend, isTonight, isTomorrow, selectTodayBucket,
+  isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent,
   todayUtcMidnight, utcMidnight, localDateParts, artsEventAsStory,
   type FeedItem,
 } from './events';
@@ -81,6 +82,63 @@ describe('date bucketing (timezone-correct, per the Aug-4 weekend-off-by-one reg
     const laterFriday = storyItem(story({ occurs_at: '2026-08-07T23:00:00Z' }));
     expect(isToday(laterFriday, fridayToday, 'America/Chicago')).toBe(true);
     expect(isThisWeekend(laterFriday, fridayToday, 'America/Chicago')).toBe(true);
+  });
+
+  // --- isTonight / isTomorrow (Recurring-traffic layer, Phase 1: /today) ---
+
+  it('isTonight is true after 17:00 local today and false earlier the same day', () => {
+    const pinnedToday = utcMidnight({ y: 2026, m: 8, d: 4 });
+    const evening = storyItem(story({ occurs_at: '2026-08-04T23:00:00Z' })); // 18:00 Central
+    const afternoon = storyItem(story({ occurs_at: '2026-08-04T19:00:00Z' })); // 14:00 Central
+    expect(isTonight(evening, pinnedToday, 'America/Chicago')).toBe(true);
+    expect(isTonight(afternoon, pinnedToday, 'America/Chicago')).toBe(false);
+  });
+
+  it('isTonight includes exactly 17:00 local (inclusive boundary)', () => {
+    const pinnedToday = utcMidnight({ y: 2026, m: 8, d: 4 });
+    const exactly5pm = storyItem(story({ occurs_at: '2026-08-04T22:00:00Z' })); // 17:00 Central exactly
+    expect(isTonight(exactly5pm, pinnedToday, 'America/Chicago')).toBe(true);
+  });
+
+  it('isTonight is false for a late event on a different calendar day', () => {
+    const pinnedToday = utcMidnight({ y: 2026, m: 8, d: 4 });
+    const tomorrowEvening = storyItem(story({ occurs_at: '2026-08-06T02:00:00Z' })); // Aug 5 21:00 Central
+    expect(isTonight(tomorrowEvening, pinnedToday, 'America/Chicago')).toBe(false);
+  });
+
+  it('isTomorrow is true for the next calendar day only, not today or two days out', () => {
+    const pinnedToday = utcMidnight({ y: 2026, m: 8, d: 4 });
+    const laterToday = storyItem(story({ occurs_at: '2026-08-04T23:00:00Z' }));
+    const tomorrow = storyItem(story({ occurs_at: '2026-08-06T02:00:00Z' })); // Aug 5 21:00 Central
+    const dayAfter = storyItem(story({ occurs_at: '2026-08-07T02:00:00Z' })); // Aug 6 21:00 Central
+    expect(isTomorrow(laterToday, pinnedToday, 'America/Chicago')).toBe(false);
+    expect(isTomorrow(tomorrow, pinnedToday, 'America/Chicago')).toBe(true);
+    expect(isTomorrow(dayAfter, pinnedToday, 'America/Chicago')).toBe(false);
+  });
+
+  it('isTonight and isTomorrow are false for an item with no occurs_at', () => {
+    const pinnedToday = utcMidnight({ y: 2026, m: 8, d: 4 });
+    const noDate = storyItem(story({ occurs_at: null }));
+    expect(isTonight(noDate, pinnedToday, 'America/Chicago')).toBe(false);
+    expect(isTomorrow(noDate, pinnedToday, 'America/Chicago')).toBe(false);
+  });
+
+  it('selectTodayBucket caps items but reports the real total', () => {
+    const pinnedToday = utcMidnight({ y: 2026, m: 8, d: 4 });
+    const items = Array.from({ length: 7 }, (_, i) =>
+      storyItem(story({ slug: `evening-${i}`, occurs_at: '2026-08-04T23:00:00Z' })));
+    const bucket = selectTodayBucket(items, pinnedToday, 'America/Chicago', isTonight, 5);
+    expect(bucket.items).toHaveLength(5);
+    expect(bucket.total).toBe(7);
+  });
+
+  it('selectTodayBucket excludes non-matching items from both the list and the count', () => {
+    const pinnedToday = utcMidnight({ y: 2026, m: 8, d: 4 });
+    const tonight = storyItem(story({ slug: 'tonight', occurs_at: '2026-08-04T23:00:00Z' }));
+    const tomorrow = storyItem(story({ slug: 'tomorrow', occurs_at: '2026-08-06T02:00:00Z' }));
+    const bucket = selectTodayBucket([tonight, tomorrow], pinnedToday, 'America/Chicago', isTonight, 5);
+    expect(bucket.items).toEqual([tonight]);
+    expect(bucket.total).toBe(1);
   });
 
   it('a late-evening Pacific event is not shifted to the wrong calendar day', () => {
