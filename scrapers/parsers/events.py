@@ -5,10 +5,18 @@ eller ej färdigbyggd delkälla ska aldrig blockera de som fungerar. Delkällor 
 "kind"-fält som styr hur de hanteras:
 
   - "ical":        riktig iCal/ICS-feed, hämtas och parsas med `icalendar` (RFC 5545).
+                    Fetch/parse-logiken bor i scrapers/event_sources.py (source
+                    registry, Fas 3 del 1) -- lägg en NY kind där, inte här, när
+                    fler källtyper (WebTrac, m.fl.) läggs till.
   - "blocked":      källan är medvetet AVSTÄNGD av policyskäl (t.ex. robots.txt nekar
                     åtkomst) -- loggas tydligt, körs aldrig, skrapas ALDRIG ändå.
   - "unconfirmed":  strukturen är inte verifierad än (Stage 0 ofullständig) -- loggas
                     och hoppas över tills en riktig feed-URL är bekräftad.
+
+"blocked" och "unconfirmed" är inga riktiga hämtningsbara kinds -- de är inerta
+markörer som kollas HÄR, innan registret ens konsulteras (se event_sources.py:s
+egen kommentar om detta). En okänd kind (varken registrerad eller en av dessa två
+markörer) hoppas också över, samma sätt som idag.
 
 Detta är den viktigaste återbesöks-motorn tillsammans med sdsu_athletics (se PLAN.md).
 
@@ -24,25 +32,14 @@ STATUS 2026-07-17:
 from __future__ import annotations
 
 import os
-import re
 
-from datetime import datetime, timezone
-
-import requests
-
-from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
-from scrapers.text_sanity import is_suspicious
+from scrapers.event_sources import EVENT_SOURCE_KINDS
 
-# Tockify-exporterade ICS-flöden (t.ex. Moreno Valleys city_events/library) innehåller
-# X-PUBLISHED-TTL/REFRESH-INTERVAL:P15M -- avsett som "15 minuter" men saknar
-# T-designatorn (RFC 5545 kräver "PT15M"; "P15M" utan T betyder 15 MÅNADER, vilket
-# duration-grammatiken inte ens tillåter). Detta får icalendar att kasta ett
-# InvalidCalendar-undantag för HELA dokumentet, inte bara den trasiga posten --
-# verifierat 2026-07-23 mot båda Moreno Valley-flödena. Vi använder ändå inte dessa
-# fält (vårt eget refresh_minutes styr hur ofta vi hämtar), så de kan strippas bort
-# innan parsning utan informationsförlust.
-_BAD_REFRESH_PROPS = re.compile(rb"^(X-PUBLISHED-TTL|REFRESH-INTERVAL):.*\r?\n", re.MULTILINE)
+_INERT_KINDS = {
+    "blocked": "policyblockerad (robots.txt) -- skrapas aldrig",
+    "unconfirmed": "overifierad källa -- hoppar över (Stage 0 ofullständig)",
+}
 
 
 class EventsParser(BaseParser):
@@ -60,28 +57,26 @@ class EventsParser(BaseParser):
             name = src.get("name")
             kind = src.get("kind")
 
-            if kind == "blocked":
-                print(f"    [events:{name}] policyblockerad (robots.txt) -- skrapas aldrig")
+            if kind in _INERT_KINDS:
+                print(f"    [events:{name}] {_INERT_KINDS[kind]}")
                 continue
-            if kind == "unconfirmed":
-                print(f"    [events:{name}] overifierad källa -- hoppar över (Stage 0 ofullständig)")
-                continue
-            if kind != "ical":
+
+            source_kind = EVENT_SOURCE_KINDS.get(kind)
+            if source_kind is None:
                 print(f"    [events:{name}] okänd kind='{kind}' -- hoppar över")
                 continue
 
-            url = src.get("url")
-            if not url:
-                continue
             try:
-                r = requests.get(url, headers=self._headers(), timeout=20)
-                r.raise_for_status()
-                blobs[name] = r.content
+                blob = source_kind.fetch(src, self._headers())
             except Exception as exc:  # noqa: BLE001 — en trasig delkälla ska inte fälla de andra
                 print(f"    [events:{name}] fel vid hämtning: {exc}")
+                continue
+            if blob is None:
+                continue
+            blobs[name] = blob
 
         self._blobs = blobs
-        # snapshot: alla ICS-flöden konkatenerade med tydliga separatorer
+        # snapshot: alla källors råa svar konkatenerade med tydliga separatorer
         combined = b"\n--EVENTSOURCE--\n".join(
             name.encode() + b"\n" + blob for name, blob in blobs.items()
         )
@@ -95,106 +90,21 @@ class EventsParser(BaseParser):
             for chunk in fetched.raw.split(b"\n--EVENTSOURCE--\n"):
                 if not chunk.strip():
                     continue
-                name, _, ics = chunk.partition(b"\n")
-                blobs[name.decode()] = ics
+                name, _, blob = chunk.partition(b"\n")
+                blobs[name.decode()] = blob
+
+        sources_by_name = {src.get("name"): src for src in self.source_cfg.get("sources", [])}
 
         out: list[dict] = []
-        for name, ics_bytes in blobs.items():
-            out.extend(self._parse_ical(name, ics_bytes))
+        for name, blob in blobs.items():
+            kind = sources_by_name.get(name, {}).get("kind")
+            source_kind = EVENT_SOURCE_KINDS.get(kind)
+            if source_kind is None:
+                # Kan bara hända om self._blobs saknas (t.ex. återuppspelning
+                # från en sparad snapshot i ett annat process) och configen
+                # samtidigt har ändrats sedan snapshotten togs -- samma
+                # "hoppa över okänt" som fetch() gör.
+                print(f"    [events:{name}] okänd/ändrad kind vid parse -- hoppar över")
+                continue
+            out.extend(source_kind.parse(name, blob))
         return out
-
-    def _parse_ical(self, source_name: str, ics_bytes: bytes) -> list[dict]:
-        try:
-            from icalendar import Calendar
-        except ImportError:
-            print("    [events] paketet 'icalendar' saknas -- lägg till i requirements.txt")
-            return []
-
-        ics_text = _decode_ics(source_name, _BAD_REFRESH_PROPS.sub(b"", ics_bytes))
-
-        try:
-            cal = Calendar.from_ical(ics_text)
-        except Exception as exc:  # noqa: BLE001 — trasig ICS ska inte krascha hela körningen
-            print(f"    [events:{source_name}] kunde inte tolka ICS: {exc}")
-            return []
-
-        records = []
-        for component in cal.walk("VEVENT"):
-            uid = str(component.get("UID", ""))
-            title = str(component.get("SUMMARY", "")).strip()
-            if not title:
-                continue
-
-            # Text-sanity-koll (se scrapers/text_sanity.py) -- fångar en
-            # felaktigt avkodad post INNAN den når databasen/AI-pipelinen,
-            # inte efteråt. En trasig TITEL gör hela posten oanvändbar
-            # (rubriken är det enda garanterat synliga fältet) så den
-            # posten hoppas över helt; en trasig plats/beskrivning nollas
-            # bara ut -- resten av posten är fortfarande användbar.
-            if is_suspicious(title):
-                print(f"    [events:{source_name}] misstänkt text i titel, hoppar över post "
-                      f"(uid={uid}): {title[:80]!r}")
-                continue
-
-            dtstart = component.get("DTSTART")
-            dtend = component.get("DTEND")
-            starts_at = _to_iso(dtstart.dt) if dtstart else None
-            ends_at = _to_iso(dtend.dt) if dtend else None
-
-            location = str(component.get("LOCATION", "")).strip() or None
-            description = str(component.get("DESCRIPTION", "")).strip() or None
-            url = str(component.get("URL", "")).strip() or None
-
-            if is_suspicious(location):
-                print(f"    [events:{source_name}] misstänkt text i plats (uid={uid}), nollar fältet")
-                location = None
-            if is_suspicious(description):
-                print(f"    [events:{source_name}] misstänkt text i beskrivning (uid={uid}), nollar fältet")
-                description = None
-
-            records.append({
-                "title": title,
-                "starts_at": starts_at,
-                "ends_at": ends_at,
-                "venue": location,
-                "source": source_name,
-                "url": url,
-                "raw_data": {"uid": uid, "description": description},
-                "content_hash": content_hash("events", source_name, uid, starts_at, title),
-            })
-        return records
-
-
-def _decode_ics(source_name: str, ics_bytes: bytes) -> str:
-    """Decode ICS bytes to text OURSELVES, explicitly, instead of handing raw
-    bytes to icalendar.Calendar.from_ical() and letting its internal
-    to_unicode() decide -- that helper assumes utf-8-sig and, on a
-    UnicodeDecodeError, silently retries with errors="replace", swallowing
-    a bad charset into replacement characters (or a wrong-charset feed into
-    outright garbled text) with no warning surfaced anywhere. Try utf-8
-    strict first (correct for every confirmed source so far), then cp1252
-    (the realistic real-world case: a library staffer pasting Windows-
-    authored text -- smart quotes, en-dashes -- into a calendar tool that
-    doesn't re-encode it). Only fall back to lossy replacement, loudly
-    logged, if neither succeeds -- so a truly broken feed is visible in the
-    run log instead of silently degrading a published event description."""
-    for encoding in ("utf-8", "cp1252"):
-        try:
-            return ics_bytes.decode(encoding)
-        except UnicodeDecodeError:
-            continue
-    print(f"    [events:{source_name}] kunde inte avkoda som utf-8 eller cp1252 -- "
-          "faller tillbaka på utf-8 med ersättningstecken (kontrollera källans charset)")
-    return ics_bytes.decode("utf-8", errors="replace")
-
-
-def _to_iso(dt) -> str | None:
-    """icalendar ger antingen date eller datetime; normalisera till ISO-sträng."""
-    if dt is None:
-        return None
-    if isinstance(dt, datetime):
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.isoformat()
-    # rent datum (heldagsevent) -> midnatt
-    return datetime(dt.year, dt.month, dt.day, tzinfo=timezone.utc).isoformat()
