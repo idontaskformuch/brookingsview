@@ -16,13 +16,13 @@ _Excluded (non-community-event rows in the same table): county_alert (6), nws_al
 
 No configured event sources for this town.
 
-## moreno_valley_ca (1170 community events)
+## moreno_valley_ca (1171 community events)
 
 | source | kind | count | share | |
 |---|---|---:|---:|---|
 | library | ical | 826 | 71% | **dominant** |
-| city_events | ical | 344 | 29% |  |
+| city_events | ical | 345 | 29% |  |
 | civic_amphitheater | unconfirmed | 0 | 0% |  |
-| farm_house_collective | unconfirmed | 0 | 0% |  |
+| farm_house_collective | ical | 0 | 0% |  |
 
 _Excluded (non-community-event rows in the same table): nws_alert (429)_

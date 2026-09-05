@@ -155,9 +155,9 @@
         },
         {
           "name": "farm_house_collective",
-          "kind": "unconfirmed",
-          "url": "https://farmhousecollective.com/calendar/",
-          "_note": "UPPGRADERAD 2026-08-04 (var ren gissning tidigare): bekräftat att farmhousecollective.com/calendar/ kör The Events Calendar (samma plugin som visit_brookings-kandidaten i Brookings-configen) -- sidan visar synligt 'Subscribe to calendar: Google Calendar / iCalendar / Outlook / Export .ics file'. Privat regional spelplats i centrala Riverside (grundad av en familj med Moreno Valley-rötter), konserter + marknader + food events, matchar den beslutade regionala/'allt är intressant'-scopen bättre än de rena kommunkällorna. Trolig sajtomfattande export: https://farmhousecollective.com/events/?ical=1 (TEC:s standardmönster) -- INTE testad live än, och robots.txt INTE kontrollerad. Tredjepartssajter (Bandsintown/JamBase) listar deras program men är själva inte lämpliga att skrapa som primärkälla."
+          "kind": "ical",
+          "url": "https://farmhousecollective.com/events/?ical=1",
+          "_note": "BEKRÄFTAD live 2026-09-05 (Fas 3, event source registry): robots.txt på farmhousecollective.com är helt rent (bara /wp-admin/ blockerad, ingen AI-crawler-specifik regel). Den gissade exporten https://farmhousecollective.com/events/?ical=1 fungerar -- HTTP 200, text/calendar, riktig The Events Calendar-export (ECPv6.17.4, samma plugin som Brookings chamber-källan), korrekt VTIMEZONE (America/Los_Angeles) och korrekt formaterad REFRESH-INTERVAL (PT1H, med T-designatorn -- INTE samma P15M-bugg som Tockify-källorna). 30 riktiga aktuella events körda genom scrapers/event_sources.py:s _parse_ical (Farmers Market, Pocket Change Market, konserter) -- titel/datum/plats (fast adress: Farm House Collective, 1393 University Ave, Riverside, CA) alltid rena. DESCRIPTION-fältet innehåller genomgående orenderad widget-HTML-whitespace (30+ mellanslag i rad, ingen riktig text) -- korrekt nollat av is_suspicious(), inte en bugg. Privat regional spelplats i centrala Riverside (grundad av en familj med Moreno Valley-rötter), konserter + marknader + food events, matchar den beslutade regionala/'allt är intressant'-scopen bättre än de rena kommunkällorna. Tredjepartssajter (Bandsintown/JamBase) listar deras program men är själva inte lämpliga att skrapa som primärkälla."
         }
       ],
       "refresh_minutes": 1440,
