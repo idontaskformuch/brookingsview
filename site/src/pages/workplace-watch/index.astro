@@ -17,7 +17,7 @@ import RelatedContent from '../../components/RelatedContent.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import {
-  getLatestEmployerRatings, getWeather, getActiveAlerts,
+  getLatestEmployerRatings, getEmployerJobStats, getWeather, getActiveAlerts,
   getShiftPollResults, getWorkerPulseComments,
 } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
@@ -48,13 +48,19 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 // wants its own version of this.
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 
-const [employers, weatherPeriods, alerts, pollResults, comments] = await Promise.all([
+const [employers, jobStatsList, weatherPeriods, alerts, pollResults, comments] = await Promise.all([
   getLatestEmployerRatings(),
+  getEmployerJobStats(),
   getWeather(),
   getActiveAlerts(),
   getShiftPollResults(),
   getWorkerPulseComments('workplace-watch'),
 ]);
+// keyed by slug for an O(1) lookup per row below -- employer_job_stats is a
+// SEPARATE query/table from employer_ratings (see lib/db.ts), joined here in
+// JS rather than in SQL since the two features ship independently and
+// either can be empty while the other has data.
+const jobStatsBySlug = new Map(jobStatsList.map((s) => [s.slug, s]));
 
 const todayPeriod = weatherPeriods.find((p) => p.is_daytime) ?? weatherPeriods[0] ?? null;
 
@@ -75,6 +81,12 @@ function trend(delta: number | null): { symbol: string; cls: string } {
   if (delta < 0) return { symbol: '▼', cls: 'down' };
   return { symbol: '▬', cls: 'flat' };
 }
+
+// Fas 4a: same house rule as hasTrendHistory above (don't render an empty
+// feature) -- hidden entirely until the monthly digest has run at least
+// once since this shipped, not shown as an all-zero/all-dash column that
+// would read as "measured, nothing happening" instead of "not measured yet".
+const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
 ---
 <BaseLayout
   title={`Worker Pulse in ${siteConfig.cityName} — ${siteConfig.siteName}`}
@@ -108,6 +120,15 @@ function trend(delta: number | null): { symbol: string; cls: string } {
     star rating means one wasn't reliably found in the search results that
     month, not that the employer has no reviews.
   </p>
+  {hasJobStats && (
+    <p class="wp-methodology">
+      <strong>Hiring column:</strong> a count of job postings for that employer
+      observed via the Adzuna job board in the last 30 days — not a real-time
+      "openings now" figure, and never a hiring, headcount, or growth claim.
+      Some employers show 0: that's a real absence of Adzuna listings for
+      that company today, not a missing measurement.
+    </p>
+  )}
 
   {isMorenoValley && (
     <HeatAdvisoryWidget
@@ -119,17 +140,19 @@ function trend(delta: number | null): { symbol: string; cls: string } {
 
   {employers.length > 0 ? (
     <div class="wp-table" role="table">
-      <div class={`wp-row wp-row--head ${!hasTrendHistory ? 'wp-row--no-trend' : ''}`} role="row">
+      <div class:list={['wp-row', 'wp-row--head', { 'wp-row--no-trend': !hasTrendHistory, 'wp-row--no-hiring': !hasJobStats }]} role="row">
         <span role="columnheader">Employer</span>
         <span role="columnheader">Rating</span>
         {hasTrendHistory && <span role="columnheader">Trend</span>}
+        {hasJobStats && <span role="columnheader">Hiring <abbr title="Job postings observed via Adzuna, last 30 days">ⓘ</abbr></span>}
         <span role="columnheader">This month</span>
       </div>
       {employers.map((e) => {
         const t = trend(e.rating_delta_vs_last_month);
         const label = e.period_label;
+        const jobStats = jobStatsBySlug.get(e.slug);
         return (
-          <div class={`wp-row ${!hasTrendHistory ? 'wp-row--no-trend' : ''}`} role="row" style={`--accent: ${e.accent_color ?? '#4b5563'}`}>
+          <div class:list={['wp-row', { 'wp-row--no-trend': !hasTrendHistory, 'wp-row--no-hiring': !hasJobStats }]} role="row" style={`--accent: ${e.accent_color ?? '#4b5563'}`}>
             <span class="wp-name" role="cell">
               <span class="wp-dot" aria-hidden="true"></span>
               <span>
@@ -141,6 +164,22 @@ function trend(delta: number | null): { symbol: string; cls: string } {
               {e.overall_rating !== null ? e.overall_rating.toFixed(1) : 'Rating pending'}
             </span>
             {hasTrendHistory && <span class={`wp-trend wp-trend--${t.cls}`} role="cell">{t.symbol}</span>}
+            {hasJobStats && (
+              <span class="wp-hiring" role="cell">
+                {jobStats?.postings_now !== null && jobStats?.postings_now !== undefined ? (
+                  <>
+                    {jobStats.postings_now} listing{jobStats.postings_now === 1 ? '' : 's'}
+                    {jobStats.postings_change !== null && jobStats.postings_change !== undefined && (
+                      <small class={jobStats.postings_change > 0 ? 'up' : jobStats.postings_change < 0 ? 'down' : ''}>
+                        {' '}({jobStats.postings_change > 0 ? '+' : ''}{jobStats.postings_change} vs last month)
+                      </small>
+                    )}
+                  </>
+                ) : (
+                  <span class="excerpt muted">Not yet measured</span>
+                )}
+              </span>
+            )}
             <span class="wp-summary" role="cell">
               {e.theme_summary ? (
                 <>
@@ -194,13 +233,15 @@ function trend(delta: number | null): { symbol: string; cls: string } {
 }
 .wp-row {
   display: grid;
-  grid-template-columns: 1.4fr 0.6fr 0.4fr 2.2fr;
+  grid-template-columns: 1.4fr 0.6fr 0.4fr 0.7fr 2.2fr;
   gap: 0.75rem;
   align-items: center;
   padding: 0.9rem 1rem;
   border-top: 1px solid var(--rule);
 }
-.wp-row--no-trend { grid-template-columns: 1.4fr 0.6fr 2.2fr; }
+.wp-row--no-trend { grid-template-columns: 1.4fr 0.6fr 0.7fr 2.2fr; }
+.wp-row--no-hiring { grid-template-columns: 1.4fr 0.6fr 0.4fr 2.2fr; }
+.wp-row--no-trend.wp-row--no-hiring { grid-template-columns: 1.4fr 0.6fr 2.2fr; }
 .wp-row:first-child { border-top: none; }
 .wp-row--head {
   font-size: 0.8rem;
@@ -221,6 +262,10 @@ function trend(delta: number | null): { symbol: string; cls: string } {
 .wp-trend--down { color: #d73027; }
 .wp-trend--flat { color: var(--ink-soft); }
 .wp-trend--new { font-size: 0.75rem; color: var(--ink-soft); font-style: italic; }
+.wp-hiring { font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.wp-hiring small { display: block; color: var(--ink-soft); font-size: 0.72rem; }
+.wp-hiring small.up { color: #1a9850; }
+.wp-hiring small.down { color: #d73027; }
 .wp-summary { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
 .excerpt { color: var(--ink-soft); }
 .excerpt.muted { font-style: italic; }
@@ -232,5 +277,6 @@ function trend(delta: number | null): { symbol: string; cls: string } {
   .wp-row { grid-template-columns: 1fr; row-gap: 0.35rem; }
   .wp-row--head { display: none; }
   .wp-rating::before { content: 'Rating: '; font-weight: 400; color: var(--ink-soft); }
+  .wp-hiring::before { content: 'Hiring: '; font-weight: 400; color: var(--ink-soft); }
 }
 </style>

@@ -33,6 +33,7 @@ import {
   getUpcomingStories, getActiveAlerts, getUpcomingGames, getNextRegionalGame,
   getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
   getWeather, getAgPrices, getLatestWeekly, getTodaysFeature, getLatestEmployerRatings,
+  getEmployerJobStats,
   getWorthKnowingCandidates, getLatestFromCandidates, getRecentProjectUpdates, formatDate,
   CATEGORY_HREFS, CATEGORY_LABELS, getFacilities, getLatestVailNewsItem,
   getClosureWatchStatus, getUpcomingArtsEvents,
@@ -211,6 +212,9 @@ const todayHomeGame = isBrookings && nextGame && nextGame.home_away === 'home'
 // Bara hämtat på towns med Workplace Watch enabled -- ingen anledning att
 // fråga en tabell som alltid är tom annars.
 const employerRatings = siteConfig.hasWorkplaceWatch ? await getLatestEmployerRatings() : [];
+// Fas 4a: same "only fetch what this town could possibly have" reasoning as
+// employerRatings just above.
+const employerJobStats = siteConfig.hasWorkplaceWatch ? await getEmployerJobStats() : [];
 // Samma resonemang: bara hämtat för Broomfield, tabellen är alltid tom för
 // de andra två (town_id-scopad, se db/migrations/029_vail_news.sql).
 const latestVailNews = isBroomfield ? await getLatestVailNewsItem() : null;
@@ -220,6 +224,33 @@ const biggestMover = employerRatings.reduce<typeof employerRatings[number] | nul
   if (!best || Math.abs(e.rating_delta_vs_last_month) > Math.abs(best.rating_delta_vs_last_month!)) return e;
   return best;
 }, null);
+
+// Fas 4a: mirrors biggestMover's own reduce exactly, but for posting-count
+// change. Falls back to "who has the most listings right now" when NO
+// employer has month-over-month history yet (every town's first tracked
+// month) -- a real, useful fact even before a delta is computable, rather
+// than showing nothing at all for the widget's entire first month live.
+// Either way, a "leader" tied at zero (every tracked employer has 0
+// postings, true for Broomfield today) is not surfaced in the WIDGET --
+// technically honest but misleading framing to call one of several zeros
+// "the leader"; the full /workplace-watch table still shows every
+// employer's real (possibly zero) count with proper context.
+const hasHiringHistory = employerJobStats.some((s) => s.postings_change !== null);
+const biggestHiringMoverRaw = hasHiringHistory
+  ? employerJobStats.reduce<typeof employerJobStats[number] | null>((best, s) => {
+      if (s.postings_change === null) return best;
+      if (!best || Math.abs(s.postings_change) > Math.abs(best.postings_change!)) return s;
+      return best;
+    }, null)
+  : employerJobStats.reduce<typeof employerJobStats[number] | null>((best, s) => {
+      if (!s.postings_now) return best;
+      if (!best || s.postings_now > (best.postings_now ?? 0)) return s;
+      return best;
+    }, null);
+const biggestHiringMover =
+  biggestHiringMoverRaw && (biggestHiringMoverRaw.postings_now || biggestHiringMoverRaw.postings_change)
+    ? biggestHiringMoverRaw
+    : null;
 
 // Jackrabbits nästa match och SDSU:s nästa "marquee"-evenemang (Athletics/
 // Music) konkurrerar om SAMMA rail-slot för Brookings -- "mutually
@@ -384,6 +415,9 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
           topRating={topEmployer.overall_rating}
           moverName={biggestMover?.name ?? null}
           moverDelta={biggestMover?.rating_delta_vs_last_month ?? null}
+          hiringName={biggestHiringMover?.name ?? null}
+          hiringCount={biggestHiringMover?.postings_now ?? null}
+          hiringDelta={biggestHiringMover?.postings_change ?? null}
         />
       )}
       {isBroomfield && latestVailNews && <VailNewsWidget item={latestVailNews} />}

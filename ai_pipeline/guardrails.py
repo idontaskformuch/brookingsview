@@ -72,6 +72,16 @@ def _norm(s: str) -> str:
     return s.casefold().strip()
 
 
+def normalize_name(s: str) -> str:
+    """Public alias for `_norm()` -- the same possessive/abbreviation-safe
+    normalizer used by the proper-noun fact-checker (fixed for "Deckers
+    Brands'"/"Skechers U.S.A.'s", see git history on this module), exposed
+    for other modules that need to compare two names for equality (Fas 4a's
+    Adzuna-to-employer matching, see workplace_watch_digest.py) without
+    reaching into a private function."""
+    return _norm(s)
+
+
 _TIME_RE = re.compile(r"\b(\d{1,2}):(\d{2})(?::\d{2})?\b")
 
 
@@ -280,6 +290,25 @@ _ABBREV_PLACEHOLDER = "§"
 _REVIEW_SOURCE_WORDS = {
     "review", "reviews", "reviewer", "reviewers", "employee", "employees",
     "worker", "workers", "staff", "glassdoor", "indeed",
+    # Fas 4a (hiring layer, Recurring-traffic layer handoff): a sentence
+    # about job-posting counts needs the same source-word + attribution-verb
+    # pairing as a review-sentiment sentence -- reusing this exact set/
+    # mechanism, per the handoff's own explicit "extend the existing hedging
+    # check... rather than adding a parallel one" instruction.
+    "posting", "postings", "listing", "listings", "adzuna",
+}
+
+# Fas 4a: posting counts are "listings observed via one job board", never a
+# hiring/headcount/growth claim (see workplace_watch_digest.py's own
+# grounding-text rules) -- unlike review-sentiment ("reviews mention X"),
+# which genuinely reflects attributed source text, a job-board LISTING COUNT
+# cannot support a real-world employment-trend claim even if hedged ("reviews
+# suggest hiring is booming" still overstates what a count means). Any
+# sentence naming a tracked employer that also uses this vocabulary is
+# rejected outright, regardless of hedging.
+_HIRING_OVERREACH_WORDS = {
+    "hiring", "headcount", "growth", "growing", "grew", "expanding",
+    "expansion", "expands", "expanded",
 }
 _ATTRIBUTION_VERBS = {
     "mention", "mentions", "mentioned", "describe", "describes", "described",
@@ -317,6 +346,11 @@ def validate_employer_hedging(text: str, employer_names: list[str]) -> Guardrail
         if not any(name in low for name in low_names):
             continue
         words = set(re.findall(r"[a-z']+", low))
+        overreach = words & _HIRING_OVERREACH_WORDS
+        if overreach:
+            violations.append(
+                f"hiring/headcount/growth overreach ({', '.join(sorted(overreach))}): {sentence.strip()}")
+            continue
         if not (words & _REVIEW_SOURCE_WORDS and words & _ATTRIBUTION_VERBS):
             violations.append(f"unhedged employer claim: {sentence.strip()}")
 

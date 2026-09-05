@@ -1688,6 +1688,63 @@ export async function getLatestEmployerRatings(): Promise<EmployerRating[]> {
 }
 
 /**
+ * Fas 4a (Recurring-traffic layer, hiring layer) -- Adzuna job-posting
+ * counts per tracked employer, see db/migrations/039_employer_job_stats.sql
+ * and ai_pipeline/workplace_watch_digest.py (count_matching_postings()).
+ * `postings_now`/`postings_change` are DERIVED IN SQL via a LAG() window
+ * function over employer_job_stats, never computed in JS -- same "dates/
+ * deltas belong in Postgres, not the frontend" convention as
+ * getLatestEmployerRatings' own to_char() usage just below.
+ *
+ * postings_change is `null` for an employer's first tracked month (no prior
+ * period to compare, not a real zero) -- same "New" vs "flat" distinction
+ * getLatestEmployerRatings' rating_delta_vs_last_month already makes, so the
+ * two features render consistently.
+ */
+export interface EmployerJobStats {
+  slug: string;
+  name: string;
+  /** "YYYY-MM", or null if this employer has no posting-count snapshot yet
+   *  (the monthly digest hasn't run since the hiring layer shipped). */
+  period_ym: string | null;
+  period_label: string | null;
+  postings_now: number | null;
+  postings_change: number | null;
+}
+
+export async function getEmployerJobStats(): Promise<EmployerJobStats[]> {
+  const rows = (await sql`
+    WITH ranked AS (
+      SELECT employer_id, period, posting_count,
+             LAG(posting_count) OVER (PARTITION BY employer_id ORDER BY period) AS prev_count
+        FROM employer_job_stats
+       WHERE town_id = ${TOWN_ID}
+    )
+    SELECT e.slug, e.name,
+           to_char(r.period, 'YYYY-MM') AS period_ym,
+           to_char(r.period, 'FMMonth YYYY') AS period_label,
+           r.posting_count,
+           CASE WHEN r.prev_count IS NULL THEN NULL ELSE r.posting_count - r.prev_count END AS postings_change
+      FROM employers e
+      LEFT JOIN LATERAL (
+        SELECT * FROM ranked WHERE ranked.employer_id = e.id
+         ORDER BY period DESC LIMIT 1
+      ) r ON true
+     WHERE e.town_id = ${TOWN_ID}
+     ORDER BY e.name
+  `) as Record<string, any>[];
+
+  return rows.map((row) => ({
+    slug: row.slug,
+    name: row.name,
+    period_ym: row.period_ym,
+    period_label: row.period_label,
+    postings_now: row.posting_count === null ? null : Number(row.posting_count),
+    postings_change: row.postings_change === null ? null : Number(row.postings_change),
+  }));
+}
+
+/**
  * Vail Resorts corporate newsroom feed -- Broomfield only (/vail-resorts,
  * VailNewsWidget.astro). See db/migrations/029_vail_news.sql and
  * scrapers/parsers/vail_news_v1.py -- a mirrored feed of the company's own

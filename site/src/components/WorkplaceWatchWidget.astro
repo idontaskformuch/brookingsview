@@ -7,13 +7,22 @@ interface Props {
   topRating: number | null;
   moverName: string | null;
   moverDelta: number | null;
+  /** Fas 4a (hiring layer): the employer with the largest posting-count
+   *  change vs last month, or the only employer with any postings at all
+   *  when no town yet has month-over-month history. null when no employer
+   *  has any employer_job_stats row yet (monthly digest hasn't run since
+   *  this shipped) -- omitted entirely, never a fake "0 listings" line. */
+  hiringName: string | null;
+  hiringCount: number | null;
+  hiringDelta: number | null;
 }
-const { topName, topRating, moverName, moverDelta } = Astro.props;
+const { topName, topRating, moverName, moverDelta, hiringName, hiringCount, hiringDelta } = Astro.props;
 
 const moverSymbol = moverDelta === null ? null : moverDelta > 0 ? '▲' : moverDelta < 0 ? '▼' : '▬';
+const hiringSymbol = hiringDelta === null ? null : hiringDelta > 0 ? '▲' : hiringDelta < 0 ? '▼' : '▬';
 ---
 
-<a href="/workplace-watch/" class="wpw-widget" aria-label="See Worker Pulse: local employer review trends">
+<a href="/workplace-watch/" class="wpw-widget" aria-label="See Worker Pulse: local employer review trends and hiring activity">
   <div class="wpw-icon">📦</div>
   <div class="wpw-text">
     <div class="wpw-title">Worker Pulse</div>
@@ -21,6 +30,14 @@ const moverSymbol = moverDelta === null ? null : moverDelta > 0 ? '▲' : moverD
       Top this month: {topName}{topRating !== null && ` (${topRating.toFixed(1)})`}
       {moverName && moverSymbol && (
         <> · Biggest mover: {moverName} <span class:list={['wpw-symbol', { up: moverDelta! > 0, down: moverDelta! < 0 }]}>{moverSymbol}</span></>
+      )}
+      {hiringName && hiringCount !== null && (
+        <>
+          {' '}· Hiring: {hiringName}{' '}{hiringCount} listing{hiringCount === 1 ? '' : 's'}
+          {hiringSymbol && (
+            <>{' '}<span class:list={['wpw-symbol', { up: hiringDelta! > 0, down: hiringDelta! < 0 }]}>{hiringSymbol}</span></>
+          )}
+        </>
       )}
     </div>
   </div>
