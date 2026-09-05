@@ -26,8 +26,9 @@ silently reintroduce either.
 from __future__ import annotations
 
 import re
+import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 import requests
@@ -147,6 +148,87 @@ def _parse_ical(source_name: str, ics_bytes: bytes) -> list[dict]:
     return records
 
 
+# ChamberMaster/GrowthZone (Brookings Area Chamber of Commerce, verified live
+# 2026-09-05) publishes no bulk feed -- only a paginated HTML calendar-grid
+# listing (source_cfg["listing_url"], e.g. .../events/Search) and a real
+# per-event ICS export (source_cfg["ical_base_url"] + slug + ".ics"). This
+# kind crawls the listing once to discover event slugs, then fetches each
+# slug's own well-formed ICS individually and parses it with the same
+# _parse_ical() used by the "ical" kind above -- no separate HTML-scraping
+# code for the actual event data itself, only for slug discovery.
+#
+# Window/cap chosen from a real live measurement (2026-09-05): a 120-day
+# forward window returned 35 unique events (a full calendar year returned
+# 227) -- comfortably under MAX_DETAIL_FETCHES, so a normal run fetches
+# everything in range rather than silently truncating. Mirrors
+# legistar_v1.py's own listing-then-per-item-fetch pattern (MAX_AGENDA_FETCHES
+# / FETCH_DELAY_SECONDS) rather than inventing a new politeness convention.
+LOOKAHEAD_DAYS = 120
+MAX_DETAIL_FETCHES = 60
+FETCH_DELAY_SECONDS = 0.25
+
+# Matches both https://.../events/Details/<slug>?... and the
+# /bpnevents/Details/<slug> variant (a distinct "module" on the same
+# GrowthZone tenant, e.g. their Professional Network sub-brand) -- both
+# resolve through the SAME /events/ICal/<slug>.ics endpoint, confirmed live.
+_DETAILS_SLUG_RE = re.compile(r'/(?:events|bpnevents)/Details/([^"\'?]+)')
+
+# Deliberately NOT events.py's own b"\n--EVENTSOURCE--\n" separator: that one
+# already wraps this kind's entire combined blob as a single value in ITS
+# outer join (see events.py fetch()/parse()). Reusing the same literal here
+# would make a plain bytes.split() -- used by parse()'s reconstruction-from-
+# snapshot fallback when self._blobs isn't cached -- shred this blob's own
+# inner per-event boundaries too, since split() doesn't know about nesting.
+_BLOB_SEPARATOR = b"\n--CHAMBEREVENTITEM--\n"
+
+
+def _extract_event_slugs(html: str) -> list[str]:
+    seen: dict[str, None] = {}
+    for slug in _DETAILS_SLUG_RE.findall(html):
+        seen.setdefault(slug, None)
+    return list(seen)
+
+
+def _fetch_html_listing_ical(source_cfg: dict, headers: dict) -> bytes | None:
+    listing_url = source_cfg.get("listing_url")
+    ical_base_url = source_cfg.get("ical_base_url")
+    if not listing_url or not ical_base_url:
+        return None
+
+    today = datetime.now(timezone.utc).date()
+    until = today + timedelta(days=LOOKAHEAD_DAYS)
+    params = {
+        "from": today.strftime("%m/%d/%Y"),
+        "to": until.strftime("%m/%d/%Y"),
+        "mode": "0",
+    }
+    r = requests.get(listing_url, params=params, headers=headers, timeout=20)
+    r.raise_for_status()
+    slugs = _extract_event_slugs(r.text)[:MAX_DETAIL_FETCHES]
+
+    blobs: dict[str, bytes] = {}
+    for slug in slugs:
+        try:
+            ir = requests.get(f"{ical_base_url}{slug}.ics", headers=headers, timeout=20)
+            ir.raise_for_status()
+            blobs[slug] = ir.content
+        except Exception as exc:  # noqa: BLE001 -- ett trasigt event ska inte fälla de andra
+            print(f"    [events:chamber_business] fel vid hämtning av {slug}: {exc}")
+        time.sleep(FETCH_DELAY_SECONDS)
+
+    return _BLOB_SEPARATOR.join(slug.encode() + b"\n" + blob for slug, blob in blobs.items())
+
+
+def _parse_html_listing_ical(source_name: str, combined: bytes) -> list[dict]:
+    records: list[dict] = []
+    for chunk in combined.split(_BLOB_SEPARATOR):
+        if not chunk.strip():
+            continue
+        _slug, _, ics_bytes = chunk.partition(b"\n")
+        records.extend(_parse_ical(source_name, ics_bytes))
+    return records
+
+
 @dataclass(frozen=True)
 class EventSourceKind:
     """One recognized `kind` value for an events.sources[] entry.
@@ -166,4 +248,5 @@ class EventSourceKind:
 # kind with a real, working fetch+parse implementation belongs here.
 EVENT_SOURCE_KINDS: dict[str, EventSourceKind] = {
     "ical": EventSourceKind(fetch=_fetch_ical, parse=_parse_ical),
+    "html_listing_ics": EventSourceKind(fetch=_fetch_html_listing_ical, parse=_parse_html_listing_ical),
 }

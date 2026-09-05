@@ -236,6 +236,13 @@
           "kind": "ical",
           "url": "https://visitbrookingssd.com/events/?ical=1",
           "_note": "BEKRÄFTAD live 2026-08-11: robots.txt på visitbrookingssd.com (User-agent: *) nekar bara /events/*/page/ och ?eventDate=/?paged= (med Crawl-delay: 2, respekteras via samma refresh_minutes-spärr som övriga källor) -- ?ical=1 är INTE blockerat. 200 OK, Content-Type text/calendar, riktig The Events Calendar-export (ECPv6.16.3) med korrekt VTIMEZONE (America/Chicago). 30 riktiga events manuellt genomlästa (Farmers Market, Downtown @ Sundown, Trivia Tuesday, Fine Art Exhibition m.fl.) -- inget overifierat/icke-publikt brus hittat, ingen filtrering behövdes (till skillnad från SDSU-kalendern). source='chamber' på varje rad ger frontend en tydlig tagg skild från SDSU-innehållet, se events.astro."
+        },
+        {
+          "name": "chamber_business",
+          "kind": "html_listing_ics",
+          "listing_url": "https://brookingsareachamberofcommerce.growthzoneapp.com/events/Search",
+          "ical_base_url": "https://brookingsareachamberofcommerce.growthzoneapp.com/events/ICal/",
+          "_note": "BEKRÄFTAD live 2026-09-05 (Fas 3, källjakt): Brookings Area Chamber of Commerce (ChamberMaster/GrowthZone) -- en verklig, distinkt källa (nätverksträffar/affärsprogram: '2026 Brookings Professional Network'-luncher, '2026 Military Affairs Banner Program', 'Little International at SDSU', 'Taste of Brookings') skild från 'chamber' ovan (som trots namnet är Visit Brookings/turism, inte själva handelskammaren). robots.txt på både business.brookingschamber.org och growthzoneapp.com-subdomänen är helt öppet (bara /TellAFriend blockerad, ingen AI-crawler-specifik regel). Ingen bulk-feed finns -- /events/Search?from=X&to=Y&mode=0 renderar en kalendergrid (bekräftat: mode 0/2 identiska, mode 1 avviker och verkar ignorera intervallet); scrapers/event_sources.py:s 'html_listing_ics'-kind crawlar den EN gång per körning (mode=0, ett 120-dagars fönster -- 35 unika events uppmätt live 2026-09-05, ett helt kalenderår gav 227) och hämtar sen varje events egna riktiga .ics-export (/events/ICal/<slug>.ics, samma slug oavsett om länken kom via /events/Details/ eller Professional Network-varianten /bpnevents/Details/) med 0.25s artighetsfördröjning mellan anropen (samma mönster som legistar_v1.py, ingen Crawl-delay deklarerad av sajten). Samma 'saknar T-designator'-REFRESH-INTERVAL-kvirk som Tockify (P1H istället för PT1H) -- redan hanterad av befintlig _BAD_REFRESH_PROPS-strippning, ingen kodändring behövdes."
         }
       ],
       "refresh_minutes": 1440,

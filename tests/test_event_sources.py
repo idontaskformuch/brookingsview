@@ -6,7 +6,8 @@ fetch/parse logic; these lock in the quirks already found and fixed once so
 a future edit to this module can't silently reintroduce them.
 """
 from scrapers.event_sources import (
-    EVENT_SOURCE_KINDS, _BAD_REFRESH_PROPS, _decode_ics, _parse_ical,
+    EVENT_SOURCE_KINDS, _BAD_REFRESH_PROPS, _BLOB_SEPARATOR, _decode_ics,
+    _extract_event_slugs, _parse_html_listing_ical, _parse_ical,
 )
 
 
@@ -14,10 +15,14 @@ def _ics(body: str) -> bytes:
     return ("BEGIN:VCALENDAR\r\nVERSION:2.0\r\n" + body + "END:VCALENDAR\r\n").encode()
 
 
-def test_registry_only_has_ical_kind():
+def _vevent(uid: str, title: str, dtstart: str = "20260101T100000Z") -> str:
+    return f"BEGIN:VEVENT\r\nUID:{uid}\r\nSUMMARY:{title}\r\nDTSTART:{dtstart}\r\nEND:VEVENT\r\n"
+
+
+def test_registry_has_ical_and_html_listing_ics_kinds():
     # "blocked"/"unconfirmed" are inert markers handled in events.py before
     # the registry is even consulted -- see event_sources.py's own comment.
-    assert set(EVENT_SOURCE_KINDS) == {"ical"}
+    assert set(EVENT_SOURCE_KINDS) == {"ical", "html_listing_ics"}
 
 
 def test_decode_ics_prefers_utf8():
@@ -127,3 +132,80 @@ def test_parse_ical_empty_calendar_returns_no_records():
 
 def test_parse_ical_malformed_calendar_does_not_raise():
     assert _parse_ical("library", b"not a real calendar at all") == []
+
+
+# ---- "html_listing_ics" kind (ChamberMaster/GrowthZone, Fas 3 källjakt) ----
+
+def test_extract_event_slugs_matches_events_and_bpnevents_variants():
+    html = (
+        '<a href="https://x.example.com/events/Details/first-slug-123?sourceTypeId=Hub">First</a>'
+        '<a href="https://x.example.com/bpnevents/Details/second-slug-456?sourceTypeId=Hub">Second</a>'
+    )
+    assert _extract_event_slugs(html) == ["first-slug-123", "second-slug-456"]
+
+
+def test_extract_event_slugs_deduplicates_preserving_first_seen_order():
+    # a long-running event repeats once per day-cell in the calendar grid --
+    # confirmed live 2026-09-05 (Military Affairs Banner Program appeared
+    # dozens of times across a 7-month run).
+    html = (
+        '<a href="/events/Details/repeats-1?x=1">A</a>'
+        '<a href="/events/Details/once-2?x=1">B</a>'
+        '<a href="/events/Details/repeats-1?x=2">A again</a>'
+    )
+    assert _extract_event_slugs(html) == ["repeats-1", "once-2"]
+
+
+def test_extract_event_slugs_handles_no_matches():
+    assert _extract_event_slugs("<p>no events here</p>") == []
+
+
+def test_parse_html_listing_ical_splits_and_parses_each_item():
+    combined = _BLOB_SEPARATOR.join([
+        b"slug-a\n" + _ics(_vevent("uid-a", "Event A")),
+        b"slug-b\n" + _ics(_vevent("uid-b", "Event B")),
+    ])
+    records = _parse_html_listing_ical("chamber_business", combined)
+    assert sorted(r["title"] for r in records) == ["Event A", "Event B"]
+    assert all(r["source"] == "chamber_business" for r in records)
+
+
+def test_parse_html_listing_ical_empty_blob_returns_no_records():
+    assert _parse_html_listing_ical("chamber_business", b"") == []
+
+
+def test_blob_separator_is_distinct_from_events_py_outer_separator():
+    # Regression test for a real bug caught before shipping (Fas 3, del 2):
+    # events.py's own outer multi-source fetch() combines independent blobs
+    # with b"\n--EVENTSOURCE--\n", and its parse() falls back to splitting on
+    # that exact literal when self._blobs isn't cached (e.g. reparsing a
+    # saved snapshot in a fresh process). If this kind's OWN inner per-event
+    # join reused that same separator, that fallback split would shred this
+    # blob's inner boundaries too, silently corrupting reconstruction. They
+    # must never be equal.
+    from scrapers.event_sources import _BLOB_SEPARATOR as inner_separator
+    outer_separator = b"\n--EVENTSOURCE--\n"
+    assert inner_separator != outer_separator
+
+
+def test_html_listing_ical_survives_outer_events_py_wrapping_roundtrip():
+    # End-to-end version of the regression above: wrap this kind's combined
+    # blob the exact way events.py's fetch() wraps every source's blob, then
+    # reconstruct via the exact way its parse() does when self._blobs is
+    # unavailable -- must recover the identical per-slug blob untouched.
+    outer_separator = b"\n--EVENTSOURCE--\n"
+    inner_combined = _BLOB_SEPARATOR.join([
+        b"slug-a\n" + _ics(_vevent("uid-a", "Event A")),
+        b"slug-b\n" + _ics(_vevent("uid-b", "Event B")),
+    ])
+    blobs = {"chamber_business": inner_combined, "library": _ics(_vevent("uid-c", "Event C"))}
+    snapshot = outer_separator.join(name.encode() + b"\n" + blob for name, blob in blobs.items())
+
+    reconstructed = {}
+    for chunk in snapshot.split(outer_separator):
+        name, _, blob = chunk.partition(b"\n")
+        reconstructed[name.decode()] = blob
+
+    assert reconstructed["chamber_business"] == inner_combined
+    records = _parse_html_listing_ical("chamber_business", reconstructed["chamber_business"])
+    assert sorted(r["title"] for r in records) == ["Event A", "Event B"]
