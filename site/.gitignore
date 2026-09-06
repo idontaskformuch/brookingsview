@@ -2,6 +2,9 @@
 dist/
 # generated types
 .astro/
+# Local Accent Identity: generated per-town at config-eval time by
+# astro.config.mjs, never a source file -- see its own comment.
+public/accent-tokens.css
 
 # dependencies
 node_modules/

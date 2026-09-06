@@ -2,6 +2,8 @@ import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 import { neon } from '@neondatabase/serverless';
 import { loadEnv } from 'vite';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // Statiskt bygge: all data hämtas från Neon vid build-time, sedan serveras rena
 // HTML-filer från Cloudflares edge. GitHub Actions pingar deploy-hooken efter
@@ -25,6 +27,41 @@ const SITE_URLS = {
 // inside a config file specifically because of this timing gap.
 const env = { ...loadEnv('', process.cwd(), ''), ...process.env };
 const activeCity = env.SITE_CITY ?? 'brookings_sd';
+
+// Local Accent Identity. Mirrors site-config.ts's per-town `brand` field
+// exactly -- same duplication tradeoff as slugifyAddress/extractZip/
+// slugifyCategory below: site-config.ts reads import.meta.env.SITE_CITY at
+// module scope, which isn't available yet when this file evaluates, so it
+// can't be imported directly here. Keep both in sync by hand.
+const BRAND_TOKENS = {
+  broomfield_co: { accent: '#2d7980', accentInk: '#124549' },
+};
+
+// Emits the per-town accent tokens as ONE plain static asset in publicDir
+// (copied verbatim to dist/, no bundling/hashing, same stable URL
+// "/accent-tokens.css" on every build of every town) rather than inlining
+// them into BaseLayout.astro's own <style> block. This site has no single
+// shared CSS file today -- Astro bundles/inlines each page's styles into
+// its own per-page chunk (confirmed live: dist/_astro/*.css hashes differ
+// per page, and small bundles get inlined into the page's own <head>
+// entirely) -- so a change inside BaseLayout's <style> block changes either
+// the raw HTML (if inlined) or the linked chunk's hash (if external) on
+// EVERY page, in EVERY town, on every build from then on. A real prior
+// incident (two same-day shared-code deploys that touched already-
+// published pages triggered a simultaneous Google re-crawl queue across two
+// towns, producing an indexing backlog that took weeks to clear) is exactly
+// what this avoids for ongoing tuning: once the one <link> tag referencing
+// this stable URL ships, only this file's CONTENT changes when a color is
+// picked or tuned later -- no town's HTML changes again for that.
+// A town with no brand override still gets a real file, explicitly pinned
+// to the existing shared navy (#0b2e55) -- not an absent file relying
+// solely on BaseLayout's own inline var() fallback -- so "no brand block"
+// is a visible, checked-in fallback rather than an implicit one.
+const brand = BRAND_TOKENS[activeCity];
+const accentTokensCss = brand
+  ? `:root {\n  --brand-accent: ${brand.accent};\n  --brand-accent-ink: ${brand.accentInk};\n}\n`
+  : ':root {\n  --brand-accent: #0b2e55;\n  --brand-accent-ink: #0b2e55;\n}\n';
+fs.writeFileSync(path.join(process.cwd(), 'public', 'accent-tokens.css'), accentTokensCss);
 
 // Mirrors lib/home-sales.ts's slugifyAddress() exactly -- deliberately
 // duplicated rather than imported, since this file runs before Vite's

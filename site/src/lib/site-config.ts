@@ -138,6 +138,22 @@ export interface SiteConfig {
     districtName: string;
     districtUrl: string;
   };
+  /** Local Accent Identity: one restrained per-town accent color, two tokens
+   *  (never one -- a hue that reads right decoratively almost never also
+   *  clears text contrast on white). `accent` is decorative/non-text use
+   *  only (boundaries, active-state indicators); `accentInk` is any real
+   *  text or interactive control. Both are enforced at build time against
+   *  WCAG minimums -- see lib/accent-contrast.ts's assertAccentContrast()
+   *  -- never hand-picked without running that check. Optional: a town with
+   *  no `brand` block falls back to the shared navy palette unchanged (see
+   *  astro.config.mjs's BRAND_TOKENS, which mirrors this field exactly --
+   *  same cross-layer duplication tradeoff as this file's other astro.config
+   *  mirrors, needed because astro.config.mjs evaluates before this file's
+   *  own import.meta.env-based SITE_CITY read is available). Broomfield-only
+   *  for v1 (rollout order, not a technical limitation) -- Brookings and
+   *  Moreno Valley are still working through the August indexing backlog
+   *  and shouldn't absorb a site-wide render change until that clears. */
+  brand?: { accent: string; accentInk: string };
 }
 
 const CITIES: Record<string, SiteConfig> = {
@@ -255,6 +271,15 @@ const CITIES: Record<string, SiteConfig> = {
     stateAbbr: 'CO',
     hasWorkplaceWatch: true,
     statusModules: ['weather', 'alerts', 'traffic', 'next_meeting'],
+    // Local Accent Identity, Broomfield-first rollout. A muted Front Range
+    // slate-teal (H185) -- deliberately not green (avoids reading as an
+    // interpretation of Vail Resorts' own branding, which this town's
+    // /vail-resorts page already covers) and far enough in hue from both
+    // the existing shared --navy (H212) and the shared CTA --accent orange
+    // (H17) to never be confused with either. Both values verified via
+    // lib/accent-contrast.ts against real WCAG minimums, not eyeballed --
+    // accent 5.05:1 / accentInk 10.64:1 against the page background.
+    brand: { accent: '#2d7980', accentInk: '#124549' },
     brandLead: 'Broomfield',
     brandTail: 'View',
     siteName: 'Broomfield View',
