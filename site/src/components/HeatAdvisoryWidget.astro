@@ -9,49 +9,24 @@
 // dess titel (t.ex. "Excessive Heat Warning") ÄR den mest exakta tillgängliga
 // uppgiften -- se nws_alerts.py, som skriver NWS:s eget "event"-namn rakt av
 // som story-titel.
+import { computeHeatTier, HEAT_TIER_TEXT } from '../lib/heat-advisory';
+
 interface Props {
   tempF: number | null;
   activeAlertTitles: string[];
 }
 const { tempF, activeAlertTitles } = Astro.props;
 
-type Tier = 'safe' | 'caution' | 'high-risk';
-
-const heatAlert = activeAlertTitles.find((t) =>
-  /excessive heat|heat warning|heat advisory|extreme heat/i.test(t)
-);
-const dustAlert = activeAlertTitles.find((t) => /dust/i.test(t));
-
-let tier: Tier;
-let label: string;
-if (heatAlert) {
-  tier = 'high-risk';
-  label = heatAlert;
-} else if (dustAlert) {
-  tier = 'caution';
-  label = dustAlert;
-} else if (tempF !== null && tempF >= 105) {
-  tier = 'high-risk';
-  label = `${Math.round(tempF)}°F -- high heat risk`;
-} else if (tempF !== null && tempF >= 90) {
-  tier = 'caution';
-  label = `${Math.round(tempF)}°F -- use caution outdoors`;
-} else {
-  tier = 'safe';
-  label = tempF !== null ? `${Math.round(tempF)}°F -- safe conditions` : 'No advisory in effect';
-}
-
-const TIER_TEXT: Record<Tier, string> = {
-  safe: 'Safe',
-  caution: 'Caution',
-  'high-risk': 'High risk',
-};
+// Tier logic itself lives in lib/heat-advisory.ts -- CityStatus's own
+// `worker_pulse` module needs the exact same decision (see
+// lib/cityStatus.ts), extracted so both consume one set of thresholds.
+const { tier, label } = computeHeatTier(tempF, activeAlertTitles);
 ---
 
 <div class={`heat-advisory heat-advisory--${tier}`}>
   <div class="heat-advisory__dot" aria-hidden="true"></div>
   <div class="heat-advisory__text">
-    <div class="heat-advisory__tier">{TIER_TEXT[tier]} for outdoor &amp; loading-dock work</div>
+    <div class="heat-advisory__tier">{HEAT_TIER_TEXT[tier]} for outdoor &amp; loading-dock work</div>
     <div class="heat-advisory__label">{label}</div>
   </div>
 </div>

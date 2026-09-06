@@ -2244,6 +2244,37 @@ export async function getAllProjectUpdatesForWeekly(): Promise<(ProjectUpdate & 
   `) as (ProjectUpdate & { project_slug: string; project_title: string })[];
 }
 
+/** CityStatus's `next_meeting` module (lib/cityStatus.ts) -- the soonest
+ *  upcoming meeting of any body, town-wide. `body` is the meeting type
+ *  ("City Council", "Planning Commission", ...); `local_label` is a
+ *  ready-to-render "Tue 6:00 PM" string, formatted IN SQL via
+ *  AT TIME ZONE + to_char (not new Date() in the frontend) -- meeting_date
+ *  is a real TIMESTAMPTZ instant, and every real row checked while building
+ *  this (Brookings/Broomfield/Moreno Valley) carries a genuine local
+ *  evening/daytime time, never a bare date -- same "format in Postgres,
+ *  not JS" convention as getLatestEmployerRatings' period_label. Returns
+ *  null when this town has no meeting scheduled in the future at all --
+ *  a real, honest state (see check_no_prediction-adjacent principle: no
+ *  meeting found is not the same as "on recess", so the caller shows an
+ *  omitted row, not a guessed one). */
+export interface NextMeeting {
+  body: string;
+  local_label: string;
+  agenda_url: string | null;
+}
+
+export async function getNextMeeting(): Promise<NextMeeting | null> {
+  const rows = (await sql`
+    SELECT body, to_char(meeting_date AT TIME ZONE ${siteConfig.timezone}, 'Dy FMHH12:MI AM') AS local_label,
+           agenda_url
+      FROM meetings
+     WHERE town_id = ${TOWN_ID} AND meeting_date >= now() AND body IS NOT NULL
+     ORDER BY meeting_date ASC
+     LIMIT 1
+  `) as NextMeeting[];
+  return rows[0] ?? null;
+}
+
 /** "Part of an ongoing story" banner support (Story Threads) -- a meeting
  *  STORY (s/[slug].astro) doesn't carry meetings.id as its own column, but
  *  the id is already the stable suffix of every meeting slug ("meeting-123"

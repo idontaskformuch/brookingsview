@@ -1,0 +1,149 @@
+---
+/** CityStatus -- "<Town> Right Now", the compact front-page status strip.
+ *  See lib/cityStatus.ts for the resolvers/validation and the handoff's own
+ *  module contract. Fully static, resolved at build time (v1 -- see the
+ *  handoff's "Freshness" section on why a runtime /api/status route isn't
+ *  built yet).
+ *
+ *  Presentation notes (handoff): no emoji-per-row -- tone is communicated
+ *  by a colour accent (the small dot, same pattern as HeatAdvisoryWidget's
+ *  own `.heat-advisory__dot`), reusing this site's existing card aesthetic
+ *  (RelatedContent.astro) rather than a new visual language.
+ */
+import { getCityStatus, applyVisibilityRules, oldestAsOf } from '../lib/cityStatus';
+import { siteConfig } from '../lib/site-config';
+
+const hasStatusModules = !!siteConfig.statusModules && siteConfig.statusModules.length > 0;
+
+// No empty container ships when a town has no statusModules configured
+// (handoff's own explicit rule) -- skip resolving anything at all rather
+// than call getCityStatus() just to render nothing.
+const modules = hasStatusModules ? applyVisibilityRules(await getCityStatus()) : [];
+const updated = oldestAsOf(modules);
+
+const updatedLabel = updated
+  ? updated.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: siteConfig.timezone })
+  : null;
+
+// A real CTA label per town (handoff's own "Presentation notes"), not a
+// generic "See more". /today is universal (no per-town gating) -- see
+// site/src/pages/today.astro.
+const ctaLabel = `Full ${siteConfig.cityName} rundown →`;
+---
+
+{modules.length > 0 && (
+  <section class="city-status" aria-label={`${siteConfig.cityName} right now`}>
+    <div class="city-status__head">
+      <h2 class="city-status__title">{siteConfig.cityName} Right Now</h2>
+      {updatedLabel && <span class="city-status__updated">Updated {updatedLabel}</span>}
+    </div>
+    <ul class="city-status__list">
+      {modules.map((mod) => (
+        <li class="city-status__item">
+          {mod.href ? (
+            <a class="city-status__link" href={mod.href}>
+              <span class:list={['city-status__dot', `city-status__dot--${mod.tone}`]} aria-hidden="true"></span>
+              <span class="city-status__text">
+                <span class="city-status__label">{mod.label}</span>
+                <span class="city-status__value">{mod.value}</span>
+              </span>
+            </a>
+          ) : (
+            <span class="city-status__static">
+              <span class:list={['city-status__dot', `city-status__dot--${mod.tone}`]} aria-hidden="true"></span>
+              <span class="city-status__text">
+                <span class="city-status__label">{mod.label}</span>
+                <span class="city-status__value">{mod.value}</span>
+              </span>
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
+    <a class="city-status__cta" href="/today/">{ctaLabel}</a>
+  </section>
+)}
+
+<style>
+  .city-status {
+    max-width: 60rem;
+    margin: 0 auto 1.5rem;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 0.9rem 1rem 0.75rem;
+  }
+  .city-status__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.65rem;
+  }
+  .city-status__title {
+    font-family: var(--font-ui);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0;
+    color: var(--ink-soft);
+  }
+  .city-status__updated {
+    font-family: var(--font-ui);
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  .city-status__list {
+    list-style: none;
+    margin: 0 0 0.65rem;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+  }
+  .city-status__item { flex: 1 1 11rem; min-width: 0; }
+  .city-status__link, .city-status__static {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: inherit;
+  }
+  .city-status__link:hover .city-status__value { text-decoration: underline; }
+  .city-status__dot {
+    width: 0.55rem; height: 0.55rem; border-radius: 50%;
+    flex-shrink: 0; margin-top: 0.35rem;
+    background: var(--ink-soft);
+  }
+  .city-status__dot--notice { background: #d9a441; }
+  .city-status__dot--alert { background: #d73027; }
+  .city-status__text { min-width: 0; }
+  .city-status__label {
+    display: block;
+    font-family: var(--font-ui);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .city-status__value {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .city-status__cta {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-top: 1px solid var(--rule);
+    padding-top: 0.6rem;
+    width: 100%;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .city-status__dot--notice { background: #fbbf24; }
+    .city-status__dot--alert { background: #fca5a5; }
+  }
+</style>

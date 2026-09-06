@@ -90,6 +90,29 @@ export interface SiteConfig {
   /** Mirrors configs/<town_id>.json's features.housing_market.enabled. See
    *  hasClosureWatch above for the sync requirement. */
   hasHousingMarket?: boolean;
+  /** Whether this town has at least one ENABLED events source in
+   *  configs/<town_id>.json's data_sources.events (see scrapers/
+   *  event_sources.py's registry) -- gates CityStatus's `events_today`
+   *  module (lib/cityStatus.ts). Broomfield's events source is still
+   *  enabled:false (WebTrac blocked by an active Cloudflare challenge, see
+   *  that config's own _notes) -- undefined/false here, not true, since
+   *  "no source" and "quiet day" are different states and events_today is
+   *  an always-rendered module (getCityStatus() fails the build if a town
+   *  configures it without this flag, see CITY_STATUS_MODULES). Keep in
+   *  sync with that config file by hand, same convention as
+   *  hasClosureWatch above. */
+  hasEventsSource?: boolean;
+  /** CityStatus (front-page condensed strip, lib/cityStatus.ts) -- which
+   *  modules render, in render order. An id with no matching resolver, or
+   *  an always-rendered module configured for a town with no real source
+   *  behind it, fails the build loudly rather than silently degrading (see
+   *  getCityStatus()'s own validation) -- this array is the single source
+   *  of truth for "does this town have X", never a hand-maintained prose
+   *  matrix (one of those was wrong about Broomfield's traffic source
+   *  twice; the fix is deriving availability from this file, not writing a
+   *  third copy of the same claim). Missing/empty disables the component
+   *  for that town entirely -- no empty container ships. */
+  statusModules?: string[];
   /** Closure Watch's operational parameters -- mirrors configs/<town_id>.json's
    *  features.closure_watch (districts/weather_zones excluded here since
    *  school_alerts/events are already scoped by town_id at scrape/query
@@ -124,6 +147,8 @@ const CITIES: Record<string, SiteConfig> = {
     stateName: 'South Dakota',
     stateAbbr: 'SD',
     hasClosureWatch: true,
+    hasEventsSource: true,
+    statusModules: ['weather', 'alerts', 'closures', 'events_today', 'next_meeting', 'university'],
     closureWatch: {
       relevantAlertEvents: [
         'Winter Storm Warning', 'Blizzard Warning', 'Ice Storm Warning',
@@ -170,6 +195,8 @@ const CITIES: Record<string, SiteConfig> = {
     stateAbbr: 'CA',
     hasWorkplaceWatch: true,
     hasClosureWatch: true,
+    hasEventsSource: true,
+    statusModules: ['weather', 'alerts', 'traffic', 'closures', 'events_today', 'next_meeting', 'worker_pulse'],
     closureWatch: {
       relevantAlertEvents: ['Red Flag Warning', 'Fire Weather Watch', 'Air Quality Alert'],
       // Measured 2026-08-28 against real scrape history: Air Quality Alert
@@ -227,6 +254,7 @@ const CITIES: Record<string, SiteConfig> = {
     stateName: 'Colorado',
     stateAbbr: 'CO',
     hasWorkplaceWatch: true,
+    statusModules: ['weather', 'alerts', 'traffic', 'next_meeting'],
     brandLead: 'Broomfield',
     brandTail: 'View',
     siteName: 'Broomfield View',
