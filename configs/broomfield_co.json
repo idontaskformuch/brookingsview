@@ -182,6 +182,11 @@
       },
       "_notes": "Direct port of the existing jobs_v1.py/Adzuna integration, just re-scoped `where`. No new code needed -- same ADZUNA_APP_ID/ADZUNA_APP_KEY secrets, same free-tier quota reasoning as the other two towns."
     },
+    "permits": {
+      "type": "permits",
+      "enabled": false,
+      "_notes": "UTREDD 2026-09-06 (Story Threads Fas 2, punkt 2 -- permits som tredje källa): Broomfields byggloven söks via 'Public Access Permit Search' (broomfield.org/2165/), som kör på Innoprise Cloud9 (broomfield.cloud9.innoprise.com/citizenaccess/). Inget robots.txt-förbud (404 på hela värden). MEN: hela gränssnittet är byggt på ZK Framework (bekräftat: /citizenaccess/zkau/web/.../js/zk.wpd, en sessionsbunden jsessionid direkt i skript-URL:en) -- ett stateful, serverdrivet Java-UI där sidans HTML-källa i praktiken är meningslös utan en levande, interaktiv session (AJAX/polling-driven, som gamla JSF/GWT-appar). Ingen lättviktig requests-baserad skrapning är realistisk -- skulle kräva fullständig webbläsarautomatisering (Playwright e.dyl.), en infrastrukturinvestering som inte finns någon annanstans i den här pipelinen (allt annat är requests+regex/API-baserat). Ingen riktig post har hämtats -- datakvalitet/matchningspotential kunde inte bedömas. Död väg av tekniska/arkitektoniska skäl, inte policy."
+    },
     "vail_news": {
       "type": "vail_news",
       "enabled": true,

@@ -202,6 +202,11 @@
       },
       "_notes": "VERIFIERAD 2026-08-10 live mot Adzuna Job Search API med riktiga ADZUNA_APP_ID/ADZUNA_APP_KEY (ENDAST i .env/GitHub-secrets, aldrig i denna fil) -- 'Brookings, SD' gav riktiga träffar. Gratisnivå ~1000 anrop/månad (~33/dag) -- refresh_minutes: 1440 (ett dygn) garanterar ETT anrop/ort/dag trots att scrape.yml kör varje timme, se runner.py:s nya refresh_minutes-spärr (db.last_run_at) och jobs_v1.py:s moduldocstring."
     },
+    "permits": {
+      "type": "permits",
+      "enabled": false,
+      "_notes": "UTREDD 2026-09-06 (Story Threads Fas 2, punkt 2 -- permits som tredje källa): Brookings kör SmartGov (samma plattform som redan känd från calendar-blockeringen, ci-brookings-sd.smartgovcommunity.com). robots.txt DÖD: explicit Disallow på /PermittingPublic/ (den faktiska publika bygglovssök-vägen) plus /Application, /ApplicationPublic/, /Parcels/, /PublicNotice/, /Public/DocumentsView, /Public/Report, /Public/ReportsView -- i praktiken varje publik yta på hela instansen. Samma policyblockering som city_parks_rec/SmartGov-kalendern redan är känd för. Ingen väg runt detta -- respektera robots.txt, samma disciplin som WebTrac/SDSU. Död väg."
+    },
     "sdsu_events": {
       "type": "sdsu_events",
       "enabled": true,

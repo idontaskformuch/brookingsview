@@ -381,6 +381,11 @@
         "voice": "n/a (fakta, ingen AI-generering)"
       },
       "_notes": "VERIFIERAD 2026-08-10 live mot Adzuna Job Search API (api.adzuna.com) med riktiga ADZUNA_APP_ID/ADZUNA_APP_KEY (ENDAST i .env/GitHub-secrets, aldrig i denna fil). Gratisnivå ~1000 anrop/månad (~33/dag) -- refresh_minutes: 1440 (ett dygn) garanterar ETT anrop/ort/dag trots att scrape.yml/moval-scrape.yml kör varje timme, se runner.py:s nya refresh_minutes-spärr (db.last_run_at) och jobs_v1.py:s moduldocstring. results_per_page/max_pages hålls lågt av samma kvotskäl."
+    },
+    "permits": {
+      "type": "permits",
+      "enabled": false,
+      "_notes": "UTREDD 2026-09-06 (Story Threads Fas 2, punkt 2 -- permits som tredje källa): Moreno Valley kör 'SimpliCITY' (stadens eget varumärke för sin Accela Citizen Access-instans, aca-prod.accela.com/MOVAL/). Inget robots.txt-förbud (404 på hela aca-prod.accela.com-värden), och sidan i sig kräver inget konto för sök (CapHome.aspx?module=Building, riktiga fält: gatunummer/namn, parcel-nr, ärendenummer med typ-legend B=Building/C=Code/F=Fire/L=Land Development/P=Planning/S=Special Districts/T=Transportation, datumintervall). MEN: klassisk ASP.NET WebForms-postback (inget JSON-API, inget enkelt GET-baserat resultat -- __VIEWSTATE/__EVENTTARGET krävs), och ett riktigt live-försök att posta en sökning (datumintervall 2026-01-01 till 2026-09-06, med korrekt extraherade viewstate-fält) avvisades av plattformens EGEN CSRF-skyddsmekanism: 'Potential cross-site request forgery attacks. The Referer and Origin headers are missing.' -- ett medvetet, plattformsbyggt anti-automatiseringsskydd, inte en teknikalitet att runda (samma disciplin som Cloudflare-utmaningen på WebTrac). Ingen riktig post har därför faktiskt hämtats -- datakvalitet/matchningspotential mot Story Threads-projekt kunde inte bedömas. Död väg, av samma skäl som WebTrac: aktivt anti-bot-skydd, inte en policy-textrad."
     }
   },
   "features": {
