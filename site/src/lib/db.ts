@@ -2107,6 +2107,16 @@ export interface Project {
   // each time a new entry lands; null until a project has at least one.
   rolling_summary: string | null;
   resolved_at: string | null;
+  // Story Threads Phase 2 cross-linking (db/migrations/040_project_
+  // workplace_watch_link.sql) -- hand-curated, same pattern as
+  // home_sales_zip above (never auto-matched by title text). slug is the
+  // raw employers.slug value; name is resolved via a JOIN at read time
+  // (see getProjects()/getProjectBySlug()) so the page can show a real
+  // label ("Ball Corporation"), not a bare slug. Both null together means
+  // "not curated / doesn't apply" -- same honest-empty convention as
+  // home_sales_zip.
+  workplace_watch_employer_slug: string | null;
+  workplace_watch_employer_name: string | null;
 }
 
 export interface ProjectUpdate {
@@ -2154,20 +2164,26 @@ export const PROJECT_STATUS_LABELS: Record<string, string> = {
 
 export async function getProjects(): Promise<Project[]> {
   return (await sql`
-    SELECT slug, title, description, status, location_text, lat, lon,
-           home_sales_zip, updated_at, rolling_summary, resolved_at
-      FROM projects
-     WHERE town_id = ${TOWN_ID}
-     ORDER BY updated_at DESC
+    SELECT p.slug, p.title, p.description, p.status, p.location_text, p.lat, p.lon,
+           p.home_sales_zip, p.updated_at, p.rolling_summary, p.resolved_at,
+           p.workplace_watch_employer_slug, e.name AS workplace_watch_employer_name
+      FROM projects p
+      LEFT JOIN employers e
+        ON e.town_id = p.town_id AND e.slug = p.workplace_watch_employer_slug
+     WHERE p.town_id = ${TOWN_ID}
+     ORDER BY p.updated_at DESC
   `) as Project[];
 }
 
 export async function getProjectBySlug(slug: string): Promise<Project | null> {
   const rows = (await sql`
-    SELECT slug, title, description, status, location_text, lat, lon,
-           home_sales_zip, updated_at, rolling_summary, resolved_at
-      FROM projects
-     WHERE town_id = ${TOWN_ID} AND slug = ${slug}
+    SELECT p.slug, p.title, p.description, p.status, p.location_text, p.lat, p.lon,
+           p.home_sales_zip, p.updated_at, p.rolling_summary, p.resolved_at,
+           p.workplace_watch_employer_slug, e.name AS workplace_watch_employer_name
+      FROM projects p
+      LEFT JOIN employers e
+        ON e.town_id = p.town_id AND e.slug = p.workplace_watch_employer_slug
+     WHERE p.town_id = ${TOWN_ID} AND p.slug = ${slug}
      LIMIT 1
   `) as Project[];
   return rows[0] ?? null;

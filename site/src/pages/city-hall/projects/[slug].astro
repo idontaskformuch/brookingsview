@@ -142,6 +142,12 @@ const itemListJsonLd = updates.length > 0 ? {
           )}
         </p>
       )}
+      {siteConfig.hasWorkplaceWatch && project.workplace_watch_employer_name && (
+        <p class="cross-link">
+          This project may affect a tracked local employer —{' '}
+          <a href="/workplace-watch/">see {project.workplace_watch_employer_name} in Worker Pulse →</a>
+        </p>
+      )}
       <ShareButton title={`${project.title} — ${siteConfig.siteName}`} url={canonicalUrl} />
     </header>
 
@@ -228,6 +234,7 @@ const itemListJsonLd = updates.length > 0 ? {
   font-size: 0.9375rem;
 }
 .location { color: var(--ink-soft); font-size: 0.9375rem; margin: 0.75rem 0 0; }
+.cross-link { color: var(--ink-soft); font-size: 0.9375rem; margin: 0.75rem 0 0; }
 .timeline-heading { margin-top: 2rem; }
 .timeline { list-style: none; margin: 0; padding: 0; max-width: 44rem; }
 .timeline__item {
