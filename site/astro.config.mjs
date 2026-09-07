@@ -183,6 +183,15 @@ const TOWN_GATED_PAGES = [
   // pipeline behind it isn't built yet -- see configs/*.json's new_in_town
   // "_notes") -- a pure stub everywhere until that ships.
   { path: '/new-in-town/', activeFor: [] },
+  // What's On Phase 5: hasWhatsOn is false everywhere (Phase 7 town-by-town
+  // rollout) -- a pure stub everywhere today, same as new-in-town above.
+  // Only the LISTING page (a single static path) needs an entry here --
+  // /whats-on/[slug]/ detail pages are excluded from this list on purpose,
+  // same reasoning as city-hall/projects/[slug].astro etc.'s own dynamic-
+  // route exclusion above: that page's own getStaticPaths() returns []
+  // when the flag is off, so no detail-page stub file is ever produced to
+  // need excluding.
+  { path: '/whats-on/', activeFor: [] },
 ];
 
 /**

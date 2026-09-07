@@ -1,7 +1,12 @@
-/** What's On Phase 3 -- Ticketmaster Discovery API adapter. Fetch +
- *  normalization only; NOT wired into buildEventFeed() or any page this
- *  phase (see this file's own module comment below for why). Callable in
- *  isolation from scripts/dump-event-ranking.ts and from tests.
+/** What's On -- Ticketmaster Discovery API adapter. Built Phase 3 as fetch +
+ *  normalization only, deliberately NOT wired into buildEventFeed() or any
+ *  page (see TicketmasterFeedItem's own comment for why that stayed true
+ *  through Phase 4 too). Phase 5 (site/src/pages/whats-on/) is the first
+ *  real caller -- gated behind SiteConfig.hasWhatsOn (false everywhere) and
+ *  siteConfig.ticketmaster.enabled (also false everywhere), so this module
+ *  itself is unchanged in spirit: still safe to call in isolation from
+ *  scripts/dump-event-ranking.ts and from tests, still inert in every real
+ *  build today.
  *
  *  Brookings-only for now -- don't call this for other towns yet (Phase 7).
  */
@@ -33,7 +38,30 @@ export interface RawTicketmasterEvent {
   images?: { url: string; width: number; height: number; ratio?: string }[];
   dates?: { start?: { dateTime?: string; localDate?: string; localTime?: string } };
   priceRanges?: { min?: number; max?: number; currency?: string }[];
-  _embedded?: { venues?: { name?: string }[] };
+  _embedded?: {
+    venues?: {
+      /** Discovery API's own stable venue identifier -- preferred over
+       *  `name` for tier matching (see lib/venue-tiers.ts's venueTierFor())
+       *  since a display name can drift (sponsorship renames are common for
+       *  arenas) while this id doesn't. */
+      id?: string;
+      name?: string;
+      address?: { line1?: string };
+      city?: { name?: string };
+      state?: { stateCode?: string };
+      postalCode?: string;
+      location?: { latitude?: string; longitude?: string };
+      /** Discovery API computes this itself, in whatever `unit` the search
+       *  request asked for (this adapter always requests `unit=miles`, see
+       *  fetchTicketmasterEvents()) -- confirmed live: 3.57 for Dana J.
+       *  Dykhouse Stadium (Brookings) and 50.06 for Washington Pavilion of
+       *  Arts & Science (Sioux Falls) against a 75-mile Brookings-centered
+       *  search. Using the API's own number instead of computing haversine
+       *  distance here avoids a whole separate distance-math implementation
+       *  (and its own bug surface) for a value the API already hands over. */
+      distance?: number;
+    }[];
+  };
   classifications?: { primary?: boolean; segment?: { name?: string } }[];
 }
 
@@ -58,9 +86,9 @@ export interface TicketmasterFeedItem {
 }
 
 /** Fields that don't fit story/arts' existing shape stay here rather than
- *  being forced into one of those -- ticketUrl and priceRangeText are
- *  genuinely Ticketmaster-specific (an SDSU arts_culture event has neither
- *  a paid-ticket link nor a price range in this codebase's data model).
+ *  being forced into one of those -- ticketUrl and price are genuinely
+ *  Ticketmaster-specific (an SDSU arts_culture event has neither a
+ *  paid-ticket link nor a price range in this codebase's data model).
  *  imageUrl/imageWidth/imageHeight are wired into lib/images.ts's
  *  resolveImage() as of Phase 4, as a new top tier above article/venue/
  *  category -- width/height are captured (not just the URL) so that tier
@@ -68,16 +96,45 @@ export interface TicketmasterFeedItem {
  *  rather than guessing a fixed size for images whose real aspect ratio
  *  varies per event (confirmed live: real captured widths range from 640
  *  to 2048px depending on which renditions Discovery API has for a given
- *  event). */
+ *  event).
+ *
+ *  venueLatitude/venueLongitude/venueAddress/venueCity/venueStateCode/
+ *  venuePostalCode (What's On Phase 5): real venue geo/address data,
+ *  captured for two things Phase 5 needs that Phase 3/4 didn't --
+ *  lib/geo.ts's distance-from-Brookings label (the anti-doorway-pattern
+ *  transparency requirement) and a real schema.org PostalAddress/
+ *  GeoCoordinates on the detail page, matching the same quality bar
+ *  lib/event-jsonld.ts already holds local venues to. Null when Discovery
+ *  API's own `_embedded.venues` is absent for an event (confirmed this
+ *  does happen live) -- never guessed.
+ *
+ *  priceMin/priceMax/priceCurrency (raw numbers, What's On Phase 5): kept
+ *  alongside priceRangeText (the pre-formatted display string) rather than
+ *  parsed back out of it, so Event JSON-LD's `offers` can use real numeric
+ *  values instead of re-parsing display text. */
 export interface TicketmasterEvent {
   id: string;
   title: string;
+  venueId: string | null;
   venueName: string | null;
+  venueLatitude: number | null;
+  venueLongitude: number | null;
+  venueAddress: string | null;
+  venueCity: string | null;
+  venueStateCode: string | null;
+  venuePostalCode: string | null;
+  /** Miles from the search origin (this town's own coordinates) -- see the
+   *  raw venue type's own comment on `distance` above. Null when Discovery
+   *  API's own venue data is absent, same as every other venue field. */
+  venueDistanceMiles: number | null;
   ticketUrl: string;
   imageUrl: string | null;
   imageWidth: number | null;
   imageHeight: number | null;
   priceRangeText: string | null;
+  priceMin: number | null;
+  priceMax: number | null;
+  priceCurrency: string | null;
 }
 
 function formatPriceRange(ranges: RawTicketmasterEvent['priceRanges']): string | null {
@@ -87,6 +144,41 @@ function formatPriceRange(ranges: RawTicketmasterEvent['priceRanges']): string |
   return range.min === range.max
     ? `${currency}${range.min}`
     : `${currency}${range.min} - ${currency}${range.max}`;
+}
+
+function parseCoordinate(value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** Below this, a venue reads as "in town," not a real distance away --
+ *  see this function's own doc comment for why a small threshold matters
+ *  here specifically. */
+const IN_TOWN_THRESHOLD_MILES = 5;
+
+/**
+ * What's On Phase 5's anti-doorway-pattern transparency label -- the
+ * original feature intent was "regional radius with drive-time always
+ * shown so it isn't a hidden doorway pattern," i.e. never let a reader
+ * discover only after clicking that "a local event" is actually 50 miles
+ * away. Distance, not drive time (see the Phase 5 handoff's own
+ * recommendation: straight-line/API-computed distance is free and honestly
+ * labeled as distance; a routing API for real drive-time is a real
+ * recurring cost not worth paying before this page's value is proven --
+ * a one-line swap later if it ever is).
+ *
+ * Below IN_TOWN_THRESHOLD_MILES, returns "In <cityName>" rather than a
+ * number -- "~1 mile away" (or worse, "~0 miles away" for a venue Discovery
+ * API places almost exactly at the search origin) reads as a bug, not a
+ * courtesy, for a venue that's genuinely in the town itself. `null` venue
+ * distance (Discovery API had no venue data at all) returns null -- no
+ * label, never a fabricated "nearby."
+ */
+export function distanceLabel(miles: number | null, cityName: string): string | null {
+  if (miles == null) return null;
+  if (miles < IN_TOWN_THRESHOLD_MILES) return `In ${cityName}`;
+  return `~${Math.round(miles)} miles away`;
 }
 
 /** Highest-resolution image Discovery API offers -- widest `width`, not
@@ -134,15 +226,28 @@ export function isSportsEvent(raw: RawTicketmasterEvent): boolean {
  *  already enforce in lib/events.ts. */
 export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): TicketmasterFeedItem {
   const image = bestImage(raw.images);
+  const venue = raw._embedded?.venues?.[0];
+  const priceRange = raw.priceRanges?.[0];
   const event: TicketmasterEvent = {
     id: raw.id,
     title: raw.name,
-    venueName: raw._embedded?.venues?.[0]?.name ?? null,
+    venueId: venue?.id ?? null,
+    venueName: venue?.name ?? null,
+    venueLatitude: parseCoordinate(venue?.location?.latitude),
+    venueLongitude: parseCoordinate(venue?.location?.longitude),
+    venueAddress: venue?.address?.line1 ?? null,
+    venueCity: venue?.city?.name ?? null,
+    venueStateCode: venue?.state?.stateCode ?? null,
+    venuePostalCode: venue?.postalCode ?? null,
+    venueDistanceMiles: venue?.distance ?? null,
     ticketUrl: raw.url ?? '',
     imageUrl: image?.url ?? null,
     imageWidth: image?.width ?? null,
     imageHeight: image?.height ?? null,
     priceRangeText: formatPriceRange(raw.priceRanges),
+    priceMin: priceRange?.min ?? null,
+    priceMax: priceRange?.max ?? null,
+    priceCurrency: priceRange?.currency ?? null,
   };
   return {
     sourceKind: 'ticketmaster',

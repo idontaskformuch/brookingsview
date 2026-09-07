@@ -90,6 +90,17 @@ export interface SiteConfig {
   /** Mirrors configs/<town_id>.json's features.housing_market.enabled. See
    *  hasClosureWatch above for the sync requirement. */
   hasHousingMarket?: boolean;
+  /** What's On Phase 5: gates the /whats-on/ listing + detail pages and
+   *  their nav link. Mirrors configs/<town_id>.json's
+   *  features.whats_on.enabled -- see hasClosureWatch above for the sync
+   *  requirement (tests/test_feature_flags.py checks this pairing for
+   *  ALL THREE towns, same as every other feature flag, even though only
+   *  Brookings has a real ticketmaster config to go with it). False
+   *  everywhere, including Brookings -- this is a real, fully-built,
+   *  human-reviewed page kept dark for town-by-town rollout (Phase 7),
+   *  the same "enabled: false everywhere" convention as siteConfig.
+   *  ticketmaster.enabled and every other What's On phase before this. */
+  hasWhatsOn?: boolean;
   /** Whether this town has at least one ENABLED events source in
    *  configs/<town_id>.json's data_sources.events (see scrapers/
    *  event_sources.py's registry) -- gates CityStatus's `events_today`
@@ -197,6 +208,7 @@ const CITIES: Record<string, SiteConfig> = {
     // field exactly. radiusMiles=75 comfortably clears the ~53mi to Sioux
     // Falls -- see this field's own doc comment above for why.
     ticketmaster: { enabled: false, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 },
+    hasWhatsOn: false,
     statusModules: ['weather', 'alerts', 'closures', 'events_today', 'next_meeting', 'university'],
     closureWatch: {
       relevantAlertEvents: [

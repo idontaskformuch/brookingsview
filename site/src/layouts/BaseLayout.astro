@@ -85,6 +85,7 @@ const nav = [
   { href: '/today/', label: 'Today' },
   { href: '/this-week/', label: 'This week' },
   { href: '/events/', label: 'Events' },
+  ...(siteConfig.hasWhatsOn ? [{ href: '/whats-on/', label: "What's On" }] : []),
   ...(isBrookings ? [{ href: '/university/', label: 'University' }] : []),
   ...(isBrookings ? [{ href: '/jackrabbits/', label: 'Jackrabbits' }] : []),
   ...(isBrookings ? [{ href: '/play/', label: 'Play' }] : []),

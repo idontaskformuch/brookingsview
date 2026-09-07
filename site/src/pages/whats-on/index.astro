@@ -1,0 +1,95 @@
+---
+/** What's On -- Phase 5. Gated on siteConfig.hasWhatsOn (false everywhere,
+ *  see site-config.ts) -- same redirect pattern as closures.astro/
+ *  workplace-watch/index.astro. Indexable (not noindex): this is the one
+ *  new page in the feature meant to attract search traffic, per the
+ *  original What's On spec's intent -- detail pages stay noindex (see
+ *  [slug].astro).
+ *
+ *  Marquee (larger cards, real images via lib/images.ts's Ticketmaster
+ *  tier) vs. Also-on-this-day (dense, no image) -- see lib/whats-on.ts's
+ *  rankTicketmasterEvents()/splitMarquee() for the ranking + provisional
+ *  cutoff.
+ *
+ *  Every card shows a distance label for any venue outside town proper --
+ *  the anti-doorway-pattern transparency the original spec named
+ *  explicitly (see lib/ticketmaster.ts's distanceLabel()).
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SectionRule from '../../components/SectionRule.astro';
+import WhatsOnCard from '../../components/WhatsOnCard.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import ShareButton from '../../components/ShareButton.astro';
+import { siteConfig } from '../../lib/site-config';
+import { getTicketmasterEventsForTown } from '../../lib/ticketmaster';
+import { rankTicketmasterEvents, splitMarquee } from '../../lib/whats-on';
+import { EMPTY_STATES } from '../../lib/empty-states';
+import { SECTION_THEME } from '../../lib/section-theme';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
+
+if (!siteConfig.hasWhatsOn) {
+  return Astro.redirect('/', 302);
+}
+
+const items = await getTicketmasterEventsForTown(siteConfig);
+const ranked = rankTicketmasterEvents(items, siteConfig.townId);
+const { marquee, alsoOn } = splitMarquee(ranked);
+
+const canonicalUrl = new URL('/whats-on/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: "What's On", href: canonicalUrl },
+];
+const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
+---
+<BaseLayout title={`What's On in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-whats-on"
+  description={`Concerts, theatre and touring shows within ${radiusMiles ?? 75} miles of ${siteConfig.cityName}, ${siteConfig.stateName} — with real distance shown, never a hidden away-game.`}
+  accentColor={SECTION_THEME.events.accent}>
+  <Breadcrumbs trail={breadcrumbTrail} />
+  <header class="lede">
+    <h1>What's On</h1>
+    <p>Concerts, theatre and touring shows within {radiusMiles ?? 75} miles of {siteConfig.cityName},
+    {siteConfig.stateName} — including nearby regional venues. Every listing shows how far it actually is,
+    so a Sioux Falls show never reads as a downtown event. Powered by Ticketmaster.</p>
+    <ShareButton title={`What's On in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
+  </header>
+
+  {ranked.length === 0 ? (
+    <p class="empty">{EMPTY_STATES.whatsOn}</p>
+  ) : (
+    <>
+      {marquee.length > 0 && (
+        <>
+          <SectionRule label="Marquee" />
+          <div class="marquee-grid">
+            {marquee.map((item) => <WhatsOnCard item={item} />)}
+          </div>
+        </>
+      )}
+      {alsoOn.length > 0 && (
+        <>
+          <SectionRule label="Also on" />
+          <div class="also-on-list">
+            {alsoOn.map((item) => <WhatsOnCard item={item} compact />)}
+          </div>
+        </>
+      )}
+    </>
+  )}
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
+</BaseLayout>
+
+<style>
+.lede {
+  max-width: 40rem;
+  border-bottom: 3px solid var(--section-accent, var(--rule-strong));
+  padding-bottom: 1.125rem;
+}
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.marquee-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); margin-bottom: 1.5rem; }
+.also-on-list { display: block; }
+.empty { color: var(--ink-soft); }
+</style>

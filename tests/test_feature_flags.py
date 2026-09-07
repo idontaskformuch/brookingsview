@@ -35,6 +35,11 @@ REQUIRED_FIELDS_WHEN_ENABLED = {
     "closure_watch": ["districts", "weather_zones", "relevant_alert_events"],
     "new_in_town": ["search_terms", "location_qualifiers"],
     "housing_market": ["sales_source"],
+    # No Python-side fields: What's On is site-side only (Ticketmaster
+    # Discovery API, fetched live at Astro build time -- see
+    # site/src/lib/ticketmaster.ts). This key exists purely so the
+    # cross-system sync check below applies to it too.
+    "whats_on": [],
 }
 
 # Maps the Python config key to the matching site-config.ts SiteConfig field.
@@ -42,6 +47,7 @@ FEATURE_TS_FLAG = {
     "closure_watch": "hasClosureWatch",
     "new_in_town": "hasNewInTown",
     "housing_market": "hasHousingMarket",
+    "whats_on": "hasWhatsOn",
 }
 
 

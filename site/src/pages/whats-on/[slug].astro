@@ -1,0 +1,140 @@
+---
+/** What's On detail page -- Phase 5. New dedicated route, NOT a reuse of
+ *  /s/[slug].astro's story infrastructure -- see lib/ticketmaster-jsonld.ts's
+ *  own module comment for the full reasoning (buildEventJsonLd() resolves
+ *  location only via the local `facilities` table, which no Ticketmaster
+ *  venue is ever in). Ticketmaster data is fetched live at build time, never
+ *  persisted to the `stories` table -- forcing it through /s/[slug].astro
+ *  would mean either a new DB write path or navigating the pre-publish
+ *  validation gate built for AI-generated text, neither of which this
+ *  structured, source-driven API data needs or should be subject to.
+ *
+ *  getStaticPaths() returns [] when hasWhatsOn is false (every town today)
+ *  -- no stub page is ever produced to need excluding from the sitemap,
+ *  same "getStaticPaths() only generates pages for rows that exist" pattern
+ *  astro.config.mjs's own TOWN_GATED_PAGES comment already documents for
+ *  city-hall/projects/[slug].astro etc.
+ *
+ *  noindex unconditionally -- matches the existing convention (meeting/
+ *  event/alert/home-sale detail pages are noindex, only listing/summary
+ *  pages are indexable). No shouldNoindexStory()-equivalent needed: unlike
+ *  a story, there's no per-item ambiguity to resolve, every one of these
+ *  pages is noindex, always.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import ImageAttribution from '../../components/ImageAttribution.astro';
+import { siteConfig } from '../../lib/site-config';
+import { getTicketmasterEventsForTown, distanceLabel, type TicketmasterFeedItem } from '../../lib/ticketmaster';
+import { ticketmasterSlug, ticketmasterResolvableImage } from '../../lib/whats-on';
+import { resolveImage } from '../../lib/images';
+import { categoryImagesFor } from '../../config/category-images';
+import { buildTicketmasterEventJsonLd } from '../../lib/ticketmaster-jsonld';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
+import { SECTION_THEME } from '../../lib/section-theme';
+
+export async function getStaticPaths() {
+  if (!siteConfig.hasWhatsOn) return [];
+  const items = await getTicketmasterEventsForTown(siteConfig);
+  return items.map((item) => ({
+    params: { slug: ticketmasterSlug(item.ticketmasterEvent) },
+    props: { item },
+  }));
+}
+
+const { item } = Astro.props as { item: TicketmasterFeedItem };
+const e = item.ticketmasterEvent;
+
+const heroImage = resolveImage(ticketmasterResolvableImage(item), {
+  town: siteConfig.townId,
+  cityName: siteConfig.cityName,
+  facilities: [],
+  categoryImages: categoryImagesFor(siteConfig.townId),
+});
+
+const distance = distanceLabel(e.venueDistanceMiles, siteConfig.cityName);
+const dateLabel = item.occurs_at
+  ? new Date(item.occurs_at).toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: siteConfig.timezone,
+    })
+  : null;
+const timeLabel = item.occurs_at
+  ? new Date(item.occurs_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: siteConfig.timezone })
+  : null;
+
+const canonicalUrl = new URL(`/whats-on/${ticketmasterSlug(e)}/`, Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: "What's On", href: new URL('/whats-on/', Astro.site ?? siteConfig.siteUrl).href },
+  { label: e.title, href: canonicalUrl },
+];
+
+const eventJsonLd = buildTicketmasterEventJsonLd(item, canonicalUrl, siteConfig.siteName);
+---
+<BaseLayout title={`${e.title} — ${siteConfig.siteName}`} ogSlug="default"
+  description={`${e.title}${e.venueName ? ` at ${e.venueName}` : ''}${dateLabel ? `, ${dateLabel}` : ''}.`}
+  noindex accentColor={SECTION_THEME.events.accent}>
+  <Breadcrumbs trail={breadcrumbTrail} />
+
+  {heroImage && (
+    <img
+      class="detail-hero"
+      src={heroImage.path}
+      alt={heroImage.alt}
+      width={heroImage.width}
+      height={heroImage.height}
+      loading="eager"
+      decoding="async"
+    />
+  )}
+  {heroImage && <ImageAttribution image={heroImage} />}
+
+  <header class="lede">
+    <h1>{e.title}</h1>
+    <p class="lede__meta">
+      {e.venueName && <span class="lede__venue">{e.venueName}</span>}
+      {distance && <span class="lede__distance">{distance}</span>}
+    </p>
+    {(dateLabel || timeLabel) && (
+      <p class="lede__when data">
+        {dateLabel}{timeLabel && ` · ${timeLabel}`}
+      </p>
+    )}
+    {e.priceRangeText && <p class="lede__price">{e.priceRangeText}</p>}
+  </header>
+
+  {e.ticketUrl && (
+    <p class="ticket-link">
+      <a href={e.ticketUrl} rel="noopener nofollow" target="_blank">See tickets on Ticketmaster</a>
+    </p>
+  )}
+
+  {eventJsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(eventJsonLd)} />
+  )}
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
+</BaseLayout>
+
+<style>
+.detail-hero { display: block; width: 100%; height: auto; margin: 1.25rem 0 0; object-fit: cover; aspect-ratio: 3 / 2; }
+.lede { max-width: 40rem; margin-top: 1rem; }
+.lede__meta { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; margin: 0.5rem 0 0; font-size: 0.9375rem; color: var(--ink-soft); }
+.lede__venue { font-weight: 600; color: var(--ink); }
+.lede__when { margin: 0.375rem 0 0; font-size: 0.9375rem; }
+.lede__price { margin: 0.375rem 0 0; font-size: 0.9375rem; color: var(--ink-soft); }
+.ticket-link { margin-top: 1.25rem; }
+.ticket-link a {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--surface);
+  background: var(--navy);
+  padding: 0.625rem 1.25rem;
+  border-radius: 4px;
+  text-decoration: none;
+}
+.ticket-link a:hover { opacity: 0.9; }
+</style>

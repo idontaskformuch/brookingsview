@@ -1,0 +1,96 @@
+---
+/** What's On Phase 5 -- a Ticketmaster event card. Not a reuse of
+ *  StoryCard.astro (that component is typed to a real `Story` row and
+ *  never renders a per-item image at all -- see its own comment: "Dense
+ *  card lists never render a per-item image") or SecondaryStory.astro
+ *  (hardcodes `/s/${story.slug}/` with no href override). Ticketmaster
+ *  items are neither: a different payload shape, no local /s/ page, and
+ *  Marquee specifically needs a real per-item image the existing dense
+ *  list pattern was deliberately built to skip. Reuses this site's
+ *  existing typography/spacing/kicker conventions (see the shared
+ *  .kicker/.data classes in BaseLayout.astro's global styles) rather than
+ *  inventing a new visual language, per the Phase 5 handoff's own
+ *  instruction.
+ */
+import { resolveImage } from '../lib/images';
+import { categoryImagesFor } from '../config/category-images';
+import { siteConfig } from '../lib/site-config';
+import { distanceLabel, type TicketmasterFeedItem } from '../lib/ticketmaster';
+import { ticketmasterResolvableImage, ticketmasterSlug } from '../lib/whats-on';
+import ImageAttribution from './ImageAttribution.astro';
+
+interface Props {
+  item: TicketmasterFeedItem;
+  /** Also-on-this-day cards: dense, no image -- same "compact" convention
+   *  StoryCard.astro already uses. */
+  compact?: boolean;
+}
+const { item, compact = false } = Astro.props;
+const e = item.ticketmasterEvent;
+
+const heroImage = compact ? null : resolveImage(ticketmasterResolvableImage(item), {
+  town: siteConfig.townId,
+  cityName: siteConfig.cityName,
+  facilities: [],
+  categoryImages: categoryImagesFor(siteConfig.townId),
+});
+
+const href = `/whats-on/${ticketmasterSlug(e)}/`;
+const distance = distanceLabel(e.venueDistanceMiles, siteConfig.cityName);
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', timeZone: siteConfig.timezone,
+  });
+}
+
+const dateLabel = item.occurs_at ? formatDate(item.occurs_at) : null;
+---
+<article class:list={['whats-on-card', compact && 'whats-on-card--compact']}>
+  {heroImage && (
+    <a class="whats-on-card__image-link" href={href} tabindex="-1" aria-hidden="true">
+      <img
+        class="whats-on-card__image"
+        src={heroImage.path}
+        alt={heroImage.alt}
+        width={heroImage.width}
+        height={heroImage.height}
+        loading="eager"
+        decoding="async"
+      />
+    </a>
+  )}
+  {heroImage && <ImageAttribution image={heroImage} />}
+  <p class="whats-on-card__meta">
+    <span class="kicker">{e.venueName ?? 'Venue TBA'}</span>
+    {dateLabel && <time class="whats-on-card__when data" datetime={item.occurs_at ?? undefined}>{dateLabel}</time>}
+    {distance && <span class="whats-on-card__distance">{distance}</span>}
+  </p>
+  <h3 class="whats-on-card__title"><a href={href}>{e.title}</a></h3>
+  {e.priceRangeText && <p class="whats-on-card__price">{e.priceRangeText}</p>}
+</article>
+
+<style>
+.whats-on-card { display: flex; flex-direction: column; border-bottom: 1px solid var(--rule); padding-block: 0.875rem; }
+.whats-on-card:first-child { padding-top: 0; }
+.whats-on-card:not(.whats-on-card--compact) { border-bottom: none; padding-block: 0; }
+.whats-on-card__image-link { display: block; }
+.whats-on-card__image { display: block; width: 100%; height: auto; margin: 0 0 0.75rem; object-fit: cover; aspect-ratio: 3 / 2; }
+.whats-on-card__meta {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 0.5rem 0.75rem; margin: 0 0 0.3125rem;
+}
+.whats-on-card__when {
+  font-size: 0.6875rem; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--ink-soft);
+}
+.whats-on-card__distance {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+.whats-on-card__title { margin: 0; font-size: 1.1875rem; line-height: 1.15; }
+.whats-on-card--compact .whats-on-card__title { font-size: 1rem; }
+.whats-on-card__title a { color: inherit; text-decoration: none; }
+.whats-on-card__title a:hover { color: var(--navy); text-decoration: underline; }
+.whats-on-card__price { margin: 0.25rem 0 0; font-size: 0.8125rem; color: var(--ink-soft); }
+</style>

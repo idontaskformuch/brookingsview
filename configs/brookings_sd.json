@@ -416,6 +416,10 @@
       "enabled": false,
       "sales_source": null,
       "_notes": "Handoff: Information Hub Tier 1, Feature C. No property-sales data source for Brookings (South Dakota has no Riverside-Assessor-style bulk sales file) -- stays enabled:false until one is found."
+    },
+    "whats_on": {
+      "enabled": false,
+      "_notes": "What's On Phase 5. Site-side only (Ticketmaster Discovery API, fetched live at Astro build time, see site/src/lib/ticketmaster.ts) -- this key exists purely to keep site-config.ts's hasWhatsOn in sync with this file's own convention (see tests/test_feature_flags.py), not because any Python pipeline code reads it. Stays enabled:false everywhere until Phase 7's town-by-town rollout, even though the /whats-on page itself is fully built and human-reviewed."
     }
   },
   "_verify_before_launch": [

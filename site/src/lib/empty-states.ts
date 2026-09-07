@@ -20,6 +20,7 @@ export const EMPTY_STATES = {
   eventsCampus: 'No campus events listed this week — check back.',
   workplaceWatch: 'No reviews summarized yet this month.',
   homeSales: 'No sales recorded in the latest county report.',
+  whatsOn: 'Nothing found in the area right now — check back.',
   comments: 'No comments yet.',
   searchFilter: 'Nothing matched. Try a broader filter.',
 } as const;
