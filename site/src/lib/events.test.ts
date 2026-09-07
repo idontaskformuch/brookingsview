@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildEventFeed, isToday, isThisWeekend, isTonight, isTomorrow, selectTodayBucket,
-  isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent,
+  isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent, findCrossSourceMatch,
   todayUtcMidnight, utcMidnight, localDateParts, artsEventAsStory,
-  type FeedItem,
+  type FeedItem, type EventSourceConfig,
 } from './events';
 import type { Story, SdsuEvent, Facility } from './db';
 
@@ -39,7 +39,7 @@ function artsEvent(overrides: Partial<SdsuEvent>): SdsuEvent {
 }
 
 function storyItem(s: Story): FeedItem {
-  return { kind: 'story', occurs_at: s.occurs_at, story: s };
+  return { sourceKind: 'story', occurs_at: s.occurs_at, story: s };
 }
 
 describe('date bucketing (timezone-correct, per the Aug-4 weekend-off-by-one regression)', () => {
@@ -161,7 +161,7 @@ describe('buildEventFeed cross-source dedup', () => {
     const a = artsEvent({ external_event_id: 'sdsu-99', title: 'Downtown @ Sundown', starts_at: '2026-08-07T20:00:00Z', event_url: 'https://sdstate.edu/events/99' });
     const { items, alsoListedBy } = buildEventFeed([s], [a], 'America/Chicago');
     expect(items).toHaveLength(1);
-    expect(items[0].kind).toBe('story');
+    expect(items[0].sourceKind).toBe('story');
     expect(alsoListedBy.get(items[0])).toEqual(['sdstate.edu']);
   });
 
@@ -177,7 +177,63 @@ describe('buildEventFeed cross-source dedup', () => {
     const earlier = story({ slug: 'a', occurs_at: '2026-08-05T12:00:00Z' });
     const undated = story({ slug: 'c', occurs_at: null });
     const { items } = buildEventFeed([later, earlier, undated], [], 'America/Chicago');
-    expect(items.map((i) => (i.kind === 'story' ? i.story.slug : ''))).toEqual(['a', 'b', 'c']);
+    expect(items.map((i) => (i.sourceKind === 'story' ? i.story.slug : ''))).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('findCrossSourceMatch (What\'s On Phase 1: n-source generalization)', () => {
+  // Synthetic 3-source config -- proves the matching logic genuinely
+  // generalizes past two hardcoded literals, without requiring a real third
+  // production source (e.g. Ticketmaster) to exist yet. Plain string keys
+  // and a Map<string, string> stand in for FeedItem/canonicalByKey here --
+  // findCrossSourceMatch() only needs a sourceKind, a dateKey, a normalized
+  // title, and a lookup map, never the concrete story/arts payload shape.
+  const THREE_SOURCES: Record<string, EventSourceConfig> = {
+    story: { crossMatch: true },
+    arts: { crossMatch: true },
+    ticketmaster: { crossMatch: true },
+  };
+
+  it('does not match a same-date entry from another source when the title differs', () => {
+    const canonicalByKey = new Map<string, string>([
+      ['2026-08-07|arts', 'the-arts-item'], // deliberately malformed/unrelated key -- must never be hit
+      ['2026-08-07|arts|a completely different event', 'the-arts-item'],
+    ]);
+    expect(findCrossSourceMatch('ticketmaster', '2026-08-07', 'downtown at sundown', canonicalByKey, THREE_SOURCES))
+      .toBeUndefined();
+  });
+
+  it('finds a match from a second source when a third is also configured', () => {
+    const canonicalByKey = new Map<string, string>([
+      ['2026-08-07|story|downtown at sundown', 'the-story-item'],
+    ]);
+    expect(findCrossSourceMatch('ticketmaster', '2026-08-07', 'downtown at sundown', canonicalByKey, THREE_SOURCES))
+      .toBe('the-story-item');
+  });
+
+  it('never matches within the same source, regardless of source count', () => {
+    const canonicalByKey = new Map<string, string>([
+      ['2026-08-07|ticketmaster|downtown at sundown', 'first-ticketmaster-item'],
+    ]);
+    expect(findCrossSourceMatch('ticketmaster', '2026-08-07', 'downtown at sundown', canonicalByKey, THREE_SOURCES))
+      .toBeUndefined();
+  });
+
+  it('a source with crossMatch:false never matches and is never matched into', () => {
+    const sources: Record<string, EventSourceConfig> = {
+      story: { crossMatch: true },
+      ticketmaster: { crossMatch: false },
+    };
+    const canonicalByKey = new Map<string, string>([
+      ['2026-08-07|story|downtown at sundown', 'the-story-item'],
+    ]);
+    expect(findCrossSourceMatch('ticketmaster', '2026-08-07', 'downtown at sundown', canonicalByKey, sources))
+      .toBeUndefined();
+  });
+
+  it('returns undefined for an undated item regardless of source count', () => {
+    const canonicalByKey = new Map<string, string>([['2026-08-07|story|x', 'y']]);
+    expect(findCrossSourceMatch('arts', null, 'x', canonicalByKey, THREE_SOURCES)).toBeUndefined();
   });
 });
 
@@ -209,7 +265,7 @@ describe('isFreeEvent', () => {
   });
 
   it('is false for an SDSU arts event even with no venue data -- campus venues are never in the town facilities registry', () => {
-    const item: FeedItem = { kind: 'arts', occurs_at: '2026-08-07T20:00:00Z', event: artsEvent({}) };
+    const item: FeedItem = { sourceKind: 'arts', occurs_at: '2026-08-07T20:00:00Z', event: artsEvent({}) };
     expect(isFreeEvent(item, facilities)).toBe(false);
   });
 
@@ -249,14 +305,14 @@ describe('isKidsEvent', () => {
   });
 
   it('checks the arts-event teaser too', () => {
-    const item: FeedItem = { kind: 'arts', occurs_at: null, event: artsEvent({ title: 'Family Weekend Concert', teaser: 'Bring the kids for a fun afternoon.' }) };
+    const item: FeedItem = { sourceKind: 'arts', occurs_at: null, event: artsEvent({ title: 'Family Weekend Concert', teaser: 'Bring the kids for a fun afternoon.' }) };
     expect(isKidsEvent(item)).toBe(true);
   });
 });
 
 describe('isCampusEvent', () => {
   it('is true only for arts-kind items', () => {
-    const arts: FeedItem = { kind: 'arts', occurs_at: null, event: artsEvent({}) };
+    const arts: FeedItem = { sourceKind: 'arts', occurs_at: null, event: artsEvent({}) };
     const regular = storyItem(story({}));
     expect(isCampusEvent(arts)).toBe(true);
     expect(isCampusEvent(regular)).toBe(false);

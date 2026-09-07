@@ -31,14 +31,14 @@ import type { Story, SdsuEvent, Facility } from './db';
 import { buildVenueIndex, resolveVenue } from './db';
 
 export type FeedItem =
-  | { kind: 'story'; occurs_at: string | null; story: Story }
-  | { kind: 'arts'; occurs_at: string | null; event: SdsuEvent };
+  | { sourceKind: 'story'; occurs_at: string | null; story: Story }
+  | { sourceKind: 'arts'; occurs_at: string | null; event: SdsuEvent };
 
 export function itemTitle(item: FeedItem): string {
-  return item.kind === 'story' ? item.story.title : item.event.title;
+  return item.sourceKind === 'story' ? item.story.title : item.event.title;
 }
 export function itemUrl(item: FeedItem): string | null {
-  return item.kind === 'story' ? item.story.source_url : item.event.event_url;
+  return item.sourceKind === 'story' ? item.story.source_url : item.event.event_url;
 }
 
 /** SDSU arts_culture events have no own /s/[slug] page (their link is
@@ -173,31 +173,65 @@ export interface EventFeedResult {
   alsoListedBy: Map<FeedItem, string[]>;
 }
 
+/** Per-source participation in cross-source dedup matching (see
+ *  findCrossSourceMatch() below) -- encoded as data rather than a hardcoded
+ *  if/else so a future source (What's On Phase 3: Ticketmaster) is a new map
+ *  entry, not a new branch. `story` and `arts` both participate today. */
+export interface EventSourceConfig {
+  crossMatch: boolean;
+}
+
+export const EVENT_SOURCES: Record<string, EventSourceConfig> = {
+  story: { crossMatch: true },
+  arts: { crossMatch: true },
+};
+
+/** Same calendar date + exact normalized-title match, cross-SOURCE only
+ *  (never within the same source -- the library legitimately lists the same
+ *  class title twice for two different session times, and SDSU legitimately
+ *  lists the same show twice for a matinee/evening pair; a same-source match
+ *  would wrongly collapse those). Generic over the number of participating
+ *  sources -- not hardcoded to exactly two -- and independently unit-tested
+ *  with synthetic 3+-source data (see events.test.ts) to prove that, without
+ *  requiring a real third production source to exist yet. `dateKey` is
+ *  `null` for an undated item (never matches anything). */
+export function findCrossSourceMatch<T>(
+  sourceKind: string,
+  dateKey: string | null,
+  normalizedTitle: string,
+  canonicalByKey: Map<string, T>,
+  sources: Record<string, EventSourceConfig>,
+): T | undefined {
+  if (!dateKey || !sources[sourceKind]?.crossMatch) return undefined;
+  for (const otherKind of Object.keys(sources)) {
+    if (otherKind === sourceKind || !sources[otherKind].crossMatch) continue;
+    const found = canonicalByKey.get(`${dateKey}|${otherKind}|${normalizedTitle}`);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 /**
  * Cross-source duplicate reconciliation -- e.g. "Downtown at Sundown" listed
  * independently by both SDSU's calendar and the Chamber's calendar. Narrow
- * and deterministic on purpose: same calendar date + EXACT normalized-title
- * match, cross-kind only (never within the same kind -- the library
- * legitimately lists the same class title twice for two different session
- * times, and SDSU legitimately lists the same show twice for a matinee/
- * evening pair; a same-kind match would wrongly collapse those).
+ * and deterministic on purpose -- see findCrossSourceMatch() above for the
+ * matching rule itself.
  */
 export function buildEventFeed(stories: Story[], artsEvents: SdsuEvent[], timezone: string): EventFeedResult {
   const rawItems: FeedItem[] = [
-    ...stories.map((story): FeedItem => ({ kind: 'story', occurs_at: story.occurs_at, story })),
-    ...artsEvents.map((event): FeedItem => ({ kind: 'arts', occurs_at: event.starts_at, event })),
+    ...stories.map((story): FeedItem => ({ sourceKind: 'story', occurs_at: story.occurs_at, story })),
+    ...artsEvents.map((event): FeedItem => ({ sourceKind: 'arts', occurs_at: event.starts_at, event })),
   ];
 
   const canonicalByKey = new Map<string, FeedItem>();
   const alsoListedBy = new Map<FeedItem, string[]>();
   const items: FeedItem[] = [];
   for (const item of rawItems) {
-    const dateKey = item.occurs_at ? localDateParts(new Date(item.occurs_at), timezone) : null;
-    const key = dateKey ? `${dateKey.y}-${dateKey.m}-${dateKey.d}|${item.kind === 'arts' ? 'arts' : 'story'}|${normalizeTitle(itemTitle(item))}` : null;
-    const crossKey = dateKey && key
-      ? `${dateKey.y}-${dateKey.m}-${dateKey.d}|${item.kind === 'arts' ? 'story' : 'arts'}|${normalizeTitle(itemTitle(item))}`
-      : null;
-    const canonical = crossKey ? canonicalByKey.get(crossKey) : undefined;
+    const dateParts = item.occurs_at ? localDateParts(new Date(item.occurs_at), timezone) : null;
+    const dateKey = dateParts ? `${dateParts.y}-${dateParts.m}-${dateParts.d}` : null;
+    const normalizedTitle = normalizeTitle(itemTitle(item));
+    const ownKey = dateKey ? `${dateKey}|${item.sourceKind}|${normalizedTitle}` : null;
+    const canonical = findCrossSourceMatch(item.sourceKind, dateKey, normalizedTitle, canonicalByKey, EVENT_SOURCES);
 
     if (canonical) {
       const url = itemUrl(item);
@@ -209,7 +243,7 @@ export function buildEventFeed(stories: Story[], artsEvents: SdsuEvent[], timezo
       }
       continue; // already covered by the canonical entry -- no separate card
     }
-    if (key) canonicalByKey.set(key, item);
+    if (ownKey) canonicalByKey.set(ownKey, item);
     items.push(item);
   }
 
@@ -260,7 +294,7 @@ export const FREE_VENUE_CATEGORIES = new Set(['library', 'park', 'community_cent
  * uncertain event is omitted, never guessed onto this page.
  */
 export function isFreeEvent(item: FeedItem, facilities: Facility[]): boolean {
-  if (item.kind !== 'story') return false;
+  if (item.sourceKind !== 'story') return false;
   const facility = resolveVenue(buildVenueIndex(facilities), item.story.venue_raw);
   if (!facility || !FREE_VENUE_CATEGORIES.has(facility.category)) return false;
   if (PAID_LANGUAGE_RE.test(item.story.body)) return false;
@@ -271,7 +305,7 @@ export function isFreeEvent(item: FeedItem, facilities: Facility[]): boolean {
  *  registry), and a library-category facility is an unambiguous fact, not a
  *  derived guess. */
 export function isLibraryEvent(item: FeedItem, facilities: Facility[]): boolean {
-  if (item.kind !== 'story') return false;
+  if (item.sourceKind !== 'story') return false;
   const facility = resolveVenue(buildVenueIndex(facilities), item.story.venue_raw);
   return facility?.category === 'library';
 }
@@ -287,7 +321,7 @@ const KIDS_RE = /\b(kids?|children|childrens?|toddler|preschool|storytime|story 
 
 export function isKidsEvent(item: FeedItem): boolean {
   const title = itemTitle(item);
-  const body = item.kind === 'story' ? item.story.body : (item.event.teaser ?? '');
+  const body = item.sourceKind === 'story' ? item.story.body : (item.event.teaser ?? '');
   return KIDS_RE.test(title) || KIDS_RE.test(body.slice(0, 200));
 }
 
@@ -301,5 +335,5 @@ export function isKidsEvent(item: FeedItem): boolean {
  *  would be the thin/near-duplicate-content problem the GSC data confirmed
  *  this site currently does NOT have. */
 export function isCampusEvent(item: FeedItem): boolean {
-  return item.kind === 'arts';
+  return item.sourceKind === 'arts';
 }

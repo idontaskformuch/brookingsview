@@ -106,8 +106,8 @@ const facilitiesItemListJsonLd = freeFacilities.length > 0 ? {
 } : null;
 
 function eventJsonLdFor(item: FeedItem): Record<string, unknown> | null {
-  const asStory = item.kind === 'arts' ? artsEventAsStory(item.event) : item.story;
-  const itemUrl = item.kind === 'arts' ? item.event.event_url : new URL(`/s/${item.story.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
+  const asStory = item.sourceKind === 'arts' ? artsEventAsStory(item.event) : item.story;
+  const itemUrl = item.sourceKind === 'arts' ? item.event.event_url : new URL(`/s/${item.story.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
   const heroUrl = new URL(asStory.image_path ?? `/og/${asStory.slug}.png`, Astro.site ?? siteConfig.siteUrl).href;
   return buildEventJsonLd(
     asStory, facilities,
@@ -117,7 +117,7 @@ function eventJsonLdFor(item: FeedItem): Record<string, unknown> | null {
 }
 
 function listItemUrl(item: FeedItem): string {
-  return item.kind === 'arts' ? item.event.event_url : new URL(`/s/${item.story.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
+  return item.sourceKind === 'arts' ? item.event.event_url : new URL(`/s/${item.story.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
 }
 
 // Full Event JSON-LD nested per listed event where it's eligible (reusing
@@ -136,7 +136,7 @@ const itemListJsonLd = items.length > 0 ? {
       '@type': 'ListItem',
       position: i + 1,
       url: listItemUrl(item),
-      name: item.kind === 'arts' ? item.event.title : item.story.title,
+      name: item.sourceKind === 'arts' ? item.event.title : item.story.title,
       ...(eventJsonLd ? { item: eventJsonLd } : {}),
     };
   }),
@@ -177,10 +177,10 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
       <div class="grid">
         {items.map((item) => (
           <div class="event-cell">
-            {item.kind === 'story'
+            {item.sourceKind === 'story'
               ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} />
               : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" />}
-            {facet.slug === 'free' && item.kind === 'story' && item.story.free_teaser && (
+            {facet.slug === 'free' && item.sourceKind === 'story' && item.story.free_teaser && (
               <p class="free-teaser">{item.story.free_teaser}</p>
             )}
           </div>

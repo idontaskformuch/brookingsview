@@ -150,7 +150,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
       )}
       {list.length > 0 && (
         <div class="grid">
-          {list.map((item) => item.kind === 'story'
+          {list.map((item) => item.sourceKind === 'story'
             ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={townwideKicker} />
             : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" />
           )}

@@ -93,7 +93,7 @@ const CLOSURE_LABEL: Record<ClosureWatchStatus['state'], string> = {
 };
 
 function toStory(item: FeedItem): { story: Story; href?: string; kicker?: string } {
-  if (item.kind === 'story') return { story: item.story };
+  if (item.sourceKind === 'story') return { story: item.story };
   return { story: artsEventAsStory(item.event), href: item.event.event_url, kicker: 'Arts & Culture' };
 }
 

@@ -266,11 +266,11 @@ export function buildWeekDays(
       if (!item.occurs_at) continue;
       if (!sameDate(localDateParts(new Date(item.occurs_at), timezone), date)) continue;
       items.push({
-        vertical: item.kind === 'arts' ? 'sdsu' : 'events',
+        vertical: item.sourceKind === 'arts' ? 'sdsu' : 'events',
         title: itemTitle(item),
-        href: item.kind === 'story' ? `/s/${item.story.slug}/` : itemUrl(item),
-        external: item.kind === 'arts',
-        detail: item.kind === 'story' ? firstLine(item.story.body) : (item.event.teaser ?? ''),
+        href: item.sourceKind === 'story' ? `/s/${item.story.slug}/` : itemUrl(item),
+        external: item.sourceKind === 'arts',
+        detail: item.sourceKind === 'story' ? firstLine(item.story.body) : (item.event.teaser ?? ''),
       });
     }
 
