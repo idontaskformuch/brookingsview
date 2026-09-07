@@ -41,6 +41,14 @@ export function itemUrl(item: FeedItem): string | null {
   return item.sourceKind === 'story' ? item.story.source_url : item.event.event_url;
 }
 
+/** What's On Phase 2: the item's own venue string, whatever field the
+ *  source happens to carry it in -- a Story's `venue_raw` or a SdsuEvent's
+ *  `location`. Both are nullable in real data; feeds lib/venue-tiers.ts's
+ *  venueTierFor(), which already treats null/empty as "unranked." */
+export function itemVenue(item: FeedItem): string | null {
+  return item.sourceKind === 'story' ? (item.story.venue_raw ?? null) : item.event.location;
+}
+
 /** SDSU arts_culture events have no own /s/[slug] page (their link is
  *  event_url, out to sdstate.edu) -- adapted to the Story shape just so
  *  StoryCard/buildEventJsonLd can be reused. Always rendered with an
