@@ -43,6 +43,8 @@ import {
 import { buildEventFeed, todayUtcMidnight, isTonight, selectTodayBucket } from './events';
 import { computeHeatTier } from './heat-advisory';
 import { siteConfig, type SiteConfig } from './site-config';
+import { getTicketmasterEventsForTown, distanceLabel, type TicketmasterFeedItem } from './ticketmaster';
+import { rankTicketmasterEvents, collapseMarqueeRuns } from './whats-on';
 
 export type StatusTone = 'quiet' | 'notice' | 'alert';
 
@@ -72,6 +74,7 @@ const ICONS: Record<string, string> = {
   next_meeting: 'gavel',
   worker_pulse: 'heat',
   university: 'athletics',
+  whats_on: 'ticket',
 };
 
 const CLOSURE_LABEL: Record<'confirmed' | 'watch' | 'clear', string> = {
@@ -188,6 +191,51 @@ async function resolveUniversity(): Promise<CityStatusModule | null> {
   };
 }
 
+/** REVISED to a true 1-event marquee after the human review gate (Step 6):
+ *  first built as a 3-entry joined line ("a small set of two or three" was
+ *  the handoff's own other named option), but the real Brookings dataset
+ *  produced a 180-character value -- roughly 2.3x this site's own longest
+ *  existing CityStatus value (Weather's 77-character forecast string,
+ *  itself already the outlier) -- visibly wrapping across several lines
+ *  next to one-line siblings like "Nothing scheduled tonight". That's
+ *  exactly the failure mode the handoff named: "a marquee that visually
+ *  outweighs the actual local news... would be the wrong outcome even if
+ *  every individual element is correct." A single top pick lands at ~70
+ *  characters on the same real data -- in line with Weather's own
+ *  precedent, not an outlier. Reported here rather than silently reverted,
+ *  per the handoff's own "decisions to make and report" instruction.
+ *
+ *  Still routed through collapseMarqueeRuns() rather than a bare
+ *  `ranked[0]`, even though for exactly one slot the two are PROVABLY
+ *  identical (collapsing only ever merges LATER same-key items into
+ *  whichever one was encountered first, and the top-ranked item is always
+ *  encountered first) -- this is the same data pipeline /whats-on and its
+ *  Marquee section use, and keeping it means a future change to show more
+ *  than one entry doesn't need to re-derive this wiring. */
+export function buildWhatsOnStatus(items: TicketmasterFeedItem[], cfg: SiteConfig): CityStatusModule | null {
+  if (!cfg.hasWhatsOn) return null;
+
+  const ranked = rankTicketmasterEvents(items, cfg.townId);
+  const entries = collapseMarqueeRuns(ranked);
+  if (entries.length === 0) return null;
+
+  const top = entries[0];
+  const e = top.primary.ticketmasterEvent;
+  const distance = distanceLabel(e.venueDistanceMiles, cfg.cityName);
+  const value = distance ? `${e.title} (${distance})` : e.title;
+
+  return {
+    id: 'whats_on', icon: ICONS.whats_on, label: "What's On", value, tone: 'quiet',
+    href: '/whats-on/', asOf: top.primary.occurs_at ? new Date(top.primary.occurs_at) : new Date(),
+  };
+}
+
+async function resolveWhatsOn(): Promise<CityStatusModule | null> {
+  if (!siteConfig.hasWhatsOn) return null;
+  const items = await getTicketmasterEventsForTown(siteConfig);
+  return buildWhatsOnStatus(items, siteConfig);
+}
+
 // Always rendered: their quiet state is still informative (handoff's own
 // "Visibility rules"). `university`/`next_meeting` weren't explicitly
 // classified in the handoff's Always/Conditional split -- both follow the
@@ -218,6 +266,17 @@ const MODULES: Record<string, ModuleDef> = {
   next_meeting: { resolve: resolveNextMeeting, hasSource: () => true },
   worker_pulse: { resolve: resolveWorkerPulse, hasSource: (cfg) => cfg.townId === 'moreno_valley_ca' },
   university: { resolve: resolveUniversity, hasSource: (cfg) => cfg.townId === 'brookings_sd' },
+  // NOT in ALWAYS_RENDERED, deliberately: unlike university/next_meeting
+  // (whose real capability is unconditional per town), this module's real
+  // capability IS the same hasWhatsOn flag that's false everywhere today --
+  // marking it always-rendered would make validateStatusModules() throw
+  // the instant it's added to a town's statusModules while the flag is
+  // still off, which is exactly the state this module ships in (see Step
+  // 3 of the handoff: gated by hasWhatsOn, not absence from this config).
+  // hasSource is still real and checked here for documentation parity with
+  // every other module, even though only an ALWAYS_RENDERED id actually
+  // has it enforced by validateStatusModules().
+  whats_on: { resolve: resolveWhatsOn, hasSource: (cfg) => !!cfg.hasWhatsOn },
 };
 
 /** Validates a town's `statusModules` config against real capability --

@@ -209,7 +209,11 @@ const CITIES: Record<string, SiteConfig> = {
     // Falls -- see this field's own doc comment above for why.
     ticketmaster: { enabled: false, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 },
     hasWhatsOn: false,
-    statusModules: ['weather', 'alerts', 'closures', 'events_today', 'next_meeting', 'university'],
+    // 'whats_on' (Phase 6a) wired in now, same "route exists, flag decides"
+    // convention as hasWhatsOn itself -- safe with hasWhatsOn:false above
+    // since that module isn't ALWAYS_RENDERED (see cityStatus.ts's own
+    // MODULES comment), so validateStatusModules() never throws over it.
+    statusModules: ['weather', 'alerts', 'closures', 'events_today', 'next_meeting', 'university', 'whats_on'],
     closureWatch: {
       relevantAlertEvents: [
         'Winter Storm Warning', 'Blizzard Warning', 'Ice Storm Warning',
