@@ -34,6 +34,7 @@ export interface RawTicketmasterEvent {
   dates?: { start?: { dateTime?: string; localDate?: string; localTime?: string } };
   priceRanges?: { min?: number; max?: number; currency?: string }[];
   _embedded?: { venues?: { name?: string }[] };
+  classifications?: { primary?: boolean; segment?: { name?: string } }[];
 }
 
 interface DiscoveryApiResponse {
@@ -91,6 +92,29 @@ function bestImageUrl(images: RawTicketmasterEvent['images']): string | null {
   return images.reduce((best, img) => (img.width > best.width ? img : best), images[0]).url;
 }
 
+/** Athletics/Sports filter -- What's On is meant to surface entertainment
+ *  content, not sports; Brookings' Athletics inventory (SDSU football,
+ *  volleyball) is already covered by a completely separate, pre-existing
+ *  pipeline (gojacks.com's own schedule scrape, feeding /university and
+ *  /jackrabbits). Confirmed live 2026-09-07: EVERY one of 14 real Discovery
+ *  API results for Brookings, SD -- all 13 SDSU games AND the one
+ *  non-SDSU commercial event ("MaskedMania Wrestling") -- carried
+ *  `segment.name === 'Sports'`, so this filter is broad by Ticketmaster's
+ *  own taxonomy, not an SDSU-specific keyword match.
+ *
+ *  Checks the classification marked `primary: true` (Discovery API can list
+ *  more than one; only the primary one is authoritative) -- falls back to
+ *  the first entry if none is explicitly marked primary, since the API
+ *  schema doesn't structurally guarantee one exists even though every
+ *  captured real event had exactly one. An event with no classifications at
+ *  all is kept (never excluded on missing data, same "uncertain means
+ *  don't guess" rule as isFreeEvent() in lib/events.ts -- there just isn't
+ *  enough signal to call it Sports). */
+export function isSportsEvent(raw: RawTicketmasterEvent): boolean {
+  const classification = raw.classifications?.find((c) => c.primary) ?? raw.classifications?.[0];
+  return classification?.segment?.name === 'Sports';
+}
+
 /** Pure -- unit-tested directly against captured fixture responses (see
  *  ticketmaster.test.ts), no network. `dates.start.dateTime` is Discovery
  *  API's own UTC instant when present; a small number of listings only
@@ -115,7 +139,9 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
 }
 
 /**
- * Fetches every Brookings event Discovery API currently lists, normalized.
+ * Fetches every non-Sports Brookings event Discovery API currently lists,
+ * normalized -- see isSportsEvent() above for why Sports is excluded here,
+ * at the fetch layer, rather than left for a caller to filter.
  * Never throws -- every failure mode (missing/invalid key, rate limit, 5xx,
  * network error) logs and resolves to `[]`, per this phase's own
  * requirement that a build must succeed identically whether or not the key
@@ -164,7 +190,7 @@ export async function fetchTicketmasterEvents(
     return [];
   }
 
-  return results.map(normalizeTicketmasterEvent);
+  return results.filter((raw) => !isSportsEvent(raw)).map(normalizeTicketmasterEvent);
 }
 
 /** The actual "is this reachable from a real page" gate: checks
