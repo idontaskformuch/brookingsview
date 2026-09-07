@@ -1,0 +1,43 @@
+name: whats-on-intro
+# What's On Phase 6b -- the weekly editorial intro block above /whats-on's
+# Marquee. Monday morning (matches weekly-roundup.yml's own reasoning: after
+# the weekend's listings have settled, while the week is still ahead of the
+# reader), plus a nightly re-check -- the generator hashes the week's actual
+# event set (ai_pipeline/whats_on_intro.py's content_hash()), so a run where
+# nothing changed makes no AI call at all.
+#
+# Inert everywhere today: features.whats_on.enabled and its nested
+# ticketmaster.enabled are both false in every configs/<town_id>.json until
+# Phase 7's town-by-town rollout (same convention as scrape.yml's own
+# already-wired-but-inert TICKETMASTER_API_KEY threading). Brookings-only
+# for now, same as the Ticketmaster source itself.
+
+on:
+  schedule:
+    - cron: "0 11 * * 1"    # Monday morning
+    - cron: "0 23 * * *"    # nightly -- only writes on an actual content change
+  workflow_dispatch: {}
+
+jobs:
+  whats-on-intro:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:         ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+      TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Generera veckans What's On-intro (Brookings)
+        run: python -m ai_pipeline.whats_on_intro --config configs/brookings_sd.json
+      - name: Trigga Cloudflare Pages-rebuild
+        if: success()
+        run: |
+          if [ -n "${{ secrets.PAGES_DEPLOY_HOOK }}" ]; then
+            curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK }}"
+          else
+            echo "PAGES_DEPLOY_HOOK ej satt -- hoppar över rebuild"
+          fi

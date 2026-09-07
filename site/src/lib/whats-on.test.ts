@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { rankTicketmasterEvents, splitMarquee, collapseMarqueeRuns, MARQUEE_SIZE, ticketmasterSlug, ticketmasterResolvableImage } from './whats-on';
+import {
+  rankTicketmasterEvents, splitMarquee, collapseMarqueeRuns, MARQUEE_SIZE,
+  ticketmasterSlug, ticketmasterResolvableImage, isWhatsOnIntroFresh,
+} from './whats-on';
 import type { TicketmasterFeedItem, TicketmasterEvent } from './ticketmaster';
 
 function tmEvent(overrides: Partial<TicketmasterEvent> = {}): TicketmasterEvent {
@@ -289,5 +292,19 @@ describe('ticketmasterResolvableImage', () => {
     };
     const resolvable = ticketmasterResolvableImage(item);
     expect(resolvable.ticketmasterImageUrl).toBeNull();
+  });
+});
+
+describe('isWhatsOnIntroFresh (What\'s On Phase 6b)', () => {
+  it('is fresh when both isoYear and isoWeek match', () => {
+    expect(isWhatsOnIntroFresh({ isoYear: 2026, isoWeek: 37 }, { isoYear: 2026, isoWeek: 37 })).toBe(true);
+  });
+
+  it('is stale when isoWeek differs -- last week\'s intro above this week\'s listing', () => {
+    expect(isWhatsOnIntroFresh({ isoYear: 2026, isoWeek: 36 }, { isoYear: 2026, isoWeek: 37 })).toBe(false);
+  });
+
+  it('is stale when isoYear differs even if isoWeek number matches (year-boundary case)', () => {
+    expect(isWhatsOnIntroFresh({ isoYear: 2025, isoWeek: 37 }, { isoYear: 2026, isoWeek: 37 })).toBe(false);
   });
 });

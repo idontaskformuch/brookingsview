@@ -181,3 +181,20 @@ export function splitMarquee(ranked: RankedTicketmasterEvent[], marqueeSize: num
     .filter((item) => !marqueePrimaryIds.has(item.ticketmasterEvent.id));
   return { marquee, alsoOn };
 }
+
+/** What's On Phase 6b: is a stored weekly-intro row (identified by its own
+ *  ISO year/week -- see lib/db.ts's WhatsOnIntroRow and
+ *  ai_pipeline/whats_on_intro.py's week_bounds()) still describing the
+ *  CURRENT week, per lib/this-week.ts's currentWeekInfo()? A block
+ *  describing last week's events above this week's listing is worse than no
+ *  block at all (handoff's own Step 4) -- kept as a separate, pure,
+ *  synchronous function (rather than folded into the DB query itself) so
+ *  this specific "is it stale" decision is unit-testable without a live DB,
+ *  the same testability reason buildWhatsOnStatus() in lib/cityStatus.ts
+ *  takes its data as a parameter instead of reaching for siteConfig/db.ts
+ *  itself. */
+export interface IsoWeek { isoYear: number; isoWeek: number }
+
+export function isWhatsOnIntroFresh(introWeek: IsoWeek, currentWeek: IsoWeek): boolean {
+  return introWeek.isoYear === currentWeek.isoYear && introWeek.isoWeek === currentWeek.isoWeek;
+}

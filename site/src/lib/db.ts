@@ -952,6 +952,33 @@ export async function getClosureWatchStatus(): Promise<ClosureWatchStatus & { pr
   return { ...status, prose };
 }
 
+export interface WhatsOnIntroRow {
+  body: string;
+  isoYear: number;
+  isoWeek: number;
+}
+
+/** The optional AI-generated weekly intro block for /whats-on (What's On
+ *  Phase 6b) -- see ai_pipeline/whats_on_intro.py. Fetches the MOST RECENT
+ *  row regardless of week (not an exact iso_year/iso_week match) so the
+ *  freshness comparison is a separate, pure, testable step -- see
+ *  lib/whats-on.ts's own isWhatsOnIntroFresh(), which the page calls against
+ *  this row's isoYear/isoWeek and lib/this-week.ts's currentWeekInfo(). A
+ *  missing row (never generated, or the only guardrail-passing draft is for
+ *  an old week that was since cleared -- see that module's own "delete
+ *  before regenerating" discipline) is the expected, common case: the page
+ *  simply renders with no intro block at all, same "absence is a normal
+ *  state, not an error" convention as getClosureWatchProse() above. */
+export async function getWhatsOnIntro(): Promise<WhatsOnIntroRow | null> {
+  const rows = (await sql`
+    SELECT body, iso_year AS "isoYear", iso_week AS "isoWeek" FROM whats_on_intro
+     WHERE town_id = ${TOWN_ID}
+     ORDER BY iso_year DESC, iso_week DESC
+     LIMIT 1
+  `) as WhatsOnIntroRow[];
+  return rows[0] ?? null;
+}
+
 /** En rad ur local_businesses -- se db/migrations/031_local_businesses.sql
  *  och ai_pipeline/new_in_town_digest.py. Bara needs_review=false rader
  *  läses här: en 'closed'-uppgift med bara en källa är avsiktligt osynlig

@@ -26,7 +26,9 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import { siteConfig } from '../../lib/site-config';
 import { getTicketmasterEventsForTown } from '../../lib/ticketmaster';
-import { rankTicketmasterEvents, splitMarquee } from '../../lib/whats-on';
+import { rankTicketmasterEvents, splitMarquee, isWhatsOnIntroFresh } from '../../lib/whats-on';
+import { getWhatsOnIntro } from '../../lib/db';
+import { currentWeekInfo } from '../../lib/this-week';
 import { EMPTY_STATES } from '../../lib/empty-states';
 import { SECTION_THEME } from '../../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
@@ -38,6 +40,18 @@ if (!siteConfig.hasWhatsOn) {
 const items = await getTicketmasterEventsForTown(siteConfig);
 const ranked = rankTicketmasterEvents(items, siteConfig.townId);
 const { marquee, alsoOn } = splitMarquee(ranked);
+
+// What's On Phase 6b: the optional weekly AI intro block, above Marquee.
+// getWhatsOnIntro() returns the MOST RECENT row regardless of week -- only
+// rendered when it's actually for the CURRENT ISO week (see
+// isWhatsOnIntroFresh()'s own comment for why "stale" is checked here as a
+// separate step rather than folded into the DB query). No row at all
+// (never generated, or a guardrail rejection this run wrote nothing for)
+// renders identically to a stale one: no block, not a placeholder.
+const introRow = await getWhatsOnIntro();
+const introText = introRow && isWhatsOnIntroFresh(introRow, currentWeekInfo(siteConfig.timezone))
+  ? introRow.body
+  : null;
 
 const canonicalUrl = new URL('/whats-on/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
@@ -57,6 +71,13 @@ const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
     so a Sioux Falls show never reads as a downtown event. Powered by Ticketmaster.</p>
     <ShareButton title={`What's On in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
   </header>
+
+  {introText && (
+    <div class="whats-on-intro">
+      <p class="whats-on-intro__text">{introText}</p>
+      <p class="whats-on-intro__disclosure">AI-generated from this week's listed events, checked against the source data before publishing.</p>
+    </div>
+  )}
 
   {ranked.length === 0 ? (
     <p class="empty">{EMPTY_STATES.whatsOn}</p>
@@ -99,6 +120,16 @@ const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
   padding-bottom: 1.125rem;
 }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.whats-on-intro {
+  max-width: 46rem;
+  margin: 0 0 1.5rem;
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--section-accent, var(--rule-strong));
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+}
+.whats-on-intro__text { line-height: 1.6; margin: 0 0 0.5rem; }
+.whats-on-intro__disclosure { font-size: 0.75rem; color: var(--ink-soft); margin: 0; }
 .marquee-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); margin-bottom: 1.5rem; }
 .also-on-list { display: block; }
 .empty { color: var(--ink-soft); }

@@ -419,7 +419,12 @@
     },
     "whats_on": {
       "enabled": false,
-      "_notes": "What's On Phase 5. Site-side only (Ticketmaster Discovery API, fetched live at Astro build time, see site/src/lib/ticketmaster.ts) -- this key exists purely to keep site-config.ts's hasWhatsOn in sync with this file's own convention (see tests/test_feature_flags.py), not because any Python pipeline code reads it. Stays enabled:false everywhere until Phase 7's town-by-town rollout, even though the /whats-on page itself is fully built and human-reviewed."
+      "_notes": "What's On Phase 5. Kept in sync with site-config.ts's hasWhatsOn (see tests/test_feature_flags.py). As of Phase 6b, this key IS read by Python: ai_pipeline/whats_on_intro.py gates its own weekly editorial-intro generation on it, alongside the ticketmaster block below (mirrors site-config.ts's own ticketmaster.enabled belt-and-suspenders check). Stays enabled:false everywhere until Phase 7's town-by-town rollout, even though the /whats-on page itself is fully built and human-reviewed.",
+      "ticketmaster": {
+        "enabled": false,
+        "radius_miles": 75,
+        "_notes": "Mirrors site-config.ts's ticketmaster block (same coordinates, reused from this file's own top-level `coordinates` rather than duplicated again -- see ai_pipeline/whats_on_intro.py). Brookings-only, same as the TS side -- Moreno Valley/Broomfield have no radius decision yet (Phase 7)."
+      }
     }
   },
   "_verify_before_launch": [

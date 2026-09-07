@@ -791,6 +791,35 @@ def validate_tone_v2(
     return GuardrailResult(passed=len(violations) == 0, violations=violations)
 
 
+# --- weekday consistency (What's On Weekly Intro) ----------------------------
+
+_WEEKDAY_WORDS_RE = re.compile(
+    r"\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b"
+)
+
+
+def check_weekday_consistency(text: str, real_weekdays: set[str]) -> GuardrailResult:
+    """Every weekday name in `text` must be one of `real_weekdays` (the
+    weekdays this week's actual source events fall on) -- see
+    ai_pipeline/whats_on_intro.py's own build_grounding_text().
+
+    A dedicated check because validate()'s general proper-noun fact-check
+    deliberately WHITELISTS weekday names as grammar-adjacent stopwords (see
+    _STOPWORDS above -- needed so ordinary sentence-initial capitalization of
+    "Monday" etc. across every OTHER content type doesn't false-positive).
+    That whitelist means a wrong weekday claim ("returns Friday" when the
+    only real date is a Saturday) would otherwise sail through unchecked --
+    this narrow, additive check exists specifically to close that one real
+    gap for this content type, without touching validate()'s shared
+    behavior for every other generator that relies on the whitelist.
+    """
+    violations: list[str] = []
+    for name in set(_WEEKDAY_WORDS_RE.findall(text)):
+        if name not in real_weekdays:
+            violations.append(f"weekday not in this week's real event dates: {name}")
+    return GuardrailResult(passed=len(violations) == 0, violations=violations)
+
+
 # bekväm sträng-serialisering av källfält för validering
 def source_to_text(record: dict) -> str:
     """Platta ut en DB-post/raw_data till en textmassa guardrails kan söka i."""
