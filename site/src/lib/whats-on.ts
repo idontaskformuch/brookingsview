@@ -6,7 +6,21 @@
  *  union: rankEvents() operates on EventFeedResult.items (FeedItem[]), and
  *  unioning Ticketmaster in would force type-narrowing changes onto Phase
  *  1's real page consumers for no benefit here -- this page never merges
- *  its list with the story/arts feed. */
+ *  its list with the story/arts feed.
+ *
+ *  Venue tiers for the real Sioux Falls-area venues in Brookings' 75-mile
+ *  Ticketmaster inventory (Denny Sanford PREMIER Center, Washington
+ *  Pavilion, Orpheum Theater, ...) were curated in the Phase 5 human
+ *  review follow-up, reversing Phase 3's earlier "don't guess" deferral
+ *  once real review showed the gap was load-bearing, not cosmetic -- see
+ *  lib/venue-tiers.ts's own VENUE_TIERS_BY_ID for the real, checked
+ *  capacity figures behind each tier. Passes the Ticketmaster venue's own
+ *  stable id through to venueTierFor() (preferred over the display name,
+ *  which can drift -- arena sponsorship renames are common). A venue not
+ *  yet observed in a live response still falls back to the default tier,
+ *  same as before -- see venue-tiers.ts's own DEFAULT_VENUE_TIER comment
+ *  and scripts/dump-event-ranking.ts's "unmapped venues" section for how
+ *  that's now surfaced at review time instead of staying invisible. */
 import { venueTierFor, venueTierRank } from './venue-tiers';
 import type { TicketmasterFeedItem, TicketmasterEvent } from './ticketmaster';
 import type { ResolvableStory } from './images';
@@ -63,7 +77,7 @@ export interface RankedTicketmasterEvent {
  *  never input-array order). */
 export function rankTicketmasterEvents(items: TicketmasterFeedItem[], townId: string): RankedTicketmasterEvent[] {
   const ranked = items.map((item) => {
-    const venueTier = venueTierFor(townId, item.ticketmasterEvent.venueName);
+    const venueTier = venueTierFor(townId, item.ticketmasterEvent.venueName, item.ticketmasterEvent.venueId);
     return { item, score: venueTierRank(venueTier), venueTier };
   });
 

@@ -30,12 +30,36 @@ describe('rankTicketmasterEvents', () => {
     expect(ranked[0].item).toBe(item);
   });
 
-  it('respects venue tier ordering -- a curated medium venue outranks an uncurated (default small) one, regardless of date', () => {
-    const small = tmItem('2026-10-10T18:00:00Z', { id: 'small', title: 'Small Venue Event', venueName: 'Some Uncurated Venue' });
-    const medium = tmItem('2026-10-24T19:00:00Z', { id: 'medium', title: 'Medium Venue Event', venueName: 'The Oscar Larson Performing Arts Center' });
-    const ranked = rankTicketmasterEvents([small, medium], 'brookings_sd');
-    expect(ranked[0].item.ticketmasterEvent.id).toBe('medium');
-    expect(ranked[0].venueTier).toBe('medium');
+  it('respects venue tier when a venue IS curated by id (What\'s On Phase 5 follow-up: real Sioux Falls venues, was previously uncurated)', () => {
+    const small = tmItem('2026-10-10T18:00:00Z', { id: 'small', title: 'Small Venue Event', venueName: 'BIGS Sports Bar', venueId: 'rZ7HnEZ178s_A' });
+    const large = tmItem('2026-10-10T18:00:00Z', { id: 'large', title: 'Large Venue Event', venueName: 'Denny Sanford PREMIER Center', venueId: 'KovZpZAJAl7A' });
+    const ranked = rankTicketmasterEvents([small, large], 'brookings_sd');
+    expect(ranked[0].item.ticketmasterEvent.id).toBe('large');
+    expect(ranked[0].venueTier).toBe('large');
+  });
+
+  it('a real touring act at a later date correctly outranks a sooner small-venue show, once the venue is curated -- the exact case the Phase 5 human review found inverted before this fix', () => {
+    const soonerSmall = tmItem('2026-09-12T00:00:00Z', { id: 'small', title: 'DECAYSTATE', venueName: 'Icon Events & Dada Gastropub', venueId: 'rZ7HnEZ178xxA' });
+    const laterLarge = tmItem('2026-10-25T00:00:00Z', { id: 'large', title: 'Zac Brown Band', venueName: 'Denny Sanford PREMIER Center', venueId: 'KovZpZAJAl7A' });
+    const ranked = rankTicketmasterEvents([soonerSmall, laterLarge], 'brookings_sd');
+    expect(ranked[0].item.ticketmasterEvent.id).toBe('large');
+  });
+
+  it('still resolves the correct tier by name alone, with no venueId at all -- the name-keyed fallback added after a real confirmed case (Denny Sanford PREMIER Center has two different Discovery API venue ids for the same building) means id instability degrades to name matching, not straight to the default', () => {
+    const large = tmItem('2026-10-24T19:00:00Z', { id: 'large', title: 'Later Event', venueName: 'Denny Sanford PREMIER Center' });
+    const medium = tmItem('2026-09-12T00:00:00Z', { id: 'medium', title: 'Sooner Event', venueName: 'Washington Pavilion of Arts & Science' });
+    const ranked = rankTicketmasterEvents([large, medium], 'brookings_sd');
+    expect(ranked[0].item.ticketmasterEvent.id).toBe('large');
+    expect(ranked[0].venueTier).toBe('large');
+    expect(ranked[1].venueTier).toBe('medium');
+  });
+
+  it('genuinely degrades to pure date ordering only for a venue never observed at all -- neither id nor name curated', () => {
+    const later = tmItem('2026-10-24T19:00:00Z', { id: 'later', title: 'Later Event', venueName: 'Some Brand New Sioux Falls Venue' });
+    const sooner = tmItem('2026-09-12T00:00:00Z', { id: 'sooner', title: 'Sooner Event', venueName: 'Another Uncurated Venue' });
+    const ranked = rankTicketmasterEvents([later, sooner], 'brookings_sd');
+    expect(ranked.every((r) => r.venueTier === 'small')).toBe(true);
+    expect(ranked.map((r) => r.item.ticketmasterEvent.id)).toEqual(['sooner', 'later']);
   });
 
   it('breaks a same-score, same-date tie by title, regardless of input order', () => {

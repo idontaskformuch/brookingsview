@@ -26,13 +26,23 @@
  * exists specifically for manual review of the adapter independent of the
  * (deliberately false) production flag. Omitted entirely by default so a
  * plain `npm run dump-ranking` behaves exactly as it did in Phase 2.
+ *
+ * The "UNMAPPED VENUES" section within --include-ticketmaster (What's On
+ * Phase 5 follow-up, "Radius Fix" review) exists because the invisible
+ * version of exactly this problem is what shipped Phase 5's own Marquee
+ * section inverted the first time: every uncurated venue silently lands at
+ * the default (lowest) tier with no signal anywhere that it happened, so a
+ * newly-arrived arena or a renamed one degrades ranking quality with no
+ * review-time indication anything is wrong. This is a REVIEW-time visibility
+ * aid only, never a build failure -- an unmapped venue must keep working
+ * (falling back to the default tier) exactly as before, just visibly now.
  */
 import { getUpcomingStories, getUpcomingArtsEvents } from '../src/lib/db';
 import { siteConfig } from '../src/lib/site-config';
 import { buildEventFeed, itemTitle, itemVenue } from '../src/lib/events';
 import { rankEvents } from '../src/lib/event-ranking';
 import { fetchTicketmasterEvents } from '../src/lib/ticketmaster';
-import { venueTierFor } from '../src/lib/venue-tiers';
+import { venueTierFor, isVenueCurated, DEFAULT_VENUE_TIER } from '../src/lib/venue-tiers';
 
 async function main() {
   const [stories, artsEvents] = await Promise.all([
@@ -76,16 +86,44 @@ async function main() {
     console.log(`Fetched ${tmItems.length} Ticketmaster event(s) within ${radiusMiles}mi of ${siteConfig.cityName} (${latitude},${longitude})\n`);
     console.log('date                  tier    venue                                          title (-> image/price)');
     console.log('-'.repeat(140));
+
+    const unmapped = new Map<string, { name: string; count: number }>();
     for (const item of tmItems) {
       const e = item.ticketmasterEvent;
       const date = item.occurs_at ? new Date(item.occurs_at).toISOString().slice(0, 16).replace('T', ' ') : '(undated)';
-      const tier = venueTierFor(siteConfig.townId, e.venueName);
+      const tier = venueTierFor(siteConfig.townId, e.venueName, e.venueId);
       const venue = (e.venueName ?? '(none)').slice(0, 45).padEnd(45);
       console.log(`${date.padEnd(21)}  ${tier.padEnd(7)} ${venue}  ${e.title}`);
       console.log(`  image: ${e.imageUrl ?? '(none)'}`);
       console.log(`  price: ${e.priceRangeText ?? '(none)'}`);
+
+      // NOT `tier === DEFAULT_VENUE_TIER` -- a venue can be deliberately
+      // curated AS the default tier (BIGS Sports Bar, 'small'), which that
+      // comparison can't distinguish from a genuinely uncurated venue that
+      // merely fell through to it. Confirmed live: the first version of
+      // this check wrongly flagged BIGS Sports Bar as unmapped. See
+      // isVenueCurated()'s own comment in lib/venue-tiers.ts.
+      if (!isVenueCurated(siteConfig.townId, e.venueName, e.venueId) && e.venueName) {
+        const key = e.venueId ?? e.venueName;
+        const existing = unmapped.get(key);
+        unmapped.set(key, { name: e.venueName, count: (existing?.count ?? 0) + 1 });
+      }
     }
     console.log();
+
+    if (unmapped.size > 0) {
+      console.log('='.repeat(78));
+      console.log(`⚠️  UNMAPPED VENUES -- ${unmapped.size} venue(s) landed at the default ('${DEFAULT_VENUE_TIER}') tier`);
+      console.log('   with no curated entry in lib/venue-tiers.ts. Review whether each one');
+      console.log('   deserves a real tier -- see venue-tiers.ts\'s VENUE_TIERS_BY_ID for how to');
+      console.log('   add one (real, checked capacity data, not a guess).');
+      console.log('='.repeat(78));
+      for (const { name, count } of unmapped.values()) {
+        console.log(`   ${String(count).padStart(3)} event(s) -- ${name}`);
+      }
+      console.log('='.repeat(78));
+      console.log();
+    }
   }
 }
 

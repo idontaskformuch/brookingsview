@@ -47,11 +47,23 @@ describe('rankEvents', () => {
   });
 
   it('respects venue tier ordering when nothing else differs', () => {
+    // Brookings' SDSU arts_culture venues (looked up by name only -- this
+    // source has no venue-id concept, unlike Ticketmaster) currently top
+    // out at 'medium': the Oscar Larson Performing Arts Center was revised
+    // down from 'large' in the What's On Phase 5 follow-up ("Radius Fix"
+    // review) once its real capacity (1,000 seats, its largest hall) was
+    // checked against the newly-curated real Sioux Falls venues and found
+    // smaller than several of them -- see lib/venue-tiers.ts's own comment.
+    // The 3-way large/medium/small ordering proof now lives in
+    // whats-on.test.ts, against Denny Sanford PREMIER Center (the one
+    // genuinely large venue in this town's tier system today, curated by
+    // Ticketmaster's own venue id).
     const small = artsItem(artsEvent({ title: 'Small Venue Event', location: 'Lincoln Hall', starts_at: '2026-09-10T18:00:00Z' }));
     const medium = artsItem(artsEvent({ title: 'Medium Venue Event', location: 'University Student Union', starts_at: '2026-09-10T18:00:00Z' }));
-    const large = artsItem(artsEvent({ title: 'Large Venue Event', location: 'The Oscar Larson Performing Arts Center', starts_at: '2026-09-10T18:00:00Z' }));
-    const ranked = rankEvents(feed([small, medium, large]), 'brookings_sd');
-    expect(ranked.map((r) => r.venueTier)).toEqual(['large', 'medium', 'small']);
+    const alsoMedium = artsItem(artsEvent({ title: 'Also Medium Venue Event', location: 'The Oscar Larson Performing Arts Center', starts_at: '2026-09-10T18:00:00Z' }));
+    const ranked = rankEvents(feed([small, medium, alsoMedium]), 'brookings_sd');
+    expect(ranked.map((r) => r.venueTier).sort()).toEqual(['medium', 'medium', 'small']);
+    expect(ranked[ranked.length - 1].venueTier).toBe('small');
   });
 
   it('boosts a cross-matched item above a same-tier item with no cross-match', () => {
@@ -66,9 +78,9 @@ describe('rankEvents', () => {
 
   it('an unranked/unknown venue falls back to the lowest tier, never crashing or outranking a known venue', () => {
     const unknown = artsItem(artsEvent({ title: 'Mystery Venue Event', location: 'Some Brand New Building', starts_at: '2026-09-10T18:00:00Z' }));
-    const large = artsItem(artsEvent({ title: 'Known Large Venue Event', location: 'The Oscar Larson Performing Arts Center', starts_at: '2026-09-10T18:00:00Z' }));
-    const ranked = rankEvents(feed([unknown, large]), 'brookings_sd');
-    expect(ranked[0].item).toBe(large);
+    const known = artsItem(artsEvent({ title: 'Known Venue Event', location: 'The Oscar Larson Performing Arts Center', starts_at: '2026-09-10T18:00:00Z' }));
+    const ranked = rankEvents(feed([unknown, known]), 'brookings_sd');
+    expect(ranked[0].item).toBe(known);
     expect(ranked[1].venueTier).toBe('small');
   });
 
