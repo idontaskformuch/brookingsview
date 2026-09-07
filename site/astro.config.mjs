@@ -183,15 +183,16 @@ const TOWN_GATED_PAGES = [
   // pipeline behind it isn't built yet -- see configs/*.json's new_in_town
   // "_notes") -- a pure stub everywhere until that ships.
   { path: '/new-in-town/', activeFor: [] },
-  // What's On Phase 7: hasWhatsOn is true for Brookings only -- Moreno
-  // Valley/Broomfield stay a pure stub (same as new-in-town above) until
-  // their own venue-tier curation follow-up lands. Only the LISTING page
-  // (a single static path) needs an entry here -- /whats-on/[slug]/ detail
-  // pages are excluded from this list on purpose, same reasoning as
-  // city-hall/projects/[slug].astro etc.'s own dynamic-route exclusion
-  // above: that page's own getStaticPaths() returns [] when the flag is
-  // off, so no detail-page stub file is ever produced to need excluding.
-  { path: '/whats-on/', activeFor: ['brookings_sd'] },
+  // What's On: hasWhatsOn is true for all three towns as of the Phase 7
+  // venue-curation follow-up (Moreno Valley/Broomfield needed their own
+  // venue curation before enabling -- see site-config.ts's own ticketmaster
+  // comments for each). Only the LISTING page (a single static path) needs
+  // an entry here -- /whats-on/[slug]/ detail pages are excluded from this
+  // list on purpose, same reasoning as city-hall/projects/[slug].astro
+  // etc.'s own dynamic-route exclusion above: that page's own
+  // getStaticPaths() returns [] when the flag is off, so no detail-page
+  // stub file is ever produced to need excluding.
+  { path: '/whats-on/', activeFor: ['brookings_sd', 'moreno_valley_ca', 'broomfield_co'] },
 ];
 
 /**

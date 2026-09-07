@@ -157,6 +157,51 @@ describe('venueTierRank', () => {
   });
 });
 
+describe('Moreno Valley / Broomfield venue curation (What\'s On Phase 7 follow-up, "Venue Curation")', () => {
+  it('resolves Moreno Valley\'s large-tier venues by id', () => {
+    expect(venueTierFor('moreno_valley_ca', 'Toyota Arena-CA', 'ZFr9jZk1a7')).toBe('large');
+  });
+
+  it('resolves Moreno Valley\'s medium-tier venues, including both real ids for the Yaamava apostrophe duplicate', () => {
+    expect(venueTierFor('moreno_valley_ca', 'Yaamava Resort & Casino at San Manuel', 'ZFr9jZAvFe')).toBe('medium');
+    expect(venueTierFor('moreno_valley_ca', "Yaamava' Resort & Casino at San Manuel", 'KovZpZAFAkJA')).toBe('medium');
+    expect(venueTierFor('moreno_valley_ca', 'Yaamava Theater', 'Z7r9jZaAVT')).toBe('medium');
+  });
+
+  it('resolves the Ontario Improv as a deliberately curated small venue, by id or by name', () => {
+    expect(venueTierFor('moreno_valley_ca', 'Ontario Improv', 'rZ7HnEZ178EPP')).toBe('small');
+    expect(venueTierFor('moreno_valley_ca', 'Ontario Improv')).toBe('small');
+    expect(isVenueCurated('moreno_valley_ca', 'Ontario Improv', 'rZ7HnEZ178EPP')).toBe(true);
+  });
+
+  it('falls back to the name-keyed map for a Moreno Valley venue whose id has drifted or is unknown', () => {
+    expect(venueTierFor('moreno_valley_ca', 'Toyota Arena', 'some-unknown-id')).toBe('large');
+    expect(venueTierFor('moreno_valley_ca', 'Pechanga Resort Casino')).toBe('medium');
+  });
+
+  it('resolves Broomfield\'s large-tier metro venues, including both real ids for the Federal Theatre duplicate', () => {
+    expect(venueTierFor('broomfield_co', 'Ball Arena', 'KovZpZAFaJeA')).toBe('large');
+    expect(venueTierFor('broomfield_co', 'Empower Field At Mile High', 'KovZpa3Wne')).toBe('large');
+    expect(venueTierFor('broomfield_co', 'Red Rocks Amphitheatre', 'KovZpZAaeIvA')).toBe('large');
+    expect(venueTierFor('broomfield_co', 'The Federal Theatre', 'KovZ917AVFY')).toBe('medium');
+    expect(venueTierFor('broomfield_co', 'The Federal Theatre', 'Z7r9jZakK6')).toBe('medium');
+  });
+
+  it('resolves Broomfield\'s small-tier venues as deliberately curated, not defaulted', () => {
+    expect(venueTierFor('broomfield_co', 'Marquis Theater', 'KovZpZAJeFkA')).toBe('small');
+    expect(isVenueCurated('broomfield_co', 'Marquis Theater', 'KovZpZAJeFkA')).toBe(true);
+  });
+
+  it('a real top-20 Broomfield venue deliberately left uncurated in this pass still falls to the default cleanly, not an error', () => {
+    expect(venueTierFor('broomfield_co', 'JUNKYARD')).toBe(DEFAULT_VENUE_TIER);
+    expect(isVenueCurated('broomfield_co', 'JUNKYARD')).toBe(false);
+  });
+
+  it('falls back to the normalized name map for Cervantes\' Masterpiece Ballroom despite its apostrophe', () => {
+    expect(venueTierFor('broomfield_co', "Cervantes' Masterpiece Ballroom")).toBe('medium');
+  });
+});
+
 describe('isVenueCurated (What\'s On Phase 5 follow-up -- distinguishes "genuinely unmapped" from "deliberately curated at the default tier")', () => {
   it('is true for a venue curated by id, even when its tier happens to equal the default', () => {
     expect(isVenueCurated('brookings_sd', 'BIGS Sports Bar', 'rZ7HnEZ178s_A')).toBe(true);

@@ -143,6 +143,13 @@ const VENUE_TIERS: Record<string, Record<string, VenueTier>> = {
     'larson commons': 'small',
     'raven precision agriculture center': 'small',
   },
+  // Populated below by Object.assign from each town's own
+  // TICKETMASTER_VENUE_TIERS_BY_NAME_* fallback map (What's On Phase 7
+  // follow-up) -- no SDSU-equivalent name-keyed source exists for these
+  // two towns, so unlike brookings_sd above there's nothing to merge INTO,
+  // just the Ticketmaster fallback itself.
+  moreno_valley_ca: {},
+  broomfield_co: {},
 };
 
 /**
@@ -195,6 +202,109 @@ const VENUE_TIERS_BY_ID: Record<string, Record<string, VenueTier>> = {
     ZFr9jZF6eF: 'medium', // Orpheum Theater Sioux Falls
     rZ7HnEZ178s_A: 'small', // BIGS Sports Bar
   },
+  /**
+   * What's On Phase 7 follow-up ("Venue Curation") -- top-end only, per
+   * that handoff's own instruction: ranking doesn't need fine-grained
+   * capacity data, only enough to keep genuine headliners above small-room
+   * shows. Curated from the venues that actually appeared in Moreno
+   * Valley's real top-20 ranked events at its calibrated 35mi radius
+   * (2026-09-07 live pull), plus Toyota Arena/Pechanga/Yaamava from the
+   * earlier radius-calibration report. Every tier below is a real, checked
+   * public capacity figure (search date 2026-09-07), not a guess:
+   *
+   *   - Toyota Arena (Ontario): 11,089 full-capacity configuration. large.
+   *   - Great Park Live (Irvine): 7,500, expanded to 10,000 GA. large.
+   *   - Morongo Casino Resort and Spa (Cabazon): 7,500. large.
+   *   - Yaamava' Theater / Yaamava Resort & Casino at San Manuel
+   *     (Highland): the dedicated theater seats ~2,500-3,000; the
+   *     generic "Resort & Casino" listing (a separate in-property space,
+   *     real capacity not separately confirmed) is treated the same,
+   *     both well above this market's next tier down. medium.
+   *   - Pechanga Resort Casino (Temecula): the Summit event center seats
+   *     3,100 (a separate 1,200-seat theater also exists on the same
+   *     property). medium.
+   *   - Riverside Municipal Auditorium: ~1,600 (sources range 1,400-1,776).
+   *     medium.
+   *   - Fox Performing Arts Center (Riverside): ~1,646. medium.
+   *   - Ontario Improv: 350-seat comedy club -- curated explicitly AS
+   *     small (see isVenueCurated()) rather than left to the default, so
+   *     its 4 real top-20 appearances read as a deliberate choice, not an
+   *     oversight.
+   *   - Stage Red (Fontana): 400-500 seats. small.
+   *   - Yucaipa Performing Arts Center Indoor Theatre: 291 seats. small.
+   *
+   * Everything else this market's real feed surfaces stays uncurated at
+   * the default tier, deliberately -- this is a top-end-only pass, not an
+   * attempt to catalog the whole Inland Empire market.
+   */
+  moreno_valley_ca: {
+    ZFr9jZAvFe: 'medium', // Yaamava Resort & Casino at San Manuel
+    KovZpZAFAkJA: 'medium', // Yaamava' Resort & Casino at San Manuel -- SAME
+    // real venue, a second Discovery API id differing only by the
+    // apostrophe in the display name (confirmed live 2026-09-07) -- kept
+    // here too, belt-and-suspenders, on top of the name-keyed fallback
+    // below now that normalizeVenueName() strips the apostrophe.
+    Z7r9jZaAVT: 'medium', // Yaamava Theater (the resort's dedicated theater)
+    KovZpZA1vvlA: 'medium', // Pechanga Resort Casino
+    KovZpZAEA6FA: 'medium', // Riverside Municipal Auditorium
+    KovZpZAEA6lA: 'medium', // Fox Performing Arts Center
+    rZ7HnEZ178EPP: 'small', // Ontario Improv -- deliberately curated, not defaulted
+    KovZ917ARhe: 'small', // Stage Red
+    KovZ917ANgr: 'small', // Yucaipa Performing Arts Center Indoor Theatre
+    ZFr9jZk1a7: 'large', // Toyota Arena (this specific id, seen live as "Toyota Arena-CA")
+  },
+  /**
+   * What's On Phase 7 follow-up ("Venue Curation") -- same top-end-only
+   * approach as Moreno Valley above. Curated from Broomfield's real top-20
+   * ranked events at its calibrated 20mi radius (2026-09-07 live pull),
+   * plus Ball Arena/Empower Field/Red Rocks -- confirmed live to fall
+   * within 20mi (13mi and 19mi respectively) even though neither happened
+   * to land in that day's specific top-20 date slice; Denver's own market
+   * has enough near-term listings that particular top-20 snapshot shifts
+   * day to day, but these two venues reliably recur. Real, checked public
+   * capacity (search date 2026-09-07):
+   *
+   *   - Empower Field at Mile High: 76,125 (NFL), 85,000+ configured for
+   *     concerts. large.
+   *   - Ball Arena: ~19,000-20,000 depending on configuration. large.
+   *   - Red Rocks Amphitheatre: 9,525. large.
+   *   - Mission Ballroom: 2,200-3,950 (moving-stage configuration). large.
+   *   - Fillmore Auditorium (Denver): ~3,600-3,900. medium.
+   *   - Paramount Theatre (Denver): ~1,865. medium.
+   *   - Cervantes' Masterpiece Ballroom: 1,450 combined (900 Ballroom +
+   *     500 Other Side, connected rooms). medium.
+   *   - Summit Music Hall: 1,100-1,350. medium.
+   *   - The Federal Theatre: 648. medium.
+   *   - Marquis Theater: 450. small.
+   *   - Arvada Center (Main Stage Theatre): ~500-526. small.
+   *
+   * Real top-20 venues NOT curated here -- Moon Room at Summit, JUNKYARD,
+   * Ophelia's Electric Soapbox, Grizzly Rose -- deliberately: no verified
+   * public capacity figure was gathered for these in this pass (a scope
+   * boundary, not an oversight; each appeared only once in the real top-20,
+   * consistent with being genuinely small rooms). They stay at the default
+   * tier and will keep surfacing in scripts/dump-event-ranking.ts's
+   * "unmapped venues" section -- a real follow-up to close later, not a
+   * silent gap.
+   */
+  broomfield_co: {
+    KovZpZAFa1nA: 'medium', // Paramount Theatre
+    Z7r9jZadVI: 'large', // Mission Ballroom
+    KovZpZAFaJeA: 'large', // Ball Arena
+    KovZpZAJeFkA: 'small', // Marquis Theater
+    KovZpZAFFt1A: 'medium', // Summit Music Hall
+    Zkr9jZ16es: 'small', // Arvada Center (Main Stage Theatre)
+    ZFr9jZkk1d: 'medium', // Cervantes' Masterpiece Ballroom
+    KovZ917AVFY: 'medium', // The Federal Theatre
+    Z7r9jZakK6: 'medium', // The Federal Theatre -- SAME real venue, a second
+    // Discovery API id (confirmed live 2026-09-07, same day, two different
+    // listings each carrying a different id for this venue) -- the exact
+    // same fragility as Denny Sanford PREMIER Center in Brookings, just
+    // discovered here instead.
+    KovZpZAE6eJA: 'medium', // Fillmore Auditorium (Denver)
+    KovZpa3Wne: 'large', // Empower Field at Mile High
+    KovZpZAaeIvA: 'large', // Red Rocks Amphitheatre
+  },
 };
 
 /** Name-keyed fallback for the same real Ticketmaster venues curated by id
@@ -213,13 +323,48 @@ const TICKETMASTER_VENUE_TIERS_BY_NAME: Record<string, VenueTier> = {
   'grand falls casino resort': 'medium',
   'icon events & dada gastropub': 'medium',
   // Was 'orpheum theater sioux falls - sd' -- the trailing " - SD" is now
-  // stripped by normalize() itself (see that function's own comment), so
-  // the stored key must match its OWN output, not the raw pre-normalized
-  // name.
+  // stripped by normalizeVenueName() itself (see that function's own
+  // comment), so the stored key must match its OWN output, not the raw
+  // pre-normalization name.
   'orpheum theater sioux falls': 'medium',
   'bigs sports bar': 'small',
 };
 Object.assign(VENUE_TIERS.brookings_sd, TICKETMASTER_VENUE_TIERS_BY_NAME);
+
+/** Name-keyed fallback for Moreno Valley's id-curated venues above -- same
+ *  belt-and-suspenders reasoning as Brookings' own fallback: a still-
+ *  undiscovered id for one of these real venues resolves by name instead
+ *  of landing at the default. Keys already reflect normalizeVenueName()'s
+ *  own output (apostrophe stripped, no trailing state suffix). */
+const MORENO_VALLEY_VENUE_TIERS_BY_NAME: Record<string, VenueTier> = {
+  'yaamava resort & casino at san manuel': 'medium',
+  'yaamava theater': 'medium',
+  'pechanga resort casino': 'medium',
+  'riverside municipal auditorium': 'medium',
+  'fox performing arts center': 'medium',
+  'ontario improv': 'small',
+  'stage red': 'small',
+  'yucaipa performing arts center indoor theatre': 'small',
+  'toyota arena': 'large',
+};
+Object.assign(VENUE_TIERS.moreno_valley_ca, MORENO_VALLEY_VENUE_TIERS_BY_NAME);
+
+/** Name-keyed fallback for Broomfield's id-curated venues above -- same
+ *  reasoning as Moreno Valley's fallback immediately above. */
+const BROOMFIELD_VENUE_TIERS_BY_NAME: Record<string, VenueTier> = {
+  'paramount theatre': 'medium',
+  'mission ballroom': 'large',
+  'ball arena': 'large',
+  'marquis theater': 'small',
+  'summit music hall': 'medium',
+  'arvada center': 'small',
+  'cervantes masterpiece ballroom': 'medium', // apostrophe stripped by normalizeVenueName()
+  'the federal theatre': 'medium',
+  'fillmore auditorium (denver)': 'medium',
+  'empower field at mile high': 'large',
+  'red rocks amphitheatre': 'large',
+};
+Object.assign(VENUE_TIERS.broomfield_co, BROOMFIELD_VENUE_TIERS_BY_NAME);
 
 /**
  * `venueName` is whatever a FeedItem's own venue field holds -- a

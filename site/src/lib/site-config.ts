@@ -215,8 +215,9 @@ const CITIES: Record<string, SiteConfig> = {
     ticketmaster: { enabled: true, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 },
     // Phase 7: enabled for real. Brookings' venues are curated and
     // human-reviewed across every What's On phase -- Moreno Valley and
-    // Broomfield are NOT (see their own ticketmaster blocks below) and stay
-    // off pending a venue-curation follow-up.
+    // Broomfield needed their own venue-curation pass first (see their own
+    // ticketmaster blocks below), done as a Phase 7 follow-up before they
+    // were enabled too.
     hasWhatsOn: true,
     // 'whats_on' (Phase 6a) wired in now, same "route exists, flag decides"
     // convention as hasWhatsOn itself -- safe with hasWhatsOn:false above
@@ -281,18 +282,24 @@ const CITIES: Record<string, SiteConfig> = {
     // 35mi chosen as comfortably regional (Inland Empire) without reaching
     // as far as Orange County (Anaheim/Irvine, which 50mi does pull in).
     //
-    // enabled: false, NOT because the radius is wrong -- because every
-    // venue in this market is unmapped in venue-tiers.ts (the curated map
-    // is Sioux Falls-only), so ranking currently degrades entirely to
-    // date-order with zero capacity signal: a real touring artist (Kany
-    // Garcia) ties directly against "Open Mic at the Ontario Improv" in the
-    // real top 8. Needs its own venue curation (a follow-up, scoped to the
-    // ~10-15 venues that actually appear near the top of the ranking, not
-    // the whole market) before this town's page is actually good -- see
-    // Phase 7's own handoff for the full finding.
-    ticketmaster: { enabled: false, latitude: 33.9425, longitude: -117.2297, radiusMiles: 35 },
-    hasWhatsOn: false,
-    statusModules: ['weather', 'alerts', 'traffic', 'closures', 'events_today', 'next_meeting', 'worker_pulse'],
+    // Was enabled: false through Phase 7 itself -- every venue in this
+    // market was unmapped in venue-tiers.ts (the curated map was Sioux
+    // Falls-only), degrading ranking entirely to date-order: a real
+    // touring artist (Kany Garcia) tied directly against "Open Mic at the
+    // Ontario Improv" in the real top 8. Fixed in the Phase 7 venue-
+    // curation follow-up: the ~10 venues that actually surface near the
+    // top of this market's ranking are now curated by real capacity (see
+    // venue-tiers.ts's own comment for the full list and reasoning) --
+    // re-verified live afterward that Kany Garcia now resolves to medium
+    // tier and ranks below the curated large-tier Toyota Arena acts,
+    // instead of tying with the open mic.
+    ticketmaster: { enabled: true, latitude: 33.9425, longitude: -117.2297, radiusMiles: 35 },
+    hasWhatsOn: true,
+    // 'whats_on' added alongside the enable above -- see cityStatus.ts's
+    // own MODULES comment for why it's safe to list even while hasWhatsOn
+    // was false (not ALWAYS_RENDERED), same reasoning that already applied
+    // to Brookings in Phase 6a.
+    statusModules: ['weather', 'alerts', 'traffic', 'closures', 'events_today', 'next_meeting', 'worker_pulse', 'whats_on'],
     closureWatch: {
       relevantAlertEvents: ['Red Flag Warning', 'Fire Weather Watch', 'Air Quality Alert'],
       // Measured 2026-08-28 against real scrape history: Air Quality Alert
@@ -359,18 +366,21 @@ const CITIES: Record<string, SiteConfig> = {
     // risk here (unlike Moreno Valley) -- 20mi chosen as the smallest
     // sufficient radius, comfortably including Boulder (~12mi away).
     //
-    // enabled: false for the SAME reason as Moreno Valley, not a radius
-    // problem: every venue here is unmapped in venue-tiers.ts, so ranking
-    // is pure date-order today. The real top-8 at every tested radius
-    // already includes genuinely major venues (Ball Arena, Empower Field,
-    // Red Rocks, Mission Ballroom) -- which is correct for a Denver-metro
-    // suburb -- but only by date coincidence, not because ranking
-    // recognizes they're arena/stadium-scale. Needs its own venue curation
-    // follow-up (same ~10-15-venue scope as Moreno Valley) before this
-    // town's page is actually good.
-    ticketmaster: { enabled: false, latitude: 39.9205, longitude: -105.0866, radiusMiles: 20 },
-    hasWhatsOn: false,
-    statusModules: ['weather', 'alerts', 'traffic', 'next_meeting'],
+    // Was enabled: false through Phase 7 itself, for the SAME reason as
+    // Moreno Valley: every venue here was unmapped in venue-tiers.ts, so
+    // ranking was pure date-order -- genuinely major venues (Ball Arena,
+    // Empower Field, Red Rocks, Mission Ballroom) only ranked high by date
+    // coincidence, not because ranking recognized their scale. Fixed in
+    // the Phase 7 venue-curation follow-up: 11 real Broomfield/Denver-
+    // metro venues now curated by real capacity (see venue-tiers.ts's own
+    // comment) -- re-verified live afterward that the top 8 is now
+    // entirely genuine major touring acts at Ball Arena/Mission Ballroom,
+    // matching what a real Denver-metro suburb's events page should show.
+    ticketmaster: { enabled: true, latitude: 39.9205, longitude: -105.0866, radiusMiles: 20 },
+    hasWhatsOn: true,
+    // 'whats_on' added alongside the enable above -- see Moreno Valley's
+    // identical comment just above for why.
+    statusModules: ['weather', 'alerts', 'traffic', 'next_meeting', 'whats_on'],
     // Local Accent Identity, Broomfield-first rollout. A muted Front Range
     // slate-teal (H185) -- deliberately not green (avoids reading as an
     // interpretation of Vail Resorts' own branding, which this town's

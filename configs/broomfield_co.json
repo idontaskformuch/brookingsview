@@ -260,8 +260,8 @@
       "_notes": "Handoff: Information Hub Tier 1, Feature C. Descoped per _verify_before_launch above -- no bulk sales-report source for Broomfield, only a per-parcel EagleWeb lookup portal."
     },
     "whats_on": {
-      "enabled": false,
-      "_notes": "What's On, Brookings-only through Phase 5 (see site/src/lib/ticketmaster.ts) -- this key exists purely to keep site-config.ts's hasWhatsOn in sync with this file's own convention (see tests/test_feature_flags.py). No Ticketmaster config exists for Broomfield yet; radius/rollout is a Phase 7 decision."
+      "enabled": true,
+      "_notes": "What's On, enabled as of the Phase 7 venue-curation follow-up. Kept in sync with site-config.ts's hasWhatsOn (see tests/test_feature_flags.py). Radius calibrated to 20mi and the top ~11 real venues curated in site/src/lib/venue-tiers.ts before enabling -- see that file's own comment for the full finding and reasoning."
     }
   },
   "_verify_before_launch": [

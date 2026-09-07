@@ -416,8 +416,8 @@
       "_notes": "Handoff: Information Hub Tier 1, Feature C. Presentation layer over the already-live property_sales data source above (Riverside County Assessor quarterly file) -- the only town with real sales data today. /home-sales stays as the raw table; this adds the narrative monthly read on top."
     },
     "whats_on": {
-      "enabled": false,
-      "_notes": "What's On, Brookings-only through Phase 5 (see site/src/lib/ticketmaster.ts) -- this key exists purely to keep site-config.ts's hasWhatsOn in sync with this file's own convention (see tests/test_feature_flags.py). No Ticketmaster config exists for Moreno Valley yet; radius/rollout is a Phase 7 decision."
+      "enabled": true,
+      "_notes": "What's On, enabled as of the Phase 7 venue-curation follow-up. Kept in sync with site-config.ts's hasWhatsOn (see tests/test_feature_flags.py). Radius calibrated to 35mi and the top ~10 real venues curated in site/src/lib/venue-tiers.ts before enabling -- see that file's own comment for the full finding and reasoning."
     }
   },
   "_verify_before_launch": [
