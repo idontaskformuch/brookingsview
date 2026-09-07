@@ -63,6 +63,12 @@ jobs:
         env:
           SITE_CITY: brookings_sd
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # What's On Phase 3: threaded through now even though nothing
+          # calls it yet (siteConfig.ticketmaster.enabled is false) -- see
+          # lib/ticketmaster.ts's own module comment. Harmless either way:
+          # fetchTicketmasterEvents() itself never crashes a build on a
+          # missing/invalid key.
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
         run: npx astro build
       - name: Deploy to Cloudflare Workers (Brookings)
         working-directory: site

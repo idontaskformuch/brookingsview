@@ -14,15 +14,25 @@
  *
  * Usage (from site/):
  *   SITE_CITY=brookings_sd npm run dump-ranking
+ *   SITE_CITY=brookings_sd npm run dump-ranking -- --include-ticketmaster
  *
  * Brookings is the only town with real arts_culture data today (Phase 2
  * runs entirely against it) -- another SITE_CITY will just print an empty
  * dump, not an error.
+ *
+ * --include-ticketmaster (What's On Phase 3): a SEPARATE section, printed
+ * after the main ranked table, calling fetchTicketmasterEvents() directly
+ * -- bypassing siteConfig.ticketmaster?.enabled on purpose, since this flag
+ * exists specifically for manual review of the adapter independent of the
+ * (deliberately false) production flag. Omitted entirely by default so a
+ * plain `npm run dump-ranking` behaves exactly as it did in Phase 2.
  */
 import { getUpcomingStories, getUpcomingArtsEvents } from '../src/lib/db';
 import { siteConfig } from '../src/lib/site-config';
 import { buildEventFeed, itemTitle, itemVenue } from '../src/lib/events';
 import { rankEvents } from '../src/lib/event-ranking';
+import { fetchTicketmasterEvents } from '../src/lib/ticketmaster';
+import { venueTierFor } from '../src/lib/venue-tiers';
 
 async function main() {
   const [stories, artsEvents] = await Promise.all([
@@ -54,6 +64,24 @@ async function main() {
   console.log(
     `\nscore = venueTier(${'small=0/medium=1/large=2'}) * 10 + crossMatchCount * 5\n`,
   );
+
+  if (process.argv.includes('--include-ticketmaster')) {
+    console.log('\n--- Ticketmaster (Discovery API, live fetch, siteConfig.ticketmaster.enabled bypassed) ---\n');
+    const tmItems = await fetchTicketmasterEvents(siteConfig.cityName, siteConfig.stateAbbr);
+    console.log(`Fetched ${tmItems.length} Ticketmaster event(s) for ${siteConfig.cityName}, ${siteConfig.stateAbbr}\n`);
+    console.log('date                  tier    venue                                          title (-> image/price)');
+    console.log('-'.repeat(140));
+    for (const item of tmItems) {
+      const e = item.ticketmasterEvent;
+      const date = item.occurs_at ? new Date(item.occurs_at).toISOString().slice(0, 16).replace('T', ' ') : '(undated)';
+      const tier = venueTierFor(siteConfig.townId, e.venueName);
+      const venue = (e.venueName ?? '(none)').slice(0, 45).padEnd(45);
+      console.log(`${date.padEnd(21)}  ${tier.padEnd(7)} ${venue}  ${e.title}`);
+      console.log(`  image: ${e.imageUrl ?? '(none)'}`);
+      console.log(`  price: ${e.priceRangeText ?? '(none)'}`);
+    }
+    console.log();
+  }
 }
 
 main().catch((err) => {

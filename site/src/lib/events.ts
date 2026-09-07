@@ -189,9 +189,24 @@ export interface EventSourceConfig {
   crossMatch: boolean;
 }
 
+/** `ticketmaster` (What's On Phase 3) is registered here even though it
+ *  never actually reaches buildEventFeed() yet -- see lib/ticketmaster.ts's
+ *  own module comment for why the adapter stays standalone this phase.
+ *  Enabled for cross-matching per real data: 14 live Brookings Discovery
+ *  API results (2026-09-07, all SDSU Athletics + one commercial wrestling
+ *  event) share zero titles with any current arts_culture/story item, so
+ *  there's no live evidence of a false-positive risk. Ticketmaster's own
+ *  title convention ("South Dakota State Jackrabbits Football vs. Murray
+ *  State Racers Football") is far more formal/verbose than how a city
+ *  calendar or SDSU's arts_culture feed would describe the same real event,
+ *  so in practice this is more likely to MISS a genuine duplicate (a safe
+ *  failure -- two cards instead of one) than to wrongly merge two different
+ *  events -- the failure mode Phase 1's own same-source exclusion rule
+ *  exists to prevent. */
 export const EVENT_SOURCES: Record<string, EventSourceConfig> = {
   story: { crossMatch: true },
   arts: { crossMatch: true },
+  ticketmaster: { crossMatch: true },
 };
 
 /** Same calendar date + exact normalized-title match, cross-SOURCE only

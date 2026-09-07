@@ -17,6 +17,12 @@ describe('venueTierFor', () => {
     expect(venueTierFor('brookings_sd', 'Some Brand New Venue Nobody Has Seen Yet')).toBe(DEFAULT_VENUE_TIER);
   });
 
+  it('a real Ticketmaster venue (What\'s On Phase 3) falls back to the default tier cleanly, not an error -- not curated yet on purpose (real venue data curation is flagged as a follow-up, not guessed)', () => {
+    expect(venueTierFor('brookings_sd', 'Dana J. Dykhouse Stadium')).toBe(DEFAULT_VENUE_TIER);
+    expect(venueTierFor('brookings_sd', 'Dacotah Bank Center')).toBe(DEFAULT_VENUE_TIER);
+    expect(venueTierFor('brookings_sd', 'First Bank and Trust Arena')).toBe(DEFAULT_VENUE_TIER);
+  });
+
   it('falls back to the default tier for an unknown town entirely', () => {
     expect(venueTierFor('some_future_town', 'Any Venue')).toBe(DEFAULT_VENUE_TIER);
   });

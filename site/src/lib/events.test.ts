@@ -3,6 +3,7 @@ import {
   buildEventFeed, isToday, isThisWeekend, isTonight, isTomorrow, selectTodayBucket,
   isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent, findCrossSourceMatch,
   todayUtcMidnight, utcMidnight, localDateParts, artsEventAsStory,
+  EVENT_SOURCES,
   type FeedItem, type EventSourceConfig,
 } from './events';
 import type { Story, SdsuEvent, Facility } from './db';
@@ -234,6 +235,44 @@ describe('findCrossSourceMatch (What\'s On Phase 1: n-source generalization)', (
   it('returns undefined for an undated item regardless of source count', () => {
     const canonicalByKey = new Map<string, string>([['2026-08-07|story|x', 'y']]);
     expect(findCrossSourceMatch('arts', null, 'x', canonicalByKey, THREE_SOURCES)).toBeUndefined();
+  });
+});
+
+describe('EVENT_SOURCES + Ticketmaster cross-match sanity check (What\'s On Phase 3)', () => {
+  // Real title, captured live from Discovery API for Brookings, SD on
+  // 2026-09-07 -- see lib/ticketmaster.test.ts's realFixture(). Ticketmaster's
+  // own convention (long, formal, "Team A vs. Team B [Sport]") is far more
+  // verbose than how an arts_culture/city feed would plausibly describe the
+  // same real-world event.
+  const REAL_TICKETMASTER_TITLE = 'South Dakota State Jackrabbits Football vs. Murray State Racers Football';
+  // A plausible (constructed, not real -- Athletics isn't in the
+  // arts_culture bucket buildEventFeed() actually reads, so no live
+  // counterpart exists to compare against) title a city/arts calendar might
+  // use for the SAME real game.
+  const PLAUSIBLE_ARTS_CALENDAR_TITLE = 'Jackrabbits Football vs Murray State';
+
+  function normalize(title: string): string {
+    return title.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  it('ticketmaster is registered with crossMatch enabled in the real production config', () => {
+    expect(EVENT_SOURCES.ticketmaster).toEqual({ crossMatch: true });
+  });
+
+  it('the mechanism DOES merge a ticketmaster item when its title exactly matches another source (proves it works when titles align)', () => {
+    const canonicalByKey = new Map<string, string>([
+      [`2026-10-24|story|${normalize(REAL_TICKETMASTER_TITLE)}`, 'the-story-item'],
+    ]);
+    expect(findCrossSourceMatch('ticketmaster', '2026-10-24', normalize(REAL_TICKETMASTER_TITLE), canonicalByKey, EVENT_SOURCES))
+      .toBe('the-story-item');
+  });
+
+  it('a real Ticketmaster title does NOT merge against a plausibly-phrased same-event title from another source -- a safe miss (two cards), never a wrong merge, documenting the real limitation', () => {
+    const canonicalByKey = new Map<string, string>([
+      [`2026-10-24|story|${normalize(PLAUSIBLE_ARTS_CALENDAR_TITLE)}`, 'the-story-item'],
+    ]);
+    expect(findCrossSourceMatch('ticketmaster', '2026-10-24', normalize(REAL_TICKETMASTER_TITLE), canonicalByKey, EVENT_SOURCES))
+      .toBeUndefined();
   });
 });
 

@@ -154,6 +154,18 @@ export interface SiteConfig {
    *  Moreno Valley are still working through the August indexing backlog
    *  and shouldn't absorb a site-wide render change until that clears. */
   brand?: { accent: string; accentInk: string };
+  /** What's On Phase 3: Ticketmaster Discovery API adapter (lib/
+   *  ticketmaster.ts). Object-shaped (not a bare boolean) the same way
+   *  closureWatch is above, since real per-town config (city/state name for
+   *  the API query, eventually a search radius per the original What's On
+   *  spec) will grow here once this is ever wired into a real page --
+   *  none of that exists yet, `enabled: false` is the only field this
+   *  phase needs. `enabled: false` everywhere until Phase 7 (town-by-town
+   *  rollout) -- the adapter itself is fully built and tested, but not
+   *  called from buildEventFeed() or any page this phase (see lib/
+   *  ticketmaster.ts's own module comment for why). Missing entirely for
+   *  every town but Brookings -- Phase 3 is Brookings-only, on purpose. */
+  ticketmaster?: { enabled: boolean };
 }
 
 const CITIES: Record<string, SiteConfig> = {
@@ -164,6 +176,7 @@ const CITIES: Record<string, SiteConfig> = {
     stateAbbr: 'SD',
     hasClosureWatch: true,
     hasEventsSource: true,
+    ticketmaster: { enabled: false },
     statusModules: ['weather', 'alerts', 'closures', 'events_today', 'next_meeting', 'university'],
     closureWatch: {
       relevantAlertEvents: [
