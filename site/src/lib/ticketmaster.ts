@@ -62,7 +62,18 @@ export interface RawTicketmasterEvent {
       distance?: number;
     }[];
   };
-  classifications?: { primary?: boolean; segment?: { name?: string } }[];
+  classifications?: {
+    primary?: boolean;
+    segment?: { name?: string };
+    /** Discovery API's own signal for a non-event listing (a parking pass,
+     *  a seating upsell, ...) riding along in the events endpoint --
+     *  confirmed live: every one of 3 real "Premium Perch Add-On" listings
+     *  (upsell add-ons for Denny Sanford PREMIER Center shows) carried
+     *  `type.name === 'Upsell'`, while every one of the other 37 real
+     *  events in the same feed had this either absent or 'Undefined'. See
+     *  isNonEventListing() below. */
+    type?: { name?: string };
+  }[];
 }
 
 interface DiscoveryApiResponse {
@@ -217,6 +228,26 @@ export function isSportsEvent(raw: RawTicketmasterEvent): boolean {
   return classification?.segment?.name === 'Sports';
 }
 
+/** What's On Phase 5 follow-up ("Ticket-Type Filtering") -- excludes a
+ *  non-event listing (a seating/parking/upsell add-on Discovery API returns
+ *  alongside real events in the same endpoint) before it ever reaches the
+ *  ranker. Structural signal, not a name/title match: real data confirmed
+ *  Discovery API classifies these with `classifications[0].type.name ===
+ *  'Upsell'` -- every one of 3 real "Premium Perch Add-On" listings
+ *  (Denny Sanford PREMIER Center) carried this, and none of the other 37
+ *  real events in the same live feed did (they were 'Undefined' or had no
+ *  `type` at all). No other non-event listing shape (parking passes,
+ *  meet-and-greets, shuttle passes) was found in that same live check --
+ *  if one appears later with a different signal, it needs its own check,
+ *  not a broadened version of this one. Same "primary classification,
+ *  fallback to first entry" precedence as isSportsEvent() above -- an
+ *  event with no classifications at all is kept, never excluded on missing
+ *  data. */
+export function isNonEventListing(raw: RawTicketmasterEvent): boolean {
+  const classification = raw.classifications?.find((c) => c.primary) ?? raw.classifications?.[0];
+  return classification?.type?.name === 'Upsell';
+}
+
 /** Pure -- unit-tested directly against captured fixture responses (see
  *  ticketmaster.test.ts), no network. `dates.start.dateTime` is Discovery
  *  API's own UTC instant when present; a small number of listings only
@@ -257,10 +288,11 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
 }
 
 /**
- * Fetches every non-Sports event Discovery API lists within `radiusMiles`
- * of (`latitude`, `longitude`), normalized -- see isSportsEvent() above for
- * why Sports is excluded here, at the fetch layer, rather than left for a
- * caller to filter.
+ * Fetches every non-Sports, real-event listing Discovery API lists within
+ * `radiusMiles` of (`latitude`, `longitude`), normalized -- see
+ * isSportsEvent() and isNonEventListing() above for why both are excluded
+ * here, at the fetch layer, rather than left for a caller (or the ranker)
+ * to filter.
  *
  * Geographic search (`latlong`/`radius`/`unit`), NOT a `city`/`stateCode`
  * exact-tag match -- a real scoping bug in the original Phase 3 version,
@@ -321,7 +353,9 @@ export async function fetchTicketmasterEvents(
     return [];
   }
 
-  return results.filter((raw) => !isSportsEvent(raw)).map(normalizeTicketmasterEvent);
+  return results
+    .filter((raw) => !isSportsEvent(raw) && !isNonEventListing(raw))
+    .map(normalizeTicketmasterEvent);
 }
 
 /** The actual "is this reachable from a real page" gate: checks

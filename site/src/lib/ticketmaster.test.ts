@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   normalizeTicketmasterEvent, fetchTicketmasterEvents, getTicketmasterEventsForTown, isSportsEvent,
-  distanceLabel,
+  isNonEventListing, distanceLabel,
   type RawTicketmasterEvent,
 } from './ticketmaster';
 import { siteConfig } from './site-config';
@@ -250,6 +250,47 @@ describe('fetchTicketmasterEvents error handling -- every path returns [], never
     expect(result[0].ticketmasterEvent.id).toBe('concert-1');
   });
 
+  it('filters out a real "Premium Perch Add-On" listing entirely -- the Ticket-Type filter (What\'s On Phase 5 follow-up)', async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    const addon = realFixture({
+      id: 'addon-1',
+      name: 'Premium Perch Add-On: Jonas Brothers: 5:00 PM',
+      classifications: [{ primary: true, segment: { name: 'Miscellaneous' }, type: { name: 'Upsell' } }],
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        _embedded: { events: [addon] },
+        page: { totalPages: 1, number: 0 },
+      }),
+    }));
+    const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
+    expect(result).toEqual([]);
+  });
+
+  it('keeps a real event and drops an add-on listing from the same mixed response', async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    const musicEvent = realFixture({
+      id: 'concert-1',
+      name: 'Jonas Brothers: The Burning Up Tour All Over Again',
+      classifications: [{ primary: true, segment: { name: 'Music' }, type: { name: 'Undefined' } }],
+    });
+    const addon = realFixture({
+      id: 'addon-1',
+      name: 'Premium Perch Add-On: Jonas Brothers: 5:00 PM',
+      classifications: [{ primary: true, segment: { name: 'Miscellaneous' }, type: { name: 'Upsell' } }],
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        _embedded: { events: [musicEvent, addon] },
+        page: { totalPages: 1, number: 0 },
+      }),
+    }));
+    const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
+    expect(result).toHaveLength(1);
+    expect(result[0].ticketmasterEvent.id).toBe('concert-1');
+  });
 });
 
 describe('isSportsEvent', () => {
@@ -272,6 +313,44 @@ describe('isSportsEvent', () => {
 
   it('is false when classifications is an empty array', () => {
     expect(isSportsEvent(realFixture({ classifications: [] }))).toBe(false);
+  });
+});
+
+describe('isNonEventListing (What\'s On Phase 5 follow-up, "Ticket-Type Filtering")', () => {
+  it('is true for a real captured "Premium Perch Add-On" listing (Upsell type)', () => {
+    expect(isNonEventListing(realFixture({
+      name: 'Premium Perch Add-On: Jonas Brothers: 5:00 PM',
+      classifications: [{
+        primary: true,
+        segment: { name: 'Miscellaneous' },
+        type: { name: 'Upsell' },
+      }],
+    }))).toBe(true);
+  });
+
+  it('is false for a real event (Undefined type, the common real-data case)', () => {
+    expect(isNonEventListing(realFixture({
+      classifications: [{ primary: true, segment: { name: 'Music' }, type: { name: 'Undefined' } }],
+    }))).toBe(false);
+  });
+
+  it('is false when type is entirely absent -- confirmed live, most real events have no type field at all', () => {
+    expect(isNonEventListing(realFixture({ classifications: [{ primary: true, segment: { name: 'Music' } }] }))).toBe(false);
+  });
+
+  it('does not falsely exclude an event just because its NAME resembles an add-on -- this is a structural check, not a name match', () => {
+    expect(isNonEventListing(realFixture({
+      name: 'The Add-Ons Live Tour',
+      classifications: [{ primary: true, segment: { name: 'Music' }, type: { name: 'Undefined' } }],
+    }))).toBe(false);
+  });
+
+  it('falls back to the first classification when none is marked primary', () => {
+    expect(isNonEventListing(realFixture({ classifications: [{ type: { name: 'Upsell' } }] }))).toBe(true);
+  });
+
+  it('is false (never excluded) when classifications are entirely absent -- not enough signal to guess', () => {
+    expect(isNonEventListing(realFixture({ classifications: undefined }))).toBe(false);
   });
 });
 
