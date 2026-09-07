@@ -206,9 +206,18 @@ const CITIES: Record<string, SiteConfig> = {
     hasEventsSource: true,
     // Coordinates mirror configs/brookings_sd.json's own `coordinates`
     // field exactly. radiusMiles=75 comfortably clears the ~53mi to Sioux
-    // Falls -- see this field's own doc comment above for why.
-    ticketmaster: { enabled: false, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 },
-    hasWhatsOn: false,
+    // Falls -- see this field's own doc comment above for why. Phase 7
+    // re-confirmed against live data (2026-09-07) rather than assumed: 37
+    // events, top 8 all real and correctly tiered, genuinely 0 unmapped
+    // venues (BIGS Sports Bar is deliberately curated at 'small', not
+    // actually unmapped -- confirmed via isVenueCurated(), not the naive
+    // tier===default comparison). No change from the original Radius Fix.
+    ticketmaster: { enabled: true, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 },
+    // Phase 7: enabled for real. Brookings' venues are curated and
+    // human-reviewed across every What's On phase -- Moreno Valley and
+    // Broomfield are NOT (see their own ticketmaster blocks below) and stay
+    // off pending a venue-curation follow-up.
+    hasWhatsOn: true,
     // 'whats_on' (Phase 6a) wired in now, same "route exists, flag decides"
     // convention as hasWhatsOn itself -- safe with hasWhatsOn:false above
     // since that module isn't ALWAYS_RENDERED (see cityStatus.ts's own
@@ -261,6 +270,28 @@ const CITIES: Record<string, SiteConfig> = {
     hasWorkplaceWatch: true,
     hasClosureWatch: true,
     hasEventsSource: true,
+    // What's On Phase 7 radius calibration (2026-09-07, real live data, not
+    // guessed): 25/35/50mi all return a genuinely regional Inland Empire
+    // mix (Riverside, San Bernardino, Ontario, Corona, Temecula, Pechanga/
+    // Yaamava casinos) with zero downtown-LA venues anywhere in the full
+    // dataset (checked all distinct venues, not just the top of the list).
+    // 75mi is where it actually breaks: Crypto.com Arena, Kia Forum,
+    // Hollywood Bowl, SoFi Stadium, Intuit Dome, and the Greek Theatre all
+    // start appearing -- the cliff is between 50 and 75mi, not gradual.
+    // 35mi chosen as comfortably regional (Inland Empire) without reaching
+    // as far as Orange County (Anaheim/Irvine, which 50mi does pull in).
+    //
+    // enabled: false, NOT because the radius is wrong -- because every
+    // venue in this market is unmapped in venue-tiers.ts (the curated map
+    // is Sioux Falls-only), so ranking currently degrades entirely to
+    // date-order with zero capacity signal: a real touring artist (Kany
+    // Garcia) ties directly against "Open Mic at the Ontario Improv" in the
+    // real top 8. Needs its own venue curation (a follow-up, scoped to the
+    // ~10-15 venues that actually appear near the top of the ranking, not
+    // the whole market) before this town's page is actually good -- see
+    // Phase 7's own handoff for the full finding.
+    ticketmaster: { enabled: false, latitude: 33.9425, longitude: -117.2297, radiusMiles: 35 },
+    hasWhatsOn: false,
     statusModules: ['weather', 'alerts', 'traffic', 'closures', 'events_today', 'next_meeting', 'worker_pulse'],
     closureWatch: {
       relevantAlertEvents: ['Red Flag Warning', 'Fire Weather Watch', 'Air Quality Alert'],
@@ -319,6 +350,26 @@ const CITIES: Record<string, SiteConfig> = {
     stateName: 'Colorado',
     stateAbbr: 'CO',
     hasWorkplaceWatch: true,
+    // What's On Phase 7 radius calibration (2026-09-07, real live data):
+    // 20/30/45mi return nearly IDENTICAL event counts (877/875/869) --
+    // Broomfield sits close enough to central Denver that 20mi already
+    // captures effectively the whole relevant metro market, and going
+    // wider barely adds anything. Zero Colorado Springs or Fort Collins
+    // venues appear even at 75mi, so "reaching too far" was never the real
+    // risk here (unlike Moreno Valley) -- 20mi chosen as the smallest
+    // sufficient radius, comfortably including Boulder (~12mi away).
+    //
+    // enabled: false for the SAME reason as Moreno Valley, not a radius
+    // problem: every venue here is unmapped in venue-tiers.ts, so ranking
+    // is pure date-order today. The real top-8 at every tested radius
+    // already includes genuinely major venues (Ball Arena, Empower Field,
+    // Red Rocks, Mission Ballroom) -- which is correct for a Denver-metro
+    // suburb -- but only by date coincidence, not because ranking
+    // recognizes they're arena/stadium-scale. Needs its own venue curation
+    // follow-up (same ~10-15-venue scope as Moreno Valley) before this
+    // town's page is actually good.
+    ticketmaster: { enabled: false, latitude: 39.9205, longitude: -105.0866, radiusMiles: 20 },
+    hasWhatsOn: false,
     statusModules: ['weather', 'alerts', 'traffic', 'next_meeting'],
     // Local Accent Identity, Broomfield-first rollout. A muted Front Range
     // slate-teal (H185) -- deliberately not green (avoids reading as an

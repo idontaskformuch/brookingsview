@@ -396,14 +396,19 @@ describe('getTicketmasterEventsForTown', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('is genuinely inert against the REAL production Brookings config (site-config.ts), not just a synthetic test object', async () => {
+  it('is genuinely enabled against the REAL production Brookings config (site-config.ts) as of Phase 7, not just a synthetic test object', async () => {
     expect(siteConfig.townId).toBe('brookings_sd');
-    expect(siteConfig.ticketmaster).toEqual({ enabled: false, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 });
-    const fetchSpy = vi.fn();
+    expect(siteConfig.ticketmaster).toEqual({ enabled: true, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 });
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true, json: async () => ({ _embedded: { events: [] }, page: { totalPages: 1, number: 0 } }),
+    });
     vi.stubGlobal('fetch', fetchSpy);
-    const result = await getTicketmasterEventsForTown(siteConfig);
-    expect(result).toEqual([]);
-    expect(fetchSpy).not.toHaveBeenCalled();
+    await getTicketmasterEventsForTown(siteConfig);
+    expect(fetchSpy).toHaveBeenCalled();
+    const calledUrl = new URL(fetchSpy.mock.calls[0][0]);
+    expect(calledUrl.searchParams.get('latlong')).toBe('44.3114,-96.7984');
+    expect(calledUrl.searchParams.get('radius')).toBe('75');
   });
 
   it('when enabled, passes the real coordinates/radius through to fetchTicketmasterEvents unchanged', async () => {

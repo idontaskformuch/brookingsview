@@ -418,12 +418,12 @@
       "_notes": "Handoff: Information Hub Tier 1, Feature C. No property-sales data source for Brookings (South Dakota has no Riverside-Assessor-style bulk sales file) -- stays enabled:false until one is found."
     },
     "whats_on": {
-      "enabled": false,
-      "_notes": "What's On Phase 5. Kept in sync with site-config.ts's hasWhatsOn (see tests/test_feature_flags.py). As of Phase 6b, this key IS read by Python: ai_pipeline/whats_on_intro.py gates its own weekly editorial-intro generation on it, alongside the ticketmaster block below (mirrors site-config.ts's own ticketmaster.enabled belt-and-suspenders check). Stays enabled:false everywhere until Phase 7's town-by-town rollout, even though the /whats-on page itself is fully built and human-reviewed.",
+      "enabled": true,
+      "_notes": "What's On, enabled for real as of Phase 7. Kept in sync with site-config.ts's hasWhatsOn (see tests/test_feature_flags.py). Brookings only -- Moreno Valley/Broomfield stay off pending a venue-tier curation follow-up (see site-config.ts's own ticketmaster comment for those two towns for the real finding: every venue in both markets is unmapped, degrading ranking to pure date-order).",
       "ticketmaster": {
-        "enabled": false,
+        "enabled": true,
         "radius_miles": 75,
-        "_notes": "Mirrors site-config.ts's ticketmaster block (same coordinates, reused from this file's own top-level `coordinates` rather than duplicated again -- see ai_pipeline/whats_on_intro.py). Brookings-only, same as the TS side -- Moreno Valley/Broomfield have no radius decision yet (Phase 7)."
+        "_notes": "Mirrors site-config.ts's ticketmaster block (same coordinates, reused from this file's own top-level `coordinates` rather than duplicated again -- see ai_pipeline/whats_on_intro.py). Phase 7 re-confirmed 75mi against live data rather than assumed -- see site-config.ts's own comment for the real numbers. Brookings-only, same as the TS side."
       }
     }
   },
