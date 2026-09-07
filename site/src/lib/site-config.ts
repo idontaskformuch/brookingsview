@@ -156,16 +156,33 @@ export interface SiteConfig {
   brand?: { accent: string; accentInk: string };
   /** What's On Phase 3: Ticketmaster Discovery API adapter (lib/
    *  ticketmaster.ts). Object-shaped (not a bare boolean) the same way
-   *  closureWatch is above, since real per-town config (city/state name for
-   *  the API query, eventually a search radius per the original What's On
-   *  spec) will grow here once this is ever wired into a real page --
-   *  none of that exists yet, `enabled: false` is the only field this
-   *  phase needs. `enabled: false` everywhere until Phase 7 (town-by-town
-   *  rollout) -- the adapter itself is fully built and tested, but not
-   *  called from buildEventFeed() or any page this phase (see lib/
-   *  ticketmaster.ts's own module comment for why). Missing entirely for
-   *  every town but Brookings -- Phase 3 is Brookings-only, on purpose. */
-  ticketmaster?: { enabled: boolean };
+   *  closureWatch is above. `enabled: false` everywhere until Phase 7
+   *  (town-by-town rollout) -- the adapter itself is fully built and
+   *  tested, but not called from buildEventFeed() or any page this phase
+   *  (see lib/ticketmaster.ts's own module comment for why). Missing
+   *  entirely for every town but Brookings -- Phase 3 is Brookings-only,
+   *  on purpose.
+   *
+   *  latitude/longitude/radiusMiles (What's On Phase 3 follow-up, "Radius
+   *  Fix"): the fetch is a real geographic search (Discovery API's
+   *  latlong+radius+unit), not the original city/stateCode exact-tag match
+   *  it shipped with -- that version structurally excluded everything
+   *  outside a town's own city limits, including a real nearby market
+   *  (Sioux Falls, ~53mi from Brookings) regardless of what's actually
+   *  playing there. Coordinates mirror configs/brookings_sd.json's own
+   *  `coordinates` field exactly (same cross-layer duplication tradeoff as
+   *  this file's other configs/*.json mirrors -- that file is Python-
+   *  pipeline-side JSON, not importable here). radiusMiles is deliberately
+   *  generous (75mi, comfortably past the ~53mi to Sioux Falls) rather than
+   *  tight -- the point of this fix is to stop excluding a real regional
+   *  market, not to guess the smallest radius that still works. Moreno
+   *  Valley and Broomfield deliberately have NO radius set yet (and no
+   *  `ticketmaster` block at all) -- both sit inside dense metro areas
+   *  (Inland Empire, Denver) where the right radius is a real editorial
+   *  call, not a small-city default; Ticketmaster isn't enabled for either
+   *  yet, so there's no urgency to guess. Flagged as a Phase 7 follow-up
+   *  decision, not made here. */
+  ticketmaster?: { enabled: boolean; latitude: number; longitude: number; radiusMiles: number };
 }
 
 const CITIES: Record<string, SiteConfig> = {
@@ -176,7 +193,10 @@ const CITIES: Record<string, SiteConfig> = {
     stateAbbr: 'SD',
     hasClosureWatch: true,
     hasEventsSource: true,
-    ticketmaster: { enabled: false },
+    // Coordinates mirror configs/brookings_sd.json's own `coordinates`
+    // field exactly. radiusMiles=75 comfortably clears the ~53mi to Sioux
+    // Falls -- see this field's own doc comment above for why.
+    ticketmaster: { enabled: false, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 },
     statusModules: ['weather', 'alerts', 'closures', 'events_today', 'next_meeting', 'university'],
     closureWatch: {
       relevantAlertEvents: [

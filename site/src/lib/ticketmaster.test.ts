@@ -98,7 +98,7 @@ describe('fetchTicketmasterEvents error handling -- every path returns [], never
     vi.stubEnv('TICKETMASTER_API_KEY', '');
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
-    const result = await fetchTicketmasterEvents('Brookings', 'SD');
+    const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
     expect(result).toEqual([]);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -106,21 +106,21 @@ describe('fetchTicketmasterEvents error handling -- every path returns [], never
   it('returns [] on a simulated rate-limit (429) response', async () => {
     vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 429 }));
-    const result = await fetchTicketmasterEvents('Brookings', 'SD');
+    const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
     expect(result).toEqual([]);
   });
 
   it('returns [] on a simulated 5xx server error', async () => {
     vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
-    const result = await fetchTicketmasterEvents('Brookings', 'SD');
+    const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
     expect(result).toEqual([]);
   });
 
   it('returns [] on a simulated network failure', async () => {
     vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
-    const result = await fetchTicketmasterEvents('Brookings', 'SD');
+    const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
     expect(result).toEqual([]);
   });
 
@@ -138,7 +138,7 @@ describe('fetchTicketmasterEvents error handling -- every path returns [], never
         page: { totalPages: 1, number: 0 },
       }),
     }));
-    const result = await fetchTicketmasterEvents('Brookings', 'SD');
+    const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
     expect(result).toHaveLength(1);
     expect(result[0].ticketmasterEvent.title).toBe('A Touring Band Live in Brookings');
   });
@@ -154,7 +154,7 @@ describe('fetchTicketmasterEvents error handling -- every path returns [], never
         page: { totalPages: 1, number: 0 },
       }),
     }));
-    const result = await fetchTicketmasterEvents('Brookings', 'SD');
+    const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
     expect(result).toEqual([]);
   });
 
@@ -172,7 +172,7 @@ describe('fetchTicketmasterEvents error handling -- every path returns [], never
         page: { totalPages: 1, number: 0 },
       }),
     }));
-    const result = await fetchTicketmasterEvents('Brookings', 'SD');
+    const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
     expect(result).toHaveLength(1);
     expect(result[0].ticketmasterEvent.id).toBe('concert-1');
   });
@@ -210,7 +210,7 @@ describe('getTicketmasterEventsForTown', () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
     const result = await getTicketmasterEventsForTown({
-      cityName: 'Brookings', stateAbbr: 'SD', ticketmaster: { enabled: false },
+      ticketmaster: { enabled: false, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 },
     });
     expect(result).toEqual([]);
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -219,18 +219,54 @@ describe('getTicketmasterEventsForTown', () => {
   it('returns [] and makes no network call when ticketmaster config is entirely absent', async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
-    const result = await getTicketmasterEventsForTown({ cityName: 'Brookings', stateAbbr: 'SD' });
+    const result = await getTicketmasterEventsForTown({});
     expect(result).toEqual([]);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it('is genuinely inert against the REAL production Brookings config (site-config.ts), not just a synthetic test object', async () => {
     expect(siteConfig.townId).toBe('brookings_sd');
-    expect(siteConfig.ticketmaster).toEqual({ enabled: false });
+    expect(siteConfig.ticketmaster).toEqual({ enabled: false, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 });
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
     const result = await getTicketmasterEventsForTown(siteConfig);
     expect(result).toEqual([]);
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('when enabled, passes the real coordinates/radius through to fetchTicketmasterEvents unchanged', async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true, json: async () => ({ _embedded: { events: [] }, page: { totalPages: 1, number: 0 } }),
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+    await getTicketmasterEventsForTown({
+      ticketmaster: { enabled: true, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 },
+    });
+    const calledUrl = new URL(fetchSpy.mock.calls[0][0]);
+    expect(calledUrl.searchParams.get('latlong')).toBe('44.3114,-96.7984');
+    expect(calledUrl.searchParams.get('radius')).toBe('75');
+  });
+});
+
+describe('fetchTicketmasterEvents query construction (What\'s On Phase 3 follow-up: Radius Fix)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it('queries with latlong/radius/unit=miles, NOT city/stateCode -- the exact-city-tag match that structurally excluded Sioux Falls', async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true, json: async () => ({ _embedded: { events: [] }, page: { totalPages: 1, number: 0 } }),
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+    await fetchTicketmasterEvents(44.3114, -96.7984, 75);
+    const calledUrl = new URL(fetchSpy.mock.calls[0][0]);
+    expect(calledUrl.searchParams.get('latlong')).toBe('44.3114,-96.7984');
+    expect(calledUrl.searchParams.get('radius')).toBe('75');
+    expect(calledUrl.searchParams.get('unit')).toBe('miles');
+    expect(calledUrl.searchParams.has('city')).toBe(false);
+    expect(calledUrl.searchParams.has('stateCode')).toBe(false);
   });
 });

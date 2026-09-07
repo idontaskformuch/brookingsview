@@ -152,9 +152,19 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
 }
 
 /**
- * Fetches every non-Sports Brookings event Discovery API currently lists,
- * normalized -- see isSportsEvent() above for why Sports is excluded here,
- * at the fetch layer, rather than left for a caller to filter.
+ * Fetches every non-Sports event Discovery API lists within `radiusMiles`
+ * of (`latitude`, `longitude`), normalized -- see isSportsEvent() above for
+ * why Sports is excluded here, at the fetch layer, rather than left for a
+ * caller to filter.
+ *
+ * Geographic search (`latlong`/`radius`/`unit`), NOT a `city`/`stateCode`
+ * exact-tag match -- a real scoping bug in the original Phase 3 version,
+ * caught before Phase 5: a city-tag query structurally excludes everything
+ * outside a town's own city boundary, including a real nearby market like
+ * Sioux Falls (~53mi from Brookings) regardless of what's actually playing
+ * there. The original What's On spec's own intent was a regional radius,
+ * not a city-limits match.
+ *
  * Never throws -- every failure mode (missing/invalid key, rate limit, 5xx,
  * network error) logs and resolves to `[]`, per this phase's own
  * requirement that a build must succeed identically whether or not the key
@@ -164,8 +174,9 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
  * quietly," not policy.
  */
 export async function fetchTicketmasterEvents(
-  cityName: string,
-  stateCode: string,
+  latitude: number,
+  longitude: number,
+  radiusMiles: number,
 ): Promise<TicketmasterFeedItem[]> {
   const apiKey = import.meta.env.TICKETMASTER_API_KEY;
   if (!apiKey) {
@@ -173,6 +184,7 @@ export async function fetchTicketmasterEvents(
     return [];
   }
 
+  const geoLabel = `${latitude},${longitude} (${radiusMiles}mi)`;
   const results: RawTicketmasterEvent[] = [];
   try {
     for (let page = 0; page < MAX_PAGES; page++) {
@@ -180,14 +192,15 @@ export async function fetchTicketmasterEvents(
 
       const url = new URL(DISCOVERY_API_BASE);
       url.searchParams.set('apikey', apiKey);
-      url.searchParams.set('city', cityName);
-      url.searchParams.set('stateCode', stateCode);
+      url.searchParams.set('latlong', `${latitude},${longitude}`);
+      url.searchParams.set('radius', String(radiusMiles));
+      url.searchParams.set('unit', 'miles');
       url.searchParams.set('size', String(PAGE_SIZE));
       url.searchParams.set('page', String(page));
 
       const res = await fetch(url.toString());
       if (!res.ok) {
-        console.warn(`[ticketmaster] Discovery API returned HTTP ${res.status} for ${cityName}, ${stateCode} -- stopping, returning what was fetched so far.`);
+        console.warn(`[ticketmaster] Discovery API returned HTTP ${res.status} for ${geoLabel} -- stopping, returning what was fetched so far.`);
         break;
       }
 
@@ -199,7 +212,7 @@ export async function fetchTicketmasterEvents(
       if (page + 1 >= totalPages) break;
     }
   } catch (err) {
-    console.warn(`[ticketmaster] fetch failed for ${cityName}, ${stateCode}: ${err instanceof Error ? err.message : String(err)} -- returning no events.`);
+    console.warn(`[ticketmaster] fetch failed for ${geoLabel}: ${err instanceof Error ? err.message : String(err)} -- returning no events.`);
     return [];
   }
 
@@ -214,8 +227,9 @@ export async function fetchTicketmasterEvents(
  *  it yet (see this file's own module comment), but it exists now so that
  *  wiring is a one-line addition, not new design work. */
 export async function getTicketmasterEventsForTown(
-  siteConfig: { cityName: string; stateAbbr: string; ticketmaster?: { enabled: boolean } },
+  siteConfig: { ticketmaster?: { enabled: boolean; latitude: number; longitude: number; radiusMiles: number } },
 ): Promise<TicketmasterFeedItem[]> {
   if (!siteConfig.ticketmaster?.enabled) return [];
-  return fetchTicketmasterEvents(siteConfig.cityName, siteConfig.stateAbbr);
+  const { latitude, longitude, radiusMiles } = siteConfig.ticketmaster;
+  return fetchTicketmasterEvents(latitude, longitude, radiusMiles);
 }

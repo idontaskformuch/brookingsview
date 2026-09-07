@@ -66,9 +66,14 @@ async function main() {
   );
 
   if (process.argv.includes('--include-ticketmaster')) {
-    console.log('\n--- Ticketmaster (Discovery API, live fetch, siteConfig.ticketmaster.enabled bypassed) ---\n');
-    const tmItems = await fetchTicketmasterEvents(siteConfig.cityName, siteConfig.stateAbbr);
-    console.log(`Fetched ${tmItems.length} Ticketmaster event(s) for ${siteConfig.cityName}, ${siteConfig.stateAbbr}\n`);
+    if (!siteConfig.ticketmaster) {
+      console.log(`\n${siteConfig.cityName} has no ticketmaster config (latitude/longitude/radiusMiles) -- skipping.\n`);
+      return;
+    }
+    const { latitude, longitude, radiusMiles } = siteConfig.ticketmaster;
+    console.log(`\n--- Ticketmaster (Discovery API, live fetch, siteConfig.ticketmaster.enabled bypassed) ---\n`);
+    const tmItems = await fetchTicketmasterEvents(latitude, longitude, radiusMiles);
+    console.log(`Fetched ${tmItems.length} Ticketmaster event(s) within ${radiusMiles}mi of ${siteConfig.cityName} (${latitude},${longitude})\n`);
     console.log('date                  tier    venue                                          title (-> image/price)');
     console.log('-'.repeat(140));
     for (const item of tmItems) {
