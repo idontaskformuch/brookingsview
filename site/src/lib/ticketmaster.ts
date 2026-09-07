@@ -61,15 +61,22 @@ export interface TicketmasterFeedItem {
  *  being forced into one of those -- ticketUrl and priceRangeText are
  *  genuinely Ticketmaster-specific (an SDSU arts_culture event has neither
  *  a paid-ticket link nor a price range in this codebase's data model).
- *  imageUrl is captured now but deliberately unused until Phase 4
- *  (resolveImage() integration) -- a dead field today, not wasted work,
- *  since re-fetching it later would mean a second live API call. */
+ *  imageUrl/imageWidth/imageHeight are wired into lib/images.ts's
+ *  resolveImage() as of Phase 4, as a new top tier above article/venue/
+ *  category -- width/height are captured (not just the URL) so that tier
+ *  can return an accurate ImageRef the same way every other tier does,
+ *  rather than guessing a fixed size for images whose real aspect ratio
+ *  varies per event (confirmed live: real captured widths range from 640
+ *  to 2048px depending on which renditions Discovery API has for a given
+ *  event). */
 export interface TicketmasterEvent {
   id: string;
   title: string;
   venueName: string | null;
   ticketUrl: string;
   imageUrl: string | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
   priceRangeText: string | null;
 }
 
@@ -86,10 +93,13 @@ function formatPriceRange(ranges: RawTicketmasterEvent['priceRanges']): string |
  *  just the first entry (the array's own order isn't documented as
  *  size-sorted). Returns null (not a placeholder) when the event has no
  *  `images` array at all, same "never guess" convention this codebase
- *  already uses for image_alt/image_path elsewhere. */
-function bestImageUrl(images: RawTicketmasterEvent['images']): string | null {
+ *  already uses for image_alt/image_path elsewhere. Returns the real
+ *  width/height alongside the URL, not just the URL -- resolveImage()
+ *  needs an accurate size, the same way every other tier already provides
+ *  one, rather than a guessed fixed size. */
+function bestImage(images: RawTicketmasterEvent['images']): { url: string; width: number; height: number } | null {
   if (!images || images.length === 0) return null;
-  return images.reduce((best, img) => (img.width > best.width ? img : best), images[0]).url;
+  return images.reduce((best, img) => (img.width > best.width ? img : best), images[0]);
 }
 
 /** Athletics/Sports filter -- What's On is meant to surface entertainment
@@ -123,12 +133,15 @@ export function isSportsEvent(raw: RawTicketmasterEvent): boolean {
  *  in that case, same "never fabricate a time" rule dayIndex()/localHour()
  *  already enforce in lib/events.ts. */
 export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): TicketmasterFeedItem {
+  const image = bestImage(raw.images);
   const event: TicketmasterEvent = {
     id: raw.id,
     title: raw.name,
     venueName: raw._embedded?.venues?.[0]?.name ?? null,
     ticketUrl: raw.url ?? '',
-    imageUrl: bestImageUrl(raw.images),
+    imageUrl: image?.url ?? null,
+    imageWidth: image?.width ?? null,
+    imageHeight: image?.height ?? null,
     priceRangeText: formatPriceRange(raw.priceRanges),
   };
   return {

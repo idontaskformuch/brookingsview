@@ -7,10 +7,15 @@
  * og:image/twitter:image, see BaseLayout.astro -- unchanged by this file).
  *
  * RESOLUTION ORDER (resolveImage()):
- *   1. Article image   -- story.image_path, the real content-track illustration.
- *   2. Venue image      -- a resolved facility's own image_path.
- *   3. Category image   -- CATEGORY_IMAGES[town][category].
- *   4. Nothing.          Returns null. NEVER falls back to /og/<slug>.png --
+ *   1. Ticketmaster image -- What's On Phase 4: ticketmasterImageUrl, set
+ *      only when the caller is resolving a real Ticketmaster-sourced item
+ *      (see ResolvableStory's own comment). Outranks every other tier --
+ *      Ticketmaster's own photography is reliably specific to that one
+ *      event, unlike the reused venue/category pools below.
+ *   2. Article image   -- story.image_path, the real content-track illustration.
+ *   3. Venue image      -- a resolved facility's own image_path.
+ *   4. Category image   -- CATEGORY_IMAGES[town][category].
+ *   5. Nothing.          Returns null. NEVER falls back to /og/<slug>.png --
  *      a missing image is honest; a reused social card pretending to be an
  *      article image is not.
  *
@@ -372,7 +377,21 @@ export interface ResolveImageOptions {
   category?: ImageCategory | null;
 }
 
-export type ResolvableStory = Pick<Story, 'title' | 'source_type' | 'image_path' | 'image_alt' | 'venue_raw'>;
+export type ResolvableStory = Pick<Story, 'title' | 'source_type' | 'image_path' | 'image_alt' | 'venue_raw'> & {
+  /** What's On Phase 4. Set ONLY by a caller constructing this object from
+   *  a real Ticketmaster-sourced item (lib/ticketmaster.ts's
+   *  TicketmasterEvent.imageUrl/imageWidth/imageHeight) -- source-driven,
+   *  never inferred from the URL's own shape (e.g. sniffing for
+   *  "ticketm.net"). Absent/null/empty for every story/arts item, which is
+   *  exactly what keeps this tier from ever activating for them. Width/
+   *  height should be passed alongside the URL when available (Discovery
+   *  API's own real dimensions vary per event, confirmed live from 640 to
+   *  2048px wide) -- undefined falls back to a 16:9 default rather than
+   *  guessing the source image's actual shape. */
+  ticketmasterImageUrl?: string | null;
+  ticketmasterImageWidth?: number;
+  ticketmasterImageHeight?: number;
+};
 
 /** Deterministic pick from a pool, keyed on a stable per-item string (a
  *  story's slug, or its title when no slug exists -- see resolveImage()'s
@@ -398,7 +417,23 @@ export function pickFromPool<T>(pool: T[], seed: string): T {
 export function resolveImage(story: ResolvableStory & { slug?: string }, options: ResolveImageOptions): ImageRef | null {
   const itemSlug = story.slug ?? story.title;
 
-  // 1. Article image.
+  // 1. Ticketmaster image (What's On Phase 4). `isHotlinkedImage()` doubles
+  // as the defensive "is this actually a usable absolute URL" check here --
+  // an empty string, null, undefined, or a malformed value all fail it and
+  // fall through to the next tier rather than erroring or rendering a
+  // broken <img src>. Always hotlinked (Ticketmaster's own s1.ticketm.net
+  // CDN), so no assertImageExists() call -- same treatment the Unsplash
+  // hotlink case already gets elsewhere in this file.
+  if (story.ticketmasterImageUrl && isHotlinkedImage(story.ticketmasterImageUrl)) {
+    return {
+      path: story.ticketmasterImageUrl,
+      alt: story.image_alt ?? `Photo for "${story.title}"`,
+      width: story.ticketmasterImageWidth ?? 1600,
+      height: story.ticketmasterImageHeight ?? 900,
+    };
+  }
+
+  // 2. Article image.
   if (story.image_path) {
     assertImageExists(story.image_path, itemSlug);
     return {
@@ -408,7 +443,7 @@ export function resolveImage(story: ResolvableStory & { slug?: string }, options
     };
   }
 
-  // 2. Venue image.
+  // 3. Venue image.
   const nameAliasIndex = buildNameAliasIndex(options.facilities);
   const venueSlug = resolveVenueSlugForImage(story, nameAliasIndex, options.cityName);
   if (venueSlug) {
@@ -425,7 +460,7 @@ export function resolveImage(story: ResolvableStory & { slug?: string }, options
     }
   }
 
-  // 3. Category image -- deterministically picked from that category's
+  // 4. Category image -- deterministically picked from that category's
   // pool (see pickFromPool()), not always the pool's first/only entry.
   const category = options.category ?? categoryForSourceType(story.source_type);
   if (category) {
@@ -437,7 +472,7 @@ export function resolveImage(story: ResolvableStory & { slug?: string }, options
     }
   }
 
-  // 4. Nothing.
+  // 5. Nothing.
   return null;
 }
 

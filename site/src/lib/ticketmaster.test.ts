@@ -41,19 +41,25 @@ describe('normalizeTicketmasterEvent', () => {
         venueName: 'Dana J. Dykhouse Stadium',
         ticketUrl: 'https://www.ticketmaster.com/event/Z7r9jZ1A70S3p',
         imageUrl: 'https://s1.ticketm.net/dam/.../TABLET_LANDSCAPE_LARGE_16_9.jpg',
+        imageWidth: 2048,
+        imageHeight: 1152,
         priceRangeText: null,
       },
     });
   });
 
-  it('picks the widest image, not just the first in the array', () => {
+  it('picks the widest image, not just the first in the array -- URL and dimensions together', () => {
     const result = normalizeTicketmasterEvent(realFixture());
     expect(result.ticketmasterEvent.imageUrl).toContain('TABLET_LANDSCAPE_LARGE_16_9');
+    expect(result.ticketmasterEvent.imageWidth).toBe(2048);
+    expect(result.ticketmasterEvent.imageHeight).toBe(1152);
   });
 
   it('handles a missing images array (no live-captured example had one, but Discovery API omits the key entirely for some listings)', () => {
     const result = normalizeTicketmasterEvent(realFixture({ images: undefined }));
     expect(result.ticketmasterEvent.imageUrl).toBeNull();
+    expect(result.ticketmasterEvent.imageWidth).toBeNull();
+    expect(result.ticketmasterEvent.imageHeight).toBeNull();
   });
 
   it('handles a missing venue (real live example: "MaskedMania Wrestling" carried a venue, but Discovery API can omit _embedded entirely)', () => {

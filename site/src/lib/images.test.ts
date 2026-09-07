@@ -178,7 +178,70 @@ describe('resolveImage', () => {
     categoryImages: {},
   };
 
-  it('tier 1: returns the article image when story.image_path is set', () => {
+  it('tier 1 (What\'s On Phase 4): a Ticketmaster image outranks article, venue, and category', () => {
+    const story: ResolvableStory = {
+      title: 'A Touring Band Live in Brookings', source_type: 'event',
+      image_path: EXISTING_IMAGE, image_alt: null, venue_raw: null,
+      ticketmasterImageUrl: 'https://s1.ticketm.net/dam/real-photo.jpg',
+      ticketmasterImageWidth: 2048, ticketmasterImageHeight: 1152,
+    };
+    const result = resolveImage(story, baseOptions);
+    expect(result?.path).toBe('https://s1.ticketm.net/dam/real-photo.jpg');
+    expect(result?.width).toBe(2048);
+    expect(result?.height).toBe(1152);
+  });
+
+  it('tier 1: defaults to a 16:9 size when width/height are not provided', () => {
+    const story: ResolvableStory = {
+      title: 'A Touring Band Live in Brookings', source_type: 'event',
+      image_path: null, image_alt: null, venue_raw: null,
+      ticketmasterImageUrl: 'https://s1.ticketm.net/dam/real-photo.jpg',
+    };
+    const result = resolveImage(story, baseOptions);
+    expect(result?.width).toBe(1600);
+    expect(result?.height).toBe(900);
+  });
+
+  it('tier 1: falls through to article when ticketmasterImageUrl is an empty string', () => {
+    const story: ResolvableStory = {
+      title: 'Editorial', source_type: 'editorial', image_path: EXISTING_IMAGE,
+      image_alt: 'A real alt', venue_raw: null,
+      ticketmasterImageUrl: '',
+    };
+    const result = resolveImage(story, baseOptions);
+    expect(result?.path).toBe(EXISTING_IMAGE);
+  });
+
+  it('tier 1: falls through to article when ticketmasterImageUrl is null', () => {
+    const story: ResolvableStory = {
+      title: 'Editorial', source_type: 'editorial', image_path: EXISTING_IMAGE,
+      image_alt: 'A real alt', venue_raw: null,
+      ticketmasterImageUrl: null,
+    };
+    const result = resolveImage(story, baseOptions);
+    expect(result?.path).toBe(EXISTING_IMAGE);
+  });
+
+  it('tier 1: falls through to article when ticketmasterImageUrl is malformed (not an absolute http(s) URL) -- defensive, never errors', () => {
+    const story: ResolvableStory = {
+      title: 'Editorial', source_type: 'editorial', image_path: EXISTING_IMAGE,
+      image_alt: 'A real alt', venue_raw: null,
+      ticketmasterImageUrl: '/assets/images/not-a-real-hotlink.jpg',
+    };
+    const result = resolveImage(story, baseOptions);
+    expect(result?.path).toBe(EXISTING_IMAGE);
+  });
+
+  it('tier 1: falls all the way through to null (not article/venue/category) when ticketmasterImageUrl is malformed and nothing else resolves', () => {
+    const story: ResolvableStory = {
+      title: 'Moreno Valley: Free Food Giveaway (Every Sunday)', source_type: 'event',
+      image_path: null, image_alt: null, venue_raw: null,
+      ticketmasterImageUrl: 'not-a-url-at-all',
+    };
+    expect(resolveImage(story, baseOptions)).toBeNull();
+  });
+
+  it('regression check: a story item with no ticketmasterImageUrl field at all resolves exactly as before this phase', () => {
     const story: ResolvableStory = {
       title: 'Editorial', source_type: 'editorial', image_path: EXISTING_IMAGE,
       image_alt: 'A real alt', venue_raw: null,
@@ -188,7 +251,17 @@ describe('resolveImage', () => {
     expect(result?.alt).toBe('A real alt');
   });
 
-  it('tier 1: throws loudly when the resolved image_path does not exist on disk', () => {
+  it('tier 2: returns the article image when story.image_path is set', () => {
+    const story: ResolvableStory = {
+      title: 'Editorial', source_type: 'editorial', image_path: EXISTING_IMAGE,
+      image_alt: 'A real alt', venue_raw: null,
+    };
+    const result = resolveImage(story, baseOptions);
+    expect(result?.path).toBe(EXISTING_IMAGE);
+    expect(result?.alt).toBe('A real alt');
+  });
+
+  it('tier 2: throws loudly when the resolved image_path does not exist on disk', () => {
     const story: ResolvableStory = {
       title: 'Editorial', source_type: 'editorial', image_path: '/assets/images/does-not-exist-12345.png',
       image_alt: null, venue_raw: null,
@@ -196,7 +269,7 @@ describe('resolveImage', () => {
     expect(() => resolveImage(story, baseOptions)).toThrow(/does-not-exist-12345\.png/);
   });
 
-  it('tier 2: returns the resolved venue image when the title-prefix matches a facility', () => {
+  it('tier 3: returns the resolved venue image when the title-prefix matches a facility', () => {
     const story: ResolvableStory = {
       title: 'Moreno Valley: IRIS PLAZA: ABC\'s & 123\'s', source_type: 'event',
       image_path: null, image_alt: null,
@@ -215,7 +288,7 @@ describe('resolveImage', () => {
     expect(result?.alt).toBe('Iris Plaza branch library');
   });
 
-  it('tier 2: propagates a facility\'s image_attribution_text/url onto the resolved ImageRef', () => {
+  it('tier 3: propagates a facility\'s image_attribution_text/url onto the resolved ImageRef', () => {
     const story: ResolvableStory = {
       title: 'Moreno Valley: City Hall: Council Meeting', source_type: 'event',
       image_path: null, image_alt: null, venue_raw: null,
@@ -235,7 +308,7 @@ describe('resolveImage', () => {
     expect(result?.attributionUrl).toBe('https://commons.wikimedia.org/wiki/File:Moreno_Valley,_California_City_Hall.jpg');
   });
 
-  it('tier 2: attributionText/Url are undefined (not null) when the facility has none', () => {
+  it('tier 3: attributionText/Url are undefined (not null) when the facility has none', () => {
     const story: ResolvableStory = {
       title: 'Moreno Valley: City Hall: Council Meeting', source_type: 'event',
       image_path: null, image_alt: null, venue_raw: null,
@@ -251,7 +324,7 @@ describe('resolveImage', () => {
     expect(result?.attributionUrl).toBeUndefined();
   });
 
-  it('tier 3: falls back to the category image when no venue matches', () => {
+  it('tier 4: falls back to the category image when no venue matches', () => {
     const story: ResolvableStory = {
       title: 'Moreno Valley: City Council Meeting', source_type: 'meeting',
       image_path: null, image_alt: null, venue_raw: null,
@@ -261,7 +334,7 @@ describe('resolveImage', () => {
     expect(result).toEqual(categoryImage);
   });
 
-  it('tier 3: picks from a multi-image pool instead of always the first entry', () => {
+  it('tier 4: picks from a multi-image pool instead of always the first entry', () => {
     const pool: ImageRef[] = [
       { path: EXISTING_IMAGE, alt: 'A', width: 1200, height: 800 },
       { path: EXISTING_IMAGE, alt: 'B', width: 1200, height: 800 },
@@ -284,7 +357,7 @@ describe('resolveImage', () => {
     expect(pool).toContainEqual(resultB);
   });
 
-  it('tier 3: the SAME story always resolves to the SAME pool entry (stable across rebuilds)', () => {
+  it('tier 4: the SAME story always resolves to the SAME pool entry (stable across rebuilds)', () => {
     const pool: ImageRef[] = [
       { path: EXISTING_IMAGE, alt: 'A', width: 1200, height: 800 },
       { path: EXISTING_IMAGE, alt: 'B', width: 1200, height: 800 },
@@ -299,12 +372,22 @@ describe('resolveImage', () => {
     expect(first).toEqual(second);
   });
 
-  it('tier 4: returns null, never the /og/<slug>.png social card', () => {
+  it('tier 5: returns null, never the /og/<slug>.png social card', () => {
     const story: ResolvableStory = {
       title: 'Moreno Valley: Free Food Giveaway (Every Sunday)', source_type: 'event',
       image_path: null, image_alt: null, venue_raw: null,
     };
     expect(resolveImage(story, baseOptions)).toBeNull();
+  });
+
+  it('tier 5 (What\'s On Phase 4 re-verification): still returns null, never /og/<slug>.png, when the new Ticketmaster tier is ALSO unpopulated -- the one invariant a silent regression here would actually matter for', () => {
+    const story: ResolvableStory = {
+      title: 'Moreno Valley: Free Food Giveaway (Every Sunday)', source_type: 'event',
+      image_path: null, image_alt: null, venue_raw: null,
+      ticketmasterImageUrl: null,
+    };
+    const result = resolveImage(story, baseOptions);
+    expect(result).toBeNull();
   });
 
   it('a category absent for a town resolves to null, never leaking the other town\'s image', () => {
