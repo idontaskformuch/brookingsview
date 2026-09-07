@@ -52,8 +52,48 @@ export function venueTierRank(tier: VenueTier): number {
  *  crash, never silently drop). */
 export const DEFAULT_VENUE_TIER: VenueTier = 'small';
 
-function normalize(venueName: string): string {
-  return venueName.trim().toLowerCase();
+/** Every US state's 2-letter postal code (plus DC) -- narrow in WHAT
+ *  normalizeVenueName() below strips (only a trailing, hyphen-attached
+ *  2-letter code that's a REAL state abbreviation), not in WHICH states it
+ *  applies to. Deliberately a fixed literal list rather than importing one
+ *  from elsewhere in the codebase (e.g. validation/place_state.py's
+ *  US_STATE_NAMES is full names, a different shape for a different job). */
+const US_STATE_ABBRS = new Set([
+  'al', 'ak', 'az', 'ar', 'ca', 'co', 'ct', 'de', 'fl', 'ga', 'hi', 'id', 'il',
+  'in', 'ia', 'ks', 'ky', 'la', 'me', 'md', 'ma', 'mi', 'mn', 'ms', 'mo', 'mt',
+  'ne', 'nv', 'nh', 'nj', 'nm', 'ny', 'nc', 'nd', 'oh', 'ok', 'or', 'pa', 'ri',
+  'sc', 'sd', 'tn', 'tx', 'ut', 'vt', 'va', 'wa', 'wv', 'wi', 'wy', 'dc',
+]);
+
+// A trailing "-XX" or " - XX", with or without surrounding spaces --
+// confirmed live (What's On Phase 7 follow-up, "Venue Curation"): Discovery
+// API returns the SAME real venue as both "Toyota Arena" and
+// "Toyota Arena-CA" (no spaces) and, already in this file's own map before
+// this fix, "Orpheum Theater Sioux Falls - SD" (spaced). Checked against
+// US_STATE_ABBRS above before stripping, not stripped unconditionally --
+// a bare "-XX" suffix that ISN'T a real state code is left alone, since a
+// venue's own name legitimately ending that way is far less likely than a
+// real state-code suffix, but not impossible.
+const _TRAILING_STATE_SUFFIX_RE = /\s*-\s*([a-z]{2})$/i;
+
+/** Narrow, explicit normalization -- NOT aggressive fuzzy matching (What's
+ *  On Phase 7 follow-up, "Venue Curation"). Strips only apostrophes
+ *  (straight and curly -- "Yaamava' Resort & Casino" vs "Yaamava Resort &
+ *  Casino", confirmed live as the SAME real venue) and a trailing real
+ *  state-code suffix (see above), then collapses whitespace. Deliberately
+ *  does NOT strip other punctuation (an ampersand is meaningful --
+ *  "Icon Events & Dada Gastropub" -- and a mid-name hyphen might be too):
+ *  collapsing two genuinely DIFFERENT venues into one match is a worse
+ *  failure than missing a real duplicate, so normalization stays narrow
+ *  and each addition here is backed by a real confirmed-live duplicate,
+ *  never a guess at what else might vary. */
+export function normalizeVenueName(venueName: string): string {
+  let s = venueName.trim().toLowerCase().replace(/['’]/g, '');
+  const stateSuffix = _TRAILING_STATE_SUFFIX_RE.exec(s);
+  if (stateSuffix && US_STATE_ABBRS.has(stateSuffix[1].toLowerCase())) {
+    s = s.slice(0, stateSuffix.index);
+  }
+  return s.replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -172,7 +212,11 @@ const TICKETMASTER_VENUE_TIERS_BY_NAME: Record<string, VenueTier> = {
   'the district': 'medium',
   'grand falls casino resort': 'medium',
   'icon events & dada gastropub': 'medium',
-  'orpheum theater sioux falls - sd': 'medium',
+  // Was 'orpheum theater sioux falls - sd' -- the trailing " - SD" is now
+  // stripped by normalize() itself (see that function's own comment), so
+  // the stored key must match its OWN output, not the raw pre-normalized
+  // name.
+  'orpheum theater sioux falls': 'medium',
   'bigs sports bar': 'small',
 };
 Object.assign(VENUE_TIERS.brookings_sd, TICKETMASTER_VENUE_TIERS_BY_NAME);
@@ -200,7 +244,7 @@ export function venueTierFor(
     if (byId) return byId;
   }
   if (!venueName) return DEFAULT_VENUE_TIER;
-  const normalized = normalize(venueName);
+  const normalized = normalizeVenueName(venueName);
   if (!normalized) return DEFAULT_VENUE_TIER;
   return VENUE_TIERS[townId]?.[normalized] ?? DEFAULT_VENUE_TIER;
 }
@@ -221,6 +265,6 @@ export function isVenueCurated(
 ): boolean {
   if (venueId && VENUE_TIERS_BY_ID[townId]?.[venueId]) return true;
   if (!venueName) return false;
-  const normalized = normalize(venueName);
+  const normalized = normalizeVenueName(venueName);
   return Boolean(normalized && VENUE_TIERS[townId]?.[normalized]);
 }

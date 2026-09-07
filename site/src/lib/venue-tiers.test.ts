@@ -1,5 +1,37 @@
 import { describe, it, expect } from 'vitest';
-import { venueTierFor, venueTierRank, isVenueCurated, DEFAULT_VENUE_TIER } from './venue-tiers';
+import { venueTierFor, venueTierRank, isVenueCurated, normalizeVenueName, DEFAULT_VENUE_TIER } from './venue-tiers';
+
+describe('normalizeVenueName (What\'s On Phase 7 follow-up, "Venue Curation")', () => {
+  it('strips a trailing real state-code suffix, spaced or not -- the exact two real confirmed-live shapes (Orpheum Theater Sioux Falls - SD, and Toyota Arena-CA once curated)', () => {
+    expect(normalizeVenueName('Orpheum Theater Sioux Falls - SD')).toBe('orpheum theater sioux falls');
+    expect(normalizeVenueName('Toyota Arena-CA')).toBe('toyota arena');
+  });
+
+  it('does NOT strip a trailing two-letter sequence that is not a real state code -- narrow, not aggressive', () => {
+    expect(normalizeVenueName('The Venue-XY')).toBe('the venue-xy');
+    expect(normalizeVenueName('Studio-Q')).toBe('studio-q'); // single letter, never matches the 2-letter pattern at all
+  });
+
+  it('strips straight and curly apostrophes -- the real confirmed-live "Yaamava\' Resort & Casino" vs "Yaamava Resort & Casino" duplicate', () => {
+    expect(normalizeVenueName("Yaamava' Resort & Casino at San Manuel")).toBe('yaamava resort & casino at san manuel');
+    expect(normalizeVenueName('Yaamava’ Resort & Casino at San Manuel')).toBe('yaamava resort & casino at san manuel');
+    expect(normalizeVenueName('Yaamava Resort & Casino at San Manuel')).toBe('yaamava resort & casino at san manuel');
+  });
+
+  it('preserves an ampersand and other meaningful punctuation -- normalization is narrow on purpose', () => {
+    expect(normalizeVenueName('Washington Pavilion of Arts & Science')).toBe('washington pavilion of arts & science');
+  });
+
+  it('collapses whitespace and trims, same as the original behavior', () => {
+    expect(normalizeVenueName('  The   District  ')).toBe('the district');
+  });
+
+  it('genuinely distinct venues stay distinct after normalization -- does not over-collapse', () => {
+    expect(normalizeVenueName('The District')).not.toBe(normalizeVenueName('Grand Falls Casino Resort'));
+    expect(venueTierFor('brookings_sd', 'The District')).toBe('medium');
+    expect(venueTierFor('brookings_sd', 'BIGS Sports Bar')).toBe('small');
+  });
+});
 
 describe('venueTierFor', () => {
   it('maps a known Brookings venue to its real tier (Oscar Larson revised to medium -- see this file\'s own comment: real capacity, 1,000 seats, is smaller than several curated Sioux Falls venues)', () => {
@@ -25,6 +57,11 @@ describe('venueTierFor', () => {
 
   it('falls back to the default tier for an unknown town entirely', () => {
     expect(venueTierFor('some_future_town', 'Any Venue')).toBe(DEFAULT_VENUE_TIER);
+  });
+
+  it('resolves the Orpheum Theater tier whether or not the raw name still carries its trailing " - SD" (What\'s On Phase 7 follow-up: the stored map key itself was updated to match normalizeVenueName()\'s own output)', () => {
+    expect(venueTierFor('brookings_sd', 'Orpheum Theater Sioux Falls - SD')).toBe('medium');
+    expect(venueTierFor('brookings_sd', 'Orpheum Theater Sioux Falls')).toBe('medium');
   });
 
   it('never throws on null, undefined, or empty/whitespace-only venue strings', () => {
