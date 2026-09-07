@@ -95,16 +95,89 @@ export function rankTicketmasterEvents(items: TicketmasterFeedItem[], townId: st
 /** Provisional starting cutoff (per the Phase 5 handoff's own instruction:
  *  "treat it as provisional... review against the real dataset"), not a
  *  final decision -- see the Phase 5 human-review report for whether this
- *  held up against the real ~40-event Brookings dataset. */
+ *  held up against the real ~40-event Brookings dataset. Deliberately left
+ *  at 6 in the "Tour-Run Collapsing" follow-up (per that handoff's own
+ *  instruction: run collapsing addresses the crowding directly, so the
+ *  cutoff itself isn't the first thing to touch). */
 export const MARQUEE_SIZE = 6;
 
+/** One Marquee slot -- either a standalone event (`members.length === 1`)
+ *  or a collapsed run of the SAME real production at the SAME venue across
+ *  multiple dates (confirmed live: 6 separate "Disney On Ice presents Find
+ *  Your Hero" dates at Denny Sanford PREMIER Center, all sharing one
+ *  Discovery API attraction id). `primary` is the best-ranked member (in
+ *  practice, since tier dominates score and every member of a run shares a
+ *  venue and thus a tier, this is the SOONEST date) -- used for the card's
+ *  image/title/link. See collapseMarqueeRuns() below for how a run is
+ *  identified. */
+export interface MarqueeEntry {
+  primary: TicketmasterFeedItem;
+  members: TicketmasterFeedItem[];
+}
+
+/**
+ * Groups already-ranked items into Marquee entries, collapsing a run of
+ * events that share BOTH the same primary attraction id AND the same
+ * venue id (or venue name, if no id) into one entry -- venue is part of
+ * the key on purpose: the same touring production at two different venues
+ * is two separate bookings, not one run, even though Discovery API would
+ * give them the same attraction id.
+ *
+ * Never collapses on attraction id alone, and NEVER collapses when
+ * attractionId is absent -- an event with no attraction data always gets
+ * its own entry. Collapsing is a structural match (a real, stable
+ * Discovery API id), never a title/name guess -- the same discipline
+ * isNonEventListing() applies to filtering.
+ *
+ * `ranked` is assumed already sorted (rankTicketmasterEvents()'s own
+ * output) -- since every member of a run shares a venue, and therefore a
+ * tier, a run's members are contiguous in score and differ only by date;
+ * the FIRST occurrence encountered is always the soonest date, which
+ * becomes `primary` without needing a separate re-sort here.
+ */
+export function collapseMarqueeRuns(ranked: RankedTicketmasterEvent[]): MarqueeEntry[] {
+  const entries: MarqueeEntry[] = [];
+  const entryIndexByKey = new Map<string, number>();
+
+  for (const { item } of ranked) {
+    const e = item.ticketmasterEvent;
+    const key = e.attractionId ? `${e.attractionId}::${e.venueId ?? e.venueName ?? ''}` : null;
+
+    const existingIndex = key ? entryIndexByKey.get(key) : undefined;
+    if (existingIndex !== undefined) {
+      entries[existingIndex].members.push(item);
+      continue;
+    }
+
+    if (key) entryIndexByKey.set(key, entries.length);
+    entries.push({ primary: item, members: [item] });
+  }
+
+  return entries;
+}
+
 export interface MarqueeSplit {
-  marquee: TicketmasterFeedItem[];
+  /** One card per entry -- a collapsed run still occupies exactly ONE
+   *  Marquee slot, per the "Tour-Run Collapsing" handoff's own instruction
+   *  not to let a six-date run count as six times as notable as a
+   *  one-night show. */
+  marquee: MarqueeEntry[];
+  /** Deliberately NOT collapsed -- every individual date/listing appears
+   *  on its own here, including the non-primary members of a run that DID
+   *  collapse in Marquee (e.g. Disney On Ice's other 5 dates, once its
+   *  earliest date is used as the Marquee entry). A dense list of repeated
+   *  titles is a smaller visual cost here than in Marquee's large-image
+   *  cards, and each one is still a real, individually bookable date with
+   *  its own detail page -- so showing it is more honest than hiding it. */
   alsoOn: TicketmasterFeedItem[];
 }
 
 export function splitMarquee(ranked: RankedTicketmasterEvent[], marqueeSize: number = MARQUEE_SIZE): MarqueeSplit {
-  const marquee = ranked.slice(0, marqueeSize).map((r) => r.item);
-  const alsoOn = ranked.slice(marqueeSize).map((r) => r.item);
+  const allEntries = collapseMarqueeRuns(ranked);
+  const marquee = allEntries.slice(0, marqueeSize);
+  const marqueePrimaryIds = new Set(marquee.map((entry) => entry.primary.ticketmasterEvent.id));
+  const alsoOn = ranked
+    .map((r) => r.item)
+    .filter((item) => !marqueePrimaryIds.has(item.ticketmasterEvent.id));
   return { marquee, alsoOn };
 }

@@ -24,8 +24,16 @@ interface Props {
   /** Also-on-this-day cards: dense, no image -- same "compact" convention
    *  StoryCard.astro already uses. */
   compact?: boolean;
+  /** What's On Phase 5 follow-up ("Tour-Run Collapsing"): total number of
+   *  dates in this run when `item` is a collapsed MarqueeEntry's primary
+   *  (e.g. 6 for "Disney On Ice presents Find Your Hero") -- omitted or 1
+   *  for a standalone event, which keeps the single-date display exactly
+   *  as it was before this follow-up. `lastOccursAt` is the run's LATEST
+   *  date, needed to render a real range rather than just a count. */
+  runSize?: number;
+  lastOccursAt?: string | null;
 }
-const { item, compact = false } = Astro.props;
+const { item, compact = false, runSize = 1, lastOccursAt = null } = Astro.props;
 const e = item.ticketmasterEvent;
 
 const heroImage = compact ? null : resolveImage(ticketmasterResolvableImage(item), {
@@ -44,7 +52,9 @@ function formatDate(iso: string): string {
   });
 }
 
-const dateLabel = item.occurs_at ? formatDate(item.occurs_at) : null;
+const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
+  ? `${runSize} dates, ${formatDate(item.occurs_at)} – ${formatDate(lastOccursAt)}`
+  : item.occurs_at ? formatDate(item.occurs_at) : null;
 ---
 <article class:list={['whats-on-card', compact && 'whats-on-card--compact']}>
   {heroImage && (

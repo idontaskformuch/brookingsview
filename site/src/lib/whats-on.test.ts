@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { rankTicketmasterEvents, splitMarquee, MARQUEE_SIZE, ticketmasterSlug, ticketmasterResolvableImage } from './whats-on';
+import { rankTicketmasterEvents, splitMarquee, collapseMarqueeRuns, MARQUEE_SIZE, ticketmasterSlug, ticketmasterResolvableImage } from './whats-on';
 import type { TicketmasterFeedItem, TicketmasterEvent } from './ticketmaster';
 
 function tmEvent(overrides: Partial<TicketmasterEvent> = {}): TicketmasterEvent {
   return {
-    id: 'tm-1', title: 'Untitled Event', venueId: null, venueName: null,
+    id: 'tm-1', title: 'Untitled Event', attractionId: null, venueId: null, venueName: null,
     venueLatitude: null, venueLongitude: null, venueAddress: null,
     venueCity: null, venueStateCode: null, venuePostalCode: null,
     venueDistanceMiles: null, ticketUrl: 'https://ticketmaster.com/event/x',
@@ -90,6 +90,74 @@ describe('rankTicketmasterEvents', () => {
   });
 });
 
+describe('collapseMarqueeRuns (What\'s On Phase 5 follow-up, "Tour-Run Collapsing")', () => {
+  it('collapses N events sharing the same attractionId AND venueId into one entry, primary = soonest date', () => {
+    const items = [
+      tmItem('2026-12-06T19:00:00Z', { id: 'stop2', title: 'Disney On Ice presents Find Your Hero', attractionId: 'K8vZ9172HM0', venueId: 'KovZpZAJAl7A' }),
+      tmItem('2026-12-05T16:00:00Z', { id: 'stop1', title: 'Disney On Ice presents Find Your Hero', attractionId: 'K8vZ9172HM0', venueId: 'KovZpZAJAl7A' }),
+      tmItem('2026-12-06T23:00:00Z', { id: 'stop3', title: 'Disney On Ice presents Find Your Hero', attractionId: 'K8vZ9172HM0', venueId: 'KovZpZAJAl7A' }),
+    ];
+    const ranked = rankTicketmasterEvents(items, 'brookings_sd');
+    const entries = collapseMarqueeRuns(ranked);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].primary.ticketmasterEvent.id).toBe('stop1'); // soonest
+    expect(entries[0].members).toHaveLength(3);
+  });
+
+  it('does NOT collapse events by different attractions at the same venue', () => {
+    const items = [
+      tmItem('2026-12-05T16:00:00Z', { id: 'a', title: 'Show A', attractionId: 'attraction-a', venueId: 'same-venue' }),
+      tmItem('2026-12-06T16:00:00Z', { id: 'b', title: 'Show B', attractionId: 'attraction-b', venueId: 'same-venue' }),
+    ];
+    const ranked = rankTicketmasterEvents(items, 'brookings_sd');
+    const entries = collapseMarqueeRuns(ranked);
+    expect(entries).toHaveLength(2);
+  });
+
+  it('does NOT collapse the same attraction at two DIFFERENT venues -- two separate bookings, not one run', () => {
+    const items = [
+      tmItem('2026-12-05T16:00:00Z', { id: 'a', title: 'Touring Show', attractionId: 'same-attraction', venueId: 'venue-1' }),
+      tmItem('2026-12-06T16:00:00Z', { id: 'b', title: 'Touring Show', attractionId: 'same-attraction', venueId: 'venue-2' }),
+    ];
+    const ranked = rankTicketmasterEvents(items, 'brookings_sd');
+    const entries = collapseMarqueeRuns(ranked);
+    expect(entries).toHaveLength(2);
+  });
+
+  it('never collapses events with no attractionId at all, even if everything else matches', () => {
+    const items = [
+      tmItem('2026-12-05T16:00:00Z', { id: 'a', title: 'Same Title', venueId: 'same-venue' }),
+      tmItem('2026-12-06T16:00:00Z', { id: 'b', title: 'Same Title', venueId: 'same-venue' }),
+    ];
+    const ranked = rankTicketmasterEvents(items, 'brookings_sd');
+    const entries = collapseMarqueeRuns(ranked);
+    expect(entries).toHaveLength(2);
+  });
+
+  it('a standalone event with an attractionId still gets its own single-member entry', () => {
+    const items = [tmItem('2026-12-05T16:00:00Z', { id: 'solo', attractionId: 'unique-attraction', venueId: 'v1' })];
+    const ranked = rankTicketmasterEvents(items, 'brookings_sd');
+    const entries = collapseMarqueeRuns(ranked);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].members).toHaveLength(1);
+  });
+
+  it('handles an empty list', () => {
+    expect(collapseMarqueeRuns([])).toEqual([]);
+  });
+
+  it('falls back to venue NAME when venueId is absent, still requiring a match on both', () => {
+    const items = [
+      tmItem('2026-12-05T16:00:00Z', { id: 'a', title: 'Touring Show', attractionId: 'attr-1', venueName: 'Some Venue' }),
+      tmItem('2026-12-06T16:00:00Z', { id: 'b', title: 'Touring Show', attractionId: 'attr-1', venueName: 'Some Venue' }),
+    ];
+    const ranked = rankTicketmasterEvents(items, 'brookings_sd');
+    const entries = collapseMarqueeRuns(ranked);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].members).toHaveLength(2);
+  });
+});
+
 describe('splitMarquee', () => {
   it('splits at the default MARQUEE_SIZE cutoff', () => {
     const items = Array.from({ length: 10 }, (_, i) =>
@@ -122,6 +190,48 @@ describe('splitMarquee', () => {
     expect(marquee).toEqual([]);
     expect(alsoOn).toEqual([]);
   });
+
+  it('a collapsed run occupies exactly one Marquee slot, freeing room for other distinct acts -- the exact crowding bug this follow-up fixes', () => {
+    // Same real shape as the live problem: 6 same-run large-tier events plus
+    // 4 other DISTINCT large-tier acts (no attractionId -- distinct
+    // one-off shows), all at the same curated venue so they tie on tier
+    // and would otherwise compete on date order alone.
+    const runStops = Array.from({ length: 6 }, (_, i) =>
+      tmItem(`2026-12-0${i + 1}T16:00:00Z`, {
+        id: `run-${i}`, title: 'Disney On Ice presents Find Your Hero',
+        attractionId: 'K8vZ9172HM0', venueId: 'KovZpZAJAl7A', venueName: 'Denny Sanford PREMIER Center',
+      }));
+    const distinctActs = ['Jonas Brothers', 'Lindsey Stirling', 'Bert Kreischer', 'TobyMac'].map((title, i) =>
+      tmItem(`2026-12-1${i}T16:00:00Z`, {
+        id: `distinct-${i}`, title, venueId: 'KovZpZAJAl7A', venueName: 'Denny Sanford PREMIER Center',
+      }));
+    const ranked = rankTicketmasterEvents([...runStops, ...distinctActs], 'brookings_sd');
+    const { marquee } = splitMarquee(ranked); // default cutoff, 6
+
+    // Without collapsing this would be 6 Disney On Ice cards. With it, the
+    // run takes ONE slot and all 4 distinct acts fit too (5 total entries).
+    expect(marquee).toHaveLength(5);
+    const marqueeTitles = marquee.map((entry) => entry.primary.ticketmasterEvent.title);
+    expect(marqueeTitles).toContain('Jonas Brothers');
+    expect(marqueeTitles).toContain('Lindsey Stirling');
+    expect(marqueeTitles).toContain('Bert Kreischer');
+    expect(marqueeTitles).toContain('TobyMac');
+    const disneyEntry = marquee.find((entry) => entry.primary.ticketmasterEvent.title.includes('Disney'));
+    expect(disneyEntry?.members).toHaveLength(6);
+  });
+
+  it('Also-On is NOT collapsed -- non-primary run members still appear individually, each a real bookable date', () => {
+    const runStops = Array.from({ length: 3 }, (_, i) =>
+      tmItem(`2026-12-0${i + 1}T16:00:00Z`, {
+        id: `run-${i}`, title: 'Touring Show', attractionId: 'attr-1', venueId: 'v1',
+      }));
+    const ranked = rankTicketmasterEvents(runStops, 'brookings_sd');
+    const { marquee, alsoOn } = splitMarquee(ranked, 1); // cutoff=1: run's primary fills the only slot
+    expect(marquee).toHaveLength(1);
+    expect(marquee[0].members).toHaveLength(3);
+    // The other 2 dates are NOT hidden -- they still show individually in Also-On.
+    expect(alsoOn.map((i) => i.ticketmasterEvent.id).sort()).toEqual(['run-1', 'run-2']);
+  });
 });
 
 describe('ticketmasterSlug', () => {
@@ -145,7 +255,7 @@ describe('ticketmasterSlug', () => {
 describe('ticketmasterResolvableImage', () => {
   function tmEvent(overrides: Partial<TicketmasterEvent> = {}): TicketmasterEvent {
     return {
-      id: 'tm-1', title: 'A Touring Band', venueId: null, venueName: null,
+      id: 'tm-1', title: 'A Touring Band', attractionId: null, venueId: null, venueName: null,
       venueLatitude: null, venueLongitude: null, venueAddress: null,
       venueCity: null, venueStateCode: null, venuePostalCode: null,
       venueDistanceMiles: null, ticketUrl: 'https://ticketmaster.com/event/tm-1',

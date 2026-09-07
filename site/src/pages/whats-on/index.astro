@@ -9,7 +9,11 @@
  *  Marquee (larger cards, real images via lib/images.ts's Ticketmaster
  *  tier) vs. Also-on-this-day (dense, no image) -- see lib/whats-on.ts's
  *  rankTicketmasterEvents()/splitMarquee() for the ranking + provisional
- *  cutoff.
+ *  cutoff. Venue tiers for the real regional venues in this feed are
+ *  curated (see lib/venue-tiers.ts) -- Marquee entries are also collapsed
+ *  per real production/venue (see splitMarquee()'s own MarqueeEntry
+ *  return shape) so a multi-date tour run occupies one slot, not one per
+ *  date, per the "Tour-Run Collapsing" follow-up.
  *
  *  Every card shows a distance label for any venue outside town proper --
  *  the anti-doorway-pattern transparency the original spec named
@@ -62,7 +66,13 @@ const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
         <>
           <SectionRule label="Marquee" />
           <div class="marquee-grid">
-            {marquee.map((item) => <WhatsOnCard item={item} />)}
+            {marquee.map((entry) => (
+              <WhatsOnCard
+                item={entry.primary}
+                runSize={entry.members.length}
+                lastOccursAt={entry.members[entry.members.length - 1].occurs_at}
+              />
+            ))}
           </div>
         </>
       )}

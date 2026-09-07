@@ -53,6 +53,7 @@ describe('normalizeTicketmasterEvent', () => {
       ticketmasterEvent: {
         id: 'Z7r9jZ1A70S3p',
         title: 'South Dakota State Jackrabbits Football vs. Murray State Racers Football',
+        attractionId: null,
         venueId: 'Z7r9jZaeWt',
         venueName: 'Dana J. Dykhouse Stadium',
         venueLatitude: 44.301399,
@@ -72,6 +73,24 @@ describe('normalizeTicketmasterEvent', () => {
         priceCurrency: null,
       },
     });
+  });
+
+  it('parses the real primary attraction id (What\'s On Phase 5 follow-up, "Tour-Run Collapsing" -- real captured value: 6 live Disney On Ice tour stops all shared this exact id)', () => {
+    const result = normalizeTicketmasterEvent(realFixture({
+      _embedded: {
+        venues: [{ name: 'Denny Sanford PREMIER Center' }],
+        attractions: [
+          { id: 'K8vZ9172HM0', name: 'Disney On Ice presents Find Your Hero' },
+          { id: 'K8vZ9171K80', name: 'Disney On Ice' },
+        ],
+      },
+    }));
+    expect(result.ticketmasterEvent.attractionId).toBe('K8vZ9172HM0');
+  });
+
+  it('handles no attractions at all -- confirmed live, real events can lack this field entirely', () => {
+    const result = normalizeTicketmasterEvent(realFixture({ _embedded: { venues: [{ name: 'X' }] } }));
+    expect(result.ticketmasterEvent.attractionId).toBeNull();
   });
 
   it('parses the real venue id (What\'s On Phase 5 follow-up: preferred over name for tier matching, since names can drift)', () => {

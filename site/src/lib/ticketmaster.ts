@@ -61,6 +61,15 @@ export interface RawTicketmasterEvent {
        *  (and its own bug surface) for a value the API already hands over. */
       distance?: number;
     }[];
+    /** The production/tour this event belongs to (e.g. "Disney On Ice
+     *  presents Find Your Hero") -- Discovery API's own stable grouping key
+     *  for "same real production, different date," used by
+     *  lib/whats-on.ts's collapseMarqueeRuns() to fold multiple tour stops
+     *  into one Marquee card. An event can list more than one attraction
+     *  (a specific production plus a broader franchise entry) -- only the
+     *  first/primary one is used, matching how classifications[0] is
+     *  already treated as authoritative elsewhere in this file. */
+    attractions?: { id?: string; name?: string }[];
   };
   classifications?: {
     primary?: boolean;
@@ -122,10 +131,17 @@ export interface TicketmasterFeedItem {
  *  priceMin/priceMax/priceCurrency (raw numbers, What's On Phase 5): kept
  *  alongside priceRangeText (the pre-formatted display string) rather than
  *  parsed back out of it, so Event JSON-LD's `offers` can use real numeric
- *  values instead of re-parsing display text. */
+ *  values instead of re-parsing display text.
+ *
+ *  attractionId (What's On Phase 5 follow-up, "Tour-Run Collapsing"): the
+ *  production/tour this event belongs to, used by lib/whats-on.ts's
+ *  collapseMarqueeRuns() to fold multiple real tour stops (confirmed live:
+ *  6 separate Disney On Ice dates, all sharing one attraction id) into one
+ *  Marquee card rather than letting them crowd out other distinct acts. */
 export interface TicketmasterEvent {
   id: string;
   title: string;
+  attractionId: string | null;
   venueId: string | null;
   venueName: string | null;
   venueLatitude: number | null;
@@ -262,6 +278,7 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
   const event: TicketmasterEvent = {
     id: raw.id,
     title: raw.name,
+    attractionId: raw._embedded?.attractions?.[0]?.id ?? null,
     venueId: venue?.id ?? null,
     venueName: venue?.name ?? null,
     venueLatitude: parseCoordinate(venue?.location?.latitude),

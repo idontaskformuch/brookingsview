@@ -4,7 +4,7 @@ import type { TicketmasterFeedItem, TicketmasterEvent } from './ticketmaster';
 
 function tmEvent(overrides: Partial<TicketmasterEvent> = {}): TicketmasterEvent {
   return {
-    id: 'tm-1', title: 'A Touring Band Live in Sioux Falls', venueId: null, venueName: null,
+    id: 'tm-1', title: 'A Touring Band Live in Sioux Falls', attractionId: null, venueId: null, venueName: null,
     venueLatitude: null, venueLongitude: null, venueAddress: null,
     venueCity: null, venueStateCode: null, venuePostalCode: null,
     venueDistanceMiles: null, ticketUrl: 'https://ticketmaster.com/event/tm-1',
