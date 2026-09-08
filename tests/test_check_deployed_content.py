@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from scripts.check_deployed_content import (
     SIGNATURE_SECTIONS,
     SITE_URLS,
+    _user_agent,
     extract_story_slugs,
     is_stale,
 )
@@ -64,3 +65,18 @@ def test_all_three_towns_have_a_site_url_and_signature_section():
         assert SITE_URLS[town_id].startswith("https://")
         assert town_id in SIGNATURE_SECTIONS
         assert SIGNATURE_SECTIONS[town_id]["path"].startswith("/")
+
+
+def test_user_agent_strips_scheme_and_identifies_domain():
+    assert _user_agent("https://broomfieldview.com") == (
+        "broomfieldview.com (contact: hello@broomfieldview.com)"
+    )
+
+
+def test_user_agent_matches_scrape_workflow_convention_for_all_three_towns():
+    # Same "<domain> (contact: hello@<domain>)" string each town's own
+    # *-scrape.yml sets as USER_AGENT -- derived from SITE_URLS rather than
+    # hardcoded a second time, so the two can't drift apart.
+    for town_id, site_url in SITE_URLS.items():
+        domain = site_url.removeprefix("https://")
+        assert _user_agent(site_url) == f"{domain} (contact: hello@{domain})"

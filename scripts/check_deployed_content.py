@@ -68,6 +68,24 @@ SITE_URLS = {
     "broomfield_co": "https://broomfieldview.com",
 }
 
+
+def _user_agent(site_url: str) -> str:
+    """A real, identifying User-Agent -- not a spoofed browser string, and
+    not `requests`' own default ("python-requests/X.Y.Z"), which is what
+    this checker sent before this fix. Confirmed live (2026-09-08):
+    Cloudflare's bot protection on broomfieldview.com's zone specifically
+    blocked that default, returning HTTP 403 to this checker while a real
+    browser and other clients got 200 with fresh content -- Brookings and
+    Moreno Valley's zones never had the problem, which is why this went
+    unnoticed until Broomfield existed. Matches the SAME
+    "<domain> (contact: hello@<domain>)" convention every scrape workflow's
+    own USER_AGENT already uses (see e.g. broomfield-scrape.yml) rather than
+    inventing a second convention -- derived from SITE_URLS itself so the
+    two can never drift apart the way the (now-removed) hardcoded domain
+    field in configs/*.json once did (see this file's own comment above)."""
+    domain = site_url.removeprefix("https://").removeprefix("http://")
+    return f"{domain} (contact: hello@{domain})"
+
 # Each town's flagship, town-specific section -- a page with no real
 # content here is the same "skeleton, not a working site" failure mode
 # as an empty homepage, just easier to miss since the homepage itself can
@@ -142,7 +160,7 @@ def check_homepage_freshness(conn, town_id: str, site_url: str) -> str | None:
     a real problem, both broke the naive version of this check.
     """
     try:
-        r = requests.get(site_url + "/", timeout=20)
+        r = requests.get(site_url + "/", timeout=20, headers={"User-Agent": _user_agent(site_url)})
     except Exception as exc:
         return f"could not fetch homepage ({site_url}/): {exc}"
     if r.status_code != 200:
@@ -171,7 +189,7 @@ def check_signature_section(town_id: str, site_url: str) -> str | None:
     section = SIGNATURE_SECTIONS[town_id]
     url = site_url + section["path"]
     try:
-        r = requests.get(url, timeout=20)
+        r = requests.get(url, timeout=20, headers={"User-Agent": _user_agent(site_url)})
     except Exception as exc:
         return f"could not fetch signature section ({url}): {exc}"
     if r.status_code != 200:
