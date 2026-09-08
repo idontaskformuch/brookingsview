@@ -472,6 +472,16 @@ export function _resetTicketmasterCacheForTests(): void {
 export async function getTicketmasterEventsForTown(
   siteConfig: { ticketmaster?: { enabled: boolean; latitude: number; longitude: number; radiusMiles: number } },
 ): Promise<TicketmasterFeedItem[]> {
+  // TEMPORARY diagnostic (2026-09-08, "zero Ticketmaster log lines in
+  // production" investigation) -- unconditional, before any gate/logic
+  // below, specifically to answer one question: is this function reached
+  // at all during a real build? fetchTicketmasterEvents() already logs
+  // every outcome (63eb79a), so if THIS line is also absent from the next
+  // build's annotations, the problem is upstream of this file entirely
+  // (a page-level hasWhatsOn gate, or the build not running this code at
+  // all) -- not the enabled-check or the fetch. Remove once the real cause
+  // is confirmed.
+  console.log(`::notice::[ticketmaster] getTicketmasterEventsForTown() entered -- ticketmaster.enabled=${siteConfig.ticketmaster?.enabled ?? 'undefined (no ticketmaster config on this siteConfig)'}`);
   if (!siteConfig.ticketmaster?.enabled) return [];
   const { latitude, longitude, radiusMiles } = siteConfig.ticketmaster;
   const cacheKey = `${latitude},${longitude},${radiusMiles}`;
