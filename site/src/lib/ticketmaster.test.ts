@@ -195,6 +195,16 @@ describe('fetchTicketmasterEvents error handling -- every path returns [], never
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it('a missing key logs a ::warning:: (What\'s On production fix) -- a real GitHub Actions annotation, not just a line buried in the build log, distinguishing "the key never arrived" from "no events in the area"', async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', '');
+    vi.stubGlobal('fetch', vi.fn());
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await fetchTicketmasterEvents(44.3114, -96.7984, 75);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('::warning::'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('TICKETMASTER_API_KEY not set'));
+    warnSpy.mockRestore();
+  });
+
   it('returns [] on a simulated rate-limit (429) response', async () => {
     vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 429 }));
@@ -202,11 +212,31 @@ describe('fetchTicketmasterEvents error handling -- every path returns [], never
     expect(result).toEqual([]);
   });
 
+  it('a 429 does NOT log a ::warning:: -- rate limiting is a different, more self-evident failure mode than a missing/rejected key', async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 429 }));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await fetchTicketmasterEvents(44.3114, -96.7984, 75);
+    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('::warning::'));
+    warnSpy.mockRestore();
+  });
+
   it('returns [] on a simulated 5xx server error', async () => {
     vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
     const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
     expect(result).toEqual([]);
+  });
+
+  it.each([401, 403])('an HTTP %i (auth error) logs a ::warning:: -- the key was sent but Discovery API rejected it, a different silent failure mode than a missing key', async (status) => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status }));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
+    expect(result).toEqual([]);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('::warning::'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('auth error'));
+    warnSpy.mockRestore();
   });
 
   it('returns [] on a simulated network failure', async () => {

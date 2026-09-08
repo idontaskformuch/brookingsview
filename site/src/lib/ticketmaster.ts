@@ -2,13 +2,9 @@
  *  normalization only, deliberately NOT wired into buildEventFeed() or any
  *  page (see TicketmasterFeedItem's own comment for why that stayed true
  *  through Phase 4 too). Phase 5 (site/src/pages/whats-on/) is the first
- *  real caller -- gated behind SiteConfig.hasWhatsOn (false everywhere) and
- *  siteConfig.ticketmaster.enabled (also false everywhere), so this module
- *  itself is unchanged in spirit: still safe to call in isolation from
- *  scripts/dump-event-ranking.ts and from tests, still inert in every real
- *  build today.
- *
- *  Brookings-only for now -- don't call this for other towns yet (Phase 7).
+ *  real caller -- gated behind SiteConfig.hasWhatsOn and
+ *  siteConfig.ticketmaster.enabled, both true for all three towns as of
+ *  Phase 7 and its venue-curation follow-up.
  */
 
 const DISCOVERY_API_BASE = 'https://app.ticketmaster.com/discovery/v2/events.json';
@@ -322,10 +318,12 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
  * Never throws -- every failure mode (missing/invalid key, rate limit, 5xx,
  * network error) logs and resolves to `[]`, per this phase's own
  * requirement that a build must succeed identically whether or not the key
- * is valid. Not gated on an `enabled` flag itself -- callers (the dump
- * script, tests, and eventually Phase 7's real wiring) decide whether to
- * call this at all; this function's own job is just "fetch safely or fail
- * quietly," not policy.
+ * is valid (each failure mode also gets a visible `::warning::` where it's
+ * otherwise indistinguishable from "no events" -- see the missing-key and
+ * 401/403 checks above). Not gated on an `enabled` flag itself -- callers
+ * (the dump script, tests, and getTicketmasterEventsForTown() below) decide
+ * whether to call this at all; this function's own job is just "fetch
+ * safely or fail quietly," not policy.
  */
 export async function fetchTicketmasterEvents(
   latitude: number,
@@ -334,7 +332,23 @@ export async function fetchTicketmasterEvents(
 ): Promise<TicketmasterFeedItem[]> {
   const apiKey = import.meta.env.TICKETMASTER_API_KEY;
   if (!apiKey) {
-    console.warn('[ticketmaster] TICKETMASTER_API_KEY not set -- skipping fetch, returning no events.');
+    // `::warning::` is a GitHub Actions workflow command -- Actions scans
+    // EVERY step's stdout/stderr for this literal pattern, not just lines a
+    // workflow's own `run:` script echoes, so this surfaces as a real
+    // annotation in the Actions UI summary rather than a line buried in a
+    // multi-thousand-line build log (same mechanism this repo's own
+    // workflow YAML already uses for `::error::`, e.g. scrape.yml's missing
+    // PAGES_DEPLOY_HOOK check). Added after a real production incident
+    // (2026-09-08): two of three towns' workflows never had
+    // TICKETMASTER_API_KEY wired into their Build step's env block at all,
+    // and this function's own "never crash, return []" design (deliberate,
+    // kept exactly as-is here -- a missing key must never break a deploy)
+    // meant the build stayed green and the deploy succeeded. The only
+    // visible symptom was a live page that looked exactly like a
+    // genuinely quiet week, not a build failure -- this warning exists so
+    // "the key never arrived" is distinguishable from "no events in the
+    // area" without already having to suspect the key.
+    console.warn("::warning::[ticketmaster] TICKETMASTER_API_KEY not set -- skipping fetch, returning no events. If this town is supposed to have Ticketmaster data, check this workflow's own Build step env block for this key.");
     return [];
   }
 
@@ -354,7 +368,16 @@ export async function fetchTicketmasterEvents(
 
       const res = await fetch(url.toString());
       if (!res.ok) {
-        console.warn(`[ticketmaster] Discovery API returned HTTP ${res.status} for ${geoLabel} -- stopping, returning what was fetched so far.`);
+        if (res.status === 401 || res.status === 403) {
+          // Same visibility reasoning as the missing-key check above --
+          // 401/403 specifically means the key WAS sent but Discovery API
+          // rejected it (wrong, revoked, or rotated), a different and
+          // equally silent-otherwise failure mode from a key that never
+          // arrived at all.
+          console.warn(`::warning::[ticketmaster] Discovery API returned HTTP ${res.status} (auth error) for ${geoLabel} -- the key was sent but rejected. Check that TICKETMASTER_API_KEY is set correctly and hasn't been revoked or rotated.`);
+        } else {
+          console.warn(`[ticketmaster] Discovery API returned HTTP ${res.status} for ${geoLabel} -- stopping, returning what was fetched so far.`);
+        }
         break;
       }
 
@@ -377,11 +400,9 @@ export async function fetchTicketmasterEvents(
 
 /** The actual "is this reachable from a real page" gate: checks
  *  `siteConfig.ticketmaster?.enabled` BEFORE doing anything else -- no
- *  network call, no API key read, just an immediate `[]` when disabled
- *  (which is every town today, see site-config.ts). This is the function a
- *  real page would call once Phase 7 wires this in for real; nothing calls
- *  it yet (see this file's own module comment), but it exists now so that
- *  wiring is a one-line addition, not new design work. */
+ *  network call, no API key read, just an immediate `[]` when disabled.
+ *  This is the function pages/whats-on/index.astro and lib/cityStatus.ts's
+ *  resolveWhatsOn() actually call. */
 export async function getTicketmasterEventsForTown(
   siteConfig: { ticketmaster?: { enabled: boolean; latitude: number; longitude: number; radiusMiles: number } },
 ): Promise<TicketmasterFeedItem[]> {

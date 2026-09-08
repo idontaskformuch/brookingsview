@@ -50,6 +50,15 @@ jobs:
         env:
           SITE_CITY: broomfield_co
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # What's On: threaded through so getTicketmasterEventsForTown()
+          # actually has a key to call with, now that hasWhatsOn/
+          # ticketmaster.enabled are true for Broomfield (Phase 7 follow-up)
+          # -- this was missing here even though scrape.yml (Brookings) has
+          # had it since Phase 3, which is why production silently showed
+          # zero events despite a green build (fetchTicketmasterEvents()
+          # returns [] rather than crashing on a missing key -- see Part 4's
+          # new build-log warning for making that failure mode visible).
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
         run: npx astro build
       - name: Deploy to Cloudflare Workers (Broomfield)
         working-directory: site
