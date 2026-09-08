@@ -201,7 +201,7 @@ def test_flag_translations_no_false_positive_without_english_pair():
 
 def test_parse_end_to_end_row_shape():
     p = VailNewsParser({"town_id": "broomfield_co"}, {"url": "https://news.vailresorts.com/news-and-stories"})
-    rows = p.parse(_fetched(LISTING_FIXTURE))
+    rows = p.parse(_fetched(LISTING_FIXTURE), recent_english_dates=[])
     assert len(rows) == 4
     row = rows[1]
     assert row["external_url"] == "https://news.vailresorts.com/2026-08-18-Is-Winter-About-to-Show-Off"
@@ -213,7 +213,7 @@ def test_parse_end_to_end_row_shape():
 
 def test_parse_flags_the_spanish_duplicate_in_fixture():
     p = VailNewsParser({"town_id": "broomfield_co"}, {"url": "https://news.vailresorts.com/news-and-stories"})
-    rows = p.parse(_fetched(LISTING_FIXTURE))
+    rows = p.parse(_fetched(LISTING_FIXTURE), recent_english_dates=[])
     assert rows[0]["is_translation"] is True
 
 

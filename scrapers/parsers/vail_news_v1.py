@@ -132,7 +132,18 @@ class VailNewsParser(BaseParser):
         return FetchResult(raw=combined.encode("utf-8"), content_type="text/html",
                             url=f"{BASE_URL}{LISTING_PATH}", http_code=200)
 
-    def parse(self, fetched: FetchResult) -> list[dict]:
+    def parse(self, fetched: FetchResult, recent_english_dates: list[date] | None = None) -> list[dict]:
+        """`recent_english_dates`, when given, is used as-is instead of a
+        real self._recent_english_dates() DB query -- lets the two
+        end-to-end tests (test_vail_news_parser.py) exercise the real
+        parse() flow, translation-flagging included, without a DATABASE_URL
+        or a live connection. runner.py's own real call site never passes
+        this (see scrapers/runner.py's parser.parse(fetched)), so a real
+        scrape run is unaffected -- it still queries the DB exactly as
+        before. tests.yml's own header comment claims this whole suite runs
+        DB-free; this restores that being true rather than adding
+        DATABASE_URL to the workflow, which would make CI slower and couple
+        unit tests to a live database."""
         pages = fetched.raw.decode("utf-8").split(_PAGE_MARKER)
         raw_items: list[dict] = []
         seen_urls: set[str] = set()
@@ -162,7 +173,9 @@ class VailNewsParser(BaseParser):
                 "markupen (li.wd_item) har troligen ändrats, inte ett tomt flöde"
             )
 
-        _flag_translations(parsed, self._recent_english_dates())
+        if recent_english_dates is None:
+            recent_english_dates = self._recent_english_dates()
+        _flag_translations(parsed, recent_english_dates)
 
         rows = []
         for p in parsed:
