@@ -205,32 +205,75 @@ describe('fetchTicketmasterEvents error handling -- every path returns [], never
     warnSpy.mockRestore();
   });
 
-  it('returns [] on a simulated rate-limit (429) response', async () => {
+  it('returns [] on a simulated rate-limit (429) response that persists through the retry', async () => {
     vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 429 }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 429, text: async () => '' }));
     const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
     expect(result).toEqual([]);
   });
 
-  it('a 429 does NOT log a ::warning:: -- rate limiting is a different, more self-evident failure mode than a missing/rejected key', async () => {
+  it('a persistent 429 logs TWO distinct ::warning:: lines -- the 2026-09-08 production incident (What\'s On production fix) was specifically that this failure mode was silent, indistinguishable from "no events in the area"', async () => {
     vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 429 }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 429, text: async () => '' }));
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     await fetchTicketmasterEvents(44.3114, -96.7984, 75);
-    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('::warning::'));
+    const warningCalls = warnSpy.mock.calls.filter((c) => String(c[0]).includes('::warning::'));
+    expect(warningCalls).toHaveLength(2); // "retrying once" + "still rate-limited after one retry"
+    expect(warningCalls[0][0]).toContain('rate-limited');
+    expect(warningCalls[1][0]).toContain('still rate-limited');
     warnSpy.mockRestore();
   });
 
-  it('returns [] on a simulated 5xx server error', async () => {
+  it('a 429 that succeeds on retry returns real events and logs only the retry warning, not a failure', async () => {
     vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
+    const musicEvent = realFixture({ id: 'concert-1', classifications: [{ primary: true, segment: { name: 'Music' } }] });
+    const fetchSpy = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 429, text: async () => '' })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ _embedded: { events: [musicEvent] }, page: { totalPages: 1, number: 0 } }),
+      });
+    vi.stubGlobal('fetch', fetchSpy);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
+    expect(result).toHaveLength(1);
+    const warningCalls = warnSpy.mock.calls.filter((c) => String(c[0]).includes('::warning::'));
+    expect(warningCalls).toHaveLength(1); // only the "retrying once" line -- no failure line, since it recovered
+    warnSpy.mockRestore();
+  });
+
+  it('returns [] on a simulated 5xx server error and logs a ::warning::', async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503, text: async () => 'Service Unavailable' }));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
+    expect(result).toEqual([]);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('::warning::'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('HTTP 503'));
+    warnSpy.mockRestore();
+  });
+
+  it('logs the response body snippet on an HTTP error, when one is available', async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false, status: 500, text: async () => '{"fault":{"faultstring":"real Discovery API error body"}}',
+    }));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await fetchTicketmasterEvents(44.3114, -96.7984, 75);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('real Discovery API error body'));
+    warnSpy.mockRestore();
+  });
+
+  it('never throws even when the error response has no .text() method at all (a non-standard Response-like object)', async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 })); // no .text at all
     const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
     expect(result).toEqual([]);
   });
 
   it.each([401, 403])('an HTTP %i (auth error) logs a ::warning:: -- the key was sent but Discovery API rejected it, a different silent failure mode than a missing key', async (status) => {
     vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status, text: async () => '' }));
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
     expect(result).toEqual([]);
@@ -263,6 +306,36 @@ describe('fetchTicketmasterEvents error handling -- every path returns [], never
     const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
     expect(result).toHaveLength(1);
     expect(result[0].ticketmasterEvent.title).toBe('A Touring Band Live in Brookings');
+  });
+
+  it('a successful fetch with real events logs a plain (non-::warning::) outcome line stating the count -- What\'s On production fix: every fetch must produce an outcome line, not just failures', async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    const musicEvent = realFixture({ id: 'concert-1', classifications: [{ primary: true, segment: { name: 'Music' } }] });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ _embedded: { events: [musicEvent] }, page: { totalPages: 1, number: 0 } }),
+    }));
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await fetchTicketmasterEvents(44.3114, -96.7984, 75);
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('fetched 1 event(s)'));
+    expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining('::warning::'));
+    logSpy.mockRestore();
+  });
+
+  it('a successful fetch with zero events in the radius (a legitimate, unremarkable state) still logs a plain outcome line, distinct from a failure', async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ _embedded: { events: [] }, page: { totalPages: 1, number: 0 } }),
+    }));
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await fetchTicketmasterEvents(44.3114, -96.7984, 75);
+    expect(result).toEqual([]);
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('fetched 0 event(s)'));
+    expect(warnSpy).not.toHaveBeenCalled(); // zero events in a real, successful response is not a problem
+    logSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   it('filters out a real Sports-classified event entirely -- the Athletics filter (prerequisite to Phase 4)', async () => {

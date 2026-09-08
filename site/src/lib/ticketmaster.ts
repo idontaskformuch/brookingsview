@@ -318,41 +318,38 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
  * Never throws -- every failure mode (missing/invalid key, rate limit, 5xx,
  * network error) logs and resolves to `[]`, per this phase's own
  * requirement that a build must succeed identically whether or not the key
- * is valid (each failure mode also gets a visible `::warning::` where it's
- * otherwise indistinguishable from "no events" -- see the missing-key and
- * 401/403 checks above). Not gated on an `enabled` flag itself -- callers
- * (the dump script, tests, and getTicketmasterEventsForTown() below) decide
- * whether to call this at all; this function's own job is just "fetch
- * safely or fail quietly," not policy.
+ * is valid. Every outcome -- not just failures -- gets exactly one clearly
+ * worded, distinct log line (see the end of this function and each
+ * `::warning::` below): a 2026-09-08 production incident (What's On empty
+ * on every town, cause chased through four wrong theories in one session)
+ * happened specifically because only SOME outcomes were visible and the
+ * rest looked identical to "no events in the area" -- first a missing key,
+ * then (after that was fixed) a plain, non-`::warning::` line for anything
+ * that wasn't 401/403, meaning a 429 rate-limit response was AS silent as
+ * the original missing-key bug had been. `::warning::` is a GitHub Actions
+ * workflow command -- Actions scans every step's stdout/stderr for that
+ * literal pattern, not just lines a workflow's own `run:` script echoes, so
+ * it surfaces as a real annotation in the Actions UI summary rather than a
+ * line buried in a multi-thousand-line build log (same mechanism this
+ * repo's own workflow YAML already uses for `::error::`). Every non-success
+ * outcome below uses it now, not just auth errors. Not gated on an
+ * `enabled` flag itself -- callers (the dump script, tests, and
+ * getTicketmasterEventsForTown() below) decide whether to call this at
+ * all; this function's own job is just "fetch safely or fail quietly," not
+ * policy.
  */
 export async function fetchTicketmasterEvents(
   latitude: number,
   longitude: number,
   radiusMiles: number,
 ): Promise<TicketmasterFeedItem[]> {
+  const geoLabel = `${latitude},${longitude} (${radiusMiles}mi)`;
   const apiKey = import.meta.env.TICKETMASTER_API_KEY;
   if (!apiKey) {
-    // `::warning::` is a GitHub Actions workflow command -- Actions scans
-    // EVERY step's stdout/stderr for this literal pattern, not just lines a
-    // workflow's own `run:` script echoes, so this surfaces as a real
-    // annotation in the Actions UI summary rather than a line buried in a
-    // multi-thousand-line build log (same mechanism this repo's own
-    // workflow YAML already uses for `::error::`, e.g. scrape.yml's missing
-    // PAGES_DEPLOY_HOOK check). Added after a real production incident
-    // (2026-09-08): two of three towns' workflows never had
-    // TICKETMASTER_API_KEY wired into their Build step's env block at all,
-    // and this function's own "never crash, return []" design (deliberate,
-    // kept exactly as-is here -- a missing key must never break a deploy)
-    // meant the build stayed green and the deploy succeeded. The only
-    // visible symptom was a live page that looked exactly like a
-    // genuinely quiet week, not a build failure -- this warning exists so
-    // "the key never arrived" is distinguishable from "no events in the
-    // area" without already having to suspect the key.
-    console.warn("::warning::[ticketmaster] TICKETMASTER_API_KEY not set -- skipping fetch, returning no events. If this town is supposed to have Ticketmaster data, check this workflow's own Build step env block for this key.");
+    console.warn(`::warning::[ticketmaster] TICKETMASTER_API_KEY not set for ${geoLabel} -- skipping fetch, returning no events. If this town is supposed to have Ticketmaster data, check this workflow's own Build step env block for this key.`);
     return [];
   }
 
-  const geoLabel = `${latitude},${longitude} (${radiusMiles}mi)`;
   const results: RawTicketmasterEvent[] = [];
   try {
     for (let page = 0; page < MAX_PAGES; page++) {
@@ -366,17 +363,47 @@ export async function fetchTicketmasterEvents(
       url.searchParams.set('size', String(PAGE_SIZE));
       url.searchParams.set('page', String(page));
 
-      const res = await fetch(url.toString());
+      let res = await fetch(url.toString());
+
+      // One retry, 429 (rate limit) only -- see this function's own module
+      // comment on the 2026-09-08 incident: three independent call sites
+      // per build (getTicketmasterEventsForTown() below now memoizes
+      // against that, but a transient collision with ANOTHER town's
+      // overlapping build, or a future new call site, is still possible)
+      // can burst past Discovery API's 5 req/sec ceiling. A single retry
+      // after a real pause is enough to ride out a momentary collision
+      // without turning a genuine outage into a long hang -- never looped
+      // or exponential, on purpose.
+      if (res.status === 429) {
+        console.warn(`::warning::[ticketmaster] Discovery API rate-limited (HTTP 429) for ${geoLabel}, page ${page} -- retrying once after a pause.`);
+        await sleep(PACING_DELAY_MS * 4);
+        res = await fetch(url.toString());
+      }
+
       if (!res.ok) {
+        // A real try/catch, not `.catch()` chained onto the call -- if
+        // `res.text` isn't a function at all (a non-standard Response-like
+        // object), calling it throws SYNCHRONOUSLY, before there's a
+        // promise for `.catch()` to attach to, and that would otherwise
+        // propagate out to the outer try/catch and get misreported as a
+        // network error instead of the real HTTP status.
+        let bodySnippet = '';
+        try {
+          bodySnippet = (await res.text()).slice(0, 300);
+        } catch {
+          // no readable body -- omit it, don't fail the whole outcome
+          // report over a body-reading problem.
+        }
         if (res.status === 401 || res.status === 403) {
-          // Same visibility reasoning as the missing-key check above --
           // 401/403 specifically means the key WAS sent but Discovery API
-          // rejected it (wrong, revoked, or rotated), a different and
-          // equally silent-otherwise failure mode from a key that never
+          // rejected it (wrong, revoked, or rotated) -- a different and,
+          // before this, equally silent failure mode from a key that never
           // arrived at all.
-          console.warn(`::warning::[ticketmaster] Discovery API returned HTTP ${res.status} (auth error) for ${geoLabel} -- the key was sent but rejected. Check that TICKETMASTER_API_KEY is set correctly and hasn't been revoked or rotated.`);
+          console.warn(`::warning::[ticketmaster] Discovery API auth error (HTTP ${res.status}) for ${geoLabel} -- the key was sent but rejected. Check that TICKETMASTER_API_KEY is set correctly and hasn't been revoked or rotated. ${bodySnippet}`);
+        } else if (res.status === 429) {
+          console.warn(`::warning::[ticketmaster] Discovery API still rate-limited (HTTP 429) for ${geoLabel} after one retry -- stopping, returning what was fetched so far (${results.length} event(s) from earlier pages). ${bodySnippet}`);
         } else {
-          console.warn(`[ticketmaster] Discovery API returned HTTP ${res.status} for ${geoLabel} -- stopping, returning what was fetched so far.`);
+          console.warn(`::warning::[ticketmaster] Discovery API returned HTTP ${res.status} for ${geoLabel} -- stopping, returning what was fetched so far (${results.length} event(s) from earlier pages). ${bodySnippet}`);
         }
         break;
       }
@@ -389,13 +416,23 @@ export async function fetchTicketmasterEvents(
       if (page + 1 >= totalPages) break;
     }
   } catch (err) {
-    console.warn(`[ticketmaster] fetch failed for ${geoLabel}: ${err instanceof Error ? err.message : String(err)} -- returning no events.`);
+    console.warn(`::warning::[ticketmaster] fetch failed (network error) for ${geoLabel}: ${err instanceof Error ? err.message : String(err)} -- returning no events.`);
     return [];
   }
 
-  return results
+  const normalized = results
     .filter((raw) => !isSportsEvent(raw) && !isNonEventListing(raw))
     .map(normalizeTicketmasterEvent);
+
+  // The success case, always logged (not just failures) -- a plain
+  // console.log, not a ::warning::, since a real quiet radius is a
+  // legitimate, unremarkable outcome and shouldn't read as a problem in
+  // the Actions UI. Still gives every build an explicit, unambiguous line
+  // to point at either way, instead of silence standing in for "0 events
+  // in the API response" (a fact worth knowing) being indistinguishable
+  // from "the fetch never really happened" (a bug).
+  console.log(`[ticketmaster] fetched ${normalized.length} event(s) for ${geoLabel} (${results.length} raw, before Sports/Upsell filtering)`);
+  return normalized;
 }
 
 /** The actual "is this reachable from a real page" gate: checks
