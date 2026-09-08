@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   normalizeTicketmasterEvent, fetchTicketmasterEvents, getTicketmasterEventsForTown, isSportsEvent,
-  isNonEventListing, distanceLabel,
+  isNonEventListing, distanceLabel, _resetTicketmasterCacheForTests,
   type RawTicketmasterEvent,
 } from './ticketmaster';
 import { siteConfig } from './site-config';
@@ -479,6 +479,13 @@ describe('isNonEventListing (What\'s On Phase 5 follow-up, "Ticket-Type Filterin
 describe('getTicketmasterEventsForTown', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    // getTicketmasterEventsForTown() now memoizes by (lat,lon,radius) for
+    // the lifetime of one build process (What's On production fix, three
+    // redundant call sites -> one shared fetch) -- without clearing this
+    // between tests, a later test using the SAME real Brookings coordinates
+    // would silently receive an earlier test's mocked result instead of
+    // exercising its own fetch mock.
+    _resetTicketmasterCacheForTests();
   });
 
   it('returns [] and makes no network call when ticketmaster.enabled is false', async () => {
@@ -526,6 +533,53 @@ describe('getTicketmasterEventsForTown', () => {
     const calledUrl = new URL(fetchSpy.mock.calls[0][0]);
     expect(calledUrl.searchParams.get('latlong')).toBe('44.3114,-96.7984');
     expect(calledUrl.searchParams.get('radius')).toBe('75');
+  });
+
+  describe('memoization (What\'s On production fix -- three real call sites per build, previously three independent uncoordinated fetches)', () => {
+    it('a second call with the SAME coordinates/radius does not fetch again -- shares the first call\'s result', async () => {
+      vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+      const musicEvent = realFixture({ id: 'concert-1', classifications: [{ primary: true, segment: { name: 'Music' } }] });
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true, json: async () => ({ _embedded: { events: [musicEvent] }, page: { totalPages: 1, number: 0 } }),
+      });
+      vi.stubGlobal('fetch', fetchSpy);
+      const cfg = { ticketmaster: { enabled: true, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 } };
+
+      const first = await getTicketmasterEventsForTown(cfg);
+      const second = await getTicketmasterEventsForTown(cfg);
+      const third = await getTicketmasterEventsForTown(cfg); // the real three call sites: index.astro, [slug].astro, cityStatus.ts
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(first).toHaveLength(1);
+      expect(second).toEqual(first);
+      expect(third).toEqual(first);
+    });
+
+    it('two concurrent calls (arriving before the first resolves) still share ONE real fetch, not two', async () => {
+      vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true, json: async () => ({ _embedded: { events: [] }, page: { totalPages: 1, number: 0 } }),
+      });
+      vi.stubGlobal('fetch', fetchSpy);
+      const cfg = { ticketmaster: { enabled: true, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 } };
+
+      // Not awaited individually -- both fire before either has a chance
+      // to resolve, the real shape of three near-simultaneous page renders.
+      const [a, b] = await Promise.all([getTicketmasterEventsForTown(cfg), getTicketmasterEventsForTown(cfg)]);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(a).toEqual(b);
+    });
+
+    it('a DIFFERENT radius for the same coordinates is treated as a real, separate fetch -- not merged with an unrelated cached result', async () => {
+      vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true, json: async () => ({ _embedded: { events: [] }, page: { totalPages: 1, number: 0 } }),
+      });
+      vi.stubGlobal('fetch', fetchSpy);
+      await getTicketmasterEventsForTown({ ticketmaster: { enabled: true, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 } });
+      await getTicketmasterEventsForTown({ ticketmaster: { enabled: true, latitude: 44.3114, longitude: -96.7984, radiusMiles: 35 } });
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+    });
   });
 });
 

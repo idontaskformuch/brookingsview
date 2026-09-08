@@ -435,6 +435,35 @@ export async function fetchTicketmasterEvents(
   return normalized;
 }
 
+/** Memoizes fetchTicketmasterEvents() by (lat,lon,radius) for the lifetime
+ *  of one build process -- see fetchTicketmasterEvents()'s own module
+ *  comment on the 2026-09-08 production incident. Three independent call
+ *  sites (pages/whats-on/index.astro, pages/whats-on/[slug].astro's
+ *  getStaticPaths(), lib/cityStatus.ts's resolveWhatsOn()) each called
+ *  getTicketmasterEventsForTown() fresh, TRIPLING real Discovery API
+ *  traffic per build with zero coordination between them -- confirmed as a
+ *  real, concrete contributor to the momentary rate-limit collisions that
+ *  caused pages to go empty even after the missing-key bug was fixed
+ *  (Broomfield/Moreno Valley's metro-scale datasets need up to
+ *  MAX_PAGES=5 paginated requests EACH, so a single build could fire up to
+ *  15 requests across the three call sites with no shared pacing at all).
+ *  `astro build` runs as one Node process per town per build (confirmed:
+ *  this is the same reasoning astro.config.mjs's own buildLastmodMap()
+ *  cache relies on), so a module-level cache safely persists across all
+ *  three call sites for that one build and needs no explicit invalidation
+ *  for the real caller -- it's simply discarded when the process exits.
+ *  Caches the in-flight PROMISE, not just the resolved value, so two calls
+ *  arriving before the first one resolves still share one real fetch
+ *  rather than both starting their own. */
+const _eventsCache = new Map<string, Promise<TicketmasterFeedItem[]>>();
+
+/** Test-only -- clears the memoization cache so each test starts fresh
+ *  instead of seeing a previous test's mocked result for the same
+ *  coordinates. Never called from real page/build code. */
+export function _resetTicketmasterCacheForTests(): void {
+  _eventsCache.clear();
+}
+
 /** The actual "is this reachable from a real page" gate: checks
  *  `siteConfig.ticketmaster?.enabled` BEFORE doing anything else -- no
  *  network call, no API key read, just an immediate `[]` when disabled.
@@ -445,5 +474,10 @@ export async function getTicketmasterEventsForTown(
 ): Promise<TicketmasterFeedItem[]> {
   if (!siteConfig.ticketmaster?.enabled) return [];
   const { latitude, longitude, radiusMiles } = siteConfig.ticketmaster;
-  return fetchTicketmasterEvents(latitude, longitude, radiusMiles);
+  const cacheKey = `${latitude},${longitude},${radiusMiles}`;
+  const cached = _eventsCache.get(cacheKey);
+  if (cached) return cached;
+  const promise = fetchTicketmasterEvents(latitude, longitude, radiusMiles);
+  _eventsCache.set(cacheKey, promise);
+  return promise;
 }
