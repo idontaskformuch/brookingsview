@@ -48,12 +48,17 @@ jobs:
       # here either. No-ops instantly if features.closure_watch is disabled.
       - name: Closure Watch (history + Watch-state prose)
         run: python -m ai_pipeline.closure_watch_digest --config configs/brookings_sd.json
-      # DEPLOY FIX (se NEEDS-HUMAN-REVIEW.md): PAGES_DEPLOY_HOOK nedan pekar
-      # på ett övergivet Cloudflare Pages-projekt -- sajten deployas numera
-      # via Cloudflare Workers (site/wrangler.jsonc), som den gamla hooken
-      # aldrig når. Detta bygger och deployar via wrangler PARALLELLT med den
-      # gamla hooken (som lämnas orörd tills det nya sättet är bevisat live,
-      # se acceptanskriterierna) -- inte en ersättning än.
+      # DEPLOY (se NEEDS-HUMAN-REVIEW.md #21 och #38): wrangler deploy nedan
+      # är nu den ENDA deploy-vägen. #21:s ursprungliga antagande -- att
+      # PAGES_DEPLOY_HOOK pekade på ett övergivet Pages-projekt som wrangler
+      # aldrig når -- visade sig vara FEL: Cloudflare-dashboardens
+      # Deployments-historik (2026-09-08/09) visade hook-triggade bygglogg
+      # landa i SAMMA produktionshistorik som wrangler-deployen, byggda
+      # oberoende inuti Cloudflare från vilka env-variabler som än var satta
+      # DÄR (inte de här GitHub Actions-secreten), och som ibland vann
+      # racet mot wrangler-deployen -- grundorsaken till att What's On
+      # tidvis visade sig tomt trots ett grönt, korrekt bygge. Hook-steget
+      # är därför borttaget, inte bara lämnat parallellt.
       - uses: actions/setup-node@v4
       - name: Install site deps
         working-directory: site
@@ -76,14 +81,6 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy --env brookings
-      - name: Trigga Cloudflare Pages-rebuild
-        if: success()
-        run: |
-          if [ -z "${{ secrets.PAGES_DEPLOY_HOOK }}" ]; then
-            echo "::error::PAGES_DEPLOY_HOOK saknas — rebuild kan inte triggas"
-            exit 1
-          fi
-          curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK }}"
       # Kontrollerar den RIKTIGA, deployade sajten -- inte bara att bygget
       # gick igenom grönt. Se scripts/check_deployed_content.py:s egen
       # moduldocstring: en grön build maskerade tyst både run_worker_first-

@@ -4051,3 +4051,65 @@ but not visually confirmed. Fine visual tuning of the widget row's new
 horizontal-wrap layout (some tiles, e.g. the prices table, were styled
 assuming a narrow sidebar column) may need a follow-up pass once someone
 can actually look at it.
+
+## 38. Two competing deploys racing each other — correcting #21's "abandoned project" claim (2026-09-09)
+
+**#21 above was wrong about one specific claim.** It assumed
+`PAGES_DEPLOY_HOOK`/`PAGES_DEPLOY_HOOK_MOVAL`/`PAGES_DEPLOY_HOOK_BROOMFIELD`
+pointed at "an abandoned Cloudflare Pages project nobody's domain points to
+anymore," reachable only by coincidence, harmless to leave running
+alongside the new `wrangler deploy` path. It does not. Cloudflare
+dashboard evidence (Deployments tab, 2026-09-08/09) showed hook-triggered
+builds landing in the SAME production deployment history as the
+`wrangler`-driven ones, timestamped minutes apart on the same cron cycle.
+
+**What was actually happening:** the hook triggers a second, independent
+build *inside* Cloudflare, pulling from GitHub directly, using whatever
+environment variables are configured in the Cloudflare dashboard — not
+these repo's GitHub Actions secrets. Whichever of the two builds (the
+correct `wrangler`-deployed one, or the Cloudflare-side hook-triggered one)
+landed second silently overwrote the other in production. This is the real
+explanation for a run of confusing 2026-09-08 symptoms that had each
+looked like a separate bug at the time: What's On content appearing then
+vanishing, a build log proving 37 real Ticketmaster events were fetched
+while the live site stayed empty, and general unpredictability that
+survived every fix to the actual application code (missing key, misnamed
+secret, silent HTTP-error logging, redundant fetch calls — see this
+session's own commit history for all four). None of that diagnosis was
+wrong; the `wrangler`-built pages were genuinely correct every time. A
+second, invisible deploy path kept overwriting them afterward.
+
+**Fix:** removed the `curl -X POST "$PAGES_DEPLOY_HOOK*"` step everywhere
+it existed — not just `scrape.yml`/`moval-scrape.yml`/`broomfield-scrape.yml`
+(the three the initial diagnosis named), but 14 further workflows that
+publish content on their own schedule (digests, weekly roundups, daily
+illustrated content, `whats-on-intro.yml`) and had no `wrangler deploy` of
+their own — meaning the hook was their ONLY publish path, and leaving it
+in place there would have kept the exact same race alive under a different
+trigger. Each of those 14 now ends with its own real
+`npx astro build` (`SITE_CITY` + `DATABASE_URL` + `TICKETMASTER_API_KEY`)
++ `npx wrangler deploy --env <town>`, matching the shape
+`closure-watch-morning.yml`/`moval-closure-watch-morning.yml` already
+used. One deploy path — `wrangler` — for the whole site now, everywhere.
+
+**Also found, and left as still-open**: while auditing this same file
+family, `closure-watch-morning.yml`/`moval-closure-watch-morning.yml`'s own
+`Build` steps were found to be missing `TICKETMASTER_API_KEY` in their env
+block — the same class of bug as the original missing-key incident, just
+in a workflow nobody had checked. Since both run on a weekday-morning
+schedule sandwiched between the 6-hourly `scrape.yml`/`moval-scrape.yml`
+runs, and both `wrangler deploy` straight to production, this alone would
+silently empty Brookings' and Moreno Valley's `/whats-on/` every weekday
+morning even with today's fix applied. Flagged here rather than folded
+into this same commit, since it's a distinct cause (a missing env var in
+an already-correct deploy step, not a competing deploy path) — see the
+next session/commit for the actual fix.
+
+**`PAGES_DEPLOY_HOOK`/`PAGES_DEPLOY_HOOK_MOVAL`/`PAGES_DEPLOY_HOOK_BROOMFIELD`
+secrets themselves were left in place in GitHub** — deleting them is a
+separate, reversible decision for the project owner, not part of this fix.
+Deliberately did NOT add `TICKETMASTER_API_KEY` (or any other env var) to
+the Cloudflare Pages/Workers project's own dashboard config to make the
+hook-triggered build correct too — that would keep two independent build
+systems both trying to be the source of truth for the same site, which was
+the actual defect, not a config gap to paper over.

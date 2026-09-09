@@ -1,7 +1,6 @@
 name: moval-scrape-and-publish
 # Moreno Valley-motsvarigheten till scrape.yml. Egen config, egen USER_AGENT,
-# egen AI_BUDGET_STATE. PAGES_DEPLOY_HOOK_MOVAL är ett eget secret --
-# återanvänd ALDRIG Brookings PAGES_DEPLOY_HOOK, då triggar det fel sajts bygge.
+# egen AI_BUDGET_STATE.
 #
 # Sänkt från varje timme till var 6:e timme 2026-08-28 -- se scrape.yml:s
 # egen kommentar för hela resonemanget (gäller identiskt här).
@@ -36,12 +35,10 @@ jobs:
       # Closure Watch -- see scrape.yml's identical step for the full comment.
       - name: Closure Watch (history + Watch-state prose)
         run: python -m ai_pipeline.closure_watch_digest --config configs/moreno_valley_ca.json
-      # DEPLOY FIX (se NEEDS-HUMAN-REVIEW.md): PAGES_DEPLOY_HOOK_MOVAL nedan
-      # pekar på ett övergivet Cloudflare Pages-projekt -- sajten deployas
-      # numera via Cloudflare Workers (site/wrangler.jsonc), som den gamla
-      # hooken aldrig når. Detta bygger och deployar via wrangler PARALLELLT
-      # med den gamla hooken (som lämnas orörd tills det nya sättet är
-      # bevisat live, se acceptanskriterierna) -- inte en ersättning än.
+      # DEPLOY: se scrape.yml:s egen kommentar (och NEEDS-HUMAN-REVIEW.md
+      # #38) för hela resonemanget -- wrangler deploy nedan är nu den ENDA
+      # deploy-vägen, hook-steget är borttaget (2026-09-09), inte längre
+      # parallellt.
       - uses: actions/setup-node@v4
       - name: Install site deps
         working-directory: site
@@ -68,14 +65,6 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy --env moreno_valley
-      - name: Trigga Cloudflare Pages-rebuild
-        if: success()
-        run: |
-          if [ -z "${{ secrets.PAGES_DEPLOY_HOOK_MOVAL }}" ]; then
-            echo "::error::PAGES_DEPLOY_HOOK_MOVAL saknas — rebuild kan inte triggas"
-            exit 1
-          fi
-          curl -fsSL -X POST "${{ secrets.PAGES_DEPLOY_HOOK_MOVAL }}"
       # Se scrape.yml:s egen kommentar för hela resonemanget.
       - name: Kontrollera att den deployade sajten faktiskt har färskt innehåll
         if: success()
