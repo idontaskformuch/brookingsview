@@ -508,7 +508,7 @@ describe('getTicketmasterEventsForTown', () => {
 
   it('is genuinely enabled against the REAL production Brookings config (site-config.ts) as of Phase 7, not just a synthetic test object', async () => {
     expect(siteConfig.townId).toBe('brookings_sd');
-    expect(siteConfig.ticketmaster).toEqual({ enabled: true, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 });
+    expect(siteConfig.ticketmaster).toEqual({ enabled: true, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75, marqueeSize: 6 });
     vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true, json: async () => ({ _embedded: { events: [] }, page: { totalPages: 1, number: 0 } }),

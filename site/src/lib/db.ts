@@ -979,6 +979,26 @@ export async function getWhatsOnIntro(): Promise<WhatsOnIntroRow | null> {
   return rows[0] ?? null;
 }
 
+/** The optional AI-generated one-sentence "deck" for a marquee-tier
+ *  Ticketmaster event (marquee deck sentences follow-up) -- see
+ *  ai_pipeline/event_deck_digest.py. Keyed on Ticketmaster's own event id,
+ *  NOT persisted alongside the event itself (Ticketmaster events still
+ *  aren't stored anywhere -- see that script's own module docstring), so
+ *  this is a batch lookup by id, called once per build with every
+ *  marquee-tier item's id at once rather than per-card. A missing entry
+ *  for a given id (never generated yet, too sparse to ground a sentence,
+ *  or a guardrail rejection) is the expected, common case -- the caller
+ *  simply omits the deck line for that card, same "absence is a normal
+ *  state, not an error" convention as getWhatsOnIntro() above. */
+export async function getEventDeckDigests(ticketmasterEventIds: string[]): Promise<Map<string, string>> {
+  if (ticketmasterEventIds.length === 0) return new Map();
+  const rows = (await sql`
+    SELECT ticketmaster_event_id AS "ticketmasterEventId", body FROM event_deck_digest
+     WHERE town_id = ${TOWN_ID} AND ticketmaster_event_id = ANY(${ticketmasterEventIds})
+  `) as { ticketmasterEventId: string; body: string }[];
+  return new Map(rows.map((r) => [r.ticketmasterEventId, r.body]));
+}
+
 /** En rad ur local_businesses -- se db/migrations/031_local_businesses.sql
  *  och ai_pipeline/new_in_town_digest.py. Bara needs_review=false rader
  *  läses här: en 'closed'-uppgift med bara en källa är avsiktligt osynlig

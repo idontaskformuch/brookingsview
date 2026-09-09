@@ -36,7 +36,7 @@ import {
   getWeather, getAgPrices, getLatestWeekly, getTodaysFeature, getLatestEmployerRatings,
   getEmployerJobStats,
   getWorthKnowingCandidates, getLatestFromCandidates, getRecentProjectUpdates, formatDate,
-  CATEGORY_HREFS, CATEGORY_LABELS, getFacilities, getLatestVailNewsItem,
+  CATEGORY_HREFS, CATEGORY_LABELS, getFacilities, getLatestVailNewsItem, getEventDeckDigests,
 } from '../lib/db';
 import { selectWorthKnowing, selectLatestFrom, firstSentence, selectFrontPageRhythm } from '../lib/homepage-curation';
 import { todayUtcMidnight } from '../lib/events';
@@ -44,7 +44,7 @@ import { siteConfig } from '../lib/site-config';
 import { resolveImage, dedupeConsecutiveImages, withThumbnailCrop, previousWeekRoundupImagePath } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
-import { rankTicketmasterEvents, collapseMarqueeRuns, ticketmasterResolvableImage, type MarqueeEntry } from '../lib/whats-on';
+import { rankTicketmasterEvents, collapseMarqueeRuns, ticketmasterResolvableImage, marqueeDigestKey, type MarqueeEntry } from '../lib/whats-on';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
@@ -277,6 +277,16 @@ for (const entry of whatsOnEntries) {
     break;
   }
 }
+// Marquee deck sentences follow-up: only the hero card ever shows a deck
+// (see MarqueeCard.astro's own comment), so only its key needs a lookup --
+// still a batch call (of one) for consistency with whats-on/index.astro's
+// own multi-key lookup, and because getEventDeckDigests() already handles
+// an empty array cheaply when hasWhatsOn is off or nothing resolved a hero.
+// Looked up by marqueeDigestKey(), NOT the primary member's own event id --
+// see that function's own doc comment for why (a real bug, caught live).
+const marqueeDeck = marqueeHero
+  ? (await getEventDeckDigests([marqueeDigestKey(marqueeHero.entry)])).get(marqueeDigestKey(marqueeHero.entry))
+  : undefined;
 const topEmployer = employerRatings[0] ?? null;
 const biggestMover = employerRatings.reduce<typeof employerRatings[number] | null>((best, e) => {
   if (e.rating_delta_vs_last_month === null) return best;
@@ -358,6 +368,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
         cityName={siteConfig.cityName}
         timezone={siteConfig.timezone}
         variant="hero"
+        deck={marqueeDeck}
         runSize={marqueeHero.entry.members.length}
         lastOccursAt={marqueeHero.entry.members[marqueeHero.entry.members.length - 1].occurs_at}
       />

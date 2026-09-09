@@ -348,6 +348,7 @@ CONTENT_TYPE_MODELS: dict[str, str] = {
     "event": "claude-haiku-4-5-20251001",
     "alert": "claude-haiku-4-5-20251001",
     "whats_on_intro": "claude-haiku-4-5-20251001",
+    "event_deck": "claude-haiku-4-5-20251001",
     # Sonnet -- tolkande/kreativ text, röst- och kvalitetskänslig
     "editorial": "claude-sonnet-5",
     "culture_essay": "claude-sonnet-5",

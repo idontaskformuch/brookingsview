@@ -27,8 +27,8 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import { siteConfig } from '../../lib/site-config';
 import { getTicketmasterEventsForTown } from '../../lib/ticketmaster';
-import { rankTicketmasterEvents, splitMarquee, isWhatsOnIntroFresh, ticketmasterResolvableImage } from '../../lib/whats-on';
-import { getWhatsOnIntro, getFacilities } from '../../lib/db';
+import { rankTicketmasterEvents, splitMarquee, isWhatsOnIntroFresh, ticketmasterResolvableImage, marqueeDigestKey } from '../../lib/whats-on';
+import { getWhatsOnIntro, getFacilities, getEventDeckDigests } from '../../lib/db';
 import { currentWeekInfo } from '../../lib/this-week';
 import { EMPTY_STATES } from '../../lib/empty-states';
 import { SECTION_THEME } from '../../lib/section-theme';
@@ -40,12 +40,25 @@ if (!siteConfig.hasWhatsOn) {
   return Astro.redirect('/', 302);
 }
 
+// Marquee deck sentences follow-up: hasWhatsOn=true has always implied a
+// real `ticketmaster` config exists (this page's own Ticketmaster fetch
+// below would be meaningless otherwise) -- made an explicit, loud check
+// here now that marqueeSize is a REQUIRED field on that config (see
+// site-config.ts's own comment): a town with hasWhatsOn on but no
+// ticketmaster block would previously have just silently fetched zero
+// events; now it fails the build immediately with a clear reason, rather
+// than defaulting marqueeSize to some guessed number for a config shape
+// that was never valid to begin with.
+if (!siteConfig.ticketmaster) {
+  throw new Error(`whats-on: hasWhatsOn is true for ${siteConfig.townId} but no ticketmaster config is set`);
+}
+
 const [items, facilities] = await Promise.all([
   getTicketmasterEventsForTown(siteConfig),
   getFacilities(),
 ]);
 const ranked = rankTicketmasterEvents(items, siteConfig.townId);
-const { marquee, alsoOn } = splitMarquee(ranked);
+const { marquee, alsoOn } = splitMarquee(ranked, siteConfig.ticketmaster.marqueeSize);
 
 // Sitewide presentation-layer pass: Marquee cards now need a real resolved
 // image (MarqueeCard.astro never renders a placeholder) -- an entry
@@ -71,6 +84,16 @@ for (const entry of marquee) {
   }
 }
 const alsoOnFinal = [...demotedToAlsoOn, ...alsoOn];
+
+// Marquee deck sentences follow-up: one batch lookup for every Marquee
+// card's own key, rather than one query per card -- see
+// getEventDeckDigests()'s own "absence is normal" doc comment. Keyed by
+// marqueeDigestKey(), NOT the primary member's own event id -- see that
+// function's own doc comment for why (a real bug, caught live: a
+// multi-date run's "primary" member isn't stable across separate fetches).
+const marqueeDecks = await getEventDeckDigests(
+  marqueeWithImages.map(({ entry }) => marqueeDigestKey(entry)),
+);
 
 // What's On Phase 6b: the optional weekly AI intro block, above Marquee.
 // getWhatsOnIntro() returns the MOST RECENT row regardless of week -- only
@@ -125,6 +148,7 @@ const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
                 cityName={siteConfig.cityName}
                 timezone={siteConfig.timezone}
                 variant="hero"
+                deck={marqueeDecks.get(marqueeDigestKey(entry))}
                 runSize={entry.members.length}
                 lastOccursAt={entry.members[entry.members.length - 1].occurs_at}
               />

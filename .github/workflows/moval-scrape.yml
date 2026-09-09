@@ -35,6 +35,12 @@ jobs:
       # Closure Watch -- see scrape.yml's identical step for the full comment.
       - name: Closure Watch (history + Watch-state prose)
         run: python -m ai_pipeline.closure_watch_digest --config configs/moreno_valley_ca.json
+      # Marquee deck sentences -- see scrape.yml's identical step for the
+      # full comment.
+      - name: Marquee deck sentences (What's On)
+        env:
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
+        run: python -m ai_pipeline.event_deck_digest --config configs/moreno_valley_ca.json
       # DEPLOY: se scrape.yml:s egen kommentar (och NEEDS-HUMAN-REVIEW.md
       # #38) för hela resonemanget -- wrangler deploy nedan är nu den ENDA
       # deploy-vägen, hook-steget är borttaget (2026-09-09), inte längre

@@ -158,6 +158,20 @@ def is_non_event_listing(raw: dict) -> bool:
     return bool(classification and (classification.get("type") or {}).get("name") == "Upsell")
 
 
+def _format_price_range(price_ranges: list[dict] | None) -> str | None:
+    """Mirrors site/src/lib/ticketmaster.ts's formatPriceRange() exactly --
+    same "$min - $max" / single-value / non-USD-prefix shape, same
+    min/max-both-required guard (Discovery API sometimes gives a range with
+    only one bound set, which isn't a real usable range)."""
+    price_range = (price_ranges or [None])[0]
+    if not price_range or price_range.get("min") is None or price_range.get("max") is None:
+        return None
+    currency = price_range.get("currency")
+    prefix = "$" if currency == "USD" else f"{currency or ''} "
+    lo, hi = price_range["min"], price_range["max"]
+    return f"{prefix}{lo}" if lo == hi else f"{prefix}{lo} - {prefix}{hi}"
+
+
 def _normalize(raw: dict) -> dict:
     """Raw Discovery API event -> the flat shape the rest of this module
     (and build_grounding_text/collapse_runs) works with. Deliberately keeps
@@ -165,7 +179,12 @@ def _normalize(raw: dict) -> dict:
     genre (confirmed live 2026-09-07: classifications[0].genre.name, e.g.
     "Ice Shows" for Disney On Ice) and localTime aren't used by the page,
     but this generator's prose legitimately draws on them (handoff's own
-    "classification segment/genre" and "matinee vs. late show" examples)."""
+    "classification segment/genre" and "matinee vs. late show" examples).
+    price_range_text/price_min/price_max/price_currency (event_deck_digest
+    follow-up): mirrors ticketmaster.ts's own priceRangeText/priceMin/
+    priceMax/priceCurrency fields exactly -- purely additive, this module's
+    own weekly-intro prose doesn't use them, only event_deck_digest.py
+    does."""
     venues = (raw.get("_embedded") or {}).get("venues") or []
     venue = venues[0] if venues else {}
     attractions = (raw.get("_embedded") or {}).get("attractions") or []
@@ -174,6 +193,7 @@ def _normalize(raw: dict) -> dict:
     primary = next((c for c in classifications if c.get("primary")), None)
     classification = primary or (classifications[0] if classifications else {})
     dates = (raw.get("dates") or {}).get("start") or {}
+    price_range = (raw.get("priceRanges") or [None])[0]
 
     return {
         "id": raw.get("id"),
@@ -187,6 +207,10 @@ def _normalize(raw: dict) -> dict:
         "occurs_at": dates.get("dateTime"),
         "local_date": dates.get("localDate"),
         "local_time": dates.get("localTime"),
+        "price_range_text": _format_price_range(raw.get("priceRanges")),
+        "price_min": (price_range or {}).get("min"),
+        "price_max": (price_range or {}).get("max"),
+        "price_currency": (price_range or {}).get("currency"),
     }
 
 

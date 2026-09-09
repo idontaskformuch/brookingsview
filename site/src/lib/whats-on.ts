@@ -115,6 +115,25 @@ export interface MarqueeEntry {
   members: TicketmasterFeedItem[];
 }
 
+/** Marquee deck sentences follow-up: a stable key for looking up a cached
+ *  deck sentence for this entry, mirroring ai_pipeline/event_deck_digest.py's
+ *  own digest_key() exactly. Deliberately NOT always `primary.ticketmasterEvent.id`
+ *  -- for a collapsed multi-date run, WHICH member becomes `primary`
+ *  (collapseMarqueeRuns()'s own "first member encountered wins" rule) depends
+ *  on the order Discovery API happens to return results in, which is NOT
+ *  guaranteed stable across two separate live fetches (this page's own build-
+ *  time fetch vs. event_deck_digest.py's independent one) -- confirmed live:
+ *  a real deck sentence went missing on a real build because of exactly this,
+ *  the primary member differed between the two fetches. The fix uses the
+ *  SAME attractionId::venueId pair collapseMarqueeRuns() itself already uses
+ *  to decide grouping -- intrinsic to the show, not fetch-order-dependent. A
+ *  standalone event (no attractionId, never collapsed) keeps its own plain
+ *  event id, which IS stable (only one id exists for it). */
+export function marqueeDigestKey(entry: MarqueeEntry): string {
+  const e = entry.primary.ticketmasterEvent;
+  return e.attractionId ? `${e.attractionId}::${e.venueId ?? e.venueName ?? ''}` : e.id;
+}
+
 /**
  * Groups already-ranked items into Marquee entries, collapsing a run of
  * events that share BOTH the same primary attraction id AND the same

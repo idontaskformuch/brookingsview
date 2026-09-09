@@ -48,6 +48,15 @@ jobs:
       # here either. No-ops instantly if features.closure_watch is disabled.
       - name: Closure Watch (history + Watch-state prose)
         run: python -m ai_pipeline.closure_watch_digest --config configs/brookings_sd.json
+      # Marquee deck sentences follow-up: the one-sentence "deck" under a
+      # marquee-tier Ticketmaster event's hero card, cached per event id --
+      # see that script's own module docstring. Runs before the build below
+      # so a freshly-generated deck is available to it same-run. No-ops
+      # instantly if features.whats_on(.ticketmaster) is disabled.
+      - name: Marquee deck sentences (What's On)
+        env:
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
+        run: python -m ai_pipeline.event_deck_digest --config configs/brookings_sd.json
       # DEPLOY (se NEEDS-HUMAN-REVIEW.md #21 och #38): wrangler deploy nedan
       # är nu den ENDA deploy-vägen. #21:s ursprungliga antagande -- att
       # PAGES_DEPLOY_HOOK pekade på ett övergivet Pages-projekt som wrangler

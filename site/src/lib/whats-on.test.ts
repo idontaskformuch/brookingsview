@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   rankTicketmasterEvents, splitMarquee, collapseMarqueeRuns, MARQUEE_SIZE,
-  ticketmasterSlug, ticketmasterResolvableImage, isWhatsOnIntroFresh,
+  ticketmasterSlug, ticketmasterResolvableImage, isWhatsOnIntroFresh, marqueeDigestKey,
+  type MarqueeEntry,
 } from './whats-on';
 import type { TicketmasterFeedItem, TicketmasterEvent } from './ticketmaster';
 
@@ -20,6 +21,46 @@ function tmEvent(overrides: Partial<TicketmasterEvent> = {}): TicketmasterEvent 
 function tmItem(occurs_at: string | null, overrides: Partial<TicketmasterEvent> = {}): TicketmasterFeedItem {
   return { sourceKind: 'ticketmaster', occurs_at, ticketmasterEvent: tmEvent(overrides) };
 }
+
+describe('marqueeDigestKey', () => {
+  function marqueeEntry(overrides: Partial<TicketmasterEvent> = {}): MarqueeEntry {
+    const item = tmItem('2026-12-05T00:00:00Z', overrides);
+    return { primary: item, members: [item] };
+  }
+
+  it('keys a standalone event (no attractionId) by its own event id', () => {
+    const entry = marqueeEntry({ id: 'e1', attractionId: null });
+    expect(marqueeDigestKey(entry)).toBe('e1');
+  });
+
+  it('keys a collapsed run by attractionId+venueId, not by the primary member\'s own id', () => {
+    // Real bug this guards against: the "primary" member's own id isn't
+    // stable across two separate live fetches (this page's own build-time
+    // fetch vs. ai_pipeline/event_deck_digest.py's independent one) -- see
+    // marqueeDigestKey()'s own doc comment. Two entries representing the
+    // SAME run but with a DIFFERENT primary member id (as if two separate
+    // fetches picked a different date as "first") must produce the SAME key.
+    const runA = marqueeEntry({ id: 'date-1', attractionId: 'attr1', venueId: 'v1' });
+    const runB = marqueeEntry({ id: 'date-2', attractionId: 'attr1', venueId: 'v1' });
+    expect(marqueeDigestKey(runA)).toBe(marqueeDigestKey(runB));
+  });
+
+  it('different venues produce different keys even with the same attractionId', () => {
+    const a = marqueeEntry({ attractionId: 'attr1', venueId: 'v1' });
+    const b = marqueeEntry({ attractionId: 'attr1', venueId: 'v2' });
+    expect(marqueeDigestKey(a)).not.toBe(marqueeDigestKey(b));
+  });
+
+  it('falls back to venueName when venueId is absent', () => {
+    const entry = marqueeEntry({ attractionId: 'attr1', venueId: null, venueName: 'The Junkyard' });
+    expect(marqueeDigestKey(entry)).toBe('attr1::The Junkyard');
+  });
+
+  it('matches ai_pipeline/event_deck_digest.py\'s own digest_key() shape exactly (attractionId::venueId)', () => {
+    const entry = marqueeEntry({ attractionId: 'attr1', venueId: 'v1' });
+    expect(marqueeDigestKey(entry)).toBe('attr1::v1');
+  });
+});
 
 describe('rankTicketmasterEvents', () => {
   it('returns [] for an empty list', () => {

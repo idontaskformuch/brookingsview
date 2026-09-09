@@ -39,6 +39,12 @@ jobs:
       # enabling the feature later needs no workflow edit.
       - name: Closure Watch (history + Watch-state prose)
         run: python -m ai_pipeline.closure_watch_digest --config configs/broomfield_co.json
+      # Marquee deck sentences -- see scrape.yml's identical step for the
+      # full comment.
+      - name: Marquee deck sentences (What's On)
+        env:
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
+        run: python -m ai_pipeline.event_deck_digest --config configs/broomfield_co.json
       - uses: actions/setup-node@v4
       - name: Install site deps
         working-directory: site

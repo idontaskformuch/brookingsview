@@ -196,8 +196,22 @@ export interface SiteConfig {
    *  call, not a small-city default; Ticketmaster isn't enabled for either
    *  yet, so there's no urgency to guess. Flagged as a Phase 7 follow-up
    *  decision, not made here (since resolved -- see each town's own
-   *  `ticketmaster` value below; all three now have a real radius). */
-  ticketmaster?: { enabled: boolean; latitude: number; longitude: number; radiusMiles: number };
+   *  `ticketmaster` value below; all three now have a real radius).
+   *
+   *  marqueeSize (marquee deck sentences follow-up): how many collapsed
+   *  Marquee-tier entries splitMarquee() promotes, per town -- moved out of
+   *  lib/whats-on.ts's own MARQUEE_SIZE constant into config (mirrors this
+   *  same field's radiusMiles precedent: a per-town tunable belongs in
+   *  config, not code) specifically so ai_pipeline/event_deck_digest.py's
+   *  own marquee selection reads the SAME number from the SAME
+   *  configs/<town>.json file, rather than a second hardcoded Python copy
+   *  that could silently drift from this one. Required, not optional --
+   *  deliberately no runtime `?? 6` fallback at any real call site: a town
+   *  whose `ticketmaster` block exists but omits `marquee_size` in its own
+   *  JSON is a build-time TypeScript error here, not a silently-guessed
+   *  value (same "fails loud" principle as assertAccentContrast()/
+   *  validateStatusModules() elsewhere in this file's neighborhood). */
+  ticketmaster?: { enabled: boolean; latitude: number; longitude: number; radiusMiles: number; marqueeSize: number };
 }
 
 const CITIES: Record<string, SiteConfig> = {
@@ -216,7 +230,7 @@ const CITIES: Record<string, SiteConfig> = {
     // venues (BIGS Sports Bar is deliberately curated at 'small', not
     // actually unmapped -- confirmed via isVenueCurated(), not the naive
     // tier===default comparison). No change from the original Radius Fix.
-    ticketmaster: { enabled: true, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 },
+    ticketmaster: { enabled: true, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75, marqueeSize: 6 },
     // Phase 7: enabled for real. Brookings' venues are curated and
     // human-reviewed across every What's On phase -- Moreno Valley and
     // Broomfield needed their own venue-curation pass first (see their own
@@ -308,7 +322,7 @@ const CITIES: Record<string, SiteConfig> = {
     // re-verified live afterward that Kany Garcia now resolves to medium
     // tier and ranks below the curated large-tier Toyota Arena acts,
     // instead of tying with the open mic.
-    ticketmaster: { enabled: true, latitude: 33.9425, longitude: -117.2297, radiusMiles: 35 },
+    ticketmaster: { enabled: true, latitude: 33.9425, longitude: -117.2297, radiusMiles: 35, marqueeSize: 6 },
     hasWhatsOn: true,
     // 'whats_on' added alongside the enable above -- see cityStatus.ts's
     // own MODULES comment for why it's safe to list even while hasWhatsOn
@@ -400,7 +414,7 @@ const CITIES: Record<string, SiteConfig> = {
     // comment) -- re-verified live afterward that the top 8 is now
     // entirely genuine major touring acts at Ball Arena/Mission Ballroom,
     // matching what a real Denver-metro suburb's events page should show.
-    ticketmaster: { enabled: true, latitude: 39.9205, longitude: -105.0866, radiusMiles: 20 },
+    ticketmaster: { enabled: true, latitude: 39.9205, longitude: -105.0866, radiusMiles: 20, marqueeSize: 6 },
     hasWhatsOn: true,
     // 'whats_on' added alongside the enable above -- see Moreno Valley's
     // identical comment just above for why.

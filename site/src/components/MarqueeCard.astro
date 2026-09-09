@@ -9,18 +9,17 @@
  *  entirely in CSS (`object-fit: cover; object-position: top`) regardless
  *  of which resolveImage() tier actually supplied the image.
  *
- *  The deck sentence the handoff describes ("one sentence, grounded in the
- *  event record") has no real generator behind it -- the only existing AI
- *  intro path (ai_pipeline/whats_on_intro.py / getWhatsOnIntro()) writes
- *  ONE shared weekly paragraph about the week's events in aggregate, not a
- *  sentence grounded in THIS specific event's own record. Building a new
- *  per-event generator would be a new ai_pipeline script -- out of scope
- *  for a presentation-only pass ("no pipeline, DB, or generator logic
- *  changes"). Per the handoff's own fallback rule ("if no grounded
- *  sentence can be produced, omit the deck rather than fill it"), the deck
- *  is simply never rendered here, not filled with the mismatched weekly
- *  paragraph. Flagged, not silently worked around.
+ *  The deck sentence (marquee deck sentences follow-up) comes from
+ *  ai_pipeline/event_deck_digest.py via lib/db.ts's getEventDeckDigests() --
+ *  a real per-event generator, distinct from whats_on_intro.py's own shared
+ *  WEEKLY paragraph (getWhatsOnIntro()), which this component never used.
+ *  `deck` is the CALLER's lookup result, already resolved before this
+ *  component renders (see index.astro/whats-on/index.astro's own batch
+ *  fetch) -- absent (undefined) is the normal, common case (not yet
+ *  generated, or the event's own record was too sparse to ground a
+ *  sentence), and the line is simply omitted, never a placeholder.
  *
+
  *  Image presence is the CALLER's decision (see index.astro's own
  *  promotion loop, which only ever calls this with `variant="hero"` for an
  *  entry it already confirmed has a real resolveImage() result) -- this
@@ -44,8 +43,15 @@ interface Props {
   variant?: 'hero' | 'row';
   runSize?: number;
   lastOccursAt?: string | null;
+  /** Marquee deck sentences follow-up -- see this file's own module
+   *  comment. Rendered on the hero variant only (the spec's "also on" rows
+   *  never show a deck); undefined/omitted renders nothing, same as
+   *  before this existed. */
+  deck?: string;
 }
-const { item, image, cityName, timezone, variant = 'hero', runSize = 1, lastOccursAt = null } = Astro.props;
+const {
+  item, image, cityName, timezone, variant = 'hero', runSize = 1, lastOccursAt = null, deck,
+} = Astro.props;
 const e = item.ticketmasterEvent;
 const href = `/whats-on/${ticketmasterSlug(e)}/`;
 const distance = distanceLabel(e.venueDistanceMiles, cityName);
@@ -78,6 +84,7 @@ const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
       {dateLabel && <time class="marquee-card__when data" datetime={item.occurs_at ?? undefined}>{dateLabel}</time>}
     </p>
     <h3 class="marquee-card__title"><a href={href}>{e.title}</a></h3>
+    {variant === 'hero' && deck && <p class="marquee-card__deck">{deck}</p>}
     {distance && (
       <p class="marquee-card__distance">
         <svg class="marquee-card__distance-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
@@ -134,6 +141,10 @@ const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
 .marquee-card__title { margin: 0; font-family: var(--font-head); }
 .marquee-card__title a { color: var(--ink); text-decoration: none; }
 .marquee-card__title a:hover { text-decoration: underline; }
+.marquee-card__deck {
+  margin: 0.5rem 0 0; font-family: var(--font-head);
+  font-size: 1.0625rem; line-height: 1.55; color: var(--ink-soft);
+}
 .marquee-card__distance {
   display: flex; align-items: center; gap: 0.3rem;
   margin: 0.375rem 0 0; font-size: 0.8125rem; color: var(--ink-soft);

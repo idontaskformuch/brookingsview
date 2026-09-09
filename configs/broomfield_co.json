@@ -261,7 +261,13 @@
     },
     "whats_on": {
       "enabled": true,
-      "_notes": "What's On, enabled as of the Phase 7 venue-curation follow-up. Kept in sync with site-config.ts's hasWhatsOn (see tests/test_feature_flags.py). Radius calibrated to 20mi and the top ~11 real venues curated in site/src/lib/venue-tiers.ts before enabling -- see that file's own comment for the full finding and reasoning."
+      "_notes": "What's On, enabled as of the Phase 7 venue-curation follow-up. Kept in sync with site-config.ts's hasWhatsOn (see tests/test_feature_flags.py). Radius calibrated to 20mi and the top ~11 real venues curated in site/src/lib/venue-tiers.ts before enabling -- see that file's own comment for the full finding and reasoning.",
+      "ticketmaster": {
+        "enabled": true,
+        "radius_miles": 20,
+        "marquee_size": 6,
+        "_notes": "Marquee deck sentences follow-up: this sub-block didn't exist before (whats_on_intro.py's own weekly-paragraph feature was never extended to this town -- a separate, pre-existing gap, not fixed here). Added so ai_pipeline/event_deck_digest.py has what it needs to run here too, mirroring site-config.ts's own ticketmaster block exactly (same coordinates, this file's own top-level `coordinates` field)."
+      }
     }
   },
   "_verify_before_launch": [

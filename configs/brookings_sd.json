@@ -419,11 +419,12 @@
     },
     "whats_on": {
       "enabled": true,
-      "_notes": "What's On, enabled for real as of Phase 7. Kept in sync with site-config.ts's hasWhatsOn (see tests/test_feature_flags.py). Brookings only -- Moreno Valley/Broomfield stay off pending a venue-tier curation follow-up (see site-config.ts's own ticketmaster comment for those two towns for the real finding: every venue in both markets is unmapped, degrading ranking to pure date-order).",
+      "_notes": "What's On, enabled for real as of Phase 7 for all three towns (this _notes predates that -- Moreno Valley/Broomfield's own venue-tier curation follow-up has since shipped, see their own configs' whats_on._notes). Kept in sync with site-config.ts's hasWhatsOn (see tests/test_feature_flags.py).",
       "ticketmaster": {
         "enabled": true,
         "radius_miles": 75,
-        "_notes": "Mirrors site-config.ts's ticketmaster block (same coordinates, reused from this file's own top-level `coordinates` rather than duplicated again -- see ai_pipeline/whats_on_intro.py). Phase 7 re-confirmed 75mi against live data rather than assumed -- see site-config.ts's own comment for the real numbers. Brookings-only, same as the TS side."
+        "marquee_size": 6,
+        "_notes": "Mirrors site-config.ts's ticketmaster block (same coordinates, reused from this file's own top-level `coordinates` rather than duplicated again -- see ai_pipeline/whats_on_intro.py). Phase 7 re-confirmed 75mi against live data rather than assumed -- see site-config.ts's own comment for the real numbers. marquee_size (marquee deck sentences follow-up): read by ai_pipeline/event_deck_digest.py, mirrors site-config.ts's own SiteConfig.ticketmaster.marqueeSize -- keep both in sync by hand, same cross-layer duplication tradeoff as this block's other fields. whats_on_intro.py's own weekly-paragraph feature is still Brookings-only (a separate, pre-existing gap -- see whats-on-intro.yml, not extended to the other two towns yet); event_deck_digest.py is NOT scoped that way and runs for all three towns via their own scrape workflows."
       }
     }
   },
