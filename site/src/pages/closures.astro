@@ -136,16 +136,19 @@ const newsArticleJsonLd = status.state === 'confirmed' && status.closure
     </section>
   )}
 
+  {/* R2/R7 (sitewide presentation-layer pass): a bordered, left-accented
+      panel is genuine severity styling -- reserved for Confirmed/Watch above,
+      the two states that actually have something active to report. Clear
+      renders on every ordinary school day, so it gets the plain status-line
+      + explanation shape instead: severity chrome that shows up every single
+      day has stopped meaning anything. */}
   {status.state === 'clear' && (
-    <section class="cw-panel cw-panel--clear" aria-labelledby="cw-state-heading">
-      <p class="cw-kicker">Clear</p>
-      <h2 id="cw-state-heading">No closures announced</h2>
-      <p class="cw-message">
+    <section class="cw-clear" aria-labelledby="cw-state-heading">
+      <h2 id="cw-state-heading" class="cw-clear__line">No closures announced.</h2>
+      <p class="cw-clear__detail">
         No school-closure notice is active for {feat.districtName}, and no weather alert
-        relevant to closures is currently in effect.
-      </p>
-      <p class="cw-source">
-        Official closures are always announced through {feat.districtName}'s{' '}
+        relevant to closures is currently in effect. Official closures are always announced
+        through {feat.districtName}'s{' '}
         <a href={feat.districtUrl} rel="noopener">own notification channel</a>, not predicted here.
       </p>
     </section>
@@ -192,7 +195,6 @@ const newsArticleJsonLd = status.state === 'confirmed' && status.closure
 }
 .cw-panel--confirmed { border-left-color: #b3261e; }
 .cw-panel--watch { border-left-color: #8a4a0a; }
-.cw-panel--clear { border-left-color: #146b36; }
 .cw-kicker {
   font-family: var(--font-ui); font-size: 0.75rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 0.5rem;
@@ -209,6 +211,13 @@ const newsArticleJsonLd = status.state === 'confirmed' && status.closure
   background: var(--panel, rgba(127, 127, 127, 0.06)); border-radius: 6px;
   font-size: 0.9375rem; line-height: 1.5;
 }
+
+/* R7: Clear is the everyday state -- one plain line plus a short
+   explanation, no border/background/left-accent (that chrome is reserved
+   for Confirmed/Watch's genuine severity, see .cw-panel above). */
+.cw-clear { max-width: 46rem; margin: 0 auto 1.5rem; }
+.cw-clear__line { font-size: 1.375rem; margin: 0 0 0.5rem; }
+.cw-clear__detail { color: var(--ink-soft); line-height: 1.6; margin: 0; }
 
 .cw-methodology {
   max-width: 46rem; margin: 0 auto 1.5rem; font-size: 0.8125rem; color: var(--ink-soft);

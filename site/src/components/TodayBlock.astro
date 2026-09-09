@@ -45,6 +45,7 @@ import TrafficWidget from './TrafficWidget.astro';
 import HeatAdvisoryWidget from './HeatAdvisoryWidget.astro';
 import { artsEventAsStory, type FeedItem, type TodayBucket } from '../lib/events';
 import { computeOpenStatus, type OpenStatus } from '../lib/facility-hours';
+import { joinWithOr } from '../lib/status-line';
 import type { Story, TrafficIncident, StructuredHours } from '../lib/db';
 import type { ClosureWatchStatus } from '../lib/closure-watch';
 
@@ -92,6 +93,8 @@ const CLOSURE_LABEL: Record<ClosureWatchStatus['state'], string> = {
   clear: 'Schools open, no closures reported',
 };
 
+type AlertItem = Pick<Story, 'slug' | 'title'>;
+
 function toStory(item: FeedItem): { story: Story; href?: string; kicker?: string } {
   if (item.sourceKind === 'story') return { story: item.story };
   return { story: artsEventAsStory(item.event), href: item.event.event_url, kicker: 'Arts & Culture' };
@@ -99,6 +102,37 @@ function toStory(item: FeedItem): { story: Story; href?: string; kicker?: string
 
 const rightNowIsEmpty = activeAlerts.length === 0 && temperature === null
   && closureStatus === null && traffic === null && !cityHallStatus.known;
+
+// R1 ("all-clear collapses to one line"): alerts/closures/traffic are the
+// same three CONDITIONAL modules cityStatus.ts's applyVisibilityRules()
+// already consolidates for the front page's status strip -- mirrored here so
+// /today gets the same "three quiet things read as one sentence, not three
+// blocks" behavior instead of always rendering its own line per module. Only
+// present modules (closureStatus/traffic non-null) participate; a module
+// absent for this town was never a candidate to begin with. City Hall stays
+// its own line unconditionally -- open/closed is never a "nothing to
+// report" state the way an absent alert/closure/incident is.
+//
+// Deliberately plain booleans + a plain array push, not an inline
+// conditional-spread array run through .every() -- that combination (built
+// and bisected while writing this) triggers an Astro type-checker cascade
+// that mistypes unrelated code elsewhere in this same file as `any` (a
+// checker bug, confirmed against plain tsc on the equivalent logic in
+// isolation -- not a real type error), even though it's never actually
+// unsound.
+const alertsQuiet = activeAlerts.length === 0;
+const closuresQuiet = !closureStatus || closureStatus.state === 'clear';
+const trafficQuiet = !traffic || traffic.incidents.length === 0;
+const allConditionalQuiet = alertsQuiet && closuresQuiet && trafficQuiet;
+const quietNouns: string[] = ['weather alerts'];
+if (closureStatus) quietNouns.push('closures');
+if (traffic) quietNouns.push('traffic incidents');
+const consolidatedQuietLine = allConditionalQuiet ? `No ${joinWithOr(quietNouns)}` : null;
+
+const closureState = closureStatus?.state;
+const showClosureLine = !consolidatedQuietLine && closureState !== undefined && closureState !== 'clear';
+const activeClosureLabel = showClosureLine && closureState ? CLOSURE_LABEL[closureState] : null;
+const activeClosureClass = showClosureLine && closureState ? `today-block__closure--${closureState}` : null;
 ---
 
 <section class="today-block" aria-label={`Today in ${cityName}`}>
@@ -111,18 +145,16 @@ const rightNowIsEmpty = activeAlerts.length === 0 && temperature === null
       <p class="today-block__section-label">Right now</p>
 
       <ul class="today-block__list">
-        {activeAlerts.length > 0 ? (
-          activeAlerts.map((alert) => (
-            <li><a href={`/s/${alert.slug}/`}>{alert.title}</a></li>
-          ))
-        ) : (
-          <li class="today-block__quiet">No active weather alerts</li>
+        {consolidatedQuietLine && (
+          <li class="today-block__quiet">{consolidatedQuietLine}</li>
         )}
 
-        {closureStatus && (
-          <li class:list={[`today-block__closure--${closureStatus.state}`]}>
-            {CLOSURE_LABEL[closureStatus.state]}
-          </li>
+        {!consolidatedQuietLine && activeAlerts.length > 0 && activeAlerts.map((alert: AlertItem) => (
+          <li><a href={`/s/${alert.slug}/`}>{alert.title}</a></li>
+        ))}
+
+        {activeClosureLabel && (
+          <li class:list={[activeClosureClass]}>{activeClosureLabel}</li>
         )}
 
         {cityHallStatus.known && (
@@ -135,13 +167,11 @@ const rightNowIsEmpty = activeAlerts.length === 0 && temperature === null
       </ul>
 
       {temperature !== null && (
-        <HeatAdvisoryWidget tempF={temperature} activeAlertTitles={activeAlerts.map((a) => a.title)} />
+        <HeatAdvisoryWidget tempF={temperature} activeAlertTitles={activeAlerts.map((a: AlertItem) => a.title)} />
       )}
 
-      {traffic && (
-        traffic.incidents.length > 0
-          ? <TrafficWidget incidents={traffic.incidents} limit={3} />
-          : <p class="today-block__quiet">No active traffic incidents reported</p>
+      {traffic && !consolidatedQuietLine && traffic.incidents.length > 0 && (
+        <TrafficWidget incidents={traffic.incidents} limit={3} />
       )}
     </div>
   )}

@@ -45,6 +45,7 @@ import { computeHeatTier } from './heat-advisory';
 import { siteConfig, type SiteConfig } from './site-config';
 import { getTicketmasterEventsForTown, distanceLabel, type TicketmasterFeedItem } from './ticketmaster';
 import { rankTicketmasterEvents, collapseMarqueeRuns } from './whats-on';
+import { joinWithOr } from './status-line';
 
 export type StatusTone = 'quiet' | 'notice' | 'alert';
 
@@ -319,12 +320,6 @@ const QUIET_NOUN: Record<string, string> = {
   traffic: 'traffic incidents',
   worker_pulse: 'heat/dust advisories',
 };
-
-function joinWithOr(items: string[]): string {
-  if (items.length <= 1) return items.join('');
-  if (items.length === 2) return `${items[0]} or ${items[1]}`;
-  return `${items.slice(0, -1).join(', ')} or ${items[items.length - 1]}`;
-}
 
 /** Applies the handoff's "Visibility rules": always-rendered modules pass
  *  through untouched; conditional modules are dropped when quiet UNLESS
