@@ -7,8 +7,10 @@ wrapper around it).
 from datetime import datetime, timedelta, timezone
 
 from scripts.check_deployed_content import (
+    DEPLOY_CHECK_HEADER,
     SIGNATURE_SECTIONS,
     SITE_URLS,
+    _request_headers,
     _user_agent,
     extract_story_slugs,
     is_stale,
@@ -80,3 +82,22 @@ def test_user_agent_matches_scrape_workflow_convention_for_all_three_towns():
     for town_id, site_url in SITE_URLS.items():
         domain = site_url.removeprefix("https://")
         assert _user_agent(site_url) == f"{domain} (contact: hello@{domain})"
+
+
+def test_request_headers_omits_bypass_header_when_secret_unset(monkeypatch):
+    # Broomfield 403 follow-up: the User-Agent fix alone didn't clear
+    # Cloudflare's bot-management block on GitHub Actions' runner IPs (see
+    # this module's own DEPLOY_CHECK_HEADER comment) -- DEPLOY_CHECK_SECRET
+    # unset must behave exactly as before that follow-up, for the two towns
+    # without a matching Cloudflare rule yet.
+    monkeypatch.delenv("DEPLOY_CHECK_SECRET", raising=False)
+    headers = _request_headers("https://brookingsview.com")
+    assert headers == {"User-Agent": _user_agent("https://brookingsview.com")}
+    assert DEPLOY_CHECK_HEADER not in headers
+
+
+def test_request_headers_adds_bypass_header_when_secret_set(monkeypatch):
+    monkeypatch.setenv("DEPLOY_CHECK_SECRET", "test-secret-value")
+    headers = _request_headers("https://broomfieldview.com")
+    assert headers[DEPLOY_CHECK_HEADER] == "test-secret-value"
+    assert headers["User-Agent"] == _user_agent("https://broomfieldview.com")

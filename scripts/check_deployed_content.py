@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from datetime import datetime, timedelta, timezone
@@ -85,6 +86,32 @@ def _user_agent(site_url: str) -> str:
     field in configs/*.json once did (see this file's own comment above)."""
     domain = site_url.removeprefix("https://").removeprefix("http://")
     return f"{domain} (contact: hello@{domain})"
+
+
+# Broomfield 403 investigation (2026-09-09): the User-Agent fix above did NOT
+# resolve it -- confirmed via real GitHub Actions run history (every run
+# since that fix failed at this exact step, 4/4, while the identical request
+# succeeds every time from outside GitHub's runner IP ranges regardless of
+# User-Agent). That's the signature of Cloudflare's bot-management scoring
+# GitHub Actions' shared datacenter IPs as automated traffic, not a
+# User-Agent block -- an IP-based Cloudflare rule can't be worked around from
+# this side with a header alone, so this is deliberately a NAMED bypass, not
+# a disguise: a Cloudflare WAF Custom Rule (configured separately, see the
+# rollout notes accompanying this change) skips bot-management specifically
+# for requests carrying this exact header+secret pair, verifying the request
+# really is this checker before letting it through -- the same shape as any
+# authenticated health-check bypass. Optional and additive: DEPLOY_CHECK_SECRET
+# unset (a town with no matching Cloudflare rule yet) means no header is
+# sent at all, identical to this script's behavior before this change.
+DEPLOY_CHECK_HEADER = "X-BV-Deploy-Check"
+
+
+def _request_headers(site_url: str) -> dict[str, str]:
+    headers = {"User-Agent": _user_agent(site_url)}
+    secret = os.environ.get("DEPLOY_CHECK_SECRET")
+    if secret:
+        headers[DEPLOY_CHECK_HEADER] = secret
+    return headers
 
 # Each town's flagship, town-specific section -- a page with no real
 # content here is the same "skeleton, not a working site" failure mode
@@ -160,7 +187,7 @@ def check_homepage_freshness(conn, town_id: str, site_url: str) -> str | None:
     a real problem, both broke the naive version of this check.
     """
     try:
-        r = requests.get(site_url + "/", timeout=20, headers={"User-Agent": _user_agent(site_url)})
+        r = requests.get(site_url + "/", timeout=20, headers=_request_headers(site_url))
     except Exception as exc:
         return f"could not fetch homepage ({site_url}/): {exc}"
     if r.status_code != 200:
@@ -189,7 +216,7 @@ def check_signature_section(town_id: str, site_url: str) -> str | None:
     section = SIGNATURE_SECTIONS[town_id]
     url = site_url + section["path"]
     try:
-        r = requests.get(url, timeout=20, headers={"User-Agent": _user_agent(site_url)})
+        r = requests.get(url, timeout=20, headers=_request_headers(site_url))
     except Exception as exc:
         return f"could not fetch signature section ({url}): {exc}"
     if r.status_code != 200:

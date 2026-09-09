@@ -90,6 +90,13 @@ jobs:
       # Cloudflares kant en stund att bli klar med propagering.
       - name: Kontrollera att den deployade sajten faktiskt har färskt innehåll
         if: success()
+        env:
+          # Broomfield 403 fix: see broomfield-scrape.yml's identical
+          # comment. Set here too even though Brookings' zone has no
+          # matching Cloudflare rule yet -- harmless (the header is simply
+          # unused) and means a rule added later here needs no workflow
+          # change.
+          DEPLOY_CHECK_SECRET: ${{ secrets.DEPLOY_CHECK_SECRET }}
         run: |
           sleep 10
           python -m scripts.check_deployed_content --config configs/brookings_sd.json

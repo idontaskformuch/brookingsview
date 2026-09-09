@@ -68,6 +68,16 @@ jobs:
       # kommentar (och NEEDS-HUMAN-REVIEW.md #38) för hela resonemanget.
       - name: Kontrollera att den deployade sajten faktiskt har färskt innehåll
         if: success()
+        env:
+          # Broomfield 403 fix: Cloudflare's bot-management blocks GitHub
+          # Actions' own runner IPs regardless of User-Agent (see
+          # scripts/check_deployed_content.py's own DEPLOY_CHECK_HEADER
+          # comment) -- this shared secret, verified by a Cloudflare WAF
+          # Custom Rule against the same header, is the bypass. Set for all
+          # three towns' workflows even though only Broomfield's zone has a
+          # matching rule yet, so a rule added later for another town needs
+          # no workflow change.
+          DEPLOY_CHECK_SECRET: ${{ secrets.DEPLOY_CHECK_SECRET }}
         run: |
           sleep 10
           python -m scripts.check_deployed_content --config configs/broomfield_co.json
