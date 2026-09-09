@@ -41,6 +41,7 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Story, Facility, SourceType } from './db';
 import type { SiteConfig } from './site-config';
+import { weekInfoForInstant, previousWeekInfo } from './this-week';
 
 export interface ImageRef {
   /** Root-relative local path ("/assets/images/...") for a downloaded and
@@ -448,6 +449,35 @@ export function pickFromPool<T>(
     if (!exclude.has(getKey(candidate))) return candidate;
   }
   return canonical;
+}
+
+/** Image-rotation follow-up (Part 3, "across-time variety"): the
+ *  category-pool path last week's weekly-roundup story would have picked,
+ *  for the CURRENT week's own resolveImage() call to exclude -- see
+ *  pages/index.astro's own call site for the full reasoning (N=1 only,
+ *  computed fresh each time from last week's own seed, no stored history
+ *  needed, since pickFromPool() is a pure function of (pool, seed)).
+ *  `currentWeeklyOccursAt` is the CURRENT week's own story.occurs_at (the
+ *  Monday ai_pipeline/weekly.py stamped it with). Deliberately built on
+ *  this-week.ts's own weekInfoForInstant()/previousWeekInfo() -- which do
+ *  this same "previous week" step via plain calendar-date arithmetic
+ *  (DateParts, not a raw instant) for exactly the archive "previous week"
+ *  link -- rather than subtracting 7*24h from the instant directly: a
+ *  first version did that and got the wrong ISO week whenever the 7-day
+ *  UTC shift landed on a different LOCAL calendar day than intended (any
+ *  town whose timezone offset isn't UTC, i.e. always), caught by this
+ *  function's own tests, not shipped. Returns null for a pool of 0-1
+ *  entries -- nothing meaningful to exclude when there's no real
+ *  alternative anyway. */
+export function previousWeekRoundupImagePath(
+  pool: ImageRef[],
+  currentWeeklyOccursAt: string | Date,
+  timezone: string,
+): string | null {
+  if (pool.length <= 1) return null;
+  const currentWeek = weekInfoForInstant(new Date(currentWeeklyOccursAt), timezone);
+  const previousWeekSlug = `weekly-${previousWeekInfo(currentWeek, timezone).slug}`;
+  return pickFromPool(pool, previousWeekSlug).path;
 }
 
 /** The single entry point every rendering surface should call. Never

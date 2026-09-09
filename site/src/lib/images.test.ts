@@ -4,6 +4,7 @@ import {
   resolveVenueSlugForImage, categoryForSourceType, dedupeConsecutiveImages,
   resolveImage, pickFromPool, requiredCategoriesFor, assertCategoryImagesComplete,
   findContentTrackRowsMissingImage, withThumbnailCrop, contentTrackCropPaths,
+  previousWeekRoundupImagePath,
   type ImageRef, type ResolvableStory,
 } from './images';
 import type { Facility } from './db';
@@ -231,6 +232,48 @@ describe('pickFromPool', () => {
       });
       expect(alternative.path).not.toBe(canonical.path);
     });
+  });
+});
+
+describe('previousWeekRoundupImagePath (image-rotation Part 3, across-time variety)', () => {
+  const pool: ImageRef[] = [
+    { path: '/a.png', alt: 'A', width: 1, height: 1 },
+    { path: '/b.png', alt: 'B', width: 1, height: 1 },
+    { path: '/c.png', alt: 'C', width: 1, height: 1 },
+  ];
+
+  // Real ai_pipeline/weekly.py output: LOCAL midnight Monday in the town's
+  // own timezone, stored as a timestamptz -- '2026-09-07T05:00:00Z' is
+  // exactly 2026-09-07 00:00 America/Chicago (CDT, UTC-5). A naive literal
+  // like '2026-09-07T00:00:00Z' would be 2026-09-06 19:00 LOCAL (still
+  // Sunday) and silently test the wrong week -- caught by an earlier
+  // version of this test actually failing against that literal.
+  const MONDAY_2026_W37_UTC = '2026-09-07T05:00:00Z';
+  const MONDAY_2027_W01_UTC = '2027-01-04T06:00:00Z'; // CST, UTC-6, by January
+
+  it('returns null for a pool of 0 or 1 entries -- nothing meaningful to exclude', () => {
+    expect(previousWeekRoundupImagePath([], MONDAY_2026_W37_UTC, 'America/Chicago')).toBeNull();
+    expect(previousWeekRoundupImagePath([pool[0]], MONDAY_2026_W37_UTC, 'America/Chicago')).toBeNull();
+  });
+
+  it("matches pickFromPool() run directly against last week's own slug", () => {
+    // ISO week 37, 2026 -> previous is ISO week 36 of the same year.
+    const result = previousWeekRoundupImagePath(pool, MONDAY_2026_W37_UTC, 'America/Chicago');
+    expect(result).toBe(pickFromPool(pool, 'weekly-2026-w36').path);
+  });
+
+  it("correctly crosses a year boundary (ISO week 1 -> previous year's last week)", () => {
+    // ISO week 1, 2027 -> previous is ISO week 53 of 2026 (2026 has 53 ISO
+    // weeks) -- a naive "current week number minus 1" would have produced
+    // a nonsensical "week 0" here instead.
+    const result = previousWeekRoundupImagePath(pool, MONDAY_2027_W01_UTC, 'America/Chicago');
+    expect(result).toBe(pickFromPool(pool, 'weekly-2026-w53').path);
+  });
+
+  it('is deterministic -- the same current week always excludes the same past pick', () => {
+    const first = previousWeekRoundupImagePath(pool, MONDAY_2026_W37_UTC, 'America/Chicago');
+    const second = previousWeekRoundupImagePath(pool, MONDAY_2026_W37_UTC, 'America/Chicago');
+    expect(first).toBe(second);
   });
 });
 

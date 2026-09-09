@@ -40,7 +40,7 @@ import {
 import { selectWorthKnowing, selectLatestFrom, firstSentence, selectFrontPageRhythm } from '../lib/homepage-curation';
 import { todayUtcMidnight } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
-import { resolveImage, dedupeConsecutiveImages, withThumbnailCrop } from '../lib/images';
+import { resolveImage, dedupeConsecutiveImages, withThumbnailCrop, previousWeekRoundupImagePath } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
@@ -138,15 +138,44 @@ const frontPageImageOrder = [weekly, feature, fullWidthLead, ...secondary]
 // function's and usedImagePaths' own doc comments for why those tiers are
 // excluded from this pass).
 const usedCategoryImagePaths = new Set<string>();
+
+// Image-rotation follow-up, Part 3 ("across-time variety" for the weekly
+// roundup). The weekly roundup resolves via the 'events' category (see
+// WeeklyRoundup.astro's own comment) and its seed (the story's own slug,
+// "weekly-2026-w35") already varies every week -- but with a 2-3 image
+// pool, pickFromPool()'s hash can still land on the SAME bucket as last
+// week purely by chance often enough to look stuck. Whatever
+// pickFromPool() would have picked for LAST week's own seed is excluded
+// from THIS week's pick (see previousWeekRoundupImagePath()'s own doc
+// comment -- computed fresh each time, no stored history needed), via the
+// same usedImagePaths mechanism Part 2 added. N=1 (last week only) is
+// deliberate, not a starting point to extend -- with a 2-image pool
+// (Moreno Valley's events category) excluding even N=1 already leaves
+// exactly one candidate, i.e. this is "alternate," not "avoid a history,"
+// and pretending otherwise would overstate what a 2-3 image pool can
+// actually support. The real fix for more headroom here is a bigger image
+// pool, a content/sourcing task flagged separately (see
+// NEEDS-HUMAN-REVIEW.md's image-rotation report), not something this
+// logic can substitute for.
+const weeklyExclude = new Set<string>();
+if (weekly?.occurs_at) {
+  const weeklyPool = categoryImagesFor(siteConfig.townId).events ?? [];
+  const excludedPath = previousWeekRoundupImagePath(weeklyPool, weekly.occurs_at, siteConfig.timezone);
+  if (excludedPath) weeklyExclude.add(excludedPath);
+}
+
 const frontPageImages = dedupeConsecutiveImages(
   frontPageImageOrder,
   (s) => {
+    const exclude = s.slug === weekly?.slug
+      ? new Set([...usedCategoryImagePaths, ...weeklyExclude])
+      : usedCategoryImagePaths;
     const image = resolveImage(s, {
       town: siteConfig.townId,
       cityName: siteConfig.cityName,
       facilities,
       categoryImages: categoryImagesFor(siteConfig.townId),
-      usedImagePaths: usedCategoryImagePaths,
+      usedImagePaths: exclude,
     });
     if (image) usedCategoryImagePaths.add(image.path);
     return image;
