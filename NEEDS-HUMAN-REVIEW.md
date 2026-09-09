@@ -4113,3 +4113,83 @@ the Cloudflare Pages/Workers project's own dashboard config to make the
 hook-triggered build correct too — that would keep two independent build
 systems both trying to be the source of truth for the same site, which was
 the actual defect, not a config gap to paper over.
+
+## 39. Same architecture bug, third recurrence — Cloudflare Workers Builds, and closing it for good (2026-09-09)
+
+**#38 above closed the Pages deploy hook, but the same failure mode came
+back a third time** under a completely different mechanism: Cloudflare
+Workers Builds, a native git integration configured entirely in the
+Cloudflare dashboard — not a step in any file in this repo, not visible to
+`git grep`, and not something `wrangler deploy`'s own success or failure
+says anything about. It rebuilds and deploys straight from GitHub on every
+push, independently of every GitHub Actions workflow, using whatever
+environment variables were set for it in the dashboard rather than this
+repo's Actions secrets. Those dashboard variables were missing
+`TICKETMASTER_API_KEY`, so its builds deployed with What's On silently
+empty — sometimes racing a correct, complete `wrangler deploy` from
+`scrape.yml` and winning, exactly the same "whichever build lands second
+wins" failure #38 already diagnosed and supposedly closed, just with a
+different git integration playing the role of the old Pages hook.
+
+**Diagnosed the same way #38 was**, deliberately not trusting a green
+Actions run on its own: live HTTP fetches straight against
+`brookingsview.com`/`morenovalleyview.com`/`broomfieldview.com` and the
+GitHub public API's own check-runs for the same commits, comparing what
+was actually live against what the Actions logs claimed had shipped. That
+comparison is what surfaced Workers Builds at all — nothing in this
+repo's own files pointed to it.
+
+**Fix, and why patching the key was rejected**: the obvious one-line fix —
+add `TICKETMASTER_API_KEY` to the Workers Builds dashboard config too —
+was deliberately not taken, for the same reason #38 didn't backfill the
+Pages hook's own missing env vars instead of removing it: that patches
+today's symptom while leaving in place the exact construction (two
+independent, dashboard/workflow-diverging paths into production) that has
+now caused three separate incidents under three different names.
+**Workers Builds was disabled entirely** in the Cloudflare dashboard.
+`wrangler deploy`, run from this repo's own GitHub Actions workflows with
+this repo's own complete secret set, is now the only path a commit can
+reach production through — matching what this repo's own workflow
+comments already said they wanted.
+
+**Consequence handled, not left as a surprise**: with Workers Builds gone,
+`wrangler deploy` previously lived only inside `scrape.yml`/
+`moval-scrape.yml`/`broomfield-scrape.yml`'s 6-hour cron — so a pure code
+push (no new scraped content at all) would have stopped reaching
+production until the next cron fired, up to 6 hours later. Added
+`deploy.yml`/`moval-deploy.yml`/`broomfield-deploy.yml`, one per town,
+each triggered on `push: branches: [main]`, each running the exact same
+build-then-`wrangler deploy`-then-verify sequence the scrape workflows
+already run. Two triggers (a push, or the 6-hour cron), one deploy
+mechanism — not a second mechanism, which would just have reintroduced
+the same bug under a fourth name.
+
+**Verified, not assumed**: pushed a real commit (`83ca28a`, merged as
+`12a2a52`) and checked the GitHub Actions API directly rather than trusting
+a green checkmark — confirmed `deploy`, `moval-deploy`, and `broomfield-deploy`
+all fired on that single push, then re-fetched all three production domains
+directly: `/whats-on/` now returns real, populated marquee content on all
+three towns (not just Brookings, which is all a Brookings-only spot check
+would have caught), Broomfield's homepage now renders the marquee module
+(the exact thing missing in the screenshot that started this
+investigation), and Broomfield's `/today/` status line now collapses to a
+single consolidated sentence instead of the bordered severity box seen
+before the fix.
+
+**Also found while verifying this, and left open**: `broomfield-deploy`'s
+own post-deploy content-freshness check (`scripts/check_deployed_content.py`,
+its last step) failed on that same `12a2a52` push, even though the build
+and the `wrangler deploy` immediately before it both succeeded and the
+site is confirmed live and correct. The identical step fails the same way
+in the ordinary 6-hour `broomfield-scrape-and-publish` cron run too (e.g.
+the 2026-09-09 15:56 run) — so this is not a regression from adding
+`broomfield-deploy.yml` today, it predates it. Likely cause per that
+script's own comments: the Cloudflare WAF Custom Rule meant to let this
+checker's requests past Broomfield zone's bot-management (keyed on the
+`X-BV-Deploy-Check` header + `DEPLOY_CHECK_SECRET`) either isn't actually
+configured on Broomfield's zone yet, or the secret isn't set — both are
+Cloudflare-dashboard/GitHub-secrets state, not something fixable from a
+code change alone. Not investigated further this session (does not block
+anything live; the deploy it's checking is already confirmed correct by
+hand). Next session should confirm which of the two it is before touching
+the script itself.
