@@ -87,9 +87,16 @@ REQUEST_TIMEOUT = 30
 CATEGORIES_DIR = Path("site/public/assets/images/categories")
 CATEGORY_IMAGES_TS = Path("site/src/config/category-images.ts")
 MONTAGE_DIR = Path(".review_montages")
-# How many images to actually keep per category pool -- see module
-# docstring ("target: 3 per category").
-POOL_SIZE = 3
+# How many images to actually keep per category pool -- raised from 3
+# (module docstring's original target) per the image-pool-rotation
+# follow-up (Addendum 2, 2026-09-09): a real incrementing rotation
+# (ai_pipeline/assign_category_image_rotation.py) makes a bigger pool
+# actually pay off in visible variety, where a 3-image pool mostly didn't.
+# Not every category reaches 6 -- see CATEGORY_SEARCHES' own per-category
+# comments for where fewer genuine real candidates were found; a smaller
+# honest pool beats padding with a borderline match, same principle the
+# original 2-image Moreno Valley "events" pool already established.
+POOL_SIZE = 6
 
 # Stable per-fleet identifier for Unsplash's required UTM parameters (all
 # three towns share one codebase/attribution identity -- see
@@ -167,15 +174,84 @@ _MV_CITY_HALL_V2_QUERY = "american municipal government building generic"
 # under a second, more specific v2 query. Lesson applied going forward:
 # any aerial/wide shot with a visible hillside or distant background needs
 # a full-resolution check before acceptance, not just the montage thumbnail.
+# Addendum 2 (2026-09-09): pool expansion from 3 to (up to) 6, reviewed via
+# --montage at the new per_page=24 (see build_montage()'s own comment).
+# Same rejection bar as the original pass throughout: no real identifiable
+# faces, no readable text/signage naming a real specific place, no visible
+# brand/company logos or manufacturer nameplates, no foreign-coded
+# architecture/flags/language, no famous/identifiable landmark. Several
+# categories (Moreno Valley city_hall/events/school_alerts especially)
+# still didn't reach 6 -- their own per-category comments below say why;
+# a smaller honest pool over a padded risky one, same rule as before.
 CATEGORY_SEARCHES: dict[tuple[str, str], CategorySearch] = {
-    ("brookings_sd", "city_hall"): {"query": "small town city hall brick building", "chosen": _pool(38855972, 37485219, 37469663)},
-    ("brookings_sd", "events"): {"query": "small town street festival community", "chosen": _pool(10148954, 10130178, 8839417)},
-    ("brookings_sd", "home_sales"): {"query": "midwest suburban houses tree lined street", "chosen": _pool(38211756, 8148346, 5846801)},
-    ("brookings_sd", "jobs"): {"query": "grain elevator silo farm building", "chosen": _pool(33406024, 2714630, 12380134)},
-    ("brookings_sd", "sports"): {"query": "high school football stadium bleachers", "chosen": _pool(13345801, 13345803, 13345751)},
-    ("brookings_sd", "school_alerts"): {"query": "elementary school building exterior", "chosen": _pool(35758714, 18145430, 17144608)},
-    ("brookings_sd", "weather_alert"): {"query": "prairie storm clouds sky", "chosen": _pool(30068845, 4824517, 29383810)},
-    ("brookings_sd", "university"): {"query": "university campus lawn trees buildings", "chosen": _pool(7752993, 27276232, 36725428)},
+    ("brookings_sd", "city_hall"): {"query": "small town city hall brick building", "chosen": _pool(38855972, 37485219, 37469663, 38855973, 14456574)},
+    # Addendum 2: 3 of the 4 montage-thumbnail picks failed the mandatory
+    # FULL-RESOLUTION recheck this file already requires (see city_hall/
+    # traffic notes above) -- a parade truck with "MAYO CLINIC" branding
+    # clearly readable (a specific, nationally-recognized real institution
+    # -- also reads as a specific real place's parade, not generic), a
+    # Revolutionary War-reenactment scene in an unmistakably New-England-
+    # coded setting with several close, identifiable faces, and a food-
+    # truck scene with a large readable Pepsi logo plus several more close,
+    # identifiable faces. Only the aerial downtown-plaza shot (34003747,
+    # crowd too small/distant to be identifiable, no readable signage)
+    # survived. Lesson already stated elsewhere in this file, worth
+    # restating: a montage thumbnail (360x240) cannot resolve a brand logo,
+    # a readable sign, or whether a face is actually identifiable --
+    # crowd/parade/market photography specifically needs the full-res
+    # check applied to EVERY candidate, not just aerial/wide ones.
+    ("brookings_sd", "events"): {"query": "small town street festival community", "chosen": _pool(10148954, 10130178, 8839417, 34003747)},
+    ("brookings_sd", "home_sales"): {"query": "midwest suburban houses tree lined street", "chosen": _pool(38211756, 8148346, 5846801, 19278016, 1546166, 33711126, 2758265)},
+    # Addendum 2: 2 of the 5 montage picks failed the FULL-RESOLUTION
+    # recheck -- 221369 had a manufacturer nameplate ("BROCK") clearly
+    # readable on the bin, same class of rejection as the original pass's
+    # "BUTLER"/"AGI WESTFIELD" catches; 16959340's brick construction and
+    # roof-tile style read as Northern European, not American Midwest, on
+    # closer inspection.
+    ("brookings_sd", "jobs"): {"query": "grain elevator silo farm building", "chosen": _pool(33406024, 2714630, 12380134, 10274179, 3753794, 4093909)},
+    # Addendum 2: 15362139 looked like generic lit bleachers at montage
+    # thumbnail size; at full resolution it's an enormous professional
+    # soccer stadium in a Spanish-speaking country (readable Spanish
+    # advertising banners, e.g. "IGLESIAS FRATERNAS") -- dropped.
+    ("brookings_sd", "sports"): {"query": "high school football stadium bleachers", "chosen": _pool(13345801, 13345803, 13345751, 13345808, 30903546, 4680027, 13345794)},
+    # Addendum 2: 3 of the 4 montage picks failed the mandatory FULL-
+    # RESOLUTION recheck -- one had "FARMINGTON HIGH SCHOOL" (plus a
+    # "Farmington RiverHawks" banner) clearly readable on the facade, a
+    # specific real school invisible at 360x240 thumbnail size; two others
+    # had no readable text but unmistakably non-US institutional
+    # architecture (South African-style terracotta roof tiles and louvered
+    # windows; a worn concrete facade matching neither US school
+    # convention). Only one (5896843, a US-style brick school with a track)
+    # survived.
+    ("brookings_sd", "school_alerts"): {"query": "elementary school building exterior", "chosen": _pool(35758714, 18145430, 17144608, 5896843)},
+    # 5387516 (a lightning-over-farmhouse shot, initially chosen from the
+    # montage) had been deleted from Pexels entirely by the time --apply
+    # ran minutes later -- confirmed 404 on direct lookup AND absent from a
+    # fresh search, not a transcription error. Dropped rather than
+    # substituted; 6 is still a healthy pool.
+    ("brookings_sd", "weather_alert"): {"query": "prairie storm clouds sky", "chosen": _pool(30068845, 4824517, 29383810, 10831793, 13021192, 2753471)},
+    # Addendum 2: this query is even more landmark-dominated than the
+    # original pass already found -- 3 of 4 montage picks failed the
+    # FULL-RESOLUTION recheck (an ornate collegiate-gothic dormitory too
+    # grand/specific to pass as generic; a building with a bronze memorial
+    # bust and named plaque, clearly a real, specific historic building; a
+    # monumental single clock tower distinctive enough to likely be a real
+    # named campus landmark on its own). Only one genuinely generic,
+    # low-detail campus-lawn shot survived.
+    ("brookings_sd", "university"): {"query": "university campus lawn trees buildings", "chosen": _pool(7752993, 27276232, 36725428, 16275762)},
+    # Addendum 2: this query is dominated by nationally-iconic, unmistakably
+    # identifiable landmarks (Beverly Hills City Hall's own gold-domed
+    # tower appeared TWICE more in the 24-candidate re-search, LA City
+    # Hall's own unmistakable tower, downtown LA's skyline, the California
+    # State Capitol twice, San Diego's Convention Center) -- exactly the
+    # "far too identifiable AND badly mismatched in scale for a city Moreno
+    # Valley's size" problem the original 3 picks already had to route
+    # around with a v2 query. The one candidate that looked generic at
+    # montage size (palm trees, no building landmark) turned out at full
+    # resolution to closely match Stanford's own iconic palm-lined campus
+    # silhouette (matching red-tile roofs, a distant bell-tower-like
+    # structure) -- dropped too. Shipping the original 3 rather than
+    # forcing a risky pick just to hit a bigger number.
     ("moreno_valley_ca", "city_hall"): {
         "query": "modern civic building palm trees california",
         "chosen": _pool(32957453, 1422407) + _pool(12567141, query=_MV_CITY_HALL_V2_QUERY),
@@ -194,20 +270,83 @@ CATEGORY_SEARCHES: dict[tuple[str, str], CategorySearch] = {
     # flag-bearer shot from BEHIND -- no face, palm trees genuinely matching
     # SoCal) -- shipping a 2-image pool for this one category rather than
     # force a 3rd risky pick.
+    #
+    # Addendum 2: re-searched at per_page=24 specifically to grow this one
+    # past 2 -- most of the 24 were still foreign/ambiguous-origin bazaars
+    # (Turkish, Indonesian, Vietnamese, Middle Eastern market scenes). Two
+    # ground-level vendor shots (1635330, 1151058) looked fine at MONTAGE
+    # thumbnail size but failed the mandatory FULL-RESOLUTION recheck this
+    # same file already requires elsewhere (see the city_hall/traffic notes
+    # above) -- both turned out to show one real, clearly identifiable
+    # person's face prominently and in sharp focus (one also had a
+    # readable non-English tablecloth banner, the other a readable
+    # specific business name, "Safari Farm...", on its own tent banner) --
+    # dropped. A third vendor shot (9650047) survived: the vendor's face is
+    # substantially obscured by a mask and greater distance, closer to the
+    # existing pool's own "flag-bearer shot from behind" risk tolerance
+    # than a posed close-up portrait.
     ("moreno_valley_ca", "events"): {
         "query": "aerial farmers market outdoor community booths",
-        "chosen": _pool(30391784) + _pool(29332592, query="american flag community parade street aerial daytime"),
+        "chosen": _pool(30391784, 35120074, 33273893, 9650047)
+            + _pool(29332592, query="american flag community parade street aerial daytime"),
     },
-    ("moreno_valley_ca", "home_sales"): {"query": "suburban stucco houses tile roof california", "chosen": _pool(34960819, 17613793, 11467685)},
-    ("moreno_valley_ca", "jobs"): {"query": "warehouse distribution center exterior", "chosen": _pool(36006588, 29298971, 12585837)},
-    ("moreno_valley_ca", "sports"): {"query": "american high school football field night lights california", "chosen": _pool(13345835, 9935427, 9935434)},
-    ("moreno_valley_ca", "school_alerts"): {"query": "american elementary school building exterior", "chosen": _pool(8500417, 10127243, 10127241)},
-    ("moreno_valley_ca", "weather_alert"): {"query": "desert heat haze highway sky", "chosen": _pool(13973966, 9898541, 2450291)},
+    # Addendum 2: 15461302 (a real-estate-listing-style photo) had a
+    # visible house number plate on the facade -- a genuine street address,
+    # not just a generic architectural style, dropped on the FULL-
+    # RESOLUTION recheck this file already requires elsewhere.
+    ("moreno_valley_ca", "home_sales"): {"query": "suburban stucco houses tile roof california", "chosen": _pool(34960819, 17613793, 11467685, 29837542, 17375721, 9875677)},
+    # Addendum 2: 2 of 5 montage picks failed the FULL-RESOLUTION recheck --
+    # 35501715 had a partial blue/white trailer logo matching Amazon's own
+    # livery closely enough to risk the same "real tracked employer" issue
+    # the original pass's own Amazon rejection already established; 221047
+    # showed a European cab-over-style semi truck, not a US long-nose
+    # tractor, reading as a non-US facility.
+    ("moreno_valley_ca", "jobs"): {"query": "warehouse distribution center exterior", "chosen": _pool(36006588, 29298971, 12585837, 20021122, 2804929, 34968619)},
+    # Addendum 2: 2 of 5 montage picks failed the FULL-RESOLUTION recheck --
+    # 34424817's background scoreboard clearly reads "RAVSTED STADIUM", a
+    # specific real venue name; 34010498 has a jersey reading "BEARCATS"
+    # plus a "PRIDE" paw-print wall banner, the same class of specific-
+    # school-identification rejection as "KNIGHTS"/"SAN MATEO BULLDOGS"
+    # already caught on the montage pass.
+    ("moreno_valley_ca", "sports"): {"query": "american high school football field night lights california", "chosen": _pool(13345835, 9935427, 9935434, 13345832, 13345808, 13345799)},
+    # Addendum 2: this query's re-search (24 candidates) was almost
+    # entirely posed stock photography of children's faces in close-up --
+    # exactly the "real children's faces in close-up ... skipped even where
+    # not textually identifiable" rule the original pass already
+    # established (see CATEGORY_SEARCHES' own top-of-dict comment). Of the
+    # 2 that showed no children at all, one (37820241, a building exterior)
+    # turned out on FULL-RESOLUTION recheck to be "FARMINGTON HIGH SCHOOL"
+    # -- a specific real school, readable on its facade -- and was dropped
+    # (see brookings_sd's own school_alerts comment, where the same id was
+    # caught the same way). Only the empty-hallway shot survived.
+    ("moreno_valley_ca", "school_alerts"): {"query": "american elementary school building exterior", "chosen": _pool(8500417, 10127243, 10127241, 35758714)},
+    # Addendum 2: 2 of 4 montage picks failed the FULL-RESOLUTION recheck --
+    # 37108200's utility-pole style and terrain read as Central Asian/
+    # Middle Eastern, not California desert; 25526060's tanker trailer had
+    # readable ad-campaign text ("...COWS", a real dairy-industry slogan).
+    ("moreno_valley_ca", "weather_alert"): {"query": "desert heat haze highway sky", "chosen": _pool(13973966, 9898541, 2450291, 5996410, 13064248)},
+    # Addendum 2: 3 of 4 montage picks failed the FULL-RESOLUTION recheck --
+    # 8783598's skyline includes a distinctive tiered white hospital tower
+    # matching LAC+USC Medical Center closely enough to risk identifying a
+    # specific real interchange; 13178602's double-roundabout "dumbbell"
+    # interchange design is a European road-engineering pattern, not
+    # typical California cloverleaf/diamond style; 3717242 has Chinese
+    # characters clearly readable in the road markings.
     ("moreno_valley_ca", "traffic"): {
         "query": "freeway interchange overpass california",
-        "chosen": _pool(8783583, 9716239) + _pool(9716230, query="suburban freeway highway traffic cars aerial"),
+        "chosen": _pool(8783583, 9716239, 9716238) + _pool(9716230, query="suburban freeway highway traffic cars aerial"),
     },
-    ("moreno_valley_ca", "workplace_watch"): {"query": "warehouse loading dock semi trucks", "chosen": _pool(35501716, 1267325, 27099093)},
+    # Addendum 2: 4 of 5 montage picks failed the FULL-RESOLUTION recheck --
+    # 2800121's painted no-stopping pictograms are a European road-marking
+    # convention, not used in the US; 257636 shows the same European
+    # cab-over-style semi already rejected once for this town's jobs
+    # category; 2449454 is unambiguously Tesla's real Fremont Factory
+    # ("Welcome to Fremont Factory", "TESLA GATE 8" both clearly readable
+    # -- a specific, named real company facility, the most severe class of
+    # miss this whole pass found); 7267443 is blanketed in snow, a climate
+    # Moreno Valley's actual desert-adjacent Southern California setting
+    # never sees. Only one generic shipping-yard shot survived.
+    ("moreno_valley_ca", "workplace_watch"): {"query": "warehouse loading dock semi trucks", "chosen": _pool(35501716, 1267325, 27099093, 29348624)},
 }
 
 
@@ -220,6 +359,35 @@ def pexels_search(query: str, api_key: str, per_page: int = 8) -> list[dict]:
     )
     resp.raise_for_status()
     return resp.json().get("photos", [])
+
+
+def pexels_get_photo(photo_id: int, api_key: str) -> dict:
+    """Direct single-photo lookup -- used by --apply instead of re-searching
+    and hoping a previously-chosen id is still ranked in the top N. Pexels'
+    own search ranking drifts over time (confirmed live, Addendum 2,
+    2026-09-09: brookings_sd/city_hall's own original #1 pick, chosen and
+    downloaded weeks earlier, had fallen out of its query's top 24 results
+    entirely) -- a chosen id, once downloaded, must stay resolvable forever
+    regardless of where the query later ranks it."""
+    resp = requests.get(
+        f"https://api.pexels.com/v1/photos/{photo_id}",
+        headers={"Authorization": api_key},
+        timeout=REQUEST_TIMEOUT,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def unsplash_get_photo(photo_id: str, access_key: str) -> dict:
+    """Direct single-photo lookup -- see pexels_get_photo()'s own comment
+    for why --apply uses this instead of re-searching."""
+    resp = requests.get(
+        f"https://api.unsplash.com/photos/{photo_id}",
+        headers={"Authorization": f"Client-ID {access_key}", "Accept-Version": "v1"},
+        timeout=REQUEST_TIMEOUT,
+    )
+    resp.raise_for_status()
+    return resp.json()
 
 
 def unsplash_search(query: str, access_key: str, per_page: int = 8) -> list[dict]:
@@ -291,7 +459,12 @@ def build_montage(town: str, category: str, entry: dict, pexels_key: str) -> Pat
     (3 columns) with each cell numbered and captioned with its Pexels id +
     photographer, saved under .review_montages/. Reviewing this ONE image
     replaces viewing every candidate individually."""
-    photos = pexels_search(entry["query"], pexels_key, per_page=8)
+    # 24, not the original 8 -- Addendum 2 grows pools from 3 to up to 6,
+    # which needs real NEW candidates beyond the ones already `chosen`
+    # (Pexels' search results are stable per query, so a re-run against the
+    # same query at the old per_page=8 would show only already-decided
+    # candidates, nothing to grow the pool with).
+    photos = pexels_search(entry["query"], pexels_key, per_page=24)
     if not photos:
         print(f"  [{town}/{category}] no Pexels results for {entry['query']!r}")
         return None
@@ -304,15 +477,17 @@ def build_montage(town: str, category: str, entry: dict, pexels_key: str) -> Pat
         thumb = _resize_cover(thumb, 360, 240)
         thumbs.append((p, thumb))
 
-    cols = 3
+    cols = 4
     rows = (len(thumbs) + cols - 1) // cols
     cell_w, cell_h, caption_h = 360, 240, 24
     grid = Image.new("RGB", (cols * cell_w, rows * (cell_h + caption_h)), "white")
     draw = ImageDraw.Draw(grid)
+    already_chosen_ids = {c["id"] for c in entry.get("chosen", []) if c.get("source", "pexels") == "pexels"}
     for i, (p, thumb) in enumerate(thumbs):
         x, y = (i % cols) * cell_w, (i // cols) * (cell_h + caption_h)
         grid.paste(thumb, (x, y))
-        caption = f"#{i} id={p['id']} {p['photographer'][:20]}"
+        mark = "[IN POOL] " if p["id"] in already_chosen_ids else ""
+        caption = f"#{i} {mark}id={p['id']} {p['photographer'][:20]}"
         draw.rectangle([x, y + cell_h, x + cell_w, y + cell_h + caption_h], fill="black")
         draw.text((x + 4, y + cell_h + 4), caption, fill="white")
 
@@ -396,28 +571,13 @@ def main() -> int:
     for (town, category), entry in searches.items():
         alt = ALT_TEXT[(town, category)]
         pool: list[dict] = []
-        # Cache per QUERY, not per category -- a pool can mix picks from a
-        # refined second search (see chosen entries' own `query` field,
-        # e.g. moreno_valley_ca/city_hall pulling from both its main query
-        # and a "suburban city hall" refinement after the first query's
-        # results turned out to be famous, wrong-scale LA/Beverly Hills
-        # landmarks) alongside the category's main query.
-        pexels_cache: dict[str, list[dict]] = {}
-        unsplash_cache: dict[str, list[dict]] = {}
 
         for i, choice in enumerate(entry["chosen"], start=1):
-            source, ident, query = choice["source"], choice["id"], choice.get("query", entry["query"])
+            source, ident = choice["source"], choice["id"]
             if source == "pexels":
                 if not pexels_key:
                     raise RuntimeError("PEXELS_API_KEY required for a pexels selection")
-                if query not in pexels_cache:
-                    pexels_cache[query] = pexels_search(query, pexels_key, per_page=10)
-                photo = next((p for p in pexels_cache[query] if p["id"] == ident), None)
-                if photo is None:
-                    raise RuntimeError(
-                        f"Pexels photo id {ident} not found for {town}/{category} under query {query!r} "
-                        "-- re-run --montage"
-                    )
+                photo = pexels_get_photo(ident, pexels_key)
                 out_path = CATEGORIES_DIR / f"{town}-{category}-{i}.png"
                 print(f"[{town}/{category}] downloading Pexels photo {ident} ({i}/{len(entry['chosen'])}) ...")
                 _download_and_save_pexels(photo, out_path)
@@ -430,14 +590,7 @@ def main() -> int:
             elif source == "unsplash":
                 if not unsplash_key:
                     raise RuntimeError("UNSPLASH_ACCESS_KEY required for an unsplash selection")
-                if query not in unsplash_cache:
-                    unsplash_cache[query] = unsplash_search(query, unsplash_key, per_page=10)
-                photo = next((p for p in unsplash_cache[query] if p["id"] == ident), None)
-                if photo is None:
-                    raise RuntimeError(
-                        f"Unsplash photo id {ident} not found for {town}/{category} under query {query!r} "
-                        "-- re-run --montage"
-                    )
+                photo = unsplash_get_photo(ident, unsplash_key)
                 print(f"[{town}/{category}] hotlinking Unsplash photo {ident} ({i}/{len(entry['chosen'])}) ...")
                 hotlink = _unsplash_hotlink_entry(photo, unsplash_key)
                 pool.append({"path": hotlink["path"], "alt": alt, "attribution_html": hotlink["attribution_html"]})
