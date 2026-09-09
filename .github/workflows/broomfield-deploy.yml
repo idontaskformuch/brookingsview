@@ -1,0 +1,46 @@
+name: broomfield-deploy
+# Broomfield equivalent of deploy.yml -- see that file's own comment for the
+# full reasoning (closing the third recurrence of the "two paths into
+# production" architecture bug by replacing Cloudflare Workers Builds' own
+# git integration with a second TRIGGER for the same single deploy
+# mechanism, rather than leaving wrangler deploy reachable only from the
+# 6-hour scrape cron).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - uses: actions/setup-node@v4
+      - name: Install site deps
+        working-directory: site
+        run: npm ci
+      - name: Build (Broomfield)
+        working-directory: site
+        env:
+          SITE_CITY: broomfield_co
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
+        run: npx astro build
+      - name: Deploy to Cloudflare Workers (Broomfield)
+        working-directory: site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --env broomfield
+      - name: Kontrollera att den deployade sajten faktiskt har färskt innehåll
+        if: success()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DEPLOY_CHECK_SECRET: ${{ secrets.DEPLOY_CHECK_SECRET }}
+        run: |
+          sleep 10
+          python -m scripts.check_deployed_content --config configs/broomfield_co.json

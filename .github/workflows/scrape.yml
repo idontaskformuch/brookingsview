@@ -58,16 +58,28 @@ jobs:
           TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
         run: python -m ai_pipeline.event_deck_digest --config configs/brookings_sd.json
       # DEPLOY (se NEEDS-HUMAN-REVIEW.md #21 och #38): wrangler deploy nedan
-      # är nu den ENDA deploy-vägen. #21:s ursprungliga antagande -- att
-      # PAGES_DEPLOY_HOOK pekade på ett övergivet Pages-projekt som wrangler
-      # aldrig når -- visade sig vara FEL: Cloudflare-dashboardens
-      # Deployments-historik (2026-09-08/09) visade hook-triggade bygglogg
-      # landa i SAMMA produktionshistorik som wrangler-deployen, byggda
-      # oberoende inuti Cloudflare från vilka env-variabler som än var satta
-      # DÄR (inte de här GitHub Actions-secreten), och som ibland vann
-      # racet mot wrangler-deployen -- grundorsaken till att What's On
-      # tidvis visade sig tomt trots ett grönt, korrekt bygge. Hook-steget
-      # är därför borttaget, inte bara lämnat parallellt.
+      # är den ENDA deploy-MEKANISMEN -- men inte den enda TRIGGERN längre,
+      # se deploy.yml. #21:s ursprungliga antagande -- att PAGES_DEPLOY_HOOK
+      # pekade på ett övergivet Pages-projekt som wrangler aldrig når --
+      # visade sig vara FEL: Cloudflare-dashboardens Deployments-historik
+      # (2026-09-08/09) visade hook-triggade bygglogg landa i SAMMA
+      # produktionshistorik som wrangler-deployen, byggda oberoende inuti
+      # Cloudflare från vilka env-variabler som än var satta DÄR (inte de
+      # här GitHub Actions-secreten), och som ibland vann racet mot
+      # wrangler-deployen -- grundorsaken till att What's On tidvis visade
+      # sig tomt trots ett grönt, korrekt bygge. Hook-steget togs därför
+      # bort (inte bara lämnat parallellt) -- men SAMMA felklass återkom en
+      # tredje gång 2026-09-09 som Cloudflare Workers Builds (en separat,
+      # dashboard-konfigurerad git-integration, inte styrd av den här YAML-
+      # filen alls), byggandes med sin egen, ofullständiga hemlighetsuppsätt-
+      # ning (saknade TICKETMASTER_API_KEY). Löst genom att stänga av Workers
+      # Builds helt i Cloudflares dashboard -- inte genom att lägga till
+      # nyckeln där, vilket bara hade lämnat kvar konstruktionen med två
+      # oberoende vägar in i produktion för nästa variant av samma bugg.
+      # deploy.yml/moval-deploy.yml/broomfield-deploy.yml lades till SAMTIDIGT
+      # (samma commit) som en andra TRIGGER för exakt samma wrangler-deploy
+      # nedan, så en ren kodpush fortfarande går live inom minuter i stället
+      # för att vänta på nästa 6-timmars scrape-cron.
       - uses: actions/setup-node@v4
       - name: Install site deps
         working-directory: site
