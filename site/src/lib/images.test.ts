@@ -168,6 +168,70 @@ describe('pickFromPool', () => {
       expect(pool).toContain(pickFromPool(pool, seed));
     }
   });
+
+  describe('with exclude (image-rotation Part 2/3: within-page and across-time variety)', () => {
+    it('behaves exactly as before when exclude is omitted or empty', () => {
+      const pool = ['a', 'b', 'c'];
+      const withoutExclude = pickFromPool(pool, 'seed-1');
+      expect(pickFromPool(pool, 'seed-1', { exclude: new Set() })).toBe(withoutExclude);
+      expect(pickFromPool(pool, 'seed-1', {})).toBe(withoutExclude);
+    });
+
+    it('picks an alternative pool entry when the canonical pick is excluded', () => {
+      const pool = ['a', 'b', 'c'];
+      const canonical = pickFromPool(pool, 'seed-1');
+      const alternative = pickFromPool(pool, 'seed-1', { exclude: new Set([canonical]) });
+      expect(alternative).not.toBe(canonical);
+      expect(pool).toContain(alternative);
+    });
+
+    it('degrades to the canonical pick when every pool entry is already excluded (pool smaller than items needing one)', () => {
+      const pool = ['a', 'b', 'c'];
+      const canonical = pickFromPool(pool, 'seed-1');
+      const stillCanonical = pickFromPool(pool, 'seed-1', { exclude: new Set(pool) });
+      expect(stillCanonical).toBe(canonical);
+    });
+
+    it('a length-1 pool always returns its one entry regardless of exclude', () => {
+      expect(pickFromPool(['only'], 'seed-1', { exclude: new Set(['only']) })).toBe('only');
+    });
+
+    it('with a 2-entry pool, excluding the canonical pick deterministically alternates to the other one -- not a real "avoid history", just an alternation, honestly (see the weekly-roundup exclude comment in pages/index.astro)', () => {
+      const pool = ['a', 'b'];
+      const canonical = pickFromPool(pool, 'seed-1');
+      const other = pool.find((p) => p !== canonical)!;
+      expect(pickFromPool(pool, 'seed-1', { exclude: new Set([canonical]) })).toBe(other);
+    });
+
+    it('sequentially excluding each prior pick spreads consecutive items across the pool instead of collapsing onto the same bucket', () => {
+      // Simulates index.astro's own within-page threading: each item's pick
+      // is added to `exclude` before resolving the next one.
+      const pool = ['a', 'b', 'c'];
+      const seeds = ['weekly-2026-w35', 'today-read-2026-08-27', 'meeting-2026-08-27-1'];
+      const exclude = new Set<string>();
+      const picks: string[] = [];
+      for (const seed of seeds) {
+        const pick = pickFromPool(pool, seed, { exclude });
+        picks.push(pick);
+        exclude.add(pick);
+      }
+      // With a 3-item pool and 3 items, every pick should be distinct --
+      // this is exactly the case (WeeklyRoundup + Today's read + a lead
+      // meeting card, all category 'events'/'city_hall') the real bug
+      // report was about.
+      expect(new Set(picks).size).toBe(3);
+    });
+
+    it('respects a custom getKey for pools of objects (not bare strings)', () => {
+      const pool = [{ path: '/a.png' }, { path: '/b.png' }, { path: '/c.png' }];
+      const canonical = pickFromPool(pool, 'seed-1', { getKey: (i) => i.path });
+      const alternative = pickFromPool(pool, 'seed-1', {
+        exclude: new Set([canonical.path]),
+        getKey: (i) => i.path,
+      });
+      expect(alternative.path).not.toBe(canonical.path);
+    });
+  });
 });
 
 describe('resolveImage', () => {
@@ -370,6 +434,49 @@ describe('resolveImage', () => {
     const first = resolveImage(story, options);
     const second = resolveImage(story, options);
     expect(first).toEqual(second);
+  });
+
+  // Image-rotation follow-up, Part 2: usedImagePaths threaded through tier
+  // 4 (see that option's own doc comment on ResolveImageOptions). Real,
+  // distinct on-disk files (not the shared EXISTING_IMAGE constant, which
+  // would make "different path" assertions meaningless) so
+  // assertImageExists() exercises the real success path too.
+  const A = '/assets/images/categories/brookings_sd-events-1.png';
+  const B = '/assets/images/categories/brookings_sd-events-2.png';
+  const C = '/assets/images/categories/brookings_sd-events-3.png';
+
+  it('tier 4: usedImagePaths steers the pick away from an already-used pool entry when an alternative exists', () => {
+    const pool: ImageRef[] = [
+      { path: A, alt: 'A', width: 1200, height: 800, attributionText: 'Photo by A' },
+      { path: B, alt: 'B', width: 1200, height: 800, attributionText: 'Photo by B' },
+      { path: C, alt: 'C', width: 1200, height: 800, attributionText: 'Photo by C' },
+    ];
+    const story: ResolvableStory & { slug: string } = {
+      slug: 'event-x', title: 'Event X', source_type: 'event', image_path: null, image_alt: null, venue_raw: null,
+    };
+    const options = { ...baseOptions, categoryImages: { events: pool } };
+    const withoutExclusion = resolveImage(story, options)!;
+    const withExclusion = resolveImage(story, { ...options, usedImagePaths: new Set([withoutExclusion.path]) })!;
+    expect(withExclusion.path).not.toBe(withoutExclusion.path);
+    // Part 4: whichever entry is actually returned still carries ITS OWN
+    // attribution, not the excluded entry's or a mismatched one -- the pool
+    // entry is returned whole, never reconstructed field-by-field.
+    const matchingPoolEntry = pool.find((p) => p.path === withExclusion.path);
+    expect(withExclusion.attributionText).toBe(matchingPoolEntry?.attributionText);
+  });
+
+  it('tier 4: usedImagePaths degrades to the normal pick when every pool entry is already used', () => {
+    const pool: ImageRef[] = [
+      { path: A, alt: 'A', width: 1200, height: 800 },
+      { path: B, alt: 'B', width: 1200, height: 800 },
+    ];
+    const story: ResolvableStory & { slug: string } = {
+      slug: 'event-y', title: 'Event Y', source_type: 'event', image_path: null, image_alt: null, venue_raw: null,
+    };
+    const options = { ...baseOptions, categoryImages: { events: pool } };
+    const canonical = resolveImage(story, options);
+    const stillResolved = resolveImage(story, { ...options, usedImagePaths: new Set([A, B]) });
+    expect(stillResolved).toEqual(canonical);
   });
 
   it('tier 5: returns null, never the /og/<slug>.png social card', () => {

@@ -375,6 +375,17 @@ export interface ResolveImageOptions {
   /** Overrides the source_type-derived category -- for hub/section pages
    *  resolving their own fixed hero image rather than one item's image. */
   category?: ImageCategory | null;
+  /** Image-rotation follow-up (Part 2): paths already used elsewhere on the
+   *  SAME page being rendered, so this item's category-pool pick (tier 4
+   *  only, below) can avoid repeating one of them when an unused pool entry
+   *  exists -- see pickFromPool()'s own doc comment. Deliberately NOT
+   *  applied to tiers 1-3 (Ticketmaster/article/venue images): those are
+   *  each a genuinely distinct real photo, or -- for venue images
+   *  specifically -- a LEGITIMATE repeat (the same real venue really does
+   *  have the same photo for two different events there), not a small-pool
+   *  coincidence to route around. Omitted or empty behaves exactly as
+   *  before this option existed. */
+  usedImagePaths?: Set<string>;
 }
 
 export type ResolvableStory = Pick<Story, 'title' | 'source_type' | 'image_path' | 'image_alt' | 'venue_raw'> & {
@@ -402,13 +413,41 @@ export type ResolvableStory = Pick<Story, 'title' | 'source_type' | 'image_path'
  *  deliberately NOT random (Math.random() would reassign an already-
  *  published story's image on every rebuild for no reason). A plain
  *  string hash, not cryptographic -- collision resistance across a pool of
- *  1-5 items doesn't need anything stronger. */
-export function pickFromPool<T>(pool: T[], seed: string): T {
+ *  1-5 items doesn't need anything stronger.
+ *
+ *  Image-rotation follow-up (Part 2, "within-page variety"): the hash pick
+ *  above is each item's own canonical, stable choice, but with pools this
+ *  small (2-3 images per category -- see NEEDS-HUMAN-REVIEW.md's image-
+ *  rotation report) two DIFFERENT items on the SAME page land on the same
+ *  bucket often enough to read as broken. `options.exclude` lets a caller
+ *  rule out paths already used elsewhere on the page it's rendering: if the
+ *  canonical pick is excluded, this walks forward through the pool
+ *  (wrapping) for the first entry that isn't -- still fully deterministic
+ *  per (pool, seed, exclude-at-that-point), never random. When every entry
+ *  is already excluded (the pool is smaller than the number of items
+ *  needing one), it degrades to the canonical pick rather than returning
+ *  nothing -- Part 2's own "repetition is unavoidable then" allowance. */
+export function pickFromPool<T>(
+  pool: T[],
+  seed: string,
+  options?: { exclude?: Set<string>; getKey?: (item: T) => string },
+): T {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
     hash = (hash * 31 + seed.charCodeAt(i)) | 0;
   }
-  return pool[Math.abs(hash) % pool.length];
+  const startIndex = Math.abs(hash) % pool.length;
+  const canonical = pool[startIndex];
+  const exclude = options?.exclude;
+  if (!exclude || exclude.size === 0 || pool.length === 1) return canonical;
+
+  const getKey = options?.getKey ?? ((item: T) => String(item));
+  if (!exclude.has(getKey(canonical))) return canonical;
+  for (let offset = 1; offset < pool.length; offset++) {
+    const candidate = pool[(startIndex + offset) % pool.length];
+    if (!exclude.has(getKey(candidate))) return candidate;
+  }
+  return canonical;
 }
 
 /** The single entry point every rendering surface should call. Never
@@ -466,7 +505,10 @@ export function resolveImage(story: ResolvableStory & { slug?: string }, options
   if (category) {
     const pool = options.categoryImages[category];
     if (pool && pool.length > 0) {
-      const categoryImage = pickFromPool(pool, itemSlug);
+      const categoryImage = pickFromPool(pool, itemSlug, {
+        exclude: options.usedImagePaths,
+        getKey: (img) => img.path,
+      });
       assertImageExists(categoryImage.path, itemSlug);
       return categoryImage;
     }
