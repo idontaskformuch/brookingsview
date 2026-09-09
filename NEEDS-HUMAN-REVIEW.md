@@ -4193,3 +4193,63 @@ code change alone. Not investigated further this session (does not block
 anything live; the deploy it's checking is already confirmed correct by
 hand). Next session should confirm which of the two it is before touching
 the script itself.
+
+## 40. media_recension hero images: mismatched noun, then a worse fix, then the real one (2026-09-09)
+
+**Symptom:** a Broomfield review of "Spider-Man: Brand New Day" shipped
+with a hero image of a plate of pasta and meatballs. Not a one-off: a
+Broomfield review of Nolan's *The Odyssey* the same week got a generic
+open book with garbled text instead of anything film-related either.
+
+**First root cause, real but incomplete:** `config/image_model.py`'s
+`STYLE_PROMPTS["media_recension"]` described the subject as "the book,
+film still, dish, or venue being reviewed" — a leftover from treating this
+content type as a generic "media review" covering four kinds of subjects,
+when `content/recensioner/media_recension.py` has only ever reviewed
+film/TV (see that module's own docstring). Diffusion prompts are
+noun-sensitive: whichever of the four offered nouns is easiest/safest for
+the model to render wins. A blockbuster's "film still" effectively
+requires either a recognizable actor's face or a trademarked
+costume/logo — both already forbidden by this file's own
+`_NO_REAL_PEOPLE` guardrail — so the model fell through to "dish" (pasta)
+or "book" (Nolan) instead, at random, per title.
+
+**First fix attempt made things worse, not better.** Rewrote the style
+prompt to describe a generic movie-going scene (cinema marquee, popcorn,
+theater lobby) instead of offering four mismatched nouns, with prose
+telling the model to never depict the film's own poster art or an actor's
+likeness. Tested once against a placeholder theme and it worked. Tested
+again against the REAL Spider-Man theme text (title + article summary,
+which itself contains "Spider-Man: Brand New Day" verbatim, several
+times) and produced a full photorealistic Spider-Man suit and mask —
+a worse likeness/IP result than the original pasta mismatch, not a
+better one. **Lesson, stated plainly so it isn't relearned:** a prose
+"never depict X" instruction living in the SAME prompt as a strong,
+specific proper noun does not reliably suppress the model actually
+reading and rendering that noun. Style-prompt wording alone cannot fix
+this class of bug when the noun itself still reaches the model.
+
+**Actual fix:** stop letting the specific film's name reach the image
+model at all for this content type. `content/_base.py` now has
+`illustration_image_theme(theme, content_type)` — identical to the real
+`illustration_theme()` output for every other content type, but for
+`media_recension` specifically returns a fixed, title-agnostic theme
+("a quiet evening out at the movies... no specific film's title or
+artwork visible") regardless of which film is actually being reviewed.
+`image_alt` (accessibility text, which SHOULD name the real film) still
+uses the real theme untouched — only the string handed to the image
+generator itself is sanitized. Wired into both callers:
+`ai_pipeline/daily_content.py` (original publish) and
+`scripts/backfill_content_track_image.py` (the null-image_path backfill
+script — same bug class as #38's "found in a sibling workflow nobody
+checked," fixed in the same commit this time instead of being left open).
+
+**Verified, not assumed:** generated the sanitized theme against the real
+Spider-Man review's own DB row three separate times — all three produced
+a generic small-town cinema marquee at dusk, illegible/gibberish marquee
+text (no real film title rendered, which was never a stated requirement),
+no faces in sharp focus, no costume, no logo. Regenerated and overwrote
+the actual live file (`site/public/assets/images/
+media_recension-2026-09-09-broomfield_co.png` + its 4:3/1:1 crops) with
+one of these, replacing the pasta image, as this commit's own content —
+not just a code change nobody's confirmed against a real title yet.

@@ -34,7 +34,7 @@ load_dotenv()
 import psycopg
 
 from content import local_context, now_playing, seasonal_ingredients
-from content._base import DEFAULT_MODEL, illustration_theme, town_label
+from content._base import DEFAULT_MODEL, illustration_image_theme, illustration_theme, town_label
 from content.illustrations.generate_illustration import generate_illustration
 from content.kronikor import culture_essay, editorial, kvick_essa, vetenskap
 from content.recensioner import media_recension
@@ -208,7 +208,12 @@ def main() -> int:
         # FILENAME (not the story slug/URL) fixes the collision without
         # touching anything URL-facing.
         image_slug = f"{slug}-{town_id}"
-        saved = generate_illustration(theme, image_slug, content_type=content_type)
+        # illustration_image_theme(): identical to `theme` for every content
+        # type except media_recension, which gets a fixed, title-agnostic
+        # theme instead -- see content/_base.py's own comment for why the
+        # real film title can't safely reach the image model. image_alt
+        # below still uses the real `theme`, unaffected.
+        saved = generate_illustration(illustration_image_theme(theme, content_type), image_slug, content_type=content_type)
         if saved is not None:
             image_path = "/" + str(saved.native.relative_to(PUBLIC_DIR)).replace("\\", "/")
             image_alt = theme

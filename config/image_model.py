@@ -61,11 +61,31 @@ STYLE_PROMPTS: dict[str, str] = {
         "unposed composition, shallow depth of field, shot on a full-frame "
         "camera, muted natural color grade, no staged studio lighting"
     ),
+    # media_recension recenserar ENDAST film/TV (se content/recensioner/
+    # media_recension.py:s egen docstring, "Film-/TV-recension") -- den
+    # tidigare formuleringen erbjöd modellen fyra möjliga motiv ("the book,
+    # film still, dish, or venue") som om innehållstypen täckte alla fyra,
+    # trots att tre av dem aldrig förekommer i praktiken. Diffusionsmodeller
+    # är känsliga för vilket substantiv som är enklast/säkrast att rendera:
+    # "film still" av en storfilm kräver antingen ett igenkännbart
+    # skådespelaransikte eller en varumärkesskyddad dräkt/logga -- båda
+    # uttryckligen förbjudna av _NO_REAL_PEOPLE nedan -- vilket i praktiken
+    # tvingade modellen mot "dish" eller "book" i stället. Bekräftat live
+    # 2026-09-09: en Spider-Man-recension fick en bild på pasta med
+    # köttbullar, en Nolan-recension fick en generisk uppslagen bok med
+    # oläslig text. Det är inte enstaka felträffar -- det är exakt vad en
+    # prompt med fyra ihopblandade motiv ger. Ersatt med ett motiv som
+    # ALLTID är sant för filmrecensioner och ALDRIG kolliderar med
+    # _NO_REAL_PEOPLE: själva bio-/streamingupplevelsen, aldrig filmens
+    # egen affisch, logga eller en skådespelares ansikte.
     "media_recension": (
-        "editorial photograph of the subject itself (the book, film still, "
-        "dish, or venue being reviewed), natural light, real-world setting, "
-        "shallow depth of field, magazine-review photography style, "
-        "no staged studio lighting"
+        "editorial photograph evoking the experience of going to the movies "
+        "or streaming one at home (a cinema marquee or exterior at dusk, a "
+        "theater lobby or auditorium, popcorn and a ticket stub, a home "
+        "living room set up for movie night) -- never the reviewed film's "
+        "own poster art, title text, or any actor's likeness or costume, "
+        "natural light, real-world setting, shallow depth of field, "
+        "magazine-review photography style, no staged studio lighting"
     ),
     "vardagsmiddag": (
         "natural light food photography, shallow depth of field, rustic "

@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dotenv import load_dotenv
 load_dotenv()
 
-from content._base import illustration_theme
+from content._base import illustration_image_theme, illustration_theme
 from content.illustrations.generate_illustration import generate_illustration
 from db.db import get_conn
 
@@ -87,7 +87,10 @@ def main() -> int:
             print("  (dry-run -- no image generated, no DB write)")
             return 0
 
-        saved = generate_illustration(theme, image_slug, content_type=source_type)
+        # illustration_image_theme(): see content/_base.py's own comment --
+        # media_recension gets a fixed, title-agnostic theme for the actual
+        # image call; image_alt (below) still stores the real `theme`.
+        saved = generate_illustration(illustration_image_theme(theme, source_type), image_slug, content_type=source_type)
         if saved is None:
             print("  generation failed -- see error above. Nothing written; story stays image-less.")
             return 1

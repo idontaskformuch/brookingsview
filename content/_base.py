@@ -347,6 +347,40 @@ def illustration_theme(article: GeneratedArticle, max_words: int = 40) -> str:
     return f"{article.title}. {summary}"
 
 
+# media_recension's own theme (above) names the specific film being reviewed
+# -- e.g. "Spider-Man swings back into theaters...". That's exactly right for
+# image_alt (accessibility text should name the real film), but wrong to feed
+# into generate_illustration(): confirmed live 2026-09-09 that a prose "never
+# depict this character" instruction living in the SAME prompt as a strong
+# franchise name does not reliably override the model actually reading that
+# name -- config/image_model.py's revised media_recension style prompt still
+# produced a full photorealistic Spider-Man suit/mask when given the real
+# theme (a worse likeness/IP result than the mismatched-dish bug that
+# prompted the style rewrite in the first place). Prose guardrails can't fix
+# this; not showing the model the name at all does. Only this content type
+# gets a fixed, title-agnostic theme for the actual image call -- every
+# other content type's illustration is still grounded in its own real
+# article, which is the point of illustration_theme() and isn't the source
+# of this risk.
+_MEDIA_RECENSION_IMAGE_THEME = (
+    "A quiet evening out at the movies: a small-town cinema marquee glowing "
+    "at dusk, moviegoers walking in, no specific film's title or artwork "
+    "visible."
+)
+
+
+def illustration_image_theme(theme: str, content_type: str | None) -> str:
+    """The theme actually passed to generate_illustration() -- identical to
+    illustration_theme()'s own output for every content type except
+    media_recension (see _MEDIA_RECENSION_IMAGE_THEME's comment above).
+    Callers should keep using the real `theme` for image_alt/DB storage;
+    this function only gates what the image MODEL sees.
+    """
+    if content_type == "media_recension":
+        return _MEDIA_RECENSION_IMAGE_THEME
+    return theme
+
+
 def to_metadata(article: GeneratedArticle, category: str, slug: str,
                  image_path: str | None = None) -> dict:
     """Build the per-article metadata dict the site template renders (byline etc.)."""
