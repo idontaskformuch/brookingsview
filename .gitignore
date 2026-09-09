@@ -23,3 +23,8 @@ site/.astro/
 # scripts/eval_tone_v2.py) -- regenerated on demand, never a build artifact
 # the site itself needs, so not versioned.
 .eval_tone_v2/
+
+# scripts/source_category_images.py --montage output -- contact-sheet grids
+# for human review before filling in CATEGORY_SEARCHES' `chosen` field.
+# Regenerated on demand, never read by the site itself.
+.review_montages/

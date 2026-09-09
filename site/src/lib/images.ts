@@ -389,7 +389,7 @@ export interface ResolveImageOptions {
   usedImagePaths?: Set<string>;
 }
 
-export type ResolvableStory = Pick<Story, 'title' | 'source_type' | 'image_path' | 'image_alt' | 'venue_raw'> & {
+export type ResolvableStory = Pick<Story, 'title' | 'source_type' | 'image_path' | 'image_alt' | 'venue_raw' | 'category_image_index'> & {
   /** What's On Phase 4. Set ONLY by a caller constructing this object from
    *  a real Ticketmaster-sourced item (lib/ticketmaster.ts's
    *  TicketmasterEvent.imageUrl/imageWidth/imageHeight) -- source-driven,
@@ -428,6 +428,24 @@ export type ResolvableStory = Pick<Story, 'title' | 'source_type' | 'image_path'
  *  is already excluded (the pool is smaller than the number of items
  *  needing one), it degrades to the canonical pick rather than returning
  *  nothing -- Part 2's own "repetition is unavoidable then" allowance. */
+function walkForwardExcluding<T>(
+  pool: T[],
+  startIndex: number,
+  exclude?: Set<string>,
+  getKey?: (item: T) => string,
+): T {
+  const canonical = pool[startIndex];
+  if (!exclude || exclude.size === 0 || pool.length === 1) return canonical;
+
+  const key = getKey ?? ((item: T) => String(item));
+  if (!exclude.has(key(canonical))) return canonical;
+  for (let offset = 1; offset < pool.length; offset++) {
+    const candidate = pool[(startIndex + offset) % pool.length];
+    if (!exclude.has(key(candidate))) return candidate;
+  }
+  return canonical;
+}
+
 export function pickFromPool<T>(
   pool: T[],
   seed: string,
@@ -438,17 +456,25 @@ export function pickFromPool<T>(
     hash = (hash * 31 + seed.charCodeAt(i)) | 0;
   }
   const startIndex = Math.abs(hash) % pool.length;
-  const canonical = pool[startIndex];
-  const exclude = options?.exclude;
-  if (!exclude || exclude.size === 0 || pool.length === 1) return canonical;
+  return walkForwardExcluding(pool, startIndex, options?.exclude, options?.getKey);
+}
 
-  const getKey = options?.getKey ?? ((item: T) => String(item));
-  if (!exclude.has(getKey(canonical))) return canonical;
-  for (let offset = 1; offset < pool.length; offset++) {
-    const candidate = pool[(startIndex + offset) % pool.length];
-    if (!exclude.has(getKey(candidate))) return candidate;
-  }
-  return canonical;
+/** Image pool rotation (Addendum 2): the SAME within-page exclude-walk
+ *  pickFromPool() already does, but starting from a story's own DURABLE
+ *  rotation slot (stories.category_image_index, an ever-incrementing
+ *  counter -- see db/migrations/043_category_image_rotation.sql) instead
+ *  of a hash of its seed string. `% pool.length` here, not at write time
+ *  (ai_pipeline/assign_category_image_rotation.py never mods against a
+ *  pool size it has no way to know) -- so a pool that later grows or
+ *  shrinks doesn't invalidate an already-assigned index, it just wraps
+ *  differently. */
+export function pickFromPoolByIndex<T>(
+  pool: T[],
+  rotationIndex: number,
+  options?: { exclude?: Set<string>; getKey?: (item: T) => string },
+): T {
+  const startIndex = ((rotationIndex % pool.length) + pool.length) % pool.length;
+  return walkForwardExcluding(pool, startIndex, options?.exclude, options?.getKey);
 }
 
 /** Image-rotation follow-up (Part 3, "across-time variety"): the
@@ -529,16 +555,27 @@ export function resolveImage(story: ResolvableStory & { slug?: string }, options
     }
   }
 
-  // 4. Category image -- deterministically picked from that category's
-  // pool (see pickFromPool()), not always the pool's first/only entry.
+  // 4. Category image -- picked from that category's pool, not always the
+  // pool's first/only entry. Image pool rotation (Addendum 2): a story
+  // with an assigned rotation slot (category_image_index, set by
+  // ai_pipeline/assign_category_image_rotation.py) uses that durable slot
+  // via pickFromPoolByIndex(); one without (not yet caught up by that
+  // script's next run, or predating this feature) falls back to the
+  // original stable per-item hash pick (pickFromPool()) -- either way
+  // deterministic, never random, never imageless while waiting.
   const category = options.category ?? categoryForSourceType(story.source_type);
   if (category) {
     const pool = options.categoryImages[category];
     if (pool && pool.length > 0) {
-      const categoryImage = pickFromPool(pool, itemSlug, {
-        exclude: options.usedImagePaths,
-        getKey: (img) => img.path,
-      });
+      const categoryImage = story.category_image_index != null
+        ? pickFromPoolByIndex(pool, story.category_image_index, {
+            exclude: options.usedImagePaths,
+            getKey: (img) => img.path,
+          })
+        : pickFromPool(pool, itemSlug, {
+            exclude: options.usedImagePaths,
+            getKey: (img) => img.path,
+          });
       assertImageExists(categoryImage.path, itemSlug);
       return categoryImage;
     }

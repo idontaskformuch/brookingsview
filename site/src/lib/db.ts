@@ -161,6 +161,15 @@ export interface Story {
   // innehåll OCH för ett gratis-event som ännu inte hunnit genereras.
   // Optional av samma skäl som venue_raw ovan.
   free_teaser?: string | null;
+  // Image pool rotation (Addendum 2, db/migrations/043) -- the durable
+  // category-pool slot ai_pipeline/assign_category_image_rotation.py
+  // assigned this story, an ever-incrementing counter NOT modded against
+  // any pool size (see that migration's own comment). NULL until that
+  // script's next run catches it up, and for any story that never needs
+  // tier 4 at all -- resolveImage() falls back to its existing stable
+  // hash-pick when this is null, so a story is never left imageless while
+  // waiting. Optional for the same reason venue_raw is.
+  category_image_index?: number | null;
 }
 
 export interface Game {
@@ -276,7 +285,7 @@ export async function getUpcomingStories(
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at, free_teaser
+           venue_raw, is_recurring_series, ends_at, category_image_index, free_teaser
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
@@ -353,7 +362,7 @@ export async function getPastStories(
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at
+           venue_raw, is_recurring_series, ends_at, category_image_index
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
@@ -379,7 +388,7 @@ export async function getTodaysFeature(): Promise<Story | null> {
   const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at
+           venue_raw, is_recurring_series, ends_at, category_image_index
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${CONTENT_TRACK_TYPES})
@@ -398,7 +407,7 @@ export async function getContentByType(sourceTypes: SourceType[], limit = 40): P
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at
+           venue_raw, is_recurring_series, ends_at, category_image_index
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
@@ -425,7 +434,7 @@ export async function getStoriesForNewsSitemap(): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at
+           venue_raw, is_recurring_series, ends_at, category_image_index
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type != 'vardagsmiddag'
@@ -438,7 +447,7 @@ export async function getStoryBySlug(slug: string): Promise<Story | null> {
   const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at
+           venue_raw, is_recurring_series, ends_at, category_image_index
       FROM stories
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
      LIMIT 1
@@ -451,7 +460,7 @@ export async function getAllStories(): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at
+           venue_raw, is_recurring_series, ends_at, category_image_index
       FROM stories
      WHERE town_id = ${TOWN_ID}
      ORDER BY occurs_at DESC NULLS LAST
@@ -492,7 +501,7 @@ export async function getLatestWeekly(): Promise<Story | null> {
   const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at
+           venue_raw, is_recurring_series, ends_at, category_image_index
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = 'weekly'
@@ -528,7 +537,7 @@ export async function getStoriesForWeekly(sourceTypes: SourceType[]): Promise<St
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at, featured
+           venue_raw, is_recurring_series, ends_at, category_image_index, featured
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
@@ -573,7 +582,7 @@ export async function getRelatedStories(
   const sameType = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at
+           venue_raw, is_recurring_series, ends_at, category_image_index
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND slug <> ${story.slug}
@@ -594,7 +603,7 @@ export async function getRelatedStories(
   const filler = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at
+           venue_raw, is_recurring_series, ends_at, category_image_index
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND slug <> ALL(${seen})

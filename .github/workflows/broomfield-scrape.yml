@@ -45,6 +45,10 @@ jobs:
         env:
           TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
         run: python -m ai_pipeline.event_deck_digest --config configs/broomfield_co.json
+      # Image pool rotation -- see scrape.yml's identical step for the full
+      # comment.
+      - name: Image pool rotation (category images)
+        run: python -m ai_pipeline.assign_category_image_rotation --config configs/broomfield_co.json
       - uses: actions/setup-node@v4
       - name: Install site deps
         working-directory: site

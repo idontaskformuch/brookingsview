@@ -57,6 +57,16 @@ jobs:
         env:
           TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
         run: python -m ai_pipeline.event_deck_digest --config configs/brookings_sd.json
+      # Image pool rotation (Addendum 2): assigns any story published since
+      # the last run a durable, round-robin slot in its category's image
+      # pool (site/src/lib/images.ts's resolveImage() reads it at build
+      # time below) -- see that script's own module docstring for why this
+      # scans broadly for "any story missing a slot" rather than being
+      # wired into every individual publish/digest step that can insert a
+      # story (eleven separate files, no single chokepoint). Runs before
+      # the build so a freshly-assigned slot is live same-run.
+      - name: Image pool rotation (category images)
+        run: python -m ai_pipeline.assign_category_image_rotation --config configs/brookings_sd.json
       # DEPLOY (se NEEDS-HUMAN-REVIEW.md #21 och #38): wrangler deploy nedan
       # är den ENDA deploy-MEKANISMEN -- men inte den enda TRIGGERN längre,
       # se deploy.yml. #21:s ursprungliga antagande -- att PAGES_DEPLOY_HOOK

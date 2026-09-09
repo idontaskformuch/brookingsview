@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   normalizeVenueText, extractTitleVenuePrefix, buildNameAliasIndex,
   resolveVenueSlugForImage, categoryForSourceType, dedupeConsecutiveImages,
-  resolveImage, pickFromPool, requiredCategoriesFor, assertCategoryImagesComplete,
+  resolveImage, pickFromPool, pickFromPoolByIndex, requiredCategoriesFor, assertCategoryImagesComplete,
   findContentTrackRowsMissingImage, withThumbnailCrop, contentTrackCropPaths,
   previousWeekRoundupImagePath,
   type ImageRef, type ResolvableStory,
@@ -232,6 +232,37 @@ describe('pickFromPool', () => {
       });
       expect(alternative.path).not.toBe(canonical.path);
     });
+  });
+});
+
+describe('pickFromPoolByIndex (image pool rotation, Addendum 2)', () => {
+  it('picks the exact slot for an in-range index', () => {
+    const pool = ['a', 'b', 'c'];
+    expect(pickFromPoolByIndex(pool, 0)).toBe('a');
+    expect(pickFromPoolByIndex(pool, 1)).toBe('b');
+    expect(pickFromPoolByIndex(pool, 2)).toBe('c');
+  });
+
+  it('wraps via modulo for an index at or beyond the pool length -- a pool that shrank since assignment', () => {
+    const pool = ['a', 'b', 'c'];
+    expect(pickFromPoolByIndex(pool, 3)).toBe('a');
+    expect(pickFromPoolByIndex(pool, 4)).toBe('b');
+    expect(pickFromPoolByIndex(pool, 100)).toBe(pool[100 % 3]);
+  });
+
+  it('successive indices visit the pool in strict round-robin order -- the actual point of this over a hash', () => {
+    const pool = ['a', 'b', 'c'];
+    const visited = [0, 1, 2, 3, 4, 5].map((i) => pickFromPoolByIndex(pool, i));
+    expect(visited).toEqual(['a', 'b', 'c', 'a', 'b', 'c']);
+  });
+
+  it('respects exclude the same way pickFromPool does', () => {
+    const pool = ['a', 'b', 'c'];
+    expect(pickFromPoolByIndex(pool, 0, { exclude: new Set(['a']) })).toBe('b');
+  });
+
+  it('a length-1 pool always returns its one entry regardless of index', () => {
+    expect(pickFromPoolByIndex(['only'], 47)).toBe('only');
   });
 });
 
@@ -520,6 +551,75 @@ describe('resolveImage', () => {
     const canonical = resolveImage(story, options);
     const stillResolved = resolveImage(story, { ...options, usedImagePaths: new Set([A, B]) });
     expect(stillResolved).toEqual(canonical);
+  });
+
+  // Image pool rotation (Addendum 2): a story with a stored
+  // category_image_index uses that durable slot instead of the seed hash.
+  it('tier 4: category_image_index picks the slot at that index (mod pool length)', () => {
+    const pool: ImageRef[] = [
+      { path: A, alt: 'A', width: 1200, height: 800 },
+      { path: B, alt: 'B', width: 1200, height: 800 },
+      { path: C, alt: 'C', width: 1200, height: 800 },
+    ];
+    const story: ResolvableStory = {
+      title: 'Event', source_type: 'event', image_path: null, image_alt: null,
+      venue_raw: null, category_image_index: 1,
+    };
+    const result = resolveImage(story, { ...baseOptions, categoryImages: { events: pool } });
+    expect(result?.path).toBe(B);
+  });
+
+  it('tier 4: category_image_index wraps via modulo when it exceeds the pool length (pool shrank since assignment)', () => {
+    const pool: ImageRef[] = [
+      { path: A, alt: 'A', width: 1200, height: 800 },
+      { path: B, alt: 'B', width: 1200, height: 800 },
+    ];
+    const story: ResolvableStory = {
+      title: 'Event', source_type: 'event', image_path: null, image_alt: null,
+      venue_raw: null, category_image_index: 5, // 5 % 2 === 1
+    };
+    const result = resolveImage(story, { ...baseOptions, categoryImages: { events: pool } });
+    expect(result?.path).toBe(B);
+  });
+
+  it('tier 4: category_image_index of 0 is honored, not treated as falsy/missing', () => {
+    const pool: ImageRef[] = [
+      { path: A, alt: 'A', width: 1200, height: 800 },
+      { path: B, alt: 'B', width: 1200, height: 800 },
+    ];
+    const story: ResolvableStory = {
+      title: 'Event', source_type: 'event', image_path: null, image_alt: null,
+      venue_raw: null, category_image_index: 0,
+    };
+    const result = resolveImage(story, { ...baseOptions, categoryImages: { events: pool } });
+    expect(result?.path).toBe(A);
+  });
+
+  it('tier 4: falls back to the seed hash pick when category_image_index is null (not yet assigned)', () => {
+    const pool: ImageRef[] = [
+      { path: EXISTING_IMAGE, alt: 'A', width: 1200, height: 800 },
+    ];
+    const story: ResolvableStory = {
+      title: 'Event', source_type: 'event', image_path: null, image_alt: null,
+      venue_raw: null, category_image_index: null,
+    };
+    const result = resolveImage(story, { ...baseOptions, categoryImages: { events: pool } });
+    expect(result?.path).toBe(EXISTING_IMAGE);
+  });
+
+  it('tier 4: usedImagePaths still steers away from the indexed slot when an alternative exists', () => {
+    const pool: ImageRef[] = [
+      { path: A, alt: 'A', width: 1200, height: 800 },
+      { path: B, alt: 'B', width: 1200, height: 800 },
+    ];
+    const story: ResolvableStory = {
+      title: 'Event', source_type: 'event', image_path: null, image_alt: null,
+      venue_raw: null, category_image_index: 0,
+    };
+    const result = resolveImage(story, {
+      ...baseOptions, categoryImages: { events: pool }, usedImagePaths: new Set([A]),
+    });
+    expect(result?.path).toBe(B);
   });
 
   it('tier 5: returns null, never the /og/<slug>.png social card', () => {
