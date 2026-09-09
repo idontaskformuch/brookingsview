@@ -34,6 +34,8 @@ const activeCity = env.SITE_CITY ?? 'brookings_sd';
 // module scope, which isn't available yet when this file evaluates, so it
 // can't be imported directly here. Keep both in sync by hand.
 const BRAND_TOKENS = {
+  brookings_sd: { accent: '#746311', accentInk: '#473d0a' },
+  moreno_valley_ca: { accent: '#4f6b2e', accentInk: '#38491f' },
   broomfield_co: { accent: '#2d7980', accentInk: '#124549' },
 };
 

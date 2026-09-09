@@ -210,10 +210,21 @@ const path = Astro.url.pathname;
 
 <style is:global>
 :root {
-  --paper: #f4f6f7;
+  /* Sitewide presentation-layer pass: retuned to a warmer, quieter neutral
+     scale (was #f4f6f7/#14120f/#4d5862/#c9d3da) -- same editorial intent as
+     before, just closer to newsprint than to a UI grey. --ink-faint is new: a
+     third text tier (timestamps, drive-time, captions) below --ink-soft
+     (decks, venue lines, secondary copy). --paper-raised is a new alias for
+     --surface's existing value -- --surface itself stays defined and in use
+     (17 other files reference it) rather than being renamed for zero visual
+     change; new/touched components should prefer --paper-raised going
+     forward. */
+  --paper: #fbfaf7;
   --surface: #ffffff;
-  --ink: #14120f;
-  --ink-soft: #4d5862;
+  --paper-raised: #ffffff;
+  --ink: #161614;
+  --ink-soft: #55554f;
+  --ink-faint: #8a8a82;
   /* Marinblå bär struktur och förtroende (12.6:1 mot papperet).
      Orange är enbart CTA -- "läs mer", knappar, aktiva lägen.
      Rött enbart varningar, skilt från CTA så en värmevarning aldrig ser ut
@@ -224,8 +235,8 @@ const path = Astro.url.pathname;
   --accent-tint: #fbede4;
   --alert: #b91c1c;
   --alert-tint: #d3e2f2;
-  --rule: #c9d3da;
-  --rule-strong: #14120f;
+  --rule: rgba(22, 22, 20, 0.11);
+  --rule-strong: rgba(22, 22, 20, 0.22);
 
   --font-head: 'Newsreader', Georgia, 'Times New Roman', serif;
   --font-ui: 'Bricolage Grotesque', system-ui, sans-serif;

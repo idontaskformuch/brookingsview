@@ -161,9 +161,12 @@ export interface SiteConfig {
    *  same cross-layer duplication tradeoff as this file's other astro.config
    *  mirrors, needed because astro.config.mjs evaluates before this file's
    *  own import.meta.env-based SITE_CITY read is available). Broomfield-only
-   *  for v1 (rollout order, not a technical limitation) -- Brookings and
-   *  Moreno Valley are still working through the August indexing backlog
-   *  and shouldn't absorb a site-wide render change until that clears. */
+   *  through v1 (rollout order, not a technical limitation -- Brookings and
+   *  Moreno Valley were still working through the August indexing backlog
+   *  and shouldn't have absorbed a site-wide render change until that
+   *  cleared). Completed for all three towns in the sitewide presentation-
+   *  layer pass -- see each town's own `brand` value below for its hue
+   *  reasoning and contrast ratios. */
   brand?: { accent: string; accentInk: string };
   /** What's On Phase 3: Ticketmaster Discovery API adapter (lib/
    *  ticketmaster.ts). Object-shaped (not a bare boolean) the same way
@@ -192,7 +195,8 @@ export interface SiteConfig {
    *  (Inland Empire, Denver) where the right radius is a real editorial
    *  call, not a small-city default; Ticketmaster isn't enabled for either
    *  yet, so there's no urgency to guess. Flagged as a Phase 7 follow-up
-   *  decision, not made here. */
+   *  decision, not made here (since resolved -- see each town's own
+   *  `ticketmaster` value below; all three now have a real radius). */
   ticketmaster?: { enabled: boolean; latitude: number; longitude: number; radiusMiles: number };
 }
 
@@ -261,6 +265,17 @@ const CITIES: Record<string, SiteConfig> = {
         detail: '$5 tickets all day Tuesdays; expanded-legroom seating.',
       },
     ],
+    // Local Accent Identity, sitewide presentation-layer pass: Brookings'
+    // and Moreno Valley's own values, completing the rollout Broomfield
+    // started (v1 was Broomfield-only pending the August indexing backlog
+    // clearing -- see this field's own doc comment above). A muted harvest
+    // gold (H50) -- South Dakota wheat country, deliberately not the shared
+    // CTA orange (H17) or the `traffic` section accent (H30), far enough in
+    // hue from both to never read as either. Both values verified via
+    // lib/accent-contrast.ts against real WCAG minimums, not eyeballed --
+    // accent 5.94:1 / accentInk 10.83:1 against the page background. Mirror
+    // this exactly in astro.config.mjs's BRAND_TOKENS.
+    brand: { accent: '#746311', accentInk: '#473d0a' },
   },
 
   moreno_valley_ca: {
@@ -349,6 +364,15 @@ const CITIES: Record<string, SiteConfig> = {
         detail: 'A discount second-run house — tickets run well below first-run prices; free lot parking.',
       },
     ],
+    // Local Accent Identity, sitewide presentation-layer pass: see
+    // Brookings' identical comment above for the rollout context. A muted
+    // sage/chaparral green (H88) -- Inland Empire high-desert scrub,
+    // deliberately distinct in hue from the `events` section green (H143)
+    // and from Broomfield's own teal (H185). Both values verified via
+    // lib/accent-contrast.ts -- accent 6.04:1 / accentInk 9.81:1 against the
+    // page background. Mirror this exactly in astro.config.mjs's
+    // BRAND_TOKENS.
+    brand: { accent: '#4f6b2e', accentInk: '#38491f' },
   },
 
   broomfield_co: {
