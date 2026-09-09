@@ -381,7 +381,11 @@ const eventJsonLdObject = buildEventJsonLd(
   border-left: 4px solid var(--navy);
   font-size: 0.9375rem;
 }
-.story__body { margin-top: 1.75rem; font-size: 1.125rem; }
+/* Sitewide presentation-layer pass: serif reading measure capped at 68
+   characters, ch-based (not the page shell's own 38rem above) so it tracks
+   this element's own font-size rather than an arbitrary fixed width --
+   hero/headline/meta rules stand unchanged. */
+.story__body { margin-top: 1.75rem; font-size: 1.125rem; max-width: 68ch; }
 .story__body p { margin: 0 0 1rem; }
 .story__zip-links { color: var(--ink-soft); font-size: 0.875rem; margin: -0.5rem 0 1.25rem; }
 .story__venue-link { color: var(--ink-soft); font-size: 0.875rem; margin: -0.5rem 0 1.25rem; }

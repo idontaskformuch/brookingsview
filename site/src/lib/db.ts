@@ -1470,6 +1470,15 @@ export interface Facility {
   // image_path/image_alt above.
   image_attribution_text: string | null;
   image_attribution_url: string | null;
+  // Also added by db/migrations/028_facility_image_attribution.sql (see
+  // that migration's own comment): true when a venue could NOT be matched
+  // to a real photo of that specific building -- "a punch list for a human
+  // to revisit later... not rendered anywhere on the site itself" per the
+  // migration's own original scope. Sitewide presentation-layer pass:
+  // exposed to the frontend for the first time so /facilities can honor it
+  // directly (never render an unverified image, text-only instead) rather
+  // than relying solely on image_path staying NULL for that case.
+  image_needs_review: boolean;
   // Added by db/migrations/036_free_teasers.sql for the /events/free/
   // "Always free" facilities section -- a short, one-time-generated
   // paragraph (see ai_pipeline/free_teasers.py) framing this facility for
@@ -1519,7 +1528,7 @@ export async function getFacilities(): Promise<Facility[]> {
            hours_text, description, source_url, verified_date,
            aliases, street_address, postal_code, lat, lon,
            image_path, image_alt, name_aliases,
-           image_attribution_text, image_attribution_url, free_teaser,
+           image_attribution_text, image_attribution_url, image_needs_review, free_teaser,
            hours_structured, hours_needs_review
       FROM facilities
      WHERE town_id = ${TOWN_ID}
@@ -1573,7 +1582,7 @@ export async function getFacilityBySlug(slug: string): Promise<Facility | null> 
            hours_text, description, source_url, verified_date,
            aliases, street_address, postal_code, lat, lon,
            image_path, image_alt, name_aliases,
-           image_attribution_text, image_attribution_url, free_teaser,
+           image_attribution_text, image_attribution_url, image_needs_review, free_teaser,
            hours_structured, hours_needs_review
       FROM facilities
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}

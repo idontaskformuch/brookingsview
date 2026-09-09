@@ -24,8 +24,8 @@ function facility(overrides: Partial<Facility>): Facility {
     website: null, hours_text: null, description: null, source_url: null,
     verified_date: null, aliases: [], street_address: null, postal_code: null,
     lat: null, lon: null, image_path: null, image_alt: null, name_aliases: [],
-    image_attribution_text: null, image_attribution_url: null, free_teaser: null,
-    hours_structured: null, hours_needs_review: false,
+    image_attribution_text: null, image_attribution_url: null, image_needs_review: false,
+    free_teaser: null, hours_structured: null, hours_needs_review: false,
     ...overrides,
   };
 }
