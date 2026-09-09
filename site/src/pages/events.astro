@@ -20,8 +20,10 @@ import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-json
 // "Arts & Culture" (SDSU) / "Around Town" (library, city, chamber, ...) --
 // bara Brookings har den här campus-vs-townwide-uppdelningen att göra (se
 // scrapers/parsers/sdsu_events_v1.py:s "EDITORIAL-OMORGANISERING"). Andra
-// orter (Moreno Valley) har inget SDSU-motstycke, så deras events behåller
-// StoryCard.astro:s vanliga generiska "Events"-kicker oförändrad.
+// orter (Moreno Valley) har inget SDSU-motstycke, så deras events lämnas
+// utan override -- StoryCard.astro visar då ingen kicker alls längre för en
+// vanlig 'event'-rad (sitewide presentation-layer pass, R4: sidans egen
+// rubrik säger redan "Events", en upprepad generisk kicker var bara brus).
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const townwideKicker = isBrookings ? 'Around Town' : undefined;
 

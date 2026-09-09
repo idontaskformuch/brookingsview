@@ -42,8 +42,13 @@ const timeLabel = hasByline
 // datetime={...}, that renders in the build machine's local timezone).
 const timeSource = hasByline ? story.published_at : when;
 const timeMachineValue = timeSource ? new Date(timeSource).toISOString() : null;
+// R4 (sitewide presentation-layer pass): see StoryCard.astro's identical
+// comment -- two or more of these sit side by side (unlike LeadStory,
+// which is a single card, not a repeated row), so a plain 'event' card's
+// generic "Events" kicker was exactly the visible near-adjacent repetition
+// R4 targets. Every other kicker value still carries real information.
 const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall'
-  : hasByline ? (CATEGORY_LABELS[story.source_type] ?? 'Feature') : 'Events';
+  : hasByline ? (CATEGORY_LABELS[story.source_type] ?? 'Feature') : null;
 
 // Same resolution as the lead -- a secondary card can be the "fail down"
 // destination for a would-be lead with no image anywhere (§1), so this
@@ -70,12 +75,14 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
     </a>
   )}
   {heroImage && <ImageAttribution image={heroImage} />}
-  <p class="secondary__kicker">
-    <span class="kicker">{kicker}</span>
-    {timeLabel && timeMachineValue && (
-      <time class="secondary__when data" datetime={timeMachineValue}>{timeLabel}</time>
-    )}
-  </p>
+  {(kicker || (timeLabel && timeMachineValue)) && (
+    <p class="secondary__kicker">
+      {kicker && <span class="kicker">{kicker}</span>}
+      {timeLabel && timeMachineValue && (
+        <time class="secondary__when data" datetime={timeMachineValue}>{timeLabel}</time>
+      )}
+    </p>
+  )}
   <h3 class="secondary__title"><a href={`/s/${story.slug}/`}>{story.title}</a></h3>
 </article>
 

@@ -102,23 +102,65 @@ const timeLabel = hasByline
 const timeSource = hasByline ? story.published_at : when;
 const timeMachineValue = timeSource ? new Date(timeSource).toISOString() : null;
 
+// R4 (sitewide presentation-layer pass): a plain 'event' row's kicker used
+// to say the literal word "Events" -- zero differentiating information,
+// exactly the handoff's own "EVENTS, EVENTS, EVENTS" example, since every
+// page that lists these rows already establishes "this is about events" via
+// its own heading/SectionRule. Every OTHER kicker value below still carries
+// REAL information in a mixed list -- a meeting reads differently from an
+// event; a content-track category; an explicit per-caller override (e.g.
+// events.astro's "Arts & Culture" vs "Around Town" distinguishing two real
+// sub-groups on the SAME page) -- so only the generic fallback is dropped,
+// nothing else. `null` here means "no kicker line at all" for that row, not
+// an empty string.
 const kicker = kickerOverride ?? (isAlert ? 'Alert' : isMeeting ? 'City hall'
-  : hasByline ? (CATEGORY_LABELS[story.source_type] ?? 'Feature') : 'Events');
+  : hasByline ? (CATEGORY_LABELS[story.source_type] ?? 'Feature') : null);
 
-const chip = CHIP[categoryForSourceType(story.source_type) as ImageCategory] ?? null;
+// The chip is the SAME information as `kicker`, just as a colored dot --
+// showing one without the other would just move the redundancy from text
+// to color, so it's gated on `kicker` being present too.
+const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCategory] ?? null) : null;
 ---
-<article class:list={['item', isAlert && 'item--alert']}>
-  <p class="item__kicker">
-    {chip && <span class="item__chip" style={`--chip-color: ${chip.color}`} aria-hidden="true">{chip.icon}</span>}
-    <span class="kicker">{kicker}</span>
-    {timeLabel && timeMachineValue && (
-      <time class="item__when data" datetime={timeMachineValue}>{timeLabel}</time>
-    )}
-  </p>
-  <h3 class="item__title"><a href={href} rel={isExternal ? 'noopener' : undefined}>{story.title}</a></h3>
-  {!compact && <p class="item__body">{story.body}</p>}
-  {!compact && hasByline && !isExternal && (
-    <ShareButtons url={shareUrl} title={story.title} />
+<article class:list={['item', isAlert ? 'item--alert' : 'item--row']}>
+  {isAlert ? (
+    /* Alerts keep their existing stacked layout -- a bordered severity
+       box (genuine active state, R2), not a plain chronological list row.
+       R5's compact time rail is for scanning a LIST; an alert's own full
+       "date · time" string doesn't fit a 46px column and alerts aren't
+       part of the list rhythm the rail exists to help with. */
+    <>
+      <p class="item__kicker">
+        <span class="kicker">{kicker}</span>
+        {timeLabel && timeMachineValue && (
+          <time class="item__when data" datetime={timeMachineValue}>{timeLabel}</time>
+        )}
+      </p>
+      <h3 class="item__title"><a href={href} rel={isExternal ? 'noopener' : undefined}>{story.title}</a></h3>
+      {!compact && <p class="item__body">{story.body}</p>}
+    </>
+  ) : (
+    <>
+      {/* R5: time in a fixed-width left rail, title in serif to its
+          right -- one column to scan instead of a ragged edge. */}
+      <div class="item__rail">
+        {timeLabel && timeMachineValue && (
+          <time class="item__when data" datetime={timeMachineValue}>{timeLabel}</time>
+        )}
+      </div>
+      <div class="item__content">
+        {kicker && (
+          <p class="item__kicker">
+            {chip && <span class="item__chip" style={`--chip-color: ${chip.color}`} aria-hidden="true">{chip.icon}</span>}
+            <span class="kicker">{kicker}</span>
+          </p>
+        )}
+        <h3 class="item__title"><a href={href} rel={isExternal ? 'noopener' : undefined}>{story.title}</a></h3>
+        {!compact && <p class="item__body">{story.body}</p>}
+        {!compact && hasByline && !isExternal && (
+          <ShareButtons url={shareUrl} title={story.title} />
+        )}
+      </div>
+    </>
   )}
 </article>
 
@@ -136,6 +178,12 @@ const chip = CHIP[categoryForSourceType(story.source_type) as ImageCategory] ?? 
   margin-bottom: 0.75rem;
 }
 .item--alert .kicker { color: var(--alert); }
+
+/* R5: the fixed-width left rail (non-alert rows only -- alerts stay
+   single-column, see the template's own comment). */
+.item--row { display: flex; gap: 0.875rem; }
+.item__rail { flex: 0 0 46px; width: 46px; padding-top: 0.1875rem; }
+.item__content { min-width: 0; flex: 1 1 auto; }
 
 .item__kicker {
   display: flex;
@@ -159,8 +207,9 @@ const chip = CHIP[categoryForSourceType(story.source_type) as ImageCategory] ?? 
   font-size: 0.6875rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--ink-soft);
+  color: var(--ink-faint, var(--ink-soft));
 }
+.item--row .item__when { text-transform: none; letter-spacing: 0; font-size: 0.8125rem; }
 .item__title { margin: 0; font-size: 1.1875rem; line-height: 1.15; }
 .item__title a { color: inherit; text-decoration: none; }
 .item__title a:hover { color: var(--navy); text-decoration: underline; }
