@@ -54,6 +54,16 @@ jobs:
         env:
           SITE_CITY: brookings_sd
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Missing here until 2026-09-09 -- this job's own wrangler deploy
+          # below pushes straight to production on a weekday-morning
+          # schedule sandwiched between the 6-hourly scrape.yml runs, so a
+          # build without this key silently emptied /whats-on/ every
+          # weekday morning (fetchTicketmasterEvents() returns [] on a
+          # missing key rather than crashing) until the next scrape.yml run
+          # overwrote it back -- the same short-lived-empty-page symptom as
+          # the competing-deploy race (see NEEDS-HUMAN-REVIEW.md #38), just
+          # on a different schedule and a different cause.
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
         run: npx astro build
       - name: Deploy to Cloudflare Workers (Brookings)
         working-directory: site

@@ -38,6 +38,9 @@ jobs:
         env:
           SITE_CITY: moreno_valley_ca
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # See closure-watch-morning.yml's identical fix/comment -- same
+          # missing-key bug, same fix, same reasoning.
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
         run: npx astro build
       - name: Deploy to Cloudflare Workers (Moreno Valley)
         working-directory: site
