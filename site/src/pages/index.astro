@@ -29,6 +29,7 @@ import SchoolAlertBanner from '../components/SchoolAlertBanner.astro';
 import TrafficWidget from '../components/TrafficWidget.astro';
 import Tile from '../components/Tile.astro';
 import CityStatus from '../components/CityStatus.astro';
+import MarqueeCard from '../components/MarqueeCard.astro';
 import {
   getUpcomingStories, getActiveAlerts, getUpcomingGames, getNextRegionalGame,
   getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
@@ -42,6 +43,8 @@ import { todayUtcMidnight } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { resolveImage, dedupeConsecutiveImages, withThumbnailCrop, previousWeekRoundupImagePath } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
+import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
+import { rankTicketmasterEvents, collapseMarqueeRuns, ticketmasterResolvableImage, type MarqueeEntry } from '../lib/whats-on';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
@@ -238,6 +241,42 @@ const employerJobStats = siteConfig.hasWorkplaceWatch ? await getEmployerJobStat
 // Samma resonemang: bara hämtat för Broomfield, tabellen är alltid tom för
 // de andra två (town_id-scopad, se db/migrations/029_vail_news.sql).
 const latestVailNews = isBroomfield ? await getLatestVailNewsItem() : null;
+
+// Sitewide presentation-layer pass -- the marquee module. Same
+// rank/collapse pipeline lib/cityStatus.ts's buildWhatsOnStatus() already
+// uses for the status-line mention, but that one only ever needs TEXT
+// (title + distance); this needs an actual resolvable IMAGE, since the
+// whole point of the marquee module is Ticketmaster being the one feed
+// with licensed photography. Promotes the highest-ranked entry that
+// actually resolves to a real image -- skipping (not just deprioritizing)
+// any higher-ranked entry that doesn't, per the handoff's own "do not
+// render a 16:9 placeholder" rule. Skipped/lower-ranked entries can still
+// appear in the "also on" rail below, but ONLY if they too have a real
+// image (the front-page module is exclusively for imaged items -- a
+// text-only "also on" row belongs to /whats-on's own dense list, not
+// here). Omitted entirely (both consts stay null/empty) when hasWhatsOn is
+// off or nothing in the whole ranked list has an image -- no placeholder,
+// no module.
+const whatsOnItems = siteConfig.hasWhatsOn ? await getTicketmasterEventsForTown(siteConfig) : [];
+const whatsOnEntries = collapseMarqueeRuns(rankTicketmasterEvents(whatsOnItems, siteConfig.townId));
+let marqueeHero: { entry: MarqueeEntry; image: NonNullable<ReturnType<typeof resolveImage>> } | null = null;
+const marqueeAlsoOn: { entry: MarqueeEntry; image: NonNullable<ReturnType<typeof resolveImage>> }[] = [];
+for (const entry of whatsOnEntries) {
+  const image = resolveImage(ticketmasterResolvableImage(entry.primary), {
+    town: siteConfig.townId,
+    cityName: siteConfig.cityName,
+    facilities,
+    categoryImages: categoryImagesFor(siteConfig.townId),
+  });
+  if (!image) continue;
+  if (!marqueeHero) {
+    marqueeHero = { entry, image };
+  } else if (marqueeAlsoOn.length < 2) {
+    marqueeAlsoOn.push({ entry, image });
+  } else {
+    break;
+  }
+}
 const topEmployer = employerRatings[0] ?? null;
 const biggestMover = employerRatings.reduce<typeof employerRatings[number] | null>((best, e) => {
   if (e.rating_delta_vs_last_month === null) return best;
@@ -304,6 +343,42 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       above for selectFrontPageRhythm/SchoolAlertBanner below, unrelated to
       CityStatus's own alerts module. */}
   <CityStatus />
+
+  {/* Marquee module (sitewide presentation-layer pass): the single
+      top-ranked What's On item with a real image, full-width, plus up to
+      two "also on" rows -- see the const block above for the promotion
+      logic. Sits between the status line and the page's original content,
+      per the handoff's own page-order table. Omitted entirely (not a
+      placeholder) when marqueeHero is null. */}
+  {marqueeHero && (
+    <section class="marquee-module" aria-label="What's On this week">
+      <MarqueeCard
+        item={marqueeHero.entry.primary}
+        image={marqueeHero.image}
+        cityName={siteConfig.cityName}
+        timezone={siteConfig.timezone}
+        variant="hero"
+        runSize={marqueeHero.entry.members.length}
+        lastOccursAt={marqueeHero.entry.members[marqueeHero.entry.members.length - 1].occurs_at}
+      />
+      {marqueeAlsoOn.length > 0 && (
+        <div class="marquee-module__also-on">
+          {marqueeAlsoOn.map(({ entry, image }) => (
+            <MarqueeCard
+              item={entry.primary}
+              image={image}
+              cityName={siteConfig.cityName}
+              timezone={siteConfig.timezone}
+              variant="row"
+              runSize={entry.members.length}
+              lastOccursAt={entry.members[entry.members.length - 1].occurs_at}
+            />
+          ))}
+        </div>
+      )}
+      <a class="marquee-module__link" href="/whats-on/">See everything on this week &rarr;</a>
+    </section>
+  )}
 
   <SchoolAlertBanner alerts={schoolAlerts} />
 
@@ -591,6 +666,16 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 </BaseLayout>
 
 <style>
+
+/* Marquee module (sitewide presentation-layer pass). */
+.marquee-module { margin-bottom: 1.75rem; }
+.marquee-module__also-on { margin-bottom: 0.75rem; }
+.marquee-module__link {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
 
 /* Front-page rhythm (Liveliness Spec §1): lead -> secondary -> widget row
    -> dense rivers, all stacked full-width, not a lead-beside-rail grid. */

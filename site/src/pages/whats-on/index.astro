@@ -22,24 +22,55 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import SectionRule from '../../components/SectionRule.astro';
 import WhatsOnCard from '../../components/WhatsOnCard.astro';
+import MarqueeCard from '../../components/MarqueeCard.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import { siteConfig } from '../../lib/site-config';
 import { getTicketmasterEventsForTown } from '../../lib/ticketmaster';
-import { rankTicketmasterEvents, splitMarquee, isWhatsOnIntroFresh } from '../../lib/whats-on';
-import { getWhatsOnIntro } from '../../lib/db';
+import { rankTicketmasterEvents, splitMarquee, isWhatsOnIntroFresh, ticketmasterResolvableImage } from '../../lib/whats-on';
+import { getWhatsOnIntro, getFacilities } from '../../lib/db';
 import { currentWeekInfo } from '../../lib/this-week';
 import { EMPTY_STATES } from '../../lib/empty-states';
 import { SECTION_THEME } from '../../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
+import { resolveImage } from '../../lib/images';
+import { categoryImagesFor } from '../../config/category-images';
 
 if (!siteConfig.hasWhatsOn) {
   return Astro.redirect('/', 302);
 }
 
-const items = await getTicketmasterEventsForTown(siteConfig);
+const [items, facilities] = await Promise.all([
+  getTicketmasterEventsForTown(siteConfig),
+  getFacilities(),
+]);
 const ranked = rankTicketmasterEvents(items, siteConfig.townId);
 const { marquee, alsoOn } = splitMarquee(ranked);
+
+// Sitewide presentation-layer pass: Marquee cards now need a real resolved
+// image (MarqueeCard.astro never renders a placeholder) -- an entry
+// splitMarquee() ranked into the Marquee tier but that has no resolvable
+// image (rare: most Ticketmaster items do resolve one, per
+// ticketmasterResolvableImage()'s own comment, but not all) is demoted into
+// Also-on rather than shown imageless in what's meant to be the imagery
+// tier. Same "skip, don't merely deprioritize" rule the front page's own
+// marquee module uses.
+const marqueeWithImages: { entry: (typeof marquee)[number]; image: NonNullable<ReturnType<typeof resolveImage>> }[] = [];
+const demotedToAlsoOn: typeof alsoOn = [];
+for (const entry of marquee) {
+  const image = resolveImage(ticketmasterResolvableImage(entry.primary), {
+    town: siteConfig.townId,
+    cityName: siteConfig.cityName,
+    facilities,
+    categoryImages: categoryImagesFor(siteConfig.townId),
+  });
+  if (image) {
+    marqueeWithImages.push({ entry, image });
+  } else {
+    demotedToAlsoOn.push(entry.primary);
+  }
+}
+const alsoOnFinal = [...demotedToAlsoOn, ...alsoOn];
 
 // What's On Phase 6b: the optional weekly AI intro block, above Marquee.
 // getWhatsOnIntro() returns the MOST RECENT row regardless of week -- only
@@ -83,13 +114,17 @@ const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
     <p class="empty">{EMPTY_STATES.whatsOn}</p>
   ) : (
     <>
-      {marquee.length > 0 && (
+      {marqueeWithImages.length > 0 && (
         <>
           <SectionRule label="Marquee" />
           <div class="marquee-grid">
-            {marquee.map((entry) => (
-              <WhatsOnCard
+            {marqueeWithImages.map(({ entry, image }) => (
+              <MarqueeCard
                 item={entry.primary}
+                image={image}
+                cityName={siteConfig.cityName}
+                timezone={siteConfig.timezone}
+                variant="hero"
                 runSize={entry.members.length}
                 lastOccursAt={entry.members[entry.members.length - 1].occurs_at}
               />
@@ -97,11 +132,11 @@ const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
           </div>
         </>
       )}
-      {alsoOn.length > 0 && (
+      {alsoOnFinal.length > 0 && (
         <>
           <SectionRule label="Also on" />
           <div class="also-on-list">
-            {alsoOn.map((item) => <WhatsOnCard item={item} compact />)}
+            {alsoOnFinal.map((item) => <WhatsOnCard item={item} />)}
           </div>
         </>
       )}

@@ -1,0 +1,143 @@
+---
+/** Sitewide presentation-layer pass -- the marquee module (front page's
+ *  single top What's On pick, and the "also on" rail rows beneath it).
+ *  Distinct from WhatsOnCard.astro (the /whats-on page's own grid of
+ *  Marquee cards, unchanged aspect ratio there): this component is built
+ *  for a 16:9 hero specifically, per the handoff's "Ticketmaster images
+ *  are 16:9; the venue/category pool is 3:2. The card is built for 16:9
+ *  and crops 3:2 sources to fit, anchored to the upper third" -- handled
+ *  entirely in CSS (`object-fit: cover; object-position: top`) regardless
+ *  of which resolveImage() tier actually supplied the image.
+ *
+ *  The deck sentence the handoff describes ("one sentence, grounded in the
+ *  event record") has no real generator behind it -- the only existing AI
+ *  intro path (ai_pipeline/whats_on_intro.py / getWhatsOnIntro()) writes
+ *  ONE shared weekly paragraph about the week's events in aggregate, not a
+ *  sentence grounded in THIS specific event's own record. Building a new
+ *  per-event generator would be a new ai_pipeline script -- out of scope
+ *  for a presentation-only pass ("no pipeline, DB, or generator logic
+ *  changes"). Per the handoff's own fallback rule ("if no grounded
+ *  sentence can be produced, omit the deck rather than fill it"), the deck
+ *  is simply never rendered here, not filled with the mismatched weekly
+ *  paragraph. Flagged, not silently worked around.
+ *
+ *  Image presence is the CALLER's decision (see index.astro's own
+ *  promotion loop, which only ever calls this with `variant="hero"` for an
+ *  entry it already confirmed has a real resolveImage() result) -- this
+ *  component never renders a 16:9 placeholder itself. */
+import { distanceLabel, type TicketmasterFeedItem } from '../lib/ticketmaster';
+import { ticketmasterSlug } from '../lib/whats-on';
+import type { ImageRef } from '../lib/images';
+import ImageAttribution from './ImageAttribution.astro';
+
+interface Props {
+  item: TicketmasterFeedItem;
+  image: ImageRef;
+  cityName: string;
+  timezone: string;
+  /** "hero": the front page's one full-width marquee card (image required).
+   *  "row": an "also on" R5 left-rail row with a 52px thumbnail -- still
+   *  requires an image (see index.astro: only promoted/already-imaged
+   *  entries reach this component at all; an entry with no image never
+   *  reaches MarqueeCard, hero or row -- it just isn't shown as a marquee
+   *  item, per the "no placeholder" rule). */
+  variant?: 'hero' | 'row';
+  runSize?: number;
+  lastOccursAt?: string | null;
+}
+const { item, image, cityName, timezone, variant = 'hero', runSize = 1, lastOccursAt = null } = Astro.props;
+const e = item.ticketmasterEvent;
+const href = `/whats-on/${ticketmasterSlug(e)}/`;
+const distance = distanceLabel(e.venueDistanceMiles, cityName);
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', timeZone: timezone,
+  });
+}
+const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
+  ? `${runSize} dates, ${formatDate(item.occurs_at)} – ${formatDate(lastOccursAt)}`
+  : item.occurs_at ? formatDate(item.occurs_at) : null;
+---
+<article class:list={['marquee-card', `marquee-card--${variant}`]}>
+  <a class="marquee-card__image-link" href={href} tabindex="-1" aria-hidden="true">
+    <img
+      class="marquee-card__image"
+      src={image.path}
+      alt={image.alt}
+      width={image.width}
+      height={image.height}
+      loading={variant === 'hero' ? 'eager' : 'lazy'}
+      decoding="async"
+    />
+  </a>
+  <div class="marquee-card__body">
+    {variant === 'hero' && <ImageAttribution image={image} />}
+    <p class="marquee-card__meta">
+      <span class="kicker">{e.venueName ?? 'Venue TBA'}</span>
+      {dateLabel && <time class="marquee-card__when data" datetime={item.occurs_at ?? undefined}>{dateLabel}</time>}
+    </p>
+    <h3 class="marquee-card__title"><a href={href}>{e.title}</a></h3>
+    {distance && (
+      <p class="marquee-card__distance">
+        <svg class="marquee-card__distance-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M8 1a5 5 0 0 0-5 5c0 3.5 5 9 5 9s5-5.5 5-9a5 5 0 0 0-5-5Zm0 7a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z" />
+        </svg>
+        {distance}
+      </p>
+    )}
+    {e.priceRangeText && <p class="marquee-card__price">{e.priceRangeText}</p>}
+  </div>
+</article>
+
+<style>
+.marquee-card { display: flex; }
+
+.marquee-card--hero {
+  flex-direction: column;
+  border-bottom: 0.5px solid var(--rule);
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.marquee-card--hero .marquee-card__image-link { display: block; }
+.marquee-card--hero .marquee-card__image {
+  display: block; width: 100%; height: auto;
+  aspect-ratio: 16 / 9; object-fit: cover; object-position: top;
+}
+.marquee-card--hero .marquee-card__body { padding-top: 0.875rem; }
+.marquee-card--hero .marquee-card__title { font-size: 1.5rem; line-height: 1.2; }
+
+.marquee-card--row {
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding-block: 0.75rem;
+  border-bottom: 0.5px solid var(--rule);
+}
+.marquee-card--row:last-child { border-bottom: 0; }
+.marquee-card--row .marquee-card__image-link {
+  flex: 0 0 52px; width: 52px; height: 52px; border-radius: 3px; overflow: hidden;
+}
+.marquee-card--row .marquee-card__image {
+  display: block; width: 52px; height: 52px; object-fit: cover; object-position: top;
+}
+.marquee-card--row .marquee-card__body { min-width: 0; flex: 1 1 auto; }
+.marquee-card--row .marquee-card__title { font-size: 1rem; line-height: 1.3; }
+
+.marquee-card__meta {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 0.375rem 0.625rem; margin: 0 0 0.25rem;
+}
+.marquee-card__when {
+  font-size: 0.6875rem; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--ink-faint, var(--ink-soft));
+}
+.marquee-card__title { margin: 0; font-family: var(--font-head); }
+.marquee-card__title a { color: var(--ink); text-decoration: none; }
+.marquee-card__title a:hover { text-decoration: underline; }
+.marquee-card__distance {
+  display: flex; align-items: center; gap: 0.3rem;
+  margin: 0.375rem 0 0; font-size: 0.8125rem; color: var(--ink-soft);
+}
+.marquee-card__distance-icon { width: 0.875rem; height: 0.875rem; flex-shrink: 0; color: var(--ink-faint, var(--ink-soft)); }
+.marquee-card__price { margin: 0.25rem 0 0; font-size: 0.8125rem; color: var(--ink-soft); }
+</style>

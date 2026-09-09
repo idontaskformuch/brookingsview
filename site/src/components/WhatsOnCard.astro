@@ -1,29 +1,22 @@
 ---
-/** What's On Phase 5 -- a Ticketmaster event card. Not a reuse of
- *  StoryCard.astro (that component is typed to a real `Story` row and
- *  never renders a per-item image at all -- see its own comment: "Dense
- *  card lists never render a per-item image") or SecondaryStory.astro
- *  (hardcodes `/s/${story.slug}/` with no href override). Ticketmaster
- *  items are neither: a different payload shape, no local /s/ page, and
- *  Marquee specifically needs a real per-item image the existing dense
- *  list pattern was deliberately built to skip. Reuses this site's
- *  existing typography/spacing/kicker conventions (see the shared
+/** What's On -- the dense "Also on" list row. Used to also render the
+ *  larger Marquee cards too (see the old `compact` prop); that role now
+ *  belongs to MarqueeCard.astro (sitewide presentation-layer pass, R5 "time
+ *  is the left rail" applied here: a fixed-width time column instead of a
+ *  kicker+time line stacked above the title, matching StoryCard.astro's own
+ *  R5 rework for the same reason). This component is now Also-on-only --
+ *  no image, ever, by design (the Marquee tier is exactly where imagery
+ *  earns its keep; Also-on stays dense on purpose).
+ *
+ *  Reuses this site's existing typography/spacing conventions (the shared
  *  .kicker/.data classes in BaseLayout.astro's global styles) rather than
- *  inventing a new visual language, per the Phase 5 handoff's own
- *  instruction.
- */
-import { resolveImage } from '../lib/images';
-import { categoryImagesFor } from '../config/category-images';
+ *  inventing a new visual language. */
 import { siteConfig } from '../lib/site-config';
 import { distanceLabel, type TicketmasterFeedItem } from '../lib/ticketmaster';
-import { ticketmasterResolvableImage, ticketmasterSlug } from '../lib/whats-on';
-import ImageAttribution from './ImageAttribution.astro';
+import { ticketmasterSlug } from '../lib/whats-on';
 
 interface Props {
   item: TicketmasterFeedItem;
-  /** Also-on-this-day cards: dense, no image -- same "compact" convention
-   *  StoryCard.astro already uses. */
-  compact?: boolean;
   /** What's On Phase 5 follow-up ("Tour-Run Collapsing"): total number of
    *  dates in this run when `item` is a collapsed MarqueeEntry's primary
    *  (e.g. 6 for "Disney On Ice presents Find Your Hero") -- omitted or 1
@@ -33,15 +26,8 @@ interface Props {
   runSize?: number;
   lastOccursAt?: string | null;
 }
-const { item, compact = false, runSize = 1, lastOccursAt = null } = Astro.props;
+const { item, runSize = 1, lastOccursAt = null } = Astro.props;
 const e = item.ticketmasterEvent;
-
-const heroImage = compact ? null : resolveImage(ticketmasterResolvableImage(item), {
-  town: siteConfig.townId,
-  cityName: siteConfig.cityName,
-  facilities: [],
-  categoryImages: categoryImagesFor(siteConfig.townId),
-});
 
 const href = `/whats-on/${ticketmasterSlug(e)}/`;
 const distance = distanceLabel(e.venueDistanceMiles, siteConfig.cityName);
@@ -51,56 +37,61 @@ function formatDate(iso: string): string {
     weekday: 'short', month: 'short', day: 'numeric', timeZone: siteConfig.timezone,
   });
 }
+function formatDayOnly(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: siteConfig.timezone });
+}
 
 const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
   ? `${runSize} dates, ${formatDate(item.occurs_at)} – ${formatDate(lastOccursAt)}`
-  : item.occurs_at ? formatDate(item.occurs_at) : null;
+  : null;
+// R5's left-rail column: a SHORT label (fits a 46px column), not the full
+// weekday+month+day string dateLabel uses for the multi-date-run case --
+// that longer string still renders, but as ordinary meta text, not
+// squeezed into the rail.
+const railLabel = item.occurs_at ? formatDayOnly(item.occurs_at) : null;
 ---
-<article class:list={['whats-on-card', compact && 'whats-on-card--compact']}>
-  {heroImage && (
-    <a class="whats-on-card__image-link" href={href} tabindex="-1" aria-hidden="true">
-      <img
-        class="whats-on-card__image"
-        src={heroImage.path}
-        alt={heroImage.alt}
-        width={heroImage.width}
-        height={heroImage.height}
-        loading="eager"
-        decoding="async"
-      />
-    </a>
-  )}
-  {heroImage && <ImageAttribution image={heroImage} />}
-  <p class="whats-on-card__meta">
-    <span class="kicker">{e.venueName ?? 'Venue TBA'}</span>
-    {dateLabel && <time class="whats-on-card__when data" datetime={item.occurs_at ?? undefined}>{dateLabel}</time>}
-    {distance && <span class="whats-on-card__distance">{distance}</span>}
-  </p>
-  <h3 class="whats-on-card__title"><a href={href}>{e.title}</a></h3>
-  {e.priceRangeText && <p class="whats-on-card__price">{e.priceRangeText}</p>}
+<article class="whats-on-row">
+  <div class="whats-on-row__rail">
+    {railLabel && <time class="whats-on-row__when data" datetime={item.occurs_at ?? undefined}>{railLabel}</time>}
+  </div>
+  <div class="whats-on-row__body">
+    <h3 class="whats-on-row__title"><a href={href}>{e.title}</a></h3>
+    <p class="whats-on-row__meta">
+      <span class="kicker">{e.venueName ?? 'Venue TBA'}</span>
+      {dateLabel && <span class="whats-on-row__daterange data">{dateLabel}</span>}
+      {distance && <span class="whats-on-row__distance">{distance}</span>}
+      {e.priceRangeText && <span class="whats-on-row__price">{e.priceRangeText}</span>}
+    </p>
+  </div>
 </article>
 
 <style>
-.whats-on-card { display: flex; flex-direction: column; border-bottom: 1px solid var(--rule); padding-block: 0.875rem; }
-.whats-on-card:first-child { padding-top: 0; }
-.whats-on-card:not(.whats-on-card--compact) { border-bottom: none; padding-block: 0; }
-.whats-on-card__image-link { display: block; }
-.whats-on-card__image { display: block; width: 100%; height: auto; margin: 0 0 0.75rem; object-fit: cover; aspect-ratio: 3 / 2; }
-.whats-on-card__meta {
-  display: flex; flex-wrap: wrap; align-items: baseline;
-  gap: 0.5rem 0.75rem; margin: 0 0 0.3125rem;
+.whats-on-row {
+  display: flex;
+  gap: 0.875rem;
+  padding-block: 0.75rem;
+  border-bottom: 0.5px solid var(--rule);
 }
-.whats-on-card__when {
-  font-size: 0.6875rem; letter-spacing: 0.04em;
-  text-transform: uppercase; color: var(--ink-soft);
+.whats-on-row:last-child { border-bottom: 0; }
+.whats-on-row__rail {
+  flex: 0 0 46px;
+  width: 46px;
+  padding-top: 0.1875rem;
 }
-.whats-on-card__distance {
+.whats-on-row__when {
   font-size: 0.75rem;
-  color: var(--ink-soft);
+  color: var(--ink-faint, var(--ink-soft));
+  line-height: 1.3;
 }
-.whats-on-card__title { margin: 0; font-size: 1.1875rem; line-height: 1.15; }
-.whats-on-card--compact .whats-on-card__title { font-size: 1rem; }
-.whats-on-card__title a { color: inherit; text-decoration: none; }
-.whats-on-card__title a:hover { color: var(--navy); text-decoration: underline; }
-.whats-on-card__price { margin: 0.25rem 0 0; font-size: 0.8125rem; color: var(--ink-soft); }
+.whats-on-row__body { min-width: 0; flex: 1 1 auto; }
+.whats-on-row__title { margin: 0 0 0.25rem; font-size: 1rem; line-height: 1.3; font-family: var(--font-head); }
+.whats-on-row__title a { color: var(--ink); text-decoration: none; }
+.whats-on-row__title a:hover { text-decoration: underline; }
+.whats-on-row__meta {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 0.375rem 0.625rem; margin: 0; font-size: 0.8125rem; color: var(--ink-soft);
+}
+.whats-on-row__daterange { font-size: 0.75rem; }
+.whats-on-row__distance { font-size: 0.8125rem; }
+.whats-on-row__price { font-size: 0.8125rem; }
 </style>
