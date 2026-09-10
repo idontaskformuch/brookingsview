@@ -23,6 +23,7 @@ const hiringSymbol = hiringDelta === null ? null : hiringDelta > 0 ? '▲' : hir
 ---
 
 <a href="/workplace-watch/" class="wpw-widget" aria-label="See Worker Pulse: local employer review trends and hiring activity">
+  <div class="wpw-icon" aria-hidden="true">📊</div>
   <div class="wpw-text">
     <div class="wpw-title">Worker Pulse</div>
     <div class="wpw-sub">
@@ -40,29 +41,32 @@ const hiringSymbol = hiringDelta === null ? null : hiringDelta > 0 ? '▲' : hir
       )}
     </div>
   </div>
-  <div class="wpw-arrow">→</div>
 </a>
 
 <style>
+  /* Consistency pass (2026-09-10) -- see JackrabbitWidget.astro's
+     identical comment for the full reasoning. The teal interactiveAccent
+     (SECTION_THEME.workplace_watch) belongs to Worker Pulse's actual
+     interactive controls (ShiftPollWidget's button, WorkerPulseComments'
+     submit) -- deliberately NOT used here, this is a plain link like the
+     other three promo cards, not a control. */
   .wpw-widget {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     padding: 0.85rem 1rem;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #0f3d3e, #146b6d);
-    color: #E8FFFB;
+    border-radius: 8px;
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    color: var(--ink);
     text-decoration: none;
-    border: 2px solid #2FD9C4;
-    transition: transform 0.15s ease;
+    transition: border-color 0.15s ease;
   }
-  .wpw-widget:hover {
-    transform: translateY(-2px);
-  }
+  .wpw-widget:hover { border-color: var(--rule-strong); }
+  .wpw-icon { font-size: 1.5rem; flex-shrink: 0; }
   .wpw-text { flex: 1; min-width: 0; }
   .wpw-title { font-weight: 700; font-size: 0.95rem; }
-  .wpw-sub { font-size: 0.78rem; opacity: 0.85; }
-  .wpw-symbol.up { color: #6EE7B7; }
-  .wpw-symbol.down { color: #FCA5A5; }
-  .wpw-arrow { color: #2FD9C4; font-weight: 700; }
+  .wpw-sub { font-size: 0.78rem; color: var(--ink-soft); }
+  .wpw-symbol.up { color: var(--status-good); }
+  .wpw-symbol.down { color: var(--status-bad); }
 </style>

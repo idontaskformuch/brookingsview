@@ -116,8 +116,8 @@ const ctaLabel = `Full ${siteConfig.cityName} rundown →`;
     flex-shrink: 0; margin-top: 0.35rem;
     background: var(--ink-soft);
   }
-  .city-status__dot--notice { background: #d9a441; }
-  .city-status__dot--alert { background: #d73027; }
+  .city-status__dot--notice { background: var(--status-caution); }
+  .city-status__dot--alert { background: var(--status-bad); }
   .city-status__text { min-width: 0; }
   .city-status__label {
     display: block;
@@ -140,10 +140,5 @@ const ctaLabel = `Full ${siteConfig.cityName} rundown →`;
     border-top: 1px solid var(--rule);
     padding-top: 0.6rem;
     width: 100%;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .city-status__dot--notice { background: #fbbf24; }
-    .city-status__dot--alert { background: #fca5a5; }
   }
 </style>

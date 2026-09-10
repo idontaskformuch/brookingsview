@@ -258,14 +258,14 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
 .wp-name small { display: block; font-weight: 400; color: var(--ink-soft); font-size: 0.75rem; }
 .wp-rating { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); }
 .wp-trend { font-size: 1.1rem; }
-.wp-trend--up { color: #1a9850; }
-.wp-trend--down { color: #d73027; }
+.wp-trend--up { color: var(--status-good); }
+.wp-trend--down { color: var(--status-bad); }
 .wp-trend--flat { color: var(--ink-soft); }
 .wp-trend--new { font-size: 0.75rem; color: var(--ink-soft); font-style: italic; }
 .wp-hiring { font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 .wp-hiring small { display: block; color: var(--ink-soft); font-size: 0.72rem; }
-.wp-hiring small.up { color: #1a9850; }
-.wp-hiring small.down { color: #d73027; }
+.wp-hiring small.up { color: var(--status-good); }
+.wp-hiring small.down { color: var(--status-bad); }
 .wp-summary { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
 .excerpt { color: var(--ink-soft); }
 .excerpt.muted { font-style: italic; }

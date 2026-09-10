@@ -17,7 +17,12 @@ export const GET: APIRoute = () => {
     id: '/',
     scope: '/',
     display: 'standalone',
-    background_color: '#f4f6f7',
+    // Consistency pass (2026-09-10): background_color was still the PRE-
+    // redesign --paper value (#f4f6f7), never updated when BaseLayout.astro
+    // retuned to #fbfaf7 -- this file can't read CSS custom properties
+    // (a bare JSON response), so it's hardcoded here, kept in sync by hand
+    // with --paper/--navy. theme_color already matched --navy.
+    background_color: '#fbfaf7',
     theme_color: '#0b2e55',
     lang: 'en-US',
     orientation: 'portrait-primary',

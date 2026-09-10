@@ -28,12 +28,31 @@ export type SectionKey = 'traffic' | 'events' | 'workplace_watch' | 'university'
 export interface SectionTheme {
   accent: string;
   label: string;
+  /** A SECOND, deliberately different color for the same section --
+   *  currently only workplace_watch has one. `accent` above is the quiet
+   *  wayfinding signal this file's own header comment describes (masthead
+   *  rule, active nav item, link underlines). `interactiveAccent` is a
+   *  brighter, higher-energy color reserved for the Worker Pulse PROMO
+   *  widget and its own interactive controls (the poll button/fill,
+   *  comment submit) -- never used for wayfinding. These are not the same
+   *  color drifting apart by accident (consistency pass, 2026-09-10, see
+   *  NEEDS-HUMAN-REVIEW.md): the navy `accent` reads as "this is the
+   *  Worker Pulse section" quietly, alongside every other section's own
+   *  quiet accent; the teal `interactiveAccent` reads as "click/type
+   *  here," a role no other section needs because no other section has an
+   *  embedded poll or comment box. */
+  interactiveAccent?: string;
 }
 
 export const SECTION_THEME: Record<SectionKey, SectionTheme> = {
   traffic: { accent: '#8a4a0a', label: 'Traffic' },
   events: { accent: '#146b36', label: 'Events' },
-  workplace_watch: { accent: '#38507a', label: 'Worker Pulse' },
+  // interactiveAccent #2FD9C4 contrast-checked the same way as this file's
+  // other accents: 8.9:1 vs --surface, 8.2:1 vs --paper -- used at
+  // WorkplaceWatchWidget.astro's promo-card border/arrow, ShiftPollWidget's
+  // button/fill, and WorkerPulseComments' submit button. Previously three
+  // separate hardcoded copies of the same hex; one named source now.
+  workplace_watch: { accent: '#38507a', label: 'Worker Pulse', interactiveAccent: '#2FD9C4' },
   university: { accent: '#0f3f8c', label: 'University' },
   home_sales: { accent: '#8a3f32', label: 'Home sales' },
   // #1c5c5c contrast-checked (relative-luminance formula, same method as

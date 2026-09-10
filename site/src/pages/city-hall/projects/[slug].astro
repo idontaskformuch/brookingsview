@@ -209,10 +209,10 @@ const itemListJsonLd = updates.length > 0 ? {
 }
 .status[data-status="approved"], .status[data-status="permitted"],
 .status[data-status="under_construction"], .status[data-status="complete"] {
-  color: #14532d;
-  background: #dcfce7;
+  color: var(--status-good-ink);
+  background: var(--status-good-tint);
 }
-.status[data-status="denied"] { color: #7f1d1d; background: #fee2e2; }
+.status[data-status="denied"] { color: var(--status-bad-ink); background: var(--status-bad-tint); }
 .activity-state {
   display: inline-block;
   font-family: var(--font-ui);
@@ -224,7 +224,7 @@ const itemListJsonLd = updates.length > 0 ? {
   padding: 0.25rem 0.7rem;
   margin: 0 0 0.5rem 0.4rem;
 }
-.activity-state[data-activity="resolved"] { color: #14532d; background: #dcfce7; }
+.activity-state[data-activity="resolved"] { color: var(--status-good-ink); background: var(--status-good-tint); }
 .desc { color: var(--ink-soft); margin: 0.5rem 0 0; }
 .rolling-summary {
   margin: 0.75rem 0 0;
@@ -244,9 +244,9 @@ const itemListJsonLd = updates.length > 0 ? {
 .timeline__date { font-family: var(--font-ui); font-size: 0.8125rem; color: var(--ink-soft); margin: 0; }
 .timeline__title { font-weight: 600; margin: 0.25rem 0; }
 .timeline__outcome { margin: 0.25rem 0; }
-.timeline__item[data-outcome="Approved"] .timeline__outcome { color: #166534; }
+.timeline__item[data-outcome="Approved"] .timeline__outcome { color: var(--status-good); }
 .timeline__item[data-outcome="Denied"] .timeline__outcome,
-.timeline__item[data-outcome="Failed"] .timeline__outcome { color: #b91c1c; }
+.timeline__item[data-outcome="Failed"] .timeline__outcome { color: var(--alert); }
 .timeline__outcome .reason { color: var(--ink-soft); font-size: 0.875rem; }
 .timeline__sources { font-size: 0.8125rem; margin: 0.25rem 0 0; }
 .empty { color: var(--ink-soft); }

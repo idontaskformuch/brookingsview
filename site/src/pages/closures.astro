@@ -193,8 +193,8 @@ const newsArticleJsonLd = status.state === 'confirmed' && status.closure
   border: 1px solid var(--rule); border-left: 4px solid var(--section-accent, var(--rule-strong));
   border-radius: 8px; padding: 1.25rem 1.5rem;
 }
-.cw-panel--confirmed { border-left-color: #b3261e; }
-.cw-panel--watch { border-left-color: #8a4a0a; }
+.cw-panel--confirmed { border-left-color: var(--status-bad); }
+.cw-panel--watch { border-left-color: var(--status-caution); }
 .cw-kicker {
   font-family: var(--font-ui); font-size: 0.75rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 0.5rem;

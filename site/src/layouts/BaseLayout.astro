@@ -238,12 +238,67 @@ const path = Astro.url.pathname;
   --rule: rgba(22, 22, 20, 0.11);
   --rule-strong: rgba(22, 22, 20, 0.22);
 
+  /* Consistency pass (2026-09-10): green/red/amber status colors had been
+     hand-copied as raw hex into 9 separate files (CityStatus, HeatAdvisory-
+     Widget, TodayBlock, facilities/[slug], facilities/index, workplace-
+     watch, city-hall/projects/[slug], closures, new-in-town) -- consistent
+     by copy-paste convention, not by a shared source, the same pattern
+     that already caused real drift bugs earlier tonight. One definition
+     each, referenced everywhere. `-tint`/`-ink` follow the existing
+     --alert/--alert-tint shape: `-tint` is a badge/chip background, `-ink`
+     is the higher-contrast text color that goes ON that tint (plain usage
+     directly on --paper uses the bare color instead). Distinct from
+     --alert/--alert-tint on purpose -- that pair means "a genuine active
+     alert" (weather/school alerts, closures), this means "good/bad/
+     caution status," a different semantic role even where the color
+     happens to be similar. */
+  --status-good: #1a9850;
+  --status-good-tint: #dcfce7;
+  --status-good-ink: #14532d;
+  --status-bad: #d73027;
+  --status-bad-tint: #fee2e2;
+  --status-bad-ink: #7f1d1d;
+  --status-caution: #d9a441;
+  --status-caution-tint: rgba(217, 164, 65, 0.12);
+  --status-caution-ink: #a3711b;
+
+  /* Mirrors lib/section-theme.ts's SECTION_THEME.workplace_watch.
+     interactiveAccent exactly -- kept as its own CSS custom property
+     because ShiftPollWidget.astro/WorkerPulseComments.astro's SCOPED
+     <style> blocks can't reach a TS module value directly. Deliberately
+     NOT the same as SECTION_THEME.workplace_watch.accent (navy #38507a,
+     the quiet section-identity color used for wayfinding) -- see that
+     file's own comment on why the two are intentionally different colors
+     for different jobs, not drift. */
+  --worker-pulse-interactive: #2fd9c4;
+
   --font-head: 'Newsreader', Georgia, 'Times New Roman', serif;
   --font-ui: 'Bricolage Grotesque', system-ui, sans-serif;
   --font-data: 'IBM Plex Mono', ui-monospace, monospace;
 
   --measure: 74rem;
   --measure-narrow: 40rem;
+}
+
+/* Dark-mode status token overrides -- centralized here instead of
+   per-component (CityStatus/HeatAdvisoryWidget/TodayBlock each used to
+   define their own copy of the same three light/dark pairs). A file that
+   only ever wrote `color: var(--status-good)` etc. in light mode gets
+   correct dark-mode contrast for free the moment it switches to the
+   token -- see city-hall/projects/[slug].astro and new-in-town.astro,
+   neither of which had ANY dark-mode handling before this pass. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --status-good: #6ee7b7;
+    --status-good-tint: rgba(26, 152, 80, 0.18);
+    --status-good-ink: #6ee7b7;
+    --status-bad: #fca5a5;
+    --status-bad-tint: rgba(215, 48, 39, 0.2);
+    --status-bad-ink: #fca5a5;
+    --status-caution: #fbbf24;
+    --status-caution-tint: rgba(217, 164, 65, 0.2);
+    --status-caution-ink: #fbbf24;
+  }
 }
 
 *, *::before, *::after { box-sizing: border-box; }

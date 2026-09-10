@@ -109,9 +109,9 @@ const itemListJsonLd = businesses.length > 0 ? {
   text-transform: uppercase; letter-spacing: 0.06em;
   padding: 0.125rem 0.5rem; border-radius: 999px; white-space: nowrap;
 }
-.nit-item--opened .nit-status { background: #146b3622; color: #146b36; }
-.nit-item--opening_soon .nit-status { background: #8a4a0a22; color: #8a4a0a; }
-.nit-item--closed .nit-status { background: #b3261e22; color: #b3261e; }
+.nit-item--opened .nit-status { background: var(--status-good-tint); color: var(--status-good-ink); }
+.nit-item--opening_soon .nit-status { background: var(--status-caution-tint); color: var(--status-caution-ink); }
+.nit-item--closed .nit-status { background: var(--status-bad-tint); color: var(--status-bad-ink); }
 .nit-name { font-family: var(--font-head); font-weight: 700; font-size: 1.0625rem; grid-column: 2; }
 .nit-category { grid-column: 2; font-size: 0.8125rem; color: var(--ink-soft); }
 .nit-address { grid-column: 2; font-size: 0.8125rem; color: var(--ink-soft); }

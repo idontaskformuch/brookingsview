@@ -231,14 +231,11 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
   .today-block__right-now { margin-bottom: 1rem; }
   .today-block__list { list-style: none; margin: 0 0 0.5rem; padding: 0; }
   .today-block__list li { padding: 0.2rem 0; font-size: 0.9rem; }
-  .today-block__closure--confirmed { color: #b91c1c; font-weight: 600; }
-  .today-block__closure--watch { color: #a3711b; font-weight: 600; }
+  .today-block__closure--confirmed { color: var(--alert); font-weight: 600; }
+  .today-block__closure--watch { color: var(--status-caution-ink); font-weight: 600; }
   .today-block__closure--clear { color: var(--ink-soft); }
   .today-block__cityhall { color: var(--ink-soft); }
-  .today-block__cityhall--open { color: #1a9850; font-weight: 600; }
-  @media (prefers-color-scheme: dark) {
-    .today-block__cityhall--open { color: #6ee7b7; }
-  }
+  .today-block__cityhall--open { color: var(--status-good); font-weight: 600; }
   .today-block__quiet { color: var(--ink-soft); font-size: 0.9rem; margin: 0.25rem 0; }
   .today-block__bucket { margin-bottom: 1rem; }
   .today-block__cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }

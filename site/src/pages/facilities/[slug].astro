@@ -188,12 +188,9 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 .fact dt { font-family: var(--font-ui); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
 .fact dd { margin: 0; }
 .open-status { display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.15rem; }
-.open-status--open { color: #1a9850; }
+.open-status--open { color: var(--status-good); }
 .open-status--closed { color: var(--ink-soft); }
 .hours-text { display: block; color: var(--ink-soft); font-size: 0.9rem; }
-@media (prefers-color-scheme: dark) {
-  .open-status--open { color: #6ee7b7; }
-}
 .description { margin: 1.25rem 0; line-height: 1.6; }
 .section-label { margin: 1.75rem 0 0.75rem; font-size: 1.0625rem; }
 .events { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }

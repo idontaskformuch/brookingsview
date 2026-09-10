@@ -130,13 +130,13 @@ const pct = (count: number) => (total > 0 ? Math.round((count / total) * 100) : 
     font: inherit;
     cursor: pointer;
   }
-  .shift-poll__btn:hover:not(:disabled) { border-color: #2FD9C4; }
+  .shift-poll__btn:hover:not(:disabled) { border-color: var(--worker-pulse-interactive); }
   .shift-poll__btn:disabled { opacity: 0.5; cursor: default; }
 
   .shift-poll__row { display: grid; grid-template-columns: 6rem 1fr 2.5rem; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; }
   .shift-poll__label { font-size: 0.85rem; }
   .shift-poll__track { height: 0.6rem; border-radius: 999px; background: var(--rule); overflow: hidden; }
-  .shift-poll__fill { height: 100%; background: #2FD9C4; transition: width 0.3s ease; }
+  .shift-poll__fill { height: 100%; background: var(--worker-pulse-interactive); transition: width 0.3s ease; }
   .shift-poll__count { font-size: 0.8rem; color: var(--ink-soft); text-align: right; }
   .shift-poll__total { font-size: 0.78rem; color: var(--ink-soft); margin: 0.5rem 0 0; }
 </style>

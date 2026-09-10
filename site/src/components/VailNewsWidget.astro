@@ -15,31 +15,32 @@ const { item } = Astro.props;
 ---
 
 <a href="/vail-resorts/" class="vnw-widget" aria-label="See Vail Resorts Newsroom: the company's own news feed">
-  {item.image_url && <img class="vnw-thumb" src={item.image_url} alt="" loading="lazy" />}
+  {item.image_url ? <img class="vnw-thumb" src={item.image_url} alt="" loading="lazy" /> : <div class="vnw-icon" aria-hidden="true">🏔️</div>}
   <div class="vnw-text">
     <div class="vnw-label">Vail Resorts Newsroom</div>
     <div class="vnw-title">{item.title}</div>
     <div class="vnw-date data">{item.published_label}</div>
   </div>
-  <div class="vnw-arrow">→</div>
 </a>
 
 <style>
+  /* Consistency pass (2026-09-10) -- previously unreported instance of the
+     same saturated-gradient pattern found and fixed sitewide (Jackrabbit/
+     BurroBonanza/WorkplaceWatch widgets) -- see JackrabbitWidget.astro's
+     identical comment. */
   .vnw-widget {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #123c3c, #1c5c5c);
-    color: #E9FBF8;
+    border-radius: 8px;
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    color: var(--ink);
     text-decoration: none;
-    border: 2px solid #3f9d95;
-    transition: transform 0.15s ease;
+    transition: border-color 0.15s ease;
   }
-  .vnw-widget:hover {
-    transform: translateY(-2px);
-  }
+  .vnw-widget:hover { border-color: var(--rule-strong); }
   .vnw-thumb {
     width: 3.25rem;
     height: 3.25rem;
@@ -47,13 +48,14 @@ const { item } = Astro.props;
     object-fit: cover;
     flex-shrink: 0;
   }
+  .vnw-icon { font-size: 1.5rem; flex-shrink: 0; }
   .vnw-text { flex: 1; min-width: 0; }
   .vnw-label {
     font-size: 0.6875rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    opacity: 0.85;
+    color: var(--ink-soft);
   }
   .vnw-title {
     font-weight: 700;
@@ -66,6 +68,5 @@ const { item } = Astro.props;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
   }
-  .vnw-date { font-size: 0.75rem; opacity: 0.8; margin-top: 0.1875rem; }
-  .vnw-arrow { color: #3f9d95; font-weight: 700; flex-shrink: 0; }
+  .vnw-date { font-size: 0.75rem; color: var(--ink-soft); margin-top: 0.1875rem; }
 </style>

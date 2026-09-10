@@ -3,31 +3,31 @@
 ---
 
 <a href="/burro-bonanza/" class="burro-widget" aria-label="Play the Burro Bonanza match-3 game">
+  <div class="bb-icon" aria-hidden="true">🐴</div>
   <div class="bb-text">
     <div class="bb-title">Play Burro Bonanza</div>
     <div class="bb-sub">Our free match-3 game — help Dusty clear the trail</div>
   </div>
-  <div class="bb-arrow">→</div>
 </a>
 
 <style>
+  /* Consistency pass (2026-09-10) -- see JackrabbitWidget.astro's
+     identical comment for the full reasoning. */
   .burro-widget {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     padding: 0.85rem 1rem;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #C16E4F, #9C4E33);
-    color: #FFF7E8;
+    border-radius: 8px;
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    color: var(--ink);
     text-decoration: none;
-    border: 2px solid #F2C438;
-    transition: transform 0.15s ease;
+    transition: border-color 0.15s ease;
   }
-  .burro-widget:hover {
-    transform: translateY(-2px);
-  }
+  .burro-widget:hover { border-color: var(--rule-strong); }
+  .bb-icon { font-size: 1.5rem; flex-shrink: 0; }
   .bb-text { flex: 1; }
   .bb-title { font-weight: 700; font-size: 0.95rem; }
-  .bb-sub { font-size: 0.78rem; opacity: 0.85; }
-  .bb-arrow { color: #F2C438; font-weight: 700; }
+  .bb-sub { font-size: 0.78rem; color: var(--ink-soft); }
 </style>

@@ -45,13 +45,13 @@ const { tier, label } = computeHeatTier(tempF, activeAlertTitles);
     margin: 0 auto 1.25rem;
   }
   .heat-advisory--safe {
-    --ha-border: #1a9850; --ha-bg: rgba(26, 152, 80, 0.1); --ha-fg: #1a9850;
+    --ha-border: var(--status-good); --ha-bg: var(--status-good-tint); --ha-fg: var(--status-good);
   }
   .heat-advisory--caution {
-    --ha-border: #d9a441; --ha-bg: rgba(217, 164, 65, 0.12); --ha-fg: #a3711b;
+    --ha-border: var(--status-caution); --ha-bg: var(--status-caution-tint); --ha-fg: var(--status-caution-ink);
   }
   .heat-advisory--high-risk {
-    --ha-border: #d73027; --ha-bg: rgba(215, 48, 39, 0.12); --ha-fg: #d73027;
+    --ha-border: var(--status-bad); --ha-bg: var(--status-bad-tint); --ha-fg: var(--status-bad);
   }
   .heat-advisory__dot {
     width: 0.85rem; height: 0.85rem; border-radius: 50%;
@@ -59,10 +59,4 @@ const { tier, label } = computeHeatTier(tempF, activeAlertTitles);
   }
   .heat-advisory__tier { font-weight: 700; font-size: 0.9rem; }
   .heat-advisory__label { font-size: 0.85rem; opacity: 0.9; }
-
-  @media (prefers-color-scheme: dark) {
-    .heat-advisory--safe { --ha-bg: rgba(26, 152, 80, 0.18); --ha-fg: #6ee7b7; }
-    .heat-advisory--caution { --ha-bg: rgba(217, 164, 65, 0.2); --ha-fg: #fbbf24; }
-    .heat-advisory--high-risk { --ha-bg: rgba(215, 48, 39, 0.2); --ha-fg: #fca5a5; }
-  }
 </style>

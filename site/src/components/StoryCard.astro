@@ -20,15 +20,24 @@ import { relativeTime } from '../lib/time';
 // NEEDS-HUMAN-REVIEW.md "Liveliness Spec" §3) are pulled from
 // lib/section-theme.ts -- one color per concept across the site, not two
 // independently-invented palettes that happen to both mean "traffic".
-// Categories with no section identity keep their own standalone color.
+// Categories with no section identity keep their own standalone color --
+// named here (consistency pass, 2026-09-10) rather than as bare hex in the
+// CHIP map below, so a reader doesn't have to guess whether e.g. "#5c4a99"
+// is arbitrary or a deliberate, remembered choice.
+const JOBS_CHIP_COLOR = '#5c4a99'; // muted violet -- jobs has no SECTION_THEME entry to match
+// Shared by sports AND school_alerts on purpose (both are "civic/community
+// competitive-or-institutional maroon", neither has its own section page) --
+// one named constant, not two copies of the same hex.
+const MAROON_CHIP_COLOR = '#a1272f';
+
 const CHIP: Partial<Record<ImageCategory, { icon: string; color: string }>> = {
   city_hall: { icon: '🏛️', color: 'var(--navy)' },
   events: { icon: '📅', color: SECTION_THEME.events.accent },
   traffic: { icon: '🚗', color: SECTION_THEME.traffic.accent },
   home_sales: { icon: '🏠', color: SECTION_THEME.home_sales.accent },
-  jobs: { icon: '💼', color: '#5c4a99' },
-  sports: { icon: '🏈', color: '#a1272f' },
-  school_alerts: { icon: '🎒', color: '#a1272f' },
+  jobs: { icon: '💼', color: JOBS_CHIP_COLOR },
+  sports: { icon: '🏈', color: MAROON_CHIP_COLOR },
+  school_alerts: { icon: '🎒', color: MAROON_CHIP_COLOR },
   weather_alert: { icon: '⚠️', color: 'var(--alert)' },
   workplace_watch: { icon: '🏭', color: SECTION_THEME.workplace_watch.accent },
   university: { icon: '🎓', color: SECTION_THEME.university.accent },

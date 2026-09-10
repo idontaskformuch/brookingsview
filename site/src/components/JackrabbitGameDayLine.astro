@@ -6,19 +6,22 @@
 ---
 
 <a href="/play/" class="gameday-line">
-  🐇 Feeling game-day energy? Play our Jackrabbit game →
+  🐇 Feeling game-day energy? Play our Jackrabbit game
 </a>
 
 <style>
+  /* Consistency pass (2026-09-10): was gold (#FFC629), the same one-off
+     hex as JackrabbitWidget.astro's old gradient card -- see that file's
+     comment. Uses the sitewide CTA accent instead. */
   .gameday-line {
     display: inline-block;
     margin-top: 0.5rem;
     font-size: 0.8rem;
-    color: #FFC629;
+    color: var(--accent);
     text-decoration: none;
-    border-bottom: 1px dashed #FFC629;
+    border-bottom: 1px dashed var(--accent);
   }
   .gameday-line:hover {
-    color: #FFF3D6;
+    color: var(--ink);
   }
 </style>
