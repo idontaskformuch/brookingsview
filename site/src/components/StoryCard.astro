@@ -189,10 +189,27 @@ const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCat
 .item--alert .kicker { color: var(--alert); }
 
 /* R5: the fixed-width left rail (non-alert rows only -- alerts stay
-   single-column, see the template's own comment). */
+   single-column, see the template's own comment). 46px comfortably fits
+   the SHORT strings relativeTime()/formatTime() produce for events/
+   announcements/alerts ("2h ago", "Tomorrow", "3:00 PM") but not a
+   meeting's formatCalendarDate() output ("Thu, September 10") -- confirmed
+   live on iPhone-width screens: that string wraps across three lines
+   inside 46px, and since the rail's wrapped height isn't reserved in the
+   row's own flow, the orphaned last line visually overlaps the NEXT list
+   item below it (City Council, Historic Preservation Commission, Park &
+   Rec Advisory Board entries all hit this -- same shared component, every
+   town). Fixed by removing the fixed-width column entirely below a mobile
+   breakpoint (stacking date above title instead) rather than hand-tuning a
+   column width for one specific string -- narrower still, or a longer
+   month name/weekday combination in a different locale, would just
+   reproduce the same bug at a different width. */
 .item--row { display: flex; gap: 0.875rem; }
 .item__rail { flex: 0 0 46px; width: 46px; padding-top: 0.1875rem; }
 .item__content { min-width: 0; flex: 1 1 auto; }
+@media (max-width: 30rem) {
+  .item--row { flex-direction: column; gap: 0.25rem; }
+  .item__rail { flex: 0 0 auto; width: auto; padding-top: 0; }
+}
 
 .item__kicker {
   display: flex;
