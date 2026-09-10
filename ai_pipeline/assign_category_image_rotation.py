@@ -73,6 +73,11 @@ CATEGORY_BY_SOURCE_TYPE: dict[str, str] = {
     "jackrabbits_season_summary": "sports",
     "university_digest": "university",
     "workplace_watch_digest": "workplace_watch",
+    # TMDB/pool handoff: media_recension is the one content-track type
+    # that reaches this tier -- daily_content.py deliberately leaves
+    # image_path null for it now (see that module's own comment) so the
+    # scan above picks it up like any other category-tier source_type.
+    "media_recension": "movie_review",
 }
 
 

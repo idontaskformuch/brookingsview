@@ -94,10 +94,14 @@ export function isHotlinkedImage(path: string): boolean {
 /** The category vocabulary this feature covers -- see NEEDS-HUMAN-REVIEW.md
  *  for the full per-town list. Deliberately NOT every SourceType has one:
  *  content-track types (editorial, culture_essay, ...) always resolve via
- *  the article-image tier first, so they never need a category. */
+ *  the article-image tier first, so they never need a category -- EXCEPT
+ *  media_recension (see 'movie_review' below and the TMDB/pool handoff):
+ *  daily_content.py deliberately stops setting image_path for reviews, so
+ *  this is the one content-track type that DOES fall through to tier 4. */
 export type ImageCategory =
   | 'city_hall' | 'events' | 'traffic' | 'home_sales' | 'jobs' | 'sports'
-  | 'school_alerts' | 'weather_alert' | 'workplace_watch' | 'university';
+  | 'school_alerts' | 'weather_alert' | 'workplace_watch' | 'university'
+  | 'movie_review';
 
 /** Maps a story's source_type to its image category, for the automatic
  *  per-item resolution path (resolveImage()). Hub/section pages that want
@@ -119,6 +123,15 @@ const CATEGORY_BY_SOURCE_TYPE: Partial<Record<SourceType, ImageCategory>> = {
   jackrabbits_season_summary: 'sports',
   university_digest: 'university',
   workplace_watch_digest: 'workplace_watch',
+  // TMDB/pool handoff: a review's own hero image used to be generated
+  // per-title (see content/_base.py's illustration_image_theme() history),
+  // which twice leaked real-film likeness into the image model. Reviews
+  // now get a generic, pre-verified, rotating pool image instead --
+  // image_path is deliberately left null by daily_content.py so this tier
+  // activates. image_alt still names the real film regardless (see
+  // ResolvableStory/resolveImage() -- alt text is independent of which
+  // pool image tier 4 assigns).
+  media_recension: 'movie_review',
 };
 
 export function categoryForSourceType(sourceType: SourceType): ImageCategory | null {
@@ -141,12 +154,16 @@ export function categoryForSourceType(sourceType: SourceType): ImageCategory | n
 
 /** Every enabled town needs these regardless of feature flags: every town
  *  has meetings (city_hall), a weekly roundup (events), NOAA/NWS weather
- *  alerts (weather_alert), and Adzuna jobs (jobs). 'sports' is likewise
- *  universal today except Broomfield, which has no sports_digest/
+ *  alerts (weather_alert), and Adzuna jobs (jobs). 'movie_review' is also
+ *  universal -- media_recension runs for all three towns via the shared
+ *  scheduler (scheduler/weekly_rotation.py), and now resolves its image
+ *  through this category pool instead of a per-title generation (see
+ *  CATEGORY_BY_SOURCE_TYPE's media_recension entry above). 'sports' is
+ *  likewise universal today except Broomfield, which has no sports_digest/
  *  local_sports_digest-producing source at all (see NEEDS-HUMAN-REVIEW.md,
  *  "Broomfield launch") -- structurally unreachable, not just unpopulated,
  *  so it's correctly excluded rather than flagged as a gap. */
-const ALWAYS_REQUIRED: ImageCategory[] = ['city_hall', 'events', 'weather_alert', 'jobs'];
+const ALWAYS_REQUIRED: ImageCategory[] = ['city_hall', 'events', 'weather_alert', 'jobs', 'movie_review'];
 
 /** The category pools an ENABLED town actually needs, derived from real,
  *  checkable feature flags -- not "every category for every town" (which
@@ -166,15 +183,20 @@ export function requiredCategoriesFor(config: Pick<SiteConfig,
 }
 
 /** Content-track types (recipe/vardagsmiddag, editorial, culture essay,
- *  science column, review) resolve their image through story.image_path
- *  alone -- the article-image tier, see resolveImage()'s tier 1 -- and by
- *  design have NO category fallback (see CATEGORY_BY_SOURCE_TYPE above: none
- *  of them appear there). A null/empty image_path on one of these rows is
+ *  science column) resolve their image through story.image_path alone --
+ *  the article-image tier, see resolveImage()'s tier 1 -- and by design
+ *  have NO category fallback (see CATEGORY_BY_SOURCE_TYPE above: none of
+ *  them appear there). A null/empty image_path on one of these rows is
  *  therefore a real, PERMANENT gap for that specific item, not a normal
  *  resolveImage() miss that degrades gracefully -- see handoff "Build check
  *  for the article / content-track image tier". Pure so it's vitest-
  *  testable without a DB -- see images.test.ts. The DB query itself lives
- *  in db.ts's getContentTrackImageStatus(), called from build-checks.ts. */
+ *  in db.ts's getContentTrackImageStatus(), called from build-checks.ts.
+ *
+ *  media_recension is the one exception (TMDB/pool handoff): it DOES have a
+ *  category fallback ('movie_review'), so db.ts's query for this check
+ *  deliberately excludes it via CONTENT_TRACK_TYPES_REQUIRING_IMAGE rather
+ *  than passing it through here to be filtered. */
 export function findContentTrackRowsMissingImage<T extends { image_path: string | null }>(rows: T[]): T[] {
   return rows.filter((r) => !r.image_path);
 }
@@ -577,7 +599,15 @@ export function resolveImage(story: ResolvableStory & { slug?: string }, options
             getKey: (img) => img.path,
           });
       assertImageExists(categoryImage.path, itemSlug);
-      return categoryImage;
+      // TMDB/pool handoff: media_recension is the one category-tier
+      // source_type that also carries its own real, item-specific
+      // image_alt (daily_content.py still sets it to the film's own
+      // theme text even though image_path stays null) -- it must win over
+      // the pool entry's generic alt so a review's image never loses its
+      // real film name just because the picture itself is generic. Every
+      // other category-tier source_type never sets image_alt at all, so
+      // this is a no-op for them.
+      return { ...categoryImage, alt: story.image_alt ?? categoryImage.alt };
     }
   }
 

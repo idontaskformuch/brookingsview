@@ -1595,11 +1595,20 @@ export interface ContentTrackImageRow {
   image_path: string | null;
 }
 
+/** CONTENT_TRACK_TYPES minus media_recension: the TMDB/pool handoff made
+ *  reviews the one content-track type that deliberately never gets an
+ *  image_path (see lib/images.ts's CATEGORY_BY_SOURCE_TYPE comment on
+ *  'media_recension') -- it resolves through the movie_review category
+ *  pool instead, same as any category-tier source_type, so it must NOT be
+ *  flagged by assertContentTrackImagesComplete() as a missing-image row. */
+const CONTENT_TRACK_TYPES_REQUIRING_IMAGE: SourceType[] =
+  CONTENT_TRACK_TYPES.filter((t) => t !== 'media_recension');
+
 export async function getContentTrackImageStatus(): Promise<ContentTrackImageRow[]> {
   return (await sql`
     SELECT slug, source_type, image_path
       FROM stories
-     WHERE town_id = ${TOWN_ID} AND source_type = ANY(${CONTENT_TRACK_TYPES})
+     WHERE town_id = ${TOWN_ID} AND source_type = ANY(${CONTENT_TRACK_TYPES_REQUIRING_IMAGE})
   `) as ContentTrackImageRow[];
 }
 

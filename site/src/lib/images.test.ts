@@ -109,6 +109,10 @@ describe('categoryForSourceType', () => {
   it('returns null for a content-track type', () => {
     expect(categoryForSourceType('editorial')).toBeNull();
   });
+
+  it('maps media_recension to movie_review (TMDB/pool handoff)', () => {
+    expect(categoryForSourceType('media_recension')).toBe('movie_review');
+  });
 });
 
 describe('dedupeConsecutiveImages', () => {
@@ -622,6 +626,36 @@ describe('resolveImage', () => {
     expect(result?.path).toBe(B);
   });
 
+  // TMDB/pool handoff: media_recension is the one category-tier
+  // source_type that also carries its own real, item-specific image_alt
+  // (the film's own theme text) -- it must win over the pool image's
+  // generic alt.
+  it('tier 4: media_recension\'s own image_alt overrides the pool image\'s generic alt', () => {
+    const pool: ImageRef[] = [
+      { path: A, alt: 'A small-town cinema at dusk.', width: 1600, height: 900 },
+    ];
+    const story: ResolvableStory = {
+      title: 'Review: A Made-Up Film', source_type: 'media_recension', image_path: null,
+      image_alt: 'A quiet evening out at the movies, reviewing "A Made-Up Film".',
+      venue_raw: null, category_image_index: 0,
+    };
+    const result = resolveImage(story, { ...baseOptions, categoryImages: { movie_review: pool } });
+    expect(result?.path).toBe(A);
+    expect(result?.alt).toBe('A quiet evening out at the movies, reviewing "A Made-Up Film".');
+  });
+
+  it('tier 4: falls back to the pool image\'s own generic alt when a category-tier story has no image_alt', () => {
+    const pool: ImageRef[] = [
+      { path: A, alt: 'A small-town cinema at dusk.', width: 1600, height: 900 },
+    ];
+    const story: ResolvableStory = {
+      title: 'Review: A Made-Up Film', source_type: 'media_recension', image_path: null,
+      image_alt: null, venue_raw: null, category_image_index: 0,
+    };
+    const result = resolveImage(story, { ...baseOptions, categoryImages: { movie_review: pool } });
+    expect(result?.alt).toBe('A small-town cinema at dusk.');
+  });
+
   it('tier 5: returns null, never the /og/<slug>.png social card', () => {
     const story: ResolvableStory = {
       title: 'Moreno Valley: Free Food Giveaway (Every Sunday)', source_type: 'event',
@@ -673,6 +707,12 @@ describe('requiredCategoriesFor', () => {
     expect(requiredCategoriesFor({ townId: 'moreno_valley_ca' })).not.toContain('university');
   });
 
+  it('always requires movie_review -- media_recension runs for every town (TMDB/pool handoff)', () => {
+    expect(requiredCategoriesFor({ townId: 'broomfield_co' })).toContain('movie_review');
+    expect(requiredCategoriesFor({ townId: 'brookings_sd' })).toContain('movie_review');
+    expect(requiredCategoriesFor({ townId: 'moreno_valley_ca' })).toContain('movie_review');
+  });
+
   it('requires feature-gated categories only when the corresponding flag is set', () => {
     const nothingEnabled = requiredCategoriesFor({ townId: 'broomfield_co' });
     expect(nothingEnabled).not.toContain('workplace_watch');
@@ -708,7 +748,7 @@ describe('assertCategoryImagesComplete', () => {
 
   it('passes silently once every required category has a non-empty pool', () => {
     const fullPool: Partial<Record<string, ImageRef[]>> = {
-      city_hall: POOL, events: POOL, weather_alert: POOL, jobs: POOL,
+      city_hall: POOL, events: POOL, weather_alert: POOL, jobs: POOL, movie_review: POOL,
     };
     expect(() => assertCategoryImagesComplete({ townId: 'broomfield_co' }, fullPool)).not.toThrow();
   });

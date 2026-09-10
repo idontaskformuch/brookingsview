@@ -70,6 +70,20 @@ def main() -> int:
                   "(this script only fills a NULL image_path, it never overwrites an existing one).")
             return 0
 
+        # TMDB/pool handoff: media_recension's null image_path is now the
+        # EXPECTED, correct state (see ai_pipeline/daily_content.py's own
+        # comment) -- it resolves through the movie_review category pool
+        # instead of a per-title illustration. Backfilling one here would
+        # silently regenerate exactly the per-title-image behavior this
+        # fix removed. ai_pipeline/assign_category_image_rotation.py is the
+        # right tool for a review still missing its category_image_index.
+        if source_type == "media_recension":
+            print(f"  {args.slug} is a media_recension review -- a null image_path is expected, not a "
+                  "failure to backfill. It resolves via the movie_review category pool instead; run "
+                  "ai_pipeline.assign_category_image_rotation to give it a rotation slot if it doesn't "
+                  "have one yet.")
+            return 0
+
         # Undo prefix_town_name() (ai_pipeline/publish.py) -- illustration_theme()
         # wants the raw, unprefixed title, same as at original publish time (see
         # ai_pipeline/daily_content.py's own comment on this).

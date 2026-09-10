@@ -4366,3 +4366,78 @@ Trail, Southwest Community Loop) — these are named multi-mile routes
 crossing the city, not single-address facilities, and don't fit this
 model at all; a lightweight dedicated page (name/length/surface/one
 parking access point) was suggested instead, not built in this pass.
+
+## 43. media_recension hero images, part 2 — drop the fixed sanitized theme, pool it instead (2026-09-10)
+
+**Follow-up to #40.** #40's fix (a fixed, title-agnostic theme,
+`content/_base.py`'s `illustration_image_theme()`) correctly solved the
+real IP/likeness leak — that part is unchanged and still correct — but it
+introduced a new, predictable problem: every review, for every title,
+forever, generated the exact same image. Fine while nobody's looking;
+reads as obviously repetitive once real readers see several reviews in a
+row. Same shape as the earlier weekly-roundup image staleness complaint,
+just relocated to reviews.
+
+**TMDB was considered and rejected** as a way to source a real per-title
+poster/still instead: its API is free only for non-commercial use, and
+all three sites here carry ads, making them commercial — TMDB would need
+a separate negotiated paid agreement, not just an API key. Not pursued.
+
+**Fix: reused this session's own image-pool-rotation infrastructure
+(Addendum 2 — `category_image_rotation` table, `stories.
+category_image_index`, `ai_pipeline/assign_category_image_rotation.py`,
+`pickFromPoolByIndex()`) instead of building anything new for this.**
+`media_recension` is now the one content-track type that resolves its
+hero through `resolveImage()`'s tier-4 category pool (a new
+`'movie_review'` `ImageCategory`) rather than its own `image_path`:
+
+- `ai_pipeline/daily_content.py` no longer calls `generate_illustration()`
+  for `media_recension` at all — `image_path` stays null on purpose,
+  `image_alt` still gets the real, full film-specific theme text (used by
+  `resolveImage()` to override the pool image's own generic alt — see
+  `lib/images.ts` tier 4).
+- `scripts/backfill_content_track_image.py` now refuses to backfill a
+  media_recension row's null `image_path` (that's expected now, not a
+  failure) and points at `assign_category_image_rotation.py` instead.
+- `site/src/lib/db.ts`'s content-track image-completeness build check
+  (`assertContentTrackImagesComplete`) excludes `media_recension` via a
+  new `CONTENT_TRACK_TYPES_REQUIRING_IMAGE`, so it no longer flags a
+  review's null `image_path` as a build-blocking gap.
+- `movie_review` pool: 7 illustrations
+  (`site/public/assets/images/categories/movie_review-1.png` .. `-7.png`),
+  same physical files referenced identically by all three towns (Brookings/
+  Moreno Valley/Broomfield all share one `MOVIE_REVIEW_POOL` array in
+  `site/src/config/category-images.ts`) — no town-specific cinema imagery
+  to source, same aliasing pattern Broomfield's block already used for
+  other categories.
+
+**Verified, not assumed:** generated 9 candidates total (the original 6
+themes from #40's own generation script plus 3 more to have enough margin
+for rejections), viewed all 9 directly and judged each against the exact
+bar #40 established (no real identifiable faces in sharp focus, no
+readable real film titles/logos — gibberish/illegible text is explicitly
+fine, precedent from #40's own marquee text). 2 rejected: one had a
+person's face visible through a lit ticket-booth window, reasonably clear
+at moderate size; one had an ambiguous blurred bright shape in the
+background that could read as a face/photo on a screen. Both dropped out
+of caution given 7 clean alternatives, rather than argued into acceptance.
+7 accepted and renumbered sequentially. No per-title generation happens
+for this pool, ever, going forward — themes are fixed, generic, cinema-
+adjacent stills (empty seats, a popcorn stand, a ticket stub, a blank
+screen, a marquee with illegible text), never regenerated per review.
+
+**Not yet done, flagged for a real run rather than guessed at:**
+`ai_pipeline/assign_category_image_rotation.py` needs to actually run
+(non-dry-run) for all three towns to give existing/future media_recension
+rows a `category_image_index` — it will pick them up automatically on its
+next normal 6-hour scrape-cron run (it scans `WHERE image_path IS NULL
+AND category_image_index IS NULL`), so no manual backfill of already-
+published reviews' `image_path` was done here; their existing per-title
+images stay as-is until they're naturally superseded by a new review, at
+which point the new one goes through the pool. Rotation-advancing-through-
+the-pool (no back-to-back repeats across real published reviews) and the
+never-imageless fallback for a brand-new review with no rotation slot yet
+are both exercised by `images.test.ts`'s existing Addendum 2 test coverage
+(this same pool-index mechanism, just a new category using it) rather
+than a fresh live-publish spot check — the mechanism itself is unchanged,
+only the category is new.

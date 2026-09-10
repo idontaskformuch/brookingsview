@@ -18,6 +18,7 @@ from ai_pipeline.assign_category_image_rotation import CATEGORY_BY_SOURCE_TYPE
 KNOWN_IMAGE_CATEGORIES = {
     "city_hall", "events", "traffic", "home_sales", "jobs", "sports",
     "school_alerts", "weather_alert", "workplace_watch", "university",
+    "movie_review",
 }
 
 # Mirrors db/schema.sql's SourceType/stories.source_type vocabulary for the
@@ -46,9 +47,14 @@ def test_content_track_types_have_no_category_mapping():
     """Content-track types always carry their own image_path (an AI
     illustration) -- they should never appear here, since a mapping would
     only matter if resolveImage() ever reached tier 4 for one, which by
-    design it never does (see images.ts's own comment on this)."""
+    design it never does (see images.ts's own comment on this).
+
+    media_recension is the deliberate exception (TMDB/pool handoff):
+    daily_content.py now leaves its image_path null on purpose, so it DOES
+    need a tier-4 mapping -- see this module's own comment on that entry."""
     content_track_types = {
         "editorial", "culture_essay", "kvick_essa", "vetenskap_kronika",
-        "media_recension", "vardagsmiddag",
+        "vardagsmiddag",
     }
     assert not (content_track_types & CATEGORY_BY_SOURCE_TYPE.keys())
+    assert CATEGORY_BY_SOURCE_TYPE["media_recension"] == "movie_review"

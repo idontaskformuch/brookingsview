@@ -208,16 +208,28 @@ def main() -> int:
         # FILENAME (not the story slug/URL) fixes the collision without
         # touching anything URL-facing.
         image_slug = f"{slug}-{town_id}"
-        # illustration_image_theme(): identical to `theme` for every content
-        # type except media_recension, which gets a fixed, title-agnostic
-        # theme instead -- see content/_base.py's own comment for why the
-        # real film title can't safely reach the image model. image_alt
-        # below still uses the real `theme`, unaffected.
-        saved = generate_illustration(illustration_image_theme(theme, content_type), image_slug, content_type=content_type)
-        if saved is not None:
-            image_path = "/" + str(saved.native.relative_to(PUBLIC_DIR)).replace("\\", "/")
+        # TMDB/pool handoff: media_recension no longer generates a
+        # per-title illustration at all -- even the fixed, title-agnostic
+        # theme (illustration_image_theme()'s own prior fix) still meant
+        # every review, forever, showed the exact same single image, which
+        # reads as repetitive once real readers show up. Reviews now
+        # resolve their hero through the shared, pre-verified
+        # 'movie_review' category pool instead (see lib/images.ts's
+        # CATEGORY_BY_SOURCE_TYPE and ai_pipeline/assign_category_image_
+        # rotation.py) -- image_path stays null on purpose so resolveImage()
+        # falls through to that pool tier. image_alt still gets the real,
+        # full film-specific theme text below regardless: the pool image
+        # itself is generic, but the alt text naming the actual film is not
+        # (resolveImage() overrides the pool's own generic alt with this
+        # one whenever it's set -- see images.ts tier 4).
+        if content_type == "media_recension":
             image_alt = theme
-            print(f"  illustration: {image_path} (+ 4:3, 1:1 crops)")
+        else:
+            saved = generate_illustration(illustration_image_theme(theme, content_type), image_slug, content_type=content_type)
+            if saved is not None:
+                image_path = "/" + str(saved.native.relative_to(PUBLIC_DIR)).replace("\\", "/")
+                image_alt = theme
+                print(f"  illustration: {image_path} (+ 4:3, 1:1 crops)")
 
         # AdSense remediation Phase B2: no town-name prefix -- the domain
         # and page chrome already establish the town, repeating it in
