@@ -1,0 +1,67 @@
+---
+/** "Looking for something?" front-page chip row (Handoff: "Front-page
+ *  orientation pass", Phase 2). All data-fetching and the actual
+ *  resolveQuickLinks() call happen in index.astro (which already has
+ *  most of this data fetched for its own rendering) -- this component
+ *  just renders the resolved list, plus the build-log line for anything
+ *  omitted (hard rule 4: never link to an empty page, but never silent
+ *  about it either).
+ *
+ *  A single horizontally-scrollable row on mobile (no wrapping into a
+ *  wall of links), plain <a> chips -- no search box, works without JS. */
+interface Props {
+  links: { label: string; route: string }[];
+  omitted: string[];
+}
+const { links, omitted } = Astro.props;
+
+if (omitted.length > 0) {
+  console.log(`[quick-links] omitted (no content at build time): ${omitted.join(', ')}`);
+}
+---
+
+{links.length > 0 && (
+  <nav class="quick-links" aria-label="Looking for something?">
+    <p class="quick-links__label">Looking for something?</p>
+    <div class="quick-links__row">
+      {links.map((link) => (
+        <a class="quick-links__chip" href={link.route}>{link.label}</a>
+      ))}
+    </div>
+  </nav>
+)}
+
+<style>
+  .quick-links { margin: 0.75rem 0 1.25rem; }
+  .quick-links__label {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-ui);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+  .quick-links__row {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .quick-links__chip {
+    flex-shrink: 0;
+    padding: 0.4375rem 0.875rem;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--ink);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .quick-links__chip:hover {
+    border-color: var(--brand-accent, var(--navy));
+    color: var(--brand-accent-ink, var(--navy));
+  }
+</style>

@@ -34,7 +34,11 @@ const ctaLabel = `Full ${siteConfig.cityName} rundown →`;
 {modules.length > 0 && (
   <section class="city-status" aria-label={`${siteConfig.cityName} right now`}>
     <div class="city-status__head">
-      <h2 class="city-status__title">{siteConfig.cityName} Right Now</h2>
+      {/* Front-page orientation pass, Phase 3: "Right now" alone, not
+          "<Town> Right Now" -- OrientationHeader already names the town
+          once, right above this (R6: never repeat the town name within
+          one page). */}
+      <h2 class="city-status__title">Right now</h2>
       {updatedLabel && <span class="city-status__updated">Updated {updatedLabel}</span>}
     </div>
     <ul class="city-status__list">
@@ -69,6 +73,11 @@ const ctaLabel = `Full ${siteConfig.cityName} rundown →`;
     max-width: 60rem;
     margin: 0 auto 1.5rem;
     border: 1px solid var(--rule);
+    /* Front-page orientation pass, Phase 3: item 2 ("Right Now") gets the
+       strongest visual weight on the page alongside "Today" -- a thicker,
+       accent-colored top border, same size/weight/spacing-only tool
+       SectionRule's own `strong` variant uses, not a new color. */
+    border-top: 3px solid var(--brand-accent, var(--rule-strong));
     border-radius: 10px;
     padding: 0.9rem 1rem 0.75rem;
   }
@@ -81,12 +90,12 @@ const ctaLabel = `Full ${siteConfig.cityName} rundown →`;
   }
   .city-status__title {
     font-family: var(--font-ui);
-    font-size: 0.8125rem;
+    font-size: 0.9375rem;
     font-weight: 600;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     margin: 0;
-    color: var(--ink-soft);
+    color: var(--ink);
   }
   .city-status__updated {
     font-family: var(--font-ui);

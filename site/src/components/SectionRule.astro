@@ -1,10 +1,17 @@
 ---
 /** Sektionsrubrik i tidningsstil: tjock överlinje, spärrad versaletikett.
- *  Etiketten anger tidshorisont, inte ämne -- sajtens fråga handlar om när. */
-interface Props { label: string; href?: string; }
-const { label, href } = Astro.props;
+ *  Etiketten anger tidshorisont, inte ämne -- sajtens fråga handlar om när.
+ *
+ *  `strong` (Front-page orientation pass, Phase 3): the front page's own
+ *  "Today" section gets a thicker, accent-colored rule and a slightly
+ *  larger label -- same size/weight/spacing tools every other section
+ *  already uses, not a new component or a new color (the accent is the
+ *  town's own existing --brand-accent). Every other section is
+ *  unchanged. */
+interface Props { label: string; href?: string; strong?: boolean; }
+const { label, href, strong = false } = Astro.props;
 ---
-<div class="sec">
+<div class:list={['sec', strong && 'sec--strong']}>
   <h2 class="sec__label">{label}</h2>
   {href && <a class="sec__more" href={href}>All &rarr;</a>}
 </div>
@@ -19,6 +26,11 @@ const { label, href } = Astro.props;
   margin: 2.25rem 0 0.875rem;
   padding-top: 0.4375rem;
 }
+.sec--strong {
+  border-top: 3px solid var(--brand-accent, var(--rule-strong));
+  margin-top: 1.5rem;
+}
+.sec--strong .sec__label { font-size: 0.9375rem; }
 .sec__label {
   font-family: var(--font-ui);
   font-size: 0.8125rem;

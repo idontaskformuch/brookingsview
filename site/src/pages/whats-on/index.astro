@@ -123,6 +123,10 @@ const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
     <p>Concerts, theatre and touring shows within {radiusMiles ?? 75} miles of {siteConfig.cityName},
     {siteConfig.stateName} — including nearby regional venues. Every listing shows how far it actually is,
     so a regional show never reads as a downtown event. Powered by Ticketmaster.</p>
+    {/* Front-page orientation pass, Phase 4: "a first-time reader can't
+        tell Events and What's On apart" -- only one goes in primary nav
+        per town, this line points to whichever one doesn't. */}
+    <p class="cross-link">Local library, city and community events: <a href="/events/">Events</a></p>
     <ShareButton title={`What's On in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
   </header>
 
@@ -179,6 +183,8 @@ const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
   padding-bottom: 1.125rem;
 }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.cross-link { font-size: 0.875rem; }
+.cross-link a { color: var(--navy); }
 .whats-on-intro {
   max-width: 46rem;
   margin: 0 0 1.5rem;

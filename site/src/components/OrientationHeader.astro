@@ -1,0 +1,76 @@
+---
+/** Front-page orientation header (Handoff: "Front-page orientation pass",
+ *  Phase 1). Front page ONLY -- every other page keeps BaseLayout's own
+ *  shared dateline unchanged.
+ *
+ *  Two lines:
+ *    1. A short date ("Wednesday, Sep 9") -- medium weight, the per-town
+ *       accent color (falls back to navy exactly like the masthead name
+ *       does, see BaseLayout.astro's .masthead__name em rule).
+ *    2. "What's happening in <Town> today" -- the page's actual <h1>. The
+ *       front page had none before this (the masthead site name is an
+ *       <a>, not a heading).
+ *
+ *  Staleness guard: this is a static site rebuilt on a cron -- if the
+ *  pipeline stalls, "today" silently becomes wrong with no visible sign.
+ *  The build's own local date (in the town's timezone) is embedded as
+ *  `data-build-date`; a tiny inline script compares it against the
+ *  VIEWER's current date in the same timezone and swaps line 1 to
+ *  "Last updated <date>" if they differ. No JS -> the build date shows
+ *  as-is, which is correct almost all the time (this site rebuilds every
+ *  6 hours) and never actively wrong, just occasionally a few hours
+ *  behind with no visible flag -- the script only IMPROVES on that
+ *  baseline, so its absence never hides content or makes anything false. */
+import { orientationDateLabel, orientationDateIso } from '../lib/orientation-header';
+import { siteConfig } from '../lib/site-config';
+
+const now = new Date();
+const dateLabel = orientationDateLabel(now, siteConfig.timezone);
+const buildDateIso = orientationDateIso(now, siteConfig.timezone);
+---
+
+<div class="orientation-header">
+  <p class="orientation-header__date" data-build-date={buildDateIso} data-fresh-label={dateLabel}>
+    {dateLabel}
+  </p>
+  <h1 class="orientation-header__heading">What's happening in {siteConfig.cityName} today</h1>
+</div>
+
+<script>
+  // Staleness guard -- see this component's own top-of-file comment for
+  // the full reasoning. Kept deliberately tiny: one Intl call, one string
+  // compare, one conditional text swap. Never removes or hides anything.
+  (function () {
+    const el = document.querySelector<HTMLElement>('.orientation-header__date');
+    if (!el) return;
+    const buildDate = el.dataset.buildDate;
+    const freshLabel = el.dataset.freshLabel;
+    const timezone = document.documentElement.getAttribute('data-timezone');
+    if (!buildDate || !freshLabel || !timezone) return;
+
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date());
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+    const currentDate = `${get('year')}-${get('month')}-${get('day')}`;
+
+    if (currentDate !== buildDate) {
+      el.textContent = `Last updated ${freshLabel}`;
+    }
+  })();
+</script>
+
+<style>
+  .orientation-header { margin-bottom: 1rem; }
+  .orientation-header__date {
+    margin: 0 0 0.25rem;
+    font-family: var(--font-ui);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--brand-accent-ink, var(--navy));
+  }
+  .orientation-header__heading {
+    margin: 0;
+    font-size: clamp(1.5rem, 4vw, 2.125rem);
+  }
+</style>

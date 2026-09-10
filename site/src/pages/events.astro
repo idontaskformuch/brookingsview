@@ -126,11 +126,21 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero category="events" />
   <header class="lede">
-    <h1>What's on</h1>
+    {/* Was "What's on" (lowercase "on") -- a real pre-existing mislabel,
+        found while adding the Events/What's On cross-link below: this
+        page's own <h1> disagreed with its title/breadcrumb/meta
+        description, all of which already correctly said "Events". */}
+    <h1>Events</h1>
     <p>Community events in {siteConfig.cityName}, {siteConfig.stateName} —
     library programs, city events and more, gathered from each organiser's own
     calendar. Times and registration details come straight from the source.
     Check back — this updates daily.</p>
+    {siteConfig.hasWhatsOn && (
+      // Front-page orientation pass, Phase 4: "a first-time reader can't
+      // tell Events and What's On apart" -- only one goes in primary nav
+      // per town, this line points to whichever one doesn't.
+      <p class="cross-link">Concerts and shows in the region: <a href="/whats-on/">What's On</a></p>
+    )}
     <ShareButton title={`Events in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
   </header>
 
@@ -184,6 +194,8 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   padding-bottom: 1.125rem;
 }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.cross-link { font-size: 0.875rem; }
+.cross-link a { color: var(--navy); }
 .facet-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0 1.5rem; }
 .facet-nav a {
   font-family: var(--font-ui);

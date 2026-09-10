@@ -30,16 +30,21 @@ import TrafficWidget from '../components/TrafficWidget.astro';
 import Tile from '../components/Tile.astro';
 import CityStatus from '../components/CityStatus.astro';
 import MarqueeCard from '../components/MarqueeCard.astro';
+import OrientationHeader from '../components/OrientationHeader.astro';
+import QuickLinks from '../components/QuickLinks.astro';
 import {
   getUpcomingStories, getActiveAlerts, getUpcomingGames, getNextRegionalGame,
   getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
   getWeather, getAgPrices, getLatestWeekly, getTodaysFeature, getLatestEmployerRatings,
-  getEmployerJobStats,
+  getEmployerJobStats, getUpcomingArtsEvents, getRecentJobs, getNextMeeting,
   getWorthKnowingCandidates, getLatestFromCandidates, getRecentProjectUpdates, formatDate,
   CATEGORY_HREFS, CATEGORY_LABELS, getFacilities, getLatestVailNewsItem, getEventDeckDigests,
 } from '../lib/db';
 import { selectWorthKnowing, selectLatestFrom, firstSentence, selectFrontPageRhythm } from '../lib/homepage-curation';
-import { todayUtcMidnight } from '../lib/events';
+import {
+  todayUtcMidnight, buildEventFeed, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent,
+} from '../lib/events';
+import { resolveQuickLinks, type QuickLinkContext } from '../lib/quick-links';
 import { siteConfig } from '../lib/site-config';
 import { resolveImage, dedupeConsecutiveImages, withThumbnailCrop, previousWeekRoundupImagePath } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
@@ -50,7 +55,7 @@ const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const isBroomfield = siteConfig.townId === 'broomfield_co';
 
-const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, feature, worthKnowingCandidates, latestFromCandidates, facilities] = await Promise.all([
+const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, feature, worthKnowingCandidates, latestFromCandidates, facilities, quickLinkEvents, quickLinkArtsEvents, quickLinkJobs, quickLinkNextMeeting] = await Promise.all([
   getActiveAlerts(),
   getActiveSchoolAlerts(),
   getActiveTrafficIncidents(),
@@ -72,7 +77,48 @@ const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame
   getWorthKnowingCandidates(),
   getLatestFromCandidates(),
   getFacilities(),
+  // Front-page orientation pass, Phase 2 ("Looking for something?" quick
+  // links) -- deliberately its OWN fetch, not a reuse of `upcoming` above:
+  // `upcoming` is capped at 40 items across FOUR mixed source_types, which
+  // would give an inaccurate (likely false-negative) content check against
+  // the real /events/today|this-weekend|free|kids|library facet pages.
+  // Mirrors events.astro's own exact fetch shape so the quick-link check
+  // agrees with what the linked-to page will actually show.
+  getUpcomingStories(['event'], 120),
+  getUpcomingArtsEvents(40),
+  getRecentJobs(1),
+  getNextMeeting(),
 ]);
+
+// Front-page orientation pass, Phase 2: resolve "Looking for something?"
+// against the SAME predicates the real facet pages use (see the fetch
+// comment above for why this is its own feed, not a reuse of `upcoming`).
+const quickLinkDate = todayUtcMidnight(siteConfig.timezone);
+const { items: quickLinkFeed } = buildEventFeed(quickLinkEvents, quickLinkArtsEvents, siteConfig.timezone);
+const quickLinkContext: QuickLinkContext = {
+  hasToday: quickLinkFeed.some((i) => isToday(i, quickLinkDate, siteConfig.timezone)),
+  hasWeekend: quickLinkFeed.some((i) => isThisWeekend(i, quickLinkDate, siteConfig.timezone)),
+  hasFree: quickLinkFeed.some((i) => isFreeEvent(i, facilities))
+    || facilities.some((f) => f.category === 'library' || f.category === 'park' || f.category === 'community_center'),
+  hasKids: quickLinkFeed.some((i) => isKidsEvent(i)),
+  hasLibrary: quickLinkFeed.some((i) => isLibraryEvent(i, facilities)),
+  // "Has a real season/schedule to show" -- games already fetched above
+  // for the rail's own game-card tile, reused here rather than re-queried.
+  hasJackrabbits: games.length > 0,
+  hasMeetings: quickLinkNextMeeting !== null,
+  // Evergreen reference pages (traffic, closures, facilities): gated on
+  // the town actually having the underlying capability/data, not on a
+  // live item count -- an empty /traffic page still correctly says "no
+  // incidents right now," which is real content, not a broken page (see
+  // the handoff's own "Evergreen reference pages ... pass the check if
+  // the page exists and has current data").
+  hasClosures: !!siteConfig.hasClosureWatch,
+  hasJobs: quickLinkJobs.length > 0,
+  hasTraffic: !!siteConfig.trafficSource,
+  hasWhatsOn: !!siteConfig.hasWhatsOn,
+  hasFacilities: facilities.length > 0,
+};
+const { shown: quickLinks, omitted: omittedQuickLinks } = resolveQuickLinks(siteConfig.townId, quickLinkContext);
 
 // Homepage curation (see NEEDS-HUMAN-REVIEW.md "Homepage Curation"): Latest
 // From is computed FIRST because Worth Knowing's theme-collision check
@@ -352,7 +398,9 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       docstring), so `alerts`/`schoolAlerts` are still fetched independently
       above for selectFrontPageRhythm/SchoolAlertBanner below, unrelated to
       CityStatus's own alerts module. */}
+  <OrientationHeader />
   <CityStatus />
+  <QuickLinks links={quickLinks} omitted={omittedQuickLinks} />
 
   {/* Marquee module (sitewide presentation-layer pass): the single
       top-ranked What's On item with a real image, full-width, plus up to
@@ -457,6 +505,57 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       </div>
     </section>
   )}
+
+  {/* Front-page orientation pass, Phase 3: "Today" and "This week" moved
+      up from well below the fold (they used to sit after Worth Knowing/
+      City hall project updates) to right after Phase F's own original-
+      content block -- as early as the page's hierarchy allows WITHOUT
+      violating Phase F's own "original content leads, ahead of the
+      scraped feed" rule (see that block's comment above): Today/This week
+      are themselves scraped-feed sections, so they can't go any higher
+      than immediately below Phase F without undoing that earlier,
+      deliberate fix. "Today" gets the same strong heading treatment as
+      "Right Now" (CityStatus) -- see SectionRule's own `strong` prop. */}
+  {(todayStories.length > 0 || todayHomeGame) && (
+    <section aria-label="Today">
+      <SectionRule label="Today" href="/events/" strong />
+      {todayHomeGame && (
+        <div class="river">
+          <GameCard game={todayHomeGame} feature />
+        </div>
+      )}
+      {todayStories.length > 0 && (
+        // Capped at 5 (see NEEDS-HUMAN-REVIEW.md "Homepage Curation") --
+        // previously unbounded, which is exactly what let a 30+ item
+        // events list dominate the homepage on a busy day. SectionRule's
+        // "All →" (added above) is the real complete view now, same
+        // pattern "This week"/"Coming up" already used.
+        <div class="river">
+          {todayStories.slice(0, 5).map((story) => <StoryCard story={story} />)}
+        </div>
+      )}
+    </section>
+  )}
+
+  <section aria-label="This week">
+    <SectionRule label="This week" href="/events/" />
+    <p class="event-teasers">
+      <a href={timelyEventTeaser.href}>{timelyEventTeaser.label}</a> ·
+      <a href="/events/free/">Free</a> ·
+      <a href="/events/kids/">Kids &amp; family</a>
+    </p>
+    {weekStories.length > 0 ? (
+      // Homepage/vertical redundancy (NEEDS-HUMAN-REVIEW.md "4.4"): a short
+      // teaser here, /events is the canonical complete view -- SectionRule's
+      // "All →" link (above) is where the rest lives, not a second copy of
+      // the full list on this page too.
+      <div class="river">
+        {weekStories.slice(0, 5).map((story) => <StoryCard story={story} />)}
+      </div>
+    ) : (
+      <p class="empty">Nothing scheduled in the next week yet.</p>
+    )}
+  </section>
 
   <div class="front">
     {fullWidthLead ? (
@@ -568,47 +667,6 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       </ul>
     </section>
   )}
-
-  {(todayStories.length > 0 || todayHomeGame) && (
-    <section aria-label="Today">
-      <SectionRule label="Today" href="/events/" />
-      {todayHomeGame && (
-        <div class="river">
-          <GameCard game={todayHomeGame} feature />
-        </div>
-      )}
-      {todayStories.length > 0 && (
-        // Capped at 5 (see NEEDS-HUMAN-REVIEW.md "Homepage Curation") --
-        // previously unbounded, which is exactly what let a 30+ item
-        // events list dominate the homepage on a busy day. SectionRule's
-        // "All →" (added above) is the real complete view now, same
-        // pattern "This week"/"Coming up" already used.
-        <div class="river">
-          {todayStories.slice(0, 5).map((story) => <StoryCard story={story} />)}
-        </div>
-      )}
-    </section>
-  )}
-
-  <section aria-label="This week">
-    <SectionRule label="This week" href="/events/" />
-    <p class="event-teasers">
-      <a href={timelyEventTeaser.href}>{timelyEventTeaser.label}</a> ·
-      <a href="/events/free/">Free</a> ·
-      <a href="/events/kids/">Kids &amp; family</a>
-    </p>
-    {weekStories.length > 0 ? (
-      // Homepage/vertical redundancy (NEEDS-HUMAN-REVIEW.md "4.4"): a short
-      // teaser here, /events is the canonical complete view -- SectionRule's
-      // "All →" link (above) is where the rest lives, not a second copy of
-      // the full list on this page too.
-      <div class="river">
-        {weekStories.slice(0, 5).map((story) => <StoryCard story={story} />)}
-      </div>
-    ) : (
-      <p class="empty">Nothing scheduled in the next week yet.</p>
-    )}
-  </section>
 
   {laterStories.length > 0 && (
     <section aria-label="Coming up">
