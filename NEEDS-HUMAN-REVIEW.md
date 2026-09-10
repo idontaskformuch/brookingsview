@@ -4288,3 +4288,81 @@ Resorts' media/communications contact and ask whether hotlinking newsroom
 images to a local news site is permitted. Not urgent given this site's
 current traffic, but shouldn't be forgotten — re-enable the `<img>` in
 both files once a real yes exists, don't infer one.
+
+## 42. Broomfield facilities expansion — police, fire, post offices, recycling (2026-09-10)
+
+**What shipped:** 11 new `facilities` rows for Broomfield (`data/facilities/broomfield_co.json`,
+loaded via `scripts.seed_facilities`) — Broomfield Police Department, all
+7 North Metro Fire Rescue District stations physically located in
+Broomfield (Headquarters + Stations 61/64/65/66/67/68), 2 USPS Post
+Offices, and the Broomfield Recycling Center — plus a note on the
+existing Community Center entry that Broomfield Senior Services operates
+out of that building (no separate address). Two new facility categories
+added (`fire_station`, `recycling`) with their own `FACILITY_CATEGORY_LABELS`/
+`FACILITY_SCHEMA_TYPE` entries (lib/db.ts) and slotted into
+`facilities/index.astro`'s category ordering.
+
+**A real, unrelated bug found and fixed while doing this:** that same
+category-ordering list only ever contained 5 of the categories
+`FACILITY_CATEGORY_LABELS` actually defines — `police`/`post_office`
+(among others) already existed as labels with no facility ever using
+them yet, so an unlisted category's `.indexOf()` returning `-1` would
+have silently sorted it to the very front of the page the first time
+any town ever used one. Fixed for every known category, not just the
+two this pass adds.
+
+**Verified against official sources, not assumed** (see the research
+agent's own report for full source URLs): confirmed the police
+department's address (7 DesCombes Drive — one source had disputed the
+street number; broomfield.org's own page confirms it's correct as
+drafted), corrected Fire Station 66's address (the draft said 1760 W
+160th Ave; North Metro Fire Rescue's own station-locations page says
+1750), and confirmed both USPS locations and the recycling center's
+address against official/authoritative sources.
+
+**Two things intentionally NOT resolved, flagged instead of guessed:**
+- **Recycling Center phone number**: broomfield.org's own dedicated
+  recycling-center page lists (720) 887-2141; a separate official
+  broomfield.org recycling-guide page lists (303) 438-6329 for the SAME
+  facility. Used the dedicated page's number (more specific to this one
+  facility) and said so in the facility's own description, rather than
+  silently picking one and hiding the conflict. Someone should call
+  Broomfield Public Works to resolve which is actually current.
+- **Recycling Center "education center" hours**: the original spec draft
+  claimed a Mon-Fri 9am-5pm "education center" at this address. Neither
+  official broomfield.org page mentions an education center at all —
+  only "staff on site" hours (7:30am-4pm) for the drop-off itself.
+  Dropped entirely rather than publishing an unverifiable claim; if a
+  real education-center schedule exists, it needs its own source before
+  it goes back in.
+
+**ZIP codes deliberately omitted, not guessed**, for 6 of the 7 fire
+stations (Headquarters' 80020 was explicitly confirmed): the research
+agent verified each station's street address against North Metro Fire
+Rescue's own site, but that source's own listing doesn't give a ZIP per
+station, and no independent second source was checked for this one
+field. `address`/`street_address` for those 6 stations end at "Broomfield,
+CO" with no ZIP rather than carrying a plausible-looking but unverified
+one — same "verify or omit" rule as everything else in this file.
+
+**Fire district service-area disclosure**: every North Metro Fire Rescue
+facility's own description explicitly notes the district also covers
+Northglenn, Thornton and Federal Heights, per the spec's own guardrail
+against implying the whole district is a Broomfield-only resource.
+Stations confirmed to be OUTSIDE Broomfield (the district's Training
+Center Complex, Station 62, Station 63 — all in Northglenn) were
+deliberately excluded, not just left unlabeled.
+
+**Station 68 is explicitly temporary** (North Metro Fire Rescue's own
+site labels it "Station 68 (Temporary)") — its description says so and
+flags a recheck in ~6 months; don't treat 12400 W 112th Ave as a
+permanent address without reconfirming.
+
+**Deferred, per the spec that requested this pass:** golf courses
+(Broadlands, Eagle Trace, Greenway Park, Omni Interlocken) — the
+address+hours facility model doesn't fit tee-time/pricing data cleanly,
+may warrant its own category later. Trails (Broomfield Trail, Lake Link
+Trail, Southwest Community Loop) — these are named multi-mile routes
+crossing the city, not single-address facilities, and don't fit this
+model at all; a lightweight dedicated page (name/length/surface/one
+parking access point) was suggested instead, not built in this pass.

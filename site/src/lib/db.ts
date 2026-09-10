@@ -1631,8 +1631,14 @@ export const FACILITY_CATEGORY_LABELS: Record<string, string> = {
   city_hall: 'City hall',
   community_center: 'Community centers',
   police: 'Public safety',
+  // A separate label from police's "Public safety" -- both feeding the
+  // SAME label string would render as two identical, duplicate section
+  // headings on facilities/index.astro (grouped by raw category, not by
+  // label), which reads as a bug, not a merged section.
+  fire_station: 'Fire stations',
   animal_shelter: 'Animal shelter',
   post_office: 'Post offices',
+  recycling: 'Recycling',
   medical: 'Medical',
   school_district: 'School district offices',
   other: 'Other',
@@ -1648,8 +1654,13 @@ export const FACILITY_SCHEMA_TYPE: Record<string, string> = {
   city_hall: 'CityHall',
   community_center: 'CivicStructure',
   police: 'PoliceStation',
+  fire_station: 'FireStation',
   animal_shelter: 'CivicStructure',
   post_office: 'PostOffice',
+  // schema.org has no dedicated recycling-center type -- CivicStructure is
+  // this file's own established conservative fallback for exactly that
+  // case (see "medical"/"other" using it too), not a guess.
+  recycling: 'CivicStructure',
   medical: 'Hospital',
   school_district: 'GovernmentOffice',
   other: 'CivicStructure',

@@ -24,7 +24,18 @@ for (const f of facilities) {
   if (!byCategory.has(f.category)) byCategory.set(f.category, []);
   byCategory.get(f.category)!.push(f);
 }
-const categoryOrder = ['library', 'park', 'city_hall', 'community_center', 'other'];
+// Broomfield facilities expansion: every category FACILITY_CATEGORY_LABELS
+// (lib/db.ts) knows about, not just the 5 that happened to be in use when
+// this list was first written -- `police`/`post_office` already existed in
+// that label map with no facility ever using them yet, so this exact gap
+// (an unlisted category silently sorting to the front via .indexOf()'s -1)
+// was already live and simply hadn't been exercised. Fixed here for good,
+// not just patched for the two new categories this pass adds.
+const categoryOrder = [
+  'library', 'park', 'city_hall', 'police', 'fire_station', 'post_office',
+  'recycling', 'animal_shelter', 'medical', 'school_district',
+  'community_center', 'other',
+];
 const categories = [...byCategory.keys()].sort(
   (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b)
 );
