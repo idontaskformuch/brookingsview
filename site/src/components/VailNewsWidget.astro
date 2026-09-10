@@ -3,11 +3,16 @@
  *  /vail-resorts. Broomfield only -- caller (index.astro) decides whether
  *  to render at all, same convention as WorkplaceWatchWidget.astro.
  *
- *  Unlike StoryCard.astro's dense list (which deliberately never shows a
- *  per-item image, see that file's own comment), this is a SINGLE item, so
- *  a thumbnail earns its place. image_url is a hotlinked Vail Resorts CDN
- *  URL, may be null (rendered text-only when absent -- see vail-resorts.astro
- *  for why this never falls back to the OG card as a substitute hero). */
+ *  Text-only, deliberately never rendering item.image_url (2026-09-10):
+ *  that field is a hotlinked Vail Resorts CDN URL, and Vail Resorts'
+ *  newsroom carries a blanket "All Rights Reserved" notice with no stated
+ *  hotlink/embed permission anywhere -- the same "no expressed permission
+ *  means no permission" call already made for Street View earlier this
+ *  session. Same "omit rather than risk it" rule already applied to
+ *  facility photos and content-track illustrations. A real photo may come
+ *  back once someone has actually emailed Vail Resorts' media contact and
+ *  gotten a yes -- see NEEDS-HUMAN-REVIEW.md. Until then this renders an
+ *  icon, same treatment as the other three promo cards. */
 import type { VailNewsItem } from '../lib/db';
 
 interface Props { item: VailNewsItem; }
@@ -15,7 +20,7 @@ const { item } = Astro.props;
 ---
 
 <a href="/vail-resorts/" class="vnw-widget" aria-label="See Vail Resorts Newsroom: the company's own news feed">
-  {item.image_url ? <img class="vnw-thumb" src={item.image_url} alt="" loading="lazy" /> : <div class="vnw-icon" aria-hidden="true">🏔️</div>}
+  <div class="vnw-icon" aria-hidden="true">🏔️</div>
   <div class="vnw-text">
     <div class="vnw-label">Vail Resorts Newsroom</div>
     <div class="vnw-title">{item.title}</div>
@@ -41,13 +46,6 @@ const { item } = Astro.props;
     transition: border-color 0.15s ease;
   }
   .vnw-widget:hover { border-color: var(--rule-strong); }
-  .vnw-thumb {
-    width: 3.25rem;
-    height: 3.25rem;
-    border-radius: 6px;
-    object-fit: cover;
-    flex-shrink: 0;
-  }
   .vnw-icon { font-size: 1.5rem; flex-shrink: 0; }
   .vnw-text { flex: 1; min-width: 0; }
   .vnw-label {

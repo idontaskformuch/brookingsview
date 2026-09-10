@@ -8,9 +8,18 @@
  *  releases, not Broomfield-specific reporting. Same "feed, not a content
  *  generator" contract as the copyright guardrail in
  *  scrapers/parsers/vail_news_v1.py: listing-page teaser verbatim, no full
- *  release body, no AI rewrite, images hotlinked from Vail's own CDN, never
- *  re-hosted. is_translation=false is already filtered in getVailNews()
- *  itself (see lib/db.ts), not re-filtered here.
+ *  release body, no AI rewrite. is_translation=false is already filtered in
+ *  getVailNews() itself (see lib/db.ts), not re-filtered here.
+ *
+ *  Images deliberately NOT rendered here (2026-09-10), even though
+ *  item.image_url (a Vail Resorts CDN URL) is still fetched/stored: Vail
+ *  Resorts' newsroom carries a blanket "All Rights Reserved" notice with
+ *  no stated hotlink/embed permission anywhere -- the same "no expressed
+ *  permission means no permission" call already made for Street View
+ *  earlier this session, and the same "omit rather than risk it" rule
+ *  already applied to facility photos and content-track illustrations.
+ *  Someone needs to actually email Vail Resorts' media contact and get a
+ *  yes before this goes back to hotlinking -- see NEEDS-HUMAN-REVIEW.md.
  *
  *  No SectionHero here (unlike /traffic, /university, /workplace-watch):
  *  Broomfield has no seeded category-image pool yet, and this feature's own
@@ -53,11 +62,6 @@ const items = await getVailNews(30);
     <div class="grid">
       {items.map((item) => (
         <article class="card">
-          {item.image_url && (
-            <a class="card__image-link" href={item.external_url} rel="noopener" target="_blank">
-              <img class="card__image" src={item.image_url} alt="" loading="lazy" />
-            </a>
-          )}
           <div class="card__body">
             {item.categories.length > 0 && (
               <p class="card__tags">
@@ -103,8 +107,6 @@ const items = await getVailNews(30);
   border-radius: 6px;
   overflow: hidden;
 }
-.card__image-link { display: block; line-height: 0; }
-.card__image { display: block; width: 100%; height: 11rem; object-fit: cover; }
 .card__body { padding: 0.875rem 1rem 1rem; display: flex; flex-direction: column; gap: 0.375rem; }
 .card__tags { display: flex; flex-wrap: wrap; gap: 0.375rem; margin: 0; }
 .card__tag {

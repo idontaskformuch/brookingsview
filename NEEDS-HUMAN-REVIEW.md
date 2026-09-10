@@ -4253,3 +4253,38 @@ the actual live file (`site/public/assets/images/
 media_recension-2026-09-09-broomfield_co.png` + its 4:3/1:1 crops) with
 one of these, replacing the pasta image, as this commit's own content —
 not just a code change nobody's confirmed against a real title yet.
+
+## 41. Vail Resorts newsroom images — hotlinked without a checked license (2026-09-10)
+
+**Found while fixing the four saturated promo cards** (see the consistency-
+pass commit around this entry): `VailNewsWidget.astro`'s front-page card
+and `vail-resorts.astro`'s full listing both rendered `item.image_url` —
+a hotlinked URL straight from Vail Resorts' own newsroom CDN — as an
+`<img>`. No license or hotlink/embed permission was ever checked before
+this shipped; it was built under the same "feed, not a content generator"
+framing as the text content (verbatim teaser, no AI rewrite, always links
+back to the original release), which is a reasonable copyright posture for
+the TEXT but doesn't say anything about the IMAGES.
+
+**Checked, not assumed:** fetched `news.vailresorts.com` directly and
+looked for a stated usage policy. Found a blanket "©2026 Vail Resorts
+Management Company. All Rights Reserved." footer notice and a stated
+channel for media/content inquiries (email their communications team) —
+no explicit hotlinking/embedding permission anywhere. Same shape as the
+Street View licensing question raised earlier this session: no expressed
+permission means no permission, not an implied yes.
+
+**Fix:** both `VailNewsWidget.astro` and `vail-resorts.astro` no longer
+render `item.image_url` at all — the promo card shows its icon (matching
+the other three, now-de-gradiented promo cards), the listing page shows
+text-only cards. `item.image_url` is still fetched and stored (the
+scraper/DB layer is untouched), just not rendered, so no re-scrape is
+needed once this is resolved. Same "omit rather than risk it" principle
+already applied to facility photos and content-track illustrations
+tonight — an unlicensed image is worse than no image, not better.
+
+**Still open, not blocking:** someone needs to actually email Vail
+Resorts' media/communications contact and ask whether hotlinking newsroom
+images to a local news site is permitted. Not urgent given this site's
+current traffic, but shouldn't be forgotten — re-enable the `<img>` in
+both files once a real yes exists, don't infer one.
