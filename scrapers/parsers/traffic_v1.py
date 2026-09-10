@@ -132,7 +132,7 @@ class TrafficParser(BaseParser):
         if "lane_closures" in payloads:
             rows += self._parse_kml(payloads["lane_closures"], "lane_closure")
         if "chp_incidents" in payloads:
-            rows += self._parse_kml(payloads["chp_incidents"], "chp_incident")
+            rows += _dedupe_fsp_companions(self._parse_kml(payloads["chp_incidents"], "chp_incident"))
         return rows
 
     def _parse_kml(self, kml_text: str, incident_type: str) -> list[dict]:
@@ -172,7 +172,21 @@ class TrafficParser(BaseParser):
 
             if incident_type == "lane_closure":
                 m = _CLOSURE_ID_RE.search(desc_html)
-                external_id = f"{m.group(1).strip()}-{m.group(2).strip()}" if m else None
+                # Only the Closure ID is a stable identifier -- "Log
+                # Number" turned out to be a revision/re-log counter that
+                # increments every time Caltrans touches the SAME closure
+                # record, including routine daily re-affirmation of a
+                # still-ongoing multi-day closure (confirmed live,
+                # 2026-09-10: one real recurring lane closure, "C38BA",
+                # produced 27 separate DB rows over two weeks purely from
+                # its Log Number incrementing daily -- see
+                # NEEDS-HUMAN-REVIEW.md). Combining Closure ID with it
+                # defeated the whole point of ON CONFLICT DO UPDATE. The
+                # coordinates stay part of the key because a single
+                # Closure ID can legitimately cover several distinct
+                # physical points along one corridor (also confirmed
+                # live -- "C38BA" alone spans 4 different lat/lon pairs).
+                external_id = f"{m.group(1).strip()}-{lat}:{lon}" if m else None
             else:
                 m = _CHP_ID_RE.search(desc_html)
                 external_id = m.group(1).strip() if m else None
@@ -211,6 +225,43 @@ class TrafficParser(BaseParser):
                 "content_hash": content_hash("traffic", external_id, title, description, str(ends_at)),
             })
         return rows
+
+
+def _dedupe_fsp_companions(rows: list[dict]) -> list[dict]:
+    """Caltrans' CHP feed emits a SEPARATE placemark, at the identical
+    coordinates, for a Freeway Service Patrol unit responding to an
+    already-logged incident -- structurally a companion record for the
+    same real-world incident, not a second one. Confirmed live,
+    2026-09-10: "260902IN0210" and "260902INFSP0087" shared the exact
+    same coordinates (34.045381, -117.310832) and overlapping description
+    text/timestamps, but have entirely unrelated external id numbers
+    (Caltrans assigns FSP its own separate log, not a suffix of the CHP
+    incident number), so the (town_id, external_incident_id) dedup key
+    can't catch this case at all -- it needs a location-based pass instead.
+
+    Matches on EXACT (not rounded) coordinates deliberately -- unlike the
+    lane-closure case, two independent real incidents landing on the
+    identical float lat/lon down to 6 decimals is not a realistic
+    coincidence, so this stays conservative (never merges two genuinely
+    different incidents) at the cost of only catching companions that
+    share Caltrans' own anchor point precisely.
+    """
+    by_point: dict[tuple[float, float], list[dict]] = {}
+    for row in rows:
+        by_point.setdefault((row["lat"], row["lon"]), []).append(row)
+
+    deduped: list[dict] = []
+    for point_rows in by_point.values():
+        if len(point_rows) == 1:
+            deduped.append(point_rows[0])
+            continue
+        primary = [r for r in point_rows if "FSP" not in r["external_incident_id"]]
+        # Keep every non-FSP record at this point (a genuine second
+        # incident at the same spot is vanishingly unlikely but not worth
+        # silently dropping) plus, only if NONE of them is a primary
+        # record, the first FSP one -- never lose the only data point.
+        deduped.extend(primary if primary else point_rows[:1])
+    return deduped
 
 
 # FAS 2: "Route \d+" matchade nästan ingenting live -- riktiga Caltrans-
