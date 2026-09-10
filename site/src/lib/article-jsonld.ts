@@ -84,22 +84,47 @@ export interface RecipeStory {
 }
 
 /**
- * Additional Recipe markup, alongside (not instead of) the Article block
- * above -- only emitted when structured ingredients/instructions actually
- * extracted (see content/recept/vardagsmiddag.py's fail-loud gate: a
- * vardagsmiddag story only ever gets published WITH both, so this is
- * really "always, for a real recipe," but checked explicitly rather than
- * assumed).
+ * Recipe markup -- see NEEDS-HUMAN-REVIEW.md "Front page: demote shared
+ * content + recipe SEO". Front-page/recipe-SEO handoff: [slug].astro emits
+ * this INSTEAD OF buildArticleJsonLd() above for vardagsmiddag stories now
+ * (a recipe genuinely isn't an Article), so this carries every field a
+ * generic Article block would otherwise have supplied (description,
+ * publisher) rather than assuming both blocks are always present together.
+ * Only emitted when structured ingredients/instructions actually extracted
+ * (see content/recept/vardagsmiddag.py's fail-loud gate: a vardagsmiddag
+ * story only ever gets published WITH both, so this is really "always, for
+ * a real recipe," but checked explicitly rather than assumed).
+ *
+ * `images` is a caller-built list (real illustration first, then its 4:3/
+ * 1:1 crops when they exist) -- NOT the site's auto-generated /og/ social
+ * card the way buildArticleJsonLd's `image` is: Google's Recipe rich-result
+ * guidance wants an actual photo of the dish in multiple aspect ratios, and
+ * a generic share-card graphic doesn't serve that the way it does for a
+ * plain Article/NewsArticle preview.
+ *
+ * recipeYield/prepTime/cookTime/totalTime are deliberately NEVER emitted:
+ * vardagsmiddag.py extracts only ingredients/instructions today (see its
+ * own docstring) -- there is no structured servings count or duration
+ * anywhere in this data model to report, only free prose mentioning them
+ * inside the intro paragraph. "Never invent values: omit the field
+ * instead" applies here exactly as it does to prepTime/cookTime/totalTime
+ * -- adding a fragile regex over body text to guess a servings count would
+ * be inventing a second, unverified extraction path this project's own
+ * "verify or omit, never guess" convention doesn't allow. If a real
+ * structured servings/time field is ever added to the generator, it
+ * belongs here as another conditional field alongside these, not before.
  */
-export function buildRecipeJsonLd(story: RecipeStory, heroUrl: string, siteName: string): Record<string, unknown> | null {
+export function buildRecipeJsonLd(story: RecipeStory, images: string[], siteName: string): Record<string, unknown> | null {
   if (!story.ingredients?.length || !story.instructions?.length) return null;
   return {
     '@context': 'https://schema.org',
     '@type': 'Recipe',
     name: story.title,
-    image: [heroUrl],
+    description: story.body.slice(0, 155),
+    image: images,
     datePublished: story.published_at,
     author: { '@type': 'Organization', name: siteName },
+    publisher: { '@type': 'Organization', name: siteName },
     recipeIngredient: story.ingredients,
     recipeInstructions: story.instructions.map((step) => ({ '@type': 'HowToStep', text: step })),
   };

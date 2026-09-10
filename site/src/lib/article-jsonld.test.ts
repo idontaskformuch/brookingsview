@@ -78,7 +78,7 @@ describe('buildRecipeJsonLd', () => {
       ingredients: ['400 g chicken thighs', '2 cloves garlic'],
       instructions: ['Heat the pan.', 'Cook the chicken.'],
     };
-    const result = buildRecipeJsonLd(story, HERO_URL, SITE_NAME);
+    const result = buildRecipeJsonLd(story, [HERO_URL], SITE_NAME);
     expect(result).not.toBeNull();
     expect(result!['@type']).toBe('Recipe');
     expect(result!.recipeIngredient).toEqual(story.ingredients);
@@ -93,13 +93,45 @@ describe('buildRecipeJsonLd', () => {
       title: 'Broken', body: 'x', published_at: '2026-08-01T15:00:00.000Z',
       ingredients: null, instructions: ['Step one.'],
     };
-    expect(buildRecipeJsonLd(noIngredients, HERO_URL, SITE_NAME)).toBeNull();
+    expect(buildRecipeJsonLd(noIngredients, [HERO_URL], SITE_NAME)).toBeNull();
 
     const noInstructions = {
       title: 'Broken', body: 'x', published_at: '2026-08-01T15:00:00.000Z',
       ingredients: ['Something'], instructions: null,
     };
-    expect(buildRecipeJsonLd(noInstructions, HERO_URL, SITE_NAME)).toBeNull();
+    expect(buildRecipeJsonLd(noInstructions, [HERO_URL], SITE_NAME)).toBeNull();
+  });
+
+  it('carries description, image list, and Organization author+publisher', () => {
+    const story = {
+      title: 'Weeknight Chicken',
+      body: 'A quick weeknight dinner built around what is in season right now, done in thirty minutes flat.',
+      published_at: '2026-08-01T15:00:00.000Z',
+      ingredients: ['400 g chicken thighs'],
+      instructions: ['Heat the pan.'],
+    };
+    const crop = 'https://brookingsview.com/assets/images/vardagsmiddag-2026-08-01-4x3.png';
+    const result = buildRecipeJsonLd(story, [HERO_URL, crop], SITE_NAME)!;
+    expect(result.description).toBe(story.body.slice(0, 155));
+    expect(result.image).toEqual([HERO_URL, crop]);
+    expect(result.author).toEqual({ '@type': 'Organization', name: SITE_NAME });
+    expect(result.publisher).toEqual({ '@type': 'Organization', name: SITE_NAME });
+  });
+
+  // recipe SEO handoff: "Never invent values: omit the field instead" --
+  // vardagsmiddag.py extracts no structured servings/duration data today,
+  // so these must never appear, not even as a guessed/empty placeholder.
+  it('never emits recipeYield/prepTime/cookTime/totalTime -- no structured source data exists for them', () => {
+    const story = {
+      title: 'Weeknight Chicken', body: 'Serves 4, ready in 30 minutes.',
+      published_at: '2026-08-01T15:00:00.000Z',
+      ingredients: ['400 g chicken thighs'], instructions: ['Heat the pan.'],
+    };
+    const result = buildRecipeJsonLd(story, [HERO_URL], SITE_NAME)!;
+    expect(result.recipeYield).toBeUndefined();
+    expect(result.prepTime).toBeUndefined();
+    expect(result.cookTime).toBeUndefined();
+    expect(result.totalTime).toBeUndefined();
   });
 });
 

@@ -78,10 +78,27 @@ export function getWordCountNoindexTally(): number {
  * omit the field entirely (published_at undefined) are unaffected.
  */
 export function shouldNoindexStory(
-  story: Pick<Story, 'source_type' | 'body'> & { published_at?: string | null },
+  story: Pick<Story, 'source_type' | 'body'> & {
+    published_at?: string | null;
+    // Recipe SEO handoff: a vardagsmiddag row's real content isn't just
+    // `body` -- content/recept/vardagsmiddag.py extracts ingredients and
+    // instructions OUT of body into these separate structured arrays (see
+    // extract_marked_list()), leaving body as just a short 2-4 sentence
+    // intro by design ("Kom till saken" -- get to the point, its own system
+    // prompt says). Confirmed live: that intro alone is routinely under
+    // 250 words even for a genuinely substantial recipe, which was
+    // silently noindexing EVERY recipe permalink via this word-count net --
+    // a net built to catch an unexpectedly thin editorial/essay/digest, not
+    // to penalize a recipe for keeping its real content in the fields
+    // designed for it. Optional and absent for every other source_type, so
+    // this has no effect on any story that doesn't carry them.
+    ingredients?: string[] | null;
+    instructions?: string[] | null;
+  },
 ): boolean {
   const isThinType = THIN_SCRAPED_SOURCE_TYPES.includes(story.source_type);
-  const isThinByWordCount = countWords(story.body) < THIN_CONTENT_WORD_THRESHOLD;
+  const structuredText = [...(story.ingredients ?? []), ...(story.instructions ?? [])].join(' ');
+  const isThinByWordCount = countWords(`${story.body} ${structuredText}`) < THIN_CONTENT_WORD_THRESHOLD;
   const isUnpublished = story.published_at === null;
   if (isThinByWordCount && !isThinType) {
     wordCountNoindexTally += 1;

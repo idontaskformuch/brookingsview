@@ -113,11 +113,17 @@ const MIN_TAG_PAGE_ITEMS = 3;
 // URLs are excluded from the sitemap, and it must agree with what the page
 // itself puts in its own <meta name="robots"> (site/src/pages/s/[slug].astro),
 // or a page could end up noindexed but still listed in the sitemap.
+// Recipe SEO handoff: ingredients/instructions are folded into the word
+// count the same way shouldNoindexStory() now does -- a vardagsmiddag row's
+// real content lives in those structured fields, not just its short
+// post-extraction intro `body` -- see that function's own comment for the
+// live bug this fixes (every recipe permalink was silently noindexed).
 const THIN_SCRAPED_SOURCE_TYPES = ['meeting', 'meeting_followup', 'event', 'alert'];
 const THIN_CONTENT_WORD_THRESHOLD = 250;
-function isThinStory(sourceType, body) {
+function isThinStory(sourceType, body, ingredients, instructions) {
   const isThinType = THIN_SCRAPED_SOURCE_TYPES.includes(sourceType);
-  const wordCount = body.split(/\s+/).filter(Boolean).length;
+  const structuredText = [...(ingredients ?? []), ...(instructions ?? [])].join(' ');
+  const wordCount = `${body} ${structuredText}`.split(/\s+/).filter(Boolean).length;
   return isThinType || wordCount < THIN_CONTENT_WORD_THRESHOLD;
 }
 
@@ -241,7 +247,7 @@ async function buildLastmodMap(townId, databaseUrl) {
   const noindexStoryUrls = new Set();
   const crossCanonicalStoryUrls = new Set();
   const stories = await sql`
-    SELECT slug, published_at, source_type, body, generated_by FROM stories WHERE town_id = ${townId}
+    SELECT slug, published_at, source_type, body, generated_by, ingredients, instructions FROM stories WHERE town_id = ${townId}
   `;
   for (const s of stories) {
     map.set(`/s/${s.slug}/`, s.published_at);
@@ -257,7 +263,7 @@ async function buildLastmodMap(townId, databaseUrl) {
     // sitemap as indexable just because it isn't thin. Confirmed live
     // 2026-09-03 this mirror had drifted from the page's own noindex logic
     // the same way the module comment above already warns about.
-    if (s.generated_by === 'data_pending' || s.published_at === null || isThinStory(s.source_type, s.body)) {
+    if (s.generated_by === 'data_pending' || s.published_at === null || isThinStory(s.source_type, s.body, s.ingredients, s.instructions)) {
       noindexStoryUrls.add(`/s/${s.slug}/`);
     }
     const canonicalOrigin = CROSS_SITE_CANONICAL_ORIGINS[s.source_type];
@@ -351,11 +357,24 @@ export default defineConfig({
     sitemap({
       filter: (page) => {
         const pathname = new URL(page).pathname;
+        // Pre-existing bug, unrelated to the recipe/front-page work this
+        // build was actually verifying -- found by scripts/verify_sitemap_
+        // noindex_disjoint.mjs against a real build with live Ticketmaster
+        // data: every /whats-on/<slug>/ DETAIL page carries noindex
+        // unconditionally, by design (see that page's own doc comment --
+        // only the /whats-on/ LISTING page is meant to be indexable), but
+        // nothing in this filter ever excluded them, since they're built
+        // from live Ticketmaster data, not a `stories` row, so none of the
+        // existing noindex*Urls sets above ever see them. Path-shape check,
+        // not a DB query, since noindex here doesn't depend on any per-item
+        // data -- EVERY detail page is noindexed, always.
+        const isWhatsOnDetailPage = pathname.startsWith('/whats-on/') && pathname !== '/whats-on/';
         return !noindexHomeSaleUrls.has(pathname)
           && !excludedGatedPages.has(pathname)
           && !noindexStoryUrls.has(pathname)
           && !noindexThinPageUrls.has(pathname)
-          && !crossCanonicalStoryUrls.has(pathname);
+          && !crossCanonicalStoryUrls.has(pathname)
+          && !isWhatsOnDetailPage;
       },
       serialize(item) {
         const lastmod = lastmodMap.get(new URL(item.url).pathname);

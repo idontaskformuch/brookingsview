@@ -20,6 +20,7 @@
 import { neon } from '@neondatabase/serverless';
 import { siteConfig } from './site-config';
 import { computeClosureWatchState, type ClosureWatchStatus, type WeatherAlert } from './closure-watch';
+import { SHARED_CONTENT_SOURCE_TYPES } from './cross-site-canonical';
 
 const sql = neon(import.meta.env.DATABASE_URL);
 
@@ -348,6 +349,33 @@ export async function getLatestFromCandidates(limit = 8): Promise<Story[]> {
        -- for this exact homepage slot -- confirmed live 2026-09-03, see
        -- NEEDS-HUMAN-REVIEW.md's "unpublished" rows. Explicit filter, not
        -- reliance on ORDER BY placement.
+       AND published_at IS NOT NULL
+     ORDER BY published_at DESC
+     LIMIT ${limit}
+  `) as Story[];
+}
+
+/** Front-page demotion handoff ("demote shared content from the feature
+ *  slot"): candidates for the homepage's "More to read" compact row --
+ *  ONLY the shared/town-agnostic content-track types (recipe, media
+ *  review, science column -- see cross-site-canonical.ts's
+ *  isSharedContentType()/SHARED_CONTENT_SOURCE_TYPES, the one existing
+ *  shared/unique flag this reuses rather than duplicating). A dedicated
+ *  query, not a client-side filter over getLatestFromCandidates(): that
+ *  function mixes all 6 content-track types in one published_at-DESC list
+ *  capped at a small `limit`, so a recent run of local (feature-eligible)
+ *  content could push a shared item below this row's own cap before any
+ *  filtering happened. category_image_index/venue_raw included because
+ *  media_recension resolves its image through the movie_review category
+ *  pool (see images.ts's resolveImage() tier 4), not image_path. */
+export async function getRecentCompactContent(limit = 3): Promise<Story[]> {
+  return (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at,
+           generated_by, byline, image_path, image_alt, rating, ingredients, instructions,
+           venue_raw, is_recurring_series, ends_at, category_image_index
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND source_type = ANY(${SHARED_CONTENT_SOURCE_TYPES})
        AND published_at IS NOT NULL
      ORDER BY published_at DESC
      LIMIT ${limit}

@@ -37,9 +37,10 @@ import {
   getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
   getWeather, getAgPrices, getLatestWeekly, getTodaysFeature, getLatestEmployerRatings,
   getEmployerJobStats, getUpcomingArtsEvents, getRecentJobs, getNextMeeting,
-  getWorthKnowingCandidates, getLatestFromCandidates, getRecentProjectUpdates, formatDate,
+  getWorthKnowingCandidates, getLatestFromCandidates, getRecentCompactContent, getRecentProjectUpdates, formatDate,
   CATEGORY_HREFS, CATEGORY_LABELS, getFacilities, getLatestVailNewsItem, getEventDeckDigests,
 } from '../lib/db';
+import { isSharedContentType } from '../lib/cross-site-canonical';
 import { selectWorthKnowing, selectLatestFrom, firstSentence, selectFrontPageRhythm } from '../lib/homepage-curation';
 import {
   todayUtcMidnight, buildEventFeed, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent,
@@ -55,7 +56,7 @@ const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const isBroomfield = siteConfig.townId === 'broomfield_co';
 
-const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, feature, worthKnowingCandidates, latestFromCandidates, facilities, quickLinkEvents, quickLinkArtsEvents, quickLinkJobs, quickLinkNextMeeting] = await Promise.all([
+const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, todaysFeature, worthKnowingCandidates, latestFromCandidates, compactContent, facilities, quickLinkEvents, quickLinkArtsEvents, quickLinkJobs, quickLinkNextMeeting] = await Promise.all([
   getActiveAlerts(),
   getActiveSchoolAlerts(),
   getActiveTrafficIncidents(),
@@ -76,6 +77,11 @@ const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame
   getTodaysFeature(),
   getWorthKnowingCandidates(),
   getLatestFromCandidates(),
+  // Front-page demotion handoff: the 2-3 most recent shared/town-agnostic
+  // items (recipe, review, science column) for the "More to read" compact
+  // row -- see that section's own comment further down for why this is a
+  // separate fetch from getLatestFromCandidates() above.
+  getRecentCompactContent(3),
   getFacilities(),
   // Front-page orientation pass, Phase 2 ("Looking for something?" quick
   // links) -- deliberately its OWN fetch, not a reuse of `upcoming` above:
@@ -125,6 +131,16 @@ const { shown: quickLinks, omitted: omittedQuickLinks } = resolveQuickLinks(site
 // needs to know what Latest From already selected, not the other way
 // around -- see selectWorthKnowing()'s own comment.
 const latestFromSelection = selectLatestFrom(latestFromCandidates);
+
+// Front-page demotion handoff ("demote shared content from the feature
+// slot"): the feature slot ("Today's read") is for LOCAL content only --
+// see isSharedContentType()'s own comment for why this reuses Phase C's
+// existing shared/unique flag instead of a second one. A shared item
+// (recipe/review/science) still gets fetched above (getTodaysFeature()
+// itself is unchanged, it doesn't know about placement) but simply never
+// becomes `feature` below -- no empty container, no image reserved for a
+// slot that never renders (see frontPageImageOrder just below).
+const feature = todaysFeature && !isSharedContentType(todaysFeature.source_type) ? todaysFeature : null;
 const alertBannerSlugs = new Set(alerts.map((a) => a.slug));
 const worthKnowingSelection = selectWorthKnowing(worthKnowingCandidates, alertBannerSlugs, latestFromSelection);
 
@@ -677,6 +693,55 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     </section>
   )}
 
+  {/* Front-page demotion handoff: the shared/town-agnostic content-track
+      types (recipe, review, science column) lost their feature slot above
+      -- this compact row is where they surface instead, near the bottom,
+      lightweight on purpose (small thumbnail, no excerpt, no large image --
+      see this section's own CSS). Deliberately separate from "Latest from"
+      further up: that section still shows all 6 content-track types mixed
+      together, unchanged; this one exists specifically so a demoted item
+      still gets ONE dedicated, reliably-present link near the bottom of
+      every single front page, not just whenever it happens to be recent
+      enough to win a spot in the mixed list above. */}
+  {compactContent.length > 0 && (
+    <section aria-label="More to read" class="more-to-read">
+      <SectionRule label="More to read" />
+      <ul class="more-to-read__list">
+        {compactContent.map((story) => {
+          const cardImage = resolveImage(story, {
+            town: siteConfig.townId,
+            cityName: siteConfig.cityName,
+            facilities,
+            categoryImages: categoryImagesFor(siteConfig.townId),
+          });
+          const thumbnail = cardImage ? withThumbnailCrop(cardImage) : null;
+          return (
+            <li>
+              <a class="more-to-read__card" href={`/s/${story.slug}/`}>
+                {thumbnail && (
+                  <img
+                    class="more-to-read__image"
+                    src={thumbnail.path}
+                    alt={thumbnail.alt}
+                    width={thumbnail.width}
+                    height={thumbnail.height}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                )}
+                <span>
+                  <span class="more-to-read__kicker">{CATEGORY_LABELS[story.source_type] ?? 'Feature'}</span>
+                  <span class="more-to-read__title">{story.title}</span>
+                </span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+      <a class="more-to-read__all" href="/recipes/">All recipes &rarr;</a>
+    </section>
+  )}
+
   <section aria-label="Sections">
     <SectionRule label={`More from ${siteConfig.cityName}`} />
     <div class="panels">
@@ -876,4 +941,55 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 .latest-from__card:hover .latest-from__title { text-decoration: underline; }
 .latest-from__excerpt { margin: 0; font-size: 0.9375rem; color: var(--ink-soft); line-height: 1.45; }
 .latest-from__read { display: inline-block; margin-top: 0.5rem; font-size: 0.8125rem; color: var(--navy); }
+
+/* Front-page demotion handoff: deliberately lightweight -- small fixed-size
+   thumbnail, no excerpt, single-line-clamped title -- unlike "Latest from"
+   above, which is a full card treatment. */
+.more-to-read__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.more-to-read__card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--rule);
+  text-decoration: none;
+  color: inherit;
+}
+.more-to-read__list li:last-child .more-to-read__card { border-bottom: 0; }
+.more-to-read__image {
+  display: block;
+  flex: 0 0 auto;
+  width: 3.5rem;
+  height: 3.5rem;
+  object-fit: cover;
+  border-radius: 3px;
+}
+.more-to-read__kicker {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0 0 0.125rem;
+}
+.more-to-read__title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 0.9375rem;
+  line-height: 1.3;
+  color: var(--navy);
+}
+.more-to-read__card:hover .more-to-read__title { text-decoration: underline; }
+.more-to-read__all {
+  display: inline-block;
+  margin-top: 0.625rem;
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--navy);
+}
 </style>

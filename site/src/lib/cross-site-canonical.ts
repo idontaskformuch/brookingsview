@@ -30,6 +30,29 @@ export const CROSS_SITE_CANONICAL_ORIGINS: Partial<Record<SourceType, string>> =
   vetenskap_kronika: 'broomfield_co',
 };
 
+/** Front-page demotion handoff ("demote shared content from the feature
+ *  slot"): this map is ALREADY the single source of truth this codebase
+ *  has for "which content-track types are shared, town-agnostic topics
+ *  rather than genuinely local material" -- that's exactly why Phase C
+ *  uses it to pick one canonical origin per type in the first place. The
+ *  front page reuses it for a second, independent purpose (placement:
+ *  `feature` slot vs the compact "More to read" row) rather than adding a
+ *  second shared/unique flag that could drift from this one. Every
+ *  content-track type NOT in CROSS_SITE_CANONICAL_ORIGINS (editorial,
+ *  culture_essay, kvick_essa) is "local" by the same logic: there was
+ *  never enough town-specific material in the shared ones for the model to
+ *  diverge on, which is precisely why they needed a canonical origin at
+ *  all -- the other three didn't. */
+export function isSharedContentType(sourceType: SourceType): boolean {
+  return sourceType in CROSS_SITE_CANONICAL_ORIGINS;
+}
+
+/** Plain array form of CROSS_SITE_CANONICAL_ORIGINS' keys, for SQL `= ANY(...)`
+ *  filters (lib/db.ts's getRecentCompactContent()) that need a real string
+ *  array rather than a lookup function. */
+export const SHARED_CONTENT_SOURCE_TYPES: SourceType[] =
+  Object.keys(CROSS_SITE_CANONICAL_ORIGINS) as SourceType[];
+
 /**
  * Returns the canonical URL to use for this story: the normal self-URL if
  * this story's type isn't cross-site-shared, or if this very town IS the

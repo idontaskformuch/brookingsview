@@ -4441,3 +4441,174 @@ are both exercised by `images.test.ts`'s existing Addendum 2 test coverage
 (this same pool-index mechanism, just a new category using it) rather
 than a fresh live-publish spot check — the mechanism itself is unchanged,
 only the category is new.
+
+## 44. Front page: demote shared content from the feature slot + recipe SEO (2026-09-10)
+
+**Goal:** the front page's feature slot ("Today's read") is now LOCAL
+content only. Shared, town-agnostic content-track types (recipe, media
+review, science column) never win that slot — they surface instead in a
+new, dedicated "More to read" compact row near the bottom, and recipe
+pages got a real SEO pass (`Recipe` structured data, breadcrumbs, and a
+noindex bug fix — see below).
+
+**Classification reused, not duplicated.** `lib/cross-site-canonical.ts`'s
+`CROSS_SITE_CANONICAL_ORIGINS` (Phase C) was already this codebase's one
+real shared/unique flag — the three keys (`vardagsmiddag`,
+`media_recension`, `vetenskap_kronika`) are shared because there's rarely
+enough town-specific material for the model to diverge on, which is
+exactly why they needed a canonical origin in the first place. New
+`isSharedContentType()`/`SHARED_CONTENT_SOURCE_TYPES` in that same file
+reuse it for front-page placement — editorial/culture_essay/kvick_essa
+were never in doubt (not in the map = local), so nothing needed asking
+about.
+
+**Front page (`site/src/pages/index.astro`):**
+- `feature` (was `todaysFeature`) is now `null` whenever today's
+  content-track item is a shared type — the "Today's read" section is
+  gated on it and simply doesn't render (no empty container), and the
+  item is excluded from `frontPageImageOrder`'s dedup reservation since it
+  never actually renders an image there.
+- New `getRecentCompactContent(3)` query (`lib/db.ts`) — a DEDICATED fetch
+  for the compact row, not a client-side filter over
+  `getLatestFromCandidates()`: that function caps at a small `limit`
+  across all 6 content-track types mixed together, so a recent run of
+  local content could push a shared item out of window before any
+  filtering happened.
+- New "More to read" section, positioned after "Coming up" and before the
+  "More from `<Town>`" panel grid — deliberately lightweight (56px
+  thumbnail via the existing `withThumbnailCrop()`, single kicker+title
+  line, `-webkit-line-clamp` at 2 lines, no excerpt), ending in an "All
+  recipes →" link to `/recipes/` per the handoff's own spec. "Latest from"
+  further up the page is UNCHANGED — still shows all 6 content-track types
+  mixed, this is an additional, more targeted surface specifically for
+  demoted items.
+- **Verified live, not just unit-tested**: today (2026-09-10, a Thursday —
+  `vardagsmiddag` day in `scheduler/weekly_rotation.py`'s ROTATION) is a
+  real recipe day on all three towns. A real build confirmed "Today's
+  read" is absent and the actual live recipe/review/science items render
+  correctly in "More to read" on both Brookings and Moreno Valley.
+
+**Recipe JSON-LD (`lib/article-jsonld.ts`, `pages/s/[slug].astro`):**
+`buildRecipeJsonLd()` now emits INSTEAD OF `Article` for `vardagsmiddag`
+(a recipe genuinely isn't an Article), and carries `description`
+(`body.slice(0,155)`, same source the page's own meta description uses),
+`publisher` (previously only `author`), and an `image` array built from
+the REAL illustration + its 4:3/1:1 crops — not the site's generic `/og/`
+social card the way `buildArticleJsonLd`'s `image` deliberately still is
+elsewhere (unchanged there) — Google's Recipe rich-result guidance wants
+an actual dish photo in multiple aspect ratios, which a generic share-card
+graphic doesn't serve. `recipeYield`/`prepTime`/`cookTime`/`totalTime` are
+deliberately never emitted: `content/recept/vardagsmiddag.py` extracts
+only ingredients/instructions today, nothing structured for servings or
+duration exists anywhere in this data model — inventing a regex-over-body
+guess would be exactly the kind of second, unverified extraction path this
+project's "verify or omit, never guess" convention exists to prevent.
+Breadcrumb for `vardagsmiddag` specifically now says "Recipes" (matching
+`/recipes.astro`'s own H1/breadcrumb) instead of the singular "Recipe"
+kicker label every other type's breadcrumb reuses — scoped to this one
+type; reviews/editorials/columns have the identical singular-vs-plural
+mismatch today but fixing those wasn't asked for here, flagged not
+silently expanded. `getRelatedStories()` already surfaces other recipes on
+a recipe page for free (its `sameType` branch matches `source_type`
+exactly, and content-track rows get a real `occurs_at` = their publish
+timestamp) — confirmed this live rather than adding a redundant "3 latest
+recipes" list the handoff's own conditional wording anticipated might not
+be needed.
+
+**Real bug found and fixed: every recipe permalink was silently
+noindexed.** `shouldNoindexStory()`'s general thin-content safety net
+(`lib/noindex.ts`) counts words in `story.body` alone — but
+`vardagsmiddag.py` extracts ingredients/instructions OUT of body into
+separate structured arrays by design, leaving body as just a short 2-4
+sentence intro ("Kom till saken" — get to the point — its own system
+prompt says). Confirmed live: today's Brookings recipe's real `body` was
+~65 words, comfortably under the 250-word threshold, even though the full
+recipe (intro + ingredients + instructions) is ~330 words of real,
+substantial content. This was defeating the entire point of the Recipe
+SEO work — a noindexed page's structured data doesn't matter for organic
+search. Fixed by folding `ingredients`/`instructions` text into the word
+count in BOTH `shouldNoindexStory()` and its hand-kept mirror in
+`astro.config.mjs`'s `isThinStory()` (kept in sync per that file's own
+existing "mirrors lib/noindex.ts" convention) — optional fields, so no
+effect on any other source_type. Verified live: Brookings' word-count
+noindex tally dropped from 15 to 14 pages after the fix, and the specific
+recipe's own `<meta name="robots">` lost `noindex` while gaining a real
+`Recipe` JSON-LD block.
+
+**Mobile date-column wrapping (StoryCard.astro), separate small bug fixed
+alongside this work:** the meetings/agenda list's fixed 46px date rail
+(`.item__rail`) fits short strings (`relativeTime()`'s "2h ago",
+`formatTime()`'s "3:00 PM") but not a meeting's
+`formatCalendarDate()` output ("Thu, September 10") — confirmed reported
+live on iPhone width: it wraps across three lines, and since the row's
+flex layout doesn't reserve that wrapped height, the orphaned last line
+visually overlaps the next list item below. `StoryCard.astro` is the
+ONE shared component behind every meeting list on all three towns (City
+Council, Historic Preservation Commission, Park & Rec Advisory Board
+included) — fixed once, applies everywhere. Fix: below a 30rem (480px)
+breakpoint, `.item--row` stacks (date above title) instead of a fixed-
+width side column, removing the wrap-prone constraint entirely rather than
+hand-tuning a column width for one specific string (a different locale's
+longer month/weekday combination would just reproduce the bug at a
+different width). No Playwright/Lighthouse/browser automation was
+available in this environment to download (sandboxed, no CDN access) —
+this was verified by reasoning through the CSS cascade and confirming the
+built HTML/CSS shipped correctly (`@media (max-width: 30rem)` present,
+inlined per-page as this codebase's small-bundle convention already does),
+NOT by an actual rendered screenshot at 375px/390px. **The owner should
+still do a quick real-device or DevTools-responsive-mode check after
+deploy** — flagged, not silently claimed as visually confirmed.
+
+**Two unrelated pre-existing bugs found via full verification (running
+`scripts/verify_sitemap_noindex_disjoint.mjs` against real builds with
+live data), one fixed, one flagged:**
+
+1. **Fixed:** every `/whats-on/<slug>/` DETAIL page carries `noindex`
+   unconditionally by design (see that page's own doc comment — only the
+   `/whats-on/` LISTING page is meant to be indexable), but
+   `astro.config.mjs`'s sitemap `filter()` had no rule for them at all —
+   they're built from live Ticketmaster data, not a `stories` row, so none
+   of the existing `noindex*Urls` sets ever saw them. 40 such URLs were
+   live in Brookings' own real sitemap. Fixed with one path-shape check
+   (`pathname.startsWith('/whats-on/') && pathname !== '/whats-on/'`) —
+   no DB query needed, since every detail page is noindexed, always, with
+   no per-item exception. Re-verified: the disjoint check now passes
+   clean for Brookings (was 40 offenders, now 0 of 116 sitemap URLs).
+
+2. **Flagged, NOT fixed — a narrow, likely self-resolving timing race:**
+   Moreno Valley's `/jobs/category/teaching-jobs/` failed the disjoint
+   check (noindexed but sitemap-listed). `jobs/category/[category].astro`'s
+   own `getStaticPaths()` and `astro.config.mjs`'s sitemap mirror both
+   query jobs with the identical window (45 days, `LIMIT 100`) and the
+   identical noindex threshold (`< 3` jobs), so this isn't a logic
+   mismatch the way `/whats-on/` was — it's two independent queries,
+   roughly 25 minutes apart (`astro.config.mjs` evaluates once before the
+   Vite/Astro rendering phase even starts; Moreno Valley's own build takes
+   ~25 minutes end to end), each calling `now() - interval '45 days'` at a
+   different wall-clock moment. A category sitting exactly at the 3-job
+   threshold with one job aging out of that window mid-build can disagree
+   between the two queries. Not fixed here: reproducing it reliably to
+   confirm the theory, or restructuring either query to share one
+   timestamp, is real work unrelated to tonight's actual task, and the
+   condition is inherently narrow (exact-threshold category + a job at the
+   exact age boundary) and self-resolving (the boundary job fully ages out
+   of both queries by the next rebuild).
+
+3. **Not a bug — already known and deliberately accepted:** Broomfield's
+   disjoint check flags `/events/kids/`, `/events/library/`,
+   `/events/this-weekend/`, `/events/today/` — but `astro.config.mjs`'s
+   own comment already documents this exact gap ("NOT mirrored for
+   events/[facet].astro: that page's per-facet matching logic is genuinely
+   non-trivial... a wrong guess would be worse than the known, disclosed
+   gap... Flagged, not silently worked around"). Confirmed this is the
+   SAME pre-existing, already-disclosed gap, not something introduced
+   tonight — left as-is, per that comment's own reasoning.
+
+**Verification:** `astro check` 0 errors; vitest 571/571 (new tests in
+`cross-site-canonical.test.ts`, `article-jsonld.test.ts`,
+`noindex.test.ts`); pytest unaffected (no Python files touched this pass);
+real clean builds for all three towns (Brookings 473 pages, Moreno Valley
+4401 pages, Broomfield 988 pages, all exit 0); `scripts/
+verify_sitemap_noindex_disjoint.mjs` clean for Brookings, with Moreno
+Valley/Broomfield's remaining failures both pre-existing and unrelated
+(see above). Left uncommitted per this handoff's own instruction.

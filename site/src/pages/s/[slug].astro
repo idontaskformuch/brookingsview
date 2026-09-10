@@ -108,9 +108,18 @@ const pageCanonicalUrl = canonicalUrlForStory(story.source_type, story.slug, sit
 // with no known parent section just gets a 2-level trail (Home > Title)
 // rather than a guessed, possibly-wrong middle crumb.
 const sectionHref = CATEGORY_HREFS[story.source_type];
+// Recipe SEO handoff: /recipes.astro's own breadcrumb (and H1/<title>) says
+// "Recipes", plural -- CATEGORY_LABELS' "Recipe" is the right word for the
+// singular Byline kicker text (`category`, used elsewhere on this same
+// page) but reads as a mismatched middle crumb here. Scoped to vardagsmiddag
+// only, not applied to every other section (reviews/editorials/columns have
+// the exact same singular-vs-plural mismatch today, but fixing those wasn't
+// asked for here -- see NEEDS-HUMAN-REVIEW.md for that flagged, not silently
+// expanded, scope).
+const breadcrumbSectionLabel = story.source_type === 'vardagsmiddag' ? 'Recipes' : category;
 const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Home', href: '/' },
-  ...(sectionHref ? [{ label: category, href: sectionHref }] : []),
+  ...(sectionHref ? [{ label: breadcrumbSectionLabel, href: sectionHref }] : []),
   { label: story.title, href: canonicalUrl },
 ];
 const related = await getRelatedStories(story, 3);
@@ -151,6 +160,23 @@ const heroImage = resolveImage(story, {
 const additionalImages = story.image_path
   ? contentTrackCropPaths(story.image_path)
       .map((f) => new URL(f, Astro.site ?? siteConfig.siteUrl).href)
+  : [];
+
+// Recipe SEO handoff: Recipe JSON-LD replaces Article JSON-LD entirely for
+// vardagsmiddag (a recipe genuinely isn't an Article -- see article-jsonld.ts's
+// own comment on buildRecipeJsonLd()), so the Article block below is
+// skipped for this one source_type rather than emitted alongside it.
+const isRecipe = story.source_type === 'vardagsmiddag';
+// Recipe rich results want a real photo, not the site's generic /og/
+// social card (see buildRecipeJsonLd's own comment) -- heroImage is the
+// actual illustration whenever resolveImage() found one (which for a
+// published vardagsmiddag row is effectively always, since
+// ai_pipeline/daily_content.py generates one for every content type except
+// media_recension). Falls back to ogImageUrl only in the rare case
+// generation itself failed and no image resolved at all -- Recipe schema
+// still wants SOME image rather than none.
+const recipeImages = isRecipe
+  ? (heroImage ? [new URL(heroImage.path, Astro.site ?? siteConfig.siteUrl).href, ...additionalImages] : [ogImageUrl])
   : [];
 
 // Kommentarer bara på Worker Pulse-digester (se WorkerPulseComments.astro-
@@ -296,7 +322,7 @@ const eventJsonLdObject = buildEventJsonLd(
       article content was a real, live contradiction (confirmed: this
       call was previously unconditional for every source_type, including
       meeting/event/alert). */}
-  {!isNoindex && (
+  {!isNoindex && !isRecipe && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(
       buildArticleJsonLd(story, ogImageUrl, siteConfig.siteName, additionalImages)
     )} />
@@ -306,8 +332,8 @@ const eventJsonLdObject = buildEventJsonLd(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
 
-  {(() => {
-    const recipeJsonLd = buildRecipeJsonLd(story, ogImageUrl, siteConfig.siteName);
+  {!isNoindex && (() => {
+    const recipeJsonLd = buildRecipeJsonLd(story, recipeImages, siteConfig.siteName);
     return recipeJsonLd && (
       <script type="application/ld+json" is:inline set:html={JSON.stringify(recipeJsonLd)} />
     );

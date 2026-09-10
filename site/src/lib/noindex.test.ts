@@ -95,4 +95,42 @@ describe('shouldNoindexStory', () => {
     shouldNoindexStory({ source_type: 'culture_essay', body: longBody(500), published_at: null });
     expect(getWordCountNoindexTally()).toBe(0);
   });
+
+  // Recipe SEO handoff: the REAL live shape of a vardagsmiddag row --
+  // content/recept/vardagsmiddag.py extracts ingredients/instructions OUT
+  // of body, leaving a short 2-4 sentence intro by design. Confirmed live:
+  // this was silently noindexing every real recipe permalink before
+  // ingredients/instructions were folded into the word count below.
+  describe('recipe word count includes ingredients/instructions', () => {
+    it('does not noindex a recipe with a thin intro body but substantial ingredients+instructions', () => {
+      expect(shouldNoindexStory({
+        source_type: 'vardagsmiddag',
+        body: longBody(60), // a realistic short intro, alone under the threshold
+        ingredients: Array(15).fill('2 tablespoons olive oil'), // 15 * 4 = 60 words
+        // 12 * 16 = 192 words -- 60 + 60 + 192 = 312, comfortably over the threshold
+        instructions: Array(12).fill('Heat the pan over medium heat and cook until everything turns golden brown all over.'),
+      })).toBe(false);
+    });
+
+    it('still noindexes a genuinely thin recipe (short body, no/thin ingredients+instructions)', () => {
+      expect(shouldNoindexStory({
+        source_type: 'vardagsmiddag',
+        body: longBody(10),
+        ingredients: ['Salt'],
+        instructions: ['Cook it.'],
+      })).toBe(true);
+    });
+
+    it('treats missing ingredients/instructions as empty, not a crash', () => {
+      expect(shouldNoindexStory({
+        source_type: 'vardagsmiddag', body: longBody(10), ingredients: null, instructions: null,
+      })).toBe(true);
+      expect(shouldNoindexStory({ source_type: 'vardagsmiddag', body: longBody(500) })).toBe(false);
+    });
+
+    it('does not affect a non-recipe story\'s word count (no ingredients/instructions fields present)', () => {
+      expect(shouldNoindexStory({ source_type: 'editorial', body: longBody(500) })).toBe(false);
+      expect(shouldNoindexStory({ source_type: 'editorial', body: longBody(10) })).toBe(true);
+    });
+  });
 });

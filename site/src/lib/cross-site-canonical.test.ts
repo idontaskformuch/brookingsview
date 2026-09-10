@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { canonicalUrlForStory, CROSS_SITE_CANONICAL_ORIGINS } from './cross-site-canonical';
+import {
+  canonicalUrlForStory, CROSS_SITE_CANONICAL_ORIGINS, isSharedContentType, SHARED_CONTENT_SOURCE_TYPES,
+} from './cross-site-canonical';
 import { ALL_SITES } from './site-config';
 import type { SourceType } from './db';
 
@@ -47,5 +49,32 @@ describe('canonicalUrlForStory', () => {
   it('rotates origins across towns rather than naming one town for everything', () => {
     const origins = new Set(Object.values(CROSS_SITE_CANONICAL_ORIGINS));
     expect(origins.size).toBe(Object.keys(CROSS_SITE_CANONICAL_ORIGINS).length);
+  });
+});
+
+// Front-page demotion handoff: isSharedContentType()/SHARED_CONTENT_SOURCE_TYPES
+// reuse this same map for front-page placement (feature vs compact) -- see
+// that function's own comment for why this is deliberately not a second,
+// independently-maintained flag.
+describe('isSharedContentType', () => {
+  it('is true for exactly the three cross-site-canonical types', () => {
+    expect(isSharedContentType('vardagsmiddag')).toBe(true);
+    expect(isSharedContentType('media_recension')).toBe(true);
+    expect(isSharedContentType('vetenskap_kronika')).toBe(true);
+  });
+
+  it('is false for the local content-track types (feature-slot-eligible)', () => {
+    expect(isSharedContentType('editorial')).toBe(false);
+    expect(isSharedContentType('culture_essay')).toBe(false);
+    expect(isSharedContentType('kvick_essa')).toBe(false);
+  });
+
+  it('is false for non-content-track types', () => {
+    expect(isSharedContentType('meeting')).toBe(false);
+    expect(isSharedContentType('event')).toBe(false);
+  });
+
+  it('SHARED_CONTENT_SOURCE_TYPES is exactly CROSS_SITE_CANONICAL_ORIGINS\' keys', () => {
+    expect(new Set(SHARED_CONTENT_SOURCE_TYPES)).toEqual(new Set(Object.keys(CROSS_SITE_CANONICAL_ORIGINS)));
   });
 });
