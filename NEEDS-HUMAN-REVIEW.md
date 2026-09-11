@@ -4612,3 +4612,109 @@ real clean builds for all three towns (Brookings 473 pages, Moreno Valley
 verify_sitemap_noindex_disjoint.mjs` clean for Brookings, with Moreno
 Valley/Broomfield's remaining failures both pre-existing and unrelated
 (see above). Left uncommitted per this handoff's own instruction.
+
+## 45. Owner follow-up: "More to read" not compact + copyrighted-character imagery (2026-09-11)
+
+**Bug 1 ("More to read" row not actually compact) — investigated, NOT
+reproducible against the shipped code.** Fetched the exact live CSS bundle
+from brookingsview.com (`/​_astro/index.BE4I38vl.css`, same content hash as
+a fresh local build) and confirmed `.more-to-read__image` is
+`width:3.5rem;height:3.5rem;object-fit:cover` and `.more-to-read__card` has
+no excerpt element at all — byte-for-byte the compact treatment #44 built,
+live in production. Could not reproduce the "full-bleed hero image and full
+body text" the owner's screenshot showed from either the source or the
+deployed asset. Leading theory, not confirmed: the SAME two items (the
+9/10 recipe, the Kara Zor-El/Supergirl review) also appear in the
+pre-existing "Latest from" section further up the page, which was
+correctly left unchanged by #44 (still shows all 6 content-track types,
+full-card style, `.latest-from__image { width:100%}` + excerpt) — a
+screenshot of that section would show exactly the symptom described.
+Flagged back to the owner for a fresh screenshot/hard-refresh rather than
+"fixed" without a reproduction.
+
+**Bug 2 (copyrighted-character imagery) — confirmed, real, and remediated.**
+The prompt-path fix asked for was already shipped in #43 (the movie_review
+pool commit): `daily_content.py` no longer calls `generate_illustration()`
+for `media_recension` at all, so no NEW review can ever leak a real
+character likeness again. What was missing was the RETROACTIVE half: 5
+already-published rows across 2 towns still had their OLD `image_path` set
+from before that fix, actively serving the exact leak the pool exists to
+prevent.
+
+**Full audit of all 9 existing review illustrations (direct visual
+review, not assumed):**
+
+| File | Depicts | Verdict |
+|---|---|---|
+| `media_recension-2026-07-22.png` | generic robed figures in a boat | safe |
+| `media_recension-2026-07-29.png` | generic teens walking/biking | safe |
+| `media_recension-2026-08-12.png` | generic robed group, no logos | safe |
+| `media_recension-2026-08-26.png` | **photorealistic Spider-Man costume, mask, spider emblem** | **VIOLATION** |
+| `media_recension-2026-09-02-broomfield_co.png` | generic open book, gibberish text | safe |
+| `media_recension-2026-09-02-moreno_valley_ca.png` | **recognizable Chucky doll (Child's Play)** | **VIOLATION** |
+| `media_recension-2026-09-09-brookings_sd.png` | **Supergirl costume + shield logo, close-up** | **VIOLATION** |
+| `media_recension-2026-09-09-broomfield_co.png` | generic cinema exterior, gibberish marquee (the #40 replacement) | safe |
+| `media_recension-2026-09-09-moreno_valley_ca.png` | **Supergirl costume + shield logo, different angle** | **VIOLATION** |
+
+4 distinct violating images, affecting **5 story rows** (the Spider-Man
+file is referenced by TWO rows — see below):
+
+- `(brookings_sd, media_recension-2026-08-26)` — "Obsession (2026)..."
+  review, showing an unrelated Spider-Man image
+- `(moreno_valley_ca, media_recension-2026-08-26)` — "Spider-Man: Brand
+  New Day..." review, showing its own (violating) image
+- `(moreno_valley_ca, media_recension-2026-09-02)` — "Obsession Brings
+  Cursed-Toy Horror..." review, showing Chucky
+- `(brookings_sd, media_recension-2026-09-09)` — "Kara Zor-El comes to
+  Brookings Cinema 8..." (Supergirl) review
+- `(moreno_valley_ca, media_recension-2026-09-09)` — "Supergirl Lands in
+  the DCU..." review
+
+**The two rows sharing one file is itself a second, distinct pre-existing
+bug**, unrelated to the character-likeness issue: `media_recension-2026-07-22.png`
+through `-08-26.png` predate the town-scoped filename fix (`{slug}-{town_id}.png`,
+landed 2026-08-27 per `daily_content.py`'s own comment on the collision it
+fixed) — every town generating `media_recension` on the SAME Wednesday
+wrote to the SAME shared path before that fix, so whichever town's
+pipeline ran last silently overwrote the others'. Confirmed live: Brookings'
+own "Obsession" review and Moreno Valley's own "Spider-Man" review both
+still point at the literal same `image_path` today, and it happened to be
+Moreno Valley's Spider-Man generation that survived. Not touched beyond
+this pass's own fix (nulling both rows' `image_path` resolves it as a
+side effect, since each row now independently falls through to its own
+town's movie_review pool) -- a systematic backfill of every OTHER
+pre-2026-08-27 collision (if any still exist for other content types) was
+not audited here.
+
+**Fix applied:** nulled `image_path` (and `category_image_index`, so a
+fresh rotation slot gets assigned rather than reusing a stale one) on all
+5 rows directly in the production DB, then ran
+`ai_pipeline.assign_category_image_rotation` for `brookings_sd` and
+`moreno_valley_ca` immediately rather than waiting for the next 6-hour
+scrape cron. `image_alt` was left untouched on all 5 -- already carries
+the real, correct per-film text, which `resolveImage()` re-applies over
+the pool's own generic alt (see #43's tier-4 override). This is
+NOT a regeneration: no new AI call was made, no new risk introduced --
+these 5 rows now resolve through the SAME pre-verified, already-audited
+generic pool every other review uses. Deleted the 4 now-orphaned violating
+files (native + 4:3/1:1 crops, 12 files total) from
+`site/public/assets/images/` -- confirmed no code anywhere still
+references them first.
+
+**Verified against a real rebuild, not assumed:** Brookings' two affected
+pages now resolve to `/assets/images/categories/movie_review-1.png` and
+`movie_review-2.png` respectively (different slots, no back-to-back
+repeat), each still captioned with its own real film's title via
+`image_alt`. Moreno Valley's three affected pages verified the same way.
+
+**Left for the owner to decide, not done here:** the DB write itself is
+immediate production data (there is no "commit" for it to leave
+uncommitted) and will reach the live site on the next build+deploy
+(automatically within 6 hours via the scrape cron's own "Image pool
+rotation" + build + `wrangler deploy` steps, or sooner if the owner
+triggers/pushes a redeploy manually) -- not force-pushed immediately by
+this pass, per this handoff's own "leave uncommitted for review"
+instruction covering the file-level changes (deleted image files). RSS/CDN
+cache purging beyond Cloudflare's own normal asset-hash cache-busting was
+not investigated -- flagged, not silently assumed unnecessary, since the
+handoff explicitly named it as an owner decision.
