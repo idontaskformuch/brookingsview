@@ -9,6 +9,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getUpcomingStories, getPastStories, getProjects } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+import { resolvePageMeta } from '../lib/page-meta';
 
 const upcoming = await getUpcomingStories(['meeting'], 40);
 const past = await getPastStories(['meeting', 'meeting_followup'], 30);
@@ -18,17 +19,25 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Home', href: '/' },
   { label: 'City hall', href: canonicalUrl },
 ];
+// Sitewide title/H1/lede handoff, Phase 1: this is the spec's own
+// reference example -- title/H1 now come from the shared pattern catalog
+// (site/src/config/page-meta.ts) instead of a hardcoded per-page string.
+// The lede below is UNCHANGED -- it's the one the handoff itself called
+// "good," and the whole point of resolvePageMeta() is to leave working
+// prose alone (see that helper's own doc comment on why ledes stay in
+// content, not config).
+const pageMeta = resolvePageMeta('city-hall', siteConfig);
 ---
-<BaseLayout title={`City Hall in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-city-hall"
+<BaseLayout title={pageMeta.title} wide ogSlug="section-city-hall"
   description={`City council, county commission and committee meetings in ${siteConfig.cityName}, ${siteConfig.stateName}, in plain language.`}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero category="city_hall" />
   <header class="lede">
-    <h1>City hall</h1>
+    <h1>{pageMeta.h1}</h1>
     <p>What {siteConfig.cityName}'s city council, county commission and committees
     are deciding — summarised from the published agendas, in plain language,
     without taking sides. Updated as new agendas and outcomes are published.</p>
-    <ShareButton title={`City Hall in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
+    <ShareButton title={pageMeta.title} />
   </header>
 
   {projects.length > 0 && (

@@ -4894,3 +4894,78 @@ against the actual 24-month Moreno Valley build), not just unit tests**:
 now excludes (21096 Pala Foxia Pl, latest sale May 2024, outside the
 ~2024-09 cutoff) → **410 Gone**; a slug that was never a real address at
 all → 404, correctly not conflated with the 410 case.
+
+## 48. Sitewide title/H1/lede handoff, Phase 1: config + resolvePageMeta() helper (2026-09-12)
+
+Per the handoff's own "Order of work" (Phase 0 audit → config block +
+helper → migrate templates section by section → validation check last):
+`site/src/config/page-meta.ts` (the pattern catalog, ~16 page types) +
+`site/src/lib/page-meta.ts`'s `resolvePageMeta(routeKey, townConfig,
+extraVars?)` -- mirrors the existing `getCityStatus()`/`resolveImage()`
+shape, throws (fails loud) on an unregistered route key or an
+unsatisfied placeholder, since a bad call site is a typo, not a normal
+per-town gap.
+
+**Real finding, not assumed: most of the handoff's own literal example
+title strings exceeded its own 65-char hard-fail line.** Checked every
+pattern against all three REAL town names, not just the spec's own
+examples -- "Moreno Valley" (13 chars, the longest of the three) blew the
+limit on the majority of patterns as originally written (e.g. "{Town}
+City Council Meetings, Summarized | {Site}" -> 68 chars for Moreno
+Valley, fine at 60/62 for Brookings/Broomfield). Shortened each
+(dropping redundant words -- "Council" alone already implies city
+government, "City" before it added nothing) rather than loosening the
+limit or leaving a town-specific overflow for the validation phase to
+catch later. `page-meta.test.ts` now checks every registered pattern
+against all three towns automatically, specifically so this class of bug
+doesn't need finding by hand again.
+
+**One genuine, unavoidable exception**: `facilities/detail` can't be
+fully solved this way. Checked the longest real facility names across all
+three towns -- "Brookings City Hall (City & County Government Center)" is
+53 characters ALONE, before any site suffix. Even the shortest possible
+pattern (`{FacilityName} | {Site}`, no surrounding words at all) exceeds
+65 chars for this and a few other long official names combined with a
+longer town's site suffix. No amount of trimming fixes this without
+either misrepresenting the facility's own official name or dropping the
+site suffix entirely for just this page type. Flagged for the validation
+phase (`page_meta_check`, not built yet) to carry a named per-slug
+exception list -- same "known exception, not silently violated"
+convention as `build-checks.ts`'s own `KNOWN_VENUE_MATCHING_GAPS`.
+
+**`/city-hall/` migrated as the concrete, verified example** (the
+handoff's own reference page) -- title and H1 now come from
+`resolvePageMeta()`, the existing hand-written lede is completely
+untouched (confirmed byte-identical in the built output). Verified
+against real builds for all three towns, not just unit tests:
+
+| Town | Title | H1 |
+|---|---|---|
+| Brookings | Brookings Council Meetings, Summarized \| Brookings View | Brookings City Hall: Council and Planning Meetings in Plain Language |
+| Moreno Valley | Moreno Valley Council Meetings, Summarized \| Moreno Valley View | Moreno Valley City Hall: Council and Planning Meetings in Plain Language |
+| Broomfield | Broomfield Council Meetings, Summarized \| Broomfield View | Broomfield City Hall: Council and Planning Meetings in Plain Language |
+
+No other template migrated yet -- city-hall was the one concrete proof
+for this pass. The remaining ~15 registered page types (events, whats-on,
+today, this-week, traffic, closures, facilities index + detail,
+home-sales, workplace-watch, jobs, sports, weather, free-things-to-do,
+city-hall/archive, city-hall/projects) still render their own hardcoded
+title/H1 strings and need the same one-line swap to `resolvePageMeta()`
+each. `page_meta_check` (the build-time validation, meant to fail loud on
+a length/duplicate/similarity violation) also not built yet -- ships
+last, once every template has actually migrated, per the handoff's own
+explicit ordering.
+
+**Correction to the handoff's own assumed location for the validation
+check**: its Implementation section says "extend the existing
+`validation/` package with a `page_meta_check`" -- that package is
+Python, used for pre-publish AI-content validation
+(`validation/pre_publish_check.py`, called from `ai_pipeline` before a
+story is written to the database), with zero visibility into built Astro
+HTML output. The real existing build-time-fail-loud mechanism for exactly
+this kind of check is `site/src/lib/build-checks.ts` (TypeScript, called
+from `BaseLayout.astro`, already used for `assertCategoryImagesComplete()`/
+`assertContentTrackImagesComplete()`). `page_meta_check` belongs there,
+not in the Python package -- flagging now so the eventual validation
+phase doesn't start by importing something that can't see the pages it's
+meant to check.
