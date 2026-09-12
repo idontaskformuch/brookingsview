@@ -19,6 +19,7 @@ import {
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
 import { computeOpenStatus } from '../../lib/facility-hours';
+import { buildFacilityLede } from '../../lib/facility-lede';
 
 export async function getStaticPaths() {
   const facilities = await getFacilities();
@@ -36,6 +37,14 @@ const categoryLabel = FACILITY_CATEGORY_LABELS[facility.category] ?? facility.ca
 const description = facility.description
   ? facility.description.slice(0, 155)
   : `Address, phone number and hours for ${facility.name} in ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`;
+// Sitewide title/H1/lede handoff, facility-detail rule: the lede must
+// include the street address in prose form -- see buildFacilityLede's own
+// comment for why this is synthesized at render time (varied connector
+// phrasing) rather than a content rewrite of all 38 real facility
+// descriptions. Distinct from `description` above (the <meta
+// name="description"> value, which keeps its own 155-char truncation and
+// doesn't need the address baked in).
+const lede = buildFacilityLede(facility.description, facility.address, facility.slug);
 
 // Cross-link upcoming events held at this facility -- the venue registry
 // (ai_pipeline/venue_registry.py, site/src/lib/event-jsonld.ts) is the join
@@ -97,6 +106,15 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
       </>
     )}
 
+    {/* Sitewide title/H1/lede handoff: moved above the facts <dl> --
+        previously this paragraph rendered AFTER the address/phone/hours
+        block, which meant the page's real editorial content structurally
+        never qualified as a "lede" (the spec's own rule: must appear
+        before any list, table, card grid, or widget) no matter how good
+        the text itself was. `lede` (not `facility.description` directly)
+        also carries the address in prose now -- see buildFacilityLede(). */}
+    {lede && <p class="description">{lede}</p>}
+
     <dl class="facts">
       {facility.address && (
         <div class="fact"><dt>Address</dt><dd>{facility.address}</dd></div>
@@ -121,8 +139,6 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
         <div class="fact"><dt>Website</dt><dd><a href={facility.website} rel="noopener">{facility.website.replace(/^https?:\/\//, '')}</a></dd></div>
       )}
     </dl>
-
-    {facility.description && <p class="description">{facility.description}</p>}
 
     {upcomingHere.length > 0 && (
       <>
