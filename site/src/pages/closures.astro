@@ -26,6 +26,7 @@ import SectionHero from '../components/SectionHero.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getClosureWatchStatus } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import { resolvePageMeta } from '../lib/page-meta';
 import { SECTION_THEME } from '../lib/section-theme';
 import { buildFaqJsonLd, buildSchoolClosureNewsArticleJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 
@@ -51,9 +52,17 @@ const lastCheckedDate = now.toLocaleDateString('en-US', {
   timeZone: siteConfig.timezone,
 });
 
+// Sitewide title/H1/lede handoff: the CONFIRMED-closure title is
+// deliberately kept as its own dynamic, date-stamped string rather than
+// resolvePageMeta()'s static pattern -- "{Date}: School closures |
+// {Town}" is a genuinely more specific, more useful title during an
+// actual active closure than the generic pattern could be (it directly
+// answers "is school closed today"), so the pattern only applies to the
+// default (no active closure) state.
+const pageMeta = resolvePageMeta('closures', siteConfig);
 const pageTitle = status.state === 'confirmed'
-  ? `${lastCheckedDate.split(',')[0]}: School closures — ${siteConfig.cityName}`
-  : `School closures — ${siteConfig.cityName}`;
+  ? `${lastCheckedDate.split(',')[0]}: School Closures | ${siteConfig.siteName}`
+  : pageMeta.title;
 
 const faqJsonLd = buildFaqJsonLd([
   {
@@ -89,13 +98,18 @@ const newsArticleJsonLd = status.state === 'confirmed' && status.closure
       concept that needs its own pool (see lib/images.ts's ImageCategory). */}
   <SectionHero category="school_alerts" />
   <header class="cw-hero">
-    <h1>Closure Watch</h1>
+    <h1>{pageMeta.h1}</h1>
+    {/* TODO (sitewide title/H1/lede handoff): must include the existing
+        never-predicts-a-closure disclaimer per the ledeRequirement in
+        page-meta.ts's 'closures' entry -- the tagline below already says
+        "not a guess," which arguably satisfies it, flagged not rewritten
+        in this title/H1-only pass. */}
     <p class="tagline">
       Official school-closure status for {siteConfig.cityName} -- what's actually
       been announced, not a guess at what might happen.
     </p>
     <p class="cw-checked">Last checked {lastChecked}, {lastCheckedDate}</p>
-    <ShareButton title={`School closures — ${siteConfig.cityName} — ${siteConfig.siteName}`} />
+    <ShareButton title={pageTitle} />
   </header>
 
   {status.state === 'confirmed' && status.closure && (

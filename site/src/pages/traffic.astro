@@ -20,7 +20,9 @@ import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
 import { SECTION_THEME } from '../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+import { resolvePageMeta } from '../lib/page-meta';
 
+const pageMeta = resolvePageMeta('traffic', siteConfig);
 const incidents = await getActiveTrafficIncidents();
 const canonicalUrl = new URL('/traffic/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
@@ -34,16 +36,20 @@ const SEVERITY_LABELS: Record<string, string> = {
   closure: 'Closure', injury: 'Injury reported', incident: 'Incident', planned: 'Planned closure',
 };
 ---
-<BaseLayout title={`Traffic in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-traffic"
+<BaseLayout title={pageMeta.title} wide ogSlug="section-traffic"
   description={`Current road incidents and lane closures affecting ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}
   accentColor={SECTION_THEME.traffic.accent}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero category="traffic" />
   <header class="lede">
-    <h1>Traffic</h1>
+    <h1>{pageMeta.h1}</h1>
+    {/* TODO (sitewide title/H1/lede handoff): this lede doesn't yet name
+        the specific DOT source or refresh interval the handoff's own
+        ledeRequirement asks for (see page-meta.ts's 'traffic' entry) --
+        flagged, not rewritten in this pass (title/H1 migration only). */}
     <p>Current road incidents, closures and construction near {siteConfig.cityName} —
     straight from the state's own public traffic feed.</p>
-    <ShareButton title={`Traffic in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
+    <ShareButton title={pageMeta.title} />
   </header>
 
   <SectionRule label={incidents.length > 0 ? `${incidents.length} active` : 'Current incidents'} />

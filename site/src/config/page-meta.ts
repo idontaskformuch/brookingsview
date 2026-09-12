@@ -1,9 +1,10 @@
 /** Sitewide title/H1/lede handoff -- the pattern catalog `resolvePageMeta()`
  *  (site/src/lib/page-meta.ts) reads from. Shared across all three towns;
- *  a town overrides an entry only where it genuinely differs (sports'
- *  own framing today -- see TOWN_OVERRIDES below), matching the same
- *  "shared defaults, narrow per-town override" shape category-images.ts's
- *  own CATEGORY_IMAGES/Broomfield-aliasing precedent already established.
+ *  a town can override an entry where it genuinely differs for the SAME
+ *  route (see TOWN_OVERRIDES below -- empty today, see its own comment),
+ *  matching the same "shared defaults, narrow per-town override" shape
+ *  category-images.ts's own CATEGORY_IMAGES/Broomfield-aliasing precedent
+ *  already established.
  *
  *  `{Town}`/`{Site}` interpolate from siteConfig.cityName/siteName. A
  *  pattern needing an extra placeholder (facility detail's own
@@ -79,9 +80,33 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     titlePattern: '{Town} Today: Weather and Events | {Site}',
     h1Pattern: "What's Happening in {Town} Today",
   },
+  // this-week/[week].astro is a per-instance DATED archive (one page per
+  // ISO week, kept forever), not a static hub -- unlike every other entry
+  // in this catalog, its title/H1 MUST differ per instance or every past
+  // week's page would carry an identical title (a real, direct violation
+  // of the handoff's own "every indexable route's title is unique within
+  // its town" rule). {WeekLabel} supplied via resolvePageMeta()'s
+  // extraVars from that page's own week.label (e.g. "September 8-14,
+  // 2026"). Also fixes a real pre-existing bug: the ORIGINAL <h1> was
+  // just {week.label} alone, with no town name in it at all -- failing
+  // the handoff's own "H1 must contain the town name" rule outright, not
+  // just imperfectly.
+  //
+  // SECOND known, rare, accepted exception to the 65-char rule (see
+  // facilities/detail above for the first): the one ISO week per year
+  // that crosses a calendar-year boundary gets a much longer label from
+  // formatWeekLabel() (site/src/lib/this-week.ts) -- e.g. "December 29,
+  // 2025 - January 4, 2026" -- which pushes Moreno Valley's own title
+  // past 65 chars (confirmed: 79 chars with the full label, still 70
+  // even with abbreviated month names). Not fixed by changing
+  // formatWeekLabel() itself: that function's output is real, visible
+  // page content on this page (not just the title), so shortening it
+  // sitewide to fit one metadata field one week a year would be the tail
+  // wagging the dog. Flagged for the validation phase's exception list,
+  // same as facilities/detail.
   'this-week': {
-    titlePattern: '{Town} This Week: Events and Meetings | {Site}',
-    h1Pattern: 'The Week Ahead in {Town}',
+    titlePattern: '{Town}: Week of {WeekLabel} | {Site}',
+    h1Pattern: 'The Week Ahead in {Town}: {WeekLabel}',
   },
   traffic: {
     titlePattern: '{Town} Road Closures and Traffic | {Site}',
@@ -133,36 +158,55 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     titlePattern: 'Jobs Hiring Now in {Town} | {Site}',
     h1Pattern: 'Current Job Openings in and Around {Town}',
   },
-  // Base pattern; TOWN_OVERRIDES below supplies each town's own H1 framing
-  // (Jackrabbits for Brookings, regional-affiliate for Moreno Valley) --
-  // the handoff's own "pull the framing from town config" instruction.
+  // CORRECTION to the handoff's own assumption: it describes "/sports/"
+  // as one shared route needing per-town H1 framing ("Brookings gets the
+  // Jackrabbits angle, Moreno Valley the regional-affiliate angle"). The
+  // real architecture is two entirely SEPARATE pages: /sports/ is
+  // Moreno-Valley-only (site/src/pages/sports.astro redirects every other
+  // town away), and Brookings has its own dedicated /jackrabbits/ page
+  // instead (site/src/pages/jackrabbits.astro) -- see that entry below.
+  // Broomfield has neither. Since Moreno Valley is the ONLY real caller of
+  // this route key, the regional-affiliate framing (no home NCAA program
+  // there, hence "affiliate" not a named team) lives directly in the base
+  // pattern rather than as a TOWN_OVERRIDES entry with exactly one member --
+  // that indirection would document a distinction that no longer exists.
   sports: {
     titlePattern: '{Town} Sports Scores and Schedule | {Site}',
-    h1Pattern: '{Town} Area Sports Scores and Schedule',
+    h1Pattern: '{Town}-Area Sports: Regional and Affiliate Team Scores',
+  },
+  // Brookings-only (site/src/pages/jackrabbits.astro redirects every
+  // other town away) -- SDSU is a real, specific, already-covered-in-
+  // depth program, a stronger keyword than a generic "sports" framing
+  // would be for this town specifically.
+  jackrabbits: {
+    titlePattern: 'SDSU Jackrabbits Schedules and Results | {Site}',
+    h1Pattern: 'SDSU Jackrabbits in {Town}: Schedules and Results',
   },
   weather: {
     titlePattern: '{Town} Weather Forecast and Alerts | {Site}',
     h1Pattern: '{Town} Forecast, Alerts and What They Mean',
   },
+  // CORRECTION to the handoff's own claim: it describes this as "built off
+  // a real Search Console query," implying the page already exists.
+  // Confirmed via repo-wide search (file paths and route strings) that
+  // /free-things-to-do/ does not exist anywhere in this codebase -- no
+  // page, no redirect, nothing to migrate. Left registered but inert
+  // (not wired into any page) rather than removed, since the pattern
+  // itself is harmless and a future decision to actually build the page
+  // shouldn't require re-deriving it; building the page itself is out of
+  // scope for a title/H1 migration and would violate sibling specs'
+  // "no new pages" guardrails.
   'free-things-to-do': {
-    // Built off a real Search Console query -- keep the title close to
-    // the query wording, per the handoff's own instruction.
     titlePattern: 'Free Things to Do in {Town} | {Site}',
     h1Pattern: 'Free Events, Parks and Places in {Town}',
   },
 };
 
-/** Per-town overrides, narrow on purpose -- only sports' H1 framing
- *  differs today. Brookings gets the Jackrabbits angle (a real, named
- *  program this site already covers in depth); Moreno Valley gets the
- *  regional-affiliate framing (no home NCAA program there). Broomfield
- *  has no /sports/ route at all (see site-config.ts's own townId checks
- *  in that page), so it needs no entry here. */
-export const TOWN_OVERRIDES: Record<string, Partial<Record<string, Partial<PageMetaPattern>>>> = {
-  brookings_sd: {
-    sports: { h1Pattern: '{Town}-Area Sports: Jackrabbits, Prep and Regional Scores' },
-  },
-  moreno_valley_ca: {
-    sports: { h1Pattern: '{Town}-Area Sports: Regional and Affiliate Team Scores' },
-  },
-};
+/** Per-town overrides. Empty today: the one case this existed for
+ *  (sports' H1 framing) turned out to be two separate pages/route keys
+ *  (`sports`, `jackrabbits`) rather than one shared route needing a
+ *  per-town override -- see those entries' own comments above. Kept as a
+ *  real mechanism, not deleted, since a genuine same-route per-town
+ *  variation is still a plausible future need (mirrors category-images.ts's
+ *  own CATEGORY_IMAGES/Broomfield-aliasing shape). */
+export const TOWN_OVERRIDES: Record<string, Partial<Record<string, Partial<PageMetaPattern>>>> = {};

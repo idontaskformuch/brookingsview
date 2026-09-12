@@ -21,6 +21,7 @@ import {
   getShiftPollResults, getWorkerPulseComments,
 } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
+import { resolvePageMeta } from '../../lib/page-meta';
 import SectionHero from '../../components/SectionHero.astro';
 import { EMPTY_STATES } from '../../lib/empty-states';
 import { SECTION_THEME } from '../../lib/section-theme';
@@ -30,6 +31,7 @@ if (!siteConfig.hasWorkplaceWatch) {
   return Astro.redirect('/', 302);
 }
 
+const pageMeta = resolvePageMeta('workplace-watch', siteConfig);
 const canonicalUrl = new URL('/workplace-watch/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Home', href: '/' },
@@ -89,7 +91,7 @@ function trend(delta: number | null): { symbol: string; cls: string } {
 const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
 ---
 <BaseLayout
-  title={`Worker Pulse in ${siteConfig.cityName} — ${siteConfig.siteName}`}
+  title={pageMeta.title}
   wide
   description={`Monthly review-trend digests for ${siteConfig.cityName}'s major employers — check before your shift.`}
   ogSlug="section-workplace-watch"
@@ -98,14 +100,14 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
   <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero category="workplace_watch" />
   <header class="wp-hero">
-    <h1>Worker Pulse</h1>
+    <h1>{pageMeta.h1}</h1>
     <p class="tagline">
       A monthly, plain-language look at review trends for {siteConfig.cityName}'s
       major employers{employers.length > 0 ? ` — ${employers.map((e) => e.name).join(', ')}` : ''}.
       Themes are summarized from recent Glassdoor/Indeed search results,
       always attributed to what reviews say, never stated as settled fact.
     </p>
-    <ShareButton title={`Worker Pulse in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
+    <ShareButton title={pageMeta.title} />
   </header>
 
   <p class="wp-methodology">

@@ -18,7 +18,7 @@
  */
 import { getSignData, countdown } from '../lib/db';
 import { siteConfig, ALL_SITES } from '../lib/site-config';
-import { runBuildTimeImageChecks } from '../lib/build-checks';
+import { runBuildTimeChecks } from '../lib/build-checks';
 import { assertAccentContrast } from '../lib/accent-contrast';
 import { buildOrganizationJsonLd } from '../lib/article-jsonld';
 import CookieBanner from '../components/CookieBanner.astro';
@@ -58,7 +58,7 @@ const {
   canonicalUrl,
 } = Astro.props;
 
-await runBuildTimeImageChecks();
+await runBuildTimeChecks();
 assertAccentContrast(siteConfig.townId, siteConfig.brand);
 const sign = await getSignData();
 const canonical = canonicalUrl

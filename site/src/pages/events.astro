@@ -16,6 +16,9 @@ import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
 import { SECTION_THEME } from '../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+import { resolvePageMeta } from '../lib/page-meta';
+
+const pageMeta = resolvePageMeta('events', siteConfig);
 
 // "Arts & Culture" (SDSU) / "Around Town" (library, city, chamber, ...) --
 // bara Brookings har den här campus-vs-townwide-uppdelningen att göra (se
@@ -120,17 +123,13 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Events', href: canonicalUrl },
 ];
 ---
-<BaseLayout title={`Events in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-events"
+<BaseLayout title={pageMeta.title} wide ogSlug="section-events"
   description={`What's on this weekend in ${siteConfig.cityName}, ${siteConfig.stateName} — library programs, city events and community happenings.`}
   accentColor={SECTION_THEME.events.accent}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero category="events" />
   <header class="lede">
-    {/* Was "What's on" (lowercase "on") -- a real pre-existing mislabel,
-        found while adding the Events/What's On cross-link below: this
-        page's own <h1> disagreed with its title/breadcrumb/meta
-        description, all of which already correctly said "Events". */}
-    <h1>Events</h1>
+    <h1>{pageMeta.h1}</h1>
     <p>Community events in {siteConfig.cityName}, {siteConfig.stateName} —
     library programs, city events and more, gathered from each organiser's own
     calendar. Times and registration details come straight from the source.
@@ -141,7 +140,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
       // per town, this line points to whichever one doesn't.
       <p class="cross-link">Concerts and shows in the region: <a href="/whats-on/">What's On</a></p>
     )}
-    <ShareButton title={`Events in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
+    <ShareButton title={pageMeta.title} />
   </header>
 
   <nav class="facet-nav" aria-label="Event filters">

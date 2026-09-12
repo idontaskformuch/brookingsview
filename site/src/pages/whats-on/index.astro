@@ -35,6 +35,7 @@ import { SECTION_THEME } from '../../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { resolveImage } from '../../lib/images';
 import { categoryImagesFor } from '../../config/category-images';
+import { resolvePageMeta } from '../../lib/page-meta';
 
 if (!siteConfig.hasWhatsOn) {
   return Astro.redirect('/', 302);
@@ -113,13 +114,14 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: "What's On", href: canonicalUrl },
 ];
 const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
+const pageMeta = resolvePageMeta('whats-on', siteConfig);
 ---
-<BaseLayout title={`What's On in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-whats-on"
+<BaseLayout title={pageMeta.title} wide ogSlug="section-whats-on"
   description={`Concerts, theatre and touring shows within ${radiusMiles ?? 75} miles of ${siteConfig.cityName}, ${siteConfig.stateName} — with real distance shown, never a hidden away-game.`}
   accentColor={SECTION_THEME.events.accent}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
-    <h1>What's On</h1>
+    <h1>{pageMeta.h1}</h1>
     <p>Concerts, theatre and touring shows within {radiusMiles ?? 75} miles of {siteConfig.cityName},
     {siteConfig.stateName} — including nearby regional venues. Every listing shows how far it actually is,
     so a regional show never reads as a downtown event. Powered by Ticketmaster.</p>
@@ -127,7 +129,7 @@ const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
         tell Events and What's On apart" -- only one goes in primary nav
         per town, this line points to whichever one doesn't. */}
     <p class="cross-link">Local library, city and community events: <a href="/events/">Events</a></p>
-    <ShareButton title={`What's On in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
+    <ShareButton title={pageMeta.title} />
   </header>
 
   {introText && (

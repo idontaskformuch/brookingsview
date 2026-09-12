@@ -11,12 +11,15 @@ import SectionRule from '../components/SectionRule.astro';
 import GameCard from '../components/GameCard.astro';
 import { getSeasonGames, getUpcomingGames, getContentByType, formatDate, formatTime } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import { resolvePageMeta } from '../lib/page-meta';
 import SectionHero from '../components/SectionHero.astro';
 import { SECTION_THEME } from '../lib/section-theme';
 
 if (siteConfig.townId !== 'brookings_sd') {
   return Astro.redirect('/', 302);
 }
+
+const pageMeta = resolvePageMeta('jackrabbits', siteConfig);
 
 const [next, all, summaries] = await Promise.all([
   getUpcomingGames(1), getSeasonGames(), getContentByType(['jackrabbits_season_summary'], 20),
@@ -42,12 +45,12 @@ const summaryBySport = new Map(
   summaries.map((s) => [s.slug.replace(/^jackrabbits-season-summary-/, ''), s])
 );
 ---
-<BaseLayout title={`SDSU Jackrabbits schedules and results — ${siteConfig.siteName}`} wide
+<BaseLayout title={pageMeta.title} wide
   description="Full SDSU Jackrabbits schedules and results for football, basketball and volleyball."
   accentColor={SECTION_THEME.university.accent}>
   <SectionHero category="sports" />
   <header class="lede">
-    <h1>Jackrabbits</h1>
+    <h1>{pageMeta.h1}</h1>
     <p>Schedules and results for SDSU football, basketball and volleyball, straight
     from the athletics department's own listings.</p>
   </header>

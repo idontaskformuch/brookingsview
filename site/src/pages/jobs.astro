@@ -19,6 +19,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getRecentJobs, formatDate } from '../lib/db';
 import { salaryText, capByEmployer, slugifyCategory } from '../lib/jobs';
 import { siteConfig } from '../lib/site-config';
+import { resolvePageMeta } from '../lib/page-meta';
 import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
@@ -30,18 +31,19 @@ const jobs = await getRecentJobs();
 // that could quietly drift apart.
 const { visible, overflowByCompany } = capByEmployer(jobs);
 
+const pageMeta = resolvePageMeta('jobs', siteConfig);
 const canonicalUrl = new URL('/jobs/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Home', href: '/' },
   { label: 'Jobs', href: canonicalUrl },
 ];
 ---
-<BaseLayout title={`Jobs in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide ogSlug="section-jobs"
+<BaseLayout title={pageMeta.title} wide ogSlug="section-jobs"
   description={`Recent job listings in and near ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero category="jobs" />
   <header class="lede">
-    <h1>Jobs</h1>
+    <h1>{pageMeta.h1}</h1>
     <p>Recent listings in and near {siteConfig.cityName}, pulled daily from
     <a href="https://www.adzuna.com" rel="noopener">Adzuna</a>'s job search — some
     are in surrounding towns, not {siteConfig.cityName} itself; each listing's

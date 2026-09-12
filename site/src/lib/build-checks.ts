@@ -24,6 +24,12 @@
  *       the Flux/fal pipeline at publish time) and have NO category
  *       fallback by design, so a failed generation is a PERMANENT gap for
  *       that specific item, silent until this check existed.
+ *    4. page_meta_check (assertPageMetaPatternsValid() below): the sitewide
+ *       title/H1/lede handoff's own validation phase. This is the SAME
+ *       "build-time, fails loud" mechanism, not the Python validation/
+ *       package the handoff originally assumed -- that package validates
+ *       AI content before publish and has zero visibility into built Astro
+ *       HTML (see NEEDS-HUMAN-REVIEW.md #48).
  *
  *  Called once from BaseLayout.astro (every real page renders it), guarded
  *  by a module-level flag so a build with hundreds of pages only actually
@@ -32,10 +38,13 @@
  *  executes this file at all (pure type-checking, no runtime), and vitest
  *  has no reason to import it, so neither needs DATABASE_URL just to run.
  */
-import { TOWN_ID, getFacilities, hasAnyStoryWithVenueRaw, getContentTrackImageStatus } from './db';
+import { TOWN_ID, getFacilities, hasAnyStoryWithVenueRaw, getContentTrackImageStatus, getAllWeeklyStories } from './db';
 import { siteConfig } from './site-config';
 import { categoryImagesFor } from '../config/category-images';
 import { assertCategoryImagesComplete, assertImageExists, findContentTrackRowsMissingImage } from './images';
+import { PAGE_META_PATTERNS } from '../config/page-meta';
+import { resolvePageMeta } from './page-meta';
+import { weekInfoForInstant, currentWeekInfo } from './this-week';
 
 let checked = false;
 
@@ -149,10 +158,157 @@ async function assertContentTrackImagesComplete(): Promise<void> {
   }
 }
 
-export async function runBuildTimeImageChecks(): Promise<void> {
+const TITLE_MAX_LENGTH = 65;
+const MIN_H1_WORDS = 4;
+const MAX_TITLE_H1_SIMILARITY = 0.8;
+
+/** Route keys resolvePageMeta() can't resolve without extraVars -- handled
+ *  by their own dedicated, real-instance-driven checks below instead of
+ *  the generic per-town sweep. */
+const EXTRA_VAR_ROUTE_KEYS = new Set(['facilities/detail', 'this-week']);
+
+function wordCount(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+/** Rough, deliberately simple word-overlap similarity -- enough to catch a
+ *  title that's just the H1 with "| {Site}" trimmed off (or vice versa),
+ *  which would defeat the point of having two distinct fields at all. Not
+ *  meant to be a general string-similarity library. */
+function titleH1Similarity(title: string, h1: string): number {
+  const words = (s: string) => new Set(s.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean));
+  const a = words(title);
+  const b = words(h1);
+  const intersection = [...a].filter((w) => b.has(w)).length;
+  const union = new Set([...a, ...b]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
+/** A week label straddling a calendar year (e.g. "December 29, 2025 -
+ *  January 4, 2026") is the one documented, unavoidable length exception
+ *  for the this-week route -- see config/page-meta.ts's own comment on
+ *  that entry. Detected off the label text itself (two distinct 4-digit
+ *  years) rather than re-deriving it from the week's start/end dates,
+ *  since the label is the actual thing being measured. */
+function crossesCalendarYear(weekLabel: string): boolean {
+  const years = new Set(weekLabel.match(/\b(19|20)\d{2}\b/g) ?? []);
+  return years.size >= 2;
+}
+
+function checkResolved(
+  routeKey: string, instance: string, title: string, h1: string, knownLengthException: boolean,
+  problems: string[],
+): void {
+  if (title.length > TITLE_MAX_LENGTH) {
+    const msg = `${routeKey} ${instance}: title is ${title.length} chars (max ${TITLE_MAX_LENGTH}) -- "${title}"`;
+    if (knownLengthException) {
+      console.warn(`\n⚠️  page_meta_check: known, documented length exception -- ${msg}\n`);
+    } else {
+      problems.push(msg);
+    }
+  }
+  if (!h1.trim()) {
+    problems.push(`${routeKey} ${instance}: H1 is empty`);
+  } else if (wordCount(h1) < MIN_H1_WORDS) {
+    problems.push(`${routeKey} ${instance}: H1 is only ${wordCount(h1)} word(s) (min ${MIN_H1_WORDS}) -- "${h1}"`);
+  }
+  const similarity = titleH1Similarity(title, h1);
+  if (similarity > MAX_TITLE_H1_SIMILARITY) {
+    problems.push(
+      `${routeKey} ${instance}: title and H1 share ${Math.round(similarity * 100)}% of their words, ` +
+      `not distinct fields -- title "${title}", h1 "${h1}"`,
+    );
+  }
+}
+
+/** Build-time validation for the sitewide title/H1/lede handoff's own
+ *  config catalog (config/page-meta.ts) -- the check the handoff's own
+ *  "Order of work" calls for AFTER every template is migrated to
+ *  resolvePageMeta(). Deliberately validates the catalog plus real
+ *  per-instance DB data (facility names, real ISO weeks), not scraped
+ *  dist/ HTML: this file's own existing checks (assertCategoryImagesComplete
+ *  et al, above) already establish that "build-time, fails loud" here means
+ *  querying the same data the pages render from and asserting on it
+ *  directly, not re-parsing rendered output.
+ *
+ *  DELIBERATELY SCOPED OUT for v1: the handoff's own "lede >= 20 words on
+ *  an indexable page" rule. Every migrated page's lede is still
+ *  hand-written prose living directly in that page's own JSX (per the
+ *  handoff's own "ledes stay in content, not config" instruction) -- there
+ *  is no config or DB signal this check can read to find that text without
+ *  every page ALSO threading its rendered lede string back through
+ *  BaseLayout, which is a real, separate plumbing task, not a natural
+ *  extension of this one. Flagged in NEEDS-HUMAN-REVIEW.md as a named,
+ *  known gap rather than silently skipped. */
+async function assertPageMetaPatternsValid(): Promise<void> {
+  const problems: string[] = [];
+  const titleOwners = new Map<string, string>(); // resolved title -> "routeKey instance" that first claimed it
+
+  const recordTitle = (routeKey: string, instance: string, title: string) => {
+    const existing = titleOwners.get(title);
+    if (existing) {
+      problems.push(`duplicate title within "${TOWN_ID}": "${title}" used by both ${existing} and ${routeKey} ${instance}`);
+    } else {
+      titleOwners.set(title, `${routeKey} ${instance}`);
+    }
+  };
+
+  for (const routeKey of Object.keys(PAGE_META_PATTERNS)) {
+    if (EXTRA_VAR_ROUTE_KEYS.has(routeKey)) continue;
+    const { title, h1 } = resolvePageMeta(routeKey, siteConfig);
+    checkResolved(routeKey, '(static)', title, h1, false, problems);
+    recordTitle(routeKey, '(static)', title);
+  }
+
+  // facilities/detail: the known, unavoidable length exception (see
+  // config/page-meta.ts's own comment on this entry) -- warn, don't throw,
+  // on overflow. Still enforced: non-empty/adequate H1, and no two
+  // facilities resolving to the identical title (which WOULD be a real
+  // bug -- two facilities can't legitimately share a name).
+  const facilities = await getFacilities();
+  for (const facility of facilities) {
+    const { title, h1 } = resolvePageMeta('facilities/detail', siteConfig, { FacilityName: facility.name });
+    checkResolved('facilities/detail', facility.slug, title, h1, true, problems);
+    recordTitle('facilities/detail', facility.slug, title);
+  }
+
+  // this-week: the second known length exception is the one real week a
+  // year that crosses a calendar-year boundary (see config/page-meta.ts).
+  // Real weeks only, mirroring this-week/[week].astro's own getStaticPaths
+  // -- every weekly story ever published, plus the current "week ahead".
+  const weeklyStories = await getAllWeeklyStories();
+  const weekLabels = new Map<string, string>(); // slug -> label
+  for (const story of weeklyStories) {
+    if (!story.occurs_at) continue;
+    const info = weekInfoForInstant(new Date(story.occurs_at), siteConfig.timezone);
+    weekLabels.set(info.slug, info.label);
+  }
+  const current = currentWeekInfo(siteConfig.timezone);
+  weekLabels.set(current.slug, current.label);
+  for (const [slug, label] of weekLabels) {
+    const { title, h1 } = resolvePageMeta('this-week', siteConfig, { WeekLabel: label });
+    checkResolved('this-week', slug, title, h1, crossesCalendarYear(label), problems);
+    recordTitle('this-week', slug, title);
+  }
+
+  if (problems.length > 0) {
+    throw new Error(
+      `Build-time page_meta_check failed for "${TOWN_ID}" (${problems.length} problem(s)):\n` +
+      problems.map((p) => `  - ${p}`).join('\n'),
+    );
+  }
+}
+
+/** Renamed from runBuildTimeImageChecks: this single build-time hook (still
+ *  called once from BaseLayout.astro, still guarded by the same module-level
+ *  `checked` flag) now also runs page_meta_check -- see
+ *  assertPageMetaPatternsValid() above for why that belongs here rather
+ *  than the Python validation/ package (NEEDS-HUMAN-REVIEW.md #48). */
+export async function runBuildTimeChecks(): Promise<void> {
   if (checked) return;
   checked = true;
   assertCategoryImagesComplete(siteConfig, categoryImagesFor(siteConfig.townId));
   await assertVenueMatchingReachable();
   await assertContentTrackImagesComplete();
+  await assertPageMetaPatternsValid();
 }

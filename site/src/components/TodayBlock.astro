@@ -70,14 +70,23 @@ export interface Props {
    *  block; the homepage mount wants a plain heading, no page-level
    *  semantics duplicated inside a component that isn't the page itself. */
   headingLevel?: 'h1' | 'h2';
+  /** Sitewide title/H1/lede handoff: the dedicated /today/ page's own H1
+   *  text comes from resolvePageMeta('today', ...) ("What's Happening in
+   *  {Town} Today"), NOT this component's default -- the homepage's h2
+   *  mount keeps the original "Today in {cityName}" wording, since that's
+   *  a section label inside a bigger page, not the page's own H1 subject
+   *  to the handoff's rules. Optional, defaults to the pre-existing text
+   *  so the homepage mount (which never passes this) is unaffected. */
+  headingText?: string;
 }
 
 const {
   cityName, timezone, asOf, temperature, activeAlerts, closureStatus, traffic,
-  cityHallFacility, tonight, tomorrow, headingLevel = 'h2',
+  cityHallFacility, tonight, tomorrow, headingLevel = 'h2', headingText,
 } = Astro.props;
 
 const Heading = headingLevel;
+const resolvedHeadingText = headingText ?? `Today in ${cityName}`;
 
 const cityHallStatus: OpenStatus = cityHallFacility
   ? computeOpenStatus(cityHallFacility.hours_structured, asOf, timezone)
@@ -137,7 +146,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
 
 <section class="today-block" aria-label={`Today in ${cityName}`}>
   <Heading class="today-block__heading">
-    Today in {cityName} <span class="today-block__asof">as of {asOfLabel} local</span>
+    {resolvedHeadingText} <span class="today-block__asof">as of {asOfLabel} local</span>
   </Heading>
 
   {!rightNowIsEmpty && (

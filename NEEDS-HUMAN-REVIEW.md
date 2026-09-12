@@ -4969,3 +4969,100 @@ from `BaseLayout.astro`, already used for `assertCategoryImagesComplete()`/
 not in the Python package -- flagging now so the eventual validation
 phase doesn't start by importing something that can't see the pages it's
 meant to check.
+
+## 49. Sitewide title/H1/lede handoff, Phase 2 + validation: every remaining template migrated, page_meta_check built (2026-09-12)
+
+Finished the handoff's own "Order of work": all ~16 registered page types
+now call `resolvePageMeta()` instead of hardcoding a title/H1 string --
+`city-hall/archive`, `city-hall/projects`, `events`, `whats-on`, `today`
+(+ `TodayBlock.astro`'s new `headingText?` prop, so the homepage mount
+keeps its own "Today in {cityName}" section label while the dedicated
+`/today/` page gets the handoff's pattern), `this-week/[week].astro`,
+`traffic`, `closures` (default state only -- see below), `facilities`
+index + detail, `home-sales`, `workplace-watch`, `jobs`, `sports`,
+`jackrabbits` (new, see below), `weather`. Verified against real, clean
+builds for all three towns, not just unit tests: Brookings (481 pages),
+Broomfield (991 pages), Moreno Valley (3,417 pages) -- all exit 0, all
+spot-checked directly from `dist/` output.
+
+**Two deliberate special cases kept, not overwritten**: `closures.astro`'s
+CONFIRMED-active-closure state keeps its own more specific, date-stamped
+title (`"{date}: School Closures | {Site}"`) -- genuinely more useful
+during an actual event than the generic pattern -- with `resolvePageMeta()`
+supplying only the default (no active closure) title/H1. `TodayBlock.astro`
+mounted on the homepage keeps `headingLevel="h2"` and no `headingText`
+override, since that's a section label inside a bigger page, not a page's
+own H1 subject to this handoff's rules.
+
+**Real architecture mismatch found by reading the actual page files, not
+trusting the handoff's own description**: the handoff describes `/sports/`
+as one shared route needing per-town H1 framing ("Brookings gets the
+Jackrabbits angle, Moreno Valley the regional-affiliate angle"). In
+reality these are two entirely separate pages -- `sports.astro` redirects
+away for every town except `moreno_valley_ca`, and Brookings has its own
+completely different page, `jackrabbits.astro`, which redirects away for
+every town except `brookings_sd`. Fixed by: removing the dead
+`brookings_sd.sports` entry from `TOWN_OVERRIDES` (Brookings never calls
+`resolvePageMeta('sports', ...)` at all), folding Moreno Valley's
+regional-affiliate H1 framing directly into the base `sports` pattern
+(since Moreno Valley is now understood to be the only real caller of that
+route key, a `TOWN_OVERRIDES` entry with exactly one member would just be
+indirection for a distinction that no longer exists), and registering a
+brand-new `jackrabbits` catalog entry the original 16-entry catalog never
+had. `TOWN_OVERRIDES` is empty today as a result -- kept as a real
+mechanism (not deleted) for a genuine future same-route per-town variation,
+not removed just because its one prior use turned out to be a
+misunderstanding.
+
+**`/free-things-to-do/` does not exist anywhere in this codebase**,
+contradicting the handoff's own claim that it was "built off a real
+Search Console query" (confirmed via exhaustive repo-wide search -- no
+page file, no route, no redirect). Its catalog entry is kept registered
+but inert: harmless to leave, and building the page itself is out of scope
+for a title/H1 migration and would violate sibling specs' explicit "no new
+pages" guardrails. Documented in `config/page-meta.ts`'s own comment on
+that entry so a future reader doesn't waste time looking for the page.
+
+**`page_meta_check` built in `site/src/lib/build-checks.ts`** (per this
+entry's own #48 correction -- TypeScript, not the Python `validation/`
+package), as `assertPageMetaPatternsValid()`, folded into the renamed
+`runBuildTimeChecks()` (was `runBuildTimeImageChecks()`) still called once
+per build from `BaseLayout.astro`. Validates the config catalog plus real
+per-instance DB data -- every real facility name (`getFacilities()`) and
+every real ISO week (`getAllWeeklyStories()` + the current "week ahead") --
+rather than scraped `dist/` HTML, matching this file's own existing
+"query the same data the pages render from, assert on it directly" shape:
+
+- Title <= 65 chars, WARNING (not failing) on the two documented
+  exceptions (`facilities/detail` per real facility; `this-week` for the
+  one real ISO week a year that crosses a calendar-year boundary, detected
+  off the resolved week label itself, not re-derived from dates).
+- H1 non-empty and >= 4 words.
+- Title/H1 word-overlap similarity <= 0.8 (catches a title that's just the
+  H1 with "| {Site}" trimmed off, defeating the point of having two
+  distinct fields).
+- No duplicate resolved title within a town, across both the static
+  catalog and every real facility/week instance (a real bug if it ever
+  fires -- two facilities sharing an official name, or a broken week-label
+  formatter producing identical labels for different weeks).
+
+Verified green on real builds for all three towns (first real end-to-end
+exercise of the check, not just against synthetic examples).
+
+**Deliberately scoped OUT of this pass**: the handoff's own "lede >= 20
+words on an indexable page" rule. Every migrated page's lede is still
+hand-written prose living directly in that page's own JSX (per the
+handoff's own "ledes stay in content, not config" instruction) -- there is
+no config or DB signal `page_meta_check` can read to find that text
+without every page also threading its rendered lede string back through
+`BaseLayout.astro`, which is a real, separate plumbing task (adding a
+`lede`/`ledeWordCount` prop to every page's `<BaseLayout>` call), not a
+natural extension of this one. Left as a named, known gap rather than
+silently faked or skipped without mention -- worth its own small follow-up
+before this check can be called fully complete against the handoff's
+original six rules.
+
+Per the handoff's own explicit dependency, its validation check now being
+green on all three towns *unlocks* the separately-received "topical
+authority -- hub-and-spoke architecture" cluster spec. Unlocked, not
+started -- that work needs its own explicit go-ahead before beginning.

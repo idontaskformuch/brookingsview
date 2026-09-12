@@ -30,6 +30,7 @@ import ShareButton from '../../components/ShareButton.astro';
 import { getContentByType, formatMonthYear, calendarDateParts } from '../../lib/db';
 import type { Story } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
+import { resolvePageMeta } from '../../lib/page-meta';
 
 const allMeetings = await getContentByType(['meeting', 'meeting_followup'], 5000);
 const meetings = allMeetings.filter((m) => !m.occurs_at || new Date(m.occurs_at) < new Date());
@@ -53,7 +54,8 @@ for (const group of groups.values()) {
 }
 const sortedMonths = [...groups.keys()].sort().reverse();
 
-const title = `City Hall Meeting Archive — ${siteConfig.cityName}`;
+const pageMeta = resolvePageMeta('city-hall/archive', siteConfig);
+const title = pageMeta.title;
 const description = `Every past city council, county commission and committee meeting covered in ${siteConfig.cityName}, ${siteConfig.stateName}, grouped by month.`;
 const canonicalUrl = new URL('/city-hall/archive/', Astro.site ?? siteConfig.siteUrl).href;
 
@@ -71,7 +73,7 @@ const itemListJsonLd = meetings.length > 0 ? {
 ---
 <BaseLayout title={title} wide ogSlug="section-city-hall" description={description}>
   <header class="lede">
-    <h1>Meeting archive</h1>
+    <h1>{pageMeta.h1}</h1>
     <p>Every city hall meeting covered on this site, oldest to newest within
     each month. Looking for what's coming up? See <a href="/city-hall/">City hall →</a>.</p>
     <ShareButton title={title} url={canonicalUrl} />

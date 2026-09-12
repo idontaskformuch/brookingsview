@@ -7,7 +7,9 @@ import SectionRule from '../../../components/SectionRule.astro';
 import ShareButton from '../../../components/ShareButton.astro';
 import { getProjects, PROJECT_STATUS_LABELS } from '../../../lib/db';
 import { siteConfig } from '../../../lib/site-config';
+import { resolvePageMeta } from '../../../lib/page-meta';
 
+const pageMeta = resolvePageMeta('city-hall/projects', siteConfig);
 const projects = await getProjects();
 
 const STATUS_ORDER = ['under_review', 'approved', 'permitted', 'under_construction', 'complete', 'denied'];
@@ -18,14 +20,14 @@ for (const p of projects) {
 }
 const statuses = [...byStatus.keys()].sort((a, b) => STATUS_ORDER.indexOf(a) - STATUS_ORDER.indexOf(b));
 ---
-<BaseLayout title={`City hall projects — ${siteConfig.siteName}`} wide ogSlug="section-city-hall"
+<BaseLayout title={pageMeta.title} wide ogSlug="section-city-hall"
   description={`Real development and civic projects in ${siteConfig.cityName}, ${siteConfig.stateAbbr}, tracked from proposal through the meetings that decide them.`}>
   <header class="lede">
-    <h1>City hall projects</h1>
+    <h1>{pageMeta.h1}</h1>
     <p>Real developments, ordinances and civic projects in {siteConfig.cityName} —
     each one tracked through every meeting that touches it, from first review
     to a final vote. Updated as new meetings happen.</p>
-    <ShareButton title={`City hall projects — ${siteConfig.siteName}`} />
+    <ShareButton title={pageMeta.title} />
   </header>
 
   {statuses.length > 0 ? statuses.map((status) => (

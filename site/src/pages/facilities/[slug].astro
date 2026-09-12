@@ -20,6 +20,7 @@ import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-j
 import { siteConfig } from '../../lib/site-config';
 import { computeOpenStatus } from '../../lib/facility-hours';
 import { buildFacilityLede } from '../../lib/facility-lede';
+import { resolvePageMeta } from '../../lib/page-meta';
 
 export async function getStaticPaths() {
   const facilities = await getFacilities();
@@ -45,6 +46,7 @@ const description = facility.description
 // name="description"> value, which keeps its own 155-char truncation and
 // doesn't need the address baked in).
 const lede = buildFacilityLede(facility.description, facility.address, facility.slug);
+const pageMeta = resolvePageMeta('facilities/detail', siteConfig, { FacilityName: facility.name });
 
 // Cross-link upcoming events held at this facility -- the venue registry
 // (ai_pipeline/venue_registry.py, site/src/lib/event-jsonld.ts) is the join
@@ -84,11 +86,11 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: facility.name, href: canonicalUrl },
 ];
 ---
-<BaseLayout title={`${facility.name} — ${siteConfig.siteName}`} description={description} ogSlug={`facility-${facility.slug}`}>
+<BaseLayout title={pageMeta.title} description={description} ogSlug={`facility-${facility.slug}`}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <article class="facility">
     <p class="kind data">{categoryLabel}</p>
-    <h1>{facility.name}</h1>
+    <h1>{pageMeta.h1}</h1>
 
     {showFacilityImage && (
       <>

@@ -22,6 +22,7 @@ import {
 import { buildEventFeed, todayUtcMidnight, isTonight, isTomorrow, selectTodayBucket } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+import { resolvePageMeta } from '../lib/page-meta';
 
 const [periods, alerts, upcomingEvents, artsEvents, trafficIncidents, closureStatus, facilities] = await Promise.all([
   getWeather(),
@@ -49,7 +50,8 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 ];
 const breadcrumbJsonLd = buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl);
 
-const pageTitle = `Today in ${siteConfig.cityName} — ${siteConfig.siteName}`;
+const pageMeta = resolvePageMeta('today', siteConfig);
+const pageTitle = pageMeta.title;
 ---
 
 <BaseLayout title={pageTitle} ogSlug="section-today"
@@ -72,6 +74,7 @@ const pageTitle = `Today in ${siteConfig.cityName} — ${siteConfig.siteName}`;
     tonight={tonight}
     tomorrow={tomorrow}
     headingLevel="h1"
+    headingText={pageMeta.h1}
   />
 </BaseLayout>
 

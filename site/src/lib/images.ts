@@ -149,8 +149,8 @@ export function categoryForSourceType(sourceType: SourceType): ImageCategory | n
 // ever, for a category it actively needs). requiredCategoriesFor()/
 // assertCategoryImagesComplete() are pure and DB-free on purpose, so they
 // can run in a plain vitest test -- see images.test.ts -- as well as at
-// real build time (called from BaseLayout.astro, see db.ts's
-// runBuildTimeImageChecks()).
+// real build time (called from BaseLayout.astro, see build-checks.ts's
+// runBuildTimeChecks()).
 
 /** Every enabled town needs these regardless of feature flags: every town
  *  has meetings (city_hall), a weekly roundup (events), NOAA/NWS weather

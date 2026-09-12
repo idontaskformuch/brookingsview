@@ -20,20 +20,27 @@ describe('resolvePageMeta', () => {
     expect(result.title).not.toContain('—');
   });
 
-  it('applies a per-town override for sports\' H1 framing (Brookings gets Jackrabbits)', () => {
-    const result = resolvePageMeta('sports', BROOKINGS);
-    expect(result.h1).toContain('Jackrabbits');
-  });
-
-  it('applies Moreno Valley\'s own sports override, not Brookings\'', () => {
+  // CORRECTION (post-Phase-1 discovery): /sports/ and /jackrabbits/ are two
+  // entirely separate pages (site/src/pages/sports.astro is Moreno-Valley-
+  // only; site/src/pages/jackrabbits.astro is Brookings-only), not one
+  // shared route with a per-town H1 override as the handoff assumed -- see
+  // page-meta.ts's own correction comment on the `sports`/`jackrabbits`
+  // entries. There is no TOWN_OVERRIDES entry for either key anymore.
+  it('resolves the sports pattern with its own regional-affiliate framing (Moreno Valley is the only real caller)', () => {
     const result = resolvePageMeta('sports', MORENO_VALLEY);
-    expect(result.h1).not.toContain('Jackrabbits');
     expect(result.h1).toContain('Regional');
+    expect(result.h1).not.toContain('Jackrabbits');
   });
 
-  it('falls back to the shared base pattern for a town with no override (Broomfield has no /sports/ route, but the fallback itself must still resolve cleanly if ever called)', () => {
+  it('resolves the jackrabbits pattern with the SDSU framing (Brookings is the only real caller)', () => {
+    const result = resolvePageMeta('jackrabbits', BROOKINGS);
+    expect(result.h1).toContain('Jackrabbits');
+    expect(result.h1).toContain('Brookings');
+  });
+
+  it('falls back to the shared base pattern for a town with no override (Broomfield has neither /sports/ nor /jackrabbits/, but the fallback itself must still resolve cleanly if ever called)', () => {
     const result = resolvePageMeta('sports', BROOMFIELD);
-    expect(result.h1).toBe('Broomfield Area Sports Scores and Schedule');
+    expect(result.h1).toBe('Broomfield-Area Sports: Regional and Affiliate Team Scores');
   });
 
   it('interpolates an extraVars placeholder for facility detail', () => {
@@ -56,10 +63,12 @@ describe('resolvePageMeta', () => {
   // strings exceeded 65 chars for it even though they fit Brookings/
   // Broomfield fine (see page-meta.ts's own calibration comment). This
   // test is what would have caught that automatically instead of by hand.
-  it('every registered pattern (except the known facility-detail exception) stays <= 65 chars for every real town', () => {
+  it('every registered pattern (except the known facility-detail/this-week exceptions) stays <= 65 chars for every real town', () => {
     const overflows: string[] = [];
     for (const routeKey of Object.keys(PAGE_META_PATTERNS)) {
-      if (routeKey === 'facilities/detail') continue; // documented exception, see page-meta.ts
+      // documented exceptions, see page-meta.ts's own calibration comments --
+      // both also require an extraVar this generic sweep doesn't supply.
+      if (routeKey === 'facilities/detail' || routeKey === 'this-week') continue;
       for (const town of ALL_TOWNS) {
         const { title } = resolvePageMeta(routeKey, town);
         if (title.length > 65) overflows.push(`${routeKey} / ${town.cityName}: ${title.length} chars ("${title}")`);
@@ -71,5 +80,19 @@ describe('resolvePageMeta', () => {
   it('facility-detail stays <= 65 chars for a realistically-named facility, even if not the longest outlier', () => {
     const result = resolvePageMeta('facilities/detail', MORENO_VALLEY, { FacilityName: 'Woodland Park' });
     expect(result.title.length).toBeLessThanOrEqual(65);
+  });
+
+  it('this-week stays <= 65 chars for an ordinary (non-year-boundary) week label', () => {
+    const result = resolvePageMeta('this-week', MORENO_VALLEY, { WeekLabel: 'September 8-14, 2026' });
+    expect(result.title.length).toBeLessThanOrEqual(65);
+    expect(result.h1).toContain('Moreno Valley');
+  });
+
+  it('this-week is the documented exception for a year-boundary week label', () => {
+    // Real formatWeekLabel() output (site/src/lib/this-week.ts) for the one
+    // ISO week per year that crosses a calendar year -- see page-meta.ts's
+    // own comment on this entry for why this isn't fixed by rewording.
+    const result = resolvePageMeta('this-week', MORENO_VALLEY, { WeekLabel: 'December 29, 2025 - January 4, 2026' });
+    expect(result.title.length).toBeGreaterThan(65);
   });
 });
