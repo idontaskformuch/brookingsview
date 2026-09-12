@@ -5066,3 +5066,129 @@ Per the handoff's own explicit dependency, its validation check now being
 green on all three towns *unlocks* the separately-received "topical
 authority -- hub-and-spoke architecture" cluster spec. Unlocked, not
 started -- that work needs its own explicit go-ahead before beginning.
+
+## 50. Topical authority -- hub-and-spoke architecture, Phase 1: the cluster graph (2026-09-12)
+
+Phase 1 only, per the handoff's own phasing: "graph only, no rendering." No
+template touched, no `getRelatedContent()` change, no breadcrumbs -- those
+are Phase 2+ and wait on this graph being reviewed first, exactly as
+instructed.
+
+**Built**: `site/src/config/clusters.ts` (the six clusters -- Civic,
+What's happening, Getting around, Work and money, Places, Local life --
+plus `ROUTE_AVAILABILITY`, one predicate per route key), `site/src/lib/clusters.ts`
+(`resolveCluster()` + `computeTownGraph()` + `validateClusterConfig()`,
+mirroring the existing `getCityStatus()`/`resolveImage()`/`resolvePageMeta()`
+config+resolver shape), `site/src/lib/clusters.test.ts` (12 tests, all
+against real per-town behavior, not synthetic examples), and
+`site/scripts/generate-cluster-graph.ts` (a `vite-node` script emitting
+`reports/cluster-graph-<town_id>.json` per town from real live DB data --
+run via the new `npm run cluster-graph` in `site/`).
+
+**Real architecture correction, found the same way the metadata handoff's
+sports/jackrabbits mismatch was found -- by reading the actual page
+files, not the spec's own framing**: the handoff's own text names
+`/sports/` as this cluster's shared hub across all three towns. In
+reality there are THREE separate, mutually-exclusive per-town flagship
+pages, each its own hard `townId` redirect gate: `jackrabbits.astro`
+(Brookings), `sports.astro` (Moreno Valley), and `vail-resorts.astro`
+(Broomfield, not mentioned in the handoff's text at all -- its Vail
+Resorts ski-country coverage is genuinely Broomfield's own "local life"
+anchor). `/sports/` redirects away for both Brookings and Broomfield, so
+it structurally cannot be their hub. Fixed via `CLUSTER_TOWN_OVERRIDES`
+(mirrors `page-meta.ts`'s own now-empty `TOWN_OVERRIDES` shape) -- the
+ONE per-town override this config needs, since every other cluster's hub
+is genuinely shared. The shared Local-life spoke list (`recipes`,
+`editorials`, `columns`, `reviews`, plus each town's own game/section
+pages) is derived entirely through `ROUTE_AVAILABILITY`, not a
+hand-maintained per-town list, per the handoff's own explicit instruction.
+
+**Second real correction: "no events source" empties a hub, it doesn't
+disable one.** Checked before assuming: `events.astro`/`today.astro`/
+`this-week/[week].astro` have NO town or feature gate at all -- they
+always render, exactly like every other "never a silent gap, an honest
+empty state instead" page this codebase already has (`EMPTY_STATES`,
+`home-sales.astro`, `jobs.astro`). Broomfield having no enabled local
+events source (confirmed live: `story:event` instance probe returns 0
+for Broomfield) does NOT make the What's Happening cluster disappear --
+its hub still renders, and `/whats-on/` (Ticketmaster, a genuinely
+separate data source, `hasWhatsOn: true` for all three towns since Phase
+7) keeps the cluster well populated there regardless. The clusters that
+DO structurally disappear for a town are the ones whose hub page has a
+real redirect gate: Work and Money (`workplace-watch.astro` redirects on
+`!hasWorkplaceWatch`) is the only one that happens to any town today --
+dark for Brookings, confirmed live (`computeTownGraph(BROOKINGS)` omits
+`work_and_money` entirely).
+
+**A real, worth-reviewing finding the graph surfaced on its own, not
+something built in by hand: "stranded" pages.** `/jobs/` and
+`/jobs/category/[category]/` have no gate of their own (Adzuna's own
+listings decide what shows, not a per-town flag) and render fine for
+Brookings -- but their natural cluster (Work and Money) is dark there
+because its hub is gated off. The graph script reports this explicitly
+(`strandedPages`, 2 entries for Brookings, 0 for the other two towns) as
+a finding to review, not a bug in either direction -- whether `/jobs/`
+should get a different hub, its own standalone treatment, or nothing at
+all is exactly the kind of call Phase 3 (hub navigation blocks) shouldn't
+make silently.
+
+**Real per-town results** (from the actual `reports/cluster-graph-*.json`,
+generated against live DB data, not synthetic):
+
+| Town | Clusters rendering | Stranded pages | Empty-but-available groups | Dangling refs | Config problems |
+|---|---|---|---|---|---|
+| Brookings | 5 of 6 (no Work and Money) | 2 (`jobs`, `jobs/category`) | 1 (`story:meeting_followup`) | 0 | 0 |
+| Moreno Valley | 6 of 6 | 0 | 0 | 0 | 0 |
+| Broomfield | 6 of 6 | 0 | 4 (`city-hall/projects/detail`, `story:meeting_followup`, `story:event`, `story:alert`) | 0 | 0 |
+
+Zero dangling references and zero config problems on all three --
+`validateClusterConfig()`'s own consistency checks (no route key
+referenced without a `ROUTE_AVAILABILITY` entry, no route key primary in
+more than one cluster, no route key with more than two total cluster
+memberships) all pass clean, and the graph script's own live-data
+cross-check agrees.
+
+**Orphan list, as expected**: 15 real pages sit outside the graph for
+every town, all documented with a reason in `PAGE_REGISTRY` --
+`404`/`offline` (system), 9 trust pages (`about`, `advertising`,
+`contact`, `cookies`, `corrections`, `editorial-policy`,
+`how-we-gather-this`, `privacy`, `terms`), the homepage (aggregates every
+cluster, isn't a member of one), `new-in-town.astro` (a real feature, dark
+everywhere today -- no town sets `hasNewInTown: true`), the generic
+`/s/[slug]/` story template (backs every `story:<sourceType>` group but
+isn't itself a route key), and `this-week/index.astro` (a pure redirect
+stub, already correctly excluded from the metadata handoff for the same
+reason).
+
+**Infra fix needed to run the graph script at all**: `vite-node` (used
+here and by the pre-existing `dump-event-ranking.ts`) doesn't know it's
+inside an Astro project, so it applies Vite's own default `envPrefix`
+restriction (only `VITE_`-prefixed vars reach `import.meta.env`) --
+unlike a real `astro build`, which exposes every env var server-side.
+Both `lib/db.ts`'s `DATABASE_URL` read and `lib/site-config.ts`'s
+`SITE_CITY` read are unprefixed, so BOTH silently failed under plain
+`vite-node` (`SITE_CITY` failing is the more dangerous of the two -- it
+doesn't error, it just silently falls back to Brookings regardless of
+what the shell actually set, which would have made every non-Brookings
+report secretly a duplicate of Brookings' own graph). Setting
+`envPrefix: ''` to widen the restriction is a hard Vite error ("could
+lead to unexpected exposure of sensitive information"); fixed instead
+with a narrow `define` in the new `site/vite-node.config.ts`, inlining
+only those two literal `import.meta.env.*` expressions -- `DATABASE_URL`
+via the same `loadEnv(mode, root, '')` call `astro.config.mjs` already
+uses for its own identical problem, `SITE_CITY` straight from
+`process.env` since it's a real per-invocation shell var, not a `.env`
+value. `dump-event-ranking.ts` gets the same fix for free (same config
+file, same `--config` flag added to its own npm script) -- it's not
+verified live in this pass, but it had the exact same two-var exposure
+gap and would have silently mis-reported its OWN `SITE_CITY` too.
+
+**Verification**: `astro check` 0 errors, full vitest suite green (33
+files / 616 tests, including the new 12), all three towns' graph reports
+generated against real live DB data (not just unit tests against
+synthetic examples).
+
+**Stopping here per the handoff's own phasing and the explicit
+instruction that came with it**: reports are written for all three
+towns, ready for review. Phase 2 (breadcrumbs) does not start until that
+review happens.

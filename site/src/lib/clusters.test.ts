@@ -1,0 +1,92 @@
+import { describe, expect, it } from 'vitest';
+import { resolveCluster, validateClusterConfig, computeTownGraph } from './clusters';
+
+const BROOKINGS = { townId: 'brookings_sd', cityName: 'Brookings', siteName: 'Brookings View' } as any;
+const MORENO_VALLEY = { townId: 'moreno_valley_ca', cityName: 'Moreno Valley', siteName: 'Moreno Valley View', hasWorkplaceWatch: true, hasClosureWatch: true, hasWhatsOn: true, hasHousingMarket: true } as any;
+const BROOMFIELD = { townId: 'broomfield_co', cityName: 'Broomfield', siteName: 'Broomfield View', hasWorkplaceWatch: true, hasWhatsOn: true } as any;
+
+describe('validateClusterConfig', () => {
+  it('has no dangling references, duplicate primaries, or over-shared spokes', () => {
+    // The real regression this catches: config/clusters.ts's own
+    // CLUSTERS/CLUSTER_TOWN_OVERRIDES referencing a route key with no
+    // matching ROUTE_AVAILABILITY entry -- a typo'd key would otherwise
+    // silently resolve to "always unavailable" everywhere instead of
+    // failing loud.
+    expect(validateClusterConfig()).toEqual([]);
+  });
+});
+
+describe('resolveCluster', () => {
+  it('resolves a hub to itself with role "hub" and its available spokes as siblings', () => {
+    const result = resolveCluster('city-hall', BROOKINGS);
+    expect(result?.primary).toEqual({ clusterKey: 'civic', clusterLabel: 'City Hall', role: 'hub' });
+    expect(result?.siblingSpokes).toContain('city-hall/archive');
+  });
+
+  it('resolves a primary spoke with the hub included among its siblings', () => {
+    const result = resolveCluster('city-hall/archive', BROOKINGS);
+    expect(result?.primary.clusterKey).toBe('civic');
+    expect(result?.primary.role).toBe('primary-spoke');
+    expect(result?.siblingSpokes).toContain('city-hall');
+  });
+
+  it("resolves home-sales' primary cluster as work_and_money with civic as secondary (the handoff's own cross-cluster example)", () => {
+    const result = resolveCluster('home-sales', MORENO_VALLEY);
+    expect(result?.primary.clusterKey).toBe('work_and_money');
+    expect(result?.secondary.map((s) => s.clusterKey)).toContain('civic');
+  });
+
+  it('returns null for home-sales in a town where it is not available (Brookings)', () => {
+    expect(resolveCluster('home-sales', BROOKINGS)).toBeNull();
+  });
+
+  it('returns null for a genuinely unregistered route key (a trust page)', () => {
+    expect(resolveCluster('about', BROOKINGS)).toBeNull();
+  });
+
+  it("resolves local_life's hub per town identity, not a single shared route", () => {
+    expect(resolveCluster('jackrabbits', BROOKINGS)?.primary.clusterKey).toBe('local_life');
+    expect(resolveCluster('sports', MORENO_VALLEY)?.primary.clusterKey).toBe('local_life');
+    expect(resolveCluster('vail-resorts', BROOMFIELD)?.primary.clusterKey).toBe('local_life');
+    // Each hub is exclusively its own town's -- never resolvable as a
+    // cluster member for a different town.
+    expect(resolveCluster('jackrabbits', MORENO_VALLEY)).toBeNull();
+    expect(resolveCluster('sports', BROOKINGS)).toBeNull();
+  });
+
+  it('drops a whole cluster for a town whose hub is disabled (work_and_money for Brookings)', () => {
+    const graph = computeTownGraph(BROOKINGS);
+    expect(graph.clusters.find((c) => c.key === 'work_and_money')).toBeUndefined();
+    expect(resolveCluster('workplace-watch', BROOKINGS)).toBeNull();
+  });
+
+  it('keeps a cluster whose hub always renders even when locally empty (whats_happening for Broomfield)', () => {
+    // events.astro has no gate -- Broomfield having no local events source
+    // makes it empty, not disabled. This is the real, code-verified
+    // correction to the handoff's own assumption that missing event
+    // sources would make a whole cluster fall away.
+    const graph = computeTownGraph(BROOMFIELD);
+    expect(graph.clusters.find((c) => c.key === 'whats_happening')).toBeDefined();
+  });
+
+  it('drops the closures spoke for a town with no Closure Watch (Broomfield) without dropping the getting_around hub', () => {
+    const graph = computeTownGraph(BROOMFIELD);
+    const gettingAround = graph.clusters.find((c) => c.key === 'getting_around');
+    expect(gettingAround).toBeDefined();
+    expect(gettingAround?.spokes.some((s) => s.routeKey === 'closures')).toBe(false);
+  });
+
+  it('drops Brookings-only local_life spokes (university, play, farm-report) for other towns', () => {
+    const graph = computeTownGraph(MORENO_VALLEY);
+    const localLife = graph.clusters.find((c) => c.key === 'local_life');
+    for (const brookingsOnly of ['university', 'play', 'farm-report']) {
+      expect(localLife?.spokes.some((s) => s.routeKey === brookingsOnly)).toBe(false);
+    }
+  });
+
+  it('never resolves free-things-to-do for any town (no real page exists anywhere)', () => {
+    expect(resolveCluster('free-things-to-do', BROOKINGS)).toBeNull();
+    expect(resolveCluster('free-things-to-do', MORENO_VALLEY)).toBeNull();
+    expect(resolveCluster('free-things-to-do', BROOMFIELD)).toBeNull();
+  });
+});

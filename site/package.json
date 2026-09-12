@@ -8,7 +8,8 @@
     "preview": "astro preview",
     "check": "astro check",
     "test": "vitest run",
-    "dump-ranking": "vite-node scripts/dump-event-ranking.ts"
+    "dump-ranking": "vite-node --config vite-node.config.ts scripts/dump-event-ranking.ts",
+    "cluster-graph": "vite-node --config vite-node.config.ts scripts/generate-cluster-graph.ts"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.0",
