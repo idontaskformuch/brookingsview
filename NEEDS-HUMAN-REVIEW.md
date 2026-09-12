@@ -5192,3 +5192,112 @@ synthetic examples).
 instruction that came with it**: reports are written for all three
 towns, ready for review. Phase 2 (breadcrumbs) does not start until that
 review happens.
+
+## 51. Topical authority handoff, Phase 2: breadcrumbs (2026-09-12)
+
+Extended every EXISTING spoke page's breadcrumb trail with its cluster's
+middle crumb -- `Home → {Cluster label} → {Page}` -- per the handoff's own
+Phase 2 spec. Deliberately did not add breadcrumbs to any page that never
+had them (three town-specific Local-life hubs -- `jackrabbits.astro`,
+`sports.astro`, `vail-resorts.astro` -- and several other pages have none
+today): the handoff says "extend the existing `BreadcrumbList`," not
+introduce a new one sitewide.
+
+**One centralized helper, not seventeen hand-rolled trails**:
+`buildClusterBreadcrumbTrail(routeKey, townConfig, page)` in
+`site/src/lib/clusters.ts`, resolving via the same `resolveCluster()`
+Phase 1 already built. A hub page passes itself and gets back the same
+plain two-crumb trail it already had (no redundant self-referencing middle
+crumb); an orphan, or a route unavailable for this town, gets the same
+plain trail every page already had before this phase. 17 page files
+updated to call it: `closures`, `columns`, `editorials`, `events/[facet]`,
+`facilities/[slug]`, `home-sales` (+ its three sub-pages), `jobs` (+ its
+category sub-page), `recipes`, `reviews`, `today`, `whats-on/index`,
+`whats-on/[slug]`, plus the shared `s/[slug].astro` story template for the
+seven `story:<sourceType>` groups the cluster graph already models
+(meeting, meeting_followup, event, weekly, alert, workplace_watch_digest,
+home_sales_digest).
+
+**Real, visible win found doing this, not just plumbing**: `alert` stories
+never got a section breadcrumb crumb before this -- the pre-existing
+`CATEGORY_HREFS` map deliberately left it out ("no dedicated alerts
+section page, guessing would misrepresent"). The cluster graph genuinely
+has a home for it now (Getting around, hub `/traffic/`), so alert stories
+get a real middle crumb for the first time, not a guess.
+
+**A real bug in Phase 1's own config, caught building this**:
+`story:weekly` and `story:home_sales_digest` were registered as SECONDARY
+spokes only, with no primary home anywhere. `resolveCluster()` only ever
+looks for a primary registration first, so both would have silently
+resolved to `null` (an orphan) despite being real cluster content --
+neither would ever have gotten a breadcrumb crumb. Fixed by promoting both
+to primary spokes of their natural cluster (`whats_happening` and
+`work_and_money` respectively) and adding a fourth `validateClusterConfig()`
+check (`secondary-without-primary`) so this class of bug can't recur
+silently -- config/clusters.ts's own comment on `CLUSTERS` now states the
+rule plainly.
+
+**Design decisions worth recording**:
+- The civic cluster's label is `'City hall'` (lowercase h), NOT `'City
+  Hall'` -- it reuses this codebase's own deeply-established string (nav,
+  kickers, OG images, `CATEGORY_LABELS`, existing breadcrumb tests), since
+  Civic and the pre-existing "City hall" page identity are the same
+  concept, not a new one. The other five cluster labels (What's happening,
+  Getting around, Work and money, Places, Local life) are genuinely NEW
+  groupings the handoff itself coined, wider than any single existing page
+  name (`/events/`, `/traffic/`, `/workplace-watch/`, `/facilities/`) --
+  their spoke pages now surface that broader label, while each hub page's
+  own breadcrumb keeps its own narrower self-reference unchanged (e.g.
+  `/events/`'s own crumb still says "Events," but `/events/kids/`'s middle
+  crumb now says "What's happening").
+- Pages that already had a REAL deeper hierarchy before this phase
+  (`city-hall/projects/[slug]`, already `Home → City hall → Projects →
+  {title}`; the three `home-sales/` sub-pages and `jobs/category/[category]`,
+  already threading through their own parent spoke page) keep that depth --
+  `buildClusterBreadcrumbTrail()` is called for the FIRST three crumbs
+  where applicable, with the page's own final crumb appended, rather than
+  flattening a real 4-level hierarchy down to the helper's own 3-level
+  default. `city-hall/projects/[slug].astro` needed no code change at all
+  -- it already threaded through the right hierarchy with the right label.
+
+**A real, unrelated bug page_meta_check caught live on the real Moreno
+Valley build while verifying this phase** (not a Phase 2 bug itself --
+the metadata handoff's own `this-week` pattern, shipped in NEEDS-HUMAN-
+REVIEW.md #49): the ORIGINAL 65-char exception analysis only accounted
+for the once-a-year calendar-year-boundary week. In reality, any week
+whose label spans two month names (roughly one week in four, not a
+yearly rarity) also overflowed 65 chars under the
+`'{Town}: Week of {WeekLabel} | {Site}'` pattern -- confirmed live: `2026-w36`
+("August 31–September 6, 2026") produced a 71-char title for Moreno
+Valley and threw a real `page_meta_check` failure, not a false alarm.
+Fixed by dropping "Week of" from the pattern (`'{Town}: {WeekLabel} |
+{Site}'`), verified this keeps every month-crossing case comfortably
+under 65 chars for all three towns (worst case 63) while the genuine
+once-a-year exception (year-boundary week) still correctly exceeds 65 and
+stays a documented, accepted exception. Added a dedicated vitest test for
+exactly this shape so it can't regress silently again. This is the kind
+of thing only a REAL build against REAL live data catches -- a build the
+prior metadata-migration session never happened to run against a week
+that crossed a month boundary in its own verification pass.
+
+**Verified against real, clean builds for all three towns**: `astro check`
+0 errors, full vitest suite green (33 files / 622 tests, including 5 new
+`buildClusterBreadcrumbTrail` tests and 1 new month-crossing `this-week`
+regression test), Brookings (481 pages), Broomfield (992 pages), and
+Moreno Valley (3,416 pages, after one unrelated transient Neon DB
+connectivity retry) all built clean with `page_meta_check` passing.
+Spot-checked visible `<nav class="breadcrumbs">` output against the JSON-LD
+`BreadcrumbList` script tag on one page per cluster per town -- byte-for-byte
+matching labels/hrefs in every case, confirming the "visible and JSON-LD
+must agree exactly" requirement holds without needing a separate
+build-time check (both are built from the exact same array, the same
+guarantee `Breadcrumbs.astro`'s own doc comment already relied on before
+this phase). Confirmed `/jobs/` correctly gets NO middle crumb for
+Brookings (its cluster is dark there) but DOES get "Work and money" for
+Moreno Valley and Broomfield (where it renders), and that a real
+`home_sales_digest` story (`/s/home-sales-digest-2024-01/`) correctly
+picks up the "Work and money" crumb too -- the exact case the
+`secondary-without-primary` fix above was for.
+
+Per the handoff's own phasing, Phase 3 (hub cluster-navigation blocks)
+waits for explicit go-ahead, same as Phase 2 did.

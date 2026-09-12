@@ -27,6 +27,7 @@ import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
 import { SECTION_THEME } from '../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+import { buildClusterBreadcrumbTrail } from '../lib/clusters';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
@@ -46,10 +47,7 @@ const sales = allRecentSales.filter((s) => isWithinRenderWindow(s.sale_date, 'ho
 
 const pageMeta = resolvePageMeta('home-sales', siteConfig);
 const canonicalUrl = new URL('/home-sales/', Astro.site ?? siteConfig.siteUrl).href;
-const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Home sales', href: canonicalUrl },
-];
+const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('home-sales', siteConfig, { label: 'Home sales', href: canonicalUrl });
 
 // Shared with home-sales/[slug].astro and home-sales/zip/[zip].astro (see
 // lib/home-sales.ts) -- one copy of the address/ZIP/outlier logic, not

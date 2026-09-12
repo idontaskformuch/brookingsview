@@ -19,6 +19,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getContentByType } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+import { buildClusterBreadcrumbTrail } from '../lib/clusters';
 
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const types = isMorenoValley
@@ -26,10 +27,7 @@ const types = isMorenoValley
   : ['culture_essay', 'kvick_essa', 'vetenskap_kronika'] as const;
 const stories = await getContentByType([...types], 60);
 const canonicalUrl = new URL('/columns/', Astro.site ?? siteConfig.siteUrl).href;
-const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Columns', href: canonicalUrl },
-];
+const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('columns', siteConfig, { label: 'Columns', href: canonicalUrl });
 ---
 <BaseLayout title={`Columns — ${siteConfig.siteName}`} wide
   description="Culture essays, light essays and science columns, AI-written and clearly labeled as such.">

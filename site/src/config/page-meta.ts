@@ -92,20 +92,32 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
   // the handoff's own "H1 must contain the town name" rule outright, not
   // just imperfectly.
   //
+  // REAL BUG, found by page_meta_check on a live Moreno Valley build (not
+  // just the year-boundary case originally anticipated below): dropping
+  // "Week of" -- titlePattern used to read '{Town}: Week of {WeekLabel} |
+  // {Site}' -- was needed because ANY week whose label spans two month
+  // names (e.g. "July 27-August 2, 2026", roughly 1 week in 4) already
+  // pushed Moreno Valley past 65 chars on its own, not just the rare
+  // year-boundary case. Confirmed live: "Moreno Valley: Week of July
+  // 27-August 2, 2026 | Moreno Valley View" was 66 chars; the same label
+  // without "Week of " is 58. This is common enough (~monthly, not
+  // ~yearly) that it needed an actual wording fix, not a bigger exception
+  // list -- verified via the same "check every real label shape against
+  // all three towns" discipline as every other pattern in this file.
+  //
   // SECOND known, rare, accepted exception to the 65-char rule (see
   // facilities/detail above for the first): the one ISO week per year
   // that crosses a calendar-year boundary gets a much longer label from
   // formatWeekLabel() (site/src/lib/this-week.ts) -- e.g. "December 29,
-  // 2025 - January 4, 2026" -- which pushes Moreno Valley's own title
-  // past 65 chars (confirmed: 79 chars with the full label, still 70
-  // even with abbreviated month names). Not fixed by changing
-  // formatWeekLabel() itself: that function's output is real, visible
-  // page content on this page (not just the title), so shortening it
-  // sitewide to fit one metadata field one week a year would be the tail
-  // wagging the dog. Flagged for the validation phase's exception list,
-  // same as facilities/detail.
+  // 2025 - January 4, 2026" -- which still pushes Moreno Valley's title
+  // past 65 chars even after the "Week of" fix above (confirmed: 71
+  // chars). Not fixed by changing formatWeekLabel() itself: that
+  // function's output is real, visible page content on this page (not
+  // just the title), so shortening it sitewide to fit one metadata field
+  // one week a year would be the tail wagging the dog. Flagged for the
+  // validation phase's exception list, same as facilities/detail.
   'this-week': {
-    titlePattern: '{Town}: Week of {WeekLabel} | {Site}',
+    titlePattern: '{Town}: {WeekLabel} | {Site}',
     h1Pattern: 'The Week Ahead in {Town}: {WeekLabel}',
   },
   traffic: {

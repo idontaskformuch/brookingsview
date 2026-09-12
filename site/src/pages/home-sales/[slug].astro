@@ -21,6 +21,7 @@ import { buildPropertySaleJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } 
 import { titleCaseAddress, extractZip, slugifyAddress, isOutlierSale, digestSlugForSaleDate } from '../../lib/home-sales';
 import { siteConfig } from '../../lib/site-config';
 import { isWithinRenderWindow } from '../../lib/render-window';
+import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
 
 export async function getStaticPaths() {
   if (siteConfig.townId !== 'moreno_valley_ca') return [];
@@ -62,9 +63,14 @@ const zip = extractZip(sales[0].address);
 const canonicalUrl = new URL(`/home-sales/${slugifyAddress(sales[0].address ?? '')}/`, Astro.site ?? siteConfig.siteUrl).href;
 
 const nearbyProject = zip ? projects.find((p) => p.home_sales_zip === zip) ?? null : null;
+// One level deeper than buildClusterBreadcrumbTrail's own 3-crumb model --
+// home-sales.astro is itself a SPOKE (not the cluster hub), so this page's
+// real trail is Home -> Work and money -> Home sales -> {address}. Resolve
+// the first three crumbs the normal way, then append this page's own --
+// same "don't flatten a real deeper hierarchy" call as
+// city-hall/projects/[slug].astro's own breadcrumb.
 const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Home sales', href: '/home-sales/' },
+  ...buildClusterBreadcrumbTrail('home-sales', siteConfig, { label: 'Home sales', href: '/home-sales/' }),
   { label: address, href: canonicalUrl },
 ];
 

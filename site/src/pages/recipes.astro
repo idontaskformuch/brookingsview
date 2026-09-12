@@ -8,13 +8,11 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getContentByType } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+import { buildClusterBreadcrumbTrail } from '../lib/clusters';
 
 const stories = await getContentByType(['vardagsmiddag'], 60);
 const canonicalUrl = new URL('/recipes/', Astro.site ?? siteConfig.siteUrl).href;
-const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Recipes', href: canonicalUrl },
-];
+const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('recipes', siteConfig, { label: 'Recipes', href: canonicalUrl });
 ---
 <BaseLayout title={`Recipes — ${siteConfig.siteName}`} wide
   description="Simple weeknight dinner recipes built around what's in season, AI-written and clearly labeled as such.">

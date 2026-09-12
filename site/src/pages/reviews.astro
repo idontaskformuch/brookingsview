@@ -8,6 +8,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getContentByType } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+import { buildClusterBreadcrumbTrail } from '../lib/clusters';
 
 // Folded into /columns/ for Moreno Valley -- see columns.astro's comment
 // and NEEDS-HUMAN-REVIEW.md "3.3 Reviews" for why (cadence too thin for a
@@ -18,10 +19,7 @@ if (siteConfig.townId === 'moreno_valley_ca') {
 
 const stories = await getContentByType(['media_recension'], 60);
 const canonicalUrl = new URL('/reviews/', Astro.site ?? siteConfig.siteUrl).href;
-const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Reviews', href: canonicalUrl },
-];
+const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('reviews', siteConfig, { label: 'Reviews', href: canonicalUrl });
 ---
 <BaseLayout title={`Reviews — ${siteConfig.siteName}`} wide
   description="Reviews of what's currently playing, AI-written and clearly labeled as such.">

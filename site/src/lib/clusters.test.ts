@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveCluster, validateClusterConfig, computeTownGraph } from './clusters';
+import { resolveCluster, validateClusterConfig, computeTownGraph, buildClusterBreadcrumbTrail } from './clusters';
 
 const BROOKINGS = { townId: 'brookings_sd', cityName: 'Brookings', siteName: 'Brookings View' } as any;
 const MORENO_VALLEY = { townId: 'moreno_valley_ca', cityName: 'Moreno Valley', siteName: 'Moreno Valley View', hasWorkplaceWatch: true, hasClosureWatch: true, hasWhatsOn: true, hasHousingMarket: true } as any;
@@ -19,7 +19,7 @@ describe('validateClusterConfig', () => {
 describe('resolveCluster', () => {
   it('resolves a hub to itself with role "hub" and its available spokes as siblings', () => {
     const result = resolveCluster('city-hall', BROOKINGS);
-    expect(result?.primary).toEqual({ clusterKey: 'civic', clusterLabel: 'City Hall', role: 'hub' });
+    expect(result?.primary).toEqual({ clusterKey: 'civic', clusterLabel: 'City hall', role: 'hub' });
     expect(result?.siblingSpokes).toContain('city-hall/archive');
   });
 
@@ -88,5 +88,48 @@ describe('resolveCluster', () => {
     expect(resolveCluster('free-things-to-do', BROOKINGS)).toBeNull();
     expect(resolveCluster('free-things-to-do', MORENO_VALLEY)).toBeNull();
     expect(resolveCluster('free-things-to-do', BROOMFIELD)).toBeNull();
+  });
+});
+
+describe('buildClusterBreadcrumbTrail', () => {
+  it('inserts the cluster hub as a middle crumb for a primary spoke', () => {
+    const trail = buildClusterBreadcrumbTrail('city-hall/archive', BROOKINGS, { label: 'Meeting archive', href: '/city-hall/archive/' });
+    expect(trail).toEqual([
+      { label: 'Home', href: '/' },
+      { label: 'City hall', href: '/city-hall/' },
+      { label: 'Meeting archive', href: '/city-hall/archive/' },
+    ]);
+  });
+
+  it('does not insert a redundant middle crumb for a hub page itself', () => {
+    const trail = buildClusterBreadcrumbTrail('city-hall', BROOKINGS, { label: 'City hall', href: '/city-hall/' });
+    expect(trail).toEqual([
+      { label: 'Home', href: '/' },
+      { label: 'City hall', href: '/city-hall/' },
+    ]);
+  });
+
+  it("resolves each town's own local_life hub as the middle crumb, not a shared /sports/ link", () => {
+    const trail = buildClusterBreadcrumbTrail('university', BROOKINGS, { label: 'SDSU', href: '/university/' });
+    expect(trail[1]).toEqual({ label: 'Local life', href: '/jackrabbits/' });
+
+    const mvTrail = buildClusterBreadcrumbTrail('burro-bonanza', MORENO_VALLEY, { label: 'Burro Bonanza', href: '/burro-bonanza/' });
+    expect(mvTrail[1]).toEqual({ label: 'Local life', href: '/sports/' });
+  });
+
+  it('leaves an orphan page (trust page, homepage, unavailable route) with the plain two-crumb trail', () => {
+    const trail = buildClusterBreadcrumbTrail('about', BROOKINGS, { label: 'About', href: '/about/' });
+    expect(trail).toEqual([
+      { label: 'Home', href: '/' },
+      { label: 'About', href: '/about/' },
+    ]);
+  });
+
+  it('a page unavailable for this town (home-sales for Brookings) also gets the plain two-crumb trail', () => {
+    const trail = buildClusterBreadcrumbTrail('home-sales', BROOKINGS, { label: 'Home sales', href: '/home-sales/' });
+    expect(trail).toEqual([
+      { label: 'Home', href: '/' },
+      { label: 'Home sales', href: '/home-sales/' },
+    ]);
   });
 });

@@ -18,6 +18,7 @@ import {
 } from '../../lib/db';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
+import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
 import { computeOpenStatus } from '../../lib/facility-hours';
 import { buildFacilityLede } from '../../lib/facility-lede';
 import { resolvePageMeta } from '../../lib/page-meta';
@@ -80,11 +81,7 @@ const showFacilityImage = Boolean(facility.image_path) && !facility.image_needs_
 // loudly instead of shipping a 404 <img src>.
 if (showFacilityImage) assertImageExists(facility.image_path!, facility.slug);
 const canonicalUrl = new URL(`/facilities/${facility.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
-const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Facilities', href: '/facilities/' },
-  { label: facility.name, href: canonicalUrl },
-];
+const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('facilities/detail', siteConfig, { label: facility.name, href: canonicalUrl });
 ---
 <BaseLayout title={pageMeta.title} description={description} ogSlug={`facility-${facility.slug}`}>
   <Breadcrumbs trail={breadcrumbTrail} />

@@ -23,6 +23,7 @@ import { resolvePageMeta } from '../lib/page-meta';
 import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+import { buildClusterBreadcrumbTrail } from '../lib/clusters';
 
 const jobs = await getRecentJobs();
 
@@ -33,10 +34,7 @@ const { visible, overflowByCompany } = capByEmployer(jobs);
 
 const pageMeta = resolvePageMeta('jobs', siteConfig);
 const canonicalUrl = new URL('/jobs/', Astro.site ?? siteConfig.siteUrl).href;
-const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Jobs', href: canonicalUrl },
-];
+const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('jobs', siteConfig, { label: 'Jobs', href: canonicalUrl });
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-jobs"
   description={`Recent job listings in and near ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>

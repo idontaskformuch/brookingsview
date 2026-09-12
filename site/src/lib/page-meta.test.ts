@@ -95,4 +95,16 @@ describe('resolvePageMeta', () => {
     const result = resolvePageMeta('this-week', MORENO_VALLEY, { WeekLabel: 'December 29, 2025 - January 4, 2026' });
     expect(result.title.length).toBeGreaterThan(65);
   });
+
+  it('this-week stays <= 65 chars for a month-crossing (but not year-crossing) week label', () => {
+    // The real regression page_meta_check caught live on a real Moreno
+    // Valley build: a week label spanning two month names (roughly one
+    // week in four, not a once-a-year rarity) also overflowed 65 chars
+    // under the old '{Town}: Week of {WeekLabel} | {Site}' pattern --
+    // "Moreno Valley: Week of July 27-August 2, 2026 | Moreno Valley
+    // View" was 66 chars. Dropping "Week of" fixed it -- see page-meta.ts's
+    // own comment on this entry.
+    const result = resolvePageMeta('this-week', MORENO_VALLEY, { WeekLabel: 'July 27-August 2, 2026' });
+    expect(result.title.length).toBeLessThanOrEqual(65);
+  });
 });

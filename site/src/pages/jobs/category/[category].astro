@@ -15,6 +15,7 @@ import { getRecentJobs, formatDate } from '../../../lib/db';
 import { salaryText, capByEmployer, slugifyCategory } from '../../../lib/jobs';
 import { siteConfig } from '../../../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../../lib/article-jsonld';
+import { buildClusterBreadcrumbTrail } from '../../../lib/clusters';
 
 export async function getStaticPaths() {
   const jobs = await getRecentJobs();
@@ -50,9 +51,10 @@ const itemListJsonLd = jobs.length > 0 ? {
 // rather than removed since it's real content once more listings land.
 const isNoindex = jobs.length < 3;
 
+// One level deeper than buildClusterBreadcrumbTrail's own 3-crumb model --
+// see home-sales/[slug].astro's identical comment.
 const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Jobs', href: '/jobs/' },
+  ...buildClusterBreadcrumbTrail('jobs', siteConfig, { label: 'Jobs', href: '/jobs/' }),
   { label: category, href: canonicalUrl },
 ];
 ---

@@ -15,6 +15,7 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { getContentByType, formatMonthYear } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
+import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
@@ -25,9 +26,10 @@ const digests = await getContentByType(['home_sales_digest'], 999);
 const title = `Home Sales Digest Archive — ${siteConfig.cityName}`;
 const description = `Every monthly home-sales digest for ${siteConfig.cityName}, ${siteConfig.stateAbbr}, oldest to newest.`;
 const canonicalUrl = new URL('/home-sales/archive/', Astro.site ?? siteConfig.siteUrl).href;
+// One level deeper than buildClusterBreadcrumbTrail's own 3-crumb model --
+// see home-sales/[slug].astro's identical comment.
 const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Home sales', href: '/home-sales/' },
+  ...buildClusterBreadcrumbTrail('home-sales', siteConfig, { label: 'Home sales', href: '/home-sales/' }),
   { label: 'Digest archive', href: canonicalUrl },
 ];
 

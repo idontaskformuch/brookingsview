@@ -8,13 +8,11 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getContentByType } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+import { buildClusterBreadcrumbTrail } from '../lib/clusters';
 
 const stories = await getContentByType(['editorial'], 60);
 const canonicalUrl = new URL('/editorials/', Astro.site ?? siteConfig.siteUrl).href;
-const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Editorials', href: canonicalUrl },
-];
+const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('editorials', siteConfig, { label: 'Editorials', href: canonicalUrl });
 ---
 <BaseLayout title={`Editorials — ${siteConfig.siteName}`} wide
   description={`Opinion pieces on issues facing ${siteConfig.cityName}, AI-written and clearly labeled as such.`}>

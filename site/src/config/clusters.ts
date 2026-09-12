@@ -43,11 +43,29 @@ export interface ClusterDefinition {
  *  below, which is what actually decides whether a given spoke survives
  *  for a given town. This file lists every spoke a cluster could ever
  *  have; resolveCluster() filters it per town at resolve time.
+ *
+ *  Every route registered ANYWHERE as a secondary spoke must also be a
+ *  PRIMARY spoke (or a hub) somewhere -- `resolveCluster()` only ever
+ *  looks for a primary home first, so a route with only a secondary
+ *  registration would be unreachable (a real bug found and fixed building
+ *  Phase 2's breadcrumbs: `story:weekly` and `story:home_sales_digest`
+ *  were briefly secondary-only, which meant a real `/s/[slug]/` page of
+ *  either type would have resolved to `null` -- an orphan -- and gotten
+ *  no breadcrumb cluster crumb at all despite being real cluster content).
+ *  `validateClusterConfig()` in lib/clusters.ts now checks this
+ *  automatically.
  */
 export const CLUSTERS: Record<string, ClusterDefinition> = {
   civic: {
     key: 'civic',
-    label: 'City Hall',
+    // 'City hall' (lowercase h), not 'City Hall' -- matches this exact,
+    // deeply-established string used sitewide already (nav, kickers,
+    // OG images, JSON-LD tests -- see CATEGORY_LABELS in lib/db.ts and
+    // BaseLayout.astro's own nav array). This cluster's label reuses an
+    // EXISTING page identity, unlike the other five (genuinely new
+    // groupings the handoff itself coined), so it follows the site's own
+    // real convention rather than a fresh title-case choice.
+    label: 'City hall',
     hubRoute: 'city-hall',
     primarySpokes: [
       'city-hall/archive', 'city-hall/projects', 'city-hall/projects/detail',
@@ -64,10 +82,10 @@ export const CLUSTERS: Record<string, ClusterDefinition> = {
     label: "What's happening",
     hubRoute: 'events',
     primarySpokes: [
-      'today', 'this-week', 'whats-on', 'whats-on/detail',
+      'today', 'this-week', 'whats-on', 'whats-on/detail', 'story:weekly',
       'free-things-to-do', 'story:event', 'events/facet', 'events/past',
     ],
-    secondarySpokes: ['story:weekly'],
+    secondarySpokes: [],
   },
   getting_around: {
     key: 'getting_around',
@@ -83,8 +101,9 @@ export const CLUSTERS: Record<string, ClusterDefinition> = {
     primarySpokes: [
       'jobs', 'jobs/category', 'story:workplace_watch_digest',
       'home-sales', 'home-sales/detail', 'home-sales/archive', 'home-sales/zip',
+      'story:home_sales_digest',
     ],
-    secondarySpokes: ['story:home_sales_digest'],
+    secondarySpokes: [],
   },
   places: {
     key: 'places',
@@ -248,4 +267,22 @@ export const ROUTE_AVAILABILITY: Record<string, RouteAvailability> = {
   // specifically -- an editorial merge, not a missing feature, but the
   // route itself genuinely doesn't exist independently there.
   reviews: (c) => c.townId !== 'moreno_valley_ca',
+};
+
+/** Phase 2 (breadcrumbs): the real, canonical URL for every route key that
+ *  can ever be a cluster HUB -- the only role that ever needs to appear as
+ *  a middle breadcrumb crumb (see lib/clusters.ts's own
+ *  buildClusterBreadcrumbTrail()). Deliberately NOT a href for every route
+ *  key in ROUTE_AVAILABILITY -- a spoke's own href is whatever that page
+ *  already computes as its `canonicalUrl` today (facility slug, week slug,
+ *  ZIP, ...), which this config has no business re-deriving a second time. */
+export const HUB_HREF: Record<string, string> = {
+  'city-hall': '/city-hall/',
+  events: '/events/',
+  traffic: '/traffic/',
+  'workplace-watch': '/workplace-watch/',
+  facilities: '/facilities/',
+  jackrabbits: '/jackrabbits/',
+  sports: '/sports/',
+  'vail-resorts': '/vail-resorts/',
 };

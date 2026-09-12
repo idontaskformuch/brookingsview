@@ -12,8 +12,9 @@
  *  what decides whether a given null is an expected orphan or a real gap,
  *  since only it has the full page inventory to judge that against.
  */
-import { CLUSTERS, CLUSTER_TOWN_OVERRIDES, ROUTE_AVAILABILITY, type ClusterDefinition } from '../config/clusters';
+import { CLUSTERS, CLUSTER_TOWN_OVERRIDES, ROUTE_AVAILABILITY, HUB_HREF, type ClusterDefinition } from '../config/clusters';
 import type { SiteConfig } from './site-config';
+import type { BreadcrumbEntry } from './article-jsonld';
 
 export type ClusterRole = 'hub' | 'primary-spoke' | 'secondary-spoke';
 
@@ -148,7 +149,7 @@ export function resolveCluster(routeKey: string, townConfig: SiteConfig): Resolv
 }
 
 export interface ClusterConfigProblem {
-  kind: 'dangling-reference' | 'duplicate-primary' | 'too-many-memberships';
+  kind: 'dangling-reference' | 'duplicate-primary' | 'too-many-memberships' | 'secondary-without-primary';
   routeKey: string;
   detail: string;
 }
@@ -168,6 +169,12 @@ export interface ClusterConfigProblem {
  *       counts as one; primary + secondary spoke registrations across all
  *       clusters count together) -- the handoff's own "beyond that the
  *       graph stops meaning anything" cap.
+ *    4. No route key is registered as a secondary spoke without also
+ *       having a primary home (a hub, or a primary spoke) SOMEWHERE --
+ *       resolveCluster() only ever looks for a primary registration
+ *       first, so a secondary-only route is silently unreachable (a real
+ *       bug this caught while building Phase 2's breadcrumbs -- see
+ *       config/clusters.ts's own comment on this rule).
  */
 export function validateClusterConfig(): ClusterConfigProblem[] {
   const problems: ClusterConfigProblem[] = [];
@@ -184,6 +191,7 @@ export function validateClusterConfig(): ClusterConfigProblem[] {
 
   const primaryOwners = new Map<string, string[]>(); // routeKey -> cluster keys where it's a hub or primary spoke
   const allMemberships = new Map<string, number>(); // routeKey -> total membership count
+  const secondaryOnly = new Set<string>();
 
   const bump = (routeKey: string) => allMemberships.set(routeKey, (allMemberships.get(routeKey) ?? 0) + 1);
   const addPrimaryOwner = (routeKey: string, clusterKey: string) => {
@@ -205,6 +213,16 @@ export function validateClusterConfig(): ClusterConfigProblem[] {
     for (const routeKey of cluster.secondarySpokes) {
       checkRef(routeKey, `${cluster.key}.secondarySpokes`);
       bump(routeKey);
+      secondaryOnly.add(routeKey);
+    }
+  }
+
+  for (const routeKey of secondaryOnly) {
+    if (!primaryOwners.has(routeKey)) {
+      problems.push({
+        kind: 'secondary-without-primary', routeKey,
+        detail: `"${routeKey}" is registered as a secondary spoke but has no primary home (hub or primary spoke) anywhere -- resolveCluster() would return null for it`,
+      });
     }
   }
 
@@ -233,4 +251,53 @@ export function validateClusterConfig(): ClusterConfigProblem[] {
   }
 
   return problems;
+}
+
+/** Topical authority handoff, Phase 2. The single place every spoke page
+ *  builds its `breadcrumbTrail` from -- replaces each page's own inline
+ *  `[Home, Section, ...]` array literal so the cluster crumb can never be
+ *  added to the visible trail (`<Breadcrumbs>`) without also landing in
+ *  the JSON-LD (`buildBreadcrumbJsonLd()`), or vice versa: both already
+ *  read the SAME array a page builds once, this just centralizes what
+ *  that array contains instead of leaving every call site to reimplement
+ *  "insert my cluster's hub crumb" by hand.
+ *
+ *  `page` is the trail's own last entry (current page, not a link) -- the
+ *  one piece of information only the call site actually has (its real
+ *  label and canonical URL, e.g. a specific facility's own name/slug).
+ *
+ *  A hub page passes ITSELF here too (matching the existing convention
+ *  every hub already follows: `[Home, {label: 'City Hall', href: canonicalUrl}]`)
+ *  -- resolveCluster() returns role 'hub' for it, and this deliberately
+ *  does NOT insert a redundant middle crumb pointing at the same URL the
+ *  last crumb already is.
+ *
+ *  An orphan (trust page, homepage, an unavailable route for this town)
+ *  gets exactly the same two-crumb trail every page already had before
+ *  this handoff -- Phase 2 only ever ADDS a middle crumb, never removes
+ *  or changes the Home/page ends of the existing trail. */
+export function buildClusterBreadcrumbTrail(
+  routeKey: string,
+  townConfig: SiteConfig,
+  page: BreadcrumbEntry,
+): BreadcrumbEntry[] {
+  const home: BreadcrumbEntry = { label: 'Home', href: '/' };
+  const resolved = resolveCluster(routeKey, townConfig);
+  if (!resolved || resolved.primary.role === 'hub') {
+    return [home, page];
+  }
+
+  const hubHref = HUB_HREF[resolved.hubRoute];
+  if (!hubHref) {
+    // A cluster's hubRoute with no HUB_HREF entry is a config mistake
+    // (every real hub route key must have one) -- fail loud rather than
+    // silently drop the middle crumb, the same "fails loud" convention as
+    // resolvePageMeta()'s own unfilled-placeholder check.
+    throw new Error(
+      `buildClusterBreadcrumbTrail: no HUB_HREF entry for hub route "${resolved.hubRoute}" ` +
+      `(resolving "${routeKey}" for "${townConfig.townId}")`,
+    );
+  }
+
+  return [home, { label: resolved.primary.clusterLabel, href: hubHref }, page];
 }

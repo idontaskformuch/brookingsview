@@ -22,6 +22,7 @@ import {
 import { buildEventFeed, todayUtcMidnight, isTonight, isTomorrow, selectTodayBucket } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+import { buildClusterBreadcrumbTrail } from '../lib/clusters';
 import { resolvePageMeta } from '../lib/page-meta';
 
 const [periods, alerts, upcomingEvents, artsEvents, trafficIncidents, closureStatus, facilities] = await Promise.all([
@@ -44,10 +45,7 @@ const tonight = selectTodayBucket(items, today, siteConfig.timezone, isTonight, 
 const tomorrow = selectTodayBucket(items, today, siteConfig.timezone, isTomorrow, 3);
 
 const canonicalUrl = new URL('/today/', Astro.site ?? siteConfig.siteUrl).href;
-const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Today', href: canonicalUrl },
-];
+const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('today', siteConfig, { label: 'Today', href: canonicalUrl });
 const breadcrumbJsonLd = buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl);
 
 const pageMeta = resolvePageMeta('today', siteConfig);

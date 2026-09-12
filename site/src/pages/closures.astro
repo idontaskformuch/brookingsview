@@ -29,6 +29,7 @@ import { siteConfig } from '../lib/site-config';
 import { resolvePageMeta } from '../lib/page-meta';
 import { SECTION_THEME } from '../lib/section-theme';
 import { buildFaqJsonLd, buildSchoolClosureNewsArticleJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+import { buildClusterBreadcrumbTrail } from '../lib/clusters';
 
 if (!siteConfig.hasClosureWatch || !siteConfig.closureWatch) {
   return Astro.redirect('/', 302);
@@ -37,10 +38,7 @@ if (!siteConfig.hasClosureWatch || !siteConfig.closureWatch) {
 const feat = siteConfig.closureWatch;
 const status = await getClosureWatchStatus();
 const canonicalUrl = new URL('/closures/', Astro.site ?? siteConfig.siteUrl).href;
-const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Closure Watch', href: canonicalUrl },
-];
+const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('closures', siteConfig, { label: 'Closure Watch', href: canonicalUrl });
 
 const now = new Date();
 const lastChecked = now.toLocaleString('en-US', {

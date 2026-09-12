@@ -33,6 +33,7 @@ import { currentWeekInfo } from '../../lib/this-week';
 import { EMPTY_STATES } from '../../lib/empty-states';
 import { SECTION_THEME } from '../../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
+import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
 import { resolveImage } from '../../lib/images';
 import { categoryImagesFor } from '../../config/category-images';
 import { resolvePageMeta } from '../../lib/page-meta';
@@ -109,10 +110,7 @@ const introText = introRow && isWhatsOnIntroFresh(introRow, currentWeekInfo(site
   : null;
 
 const canonicalUrl = new URL('/whats-on/', Astro.site ?? siteConfig.siteUrl).href;
-const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  { label: "What's On", href: canonicalUrl },
-];
+const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('whats-on', siteConfig, { label: "What's On", href: canonicalUrl });
 const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
 const pageMeta = resolvePageMeta('whats-on', siteConfig);
 ---

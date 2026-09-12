@@ -15,6 +15,7 @@ import { titleCaseAddress, extractZip, slugifyAddress, isOutlierSale } from '../
 import { siteConfig } from '../../../lib/site-config';
 import { isWithinRenderWindow } from '../../../lib/render-window';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../../lib/article-jsonld';
+import { buildClusterBreadcrumbTrail } from '../../../lib/clusters';
 
 export async function getStaticPaths() {
   if (siteConfig.townId !== 'moreno_valley_ca') return [];
@@ -68,9 +69,10 @@ const itemListJsonLd = sales.length > 0 ? {
 // a ZIP with fewer than 3 recorded sales is a near-empty landing page.
 const isNoindex = sales.length < 3;
 
+// One level deeper than buildClusterBreadcrumbTrail's own 3-crumb model --
+// see home-sales/[slug].astro's identical comment.
 const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Home sales', href: '/home-sales/' },
+  ...buildClusterBreadcrumbTrail('home-sales', siteConfig, { label: 'Home sales', href: '/home-sales/' }),
   { label: zip, href: canonicalUrl },
 ];
 ---

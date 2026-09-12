@@ -31,6 +31,7 @@ import { resolveImage } from '../../lib/images';
 import { categoryImagesFor } from '../../config/category-images';
 import { buildTicketmasterEventJsonLd } from '../../lib/ticketmaster-jsonld';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
+import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
 import { SECTION_THEME } from '../../lib/section-theme';
 
 export async function getStaticPaths() {
@@ -63,9 +64,10 @@ const timeLabel = item.occurs_at
   : null;
 
 const canonicalUrl = new URL(`/whats-on/${ticketmasterSlug(e)}/`, Astro.site ?? siteConfig.siteUrl).href;
+// One level deeper than buildClusterBreadcrumbTrail's own 3-crumb model --
+// see home-sales/[slug].astro's identical comment.
 const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  { label: "What's On", href: new URL('/whats-on/', Astro.site ?? siteConfig.siteUrl).href },
+  ...buildClusterBreadcrumbTrail('whats-on', siteConfig, { label: "What's On", href: new URL('/whats-on/', Astro.site ?? siteConfig.siteUrl).href }),
   { label: e.title, href: canonicalUrl },
 ];
 

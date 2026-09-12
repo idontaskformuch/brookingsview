@@ -20,6 +20,7 @@ import { categoryImagesFor } from '../../config/category-images';
 import ImageAttribution from '../../components/ImageAttribution.astro';
 import { shouldNoindexStory } from '../../lib/noindex';
 import { canonicalUrlForStory } from '../../lib/cross-site-canonical';
+import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
 
 export async function getStaticPaths() {
   // Fetched once for the whole build, not per-page -- the facilities set is
@@ -103,11 +104,33 @@ const cityHallFacility = isMeeting ? facilities.find((f) => f.slug === 'city-hal
 // duplication remediation).
 const canonicalUrl = new URL(`/s/${story.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
 const pageCanonicalUrl = canonicalUrlForStory(story.source_type, story.slug, siteConfig.townId, canonicalUrl);
-// Fas 2.3 (breadcrumbs): CATEGORY_HREFS doesn't cover every source_type
-// (deliberately -- see that map's own comment on 'alert'), so a story
-// with no known parent section just gets a 2-level trail (Home > Title)
-// rather than a guessed, possibly-wrong middle crumb.
-const sectionHref = CATEGORY_HREFS[story.source_type];
+// Topical authority handoff, Phase 2: source_types the cluster graph
+// (config/clusters.ts) already registers as their own `story:<sourceType>`
+// group get their breadcrumb from the SAME cluster resolution every other
+// spoke page now uses -- the cluster's own label/hub, not a hand-picked
+// section label here. This is a real improvement over the previous
+// CATEGORY_HREFS-only version for 'alert': that map deliberately left it
+// out ("no dedicated alerts section page, guessing would misrepresent"),
+// but the cluster graph genuinely DOES have a real home for it now
+// (getting_around, hub /traffic/) -- alert stories get a real middle crumb
+// for the first time here, not a guess.
+const CLUSTER_STORY_ROUTE_KEYS: Partial<Record<string, string>> = {
+  meeting: 'story:meeting',
+  meeting_followup: 'story:meeting_followup',
+  event: 'story:event',
+  weekly: 'story:weekly',
+  alert: 'story:alert',
+  workplace_watch_digest: 'story:workplace_watch_digest',
+  home_sales_digest: 'story:home_sales_digest',
+};
+const clusterStoryRouteKey = CLUSTER_STORY_ROUTE_KEYS[story.source_type];
+// Every other source_type (the content-track essay/review/recipe types,
+// plus the remaining digest types) isn't modeled as its own cluster
+// story-group -- their INDEX page (recipes/editorials/columns/etc.) is the
+// spoke, not each individual story -- so they keep the pre-existing
+// CATEGORY_HREFS-driven trail exactly as before. Same "a story with no
+// known parent section just gets a 2-level trail" fallback either way.
+//
 // Recipe SEO handoff: /recipes.astro's own breadcrumb (and H1/<title>) says
 // "Recipes", plural -- CATEGORY_LABELS' "Recipe" is the right word for the
 // singular Byline kicker text (`category`, used elsewhere on this same
@@ -116,12 +139,15 @@ const sectionHref = CATEGORY_HREFS[story.source_type];
 // the exact same singular-vs-plural mismatch today, but fixing those wasn't
 // asked for here -- see NEEDS-HUMAN-REVIEW.md for that flagged, not silently
 // expanded, scope).
+const sectionHref = CATEGORY_HREFS[story.source_type];
 const breadcrumbSectionLabel = story.source_type === 'vardagsmiddag' ? 'Recipes' : category;
-const breadcrumbTrail: BreadcrumbEntry[] = [
-  { label: 'Home', href: '/' },
-  ...(sectionHref ? [{ label: breadcrumbSectionLabel, href: sectionHref }] : []),
-  { label: story.title, href: canonicalUrl },
-];
+const breadcrumbTrail: BreadcrumbEntry[] = clusterStoryRouteKey
+  ? buildClusterBreadcrumbTrail(clusterStoryRouteKey, siteConfig, { label: story.title, href: canonicalUrl })
+  : [
+      { label: 'Home', href: '/' },
+      ...(sectionHref ? [{ label: breadcrumbSectionLabel, href: sectionHref }] : []),
+      { label: story.title, href: canonicalUrl },
+    ];
 const related = await getRelatedStories(story, 3);
 // og:image / JSON-LD `image` -- ALWAYS the auto-generated social card,
 // never resolveImage()'s result. See NEEDS-HUMAN-REVIEW.md "Venue &
