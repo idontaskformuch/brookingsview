@@ -13,15 +13,24 @@ import { getRecentPropertySales, getProjects, formatPrice } from '../../../lib/d
 import type { Project } from '../../../lib/db';
 import { titleCaseAddress, extractZip, slugifyAddress, isOutlierSale } from '../../../lib/home-sales';
 import { siteConfig } from '../../../lib/site-config';
+import { isWithinRenderWindow } from '../../../lib/render-window';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../../lib/article-jsonld';
 
 export async function getStaticPaths() {
   if (siteConfig.townId !== 'moreno_valley_ca') return [];
 
-  const [sales, projects] = await Promise.all([
+  const [allRecentSales, projects] = await Promise.all([
     getRecentPropertySales(5000),
     getProjects(),
   ]);
+  // Render-window handoff, merged Phase 3+4: same filter, same window, as
+  // home-sales.astro and home-sales/[slug].astro's own getStaticPaths --
+  // this facet's own listing must never link into a parcel page that
+  // isn't being built. Filtered BEFORE deriving the ZIP list itself, so a
+  // ZIP whose only sales are all outside the window doesn't get a facet
+  // page at all (same "no page for zero real results" rule this page's
+  // own doc comment already states).
+  const sales = allRecentSales.filter((s) => isWithinRenderWindow(s.sale_date, 'homeSales', siteConfig));
   const zips = [...new Set(sales.map((s) => extractZip(s.address)).filter(Boolean))];
 
   return zips.map((zip) => ({

@@ -21,6 +21,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getRecentPropertySales, getContentByType, formatPrice } from '../lib/db';
 import { titleCaseAddress as sharedTitleCaseAddress, extractZip as sharedExtractZip, slugifyAddress, isOutlierSale } from '../lib/home-sales';
 import { siteConfig } from '../lib/site-config';
+import { isWithinRenderWindow } from '../lib/render-window';
 import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
 import { SECTION_THEME } from '../lib/section-theme';
@@ -30,10 +31,17 @@ if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
 }
 
-const [sales, digests] = await Promise.all([
+const [allRecentSales, digests] = await Promise.all([
   getRecentPropertySales(),
   getContentByType(['home_sales_digest'], 12),
 ]);
+// Render-window handoff, merged Phase 3+4: this table must never link to
+// a parcel page that isn't actually being built (see home-sales/[slug].astro's
+// own getStaticPaths -- same isWithinRenderWindow() call, same window).
+// Filtering here, not just there, is the graceful-degradation half the
+// handoff's own guardrail requires: the table just shows whatever's in
+// the window, it never renders a link into a 410.
+const sales = allRecentSales.filter((s) => isWithinRenderWindow(s.sale_date, 'homeSales', siteConfig));
 
 const canonicalUrl = new URL('/home-sales/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [

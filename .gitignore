@@ -19,6 +19,11 @@ site/node_modules/
 site/dist/
 site/.astro/
 
+# Generated audit CSVs (scripts/audit_page_metadata.mjs,
+# scripts/audit_noindex_inbound_links.mjs) -- regenerated on demand
+# against a real build, never a source of truth to carry forward.
+reports/
+
 # Local-only side-by-side comparison pages for a specific eval run (see
 # scripts/eval_tone_v2.py) -- regenerated on demand, never a build artifact
 # the site itself needs, so not versioned.

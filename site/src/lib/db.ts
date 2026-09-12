@@ -1452,14 +1452,19 @@ export async function getRecentPropertySales(limit = 250): Promise<PropertySale[
 
 /** One row per distinct parcel (its most recently-recorded address
  *  spelling), for /home-sales/[slug].astro's getStaticPaths -- the full
- *  set of permalink pages to build. */
-export async function getPropertySaleParcels(): Promise<{ pin: string; address: string }[]> {
+ *  set of permalink pages to build. sale_date is that most recent sale's
+ *  own date (DISTINCT ON (pin) + ORDER BY sale_date DESC already picks
+ *  it) -- render-window handoff: the page-generation layer filters on it
+ *  via isWithinRenderWindow(), this function stays an unfiltered fetch of
+ *  every parcel regardless of window (see lib/render-window.ts's own
+ *  module doc on why db.ts never applies this filter itself). */
+export async function getPropertySaleParcels(): Promise<{ pin: string; address: string; sale_date: string | null }[]> {
   return (await sql`
-    SELECT DISTINCT ON (pin) pin, address
+    SELECT DISTINCT ON (pin) pin, address, sale_date
       FROM property_sales
      WHERE town_id = ${TOWN_ID} AND pin IS NOT NULL
      ORDER BY pin, sale_date DESC
-  `) as { pin: string; address: string }[];
+  `) as { pin: string; address: string; sale_date: string | null }[];
 }
 
 /** A single parcel's full recorded sale history, most recent first -- the

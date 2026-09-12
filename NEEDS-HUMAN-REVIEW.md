@@ -4718,3 +4718,144 @@ instruction covering the file-level changes (deleted image files). RSS/CDN
 cache purging beyond Cloudflare's own normal asset-hash cache-busting was
 not investigated -- flagged, not silently assumed unnecessary, since the
 handoff explicitly named it as an owner decision.
+
+## 46. Sitewide title/H1/lede handoff — Phase 0 audit tooling + a real facility-page bug found along the way (2026-09-12)
+
+**Phase 0 (blocking, per that spec's own gate):** built `scripts/
+audit_page_metadata.mjs` -- reads a real `astro build` output (no HTML-
+parsing dependency in this codebase, so regex extraction over raw markup,
+same convention as `verify_sitemap_noindex_disjoint.mjs`) and emits one
+CSV row per route (`reports/metadata-audit-<town>.csv`) with title/H1/
+lede/meta-description text, lengths, a title-vs-H1 Jaccard similarity
+score, and every flag the handoff's own rules ask for.
+
+**Owner's own instinct to isolate `/facilities/[slug]/` manually before
+trusting the audit broadly paid off immediately**: EVERY facility page's
+audited "lede" was a 1-2 word category kicker ("Fire stations",
+"Community centers") -- the template renders `<p class="kind data">`
+BEFORE the `<h1>` even. Fixed the audit tool generally (excludes any `<p>`
+carrying this codebase's own sitewide `data` metadata-class convention --
+confirmed via grep it's used by dozens of unrelated components:
+`story__kind data`, `card__date data`, `forecast__temp data`, etc. --
+plus `image-attribution`, the earlier-found photo-credit case). This
+wasn't facility-specific: the SAME false positive affected every meeting/
+event/alert `/s/[slug]/` page sitewide (their own `story__kind`/
+`story__when` kickers) -- re-running after the fix dropped Brookings'
+`lede<20words` count from 432 to 93.
+
+**A second, real, structural bug surfaced underneath the measurement
+artifact**: even past the kicker issue, `facility.description`'s own
+`<p>` rendered AFTER the address/phone/hours `<dl>` block -- failing the
+handoff's own "lede must appear before any list/table" rule on every one
+of the 38 real facility pages across all three towns, not a measurement
+problem. Reordered the template. Separately, none of the 38 real
+descriptions mention their own street address in prose (verified against
+`data/facilities/*.json` directly), which the handoff's own facility-page
+pattern requires -- rather than hand-rewriting 38+ descriptions (and every
+one added later), `site/src/lib/facility-lede.ts` synthesizes the address
+onto the existing description as a second sentence, varying across 4
+connectors (`It's located at` / `Find it at` / `You'll find it at` /
+`Address:`) chosen deterministically per facility slug so the same page
+never flickers on rebuild and different pages on the same index don't all
+read identically.
+
+**Final Phase 0 scope, reweighted to sitemap-only per the owner's own
+proposal** (added an `inSitemap` column, cross-referencing the real built
+`sitemap-index.xml`/`sitemap-N.xml` chain rather than re-deriving
+`astro.config.mjs`'s own filter logic a third time): of thousands of
+built routes per town, only the routes actually in the sitemap matter for
+Phase 1 -- **117/149/62 indexable+in-sitemap routes for Brookings/Moreno
+Valley/Broomfield respectively, 106/138/50 flagged (294 total)**. This is
+the real Phase 1 workload: a bounded, config-pattern job, not a
+per-article project. Phase 1 (config block + `resolvePageMeta()` helper +
+template migration) itself has not started -- this entry is Phase 0 only.
+
+## 47. Render-window handoff: home sales enabled at 24 months, merged with its own listing-page fix (2026-09-12)
+
+**Phase 0a (blocking): internal link audit.** Built `scripts/
+audit_noindex_inbound_links.mjs` (reuses the metadata audit's own
+noindex/indexable classification, cross-references real `<a href>`s
+against it, classifies link context via each component's own `<nav
+aria-label>` -- Breadcrumbs/RelatedStories/RelatedContent/site nav all
+already have one). Broomfield (901 linked noindex routes, 864 of them
+`/whats-on/` detail pages -- always noindex by design, not a render-window
+concern) turned out to be the wrong town to test the spec's actual
+question on: it has zero home-sales data. **Moreno Valley: 2,409 home-
+sales parcel pages linked from indexable pages, ALL traced to exactly 5
+source pages** (`/home-sales/` + its 4 ZIP facets) -- confirming the
+spec's own worst-case framing and motivating the owner's explicit
+decision to merge Phase 3 (enable the window) and Phase 4 (fix the
+listing pages) into one change for home sales, rather than shipping the
+window first and the link fix after.
+
+**Phase 0b: schema/retention review.** `property_sales.raw_data` already
+retains every field Riverside County's own export provides (verified
+against the parser's own `_HEADER` list) -- square footage/lot size/year
+built are absent because the SOURCE FILE never has them (a transactional
+sales-listing export, not a parcel-characteristics dataset), not because
+the pipeline discards them. **Corrected an assumption of my own
+mid-review**: `GeographicalCode` looked like a neighbourhood/district code
+by name; checked the actual data and it's byte-for-byte identical to
+`pin` on every row -- not a district code at all, nothing to decode. A
+real "prices by area" analysis already has what it needs via ZIP (already
+extracted and faceted on today). **Meetings: a real, flagged-not-fixed
+asymmetry** -- Broomfield and Moreno Valley (both eSCRIBE) already parse
+a structured per-item vote tally (`{counter, title, result, vote}` with
+YES/NO/ABSTAIN/CONFLICT/ABSENT) from the ACTION SUMMARY PDF; Brookings
+(Legistar, the only town where it's actually the enabled meeting source)
+keeps only free-text action fields, no structured vote count. Nothing is
+unrecoverably lost (Legistar's full raw API response, including per-item
+detail, is archived verbatim in `source_snapshots.raw`), but a future
+"how did council vote on X" feature works on two of three towns without
+any new work and needs the Legistar path extended on the third.
+
+**Implementation**, all in the same change:
+- `SiteConfig.renderWindow` (required, `{ homeSales, meetings, events }`,
+  months or `null`) + `isWithinRenderWindow(date, type, config)` in the
+  new `lib/render-window.ts` -- a pure function with zero database access,
+  called only from Astro page frontmatter. `lib/db.ts`'s query functions
+  stay unfiltered (retention is unbounded; a future record-mining feature
+  reads the database directly, same as today).
+- Retention guarantee, Phase 2: this codebase has no live-database
+  integration test anywhere to extend (confirmed: existing DB-adjacent
+  tests assert certain paths never even reach `DATABASE_URL`, they don't
+  mock a real connection), so proved the stronger structural claim instead
+  -- `tests/test_render_window_isolation.py` fails loud if the render-
+  window concept (or the TS helper itself gaining DB access) ever appears
+  anywhere under `scrapers/`, `ai_pipeline/`, `scripts/`, `db/`.
+- Merged Phase 3+4: `home-sales/[slug].astro`'s `getStaticPaths()`,
+  `home-sales.astro`, and `home-sales/zip/[zip].astro` all filter through
+  the SAME `isWithinRenderWindow()` call in the SAME change -- the
+  listing pages can never link to a parcel page that isn't being built,
+  by construction, not by a follow-up cleanup pass. Mirrored into
+  `astro.config.mjs`'s own independent thin-ZIP-page count too (same
+  duplication tradeoff this file already has for `CROSS_SITE_CANONICAL_ORIGINS`
+  etc.) -- easy to forget, would have silently drifted otherwise.
+
+**Verified live, twice, not just via unit tests:** no-op check first
+(window `null` everywhere) -- 4,381 pages / 27.3min / 2,409 linked parcels,
+byte-for-byte identical before and after the wiring landed. Then tried
+the spec's own suggested value (12 months) and caught a real problem
+LIVE before it shipped: Riverside County's data carries ~11-13 months of
+built-in reporting lag (most recent recorded sale was October 2025,
+2 rows that month), so a window measured from *today* landed almost
+exactly where the county's own data runs out -- 4,381→1,971 pages and
+27.3→12.9min (the mechanism worked exactly as designed), but
+`/home-sales/`'s own table dropped to 2 rows and 3 of 4 ZIP facets
+stopped generating at all. Reverted same day to 24 months (owner sign-off
+2026-09-12): 4,381→3,415 pages, 27.3→20.9min, all 4 ZIP facets healthy
+(282/302/529/422 sales each), aggregate table back at its normal 250-row
+cap, sitemap-indexable count unchanged (149, 138 flagged -- identical to
+every prior measurement, confirming the window only ever touches
+already-noindex pages).
+
+**Known improvement, flagged before extending further (owner's own
+requirement)**: the cutoff is computed from `new Date()` (the build's own
+clock), not from the data's own most recent record -- a static month
+count is a guess about a data source's reporting lag that can itself
+drift, and 24 months papers over today's specific lag amount rather than
+fixing the underlying "wrong clock" issue. Do this (compute the cutoff
+relative to the record set's own `MAX(date)`, or a per-source configured
+"as of" date) before enabling render windows for meetings/events or any
+other town -- see `lib/render-window.ts`'s own module doc for the fuller
+writeup. Phase 5 (410 Gone for dropped URLs) not yet started.

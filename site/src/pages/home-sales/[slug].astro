@@ -20,6 +20,7 @@ import type { Project } from '../../lib/db';
 import { buildPropertySaleJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { titleCaseAddress, extractZip, slugifyAddress, isOutlierSale, digestSlugForSaleDate } from '../../lib/home-sales';
 import { siteConfig } from '../../lib/site-config';
+import { isWithinRenderWindow } from '../../lib/render-window';
 
 export async function getStaticPaths() {
   if (siteConfig.townId !== 'moreno_valley_ca') return [];
@@ -31,7 +32,15 @@ export async function getStaticPaths() {
   ]);
   const digestSlugs = new Set(digests.map((d) => d.slug));
 
-  return parcels.map((p) => ({
+  // Render-window handoff: a parcel whose most recent recorded sale is
+  // outside the configured window doesn't get a page built at all -- the
+  // record itself is untouched in the database (retention is unbounded,
+  // see lib/render-window.ts), this only decides whether THIS page exists
+  // in THIS build. null window (today's default, every town) means every
+  // parcel still gets one, unchanged from before this handoff.
+  const inWindowParcels = parcels.filter((p) => isWithinRenderWindow(p.sale_date, 'homeSales', siteConfig));
+
+  return inWindowParcels.map((p) => ({
     params: { slug: slugifyAddress(p.address) },
     props: { pin: p.pin, digestSlugs, projects },
   }));

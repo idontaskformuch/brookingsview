@@ -212,11 +212,38 @@ export interface SiteConfig {
    *  value (same "fails loud" principle as assertAccentContrast()/
    *  validateStatusModules() elsewhere in this file's neighborhood). */
   ticketmaster?: { enabled: boolean; latitude: number; longitude: number; radiusMiles: number; marqueeSize: number };
+  /** Render-window handoff: how many months of history actually get a
+   *  BUILT page for each page type -- null means no window (render
+   *  everything, today's behavior). This is deliberately NOT a retention
+   *  or index-policy control -- see lib/render-window.ts's own module doc
+   *  for why those three concepts (retention/render window/index policy)
+   *  must stay separate, and why isWithinRenderWindow() is the ONLY place
+   *  this value is ever read. Required (not optional, no `?? null`
+   *  fallback anywhere) so a town missing this field is a compile error,
+   *  not a silently-assumed "no window" -- same "fails loud" convention as
+   *  ticketmaster.marqueeSize above. Every town starts at null everywhere:
+   *  enabling a window for a page type is a deliberate, reviewed, one-line
+   *  change per type per town, never a default. */
+  renderWindow: RenderWindow;
 }
+
+/** See SiteConfig.renderWindow's own doc comment. Each key names a page
+ *  TYPE, not a table -- home_sales/meetings/events map to real DB tables
+ *  1:1 today, but the type is what a page's own getStaticPaths() (and, for
+ *  home_sales, its own listing pages -- see NEEDS-HUMAN-REVIEW.md's
+ *  render-window entry) filters on, not the table name itself. */
+export interface RenderWindow {
+  homeSales: number | null;
+  meetings: number | null;
+  events: number | null;
+}
+
+const NO_RENDER_WINDOW: RenderWindow = { homeSales: null, meetings: null, events: null };
 
 const CITIES: Record<string, SiteConfig> = {
   brookings_sd: {
     townId: 'brookings_sd',
+    renderWindow: NO_RENDER_WINDOW,
     cityName: 'Brookings',
     stateName: 'South Dakota',
     stateAbbr: 'SD',
@@ -294,6 +321,34 @@ const CITIES: Record<string, SiteConfig> = {
 
   moreno_valley_ca: {
     townId: 'moreno_valley_ca',
+    // Render-window handoff, Phase 3+4 (merged, per that spec's own
+    // review): home sales enabled first -- see NEEDS-HUMAN-REVIEW.md for
+    // the Phase 0a link-audit evidence that motivated shipping this
+    // merged with home-sales.astro/home-sales/zip/[zip].astro's own
+    // listing-query filter in the same change (2409 parcel pages were
+    // linked from just 5 indexable listing pages). meetings/events stay
+    // null -- meetings are the spec's own "unbounded, civic-reference
+    // value" case; events wasn't reviewed/signed off yet.
+    //
+    // 12 months (the spec's own suggested value, signed off 2026-09-12)
+    // was tried first and immediately reverted the same day: Riverside
+    // County's own sales data carries ~11-13 months of built-in reporting
+    // lag (most recent recorded sale was October 2025, real volume not
+    // resuming until August 2025), so a window measured from TODAY landed
+    // almost exactly where the county's own data runs out -- confirmed
+    // live: 4381->1971 pages and 27.3->12.9min build (the mechanism
+    // worked exactly as designed), but /home-sales/'s own table dropped
+    // to 2 rows and 3 of 4 ZIP facets stopped generating at all. 24
+    // months (also signed off 2026-09-12) comfortably covers the known
+    // lag. KNOWN IMPROVEMENT, not yet built -- see
+    // lib/render-window.ts's own module doc: define this window relative
+    // to the data's own latest sale_date, not relative to "today", so it
+    // stays correct automatically as reporting lag drifts, instead of
+    // needing a repeat of this exact incident every time it does. Do this
+    // before extending the render-window mechanism to more towns or page
+    // types, since events/meetings will have their own version of the
+    // same "is the cutoff measured against the right clock" question.
+    renderWindow: { homeSales: 24, meetings: null, events: null },
     cityName: 'Moreno Valley',
     stateName: 'California',
     stateAbbr: 'CA',
@@ -391,6 +446,7 @@ const CITIES: Record<string, SiteConfig> = {
 
   broomfield_co: {
     townId: 'broomfield_co',
+    renderWindow: NO_RENDER_WINDOW,
     cityName: 'Broomfield',
     stateName: 'Colorado',
     stateAbbr: 'CO',

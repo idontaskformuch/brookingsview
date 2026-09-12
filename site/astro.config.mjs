@@ -127,6 +127,26 @@ function isThinStory(sourceType, body, ingredients, instructions) {
   return isThinType || wordCount < THIN_CONTENT_WORD_THRESHOLD;
 }
 
+// Render-window handoff: mirrors site/src/lib/site-config.ts's
+// CITIES.moreno_valley_ca.renderWindow.homeSales exactly -- same
+// duplication tradeoff as slugifyAddress above (site-config.ts can't be
+// imported here, same import.meta.env timing issue that file's own
+// comment already documents). 24 months, signed off 2026-09-12 (12 was
+// tried first the same day and reverted -- see site-config.ts's own
+// comment on this value for why: Riverside County's data carries ~11-13
+// months of built-in reporting lag, so a window measured from TODAY needs
+// real headroom, not just the raw lag amount). Keep this in sync BY HAND
+// with site-config.ts's own value, or this thin-page count silently
+// drifts from what home-sales/zip/[zip].astro's own getStaticPaths
+// actually builds.
+const RENDER_WINDOW_HOME_SALES_MONTHS = 24;
+function isWithinRenderWindowMirror(saleDate, months) {
+  if (months === null || !saleDate) return true;
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - months);
+  return new Date(saleDate) >= cutoff;
+}
+
 // Mirrors lib/cross-site-canonical.ts's CROSS_SITE_CANONICAL_ORIGINS
 // exactly -- same duplication tradeoff as slugifyAddress above. A
 // non-origin town's page for one of these types carries a cross-domain
@@ -323,13 +343,14 @@ async function buildLastmodMap(townId, databaseUrl) {
   // Mirrors getRecentPropertySales(5000)'s call shape from that page exactly.
   if (townId === 'moreno_valley_ca') {
     const zipSales = await sql`
-      SELECT address FROM property_sales
+      SELECT address, sale_date FROM property_sales
        WHERE town_id = ${townId}
        ORDER BY sale_date DESC
        LIMIT 5000
     `;
     const zipCounts = new Map();
     for (const s of zipSales) {
+      if (!isWithinRenderWindowMirror(s.sale_date, RENDER_WINDOW_HOME_SALES_MONTHS)) continue;
       const zip = extractZip(s.address);
       if (!zip) continue;
       zipCounts.set(zip, (zipCounts.get(zip) ?? 0) + 1);
