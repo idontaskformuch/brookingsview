@@ -4858,4 +4858,39 @@ fixing the underlying "wrong clock" issue. Do this (compute the cutoff
 relative to the record set's own `MAX(date)`, or a per-source configured
 "as of" date) before enabling render windows for meetings/events or any
 other town -- see `lib/render-window.ts`'s own module doc for the fuller
-writeup. Phase 5 (410 Gone for dropped URLs) not yet started.
+writeup.
+
+**Phase 5 (410 Gone for dropped URLs), shipped same day.** This site
+deploys as a real Cloudflare Worker with static assets (`site/wrangler.jsonc`'s
+`main: "server/worker.ts"`, "Advanced Mode"), not a plain static-assets-
+only deployment -- confirmed by reading that config rather than assuming
+a 410 wasn't possible on this host. `run_worker_first` already routes
+`/this-week/*` and `/api/*` through the Worker before the assets binding
+gets a chance to short-circuit to its own 404/405 (same mechanism a
+missing-config bug once made `/api/*` completely dead code in production,
+see that file's own comment) -- added `/home-sales/*` to the same list.
+
+**Design deliberately deviates from the spec's own suggested
+implementation** ("generate the 410 list by diffing the previous build
+manifest against the new one"): this project's CI doesn't cache or
+persist `dist/` between workflow runs, so there's no "previous manifest"
+to diff against without adding new artifact-retention plumbing. Built
+`server/home-sales-gone.ts` instead: a LIVE query at request time, fired
+only on the (rare) case of a 404 for a `/home-sales/<slug>/`-shaped path
+-- every still-in-window page keeps serving straight from `ASSETS` with
+zero extra query, unchanged from before. If the slug matches any
+address ever recorded for the town (regardless of window -- `@neondatabase/serverless`'s
+`neon()` HTTP client, already a dependency, makes this a cheap edge
+query), it's a real parcel the window excluded: 410. If it matches
+nothing at all, it never existed: a genuine 404. Self-correcting as the
+window keeps moving forward every day, not just correct on the one day
+it was enabled -- no generated file to regenerate, no new CI step, no
+second copy of a list to keep in sync.
+
+**Verified live against a real local Cloudflare Worker (`wrangler dev`
+against the actual 24-month Moreno Valley build), not just unit tests**:
+`/home-sales/` → 200 (unaffected); a real parcel still inside the window
+(21165 Martynia Ct, latest sale Jan 2025) → 200; a real parcel the window
+now excludes (21096 Pala Foxia Pl, latest sale May 2024, outside the
+~2024-09 cutoff) → **410 Gone**; a slug that was never a real address at
+all → 404, correctly not conflated with the 410 case.

@@ -21,6 +21,7 @@
 // the static assets binding. This is Cloudflare's "Advanced Mode" for a
 // Worker with static assets. See site/wrangler.jsonc for the matching
 // "main" + "assets.binding" config.
+import { neon } from '@neondatabase/serverless';
 import { handleComment } from './comment';
 import { handleShiftPollVote } from './shift-poll-vote';
 import { handleContact } from './contact';
@@ -29,6 +30,7 @@ import {
   resolveLegacyMeetingRedirect,
 } from './_shared';
 import legacyMeetingRedirects from './legacy-meeting-redirects.json';
+import { homeSalesParcelSlugFromPath, wasHomeSalesParcelEverRecorded } from './home-sales-gone';
 
 interface WorkerEnv extends Env {
   // Bound via wrangler.jsonc `assets.binding` -- serves the static Astro
@@ -128,6 +130,36 @@ export default {
         status: 302,
         headers: { Location: target.toString(), 'Cache-Control': 'no-store' },
       });
+    }
+
+    // Render-window handoff, Phase 5: a home-sales parcel page that USED
+    // to build (its most recent sale was once inside the render window)
+    // and no longer does gets a real 410 Gone, not a 404 -- see
+    // home-sales-gone.ts's own module doc for why this is a live query
+    // rather than a precomputed/diffed list. Only touches the DB on the
+    // (rare) 404 case for a genuine parcel-detail path -- every page still
+    // inside the window serves straight from ASSETS below with zero extra
+    // query, same as before this handoff. run_worker_first must include
+    // "/home-sales/*" (see wrangler.jsonc) or this branch is dead code,
+    // same failure mode that file's own comment already documents for
+    // /this-week/ and /api/*.
+    const parcelSlug = homeSalesParcelSlugFromPath(url.pathname);
+    if (parcelSlug) {
+      const assetResponse = await env.ASSETS.fetch(request);
+      if (assetResponse.status !== 404) return assetResponse;
+
+      const townId = townFromHostname(request.url, env.DEV_TOWN_ID);
+      if (townId) {
+        const sql = neon(env.DATABASE_URL);
+        const querySales = async (forTown: string) => (await sql`
+          SELECT address FROM property_sales WHERE town_id = ${forTown}
+        `) as { address: string | null }[];
+        const everRecorded = await wasHomeSalesParcelEverRecorded(parcelSlug, townId, querySales);
+        if (everRecorded) {
+          return new Response('Gone', { status: 410, headers: { 'Content-Type': 'text/plain' } });
+        }
+      }
+      return assetResponse; // genuinely never existed (or town unresolved) -- the normal 404
     }
 
     return env.ASSETS.fetch(request);

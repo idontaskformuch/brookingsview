@@ -48,7 +48,13 @@
     // formuläret) obrukbar i produktion sedan innan denna upptäckt, utan
     // att någon befintlig check fångade det (post-deploy-kollen testar
     // bara hemsidan/sektionssidor, aldrig /api/*).
-    "run_worker_first": ["/this-week", "/this-week/", "/api/*"]
+    // "/home-sales/*" added for the render-window handoff's Phase 5 (410
+    // Gone for a parcel page the render window dropped, see
+    // server/home-sales-gone.ts) -- same reasoning as /this-week/ and
+    // /api/* above: without this, a request for a path with no matching
+    // static file never reaches worker.ts's fetch() handler at all, so
+    // the 410 branch there would be dead code.
+    "run_worker_first": ["/this-week", "/this-week/", "/api/*", "/home-sales/*"]
   },
   // VIKTIGT: en enda wrangler.jsonc delas av båda städernas Cloudflare-
   // projekt (samma repo, skiljs bara åt av SITE_CITY vid Astro-bygget).
