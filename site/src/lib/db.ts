@@ -788,8 +788,14 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
   } else if (pageType === 'workplace_watch') {
     const homeSales = await latestStoryByType('home_sales_digest');
     if (homeSales) items.push(homeSales);
-    items.push({ href: '/jobs/', title: 'Jobs', kicker: 'Jobs', description: 'Current listings in and near Moreno Valley.' });
-    items.push({ href: '/events/', title: "What's on", kicker: 'Events', description: 'This week in Moreno Valley.' });
+    // Real bug found building the topical authority handoff's Phase 3
+    // (both description strings hardcoded "Moreno Valley" unconditionally,
+    // even though hasWorkplaceWatch is also true for Broomfield -- a
+    // leftover from when Worker Pulse was Moreno-Valley-only, never
+    // updated when it was extended). siteConfig.cityName is correct for
+    // every town this branch can ever run for.
+    items.push({ href: '/jobs/', title: 'Jobs', kicker: 'Jobs', description: `Current listings in and near ${siteConfig.cityName}.` });
+    items.push({ href: '/events/', title: "What's on", kicker: 'Events', description: `This week in ${siteConfig.cityName}.` });
     if (gameItem) items.push(gameItem);
   } else if (pageType === 'city_hall') {
     items.push({ href: '/city-hall/archive/', title: 'Meeting archive', kicker: 'Archive', description: 'Every past meeting covered here, by month.' });

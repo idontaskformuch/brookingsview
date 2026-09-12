@@ -4,12 +4,14 @@ import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import ShareButton from '../components/ShareButton.astro';
 import RelatedContent from '../components/RelatedContent.astro';
+import ClusterNav from '../components/ClusterNav.astro';
 import SectionHero from '../components/SectionHero.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getUpcomingStories, getPastStories, getProjects } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { resolvePageMeta } from '../lib/page-meta';
+import { resolveHubNavItems } from '../lib/clusters';
 
 const upcoming = await getUpcomingStories(['meeting'], 40);
 const past = await getPastStories(['meeting', 'meeting_followup'], 30);
@@ -27,6 +29,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 // prose alone (see that helper's own doc comment on why ledes stay in
 // content, not config).
 const pageMeta = resolvePageMeta('city-hall', siteConfig);
+const clusterNavItems = resolveHubNavItems('city-hall', siteConfig);
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-city-hall"
   description={`City council, county commission and committee meetings in ${siteConfig.cityName}, ${siteConfig.stateName}, in plain language.`}>
@@ -60,6 +63,8 @@ const pageMeta = resolvePageMeta('city-hall', siteConfig);
       <div class="stack">{past.map((story) => <StoryCard story={story} />)}</div>
     </>
   )}
+
+  <ClusterNav clusterLabel="City hall" items={clusterNavItems} />
 
   <RelatedContent pageType="city_hall" />
 

@@ -1,0 +1,73 @@
+---
+/** Topical authority handoff, Phase 3 -- a hub page's own "map of this
+ *  topic" block. Distinct from RelatedContent.astro's "You might also
+ *  like" (a small curated set of OTHER sections plus the town's game):
+ *  this is explicitly the REST OF THE SAME cluster, and reads that way --
+ *  "here's the rest of this topic," not "here's something else on the
+ *  site," per the handoff's own instruction. Placement on every hub page:
+ *  after the hub's own primary content, before RelatedContent.
+ *
+ *  `items` comes from lib/clusters.ts's `resolveHubNavItems()`, already
+ *  filtered to what's real and available for this town -- this component
+ *  renders nothing if it's empty (a hub with zero linkable spokes, which
+ *  doesn't happen today but costs nothing to handle).
+ */
+import type { SpokeNavCopy } from '../config/clusters';
+
+interface Props {
+  clusterLabel: string;
+  items: SpokeNavCopy[];
+}
+const { clusterLabel, items } = Astro.props;
+---
+{items.length > 0 && (
+  <nav class="cluster-nav" aria-label={`More on ${clusterLabel}`}>
+    <h2 class="cluster-nav__head">More on {clusterLabel}</h2>
+    <div class="cluster-nav__grid">
+      {items.map((item) => (
+        <a class="cluster-nav__card" href={item.href}>
+          <span class="cluster-nav__title">{item.label}</span>
+          <span class="cluster-nav__desc">{item.description}</span>
+        </a>
+      ))}
+    </div>
+  </nav>
+)}
+
+<style>
+.cluster-nav {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 3px solid var(--section-accent, var(--rule-strong));
+}
+.cluster-nav__head {
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 0 0 0.75rem;
+}
+.cluster-nav__grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+.cluster-nav__card {
+  display: block;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--section-accent, var(--navy));
+  padding: 0.75rem 0.875rem;
+  color: inherit;
+  text-decoration: none;
+}
+.cluster-nav__card:hover { border-color: var(--section-accent, var(--navy)); }
+.cluster-nav__title {
+  display: block;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  margin-bottom: 0.25rem;
+}
+.cluster-nav__desc { display: block; font-size: 0.875rem; color: var(--ink-soft); line-height: 1.4; }
+</style>

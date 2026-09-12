@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveCluster, validateClusterConfig, computeTownGraph, buildClusterBreadcrumbTrail } from './clusters';
+import { resolveCluster, validateClusterConfig, computeTownGraph, buildClusterBreadcrumbTrail, resolveHubNavItems } from './clusters';
 
 const BROOKINGS = { townId: 'brookings_sd', cityName: 'Brookings', siteName: 'Brookings View' } as any;
 const MORENO_VALLEY = { townId: 'moreno_valley_ca', cityName: 'Moreno Valley', siteName: 'Moreno Valley View', hasWorkplaceWatch: true, hasClosureWatch: true, hasWhatsOn: true, hasHousingMarket: true } as any;
@@ -131,5 +131,48 @@ describe('buildClusterBreadcrumbTrail', () => {
       { label: 'Home', href: '/' },
       { label: 'Home sales', href: '/home-sales/' },
     ]);
+  });
+});
+
+describe('resolveHubNavItems', () => {
+  it("returns a hub's own spokes that have real nav copy, in config authoring order", () => {
+    const items = resolveHubNavItems('city-hall', BROOKINGS);
+    expect(items.map((i) => i.label)).toEqual(['Meeting archive', 'Active projects']);
+  });
+
+  it('skips spokes with no single-page nav copy (detail/story groups) without erroring', () => {
+    // civic's primarySpokes also include city-hall/projects/detail,
+    // story:meeting and story:meeting_followup -- none of those are in
+    // SPOKE_NAV_COPY, and resolveHubNavItems must silently skip them
+    // rather than rendering a broken/blank card.
+    const items = resolveHubNavItems('city-hall', BROOKINGS);
+    expect(items.length).toBe(2);
+  });
+
+  it("returns [] for a town's hub that isn't rendering (work_and_money for Brookings)", () => {
+    expect(resolveHubNavItems('workplace-watch', BROOKINGS)).toEqual([]);
+  });
+
+  it("filters out a town-gated spoke that doesn't apply here (home-sales for Brookings' work_and_money -- N/A; check local_life instead)", () => {
+    // Moreno Valley's local_life spokes must not include Brookings-only
+    // university/play/farm-report.
+    const items = resolveHubNavItems('sports', MORENO_VALLEY);
+    const labels = items.map((i) => i.label);
+    expect(labels).not.toContain('SDSU');
+    expect(labels).not.toContain('Play Jackrabbit');
+    expect(labels).toContain('Play Burro Bonanza');
+  });
+
+  it("resolves each town's own local_life hub key independently (jackrabbits/sports/vail-resorts)", () => {
+    expect(resolveHubNavItems('jackrabbits', BROOKINGS).length).toBeGreaterThan(0);
+    expect(resolveHubNavItems('sports', MORENO_VALLEY).length).toBeGreaterThan(0);
+    expect(resolveHubNavItems('vail-resorts', BROOMFIELD).length).toBeGreaterThan(0);
+    // A local_life hub key that ISN'T this town's own resolves to nothing.
+    expect(resolveHubNavItems('sports', BROOKINGS)).toEqual([]);
+  });
+
+  it('work_and_money nav for Moreno Valley includes home-sales (available there)', () => {
+    const items = resolveHubNavItems('workplace-watch', MORENO_VALLEY);
+    expect(items.map((i) => i.label)).toContain('Home sales');
   });
 });

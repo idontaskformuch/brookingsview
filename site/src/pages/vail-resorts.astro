@@ -34,12 +34,15 @@ import ShareButton from '../components/ShareButton.astro';
 import { getVailNews } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { SECTION_THEME } from '../lib/section-theme';
+import { resolveHubNavItems } from '../lib/clusters';
+import ClusterNav from '../components/ClusterNav.astro';
 
 if (siteConfig.townId !== 'broomfield_co') {
   return Astro.redirect('/', 302);
 }
 
 const items = await getVailNews(30);
+const clusterNavItems = resolveHubNavItems('vail-resorts', siteConfig);
 ---
 <BaseLayout title={`Vail Resorts Newsroom — ${siteConfig.siteName}`} wide
   ogSlug="section-vail-news"
@@ -87,6 +90,8 @@ const items = await getVailNews(30);
     refreshed every 48 hours. Headlines, dates, categories and teasers are the company's
     own; every item links back to the original release.
   </p>
+
+  <ClusterNav clusterLabel="Local life" items={clusterNavItems} />
 
   <RelatedContent pageType="vail_news" />
 </BaseLayout>

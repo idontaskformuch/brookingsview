@@ -21,8 +21,11 @@ import { EMPTY_STATES } from '../lib/empty-states';
 import { SECTION_THEME } from '../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { resolvePageMeta } from '../lib/page-meta';
+import { resolveHubNavItems } from '../lib/clusters';
+import ClusterNav from '../components/ClusterNav.astro';
 
 const pageMeta = resolvePageMeta('traffic', siteConfig);
+const clusterNavItems = resolveHubNavItems('traffic', siteConfig);
 const incidents = await getActiveTrafficIncidents();
 const canonicalUrl = new URL('/traffic/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
@@ -117,6 +120,8 @@ const SEVERITY_LABELS: Record<string, string> = {
       <>No traffic data source configured for {siteConfig.cityName} yet.</>
     )}
   </p>
+
+  <ClusterNav clusterLabel="Getting around" items={clusterNavItems} />
 
   <RelatedContent pageType="traffic" />
 

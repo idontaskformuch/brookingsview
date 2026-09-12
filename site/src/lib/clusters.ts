@@ -12,7 +12,7 @@
  *  what decides whether a given null is an expected orphan or a real gap,
  *  since only it has the full page inventory to judge that against.
  */
-import { CLUSTERS, CLUSTER_TOWN_OVERRIDES, ROUTE_AVAILABILITY, HUB_HREF, type ClusterDefinition } from '../config/clusters';
+import { CLUSTERS, CLUSTER_TOWN_OVERRIDES, ROUTE_AVAILABILITY, HUB_HREF, SPOKE_NAV_COPY, type ClusterDefinition, type SpokeNavCopy } from '../config/clusters';
 import type { SiteConfig } from './site-config';
 import type { BreadcrumbEntry } from './article-jsonld';
 
@@ -300,4 +300,34 @@ export function buildClusterBreadcrumbTrail(
   }
 
   return [home, { label: resolved.primary.clusterLabel, href: hubHref }, page];
+}
+
+/** Topical authority handoff, Phase 3. A hub page calls this with its OWN
+ *  route key to get the hand-written nav copy (see config/clusters.ts's
+ *  `SPOKE_NAV_COPY`) for every spoke that's both available for this town
+ *  AND has a real, single-page description registered -- the "detail"
+ *  keys (e.g. `facilities/detail`) and `story:<sourceType>` groups have
+ *  neither, and are silently skipped
+ *  (not an error: not every spoke is a hub-nav candidate, only the ones
+ *  with one real page to point at). Order follows the cluster's own
+ *  `primarySpokes` array (config authoring order), not spoke-discovery
+ *  order, so the block reads the same each build rather than shuffling
+ *  with unrelated data changes. Returns `[]` for a route key that isn't a
+ *  real hub for this town (including local_life's other two towns' hub
+ *  keys) -- the component this feeds renders nothing in that case, same
+ *  "absence is normal" convention as every other optional module here. */
+export function resolveHubNavItems(hubRouteKey: string, townConfig: SiteConfig): SpokeNavCopy[] {
+  const graph = computeTownGraph(townConfig);
+  const cluster = graph.clusters.find((c) => c.hubRoute === hubRouteKey);
+  if (!cluster) return [];
+
+  const available = new Set(cluster.spokes.map((s) => s.routeKey));
+  const definition = CLUSTERS[cluster.key];
+  const items: SpokeNavCopy[] = [];
+  for (const routeKey of definition.primarySpokes) {
+    if (!available.has(routeKey)) continue;
+    const copy = SPOKE_NAV_COPY[routeKey];
+    if (copy) items.push(copy);
+  }
+  return items;
 }

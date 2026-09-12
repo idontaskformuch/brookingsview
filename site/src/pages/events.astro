@@ -17,8 +17,11 @@ import { EMPTY_STATES } from '../lib/empty-states';
 import { SECTION_THEME } from '../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { resolvePageMeta } from '../lib/page-meta';
+import { resolveHubNavItems } from '../lib/clusters';
+import ClusterNav from '../components/ClusterNav.astro';
 
 const pageMeta = resolvePageMeta('events', siteConfig);
+const clusterNavItems = resolveHubNavItems('events', siteConfig);
 
 // "Arts & Culture" (SDSU) / "Around Town" (library, city, chamber, ...) --
 // bara Brookings har den här campus-vs-townwide-uppdelningen att göra (se
@@ -178,6 +181,8 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
       <div class="grid">{past.map((story) => <StoryCard story={story} compact kicker={townwideKicker} />)}</div>
     </>
   )}
+
+  <ClusterNav clusterLabel="What's happening" items={clusterNavItems} />
 
   <RelatedContent pageType="events" />
 

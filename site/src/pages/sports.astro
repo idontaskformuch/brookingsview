@@ -15,12 +15,15 @@ import { getRegionalSports, getContentByType, formatCalendarDate, formatTime } f
 import { siteConfig } from '../lib/site-config';
 import { resolvePageMeta } from '../lib/page-meta';
 import SectionHero from '../components/SectionHero.astro';
+import { resolveHubNavItems } from '../lib/clusters';
+import ClusterNav from '../components/ClusterNav.astro';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
 }
 
 const pageMeta = resolvePageMeta('sports', siteConfig);
+const clusterNavItems = resolveHubNavItems('sports', siteConfig);
 
 const [games, digests, localDigests] = await Promise.all([
   getRegionalSports(),
@@ -123,6 +126,8 @@ const leagueLabel = (l: string) => l.toUpperCase();
   <p class="source">
     Source: <a href="https://statsapi.mlb.com" rel="noopener">MLB Stats API</a>, refreshed regularly.
   </p>
+
+  <ClusterNav clusterLabel="Local life" items={clusterNavItems} />
 </BaseLayout>
 
 <style>

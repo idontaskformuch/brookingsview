@@ -5301,3 +5301,78 @@ picks up the "Work and money" crumb too -- the exact case the
 
 Per the handoff's own phasing, Phase 3 (hub cluster-navigation blocks)
 waits for explicit go-ahead, same as Phase 2 did.
+
+## 52. Topical authority handoff, Phase 3: hub cluster-navigation blocks (2026-09-13)
+
+Every one of the six hubs (`city-hall`, `events`, `traffic`, `workplace-watch`,
+`facilities`, and each town's own Local-life hub -- `jackrabbits.astro`,
+`sports.astro`, or `vail-resorts.astro`) now gets a "More on {cluster}"
+block: a compact card grid, one hand-written original line per spoke, not
+a bare link dump -- matching the tone the handoff's own text cited
+(`/city-hall/`'s pre-existing "Tracking a real development..." teaser,
+which stays exactly where it was, untouched).
+
+**Built**: `site/src/components/ClusterNav.astro` (the rendering
+component -- deliberately visually distinct from `RelatedContent.astro`'s
+"You might also like," same card-grid mechanics but its own accent-colored
+left border and heading, since the two modules serve different purposes:
+"the rest of this topic" vs. "something else on the site"), a new
+`SPOKE_NAV_COPY` map in `config/clusters.ts` (14 hand-written
+label/href/description entries -- two reuse existing wording verbatim
+from `lib/db.ts`'s own game-teaser copy rather than writing a second,
+slightly different description of the same page), and
+`resolveHubNavItems()` in `lib/clusters.ts` (reuses Phase 1's
+`computeTownGraph()`, filters to spokes that are both available for this
+town and have real nav copy -- the `*/detail` and `story:<sourceType>`
+groups have neither, since a hub-nav card needs ONE url to send a reader
+to, and are silently skipped, not an oversight).
+
+**Real, unrelated production bug found and fixed verifying this on a
+real Broomfield build**: `lib/db.ts`'s `getRelatedContent()` -- the
+PRE-EXISTING "You might also like" module, untouched by this handoff
+otherwise -- had its `workplace_watch` branch hardcode "Moreno Valley" in
+two description strings unconditionally, even though `hasWorkplaceWatch`
+is also true for Broomfield (a leftover from when Worker Pulse was
+Moreno-Valley-only, never updated when it was extended -- see
+`site-config.ts`'s own `hasWorkplaceWatch` doc comment for that history).
+Confirmed live: Broomfield's own `/workplace-watch/` page was really
+telling readers "Current listings in and near Moreno Valley." Fixed by
+interpolating `siteConfig.cityName` -- one line, no scope creep, but not
+something a real production build should keep serving once seen.
+
+**A hub can legitimately have an empty nav section**: Broomfield's
+`/traffic/` hub has zero linkable spokes (its only real spoke, `closures`,
+is unavailable there -- no Closure Watch -- and `story:alert` has no
+single-page nav copy by design). `ClusterNav.astro` renders nothing in
+that case, same "absence is normal" convention as every other optional
+module here, confirmed correct on the real build rather than assumed.
+
+**Verified against real, clean builds for all three towns**: `astro check`
+0 errors, full vitest suite green (33 files / 628 tests, including 6 new
+`resolveHubNavItems` tests), Brookings (481 pages) and Broomfield (992
+pages) built clean with cluster-nav content spot-checked correct on every
+hub (including Brookings' `jackrabbits.astro` Local-life block correctly
+showing SDSU/Play Jackrabbit/Farm Report and NOT Play Burro Bonanza;
+Broomfield's `vail-resorts.astro` block correctly showing only the four
+shared content-track spokes). Moreno Valley verified separately (see its
+own build log) with `workplace-watch`'s block confirmed to include Home
+sales (available there) and `sports.astro`'s Local-life block confirmed
+to include Play Burro Bonanza and exclude Reviews (redirects to
+`/columns/` for Moreno Valley specifically).
+
+**Flagged, not fixed -- out of scope for this phase**:
+`vail-resorts.astro` never adopted `resolvePageMeta()`/the metadata
+handoff's pattern catalog at all -- it still hardcodes
+`` `Vail Resorts Newsroom — ${siteConfig.siteName}` `` (an em-dash title,
+against that handoff's own "no em-dash" rule) and a bare `<h1>` string.
+This page didn't exist in the metadata handoff's original ~16-entry
+catalog for the same reason it wasn't the topical-authority handoff's
+Local-life hub in its own literal text either: neither handoff's author
+knew about it. Worth a small follow-up matching the other five hubs'
+metadata treatment, not done here since it's a metadata-handoff concern,
+not a Phase 3 one.
+
+Per the handoff's own phasing, Phase 4 (spoke hub-backlinks in prose --
+distinct from Phase 2's breadcrumb crumb, this is the reverse direction:
+each spoke's own lede text linking back to its hub) waits for explicit
+go-ahead, same as every phase before it.

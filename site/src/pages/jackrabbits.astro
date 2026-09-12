@@ -14,12 +14,15 @@ import { siteConfig } from '../lib/site-config';
 import { resolvePageMeta } from '../lib/page-meta';
 import SectionHero from '../components/SectionHero.astro';
 import { SECTION_THEME } from '../lib/section-theme';
+import { resolveHubNavItems } from '../lib/clusters';
+import ClusterNav from '../components/ClusterNav.astro';
 
 if (siteConfig.townId !== 'brookings_sd') {
   return Astro.redirect('/', 302);
 }
 
 const pageMeta = resolvePageMeta('jackrabbits', siteConfig);
+const clusterNavItems = resolveHubNavItems('jackrabbits', siteConfig);
 
 const [next, all, summaries] = await Promise.all([
   getUpcomingGames(1), getSeasonGames(), getContentByType(['jackrabbits_season_summary'], 20),
@@ -123,6 +126,8 @@ const summaryBySport = new Map(
       </>
     );
   })}
+
+  <ClusterNav clusterLabel="Local life" items={clusterNavItems} />
 </BaseLayout>
 
 <style>

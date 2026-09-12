@@ -286,3 +286,118 @@ export const HUB_HREF: Record<string, string> = {
   sports: '/sports/',
   'vail-resorts': '/vail-resorts/',
 };
+
+export interface SpokeNavCopy {
+  label: string;
+  href: string;
+  description: string;
+}
+
+/** Phase 3 (hub cluster-navigation blocks): one hand-written line per
+ *  spoke, the same "contextual and useful, not a nav dump" tone as
+ *  `/city-hall/`'s own pre-existing "Tracking a real development..."
+ *  teaser (the handoff's own cited example) -- never templated or
+ *  auto-generated from a route key. Deliberately covers only spokes that
+ *  are a single, real, static page a hub can meaningfully link to -- the
+ *  "detail" keys (e.g. `facilities/detail`) and `story:<sourceType>`
+ *  groups have no ONE url to send a reader to, so they have no entry here
+ *  and are silently skipped by
+ *  `resolveHubNavItems()` (see lib/clusters.ts), not an oversight.
+ *
+ *  Two entries reuse WORDING that already exists elsewhere verbatim
+ *  (`play`/`burro-bonanza`, from lib/db.ts's own `getRelatedContent()`
+ *  game-teaser copy) rather than writing a second, slightly different
+ *  description of the same page. */
+export const SPOKE_NAV_COPY: Record<string, SpokeNavCopy> = {
+  // Civic
+  'city-hall/archive': {
+    label: 'Meeting archive',
+    href: '/city-hall/archive/',
+    description: "Every council and commission meeting we've covered, sorted by month.",
+  },
+  'city-hall/projects': {
+    label: 'Active projects',
+    href: '/city-hall/projects/',
+    description: 'Track a real development or ordinance through every meeting that touches it.',
+  },
+  // What's happening
+  today: {
+    label: 'Today',
+    href: '/today/',
+    description: "What's actually happening right now -- weather, events and any open closures, in one glance.",
+  },
+  'this-week': {
+    label: 'This week',
+    href: '/this-week/',
+    description: 'A day-by-day look at the week ahead: meetings, events and games, all in one place.',
+  },
+  'whats-on': {
+    label: 'Concerts & shows',
+    href: '/whats-on/',
+    description: 'Touring concerts, theatre and festivals within driving distance, ranked by how big they actually are.',
+  },
+  // Getting around
+  closures: {
+    label: 'Closure Watch',
+    href: '/closures/',
+    description: 'Real closure announcements and weather-alert monitoring for schools -- never a guess about tomorrow.',
+  },
+  // Work and money
+  jobs: {
+    label: 'Jobs',
+    href: '/jobs/',
+    description: 'Local job listings pulled daily, filterable by category.',
+  },
+  'home-sales': {
+    label: 'Home sales',
+    href: '/home-sales/',
+    description: "What homes are actually selling for, straight from the county assessor's own records.",
+  },
+  // Places
+  weather: {
+    label: 'Weather',
+    href: '/weather/',
+    description: 'Hourly forecast and any active weather alerts for the area.',
+  },
+  // Local life
+  university: {
+    label: 'SDSU',
+    href: '/university/',
+    description: 'Campus games, concerts and shows at South Dakota State University this week.',
+  },
+  play: {
+    label: 'Play Jackrabbit',
+    href: '/play/',
+    description: 'Our free arcade game -- how far can you get?',
+  },
+  'farm-report': {
+    label: 'Farm Report',
+    href: '/farm-report/',
+    description: 'Monthly USDA prices for corn, soybeans, cattle and more, with the direction they’re moving.',
+  },
+  'burro-bonanza': {
+    label: 'Play Burro Bonanza',
+    href: '/burro-bonanza/',
+    description: 'Our free match-3 game -- help Dusty clear the trail.',
+  },
+  recipes: {
+    label: 'Recipes',
+    href: '/recipes/',
+    description: "Simple weeknight dinners built around what's in season.",
+  },
+  editorials: {
+    label: 'Editorials',
+    href: '/editorials/',
+    description: 'Opinion pieces on issues facing the town, written by us and clearly labeled as such.',
+  },
+  columns: {
+    label: 'Columns',
+    href: '/columns/',
+    description: 'Culture essays, light commentary and science columns.',
+  },
+  reviews: {
+    label: 'Reviews',
+    href: '/reviews/',
+    description: "Reviews of what's currently playing locally.",
+  },
+};
