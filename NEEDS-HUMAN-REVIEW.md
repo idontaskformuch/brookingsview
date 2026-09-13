@@ -5853,3 +5853,19 @@ Nothing was changed. `robots.txt`'s own file already documents the
 site's own stated intent ("All content is intended to be indexed") --
 this confirms that intent isn't contradicted anywhere else in the stack
 that could be checked from outside the Cloudflare dashboard.
+
+**AdSense/`ads.txt` cross-check** (the spec's own explicit ask before
+flipping anything -- nothing needed flipping, but checked anyway):
+no conflict exists, and couldn't exist. `ads.txt` (`site/src/pages/ads.txt.ts`)
+serves a seller declaration for Google's own ad-verification crawler
+(`Mediapartners-Google`/`AdsBot-Google`) -- a different bot entirely
+from the Section 1 list, unrelated mechanism. AdSense's own script
+(`BaseLayout.astro`, `isMorenoValley` block) is 100% client-side
+JavaScript, gated behind an explicit cookie-consent click
+(`CookieBanner.astro`) -- it never runs on the server response and a
+crawler (no JS execution, no consent interaction) never triggers it
+regardless of `robots.txt`. One correction to the spec's own framing
+while checking this: AdSense is currently live for Moreno Valley only
+(`ads.txt` 404s for the other two towns, confirmed in code) -- "these
+sites run AdSense" isn't yet true for Brookings/Broomfield, though the
+conclusion (no conflict) holds identically either way.
