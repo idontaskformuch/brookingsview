@@ -5664,3 +5664,49 @@ something to quietly resolve inline here.
 shape, exact file, exact wiring point) is fully specified above so
 whoever makes that scope call can act on it directly without re-deriving
 the investigation.
+
+## 58. Correction to #57's own numbers, plus a real bug found in `audit_page_metadata.mjs` while re-checking them (2026-09-13)
+
+#57's own reported numbers (Brookings 93/494, Broomfield 884/985, Moreno
+Valley 2,107/3,545 routes failing `lede<20words`) were computed with a
+naive `awk -F'","' ... | grep -o 'lede...'` one-liner against the CSV,
+not a real CSV parser. `audit_page_metadata.mjs`'s own `csvEscape()`
+only quotes a field when it actually contains a comma/quote/newline --
+most fields (including `flags` itself, e.g. `lede<20words;h1<4words`)
+are plain, unquoted text. Splitting on the literal string `","` silently
+misaligns columns on any row where the field boundary isn't quote-
+delimited, which is most of them. The old numbers were not a real
+measurement of anything -- re-verified by recomputing the SAME rows two
+independent ways (the `flags` column, and directly recounting
+`ledeExclMetaWords`) with Python's `csv.DictReader`; both agree exactly,
+confirming the awk approach was the error, not a stale build.
+
+**A second, real, independent bug was found in the same pass** (unrelated
+to the parsing error, and unrelated to any content problem): #56's
+own Phase 4 extension added a `<p class="thread-banner">` hub-backlink
+sentence to `s/[slug].astro`, rendered before the story body whenever no
+`threadProject` banner already occupies that slot. `thread-banner` was
+never in `audit_page_metadata.mjs`'s `isMetaParagraph()` exclusion list
+(only `data`/`image-attribution` were), so the script was reading that
+one-sentence backlink nudge as the page's own "lede" instead of the real
+first sentence of the story -- confirmed live: 286 of Brookings' 334
+`/s/` routes had the banner text, not the story, as their measured lede
+before this fix. Same category as `image-attribution`: a cross-link
+nudge, never editorial content, just not using the `data` convention
+(it needs to stay visually prominent for readers). Fixed by adding
+`thread-banner` to the exclusion list, with the finding documented
+inline in the script itself.
+
+**Corrected numbers, fresh builds, all three towns, both bugs fixed**
+(see #59 for the full lede-threshold investigation these numbers feed):
+
+| town | total routes | `<20words` | `<12words` | inSitemap `<20words` |
+|---|---|---|---|---|
+| brookings_sd | 484 | 96 (19.8%) | 75 (15.5%) | 36/118 |
+| broomfield_co | 979 | 891 (91.0%) | 882 (90.1%) | 12/67 |
+| moreno_valley_ca | 3,401 | 2,089 (61.4%) | 1,772 (52.1%) | 47/150 |
+
+Broomfield's full-corpus number is dominated by `/whats-on/*` (865 of
+979 routes) -- Ticketmaster's own live event feed, town-specific volume,
+not a Broomfield content-quality problem; see #59.
+

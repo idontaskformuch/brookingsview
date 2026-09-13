@@ -115,11 +115,23 @@ function auditRoute(route, html) {
   // specific component class names that would need updating every time a
   // new one is found. image-attribution doesn't use the `data` convention,
   // so it's excluded separately.
+  //
+  // thread-banner added post-spec-cleanup (2026-09-13), found live while
+  // investigating a lede-threshold question: s/[slug].astro's Phase 4
+  // hub-backlink sentence ("Looking for more coverage like this? See City
+  // hall.") renders as the first <p class="thread-banner"> in <main>
+  // BEFORE the real story body whenever no threadProject banner already
+  // occupies that slot -- confirmed live, 286/334 Brookings /s/ routes had
+  // this banner sentence, not the actual story text, as their measured
+  // lede before this fix. Same category as image-attribution: a cross-
+  // link nudge, never editorial content, just not using the `data`
+  // convention (it needs to stay VISUALLY prominent for readers, unlike
+  // truly minor metadata).
   const isMetaParagraph = (attrString) => {
     const classMatch = (attrString ?? '').match(/class="([^"]*)"/);
     if (!classMatch) return false;
     const classes = classMatch[1].split(/\s+/);
-    return classes.includes('data') || classes.includes('image-attribution');
+    return classes.includes('data') || classes.includes('image-attribution') || classes.includes('thread-banner');
   };
   const firstNonMetaP = pMatches.find((m) => !isMetaParagraph(m[1]));
   const ledeExclMeta = firstNonMetaP ? stripTags(firstNonMetaP[2]) : '';
