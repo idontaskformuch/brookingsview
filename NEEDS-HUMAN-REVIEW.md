@@ -5608,3 +5608,59 @@ Work and money, `events/[facet]` -> What's happening, and all 7 story
 types' hand-written sentences resolving to their correct hub, on real
 built pages, not synthetic fixtures.
 
+## 57. Post-spec cleanup, part 3: lede word-count enforcement flagged, not implemented -- real content gap, not a plumbing gap (2026-09-13)
+
+The third and last item on this cleanup pass. #49 deliberately scoped the
+handoff's own "lede >= 20 words on an indexable page" rule out of
+`page_meta_check` (`assertPageMetaPatternsValid()` in `lib/build-checks.ts`)
+for v1, because that check runs mid-render, inside `BaseLayout.astro`,
+before any page's own rendered HTML exists on disk -- it validates the
+catalog plus real DB instance data, never rendered output. Reading a
+page's own rendered `<main>` from inside that same page's render pass
+isn't possible without a genuinely new plumbing step (a prop threaded
+through every page type's own `<BaseLayout>` call).
+
+**The plumbing gap has a real answer, and it doesn't require touching
+BaseLayout at all**: `scripts/audit_page_metadata.mjs` already solves
+"read a page's own rendered lede" for exactly this codebase, the same way
+`scripts/verify_sitemap_noindex_disjoint.mjs` already proves a POST-build
+script (reading real `dist/**/index.html`, after `astro build` finishes)
+can be a real, throwing, `exit 1` build gate -- not just a passive
+measurement tool. A `check_lede_word_count.mjs` in that same shape
+(reusing `audit_page_metadata.mjs`'s own first-non-meta-`<p>`-in-`<main>`
+extraction -- the `data`/`image-attribution` class exclusion already
+correctly skips photo credits, "kind" kickers, and date lines across every
+page type it's been checked against) wired into the three `*-deploy.yml`
+and three `*-scrape.yml` workflows (the six that actually run `wrangler
+deploy`), right after each workflow's own `npx astro build` step, would
+close this with zero changes to any page component.
+
+**That plumbing was never the real blocker. The content is.** Re-running
+the existing (already-built, already-measuring) `audit_page_metadata.mjs`
+against real builds this session -- generated 2026-09-12, still current,
+since nothing in this pass or Phase 4/5 touched a FIRST paragraph, only
+added a second/later one -- shows the scale of what a hard `lede<20words`
+gate would fail RIGHT NOW, on every single build:
+
+- Brookings: 93 of 494 routes (18.8%)
+- Broomfield: 884 of 985 routes (89.7%)
+- Moreno Valley: 2,107 of 3,545 routes (59.4%)
+
+The overwhelming majority are the dynamic per-instance detail templates
+(`whats-on/[slug]`, `home-sales/[slug]`, `s/[slug]` story permalinks,
+facility details) -- pages whose real first paragraph is a short,
+factual line (a price, a date, a kicker) by design, not an editorial
+lede the handoff's 20-word rule was ever written with in mind. Turning
+this into a hard gate today, even with the plumbing question fully
+solved, would either fail every real deploy immediately or require
+first deciding -- for real, as a content and scope decision, not a code
+one -- which of the ~16 page types the 20-word rule is even meant to
+apply to, and doing a real rewrite pass on whichever per-instance
+templates it does apply to. That decision is bigger than this cleanup
+pass and belongs to whoever owns the handoff's own content bar, not
+something to quietly resolve inline here.
+
+**Flagged, not implemented**, per instruction: the technical path (script
+shape, exact file, exact wiring point) is fully specified above so
+whoever makes that scope call can act on it directly without re-deriving
+the investigation.
