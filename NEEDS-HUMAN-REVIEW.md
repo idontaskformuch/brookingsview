@@ -5439,3 +5439,73 @@ respectively for the shared Local-life spokes).
 Per the handoff's own phasing, Phase 5 (`getRelatedContent()` cluster
 priority layer -- the last phase in the handoff) waits for explicit
 go-ahead.
+
+## 54. Topical authority handoff, Phase 5: getRelatedContent() cluster priority layer (2026-09-13)
+
+The last phase in the handoff. `getRelatedContent()` (`lib/db.ts`,
+"You might also like") now runs a cluster-aware priority pass BEFORE its
+existing per-`pageType` rules, per the handoff's own instruction: "Keep
+every existing per-page rule. Add cluster-awareness as a priority layer
+above them." Nothing in any existing branch was rewritten or removed --
+this is a pure addition, reconciled by MERGING rather than replacing.
+
+**How the merge works, and why**: for each of up to two priority slots
+(a same-cluster "fresh" sibling -- an upcoming event, an active closure,
+or a recent digest, exactly the handoff's own three examples -- and the
+cluster's own hub, when the current page isn't the hub itself), the merge
+checks whether the EXISTING branch below already produces an item with
+that same href. If so, the existing (often more specifically worded) item
+wins and is simply promoted to the front. If not, this layer's own
+generic item is inserted there instead. Every remaining existing item
+follows, unchanged, in its original order. This means a branch that
+already hand-tunes a hub link with a sharper description (several do)
+keeps that exact wording; only pages with a real gap get NEW content, and
+every page gets the graph's own priority ORDER regardless.
+
+**A real gap this closes, not just plumbing**: the `jobs` branch's own
+hub-link-plus-digest logic was gated on `isMorenoValley` specifically --
+a leftover from before Worker Pulse was extended to Broomfield (the same
+class of bug as #52's `getRelatedContent()` town-name fix, in the same
+function). Broomfield's own `/jobs/` page's "You might also like" module
+rendered EMPTY before this phase (zero items, since the old branch's
+`isMorenoValley` gate excluded it and Broomfield has no game). It now
+correctly shows a Work and Money hub link and, when one exists, the
+latest Worker Pulse digest -- derived from the real cluster graph, not a
+second hardcoded town check. `home-sales.astro`'s own related content
+also gains a genuinely new cross-spoke signal (the latest Worker Pulse
+digest) it never had before, for the same reason.
+
+**Self-reference avoided deliberately, not accidentally**: the "fresh
+signal" step is skipped entirely for `civic` (its only real caller,
+`city_hall`, already shows upcoming meetings prominently in its own
+primary content) and for `closures.astro` specifically within
+`getting_around` (that page IS the active-closure state, not a sibling
+pointing at one) -- mirrors the existing `workplace_watch` branch's own
+already-correct choice to surface the `home_sales_digest` rather than its
+own type, generalized into one shared rule (`freshClusterSignal()`'s own
+`excludePageType`-equivalent logic) instead of it being one page's
+private, undocumented convention.
+
+**Deliberately excluded**: `new_in_town` has no cluster membership (the
+feature is dark for every town today) and keeps its own branch completely
+untouched, same as before this phase -- it was never a candidate for this
+layer, not an oversight.
+
+Still rule-based, still zero AI cost, per the handoff's own explicit
+"do not introduce an LLM into link selection" instruction -- every new
+piece here is either a plain DB lookup already used elsewhere in this
+file or a static switch statement.
+
+**Verified against real, clean builds for all three towns**, with the
+Broomfield `/jobs/` gap fix and the Worker Pulse/home-sales cross-links
+confirmed present on the real output, and every existing branch's
+previously-hand-tuned wording confirmed unchanged where it already
+existed.
+
+This closes the topical authority handoff's own five-phase plan in full:
+graph (Phase 1), breadcrumbs (Phase 2), hub navigation (Phase 3), spoke
+backlinks (Phase 4), and this cluster-aware related-content layer
+(Phase 5). Two follow-ups remain explicitly flagged, not silently
+dropped: extending Phase 4's backlinks to the dynamic per-instance detail
+templates (#53), and giving `university.astro`/`vail-resorts.astro` the
+same `resolvePageMeta()` treatment every other hub already has (#52/#53).

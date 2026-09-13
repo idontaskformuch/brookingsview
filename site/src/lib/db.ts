@@ -21,6 +21,7 @@ import { neon } from '@neondatabase/serverless';
 import { siteConfig } from './site-config';
 import { computeClosureWatchState, type ClosureWatchStatus, type WeatherAlert } from './closure-watch';
 import { SHARED_CONTENT_SOURCE_TYPES } from './cross-site-canonical';
+import { resolveCluster } from './clusters';
 
 const sql = neon(import.meta.env.DATABASE_URL);
 
@@ -715,10 +716,123 @@ async function latestStoryByType(sourceType: SourceType): Promise<RelatedItem | 
   };
 }
 
+/** Topical authority handoff, Phase 5: which cluster route key each
+ *  `RelatedPageType` corresponds to, so `getRelatedContent()` can ask
+ *  `resolveCluster()` (site/src/lib/clusters.ts, Phase 1) what this page's
+ *  cluster is. `new_in_town` is deliberately absent -- that feature is
+ *  dark for every town today (no `hasNewInTown: true` anywhere in
+ *  site-config.ts), so it was never given a cluster membership either;
+ *  its own branch below stays completely untouched, same as before this
+ *  phase. */
+const RELATED_PAGE_TYPE_ROUTE_KEY: Partial<Record<RelatedPageType, string>> = {
+  traffic: 'traffic',
+  closure_watch: 'closures',
+  events: 'events',
+  university: 'university',
+  workplace_watch: 'workplace-watch',
+  city_hall: 'city-hall',
+  jobs: 'jobs',
+  home_sales: 'home-sales',
+  vail_news: 'vail-resorts',
+  facilities: 'facilities/detail', // only ever called from facilities/[slug].astro
+};
+
+/** "An upcoming event, an active closure, a recent digest" -- the
+ *  handoff's own three examples of what counts as a same-cluster sibling
+ *  worth surfacing first. Only implemented for clusters where a real,
+ *  non-self-referential signal exists: `civic`'s only real caller
+ *  (`city_hall`, the hub) already shows upcoming meetings prominently in
+ *  its own primary content, and `places`/`local_life` have no single
+ *  obvious "fresh" story type across every town -- both return `null`,
+ *  falling through to the hub link (or nothing) instead of forcing a
+ *  signal that doesn't exist. `excludePageType` skips a digest type that
+ *  would be self-referential (e.g. `workplace_watch` linking to its own
+ *  most recent `workplace_watch_digest`) -- mirrors the existing
+ *  hand-tuned choice the `workplace_watch` branch below already made
+ *  (it surfaces the `home_sales_digest` instead, never its own type). */
+async function freshClusterSignal(clusterKey: string, currentPageType: RelatedPageType): Promise<RelatedItem | null> {
+  switch (clusterKey) {
+    case 'whats_happening': {
+      const [nextEvent] = await getUpcomingStories(['event'], 1);
+      return nextEvent
+        ? { href: `/s/${nextEvent.slug}/`, title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) }
+        : null;
+    }
+    case 'getting_around': {
+      // Self-referential on closures.astro itself -- that page already IS
+      // "the active closure," not a sibling pointing at one.
+      if (currentPageType === 'closure_watch') return null;
+      const [closure] = await getActiveSchoolAlerts();
+      return closure
+        ? { href: closure.url || '/events/', title: closure.title || 'School closure alert', kicker: 'School alert', description: closure.district }
+        : null;
+    }
+    case 'work_and_money': {
+      const ownDigestType: SourceType | null =
+        currentPageType === 'workplace_watch' ? 'workplace_watch_digest'
+        : currentPageType === 'home_sales' ? 'home_sales_digest'
+        : null;
+      for (const t of ['workplace_watch_digest', 'home_sales_digest'] as const) {
+        if (t === ownDigestType) continue;
+        const item = await latestStoryByType(t);
+        if (item) return item;
+      }
+      return null;
+    }
+    default:
+      return null; // civic, places, local_life -- see doc comment above
+  }
+}
+
+/** The cluster's own hub, as a related-content item -- only reached when
+ *  the current page ISN'T the hub itself. Deliberately generic wording
+ *  (a NEW case this phase adds, e.g. Broomfield's own `/jobs/`, gets this
+ *  version); an existing branch below that already hand-tunes a link to
+ *  the same href keeps its own more specific wording instead -- see
+ *  `getRelatedContent()`'s own merge step. */
+function hubRelatedItem(hubRoute: string): RelatedItem | null {
+  switch (hubRoute) {
+    case 'city-hall':
+      return { href: '/city-hall/', title: 'City hall', kicker: 'City hall', description: 'Council and commission meetings, summarized in plain language.' };
+    case 'events':
+      return { href: '/events/', title: "What's on", kicker: 'Events', description: 'Everything happening this week, in one place.' };
+    case 'traffic':
+      return { href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' };
+    case 'workplace-watch':
+      return { href: '/workplace-watch/', title: 'Worker Pulse', kicker: 'Worker Pulse', description: `Employer review trends for ${siteConfig.cityName}.` };
+    case 'facilities':
+      return { href: '/facilities/', title: 'Facilities', kicker: 'Facilities', description: 'Every park, library and civic building we track.' };
+    case 'jackrabbits':
+      return { href: '/jackrabbits/', title: 'Jackrabbits', kicker: 'Sports', description: 'Schedule and results.' };
+    case 'sports':
+      return { href: '/sports/', title: 'Regional sports', kicker: 'Sports', description: "Scores and schedules for the region's pro and minor-league teams." };
+    case 'vail-resorts':
+      return { href: '/vail-resorts/', title: 'Vail Resorts Newsroom', kicker: 'Vail Resorts', description: "Company news from the town's largest employer." };
+    default:
+      return null;
+  }
+}
+
 export async function getRelatedContent(pageType: RelatedPageType): Promise<RelatedItem[]> {
   const isBrookings = TOWN_ID === 'brookings_sd';
   const isMorenoValley = TOWN_ID === 'moreno_valley_ca';
   const items: RelatedItem[] = [];
+
+  // Topical authority handoff, Phase 5: a priority layer ABOVE every
+  // per-pageType rule below, never a replacement for them (the handoff's
+  // own explicit instruction) -- computed here, merged in at the very end
+  // once `items` is fully populated by the existing (unchanged) branches.
+  const clusterRouteKey = RELATED_PAGE_TYPE_ROUTE_KEY[pageType];
+  const resolvedCluster = clusterRouteKey ? resolveCluster(clusterRouteKey, siteConfig) : null;
+  const priorityItems: RelatedItem[] = [];
+  if (resolvedCluster) {
+    const fresh = await freshClusterSignal(resolvedCluster.primary.clusterKey, pageType);
+    if (fresh) priorityItems.push(fresh);
+    if (resolvedCluster.primary.role !== 'hub') {
+      const hubItem = hubRelatedItem(resolvedCluster.hubRoute);
+      if (hubItem) priorityItems.push(hubItem);
+    }
+  }
 
   // Arkadspelet -- olika spel per ort (Fas 1/2-arbetet denna session), inte
   // via CATEGORY_HREFS eftersom spelen inte är egna stories.
@@ -827,7 +941,22 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
     items.push({ href: '/events/', title: "What's on", kicker: 'Events', description: 'Community events this week.' });
   }
 
-  return items;
+  // Merge: each priority slot is promoted to the front, using the
+  // EXISTING branch's own item for that href when one already exists
+  // (several branches above already hand-tune a hub or fresh-digest link
+  // with more specific wording than this generic layer's own default --
+  // that specificity should always win, only the ORDERING changes) and
+  // falling back to this layer's own generic item only where the existing
+  // rules had a real gap (e.g. Broomfield's own /jobs/ page, which never
+  // got a Work and Money link before this phase because the old branch
+  // only checked `isMorenoValley`). Every remaining existing item follows,
+  // in its original order -- nothing from the old rules is ever dropped.
+  const priorityHrefs = new Set(priorityItems.map((p) => p.href));
+  const merged: RelatedItem[] = priorityItems.map((p) => items.find((i) => i.href === p.href) ?? p);
+  for (const item of items) {
+    if (!priorityHrefs.has(item.href)) merged.push(item);
+  }
+  return merged;
 }
 
 /* -------------------------------------------------- strukturerad data ------ */
