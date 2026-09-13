@@ -6098,3 +6098,66 @@ deliberate, pre-existing cross-cluster secondary membership, not a
 bug), `workplace-watch`, and its own `sports` local_life hub; zero
 `vail-resorts`/`jackrabbits`/`university` leakage.
 
+
+## 65. `spec-answer-engine-visibility.md`, Section 4: entity consistency -- same Python-validation/-package mismatch #48 already found, once more (2026-09-13)
+
+The spec's own text says to build this "in the existing `validation/`
+package." That package (`validation/*.py`) is a PRE-PUBLISH gate that
+runs during AI content generation in GitHub Actions batch jobs, with
+zero visibility into rendered Astro HTML -- the exact same mismatch
+#48 already found and corrected for `page_meta_check` (the title/H1/
+lede handoff made the identical assumption about the identical
+package). Entity consistency needs to compare what's ACTUALLY rendered
+across three surfaces (visible HTML, JSON-LD, `llms.txt`), which only
+exist as real files once `astro build` finishes -- the same reason the
+lede-word-count investigation (#59) concluded a post-build script, not
+a build-time function, is the right shape for anything that needs to
+read rendered output.
+
+Built `scripts/verify_entity_consistency.mjs`, same family as
+`verify_sitemap_noindex_disjoint.mjs`/`audit_page_metadata.mjs` (reads
+real `dist/` output, `node scripts/verify_entity_consistency.mjs <dist-dir>`,
+exits 1 with every mismatch listed). Two checks:
+
+1. Site name byte-identical across `<title>`'s `og:site_name`, the
+   footer copyright line, the sitewide `Organization` JSON-LD, and
+   `llms.txt`'s own H1.
+2. Every facility's address/phone byte-identical between the visible
+   HTML fact list, its own generated `llms.txt` line, and (phone only)
+   its JSON-LD `telephone`. Address is deliberately NOT compared
+   against JSON-LD's `streetAddress` -- that's `facility.street_address`,
+   a different, more granular field than `facility.address` (the full
+   display string) by original design, not a rendering bug if the two
+   differ in form.
+
+**Three real bugs found and fixed IN THE SCRIPT ITSELF while first
+running it against a real build** -- worth recording since all three
+would have produced false "inconsistency" reports on a site that was
+actually fine:
+- Astro scopes every element with a `data-astro-cid-*` attribute, so
+  `<dt>Hours</dt>` (bare, no attribute) never matches real output;
+  needed `<dt[^>]*>Hours</dt>` throughout. Confirmed live: this alone
+  produced two false positives (city-hall, public-library) claiming
+  "schema asserts hours the page doesn't show," when the page visibly
+  does.
+- The `Organization` JSON-LD name check used a loose `[^}]*` that
+  greedily matched past the FIRST `"name"` field (the real one,
+  `"Brookings View"`) to the NESTED `areaServed.name` ("Brookings")
+  instead, before backtracking -- confirmed live, reported the site
+  name as inconsistent when it wasn't. Fixed by matching the field's
+  known, fixed adjacency (`"@type":"NewsMediaOrganization","name":"..."`)
+  instead of an unbounded scan.
+- Visible HTML correctly renders `&` as `&amp;` (valid HTML);
+  `llms.txt` is plain text and correctly does not. Comparing the two
+  without decoding first flagged every real "&"-containing address (9
+  of them on Brookings alone -- every park at a named intersection) as
+  a mismatch. Fixed by reusing `audit_page_metadata.mjs`'s own
+  `stripTags()`-style entity decode before comparing.
+
+**Verified**: after all three fixes, the script reports a clean pass
+against real Brookings and Broomfield builds. Not yet wired into any
+CI workflow -- same as `verify_sitemap_noindex_disjoint.mjs` and
+`audit_page_metadata.mjs`, neither of which is either (confirmed
+earlier this session, #60); a real, runnable tool today, a separate
+decision to gate deploys on.
+
