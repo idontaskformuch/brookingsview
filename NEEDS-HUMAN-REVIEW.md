@@ -6661,3 +6661,75 @@ Services pages (none have exceptions) -- all still render correctly,
 unaffected by the shared-function change. All 27 place pages build; the
 `/places/` index groups all 27 correctly, including the new `museum`
 category.
+
+## 72. `spec-broomfield-place-layer.md`, Step 5, batch 3: 9 more real places seeded (36 of 40-50 total) (2026-09-13)
+
+**New places** (`scripts/seed_broomfield_places_batch3.py`), each with a
+real, checked source and `source_url`/`verified_date` set:
+
+- `broomfield-court-services` (other) -- Broomfield Combined Court &
+  Municipal Court, 17 DesCombes Drive -- a genuinely distinct building
+  from both city-hall (One DesCombes Drive) and the police department
+  (7 DesCombes Drive) despite the shared street. Structured split hours
+  confirmed directly on the dept's own page (M-F 7:30-11:30, 12:30-16:30,
+  closed for lunch).
+- `uchealth-broomfield-hospital` (medical) -- the first real place under
+  this category. Address/phone confirmed. Hours left unconfirmed --
+  see below.
+- `anthem-community-park`, `northmoor-park`, `lac-amora-park`,
+  `interlocken-east-park`, `broadlands-east-park`, `willow-park` (park) --
+  address confirmed against each park's own broomfield.org facility page;
+  hours NULL, same as every other park seeded so far (broomfield.org's
+  park pages don't publish per-park hours).
+- `broomfield-skate-park` (park) -- structured daily hours 6am-10pm,
+  free, confirmed directly on the dept's own page.
+
+**Two real candidates checked and found to be the SAME BUILDING as an
+already-seeded place, not new places**: Broomfield Animal Services
+(broomfield.org/297/Animal-Services) is at 7 DesCombes Dr -- the exact
+address of the already-seeded `broomfield-police-department`, a division
+of it, not a separate facility. The Motor Vehicle / Clerk and Recorder
+office (broomfield.org/284/Motor-Vehicle) is at One DesCombes Drive --
+the exact address of the already-seeded `city-hall`, a department inside
+it. Neither added as a duplicate row.
+
+**One fact deliberately left unconfirmed despite being a near-universal
+default**: a hospital emergency room is open 24/7 essentially everywhere
+in the US, but `uchealth.org` itself returned HTTP 403 to this session's
+automated fetches on two separate attempts against two different pages
+under that domain. Search-engine result summaries referencing that page's
+own text were available, but were NOT treated as a substitute for a
+directly-fetched, verifiable source, per this project's own "no
+AI-generated hours, ever" rule -- `uchealth-broomfield-hospital`'s
+`hours_confidence` is `unknown`, not `structured`, and no `place_hours`
+rows exist for it. Address and phone WERE independently confirmed via a
+direct fetch of `cumedicine.us`'s own official CU Medicine location page
+(UCHealth's academic-medicine affiliate, not a third-party aggregator),
+consistent with every other reference found.
+
+**One live catch from directly fetching rather than trusting a search
+summary, worth flagging as a general caution for future batches**: a
+search-engine summary for the skate park confidently stated its address
+as "150 Lamar Street" and its hours as "8 AM to 10 PM" -- both wrong.
+Directly fetching broomfield.org's own page for it gave the real values
+used above: 150 Spader Way, 6 a.m.-10 p.m. Nothing in this batch (or any
+prior one) was entered from a search summary alone without a direct
+fetch of the actual official page confirming it -- this is the reason
+that discipline is followed every time, not a one-off.
+
+**Verified on a real rebuild**: all 36 Broomfield places now build a real
+`/place/[slug]/` page (up from 27). Spot-checked all 9 new pages' own
+answer-first paragraphs: the skate park correctly shows live open/closed
+status against its real hours; court services correctly shows "Closed
+now. Opens at 7:30 AM tomorrow." (Saturday build time, Monday hours);
+every place with unconfirmed hours correctly says so rather than
+guessing. `/places/` correctly groups all 36 by category, including the
+first real row under "Medical". `astro check` 0 errors, full test suite
+unaffected (no shared code changed this batch -- data only, no new
+category label needed since park/medical/other already existed).
+
+**Honest accounting, per the explicit "no rush" instruction**: 36 of the
+40-50 target. Stopped at 9 rather than forcing a round 10 -- the ninth
+and final candidates researched this batch were the last ones that could
+still be verified against a real, directly-fetched official source in
+this sitting. The remaining ~4-14 places are left for a future batch.
