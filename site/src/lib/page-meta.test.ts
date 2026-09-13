@@ -107,4 +107,25 @@ describe('resolvePageMeta', () => {
     const result = resolvePageMeta('this-week', MORENO_VALLEY, { WeekLabel: 'July 27-August 2, 2026' });
     expect(result.title.length).toBeLessThanOrEqual(65);
   });
+
+  // Topical authority handoff cleanup (NEEDS-HUMAN-REVIEW.md #52/#53):
+  // university.astro and vail-resorts.astro both predate this catalog --
+  // real page files this session found never migrated, same class of gap
+  // the sports/jackrabbits correction already caught. Both are hard
+  // single-town gates, so real production use only ever calls
+  // resolvePageMeta() with their own one real town -- but the sweep test
+  // above still exercises all three (same as jackrabbits/sports), so
+  // these just confirm the actual interpolated text and the H1 word-count
+  // fix specifically.
+  it('university has a real, 4+-word H1 (was a bare "University", 1 word)', () => {
+    const result = resolvePageMeta('university', BROOKINGS);
+    expect(result.title).toBe('SDSU News in Brookings | Brookings View');
+    expect(result.h1.split(/\s+/).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('vail-resorts has a real, 4+-word H1 (was "Vail Resorts Newsroom", 3 words)', () => {
+    const result = resolvePageMeta('vail-resorts', BROOMFIELD);
+    expect(result.title).toBe('Vail Resorts Newsroom | Broomfield View');
+    expect(result.h1.split(/\s+/).length).toBeGreaterThanOrEqual(4);
+  });
 });

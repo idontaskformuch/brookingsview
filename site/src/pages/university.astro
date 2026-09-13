@@ -27,12 +27,14 @@ import SectionHero from '../components/SectionHero.astro';
 import { SECTION_THEME } from '../lib/section-theme';
 import { siteConfig } from '../lib/site-config';
 import { resolveHubBacklink } from '../lib/clusters';
+import { resolvePageMeta } from '../lib/page-meta';
 
 if (siteConfig.townId !== 'brookings_sd') {
   return Astro.redirect('/', 302);
 }
 
 const hubBacklink = resolveHubBacklink('university', siteConfig);
+const pageMeta = resolvePageMeta('university', siteConfig);
 
 const [events, artsEvents, academicDates, digests] = await Promise.all([
   getUpcomingSdsuEvents(60),
@@ -125,16 +127,16 @@ const sections = (
 ).filter(([, list]) => list.length > 0);
 
 ---
-<BaseLayout title={`SDSU News in ${siteConfig.cityName} — ${siteConfig.siteName}`} wide
+<BaseLayout title={pageMeta.title} wide
   description="What's happening at South Dakota State University -- athletics, music, theatre and campus events, plus key academic dates."
   accentColor={SECTION_THEME.university.accent}>
   <SectionHero category="university" />
   <header class="lede">
-    <h1>University</h1>
+    <h1>{pageMeta.h1}</h1>
     <p>What's on at South Dakota State University this week — games, concerts, shows
     and campus happenings, straight from SDSU's own event calendar.
     {hubBacklink && <> For Jackrabbits schedules and results, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
-    <ShareButton title={`SDSU News in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
+    <ShareButton title={pageMeta.title} />
   </header>
 
   {digests.length > 0 && (

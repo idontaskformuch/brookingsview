@@ -194,6 +194,31 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     titlePattern: 'SDSU Jackrabbits Schedules and Results | {Site}',
     h1Pattern: 'SDSU Jackrabbits in {Town}: Schedules and Results',
   },
+  // Topical authority handoff cleanup (see NEEDS-HUMAN-REVIEW.md #52/#53):
+  // university.astro and vail-resorts.astro both predate this catalog and
+  // were never migrated -- neither the original metadata handoff nor the
+  // topical-authority handoff's own text knew these two pages existed
+  // (same class of blind spot the sports/jackrabbits correction above
+  // already found). Both are hard single-town gates (university.astro
+  // redirects everyone but brookings_sd; vail-resorts.astro redirects
+  // everyone but broomfield_co), same shape as jackrabbits above -- no
+  // TOWN_OVERRIDES needed, {Town} always resolves to the one real town
+  // that ever calls resolvePageMeta() with this key.
+  university: {
+    titlePattern: 'SDSU News in {Town} | {Site}',
+    // Was a bare, un-interpolated "University" -- 1 word, well under the
+    // 4-word minimum page_meta_check now enforces.
+    h1Pattern: 'SDSU Sports, Arts and Campus News in {Town}',
+  },
+  'vail-resorts': {
+    // Deliberately keeps the existing "Newsroom" framing (the page's own
+    // module comment is explicit this mirrors Vail Resorts' OWN corporate
+    // newsroom listing, not hyperlocal reporting) -- just the em-dash
+    // separator fixed, matching every other entry in this catalog.
+    titlePattern: 'Vail Resorts Newsroom | {Site}',
+    // Was "Vail Resorts Newsroom" -- 3 words, under the 4-word minimum.
+    h1Pattern: 'Vail Resorts Corporate Newsroom for {Town}',
+  },
   weather: {
     titlePattern: '{Town} Weather Forecast and Alerts | {Site}',
     h1Pattern: '{Town} Forecast, Alerts and What They Mean',

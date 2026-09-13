@@ -5509,3 +5509,40 @@ backlinks (Phase 4), and this cluster-aware related-content layer
 dropped: extending Phase 4's backlinks to the dynamic per-instance detail
 templates (#53), and giving `university.astro`/`vail-resorts.astro` the
 same `resolvePageMeta()` treatment every other hub already has (#52/#53).
+
+## 55. Post-spec cleanup, part 1: `university.astro` / `vail-resorts.astro` finally migrated to `resolvePageMeta()` (2026-09-13)
+
+Closes #52/#53's own named gap. Both pages predate the sitewide title/H1/
+lede handoff and were never migrated -- same class of miss as the
+`sports`/`jackrabbits` correction in #49, just never caught because
+neither page has a sibling in the other two towns to prompt a side-by-side
+comparison (`university.astro` redirects away everywhere but
+`brookings_sd`; `vail-resorts.astro` redirects away everywhere but
+`broomfield_co`).
+
+Two new catalog entries in `config/page-meta.ts`, same pattern as every
+other single-town-gated route (`jackrabbits`, `sports`): no
+`TOWN_OVERRIDES` entry needed, since `{Town}` only ever resolves against
+the one real town that calls each. Both were previously a bare, static
+string that undershot `page_meta_check`'s own 4-word H1 minimum --
+`university.astro`'s H1 was the single word "University"; `vail-resorts.astro`'s
+was "Vail Resorts Newsroom" (3 words). Now:
+
+- `university`: title `"SDSU News in {Town} | {Site}"`, H1 `"SDSU Sports,
+  Arts and Campus News in {Town}"`.
+- `vail-resorts`: title `"Vail Resorts Newsroom | {Site}"` (unchanged --
+  it already fit the pattern), H1 `"Vail Resorts Corporate Newsroom for
+  {Town}"`.
+
+Two new tests in `page-meta.test.ts` pin the exact resolved strings and
+the 4+-word H1 fix specifically; the existing sweep test (every pattern
+<=65 chars for all three towns) now also covers both new entries for
+free, same as it already does for `jackrabbits`/`sports`.
+
+**Verified against real, clean builds for both real callers** -- Brookings
+(`/university/`: title "SDSU News in Brookings | Brookings View", H1
+"SDSU Sports, Arts and Campus News in Brookings") and Broomfield
+(`/vail-resorts/`: title "Vail Resorts Newsroom | Broomfield View", H1
+"Vail Resorts Corporate Newsroom for Broomfield") -- both spot-checked
+directly from `dist/` output, not just unit tests.
+

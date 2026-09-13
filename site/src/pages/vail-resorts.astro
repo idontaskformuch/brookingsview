@@ -36,6 +36,7 @@ import { siteConfig } from '../lib/site-config';
 import { SECTION_THEME } from '../lib/section-theme';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
+import { resolvePageMeta } from '../lib/page-meta';
 
 if (siteConfig.townId !== 'broomfield_co') {
   return Astro.redirect('/', 302);
@@ -43,20 +44,21 @@ if (siteConfig.townId !== 'broomfield_co') {
 
 const items = await getVailNews(30);
 const clusterNavItems = resolveHubNavItems('vail-resorts', siteConfig);
+const pageMeta = resolvePageMeta('vail-resorts', siteConfig);
 ---
-<BaseLayout title={`Vail Resorts Newsroom — ${siteConfig.siteName}`} wide
+<BaseLayout title={pageMeta.title} wide
   ogSlug="section-vail-news"
   description="Vail Resorts' own newsroom feed, collected here for Broomfield residents who work there, invest there, or just want to keep up."
   accentColor={SECTION_THEME.vail_news.accent}>
   <header class="lede">
-    <h1>Vail Resorts Newsroom</h1>
+    <h1>{pageMeta.h1}</h1>
     <p>
       Vail Resorts is headquartered here in Broomfield. Below is the company's own
       newsroom feed — announcements, leadership changes, and resort news from across
       its mountains — collected here for the many Broomfield residents who work there,
       invest there, or just want to keep up. All items link to the original release.
     </p>
-    <ShareButton title={`Vail Resorts Newsroom — ${siteConfig.siteName}`} />
+    <ShareButton title={pageMeta.title} />
   </header>
 
   <SectionRule label={items.length > 0 ? `${items.length} recent releases` : 'Recent releases'} />
