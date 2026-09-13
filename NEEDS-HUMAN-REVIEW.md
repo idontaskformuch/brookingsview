@@ -5930,3 +5930,104 @@ verified**: an actual production request from a real crawler landing a
 row in `ai_crawler_hits` -- that needs a live post-deploy check (query
 the table a day or two after this ships) since a local build can't
 simulate a real Cloudflare Worker invocation end to end.
+
+## 62. `spec-answer-engine-visibility.md`, Section 3 (schema depth): most of it already shipped; two real additions; one significant dead-code finding (2026-09-13)
+
+Went through the spec's five schema items in order. Three were **already
+fully implemented** by earlier phases of this project, before this spec
+existed -- verified, not re-touched:
+
+1. **Event schema** -- `buildEventJsonLd()`/`buildTicketmasterEventJsonLd()`
+   already wired into `whats-on/[slug].astro`, `s/[slug].astro`, and
+   `events/[facet].astro`.
+2. **Sitewide `Organization`** -- `buildOrganizationJsonLd()` already
+   emits `NewsMediaOrganization` (a more specific, still-correct
+   subtype) with name/url/areaServed/publishingPrinciples/sameAs, wired
+   into `BaseLayout.astro` on every page. No logo, by an existing,
+   explicit "don't fabricate one" decision.
+3. **`FAQPage`** -- already on `closures.astro`, built from two
+   genuinely dynamic Q&A pairs about that specific town's real closure
+   status, not manufactured.
+4. **`GovernmentBuilding`/`CivicStructure`/etc. type selection** --
+   `FACILITY_SCHEMA_TYPE` in `lib/db.ts` already maps every real
+   facility category to its most specific real schema.org type, with an
+   explicit, reasoned fallback (`CivicStructure`) for categories
+   schema.org has no dedicated type for (recycling centers, animal
+   shelters). Nothing missing here either.
+
+**Two real additions, shipped** (see #58-adjacent commits `c1a32fd` and
+`d5fa805`):
+
+- **`openingHoursSpecification`** on facility JSON-LD (item 1's own
+  remaining gap) -- `buildOpeningHoursSpecification()` in
+  `lib/facility-hours.ts`, sourced from the exact same
+  `hours_structured` data the visible "Open now"/"Closed" badge already
+  reads. Verified rendering correctly on real Brookings and Broomfield
+  builds (`public-library`, `city-hall`, `paul-derda-recreation-center`,
+  `broomfield-community-center`). One small known gap: Brookings'
+  `dakota-nature-park` has real structured hours but no full street
+  address, so the pre-existing `hasFullAddress` gate suppresses its
+  entire facility schema block, hours included -- 1 of the 10 facilities
+  sitewide that actually have `hours_structured` data. Not fixed here
+  (would mean restructuring an existing conditional for one facility);
+  flagged in case someone wants the gate split later.
+
+- **`isBasedOn`** on `NewsArticle`/etc. JSON-LD (item 2) -- added to
+  `buildArticleJsonLd()`, pointing at `story.source_url` when set, the
+  same URL already rendered visibly as "Source: the original agenda or
+  listing" on `s/[slug].astro`.
+
+**The significant finding**: `isBasedOn` is currently **dead code in
+production** -- correct, tested, ready, and with zero opportunities to
+ever render. Checked live against the real database:
+
+| source_type | total | with `source_url` |
+|---|---|---|
+| `alert` | 60 | 60 |
+| `event` | 1,300 | 1,300 |
+| `meeting` | 114 | 110 |
+| `meeting_followup` | 1 | 1 |
+| every other source_type (`editorial`, `culture_essay`, `weekly`, `home_sales_digest`, ...) | 165 combined | **0** |
+
+`source_url` is populated for exactly four source_types --
+`meeting`/`meeting_followup`/`event`/`alert` -- and for no others (an
+original essay/editorial/digest has no single external document to cite
+against; only content DERIVED from a specific scraped document has
+one). But those same four types are exactly
+`THIN_SCRAPED_SOURCE_TYPES` in `lib/noindex.ts`, which
+`shouldNoindexStory()` returns `true` for **unconditionally, regardless
+of length** -- and `s/[slug].astro`'s Article JSON-LD block is gated on
+`!isNoindex`. The set of stories with a real citable source and the set
+of stories that get ANY Article schema at all are **completely
+disjoint** by the site's own existing, deliberate design. 1,300 events
+and 114 meetings -- almost certainly the exact civic-reference content
+the spec's own "honest framing" and the citation-probe questions
+(`OPERATIONS.md`) are built around -- carry zero structured provenance
+today, and can't under the current gate.
+
+**Why this isn't fixed here**: `THIN_SCRAPED_SOURCE_TYPES`'s
+unconditional noindex is an existing, deliberate AdSense-remediation
+decision (these ARE thin, factual, low-value-add-over-the-source pages
+for classic search ranking). Whether the SAME judgment should apply to
+answer-engine citation -- a different goal the spec's own preamble says
+explicitly isn't the same discipline as classic SEO ranking, even though
+"the same qualities win both" -- is a real, values-adjacent call, not a
+plumbing one. Two live options, not adjudicated here:
+
+1. Leave it: these types stay noindexed and schema-less for both
+   purposes. `isBasedOn` remains ready but dormant, doing no harm.
+2. Decouple structured-data emission from the search-indexability gate
+   specifically for these four types -- emit Article/`isBasedOn` JSON-LD
+   even while keeping `noindex` for classic search, on the reasoning
+   that an AI crawler reading page content for grounding/citation is a
+   different consumer than a search-ranking algorithm. Needs an explicit
+   decision before touching `s/[slug].astro`'s existing gate -- same
+   care as the referral-tracking call in #61, not something to route
+   around a stated policy unilaterally.
+
+**Verified**: `astro check` 0 errors (fixed one incidental breakage:
+`news-sitemap.test.ts` called `buildArticleJsonLd()` with an object
+missing the now-required `source_url` key), `vitest run` 640/640 (2 new
+tests for `isBasedOn`), real clean builds for Brookings and Broomfield
+inspected directly from `dist/` output. Moreno Valley not yet
+build-verified for this specific change (queued next).
