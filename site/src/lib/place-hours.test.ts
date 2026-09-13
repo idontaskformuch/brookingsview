@@ -68,6 +68,21 @@ describe('computePlaceOpenStatus', () => {
     expect(openDuring).toEqual({ known: true, isOpen: true, closesAt: '2:00 PM' });
   });
 
+  it('a future exception is honored by the "opens next" scan, not just today -- the real Depot Museum bug', () => {
+    // Saturday-only hours (like the real Broomfield Depot Museum), with
+    // the next TWO Saturdays excepted away (closed for construction).
+    // 2026-09-13 (Sunday) -> next Saturday is 2026-09-19, then 09-26.
+    const saturdayOnly: PlaceHoursRow[] = [{ day_of_week: 6, opens: '11:00:00', closes: '16:00:00', valid_from: null, valid_to: null }];
+    const exceptions: PlaceHoursException[] = [
+      { date: '2026-09-19', opens: null, closes: null, reason: 'Closed for construction', source_url: null, last_verified_at: null },
+    ];
+    const sunday = new Date(Date.UTC(2026, 8, 13, 16, 0)); // ~10am Denver
+    const status = computePlaceOpenStatus(saturdayOnly, exceptions, sunday, TZ);
+    // Must NOT claim "opens Saturday" (09-19) -- that Saturday is excepted
+    // away, and the next real window (09-26) is outside the 7-day scan.
+    expect(status).toEqual({ known: true, isOpen: false, opensAt: null, opensLabel: null });
+  });
+
   it('never open this week when there are hours rows but none match any weekday', () => {
     const sundayOnly: PlaceHoursRow[] = [{ day_of_week: 0, opens: '10:00:00', closes: '11:00:00', valid_from: null, valid_to: null }];
     // Monday at 10am, more than 7 days from the next Sunday window check --

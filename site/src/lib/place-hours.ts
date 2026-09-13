@@ -17,6 +17,7 @@
  *  this project once, see verified_date's own formatCalendarDate() history).
  */
 import type { PlaceHoursRow, PlaceHoursException } from './db';
+import { calendarDateParts } from './db';
 import { formatClock } from './facility-hours';
 
 export type PlaceOpenStatus =
@@ -46,6 +47,37 @@ function localParts(instant: Date, timezone: string): { weekday: number; isoDate
   return { weekday, isoDate, minutesOfDay: hour * 60 + minute };
 }
 
+/** Compares two calendar dates by their actual Y/M/D, never by raw string
+ *  equality -- the exact "sometimes a string, sometimes already a Date
+ *  object" Neon driver ambiguity calendarDateParts() (lib/db.ts) already
+ *  exists to solve, confirmed live to matter here too: a naive `date ===
+ *  isoDate` string check silently never matched a real
+ *  place_hours_exceptions row fetched through the actual TS/neon query
+ *  path, even though the exact same value round-tripped fine through
+ *  formatFullCalendarDate() elsewhere on the same page (that function
+ *  already normalizes through calendarDateParts() too) -- confirmed on a
+ *  real build: the Depot Museum's "Upcoming exceptions" list correctly
+ *  named Sept 19 as closed while the answer-first paragraph above it,
+ *  using the old naive comparison, still claimed "Opens ... Saturday". */
+function sameCalendarDate(a: string | Date, isoDate: string): boolean {
+  return compareCalendarDates(a, isoDate) === 0;
+}
+
+/** -1/0/1, comparing by actual Y/M/D -- never `<`/`<=` on the raw values
+ *  directly, which is exactly as unsafe for `valid_from`/`valid_to` as the
+ *  naive `===` above was for exceptions (same driver ambiguity, same
+ *  fix). Not yet exercised by any real seeded row (every place today has
+ *  `valid_from`/`valid_to` NULL), but latent until the first seasonal
+ *  place actually uses them -- fixed proactively rather than waiting for
+ *  a second live incident to prove it out. */
+function compareCalendarDates(a: string | Date, b: string | Date): number {
+  const partsA = calendarDateParts(a)!;
+  const partsB = calendarDateParts(b)!;
+  if (partsA.y !== partsB.y) return partsA.y - partsB.y;
+  if (partsA.m !== partsB.m) return partsA.m - partsB.m;
+  return partsA.d - partsB.d;
+}
+
 /** A given calendar date's windows: the day's exception if one exists
  *  (always wins, per the handoff's own "exceptions always override" rule --
  *  an exception with both opens/closes NULL means closed all day, a real,
@@ -54,13 +86,14 @@ function localParts(instant: Date, timezone: string): { weekday: number; isoDate
 function windowsForDate(
   isoDate: string, weekday: number, hours: PlaceHoursRow[], exceptions: PlaceHoursException[],
 ): { opens: string; closes: string }[] {
-  const exception = exceptions.find((e) => e.date === isoDate);
+  const exception = exceptions.find((e) => sameCalendarDate(e.date, isoDate));
   if (exception) {
     return exception.opens && exception.closes ? [{ opens: exception.opens, closes: exception.closes }] : [];
   }
   return hours
     .filter((h) => h.day_of_week === weekday)
-    .filter((h) => (!h.valid_from || h.valid_from <= isoDate) && (!h.valid_to || h.valid_to >= isoDate))
+    .filter((h) => (!h.valid_from || compareCalendarDates(h.valid_from, isoDate) <= 0)
+                && (!h.valid_to || compareCalendarDates(h.valid_to, isoDate) >= 0))
     .map((h) => ({ opens: h.opens, closes: h.closes }));
 }
 
@@ -70,12 +103,17 @@ function windowsForDate(
  *  principle lib/facility-hours.ts's own computeOpenStatus() already
  *  states. Scans up to 7 days ahead for the next real opening, same bound
  *  as the existing facility version, for the same reason (a place open
- *  exactly one day a week is still found). Does NOT apply exceptions to
- *  future days in this scan -- only to `now`'s own date -- since upcoming
- *  exceptions are already surfaced separately as their own list on the
- *  page (handoff 5.1); this keeps the "opens next at" fallback message
- *  simple rather than silently promising a time an exception might still
- *  override closer to the date. */
+ *  exactly one day a week is still found). Exceptions ARE applied across
+ *  the whole 7-day scan, not just to `now`'s own date -- confirmed live
+ *  this mattered: the Broomfield Depot Museum (Saturdays only, closed for
+ *  construction through two upcoming Saturdays) would otherwise have its
+ *  answer-first paragraph claim "opens Saturday" while the page's own
+ *  "Upcoming exceptions" section, directly below, said that exact
+ *  Saturday is closed -- a real, visible contradiction on the same page,
+ *  not a hypothetical one. If every window within the 7-day scan is
+ *  excepted away, the result is honestly "not open this week" rather
+ *  than a wrong date -- the exceptions list itself still tells the
+ *  reader when it actually reopens. */
 export function computePlaceOpenStatus(
   hours: PlaceHoursRow[], exceptions: PlaceHoursException[], now: Date, timezone: string,
 ): PlaceOpenStatus {
@@ -93,7 +131,7 @@ export function computePlaceOpenStatus(
   for (let offset = 0; offset < 7; offset++) {
     const future = new Date(now.getTime() + offset * 86_400_000);
     const futureParts = localParts(future, timezone);
-    const windows = offset === 0 ? todayWindows : windowsForDate(futureParts.isoDate, futureParts.weekday, hours, []);
+    const windows = offset === 0 ? todayWindows : windowsForDate(futureParts.isoDate, futureParts.weekday, hours, exceptions);
     for (const w of windows) {
       if (offset === 0 && toMinutes(w.opens) <= minutesOfDay) continue; // today's window already passed
       const label = offset === 0 ? 'today'
