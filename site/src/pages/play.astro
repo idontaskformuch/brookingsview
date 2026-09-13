@@ -5,10 +5,13 @@
  *  morenovalleyview.com. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
+import { resolveHubBacklink } from '../lib/clusters';
 
 if (siteConfig.townId !== 'brookings_sd') {
   return Astro.redirect('/', 302);
 }
+
+const hubBacklink = resolveHubBacklink('play', siteConfig);
 ---
 
 <BaseLayout
@@ -21,6 +24,7 @@ if (siteConfig.townId !== 'brookings_sd') {
       A little side project: <strong>Jackrabbit</strong>, a Flappy-Bird-style
       game starring a jackrabbit hopping through Brookings. Clear 20 on
       Prairie to unlock SDSU Campus, clear 30 there to unlock Main Street.
+      {hubBacklink && <> For the real Jackrabbits, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}
     </p>
 
     <div class="game-frame">

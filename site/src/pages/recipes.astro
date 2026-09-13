@@ -8,11 +8,12 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getContentByType } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
-import { buildClusterBreadcrumbTrail } from '../lib/clusters';
+import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
 
 const stories = await getContentByType(['vardagsmiddag'], 60);
 const canonicalUrl = new URL('/recipes/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('recipes', siteConfig, { label: 'Recipes', href: canonicalUrl });
+const hubBacklink = resolveHubBacklink('recipes', siteConfig);
 ---
 <BaseLayout title={`Recipes — ${siteConfig.siteName}`} wide
   description="Simple weeknight dinner recipes built around what's in season, AI-written and clearly labeled as such.">
@@ -20,7 +21,8 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('recipes'
   <header class="lede">
     <h1>Recipes</h1>
     <p>Simple weeknight dinners built around what's in season, written by AI and
-    disclosed as such on every piece below.</p>
+    disclosed as such on every piece below.
+    {hubBacklink && <> For more of what makes {siteConfig.cityName} feel local, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
   </header>
 
   <SectionRule label="Latest" />

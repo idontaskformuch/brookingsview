@@ -5376,3 +5376,66 @@ Per the handoff's own phasing, Phase 4 (spoke hub-backlinks in prose --
 distinct from Phase 2's breadcrumb crumb, this is the reverse direction:
 each spoke's own lede text linking back to its hub) waits for explicit
 go-ahead, same as every phase before it.
+
+## 53. Topical authority handoff, Phase 4: spoke hub-backlinks in prose (2026-09-13)
+
+Every one of the 17 real, static spoke pages (the same set `SPOKE_NAV_COPY`
+already covers -- `city-hall/archive`, `city-hall/projects`, `today`,
+`this-week`, `whats-on`, `closures`, `jobs`, `home-sales`, `weather`,
+`university`, `play`, `farm-report`, `burro-bonanza`, `recipes`,
+`editorials`, `columns`, `reviews`) now links back to its own hub in
+prose, high on the page (inside or right after the lede) -- the reverse
+direction of Phase 3's hub-to-spoke nav block.
+
+**Two of the 17 already satisfied this before any edit**: `city-hall/archive.astro`
+already had "Looking for what's coming up? See City hall →" in its own
+lede, and `whats-on/index.astro` already had a "Local library, city and
+community events: Events" cross-link (added during an earlier, unrelated
+front-page-orientation pass). Both left untouched -- the point of this
+phase is a real backlink existing somewhere sensible, not a specific new
+sentence appearing everywhere uniformly.
+
+**Built**: `resolveHubBacklink(routeKey, townConfig)` in `lib/clusters.ts`
+-- resolves only the LINK TARGET (hub href + cluster label), reusing
+`resolveCluster()`; the sentence wording around it stays hand-written at
+each of the other 15 call sites, same "contextual, not a templated nav
+dump" reasoning as Phase 3's `SPOKE_NAV_COPY`. Returns `null` for a hub
+itself, an orphan, or a route unavailable for this town -- callers
+condition their sentence on that (`{hubBacklink && ...}`), so e.g.
+`/jobs/` on Brookings (where Work and Money is dark) correctly shows no
+backlink sentence at all, while Moreno Valley and Broomfield's own
+`/jobs/` pages do.
+
+**A real, useful side effect**: writing 15 individual sentences by hand
+(rather than reusing one generic template) surfaced that `university.astro`
+and `vail-resorts.astro` (already flagged in #52) aren't the only pages
+that never adopted `resolvePageMeta()` -- worth a combined follow-up
+pass rather than three separate ones.
+
+**Deliberately scoped to the 17 static spokes, not the full spoke set**:
+the handoff's own text says "every spoke," which technically also
+includes the dynamic per-instance detail templates -- `facilities/[slug]`,
+`home-sales/[slug]`/`archive`/`zip/[zip]`, `jobs/category/[category]`,
+`events/[facet]`/`past`, `whats-on/[slug]`, `city-hall/projects/[slug]`,
+and the seven `story:<sourceType>` groups inside `s/[slug].astro`. Several
+of these already have SOME kind of backlink today (e.g.
+`facilities/[slug].astro`'s existing "← All local facilities" line), just
+not consistently "in prose, high on the page" the way this phase
+requires -- upgrading all of them consistently is real, valuable work,
+but roughly doubles this phase's total file count. Flagged here as a
+named, deliberate scope decision (not silently dropped) rather than
+folded into an already-large single pass -- worth its own follow-up.
+
+**Verified against real, clean builds for all three towns**: `astro check`
+0 errors, full vitest suite green (33 files / 632 tests, including 4 new
+`resolveHubBacklink` tests), Brookings (485 pages), Broomfield (992
+pages), and Moreno Valley (3,411 pages) all built clean with every
+sentence spot-checked against the real output -- including confirming
+`/jobs/` correctly carries NO backlink on Brookings (Work and Money is
+dark there) but does on Moreno Valley and Broomfield, each pointing at
+its own real hub (`/sports/`, `/vail-resorts/`, `/jackrabbits/`
+respectively for the shared Local-life spokes).
+
+Per the handoff's own phasing, Phase 5 (`getRelatedContent()` cluster
+priority layer -- the last phase in the handoff) waits for explicit
+go-ahead.

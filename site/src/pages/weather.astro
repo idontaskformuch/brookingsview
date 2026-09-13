@@ -26,8 +26,10 @@ import SectionRule from '../components/SectionRule.astro';
 import { getWeather, getHourlyWeather, getActiveAlerts } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { resolvePageMeta } from '../lib/page-meta';
+import { resolveHubBacklink } from '../lib/clusters';
 
 const pageMeta = resolvePageMeta('weather', siteConfig);
+const hubBacklink = resolveHubBacklink('weather', siteConfig);
 
 const [periods, hourly, alerts] = await Promise.all([
   getWeather(),
@@ -72,7 +74,8 @@ function hourLabel(start: string): string {
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
     <p>Straight from the National Weather Service, updated every hour along
-    with the rest of the site.</p>
+    with the rest of the site.
+    {hubBacklink && <> Looking for a specific address instead? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
   </header>
 
   {alerts.length > 0 && (

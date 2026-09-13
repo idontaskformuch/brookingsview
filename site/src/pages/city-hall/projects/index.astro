@@ -8,8 +8,10 @@ import ShareButton from '../../../components/ShareButton.astro';
 import { getProjects, PROJECT_STATUS_LABELS } from '../../../lib/db';
 import { siteConfig } from '../../../lib/site-config';
 import { resolvePageMeta } from '../../../lib/page-meta';
+import { resolveHubBacklink } from '../../../lib/clusters';
 
 const pageMeta = resolvePageMeta('city-hall/projects', siteConfig);
+const hubBacklink = resolveHubBacklink('city-hall/projects', siteConfig);
 const projects = await getProjects();
 
 const STATUS_ORDER = ['under_review', 'approved', 'permitted', 'under_construction', 'complete', 'denied'];
@@ -26,7 +28,8 @@ const statuses = [...byStatus.keys()].sort((a, b) => STATUS_ORDER.indexOf(a) - S
     <h1>{pageMeta.h1}</h1>
     <p>Real developments, ordinances and civic projects in {siteConfig.cityName} —
     each one tracked through every meeting that touches it, from first review
-    to a final vote. Updated as new meetings happen.</p>
+    to a final vote. Updated as new meetings happen.
+    {hubBacklink && <> Looking for a specific meeting instead? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
     <ShareButton title={pageMeta.title} />
   </header>
 

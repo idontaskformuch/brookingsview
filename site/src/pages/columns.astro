@@ -19,7 +19,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getContentByType } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
-import { buildClusterBreadcrumbTrail } from '../lib/clusters';
+import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
 
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const types = isMorenoValley
@@ -28,6 +28,7 @@ const types = isMorenoValley
 const stories = await getContentByType([...types], 60);
 const canonicalUrl = new URL('/columns/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('columns', siteConfig, { label: 'Columns', href: canonicalUrl });
+const hubBacklink = resolveHubBacklink('columns', siteConfig);
 ---
 <BaseLayout title={`Columns — ${siteConfig.siteName}`} wide
   description="Culture essays, light essays and science columns, AI-written and clearly labeled as such.">
@@ -35,7 +36,8 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('columns'
   <header class="lede">
     <h1>Columns</h1>
     <p>Culture, science and light essays -- a change of pace from the news, written
-    by AI and disclosed as such on every piece below.</p>
+    by AI and disclosed as such on every piece below.
+    {hubBacklink && <> For more of what makes {siteConfig.cityName} feel local, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
   </header>
 
   <SectionRule label="Latest" />

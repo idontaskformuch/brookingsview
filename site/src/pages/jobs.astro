@@ -23,7 +23,7 @@ import { resolvePageMeta } from '../lib/page-meta';
 import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
-import { buildClusterBreadcrumbTrail } from '../lib/clusters';
+import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
 
 const jobs = await getRecentJobs();
 
@@ -35,6 +35,7 @@ const { visible, overflowByCompany } = capByEmployer(jobs);
 const pageMeta = resolvePageMeta('jobs', siteConfig);
 const canonicalUrl = new URL('/jobs/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('jobs', siteConfig, { label: 'Jobs', href: canonicalUrl });
+const hubBacklink = resolveHubBacklink('jobs', siteConfig);
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-jobs"
   description={`Recent job listings in and near ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
@@ -48,7 +49,8 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('jobs', s
     location is shown alongside it. Salaries marked "est." are Adzuna's own
     estimate, not the employer's listed figure. We earn a small commission if
     you apply through a listing here — it never affects which jobs are shown
-    or how they're ordered.</p>
+    or how they're ordered.
+    {hubBacklink && <> Curious what employees actually say about local employers? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
   </header>
 
   <SectionRule label={jobs.length > 0 ? `${jobs.length} listings` : 'Listings'} />

@@ -18,10 +18,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { getAgPriceSeries, formatMonthYear } from '../lib/db';
 import { buildSeriesDisplay } from '../lib/farm-report';
 import { siteConfig } from '../lib/site-config';
+import { resolveHubBacklink } from '../lib/clusters';
 
 if (siteConfig.townId !== 'brookings_sd') {
   return Astro.redirect('/', 302);
 }
+
+const hubBacklink = resolveHubBacklink('farm-report', siteConfig);
 
 const series = await getAgPriceSeries();
 const cards = series
@@ -35,7 +38,8 @@ const cards = series
     <p>Prices received, from the USDA National Agricultural Statistics Service.
     Corn, soybeans, wheat, sunflowers, and oats are South Dakota figures.
     Cattle and hogs are national series — South Dakota doesn't get its own
-    price-received series for those in USDA's data.</p>
+    price-received series for those in USDA's data.
+    {hubBacklink && <> For Jackrabbits schedules and results, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
   </header>
 
   {cards.length > 0 ? (

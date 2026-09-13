@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveCluster, validateClusterConfig, computeTownGraph, buildClusterBreadcrumbTrail, resolveHubNavItems } from './clusters';
+import { resolveCluster, validateClusterConfig, computeTownGraph, buildClusterBreadcrumbTrail, resolveHubNavItems, resolveHubBacklink } from './clusters';
 
 const BROOKINGS = { townId: 'brookings_sd', cityName: 'Brookings', siteName: 'Brookings View' } as any;
 const MORENO_VALLEY = { townId: 'moreno_valley_ca', cityName: 'Moreno Valley', siteName: 'Moreno Valley View', hasWorkplaceWatch: true, hasClosureWatch: true, hasWhatsOn: true, hasHousingMarket: true } as any;
@@ -174,5 +174,27 @@ describe('resolveHubNavItems', () => {
   it('work_and_money nav for Moreno Valley includes home-sales (available there)', () => {
     const items = resolveHubNavItems('workplace-watch', MORENO_VALLEY);
     expect(items.map((i) => i.label)).toContain('Home sales');
+  });
+});
+
+describe('resolveHubBacklink', () => {
+  it("resolves a spoke's own hub label and href", () => {
+    const backlink = resolveHubBacklink('city-hall/archive', BROOKINGS);
+    expect(backlink).toEqual({ clusterLabel: 'City hall', hubHref: '/city-hall/' });
+  });
+
+  it('returns null for a hub page itself (nothing to link back to)', () => {
+    expect(resolveHubBacklink('city-hall', BROOKINGS)).toBeNull();
+  });
+
+  it('returns null for an orphan or unavailable route', () => {
+    expect(resolveHubBacklink('about', BROOKINGS)).toBeNull();
+    expect(resolveHubBacklink('home-sales', BROOKINGS)).toBeNull();
+  });
+
+  it("resolves each town's own local_life hub as the backlink target", () => {
+    expect(resolveHubBacklink('recipes', BROOKINGS)?.hubHref).toBe('/jackrabbits/');
+    expect(resolveHubBacklink('recipes', MORENO_VALLEY)?.hubHref).toBe('/sports/');
+    expect(resolveHubBacklink('recipes', BROOMFIELD)?.hubHref).toBe('/vail-resorts/');
   });
 });

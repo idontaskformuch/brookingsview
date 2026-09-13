@@ -26,10 +26,13 @@ import {
 import SectionHero from '../components/SectionHero.astro';
 import { SECTION_THEME } from '../lib/section-theme';
 import { siteConfig } from '../lib/site-config';
+import { resolveHubBacklink } from '../lib/clusters';
 
 if (siteConfig.townId !== 'brookings_sd') {
   return Astro.redirect('/', 302);
 }
+
+const hubBacklink = resolveHubBacklink('university', siteConfig);
 
 const [events, artsEvents, academicDates, digests] = await Promise.all([
   getUpcomingSdsuEvents(60),
@@ -129,7 +132,8 @@ const sections = (
   <header class="lede">
     <h1>University</h1>
     <p>What's on at South Dakota State University this week — games, concerts, shows
-    and campus happenings, straight from SDSU's own event calendar.</p>
+    and campus happenings, straight from SDSU's own event calendar.
+    {hubBacklink && <> For Jackrabbits schedules and results, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
     <ShareButton title={`SDSU News in ${siteConfig.cityName} — ${siteConfig.siteName}`} />
   </header>
 

@@ -331,3 +331,37 @@ export function resolveHubNavItems(hubRouteKey: string, townConfig: SiteConfig):
   }
   return items;
 }
+
+export interface HubBacklink {
+  clusterLabel: string;
+  hubHref: string;
+}
+
+/** Topical authority handoff, Phase 4. A spoke page calls this with its OWN
+ *  route key to get the resolved hub it should link back to, in prose,
+ *  high on the page (inside or right after the lede) -- the reverse
+ *  direction of Phase 3's hub-to-spoke nav block. Only the LINK TARGET is
+ *  resolved here (same hub/label resolution `buildClusterBreadcrumbTrail()`
+ *  already does); the sentence wording around it stays hand-written at
+ *  each call site, same "contextual, not a nav dump" reasoning as
+ *  `SPOKE_NAV_COPY` -- a templated "See {clusterLabel} for more" would
+ *  read identically on every page, which is exactly what this handoff's
+ *  own text warns against.
+ *
+ *  Returns `null` for a hub itself (nothing to link back to), an orphan,
+ *  or a route unavailable for this town -- callers render nothing in
+ *  that case. */
+export function resolveHubBacklink(routeKey: string, townConfig: SiteConfig): HubBacklink | null {
+  const resolved = resolveCluster(routeKey, townConfig);
+  if (!resolved || resolved.primary.role === 'hub') return null;
+
+  const hubHref = HUB_HREF[resolved.hubRoute];
+  if (!hubHref) {
+    throw new Error(
+      `resolveHubBacklink: no HUB_HREF entry for hub route "${resolved.hubRoute}" ` +
+      `(resolving "${routeKey}" for "${townConfig.townId}")`,
+    );
+  }
+
+  return { clusterLabel: resolved.primary.clusterLabel, hubHref };
+}

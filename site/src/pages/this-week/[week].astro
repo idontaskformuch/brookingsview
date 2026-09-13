@@ -33,6 +33,7 @@ import {
 } from '../../lib/this-week';
 import { siteConfig } from '../../lib/site-config';
 import { resolvePageMeta } from '../../lib/page-meta';
+import { resolveHubBacklink } from '../../lib/clusters';
 
 const VERTICAL_LABELS: Record<Vertical, string> = {
   events: 'Events', city_hall: 'City Hall', sdsu: 'SDSU', sports: 'Sports',
@@ -89,6 +90,7 @@ const { week, days, lead, weeklyStory, prevWeek, isCurrent } = Astro.props as {
 };
 
 const pageMeta = resolvePageMeta('this-week', siteConfig, { WeekLabel: week.label });
+const hubBacklink = resolveHubBacklink('this-week', siteConfig);
 const title = pageMeta.title;
 const description = `A day-by-day look at ${siteConfig.cityName}, ${siteConfig.stateAbbr} for the week of ${week.label}: meetings, events${siteConfig.townId === 'brookings_sd' ? ', SDSU' : ''} and sports.`;
 const canonicalUrl = new URL(`/this-week/${week.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
@@ -120,6 +122,7 @@ const itemListJsonLd = hasAnyItems ? {
         ? `What's on this week in ${siteConfig.cityName}, day by day, built from real scheduled meetings, events${isBrookings ? ', SDSU listings' : ''} and games.`
         : `A day-by-day record of what happened in ${siteConfig.cityName} this week.`}</p>
     )}
+    {hubBacklink && <p class="intro">Want just today, or a broader view? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</p>}
     <ShareButton title={title} url={canonicalUrl} />
   </header>
 
