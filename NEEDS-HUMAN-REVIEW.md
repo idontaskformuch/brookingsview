@@ -5710,3 +5710,105 @@ Broomfield's full-corpus number is dominated by `/whats-on/*` (865 of
 979 routes) -- Ticketmaster's own live event feed, town-specific volume,
 not a Broomfield content-quality problem; see #59.
 
+
+## 59. Lede-threshold investigation: 12 words vs 20, and why word count alone is the wrong lever (2026-09-13)
+
+Asked, before any hard gate goes into `page_meta_check`: would 12 words
+be a better floor than the handoff's original 20? Investigated with a
+real qualitative read, not just a re-count -- see #58 for the corrected
+raw numbers this builds on.
+
+**Per-route-type breakdown (all three towns, post both #58 fixes)**
+explains where the failures concentrate:
+
+- `whats-on/*` (Ticketmaster event listings): 39/40 (Brookings),
+  865/866 (Broomfield), 561/562 (Moreno Valley) fail even at 20 words.
+  Read the template (`whats-on/[slug].astro`) directly: it is
+  UNCONDITIONALLY `noindex`, and carries zero editorial prose by design
+  -- venue name, distance, date, price, a ticket link. Its own doc
+  comment already frames it as a feed passthrough, same "no AI rewrite,
+  no invented content" contract as `vail-resorts.astro`. A low lede
+  score here is accurate, not a bug or a gap -- it's not indexed and was
+  never meant to carry one.
+- `home-sales/[slug]` (Moreno Valley only): 1,443/1,445 fail. Also
+  UNCONDITIONALLY `noindex` by its own existing doc comment ("thin,
+  derivative content... always noindex, regardless of how recent the
+  sale is" -- AdSense remediation Phase A2). Same category as
+  `whats-on`: correctly excluded from search, never meant to carry a
+  20-word (or 12-word) editorial lede.
+- `/s/` story permalinks: 15/334 (Brookings), 3/46 (Broomfield), 40/1,270
+  (Moreno Valley) fail once #58's thread-banner bug is fixed -- a small,
+  plausible residual, not a systemic gap.
+- Everything else (hubs, facility details, event facets): small numbers,
+  each independently explainable (see below).
+
+**Restricting to routes actually in the sitemap** (the pages any of this
+is meant to protect, since `whats-on`/`home-sales/[slug]` are already,
+correctly, excluded from it) drops the picture to 36/118 (Brookings),
+12/67 (Broomfield), 47/150 (Moreno Valley) failing at 20 words -- 20-31%,
+not 20-91%. This is the number that matters for "is our indexable
+content thin," and it was buried inside #57's own uninvestigated full-
+corpus total.
+
+**Qualitative read, ~30 real ledes sampled from the 12-19-word band**
+(the band a 12-word floor would newly pass that a 20-word floor
+wouldn't), stratified across meeting summaries, event details, sports
+recaps, and home-sales/facility pages:
+
+Genuinely complete at 12-18 words, real per-item facts, nothing missing:
+- "The Jackrabbits football team is 1-1 this season. Next up: vs New
+  Haven." (13w)
+- "Council study session to review department budget presentations.
+  Staff will be available to answer questions following the
+  presentations." (18w)
+- "Football fans gather to watch Monday Night Football. The Farm House
+  Collective hosts the viewing." (15w)
+- "Vendors sell homemade crafts and goods. The show runs from 10 a.m.
+  to 4 p.m." (15w)
+
+Technically a complete sentence, but generic/templated -- adds
+essentially zero unique information about the specific page it's on:
+- "A city park in Brookings. You'll find it at Brookings, SD 57006."
+  (12w) -- identical (modulo connector phrasing) across 5 of Brookings'
+  36 real facility pages.
+- "ZIP 92553 -- Nearby: Convenience Store, Fueling Station & Car Wash --
+  Cactus Ave & Indian St" (17w) -- **the exact same string, verbatim,
+  across 271 different Moreno Valley home-sales parcel pages** (and
+  similarly for the other 9 distinct ZIP/project combinations covering
+  all 1,445 home-sales pages -- only 10 distinct lede strings exist for
+  1,445 pages, a 99.6% duplication rate).
+
+**The finding this settles**: word count, at 12 words OR 20, cannot
+distinguish these two categories. The genuinely complete meeting/event/
+sports summaries above would FAIL a strict 20-word floor despite being
+exactly what a reader needs. The templated park and home-sales lines
+would PASS both a 12-word and a 20-word floor despite being
+functionally duplicate content repeated across hundreds of pages. A
+pure length threshold is the wrong instrument for the actual quality
+question -- it's tuned to catch "empty," not "generic."
+
+**Recommendation, not implemented**: no single word-count number is
+right sitewide.
+1. If a hard gate is added at all, scope it to routes that are actually
+   in the sitemap -- `whats-on/[slug]` and `home-sales/[slug]` are
+   already, deliberately, permanently `noindex`; gating them on lede
+   quality re-fights a fight this codebase already won differently
+   (the AdSense remediation project, #34ish and the render-window
+   handoff already excluded them from search on purpose).
+2. Within the sitemap-scoped set, 12 words is a more defensible floor
+   than 20 -- it stops penalizing genuinely complete, concise editorial
+   writing (several real examples above sit at 13-18 words) without
+   meaningfully changing which pages the 20-word floor would have
+   caught anyway (see the per-route-type table: `/s/`, `facilities`,
+   hub pages all clear 12 words almost universally once genuinely
+   thin).
+3. The duplicate-lede problem (park/ZIP boilerplate) is real but is a
+   DIFFERENT check than word count -- something closer to "N pages
+   share the identical first paragraph" would catch it; word count
+   can't, at any threshold. Not designed here -- flagged as its own,
+   separate follow-up, not bundled into this threshold question.
+
+**Nothing in `page_meta_check` was changed.** This is investigation
+only, per instruction -- the 12-vs-20 (and sitemap-scoping, and
+duplicate-lede) decisions are the human's to make.
+
