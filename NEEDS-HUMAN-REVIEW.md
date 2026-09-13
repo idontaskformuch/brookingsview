@@ -5812,3 +5812,44 @@ right sitewide.
 only, per instruction -- the 12-vs-20 (and sitemap-scoping, and
 duplicate-lede) decisions are the human's to make.
 
+
+## 60. `spec-answer-engine-visibility.md`, Section 1: crawler-access-audit -- nothing is blocked, on any of the three domains (2026-09-13)
+
+Checked two independent layers, live, for all three real domains
+(brookingsview.com, morenovalleyview.com, broomfieldview.com) against
+Googlebot, Bingbot, GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot,
+Claude-Web, PerplexityBot, and Google-Extended:
+
+1. **`robots.txt`** (`site/src/pages/robots.txt.ts`, generated at build
+   time, one shared template for all three towns): `User-agent: *` /
+   `Allow: /`, unconditionally. No bot-specific block exists in code for
+   any of the three sites.
+2. **Live probing** (real HTTP requests against the deployed domains,
+   each named crawler's real User-Agent string): every single one
+   returned `HTTP 200` with real, cached HTML (`CF-Cache-Status: HIT`,
+   the actual page `<title>`), not a Cloudflare challenge/interstitial
+   page, for all three domains.
+
+**One thing could NOT be checked directly**: Cloudflare's own dashboard-
+level Bot Management / "Block AI Bots" toggle (a real, one-click feature
+distinct from `robots.txt`) can't be fully ruled out by UA-spoofed
+probing alone -- that feature keys off Cloudflare's own IP+reverse-DNS
+bot verification, which only evaluates true for the REAL crawler hitting
+from its real IP range, not for a UA string sent from an arbitrary
+address. If that toggle were on, this exact test would still return 200
+(since the request isn't a verified bot either way) while the real
+GPTBot could still be silently blocked in production. Tried to check
+this authoritatively via the Cloudflare API (`CLOUDFLARE_API_TOKEN` in
+the repo's own root `.env`) -- the token fails authentication outright
+(`code 9109, Invalid access token`) against the general `/zones`
+endpoint, before any permission/scope question even comes up; it may be
+scoped for a different purpose entirely (Workers deploy only) or be
+stale. Whoever owns the Cloudflare account should check the Bot
+Management tab directly in the dashboard for all three zones to close
+this specific residual gap -- everything else checked here is a real,
+live-verified "no."
+
+Nothing was changed. `robots.txt`'s own file already documents the
+site's own stated intent ("All content is intended to be indexed") --
+this confirms that intent isn't contradicted anywhere else in the stack
+that could be checked from outside the Cloudflare dashboard.
