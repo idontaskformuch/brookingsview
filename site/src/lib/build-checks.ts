@@ -38,11 +38,12 @@
  *  executes this file at all (pure type-checking, no runtime), and vitest
  *  has no reason to import it, so neither needs DATABASE_URL just to run.
  */
-import { TOWN_ID, getFacilities, hasAnyStoryWithVenueRaw, getContentTrackImageStatus, getAllWeeklyStories } from './db';
+import { TOWN_ID, getFacilities, hasAnyStoryWithVenueRaw, getContentTrackImageStatus, getAllWeeklyStories, getPlaceGuardrailData } from './db';
 import { siteConfig } from './site-config';
 import { categoryImagesFor } from '../config/category-images';
 import { assertCategoryImagesComplete, assertImageExists, findContentTrackRowsMissingImage } from './images';
 import { PAGE_META_PATTERNS } from '../config/page-meta';
+import { isPastStalenessThreshold } from './place-hours';
 import { resolvePageMeta } from './page-meta';
 import { weekInfoForInstant, currentWeekInfo } from './this-week';
 
@@ -299,11 +300,88 @@ async function assertPageMetaPatternsValid(): Promise<void> {
   }
 }
 
+/** Broomfield place-layer handoff, Section 8 ("Guardrails / build-fails-
+ *  loud"). Two real, throwing checks -- both genuine failure modes a bad
+ *  seed edit could actually introduce:
+ *    1. hours_confidence='structured' but zero place_hours rows -- the
+ *       page would silently render "hours not confirmed" while the DB
+ *       claims otherwise, or worse, JSON-LD's own emitHoursSchema gate
+ *       (place/[slug].astro) would just correctly emit nothing, masking
+ *       the real data-entry mistake instead of surfacing it.
+ *    2. Missing source_url or verified_date -- the handoff's own hard
+ *       rule ("source_url and last_verified_at required on every row").
+ *  Plus one WARN, not throw, per the handoff's own explicit instruction
+ *  ("warn, do not fail, on any place past its staleness threshold, and
+ *  list them so the queue is visible") -- staleness is an expected,
+ *  eventual state for any real place, not a data-entry mistake.
+ *
+ *  The spec's third throwing guardrail ("an exception row has a date in
+ *  the past... and is still being rendered") is NOT implemented as a
+ *  separate runtime check here -- it's structurally impossible by
+ *  construction: getUpcomingPlaceHoursExceptions() (lib/db.ts) only ever
+ *  selects `date >= CURRENT_DATE`, so no code path in this codebase can
+ *  render a past exception regardless of how long one sits in the table.
+ *  Writing a redundant check against an unreachable state would be dead
+ *  code asserting nothing real.
+ *
+ *  The spec's validation-package guardrail ("no LLM-written text on a
+ *  place page may contain a time, date, phone number, or address") has no
+ *  current target either -- /place/[slug].astro and /places/index.astro
+ *  render zero LLM-written text today (every fact is a column value; the
+ *  index page's own "teaser" is a deterministic, non-AI string built from
+ *  category + open-status, see places/index.astro's own comment). Nothing
+ *  to check yet; revisit if an AI-generated place description is ever
+ *  actually introduced. */
+async function assertPlaceLayerConsistent(): Promise<void> {
+  if (!siteConfig.hasPlaces) return;
+
+  const rows = await getPlaceGuardrailData();
+  const problems: string[] = [];
+  const staleHours: string[] = [];
+  const staleAddress: string[] = [];
+  const staleness = siteConfig.placeStaleness ?? { hoursDays: 45, addressPhoneDays: 180 };
+  const now = new Date();
+
+  for (const row of rows) {
+    if (row.hours_confidence === 'structured' && row.place_hours_count === 0) {
+      problems.push(`${row.slug}: hours_confidence='structured' but has zero place_hours rows`);
+    }
+    if (!row.source_url) problems.push(`${row.slug}: missing source_url`);
+    if (!row.verified_date) problems.push(`${row.slug}: missing verified_date`);
+    // Hours age faster than address/phone -- two thresholds, not one, per
+    // the handoff's own suggested defaults (45 vs 180 days). Only checked
+    // for a place that actually claims structured hours; a place with no
+    // hours data at all has nothing hours-specific to go stale.
+    if (row.hours_confidence === 'structured' && isPastStalenessThreshold(row.verified_date, staleness.hoursDays, now)) {
+      staleHours.push(`${row.slug}: hours last verified ${row.verified_date ?? 'never'} (> ${staleness.hoursDays} days)`);
+    }
+    if (isPastStalenessThreshold(row.verified_date, staleness.addressPhoneDays, now)) {
+      staleAddress.push(`${row.slug}: address/phone last verified ${row.verified_date ?? 'never'} (> ${staleness.addressPhoneDays} days)`);
+    }
+  }
+
+  if (staleHours.length > 0 || staleAddress.length > 0) {
+    console.warn(
+      `\n⚠️  Place-layer staleness queue for "${TOWN_ID}" -- render as "Last confirmed <date>", never hidden:\n` +
+      (staleHours.length > 0 ? `  Hours (> ${staleness.hoursDays}d):\n` + staleHours.map((s) => `   - ${s}`).join('\n') + '\n' : '') +
+      (staleAddress.length > 0 ? `  Address/phone (> ${staleness.addressPhoneDays}d):\n` + staleAddress.map((s) => `   - ${s}`).join('\n') + '\n' : ''),
+    );
+  }
+
+  if (problems.length > 0) {
+    throw new Error(
+      `Build-time place-layer check failed for "${TOWN_ID}" (${problems.length} problem(s)):\n` +
+      problems.map((p) => `  - ${p}`).join('\n'),
+    );
+  }
+}
+
 /** Renamed from runBuildTimeImageChecks: this single build-time hook (still
  *  called once from BaseLayout.astro, still guarded by the same module-level
  *  `checked` flag) now also runs page_meta_check -- see
  *  assertPageMetaPatternsValid() above for why that belongs here rather
- *  than the Python validation/ package (NEEDS-HUMAN-REVIEW.md #48). */
+ *  than the Python validation/ package (NEEDS-HUMAN-REVIEW.md #48) -- and
+ *  the Broomfield place-layer handoff's own Section 8 guardrails. */
 export async function runBuildTimeChecks(): Promise<void> {
   if (checked) return;
   checked = true;
@@ -311,4 +389,5 @@ export async function runBuildTimeChecks(): Promise<void> {
   await assertVenueMatchingReachable();
   await assertContentTrackImagesComplete();
   await assertPageMetaPatternsValid();
+  await assertPlaceLayerConsistent();
 }

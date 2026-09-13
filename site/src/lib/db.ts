@@ -1806,6 +1806,148 @@ export async function getFacilityBySlug(slug: string): Promise<Facility | null> 
   return rows[0] ?? null;
 }
 
+/** Broomfield place-layer handoff, Step 4: the richer place-detail row for
+ *  /place/[slug].astro -- deliberately a SEPARATE query/interface from
+ *  Facility/getFacilityBySlug() above, not an extension of it, even though
+ *  both read the same `places` table. The existing /facilities/ routes
+ *  (all three towns) have no use for is_free/services/hours_confidence/etc,
+ *  and giving them those fields for free would be a silent scope increase
+ *  nobody asked for. */
+export interface PlaceDetail extends Facility {
+  id: number;
+  is_free: boolean | null;
+  fee_note: string | null;
+  accessibility_note: string | null;
+  services: string[] | null;
+  verification_method: string | null;
+  hours_confidence: string | null;
+}
+
+export async function getPlaceBySlug(slug: string): Promise<PlaceDetail | null> {
+  const rows = (await sql`
+    SELECT id, slug, name, category, address, phone, website,
+           hours_text, description, source_url, verified_date,
+           aliases, street_address, postal_code, lat, lon,
+           image_path, image_alt, name_aliases,
+           image_attribution_text, image_attribution_url, image_needs_review, free_teaser,
+           hours_structured, hours_needs_review,
+           is_free, fee_note, accessibility_note, services, verification_method, hours_confidence
+      FROM places
+     WHERE town_id = ${TOWN_ID} AND slug = ${slug}
+     LIMIT 1
+  `) as PlaceDetail[];
+  return rows[0] ?? null;
+}
+
+/** Every place for this town, with the full place-layer field set -- for
+ *  /places/index.astro (handoff 5.3). Mirrors getFacilities()'s own
+ *  shape/ordering exactly, just with the extra columns getFacilities()
+ *  deliberately doesn't select (see PlaceDetail's own doc comment). */
+export async function getAllPlaces(): Promise<PlaceDetail[]> {
+  return (await sql`
+    SELECT id, slug, name, category, address, phone, website,
+           hours_text, description, source_url, verified_date,
+           aliases, street_address, postal_code, lat, lon,
+           image_path, image_alt, name_aliases,
+           image_attribution_text, image_attribution_url, image_needs_review, free_teaser,
+           hours_structured, hours_needs_review,
+           is_free, fee_note, accessibility_note, services, verification_method, hours_confidence
+      FROM places
+     WHERE town_id = ${TOWN_ID}
+     ORDER BY category, name
+  `) as PlaceDetail[];
+}
+
+/** Every place's own internal id + slug for this town, for getStaticPaths()
+ *  -- place_hours/place_hours_exceptions are keyed on the numeric id, not
+ *  the slug, so the page needs both. */
+export async function getAllPlaceSlugs(): Promise<{ id: number; slug: string }[]> {
+  return (await sql`SELECT id, slug FROM places WHERE town_id = ${TOWN_ID}`) as { id: number; slug: string }[];
+}
+
+export interface PlaceHoursRow {
+  // 0=Sunday..6=Saturday -- see scripts/seed_broomfield_places_batch1.py's
+  // own comment for why (JS Date.getDay() convention, no prior precedent
+  // in this codebase's day-numbering to follow instead).
+  day_of_week: number;
+  opens: string;
+  closes: string;
+  valid_from: string | null;
+  valid_to: string | null;
+}
+
+/** Every place_hours row for EVERY place in this town, in one query -- for
+ *  /places/index.astro (handoff 5.3), which needs "today's status" for
+ *  every place at once. Grouping by place_id is the caller's job (a plain
+ *  Map build, not worth a second DB round trip); avoids an N+1 query
+ *  pattern across what could be 40-60 places once seeding finishes. */
+export async function getAllPlaceHoursForTown(): Promise<(PlaceHoursRow & { place_id: number })[]> {
+  return (await sql`
+    SELECT ph.place_id, ph.day_of_week, ph.opens, ph.closes, ph.valid_from, ph.valid_to
+      FROM place_hours ph
+      JOIN places p ON p.id = ph.place_id
+     WHERE p.town_id = ${TOWN_ID}
+  `) as (PlaceHoursRow & { place_id: number })[];
+}
+
+export async function getPlaceHours(placeId: number): Promise<PlaceHoursRow[]> {
+  return (await sql`
+    SELECT day_of_week, opens, closes, valid_from, valid_to
+      FROM place_hours
+     WHERE place_id = ${placeId}
+     ORDER BY day_of_week
+  `) as PlaceHoursRow[];
+}
+
+export interface PlaceHoursException {
+  date: string;
+  opens: string | null;
+  closes: string | null;
+  reason: string | null;
+  source_url: string | null;
+  last_verified_at: string | null;
+}
+
+/** Only exceptions in the next 60 days -- see the place page's own
+ *  "Upcoming exceptions" section (handoff 5.1). A past exception has no
+ *  reader value on a reference page (it's not a news archive), and Section
+ *  8's own guardrail treats a past exception STILL being rendered as a
+ *  build failure -- this query is what keeps that from ever happening,
+ *  not a separate check bolted on after the fact. */
+export async function getUpcomingPlaceHoursExceptions(placeId: number): Promise<PlaceHoursException[]> {
+  return (await sql`
+    SELECT date, opens, closes, reason, source_url, last_verified_at
+      FROM place_hours_exceptions
+     WHERE place_id = ${placeId}
+       AND date >= CURRENT_DATE AND date <= CURRENT_DATE + INTERVAL '60 days'
+     ORDER BY date
+  `) as PlaceHoursException[];
+}
+
+export interface PlaceGuardrailRow {
+  slug: string;
+  source_url: string | null;
+  verified_date: string | null;
+  hours_confidence: string | null;
+  place_hours_count: number;
+}
+
+/** Backs build-checks.ts's Section-8 place-layer guardrails (handoff
+ *  "Guardrails / build-fails-loud"). One row per place for this town, with
+ *  the place_hours row COUNT already joined in -- so "structured but zero
+ *  hours rows" is a single, cheap comparison in the caller, not an N+1
+ *  query per place. */
+export async function getPlaceGuardrailData(): Promise<PlaceGuardrailRow[]> {
+  return (await sql`
+    SELECT p.slug, p.source_url, p.verified_date, p.hours_confidence,
+           COUNT(ph.id)::int AS place_hours_count
+      FROM places p
+      LEFT JOIN place_hours ph ON ph.place_id = p.id
+     WHERE p.town_id = ${TOWN_ID}
+     GROUP BY p.slug, p.source_url, p.verified_date, p.hours_confidence
+  `) as PlaceGuardrailRow[];
+}
+
 /** Läsbar rubrik per category-värde, för gruppering på /facilities. */
 // Expanded 2026-08-22 (scripts/ingest_moval_facilities.py) from the
 // original 5 to cover the City of Moreno Valley's real civic footprint --
@@ -1827,6 +1969,9 @@ export const FACILITY_CATEGORY_LABELS: Record<string, string> = {
   recycling: 'Recycling',
   medical: 'Medical',
   school_district: 'School district offices',
+  // Broomfield place-layer handoff, Step 3: the first real place seeded
+  // under this category (US 36 & Broomfield Station Park-n-Ride).
+  transit: 'Transit',
   other: 'Other',
 };
 
@@ -1849,6 +1994,11 @@ export const FACILITY_SCHEMA_TYPE: Record<string, string> = {
   recycling: 'CivicStructure',
   medical: 'Hospital',
   school_district: 'GovernmentOffice',
+  // Broomfield place-layer handoff, Step 3: BusStation is a real,
+  // dedicated schema.org type (not a CivicStructure fallback) -- the one
+  // seeded transit place today (US 36 & Broomfield Station) is a bus
+  // park-n-ride, not rail.
+  transit: 'BusStation',
   other: 'CivicStructure',
 };
 
@@ -2204,6 +2354,22 @@ export function formatCalendarDate(value: string | Date | null): string {
   const { y, m, d } = calendarDateParts(value)!;
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'short', month: 'long', day: 'numeric', timeZone: 'UTC',
+  }).format(new Date(Date.UTC(y, m, d)));
+}
+
+/** "Sunday, September 13, 2026" -- the place-layer handoff's own explicit
+ *  "explicit dates written out" rule (5.1), for the /place/[slug] answer-
+ *  first paragraph and exceptions list specifically. A real, full weekday
+ *  name and year, unlike formatCalendarDate()'s abbreviated "Sun, September
+ *  13" (which every EXISTING caller -- facility verified_date, etc. --
+ *  already depends on unchanged). Same UTC-midnight-safe date-parts
+ *  extraction as formatCalendarDate(), not a separate, second-guessed
+ *  implementation of that same fix. */
+export function formatFullCalendarDate(value: string | Date | null): string {
+  if (!value) return '';
+  const { y, m, d } = calendarDateParts(value)!;
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
   }).format(new Date(Date.UTC(y, m, d)));
 }
 

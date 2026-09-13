@@ -1,0 +1,220 @@
+---
+/** Broomfield place-layer handoff, Step 4: answer-first reference page,
+ *  structure per the handoff's own 5.1 exactly (H1, answer-first paragraph,
+ *  weekly hours table, upcoming exceptions, facts, map link, verification
+ *  block, RelatedContent+ShareButton). Gated on siteConfig.hasPlaces --
+ *  redirects away for every town except Broomfield, same pattern as
+ *  /workplace-watch/index.astro.
+ *
+ *  Deliberately a SEPARATE template from facilities/[slug].astro, not a
+ *  variant of it -- that page keeps its own existing lede-style content
+ *  for Brookings/Moreno Valley/Broomfield's original 17 facilities
+ *  unchanged; this one is the new, answer-first shape the handoff asks
+ *  for, reading the same `places` table's newer columns.
+ *
+ *  Open/closed status is computed server-side at build time in the town's
+ *  own timezone (lib/place-hours.ts's computePlaceOpenStatus()) -- never in
+ *  browser JS from a hardcoded offset, the exact Neon DATE/local-time bug
+ *  that already hit this project once (see formatCalendarDate()'s own
+ *  history in lib/db.ts).
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import RelatedContent from '../../components/RelatedContent.astro';
+import ShareButton from '../../components/ShareButton.astro';
+import {
+  getPlaceBySlug, getAllPlaceSlugs, getPlaceHours, getUpcomingPlaceHoursExceptions,
+  FACILITY_CATEGORY_LABELS, FACILITY_SCHEMA_TYPE, formatFullCalendarDate,
+} from '../../lib/db';
+import {
+  computePlaceOpenStatus, buildPlaceOpeningHoursSpecification, isPastStalenessThreshold,
+} from '../../lib/place-hours';
+import { formatClock } from '../../lib/facility-hours';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
+import { siteConfig } from '../../lib/site-config';
+
+if (!siteConfig.hasPlaces) {
+  return Astro.redirect('/', 302);
+}
+
+export async function getStaticPaths() {
+  if (!siteConfig.hasPlaces) return [];
+  const places = await getAllPlaceSlugs();
+  return places.map((p) => ({ params: { slug: p.slug }, props: { placeId: p.id } }));
+}
+
+const { slug } = Astro.params;
+const { placeId } = Astro.props as { placeId: number };
+const place = await getPlaceBySlug(slug!);
+if (!place) {
+  return Astro.redirect('/places/', 302);
+}
+
+const [hours, exceptions] = await Promise.all([
+  getPlaceHours(placeId),
+  getUpcomingPlaceHoursExceptions(placeId),
+]);
+
+const now = new Date();
+const openStatus = computePlaceOpenStatus(hours, exceptions, now, siteConfig.timezone);
+const staleness = siteConfig.placeStaleness ?? { hoursDays: 45, addressPhoneDays: 180 };
+const hoursStale = isPastStalenessThreshold(place.verified_date, staleness.hoursDays, now);
+const addressStale = isPastStalenessThreshold(place.verified_date, staleness.addressPhoneDays, now);
+
+const categoryLabel = FACILITY_CATEGORY_LABELS[place.category] ?? place.category;
+const schemaType = FACILITY_SCHEMA_TYPE[place.category] ?? 'CivicStructure';
+const canonicalUrl = new URL(`/place/${place.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
+const todayLabel = formatFullCalendarDate(now.toISOString());
+
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Places', href: '/places/' },
+  { label: place.name, href: canonicalUrl },
+];
+
+const hasFullAddress = Boolean(place.street_address && place.postal_code);
+// Handoff 5.2: only emit the schema when hours are structured AND fresh --
+// "emitting stale hours as schema is worse than emitting none."
+const emitHoursSchema = place.hours_confidence === 'structured' && !hoursStale && hours.length > 0;
+const hasFacts = place.is_free !== null || Boolean(place.fee_note) || Boolean(place.services?.length) || Boolean(place.accessibility_note);
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+---
+<BaseLayout title={`${place.name} | ${siteConfig.siteName}`}
+  description={`Hours, address and contact for ${place.name} in ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
+  <Breadcrumbs trail={breadcrumbTrail} />
+  <article class="place">
+    <p class="kind data">{categoryLabel}</p>
+    <h1>{place.name}</h1>
+
+    {/* Answer-first: no lede, one fact per sentence, per handoff 5.1. */}
+    <p class="answer">
+      {openStatus.known ? (
+        openStatus.isOpen
+          ? <>Open now. Closes at {openStatus.closesAt} today, {todayLabel}.</>
+          : (openStatus.opensAt
+              ? <>Closed now. Opens at {`${openStatus.opensAt} ${openStatus.opensLabel}`}.</>
+              : <>Closed now, with no confirmed opening time this week.</>)
+      ) : <>Hours have not been confirmed for this location from a current source yet.</>}
+      {' '}{place.address && <>Located at {place.address}.</>}
+      {' '}{place.phone && <>Phone: {place.phone}.</>}
+    </p>
+
+    {hours.length > 0 && (
+      <table class="hours-table">
+        <caption>Weekly hours</caption>
+        <tbody>
+          {DAY_NAMES.map((name, dow) => {
+            const rows = hours.filter((h) => h.day_of_week === dow);
+            return (
+              <tr>
+                <th scope="row">{name}</th>
+                <td>{rows.length > 0
+                  ? rows.map((r) => `${formatClock(r.opens)}–${formatClock(r.closes)}`).join(', ')
+                  : 'Closed'}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    )}
+
+    {exceptions.length > 0 && (
+      <section class="exceptions">
+        <h2>Upcoming exceptions</h2>
+        <ul>
+          {exceptions.map((e) => (
+            <li>
+              <strong>{formatFullCalendarDate(e.date)}</strong>:{' '}
+              {e.opens && e.closes ? `${formatClock(e.opens)}–${formatClock(e.closes)}` : 'Closed'}
+              {e.reason && <> — {e.reason}</>}
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    {hasFacts && (
+      <dl class="facts">
+        {place.is_free !== null && (
+          <div class="fact"><dt>Cost</dt><dd>{place.is_free ? 'Free' : (place.fee_note ?? 'Fee required')}</dd></div>
+        )}
+        {place.is_free === false && place.fee_note && (
+          <div class="fact"><dt>Fees</dt><dd>{place.fee_note}</dd></div>
+        )}
+        {place.services && place.services.length > 0 && (
+          <div class="fact"><dt>Services</dt><dd>{place.services.join(', ')}</dd></div>
+        )}
+        {place.accessibility_note && (
+          <div class="fact"><dt>Accessibility</dt><dd>{place.accessibility_note}</dd></div>
+        )}
+      </dl>
+    )}
+
+    {place.lat != null && place.lon != null && (
+      <p class="map">
+        <a href={`https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lon}`} rel="noopener">Get directions</a>
+      </p>
+    )}
+
+    {place.source_url && (
+      <p class="source">
+        Source: <a href={place.source_url} rel="noopener">{siteConfig.cityName} official site</a>
+        {place.verified_date && <> — last confirmed {formatFullCalendarDate(place.verified_date)}</>}
+        {(hoursStale || addressStale) && <> (this may be out of date — verify before relying on it)</>}
+      </p>
+    )}
+
+    <ShareButton title={place.name} url={canonicalUrl} />
+  </article>
+
+  <RelatedContent pageType="facilities" />
+
+  {hasFullAddress && (
+    // Never claims a schema.org address for a place that doesn't have a
+    // verified one -- same "resolved or nothing" rule as the existing
+    // facility JSON-LD (facilities/[slug].astro) and Event JSON-LD.
+    <script type="application/ld+json" is:inline set:html={JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': schemaType,
+      name: place.name,
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: place.street_address,
+        addressLocality: siteConfig.cityName,
+        addressRegion: siteConfig.stateAbbr,
+        postalCode: place.postal_code,
+        addressCountry: 'US',
+      },
+      ...(place.lat != null && place.lon != null
+        ? { geo: { '@type': 'GeoCoordinates', latitude: place.lat, longitude: place.lon } }
+        : {}),
+      ...(place.phone ? { telephone: place.phone } : {}),
+      ...(place.website ? { url: place.website } : {}),
+      ...(emitHoursSchema ? { openingHoursSpecification: buildPlaceOpeningHoursSpecification(hours) } : {}),
+    })} />
+  )}
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
+</BaseLayout>
+
+<style>
+.place { max-width: 38rem; }
+.kind { color: var(--ink-soft); margin: 0 0 0.25rem; }
+.answer { margin: 1rem 0 1.5rem; line-height: 1.6; font-size: 1.0625rem; }
+.hours-table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.9375rem; }
+.hours-table caption { text-align: left; font-family: var(--font-ui); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 0.5rem; }
+.hours-table th, .hours-table td { text-align: left; padding: 0.375rem 0.75rem 0.375rem 0; border-bottom: 1px solid var(--rule); }
+.hours-table th { font-weight: 600; width: 8rem; }
+.exceptions { margin: 1.5rem 0; }
+.exceptions ul { list-style: none; margin: 0.5rem 0 0; padding: 0; }
+.exceptions li { padding: 0.375rem 0; border-bottom: 1px solid var(--rule); font-size: 0.9375rem; }
+.facts { margin: 1.25rem 0; display: grid; gap: 0.5rem; }
+.fact { display: grid; grid-template-columns: 7rem 1fr; gap: 0.75rem; padding: 0.375rem 0; border-bottom: 1px solid var(--rule); }
+.fact dt { font-family: var(--font-ui); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.fact dd { margin: 0; }
+.map { margin: 1rem 0; }
+.source { font-size: 0.875rem; color: var(--ink-soft); margin-top: 1.5rem; }
+</style>

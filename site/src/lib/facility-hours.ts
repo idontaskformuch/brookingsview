@@ -27,7 +27,7 @@ const DAY_KEYS: (keyof StructuredHours)[] = [
  *  no-leading-zero convention this site's other time formatting already
  *  uses (see lib/publish.py's fmt_time()/_fmt() equivalents on the Python
  *  side, same reasoning: readers think in 12-hour clock time). */
-function formatClock(hhmm: string): string {
+export function formatClock(hhmm: string): string {
   const [h, m] = hhmm.split(':').map(Number);
   const period = h < 12 ? 'AM' : 'PM';
   const hour12 = h % 12 || 12;

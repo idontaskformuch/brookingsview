@@ -113,6 +113,27 @@ export interface SiteConfig {
    *  sync with that config file by hand, same convention as
    *  hasClosureWatch above. */
   hasEventsSource?: boolean;
+  /** Broomfield place-layer handoff, Section 7: gates /place/[slug],
+   *  /places/ and their nav link -- a per-town test, not a permanent
+   *  platform feature (see the handoff's own "this is a test, not a
+   *  migration" framing). False everywhere except Broomfield, same
+   *  "enabled:false by default, opt in per town" convention as every
+   *  other flag here. Deliberately NOT mirrored into
+   *  configs/<town_id>.json's features block -- no Python/scraper code
+   *  reads this (seeding is manual, see scripts/seed_broomfield_places_batch1.py),
+   *  so there's nothing on that side to drift out of sync with, unlike
+   *  hasClosureWatch/hasNewInTown/hasHousingMarket/hasWhatsOn which all
+   *  gate a real Python-side pipeline too. */
+  hasPlaces?: boolean;
+  /** Staleness thresholds for the place layer (handoff Section 4) -- how
+   *  many days old verified_date/last_verified_at can be before a place's
+   *  hours/address downgrade from a bare present-tense fact to "Last
+   *  confirmed <date>". Two thresholds, not per-category ones: the
+   *  handoff's own suggested defaults (hours 45 days, address/phone 180
+   *  days) vary by WHICH FACT is stale, not by place type -- a park's
+   *  hours go stale exactly as fast as a library's. Present only when
+   *  hasPlaces is true. */
+  placeStaleness?: { hoursDays: number; addressPhoneDays: number };
   /** CityStatus (front-page condensed strip, lib/cityStatus.ts) -- which
    *  modules render, in render order. An id with no matching resolver, or
    *  an always-rendered module configured for a town with no real source
@@ -451,6 +472,8 @@ const CITIES: Record<string, SiteConfig> = {
     stateName: 'Colorado',
     stateAbbr: 'CO',
     hasWorkplaceWatch: true,
+    hasPlaces: true,
+    placeStaleness: { hoursDays: 45, addressPhoneDays: 180 },
     // What's On Phase 7 radius calibration (2026-09-07, real live data):
     // 20/30/45mi return nearly IDENTICAL event counts (877/875/869) --
     // Broomfield sits close enough to central Denver that 20mi already

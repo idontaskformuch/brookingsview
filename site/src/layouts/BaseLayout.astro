@@ -93,6 +93,7 @@ const nav = [
   ...(siteConfig.hasClosureWatch ? [{ href: '/closures/', label: 'Closure Watch' }] : []),
   ...(siteConfig.hasNewInTown ? [{ href: '/new-in-town/', label: 'New in Town' }] : []),
   { href: '/facilities/', label: 'Facilities' },
+  ...(siteConfig.hasPlaces ? [{ href: '/places/', label: 'Places' }] : []),
   ...(isBrookings ? [{ href: '/farm-report/', label: 'Farm report' }] : []),
   ...(isMorenoValley ? [{ href: '/home-sales/', label: 'Home sales' }] : []),
   ...(isMorenoValley ? [{ href: '/sports/', label: 'Sports' }] : []),

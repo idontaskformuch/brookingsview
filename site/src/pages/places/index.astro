@@ -1,0 +1,105 @@
+---
+/** Broomfield place-layer handoff, Step 4, Section 5.3: indexable index
+ *  page, grouped by category, each entry showing name + today's status +
+ *  a one-line teaser. The teaser is a short, deterministic line built
+ *  from real fields (category + open status) -- NOT an AI-generated
+ *  description and never a copy of the place's own `description` field,
+ *  per the handoff's own explicit "curated teaser, never copied facility
+ *  descriptions" rule (same approach as /events/free/'s own teasers).
+ *
+ *  Gated on siteConfig.hasPlaces, same as /place/[slug].astro.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import ShareButton from '../../components/ShareButton.astro';
+import { getAllPlaces, getAllPlaceHoursForTown, FACILITY_CATEGORY_LABELS } from '../../lib/db';
+import { computePlaceOpenStatus } from '../../lib/place-hours';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
+import { siteConfig } from '../../lib/site-config';
+
+if (!siteConfig.hasPlaces) {
+  return Astro.redirect('/', 302);
+}
+
+const [places, allHours] = await Promise.all([getAllPlaces(), getAllPlaceHoursForTown()]);
+const now = new Date();
+
+const hoursByPlaceId = new Map<number, typeof allHours>();
+for (const h of allHours) {
+  if (!hoursByPlaceId.has(h.place_id)) hoursByPlaceId.set(h.place_id, []);
+  hoursByPlaceId.get(h.place_id)!.push(h);
+}
+
+function teaserFor(place: (typeof places)[number]): string {
+  const categoryLabel = FACILITY_CATEGORY_LABELS[place.category] ?? place.category;
+  const status = computePlaceOpenStatus(hoursByPlaceId.get(place.id) ?? [], [], now, siteConfig.timezone);
+  const statusText = status.known
+    ? (status.isOpen ? 'Open now' : 'Closed now')
+    : 'Hours not yet confirmed';
+  return `${categoryLabel} · ${statusText}`;
+}
+
+// Same category-order convention as facilities/index.astro -- see that
+// file's own comment on why an unlisted category can't silently sort to
+// the front via .indexOf() returning -1.
+const categoryOrder = [
+  'library', 'park', 'city_hall', 'police', 'fire_station', 'post_office',
+  'recycling', 'animal_shelter', 'medical', 'school_district', 'transit',
+  'community_center', 'other',
+];
+const byCategory = new Map<string, typeof places>();
+for (const p of places) {
+  if (!byCategory.has(p.category)) byCategory.set(p.category, []);
+  byCategory.get(p.category)!.push(p);
+}
+const categories = [...byCategory.keys()].sort(
+  (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b)
+);
+
+const canonicalUrl = new URL('/places/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'Places', href: canonicalUrl },
+];
+const title = `Places in ${siteConfig.cityName} | ${siteConfig.siteName}`;
+---
+<BaseLayout title={title} wide
+  description={`Hours, addresses and contact for public places in ${siteConfig.cityName}, ${siteConfig.stateAbbr} -- verified against each place's own official source.`}>
+  <Breadcrumbs trail={breadcrumbTrail} />
+  <header class="lede">
+    <h1>Places in {siteConfig.cityName}</h1>
+    <p>Real, verified reference facts for public places in {siteConfig.cityName} -- hours, address
+    and contact, each checked against the place's own official source, with the date it was last
+    confirmed shown on every page.</p>
+    <ShareButton title={title} url={canonicalUrl} />
+  </header>
+
+  {categories.map((cat) => (
+    <section class="category">
+      <h2>{FACILITY_CATEGORY_LABELS[cat] ?? cat}</h2>
+      <ul class="places">
+        {byCategory.get(cat)!.map((p) => (
+          <li>
+            <a href={`/place/${p.slug}/`}>{p.name}</a>
+            <span class="teaser data">{teaserFor(p)}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))}
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
+</BaseLayout>
+
+<style>
+.lede { max-width: 42rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.category { margin-top: 2rem; }
+.category h2 { font-size: 1.125rem; margin: 0 0 0.75rem; }
+.places { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.places li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--rule); }
+.places a { font-weight: 600; }
+.teaser { color: var(--ink-soft); white-space: nowrap; font-size: 0.8125rem; }
+</style>

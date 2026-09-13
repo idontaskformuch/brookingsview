@@ -6466,3 +6466,92 @@ real, current sourcing in this session without padding -- 2 of the 10
 have incomplete data (hours) because their own real source doesn't
 state it, not because research was cut short. That's the batch; the
 remaining ~30-50 for Step 5 are a separate, later effort.
+
+## 70. `spec-broomfield-place-layer.md`, Step 4: `/place/[slug]` + `/places/` shipped, verified against all 10 seeded places (2026-09-13)
+
+New, separate templates -- `site/src/pages/place/[slug].astro` and
+`site/src/pages/places/index.astro` -- not variants of the existing
+`facilities/[slug].astro`/`facilities/index.astro`, which keep their own
+current content unchanged for all three towns. Both gated on the new
+`siteConfig.hasPlaces` flag (true for Broomfield only), same
+redirect-on-build pattern as `/workplace-watch/`. A new "Places" nav
+link appears only when `hasPlaces` is true.
+
+**Structure matches the handoff's own 5.1 exactly**: H1, an answer-first
+paragraph with no lede (open now or not, today's hours, address, phone
+-- one fact per sentence), a weekly hours table, an upcoming-exceptions
+section (only rendered when any exist in the next 60 days), a facts
+list (cost/services/accessibility -- only non-NULL fields), a map link,
+a verification block (source + "last confirmed" date, with an explicit
+staleness caveat when past threshold), then the existing
+`RelatedContent`/`ShareButton` components.
+
+**New library code, all with real unit tests** (14 new tests,
+`site/src/lib/place-hours.test.ts`):
+- `lib/place-hours.ts` -- `computePlaceOpenStatus()`, a SEPARATE function
+  from the existing `facility-hours.ts`'s `computeOpenStatus()`, not an
+  extension of it: reads the new `place_hours` row format (multiple
+  windows per day, `place_hours_exceptions` always overriding the
+  regular week for their own date), which the old JSONB-based function
+  can't represent at all. Computed server-side at build time in the
+  town's own timezone, per the handoff's explicit instruction never to
+  do this in browser JS.
+- `isPastStalenessThreshold()` -- two separate thresholds (hours: 45
+  days, address/phone: 180 days, `siteConfig.placeStaleness`), not one,
+  since hours age faster than a street address.
+- `buildPlaceOpeningHoursSpecification()` -- only ever called when
+  `hours_confidence='structured'` AND the data is inside its staleness
+  window, per the handoff's own explicit "emitting stale hours as
+  schema is worse than emitting none" rule.
+- `lib/db.ts` -- `getPlaceBySlug()`/`getAllPlaces()`/`getPlaceHours()`/
+  `getUpcomingPlaceHoursExceptions()`/`getAllPlaceHoursForTown()`/
+  `getPlaceGuardrailData()`, plus `formatFullCalendarDate()` ("Sunday,
+  September 13, 2026" -- the handoff's own explicit date-writing rule,
+  a new function alongside the existing, differently-formatted
+  `formatCalendarDate()` every facility page already depends on
+  unchanged). `FACILITY_CATEGORY_LABELS`/`FACILITY_SCHEMA_TYPE` gained a
+  `transit` entry (`'Transit'` / schema.org's real `BusStation` type) for
+  the one real seeded place using it.
+
+**Section 8 guardrails** (`build-checks.ts`, `assertPlaceLayerConsistent()`,
+gated on `hasPlaces`): throws on `hours_confidence='structured'` with
+zero `place_hours` rows, and on any place missing `source_url` or
+`verified_date`; warns (doesn't fail) on any place past its own
+staleness threshold, hours and address/phone tracked separately. Two of
+the spec's own guardrails have no code here, for real reasons rather
+than being skipped: a past-dated exception being rendered is
+structurally impossible by construction (`getUpcomingPlaceHoursExceptions()`
+only ever selects `date >= CURRENT_DATE`), and the "no LLM-written text
+may contain a time/date/phone/address" validation-package check has no
+current target -- these pages render zero LLM-written text today (the
+index page's own "teaser" is a deterministic, non-AI string built from
+category + open status, never the place's own free-text `description`).
+
+**A real bug found only by a real build, not by `astro check` or
+`vitest`**: the answer-first paragraph's "Opens at {time} {label}" line
+rendered as "Opens at 1:00 PMtoday" -- no space -- on the first real
+Broomfield build. Astro collapsed the whitespace-only text node between
+two adjacent `{expression}` blocks with nothing else between them (the
+`{' '}{expr}` joins elsewhere in the same file were already written
+defensively for exactly this and rendered fine; this one spot used a
+bare space between two expressions instead and didn't survive). Fixed
+by folding both values into one template-literal expression instead of
+two adjacent ones. Re-verified on a real rebuild: "Open now. Closes at
+6:00 PM today, Sunday, September 13, 2026." and "Closed now. Opens at
+1:00 PM today." both render correctly now.
+
+**Verified on real builds, all three towns**: Broomfield -- all 17
+seeded places get a real `/place/[slug]/` page; spot-checked open
+(Paul Derda, Sunday 8am-6pm), closed-opens-later-today (the library),
+and unconfirmed-hours (`county-commons-park`, correctly says "Hours
+have not been confirmed" rather than guessing) states, all correct;
+`/places/` correctly groups all 17 by category with accurate live
+open/closed status per place (spot-checked against the same real
+Sunday hours). Zero build-check warnings fired (every seeded place's
+`verified_date` is today, well inside both thresholds). Brookings and
+Moreno Valley: zero `/place/[slug]` pages built (`getStaticPaths()`
+correctly returns `[]`), `/places/` exists only as the same
+build-time redirect stub `/workplace-watch/` already has for towns
+without that feature (confirmed identical pattern, not a leak), no
+"Places" nav link renders. `astro check` 0 errors throughout, `vitest
+run` 657/657.
