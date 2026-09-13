@@ -31,7 +31,7 @@ function articleType(sourceType: SourceType): string {
 }
 
 export function buildArticleJsonLd(
-  story: Pick<Story, 'title' | 'published_at' | 'body' | 'source_type' | 'rating'>,
+  story: Pick<Story, 'title' | 'published_at' | 'body' | 'source_type' | 'rating' | 'source_url'>,
   heroUrl: string,
   siteName: string,
   // Additional crop URLs (e.g. 4:3, 1:1) alongside heroUrl -- see NEEDS-
@@ -59,6 +59,19 @@ export function buildArticleJsonLd(
     author: { '@type': 'Organization', name: siteName },
     publisher: { '@type': 'Organization', name: siteName },
   };
+
+  // Answer-engine-visibility handoff, Section 3: the provenance field that
+  // makes an AI-summarized story safe for a model to cite -- a
+  // machine-readable assertion that this article is derived from a real,
+  // named public document, not a bare claim. Same "resolved or nothing"
+  // gate the facility JSON-LD's address block already uses: only emitted
+  // when story.source_url is actually set, and only ever the SAME URL
+  // already rendered visibly on the page as "Source: the original agenda
+  // or listing" (see s/[slug].astro) -- never a second, silently-differing
+  // copy of that fact.
+  if (story.source_url) {
+    base.isBasedOn = story.source_url;
+  }
 
   // ReviewNewsArticle can carry a structured reviewRating -- only added
   // when a real numeric rating was actually extracted (see

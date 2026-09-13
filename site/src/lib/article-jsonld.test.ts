@@ -15,6 +15,7 @@ function baseStory(overrides: Partial<Parameters<typeof buildArticleJsonLd>[0]>)
     body: 'Body text.',
     source_type: 'culture_essay' as const,
     rating: null,
+    source_url: null,
     ...overrides,
   };
 }
@@ -66,6 +67,21 @@ describe('buildArticleJsonLd -- type selection', () => {
     const crop1x1 = 'https://morenovalleyview.com/assets/images/culture_essay-2026-08-01-1x1.png';
     const result = buildArticleJsonLd(baseStory({}), HERO_URL, SITE_NAME, [crop4x3, crop1x1]);
     expect(result.image).toEqual([HERO_URL, crop4x3, crop1x1]);
+  });
+
+  // Answer-engine-visibility handoff, Section 3: isBasedOn is the
+  // provenance field that makes a summary safe to cite -- only ever the
+  // SAME URL already rendered visibly on the page as "Source: the
+  // original agenda or listing" (see s/[slug].astro), never invented for
+  // a story that doesn't actually have one.
+  it('carries isBasedOn only when the story has a real source_url', () => {
+    const withSource = buildArticleJsonLd(
+      baseStory({ source_url: 'https://www.moval.org/citycouncil/agendas/2026-08-01.pdf' }), HERO_URL, SITE_NAME,
+    );
+    expect(withSource.isBasedOn).toBe('https://www.moval.org/citycouncil/agendas/2026-08-01.pdf');
+
+    const withoutSource = buildArticleJsonLd(baseStory({ source_url: null }), HERO_URL, SITE_NAME);
+    expect(withoutSource.isBasedOn).toBeUndefined();
   });
 });
 

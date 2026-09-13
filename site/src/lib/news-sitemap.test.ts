@@ -121,7 +121,7 @@ describe('the three-surface date consistency the brief explicitly requires', () 
     const sitemapInstant = new Date(sitemapDateMatch![1]).getTime();
 
     const jsonLd = buildArticleJsonLd(
-      { title: sample.title, published_at: publishedAt, body: 'x', source_type: 'meeting', rating: null },
+      { title: sample.title, published_at: publishedAt, body: 'x', source_type: 'meeting', rating: null, source_url: null },
       'https://brookingsview.com/og/meeting-10703.png', 'Brookings View',
     );
     const schemaInstant = new Date(jsonLd.datePublished as string).getTime();
