@@ -6733,3 +6733,58 @@ category label needed since park/medical/other already existed).
 and final candidates researched this batch were the last ones that could
 still be verified against a real, directly-fetched official source in
 this sitting. The remaining ~4-14 places are left for a future batch.
+
+## 73. `spec-broomfield-place-layer.md`, Step 5, batch 4: 10 more real parks seeded (46 of 40-50 total -- target reached) (2026-09-13)
+
+**New places** (`scripts/seed_broomfield_places_batch4.py`), all
+`category='park'`, each with a real address confirmed by directly
+fetching that park's own broomfield.org facility page: `brandywine-parks`,
+`bronco-park`, `country-vista-park`, `greenway-park`, `highland-park`,
+`broadlands-west-park`, `quail-creek-park`, `westlake-park-and-greenbelt`,
+`midway-park`, `columbine-meadows-parks`. Hours NULL for all ten -- none
+of their official pages state operating hours, same pattern as every
+park seeded in batches 2-3.
+
+All ten are parks because the remaining un-filled categories
+(`animal_shelter`, `school_district`) genuinely have no real Broomfield
+candidate left: both real animal-services and motor-vehicle offices
+already turned out to be the same buildings as existing places (batch3),
+and both real school districts serving Broomfield have their admin
+offices physically outside it (batch1/batch2). Parks are where real,
+addressable coverage gaps still exist.
+
+**One real candidate checked and deliberately not added**: Interlocken
+West Park. Its own official page gives its location as "Interlocken
+Pkwy. & Interlocken Blvd., Broomfield, CO 80021" -- the same cross-streets
+already used for the already-seeded Interlocken East Park, differing
+only in a zip code that doesn't actually distinguish the two on the page
+text itself. Rather than publish two places with indistinguishable
+address text (or guess a more specific address the source doesn't give),
+it was left out.
+
+**Two more real catches from directly fetching each park's own official
+page instead of trusting a search-engine summary** (same discipline that
+caught the skate park's wrong address/hours in batch3): a search summary
+claimed Midway Park's address was "1280 W Midway Blvd, Broomfield, CO
+80020"; broomfield.org's own page states only "Midway Boulevard and Kohl
+Street, Broomfield, CO 80021" -- different zip, no street number at all.
+A search summary claimed Columbine Meadows Park is "open from 5:00 AM to
+11:00 PM"; its own official page states no hours whatsoever. Both places
+below use the directly-fetched, correct (non-)values, not the search
+summary's.
+
+**Verified on a real rebuild**: all 46 Broomfield places now build a real
+`/place/[slug]/` page (up from 36). All ten new pages correctly show
+"Hours have not been confirmed for this location from a current source
+yet." rather than guessing. `/places/` groups all 46 correctly under
+"Parks" alongside the existing entries. `astro check` 0 errors; no shared
+code changed this batch (data only, all pre-existing category/label
+values).
+
+**Target reached**: 46 places, inside the spec's own 40-50 range. Per
+this session's "no rush" instruction the pace never changed to hit a
+number -- this batch simply happened to be the one that crossed the
+threshold with real, well-sourced candidates still available. Whether to
+seed further past 50 or consider Step 5's coverage complete and move
+toward Step 6 (Search Console baseline) is a call for the user, not
+assumed here.
