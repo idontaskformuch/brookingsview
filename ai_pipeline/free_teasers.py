@@ -5,7 +5,8 @@ digest: every other AI-generation module in this pipeline is tied to
 recurring/dated content (CONTENT_TRACK_TYPES, weekly/monthly digests).
 This is one-time-evergreen -- a facility's teaser is generated once and
 never regenerated; an event's teaser is generated once while it's
-upcoming. Both are cached in the DB (facilities.free_teaser,
+upcoming. Both are cached in the DB (places.free_teaser -- renamed from
+facilities in db/migrations/045_facilities_to_places.sql --,
 stories.free_teaser -- db/migrations/036_free_teasers.sql) specifically
 because the site rebuilds hourly and inline generation at Astro build
 time would re-pay for the same sentence forever.
@@ -306,7 +307,7 @@ def run_facilities(conn, cfg: dict, dry_run: bool) -> int:
         cur.execute(
             f"""
             SELECT id, name, category, address, hours_text, description
-              FROM facilities
+              FROM places
              WHERE town_id = %s AND category IN ({placeholders}) AND free_teaser IS NULL
             """,
             (town_id, *FREE_VENUE_CATEGORIES),
@@ -322,7 +323,7 @@ def run_facilities(conn, cfg: dict, dry_run: bool) -> int:
         print(f"  [{category}] {name}: {text!r} ({generated_by})")
         if not dry_run:
             with conn.cursor() as cur:
-                cur.execute("UPDATE facilities SET free_teaser = %s WHERE id = %s", (text, fid))
+                cur.execute("UPDATE places SET free_teaser = %s WHERE id = %s", (text, fid))
             updated += 1
     if not dry_run:
         conn.commit()

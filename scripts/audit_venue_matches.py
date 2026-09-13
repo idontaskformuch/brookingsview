@@ -104,7 +104,7 @@ def main() -> int:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT slug, name, name_aliases FROM facilities WHERE town_id = %s
+                SELECT slug, name, name_aliases FROM places WHERE town_id = %s
                 """,
                 (args.town,),
             )

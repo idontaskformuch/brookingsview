@@ -3,8 +3,9 @@ JSON-LD venue resolution & emission rules").
 
 CORE PRINCIPLE: address correctness is an eligibility and trust issue for
 Google's Event rich result. We never synthesize or guess a per-event
-address from a scraped venue string -- we resolve it against `facilities`
-(db/migrations/007_facilities.sql + 020_event_venue_resolution.sql), a
+address from a scraped venue string -- we resolve it against `places`
+(renamed from `facilities` in db/migrations/045_facilities_to_places.sql;
+originally db/migrations/007_facilities.sql + 020_event_venue_resolution.sql), a
 small, hand-verified registry, and only claim rich-result eligibility when
 the venue actually resolves.
 
@@ -16,7 +17,7 @@ TWO SEPARATE JOBS, deliberately split:
      read-only site build (which can re-run many times with no new source
      data and would otherwise inflate occurrence counts every rebuild).
   2. READ side (site/src/lib/db.ts, a parallel TypeScript implementation of
-     normalize_venue()): resolves against `facilities` fresh at every site
+     normalize_venue()): resolves against `places` fresh at every site
      build, so adding an alias to the registry re-resolves every previously
      unmatched event on the next rebuild with no pipeline re-run needed.
      Kept as a small duplicated algorithm rather than a cross-language
@@ -74,7 +75,7 @@ def load_registry(conn, town_id: str) -> dict[str, dict]:
             """
             SELECT slug, name, aliases, category, address, street_address,
                    postal_code, phone, website, lat, lon
-              FROM facilities WHERE town_id = %s
+              FROM places WHERE town_id = %s
             """,
             (town_id,),
         )

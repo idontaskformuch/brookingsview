@@ -116,7 +116,7 @@ def gather_facilities(conn, town_id: str) -> list[dict]:
         cur.execute(
             """
             SELECT slug, name, address, description, phone, website
-              FROM facilities WHERE town_id = %s
+              FROM places WHERE town_id = %s
             """,
             (town_id,),
         )

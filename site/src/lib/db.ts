@@ -1628,6 +1628,15 @@ export async function getPropertySalesByPin(pin: string): Promise<PropertySale[]
  * stod för nästan alla exponeringar sajten fick, men gav noll klick eftersom
  * ingen sida besvarade frågan). Fem-åtta sådana sidor med genuin, unik text
  * per anläggning är en normal katalogsida, inte skalat innehåll.
+ *
+ * Broomfield place-layer handoff, Step 2: the underlying table is now
+ * `places` (renamed from `facilities`, db/migrations/045_facilities_to_places.sql)
+ * -- this interface, getFacilities()/getFacilityBySlug() and every existing
+ * /facilities/ route deliberately KEEP their current names. Brookings and
+ * Moreno Valley's existing routes/columns are completely unaffected by the
+ * rename; only Broomfield's new /place/[slug] template (see that handoff)
+ * reads the place-layer-specific columns/tables this interface doesn't
+ * carry (place_hours, place_hours_exceptions, is_free, ...).
  */
 export interface Facility {
   slug: string;
@@ -1727,7 +1736,7 @@ export async function getFacilities(): Promise<Facility[]> {
            image_path, image_alt, name_aliases,
            image_attribution_text, image_attribution_url, image_needs_review, free_teaser,
            hours_structured, hours_needs_review
-      FROM facilities
+      FROM places
      WHERE town_id = ${TOWN_ID}
      ORDER BY category, name
   `) as Facility[];
@@ -1790,7 +1799,7 @@ export async function getFacilityBySlug(slug: string): Promise<Facility | null> 
            image_path, image_alt, name_aliases,
            image_attribution_text, image_attribution_url, image_needs_review, free_teaser,
            hours_structured, hours_needs_review
-      FROM facilities
+      FROM places
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
      LIMIT 1
   `) as Facility[];

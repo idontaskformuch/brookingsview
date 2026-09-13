@@ -296,7 +296,7 @@ async function buildLastmodMap(townId, databaseUrl) {
   for (const p of projects) map.set(`/city-hall/projects/${p.slug}/`, p.updated_at);
 
   const facilities = await sql`
-    SELECT slug, verified_date FROM facilities
+    SELECT slug, verified_date FROM places
      WHERE town_id = ${townId} AND verified_date IS NOT NULL
   `;
   for (const f of facilities) map.set(`/facilities/${f.slug}/`, f.verified_date);

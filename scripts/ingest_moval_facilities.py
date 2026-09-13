@@ -1,5 +1,7 @@
 """One-time/periodic ingest of Moreno Valley's official GIS open-data feeds
-into `facilities` -- see NEEDS-HUMAN-REVIEW.md, "3.1 Facilities sourcing".
+into `places` (renamed from `facilities` in
+db/migrations/045_facilities_to_places.sql) -- see NEEDS-HUMAN-REVIEW.md,
+"3.1 Facilities sourcing".
 
 SOURCE: the City of Moreno Valley publishes several public, unauthenticated
 Esri ArcGIS Feature Services (found via MoVal GeoHub, gis-moval.opendata.
@@ -320,7 +322,7 @@ def ingest(conn, town_id: str, records: list[dict], dry_run: bool) -> dict:
             if crosswalk_slug:
                 cur.execute(
                     """
-                    UPDATE facilities
+                    UPDATE places
                        SET lat = %(lat)s, lon = %(lon)s,
                            street_address = COALESCE(street_address, %(street_address)s),
                            postal_code = COALESCE(postal_code, %(postal_code)s),
@@ -338,7 +340,7 @@ def ingest(conn, town_id: str, records: list[dict], dry_run: bool) -> dict:
                 if slug == "shadow-mountain-park":
                     cur.execute(
                         """
-                        UPDATE facilities
+                        UPDATE places
                            SET street_address = %(street_address)s, address = %(address)s,
                                postal_code = %(postal_code)s, updated_at = now()
                          WHERE town_id = %(town_id)s AND slug = %(slug)s
@@ -350,7 +352,7 @@ def ingest(conn, town_id: str, records: list[dict], dry_run: bool) -> dict:
             else:
                 cur.execute(
                     """
-                    INSERT INTO facilities
+                    INSERT INTO places
                         (town_id, slug, name, category, address, street_address, postal_code,
                          aliases, description, website, hours_text, lat, lon,
                          source_url, verified_date, content_hash, updated_at)
@@ -361,7 +363,7 @@ def ingest(conn, town_id: str, records: list[dict], dry_run: bool) -> dict:
                          %(source_url)s, current_date, %(content_hash)s, now())
                     ON CONFLICT (town_id, slug) DO UPDATE SET
                         lat = EXCLUDED.lat, lon = EXCLUDED.lon,
-                        postal_code = COALESCE(facilities.postal_code, EXCLUDED.postal_code),
+                        postal_code = COALESCE(places.postal_code, EXCLUDED.postal_code),
                         content_hash = EXCLUDED.content_hash, updated_at = now()
                     """,
                     {"town_id": town_id, "slug": slug, "name": rec["name"], "category": rec["category"],

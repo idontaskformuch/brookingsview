@@ -1,5 +1,7 @@
 """Loads hand-curated facility facts from data/facilities/<town_id>.json into
-the `facilities` table (see db/migrations/007_facilities.sql).
+the `places` table (renamed from `facilities` in
+db/migrations/045_facilities_to_places.sql; originally
+db/migrations/007_facilities.sql).
 
 WHY A SEPARATE SCRIPT, NOT A scrapers/parsers/*.py PARSER: everything else in
 scrapers/parsers/ fetches from a live source on a schedule (see runner.py +
@@ -46,7 +48,7 @@ def seed_town(conn, town_id: str) -> tuple[int, int]:
             )
             cur.execute(
                 """
-                INSERT INTO facilities
+                INSERT INTO places
                     (town_id, slug, name, category, address, street_address,
                      postal_code, aliases, phone, website, hours_text,
                      description, lat, lon, source_url, verified_date,

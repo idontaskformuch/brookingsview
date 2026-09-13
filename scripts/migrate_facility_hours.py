@@ -1,4 +1,4 @@
-"""One-time backfill: facilities.hours_text -> hours_structured/hours_needs_review
+"""One-time backfill: places.hours_text (renamed from facilities) -> hours_structured/hours_needs_review
 (db/migrations/038_facility_hours_structured.sql), via
 ai_pipeline/facility_hours.py's deterministic parser.
 
@@ -28,7 +28,7 @@ def main() -> int:
 
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, town_id, slug, hours_text FROM facilities WHERE hours_text IS NOT NULL ORDER BY town_id, slug")
+            cur.execute("SELECT id, town_id, slug, hours_text FROM places WHERE hours_text IS NOT NULL ORDER BY town_id, slug")
             rows = cur.fetchall()
 
             parsed_count = flagged_count = 0
@@ -43,7 +43,7 @@ def main() -> int:
 
                 if args.apply:
                     cur.execute(
-                        "UPDATE facilities SET hours_structured = %s, hours_needs_review = %s WHERE id = %s",
+                        "UPDATE places SET hours_structured = %s, hours_needs_review = %s WHERE id = %s",
                         (json.dumps(result.structured) if result.structured else None, result.needs_review, facility_id),
                     )
         # get_conn()'s own context manager commits on a clean exit -- no

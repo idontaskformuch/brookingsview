@@ -6274,3 +6274,89 @@ run the same locally and in CI, per its own module docstring); `record_run()`
 is a two-line composition of the two functions immediately above it
 that already have no tests either, so this doesn't introduce a new gap,
 it stays consistent with the file's existing convention.
+
+## 68. `spec-broomfield-place-layer.md`, Step 2: `facilities` renamed to `places` -- schema conflicts found and resolved, one real cross-file bug caught by real builds (2026-09-13)
+
+**Real conflicts between the spec's own "new columns" list (3.2) and the
+already-existing `facilities` schema**, checked before writing any DDL
+(confirmed against the live table, not assumed):
+
+- `phone`, `lat`, `lon`, `source_url` -- byte-identical to what the spec
+  asks for, already present. Not re-added.
+- `website_url` (spec) vs `website` (existing) -- same job, different
+  name. Reused the existing column, not duplicated.
+- `last_verified_at TIMESTAMPTZ` (spec) vs `verified_date DATE`
+  (existing, already rendered sitewide as "checked <date>") -- same job,
+  coarser granularity, which is already sufficient for that display.
+  Reused, not duplicated.
+- `place_type` (spec, 9 values: library/park/recreation_center/pool/
+  city_office/community_center/recycling/school_admin/transit) vs
+  `category` (existing, 12 DIFFERENT values, already load-bearing --
+  `FACILITY_CATEGORY_LABELS`/`FACILITY_SCHEMA_TYPE`, the `/facilities`
+  index page's own grouping, "Always free" venue filtering). These are
+  not a naming difference -- Broomfield already has real seeded rows
+  under `police`/`fire_station`/`post_office`/`animal_shelter`/`medical`,
+  none of which `place_type`'s own list covers at all. **Decided with
+  the human, not silently invented**: `category` stays the one taxonomy;
+  `place_type` was not added. Extending `category`'s own label maps with
+  the genuinely missing values (`recreation_center`, `pool`, `transit`)
+  is deferred to Step 4 (page template), when the actual render code
+  needs them.
+
+**What was genuinely new and got added** (all nullable, existing rows on
+all three towns unaffected): `is_free`, `fee_note`, `accessibility_note`,
+`services TEXT[]`, `verification_method`, `hours_confidence`. Plus two
+new tables per the spec's own 3.3/3.4: `place_hours` (one row per
+regular weekly interval, multiple rows per day allowed for split hours,
+absent row = unknown vs. `opens=closes=NULL` = confirmed closed) and
+`place_hours_exceptions` (holidays/closures, always overrides the
+regular weekly rows for its own date).
+
+`db/migrations/045_facilities_to_places.sql` -- `ALTER TABLE facilities
+RENAME TO places`, then the additive columns/tables above, in one
+transaction. Applied directly against the real database (confirmed:
+114 rows survived intact, all pre-existing data untouched).
+
+**Every SQL reference across both codebases updated** -- 1 TypeScript
+file (`site/src/lib/db.ts`, 2 queries) and 10 Python files
+(`ai_pipeline/free_teasers.py`, `ai_pipeline/venue_registry.py`,
+`scripts/audit_venue_matches.py`, `scripts/ingest_brookings_facilities.py`,
+`scripts/ingest_moval_facilities.py`, `scripts/migrate_facility_hours.py`,
+`scripts/scan_contamination.py`, `scripts/seed_facilities.py`,
+`scripts/seed_facility_name_aliases.py`, `scripts/source_venue_images.py`).
+`Facility`/`getFacilities()`/`getFacilityBySlug()` and every existing
+`/facilities/` route deliberately KEEP their current names -- only the
+underlying SQL table identifier changed; Brookings and Moreno Valley's
+existing routes, columns and rendering are completely unaffected by
+design, not just by luck.
+
+**A real bug this rename caught, only visible on a real build**:
+`site/astro.config.mjs` itself (not `site/src/lib/db.ts`) has its OWN
+direct `FROM facilities` query (`buildLastmodMap()`, for the sitemap's
+lastmod dates) -- missed by the initial grep because it was scoped to
+`site/src/` only, not the `site/` root where the Astro config itself
+lives. The first real Brookings build after the rename failed
+immediately with `relation "facilities" does not exist` at Astro config
+load time, before a single page rendered -- exactly the kind of failure
+this session's own "verify on real builds, not just type-checking"
+discipline exists to catch (`astro check` cannot see this: `astro.config.mjs`
+isn't part of the TypeScript project it checks). Fixed, then a
+repo-wide grep (not directory-scoped) confirmed no third location was
+missed.
+
+**Unrelated, also hit mid-verification**: a second build failure
+(missing image asset for a same-day-published culture essay) turned out
+to be the SAME local-clone-staleness pattern already on file --
+`origin/main` had one bot-pushed illustration commit
+(`5525fc1`, "Daily content: add illustration for today's article") this
+local clone hadn't fetched yet. `git fetch` + a clean fast-forward merge
+(zero conflict with any of this session's own uncommitted changes)
+resolved it -- not a rename bug, recorded here only so it isn't
+mistaken for one by a future reader of this same build log.
+
+**Verified**: `astro check` 0 errors, real Brookings build clean end to
+end after both fixes -- 36 facility pages built, `city-hall`'s own
+`telephone`/`openingHoursSpecification` JSON-LD confirmed present and
+correct on the real rendered page. Broomfield and Moreno Valley builds
+in progress (queued next in this same pass, before any seeding work
+starts).

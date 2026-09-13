@@ -1,4 +1,5 @@
-"""Deterministic parser: facilities.hours_text (free text, hand-curated by a
+"""Deterministic parser: places.hours_text (renamed from facilities in
+db/migrations/045_facilities_to_places.sql; free text, hand-curated by a
 human against each facility's own official page -- see
 scripts/seed_facilities.py) -> structured per-weekday open/close times.
 

@@ -271,7 +271,7 @@ def main() -> int:
             needs_review = entry.get("needs_review", False)
             with conn.cursor() as cur:
                 cur.execute(
-                    """UPDATE facilities SET image_path = %s, image_source = 'wikimedia_commons',
+                    """UPDATE places SET image_path = %s, image_source = 'wikimedia_commons',
                        image_license = %s, image_attribution_text = %s, image_attribution_url = %s,
                        image_needs_review = %s
                        WHERE town_id = %s AND slug = %s""",
@@ -286,7 +286,7 @@ def main() -> int:
             print(f"[{town}/{slug}] no Commons match -- clearing image_path, flagging for review")
             with conn.cursor() as cur:
                 cur.execute(
-                    """UPDATE facilities SET image_path = NULL, image_alt = NULL, image_source = NULL,
+                    """UPDATE places SET image_path = NULL, image_alt = NULL, image_source = NULL,
                        image_license = NULL, image_attribution_text = NULL, image_attribution_url = NULL,
                        image_needs_review = true
                        WHERE town_id = %s AND slug = %s""",

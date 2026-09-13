@@ -1,4 +1,5 @@
-"""One-time seed: sets facilities.name_aliases for the handful of landmark
+"""One-time seed: sets places.name_aliases (renamed from facilities in
+db/migrations/045_facilities_to_places.sql) for the handful of landmark
 venues the Venue & Category Image Identity feature actually needs it for
 (see NEEDS-HUMAN-REVIEW.md, "Venue & Category Image Identity" and
 site/src/lib/images.ts's module docstring).
@@ -82,7 +83,7 @@ def apply_seed(conn, apply: bool) -> None:
     with conn.cursor() as cur:
         for (town_id, slug), aliases in SEED.items():
             cur.execute(
-                "SELECT name_aliases FROM facilities WHERE town_id = %s AND slug = %s",
+                "SELECT name_aliases FROM places WHERE town_id = %s AND slug = %s",
                 (town_id, slug),
             )
             row = cur.fetchone()
@@ -98,7 +99,7 @@ def apply_seed(conn, apply: bool) -> None:
             print(f"  {town_id}/{slug}: adding {added}")
             if apply:
                 cur.execute(
-                    "UPDATE facilities SET name_aliases = %s WHERE town_id = %s AND slug = %s",
+                    "UPDATE places SET name_aliases = %s WHERE town_id = %s AND slug = %s",
                     (merged, town_id, slug),
                 )
 
