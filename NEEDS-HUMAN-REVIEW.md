@@ -6555,3 +6555,109 @@ build-time redirect stub `/workplace-watch/` already has for towns
 without that feature (confirmed identical pattern, not a leak), no
 "Places" nav link renders. `astro check` 0 errors throughout, `vitest
 run` 657/657.
+
+## 71. `spec-broomfield-place-layer.md`, Step 5, batch 2: 10 more real places seeded (27 of 40-50 total), plus two real bugs found in `place-hours.ts` on this batch's own data (2026-09-13)
+
+**New places** (`scripts/seed_broomfield_places_batch2.py`), each with a
+real, checked source and `source_url`/`verified_date` set, same rules as
+batch 1 -- NULL left wherever the source itself doesn't state a fact,
+nothing guessed or AI-written:
+
+- `the-bay-aquatic-park` (community_center) -- address confirmed against
+  `broomfield.org` (250 Spader Way; third-party aggregators listed 250
+  Lamar St, not used). Hours left NULL -- the facility runs
+  seasonal/session-based hours, not a fixed weekly schedule, and its own
+  official page doesn't publish one.
+- `us-36-flatiron-station` (transit) -- hours NULL, RTD publishes routes/
+  schedules, not station "open" hours as such.
+- `miramonte-park`, `zang-spur-park`, `community-park` (park) -- address
+  only, hours NULL (Broomfield's park pages don't publish per-park hours
+  beyond a citywide dawn-to-dusk convention that isn't a sourced fact per
+  place).
+- `broomfield-depot-museum` (museum) -- structured hours, Sat 11am-4pm,
+  plus two real `place_hours_exceptions` rows (2026-09-19 and 2026-09-26,
+  "Closed for construction (reopens October 3, 2026)"), sourced from the
+  museum's own page.
+- `broomfield-health-human-services` (other) -- structured M-F 8am-5pm.
+- `broomfield-workforce-center` (other) -- structured split hours, M-F
+  8am-12pm / 1pm-5pm, sourced from the center's own page (a real,
+  non-hypothetical split-hours row, the first this project has seeded).
+- `broomfield-veterans-museum` (museum) -- structured Tue/Thu 10am-2pm +
+  Sat 9am-3pm.
+- `broomfield-auditorium` (other) -- structured M-F 10am-6pm only,
+  `is_free` left NULL (its own page doesn't state a blanket fee/free
+  status -- rental venue, price depends on the event).
+
+New `museum` category added to `FACILITY_CATEGORY_LABELS`/
+`FACILITY_SCHEMA_TYPE` (`site/src/lib/db.ts`) and both index pages'
+`categoryOrder` arrays, same pattern as `transit` in Step 3/4 -- reusing
+`category`, not the spec's own separate `place_type` taxonomy, per the
+Step 2 decision.
+
+**Three real candidates explicitly excluded**, documented in the seed
+script's own module docstring rather than silently dropped: Boulder
+Valley School District's admin building (in Boulder, not Broomfield --
+same "physically outside the town" exclusion as Adams 12 in Step 3);
+McKay Lake Park (owned/operated by the City of Westminster, not
+Broomfield); Josh's Pond (ambiguous jurisdiction, no clean single
+address to source against confidently in this sitting).
+
+**Not a duplicate**: a stale, 2013-dated official Broomfield PDF (already
+flagged as not a current source in Step 3) separately lists a "Broomfield
+Community and Senior Center" at a different address than the
+already-seeded Broomfield Community Center. Checked against current
+sources -- confirmed to be the same building under an older name, not a
+second facility. Not added as a duplicate row.
+
+**Honest accounting, per the explicit "no rush" instruction**: this batch
+adds 10, bringing the real total to 27 of the spec's 40-50 target. Same
+as batch 1, stopping here rather than pushing further in one sitting --
+research quality (checking each place against its own official source,
+not an aggregator, and confirming jurisdiction) is the limiting factor,
+not the row count. The remaining ~13-23 places are left for a future
+batch.
+
+**Two real bugs found in `place-hours.ts`, both only by a real build
+against real seeded data, neither caught by the existing unit suite**:
+
+1. `computePlaceOpenStatus()`'s "opens next" 7-day scan was only applying
+   `exceptions` to `now`'s own date, passing `[]` for every future day it
+   scanned. On a real rebuild, the Depot Museum's answer-first paragraph
+   said "Closed now. Opens at 11:00 AM Saturday" while the same page's own
+   "Upcoming exceptions" section, directly below, correctly listed that
+   exact Saturday as closed for construction -- a real, visible
+   contradiction on one page. Fixed by threading the real `exceptions`
+   array through the whole scan, not just today.
+
+2. Fixing (1) alone did not fix the real build -- the same wrong text
+   still rendered. Root cause: `windowsForDate()`'s exception lookup used
+   `exceptions.find((e) => e.date === isoDate)`, a raw string-equality
+   check that doesn't reliably hold against the Neon/TS driver's actual
+   runtime representation of a `DATE` column value -- the exact same
+   "sometimes a string, sometimes not" ambiguity `lib/db.ts`'s own
+   `calendarDateParts()`/`formatCalendarDate()` already exists to solve
+   (per that function's own documented history). The unit test fixtures
+   used clean string literals that happened to string-match fine even
+   under the old, buggy comparison, so the automated suite alone could
+   never have caught this -- it only ever showed up against real
+   DB-fetched rows. Fixed by importing `calendarDateParts` into
+   `place-hours.ts` and adding `sameCalendarDate()`/`compareCalendarDates()`
+   helpers that compare actual Y/M/D numeric parts instead of raw
+   equality/`<=`/`>=`. Applied the same fix proactively to the
+   `valid_from`/`valid_to` seasonal-range check too, even though no
+   seeded row exercises it yet -- same bug class, fixed before a second
+   live incident rather than after.
+
+Added one new regression test reproducing the real Depot Museum scenario
+(Saturday-only hours, next Saturday excepted away, asserts the 7-day scan
+correctly falls through to "not open this week" rather than naming the
+excepted date). Full suite 658/658 passing, `astro check` 0 errors.
+
+**Verified on a real rebuild after both fixes**: the Depot Museum's
+answer-first paragraph now correctly reads "Closed now, with no confirmed
+opening time this week," consistent with its own exceptions section.
+Spot-checked the Veterans Museum, Workforce Center, and Health & Human
+Services pages (none have exceptions) -- all still render correctly,
+unaffected by the shared-function change. All 27 place pages build; the
+`/places/` index groups all 27 correctly, including the new `museum`
+category.

@@ -1972,6 +1972,12 @@ export const FACILITY_CATEGORY_LABELS: Record<string, string> = {
   // Broomfield place-layer handoff, Step 3: the first real place seeded
   // under this category (US 36 & Broomfield Station Park-n-Ride).
   transit: 'Transit',
+  // Step 5: the Depot Museum and Veterans Museum -- genuinely distinct
+  // from every other category (not a park, not a generic civic office),
+  // and real enough (two seeded rows, both real destinations people
+  // search hours for) to earn their own label rather than falling into
+  // "Other" alongside unrelated landmarks.
+  museum: 'Museums',
   other: 'Other',
 };
 
@@ -1999,6 +2005,8 @@ export const FACILITY_SCHEMA_TYPE: Record<string, string> = {
   // seeded transit place today (US 36 & Broomfield Station) is a bus
   // park-n-ride, not rail.
   transit: 'BusStation',
+  // Step 5: also a real, dedicated schema.org type, not a fallback.
+  museum: 'Museum',
   other: 'CivicStructure',
 };
 
