@@ -6031,3 +6031,23 @@ missing the now-required `source_url` key), `vitest run` 640/640 (2 new
 tests for `isBasedOn`), real clean builds for Brookings and Broomfield
 inspected directly from `dist/` output. Moreno Valley not yet
 build-verified for this specific change (queued next).
+
+## 63. `isBasedOn`/noindex decision made: decoupled for the four thin-scraped-but-citable source types (2026-09-13)
+
+Resolves #62's own open question. Decided explicitly, not inferred: an
+AI crawler reading page content for grounding/citation is a different
+consumer than a search-ranking algorithm, which is the answer-engine-
+visibility spec's own stated premise. `s/[slug].astro` now computes
+`emitArticleSchema` separately from the page's own `noindex` meta tag --
+`meeting`/`meeting_followup`/`event`/`alert` (the only four source_types
+that ever carry a real `source_url`) get Article/`isBasedOn` JSON-LD
+even while staying `noindex` for classic search; every other still-
+noindexed case (thin by word count, unpublished, data-pending) stays
+excluded exactly as before. `noindex` itself is untouched -- this only
+changes whether the schema block renders, not what search engines are
+told about the page. Full reasoning and the code comment are in
+`s/[slug].astro` itself, next to `emitArticleSchema`'s own definition.
+Verified live: `meeting-2026-09-15-12462` (Brookings, noindexed) now
+correctly carries `"isBasedOn":"https://cityofbrookings.legistar1.com/.../3554_A_City_Council_26-09-15_Meeting_Agenda.pdf"`
+alongside its unchanged `<meta name="robots" content="noindex">`.
+
