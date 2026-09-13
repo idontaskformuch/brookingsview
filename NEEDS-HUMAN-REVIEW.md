@@ -5546,3 +5546,65 @@ free, same as it already does for `jackrabbits`/`sports`.
 "Vail Resorts Corporate Newsroom for Broomfield") -- both spot-checked
 directly from `dist/` output, not just unit tests.
 
+
+## 56. Post-spec cleanup, part 2: Phase 4's prose hub-backlinks extended to the dynamic per-instance templates (#53) (2026-09-13)
+
+Phase 4 (#53) covered the 17 static spoke pages only. This extends the
+same "in prose, high on the page" treatment -- distinct from a
+breadcrumb, which is structural, not prose -- to the dynamic instance
+templates behind facility details, home-sales sub-pages, job categories,
+event facets, and story permalinks. Same `resolveHubBacklink()` from
+`lib/clusters.ts` throughout, no new resolution logic:
+
+- `facilities/[slug].astro` -- one sentence added after the existing
+  lede paragraph, using the same `facilities/detail` route key its own
+  breadcrumb already resolves.
+- `home-sales/[slug].astro`, `home-sales/archive.astro`,
+  `home-sales/zip/[zip].astro` -- one sentence each (all `home-sales`
+  route key, matching their own breadcrumb calls), pointing to the
+  `work_and_money` cluster hub (`/workplace-watch/`) -- a genuinely new
+  cross-link these pages didn't have before, not merely a reworded
+  existing one.
+- `jobs/category/[category].astro` -- one sentence (`jobs` route key),
+  same `/workplace-watch/` hub.
+- `events/[facet].astro` -- one sentence (`events/facet` route key),
+  pointing back to the `whats_happening` hub (`/events/`) itself. This
+  duplicates the facet-nav's existing "All events" link in destination,
+  but not in kind -- the facet-nav is UI chrome, this is the first prose
+  version, matching every other spoke's own hub-backlink treatment
+  regardless of what nav chrome already existed alongside it.
+- `s/[slug].astro` -- one sentence per the 7 `story:<sourceType>` groups
+  Phase 2's breadcrumb work already resolves a real cluster for (meeting,
+  meeting_followup, event, weekly, alert, workplace_watch_digest,
+  home_sales_digest), hand-worded per type the same way the 17 static
+  spokes were, rendered in the same slot as the existing `threadProject`
+  banner (right before the story body).
+
+**Scoping decision**: a page qualified for this pass if it already had
+SOME backlink infrastructure -- even just a Phase 2 breadcrumb, which is
+structural, not prose -- per the instruction "flera har redan någon typ
+av backlink -- målet är konsekvens, inte att lägga till länkar där det
+saknas helt." `events/past.astro` was the one candidate checked and
+confirmed (via grep) to have zero breadcrumb or backlink of any kind --
+deliberately excluded from this pass rather than silently skipped;
+someone should decide on purpose whether it warrants a first cluster
+membership at all, which is a bigger question than this cleanup pass.
+
+**Noted, not fixed (out of scope for this pass)**: `home-sales/[slug].astro`'s
+own per-instance title (`` `${address} — Home Sale History — ${siteConfig.siteName}` ``)
+uses an em-dash, violating the metadata handoff's no-em-dash rule. It's a
+dynamic per-instance title the static `page-meta.ts` catalog never
+covered (unlike the facility-detail and this-week extraVar patterns,
+nobody built a `home-sales/detail` catalog entry for it), so fixing it is
+a real, separate decision, not a one-line touch-up worth bundling into an
+unrelated backlink pass.
+
+**Verified against real, clean builds for all three towns** (Brookings,
+Broomfield, Moreno Valley -- the only one of the three with real
+`home-sales` data, so the only build that could confirm those three
+files' backlinks render at all), spot-checked directly from `dist/`
+output: `facilities/[slug]` -> Places, `jobs/category/[category]` ->
+Work and money, `events/[facet]` -> What's happening, and all 7 story
+types' hand-written sentences resolving to their correct hub, on real
+built pages, not synthetic fixtures.
+

@@ -15,7 +15,7 @@ import { getRecentJobs, formatDate } from '../../../lib/db';
 import { salaryText, capByEmployer, slugifyCategory } from '../../../lib/jobs';
 import { siteConfig } from '../../../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../../lib/article-jsonld';
-import { buildClusterBreadcrumbTrail } from '../../../lib/clusters';
+import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../../lib/clusters';
 
 export async function getStaticPaths() {
   const jobs = await getRecentJobs();
@@ -57,6 +57,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   ...buildClusterBreadcrumbTrail('jobs', siteConfig, { label: 'Jobs', href: '/jobs/' }),
   { label: category, href: canonicalUrl },
 ];
+const hubBacklink = resolveHubBacklink('jobs', siteConfig);
 ---
 <BaseLayout title={title} wide ogSlug="section-jobs" description={description} noindex={isNoindex}>
   <Breadcrumbs trail={breadcrumbTrail} />
@@ -67,7 +68,8 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
     are in surrounding towns, not {siteConfig.cityName} itself; each listing's
     location is shown alongside it. We earn a small commission if you apply
     through a listing here — it never affects which jobs are shown or how
-    they're ordered.</p>
+    they're ordered.
+    {hubBacklink && <> Curious what employees actually say about local employers? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
     <ShareButton title={title} url={canonicalUrl} />
   </header>
 

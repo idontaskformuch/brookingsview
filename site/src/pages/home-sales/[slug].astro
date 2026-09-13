@@ -21,7 +21,7 @@ import { buildPropertySaleJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } 
 import { titleCaseAddress, extractZip, slugifyAddress, isOutlierSale, digestSlugForSaleDate } from '../../lib/home-sales';
 import { siteConfig } from '../../lib/site-config';
 import { isWithinRenderWindow } from '../../lib/render-window';
-import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
+import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 
 export async function getStaticPaths() {
   if (siteConfig.townId !== 'moreno_valley_ca') return [];
@@ -87,6 +87,7 @@ const propertyJsonLd = buildPropertySaleJsonLd(
 );
 
 const title = `${address} — Home Sale History — ${siteConfig.siteName}`;
+const hubBacklink = resolveHubBacklink('home-sales', siteConfig);
 const latestSale = sales[0];
 const description = latestSale.sale_price != null
   ? `${address} sold for ${formatPrice(latestSale.sale_price)} on ${formatSaleDate(latestSale.sale_date)}. Recorded sale history from Riverside County's public assessor data.`
@@ -111,6 +112,7 @@ const description = latestSale.sale_price != null
           )}
         </p>
       )}
+      {hubBacklink && <p class="sub">Curious what employees actually say about local employers? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</p>}
       <ShareButton title={title} url={canonicalUrl} />
     </header>
 

@@ -20,7 +20,7 @@ import { categoryImagesFor } from '../../config/category-images';
 import ImageAttribution from '../../components/ImageAttribution.astro';
 import { shouldNoindexStory } from '../../lib/noindex';
 import { canonicalUrlForStory } from '../../lib/cross-site-canonical';
-import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
+import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 
 export async function getStaticPaths() {
   // Fetched once for the whole build, not per-page -- the facilities set is
@@ -124,6 +124,23 @@ const CLUSTER_STORY_ROUTE_KEYS: Partial<Record<string, string>> = {
   home_sales_digest: 'story:home_sales_digest',
 };
 const clusterStoryRouteKey = CLUSTER_STORY_ROUTE_KEYS[story.source_type];
+// Topical authority handoff cleanup: same "in prose, high on the page"
+// hub-backlink treatment Phase 4 gave the 17 static spoke pages, extended
+// here to the story permalinks that Phase 2 above already resolved a real
+// cluster/hub for. One hand-written sentence per source_type (same
+// approach as the static spokes), reusing resolveHubBacklink() -- never a
+// new resolution mechanism.
+const HUB_BACKLINK_COPY: Partial<Record<string, string>> = {
+  meeting: 'Looking for more coverage like this',
+  meeting_followup: 'Looking for more coverage like this',
+  event: 'Looking for more upcoming events',
+  weekly: "Looking for the rest of what's happening this week",
+  alert: 'Looking for more on road conditions and closures',
+  workplace_watch_digest: 'Curious what employees say about other local employers',
+  home_sales_digest: 'Want to browse individual recent home sales',
+};
+const hubBacklink = clusterStoryRouteKey ? resolveHubBacklink(clusterStoryRouteKey, siteConfig) : null;
+const hubBacklinkLead = HUB_BACKLINK_COPY[story.source_type];
 // Every other source_type (the content-track essay/review/recipe types,
 // plus the remaining digest types) isn't modeled as its own cluster
 // story-group -- their INDEX page (recipes/editorials/columns/etc.) is the
@@ -249,6 +266,12 @@ const eventJsonLdObject = buildEventJsonLd(
     {threadProject && (
       <p class="thread-banner">
         Part of an ongoing story: <a href={`/city-hall/projects/${threadProject.slug}/`}>{threadProject.title}</a>
+      </p>
+    )}
+
+    {hubBacklink && (
+      <p class="thread-banner">
+        {hubBacklinkLead}? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.
       </p>
     )}
 

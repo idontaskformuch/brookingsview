@@ -15,7 +15,7 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { getContentByType, formatMonthYear } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
-import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
+import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
@@ -32,6 +32,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   ...buildClusterBreadcrumbTrail('home-sales', siteConfig, { label: 'Home sales', href: '/home-sales/' }),
   { label: 'Digest archive', href: canonicalUrl },
 ];
+const hubBacklink = resolveHubBacklink('home-sales', siteConfig);
 
 const itemListJsonLd = digests.length > 0 ? {
   '@context': 'https://schema.org',
@@ -50,7 +51,8 @@ const itemListJsonLd = digests.length > 0 ? {
   <header class="lede">
     <h1>Home sales digest archive</h1>
     <p>Every monthly home-sales digest, oldest to newest. Looking for
-    recent individual sales? See <a href="/home-sales/">Recent home sales →</a>.</p>
+    recent individual sales? See <a href="/home-sales/">Recent home sales →</a>.
+    {hubBacklink && <> Curious what employees actually say about local employers? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
     <ShareButton title={title} url={canonicalUrl} />
   </header>
 

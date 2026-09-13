@@ -29,7 +29,7 @@ import { buildEventJsonLd } from '../../lib/event-jsonld';
 import { EVENT_FACETS, type EventFacet } from '../../lib/event-facets';
 import { siteConfig } from '../../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
-import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
+import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 
 export async function getStaticPaths() {
   const isBrookings = siteConfig.townId === 'brookings_sd';
@@ -148,12 +148,14 @@ const siblingFacets = EVENT_FACETS.filter(
 );
 
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('events/facet', siteConfig, { label: facet.navLabel, href: canonicalUrl });
+const hubBacklink = resolveHubBacklink('events/facet', siteConfig);
 ---
 <BaseLayout title={title} wide ogSlug={`events-${facet.slug}`} description={description} noindex={isNoindex}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>{facet.heading}</h1>
-    <p>{facet.intro(siteConfig.cityName)}</p>
+    <p>{facet.intro(siteConfig.cityName)}
+    {hubBacklink && <> Looking for the full calendar? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
     <ShareButton title={title} url={canonicalUrl} />
   </header>
 

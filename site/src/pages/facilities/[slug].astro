@@ -18,7 +18,7 @@ import {
 } from '../../lib/db';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
-import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
+import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 import { computeOpenStatus } from '../../lib/facility-hours';
 import { buildFacilityLede } from '../../lib/facility-lede';
 import { resolvePageMeta } from '../../lib/page-meta';
@@ -48,6 +48,7 @@ const description = facility.description
 // doesn't need the address baked in).
 const lede = buildFacilityLede(facility.description, facility.address, facility.slug);
 const pageMeta = resolvePageMeta('facilities/detail', siteConfig, { FacilityName: facility.name });
+const hubBacklink = resolveHubBacklink('facilities/detail', siteConfig);
 
 // Cross-link upcoming events held at this facility -- the venue registry
 // (ai_pipeline/venue_registry.py, site/src/lib/event-jsonld.ts) is the join
@@ -113,6 +114,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
         the text itself was. `lede` (not `facility.description` directly)
         also carries the address in prose now -- see buildFacilityLede(). */}
     {lede && <p class="description">{lede}</p>}
+    {hubBacklink && <p class="description">Looking for a different facility? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</p>}
 
     <dl class="facts">
       {facility.address && (
