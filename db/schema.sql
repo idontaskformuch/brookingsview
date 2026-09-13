@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS scrape_runs (
     id            BIGSERIAL PRIMARY KEY,
     town_id       TEXT NOT NULL REFERENCES towns(town_id),
     source_key    TEXT NOT NULL,
-    status        TEXT NOT NULL,          -- 'ok' | 'error' | 'stub' | 'skipped'
+    status        TEXT NOT NULL,          -- 'ok' | 'error' | 'stub' | 'skipped' | 'manual' (see db.py's record_run())
     http_code     INT,
     items_found   INT DEFAULT 0,
     items_new     INT DEFAULT 0,

@@ -6226,3 +6226,51 @@ Hub numbers weren't independently re-measured for Brookings/Broomfield
 differs by a few characters) but should generalize; entity-consistency
 and `llms.txt` gating WERE independently re-verified clean on all three
 towns (see #64/#65).
+
+## 67. `spec-broomfield-place-layer.md`, Step 1: the "coverage-log wrapper" already exists (2026-09-13)
+
+The spec's own Section 4.1 says "if the coverage log exists by the time
+this is built, [use it]... if it does not exist yet, build the wrapper
+here." Checked before building anything: it exists, and has since
+before this project's scraper layer was even called that -- `scrape_runs`
+(`db/schema.sql`, present since the original schema, not a later
+migration) plus `start_run()`/`finish_run()`/`last_run_at()`/
+`consecutive_failures()` in `db/db.py`. Every scraper already calls
+`start_run()`/`finish_run()` via `scrapers/runner.py:run_source()` on
+every single run; `last_run_at()` already drives the `refresh_minutes`
+throttle, and `consecutive_failures()` already drives alerting. Building
+a second, parallel run-log table for places specifically would be the
+exact kind of harmful duplication this project's own conventions exist
+to avoid -- two tracking mechanisms for the same fact, free to silently
+drift apart.
+
+**What was actually missing, and built**: `start_run()`/`finish_run()`
+are shaped for a live scraper's real async fetch-then-parse-later flow
+(a row sits in `'running'` state while work happens). A human verifying
+a place's hours against its own official page is a single, synchronous
+event with no real "in progress" phase -- `record_run()` (new, in
+`db/db.py`) is that one-call shape, composing the SAME table and the
+SAME `last_run_at()`/`consecutive_failures()` queries every other
+caller already relies on. Not a second mechanism -- a second calling
+convention for the one that already exists. `status='manual'` is the
+new value for a human-verified entry with no HTTP fetch behind it
+(schema.sql's own descriptive comment updated to list it alongside the
+existing `'ok'|'error'|'stub'|'skipped'`; not a real CHECK constraint,
+so this needed no migration).
+
+**Source-key convention for place verification**: `f"place:{slug}"`,
+not a shared source key across all places. Staleness is inherently
+PER PLACE in this spec (each has its own `place_type` threshold, its
+own `source_url`) -- a single shared "seeding session" key would
+conflate distinct real-world sources (a library page, a parks-dept
+page, an AgendaLink API response) into one meaningless aggregate,
+defeating the exact per-place signal the staleness downgrade (§4)
+needs. `last_run_at(conn, town_id, f"place:{slug}")` is what a future
+place-detail page's own staleness check should read.
+
+No test added -- `db/db.py` has no existing test file for any of its
+functions (a thin, deliberately dependency-light DB wrapper meant to
+run the same locally and in CI, per its own module docstring); `record_run()`
+is a two-line composition of the two functions immediately above it
+that already have no tests either, so this doesn't introduce a new gap,
+it stays consistent with the file's existing convention.

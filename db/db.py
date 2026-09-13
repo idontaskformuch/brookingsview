@@ -5,6 +5,8 @@ Tunn wrapper runt psycopg (v3). Ger:
   - save_snapshot(): lagra rå källdata + hash, returnera id
   - upsert_records(): dedup-säker insert via content_hash
   - log_run(): starta/avsluta en scrape_run-rad (driver alerting)
+  - record_run(): samma scrape_runs-rad, i ett anrop, för en synkron händelse
+    utan en riktig "pågår"-fas (t.ex. en människa som verifierar en plats)
 
 Designad för att vara beroende-lätt och köra lika bra lokalt som i GitHub Actions.
 """
@@ -159,6 +161,43 @@ def finish_run(conn, run_id: int, status: str, http_code: int | None = None,
             (status, http_code, items_found, items_new, error,
              datetime.now(timezone.utc), run_id),
         )
+
+
+def record_run(conn, town_id: str, source_key: str, status: str, *,
+               http_code: int | None = None, items_found: int = 0,
+               items_new: int = 0, error: str | None = None) -> int:
+    """Broomfield place-layer handoff, Section 4.1's own "coverage-log /
+    record_run() wrapper" -- confirmed live (see NEEDS-HUMAN-REVIEW.md) that
+    this table and start_run()/finish_run() ALREADY are that wrapper, used by
+    every scraper via scrapers/runner.py since before this spec existed.
+    Building a second, parallel run-log table would just be the same
+    tracking duplicated, with a real risk of the two silently drifting apart.
+
+    This is the one genuinely missing piece: start_run()+finish_run() are
+    shaped for a live scraper's real async fetch-then-parse-later flow (a
+    row exists in 'running' state while work happens). A human confirming a
+    place's hours against its own official page is a single, synchronous
+    event with no "in progress" state worth recording -- record_run() is
+    that one-call shape, composing the SAME table and the SAME
+    last_run_at()/consecutive_failures() queries every other source already
+    relies on for staleness/alerting, not a second mechanism.
+
+    source_key convention for place verification: "place:<slug>" -- staleness
+    is inherently PER PLACE (each has its own place_type threshold, its own
+    source_url), not per scraper-source the way every other caller of this
+    table is, so last_run_at(conn, town_id, f"place:{slug}") is the real
+    per-place signal the place-detail page's staleness downgrade reads.
+
+    status: 'ok' | 'error' | 'stub' | 'skipped' (see scrape_runs' own
+    schema.sql comment) for anything that went through a real fetch --
+    'manual' for a human-verified entry with no HTTP fetch behind it (the
+    normal case for place seeding, at least until an automated re-scrape of
+    place sources exists, if one ever does).
+    """
+    run_id = start_run(conn, town_id, source_key)
+    finish_run(conn, run_id, status=status, http_code=http_code,
+               items_found=items_found, items_new=items_new, error=error)
+    return run_id
 
 
 def last_run_at(conn, town_id: str, source_key: str) -> datetime | None:
