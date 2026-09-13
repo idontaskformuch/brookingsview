@@ -84,3 +84,37 @@ export function computeOpenStatus(hours: StructuredHours | null, now: Date, time
   // Every day is null -- a real, if unusual, "never open" facility record.
   return { known: true, isOpen: false, opensAt: '', opensLabel: 'not open this week' };
 }
+
+const SCHEMA_DAY_NAMES: Record<keyof StructuredHours, string> = {
+  sunday: 'Sunday', monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday',
+  thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday',
+};
+
+/** Answer-engine-visibility handoff, Section 3: `openingHoursSpecification`
+ *  for facility JSON-LD -- one entry per day the facility is actually
+ *  open, straight from the same `hours_structured` data the visible "Open
+ *  now"/"Closed" badge above already renders from (computeOpenStatus()),
+ *  never a second, independently-derived guess. `opens`/`closes` are
+ *  passed through as-is: schema.org's own time format for this property is
+ *  bare 24h "HH:MM", which is exactly what StructuredHours already stores
+ *  (no formatClock() 12-hour conversion needed here -- that's for the
+ *  human-readable badge only). Returns undefined (never an empty array)
+ *  when there's no structured data at all, or the parser found nothing
+ *  open a single day -- same "resolved or nothing" rule the facility page's
+ *  own address block already follows, so a caller can drop this straight
+ *  into a conditional spread without an extra emptiness check. */
+export function buildOpeningHoursSpecification(hours: StructuredHours | null): Record<string, unknown>[] | undefined {
+  if (!hours) return undefined;
+  const specs = (Object.keys(SCHEMA_DAY_NAMES) as (keyof StructuredHours)[])
+    .filter((day) => hours[day] !== null)
+    .map((day) => {
+      const [opens, closes] = hours[day]!;
+      return {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: `https://schema.org/${SCHEMA_DAY_NAMES[day]}`,
+        opens,
+        closes,
+      };
+    });
+  return specs.length > 0 ? specs : undefined;
+}

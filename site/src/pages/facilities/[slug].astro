@@ -19,7 +19,7 @@ import {
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
-import { computeOpenStatus } from '../../lib/facility-hours';
+import { computeOpenStatus, buildOpeningHoursSpecification } from '../../lib/facility-hours';
 import { buildFacilityLede } from '../../lib/facility-lede';
 import { resolvePageMeta } from '../../lib/page-meta';
 
@@ -67,6 +67,7 @@ const hasFullAddress = Boolean(facility.street_address && facility.postal_code);
 // it for review), which the template below renders as no badge at all,
 // never a guessed/false "closed".
 const openStatus = computeOpenStatus(facility.hours_structured, new Date(), siteConfig.timezone);
+const openingHoursSpecification = buildOpeningHoursSpecification(facility.hours_structured);
 const schemaType = FACILITY_SCHEMA_TYPE[facility.category] ?? 'CivicStructure';
 // Sitewide presentation-layer pass: a verified real photo where one
 // exists -- never a placeholder when it doesn't. image_needs_review means
@@ -188,6 +189,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
         : {}),
       ...(facility.phone ? { telephone: facility.phone } : {}),
       ...(facility.website ? { url: facility.website } : {}),
+      ...(openingHoursSpecification ? { openingHoursSpecification } : {}),
     })} />
   )}
 
