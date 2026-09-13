@@ -5869,3 +5869,64 @@ while checking this: AdSense is currently live for Moreno Valley only
 (`ads.txt` 404s for the other two towns, confirmed in code) -- "these
 sites run AdSense" isn't yet true for Brookings/Broomfield, though the
 conclusion (no conflict) holds identically either way.
+
+## 61. `spec-answer-engine-visibility.md`, Section 6 item 2: AI-crawler hit logging shipped; item 1 (referral channels) deliberately skipped (2026-09-13)
+
+Before writing any code, found that this site runs **no analytics at
+all** -- `privacy.astro` states it outright: "We don't otherwise run
+analytics or tracking scripts." The spec's own Section 6 asks for two
+different things under one "measurement" umbrella, and they don't sit
+the same way against that promise:
+
+- **Item 2 (log the Section 1 crawler UAs, which pages)**: server-side,
+  and only ever logs a REQUEST that self-identifies as one of the nine
+  named bots (see #60) -- never a human visitor, never an IP. Decided:
+  build it.
+- **Item 1 (separate AI referral traffic)**: requires reading the
+  `Referer` header on ordinary human page views to bucket them by
+  source -- that's visitor tracking, exactly the thing the privacy page
+  promises isn't happening. Decided, explicitly, with the human: **skip
+  it permanently**, don't touch `privacy.astro`. The promise came first,
+  for a reason, and isn't something to route around because a spec
+  wanted a metric. Google Search Console / Bing Webmaster Tools already
+  give a substitute for the specific "who's sending us clicks" question
+  without collecting anything new, and the monthly citation probe (item
+  3, see below) measures the thing this spec actually cares about --
+  citation, not click-through -- more directly than a referrer count
+  ever would.
+
+**Shipped**: `db/migrations/044_ai_crawler_hits.sql` (new table,
+`town_id`/`crawler_name`/`path`/`user_agent`/`created_at`, applied live
+against Neon), `site/server/ai-crawler-log.ts` (`matchAiCrawler()` --
+the same nine-crawler list from #60, checked against a request's
+User-Agent; `logAiCrawlerHit()` -- fire-and-forget insert), wired into
+`worker.ts`'s `fetch()` via `ctx.waitUntil()` so a match never delays
+the actual response.
+
+**A real infrastructure change this required, not a side effect**:
+`wrangler.jsonc`'s `run_worker_first` previously listed four specific
+paths (`/this-week`, `/api/*`, `/home-sales/*`) -- everything else was
+answered directly from Cloudflare's edge/ASSETS binding without ever
+invoking `worker.ts`'s `fetch()` handler at all (the exact mechanism
+that file's own comments already document getting wrong twice before).
+Crawler logging needs to see EVERY request, since a crawler can fetch
+any page -- so the list is now `["/*"]`. `wrangler deploy --dry-run`
+actively REJECTS keeping the old four entries alongside a `"/*"` rule
+("makes it redundant"), confirmed live, so they were removed rather
+than left for documentation (the comments explaining why each one was
+originally needed stay in place). Every request now runs through the
+Worker instead of most bypassing it -- accepted cost is one User-Agent
+regex check per request (near-zero) plus, only on an actual crawler
+hit, one non-blocking DB insert.
+
+**Verified**: `npx tsc --noEmit -p server/tsconfig.json` (server/ is
+excluded from `astro check`'s own tsconfig, has its own) -- 0 errors.
+5 new unit tests for `matchAiCrawler()` against real UA strings from
+the #60 audit (639 total, up from 634). `wrangler deploy --dry-run`
+bundles cleanly for all three environments (brookings, moreno_valley,
+broomfield) after the `run_worker_first` fix -- caught the redundant-
+routes error BEFORE it could have failed a real deploy. **Not yet
+verified**: an actual production request from a real crawler landing a
+row in `ai_crawler_hits` -- that needs a live post-deploy check (query
+the table a day or two after this ships) since a local build can't
+simulate a real Cloudflare Worker invocation end to end.

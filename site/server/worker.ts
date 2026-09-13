@@ -31,6 +31,7 @@ import {
 } from './_shared';
 import legacyMeetingRedirects from './legacy-meeting-redirects.json';
 import { homeSalesParcelSlugFromPath, wasHomeSalesParcelEverRecorded } from './home-sales-gone';
+import { matchAiCrawler, logAiCrawlerHit } from './ai-crawler-log';
 
 interface WorkerEnv extends Env {
   // Bound via wrangler.jsonc `assets.binding` -- serves the static Astro
@@ -40,8 +41,28 @@ interface WorkerEnv extends Env {
 }
 
 export default {
-  async fetch(request: Request, env: WorkerEnv): Promise<Response> {
+  async fetch(request: Request, env: WorkerEnv, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    // Answer-engine-visibility handoff, Section 6 item 2 -- see
+    // ai-crawler-log.ts's own doc for why this is narrower than "log every
+    // visitor's referrer" (that idea was explicitly decided against to
+    // hold privacy.astro's "no tracking scripts" promise). ctx.waitUntil()
+    // means this never delays the response a crawler (or anyone else)
+    // actually receives -- the insert happens after the response is
+    // already on its way out. Requires wrangler.jsonc's run_worker_first
+    // to include "/*" (see that file's own comment) -- otherwise, same
+    // failure mode that file already documents twice over for
+    // /this-week/ and /api/*, this branch would silently never run for
+    // any request Cloudflare's edge can answer directly from ASSETS.
+    const crawlerName = matchAiCrawler(request.headers.get('User-Agent'));
+    if (crawlerName) {
+      const townId = townFromHostname(request.url, env.DEV_TOWN_ID);
+      if (townId) {
+        const sql = neon(env.DATABASE_URL);
+        ctx.waitUntil(logAiCrawlerHit(sql, townId, crawlerName, url.pathname, request.headers.get('User-Agent')!));
+      }
+    }
 
     if (request.method === 'POST' && url.pathname === '/api/comment') {
       return handleComment(request, env);

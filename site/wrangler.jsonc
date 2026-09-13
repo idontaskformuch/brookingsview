@@ -54,7 +54,31 @@
     // /api/* above: without this, a request for a path with no matching
     // static file never reaches worker.ts's fetch() handler at all, so
     // the 410 branch there would be dead code.
-    "run_worker_first": ["/this-week", "/this-week/", "/api/*", "/home-sales/*"]
+    //
+    // Replaced by a single "/*" for the answer-engine-visibility handoff's
+    // AI-crawler logging (see server/ai-crawler-log.ts, worker.ts's own
+    // top-of-fetch() check): that check needs to see EVERY request, not
+    // just the paths above, since an AI crawler can fetch any page on the
+    // site. This is a real, deliberate change from the previous narrower
+    // list -- every request now executes worker.ts's fetch() handler
+    // instead of the majority being answered directly from Cloudflare's
+    // edge cache/ASSETS binding without ever invoking the Worker.
+    // Accepted trade-off: the added per-request cost is one User-Agent
+    // regex check (a no-op for the crawler-name match on every normal
+    // browser request) plus, ONLY on an actual crawler hit, one
+    // fire-and-forget DB insert via ctx.waitUntil() that never delays the
+    // response -- not the "run real page logic on every asset fetch" cost
+    // this list was originally kept narrow to avoid.
+    //
+    // The four specific entries this replaced (/this-week, /this-week/,
+    // /api/*, /home-sales/*) are now REDUNDANT under "/*" -- confirmed via
+    // `wrangler deploy --dry-run`, which actively rejects keeping them
+    // alongside a "/*" rule ("makes it redundant"), so they can't be left
+    // in the array for documentation's sake; the comments above still
+    // record why each one was originally needed. Every one of
+    // /this-week's, /api/*'s, and /home-sales/*'s own dead-code failure
+    // modes is still fully covered -- "/*" is a strict superset of all four.
+    "run_worker_first": ["/*"]
   },
   // VIKTIGT: en enda wrangler.jsonc delas av båda städernas Cloudflare-
   // projekt (samma repo, skiljs bara åt av SITE_CITY vid Astro-bygget).
