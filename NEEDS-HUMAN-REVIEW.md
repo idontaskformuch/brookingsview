@@ -6161,3 +6161,68 @@ CI workflow -- same as `verify_sitemap_noindex_disjoint.mjs` and
 earlier this session, #60); a real, runnable tool today, a separate
 decision to gate deploys on.
 
+
+## 66. `spec-answer-engine-visibility.md`, Section 5: 40-60 word target for reference-page ledes + visible verification dates (2026-09-13)
+
+**Checked the real, achievable ceiling before writing any code**: of 114
+facilities sitewide, 18 have NO description at all (just name/category/
+address), and most of the rest lack `hours_text`/`phone`/`website` too
+(sitewide: 13/114 have hours, 29/114 have phone, 36/114 have website).
+For those 18 -- e.g. Brookings' `arrowhead-park` (`description: "A city
+park in Brookings."`, no phone, no hours, no website, no street
+address) -- 40-60 words is NOT reachable via code without inventing a
+fact this codebase's own "verify or omit, never guess" rule forbids.
+This is a data-completeness gap, not a code gap -- the same kind of gap
+the new `spec-broomfield-place-layer.md`'s own manual-seeding step
+exists to close, for Broomfield specifically, going forward.
+
+**What was actually shippable, real facts only**:
+
+- `buildFacilityLede()` (`lib/facility-lede.ts`) now appends `hours_text`
+  and `phone` as additional real-fact sentences when present, using the
+  same deterministic-per-slug connector-variety mechanism the existing
+  address sentence already uses (never the same phrasing on every page).
+  Nothing invented -- every appended fact is the SAME data already shown
+  in the page's own `<dl class="facts">` block. Projected sitewide
+  effect (measured from real DB data before shipping): facilities
+  scoring under 40 words drops from 76/114 to 68/114 -- a real but
+  modest gain, bounded by how many facilities have hours/phone data to
+  draw on at all.
+- `facilities/[slug].astro`'s verification line ("Source: ... checked
+  {date}") was gated on `source_url` being present -- `verified_date` is
+  independently checked now, so all 114 facilities show a real,
+  specific confirmed-as-of date (`formatCalendarDate`), not just the 111
+  that also have a source link. Closes the spec's "every place page
+  shows the verification date" requirement completely, for facilities.
+- Six hub ledes (`city-hall`, `events`, `traffic`, `facilities/index`,
+  `jackrabbits`, `sports`) extended with real, already-true facts that
+  were previously only implied or shown elsewhere on the same page --
+  never new claims. `traffic.astro` specifically closes a TODO the
+  title/H1/lede migration itself left open ("doesn't yet name the
+  specific DOT source"): the lede now names the real per-town DOT
+  source (Caltrans QuickMap / CDOT COtrip) and its real scope note
+  directly, for the two towns that have one, and gives Brookings'
+  genuinely-sourceless state an honest sentence instead of implying a
+  feed that doesn't exist. `vail-resorts.astro` and `workplace-watch`'s
+  tagline were already in or near the 40-60 range and left alone.
+
+**Not done**: rewriting AI-generated facility descriptions to be
+longer, or writing NEW ones for the 18 facilities that have none --
+that's real content work (sourcing, not code), out of scope for this
+pass, and exactly the shape of work `spec-broomfield-place-layer.md`
+budgets real seeding time for.
+
+**Verified**: `astro check` 0 errors, `vitest run` 643/643 (3 new tests
+for the hours/phone lede enrichment, real-fact-only behavior, plus the
+existing suite). Real Moreno Valley build, measured with
+`audit_page_metadata.mjs`: **all 6 hub pages now land in the 40-60 word
+target** (`workplace-watch` 42, `city-hall` 45, `traffic` 49, `events`
+52, `sports` 50, `facilities` 56 words). Facilities: of 63 real Moreno
+Valley facility pages, 19 (30%) now land in 40-60 words, 33 (52%) stay
+under 40 (the data-completeness ceiling above), 11 (17%) exceed 60 (not
+trimmed -- a substantive real description running long isn't a defect).
+Hub numbers weren't independently re-measured for Brookings/Broomfield
+(same shared JSX template per hub, only the interpolated `{Town}` name
+differs by a few characters) but should generalize; entity-consistency
+and `llms.txt` gating WERE independently re-verified clean on all three
+towns (see #64/#65).

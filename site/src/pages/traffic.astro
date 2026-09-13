@@ -46,12 +46,20 @@ const SEVERITY_LABELS: Record<string, string> = {
   <SectionHero category="traffic" />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    {/* TODO (sitewide title/H1/lede handoff): this lede doesn't yet name
-        the specific DOT source or refresh interval the handoff's own
-        ledeRequirement asks for (see page-meta.ts's 'traffic' entry) --
-        flagged, not rewritten in this pass (title/H1 migration only). */}
+    {/* Answer-engine-visibility handoff, Section 5: closes the TODO the
+        title/H1/lede migration left open -- now names the actual DOT
+        source and its real scope directly in the lede, not just in the
+        page's own separate "Source:" line further down. */}
     <p>Current road incidents, closures and construction near {siteConfig.cityName} —
-    straight from the state's own public traffic feed.</p>
+    {siteConfig.trafficSource ? (
+      <> straight from <a href={siteConfig.trafficSource.url} rel="noopener">{siteConfig.trafficSource.name}</a>,
+      the state's own public incident feed. {siteConfig.trafficSource.scopeNote} The table below refreshes
+      automatically as new incidents are reported, with no manual review in between.</>
+    ) : (
+      <> though no public live incident feed has been found for this area yet{siteConfig.noTrafficSourceNote
+        ? ` (${siteConfig.noTrafficSourceNote})` : ''}. Active weather alerts, which do cover this area, are
+      tracked separately on the weather page.</>
+    )}</p>
     <ShareButton title={pageMeta.title} />
   </header>
 

@@ -46,7 +46,7 @@ const description = facility.description
 // descriptions. Distinct from `description` above (the <meta
 // name="description"> value, which keeps its own 155-char truncation and
 // doesn't need the address baked in).
-const lede = buildFacilityLede(facility.description, facility.address, facility.slug);
+const lede = buildFacilityLede(facility.description, facility.address, facility.slug, facility.hours_text, facility.phone);
 const pageMeta = resolvePageMeta('facilities/detail', siteConfig, { FacilityName: facility.name });
 const hubBacklink = resolveHubBacklink('facilities/detail', siteConfig);
 
@@ -156,10 +156,20 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
       </>
     )}
 
-    {facility.source_url && (
+    {(facility.source_url || facility.verified_date) && (
+      // Answer-engine-visibility handoff, Section 5: "every place page
+      // shows the verification date" -- previously gated on source_url
+      // alone, which meant the 3 facilities (of 114) with a real
+      // verified_date but no source_url showed no confirmation date at
+      // all. verified_date is separately checked now, so it renders
+      // whenever it exists, with or without the source link.
       <p class="source">
-        Source: <a href={facility.source_url} rel="noopener">{siteConfig.cityName} official site</a>
-        {facility.verified_date && <> — checked {formatCalendarDate(facility.verified_date)}</>}
+        {facility.source_url && (
+          <>Source: <a href={facility.source_url} rel="noopener">{siteConfig.cityName} official site</a></>
+        )}
+        {facility.verified_date && (
+          <>{facility.source_url ? ' — ' : ''}checked {formatCalendarDate(facility.verified_date)}</>
+        )}
       </p>
     )}
 
