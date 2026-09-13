@@ -6360,3 +6360,109 @@ end after both fixes -- 36 facility pages built, `city-hall`'s own
 correct on the real rendered page. Broomfield and Moreno Valley builds
 in progress (queued next in this same pass, before any seeding work
 starts).
+
+## 69. `spec-broomfield-place-layer.md`, Step 3: first 10 Broomfield places seeded, end to end (2026-09-13)
+
+`scripts/seed_broomfield_places_batch1.py` -- real data entry, not
+generation. Every fact below was looked up live against the place's own
+current, named source on 2026-09-13; nothing was inferred from an old
+document or a pattern across other buildings when the specific place's
+own current source didn't state it. Logged via `record_run()` (#67) --
+`scrape_runs` now has 10 real `place:<slug>` rows for Broomfield.
+
+**9 existing places, enriched** (structured `place_hours`, `is_free`,
+`fee_note`, `services`, `verification_method='manual'`,
+`verified_date` refreshed to today):
+
+- `paul-derda-recreation-center`, `broomfield-community-center` --
+  hours cross-checked against broomfield.org's own dedicated
+  Recreation-Facilities-Hours page, which matched the already-stored
+  `hours_text` exactly. Real amenities recorded as `services` (pool,
+  gym, fitness_center, meeting_rooms, etc.) from each center's own page.
+  Both paid (`is_free=false`) -- fee_note points to the real Passes and
+  Fees page, no specific price invented since none is stated on the
+  page itself.
+- `library` -- hours matched stored `hours_text` exactly; confirmed
+  free, with real services (wifi, printing, meeting rooms).
+- `broomfield-recycling-center` -- confirmed genuinely 24/7 self-serve
+  drop-off (not an approximation like a "dawn to dusk" park would be --
+  the source states this literally), free, residents-only.
+- `broomfield-police-department` -- confirmed Mon-Fri 8am-5pm public
+  lobby hours (closed weekends) directly from the department's own page.
+- `usps-broomfield`, `usps-broomfield-eagle-view` -- confirmed current
+  retail hours from USPS's own official location-lookup tool for each
+  specific location (not assumed identical without checking both).
+
+**2 existing places, address/phone reconfirmed but hours left
+UNCONFIRMED** (`hours_confidence='unknown'`, zero `place_hours` rows --
+per the spec's own rule, absence of a row means unknown, never
+rendered as a guess):
+
+- `county-commons-park` -- broomfield.org's own park page states no
+  operating hours at all. Real amenities (playground, sports fields,
+  dog park, picnic area, restrooms) recorded regardless -- an
+  incomplete-but-correct record, per the spec's own instruction.
+- `city-hall` -- the one real judgment call in this batch. Several
+  OTHER current Broomfield department pages (Benefits Team, Police
+  lobby) independently state Mon-Fri 8am-5pm, and one broomfield.org
+  PDF titled "Building Contact List" states the same for this specific
+  building -- but that PDF is dated **"Revised 5/1/2013"**, 13 years
+  stale relative to this project's current date, so it was NOT treated
+  as a current source. No other CURRENT, dated page states this
+  building's own hours directly. Left unconfirmed rather than inferred
+  from a pattern across other buildings, even though the pattern is
+  suggestive. A worthwhile 10-minute human follow-up: call the number
+  already on file and confirm, or find a current page that states it
+  directly.
+
+**1 genuinely new place, filling a real coverage gap**:
+`us-36-broomfield-station` (RTD's US 36 & Broomfield Station
+Park-n-Ride, category `transit`) -- no existing Broomfield place
+covered transit at all. Address and services (bus routes, bike
+storage, park-and-ride) confirmed from broomfield.org's own RTD page;
+no explicit lot-hours statement found, left unconfirmed rather than
+assumed 24/7 without a direct source saying so.
+
+**One candidate deliberately NOT added**, worth recording so it isn't
+re-attempted by mistake later: the spec's own "coverage to aim for"
+list names Adams 12 Five Star Schools' administrative offices, but that
+building is physically in **Thornton, CO**, not Broomfield -- outside
+this directory's own established scope (see
+`ingest_moval_facilities.py`'s identical "civic info but not *in* the
+city, so excluded" convention, applied here for the first time to a
+school district rather than a Moreno Valley civic entity). Boulder
+Valley School District's own admin building was not checked in this
+pass; if it's genuinely inside Broomfield city limits it's a real
+candidate for the next batch, not ruled out the same way.
+
+**A new `category` value, `transit`, was introduced** by the new place
+above -- `FACILITY_CATEGORY_LABELS`/`FACILITY_SCHEMA_TYPE` don't have an
+entry for it yet (falls back to the raw string today, not broken, just
+unpolished). Deferred to Step 4 as planned in #68, when the actual
+`/place/[slug]` render code is built and needs it anyway.
+
+**Section 8 guardrails not yet coded** (deferred to Step 4, when the
+page template and its own build pipeline exist to enforce them
+against) -- but checked by hand that this batch already satisfies the
+two DB-level ones: no place has `hours_confidence='structured'` with
+zero `place_hours` rows (7 places do have rows; the 3 left `'unknown'`
+correctly have none), and every one of the 10 has both `source_url`
+and `verified_date` set.
+
+**Unrelated, hit again mid-verification**: a second real build failure,
+for the exact same reason as #68's own aside -- another bot-pushed
+illustration commit (`e6f3944`, "Daily content (Broomfield): add
+illustration for today's article") had landed on `origin/main` after
+this session's last push. Fetched and fast-forward merged (zero
+conflict with any uncommitted work), same as before.
+
+**Verified**: script is idempotent (deletes+reinserts a place's own
+`place_hours` before adding new rows, matched by `(town_id, slug)`, so
+a re-run never duplicates or clobbers a different place). Real
+Broomfield build clean end to end after the merge.
+
+**Honest accounting, per instruction**: 10 places were reachable with
+real, current sourcing in this session without padding -- 2 of the 10
+have incomplete data (hours) because their own real source doesn't
+state it, not because research was cut short. That's the batch; the
+remaining ~30-50 for Step 5 are a separate, later effort.
