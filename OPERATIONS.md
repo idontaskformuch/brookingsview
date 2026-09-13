@@ -52,6 +52,60 @@ if home-sales becomes a flagship traffic driver *and* the free report's
 latency proves to be a real user-facing problem, with evidence, not by
 default.
 
+## Monthly: AI citation probe (answer-engine-visibility spec §6.3)
+
+**Why manual**: this is the only direct measure of what the
+answer-engine-visibility handoff is actually for — whether an AI
+search engine cites the site, not just whether a crawler fetched it
+(that part is logged automatically, see `ai_crawler_hits` /
+`site/server/ai-crawler-log.ts`) or whether a human clicked through
+(deliberately not tracked — see NEEDS-HUMAN-REVIEW.md #61). There is no
+API for "was I cited" across ChatGPT/Perplexity/Gemini — someone has to
+actually ask.
+
+**Cadence**: once a month. Ten minutes if the question list below is
+reused as-is; record the date each time you run it.
+
+**Steps**:
+1. Ask each of ChatGPT (with search/browsing on), Perplexity, and
+   Gemini the questions below, one town at a time.
+2. For each answer, record: cited or not (a visible link/citation to
+   `{town}view.com`, not just a correct-sounding answer with no
+   attribution), which URL if cited, and whether the answer was
+   actually correct against the live site.
+3. Log results in a running table at the bottom of this section —
+   date, engine, town, question, cited (Y/N), URL, correct (Y/N).
+4. The FIRST run is the baseline (spec's §6.4) — do it before treating
+   any later change in citation rate as a real signal, same discipline
+   as the metadata rollout's own before/after baseline.
+
+**Questions** (one real fact per question, chosen so the correct
+answer requires this site or an equally primary source — not something
+any general-knowledge answer would already get right):
+
+*Brookings*
+- What are SDSU Jackrabbits football's next home game and opponent?
+- What park facilities are open to the public in Brookings, SD?
+- Where can I find a summary of recent Brookings city council meetings?
+- What's the hours/address for Oscar Larson Performing Arts Center in Brookings?
+
+*Broomfield*
+- What are the hours for the Broomfield Community Center?
+- Where's the nearest USPS post office in Broomfield, CO?
+- Is Vail Resorts headquartered in Broomfield, and where can I read their latest news?
+- What does Broomfield's recycling center accept and what are its hours?
+
+*Moreno Valley*
+- When is the next Moreno Valley planning commission or city council meeting?
+- What have recent home sales looked like in a specific Moreno Valley ZIP code (pick one from the site's own `/home-sales/zip/` pages)?
+- What do employees say about working at a major Moreno Valley employer (Worker Pulse / Workplace Watch)?
+- What public facilities are near a specific Moreno Valley address?
+
+**Results log** (append, don't rewrite — this is the baseline history):
+
+| Date | Engine | Town | Question | Cited? | URL | Correct? |
+|---|---|---|---|---|---|---|
+
 ## Ongoing: scheduled GitHub Actions workflows need real activity to survive
 
 **Why this matters**: GitHub automatically disables a repository's
