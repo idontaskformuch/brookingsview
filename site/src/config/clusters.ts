@@ -287,6 +287,53 @@ export const HUB_HREF: Record<string, string> = {
   'vail-resorts': '/vail-resorts/',
 };
 
+/** Answer-engine-visibility handoff, Section 2 (llms.txt): the same
+ *  {label, description} shape SPOKE_NAV_COPY above already uses, for
+ *  every route that's a HUB rather than a spoke -- SPOKE_NAV_COPY has no
+ *  entries for city-hall/events/traffic/workplace-watch/facilities or
+ *  each town's own local_life flagship, so this fills that one gap.
+ *  Every description is lifted from that hub page's own real, already-
+ *  shipped <BaseLayout description="..."> -- never freshly invented copy
+ *  for a file that's never rendered to a reader -- with {Town}
+ *  interpolated the same simple way page-meta.ts's own patterns are.
+ *  jackrabbits/sports/vail-resorts need no {Town} placeholder: each is a
+ *  hard single-town gate (see ROUTE_AVAILABILITY), so its description is
+ *  already written for that one real town specifically. */
+export const HUB_NAV_COPY: Record<string, { label: string; description: string }> = {
+  'city-hall': {
+    label: 'City hall',
+    description: 'City council, county commission and committee meetings in {Town}, in plain language.',
+  },
+  events: {
+    label: 'Events',
+    description: "What's on in {Town} -- library programs, city events and community happenings.",
+  },
+  traffic: {
+    label: 'Traffic',
+    description: 'Current road incidents and lane closures affecting {Town}.',
+  },
+  'workplace-watch': {
+    label: 'Workplace Watch',
+    description: "Monthly review-trend digests for {Town}'s major employers -- check before your shift.",
+  },
+  facilities: {
+    label: 'Facilities index',
+    description: 'Addresses, phone numbers and hours for libraries, parks, city hall and other public facilities in {Town}.',
+  },
+  jackrabbits: {
+    label: 'Jackrabbits',
+    description: 'Full SDSU Jackrabbits schedules and results for football, basketball and volleyball.',
+  },
+  sports: {
+    label: 'Sports',
+    description: 'Schedules and results for pro and minor-league teams that matter in Moreno Valley: the Inland Empire 66ers, Angels and Dodgers.',
+  },
+  'vail-resorts': {
+    label: 'Vail Resorts newsroom',
+    description: "Vail Resorts' own newsroom feed, collected here for Broomfield residents who work there, invest there, or just want to keep up.",
+  },
+};
+
 export interface SpokeNavCopy {
   label: string;
   href: string;

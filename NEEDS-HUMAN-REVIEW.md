@@ -6051,3 +6051,50 @@ Verified live: `meeting-2026-09-15-12462` (Brookings, noindexed) now
 correctly carries `"isBasedOn":"https://cityofbrookings.legistar1.com/.../3554_A_City_Council_26-09-15_Meeting_Agenda.pdf"`
 alongside its unchanged `<meta name="robots" content="noindex">`.
 
+
+## 64. `spec-answer-engine-visibility.md`, Section 2: `llms.txt` generated from the cluster graph (2026-09-13)
+
+`site/src/pages/llms.txt.ts`, a static endpoint (same convention as
+`robots.txt.ts`), generates the file at build time from `computeTownGraph()`
+-- the SAME per-town cluster graph every hub/spoke page and Phase 3's
+`ClusterNav` already resolve against. Nothing here is a second,
+hand-maintained gating list: a disabled route (Broomfield's `/university/`,
+Moreno Valley's `/vail-resorts/`, Brookings' `/home-sales/`, ...) is simply
+absent from `computeTownGraph()`'s output, so it structurally cannot leak
+into `llms.txt` either.
+
+New `HUB_NAV_COPY` in `config/clusters.ts` fills the one real gap in
+reusing existing config: `SPOKE_NAV_COPY` (Phase 3) has copy for every
+spoke but no entry for a route that's a HUB (city-hall, events, traffic,
+workplace-watch, facilities, and each town's own local_life flagship) --
+every description is lifted verbatim from that hub page's own real,
+already-shipped `<BaseLayout description="...">`, never freshly invented
+text for a file nobody reads on the site itself.
+
+**The spec's own named exception, implemented literally**: facility
+pages are listed individually under `## Public facilities` (all 114
+sitewide, name + category + address, generated from `getFacilities()`),
+not just the hub -- per the spec's own reasoning, these are the stable,
+factual, individually citable pages this file exists for. Every other
+section links only hubs and named durable spokes (`SPOKE_NAV_COPY`),
+never individual stories.
+
+Per the spec's own explicit instruction, `llms-full.txt` was NOT built --
+an enormous, immediately-stale artifact for a daily-updating site, with
+the spec's own text already naming it as the weaker of the two ideas.
+
+**Verified on real builds, Brookings and Broomfield**: valid Markdown,
+correct H1/blockquote, zero links to a gated/redirect-stub route
+(confirmed: Broomfield's `llms.txt` correctly contains `vail-resorts`
+and the REAL `workplace-watch` entry -- Broomfield genuinely has
+`hasWorkplaceWatch: true`, contrary to this spec's own illustrative
+example naming it as something Broomfield "must not advertise"; the
+code correctly follows the real flag, not the spec's assumption -- and
+zero references to `university`, `jackrabbits`, `sports`, or
+`home-sales`, all correctly Brookings/Moreno-Valley-only). **Moreno
+Valley since also verified**: correctly shows `home-sales` (twice --
+once under "City hall," once under "Work and money," its one
+deliberate, pre-existing cross-cluster secondary membership, not a
+bug), `workplace-watch`, and its own `sports` local_life hub; zero
+`vail-resorts`/`jackrabbits`/`university` leakage.
+
