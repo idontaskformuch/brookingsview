@@ -41,6 +41,17 @@ interface Props {
    *  reaches MarqueeCard, hero or row -- it just isn't shown as a marquee
    *  item, per the "no placeholder" rule). */
   variant?: 'hero' | 'row';
+  /** LCP fix: `variant === 'hero'` does NOT uniquely identify "the one
+   *  above-the-fold image" -- true on index.astro (exactly one hero call),
+   *  false on /whats-on/'s own marquee grid, which renders SEVERAL
+   *  `variant="hero"` cards side by side (a real structural difference
+   *  from what this component's own module comment above describes,
+   *  flagged in NEEDS-HUMAN-REVIEW.md). `fetchpriority="high"` on every
+   *  one of them would dilute the signal Cloudflare's LCP flag is asking
+   *  for instead of fixing it -- the caller must say which single image is
+   *  the real LCP candidate. Defaults to false; only ever true for the
+   *  literal first card in a grid/list, never inferred from variant. */
+  priority?: boolean;
   runSize?: number;
   lastOccursAt?: string | null;
   /** Marquee deck sentences follow-up -- see this file's own module
@@ -50,7 +61,7 @@ interface Props {
   deck?: string;
 }
 const {
-  item, image, cityName, timezone, variant = 'hero', runSize = 1, lastOccursAt = null, deck,
+  item, image, cityName, timezone, variant = 'hero', priority = false, runSize = 1, lastOccursAt = null, deck,
 } = Astro.props;
 const e = item.ticketmasterEvent;
 const href = `/whats-on/${ticketmasterSlug(e)}/`;
@@ -75,6 +86,7 @@ const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
       height={image.height}
       loading={variant === 'hero' ? 'eager' : 'lazy'}
       decoding="async"
+      fetchpriority={priority ? 'high' : undefined}
     />
   </a>
   <div class="marquee-card__body">

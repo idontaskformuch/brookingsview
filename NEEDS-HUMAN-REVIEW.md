@@ -6871,3 +6871,58 @@ predates the place layer entirely and isn't the relevant anchor for
 judging ITS effect). Re-pull the same five metrics (impressions/day,
 distinct query count, average position, clicks/day, indexed page count)
 around **2026-11-09** to evaluate against this baseline.
+
+## 75. LCP fix: `/whats-on/` hero image (Cloudflare-flagged), and a real deviation from the assumed carousel structure (2026-09-14)
+
+Cloudflare flagged `article.marquee-card.marquee-card--hero >
+a.marquee-card__image-link > img.marquee-card__image` as a poor-LCP
+element on `/whats-on/` -- the image is hotlinked from Ticketmaster's own
+CDN (`s1.ticketm.net`), not self-hosted. Three low-risk fixes, no
+architecture change:
+
+1. **Preconnect** to `https://s1.ticketm.net` in `BaseLayout.astro`,
+   gated on `siteConfig.ticketmaster?.enabled` rather than hardcoded --
+   confirmed via grep that this is the only Ticketmaster image domain
+   that appears anywhere in this codebase's real data (fixtures, logs).
+   `ticketmaster.enabled` is true for all three towns as of Phase 7, not
+   just Moreno Valley/Broomfield as originally assumed when this task was
+   requested -- flagged and corrected before implementing (a stale
+   comment in `site-config.ts` still says "only Brookings has a real
+   ticketmaster config", left over from an earlier rollout phase).
+2. **`fetchpriority="high"`**, but NOT simply gated on `variant ===
+   'hero'` as originally proposed -- see the real structural deviation
+   below.
+3. **Explicit `width`/`height`** -- already present (`ImageRef.width`/
+   `.height` are required, non-optional fields on the type). No change
+   needed.
+
+**Real deviation from the assumed carousel structure, found before
+shipping, not after**: `MarqueeCard.astro`'s own module comment describes
+`variant="hero"` as "the front page's one full-width marquee card" --
+true on `index.astro` (exactly one `variant="hero"` call). But
+`/whats-on/index.astro`'s own "Marquee" section renders a whole CSS grid
+of `marqueeWithImages` (currently 6 per town), **every one** tagged
+`variant="hero"` -- a real, different reuse of that variant that doesn't
+match the component's own documented assumption. A first pass literally
+gave `fetchpriority="high"` to all 6 grid cards, which would have diluted
+the signal Cloudflare's LCP flag was asking to fix, not resolved it (only
+one image can be the real largest-contentful-paint element; the grid's
+plain CSS with no `order` override means DOM order = paint order, so the
+first/top-left card is genuinely the only real LCP candidate).
+
+Fixed by adding an explicit `priority?: boolean` prop to `MarqueeCard.astro`,
+independent of `variant` -- `fetchpriority` is now driven by this prop,
+never inferred from `variant`. `index.astro` passes `priority` on its
+single hero call (identical behavior to before, since that page only ever
+had one hero anyway). `whats-on/index.astro` passes `priority={i === 0}`
+in its grid's own `.map()`, so only the genuine first/top-left card gets
+`fetchpriority="high"`.
+
+**Verified on real builds, all three towns** (a transient Neon `fetch
+failed` mid-build hit once, same known pattern this session has seen
+before, resolved by a plain retry): `preconnect` to `s1.ticketm.net`
+present on all three `/whats-on/` pages; Broomfield's marquee grid has 6
+cards, exactly 1 with `fetchpriority="high"`; all three towns' home-page
+hero still has exactly 1 `fetchpriority="high"` image, unchanged from
+before; `width`/`height` present on every marquee image. `astro check` 0
+errors, `vitest run` 658/658.

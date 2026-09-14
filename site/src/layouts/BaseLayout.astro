@@ -192,6 +192,17 @@ const footerGroups = FOOTER_GROUPS
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+{/* LCP fix: the /whats-on/ hero marquee card's image is hotlinked from
+    Ticketmaster's own image CDN (see MarqueeCard.astro), not self-hosted --
+    a Cloudflare LCP flag on that exact element traced the delay to the
+    connection handshake to this external host. s1.ticketm.net is the only
+    Ticketmaster image domain that appears anywhere in this codebase's real
+    data (fixtures, logs) -- the US Discovery API market this site uses
+    doesn't return the .eu CDN. Gated on ticketmaster.enabled, not a
+    per-town hardcode -- true for all three towns as of Phase 7. */}
+{siteConfig.ticketmaster?.enabled && (
+  <link rel="preconnect" href="https://s1.ticketm.net" crossorigin />
+)}
 <link
   rel="stylesheet"
   href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=IBM+Plex+Mono:wght@400;500&display=swap"

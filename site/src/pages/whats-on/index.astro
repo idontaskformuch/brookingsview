@@ -144,14 +144,22 @@ const pageMeta = resolvePageMeta('whats-on', siteConfig);
       {marqueeWithImages.length > 0 && (
         <>
           <SectionRule label="Marquee" />
+          {/* LCP fix: this grid renders several variant="hero" cards side
+              by side (unlike index.astro's single hero + row thumbnails --
+              see MarqueeCard.astro's own `priority` prop comment). Only
+              the first, top-left card (plain CSS grid, no `order`
+              override, so DOM order === paint order) is the real LCP
+              candidate -- fetchpriority="high" on every card in the grid
+              would dilute the signal instead of fixing it. */}
           <div class="marquee-grid">
-            {marqueeWithImages.map(({ entry, image }) => (
+            {marqueeWithImages.map(({ entry, image }, i) => (
               <MarqueeCard
                 item={entry.primary}
                 image={image}
                 cityName={siteConfig.cityName}
                 timezone={siteConfig.timezone}
                 variant="hero"
+                priority={i === 0}
                 deck={marqueeDecks.get(marqueeDigestKey(entry))}
                 runSize={entry.members.length}
                 lastOccursAt={entry.members[entry.members.length - 1].occurs_at}
