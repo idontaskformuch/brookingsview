@@ -6788,3 +6788,86 @@ threshold with real, well-sourced candidates still available. Whether to
 seed further past 50 or consider Step 5's coverage complete and move
 toward Step 6 (Search Console baseline) is a call for the user, not
 assumed here.
+
+## 74. `spec-broomfield-place-layer.md`, Step 6: Search Console baseline established, 8-week clock started (2026-09-14)
+
+**Baseline data, pulled from the real broomfieldview.com Search Console
+property by the user on 2026-09-14** (I have no API/MCP access to Search
+Console myself -- no credentials or connector for it exist in this repo
+or session, confirmed by searching for any existing integration before
+asking the user to pull this manually):
+
+- **Real available history is 17 days (2026-08-26 through 2026-09-11),
+  not 28.** This is a genuine constraint, not a filter mistake -- the
+  first export used "Senaste 3 manaderna" (last 3 months) and still
+  returned only these 17 days, confirmed by summing the daily chart rows
+  (207) against the Devices-tab total (149 Desktop + 58 Mobile = 207,
+  exact match). The property's own performance history apparently starts
+  around 2026-08-26; a true 28-day trailing window does not exist yet.
+  Per the user's own explicit decision, this 17-day window is recorded
+  as the real baseline rather than waiting ~11 more days for a literal
+  28-day span.
+- **Impressions**: 207 total over 17 days (~12.2/day average).
+- **Clicks**: 0 total over the entire 17-day window (0/day) -- across
+  every one of the 46 distinct queries below. This is real, not
+  estimated, and it's exactly the pattern that motivated this whole
+  spec.
+- **Distinct queries**: 46. The real top queries are almost entirely
+  civic-reference lookups for existing `/facilities/` pages, e.g. "paul
+  derda rec center hours" (4 impressions), "mamie doud library hours"
+  (1), "george di ciero city and county building" (3), "broomfield
+  community center" (4), "280 spader way broomfield co 80020" (3) --
+  zero clicks on any of them.
+- **Average position**: ~22.9 (impression-weighted across devices:
+  Desktop 27.61 over 149 impressions, Mobile 10.81 over 58).
+- **Indexed page count**: 55, per the separate Indexing > Pages coverage
+  report's own latest snapshot (2026-09-04 -- this report lags a few
+  days further behind than the Performance report's 2026-09-11 cutoff,
+  a real, expected difference between the two report types, not an
+  inconsistency). 46 pages not indexed, of which 34 are legitimate,
+  expected exclusions (22 noindex, 11 duplicate-with-correct-canonical,
+  1 redirect) and only 12 are genuinely pending (8 "Discovered, not
+  indexed" + 4 "Crawled, not indexed").
+- **None of the new `/place/[slug]` or `/places/` URLs appear anywhere
+  in this baseline data** -- confirms the pages have not yet been
+  crawled or indexed, which matters for the next finding below.
+
+**A real deploy-timing question, raised and resolved before recording
+the baseline**: this repo auto-deploys Broomfield to production on every
+push to `main` (`.github/workflows/broomfield-deploy.yml`, `on: push:
+branches: [main]`, no manual gate) -- meaning the first `/place/` and
+`/places/` pages actually went live in production when Step 4 was
+pushed (2026-09-13 21:06 CEST), roughly 18 hours before this baseline
+was pulled, not "at Step 6" as the spec's own ordering assumes is
+possible. Checked whether this contaminated the baseline: it did not --
+the Performance data above shows zero impressions for any `/place/` URL,
+confirming Google's normal crawl/index lag protected the baseline
+despite the pages already being technically live and sitemap-listed for
+those 18 hours.
+
+**The sitemap itself was already submitted to Search Console on 2026-08-27
+-- weeks before any place-layer work started, for unrelated reasons
+(robots.txt has unconditionally advertised
+`https://broomfieldview.com/sitemap-index.xml` since long before this
+spec).** The user correctly pointed out that the real Step 6 action
+isn't re-clicking "submit" -- since the sitemap is dynamically
+regenerated at every build from live DB content, Google will pick up any
+new URLs on its next periodic re-crawl of the already-known file
+regardless. What actually needed confirming was whether the new routes
+are IN that file. Verified directly against the live production
+sitemap (not just a local build): fetching
+`https://broomfieldview.com/sitemap-index.xml` and
+`https://broomfieldview.com/sitemap-0.xml` directly confirms
+`https://broomfieldview.com/places/` and all 46 `https://broomfieldview.com/place/<slug>/`
+URLs are present right now, in production, at the URL Google already
+has on file. No sitemap resubmission is needed or was performed --
+Google already has a real path in to every place page.
+
+**The 8-week clock starts today, 2026-09-14** -- the date this baseline
+was pulled and recorded, not the date any individual place page first
+went live (which varied across batches 1-4, 2026-09-13 through
+2026-09-14) and not the 2026-08-27 sitemap-submission date (which
+predates the place layer entirely and isn't the relevant anchor for
+judging ITS effect). Re-pull the same five metrics (impressions/day,
+distinct query count, average position, clicks/day, indexed page count)
+around **2026-11-09** to evaluate against this baseline.
