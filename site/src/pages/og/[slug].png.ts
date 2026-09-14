@@ -6,9 +6,10 @@
  * "default" täcker startsidan och sektionssidorna.
  */
 import type { APIRoute } from 'astro';
-import { getAllStories, getFacilities, formatDate } from '../../lib/db';
+import { getAllStories, getFacilities, getAllWeeklyStories, formatDate } from '../../lib/db';
 import { renderOgImage } from '../../lib/og';
 import { siteConfig } from '../../lib/site-config';
+import { weekInfoForInstant, currentWeekInfo, type WeekInfo } from '../../lib/this-week';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
@@ -60,8 +61,35 @@ const SECTION_CARDS: { slug: string; title: string; kicker: string }[] = [
   ] : []),
 ];
 
+/** One dynamic OG card per real published `/this-week/<slug>/` archive page
+ *  -- every week `ai_pipeline/weekly.py` has generated a narrative for,
+ *  plus the current "week ahead" week, exactly mirroring
+ *  `this-week/[week].astro`'s own `getStaticPaths()` week-derivation (see
+ *  that file's own comment for why the current week is included even
+ *  before its narrative exists). Replaces reusing the generic
+ *  `section-events` card for every week forever -- see NEEDS-HUMAN-REVIEW.md
+ *  "This-week OG image reused the generic Events card every week". */
+async function thisWeekCards(): Promise<{ slug: string; title: string; kicker: string }[]> {
+  const weeklyStories = await getAllWeeklyStories();
+  const weekInfos = new Map<string, WeekInfo>();
+  for (const s of weeklyStories) {
+    if (!s.occurs_at) continue;
+    const info = weekInfoForInstant(new Date(s.occurs_at), siteConfig.timezone);
+    weekInfos.set(info.slug, info);
+  }
+  const current = currentWeekInfo(siteConfig.timezone);
+  weekInfos.set(current.slug, current);
+  return [...weekInfos.values()].map((week) => ({
+    slug: `this-week-${week.slug}`,
+    title: `This Week in ${siteConfig.cityName} — ${week.label}`,
+    kicker: 'This week',
+  }));
+}
+
 export async function getStaticPaths() {
-  const [stories, facilities] = await Promise.all([getAllStories(), getFacilities()]);
+  const [stories, facilities, weekCards] = await Promise.all([
+    getAllStories(), getFacilities(), thisWeekCards(),
+  ]);
   return [
     {
       params: { slug: 'default' },
@@ -74,6 +102,10 @@ export async function getStaticPaths() {
     ...SECTION_CARDS.map((s) => ({
       params: { slug: s.slug },
       props: { title: s.title, sourceType: s.slug, kickerOverride: s.kicker, dateline: null },
+    })),
+    ...weekCards.map((w) => ({
+      params: { slug: w.slug },
+      props: { title: w.title, sourceType: w.slug, kickerOverride: w.kicker, dateline: null },
     })),
     ...facilities.map((f) => ({
       params: { slug: `facility-${f.slug}` },

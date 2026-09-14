@@ -110,7 +110,7 @@ const itemListJsonLd = hasAnyItems ? {
   })),
 } : null;
 ---
-<BaseLayout title={title} wide ogSlug="section-events" description={description}>
+<BaseLayout title={title} wide ogSlug={`this-week-${week.slug}`} description={description}>
   <header class="lede">
     <p class="kicker">This week in {siteConfig.cityName}</p>
     <h1>{pageMeta.h1}</h1>

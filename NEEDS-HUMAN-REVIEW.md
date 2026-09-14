@@ -6926,3 +6926,52 @@ cards, exactly 1 with `fetchpriority="high"`; all three towns' home-page
 hero still has exactly 1 `fetchpriority="high"` image, unchanged from
 before; `width`/`height` present on every marquee image. `astro check` 0
 errors, `vitest run` 658/658.
+
+## 76. Bug fix: `/this-week/` shared the generic "Events" OG image every week, on every town (2026-09-14)
+
+**Reported**: `/this-week/` shows the same social-preview image every
+week, on both Brookings and Broomfield, consistently enough across two
+towns to indicate a systematic cause, not chance.
+
+**Checked for a prior attempt first, per instruction**: found one commit
+that sounds related but isn't -- `82c0870` ("Image rotation Part 3:
+weekly roundup avoids repeating last week's photo") fixed a different,
+correctly-implemented thing: the in-body photo on the weekly-roundup
+STORY page (`/s/weekly-YYYY-wNN/`, via `previousWeekRoundupImagePath()`
+in `lib/images.ts`). That fix works as intended and is unrelated. Grepped
+all 42 mentions of "this-week" in this file -- none address an OG-image
+or "same image" problem. No prior attempt actually existed for this bug.
+
+**Root cause, confirmed by reading the code, not assumed**:
+`this-week/[week].astro` passed `ogSlug="section-events"` -- a hardcoded
+literal, identical on every week's page, every town. `BaseLayout.astro`
+derives `og:image`/`twitter:image` purely from this slug
+(`/og/${ogSlug}.png`, a build-time-generated, TEXT-based title card, not
+a photo -- see `pages/og/[slug].png.ts`). `section-events` is the exact
+same slug `/events.astro` and `/events/past.astro` already use, so
+`/this-week/` pages never had their own OG identity; they silently
+borrowed the generic Events section card. This-week pages render zero
+images in their own visible body (`grep` for `image`/`<img`/`hero` in
+both this-week page files returns nothing) -- confirms the "same image"
+observation could only be the OG/social-preview card, never something in
+the page body. Confirmed identical on Moreno Valley too (no per-town
+branch in the hardcoded literal).
+
+**Fix**: `pages/og/[slug].png.ts` gained a `thisWeekCards()` helper that
+mirrors `this-week/[week].astro`'s own `getStaticPaths()` week-derivation
+exactly (every week `ai_pipeline/weekly.py` has a real narrative for,
+plus the current "week ahead" week) and generates one dynamic OG card per
+real published week: slug `this-week-<iso-week>`, title `This Week in
+{cityName} — {week.label}` (reusing `WeekInfo.label`, e.g. "September
+7–13, 2026"), same generator/`renderOgImage()` pattern every other
+section card already uses. `this-week/[week].astro` now passes
+`ogSlug={`this-week-${week.slug}`}` instead of the hardcoded literal.
+
+**Verified on real builds, all three towns**: every `/this-week/<week>/`
+page now resolves to its own distinct `/og/this-week-<week>.png` URL
+(10 distinct weeks on Brookings, 9 on Moreno Valley, 3 on Broomfield --
+matching each town's own real published-week count); confirmed zero
+`/this-week/` pages still reference `og/section-events.png`; confirmed
+`/events/` and `/events/past/` are unaffected and still correctly share
+that same generic card (the fix only removes this-week's borrowing of
+it, not the card itself). `astro check` 0 errors, `vitest run` 658/658.
