@@ -2682,33 +2682,86 @@ export async function getAllProjectUpdatesForWeekly(): Promise<(ProjectUpdate & 
 
 /** CityStatus's `next_meeting` module (lib/cityStatus.ts) -- the soonest
  *  upcoming meeting of any body, town-wide. `body` is the meeting type
- *  ("City Council", "Planning Commission", ...); `local_label` is a
- *  ready-to-render "Tue 6:00 PM" string, formatted IN SQL via
- *  AT TIME ZONE + to_char (not new Date() in the frontend) -- meeting_date
- *  is a real TIMESTAMPTZ instant, and every real row checked while building
- *  this (Brookings/Broomfield/Moreno Valley) carries a genuine local
- *  evening/daytime time, never a bare date -- same "format in Postgres,
- *  not JS" convention as getLatestEmployerRatings' period_label. Returns
- *  null when this town has no meeting scheduled in the future at all --
- *  a real, honest state (see check_no_prediction-adjacent principle: no
- *  meeting found is not the same as "on recess", so the caller shows an
- *  omitted row, not a guessed one). */
+ *  ("City Council", "Planning Commission", ...).
+ *
+ *  Bug fixed 2026-09-30: this used to format a clock time in SQL via
+ *  AT TIME ZONE + to_char, on the stated assumption that meeting_date
+ *  always carries a genuine time-of-day. True for Moreno Valley (eSCRIBE)
+ *  and Broomfield (AgendaLink) as of this fix, but NEVER true for
+ *  Brookings: Legistar's EventDate has no time component (EventTime not
+ *  fetched, see legistar_v1.py), so meeting_date there is a bare calendar
+ *  date stored at UTC midnight. AT TIME ZONE 'America/Chicago' on a bare
+ *  date shifts it to ~7 PM the PREVIOUS evening (confirmed live: a
+ *  Thursday meeting rendered as "Wed 7:00 PM") -- exactly the "UTC
+ *  midnight != local calendar day" bug formatCalendarDate() already
+ *  guards against everywhere else on the site. `siteConfig.meetingsHaveTime`
+ *  (site-config.ts) records which towns' source genuinely has a time, so
+ *  this can show a real time where one exists instead of either
+ *  fabricating one (the old bug) or hiding a real one everywhere (an
+ *  earlier, too-broad fix attempt).
+ *
+ *  The 5-row window + in-JS filtering (rather than a single SQL WHERE
+ *  clause) exists because "is this meeting still upcoming" needs a
+ *  DIFFERENT comparison per town: a real instant (meetingsHaveTime) vs. a
+ *  local calendar date read straight from meeting_date's own UTC
+ *  components, never tz-converted (bare date) -- the same two rules
+ *  formatMeetingWhen() below applies for display, kept in sync by sharing
+ *  the same flag instead of duplicating the distinction in raw SQL.
+ *
+ *  Returns null when this town has no meeting scheduled in the future at
+ *  all -- a real, honest state (see check_no_prediction-adjacent
+ *  principle: no meeting found is not the same as "on recess", so the
+ *  caller shows an omitted row, not a guessed one). */
 export interface NextMeeting {
   body: string;
-  local_label: string;
+  meeting_date: string;
   agenda_url: string | null;
 }
 
 export async function getNextMeeting(): Promise<NextMeeting | null> {
+  // `- interval '1 day'` buffer: a bare-date meeting_date is anchored to
+  // UTC midnight, which is already several hours in the PAST in UTC while
+  // its real local calendar date hasn't started yet in a negative-UTC-
+  // offset town -- without this buffer a same-day Brookings meeting could
+  // be excluded from this window hours before it actually happens locally.
   const rows = (await sql`
-    SELECT body, to_char(meeting_date AT TIME ZONE ${siteConfig.timezone}, 'Dy FMHH12:MI AM') AS local_label,
-           agenda_url
+    SELECT body, meeting_date, agenda_url
       FROM meetings
-     WHERE town_id = ${TOWN_ID} AND meeting_date >= now() AND body IS NOT NULL
+     WHERE town_id = ${TOWN_ID}
+       AND body IS NOT NULL
+       AND meeting_date >= now() - interval '1 day'
      ORDER BY meeting_date ASC
-     LIMIT 1
+     LIMIT 5
   `) as NextMeeting[];
-  return rows[0] ?? null;
+
+  if (siteConfig.meetingsHaveTime) {
+    const now = Date.now();
+    return rows.find((r) => new Date(r.meeting_date).getTime() >= now) ?? null;
+  }
+  const todayLocalYmd = new Intl.DateTimeFormat('en-CA', {
+    timeZone: siteConfig.timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+  return rows.find((r) => {
+    // neon returns a timestamptz as a string in some code paths and an
+    // already-parsed Date in others (see calendarDateParts()'s own comment
+    // above) -- reuse that same helper rather than assuming .slice() works.
+    const { y, m, d } = calendarDateParts(r.meeting_date)!;
+    const ymd = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    return ymd >= todayLocalYmd;
+  }) ?? null;
+}
+
+/** Display string for a NextMeeting -- "Tue, Oct 14, 6:00 PM" when the
+ *  town's source has a real time (siteConfig.meetingsHaveTime), else just
+ *  the bare calendar date ("Wed, Oct 1") via formatCalendarDate. See
+ *  getNextMeeting()'s own comment for why this can't be one formatter for
+ *  every town. */
+export function formatMeetingWhen(meeting: NextMeeting): string {
+  if (!siteConfig.meetingsHaveTime) return formatCalendarDate(meeting.meeting_date);
+  const date = new Date(meeting.meeting_date);
+  const weekday = date.toLocaleDateString('en-US', { weekday: 'short', timeZone: TZ });
+  const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: TZ });
+  return `${weekday}, ${time}`;
 }
 
 /** "Part of an ongoing story" banner support (Story Threads) -- a meeting

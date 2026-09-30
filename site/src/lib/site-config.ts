@@ -27,6 +27,15 @@ export interface SiteConfig {
   siteUrl: string;     // "https://morenovalleyview.com"
   /** IANA-tidszon för datumraden */
   timezone: string;
+  /** Har stadens `meetings`-källa ett RIKTIGT klockslag per möte (eSCRIBE/
+   *  AgendaLink), eller bara ett datum (Legistars EventDate, ingen EventTime
+   *  hämtad än -- se scrapers/parsers/legistar_v1.py)? Styr om
+   *  getNextMeeting() får visa ett klockslag alls: ett datum-utan-tid
+   *  konverterat via AT TIME ZONE skiftar till föregående kvälls klockslag
+   *  (samma "midnatt UTC blir fel lokal dag/tid"-bugg som formatCalendarDate()
+   *  redan skyddar mot på visningssidan -- se dess kommentar). false för varje
+   *  stad tills dess källa bevisat ger ett äkta klockslag. */
+  meetingsHaveTime: boolean;
   /** Meta description-standard */
   description: string;
   /** Rader i footerns "var informationen kommer ifrån" */
@@ -305,6 +314,9 @@ const CITIES: Record<string, SiteConfig> = {
     domain: 'brookingsview.com',
     siteUrl: 'https://brookingsview.com',
     timezone: 'America/Chicago',
+    // Legistar's EventDate has no time component (EventTime not fetched
+    // yet, see legistar_v1.py) -- meeting_date is a bare calendar date.
+    meetingsHaveTime: false,
     description:
       'Meetings, events, Jackrabbits games, weather and market prices in Brookings, South Dakota. Updated every hour.',
     sourceBlurb:
@@ -424,6 +436,10 @@ const CITIES: Record<string, SiteConfig> = {
     domain: 'morenovalleyview.com',
     siteUrl: 'https://morenovalleyview.com',
     timezone: 'America/Los_Angeles',
+    // eSCRIBE's StartDate is a real per-meeting clock time (see
+    // escribe_v1.py's _parse_escribe_date()), localized to this zone at
+    // scrape time as of the 2026-09-30 timezone fix.
+    meetingsHaveTime: true,
     description:
       'City council decisions, events, weather and local happenings in Moreno Valley, California. Updated every hour.',
     sourceBlurb:
@@ -513,6 +529,11 @@ const CITIES: Record<string, SiteConfig> = {
     domain: 'broomfieldview.com',
     siteUrl: 'https://broomfieldview.com',
     timezone: 'America/Denver',
+    // AgendaLink's own `scheduleTime` string is the authoritative local
+    // clock time (parsed + localized to this zone as of the 2026-09-30
+    // fix) -- its `scheduleIso` field was found silently computed against
+    // the wrong US timezone, see agendalink_v1.py's parse comment.
+    meetingsHaveTime: true,
     description:
       'City Council decisions, events, weather and local happenings in Broomfield, Colorado. Updated every hour.',
     sourceBlurb:

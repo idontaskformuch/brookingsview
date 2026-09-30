@@ -39,6 +39,7 @@
 import {
   getWeather, getActiveAlerts, getClosureWatchStatus, getActiveTrafficIncidents,
   getUpcomingStories, getUpcomingArtsEvents, getNextMeeting, getNextSdsuMarqueeEvent,
+  formatMeetingWhen,
 } from './db';
 import { buildEventFeed, todayUtcMidnight, isTonight, selectTodayBucket } from './events';
 import { computeHeatTier } from './heat-advisory';
@@ -161,7 +162,7 @@ async function resolveNextMeeting(): Promise<CityStatusModule | null> {
   if (!meeting) return null;
   return {
     id: 'next_meeting', icon: ICONS.next_meeting, label: 'Next meeting',
-    value: `${meeting.body}, ${meeting.local_label}`, tone: 'quiet',
+    value: `${meeting.body}, ${formatMeetingWhen(meeting)}`, tone: 'quiet',
     href: meeting.agenda_url ?? '/city-hall/', asOf: new Date(),
   };
 }
