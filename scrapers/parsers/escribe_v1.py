@@ -48,6 +48,7 @@ import os
 import re
 import time
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import requests
 from bs4 import BeautifulSoup
@@ -204,7 +205,7 @@ class EscribeParser(BaseParser):
             minutes_url = m.pop("_minutes_url", None)
             action_summary_text = m.pop("_action_summary_text", None)
             action_summary_url = m.pop("_action_summary_url", None)
-            meeting_dt = _parse_escribe_date(m.get("StartDate"))
+            meeting_dt = _parse_escribe_date(m.get("StartDate"), self.cfg["timezone"])
 
             raw_data = dict(m)
             if agenda_html:
@@ -338,13 +339,24 @@ def _extract_pdf_text(raw: bytes, max_chars: int = _MAX_MINUTES_TEXT_CHARS) -> s
         return None
 
 
-def _parse_escribe_date(value: str | None) -> datetime | None:
-    """eSCRIBE ger 'YYYY/MM/DD HH:MM:SS' -- ett riktigt datetime-objekt undviker
-    all tvetydighet kring hur Postgres DateStyle skulle tolka en rå sträng."""
+def _parse_escribe_date(value: str | None, tzname: str) -> datetime | None:
+    """eSCRIBE ger 'YYYY/MM/DD HH:MM:SS' -- ortens egen väggklocka, ingen
+    tidszon angiven.
+
+    BUGG fixad 2026-09-30: strptime() ovan gav tidigare ett NAIVT
+    datetime-objekt, som denna funktions egen (felaktiga) kommentar
+    påstod "undviker all tvetydighet" -- i praktiken sköt det bara
+    tvetydigheten vidare ett steg, till hur psycopg/Postgres tolkar ett
+    naivt datetime mot en TIMESTAMPTZ-kolumn (sessionens tidszon, i
+    praktiken UTC här). Bekräftat live: Moreno Valleys "18:00:00" (6 PM
+    Pacific, en helt normal mötestid) lagrades som 18:00 UTC = 11:00 FM
+    Pacific -- ~7 timmar fel. Lokalisera explicit till ORTENS egen zon
+    (tzname = configs/<town_id>.json:s "timezone") innan den lämnar
+    scrapern, samma disciplin som scrapers/event_sources.py:s _to_iso()."""
     if not value:
         return None
     try:
-        return datetime.strptime(value, "%Y/%m/%d %H:%M:%S")
+        return datetime.strptime(value, "%Y/%m/%d %H:%M:%S").replace(tzinfo=ZoneInfo(tzname))
     except ValueError:
         return None
 
