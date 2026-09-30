@@ -16,7 +16,7 @@ def _stub_kind():
     def fetch(source_cfg, headers):
         return f"blob-for-{source_cfg['name']}".encode()
 
-    def parse(name, blob):
+    def parse(name, blob, tzname):
         return [{"title": name, "content_hash": name, "raw": blob.decode()}]
 
     return EventSourceKind(fetch=fetch, parse=parse)
@@ -31,7 +31,7 @@ def _remove_stub_kind():
 
 
 def _parser(sources):
-    cfg = {"town_id": "test_town"}
+    cfg = {"town_id": "test_town", "timezone": "America/Chicago"}
     source_cfg = {"sources": sources}
     return EventsParser(cfg, source_cfg)
 

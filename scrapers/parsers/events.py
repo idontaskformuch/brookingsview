@@ -106,5 +106,5 @@ class EventsParser(BaseParser):
                 # "hoppa över okänt" som fetch() gör.
                 print(f"    [events:{name}] okänd/ändrad kind vid parse -- hoppar över")
                 continue
-            out.extend(source_kind.parse(name, blob))
+            out.extend(source_kind.parse(name, blob, self.cfg["timezone"]))
         return out

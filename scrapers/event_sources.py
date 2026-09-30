@@ -30,6 +30,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Callable
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -65,16 +66,28 @@ def _decode_ics(source_name: str, ics_bytes: bytes) -> str:
     return ics_bytes.decode("utf-8", errors="replace")
 
 
-def _to_iso(dt) -> str | None:
-    """icalendar ger antingen date eller datetime; normalisera till ISO-sträng."""
+def _to_iso(dt, tzname: str) -> str | None:
+    """icalendar ger antingen date eller datetime; normalisera till ISO-sträng.
+
+    En DTSTART/DTEND utan explicit UTC-offset eller TZID ("floating time"
+    enligt RFC 5545) representerar väggklockan PÅ ORTEN -- aldrig UTC. En
+    källa som publicerar "19:00" menar 19:00 lokal tid, inte 19:00 UTC (vilket
+    för en västkusttid är runt middag lokalt -- fel klockslag, och för sena
+    kvällsevent kan det även hamna på fel kalenderdag lokalt). tzname är
+    alltid KÄLLANS egen ort (configs/<town_id>.json:s "timezone"), aldrig
+    UTC eller körmaskinens egen tid -- se ai_pipeline/time.ts-motsvarigheten
+    på sajtsidan för samma disciplin.
+    """
     if dt is None:
         return None
+    tz = ZoneInfo(tzname)
     if isinstance(dt, datetime):
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=tz)
         return dt.isoformat()
-    # rent datum (heldagsevent) -> midnatt
-    return datetime(dt.year, dt.month, dt.day, tzinfo=timezone.utc).isoformat()
+    # rent datum (heldagsevent) -> lokal midnatt, inte UTC-midnatt (som kan
+    # falla på fel kalenderdag i lokal tid)
+    return datetime(dt.year, dt.month, dt.day, tzinfo=tz).isoformat()
 
 
 def _fetch_ical(source_cfg: dict, headers: dict) -> bytes | None:
@@ -86,7 +99,7 @@ def _fetch_ical(source_cfg: dict, headers: dict) -> bytes | None:
     return r.content
 
 
-def _parse_ical(source_name: str, ics_bytes: bytes) -> list[dict]:
+def _parse_ical(source_name: str, ics_bytes: bytes, tzname: str) -> list[dict]:
     try:
         from icalendar import Calendar
     except ImportError:
@@ -121,8 +134,8 @@ def _parse_ical(source_name: str, ics_bytes: bytes) -> list[dict]:
 
         dtstart = component.get("DTSTART")
         dtend = component.get("DTEND")
-        starts_at = _to_iso(dtstart.dt) if dtstart else None
-        ends_at = _to_iso(dtend.dt) if dtend else None
+        starts_at = _to_iso(dtstart.dt, tzname) if dtstart else None
+        ends_at = _to_iso(dtend.dt, tzname) if dtend else None
 
         location = str(component.get("LOCATION", "")).strip() or None
         description = str(component.get("DESCRIPTION", "")).strip() or None
@@ -219,13 +232,13 @@ def _fetch_html_listing_ical(source_cfg: dict, headers: dict) -> bytes | None:
     return _BLOB_SEPARATOR.join(slug.encode() + b"\n" + blob for slug, blob in blobs.items())
 
 
-def _parse_html_listing_ical(source_name: str, combined: bytes) -> list[dict]:
+def _parse_html_listing_ical(source_name: str, combined: bytes, tzname: str) -> list[dict]:
     records: list[dict] = []
     for chunk in combined.split(_BLOB_SEPARATOR):
         if not chunk.strip():
             continue
         _slug, _, ics_bytes = chunk.partition(b"\n")
-        records.extend(_parse_ical(source_name, ics_bytes))
+        records.extend(_parse_ical(source_name, ics_bytes, tzname))
     return records
 
 
@@ -234,11 +247,14 @@ class EventSourceKind:
     """One recognized `kind` value for an events.sources[] entry.
 
     fetch(source_cfg, headers) -> raw bytes, or None to skip (no url set).
-    parse(source_name, raw_bytes) -> normalized records, same shape
+    parse(source_name, raw_bytes, tzname) -> normalized records, same shape
     run_source()/db.upsert_records() already expect from every parser.
+    tzname is the town's own IANA zone (configs/<town_id>.json's
+    "timezone") -- see _to_iso()'s docstring for why floating-time DTSTART
+    values must be localized to it, never to UTC.
     """
     fetch: Callable[[dict, dict], bytes | None]
-    parse: Callable[[str, bytes], list[dict]]
+    parse: Callable[[str, bytes, str], list[dict]]
 
 
 # "blocked" (policy-blocked, e.g. a robots.txt disallow) and "unconfirmed"

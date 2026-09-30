@@ -5,6 +5,8 @@ Brookings/Moreno Valley feeds). No test file previously existed for this
 fetch/parse logic; these lock in the quirks already found and fixed once so
 a future edit to this module can't silently reintroduce them.
 """
+from datetime import datetime
+
 from scrapers.event_sources import (
     EVENT_SOURCE_KINDS, _BAD_REFRESH_PROPS, _BLOB_SEPARATOR, _decode_ics,
     _extract_event_slugs, _parse_html_listing_ical, _parse_ical,
@@ -66,14 +68,53 @@ def test_parse_ical_extracts_basic_event():
         "DESCRIPTION:Test description\r\n"
         "END:VEVENT\r\n"
     )
-    records = _parse_ical("library", raw)
+    records = _parse_ical("library", raw, "America/Chicago")
     assert len(records) == 1
     r = records[0]
     assert r["title"] == "Test Event"
     assert r["venue"] == "Test Venue"
     assert r["source"] == "library"
+    # explicit "Z" (UTC) offset -- unambiguous, must not be reinterpreted
+    # as the town's local zone.
     assert r["starts_at"] == "2026-01-01T10:00:00+00:00"
     assert r["raw_data"]["uid"] == "test-uid-1"
+
+
+def test_parse_ical_localizes_floating_time_to_town_timezone():
+    # Regression: a DTSTART with no "Z" and no TZID ("floating time" per RFC
+    # 5545) is the venue's own wall-clock time, never UTC. Previously this
+    # was silently stamped as UTC, shifting a 7pm Pacific event to ~noon
+    # Pacific once displayed -- wrong time, and for late events, a shifted
+    # calendar date too.
+    raw = _ics(
+        "BEGIN:VEVENT\r\n"
+        "UID:floating-1\r\n"
+        "SUMMARY:Evening Screening\r\n"
+        "DTSTART:20260930T190000\r\n"
+        "END:VEVENT\r\n"
+    )
+    records = _parse_ical("library", raw, "America/Los_Angeles")
+    assert len(records) == 1
+    assert records[0]["starts_at"] == "2026-09-30T19:00:00-07:00"
+
+
+def test_parse_ical_floating_time_near_midnight_keeps_correct_local_date():
+    # Tz-boundary case: 11:30pm Mountain Time on Sep 30 is 05:30 UTC on
+    # Oct 1 -- if this were ever naively UTC-ized instead of localized, the
+    # LOCAL calendar date (still Sep 30) would be corrupted.
+    raw = _ics(_vevent("late-1", "Late Show", dtstart="20260930T233000"))
+    records = _parse_ical("chamber", raw, "America/Denver")
+    starts_at = records[0]["starts_at"]
+    assert starts_at.startswith("2026-09-30T23:30:00")
+    local_date = datetime.fromisoformat(starts_at).date()
+    assert local_date.isoformat() == "2026-09-30"
+
+
+def test_parse_ical_all_day_event_uses_local_midnight_not_utc_midnight():
+    raw = _ics(_vevent("all-day-1", "Farmers Market", dtstart="20260930"))
+    records = _parse_ical("chamber", raw, "America/Los_Angeles")
+    starts_at = records[0]["starts_at"]
+    assert starts_at.startswith("2026-09-30T00:00:00")
 
 
 def test_parse_ical_survives_malformed_refresh_interval():
@@ -87,7 +128,7 @@ def test_parse_ical_survives_malformed_refresh_interval():
         "DTSTART:20260101T100000Z\r\n"
         "END:VEVENT\r\n"
     )
-    records = _parse_ical("city_events", raw)
+    records = _parse_ical("city_events", raw, "America/Chicago")
     assert len(records) == 1
     assert records[0]["title"] == "Survives Bad Refresh"
 
@@ -100,7 +141,7 @@ def test_parse_ical_skips_event_with_suspicious_title():
         "DTSTART:20260101T100000Z\r\n"
         "END:VEVENT\r\n"
     )
-    assert _parse_ical("library", raw) == []
+    assert _parse_ical("library", raw, "America/Chicago") == []
 
 
 def test_parse_ical_nulls_suspicious_location_and_description_only():
@@ -113,7 +154,7 @@ def test_parse_ical_nulls_suspicious_location_and_description_only():
         "DESCRIPTION:Garbled ��� Text\r\n"
         "END:VEVENT\r\n"
     )
-    records = _parse_ical("chamber", raw)
+    records = _parse_ical("chamber", raw, "America/Chicago")
     assert len(records) == 1
     r = records[0]
     assert r["title"] == "Clean Title"
@@ -123,15 +164,15 @@ def test_parse_ical_nulls_suspicious_location_and_description_only():
 
 def test_parse_ical_skips_event_with_no_title():
     raw = _ics("BEGIN:VEVENT\r\nUID:no-title\r\nDTSTART:20260101T100000Z\r\nEND:VEVENT\r\n")
-    assert _parse_ical("library", raw) == []
+    assert _parse_ical("library", raw, "America/Chicago") == []
 
 
 def test_parse_ical_empty_calendar_returns_no_records():
-    assert _parse_ical("library", _ics("")) == []
+    assert _parse_ical("library", _ics(""), "America/Chicago") == []
 
 
 def test_parse_ical_malformed_calendar_does_not_raise():
-    assert _parse_ical("library", b"not a real calendar at all") == []
+    assert _parse_ical("library", b"not a real calendar at all", "America/Chicago") == []
 
 
 # ---- "html_listing_ics" kind (ChamberMaster/GrowthZone, Fas 3 källjakt) ----
@@ -165,13 +206,13 @@ def test_parse_html_listing_ical_splits_and_parses_each_item():
         b"slug-a\n" + _ics(_vevent("uid-a", "Event A")),
         b"slug-b\n" + _ics(_vevent("uid-b", "Event B")),
     ])
-    records = _parse_html_listing_ical("chamber_business", combined)
+    records = _parse_html_listing_ical("chamber_business", combined, "America/Chicago")
     assert sorted(r["title"] for r in records) == ["Event A", "Event B"]
     assert all(r["source"] == "chamber_business" for r in records)
 
 
 def test_parse_html_listing_ical_empty_blob_returns_no_records():
-    assert _parse_html_listing_ical("chamber_business", b"") == []
+    assert _parse_html_listing_ical("chamber_business", b"", "America/Chicago") == []
 
 
 def test_blob_separator_is_distinct_from_events_py_outer_separator():
@@ -207,5 +248,5 @@ def test_html_listing_ical_survives_outer_events_py_wrapping_roundtrip():
         reconstructed[name.decode()] = blob
 
     assert reconstructed["chamber_business"] == inner_combined
-    records = _parse_html_listing_ical("chamber_business", reconstructed["chamber_business"])
+    records = _parse_html_listing_ical("chamber_business", reconstructed["chamber_business"], "America/Chicago")
     assert sorted(r["title"] for r in records) == ["Event A", "Event B"]
