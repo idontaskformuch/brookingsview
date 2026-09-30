@@ -2764,6 +2764,43 @@ export function formatMeetingWhen(meeting: NextMeeting): string {
   return `${weekday}, ${time}`;
 }
 
+/** Broomfield's AgendaLink `agendaUrl` (copied verbatim into meetings.agenda_url
+ *  and, at publish time, into stories.source_url -- see publish.py's
+ *  build_source_url()) comes back from the vendor's own API pointing at
+ *  sandbox.agendalink.app, not a horizon.agendalink.app/production host --
+ *  confirmed 2026-08-27 this is the API's OWN returned field, not something
+ *  this codebase guesses or constructs. Whether that host is genuinely
+ *  Broomfield's real public portal (oddly named) or a non-production
+ *  environment couldn't be confirmed live (2026-09-30: the page is a
+ *  JS-rendered SPA a text fetch can't evaluate) -- horizon.agendalink.app
+ *  looks like the real production host (same meeting IDs are Google-indexed
+ *  there), but that's one coincidental match, not a verified rewrite rule,
+ *  so this doesn't guess at a replacement URL. Given the uncertainty, no
+ *  outbound link on this site should point at sandbox.* -- see every call
+ *  site of this function for the fallback used instead. */
+export function isSandboxUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    return new URL(url).hostname.startsWith('sandbox.');
+  } catch {
+    return false;
+  }
+}
+
+/** Build-time safety net for isSandboxUrl() -- every render site that emits
+ *  story.source_url (s/[slug].astro, article-jsonld.ts, city-hall/projects/
+ *  [slug].astro) already gates on isSandboxUrl(), but this queries the raw
+ *  DB directly so a FUTURE render site that forgets that gate still gets
+ *  caught here instead of silently leaking a sandbox URL into published
+ *  output. See build-checks.ts's runBuildTimeChecks(). */
+export async function getSandboxSourceUrlSlugs(): Promise<string[]> {
+  const rows = (await sql`
+    SELECT slug FROM stories
+     WHERE town_id = ${TOWN_ID} AND source_url LIKE 'https://sandbox.%'
+  `) as { slug: string }[];
+  return rows.map((r) => r.slug);
+}
+
 /** "Part of an ongoing story" banner support (Story Threads) -- a meeting
  *  STORY (s/[slug].astro) doesn't carry meetings.id as its own column, but
  *  the id is already the stable suffix of every meeting slug ("meeting-123"

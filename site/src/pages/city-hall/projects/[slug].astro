@@ -12,7 +12,7 @@ import ShareButton from '../../../components/ShareButton.astro';
 import Breadcrumbs from '../../../components/Breadcrumbs.astro';
 import {
   getProjects, getProjectBySlug, getProjectUpdates, PROJECT_STATUS_LABELS,
-  formatDate, projectActivityState, STALLED_AFTER_DAYS,
+  formatDate, projectActivityState, STALLED_AFTER_DAYS, isSandboxUrl,
 } from '../../../lib/db';
 import type { ProjectUpdate } from '../../../lib/db';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../../lib/article-jsonld';
@@ -111,7 +111,9 @@ const itemListJsonLd = updates.length > 0 ? {
     '@type': 'ListItem',
     position: i + 1,
     name: `${formatDate(u.entry_date)}: ${entryHeadline(u)}`,
-    url: u.source_url ?? u.agenda_url ?? canonicalUrl,
+    url: (u.source_url && !isSandboxUrl(u.source_url) ? u.source_url : null)
+      ?? (u.agenda_url && !isSandboxUrl(u.agenda_url) ? u.agenda_url : null)
+      ?? canonicalUrl,
   })),
 } : null;
 ---
@@ -166,8 +168,8 @@ const itemListJsonLd = updates.length > 0 ? {
               )}
             </p>
             <p class="timeline__sources">
-              {u.agenda_url && <a href={u.agenda_url} target="_blank" rel="noopener">Agenda</a>}
-              {u.source_url && u.source_url !== u.agenda_url && (
+              {u.agenda_url && !isSandboxUrl(u.agenda_url) && <a href={u.agenda_url} target="_blank" rel="noopener">Agenda</a>}
+              {u.source_url && !isSandboxUrl(u.source_url) && u.source_url !== u.agenda_url && (
                 <> · <a href={u.source_url} target="_blank" rel="noopener">
                   {u.outcome === 'pending' ? 'Source' : 'Minutes / action summary'}
                 </a></>

@@ -10,6 +10,7 @@ import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
 import {
   getAllStories, getRelatedStories, formatOccursAt, formatDate, CATEGORY_LABELS, CATEGORY_HREFS,
   getWorkerPulseComments, getFacilities, buildVenueIndex, resolveVenue, getProjectForMeetingId,
+  isSandboxUrl,
 } from '../../lib/db';
 import type { Story, Facility } from '../../lib/db';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
@@ -364,7 +365,7 @@ const eventJsonLdObject = buildEventJsonLd(
     <ShareButtons url={canonicalUrl} title={story.title} />
 
     <footer class="story__source">
-      {story.source_url ? (
+      {story.source_url && !isSandboxUrl(story.source_url) ? (
         <p>
           Source: <a href={story.source_url} rel="noopener">the original agenda or listing</a>.
           Read it if you need the full detail — this summary is deliberately short.

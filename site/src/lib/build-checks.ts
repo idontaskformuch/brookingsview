@@ -38,7 +38,7 @@
  *  executes this file at all (pure type-checking, no runtime), and vitest
  *  has no reason to import it, so neither needs DATABASE_URL just to run.
  */
-import { TOWN_ID, getFacilities, hasAnyStoryWithVenueRaw, getContentTrackImageStatus, getAllWeeklyStories, getPlaceGuardrailData } from './db';
+import { TOWN_ID, getFacilities, hasAnyStoryWithVenueRaw, getContentTrackImageStatus, getAllWeeklyStories, getPlaceGuardrailData, getSandboxSourceUrlSlugs } from './db';
 import { siteConfig } from './site-config';
 import { categoryImagesFor } from '../config/category-images';
 import { assertCategoryImagesComplete, assertImageExists, findContentTrackRowsMissingImage } from './images';
@@ -76,6 +76,17 @@ let checked = false;
 const KNOWN_VENUE_MATCHING_GAPS: Record<string, string> = {
   broomfield_co: '2026-11-28', // ~3 months from 2026-08-28 -- see the publish.py venue_raw task
 };
+
+/** Same dated-exception shape as KNOWN_VENUE_MATCHING_GAPS above, for
+ *  assertNoSandboxSourceUrls(): confirmed live 2026-09-30 that 24 already-
+ *  published Broomfield stories carry a sandbox.agendalink.app source_url
+ *  from before every render site was gated on isSandboxUrl() -- a real,
+ *  known, already-existing gap (not a hypothetical this check invents), not
+ *  yet backfilled pending an explicit go-ahead (a DB write to already-
+ *  published rows, deliberately not done without one -- see
+ *  scripts/backfill_sandbox_source_urls.py, not yet run). Warn until fixed;
+ *  expires so this can't quietly become permanent. */
+const KNOWN_SANDBOX_URL_GAP_EXPIRY = '2026-10-31';
 
 /** Requires BOTH a real alias and a real venue_raw signal to match it
  *  against -- either alone can be true while the venue tier is still dead
@@ -376,6 +387,35 @@ async function assertPlaceLayerConsistent(): Promise<void> {
   }
 }
 
+/** Broomfield Handoff (2026-09-30), Issue 2: AgendaLink's own API returns
+ *  `agendaUrl` values pointing at sandbox.agendalink.app, not a confirmed
+ *  production host (see db.ts's isSandboxUrl() comment for the full
+ *  investigation) -- every render site now gates on isSandboxUrl() instead
+ *  of emitting it, but this proactively queries stories.source_url directly
+ *  so a future render site that forgets that gate fails the build loudly
+ *  instead of silently shipping a sandbox link to production. */
+async function assertNoSandboxSourceUrls(): Promise<void> {
+  const slugs = await getSandboxSourceUrlSlugs();
+  if (slugs.length === 0) return;
+
+  const message = `${slugs.length} stor${slugs.length === 1 ? 'y' : 'ies'} in "${TOWN_ID}" still ` +
+    `carr${slugs.length === 1 ? 'ies' : 'y'} a sandbox.* source_url: ${slugs.join(', ')}.`;
+
+  if (new Date() <= new Date(KNOWN_SANDBOX_URL_GAP_EXPIRY)) {
+    console.warn(
+      `\n⚠️  KNOWN GAP (tracked, not build-blocking until ${KNOWN_SANDBOX_URL_GAP_EXPIRY}): ${message}\n` +
+      '   Every render site already gates on isSandboxUrl() so none of these reach published output, ' +
+      'but the rows themselves are unbackfilled -- see build-checks.ts\'s KNOWN_SANDBOX_URL_GAP_EXPIRY comment.\n',
+    );
+    return;
+  }
+
+  throw new Error(
+    `Build-time sandbox-URL check failed: ${message} The KNOWN_SANDBOX_URL_GAP_EXPIRY exception expired on ` +
+    `${KNOWN_SANDBOX_URL_GAP_EXPIRY} -- either backfill these rows or deliberately re-review and push the date out.`,
+  );
+}
+
 /** Renamed from runBuildTimeImageChecks: this single build-time hook (still
  *  called once from BaseLayout.astro, still guarded by the same module-level
  *  `checked` flag) now also runs page_meta_check -- see
@@ -390,4 +430,5 @@ export async function runBuildTimeChecks(): Promise<void> {
   await assertContentTrackImagesComplete();
   await assertPageMetaPatternsValid();
   await assertPlaceLayerConsistent();
+  await assertNoSandboxSourceUrls();
 }

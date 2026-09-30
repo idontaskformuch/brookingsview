@@ -58,6 +58,7 @@ import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -285,9 +286,23 @@ def build_title(table: str, row: dict) -> str:
     return "Update"
 
 
+def _is_sandbox_url(url: str | None) -> bool:
+    """AgendaLink's own API returns `agendaUrl` values on sandbox.agendalink.app,
+    not a confirmed production host (see agendalink_v1.py's module docstring
+    and site/src/lib/db.ts's isSandboxUrl() -- same rule, kept in sync on
+    both sides since this value is written here and read/rendered there).
+    Never publish a sandbox link as a story's citable source_url; None here
+    falls back to siteConfig.sourceBlurb on the render side."""
+    if not url:
+        return False
+    host = urlparse(url).hostname or ""
+    return host.startswith("sandbox.")
+
+
 def build_source_url(table: str, row: dict) -> str | None:
     if table == "meetings":
-        return row.get("agenda_url")
+        agenda_url = row.get("agenda_url")
+        return None if _is_sandbox_url(agenda_url) else agenda_url
     if table == "events":
         return row.get("url")
     return None

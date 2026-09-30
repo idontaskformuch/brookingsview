@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from ai_pipeline.publish import (
-    _fmt_hour_min, fmt_dt, fmt_time, group_event_slots, group_recurring_events, slug_date,
+    _fmt_hour_min, build_source_url, fmt_dt, fmt_time, group_event_slots, group_recurring_events, slug_date,
 )
 from ai_pipeline.weekly import _clock
 
@@ -100,3 +100,22 @@ def test_slug_date_accepts_iso_string():
 
 def test_slug_date_none_for_missing_value():
     assert slug_date(None) is None
+
+
+def test_build_source_url_rejects_sandbox_agenda_url():
+    # Broomfield Handoff (2026-09-30), Issue 2: AgendaLink's own API returns
+    # agendaUrl values on sandbox.agendalink.app -- confirmed live never a
+    # confirmed production host. Never publish it as a story's citable
+    # source_url (site/src/lib/db.ts's isSandboxUrl() is the same rule on
+    # the render side, kept in sync).
+    row = {"agenda_url": "https://sandbox.agendalink.app/engage/broomfield/abc123"}
+    assert build_source_url("meetings", row) is None
+
+
+def test_build_source_url_keeps_real_agenda_url():
+    row = {"agenda_url": "https://cityofbrookings.legistar.com/MeetingDetail.aspx?ID=123"}
+    assert build_source_url("meetings", row) == "https://cityofbrookings.legistar.com/MeetingDetail.aspx?ID=123"
+
+
+def test_build_source_url_none_for_missing_agenda_url():
+    assert build_source_url("meetings", {}) is None

@@ -15,7 +15,7 @@
  * author, never a fabricated Person) -- the honesty about AI authorship IS
  * the trust signal, not something to hide to look more human.
  */
-import { formatPrice, type SourceType, type Story, type PropertySale } from './db';
+import { formatPrice, isSandboxUrl, type SourceType, type Story, type PropertySale } from './db';
 
 const ARTICLE_TYPE_BY_SOURCE_TYPE: Partial<Record<SourceType, string>> = {
   editorial: 'OpinionNewsArticle',
@@ -69,7 +69,7 @@ export function buildArticleJsonLd(
   // already rendered visibly on the page as "Source: the original agenda
   // or listing" (see s/[slug].astro) -- never a second, silently-differing
   // copy of that fact.
-  if (story.source_url) {
+  if (story.source_url && !isSandboxUrl(story.source_url)) {
     base.isBasedOn = story.source_url;
   }
 
