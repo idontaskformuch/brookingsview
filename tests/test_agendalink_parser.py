@@ -5,9 +5,33 @@ Broomfield, CO's real AgendaLink data (client slug "broomfield").
 import json
 
 from scrapers.parsers.agendalink_v1 import (
-    _extract_text_from_details, _extract_topics, _slate_to_text,
-    _strip_unresolved_merge_fields,
+    _extract_text_from_details, _extract_topics, _parse_schedule_iso,
+    _parse_schedule_time, _slate_to_text, _strip_unresolved_merge_fields,
 )
+
+
+def test_parse_schedule_time_localizes_to_town_timezone():
+    # Real live example (meeting id 11337, confirmed 2026-09-30): this is
+    # the authoritative field -- scheduleIso for the same meeting
+    # ("2026-10-14T00:00:00.000Z") converts to a DIFFERENT day/time
+    # (6:00 PM Oct 13 via a correct America/Denver conversion), proving
+    # scheduleIso is computed against the wrong US timezone upstream.
+    dt = _parse_schedule_time("Tuesday, October 13, 2026, 7:00 PM", "America/Denver")
+    assert dt is not None
+    assert dt.isoformat() == "2026-10-13T19:00:00-06:00"
+
+
+def test_parse_schedule_time_none_for_missing_or_malformed():
+    assert _parse_schedule_time(None, "America/Denver") is None
+    assert _parse_schedule_time("not a real schedule string", "America/Denver") is None
+
+
+def test_parse_schedule_iso_still_parses_for_coarse_window_filter():
+    # Unchanged behavior -- still used by fetch()'s window filter, where a
+    # rough instant is good enough.
+    dt = _parse_schedule_iso("2026-10-14T00:00:00.000Z")
+    assert dt is not None
+    assert dt.isoformat() == "2026-10-14T00:00:00+00:00"
 
 
 def test_strips_double_brace_merge_fields():

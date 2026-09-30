@@ -45,9 +45,15 @@ templateTopic=true FILTRERAS BORT: mötets fasta dagordningsskelett
 "inget innehållslöst" -princip civicengage_pdf_v1/escribe_v1 redan
 tillämpar för sina plattformars motsvarande boilerplate-poster.
 
-DATUM: scheduleIso är redan en riktig ISO 8601-instant (UTC, "Z"-suffix) --
-till skillnad från eSCRIBE:s "YYYY/MM/DD HH:MM:SS" krävs ingen
-strängtolkning av ett tvetydigt format, bara datetime.fromisoformat().
+DATUM: scheduleIso SER ut som en riktig ISO 8601-instant (UTC, "Z"-suffix),
+men fixad 2026-09-30: bekräftat live att den räknas fel tidszon (som om
+Broomfield låg i Central time, inte Mountain) -- en konsekvent ~1 timmes
+avvikelse mot samma mötes egen scheduleTime-sträng. meeting_date byggs
+därför av scheduleTime ("Thursday, December 10, 2026, 7:00 PM", ortens
+väggklocka) lokaliserad till configens timezone, inte av scheduleIso --
+se _parse_schedule_time()'s docstring för den fulla utredningen.
+scheduleIso används bara kvar som grov fönsterfilter i fetch() (se
+_parse_schedule_iso) och som sista reservutväg om scheduleTime saknas.
 
 GENERISK FÖR ANDRA STÄDER: bara client_id/base_url är stadsspecifika
 (satta i configen). Ingen hårdkodad Broomfield-referens här.
@@ -63,6 +69,7 @@ import os
 import re
 import time
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 from bs4 import BeautifulSoup
@@ -150,10 +157,21 @@ class AgendaLinkParser(BaseParser):
         if candidates is None:
             candidates = json.loads(fetched.raw.decode("utf-8"))
 
+        tzname = self.cfg["timezone"]
         out = []
         for m in candidates:
             meeting_id = m.get("id")
-            meeting_dt = _parse_schedule_iso(m.get("scheduleIso"))
+            meeting_dt = _parse_schedule_time(m.get("scheduleTime"), tzname)
+            if meeting_dt is None:
+                # Defensive fallback only -- scheduleTime missing/unparseable
+                # is not expected from real data (verified live 2026-08-27
+                # and again 2026-09-30), but a wrong-timezone instant still
+                # beats losing the meeting entirely.
+                meeting_dt = _parse_schedule_iso(m.get("scheduleIso"))
+                if meeting_dt is not None:
+                    print(f"    [agendalink] möte {meeting_id}: scheduleTime saknas/oparsbar "
+                          f"({m.get('scheduleTime')!r}), faller tillbaka på scheduleIso (kan vara "
+                          "fel tidszon -- se _parse_schedule_time()'s docstring)")
             detail = m.pop("_agenda_detail", None)
 
             raw_data = dict(m)
@@ -179,10 +197,40 @@ class AgendaLinkParser(BaseParser):
 
 
 def _parse_schedule_iso(value: str | None) -> datetime | None:
+    """Coarse-only: used solely for fetch()'s generous DAYS_BACK/DAYS_FORWARD
+    window filter, where being off by an hour or two never changes which
+    meetings fall inside a 60/90-day window. NOT used for the stored
+    meeting_date -- see _parse_schedule_time()'s docstring for why."""
     if not value:
         return None
     try:
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+_SCHEDULE_TIME_RE = "%A, %B %d, %Y, %I:%M %p"
+
+
+def _parse_schedule_time(value: str | None, tzname: str) -> datetime | None:
+    """The stored meeting_date. AgendaLink's own `scheduleTime` string
+    ("Thursday, December 10, 2026, 7:00 PM") is a human-composed local
+    wall-clock time -- verified live against real Broomfield data to be the
+    RELIABLE field. `scheduleIso` claims to already be a correct UTC
+    instant (this module's docstring said so until this fix), but is
+    silently computed against the WRONG US timezone: e.g. id 11337's
+    scheduleIso (2026-10-14T00:00:00Z) converts to 6:00 PM America/Denver
+    on Oct 13 via a correct IANA conversion, but its own scheduleTime says
+    "Tuesday, October 13, 2026, 7:00 PM" -- a real, consistent 1-hour
+    mismatch (matches scheduleIso being computed as if Broomfield were on
+    Central time, not Mountain), an upstream AgendaLink/Horizon quirk, not
+    something this scraper introduced. Parsing scheduleTime directly and
+    localizing it to the town's OWN configured zone (tzname) sidesteps
+    whatever timezone AgendaLink's own scheduleIso computation assumes."""
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, _SCHEDULE_TIME_RE).replace(tzinfo=ZoneInfo(tzname))
     except ValueError:
         return None
 
