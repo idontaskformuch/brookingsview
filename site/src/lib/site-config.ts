@@ -529,10 +529,12 @@ const CITIES: Record<string, SiteConfig> = {
     domain: 'broomfieldview.com',
     siteUrl: 'https://broomfieldview.com',
     timezone: 'America/Denver',
-    // AgendaLink's own `scheduleTime` string is the authoritative local
-    // clock time (parsed + localized to this zone as of the 2026-09-30
-    // fix) -- its `scheduleIso` field was found silently computed against
-    // the wrong US timezone, see agendalink_v1.py's parse comment.
+    // AgendaLink's own `scheduleIso` field is a real, correct UTC instant
+    // -- verified DIRECTLY against broomfield.org's own CivicEngage
+    // calendar (independent of AgendaLink), not just cross-checked against
+    // AgendaLink's other field (`scheduleTime`, which has its own
+    // independent 1-hour error -- see agendalink_v1.py's parse comment for
+    // the full, corrected investigation).
     meetingsHaveTime: true,
     description:
       'City Council decisions, events, weather and local happenings in Broomfield, Colorado. Updated every hour.',

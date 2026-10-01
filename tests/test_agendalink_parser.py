@@ -3,35 +3,29 @@
 Broomfield, CO's real AgendaLink data (client slug "broomfield").
 """
 import json
+from zoneinfo import ZoneInfo
 
 from scrapers.parsers.agendalink_v1 import (
     _extract_text_from_details, _extract_topics, _parse_schedule_iso,
-    _parse_schedule_time, _slate_to_text, _strip_unresolved_merge_fields,
+    _slate_to_text, _strip_unresolved_merge_fields,
 )
 
 
-def test_parse_schedule_time_localizes_to_town_timezone():
-    # Real live example (meeting id 11337, confirmed 2026-09-30): this is
-    # the authoritative field -- scheduleIso for the same meeting
-    # ("2026-10-14T00:00:00.000Z") converts to a DIFFERENT day/time
-    # (6:00 PM Oct 13 via a correct America/Denver conversion), proving
-    # scheduleIso is computed against the wrong US timezone upstream.
-    dt = _parse_schedule_time("Tuesday, October 13, 2026, 7:00 PM", "America/Denver")
+def test_parse_schedule_iso_is_the_authoritative_meeting_date_source():
+    # Verified DIRECTLY against broomfield.org's own CivicEngage calendar
+    # (independent of AgendaLink): the city's own site says Sept 22, 2026's
+    # City Council Regular Meeting is "6 p.m." -- scheduleIso converted to
+    # America/Denver gives exactly that. (A same-day-earlier version of
+    # this fix wrongly trusted scheduleTime instead, which has its own
+    # independent 1-hour error -- see the module's docstring.)
+    dt = _parse_schedule_iso("2026-09-23T00:00:00.000Z")  # real id 11341's scheduleIso
     assert dt is not None
-    assert dt.isoformat() == "2026-10-13T19:00:00-06:00"
+    assert dt.astimezone(ZoneInfo("America/Denver")).strftime("%A, %I:%M %p") == "Tuesday, 06:00 PM"
 
 
-def test_parse_schedule_time_none_for_missing_or_malformed():
-    assert _parse_schedule_time(None, "America/Denver") is None
-    assert _parse_schedule_time("not a real schedule string", "America/Denver") is None
-
-
-def test_parse_schedule_iso_still_parses_for_coarse_window_filter():
-    # Unchanged behavior -- still used by fetch()'s window filter, where a
-    # rough instant is good enough.
-    dt = _parse_schedule_iso("2026-10-14T00:00:00.000Z")
-    assert dt is not None
-    assert dt.isoformat() == "2026-10-14T00:00:00+00:00"
+def test_parse_schedule_iso_none_for_missing_or_malformed():
+    assert _parse_schedule_iso(None) is None
+    assert _parse_schedule_iso("not a real iso string") is None
 
 
 def test_strips_double_brace_merge_fields():
