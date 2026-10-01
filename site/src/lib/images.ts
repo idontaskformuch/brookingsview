@@ -91,6 +91,19 @@ export function isHotlinkedImage(path: string): boolean {
   return path.startsWith('http://') || path.startsWith('https://');
 }
 
+/** 2026-10-01 cleanup round, item 3: Ticketmaster's own image CDN
+ *  (s1.ticketm.net) is no longer put directly into a rendered <img src> --
+ *  this root-relative path routes through server/ticketmaster-image.ts's
+ *  Worker route instead, which fetches-and-caches the real image server
+ *  side (bounded TTL, see that module's own ToS-compliance comment) and
+ *  falls back to a real local placeholder if the upstream fetch ever
+ *  fails. Root-relative on purpose, not emitted as an absolute URL --
+ *  isHotlinkedImage() must keep treating this as a local path, the same
+ *  as any other asset under /assets/, not as an external hotlink. */
+export function ticketmasterImageProxyPath(originalUrl: string): string {
+  return `/img/ticketmaster?u=${encodeURIComponent(originalUrl)}`;
+}
+
 /** The category vocabulary this feature covers -- see NEEDS-HUMAN-REVIEW.md
  *  for the full per-town list. Deliberately NOT every SourceType has one:
  *  content-track types (editorial, culture_essay, ...) always resolve via
@@ -566,12 +579,15 @@ export function resolveImage(story: ResolvableStory & { slug?: string }, options
   // as the defensive "is this actually a usable absolute URL" check here --
   // an empty string, null, undefined, or a malformed value all fail it and
   // fall through to the next tier rather than erroring or rendering a
-  // broken <img src>. Always hotlinked (Ticketmaster's own s1.ticketm.net
-  // CDN), so no assertImageExists() call -- same treatment the Unsplash
-  // hotlink case already gets elsewhere in this file.
+  // broken <img src>. 2026-10-01: no longer hotlinked straight to
+  // Ticketmaster's own s1.ticketm.net CDN -- routed through
+  // ticketmasterImageProxyPath()'s own cache-and-placeholder Worker route
+  // instead (see that function's own comment), so still no
+  // assertImageExists() call here (the Worker route handles a missing/dead
+  // upstream image itself, at request time, not at build time).
   if (story.ticketmasterImageUrl && isHotlinkedImage(story.ticketmasterImageUrl)) {
     return {
-      path: story.ticketmasterImageUrl,
+      path: ticketmasterImageProxyPath(story.ticketmasterImageUrl),
       alt: story.image_alt ?? `Photo for "${story.title}"`,
       width: story.ticketmasterImageWidth ?? 1600,
       height: story.ticketmasterImageHeight ?? 900,

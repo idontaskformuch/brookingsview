@@ -328,7 +328,10 @@ describe('resolveImage', () => {
       ticketmasterImageWidth: 2048, ticketmasterImageHeight: 1152,
     };
     const result = resolveImage(story, baseOptions);
-    expect(result?.path).toBe('https://s1.ticketm.net/dam/real-photo.jpg');
+    // 2026-10-01, item 3: proxied+cached through this site's own origin
+    // now, not hotlinked straight to Ticketmaster's CDN -- see
+    // ticketmasterImageProxyPath()'s own comment.
+    expect(result?.path).toBe('/img/ticketmaster?u=https%3A%2F%2Fs1.ticketm.net%2Fdam%2Freal-photo.jpg');
     expect(result?.width).toBe(2048);
     expect(result?.height).toBe(1152);
   });

@@ -25,6 +25,7 @@ import { neon } from '@neondatabase/serverless';
 import { handleComment } from './comment';
 import { handleShiftPollVote } from './shift-poll-vote';
 import { handleContact } from './contact';
+import { handleTicketmasterImage } from './ticketmaster-image';
 import {
   type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug, previousIsoWeekSlug,
   resolveLegacyMeetingRedirect,
@@ -72,6 +73,13 @@ export default {
     }
     if (request.method === 'POST' && url.pathname === '/api/contact') {
       return handleContact(request, env);
+    }
+    // Item 3, 2026-10-01 cleanup round: proxy-and-cache Ticketmaster event
+    // images here instead of hotlinking s1.ticketm.net directly from the
+    // browser -- see ticketmaster-image.ts's own module docstring for the
+    // ToS reasoning and the cache-then-placeholder behavior.
+    if (request.method === 'GET' && url.pathname === '/img/ticketmaster') {
+      return handleTicketmasterImage(request, env, ctx);
     }
 
     // Legacy meeting slugs (AdSense remediation Phase B1, see
