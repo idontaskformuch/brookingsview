@@ -88,3 +88,69 @@ def test_a_clean_draft_on_the_first_try_never_retries():
     )
     assert article is not None
     assert len(client.calls) == 1
+
+
+# Follow-up (2026-10-02) to the question "is election_business_policy a hard
+# block or just a flag like review_standard.py's own checks?" -- this proves
+# the answer with the SAME end-to-end harness as the wrong-town tests above,
+# using the real published text of brookings_sd/editorial-2026-09-29. The
+# check lives INSIDE pre_publish_check() (Phase 0 check 6), the SAME gate
+# the wrong-town checks above go through -- there is only one enforcement
+# path through generate_article() for all 6 checks, not a separate one per
+# check, so this is a real test of the shared mechanism, not a new one.
+CORNERSTONE_DRAFT = (
+    "The Open House That Brookings Should Read as a Warning\n\n"
+    "On October 6, Cornerstone Caregiving will throw open the doors of its new "
+    "office for four hours of tours, refreshments, and a door-prize drawing. "
+    "This is the open house Brookings should read as a warning sign about "
+    "where the town is headed."
+)
+# A realistic retry: generate_article()'s own correction prompt is worded for
+# the wrong-town check ("every place reference... belongs ONLY to {town}"),
+# not specifically for election_business_policy -- so a retry that fixes
+# nothing about the actual violation (still names the business critically)
+# is the REALISTIC failure mode this test checks, not a contrived one.
+CORNERSTONE_STILL_CRITICAL_RETRY = (
+    "The Open House Brookings Residents Should Notice\n\n"
+    "On October 6, Cornerstone Caregiving opens its new office. This is the "
+    "open house Brookings should read as a warning sign about where the town "
+    "is headed, and residents deserve to know it."
+)
+CORNERSTONE_FIXED_RETRY = (
+    "A New Caregiving Option Opens Its Doors\n\n"
+    "On October 6, a new in-home caregiving provider opens its office for "
+    "tours and refreshments -- one data point in a broader pattern worth the "
+    "city's attention as its population ages."
+)
+
+
+def test_election_business_policy_violation_blocks_publication_after_retry():
+    """The actual incident: a Cornerstone-Caregiving-shaped draft that STAYS
+    in violation after one retry publishes NOTHING -- same hard-block
+    behavior as the wrong-town tests above, via the same pre_publish_check()
+    gate. This is the code path that would have stopped
+    editorial-2026-09-29 had the check existed before 2026-09-29 published
+    it; it didn't exist yet that day (added 2026-10-01), which is the real,
+    purely TEMPORAL reason that article got published -- not a flag-vs-block
+    gap in the check itself."""
+    client = _ScriptedClient([CORNERSTONE_DRAFT, CORNERSTONE_STILL_CRITICAL_RETRY])
+    article = generate_article(
+        "You are an editorial writer.", "local input about a caregiving business open house",
+        existing_corpus=[], cfg=BROOKINGS_CFG, client=client, content_type="editorial",
+    )
+    assert article is None
+    assert len(client.calls) == 2  # retried once, gave up, published nothing
+
+
+def test_election_business_policy_violation_allows_a_genuinely_fixed_retry():
+    # The flip side: if the retry actually removes the business-criticism
+    # framing, it passes and publishes -- the gate blocks the VIOLATION,
+    # not the topic area itself.
+    client = _ScriptedClient([CORNERSTONE_DRAFT, CORNERSTONE_FIXED_RETRY])
+    article = generate_article(
+        "You are an editorial writer.", "local input about a caregiving business open house",
+        existing_corpus=[], cfg=BROOKINGS_CFG, client=client, content_type="editorial",
+    )
+    assert article is not None
+    assert "Cornerstone Caregiving" not in article.body
+    assert len(client.calls) == 2
