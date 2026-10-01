@@ -1,12 +1,13 @@
 """The single pre-publish validation entry point -- see validation/__init__.py
 and the package docstring for the overall shape.
 
-pre_publish_check() composes five checks:
+pre_publish_check() composes six checks:
   1. Wrong-town leakage      -- ai_pipeline.town_guard.validate_town_identity()
   2. Wrong state/place       -- validation.place_state
   3. Date coherence          -- validation.date_coherence
   4. Intra-record consistency -- validation.record_consistency
   5. Incoherent fragments    -- validation.incoherent_fragments
+  6. Election/business policy -- validation.election_business_policy
 
 Checks 1 and 2 both need `cfg` (the active town's own config) to know what
 "wrong" means; 3 needs the record's own date; 4 needs the source record(s)
@@ -35,6 +36,7 @@ from datetime import datetime
 
 from ai_pipeline.town_guard import validate_town_identity
 from validation.date_coherence import check_date_coherence
+from validation.election_business_policy import check_election_business_policy
 from validation.incoherent_fragments import check_incoherent_fragments
 from validation.place_state import check_place_state
 from validation.record_consistency import check_record_consistency
@@ -112,6 +114,11 @@ def pre_publish_check(
     if not fragments.passed:
         failing_checks.append("incoherent_fragments")
         violations.extend(fragments.violations)
+
+    policy = check_election_business_policy(text)
+    if not policy.passed:
+        failing_checks.append("election_business_policy")
+        violations.extend(policy.violations)
 
     passed = len(failing_checks) == 0
     id_label = f" record={record_id}" if record_id is not None else ""
