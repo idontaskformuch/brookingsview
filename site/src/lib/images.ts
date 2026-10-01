@@ -459,7 +459,7 @@ export type ResolvableStory = Pick<Story, 'title' | 'source_type' | 'image_path'
  *  story's slug, or its title when no slug exists -- see resolveImage()'s
  *  own itemSlug). Same seed always picks the same index, so the SAME story
  *  gets the SAME category image across rebuilds (no flicker on every
- *  hourly rebuild) while DIFFERENT stories in the same category spread
+ *  rebuild) while DIFFERENT stories in the same category spread
  *  across the pool instead of every single one collapsing onto image #1 --
  *  deliberately NOT random (Math.random() would reassign an already-
  *  published story's image on every rebuild for no reason). A plain

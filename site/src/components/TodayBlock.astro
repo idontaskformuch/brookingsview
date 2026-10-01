@@ -52,8 +52,8 @@ import type { ClosureWatchStatus } from '../lib/closure-watch';
 export interface Props {
   cityName: string;
   timezone: string;
-  /** Real build/render timestamp -- see module docstring: the hourly
-   *  deploy hook means this can be up to an hour stale, so it must be
+  /** Real build/render timestamp -- see module docstring: the every-6-hours
+   *  deploy cadence means this can be up to 6 hours stale, so it must be
    *  shown, not implied. */
   asOf: Date;
   temperature: number | null;

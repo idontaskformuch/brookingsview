@@ -45,13 +45,18 @@ export const GET: APIRoute = async () => {
     `# ${siteConfig.siteName}`,
     '',
     `> Local public-information coverage for ${siteConfig.cityName}, ${siteConfig.stateAbbr}. ` +
-      `${siteConfig.sourceBlurb} Every item links back to its original source. Updated hourly.`,
+      `${siteConfig.sourceBlurb} News and listings link back to their original source. Refreshed every 6 hours.`,
     '',
     // Paraphrased from how-we-gather-this.astro's own real "How the
     // summaries are written" section -- the provenance/method sentence
     // the spec's own Section 2 says "is doing more work for citability
-    // than the link list is," not freshly invented framing.
-    "Every summary is written by an AI model working only from the named source above -- never adding a fact, name or number that isn't in it -- and checked against that source before publishing.",
+    // than the link list is," not freshly invented framing. Split in two
+    // (2026-10-01) to stop overclaiming "checked against that source" for
+    // content with no single source document -- reviews/recipes/editorials/
+    // columns are checked a different way (see how-we-gather-this.astro's
+    // own "Reviews, recipes, editorials, and columns" section).
+    "News and listing summaries are written by an AI model working only from the named source above -- never adding a fact, name or number that isn't in it -- and checked against that source before publishing.",
+    "Reviews, recipes, editorials, and columns are AI-written original pieces, labeled as such, checked by automated rules (town/date/fact consistency, no election or private-business endorsement, no unverified showtime claims) rather than against a single source document.",
   ];
 
   for (const cluster of graph.clusters) {

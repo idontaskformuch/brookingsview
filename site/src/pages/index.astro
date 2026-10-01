@@ -578,7 +578,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     {fullWidthLead ? (
       <LeadStory story={fullWidthLead} facilities={facilities} image={frontPageImageBySlug.get(fullWidthLead.slug)} />
     ) : secondary.length === 0 && (
-      <p class="empty">Nothing scheduled right now. This page rebuilds every hour.</p>
+      <p class="empty">Nothing scheduled right now. This page rebuilds every 6 hours.</p>
     )}
 
     {secondary.length > 0 && (

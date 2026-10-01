@@ -1,85 +1,87 @@
 ---
+/** 2026-10-01 cleanup round, item 2: rewritten so the sources list and the
+ *  "how often" line are GENERATED from the actual per-town config
+ *  (via lib/about-sources.ts's aboutSourcesFor(), the same "can't drift"
+ *  machinery /about already uses) instead of a Brookings-only hand-written
+ *  table with every other town falling back to a vague blurb -- the
+ *  previous version leaked Brookings-shaped assumptions ("every hour")
+ *  onto Moreno Valley and Broomfield, which don't share that cadence, and
+ *  never enumerated Ticketmaster, Chamber/GrowthZone, or Worker Pulse's own
+ *  sourcing at all.
+ *
+ *  Three facts below were explicitly verified against the real pipeline
+ *  before writing this page, not assumed:
+ *   1. No person reviews an item before it appears. Checked:
+ *      ai_pipeline/publish.py's only "human review" reference (line ~699)
+ *      is queuing an unresolved VENUE NAME STRING for a data-quality
+ *      review queue (ai_pipeline/venue_registry.py) -- unrelated to content
+ *      approval. There is no gate between generation and publish anywhere
+ *      in the pipeline.
+ *   2. The real cadence is every 6 hours, not hourly, for all three towns --
+ *      confirmed via the "every 6 hours" cron in scrape.yml, moval-scrape.yml,
+ *      and broomfield-scrape.yml alike (lowered from hourly 2026-08-28, per
+ *      scrape.yml's own comment).
+ *   3. /corrections exists, links from /contact, and honestly shows "No
+ *      corrections have been logged yet" rather than being an empty stub.
+ */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
+import { aboutSourcesFor } from '../lib/about-sources';
 
-// De faktiska källorna skiljer sig strukturellt per stad (olika plattformar,
-// olika institutioner), inte bara i namn -- siteConfig har inte (och ska inte
-// ha) den granulariteten. Den detaljerade tabellen är därför Brookings-
-// specifik och äkta; andra städer får sourceBlurb-sammanfattningen i stället
-// för en påhittad men strukturellt fel tabell.
-const isBrookings = siteConfig.townId === 'brookings_sd';
-
-const sources = [
-  {
-    name: 'City council & city meetings',
-    from: 'City of Brookings, via Legistar',
-    detail: "Agendas and the items on them — permits, ordinances, appointments — pulled directly from the city's own meeting management system.",
-  },
-  {
-    name: 'County meetings',
-    from: 'Brookings County, via its Agenda Center',
-    detail: 'County commission, planning & zoning, and committee agendas, including the text of posted PDF documents where available.',
-  },
-  {
-    name: 'Weather & alerts',
-    from: 'National Weather Service / NOAA',
-    detail: 'Forecasts and active advisories for Brookings County, straight from the federal weather API.',
-  },
-  {
-    name: 'Road & emergency alerts',
-    from: 'Brookings County Alert Center',
-    detail: "Closures, hazards, and public notices, shown only while they're still in effect.",
-  },
-  {
-    name: 'Library events',
-    from: 'Brookings Public Library',
-    detail: "Classes, programs, and events from the library's own public calendar.",
-  },
-  {
-    name: 'Jackrabbits schedules & results',
-    from: 'SDSU Athletics',
-    detail: 'Game times, opponents, and final scores for SDSU football, basketball, and volleyball.',
-  },
-  {
-    name: 'Farm report',
-    from: 'USDA National Agricultural Statistics Service',
-    detail: 'Corn, soybean, and cattle prices, published monthly by USDA.',
-  },
-];
+const sources = aboutSourcesFor(siteConfig.townId);
 ---
 <BaseLayout title={`How we gather this — ${siteConfig.siteName}`}
-  description={`Every source ${siteConfig.siteName} draws from, and how the AI summaries are checked.`}>
+  description={`Every source ${siteConfig.siteName} draws from, how the AI-written pieces are checked, and what's reviewed by a person (nothing, before publish).`}>
   <article class="prose">
     <h1>How we gather this</h1>
-    <p>{siteConfig.siteName} doesn't have a newsroom. It has a set of public data
-    sources, checked every hour, and a language model that turns raw agendas
-    and calendars into short, readable summaries. Here's exactly how that
-    works.</p>
+    <p>{siteConfig.siteName} doesn't have a newsroom. It has a set of public
+    data sources, refreshed every 6 hours, and a language model that turns
+    raw agendas, calendars, and public data into readable pages. No person
+    reviews an individual item before it goes live — the checks below run
+    automatically, every time. Here's exactly how that works.</p>
 
     <h2>The sources</h2>
-    {isBrookings ? (
-      <dl class="sources">
+    {sources.length > 0 ? (
+      <ul class="sources">
         {sources.map((s) => (
-          <div class="source">
-            <dt>{s.name}</dt>
-            <dd class="source__from">{s.from}</dd>
-            <dd>{s.detail}</dd>
-          </div>
+          <li><a href={s.url} rel="nofollow noopener" target="_blank">{s.name}</a></li>
         ))}
-      </dl>
+      </ul>
     ) : (
-      <p>{siteConfig.sourceBlurb} Every item links back to its original source.</p>
+      <p>{siteConfig.sourceBlurb}</p>
     )}
+    <p>This list is generated from the same configuration the scrapers
+    themselves run from — if a source is turned off, it drops off this page
+    automatically, and nothing here is written by hand per town.</p>
 
-    <h2>How the summaries are written</h2>
-    <p>Each item is summarized by Claude, an AI model made by Anthropic, working
-    only from the source text — the actual agenda, the actual calendar listing.
-    It's instructed to use only facts present in that source and never to add
-    names, numbers, or details that aren't there. Every summary is checked
-    against its source before publishing; if a check fails, the item is either
-    rewritten or held back rather than published incomplete.</p>
-    <p>Every story links back to its original source, so you can always read
-    the full agenda or listing yourself.</p>
+    <h2>News, meetings, and listings</h2>
+    <p>Meeting agendas, calendar listings, weather alerts, and similar
+    factual items are summarized by Claude, an AI model made by Anthropic,
+    working only from the source text — the actual agenda, the actual
+    listing. It's instructed to use only facts present in that source and
+    never to add names, numbers, or details that aren't there. A summary
+    that appears to contradict its own source is rewritten or held back
+    rather than published incomplete. Every one of these stories links back
+    to its original source, so you can always read the full agenda or
+    listing yourself.</p>
+
+    <h2>Reviews, recipes, editorials, and columns</h2>
+    <p>Some of what's on this site isn't a summary of one source document at
+    all — film/TV reviews, recipes, editorials, and the science and
+    quick-read columns are written by the same AI model, grounded in real
+    facts (aggregate critic scores, a verified local venue, real civic
+    data) but composed, not extracted. These are clearly AI-written and
+    labeled as such on the page.</p>
+    <p>Before anything in this group publishes, it has to pass a set of
+    automatic checks: that it names the right town, state, and date; that
+    it doesn't contradict its own source material or the facts already on
+    this site; that editorials describe civic processes without endorsing a
+    candidate or ballot measure, or naming a private business or person as
+    a target of criticism; and, for reviews specifically, that it never
+    claims a confirmed local showtime or "now playing" status this site has
+    no actual data for. A draft that fails gets one rewrite attempt with the
+    specific problem pointed out; if it still fails, nothing is published —
+    there's no template fallback for a piece that fails these checks.</p>
 
     <h2>What we choose not to name</h2>
     <p>Meeting agendas sometimes include the names of private individuals —
@@ -88,10 +90,17 @@ const sources = [
     Organizations, businesses, and public officials acting in their official
     capacity are named normally.</p>
 
+    <h2>Photos</h2>
+    <p>Illustrative photos on category and topic pages come from Pexels,
+    each individually credited to its photographer where it appears. They
+    represent the general subject, not a specific event pictured in the
+    story next to them.</p>
+
     <h2>Corrections</h2>
     <p>If a summary gets something wrong, <a href="/contact/">tell us</a> and
-    we'll fix it — usually within the hour, since the site rebuilds
-    automatically.</p>
+    we'll fix it — usually within one refresh cycle, since the site rebuilds
+    automatically. Logged corrections are public: see the
+    <a href="/corrections/">corrections page</a>.</p>
   </article>
 </BaseLayout>
 
@@ -100,13 +109,6 @@ const sources = [
 .prose h2 { margin-top: 2.25rem; margin-bottom: 0.75rem; }
 .prose p { margin: 0 0 1rem; }
 
-.sources { display: grid; gap: 1.25rem; margin: 0; }
-.source dt {
-  font-family: var(--font-ui);
-  font-weight: 600;
-  font-size: 1rem;
-}
-.source__from { color: var(--navy); font-size: 0.875rem; margin: 0.125rem 0 0.375rem; }
-.source dd:last-child { margin: 0; color: var(--ink-soft); font-size: 0.9375rem; }
-.source dd { margin-inline-start: 0; }
+.sources { margin: 0 0 1rem; padding-left: 1.25rem; display: grid; gap: 0.375rem; }
+.sources li { font-size: 0.9375rem; }
 </style>

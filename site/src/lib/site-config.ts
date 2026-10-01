@@ -318,7 +318,7 @@ const CITIES: Record<string, SiteConfig> = {
     // yet, see legistar_v1.py) -- meeting_date is a bare calendar date.
     meetingsHaveTime: false,
     description:
-      'Meetings, events, Jackrabbits games, weather and market prices in Brookings, South Dakota. Updated every hour.',
+      'Meetings, events, Jackrabbits games, weather and market prices in Brookings, South Dakota. Updated every 6 hours.',
     sourceBlurb:
       'Brookings View gathers public information from the City of Brookings, Brookings County, South Dakota State University, and Brookings Public Library.',
     removalEmail: 'hello@brookingsview.com',
@@ -441,7 +441,7 @@ const CITIES: Record<string, SiteConfig> = {
     // scrape time as of the 2026-09-30 timezone fix.
     meetingsHaveTime: true,
     description:
-      'City council decisions, events, weather and local happenings in Moreno Valley, California. Updated every hour.',
+      'City council decisions, events, weather and local happenings in Moreno Valley, California. Updated every 6 hours.',
     sourceBlurb:
       'Moreno Valley View gathers public information from the City of Moreno Valley, Riverside County, and the Moreno Valley Public Library.',
     removalEmail: 'hello@morenovalleyview.com',
@@ -537,7 +537,7 @@ const CITIES: Record<string, SiteConfig> = {
     // the full, corrected investigation).
     meetingsHaveTime: true,
     description:
-      'City Council decisions, events, weather and local happenings in Broomfield, Colorado. Updated every hour.',
+      'City Council decisions, events, weather and local happenings in Broomfield, Colorado. Updated every 6 hours.',
     sourceBlurb:
       'Broomfield View gathers public information from the City and County of Broomfield, Adams 12 Five Star Schools, and Boulder Valley School District.',
     removalEmail: 'hello@broomfieldview.com',

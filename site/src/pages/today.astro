@@ -54,7 +54,7 @@ const hubBacklink = resolveHubBacklink('today', siteConfig);
 ---
 
 <BaseLayout title={pageTitle} ogSlug="section-today"
-  description={`What's happening today in ${siteConfig.cityName}, ${siteConfig.stateAbbr} — active alerts, school status, traffic, and tonight's and tomorrow's events, updated hourly.`}>
+  description={`What's happening today in ${siteConfig.cityName}, ${siteConfig.stateAbbr} — active alerts, school status, traffic, and tonight's and tomorrow's events, updated every 6 hours.`}>
   <script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumbJsonLd)} />
   <Breadcrumbs trail={breadcrumbTrail} />
   <div class="lede">

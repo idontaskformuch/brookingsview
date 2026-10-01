@@ -5,8 +5,8 @@
  * sitemap-index.xml) -- News sitemaps are their own file by Google's own
  * spec, never merged into the general one.
  *
- * Regenerated on every site build (this repo's site rebuilds hourly, see
- * .github/workflows/scrape.yml) -- no separate cron job needed, and no
+ * Regenerated on every site build (this repo's site rebuilds every 6 hours,
+ * see .github/workflows/scrape.yml) -- no separate cron job needed, and no
  * risk of ever serving a stale/expired entry, since the 48-hour window is
  * recomputed fresh against real `published_at` values at every build.
  */
