@@ -5,7 +5,7 @@
  *  scale (bigger than a dense StoryCard row, smaller than the lead), not
  *  from repeating the same amount of text at a smaller size. */
 import type { Story, Facility } from '../lib/db';
-import { formatDate, formatTime, formatCalendarDate, CATEGORY_LABELS } from '../lib/db';
+import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS } from '../lib/db';
 import { resolveImage, type ImageRef } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import { siteConfig } from '../lib/site-config';
@@ -24,7 +24,8 @@ const hasByline = Boolean(story.byline);
 const when = story.occurs_at;
 const now = new Date();
 // Relative time (Liveliness Spec §2) -- same exceptions as StoryCard.astro/
-// LeadStory.astro: alerts keep exact times, meetings keep formatCalendarDate().
+// LeadStory.astro: alerts keep exact times, meetings keep formatMeetingDate()
+// (meetingsHaveTime-aware -- see db.ts's own comment).
 // published_at is typed as always-set but isn't in real data -- see
 // StoryCard.astro's own comment for the confirmed live count.
 const timeLabel = hasByline
@@ -32,7 +33,7 @@ const timeLabel = hasByline
   : !when
     ? ''
     : isMeeting
-      ? formatCalendarDate(when)
+      ? formatMeetingDate(when)
       : isAlert
         ? `${formatDate(when)}${formatTime(when) ? ` · ${formatTime(when)}` : ''}`
         : relativeTime(when, now, siteConfig.timezone);

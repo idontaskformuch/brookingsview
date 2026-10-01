@@ -2,7 +2,7 @@
 /** En post i nyhetsströmmen. Avdelad med hårfin linje, inte inramad som ett
  *  kort -- kortramar plattar ut hierarkin och får allt att se lika viktigt ut. */
 import type { Story } from '../lib/db';
-import { formatDate, formatTime, formatCalendarDate, CATEGORY_LABELS } from '../lib/db';
+import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS } from '../lib/db';
 import ShareButtons from './ShareButtons.astro';
 import { siteConfig } from '../lib/site-config';
 import { categoryForSourceType, type ImageCategory } from '../lib/images';
@@ -75,13 +75,15 @@ const now = new Date();
 // rules:
 //   - alerts keep their exact date/time, never relative-formatted -- §2:
 //     "Never relative-format an alert's effective window."
-//   - meetings keep formatCalendarDate(), NOT relativeTime() -- meeting_date
-//     is a bare UTC-midnight calendar date with no real time-of-day (see
-//     db.ts's own formatCalendarDate docstring), and relativeTime()'s zoned
-//     calendar-day math assumes a genuine instant. Timezone-converting a
-//     bare calendar date has been a repeated real bug in this codebase
-//     (events.astro, weekly.py, the Legistar parser all hit it) -- not
-//     repeating it here for a cosmetic wording change.
+//   - meetings keep formatMeetingDate(), NOT relativeTime() -- relativeTime()'s
+//     zoned calendar-day math assumes a genuine instant, which is only true
+//     for SOME towns' meeting_date (see siteConfig.meetingsHaveTime and
+//     formatMeetingDate()'s own comment in db.ts: Brookings/Legistar's is a
+//     bare UTC-midnight calendar date with no real time-of-day, Broomfield/
+//     Moreno Valley's is a real tz-aware instant). Timezone-converting a
+//     bare calendar date (or failing to convert a real one) has been a
+//     repeated real bug in this codebase (events.astro, weekly.py, the
+//     Legistar parser, the AgendaLink parser all hit some version of it).
 // published_at is typed as always-set (`string`, not `string | null`), but
 // real data has NULL rows for some content-track stories -- confirmed live
 // (2026-08-26): 10+ culture_essay/editorial/vardagsmiddag rows on Moreno
@@ -95,7 +97,7 @@ const timeLabel = hasByline
   : !when
     ? ''
     : isMeeting
-      ? formatCalendarDate(when)  // datum-utan-klockslag -- se db.ts
+      ? formatMeetingDate(when)  // meetingsHaveTime-medveten -- se db.ts
       : isAlert
         ? `${formatDate(when)}${formatTime(when) ? ` · ${formatTime(when)}` : ''}`
         : relativeTime(when, now, siteConfig.timezone);

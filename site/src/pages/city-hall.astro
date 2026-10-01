@@ -7,7 +7,7 @@ import RelatedContent from '../components/RelatedContent.astro';
 import ClusterNav from '../components/ClusterNav.astro';
 import SectionHero from '../components/SectionHero.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
-import { getUpcomingStories, getPastStories, getProjects, formatCalendarDate } from '../lib/db';
+import { getUpcomingStories, getPastStories, getProjects, formatMeetingDate } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { resolvePageMeta } from '../lib/page-meta';
@@ -41,7 +41,7 @@ const clusterNavItems = resolveHubNavItems('city-hall', siteConfig);
     are deciding — summarised from the published agendas, in plain language,
     without taking sides. Every summary is checked against its own agenda
     before publishing, and links back to the original document.
-    {past[0]?.occurs_at && <> Last updated {formatCalendarDate(past[0].occurs_at)}.</>}</p>
+    {past[0]?.occurs_at && <> Last updated {formatMeetingDate(past[0].occurs_at)}.</>}</p>
     <ShareButton title={pageMeta.title} />
   </header>
 

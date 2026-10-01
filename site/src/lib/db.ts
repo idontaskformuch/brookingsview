@@ -2408,11 +2408,33 @@ export function calendarDateParts(value: string | Date | null): { y: number; m: 
   return { y, m: m - 1, d };
 }
 
+/** Meeting-date display, aware of siteConfig.meetingsHaveTime (see that
+ *  flag's own comment on site-config.ts): Brookings/Legistar's meeting_date
+ *  is a genuinely bare calendar date, so formatCalendarDate()'s no-tz-
+ *  conversion UTC-read is correct and must stay unchanged there. Broomfield
+ *  (AgendaLink) and Moreno Valley (eSCRIBE) meeting_date IS a real,
+ *  tz-aware instant (as of their own 2026-09-30 scraper fixes) -- reading
+ *  its raw UTC calendar date with NO conversion, the same way
+ *  formatCalendarDate() does, lands on the WRONG local day for any evening
+ *  meeting that crosses the UTC date boundary (confirmed live: id 11337's
+ *  real Tue Oct 13 6pm Denver meeting stores as 2026-10-14T00:00:00Z, whose
+ *  raw UTC date is Oct 14 -- a Wednesday). A real tz-aware day-read is
+ *  needed for those two towns instead. Shared by formatOccursAt() below
+ *  and every direct meeting-date display call site (StoryCard.astro,
+ *  LeadStory.astro, SecondaryStory.astro, city-hall.astro). */
+export function formatMeetingDate(value: string | Date | null): string {
+  if (!siteConfig.meetingsHaveTime) return formatCalendarDate(value);
+  if (!value) return '';
+  return new Date(value).toLocaleDateString('en-US', {
+    weekday: 'short', month: 'long', day: 'numeric', timeZone: TZ,
+  });
+}
+
 /** Rätt formatering av story.occurs_at givet KÄLLTYP -- enda stället den
  *  distinktionen behöver göras, så inget anropsställe kan glömma den. */
 export function formatOccursAt(story: Pick<Story, 'source_type' | 'occurs_at'>): string {
   if (!story.occurs_at) return '';
-  if (story.source_type === 'meeting' || story.source_type === 'meeting_followup') return formatCalendarDate(story.occurs_at);
+  if (story.source_type === 'meeting' || story.source_type === 'meeting_followup') return formatMeetingDate(story.occurs_at);
   return formatDateTime(story.occurs_at);
 }
 

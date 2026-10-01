@@ -2,7 +2,7 @@
 /** Ettan. Dominerar sidan i skala -- det är så en tidning uttrycker redaktionell
  *  bedömning visuellt, i stället för att ge varje post lika stor vikt. */
 import type { Story, Facility } from '../lib/db';
-import { formatDate, formatTime, formatCalendarDate, CATEGORY_LABELS } from '../lib/db';
+import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS } from '../lib/db';
 import { resolveImage, type ImageRef } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import ImageAttribution from './ImageAttribution.astro';
@@ -29,8 +29,8 @@ const when = story.occurs_at;
 const now = new Date();
 // Relative time (Liveliness Spec §2) -- same two exceptions as
 // StoryCard.astro: alerts keep exact times, meetings keep
-// formatCalendarDate() (meeting_date is a bare calendar date, not a real
-// instant -- see StoryCard.astro's own comment for the timezone landmine).
+// formatMeetingDate() (meetingsHaveTime-aware -- see StoryCard.astro's own
+// comment and db.ts's formatMeetingDate() for the timezone landmine).
 // published_at is typed as always-set but isn't in real data -- see
 // StoryCard.astro's own comment for the confirmed live count.
 const timeLabel = hasByline
@@ -38,7 +38,7 @@ const timeLabel = hasByline
   : !when
     ? ''
     : isMeeting
-      ? formatCalendarDate(when)
+      ? formatMeetingDate(when)
       : isAlert
         ? `${formatDate(when)}${formatTime(when) ? ` · ${formatTime(when)}` : ''}`
         : relativeTime(when, now, siteConfig.timezone);
