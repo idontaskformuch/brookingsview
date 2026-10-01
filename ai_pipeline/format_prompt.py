@@ -19,6 +19,8 @@ import sys
 from dataclasses import dataclass
 
 from ai_pipeline import guardrails
+from ai_pipeline import api_usage
+from config import pricing
 from validation import pre_publish_check
 
 try:
@@ -42,7 +44,7 @@ class GenerationUnavailable(Exception):
     batchen) -- aldrig låta den propagera."""
 
 
-def safe_create(client, **kwargs):
+def safe_create(client, *, attempt: int = 1, **kwargs):
     """client.messages.create(), men med ETT delat felfång i stället för att
     varje pipeline-modul (upptäckt: alla fem gjorde det) anropar Anthropic
     direkt utan try/except alls.
@@ -53,11 +55,46 @@ def safe_create(client, **kwargs):
     om dem till GenerationUnavailable. Guardrail-/originalitetsavslag är INTE
     detta -- de är redan separat hanterade av respektive anropsställe och
     ska fortsätta vara det.
+
+    This is the ONE chokepoint every Python Anthropic call in the pipeline
+    goes through (content/_base.generate_article(), format_record() below,
+    and all 14 direct-call generator scripts) -- so it's also the one place
+    that logs api_usage, rather than requiring every caller to remember to.
+    `attempt` is the only thing that varies call-to-call within a single
+    generation's own retry closure (1 = first try, 2+ = a guardrail retry);
+    generator/town_id/run_id come from api_usage.usage_context(), set once
+    at each script's entry point -- see api_usage.py's module docstring.
+
+    Logs outcome='pending' (or 'error' on a GenerationUnavailable) and
+    returns the raw SDK response unchanged -- a caller that wants the
+    eventual guardrail/pre-publish outcome reflected in this row must call
+    api_usage.take_last_usage_id() right after this returns, then
+    api_usage.finalize_outcome()/finalize_generation() once that's known. A
+    caller that doesn't (most of the 14 simple digest scripts, for now)
+    leaves the row at 'pending' -- still real, still costed, just without
+    the finer published/rejected distinction.
     """
+    model = kwargs.get("model")
     try:
-        return client.messages.create(**kwargs)
+        msg = client.messages.create(**kwargs)
     except (anthropic.APIStatusError, anthropic.APIConnectionError) as exc:
+        api_usage.log_usage(provider="anthropic", model=model, attempt=attempt, outcome="error")
         raise GenerationUnavailable(str(exc)) from exc
+
+    usage = msg.usage
+    cost = pricing.cost_for_anthropic(
+        model, usage.input_tokens, usage.output_tokens,
+        cache_read_tokens=getattr(usage, "cache_read_input_tokens", None),
+        cache_write_tokens=getattr(usage, "cache_creation_input_tokens", None),
+    )
+    api_usage.log_usage(
+        provider="anthropic", model=model,
+        input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
+        cache_read_tokens=getattr(usage, "cache_read_input_tokens", None),
+        cache_write_tokens=getattr(usage, "cache_creation_input_tokens", None),
+        cost_usd=cost, attempt=attempt, outcome="pending",
+    )
+    return msg
 
 
 # --- systemprompt byggd ur configen ----------------------------------------
@@ -379,19 +416,23 @@ def resolve_model(content_type: str | None, cfg: dict | None = None) -> str:
 # antog varje _record_spend-anrop Sonnets pris rakt av, vilket hade fått
 # Haiku-körningar att se dyrare ut i spårningen än de faktiskt är -- och
 # därmed underminerat hela poängen med att flytta billig content dit.
-# Prislistan är Anthropics publika per 2026-08 -- kontrollera mot
-# anthropic.com/pricing om den ändras.
-MODEL_PRICING: dict[str, tuple[float, float]] = {
-    "claude-sonnet-5": (3.0 / 1_000_000, 15.0 / 1_000_000),
-    "claude-haiku-4-5-20251001": (1.0 / 1_000_000, 5.0 / 1_000_000),
-}
+#
+# Delegerar till config/pricing.py (API Cost Logging-specen, 2026-10-01) --
+# den modulen är nu den enda källan till priserna själva, det här namnet
+# finns kvar bara för bakåtkompatibilitet (flera moduler importerar
+# MODEL_PRICING direkt).
+MODEL_PRICING: dict[str, tuple[float, float]] = dict(pricing.ANTHROPIC_PRICING)
 
 
 def pricing_for(model: str) -> tuple[float, float]:
     """(usd_per_input_token, usd_per_output_token) för en given modell.
 
     Okänd modell -> Sonnets pris (säkert att överskatta kostnad, aldrig
-    underskatta den mot det faktiska budgettaket)."""
+    underskatta den mot det faktiska budgettaket). Detta är den medvetet
+    PESSIMISTISKA regeln för budgettaket -- skiljer sig från config.pricing.
+    cost_for_anthropic(), som loggar cost_usd=NULL för en okänd modell i
+    stället för att gissa, eftersom en kostnadsLOGG aldrig får attribuera
+    spend till fel modell."""
     return MODEL_PRICING.get(model, MODEL_PRICING["claude-sonnet-5"])
 
 
@@ -502,13 +543,26 @@ def format_record(record: dict, source_type: str, cfg: dict,
     tone_v2 = bool(ai_cfg.get("tone_v2")) and source_type in TONE_V2_TYPE_RULES
     system = build_system_prompt_v2(cfg, source_type) if tone_v2 else build_system_prompt(cfg)
 
+    # source_type (meeting/event/alert/...) is this call's "generator" for
+    # api_usage, but it varies PER RECORD within one publish.py run -- not a
+    # script-wide constant the way weekly.py's or workplace_watch_digest.py's
+    # generator name is. So unlike those, this opens its own narrow, nested
+    # usage_context() around just this record's calls rather than relying on
+    # whatever publish.py set at its own entry point (town_id/run_id still
+    # inherit from that outer context -- see api_usage.py's module docstring).
+    usage_ids: list[int] = []
+
     def _call(extra: str = "") -> tuple[str, object]:
         msg = safe_create(
             client,
             model=model, max_tokens=500 if tone_v2 else 400, system=system + extra,
             messages=[{"role": "user",
                        "content": f"SOURCE DATA (source_type={source_type}):\n{source_text}"}],
+            attempt=len(usage_ids) + 1,
         )
+        usage_id = api_usage.take_last_usage_id()
+        if usage_id is not None:
+            usage_ids.append(usage_id)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text"), msg.usage
 
     record_date = _record_date(record)
@@ -565,36 +619,45 @@ def format_record(record: dict, source_type: str, cfg: dict,
     # saknar kredit, i stället för att bara falla tillbaka på mall för den
     # raden och fortsätta med resten av batchen.
     try:
-        raw, usage = _call()
-        _record_spend(usage.input_tokens * price_in + usage.output_tokens * price_out)
-        passed, violations, text, meta = _validate(raw)
-
-        if not passed:
-            # ett striktare omförsök -- måste peka på VAD som faktiskt underkändes.
-            # Tidigare var det här meddelandet ett hårdkodat "du hittade på fakta"
-            # oavsett verklig avslagsorsak. Live-testat (2026-08-26,
-            # scripts/eval_tone_v2.py mot Moreno Valley): tone_v2:s meta.when-krav
-            # (§7.1) slog till på 6 av 10 möten, men det generiska meddelandet gav
-            # modellen noll signal om VAD som saknades -- omförsöket upprepade
-            # samma miss, och möten utan egen TEMPLATERS-mall föll då rakt igenom
-            # till _fallback()'s sista utväg (bara styrelsens namn, ingen substans
-            # alls). Peka på de faktiska violations i stället.
-            strict = (
-                "\n\nYour previous attempt was rejected for these specific reasons:\n"
-                + "\n".join(f"- {v}" for v in violations)
-                + "\nFix exactly these issues. Do not otherwise change what you wrote."
-            )
-            raw, usage = _call(strict)
+        with api_usage.usage_context(generator=source_type, town_id=cfg.get("town_id")):
+            raw, usage = _call()
             _record_spend(usage.input_tokens * price_in + usage.output_tokens * price_out)
             passed, violations, text, meta = _validate(raw)
+
+            if not passed:
+                # ett striktare omförsök -- måste peka på VAD som faktiskt underkändes.
+                # Tidigare var det här meddelandet ett hårdkodat "du hittade på fakta"
+                # oavsett verklig avslagsorsak. Live-testat (2026-08-26,
+                # scripts/eval_tone_v2.py mot Moreno Valley): tone_v2:s meta.when-krav
+                # (§7.1) slog till på 6 av 10 möten, men det generiska meddelandet gav
+                # modellen noll signal om VAD som saknades -- omförsöket upprepade
+                # samma miss, och möten utan egen TEMPLATERS-mall föll då rakt igenom
+                # till _fallback()'s sista utväg (bara styrelsens namn, ingen substans
+                # alls). Peka på de faktiska violations i stället.
+                strict = (
+                    "\n\nYour previous attempt was rejected for these specific reasons:\n"
+                    + "\n".join(f"- {v}" for v in violations)
+                    + "\nFix exactly these issues. Do not otherwise change what you wrote."
+                )
+                raw, usage = _call(strict)
+                _record_spend(usage.input_tokens * price_in + usage.output_tokens * price_out)
+                passed, violations, text, meta = _validate(raw)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall", file=sys.stderr)
+        # usage_ids collected before the failing attempt (e.g. attempt 1 was
+        # rejected, attempt 2 then hit GenerationUnavailable) were real,
+        # rejected generations -- safe_create() already logged the failing
+        # attempt itself as outcome='error', but these earlier ones are
+        # still 'pending' unless finalized here too.
+        api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="template_fallback")
         return _fallback(record, source_type, cfg, reason=f"AI ej tillgängligt: {exc}")
 
     if passed:
+        api_usage.finalize_generation(usage_ids, succeeded=True)
         return FormatResult(text=text, generated_by=f"ai:{model}", verified=True, meta=meta)
 
     # 4. gav sig inte → ren mall-fallback
+    api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="template_fallback")
     return _fallback(record, source_type, cfg,
                      reason=f"guardrail: {'; '.join(violations)}")
 

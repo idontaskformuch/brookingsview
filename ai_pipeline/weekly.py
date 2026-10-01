@@ -46,6 +46,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline import guardrails
+from ai_pipeline import api_usage
 from validation import pre_publish_check
 # Samma budgetliggare som format_prompt -- två separata räknare skulle göra
 # taket i configen meningslöst.
@@ -266,8 +267,16 @@ def template_fallback(data: dict, label: str, cfg: dict) -> str:
     return "\n".join(lines)
 
 
-def generate(data: dict, label: str, cfg: dict, client=None) -> tuple[str, str, bool]:
-    """Returnerar (text, generated_by, verified)."""
+def generate(data: dict, label: str, cfg: dict, client=None, dry_run: bool = False) -> tuple[str, str, bool]:
+    """Returnerar (text, generated_by, verified).
+
+    `dry_run`: --dry-run still makes a real AI call (see main()'s own
+    comment -- it costs the same as a publish) but never writes to stories,
+    so a successful generation's api_usage row is finalized 'dry_run'
+    instead of 'published' -- otherwise cost_report.py's waste query, which
+    treats anything other than published/dry_run as wasted spend, would be
+    unable to tell a real publish apart from a --dry-run test run.
+    """
     tz = ZoneInfo(cfg.get("timezone", "America/Chicago"))
     src = source_text(data, label, tz)
     ai_cfg = cfg.get("ai", {})
@@ -285,12 +294,19 @@ def generate(data: dict, label: str, cfg: dict, client=None) -> tuple[str, str, 
     price_in, price_out = pricing_for(model)
     system = build_prompt(cfg, label)
 
+    usage_ids: list[int] = []
+
     def call(extra: str = "") -> str:
-        msg = safe_create(
-            client,
-            model=model, max_tokens=1600, system=system + extra,
-            messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}],
-        )
+        with api_usage.usage_context(generator="weekly", town_id=cfg.get("town_id")):
+            msg = safe_create(
+                client,
+                model=model, max_tokens=1600, system=system + extra,
+                messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}],
+                attempt=len(usage_ids) + 1,
+            )
+        usage_id = api_usage.take_last_usage_id()
+        if usage_id is not None:
+            usage_ids.append(usage_id)
         _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
 
@@ -317,9 +333,12 @@ def generate(data: dict, label: str, cfg: dict, client=None) -> tuple[str, str, 
             passed, violations = _checks_pass(text)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
+        api_usage.finalize_generation(usage_ids, succeeded=False)
         return template_fallback(data, label, cfg), "template_fallback", True
 
     if passed and len(text.split()) >= MIN_WORDS:
+        api_usage.finalize_generation(usage_ids, succeeded=True,
+                                      success_outcome="dry_run" if dry_run else "published")
         return text, f"ai:{model}", True
 
     reason = "guardrail" if not passed else "too short"
@@ -327,6 +346,7 @@ def generate(data: dict, label: str, cfg: dict, client=None) -> tuple[str, str, 
     if not passed:
         for v in violations[:5]:
             print(f"    - {v}")
+    api_usage.finalize_generation(usage_ids, succeeded=False)
     return template_fallback(data, label, cfg), "template_fallback", True
 
 
@@ -373,7 +393,7 @@ def main() -> int:
             print("  underlaget oförändrat -- hoppar över (inget AI-anrop)")
             return 0
 
-        text, generated_by, verified = generate(data, label, cfg)
+        text, generated_by, verified = generate(data, label, cfg, dry_run=args.dry_run)
         title = f"This week in {cfg['display_name']}: {label}"
 
         if args.dry_run:

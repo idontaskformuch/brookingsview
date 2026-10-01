@@ -27,7 +27,7 @@ INPUT: Du får underlag om ett ämne (en händelse, ett verk, en lokal företeel
 
 
 def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
-          client=None) -> GeneratedArticle | None:
+          client=None, dry_run: bool = False) -> GeneratedArticle | None:
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(town=town_label(cfg))
     return generate_article(system_prompt, local_input, existing_corpus, cfg=cfg, client=client,
-                             content_type="culture_essay")
+                             content_type="culture_essay", dry_run=dry_run)

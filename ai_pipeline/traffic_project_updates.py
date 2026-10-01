@@ -43,6 +43,7 @@ load_dotenv()
 import psycopg
 from psycopg.rows import dict_row
 
+from ai_pipeline import api_usage
 from ai_pipeline.project_threads import (
     ai_match_candidate, generate_synthesis, is_candidate_traffic_incident,
     load_open_projects_for_matching, queue_new_candidate, regenerate_rolling_summary,
@@ -103,6 +104,7 @@ def main() -> int:
 
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
     town_id = cfg["town_id"]
+    api_usage.set_default_context(town_id=town_id)
 
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:

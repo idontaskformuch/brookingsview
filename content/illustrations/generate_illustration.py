@@ -35,6 +35,8 @@ from pathlib import Path
 import requests
 from PIL import Image
 
+from ai_pipeline import api_usage
+from config import pricing
 from config.image_model import (
     DEFAULT_STYLE_PROMPT, IMAGE_API_PROVIDER, IMAGE_HEIGHT, IMAGE_MODEL, IMAGE_WIDTH,
     MODEL_IDS, STYLE_PROMPTS, _NO_REAL_PEOPLE,
@@ -174,7 +176,27 @@ def _generate_or_raise(theme: str, slug: str, out_dir: Path, content_type: str |
     model_id = _model_id()  # validate provider+model combo before touching any API key
 
     prompt = _build_prompt(theme, content_type)
-    image_bytes = generate(model_id, prompt)
+    # Logged HERE, at the provider dispatch point, not inside _generate_fal()
+    # -- so if IMAGE_API_PROVIDER ever switches to "replicate" (configured,
+    # currently unused -- see config/image_model.py), a row still gets
+    # written (cost_usd=NULL + a pricing.py warning, since FAL_PRICE_PER_IMAGE
+    # has no replicate entry -- replicate is out of this spec's scope) rather
+    # than silently stopping cost tracking the moment the config changes.
+    # town_id/run_id inherit from whatever usage_context the calling
+    # script's entry point set (daily_content.py / backfill_content_track_
+    # image.py); only `generator` is overridden here, narrowly, for this one
+    # call.
+    with api_usage.usage_context(generator="illustration"):
+        try:
+            image_bytes = generate(model_id, prompt)
+        except Exception:
+            api_usage.log_usage(provider=IMAGE_API_PROVIDER, model=IMAGE_MODEL, units=1, outcome="error")
+            raise
+        api_usage.log_usage(
+            provider=IMAGE_API_PROVIDER, model=IMAGE_MODEL, units=1,
+            cost_usd=pricing.cost_for_fal(IMAGE_API_PROVIDER, IMAGE_MODEL, images=1),
+            outcome="published",
+        )
 
     # Providers don't all return PNG (fal.ai's flux/dev returns JPEG) -- re-encode so
     # the file on disk always matches its .png extension, regardless of provider.

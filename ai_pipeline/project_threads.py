@@ -33,7 +33,7 @@ import json
 import re
 from datetime import datetime, timedelta, timezone
 
-from ai_pipeline import guardrails
+from ai_pipeline import api_usage, guardrails
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, pricing_for, resolve_model, safe_create, strip_json_fence,
@@ -239,8 +239,10 @@ def ai_match_candidate(candidate_text: str, open_projects: list[dict], cfg: dict
     prompt = build_match_prompt(candidate_text, open_projects)
 
     try:
-        msg = safe_create(client, model=model, max_tokens=400,
-                           messages=[{"role": "user", "content": prompt}])
+        with api_usage.usage_context(generator="project_thread_match"):
+            msg = safe_create(client, model=model, max_tokens=400,
+                               messages=[{"role": "user", "content": prompt}])
+        usage_id = api_usage.take_last_usage_id()
         _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         raw = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
     except GenerationUnavailable as exc:
@@ -248,8 +250,10 @@ def ai_match_candidate(candidate_text: str, open_projects: list[dict], cfg: dict
 
     parsed = _parse_match_response(raw)
     if parsed is None:
+        api_usage.finalize_outcome(usage_id, "error")
         return {"match_project_id": None, "confidence": 0.0, "reasoning": "unparseable AI response"}
 
+    api_usage.finalize_outcome(usage_id, "published")
     if parsed["confidence"] < MATCH_CONFIDENCE_THRESHOLD:
         parsed["match_project_id"] = None
     return parsed
@@ -305,9 +309,16 @@ def generate_synthesis(item_title: str, item_text: str, cfg: dict, client=None) 
         "means in practice, not just the item's own title verbatim."
     )
 
+    usage_ids: list[int] = []
+
     def call(extra: str = "") -> str:
-        msg = safe_create(client, model=model, max_tokens=150, system=system + extra,
-                           messages=[{"role": "user", "content": f"SOURCE DATA:\n{item_text}"}])
+        with api_usage.usage_context(generator="project_thread_synthesis"):
+            msg = safe_create(client, model=model, max_tokens=150, system=system + extra,
+                               messages=[{"role": "user", "content": f"SOURCE DATA:\n{item_text}"}],
+                               attempt=len(usage_ids) + 1)
+        usage_id = api_usage.take_last_usage_id()
+        if usage_id is not None:
+            usage_ids.append(usage_id)
         _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
 
@@ -322,12 +333,15 @@ def generate_synthesis(item_title: str, item_text: str, cfg: dict, client=None) 
             result = _guardrails_pass(text, item_text, cfg, "project_thread_synthesis")
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
+        api_usage.finalize_generation(usage_ids, succeeded=False)
         return synthesis_template_fallback(item_title), "template_fallback", True
 
     if result.passed and len(text.split()) >= MIN_SYNTHESIS_WORDS:
+        api_usage.finalize_generation(usage_ids, succeeded=True)
         return text, f"ai:{model}", True
 
     print(f"  guardrail avvisade syntesraden ({result.violations[:3]}) -- faller tillbaka på mall")
+    api_usage.finalize_generation(usage_ids, succeeded=False)
     return synthesis_template_fallback(item_title), "template_fallback", True
 
 
@@ -361,9 +375,16 @@ def generate_rolling_summary(project_title: str, recent_entries_text: str, cfg: 
         "source explicitly states -- describe the current situation only."
     )
 
+    usage_ids: list[int] = []
+
     def call(extra: str = "") -> str:
-        msg = safe_create(client, model=model, max_tokens=250, system=system + extra,
-                           messages=[{"role": "user", "content": f"SOURCE DATA (timeline, newest first):\n{recent_entries_text}"}])
+        with api_usage.usage_context(generator="project_thread_summary"):
+            msg = safe_create(client, model=model, max_tokens=250, system=system + extra,
+                               messages=[{"role": "user", "content": f"SOURCE DATA (timeline, newest first):\n{recent_entries_text}"}],
+                               attempt=len(usage_ids) + 1)
+        usage_id = api_usage.take_last_usage_id()
+        if usage_id is not None:
+            usage_ids.append(usage_id)
         _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
 
@@ -378,12 +399,15 @@ def generate_rolling_summary(project_title: str, recent_entries_text: str, cfg: 
             result = _guardrails_pass(text, recent_entries_text, cfg, "project_thread_summary")
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
+        api_usage.finalize_generation(usage_ids, succeeded=False)
         return rolling_summary_template_fallback(project_title), "template_fallback", True
 
     if result.passed:
+        api_usage.finalize_generation(usage_ids, succeeded=True)
         return text, f"ai:{model}", True
 
     print(f"  guardrail avvisade rolling summary ({result.violations[:3]}) -- faller tillbaka på mall")
+    api_usage.finalize_generation(usage_ids, succeeded=False)
     return rolling_summary_template_fallback(project_title), "template_fallback", True
 
 

@@ -6975,3 +6975,41 @@ matching each town's own real published-week count); confirmed zero
 `/events/` and `/events/past/` are unaffected and still correctly share
 that same generic card (the fix only removes this-week's borrowing of
 it, not the card itself). `astro check` 0 errors, `vitest run` 658/658.
+
+## 77. API Cost Logging spec, inventory step: `.ai_budget.json`'s monthly cap doesn't actually span a month (2026-10-01)
+
+**Found while inventorying every paid-API call site before building the new
+`api_usage` table** (`db/migrations/046_api_usage.sql` + `ai_pipeline/
+api_usage.py`): `ai_pipeline/format_prompt.py`'s `_spent_this_month()` /
+`_record_spend()` read/write a plain JSON file (`.ai_budget.json`, path
+configurable via `AI_BUDGET_STATE` — each town gets its own file, e.g.
+`.ai_budget_moreno_valley_ca.json`). That file is `.gitignore`d, and every
+GitHub Actions workflow in `.github/workflows/` does a fresh
+`actions/checkout@v5` with no `actions/cache`/`upload-artifact`/
+`download-artifact` step anywhere that would carry it between runs —
+confirmed by grepping all workflow YAML for `.ai_budget`. `_spent_this_month()`
+returns `0.0` on `FileNotFoundError`, which is exactly what every scheduled
+run gets.
+
+**Practical effect**: `ai.monthly_budget_usd` (set per-town in `configs/
+*.json`) only ever caps spend *within a single scheduled run* (several
+generators can share a GitHub Actions job's filesystem across their own
+calls in that one run), never across the actual calendar month the name
+implies. A town whose workflows run many times a day, or whose per-run
+spend is well under the configured cap, could exceed the intended monthly
+ceiling many times over without the cap ever tripping — nothing currently
+alerts on this.
+
+**Not fixed here** — out of scope for the API Cost Logging spec, which is
+measurement-only (explicitly: "Inga beteendeändringar i pipelinen"), and
+changing budget-enforcement behavior is a real behavior change.
+
+**Follow-up, once `api_usage` has real data**: replace `_spent_this_month()`'s
+JSON-file read with a `SELECT sum(cost_usd) FROM api_usage WHERE town_id = %s
+AND created_at >= date_trunc('month', now())`-style query against the new
+table — `api_usage` already persists across runs (it's the database, not a
+runner-local file) and is already town-scoped, so it fixes the cross-run gap
+for free once wired in. `_record_spend()` and the `.ai_budget.json` write
+path can then be retired entirely rather than kept as a second, parallel,
+less-accurate counter. Needs its own small spec/pass, not bundled into this
+one.

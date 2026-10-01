@@ -57,7 +57,7 @@ load_dotenv()
 
 import psycopg
 
-from ai_pipeline import guardrails
+from ai_pipeline import api_usage, guardrails
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, pricing_for, resolve_model, safe_create,
@@ -207,9 +207,16 @@ Return ONLY the paragraph. No preamble, no quotation marks, no bullet points."""
 
     src = facility_source_text(facility)
 
+    usage_ids: list[int] = []
+
     def call(extra: str = "") -> str:
-        msg = safe_create(client, model=model, max_tokens=350, system=system + extra,
-                           messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}])
+        with api_usage.usage_context(generator="free_teaser_facility"):
+            msg = safe_create(client, model=model, max_tokens=350, system=system + extra,
+                               messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}],
+                               attempt=len(usage_ids) + 1)
+        usage_id = api_usage.take_last_usage_id()
+        if usage_id is not None:
+            usage_ids.append(usage_id)
         _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
 
@@ -232,12 +239,15 @@ Return ONLY the paragraph. No preamble, no quotation marks, no bullet points."""
             complete = _is_complete_sentence(text)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
+        api_usage.finalize_generation(usage_ids, succeeded=False)
         return facility_template_fallback(facility), "template_fallback"
 
     if result.passed and complete and len(text.split()) >= MIN_FACILITY_PARAGRAPH_WORDS:
+        api_usage.finalize_generation(usage_ids, succeeded=True)
         return text, f"ai:{model}"
 
     print(f"  guardrail avvisade ({result.violations[:3]}) -- faller tillbaka på mall")
+    api_usage.finalize_generation(usage_ids, succeeded=False)
     return facility_template_fallback(facility), "template_fallback"
 
 
@@ -271,9 +281,16 @@ Return ONLY the sentence. No preamble, no quotation marks."""
 
     src = f"Title: {title}\nDescription: {body}"
 
+    usage_ids: list[int] = []
+
     def call(extra: str = "") -> str:
-        msg = safe_create(client, model=model, max_tokens=100, system=system + extra,
-                           messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}])
+        with api_usage.usage_context(generator="free_teaser_event"):
+            msg = safe_create(client, model=model, max_tokens=100, system=system + extra,
+                               messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}],
+                               attempt=len(usage_ids) + 1)
+        usage_id = api_usage.take_last_usage_id()
+        if usage_id is not None:
+            usage_ids.append(usage_id)
         _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text").strip()
 
@@ -291,12 +308,15 @@ Return ONLY the sentence. No preamble, no quotation marks."""
             complete = _is_complete_sentence(text)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc})")
+        api_usage.finalize_generation(usage_ids, succeeded=False)
         return None
 
     if result.passed and complete and len(text.split()) >= MIN_EVENT_TEASER_WORDS:
+        api_usage.finalize_generation(usage_ids, succeeded=True)
         return text, f"ai:{model}"
 
     print(f"  guardrail avvisade ({result.violations[:3]})")
+    api_usage.finalize_generation(usage_ids, succeeded=False)
     return None
 
 
@@ -375,6 +395,7 @@ def main() -> int:
     args = ap.parse_args()
 
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
+    api_usage.set_default_context(town_id=cfg["town_id"])
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         raise RuntimeError("DATABASE_URL saknas i .env")

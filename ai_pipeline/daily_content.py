@@ -33,6 +33,7 @@ load_dotenv()
 
 import psycopg
 
+from ai_pipeline import api_usage
 from content import local_context, now_playing, seasonal_ingredients
 from content._base import DEFAULT_MODEL, illustration_image_theme, illustration_theme, town_label
 from content.illustrations.generate_illustration import generate_illustration
@@ -156,6 +157,11 @@ def main() -> int:
 
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
     town_id = cfg["town_id"]
+    # town_id/run_id for this whole run -- generate_article() (via write()
+    # below) and generate_illustration() both inherit this and only
+    # override `generator` narrowly for their own calls. See
+    # ai_pipeline/api_usage.py's module docstring.
+    api_usage.set_default_context(town_id=town_id)
 
     today = (datetime.date.fromisoformat(args.date) if args.date
              else datetime.date.today())
@@ -182,7 +188,7 @@ def main() -> int:
 
         existing_corpus = _existing_corpus(conn, town_id, content_type)
 
-        article = write(local_input, existing_corpus, cfg=cfg)
+        article = write(local_input, existing_corpus, cfg=cfg, dry_run=args.dry_run)
         if article is None:
             print("  generering gav inget godkänt resultat (budgettak, "
                   "originalitet, eller avkapad text) -- hoppar över publicering idag")

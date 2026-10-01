@@ -51,7 +51,7 @@ load_dotenv()
 import psycopg
 from psycopg.rows import dict_row
 
-from ai_pipeline import guardrails
+from ai_pipeline import api_usage, guardrails
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
@@ -352,12 +352,18 @@ def generate(stats: dict, label: str, cfg: dict, client=None, mom_stats: dict | 
     price_in, price_out = pricing_for(model)
     system = build_prompt(cfg, label)
 
+    usage_ids: list[int] = []
+
     def call(extra: str = "") -> str:
         msg = safe_create(
             client,
             model=model, max_tokens=1200, system=system + extra,
             messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}],
+            attempt=len(usage_ids) + 1,
         )
+        usage_id = api_usage.take_last_usage_id()
+        if usage_id is not None:
+            usage_ids.append(usage_id)
         _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
 
@@ -391,15 +397,18 @@ def generate(stats: dict, label: str, cfg: dict, client=None, mom_stats: dict | 
             passed, violations = _checks_pass(text)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
+        api_usage.finalize_generation(usage_ids, succeeded=False)
         return fallback, "template_fallback", True
 
     if passed and len(text.split()) >= MIN_WORDS:
+        api_usage.finalize_generation(usage_ids, succeeded=True)
         return text, f"ai:{model}", True
 
     reason = "guardrail" if not passed else "too short"
     print(f"  faller tillbaka på mall ({reason})")
     for v in violations[:5]:
         print(f"    - {v}")
+    api_usage.finalize_generation(usage_ids, succeeded=False)
     return fallback, "template_fallback", True
 
 
@@ -421,6 +430,7 @@ def main() -> int:
 
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
     town_id = cfg["town_id"]
+    api_usage.set_default_context(generator="home_sales_digest", town_id=town_id)
 
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:

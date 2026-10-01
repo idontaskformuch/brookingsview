@@ -50,7 +50,7 @@ load_dotenv()
 import psycopg
 from psycopg.rows import dict_row
 
-from ai_pipeline import guardrails
+from ai_pipeline import api_usage, guardrails
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
@@ -283,15 +283,21 @@ def generate(alert: dict, district: str, district_url: str | None, historical_co
     price_in, price_out = pricing_for(model)
     system = build_prompt(cfg)
 
+    usage_ids: list[int] = []
+
     def call(extra: str = "") -> str | None:
         try:
             msg = safe_create(
                 client, model=model, max_tokens=400, system=system + extra,
                 messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}],
+                attempt=len(usage_ids) + 1,
             )
         except GenerationUnavailable as exc:
             print(f"  AI call failed ({exc}) -- no Watch prose this run", file=sys.stderr)
             return None
+        usage_id = api_usage.take_last_usage_id()
+        if usage_id is not None:
+            usage_ids.append(usage_id)
         _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
 
@@ -324,15 +330,18 @@ def generate(alert: dict, district: str, district_url: str | None, historical_co
             "no probability language, no assumption of closure."
         )
         if text is None:
+            api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="guardrail_rejected")
             return None
         passed, violations = _checks_pass(text)
 
     if passed:
+        api_usage.finalize_generation(usage_ids, succeeded=True)
         return text, f"ai:{model}"
 
     print("  guardrail rejection survived retry -- writing nothing, static fallback applies")
     for v in violations[:5]:
         print(f"    - {v}")
+    api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="guardrail_rejected")
     return None
 
 
@@ -347,6 +356,7 @@ def main() -> int:
 
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
     town_id = cfg["town_id"]
+    api_usage.set_default_context(generator="closure_watch_digest", town_id=town_id)
     feat = cfg.get("features", {}).get("closure_watch", {})
 
     if not feat.get("enabled"):

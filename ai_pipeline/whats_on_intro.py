@@ -66,7 +66,7 @@ load_dotenv()
 import psycopg
 import requests
 
-from ai_pipeline import guardrails
+from ai_pipeline import api_usage, guardrails
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
@@ -452,15 +452,21 @@ def generate(entries: list[dict], cfg: dict, town_id: str, tz: ZoneInfo, client=
     system = build_prompt(cfg)
     source_records = [m for entry in entries for m in entry["members"]]
 
+    usage_ids: list[int] = []
+
     def call(extra: str = "") -> str | None:
         try:
             msg = safe_create(
                 client, model=model, max_tokens=300, system=system + extra,
                 messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}],
+                attempt=len(usage_ids) + 1,
             )
         except GenerationUnavailable as exc:
             print(f"  [whats_on_intro] AI call failed ({exc}) -- no intro this run", file=sys.stderr)
             return None
+        usage_id = api_usage.take_last_usage_id()
+        if usage_id is not None:
+            usage_ids.append(usage_id)
         _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
 
@@ -469,6 +475,8 @@ def generate(entries: list[dict], cfg: dict, town_id: str, tz: ZoneInfo, client=
 
     text = call()
     if text is None:
+        # usage_ids is empty here (GenerationUnavailable, logged 'error' by
+        # safe_create() itself -- nothing else to finalize).
         return None
     text = text.strip()
 
@@ -481,16 +489,25 @@ def generate(entries: list[dict], cfg: dict, town_id: str, tz: ZoneInfo, client=
             "ONLY facts from SOURCE DATA, describing only the shape of the week."
         )
         if text is None:
+            # usage_ids may hold the first attempt's row (rejected, then the
+            # retry hit GenerationUnavailable) -- still needs finalizing.
+            api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="guardrail_rejected")
             return None
         text = text.strip()
         passed, violations = _checks_pass(text)
 
     if passed:
+        api_usage.finalize_generation(usage_ids, succeeded=True)
         return text, f"ai:{model}"
 
     print("  [whats_on_intro] guardrail rejection survived retry -- writing nothing")
     for v in violations[:5]:
         print(f"    - {v}")
+    # No TEMPLATERS/template_fallback() path for this generator -- a final
+    # rejection means "no intro this run," not a templated substitute, so
+    # the last attempt is tagged 'guardrail_rejected' like content/_base.py's
+    # content track, not the usual 'template_fallback' default.
+    api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="guardrail_rejected")
     return None
 
 
@@ -503,6 +520,7 @@ def main() -> int:
 
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
     town_id = cfg["town_id"]
+    api_usage.set_default_context(generator="whats_on_intro", town_id=town_id)
     feat = cfg.get("features", {}).get("whats_on", {})
     tm = feat.get("ticketmaster", {})
 

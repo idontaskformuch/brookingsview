@@ -62,14 +62,14 @@ INPUT: Du får ett rättkoncept eller en huvudingrediens. Din uppgift är att sk
 
 
 def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
-          client=None) -> GeneratedArticle | None:
+          client=None, dry_run: bool = False) -> GeneratedArticle | None:
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
         town=town_label(cfg),
         ingredients_start=_INGREDIENTS_START, ingredients_end=_INGREDIENTS_END,
         instructions_start=_INSTRUCTIONS_START, instructions_end=_INSTRUCTIONS_END,
     )
     article = generate_article(system_prompt, local_input, existing_corpus, cfg=cfg, client=client,
-                                content_type="vardagsmiddag")
+                                content_type="vardagsmiddag", dry_run=dry_run)
     if article is None:
         return None
 

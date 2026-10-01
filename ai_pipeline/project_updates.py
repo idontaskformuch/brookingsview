@@ -58,6 +58,7 @@ load_dotenv()
 import psycopg
 from psycopg.rows import dict_row
 
+from ai_pipeline import api_usage
 from ai_pipeline.project_registry import load_projects, match_project, queue_for_review, status_for_outcome
 from ai_pipeline.project_threads import (
     ai_match_candidate, generate_synthesis, is_candidate_agenda_item,
@@ -187,6 +188,10 @@ def main() -> int:
 
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
     town_id = cfg["town_id"]
+    # generator is set per-call inside project_threads.py's own three
+    # generate functions (project_thread_match/_synthesis/_summary); only
+    # town_id/run_id are this script-wide here.
+    api_usage.set_default_context(town_id=town_id)
 
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:

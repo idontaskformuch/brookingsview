@@ -110,7 +110,7 @@ def _retry_addendum(violations: list[str]) -> str:
 
 
 def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
-          client=None) -> GeneratedArticle | None:
+          client=None, dry_run: bool = False) -> GeneratedArticle | None:
     today = datetime.date.today()
     today_prompt_label = f"{calendar.day_name[today.weekday()]}, {_today_label(today)}"
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(town=town_label(cfg), today=today_prompt_label)
@@ -119,7 +119,7 @@ def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
 
     article = generate_article(system_prompt + _RATING_INSTRUCTION, local_input,
                                 existing_corpus, cfg=cfg, client=client,
-                                content_type="media_recension")
+                                content_type="media_recension", dry_run=dry_run)
     if article is None:
         return None
     article = _extract_rating(article)
@@ -134,7 +134,7 @@ def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
     retry_article = generate_article(
         system_prompt + _RATING_INSTRUCTION + _retry_addendum(check.violations),
         local_input, existing_corpus, cfg=cfg, client=client,
-        content_type="media_recension",
+        content_type="media_recension", dry_run=dry_run,
     )
     if retry_article is None:
         # Keep the first draft rather than lose a whole review to a transient

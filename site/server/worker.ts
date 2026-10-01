@@ -67,7 +67,7 @@ export default {
     }
 
     if (request.method === 'POST' && url.pathname === '/api/comment') {
-      return handleComment(request, env);
+      return handleComment(request, env, ctx);
     }
     if (request.method === 'POST' && url.pathname === '/api/shift-poll-vote') {
       return handleShiftPollVote(request, env);

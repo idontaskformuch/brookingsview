@@ -30,7 +30,7 @@ INPUT: Du får underlag om en fråga eller händelse. Din uppgift är att gå fr
 
 
 def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
-          client=None) -> GeneratedArticle | None:
+          client=None, dry_run: bool = False) -> GeneratedArticle | None:
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(town=town_label(cfg))
     return generate_article(system_prompt, local_input, existing_corpus, cfg=cfg, client=client,
-                             content_type="editorial")
+                             content_type="editorial", dry_run=dry_run)

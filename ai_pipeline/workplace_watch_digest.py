@@ -75,7 +75,7 @@ load_dotenv()
 import psycopg
 from psycopg.rows import dict_row
 
-from ai_pipeline import guardrails, search_client
+from ai_pipeline import api_usage, guardrails, search_client
 from ai_pipeline.guardrails import normalize_name
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
@@ -225,8 +225,12 @@ def template_fallback(employer_name: str, results: list[dict]) -> str:
             f"Check back next month for an updated Worker Pulse summary.")
 
 
-def generate(employer_name: str, results: list[dict], cfg: dict, client=None) -> tuple[str, str, bool]:
-    """Returnerar (text, generated_by, verified)."""
+def generate(employer_name: str, results: list[dict], cfg: dict, client=None,
+             dry_run: bool = False) -> tuple[str, str, bool]:
+    """Returnerar (text, generated_by, verified). See weekly.generate()'s
+    docstring for why `dry_run` matters to api_usage logging here too --
+    --dry-run makes a real AI call (see main()'s own comment) but never
+    writes to DB."""
     src = build_grounding_text(employer_name, results, cfg)
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
@@ -243,12 +247,18 @@ def generate(employer_name: str, results: list[dict], cfg: dict, client=None) ->
     price_in, price_out = pricing_for(model)
     system = build_prompt(cfg, employer_name)
 
+    usage_ids: list[int] = []
+
     def call(extra: str = "") -> str:
         msg = safe_create(
             client,
             model=model, max_tokens=500, system=system + extra,
             messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}],
+            attempt=len(usage_ids) + 1,
         )
+        usage_id = api_usage.take_last_usage_id()
+        if usage_id is not None:
+            usage_ids.append(usage_id)
         _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
 
@@ -275,15 +285,19 @@ def generate(employer_name: str, results: list[dict], cfg: dict, client=None) ->
             passed, violations = _checks_pass(text)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")
+        api_usage.finalize_generation(usage_ids, succeeded=False)
         return template_fallback(employer_name, results), "template_fallback", True
 
     if passed and len(text.split()) >= MIN_WORDS:
+        api_usage.finalize_generation(usage_ids, succeeded=True,
+                                      success_outcome="dry_run" if dry_run else "published")
         return text, f"ai:{model}", True
 
     reason = "guardrail" if not passed else "too short"
     print(f"  faller tillbaka på mall ({reason})")
     for v in violations[:5]:
         print(f"    - {v}")
+    api_usage.finalize_generation(usage_ids, succeeded=False)
     return template_fallback(employer_name, results), "template_fallback", True
 
 
@@ -299,6 +313,7 @@ def main() -> int:
 
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
     town_id = cfg["town_id"]
+    api_usage.set_default_context(generator="workplace_watch_digest", town_id=town_id)
     tz = ZoneInfo(cfg.get("timezone", "America/Los_Angeles"))
 
     database_url = os.environ.get("DATABASE_URL")
@@ -370,7 +385,7 @@ def main() -> int:
                 print("  underlaget oförändrat -- hoppar över (inget AI-anrop)")
                 continue
 
-            text, generated_by, verified = generate(employer["name"], results, cfg)
+            text, generated_by, verified = generate(employer["name"], results, cfg, dry_run=args.dry_run)
             rating = extract_rating(build_grounding_text(employer["name"], results, cfg))
             prev = previous_rating(conn, town_id, employer["id"], period)
             delta = (rating - prev) if (rating is not None and prev is not None) else None

@@ -17,6 +17,9 @@ import os
 
 import requests
 
+from ai_pipeline import api_usage
+from config import pricing
+
 _ENDPOINT = "https://api.search.brave.com/res/v1/web/search"
 
 
@@ -49,7 +52,20 @@ def brave_search(query: str, count: int = 10) -> list[dict]:
         )
         resp.raise_for_status()
     except requests.RequestException as exc:
+        # Logged 'error' here, not left for the caller -- every brave_search()
+        # call goes through this one function (api_usage's chokepoint for
+        # this provider, same role safe_create() plays for Anthropic), so
+        # this is the only place that needs to know about the failure.
+        api_usage.log_usage(provider="brave", units=1, outcome="error")
         raise SearchUnavailable(str(exc)) from exc
+
+    # One billed request regardless of how many results come back -- Brave
+    # charges per request, not per result/token, so there's no retry/
+    # guardrail-rejection concept the way an Anthropic call has: a
+    # successful call always "did its job" (outcome='published' means "spend
+    # that produced a usable result", same vocabulary as every other
+    # provider logs, not literally "this became a published story").
+    api_usage.log_usage(provider="brave", units=1, cost_usd=pricing.cost_for_brave(1), outcome="published")
 
     results = (resp.json().get("web") or {}).get("results") or []
     return [

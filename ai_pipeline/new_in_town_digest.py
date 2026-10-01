@@ -48,7 +48,7 @@ load_dotenv()
 import psycopg
 from psycopg.rows import dict_row
 
-from ai_pipeline import guardrails, search_budget, search_client
+from ai_pipeline import api_usage, guardrails, search_budget, search_client
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, strip_json_fence, _spent_this_month, _record_spend,
@@ -123,20 +123,30 @@ def extract_records(cfg: dict, results: list[dict], client) -> list[dict]:
         return []
     model = resolve_model(EXTRACTION_CONTENT_TYPE, cfg)
     price_in, price_out = pricing_for(model)
-    msg = safe_create(
-        client, model=model, max_tokens=1500,
-        system=build_extraction_prompt(cfg, results),
-        messages=[{"role": "user", "content": "Extract the records now."}],
-    )
+    with api_usage.usage_context(generator="new_in_town_extraction"):
+        msg = safe_create(
+            client, model=model, max_tokens=1500,
+            system=build_extraction_prompt(cfg, results),
+            messages=[{"role": "user", "content": "Extract the records now."}],
+        )
+    usage_id = api_usage.take_last_usage_id()
     _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
     raw = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
     text = strip_json_fence(raw)
     try:
         records = json.loads(text)
     except ValueError:
+        # No guardrail/template concept for this call -- it's a single
+        # structured-extraction attempt (per-record validation happens
+        # downstream in validate_record(), not here). A JSON parse failure
+        # means the whole response was unusable, which 'error' captures
+        # better than any other outcome value this enum has.
+        api_usage.finalize_outcome(usage_id, "error")
         return []
     if not isinstance(records, list):
+        api_usage.finalize_outcome(usage_id, "error")
         return []
+    api_usage.finalize_outcome(usage_id, "published")
     return [r for r in records if isinstance(r, dict)]
 
 
@@ -341,9 +351,12 @@ def roundup_template_fallback(newly_rendered: list[dict], cfg: dict) -> str:
     return "\n".join(lines)
 
 
-def generate_roundup(newly_rendered: list[dict], cfg: dict, client=None) -> tuple[str, str]:
+def generate_roundup(newly_rendered: list[dict], cfg: dict, client=None,
+                     dry_run: bool = False) -> tuple[str, str]:
     """Returns (text, generated_by). Falls back to a plain template on any
-    guardrail failure -- same philosophy as workplace_watch_digest.py."""
+    guardrail failure -- same philosophy as workplace_watch_digest.py.
+    `dry_run`: see weekly.generate()'s docstring -- --dry-run still makes a
+    real AI call here (main()'s own help text says so explicitly)."""
     src = build_roundup_source_text(newly_rendered)
     fallback = roundup_template_fallback(newly_rendered, cfg)
     ai_cfg = cfg.get("ai", {})
@@ -362,11 +375,18 @@ def generate_roundup(newly_rendered: list[dict], cfg: dict, client=None) -> tupl
     business_names = [b["name"] for b in newly_rendered]
     snippets = [b.get("_source_snippet", "") for b in newly_rendered]
 
+    usage_ids: list[int] = []
+
     def call(extra: str = "") -> str:
-        msg = safe_create(
-            client, model=model, max_tokens=500, system=system + extra,
-            messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}],
-        )
+        with api_usage.usage_context(generator="new_in_town_digest"):
+            msg = safe_create(
+                client, model=model, max_tokens=500, system=system + extra,
+                messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}],
+                attempt=len(usage_ids) + 1,
+            )
+        usage_id = api_usage.take_last_usage_id()
+        if usage_id is not None:
+            usage_ids.append(usage_id)
         _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
 
@@ -394,15 +414,19 @@ def generate_roundup(newly_rendered: list[dict], cfg: dict, client=None) -> tupl
             result = check(text)
     except GenerationUnavailable as exc:
         print(f"  AI call failed ({exc}) -- falling back to template")
+        api_usage.finalize_generation(usage_ids, succeeded=False)
         return fallback, "template_fallback"
 
     if result.passed and len(text.split()) >= ROUNDUP_MIN_WORDS:
+        api_usage.finalize_generation(usage_ids, succeeded=True,
+                                      success_outcome="dry_run" if dry_run else "published")
         return text, f"ai:{model}"
 
     reason = "guardrail" if not result.passed else "too short"
     print(f"  falling back to template ({reason})")
     for v in result.violations[:5]:
         print(f"    - {v}")
+    api_usage.finalize_generation(usage_ids, succeeded=False)
     return fallback, "template_fallback"
 
 
@@ -429,6 +453,11 @@ def main() -> int:
 
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
     town_id = cfg["town_id"]
+    # generator="new_in_town_digest" covers the Brave Search calls below
+    # (constant for this whole script); extract_records()/generate_roundup()
+    # each open their own narrower usage_context() for their own distinct
+    # Anthropic generator names.
+    api_usage.set_default_context(generator="new_in_town_digest", town_id=town_id)
     feat = cfg.get("features", {}).get("new_in_town", {})
 
     if not feat.get("enabled"):
@@ -502,7 +531,7 @@ def main() -> int:
 
         if not newly_rendered or args.dry_run:
             if args.dry_run and newly_rendered:
-                text, generated_by = generate_roundup(newly_rendered, cfg, client)
+                text, generated_by = generate_roundup(newly_rendered, cfg, client, dry_run=True)
                 print("\n" + "=" * 70)
                 print(f"(dry-run) ROUNDUP [{generated_by}]:\n{text}")
                 print("=" * 70)

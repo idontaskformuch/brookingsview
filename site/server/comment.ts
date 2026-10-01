@@ -34,6 +34,8 @@
 // tracked against it. A per-IP daily submission cap stands in for that here.
 import { neon } from '@neondatabase/serverless';
 import { type Env, townFromHostname, sha256Hex, jsonResponse } from './_shared';
+import { logApiUsage } from './api-usage';
+import { costForAnthropic } from './pricing';
 
 const MIN_LEN = 3;
 const MAX_LEN = 1000;
@@ -52,11 +54,18 @@ function stage1Reject(body: string): string | null {
   return null;
 }
 
+interface ModerationResult {
+  decision: Decision;
+  reason: string;
+  inputTokens: number | null;
+  outputTokens: number | null;
+}
+
 async function moderate(
   body: string,
   employerNames: string[],
   apiKey: string,
-): Promise<{ decision: Decision; reason: string }> {
+): Promise<ModerationResult> {
   const context = employerNames.length
     ? `This comment was submitted on a page about: ${employerNames.join(', ')}.`
     : 'This comment was submitted on a general comparison page covering several employers.';
@@ -89,7 +98,12 @@ Respond with ONLY a JSON object: {"decision": "publish"|"hold"|"reject", "reason
     throw new Error(`Anthropic API error: ${resp.status}`);
   }
 
-  const data = (await resp.json()) as { content?: { type?: string; text?: string }[] };
+  const data = (await resp.json()) as {
+    content?: { type?: string; text?: string }[];
+    usage?: { input_tokens?: number; output_tokens?: number };
+  };
+  const inputTokens = data.usage?.input_tokens ?? null;
+  const outputTokens = data.usage?.output_tokens ?? null;
   const rawText = (data.content ?? [])
     .filter((b) => b.type === 'text')
     .map((b) => b.text ?? '')
@@ -106,15 +120,25 @@ Respond with ONLY a JSON object: {"decision": "publish"|"hold"|"reject", "reason
   try {
     const parsed = JSON.parse(text);
     if (parsed.decision === 'publish' || parsed.decision === 'hold' || parsed.decision === 'reject') {
-      return { decision: parsed.decision, reason: String(parsed.reason ?? '') };
+      return { decision: parsed.decision, reason: String(parsed.reason ?? ''), inputTokens, outputTokens };
     }
-    return { decision: 'hold', reason: `unrecognized decision value: ${JSON.stringify(parsed)}`.slice(0, 200) };
+    return {
+      decision: 'hold',
+      reason: `unrecognized decision value: ${JSON.stringify(parsed)}`.slice(0, 200),
+      inputTokens,
+      outputTokens,
+    };
   } catch {
-    return { decision: 'hold', reason: `could not parse moderation response: ${text}`.slice(0, 200) };
+    return {
+      decision: 'hold',
+      reason: `could not parse moderation response: ${text}`.slice(0, 200),
+      inputTokens,
+      outputTokens,
+    };
   }
 }
 
-export async function handleComment(request: Request, env: Env): Promise<Response> {
+export async function handleComment(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const townId = townFromHostname(request.url, env.DEV_TOWN_ID);
   if (townId !== 'moreno_valley_ca') {
     return new Response('Not found', { status: 404 });
@@ -174,9 +198,44 @@ export async function handleComment(request: Request, env: Env): Promise<Respons
       const result = await moderate(body, employerNames, env.ANTHROPIC_API_KEY);
       status = result.decision === 'publish' ? 'published' : result.decision === 'reject' ? 'rejected' : 'pending_review';
       reason = result.reason;
+      // The moderation call itself succeeded and did its job (classified
+      // the comment) regardless of which of publish/hold/reject it landed
+      // on -- 'error' here means the Anthropic call/response itself
+      // failed, not that the comment got held or rejected. See api-
+      // usage.ts/ai_pipeline/api_usage.py for the same outcome vocabulary
+      // used on the Python side.
+      // Optional chaining on ctx itself: a test harness calling
+      // handleComment() without a real ExecutionContext (no existing test
+      // does today, but nothing should hard-crash the moderation result if
+      // one shows up later) just skips logging rather than throwing here
+      // and getting caught below, which would otherwise mis-flip a clean
+      // 'published' classification to 'pending_review'.
+      ctx?.waitUntil?.(
+        logApiUsage(sql, {
+          runId: crypto.randomUUID(),
+          townId,
+          generator: 'comment_moderation',
+          provider: 'anthropic',
+          model: MODEL,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          costUsd: costForAnthropic(MODEL, result.inputTokens, result.outputTokens),
+          outcome: 'published',
+        }),
+      );
     } catch {
       status = 'pending_review';
       reason = 'moderation call failed -- held for manual review';
+      ctx?.waitUntil?.(
+        logApiUsage(sql, {
+          runId: crypto.randomUUID(),
+          townId,
+          generator: 'comment_moderation',
+          provider: 'anthropic',
+          model: MODEL,
+          outcome: 'error',
+        }),
+      );
     }
   }
 

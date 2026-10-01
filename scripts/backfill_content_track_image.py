@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dotenv import load_dotenv
 load_dotenv()
 
+from ai_pipeline import api_usage
 from content._base import illustration_image_theme, illustration_theme
 from content.illustrations.generate_illustration import generate_illustration
 from db.db import get_conn
@@ -52,6 +53,7 @@ def main() -> int:
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
     town_id = cfg["town_id"]
     display_name = cfg["display_name"]
+    api_usage.set_default_context(town_id=town_id)
 
     with get_conn() as conn:
         with conn.cursor() as cur:

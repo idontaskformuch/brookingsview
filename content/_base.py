@@ -23,6 +23,7 @@ try:
 except ImportError:  # pragma: no cover
     anthropic = None
 
+from ai_pipeline import api_usage
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, _record_spend, _spent_this_month, pricing_for, resolve_model, safe_create,
 )
@@ -135,6 +136,7 @@ def generate_article(
     content_type: str | None = None,
     model: str | None = None,
     max_tokens: int = DEFAULT_MAX_TOKENS,
+    dry_run: bool = False,
 ) -> GeneratedArticle | None:
     """Generate one article: AI call -> style_filter.clean() -> originality_check.
 
@@ -164,6 +166,14 @@ def generate_article(
     resolved_model = model or resolve_model(content_type, cfg)
     price_in, price_out = pricing_for(resolved_model)
 
+    # usage_ids: one api_usage row id per attempt made below, in order -- see
+    # finalize_generation() calls at each of this function's return points.
+    # content_type doubles as the "generator" name here (daily_content.py
+    # calls generate_article() at most once per run, for the one content
+    # type scheduler.weekly_rotation picked for today -- a true script-wide
+    # constant, unlike format_record()'s per-record source_type).
+    usage_ids: list[int] = []
+
     def _call(extra_system: str = "") -> str | None:
         # GenerationUnavailable (API-fel) hanteras som VILKEN ANNAN anledning
         # att inte publicera i dag som helst -- returnera None, samma som
@@ -171,16 +181,21 @@ def generate_article(
         # GenerationUnavailable-docstringen för incidenten (2026-08-09) det
         # här skyddar mot.
         try:
-            msg = safe_create(
-                client,
-                model=resolved_model,
-                max_tokens=max_tokens,
-                system=system_prompt + _OUTPUT_FORMAT_INSTRUCTION + extra_system,
-                messages=[{"role": "user", "content": local_input}],
-            )
+            with api_usage.usage_context(generator=content_type, town_id=(cfg or {}).get("town_id")):
+                msg = safe_create(
+                    client,
+                    model=resolved_model,
+                    max_tokens=max_tokens,
+                    system=system_prompt + _OUTPUT_FORMAT_INSTRUCTION + extra_system,
+                    messages=[{"role": "user", "content": local_input}],
+                    attempt=len(usage_ids) + 1,
+                )
         except GenerationUnavailable as exc:
             print(f"  AI-anrop misslyckades ({exc}) -- ingen artikel idag", file=sys.stderr)
             return None
+        usage_id = api_usage.take_last_usage_id()
+        if usage_id is not None:
+            usage_ids.append(usage_id)
         _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
         # En text avkapad mitt i meningen är samma sorts fel som ett underkänt
         # originality_check: hellre ingen artikel idag än en trasig.
@@ -235,6 +250,7 @@ def generate_article(
             "exactly these issues without otherwise changing what you wrote."
         )
         if retry_text is None:
+            api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="guardrail_rejected")
             return None
         title, body = _split_title_body(retry_text)
         body = clean(body)
@@ -246,6 +262,7 @@ def generate_article(
         if not result.passed:
             print(f"  pre-publish-gate kvarstår ({', '.join(result.violations)}) "
                   "-- ingen artikel idag", file=sys.stderr)
+            api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="guardrail_rejected")
             return None
 
     # Local-anchor-spärren (se ai_pipeline/town_guard.py:has_local_anchor,
@@ -267,17 +284,22 @@ def generate_article(
             "anywhere."
         )
         if retry_text is None:
+            api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="guardrail_rejected")
             return None
         title, body = _split_title_body(retry_text)
         body = clean(body)
         title = clean(title)
         if not has_local_anchor(f"{title}\n\n{body}", cfg):
             print("  lokal förankring saknas fortfarande -- ingen artikel idag", file=sys.stderr)
+            api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="guardrail_rejected")
             return None
 
     if not is_original(body, existing_corpus):
+        api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="guardrail_rejected")
         return None
 
+    api_usage.finalize_generation(usage_ids, succeeded=True,
+                                  success_outcome="dry_run" if dry_run else "published")
     return GeneratedArticle(title=title, body=body)
 
 
