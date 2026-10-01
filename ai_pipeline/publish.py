@@ -255,13 +255,26 @@ def build_occurs_at(table: str, row: dict):
     return None
 
 
-def slug_date(value) -> str | None:
+def slug_date(value, cfg: dict | None = None) -> str | None:
     """"YYYY-MM-DD" ur meeting_date, för SEO Fas 5's dateradade meeting-
     slugs (se NEEDS-HUMAN-REVIEW.md, "SEO Fas 5"). Samma "aldrig
     tidszonskonvertera ett rent kalenderdatum"-regel som fmt_dt() ovan --
-    meeting_date är midnatt UTC utan tillförlitligt klockslag, så
-    datumdelen läses ut direkt ur den råa datetime/strängen, aldrig via en
-    tz-konvertering som skulle kunna flytta datumet en dag."""
+    meeting_date är midnatt UTC utan tillförlitligt klockslag för
+    Legistar-orter, så datumdelen läses ut direkt ur den råa datetime/
+    strängen, aldrig via en tz-konvertering som skulle kunna flytta datumet
+    en dag.
+
+    FIXAT 2026-10-01 (samma rotorsak som _meeting_date_title_part()): för
+    eSCRIBE/AgendaLink-orter ÄR meeting_date en riktig, tidszonsmedveten
+    instans, så den råa UTC-läsningen gav en slug med fel datum (samma
+    "Wed Oct 14" för ett i verkligheten Tue Oct 13-möte som titel-buggen).
+    cfg (om given) avgör via samma data_sources.city_meetings.
+    meetings_have_time-flagga om datumet ska lokaliseras först. Gäller bara
+    FRAMTIDA/nya slugs -- redan publicerade rader behåller sin existerande
+    slug för alltid (known_slugs-kollen i publish_table() körs INNAN detta
+    någonsin anropas för en rad, så en redan befintlig rad når aldrig hit),
+    per detta projekts etablerade "ändra aldrig en redan indexerad URL utan
+    en riktig redirect"-princip."""
     if value is None:
         return None
     dt = value
@@ -272,6 +285,11 @@ def slug_date(value) -> str | None:
             return None
     if not isinstance(dt, datetime):
         return None
+    meetings_have_time = (cfg or {}).get("data_sources", {}).get("city_meetings", {}).get("meetings_have_time", False)
+    if meetings_have_time:
+        tzname = (cfg or {}).get("timezone")
+        if tzname:
+            dt = dt.astimezone(ZoneInfo(tzname))
     return dt.strftime("%Y-%m-%d")
 
 
@@ -558,7 +576,7 @@ def publish_table(
         # more descriptive, indexable URL, per NEEDS-HUMAN-REVIEW.md.
         # meeting_followup keeps its own existing "meeting-followup-{id}"
         # scheme (ai_pipeline/meeting_followups.py) -- untouched here.
-        date_part = slug_date(row.get("meeting_date")) if source_type == "meeting" else None
+        date_part = slug_date(row.get("meeting_date"), cfg) if source_type == "meeting" else None
         slug = f"{source_type}-{date_part}-{row['id']}" if date_part else f"{source_type}-{row['id']}"
         if slug in known_slugs:
             skipped += 1

@@ -103,6 +103,23 @@ def test_slug_date_none_for_missing_value():
     assert slug_date(None) is None
 
 
+def test_slug_date_stays_bare_for_legistar_towns():
+    # Oct 1, 2026 00:00 UTC is a bare calendar date -- no cfg, and with a
+    # meetings_have_time: false cfg, must read "2026-10-01", never shifted.
+    midnight_utc = datetime(2026, 10, 1, 0, 0, tzinfo=timezone.utc)
+    assert slug_date(midnight_utc) == "2026-10-01"
+    assert slug_date(midnight_utc, BROOKINGS_CFG) == "2026-10-01"
+
+
+def test_slug_date_localizes_for_real_timestamp_towns():
+    # Same real example as the build_title() tests above (meeting id
+    # 11337): 2026-10-14T00:00:00Z is Tue Oct 13, 6 PM Denver -- a NEW
+    # slug for this meeting must use the correct local date, "2026-10-13",
+    # not "2026-10-14".
+    real_instant = datetime(2026, 10, 14, 0, 0, tzinfo=timezone.utc)
+    assert slug_date(real_instant, BROOMFIELD_CFG) == "2026-10-13"
+
+
 def test_build_source_url_rejects_sandbox_agenda_url():
     # Broomfield Handoff (2026-09-30), Issue 2: AgendaLink's own API returns
     # agendaUrl values on sandbox.agendalink.app -- confirmed live never a
