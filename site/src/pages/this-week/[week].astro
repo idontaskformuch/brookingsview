@@ -34,6 +34,7 @@ import {
 import { siteConfig } from '../../lib/site-config';
 import { resolvePageMeta } from '../../lib/page-meta';
 import { resolveHubBacklink } from '../../lib/clusters';
+import { storyHref } from '../../lib/content-slugs';
 
 const VERTICAL_LABELS: Record<Vertical, string> = {
   events: 'Events', city_hall: 'City Hall', sdsu: 'SDSU', sports: 'Sports',
@@ -119,7 +120,7 @@ const itemListJsonLd = hasAnyItems ? {
     <h1>{pageMeta.h1}</h1>
     {weeklyStory ? (
       <p class="intro">{weeklyStory.body.split('\n').map((p) => p.trim()).filter(Boolean)[0]}{' '}
-        <a href={`/s/${weeklyStory.slug}/`}>Read the full week in review →</a></p>
+        <a href={storyHref(weeklyStory.slug)}>Read the full week in review →</a></p>
     ) : (
       <p class="intro">{isCurrent
         ? `What's on this week in ${siteConfig.cityName}, day by day, built from real scheduled meetings, events${isBrookings ? ', SDSU listings' : ''} and games.`
@@ -132,7 +133,7 @@ const itemListJsonLd = hasAnyItems ? {
   {lead && (
     <aside class="lead-callout">
       <p class="lead-callout__kicker">Worth knowing this week</p>
-      <p class="lead-callout__title"><a href={`/s/${lead.slug}/`}>{lead.title}</a></p>
+      <p class="lead-callout__title"><a href={storyHref(lead.slug)}>{lead.title}</a></p>
       <p class="lead-callout__when">{formatOccursAt(lead)}</p>
     </aside>
   )}

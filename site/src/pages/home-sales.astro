@@ -28,6 +28,7 @@ import { EMPTY_STATES } from '../lib/empty-states';
 import { SECTION_THEME } from '../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
+import { storyHref } from '../lib/content-slugs';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
@@ -80,7 +81,7 @@ function monthYear(occursAt: string | null): string {
       <SectionRule label="Monthly digest" href="/home-sales/archive/" />
       <div class="grid">
         {digests.map((story) => (
-          <a class="digest-card" href={`/s/${story.slug}/`}>
+          <a class="digest-card" href={storyHref(story.slug)}>
             <p class="digest-card__covering">Covering {monthYear(story.occurs_at)}</p>
             <p class="digest-card__title">{story.title}</p>
           </a>

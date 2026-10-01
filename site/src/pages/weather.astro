@@ -27,6 +27,7 @@ import { getWeather, getHourlyWeather, getActiveAlerts } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubBacklink } from '../lib/clusters';
+import { storyHref } from '../lib/content-slugs';
 
 const pageMeta = resolvePageMeta('weather', siteConfig);
 const hubBacklink = resolveHubBacklink('weather', siteConfig);
@@ -83,7 +84,7 @@ function hourLabel(start: string): string {
       {alerts.map((alert) => (
         <div class="alert">
           <p class="alert__kicker">Active alert</p>
-          <p class="alert__title"><a href={`/s/${alert.slug}/`}>{alert.title}</a></p>
+          <p class="alert__title"><a href={storyHref(alert.slug)}>{alert.title}</a></p>
         </div>
       ))}
     </section>

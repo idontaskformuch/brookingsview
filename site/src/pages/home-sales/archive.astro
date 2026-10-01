@@ -16,6 +16,7 @@ import { getContentByType, formatMonthYear } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
+import { storyHref } from '../../lib/content-slugs';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
@@ -42,7 +43,7 @@ const itemListJsonLd = digests.length > 0 ? {
     '@type': 'ListItem',
     position: i + 1,
     name: d.title,
-    url: new URL(`/s/${d.slug}/`, Astro.site ?? siteConfig.siteUrl).href,
+    url: new URL(storyHref(d.slug), Astro.site ?? siteConfig.siteUrl).href,
   })),
 } : null;
 ---
@@ -61,7 +62,7 @@ const itemListJsonLd = digests.length > 0 ? {
       {digests.map((d) => (
         <li>
           <span class="covering">{formatMonthYear(d.occurs_at)}</span>
-          <a href={`/s/${d.slug}/`}>{d.title}</a>
+          <a href={storyHref(d.slug)}>{d.title}</a>
         </li>
       ))}
     </ul>

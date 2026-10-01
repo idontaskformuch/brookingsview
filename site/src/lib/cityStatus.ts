@@ -47,6 +47,7 @@ import { siteConfig, type SiteConfig } from './site-config';
 import { getTicketmasterEventsForTown, distanceLabel, type TicketmasterFeedItem } from './ticketmaster';
 import { rankTicketmasterEvents, collapseMarqueeRuns } from './whats-on';
 import { joinWithOr } from './status-line';
+import { storyHref } from './content-slugs';
 
 export type StatusTone = 'quiet' | 'notice' | 'alert';
 
@@ -107,7 +108,7 @@ async function resolveAlerts(): Promise<CityStatusModule | null> {
   const value = alerts.length === 1 ? alerts[0].title : `${alerts.length} active alerts`;
   return {
     id: 'alerts', icon: ICONS.alerts, label: 'Alerts', value, tone: 'alert',
-    href: `/s/${alerts[0].slug}/`, asOf: new Date(alerts[0].published_at),
+    href: storyHref(alerts[0].slug), asOf: new Date(alerts[0].published_at),
   };
 }
 

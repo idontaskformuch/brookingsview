@@ -20,6 +20,7 @@
  * JSON-LD's startDate/endDate.
  */
 import { toZonedISOString, type Story } from './db';
+import { storyHref } from './content-slugs';
 
 export const NEWS_SITEMAP_WINDOW_HOURS = 48;
 
@@ -90,7 +91,7 @@ export function buildNewsSitemapXml(
   const eligible = stories.filter((s) => isWithinNewsWindow(s.published_at, now));
 
   const urlEntries = eligible.map((story) => {
-    const loc = `${site.siteUrl}/s/${story.slug}/`;
+    const loc = `${site.siteUrl}${storyHref(story.slug)}`;
     const publicationDate = toZonedISOString(story.published_at, site.timezone);
     const title = stripTownPrefix(story.title, site.cityName);
     return `  <url>

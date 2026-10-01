@@ -26,6 +26,7 @@ import { handleComment } from './comment';
 import { handleShiftPollVote } from './shift-poll-vote';
 import { handleContact } from './contact';
 import { handleTicketmasterImage } from './ticketmaster-image';
+import { resolveContentSlugRedirect } from './content-slug-redirects';
 import {
   type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug, previousIsoWeekSlug,
   resolveLegacyMeetingRedirect,
@@ -100,6 +101,19 @@ export default {
     );
     if (legacyRedirectPath) {
       const target = new URL(legacyRedirectPath, url.origin);
+      target.search = url.search;
+      return Response.redirect(target.toString(), 301);
+    }
+
+    // Old Swedish-prefixed content slugs (vardagsmiddag-/vetenskap_kronika-/
+    // kvick_essa-/media_recension-) -- 2026-10-01 cleanup round, item 4. See
+    // content-slug-redirects.ts's own comment: a pure prefix swap, not a
+    // table, so this never needs regenerating as rows are added. Same 301
+    // reasoning as the legacy meeting block above -- the new slug, once
+    // decided, never changes again.
+    const contentSlugRedirectPath = resolveContentSlugRedirect(url.pathname);
+    if (contentSlugRedirectPath) {
+      const target = new URL(contentSlugRedirectPath, url.origin);
       target.search = url.search;
       return Response.redirect(target.toString(), 301);
     }

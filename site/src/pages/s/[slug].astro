@@ -22,12 +22,19 @@ import ImageAttribution from '../../components/ImageAttribution.astro';
 import { shouldNoindexStory, THIN_SCRAPED_SOURCE_TYPES } from '../../lib/noindex';
 import { canonicalUrlForStory } from '../../lib/cross-site-canonical';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
+import { publicSlug, storyHref } from '../../lib/content-slugs';
 
 export async function getStaticPaths() {
   // Fetched once for the whole build, not per-page -- the facilities set is
   // small (a handful of rows) and doesn't vary per story.
   const [stories, facilities] = await Promise.all([getAllStories(), getFacilities()]);
-  return stories.map((story) => ({ params: { slug: story.slug }, props: { story, facilities } }));
+  // 2026-10-01, item 4: the route param is the PUBLIC slug (publicSlug());
+  // `story.slug` itself (passed through unchanged via props) stays the
+  // real DB value everywhere below -- story.slug.match(/-(\d+)$/) just
+  // below, WorkerPulseComments' pageSlug, etc. all need the real slug, not
+  // the public one, since they're DB keys, not URLs. Old-prefixed requests
+  // 301 to this new path via server/content-slug-redirects.ts.
+  return stories.map((story) => ({ params: { slug: publicSlug(story.slug) }, props: { story, facilities } }));
 }
 
 const { story, facilities } = Astro.props as { story: Story; facilities: Facility[] };
@@ -121,7 +128,7 @@ const cityHallFacility = isMeeting ? facilities.find((f) => f.slug === 'city-hal
 // rel="canonical"> signal (pageCanonicalUrl, passed to BaseLayout) differs
 // when this story's type points elsewhere (Phase C: cross-site
 // duplication remediation).
-const canonicalUrl = new URL(`/s/${story.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
+const canonicalUrl = new URL(storyHref(story.slug), Astro.site ?? siteConfig.siteUrl).href;
 const pageCanonicalUrl = canonicalUrlForStory(story.source_type, story.slug, siteConfig.townId, canonicalUrl);
 // Topical authority handoff, Phase 2: source_types the cluster graph
 // (config/clusters.ts) already registers as their own `story:<sourceType>`

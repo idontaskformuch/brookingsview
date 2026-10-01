@@ -8,6 +8,7 @@ import { siteConfig } from '../lib/site-config';
 import { categoryForSourceType, type ImageCategory } from '../lib/images';
 import { SECTION_THEME } from '../lib/section-theme';
 import { relativeTime } from '../lib/time';
+import { storyHref } from '../lib/content-slugs';
 
 // Dense card lists never render a per-item image (see NEEDS-HUMAN-REVIEW.md
 // "Venue & Category Image Identity", rendering-rules table) -- a small
@@ -57,9 +58,9 @@ interface Props {
   kicker?: string;
 }
 const { story, compact = false, href: hrefOverride, kicker: kickerOverride } = Astro.props;
-const href = hrefOverride ?? `/s/${story.slug}/`;
+const href = hrefOverride ?? storyHref(story.slug);
 const isExternal = Boolean(hrefOverride);
-const shareUrl = new URL(`/s/${story.slug}/`, siteConfig.siteUrl).href;
+const shareUrl = new URL(storyHref(story.slug), siteConfig.siteUrl).href;
 
 const isAlert = story.source_type === 'alert';
 const isMeeting = story.source_type === 'meeting' || story.source_type === 'meeting_followup';

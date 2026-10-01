@@ -28,6 +28,7 @@ import { SECTION_THEME } from '../../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { resolveHubNavItems } from '../../lib/clusters';
 import ClusterNav from '../../components/ClusterNav.astro';
+import { storyHref } from '../../lib/content-slugs';
 
 if (!siteConfig.hasWorkplaceWatch) {
   return Astro.redirect('/', 302);
@@ -182,7 +183,7 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
                 <>
                   <span class="excerpt">{e.theme_summary}</span>
                   {e.digest_slug && (
-                    <a href={`/s/${e.digest_slug}/`}>Read the full {label} digest →</a>
+                    <a href={storyHref(e.digest_slug)}>Read the full {label} digest →</a>
                   )}
                 </>
               ) : (

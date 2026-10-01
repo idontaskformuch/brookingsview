@@ -32,6 +32,7 @@ import type { Story, Game, RegionalGame, SdsuEvent, ProjectUpdate } from './db';
 import { calendarDateParts } from './db';
 import { localDateParts, utcMidnight, todayUtcMidnight, buildEventFeed, itemTitle, itemUrl } from './events';
 import { selectWorthKnowing } from './homepage-curation';
+import { storyHref } from './content-slugs';
 
 export interface DateParts { y: number; m: number; d: number; } // m is 1-12, unlike calendarDateParts()
 
@@ -268,7 +269,7 @@ export function buildWeekDays(
       items.push({
         vertical: item.sourceKind === 'arts' ? 'sdsu' : 'events',
         title: itemTitle(item),
-        href: item.sourceKind === 'story' ? `/s/${item.story.slug}/` : itemUrl(item),
+        href: item.sourceKind === 'story' ? storyHref(item.story.slug) : itemUrl(item),
         external: item.sourceKind === 'arts',
         detail: item.sourceKind === 'story' ? firstLine(item.story.body) : (item.event.teaser ?? ''),
       });
@@ -278,7 +279,7 @@ export function buildWeekDays(
       const md = bareDateParts(meeting.occurs_at);
       if (!md || !sameDate(md, date)) continue;
       items.push({
-        vertical: 'city_hall', title: meeting.title, href: `/s/${meeting.slug}/`,
+        vertical: 'city_hall', title: meeting.title, href: storyHref(meeting.slug),
         external: false, detail: firstLine(meeting.body),
       });
     }

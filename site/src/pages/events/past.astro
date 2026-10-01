@@ -31,6 +31,7 @@ import { getContentByType } from '../../lib/db';
 import type { Story } from '../../lib/db';
 import { localDateParts } from '../../lib/events';
 import { siteConfig } from '../../lib/site-config';
+import { storyHref } from '../../lib/content-slugs';
 
 const allEvents = await getContentByType(['event'], 5000);
 const events = allEvents.filter((e) => !e.occurs_at || new Date(e.occurs_at) < new Date());
@@ -75,7 +76,7 @@ const itemListJsonLd = events.length > 0 ? {
     '@type': 'ListItem',
     position: i + 1,
     name: e.title,
-    url: new URL(`/s/${e.slug}/`, Astro.site ?? siteConfig.siteUrl).href,
+    url: new URL(storyHref(e.slug), Astro.site ?? siteConfig.siteUrl).href,
   })),
 } : null;
 ---

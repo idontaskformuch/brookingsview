@@ -48,6 +48,7 @@ import { computeOpenStatus, type OpenStatus } from '../lib/facility-hours';
 import { joinWithOr } from '../lib/status-line';
 import type { Story, TrafficIncident, StructuredHours } from '../lib/db';
 import type { ClosureWatchStatus } from '../lib/closure-watch';
+import { storyHref } from '../lib/content-slugs';
 
 export interface Props {
   cityName: string;
@@ -159,7 +160,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
         )}
 
         {!consolidatedQuietLine && activeAlerts.length > 0 && activeAlerts.map((alert: AlertItem) => (
-          <li><a href={`/s/${alert.slug}/`}>{alert.title}</a></li>
+          <li><a href={storyHref(alert.slug)}>{alert.title}</a></li>
         ))}
 
         {activeClosureLabel && (

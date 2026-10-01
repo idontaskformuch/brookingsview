@@ -8,6 +8,7 @@ import { siteConfig } from '../lib/site-config';
 import { resolveImage, type ImageRef } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import ImageAttribution from './ImageAttribution.astro';
+import { storyHref } from '../lib/content-slugs';
 
 // See LeadStory.astro's identical Props comment -- WeeklyRoundup always
 // resolves via the 'events' category (see heroImage below), so it's the
@@ -27,7 +28,7 @@ const words = story.body.split(/\s+/).length;
 // story.occurs_at = veckans måndag (satt av ai_pipeline/weekly.py:s main()).
 const weekHref = story.occurs_at
   ? `/this-week/${weekInfoForInstant(new Date(story.occurs_at), siteConfig.timezone).slug}/`
-  : `/s/${story.slug}/`;
+  : storyHref(story.slug);
 
 // Was an unconditional /og/<slug>.png (the social card reused as an
 // article image -- exactly the bug NEEDS-HUMAN-REVIEW.md "Venue &

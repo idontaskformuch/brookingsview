@@ -31,6 +31,7 @@ import { getContentByType, formatMonthYear, calendarDateParts } from '../../lib/
 import type { Story } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 import { resolvePageMeta } from '../../lib/page-meta';
+import { storyHref } from '../../lib/content-slugs';
 
 const allMeetings = await getContentByType(['meeting', 'meeting_followup'], 5000);
 const meetings = allMeetings.filter((m) => !m.occurs_at || new Date(m.occurs_at) < new Date());
@@ -67,7 +68,7 @@ const itemListJsonLd = meetings.length > 0 ? {
     '@type': 'ListItem',
     position: i + 1,
     name: m.title,
-    url: new URL(`/s/${m.slug}/`, Astro.site ?? siteConfig.siteUrl).href,
+    url: new URL(storyHref(m.slug), Astro.site ?? siteConfig.siteUrl).href,
   })),
 } : null;
 ---

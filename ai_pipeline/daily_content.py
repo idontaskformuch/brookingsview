@@ -65,6 +65,32 @@ assert not _missing, (
 
 ORIGINALITY_LOOKBACK_DAYS = 60
 
+# 2026-10-01 cleanup round, item 4. source_type stays unchanged internally
+# (CONTENT_TRACK_TYPES, MODULES, CONTENT_TYPE_MODELS etc. all key off it) --
+# only the reader-facing URL prefix changes. Existing rows under the OLD
+# prefix keep their slug COLUMN as-is permanently (slugs are never renamed
+# post-publish anywhere in this codebase); their public URL now 301s
+# instead, via server/content-slug-redirects.ts -- a hand-duplicated TS twin
+# of this dict (see that file's own comment for why it can't just import
+# this one -- cross-language, not just cross-module) -- and
+# site/src/lib/content-slugs.ts's OLD_PREFIX_TO_PUBLIC. Keep all three in
+# sync by hand. vardagsmiddag->recipe shipped alone first, 2026-08-23 (see
+# NEEDS-HUMAN-REVIEW.md "3.4 Recipes"); the other three were added
+# 2026-10-01 at the same time the redirect/canonical layer was built.
+SLUG_PREFIX_OVERRIDES = {
+    "vardagsmiddag": "recipe",
+    "vetenskap_kronika": "science-column",
+    "kvick_essa": "quick-essay",
+    "media_recension": "review",
+}
+
+
+def public_slug_prefix(content_type: str) -> str:
+    """The slug prefix a NEW row of this content_type should publish under --
+    the override above if one exists, otherwise content_type itself
+    unchanged (every other content type's own name is already English)."""
+    return SLUG_PREFIX_OVERRIDES.get(content_type, content_type)
+
 
 def _build_local_input(conn, town_id: str, content_type: str,
                         today: datetime.date, cfg: dict) -> tuple[str | None, str]:
@@ -141,15 +167,7 @@ def main() -> int:
         return 0
 
     write, category = MODULES[content_type]
-    # Slug prefix renamed 2026-08-23 (vardagsmiddag -> recipe) for new
-    # content only -- see NEEDS-HUMAN-REVIEW.md "3.4 Recipes". source_type
-    # stays "vardagsmiddag" internally (CONTENT_TRACK_TYPES, MODULES,
-    # CONTENT_TYPE_MODELS etc. all key off it) -- only the reader-facing URL
-    # prefix changes. Existing vardagsmiddag-* rows keep their slug as-is
-    # permanently (slugs are never renamed post-publish anywhere in this
-    # codebase), so old URLs keep working without needing a redirect table.
-    slug_prefix = "recipe" if content_type == "vardagsmiddag" else content_type
-    slug = f"{slug_prefix}-{today.isoformat()}"
+    slug = f"{public_slug_prefix(content_type)}-{today.isoformat()}"
 
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:

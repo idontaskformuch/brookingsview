@@ -19,9 +19,14 @@ describe('canonicalUrlForStory', () => {
     expect(canonicalUrlForStory('vetenskap_kronika', 'vetenskap_kronika-2026-08-28', 'broomfield_co', SELF_URL)).toBe(SELF_URL);
   });
 
-  it('points to the origin town, same slug, when this town is not the origin', () => {
+  it('points to the origin town, with the PUBLIC slug, when this town is not the origin', () => {
+    // 2026-10-01, item 4: the DB slug ("vardagsmiddag-...") stays in the
+    // function's own input/signature (never rewritten), but the resulting
+    // URL must use the public slug ("recipe-...") since that's the actual
+    // path the origin town now serves -- see content-slugs.ts's own
+    // storyHref().
     const url = canonicalUrlForStory('vardagsmiddag', 'vardagsmiddag-2026-08-28', 'moreno_valley_ca', SELF_URL);
-    expect(url).toBe('https://brookingsview.com/s/vardagsmiddag-2026-08-28/');
+    expect(url).toBe('https://brookingsview.com/s/recipe-2026-08-28/');
   });
 
   it('covers all three shared types pointing away from a non-origin town', () => {

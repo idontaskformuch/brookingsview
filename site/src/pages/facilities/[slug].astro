@@ -22,6 +22,7 @@ import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clust
 import { computeOpenStatus, buildOpeningHoursSpecification } from '../../lib/facility-hours';
 import { buildFacilityLede } from '../../lib/facility-lede';
 import { resolvePageMeta } from '../../lib/page-meta';
+import { storyHref } from '../../lib/content-slugs';
 
 export async function getStaticPaths() {
   const facilities = await getFacilities();
@@ -148,7 +149,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
         <ul class="events">
           {upcomingHere.map((s) => (
             <li>
-              <a href={`/s/${s.slug}/`}>{s.title}</a>
+              <a href={storyHref(s.slug)}>{s.title}</a>
               <span class="when data">{formatOccursAt(s)}</span>
             </li>
           ))}

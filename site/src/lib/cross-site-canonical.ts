@@ -23,6 +23,7 @@
  *  single site reads as a pure mirror of another. */
 import type { SourceType } from './db';
 import { ALL_SITES } from './site-config';
+import { storyHref } from './content-slugs';
 
 export const CROSS_SITE_CANONICAL_ORIGINS: Partial<Record<SourceType, string>> = {
   vardagsmiddag: 'brookings_sd',
@@ -72,5 +73,5 @@ export function canonicalUrlForStory(
   const origin = ALL_SITES.find((s) => s.townId === originTownId);
   if (!origin) return selfUrl; // defensive only -- every real townId is in ALL_SITES
 
-  return new URL(`/s/${slug}/`, origin.siteUrl).href;
+  return new URL(storyHref(slug), origin.siteUrl).href;
 }

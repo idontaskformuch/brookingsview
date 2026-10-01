@@ -22,6 +22,7 @@ import { siteConfig } from './site-config';
 import { computeClosureWatchState, type ClosureWatchStatus, type WeatherAlert } from './closure-watch';
 import { SHARED_CONTENT_SOURCE_TYPES } from './cross-site-canonical';
 import { resolveCluster } from './clusters';
+import { storyHref } from './content-slugs';
 
 const sql = neon(import.meta.env.DATABASE_URL);
 
@@ -709,7 +710,7 @@ async function latestStoryByType(sourceType: SourceType): Promise<RelatedItem | 
   const row = rows[0];
   if (!row) return null;
   return {
-    href: `/s/${row.slug}/`,
+    href: storyHref(row.slug),
     title: row.title,
     kicker: CATEGORY_LABELS[sourceType] ?? sourceType,
     description: row.body.length > 90 ? row.body.slice(0, 90) + '…' : row.body,
@@ -755,7 +756,7 @@ async function freshClusterSignal(clusterKey: string, currentPageType: RelatedPa
     case 'whats_happening': {
       const [nextEvent] = await getUpcomingStories(['event'], 1);
       return nextEvent
-        ? { href: `/s/${nextEvent.slug}/`, title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) }
+        ? { href: storyHref(nextEvent.slug), title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) }
         : null;
     }
     case 'getting_around': {
@@ -845,7 +846,7 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
   if (pageType === 'traffic') {
     const [nextEvent] = await getUpcomingStories(['event'], 1);
     if (nextEvent) {
-      items.push({ href: `/s/${nextEvent.slug}/`, title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
+      items.push({ href: storyHref(nextEvent.slug), title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
     }
     const [closure] = await getActiveSchoolAlerts();
     if (closure) {
@@ -893,7 +894,7 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
   } else if (pageType === 'university') {
     const [nextEvent] = await getUpcomingStories(['event'], 1);
     if (nextEvent) {
-      items.push({ href: `/s/${nextEvent.slug}/`, title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
+      items.push({ href: storyHref(nextEvent.slug), title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
     }
     items.push({ href: '/events/campus/', title: 'Arts & culture at SDSU', kicker: 'Events', description: 'Music, theatre and special events on campus.' });
     items.push({ href: '/jackrabbits/', title: 'Jackrabbits', kicker: 'Sports', description: 'Schedule and results.' });

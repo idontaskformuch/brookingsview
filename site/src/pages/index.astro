@@ -35,7 +35,7 @@ import QuickLinks from '../components/QuickLinks.astro';
 import {
   getUpcomingStories, getActiveAlerts, getUpcomingGames, getNextRegionalGame,
   getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
-  getWeather, getAgPrices, getLatestWeekly, getTodaysFeature, getLatestEmployerRatings,
+  getWeather, getAgPrices, getLatestWeekly, getTodaysFeature,
   getEmployerJobStats, getUpcomingArtsEvents, getRecentJobs, getNextMeeting,
   getWorthKnowingCandidates, getLatestFromCandidates, getRecentCompactContent, getRecentProjectUpdates, formatDate,
   CATEGORY_HREFS, CATEGORY_LABELS, getFacilities, getLatestVailNewsItem, getEventDeckDigests,
@@ -51,6 +51,7 @@ import { resolveImage, dedupeConsecutiveImages, withThumbnailCrop, previousWeekR
 import { categoryImagesFor } from '../config/category-images';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
 import { rankTicketmasterEvents, collapseMarqueeRuns, ticketmasterResolvableImage, marqueeDigestKey, type MarqueeEntry } from '../lib/whats-on';
+import { storyHref } from '../lib/content-slugs';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
@@ -294,11 +295,13 @@ const timelyEventTeaser = isEventTeaserWeekend
 const todayHomeGame = isBrookings && nextGame && nextGame.home_away === 'home'
   && within(nextGame.starts_at, startOfDay, endOfDay) ? nextGame : null;
 
+// 2026-10-01: getLatestEmployerRatings() (rating-derived) is no longer
+// fetched here at all -- the homepage card only ever needed it for the
+// rating/ranking display that's now hidden, see WorkplaceWatchWidget.astro's
+// own comment. employerJobStats (Adzuna-derived, unrelated source) is all
+// this page still needs.
 // Bara hämtat på towns med Workplace Watch enabled -- ingen anledning att
 // fråga en tabell som alltid är tom annars.
-const employerRatings = siteConfig.hasWorkplaceWatch ? await getLatestEmployerRatings() : [];
-// Fas 4a: same "only fetch what this town could possibly have" reasoning as
-// employerRatings just above.
 const employerJobStats = siteConfig.hasWorkplaceWatch ? await getEmployerJobStats() : [];
 // Samma resonemang: bara hämtat för Broomfield, tabellen är alltid tom för
 // de andra två (town_id-scopad, se db/migrations/029_vail_news.sql).
@@ -350,10 +353,13 @@ const marqueeDeck = marqueeHero
   ? (await getEventDeckDigests([marqueeDigestKey(marqueeHero.entry)])).get(marqueeDigestKey(marqueeHero.entry))
   : undefined;
 // 2026-10-01: the rating-derived topEmployer/biggestMover pair that used to
-// live here (employerRatings[0], and a reduce() over rating_delta_vs_last_month)
-// was removed along with the homepage widget's rating/ranking display --
-// see WorkplaceWatchWidget.astro's own comment. employerRatings itself is
-// still fetched above and still used by /workplace-watch's full table.
+// live here (getLatestEmployerRatings()[0], and a reduce() over
+// rating_delta_vs_last_month) was removed, along with the fetch itself
+// (see above getEmployerJobStats), when the homepage widget's rating/
+// ranking display was hidden -- see WorkplaceWatchWidget.astro's own
+// comment. /workplace-watch's own full table still fetches ratings
+// directly (getLatestEmployerRatings() is still used there, just no longer
+// here on the homepage).
 
 // Fas 4a: a reduce() over posting-count
 // change. Falls back to "who has the most listings right now" when NO
@@ -499,7 +505,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
           });
           const thumbnail = cardImage ? withThumbnailCrop(cardImage) : null;
           return (
-            <a class="latest-from__card" href={`/s/${story.slug}/`}>
+            <a class="latest-from__card" href={storyHref(story.slug)}>
               {thumbnail && (
                 <img
                   class="latest-from__image"
@@ -720,7 +726,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
           const thumbnail = cardImage ? withThumbnailCrop(cardImage) : null;
           return (
             <li>
-              <a class="more-to-read__card" href={`/s/${story.slug}/`}>
+              <a class="more-to-read__card" href={storyHref(story.slug)}>
                 {thumbnail && (
                   <img
                     class="more-to-read__image"
