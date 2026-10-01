@@ -124,6 +124,7 @@
     },
     "city_meetings": {
       "type": "legistar",
+      "meetings_have_time": false,
       "enabled": true,
       "client_id": "cityofbrookings",
       "base_url": "https://cityofbrookings.legistar.com",

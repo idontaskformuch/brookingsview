@@ -33,6 +33,7 @@ import sys
 from calendar import month_name
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -188,7 +189,18 @@ def main() -> int:
             # %-d (no leading zero) is a glibc strftime extension, not
             # portable to Windows dev environments -- build the label by
             # hand instead of relying on it.
+            #
+            # Real live bug found 2026-10-01: dt.month/.day/.year read
+            # directly off meeting_date with no tz conversion -- correct
+            # for Legistar towns (meeting_date is a bare calendar date)
+            # but wrong for eSCRIBE/AgendaLink towns, where it's a real,
+            # tz-aware instant (same bug as ai_pipeline/publish.py's
+            # build_title(), see that function's _meeting_date_title_part()
+            # for the full explanation). Convert first when this town's
+            # source has a real time.
             dt = m["meeting_date"]
+            if dt is not None and cfg.get("data_sources", {}).get("city_meetings", {}).get("meetings_have_time", False):
+                dt = dt.astimezone(ZoneInfo(cfg["timezone"]))
             label = f"{month_name[dt.month]} {dt.day}, {dt.year}" if dt else "recently"
             minutes_text = m["raw_data"]["minutes_text"]
             slug = f"meeting-followup-{m['id']}"

@@ -275,10 +275,43 @@ def slug_date(value) -> str | None:
     return dt.strftime("%Y-%m-%d")
 
 
-def build_title(table: str, row: dict) -> str:
+def _meeting_date_title_part(value, cfg: dict | None) -> str | None:
+    """Date portion of a meeting story's title. Deliberately NOT fmt_dt():
+    that function's date component is intentionally never tz-converted
+    (see its own docstring and test_fmt_dt_date_part_never_shifts_with_tz),
+    correct for Legistar towns (meeting_date is a bare calendar date) but
+    wrong for eSCRIBE/AgendaLink towns, where meeting_date is a real,
+    tz-aware instant -- confirmed live 2026-10-01: a Broomfield meeting
+    title read "City Council Regular Meeting — Wed, Oct 14, 2026" for a
+    meeting actually on Tuesday evening Denver time, because the title was
+    built from the raw UTC calendar date instead of the local one (the
+    exact bug already fixed on the site-display side, see db.ts's
+    formatMeetingDate()). Mirrors that same town-aware distinction here,
+    keyed off the same configs/<town>.json flag
+    (data_sources.city_meetings.meetings_have_time) the TS side's
+    siteConfig.meetingsHaveTime mirrors by hand."""
+    if value is None:
+        return None
+    dt = value
+    if isinstance(dt, str):
+        try:
+            dt = datetime.fromisoformat(dt.replace("Z", "+00:00"))
+        except ValueError:
+            return dt
+    if not isinstance(dt, datetime):
+        return str(dt)
+    meetings_have_time = (cfg or {}).get("data_sources", {}).get("city_meetings", {}).get("meetings_have_time", False)
+    if meetings_have_time:
+        tzname = (cfg or {}).get("timezone")
+        if tzname:
+            dt = dt.astimezone(ZoneInfo(tzname))
+    return f"{dt.strftime('%a, %b')} {dt.day}, {dt.year}"
+
+
+def build_title(table: str, row: dict, cfg: dict | None = None) -> str:
     if table == "meetings":
         body = row.get("body") or "Meeting"
-        when = fmt_dt(row.get("meeting_date"))
+        when = _meeting_date_title_part(row.get("meeting_date"), cfg)
         return f"{body} — {when}" if when else str(body)
     if table == "events":
         base, _ = strip_slot(row.get("title") or "Event")
@@ -570,7 +603,7 @@ def publish_table(
             thin += 1
             continue
 
-        title = build_title(table, row)
+        title = build_title(table, row, cfg)
         source_url = build_source_url(table, row)
         snapshot_id = row.get("snapshot_id")
         occurs_at = build_occurs_at(table, row)

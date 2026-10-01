@@ -11,7 +11,8 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from ai_pipeline.publish import (
-    _fmt_hour_min, build_source_url, fmt_dt, fmt_time, group_event_slots, group_recurring_events, slug_date,
+    _fmt_hour_min, build_source_url, build_title, fmt_dt, fmt_time, group_event_slots,
+    group_recurring_events, slug_date,
 )
 from ai_pipeline.weekly import _clock
 
@@ -119,3 +120,34 @@ def test_build_source_url_keeps_real_agenda_url():
 
 def test_build_source_url_none_for_missing_agenda_url():
     assert build_source_url("meetings", {}) is None
+
+
+# build_title()'s meeting-date portion -- real live bug found 2026-10-01
+# during final verification: a Broomfield story title read "City Council
+# Regular Meeting — Wed, Oct 14, 2026" for a meeting actually on Tuesday
+# evening Denver time, because the date was read from the raw UTC instant
+# with no tz conversion -- the exact same bug class as formatMeetingDate()
+# on the site-display side, just unfixed on the Python/title side until now.
+
+BROOKINGS_CFG = {"timezone": "America/Chicago", "data_sources": {"city_meetings": {"meetings_have_time": False}}}
+BROOMFIELD_CFG = {"timezone": "America/Denver", "data_sources": {"city_meetings": {"meetings_have_time": True}}}
+
+
+def test_build_title_meeting_date_stays_bare_for_legistar_towns():
+    # Oct 1, 2026 00:00 UTC is a bare calendar date (Legistar has no real
+    # time) -- must read as "Thu, Oct 1", never tz-shifted to Sep 30.
+    row = {"body": "City Council", "meeting_date": datetime(2026, 10, 1, 0, 0, tzinfo=timezone.utc)}
+    assert build_title("meetings", row, BROOKINGS_CFG) == "City Council — Thu, Oct 1, 2026"
+
+
+def test_build_title_meeting_date_converts_for_real_timestamp_towns():
+    # Real example (meeting id 11337): 2026-10-14T00:00:00Z is Tue Oct 13,
+    # 6:00 PM Denver -- the title's date must say Tuesday Oct 13, not
+    # Wednesday Oct 14.
+    row = {"body": "City Council Regular Meeting", "meeting_date": datetime(2026, 10, 14, 0, 0, tzinfo=timezone.utc)}
+    assert build_title("meetings", row, BROOMFIELD_CFG) == "City Council Regular Meeting — Tue, Oct 13, 2026"
+
+
+def test_build_title_defaults_to_bare_date_when_cfg_missing():
+    row = {"body": "City Council", "meeting_date": datetime(2026, 10, 1, 0, 0, tzinfo=timezone.utc)}
+    assert build_title("meetings", row, None) == "City Council — Thu, Oct 1, 2026"

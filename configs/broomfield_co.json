@@ -70,6 +70,7 @@
   "data_sources": {
     "city_meetings": {
       "type": "agendalink",
+      "meetings_have_time": true,
       "enabled": true,
       "client_id": "broomfield",
       "base_url": "https://api.agendalink.app",
