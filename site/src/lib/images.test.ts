@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   normalizeVenueText, extractTitleVenuePrefix, buildNameAliasIndex,
   resolveVenueSlugForImage, categoryForSourceType, dedupeConsecutiveImages,
   resolveImage, pickFromPool, pickFromPoolByIndex, requiredCategoriesFor, assertCategoryImagesComplete,
   findContentTrackRowsMissingImage, withThumbnailCrop, contentTrackCropPaths,
   previousWeekRoundupImagePath,
-  type ImageRef, type ResolvableStory,
+  type ImageRef, type ResolvableStory, type ImageCategory,
 } from './images';
 import type { Facility } from './db';
 
@@ -403,12 +403,38 @@ describe('resolveImage', () => {
     expect(result?.alt).toBe('A real alt');
   });
 
-  it('tier 2: throws loudly when the resolved image_path does not exist on disk', () => {
+  it('tier 2: falls through instead of crashing when the resolved image_path does not exist on disk', () => {
+    // 2026-09-30 fix: this used to throw and take down the ENTIRE build for
+    // one bad row (see the local-clone-staleness incident this fixed) --
+    // now it falls through to the next tier (here: no facilities, no
+    // category pool configured in baseOptions, so tier 5 = null) instead.
+    // The dedicated build-checks.ts::assertContentTrackImagesComplete()
+    // still hard-fails the build for exactly this case, just cleanly and
+    // up front rather than crashing mid-render.
     const story: ResolvableStory = {
       title: 'Editorial', source_type: 'editorial', image_path: '/assets/images/does-not-exist-12345.png',
       image_alt: null, venue_raw: null,
     };
-    expect(() => resolveImage(story, baseOptions)).toThrow(/does-not-exist-12345\.png/);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(resolveImage(story, baseOptions)).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('does-not-exist-12345.png'));
+    warnSpy.mockRestore();
+  });
+
+  it('tier 2 -> 4: falls back to a real category image when the article image_path is missing', () => {
+    const story: ResolvableStory = {
+      title: 'Editorial', source_type: 'editorial', image_path: '/assets/images/does-not-exist-12345.png',
+      image_alt: null, venue_raw: null,
+    };
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const optionsWithCategoryPool = {
+      ...baseOptions,
+      category: 'city_hall' as ImageCategory,
+      categoryImages: { city_hall: [{ path: EXISTING_IMAGE, alt: 'City hall', width: 1200, height: 800 }] },
+    };
+    const result = resolveImage(story, optionsWithCategoryPool);
+    expect(result?.path).toBe(EXISTING_IMAGE);
+    warnSpy.mockRestore();
   });
 
   it('tier 3: returns the resolved venue image when the title-prefix matches a facility', () => {

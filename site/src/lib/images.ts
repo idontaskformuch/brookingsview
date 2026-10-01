@@ -313,6 +313,27 @@ export function resolveVenueSlugForImage(
   return null;
 }
 
+/** Non-throwing existence check -- see assertImageExists() below for the
+ *  throwing twin used where a missing file should hard-fail the build.
+ *  resolveImage()'s own tiers (2026-09-30 fix) use THIS one and fall
+ *  through to the next tier on a miss instead: a single bad image_path
+ *  used to throw from inside page rendering, which crashed the ENTIRE
+ *  build (every other page, every other town) over one bad row -- an
+ *  unrelated missing recipe illustration for one town has no business
+ *  taking down Brookings' and Moreno Valley's builds too. The dedicated,
+ *  proactive checks (build-checks.ts's assertContentTrackImagesComplete())
+ *  still call the throwing assertImageExists() directly and still hard-fail
+ *  the build loudly and specifically for exactly the cases that are meant
+ *  to (content-track images have no category fallback by design, see that
+ *  function's own comment) -- this change only affects the RENDER-time
+ *  fallback behavior, not whether the build ultimately fails for a real
+ *  gap. */
+export function imageExistsOnDisk(imagePath: string): boolean {
+  if (isHotlinkedImage(imagePath)) return true;
+  const absolute = fileURLToPath(new URL(`../../public${imagePath}`, import.meta.url));
+  return existsSync(absolute);
+}
+
 /** Build-time guard: `image_path` values are root-relative public paths
  *  (e.g. "/assets/images/venues/moreno_valley_ca-city-hall.png", see
  *  ai_pipeline/daily_content.py's own `"/" + saved.native.relative_to
@@ -322,7 +343,14 @@ export function resolveVenueSlugForImage(
  *  "never silently degrade" (see [slug].astro's existsSync/fileURLToPath
  *  crop-check for the established pattern this mirrors, though that one
  *  degrades gracefully by design -- a missing crop is optional, a missing
- *  primary image is not). */
+ *  primary image is not).
+ *
+ *  Used only by the dedicated, proactive build-time checks now (see
+ *  imageExistsOnDisk() above for resolveImage()'s own render-time,
+ *  fall-through-instead-of-crash use) -- this is still the right choice
+ *  there specifically because those checks exist to hard-fail the build
+ *  loudly and clearly, once, up front, rather than let a bad row crash an
+ *  arbitrary page mid-render. */
 export function assertImageExists(imagePath: string, itemSlug: string): void {
   // Hotlinked images (Unsplash only, see ImageRef.path's own comment) have
   // no local file to check -- their existence is the external CDN's
@@ -552,12 +580,18 @@ export function resolveImage(story: ResolvableStory & { slug?: string }, options
 
   // 2. Article image.
   if (story.image_path) {
-    assertImageExists(story.image_path, itemSlug);
-    return {
-      path: story.image_path,
-      alt: story.image_alt ?? `Illustration for "${story.title}"`,
-      width: 1600, height: 900,
-    };
+    if (imageExistsOnDisk(story.image_path)) {
+      return {
+        path: story.image_path,
+        alt: story.image_alt ?? `Illustration for "${story.title}"`,
+        width: 1600, height: 900,
+      };
+    }
+    console.warn(
+      `resolveImage: "${itemSlug}" resolved to image_path "${story.image_path}", but no file exists on disk -- ` +
+      'falling back to the next tier instead of crashing the build (see build-checks.ts\'s ' +
+      'assertContentTrackImagesComplete() for the check that should catch this loudly instead).',
+    );
   }
 
   // 3. Venue image.
@@ -566,14 +600,19 @@ export function resolveImage(story: ResolvableStory & { slug?: string }, options
   if (venueSlug) {
     const facility = options.facilities.find((f) => f.slug === venueSlug);
     if (facility?.image_path) {
-      assertImageExists(facility.image_path, itemSlug);
-      return {
-        path: facility.image_path,
-        alt: facility.image_alt ?? story.title,
-        width: 1200, height: 800,
-        attributionText: facility.image_attribution_text ?? undefined,
-        attributionUrl: facility.image_attribution_url ?? undefined,
-      };
+      if (imageExistsOnDisk(facility.image_path)) {
+        return {
+          path: facility.image_path,
+          alt: facility.image_alt ?? story.title,
+          width: 1200, height: 800,
+          attributionText: facility.image_attribution_text ?? undefined,
+          attributionUrl: facility.image_attribution_url ?? undefined,
+        };
+      }
+      console.warn(
+        `resolveImage: "${itemSlug}" resolved to venue image_path "${facility.image_path}", but no file exists ` +
+        'on disk -- falling back to the next tier instead of crashing the build.',
+      );
     }
   }
 
@@ -598,16 +637,22 @@ export function resolveImage(story: ResolvableStory & { slug?: string }, options
             exclude: options.usedImagePaths,
             getKey: (img) => img.path,
           });
-      assertImageExists(categoryImage.path, itemSlug);
-      // TMDB/pool handoff: media_recension is the one category-tier
-      // source_type that also carries its own real, item-specific
-      // image_alt (daily_content.py still sets it to the film's own
-      // theme text even though image_path stays null) -- it must win over
-      // the pool entry's generic alt so a review's image never loses its
-      // real film name just because the picture itself is generic. Every
-      // other category-tier source_type never sets image_alt at all, so
-      // this is a no-op for them.
-      return { ...categoryImage, alt: story.image_alt ?? categoryImage.alt };
+      if (imageExistsOnDisk(categoryImage.path)) {
+        // TMDB/pool handoff: media_recension is the one category-tier
+        // source_type that also carries its own real, item-specific
+        // image_alt (daily_content.py still sets it to the film's own
+        // theme text even though image_path stays null) -- it must win over
+        // the pool entry's generic alt so a review's image never loses its
+        // real film name just because the picture itself is generic. Every
+        // other category-tier source_type never sets image_alt at all, so
+        // this is a no-op for them.
+        return { ...categoryImage, alt: story.image_alt ?? categoryImage.alt };
+      }
+      console.warn(
+        `resolveImage: "${itemSlug}" picked category image "${categoryImage.path}" from the "${category}" pool, ` +
+        'but no file exists on disk -- falling back to no image instead of crashing the build (see ' +
+        "build-checks.ts's assertCategoryImagesComplete() for the check that should catch a broken pool entry).",
+      );
     }
   }
 
