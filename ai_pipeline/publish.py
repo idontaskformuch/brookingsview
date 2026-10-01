@@ -326,8 +326,58 @@ def _meeting_date_title_part(value, cfg: dict | None) -> str | None:
     return f"{dt.strftime('%a, %b')} {dt.day}, {dt.year}"
 
 
+_QUORUM_NOTICE_RE = re.compile(r"notice of quorum", re.IGNORECASE)
+_NO_OFFICIAL_BUSINESS_RE = re.compile(r"no official city business", re.IGNORECASE)
+_QUORUM_EVENT_RE = re.compile(
+    r"may be present (?:for|at|to)\s+(?:the )?(.+?)(?:\s+(?:to be held\s+)?(?:on\s+)?"
+    r"(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b)",
+    re.IGNORECASE,
+)
+
+
+def is_quorum_notice_only(raw_data: dict) -> bool:
+    """A Legistar "Notice of Quorum" posting (South Dakota open-meetings-law
+    requirement, SDCL 1-25-1.1) announces that enough members of a body
+    MIGHT attend some unrelated public event (a ribbon-cutting, a parade, a
+    BBQ) to technically constitute a quorum -- explicitly "no official city
+    business will be acted upon." Confirmed live 2026-10-01: 24 of
+    Brookings' published meeting stories (City Council, Park & Recreation
+    Advisory Board, Historic Preservation Commission) were actually one of
+    these notices, not a real meeting, but still titled "{body} — {date}"
+    like any other meeting -- e.g. "City Council — Thu, Oct 1, 2026" for
+    what was really a solar farm ribbon-cutting ceremony.
+
+    Requires BOTH phrases, not just "quorum" alone: a real meeting's own
+    agenda routinely includes a "determination of a quorum" procedural
+    step (confirmed live: Brookings County Outdoor Adventure Center
+    Advisory Board, a genuine meeting) without being a notice-only
+    posting -- that phrasing never co-occurred with "no official city
+    business" in any of the real rows checked, so requiring both avoids
+    misclassifying a real meeting."""
+    agenda_text = raw_data.get("agenda_text") or ""
+    return bool(_QUORUM_NOTICE_RE.search(agenda_text) and _NO_OFFICIAL_BUSINESS_RE.search(agenda_text))
+
+
+def extract_quorum_event(agenda_text: str) -> str | None:
+    """The actual event a quorum notice is about (e.g. "Brookings Solar
+    Ribbon Cutting Ceremony"), for the "Notice: possible quorum — {event}"
+    title. Verified against all 24 real notices found live 2026-10-01 --
+    the phrasing varies ("may be present for/at/to the ...", "to be held
+    on {weekday}" or "{weekday}" directly), so this matches up to the
+    first weekday name rather than a single fixed phrase."""
+    match = _QUORUM_EVENT_RE.search(agenda_text)
+    return match.group(1).strip() if match else None
+
+
 def build_title(table: str, row: dict, cfg: dict | None = None) -> str:
     if table == "meetings":
+        raw = row.get("raw_data") or {}
+        if isinstance(raw, str):
+            raw = json.loads(raw)
+        if is_quorum_notice_only(raw):
+            event = extract_quorum_event(raw.get("agenda_text") or "")
+            if event:
+                return f"Notice: possible quorum — {event}"
         body = row.get("body") or "Meeting"
         when = _meeting_date_title_part(row.get("meeting_date"), cfg)
         return f"{body} — {when}" if when else str(body)

@@ -2740,30 +2740,52 @@ export interface NextMeeting {
   agenda_url: string | null;
 }
 
+// A Legistar "Notice of Quorum" posting (SDCL 1-25-1.1) announces that
+// enough members of a body MIGHT attend some unrelated public event (a
+// ribbon-cutting, a parade, a BBQ) to technically constitute a quorum --
+// explicitly "no official city business will be acted upon." Confirmed
+// live 2026-10-01: 24 of Brookings' published meeting stories were
+// actually one of these, not a real meeting -- e.g. the "Next meeting"
+// hero showed "City Council, Thu, October 1" for what was really a solar
+// farm ribbon-cutting. Mirrors ai_pipeline/publish.py's
+// is_quorum_notice_only() exactly (same two-phrase requirement -- a real
+// meeting's own agenda routinely includes a "determination of a quorum"
+// step without being a notice-only posting, confirmed live that phrasing
+// never co-occurs with "no official city business").
+function isQuorumNoticeOnly(rawData: Record<string, unknown> | null): boolean {
+  const agendaText = (rawData?.agenda_text as string) ?? '';
+  return /notice of quorum/i.test(agendaText) && /no official city business/i.test(agendaText);
+}
+
 export async function getNextMeeting(): Promise<NextMeeting | null> {
   // `- interval '1 day'` buffer: a bare-date meeting_date is anchored to
   // UTC midnight, which is already several hours in the PAST in UTC while
   // its real local calendar date hasn't started yet in a negative-UTC-
   // offset town -- without this buffer a same-day Brookings meeting could
   // be excluded from this window hours before it actually happens locally.
+  // LIMIT 10 (not 5): a notice-of-quorum row can occupy an early slot in
+  // this window and gets filtered out below, so a slightly wider candidate
+  // pool avoids running out of rows on a quorum-notice-heavy stretch.
   const rows = (await sql`
-    SELECT body, meeting_date, agenda_url
+    SELECT body, meeting_date, agenda_url, raw_data
       FROM meetings
      WHERE town_id = ${TOWN_ID}
        AND body IS NOT NULL
        AND meeting_date >= now() - interval '1 day'
      ORDER BY meeting_date ASC
-     LIMIT 5
-  `) as NextMeeting[];
+     LIMIT 10
+  `) as (NextMeeting & { raw_data: Record<string, unknown> | null })[];
+
+  const realMeetings = rows.filter((r) => !isQuorumNoticeOnly(r.raw_data));
 
   if (siteConfig.meetingsHaveTime) {
     const now = Date.now();
-    return rows.find((r) => new Date(r.meeting_date).getTime() >= now) ?? null;
+    return realMeetings.find((r) => new Date(r.meeting_date).getTime() >= now) ?? null;
   }
   const todayLocalYmd = new Intl.DateTimeFormat('en-CA', {
     timeZone: siteConfig.timezone, year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(new Date());
-  return rows.find((r) => {
+  return realMeetings.find((r) => {
     // neon returns a timestamptz as a string in some code paths and an
     // already-parsed Date in others (see calendarDateParts()'s own comment
     // above) -- reuse that same helper rather than assuming .slice() works.

@@ -11,8 +11,8 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from ai_pipeline.publish import (
-    _fmt_hour_min, build_source_url, build_title, fmt_dt, fmt_time, group_event_slots,
-    group_recurring_events, slug_date,
+    _fmt_hour_min, build_source_url, build_title, extract_quorum_event, fmt_dt, fmt_time,
+    group_event_slots, group_recurring_events, is_quorum_notice_only, slug_date,
 )
 from ai_pipeline.weekly import _clock
 
@@ -109,6 +109,80 @@ def test_slug_date_stays_bare_for_legistar_towns():
     midnight_utc = datetime(2026, 10, 1, 0, 0, tzinfo=timezone.utc)
     assert slug_date(midnight_utc) == "2026-10-01"
     assert slug_date(midnight_utc, BROOKINGS_CFG) == "2026-10-01"
+
+
+# Notice-of-quorum detection -- real live incident found 2026-10-01: a
+# Brookings Solar Ribbon Cutting Ceremony was published as a "City
+# Council" meeting story ("City Council — Thu, Oct 1, 2026") because
+# build_title() never distinguished a real meeting from a Legistar
+# "Notice of Quorum" posting (SDCL 1-25-1.1) -- 24 of Brookings' published
+# meeting stories turned out to be this.
+
+# Real, verbatim agenda_text from meeting id 12458 (the actual ribbon-cutting).
+REAL_QUORUM_NOTICE_AGENDA = (
+    "The City of Brookings is committed to providing a high quality of life for its citizens and "
+    "fostering a diverse economic base through innovative thinking, strategic planning, and "
+    "proactive, fiscally responsible municipal management.\n"
+    "Notice of Quorum\n"
+    "It is possible that at least four (4) City Council and five (5) Planning Commission members "
+    "may be present for the Brookings Solar Ribbon Cutting Ceremony to be held on Thursday, "
+    "October 1, 2026, from 2:00 pm – 4:00 pm.  Though a majority of City Council and Planning "
+    "Commission members may be present, no official city business will be acted upon. This notice "
+    "constitutes sufficient public notice according to SD Codified Law 1-25-1.1."
+)
+
+# Real, verbatim agenda_text excerpt from a genuine meeting (Brookings County
+# Outdoor Adventure Center Advisory Board) whose own agenda routinely
+# includes a "determination of a quorum" procedural step -- must NOT be
+# misclassified as a notice-only posting.
+REAL_GENUINE_MEETING_AGENDA = (
+    "Any requested action items must be scheduled for a future meeting date.\n"
+    "3. Determination of a quorum\n"
+    "Five board members must be present for a quorum\n"
+    "4. Approval of Agenda\n"
+    "Action: Motion to approve, Comments, Voice Vote"
+)
+
+
+def test_is_quorum_notice_only_flags_real_notice():
+    assert is_quorum_notice_only({"agenda_text": REAL_QUORUM_NOTICE_AGENDA}) is True
+
+
+def test_is_quorum_notice_only_false_for_genuine_meeting_mentioning_quorum():
+    assert is_quorum_notice_only({"agenda_text": REAL_GENUINE_MEETING_AGENDA}) is False
+
+
+def test_is_quorum_notice_only_false_for_missing_agenda():
+    assert is_quorum_notice_only({}) is False
+
+
+def test_extract_quorum_event_from_real_notice():
+    assert extract_quorum_event(REAL_QUORUM_NOTICE_AGENDA) == "Brookings Solar Ribbon Cutting Ceremony"
+
+
+def test_extract_quorum_event_handles_varied_phrasing():
+    # Real variant (meeting id 11875): "may be present to {event} on {weekday}".
+    text = ("Notice of Quorum\nIt is possible that at least four (4) City Council members may be "
+            "present to Chalk the Walk for Suicide Prevention Month on Tuesday, September 8, 2026.")
+    assert extract_quorum_event(text) == "Chalk the Walk for Suicide Prevention Month"
+
+
+def test_build_title_labels_quorum_notice_instead_of_meeting():
+    row = {
+        "body": "City Council",
+        "meeting_date": datetime(2026, 10, 1, 0, 0, tzinfo=timezone.utc),
+        "raw_data": {"agenda_text": REAL_QUORUM_NOTICE_AGENDA},
+    }
+    assert build_title("meetings", row, BROOKINGS_CFG) == "Notice: possible quorum — Brookings Solar Ribbon Cutting Ceremony"
+
+
+def test_build_title_still_builds_normal_title_for_genuine_meeting():
+    row = {
+        "body": "City Council",
+        "meeting_date": datetime(2026, 10, 1, 0, 0, tzinfo=timezone.utc),
+        "raw_data": {"agenda_text": "1. Call to Order\n2. Approval of Minutes\n3. Public Hearing on rezoning"},
+    }
+    assert build_title("meetings", row, BROOKINGS_CFG) == "City Council — Thu, Oct 1, 2026"
 
 
 def test_slug_date_localizes_for_real_timestamp_towns():
