@@ -1,12 +1,22 @@
 ---
 // Front-page promo card for Worker Pulse / Workplace Watch, see /workplace-watch.
-// Caller (index.astro) decides whether to render at all and passes the two
+// Caller (index.astro) decides whether to render at all and passes the
 // headline figures -- same convention as TrafficWidget.astro.
+//
+// 2026-10-01: per-employer RATING and the rating-based "top employer"/
+// "biggest mover" ranking are temporarily removed from this card (and from
+// the full /workplace-watch page) pending a review of Glassdoor's and
+// Indeed's own Terms of Use on republishing their content -- both contain
+// broad "personal, non-commercial use only" / "no reproduction or
+// derivative works" language that a search-API-sourced, AI-paraphrased
+// rating may not clear, independent of how carefully it's hedged. Adzuna
+// hiring data has no such provenance question (a different, unrelated
+// source), so it stays. See ai_pipeline/workplace_watch_digest.py's own
+// extract_rating() for how a rating number is pulled (a bare regex over up
+// to 20 concatenated Brave Search snippets, no verification the match is
+// even about the right company) -- the accuracy question is separate from,
+// and in addition to, the ToS question above.
 interface Props {
-  topName: string;
-  topRating: number | null;
-  moverName: string | null;
-  moverDelta: number | null;
   /** Fas 4a (hiring layer): the employer with the largest posting-count
    *  change vs last month, or the only employer with any postings at all
    *  when no town yet has month-over-month history. null when no employer
@@ -15,41 +25,23 @@ interface Props {
   hiringName: string | null;
   hiringCount: number | null;
   hiringDelta: number | null;
-  /** 2026-10-01 cleanup round, item 1b: this card ranks a named employer by
-   *  review rating with no source/date of its own -- the full methodology
-   *  lives on /workplace-watch/ (Brave-Search-sourced, AI-summarized,
-   *  already disclosed there), but a reader who only ever sees this
-   *  homepage card never reaches that text. periodLabel (the same
-   *  to_char(r.period, 'FMMonth YYYY') value the full page's own "This
-   *  month" column uses, from getLatestEmployerRatings()) gives this card
-   *  its own "as of" date rather than the vague, undated "this month". */
-  periodLabel: string | null;
 }
-const { topName, topRating, moverName, moverDelta, hiringName, hiringCount, hiringDelta, periodLabel } = Astro.props;
+const { hiringName, hiringCount, hiringDelta } = Astro.props;
 
-const moverSymbol = moverDelta === null ? null : moverDelta > 0 ? '▲' : moverDelta < 0 ? '▼' : '▬';
 const hiringSymbol = hiringDelta === null ? null : hiringDelta > 0 ? '▲' : hiringDelta < 0 ? '▼' : '▬';
 ---
 
-<a href="/workplace-watch/" class="wpw-widget" aria-label="See Worker Pulse: local employer review trends and hiring activity">
+<a href="/workplace-watch/" class="wpw-widget" aria-label="See Worker Pulse: local employer hiring activity">
   <div class="wpw-icon" aria-hidden="true">📊</div>
   <div class="wpw-text">
     <div class="wpw-title">Worker Pulse</div>
     <div class="wpw-sub">
-      Top{periodLabel ? ` (${periodLabel})` : ' this month'}: {topName}{topRating !== null && ` (${topRating.toFixed(1)})`}
-      {moverName && moverSymbol && (
-        <> · Biggest mover: {moverName} <span class:list={['wpw-symbol', { up: moverDelta! > 0, down: moverDelta! < 0 }]}>{moverSymbol}</span></>
-      )}
-      {hiringName && hiringCount !== null && (
-        <>
-          {' '}· Hiring: {hiringName}{' '}{hiringCount} listing{hiringCount === 1 ? '' : 's'}
-          {hiringSymbol && (
-            <>{' '}<span class:list={['wpw-symbol', { up: hiringDelta! > 0, down: hiringDelta! < 0 }]}>{hiringSymbol}</span></>
-          )}
-        </>
+      Hiring: {hiringName} — {hiringCount} listing{hiringCount === 1 ? '' : 's'}
+      {hiringSymbol && (
+        <>{' '}<span class:list={['wpw-symbol', { up: hiringDelta! > 0, down: hiringDelta! < 0 }]}>{hiringSymbol}</span></>
       )}
     </div>
-    <div class="wpw-source">Source: Brave Search summaries of Glassdoor/Indeed, AI-paraphrased</div>
+    <div class="wpw-source">Source: Adzuna job postings, last 30 days</div>
   </div>
 </a>
 

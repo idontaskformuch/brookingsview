@@ -69,25 +69,23 @@ const jobStatsBySlug = new Map(jobStatsList.map((s) => [s.slug, s]));
 
 const todayPeriod = weatherPeriods.find((p) => p.is_daytime) ?? weatherPeriods[0] ?? null;
 
-// Hide the Trend column entirely until at least one employer has a real
-// month-over-month comparison (house rule 4: don't render an empty
-// feature). rating_delta_vs_last_month is null for an employer's first-ever
-// tracked month -- with 5 employers each 1 month in as of 2026-08-23, every
-// cell would currently read the same flat "—" for everyone, which looks
-// like "nothing changed" (a real signal) rather than "no prior month to
-// compare" (not a signal at all) -- see NEEDS-HUMAN-REVIEW.md "3.6 Worker
-// Pulse". Once true, an employer still on its first tracked month shows
-// "New" instead of a dash, so those two states never look identical.
-const hasTrendHistory = employers.some((e) => e.rating_delta_vs_last_month !== null);
+// 2026-10-01: the Rating and Trend columns (and trend()'s own helper) are
+// removed here, pending a review of Glassdoor's and Indeed's Terms of Use
+// on republishing their content -- both contain broad "personal,
+// non-commercial use only" / "no reproduction or derivative works without
+// permission" language that a search-API-sourced, AI-paraphrased rating
+// may not clear, independent of how it's hedged. See
+// WorkplaceWatchWidget.astro's own comment (the homepage card lost the
+// same two fields) and ai_pipeline/workplace_watch_digest.py's
+// extract_rating() for the separate, additional accuracy question (a bare
+// regex over up to 20 concatenated search snippets, no verification the
+// matched number is even about the right company). The theme_summary
+// paragraph below is left in place -- it's prose, not a rating or a
+// ranking, and carries its own hedging/attribution guardrails
+// (guardrails.validate_employer_hedging()) -- revisit this scope if asked
+// to hide more.
 
-function trend(delta: number | null): { symbol: string; cls: string } {
-  if (delta === null) return { symbol: 'New', cls: 'new' };
-  if (delta > 0) return { symbol: '▲', cls: 'up' };
-  if (delta < 0) return { symbol: '▼', cls: 'down' };
-  return { symbol: '▬', cls: 'flat' };
-}
-
-// Fas 4a: same house rule as hasTrendHistory above (don't render an empty
+// Fas 4a: same house rule (don't render an empty
 // feature) -- hidden entirely until the monthly digest has run at least
 // once since this shipped, not shown as an all-zero/all-dash column that
 // would read as "measured, nothing happening" instead of "not measured yet".
@@ -114,16 +112,17 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
   </header>
 
   <p class="wp-methodology">
-    <strong>How this works:</strong> ratings and themes below are
-    <strong>company-wide</strong> figures (as reported in public review-site
+    <strong>How this works:</strong> the themes below are a
+    <strong>company-wide</strong> summary (as reported in public review-site
     search results), not specific to any one {siteConfig.cityName} facility —
     Glassdoor and Indeed have no public API and don't allow automated
     scraping, so nothing here comes from directly accessing either site.
     Instead, a search API is used to find what's publicly indexed about each
     employer, and an AI summarizes the recurring themes from those search
-    result snippets — paraphrased, never a verbatim review quote. A missing
-    star rating means one wasn't reliably found in the search results that
-    month, not that the employer has no reviews.
+    result snippets — paraphrased, never a verbatim review quote.
+    <strong>Star ratings and employer rankings are temporarily hidden</strong>
+    while we review Glassdoor's and Indeed's own terms on republishing their
+    content.
   </p>
   {hasJobStats && (
     <p class="wp-methodology">
@@ -145,19 +144,16 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
 
   {employers.length > 0 ? (
     <div class="wp-table" role="table">
-      <div class:list={['wp-row', 'wp-row--head', { 'wp-row--no-trend': !hasTrendHistory, 'wp-row--no-hiring': !hasJobStats }]} role="row">
+      <div class:list={['wp-row', 'wp-row--head', { 'wp-row--no-hiring': !hasJobStats }]} role="row">
         <span role="columnheader">Employer</span>
-        <span role="columnheader">Rating</span>
-        {hasTrendHistory && <span role="columnheader">Trend</span>}
         {hasJobStats && <span role="columnheader">Hiring <abbr title="Job postings observed via Adzuna, last 30 days">ⓘ</abbr></span>}
         <span role="columnheader">This month</span>
       </div>
       {employers.map((e) => {
-        const t = trend(e.rating_delta_vs_last_month);
         const label = e.period_label;
         const jobStats = jobStatsBySlug.get(e.slug);
         return (
-          <div class:list={['wp-row', { 'wp-row--no-trend': !hasTrendHistory, 'wp-row--no-hiring': !hasJobStats }]} role="row" style={`--accent: ${e.accent_color ?? '#4b5563'}`}>
+          <div class:list={['wp-row', { 'wp-row--no-hiring': !hasJobStats }]} role="row" style={`--accent: ${e.accent_color ?? '#4b5563'}`}>
             <span class="wp-name" role="cell">
               <span class="wp-dot" aria-hidden="true"></span>
               <span>
@@ -165,10 +161,6 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
                 <small>{e.facility_type}</small>
               </span>
             </span>
-            <span class="wp-rating" role="cell">
-              {e.overall_rating !== null ? e.overall_rating.toFixed(1) : 'Rating pending'}
-            </span>
-            {hasTrendHistory && <span class={`wp-trend wp-trend--${t.cls}`} role="cell">{t.symbol}</span>}
             {hasJobStats && (
               <span class="wp-hiring" role="cell">
                 {jobStats?.postings_now !== null && jobStats?.postings_now !== undefined ? (
@@ -240,15 +232,16 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
 }
 .wp-row {
   display: grid;
-  grid-template-columns: 1.4fr 0.6fr 0.4fr 0.7fr 2.2fr;
+  /* 2026-10-01: was "1.4fr 0.6fr 0.4fr 0.7fr 2.2fr" (name/rating/trend/
+     hiring/summary) -- rating and trend columns removed, see this file's
+     own comment above hasJobStats. */
+  grid-template-columns: 1.4fr 0.7fr 2.2fr;
   gap: 0.75rem;
   align-items: center;
   padding: 0.9rem 1rem;
   border-top: 1px solid var(--rule);
 }
-.wp-row--no-trend { grid-template-columns: 1.4fr 0.6fr 0.7fr 2.2fr; }
-.wp-row--no-hiring { grid-template-columns: 1.4fr 0.6fr 0.4fr 2.2fr; }
-.wp-row--no-trend.wp-row--no-hiring { grid-template-columns: 1.4fr 0.6fr 2.2fr; }
+.wp-row--no-hiring { grid-template-columns: 1.4fr 2.2fr; }
 .wp-row:first-child { border-top: none; }
 .wp-row--head {
   font-size: 0.8rem;
@@ -263,12 +256,6 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
   background: var(--accent); flex-shrink: 0;
 }
 .wp-name small { display: block; font-weight: 400; color: var(--ink-soft); font-size: 0.75rem; }
-.wp-rating { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); }
-.wp-trend { font-size: 1.1rem; }
-.wp-trend--up { color: var(--status-good); }
-.wp-trend--down { color: var(--status-bad); }
-.wp-trend--flat { color: var(--ink-soft); }
-.wp-trend--new { font-size: 0.75rem; color: var(--ink-soft); font-style: italic; }
 .wp-hiring { font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 .wp-hiring small { display: block; color: var(--ink-soft); font-size: 0.72rem; }
 .wp-hiring small.up { color: var(--status-good); }
@@ -283,7 +270,6 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
 @media (max-width: 640px) {
   .wp-row { grid-template-columns: 1fr; row-gap: 0.35rem; }
   .wp-row--head { display: none; }
-  .wp-rating::before { content: 'Rating: '; font-weight: 400; color: var(--ink-soft); }
   .wp-hiring::before { content: 'Hiring: '; font-weight: 400; color: var(--ink-soft); }
 }
 </style>

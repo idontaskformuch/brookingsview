@@ -349,14 +349,13 @@ for (const entry of whatsOnEntries) {
 const marqueeDeck = marqueeHero
   ? (await getEventDeckDigests([marqueeDigestKey(marqueeHero.entry)])).get(marqueeDigestKey(marqueeHero.entry))
   : undefined;
-const topEmployer = employerRatings[0] ?? null;
-const biggestMover = employerRatings.reduce<typeof employerRatings[number] | null>((best, e) => {
-  if (e.rating_delta_vs_last_month === null) return best;
-  if (!best || Math.abs(e.rating_delta_vs_last_month) > Math.abs(best.rating_delta_vs_last_month!)) return e;
-  return best;
-}, null);
+// 2026-10-01: the rating-derived topEmployer/biggestMover pair that used to
+// live here (employerRatings[0], and a reduce() over rating_delta_vs_last_month)
+// was removed along with the homepage widget's rating/ranking display --
+// see WorkplaceWatchWidget.astro's own comment. employerRatings itself is
+// still fetched above and still used by /workplace-watch's full table.
 
-// Fas 4a: mirrors biggestMover's own reduce exactly, but for posting-count
+// Fas 4a: a reduce() over posting-count
 // change. Falls back to "who has the most listings right now" when NO
 // employer has month-over-month history yet (every town's first tracked
 // month) -- a real, useful fact even before a delta is computable, rather
@@ -619,16 +618,18 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       )}
       {isBrookings && <JackrabbitWidget />}
       {isMorenoValley && <BurroBonanzaWidget />}
-      {siteConfig.hasWorkplaceWatch && topEmployer && (
+      {/* 2026-10-01: gated on biggestHiringMover (Adzuna-sourced), not
+          topEmployer (rating-sourced) -- rating/ranking is hidden pending
+          a Glassdoor/Indeed ToS review, see WorkplaceWatchWidget.astro's
+          own comment. With no rating to show, there's nothing left to
+          headline the card with when hiring data is absent, so the card
+          simply doesn't render in that case rather than showing an empty
+          shell. */}
+      {siteConfig.hasWorkplaceWatch && biggestHiringMover && (
         <WorkplaceWatchWidget
-          topName={topEmployer.name}
-          topRating={topEmployer.overall_rating}
-          moverName={biggestMover?.name ?? null}
-          moverDelta={biggestMover?.rating_delta_vs_last_month ?? null}
-          hiringName={biggestHiringMover?.name ?? null}
-          hiringCount={biggestHiringMover?.postings_now ?? null}
-          hiringDelta={biggestHiringMover?.postings_change ?? null}
-          periodLabel={topEmployer.period_label}
+          hiringName={biggestHiringMover.name}
+          hiringCount={biggestHiringMover.postings_now}
+          hiringDelta={biggestHiringMover.postings_change}
         />
       )}
       {isBroomfield && latestVailNews && <VailNewsWidget item={latestVailNews} />}
