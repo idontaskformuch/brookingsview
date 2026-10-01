@@ -88,3 +88,9 @@ jobs:
         run: |
           sleep 10
           python -m scripts.check_deployed_content --config configs/moreno_valley_ca.json
+      # Source-staleness check -- see scrape.yml's identical step for the
+      # full comment (scrapers/staleness.py, added after this exact gap
+      # was found live 2026-10-01 for this town's eSCRIBE meetings source).
+      - name: Kontrollera källfräschhet (meetings/events m.fl.)
+        if: always()
+        run: python -m scripts.check_source_staleness --config configs/moreno_valley_ca.json

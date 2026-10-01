@@ -91,3 +91,8 @@ jobs:
         run: |
           sleep 10
           python -m scripts.check_deployed_content --config configs/broomfield_co.json
+      # Source-staleness check -- see scrape.yml's identical step for the
+      # full comment (scrapers/staleness.py).
+      - name: Kontrollera källfräschhet (meetings/events m.fl.)
+        if: always()
+        run: python -m scripts.check_source_staleness --config configs/broomfield_co.json

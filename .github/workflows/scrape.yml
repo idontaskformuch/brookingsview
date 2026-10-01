@@ -131,3 +131,13 @@ jobs:
         run: |
           sleep 10
           python -m scripts.check_deployed_content --config configs/brookings_sd.json
+      # Source-staleness check (scrapers/staleness.py) -- deliberately the
+      # LAST step, same reasoning as check_deployed_content.py above: a
+      # scraper can run and exit "ok" every time while the data it finds
+      # goes stale (found live 2026-10-01, Moreno Valley's meetings), which
+      # the scrape step's own error-based alerting never catches. always(),
+      # not success(): staleness is about the DATA, not this run's deploy
+      # outcome, and should be visible even if an earlier step failed.
+      - name: Kontrollera källfräschhet (meetings/events m.fl.)
+        if: always()
+        run: python -m scripts.check_source_staleness --config configs/brookings_sd.json
