@@ -628,6 +628,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
           hiringName={biggestHiringMover?.name ?? null}
           hiringCount={biggestHiringMover?.postings_now ?? null}
           hiringDelta={biggestHiringMover?.postings_change ?? null}
+          periodLabel={topEmployer.period_label}
         />
       )}
       {isBroomfield && latestVailNews && <VailNewsWidget item={latestVailNews} />}

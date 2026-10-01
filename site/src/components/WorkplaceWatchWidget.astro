@@ -15,8 +15,17 @@ interface Props {
   hiringName: string | null;
   hiringCount: number | null;
   hiringDelta: number | null;
+  /** 2026-10-01 cleanup round, item 1b: this card ranks a named employer by
+   *  review rating with no source/date of its own -- the full methodology
+   *  lives on /workplace-watch/ (Brave-Search-sourced, AI-summarized,
+   *  already disclosed there), but a reader who only ever sees this
+   *  homepage card never reaches that text. periodLabel (the same
+   *  to_char(r.period, 'FMMonth YYYY') value the full page's own "This
+   *  month" column uses, from getLatestEmployerRatings()) gives this card
+   *  its own "as of" date rather than the vague, undated "this month". */
+  periodLabel: string | null;
 }
-const { topName, topRating, moverName, moverDelta, hiringName, hiringCount, hiringDelta } = Astro.props;
+const { topName, topRating, moverName, moverDelta, hiringName, hiringCount, hiringDelta, periodLabel } = Astro.props;
 
 const moverSymbol = moverDelta === null ? null : moverDelta > 0 ? '▲' : moverDelta < 0 ? '▼' : '▬';
 const hiringSymbol = hiringDelta === null ? null : hiringDelta > 0 ? '▲' : hiringDelta < 0 ? '▼' : '▬';
@@ -27,7 +36,7 @@ const hiringSymbol = hiringDelta === null ? null : hiringDelta > 0 ? '▲' : hir
   <div class="wpw-text">
     <div class="wpw-title">Worker Pulse</div>
     <div class="wpw-sub">
-      Top this month: {topName}{topRating !== null && ` (${topRating.toFixed(1)})`}
+      Top{periodLabel ? ` (${periodLabel})` : ' this month'}: {topName}{topRating !== null && ` (${topRating.toFixed(1)})`}
       {moverName && moverSymbol && (
         <> · Biggest mover: {moverName} <span class:list={['wpw-symbol', { up: moverDelta! > 0, down: moverDelta! < 0 }]}>{moverSymbol}</span></>
       )}
@@ -40,6 +49,7 @@ const hiringSymbol = hiringDelta === null ? null : hiringDelta > 0 ? '▲' : hir
         </>
       )}
     </div>
+    <div class="wpw-source">Source: Brave Search summaries of Glassdoor/Indeed, AI-paraphrased</div>
   </div>
 </a>
 
@@ -67,6 +77,7 @@ const hiringSymbol = hiringDelta === null ? null : hiringDelta > 0 ? '▲' : hir
   .wpw-text { flex: 1; min-width: 0; }
   .wpw-title { font-weight: 700; font-size: 0.95rem; }
   .wpw-sub { font-size: 0.78rem; color: var(--ink-soft); }
+  .wpw-source { font-size: 0.68rem; color: var(--ink-soft); margin-top: 0.2rem; opacity: 0.8; }
   .wpw-symbol.up { color: var(--status-good); }
   .wpw-symbol.down { color: var(--status-bad); }
 </style>
