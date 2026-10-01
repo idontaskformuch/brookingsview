@@ -8,6 +8,8 @@ pre_publish_check() composes six checks:
   4. Intra-record consistency -- validation.record_consistency
   5. Incoherent fragments    -- validation.incoherent_fragments
   6. Election/business policy -- validation.election_business_policy
+  7. Unverifiable availability -- validation.unverifiable_availability
+    (media_recension only -- see that module's own docstring)
 
 Checks 1 and 2 both need `cfg` (the active town's own config) to know what
 "wrong" means; 3 needs the record's own date; 4 needs the source record(s)
@@ -40,6 +42,7 @@ from validation.election_business_policy import check_election_business_policy
 from validation.incoherent_fragments import check_incoherent_fragments
 from validation.place_state import check_place_state
 from validation.record_consistency import check_record_consistency
+from validation.unverifiable_availability import check_unverifiable_availability
 
 
 @dataclass
@@ -119,6 +122,11 @@ def pre_publish_check(
     if not policy.passed:
         failing_checks.append("election_business_policy")
         violations.extend(policy.violations)
+
+    availability = check_unverifiable_availability(text, content_type)
+    if not availability.passed:
+        failing_checks.append("unverifiable_availability")
+        violations.extend(availability.violations)
 
     passed = len(failing_checks) == 0
     id_label = f" record={record_id}" if record_id is not None else ""

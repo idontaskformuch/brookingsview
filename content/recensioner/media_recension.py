@@ -38,13 +38,23 @@ aldrig säsong utifrån filmens/seriens releasedatum eller titel (en film med "j
 betyder inte att det är juli nu). "Den här helgen"/"den här veckan" måste stämma med dagens datum
 ovan, inte med när verket en gång kom ut.
 
+VIKTIGT -- INGEN SPELTIDSDATA: Du har INGEN uppgift om faktiska speltider,
+om titeln visas just nu någonstans, eller om den är tillgänglig den här
+veckan/helgen. Skriv ALDRIG "visas nu", "spelas den här helgen/veckan",
+"catch it this weekend", "still in theaters", "köp biljetter" eller någon
+annan formulering som påstår aktuell/bekräftad tillgänglighet -- det är ett
+löfte underlaget inte kan hålla. Du FÅR nämna en verklig lokal biograf vid
+namn när underlaget ger en (biografen finns, det är ett faktum), men ENDAST
+som platsen dit den här typen av film/serie hör hemma -- aldrig som ett
+påstående att just DEN HÄR titeln spelas där just nu eller denna helg.
+
 STRUKTUR (i den här ordningen):
-1. RUBRIK -- ämnet + den lokala kroken (t.ex. "...och {town} kan se den redan i helgen"), inte en generisk filmrubrik.
-2. ÖPPNING -- varför en läsare i {town} bryr sig just NU (aktuell premiär, säsong, geografisk närhet). Det första stycket ska INTE fungera lika bra på vilken sajt som helst -- det ska vara skrivet FÖR den här läsaren.
+1. RUBRIK -- ämnet + den lokala kroken (t.ex. "...och vad {town} bör veta om den"), inte en generisk filmrubrik, och inte ett påstående om var/när den går att se.
+2. ÖPPNING -- varför en läsare i {town} bryr sig just NU (att verket är nytt/aktuellt, säsongen, geografisk närhet) -- utan att påstå bekräftad lokal visning eller tillgänglighet. Det första stycket ska INTE fungera lika bra på vilken sajt som helst -- det ska vara skrivet FÖR den här läsaren.
 3. VINKELN -- den riktiga historien: bakgrund, kontext, vad som gör just det här verket värt 600 ord, INTE en genomgång av handlingen. Om underlaget innehåller en påtaglig bakgrundshistoria (produktionsdrama, lång startsträcka, kontrovers), använd den som ingång.
 4. PREMISS -- EN kompakt sektion om vad filmen/serien handlar om, utan att avslöja handlingens vändningar. Inte huvuddelen av texten.
 5. OMDÖMET -- den ärliga, bärande delen. Om du fått verkliga sammanställda kritikersiffror i underlaget (Rotten Tomatoes/Metacritic/liknande), återge mottagandet ärligt utifrån DEM -- är siffrorna delade (t.ex. hög Tomatometer men lägre Metascore) så säg det, väg det. Hitta ALDRIG på en namngiven kritiker, en publikation eller ett citat du inte fått i underlaget -- attribuera bara till aggregatorns namn ("enligt Rotten Tomatoes..."). Landa sedan i ETT eget, tydligt vägt omdöme -- inte "kritikerna är delade" som en flykt från att ta ställning. En recension som vägrar döma är ingen recension.
-6. NÄR UNDERLAGET INNEHÅLLER VERKLIGA LOKALA BIOGRAFER: väv naturligt in det exakta namnet på minst en av dem EN gång i texten (t.ex. "...visas nu på [biografens namn ur underlaget]"). Adress och telefonnummer visas separat av sajten -- du behöver inte återge dem. Hitta ALDRIG på en biograf som inte finns i underlaget.
+6. NÄR UNDERLAGET INNEHÅLLER VERKLIGA LOKALA BIOGRAFER: väv naturligt in det exakta namnet på minst en av dem EN gång i texten, som platsen dit den här typen av film hör hemma i {town} (t.ex. "...den typen av film [biografens namn ur underlaget] brukar visa" eller "om du vill se den på bio är [biografens namn] det lokala alternativet") -- INTE som ett påstående att den visas där just nu eller denna helg (det vet du inte). Adress och telefonnummer visas separat av sajten -- du behöver inte återge dem. Hitta ALDRIG på en biograf som inte finns i underlaget.
 
 STIL:
 - 500-800 ord.

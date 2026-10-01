@@ -154,3 +154,60 @@ def test_election_business_policy_violation_allows_a_genuinely_fixed_retry():
     assert article is not None
     assert "Cornerstone Caregiving" not in article.body
     assert len(client.calls) == 2
+
+
+# 2026-10-01 cleanup round, item 1a: content/now_playing.py has no source
+# anywhere for real showtimes or confirmed current theater availability --
+# see validation/unverifiable_availability.py's own docstring. This proves
+# that check is ALSO a hard block through the same shared gate, the same way
+# the Cornerstone tests above proved it for election_business_policy -- not
+# a separate enforcement path, and not the flag-then-publish behavior of
+# review_standard.py's own non-negotiables.
+REVIEW_AVAILABILITY_DRAFT = (
+    "Nolan's Latest Finally Lands, and Brookings Cinema 8 Has It on the Big Screen This Weekend\n\n"
+    "Brookings moviegoers can see it playing now at the local multiplex, with showtimes "
+    "stacked all day this weekend."
+)
+REVIEW_AVAILABILITY_STILL_VIOLATING_RETRY = (
+    "Nolan's Latest Arrives in Brookings\n\n"
+    "It is still playing now at Brookings Cinema 8, the cheapest way to catch it this weekend."
+)
+REVIEW_AVAILABILITY_FIXED_RETRY = (
+    "Nolan's Latest Arrives, and Brookings Has Its Own Take\n\n"
+    "Brookings Cinema 8 is the kind of theater where a film like this belongs, and this is "
+    "what the town should know about it."
+)
+
+
+def test_unverifiable_availability_violation_blocks_publication_after_retry():
+    client = _ScriptedClient([REVIEW_AVAILABILITY_DRAFT, REVIEW_AVAILABILITY_STILL_VIOLATING_RETRY])
+    article = generate_article(
+        "You are a reviewer.", "local input about a new film release",
+        existing_corpus=[], cfg=BROOKINGS_CFG, client=client, content_type="media_recension",
+    )
+    assert article is None
+    assert len(client.calls) == 2  # retried once, gave up, published nothing
+
+
+def test_unverifiable_availability_violation_allows_a_genuinely_fixed_retry():
+    client = _ScriptedClient([REVIEW_AVAILABILITY_DRAFT, REVIEW_AVAILABILITY_FIXED_RETRY])
+    article = generate_article(
+        "You are a reviewer.", "local input about a new film release",
+        existing_corpus=[], cfg=BROOKINGS_CFG, client=client, content_type="media_recension",
+    )
+    assert article is not None
+    assert "playing now" not in article.body
+    assert len(client.calls) == 2
+
+
+def test_unverifiable_availability_does_not_apply_outside_media_recension():
+    # The same availability-claim language is fine for a content type this
+    # check doesn't scope to (e.g. an editorial quoting a review) -- it must
+    # not be blocked by a check that only applies to media_recension.
+    client = _ScriptedClient([REVIEW_AVAILABILITY_DRAFT])
+    article = generate_article(
+        "You are an editorial writer.", "local input about a theater reopening",
+        existing_corpus=[], cfg=BROOKINGS_CFG, client=client, content_type="editorial",
+    )
+    assert article is not None
+    assert len(client.calls) == 1
