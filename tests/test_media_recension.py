@@ -36,8 +36,8 @@ def test_append_verification_line_uses_todays_date_no_platform_crash():
     # ai_pipeline/meeting_followups.py (glibc-only strftime flag) -- this
     # helper must never use that flag.
     article = GeneratedArticle(title="T", body="Body text.")
-    result = _append_verification_line(article)
     today = datetime.date.today()
+    result = _append_verification_line(article, today)
     assert f"Facts verified as of" in result.body
     assert str(today.year) in result.body
     assert result.body.startswith("Body text.")

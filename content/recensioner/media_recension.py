@@ -33,6 +33,11 @@ CATEGORY = "Review"
 
 SYSTEM_PROMPT_TEMPLATE = """Du skriver en recension av film eller TV för en lokal nyhetssajt som riktar sig till {town}, och regionen kring den. Tonen är den kunniga men tillgängliga grannen: någon som faktiskt sett filmen (i den meningen att omdömet är genomtänkt och konkret, INTE ett påstående om fysisk närvaro i en biosalong) och berättar rakt vad hen tycker -- varm, vardagsspråklig, säker nog att fälla ett omdöme men aldrig överlägsen.
 
+DAGENS DATUM ÄR {today}. Beskriv ENDAST den aktuella säsongen/veckan relativt DETTA datum -- gissa
+aldrig säsong utifrån filmens/seriens releasedatum eller titel (en film med "juli" i premisen
+betyder inte att det är juli nu). "Den här helgen"/"den här veckan" måste stämma med dagens datum
+ovan, inte med när verket en gång kom ut.
+
 STRUKTUR (i den här ordningen):
 1. RUBRIK -- ämnet + den lokala kroken (t.ex. "...och {town} kan se den redan i helgen"), inte en generisk filmrubrik.
 2. ÖPPNING -- varför en läsare i {town} bryr sig just NU (aktuell premiär, säsong, geografisk närhet). Det första stycket ska INTE fungera lika bra på vilken sajt som helst -- det ska vara skrivet FÖR den här läsaren.
@@ -69,13 +74,15 @@ def _extract_rating(article: GeneratedArticle) -> GeneratedArticle:
     return replace(article, body=body, rating=rating)
 
 
-def _append_verification_line(article: GeneratedArticle) -> GeneratedArticle:
+def _today_label(today: datetime.date) -> str:
     # calendar.month_name[...] instead of strftime("%-d") -- that flag is a
     # glibc-only extension that throws ValueError on Windows (see
     # ai_pipeline/meeting_followups.py for the same fix, hit live locally).
-    today = datetime.date.today()
-    label = f"{calendar.month_name[today.month]} {today.day}, {today.year}"
-    body = f"{article.body}\n\nFacts verified as of {label}."
+    return f"{calendar.month_name[today.month]} {today.day}, {today.year}"
+
+
+def _append_verification_line(article: GeneratedArticle, today: datetime.date) -> GeneratedArticle:
+    body = f"{article.body}\n\nFacts verified as of {_today_label(today)}."
     return replace(article, body=body)
 
 
@@ -94,7 +101,9 @@ def _retry_addendum(violations: list[str]) -> str:
 
 def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
           client=None) -> GeneratedArticle | None:
-    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(town=town_label(cfg))
+    today = datetime.date.today()
+    today_prompt_label = f"{calendar.day_name[today.weekday()]}, {_today_label(today)}"
+    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(town=town_label(cfg), today=today_prompt_label)
     venue_names = [t["name"] for t in (cfg or {}).get("local_theaters", [])]
     has_review_scores = "Real aggregate critic-reception scores" in local_input
 
@@ -106,9 +115,9 @@ def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
     article = _extract_rating(article)
 
     check = review_standard.check_review_standard(
-        article.title, article.body, cfg, venue_names, has_review_scores)
+        article.title, article.body, cfg, venue_names, has_review_scores, today)
     if check.passed:
-        return _append_verification_line(article)
+        return _append_verification_line(article, today)
 
     print(f"  review standard unmet ({'; '.join(check.violations)}) -- retrying once",
           file=sys.stderr)
@@ -121,13 +130,13 @@ def write(local_input: str, existing_corpus: list[str], cfg: dict | None = None,
         # Keep the first draft rather than lose a whole review to a transient
         # API hiccup on the retry call -- flag it for a human instead of
         # silently killing it (see review_standard.py's module docstring).
-        return _append_verification_line(replace(article, review_flags=check.violations))
+        return _append_verification_line(replace(article, review_flags=check.violations), today)
 
     retry_article = _extract_rating(retry_article)
     recheck = review_standard.check_review_standard(
-        retry_article.title, retry_article.body, cfg, venue_names, has_review_scores)
+        retry_article.title, retry_article.body, cfg, venue_names, has_review_scores, today)
     if not recheck.passed:
         print(f"  review standard still unmet after retry ({'; '.join(recheck.violations)}) "
               "-- publishing flagged for human review", file=sys.stderr)
-        return _append_verification_line(replace(retry_article, review_flags=recheck.violations))
-    return _append_verification_line(retry_article)
+        return _append_verification_line(replace(retry_article, review_flags=recheck.violations), today)
+    return _append_verification_line(retry_article, today)

@@ -2,6 +2,8 @@
 NEEDS-HUMAN-REVIEW.md "Review Writing Standard"). Pure logic only -- takes
 plain strings/dicts, no DB connection, no AI call.
 """
+import datetime
+
 from content.recensioner.review_standard import check_review_standard
 
 CFG = {"display_name": "Moreno Valley"}
@@ -84,3 +86,81 @@ def test_missing_cfg_display_name_falls_back_to_venue_only():
     body = "Catch this one now at Harkins Moreno Valley 16. The verdict: worth your time."
     result = check_review_standard("Review", body, {}, VENUES, has_review_scores=False)
     assert not any("local hook" in v for v in result.violations)
+
+
+# ---- season/month conflict check (2026-09-30 fix) --------------------------
+# Regression for the live bug: a review published 2026-09-23 described "late
+# July" as the current season -- the model had no "today is X" anchor and
+# inferred season from the film's own release-date context instead.
+
+def test_season_month_check_skipped_when_no_publish_date_given():
+    # Existing callers (and every test above) don't pass publish_date --
+    # must not start failing reviews that were never checked for this before.
+    body = "Moreno Valley readers can catch this in late July at Harkins Moreno Valley 16. The verdict: worth your time."
+    result = check_review_standard("Review", body, CFG, VENUES, has_review_scores=False)
+    assert result.passed, result.violations
+
+
+def test_flags_conflicting_month_reference():
+    body = ("Late July is a strange, sun-baked stretch for moviegoing, but Moreno "
+            "Valley readers can catch this now at Harkins Moreno Valley 16. "
+            "The verdict: worth your time.")
+    publish_date = datetime.date(2026, 9, 23)
+    result = check_review_standard("Review", body, CFG, VENUES, has_review_scores=False,
+                                    publish_date=publish_date)
+    assert not result.passed
+    assert any("July" in v for v in result.violations)
+
+
+def test_flags_conflicting_season_word():
+    body = ("Summer moviegoing calls for exactly this, and Moreno Valley "
+            "readers can catch it now at Harkins Moreno Valley 16. "
+            "The verdict: worth your time.")
+    publish_date = datetime.date(2026, 12, 10)
+    result = check_review_standard("Review", body, CFG, VENUES, has_review_scores=False,
+                                    publish_date=publish_date)
+    assert not result.passed
+    assert any("Summer" in v for v in result.violations)
+
+
+def test_allows_month_matching_publish_date():
+    body = ("Late September is exactly the right stretch for this one, and Moreno "
+            "Valley readers can catch it now at Harkins Moreno Valley 16. "
+            "The verdict: worth your time.")
+    publish_date = datetime.date(2026, 9, 23)
+    result = check_review_standard("Review", body, CFG, VENUES, has_review_scores=False,
+                                    publish_date=publish_date)
+    assert not any("September" in v for v in result.violations)
+
+
+def test_allows_legitimate_release_date_mention():
+    # "Cars Turns 20" (real example): the film's own 2006 release date is a
+    # historical fact, not a claim about the current season -- must not flag.
+    body = ("Cars originally released in June 2006, and two decades later Moreno "
+            "Valley gets another lap around the track at Harkins Moreno Valley 16, "
+            "just as the weather turns cool. The verdict: worth revisiting.")
+    publish_date = datetime.date(2026, 9, 30)
+    result = check_review_standard("Review", body, CFG, VENUES, has_review_scores=False,
+                                    publish_date=publish_date)
+    assert not any("June" in v for v in result.violations)
+
+
+def test_allows_bare_opened_date_mention():
+    # Real live example: "Spider-Man... opened July 29" published Aug 26 --
+    # "opened" without a following "in" must still count as release context.
+    body = ("This one opened July 29 at Harkins Moreno Valley 16, and Moreno Valley "
+            "readers can still catch it this weekend. The verdict: worth your time.")
+    publish_date = datetime.date(2026, 8, 26)
+    result = check_review_standard("Review", body, CFG, VENUES, has_review_scores=False,
+                                    publish_date=publish_date)
+    assert not any("July" in v for v in result.violations)
+
+
+def test_allows_anniversary_context_mention():
+    body = ("This film celebrates its July anniversary this year, and Moreno Valley "
+            "readers can catch the re-release now at Harkins Moreno Valley 16. "
+            "The verdict: worth your time.")
+    publish_date = datetime.date(2026, 9, 23)
+    result = check_review_standard("Review", body, CFG, VENUES, has_review_scores=False,
+                                    publish_date=publish_date)
+    assert not any("July" in v for v in result.violations)
