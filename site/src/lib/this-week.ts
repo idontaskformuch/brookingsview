@@ -30,7 +30,7 @@
  */
 import type { Story, Game, RegionalGame, SdsuEvent, ProjectUpdate } from './db';
 import { calendarDateParts } from './db';
-import { localDateParts, utcMidnight, buildEventFeed, itemTitle, itemUrl } from './events';
+import { localDateParts, utcMidnight, todayUtcMidnight, buildEventFeed, itemTitle, itemUrl } from './events';
 import { selectWorthKnowing } from './homepage-curation';
 
 export interface DateParts { y: number; m: number; d: number; } // m is 1-12, unlike calendarDateParts()
@@ -325,6 +325,65 @@ export function buildWeekDays(
 
     return { date, weekdayName: WEEKDAY_NAMES[i], leadVertical, items };
   });
+}
+
+/** Broomfield handoff (2026-09-30), Issue 3: a display-only post-processing
+ *  step over an already-built week's DayBuckets, kept separate from
+ *  buildWeekDays() so that function's per-day item-building logic stays
+ *  untouched.
+ *
+ *  dropPastDays: true drops any day strictly before today -- ONLY correct
+ *  for the still-in-progress CURRENT week ("Mon/Tue already happened, don't
+ *  show them as empty placeholders"); a completed historical week keeps
+ *  all 7 days as its own record, so callers must pass false there.
+ *
+ *  Consecutive empty days (after that filter) collapse into a single
+ *  { kind: 'empty-range' } row -- "Nothing recorded for Thursday to
+ *  Sunday" instead of four separate near-empty paragraphs -- rather than
+ *  one row per empty day. A day WITH items is never collapsed, regardless
+ *  of its neighbors. */
+export type DisplayRow =
+  | { kind: 'day'; day: DayBucket }
+  | { kind: 'empty-range'; days: DayBucket[] };
+
+export function buildDisplayRows(days: DayBucket[], timezone: string, dropPastDays: boolean): DisplayRow[] {
+  const visible = dropPastDays
+    ? days.filter((d) => utcMidnight(d.date).getTime() >= todayUtcMidnight(timezone).getTime())
+    : days;
+
+  const rows: DisplayRow[] = [];
+  let emptyRun: DayBucket[] = [];
+  const flushEmpty = () => {
+    if (emptyRun.length > 0) {
+      rows.push({ kind: 'empty-range', days: emptyRun });
+      emptyRun = [];
+    }
+  };
+  for (const day of visible) {
+    if (day.items.length === 0) {
+      emptyRun.push(day);
+    } else {
+      flushEmpty();
+      rows.push({ kind: 'day', day });
+    }
+  }
+  flushEmpty();
+  return rows;
+}
+
+/** Broomfield handoff (2026-09-30), Issue 3: a week with fewer than this
+ *  many real items across the whole week isn't worth its own indexed page
+ *  -- reuses astro.config.mjs's existing MIN_TAG_PAGE_ITEMS threshold
+ *  (jobs/category, home-sales/zip already use the same "3" for the same
+ *  kind of thin-listing-page judgment), not a new number invented for this
+ *  page type. Keep in sync with astro.config.mjs's own copy of this value
+ *  -- see that file's THIS_WEEK_TIMEZONES comment for why it can't import
+ *  this one directly. */
+export const THIS_WEEK_MIN_ITEMS = 3;
+
+export function shouldNoindexWeekPage(days: DayBucket[]): boolean {
+  const totalItems = days.reduce((n, d) => n + d.items.length, 0);
+  return totalItems < THIS_WEEK_MIN_ITEMS;
 }
 
 function firstLine(body: string): string {

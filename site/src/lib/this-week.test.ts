@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   weekInfoForInstant, weekInfoForSlug, currentWeekInfo, isoWeekInfo,
   formatWeekLabel, buildWeekDays, selectWeeklyLead, weekDays, addDays,
+  buildDisplayRows, shouldNoindexWeekPage, type DayBucket,
 } from './this-week';
 import type { Story, RegionalGame, SdsuEvent, ProjectUpdate } from './db';
 
@@ -218,5 +219,65 @@ describe('selectWeeklyLead', () => {
     const featured = story({ slug: 'big-vote', featured: true, occurs_at: '2026-08-26T00:00:00Z' });
     const ordinary = story({ slug: 'routine-minutes', occurs_at: '2026-08-25T00:00:00Z' });
     expect(selectWeeklyLead([featured, ordinary])?.slug).toBe('big-vote');
+  });
+});
+
+// Broomfield handoff (2026-09-30), Issue 3.
+function day(weekdayName: string, itemCount: number, date = { y: 2026, m: 9, d: 28 }): DayBucket {
+  return {
+    date, weekdayName, leadVertical: 'events',
+    items: Array.from({ length: itemCount }, (_, i) => ({
+      vertical: 'events' as const, title: `Item ${i}`, href: null, external: false, detail: '',
+    })),
+  };
+}
+
+describe('buildDisplayRows', () => {
+  it('keeps every day as its own row when dropPastDays is false, even if empty', () => {
+    const days = [day('Monday', 0), day('Tuesday', 1), day('Wednesday', 0)];
+    const rows = buildDisplayRows(days, CHICAGO, false);
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toEqual({ kind: 'empty-range', days: [days[0]] });
+    expect(rows[1]).toEqual({ kind: 'day', day: days[1] });
+    expect(rows[2]).toEqual({ kind: 'empty-range', days: [days[2]] });
+  });
+
+  it('collapses a consecutive run of empty days into one row', () => {
+    const days = [
+      day('Monday', 1), day('Tuesday', 0), day('Wednesday', 0),
+      day('Thursday', 0), day('Friday', 0), day('Saturday', 0), day('Sunday', 0),
+    ];
+    const rows = buildDisplayRows(days, CHICAGO, false);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toEqual({ kind: 'day', day: days[0] });
+    expect(rows[1].kind).toBe('empty-range');
+    expect((rows[1] as { kind: 'empty-range'; days: DayBucket[] }).days).toHaveLength(6);
+  });
+
+  it('never collapses a day that has items, regardless of empty neighbors', () => {
+    const days = [day('Monday', 0), day('Tuesday', 2), day('Wednesday', 0)];
+    const rows = buildDisplayRows(days, CHICAGO, false);
+    expect(rows.map((r) => r.kind)).toEqual(['empty-range', 'day', 'empty-range']);
+  });
+
+  it('drops days strictly before today when dropPastDays is true', () => {
+    // "today" is whatever the test runs on -- use dates guaranteed to be
+    // in the past (2020) and far future (2099) instead of a moving target.
+    const past = day('Monday', 0, { y: 2020, m: 1, d: 1 });
+    const future = day('Tuesday', 1, { y: 2099, m: 1, d: 1 });
+    const rows = buildDisplayRows([past, future], CHICAGO, true);
+    expect(rows).toEqual([{ kind: 'day', day: future }]);
+  });
+});
+
+describe('shouldNoindexWeekPage', () => {
+  it('flags a week with fewer than 3 total items', () => {
+    const days = [day('Monday', 1), day('Tuesday', 0), day('Wednesday', 0)];
+    expect(shouldNoindexWeekPage(days)).toBe(true);
+  });
+
+  it('does not flag a week with 3 or more total items', () => {
+    const days = [day('Monday', 1), day('Tuesday', 1), day('Wednesday', 1)];
+    expect(shouldNoindexWeekPage(days)).toBe(false);
   });
 });

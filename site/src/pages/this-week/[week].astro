@@ -29,7 +29,7 @@ import {
 import type { Story } from '../../lib/db';
 import {
   weekInfoForInstant, currentWeekInfo, previousWeekInfo, buildWeekDays, selectWeeklyLead,
-  type WeekInfo, type DayBucket, type Vertical,
+  buildDisplayRows, shouldNoindexWeekPage, type WeekInfo, type DayBucket, type Vertical,
 } from '../../lib/this-week';
 import { siteConfig } from '../../lib/site-config';
 import { resolvePageMeta } from '../../lib/page-meta';
@@ -97,6 +97,9 @@ const canonicalUrl = new URL(`/this-week/${week.slug}/`, Astro.site ?? siteConfi
 const isBrookings = siteConfig.townId === 'brookings_sd';
 
 const hasAnyItems = days.some((d) => d.items.length > 0);
+// Past-day omission only makes sense for the still-in-progress current
+// week -- a completed historical week keeps all 7 days as its own record.
+const displayRows = buildDisplayRows(days, siteConfig.timezone, isCurrent);
 
 const itemListJsonLd = hasAnyItems ? {
   '@context': 'https://schema.org',
@@ -110,7 +113,7 @@ const itemListJsonLd = hasAnyItems ? {
   })),
 } : null;
 ---
-<BaseLayout title={title} wide ogSlug={`this-week-${week.slug}`} description={description}>
+<BaseLayout title={title} wide ogSlug={`this-week-${week.slug}`} description={description} noindex={shouldNoindexWeekPage(days)}>
   <header class="lede">
     <p class="kicker">This week in {siteConfig.cityName}</p>
     <h1>{pageMeta.h1}</h1>
@@ -135,30 +138,32 @@ const itemListJsonLd = hasAnyItems ? {
   )}
 
   <div class="days">
-    {days.map((day) => (
+    {displayRows.map((row) => row.kind === 'empty-range' ? (
+      <p class="day__quiet day__quiet--range">
+        Nothing recorded for {row.days.length === 1
+          ? `${row.days[0].weekdayName}.`
+          : `${row.days[0].weekdayName} to ${row.days[row.days.length - 1].weekdayName}.`}
+      </p>
+    ) : (
       <section class="day">
         <h2 class="day__heading">
-          {day.weekdayName}
-          <span class="day__date">{new Date(Date.UTC(day.date.y, day.date.m - 1, day.date.d))
+          {row.day.weekdayName}
+          <span class="day__date">{new Date(Date.UTC(row.day.date.y, row.day.date.m - 1, row.day.date.d))
             .toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>
         </h2>
-        {day.items.length > 0 ? (
-          <ul class="day__items">
-            {day.items.map((item) => (
-              <li class="day__item">
-                <span class="day__vertical">{VERTICAL_LABELS[item.vertical]}</span>
-                {item.href ? (
-                  <a href={item.href} target={item.external ? '_blank' : undefined} rel={item.external ? 'noopener' : undefined}>
-                    {item.title}
-                  </a>
-                ) : <span>{item.title}</span>}
-                {item.detail && <span class="day__detail">{item.detail}</span>}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p class="day__quiet">Nothing recorded for {day.weekdayName.toLowerCase()}.</p>
-        )}
+        <ul class="day__items">
+          {row.day.items.map((item) => (
+            <li class="day__item">
+              <span class="day__vertical">{VERTICAL_LABELS[item.vertical]}</span>
+              {item.href ? (
+                <a href={item.href} target={item.external ? '_blank' : undefined} rel={item.external ? 'noopener' : undefined}>
+                  {item.title}
+                </a>
+              ) : <span>{item.title}</span>}
+              {item.detail && <span class="day__detail">{item.detail}</span>}
+            </li>
+          ))}
+        </ul>
       </section>
     ))}
   </div>
@@ -252,6 +257,8 @@ const itemListJsonLd = hasAnyItems ? {
 .day__item a { font-weight: 600; }
 .day__detail { display: block; color: var(--ink-soft); font-size: 0.875rem; margin-top: 0.125rem; }
 .day__quiet { color: var(--ink-soft); font-size: 0.9375rem; margin: 0; }
+.day__quiet--range { padding: 1rem 0; border-top: 1px solid var(--rule); }
+.day__quiet--range:last-child { border-bottom: 1px solid var(--rule); }
 
 .empty { color: var(--ink-soft); margin-top: 1.5rem; }
 

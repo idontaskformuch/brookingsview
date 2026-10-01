@@ -127,6 +127,62 @@ function isThinStory(sourceType, body, ingredients, instructions) {
   return isThinType || wordCount < THIN_CONTENT_WORD_THRESHOLD;
 }
 
+// Broomfield handoff (2026-09-30), Issue 3: /this-week/<slug>/ pages with
+// fewer than MIN_TAG_PAGE_ITEMS real items are noindexed in the page itself
+// (this-week/[week].astro, via lib/this-week.ts's shouldNoindexWeekPage())
+// -- mirrored here so the sitemap agrees, same MIN_TAG_PAGE_ITEMS threshold
+// already used for jobs/category and home-sales/zip above. Same
+// duplication tradeoff as slugifyAddress/BRAND_TOKENS: site-config.ts's
+// per-town timezone can't be imported here, and lib/this-week.ts's week-
+// boundary math (mondayContaining/isoWeekInfo) is pure date logic with no
+// DB/site-config dependency, so it's safe to copy verbatim rather than
+// reimport.
+//
+// DELIBERATE SIMPLIFICATION, disclosed rather than silently attempted:
+// this counts raw per-table rows and does NOT run them through
+// buildEventFeed()'s cross-source dedup (an event double-listed by, say,
+// both SDSU and the Chamber collapses to one item on the real page). That
+// means this mirror's count is always >= the real page's count, so in the
+// rare case a week sits exactly at the dedup boundary, this could list a
+// genuinely-thin week as indexable when the page itself noindexes it --
+// the one direction scripts/verify_sitemap_noindex_disjoint.mjs actually
+// checks for. Verified against live 2026-09-30 data that no such
+// disagreement currently exists; revisit if that script ever catches one.
+const THIS_WEEK_TIMEZONES = {
+  brookings_sd: 'America/Chicago',
+  moreno_valley_ca: 'America/Los_Angeles',
+  broomfield_co: 'America/Denver',
+};
+
+function localDatePartsMirror(instant, timeZone) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(instant);
+  const get = (t) => Number(parts.find((p) => p.type === t).value);
+  return { y: get('year'), m: get('month'), d: get('day') };
+}
+
+// UTC-read, no timezone conversion -- for bare-calendar-date fields
+// (meeting_date-style), exactly like lib/this-week.ts's bareDateParts().
+function utcDatePartsMirror(value) {
+  const d = new Date(value);
+  return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() };
+}
+
+function isoWeekSlugMirror({ y, m, d }) {
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const dayNum = (date.getUTCDay() + 6) % 7; // 0=Mon
+  date.setUTCDate(date.getUTCDate() - dayNum); // back up to that week's Monday
+  const thursday = new Date(date.getTime());
+  thursday.setUTCDate(thursday.getUTCDate() + 3);
+  const isoYear = thursday.getUTCFullYear();
+  const jan4 = new Date(Date.UTC(isoYear, 0, 4));
+  const jan4DayNum = (jan4.getUTCDay() + 6) % 7;
+  const week1Monday = new Date(jan4.getTime() - jan4DayNum * 86_400_000);
+  const isoWeek = Math.round((date.getTime() - week1Monday.getTime()) / (7 * 86_400_000)) + 1;
+  return `${isoYear}-w${String(isoWeek).padStart(2, '0')}`;
+}
+
 // Render-window handoff: mirrors site/src/lib/site-config.ts's
 // CITIES.moreno_valley_ca.renderWindow.homeSales exactly -- same
 // duplication tradeoff as slugifyAddress above (site-config.ts can't be
@@ -267,7 +323,7 @@ async function buildLastmodMap(townId, databaseUrl) {
   const noindexStoryUrls = new Set();
   const crossCanonicalStoryUrls = new Set();
   const stories = await sql`
-    SELECT slug, published_at, source_type, body, generated_by, ingredients, instructions FROM stories WHERE town_id = ${townId}
+    SELECT slug, published_at, source_type, body, generated_by, ingredients, instructions, occurs_at FROM stories WHERE town_id = ${townId}
   `;
   for (const s of stories) {
     map.set(`/s/${s.slug}/`, s.published_at);
@@ -358,6 +414,44 @@ async function buildLastmodMap(townId, databaseUrl) {
     for (const [zip, count] of zipCounts) {
       if (count < MIN_TAG_PAGE_ITEMS) noindexThinPageUrls.add(`/home-sales/zip/${zip}/`);
     }
+  }
+
+  // /this-week/<slug>/ thin-week mirror -- see THIS_WEEK_TIMEZONES' own
+  // comment above for the counting caveat. A week only gets a page (per
+  // [week].astro's own getStaticPaths) if a real 'weekly' story exists for
+  // it, or it's the current week -- so those are the only slugs checked.
+  const thisWeekTz = THIS_WEEK_TIMEZONES[townId] ?? THIS_WEEK_TIMEZONES.brookings_sd;
+  const weekItemCounts = new Map();
+  const bumpWeek = (slug) => weekItemCounts.set(slug, (weekItemCounts.get(slug) ?? 0) + 1);
+
+  const pageWeekSlugs = new Set([isoWeekSlugMirror(localDatePartsMirror(new Date(), thisWeekTz))]);
+  for (const s of stories) {
+    if (!s.occurs_at) continue;
+    if (s.source_type === 'weekly') {
+      pageWeekSlugs.add(isoWeekSlugMirror(localDatePartsMirror(new Date(s.occurs_at), thisWeekTz)));
+    } else if (s.source_type === 'event') {
+      bumpWeek(isoWeekSlugMirror(localDatePartsMirror(new Date(s.occurs_at), thisWeekTz)));
+    } else if (s.source_type === 'meeting' || s.source_type === 'meeting_followup') {
+      bumpWeek(isoWeekSlugMirror(utcDatePartsMirror(s.occurs_at)));
+    }
+  }
+
+  const projectUpdates = await sql`
+    SELECT u.meeting_date FROM project_updates u JOIN projects p ON p.id = u.project_id
+     WHERE p.town_id = ${townId} AND u.meeting_date IS NOT NULL
+  `;
+  for (const u of projectUpdates) bumpWeek(isoWeekSlugMirror(utcDatePartsMirror(u.meeting_date)));
+
+  if (townId === 'brookings_sd') {
+    const games = await sql`SELECT starts_at FROM sports_games WHERE town_id = ${townId} AND starts_at IS NOT NULL`;
+    for (const g of games) bumpWeek(isoWeekSlugMirror(localDatePartsMirror(new Date(g.starts_at), thisWeekTz)));
+  } else {
+    const regionalGames = await sql`SELECT game_date FROM regional_sports_games WHERE town_id = ${townId} AND game_date IS NOT NULL`;
+    for (const g of regionalGames) bumpWeek(isoWeekSlugMirror(utcDatePartsMirror(g.game_date)));
+  }
+
+  for (const slug of pageWeekSlugs) {
+    if ((weekItemCounts.get(slug) ?? 0) < MIN_TAG_PAGE_ITEMS) noindexThinPageUrls.add(`/this-week/${slug}/`);
   }
 
   return {
