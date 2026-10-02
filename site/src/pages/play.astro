@@ -1,8 +1,18 @@
 ---
 /** Brookings-gated (samma mönster som /university/-jackrabbits) -- spelet
- *  är uttryckligen SDSU-/Brookings-tematiserat ("SDSU Campus"-bana, "a
- *  flappy hare from Brookings, SD"), skulle inte göra sajtmässig mening på
- *  morenovalleyview.com. */
+ *  är Brookings-tematiserat ("a flappy hare from Brookings, SD"), skulle
+ *  inte göra sajtmässig mening på morenovalleyview.com.
+ *
+ *  Item F5: renamed away from "Jackrabbit"/"SDSU Campus" (both the page's
+ *  own title and the in-game level name, plus the game file's internal
+ *  --sdsu-* CSS variable names) -- a fan-made arcade game has no license
+ *  from South Dakota State University to use its mascot name or "SDSU" as
+ *  its own branding, even though the SAME real jackrabbit (the animal, not
+ *  the team) is genuinely native to the Brookings prairie the game is
+ *  themed around. The hub backlink to the REAL Jackrabbits sports coverage
+ *  (see below) is untouched -- that's an editorial cross-link to this
+ *  site's own /university/ section, not the game claiming an SDSU
+ *  affiliation. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
 import { resolveHubBacklink } from '../lib/clusters';
@@ -15,22 +25,22 @@ const hubBacklink = resolveHubBacklink('play', siteConfig);
 ---
 
 <BaseLayout
-  title={`Play Jackrabbit — ${siteConfig.siteName}`}
-  description="A free retro arcade game starring a jackrabbit, built for Brookings, SD. Play Prairie, unlock SDSU Campus and Main Street."
+  title={`Play Prairie Hopper — ${siteConfig.siteName}`}
+  description="A free retro arcade game starring a jackrabbit, built for Brookings, SD. Play Prairie, unlock Campus Hill and Main Street."
 >
   <section class="play-hero">
     <h1>Arcade</h1>
     <p class="tagline">
-      A little side project: <strong>Jackrabbit</strong>, a Flappy-Bird-style
+      A little side project: <strong>Prairie Hopper</strong>, a Flappy-Bird-style
       game starring a jackrabbit hopping through Brookings. Clear 20 on
-      Prairie to unlock SDSU Campus, clear 30 there to unlock Main Street.
+      Prairie to unlock Campus Hill, clear 30 there to unlock Main Street.
       {hubBacklink && <> For the real Jackrabbits, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}
     </p>
 
     <div class="game-frame">
       <iframe
         src="/games/jackrabbit.html"
-        title="Jackrabbit game"
+        title="Prairie Hopper game"
         loading="lazy"
         allow="autoplay"
       ></iframe>

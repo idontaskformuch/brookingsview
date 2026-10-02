@@ -413,7 +413,7 @@ export const SPOKE_NAV_COPY: Record<string, SpokeNavCopy> = {
     description: 'Campus games, concerts and shows at South Dakota State University this week.',
   },
   play: {
-    label: 'Play Jackrabbit',
+    label: 'Play Prairie Hopper',
     href: '/play/',
     description: 'Our free arcade game -- how far can you get?',
   },

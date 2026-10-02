@@ -159,7 +159,7 @@ describe('resolveHubNavItems', () => {
     const items = resolveHubNavItems('sports', MORENO_VALLEY);
     const labels = items.map((i) => i.label);
     expect(labels).not.toContain('SDSU');
-    expect(labels).not.toContain('Play Jackrabbit');
+    expect(labels).not.toContain('Play Prairie Hopper');
     expect(labels).toContain('Play Burro Bonanza');
   });
 

@@ -852,7 +852,7 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
   // Arkadspelet -- olika spel per ort (Fas 1/2-arbetet denna session), inte
   // via CATEGORY_HREFS eftersom spelen inte är egna stories.
   const gameItem: RelatedItem | null = isBrookings
-    ? { href: '/play/', title: 'Play Jackrabbit', kicker: 'Play', description: 'Our free arcade game — how far can you get?' }
+    ? { href: '/play/', title: 'Play Prairie Hopper', kicker: 'Play', description: 'Our free arcade game — how far can you get?' }
     : isMorenoValley
       ? { href: '/burro-bonanza/', title: 'Play Burro Bonanza', kicker: 'Play', description: "Our free match-3 game — help Dusty clear the trail." }
       : null;
