@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  normalizeVenueText, extractTitleVenuePrefix, buildNameAliasIndex,
+  normalizeVenueText, extractTitleVenuePrefix, splitEventTitleAndVenue, buildNameAliasIndex,
   resolveVenueSlugForImage, categoryForSourceType, dedupeConsecutiveImages,
   resolveImage, pickFromPool, pickFromPoolByIndex, requiredCategoriesFor, assertCategoryImagesComplete,
   findContentTrackRowsMissingImage, withThumbnailCrop, contentTrackCropPaths,
@@ -63,6 +63,46 @@ describe('extractTitleVenuePrefix', () => {
 
   it('extracts the prefix directly when there is no town prefix present', () => {
     expect(extractTitleVenuePrefix('MAIN LIBRARY: Talk MoVal', 'Moreno Valley')).toBe('MAIN LIBRARY');
+  });
+});
+
+describe('splitEventTitleAndVenue', () => {
+  it('strips both the town prefix and an ALL-CAPS venue prefix, title-casing the venue', () => {
+    expect(splitEventTitleAndVenue('Moreno Valley: MAIN LIBRARY: Toddler Time', 'Moreno Valley'))
+      .toEqual({ displayTitle: 'Toddler Time', venue: 'Main Library' });
+  });
+
+  it('keeps a short all-caps word (an acronym like MV) uppercase rather than title-casing it', () => {
+    expect(splitEventTitleAndVenue('Moreno Valley: MV MALL: Discovery Club', 'Moreno Valley'))
+      .toEqual({ displayTitle: 'Discovery Club', venue: 'MV Mall' });
+  });
+
+  it('handles a three-word venue prefix', () => {
+    expect(splitEventTitleAndVenue('Moreno Valley: MV MALL LIBRARY: Family Fun', 'Moreno Valley'))
+      .toEqual({ displayTitle: 'Family Fun', venue: 'MV Mall Library' });
+  });
+
+  it('strips only the town prefix when there is no venue-shaped prefix after it', () => {
+    expect(splitEventTitleAndVenue('Brookings: Farmers Market', 'Brookings'))
+      .toEqual({ displayTitle: 'Farmers Market', venue: null });
+  });
+
+  it('does not treat a normal mixed-case colon title as a venue prefix', () => {
+    // The real failure mode this strictness exists to prevent -- a movie
+    // review titled like "Spider-Man: Brand New Day" must never be split
+    // into a fake "Spider-Man" venue line.
+    expect(splitEventTitleAndVenue('Spider-Man: Brand New Day', 'Brookings'))
+      .toEqual({ displayTitle: 'Spider-Man: Brand New Day', venue: null });
+  });
+
+  it('returns the title unchanged when there is no colon at all', () => {
+    expect(splitEventTitleAndVenue('City Council Meeting', 'Brookings'))
+      .toEqual({ displayTitle: 'City Council Meeting', venue: null });
+  });
+
+  it('does not strip a venue prefix with nothing left after it', () => {
+    expect(splitEventTitleAndVenue('Moreno Valley: MAIN LIBRARY:', 'Moreno Valley'))
+      .toEqual({ displayTitle: 'MAIN LIBRARY:', venue: null });
   });
 });
 

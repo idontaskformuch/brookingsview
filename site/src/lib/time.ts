@@ -103,8 +103,48 @@ function futureText(date: Date, now: Date, timeZone: string): string {
 
 /** Human, town-timezone-aware relative time for `date` relative to `now`.
  *  Lowercase throughout except month/weekday names, per §2. Picks the past
- *  or future table automatically from the sign of (date - now). */
-export function relativeTime(date: Date | string, now: Date, timeZone: string): string {
+ *  or future table automatically from the sign of (date - now).
+ *
+ *  2026-10-02, item C2: `endsAt` is optional and additive -- every existing
+ *  call site (none of which has an end time to pass) is unaffected. Without
+ *  it, pastText()'s own "just now" (< 60 minutes since `date`) is the only
+ *  "this is current" signal, which fires identically whether the thing
+ *  being described is still happening or has already ended -- a 90-minute
+ *  event reads "just now" for its first 60 minutes and then silently jumps
+ *  straight to "this morning"/"this afternoon" with no signal that it's
+ *  still actually in progress for its remaining half hour. When `endsAt` IS
+ *  given, "now" is reported for the exact `date <= now < endsAt` window
+ *  instead of the coarser time-since-start heuristic -- a real in-progress
+ *  check, not a proxy for one. */
+export function relativeTime(
+  date: Date | string, now: Date, timeZone: string, endsAt?: Date | string | null,
+): string {
   const d = typeof date === 'string' ? new Date(date) : date;
+  if (endsAt != null) {
+    const end = typeof endsAt === 'string' ? new Date(endsAt) : endsAt;
+    if (d.getTime() <= now.getTime() && now.getTime() < end.getTime()) return 'now';
+  }
   return d.getTime() <= now.getTime() ? pastText(d, now, timeZone) : futureText(d, now, timeZone);
+}
+
+/** 2026-10-02, item C1: a compact "{DAY} · {TIME}" kicker for an event's
+ *  own card -- e.g. "Thu · 7:30 PM". Deliberately NOT relativeTime()'s
+ *  casual relative language ("tomorrow at 7:30pm") -- a kicker is scanned,
+ *  not read as prose, so an absolute weekday + a conventionally-capitalized
+ *  clock time (space + uppercase AM/PM, unlike relativeTime()'s own
+ *  lowercase-no-space "7:30pm") reads faster in a dense list. Always the
+ *  short weekday form ("Thu"), regardless of how far out the date is --
+ *  unlike relativeTime()'s futureText(), which switches to a month/day
+ *  format past ~2 weeks out; this is for a SINGLE EVENT's own card, where
+ *  the exact date is already shown elsewhere on the card (or is today/soon
+ *  by construction of whatever list rendered the card), not a general-
+ *  purpose "how far away is this" sentence. */
+export function dayTimeKicker(date: Date | string, timeZone: string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const { hour, minute } = zonedParts(d, timeZone);
+  const day = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(d);
+  const period = hour < 12 ? 'AM' : 'PM';
+  const hour12 = hour % 12 || 12;
+  const clock = minute === 0 ? `${hour12} ${period}` : `${hour12}:${String(minute).padStart(2, '0')} ${period}`;
+  return `${day} · ${clock}`;
 }

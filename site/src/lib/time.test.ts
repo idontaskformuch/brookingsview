@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { relativeTime } from './time';
+import { relativeTime, dayTimeKicker } from './time';
 
 const LA = 'America/Los_Angeles';
 const CHI = 'America/Chicago';
@@ -151,5 +151,68 @@ describe('relativeTime -- year rollover', () => {
   it('treats Jan 1 relative to a "now" of the previous Dec 31 as year-rollover, not same year', () => {
     const now = new Date('2026-12-31T16:00:00Z');
     expect(relativeTime('2025-01-01T16:00:00Z', now, CHI)).toBe('January 1, 2025');
+  });
+});
+
+// 2026-10-02, item C2: a real in-progress window, not just "< 60 minutes
+// since start" (which the pre-existing "just now" tests above already
+// cover and are unaffected by -- endsAt is optional and additive).
+describe('relativeTime -- endsAt (real in-progress window)', () => {
+  it('says "now" when the current time is between start and end', () => {
+    const start = new Date('2026-08-25T18:00:00Z');
+    const end = new Date('2026-08-25T20:00:00Z');
+    const now = new Date('2026-08-25T19:30:00Z'); // 90 min after start, still before end
+    expect(relativeTime(start, now, CHI, end)).toBe('now');
+  });
+
+  it('says "now" at the exact start instant', () => {
+    const start = new Date('2026-08-25T18:00:00Z');
+    const end = new Date('2026-08-25T20:00:00Z');
+    expect(relativeTime(start, start, CHI, end)).toBe('now');
+  });
+
+  it('falls through to normal past text once the end instant has passed', () => {
+    const start = new Date('2026-08-25T18:00:00Z');
+    const end = new Date('2026-08-25T20:00:00Z');
+    const now = new Date('2026-08-25T20:00:01Z'); // 1 second after end
+    expect(relativeTime(start, now, CHI, end)).toBe('this afternoon');
+  });
+
+  it('a future event (start still ahead of now) is unaffected by endsAt', () => {
+    const start = new Date('2026-08-25T18:00:00Z');
+    const end = new Date('2026-08-25T20:00:00Z');
+    const now = new Date('2026-08-25T10:00:00Z');
+    expect(relativeTime(start, now, CHI, end)).toBe(relativeTime(start, now, CHI));
+  });
+
+  it('without endsAt, behavior is completely unchanged (every pre-existing call site)', () => {
+    const now = new Date('2026-08-25T18:30:00Z');
+    expect(relativeTime('2026-08-25T18:00:01Z', now, CHI)).toBe('just now');
+    expect(relativeTime('2026-08-25T18:00:01Z', now, CHI, null)).toBe('just now');
+    expect(relativeTime('2026-08-25T18:00:01Z', now, CHI, undefined)).toBe('just now');
+  });
+});
+
+describe('dayTimeKicker', () => {
+  it('formats as "{short weekday} · {h:mm AM/PM}"', () => {
+    // 2026-08-27T19:30:00Z = 14:30 CDT (UTC-5 in August) = Thursday
+    expect(dayTimeKicker('2026-08-27T19:30:00Z', CHI)).toBe('Thu · 2:30 PM');
+  });
+
+  it('omits the :00 minutes for an on-the-hour time', () => {
+    // 2026-08-27T19:00:00Z = 14:00 CDT = Thursday
+    expect(dayTimeKicker('2026-08-27T19:00:00Z', CHI)).toBe('Thu · 2 PM');
+  });
+
+  it('uses 12 for both noon and midnight, never 0', () => {
+    // 2026-08-27T17:00:00Z = 12:00 CDT noon
+    expect(dayTimeKicker('2026-08-27T17:00:00Z', CHI)).toBe('Thu · 12 PM');
+    // 2026-08-28T05:00:00Z = 00:00 CDT midnight -> Friday local
+    expect(dayTimeKicker('2026-08-28T05:00:00Z', CHI)).toBe('Fri · 12 AM');
+  });
+
+  it('is timezone-aware, not UTC', () => {
+    // 2026-08-27T19:30:00Z = 12:30 PDT (Pacific) same instant, different wall time
+    expect(dayTimeKicker('2026-08-27T19:30:00Z', LA)).toBe('Thu · 12:30 PM');
   });
 });

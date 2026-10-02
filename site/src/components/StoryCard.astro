@@ -5,9 +5,9 @@ import type { Story } from '../lib/db';
 import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS } from '../lib/db';
 import ShareButtons from './ShareButtons.astro';
 import { siteConfig } from '../lib/site-config';
-import { categoryForSourceType, type ImageCategory } from '../lib/images';
+import { categoryForSourceType, splitEventTitleAndVenue, type ImageCategory } from '../lib/images';
 import { SECTION_THEME } from '../lib/section-theme';
-import { relativeTime } from '../lib/time';
+import { relativeTime, dayTimeKicker } from '../lib/time';
 import { storyHref } from '../lib/content-slugs';
 
 // Dense card lists never render a per-item image (see NEEDS-HUMAN-REVIEW.md
@@ -64,6 +64,17 @@ const shareUrl = new URL(storyHref(story.slug), siteConfig.siteUrl).href;
 
 const isAlert = story.source_type === 'alert';
 const isMeeting = story.source_type === 'meeting' || story.source_type === 'meeting_followup';
+const isEvent = story.source_type === 'event';
+// 2026-10-02, item C4: strip a "{Town}: " / "{VENUE IN CAPS}: " prefix from
+// an event's displayed title (confirmed live: 1,063 of 1,068 Moreno Valley
+// event titles carry one) -- see splitEventTitleAndVenue()'s own doc
+// comment for why this is scoped to events only (a non-event title's own
+// colon punctuation, e.g. a movie review's "Spider-Man: Brand New Day",
+// must never be mangled). The venue renders as its own line below the
+// title instead of staying silently baked into it.
+const { displayTitle, venue } = isEvent
+  ? splitEventTitleAndVenue(story.title, siteConfig.cityName)
+  : { displayTitle: story.title, venue: null };
 // Content Track-innehåll (krönikor, recensioner, recept m.fl.) har alltid byline
 // satt -- occurs_at är bara now() vid genereringstillfället för de typerna, så
 // den ska aldrig användas som tidsangivelse. Publiceringsdatum är den rätta.
@@ -93,6 +104,14 @@ const now = new Date();
 // no such guard (a null `date` isn't `typeof 'string'`, so it's passed
 // through as null and crashes on `.getTime()`), so the call site needs the
 // same explicit guard formatDate's caller got for free.
+// 2026-10-02, item C1: an event's own kicker is dayTimeKicker()'s absolute
+// "{DAY} · {TIME}" ("Thu · 7:30 PM"), not relativeTime()'s relative prose --
+// see that function's own doc comment for why a dense list is scanned, not
+// read. Also sidesteps item C2 for events specifically: an absolute
+// day+time never says "just now" in the first place, so the narrower
+// in-progress check only still matters for the final relativeTime() branch
+// below (non-event, non-meeting, non-alert rows with an occurs_at, e.g.
+// announcements) -- story.ends_at is threaded through there too.
 const timeLabel = hasByline
   ? (story.published_at ? relativeTime(story.published_at, now, siteConfig.timezone) : '')
   : !when
@@ -101,7 +120,9 @@ const timeLabel = hasByline
       ? formatMeetingDate(when)  // meetingsHaveTime-medveten -- se db.ts
       : isAlert
         ? `${formatDate(when)}${formatTime(when) ? ` · ${formatTime(when)}` : ''}`
-        : relativeTime(when, now, siteConfig.timezone);
+        : isEvent
+          ? dayTimeKicker(when, siteConfig.timezone)
+          : relativeTime(when, now, siteConfig.timezone, story.ends_at);
 // .toISOString(), not a raw passthrough of the source value: the DB driver
 // returns a real Date object for timestamptz columns at runtime despite
 // the `string` type annotation in db.ts. Passed straight into
@@ -133,46 +154,27 @@ const kicker = kickerOverride ?? (isAlert ? 'Alert' : isMeeting ? 'City hall'
 // to color, so it's gated on `kicker` being present too.
 const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCategory] ?? null) : null;
 ---
-<article class:list={['item', isAlert ? 'item--alert' : 'item--row']}>
-  {isAlert ? (
-    /* Alerts keep their existing stacked layout -- a bordered severity
-       box (genuine active state, R2), not a plain chronological list row.
-       R5's compact time rail is for scanning a LIST; an alert's own full
-       "date · time" string doesn't fit a 46px column and alerts aren't
-       part of the list rhythm the rail exists to help with. */
-    <>
-      <p class="item__kicker">
-        <span class="kicker">{kicker}</span>
-        {timeLabel && timeMachineValue && (
-          <time class="item__when data" datetime={timeMachineValue}>{timeLabel}</time>
-        )}
-      </p>
-      <h3 class="item__title"><a href={href} rel={isExternal ? 'noopener' : undefined}>{story.title}</a></h3>
-      {!compact && <p class="item__body">{story.body}</p>}
-    </>
-  ) : (
-    <>
-      {/* R5: time in a fixed-width left rail, title in serif to its
-          right -- one column to scan instead of a ragged edge. */}
-      <div class="item__rail">
-        {timeLabel && timeMachineValue && (
-          <time class="item__when data" datetime={timeMachineValue}>{timeLabel}</time>
-        )}
-      </div>
-      <div class="item__content">
-        {kicker && (
-          <p class="item__kicker">
-            {chip && <span class="item__chip" style={`--chip-color: ${chip.color}`} aria-hidden="true">{chip.icon}</span>}
-            <span class="kicker">{kicker}</span>
-          </p>
-        )}
-        <h3 class="item__title"><a href={href} rel={isExternal ? 'noopener' : undefined}>{story.title}</a></h3>
-        {!compact && <p class="item__body">{story.body}</p>}
-        {!compact && hasByline && !isExternal && (
-          <ShareButtons url={shareUrl} title={story.title} />
-        )}
-      </div>
-    </>
+<article class:list={['item', { 'item--alert': isAlert }]}>
+  {/* 2026-10-02, item C1: the 46px fixed-width time RAIL (R5) is gone --
+      it collided with long titles (confirmed on real Moreno Valley titles,
+      which run longer once a venue line is no longer baked into them, see
+      C4 above) and, per its own now-removed comment, already needed a
+      mobile-only escape hatch for the exact same reason. Every row
+      (alert or not) now shares ONE kicker-line-above-title structure --
+      the alert branch already looked like this; this just generalizes it,
+      so there's one layout to reason about instead of two. */}
+  <p class="item__kicker">
+    {chip && <span class="item__chip" style={`--chip-color: ${chip.color}`} aria-hidden="true">{chip.icon}</span>}
+    {kicker && <span class="kicker">{kicker}</span>}
+    {timeLabel && timeMachineValue && (
+      <time class="item__when data" datetime={timeMachineValue}>{timeLabel}</time>
+    )}
+  </p>
+  <h3 class="item__title"><a href={href} rel={isExternal ? 'noopener' : undefined}>{displayTitle}</a></h3>
+  {venue && <p class="item__venue data">{venue}</p>}
+  {!compact && <p class="item__body">{story.body}</p>}
+  {!compact && hasByline && !isExternal && (
+    <ShareButtons url={shareUrl} title={story.title} />
   )}
 </article>
 
@@ -191,29 +193,11 @@ const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCat
 }
 .item--alert .kicker { color: var(--alert); }
 
-/* R5: the fixed-width left rail (non-alert rows only -- alerts stay
-   single-column, see the template's own comment). 46px comfortably fits
-   the SHORT strings relativeTime()/formatTime() produce for events/
-   announcements/alerts ("2h ago", "Tomorrow", "3:00 PM") but not a
-   meeting's formatCalendarDate() output ("Thu, September 10") -- confirmed
-   live on iPhone-width screens: that string wraps across three lines
-   inside 46px, and since the rail's wrapped height isn't reserved in the
-   row's own flow, the orphaned last line visually overlaps the NEXT list
-   item below it (City Council, Historic Preservation Commission, Park &
-   Rec Advisory Board entries all hit this -- same shared component, every
-   town). Fixed by removing the fixed-width column entirely below a mobile
-   breakpoint (stacking date above title instead) rather than hand-tuning a
-   column width for one specific string -- narrower still, or a longer
-   month name/weekday combination in a different locale, would just
-   reproduce the same bug at a different width. */
-.item--row { display: flex; gap: 0.875rem; }
-.item__rail { flex: 0 0 46px; width: 46px; padding-top: 0.1875rem; }
-.item__content { min-width: 0; flex: 1 1 auto; }
-@media (max-width: 30rem) {
-  .item--row { flex-direction: column; gap: 0.25rem; }
-  .item__rail { flex: 0 0 auto; width: auto; padding-top: 0; }
-}
-
+/* 2026-10-02, item C1: R5's fixed-width 46px rail is gone (see the
+   template's own comment) -- every row, alert or not, is single-column
+   now: a kicker line (chip + category + day/time), then the title, same
+   structure the alert branch already used. No per-row-type width/layout
+   split left to maintain, and nothing left to collide with a long title. */
 .item__kicker {
   display: flex;
   flex-wrap: wrap;
@@ -233,15 +217,20 @@ const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCat
   background: color-mix(in srgb, var(--chip-color) 15%, transparent);
 }
 .item__when {
-  font-size: 0.6875rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 0.8125rem;
   color: var(--ink-faint, var(--ink-soft));
 }
-.item--row .item__when { text-transform: none; letter-spacing: 0; font-size: 0.8125rem; }
 .item__title { margin: 0; font-size: 1.1875rem; line-height: 1.15; }
 .item__title a { color: inherit; text-decoration: none; }
 .item__title a:hover { color: var(--navy); text-decoration: underline; }
+/* 2026-10-02, item C4: the venue line a stripped "VENUE IN CAPS:" title
+   prefix becomes -- same visual weight as item__body's own color, placed
+   between title and body so it reads as "where", not as part of the name. */
+.item__venue {
+  margin: 0.125rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
 .item__body {
   margin: 0.375rem 0 0;
   font-size: 0.9375rem;

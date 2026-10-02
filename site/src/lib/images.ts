@@ -282,6 +282,42 @@ export function extractTitleVenuePrefix(title: string, cityName: string): string
   return prefix || null;
 }
 
+/** 2026-10-02, item C4: the DISPLAY-facing twin of extractTitleVenuePrefix()
+ *  above -- that one is deliberately loose (any colon-delimited prefix is a
+ *  candidate, fine for a best-effort image-matching lookup that simply
+ *  finds no facility and moves on for a false hit). Showing "Brand New Day"
+ *  with a fake "Spider-Man" venue line on an actual movie-review-shaped
+ *  title would be a real, visible bug, so this one is deliberately
+ *  STRICTER: only strips the prefix when it reads as a venue by the same
+ *  convention the real data actually uses -- ALL CAPS (confirmed live:
+ *  "MAIN LIBRARY", "MV MALL", "IRIS PLAZA", ...), never a mixed-case colon
+ *  title's own normal punctuation.
+ *
+ *  Returns the title with BOTH the "{cityName}: " prefix and a detected
+ *  ALL-CAPS "VENUE: " prefix removed, plus the venue in Title Case (short
+ *  words that are themselves all-caps, like "MV", are kept as acronyms --
+ *  ordinary title-casing would mangle "MV" into "Mv"). `venue` is null
+ *  when no such prefix was found, which is the common case for every
+ *  content type other than Moreno Valley's library/mall calendar feeds. */
+export function splitEventTitleAndVenue(
+  title: string, cityName: string,
+): { displayTitle: string; venue: string | null } {
+  const withoutTownPrefix = title.startsWith(`${cityName}: `) ? title.slice(cityName.length + 2) : title;
+  const colonIndex = withoutTownPrefix.indexOf(':');
+  if (colonIndex === -1) return { displayTitle: withoutTownPrefix, venue: null };
+
+  const prefix = withoutTownPrefix.slice(0, colonIndex).trim();
+  const rest = withoutTownPrefix.slice(colonIndex + 1).trim();
+  const looksLikeVenue = prefix.length > 0 && prefix === prefix.toUpperCase() && /[A-Z]/.test(prefix);
+  if (!looksLikeVenue || !rest) return { displayTitle: withoutTownPrefix, venue: null };
+
+  const venue = prefix
+    .split(' ')
+    .map((word) => (word.length <= 3 ? word : word.charAt(0) + word.slice(1).toLowerCase()))
+    .join(' ');
+  return { displayTitle: rest, venue };
+}
+
 /** Builds a normalized-alias -> facility lookup, longest-alias-first so
  *  e.g. "mv mall library" is checked before the shorter "mv mall" (see
  *  facilities.name_aliases, db/migrations/026). Facilities with no

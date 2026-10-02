@@ -6,7 +6,7 @@
  *  from repeating the same amount of text at a smaller size. */
 import type { Story, Facility } from '../lib/db';
 import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS } from '../lib/db';
-import { resolveImage, type ImageRef } from '../lib/images';
+import { resolveImage, splitEventTitleAndVenue, type ImageRef } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import { siteConfig } from '../lib/site-config';
 import { relativeTime } from '../lib/time';
@@ -21,7 +21,12 @@ const imageOverride = 'image' in Astro.props ? Astro.props.image : undefined;
 
 const isMeeting = story.source_type === 'meeting';
 const isAlert = story.source_type === 'alert';
+const isEvent = story.source_type === 'event';
 const hasByline = Boolean(story.byline);
+// Item C4 -- see StoryCard.astro's identical comment for the full reasoning.
+const { displayTitle, venue } = isEvent
+  ? splitEventTitleAndVenue(story.title, siteConfig.cityName)
+  : { displayTitle: story.title, venue: null };
 const when = story.occurs_at;
 const now = new Date();
 // Relative time (Liveliness Spec §2) -- same exceptions as StoryCard.astro/
@@ -37,7 +42,7 @@ const timeLabel = hasByline
       ? formatMeetingDate(when)
       : isAlert
         ? `${formatDate(when)}${formatTime(when) ? ` · ${formatTime(when)}` : ''}`
-        : relativeTime(when, now, siteConfig.timezone);
+        : relativeTime(when, now, siteConfig.timezone, story.ends_at);
 // .toISOString(), not a raw passthrough -- see StoryCard.astro's own
 // comment for why (the DB driver returns a real Date object at runtime
 // despite db.ts's `string` type annotation; passed raw into
@@ -85,7 +90,8 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
       )}
     </p>
   )}
-  <h3 class="secondary__title"><a href={storyHref(story.slug)}>{story.title}</a></h3>
+  <h3 class="secondary__title"><a href={storyHref(story.slug)}>{displayTitle}</a></h3>
+  {venue && <p class="secondary__venue data">{venue}</p>}
 </article>
 
 <style>
@@ -107,4 +113,5 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
 }
 .secondary__title a { color: inherit; text-decoration: none; }
 .secondary__title a:hover { color: var(--navy); }
+.secondary__venue { margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--ink-soft); }
 </style>
