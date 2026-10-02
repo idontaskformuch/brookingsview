@@ -25,7 +25,7 @@ import { neon } from '@neondatabase/serverless';
 import { handleComment } from './comment';
 import { handleShiftPollVote } from './shift-poll-vote';
 import { handleContact } from './contact';
-import { handleTicketmasterImage } from './ticketmaster-image';
+import { handleTicketmasterImage, handleTicketmasterImagePurge } from './ticketmaster-image';
 import { resolveContentSlugRedirect } from './content-slug-redirects';
 import {
   type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug, previousIsoWeekSlug,
@@ -81,6 +81,12 @@ export default {
     // ToS reasoning and the cache-then-placeholder behavior.
     if (request.method === 'GET' && url.pathname === '/img/ticketmaster') {
       return handleTicketmasterImage(request, env, ctx);
+    }
+    // 2026-10-02: operator-triggered purge for Ticketmaster's 24-hour
+    // removal-on-request deadline -- see ticketmaster-image.ts's own
+    // handleTicketmasterImagePurge() comment.
+    if (request.method === 'POST' && url.pathname === '/img/ticketmaster/purge') {
+      return handleTicketmasterImagePurge(request, env);
     }
 
     // Legacy meeting slugs (AdSense remediation Phase B1, see

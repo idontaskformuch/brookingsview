@@ -23,17 +23,29 @@
  * ALLOWED_HOSTS is a hard allowlist, not a convenience check: without it
  * this endpoint would be an open proxy that fetches ANY attacker-supplied
  * URL server-side (SSRF) just because it was handed a `u=` query param.
+ *
+ * 2026-10-02: TTL cut from 7 days to 24 hours, and a single-image purge
+ * route added -- found, re-reading Ticketmaster's terms for this follow-up,
+ * a SEPARATE affirmative obligation alongside the caching clause: "You
+ * shall... Remove from your application within 24 hours any Event Content
+ * or other information or tickets that the owner asks you to remove." A
+ * 7-day TTL with no purge path could leave a removal-requested image
+ * cached for up to a week past that deadline; 24 hours is the actual
+ * contractual ceiling, and handleTicketmasterImagePurge() below lets an
+ * operator clear one image immediately on request rather than waiting out
+ * even that.
  */
 import type { Env } from './_shared';
 import { townFromHostname } from './_shared';
 
 const ALLOWED_HOSTS = new Set(['s1.ticketm.net']);
 
-// 7 days: see module docstring's "reasonable periods" discussion. Long
-// enough that a marquee card's image is only ever fetched from
-// Ticketmaster once per week at most, short enough to never be mistaken
-// for permanent hosting.
-const CACHE_TTL_SECONDS = 60 * 60 * 24 * 7;
+// 24 hours: Ticketmaster's own 24-hour removal-on-request deadline (see
+// module docstring) is the real ceiling here, not just "reasonable
+// periods" in the abstract -- a cached image must never outlive a removal
+// request by more than this TTL even if the purge route (below) is never
+// called for it.
+const CACHE_TTL_SECONDS = 60 * 60 * 24;
 
 // Reuses each town's own real, already-Pexels-attributed "events" category
 // image (site/src/config/category-images.ts's first entry per town) rather
@@ -119,4 +131,47 @@ export async function handleTicketmasterImage(
   // so the caller gets a separate clone, not the same (now-drained) object.
   ctx.waitUntil(cache.put(request, cacheableResponse.clone()));
   return cacheableResponse;
+}
+
+/** POST /img/ticketmaster/purge?u=<original Ticketmaster URL> -- clears one
+ *  cached image immediately, for Ticketmaster's own 24-hour
+ *  removal-on-request deadline (see module docstring) rather than waiting
+ *  out CACHE_TTL_SECONDS. Operator-triggered (a human runs this when asked
+ *  to remove an image), not called by CI, so it's gated on a Workers
+ *  secret (TICKETMASTER_PURGE_SECRET) rather than the GitHub-Actions-only
+ *  DEPLOY_CHECK_SECRET pattern used elsewhere in this file's neighbors.
+ *  Builds the SAME cache key handleTicketmasterImage() would have used
+ *  (the full /img/ticketmaster?u=... request URL) so cache.delete() finds
+ *  the right entry without needing a second lookup table. */
+export async function handleTicketmasterImagePurge(
+  request: Request,
+  env: TicketmasterImageEnv,
+  cacheStorage: CacheStorage = caches,
+): Promise<Response> {
+  if (!env.TICKETMASTER_PURGE_SECRET) {
+    return new Response('Purge not configured', { status: 403 });
+  }
+  if (request.headers.get('X-BV-Purge-Secret') !== env.TICKETMASTER_PURGE_SECRET) {
+    return new Response('Forbidden', { status: 403 });
+  }
+
+  const originalUrl = new URL(request.url).searchParams.get('u');
+  if (!originalUrl) {
+    return new Response('Missing u parameter', { status: 400 });
+  }
+  let parsedOriginal: URL;
+  try {
+    parsedOriginal = new URL(originalUrl);
+  } catch {
+    return new Response('Invalid u parameter', { status: 400 });
+  }
+  if (!ALLOWED_HOSTS.has(parsedOriginal.hostname)) {
+    return new Response('Host not allowed', { status: 400 });
+  }
+
+  const cacheKeyUrl = new URL(request.url);
+  cacheKeyUrl.pathname = '/img/ticketmaster';
+  cacheKeyUrl.search = `?u=${encodeURIComponent(parsedOriginal.toString())}`;
+  const deleted = await cacheStorage.default.delete(new Request(cacheKeyUrl.toString()));
+  return new Response(deleted ? 'Purged' : 'Not cached', { status: deleted ? 200 : 404 });
 }

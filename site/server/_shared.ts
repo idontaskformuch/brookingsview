@@ -35,6 +35,17 @@ export interface Env {
    *  was even written), which the hardcoded map would have silently
    *  ignored forever. */
   CONTACT_TO_ADDRESS: string;
+  /** 2026-10-02: authorizes POST /img/ticketmaster/purge (see
+   *  ticketmaster-image.ts's own module comment) -- Ticketmaster's
+   *  Developer Terms of Use require removing Event Content "within 24
+   *  hours" of the rights holder asking, and the edge cache otherwise has
+   *  no per-image purge path short of waiting out the TTL. Optional: unset
+   *  means the purge endpoint always 403s, same "absent = feature off"
+   *  convention as RESEND_API_KEY above. Set via `wrangler secret put
+   *  TICKETMASTER_PURGE_SECRET --env <town>`, an operator-triggered action,
+   *  not something CI ever calls -- unlike DEPLOY_CHECK_SECRET (a GitHub
+   *  Actions env var), this is a genuine Workers secret. */
+  TICKETMASTER_PURGE_SECRET?: string;
 }
 
 /** The domain Resend sends contact-form notifications FROM -- always the

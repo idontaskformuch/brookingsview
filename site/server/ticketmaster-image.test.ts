@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { handleTicketmasterImage } from './ticketmaster-image';
+import { handleTicketmasterImage, handleTicketmasterImagePurge } from './ticketmaster-image';
 
 // This repo's vitest config runs in a plain Node environment (see
 // vitest.config.ts's own comment) -- no real Cloudflare `caches` global,
@@ -13,6 +13,7 @@ function fakeCacheStorage() {
     default: {
       async match(request: Request) { return store.get(request.url)?.clone() ?? undefined; },
       async put(request: Request, response: Response) { store.set(request.url, response); },
+      async delete(request: Request) { return store.delete(request.url); },
     },
   } as unknown as CacheStorage;
 }
@@ -69,7 +70,7 @@ describe('handleTicketmasterImage', () => {
 
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('real-image-bytes');
-    expect(res.headers.get('Cache-Control')).toMatch(/max-age=604800/);
+    expect(res.headers.get('Cache-Control')).toMatch(/max-age=86400/);
     expect(fetchMock).toHaveBeenCalledWith(REAL_URL);
   });
 
@@ -117,5 +118,78 @@ describe('handleTicketmasterImage', () => {
     expect(assetsFetch).toHaveBeenCalledTimes(1);
     const requestedPath = new URL(assetsFetch.mock.calls[0][0].url).pathname;
     expect(requestedPath).toBe('/assets/images/categories/moreno_valley_ca-events-1.png');
+  });
+});
+
+// 2026-10-02 follow-up: Ticketmaster's Developer Terms of Use require
+// removing Event Content "within 24 hours" of the rights holder asking --
+// handleTicketmasterImagePurge() is the operator-triggered path for that,
+// independent of waiting out CACHE_TTL_SECONDS (now 24h, was 7 days).
+describe('handleTicketmasterImagePurge', () => {
+  const PURGE_SECRET = 'test-purge-secret';
+
+  function fakeEnvWithSecret() {
+    return { ...fakeEnv(), TICKETMASTER_PURGE_SECRET: PURGE_SECRET };
+  }
+
+  it('403s when TICKETMASTER_PURGE_SECRET is not configured at all', async () => {
+    const req = new Request(`https://brookingsview.com/img/ticketmaster/purge?u=${encodeURIComponent(REAL_URL)}`, {
+      method: 'POST', headers: { 'X-BV-Purge-Secret': 'anything' },
+    });
+    const res = await handleTicketmasterImagePurge(req, fakeEnv(), fakeCacheStorage());
+    expect(res.status).toBe(403);
+  });
+
+  it('403s when the provided secret does not match', async () => {
+    const req = new Request(`https://brookingsview.com/img/ticketmaster/purge?u=${encodeURIComponent(REAL_URL)}`, {
+      method: 'POST', headers: { 'X-BV-Purge-Secret': 'wrong-secret' },
+    });
+    const res = await handleTicketmasterImagePurge(req, fakeEnvWithSecret(), fakeCacheStorage());
+    expect(res.status).toBe(403);
+  });
+
+  it('rejects a host outside the allowlist, same SSRF guard as the image route', async () => {
+    const evil = encodeURIComponent('https://attacker.example/internal-metadata');
+    const req = new Request(`https://brookingsview.com/img/ticketmaster/purge?u=${evil}`, {
+      method: 'POST', headers: { 'X-BV-Purge-Secret': PURGE_SECRET },
+    });
+    const res = await handleTicketmasterImagePurge(req, fakeEnvWithSecret(), fakeCacheStorage());
+    expect(res.status).toBe(400);
+  });
+
+  it('purges a real cached image and a subsequent fetch re-downloads it from Ticketmaster', async () => {
+    const fetchMock = vi.fn(async () => new Response('real-image-bytes', {
+      status: 200, headers: { 'Content-Type': 'image/jpeg' },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const cacheStorage = fakeCacheStorage();
+    const imageUrl = `https://brookingsview.com/img/ticketmaster?u=${encodeURIComponent(REAL_URL)}`;
+
+    // Prime the cache.
+    await handleTicketmasterImage(new Request(imageUrl), fakeEnv(), fakeCtx(), cacheStorage);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Confirm it's actually cached (no re-fetch) before purging.
+    await handleTicketmasterImage(new Request(imageUrl), fakeEnv(), fakeCtx(), cacheStorage);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const purgeReq = new Request(`https://brookingsview.com/img/ticketmaster/purge?u=${encodeURIComponent(REAL_URL)}`, {
+      method: 'POST', headers: { 'X-BV-Purge-Secret': PURGE_SECRET },
+    });
+    const purgeRes = await handleTicketmasterImagePurge(purgeReq, fakeEnvWithSecret(), cacheStorage);
+    expect(purgeRes.status).toBe(200);
+
+    // Next image request must re-fetch from Ticketmaster -- the cache entry is really gone.
+    await handleTicketmasterImage(new Request(imageUrl), fakeEnv(), fakeCtx(), cacheStorage);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns 404 when purging an image that was never cached', async () => {
+    const req = new Request(`https://brookingsview.com/img/ticketmaster/purge?u=${encodeURIComponent(REAL_URL)}`, {
+      method: 'POST', headers: { 'X-BV-Purge-Secret': PURGE_SECRET },
+    });
+    const res = await handleTicketmasterImagePurge(req, fakeEnvWithSecret(), fakeCacheStorage());
+    expect(res.status).toBe(404);
   });
 });
