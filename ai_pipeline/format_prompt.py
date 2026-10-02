@@ -517,6 +517,13 @@ class FormatResult:
     # true) -- see NEEDS-HUMAN-REVIEW.md "Summary Tone Prompts". None for every
     # other path, including the old prose-blob generator for the same types.
     meta: dict | None = None
+    # The LAST attempt's violations when generated_by == "template_fallback"
+    # because both AI attempts were rejected (never set for the "template"
+    # path -- TEMPLATERS types never call the model at all, nothing to
+    # report). publish.py's discard-retry-cap logic (NEEDS-HUMAN-REVIEW.md
+    # #77/#78) reads this to record WHY a record keeps failing, rather than
+    # re-deriving it. None for every other generated_by value.
+    violations: list[str] | None = None
 
 
 # Field names actually used across meetings/events rows for "does the
@@ -702,7 +709,8 @@ def format_record(record: dict, source_type: str, cfg: dict,
         # still 'pending' unless finalized here too.
         api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="template_fallback",
                                       violations_by_attempt=violations_per_attempt)
-        return _fallback(record, source_type, cfg, reason=f"AI ej tillgängligt: {exc}")
+        return _fallback(record, source_type, cfg, reason=f"AI ej tillgängligt: {exc}",
+                         violations=violations_per_attempt[-1] if violations_per_attempt else None)
 
     if passed:
         api_usage.finalize_generation(usage_ids, succeeded=True)
@@ -712,10 +720,11 @@ def format_record(record: dict, source_type: str, cfg: dict,
     api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="template_fallback",
                                   violations_by_attempt=violations_per_attempt)
     return _fallback(record, source_type, cfg,
-                     reason=f"guardrail: {'; '.join(violations)}")
+                     reason=f"guardrail: {'; '.join(violations)}", violations=violations)
 
 
-def _fallback(record: dict, source_type: str, cfg: dict, reason: str) -> FormatResult:
+def _fallback(record: dict, source_type: str, cfg: dict, reason: str,
+             violations: list[str] | None = None) -> FormatResult:
     templater = TEMPLATERS.get(source_type)
     if templater:
         return FormatResult(text=templater(record.get("payload", record), cfg),
@@ -723,4 +732,4 @@ def _fallback(record: dict, source_type: str, cfg: dict, reason: str) -> FormatR
     # sista utväg: en minimal, säker faktarad
     title = record.get("title") or record.get("body") or record.get("description") or ""
     return FormatResult(text=str(title).strip(),
-                        generated_by="template_fallback", verified=bool(title))
+                        generated_by="template_fallback", verified=bool(title), violations=violations)

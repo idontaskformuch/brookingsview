@@ -67,6 +67,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+import requests
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
@@ -74,6 +75,14 @@ from ai_pipeline import guardrails
 from ai_pipeline.format_prompt import format_record, TEMPLATERS
 from ai_pipeline.venue_registry import load_registry, queue_for_review, resolve_venue
 from db.db import content_hash
+
+# A record discarded this many consecutive scheduled runs (both AI attempts
+# rejected, no TEMPLATERS fallback for meeting/event/alert -- see the
+# SUBSTANSKRAV comment below) stops being retried at all. Without this, a
+# structurally-stuck record burns 2 real API calls every 6-hour run
+# indefinitely -- found live via api_usage.reject_reason (NEEDS-HUMAN-
+# REVIEW.md #77/#78), not a hypothetical.
+MAX_CONSECUTIVE_DISCARDS = 3
 
 SOURCES: dict[str, str] = {
     "meetings": "meeting",
@@ -534,6 +543,76 @@ def already_has_a_story(source_type: str, row_id: int, known_meeting_ids: set[in
     return source_type == "meeting" and row_id in known_meeting_ids
 
 
+def _alert(town_id: str, msg: str) -> None:
+    """Same fire-and-forget pattern as scrapers/runner.py's and scripts/
+    check_deployed_content.py's own _alert() -- duplicated, not imported,
+    matching this codebase's existing convention of a small per-module
+    helper over a shared one (see e.g. site/server/content-slug-redirects.ts's
+    own comment on the same tradeoff). ALERT_WEBHOOK is already wired into
+    all three *-scrape.yml workflows' env (used by check_source_staleness.py
+    in the same job), so no workflow change is needed for this to fire."""
+    hook = os.environ.get("ALERT_WEBHOOK")
+    full_msg = f"[{town_id}] publish.py gave up retrying a record: {msg}"
+    print(f"ALERT: {full_msg}", file=sys.stderr)
+    if hook:
+        try:
+            requests.post(hook, json={"text": full_msg}, timeout=10)
+        except Exception:  # pragma: no cover
+            pass
+
+
+def load_given_up_records(conn, town_id: str) -> set[tuple[str, str]]:
+    """(source_type, record_id) pairs already at/over MAX_CONSECUTIVE_DISCARDS
+    -- loaded once per publish_table() call (same pattern as existing_slugs()/
+    existing_meeting_ids()), so a record publish.py has already given up on
+    is skipped BEFORE format_record() is ever called again, not just logged
+    as skipped after spending on it anyway."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT source_type, record_id FROM publish_discard_streak "
+            "WHERE town_id = %s AND consecutive_runs >= %s",
+            (town_id, MAX_CONSECUTIVE_DISCARDS),
+        )
+        return {(r[0], r[1]) for r in cur.fetchall()}
+
+
+def record_discard(conn, town_id: str, source_type: str, record_id: str,
+                    reject_reason: str | None) -> int:
+    """UPSERTs this record's consecutive-discard streak, returns the new
+    count. Runs on the SAME `conn` as every other write in publish_table() --
+    so --dry-run's rollback (see main()) undoes this bookkeeping exactly
+    like it undoes a real INSERT INTO stories, instead of a dry/test run
+    silently polluting the real retry-cap count."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO publish_discard_streak
+                (town_id, source_type, record_id, consecutive_runs, last_discarded_at, last_reject_reason)
+            VALUES (%s, %s, %s, 1, now(), %s)
+            ON CONFLICT (town_id, source_type, record_id) DO UPDATE SET
+                consecutive_runs = publish_discard_streak.consecutive_runs + 1,
+                last_discarded_at = now(),
+                last_reject_reason = EXCLUDED.last_reject_reason
+            RETURNING consecutive_runs
+            """,
+            (town_id, source_type, record_id, reject_reason),
+        )
+        return cur.fetchone()[0]
+
+
+def clear_discard_streak(conn, town_id: str, source_type: str, record_id: str) -> None:
+    """Deletes this record's streak row, if any -- called on a successful
+    publish. A record that eventually succeeds wasn't permanently stuck, so
+    nothing more to track (see module docstring at the top of this file's
+    migration, db/migrations/048_publish_discard_streak.sql, for why this
+    table only ever holds CURRENTLY struggling records)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM publish_discard_streak WHERE town_id = %s AND source_type = %s AND record_id = %s",
+            (town_id, source_type, record_id),
+        )
+
+
 def _recent_openings(conn, town_id: str, source_type: str, limit: int = 10) -> list[str]:
     """Opening shapes (guardrails.classify_opening()) of the most recently
     published same-source_type/town stories -- the proxy for "what's
@@ -573,9 +652,10 @@ def _localize_datetime_fields(record: dict, tz: ZoneInfo) -> dict:
 def publish_table(
     conn, cfg: dict, table: str, known_slugs: set[str], max_new: int = DEFAULT_MAX_NEW_PER_RUN,
     known_meeting_ids: set[int] | None = None, verbose: bool = False,
-) -> tuple[int, int, int, int, int]:
+) -> tuple[int, int, int, int, int, int]:
     known_meeting_ids = known_meeting_ids if known_meeting_ids is not None else set()
     town_id = cfg["town_id"]
+    given_up = load_given_up_records(conn, town_id)
     tz = ZoneInfo(cfg.get("timezone", "America/Chicago"))
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(f"SELECT * FROM {table} WHERE town_id = %s ORDER BY id", (town_id,))
@@ -602,13 +682,14 @@ def publish_table(
         if tone_v2 else {}
     )
 
-    published = skipped = thin = stale = remaining = 0
+    published = skipped = thin = stale = remaining = abandoned = 0
     for row in rows:
         if not has_substance(table, row):
             thin += 1
             continue
 
         source_type = resolve_source_type(table, row)
+        record_id = str(row["id"])
 
         # varningar har ett bäst-före-datum en agenda/eventbeskrivning inte har
         # -- se is_current(). Kollas innan slug/AI så en inaktuell varning
@@ -619,6 +700,14 @@ def publish_table(
 
         if already_has_a_story(source_type, row["id"], known_meeting_ids):
             skipped += 1
+            continue
+
+        # Retry cap (NEEDS-HUMAN-REVIEW.md #77/#78, MAX_CONSECUTIVE_DISCARDS):
+        # a record already given up on in a PRIOR run -- checked before
+        # known_slugs/the AI call, so it costs nothing further, not just
+        # "logged as skipped after spending on it anyway."
+        if (source_type, record_id) in given_up:
+            abandoned += 1
             continue
 
         # SEO Fas 5: meetings get a dated slug going forward
@@ -669,9 +758,31 @@ def publish_table(
         # framtida körning försöka igen (lägg INTE till i known_slugs).
         if result.generated_by == "template_fallback" and source_type not in TEMPLATERS:
             thin += 1
-            if verbose:
-                print(f"    DISCARD  {slug}  (both attempts rejected, no template -- retried next run)")
+            reject_reason = "; ".join(result.violations) if result.violations else None
+            streak = record_discard(conn, town_id, source_type, record_id, reject_reason)
+            if streak >= MAX_CONSECUTIVE_DISCARDS:
+                # Give up for good: excluded from the rest of THIS run too
+                # (not just the next one) via the same known_slugs/
+                # known_meeting_ids sets already_has_a_story()/the slug
+                # check above read.
+                known_slugs.add(slug)
+                if source_type == "meeting":
+                    known_meeting_ids.add(row["id"])
+                abandoned += 1
+                _alert(town_id, f"{source_type} #{record_id} discarded {streak} consecutive runs -- "
+                                f"giving up. last_reject_reason: {reject_reason}")
+                if verbose:
+                    print(f"    ABANDON  {slug}  ({streak} consecutive discards -- never retrying again)")
+            elif verbose:
+                print(f"    DISCARD  {slug}  (attempt {streak}/{MAX_CONSECUTIVE_DISCARDS}, "
+                      "retried next run)")
             continue
+
+        # A record that just succeeded wasn't permanently stuck -- clear any
+        # streak a PRIOR run's discard(s) left behind, so a record that
+        # struggled for 1-2 runs and then passed doesn't carry a stale
+        # streak toward some future, unrelated failure.
+        clear_discard_streak(conn, town_id, source_type, record_id)
 
         title = build_title(table, row, cfg)
         source_url = build_source_url(table, row)
@@ -733,7 +844,7 @@ def publish_table(
         if verbose:
             occurs_label = occurs_at.date().isoformat() if occurs_at else "(no date)"
             print(f"    PUBLISH  {slug}  occurs_at={occurs_label}  generated_by={result.generated_by}")
-    return published, skipped, thin, stale, remaining
+    return published, skipped, thin, stale, remaining, abandoned
 
 
 def main() -> int:
@@ -770,16 +881,17 @@ def main() -> int:
         known_meetings = existing_meeting_ids(conn, town_id)
         print(f"{len(known)} stories finns redan för {town_id}\n")
 
-        tot_pub = tot_skip = tot_thin = tot_stale = tot_remaining = 0
+        tot_pub = tot_skip = tot_thin = tot_stale = tot_remaining = tot_abandoned = 0
         for table in SOURCES:
             if args.only and table not in args.only:
                 continue
-            pub, skip, thin, stale, remaining = publish_table(
+            pub, skip, thin, stale, remaining, abandoned = publish_table(
                 conn, cfg, table, known, max_new=max_new, known_meeting_ids=known_meetings,
                 verbose=args.dry_run,
             )
             extra = f", {thin} för tunna (ej publicerade)" if thin else ""
             extra += f", {stale} inaktuella (ej publicerade)" if stale else ""
+            extra += f", {abandoned} uppgivna efter {MAX_CONSECUTIVE_DISCARDS} försök" if abandoned else ""
             print(f"  {table:20} -> {pub} nya, {skip} redan publicerade{extra}")
             if remaining:
                 # tydlig signal att detta är en STOR BACKFYLLNING som fortsätter
@@ -791,6 +903,7 @@ def main() -> int:
             tot_thin += thin
             tot_stale += stale
             tot_remaining += remaining
+            tot_abandoned += abandoned
         if args.dry_run:
             conn.rollback()
         else:
@@ -798,6 +911,7 @@ def main() -> int:
 
     print(f"\nTotalt: {tot_pub} nya stories, {tot_skip} hoppade, "
           f"{tot_thin} för tunna, {tot_stale} inaktuella"
+          + (f", {tot_abandoned} uppgivna" if tot_abandoned else "")
           + (f", {tot_remaining} kvar till nästa körning" if tot_remaining else ""))
     if args.dry_run:
         print("(dry-run -- transaktionen rullades tillbaka, INGET skrevs till stories)")
