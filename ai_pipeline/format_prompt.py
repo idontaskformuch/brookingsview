@@ -258,7 +258,7 @@ HARD RULES (fact/safety, unconditional):
   not state it.
 - No opinion, no political framing, neutral on any contested civic matter.
 - NEVER name an individual person. Refer to people by role instead ("an
-  applicant in Preston Township", "the council", "a dispatcher"). Case and
+  applicant for the permit", "the council", "a dispatcher"). Case and
   file numbers give traceability without naming anyone. Organizations,
   businesses, agencies, and place names are fine to name.
 - Explain jargon and acronyms in plain words on first use, or avoid them.
