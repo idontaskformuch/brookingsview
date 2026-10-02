@@ -401,5 +401,8 @@ function firstLine(body: string): string {
  *  of the homepage's -24h candidate query. Returns null on a genuinely
  *  quiet week rather than forcing a pick -- never fabricate significance. */
 export function selectWeeklyLead(candidates: Story[]): Story | null {
-  return selectWorthKnowing(candidates, new Set(), [], 1)[0] ?? null;
+  // No front-page hero/secondary selection happening in this weekly-digest
+  // context (see selectWorthKnowing()'s own comment for what usedSlugs is
+  // for) -- nothing to exclude, so an empty Set.
+  return selectWorthKnowing(candidates, new Set(), [], new Set(), 1)[0] ?? null;
 }

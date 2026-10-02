@@ -143,7 +143,6 @@ const latestFromSelection = selectLatestFrom(latestFromCandidates);
 // slot that never renders (see frontPageImageOrder just below).
 const feature = todaysFeature && !isSharedContentType(todaysFeature.source_type) ? todaysFeature : null;
 const alertBannerSlugs = new Set(alerts.map((a) => a.slug));
-const worthKnowingSelection = selectWorthKnowing(worthKnowingCandidates, alertBannerSlugs, latestFromSelection);
 
 const today = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
 
@@ -155,6 +154,11 @@ const today = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
 // resolveImage() tier the actual <img> rendering uses, so the selection
 // can never pick something LeadStory/SecondaryStory then fail to render an
 // image for.
+//
+// 2026-10-02, item D5: computed BEFORE Worth Knowing now (it used to run
+// after), specifically so usedSlugs exists in time to be passed into
+// selectWorthKnowing() below -- see that function's own comment for the
+// real duplicate-card bug this ordering fixes.
 const hasImage = (story: (typeof upcoming)[number]) => resolveImage(story, {
   town: siteConfig.townId,
   cityName: siteConfig.cityName,
@@ -169,6 +173,8 @@ const hasImage = (story: (typeof upcoming)[number]) => resolveImage(story, {
 const widgetSlugs = new Set<string>();
 
 const { fullWidthLead, secondary, usedSlugs } = selectFrontPageRhythm(upcoming, alerts, { hasImage, widgetSlugs });
+
+const worthKnowingSelection = selectWorthKnowing(worthKnowingCandidates, alertBannerSlugs, latestFromSelection, usedSlugs);
 
 // Real per-place/category photos (see NEEDS-HUMAN-REVIEW.md "Switch venue/
 // category images to real photos") replaced the old, much larger

@@ -76,13 +76,13 @@ describe('selectLatestFrom', () => {
 describe('selectWorthKnowing', () => {
   it('excludes a story already shown in the alert banner', () => {
     const bannered = story({ slug: 'heat-advisory', source_type: 'alert' });
-    const result = selectWorthKnowing([bannered], new Set(['heat-advisory']), []);
+    const result = selectWorthKnowing([bannered], new Set(['heat-advisory']), [], new Set());
     expect(result).toEqual([]);
   });
 
   it('caps at the given limit', () => {
     const items = ['a', 'b', 'c', 'd'].map((slug) => story({ slug }));
-    expect(selectWorthKnowing(items, new Set(), [], 3)).toHaveLength(3);
+    expect(selectWorthKnowing(items, new Set(), [], new Set(), 3)).toHaveLength(3);
   });
 
   it('drops a quorum-notice-themed candidate when Latest From already covers that theme', () => {
@@ -99,7 +99,7 @@ describe('selectWorthKnowing', () => {
       title: 'The Quorum at Sundown',
       body: 'Five times this summer the city has issued a quorum notice for Downtown at Sundown.',
     });
-    const result = selectWorthKnowing([meetingNotice, realDecision], new Set(), [quorumColumn]);
+    const result = selectWorthKnowing([meetingNotice, realDecision], new Set(), [quorumColumn], new Set());
     expect(result.map((s) => s.slug)).toEqual(['meeting-2']);
   });
 
@@ -109,7 +109,7 @@ describe('selectWorthKnowing', () => {
       body: 'The Planning Commission approved a conditional use permit for a truck facility.',
     });
     const unrelatedColumn = story({ slug: 'gopher-bounty', source_type: 'vetenskap_kronika', body: 'Pest control ecology.' });
-    const result = selectWorthKnowing([realDecision], new Set(), [unrelatedColumn]);
+    const result = selectWorthKnowing([realDecision], new Set(), [unrelatedColumn], new Set());
     expect(result.map((s) => s.slug)).toEqual(['meeting-2']);
   });
 
@@ -122,14 +122,41 @@ describe('selectWorthKnowing', () => {
       slug: 'meeting-b', source_type: 'meeting',
       body: 'At least four members may attend, though no official city business will be conducted.',
     });
-    const result = selectWorthKnowing([notice1, notice2], new Set(), []);
+    const result = selectWorthKnowing([notice1, notice2], new Set(), [], new Set());
     expect(result.map((s) => s.slug)).toEqual(['meeting-a']);
   });
 
   it('featured items are not excluded by the theme check just for existing', () => {
     const featured = story({ slug: 'featured-item', source_type: 'meeting', featured: true, body: 'Nothing quorum-related here.' });
-    const result = selectWorthKnowing([featured], new Set(), []);
+    const result = selectWorthKnowing([featured], new Set(), [], new Set());
     expect(result.map((s) => s.slug)).toEqual(['featured-item']);
+  });
+
+  // 2026-10-02, item D5: the real bug this parameter exists to close -- a
+  // meeting (or any other worth-knowing-eligible story) picked as the
+  // homepage's own hero/secondary card must never ALSO appear in Worth
+  // Knowing, which used to be selected from the same candidate pool with
+  // no cross-check against the hero/secondary selection at all.
+  describe('usedSlugs (no duplicate with hero/secondary)', () => {
+    it('excludes a candidate whose slug is already used as the hero or a secondary card', () => {
+      const heroCandidate = story({ slug: 'council-vote', source_type: 'meeting', body: 'The Council approved a new budget line item.' });
+      const other = story({ slug: 'other-meeting', source_type: 'meeting', body: 'The Planning Commission approved a permit.' });
+      const result = selectWorthKnowing([heroCandidate, other], new Set(), [], new Set(['council-vote']));
+      expect(result.map((s) => s.slug)).toEqual(['other-meeting']);
+    });
+
+    it('with an empty usedSlugs set, behaves exactly as before (no new exclusions)', () => {
+      const a = story({ slug: 'meeting-a', source_type: 'meeting', body: 'The Council approved a budget item.' });
+      const result = selectWorthKnowing([a], new Set(), [], new Set());
+      expect(result.map((s) => s.slug)).toEqual(['meeting-a']);
+    });
+
+    it('excluding the hero slug can surface a candidate that would otherwise be cut by the limit', () => {
+      const used = story({ slug: 'used-1', source_type: 'meeting', body: 'Routine council business A.' });
+      const promoted = story({ slug: 'promoted', source_type: 'meeting', body: 'Routine council business B.' });
+      const result = selectWorthKnowing([used, promoted], new Set(), [], new Set(['used-1']), 1);
+      expect(result.map((s) => s.slug)).toEqual(['promoted']);
+    });
   });
 });
 

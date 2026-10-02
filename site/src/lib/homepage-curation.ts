@@ -181,10 +181,20 @@ export function selectFrontPageRhythm(
   return { fullWidthLead: null, secondary, usedSlugs: new Set(secondary.map((s) => s.slug)) };
 }
 
+/** 2026-10-02, item D5: `usedSlugs` (selectFrontPageRhythm()'s own return
+ *  value -- the hero + secondary cards' slugs) is REQUIRED, not optional,
+ *  on purpose. Before this fix, Worth Knowing was selected from the same
+ *  `candidates` pool as the hero/secondary rhythm with no cross-check
+ *  against it at all -- a meeting (or any other worth-knowing-eligible
+ *  story) could legitimately be picked as BOTH the hero/secondary AND
+ *  Worth Knowing, rendering the identical card twice on one homepage. A
+ *  required parameter (not a default empty Set) means a caller can't
+ *  silently skip wiring this the way the old call site did. */
 export function selectWorthKnowing(
   candidates: Story[],
   alertBannerSlugs: Set<string>,
   latestFromSelection: Story[],
+  usedSlugs: Set<string>,
   limit = 3
 ): Story[] {
   const latestFromThemes = new Set(
@@ -196,6 +206,7 @@ export function selectWorthKnowing(
   for (const story of candidates) {
     if (selected.length >= limit) break;
     if (alertBannerSlugs.has(story.slug)) continue;
+    if (usedSlugs.has(story.slug)) continue;
     const theme = themeSignal(story);
     if (theme && (latestFromThemes.has(theme) || seenThemes.has(theme))) continue;
     if (theme) seenThemes.add(theme);
