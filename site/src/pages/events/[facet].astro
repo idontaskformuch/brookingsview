@@ -178,8 +178,8 @@ const hubBacklink = resolveHubBacklink('events/facet', siteConfig);
         {items.map((item) => (
           <div class="event-cell">
             {item.sourceKind === 'story'
-              ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} />
-              : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" />}
+              ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} facilities={facilities} />
+              : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" facilities={facilities} />}
             {facet.slug === 'free' && item.sourceKind === 'story' && item.story.free_teaser && (
               <p class="free-teaser">{item.story.free_teaser}</p>
             )}

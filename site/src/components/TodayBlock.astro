@@ -46,7 +46,7 @@ import HeatAdvisoryWidget from './HeatAdvisoryWidget.astro';
 import { artsEventAsStory, type FeedItem, type TodayBucket } from '../lib/events';
 import { computeOpenStatus, type OpenStatus } from '../lib/facility-hours';
 import { joinWithOr } from '../lib/status-line';
-import type { Story, TrafficIncident, StructuredHours } from '../lib/db';
+import type { Story, TrafficIncident, StructuredHours, Facility } from '../lib/db';
 import type { ClosureWatchStatus } from '../lib/closure-watch';
 import { storyHref } from '../lib/content-slugs';
 
@@ -65,6 +65,10 @@ export interface Props {
    *  (even with an empty `incidents` array) means the source exists. */
   traffic: { incidents: TrafficIncident[] } | null;
   cityHallFacility: { hours_structured: StructuredHours | null; name: string } | null;
+  /** Item C4 (corrected) -- only needed to resolve an event's venue line via
+   *  ground-truth facility alias matching, same reasoning as StoryCard.astro's
+   *  own facilities prop. */
+  facilities?: Pick<Facility, 'slug' | 'name_aliases'>[];
   tonight: TodayBucket;
   tomorrow: TodayBucket;
   /** The dedicated /today/ page wants its own <h1>+chrome around this
@@ -83,7 +87,7 @@ export interface Props {
 
 const {
   cityName, timezone, asOf, temperature, activeAlerts, closureStatus, traffic,
-  cityHallFacility, tonight, tomorrow, headingLevel = 'h2', headingText,
+  cityHallFacility, facilities = [], tonight, tomorrow, headingLevel = 'h2', headingText,
 } = Astro.props;
 
 const Heading = headingLevel;
@@ -193,7 +197,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
         <ul class="today-block__cards">
           {tonight.items.map((item) => {
             const { story, href, kicker } = toStory(item);
-            return <li><StoryCard story={story} compact href={href} kicker={kicker} /></li>;
+            return <li><StoryCard story={story} compact href={href} kicker={kicker} facilities={facilities} /></li>;
           })}
         </ul>
         {tonight.total > tonight.items.length && (
@@ -213,7 +217,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
         <ul class="today-block__cards">
           {tomorrow.items.map((item) => {
             const { story, href, kicker } = toStory(item);
-            return <li><StoryCard story={story} compact href={href} kicker={kicker} /></li>;
+            return <li><StoryCard story={story} compact href={href} kicker={kicker} facilities={facilities} /></li>;
           })}
         </ul>
       </>

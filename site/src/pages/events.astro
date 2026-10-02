@@ -5,7 +5,7 @@ import StoryCard from '../components/StoryCard.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
-import { getUpcomingStories, getPastStories, getUpcomingArtsEvents, getRegionalSports, calendarDateParts } from '../lib/db';
+import { getUpcomingStories, getPastStories, getUpcomingArtsEvents, getRegionalSports, getFacilities, calendarDateParts } from '../lib/db';
 import {
   buildEventFeed, artsEventAsStory, withAttribution, localDateParts, utcMidnight,
   type FeedItem,
@@ -33,7 +33,7 @@ const clusterNavItems = resolveHubNavItems('events', siteConfig);
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const townwideKicker = isBrookings ? 'Around Town' : undefined;
 
-const [upcoming, past, artsEvents] = await Promise.all([
+const [upcoming, past, artsEvents, facilities] = await Promise.all([
   getUpcomingStories(['event'], 120),
   getPastStories(['event'], 12),
   // Brookings-specifikt (SDSU) -- tom lista för andra orter, samma
@@ -43,6 +43,7 @@ const [upcoming, past, artsEvents] = await Promise.all([
   // stället för att visas på /university, se
   // scrapers/parsers/sdsu_events_v1.py:s "EDITORIAL-OMORGANISERING".
   getUpcomingArtsEvents(40),
+  getFacilities(),
 ]);
 
 // FAS 2: en primary-lags (66ers) HEMMAmatch idag hör hemma i "Today"-bucketen
@@ -167,8 +168,8 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
       {list.length > 0 && (
         <div class="grid">
           {list.map((item) => item.sourceKind === 'story'
-            ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={townwideKicker} />
-            : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" />
+            ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={townwideKicker} facilities={facilities} />
+            : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" facilities={facilities} />
           )}
         </div>
       )}
@@ -180,7 +181,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   {past.length > 0 && (
     <>
       <SectionRule label="Recently" href="/events/past/" />
-      <div class="grid">{past.map((story) => <StoryCard story={story} compact kicker={townwideKicker} />)}</div>
+      <div class="grid">{past.map((story) => <StoryCard story={story} compact kicker={townwideKicker} facilities={facilities} />)}</div>
     </>
   )}
 

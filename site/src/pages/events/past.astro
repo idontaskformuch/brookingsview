@@ -27,13 +27,16 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import StoryCard from '../../components/StoryCard.astro';
 import ShareButton from '../../components/ShareButton.astro';
-import { getContentByType } from '../../lib/db';
+import { getContentByType, getFacilities } from '../../lib/db';
 import type { Story } from '../../lib/db';
 import { localDateParts } from '../../lib/events';
 import { siteConfig } from '../../lib/site-config';
 import { storyHref } from '../../lib/content-slugs';
 
-const allEvents = await getContentByType(['event'], 5000);
+const [allEvents, facilities] = await Promise.all([
+  getContentByType(['event'], 5000),
+  getFacilities(),
+]);
 const events = allEvents.filter((e) => !e.occurs_at || new Date(e.occurs_at) < new Date());
 
 const MONTH_NAMES = [
@@ -92,7 +95,7 @@ const itemListJsonLd = events.length > 0 ? {
     <section class="month">
       <h2 class="month__heading">{key === 'undated' ? 'Undated' : monthLabel(key)}</h2>
       <div class="grid">
-        {groups.get(key)!.map((story) => <StoryCard story={story} compact />)}
+        {groups.get(key)!.map((story) => <StoryCard story={story} compact facilities={facilities} />)}
       </div>
     </section>
   )) : (
