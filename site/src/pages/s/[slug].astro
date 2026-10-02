@@ -20,6 +20,7 @@ import { resolveImage, contentTrackCropPaths } from '../../lib/images';
 import { categoryImagesFor } from '../../config/category-images';
 import ImageAttribution from '../../components/ImageAttribution.astro';
 import { shouldNoindexStory, THIN_SCRAPED_SOURCE_TYPES } from '../../lib/noindex';
+import { hasEventPassed } from '../../lib/time';
 import { canonicalUrlForStory } from '../../lib/cross-site-canonical';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 import { publicSlug, storyHref } from '../../lib/content-slugs';
@@ -41,7 +42,19 @@ export async function getStaticPaths() {
 const { story, facilities } = Astro.props as { story: Story; facilities: Facility[] };
 const isAlert = story.source_type === 'alert';
 const isMeeting = story.source_type === 'meeting' || story.source_type === 'meeting_followup';
+const isEvent = story.source_type === 'event';
 const kind = isAlert ? 'Alert' : isMeeting ? 'Meeting' : 'Event';
+// Item D2: a reader landing on an old event's own permalink (search,
+// a shared link, an internal "related stories" pick) has no other signal
+// that it's over -- the page otherwise reads identically to an upcoming
+// event. Checked against ends_at when the row has one (the real end of the
+// window, same field C2's relativeTime() fix now threads through), falling
+// back to occurs_at (the start time) for the many single-instant events that
+// never get an ends_at at all. Never shown for a recurring series page
+// (is_recurring_series -- see venueFacility's identical guard above it):
+// that page represents MANY future instances, not one date that can "pass".
+const eventHasPassed = isEvent && !story.is_recurring_series
+  && hasEventPassed(story.occurs_at, story.ends_at, new Date());
 // Story Threads: "part of an ongoing story" banner -- gives the underlying
 // noindexed feed item (see lib/noindex.ts) somewhere useful to send its
 // link equity and its readers. Restricted to source_type === 'meeting'
@@ -286,6 +299,7 @@ const eventJsonLdObject = buildEventJsonLd(
       <Byline category={category} byline={story.byline!} date={formatDate(story.published_at)} />
     )}
     {when && <p class="story__when data">{when}</p>}
+    {eventHasPassed && <p class="story__passed-notice">This event has passed.</p>}
 
     {heroImage && (
       <img
@@ -466,6 +480,17 @@ const eventJsonLdObject = buildEventJsonLd(
   color: var(--navy);
 }
 .story__when { margin: 0.75rem 0 0; color: var(--ink-soft); font-size: 0.875rem; }
+.story__passed-notice {
+  display: inline-block;
+  margin: 0.5rem 0 0;
+  padding: 0.25rem 0.625rem;
+  background: var(--paper-tint, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
 .story__hero {
   display: block;
   width: 100%;

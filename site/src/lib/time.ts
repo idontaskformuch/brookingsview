@@ -46,8 +46,12 @@ function zonedMidnightUtc(date: Date, timeZone: string): number {
 
 /** Whole calendar-day difference (`date` minus `now`), in the given
  *  timezone -- 0 for the same day, 1 for tomorrow, -1 for yesterday, etc.
- *  Never affected by either instant's time-of-day, only its zoned date. */
-function calendarDayDiff(date: Date, now: Date, timeZone: string): number {
+ *  Never affected by either instant's time-of-day, only its zoned date.
+ *  Exported for db.ts's countdown() (item B3) -- the same town-local-day
+ *  arithmetic this module already uses for relativeTime(), reused rather
+ *  than re-implemented a second time with its own UTC-midnight-normalize
+ *  logic. */
+export function calendarDayDiff(date: Date, now: Date, timeZone: string): number {
   const oneDayMs = 86_400_000;
   return Math.round((zonedMidnightUtc(date, timeZone) - zonedMidnightUtc(now, timeZone)) / oneDayMs);
 }
@@ -147,4 +151,20 @@ export function dayTimeKicker(date: Date | string, timeZone: string): string {
   const hour12 = hour % 12 || 12;
   const clock = minute === 0 ? `${hour12} ${period}` : `${hour12}:${String(minute).padStart(2, '0')} ${period}`;
   return `${day} · ${clock}`;
+}
+
+/** Item D2: whether a single event instance is over, for the detail page's
+ *  own "This event has passed" notice. Checked against `endsAt` when given
+ *  (the real end of the window -- same field C2's relativeTime() fix above
+ *  threads through), falling back to `occursAt` (the start time) for the
+ *  many single-instant events with no `endsAt` at all. `occursAt == null`
+ *  (a content-track row with no real date, see callers' own byline/occurs_at
+ *  split) returns false rather than treating a missing date as "passed". */
+export function hasEventPassed(
+  occursAt: Date | string | null, endsAt: Date | string | null | undefined, now: Date,
+): boolean {
+  if (!occursAt) return false;
+  const reference = endsAt ?? occursAt;
+  const d = typeof reference === 'string' ? new Date(reference) : reference;
+  return d.getTime() < now.getTime();
 }

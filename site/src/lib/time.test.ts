@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { relativeTime, dayTimeKicker } from './time';
+import { relativeTime, dayTimeKicker, hasEventPassed } from './time';
 
 const LA = 'America/Los_Angeles';
 const CHI = 'America/Chicago';
@@ -214,5 +214,35 @@ describe('dayTimeKicker', () => {
   it('is timezone-aware, not UTC', () => {
     // 2026-08-27T19:30:00Z = 12:30 PDT (Pacific) same instant, different wall time
     expect(dayTimeKicker('2026-08-27T19:30:00Z', LA)).toBe('Thu · 12:30 PM');
+  });
+});
+
+describe('hasEventPassed', () => {
+  const NOW = new Date('2026-08-27T19:00:00Z');
+
+  it('is false for a future occurs_at with no ends_at', () => {
+    expect(hasEventPassed('2026-08-28T19:00:00Z', null, NOW)).toBe(false);
+  });
+
+  it('is true once a single-instant event\'s own occurs_at is in the past', () => {
+    expect(hasEventPassed('2026-08-26T19:00:00Z', null, NOW)).toBe(true);
+  });
+
+  it('prefers ends_at over occurs_at when both are given -- still in progress', () => {
+    // Started an hour ago, doesn't end for another hour -- not passed yet,
+    // even though occurs_at (the start) is already behind `now`.
+    expect(hasEventPassed('2026-08-27T18:00:00Z', '2026-08-27T20:00:00Z', NOW)).toBe(false);
+  });
+
+  it('is true once ends_at itself has passed', () => {
+    expect(hasEventPassed('2026-08-27T16:00:00Z', '2026-08-27T18:00:00Z', NOW)).toBe(true);
+  });
+
+  it('is false when occurs_at is null -- a missing date is never "passed"', () => {
+    expect(hasEventPassed(null, null, NOW)).toBe(false);
+  });
+
+  it('accepts real Date objects, not just ISO strings', () => {
+    expect(hasEventPassed(new Date('2026-08-26T19:00:00Z'), null, NOW)).toBe(true);
   });
 });
