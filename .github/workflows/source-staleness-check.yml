@@ -1,0 +1,43 @@
+name: source-staleness-check
+# 2026-10-02: pulled out of scrape.yml/moval-scrape.yml/broomfield-scrape.yml
+# (where it ran as each one's own LAST step, if: always()) into its own
+# workflow -- a stale source is a real, separate thing worth alerting on,
+# but it isn't a scrape-and-publish FAILURE, and folding it into that job's
+# own exit code made a genuinely successful scrape run (content published
+# fine) show the same red X as an actually broken scraper. Running it here,
+# daily, independent of the 6-hourly scrape cron and of either deploy path,
+# means a stale-source alert is its own clear signal (this workflow's own
+# red X IS the alert) instead of noise on top of three other jobs' own
+# pass/fail. See scrapers/staleness.py's own module docstring for the full
+# "why" behind the staleness logic itself -- unchanged by this move, only
+# its scheduling/workflow placement changed.
+#
+# Once a day is enough: DEFAULT_STALENESS_DAYS's shortest threshold
+# (events, 2 days) still has a full day of slack against a once-daily
+# check, and this avoids re-alerting six times a day for the same
+# already-known-stale source between the Oct 3 Moreno Valley follow-up and
+# any fix that lands from it.
+
+on:
+  schedule:
+    - cron: "0 9 * * *"   # once daily, 09:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false   # one town's stale source shouldn't hide another's
+      matrix:
+        town: [brookings_sd, moreno_valley_ca, broomfield_co]
+    env:
+      DATABASE_URL:   ${{ secrets.DATABASE_URL }}
+      ALERT_WEBHOOK:  ${{ secrets.ALERT_WEBHOOK }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Kontrollera källfräschhet (meetings/events m.fl.)
+        run: python -m scripts.check_source_staleness --config configs/${{ matrix.town }}.json

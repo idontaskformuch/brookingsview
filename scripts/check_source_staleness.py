@@ -4,14 +4,19 @@ gap found 2026-10-01: a scraper that runs and exits 'ok' every time while
 the data it finds goes stale, which the existing consecutive-failures
 alerting never catches).
 
-Deliberately a LAST, separate workflow step (same placement as
-scripts/check_deployed_content.py), not folded into scrapers/runner.py's
-own exit code: runner.py runs FIRST in each *-scrape.yml, and a GitHub
-Actions step's non-zero exit skips every step after it by default --
-publish, build, deploy would all be skipped for the ENTIRE town over one
-stale source, which is a far worse outcome than the staleness itself. This
-script fails the job VISIBLY (a red X, per the handoff's own ask) without
-blocking anything that already ran.
+Runs as its own scheduled workflow (.github/workflows/source-staleness-check.yml,
+daily, one job per town via a matrix), not folded into runner.py's own
+exit code and NOT a step inside scrape.yml/moval-scrape.yml/broomfield-scrape.yml
+(where it originally lived, 2026-10-01 to 2026-10-02): a GitHub Actions
+step's non-zero exit skips every step after it by default, so publish,
+build, deploy would all be skipped for the ENTIRE town over one stale
+source if this ran early in that job -- and running it LAST (if: always(),
+the original placement) avoided that but meant a stale-source alert made a
+genuinely successful scrape-and-publish run show the same red X as an
+actually broken scraper, conflating two different failure classes in one
+job's pass/fail. A separate daily workflow fails VISIBLY on its own (a red
+X here really does mean "a source is stale") without touching either the
+scrape or the deploy workflow's own status.
 
 Usage:
     python -m scripts.check_source_staleness --config configs/moreno_valley_ca.json
