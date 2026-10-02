@@ -156,7 +156,25 @@ def _parse_ical(source_name: str, ics_bytes: bytes, tzname: str) -> list[dict]:
             "source": source_name,
             "url": url,
             "raw_data": {"uid": uid, "description": description},
-            "content_hash": content_hash("events", source_name, uid, starts_at, title),
+            # 2026-10-02, item D3: content_hash used to include starts_at and
+            # title -- found live (a real, user-reported duplicate):
+            # "BPN October Meetup - Fly Boy Donuts" (Brookings chamber_business)
+            # has the SAME source uid but was scraped at two different
+            # starts_at values (Oct 6 and Oct 8) after the organizer corrected
+            # the date on GrowthZone's own site between two scrape runs.
+            # Hashing starts_at in meant the corrected row looked like a
+            # brand-new event (DIFFERENT hash) rather than an update to the
+            # same one, so ON CONFLICT DO NOTHING left the old, now-wrong row
+            # sitting alongside the new one forever. (source_name, uid) alone
+            # is the real, stable identity here -- confirmed safe for
+            # recurring series too: a live check of "Free Food Giveaway
+            # (Every Sunday)" showed every occurrence already carries its own
+            # distinct per-occurrence uid (Tockify's own numbering), not one
+            # shared uid relying on starts_at to tell occurrences apart.
+            # EventsParser.update_columns (see scrapers/parsers/events.py)
+            # makes a hash match actually overwrite the stale fields instead
+            # of silently doing nothing.
+            "content_hash": content_hash("events", source_name, uid),
         })
     return records
 

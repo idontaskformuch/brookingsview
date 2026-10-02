@@ -36,6 +36,19 @@ def _parser(sources):
     return EventsParser(cfg, source_cfg)
 
 
+# 2026-10-02, item D3: without these, db.upsert_records() falls back to
+# ON CONFLICT (town_id, content_hash) DO NOTHING -- a corrected re-scrape
+# (same source uid, different starts_at/title) would hash-match the old row
+# and then write nothing, leaving the stale fields in place forever. See
+# event_sources.py's own content_hash comment for the real incident this
+# fixes (a Brookings chamber meetup rescheduled on the source site).
+def test_update_columns_cover_every_field_a_source_correction_could_touch():
+    assert EventsParser.conflict_columns == ("town_id", "content_hash")
+    assert set(EventsParser.update_columns) == {
+        "title", "starts_at", "ends_at", "venue", "url", "raw_data",
+    }
+
+
 def test_blocked_and_unconfirmed_sources_never_hit_registry(capsys):
     parser = _parser([
         {"name": "parks", "kind": "blocked", "url": "https://example.com/blocked"},

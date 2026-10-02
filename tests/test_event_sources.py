@@ -80,6 +80,53 @@ def test_parse_ical_extracts_basic_event():
     assert r["raw_data"]["uid"] == "test-uid-1"
 
 
+# 2026-10-02, item D3: the real, live incident this locks in -- Brookings'
+# chamber_business source re-scraped "BPN October Meetup - Fly Boy Donuts"
+# (same source uid) after the organizer corrected its date on GrowthZone's
+# own site, producing a second, stale row instead of updating the first.
+def test_content_hash_is_stable_across_a_corrected_date_for_the_same_uid():
+    # Same event (same uid, same source), scraped twice with a DIFFERENT
+    # starts_at -- as if the organizer rescheduled it between two runs.
+    first = _ics(_vevent("e.3606.1403836", "BPN October Meetup", "20261006T123000Z"))
+    second = _ics(_vevent("e.3606.1403836", "BPN October Meetup", "20261008T123000Z"))
+    hash1 = _parse_ical("chamber_business", first, "America/Chicago")[0]["content_hash"]
+    hash2 = _parse_ical("chamber_business", second, "America/Chicago")[0]["content_hash"]
+    # MUST match -- this is what makes db.upsert_records() treat the second
+    # scrape as a correction to update, not a brand-new event to insert
+    # alongside the first (see EventsParser.update_columns).
+    assert hash1 == hash2
+
+
+def test_content_hash_still_differs_for_a_genuinely_different_uid():
+    # Guards against a trivial "always return the same hash" regression --
+    # two real, distinct events (different uid) must still hash differently.
+    a = _ics(_vevent("uid-a", "Event A", "20260101T100000Z"))
+    b = _ics(_vevent("uid-b", "Event B", "20260101T100000Z"))
+    hash_a = _parse_ical("library", a, "America/Chicago")[0]["content_hash"]
+    hash_b = _parse_ical("library", b, "America/Chicago")[0]["content_hash"]
+    assert hash_a != hash_b
+
+
+def test_content_hash_differs_across_sources_for_the_same_uid():
+    # Two different calendar platforms could coincidentally reuse the same
+    # uid string -- source_name is part of the identity too, not uid alone.
+    same_uid = _ics(_vevent("shared-uid", "Some Event", "20260101T100000Z"))
+    hash_library = _parse_ical("library", same_uid, "America/Chicago")[0]["content_hash"]
+    hash_chamber = _parse_ical("chamber", same_uid, "America/Chicago")[0]["content_hash"]
+    assert hash_library != hash_chamber
+
+
+def test_content_hash_is_unaffected_by_a_title_correction_for_the_same_uid():
+    # Same reasoning as the date case above -- a typo fix to an event's own
+    # title (same uid) must still match the earlier row, not create a
+    # duplicate, since EventsParser.update_columns includes "title".
+    first = _ics(_vevent("e.123", "Toddler Tyme", "20260101T100000Z"))
+    second = _ics(_vevent("e.123", "Toddler Time", "20260101T100000Z"))
+    hash1 = _parse_ical("library", first, "America/Chicago")[0]["content_hash"]
+    hash2 = _parse_ical("library", second, "America/Chicago")[0]["content_hash"]
+    assert hash1 == hash2
+
+
 def test_parse_ical_localizes_floating_time_to_town_timezone():
     # Regression: a DTSTART with no "Z" and no TZID ("floating time" per RFC
     # 5545) is the venue's own wall-clock time, never UTC. Previously this

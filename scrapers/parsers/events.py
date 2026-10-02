@@ -45,6 +45,20 @@ _INERT_KINDS = {
 class EventsParser(BaseParser):
     table = "events"
     platform = "multi_events"
+    # 2026-10-02, item D3: content_hash (see event_sources.py's
+    # _parse_ical(), the only producer of 'events' rows today) is now keyed
+    # on (source, uid) alone, a stable per-occurrence identity -- not
+    # starts_at/title, which a source CAN legitimately change for the same
+    # event (a real, live example: an organizer correcting a meetup's date
+    # on GrowthZone between two scrapes produced two rows for the same
+    # event instead of one corrected one). Without update_columns, a
+    # corrected re-scrape would still hash-match the OLD row and then do
+    # nothing, silently keeping the stale starts_at forever -- these are
+    # exactly the fields a correction could touch. conflict_columns declared
+    # explicitly (matches content_hash's own default target already) for
+    # the same clarity reason agendalink_v1.py/escribe_v1.py both do.
+    conflict_columns = ("town_id", "content_hash")
+    update_columns = ["title", "starts_at", "ends_at", "venue", "url", "raw_data"]
 
     def _headers(self) -> dict:
         return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
