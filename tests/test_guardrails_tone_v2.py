@@ -2,7 +2,7 @@
 NEEDS-HUMAN-REVIEW.md "Summary Tone Prompts -- scraped local items" and
 ai_pipeline/guardrails.py's own tone_v2 section)."""
 from ai_pipeline.guardrails import (
-    classify_opening, opening_diversity_ok, validate_tone_v2,
+    classify_opening, opening_diversity_ok, overrepresented_opening_shapes, validate_tone_v2,
 )
 
 
@@ -99,10 +99,35 @@ def test_validate_tone_v2_enforces_event_sentence_ceiling():
     assert any("exceeds event ceiling" in v for v in result.violations)
 
 
-def test_validate_tone_v2_opening_diversity_uses_recent_openings():
+def test_validate_tone_v2_no_longer_blocks_on_opening_repetition():
+    # 2026-10-02 fix: the post-generation diversity gate self-deadlocked
+    # (found live -- see NEEDS-HUMAN-REVIEW.md) once a town's last-10-
+    # published pool saturated with one shape, since a rejected draft never
+    # got published to dilute the pool. It's advisory-only now (pre-
+    # generation prompt steering, see format_prompt.opening_steering_clause),
+    # never a pass/fail violation -- validate_tone_v2() doesn't even take a
+    # recent_openings argument anymore.
     result = validate_tone_v2(
         "Council will meet Tuesday to review the budget.", {}, "council meets tuesday budget",
-        "meeting", {}, recent_openings=["subject_verb", "subject_verb", "subject_verb"],
+        "meeting", {},
     )
-    assert not result.passed
-    assert any("opening shape" in v for v in result.violations)
+    assert result.passed
+    assert not any("opening shape" in v for v in result.violations)
+
+
+def test_overrepresented_opening_shapes_flags_dominant_shape():
+    recent = ["subject_verb", "subject_verb", "subject_verb", "article"]
+    assert overrepresented_opening_shapes(recent) == ["subject_verb"]
+
+
+def test_overrepresented_opening_shapes_empty_pool():
+    assert overrepresented_opening_shapes([]) == []
+
+
+def test_overrepresented_opening_shapes_excludes_other_even_when_dominant():
+    assert overrepresented_opening_shapes(["other"] * 9 + ["article"]) == []
+
+
+def test_overrepresented_opening_shapes_none_under_threshold():
+    recent = ["subject_verb", "article", "gerund", "other"]
+    assert overrepresented_opening_shapes(recent) == []

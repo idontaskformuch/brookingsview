@@ -572,7 +572,7 @@ def _localize_datetime_fields(record: dict, tz: ZoneInfo) -> dict:
 
 def publish_table(
     conn, cfg: dict, table: str, known_slugs: set[str], max_new: int = DEFAULT_MAX_NEW_PER_RUN,
-    known_meeting_ids: set[int] | None = None,
+    known_meeting_ids: set[int] | None = None, verbose: bool = False,
 ) -> tuple[int, int, int, int, int]:
     known_meeting_ids = known_meeting_ids if known_meeting_ids is not None else set()
     town_id = cfg["town_id"]
@@ -669,6 +669,8 @@ def publish_table(
         # framtida körning försöka igen (lägg INTE till i known_slugs).
         if result.generated_by == "template_fallback" and source_type not in TEMPLATERS:
             thin += 1
+            if verbose:
+                print(f"    DISCARD  {slug}  (both attempts rejected, no template -- retried next run)")
             continue
 
         title = build_title(table, row, cfg)
@@ -728,6 +730,9 @@ def publish_table(
         if meeting_id is not None:
             known_meeting_ids.add(meeting_id)
         published += 1
+        if verbose:
+            occurs_label = occurs_at.date().isoformat() if occurs_at else "(no date)"
+            print(f"    PUBLISH  {slug}  occurs_at={occurs_label}  generated_by={result.generated_by}")
     return published, skipped, thin, stale, remaining
 
 
@@ -739,6 +744,12 @@ def main() -> int:
         "--max-new-per-table", type=int, default=None,
         help=f"tak per tabell och körning (default {DEFAULT_MAX_NEW_PER_RUN}, "
              "eller ai.max_new_per_run_per_table i configen om satt)",
+    )
+    ap.add_argument(
+        "--dry-run", action="store_true",
+        help="kör på riktigt (riktiga sök-/AI-anrop, samma kostnad som en publicering) men "
+             "rulla tillbaka transaktionen i stället för att committa -- skriv per-rad vad som "
+             "skulle publicerats/kastats (slug, occurs_at, generated_by)",
     )
     args = ap.parse_args()
 
@@ -765,6 +776,7 @@ def main() -> int:
                 continue
             pub, skip, thin, stale, remaining = publish_table(
                 conn, cfg, table, known, max_new=max_new, known_meeting_ids=known_meetings,
+                verbose=args.dry_run,
             )
             extra = f", {thin} för tunna (ej publicerade)" if thin else ""
             extra += f", {stale} inaktuella (ej publicerade)" if stale else ""
@@ -779,11 +791,16 @@ def main() -> int:
             tot_thin += thin
             tot_stale += stale
             tot_remaining += remaining
-        conn.commit()
+        if args.dry_run:
+            conn.rollback()
+        else:
+            conn.commit()
 
     print(f"\nTotalt: {tot_pub} nya stories, {tot_skip} hoppade, "
           f"{tot_thin} för tunna, {tot_stale} inaktuella"
           + (f", {tot_remaining} kvar till nästa körning" if tot_remaining else ""))
+    if args.dry_run:
+        print("(dry-run -- transaktionen rullades tillbaka, INGET skrevs till stories)")
     return 0
 
 

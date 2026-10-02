@@ -273,6 +273,48 @@ no real value, never emit an empty string):
 "registration": "..."}}}}"""
 
 
+# Human-readable per-shape description for the opening-variety steering
+# clause below -- keys match guardrails.classify_opening()'s return values.
+# 'other' is never listed (guardrails.overrepresented_opening_shapes()
+# already excludes it, same non-policed exemption opening_diversity_ok() had).
+_OPENING_SHAPE_DESCRIPTIONS: dict[str, str] = {
+    "subject_verb": '"The Council will...", "Discovery Club meets..." (a named subject immediately followed by an occurrence verb)',
+    "article": '"A proposal to..." (a bare article opening that is not itself a subject+verb phrase)',
+    "gerund": '"Featuring..." (an -ing word opening the sentence)',
+    "number": '"42 permits..." (a number opening the sentence)',
+}
+
+
+def opening_steering_clause(recent_openings: list[str] | None, source_type: str) -> str:
+    """Appended to the tone_v2 system prompt for event/alert generation --
+    the ADVISORY replacement for the opening-diversity check that used to
+    run (and block) after generation. See guardrails.validate_tone_v2()'s
+    own comment for why: the post-generation gate self-deadlocked once the
+    last-10-published pool saturated with one shape, since a rejected draft
+    never entered the pool to dilute it. This steers the model away from an
+    already-dominant shape BEFORE it writes anything, but never blocks --
+    if the draft still repeats one despite this, it publishes anyway.
+
+    Never called for meeting (disabled entirely, not just advisory -- see
+    the same comment: meeting pages are noindex, so there's no SEO reason
+    to police repetition there, and "The Council will..." is simply the
+    correct, natural phrasing for a civic meeting summary). Callers enforce
+    that by source_type; this function doesn't re-check it, so it stays a
+    plain, independently testable string-builder.
+    """
+    if not recent_openings:
+        return ""
+    overrepresented = guardrails.overrepresented_opening_shapes(recent_openings)
+    if not overrepresented:
+        return ""
+    descriptions = [_OPENING_SHAPE_DESCRIPTIONS.get(s, s) for s in overrepresented]
+    return (
+        "\n\nOPENING VARIETY (style preference, not a hard rule -- never distort or omit a fact just to "
+        f"change the opening): recent {source_type} items on this page have leaned heavily on "
+        + "; ".join(descriptions) + ". Try a different opening shape for this one if the source naturally allows it."
+    )
+
+
 def strip_json_fence(raw: str) -> str:
     """Models sometimes wrap a requested-JSON-only response in a ```json ...
     ``` markdown fence despite explicit instructions not to -- observed
@@ -542,6 +584,13 @@ def format_record(record: dict, source_type: str, cfg: dict,
 
     tone_v2 = bool(ai_cfg.get("tone_v2")) and source_type in TONE_V2_TYPE_RULES
     system = build_system_prompt_v2(cfg, source_type) if tone_v2 else build_system_prompt(cfg)
+    # Pre-generation opening-variety steering -- event/alert only, never
+    # meeting (noindex, no SEO reason to police it; see guardrails.
+    # validate_tone_v2()'s own comment for the 2026-10-02 fix this is half
+    # of). A no-op string ("") when there's no recent_openings data or
+    # nothing is currently over-represented.
+    if tone_v2 and source_type != "meeting":
+        system += opening_steering_clause(recent_openings, source_type)
 
     # source_type (meeting/event/alert/...) is this call's "generator" for
     # api_usage, but it varies PER RECORD within one publish.py run -- not a
@@ -604,7 +653,6 @@ def format_record(record: dict, source_type: str, cfg: dict,
             summary, meta, source_text, source_type, cfg,
             has_venue_in_source=_source_has_venue(record),
             has_when_in_source=_source_has_when(record),
-            recent_openings=recent_openings,
         )
         violations = fact_result.violations + tone_result.violations
         if not violations:

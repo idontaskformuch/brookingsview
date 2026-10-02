@@ -4,7 +4,7 @@ ai_pipeline/format_prompt.py's own tone_v2 section)."""
 import json
 
 from ai_pipeline.format_prompt import (
-    build_system_prompt_v2, parse_tone_v2_response, TONE_V2_MAX_SENTENCES,
+    build_system_prompt_v2, opening_steering_clause, parse_tone_v2_response, TONE_V2_MAX_SENTENCES,
 )
 
 CFG = {"display_name": "Moreno Valley", "state": "California"}
@@ -71,3 +71,22 @@ def test_build_system_prompt_v2_requests_json_output():
 
 def test_tone_v2_max_sentences_covers_all_three_types():
     assert set(TONE_V2_MAX_SENTENCES) == {"meeting", "event", "alert"}
+
+
+def test_opening_steering_clause_empty_without_recent_openings():
+    assert opening_steering_clause(None, "event") == ""
+    assert opening_steering_clause([], "event") == ""
+
+
+def test_opening_steering_clause_empty_when_nothing_overrepresented():
+    diverse = ["subject_verb", "article", "gerund", "other"]
+    assert opening_steering_clause(diverse, "event") == ""
+
+
+def test_opening_steering_clause_names_the_dominant_shape():
+    dominated = ["subject_verb"] * 4 + ["article"]
+    clause = opening_steering_clause(dominated, "event")
+    assert "OPENING VARIETY" in clause
+    assert "The Council will" in clause
+    assert "event" in clause
+    assert "never distort or omit a fact" in clause

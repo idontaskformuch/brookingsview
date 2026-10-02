@@ -7013,3 +7013,41 @@ for free once wired in. `_record_spend()` and the `.ai_budget.json` write
 path can then be retired entirely rather than kept as a second, parallel,
 less-accurate counter. Needs its own small spec/pass, not bundled into this
 one.
+
+## 78. `guardrails.py`'s "möjlig åsikt/vinkling" (possible opinion/framing) check flags the word "must" (2026-10-02)
+
+**Found while diagnosing the meeting/event guardrail-rejection collapse**
+(see `api_usage.reject_reason`, commit `a4ea4cf`): once the dominant cause
+(the opening-diversity deadlock, see this file's own timeline for #77's
+neighbor) was fixed, a secondary, much smaller rejection pattern remained
+in both Brookings and Moreno Valley's `event`/`meeting` attempts:
+`möjlig åsikt/vinkling: must`.
+
+Traced it: `ai_pipeline/guardrails.py`'s `_OPINION_MARKERS` list (feeding
+`_opinion_hits()`, used by `validate()` -- shared across every content
+type, not just tone_v2) hardcodes the literal substring `"must "`. That's
+too blunt: "must" is also the plain, neutral word for a stated REQUIREMENT
+in source data ("applicants must submit by Friday", "the ordinance
+requires permit holders must...") -- a legitimate fact, not an editorial
+stance. Rejecting every draft that uses it for a genuine requirement
+forces either an awkward paraphrase or a lost fact, for no real
+opinion-neutrality gain.
+
+This is the exact same false-positive SHAPE as a precedent already fixed
+right above it in the same file: bare "should" was removed from this same
+list 2026-08-26 after live-testing showed it flagging neutral procedural
+instructions ("Those wishing to testify should submit a speaker slip") as
+if they were opinions. "must" likely needs the identical treatment, but
+unlike "should" (which was fully removed), "must" may be worth narrowing
+rather than dropping outright -- e.g. only flagging it adjacent to a
+first/second-person address or a value judgment, not a bare procedural
+requirement -- which is exactly the kind of distinction real
+`reject_reason` samples (not a handful of guessed examples) should decide.
+
+**Not fixed here** -- this is a secondary contributor, not the one that
+was collapsing publication rates, and scoping a fix needs the real
+rejection sample `reject_reason` is now collecting (does "must" ever
+co-occur with a *genuine* subjective framing in the flagged drafts, or is
+every hit a plain stated requirement?) before narrowing the rule, not a
+guess from a handful of examples. Worth a pass once a week or so of real
+`reject_reason` data has accumulated.

@@ -728,10 +728,26 @@ def opening_diversity_ok(shape: str, recent_shapes: list[str], threshold: float 
     return share <= threshold
 
 
+def overrepresented_opening_shapes(recent_shapes: list[str], threshold: float = 0.30) -> list[str]:
+    """Which opening shapes already exceed `threshold` of `recent_shapes` --
+    i.e. shapes a NEW item should try to avoid reproducing. Unlike
+    opening_diversity_ok() (a post-generation pass/fail gate, no longer used
+    for that -- see validate_tone_v2()'s own comment), this is a PRE-
+    generation signal: computed from the existing pool alone, before the new
+    item exists, so format_prompt.py can steer the prompt away from an
+    already-dominant shape instead of generating blind and then rejecting.
+    'other' is excluded, same non-policed exemption as opening_diversity_ok().
+    Sorted for deterministic prompt text."""
+    if not recent_shapes:
+        return []
+    total = len(recent_shapes)
+    counts = {shape: recent_shapes.count(shape) for shape in set(recent_shapes)}
+    return sorted(shape for shape, n in counts.items() if shape != "other" and n / total > threshold)
+
+
 def validate_tone_v2(
     summary: str, meta: dict, source_text: str, source_type: str, cfg: dict,
     *, has_venue_in_source: bool = False, has_when_in_source: bool = False,
-    recent_openings: list[str] | None = None,
 ) -> GuardrailResult:
     """Post-generation checks specific to the {summary, meta} tone-v2 shape
     (§7). Runs IN ADDITION to validate(summary, source_text, cfg) -- callers
@@ -772,11 +788,21 @@ def validate_tone_v2(
         if num and num not in haystack:
             violations.append(f"tone_v2: number not in source: {num}")
 
-    # 5. opening-structure diversity
-    if recent_openings is not None:
-        shape = classify_opening(summary)
-        if not opening_diversity_ok(shape, recent_openings):
-            violations.append(f"tone_v2: opening shape '{shape}' over 30% of recent {source_type} items")
+    # 5. opening-structure diversity -- REMOVED as a blocking check
+    # 2026-10-02 (see NEEDS-HUMAN-REVIEW.md): found live that the last-10-
+    # published pool for meeting/event self-saturates with the one or two
+    # naturally dominant shapes (there are only so many ways to open "the
+    # council met about X"), and because a rejected draft is discarded
+    # rather than published, nothing ever enters the pool to dilute it --
+    # a deadlock, not a diversity nudge. meeting is noindex (site/src/lib/
+    # noindex.ts's THIN_SCRAPED_SOURCE_TYPES), so there's no SEO reason to
+    # police it there at all. For event/alert, the real goal (a stacked
+    # listing page not reading as machine-repetitive) is now handled
+    # PRE-generation instead -- see format_prompt.py's opening-shape
+    # steering clause, built from overrepresented_opening_shapes() below --
+    # so a draft that still repeats a shape despite that steering just
+    # publishes; classify_opening()/opening_diversity_ok() are kept as
+    # pure, independently-tested functions but no longer gate publication.
 
     # 6. length band per type -- see format_prompt.py's TONE_V2_LENGTH_SENTENCES
     # for the actual bounds (kept there, not duplicated here, since the bands
