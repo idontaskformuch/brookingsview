@@ -23,6 +23,7 @@ import { computeClosureWatchState, type ClosureWatchStatus, type WeatherAlert } 
 import { SHARED_CONTENT_SOURCE_TYPES } from './cross-site-canonical';
 import { resolveCluster } from './clusters';
 import { storyHref } from './content-slugs';
+import { calendarDayDiff } from './time';
 
 const sql = neon(import.meta.env.DATABASE_URL);
 
@@ -2461,12 +2462,26 @@ export function formatOccursAt(story: Pick<Story, 'source_type' | 'occurs_at'>):
   return formatDateTime(story.occurs_at);
 }
 
-/** "in 6 days" / "tomorrow" / "today" -- för skyltremsan. */
-export function countdown(value: string | null): string {
+/** "in 6 days" / "tomorrow" / "today" -- för skyltremsan.
+ *
+ *  Item B3 (fix): the original version divided raw elapsed milliseconds
+ *  (`new Date(value).getTime() - Date.now()`) by 86,400,000 and
+ *  Math.ceil()'d the result -- the exact same bug class formatMeetingDate()'s
+ *  own comment above describes and this session has already fixed
+ *  elsewhere (this-week.ts's module docstring has the full rundown): a
+ *  raw-elapsed-time bucket is not the same question as "how many TOWN-LOCAL
+ *  calendar days away is this." Concretely wrong case: at 00:30 local on
+ *  game day itself, a 7pm local start is ~18.5 real hours away --
+ *  Math.ceil(18.5 / 24) = 1, so the old code said "tomorrow" for a game
+ *  happening LATER THAT SAME local day. Fixed by reusing time.ts's
+ *  calendarDayDiff() -- the same town-timezone-aware whole-day arithmetic
+ *  relativeTime() already relies on -- instead of a second, raw-elapsed-time
+ *  implementation of "how many days away." `now`/`timeZone` are explicit
+ *  parameters (not read from Date.now()/siteConfig internally) for the same
+ *  testability reason relativeTime() takes them explicitly. */
+export function countdown(value: string | null, now: Date, timeZone: string): string {
   if (!value) return '';
-  const days = Math.ceil(
-    (new Date(value).getTime() - Date.now()) / 86_400_000,
-  );
+  const days = calendarDayDiff(new Date(value), now, timeZone);
   if (days <= 0) return 'today';
   if (days === 1) return 'tomorrow';
   return `in ${days} days`;

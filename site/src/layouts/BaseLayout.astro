@@ -635,7 +635,7 @@ main { padding-block: 1.75rem 3.5rem; }
     )}
     {sign.nextGame?.starts_at && (
       <span class="sign__item">
-        Jacks {sign.nextGame.home_away === 'home' ? 'vs' : 'at'} {sign.nextGame.opponent} {countdown(sign.nextGame.starts_at)}
+        Jacks {sign.nextGame.home_away === 'home' ? 'vs' : 'at'} {sign.nextGame.opponent} {countdown(sign.nextGame.starts_at, now, siteConfig.timezone)}
       </span>
     )}
   </div>
