@@ -67,23 +67,47 @@ describe('extractTitleVenuePrefix', () => {
 });
 
 describe('splitEventTitleAndVenue', () => {
-  it('strips both the town prefix and an ALL-CAPS venue prefix, title-casing the venue', () => {
-    expect(splitEventTitleAndVenue('Moreno Valley: MAIN LIBRARY: Toddler Time', 'Moreno Valley'))
+  // Corrected version (2026-10-02): gates on a REAL facility match (via
+  // buildNameAliasIndex/facilities.name_aliases) instead of an ALL-CAPS text
+  // heuristic -- see the function's own doc comment for why the text-only
+  // approach was wrong in both directions on real data. These aliases mirror
+  // Moreno Valley's actual seeded data (both casings really exist live for
+  // the same branch).
+  const moreno = buildNameAliasIndex([
+    facility({ slug: 'main-library', name_aliases: ['MAIN LIBRARY', 'MAIN Library', 'MAIN'] }),
+    facility({
+      slug: 'mall-branch-library',
+      name_aliases: ['MV MALL', 'MV MALL LIBRARY', 'MV MALL Library', 'MV MALL BRANCH'],
+    }),
+    facility({ slug: 'iris-plaza-branch-library', name_aliases: ['IRIS PLAZA', 'IRIS PLAZA LIBRARY'] }),
+  ]);
+
+  it('strips both the town prefix and a venue prefix that matches a known facility, title-casing the venue', () => {
+    expect(splitEventTitleAndVenue('Moreno Valley: MAIN LIBRARY: Toddler Time', 'Moreno Valley', moreno))
       .toEqual({ displayTitle: 'Toddler Time', venue: 'Main Library' });
   });
 
   it('keeps a short all-caps word (an acronym like MV) uppercase rather than title-casing it', () => {
-    expect(splitEventTitleAndVenue('Moreno Valley: MV MALL: Discovery Club', 'Moreno Valley'))
+    expect(splitEventTitleAndVenue('Moreno Valley: MV MALL: Discovery Club', 'Moreno Valley', moreno))
       .toEqual({ displayTitle: 'Discovery Club', venue: 'MV Mall' });
   });
 
   it('handles a three-word venue prefix', () => {
-    expect(splitEventTitleAndVenue('Moreno Valley: MV MALL LIBRARY: Family Fun', 'Moreno Valley'))
+    expect(splitEventTitleAndVenue('Moreno Valley: MV MALL LIBRARY: Family Fun', 'Moreno Valley', moreno))
       .toEqual({ displayTitle: 'Family Fun', venue: 'MV Mall Library' });
   });
 
+  it('matches a mixed-case venue prefix for the SAME real venue the all-caps form also matches', () => {
+    // The real bug this fix closes: Moreno Valley's own Tockify feed emits
+    // the identical real venue as both "MV MALL LIBRARY" and "MV MALL
+    // Library" (confirmed live) -- normalizeVenueText() makes both forms
+    // resolve to the same alias-index entry, so casing no longer matters.
+    expect(splitEventTitleAndVenue('Moreno Valley: MV MALL Library: Game On!', 'Moreno Valley', moreno))
+      .toEqual({ displayTitle: 'Game On!', venue: 'MV Mall Library' });
+  });
+
   it('strips only the town prefix when there is no venue-shaped prefix after it', () => {
-    expect(splitEventTitleAndVenue('Brookings: Farmers Market', 'Brookings'))
+    expect(splitEventTitleAndVenue('Brookings: Farmers Market', 'Brookings', moreno))
       .toEqual({ displayTitle: 'Farmers Market', venue: null });
   });
 
@@ -91,18 +115,36 @@ describe('splitEventTitleAndVenue', () => {
     // The real failure mode this strictness exists to prevent -- a movie
     // review titled like "Spider-Man: Brand New Day" must never be split
     // into a fake "Spider-Man" venue line.
-    expect(splitEventTitleAndVenue('Spider-Man: Brand New Day', 'Brookings'))
+    expect(splitEventTitleAndVenue('Spider-Man: Brand New Day', 'Brookings', moreno))
       .toEqual({ displayTitle: 'Spider-Man: Brand New Day', venue: null });
   });
 
+  it('does not treat a capitalized non-venue event title as a venue prefix', () => {
+    // Confirmed live: these are real event titles whose text before the
+    // colon is NOT a venue -- every word happens to be capitalized, which is
+    // exactly the pattern a looser "Title Case" heuristic would have wrongly
+    // matched (and why this function checks real facility aliases instead).
+    expect(splitEventTitleAndVenue('NFL Season Kickoff: Seahawks vs Patriots', 'Moreno Valley', moreno))
+      .toEqual({ displayTitle: 'NFL Season Kickoff: Seahawks vs Patriots', venue: null });
+    expect(splitEventTitleAndVenue('Ribbon Cutting: Teesdale Law', 'Brookings', moreno))
+      .toEqual({ displayTitle: 'Ribbon Cutting: Teesdale Law', venue: null });
+    expect(splitEventTitleAndVenue('Thursday Night Football: Rams vs Niners', 'Moreno Valley', moreno))
+      .toEqual({ displayTitle: 'Thursday Night Football: Rams vs Niners', venue: null });
+  });
+
   it('returns the title unchanged when there is no colon at all', () => {
-    expect(splitEventTitleAndVenue('City Council Meeting', 'Brookings'))
+    expect(splitEventTitleAndVenue('City Council Meeting', 'Brookings', moreno))
       .toEqual({ displayTitle: 'City Council Meeting', venue: null });
   });
 
   it('does not strip a venue prefix with nothing left after it', () => {
-    expect(splitEventTitleAndVenue('Moreno Valley: MAIN LIBRARY:', 'Moreno Valley'))
+    expect(splitEventTitleAndVenue('Moreno Valley: MAIN LIBRARY:', 'Moreno Valley', moreno))
       .toEqual({ displayTitle: 'MAIN LIBRARY:', venue: null });
+  });
+
+  it('does not treat a venue-shaped prefix as a match when no facility alias index recognizes it', () => {
+    expect(splitEventTitleAndVenue('Moreno Valley: MAIN LIBRARY: Toddler Time', 'Moreno Valley', new Map()))
+      .toEqual({ displayTitle: 'MAIN LIBRARY: Toddler Time', venue: null });
   });
 });
 

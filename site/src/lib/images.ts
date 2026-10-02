@@ -282,25 +282,54 @@ export function extractTitleVenuePrefix(title: string, cityName: string): string
   return prefix || null;
 }
 
-/** 2026-10-02, item C4: the DISPLAY-facing twin of extractTitleVenuePrefix()
- *  above -- that one is deliberately loose (any colon-delimited prefix is a
- *  candidate, fine for a best-effort image-matching lookup that simply
- *  finds no facility and moves on for a false hit). Showing "Brand New Day"
- *  with a fake "Spider-Man" venue line on an actual movie-review-shaped
- *  title would be a real, visible bug, so this one is deliberately
- *  STRICTER: only strips the prefix when it reads as a venue by the same
- *  convention the real data actually uses -- ALL CAPS (confirmed live:
- *  "MAIN LIBRARY", "MV MALL", "IRIS PLAZA", ...), never a mixed-case colon
- *  title's own normal punctuation.
+/** 2026-10-02, item C4 (corrected): the DISPLAY-facing twin of
+ *  extractTitleVenuePrefix() above -- that one is deliberately loose (any
+ *  colon-delimited prefix is a candidate, fine for a best-effort image-
+ *  matching lookup that simply finds no facility and moves on for a false
+ *  hit). Showing "Brand New Day" with a fake "Spider-Man" venue line on an
+ *  actual movie-review-shaped title would be a real, visible bug, so this
+ *  one needs to be strict about what counts as a venue.
  *
- *  Returns the title with BOTH the "{cityName}: " prefix and a detected
- *  ALL-CAPS "VENUE: " prefix removed, plus the venue in Title Case (short
- *  words that are themselves all-caps, like "MV", are kept as acronyms --
- *  ordinary title-casing would mangle "MV" into "Mv"). `venue` is null
- *  when no such prefix was found, which is the common case for every
+ *  FIRST VERSION of this function (shipped, then reverted the same day) used
+ *  an ALL-CAPS text heuristic: strip the prefix only when it's fully
+ *  uppercase. Confirmed live against the real dataset that this is wrong in
+ *  BOTH directions at once -- Moreno Valley's own library/mall feed emits
+ *  the SAME real venue with inconsistent casing ("MV MALL LIBRARY: Rock
+ *  Solid" vs "MV MALL Library: Game On!", confirmed live, same branch), so
+ *  all-caps-only produces real, visible misses; and relaxing it to "every
+ *  word capitalized" instead produces real false positives, since plenty of
+ *  genuine event titles are ALSO just capitalized phrases before a colon
+ *  with no venue meaning at all (confirmed live: "NFL Season Kickoff:
+ *  Seahawks vs Patriots", "Ribbon Cutting: Teesdale Law", "Thursday Night
+ *  Football: Rams vs Niners", "Spice Club: Lavender" -- none of these are a
+ *  venue prefix, and no casing-based text rule can tell them apart from
+ *  "MAIN LIBRARY: Toddler Time").
+ *
+ *  This version instead asks the question directly, against ground truth,
+ *  the same way resolveVenueSlugForImage() above already does for images:
+ *  does this exact prefix text match a REAL facility's name_aliases (see
+ *  buildNameAliasIndex(), built from facilities.name_aliases, db/migrations/
+ *  026 -- already seeded with BOTH casings for every known branch, e.g.
+ *  Mall Branch Library's aliases include both 'MV MALL LIBRARY' and 'MV
+ *  MALL Library')? normalizeVenueText() lowercases before comparing, so the
+ *  casing inconsistency that broke the old heuristic is a non-issue here --
+ *  both forms normalize to the same key and match the same alias. A prefix
+ *  that doesn't match any seeded alias is never treated as a venue,
+ *  regardless of its casing -- eliminating the false-positive risk instead
+ *  of trying to out-guess it with a sharper text rule.
+ *
+ *  `venueAliasIndex` is buildNameAliasIndex(facilities) -- callers already
+ *  building it for image resolution should reuse that same index rather
+ *  than building a second one.
+ *
+ *  Returns the title with BOTH the "{cityName}: " prefix and the matched
+ *  venue prefix removed, plus the venue in Title Case (short words that are
+ *  themselves all-caps, like "MV", are kept as acronyms -- ordinary title-
+ *  casing would mangle "MV" into "Mv"). `venue` is null when the prefix
+ *  doesn't resolve to a known facility, which is the common case for every
  *  content type other than Moreno Valley's library/mall calendar feeds. */
 export function splitEventTitleAndVenue(
-  title: string, cityName: string,
+  title: string, cityName: string, venueAliasIndex: Map<string, string>,
 ): { displayTitle: string; venue: string | null } {
   const withoutTownPrefix = title.startsWith(`${cityName}: `) ? title.slice(cityName.length + 2) : title;
   const colonIndex = withoutTownPrefix.indexOf(':');
@@ -308,8 +337,8 @@ export function splitEventTitleAndVenue(
 
   const prefix = withoutTownPrefix.slice(0, colonIndex).trim();
   const rest = withoutTownPrefix.slice(colonIndex + 1).trim();
-  const looksLikeVenue = prefix.length > 0 && prefix === prefix.toUpperCase() && /[A-Z]/.test(prefix);
-  if (!looksLikeVenue || !rest) return { displayTitle: withoutTownPrefix, venue: null };
+  const isKnownVenue = prefix.length > 0 && venueAliasIndex.has(normalizeVenueText(prefix));
+  if (!isKnownVenue || !rest) return { displayTitle: withoutTownPrefix, venue: null };
 
   const venue = prefix
     .split(' ')

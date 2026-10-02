@@ -80,6 +80,20 @@ export const CONTENT_TRACK_TYPES: SourceType[] = [
   'culture_essay', 'editorial', 'vetenskap_kronika', 'kvick_essa', 'media_recension', 'vardagsmiddag',
 ];
 
+/** Extra 1: every real row of these six types is AI-generated today (every
+ *  one of them carries a `generated_by` of the form "ai:<model>", confirmed
+ *  live against the DB) -- CONTENT_TRACK_TYPES itself IS the AI-written
+ *  content track, not an incidental correlation with it, so gating the
+ *  reader-facing "AI-written" label on source_type (reused here, not a new
+ *  parallel list) is both simpler and exactly what the brief asked for:
+ *  "every card for reviews, recipes, editorials and columns" -- every card
+ *  of these categories, not a per-row generated_by sniff that would quietly
+ *  stop labeling a row if some future editorial workflow ever hand-wrote
+ *  one under the same source_type. */
+export function isAiWrittenContent(sourceType: SourceType): boolean {
+  return CONTENT_TRACK_TYPES.includes(sourceType);
+}
+
 /** Vilken kategori-sida en Content Track-story hör hemma på när den arkiveras
  *  bort från förstasidan. culture_essay/vetenskap_kronika/kvick_essa delar
  *  /columns -- tre krönike-varianter i en sektion, inte tre tunna sidor.
