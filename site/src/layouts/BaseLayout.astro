@@ -626,7 +626,7 @@ main { padding-block: 1.75rem 3.5rem; }
   <div class="shell sign__inner">
     {sign.temp !== null && (
       <span class="sign__item">
-        {Math.round(sign.temp)}&deg;{sign.unit}{sign.conditions && <>&nbsp;{sign.conditions.toLowerCase()}</>}
+        {sign.isDaytime ? 'High' : 'Low'}&nbsp;{Math.round(sign.temp)}&deg;{sign.unit}{sign.conditions && <>&nbsp;{sign.conditions.toLowerCase()}</>}
       </span>
     )}
     {sign.alert && <span class="sign__item sign__item--alert">{sign.alert}</span>}

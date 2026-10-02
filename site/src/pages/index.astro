@@ -604,7 +604,9 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
         <a class="rail__link" href="/weather/">
           <Tile
             label="Weather"
-            value={`${today.temp !== null ? Math.round(today.temp) : '—'}°${today.unit}`}
+            value={today.temp !== null
+              ? `${today.is_daytime ? 'High' : 'Low'} ${Math.round(today.temp)}°${today.unit}`
+              : '—'}
             note={`${today.short} · 5-day forecast`}
           />
         </a>

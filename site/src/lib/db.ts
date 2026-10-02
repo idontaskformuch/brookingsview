@@ -2265,6 +2265,13 @@ export async function getWorkerPulseComments(pageSlug: string): Promise<WorkerPu
 export interface SignData {
   temp: number | null;
   unit: string;
+  /** 2026-10-02, item E2: whether `temp` is a forecast HIGH (daytime
+   *  period) or LOW (nighttime period) -- getWeather() is NWS forecast
+   *  period data, never a live current reading, see getWeather()'s own
+   *  callers for the full "no live-conditions feed exists" context. The
+   *  sign strip renders this distinction rather than showing a bare number
+   *  that reads as a current temperature it isn't. */
+  isDaytime: boolean;
   conditions: string | null;
   alert: string | null;
   nextGame: Game | null;
@@ -2291,6 +2298,7 @@ export async function getSignData(): Promise<SignData> {
   return {
     temp: current?.temp ?? null,
     unit: current?.unit ?? 'F',
+    isDaytime: current?.is_daytime ?? true,
     conditions: current?.short ?? null,
     alert: alerts[0]?.title ?? null,
     nextGame: games[0] ?? null,

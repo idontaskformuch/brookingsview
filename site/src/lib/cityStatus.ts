@@ -86,13 +86,27 @@ const CLOSURE_LABEL: Record<'confirmed' | 'watch' | 'clear', string> = {
   clear: 'Schools open, no closures reported',
 };
 
+// 2026-10-02, item E2: this is NWS's own 12-hour forecast period data
+// (getWeather() -- confirmed, no live-current-conditions feed exists
+// anywhere in this pipeline, see weather.astro's own module comment), so
+// the number is a forecast HIGH (daytime period) or LOW (nighttime
+// period), never an actual current reading. Labeling it plainly as
+// "Weather" without that distinction reads as a live temperature it isn't.
+// Checked both branches, not just the common daytime case -- showing
+// "High" on a genuine nighttime fallback period would be its own,
+// different overclaim.
+export function weatherValueLabel(current: { temp: number | null; unit: string; short: string; is_daytime: boolean }): string {
+  const qualifier = current.is_daytime ? 'High' : 'Low';
+  return `${qualifier} ${Math.round(current.temp!)}°${current.unit}, ${current.short}`;
+}
+
 async function resolveWeather(): Promise<CityStatusModule | null> {
   const periods = await getWeather();
   const current = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
   if (!current || current.temp === null) return null;
   return {
     id: 'weather', icon: ICONS.weather, label: 'Weather',
-    value: `${Math.round(current.temp)}°${current.unit}, ${current.short}`,
+    value: weatherValueLabel(current),
     tone: 'quiet', href: '/weather/', asOf: new Date(current.start),
   };
 }

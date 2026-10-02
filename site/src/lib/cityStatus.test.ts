@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  applyVisibilityRules, oldestAsOf, validateStatusModules, buildWhatsOnStatus, type CityStatusModule,
+  applyVisibilityRules, oldestAsOf, validateStatusModules, buildWhatsOnStatus, weatherValueLabel,
+  type CityStatusModule,
 } from './cityStatus';
 import type { SiteConfig } from './site-config';
 import type { TicketmasterFeedItem, TicketmasterEvent } from './ticketmaster';
@@ -25,6 +26,28 @@ function baseCfg(overrides: Partial<SiteConfig> = {}): SiteConfig {
     ...overrides,
   } as SiteConfig;
 }
+
+// 2026-10-02, item E2: getWeather() is NWS forecast-period data, never a
+// live current reading (confirmed: no live-conditions feed exists
+// anywhere in this pipeline) -- the sign strip/homepage tile/CityStatus
+// module all used to show a bare number with no indication it's a
+// forecast high or low, reading as a current temperature it isn't.
+describe('weatherValueLabel', () => {
+  it('labels a daytime period as "High"', () => {
+    expect(weatherValueLabel({ temp: 72, unit: 'F', short: 'Sunny', is_daytime: true }))
+      .toBe('High 72°F, Sunny');
+  });
+
+  it('labels a nighttime period as "Low", not "High"', () => {
+    expect(weatherValueLabel({ temp: 54, unit: 'F', short: 'Clear', is_daytime: false }))
+      .toBe('Low 54°F, Clear');
+  });
+
+  it('rounds a fractional temperature', () => {
+    expect(weatherValueLabel({ temp: 71.6, unit: 'F', short: 'Sunny', is_daytime: true }))
+      .toBe('High 72°F, Sunny');
+  });
+});
 
 describe('validateStatusModules', () => {
   it('accepts a real, fully-backed module list', () => {
