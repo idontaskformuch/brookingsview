@@ -2,8 +2,8 @@
 /** Ettan. Dominerar sidan i skala -- det är så en tidning uttrycker redaktionell
  *  bedömning visuellt, i stället för att ge varje post lika stor vikt. */
 import type { Story, Facility } from '../lib/db';
-import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS } from '../lib/db';
-import { resolveImage, splitEventTitleAndVenue, type ImageRef } from '../lib/images';
+import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
+import { resolveImage, splitEventTitleAndVenue, buildNameAliasIndex, type ImageRef } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import ImageAttribution from './ImageAttribution.astro';
 import { siteConfig } from '../lib/site-config';
@@ -24,9 +24,10 @@ const imageOverride = 'image' in Astro.props ? Astro.props.image : undefined;
 const isMeeting = story.source_type === 'meeting';
 const isAlert = story.source_type === 'alert';
 const isEvent = story.source_type === 'event';
+const isAiWritten = isAiWrittenContent(story.source_type);
 // Item C4 -- see StoryCard.astro's identical comment for the full reasoning.
 const { displayTitle, venue } = isEvent
-  ? splitEventTitleAndVenue(story.title, siteConfig.cityName)
+  ? splitEventTitleAndVenue(story.title, siteConfig.cityName, buildNameAliasIndex(facilities))
   : { displayTitle: story.title, venue: null };
 // Se StoryCard.astro för samma resonemang: byline betyder Content Track-innehåll,
 // och då är occurs_at inte en riktig tidsangivelse -- publiceringsdatum är rätt.
@@ -74,6 +75,7 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
     {timeLabel && timeMachineValue && (
       <time class="lead__when data" datetime={timeMachineValue}>{timeLabel}</time>
     )}
+    {isAiWritten && <span class="lead__ai-label">AI-written</span>}
   </p>
   {heroImage && (
     <a class="lead__image-link" href={storyHref(story.slug)} tabindex="-1" aria-hidden="true">
@@ -104,6 +106,12 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
 .lead__when {
   font-size: 0.6875rem; letter-spacing: 0.04em;
   text-transform: uppercase; color: var(--ink-soft);
+}
+/* Extra 1 -- see StoryCard.astro's identical .item__ai-label comment. */
+.lead__ai-label {
+  font-size: 0.6875rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--ink-soft);
+  padding: 0.0625rem 0.375rem; border: 1px solid var(--rule); border-radius: 999px;
 }
 .lead__image-link { display: block; }
 .lead__image {

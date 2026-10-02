@@ -5,8 +5,8 @@
  *  scale (bigger than a dense StoryCard row, smaller than the lead), not
  *  from repeating the same amount of text at a smaller size. */
 import type { Story, Facility } from '../lib/db';
-import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS } from '../lib/db';
-import { resolveImage, splitEventTitleAndVenue, type ImageRef } from '../lib/images';
+import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
+import { resolveImage, splitEventTitleAndVenue, buildNameAliasIndex, type ImageRef } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import { siteConfig } from '../lib/site-config';
 import { relativeTime } from '../lib/time';
@@ -22,10 +22,11 @@ const imageOverride = 'image' in Astro.props ? Astro.props.image : undefined;
 const isMeeting = story.source_type === 'meeting';
 const isAlert = story.source_type === 'alert';
 const isEvent = story.source_type === 'event';
+const isAiWritten = isAiWrittenContent(story.source_type);
 const hasByline = Boolean(story.byline);
 // Item C4 -- see StoryCard.astro's identical comment for the full reasoning.
 const { displayTitle, venue } = isEvent
-  ? splitEventTitleAndVenue(story.title, siteConfig.cityName)
+  ? splitEventTitleAndVenue(story.title, siteConfig.cityName, buildNameAliasIndex(facilities))
   : { displayTitle: story.title, venue: null };
 const when = story.occurs_at;
 const now = new Date();
@@ -82,12 +83,13 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
     </a>
   )}
   {heroImage && <ImageAttribution image={heroImage} />}
-  {(kicker || (timeLabel && timeMachineValue)) && (
+  {(kicker || (timeLabel && timeMachineValue) || isAiWritten) && (
     <p class="secondary__kicker">
       {kicker && <span class="kicker">{kicker}</span>}
       {timeLabel && timeMachineValue && (
         <time class="secondary__when data" datetime={timeMachineValue}>{timeLabel}</time>
       )}
+      {isAiWritten && <span class="secondary__ai-label">AI-written</span>}
     </p>
   )}
   <h3 class="secondary__title"><a href={storyHref(story.slug)}>{displayTitle}</a></h3>
@@ -105,6 +107,12 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
 .secondary__when {
   font-size: 0.6875rem; letter-spacing: 0.04em;
   text-transform: uppercase; color: var(--ink-soft);
+}
+/* Extra 1 -- see StoryCard.astro's identical .item__ai-label comment. */
+.secondary__ai-label {
+  font-size: 0.6875rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--ink-soft);
+  padding: 0.0625rem 0.375rem; border: 1px solid var(--rule); border-radius: 999px;
 }
 .secondary__title {
   font-size: 1.25rem;

@@ -38,7 +38,7 @@ import {
   getWeather, getAgPrices, getLatestWeekly, getTodaysFeature,
   getEmployerJobStats, getUpcomingArtsEvents, getRecentJobs, getNextMeeting,
   getWorthKnowingCandidates, getLatestFromCandidates, getRecentCompactContent, getRecentProjectUpdates, formatDate,
-  CATEGORY_HREFS, CATEGORY_LABELS, getFacilities, getLatestVailNewsItem, getEventDeckDigests,
+  CATEGORY_HREFS, CATEGORY_LABELS, getFacilities, getLatestVailNewsItem, getEventDeckDigests, isAiWrittenContent,
 } from '../lib/db';
 import { isSharedContentType } from '../lib/cross-site-canonical';
 import { selectWorthKnowing, selectLatestFrom, firstSentence, selectFrontPageRhythm } from '../lib/homepage-curation';
@@ -328,8 +328,26 @@ const latestVailNews = isBroomfield ? await getLatestVailNewsItem() : null;
 // here). Omitted entirely (both consts stay null/empty) when hasWhatsOn is
 // off or nothing in the whole ranked list has an image -- no placeholder,
 // no module.
-const whatsOnItems = siteConfig.hasWhatsOn ? await getTicketmasterEventsForTown(siteConfig) : [];
-const whatsOnEntries = collapseMarqueeRuns(rankTicketmasterEvents(whatsOnItems, siteConfig.townId));
+// Item E5: the homepage marquee is presented as "what's happening" for THIS
+// town -- a real, verified Sioux Falls venue ~53mi away reads as local there
+// in a way it never would on /whats-on, whose own lede explicitly discloses
+// the full town radius (75mi Brookings/35mi Moreno Valley/20mi Broomfield,
+// see that page's own radiusMiles copy) before showing a single card. Capped
+// here, not in getTicketmasterEventsForTown()/rankTicketmasterEvents()
+// themselves -- /whats-on/index.astro calls those same functions and must
+// keep showing the full town radius unchanged; only the homepage's own
+// prominent placement needs the tighter promise. `venueDistanceMiles ==
+// null` (Discovery API had no venue geo data at all) is kept rather than
+// dropped -- an unknown distance is not a confirmed "too far," and this cap
+// exists to stop a KNOWN-far venue from reading as local, not to penalize a
+// missing field.
+const HOMEPAGE_MARQUEE_RADIUS_MILES = 25;
+const nearbyWhatsOnItems = (siteConfig.hasWhatsOn ? await getTicketmasterEventsForTown(siteConfig) : [])
+  .filter((item) => {
+    const miles = item.ticketmasterEvent.venueDistanceMiles;
+    return miles == null || miles <= HOMEPAGE_MARQUEE_RADIUS_MILES;
+  });
+const whatsOnEntries = collapseMarqueeRuns(rankTicketmasterEvents(nearbyWhatsOnItems, siteConfig.townId));
 let marqueeHero: { entry: MarqueeEntry; image: NonNullable<ReturnType<typeof resolveImage>> } | null = null;
 const marqueeAlsoOn: { entry: MarqueeEntry; image: NonNullable<ReturnType<typeof resolveImage>> }[] = [];
 for (const entry of whatsOnEntries) {
@@ -523,7 +541,10 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
                   decoding="async"
                 />
               )}
-              <p class="latest-from__kicker">{CATEGORY_LABELS[story.source_type] ?? 'Feature'}</p>
+              <p class="latest-from__kicker">
+                {CATEGORY_LABELS[story.source_type] ?? 'Feature'}
+                {isAiWrittenContent(story.source_type) && <span class="latest-from__ai-label">AI-written</span>}
+              </p>
               <h3 class="latest-from__title">{story.title}</h3>
               <p class="latest-from__excerpt">{firstSentence(story.body)}</p>
               <span class="latest-from__read">Read &rarr;</span>
@@ -559,7 +580,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
         // "All →" (added above) is the real complete view now, same
         // pattern "This week"/"Coming up" already used.
         <div class="river">
-          {todayStories.slice(0, 5).map((story) => <StoryCard story={story} />)}
+          {todayStories.slice(0, 5).map((story) => <StoryCard story={story} facilities={facilities} />)}
         </div>
       )}
     </section>
@@ -578,7 +599,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       // "All →" link (above) is where the rest lives, not a second copy of
       // the full list on this page too.
       <div class="river">
-        {weekStories.slice(0, 5).map((story) => <StoryCard story={story} />)}
+        {weekStories.slice(0, 5).map((story) => <StoryCard story={story} facilities={facilities} />)}
       </div>
     ) : (
       <p class="empty">Nothing scheduled in the next week yet.</p>
@@ -679,7 +700,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     <section aria-label="Worth knowing" class="worth-knowing">
       <SectionRule label="Worth knowing" />
       <div class="river">
-        {worthKnowingSelection.map((story) => <StoryCard story={story} />)}
+        {worthKnowingSelection.map((story) => <StoryCard story={story} facilities={facilities} />)}
       </div>
     </section>
   )}
@@ -705,7 +726,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     <section aria-label="Coming up">
       <SectionRule label="Coming up" href="/events/" />
       <div class="river">
-        {laterStories.slice(0, 5).map((story) => <StoryCard story={story} compact />)}
+        {laterStories.slice(0, 5).map((story) => <StoryCard story={story} compact facilities={facilities} />)}
       </div>
     </section>
   )}
@@ -747,7 +768,10 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
                   />
                 )}
                 <span>
-                  <span class="more-to-read__kicker">{CATEGORY_LABELS[story.source_type] ?? 'Feature'}</span>
+                  <span class="more-to-read__kicker">
+                    {CATEGORY_LABELS[story.source_type] ?? 'Feature'}
+                    {isAiWrittenContent(story.source_type) && <span class="more-to-read__ai-label">AI-written</span>}
+                  </span>
                   <span class="more-to-read__title">{story.title}</span>
                 </span>
               </a>
@@ -954,6 +978,15 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   text-transform: uppercase;
   color: var(--ink-soft);
 }
+/* Extra 1 -- see StoryCard.astro's identical .item__ai-label comment. Inherits
+   the kicker's own uppercase/letter-spacing/size; just adds pill framing and
+   spacing from the category label it sits beside. */
+.latest-from__ai-label {
+  margin-left: 0.5rem;
+  padding: 0.0625rem 0.375rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+}
 .latest-from__title { margin: 0 0 0.3125rem; font-size: 1.0625rem; line-height: 1.2; color: var(--navy); }
 .latest-from__card:hover .latest-from__title { text-decoration: underline; }
 .latest-from__excerpt { margin: 0; font-size: 0.9375rem; color: var(--ink-soft); line-height: 1.45; }
@@ -990,6 +1023,13 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   text-transform: uppercase;
   color: var(--ink-soft);
   margin: 0 0 0.125rem;
+}
+/* Extra 1 -- see .latest-from__ai-label's identical comment just above. */
+.more-to-read__ai-label {
+  margin-left: 0.5rem;
+  padding: 0.0625rem 0.375rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
 }
 .more-to-read__title {
   display: -webkit-box;

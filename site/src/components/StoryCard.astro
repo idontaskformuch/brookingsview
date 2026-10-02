@@ -1,11 +1,11 @@
 ---
 /** En post i nyhetsströmmen. Avdelad med hårfin linje, inte inramad som ett
  *  kort -- kortramar plattar ut hierarkin och får allt att se lika viktigt ut. */
-import type { Story } from '../lib/db';
-import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS } from '../lib/db';
+import type { Story, Facility } from '../lib/db';
+import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
 import ShareButtons from './ShareButtons.astro';
 import { siteConfig } from '../lib/site-config';
-import { categoryForSourceType, splitEventTitleAndVenue, type ImageCategory } from '../lib/images';
+import { categoryForSourceType, splitEventTitleAndVenue, buildNameAliasIndex, type ImageCategory } from '../lib/images';
 import { SECTION_THEME } from '../lib/section-theme';
 import { relativeTime, dayTimeKicker } from '../lib/time';
 import { storyHref } from '../lib/content-slugs';
@@ -56,8 +56,16 @@ interface Props {
   /** Kicker-override -- för samma adapterade poster, som inte har en
    *  meningsfull source_type att härleda en kicker-etikett ur. */
   kicker?: string;
+  /** Item C4 (corrected): only needed to resolve an event's venue line via
+   *  ground-truth facility alias matching (see splitEventTitleAndVenue()'s
+   *  own doc comment) -- optional and defaults to [] since most call sites
+   *  never render source_type='event' stories through this component and
+   *  would otherwise need to thread facilities through purely unused. */
+  facilities?: Pick<Facility, 'slug' | 'name_aliases'>[];
 }
-const { story, compact = false, href: hrefOverride, kicker: kickerOverride } = Astro.props;
+const {
+  story, compact = false, href: hrefOverride, kicker: kickerOverride, facilities = [],
+} = Astro.props;
 const href = hrefOverride ?? storyHref(story.slug);
 const isExternal = Boolean(hrefOverride);
 const shareUrl = new URL(storyHref(story.slug), siteConfig.siteUrl).href;
@@ -65,6 +73,7 @@ const shareUrl = new URL(storyHref(story.slug), siteConfig.siteUrl).href;
 const isAlert = story.source_type === 'alert';
 const isMeeting = story.source_type === 'meeting' || story.source_type === 'meeting_followup';
 const isEvent = story.source_type === 'event';
+const isAiWritten = isAiWrittenContent(story.source_type);
 // 2026-10-02, item C4: strip a "{Town}: " / "{VENUE IN CAPS}: " prefix from
 // an event's displayed title (confirmed live: 1,063 of 1,068 Moreno Valley
 // event titles carry one) -- see splitEventTitleAndVenue()'s own doc
@@ -73,7 +82,7 @@ const isEvent = story.source_type === 'event';
 // must never be mangled). The venue renders as its own line below the
 // title instead of staying silently baked into it.
 const { displayTitle, venue } = isEvent
-  ? splitEventTitleAndVenue(story.title, siteConfig.cityName)
+  ? splitEventTitleAndVenue(story.title, siteConfig.cityName, buildNameAliasIndex(facilities))
   : { displayTitle: story.title, venue: null };
 // Content Track-innehåll (krönikor, recensioner, recept m.fl.) har alltid byline
 // satt -- occurs_at är bara now() vid genereringstillfället för de typerna, så
@@ -169,6 +178,7 @@ const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCat
     {timeLabel && timeMachineValue && (
       <time class="item__when data" datetime={timeMachineValue}>{timeLabel}</time>
     )}
+    {isAiWritten && <span class="item__ai-label">AI-written</span>}
   </p>
   <h3 class="item__title"><a href={href} rel={isExternal ? 'noopener' : undefined}>{displayTitle}</a></h3>
   {venue && <p class="item__venue data">{venue}</p>}
@@ -219,6 +229,19 @@ const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCat
 .item__when {
   font-size: 0.8125rem;
   color: var(--ink-faint, var(--ink-soft));
+}
+/* Extra 1: a visible, honest disclosure for AI-generated content-track
+   cards (reviews/recipes/editorials/columns) -- quiet enough not to compete
+   with the kicker/time it sits beside, but never hidden or color-only. */
+.item__ai-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  padding: 0.0625rem 0.375rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
 }
 .item__title { margin: 0; font-size: 1.1875rem; line-height: 1.15; }
 .item__title a { color: inherit; text-decoration: none; }
