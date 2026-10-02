@@ -13,6 +13,16 @@ Usage:
     python -m scripts.list_permanently_discarded
     python -m scripts.list_permanently_discarded --town brookings_sd
     python -m scripts.list_permanently_discarded --since 7d
+    python -m scripts.list_permanently_discarded --town brookings_sd --reset
+
+--reset is a manual override for the automatic one (db/migrations/049_...,
+publish.py's own source_content_hash comparison, which un-gives-up a record
+on its own once the underlying source data changes). Use --reset when the
+FIX isn't a source-data change the automatic path would ever notice -- a
+loosened/corrected guardrail, a manually-edited record, a decision to just
+let it try again. Always lists what it's about to reset BEFORE resetting
+(reset happens after printing, using the exact same filtered rows) --
+narrow with --town/--since first if you don't want everything reset at once.
 """
 from __future__ import annotations
 
@@ -20,6 +30,7 @@ import argparse
 import re
 from datetime import datetime, timedelta, timezone
 
+from ai_pipeline.publish import MAX_CONSECUTIVE_DISCARDS, clear_discard_streak
 from db.db import get_conn
 
 
@@ -37,15 +48,18 @@ def main() -> int:
     ap.add_argument("--since", type=_parse_since, default=None,
                     help="only records last discarded within this window, e.g. '7d' or '48h' "
                          "(default: no limit -- the table only ever holds currently-stuck records anyway)")
+    ap.add_argument("--reset", action="store_true",
+                    help="after listing, clear the streak for every record just listed -- "
+                         "publish.py will attempt it again on the next scheduled run")
     args = ap.parse_args()
 
     query = """
         SELECT town_id, source_type, record_id, consecutive_runs,
                first_discarded_at, last_discarded_at, last_reject_reason
         FROM publish_discard_streak
-        WHERE consecutive_runs >= 3
+        WHERE consecutive_runs >= %s
     """
-    params: list = []
+    params: list = [MAX_CONSECUTIVE_DISCARDS]
     if args.town:
         query += " AND town_id = %s"
         params.append(args.town)
@@ -59,19 +73,29 @@ def main() -> int:
             cur.execute(query, params)
             rows = cur.fetchall()
 
-    if not rows:
-        print("No permanently-discarded records found.")
-        return 0
+        if not rows:
+            print("No permanently-discarded records found.")
+            return 0
 
-    for town_id, source_type, record_id, streak, first_at, last_at, reason in rows:
-        stuck_for = last_at - first_at
-        print(f"[{town_id}] {source_type} #{record_id} -- {streak} consecutive runs, "
-              f"first discarded {first_at:%Y-%m-%d}, last {last_at:%Y-%m-%d} "
-              f"(stuck {stuck_for.days}d)")
-        print(f"  last_reject_reason: {reason}")
-        print()
+        for town_id, source_type, record_id, streak, first_at, last_at, reason in rows:
+            stuck_for = last_at - first_at
+            print(f"[{town_id}] {source_type} #{record_id} -- {streak} consecutive runs, "
+                  f"first discarded {first_at:%Y-%m-%d}, last {last_at:%Y-%m-%d} "
+                  f"(stuck {stuck_for.days}d)")
+            print(f"  last_reject_reason: {reason}")
+            print()
 
-    print(f"{len(rows)} record(s) total.")
+        print(f"{len(rows)} record(s) total.")
+
+        if args.reset:
+            # Always resets exactly what was just listed above, never a
+            # separately-queried set -- what you see is what gets reset.
+            # get_conn() commits on clean exit (see db/db.py) -- no explicit
+            # commit needed here.
+            for town_id, source_type, record_id, *_ in rows:
+                clear_discard_streak(conn, town_id, source_type, record_id)
+            print(f"\nReset {len(rows)} record(s) -- publish.py will attempt them again next run.")
+
     return 0
 
 

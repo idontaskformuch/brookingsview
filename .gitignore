@@ -33,3 +33,7 @@ reports/
 # for human review before filling in CATEGORY_SEARCHES' `chosen` field.
 # Regenerated on demand, never read by the site itself.
 .review_montages/
+
+# Ad-hoc before/after screenshot dumps from manual UI verification --
+# disposable visual-QA output, never a build artifact or source of truth.
+scratch_shots/

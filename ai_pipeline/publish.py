@@ -561,41 +561,70 @@ def _alert(town_id: str, msg: str) -> None:
             pass
 
 
-def load_given_up_records(conn, town_id: str) -> set[tuple[str, str]]:
-    """(source_type, record_id) pairs already at/over MAX_CONSECUTIVE_DISCARDS
-    -- loaded once per publish_table() call (same pattern as existing_slugs()/
+def load_given_up_records(conn, town_id: str) -> dict[tuple[str, str], str | None]:
+    """(source_type, record_id) -> source_content_hash, for every record
+    already at/over MAX_CONSECUTIVE_DISCARDS -- loaded once per
+    publish_table() call (same pattern as existing_slugs()/
     existing_meeting_ids()), so a record publish.py has already given up on
     is skipped BEFORE format_record() is ever called again, not just logged
-    as skipped after spending on it anyway."""
+    as skipped after spending on it anyway.
+
+    The hash is returned (not just the key) so the caller can detect "the
+    underlying source record changed since we gave up" and un-give-up it --
+    see publish_table()'s own use of this and record_discard()'s reset-on-
+    hash-change logic below."""
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT source_type, record_id FROM publish_discard_streak "
+            "SELECT source_type, record_id, source_content_hash FROM publish_discard_streak "
             "WHERE town_id = %s AND consecutive_runs >= %s",
             (town_id, MAX_CONSECUTIVE_DISCARDS),
         )
-        return {(r[0], r[1]) for r in cur.fetchall()}
+        return {(r[0], r[1]): r[2] for r in cur.fetchall()}
 
 
 def record_discard(conn, town_id: str, source_type: str, record_id: str,
-                    reject_reason: str | None) -> int:
+                    reject_reason: str | None, source_content_hash: str | None) -> int:
     """UPSERTs this record's consecutive-discard streak, returns the new
     count. Runs on the SAME `conn` as every other write in publish_table() --
     so --dry-run's rollback (see main()) undoes this bookkeeping exactly
     like it undoes a real INSERT INTO stories, instead of a dry/test run
-    silently polluting the real retry-cap count."""
+    silently polluting the real retry-cap count.
+
+    Reset-on-change (db/migrations/049_...): if the record's current
+    source_content_hash differs from what's stored (the underlying scraped
+    data changed since the last discard -- a corrected agenda, a re-scrape
+    that picked up new detail), this is effectively new data, not a repeat
+    failure of the same input -- the streak resets to 1 instead of
+    incrementing, `first_discarded_at` resets to now() along with it (it
+    means "start of the CURRENT streak," not "first ever seen"). `IS
+    DISTINCT FROM` (NULL-safe) rather than `!=` since source_content_hash
+    can genuinely be NULL (a record with no content_hash of its own, or the
+    pre-049 rows that predate this column).
+    """
     with conn.cursor() as cur:
         cur.execute(
             """
             INSERT INTO publish_discard_streak
-                (town_id, source_type, record_id, consecutive_runs, last_discarded_at, last_reject_reason)
-            VALUES (%s, %s, %s, 1, now(), %s)
+                (town_id, source_type, record_id, consecutive_runs, last_discarded_at,
+                 last_reject_reason, source_content_hash)
+            VALUES (%s, %s, %s, 1, now(), %s, %s)
             ON CONFLICT (town_id, source_type, record_id) DO UPDATE SET
-                consecutive_runs = publish_discard_streak.consecutive_runs + 1,
+                consecutive_runs = CASE
+                    WHEN publish_discard_streak.source_content_hash IS DISTINCT FROM EXCLUDED.source_content_hash
+                        THEN 1
+                    ELSE publish_discard_streak.consecutive_runs + 1
+                END,
+                first_discarded_at = CASE
+                    WHEN publish_discard_streak.source_content_hash IS DISTINCT FROM EXCLUDED.source_content_hash
+                        THEN now()
+                    ELSE publish_discard_streak.first_discarded_at
+                END,
                 last_discarded_at = now(),
-                last_reject_reason = EXCLUDED.last_reject_reason
+                last_reject_reason = EXCLUDED.last_reject_reason,
+                source_content_hash = EXCLUDED.source_content_hash
             RETURNING consecutive_runs
             """,
-            (town_id, source_type, record_id, reject_reason),
+            (town_id, source_type, record_id, reject_reason, source_content_hash),
         )
         return cur.fetchone()[0]
 
@@ -705,10 +734,18 @@ def publish_table(
         # Retry cap (NEEDS-HUMAN-REVIEW.md #77/#78, MAX_CONSECUTIVE_DISCARDS):
         # a record already given up on in a PRIOR run -- checked before
         # known_slugs/the AI call, so it costs nothing further, not just
-        # "logged as skipped after spending on it anyway."
+        # "logged as skipped after spending on it anyway." Reset path
+        # (db/migrations/049_...): if the record's CURRENT source data no
+        # longer matches the hash we gave up against, treat it as new --
+        # clear the streak and fall through to a normal attempt instead of
+        # skipping, rather than leaving it permanently excluded against
+        # stale content it may no longer even have.
         if (source_type, record_id) in given_up:
-            abandoned += 1
-            continue
+            if given_up[(source_type, record_id)] != row.get("content_hash"):
+                clear_discard_streak(conn, town_id, source_type, record_id)
+            else:
+                abandoned += 1
+                continue
 
         # SEO Fas 5: meetings get a dated slug going forward
         # ("meeting-2026-08-25-10703" instead of "meeting-10703") -- a
@@ -759,7 +796,8 @@ def publish_table(
         if result.generated_by == "template_fallback" and source_type not in TEMPLATERS:
             thin += 1
             reject_reason = "; ".join(result.violations) if result.violations else None
-            streak = record_discard(conn, town_id, source_type, record_id, reject_reason)
+            streak = record_discard(conn, town_id, source_type, record_id, reject_reason,
+                                    row.get("content_hash"))
             if streak >= MAX_CONSECUTIVE_DISCARDS:
                 # Give up for good: excluded from the rest of THIS run too
                 # (not just the next one) via the same known_slugs/
