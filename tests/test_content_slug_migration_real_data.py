@@ -69,22 +69,37 @@ def affected_rows():
         return cur.fetchall()
 
 
-def test_real_row_count_is_79_across_all_three_towns(affected_rows):
-    assert len(affected_rows) == 79
+def test_real_row_count_is_at_least_79_across_all_three_towns(affected_rows):
+    # 79 was the real count on 2026-10-02 when this migration shipped --
+    # daily_content.py keeps publishing new rows of these types every day,
+    # so this only ever grows. A lower bound, not an exact count, so this
+    # test doesn't rot the next time it's run.
+    assert len(affected_rows) >= 79
 
 
 def test_exactly_67_rows_still_carry_an_old_prefix(affected_rows):
+    # Unlike the total above, this one IS exact and permanent: no row can
+    # ever newly acquire an old prefix again (daily_content.py's
+    # SLUG_PREFIX_OVERRIDES always assigns the new prefix going forward),
+    # and existing DB slugs are never rewritten -- so 67 is a hard ceiling,
+    # not a snapshot.
     old = [slug for _, _, slug in affected_rows if OLD_PREFIX_RE.match(slug)]
     assert len(old) == 67
 
 
-def test_exactly_12_rows_already_use_the_new_prefix(affected_rows):
+def test_at_least_12_rows_already_use_the_new_prefix(affected_rows):
     already_new = [slug for _, _, slug in affected_rows if not OLD_PREFIX_RE.match(slug)]
-    assert len(already_new) == 12
-    # All 12 are the pre-existing recipe-* rows (2026-08-23 vardagsmiddag
-    # migration) -- confirm, don't assume, since a stray already-new row of
-    # a DIFFERENT type here would indicate a second, undocumented migration.
-    assert all(slug.startswith("recipe-") for slug in already_new)
+    # 12 was the real count on 2026-10-02 (the pre-existing recipe-* rows
+    # from the 2026-08-23 vardagsmiddag migration, plus whatever has
+    # published since under any of the four new prefixes) -- grows daily,
+    # same reasoning as the total-row-count test above.
+    assert len(already_new) >= 12
+    # Every already-new slug must start with one of the four KNOWN new
+    # prefixes -- confirms this is really "the four migrated types, already
+    # on their new prefix," not a stray row of some fifth, undocumented type
+    # that happens not to match the old-prefix regex for unrelated reasons.
+    new_prefixes = tuple(OLD_PREFIX_TO_PUBLIC.values())
+    assert all(slug.startswith(new_prefixes) for slug in already_new)
 
 
 def test_every_old_prefix_actually_changes_under_public_slug(affected_rows):
