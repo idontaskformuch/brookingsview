@@ -23,6 +23,7 @@ import { shouldNoindexStory, THIN_SCRAPED_SOURCE_TYPES } from '../../lib/noindex
 import { canonicalUrlForStory } from '../../lib/cross-site-canonical';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 import { publicSlug, storyHref } from '../../lib/content-slugs';
+import { redactWorkerPulseBody } from '../../lib/content-redaction';
 
 export async function getStaticPaths() {
   // Fetched once for the whole build, not per-page -- the facilities set is
@@ -253,6 +254,16 @@ const recipeImages = isRecipe
 // det här blir aldrig sant på en Brookings-build.
 const isWorkerPulseDigest = story.source_type === 'workplace_watch_digest';
 const comments = isWorkerPulseDigest ? await getWorkerPulseComments(story.slug) : [];
+// 2026-10-02 follow-up: hiding the STRUCTURED rating/trend display (see
+// WorkplaceWatchWidget.astro's own comment) turned out not to be enough --
+// grepping the real built output found the AI-generated theme_summary
+// PROSE itself routinely states the exact same numbers in sentence form.
+// redactWorkerPulseBody() feeds the meta description, the visible
+// paragraph, AND articleBody in this page's own JSON-LD below -- all three
+// via this one shared displayBody, not three separate special cases (see
+// lib/content-redaction.ts for the full reasoning, shared with rss.xml.ts
+// and workplace-watch/index.astro).
+const displayBody = redactWorkerPulseBody(story.source_type, story.body);
 
 // Event JSON-LD -- full decision tree lives in lib/event-jsonld.ts (unit-
 // tested there, see event-jsonld.test.ts) so it's testable independent of
@@ -266,7 +277,7 @@ const eventJsonLdObject = buildEventJsonLd(
 );
 ---
 
-<BaseLayout title={`${story.title} — ${siteConfig.siteName}`} description={story.body.slice(0, 155)} ogSlug={story.slug} noindex={isNoindex} canonicalUrl={pageCanonicalUrl}>
+<BaseLayout title={`${story.title} — ${siteConfig.siteName}`} description={displayBody.slice(0, 155)} ogSlug={story.slug} noindex={isNoindex} canonicalUrl={pageCanonicalUrl}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <article class="story">
     {!hasByline && <p class="story__kind data">{kind}</p>}
@@ -302,7 +313,7 @@ const eventJsonLdObject = buildEventJsonLd(
     )}
 
     <div class="story__body">
-      {story.body.split('\n').filter(Boolean).map((para) => <p>{para}</p>)}
+      {displayBody.split('\n').filter(Boolean).map((para) => <p>{para}</p>)}
     </div>
 
     {mentionedZips.length > 0 && (
@@ -408,7 +419,7 @@ const eventJsonLdObject = buildEventJsonLd(
       Article for that type entirely, see isRecipe's own definition. */}
   {emitArticleSchema && !isRecipe && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(
-      buildArticleJsonLd(story, ogImageUrl, siteConfig.siteName, additionalImages)
+      buildArticleJsonLd({ ...story, body: displayBody }, ogImageUrl, siteConfig.siteName, additionalImages)
     )} />
   )}
 

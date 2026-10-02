@@ -5,10 +5,14 @@
  *  (logistik-/lagerarbetsgivare) och Broomfield (publika bolags huvudkontor,
  *  se data/employers/broomfield_co.json) -- HeatAdvisoryWidget/ShiftPollWidget
  *  nedan hålls ändå Moreno-Valley-specifika, se den kommentaren för varför.
- *  Se lib/db.ts (getLatestEmployerRatings)
- *  och ai_pipeline/workplace_watch_digest.py för varifrån datat kommer -- ett
- *  stjärnbetyg visas bara om det uttryckligen hittades i sökträffarna, annars
- *  "rating pending" i stället för en gissning. */
+ *  Se lib/db.ts (getLatestEmployerRatings) och
+ *  ai_pipeline/workplace_watch_digest.py för varifrån datat kommer.
+ *
+ *  2026-10-02: ratings, trends OCH theme_summary-texten är withheld tills
+ *  vidare (pending Glassdoor/Indeed ToS-review) -- se wp-methodology-
+ *  stycket nedan för läsarfacing-förklaringen, och [slug].astro:s egen
+ *  WORKER_PULSE_WITHHELD_NOTE för samma sak på den enskilda digest-sidan.
+ *  Endast hiring-kolumnen (Adzuna, en separat källa) visas fortfarande. */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import HeatAdvisoryWidget from '../../components/HeatAdvisoryWidget.astro';
 import ShiftPollWidget from '../../components/ShiftPollWidget.astro';
@@ -104,26 +108,23 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
   <header class="wp-hero">
     <h1>{pageMeta.h1}</h1>
     <p class="tagline">
-      A monthly, plain-language look at review trends for {siteConfig.cityName}'s
+      A monthly look at hiring activity for {siteConfig.cityName}'s
       major employers{employers.length > 0 ? ` — ${employers.map((e) => e.name).join(', ')}` : ''}.
-      Themes are summarized from recent Glassdoor/Indeed search results,
-      always attributed to what reviews say, never stated as settled fact.
+      Review-theme summaries and star ratings are temporarily withheld (see below).
     </p>
     <ShareButton title={pageMeta.title} />
   </header>
 
   <p class="wp-methodology">
-    <strong>How this works:</strong> the themes below are a
-    <strong>company-wide</strong> summary (as reported in public review-site
-    search results), not specific to any one {siteConfig.cityName} facility —
-    Glassdoor and Indeed have no public API and don't allow automated
-    scraping, so nothing here comes from directly accessing either site.
-    Instead, a search API is used to find what's publicly indexed about each
-    employer, and an AI summarizes the recurring themes from those search
-    result snippets — paraphrased, never a verbatim review quote.
-    <strong>Star ratings and employer rankings are temporarily hidden</strong>
-    while we review Glassdoor's and Indeed's own terms on republishing their
-    content.
+    <strong>How this works:</strong> this page used to summarize recurring
+    themes from public Glassdoor/Indeed search-result snippets (never a
+    verbatim quote, always attributed to what reviews say). Both the
+    <strong>review-theme summaries and star ratings/rankings are temporarily
+    withheld</strong> while we review Glassdoor's and Indeed's own terms of
+    use on republishing their content -- the search-result text itself
+    routinely restates a specific numeric rating, so hiding the rating
+    column alone wasn't enough. Hiring data below (sourced from Adzuna, a
+    separate, unrelated source) is unaffected.
   </p>
   {hasJobStats && (
     <p class="wp-methodology">
@@ -151,7 +152,6 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
         <span role="columnheader">This month</span>
       </div>
       {employers.map((e) => {
-        const label = e.period_label;
         const jobStats = jobStatsBySlug.get(e.slug);
         return (
           <div class:list={['wp-row', { 'wp-row--no-hiring': !hasJobStats }]} role="row" style={`--accent: ${e.accent_color ?? '#4b5563'}`}>
@@ -181,9 +181,22 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
             <span class="wp-summary" role="cell">
               {e.theme_summary ? (
                 <>
-                  <span class="excerpt">{e.theme_summary}</span>
+                  {/* 2026-10-02: the raw theme_summary excerpt is withheld here
+                      too, not just the structured rating/trend columns -- it
+                      routinely states the exact same numbers in prose ("rate
+                      the company 2.9 out of 5 stars on Glassdoor"), found by
+                      grepping the real built output. See lib/content-redaction.ts
+                      for the full reasoning and the longer version of this
+                      note used on the digest's own /s/ page; this is the
+                      short, table-cell-sized version, not imported from
+                      there since a dense comparison table needs a shorter
+                      line than a full page does. period_label is kept visible
+                      (it's just a month name, not a rating) so the "This
+                      month" column header still has real content under it. */}
+                  <small class="data">{e.period_label}</small>
+                  <span class="excerpt muted">Review-theme summary withheld pending a sourcing review.</span>
                   {e.digest_slug && (
-                    <a href={storyHref(e.digest_slug)}>Read the full {label} digest →</a>
+                    <a href={storyHref(e.digest_slug)}>Read more →</a>
                   )}
                 </>
               ) : (

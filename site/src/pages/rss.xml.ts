@@ -3,6 +3,7 @@ import type { APIContext } from 'astro';
 import { getAllStories } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { storyHref } from '../lib/content-slugs';
+import { redactWorkerPulseBody } from '../lib/content-redaction';
 
 // Genererad vid build, precis som resten av sajten. Ingen story äldre än
 // occurs_at behöver filtreras bort här -- ett RSS-arkiv får gärna vara fullt.
@@ -22,7 +23,10 @@ export async function GET(context: APIContext) {
     site: context.site!,
     items: stories.map((story) => ({
       title: story.title,
-      description: story.body,
+      // 2026-10-02: redacted for workplace_watch_digest rows -- the raw
+      // body routinely states a specific Glassdoor/Indeed rating in prose,
+      // see lib/content-redaction.ts's own module docstring.
+      description: redactWorkerPulseBody(story.source_type, story.body),
       link: storyHref(story.slug),
       pubDate: new Date(story.published_at),
     })),
