@@ -618,11 +618,13 @@ def format_record(record: dict, source_type: str, cfg: dict,
     # publish.py-processen på FÖRSTA raden som råkar formateras när kontot
     # saknar kredit, i stället för att bara falla tillbaka på mall för den
     # raden och fortsätta med resten av batchen.
+    violations_per_attempt: list[list[str]] = []
     try:
         with api_usage.usage_context(generator=source_type, town_id=cfg.get("town_id")):
             raw, usage = _call()
             _record_spend(usage.input_tokens * price_in + usage.output_tokens * price_out)
             passed, violations, text, meta = _validate(raw)
+            violations_per_attempt.append(violations)
 
             if not passed:
                 # ett striktare omförsök -- måste peka på VAD som faktiskt underkändes.
@@ -642,6 +644,7 @@ def format_record(record: dict, source_type: str, cfg: dict,
                 raw, usage = _call(strict)
                 _record_spend(usage.input_tokens * price_in + usage.output_tokens * price_out)
                 passed, violations, text, meta = _validate(raw)
+                violations_per_attempt.append(violations)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall", file=sys.stderr)
         # usage_ids collected before the failing attempt (e.g. attempt 1 was
@@ -649,7 +652,8 @@ def format_record(record: dict, source_type: str, cfg: dict,
         # rejected generations -- safe_create() already logged the failing
         # attempt itself as outcome='error', but these earlier ones are
         # still 'pending' unless finalized here too.
-        api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="template_fallback")
+        api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="template_fallback",
+                                      violations_by_attempt=violations_per_attempt)
         return _fallback(record, source_type, cfg, reason=f"AI ej tillgängligt: {exc}")
 
     if passed:
@@ -657,7 +661,8 @@ def format_record(record: dict, source_type: str, cfg: dict,
         return FormatResult(text=text, generated_by=f"ai:{model}", verified=True, meta=meta)
 
     # 4. gav sig inte → ren mall-fallback
-    api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="template_fallback")
+    api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="template_fallback",
+                                  violations_by_attempt=violations_per_attempt)
     return _fallback(record, source_type, cfg,
                      reason=f"guardrail: {'; '.join(violations)}")
 

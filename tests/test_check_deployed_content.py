@@ -14,6 +14,8 @@ from scripts.check_deployed_content import (
     _user_agent,
     extract_story_slugs,
     is_stale,
+    resolve_homepage_slugs_to_db_slugs,
+    run_with_retry,
 )
 
 
@@ -34,6 +36,34 @@ def test_extract_story_slugs_ignores_non_story_links():
 
 def test_extract_story_slugs_empty_page():
     assert extract_story_slugs("<html><body>nothing here</body></html>") == []
+
+
+def test_resolve_homepage_slugs_to_db_slugs_maps_all_four_renamed_prefixes():
+    # Bug fix 2026-10-02: these four public prefixes (site/src/lib/content-
+    # slugs.ts's OLD_PREFIX_TO_PUBLIC) diverge from the DB's own slug column
+    # since 8a0a938 -- a direct `slug = ANY(homepage_slugs)` match against
+    # stories.slug can never match any of them, however fresh.
+    assert resolve_homepage_slugs_to_db_slugs(["recipe-2026-08-27"]) == ["vardagsmiddag-2026-08-27"]
+    assert resolve_homepage_slugs_to_db_slugs(["science-column-2026-09-01"]) == ["vetenskap_kronika-2026-09-01"]
+    assert resolve_homepage_slugs_to_db_slugs(["quick-essay-2026-09-15"]) == ["kvick_essa-2026-09-15"]
+    assert resolve_homepage_slugs_to_db_slugs(["review-2026-09-30"]) == ["media_recension-2026-09-30"]
+
+
+def test_resolve_homepage_slugs_to_db_slugs_passes_through_unrenamed_types():
+    # meeting/event/editorial/weekly/... slugs already match their DB column
+    # directly -- must stay byte-for-byte unchanged, not just "unbroken".
+    slugs = ["meeting-2026-10-14-11337", "event-9981", "editorial-2026-09-08", "weekly-2026-w40"]
+    assert resolve_homepage_slugs_to_db_slugs(slugs) == slugs
+
+
+def test_resolve_homepage_slugs_to_db_slugs_does_not_mis_split_hyphenated_public_prefixes():
+    # "science-column" and "quick-essay" each contain their own internal
+    # hyphen -- a naive split on the first "-" would wrongly cut
+    # "science-column-2026-10-02" into "science" / "column-2026-10-02".
+    # Confirms the regex matches the LONGEST known prefix, not the first
+    # hyphen-delimited token.
+    result = resolve_homepage_slugs_to_db_slugs(["science-column-2026-10-02", "quick-essay-2026-10-02"])
+    assert result == ["vetenskap_kronika-2026-10-02", "kvick_essa-2026-10-02"]
 
 
 def test_is_stale_none_counts_as_stale():
@@ -101,3 +131,87 @@ def test_request_headers_adds_bypass_header_when_secret_set(monkeypatch):
     headers = _request_headers("https://broomfieldview.com")
     assert headers[DEPLOY_CHECK_HEADER] == "test-secret-value"
     assert headers["User-Agent"] == _user_agent("https://broomfieldview.com")
+
+
+# 2026-10-02: run_with_retry() itself -- added after moval-deploy and
+# broomfield-deploy both failed this exact step on a single attempt right
+# after a fresh deploy (Cloudflare propagation / a transient Neon
+# connection blip, the same class of flake this project's own astro builds
+# hit the same day -- see check_deployed_content.py's own module comment
+# above RETRY_TIMEOUT_SECONDS). A real clock/sleep would make this suite
+# take 5 real minutes per failing-forever case, so both are injected fakes.
+class _FakeClock:
+    """Advances only when sleep_fn is called -- time.monotonic() is called
+    an extra time at loop entry and after each attempt in run_with_retry(),
+    so this must behave like a real monotonic clock (readable any number of
+    times without advancing on its own), not a queue of fixed return
+    values."""
+    def __init__(self):
+        self.now = 0.0
+
+    def clock(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.now += seconds
+
+
+def test_succeeds_immediately_without_ever_sleeping():
+    clock = _FakeClock()
+    calls = []
+
+    def check_fn():
+        calls.append(1)
+        return []
+
+    failures = run_with_retry(check_fn, "brookings_sd", timeout_seconds=300,
+                               interval_seconds=20, sleep_fn=clock.sleep, clock_fn=clock.clock)
+    assert failures == []
+    assert len(calls) == 1
+    assert clock.now == 0.0  # never slept
+
+
+def test_retries_then_succeeds_within_the_window():
+    clock = _FakeClock()
+    attempts = [["still propagating"], ["still propagating"], []]
+
+    def check_fn():
+        return attempts.pop(0)
+
+    failures = run_with_retry(check_fn, "moreno_valley_ca", timeout_seconds=300,
+                               interval_seconds=20, sleep_fn=clock.sleep, clock_fn=clock.clock)
+    assert failures == []
+    assert clock.now == 40.0  # two sleeps of 20s before the third (successful) attempt
+
+
+def test_gives_up_after_the_timeout_and_returns_the_last_failure():
+    clock = _FakeClock()
+
+    def check_fn():
+        return ["still broken"]
+
+    failures = run_with_retry(check_fn, "broomfield_co", timeout_seconds=50,
+                               interval_seconds=20, sleep_fn=clock.sleep, clock_fn=clock.clock)
+    assert failures == ["still broken"]
+    # 0s, 20s, 40s attempts all fail; at 40s, 10s remain (< interval), one
+    # final short sleep, then the attempt at 50s also fails and the budget
+    # is exhausted -- never sleeps PAST the timeout.
+    assert clock.now == 50.0
+
+
+def test_never_sleeps_longer_than_the_remaining_budget():
+    clock = _FakeClock()
+    sleeps: list[float] = []
+
+    def tracking_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+        clock.sleep(seconds)
+
+    def check_fn():
+        return ["broken"]
+
+    run_with_retry(check_fn, "brookings_sd", timeout_seconds=25,
+                    interval_seconds=20, sleep_fn=tracking_sleep, clock_fn=clock.clock)
+    # First sleep is the full 20s interval; the second is clamped to the
+    # remaining 5s, not another full 20s overshooting the 25s budget.
+    assert sleeps == [20.0, 5.0]

@@ -159,22 +159,36 @@ def log_usage(provider: str, *, model: str | None = None,
     return usage_id
 
 
-def finalize_outcome(usage_id: int | None, outcome: str) -> None:
-    """UPDATE a previously-logged row's outcome once the pipeline knows how
-    the call was actually used. usage_id=None (log_usage() itself already
-    failed, or a caller chose not to track this call's outcome) is a silent
-    no-op -- the warning already happened once, at log_usage() time."""
+def finalize_outcome(usage_id: int | None, outcome: str, reject_reason: str | list[str] | None = None) -> None:
+    """UPDATE a previously-logged row's outcome (and, optionally, the exact
+    violation text that caused it) once the pipeline knows how the call was
+    actually used. usage_id=None (log_usage() itself already failed, or a
+    caller chose not to track this call's outcome) is a silent no-op -- the
+    warning already happened once, at log_usage() time.
+
+    `reject_reason`: the guardrail/pre_publish_check violation list for THIS
+    specific attempt (joined with '; ' if given as a list), or None to leave
+    the column untouched -- never cleared, since a caller that doesn't know
+    the reason shouldn't erase one a prior call already recorded."""
     if usage_id is None:
         return
+    reason = "; ".join(reject_reason) if isinstance(reject_reason, list) else reject_reason
     try:
         with get_conn() as conn, conn.cursor() as cur:
-            cur.execute("UPDATE api_usage SET outcome = %s WHERE id = %s", (outcome, usage_id))
+            if reason is not None:
+                cur.execute(
+                    "UPDATE api_usage SET outcome = %s, reject_reason = %s WHERE id = %s",
+                    (outcome, reason, usage_id),
+                )
+            else:
+                cur.execute("UPDATE api_usage SET outcome = %s WHERE id = %s", (outcome, usage_id))
     except Exception as exc:  # noqa: BLE001
         _warn(f"failed to finalize outcome for usage row {usage_id}: {exc}")
 
 
 def finalize_generation(usage_ids: list[int], succeeded: bool, fallback_outcome: str = "template_fallback",
-                         success_outcome: str = "published") -> None:
+                         success_outcome: str = "published",
+                         violations_by_attempt: list[list[str]] | None = None) -> None:
     """Common end-of-generation finalizer for the "call, maybe retry once,
     then succeed or give up" shape every generator in this pipeline shares
     (content/_base.generate_article(), format_prompt.format_record(),
@@ -196,9 +210,18 @@ def finalize_generation(usage_ids: list[int], succeeded: bool, fallback_outcome:
     full-price AI call but never writes to stories, so cost_report.py's
     waste query (outcome NOT IN ('published','dry_run')) needs 'dry_run'
     here, not 'published', to keep its published-cost numbers honest.
+
+    `violations_by_attempt`: parallel to `usage_ids` -- the violations list
+    this specific attempt's guardrail/pre_publish_check check(s) returned
+    (empty/None for an attempt that passed). Optional: a caller that hasn't
+    been retrofitted to track per-attempt violations can omit it and every
+    row just gets its outcome, reject_reason left NULL, same as before this
+    parameter existed.
     """
     if not usage_ids:
         return
-    for usage_id in usage_ids[:-1]:
-        finalize_outcome(usage_id, "guardrail_rejected")
-    finalize_outcome(usage_ids[-1], success_outcome if succeeded else fallback_outcome)
+    reasons = violations_by_attempt or [None] * len(usage_ids)
+    for usage_id, reason in zip(usage_ids[:-1], reasons[:-1]):
+        finalize_outcome(usage_id, "guardrail_rejected", reject_reason=reason)
+    last_reason = None if succeeded else reasons[-1]
+    finalize_outcome(usage_ids[-1], success_outcome if succeeded else fallback_outcome, reject_reason=last_reason)

@@ -49,11 +49,55 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 
 import requests
 
+from ai_pipeline.daily_content import SLUG_PREFIX_OVERRIDES
 from db.db import get_conn
+
+# Reverse of SLUG_PREFIX_OVERRIDES (content_type -> public prefix), keyed by
+# the PUBLIC prefix instead, for matching a homepage-scraped /s/<slug>/ href
+# back to the DB's own slug prefix. Bug found 2026-10-02 (broomfield-deploy
+# failing its freshness check): this function originally compared scraped
+# hrefs against stories.slug DIRECTLY, which worked until 8a0a938 ("English
+# slugs for new content") made the public URL prefix diverge from the DB
+# slug column for these four content types -- every homepage link to one of
+# them could then never match a real row, however fresh, making this check
+# permanently fail for any town publishing them (exactly the failure mode
+# this script exists to catch, except the bug was in the checker itself).
+PUBLIC_PREFIX_TO_DB: dict[str, str] = {public: db for db, public in SLUG_PREFIX_OVERRIDES.items()}
+
+# Anchored at the start of the slug, prefix being one of PUBLIC_PREFIX_TO_DB's
+# keys -- NOT a naive split on the first "-", which would wrongly cut
+# "science-column-2026-10-02" into "science"/"column-..." (two of the four
+# public prefixes -- "science-column", "quick-essay" -- contain their own
+# internal hyphen). Longest-prefix-first so "quick-essay" can never be
+# mis-matched by a shorter prefix that happens to also start matching.
+_PUBLIC_PREFIX_RE = re.compile(
+    "^(" + "|".join(re.escape(p) for p in sorted(PUBLIC_PREFIX_TO_DB, key=len, reverse=True)) + ")-"
+)
+
+
+def resolve_homepage_slugs_to_db_slugs(homepage_slugs: list[str]) -> list[str]:
+    """Maps each homepage-scraped /s/<slug>/ value back to the slug it would
+    actually be stored under in stories.slug -- a pure inverse of site/src/
+    lib/content-slugs.ts's publicSlug(), kept in sync via SLUG_PREFIX_
+    OVERRIDES (the same dict daily_content.py uses to build the public
+    prefix in the first place) rather than a second hand-maintained mapping.
+    A slug with no recognized public prefix (every content type other than
+    the renamed four, e.g. "meeting-...", "event-...") passes through
+    unchanged, same as content-slugs.ts's own no-op case."""
+    out = []
+    for slug in homepage_slugs:
+        match = _PUBLIC_PREFIX_RE.match(slug)
+        if match is None:
+            out.append(slug)
+            continue
+        db_prefix = PUBLIC_PREFIX_TO_DB[match.group(1)]
+        out.append(db_prefix + slug[match.end(1):])
+    return out
 
 FRESHNESS_DAYS = 2
 
@@ -197,10 +241,21 @@ def check_homepage_freshness(conn, town_id: str, site_url: str) -> str | None:
     if not slugs:
         return "homepage has no /s/<slug>/ links at all"
 
+    # Bug fix 2026-10-02: homepage hrefs are PUBLIC slugs (site/src/lib/
+    # content-slugs.ts's publicSlug()), which diverge from stories.slug for
+    # four content types since 8a0a938 ("English slugs for new content") --
+    # comparing the raw scraped slugs against the DB column directly made
+    # this check permanently unable to match any of those four types,
+    # however recently published (see resolve_homepage_slugs_to_db_slugs()'s
+    # own docstring for the live case this was caught on: broomfield_co's
+    # genuinely-fresh media_recension-2026-09-30 / public "review-2026-09-30"
+    # story, live and 200-ing, that this check reported as 29-day-stale).
+    db_slugs = resolve_homepage_slugs_to_db_slugs(slugs)
+
     with conn.cursor() as cur:
         cur.execute(
             "SELECT max(published_at) FROM stories WHERE town_id=%s AND slug = ANY(%s)",
-            (town_id, slugs),
+            (town_id, db_slugs),
         )
         newest = cur.fetchone()[0]
     if newest is None:
@@ -229,6 +284,82 @@ def check_signature_section(town_id: str, site_url: str) -> str | None:
     return None
 
 
+# 2026-10-01: both checks hit the live edge (Cloudflare propagation can lag
+# a few seconds to low tens of seconds behind a fresh deploy) and a fresh
+# Neon connection (this exact project has hit a transient "fetch failed"
+# from Neon's serverless driver before, see the astro build retries this
+# same day, and get_conn() here is the identical driver). Neither is a real
+# content/deploy problem -- a single failed attempt right after `wrangler
+# deploy` finishes is expected often enough that this used to fail the job
+# on it. Retrying for a few minutes before giving up tells apart "still
+# propagating" from "actually broken" without weakening the check itself:
+# a genuinely broken deploy is still broken 5 minutes later and still fails
+# loud, same alert as before.
+RETRY_TIMEOUT_SECONDS = 300
+RETRY_INTERVAL_SECONDS = 20
+
+
+def _run_checks_once(town_id: str, site_url: str) -> list[str]:
+    """One attempt at both checks, each against a FRESH DB connection (not
+    reused across retries -- a connection that failed once is exactly the
+    kind of thing a retry shouldn't trust again). Returns the list of
+    failure strings, empty on success."""
+    failures: list[str] = []
+    try:
+        with get_conn() as conn:
+            err = check_homepage_freshness(conn, town_id, site_url)
+            if err:
+                failures.append(f"homepage freshness: {err}")
+            else:
+                print(f"  [{town_id}] homepage freshness: ok")
+
+            err = check_signature_section(town_id, site_url)
+            if err:
+                failures.append(f"signature section: {err}")
+            else:
+                print(f"  [{town_id}] signature section: ok")
+    except Exception as exc:  # noqa: BLE001 -- a DB/network exception counts as a failed attempt, not a crash
+        failures.append(f"attempt raised {type(exc).__name__}: {exc}")
+    return failures
+
+
+def run_with_retry(
+    check_fn,
+    town_id: str,
+    timeout_seconds: float = RETRY_TIMEOUT_SECONDS,
+    interval_seconds: float = RETRY_INTERVAL_SECONDS,
+    sleep_fn=time.sleep,
+    clock_fn=time.monotonic,
+) -> list[str]:
+    """Calls check_fn() (no args, returns a list of failure strings, empty
+    on success) repeatedly until it succeeds or timeout_seconds has
+    elapsed. Returns the LAST attempt's failure list (empty = success).
+
+    check_fn/sleep_fn/clock_fn are injectable so this loop's own timing and
+    give-up logic can be unit tested without a real clock or real I/O (see
+    tests/test_check_deployed_content.py) -- same dependency-injection
+    shape as server/ticketmaster-image.ts's cacheStorage parameter."""
+    start = clock_fn()
+    attempt = 0
+    failures: list[str] = []
+    while True:
+        attempt += 1
+        failures = check_fn()
+        if not failures:
+            print(f"  [{town_id}] post-deploy content check: all clear (attempt {attempt})")
+            return failures
+
+        elapsed = clock_fn() - start
+        remaining = timeout_seconds - elapsed
+        for f in failures:
+            print(f"  [{town_id}] attempt {attempt} failed ({elapsed:.0f}s elapsed) -- {f}", file=sys.stderr)
+        if remaining <= 0:
+            return failures
+        sleep_for = min(interval_seconds, remaining)
+        print(f"  [{town_id}] retrying in {sleep_for:.0f}s ({remaining:.0f}s left in the retry window)...")
+        sleep_fn(sleep_for)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--config", required=True)
@@ -241,27 +372,12 @@ def main() -> int:
         print(f"no known site URL for town_id={town_id!r} -- add it to SITE_URLS", file=sys.stderr)
         return 1
 
-    failures: list[str] = []
-    with get_conn() as conn:
-        err = check_homepage_freshness(conn, town_id, site_url)
-        if err:
-            failures.append(f"homepage freshness: {err}")
-        else:
-            print(f"  [{town_id}] homepage freshness: ok")
-
-        err = check_signature_section(town_id, site_url)
-        if err:
-            failures.append(f"signature section: {err}")
-        else:
-            print(f"  [{town_id}] signature section: ok")
-
+    failures = run_with_retry(lambda: _run_checks_once(town_id, site_url), town_id)
     if failures:
         for f in failures:
             print(f"  [{town_id}] FAIL -- {f}", file=sys.stderr)
         _alert(town_id, "; ".join(failures))
         return 1
-
-    print(f"  [{town_id}] post-deploy content check: all clear")
     return 0
 
 
