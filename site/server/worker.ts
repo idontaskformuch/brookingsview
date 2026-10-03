@@ -27,6 +27,7 @@ import { handleShiftPollVote } from './shift-poll-vote';
 import { handleContact } from './contact';
 import { handleTicketmasterImage, handleTicketmasterImagePurge } from './ticketmaster-image';
 import { resolveContentSlugRedirect } from './content-slug-redirects';
+import { resolvePlaceRedirect } from './place-redirects';
 import {
   type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug, previousIsoWeekSlug,
   resolveLegacyMeetingRedirect,
@@ -120,6 +121,19 @@ export default {
     const contentSlugRedirectPath = resolveContentSlugRedirect(url.pathname);
     if (contentSlugRedirectPath) {
       const target = new URL(contentSlugRedirectPath, url.origin);
+      target.search = url.search;
+      return Response.redirect(target.toString(), 301);
+    }
+
+    // Facilities Traffic Pass, 2026-10-03: the retired Broomfield-only
+    // /place/[slug] + /places/ -> the unified /facilities/[slug] +
+    // /facilities/ every town now uses (see place-redirects.ts's own
+    // comment for why /facilities/ won). Same 301 reasoning as the two
+    // blocks above -- the canonical facility URL, once decided, doesn't
+    // change again.
+    const placeRedirectPath = resolvePlaceRedirect(url.pathname);
+    if (placeRedirectPath) {
+      const target = new URL(placeRedirectPath, url.origin);
       target.search = url.search;
       return Response.redirect(target.toString(), 301);
     }
