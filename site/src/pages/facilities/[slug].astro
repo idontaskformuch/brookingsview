@@ -113,7 +113,14 @@ const showFacilityImage = Boolean(facility.image_path) && !facility.image_needs_
 // loudly instead of shipping a 404 <img src>.
 if (showFacilityImage) assertImageExists(facility.image_path!, facility.slug);
 const canonicalUrl = new URL(`/facilities/${facility.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
-const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('facilities/detail', siteConfig, { label: facility.name, href: canonicalUrl });
+// The 'places' cluster's own label is 'Places' (a broader content-category
+// name shared with the weather spoke -- see config/clusters.ts) but the hub
+// it points at here is titled "Facilities", so the generic cluster label
+// would read as a mismatch on this specific spoke's breadcrumb/BreadcrumbList.
+// Relabeled only on this trail, not in clusters.ts -- every other page still
+// reads "Places" exactly as before.
+const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('facilities/detail', siteConfig, { label: facility.name, href: canonicalUrl })
+  .map((entry) => (entry.label === 'Places' ? { ...entry, label: 'Facilities' } : entry));
 ---
 <BaseLayout title={pageMeta.title} description={description} ogSlug={`facility-${facility.slug}`}>
   <Breadcrumbs trail={breadcrumbTrail} />
