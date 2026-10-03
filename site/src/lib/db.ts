@@ -1724,6 +1724,20 @@ export interface Facility {
   // at all" and "parsed successfully"; this field only distinguishes the
   // one state that actually wants a human's attention.
   hours_needs_review: boolean;
+  // Facilities Traffic Pass, 2026-10-03: merged in from the former
+  // Broomfield-only PlaceDetail interface (deleted) -- Search Console
+  // showed no canonical conflict between /facilities/ and /place/ for
+  // Broomfield, so /facilities/[slug] became the one template for all
+  // three towns instead of the reverse. `id` was PlaceDetail-only
+  // (place_hours/place_hours_exceptions are keyed on it); every /facilities/
+  // route needs it now too, for the same reason /place/[slug] did.
+  id: number;
+  is_free: boolean | null;
+  fee_note: string | null;
+  accessibility_note: string | null;
+  services: string[] | null;
+  verification_method: string | null;
+  hours_confidence: string | null;
 }
 
 /** One facility's whole week, 24h local "HH:MM" strings -- mirrors
@@ -1743,15 +1757,24 @@ export interface StructuredHours {
 
 /** Alla anläggningar för den aktuella orten, grupperat på category av
  *  anroparen (t.ex. /facilities/index.astro). Sorterat på category sen namn
- *  så renderingen blir stabil utan att varje sida behöver egen ORDER BY. */
+ *  så renderingen blir stabil utan att varje sida behöver egen ORDER BY.
+ *
+ *  Facilities Traffic Pass, 2026-10-03: now selects the full place-layer
+ *  column set too (id, is_free, services, ...) -- getAllPlaces()/
+ *  getPlaceBySlug() and the PlaceDetail interface are deleted, this is the
+ *  one query for all three towns now. See db/migrations/045's own comment
+ *  for why those were ever separate (a Broomfield-only /place/ template
+ *  the rest of this pass just retired, see redirects in place/[slug].astro
+ *  and places/index.astro). */
 export async function getFacilities(): Promise<Facility[]> {
   return (await sql`
-    SELECT slug, name, category, address, phone, website,
+    SELECT id, slug, name, category, address, phone, website,
            hours_text, description, source_url, verified_date,
            aliases, street_address, postal_code, lat, lon,
            image_path, image_alt, name_aliases,
            image_attribution_text, image_attribution_url, image_needs_review, free_teaser,
-           hours_structured, hours_needs_review
+           hours_structured, hours_needs_review,
+           is_free, fee_note, accessibility_note, services, verification_method, hours_confidence
       FROM places
      WHERE town_id = ${TOWN_ID}
      ORDER BY category, name
@@ -1809,12 +1832,13 @@ export async function getContentTrackImageStatus(): Promise<ContentTrackImageRow
  *  unikt inom en ort (UNIQUE(town_id, slug)), samma mönster som Story-slugs. */
 export async function getFacilityBySlug(slug: string): Promise<Facility | null> {
   const rows = (await sql`
-    SELECT slug, name, category, address, phone, website,
+    SELECT id, slug, name, category, address, phone, website,
            hours_text, description, source_url, verified_date,
            aliases, street_address, postal_code, lat, lon,
            image_path, image_alt, name_aliases,
            image_attribution_text, image_attribution_url, image_needs_review, free_teaser,
-           hours_structured, hours_needs_review
+           hours_structured, hours_needs_review,
+           is_free, fee_note, accessibility_note, services, verification_method, hours_confidence
       FROM places
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
      LIMIT 1
@@ -1822,72 +1846,21 @@ export async function getFacilityBySlug(slug: string): Promise<Facility | null> 
   return rows[0] ?? null;
 }
 
-/** Broomfield place-layer handoff, Step 4: the richer place-detail row for
- *  /place/[slug].astro -- deliberately a SEPARATE query/interface from
- *  Facility/getFacilityBySlug() above, not an extension of it, even though
- *  both read the same `places` table. The existing /facilities/ routes
- *  (all three towns) have no use for is_free/services/hours_confidence/etc,
- *  and giving them those fields for free would be a silent scope increase
- *  nobody asked for. */
-export interface PlaceDetail extends Facility {
-  id: number;
-  is_free: boolean | null;
-  fee_note: string | null;
-  accessibility_note: string | null;
-  services: string[] | null;
-  verification_method: string | null;
-  hours_confidence: string | null;
-}
-
-export async function getPlaceBySlug(slug: string): Promise<PlaceDetail | null> {
-  const rows = (await sql`
-    SELECT id, slug, name, category, address, phone, website,
-           hours_text, description, source_url, verified_date,
-           aliases, street_address, postal_code, lat, lon,
-           image_path, image_alt, name_aliases,
-           image_attribution_text, image_attribution_url, image_needs_review, free_teaser,
-           hours_structured, hours_needs_review,
-           is_free, fee_note, accessibility_note, services, verification_method, hours_confidence
-      FROM places
-     WHERE town_id = ${TOWN_ID} AND slug = ${slug}
-     LIMIT 1
-  `) as PlaceDetail[];
-  return rows[0] ?? null;
-}
-
-/** Every place for this town, with the full place-layer field set -- for
- *  /places/index.astro (handoff 5.3). Mirrors getFacilities()'s own
- *  shape/ordering exactly, just with the extra columns getFacilities()
- *  deliberately doesn't select (see PlaceDetail's own doc comment). */
-export async function getAllPlaces(): Promise<PlaceDetail[]> {
-  return (await sql`
-    SELECT id, slug, name, category, address, phone, website,
-           hours_text, description, source_url, verified_date,
-           aliases, street_address, postal_code, lat, lon,
-           image_path, image_alt, name_aliases,
-           image_attribution_text, image_attribution_url, image_needs_review, free_teaser,
-           hours_structured, hours_needs_review,
-           is_free, fee_note, accessibility_note, services, verification_method, hours_confidence
-      FROM places
-     WHERE town_id = ${TOWN_ID}
-     ORDER BY category, name
-  `) as PlaceDetail[];
-}
-
-/** Every place's own internal id + slug for this town, for getStaticPaths()
- *  -- place_hours/place_hours_exceptions are keyed on the numeric id, not
- *  the slug, so the page needs both. */
-export async function getAllPlaceSlugs(): Promise<{ id: number; slug: string }[]> {
-  return (await sql`SELECT id, slug FROM places WHERE town_id = ${TOWN_ID}`) as { id: number; slug: string }[];
-}
-
 export interface PlaceHoursRow {
   // 0=Sunday..6=Saturday -- see scripts/seed_broomfield_places_batch1.py's
   // own comment for why (JS Date.getDay() convention, no prior precedent
   // in this codebase's day-numbering to follow instead).
   day_of_week: number;
-  opens: string;
-  closes: string;
+  // Both null together is a real, sourced "closed that day" fact (migration
+  // 045's own comment) -- distinct from no row at all for that weekday,
+  // which means unknown/never asked. Widened from non-null `string` to
+  // match (facilities/[slug].astro's hours_structured backfill, 2026-10-03,
+  // is the first real data to ever populate this case -- place-hours.ts's
+  // windowsForDate()/buildPlaceOpeningHoursSpecification() needed the same
+  // null-guard place_hours_exceptions already had, see those functions'
+  // own updated comments).
+  opens: string | null;
+  closes: string | null;
   valid_from: string | null;
   valid_to: string | null;
 }

@@ -10,6 +10,7 @@ const SITE = {
 };
 
 const MAIN_LIBRARY: Facility = {
+  id: 4,
   slug: 'main-library',
   name: 'Moreno Valley Public Library — Main Branch',
   category: 'library',
@@ -34,6 +35,12 @@ const MAIN_LIBRARY: Facility = {
   free_teaser: null,
   hours_structured: null,
   hours_needs_review: false,
+  is_free: null,
+  fee_note: null,
+  accessibility_note: null,
+  services: null,
+  verification_method: null,
+  hours_confidence: null,
 };
 
 const CITY_HALL_UNVERIFIED_ADDRESS: Facility = {

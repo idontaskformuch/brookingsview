@@ -94,7 +94,16 @@ function windowsForDate(
     .filter((h) => h.day_of_week === weekday)
     .filter((h) => (!h.valid_from || compareCalendarDates(h.valid_from, isoDate) <= 0)
                 && (!h.valid_to || compareCalendarDates(h.valid_to, isoDate) >= 0))
-    .map((h) => ({ opens: h.opens, closes: h.closes }));
+    // opens===closes===null is a real, sourced "closed this day" row (see
+    // PlaceHoursRow's own doc comment) -- the SAME "no window" result as no
+    // row at all for this weekday, just for a different reason (confirmed
+    // closed vs. never asked). Without this filter, a null/null row would
+    // reach toMinutes()/formatClock() below and crash on `.split(':')` of
+    // null -- unexercised until facilities/[slug].astro's hours_structured
+    // backfill (2026-10-03) became the first real data to ever store one;
+    // place_hours_exceptions already had the equivalent guard above.
+    .filter((h) => h.opens !== null && h.closes !== null)
+    .map((h) => ({ opens: h.opens as string, closes: h.closes as string }));
 }
 
 /** hours.length === 0 is the caller's own signal for "no structured data at
@@ -157,14 +166,20 @@ const SCHEMA_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'
  *  stores one row per day, so collapsing would be a lossy round-trip for
  *  no real benefit here. */
 export function buildPlaceOpeningHoursSpecification(hours: PlaceHoursRow[]): Record<string, unknown>[] {
-  return hours.map((h) => ({
-    '@type': 'OpeningHoursSpecification',
-    dayOfWeek: `https://schema.org/${SCHEMA_DAY_NAMES[h.day_of_week]}`,
-    opens: h.opens.slice(0, 5),
-    closes: h.closes.slice(0, 5),
-    ...(h.valid_from ? { validFrom: h.valid_from } : {}),
-    ...(h.valid_to ? { validThrough: h.valid_to } : {}),
-  }));
+  // A confirmed-closed row (opens===closes===null, see PlaceHoursRow's own
+  // doc comment) has nothing to emit -- schema.org's openingHoursSpecification
+  // has no "closed" value; the day's absence from this array IS the closed
+  // signal, same as a weekday with no row at all.
+  return hours
+    .filter((h) => h.opens !== null && h.closes !== null)
+    .map((h) => ({
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: `https://schema.org/${SCHEMA_DAY_NAMES[h.day_of_week]}`,
+      opens: (h.opens as string).slice(0, 5),
+      closes: (h.closes as string).slice(0, 5),
+      ...(h.valid_from ? { validFrom: h.valid_from } : {}),
+      ...(h.valid_to ? { validThrough: h.valid_to } : {}),
+    }));
 }
 
 /** Handoff Section 4: staleness. `verifiedDate` is a bare "YYYY-MM-DD"

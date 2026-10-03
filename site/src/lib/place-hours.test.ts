@@ -93,6 +93,29 @@ describe('computePlaceOpenStatus', () => {
     expect(status.known && !status.isOpen).toBe(true); // finds next Sunday within 7 days
   });
 
+  it('a confirmed-closed row (opens/closes both null) is treated as closed that day, not a crash', () => {
+    // facilities/[slug].astro's hours_structured backfill (2026-10-03) is
+    // the first real data to ever store a null/null regular place_hours
+    // row (e.g. Brookings City Hall: open Mon-Fri, explicitly closed
+    // Sat/Sun) -- windowsForDate()'s regular-hours branch had no guard for
+    // this before, only place_hours_exceptions did; would have crashed on
+    // `.split(':')` of null without the fix.
+    const weekdaysOnly: PlaceHoursRow[] = [
+      ...MON_THU_9_5,
+      { day_of_week: 5, opens: '09:00:00', closes: '17:00:00', valid_from: null, valid_to: null },
+      { day_of_week: 6, opens: null, closes: null, valid_from: null, valid_to: null },
+      { day_of_week: 0, opens: null, closes: null, valid_from: null, valid_to: null },
+    ];
+    // Saturday 09-12 (day_of_week 6) -- the null/null row means closed, and
+    // since weekdaysOnly's Monday window is still 2 days off, not within
+    // the 7-day scan from Saturday... actually Monday IS within 7 days, so
+    // this should report "opens Monday", not crash.
+    const saturday = new Date(Date.UTC(2026, 8, 12, 15, 0)); // ~9am Denver, Sat 2026-09-12
+    const status = computePlaceOpenStatus(weekdaysOnly, [], saturday, TZ);
+    expect(status.known).toBe(true);
+    expect(status.known && status.isOpen).toBe(false);
+  });
+
   it('valid_from/valid_to scope a seasonal window to its own date range', () => {
     const summerOnly: PlaceHoursRow[] = [
       { day_of_week: 1, opens: '10:00:00', closes: '18:00:00', valid_from: '2026-06-01', valid_to: '2026-08-31' },
@@ -121,6 +144,16 @@ describe('buildPlaceOpeningHoursSpecification', () => {
     expect(buildPlaceOpeningHoursSpecification(rows)[0]).toMatchObject({
       validFrom: '2026-06-01', validThrough: '2026-08-31',
     });
+  });
+
+  it('omits a confirmed-closed (null/null) row entirely -- schema.org has no "closed" value', () => {
+    const rows: PlaceHoursRow[] = [
+      { day_of_week: 1, opens: '09:00:00', closes: '17:00:00', valid_from: null, valid_to: null },
+      { day_of_week: 6, opens: null, closes: null, valid_from: null, valid_to: null },
+    ];
+    const spec = buildPlaceOpeningHoursSpecification(rows);
+    expect(spec).toHaveLength(1);
+    expect(spec[0]).toMatchObject({ dayOfWeek: 'https://schema.org/Monday' });
   });
 });
 

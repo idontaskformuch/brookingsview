@@ -6,20 +6,35 @@
  *  (se lib/db.ts, getFacilities-kommentaren, för resonemanget om varför det
  *  inte är samma "scaled content"-problem). Byggs för alla städer -- ingen
  *  townId-gate, eftersom facilities-tabellen redan är town_id-filtrerad via
- *  getFacilities()/getFacilityBySlug(). */
+ *  getFacilities()/getFacilityBySlug().
+ *
+ *  Facilities Traffic Pass, 2026-10-03: this is now the ONE detail template
+ *  for all three towns -- structured weekly hours, upcoming exceptions, and
+ *  the is_free/services/accessibility facts block are merged in from the
+ *  former Broomfield-only /place/[slug].astro (deleted; that path and
+ *  /places/ now 301 here, see those files). Search Console showed no
+ *  canonical conflict between the two for Broomfield's existing pages, so
+ *  this path won by the project's own default-to-current-URL rule. The old
+ *  computeOpenStatus()/hours_text open-status computation is retired from
+ *  THIS page (computePlaceOpenStatus() replaces it, reading real
+ *  place_hours rows) -- facilities/index.astro's own hub badges still use
+ *  the old function for now, a known, deliberately out-of-scope-for-today
+ *  inconsistency, not an oversight. */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import RelatedContent from '../../components/RelatedContent.astro';
 import ImageAttribution from '../../components/ImageAttribution.astro';
 import { assertImageExists } from '../../lib/images';
 import {
-  getFacilities, getFacilityBySlug, FACILITY_CATEGORY_LABELS, FACILITY_SCHEMA_TYPE,
-  formatCalendarDate, getUpcomingStories, buildVenueIndex, resolveVenue, formatOccursAt,
+  getFacilities, getFacilityBySlug, getPlaceHours, getUpcomingPlaceHoursExceptions,
+  FACILITY_CATEGORY_LABELS, FACILITY_SCHEMA_TYPE,
+  formatCalendarDate, formatFullCalendarDate, getUpcomingStories, buildVenueIndex, resolveVenue, formatOccursAt,
 } from '../../lib/db';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
-import { computeOpenStatus, buildOpeningHoursSpecification } from '../../lib/facility-hours';
+import { formatClock } from '../../lib/facility-hours';
+import { computePlaceOpenStatus, buildPlaceOpeningHoursSpecification, isPastStalenessThreshold } from '../../lib/place-hours';
 import { buildFacilityLede } from '../../lib/facility-lede';
 import { resolvePageMeta } from '../../lib/page-meta';
 import { storyHref } from '../../lib/content-slugs';
@@ -62,13 +77,27 @@ const upcomingHere = allUpcoming
   .slice(0, 8);
 
 const hasFullAddress = Boolean(facility.street_address && facility.postal_code);
-// Recurring-traffic layer, Phase 2: "open now" computed from the
-// structured hours (see lib/facility-hours.ts) -- known:false whenever
-// hours_structured is null (no hours_text at all, or the parser flagged
-// it for review), which the template below renders as no badge at all,
-// never a guessed/false "closed".
-const openStatus = computeOpenStatus(facility.hours_structured, new Date(), siteConfig.timezone);
-const openingHoursSpecification = buildOpeningHoursSpecification(facility.hours_structured);
+
+// Structured hours -- real place_hours/place_hours_exceptions rows, same
+// computation the former /place/[slug].astro used. known:false whenever
+// there are no place_hours rows at all (never asked/sourced yet), which the
+// template below renders as no status line and no table, never a guessed
+// "closed". See place-hours.ts's own module comment for the null/null
+// "confirmed closed that day" convention a real row can carry.
+const [hours, exceptions] = await Promise.all([
+  getPlaceHours(facility.id),
+  getUpcomingPlaceHoursExceptions(facility.id),
+]);
+const now = new Date();
+const openStatus = computePlaceOpenStatus(hours, exceptions, now, siteConfig.timezone);
+const staleness = siteConfig.placeStaleness ?? { hoursDays: 45, addressPhoneDays: 180 };
+const hoursStale = isPastStalenessThreshold(facility.verified_date, staleness.hoursDays, now);
+// Handoff 5.2's own rule, carried over unchanged: "emitting stale hours as
+// schema is worse than emitting none."
+const emitHoursSchema = facility.hours_confidence === 'structured' && !hoursStale && hours.length > 0;
+const todayLabel = formatFullCalendarDate(now.toISOString());
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 const schemaType = FACILITY_SCHEMA_TYPE[facility.category] ?? 'CivicStructure';
 // Sitewide presentation-layer pass: a verified real photo where one
 // exists -- never a placeholder when it doesn't. image_needs_review means
@@ -125,23 +154,96 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
       {facility.phone && (
         <div class="fact"><dt>Phone</dt><dd><a href={`tel:${facility.phone.replace(/[^\d+]/g, '')}`}>{facility.phone}</a></dd></div>
       )}
-      {facility.hours_text && (
+      {hours.length > 0 ? (
+        // openStatus.known is always true whenever hours.length > 0 (see
+        // computePlaceOpenStatus's own "hours.length === 0 -> known: false"
+        // rule) -- this branch never needs an "unconfirmed" fallback of its
+        // own, only the sibling branches below do.
         <div class="fact">
           <dt>Hours</dt>
           <dd>
-            {openStatus.known && (
-              <span class:list={['open-status', openStatus.isOpen ? 'open-status--open' : 'open-status--closed']}>
-                {openStatus.isOpen ? `Open now — closes ${openStatus.closesAt}` : `Closed — opens ${openStatus.opensAt} ${openStatus.opensLabel}`}
-              </span>
-            )}
-            <span class="hours-text">{facility.hours_text}</span>
+            <span class:list={['open-status', openStatus.known && openStatus.isOpen ? 'open-status--open' : 'open-status--closed']}>
+              {openStatus.known && openStatus.isOpen
+                ? `Open now — closes ${openStatus.closesAt} today, ${todayLabel}`
+                : (openStatus.known && openStatus.opensAt
+                    ? `Closed now — opens ${openStatus.opensAt} ${openStatus.opensLabel}`
+                    : 'Closed now, with no confirmed opening time this week')}
+            </span>
           </dd>
         </div>
+      ) : facility.hours_text ? (
+        // Fallback for the rare hours_text that never parsed into structured
+        // data at all (e.g. "some counters follow separate Friday hours",
+        // "Sun 10am onward" -- too irregular for a fixed [open,close] pair) --
+        // shown as plain text, no computed open/closed badge, rather than
+        // silently dropping a real sourced fact when retiring the old
+        // computeOpenStatus()/hours_structured computation from this page.
+        <div class="fact"><dt>Hours</dt><dd><span class="hours-text">{facility.hours_text}</span></dd></div>
+      ) : (
+        // No structured hours AND no hours_text at all -- say so explicitly
+        // rather than silently omitting the Hours fact entirely. A reader
+        // (and a search engine) seeing no "Hours" row at all can't tell "we
+        // checked and found none" apart from "this page was never built to
+        // answer that question" -- exactly the ambiguity this whole pass
+        // exists to remove. Bug fix 2026-10-03: the original merge nested
+        // this fallback one level too deep (inside the hours.length > 0
+        // branch, where openStatus.known is always true), making it
+        // unreachable dead code -- found by spot-checking a real
+        // zero-hours-data facility (Brookings' HillCrest Park) against the
+        // actual built HTML, not just astro check/vitest passing.
+        <div class="fact"><dt>Hours</dt><dd>Hours have not been confirmed for this location from a current source yet.</dd></div>
       )}
       {facility.website && (
         <div class="fact"><dt>Website</dt><dd><a href={facility.website} rel="noopener">{facility.website.replace(/^https?:\/\//, '')}</a></dd></div>
       )}
+      {facility.is_free !== null && (
+        <div class="fact"><dt>Cost</dt><dd>{facility.is_free ? 'Free' : (facility.fee_note ?? 'Fee required')}</dd></div>
+      )}
+      {facility.is_free === false && facility.fee_note && (
+        <div class="fact"><dt>Fees</dt><dd>{facility.fee_note}</dd></div>
+      )}
+      {facility.services && facility.services.length > 0 && (
+        <div class="fact"><dt>Services</dt><dd>{facility.services.join(', ')}</dd></div>
+      )}
+      {facility.accessibility_note && (
+        <div class="fact"><dt>Accessibility</dt><dd>{facility.accessibility_note}</dd></div>
+      )}
     </dl>
+
+    {hours.length > 0 && (
+      <table class="hours-table">
+        <caption>Weekly hours</caption>
+        <tbody>
+          {DAY_NAMES.map((name, dow) => {
+            const rows = hours.filter((h) => h.day_of_week === dow);
+            const windows = rows.filter((r) => r.opens && r.closes);
+            return (
+              <tr>
+                <th scope="row">{name}</th>
+                <td>{windows.length > 0
+                  ? windows.map((r) => `${formatClock(r.opens!)}–${formatClock(r.closes!)}`).join(', ')
+                  : 'Closed'}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    )}
+
+    {exceptions.length > 0 && (
+      <section class="exceptions">
+        <h2 class="section-label">Upcoming exceptions</h2>
+        <ul>
+          {exceptions.map((e) => (
+            <li>
+              <strong>{formatFullCalendarDate(e.date)}</strong>:{' '}
+              {e.opens && e.closes ? `${formatClock(e.opens)}–${formatClock(e.closes)}` : 'Closed'}
+              {e.reason && <> — {e.reason}</>}
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
 
     {upcomingHere.length > 0 && (
       <>
@@ -200,7 +302,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
         : {}),
       ...(facility.phone ? { telephone: facility.phone } : {}),
       ...(facility.website ? { url: facility.website } : {}),
-      ...(openingHoursSpecification ? { openingHoursSpecification } : {}),
+      ...(emitHoursSchema ? { openingHoursSpecification: buildPlaceOpeningHoursSpecification(hours) } : {}),
     })} />
   )}
 
@@ -223,6 +325,13 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
 .hours-text { display: block; color: var(--ink-soft); font-size: 0.9rem; }
 .description { margin: 1.25rem 0; line-height: 1.6; }
 .section-label { margin: 1.75rem 0 0.75rem; font-size: 1.0625rem; }
+.hours-table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.9375rem; }
+.hours-table caption { text-align: left; font-family: var(--font-ui); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 0.5rem; }
+.hours-table th, .hours-table td { text-align: left; padding: 0.375rem 0.75rem 0.375rem 0; border-bottom: 1px solid var(--rule); }
+.hours-table th { font-weight: 600; width: 8rem; }
+.exceptions { margin: 1.5rem 0; }
+.exceptions ul { list-style: none; margin: 0.5rem 0 0; padding: 0; }
+.exceptions li { padding: 0.375rem 0; border-bottom: 1px solid var(--rule); font-size: 0.9375rem; }
 .events { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
 .events li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--rule); }
 .events a { font-weight: 600; }
