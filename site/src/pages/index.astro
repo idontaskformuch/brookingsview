@@ -47,7 +47,7 @@ import {
 } from '../lib/events';
 import { resolveQuickLinks, type QuickLinkContext } from '../lib/quick-links';
 import { siteConfig } from '../lib/site-config';
-import { resolveImage, dedupeConsecutiveImages, withThumbnailCrop, previousWeekRoundupImagePath } from '../lib/images';
+import { resolveImage, dedupeConsecutiveImages, withThumbnailCrop } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
 import { rankTicketmasterEvents, collapseMarqueeRuns, ticketmasterResolvableImage, marqueeDigestKey, type MarqueeEntry } from '../lib/whats-on';
@@ -179,22 +179,27 @@ const worthKnowingSelection = selectWorthKnowing(worthKnowingCandidates, alertBa
 // Real per-place/category photos (see NEEDS-HUMAN-REVIEW.md "Switch venue/
 // category images to real photos") replaced the old, much larger
 // Flux-generated set with ONE photo per category -- so two front-page
-// cards sharing a category (e.g. two "events" items, or WeeklyRoundup
-// colliding with an events lead -- WeeklyRoundup always resolves via
-// 'events', see that component) would otherwise render the exact same
-// photo twice, reading as a bug rather than a deliberate choice.
-// dedupeConsecutiveImages() (added with the original image-identity
-// feature but never actually called from any page until this) is applied
-// here to the front page's image-bearing cards IN THEIR REAL VISUAL ORDER
-// -- weekly roundup, then the "Today's read" feature (moved above the
-// scraped lead/secondary hero, Phase F: surface what's actually unique),
-// then the lead, then each secondary card -- so a repeat is suppressed (an
-// honest "no image" gap, same as any other resolveImage() miss) rather
-// than shown twice. Deliberately only consecutive-in-this-list repeats are
+// cards sharing a category (e.g. two "events" items) would otherwise
+// render the exact same photo twice, reading as a bug rather than a
+// deliberate choice. dedupeConsecutiveImages() (added with the original
+// image-identity feature but never actually called from any page until
+// this) is applied here to the front page's image-bearing cards IN THEIR
+// REAL VISUAL ORDER -- the "Today's read" feature (moved above the scraped
+// lead/secondary hero, Phase F: surface what's actually unique), then the
+// lead, then each secondary card -- so a repeat is suppressed (an honest
+// "no image" gap, same as any other resolveImage() miss) rather than shown
+// twice. Deliberately only consecutive-in-this-list repeats are
 // suppressed, not any-earlier-in-the-list ones -- see that function's own
 // docstring for why a repeat separated by other images isn't the same
 // "reads as broken" problem.
-const frontPageImageOrder = [weekly, feature, fullWidthLead, ...secondary]
+//
+// `weekly` is deliberately NOT in this list (This Week image rotation,
+// 2026-10-03): WeeklyRoundup.astro now resolves its own image from a
+// dedicated, town+season-scoped pool (config/this-week-images.ts) with its
+// own real 60-day usage history, not the shared 'events' category pool --
+// it can no longer collide with another card's photo at all, so it has
+// nothing to participate in this same-page dedup pass for.
+const frontPageImageOrder = [feature, fullWidthLead, ...secondary]
   .filter((s): s is NonNullable<typeof s> => s != null);
 
 // Image-rotation follow-up, Part 2 ("within-page variety") -- see
@@ -211,43 +216,15 @@ const frontPageImageOrder = [weekly, feature, fullWidthLead, ...secondary]
 // excluded from this pass).
 const usedCategoryImagePaths = new Set<string>();
 
-// Image-rotation follow-up, Part 3 ("across-time variety" for the weekly
-// roundup). The weekly roundup resolves via the 'events' category (see
-// WeeklyRoundup.astro's own comment) and its seed (the story's own slug,
-// "weekly-2026-w35") already varies every week -- but with a 2-3 image
-// pool, pickFromPool()'s hash can still land on the SAME bucket as last
-// week purely by chance often enough to look stuck. Whatever
-// pickFromPool() would have picked for LAST week's own seed is excluded
-// from THIS week's pick (see previousWeekRoundupImagePath()'s own doc
-// comment -- computed fresh each time, no stored history needed), via the
-// same usedImagePaths mechanism Part 2 added. N=1 (last week only) is
-// deliberate, not a starting point to extend -- with a 2-image pool
-// (Moreno Valley's events category) excluding even N=1 already leaves
-// exactly one candidate, i.e. this is "alternate," not "avoid a history,"
-// and pretending otherwise would overstate what a 2-3 image pool can
-// actually support. The real fix for more headroom here is a bigger image
-// pool, a content/sourcing task flagged separately (see
-// NEEDS-HUMAN-REVIEW.md's image-rotation report), not something this
-// logic can substitute for.
-const weeklyExclude = new Set<string>();
-if (weekly?.occurs_at) {
-  const weeklyPool = categoryImagesFor(siteConfig.townId).events ?? [];
-  const excludedPath = previousWeekRoundupImagePath(weeklyPool, weekly.occurs_at, siteConfig.timezone);
-  if (excludedPath) weeklyExclude.add(excludedPath);
-}
-
 const frontPageImages = dedupeConsecutiveImages(
   frontPageImageOrder,
   (s) => {
-    const exclude = s.slug === weekly?.slug
-      ? new Set([...usedCategoryImagePaths, ...weeklyExclude])
-      : usedCategoryImagePaths;
     const image = resolveImage(s, {
       town: siteConfig.townId,
       cityName: siteConfig.cityName,
       facilities,
       categoryImages: categoryImagesFor(siteConfig.townId),
-      usedImagePaths: exclude,
+      usedImagePaths: usedCategoryImagePaths,
     });
     if (image) usedCategoryImagePaths.add(image.path);
     return image;
@@ -487,7 +464,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 
   <SchoolAlertBanner alerts={schoolAlerts} />
 
-  {weekly && <WeeklyRoundup story={weekly} facilities={facilities} image={frontPageImageBySlug.get(weekly.slug)} />}
+  {weekly && <WeeklyRoundup story={weekly} />}
 
   {/* Phase F (surface what's actually unique): original, content-track
       material -- the daily featured column/recipe/review and the recent-

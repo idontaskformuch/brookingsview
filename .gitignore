@@ -37,3 +37,8 @@ reports/
 # Ad-hoc before/after screenshot dumps from manual UI verification --
 # disposable visual-QA output, never a build artifact or source of truth.
 scratch_shots/
+
+# Full-resolution Pexels fetches downloaded for manual face/logo/signage
+# verification during this-week-images review (2026-10-06) -- disposable,
+# same reasoning as .review_montages/ above.
+.verify_fullres/

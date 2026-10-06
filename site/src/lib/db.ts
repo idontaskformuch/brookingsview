@@ -24,6 +24,8 @@ import { SHARED_CONTENT_SOURCE_TYPES } from './cross-site-canonical';
 import { resolveCluster } from './clusters';
 import { storyHref } from './content-slugs';
 import { calendarDayDiff } from './time';
+import { selectThisWeekImage, type Season } from './this-week-images';
+import type { ThisWeekImage } from '../config/this-week-images';
 
 const sql = neon(import.meta.env.DATABASE_URL);
 
@@ -571,6 +573,71 @@ export async function getAllWeeklyStories(): Promise<Story[]> {
      WHERE town_id = ${TOWN_ID} AND source_type = 'weekly'
      ORDER BY occurs_at ASC
   `) as Story[];
+}
+
+/** This week's rotating image for the "This week" segment (db/migrations/
+ *  050_this_week_image_usage.sql) -- see lib/this-week-images.ts's
+ *  selectThisWeekImage() for the actual pick algorithm, kept pure/DB-free
+ *  there specifically so it's unit-testable without a database. This
+ *  function is the thin, DB-touching shell around it: read any already-
+ *  saved pick for this exact (town, iso week) first -- a rebuild within the
+ *  same week reuses it rather than re-rolling, which is also what makes the
+ *  pick STABLE rather than merely "probably the same" -- and only select +
+ *  persist a new one when none exists yet.
+ *
+ *  Throws (fails the build) when no eligible candidate exists, same
+ *  "never silently degrade" principle as assertCategoryImagesComplete()/
+ *  resolveVenue()'s hasResolvedAddress() gate elsewhere in this codebase --
+ *  reusing a recently-shown or wrong-season image would defeat the entire
+ *  point of this feature more quietly than just failing the build does. */
+export async function resolveThisWeekImage(
+  isoYearWeek: string,
+  season: Season,
+  pool: ThisWeekImage[],
+): Promise<ThisWeekImage> {
+  const existing = (await sql`
+    SELECT image_id FROM this_week_image_usage
+     WHERE town_id = ${TOWN_ID} AND iso_year_week = ${isoYearWeek}
+  `) as { image_id: string }[];
+  if (existing.length > 0) {
+    const found = pool.find((img) => img.id === existing[0].image_id);
+    if (!found) {
+      throw new Error(
+        `resolveThisWeekImage: town "${TOWN_ID}" week "${isoYearWeek}" already recorded image_id ` +
+        `"${existing[0].image_id}", but no pool entry with that id exists anymore -- it was likely removed ` +
+        'during curation. Fix config/this-week-images.ts (re-add it, or re-point this historical row at a ' +
+        'replacement) rather than silently re-selecting a different image for an already-published week.',
+      );
+    }
+    return found;
+  }
+
+  const history = (await sql`
+    SELECT image_id, shown_at FROM this_week_image_usage WHERE town_id = ${TOWN_ID}
+  `) as { image_id: string; shown_at: string }[];
+  const chosenId = selectThisWeekImage(
+    pool,
+    TOWN_ID,
+    season,
+    history.map((h) => ({ imageId: h.image_id, shownAt: new Date(h.shown_at) })),
+    isoYearWeek,
+    new Date(),
+  );
+  if (!chosenId) {
+    throw new Error(
+      `resolveThisWeekImage: no eligible "This week" image for town "${TOWN_ID}", week "${isoYearWeek}", ` +
+      `season "${season}" -- every candidate for this town+season was shown within the last 60 days, or ` +
+      'config/this-week-images.ts has no entry at all for this town+season. Add more curated images ' +
+      '(see that file\'s own module comment) rather than letting this fall back to a stale or wrong-season pick.',
+    );
+  }
+
+  await sql`
+    INSERT INTO this_week_image_usage (town_id, iso_year_week, image_id)
+    VALUES (${TOWN_ID}, ${isoYearWeek}, ${chosenId})
+    ON CONFLICT (town_id, iso_year_week) DO NOTHING
+  `;
+  return pool.find((img) => img.id === chosenId)!;
 }
 
 /** Every story of the given source_type(s), oldest first, no date window --

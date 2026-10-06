@@ -1,0 +1,119 @@
+/**
+ * Per-town, per-season photo pool for the "This week" segment (homepage
+ * WeeklyRoundup.astro) -- see lib/this-week-images.ts for the selection
+ * algorithm and db.ts's resolveThisWeekImage() for the history-backed
+ * rotation. A DEDICATED pool, separate from config/category-images.ts's
+ * generic 'events' pool: that pool is shared with every event/alert/meeting
+ * card sitewide, has no seasonal awareness, and -- confirmed live
+ * (2026-10-03) -- is small enough (4-5 photos/town) that "This week" reading
+ * as "always the same picture" was a real, reported bug, not a perception
+ * issue.
+ *
+ * Minimum 13 APPROVED images per season per town (brief's own requirement).
+ * Candidates are sourced via scripts/source_this_week_images.py (Pexels,
+ * same hand-reviewed-via-montage policy as source_category_images.py -- a
+ * recognizable OTHER real place, visible signage/branding, is the one thing
+ * text search can't reliably catch) and only added here after a human has
+ * looked at the montage and approved them. Do not hand-add an entry without
+ * going through that review step.
+ *
+ * `seasons` is METEOROLOGICAL, Northern Hemisphere (see
+ * lib/this-week-images.ts's seasonForMonth()): Dec-Feb winter, Mar-May
+ * spring, Jun-Aug summer, Sep-Nov autumn.
+ *
+ * `town_ids` is almost always a single town -- these are meant to be
+ * town-specific (Moreno Valley's autumn is dry hills and Santa Ana wind, not
+ * fall foliage; see the brief), not a generic nationwide stock photo. It's
+ * an array (not a single `town_id`) only so a genuinely generic, real photo
+ * that happens to suit more than one town's look can be shared without
+ * duplicating the same file under two ids -- not the default case.
+ */
+import type { Season } from '../lib/this-week-images';
+import type { Town } from './category-images';
+
+export interface ThisWeekImage {
+  /** Stable id, e.g. "brookings_sd-winter-01" -- this is what
+   *  this_week_image_usage.image_id stores, NOT the file path (so a later
+   *  path/crop change never orphans usage history). */
+  id: string;
+  path: string;
+  alt: string;
+  width: number;
+  height: number;
+  attributionText?: string;
+  attributionUrl?: string;
+  seasons: Season[];
+  town_ids: Town[];
+  /** The underlying Pexels photo id this entry was sourced from (round-3
+   *  curation, 2026-10-03) -- NOT the same as `id` above (this file's own
+   *  "brookings_sd-winter-01" scheme), and never written to the DB. Exists
+   *  purely so a pool-disjointness check (this-week-images.test.ts: the
+   *  same real photo must never be chosen for two DIFFERENT town_ids sets)
+   *  has something to check against -- without this field, two entries
+   *  downloaded from the same Pexels photo for two different towns would
+   *  be indistinguishable here (each gets its own re-saved file under a
+   *  town-prefixed path, so `path` itself can't catch the duplicate).
+   *  scripts/source_this_week_images.py's --select flow checks the SAME
+   *  rule earlier, at curation time, directly against Pexels ids before
+   *  this field even exists -- this is the regression guard for afterward
+   *  (e.g. a hand-edit of this file later), not the only check. */
+  sourcePhotoId: number;
+}
+
+/** Populated by scripts/source_this_week_images.py --apply, after montage
+ *  review -- empty until that review has happened (see this file's own
+ *  module comment). resolveThisWeekImage() fails the build loudly rather
+ *  than silently falling back when a town+season has no entry here, same
+ *  principle as assertCategoryImagesComplete() -- an empty pool is a real,
+ *  visible gap, not a quiet degradation. */
+export const THIS_WEEK_IMAGES: ThisWeekImage[] = [
+  { id: 'brookings_sd-autumn-01', path: '/assets/images/this-week/brookings_sd-autumn-01.jpg', alt: 'Autumn in Brookings, South Dakota.', width: 1200, height: 800, attributionText: 'Photo by Ken Cheatham on Pexels', attributionUrl: 'https://www.pexels.com/@ken-cheatham-1149801429', seasons: ['autumn'], town_ids: ['brookings_sd'], sourcePhotoId: 29348605 },
+  { id: 'brookings_sd-autumn-02', path: '/assets/images/this-week/brookings_sd-autumn-02.jpg', alt: 'Autumn in Brookings, South Dakota.', width: 1200, height: 800, attributionText: 'Photo by Marta Wave on Pexels', attributionUrl: 'https://www.pexels.com/@marta-wave', seasons: ['autumn'], town_ids: ['brookings_sd'], sourcePhotoId: 5875894 },
+  { id: 'brookings_sd-autumn-03', path: '/assets/images/this-week/brookings_sd-autumn-03.jpg', alt: 'Autumn in Brookings, South Dakota.', width: 1200, height: 800, attributionText: 'Photo by Vitalii Melnichenko on Pexels', attributionUrl: 'https://www.pexels.com/@vitalii-melnichenko-487819072', seasons: ['autumn'], town_ids: ['brookings_sd'], sourcePhotoId: 33784496 },
+  { id: 'brookings_sd-autumn-04', path: '/assets/images/this-week/brookings_sd-autumn-04.jpg', alt: 'Autumn in Brookings, South Dakota.', width: 1200, height: 800, attributionText: 'Photo by Tom Fisk on Pexels', attributionUrl: 'https://www.pexels.com/@tomfisk', seasons: ['autumn'], town_ids: ['brookings_sd'], sourcePhotoId: 29702007 },
+  { id: 'brookings_sd-autumn-05', path: '/assets/images/this-week/brookings_sd-autumn-05.jpg', alt: 'Autumn in Brookings, South Dakota.', width: 1200, height: 800, attributionText: 'Photo by Taylor Thompson on Pexels', attributionUrl: 'https://www.pexels.com/@taylor-thompson-865581658', seasons: ['autumn'], town_ids: ['brookings_sd'], sourcePhotoId: 19640440 },
+  { id: 'brookings_sd-autumn-06', path: '/assets/images/this-week/brookings_sd-autumn-06.jpg', alt: 'Autumn in Brookings, South Dakota.', width: 1200, height: 800, attributionText: 'Photo by Mathias Reding on Pexels', attributionUrl: 'https://www.pexels.com/@matreding', seasons: ['autumn'], town_ids: ['brookings_sd'], sourcePhotoId: 34298357 },
+  { id: 'brookings_sd-autumn-07', path: '/assets/images/this-week/brookings_sd-autumn-07.jpg', alt: 'Autumn in Brookings, South Dakota.', width: 1200, height: 800, attributionText: 'Photo by Thomas Parker on Pexels', attributionUrl: 'https://www.pexels.com/@thomas-parker-1272388137', seasons: ['autumn'], town_ids: ['brookings_sd'], sourcePhotoId: 29467584 },
+  { id: 'brookings_sd-autumn-08', path: '/assets/images/this-week/brookings_sd-autumn-08.jpg', alt: 'Autumn in Brookings, South Dakota.', width: 1200, height: 800, attributionText: 'Photo by Sharuk Shaik on Pexels', attributionUrl: 'https://www.pexels.com/@mahabub1144', seasons: ['autumn'], town_ids: ['brookings_sd'], sourcePhotoId: 35077503 },
+  { id: 'brookings_sd-autumn-09', path: '/assets/images/this-week/brookings_sd-autumn-09.jpg', alt: 'Autumn in Brookings, South Dakota.', width: 1200, height: 800, attributionText: 'Photo by Thomas Newland on Pexels', attributionUrl: 'https://www.pexels.com/@thomas-newland-923080', seasons: ['autumn'], town_ids: ['brookings_sd'], sourcePhotoId: 11089479 },
+  { id: 'brookings_sd-autumn-10', path: '/assets/images/this-week/brookings_sd-autumn-10.jpg', alt: 'Autumn in Brookings, South Dakota.', width: 1200, height: 800, attributionText: 'Photo by Rod Shelley on Pexels', attributionUrl: 'https://www.pexels.com/@rods', seasons: ['autumn'], town_ids: ['brookings_sd'], sourcePhotoId: 14633165 },
+  { id: 'brookings_sd-autumn-11', path: '/assets/images/this-week/brookings_sd-autumn-11.jpg', alt: 'Autumn in Brookings, South Dakota.', width: 1200, height: 800, attributionText: 'Photo by Sam N on Pexels', attributionUrl: 'https://www.pexels.com/@sam-n-2279257', seasons: ['autumn'], town_ids: ['brookings_sd'], sourcePhotoId: 35365408 },
+  { id: 'brookings_sd-autumn-12', path: '/assets/images/this-week/brookings_sd-autumn-12.jpg', alt: 'Autumn in Brookings, South Dakota.', width: 1200, height: 800, attributionText: 'Photo by Adriaan Greyling on Pexels', attributionUrl: 'https://www.pexels.com/@monkeytactics', seasons: ['autumn'], town_ids: ['brookings_sd'], sourcePhotoId: 18843431 },
+  { id: 'brookings_sd-autumn-13', path: '/assets/images/this-week/brookings_sd-autumn-13.jpg', alt: 'Autumn in Brookings, South Dakota.', width: 1200, height: 800, attributionText: 'Photo by Keith Cassill on Pexels', attributionUrl: 'https://www.pexels.com/@inspired2love', seasons: ['autumn'], town_ids: ['brookings_sd'], sourcePhotoId: 33815997 },
+  { id: 'brookings_sd-autumn-14', path: '/assets/images/this-week/brookings_sd-autumn-14.jpg', alt: 'Autumn in Brookings, South Dakota.', width: 1200, height: 800, attributionText: 'Photo by Keith Cassill on Pexels', attributionUrl: 'https://www.pexels.com/@inspired2love', seasons: ['autumn'], town_ids: ['brookings_sd'], sourcePhotoId: 29008130 },
+  { id: 'brookings_sd-autumn-15', path: '/assets/images/this-week/brookings_sd-autumn-15.jpg', alt: 'Autumn in Brookings, South Dakota.', width: 1200, height: 800, attributionText: 'Photo by Sóc Năng Động on Pexels', attributionUrl: 'https://www.pexels.com/@soc-nang-d-ng-2150345854', seasons: ['autumn'], town_ids: ['brookings_sd'], sourcePhotoId: 34211073 },
+  { id: 'moreno_valley_ca-autumn-01', path: '/assets/images/this-week/moreno_valley_ca-autumn-01.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by JUDY HORN on Pexels', attributionUrl: 'https://www.pexels.com/@judy-horn-2027870', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 5365778 },
+  { id: 'moreno_valley_ca-autumn-02', path: '/assets/images/this-week/moreno_valley_ca-autumn-02.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by Zachary Vessels on Pexels', attributionUrl: 'https://www.pexels.com/@zachary-vessels-26649727', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 6794794 },
+  { id: 'moreno_valley_ca-autumn-03', path: '/assets/images/this-week/moreno_valley_ca-autumn-03.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by Tara Winstead on Pexels', attributionUrl: 'https://www.pexels.com/@tara-winstead', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 8406992 },
+  { id: 'moreno_valley_ca-autumn-04', path: '/assets/images/this-week/moreno_valley_ca-autumn-04.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by Darya Sannikova on Pexels', attributionUrl: 'https://www.pexels.com/@myatezhny39', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 30151768 },
+  { id: 'moreno_valley_ca-autumn-05', path: '/assets/images/this-week/moreno_valley_ca-autumn-05.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by Eliezer Muller on Pexels', attributionUrl: 'https://www.pexels.com/@eliezer', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 34728909 },
+  { id: 'moreno_valley_ca-autumn-06', path: '/assets/images/this-week/moreno_valley_ca-autumn-06.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by D Goug on Pexels', attributionUrl: 'https://www.pexels.com/@d-goug-211350543', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 33043467 },
+  { id: 'moreno_valley_ca-autumn-07', path: '/assets/images/this-week/moreno_valley_ca-autumn-07.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by mars l on Pexels', attributionUrl: 'https://www.pexels.com/@mars-l-296478532', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 13278726 },
+  { id: 'moreno_valley_ca-autumn-08', path: '/assets/images/this-week/moreno_valley_ca-autumn-08.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by Megan Krause on Pexels', attributionUrl: 'https://www.pexels.com/@megan-krause-696978842', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 18027616 },
+  { id: 'moreno_valley_ca-autumn-09', path: '/assets/images/this-week/moreno_valley_ca-autumn-09.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by Tom Briskey on Pexels', attributionUrl: 'https://www.pexels.com/@tom-briskey-99375926', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 12422188 },
+  { id: 'moreno_valley_ca-autumn-10', path: '/assets/images/this-week/moreno_valley_ca-autumn-10.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by Wendy Wei on Pexels', attributionUrl: 'https://www.pexels.com/@wendywei', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 2974614 },
+  { id: 'moreno_valley_ca-autumn-11', path: '/assets/images/this-week/moreno_valley_ca-autumn-11.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by Soly Moses on Pexels', attributionUrl: 'https://www.pexels.com/@solyartphotos', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 15742718 },
+  { id: 'moreno_valley_ca-autumn-12', path: '/assets/images/this-week/moreno_valley_ca-autumn-12.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by James Wheeler on Pexels', attributionUrl: 'https://www.pexels.com/@souvenirpixels', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 1486976 },
+  { id: 'moreno_valley_ca-autumn-13', path: '/assets/images/this-week/moreno_valley_ca-autumn-13.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by Zen Chung on Pexels', attributionUrl: 'https://www.pexels.com/@zen-chung', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 5528964 },
+  { id: 'moreno_valley_ca-autumn-14', path: '/assets/images/this-week/moreno_valley_ca-autumn-14.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by Nés on Pexels', attributionUrl: 'https://www.pexels.com/@nes-253751703', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 37442921 },
+  { id: 'moreno_valley_ca-autumn-15', path: '/assets/images/this-week/moreno_valley_ca-autumn-15.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by Jilly Noble on Pexels', attributionUrl: 'https://www.pexels.com/@jillyjillystudio', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 18748109 },
+  { id: 'moreno_valley_ca-autumn-16', path: '/assets/images/this-week/moreno_valley_ca-autumn-16.jpg', alt: 'Autumn in Moreno Valley, California.', width: 1200, height: 800, attributionText: 'Photo by Jilly Noble on Pexels', attributionUrl: 'https://www.pexels.com/@jillyjillystudio', seasons: ['autumn'], town_ids: ['moreno_valley_ca'], sourcePhotoId: 18748105 },
+  { id: 'broomfield_co-autumn-01', path: '/assets/images/this-week/broomfield_co-autumn-01.jpg', alt: 'Autumn in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Natalia Sevruk on Pexels', attributionUrl: 'https://www.pexels.com/@natalia-sevruk-636238602', seasons: ['autumn'], town_ids: ['broomfield_co'], sourcePhotoId: 34674157 },
+  { id: 'broomfield_co-autumn-02', path: '/assets/images/this-week/broomfield_co-autumn-02.jpg', alt: 'Autumn in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Erik Mclean on Pexels', attributionUrl: 'https://www.pexels.com/@introspectivedsgn', seasons: ['autumn'], town_ids: ['broomfield_co'], sourcePhotoId: 18462221 },
+  { id: 'broomfield_co-autumn-03', path: '/assets/images/this-week/broomfield_co-autumn-03.jpg', alt: 'Autumn in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Curtis Adams on Pexels', attributionUrl: 'https://www.pexels.com/@curtis-adams-1694007', seasons: ['autumn'], town_ids: ['broomfield_co'], sourcePhotoId: 12700439 },
+  { id: 'broomfield_co-autumn-04', path: '/assets/images/this-week/broomfield_co-autumn-04.jpg', alt: 'Autumn in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by hi room on Pexels', attributionUrl: 'https://www.pexels.com/@hiroom', seasons: ['autumn'], town_ids: ['broomfield_co'], sourcePhotoId: 17240675 },
+  { id: 'broomfield_co-autumn-05', path: '/assets/images/this-week/broomfield_co-autumn-05.jpg', alt: 'Autumn in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Sean P. Twomey on Pexels', attributionUrl: 'https://www.pexels.com/@2mephoto', seasons: ['autumn'], town_ids: ['broomfield_co'], sourcePhotoId: 16781299 },
+  { id: 'broomfield_co-autumn-06', path: '/assets/images/this-week/broomfield_co-autumn-06.jpg', alt: 'Autumn in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Joshua Woroniecki on Pexels', attributionUrl: 'https://www.pexels.com/@joshuaworoniecki', seasons: ['autumn'], town_ids: ['broomfield_co'], sourcePhotoId: 18790368 },
+  { id: 'broomfield_co-autumn-07', path: '/assets/images/this-week/broomfield_co-autumn-07.jpg', alt: 'Autumn in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Trent Steed on Pexels', attributionUrl: 'https://www.pexels.com/@trent-steed-3808856', seasons: ['autumn'], town_ids: ['broomfield_co'], sourcePhotoId: 5645251 },
+  { id: 'broomfield_co-autumn-08', path: '/assets/images/this-week/broomfield_co-autumn-08.jpg', alt: 'Autumn in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Bryan Dickerson on Pexels', attributionUrl: 'https://www.pexels.com/@bryan-dickerson-41704633', seasons: ['autumn'], town_ids: ['broomfield_co'], sourcePhotoId: 19288718 },
+  { id: 'broomfield_co-autumn-09', path: '/assets/images/this-week/broomfield_co-autumn-09.jpg', alt: 'Autumn in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Connor Scott McManus on Pexels', attributionUrl: 'https://www.pexels.com/@connorscottmcmanus', seasons: ['autumn'], town_ids: ['broomfield_co'], sourcePhotoId: 11794282 },
+  { id: 'broomfield_co-autumn-10', path: '/assets/images/this-week/broomfield_co-autumn-10.jpg', alt: 'Autumn in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Elijah  Pilchard on Pexels', attributionUrl: 'https://www.pexels.com/@elijah-pilchard-269100825', seasons: ['autumn'], town_ids: ['broomfield_co'], sourcePhotoId: 14672013 },
+  { id: 'broomfield_co-autumn-11', path: '/assets/images/this-week/broomfield_co-autumn-11.jpg', alt: 'Autumn in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Elliott Corriveau on Pexels', attributionUrl: 'https://www.pexels.com/@elliott-corriveau-2149568512', seasons: ['autumn'], town_ids: ['broomfield_co'], sourcePhotoId: 38908441 },
+  { id: 'broomfield_co-autumn-12', path: '/assets/images/this-week/broomfield_co-autumn-12.jpg', alt: 'Autumn in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Rachel Claire on Pexels', attributionUrl: 'https://www.pexels.com/@rachel-claire', seasons: ['autumn'], town_ids: ['broomfield_co'], sourcePhotoId: 6761058 },
+  { id: 'broomfield_co-autumn-13', path: '/assets/images/this-week/broomfield_co-autumn-13.jpg', alt: 'Autumn in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Vlada Karpovich on Pexels', attributionUrl: 'https://www.pexels.com/@vlada-karpovich', seasons: ['autumn'], town_ids: ['broomfield_co'], sourcePhotoId: 9968471 },
+  { id: 'broomfield_co-autumn-14', path: '/assets/images/this-week/broomfield_co-autumn-14.jpg', alt: 'Autumn in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Helena Jankovičová Kováčová on Pexels', attributionUrl: 'https://www.pexels.com/@helen1', seasons: ['autumn'], town_ids: ['broomfield_co'], sourcePhotoId: 14449807 },
+];
+
+export function thisWeekImagesFor(townId: string): ThisWeekImage[] {
+  return THIS_WEEK_IMAGES.filter((img) => img.town_ids.includes(townId as Town));
+}

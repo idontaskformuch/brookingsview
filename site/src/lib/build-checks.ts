@@ -46,6 +46,12 @@ import { PAGE_META_PATTERNS } from '../config/page-meta';
 import { isPastStalenessThreshold } from './place-hours';
 import { resolvePageMeta } from './page-meta';
 import { weekInfoForInstant, currentWeekInfo } from './this-week';
+import { localDateParts } from './events';
+import {
+  weeksCoverage, forwardCoverageWeeks, seasonPoolSizes, MIN_POOL_SIZE_FOR_60_DAY_RULE, RECOMMENDED_MIN_POOL_SIZE,
+  type WeekCoverage, type SeasonPoolSize,
+} from './this-week-images';
+import { THIS_WEEK_IMAGES } from '../config/this-week-images';
 
 let checked = false;
 
@@ -416,6 +422,114 @@ async function assertNoSandboxSourceUrls(): Promise<void> {
   );
 }
 
+const THIS_WEEK_IMAGE_COVERAGE_HORIZON_WEEKS = 8;
+const THIS_WEEK_IMAGE_COVERAGE_WARN_THRESHOLD = 4;
+const THIS_WEEK_IMAGE_COVERAGE_FAIL_THRESHOLD = 1;
+
+function describeCoverage(coverage: WeekCoverage[]): string {
+  return coverage.map((w) => `${w.isoYearWeek} (${w.season}): ${w.poolSize} image(s)`).join(', ');
+}
+
+/** "This week" image pool, forward-looking coverage guardrail -- see
+ *  lib/this-week-images.ts's weeksCoverage()/forwardCoverageWeeks() for the
+ *  pure pool-only math this wraps. Deliberately NOT a duplicate of db.ts's
+ *  resolveThisWeekImage() own per-week throw (kept as-is, unchanged): that
+ *  one additionally accounts for the live 60-day no-repeat usage history
+ *  from the DB, so it's the authoritative check for whether THIS week's
+ *  build will actually succeed. This check is a cheaper, static radar with
+ *  no DB dependency that catches an empty pool for an UPCOMING season weeks
+ *  before the rotation actually reaches it -- not a simulation of the real
+ *  rotation (it ignores usage history entirely, so it can under-count a
+ *  real future gap caused by every pool entry having been recently shown,
+ *  and over-count... never: a pool-level zero is always a real zero).
+ *
+ *  WARN when fewer than THIS_WEEK_IMAGE_COVERAGE_WARN_THRESHOLD consecutive
+ *  weeks (starting THIS week) have at least one eligible image -- enough
+ *  runway to add more curated images (scripts/source_this_week_images.py)
+ *  before it becomes a real failure.
+ *
+ *  THROW when fewer than THIS_WEEK_IMAGE_COVERAGE_FAIL_THRESHOLD -- i.e. the
+ *  CURRENT week's own pool is already empty. db.ts's resolveThisWeekImage()
+ *  would fail the build anyway once WeeklyRoundup.astro actually renders,
+ *  but this throws earlier, with the full forward picture already in the
+ *  message, rather than waiting for that render to happen. */
+function assertThisWeekImageCoverage(): void {
+  const now = new Date();
+  const weeks = Array.from({ length: THIS_WEEK_IMAGE_COVERAGE_HORIZON_WEEKS }, (_, i) => {
+    const info = weekInfoForInstant(new Date(now.getTime() + i * 7 * 86_400_000), siteConfig.timezone);
+    return { isoYearWeek: info.slug, month: info.monday.m };
+  });
+  const coverage = weeksCoverage(THIS_WEEK_IMAGES, TOWN_ID, weeks);
+  const forward = forwardCoverageWeeks(coverage);
+
+  if (forward < THIS_WEEK_IMAGE_COVERAGE_FAIL_THRESHOLD) {
+    throw new Error(
+      `Build-time "This week" image coverage check failed for "${TOWN_ID}": the CURRENT week ` +
+      `(${coverage[0].isoYearWeek}, ${coverage[0].season}) has zero eligible images in ` +
+      `config/this-week-images.ts. Next ${THIS_WEEK_IMAGE_COVERAGE_HORIZON_WEEKS} weeks: ${describeCoverage(coverage)}. ` +
+      'Add curated images via scripts/source_this_week_images.py before this town can build.',
+    );
+  }
+
+  if (forward < THIS_WEEK_IMAGE_COVERAGE_WARN_THRESHOLD) {
+    console.warn(
+      `\n⚠️  "This week" image coverage for "${TOWN_ID}" runs out in ${forward} week(s) ` +
+      `(warn threshold: ${THIS_WEEK_IMAGE_COVERAGE_WARN_THRESHOLD}). Next ` +
+      `${THIS_WEEK_IMAGE_COVERAGE_HORIZON_WEEKS} weeks: ${describeCoverage(coverage)}. Add more curated images via ` +
+      'scripts/source_this_week_images.py before the rotation actually reaches the empty week(s).\n',
+    );
+  }
+
+  assertThisWeekSeasonPoolSizes(now);
+}
+
+const SEASON_POOL_SHIFT_WARNING_DAYS = 30;
+
+function describeSeasonPools(sizes: SeasonPoolSize[]): string {
+  return sizes.map((s) => `${s.scope} season "${s.season}": ${s.poolSize} image(s)`).join('; ');
+}
+
+/** Per-town pool-SIZE guardrail, independent of weeksCoverage() above (which
+ *  only ever asks "is this week's pool non-empty", never "is it big
+ *  enough"): a pool of, say, 3 images passes weeksCoverage() for every one
+ *  of the next 8 weeks (each week's own check only sees ">0"), yet the real
+ *  60-day no-repeat rule guarantees that same handful of images will start
+ *  repeating inside 60 days, every time, forever -- see lib/this-week-
+ *  images.ts's MIN_POOL_SIZE_FOR_60_DAY_RULE for exactly why 9 is the
+ *  structural floor. Checks the CURRENT season always, and the NEXT season
+ *  too once today is within SEASON_POOL_SHIFT_WARNING_DAYS of its start
+ *  date -- see seasonPoolSizes()'s own comment for why that's worth doing
+ *  ahead of weeksCoverage() ever reaching that boundary itself.
+ *
+ *  THROW below MIN_POOL_SIZE_FOR_60_DAY_RULE (9) -- the 60-day rule cannot
+ *  be upheld indefinitely at this size, regardless of usage history.
+ *  WARN below RECOMMENDED_MIN_POOL_SIZE (13) -- the brief's own stated
+ *  minimum (see config/this-week-images.ts's module comment); mechanically
+ *  sustainable but thinner variety than intended. */
+function assertThisWeekSeasonPoolSizes(now: Date): void {
+  const today = localDateParts(now, siteConfig.timezone);
+  const sizes = seasonPoolSizes(THIS_WEEK_IMAGES, TOWN_ID, today.m, today.d, SEASON_POOL_SHIFT_WARNING_DAYS);
+
+  const tooSmall = sizes.filter((s) => s.poolSize < MIN_POOL_SIZE_FOR_60_DAY_RULE);
+  if (tooSmall.length > 0) {
+    throw new Error(
+      `Build-time "This week" image pool-size check failed for "${TOWN_ID}": ${describeSeasonPools(tooSmall)} -- ` +
+      `below the structural minimum of ${MIN_POOL_SIZE_FOR_60_DAY_RULE} (the 60-day no-repeat rule cannot be ` +
+      'upheld indefinitely at this size, regardless of usage history). Add curated images via ' +
+      'scripts/source_this_week_images.py.',
+    );
+  }
+
+  const belowRecommended = sizes.filter((s) => s.poolSize < RECOMMENDED_MIN_POOL_SIZE);
+  if (belowRecommended.length > 0) {
+    console.warn(
+      `\n⚠️  "This week" image pool for "${TOWN_ID}" is below the recommended minimum of ` +
+      `${RECOMMENDED_MIN_POOL_SIZE}: ${describeSeasonPools(belowRecommended)}. Add more curated images via ` +
+      'scripts/source_this_week_images.py.\n',
+    );
+  }
+}
+
 /** Renamed from runBuildTimeImageChecks: this single build-time hook (still
  *  called once from BaseLayout.astro, still guarded by the same module-level
  *  `checked` flag) now also runs page_meta_check -- see
@@ -431,4 +545,5 @@ export async function runBuildTimeChecks(): Promise<void> {
   await assertPageMetaPatternsValid();
   await assertPlaceLayerConsistent();
   await assertNoSandboxSourceUrls();
+  assertThisWeekImageCoverage();
 }
