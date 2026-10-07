@@ -52,7 +52,7 @@ import {
   type WeekCoverage, type SeasonPoolSize,
 } from './this-week-images';
 import { THIS_WEEK_IMAGES } from '../config/this-week-images';
-import { holidayPoolSizesDueSoon } from './holidays';
+import { holidayPoolSizesDueSoon, holidayPoolSizeForWeek as _holidayPoolSizeForWeek, type DateYMD } from './holidays';
 import { HOLIDAYS, HOLIDAY_IMAGES } from '../config/holidays';
 
 let checked = false;
@@ -432,6 +432,19 @@ function describeCoverage(coverage: WeekCoverage[]): string {
   return coverage.map((w) => `${w.isoYearWeek} (${w.season}): ${w.poolSize} image(s)`).join(', ');
 }
 
+/** `holidayPoolSizeForWeek()` bound to this town's HOLIDAYS/HOLIDAY_IMAGES --
+ *  the actual logic (and its 2026-10-07 "holiday-blind" backstory) lives in
+ *  lib/holidays.ts, tested directly there (holidays.test.ts) since
+ *  build-checks.ts itself can't be imported under vitest (db.ts calls
+ *  neon(import.meta.env.DATABASE_URL) at module load). Shared by both the
+ *  per-week coverage check and the season-pool-size check below, so a
+ *  week/moment the real rotation would actually serve from the holiday
+ *  pool never gets blamed on an empty season pool it was never going to
+ *  use. */
+function holidayPoolSizeForWeek(monday: DateYMD, sunday: DateYMD): number {
+  return _holidayPoolSizeForWeek(HOLIDAYS, HOLIDAY_IMAGES, TOWN_ID, monday, sunday);
+}
+
 /** "This week" image pool, forward-looking coverage guardrail -- see
  *  lib/this-week-images.ts's weeksCoverage()/forwardCoverageWeeks() for the
  *  pure pool-only math this wraps. Deliberately NOT a duplicate of db.ts's
@@ -445,6 +458,15 @@ function describeCoverage(coverage: WeekCoverage[]): string {
  *  real future gap caused by every pool entry having been recently shown,
  *  and over-count... never: a pool-level zero is always a real zero).
  *
+ *  Each week's poolSize is the SEASON pool size, overridden with the
+ *  HOLIDAY pool size whenever an active holiday with a non-empty pool
+ *  covers that week (2026-10-07 review: this check used to be entirely
+ *  holiday-blind, so e.g. w50-w52 with an empty winter season pool would
+ *  throw here even while fully covered by an already-applied Christmas
+ *  pool -- caught by simulating Dec 7 2026 against the real pools before
+ *  this fix). See holidayPoolSizeForWeek() above for exactly which case
+ *  that is.
+ *
  *  WARN when fewer than THIS_WEEK_IMAGE_COVERAGE_WARN_THRESHOLD consecutive
  *  weeks (starting THIS week) have at least one eligible image -- enough
  *  runway to add more curated images (scripts/source_this_week_images.py)
@@ -457,11 +479,16 @@ function describeCoverage(coverage: WeekCoverage[]): string {
  *  message, rather than waiting for that render to happen. */
 function assertThisWeekImageCoverage(): void {
   const now = new Date();
-  const weeks = Array.from({ length: THIS_WEEK_IMAGE_COVERAGE_HORIZON_WEEKS }, (_, i) => {
-    const info = weekInfoForInstant(new Date(now.getTime() + i * 7 * 86_400_000), siteConfig.timezone);
-    return { isoYearWeek: info.slug, month: info.monday.m };
+  const weekInfos = Array.from({ length: THIS_WEEK_IMAGE_COVERAGE_HORIZON_WEEKS }, (_, i) =>
+    weekInfoForInstant(new Date(now.getTime() + i * 7 * 86_400_000), siteConfig.timezone));
+  const seasonCoverage = weeksCoverage(
+    THIS_WEEK_IMAGES, TOWN_ID,
+    weekInfos.map((info) => ({ isoYearWeek: info.slug, month: info.monday.m })),
+  );
+  const coverage: WeekCoverage[] = seasonCoverage.map((week, i) => {
+    const holidaySize = holidayPoolSizeForWeek(weekInfos[i].monday, weekInfos[i].sunday);
+    return holidaySize > 0 ? { ...week, poolSize: holidaySize } : week;
   });
-  const coverage = weeksCoverage(THIS_WEEK_IMAGES, TOWN_ID, weeks);
   const forward = forwardCoverageWeeks(coverage);
 
   if (forward < THIS_WEEK_IMAGE_COVERAGE_FAIL_THRESHOLD) {
@@ -505,7 +532,18 @@ function describeSeasonPools(sizes: SeasonPoolSize[]): string {
  *  ahead of weeksCoverage() ever reaching that boundary itself.
  *
  *  THROW below MIN_POOL_SIZE_FOR_60_DAY_RULE (9) -- the 60-day rule cannot
- *  be upheld indefinitely at this size, regardless of usage history.
+ *  be upheld indefinitely at this size, regardless of usage history. BUT
+ *  only for the 'current' scope when the week happening RIGHT NOW isn't
+ *  already covered by an active, non-empty holiday pool (holidayPoolSizeForWeek()
+ *  above) -- otherwise this threw on an empty winter season pool throughout
+ *  the Dec 11-25 Christmas window even though that window's own pool was
+ *  already covering every one of those weeks (2026-10-07 review, same
+ *  diagnosis as assertThisWeekImageCoverage() above). Still WARNS in that
+ *  case, since the season pool genuinely will be needed the moment the
+ *  holiday window ends -- just doesn't hard-fail a build that would
+ *  actually succeed today. The 'next'-scope entry (the season-shift
+ *  warning) is a season that hasn't started yet by definition, so it's
+ *  never holiday-covered and always throws/warns normally.
  *  WARN below RECOMMENDED_MIN_POOL_SIZE (13) -- the brief's own stated
  *  minimum (see config/this-week-images.ts's module comment); mechanically
  *  sustainable but thinner variety than intended. */
@@ -513,13 +551,26 @@ function assertThisWeekSeasonPoolSizes(now: Date): void {
   const today = localDateParts(now, siteConfig.timezone);
   const sizes = seasonPoolSizes(THIS_WEEK_IMAGES, TOWN_ID, today.m, today.d, SEASON_POOL_SHIFT_WARNING_DAYS);
 
+  const thisWeek = weekInfoForInstant(now, siteConfig.timezone);
+  const holidayCoversNow = holidayPoolSizeForWeek(thisWeek.monday, thisWeek.sunday) > 0;
+
   const tooSmall = sizes.filter((s) => s.poolSize < MIN_POOL_SIZE_FOR_60_DAY_RULE);
-  if (tooSmall.length > 0) {
+  const mustThrow = tooSmall.filter((s) => !(s.scope === 'current' && holidayCoversNow));
+  if (mustThrow.length > 0) {
     throw new Error(
-      `Build-time "This week" image pool-size check failed for "${TOWN_ID}": ${describeSeasonPools(tooSmall)} -- ` +
+      `Build-time "This week" image pool-size check failed for "${TOWN_ID}": ${describeSeasonPools(mustThrow)} -- ` +
       `below the structural minimum of ${MIN_POOL_SIZE_FOR_60_DAY_RULE} (the 60-day no-repeat rule cannot be ` +
       'upheld indefinitely at this size, regardless of usage history). Add curated images via ' +
       'scripts/source_this_week_images.py.',
+    );
+  }
+  const suppressed = tooSmall.filter((s) => s.scope === 'current' && holidayCoversNow);
+  if (suppressed.length > 0) {
+    console.warn(
+      `\n⚠️  "This week" image pool for "${TOWN_ID}" is below the structural minimum of ` +
+      `${MIN_POOL_SIZE_FOR_60_DAY_RULE} (${describeSeasonPools(suppressed)}), not failing the build because the ` +
+      `current week is already covered by an active holiday pool -- but this will be needed the moment that ` +
+      'window ends. Add curated images via scripts/source_this_week_images.py.\n',
     );
   }
 

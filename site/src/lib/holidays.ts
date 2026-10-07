@@ -130,6 +130,33 @@ export function resolveActiveHoliday(
   return candidates[0];
 }
 
+/** The number of this town's holiday-pool images that would actually serve
+ *  `monday`..`sunday` -- 0 when no holiday is active for the week, or when
+ *  one is active but its pool for this town is still empty (the one case
+ *  where the real resolver -- db.ts's resolveThisWeekImage() -- falls
+ *  through to the season pool too, so season emptiness still matters
+ *  there). Used by build-checks.ts's season-pool coverage/size guardrails
+ *  so a week the real rotation would actually serve from an active holiday
+ *  pool never gets blamed on an empty season pool it was never going to
+ *  use (2026-10-07 review instruction: those checks used to be entirely
+ *  holiday-blind -- confirmed by simulating Dec 7 2026, w50, against an
+ *  empty winter pool and the real applied Christmas pool: the coverage
+ *  check reported zero forward coverage and would have thrown, despite
+ *  the Christmas pool already covering w50-w52). */
+export function holidayPoolSizeForWeek(
+  holidays: HolidayDefinition[],
+  holidayImages: HolidayImage[],
+  townId: string,
+  monday: DateYMD,
+  sunday: DateYMD,
+): number {
+  const match = resolveActiveHoliday(holidays, monday, sunday);
+  if (!match) return 0;
+  return holidayImages.filter(
+    (img) => img.holiday === match.holiday && img.town_ids.includes(townId as Town),
+  ).length;
+}
+
 const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000;
 
 /** Same algorithm as this-week-images.ts's selectThisWeekImage(), adapted

@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   computeHolidayDate, holidayWindow, resolveActiveHoliday, selectHolidayImage, holidayPoolSizesDueSoon,
-  type DateYMD,
+  holidayPoolSizeForWeek, type DateYMD,
 } from './holidays';
-import { selectThisWeekImage, seasonForMonth, type ThisWeekUsageRecord } from './this-week-images';
+import {
+  selectThisWeekImage, seasonForMonth, weeksCoverage, forwardCoverageWeeks,
+  MIN_POOL_SIZE_FOR_60_DAY_RULE, type ThisWeekUsageRecord, type WeekCoverage,
+} from './this-week-images';
 import { HOLIDAYS, HOLIDAY_IMAGES, type HolidayDefinition, type HolidayImage, type HolidayId } from '../config/holidays';
 import type { Town } from '../config/category-images';
 import type { ThisWeekImage } from '../config/this-week-images';
@@ -242,5 +245,78 @@ describe('53-week year handling (2026-10-07 review instruction: 2026 has an ISO 
     // different strings is what guarantees no history-row collision
     // between the year's last week and the next year's first week.
     expect(w01.monday).toEqual({ y: 2027, m: 1, d: 4 });
+  });
+});
+
+describe('holiday-aware season-pool coverage/size checks (2026-10-07 review instruction)', () => {
+  /** build-checks.ts's assertThisWeekImageCoverage()/assertThisWeekSeasonPoolSizes()
+   *  used to compute "is this week covered" purely from the SEASON pool,
+   *  with no idea an active holiday pool might already be serving that
+   *  exact week -- confirmed live by simulating Dec 7 2026 (w50) against
+   *  the real pools (winter empty, Christmas applied with 4 images):
+   *  forwardCoverageWeeks() came back 0 and the build-time check would
+   *  have thrown, despite the Christmas pool already covering w50-w52.
+   *  Fixed by overriding a week's poolSize with holidayPoolSizeForWeek()
+   *  whenever it's non-zero (build-checks.ts can't be imported under
+   *  vitest -- db.ts calls neon(import.meta.env.DATABASE_URL) at module
+   *  load -- so this test reproduces the exact override build-checks.ts
+   *  now applies, against synthetic pools shaped like the real Dec 7
+   *  scenario, not the live config (which will have a real winter pool by
+   *  the time this ships).  */
+  const emptyWinterPool: ThisWeekImage[] = []; // scenario: winter pool not curated yet
+  const fourImageChristmasPool: HolidayImage[] = [
+    holidayImg('xmas-1', 'christmas'), holidayImg('xmas-2', 'christmas'),
+    holidayImg('xmas-3', 'christmas'), holidayImg('xmas-4', 'christmas'),
+  ];
+
+  function effectiveCoverageForDec7Scenario(): WeekCoverage[] {
+    // Mirrors assertThisWeekImageCoverage()'s own 8-week horizon starting
+    // at the real-world week containing Dec 7 2026 (w50).
+    const weekSlugs = ['2026-w50', '2026-w51', '2026-w52', '2026-w53', '2027-w01', '2027-w02', '2027-w03', '2027-w04'];
+    const weekInfos = weekSlugs.map((slug) => weekInfoForSlug(slug, 'America/Chicago')!);
+    const seasonCoverage = weeksCoverage(
+      emptyWinterPool, 'brookings_sd',
+      weekInfos.map((info) => ({ isoYearWeek: info.slug, month: info.monday.m })),
+    );
+    return seasonCoverage.map((week, i) => {
+      const holidaySize = holidayPoolSizeForWeek(HOLIDAYS, fourImageChristmasPool, 'brookings_sd', weekInfos[i].monday, weekInfos[i].sunday);
+      return holidaySize > 0 ? { ...week, poolSize: holidaySize } : week;
+    });
+  }
+
+  it('w50-w52 (the Christmas window) report the HOLIDAY pool size, not the empty season pool', () => {
+    const coverage = effectiveCoverageForDec7Scenario();
+    expect(coverage[0]).toMatchObject({ isoYearWeek: '2026-w50', poolSize: 4 });
+    expect(coverage[1]).toMatchObject({ isoYearWeek: '2026-w51', poolSize: 4 });
+    expect(coverage[2]).toMatchObject({ isoYearWeek: '2026-w52', poolSize: 4 });
+  });
+
+  it('w53 is NOT covered by Christmas, stays at the real (empty) season pool size', () => {
+    const coverage = effectiveCoverageForDec7Scenario();
+    expect(coverage[3]).toMatchObject({ isoYearWeek: '2026-w53', poolSize: 0 });
+  });
+
+  it('forward coverage is 3 (w50-w52 via the holiday pool), not 0 -- the exact bug this fix closes', () => {
+    const coverage = effectiveCoverageForDec7Scenario();
+    expect(forwardCoverageWeeks(coverage)).toBe(3);
+  });
+
+  it('the CURRENT week (w50) being holiday-covered is what turns assertThisWeekSeasonPoolSizes()\'s ' +
+     'THROW into a WARN -- this is the exact boolean that check now branches on', () => {
+    const w50 = weekInfoForSlug('2026-w50', 'America/Chicago')!;
+    const holidayCoversNow = holidayPoolSizeForWeek(HOLIDAYS, fourImageChristmasPool, 'brookings_sd', w50.monday, w50.sunday) > 0;
+    expect(holidayCoversNow).toBe(true);
+    // And the season pool really is below the structural floor on its own
+    // -- confirming this is a genuine "holiday is covering for it" case,
+    // not a false alarm that happened to also be holiday season.
+    expect(emptyWinterPool.length).toBeLessThan(MIN_POOL_SIZE_FOR_60_DAY_RULE);
+  });
+
+  it('a week with NO active holiday and an empty season pool is still correctly uncovered (sanity check: the fix does not mask real gaps)', () => {
+    const juneWeek = weekInfoForSlug('2027-w24', 'America/Chicago')!; // mid-June, no active holiday
+    const match = resolveActiveHoliday(HOLIDAYS, juneWeek.monday, juneWeek.sunday);
+    expect(match).toBeNull();
+    const size = holidayPoolSizeForWeek(HOLIDAYS, fourImageChristmasPool, 'brookings_sd', juneWeek.monday, juneWeek.sunday);
+    expect(size).toBe(0);
   });
 });
