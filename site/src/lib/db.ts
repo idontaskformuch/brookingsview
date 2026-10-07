@@ -553,6 +553,11 @@ export async function getActiveAlerts(): Promise<Story[]> {
  * är "aktuell vecka" eller en äldre fallback genom att jämföra `occurs_at`
  * mot currentWeekInfo() -- ingen separat `isStale`-flagga här, samma
  * "redan upplöst input"-princip som resten av filen.
+ *
+ * Fallbacken är begränsad till 28 dagar (2026-10-08): en vecka äldre än
+ * det är inte längre "senast tillgänglig", det är bara gammalt -- då är
+ * ingen sektion bättre än en missvisande. index.astro's {weekly &&
+ * <WeeklyRoundup .../>} hoppar redan över rendering vid null.
  */
 export async function getLatestWeekly(): Promise<Story | null> {
   const recent = (await sql`
@@ -575,6 +580,7 @@ export async function getLatestWeekly(): Promise<Story | null> {
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = 'weekly'
+       AND occurs_at >= now() - interval '28 days'
      ORDER BY occurs_at DESC
      LIMIT 1
   `) as Story[];
