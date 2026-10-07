@@ -312,6 +312,30 @@ HOLIDAY_QUERIES: dict[tuple[str, str], list[str]] = {
         "candy bowl halloween table autumn",
         "halloween string lights yard evening colorado",
     ],
+    ("brookings_sd", "thanksgiving"): [
+        "thanksgiving table setting autumn harvest",
+        "cornucopia harvest decor autumn table",
+        "pumpkin pie thanksgiving table homemade",
+        "autumn wreath front door thanksgiving",
+        "harvest centerpiece table autumn gourds",
+        "roast turkey thanksgiving table setting",
+    ],
+    ("moreno_valley_ca", "thanksgiving"): [
+        "thanksgiving table setting autumn harvest",
+        "cornucopia harvest decor autumn table",
+        "pumpkin pie thanksgiving table homemade",
+        "autumn wreath front door thanksgiving california",
+        "harvest centerpiece table autumn gourds",
+        "roast turkey thanksgiving table setting",
+    ],
+    ("broomfield_co", "thanksgiving"): [
+        "thanksgiving table setting autumn harvest colorado",
+        "cornucopia harvest decor autumn table",
+        "pumpkin pie thanksgiving table homemade",
+        "autumn wreath front door thanksgiving colorado",
+        "harvest centerpiece table autumn gourds",
+        "roast turkey thanksgiving table setting",
+    ],
 }
 TEXT_FLAG_COLOR = (170, 20, 20)  # OCR "[TEXT]" flag -- deliberately alarming red
 
@@ -800,6 +824,23 @@ def _applied_season_pool_ids() -> dict[int, str]:
     return result
 
 
+def _applied_holiday_pool_ids() -> dict[int, str]:
+    """{sourcePhotoId: "town (holiday)", ...} for every entry ALREADY
+    applied in config/holidays.ts, across all three towns and ALL
+    holidays (2026-10-07 review instruction: a later holiday's candidates
+    -- e.g. Thanksgiving -- must never reuse a photo an EARLIER holiday --
+    e.g. Halloween -- already owns, in any town, same reasoning as
+    _applied_season_pool_ids() above). Same parsing approach, against
+    HOLIDAYS_CONFIG_TS's `holiday: '...'` field instead of `seasons: [...]`."""
+    if not HOLIDAYS_CONFIG_TS.exists():
+        return {}
+    text = HOLIDAYS_CONFIG_TS.read_text(encoding="utf-8")
+    result: dict[int, str] = {}
+    for m in re.finditer(r"holiday: '([a-z_]+)', town_ids: \['([a-z_]+)'\].*?sourcePhotoId: (\d+)", text):
+        result[int(m.group(3))] = f"{m.group(2)} ({m.group(1)})"
+    return result
+
+
 def _cross_town_duplicate_ids(town: str, season: str, candidate_ids: set[int]) -> dict[int, str]:
     """{id: other_town_or_pool, ...} for every id in `candidate_ids` that's
     ALREADY spoken for -- either by another town's own {other}-{season}-
@@ -830,6 +871,11 @@ def _cross_town_duplicate_ids(town: str, season: str, candidate_ids: set[int]) -
     for pid in candidate_ids:
         if pid in applied and pid not in conflicts:
             conflicts[pid] = f"{applied[pid]} (applied season pool)"
+
+    applied_holidays = _applied_holiday_pool_ids()
+    for pid in candidate_ids:
+        if pid in applied_holidays and pid not in conflicts:
+            conflicts[pid] = f"applied holiday pool: {applied_holidays[pid]}"
     return conflicts
 
 
