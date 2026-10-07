@@ -42,3 +42,10 @@ scratch_shots/
 # verification during this-week-images review (2026-10-06) -- disposable,
 # same reasoning as .review_montages/ above.
 .verify_fullres/
+
+# Per-session handoff notes (2026-10-08) -- local only, never shared via git;
+# each agent/worktree keeps its own.
+.claude/state.md
+
+# Scratch build-log captures from manual verify runs -- disposable.
+.verify_*.txt
