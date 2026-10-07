@@ -539,15 +539,23 @@ export async function getActiveAlerts(): Promise<Story[]> {
 }
 
 /**
- * Veckosammanfattningen för innevarande vecka.
- *
- * Den enda story som väver ihop möten, evenemang, matcher och priser till en
- * sammanhängande text -- och därmed sajtens starkaste innehåll. Hämtas separat
- * i stället för att blandas in i strömmen, eftersom den ska ha en egen plats
- * högst upp och aldrig konkurrera med enskilda notiser.
+ * Veckosammanfattningen för innevarande vecka -- med fallback till senast
+ * tillgängliga vecka (2026-10-07, Broomfield-spåret) när ingen finns inom
+ * 8-dagarsfönstret: ai_pipeline/weekly.py skriver INGEN story alls den vecka
+ * underlaget (meetings+events+games) är helt tomt (se dess egen
+ * "inget att sammanfatta"-tidig-retur) -- en stad vars events-tabell
+ * strukturellt saknar en fungerande scraper (Broomfield, se
+ * configs/broomfield_co.json's events-källa) kan då hamna utan NÅGON
+ * story inom 8 dagar även om en äldre finns. Utan denna fallback
+ * försvann hela startsidans "week ahead"-sektion spårlöst
+ * ({weekly && <WeeklyRoundup .../>} i index.astro) istället för att visa
+ * den senaste riktiga veckan med sitt eget datum. Callern avgör om detta
+ * är "aktuell vecka" eller en äldre fallback genom att jämföra `occurs_at`
+ * mot currentWeekInfo() -- ingen separat `isStale`-flagga här, samma
+ * "redan upplöst input"-princip som resten av filen.
  */
 export async function getLatestWeekly(): Promise<Story | null> {
-  const rows = (await sql`
+  const recent = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
            venue_raw, is_recurring_series, ends_at, category_image_index
@@ -558,7 +566,19 @@ export async function getLatestWeekly(): Promise<Story | null> {
      ORDER BY occurs_at DESC
      LIMIT 1
   `) as Story[];
-  return rows[0] ?? null;
+  if (recent[0]) return recent[0];
+
+  const fallback = (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
+           byline, image_path, image_alt, rating, ingredients, instructions,
+           venue_raw, is_recurring_series, ends_at, category_image_index
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND source_type = 'weekly'
+     ORDER BY occurs_at DESC
+     LIMIT 1
+  `) as Story[];
+  return fallback[0] ?? null;
 }
 
 /** Every 'weekly' story ever generated (occurs_at = that week's Monday, see

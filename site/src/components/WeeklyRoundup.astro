@@ -4,7 +4,7 @@
  *  med enskilda notiser i strömmen. */
 import type { Story } from '../lib/db';
 import { resolveThisWeekImage } from '../lib/db';
-import { weekInfoForInstant } from '../lib/this-week';
+import { weekInfoForInstant, currentWeekInfo } from '../lib/this-week';
 import { seasonForMonth } from '../lib/this-week-images';
 import { thisWeekImagesFor } from '../config/this-week-images';
 import { siteConfig } from '../lib/site-config';
@@ -29,6 +29,16 @@ const words = story.body.split(/\s+/).length;
 const weekInfo = story.occurs_at ? weekInfoForInstant(new Date(story.occurs_at), siteConfig.timezone) : null;
 const weekHref = weekInfo ? `/this-week/${weekInfo.slug}/` : storyHref(story.slug);
 
+// getLatestWeekly() (lib/db.ts, 2026-10-07 Broomfield fix) now falls back to
+// the most recent weekly story when none exists within its own 8-day
+// window -- a real case for any town whose events-table scraper is
+// structurally thin (Broomfield: no working events source, see
+// configs/broomfield_co.json) and which happens to also have no meetings
+// in the current week. The kicker below is the only thing that tells a
+// reader which case they're looking at, so it must never claim "the week
+// ahead" for a week that has already passed.
+const isCurrentWeek = weekInfo !== null && weekInfo.slug === currentWeekInfo(siteConfig.timezone).slug;
+
 // This Week image rotation (2026-10-03): a dedicated, town+season-scoped
 // pool with real 60-day usage history (db/migrations/050), replacing the
 // old shared 'events' category tier -- see config/this-week-images.ts's
@@ -45,7 +55,9 @@ const heroImage = weekInfo
   : null;
 ---
 <article class="roundup">
-  <p class="roundup__kicker"><span class="kicker">The week ahead</span></p>
+  <p class="roundup__kicker">
+    <span class="kicker">{isCurrentWeek ? 'The week ahead' : `Latest available: week of ${weekInfo?.label}`}</span>
+  </p>
   <h2 class="roundup__title"><a href={weekHref}>{story.title}</a></h2>
   {heroImage && (
     <a class="roundup__image-link" href={weekHref} tabindex="-1" aria-hidden="true">

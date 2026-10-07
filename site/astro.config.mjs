@@ -98,13 +98,26 @@ function slugifyCategory(category) {
 // AdSense "low value content" remediation, Phase A4: thin tag/category
 // pages (fewer than 3 items) are noindexed in their own page frontmatter
 // (jobs/category/[category].astro, home-sales/zip/[zip].astro) -- mirrored
-// here so the sitemap agrees. NOT mirrored for events/[facet].astro: that
-// page's per-facet matching logic is genuinely non-trivial (see its own
-// doc comment on e.g. "Free" being scoped to specific venue types, never
-// guessed from event text) and reimplementing it a second time here risks
-// silently drifting from the real logic -- a wrong guess would be worse
-// than the known, disclosed gap of a handful of thin event-facet pages
-// occasionally staying in the sitemap. Flagged, not silently worked around.
+// here so the sitemap agrees.
+//
+// events/[facet].astro UPDATE (2026-10-07, Broomfield sitemap fix): this was
+// deliberately left unmirrored for exactly the reason above this edit --
+// the real per-facet matching logic (lib/events.ts's isKidsEvent/
+// isLibraryEvent/isToday/isThisWeekend, cross-source dedup in
+// buildEventFeed) is genuinely non-trivial, and a wrong guess seemed worse
+// than the known gap. Revisited because that "known gap" turned out to be
+// a REAL, confirmed contradiction for Broomfield specifically (its events
+// table has never had a working scraper -- see configs/broomfield_co.json
+// -- so its 'today'/'this-weekend'/'kids'/'library' facets are
+// permanently empty, permanently noindexed by the page, yet were still
+// listed in its sitemap). The 'today'/'this-weekend'/'kids'/'library'
+// facets are now mirrored below (search "events-facet mirror"); 'free'
+// (unconditionally indexable) and 'campus' (SDSU-only, not part of this
+// fix) are not. The mirror is deliberately simplified in ways that only
+// ever OVERcount relative to the real page (see its own comment for which
+// two) -- run scripts/verify_sitemap_noindex_disjoint.mjs against a real
+// build of all three towns before trusting it, same as any other mirror
+// in this file.
 const MIN_TAG_PAGE_ITEMS = 3;
 
 // Mirrors lib/noindex.ts's THIN_SCRAPED_SOURCE_TYPES / THIN_CONTENT_WORD_THRESHOLD
@@ -167,6 +180,13 @@ function localDatePartsMirror(instant, timeZone) {
 function utcDatePartsMirror(value) {
   const d = new Date(value);
   return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() };
+}
+
+// Mirrors lib/this-week.ts's utcMidnight() -- UTC midnight of the given
+// calendar date, used (via localDatePartsMirror) as the events-facet
+// mirror's own "today," exactly like lib/events.ts's todayUtcMidnight().
+function utcMidnightMirror({ y, m, d }) {
+  return new Date(Date.UTC(y, m - 1, d));
 }
 
 function isoWeekSlugMirror({ y, m, d }) {
@@ -323,7 +343,7 @@ async function buildLastmodMap(townId, databaseUrl) {
   const noindexStoryUrls = new Set();
   const crossCanonicalStoryUrls = new Set();
   const stories = await sql`
-    SELECT slug, published_at, source_type, body, generated_by, ingredients, instructions, occurs_at FROM stories WHERE town_id = ${townId}
+    SELECT slug, published_at, source_type, body, generated_by, ingredients, instructions, occurs_at, title, venue_raw FROM stories WHERE town_id = ${townId}
   `;
   for (const s of stories) {
     map.set(`/s/${s.slug}/`, s.published_at);
@@ -452,6 +472,59 @@ async function buildLastmodMap(townId, databaseUrl) {
 
   for (const slug of pageWeekSlugs) {
     if ((weekItemCounts.get(slug) ?? 0) < MIN_TAG_PAGE_ITEMS) noindexThinPageUrls.add(`/this-week/${slug}/`);
+  }
+
+  // /events/<facet>/ thin-facet mirror (2026-10-07, Broomfield sitemap fix):
+  // mirrors pages/events/[facet].astro's own `isNoindex = facet.slug ===
+  // 'free' ? false : items.length < 3` for the 'today'/'this-weekend'/
+  // 'kids'/'library' facets only ('free' is explicitly exempt on that page
+  // and 'campus' isn't part of this fix). Deliberately simplified relative
+  // to the real page in two ways, both erring the SAME safe direction
+  // THIS_WEEK_TIMEZONES' own comment above documents (this mirror's count
+  // >= the real page's): (1) no cross-source dedup against SDSU arts
+  // events (lib/events.ts's buildEventFeed) -- dedup only ever REDUCES a
+  // count, so skipping it can only overcount; (2) arts events themselves
+  // aren't counted at all here, acceptable because the one town with a real
+  // arts feed (brookings_sd) already has hundreds of plain 'event' stories
+  // a week, nowhere near the MIN_TAG_PAGE_ITEMS=3 boundary this exists to
+  // protect. Verify with scripts/verify_sitemap_noindex_disjoint.mjs
+  // against a real build before trusting this for a town/facet combination
+  // that's actually close to the line.
+  const eventFacetCounts = { today: 0, 'this-weekend': 0, kids: 0, library: 0 };
+  const KIDS_RE_MIRROR = /\b(kids?|children|childrens?|toddler|preschool|storytime|story time|famil(?:y|ies)|youth|teens?|tween)\b/i;
+  const facilityVenues = await sql`
+    SELECT name, aliases, category FROM places WHERE town_id = ${townId} AND category = 'library'
+  `;
+  const normalizeVenueMirror = (raw) => {
+    if (!raw || !raw.trim()) return null;
+    const namePart = raw.split(',')[0].replace(/^[A-Z0-9 .'-]+:\s*/, '');
+    const normalized = namePart.replace(/\s+/g, ' ').trim().toLowerCase();
+    return normalized || null;
+  };
+  const libraryVenueNames = new Set();
+  for (const f of facilityVenues) {
+    for (const candidate of [f.name, ...(f.aliases ?? [])]) {
+      const norm = normalizeVenueMirror(candidate);
+      if (norm) libraryVenueNames.add(norm);
+    }
+  }
+  const eventsToday = utcMidnightMirror(localDatePartsMirror(new Date(), thisWeekTz));
+  const weekdayOfTodayMirror = eventsToday.getUTCDay();
+  const daysToFridayMirror = (5 - weekdayOfTodayMirror + 7) % 7;
+  for (const s of stories) {
+    if (s.source_type !== 'event' || !s.occurs_at) continue;
+    if (new Date(s.occurs_at) < new Date(Date.now() - 12 * 60 * 60 * 1000)) continue;
+    const eventDay = utcMidnightMirror(localDatePartsMirror(new Date(s.occurs_at), thisWeekTz));
+    const offset = Math.round((eventDay.getTime() - eventsToday.getTime()) / 86_400_000);
+    if (offset <= 0) eventFacetCounts.today++;
+    if (offset >= daysToFridayMirror && offset <= daysToFridayMirror + 2) eventFacetCounts['this-weekend']++;
+    const haystack = `${s.title ?? ''} ${(s.body ?? '').slice(0, 200)}`;
+    if (KIDS_RE_MIRROR.test(haystack)) eventFacetCounts.kids++;
+    const venueNorm = normalizeVenueMirror(s.venue_raw);
+    if (venueNorm && libraryVenueNames.has(venueNorm)) eventFacetCounts.library++;
+  }
+  for (const [facetSlug, count] of Object.entries(eventFacetCounts)) {
+    if (count < MIN_TAG_PAGE_ITEMS) noindexThinPageUrls.add(`/events/${facetSlug}/`);
   }
 
   return {

@@ -172,6 +172,11 @@ const itemListJsonLd = hasAnyItems ? {
   {!hasAnyItems && (
     <p class="empty">A quiet week — no meetings, events or games recorded for {siteConfig.cityName} this week.</p>
   )}
+  {!hasAnyItems && prevWeek && (
+    <p class="empty-prev-week">
+      <a href={`/this-week/${prevWeek.slug}/`}>See last week instead: week of {prevWeek.label} →</a>
+    </p>
+  )}
 
   <nav class="cross-links" aria-label="Related sections">
     <a href="/events/">All events →</a>
@@ -262,6 +267,14 @@ const itemListJsonLd = hasAnyItems ? {
 .day__quiet--range:last-child { border-bottom: 1px solid var(--rule); }
 
 .empty { color: var(--ink-soft); margin-top: 1.5rem; }
+
+.empty-prev-week {
+  margin-top: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.empty-prev-week a { color: var(--navy); }
+.empty-prev-week a:hover, .empty-prev-week a:focus-visible { text-decoration: underline; }
 
 .cross-links { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 2rem 0 1rem; }
 .cross-links a {
