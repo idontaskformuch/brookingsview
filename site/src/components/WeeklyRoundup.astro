@@ -38,7 +38,10 @@ const weekHref = weekInfo ? `/this-week/${weekInfo.slug}/` : storyHref(story.slu
 // never that: resolveThisWeekImage() throws rather than returning null, so
 // there's no "no image" case left to fall back from here.
 const heroImage = weekInfo
-  ? await resolveThisWeekImage(weekInfo.slug, seasonForMonth(weekInfo.monday.m), thisWeekImagesFor(siteConfig.townId))
+  ? await resolveThisWeekImage(
+      weekInfo.slug, seasonForMonth(weekInfo.monday.m), thisWeekImagesFor(siteConfig.townId),
+      weekInfo.monday, weekInfo.sunday,
+    )
   : null;
 ---
 <article class="roundup">

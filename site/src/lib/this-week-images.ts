@@ -187,8 +187,9 @@ const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000;
 /** Same plain string hash lib/images.ts's pickFromPool() already uses for
  *  its own deterministic pick -- reused rather than a second hash scheme,
  *  not collision-resistant and doesn't need to be (tie-break among a
- *  handful of equally-eligible candidates). */
-function stableHash(seed: string): number {
+ *  handful of equally-eligible candidates). Exported for lib/holidays.ts's
+ *  own selectHolidayImage(), which needs the exact same tie-break. */
+export function stableHash(seed: string): number {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
     hash = (hash * 31 + seed.charCodeAt(i)) | 0;

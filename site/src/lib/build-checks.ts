@@ -52,6 +52,8 @@ import {
   type WeekCoverage, type SeasonPoolSize,
 } from './this-week-images';
 import { THIS_WEEK_IMAGES } from '../config/this-week-images';
+import { holidayPoolSizesDueSoon } from './holidays';
+import { HOLIDAYS, HOLIDAY_IMAGES } from '../config/holidays';
 
 let checked = false;
 
@@ -481,6 +483,7 @@ function assertThisWeekImageCoverage(): void {
   }
 
   assertThisWeekSeasonPoolSizes(now);
+  assertHolidayPoolSizes(now);
 }
 
 const SEASON_POOL_SHIFT_WARNING_DAYS = 30;
@@ -528,6 +531,32 @@ function assertThisWeekSeasonPoolSizes(now: Date): void {
       'scripts/source_this_week_images.py.\n',
     );
   }
+}
+
+const HOLIDAY_WINDOW_WARNING_DAYS = 30;
+const HOLIDAY_MIN_POOL_SIZE = 3;
+
+/** Holiday equivalent of assertThisWeekSeasonPoolSizes() above -- WARN only
+ *  (2026-10-06 review instruction: "byggvarning", not a build-failing
+ *  check -- a thin or still-empty holiday pool is expected right up until
+ *  curation finishes, not a data-entry mistake the way an empty SEASON
+ *  pool would be) when today falls within HOLIDAY_WINDOW_WARNING_DAYS of
+ *  an ACTIVE holiday's own window start and this town's pool for it has
+ *  fewer than HOLIDAY_MIN_POOL_SIZE images. Inactive holidays (every
+ *  Level-2 entry in config/holidays.ts today) are never checked at all --
+ *  same as the real week-resolver, which never looks at an inactive
+ *  holiday's pool either. */
+function assertHolidayPoolSizes(now: Date): void {
+  const today = localDateParts(now, siteConfig.timezone);
+  const dueSoon = holidayPoolSizesDueSoon(HOLIDAYS, HOLIDAY_IMAGES, TOWN_ID, today, HOLIDAY_WINDOW_WARNING_DAYS);
+  const tooSmall = dueSoon.filter((c) => c.poolSize < HOLIDAY_MIN_POOL_SIZE);
+  if (tooSmall.length === 0) return;
+
+  console.warn(
+    `\n⚠️  Holiday image pool for "${TOWN_ID}" is below the minimum of ${HOLIDAY_MIN_POOL_SIZE} with its ` +
+    `window approaching: ${tooSmall.map((c) => `${c.holiday} (window starts ${c.windowStart.y}-${c.windowStart.m}-${c.windowStart.d}): ${c.poolSize} image(s)`).join('; ')}. ` +
+    'Add curated images via scripts/source_this_week_images.py --holiday <name>.\n',
+  );
 }
 
 /** Renamed from runBuildTimeImageChecks: this single build-time hook (still

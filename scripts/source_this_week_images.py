@@ -203,6 +203,7 @@ def _ocr_available() -> bool:
 
 IMAGES_DIR = Path("site/public/assets/images/this-week")
 CONFIG_TS = Path("site/src/config/this-week-images.ts")
+HOLIDAYS_CONFIG_TS = Path("site/src/config/holidays.ts")
 MONTAGE_DIR = Path(".review_montages")
 
 # 2026-10-06 review finding: _download_and_save_pexels() (shared with
@@ -258,7 +259,60 @@ ROUND2_TARGET = 18
 BUCKET_TARGET_COUNT = {"built": 12, "nature": 7, "life": 5}
 
 # Caption background per bucket, for fast visual scanning of a grid's mix.
-BUCKET_COLOR = {"built": (30, 60, 120), "nature": (30, 110, 60), "life": (150, 90, 20)}
+BUCKET_COLOR = {"built": (30, 60, 120), "nature": (30, 110, 60), "life": (150, 90, 20), "holiday": (110, 30, 110)}
+
+# Holiday overlay (2026-10-06 review instruction) -- "season" as this
+# whole file already treats it, just a different string: _build_grid(),
+# _write_manifest()/_load_manifest(), and _cross_town_duplicate_ids() all
+# take a plain `season` string purely for file-naming/lookup purposes and
+# don't care whether it's "autumn" or "halloween". No bucket split required
+# here (every candidate uses the single 'holiday' bucket/color above) --
+# just >=2 distinct motifs per pool, enforced by hand at review time, not
+# mechanically. Level 1 only for now (halloween/thanksgiving/christmas) --
+# see config/holidays.ts's own Level 1/Level 2 split.
+HOLIDAY_MIN_POOL_SIZE = 3
+
+# Mirrors config/holidays.ts's HOLIDAYS list (id -> label) exactly -- same
+# duplication tradeoff this codebase already makes across the Python/TS
+# boundary elsewhere (see astro.config.mjs's own BRAND_TOKENS/TOWN_GATED_
+# PAGES comments for why: this script runs before anything could import a
+# .ts file, so mirroring by hand is the only option, not a shortcut).
+HOLIDAYS: list[tuple[str, str]] = [
+    ("halloween", "Halloween"), ("thanksgiving", "Thanksgiving"), ("christmas", "Christmas"),
+    ("new_years", "New Year's Day"), ("valentines", "Valentine's Day"), ("easter", "Easter"),
+    ("memorial_day", "Memorial Day"), ("july_4", "Independence Day"), ("labor_day", "Labor Day"),
+    ("veterans_day", "Veterans Day"),
+]
+TOWN_LABEL = {
+    "brookings_sd": "Brookings, South Dakota", "moreno_valley_ca": "Moreno Valley, California",
+    "broomfield_co": "Broomfield, Colorado",
+}
+HOLIDAY_QUERIES: dict[tuple[str, str], list[str]] = {
+    ("brookings_sd", "halloween"): [
+        "carved jack o lantern porch autumn",
+        "halloween pumpkin decoration house midwest",
+        "halloween porch decoration autumn leaves",
+        "pumpkin patch halloween decor midwest",
+        "candy bowl halloween table autumn",
+        "halloween string lights yard evening",
+    ],
+    ("moreno_valley_ca", "halloween"): [
+        "carved jack o lantern porch california",
+        "halloween pumpkin decoration house palm trees",
+        "halloween porch decoration southern california",
+        "pumpkin patch halloween decor california",
+        "candy bowl halloween table",
+        "halloween string lights yard california evening",
+    ],
+    ("broomfield_co", "halloween"): [
+        "carved jack o lantern porch colorado autumn",
+        "halloween pumpkin decoration house colorado",
+        "halloween porch decoration autumn leaves colorado",
+        "pumpkin patch halloween decor colorado",
+        "candy bowl halloween table autumn",
+        "halloween string lights yard evening colorado",
+    ],
+}
 TEXT_FLAG_COLOR = (170, 20, 20)  # OCR "[TEXT]" flag -- deliberately alarming red
 
 # 2026-10-03 human review results, round 1 (24-ish candidates/town, one
@@ -728,16 +782,38 @@ def build_final_montage(town: str, season: str, pexels_key: str) -> Path | None:
     return out_path
 
 
+def _applied_season_pool_ids() -> dict[int, str]:
+    """{sourcePhotoId: town, ...} for every entry ALREADY applied in
+    config/this-week-images.ts, across all three towns -- parsed directly
+    from the TS literal (same approach _write_config()'s own town_ids/
+    seasons regex already uses) rather than re-deriving it, so this always
+    reflects whatever is actually live, not a snapshot. Returns {} before
+    CONFIG_TS exists or has no entries yet (never raises over an empty/
+    missing file -- a holiday pool can be sourced before any season pool
+    exists)."""
+    if not CONFIG_TS.exists():
+        return {}
+    text = CONFIG_TS.read_text(encoding="utf-8")
+    result: dict[int, str] = {}
+    for m in re.finditer(r"town_ids: \['([a-z_]+)'\].*?sourcePhotoId: (\d+)", text):
+        result[int(m.group(2))] = m.group(1)
+    return result
+
+
 def _cross_town_duplicate_ids(town: str, season: str, candidate_ids: set[int]) -> dict[int, str]:
-    """{id: other_town, ...} for every id in `candidate_ids` that another
-    town has ALREADY chosen (written to its own {town}-{season}-chosen.json
-    sidecar) for the same season -- the pools must be disjoint across towns
-    (2026-10-03 review instruction): the same real Pexels photo reused for
-    two towns both weakens "this town, this week" distinctiveness and (once
-    --apply downloads it twice under two town-prefixed filenames) leaves no
-    trace in config/this-week-images.ts that it ever happened -- see that
-    file's own sourcePhotoId field, added for exactly this check and its
-    vitest-side twin (this-week-images.test.ts)."""
+    """{id: other_town_or_pool, ...} for every id in `candidate_ids` that's
+    ALREADY spoken for -- either by another town's own {other}-{season}-
+    chosen.json sidecar for this SAME pool (season or holiday, whichever
+    `season` names -- 2026-10-03 review instruction), or by ANY town's
+    already-APPLIED season pool (config/this-week-images.ts -- 2026-10-07
+    review instruction: a holiday pool reusing a season photo, even for the
+    SAME town, both defeats "this town, this week" distinctiveness and
+    risks the exact collision a real build would hit if a season week and a
+    holiday week ever landed on the identical image). The same real Pexels
+    photo must never be reused across ANY of these, since --apply downloads
+    it again under a new town/pool-prefixed filename and leaves no trace in
+    either config file that it's the same underlying photo -- see
+    sourcePhotoId's own doc comment for why that field exists at all."""
     conflicts: dict[int, str] = {}
     for other in TOWNS:
         if other == town:
@@ -749,6 +825,11 @@ def _cross_town_duplicate_ids(town: str, season: str, candidate_ids: set[int]) -
         other_ids = {c["id"] for c in json.loads(sidecar.read_text(encoding="utf-8"))}
         for pid in candidate_ids & other_ids:
             conflicts[pid] = other
+
+    applied = _applied_season_pool_ids()
+    for pid in candidate_ids:
+        if pid in applied and pid not in conflicts:
+            conflicts[pid] = f"{applied[pid]} (applied season pool)"
     return conflicts
 
 
@@ -851,6 +932,114 @@ def build_round2_montage(town: str, season: str, pexels_key: str, ocr_ready: boo
     return out_path
 
 
+def _fetch_holiday_candidates(town: str, holiday: str, pexels_key: str, exclude_ids: set[int]) -> list[tuple[str, dict]]:
+    """[("holiday", photo), ...] -- mirrors _fetch_life_candidates()'s shape
+    exactly (single bucket, no per-query slot allocation needed since
+    there's no built/nature/life split to balance)."""
+    seen_ids: set[int] = set(exclude_ids)
+    results: list[tuple[str, dict]] = []
+    for q in HOLIDAY_QUERIES.get((town, holiday), []):
+        for photo in pexels_search(q, pexels_key, per_page=6):
+            if photo["id"] in seen_ids:
+                continue
+            seen_ids.add(photo["id"])
+            results.append(("holiday", photo))
+    return results
+
+
+def build_holiday_montage(town: str, holiday: str, pexels_key: str, ocr_ready: bool) -> Path | None:
+    """First-pass holiday montage -- no prior round, no kept/rejected
+    carry-over (unlike the season pool's round1/2/3 history), since this is
+    a fresh pool. One flat OCR-flagged grid, reviewed the same way (faces,
+    signage, brands, landmarks, foreign environment) plus the holiday-
+    specific rules from the review instruction (town-appropriate climate
+    cues, no branded packaging/characters)."""
+    candidates = _fetch_holiday_candidates(town, holiday, pexels_key, set())
+    if not candidates:
+        print(f"  [{town}/{holiday}] no candidates found -- check HOLIDAY_QUERIES")
+        return None
+    out_path, stats = _build_grid(town, holiday, "holiday", candidates, set(), ocr_ready)
+    print(
+        f"  [{town}/{holiday}] holiday montage -> {out_path} "
+        f"({stats['total']} candidates, {stats['flagged']} flagged [TEXT])"
+        + ("" if ocr_ready else " -- OCR UNAVAILABLE, no [TEXT] flags were possible this run")
+    )
+    return out_path
+
+
+def _select_holiday_report(town: str, holiday: str, indices: list[int]) -> tuple[bool, list[dict]]:
+    """Same shape as _select_report() (final-montage indices -> validated
+    chosen list -> sidecar), but against the single holiday montage
+    directly (no separate "final" merge step -- there's only ever one
+    round for a first-pass holiday pool) and HOLIDAY_MIN_POOL_SIZE (3), not
+    the season pool's 13, with no bucket-ratio checks (none required)."""
+    manifest = _load_manifest(town, holiday, "holiday")
+    if not manifest:
+        print(f"  [{town}/{holiday}] no holiday manifest -- run --holiday-montage {holiday} first")
+        return False, []
+    by_index = {m["index"]: m for m in manifest}
+
+    chosen: list[dict] = []
+    seen_ids: set[int] = set()
+    for idx in indices:
+        entry = by_index.get(idx)
+        if entry is None:
+            print(f"  ERROR: index #{idx} does not exist in the {holiday} montage (0-{len(manifest) - 1})")
+            return False, []
+        if entry["id"] in seen_ids:
+            print(f"  WARNING: index #{idx} (id={entry['id']}) selected more than once -- skipping duplicate")
+            continue
+        seen_ids.add(entry["id"])
+        chosen.append({"id": entry["id"]})
+
+    cross_town = _cross_town_duplicate_ids(town, holiday, seen_ids)
+    if cross_town:
+        for pid, other in sorted(cross_town.items()):
+            print(f"  ERROR: id={pid} is already chosen for \"{other}\" -- pools must be disjoint across towns.")
+        return False, []
+
+    total = len(chosen)
+    print(f"  [{town}/{holiday}] selected {total} image(s)")
+    ok = True
+    if total < HOLIDAY_MIN_POOL_SIZE:
+        print(f"  ERROR: {total} < required minimum {HOLIDAY_MIN_POOL_SIZE} -- not enough to apply yet")
+        ok = False
+
+    import json
+    sidecar = MONTAGE_DIR / f"{town}-{holiday}-chosen.json"
+    sidecar.write_text(json.dumps(chosen, indent=1), encoding="utf-8")
+    print(f"  -> wrote {sidecar} ({'ready for --holiday-apply' if ok else 'NOT ready -- fix and re-run --holiday-select'})")
+    return ok, chosen
+
+
+def _write_holiday_config(entry_lines: list[str], touched_holidays: set[str]) -> None:
+    """Same merge-not-replace logic as _write_config() (see that function's
+    own 2026-10-06 comment for the bug this avoids), targeting
+    config/holidays.ts's HOLIDAY_IMAGES array and matching on `holiday:`
+    instead of `seasons:`/`town_ids:`."""
+    text = HOLIDAYS_CONFIG_TS.read_text(encoding="utf-8")
+    marker_start = "export const HOLIDAY_IMAGES: HolidayImage[] = ["
+    marker_end = "];"
+    start = text.index(marker_start) + len(marker_start)
+    end = text.index(marker_end, start)
+    existing_body = text[start:end]
+
+    preserved: list[str] = []
+    for raw_line in existing_body.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        m = re.search(r"holiday: '([a-z_]+)'", line)
+        if m is None:
+            preserved.append(line)
+            continue
+        if m.group(1) not in touched_holidays:
+            preserved.append(line)
+
+    new_body = "\n" + "\n".join(preserved + entry_lines) + "\n"
+    HOLIDAYS_CONFIG_TS.write_text(text[:start] + new_body + text[end:], encoding="utf-8")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
@@ -860,9 +1049,78 @@ def main() -> int:
     ap.add_argument("--final", action="store_true", help="Merge round-2 survivors + round-3 life into one renumbered final montage per town (what --select's indices refer to).")
     ap.add_argument("--select", nargs=2, metavar=("TOWN", "INDICES"), help="Resolve comma-separated final-montage indices to a chosen list, validate, and write the --apply sidecar. E.g. --select brookings_sd \"2,5,7,9\"")
     ap.add_argument("--only", nargs=2, metavar=("TOWN", "SEASON"))
+    ap.add_argument("--holiday-montage", metavar="HOLIDAY", help="Build first-pass holiday montages for all three towns, e.g. --holiday-montage halloween")
+    ap.add_argument("--holiday-select", nargs=3, metavar=("TOWN", "HOLIDAY", "INDICES"), help="Resolve comma-separated holiday-montage indices to a chosen list for one town. E.g. --holiday-select brookings_sd halloween \"2,5,7\"")
+    ap.add_argument("--holiday-apply", action="store_true", help="Download + compress every town's holiday-chosen sidecar and write config/holidays.ts.")
     args = ap.parse_args()
 
     pexels_key = os.environ.get("PEXELS_API_KEY")
+
+    if args.holiday_montage:
+        if not pexels_key:
+            print("PEXELS_API_KEY not set -- can't build montages.")
+            return 1
+        ocr_ready = _ocr_available()
+        for town in TOWNS:
+            build_holiday_montage(town, args.holiday_montage, pexels_key, ocr_ready)
+        return 0
+
+    if args.holiday_select:
+        town, holiday, indices_str = args.holiday_select
+        try:
+            indices = [int(x.strip()) for x in indices_str.split(",") if x.strip()]
+        except ValueError:
+            print(f"Could not parse indices from {indices_str!r} -- expected e.g. \"2,5,7\"")
+            return 1
+        ok, _chosen = _select_holiday_report(town, holiday, indices)
+        return 0 if ok else 1
+
+    if args.holiday_apply:
+        if not pexels_key:
+            print("PEXELS_API_KEY not set -- can't download.")
+            return 1
+        import json
+        touched: set[str] = set()
+        lines: list[str] = []
+        for town in TOWNS:
+            for sidecar in MONTAGE_DIR.glob(f"{town}-*-chosen.json"):
+                # Holiday sidecars share the same "{town}-{X}-chosen.json"
+                # name shape as season ones -- only act on ones whose X is a
+                # real holiday id, so this never picks up a season sidecar
+                # by accident.
+                x = sidecar.name[len(town) + 1: -len("-chosen.json")]
+                if x not in {hid for hid, _ in HOLIDAYS}:
+                    continue
+                holiday = x
+                chosen = json.loads(sidecar.read_text(encoding="utf-8"))
+                if len(chosen) < HOLIDAY_MIN_POOL_SIZE:
+                    print(f"Skipping {town}/{holiday}: only {len(chosen)} chosen (< {HOLIDAY_MIN_POOL_SIZE})")
+                    continue
+                holiday_label = next((label for hid, label in HOLIDAYS if hid == holiday), holiday)
+                alt = f"{holiday_label} in {TOWN_LABEL[town]}."
+                for i, choice in enumerate(chosen, start=1):
+                    photo = pexels_get_photo(choice["id"], pexels_key)
+                    image_id = f"{town}-{holiday}-{i:02d}"
+                    out_path = IMAGES_DIR.parent / "holidays" / f"{image_id}.png"
+                    print(f"[{town}/{holiday}] downloading Pexels photo {choice['id']} ({i}/{len(chosen)}) -> {image_id} ...")
+                    _download_and_save_pexels(photo, out_path)
+                    out_path = _compress_to_jpeg(out_path)
+                    web_path = "/" + str(out_path.relative_to("site/public")).replace("\\", "/")
+                    lines.append(
+                        "  { id: " + repr(image_id) + ", path: " + repr(web_path) + ", alt: " + repr(alt) +
+                        ", width: 1200, height: 800, attributionText: " +
+                        repr(f"Photo by {photo['photographer']} on Pexels") +
+                        ", attributionUrl: " + repr(photo["photographer_url"]) +
+                        ", holiday: " + repr(holiday) + ", town_ids: [" + repr(town) + "]" +
+                        ", sourcePhotoId: " + str(choice["id"]) + " },"
+                    )
+                touched.add(holiday)
+        if not lines:
+            print("Nothing to apply -- no holiday sidecar met the minimum.")
+            return 1
+        _write_holiday_config(lines, touched)
+        print(f"\nWrote {HOLIDAYS_CONFIG_TS}")
+        return 0
 
     if args.select:
         town, indices_str = args.select
