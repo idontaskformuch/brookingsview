@@ -256,7 +256,15 @@ ROUND2_TARGET = 18
 # however many queries a given (town, season, bucket) lists; not a cap on
 # how many a reviewer can approve from what's shown, just how many are
 # fetched to choose from.
-BUCKET_TARGET_COUNT = {"built": 12, "nature": 7, "life": 5}
+BUCKET_TARGET_COUNT = {"built": 20, "nature": 14, "life": 8}
+# Raised from the autumn round's {12,7,5}=24 total (2026-10-07, winter pool):
+# the Christmas holiday round's full-resolution-first review (every
+# candidate checked, not just OCR-flagged ones) found roughly half of all
+# thumbnail-approved candidates failed once actually inspected -- foreign
+# architecture, snow in a no-snow town, unreadable-at-thumbnail signage,
+# party lights miscoded as Christmas lights. 24 raw candidates at that
+# survival rate doesn't reliably clear MIN_POOL_SIZE (13) with real margin;
+# 42 does.
 
 # Caption background per bucket, for fast visual scanning of a grid's mix.
 BUCKET_COLOR = {"built": (30, 60, 120), "nature": (30, 110, 60), "life": (150, 90, 20), "holiday": (110, 30, 110)}
@@ -522,9 +530,28 @@ BUCKET_QUERIES: dict[tuple[str, str], dict[str, list[str]]] = {
     # autumn's were, after its own round-1/round-2 correction) before
     # actually running these.
     ("brookings_sd", "winter"): {
-        "built": ["quiet residential street snow midwest", "midwest farmhouse winter snow"],
-        "nature": ["south dakota prairie snow farmland"],
-        "life": ["small town winter market indoor"],
+        # Snow on brick houses/porches, frost, early dark with lit windows --
+        # deliberately NO christmas/holiday decor in any query (2026-10-07
+        # review instruction: this pool must read as plain midwest winter,
+        # not a december-specific scene already covered by the holiday pool).
+        "built": [
+            "snow covered brick house porch winter american",
+            "midwest house winter dusk lit windows snow",
+            "frost covered house winter morning midwest",
+            "snowy residential street midwest winter houses",
+            "american suburban house snow evening no decorations",
+        ],
+        "nature": [
+            "frozen prairie snow winter south dakota",
+            "frost field sunrise winter midwest",
+            "snowy farmland winter morning midwest",
+            "south dakota winter landscape snow fence",
+        ],
+        "life": [
+            "person walking snowy street winter midwest",
+            "coffee shop window winter snow indoor midwest",
+            "small town winter market indoor people",
+        ],
     },
     ("brookings_sd", "spring"): {
         "built": ["quiet residential street spring blossom midwest", "suburban house front porch spring"],
@@ -537,9 +564,28 @@ BUCKET_QUERIES: dict[tuple[str, str], dict[str, list[str]]] = {
         "life": ["small town summer festival people"],
     },
     ("moreno_valley_ca", "winter"): {
-        "built": ["stucco suburban homes palm trees winter quiet street", "southern california suburban house winter mild"],
-        "nature": ["southern california desert hills winter mild"],
-        "life": ["southern california farmers market winter"],
+        # NO snow, ever (2026-10-07 review instruction): rain, green hills
+        # after rain, citrus trees, fog over hills, palms against a gray
+        # sky, low winter light. This is the one town whose winter actually
+        # looks wetter and greener than its own summer/autumn, not colder.
+        "built": [
+            "california suburban house rain winter overcast",
+            "stucco house palm tree gray sky winter california",
+            "southern california house overcast winter porch",
+            "american suburban street california winter rain",
+            "california ranch house low winter light",
+        ],
+        "nature": [
+            "green hills california after rain winter",
+            "citrus orchard california winter",
+            "fog over hills california winter morning",
+            "palm trees gray cloudy sky california",
+        ],
+        "life": [
+            "farmers market california winter overcast people",
+            "person walking california street rain umbrella",
+            "coffee shop window california winter rain",
+        ],
     },
     ("moreno_valley_ca", "spring"): {
         "built": ["stucco suburban homes palm trees spring quiet street", "southern california suburban house front porch spring"],
@@ -552,9 +598,26 @@ BUCKET_QUERIES: dict[tuple[str, str], dict[str, list[str]]] = {
         "life": ["southern california summer market people"],
     },
     ("broomfield_co", "winter"): {
-        "built": ["colorado suburban homes front range snow quiet street", "colorado suburban house front porch winter"],
-        "nature": ["colorado front range snow mountains winter"],
-        "life": ["colorado winter market indoor people"],
+        # Snow-dusted suburb houses, GENERIC snowy mountain ranges only (no
+        # recognizable named peak -- same rule the christmas pool's mountain
+        # shot already applied), bare trees, cold flat light.
+        "built": [
+            "colorado suburban house snow quiet street winter",
+            "snow dusted suburb colorado winter houses",
+            "colorado front range neighborhood snow evening",
+            "american suburban house winter snow porch",
+        ],
+        "nature": [
+            "distant snowy mountain range colorado generic",
+            "colorado plains winter snow bare trees",
+            "cold winter light colorado landscape",
+            "snowy field bare trees colorado winter",
+        ],
+        "life": [
+            "colorado winter market indoor people",
+            "person walking snowy sidewalk colorado winter",
+            "coffee shop window colorado winter snow",
+        ],
     },
     ("broomfield_co", "spring"): {
         "built": ["colorado suburban homes front range spring quiet street", "new neighborhood trail colorado spring"],
