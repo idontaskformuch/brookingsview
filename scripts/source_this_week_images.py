@@ -380,6 +380,54 @@ HOLIDAY_QUERIES: dict[tuple[str, str], list[str]] = {
         "snowy mountains winter generic colorado",
         "christmas tree lights living room window",
     ],
+
+    # LEVEL 2, etapp 1 (2026-10-07 review instruction, live before
+    # 2027-03-01): Easter -- SECULAR motifs only, no religious imagery
+    # (crosses, churches, resurrection symbolism) -- pastel eggs, egg-hunt
+    # baskets, spring tulips/flowers, a rabbit figure. Valentine's Day --
+    # NO FACES, ever -- hearts, roses, candy, wrapped gifts, a table set for
+    # two with nobody in frame.
+    ("brookings_sd", "easter"): [
+        "pastel easter eggs basket spring",
+        "easter egg hunt grass spring midwest",
+        "spring tulips easter decoration porch",
+        "easter bunny figurine spring decor",
+        "pastel ribbon easter decoration table",
+        "spring flowers easter basket midwest",
+    ],
+    ("moreno_valley_ca", "easter"): [
+        "pastel easter eggs basket spring california",
+        "easter egg hunt grass spring",
+        "spring flowers easter decoration porch california",
+        "easter bunny figurine spring decor",
+        "pastel ribbon easter decoration table",
+    ],
+    ("broomfield_co", "easter"): [
+        "pastel easter eggs basket spring colorado",
+        "easter egg hunt grass spring",
+        "spring tulips easter decoration porch colorado",
+        "easter bunny figurine spring decor",
+        "pastel ribbon easter decoration table",
+    ],
+    ("brookings_sd", "valentines"): [
+        "red roses bouquet valentines table",
+        "heart shaped box chocolate valentines",
+        "candy hearts valentines table closeup",
+        "wrapped gift red ribbon valentines",
+        "table set for two valentines evening no people",
+    ],
+    ("moreno_valley_ca", "valentines"): [
+        "red roses bouquet valentines table california",
+        "heart shaped box chocolate valentines",
+        "candy hearts valentines table closeup",
+        "wrapped gift red ribbon valentines",
+    ],
+    ("broomfield_co", "valentines"): [
+        "red roses bouquet valentines table colorado",
+        "heart shaped box chocolate valentines",
+        "candy hearts valentines table closeup",
+        "wrapped gift red ribbon valentines",
+    ],
 }
 TEXT_FLAG_COLOR = (170, 20, 20)  # OCR "[TEXT]" flag -- deliberately alarming red
 
@@ -554,9 +602,27 @@ BUCKET_QUERIES: dict[tuple[str, str], dict[str, list[str]]] = {
         ],
     },
     ("brookings_sd", "spring"): {
-        "built": ["quiet residential street spring blossom midwest", "suburban house front porch spring"],
-        "nature": ["midwest prairie spring green fields"],
-        "life": ["farmers market small town spring"],
+        # Live before 2027-03-01, first spring week 2027-w09 (2026-10-07
+        # review instruction). Melting-snow mud season into blossom/green --
+        # NOT summer-green yet, no Easter decor (that's its own holiday pool).
+        "built": [
+            "midwest house blossom tree spring quiet street",
+            "suburban front porch spring tulips midwest",
+            "farmhouse spring green field muddy midwest",
+            "midwest residential street spring budding trees",
+            "small town house spring rain puddle midwest",
+        ],
+        "nature": [
+            "south dakota prairie spring green new grass",
+            "melting snow field spring midwest",
+            "robin bird spring tree midwest",
+            "flowering tree blossom spring midwest",
+        ],
+        "life": [
+            "farmers market spring small town midwest people",
+            "person walking spring street midwest distance",
+            "garden planting spring midwest",
+        ],
     },
     ("brookings_sd", "summer"): {
         "built": ["quiet residential street summer midwest trees", "midwest suburban house front porch summer"],
@@ -588,9 +654,28 @@ BUCKET_QUERIES: dict[tuple[str, str], dict[str, list[str]]] = {
         ],
     },
     ("moreno_valley_ca", "spring"): {
-        "built": ["stucco suburban homes palm trees spring quiet street", "southern california suburban house front porch spring"],
-        "nature": ["california desert hills spring wildflowers"],
-        "life": ["southern california farmers market spring people"],
+        # Moreno Valley's one genuinely GREEN season (2026-10-07 review
+        # instruction): green hills, blooming citrus, wildflowers -- the
+        # opposite of its own dry summer/autumn, same "this town's real
+        # climate, not a generic calendar icon" rule winter's queries used.
+        "built": [
+            "stucco house citrus tree blooming spring california",
+            "southern california suburban porch spring flowers",
+            "california ranch house green lawn spring",
+            "quiet street california spring green hills background",
+            "california house spring blue sky palm tree",
+        ],
+        "nature": [
+            "green hills california spring wildflowers",
+            "california poppy wildflower field spring",
+            "blooming citrus orchard california spring",
+            "inland southern california hills green spring",
+        ],
+        "life": [
+            "farmers market california spring people",
+            "person walking california spring street distance",
+            "community garden california spring",
+        ],
     },
     ("moreno_valley_ca", "summer"): {
         "built": ["stucco suburban homes palm trees summer quiet street", "southern california suburban house golden hour"],
@@ -620,9 +705,28 @@ BUCKET_QUERIES: dict[tuple[str, str], dict[str, list[str]]] = {
         ],
     },
     ("broomfield_co", "spring"): {
-        "built": ["colorado suburban homes front range spring quiet street", "new neighborhood trail colorado spring"],
-        "nature": ["colorado plains foothills spring"],
-        "life": ["colorado farmers market spring people"],
+        # Front Range spring (2026-10-07 review instruction): late snow is
+        # real here but this pool is ABOUT green returning, not a repeat of
+        # the winter pool -- green grass, flowering trees, mud, generic
+        # (non-landmark) foothills in the background only.
+        "built": [
+            "colorado suburban house spring green lawn quiet street",
+            "front range neighborhood spring flowering tree",
+            "colorado house front porch spring tulips",
+            "new subdivision colorado spring green grass",
+            "colorado residential street spring budding trees",
+        ],
+        "nature": [
+            "colorado foothills spring green generic",
+            "colorado plains spring wildflowers",
+            "melting snow mountain base spring colorado generic",
+            "flowering tree colorado spring",
+        ],
+        "life": [
+            "colorado farmers market spring people",
+            "person walking colorado spring street distance",
+            "community garden colorado spring",
+        ],
     },
     ("broomfield_co", "summer"): {
         "built": ["colorado suburban homes front range summer quiet street", "colorado suburban house front porch summer"],
