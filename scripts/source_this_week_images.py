@@ -336,6 +336,42 @@ HOLIDAY_QUERIES: dict[tuple[str, str], list[str]] = {
         "harvest centerpiece table autumn gourds",
         "roast turkey thanksgiving table setting",
     ],
+    # Christmas motifs are deliberately TOWN-SPECIFIC, not a generic snow
+    # scene set (2026-10-07 review instruction) -- Moreno Valley's own
+    # climate never gets snow, so its queries target string lights on
+    # palms/houses and decorated porches instead; Brookings and Broomfield
+    # both get real snow, but Broomfield's queries avoid any named/
+    # recognizable peak (generic "snowy mountains" framing only).
+    ("brookings_sd", "christmas"): [
+        "christmas lights snow brick house window",
+        "snowy porch christmas lights evening",
+        "christmas wreath door snow frost",
+        "frost window christmas morning midwest",
+        "snow covered prairie winter christmas",
+        "christmas tree lights living room window",
+    ],
+    ("moreno_valley_ca", "christmas"): [
+        "christmas lights palm trees house evening",
+        "christmas lights house california no snow",
+        "christmas wreath door california",
+        "decorated porch christmas lights california",
+        "christmas tree lights living room window",
+        "string lights patio christmas california evening",
+        "front yard christmas lights suburban house",
+        "christmas decorations house palm tree driveway",
+        "house christmas lights warm string residential",
+        "christmas inflatable yard decoration suburban house",
+        "christmas lights single family home dusk",
+        "palm tree string lights backyard evening",
+    ],
+    ("broomfield_co", "christmas"): [
+        "christmas lights snow house colorado evening",
+        "snowy suburban street christmas lights",
+        "christmas wreath door snow colorado",
+        "string lights snow yard evening colorado",
+        "snowy mountains winter generic colorado",
+        "christmas tree lights living room window",
+    ],
 }
 TEXT_FLAG_COLOR = (170, 20, 20)  # OCR "[TEXT]" flag -- deliberately alarming red
 

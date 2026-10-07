@@ -3,10 +3,11 @@ import {
   computeHolidayDate, holidayWindow, resolveActiveHoliday, selectHolidayImage, holidayPoolSizesDueSoon,
   type DateYMD,
 } from './holidays';
-import { selectThisWeekImage, type ThisWeekUsageRecord } from './this-week-images';
+import { selectThisWeekImage, seasonForMonth, type ThisWeekUsageRecord } from './this-week-images';
 import { HOLIDAYS, HOLIDAY_IMAGES, type HolidayDefinition, type HolidayImage, type HolidayId } from '../config/holidays';
 import type { Town } from '../config/category-images';
 import type { ThisWeekImage } from '../config/this-week-images';
+import { weekInfoForSlug } from './this-week';
 
 function holidayImg(id: string, holiday: HolidayId, townIds: Town[] = ['brookings_sd']): HolidayImage {
   return {
@@ -214,5 +215,32 @@ describe('HOLIDAY_IMAGES pool disjointness (same rule as THIS_WEEK_IMAGES -- 202
     }
     const violations = [...townsForPhoto.entries()].filter(([, towns]) => towns.size > 1);
     expect(violations.length).toBe(1);
+  });
+});
+
+describe('53-week year handling (2026-10-07 review instruction: 2026 has an ISO week 53)', () => {
+  it('weekInfoForSlug resolves 2026-w53 correctly, crossing the calendar year boundary', () => {
+    const info = weekInfoForSlug('2026-w53', 'America/Chicago');
+    expect(info?.monday).toEqual({ y: 2026, m: 12, d: 28 });
+    expect(info?.sunday).toEqual({ y: 2027, m: 1, d: 3 });
+    expect(info?.slug).toBe('2026-w53'); // round-trips, not re-labeled 2027-w01
+  });
+
+  it('2026-w53 does not overlap the Christmas window (Dec 11-25) and falls back to the winter season', () => {
+    const info = weekInfoForSlug('2026-w53', 'America/Chicago')!;
+    const match = resolveActiveHoliday(HOLIDAYS, info.monday, info.sunday);
+    expect(match).toBeNull();
+    expect(seasonForMonth(info.monday.m)).toBe('winter');
+  });
+
+  it('2026-w53 and 2027-w01 are distinct weeks with distinct history-table keys, not aliased', () => {
+    const w53 = weekInfoForSlug('2026-w53', 'America/Chicago')!;
+    const w01 = weekInfoForSlug('2027-w01', 'America/Chicago')!;
+    expect(w53.slug).not.toBe(w01.slug);
+    // iso_year_week is stored as this exact slug string (db.ts's
+    // resolveThisWeekImage()/this_week_image_usage) -- confirming they're
+    // different strings is what guarantees no history-row collision
+    // between the year's last week and the next year's first week.
+    expect(w01.monday).toEqual({ y: 2027, m: 1, d: 4 });
   });
 });
