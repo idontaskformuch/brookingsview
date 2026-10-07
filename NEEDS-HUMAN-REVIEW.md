@@ -7051,3 +7051,56 @@ co-occur with a *genuine* subjective framing in the flagged drafts, or is
 every hit a plain stated requirement?) before narrowing the rule, not a
 guess from a handful of examples. Worth a pass once a week or so of real
 `reject_reason` data has accumulated.
+
+## 79. Broomfield's category-image pools are cross-town references, beyond `events` (2026-10-08)
+
+**Found while fixing the `events` category pool** (see `#80f8531`,
+"Broomfield: remove cross-town events category images"): that commit
+removed Broomfield's `events` pool because every entry pointed at literal
+`brookings_sd-events-*.png` files with the alt text relabeled "Broomfield"
+-- not a real Broomfield photo. The same pattern exists in
+`config/category-images.ts`'s `broomfield_co` block for every other
+category it has an entry for. None are real Broomfield photos; each is
+another town's file, alt-text-relabeled. Not fixed here -- scoped to just
+`events` in that commit, flagged for a separate pass:
+
+| Category | Files | Source town | Required for broomfield_co? |
+|---|---|---|---|
+| `city_hall` | 3 | `moreno_valley_ca` | Yes -- `ALWAYS_REQUIRED` |
+| `jobs` | 6 | `brookings_sd` | Yes -- `ALWAYS_REQUIRED` |
+| `weather_alert` | 6 | `brookings_sd` | Yes -- `ALWAYS_REQUIRED` |
+| `traffic` | 4 | `moreno_valley_ca` | Yes -- `trafficSource` is set |
+| `workplace_watch` | 4 | `moreno_valley_ca` | Yes -- `hasWorkplaceWatch: true` |
+| `home_sales` | 7 | `brookings_sd` | ~~No~~ -- **resolved, see update below** |
+| `school_alerts` | 4 | `moreno_valley_ca` | ~~No~~ -- **resolved, see update below** |
+
+Originally 34 files across 7 categories. (`movie_review` is NOT on this
+list -- that pool is deliberately identical AI-generated art shared
+verbatim by all three towns, see its own doc comment in
+`category-images.ts`; that's by design, not a bug.)
+
+**Update (2026-10-08, commit `15293d8`):** `home_sales` and
+`school_alerts` (11 files) resolved -- neither was in
+`requiredCategoriesFor()`'s output for `broomfield_co` at all (no
+`hasHousingMarket`/`hasClosureWatch` for this town), so nothing enforced
+their presence. Deleted outright, same way `events` was, with **no**
+matching `requiredCategoriesFor()` carve-out needed since there was
+nothing to carve out. No image files deleted from disk -- the borrowed
+`brookings_sd-home_sales-*.png` / `moreno_valley_ca-school_alerts-*.png`
+files remain in use by their rightful towns' own pools. Verified:
+98/98 `images.test.ts` pass, fresh `broomfield_co` build +
+`verify_sitemap_noindex_disjoint.mjs` both clean.
+
+**Still open:** `city_hall`, `jobs`, `weather_alert`, `traffic`,
+`workplace_watch` (23 files) ARE build-required for this town, so they
+can't just be deleted the same way -- that needs a human decision
+between two options:
+
+1. **Real Broomfield photos** -- source genuine Broomfield-area photos
+   via `scripts/source_category_images.py` (same tool that generated
+   every other town's real entries) for these 5 categories.
+2. **Carve-out** -- the same `requiredCategoriesFor()` exclusion
+   `events` got, which just trades a wrong image for no image, and
+   needs checking against the separate "no CI exception list" decision
+   on `verify_sitemap_noindex_disjoint.mjs` before assuming it's free of
+   side effects.
