@@ -11,7 +11,12 @@
  *  publicerad recension över flera veckor) håller inte ~en/vecka-takten en
  *  egen navflik antyder (husregel 4) -- reviews.astro redirectar dit för den
  *  orten i stället för att visa en nästan tom sida. Brookings har bättre
- *  historisk takt (3 publicerade) och behåller sin egen /reviews-sida. */
+ *  historisk takt (3 publicerade) och behåller sin egen /reviews-sida.
+ *
+ *  AdSense "low value content" remediation, Phase 0 (2026-10-07): alla fyra
+ *  typer stängde av sin generering samtidigt, och den här sidan unlinkades
+ *  från nav/footer/homepage -- byggs fortfarande (inte 404), men noindexad,
+ *  enligt handoff-specens "keep data, stop rendering"-regel. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
@@ -30,7 +35,7 @@ const canonicalUrl = new URL('/columns/', Astro.site ?? siteConfig.siteUrl).href
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('columns', siteConfig, { label: 'Columns', href: canonicalUrl });
 const hubBacklink = resolveHubBacklink('columns', siteConfig);
 ---
-<BaseLayout title={`Columns — ${siteConfig.siteName}`} wide
+<BaseLayout title={`Columns — ${siteConfig.siteName}`} wide noindex
   description="Culture essays, light essays and science columns, AI-written and clearly labeled as such.">
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">

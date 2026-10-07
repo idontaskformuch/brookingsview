@@ -101,13 +101,13 @@ const nav = [
   ...(isMorenoValley ? [{ href: '/burro-bonanza/', label: 'Play' }] : []),
   { href: '/traffic/', label: 'Traffic' },
   { href: '/jobs/', label: 'Jobs' },
-  // Moreno Valley: folded into /columns/ -- see columns.astro/reviews.astro
-  // and NEEDS-HUMAN-REVIEW.md "3.3 Reviews" (cadence too thin for its own
-  // nav slot). Brookings keeps its own tab.
-  ...(!isMorenoValley ? [{ href: '/reviews/', label: 'Reviews' }] : []),
-  { href: '/recipes/', label: 'Recipes' },
-  { href: '/editorials/', label: 'Editorials' },
-  { href: '/columns/', label: 'Columns' },
+  // AdSense "low value content" remediation, Phase 0 (2026-10-07): the
+  // Reviews/Recipes/Editorials/Columns nav links were here, removed --
+  // that generic AI content track stopped generating and was unlinked
+  // from every surface. The four pages themselves still exist and still
+  // build (see reviews.astro/recipes.astro/editorials.astro/columns.astro),
+  // just noindexed and with no link anywhere on the site pointing to them
+  // ("do not 404 them yet" per the handoff spec).
   { href: '/weather/', label: 'Weather' },
 ];
 const path = Astro.url.pathname;
@@ -145,7 +145,10 @@ const FOOTER_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: 'Today & events', hrefs: ['/today/', '/this-week/', '/events/', '/whats-on/', '/university/', '/jackrabbits/', '/play/', '/burro-bonanza/'] },
   { label: 'City', hrefs: ['/city-hall/', '/closures/', '/facilities/', '/traffic/', '/farm-report/', '/home-sales/'] },
   { label: 'Community', hrefs: ['/new-in-town/', '/workplace-watch/', '/vail-resorts/', '/sports/', '/jobs/'] },
-  { label: 'Read', hrefs: ['/reviews/', '/recipes/', '/editorials/', '/columns/', '/weather/'] },
+  // Phase 0 (2026-10-07): used to also list reviews/recipes/editorials/
+  // columns -- see `nav`'s own comment just above for why those hrefs no
+  // longer exist in `nav` to match against.
+  { label: 'Read', hrefs: ['/weather/'] },
 ];
 const footerGroups = FOOTER_GROUPS
   .map((group) => ({ label: group.label, items: nav.filter((item) => group.hrefs.includes(item.href)) }))
@@ -676,8 +679,8 @@ main { padding-block: 1.75rem 3.5rem; }
     </nav>
     <p>
       {siteConfig.sourceBlurb} News and listings link to their original
-      sources; reviews, recipes, editorials, and columns are AI-written and
-      labeled as such. <a href="/corrections/">Corrections are welcome</a>.
+      sources; where a piece is AI-written, that's disclosed on the piece
+      itself. <a href="/corrections/">Corrections are welcome</a>.
     </p>
     <p class="data" style="margin-top:0.75rem; font-size:0.75rem;">&copy; {year} {siteConfig.siteName}</p>
   </div>

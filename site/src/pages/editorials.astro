@@ -1,6 +1,12 @@
 ---
 /** Arkiv för editorial -- dagens ledartext flyttar hit dagen efter att den varit
- *  ettan på förstasidan (se index.astro / getTodaysFeature). */
+ *  ettan på förstasidan (se index.astro / getTodaysFeature).
+ *
+ *  AdSense "low value content" remediation, Phase 0 (2026-10-07): editorial
+ *  stopped generating and this page was unlinked from nav/footer/homepage --
+ *  kept building (not 404ed) but noindexed, per the handoff spec's "keep data,
+ *  stop rendering" rule. getTodaysFeature() itself is now dead code (nothing
+ *  calls it from index.astro any more), kept only for the comment above. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
@@ -15,7 +21,7 @@ const canonicalUrl = new URL('/editorials/', Astro.site ?? siteConfig.siteUrl).h
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('editorials', siteConfig, { label: 'Editorials', href: canonicalUrl });
 const hubBacklink = resolveHubBacklink('editorials', siteConfig);
 ---
-<BaseLayout title={`Editorials — ${siteConfig.siteName}`} wide
+<BaseLayout title={`Editorials — ${siteConfig.siteName}`} wide noindex
   description={`Opinion pieces on issues facing ${siteConfig.cityName}, AI-written and clearly labeled as such.`}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">

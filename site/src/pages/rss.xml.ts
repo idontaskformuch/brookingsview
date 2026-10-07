@@ -1,6 +1,6 @@
 import rss from '@astrojs/rss';
 import type { APIContext } from 'astro';
-import { getAllStories } from '../lib/db';
+import { getAllStories, CONTENT_TRACK_TYPES } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { storyHref } from '../lib/content-slugs';
 import { redactWorkerPulseBody } from '../lib/content-redaction';
@@ -15,8 +15,15 @@ import { redactWorkerPulseBody } from '../lib/content-redaction';
 // reader has no use for a row with published_at = NULL, and confirmed live
 // 2026-09-03 that unfiltered stories here were syndicating exactly the
 // contamination-quarantine rows from NEEDS-HUMAN-REVIEW.md.
+//
+// AdSense "low value content" remediation, Phase 0: CONTENT_TRACK_TYPES
+// (the generic AI content track -- editorials/columns/reviews/recipes)
+// also excluded here now -- generation stopped and the type was unlinked
+// from every other surface, so a feed reader subscribed before this
+// shouldn't keep getting old rows resurfaced forever either.
 export async function GET(context: APIContext) {
-  const stories = (await getAllStories()).filter((story) => story.published_at !== null);
+  const stories = (await getAllStories())
+    .filter((story) => story.published_at !== null && !CONTENT_TRACK_TYPES.includes(story.source_type));
   return rss({
     title: siteConfig.siteName,
     description: `What's happening in ${siteConfig.cityName}, ${siteConfig.stateName}.`,

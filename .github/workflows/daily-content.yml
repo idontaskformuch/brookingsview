@@ -4,7 +4,10 @@ name: daily-content
 # content/kronikor-modul, skriver till stories vid pass. Steg 3.5: en matchande
 # illustration genereras samtidigt och sparas i site/public/assets/images/.
 #
-# Alla sex innehållstyper är kopplade in (se ai_pipeline/daily_content.py MODULES).
+# AdSense "low value content" remediation, Phase 0 (2026-10-07): innehållsspåret
+# är avstängt på config-nivå (scheduler/weekly_rotation.py ROTATION -> None för
+# varje dag) -- den här workflown körs oförändrad, men daily_content.py hoppar
+# nu över varje dag rent (inget AI-anrop, ingen illustration, inget att committa).
 #
 # Illustrationen är en fil, inte en DB-rad -- Cloudflare Pages bygger från git,
 # så bilden måste committas tillbaka till repot innan rebuild-hooken triggas,

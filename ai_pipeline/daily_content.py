@@ -5,10 +5,12 @@ lokalt underlag ur redan skrapade och guardrail-godkända stories (se
 content/local_context.py), genererar via rätt modul i content/kronikor, och
 skriver till stories vid pass.
 
-Alla sex innehållstyper är kopplade in. Skulle scheduler.weekly_rotation ändå
-peka på en typ utan MODULES-post skrivs det ut och körningen avslutas rent (inget
-AI-anrop, inget fel kastat) -- men se _missing-kontrollen nedan, som redan fångar
-den situationen vid import om ROTATION och MODULES går isär.
+AdSense "low value content" remediation, Phase 0 (2026-10-07): alla sex
+innehållstyper är AVSTÄNGDA just nu -- scheduler.weekly_rotation.ROTATION
+pekar varje veckodag på None (se den filens egen docstring). Modulerna nedan
+är fortfarande kopplade in oförändrade; main() nedan hoppar bara över rent
+(inget AI-anrop, inget fel) när dagens content_type är None, EXAKT samma väg
+som när ROTATION ändå pekar på en sträng utan MODULES-post.
 
 Idempotens: sluggen är deterministisk per dag ("editorial-2026-07-21"), så en
 omkörning samma dag skriver över samma rad i stället för att duplicera.
@@ -57,11 +59,11 @@ MODULES = {
     "vardagsmiddag": (vardagsmiddag.write, vardagsmiddag.CATEGORY),
 }
 
-_missing = set(ROTATION.values()) - set(MODULES)
+_missing = {v for v in ROTATION.values() if v is not None} - set(MODULES)
 assert not _missing, (
     f"scheduler.weekly_rotation.ROTATION references content type(s) with no matching "
-    f"MODULES entry: {_missing}. Every rotation value must have an exact-match dispatch "
-    f"key here, or that weekday silently publishes nothing forever."
+    f"MODULES entry: {_missing}. Every non-None rotation value must have an exact-match "
+    f"dispatch key here, or that weekday silently publishes nothing forever."
 )
 
 ORIGINALITY_LOOKBACK_DAYS = 60
@@ -167,6 +169,10 @@ def main() -> int:
              else datetime.date.today())
     content_type = content_type_for(today)
     print(f"{today.isoformat()} ({today.strftime('%A')}) -> {content_type}")
+
+    if content_type is None:
+        print("  innehållsspåret avstängt för denna veckodag (Fas 0, 2026-10-07) -- hoppar över")
+        return 0
 
     if content_type not in MODULES:
         print(f"  ingen modul kopplad för '{content_type}' ännu -- hoppar över")

@@ -35,29 +35,27 @@ import QuickLinks from '../components/QuickLinks.astro';
 import {
   getUpcomingStories, getActiveAlerts, getUpcomingGames, getNextRegionalGame,
   getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
-  getWeather, getAgPrices, getLatestWeekly, getTodaysFeature,
+  getWeather, getAgPrices, getLatestWeekly,
   getEmployerJobStats, getUpcomingArtsEvents, getRecentJobs, getNextMeeting,
-  getWorthKnowingCandidates, getLatestFromCandidates, getRecentCompactContent, getRecentProjectUpdates, formatDate,
-  CATEGORY_HREFS, CATEGORY_LABELS, getFacilities, getLatestVailNewsItem, getEventDeckDigests, isAiWrittenContent,
+  getWorthKnowingCandidates, getRecentProjectUpdates, formatDate,
+  getFacilities, getLatestVailNewsItem, getEventDeckDigests,
 } from '../lib/db';
-import { isSharedContentType } from '../lib/cross-site-canonical';
-import { selectWorthKnowing, selectLatestFrom, firstSentence, selectFrontPageRhythm } from '../lib/homepage-curation';
+import { selectWorthKnowing, selectFrontPageRhythm } from '../lib/homepage-curation';
 import {
   todayUtcMidnight, buildEventFeed, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent,
 } from '../lib/events';
 import { resolveQuickLinks, type QuickLinkContext } from '../lib/quick-links';
 import { siteConfig } from '../lib/site-config';
-import { resolveImage, dedupeConsecutiveImages, withThumbnailCrop } from '../lib/images';
+import { resolveImage, dedupeConsecutiveImages } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
 import { rankTicketmasterEvents, collapseMarqueeRuns, ticketmasterResolvableImage, marqueeDigestKey, type MarqueeEntry } from '../lib/whats-on';
-import { storyHref } from '../lib/content-slugs';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const isBroomfield = siteConfig.townId === 'broomfield_co';
 
-const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, todaysFeature, worthKnowingCandidates, latestFromCandidates, compactContent, facilities, quickLinkEvents, quickLinkArtsEvents, quickLinkJobs, quickLinkNextMeeting] = await Promise.all([
+const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, worthKnowingCandidates, facilities, quickLinkEvents, quickLinkArtsEvents, quickLinkJobs, quickLinkNextMeeting] = await Promise.all([
   getActiveAlerts(),
   getActiveSchoolAlerts(),
   getActiveTrafficIncidents(),
@@ -75,14 +73,7 @@ const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame
   getWeather(),
   getAgPrices(),
   getLatestWeekly(),
-  getTodaysFeature(),
   getWorthKnowingCandidates(),
-  getLatestFromCandidates(),
-  // Front-page demotion handoff: the 2-3 most recent shared/town-agnostic
-  // items (recipe, review, science column) for the "More to read" compact
-  // row -- see that section's own comment further down for why this is a
-  // separate fetch from getLatestFromCandidates() above.
-  getRecentCompactContent(3),
   getFacilities(),
   // Front-page orientation pass, Phase 2 ("Looking for something?" quick
   // links) -- deliberately its OWN fetch, not a reuse of `upcoming` above:
@@ -127,21 +118,15 @@ const quickLinkContext: QuickLinkContext = {
 };
 const { shown: quickLinks, omitted: omittedQuickLinks } = resolveQuickLinks(siteConfig.townId, quickLinkContext);
 
-// Homepage curation (see NEEDS-HUMAN-REVIEW.md "Homepage Curation"): Latest
-// From is computed FIRST because Worth Knowing's theme-collision check
-// needs to know what Latest From already selected, not the other way
-// around -- see selectWorthKnowing()'s own comment.
-const latestFromSelection = selectLatestFrom(latestFromCandidates);
-
-// Front-page demotion handoff ("demote shared content from the feature
-// slot"): the feature slot ("Today's read") is for LOCAL content only --
-// see isSharedContentType()'s own comment for why this reuses Phase C's
-// existing shared/unique flag instead of a second one. A shared item
-// (recipe/review/science) still gets fetched above (getTodaysFeature()
-// itself is unchanged, it doesn't know about placement) but simply never
-// becomes `feature` below -- no empty container, no image reserved for a
-// slot that never renders (see frontPageImageOrder just below).
-const feature = todaysFeature && !isSharedContentType(todaysFeature.source_type) ? todaysFeature : null;
+// AdSense "low value content" remediation, Phase 0: the generic AI content
+// track (editorials/columns/reviews/recipes) stopped generating and was
+// pulled from the homepage entirely -- no "Today's read" feature slot, no
+// "Latest from"/"More to read" sections. `feature` stays a literal `null`
+// (not removed outright) so frontPageImageOrder just below and the
+// now-dead JSX guards elsewhere on the page don't need their own
+// follow-up edit. The slot is spec'd to come back in Phase 2 as the
+// Events weekend module, not refilled with anything else meanwhile.
+const feature = null;
 const alertBannerSlugs = new Set(alerts.map((a) => a.slug));
 
 const today = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
@@ -174,7 +159,10 @@ const widgetSlugs = new Set<string>();
 
 const { fullWidthLead, secondary, usedSlugs } = selectFrontPageRhythm(upcoming, alerts, { hasImage, widgetSlugs });
 
-const worthKnowingSelection = selectWorthKnowing(worthKnowingCandidates, alertBannerSlugs, latestFromSelection, usedSlugs);
+// Phase 0 removed the "Latest from" content-track section this used to
+// dedupe against -- the theme-collision check has nothing left to compare
+// to, so this is now always [], not a second removed fetch.
+const worthKnowingSelection = selectWorthKnowing(worthKnowingCandidates, alertBannerSlugs, [], usedSlugs);
 
 // Real per-place/category photos (see NEEDS-HUMAN-REVIEW.md "Switch venue/
 // category images to real photos") replaced the old, much larger
@@ -466,71 +454,13 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 
   {weekly && <WeeklyRoundup story={weekly} />}
 
-  {/* Phase F (surface what's actually unique): original, content-track
-      material -- the daily featured column/recipe/review and the recent-
-      editorial grid -- leads the page, ahead of the scraped meeting/event
-      feed below. Previously both sat well below the fold, the "Latest
-      from" grid specifically buried under three full event rivers (see
-      that section's own comment on the earlier, smaller fix for the same
-      problem). Moved as complete, unmodified sections -- no change to
-      either one's internal design, only where they sit on the page. */}
-  {feature && (
-    <section aria-label="Today's read">
-      <SectionRule label="Today's read" href={CATEGORY_HREFS[feature.source_type]} />
-      <LeadStory story={feature} facilities={facilities} image={frontPageImageBySlug.get(feature.slug)} />
-    </section>
-  )}
-
-  {latestFromSelection.length > 0 && (
-    // The site's editorial verticals (Editorials/Columns/Reviews/Recipes)
-    // -- previously invisible from the homepage entirely, buried below a
-    // 30+ item events list. See lib/homepage-curation.ts:selectLatestFrom()
-    // and NEEDS-HUMAN-REVIEW.md "Homepage Curation".
-    <section aria-label="Latest from" class="latest-from">
-      <SectionRule label={`Latest from ${siteConfig.siteName}`} />
-      <div class="latest-from__grid">
-        {latestFromSelection.map((story) => {
-          // Same resolveImage() every other rendering surface uses --
-          // content-track items (the only types that ever land here, see
-          // getLatestFromCandidates()) resolve via the article-image tier
-          // (story.image_path), same as the story page and "Today's read"
-          // hero. withThumbnailCrop() swaps in the smaller 4:3 crop for
-          // this card's compact layout when one exists, falling back to
-          // the full image otherwise -- never a broken <img>, and never
-          // the /og/ social card standing in as an inline hero.
-          const cardImage = resolveImage(story, {
-            town: siteConfig.townId,
-            cityName: siteConfig.cityName,
-            facilities,
-            categoryImages: categoryImagesFor(siteConfig.townId),
-          });
-          const thumbnail = cardImage ? withThumbnailCrop(cardImage) : null;
-          return (
-            <a class="latest-from__card" href={storyHref(story.slug)}>
-              {thumbnail && (
-                <img
-                  class="latest-from__image"
-                  src={thumbnail.path}
-                  alt={thumbnail.alt}
-                  width={thumbnail.width}
-                  height={thumbnail.height}
-                  loading="lazy"
-                  decoding="async"
-                />
-              )}
-              <p class="latest-from__kicker">
-                {CATEGORY_LABELS[story.source_type] ?? 'Feature'}
-                {isAiWrittenContent(story.source_type) && <span class="latest-from__ai-label">AI-written</span>}
-              </p>
-              <h3 class="latest-from__title">{story.title}</h3>
-              <p class="latest-from__excerpt">{firstSentence(story.body)}</p>
-              <span class="latest-from__read">Read &rarr;</span>
-            </a>
-          );
-        })}
-      </div>
-    </section>
-  )}
+  {/* AdSense "low value content" remediation, Phase 0: the "Today's read"
+      feature slot and the "Latest from <site>" grid both only ever showed
+      the generic AI content track (editorials/columns/reviews/recipes),
+      which stopped generating -- both sections removed outright rather
+      than left to render an empty/frozen state. The freed slot is spec'd
+      to become the Events weekend module in Phase 2; until then it's
+      simply gone, not backfilled with something else. */}
 
   {/* Front-page orientation pass, Phase 3: "Today" and "This week" moved
       up from well below the fold (they used to sit after Worth Knowing/
@@ -708,57 +638,10 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     </section>
   )}
 
-  {/* Front-page demotion handoff: the shared/town-agnostic content-track
-      types (recipe, review, science column) lost their feature slot above
-      -- this compact row is where they surface instead, near the bottom,
-      lightweight on purpose (small thumbnail, no excerpt, no large image --
-      see this section's own CSS). Deliberately separate from "Latest from"
-      further up: that section still shows all 6 content-track types mixed
-      together, unchanged; this one exists specifically so a demoted item
-      still gets ONE dedicated, reliably-present link near the bottom of
-      every single front page, not just whenever it happens to be recent
-      enough to win a spot in the mixed list above. */}
-  {compactContent.length > 0 && (
-    <section aria-label="More to read" class="more-to-read">
-      <SectionRule label="More to read" />
-      <ul class="more-to-read__list">
-        {compactContent.map((story) => {
-          const cardImage = resolveImage(story, {
-            town: siteConfig.townId,
-            cityName: siteConfig.cityName,
-            facilities,
-            categoryImages: categoryImagesFor(siteConfig.townId),
-          });
-          const thumbnail = cardImage ? withThumbnailCrop(cardImage) : null;
-          return (
-            <li>
-              <a class="more-to-read__card" href={storyHref(story.slug)}>
-                {thumbnail && (
-                  <img
-                    class="more-to-read__image"
-                    src={thumbnail.path}
-                    alt={thumbnail.alt}
-                    width={thumbnail.width}
-                    height={thumbnail.height}
-                    loading="lazy"
-                    decoding="async"
-                  />
-                )}
-                <span>
-                  <span class="more-to-read__kicker">
-                    {CATEGORY_LABELS[story.source_type] ?? 'Feature'}
-                    {isAiWrittenContent(story.source_type) && <span class="more-to-read__ai-label">AI-written</span>}
-                  </span>
-                  <span class="more-to-read__title">{story.title}</span>
-                </span>
-              </a>
-            </li>
-          );
-        })}
-      </ul>
-      <a class="more-to-read__all" href="/recipes/">All recipes &rarr;</a>
-    </section>
-  )}
+  {/* AdSense "low value content" remediation, Phase 0: "More to read"
+      existed only to surface the shared/town-agnostic content-track items
+      (recipe, review, science column), which stopped generating -- removed
+      outright along with "Today's read" and "Latest from" above. */}
 
   <section aria-label="Sections">
     <SectionRule label={`More from ${siteConfig.cityName}`} />
@@ -785,22 +668,6 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
           <p>Corn, soybean and cattle prices from USDA.</p>
         </a>
       )}
-      <a class="panel" href="/reviews/">
-        <h3>Reviews</h3>
-        <p>What's playing right now, reviewed and clearly labeled as AI-written.</p>
-      </a>
-      <a class="panel" href="/recipes/">
-        <h3>Recipes</h3>
-        <p>Simple weeknight dinners built around what's in season.</p>
-      </a>
-      <a class="panel" href="/editorials/">
-        <h3>Editorials</h3>
-        <p>Opinion pieces on issues facing {siteConfig.cityName}.</p>
-      </a>
-      <a class="panel" href="/columns/">
-        <h3>Columns</h3>
-        <p>Culture, science and light essays -- a change of pace from the news.</p>
-      </a>
     </div>
   </section>
 
@@ -932,98 +799,8 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
    accent so a reader can tell these were curated, not just next in line. */
 .worth-knowing { border-left: 3px solid var(--navy); padding-left: 1.125rem; }
 
-.latest-from__grid { display: grid; gap: 0 1.5rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
-.latest-from__card {
-  display: block;
-  border-top: 1px solid var(--rule);
-  padding: 0.875rem 0 1rem;
-  text-decoration: none;
-  color: inherit;
-}
-.latest-from__image {
-  display: block;
-  width: 100%;
-  height: auto;
-  margin: 0 0 0.625rem;
-}
-.latest-from__kicker {
-  margin: 0 0 0.25rem;
-  font-family: var(--font-ui);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-/* Extra 1 -- see StoryCard.astro's identical .item__ai-label comment. Inherits
-   the kicker's own uppercase/letter-spacing/size; just adds pill framing and
-   spacing from the category label it sits beside. */
-.latest-from__ai-label {
-  margin-left: 0.5rem;
-  padding: 0.0625rem 0.375rem;
-  border: 1px solid var(--rule);
-  border-radius: 999px;
-}
-.latest-from__title { margin: 0 0 0.3125rem; font-size: 1.0625rem; line-height: 1.2; color: var(--navy); }
-.latest-from__card:hover .latest-from__title { text-decoration: underline; }
-.latest-from__excerpt { margin: 0; font-size: 0.9375rem; color: var(--ink-soft); line-height: 1.45; }
-.latest-from__read { display: inline-block; margin-top: 0.5rem; font-size: 0.8125rem; color: var(--navy); }
-
-/* Front-page demotion handoff: deliberately lightweight -- small fixed-size
-   thumbnail, no excerpt, single-line-clamped title -- unlike "Latest from"
-   above, which is a full card treatment. */
-.more-to-read__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
-.more-to-read__card {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 0;
-  border-bottom: 1px solid var(--rule);
-  text-decoration: none;
-  color: inherit;
-}
-.more-to-read__list li:last-child .more-to-read__card { border-bottom: 0; }
-.more-to-read__image {
-  display: block;
-  flex: 0 0 auto;
-  width: 3.5rem;
-  height: 3.5rem;
-  object-fit: cover;
-  border-radius: 3px;
-}
-.more-to-read__kicker {
-  display: block;
-  font-family: var(--font-ui);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  margin: 0 0 0.125rem;
-}
-/* Extra 1 -- see .latest-from__ai-label's identical comment just above. */
-.more-to-read__ai-label {
-  margin-left: 0.5rem;
-  padding: 0.0625rem 0.375rem;
-  border: 1px solid var(--rule);
-  border-radius: 999px;
-}
-.more-to-read__title {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  font-size: 0.9375rem;
-  line-height: 1.3;
-  color: var(--navy);
-}
-.more-to-read__card:hover .more-to-read__title { text-decoration: underline; }
-.more-to-read__all {
-  display: inline-block;
-  margin-top: 0.625rem;
-  font-family: var(--font-ui);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--navy);
-}
+/* .latest-from__*/.more-to-read__* rules removed, AdSense "low value
+   content" remediation Phase 0 -- both sections only ever rendered the
+   generic AI content track, which stopped generating (see the two removed
+   sections' own comment further up this file). */
 </style>

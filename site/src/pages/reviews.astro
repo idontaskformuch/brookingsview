@@ -1,6 +1,12 @@
 ---
 /** Arkiv för media_recension -- dagens recension flyttar hit dagen efter att den
- *  varit ettan på förstasidan (se index.astro / getTodaysFeature). */
+ *  varit ettan på förstasidan (se index.astro / getTodaysFeature).
+ *
+ *  AdSense "low value content" remediation, Phase 0 (2026-10-07): media_recension
+ *  stopped generating and this page was unlinked from nav/footer/homepage --
+ *  kept building (not 404ed) but noindexed, per the handoff spec's "keep data,
+ *  stop rendering" rule. getTodaysFeature() itself is now dead code (nothing
+ *  calls it from index.astro any more), kept only for the comment above. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
@@ -22,7 +28,7 @@ const canonicalUrl = new URL('/reviews/', Astro.site ?? siteConfig.siteUrl).href
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('reviews', siteConfig, { label: 'Reviews', href: canonicalUrl });
 const hubBacklink = resolveHubBacklink('reviews', siteConfig);
 ---
-<BaseLayout title={`Reviews — ${siteConfig.siteName}`} wide
+<BaseLayout title={`Reviews — ${siteConfig.siteName}`} wide noindex
   description="Reviews of what's currently playing, AI-written and clearly labeled as such.">
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">

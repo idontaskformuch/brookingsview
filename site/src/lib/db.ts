@@ -470,13 +470,18 @@ export async function getContentByType(sourceTypes: SourceType[], limit = 40): P
 
 /** Stories eligible for the Google News sitemap (see NEEDS-HUMAN-REVIEW.md,
  *  "Google News sitemap") -- published within the last 48 hours, every real
- *  reported/edited content type EXCEPT 'vardagsmiddag' (recipes: evergreen
- *  content, not news -- the one source_type this codebase's own existing
- *  JSON-LD type selection already treats as generic 'Article' rather than
- *  any NewsArticle-flavored type, see article-jsonld.ts's own
- *  ARTICLE_TYPE_BY_SOURCE_TYPE). Filtered again in lib/news-sitemap.ts's
- *  pure buildNewsSitemapXml() too (defense in depth / unit-testable without
- *  a DB), but filtering here first keeps this cheap to run on every hourly
+ *  reported/edited content type EXCEPT the generic AI content track
+ *  (CONTENT_TRACK_TYPES): recipes were already excluded as evergreen, not
+ *  news (the one source_type this codebase's own existing JSON-LD type
+ *  selection already treats as generic 'Article' rather than any
+ *  NewsArticle-flavored type, see article-jsonld.ts's own
+ *  ARTICLE_TYPE_BY_SOURCE_TYPE); the other five joined it on generation
+ *  stopping (AdSense "low value content" remediation, Phase 0) -- no new
+ *  row of any of the six can appear here going forward, but the 48-hour
+ *  window meant the exclusion needed widening rather than leaving to decay
+ *  on its own. Filtered again in lib/news-sitemap.ts's pure
+ *  buildNewsSitemapXml() too (defense in depth / unit-testable without a
+ *  DB), but filtering here first keeps this cheap to run on every hourly
  *  build -- no reason to fetch the whole stories table just to throw away
  *  everything older than 2 days. */
 export async function getStoriesForNewsSitemap(): Promise<Story[]> {
@@ -486,7 +491,7 @@ export async function getStoriesForNewsSitemap(): Promise<Story[]> {
            venue_raw, is_recurring_series, ends_at, category_image_index
       FROM stories
      WHERE town_id = ${TOWN_ID}
-       AND source_type != 'vardagsmiddag'
+       AND source_type != ALL(${CONTENT_TRACK_TYPES})
        AND published_at >= now() - interval '48 hours'
      ORDER BY published_at DESC
   `) as Story[];
@@ -759,6 +764,13 @@ export async function getRelatedStories(
      WHERE town_id = ${TOWN_ID}
        AND slug <> ${story.slug}
        AND source_type = ${story.source_type}
+       -- AdSense "low value content" remediation, Phase 0: the generic AI
+       -- content track stopped generating and was unlinked from every
+       -- surface -- excluding it here too (even when the anchor story is
+       -- itself one of these six types, which just makes this query return
+       -- nothing, same as the empty-section handling everywhere else) stops
+       -- it being suggested as "related" from any indexable page.
+       AND source_type != ALL(${CONTENT_TRACK_TYPES})
        AND occurs_at IS NOT NULL
        -- An unpublished row (e.g. a contamination-quarantine row, see
        -- NEEDS-HUMAN-REVIEW.md) still carries a real occurs_at from when it
@@ -779,6 +791,7 @@ export async function getRelatedStories(
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND slug <> ALL(${seen})
+       AND source_type != ALL(${CONTENT_TRACK_TYPES})
        AND occurs_at IS NOT NULL
        AND published_at IS NOT NULL
      ORDER BY abs(extract(epoch FROM (occurs_at - ${anchor}::timestamptz)))

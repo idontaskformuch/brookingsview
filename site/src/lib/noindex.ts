@@ -16,10 +16,25 @@
  *  as individual permalinks in this codebase (jobs.astro/[category].astro
  *  are tables with no per-job route; traffic.astro and closures.astro are
  *  single live-status pages, not per-incident/per-notice routes) -- there
- *  is nothing to noindex there today. */
+ *  is nothing to noindex there today.
+ *
+ *  2026-10-07, AdSense remediation Phase 0: the six generic AI content-
+ *  track types (editorials/columns/reviews/recipes -- see db.ts's
+ *  CONTENT_TRACK_TYPES) joined this list. Generation stopped and every
+ *  other surface (nav, footer, homepage, RSS, related-content) was
+ *  unlinked from them, but the existing rows and their /s/[slug]/ pages
+ *  stay up per the "keep data, stop rendering" rule -- noindex,follow is
+ *  how a page that still legitimately exists (and should still pass link
+ *  equity to whatever it links out to) tells Google to drop it from the
+ *  index without a 410. Same treatment as a thin meeting/event/alert
+ *  permalink, reason 1 above, just for a different kind of thinness
+ *  (content-farm perception, not scraped-feed redundancy). */
 import type { SourceType, Story } from './db';
 
-export const THIN_SCRAPED_SOURCE_TYPES: SourceType[] = ['meeting', 'meeting_followup', 'event', 'alert'];
+export const THIN_SCRAPED_SOURCE_TYPES: SourceType[] = [
+  'meeting', 'meeting_followup', 'event', 'alert',
+  'culture_essay', 'editorial', 'vetenskap_kronika', 'kvick_essa', 'media_recension', 'vardagsmiddag',
+];
 export const THIN_CONTENT_WORD_THRESHOLD = 250;
 
 export function countWords(body: string): number {

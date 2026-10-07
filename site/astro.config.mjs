@@ -95,6 +95,36 @@ function slugifyCategory(category) {
     .replace(/^-+|-+$/g, '');
 }
 
+// Mirrors lib/content-slugs.ts's OLD_PREFIX_TO_PUBLIC/publicSlug() exactly --
+// same duplication tradeoff as slugifyAddress above. Found missing here
+// 2026-10-07 (AdSense remediation Phase 0, via a real
+// verify_sitemap_noindex_disjoint.mjs run): every `/s/${s.slug}/` below used
+// the raw DB slug (e.g. "vetenskap_kronika-2026-07-24"), but
+// getStaticPaths() in s/[slug].astro actually builds the page at the PUBLIC
+// slug (publicSlug(story.slug), e.g. "science-column-2026-07-24" -- see that
+// file's own 2026-10-01 item 4 comment). The two paths never collided
+// before because none of the four old-prefixed types were ever noindexed
+// (only word-count-gated, and they're usually long enough not to trip it),
+// so this mirror's wrong path simply never got checked against anything.
+// Phase 0 made all six content-track types noindex unconditionally, which
+// is what surfaced it: this mirror's noindexStoryUrls entry for e.g.
+// "vetenskap_kronika-2026-07-24" could never match the real built page's
+// pathname ("science-column-2026-07-24"), so the sitemap filter's
+// `!noindexStoryUrls.has(pathname)` check always passed -- the real,
+// noindexed page stayed listed in the sitemap anyway.
+const OLD_PREFIX_TO_PUBLIC = {
+  vardagsmiddag: 'recipe',
+  vetenskap_kronika: 'science-column',
+  kvick_essa: 'quick-essay',
+  media_recension: 'review',
+};
+const OLD_PREFIX_RE_MIRROR = new RegExp(`^(${Object.keys(OLD_PREFIX_TO_PUBLIC).join('|')})-`);
+function publicSlugMirror(dbSlug) {
+  const match = dbSlug.match(OLD_PREFIX_RE_MIRROR);
+  if (!match) return dbSlug;
+  return OLD_PREFIX_TO_PUBLIC[match[1]] + dbSlug.slice(match[0].length - 1);
+}
+
 // AdSense "low value content" remediation, Phase A4: thin tag/category
 // pages (fewer than 3 items) are noindexed in their own page frontmatter
 // (jobs/category/[category].astro, home-sales/zip/[zip].astro) -- mirrored
@@ -131,7 +161,13 @@ const MIN_TAG_PAGE_ITEMS = 3;
 // real content lives in those structured fields, not just its short
 // post-extraction intro `body` -- see that function's own comment for the
 // live bug this fixes (every recipe permalink was silently noindexed).
-const THIN_SCRAPED_SOURCE_TYPES = ['meeting', 'meeting_followup', 'event', 'alert'];
+// 2026-10-07, AdSense remediation Phase 0: the six generic AI content-track
+// types joined this list on the lib/noindex.ts side -- see that file's own
+// comment for why. Keep in sync by hand, same as every other mirror here.
+const THIN_SCRAPED_SOURCE_TYPES = [
+  'meeting', 'meeting_followup', 'event', 'alert',
+  'culture_essay', 'editorial', 'vetenskap_kronika', 'kvick_essa', 'media_recension', 'vardagsmiddag',
+];
 const THIN_CONTENT_WORD_THRESHOLD = 250;
 function isThinStory(sourceType, body, ingredients, instructions) {
   const isThinType = THIN_SCRAPED_SOURCE_TYPES.includes(sourceType);
@@ -323,7 +359,18 @@ async function buildLastmodMap(townId, databaseUrl) {
   const noindexHomeSaleUrls = new Set();
   // Thin tag/category pages (jobs/category/*, home-sales/zip/*) -- see
   // MIN_TAG_PAGE_ITEMS' own comment above.
-  const noindexThinPageUrls = new Set();
+  //
+  // AdSense "low value content" remediation, Phase 0 (2026-10-07): the four
+  // content-track archive index pages carry an unconditional `noindex` prop
+  // now (see reviews.astro/recipes.astro/editorials.astro/columns.astro) --
+  // a path-shape check, not a DB query, same reasoning as the
+  // isWhatsOnDetailPage check in the sitemap filter below: these are
+  // top-level static pages with no per-row data to query, always noindexed,
+  // never conditionally. /reviews/ redirects away for Moreno Valley (see
+  // TOWN_GATED_PAGES/excludedGatedPages above) -- adding it here too is
+  // harmless for that town (the Set just never matches a pathname that was
+  // never built).
+  const noindexThinPageUrls = new Set(['/reviews/', '/recipes/', '/editorials/', '/columns/']);
   // Town/feature-gated stub pages excluded for THIS build's town -- see
   // TOWN_GATED_PAGES' own comment above.
   const excludedGatedPages = new Set(
@@ -346,7 +393,8 @@ async function buildLastmodMap(townId, databaseUrl) {
     SELECT slug, published_at, source_type, body, generated_by, ingredients, instructions, occurs_at, title, venue_raw FROM stories WHERE town_id = ${townId}
   `;
   for (const s of stories) {
-    map.set(`/s/${s.slug}/`, s.published_at);
+    const storyPathname = `/s/${publicSlugMirror(s.slug)}/`;
+    map.set(storyPathname, s.published_at);
     // generated_by === 'data_pending': mirrors s/[slug].astro's own
     // pre-existing noindex rule for "not yet released" placeholders (see
     // that page's own comment) -- folded in here alongside the new
@@ -360,11 +408,11 @@ async function buildLastmodMap(townId, databaseUrl) {
     // 2026-09-03 this mirror had drifted from the page's own noindex logic
     // the same way the module comment above already warns about.
     if (s.generated_by === 'data_pending' || s.published_at === null || isThinStory(s.source_type, s.body, s.ingredients, s.instructions)) {
-      noindexStoryUrls.add(`/s/${s.slug}/`);
+      noindexStoryUrls.add(storyPathname);
     }
     const canonicalOrigin = CROSS_SITE_CANONICAL_ORIGINS[s.source_type];
     if (canonicalOrigin && canonicalOrigin !== townId) {
-      crossCanonicalStoryUrls.add(`/s/${s.slug}/`);
+      crossCanonicalStoryUrls.add(storyPathname);
     }
   }
 
