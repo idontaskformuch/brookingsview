@@ -184,7 +184,13 @@ const ALWAYS_REQUIRED: ImageCategory[] = ['city_hall', 'events', 'weather_alert'
 export function requiredCategoriesFor(config: Pick<SiteConfig,
   'townId' | 'hasWorkplaceWatch' | 'hasClosureWatch' | 'hasHousingMarket' | 'trafficSource'>,
 ): ImageCategory[] {
-  const required = [...ALWAYS_REQUIRED];
+  const required = ALWAYS_REQUIRED.filter((cat) =>
+    // 'events' temporarily excluded for broomfield_co (2026-10-07): its
+    // former pool entries were cross-town references (brookings_sd's own
+    // event photo files, relabeled) -- removed in config/category-images.ts
+    // rather than left wrong. Put 'events' back in ALWAYS_REQUIRED for this
+    // town once real Broomfield event photos exist there.
+    !(cat === 'events' && config.townId === 'broomfield_co'));
   if (config.townId !== 'broomfield_co') required.push('sports');
   if (config.townId === 'brookings_sd') required.push('university');
   if (config.hasWorkplaceWatch) required.push('workplace_watch');

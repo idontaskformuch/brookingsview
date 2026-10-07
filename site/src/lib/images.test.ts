@@ -767,6 +767,15 @@ describe('requiredCategoriesFor', () => {
     expect(required).not.toContain('sports');
   });
 
+  it('does not require events for Broomfield (2026-10-07: former pool was cross-town references, removed)', () => {
+    expect(requiredCategoriesFor({ townId: 'broomfield_co' })).not.toContain('events');
+  });
+
+  it('still requires events for the other two towns', () => {
+    expect(requiredCategoriesFor({ townId: 'brookings_sd' })).toContain('events');
+    expect(requiredCategoriesFor({ townId: 'moreno_valley_ca' })).toContain('events');
+  });
+
   it('requires sports for a town that is not Broomfield', () => {
     expect(requiredCategoriesFor({ townId: 'brookings_sd' })).toContain('sports');
     expect(requiredCategoriesFor({ townId: 'moreno_valley_ca' })).toContain('sports');
