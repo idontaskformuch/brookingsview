@@ -17,3 +17,10 @@
 5. Avslut av delmål (tester gröna): "Uppgift klar. Status sparad i
    .claude/state.md. Kör /clear och ladda state.md för nästa steg."
 6. Max en session åt gången mot repot. Pusha aldrig utan godkännande.
+7. Skrivningar mot den LIVE databasen (UPDATE/INSERT/DELETE/migrationer körda
+   direkt mot DATABASE_URL, inte via en committad migration som bara skapar
+   en kolumn) kräver ägarens godkännande innan de körs, exakt som push --
+   fråga först, kör sedan. Gäller även ett skript som bara KÖR en redan
+   godkänd idé på nya rader (t.ex. en omkörning av en tidigare godkänd
+   dedup/regenerering) om det inte redan är explicit beordrat i samma
+   instruktion.
