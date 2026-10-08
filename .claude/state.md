@@ -1,30 +1,29 @@
 # State
 
-Master spec: HANDOFF_journey_cleanup_events.md (current phase only) -- not found on disk, using in-context copy
-Current: Phase 1 DONE and pushed (387e287). Starting Phase 2.
+Master spec: HANDOFF_journey_cleanup_events.md -- not on disk, in-context copy.
+Current: Step A (pre-Phase-2 cleanup), handoff 2026-10-08.
 
-## Status
-- Phase 0: DONE, pushed (1cc6055)
-- Phase 1: DONE, pushed. Timezone fix (28d1128), recurring-merge pass 1+2
-  (a52227b, 2850995; 1033 rows superseded), bare-state-code fix (9b5c26e),
-  AI-fabrication guardrail (8935084), stale-body regen (79dbc0e, 20/24 fixed
-  live). Confirmed clean: 20/20 regenerated rows + 3 fresh live-source
-  spot-checks all correct.
-- Phase 2: STARTING. First item per owner: Broomfield has 0 events (webtrac
-  source disabled) -- point 2d.
+## Step A progress
+1. done. 2. meta.when: confirmed INERT (nothing reads stories.meta; Story
+type didn't expose it) -- left alone per handoff.
+3. DONE (e6ba48c): wired meta.cost/audience into cards + /s/[slug]
+(Story.meta/EventMeta, eventPriceAgeLine()); fixed isFreeEvent() +
+free_teasers.py's is_free_event() -- prose can't carry a price anymore
+(Phase 1 guardrail) so the old $-safety-net was dead; meta.cost checked now.
+4-6 NOT STARTED: guardrail FP review; Corpse Bride + 2 recurring-series rows
+(owner approval needed before any live write); Phase 0 live check.
 
 ## Known residuals (owner aware, logged not dropped)
-- 4 rows still template_fallback (incl. audit's "Corpse Bride" example) --
-  both AI attempts rejected for unrelated reasons, old body left as-is.
-- 2 is_recurring_series rows need a full merge rebuild to regenerate -- skipped.
-- 11 duplicate-title groups still lack a canonical series row.
-- Venue-name-dropping (ICS feeds lack venue names): accepted, no paid geocoding.
+- 4 rows still template_fallback (incl. "Corpse Bride").
+- 2 is_recurring_series rows need a full merge rebuild -- skipped. Likely
+  cause of event-series-redirects.test.ts's pre-existing failure on clean
+  main (one canonical slug doesn't match /^event-series-/) -- check point 5.
+- 11 duplicate-title groups lack a canonical series row.
+- Venue-name-dropping (ICS feeds): accepted, no paid geocoding.
 - Local stash "superseded-broomfield-draft": still present, owner's to drop.
 
 ## New rule
-CLAUDE.md rule 7: live-DB writes need owner approval, same as push, unless
-already explicitly ordered in the same instruction.
+CLAUDE.md rule 7: live-DB writes need owner approval, same as push.
 
 ## Next
-Phase 2, point 2d: Broomfield event source investigation. Then 2a-2c
-(weekend front-door structure), per the master spec.
+Step A point 4, then 5, 6. Then Phase 2 starting with 2d.
