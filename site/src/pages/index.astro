@@ -43,7 +43,9 @@ import {
 import { selectWorthKnowing, selectFrontPageRhythm } from '../lib/homepage-curation';
 import {
   todayUtcMidnight, buildEventFeed, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent, dayIndex,
+  buildWeekendSummary,
 } from '../lib/events';
+import WeekendModule from '../components/WeekendModule.astro';
 import { resolveQuickLinks, type QuickLinkContext } from '../lib/quick-links';
 import { siteConfig } from '../lib/site-config';
 import { resolveImage, dedupeConsecutiveImages } from '../lib/images';
@@ -118,14 +120,28 @@ const quickLinkContext: QuickLinkContext = {
 };
 const { shown: quickLinks, omitted: omittedQuickLinks } = resolveQuickLinks(siteConfig.townId, quickLinkContext);
 
+// Phase 2, item 2b: homepage weekend module. Reuses `quickLinkFeed` --
+// already the exact same buildEventFeed(getUpcomingStories(['event'],120),
+// getUpcomingArtsEvents(40)) shape /events/'s own weekend hero uses (see
+// that fetch's own comment above) -- no second query, no second feed
+// build. `hasEventsSource` gates it the same way every other conditional
+// module on this page (Marquee/WeeklyRoundup/WorkplaceWatch/...) is gated
+// on its own siteConfig capability flag; buildWeekendSummary() itself
+// returns null on a quiet weekend even for a town that has it, so both
+// "no source" and "nothing this weekend" hide the module the same way.
+const weekendSummary = siteConfig.hasEventsSource
+  ? buildWeekendSummary(quickLinkFeed, facilities, siteConfig.townId, siteConfig.cityName, siteConfig.townCenter, siteConfig.timezone)
+  : null;
+
 // AdSense "low value content" remediation, Phase 0: the generic AI content
 // track (editorials/columns/reviews/recipes) stopped generating and was
 // pulled from the homepage entirely -- no "Today's read" feature slot, no
 // "Latest from"/"More to read" sections. `feature` stays a literal `null`
 // (not removed outright) so frontPageImageOrder just below and the
 // now-dead JSX guards elsewhere on the page don't need their own
-// follow-up edit. The slot is spec'd to come back in Phase 2 as the
-// Events weekend module, not refilled with anything else meanwhile.
+// follow-up edit. The freed slot became the Events weekend module in
+// Phase 2, item 2b (see weekendSummary/WeekendModule above) -- this
+// `feature` slot itself stays empty, unrelated to that module.
 const feature = null;
 const alertBannerSlugs = new Set(alerts.map((a) => a.slug));
 
@@ -468,9 +484,11 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       feature slot and the "Latest from <site>" grid both only ever showed
       the generic AI content track (editorials/columns/reviews/recipes),
       which stopped generating -- both sections removed outright rather
-      than left to render an empty/frozen state. The freed slot is spec'd
-      to become the Events weekend module in Phase 2; until then it's
-      simply gone, not backfilled with something else. */}
+      than left to render an empty/frozen state. The freed slot is now the
+      Events weekend module (Phase 2, item 2b) -- omitted entirely (not a
+      placeholder) when weekendSummary is null, same rule as every other
+      conditional module above. */}
+  {weekendSummary && <WeekendModule summary={weekendSummary} cityName={siteConfig.cityName} facilities={facilities} />}
 
   {/* Front-page orientation pass, Phase 3: "Today" and "This week" moved
       up from well below the fold (they used to sit after Worth Knowing/

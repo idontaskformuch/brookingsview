@@ -200,6 +200,47 @@ export function isThisWeekend(item: FeedItem, today: Date, timezone: string): bo
   return offset >= anchor && offset <= anchor + 2;
 }
 
+export interface WeekendSummary {
+  counts: { friday: number; saturday: number; sunday: number };
+  /** Date-sorted (buildEventFeed's own output already is), capped to
+   *  `limit` -- the homepage module's compact "top N" list, not the full
+   *  weekend. */
+  items: FeedItem[];
+}
+
+/** Phase 2, item 2b: data for the homepage's compact "This weekend" module.
+ *  Reuses weekendAnchorOffset()/dayIndex()/classifyEventLocality() --
+ *  deliberately NO separate date math of its own, so the homepage module
+ *  and /events/'s own weekend hero can never silently drift onto two
+ *  different definitions of "this weekend" or "in town." Returns `null`
+ *  when there's nothing to show (so the module hides outright) rather than
+ *  an all-zero summary a caller would have to remember to check for. */
+export function buildWeekendSummary(
+  items: FeedItem[], facilities: Facility[], townId: string, cityName: string,
+  townCenter: { lat: number; lon: number }, timezone: string, limit = 5,
+): WeekendSummary | null {
+  const today = todayUtcMidnight(timezone);
+  const anchor = weekendAnchorOffset(today);
+
+  const weekendItems = items.filter((item) => {
+    if (!item.occurs_at) return false;
+    const offset = dayIndex(item.occurs_at, today, timezone);
+    if (offset < anchor || offset > anchor + 2) return false;
+    return classifyEventLocality(item, facilities, townId, cityName, townCenter).zone === 'in_town';
+  });
+  if (weekendItems.length === 0) return null;
+
+  const counts = { friday: 0, saturday: 0, sunday: 0 };
+  for (const item of weekendItems) {
+    const offset = dayIndex(item.occurs_at!, today, timezone);
+    if (offset === anchor) counts.friday++;
+    else if (offset === anchor + 1) counts.saturday++;
+    else counts.sunday++;
+  }
+
+  return { counts, items: weekendItems.slice(0, limit) };
+}
+
 export interface TodayBucket {
   /** Capped for display -- see `limit`. */
   items: FeedItem[];

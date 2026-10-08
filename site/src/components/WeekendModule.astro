@@ -1,0 +1,54 @@
+---
+/** Phase 2, item 2b -- the homepage's compact "This weekend" module.
+ *  Mounted in the slot AdSense remediation Phase 0 freed on index.astro
+ *  (see that page's own comment, "the freed slot is spec'd to become the
+ *  Events weekend module"). All data/date logic lives in
+ *  lib/events.ts:buildWeekendSummary() -- this component only renders a
+ *  `WeekendSummary` it's handed, no date math of its own. The caller
+ *  (index.astro) is responsible for not rendering this at all when
+ *  buildWeekendSummary() returns null (siteConfig.hasEventsSource towns
+ *  only) -- matches the "hide when no events" rule every other
+ *  conditional homepage module (Marquee, WeeklyRoundup, ...) already
+ *  follows, rather than rendering an empty/placeholder state. */
+import StoryCard from './StoryCard.astro';
+import SectionRule from './SectionRule.astro';
+import { artsEventAsStory, type WeekendSummary } from '../lib/events';
+import type { Facility } from '../lib/db';
+
+interface Props {
+  summary: WeekendSummary;
+  cityName: string;
+  facilities: Facility[];
+}
+const { summary, cityName, facilities } = Astro.props;
+const { counts, items } = summary;
+---
+<section class="weekend-module" aria-label={`This weekend in ${cityName}`}>
+  <SectionRule label={`This weekend in ${cityName}`} strong href="/events/" />
+  <p class="weekend-module__counts">
+    <span class="weekend-module__count"><strong>{counts.friday}</strong> Fri</span>
+    <span class="sep"> · </span>
+    <span class="weekend-module__count"><strong>{counts.saturday}</strong> Sat</span>
+    <span class="sep"> · </span>
+    <span class="weekend-module__count"><strong>{counts.sunday}</strong> Sun</span>
+  </p>
+  <div class="weekend-module__grid">
+    {items.map((item) => item.sourceKind === 'story'
+      ? <StoryCard story={item.story} compact facilities={facilities} />
+      : <StoryCard story={artsEventAsStory(item.event)} href={item.event.event_url} kicker="Arts & Culture" compact facilities={facilities} />
+    )}
+  </div>
+</section>
+
+<style>
+.weekend-module { margin-bottom: 1.5rem; }
+.weekend-module__counts {
+  font-family: var(--font-ui);
+  font-size: 0.9375rem;
+  color: var(--ink-soft);
+  margin: 0 0 1rem;
+}
+.weekend-module__count strong { color: var(--ink); font-size: 1.0625rem; }
+.sep { opacity: 0.5; }
+.weekend-module__grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+</style>

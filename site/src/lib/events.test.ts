@@ -4,6 +4,7 @@ import {
   isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent, isOutdoorEvent, classifyEventLocality,
   findCrossSourceMatch, eventPriceAgeLine,
   todayUtcMidnight, utcMidnight, localDateParts, artsEventAsStory, dayIndex, weekendAnchorOffset,
+  buildWeekendSummary,
   EVENT_SOURCES,
   type FeedItem, type EventSourceConfig,
 } from './events';
@@ -664,6 +665,64 @@ describe('classifyEventLocality', () => {
   it('falls back to in_town when the fallback text names the town itself', () => {
     const item = storyItem(story({ venue_raw: 'Grand Lodge, 123 Main St, Brookings, SD' }));
     expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null, method: 'text' });
+  });
+});
+
+describe('buildWeekendSummary (Phase 2, item 2b -- homepage module)', () => {
+  const townId = 'brookings_sd';
+  const cityName = 'Brookings';
+  const timezone = 'America/Chicago';
+  const townCenter = { lat: 44.3114, lon: -96.7984 };
+  const facilities: Facility[] = [
+    facility({ slug: 'city-hall', name: 'Brookings City Hall', category: 'city_hall', aliases: ['brookings city hall'], lat: 44.3105, lon: -96.7978 }),
+  ];
+  // A real Thursday (2026-10-08) -- anchor offset 1, i.e. tomorrow (Friday)
+  // is the start of the weekend. buildWeekendSummary() calls
+  // todayUtcMidnight() internally (reads the real clock), so system time is
+  // mocked to noon America/Chicago on that same date -- not re-derived,
+  // just pinned to match the `today` used for atOffsetDays() below.
+  const today = utcMidnight({ y: 2026, m: 10, d: 8 });
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-08T17:00:00.000Z')); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  function atOffsetDays(n: number): string {
+    return new Date(today.getTime() + n * 86_400_000 + 18 * 3_600_000).toISOString(); // mid-afternoon-ish local
+  }
+
+  it('is null when there is nothing this weekend', () => {
+    expect(buildWeekendSummary([], facilities, townId, cityName, townCenter, timezone)).toBeNull();
+  });
+
+  it('counts Friday/Saturday/Sunday separately and returns the matching items', () => {
+    const items: FeedItem[] = [
+      storyItem(story({ title: 'Fri Thing', venue_raw: 'Brookings City Hall', occurs_at: atOffsetDays(1) })),
+      storyItem(story({ title: 'Sat Thing A', venue_raw: 'Brookings City Hall', occurs_at: atOffsetDays(2) })),
+      storyItem(story({ title: 'Sat Thing B', venue_raw: 'Brookings City Hall', occurs_at: atOffsetDays(2) })),
+      storyItem(story({ title: 'Sun Thing', venue_raw: 'Brookings City Hall', occurs_at: atOffsetDays(3) })),
+    ];
+    const summary = buildWeekendSummary(items, facilities, townId, cityName, townCenter, timezone);
+    expect(summary?.counts).toEqual({ friday: 1, saturday: 2, sunday: 1 });
+    expect(summary?.items.map((i) => i.sourceKind === 'story' && i.story.title)).toEqual(
+      ['Fri Thing', 'Sat Thing A', 'Sat Thing B', 'Sun Thing'],
+    );
+  });
+
+  it('caps the returned items to `limit` but still reports the real total counts', () => {
+    const items: FeedItem[] = Array.from({ length: 6 }, (_, i) =>
+      storyItem(story({ title: `Sat ${i}`, venue_raw: 'Brookings City Hall', occurs_at: atOffsetDays(2) })));
+    const summary = buildWeekendSummary(items, facilities, townId, cityName, townCenter, timezone, 3);
+    expect(summary?.counts.saturday).toBe(6);
+    expect(summary?.items).toHaveLength(3);
+  });
+
+  it('excludes events outside the weekend window and non-in_town events', () => {
+    const items: FeedItem[] = [
+      storyItem(story({ title: 'Next week', venue_raw: 'Brookings City Hall', occurs_at: atOffsetDays(10) })),
+      // Unresolved, address-shaped venue naming a different real place --
+      // classifies 'unknown' (see town-boundary.ts), never counted here.
+      storyItem(story({ title: 'Far away', venue_raw: 'Some Hall, 1 Main St, Elsewhere, ZZ, 00000', occurs_at: atOffsetDays(2) })),
+    ];
+    expect(buildWeekendSummary(items, facilities, townId, cityName, townCenter, timezone)).toBeNull();
   });
 });
 
