@@ -66,7 +66,7 @@ describe('classifyLocalityByCoords', () => {
 
   it('is in_town for a point inside the boundary', () => {
     expect(classifyLocalityByCoords('brookings_sd', 44.3105, -96.7978, brookingsCenter))
-      .toEqual({ zone: 'in_town', distanceMiles: null });
+      .toEqual({ zone: 'in_town', distanceMiles: null, method: 'coords' });
   });
 
   it('is nearby, with a distance, for a point outside the boundary but within the radius', () => {
@@ -87,16 +87,20 @@ describe('classifyLocalityByCoords', () => {
 describe('classifyLocalityByText', () => {
   it('is in_town when the text names the town itself', () => {
     expect(classifyLocalityByText('Grand Lodge, 123 Main St, Brookings, SD', 'Brookings'))
-      .toEqual({ zone: 'in_town', distanceMiles: null });
+      .toEqual({ zone: 'in_town', distanceMiles: null, method: 'text' });
   });
 
-  it('is nearby when the text is address-shaped but names a different place', () => {
+  // Owner correction, 2026-10-08: this used to be 'nearby' with no
+  // distance -- an unverifiable claim (NEARBY_RADIUS_MILES can't be
+  // checked without a real coordinate). Now 'unknown' (excluded from both
+  // sections) -- see classifyLocalityByText()'s own doc comment.
+  it('is unknown (never a confident nearby) when the text is address-shaped but names a different place', () => {
     expect(classifyLocalityByText('Delta Hotel, 10 E 120th Ave, Northglenn, CO, 80233', 'Broomfield'))
-      .toEqual({ zone: 'nearby', distanceMiles: null });
+      .toEqual({ zone: 'unknown', distanceMiles: null, method: 'text' });
   });
 
   it('is in_town for a bare venue name with no city mentioned at all (benefit of the doubt)', () => {
     expect(classifyLocalityByText('Downtown Main Avenue', 'Brookings'))
-      .toEqual({ zone: 'in_town', distanceMiles: null });
+      .toEqual({ zone: 'in_town', distanceMiles: null, method: 'text' });
   });
 });

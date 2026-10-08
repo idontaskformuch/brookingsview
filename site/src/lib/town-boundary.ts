@@ -100,12 +100,22 @@ export const NEARBY_RADIUS_MILES = 25;
 
 export type LocalityZone = 'in_town' | 'nearby' | 'unknown';
 
+/** How a LocalityResult was reached -- purely diagnostic (see events.astro's
+ *  own per-build `[locality]` count log, added alongside the fix below) so a
+ *  human can see how much of "nearby" rests on a real measured distance
+ *  versus a guess, per town, per build. */
+export type LocalityMethod = 'coords' | 'text' | 'default';
+
 export interface LocalityResult {
   zone: LocalityZone;
-  /** Miles from the town center -- only set for `nearby` (never shown for
-   *  `in_town`, which is "home turf" by definition; never known for
-   *  `unknown`, which has no resolved coordinates at all). */
+  /** Miles from the town center -- only ever set when a REAL coordinate
+   *  distance was computed (method `'coords'`). `null` for `in_town` (home
+   *  turf by definition), for `unknown`'s text-fallback cases, and for every
+   *  `'text'`-method result -- see classifyLocalityByText()'s own doc for
+   *  why a text match is never allowed to assert a distance it can't back
+   *  up with a real coordinate. */
   distanceMiles: number | null;
+  method: LocalityMethod;
 }
 
 /** Coordinate-based classification: in the town's own Census boundary, or
@@ -116,29 +126,46 @@ export function classifyLocalityByCoords(
   townId: string, lat: number, lon: number, townCenter: { lat: number; lon: number },
 ): LocalityResult {
   const boundary = getTownBoundary(townId);
-  if (boundary && pointInBoundary(lat, lon, boundary)) return { zone: 'in_town', distanceMiles: null };
+  if (boundary && pointInBoundary(lat, lon, boundary)) return { zone: 'in_town', distanceMiles: null, method: 'coords' };
   const distanceMiles = haversineMiles(lat, lon, townCenter.lat, townCenter.lon);
-  if (distanceMiles <= NEARBY_RADIUS_MILES) return { zone: 'nearby', distanceMiles };
-  return { zone: 'unknown', distanceMiles };
+  if (distanceMiles <= NEARBY_RADIUS_MILES) return { zone: 'nearby', distanceMiles, method: 'coords' };
+  return { zone: 'unknown', distanceMiles, method: 'coords' };
 }
 
 /** Fallback for a venue that didn't resolve to a known `facilities`/`places`
  *  row (so no coordinates exist at all) -- per the phase2-spec's own
  *  instruction ("fallback: venue address city"). Purely textual, and
- *  necessarily weaker than the coordinate path: a venue string naming the
- *  town itself (or carrying no city at all, e.g. a bare "City Hall") is
- *  treated as in-town; one that names a DIFFERENT real place is treated as
- *  nearby (with no distance -- none is knowable without geocoding, which
- *  this project has already decided against paying for). This is the exact
- *  path the new Broomfield Chamber source's one live event takes today
- *  (full street address, "Northglenn, CO" -- not Broomfield) until/unless
- *  it's ever added as a `places` alias with real coordinates. */
+ *  necessarily weaker than the coordinate path.
+ *
+ *  Owner correction, 2026-10-08 (post-2a verification round): this
+ *  USED TO return `nearby` for any address-shaped text that named a
+ *  different real place, with no distance -- an unbounded claim, since
+ *  NEARBY_RADIUS_MILES (the one real cap this whole feature is supposed to
+ *  enforce) can't be checked without a real coordinate. A manual spot-check
+ *  (Moreno Valley's Farm House Collective, geocoded by hand) happened to
+ *  confirm ~6.8mi, genuinely within radius -- but that was luck, not a
+ *  property of the check itself: this same branch would have said "nearby"
+ *  just as confidently for a venue 200 miles away. Per this project's own
+ *  "zero events is better than wrong events" rule, an unverifiable match
+ *  must never be labeled `nearby` -- it's `unknown` (excluded from both
+ *  sections) instead. A venue worth actually showing as Nearby needs a real
+ *  `places` row with real geocoded coordinates (see venue_registry.py /
+ *  lib/db.ts's resolveVenue()), which routes it through
+ *  classifyLocalityByCoords() above instead of this function entirely.
+ *
+ *  `in_town` is NOT weakened the same way: naming the town itself is a
+ *  real positive signal, not a distance claim, and a bare venue name with
+ *  no city at all (e.g. "City Hall") gets the benefit of the doubt for the
+ *  same reason it already did -- neither asserts a specific distance. */
 export function classifyLocalityByText(venueText: string, cityName: string): LocalityResult {
   const normalized = venueText.toLowerCase();
-  if (normalized.includes(cityName.toLowerCase())) return { zone: 'in_town', distanceMiles: null };
+  if (normalized.includes(cityName.toLowerCase())) return { zone: 'in_town', distanceMiles: null, method: 'text' };
   // A real street address names SOME city -- "<street>, <city>, <ST>" -- so
   // a comma-separated string with 2+ parts that doesn't mention our own
-  // town is read as a different, real place (nearby), not ambiguous.
+  // town is read as a different, real place -- `unknown`, not `nearby` (see
+  // doc comment above for why this can no longer assert "nearby" here).
   const looksLikeAddress = venueText.split(',').length >= 2;
-  return looksLikeAddress ? { zone: 'nearby', distanceMiles: null } : { zone: 'in_town', distanceMiles: null };
+  return looksLikeAddress
+    ? { zone: 'unknown', distanceMiles: null, method: 'text' }
+    : { zone: 'in_town', distanceMiles: null, method: 'text' };
 }

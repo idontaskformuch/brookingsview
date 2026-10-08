@@ -86,6 +86,24 @@ const localized = items.map((item) => ({
 const inTownItems: FeedItem[] = localized.filter((l) => l.zone === 'in_town').map((l) => l.item);
 const nearbyItems = localized.filter((l) => l.zone === 'nearby');
 
+// Owner request, 2026-10-08 (post-2a verification): visibility into how
+// much of this page's locality split rests on a real resolved coordinate
+// versus the weaker text fallback, per town, per build -- same plain
+// console.log convention as lib/noindex.ts's own `[build]` tally.
+// `'text'`-method results are never `nearby` any more (see
+// classifyLocalityByText()'s own doc comment), so a high `text` count here
+// is a prompt to go seed that venue into `places` with real coordinates,
+// not a sign anything is currently wrong.
+const localityMethodCounts = { coords: 0, text: 0, default: 0 };
+for (const l of localized) localityMethodCounts[l.method]++;
+console.log(
+  `[locality] ${siteConfig.cityName}: ${localized.length} event(s) -- ` +
+  `${localityMethodCounts.coords} via coords, ${localityMethodCounts.text} via text fallback, ` +
+  `${localityMethodCounts.default} default (arts/virtual/no-venue) -- ` +
+  `${inTownItems.length} in_town, ${nearbyItems.length} nearby, ` +
+  `${localized.length - inTownItems.length - nearbyItems.length} excluded (unknown)`
+);
+
 /**
  * Bucket upcoming events by time horizon rather than showing one flat list.
  * "This weekend" is the bucket the whole feature exists for (see

@@ -31,8 +31,8 @@ async function main() {
   }));
 
   console.log(`\n${siteConfig.cityName} (${siteConfig.townId}) -- ${items.length} upcoming event(s), today = ${today.toISOString().slice(0, 10)}, weekend anchor offset = ${anchor}\n`);
-  console.log('date                  dayIdx  zone      dist   source   venue                                     title');
-  console.log('-'.repeat(150));
+  console.log('date                  dayIdx  zone      meth    dist   source   venue                                     title');
+  console.log('-'.repeat(160));
 
   // Mirrors events.astro's real weekend-hero math exactly: only in_town
   // items count, same as `inTownItems` there.
@@ -41,21 +41,24 @@ async function main() {
   const satCount = inTown.filter((c) => c.offset === anchor + 1).length;
   const sunCount = inTown.filter((c) => c.offset === anchor + 2).length;
 
-  for (const { item, offset, zone, distanceMiles } of classified.slice(0, 20)) {
+  for (const { item, offset, zone, method, distanceMiles } of classified.slice(0, 20)) {
     const date = item.occurs_at ? new Date(item.occurs_at).toISOString().slice(0, 16).replace('T', ' ') : '(undated)';
     const offsetStr = offset === null ? '?' : String(offset);
     const dist = distanceMiles != null ? `${distanceMiles.toFixed(1)}mi` : '-';
     const source = item.sourceKind;
     const venue = (itemVenue(item) ?? '(none)').slice(0, 40).padEnd(40);
     console.log(
-      `${date.padEnd(21)} ${offsetStr.padStart(6)}  ${zone.padEnd(8)}  ${dist.padStart(6)}  ${source.padEnd(7)}  ${venue}  ${itemTitle(item)}`,
+      `${date.padEnd(21)} ${offsetStr.padStart(6)}  ${zone.padEnd(8)}  ${method.padEnd(6)}  ${dist.padStart(6)}  ${source.padEnd(7)}  ${venue}  ${itemTitle(item)}`,
     );
   }
 
   const nearbyCount = classified.filter((c) => c.zone === 'nearby').length;
   const unknownCount = classified.filter((c) => c.zone === 'unknown').length;
+  const methodCounts = { coords: 0, text: 0, default: 0 };
+  for (const c of classified) methodCounts[c.method]++;
   console.log(`\nWeekend hero (in_town only, FULL upcoming list not just the 20-row sample above): Fri ${friCount} · Sat ${satCount} · Sun ${sunCount} (anchor offset ${anchor})`);
-  console.log(`Locality totals (full list): in_town ${inTown.length} · nearby ${nearbyCount} · unknown/excluded ${unknownCount}\n`);
+  console.log(`Locality totals (full list): in_town ${inTown.length} · nearby ${nearbyCount} · unknown/excluded ${unknownCount}`);
+  console.log(`Method totals (full list): coords ${methodCounts.coords} · text fallback ${methodCounts.text} · default (arts/virtual/no-venue) ${methodCounts.default}\n`);
 }
 
 main().catch((err) => {

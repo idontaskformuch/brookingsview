@@ -461,14 +461,14 @@ export function classifyEventLocality(
   item: FeedItem, facilities: Facility[], townId: string, cityName: string,
   townCenter: { lat: number; lon: number },
 ): LocalityResult {
-  if (item.sourceKind !== 'story') return { zone: 'in_town', distanceMiles: null };
+  if (item.sourceKind !== 'story') return { zone: 'in_town', distanceMiles: null, method: 'default' };
   const venueText = item.story.venue_raw;
-  if (isVirtualVenue(venueText)) return { zone: 'in_town', distanceMiles: null };
+  if (isVirtualVenue(venueText)) return { zone: 'in_town', distanceMiles: null, method: 'default' };
 
   const facility = resolveVenue(buildVenueIndex(facilities), venueText);
   if (facility?.lat != null && facility?.lon != null) {
     return classifyLocalityByCoords(townId, facility.lat, facility.lon, townCenter);
   }
-  if (!venueText) return { zone: 'in_town', distanceMiles: null };
+  if (!venueText) return { zone: 'in_town', distanceMiles: null, method: 'default' };
   return classifyLocalityByText(venueText, cityName);
 }

@@ -624,39 +624,46 @@ describe('classifyEventLocality', () => {
 
   it('is in_town for a resolved venue inside the boundary', () => {
     const item = storyItem(story({ venue_raw: 'Brookings City Hall' }));
-    expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null });
+    expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null, method: 'coords' });
   });
 
   it('is unknown (excluded) for a resolved venue far outside both the boundary and the 25mi radius', () => {
     const item = storyItem(story({ venue_raw: 'Washington Pavilion' }));
     const result = classifyEventLocality(item, facilities, townId, cityName, townCenter);
     expect(result.zone).toBe('unknown');
+    expect(result.method).toBe('coords');
     expect(result.distanceMiles).toBeGreaterThan(25);
   });
 
   it('always treats an arts-kind (SDSU campus) item as in_town, no lookup needed', () => {
     const arts: FeedItem = { sourceKind: 'arts', occurs_at: null, event: artsEvent({}) };
-    expect(classifyEventLocality(arts, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null });
+    expect(classifyEventLocality(arts, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null, method: 'default' });
   });
 
   it('treats a virtual venue as in_town rather than nearby/unknown', () => {
     const item = storyItem(story({ venue_raw: 'Zoom Webinar' }));
-    expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null });
+    expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null, method: 'default' });
   });
 
-  it('falls back to text matching for an unresolved venue naming a different real place', () => {
+  // Owner correction, 2026-10-08: an unresolved venue naming a different
+  // real place used to come back 'nearby' with no distance -- unverifiable,
+  // since NEARBY_RADIUS_MILES can't be checked without a real coordinate.
+  // Now 'unknown' (excluded) instead -- see classifyLocalityByText()'s own
+  // doc comment in lib/town-boundary.ts. A venue worth actually surfacing
+  // as Nearby needs a real `places` row with real coordinates.
+  it('falls back to text matching, but never confidently "nearby," for an unresolved venue naming a different real place', () => {
     const item = storyItem(story({ venue_raw: 'Delta Hotel, 10 E 120th Ave, Northglenn, CO, 80233' }));
-    expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'nearby', distanceMiles: null });
+    expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'unknown', distanceMiles: null, method: 'text' });
   });
 
   it('falls back to in_town for an unresolved, bare venue name with no city mentioned', () => {
     const item = storyItem(story({ venue_raw: 'Downtown Main Avenue' }));
-    expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null });
+    expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null, method: 'text' });
   });
 
   it('falls back to in_town when the fallback text names the town itself', () => {
     const item = storyItem(story({ venue_raw: 'Grand Lodge, 123 Main St, Brookings, SD' }));
-    expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null });
+    expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null, method: 'text' });
   });
 });
 
