@@ -169,6 +169,18 @@ export interface Story {
   // Endast source_type='event', enkla (icke-serie) rader -- se
   // ai_pipeline/publish.py. Optional för samma skäl som venue_raw ovan.
   ends_at?: string | null;
+  // Events correctness Phase 1 (2026-10-08, db/migrations/051): satt på en
+  // gammal, individuellt publicerad event-rad som retroaktivt slogs ihop
+  // in i en is_recurring_series-rad (scripts/merge_recurring_event_
+  // duplicates.py) -- pekar på DEN kanoniska radens slug. "Keep data, stop
+  // rendering": raden tas aldrig bort, men varje frågefunktion som listar
+  // events filtrerar AND superseded_by_slug IS NULL, så den gamla
+  // dubblettkortet slutar visas utan att historiken försvinner. Dess egen
+  // /s/[slug]/-sida 301:ar till den kanoniska via site/server/event-series-
+  // redirects.json (samma mönster som legacy-meeting-redirects.json).
+  // NULL för alla andra rader (alla andra source_type, och varje event som
+  // aldrig blivit en dubblett).
+  superseded_by_slug?: string | null;
   // Handkurerad flagga -- förstasidans "Worth knowing"-block (se
   // NEEDS-HUMAN-REVIEW.md "Homepage Curation" och db/migrations/022) tar in
   // en rad även om den inte matchar någon regelbaserad kategori. false på
@@ -299,7 +311,12 @@ export interface RegionalGame {
 
 /* ------------------------------------------------------------------ stories */
 
-/** Kommande och pågående -- det startsidan och sektionssidorna visar. */
+/** Kommande och pågående -- det startsidan och sektionssidorna visar.
+ *  Events correctness Phase 1: `superseded_by_slug IS NULL` excludes an
+ *  old individually-published event row once it's been retroactively
+ *  merged into a recurring-series story (see Story's own doc comment on
+ *  that column) -- a no-op filter for every other source_type, which
+ *  never sets the column. */
 export async function getUpcomingStories(
   sourceTypes: SourceType[],
   limit = 20,
@@ -312,6 +329,7 @@ export async function getUpcomingStories(
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
        AND occurs_at >= now() - interval '12 hours'
+       AND superseded_by_slug IS NULL
      ORDER BY occurs_at ASC
      LIMIT ${limit}
   `) as Story[];
@@ -416,6 +434,7 @@ export async function getPastStories(
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
        AND occurs_at < now() - interval '12 hours'
+       AND superseded_by_slug IS NULL
      ORDER BY occurs_at DESC
      LIMIT ${limit}
   `) as Story[];
@@ -514,7 +533,7 @@ export async function getAllStories(): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at, category_image_index
+           venue_raw, is_recurring_series, ends_at, category_image_index, superseded_by_slug
       FROM stories
      WHERE town_id = ${TOWN_ID}
      ORDER BY occurs_at DESC NULLS LAST
@@ -2406,7 +2425,19 @@ export interface SignData {
   eventsToday: number;
 }
 
-/** Datan till skyltremsan högst upp. En fråga per fält, körs vid build. */
+/** Datan till skyltremsan högst upp. En fråga per fält, körs vid build.
+ *
+ *  Events correctness Phase 1 (2026-10-08): `occurs_at::date` used to cast
+ *  the timestamptz to a date in whatever timezone the DB session defaults
+ *  to (never the town's own -- same bug class as index.astro's old
+ *  `new Date().setHours(0,0,0,0)`), while the right-hand side correctly
+ *  converted through siteConfig.timezone first. An evening event could
+ *  then be silently excluded from (or, depending on the session default,
+ *  wrongly included in) "N events today." Both sides now go through
+ *  AT TIME ZONE explicitly, and superseded_by_slug is excluded the same
+ *  way every other event-listing query now does (see Story's own doc
+ *  comment on that column) so a merged-away duplicate doesn't inflate
+ *  the count. */
 export async function getSignData(): Promise<SignData> {
   const [periods, alerts, games, todayRows] = await Promise.all([
     getWeather(),
@@ -2417,7 +2448,8 @@ export async function getSignData(): Promise<SignData> {
         FROM stories
        WHERE town_id = ${TOWN_ID}
          AND source_type = 'event'
-         AND occurs_at::date = (now() AT TIME ZONE ${siteConfig.timezone})::date
+         AND superseded_by_slug IS NULL
+         AND (occurs_at AT TIME ZONE ${siteConfig.timezone})::date = (now() AT TIME ZONE ${siteConfig.timezone})::date
     ` as unknown as Promise<{ n: number }[]>,
   ]);
 

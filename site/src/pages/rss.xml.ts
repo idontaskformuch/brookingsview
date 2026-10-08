@@ -21,9 +21,17 @@ import { redactWorkerPulseBody } from '../lib/content-redaction';
 // also excluded here now -- generation stopped and the type was unlinked
 // from every other surface, so a feed reader subscribed before this
 // shouldn't keep getting old rows resurfaced forever either.
+//
+// Events correctness Phase 1: a superseded event (retroactively merged
+// into a recurring-series story, see Story's own superseded_by_slug doc
+// comment) is excluded the same way -- a feed reader doesn't need the old
+// per-occurrence duplicate once there's a canonical series item for it.
 export async function GET(context: APIContext) {
   const stories = (await getAllStories())
-    .filter((story) => story.published_at !== null && !CONTENT_TRACK_TYPES.includes(story.source_type));
+    .filter((story) =>
+      story.published_at !== null
+      && !CONTENT_TRACK_TYPES.includes(story.source_type)
+      && !story.superseded_by_slug);
   return rss({
     title: siteConfig.siteName,
     description: `What's happening in ${siteConfig.cityName}, ${siteConfig.stateName}.`,

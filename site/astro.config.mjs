@@ -390,7 +390,7 @@ async function buildLastmodMap(townId, databaseUrl) {
   const noindexStoryUrls = new Set();
   const crossCanonicalStoryUrls = new Set();
   const stories = await sql`
-    SELECT slug, published_at, source_type, body, generated_by, ingredients, instructions, occurs_at, title, venue_raw FROM stories WHERE town_id = ${townId}
+    SELECT slug, published_at, source_type, body, generated_by, ingredients, instructions, occurs_at, title, venue_raw, superseded_by_slug FROM stories WHERE town_id = ${townId}
   `;
   for (const s of stories) {
     const storyPathname = `/s/${publicSlugMirror(s.slug)}/`;
@@ -561,6 +561,16 @@ async function buildLastmodMap(townId, databaseUrl) {
   const daysToFridayMirror = (5 - weekdayOfTodayMirror + 7) % 7;
   for (const s of stories) {
     if (s.source_type !== 'event' || !s.occurs_at) continue;
+    // Events correctness Phase 1: getUpcomingStories() (the real page's own
+    // data source) now excludes a superseded recurring-program duplicate
+    // (see Story's own superseded_by_slug doc comment in lib/db.ts) --
+    // mirrored here too, or this count could overcount relative to the
+    // real page on a borderline facet, which is the one direction
+    // scripts/verify_sitemap_noindex_disjoint.mjs actually checks for
+    // (this mirror's other two simplifications both only ever overcount,
+    // see the comment above eventFacetCounts' declaration -- this one
+    // must stay exact, not just safely conservative).
+    if (s.superseded_by_slug) continue;
     if (new Date(s.occurs_at) < new Date(Date.now() - 12 * 60 * 60 * 1000)) continue;
     const eventDay = utcMidnightMirror(localDatePartsMirror(new Date(s.occurs_at), thisWeekTz));
     const offset = Math.round((eventDay.getTime() - eventsToday.getTime()) / 86_400_000);
