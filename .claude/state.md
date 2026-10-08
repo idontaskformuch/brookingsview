@@ -1,8 +1,29 @@
 # State
 
 Current spec: .claude/phase2-spec.md. Step A + Phase 2 items 2d/2a/2b
-done. Pushed through bea8846 (2d+2a+fixes); 2b (80910c2) NOT pushed yet.
-Next: owner reviews 2b, then 2c or 2f per phase2-spec.md.
+done and PUSHED (through 4f181e9). Next: Farm House Collective places
+write (owner-approved, in progress -- see checkpoint below), then 2c.
+
+## CHECKPOINT -- Farm House Collective `places` write, pre-write state (2026-10-08)
+Owner-approved with conditions. Pre-write SELECT confirmed ZERO existing
+rows for (town_id='moreno_valley_ca', slug='farm-house-collective') --
+this is a pure INSERT, nothing to revert TO; reverting later = `DELETE
+FROM places WHERE town_id='moreno_valley_ca' AND slug=
+'farm-house-collective'`. Address RE-VERIFIED directly against
+farmhousecollective.com itself (not just the geocoder) -- matches
+exactly. Real hours found first-party on their own site ("Open daily
+11am-10pm") and added to the prepared entry (upgrade from the earlier
+draft, which left hours null over a weaker secondhand source).
+Moreno Valley BEFORE counts (script: site/scripts/dump-section-counts.ts,
+not committed): 28 total upcoming events. In town 12 (Today 0/Weekend
+1/Coming up 1/Further out 10). Nearby 0. Unknown/excluded 16 -- ALL 16
+are Farm House Collective (confirmed by venue breakdown) -- i.e. these
+events are currently invisible on both /events/ and the homepage, not
+appearing in ANY section. This is the exact state the write is meant
+to fix. Dry-run v2 UPSERT params (town_id/slug/name/category/address/
+street_address/postal_code/aliases/phone=null/website/hours_text/
+description/lat/lon/source_url/verified_date/content_hash) printed and
+reviewed, not yet executed as of this checkpoint.
 
 ## Phase 2, item 2d -- CLOSED, owner declined the live run (75d4db6, pushed)
 Broomfield: no clean event source found. webtrac/compass/chamber all
