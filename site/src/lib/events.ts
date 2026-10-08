@@ -28,7 +28,8 @@
  * partition of one shared list.
  */
 import type { Story, SdsuEvent, Facility } from './db';
-import { buildVenueIndex, resolveVenue } from './db';
+import { buildVenueIndex, resolveVenue, isVirtualVenue } from './db';
+import { classifyLocalityByCoords, classifyLocalityByText, type LocalityResult } from './town-boundary';
 
 export type FeedItem =
   | { sourceKind: 'story'; occurs_at: string | null; story: Story }
@@ -390,4 +391,47 @@ export function isKidsEvent(item: FeedItem): boolean {
  *  this site currently does NOT have. */
 export function isCampusEvent(item: FeedItem): boolean {
   return item.sourceKind === 'arts';
+}
+
+/** Phase 2, item 2a's "Outdoor" filter chip -- same grounding discipline as
+ *  isFreeEvent()/isLibraryEvent(): a real, resolved venue CATEGORY, never a
+ *  keyword guess against the title/body (an indoor "Outdoor Education"
+ *  class at the community center would false-positive on a text match).
+ *  `park` is the one facility category that's unambiguously outdoor space;
+ *  deliberately not `community_center` (overwhelmingly indoor programs). */
+export function isOutdoorEvent(item: FeedItem, facilities: Facility[]): boolean {
+  if (item.sourceKind !== 'story') return false;
+  const facility = resolveVenue(buildVenueIndex(facilities), item.story.venue_raw);
+  return facility?.category === 'park';
+}
+
+/** Phase 2, item 2a's "In <Town>" vs "Nearby" split -- see
+ *  lib/town-boundary.ts's own module doc for the boundary/distance
+ *  mechanics and the straight-line-not-drive-time decision. This is the
+ *  one adapter that knows how to get FROM a FeedItem TO a classification:
+ *  - SDSU arts events never resolve against the town's own facilities
+ *    registry (campus venues aren't in it, same gap isFreeEvent()'s own
+ *    comment already documents) but are inherently local -- always
+ *    `in_town`, no lookup needed.
+ *  - A virtual/online venue has no real-world location at all; treated as
+ *    `in_town` rather than invented as "nearby" or dropped from both
+ *    sections, since it's still hosted by a local organizer.
+ *  - A resolved facility (real lat/lon) uses the precise boundary/distance
+ *    path. An unresolved venue string falls back to the text heuristic --
+ *    this is the path the new Broomfield Chamber (BizWest) source's one
+ *    live event takes today, see town-boundary.ts's own doc comment. */
+export function classifyEventLocality(
+  item: FeedItem, facilities: Facility[], townId: string, cityName: string,
+  townCenter: { lat: number; lon: number },
+): LocalityResult {
+  if (item.sourceKind !== 'story') return { zone: 'in_town', distanceMiles: null };
+  const venueText = item.story.venue_raw;
+  if (isVirtualVenue(venueText)) return { zone: 'in_town', distanceMiles: null };
+
+  const facility = resolveVenue(buildVenueIndex(facilities), venueText);
+  if (facility?.lat != null && facility?.lon != null) {
+    return classifyLocalityByCoords(townId, facility.lat, facility.lon, townCenter);
+  }
+  if (!venueText) return { zone: 'in_town', distanceMiles: null };
+  return classifyLocalityByText(venueText, cityName);
 }

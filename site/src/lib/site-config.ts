@@ -249,6 +249,18 @@ export interface SiteConfig {
    *  value (same "fails loud" principle as assertAccentContrast()/
    *  validateStatusModules() elsewhere in this file's neighborhood). */
   ticketmaster?: { enabled: boolean; latitude: number; longitude: number; radiusMiles: number; marqueeSize: number };
+  /** Phase 2 (2026-10-08), "In <Town> vs Nearby": the town's own centroid,
+   *  for lib/town-boundary.ts's distance-from-center fallback when a venue
+   *  resolves OUTSIDE the town's Census boundary polygon. Same real
+   *  coordinates already used by `ticketmaster` above (deliberately a
+   *  SEPARATE field, not reused from that optional/Ticketmaster-specific
+   *  one -- this is a general-purpose town location, unrelated to
+   *  Ticketmaster, and future consumers (Traffic, Jobs, per the phase2
+   *  spec) shouldn't have to reach through an unrelated feature's config to
+   *  get it). Required, not optional -- same "fails loud" convention as
+   *  `renderWindow` below: a town missing this is a compile error, not a
+   *  silently-skipped geo feature. */
+  townCenter: { lat: number; lon: number };
   /** Render-window handoff: how many months of history actually get a
    *  BUILT page for each page type -- null means no window (render
    *  everything, today's behavior). This is deliberately NOT a retention
@@ -294,6 +306,7 @@ const CITIES: Record<string, SiteConfig> = {
     // venues (BIGS Sports Bar is deliberately curated at 'small', not
     // actually unmapped -- confirmed via isVenueCurated(), not the naive
     // tier===default comparison). No change from the original Radius Fix.
+    townCenter: { lat: 44.3114, lon: -96.7984 },
     ticketmaster: { enabled: true, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75, marqueeSize: 6 },
     // Phase 7: enabled for real. Brookings' venues are curated and
     // human-reviewed across every What's On phase -- Moreno Valley and
@@ -418,6 +431,7 @@ const CITIES: Record<string, SiteConfig> = {
     // re-verified live afterward that Kany Garcia now resolves to medium
     // tier and ranks below the curated large-tier Toyota Arena acts,
     // instead of tying with the open mic.
+    townCenter: { lat: 33.9425, lon: -117.2297 },
     ticketmaster: { enabled: true, latitude: 33.9425, longitude: -117.2297, radiusMiles: 35, marqueeSize: 6 },
     hasWhatsOn: true,
     // 'whats_on' added alongside the enable above -- see cityStatus.ts's
@@ -518,6 +532,7 @@ const CITIES: Record<string, SiteConfig> = {
     // comment) -- re-verified live afterward that the top 8 is now
     // entirely genuine major touring acts at Ball Arena/Mission Ballroom,
     // matching what a real Denver-metro suburb's events page should show.
+    townCenter: { lat: 39.9205, lon: -105.0866 },
     ticketmaster: { enabled: true, latitude: 39.9205, longitude: -105.0866, radiusMiles: 20, marqueeSize: 6 },
     hasWhatsOn: true,
     // 'whats_on' added alongside the enable above -- see Moreno Valley's

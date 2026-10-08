@@ -522,12 +522,13 @@ async function buildLastmodMap(townId, databaseUrl) {
     if ((weekItemCounts.get(slug) ?? 0) < MIN_TAG_PAGE_ITEMS) noindexThinPageUrls.add(`/this-week/${slug}/`);
   }
 
-  // /events/<facet>/ thin-facet mirror (2026-10-07, Broomfield sitemap fix):
+  // /events/<facet>/ thin-facet mirror (2026-10-07, Broomfield sitemap fix;
+  // extended 2026-10-08, Phase 2 item 2a, for the new 'outdoor' facet):
   // mirrors pages/events/[facet].astro's own `isNoindex = facet.slug ===
   // 'free' ? false : items.length < 3` for the 'today'/'this-weekend'/
-  // 'kids'/'library' facets only ('free' is explicitly exempt on that page
-  // and 'campus' isn't part of this fix). Deliberately simplified relative
-  // to the real page in two ways, both erring the SAME safe direction
+  // 'kids'/'library'/'outdoor' facets only ('free' is explicitly exempt on
+  // that page and 'campus' isn't part of this fix). Deliberately simplified
+  // relative to the real page in two ways, both erring the SAME safe direction
   // THIS_WEEK_TIMEZONES' own comment above documents (this mirror's count
   // >= the real page's): (1) no cross-source dedup against SDSU arts
   // events (lib/events.ts's buildEventFeed) -- dedup only ever REDUCES a
@@ -538,10 +539,10 @@ async function buildLastmodMap(townId, databaseUrl) {
   // protect. Verify with scripts/verify_sitemap_noindex_disjoint.mjs
   // against a real build before trusting this for a town/facet combination
   // that's actually close to the line.
-  const eventFacetCounts = { today: 0, 'this-weekend': 0, kids: 0, library: 0 };
+  const eventFacetCounts = { today: 0, 'this-weekend': 0, kids: 0, library: 0, outdoor: 0 };
   const KIDS_RE_MIRROR = /\b(kids?|children|childrens?|toddler|preschool|storytime|story time|famil(?:y|ies)|youth|teens?|tween)\b/i;
   const facilityVenues = await sql`
-    SELECT name, aliases, category FROM places WHERE town_id = ${townId} AND category = 'library'
+    SELECT name, aliases, category FROM places WHERE town_id = ${townId} AND category IN ('library', 'park')
   `;
   const normalizeVenueMirror = (raw) => {
     if (!raw || !raw.trim()) return null;
@@ -550,10 +551,12 @@ async function buildLastmodMap(townId, databaseUrl) {
     return normalized || null;
   };
   const libraryVenueNames = new Set();
+  const parkVenueNames = new Set();
   for (const f of facilityVenues) {
+    const targetSet = f.category === 'library' ? libraryVenueNames : parkVenueNames;
     for (const candidate of [f.name, ...(f.aliases ?? [])]) {
       const norm = normalizeVenueMirror(candidate);
-      if (norm) libraryVenueNames.add(norm);
+      if (norm) targetSet.add(norm);
     }
   }
   const eventsToday = utcMidnightMirror(localDatePartsMirror(new Date(), thisWeekTz));
@@ -580,6 +583,7 @@ async function buildLastmodMap(townId, databaseUrl) {
     if (KIDS_RE_MIRROR.test(haystack)) eventFacetCounts.kids++;
     const venueNorm = normalizeVenueMirror(s.venue_raw);
     if (venueNorm && libraryVenueNames.has(venueNorm)) eventFacetCounts.library++;
+    if (venueNorm && parkVenueNames.has(venueNorm)) eventFacetCounts.outdoor++;
   }
   for (const [facetSlug, count] of Object.entries(eventFacetCounts)) {
     if (count < MIN_TAG_PAGE_ITEMS) noindexThinPageUrls.add(`/events/${facetSlug}/`);

@@ -10,7 +10,7 @@
  */
 import type { Facility } from './db';
 import {
-  type FeedItem, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent,
+  type FeedItem, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent, isOutdoorEvent,
 } from './events';
 import { EMPTY_STATES } from './empty-states';
 
@@ -96,6 +96,17 @@ export const EVENT_FACETS: EventFacet[] = [
     intro: (cityName) => `Everything on the calendar at the ${cityName} public library, updated daily.`,
     emptyMessage: EMPTY_STATES.eventsLibrary,
     matches: (item, ctx) => isLibraryEvent(item, ctx.facilities),
+  },
+  {
+    slug: 'outdoor',
+    navLabel: 'Outdoor',
+    heading: 'Outdoor events',
+    titleTemplate: (cityName, siteName) => `Outdoor Events in ${cityName} — ${siteName}`,
+    descriptionTemplate: (cityName) =>
+      `Park programs and other outdoor events in ${cityName}, updated daily.`,
+    intro: (cityName) => `Park programs and other events in ${cityName}'s outdoor spaces, updated daily.`,
+    emptyMessage: EMPTY_STATES.eventsOutdoor,
+    matches: (item, ctx) => isOutdoorEvent(item, ctx.facilities),
   },
   {
     slug: 'campus',

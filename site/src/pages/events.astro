@@ -7,7 +7,7 @@ import ShareButton from '../components/ShareButton.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getUpcomingStories, getPastStories, getUpcomingArtsEvents, getRegionalSports, getFacilities, calendarDateParts } from '../lib/db';
 import {
-  buildEventFeed, artsEventAsStory, withAttribution, localDateParts, utcMidnight,
+  buildEventFeed, artsEventAsStory, withAttribution, localDateParts, utcMidnight, classifyEventLocality,
   type FeedItem,
 } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
@@ -68,6 +68,24 @@ const regionalGames = siteConfig.townId === 'moreno_valley_ca' ? await getRegion
 const { items, alsoListedBy } = buildEventFeed(upcoming, artsEvents, siteConfig.timezone);
 
 /**
+ * Phase 2, item 2a: "In <Town>" vs "Nearby" -- see lib/town-boundary.ts's
+ * module doc for the boundary/distance mechanics. `inTownItems` feeds every
+ * section below that already existed (This weekend / Today / Coming up /
+ * Further out); `nearbyItems` is a new, separate section (own real place,
+ * just outside town, surfaced rather than silently dropped). An `unknown`
+ * zone (resolved coordinates further than NEARBY_RADIUS_MILES, or a bare
+ * fallback-text match that named neither town) is excluded from both --
+ * in practice this almost never fires, since every source here is already
+ * a town-scoped or adjacent calendar.
+ */
+const localized = items.map((item) => ({
+  item,
+  ...classifyEventLocality(item, facilities, siteConfig.townId, siteConfig.cityName, siteConfig.townCenter),
+}));
+const inTownItems: FeedItem[] = localized.filter((l) => l.zone === 'in_town').map((l) => l.item);
+const nearbyItems = localized.filter((l) => l.zone === 'nearby');
+
+/**
  * Bucket upcoming events by time horizon rather than showing one flat list.
  * "This weekend" is the bucket the whole feature exists for (see
  * news-aggregator return-visit reasoning) -- Fri/Sat/Sun relative to the
@@ -100,7 +118,7 @@ const weekdayOfToday = today.getUTCDay(); // 0=Sun -- today is already UTC-ancho
 const daysToFriday = (5 - weekdayOfToday + 7) % 7;
 
 const buckets = { today: [] as FeedItem[], weekend: [] as FeedItem[], nextWeek: [] as FeedItem[], later: [] as FeedItem[] };
-for (const item of items) {
+for (const item of inTownItems) {
   if (!item.occurs_at) { buckets.later.push(item); continue; }
   const offset = dayIndex(item.occurs_at, today);
   if (offset <= 0) buckets.today.push(item);
@@ -109,10 +127,27 @@ for (const item of items) {
   else buckets.later.push(item);
 }
 
+/**
+ * Phase 2, item 2a: "This weekend in <Town>" split Fri/Sat/Sun with counts
+ * -- replaces the old flat "This weekend" bucket (still computed above as
+ * `buckets.weekend`, just no longer rendered as its own single-label
+ * section) with a richer per-day breakdown, per the phase2 spec. `offset`
+ * values reuse daysToFriday from above -- Friday/Saturday/Sunday are
+ * exactly daysToFriday/+1/+2 regardless of which weekday "today" is.
+ */
+const weekendDays = ([
+  ['Friday', daysToFriday],
+  ['Saturday', daysToFriday + 1],
+  ['Sunday', daysToFriday + 2],
+] as [string, number][]).map(([label, offset]) => ({
+  label,
+  items: buckets.weekend.filter((item) => item.occurs_at && dayIndex(item.occurs_at, today) === offset),
+}));
+const weekendTotal = buckets.weekend.length;
+
 const sections = (
   [
     ['Today', buckets.today],
-    ['This weekend', buckets.weekend],
     ['Coming up', buckets.nextWeek],
     ['Further out', buckets.later],
   ] as [string, FeedItem[]][]
@@ -155,7 +190,60 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
     ))}
   </nav>
 
-  {sections.length > 0 ? sections.map(([label, list]) => (
+  {/* Phase 2, item 2a: "This weekend in <Town>" split Fri/Sat/Sun with
+      counts -- the hero this whole restructure exists for (see
+      news-aggregator return-visit reasoning in this file's own history).
+      In-town events only; a weekend event at a nearby-but-out-of-town venue
+      shows in the Nearby section below instead, tagged with its distance. */}
+  {weekendTotal > 0 && (
+    <section class="weekend-hero">
+      <SectionRule label={`This weekend in ${siteConfig.cityName}`} />
+      <p class="weekend-counts">
+        {weekendDays.map(({ label, items: dayItems }, i) => (
+          <>
+            {i > 0 && <span class="sep"> · </span>}
+            <span class="weekend-count"><strong>{dayItems.length}</strong> {label.slice(0, 3)}</span>
+          </>
+        ))}
+      </p>
+      {weekendDays.filter((d) => d.items.length > 0).map((day) => (
+        <div class="weekend-day">
+          <h3 class="weekend-day__label">{day.label}</h3>
+          <div class="grid">
+            {day.items.map((item) => item.sourceKind === 'story'
+              ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={townwideKicker} facilities={facilities} />
+              : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" facilities={facilities} />
+            )}
+          </div>
+        </div>
+      ))}
+    </section>
+  )}
+
+  {/* Phase 2, item 2a: "Nearby" -- real events at a real place just outside
+      town (within lib/town-boundary.ts's NEARBY_RADIUS_MILES), surfaced
+      rather than silently dropped. Distance is straight-line miles, never a
+      drive-time estimate -- see town-boundary.ts's own doc comment for why
+      (an owner decision, 2026-10-08, matching the site's existing
+      /whats-on/ precedent). Not day-bucketed like the in-town sections
+      above -- one flat, date-sorted list is enough at today's volume. */}
+  {nearbyItems.length > 0 && (
+    <section class="nearby">
+      <SectionRule label="Nearby" />
+      <div class="grid">
+        {nearbyItems.map(({ item, distanceMiles }) => (
+          <div class="event-cell">
+            {item.sourceKind === 'story'
+              ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={townwideKicker} facilities={facilities} />
+              : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" facilities={facilities} />}
+            {distanceMiles != null && <p class="distance">{Math.round(distanceMiles)} mi away</p>}
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  {(sections.length > 0 || weekendTotal > 0 || nearbyItems.length > 0 || todaysHomeGame) ? sections.map(([label, list]) => (
     <>
       <SectionRule label={label} />
       {label === 'Today' && todaysHomeGame && (
@@ -224,4 +312,25 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 }
 .game-note a { margin-left: 0.375rem; }
 .empty { color: var(--ink-soft); }
+.weekend-counts {
+  font-family: var(--font-ui);
+  font-size: 0.9375rem;
+  color: var(--ink-soft);
+  margin: 0 0 1rem;
+}
+.weekend-count strong { color: var(--ink); font-size: 1.0625rem; }
+.sep { opacity: 0.5; }
+.weekend-day { margin-top: 1rem; }
+.weekend-day:first-of-type { margin-top: 0; }
+.weekend-day__label {
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0 0 0.5rem;
+}
+.event-cell { display: flex; flex-direction: column; gap: 0.375rem; }
+.distance { margin: 0; font-size: 0.8125rem; color: var(--ink-soft); }
 </style>

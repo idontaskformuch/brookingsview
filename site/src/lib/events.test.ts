@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildEventFeed, isToday, isThisWeekend, isTonight, isTomorrow, selectTodayBucket,
-  isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent, findCrossSourceMatch, eventPriceAgeLine,
+  isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent, isOutdoorEvent, classifyEventLocality,
+  findCrossSourceMatch, eventPriceAgeLine,
   todayUtcMidnight, utcMidnight, localDateParts, artsEventAsStory, dayIndex,
   EVENT_SOURCES,
   type FeedItem, type EventSourceConfig,
@@ -476,6 +477,80 @@ describe('isLibraryEvent', () => {
   it('is false for an unresolved venue', () => {
     const item = storyItem(story({ venue_raw: 'City Hall Annex' }));
     expect(isLibraryEvent(item, facilities)).toBe(false);
+  });
+});
+
+describe('isOutdoorEvent', () => {
+  const facilities: Facility[] = [
+    facility({ slug: 'dykstra-park', name: 'Dykstra Park', category: 'park', aliases: ['dykstra park'] }),
+    facility({ slug: 'library', name: 'Brookings Public Library', category: 'library', aliases: ['brookings public library'] }),
+  ];
+
+  it('is true when venue resolves to a park', () => {
+    expect(isOutdoorEvent(storyItem(story({ venue_raw: 'Dykstra Park' })), facilities)).toBe(true);
+  });
+
+  it('is false for a non-park resolved venue', () => {
+    expect(isOutdoorEvent(storyItem(story({ venue_raw: 'Brookings Public Library' })), facilities)).toBe(false);
+  });
+
+  it('is false for an unresolved venue', () => {
+    expect(isOutdoorEvent(storyItem(story({ venue_raw: 'Somewhere Unknown' })), facilities)).toBe(false);
+  });
+
+  it('is false for an arts-kind item (never resolves against the town facilities registry)', () => {
+    const arts: FeedItem = { sourceKind: 'arts', occurs_at: null, event: artsEvent({}) };
+    expect(isOutdoorEvent(arts, facilities)).toBe(false);
+  });
+});
+
+describe('classifyEventLocality', () => {
+  // Real Brookings, SD coordinates/boundary (same data lib/town-boundary.ts
+  // ships for brookings_sd) -- City Hall is genuinely inside town limits,
+  // Sioux Falls' Washington Pavilion is a real ~50mi-away venue.
+  const townId = 'brookings_sd';
+  const cityName = 'Brookings';
+  const townCenter = { lat: 44.3114, lon: -96.7984 };
+  const facilities: Facility[] = [
+    facility({ slug: 'city-hall', name: 'Brookings City Hall', category: 'city_hall', aliases: ['brookings city hall'], lat: 44.3105, lon: -96.7978 }),
+    facility({ slug: 'washington-pavilion', name: 'Washington Pavilion', category: 'other', aliases: ['washington pavilion'], lat: 43.5460, lon: -96.7313 }),
+  ];
+
+  it('is in_town for a resolved venue inside the boundary', () => {
+    const item = storyItem(story({ venue_raw: 'Brookings City Hall' }));
+    expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null });
+  });
+
+  it('is unknown (excluded) for a resolved venue far outside both the boundary and the 25mi radius', () => {
+    const item = storyItem(story({ venue_raw: 'Washington Pavilion' }));
+    const result = classifyEventLocality(item, facilities, townId, cityName, townCenter);
+    expect(result.zone).toBe('unknown');
+    expect(result.distanceMiles).toBeGreaterThan(25);
+  });
+
+  it('always treats an arts-kind (SDSU campus) item as in_town, no lookup needed', () => {
+    const arts: FeedItem = { sourceKind: 'arts', occurs_at: null, event: artsEvent({}) };
+    expect(classifyEventLocality(arts, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null });
+  });
+
+  it('treats a virtual venue as in_town rather than nearby/unknown', () => {
+    const item = storyItem(story({ venue_raw: 'Zoom Webinar' }));
+    expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null });
+  });
+
+  it('falls back to text matching for an unresolved venue naming a different real place', () => {
+    const item = storyItem(story({ venue_raw: 'Delta Hotel, 10 E 120th Ave, Northglenn, CO, 80233' }));
+    expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'nearby', distanceMiles: null });
+  });
+
+  it('falls back to in_town for an unresolved, bare venue name with no city mentioned', () => {
+    const item = storyItem(story({ venue_raw: 'Downtown Main Avenue' }));
+    expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null });
+  });
+
+  it('falls back to in_town when the fallback text names the town itself', () => {
+    const item = storyItem(story({ venue_raw: 'Grand Lodge, 123 Main St, Brookings, SD' }));
+    expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null });
   });
 });
 

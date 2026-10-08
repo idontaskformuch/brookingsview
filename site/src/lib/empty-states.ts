@@ -18,6 +18,7 @@ export const EMPTY_STATES = {
   eventsKids: 'No kids or family events listed this week — check back.',
   eventsLibrary: 'No library events listed this week — check back.',
   eventsCampus: 'No campus events listed this week — check back.',
+  eventsOutdoor: 'No outdoor events listed this week — check back.',
   workplaceWatch: 'No reviews summarized yet this month.',
   homeSales: 'No sales recorded in the latest county report.',
   whatsOn: 'Nothing found in the area right now — check back.',
