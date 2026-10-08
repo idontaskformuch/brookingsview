@@ -4,15 +4,20 @@ Current spec: .claude/phase2-spec.md. Step A + Phase 2 items 2d/2a done
 (561c295, de79552). Pre-2b verification requested by owner -- DONE, see
 below. Not pushed. Next: owner reviews findings, then 2b.
 
-## Phase 2, item 2d -- config wired (561c295), NOT scraped live yet
-Broomfield's data_sources.events: webtrac/compass = documented dead
-ends; "chamber" (BizWest) = the one live source. Dry-run re-confirmed
-2026-10-08: 1 real event (EmpowHer, 2026-10-22, Delta Hotel/Northglenn
-CO), robots.txt permissive (old-events.bizwest.com, Crawl-delay:10
-only), no ToS page found (checked, 404s). Times correct: feed's own
-VTIMEZONE is America/Denver, same zone as Broomfield's config -- no
-conversion risk. Awaiting owner go-ahead to run scrapers.runner for
-real (live-DB write, rule 7).
+## Phase 2, item 2d -- CLOSED, owner declined the live run (2026-10-08)
+Findings: Broomfield -- no clean event source found. All three
+candidates (webtrac, compass, chamber/BizWest) are now `kind:"blocked"`
+in configs/broomfield_co.json, and `data_sources.events.enabled` is
+back to `false` -- confirmed `scrapers/runner.py`'s own run loop skips
+a disabled entry before ever touching its sources[], and
+`broomfield-scrape.yml` calls the whole config with no override, so no
+scheduled job (every 6h) can fetch any of them. Broomfield gets zero
+events until a real source turns up. Chamber dry-run itself was clean
+(1 real event, robots.txt permissive, correct timezone) but owner
+judged it too thin to ship live: 1 event, venue ~a mil outside
+Broomfield, and the 'old-events.bizwest.com' naming reads as a
+platform migration that could vanish. Kept as a documented dead end
+(not deleted) so this research survives if a stronger case appears.
 
 ## Phase 2, item 2a -- done (de79552), bugfix on top (a653391)
 /events restructured: weekend hero (Fri/Sat/Sun), Nearby section

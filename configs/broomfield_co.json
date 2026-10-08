@@ -115,7 +115,8 @@
     },
     "events": {
       "type": "multi",
-      "enabled": true,
+      "enabled": false,
+      "_enabled_note": "Set back to false 2026-10-08 (owner decision, post-2d review): all three known sources are now documented dead ends (see each one's own _note below) -- no scheduled job will fetch any of them while this stays false (scrapers/runner.py's own run loop skips a disabled data_sources entry before ever consulting its sources[]). Broomfield gets zero events until a real one is found. Flipping this back to true alone is NOT enough to resume scraping -- the 'chamber' source below must also have its kind changed back from 'blocked' to 'ical' first.",
       "sources": [
         {
           "name": "webtrac",
@@ -131,9 +132,9 @@
         },
         {
           "name": "chamber",
-          "kind": "ical",
+          "kind": "blocked",
           "url": "https://old-events.bizwest.com/events/category/broomfield/?ical=1",
-          "_note": "Broomfield Chamber of Commerce's own events, organizer andrea.warren@broomfieldchamber.com, found 2026-10-08 (Phase 2, item 2d). Hosted on BizWest's (the regional business journal covering Boulder Valley/Northern Colorado) events platform -- a real The Events Calendar (WordPress/ECPv6-style) export, same pattern as Brookings' chamber/chamber_business sources, well-formed REFRESH-INTERVAL (PT1H, has the T designator) and VTIMEZONE (America/Denver). events.bizwest.com permanently 302-redirects every /events/ path to this old-events. subdomain (X-Robots-Tag: noindex) -- fetches the redirect target directly, not the alias. robots.txt on old-events.bizwest.com is permissive (only GPTBot/Amazonbot disallowed; Crawl-delay: 10 for everyone else, respected via refresh_minutes same as other sources). CAVEATS, owner-approved anyway 2026-10-08: only 1 event in the broomfield category at verification time (EmpowHer, 2026-10-22), and that event's own venue is a Northglenn, CO address, not Broomfield proper -- accepted under the same venue-name-dropping policy already logged for other ICS sources. The noindex + 'old-' subdomain naming suggests a platform migration that could disappear; re-verify this URL still resolves before relying on it if a long gap in scrape_runs shows up."
+          "_note": "Broomfield Chamber of Commerce's own events, organizer andrea.warren@broomfieldchamber.com, found 2026-10-08 (Phase 2, item 2d). Hosted on BizWest's (the regional business journal covering Boulder Valley/Northern Colorado) events platform -- a real The Events Calendar (WordPress/ECPv6-style) export, same pattern as Brookings' chamber/chamber_business sources, well-formed REFRESH-INTERVAL (PT1H, has the T designator) and VTIMEZONE (America/Denver). events.bizwest.com permanently 302-redirects every /events/ path to this old-events. subdomain (X-Robots-Tag: noindex) -- fetches the redirect target directly, not the alias. robots.txt on old-events.bizwest.com is permissive (only GPTBot/Amazonbot disallowed; Crawl-delay: 10 for everyone else, respected via refresh_minutes same as other sources). Initially wired in as 'ical' and owner-approved despite its caveats (dry-run verified clean: 1 real record, correct timezone), but on review of the dry-run findings the OWNER DECLINED to run it live, 2026-10-08: only 1 event in the broomfield category, that event's own venue (Delta Hotels, Northglenn CO) is roughly a Swedish mil (~6-10mi) outside Broomfield proper, and the 'old-events.bizwest.com' naming/noindex strongly suggests a platform migration that could vanish without notice. Not a policy or technical block like webtrac/compass above -- a thin-value judgment call. kind changed back to 'blocked' (never fetched) rather than deleted, so this research isn't lost if a stronger case (more events, or a real Broomfield-addressed one) shows up later. Re-check this same URL if revisited; don't re-derive it from scratch."
         }
       ],
       "refresh_minutes": 1440,
