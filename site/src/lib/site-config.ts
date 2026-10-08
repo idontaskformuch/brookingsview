@@ -25,6 +25,13 @@ export interface SiteConfig {
   siteName: string;    // "Moreno Valley View"
   domain: string;      // "morenovalleyview.com"
   siteUrl: string;     // "https://morenovalleyview.com"
+  /** GA4 measurement ID ("G-XXXXXXXXXX"), Mediavine Journey verification
+   *  (2026-10-08). Undefined until this town's own GA4 property exists --
+   *  BaseLayout.astro renders no tag, no script, no empty placeholder at
+   *  all when this is unset, same "render nothing when data is absent"
+   *  rule as every other optional field here. Never hardcode an ID in the
+   *  layout itself; this is the only place one is allowed to live. */
+  ga4MeasurementId?: string;
   /** IANA-tidszon för datumraden */
   timezone: string;
   /** Har stadens `meetings`-källa ett RIKTIGT klockslag per möte (eSCRIBE/
@@ -313,6 +320,7 @@ const CITIES: Record<string, SiteConfig> = {
     siteName: 'Brookings View',
     domain: 'brookingsview.com',
     siteUrl: 'https://brookingsview.com',
+    ga4MeasurementId: 'G-0K3RL2H501',
     timezone: 'America/Chicago',
     // Legistar's EventDate has no time component (EventTime not fetched
     // yet, see legistar_v1.py) -- meeting_date is a bare calendar date.
@@ -435,6 +443,7 @@ const CITIES: Record<string, SiteConfig> = {
     siteName: 'Moreno Valley View',
     domain: 'morenovalleyview.com',
     siteUrl: 'https://morenovalleyview.com',
+    ga4MeasurementId: 'G-5KH1S9H8SB',
     timezone: 'America/Los_Angeles',
     // eSCRIBE's StartDate is a real per-meeting clock time (see
     // escribe_v1.py's _parse_escribe_date()), localized to this zone at
@@ -528,6 +537,7 @@ const CITIES: Record<string, SiteConfig> = {
     siteName: 'Broomfield View',
     domain: 'broomfieldview.com',
     siteUrl: 'https://broomfieldview.com',
+    ga4MeasurementId: 'G-L7JGXKQVNV',
     timezone: 'America/Denver',
     // AgendaLink's own `scheduleIso` field is a real, correct UTC instant
     // -- verified DIRECTLY against broomfield.org's own CivicEngage

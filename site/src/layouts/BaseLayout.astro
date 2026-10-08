@@ -258,6 +258,57 @@ const footerGroups = FOOTER_GROUPS
   </script>
 )}
 
+{siteConfig.ga4MeasurementId && import.meta.env.PROD && (
+  /* GA4 (gtag.js) -- Mediavine Journey verification (2026-10-08).
+     Per-town measurement ID lives ONLY in site-config.ts
+     (siteConfig.ga4MeasurementId); a town with none yet (currently Moreno
+     Valley, Broomfield) renders nothing here at all -- no script, no
+     empty tag.
+
+     import.meta.env.PROD gates this to the real `astro build` output
+     only -- every deploy workflow in this repo runs exactly that command
+     (see .github/workflows/*deploy.yml), so production is unaffected;
+     `astro dev` has PROD=false, so a local dev session never sends a hit.
+
+     Consent-gated exactly like the AdSense script just above, for the
+     same reason: this IS a tracking script, and privacy.astro currently
+     promises "We don't otherwise run analytics or tracking scripts" --
+     updated alongside this change to say GA4 is used, gated behind the
+     same cookie banner, so that promise stays true rather than becoming
+     false the moment this ships. Shares AdSlot.astro's bvConsent/
+     bv:consent mechanism (not a new one), and its own __bvGaLoaded guard
+     so a page can never double-inject gtag.js. The gtag calls themselves
+     are Google's unmodified standard snippet (gtag('js', ...) +
+     gtag('config', ID)) -- only the LOADING is deferred to consent,
+     identical to the AdSense block's own script-element-on-accept
+     pattern, not a change to the tag itself. */
+  <script is:inline data-ga4-id={siteConfig.ga4MeasurementId}>
+    (function () {
+      var ID = document.currentScript.dataset.ga4Id;
+      function load() {
+        if (window.__bvGaLoaded) return;
+        window.__bvGaLoaded = true;
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(ID);
+        document.head.appendChild(s);
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { window.dataLayer.push(arguments); }
+        window.gtag = gtag;
+        gtag('js', new Date());
+        gtag('config', ID);
+      }
+      if (window.bvConsent === 'accepted') {
+        load();
+      } else {
+        window.addEventListener('bv:consent', function (e) {
+          if (e.detail && e.detail.choice === 'accepted') load();
+        }, { once: true });
+      }
+    })();
+  </script>
+)}
+
 <style is:global>
 :root {
   /* Sitewide presentation-layer pass: retuned to a warmer, quieter neutral
