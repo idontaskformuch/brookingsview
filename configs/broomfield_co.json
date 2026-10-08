@@ -114,16 +114,34 @@
       "_notes": "Serves Broomfield High School ('Eagles'). CONFIRMED DEAD END 2026-08-27 (direct verification): bvsd.org itself is NOT blocked (unlike Adams 12) and genuinely runs Finalsite -- same fsBoard/data-post-id structure school_alerts_v1.py already parses for MVUSD, robots.txt has the identical Allow: /fs/pages/news pattern. But the general news board (board 38) is old/general district news, not closures, and the dedicated /departments/operational-services/weather-closures page (found via bvsd.org/weather's redirect) is a STATIC policy/procedure page, not a live feed -- it just links out to 'Download the BVSD App' (Apptegy) and SchoolMessenger for the actual live status. No embedded widget, iframe, or JSON endpoint found carrying real-time closure state anywhere on the page. The live status genuinely only exists inside Apptegy's mobile app/push notifications, which has no public web feed. Stays disabled -- this is a real platform gap, not an unfound URL."
     },
     "events": {
-      "type": "webtrac",
-      "enabled": false,
-      "base_url": "https://cobroomfieldweb.myvscloud.com/webtrac/web/",
-      "public_program_guide": "https://broomfield.org/ProgramGuide",
+      "type": "multi",
+      "enabled": true,
+      "sources": [
+        {
+          "name": "webtrac",
+          "kind": "blocked",
+          "url": "https://cobroomfieldweb.myvscloud.com/webtrac/web/",
+          "_note": "Broomfield's own recreation/library calendar (Vermont Systems WebTrac, city-branded 'B-REx'), public_program_guide https://broomfield.org/ProgramGuide. CONFIRMED live 2026-08-26, re-UPPDATERAD 2026-09-04 (Fas 3): the whole myvscloud.com platform (both cobroomfieldweb.myvscloud.com and the web2.myvscloud.com/wbwsc/... host broomfield.org/ProgramGuide redirects to) answers 403 with 'Cf-Mitigated: challenge' on every path, including /robots.txt itself -- an active Cloudflare Managed Challenge (JS execution required), not a UA-based block. RE-CONFIRMED still 403 on 2026-10-08 (Phase 2, item 2d) -- not stale. Evading an active bot challenge is not a path we take. Only remaining way in is WebTrac's own JSON API (needs the city's Authenticate/Login API key + session ID, unconfirmed whether that's behind the same Cloudflare layer) -- a manual, outside-this-codebase ask, not a coding task."
+        },
+        {
+          "name": "compass",
+          "kind": "blocked",
+          "url": "https://compass.broomfield.org/events",
+          "_note": "NEW dead end, found 2026-10-08 (Phase 2, item 2d): the city's newer library/rec/history program-registration platform (referenced from the 2026 Spring Program Guide), a Drupal site distinct from WebTrac. robots.txt POLICY-blocks any generic crawler: a second 'User-agent: *' group adds 'Disallow: /' for everyone, with only named search-engine/social/ad bots (Googlebot, Bingbot, FacebookExternalHit, etc.) explicitly allowed back in via their own group below it. We are not one of those named bots, so this falls under the generic disallow -- same policy-block class as Brookings' city_parks_rec. Skrapa aldrig, oavsett User-Agent-trick."
+        },
+        {
+          "name": "chamber",
+          "kind": "ical",
+          "url": "https://old-events.bizwest.com/events/category/broomfield/?ical=1",
+          "_note": "Broomfield Chamber of Commerce's own events, organizer andrea.warren@broomfieldchamber.com, found 2026-10-08 (Phase 2, item 2d). Hosted on BizWest's (the regional business journal covering Boulder Valley/Northern Colorado) events platform -- a real The Events Calendar (WordPress/ECPv6-style) export, same pattern as Brookings' chamber/chamber_business sources, well-formed REFRESH-INTERVAL (PT1H, has the T designator) and VTIMEZONE (America/Denver). events.bizwest.com permanently 302-redirects every /events/ path to this old-events. subdomain (X-Robots-Tag: noindex) -- fetches the redirect target directly, not the alias. robots.txt on old-events.bizwest.com is permissive (only GPTBot/Amazonbot disallowed; Crawl-delay: 10 for everyone else, respected via refresh_minutes same as other sources). CAVEATS, owner-approved anyway 2026-10-08: only 1 event in the broomfield category at verification time (EmpowHer, 2026-10-22), and that event's own venue is a Northglenn, CO address, not Broomfield proper -- accepted under the same venue-name-dropping policy already logged for other ICS sources. The noindex + 'old-' subdomain naming suggests a platform migration that could disappear; re-verify this URL still resolves before relying on it if a long gap in scrape_runs shows up."
+        }
+      ],
       "refresh_minutes": 1440,
       "output": {
         "format": "this_week_in_broomfield",
         "voice": "fun-friendly"
       },
-      "_notes": "CONFIRMED live 2026-08-26: Broomfield's recreation/library calendar runs on Vermont Systems WebTrac (city-branded 'B-REx'), confirmed live at cobroomfieldweb.myvscloud.com/webtrac/web/ (search.html, iteminfo.html?Module=AR for activities, Module=FR for facilities). Vermont Systems documents a real JSON API but it requires an Authenticate/Login call with an API key + session ID -- not a bare discoverable endpoint the way Tockify's ICS export is for Moreno Valley. UPPDATERAD 2026-09-04 (Fas 3, verifiering av HTML-scrape-fallbacken innan byggstart): premissen 'Public HTML pages are scrapable as a fallback' är INTE LÄNGRE SANN. Hela myvscloud.com-plattformen (bekräftat på både cobroomfieldweb.myvscloud.com och web2.myvscloud.com/wbwsc/cobroomfieldwt.wsc/ -- broomfield.org/ProgramGuide:s egen länk, som redirectar till samma cobroomfieldweb-host) svarar nu 403 med header 'Cf-Mitigated: challenge' på VARJE testad path, inklusive /robots.txt självt -- ett aktivt Cloudflare Managed Challenge (JS-exekvering krävs), inte ett UA-baserat block. Verifierat med både default curl-UA och en riktig Chrome-UA, samt vid upprepat försök (inte en engångsflax). Detta blockerar en vanlig HTTP-baserad scraper helt, oavsett robots.txt-utfall -- att kringgå en aktiv bot-utmaning är inte en väg vi går. enabled:false kvarstår. Enda kvarvarande vägen in är WebTrac API:et (kräver stadens Authenticate/Login-nycklar, obekräftat om detta är samma Cloudflare-lager eller ett separat API-gateway-undantag) -- HTML-scrape-fallbacken är en död väg tills vidare, inte längre 'obyggd' utan faktiskt oframkomlig."
+      "_notes": "Fas 2, punkt 2d (2026-10-08): multi-source events, samma mönster som Brookings/Moreno Valley. WebTrac och compass.broomfield.org är 'blocked' (policy/teknik, se resp. _note) -- körs aldrig men hålls kvar som dokumenterade döda vägar, inte borttagna. 'chamber' (BizWest) är den enda levande källan, låg volym -- noll events är bättre än fel events, så detta stänger INTE behovet av en bredare lokal källa om en sådan någonsin blir nåbar (WebTrac API-nyckel, eller en ny stadsplattform utan robots.txt-blockering)."
     },
     "weather": {
       "type": "api",

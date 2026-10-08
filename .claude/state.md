@@ -1,12 +1,8 @@
 # State
 
-Master spec: HANDOFF_journey_cleanup_events.md -- STILL not on disk, never
-committed (re-confirmed via git log --all this session). "HANDOFF_phase2_
-consolidated.md" (asked for 2026-10-08) also doesn't exist -- doesn't match
-even the master spec's own filename. Owner must supply or re-paste the
-Phase 2 spec (2a-2c, 2f content unknown) before those sub-items can start.
-Step A fully done (GA4 b4621b6/d42e8c3, events-correctness points 1-6) --
-not re-detailed here, see git log; not pushed.
+Current spec: .claude/phase2-spec.md (owner re-pasted 2026-10-08, now on
+disk -- survives /clear). Step A fully done (GA4 b4621b6/d42e8c3,
+events-correctness points 1-6) -- not re-detailed here, see git log.
 
 ## Known residuals (owner aware, logged not dropped)
 3 rows template_fallback; "must" opinion-marker FP risk (36 rejections);
@@ -15,24 +11,28 @@ duplicate-title groups w/o canonical series row; ICS venue-name-dropping
 accepted; local stash "superseded-broomfield-draft" owner's to drop.
 CLAUDE.md rule 7: live-DB writes need owner approval, same as push.
 
-## Phase 2, item 2d (Broomfield event source) -- investigated 2026-10-08, NOT built
-Re-confirmed dead: WebTrac (cobroomfieldweb.myvscloud.com) still 403s
-with Cloudflare challenge today (only entry in data_sources.events,
-enabled:false). NEW dead end found: compass.broomfield.org (city's
-newer library/rec/history program platform) -- robots.txt blocks every
-generic UA via a double "User-agent: *" block (only named search/social/
-ad bots explicitly allowed), same policy-block class as Brookings'
-city_parks_rec; not scraped, per house rule.
-ONE non-blocked candidate found, NOT wired in, awaiting owner decision:
-Broomfield Chamber's calendar on events.bizwest.com permanently 302s
-every /events/ path to old-events.bizwest.com (X-Robots-Tag: noindex,
-permissive robots.txt, real `?ical=1` export, same plugin/pattern as
-Brookings' chamber source). Caveats: only 1 event in /events/category/
-broomfield/ right now (EmpowHer, Oct 22), its own venue is in Northglenn
-CO not Broomfield, and the "old-" noindex subdomain smells like a
-platform migration that could disappear. Thin enough to need an explicit
-go/no-go before building the 'ical' source entry + config wiring.
+## Phase 2, item 2d (Broomfield event source) -- DONE, config wired, NOT scraped live yet
+configs/broomfield_co.json's data_sources.events: type "multi"/enabled
+true, 3 sources. "webtrac" (kind blocked) -- re-confirmed still 403/
+Cloudflare-challenged today, note preserved. "compass" (kind blocked,
+NEW) -- compass.broomfield.org's robots.txt policy-blocks any generic
+UA (double "User-agent: *", only named search/social/ad bots allowed
+back in) -- same class as Brookings' city_parks_rec. "chamber" (kind
+ical, owner-approved despite caveats) -- Broomfield Chamber's calendar,
+real feed at old-events.bizwest.com/events/category/broomfield/?ical=1
+(events.bizwest.com itself just 302s there, noindex'd legacy subdomain).
+Live fetch+parse tested directly (not via runner, so no DB write): 1
+real record parsed clean (EmpowHer, 2026-10-22, venue address in
+Northglenn CO not Broomfield -- accepted, same venue-name-dropping
+policy as other ICS sources). tests/test_town_parity.py + test_event_
+sources.py green (45 passed/2 skipped). NOT yet run through
+scrapers.runner against the live DB -- that INSERTs into live `events`,
+needs owner go-ahead same as any live-DB write (rule 7), and this
+is this config's FIRST-ever live run, not a rerun of prior-approved
+work. Not pushed (broomfield-scrape.yml cron won't see it until pushed).
 
 ## Next
-Get Phase 2 spec from owner (2a-2c/2f unknown). Decide BizWest source
-go/no-go. 2d otherwise blocked as before.
+2d: get owner approval, then run `python -m scrapers.runner --config
+configs/broomfield_co.json --only events` once to confirm a real insert,
+check weekly.py's collect() picks it up next weekly-roundup run. Then
+2a (/events structure) per phase2-spec.md.
