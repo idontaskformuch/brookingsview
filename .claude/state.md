@@ -2,61 +2,76 @@
 
 Current spec: .claude/phase2-spec.md. Step A + 2d/2a/2b/2c pushed
 (through 3afe29c). Farm House Collective `places` write DONE (live DB
-row id 205). 3 pre-2f fixes DONE (d9fd577/50344ae/bf42cf6), NOT
-pushed. Next: push these, then 2f point 4 (research + gap list).
+row id 205). 3 pre-2f fixes DONE+verified all 3 towns (d9fd577/
+50344ae/bf42cf6/646f430/01db31e), NOT pushed, awaiting push approval.
+2f research DONE, NO pages created -- see below. Next: owner reviews
+gap list, decides on the 2 real findings below, then approves what
+(if anything) gets built.
 
-## Pre-2f fix 1/3 -- unknown-locality events no longer disappear (d9fd577)
-classifyEventLocality()='unknown' used to be excluded from BOTH
-in_town and nearby -> silently vanished from /events/ entirely. Counts
-RIGHT NOW (all 3 towns, before this fix would ever have mattered):
-Brookings 0, Moreno Valley 0 (Farm House write already resolved its
-16), Broomfield 0 (no events at all) -- so nothing was actively
-missing today, but the bug was real and data-dependent, not
-hypothetical. New shared lib/events.ts:buildEventSections(): unknown
-items fold into Today/Coming up/Further out by date, NEVER the
-weekend-hero bucket (that header claims "in <Town>", unearned for an
-unconfirmed item) -- same plain rendering, no locality label either
-way. 6 new tests, incl. one proving an unknown item at a weekend-
-window date still lands in nextWeek not weekend. Homepage module
-(buildWeekendSummary) intentionally untouched -- it's a true in-town-
-only "this weekend" claim, not a general counter.
+## 2f research + gap list (2026-10-08) -- NO pages created
+Cross-checked every owner-named search term against the live `places`
+table + direct web/official-site research.
 
-## Pre-2f fix 2/3 -- phase2-spec.md corrected (50344ae)
-"IndexNow and Bing Webmaster already set up" removed (repo-wide search
-found neither). Replaced with: "IndexNow/Crawler Hints: ägaren
-kontrollerar i Cloudflare." No code built for this, per instruction.
+**Broomfield -- 15 of 17 already fully covered, 2 real findings:**
+Quail Creek/Paul Derda+community center/Columbine Meadows/park-and-
+ride (both US 36 stations)/library (Mamie Doud Eisenhower)/recycling
+center/Lac Amora/Northmoor/Bronco/Greenway/municipal court/Depot
+Museum/Bay Aquatics/health+human services -- all exist, real data.
+"280 Spader Way" = Broomfield Community Center's own real address,
+already on that page. "Non-emergency police line" = (303) 438-6400,
+already the police dept page's real phone (confirmed via live web
+search). Neither is a gap; 2f's title/above-fold pass applies to the
+EXISTING pages, nothing new to create.
+FINDING 1: "Midway parks" (plural, as the owner wrote) -- our single
+`midway-park` row's address (Midway Blvd & Kohl St) matches what
+other real sources call "North Midway Park" specifically. A real,
+separately-addressed "South Midway Park" (4th & Garnet St) appears to
+exist with NO row in our table at all. Candidate new facility --
+NOT created, needs direct confirmation against broomfield.org's own
+facility database (not just a secondary source) before adding.
+FINDING 2 (weaker): broomfield.org's own recreation-facilities summary
+page names only "Broadlands East Park" and plain "Midway Park," not a
+"Broadlands West" by that exact name -- our `broadlands-west-park`
+row has its own real, distinct cross-street address (Meadow Mountain
+Rd & Sheridan Blvd) so it's plausibly real, just not independently
+confirmed as a separately-recognized facility yet. Also found (not on
+the owner's list, surfaced by this research): McKay Lake Park, Conoco
+Park, Outlook Park, Broomfield Industrial Park, Country Estates appear
+on broomfield.org with no row in our table -- flagged, not requested,
+not investigated further.
 
-## Pre-2f fix 3/3 -- thin-facility noindex gate (bf42cf6)
-facilities/[slug].astro: noindex when a facility has NONE of address/
-phone/hours (hours_text OR real place_hours rows, either counts).
-astro.config.mjs sitemap mirror is EXACT parity (EXISTS subquery
-against place_hours), not an approximation. Live count right now: 0 of
-35/64/46 facilities (Brookings/Moreno Valley/Broomfield) are thin --
-pure safety net for whatever 2f adds, nothing live changes today.
-Verified: real Brookings build, 105 sitemap URLs unchanged, disjoint
-clean. Moreno Valley/Broomfield full-suite builds in progress as of
-this checkpoint (Moreno Valley flaked once on an unrelated, already-
-documented transient Node ESM "Cannot find module" error -- see
-[[recurring_traffic_layer_project]]'s own note on this exact flake
-class; retried).
+**Moreno Valley:**
+"City Hall incl. 14075 Frederick St" -- our City Hall row (14177
+Frederick St) is independently confirmed correct via official city
+sources; 14075 Frederick St does NOT belong to City Hall anywhere
+official. REAL BUG FOUND INSTEAD: 14075 Frederick St is the address of
+BOTH `conference-recreation-center` AND `moreno-valley-conference-and-
+recreation-center` -- two separate live `places` rows (different
+content_hash, different display name, same real address, same
+verified_date 2026-08-22, neither has phone/hours) for what's almost
+certainly the same real building. A pre-existing duplicate-content bug,
+not something this session introduced. Applying 2f's title pattern to
+BOTH would reinforce the duplication rather than fix it -- needs a
+decision (merge to one slug, keep the better name, 301 the other) before
+2f touches either page. NOT changed (a live-DB delete/merge needs
+owner approval, rule 7).
 
-## Earlier this session (pushed through 3afe29c)
-2d (Broomfield: no clean source, closed). 2a (/events restructure +
-weekend-anchor bugfix + locality text-fallback safety fix). 2b
-(homepage weekend module). 2c (ItemList JSON-LD, dateModified,
-title/H1 -- IndexNow deferred, see fix 2/3 above). Farm House
-Collective `places` row (live DB id 205, Moreno Valley Nearby 0->16).
+**Brookings:** "SDSU athletics" and "county jobs" both already served
+by dedicated content hubs (/jackrabbits/, /jobs/) that aren't
+`places`-table facility pages at all -- outside 2f's literal facility-
+page scope. No facility-table gap. If the owner meant something more
+specific (a county-government jobs page distinct from the general
+Adzuna /jobs/ aggregator), that's a scope question, not a data gap.
 
 ## Known residuals (owner aware, unrelated to this round)
 3 rows template_fallback; "must" opinion-marker FP risk; 44 brookings_sd
 pre_publish_check rejections unroot-caused; 11 duplicate-title groups
 w/o canonical row; CLAUDE.md rule 7 (live-DB writes need approval).
 
-All 3 towns now verified clean (real builds): sitemap unchanged
-(105/134/77), disjoint clean on all three. This round's 3 fixes
-(d9fd577/50344ae/bf42cf6/646f430) fully verified, NOT pushed.
-
 ## Next
-This round's 3 fixes await push approval. Then 2f per phase2-spec.md:
-research real facility sources for the owner's named list (Broomfield/
-Moreno Valley/Brookings) and report a gap list BEFORE creating any page.
+Owner reviews the gap list above and decides: (1) Midway South --
+create or skip; (2) Moreno Valley Conference Center duplicate -- which
+slug to keep; (3) Broadlands West -- treat as confirmed or re-verify
+first. Also: push approval for the 3 pre-2f fixes. Then 2f's actual
+SERP pass (title pattern, address/phone/hours above the fold, JSON-LD)
+on whichever pages are confirmed real.
