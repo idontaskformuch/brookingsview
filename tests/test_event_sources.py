@@ -209,6 +209,39 @@ def test_parse_ical_nulls_suspicious_location_and_description_only():
     assert r["raw_data"]["description"] is None
 
 
+def test_parse_ical_nulls_a_bare_state_code_location():
+    # Events correctness Phase 1 -- confirmed live (Brookings "114th Hobo
+    # Day"): a LOCATION of just "SD" got stored as if it were a real venue
+    # name. Not text corruption (is_suspicious() correctly leaves it alone),
+    # just semantically useless -- no real venue name is ever exactly a US
+    # state/territory abbreviation.
+    raw = _ics(
+        "BEGIN:VEVENT\r\n"
+        "UID:state-code-only\r\n"
+        "SUMMARY:Clean Title\r\n"
+        "DTSTART:20260101T100000Z\r\n"
+        "LOCATION:SD\r\n"
+        "END:VEVENT\r\n"
+    )
+    records = _parse_ical("chamber", raw, "America/Chicago")
+    assert records[0]["venue"] is None
+
+
+def test_parse_ical_keeps_a_short_but_real_venue_name():
+    # Guard against the state-code check being too aggressive -- a short
+    # real venue name must survive untouched.
+    raw = _ics(
+        "BEGIN:VEVENT\r\n"
+        "UID:short-real-venue\r\n"
+        "SUMMARY:Clean Title\r\n"
+        "DTSTART:20260101T100000Z\r\n"
+        "LOCATION:The Pub\r\n"
+        "END:VEVENT\r\n"
+    )
+    records = _parse_ical("chamber", raw, "America/Chicago")
+    assert records[0]["venue"] == "The Pub"
+
+
 def test_parse_ical_skips_event_with_no_title():
     raw = _ics("BEGIN:VEVENT\r\nUID:no-title\r\nDTSTART:20260101T100000Z\r\nEND:VEVENT\r\n")
     assert _parse_ical("library", raw, "America/Chicago") == []

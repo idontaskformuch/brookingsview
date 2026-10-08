@@ -37,6 +37,29 @@ import requests
 from db.db import content_hash
 from scrapers.text_sanity import is_suspicious
 
+# Events correctness Phase 1 (2026-10-08): confirmed live -- a Brookings
+# chamber ICS LOCATION once came through as the bare two-letter string "SD"
+# (the organizer's own calendar platform apparently truncated "Brookings,
+# SD" down to just the state code in its export; the live feed no longer
+# even has a LOCATION for this entry, so the exact upstream cause can't be
+# re-diagnosed, but the symptom -- a bare state code stored as if it were a
+# venue name -- is cheap to catch generically). No real venue name is ever
+# exactly a US state/territory abbreviation, so this is a safe, narrow
+# check: it never flags a legitimate short venue ("Zoom", "The Pub"),
+# only an exact 2-letter match. is_suspicious() (text_sanity.py) is
+# deliberately scoped to character-level corruption (mojibake, replacement
+# chars) -- this is a different, semantic check, so it stays separate
+# rather than being folded into that function.
+_US_STATE_CODES = frozenset("""
+    AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS
+    MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV
+    WI WY DC AS GU MP PR VI
+""".split())
+
+
+def _is_bare_state_code(text: str) -> bool:
+    return text.strip().upper() in _US_STATE_CODES
+
 # See module docstring -- Tockify-exported ICS feeds' X-PUBLISHED-TTL/
 # REFRESH-INTERVAL:P15M is malformed RFC 5545 (missing the "T" duration
 # designator; "P15M" parses as 15 MONTHS, which the icalendar package
@@ -143,6 +166,9 @@ def _parse_ical(source_name: str, ics_bytes: bytes, tzname: str) -> list[dict]:
 
         if is_suspicious(location):
             print(f"    [events:{source_name}] misstänkt text i plats (uid={uid}), nollar fältet")
+            location = None
+        elif location and _is_bare_state_code(location):
+            print(f"    [events:{source_name}] plats är bara en delstatskod (uid={uid}): {location!r}, nollar fältet")
             location = None
         if is_suspicious(description):
             print(f"    [events:{source_name}] misstänkt text i beskrivning (uid={uid}), nollar fältet")
