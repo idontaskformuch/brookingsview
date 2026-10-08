@@ -52,8 +52,11 @@ Collective `places` row (live DB id 205, Moreno Valley Nearby 0->16).
 pre_publish_check rejections unroot-caused; 11 duplicate-title groups
 w/o canonical row; CLAUDE.md rule 7 (live-DB writes need approval).
 
+All 3 towns now verified clean (real builds): sitemap unchanged
+(105/134/77), disjoint clean on all three. This round's 3 fixes
+(d9fd577/50344ae/bf42cf6/646f430) fully verified, NOT pushed.
+
 ## Next
-Confirm Moreno Valley/Broomfield builds clean, then this round's 3
-fixes await push approval. Then 2f per phase2-spec.md: research real
-facility sources for the owner's named list (Broomfield/Moreno Valley/
-Brookings) and report a gap list BEFORE creating any page.
+This round's 3 fixes await push approval. Then 2f per phase2-spec.md:
+research real facility sources for the owner's named list (Broomfield/
+Moreno Valley/Brookings) and report a gap list BEFORE creating any page.
