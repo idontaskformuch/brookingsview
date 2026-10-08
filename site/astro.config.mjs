@@ -425,6 +425,27 @@ async function buildLastmodMap(townId, databaseUrl) {
   `;
   for (const f of facilities) map.set(`/facilities/${f.slug}/`, f.verified_date);
 
+  // /facilities/<slug>/ thin-page mirror (Phase 2, item 2f part 1,
+  // 2026-10-08): mirrors facilities/[slug].astro's own `isThinFacility =
+  // !address && !phone && !hours_text && hours.length === 0`. Not a
+  // simplified approximation like the events-facet mirror above -- the
+  // EXISTS subquery gives exact parity with the real page's structured-
+  // hours check (place_hours rows), no overcounting needed here.
+  const thinFacilities = await sql`
+    SELECT p.slug,
+           (p.address IS NULL OR p.address = '') AS no_address,
+           (p.phone IS NULL OR p.phone = '') AS no_phone,
+           (p.hours_text IS NULL OR p.hours_text = '') AS no_hours_text,
+           NOT EXISTS(SELECT 1 FROM place_hours ph WHERE ph.place_id = p.id) AS no_structured_hours
+      FROM places p
+     WHERE p.town_id = ${townId}
+  `;
+  for (const f of thinFacilities) {
+    if (f.no_address && f.no_phone && f.no_hours_text && f.no_structured_hours) {
+      noindexThinPageUrls.add(`/facilities/${f.slug}/`);
+    }
+  }
+
   // property_sales only exists for Moreno Valley (Riverside County's
   // assessor report doesn't cover South Dakota) -- same naturally-empty-
   // elsewhere pattern as getPropertySaleParcels() in lib/db.ts.

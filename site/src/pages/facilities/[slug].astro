@@ -113,6 +113,18 @@ const showFacilityImage = Boolean(facility.image_path) && !facility.image_needs_
 // loudly instead of shipping a 404 <img src>.
 if (showFacilityImage) assertImageExists(facility.image_path!, facility.slug);
 const canonicalUrl = new URL(`/facilities/${facility.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
+// Phase 2, item 2f, part 1 (2026-10-08, owner-requested, built BEFORE any
+// new facility page so nothing new ships thin by default): a facility page
+// with NONE of address/phone/hours is a bare name-and-description page --
+// nothing a search result could usefully show. `hours` is checked
+// alongside `hours_text` since both represent "do we know hours" (the
+// structured place_hours rows and the older free-text field are two
+// parallel systems mid-migration -- see this file's own comment on
+// `hours`/`emitHoursSchema` above); a facility with either counts as
+// having hours. Noindex only -- the page still builds and still links
+// out, same "thin but real" treatment as a low-word-count story (see
+// lib/noindex.ts), never a 404 or a removed page.
+const isThinFacility = !facility.address && !facility.phone && !facility.hours_text && hours.length === 0;
 // The 'places' cluster's own label is 'Places' (a broader content-category
 // name shared with the weather spoke -- see config/clusters.ts) but the hub
 // it points at here is titled "Facilities", so the generic cluster label
@@ -122,7 +134,7 @@ const canonicalUrl = new URL(`/facilities/${facility.slug}/`, Astro.site ?? site
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('facilities/detail', siteConfig, { label: facility.name, href: canonicalUrl })
   .map((entry) => (entry.label === 'Places' ? { ...entry, label: 'Facilities' } : entry));
 ---
-<BaseLayout title={pageMeta.title} description={description} ogSlug={`facility-${facility.slug}`}>
+<BaseLayout title={pageMeta.title} description={description} ogSlug={`facility-${facility.slug}`} noindex={isThinFacility}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <article class="facility">
     <p class="kind data">{categoryLabel}</p>
