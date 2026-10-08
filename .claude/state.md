@@ -4,15 +4,18 @@ Master spec: HANDOFF_journey_cleanup_events.md -- not on disk, in-context copy.
 Current: Step A (pre-Phase-2 cleanup) COMPLETE. GA4 added out-of-band
 (owner priority, 2026-10-08). Next session starts Phase 2.
 
-## GA4 (b4621b6) -- DONE, all 3 towns, Mediavine Journey verification
+## GA4 (b4621b6, d42e8c3) -- DONE, all 3 towns, Mediavine Journey
 site-config.ts's ga4MeasurementId (Brookings G-0K3RL2H501, Moreno Valley
-G-5KH1S9H8SB, Broomfield G-L7JGXKQVNV); BaseLayout.astro renders it
-consent-gated like the existing AdSense script (same bvConsent mechanism),
-PROD-only. privacy.astro/cookies.astro updated so "we don't run analytics"
-no longer reads false. No CSP exists anywhere -- nothing to change there.
-Verified zero cross-town ID leakage across 3 fully isolated --outDir
-builds (concurrent attempt corrupted via shared .astro/ cache -- redone
-sequentially). Not pushed.
+G-5KH1S9H8SB, Broomfield G-L7JGXKQVNV). OPT-OUT as of d42e8c3 (owner
+changed call from opt-in): loads for every visitor by default, PROD-only;
+reads localStorage directly (not window.bvConsent -- CookieBanner's own
+script runs too late in <body> to matter) to skip loading if already
+declined; a live decline sets Google's own window['ga-disable-ID'] kill
+switch. AdSense stays opt-in/consent-gated, untouched. privacy.astro/
+cookies.astro describe the real opt-out behavior now. No CSP exists
+anywhere. Verified zero cross-town ID leakage (3 isolated --outDir
+builds) and the real shipped script's 4 consent-state behaviors (node vm,
+extracted from built HTML) -- both green. Not pushed.
 
 ## Step A -- all 6 points done
 1-2: meta.when confirmed INERT -- left alone. 3 (e6ba48c): meta.cost/
