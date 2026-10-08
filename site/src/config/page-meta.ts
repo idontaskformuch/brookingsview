@@ -66,9 +66,21 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     titlePattern: '{Town} Projects, Tracked by Meeting | {Site}',
     h1Pattern: 'Active {Town} Projects, Followed Meeting by Meeting',
   },
+  // Phase 2, item 2c (2026-10-08): was 'Things to Do in {Town} This Week' /
+  // '{Town} Events: Today, This Weekend, and Coming Up' -- the phase2 spec
+  // calls for a plain, literal "Events in {Town}" instead, with per-town
+  // tuning against real Bing query data done LATER as its own small change
+  // via TOWN_OVERRIDES (already a general mechanism, see this file's own
+  // module doc and resolvePageMeta() -- no new hook needed, just not used
+  // for this route yet). H1 is "All Events in {Town}," not the bare 3-word
+  // phrase, because of a real build-time gate (src/lib/build-checks.ts's
+  // own assertPageMetaPatternsValid(), MIN_H1_WORDS=4) this caught on a
+  // real build before shipping -- "Events in {Town}" alone is 3 words for
+  // every real town. "All" is the smallest addition that both clears the
+  // gate and stays true to "plain."
   events: {
-    titlePattern: 'Things to Do in {Town} This Week | {Site}',
-    h1Pattern: '{Town} Events: Today, This Weekend, and Coming Up',
+    titlePattern: 'Events in {Town} | {Site}',
+    h1Pattern: 'All Events in {Town}',
     ledeRequirement: 'Name the actual sources (library, city, chamber) and the update cadence.',
   },
   'whats-on': {

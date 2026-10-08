@@ -17,6 +17,8 @@ import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
 import { SECTION_THEME } from '../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+import { buildEventJsonLd } from '../lib/event-jsonld';
+import { storyHref } from '../lib/content-slugs';
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
@@ -185,6 +187,82 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Home', href: '/' },
   { label: 'Events', href: canonicalUrl },
 ];
+
+/**
+ * Phase 2, item 2c: ItemList + an accurate dateModified for /events/ --
+ * same real building blocks the /events/[facet]/ landing pages already use
+ * (lib/event-jsonld.ts:buildEventJsonLd(), never a second copy of the
+ * venue-resolution/eligibility rules), just assembled over THIS page's own
+ * combined display order instead of one filtered facet: weekend hero items
+ * first (day order), then Nearby, then Today/Coming up/Further out -- the
+ * exact order a reader scrolling the real page sees them in, so `position`
+ * means what it says.
+ */
+const allDisplayedItems: FeedItem[] = [
+  ...buckets.weekend,
+  ...nearbyItems.map((l) => l.item),
+  ...buckets.today,
+  ...buckets.nextWeek,
+  ...buckets.later,
+];
+
+function asStoryShape(item: FeedItem) {
+  return item.sourceKind === 'arts' ? artsEventAsStory(item.event) : item.story;
+}
+function displayItemUrl(item: FeedItem): string {
+  return item.sourceKind === 'arts' ? item.event.event_url : new URL(storyHref(item.story.slug), Astro.site ?? siteConfig.siteUrl).href;
+}
+
+const itemListJsonLd = allDisplayedItems.length > 0 ? {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: pageMeta.title,
+  itemListElement: allDisplayedItems.map((item, i) => {
+    const asStory = asStoryShape(item);
+    const itemUrl = displayItemUrl(item);
+    const heroUrl = new URL(asStory.image_path ?? `/og/${asStory.slug}.png`, Astro.site ?? siteConfig.siteUrl).href;
+    const eventJsonLd = buildEventJsonLd(
+      asStory, facilities,
+      { cityName: siteConfig.cityName, stateAbbr: siteConfig.stateAbbr, siteName: siteConfig.siteName, timezone: siteConfig.timezone },
+      itemUrl, heroUrl,
+    );
+    return {
+      '@type': 'ListItem',
+      position: i + 1,
+      url: itemUrl,
+      name: asStory.title,
+      ...(eventJsonLd ? { item: eventJsonLd } : {}),
+    };
+  }),
+} : null;
+
+// Real, not guessed: the most recent REAL `published_at` among everything
+// shown -- the same field article-jsonld.ts's own per-story dateModified
+// already uses (see that file), just taken as a max across this page's
+// whole displayed set rather than one story. Story-kind items only --
+// arts-kind items' artsEventAsStory() sets `published_at: event.starts_at
+// ?? new Date().toISOString()` (see lib/events.ts), reusing that field to
+// satisfy the Story shape StoryCard/JSON-LD need, NOT a real "last
+// modified" signal -- it's the event's own FUTURE occurrence time. Caught
+// on a real build before shipping: a page with an SDSU event further out
+// than any real story produced a dateModified weeks in the future, which
+// is backwards. Falls back to null (omit the WebPage block) on the one
+// edge case where every displayed item is arts-kind -- no real signal
+// exists then, never guessed.
+const realPublishedDates = allDisplayedItems
+  .filter((item): item is Extract<FeedItem, { sourceKind: 'story' }> => item.sourceKind === 'story')
+  .map((item) => item.story.published_at);
+const dateModified = realPublishedDates.length > 0
+  ? realPublishedDates.reduce((max, p) => (p > max ? p : max))
+  : null;
+
+const webPageJsonLd = dateModified ? {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: pageMeta.title,
+  url: canonicalUrl,
+  dateModified,
+} : null;
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-events"
   description={`What's on this weekend in ${siteConfig.cityName}, ${siteConfig.stateName} — library programs, city events and community happenings.`}
@@ -300,6 +378,14 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   <ClusterNav clusterLabel="What's happening" items={clusterNavItems} />
 
   <RelatedContent pageType="events" />
+
+  {itemListJsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
+  )}
+
+  {webPageJsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(webPageJsonLd)} />
+  )}
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
