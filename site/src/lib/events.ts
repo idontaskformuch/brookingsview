@@ -104,7 +104,17 @@ export function todayUtcMidnight(timezone: string): Date {
   return utcMidnight(localDateParts(new Date(), timezone));
 }
 
-function dayIndex(occursAt: string, today: Date, timezone: string): number {
+/** How many LOCAL calendar days after `today` (see todayUtcMidnight()) an
+ *  item's occurs_at falls -- 0 is today, 1 is tomorrow, negative is in the
+ *  past. Exported (Events correctness Phase 1, 2026-10-07): index.astro's
+ *  homepage Today/This-week/Later story-river partition used to hand-roll
+ *  this same day-bucketing with `new Date().setHours(0,0,0,0)`, which reads
+ *  the BUILD MACHINE's local time (always UTC in CI/Cloudflare, never the
+ *  town's own zone) -- exactly the bug class this file's own docstring
+ *  already warns about, and it shifted evening events into the wrong
+ *  bucket because this one call site was never routed through the
+ *  timezone-correct primitive the rest of this file already uses. */
+export function dayIndex(occursAt: string, today: Date, timezone: string): number {
   const eventDay = utcMidnight(localDateParts(new Date(occursAt), timezone));
   return Math.round((eventDay.getTime() - today.getTime()) / 86_400_000);
 }

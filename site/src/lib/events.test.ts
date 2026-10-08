@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildEventFeed, isToday, isThisWeekend, isTonight, isTomorrow, selectTodayBucket,
   isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent, findCrossSourceMatch,
-  todayUtcMidnight, utcMidnight, localDateParts, artsEventAsStory,
+  todayUtcMidnight, utcMidnight, localDateParts, artsEventAsStory, dayIndex,
   EVENT_SOURCES,
   type FeedItem, type EventSourceConfig,
 } from './events';
@@ -155,6 +155,111 @@ describe('date bucketing (timezone-correct, per the Aug-4 weekend-off-by-one reg
   it('todayUtcMidnight runs without throwing for both site timezones', () => {
     expect(today instanceof Date).toBe(true);
     expect(todayUtcMidnight('America/Los_Angeles') instanceof Date).toBe(true);
+  });
+});
+
+describe('dayIndex bucketing -- all three real site timezones (Events correctness Phase 1, 2026-10-07)', () => {
+  // index.astro's homepage Today/This-week/Later story river used to bucket
+  // via `new Date().setHours(0,0,0,0)` -- the BUILD MACHINE's local time
+  // (always UTC in CI/Cloudflare, never the town's own zone). All three
+  // real site timezones are west of UTC, so an evening local event rolled
+  // into the next UTC calendar day and silently fell out of "Today." The
+  // fix routes index.astro through this same dayIndex() (exported for
+  // exactly that reason) rather than a second hand-rolled copy, so these
+  // cases exercise the one shared primitive directly instead of only one
+  // of its existing callers (isToday/isTonight/etc., tested above).
+  //
+  // Every occurs_at below is a real local-wall-clock-to-UTC conversion for
+  // the stated IANA zone (cross-checked against Intl.DateTimeFormat, not
+  // hand-computed), covering Brookings (America/Chicago), Moreno Valley
+  // (America/Los_Angeles) and Broomfield (America/Denver) -- the three
+  // actual site timezones, per the handoff's explicit requirement.
+
+  describe('evening events land on today, not tomorrow', () => {
+    const today = utcMidnight({ y: 2026, m: 8, d: 4 }); // an ordinary Tuesday, no DST nearby
+
+    it.each([
+      ['America/Chicago', '18:00', '2026-08-04T23:00:00.000Z'],
+      ['America/Chicago', '21:00', '2026-08-05T02:00:00.000Z'],
+      ['America/Chicago', '23:30', '2026-08-05T04:30:00.000Z'],
+      ['America/Los_Angeles', '18:00', '2026-08-05T01:00:00.000Z'],
+      ['America/Los_Angeles', '21:00', '2026-08-05T04:00:00.000Z'],
+      ['America/Los_Angeles', '23:30', '2026-08-05T06:30:00.000Z'],
+      ['America/Denver', '18:00', '2026-08-05T00:00:00.000Z'],
+      ['America/Denver', '21:00', '2026-08-05T03:00:00.000Z'],
+      ['America/Denver', '23:30', '2026-08-05T05:30:00.000Z'],
+    ])('%s %s local -> offset 0 (today)', (tz, _label, occursAt) => {
+      expect(dayIndex(occursAt, today, tz)).toBe(0);
+    });
+  });
+
+  describe('an event just after local midnight lands on tomorrow, not today', () => {
+    const today = utcMidnight({ y: 2026, m: 8, d: 4 });
+
+    it.each([
+      ['America/Chicago', '2026-08-05T05:30:00.000Z'],
+      ['America/Los_Angeles', '2026-08-05T07:30:00.000Z'],
+      ['America/Denver', '2026-08-05T06:30:00.000Z'],
+    ])('%s 00:30 local -> offset 1 (tomorrow)', (tz, occursAt) => {
+      expect(dayIndex(occursAt, today, tz)).toBe(1);
+    });
+  });
+
+  describe('spring-forward DST boundary (2026-03-08) does not shift bucketing', () => {
+    it.each([
+      ['America/Chicago', '2026-03-09T02:00:00.000Z'],
+      ['America/Los_Angeles', '2026-03-09T04:00:00.000Z'],
+      ['America/Denver', '2026-03-09T03:00:00.000Z'],
+    ])('%s: "today" the day before the transition, a 21:00-local event ON the transition day is tomorrow (offset 1)', (tz, occursAt) => {
+      const today = utcMidnight({ y: 2026, m: 3, d: 7 });
+      expect(dayIndex(occursAt, today, tz)).toBe(1);
+    });
+
+    it.each([
+      ['America/Chicago', '2026-03-10T02:00:00.000Z'],
+      ['America/Los_Angeles', '2026-03-10T04:00:00.000Z'],
+      ['America/Denver', '2026-03-10T03:00:00.000Z'],
+    ])('%s: "today" IS the transition day, a 21:00-local event the day after is tomorrow (offset 1)', (tz, occursAt) => {
+      const today = utcMidnight({ y: 2026, m: 3, d: 8 });
+      expect(dayIndex(occursAt, today, tz)).toBe(1);
+    });
+  });
+
+  describe('fall-back DST boundary (2026-11-01) does not shift bucketing', () => {
+    it.each([
+      ['America/Chicago', '2026-11-02T03:00:00.000Z'],
+      ['America/Los_Angeles', '2026-11-02T05:00:00.000Z'],
+      ['America/Denver', '2026-11-02T04:00:00.000Z'],
+    ])('%s: "today" the day before the transition, a 21:00-local event ON the transition day is tomorrow (offset 1)', (tz, occursAt) => {
+      const today = utcMidnight({ y: 2026, m: 10, d: 31 });
+      expect(dayIndex(occursAt, today, tz)).toBe(1);
+    });
+
+    it.each([
+      ['America/Chicago', '2026-11-03T03:00:00.000Z'],
+      ['America/Los_Angeles', '2026-11-03T05:00:00.000Z'],
+      ['America/Denver', '2026-11-03T04:00:00.000Z'],
+    ])('%s: "today" IS the transition day, a 21:00-local event the day after is tomorrow (offset 1)', (tz, occursAt) => {
+      const today = utcMidnight({ y: 2026, m: 11, d: 1 });
+      expect(dayIndex(occursAt, today, tz)).toBe(1);
+    });
+  });
+
+  describe('all-day events (local midnight occurs_at, per scrapers/event_sources.py\'s floating-time rule) stay on their own date', () => {
+    // An all-day iCal VEVENT (DTSTART with no time component) is stored as
+    // local midnight of its date -- see scrapers/event_sources.py's
+    // _to_iso() and tests/test_event_sources.py's
+    // test_parse_ical_all_day_event_uses_local_midnight_not_utc_midnight.
+    // These are that same instant, one per town, confirming the frontend
+    // bucketing side agrees without needing its own special case.
+    it.each([
+      ['America/Chicago', '2026-09-30T05:00:00.000Z'],
+      ['America/Los_Angeles', '2026-09-30T07:00:00.000Z'],
+      ['America/Denver', '2026-09-30T06:00:00.000Z'],
+    ])('%s: an all-day event dated 2026-09-30 buckets as 2026-09-30 (offset 0)', (tz, occursAt) => {
+      const today = utcMidnight({ y: 2026, m: 9, d: 30 });
+      expect(dayIndex(occursAt, today, tz)).toBe(0);
+    });
   });
 });
 

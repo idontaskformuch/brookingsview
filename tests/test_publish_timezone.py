@@ -43,13 +43,36 @@ def test_fmt_time_threads_tz_through():
     assert fmt_time(CROSSING_INSTANT, LOS_ANGELES) == "10:30 PM"
 
 
-def test_fmt_dt_date_part_never_shifts_with_tz():
-    # the DATE half of fmt_dt must stay anchored to the UTC calendar day --
-    # only the clock-time half localizes (see fmt_dt's own docstring on why
-    # meeting_date-style values must never get this treatment at all)
+def test_fmt_dt_localizes_both_date_and_time_when_tz_given():
+    # Events correctness Phase 1 (2026-10-08): this test used to assert the
+    # OPPOSITE -- that the date half stayed pinned to the UTC calendar day
+    # ("Aug 15") while only the clock-time half localized. That was the bug,
+    # not a deliberate rule: CROSSING_INSTANT (2026-08-15 05:30 UTC) is
+    # 2026-08-14 22:30 in Los Angeles, so a reader was shown "Aug 15 ...
+    # 10:30 PM" for an event that, locally, happened on Aug 14 at night --
+    # internally inconsistent, and written straight into published article
+    # text via _localize_datetime_fields() and into group_recurring_events()'s
+    # series_dates. meeting_date-style bare-calendar-day values still never
+    # reach this path with a tz at all (build_title() uses its own
+    # _meeting_date_title_part(), never fmt_dt(), for exactly that reason --
+    # see fmt_dt's own docstring).
     la_text = fmt_dt(CROSSING_INSTANT, with_time=True, tz=LOS_ANGELES)
-    assert "Aug 15" in la_text
+    assert "Aug 14" in la_text
+    assert "Aug 15" not in la_text
     assert "10:30 PM" in la_text
+
+
+def test_fmt_dt_localizes_date_the_other_direction_too():
+    # Same bug, opposite crossing direction: a 23:30 Central event is
+    # 04:30 UTC the NEXT calendar day, and the original live symptom this
+    # whole phase traces back to ("evening events show a date one day
+    # off") -- a late-evening local event must still show its OWN local
+    # date, not the later UTC one.
+    instant = datetime(2026, 10, 2, 4, 30, tzinfo=timezone.utc)  # Oct 1, 23:30 Central
+    text = fmt_dt(instant, with_time=True, tz=CHICAGO)
+    assert "Oct 1" in text
+    assert "Oct 2" not in text
+    assert "11:30 PM" in text
 
 
 def test_group_event_slots_groups_by_localized_day_not_utc_day():

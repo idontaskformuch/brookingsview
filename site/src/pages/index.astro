@@ -42,7 +42,7 @@ import {
 } from '../lib/db';
 import { selectWorthKnowing, selectFrontPageRhythm } from '../lib/homepage-curation';
 import {
-  todayUtcMidnight, buildEventFeed, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent,
+  todayUtcMidnight, buildEventFeed, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent, dayIndex,
 } from '../lib/events';
 import { resolveQuickLinks, type QuickLinkContext } from '../lib/quick-links';
 import { siteConfig } from '../lib/site-config';
@@ -222,16 +222,26 @@ const frontPageImageBySlug = new Map(frontPageImages.map(({ item, image }) => [i
 
 const rest = upcoming.filter((s) => !usedSlugs.has(s.slug));
 
-const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-const endOfDay = new Date(startOfDay); endOfDay.setDate(endOfDay.getDate() + 1);
-const weekEnd = new Date(startOfDay); weekEnd.setDate(weekEnd.getDate() + 8);
+// Events correctness Phase 1 (2026-10-07): this used to bucket via
+// `new Date().setHours(0,0,0,0)`, which reads the BUILD MACHINE's local
+// time (always UTC in CI/Cloudflare) instead of siteConfig.timezone -- an
+// evening local event, once past its own town's sunset, is already
+// tomorrow in UTC and silently fell into "This week" instead of "Today."
+// dayOffsetOf() reuses the same timezone-correct day-bucketing primitive
+// quickLinkDate above (and events.astro/the /events/[facet] pages) already
+// use, so this river can't drift from what those pages consider "today"
+// again.
+const dayOffsetOf = (iso: string | null) => (iso === null ? null : dayIndex(iso, quickLinkDate, siteConfig.timezone));
 
-const within = (iso: string | null, from: Date, to: Date) =>
-  !!iso && new Date(iso) >= from && new Date(iso) < to;
-
-const todayStories = rest.filter((s) => within(s.occurs_at, startOfDay, endOfDay));
-const weekStories = rest.filter((s) => within(s.occurs_at, endOfDay, weekEnd));
-const laterStories = rest.filter((s) => s.occurs_at && new Date(s.occurs_at) >= weekEnd);
+const todayStories = rest.filter((s) => dayOffsetOf(s.occurs_at) === 0);
+const weekStories = rest.filter((s) => {
+  const offset = dayOffsetOf(s.occurs_at);
+  return offset !== null && offset >= 1 && offset <= 7;
+});
+const laterStories = rest.filter((s) => {
+  const offset = dayOffsetOf(s.occurs_at);
+  return offset !== null && offset >= 8;
+});
 
 const nextGame = games[0] ?? null;
 
@@ -264,7 +274,7 @@ const timelyEventTeaser = isEventTeaserWeekend
 // does (traffic, parking, foot draw), and the rail widget already covers
 // "next game" regardless of home/away.
 const todayHomeGame = isBrookings && nextGame && nextGame.home_away === 'home'
-  && within(nextGame.starts_at, startOfDay, endOfDay) ? nextGame : null;
+  && dayOffsetOf(nextGame.starts_at) === 0 ? nextGame : null;
 
 // 2026-10-01: getLatestEmployerRatings() (rating-derived) is no longer
 // fetched here at all -- the homepage card only ever needed it for the

@@ -127,14 +127,28 @@ def strip_slot(title: str) -> tuple[str, bool]:
 def fmt_dt(value, with_time: bool = False, tz: ZoneInfo | None = None) -> str | None:
     """Formatera datum läsbart. Tar datetime ELLER sträng.
 
-    `tz`: appliceras ENDAST på klockslags-delen (via _fmt_hour_min), aldrig
-    på datumdelen. meeting_date lagras som en ren kalenderdag (midnatt UTC,
-    inget tillförlitligt klockslag -- se moduldocstringen för build_title())
-    -- att tidszonskonvertera DATUMET skulle återinföra exakt den
-    "midnatt UTC blir föregående dag lokalt"-bugg som redan är löst på
-    frontend-sidan (site/src/lib/db.ts:formatCalendarDate). Riktiga
-    tidsstämplar (events/alerts) ska alltid skicka in ett `tz` när
-    with_time=True.
+    `tz`, om angett, lokaliserar HELA instanten -- både datum- och
+    klockslagsdelen -- INNAN den skrivs ut. meeting_date (ren kalenderdag,
+    midnatt UTC, inget tillförlitligt klockslag) ska ALDRIG skickas hit med
+    ett tz -- build_title() använder sin egen _meeting_date_title_part() för
+    det, aldrig fmt_dt(), exakt för att undvika att tidszonskonvertera ett
+    datum som inte har en riktig klocka bakom sig (se den funktionens egen
+    kommentar). Riktiga tidsstämplar (events/alerts) ska alltid skicka in
+    ett `tz` när with_time=True -- och FÅR DÅ en korrekt lokal kalenderdag,
+    inte bara en korrekt klocka.
+
+    Events correctness Phase 1-fix (2026-10-08): date_part lästes tidigare
+    av dt.day/.year/.strftime() rakt på det UTC-medvetna datetime-objektet
+    ÄVEN när ett tz angavs -- bara _fmt_hour_min() konverterade. Ett sent
+    kvällsevent som passerar UTC-midnatt (23:30 Central = 04:30 UTC NÄSTA
+    dag) skrevs då ut som t.ex. "Fri, Oct 2, 2026 at 11:30 PM" i stället för
+    "Thu, Oct 1, 2026 at 11:30 PM" -- rätt klockslag, fel datum, i BÅDE
+    group_recurring_events()'s series_dates-lista och i
+    _localize_datetime_fields()'s underlag till AI-prompten, så en felaktig
+    dag kunde skrivas rakt in i publicerad artikeltext, inte bara visas fel
+    på en listningssida. Bekräftat: de två enda ställena som skickar in ett
+    tz (grep "fmt_dt(" i den här filen) är båda riktiga tidsstämplar, aldrig
+    meeting_date, så detta är säkert att fixa utan att röra det fallet.
     """
     if value is None:
         return None
@@ -149,7 +163,8 @@ def fmt_dt(value, with_time: bool = False, tz: ZoneInfo | None = None) -> str | 
     # %-d/%-I (icke-nollutfyllda dag/timme) är Linux/macOS-specifika strftime-flaggor
     # -- kraschar med ValueError på Windows. Bygg strängen manuellt istället, så det
     # fungerar lika bra lokalt (Windows) som i GitHub Actions (ubuntu-latest).
-    date_part = f"{dt.strftime('%a, %b')} {dt.day}, {dt.year}"
+    local_dt = dt.astimezone(tz) if tz is not None else dt
+    date_part = f"{local_dt.strftime('%a, %b')} {local_dt.day}, {local_dt.year}"
     return f"{date_part} at {_fmt_hour_min(dt, tz)}" if with_time else date_part
 
 
