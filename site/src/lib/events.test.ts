@@ -4,7 +4,7 @@ import {
   isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent, isOutdoorEvent, classifyEventLocality,
   findCrossSourceMatch, eventPriceAgeLine,
   todayUtcMidnight, utcMidnight, localDateParts, artsEventAsStory, dayIndex, weekendAnchorOffset,
-  buildWeekendSummary,
+  buildWeekendSummary, buildEventSections,
   EVENT_SOURCES,
   type FeedItem, type EventSourceConfig,
 } from './events';
@@ -368,6 +368,61 @@ describe('weekendAnchorOffset -- all seven weekdays (pure calendar math, timezon
     const today = utcMidnight(dates[_weekday]);
     expect(today.getUTCDay()).toBe(_weekday);
     expect(weekendAnchorOffset(today)).toBe(expectedAnchor);
+  });
+});
+
+describe('buildEventSections (owner fix, 2026-10-08: an unknown-locality item must never disappear)', () => {
+  const timezone = 'America/Chicago';
+  // A real Thursday (2026-10-08) -- anchor offset 1 (tomorrow, Friday,
+  // starts the weekend window).
+  const today = utcMidnight({ y: 2026, m: 10, d: 8 });
+
+  function atOffsetDays(n: number): string {
+    return new Date(today.getTime() + n * 86_400_000 + 18 * 3_600_000).toISOString();
+  }
+
+  it('an in_town item inside the weekend window lands in `weekend`', () => {
+    const item = storyItem(story({ title: 'In town weekend thing', occurs_at: atOffsetDays(2) })); // Saturday
+    const sections = buildEventSections([item], [], today, timezone);
+    expect(sections.weekend).toEqual([item]);
+    expect(sections.today).toEqual([]);
+    expect(sections.nextWeek).toEqual([]);
+    expect(sections.later).toEqual([]);
+  });
+
+  it('an unknown-locality item at the SAME weekend-window date never lands in `weekend` -- lands in nextWeek instead, but is never dropped', () => {
+    const item = storyItem(story({ title: 'Unknown-locality weekend-dated thing', occurs_at: atOffsetDays(2) })); // Saturday
+    const sections = buildEventSections([], [item], today, timezone);
+    expect(sections.weekend).toEqual([]);
+    const allSections = [...sections.today, ...sections.nextWeek, ...sections.later];
+    expect(allSections).toContainEqual(item);
+    expect(sections.nextWeek).toEqual([item]);
+  });
+
+  it('an unknown-locality item dated today lands in `today`, not dropped', () => {
+    const item = storyItem(story({ title: 'Unknown today', occurs_at: atOffsetDays(0) }));
+    const sections = buildEventSections([], [item], today, timezone);
+    expect(sections.today).toEqual([item]);
+  });
+
+  it('an unknown-locality item dated far out lands in `later`, not dropped', () => {
+    const item = storyItem(story({ title: 'Unknown far out', occurs_at: atOffsetDays(30) }));
+    const sections = buildEventSections([], [item], today, timezone);
+    expect(sections.later).toEqual([item]);
+  });
+
+  it('an undated unknown-locality item lands in `later`, not dropped', () => {
+    const item = storyItem(story({ title: 'Undated unknown', occurs_at: null }));
+    const sections = buildEventSections([], [item], today, timezone);
+    expect(sections.later).toEqual([item]);
+  });
+
+  it('mixes in_town and unknown items into the same sections without losing either', () => {
+    const inTown = storyItem(story({ title: 'In town today', occurs_at: atOffsetDays(0) }));
+    const unknown = storyItem(story({ title: 'Unknown today', occurs_at: atOffsetDays(0) }));
+    const sections = buildEventSections([inTown], [unknown], today, timezone);
+    expect(sections.today).toEqual(expect.arrayContaining([inTown, unknown]));
+    expect(sections.today).toHaveLength(2);
   });
 });
 

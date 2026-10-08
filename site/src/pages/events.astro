@@ -8,7 +8,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getUpcomingStories, getPastStories, getUpcomingArtsEvents, getRegionalSports, getFacilities, calendarDateParts } from '../lib/db';
 import {
   buildEventFeed, artsEventAsStory, withAttribution, localDateParts, utcMidnight, classifyEventLocality,
-  weekendAnchorOffset,
+  weekendAnchorOffset, buildEventSections,
   type FeedItem,
 } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
@@ -87,6 +87,13 @@ const localized = items.map((item) => ({
 }));
 const inTownItems: FeedItem[] = localized.filter((l) => l.zone === 'in_town').map((l) => l.item);
 const nearbyItems = localized.filter((l) => l.zone === 'nearby');
+// Owner fix, 2026-10-08: an "unknown"-locality item (classifyEventLocality()
+// couldn't confirm in-town OR nearby) used to just be excluded here --
+// neither in `inTownItems` nor `nearbyItems`, so it silently vanished from
+// the whole page. See buildEventSections()'s own doc comment (lib/
+// events.ts) for how these are now folded into Today/Coming up/Further
+// out instead, unlabeled, never the weekend hero.
+const unknownItems: FeedItem[] = localized.filter((l) => l.zone === 'unknown').map((l) => l.item);
 
 // Owner request, 2026-10-08 (post-2a verification): visibility into how
 // much of this page's locality split rests on a real resolved coordinate
@@ -143,15 +150,12 @@ const todaysHomeGame = regionalGames.find((g) => {
 // breakdown this fixes.
 const daysToFriday = weekendAnchorOffset(today);
 
-const buckets = { today: [] as FeedItem[], weekend: [] as FeedItem[], nextWeek: [] as FeedItem[], later: [] as FeedItem[] };
-for (const item of inTownItems) {
-  if (!item.occurs_at) { buckets.later.push(item); continue; }
-  const offset = dayIndex(item.occurs_at, today);
-  if (offset <= 0) buckets.today.push(item);
-  else if (offset >= daysToFriday && offset <= daysToFriday + 2) buckets.weekend.push(item);
-  else if (offset < 14) buckets.nextWeek.push(item);
-  else buckets.later.push(item);
-}
+// Owner fix, 2026-10-08: now the shared buildEventSections() primitive
+// (lib/events.ts) instead of a page-local loop -- folds `unknownItems` in
+// (today/nextWeek/later only, never `weekend`) so an event with no
+// confirmed locality still shows up somewhere rather than disappearing.
+// See that function's own doc comment for the full reasoning.
+const buckets = buildEventSections(inTownItems, unknownItems, today, siteConfig.timezone);
 
 /**
  * Phase 2, item 2a: "This weekend in <Town>" split Fri/Sat/Sun with counts

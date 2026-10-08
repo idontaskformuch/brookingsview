@@ -200,6 +200,61 @@ export function isThisWeekend(item: FeedItem, today: Date, timezone: string): bo
   return offset >= anchor && offset <= anchor + 2;
 }
 
+export interface EventSections {
+  today: FeedItem[];
+  weekend: FeedItem[];
+  nextWeek: FeedItem[];
+  later: FeedItem[];
+}
+
+/**
+ * Partitions /events/'s own Today / This-weekend / Coming-up / Further-out
+ * sections -- the one shared primitive events.astro's bucket loop uses, so
+ * this logic lives in exactly one place (same discipline as
+ * weekendAnchorOffset()/buildWeekendSummary() above).
+ *
+ * Owner fix, 2026-10-08: an "unknown"-locality item (classifyEventLocality()
+ * couldn't confirm in-town or nearby, e.g. an unresolved venue naming a
+ * different real place with no coordinates to check the distance cap
+ * against) used to be silently dropped from the page entirely -- excluded
+ * from `inTownItems` AND never nearby, so it just vanished from every
+ * section. Real data had 0 of these at the moment this was caught, but
+ * it's a latent, data-dependent bug, not a hypothetical one (see
+ * [[events_correctness_phase2_project]]).
+ *
+ * `unknownItems` are folded into today/nextWeek/later by date alone,
+ * DELIBERATELY never into `weekend`: that bucket feeds a header that
+ * explicitly reads "This weekend in <Town>" (both the /events/ hero and
+ * the homepage module), a locality claim an unknown item hasn't earned.
+ * This guarantees it still shows up SOMEWHERE (today/coming up/further
+ * out, unlabeled -- no in_town/nearby badge is ever rendered for these,
+ * since they go through the same plain StoryCard rendering those sections
+ * already use) rather than disappearing, without ever mislabeling it.
+ */
+export function buildEventSections(
+  inTownItems: FeedItem[], unknownItems: FeedItem[], today: Date, timezone: string,
+): EventSections {
+  const anchor = weekendAnchorOffset(today);
+  const sections: EventSections = { today: [], weekend: [], nextWeek: [], later: [] };
+
+  for (const item of inTownItems) {
+    if (!item.occurs_at) { sections.later.push(item); continue; }
+    const offset = dayIndex(item.occurs_at, today, timezone);
+    if (offset <= 0) sections.today.push(item);
+    else if (offset >= anchor && offset <= anchor + 2) sections.weekend.push(item);
+    else if (offset < 14) sections.nextWeek.push(item);
+    else sections.later.push(item);
+  }
+  for (const item of unknownItems) {
+    if (!item.occurs_at) { sections.later.push(item); continue; }
+    const offset = dayIndex(item.occurs_at, today, timezone);
+    if (offset <= 0) sections.today.push(item);
+    else if (offset < 14) sections.nextWeek.push(item);
+    else sections.later.push(item);
+  }
+  return sections;
+}
+
 export interface WeekendSummary {
   counts: { friday: number; saturday: number; sunday: number };
   /** Date-sorted (buildEventFeed's own output already is), capped to
