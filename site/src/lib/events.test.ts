@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildEventFeed, isToday, isThisWeekend, isTonight, isTomorrow, selectTodayBucket,
-  isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent, findCrossSourceMatch,
+  isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent, findCrossSourceMatch, eventPriceAgeLine,
   todayUtcMidnight, utcMidnight, localDateParts, artsEventAsStory, dayIndex,
   EVENT_SOURCES,
   type FeedItem, type EventSourceConfig,
@@ -421,6 +421,45 @@ describe('isFreeEvent', () => {
       body: 'Admission is $5 at the door, tickets required.',
     }));
     expect(isFreeEvent(item, facilities)).toBe(false);
+  });
+
+  // Events correctness Step A, point 3: body can no longer carry a dollar
+  // amount at all (guardrails.py's check_no_date_time_price_age_claims),
+  // so meta.cost is now the only place that signal can still appear.
+  it('the paid-language safety net also excludes a library event whose meta.cost names a price', () => {
+    const item = storyItem(story({
+      venue_raw: 'Brookings Public Library',
+      body: 'A hands-on workshop for all skill levels.',
+      meta: { cost: '$5 suggested donation' },
+    }));
+    expect(isFreeEvent(item, facilities)).toBe(false);
+  });
+
+  it('stays true for a library event whose meta.cost explicitly says free', () => {
+    const item = storyItem(story({
+      venue_raw: 'Brookings Public Library',
+      body: 'A hands-on workshop for all skill levels.',
+      meta: { cost: 'Free' },
+    }));
+    expect(isFreeEvent(item, facilities)).toBe(true);
+  });
+});
+
+describe('eventPriceAgeLine', () => {
+  it('is null when meta is absent', () => {
+    expect(eventPriceAgeLine(story({ venue_raw: 'Dakota Nature Park' }))).toBeNull();
+  });
+
+  it('is null when meta has neither cost nor audience', () => {
+    expect(eventPriceAgeLine(story({ meta: { venue: 'Dakota Nature Park' } }))).toBeNull();
+  });
+
+  it('renders cost alone', () => {
+    expect(eventPriceAgeLine(story({ meta: { cost: 'Free' } }))).toBe('Free');
+  });
+
+  it('joins cost and audience when both are present', () => {
+    expect(eventPriceAgeLine(story({ meta: { cost: '$10', audience: 'Ages 21+' } }))).toBe('$10 · Ages 21+');
   });
 });
 

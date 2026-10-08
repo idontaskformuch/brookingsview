@@ -301,7 +301,17 @@ export function withAttribution(body: string, item: FeedItem, alsoListedBy: Map<
  *  includes. A false-positive exclusion just omits a genuinely free event
  *  from this one page (harmless: it still has its own /s/[slug] page and
  *  shows on /events); a false-positive inclusion would mislabel a paid
- *  event as free, the one failure mode this facet must never produce. */
+ *  event as free, the one failure mode this facet must never produce.
+ *
+ *  Events correctness Step A, point 3 (2026-10-08): the `\$\d` branch can
+ *  no longer fire against `body` -- guardrails.py's
+ *  check_no_date_time_price_age_claims now blanket-bans a dollar amount
+ *  from event prose, the exact text this branch used to catch. Checked
+ *  against `meta.cost` too below (that's the one field the ban doesn't
+ *  touch, since it's a structured extraction, not prose) so a real paid
+ *  amount still excludes the event; the textual phrases ("admission fee",
+ *  "tickets required", ...) still work against `body` since the guardrail
+ *  never covered them. */
 const PAID_LANGUAGE_RE = /\$\d|admission fee|cover charge|tickets?\s+(required|on sale)|purchase\s+a\s+ticket/i;
 
 // Exported so events/[facet].astro's 'free' facet can pick the SAME
@@ -312,26 +322,37 @@ const PAID_LANGUAGE_RE = /\$\d|admission fee|cover charge|tickets?\s+(required|o
 export const FREE_VENUE_CATEGORIES = new Set(['library', 'park', 'community_center']);
 
 /**
- * Events genuinely knowable as free without guessing. Neither `events` nor
- * `stories` carries a structured cost/price field anywhere in the pipeline
- * (confirmed against scrapers/parsers/events.py and ai_pipeline/publish.py),
- * and the raw feed source ('library' / 'chamber' / 'city_events') that WOULD
- * distinguish a reliably-free civic calendar from a mixed commercial one is
- * never persisted past the `events` table -- it doesn't survive onto the
- * published `stories` row publish.py writes. Venue CATEGORY is the one
- * signal that IS reliably known at render time: a town-run library, park, or
- * community center essentially never charges for its own public programs.
- * SDSU arts events are always excluded here -- they don't resolve against
- * the town's own `facilities` registry (campus venues aren't in it), so
- * free-ness there is genuinely unknown, and per the brief's own rule an
- * uncertain event is omitted, never guessed onto this page.
+ * Events genuinely knowable as free without guessing. `stories.meta.cost`
+ * (db/migrations/027_story_meta.sql) is a structured per-event extraction
+ * when the source's own text named a price/cost, but it's the EXCEPTION
+ * (NULL for most rows: most sources never mention a price either way, and
+ * no row published before 027 has it at all) -- Venue CATEGORY stays the
+ * PRIMARY signal, same as before: a town-run library, park, or community
+ * center essentially never charges for its own public programs. SDSU arts
+ * events are always excluded here -- they don't resolve against the town's
+ * own `facilities` registry (campus venues aren't in it), so free-ness
+ * there is genuinely unknown, and per the brief's own rule an uncertain
+ * event is omitted, never guessed onto this page.
  */
 export function isFreeEvent(item: FeedItem, facilities: Facility[]): boolean {
   if (item.sourceKind !== 'story') return false;
   const facility = resolveVenue(buildVenueIndex(facilities), item.story.venue_raw);
   if (!facility || !FREE_VENUE_CATEGORIES.has(facility.category)) return false;
   if (PAID_LANGUAGE_RE.test(item.story.body)) return false;
+  if (item.story.meta?.cost && PAID_LANGUAGE_RE.test(item.story.meta.cost)) return false;
   return true;
+}
+
+/** Events correctness Step A, point 3: the compact "Free"/price + age line
+ *  for event cards and the detail page -- rendered only from the
+ *  structured `meta` fields, never from prose. `null` (never an empty
+ *  string) when the source gave neither, so callers can gate rendering on
+ *  it directly without a second emptiness check. Meeting/alert rows and
+ *  every row published before 027_story_meta.sql have `meta` null -- same
+ *  "render nothing" rule. */
+export function eventPriceAgeLine(story: Story): string | null {
+  const parts = [story.meta?.cost, story.meta?.audience].filter((v): v is string => Boolean(v));
+  return parts.length > 0 ? parts.join(' · ') : null;
 }
 
 /** The most reliable facet: venue resolution is already built (the venue

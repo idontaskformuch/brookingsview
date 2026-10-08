@@ -204,6 +204,31 @@ export interface Story {
   // hash-pick when this is null, so a story is never left imageless while
   // waiting. Optional for the same reason venue_raw is.
   category_image_index?: number | null;
+  // Tone-v2 structured extraction (db/migrations/027_story_meta.sql) --
+  // meeting/event/alert rows only, NULL for every content-track story and
+  // every row published before this shipped (forward-only, no retroactive
+  // backfill, same convention as image_alt). Events correctness Step A,
+  // point 3 (2026-10-08): `cost`/`audience` are the two keys actually
+  // rendered (price/age-from-prose was banned, see guardrails.py's
+  // check_no_date_time_price_age_claims docstring) -- the rest of the shape
+  // exists because format_prompt.py's model output includes it, but
+  // nothing reads it yet. Optional for the same reason venue_raw is.
+  meta?: EventMeta | null;
+}
+
+/** See Story.meta's own comment. All keys are free-text model output,
+ *  absent (never a fabricated empty string) when the source had nothing to
+ *  extract -- callers must render nothing for a missing key, never a
+ *  placeholder. */
+export interface EventMeta {
+  venue?: string;
+  address?: string;
+  phone?: string;
+  when?: string;
+  recurrence?: string;
+  audience?: string;
+  cost?: string;
+  registration?: string;
 }
 
 export interface Game {
@@ -324,7 +349,7 @@ export async function getUpcomingStories(
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at, category_image_index, free_teaser
+           venue_raw, is_recurring_series, ends_at, category_image_index, free_teaser, meta
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
@@ -520,7 +545,7 @@ export async function getStoryBySlug(slug: string): Promise<Story | null> {
   const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at, category_image_index
+           venue_raw, is_recurring_series, ends_at, category_image_index, meta
       FROM stories
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
      LIMIT 1
@@ -533,7 +558,7 @@ export async function getAllStories(): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at, category_image_index, superseded_by_slug
+           venue_raw, is_recurring_series, ends_at, category_image_index, superseded_by_slug, meta
       FROM stories
      WHERE town_id = ${TOWN_ID}
      ORDER BY occurs_at DESC NULLS LAST

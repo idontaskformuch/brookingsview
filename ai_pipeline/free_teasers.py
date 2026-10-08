@@ -73,6 +73,13 @@ except ImportError:
 # Mirrors site/src/lib/events.ts's FREE_VENUE_CATEGORIES / PAID_LANGUAGE_RE
 # exactly -- same duplicate-across-layers tradeoff this codebase already
 # makes for OUTLIER_PRICE_FLOOR / normalize_venue(). Keep both in sync.
+#
+# Events correctness Step A, point 3 (2026-10-08): the `\$\d` branch can no
+# longer fire against `body` -- guardrails.py's
+# check_no_date_time_price_age_claims now blanket-bans a dollar amount from
+# event prose. is_free_event() below also checks `meta.get("cost")`, the
+# one field the ban doesn't touch -- see events.ts's isFreeEvent() for the
+# TS-side twin of this same fix.
 FREE_VENUE_CATEGORIES = {"library", "park", "community_center"}
 PAID_LANGUAGE_RE = re.compile(
     r"\$\d|admission fee|cover charge|tickets?\s+(required|on sale)|purchase\s+a\s+ticket",
@@ -86,11 +93,14 @@ MIN_EVENT_TEASER_WORDS = 4
 MIN_FACILITY_PARAGRAPH_WORDS = 24
 
 
-def is_free_event(registry: dict, venue_raw: str | None, body: str) -> bool:
+def is_free_event(registry: dict, venue_raw: str | None, body: str, meta: dict | None = None) -> bool:
     facility = resolve_venue(registry, venue_raw)
     if not facility or facility["category"] not in FREE_VENUE_CATEGORIES:
         return False
     if PAID_LANGUAGE_RE.search(body or ""):
+        return False
+    cost = (meta or {}).get("cost")
+    if cost and PAID_LANGUAGE_RE.search(cost):
         return False
     return True
 
@@ -356,7 +366,7 @@ def run_events(conn, cfg: dict, dry_run: bool) -> int:
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT id, title, body, venue_raw
+            SELECT id, title, body, venue_raw, meta
               FROM stories
              WHERE town_id = %s AND source_type = 'event'
                AND occurs_at >= now() AND free_teaser IS NULL
@@ -365,8 +375,8 @@ def run_events(conn, cfg: dict, dry_run: bool) -> int:
         )
         rows = cur.fetchall()
 
-    candidates = [(sid, title, body, venue_raw) for sid, title, body, venue_raw in rows
-                  if is_free_event(registry, venue_raw, body)]
+    candidates = [(sid, title, body, venue_raw) for sid, title, body, venue_raw, meta in rows
+                  if is_free_event(registry, venue_raw, body, meta)]
     print(f"  {len(rows)} upcoming event(s) without a teaser, {len(candidates)} classify as free")
 
     updated = 0

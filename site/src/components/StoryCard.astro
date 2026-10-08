@@ -6,6 +6,7 @@ import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS, isAiWritten
 import ShareButtons from './ShareButtons.astro';
 import { siteConfig } from '../lib/site-config';
 import { categoryForSourceType, splitEventTitleAndVenue, buildNameAliasIndex, type ImageCategory } from '../lib/images';
+import { eventPriceAgeLine } from '../lib/events';
 import { SECTION_THEME } from '../lib/section-theme';
 import { relativeTime, dayTimeKicker } from '../lib/time';
 import { storyHref } from '../lib/content-slugs';
@@ -84,6 +85,10 @@ const isAiWritten = isAiWrittenContent(story.source_type);
 const { displayTitle, venue } = isEvent
   ? splitEventTitleAndVenue(story.title, siteConfig.cityName, buildNameAliasIndex(facilities))
   : { displayTitle: story.title, venue: null };
+// Events correctness Step A, point 3: "Free"/price + age, structured-only
+// (see eventPriceAgeLine's own comment) -- null, so nothing renders, for
+// the vast majority of rows the source never mentioned a price/age for.
+const priceAge = isEvent ? eventPriceAgeLine(story) : null;
 // Content Track-innehåll (krönikor, recensioner, recept m.fl.) har alltid byline
 // satt -- occurs_at är bara now() vid genereringstillfället för de typerna, så
 // den ska aldrig användas som tidsangivelse. Publiceringsdatum är den rätta.
@@ -182,6 +187,7 @@ const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCat
   </p>
   <h3 class="item__title"><a href={href} rel={isExternal ? 'noopener' : undefined}>{displayTitle}</a></h3>
   {venue && <p class="item__venue data">{venue}</p>}
+  {priceAge && <p class="item__price-age data">{priceAge}</p>}
   {!compact && <p class="item__body">{story.body}</p>}
   {!compact && hasByline && !isExternal && (
     <ShareButtons url={shareUrl} title={story.title} />
@@ -250,6 +256,11 @@ const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCat
    prefix becomes -- same visual weight as item__body's own color, placed
    between title and body so it reads as "where", not as part of the name. */
 .item__venue {
+  margin: 0.125rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+.item__price-age {
   margin: 0.125rem 0 0;
   font-size: 0.8125rem;
   color: var(--ink-soft);

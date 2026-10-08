@@ -14,6 +14,7 @@ import {
 } from '../../lib/db';
 import type { Story, Facility } from '../../lib/db';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
+import { eventPriceAgeLine } from '../../lib/events';
 import { buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
 import { resolveImage, contentTrackCropPaths } from '../../lib/images';
@@ -55,6 +56,10 @@ const kind = isAlert ? 'Alert' : isMeeting ? 'Meeting' : 'Event';
 // that page represents MANY future instances, not one date that can "pass".
 const eventHasPassed = isEvent && !story.is_recurring_series
   && hasEventPassed(story.occurs_at, story.ends_at, new Date());
+// Events correctness Step A, point 3: "Free"/price + age, structured-only
+// (see eventPriceAgeLine's own comment) -- null for the vast majority of
+// rows the source never mentioned a price/age for.
+const priceAge = isEvent ? eventPriceAgeLine(story) : null;
 // Story Threads: "part of an ongoing story" banner -- gives the underlying
 // noindexed feed item (see lib/noindex.ts) somewhere useful to send its
 // link equity and its readers. Restricted to source_type === 'meeting'
@@ -353,6 +358,8 @@ const eventJsonLdObject = buildEventJsonLd(
       </p>
     )}
 
+    {priceAge && <p class="story__price-age data">{priceAge}</p>}
+
     {story.ingredients && story.ingredients.length > 0 && (
       <>
         <h2 class="story__section-label">Ingredients</h2>
@@ -535,6 +542,7 @@ const eventJsonLdObject = buildEventJsonLd(
 .story__body p { margin: 0 0 1rem; }
 .story__zip-links { color: var(--ink-soft); font-size: 0.875rem; margin: -0.5rem 0 1.25rem; }
 .story__venue-link { color: var(--ink-soft); font-size: 0.875rem; margin: -0.5rem 0 1.25rem; }
+.story__price-age { color: var(--ink-soft); font-size: 0.875rem; margin: -0.5rem 0 1.25rem; }
 .story__theaters { margin: 1.75rem 0; }
 .story__theaters ul { margin: 0.5rem 0 0; padding: 0; list-style: none; display: grid; gap: 1rem; }
 .story__theaters li { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
