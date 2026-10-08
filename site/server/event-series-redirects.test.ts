@@ -11,12 +11,22 @@ import eventSeriesRedirects from './event-series-redirects.json';
 // entry resolves, not the lookup mechanics again.
 
 describe('event-series-redirects.json', () => {
-  it('is a non-empty map of old event slugs to canonical series slugs', () => {
+  // Despite the filename, NOT every canonical target is a series page --
+  // scripts/merge_recurring_event_duplicates.py's find_source_url_
+  // duplicate_groups() (Events correctness Phase 1, point 2) also writes
+  // individual-to-individual entries here (a one-time event re-scraped
+  // after the organizer corrected its own date, e.g. "BPN October Meetup -
+  // Fly Boy Donuts" -- confirmed live 2026-10-08). Both shapes are a plain
+  // old-slug -> canonical-slug lookup either way (resolveLegacyMeetingRedirect()
+  // doesn't care which), so this only asserts both sides are real event
+  // slugs, not that the target is specifically a series.
+  it('is a non-empty map of old event slugs to canonical event slugs', () => {
     const entries = Object.entries(eventSeriesRedirects as Record<string, string>);
     expect(entries.length).toBeGreaterThan(0);
     for (const [oldSlug, canonicalSlug] of entries) {
       expect(oldSlug).toMatch(/^event-/);
-      expect(canonicalSlug).toMatch(/^event-series-/);
+      expect(canonicalSlug).toMatch(/^event-/);
+      expect(canonicalSlug).not.toBe(oldSlug);
     }
   });
 
