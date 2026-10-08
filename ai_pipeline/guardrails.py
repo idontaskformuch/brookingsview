@@ -814,6 +814,68 @@ def validate_tone_v2(
         if sentence_count > max_sentences:
             violations.append(f"tone_v2: {sentence_count} sentences exceeds {source_type} ceiling of {max_sentences}")
 
+    # 7. no date/time/price/age claims in prose (Events correctness Phase
+    # 1, point 1) -- event-only. Meetings put their date in meta.when too,
+    # but face none of the recurring-series cadence-guessing risk that
+    # motivated this; alerts explicitly need duration/time IN the prose
+    # per the §5 rule near the top of this function ("Lead with the
+    # practical shape: what, where, how long").
+    if source_type == "event":
+        claim_result = check_no_date_time_price_age_claims(summary)
+        violations.extend(claim_result.violations)
+
+    return GuardrailResult(passed=len(violations) == 0, violations=violations)
+
+
+# --- no date/time/price/age claims in event prose (Events correctness Phase
+# 1, point 1, 2026-10-08) --------------------------------------------------
+#
+# The page renders date, time, venue and (where available) price/age facts
+# separately from structured fields (meta.when/meta.venue, occurs_at,
+# ends_at) -- see format_prompt.py's TONE_V2_SHARED_RULES "DATES, TIMES,
+# PRICES, AGES" section for the full rationale and the three confirmed live
+# fabrications that prompted this (an invented end date, an invented "All
+# ages welcome" claim, a stale weekday carried over from a since-corrected
+# scrape). Deliberately a BLANKET ban on even a CORRECT claim, not a fact-
+# check against source_text: cross-checking a small date-like number
+# against source text is unreliable (a day-of-month collides easily with
+# an unrelated number elsewhere in the source), and the structured fields
+# already show the real value correctly, so restating it in prose is pure
+# redundant risk with no reader benefit.
+_MONTH_NAME_RE = re.compile(
+    r"\b(January|February|March|April|May|June|July|August|September|October|November|December)\b",
+    re.IGNORECASE,
+)
+_CLOCK_TIME_RE = re.compile(r"\b\d{1,2}(:\d{2})?\s*(a\.?m\.?|p\.?m\.?)\b", re.IGNORECASE)
+_PRICE_RE = re.compile(r"\$\d")
+_CADENCE_RE = re.compile(
+    r"\b(every|each)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|day|week|month)\b"
+    r"|\b(weekly|monthly|biweekly|daily|annually|yearly)\b",
+    re.IGNORECASE,
+)
+_AGE_CLAIM_RE = re.compile(
+    r"\ball ages\b|\bages?\s+\d+\b|\b\d+\s*(\+|and (up|older|over))\b|\badults? only\b|\bmust be \d+\b",
+    re.IGNORECASE,
+)
+
+
+def check_no_date_time_price_age_claims(text: str) -> GuardrailResult:
+    """Event-only (see format_prompt.py's _validate(), wired for both the
+    tone_v2 and plain validate() paths). Reuses _WEEKDAY_WORDS_RE just
+    below rather than a second copy of the same pattern."""
+    violations: list[str] = []
+    if _MONTH_NAME_RE.search(text):
+        violations.append("date/time/price/age: month name in prose")
+    if _WEEKDAY_WORDS_RE.search(text):
+        violations.append("date/time/price/age: weekday name in prose")
+    if _CLOCK_TIME_RE.search(text):
+        violations.append("date/time/price/age: clock time in prose")
+    if _CADENCE_RE.search(text):
+        violations.append("date/time/price/age: recurrence cadence in prose")
+    if _PRICE_RE.search(text):
+        violations.append("date/time/price/age: dollar amount in prose")
+    if _AGE_CLAIM_RE.search(text):
+        violations.append("date/time/price/age: age/audience-number claim in prose")
     return GuardrailResult(passed=len(violations) == 0, violations=violations)
 
 

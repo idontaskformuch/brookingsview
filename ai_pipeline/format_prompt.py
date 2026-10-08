@@ -187,6 +187,22 @@ REFERENCE DATA
 Address, phone number, room number, registration details and cost do NOT
 belong in the prose. Put them in the `meta` object instead (see the output
 format below) -- never repeat them in `summary`.
+
+DATES, TIMES, PRICES, AGES (Events correctness Phase 1, point 1, 2026-10-08)
+Never state a specific date, day-of-week, time, recurrence cadence, price,
+or age/audience restriction in `summary` -- not even one you believe is
+correct. The page renders all of these separately from structured data
+(`meta.when`, `occurs_at`, etc.), which is already correct and current;
+restating any of them in prose is pure redundant risk with no benefit, and
+confirmed live cases of each: an invented end date ("runs through
+mid-August" for an event recurring indefinitely), an invented age claim
+("All ages welcome" where the source states no such thing), and a stale
+weekday/date carried over from an earlier, since-corrected scrape ("every
+Saturday" for a Friday program). Describe WHAT the event is and who it's
+natively for only if the source states it as a category (e.g. "a toddler
+storytime", "a teen book club") -- never as a specific day, date, time,
+dollar amount, or age number. If you would otherwise write "every Tuesday
+at six" or "ages 5 and up" or "$10 admission", omit the sentence instead.
 """
 
 TONE_V2_TYPE_RULES: dict[str, str] = {
@@ -209,16 +225,18 @@ MEETING RULES -- length scales to substance, this is the main thing to get right
 """,
     "event": """
 EVENT RULES -- two to four sentences, hard ceiling of four:
-- Open with what actually happens at the event, not its name and
-  meeting-place (those go in `meta.venue`/`meta.when`).
+- Open with what actually happens at the event -- not its name, date, time,
+  recurrence cadence, or meeting-place (those go in `meta.venue`/`meta.when`,
+  or are rendered separately by the page -- see DATES, TIMES, PRICES, AGES
+  above, which overrides anything below it that looks like an exception).
   Before: "Dragons in the Stacks runs August 25 at the Moreno Valley Public
   Library Mall Branch, 22500 Town Circle, Suite 2078."
-  Wanted shape: "Tabletop role-playing, adults welcome, dice provided. The
-  Mall branch runs it monthly."
-- State the intended audience (age range, adults, teens, preschool) early --
-  it is the fact that decides relevance to a reader.
-- Recurring events: state the cadence ("Every Tuesday at six") rather than
-  only the single instance date.
+  Wanted shape: "Tabletop role-playing, dice provided. A game master runs
+  each session; walk-ins are welcome."
+- Describe the ACTIVITY and, if the source states it as a category (a
+  storytime, a teen club, a senior fitness class), who it's for -- never as
+  a specific age number, day-of-week, date, time, recurrence word
+  ("monthly", "every Tuesday"), or dollar amount.
 - If the source description is thin, write two sentences. Do not invent
   atmosphere, and do not describe what attendees will feel or gain.
 - Never write "for more information, call..." in the prose -- that is
@@ -647,6 +665,13 @@ def format_record(record: dict, source_type: str, cfg: dict,
         if not tone_v2:
             result = guardrails.validate(raw_text, source_text, cfg)
             violations = list(result.violations)
+            # Events correctness Phase 1, point 1: the tone_v2 path gets
+            # this via validate_tone_v2()'s own source_type-gated check;
+            # mirrored here too so the plain (non-tone_v2) path -- currently
+            # unused by any town's config, but not guaranteed to stay that
+            # way -- can't silently skip it.
+            if source_type == "event":
+                violations.extend(guardrails.check_no_date_time_price_age_claims(raw_text).violations)
             if not violations:
                 violations = _pre_publish(raw_text, None)
             return not violations, violations, raw_text, None
