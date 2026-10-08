@@ -1,0 +1,142 @@
+"""Read-only guardrail-rejection report -- Events correctness Step A, point
+4 (2026-10-08).
+
+Every AI-generation attempt already logs its outcome and (since
+db/migrations/047_api_usage_reject_reason.sql) the exact violation text to
+`api_usage` -- see ai_pipeline/format_prompt.py's format_record() and
+ai_pipeline/api_usage.py's finalize_generation(). That's the actual
+"logging" the handoff asked for; it already existed before this script.
+What was missing was a per-town/per-day COUNT broken out by violation
+category, so a new guardrail's false-positive rate (or any other rejection
+pattern) can be checked at a glance instead of by hand-rolling a query.
+
+`_categorize()` below buckets the free-text `reject_reason` (semicolon-
+joined violations from one attempt) into named categories. It's a
+best-effort text match, not a schema -- reject_reason is deliberately
+human-readable prose (see format_prompt.py's own retry-prompt comment on
+why), so a new violation wording this script doesn't recognize just lands
+in the catch-all `other` bucket rather than crashing or silently miscounting.
+
+Does NOT unpublish, edit, regenerate, or delete anything. Writes
+GUARDRAIL_REJECTION_REPORT.md at the repo root.
+
+Usage:
+    python -m scripts.guardrail_rejection_report
+    python -m scripts.guardrail_rejection_report --generator event --days 14
+"""
+from __future__ import annotations
+
+import argparse
+import re
+from collections import Counter
+from pathlib import Path
+
+from db.db import get_conn
+
+# Order matters -- first match wins, so a more specific prefix (e.g. the
+# Phase 1 date/time/price/age ban) is checked before a generic fallback.
+_CATEGORY_RULES: list[tuple[str, re.Pattern]] = [
+    ("date/time/price/age ban (Phase 1)", re.compile(r"^date/time/price/age:", re.IGNORECASE)),
+    ("pre_publish: weekday/date mismatch", re.compile(r"lede names .* but the record's date", re.IGNORECASE)),
+    ("tone_v2: required field missing", re.compile(r"^tone_v2:.*(is missing)", re.IGNORECASE)),
+    ("tone_v2: sentence-count ceiling", re.compile(r"^tone_v2:.*sentences exceeds", re.IGNORECASE)),
+    ("tone_v2: opening-shape diversity", re.compile(r"^tone_v2:.*opening shape", re.IGNORECASE)),
+    ("tone_v2: em dash", re.compile(r"^tone_v2:.*em dash", re.IGNORECASE)),
+    ("tone_v2: banned adjective", re.compile(r"^tone_v2:.*banned adjective", re.IGNORECASE)),
+    ("tone_v2: other", re.compile(r"^tone_v2:", re.IGNORECASE)),
+    ("opinion/framing marker", re.compile(r"åsikt|opinion", re.IGNORECASE)),
+    ("number not in source", re.compile(r"siffra saknas|number not in source", re.IGNORECASE)),
+    ("entity/name not in source", re.compile(r"namn/entitet saknas|entity.*not in source", re.IGNORECASE)),
+    ("no lexical overlap with source", re.compile(r"no lexical overlap", re.IGNORECASE)),
+    ("banned content", re.compile(r"förbjudet innehåll|banned content", re.IGNORECASE)),
+]
+
+
+def _categorize(reject_reason: str) -> set[str]:
+    """Known limitation: splits on every `;`, including one that occurs
+    INSIDE a quoted source sentence (e.g. 'Seating is first-come,
+    first-served; bring blankets...') -- that one violation then splits
+    into two fragments and the second loses its category prefix, landing
+    in `other`. Rare (seen once in ~100 real rows) and harmless for this
+    report's purpose (spotting a pattern, not exact accounting); not worth
+    a quote-aware parser for a free-text diagnostic string."""
+    cats: set[str] = set()
+    for part in reject_reason.split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        for label, pattern in _CATEGORY_RULES:
+            if pattern.search(part):
+                cats.add(label)
+                break
+        else:
+            cats.add(f"other: {part[:60]}")
+    return cats
+
+
+def fetch_rejections(conn, generator: str | None, days: int) -> list[tuple[str, object, str]]:
+    generator_filter = "AND generator = %s" if generator else ""
+    params: tuple = (days,) + ((generator,) if generator else ())
+    with conn.cursor() as cur:
+        cur.execute(
+            f"""
+            SELECT town_id, created_at::date AS day, reject_reason
+              FROM api_usage
+             WHERE outcome IN ('guardrail_rejected', 'template_fallback')
+               AND reject_reason IS NOT NULL
+               AND created_at >= now() - (%s || ' days')::interval
+               {generator_filter}
+            """,
+            params,
+        )
+        return [(r[0] or "(no town)", r[1], r[2]) for r in cur.fetchall()]
+
+
+def render_report(rows: list[tuple[str, object, str]], generator: str | None, days: int) -> str:
+    by_town_category: Counter[tuple[str, str]] = Counter()
+    by_town_day: Counter[tuple[str, object]] = Counter()
+    for town_id, day, reason in rows:
+        by_town_day[(town_id, day)] += 1
+        for cat in _categorize(reason):
+            by_town_category[(town_id, cat)] += 1
+
+    lines = [
+        "# Guardrail rejection report",
+        "",
+        f"Generated by `scripts/guardrail_rejection_report.py` (read-only). "
+        f"Last {days} day(s), generator = {generator or 'all'}. "
+        f"{len(rows)} rejected attempt(s) total.",
+        "",
+        "## By town and category",
+        "",
+        "| town | category | count |",
+        "|---|---|---:|",
+    ]
+    for (town_id, cat), n in sorted(by_town_category.items(), key=lambda kv: (-kv[1], kv[0])):
+        lines.append(f"| {town_id} | {cat} | {n} |")
+
+    lines += ["", "## By town and day", "", "| town | day | count |", "|---|---|---:|"]
+    for (town_id, day), n in sorted(by_town_day.items(), key=lambda kv: (kv[0][0], str(kv[0][1]))):
+        lines.append(f"| {town_id} | {day} | {n} |")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--generator", help="restrict to one generator, e.g. 'event' (default: all)")
+    ap.add_argument("--days", type=int, default=30, help="lookback window (default: 30)")
+    args = ap.parse_args()
+
+    with get_conn() as conn:
+        rows = fetch_rejections(conn, args.generator, args.days)
+
+    report = render_report(rows, args.generator, args.days)
+    Path("GUARDRAIL_REJECTION_REPORT.md").write_text(report, encoding="utf-8")
+    print(report)
+    print("\nWrote GUARDRAIL_REJECTION_REPORT.md")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
