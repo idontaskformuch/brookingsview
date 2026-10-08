@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   buildEventFeed, isToday, isThisWeekend, isTonight, isTomorrow, selectTodayBucket,
   isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent, isOutdoorEvent, classifyEventLocality,
   findCrossSourceMatch, eventPriceAgeLine,
-  todayUtcMidnight, utcMidnight, localDateParts, artsEventAsStory, dayIndex,
+  todayUtcMidnight, utcMidnight, localDateParts, artsEventAsStory, dayIndex, weekendAnchorOffset,
   EVENT_SOURCES,
   type FeedItem, type EventSourceConfig,
 } from './events';
@@ -261,6 +261,112 @@ describe('dayIndex bucketing -- all three real site timezones (Events correctnes
       const today = utcMidnight({ y: 2026, m: 9, d: 30 });
       expect(dayIndex(occursAt, today, tz)).toBe(0);
     });
+  });
+});
+
+describe('weekendAnchorOffset -- real Fri evening/Sat afternoon/Sun evening/Mon morning, all three site timezones (Phase 2 item 2a verification, 2026-10-08)', () => {
+  // Real wall-clock instants for the week of 2026-10-09 (a real Friday) --
+  // converted via Python zoneinfo, not hand-computed. System time is mocked
+  // (vi.setSystemTime) so todayUtcMidnight() runs for real end-to-end,
+  // exactly the real page's own `today = todayUtcMidnight(timezone)` call.
+  const scenarios: [string, string, string][] = [
+    ['America/Chicago', 'Friday evening', '2026-10-10T00:00:00.000Z'],
+    ['America/Chicago', 'Saturday afternoon', '2026-10-10T20:00:00.000Z'],
+    ['America/Chicago', 'Sunday evening', '2026-10-12T01:00:00.000Z'],
+    ['America/Chicago', 'Monday morning', '2026-10-12T13:00:00.000Z'],
+    ['America/Los_Angeles', 'Friday evening', '2026-10-10T02:00:00.000Z'],
+    ['America/Los_Angeles', 'Saturday afternoon', '2026-10-10T22:00:00.000Z'],
+    ['America/Los_Angeles', 'Sunday evening', '2026-10-12T03:00:00.000Z'],
+    ['America/Los_Angeles', 'Monday morning', '2026-10-12T15:00:00.000Z'],
+    ['America/Denver', 'Friday evening', '2026-10-10T01:00:00.000Z'],
+    ['America/Denver', 'Saturday afternoon', '2026-10-10T21:00:00.000Z'],
+    ['America/Denver', 'Sunday evening', '2026-10-12T02:00:00.000Z'],
+    ['America/Denver', 'Monday morning', '2026-10-12T14:00:00.000Z'],
+  ];
+
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it.each(scenarios)('%s %s: anchors on the weekend that still has a day left, never one already fully passed', (tz, _label, nowIso) => {
+    vi.setSystemTime(new Date(nowIso));
+    const today = todayUtcMidnight(tz);
+    const anchor = weekendAnchorOffset(today);
+    // The anchor's own weekend block (anchor..anchor+2) must never be
+    // entirely in the past relative to "today" -- i.e. Sunday (anchor+2)
+    // must be today (0) or later. This is the literal bug: the old formula
+    // could return an anchor whose block had already fully elapsed.
+    expect(anchor + 2).toBeGreaterThanOrEqual(0);
+  });
+
+  it.each([
+    ['America/Chicago', '2026-10-10T20:00:00.000Z'], // Saturday afternoon
+    ['America/Los_Angeles', '2026-10-10T22:00:00.000Z'],
+    ['America/Denver', '2026-10-10T21:00:00.000Z'],
+  ])('%s Saturday afternoon: tomorrow (Sunday) still counts as this weekend, not Coming up', (tz, nowIso) => {
+    vi.setSystemTime(new Date(nowIso));
+    const today = todayUtcMidnight(tz);
+    const anchor = weekendAnchorOffset(today);
+    // Tomorrow is offset 1 -- must fall inside [anchor, anchor+2], i.e. not
+    // get pushed out to the "Coming up" bucket the way the pre-fix formula
+    // (anchor = 6, range [6,8]) would have.
+    expect(1).toBeGreaterThanOrEqual(anchor);
+    expect(1).toBeLessThanOrEqual(anchor + 2);
+  });
+
+  it.each([
+    ['America/Chicago', '2026-10-12T01:00:00.000Z'], // Sunday evening
+    ['America/Los_Angeles', '2026-10-12T03:00:00.000Z'],
+    ['America/Denver', '2026-10-12T02:00:00.000Z'],
+  ])('%s Sunday evening: rolls forward to NEXT weekend (today itself is excluded, so the hero never renders as three zeros)', (tz, nowIso) => {
+    vi.setSystemTime(new Date(nowIso));
+    const today = todayUtcMidnight(tz);
+    const anchor = weekendAnchorOffset(today);
+    // Today is Sunday (offset 0) -- it must NOT be inside the weekend
+    // block (today's own items always go to the "Today" bucket first), and
+    // the block must be a real NEXT weekend (starts at least 2 days out).
+    expect(0 >= anchor && 0 <= anchor + 2).toBe(false);
+    expect(anchor).toBeGreaterThanOrEqual(2);
+  });
+
+  it.each([
+    ['America/Chicago', '2026-10-12T13:00:00.000Z'], // Monday morning
+    ['America/Los_Angeles', '2026-10-12T15:00:00.000Z'],
+    ['America/Denver', '2026-10-12T14:00:00.000Z'],
+  ])('%s Monday morning: shows the upcoming weekend (4 days out), unaffected by the fix', (tz, nowIso) => {
+    vi.setSystemTime(new Date(nowIso));
+    const today = todayUtcMidnight(tz);
+    expect(weekendAnchorOffset(today)).toBe(4);
+  });
+
+  it.each([
+    ['America/Chicago', '2026-10-10T00:00:00.000Z'], // Friday evening (today IS Friday)
+    ['America/Los_Angeles', '2026-10-10T02:00:00.000Z'],
+    ['America/Denver', '2026-10-10T01:00:00.000Z'],
+  ])('%s Friday evening: anchors on today (offset 0) -- today\'s own events still route to "Today," not lost', (tz, nowIso) => {
+    vi.setSystemTime(new Date(nowIso));
+    const today = todayUtcMidnight(tz);
+    expect(weekendAnchorOffset(today)).toBe(0);
+  });
+});
+
+describe('weekendAnchorOffset -- all seven weekdays (pure calendar math, timezone-independent once `today` is given)', () => {
+  it.each([
+    [0, 5, 'Sunday rolls forward to next weekend since today is the old weekend\'s last day'], // Sun 2026-10-11
+    [1, 4, 'Monday'], // 2026-10-12
+    [2, 3, 'Tuesday'], // 2026-10-13
+    [3, 2, 'Wednesday'], // 2026-10-14
+    [4, 1, 'Thursday'], // 2026-10-15
+    [5, 0, 'Friday is today'], // 2026-10-09
+    [6, -1, 'Saturday anchors on yesterday\'s Friday so Sunday (+1) still counts'], // 2026-10-10
+  ])('weekday %i -> anchor %i (%s)', (_weekday, expectedAnchor, _label) => {
+    const dates: Record<number, { y: number; m: number; d: number }> = {
+      0: { y: 2026, m: 10, d: 11 }, 1: { y: 2026, m: 10, d: 12 }, 2: { y: 2026, m: 10, d: 13 },
+      3: { y: 2026, m: 10, d: 14 }, 4: { y: 2026, m: 10, d: 15 }, 5: { y: 2026, m: 10, d: 9 },
+      6: { y: 2026, m: 10, d: 10 },
+    };
+    const today = utcMidnight(dates[_weekday]);
+    expect(today.getUTCDay()).toBe(_weekday);
+    expect(weekendAnchorOffset(today)).toBe(expectedAnchor);
   });
 });
 

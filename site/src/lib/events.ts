@@ -155,12 +155,49 @@ export function isTomorrow(item: FeedItem, today: Date, timezone: string): boole
   return dayIndex(item.occurs_at, today, timezone) === 1;
 }
 
+/**
+ * The day-offset (relative to `today`, see dayIndex()) of the Friday that
+ * anchors "this weekend" -- Saturday/Sunday are anchorOffset+1/+2.
+ *
+ * Phase 2, item 2a verification (2026-10-08): the naive `(5 - weekdayOfToday
+ * + 7) % 7` (always 0..6, "days until the NEXT Friday") is wrong on a real
+ * Saturday -- it computes NEXT week's Friday (6 days out) instead of
+ * recognizing we're already living in a weekend that started YESTERDAY. A
+ * Saturday-afternoon visitor would see "this weekend" jump a full week
+ * ahead while today's own remaining Saturday events sit under "Today" and
+ * tomorrow's clearly-still-this-weekend Sunday events get mis-bucketed into
+ * "Coming up." Fixed here (the one shared primitive both isThisWeekend()
+ * below and events.astro's own bucket loop now use, instead of each
+ * hand-rolling its own copy of this formula a second/third time -- exactly
+ * the class of drift this file's own module docstring already warns
+ * against):
+ *   - Mon-Thu: the upcoming Friday (0..4 days out) -- unaffected, unchanged.
+ *   - Friday: today itself (offset 0) -- unaffected, unchanged. (Today's
+ *     own Friday events still route to the "Today" bucket first, same
+ *     existing priority; the weekend block simply starts there.)
+ *   - Saturday: YESTERDAY's Friday (offset -1), so Sunday (offset +1) is
+ *     correctly still "this weekend" -- the real fix.
+ *   - Sunday: this past Friday would be offset -2, making the whole block's
+ *     last day (anchor+2 = 0, i.e. today) nothing left to show -- rolled
+ *     forward a full week instead, so Sunday (any time of day -- this file
+ *     only ever reasons in whole calendar days, see its own module
+ *     docstring) shows the NEXT weekend rather than an empty/pointless
+ *     "0 Fri · 0 Sat · 0 Sun." Matches the owner's own explicit spec: on
+ *     Sunday evening or Monday, the next weekend should show, or the
+ *     section should hide -- never render empty.
+ */
+export function weekendAnchorOffset(today: Date): number {
+  const weekdayOfToday = today.getUTCDay(); // 0=Sun -- today is already UTC-anchored, read it directly
+  let anchor = weekdayOfToday === 6 ? -1 : weekdayOfToday === 0 ? -2 : (5 - weekdayOfToday + 7) % 7;
+  if (anchor + 2 <= 0) anchor += 7;
+  return anchor;
+}
+
 export function isThisWeekend(item: FeedItem, today: Date, timezone: string): boolean {
   if (!item.occurs_at) return false;
-  const weekdayOfToday = today.getUTCDay(); // 0=Sun -- today is already UTC-anchored, read it directly
-  const daysToFriday = (5 - weekdayOfToday + 7) % 7;
+  const anchor = weekendAnchorOffset(today);
   const offset = dayIndex(item.occurs_at, today, timezone);
-  return offset >= daysToFriday && offset <= daysToFriday + 2;
+  return offset >= anchor && offset <= anchor + 2;
 }
 
 export interface TodayBucket {

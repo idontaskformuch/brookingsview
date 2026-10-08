@@ -8,6 +8,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getUpcomingStories, getPastStories, getUpcomingArtsEvents, getRegionalSports, getFacilities, calendarDateParts } from '../lib/db';
 import {
   buildEventFeed, artsEventAsStory, withAttribution, localDateParts, utcMidnight, classifyEventLocality,
+  weekendAnchorOffset,
   type FeedItem,
 } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
@@ -114,8 +115,13 @@ const todaysHomeGame = regionalGames.find((g) => {
   return parts.y === today.getUTCFullYear() && parts.m === today.getUTCMonth() && parts.d === today.getUTCDate();
 }) ?? null;
 
-const weekdayOfToday = today.getUTCDay(); // 0=Sun -- today is already UTC-anchored, read it directly
-const daysToFriday = (5 - weekdayOfToday + 7) % 7;
+// Events correctness Phase 2, item 2a verification (2026-10-08): was a
+// local `(5 - weekdayOfToday + 7) % 7` -- wrong on a real Saturday/Sunday
+// (jumped a full week ahead instead of recognizing the weekend already in
+// progress). Now the one shared primitive lib/events.ts's isThisWeekend()
+// also uses -- see that function's own doc comment for the full case
+// breakdown this fixes.
+const daysToFriday = weekendAnchorOffset(today);
 
 const buckets = { today: [] as FeedItem[], weekend: [] as FeedItem[], nextWeek: [] as FeedItem[], later: [] as FeedItem[] };
 for (const item of inTownItems) {

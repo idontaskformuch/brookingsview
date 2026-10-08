@@ -560,8 +560,18 @@ async function buildLastmodMap(townId, databaseUrl) {
     }
   }
   const eventsToday = utcMidnightMirror(localDatePartsMirror(new Date(), thisWeekTz));
+  // Events correctness Phase 2, item 2a verification (2026-10-08): mirrors
+  // lib/events.ts's weekendAnchorOffset() -- the naive `(5 - weekday + 7) %
+  // 7` this used to be (still was, until this fix) is wrong on a real
+  // Saturday/Sunday (jumps a full week ahead instead of the weekend already
+  // in progress) -- see that function's own doc comment for the full case
+  // breakdown. Keeping this mirror in sync matters here specifically:
+  // scripts/verify_sitemap_noindex_disjoint.mjs would otherwise fail on any
+  // Saturday/Sunday build, since this mirror's thin/not-thin verdict could
+  // disagree with the real /events/this-weekend/ page's.
   const weekdayOfTodayMirror = eventsToday.getUTCDay();
-  const daysToFridayMirror = (5 - weekdayOfTodayMirror + 7) % 7;
+  let daysToFridayMirror = weekdayOfTodayMirror === 6 ? -1 : weekdayOfTodayMirror === 0 ? -2 : (5 - weekdayOfTodayMirror + 7) % 7;
+  if (daysToFridayMirror + 2 <= 0) daysToFridayMirror += 7;
   for (const s of stories) {
     if (s.source_type !== 'event' || !s.occurs_at) continue;
     // Events correctness Phase 1: getUpcomingStories() (the real page's own
