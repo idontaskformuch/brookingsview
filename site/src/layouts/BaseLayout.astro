@@ -261,27 +261,34 @@ const footerGroups = FOOTER_GROUPS
 {siteConfig.ga4MeasurementId && import.meta.env.PROD && (
   /* GA4 (gtag.js) -- Mediavine Journey verification (2026-10-08).
      Per-town measurement ID lives ONLY in site-config.ts
-     (siteConfig.ga4MeasurementId); a town with none yet (currently Moreno
-     Valley, Broomfield) renders nothing here at all -- no script, no
-     empty tag.
+     (siteConfig.ga4MeasurementId); a town with none yet renders nothing
+     here at all -- no script, no empty tag.
 
      import.meta.env.PROD gates this to the real `astro build` output
      only -- every deploy workflow in this repo runs exactly that command
      (see .github/workflows/*deploy.yml), so production is unaffected;
      `astro dev` has PROD=false, so a local dev session never sends a hit.
 
-     Consent-gated exactly like the AdSense script just above, for the
-     same reason: this IS a tracking script, and privacy.astro currently
-     promises "We don't otherwise run analytics or tracking scripts" --
-     updated alongside this change to say GA4 is used, gated behind the
-     same cookie banner, so that promise stays true rather than becoming
-     false the moment this ships. Shares AdSlot.astro's bvConsent/
-     bv:consent mechanism (not a new one), and its own __bvGaLoaded guard
-     so a page can never double-inject gtag.js. The gtag calls themselves
-     are Google's unmodified standard snippet (gtag('js', ...) +
-     gtag('config', ID)) -- only the LOADING is deferred to consent,
-     identical to the AdSense block's own script-element-on-accept
-     pattern, not a change to the tag itself. */
+     OPT-OUT (2026-10-08 revision), deliberately NOT the same gate as the
+     AdSense script just above: this loads for every visitor by default,
+     on every page view, UNLESS they've already told this site's own
+     cookie banner "Decline" -- read directly from localStorage
+     (CookieBanner.astro's own 'bv_cookie_consent' key) rather than
+     waiting for window.bvConsent, since CookieBanner's script runs much
+     later in the page (near the end of <body>) and this script -- in
+     <head>, is:inline -- would otherwise always see it unset and load
+     regardless of an existing decline. A live "Decline" click during
+     THIS page view can't retroactively un-send a hit this script already
+     fired on page load (true of any opt-out tag); it instead sets
+     Google's own documented `window['ga-disable-<ID>']` flag (see
+     https://developers.google.com/analytics/devguides/collection/gtagjs/,
+     "Disable analytics"), which gtag.js itself checks before every
+     future call -- no further hits fire for the rest of this page view.
+     privacy.astro/cookies.astro describe exactly this: used from the
+     first page view, declining in the banner turns it off from that
+     point on. The gtag calls themselves are Google's unmodified standard
+     snippet (gtag('js', ...) + gtag('config', ID)); __bvGaLoaded still
+     guards against double-injection. */
   <script is:inline data-ga4-id={siteConfig.ga4MeasurementId}>
     (function () {
       var ID = document.currentScript.dataset.ga4Id;
@@ -298,13 +305,21 @@ const footerGroups = FOOTER_GROUPS
         gtag('js', new Date());
         gtag('config', ID);
       }
-      if (window.bvConsent === 'accepted') {
-        load();
-      } else {
-        window.addEventListener('bv:consent', function (e) {
-          if (e.detail && e.detail.choice === 'accepted') load();
-        }, { once: true });
+      function alreadyDeclined() {
+        try {
+          var raw = localStorage.getItem('bv_cookie_consent');
+          var record = raw ? JSON.parse(raw) : null;
+          return !!record && record.choice === 'declined';
+        } catch (e) {
+          return false; // storage unreadable -- opt-out default is to load
+        }
       }
+      if (!alreadyDeclined()) load();
+      window.addEventListener('bv:consent', function (e) {
+        if (e.detail && e.detail.choice === 'declined') {
+          window['ga-disable-' + ID] = true;
+        }
+      });
     })();
   </script>
 )}
