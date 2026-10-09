@@ -9,6 +9,7 @@ import { siteConfig, ALL_SITES } from '../lib/site-config';
 import { aboutSourcesFor } from '../lib/about-sources';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
+const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const sources = aboutSourcesFor(siteConfig.townId);
 const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
 ---
@@ -29,14 +30,33 @@ const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
         deciding, what's on at the library this week, or when the Jackrabbits
         play next. This site is an attempt to fill that gap.</p>
       </>
+    ) : isMorenoValley ? (
+      <>
+        <p>{siteConfig.siteName} is a local information service for Moreno
+        Valley, California. It brings city council and planning commission
+        agendas, city and library calendars, official alerts, traffic,
+        weather and other local public data into one place, updated
+        automatically through the day. Every item links to its original
+        source.</p>
+        <p>Local newspapers have been closing or shrinking all over the
+        country, and small and mid-sized cities are often the first places to
+        lose the kind of coverage that keeps residents in the loop.
+        {siteConfig.siteName} is an attempt to give {siteConfig.cityName} a
+        single place to find out what's happening.</p>
+      </>
     ) : (
-      <p>Local newspapers have been closing or shrinking all over the country,
-      and small and mid-sized cities are often the first places to lose the
-      kind of coverage that keeps residents in the loop. {siteConfig.siteName}
-      is an attempt to give {siteConfig.cityName} a single place to find out
-      what's happening: a local news site assembled automatically from public
-      sources -- city meeting agendas, the library and city calendars, county
-      records, and official alerts.</p>
+      <>
+        <p>{siteConfig.siteName} is a local information service for
+        Broomfield, Colorado. It brings city and county council agendas,
+        official calendars, alerts, traffic, weather and other local public
+        data into one place, updated automatically through the day. Every
+        item links to its original source.</p>
+        <p>Local newspapers have been closing or shrinking all over the
+        country, and small and mid-sized cities are often the first places to
+        lose the kind of coverage that keeps residents in the loop.
+        {siteConfig.siteName} is an attempt to give {siteConfig.cityName} a
+        single place to find out what's happening.</p>
+      </>
     )}
 
     <h2>How it is made</h2>
