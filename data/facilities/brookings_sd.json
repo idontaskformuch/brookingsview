@@ -239,6 +239,23 @@
       "verified_date": "2026-10-09",
       "lat": 44.317551,
       "lon": -96.753021
+    },
+    {
+      "slug": "childrens-museum-of-south-dakota",
+      "name": "Children's Museum of South Dakota",
+      "category": "museum",
+      "address": "521 4th Street, Brookings, SD 57006",
+      "street_address": "521 4th Street",
+      "postal_code": "57006",
+      "aliases": ["521 4th Street", "521 4th St"],
+      "phone": "(605) 692-6700",
+      "website": "https://prairieplay.org/",
+      "hours_text": "Mon 10am–5pm, Tue 10am–7pm, Wed–Sat 10am–5pm, Sun noon–5pm (closed Easter Sunday, Memorial Day, July 4th, Labor Day, Thanksgiving Day, Christmas Eve, Christmas Day, New Year's Day)",
+      "description": "A hands-on children's museum, operating as \"PrairiePlay,\" one block from the public library.",
+      "source_url": "https://prairieplay.org/hours-admission/",
+      "verified_date": "2026-10-09",
+      "lat": 44.309572,
+      "lon": -96.795689
     }
   ]
 }
