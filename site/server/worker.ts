@@ -30,10 +30,11 @@ import { resolveContentSlugRedirect } from './content-slug-redirects';
 import { resolvePlaceRedirect } from './place-redirects';
 import {
   type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug, previousIsoWeekSlug,
-  resolveLegacyMeetingRedirect,
+  resolveLegacyMeetingRedirect, resolveFacilityRedirect,
 } from './_shared';
 import legacyMeetingRedirects from './legacy-meeting-redirects.json';
 import eventSeriesRedirects from './event-series-redirects.json';
+import facilityRedirects from './facility-redirects.json';
 import { homeSalesParcelSlugFromPath, wasHomeSalesParcelEverRecorded } from './home-sales-gone';
 import { matchAiCrawler, logAiCrawlerHit } from './ai-crawler-log';
 
@@ -130,6 +131,22 @@ export default {
     );
     if (eventSeriesRedirectPath) {
       const target = new URL(eventSeriesRedirectPath, url.origin);
+      target.search = url.search;
+      return Response.redirect(target.toString(), 301);
+    }
+
+    // Facility-slug merges (Phase 2, item 2f, 2026-10-08) -- a duplicate
+    // `places` row (same real facility, two GIS-import rows under two
+    // different names) merged into one canonical row; the deleted row's
+    // old /facilities/<slug>/ URL would 404 (no static file left to
+    // generate it from) without this. See facility-redirects.json's own
+    // doc comment (via resolveFacilityRedirect()) for why this is a
+    // hand-maintained table, not a pure function.
+    const facilityRedirectPath = resolveFacilityRedirect(
+      url.pathname, facilityRedirects as Record<string, string>,
+    );
+    if (facilityRedirectPath) {
+      const target = new URL(facilityRedirectPath, url.origin);
       target.search = url.search;
       return Response.redirect(target.toString(), 301);
     }

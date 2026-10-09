@@ -140,12 +140,27 @@ _EXISTING_SLUG_CROSSWALK = {
     "shadow mountain park": "shadow-mountain-park",
     "moreno valley community park": "moreno-valley-community-park",
     "city hall/fire prevention": "city-hall",
+    # Phase 2, item 2f (2026-10-09): see _NAME_MERGE's own comment above --
+    # both source-name variants normalize through that merge to "conference
+    # and recreation center" before this lookup runs, so this one entry
+    # covers both.
+    "conference and recreation center": "conference-recreation-center",
 }
 
 # Same physical facility, listed under a shorter name in one layer --
 # prefer the more descriptive name, drop the shorter duplicate.
 _NAME_MERGE = {
     "cottonwood golf center": "Cottonwood Golf Center & Banquet Facility",
+    # Phase 2, item 2f (2026-10-09): a real, already-shipped duplicate --
+    # two source names for the same real building at 14075 Frederick St
+    # produced two `places` rows (ids 55/59) before this fix existed.
+    # Merged live into the canonical name below (moval.org's own official
+    # name, confirmed 2026-10-09) under slug "conference-recreation-
+    # center" -- see _EXISTING_SLUG_CROSSWALK below. Both source-name
+    # variants map here so a future re-run of this script can never
+    # recreate the duplicate.
+    "conference & recreation center": "Conference and Recreation Center",
+    "moreno valley conference and recreation center": "Conference and Recreation Center",
 }
 
 _CIVIC_CATEGORY_RULES: list[tuple[re.Pattern, str]] = [

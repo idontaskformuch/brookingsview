@@ -217,3 +217,22 @@ export function resolveLegacyMeetingRedirect(
   const canonicalSlug = redirectMap[legacySlug];
   return canonicalSlug ? `/s/${canonicalSlug}/` : null;
 }
+
+/** Phase 2, item 2f (2026-10-08): same shape as resolveLegacyMeetingRedirect()
+ *  above, for /facilities/<slug>/ instead of /s/<slug>/ -- a facility-slug
+ *  merge (two `places` rows for the same real place, one kept, one
+ *  deleted) is the same "old static page deleted, URL must still 301"
+ *  problem the meeting-slug merge already solved, just a different URL
+ *  namespace. facility-redirects.json is town-agnostic (facility slugs are
+ *  globally unique, drawn from the shared `places` table) and hand-
+ *  maintained (unlike legacy-meeting-redirects.json, this isn't a bulk
+ *  script output -- see that file's own module comment on when a static
+ *  table beats a pure function: a merge is a one-off dedup decision, not a
+ *  systematic rename). */
+export function resolveFacilityRedirect(
+  pathname: string, redirectMap: Record<string, string>,
+): string | null {
+  const legacySlug = pathname.replace(/^\/facilities\/|\/$/g, '');
+  const canonicalSlug = redirectMap[legacySlug];
+  return canonicalSlug ? `/facilities/${canonicalSlug}/` : null;
+}
