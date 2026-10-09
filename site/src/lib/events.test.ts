@@ -4,7 +4,7 @@ import {
   isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent, isOutdoorEvent, classifyEventLocality,
   findCrossSourceMatch, eventPriceAgeLine,
   todayUtcMidnight, utcMidnight, localDateParts, artsEventAsStory, dayIndex, weekendAnchorOffset,
-  buildWeekendSummary, buildEventSections,
+  buildWeekendSummary, buildEventSections, eventsAtVenue, selectWeekendNearby,
   EVENT_SOURCES,
   type FeedItem, type EventSourceConfig,
 } from './events';
@@ -720,6 +720,85 @@ describe('classifyEventLocality', () => {
   it('falls back to in_town when the fallback text names the town itself', () => {
     const item = storyItem(story({ venue_raw: 'Grand Lodge, 123 Main St, Brookings, SD' }));
     expect(classifyEventLocality(item, facilities, townId, cityName, townCenter)).toEqual({ zone: 'in_town', distanceMiles: null, method: 'text' });
+  });
+});
+
+describe('eventsAtVenue (Phase 3, "Event <-> facility hub")', () => {
+  const facilities: Facility[] = [
+    facility({ slug: 'library', name: 'Brookings Public Library', category: 'library', aliases: ['brookings public library'] }),
+  ];
+
+  it('returns other stories resolving to the same venue, excluding the current one', () => {
+    const current = story({ slug: 'story-tape', title: 'Current', venue_raw: 'Brookings Public Library' });
+    const other = story({ slug: 'story-b', title: 'Other Thing', venue_raw: 'Brookings Public Library' });
+    const elsewhere = story({ slug: 'story-c', title: 'Elsewhere', venue_raw: 'Some Other Place' });
+    const result = eventsAtVenue([current, other, elsewhere], facilities, 'library', current.slug);
+    expect(result.map((s) => s.slug)).toEqual(['story-b']);
+  });
+
+  it('caps to `limit`', () => {
+    const stories = Array.from({ length: 10 }, (_, i) =>
+      story({ slug: `s-${i}`, venue_raw: 'Brookings Public Library' }));
+    expect(eventsAtVenue(stories, facilities, 'library', undefined, 3)).toHaveLength(3);
+  });
+
+  it('returns empty when the venue never resolves (no venue name at all, common for Brookings)', () => {
+    const noVenue = story({ slug: 's1', venue_raw: null });
+    expect(eventsAtVenue([noVenue], facilities, 'library')).toEqual([]);
+  });
+});
+
+describe('selectWeekendNearby (Phase 3, "Event <-> facility hub")', () => {
+  const townId = 'brookings_sd';
+  const cityName = 'Brookings';
+  const timezone = 'America/Chicago';
+  const townCenter = { lat: 44.3114, lon: -96.7984 };
+  const facilities: Facility[] = [
+    facility({ slug: 'city-hall', name: 'Brookings City Hall', category: 'city_hall', aliases: ['brookings city hall'], lat: 44.3105, lon: -96.7978 }),
+    // A real resolved venue ~6mi outside the Brookings boundary but well
+    // within the 25mi nearby radius -- 'nearby' can only come from the
+    // coordinate path now (classifyLocalityByText() no longer returns
+    // 'nearby' for an unresolved address string, see town-boundary.ts's
+    // own doc comment on that owner-requested safety fix).
+    facility({ slug: 'nearby-hall', name: 'Nearby Hall', category: 'other', aliases: ['nearby hall'], lat: 44.3114, lon: -96.65 }),
+  ];
+  const today = utcMidnight({ y: 2026, m: 10, d: 8 }); // Thursday, anchor offset 1
+  function atOffsetDays(n: number): string {
+    return new Date(today.getTime() + n * 86_400_000 + 18 * 3_600_000).toISOString();
+  }
+
+  it('excludes the current story itself', () => {
+    const current = storyItem(story({ slug: 'self', venue_raw: 'Brookings City Hall', occurs_at: atOffsetDays(2) }));
+    const items = [current];
+    const result = selectWeekendNearby(items, facilities, townId, cityName, townCenter, timezone, 'self');
+    expect(result).toEqual([]);
+  });
+
+  it('sorts in-town results before nearby ones', () => {
+    const inTownItem = storyItem(story({ slug: 'in-town', venue_raw: 'Brookings City Hall', occurs_at: atOffsetDays(2) }));
+    const nearbyItem = storyItem(story({ slug: 'nearby-one', venue_raw: 'Nearby Hall', occurs_at: atOffsetDays(1) }));
+    const result = selectWeekendNearby([nearbyItem, inTownItem], facilities, townId, cityName, townCenter, timezone, 'excluded-self');
+    expect(result.map((r) => r.zone)).toEqual(['in_town', 'nearby']);
+  });
+
+  it('excludes items outside the weekend window', () => {
+    const farOut = storyItem(story({ slug: 'far', venue_raw: 'Brookings City Hall', occurs_at: atOffsetDays(10) }));
+    const result = selectWeekendNearby([farOut], facilities, townId, cityName, townCenter, timezone, 'excluded-self');
+    expect(result).toEqual([]);
+  });
+
+  it('excludes unknown-locality items (unlike the main /events/ sections, this is a curated rail, not a complete list)', () => {
+    const unknown = storyItem(story({
+      slug: 'unknown', venue_raw: 'Some Hall, 1 Main St, Far Away City, ZZ 00000', occurs_at: atOffsetDays(2),
+    }));
+    const result = selectWeekendNearby([unknown], facilities, townId, cityName, townCenter, timezone, 'excluded-self');
+    expect(result).toEqual([]);
+  });
+
+  it('caps to `limit`', () => {
+    const items: FeedItem[] = Array.from({ length: 8 }, (_, i) =>
+      storyItem(story({ slug: `w-${i}`, venue_raw: 'Brookings City Hall', occurs_at: atOffsetDays(2) })));
+    expect(selectWeekendNearby(items, facilities, townId, cityName, townCenter, timezone, 'excluded-self', 3)).toHaveLength(3);
   });
 });
 

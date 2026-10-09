@@ -29,7 +29,7 @@
  */
 import type { Story, SdsuEvent, Facility } from './db';
 import { buildVenueIndex, resolveVenue, isVirtualVenue } from './db';
-import { classifyLocalityByCoords, classifyLocalityByText, type LocalityResult } from './town-boundary';
+import { classifyLocalityByCoords, classifyLocalityByText, type LocalityResult, type LocalityMethod } from './town-boundary';
 
 export type FeedItem =
   | { sourceKind: 'story'; occurs_at: string | null; story: Story }
@@ -567,4 +567,72 @@ export function classifyEventLocality(
   }
   if (!venueText) return { zone: 'in_town', distanceMiles: null, method: 'default' };
   return classifyLocalityByText(venueText, cityName);
+}
+
+/**
+ * Phase 3, "Event ↔ facility hub" (2026-10-09): "Other events at this
+ * venue" (an event's own detail page) and the facility page's own
+ * "Upcoming here" (facilities/[slug].astro) are the SAME real question --
+ * which upcoming events resolve to this one facility -- so this is the one
+ * shared primitive both now call, rather than two copies of the same
+ * resolveVenue()-based filter. Takes plain `Story[]` (not FeedItem[]):
+ * venue resolution is only ever meaningful for story-kind items anywhere
+ * in this codebase (an arts_culture SdsuEvent never resolves against the
+ * facilities registry at all -- see isFreeEvent()'s own comment above),
+ * so wrapping/unwrapping FeedItem here would add indirection with no real
+ * benefit. `excludeSlug` (optional) is the current story's own slug, so an
+ * event page never lists itself as "another event here." Date-sorted (the
+ * input is assumed already sorted) and capped to `limit`.
+ */
+export function eventsAtVenue(
+  stories: Story[], facilities: Facility[], venueSlug: string, excludeSlug?: string, limit = 5,
+): Story[] {
+  const venueIndex = buildVenueIndex(facilities);
+  return stories
+    .filter((s) => s.slug !== excludeSlug)
+    .filter((s) => resolveVenue(venueIndex, s.venue_raw)?.slug === venueSlug)
+    .slice(0, limit);
+}
+
+export interface NearbyWeekendItem {
+  item: FeedItem;
+  zone: 'in_town' | 'nearby';
+  distanceMiles: number | null;
+}
+
+/**
+ * Phase 3: "Also this weekend nearby" on an event's own detail page --
+ * reuses weekendAnchorOffset()/dayIndex()/classifyEventLocality() exactly
+ * as /events/'s own weekend hero and Nearby section do (no new date math,
+ * per the phase spec's own explicit instruction). In-town results sort
+ * before nearby ones (per spec: "in-town first"); the current story is
+ * always excluded so an event never recommends itself. `unknown`-locality
+ * items are deliberately excluded here (unlike /events/'s own Today/
+ * Coming-up/Further-out sections, which must never drop one) -- this is a
+ * small, curated "you might also like" rail, not a complete listing, so
+ * there's no "never disappears" obligation for an item this module can't
+ * even confirm is nearby.
+ */
+export function selectWeekendNearby(
+  items: FeedItem[], facilities: Facility[], townId: string, cityName: string,
+  townCenter: { lat: number; lon: number }, timezone: string, excludeSlug: string, limit = 5,
+): NearbyWeekendItem[] {
+  const today = todayUtcMidnight(timezone);
+  const anchor = weekendAnchorOffset(today);
+
+  const candidates = items.filter((item) => {
+    if (item.sourceKind === 'story' && item.story.slug === excludeSlug) return false;
+    if (!item.occurs_at) return false;
+    const offset = dayIndex(item.occurs_at, today, timezone);
+    return offset >= anchor && offset <= anchor + 2;
+  });
+
+  const classified = candidates
+    .map((item) => ({ item, ...classifyEventLocality(item, facilities, townId, cityName, townCenter) }))
+    .filter((c): c is { item: FeedItem; zone: 'in_town' | 'nearby'; distanceMiles: number | null; method: LocalityMethod } =>
+      c.zone === 'in_town' || c.zone === 'nearby');
+
+  const inTown = classified.filter((c) => c.zone === 'in_town');
+  const nearby = classified.filter((c) => c.zone === 'nearby');
+  return [...inTown, ...nearby].slice(0, limit).map(({ item, zone, distanceMiles }) => ({ item, zone, distanceMiles }));
 }

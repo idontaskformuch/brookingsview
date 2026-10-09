@@ -10,11 +10,14 @@ import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
 import {
   getAllStories, getRelatedStories, formatOccursAt, formatDate, CATEGORY_LABELS, CATEGORY_HREFS,
   getWorkerPulseComments, getFacilities, buildVenueIndex, resolveVenue, getProjectForMeetingId,
-  isSandboxUrl,
+  isSandboxUrl, getUpcomingStories, getUpcomingArtsEvents,
 } from '../../lib/db';
 import type { Story, Facility } from '../../lib/db';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
-import { eventPriceAgeLine } from '../../lib/events';
+import {
+  eventPriceAgeLine, buildEventFeed, eventsAtVenue, selectWeekendNearby, artsEventAsStory,
+  type FeedItem,
+} from '../../lib/events';
 import { buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
 import { resolveImage, contentTrackCropPaths } from '../../lib/images';
@@ -29,18 +32,32 @@ import { redactWorkerPulseBody } from '../../lib/content-redaction';
 
 export async function getStaticPaths() {
   // Fetched once for the whole build, not per-page -- the facilities set is
-  // small (a handful of rows) and doesn't vary per story.
-  const [stories, facilities] = await Promise.all([getAllStories(), getFacilities()]);
+  // small (a handful of rows) and doesn't vary per story. `upcomingEvents`/
+  // `upcomingArts` likewise (Phase 3, "Event <-> facility hub," 2026-10-09):
+  // the same shape events.astro itself fetches, reused here for "Other
+  // events at this venue" and "Also this weekend nearby" -- a second query
+  // pair for the whole build, not per-page, and the one correct way to stay
+  // in sync with getUpcomingStories()'s own real filtering (published,
+  // non-superseded, upcoming) rather than re-deriving that from
+  // getAllStories()'s much broader routing set and risking drift.
+  const [stories, facilities, upcomingEvents, upcomingArts] = await Promise.all([
+    getAllStories(), getFacilities(), getUpcomingStories(['event'], 200), getUpcomingArtsEvents(60),
+  ]);
+  const { items: upcomingEventItems } = buildEventFeed(upcomingEvents, upcomingArts, siteConfig.timezone);
   // 2026-10-01, item 4: the route param is the PUBLIC slug (publicSlug());
   // `story.slug` itself (passed through unchanged via props) stays the
   // real DB value everywhere below -- story.slug.match(/-(\d+)$/) just
   // below, WorkerPulseComments' pageSlug, etc. all need the real slug, not
   // the public one, since they're DB keys, not URLs. Old-prefixed requests
   // 301 to this new path via server/content-slug-redirects.ts.
-  return stories.map((story) => ({ params: { slug: publicSlug(story.slug) }, props: { story, facilities } }));
+  return stories.map((story) => ({
+    params: { slug: publicSlug(story.slug) }, props: { story, facilities, upcomingEvents, upcomingEventItems },
+  }));
 }
 
-const { story, facilities } = Astro.props as { story: Story; facilities: Facility[] };
+const { story, facilities, upcomingEvents, upcomingEventItems } = Astro.props as {
+  story: Story; facilities: Facility[]; upcomingEvents: Story[]; upcomingEventItems: FeedItem[];
+};
 const isAlert = story.source_type === 'alert';
 const isMeeting = story.source_type === 'meeting' || story.source_type === 'meeting_followup';
 const isEvent = story.source_type === 'event';
@@ -140,6 +157,29 @@ const venueFacility = story.source_type === 'event' && !story.is_recurring_serie
   ? resolveVenue(buildVenueIndex(facilities), story.venue_raw)
   : null;
 const cityHallFacility = isMeeting ? facilities.find((f) => f.slug === 'city-hall') ?? null : null;
+
+// Phase 3, "Event <-> facility hub" (2026-10-09): "Other events at this
+// venue" -- only possible when this event's own venue actually resolved
+// (see venueFacility above; many Brookings events simply have no venue
+// name at all in the source feed, so this naturally renders nothing for
+// those rather than a guessed/empty section). eventsAtVenue() is the SAME
+// primitive facilities/[slug].astro's own "Upcoming here" now calls, not
+// a second copy.
+const otherEventsHere = venueFacility
+  ? eventsAtVenue(upcomingEvents, facilities, venueFacility.slug, story.slug, 5)
+  : [];
+
+// "Also this weekend nearby" -- independent of whether THIS event's own
+// venue resolved (it's about OTHER events, not this one), gated only on
+// actually being an event page. Reuses the exact same weekendAnchorOffset()
+// /classifyEventLocality() pipeline /events/'s own Nearby section and
+// weekend hero use -- see selectWeekendNearby()'s own doc comment.
+const weekendNearby = isEvent
+  ? selectWeekendNearby(
+      upcomingEventItems, facilities, siteConfig.townId, siteConfig.cityName, siteConfig.townCenter,
+      siteConfig.timezone, story.slug, 5,
+    )
+  : [];
 // This page's own real URL -- used for breadcrumbs, JSON-LD, and share
 // buttons below, which all describe THIS page regardless of SEO
 // canonicalization. Never swapped for the cross-site origin URL -- the
@@ -349,6 +389,15 @@ const eventJsonLdObject = buildEventJsonLd(
     {venueFacility && (
       <p class="story__venue-link data">
         📍 <a href={`/facilities/${venueFacility.slug}/`}>{venueFacility.name}</a>
+        {/* Phase 3, "Event <-> facility hub" (2026-10-09): address + hours
+            inline here, where real -- `hours_text` (not a per-page
+            getPlaceHours() query; see this page's own getStaticPaths()
+            comment on why structured place_hours stays the facility page's
+            own specialty, not duplicated per event page). Never a guessed
+            field: both are plain `Facility` columns, rendered only when
+            actually populated. */}
+        {venueFacility.address && <> — {venueFacility.address}</>}
+        {venueFacility.hours_text && <> · {venueFacility.hours_text}</>}
       </p>
     )}
 
@@ -418,6 +467,44 @@ const eventJsonLdObject = buildEventJsonLd(
       </p>
     </footer>
   </article>
+
+  {/* Phase 3, "Event <-> facility hub" (2026-10-09): both sections render
+      nothing (not an empty heading) when there's nothing real to show --
+      an event with no resolved venue gets no "Other events here" at all
+      (common for Brookings, whose source feeds often carry no venue name),
+      and a quiet weekend with nothing else scheduled gets no "Also this
+      weekend nearby" either. */}
+  {otherEventsHere.length > 0 && (
+    <nav class="venue-events" aria-label={`Other events at ${venueFacility?.name}`}>
+      <h2 class="story__section-label">Other events at {venueFacility?.name}</h2>
+      <ul class="venue-events__list">
+        {otherEventsHere.map((s) => (
+          <li>
+            <a href={storyHref(s.slug)}>{s.title}</a>
+            <span class="when data">{formatOccursAt(s)}</span>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )}
+
+  {weekendNearby.length > 0 && (
+    <nav class="venue-events" aria-label="Also this weekend nearby">
+      <h2 class="story__section-label">Also this weekend{weekendNearby.some((n) => n.zone === 'nearby') ? '' : ` in ${siteConfig.cityName}`}</h2>
+      <ul class="venue-events__list">
+        {weekendNearby.map(({ item, distanceMiles }) => {
+          const s = item.sourceKind === 'story' ? item.story : artsEventAsStory(item.event);
+          const href = item.sourceKind === 'story' ? storyHref(s.slug) : item.event.event_url;
+          return (
+            <li>
+              <a href={href}>{s.title}</a>
+              <span class="when data">{formatOccursAt(s)}{distanceMiles != null && ` · ${Math.round(distanceMiles)} mi away`}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  )}
 
   <RelatedStories stories={related} />
 
@@ -510,6 +597,11 @@ const eventJsonLdObject = buildEventJsonLd(
   margin: 2rem 0 0.75rem;
   font-size: 1.25rem;
 }
+.venue-events { margin-top: 1.5rem; }
+.venue-events__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.venue-events__list li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--rule); }
+.venue-events__list a { font-weight: 600; }
+.venue-events__list .when { color: var(--ink-soft); white-space: nowrap; font-size: 0.8125rem; }
 .story__ingredients {
   margin: 0;
   padding: 1rem 1.25rem;

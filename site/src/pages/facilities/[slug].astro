@@ -28,8 +28,9 @@ import { assertImageExists } from '../../lib/images';
 import {
   getFacilities, getFacilityBySlug, getPlaceHours, getUpcomingPlaceHoursExceptions,
   FACILITY_CATEGORY_LABELS, FACILITY_SCHEMA_TYPE,
-  formatCalendarDate, formatFullCalendarDate, getUpcomingStories, buildVenueIndex, resolveVenue, formatOccursAt,
+  formatCalendarDate, formatFullCalendarDate, getUpcomingStories, formatOccursAt,
 } from '../../lib/db';
+import { eventsAtVenue } from '../../lib/events';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
@@ -70,10 +71,12 @@ const hubBacklink = resolveHubBacklink('facilities/detail', siteConfig);
 // key: an event's venue_raw resolves against the SAME facilities table this
 // page renders, so no separate venue-to-facility mapping needs maintaining.
 const allUpcoming = await getUpcomingStories(['event'], 200);
-const venueIndex = buildVenueIndex(await getFacilities());
-const upcomingHere = allUpcoming
-  .filter((s) => resolveVenue(venueIndex, s.venue_raw)?.slug === facility.slug)
-  .slice(0, 8);
+// Phase 3, "Event <-> facility hub" (2026-10-09): shared with the event
+// detail page's own "Other events at this venue" section (see
+// lib/events.ts:eventsAtVenue()'s own doc comment) -- one resolveVenue()
+// filter, not two. Capped at 5 (was 8) to match the phase spec's own
+// "next 5 events ... plus a link to more" wording.
+const upcomingHere = eventsAtVenue(allUpcoming, await getFacilities(), facility.slug, undefined, 5);
 
 const hasFullAddress = Boolean(facility.street_address && facility.postal_code);
 
@@ -311,6 +314,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
             </li>
           ))}
         </ul>
+        <p class="more-events"><a href="/events/">See all events in {siteConfig.cityName} →</a></p>
       </>
     )}
 
@@ -374,5 +378,6 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
 .events li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--rule); }
 .events a { font-weight: 600; }
 .events .when { color: var(--ink-soft); white-space: nowrap; font-size: 0.8125rem; }
+.more-events { margin: 0.75rem 0 0; font-size: 0.875rem; }
 .back { margin-top: 1rem; }
 </style>
