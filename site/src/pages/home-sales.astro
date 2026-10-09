@@ -46,6 +46,16 @@ const [allRecentSales, digests] = await Promise.all([
 // the window, it never renders a link into a 410.
 const sales = allRecentSales.filter((s) => isWithinRenderWindow(s.sale_date, 'homeSales', siteConfig));
 
+// Phase 5 (2026-10-09): county recording is itself always behind the
+// actual sale (closing paperwork, then the county's own processing
+// queue) -- "Updated quarterly" told a reader how often WE check the
+// source, not how stale the source's own data already is when we do.
+// allRecentSales is ORDER BY sale_date DESC (unfiltered by
+// isWithinRenderWindow, which exists to decide what gets a permalink
+// page, not to describe the data itself) so its first row's date is the
+// real max -- computed from the data, never a guessed/rounded figure.
+const mostRecentSaleDate = allRecentSales[0]?.sale_date ?? null;
+
 const pageMeta = resolvePageMeta('home-sales', siteConfig);
 const canonicalUrl = new URL('/home-sales/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('home-sales', siteConfig, { label: 'Home sales', href: canonicalUrl });
@@ -72,7 +82,9 @@ function monthYear(occursAt: string | null): string {
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
     <p>Recently recorded home sales in {siteConfig.cityName}, {siteConfig.stateAbbr},
-    straight from Riverside County's public assessor data. Updated quarterly.
+    straight from Riverside County's public assessor data. County records
+    lag behind actual sales{mostRecentSaleDate && <> — the most recent
+    recorded sale currently available is from {new Date(mostRecentSaleDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</>}.
     {hubBacklink && <> Wondering what local employers pay? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
   </header>
 
@@ -90,7 +102,9 @@ function monthYear(occursAt: string | null): string {
     </>
   )}
 
-  <SectionRule label={`${sales.length} most recent`} />
+  <SectionRule label={mostRecentSaleDate
+    ? `${sales.length} most recent, through ${monthYear(mostRecentSaleDate)}`
+    : `${sales.length} most recent`} />
 
   <p class="zip-links">
     Browse by ZIP: {zips.map((z, i) => (
