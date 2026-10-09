@@ -433,6 +433,20 @@ def build_source_url(table: str, row: dict) -> str | None:
     return None
 
 
+def _venue_eligible(table: str, source_type: str) -> bool:
+    """Whether this row's own `venue` field is a resolvable physical venue
+    at all. Alerts and events share the `events` table (see this module's
+    own point 3 above), but an NWS alert's "venue" is really areaDesc -- a
+    county list (e.g. "Lincoln; Lyon; Murray; Cottonwood; Pipestone;
+    Brookings") or, for some alert products, a product-category phrase
+    ("Hazardous Weather Alerts") rather than a place at all (see
+    nws_alerts.py's own parse()). An alert covers an area, it doesn't
+    happen AT a building, so it never gets a venue_raw -- same spirit as
+    _is_bare_state_code() in scrapers/event_sources.py, just scoped by row
+    type instead of string content."""
+    return table == "events" and source_type != "alert"
+
+
 def group_event_slots(rows: list[dict], tz: ZoneInfo) -> list[dict]:
     """Kollapsa flera tidsluckor av samma event samma dag till en post.
 
@@ -841,7 +855,7 @@ def publish_table(
         source_url = build_source_url(table, row)
         snapshot_id = row.get("snapshot_id")
         occurs_at = build_occurs_at(table, row)
-        venue_raw = row.get("venue") if table == "events" else None
+        venue_raw = row.get("venue") if _venue_eligible(table, source_type) else None
         # Brookings' library calendar (LibCal, source="library") never
         # populates a LOCATION field at all -- confirmed live: 0 of 88 raw
         # library-source event rows have `venue` set, vs. 36 of 37 for
