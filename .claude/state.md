@@ -1,30 +1,29 @@
 # State
 
-Current spec: .claude/spec-phases-3-9.md (read only the current phase).
-Phase 3 ("Event <-> facility hub") DONE, all three towns, not yet pushed.
-Also fixed: Moreno Valley's /reviews/ redirect (was noindexed /columns/,
-now ->/).
+Current spec: .claude/spec-phases-3-9.md (read only current phase).
+Phase 3 DONE + PUSHED (8d576a2). Mid 3-part owner follow-up before
+Phase 5 (approved in chat; not all done yet -- see Next).
 
-## Phase 3 changes
-- events.ts: new eventsAtVenue() + selectWeekendNearby(), siblings of
-  getRelatedStories() -- NOT inside getRelatedContent() (that's a
-  section-landing system, wrong fit; documented in code).
-- facilities/[slug].astro: "Upcoming here" via eventsAtVenue(), capped 5
-  + "See all events" link.
-- s/[slug].astro: venue link now shows address/hours_text (no per-page
-  getPlaceHours query, perf tradeoff). New sections: "Other events at
-  this venue", "Also this weekend nearby/in <Town>".
-- events.test.ts: +8 tests.
+## Part 1: redirect audit (DONE, nothing to fix, not yet reported)
+Checked reviews/recipes/editorials/columns, all 3 towns, for a
+noindex-to-noindex redirect like the one fixed in 48f05a7. Only
+reviews.astro redirects at all (Moreno Valley only, ->'/'). The other
+three never redirect, always render their own noindexed page, every
+town. Moreno Valley's /columns/ already folds in media_recension
+content -- no orphaned reviews content anywhere. Clean.
 
-## Verified
-945 vitest, 726 pytest, astro check 0 errors. Real builds all 3 towns:
-sitemaps unchanged (105/134/77), disjoint clean. Rendered HTML spot-
-checked on Brookings + Moreno Valley.
+## Part 2: Brookings venue audit -- IN PROGRESS, nothing written yet
+Need: alias-match the 37 unresolved venue_raw strings (see
+events_correctness_phase2_project memory) vs existing facilities via
+buildVenueIndex()/resolveVenue() (lib/events.ts); report only
+unambiguous matches, list uncertain ones, no new pages. Then research
+official address/phone/hours for SD Art Museum, SD Ag Heritage Museum,
+Larson Ice Center; prepare a dry-run of possible new places rows for
+approval. Mosaic Wine Bar + bare addresses: no pages (owner said so).
 
-## Owner deliverable: unresolved venue_raw audit
-Brookings 37/49 unresolved (bare addresses, Larson Ice Center x3, Pasque
-x3, SD Art/Ag museums). Moreno Valley 0/11. Broomfield 0/0 (no events).
+## Part 3: Phase 5 -- NOT STARTED
+Draft About/Editorial Policy only (no publish); propose per-town
+Traffic corridor lists and report BEFORE building the filter.
 
 ## Next
-STOPPED per spec. Phase 5 is next in order but needs separate go-ahead.
-Nothing pushed (rule 6).
+Finish+report Parts 1-2, then start Part 3. Stop after Phase 5, report.
