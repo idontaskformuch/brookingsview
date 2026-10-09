@@ -73,6 +73,12 @@ const kind = isAlert ? 'Alert' : isMeeting ? 'Meeting' : 'Event';
 // that page represents MANY future instances, not one date that can "pass".
 const eventHasPassed = isEvent && !story.is_recurring_series
   && hasEventPassed(story.occurs_at, story.ends_at, new Date());
+// Phase 4, "Add to calendar" (2026-10-09): same eligibility as the .ics
+// file itself (site/src/pages/s/[slug].ics.ts's own getStaticPaths) --
+// a recurring-series page has no single date to add, and a past event
+// isn't worth adding to anyone's calendar.
+const icsUrl = isEvent && !eventHasPassed && !story.is_recurring_series
+  ? `/s/${publicSlug(story.slug)}.ics` : null;
 // Events correctness Step A, point 3: "Free"/price + age, structured-only
 // (see eventPriceAgeLine's own comment) -- null for the vast majority of
 // rows the source never mentioned a price/age for.
@@ -451,6 +457,7 @@ const eventJsonLdObject = buildEventJsonLd(
     )}
 
     <ShareButtons url={canonicalUrl} title={story.title} />
+    {icsUrl && <p class="story__add-to-calendar"><a href={icsUrl} download>+ Add to calendar</a></p>}
 
     <footer class="story__source">
       {story.source_url && !isSandboxUrl(story.source_url) ? (
@@ -574,6 +581,7 @@ const eventJsonLdObject = buildEventJsonLd(
   color: var(--navy);
 }
 .story__when { margin: 0.75rem 0 0; color: var(--ink-soft); font-size: 0.875rem; }
+.story__add-to-calendar { margin: 0.5rem 0 0; font-size: 0.875rem; }
 .story__passed-notice {
   display: inline-block;
   margin: 0.5rem 0 0;

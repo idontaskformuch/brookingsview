@@ -15,6 +15,8 @@ export const GET: APIRoute = ({ site }) => {
 
 User-agent: *
 Allow: /
+# Phase 4, "Add to calendar": per-event .ics downloads, not content pages.
+Disallow: /s/*.ics
 
 Sitemap: ${siteUrl}/sitemap-index.xml
 Sitemap: ${siteUrl}/news-sitemap.xml

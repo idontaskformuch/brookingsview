@@ -650,12 +650,18 @@ export default defineConfig({
         // not a DB query, since noindex here doesn't depend on any per-item
         // data -- EVERY detail page is noindexed, always.
         const isWhatsOnDetailPage = pathname.startsWith('/whats-on/') && pathname !== '/whats-on/';
+        // Phase 4, "Add to calendar" (2026-10-09): per-event .ics files
+        // (site/src/pages/s/[slug].ics.ts) are a download, not a page --
+        // keep them out of the sitemap the same way the HTML event pages
+        // they belong to are already noindexed (see lib/noindex.ts).
+        const isIcsFile = pathname.endsWith('.ics');
         return !noindexHomeSaleUrls.has(pathname)
           && !excludedGatedPages.has(pathname)
           && !noindexStoryUrls.has(pathname)
           && !noindexThinPageUrls.has(pathname)
           && !crossCanonicalStoryUrls.has(pathname)
-          && !isWhatsOnDetailPage;
+          && !isWhatsOnDetailPage
+          && !isIcsFile;
       },
       serialize(item) {
         const lastmod = lastmodMap.get(new URL(item.url).pathname);
