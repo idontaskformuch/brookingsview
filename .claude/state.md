@@ -50,6 +50,34 @@ on both the coordinate and address-fallback paths. vitest 932, pytest
    (live-DB write, rule 7).
 4. McKay Lake/Conoco/Outlook/etc: not created, per instruction.
 
+## CHECKPOINT -- Moreno Valley merge, before-state (2026-10-09, immediately pre-write)
+Pushed 2f (856c308..c164347) + the title-length budget fix (below).
+Deploy confirmed live: curled the old slug, got a real 301 ->
+/facilities/conference-recreation-center/ (took ~6.5min after push).
+Full before-snapshot of both rows (id 59 `conference-recreation-
+center`: address "14075 Frederick St", lat 33.9164292204479/lon
+-117.262363455989, content_hash dac79fa2...; id 55 `moreno-valley-
+conference-and-recreation-center`: address "14075 Frederick Street",
+lat 33.9165750900756/lon -117.262391453454, content_hash 6416f2a1...,
+has the richer amenities description) -- unchanged from the dry-run
+shown earlier, both still phone=null/hours=null. About to execute:
+UPDATE id 59 with the merged content already dry-run-approved, DELETE
+id 55. Revert path if ever needed: re-INSERT id 55's exact row above
+(full snapshot preserved in this entry) and revert id 59's fields to
+its own snapshot above.
+
+## Title-length budget fix (before push, see commit log)
+Point-2 audit (5 longest facility titles/town) found real titles up to
+95 chars -- several facility names are 50-70 chars ALONE, so the full
+"— Hours, Address & Phone" suffix (25 chars) blew well past the
+owner's ~60-char name+elements target. Fixed: facilityTitleElements()
+now takes the facility name's own length + a budget (default 60) and
+drops Phone first, then Hours, down to Address-alone, down to nothing,
+whichever fits -- never truncates the facility's own real name. Every
+title now provably fits "Name+Elements" <= 60 chars (by construction,
+not just spot-checked). Re-verified against live data after the fix --
+see chat for the full before/after 5-longest tables per town.
+
 ## Known residuals (owner aware, unrelated to this round)
 3 rows template_fallback; "must" opinion-marker FP risk; 44 brookings_sd
 pre_publish_check rejections unroot-caused; 11 duplicate-title groups

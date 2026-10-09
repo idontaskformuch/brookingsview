@@ -81,27 +81,65 @@ describe('pickAddressConnector', () => {
 });
 
 describe('facilityTitleElements (Phase 2, item 2f)', () => {
+  // Short name ("Quail Creek Park", 16 chars) -- plenty of budget room for
+  // every test below unless the test itself is specifically about budget
+  // pressure.
+  const SHORT_NAME = 16;
+
   it('lists all three, in fixed Hours/Address/Phone order, regardless of argument order meaning', () => {
-    expect(facilityTitleElements(true, true, true)).toBe(' — Hours, Address & Phone');
+    expect(facilityTitleElements(true, true, true, SHORT_NAME)).toBe(' — Hours, Address & Phone');
   });
 
   it('lists two with an ampersand, no Oxford comma', () => {
-    expect(facilityTitleElements(true, true, false)).toBe(' — Hours & Address');
-    expect(facilityTitleElements(false, true, true)).toBe(' — Address & Phone');
+    expect(facilityTitleElements(true, true, false, SHORT_NAME)).toBe(' — Hours & Address');
+    expect(facilityTitleElements(false, true, true, SHORT_NAME)).toBe(' — Address & Phone');
   });
 
   it('lists one alone with no ampersand', () => {
-    expect(facilityTitleElements(false, true, false)).toBe(' — Address');
+    expect(facilityTitleElements(false, true, false, SHORT_NAME)).toBe(' — Address');
   });
 
   it('is empty (not a dangling dash) when none are present', () => {
-    expect(facilityTitleElements(false, false, false)).toBe('');
+    expect(facilityTitleElements(false, false, false, SHORT_NAME)).toBe('');
   });
 
   it('matches the real, common Broomfield-park case: address only', () => {
     // Real live data (2026-10-09): 9 of 10 checked Broomfield parks have
     // ONLY an address -- no phone, no hours.
-    expect(facilityTitleElements(false, true, false)).toBe(' — Address');
+    expect(facilityTitleElements(false, true, false, SHORT_NAME)).toBe(' — Address');
+  });
+
+  describe('length budget (owner-caught, 2026-10-09: real names are up to 60+ chars alone)', () => {
+    // Real live name, 41 chars -- the full 3-element suffix (25 chars)
+    // doesn't fit under the default 60-char budget, but dropping Phone
+    // (the 2-element "Hours & Address" suffix, 18 chars) does: 41+18=59.
+    const ADVENTURE_CENTER_NAME = 'Brookings County Outdoor Adventure Center'.length;
+    // Real live name, 53 chars -- even the single-element "— Address"
+    // suffix (10 chars) no longer fits: 53+10=63, over the 60 budget.
+    const CITY_HALL_NAME = 'Brookings City Hall (City & County Government Center)'.length;
+
+    it('drops Phone first when the full 3-element suffix would blow the default 60-char budget', () => {
+      expect(facilityTitleElements(true, true, true, ADVENTURE_CENTER_NAME)).toBe(' — Hours & Address');
+    });
+
+    it('drops the whole suffix when even "— Address" alone does not fit', () => {
+      expect(facilityTitleElements(true, true, true, CITY_HALL_NAME)).toBe('');
+    });
+
+    it('a shorter real name keeps the full suffix under the same budget', () => {
+      // "Dakota Nature Park" = 18 chars; 18 + 25 = 43, well under 60.
+      expect(facilityTitleElements(true, true, true, 'Dakota Nature Park'.length)).toBe(' — Hours, Address & Phone');
+    });
+
+    it('respects a custom budget argument', () => {
+      expect(facilityTitleElements(true, true, true, 10, 15)).toBe('');
+      expect(facilityTitleElements(true, true, true, 10, 100)).toBe(' — Hours, Address & Phone');
+    });
+
+    it('falls back to a single field when address is unavailable but hours or phone would otherwise fit', () => {
+      expect(facilityTitleElements(true, false, false, SHORT_NAME)).toBe(' — Hours');
+      expect(facilityTitleElements(false, false, true, SHORT_NAME)).toBe(' — Phone');
+    });
   });
 });
 

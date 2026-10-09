@@ -298,7 +298,7 @@ async function assertPageMetaPatternsValid(): Promise<void> {
     // "has hours" only ever UNDER-estimates this check's title length,
     // never silently hides a real duplicate-title bug (the other thing
     // this loop catches, unaffected by Elements at all).
-    const elements = facilityTitleElements(Boolean(facility.hours_text), Boolean(facility.address), Boolean(facility.phone));
+    const elements = facilityTitleElements(Boolean(facility.hours_text), Boolean(facility.address), Boolean(facility.phone), facility.name.length);
     const { title, h1 } = resolvePageMeta('facilities/detail', siteConfig, { FacilityName: facility.name, Elements: elements });
     checkResolved('facilities/detail', facility.slug, title, h1, true, problems);
     recordTitle('facilities/detail', facility.slug, title);

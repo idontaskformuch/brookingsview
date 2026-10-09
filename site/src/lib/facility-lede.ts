@@ -75,15 +75,6 @@ export function buildFacilityLede(
   return sentences.length > 0 ? sentences.join(' ') : null;
 }
 
-/** Phase 2, item 2f (2026-10-09): the dynamic "— Hours, Address & Phone"
- *  title suffix -- names only the elements THIS facility actually has
- *  (most Broomfield parks have an address and nothing else; a handful of
- *  civic buildings have all three). Returns '' (not a dangling "— |
- *  Site") when none are present, so resolvePageMeta's titlePattern
- *  ('{FacilityName}{Elements} | {Site}') collapses cleanly to just the
- *  bare name. Always Hours/Address/Phone in that fixed order when
- *  present, matching the spec's own literal example wording -- not the
- *  order the three booleans happen to be passed in. */
 /** Phase 2, item 2f (2026-10-09): a real, working map link built from data
  *  already on the row -- never a new fact, just an existing one (lat/lon
  *  when geocoded, the already-verified address string otherwise) presented
@@ -101,13 +92,63 @@ export function facilityMapLink(lat: number | null, lon: number | null, address:
   return null;
 }
 
-export function facilityTitleElements(hasHours: boolean, hasAddress: boolean, hasPhone: boolean): string {
-  const parts: string[] = [];
-  if (hasHours) parts.push('Hours');
-  if (hasAddress) parts.push('Address');
-  if (hasPhone) parts.push('Phone');
+/** `parts` already in the fixed Hours/Address/Phone display order --
+ *  "A, B & C" (no Oxford comma), "A & B" for two, "A" for one, '' for
+ *  none (never a dangling "— | Site"). */
+function joinElementParts(parts: string[]): string {
   if (parts.length === 0) return '';
   if (parts.length === 1) return ` — ${parts[0]}`;
   const last = parts[parts.length - 1];
   return ` — ${parts.slice(0, -1).join(', ')} & ${last}`;
+}
+
+/** Phase 2, item 2f (2026-10-09): the dynamic "— Hours, Address & Phone"
+ *  title suffix -- names only the elements THIS facility actually has
+ *  (most Broomfield parks have an address and nothing else; a handful of
+ *  civic buildings have all three). Returns '' (not a dangling "— |
+ *  Site") when none are present, so resolvePageMeta's titlePattern
+ *  ('{FacilityName}{Elements} | {Site}') collapses cleanly to just the
+ *  bare name.
+ *
+ *  Length-budgeted, 2026-10-09 (owner-caught before shipping): real data
+ *  across all three towns showed several facility names are ALREADY
+ *  50-70 chars alone (e.g. "Moreno Valley Community Hospital, a Kaiser
+ *  Foundation Hospital", "Brookings City Hall (City & County Government
+ *  Center)") -- the full 25-char suffix pushed some titles to 93-95
+ *  chars, nowhere near readable in a real SERP snippet even before
+ *  counting " | {Site}". `facilityNameLength` (the real name's own
+ *  length, not counting the suffix or site) + this suffix must fit
+ *  within `budget` (default 60, per the owner's own "~60 chars" target)
+ *  or elements get dropped -- Phone first (least essential once a reader
+ *  is already on the right page), then Hours, keeping Address alone as
+ *  the last thing to drop (the single most expected fact on a local
+ *  facility page). A facility name alone already at or past budget gets
+ *  no suffix at all -- the same "known, unavoidable exception" the
+ *  city-hall title already documents, extended here rather than ever
+ *  truncating a facility's own real name to make room. */
+export function facilityTitleElements(
+  hasHours: boolean, hasAddress: boolean, hasPhone: boolean,
+  facilityNameLength: number, budget = 60,
+): string {
+  const attempts: [boolean, boolean, boolean][] = [
+    [hasHours, hasAddress, hasPhone],
+    [hasHours, hasAddress, false],
+    [false, hasAddress, false],
+    // Real data has address on nearly every facility that has anything at
+    // all, so these last two rarely fire -- kept for the edge case of a
+    // facility with hours or phone but genuinely no address, so it still
+    // gets SOMETHING rather than silently falling through to ''.
+    [hasHours, false, false],
+    [false, false, hasPhone],
+  ];
+  for (const [hours, address, phone] of attempts) {
+    const parts: string[] = [];
+    if (hours) parts.push('Hours');
+    if (address) parts.push('Address');
+    if (phone) parts.push('Phone');
+    const suffix = joinElementParts(parts);
+    if (suffix === '') continue;
+    if (facilityNameLength + suffix.length <= budget) return suffix;
+  }
+  return '';
 }

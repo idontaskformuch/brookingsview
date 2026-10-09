@@ -136,7 +136,7 @@ const isThinFacility = !facility.address && !facility.phone && !facility.hours_t
 // named list, not changed here).
 const pageMeta = resolvePageMeta('facilities/detail', siteConfig, {
   FacilityName: facility.name,
-  Elements: facilityTitleElements(Boolean(facility.hours_text) || hours.length > 0, Boolean(facility.address), Boolean(facility.phone)),
+  Elements: facilityTitleElements(Boolean(facility.hours_text) || hours.length > 0, Boolean(facility.address), Boolean(facility.phone), facility.name.length),
 });
 const mapLink = facilityMapLink(facility.lat, facility.lon, facility.address);
 // The 'places' cluster's own label is 'Places' (a broader content-category
