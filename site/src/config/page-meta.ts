@@ -205,9 +205,13 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
   // there, hence "affiliate" not a named team) lives directly in the base
   // pattern rather than as a TOWN_OVERRIDES entry with exactly one member --
   // that indirection would document a distinction that no longer exists.
+  // Renamed Phase 5 (2026-10-09): this page covers regional/affiliate
+  // teams near the town, not a home team of the town's own -- "Local &
+  // nearby sports" says that plainly instead of implying a home-team
+  // framing "{Town}-Area Sports" didn't quite have.
   sports: {
-    titlePattern: '{Town} Sports Scores and Schedule | {Site}',
-    h1Pattern: '{Town}-Area Sports: Regional and Affiliate Team Scores',
+    titlePattern: 'Local & Nearby Sports in {Town} | {Site}',
+    h1Pattern: 'Local & Nearby Sports: {Town}-Area Scores and Schedule',
   },
   // Brookings-only (site/src/pages/jackrabbits.astro redirects every
   // other town away) -- SDSU is a real, specific, already-covered-in-

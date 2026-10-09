@@ -26,9 +26,9 @@ describe('resolvePageMeta', () => {
   // shared route with a per-town H1 override as the handoff assumed -- see
   // page-meta.ts's own correction comment on the `sports`/`jackrabbits`
   // entries. There is no TOWN_OVERRIDES entry for either key anymore.
-  it('resolves the sports pattern with its own regional-affiliate framing (Moreno Valley is the only real caller)', () => {
+  it('resolves the sports pattern with the "Local & Nearby" framing, not a home-team one (Moreno Valley is the only real caller)', () => {
     const result = resolvePageMeta('sports', MORENO_VALLEY);
-    expect(result.h1).toContain('Regional');
+    expect(result.h1).toContain('Local & Nearby');
     expect(result.h1).not.toContain('Jackrabbits');
   });
 
@@ -40,7 +40,7 @@ describe('resolvePageMeta', () => {
 
   it('falls back to the shared base pattern for a town with no override (Broomfield has neither /sports/ nor /jackrabbits/, but the fallback itself must still resolve cleanly if ever called)', () => {
     const result = resolvePageMeta('sports', BROOMFIELD);
-    expect(result.h1).toBe('Broomfield-Area Sports: Regional and Affiliate Team Scores');
+    expect(result.h1).toBe('Local & Nearby Sports: Broomfield-Area Scores and Schedule');
   });
 
   it('interpolates extraVars placeholders for facility detail, including the dynamic Elements suffix', () => {
