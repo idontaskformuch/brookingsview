@@ -1435,6 +1435,21 @@ export async function getActiveTrafficIncidents(maxAgeHours = 3): Promise<Traffi
   `) as TrafficIncident[];
 }
 
+/** Traffic Phase 5: the empty state ("No incidents in <Town> right now")
+ *  needs a "last checked" time even when zero incidents pass the In-
+ *  Town/Approach-roads filter (or even when the raw feed itself currently
+ *  has nothing active) -- this is deliberately NOT scoped by the same
+ *  maxAgeHours/ends_at filters getActiveTrafficIncidents() uses, since
+ *  it answers a different question ("when did we last hear from the
+ *  source at all", not "is anything active right now"). Null only when
+ *  this town has never stored a single incident. */
+export async function getTrafficLastChecked(): Promise<string | null> {
+  const rows = await sql`
+    SELECT MAX(last_seen_at) AS last_checked FROM traffic_incidents WHERE town_id = ${TOWN_ID}
+  `;
+  return (rows[0] as { last_checked: string | null })?.last_checked ?? null;
+}
+
 /** FAS 2: rå CHP/Caltrans-text ("C74-R12 WB 91 FROM ADAMS TO VB 3/4 LNS
  *  CLOSED") är genuint svårläst för en vanlig läsare. Ordlistan expanderar
  *  bara TERMER VI ÄR SÄKRA PÅ (riktningsförkortningar, "LNS"->"lanes" osv)

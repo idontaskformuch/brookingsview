@@ -14,19 +14,33 @@ import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
-import { getActiveTrafficIncidents, formatTimeWithZone, plainLanguageTraffic } from '../lib/db';
+import { getActiveTrafficIncidents, getTrafficLastChecked, formatTimeWithZone, plainLanguageTraffic } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import SectionHero from '../components/SectionHero.astro';
-import { EMPTY_STATES } from '../lib/empty-states';
 import { SECTION_THEME } from '../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
+import { classifyTrafficIncident } from '../lib/traffic';
 
 const pageMeta = resolvePageMeta('traffic', siteConfig);
 const clusterNavItems = resolveHubNavItems('traffic', siteConfig);
-const incidents = await getActiveTrafficIncidents();
+const rawIncidents = await getActiveTrafficIncidents();
+// Traffic Phase 5 (2026-10-09): the scraper's own bounding box is looser
+// than "this town" -- see lib/traffic.ts's own module doc for the real
+// stored-data audit that found it storing other towns'/other cities'
+// highways too. Every incident is re-classified here against the real
+// town boundary + a named corridor list before it's allowed on the page;
+// anything that's neither in town nor on a configured corridor within
+// range is dropped, never shown as if it were town-relevant.
+const incidents = rawIncidents
+  .map((incident) => {
+    const c = classifyTrafficIncident(incident, siteConfig.townId, siteConfig.trafficCorridors, siteConfig.trafficCorridorMaxMiles);
+    return c ? { ...incident, zone: c.zone, distanceMiles: c.distanceMiles } : null;
+  })
+  .filter((i): i is NonNullable<typeof i> => i !== null);
+const lastChecked = siteConfig.trafficSource ? await getTrafficLastChecked() : null;
 const canonicalUrl = new URL('/traffic/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Home', href: '/' },
@@ -38,6 +52,8 @@ const typeLabel = (t: string) => (t === 'lane_closure' ? 'Lane closure / constru
 const SEVERITY_LABELS: Record<string, string> = {
   closure: 'Closure', injury: 'Injury reported', incident: 'Incident', planned: 'Planned closure',
 };
+const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | null }) =>
+  i.zone === 'in_town' ? `In ${siteConfig.cityName}` : `Approach roads · ${Math.round(i.distanceMiles ?? 0)} mi out`;
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-traffic"
   description={`Current road incidents and lane closures affecting ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}
@@ -76,20 +92,30 @@ const SEVERITY_LABELS: Record<string, string> = {
           ))}
         </select>
       </label>
+      <label>
+        Where
+        <select id="zone-filter">
+          <option value="">All</option>
+          {[...new Set(incidents.map((i) => i.zone))].map((z) => (
+            <option value={z}>{z === 'in_town' ? `In ${siteConfig.cityName}` : 'Approach roads'}</option>
+          ))}
+        </select>
+      </label>
     </div>
   )}
 
   {incidents.length > 0 ? (
     <table class="incidents" id="incidents-table">
       <thead>
-        <tr><th scope="col">Severity</th><th scope="col">Road</th><th scope="col">Details</th><th scope="col">Last updated</th></tr>
+        <tr><th scope="col">Severity</th><th scope="col">Where</th><th scope="col">Road</th><th scope="col">Details</th><th scope="col">Last updated</th></tr>
       </thead>
       <tbody>
         {incidents.map((incident) => (
-          <tr data-severity={incident.severity ?? 'incident'}>
+          <tr data-severity={incident.severity ?? 'incident'} data-zone={incident.zone}>
             <td class={`sev sev--${incident.severity ?? 'incident'}`}>
               {SEVERITY_LABELS[incident.severity ?? 'incident']}
             </td>
+            <td class="data">{whereLabel(incident)}</td>
             <td>{incident.road ?? '—'}</td>
             <td>
               <p class="plain">{plainLanguageTraffic(incident.title)}</p>
@@ -107,7 +133,11 @@ const SEVERITY_LABELS: Record<string, string> = {
       </tbody>
     </table>
   ) : siteConfig.trafficSource ? (
-    <p class="empty">{EMPTY_STATES.traffic}</p>
+    <p class="empty">
+      No incidents in {siteConfig.cityName} right now.{lastChecked
+        ? <> Last checked {formatTimeWithZone(lastChecked)}.</>
+        : null}
+    </p>
   ) : (
     // Never render "No active incidents" when there's no actual source
     // behind it -- that reads as "roads are clear," not the true state
@@ -145,7 +175,7 @@ const SEVERITY_LABELS: Record<string, string> = {
   function init() {
     initDataTable({
       tableId: 'incidents-table',
-      filters: [{ selectId: 'severity-filter', attr: 'severity' }],
+      filters: [{ selectId: 'severity-filter', attr: 'severity' }, { selectId: 'zone-filter', attr: 'zone' }],
       emptyMessage: EMPTY_STATES.searchFilter,
     });
   }

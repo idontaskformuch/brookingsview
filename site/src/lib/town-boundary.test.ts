@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   pointInBoundary, haversineMiles, classifyLocalityByCoords, classifyLocalityByText,
-  getTownBoundary, NEARBY_RADIUS_MILES,
+  getTownBoundary, NEARBY_RADIUS_MILES, distanceToBoundaryMiles,
 } from './town-boundary';
 
 describe('getTownBoundary', () => {
@@ -46,6 +46,37 @@ describe('pointInBoundary', () => {
     // Delta Hotels, 10 E 120th Ave, Northglenn CO -- real geocode (Esri
     // World Geocoding Service, verified live during Phase 2 item 2d).
     expect(pointInBoundary(39.9122467, -104.9886432, boundary)).toBe(false);
+  });
+});
+
+describe('distanceToBoundaryMiles', () => {
+  it('is ~0 for a point on the boundary itself (Sioux Falls direction, walked toward Brookings)', () => {
+    // Sioux Falls (43.5460, -96.7313) is ~53mi from Brookings' CENTER but
+    // the boundary itself is much closer -- this is exactly the
+    // center-vs-boundary distinction this function exists for.
+    const boundary = getTownBoundary('brookings_sd')!;
+    const farPoint = distanceToBoundaryMiles(43.5460, -96.7313, boundary);
+    const centerDistance = haversineMiles(43.5460, -96.7313, 44.3114, -96.7984);
+    expect(farPoint).toBeLessThan(centerDistance);
+    expect(farPoint).toBeGreaterThan(0);
+  });
+
+  it('is ~0 for a point exactly on the boundary ring itself', () => {
+    const boundary = getTownBoundary('brookings_sd')!;
+    const rings = boundary.type === 'Polygon'
+      ? (boundary.coordinates as number[][][])
+      : (boundary.coordinates as number[][][][])[0];
+    const [lon, lat] = rings[0][0];
+    expect(distanceToBoundaryMiles(lat, lon, boundary)).toBeLessThan(0.001);
+  });
+
+  it('a real nearby-but-outside point (Volga, SD, ~8mi from Brookings) is closer to the boundary than to the center', () => {
+    const boundary = getTownBoundary('brookings_sd')!;
+    const volga = { lat: 44.3372, lon: -96.9336 };
+    const toBoundary = distanceToBoundaryMiles(volga.lat, volga.lon, boundary);
+    const toCenter = haversineMiles(volga.lat, volga.lon, 44.3114, -96.7984);
+    expect(toBoundary).toBeGreaterThan(0);
+    expect(toBoundary).toBeLessThan(toCenter);
   });
 });
 

@@ -10,7 +10,6 @@
  */
 export const EMPTY_STATES = {
   schoolClosures: 'No closures. Schools are open.',
-  traffic: 'Nothing closed or blocked right now.',
   eventsAll: 'Nothing on the calendar yet this week.',
   eventsToday: 'Nothing today — check back, or see everything coming up.',
   eventsWeekend: 'Nothing this weekend.',

@@ -90,6 +90,61 @@ export function haversineMiles(lat1: number, lon1: number, lat2: number, lon2: n
   return 2 * EARTH_RADIUS_MILES * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
+const MILES_PER_DEGREE_LAT = (Math.PI / 180) * EARTH_RADIUS_MILES;
+
+/** Closest distance (miles) from (lat, lon) to any edge of this boundary's
+ *  rings -- NOT distance-from-center like classifyLocalityByCoords above.
+ *  Traffic Phase 5 needs this specifically: "within N miles of the town
+ *  BOUNDARY" (an approach corridor just outside town) is a meaningfully
+ *  different, tighter claim than "within N miles of the town CENTER" for a
+ *  town of any real size, and conflating the two would let the threshold
+ *  silently drift with town size.
+ *
+ *  Projects lat/lon to a local flat (equirectangular) plane scaled by
+ *  miles-per-degree at the TEST POINT's own latitude -- the same
+ *  small-town-scale approximation haversineMiles already makes (no
+ *  ellipsoid, no routing), accurate to well under 1% error at the ~10mi
+ *  scale this feature actually uses it at. Every ring of every polygon
+ *  part is searched (not just the exterior) -- cheap, and correct even for
+ *  a pathological concave shape, without needing to reason about which
+ *  ring is "outer" for an already-outside point. */
+export function distanceToBoundaryMiles(lat: number, lon: number, geometry: BoundaryGeometry): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const milesPerDegLon = MILES_PER_DEGREE_LAT * Math.cos(toRad(lat));
+  const px = lon * milesPerDegLon;
+  const py = lat * MILES_PER_DEGREE_LAT;
+
+  const pointToSegment = (ax: number, ay: number, bx: number, by: number): number => {
+    const dx = bx - ax;
+    const dy = by - ay;
+    const lenSq = dx * dx + dy * dy;
+    const t = lenSq === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
+    const cx = ax + t * dx;
+    const cy = ay + t * dy;
+    return Math.hypot(px - cx, py - cy);
+  };
+
+  const polygons = geometry.type === 'Polygon'
+    ? [geometry.coordinates as number[][][]]
+    : (geometry.coordinates as number[][][][]);
+
+  let minMiles = Infinity;
+  for (const rings of polygons) {
+    for (const ring of rings) {
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [lonA, latA] = ring[j];
+        const [lonB, latB] = ring[i];
+        const ax = lonA * milesPerDegLon;
+        const ay = latA * MILES_PER_DEGREE_LAT;
+        const bx = lonB * milesPerDegLon;
+        const by = latB * MILES_PER_DEGREE_LAT;
+        minMiles = Math.min(minMiles, pointToSegment(ax, ay, bx, by));
+      }
+    }
+  }
+  return minMiles;
+}
+
 /** Phase 2 spec default: events farther than this from the town center
  *  (and outside the town boundary) don't count as "nearby" at all -- they
  *  just don't appear in either geo section. In practice this almost never

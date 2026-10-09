@@ -73,6 +73,28 @@ export interface SiteConfig {
    *  scopeNote: what the source does/doesn't cover (e.g. state highways
    *  only, not city streets) -- shown on the page, not left implicit. */
   trafficSource?: { name: string; url: string; scopeNote: string };
+  /** Traffic Phase 5 (2026-10-09): named highways that count as an
+   *  "approach corridor" into this town, e.g. I-215 and SR-60 for Moreno
+   *  Valley -- confirmed against real stored incidents, not every highway
+   *  within some radius (Moreno Valley's bounding-box scraper was ALSO
+   *  storing SR-38/I-10/I-210/SR-91 incidents at a similar raw distance
+   *  that don't actually serve the town; this list is the deliberate,
+   *  named exclusion of those). `numbers` are the bare route numbers as
+   *  they appear in `traffic_incidents.road` once run through
+   *  extractRouteNumber() in lib/traffic.ts (e.g. "215", "60") -- matching
+   *  on the digits alone is enough to be unambiguous for each town's own
+   *  real road inventory (re-verified per town, not assumed globally safe).
+   *  `label` is the human-readable form shown on the page. Undefined/empty
+   *  = no corridors configured (Brookings today -- traffic.enabled is
+   *  false in its config, so this is inert until a real source exists). */
+  trafficCorridors?: { label: string; numbers: string[] }[];
+  /** How far (miles) from the town's own boundary (not center -- see
+   *  lib/town-boundary.ts's distanceToBoundaryMiles()) a corridor incident
+   *  may be and still count as "Approach roads." Chosen per town from real
+   *  stored incident distances (see .claude/state.md for the numbers this
+   *  was set against) -- not a single global constant, since towns differ
+   *  in how far out their real corridor incidents land. */
+  trafficCorridorMaxMiles?: number;
   /** Parenthetical shown on /traffic when trafficSource is undefined --
    *  what was actually checked and ruled out, so the "no source yet" state
    *  reads as researched rather than lazy. Town-specific research, so it
@@ -345,6 +367,15 @@ const CITIES: Record<string, SiteConfig> = {
     removalEmail: 'hello@brookingsview.com',
     noTrafficSourceNote:
       "checked SD511.org and South Dakota DOT's GIS server directly -- neither exposes an open incident API at this time",
+    // No live traffic source yet (see noTrafficSourceNote above) so this is
+    // inert today -- configured ahead of time per the Traffic Phase 5 spec's
+    // own "per-town list" instruction, not validated against real data the
+    // way Moreno Valley/Broomfield's were (nothing to validate against).
+    // I-29 runs ~8mi west of town (Sioux Falls direction); US-14 runs
+    // through town itself (the "6th St"/"Hwy 14 Bypass" named in several
+    // facility addresses above).
+    trafficCorridors: [{ label: 'I-29', numbers: ['29'] }, { label: 'US-14', numbers: ['14'] }],
+    trafficCorridorMaxMiles: 8,
     // Verified 2026-08-23 (Yelp, Brookings Area Chamber of Commerce
     // directory, IMDb -- cross-checked, not a single-source guess): the
     // only movie theater in Brookings. See NEEDS-HUMAN-REVIEW.md "Brookings
@@ -473,6 +504,17 @@ const CITIES: Record<string, SiteConfig> = {
       url: 'https://quickmap.dot.ca.gov',
       scopeNote: 'State highways, freeways, and CHP-logged incidents -- not city or county streets.',
     },
+    // Traffic Phase 5 (2026-10-09): the scraper's own bounding box was
+    // storing SR-38/I-10/I-210/SR-91 incidents too (San Bernardino/
+    // Redlands/Riverside-area highways that don't actually serve this
+    // town) at a similar raw distance to real I-215/SR-60 ones -- this
+    // named list is the fix. Verified against 14 days of real stored
+    // incidents: every real I-215/SR-60 incident is within 7mi of the
+    // town BOUNDARY (not center), so 8mi has zero false negatives here;
+    // it's set to match Broomfield's own real need for the cap (see that
+    // town's own comment) rather than because this town needed it.
+    trafficCorridors: [{ label: 'I-215', numbers: ['215'] }, { label: 'SR-60', numbers: ['60'] }],
+    trafficCorridorMaxMiles: 8,
     // Verified 2026-08-23 (search + each theater's own site): the two
     // first-run theaters actually in Moreno Valley. Not an exhaustive
     // regional list (Riverside/Redlands/Perris have more) -- deliberately
@@ -571,6 +613,17 @@ const CITIES: Record<string, SiteConfig> = {
       url: 'https://www.cotrip.org',
       scopeNote: 'State highways and CDOT-logged incidents -- not city or county streets.',
     },
+    // Traffic Phase 5 (2026-10-09): the scraper's own bounding box was
+    // storing Denver-area I-70/I-76/I-270/CO-35 incidents too (not roads
+    // that actually border Broomfield) -- this named list is the fix.
+    // Verified against 14 days of real stored incidents: real I-25/
+    // US-36/US-287 incidents all land within 7.2mi of the town BOUNDARY
+    // (not center); 3 incidents at a Denver I-25/I-70 interchange ~9.2-
+    // 9.4mi out matched the "I-25" corridor by route number alone but are
+    // genuinely a different, Denver-side location -- 8mi (not 10) is the
+    // cap that actually excludes those while keeping every real one.
+    trafficCorridors: [{ label: 'I-25', numbers: ['25'] }, { label: 'US-36', numbers: ['36'] }, { label: 'US-287', numbers: ['287'] }],
+    trafficCorridorMaxMiles: 8,
     // No verified movie theater yet either -- undefined (never guessed)
     // until one is cross-checked the way Brookings/Moreno Valley's were.
   },
