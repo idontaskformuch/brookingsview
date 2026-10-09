@@ -74,3 +74,40 @@ export function buildFacilityLede(
   if (phone) sentences.push(`${pickPhoneConnector(slug)} ${phone}.`);
   return sentences.length > 0 ? sentences.join(' ') : null;
 }
+
+/** Phase 2, item 2f (2026-10-09): the dynamic "— Hours, Address & Phone"
+ *  title suffix -- names only the elements THIS facility actually has
+ *  (most Broomfield parks have an address and nothing else; a handful of
+ *  civic buildings have all three). Returns '' (not a dangling "— |
+ *  Site") when none are present, so resolvePageMeta's titlePattern
+ *  ('{FacilityName}{Elements} | {Site}') collapses cleanly to just the
+ *  bare name. Always Hours/Address/Phone in that fixed order when
+ *  present, matching the spec's own literal example wording -- not the
+ *  order the three booleans happen to be passed in. */
+/** Phase 2, item 2f (2026-10-09): a real, working map link built from data
+ *  already on the row -- never a new fact, just an existing one (lat/lon
+ *  when geocoded, the already-verified address string otherwise) presented
+ *  as a clickable Google Maps search URL. This is why NO Broomfield
+ *  facility needs a geocoding pass to get a working map link: every
+ *  facility with a real address already has everything this needs. Prefers
+ *  lat/lon (an exact pin) over the address query (Google's own geocoding,
+ *  one step removed) when both exist. Returns null only when there's
+ *  truly nothing to search on at all -- a facility with neither is already
+ *  the thin-noindex case (see facilities/[slug].astro's own
+ *  isThinFacility). */
+export function facilityMapLink(lat: number | null, lon: number | null, address: string | null): string | null {
+  if (lat != null && lon != null) return `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+  if (address) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  return null;
+}
+
+export function facilityTitleElements(hasHours: boolean, hasAddress: boolean, hasPhone: boolean): string {
+  const parts: string[] = [];
+  if (hasHours) parts.push('Hours');
+  if (hasAddress) parts.push('Address');
+  if (hasPhone) parts.push('Phone');
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return ` — ${parts[0]}`;
+  const last = parts[parts.length - 1];
+  return ` — ${parts.slice(0, -1).join(', ')} & ${last}`;
+}

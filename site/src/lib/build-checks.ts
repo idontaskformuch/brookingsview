@@ -45,6 +45,7 @@ import { assertCategoryImagesComplete, assertImageExists, findContentTrackRowsMi
 import { PAGE_META_PATTERNS } from '../config/page-meta';
 import { isPastStalenessThreshold } from './place-hours';
 import { resolvePageMeta } from './page-meta';
+import { facilityTitleElements } from './facility-lede';
 import { weekInfoForInstant, currentWeekInfo } from './this-week';
 import { localDateParts } from './events';
 import {
@@ -287,7 +288,18 @@ async function assertPageMetaPatternsValid(): Promise<void> {
   // bug -- two facilities can't legitimately share a name).
   const facilities = await getFacilities();
   for (const facility of facilities) {
-    const { title, h1 } = resolvePageMeta('facilities/detail', siteConfig, { FacilityName: facility.name });
+    // Phase 2, item 2f (2026-10-09): mirrors facilities/[slug].astro's own
+    // Elements computation, with one deliberate simplification -- checks
+    // `hours_text` only, not the real structured `place_hours` rows (that
+    // would mean an extra DB query per facility in this sweep over EVERY
+    // facility across the town). Safe here specifically: this route is
+    // already `knownLengthException: true` (a warning, not a hard failure,
+    // on overflow -- see checkResolved's own doc), so under-counting
+    // "has hours" only ever UNDER-estimates this check's title length,
+    // never silently hides a real duplicate-title bug (the other thing
+    // this loop catches, unaffected by Elements at all).
+    const elements = facilityTitleElements(Boolean(facility.hours_text), Boolean(facility.address), Boolean(facility.phone));
+    const { title, h1 } = resolvePageMeta('facilities/detail', siteConfig, { FacilityName: facility.name, Elements: elements });
     checkResolved('facilities/detail', facility.slug, title, h1, true, problems);
     recordTitle('facilities/detail', facility.slug, title);
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildFacilityLede, pickAddressConnector } from './facility-lede';
+import { buildFacilityLede, pickAddressConnector, facilityTitleElements, facilityMapLink } from './facility-lede';
 
 describe('buildFacilityLede', () => {
   it('appends the address as a second sentence after the description', () => {
@@ -77,5 +77,46 @@ describe('buildFacilityLede', () => {
 describe('pickAddressConnector', () => {
   it('is a pure function of the slug alone', () => {
     expect(pickAddressConnector('city-hall')).toBe(pickAddressConnector('city-hall'));
+  });
+});
+
+describe('facilityTitleElements (Phase 2, item 2f)', () => {
+  it('lists all three, in fixed Hours/Address/Phone order, regardless of argument order meaning', () => {
+    expect(facilityTitleElements(true, true, true)).toBe(' — Hours, Address & Phone');
+  });
+
+  it('lists two with an ampersand, no Oxford comma', () => {
+    expect(facilityTitleElements(true, true, false)).toBe(' — Hours & Address');
+    expect(facilityTitleElements(false, true, true)).toBe(' — Address & Phone');
+  });
+
+  it('lists one alone with no ampersand', () => {
+    expect(facilityTitleElements(false, true, false)).toBe(' — Address');
+  });
+
+  it('is empty (not a dangling dash) when none are present', () => {
+    expect(facilityTitleElements(false, false, false)).toBe('');
+  });
+
+  it('matches the real, common Broomfield-park case: address only', () => {
+    // Real live data (2026-10-09): 9 of 10 checked Broomfield parks have
+    // ONLY an address -- no phone, no hours.
+    expect(facilityTitleElements(false, true, false)).toBe(' — Address');
+  });
+});
+
+describe('facilityMapLink (Phase 2, item 2f)', () => {
+  it('prefers lat/lon (an exact pin) when both exist', () => {
+    expect(facilityMapLink(44.3105, -96.7978, '520 3rd St, Brookings, SD 57006'))
+      .toBe('https://www.google.com/maps/search/?api=1&query=44.3105,-96.7978');
+  });
+
+  it('falls back to the address as a search query when there is no lat/lon -- the real Broomfield case (0 of 19 geocoded today)', () => {
+    expect(facilityMapLink(null, null, '280 Spader Way, Broomfield, CO 80020'))
+      .toBe('https://www.google.com/maps/search/?api=1&query=280%20Spader%20Way%2C%20Broomfield%2C%20CO%2080020');
+  });
+
+  it('returns null when there is neither -- never a guessed location', () => {
+    expect(facilityMapLink(null, null, null)).toBeNull();
   });
 });

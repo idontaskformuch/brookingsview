@@ -43,10 +43,17 @@ describe('resolvePageMeta', () => {
     expect(result.h1).toBe('Broomfield-Area Sports: Regional and Affiliate Team Scores');
   });
 
-  it('interpolates an extraVars placeholder for facility detail', () => {
-    const result = resolvePageMeta('facilities/detail', BROOMFIELD, { FacilityName: 'Mamie Doud Eisenhower Public Library' });
-    expect(result.title).toBe('Mamie Doud Eisenhower Public Library | Broomfield View');
+  it('interpolates extraVars placeholders for facility detail, including the dynamic Elements suffix', () => {
+    const result = resolvePageMeta('facilities/detail', BROOMFIELD, {
+      FacilityName: 'Mamie Doud Eisenhower Public Library', Elements: ' — Hours, Address & Phone',
+    });
+    expect(result.title).toBe('Mamie Doud Eisenhower Public Library — Hours, Address & Phone | Broomfield View');
     expect(result.h1).toBe("Mamie Doud Eisenhower Public Library: Hours, Location and What's There");
+  });
+
+  it('facility detail collapses cleanly to just the name when Elements is empty', () => {
+    const result = resolvePageMeta('facilities/detail', BROOMFIELD, { FacilityName: 'Quail Creek Park', Elements: '' });
+    expect(result.title).toBe('Quail Creek Park | Broomfield View');
   });
 
   it('throws for an unregistered route key -- a typo\'d call site, not a normal per-town gap', () => {
@@ -77,8 +84,10 @@ describe('resolvePageMeta', () => {
     expect(overflows).toEqual([]);
   });
 
-  it('facility-detail stays <= 65 chars for a realistically-named facility, even if not the longest outlier', () => {
-    const result = resolvePageMeta('facilities/detail', MORENO_VALLEY, { FacilityName: 'Woodland Park' });
+  it('facility-detail stays <= 65 chars for a realistically-named facility, even with the full 3-element suffix', () => {
+    const result = resolvePageMeta('facilities/detail', MORENO_VALLEY, {
+      FacilityName: 'Woodland Park', Elements: ' — Hours, Address & Phone',
+    });
     expect(result.title.length).toBeLessThanOrEqual(65);
   });
 

@@ -163,8 +163,19 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
   // not built yet) to carry a named per-slug exception list, same
   // "known exception, not silently violated" convention as
   // build-checks.ts's own KNOWN_VENUE_MATCHING_GAPS.
+  // Phase 2, item 2f (2026-10-09): title now names the REAL elements this
+  // specific facility actually has ("Hours, Address & Phone," "Address,"
+  // whichever subset is real) instead of a blanket claim every facility
+  // can't back up -- most Broomfield parks have an address and nothing
+  // else. {Elements} is computed per-instance in facilities/[slug].astro
+  // (the one place that already knows which fields are populated) and
+  // passed in as an extraVar, same mechanism {FacilityName} already uses
+  // -- empty string (facility has none of the three) collapses to just
+  // the bare name, no dangling "— | Site". Em-dash stays internal to the
+  // title; the separator before {Site} is still " | ", per this
+  // catalog's own no-em-dash-before-site rule (see page-meta.test.ts).
   'facilities/detail': {
-    titlePattern: '{FacilityName} | {Site}',
+    titlePattern: '{FacilityName}{Elements} | {Site}',
     h1Pattern: '{FacilityName}: Hours, Location and What\'s There',
     ledeRequirement: 'Must include the street address in prose form (already shipped, see facility-lede.ts).',
   },
