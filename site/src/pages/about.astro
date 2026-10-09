@@ -18,13 +18,17 @@ const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
     <h1>About {siteConfig.siteName}</h1>
 
     {isBrookings ? (
-      <p>Brookings Register, the town's newspaper, closed in August 2025. Since
-      then, there's been no single place to find out what the city council
-      decided, what's happening at the library this week, or when the Jackrabbits
-      play next. {siteConfig.siteName} is an attempt to fill that gap: a local
-      news site for Brookings, assembled automatically from public sources --
-      city and county meeting agendas, the library and city calendars, and
-      official alerts.</p>
+      <>
+        <p>{siteConfig.siteName} is a local information service for Brookings,
+        South Dakota. It brings city and county meeting agendas, library and
+        city calendars, official alerts, traffic and weather into one place,
+        updated automatically through the day. Every item links to its
+        original source.</p>
+        <p>Brookings Register, the town's newspaper, closed in August 2025.
+        Since then there's been no single place to see what the council is
+        deciding, what's on at the library this week, or when the Jackrabbits
+        play next. This site is an attempt to fill that gap.</p>
+      </>
     ) : (
       <p>Local newspapers have been closing or shrinking all over the country,
       and small and mid-sized cities are often the first places to lose the
@@ -36,15 +40,12 @@ const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
     )}
 
     <h2>How it is made</h2>
-    <p>Software checks the sources listed below every 6 hours. New items are
-    summarized in plain language by an AI language model, working only from
-    what those sources say, and published without a person reviewing each one
-    first.</p>
-    <p>That means no one is reporting from the ground here. Nothing on this
-    site is a firsthand account -- no one attended the meeting, walked the
-    site, or talked to anyone involved. Every summary is a machine-written
-    digest of a public document or feed, always linked back to that original
-    source so you can read the full thing yourself. Read the full,
+    <p>Software checks the sources listed below every 6 hours. An AI language
+    model summarizes new items, working only from what those sources say, and
+    automated checks run before anything publishes. Items go live without a
+    person reviewing each one, and no one reports from the ground: every
+    summary is a digest of a public document or feed, linked back to the
+    original so you can read the full thing yourself. Read the full,
     source-by-source breakdown on <a href="/how-we-gather-this/">how we
     gather this</a>.</p>
 
