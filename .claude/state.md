@@ -1,29 +1,28 @@
 # State
 
 Current spec: .claude/spec-phases-3-9.md (read only current phase).
-Phase 3 DONE+PUSHED. Phase 5 DONE+PUSHED (through 25582fe). Phase 4
-DONE this round, 3 commits NOT YET PUSHED -- awaiting owner review of
-the About page diff (explicit "pusha inte" instruction).
+Phase 3+5 DONE+PUSHED. Phase 4 ("Add to calendar") DONE+PUSHED+LIVE-
+VERIFIED (through e81d1c8). About page MV/Broomfield restructure DONE,
+1 commit NOT YET PUSHED -- awaiting owner approval.
 
-## Unpushed (HEAD is ea1cf51, origin is 25582fe)
-- 2dd0b7f: Children's Museum of South Dakota added live to `places`
-  (owner-approved, executed+verified). Also backfilled venue_raw NULL
-  on the 4 live alert rows (DB write, no file diff for that part).
-- da2dcd2: About page opening rewrite (owner's text, Brookings branch
-  only + shared "How it is made" shortened for all towns). NOT PUSHED
-  per explicit instruction -- show diff, wait for go-ahead.
-- ea1cf51: Phase 4 "Add to calendar" -- per-event .ics (lib/ics.ts +
-  s/[slug].ics.ts), UTC-only DTSTART (zero DST risk by construction),
-  RFC 5545 escaping+folding, kept out of sitemap/robots.
+## This round, pushed+live (origin now at e81d1c8)
+Children's Museum of SD live; alert venue_raw backfill; About opening
+rewrite (Brookings); Phase 4 .ics. Live-verified on morenovalleyview.com:
+curled a real event's .ics, Content-Type text/calendar (200), raw
+bytes confirm CRLF+UTF-8; sitemap-0.xml has 0 .ics URLs (135, unchanged).
+Note: Cloudflare drops the ";charset=utf-8" I set, serves bare
+"text/calendar" -- bytes still correct UTF-8, functionally fine.
+
+## Unpushed (HEAD is dacd9b8, origin is e81d1c8)
+- dacd9b8: About page, same restructure for Moreno Valley + Broomfield
+  (owner's own text for each town's opening, shared "why this exists"
+  paragraph kept, no new facts added). Built+verified both towns live
+  (sitemap unchanged 135/77, disjoint clean, text confirmed rendered).
+  NOT PUSHED -- awaiting go-ahead.
 
 ## Verification (DONE)
-981 vitest, astro check 0 errors (pytest unaffected, no .py touched).
-Builds: Brookings (109 URLs, disjoint clean, .ics validated against
-Python's icalendar lib, link renders on real future events); Broomfield
-(77 URLs, correctly zero .ics -- no real events source). Moreno Valley
-not rebuilt (ics.ts is town-agnostic, unit-tested per town already).
+981 vitest, astro check 0 errors (clean dist dirs). pytest unaffected.
 
 ## Next
-Awaiting owner: approve About page push; University Plains
-Speedway/SR-91 already decided (no page / not included). Stop and
-report per spec+owner instruction.
+Awaiting owner push approval for dacd9b8. Then stop + report per
+instruction. Phase 6 starts separately, not this round.
