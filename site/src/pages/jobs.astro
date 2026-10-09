@@ -17,11 +17,10 @@ import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getRecentJobs, formatDate } from '../lib/db';
-import { salaryText, capByEmployer, slugifyCategory } from '../lib/jobs';
+import { salaryText, capByEmployer, slugifyCategory, jobZone } from '../lib/jobs';
 import { siteConfig } from '../lib/site-config';
 import { resolvePageMeta } from '../lib/page-meta';
 import SectionHero from '../components/SectionHero.astro';
-import { EMPTY_STATES } from '../lib/empty-states';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
 
@@ -75,6 +74,14 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
         </select>
       </label>
       <label>
+        Where
+        <select id="zone-filter">
+          <option value="">All</option>
+          <option value="in_town">In {siteConfig.cityName}</option>
+          <option value="nearby">Nearby</option>
+        </select>
+      </label>
+      <label>
         Sort by
         <select id="sort-by">
           <option value="date">Newest first</option>
@@ -87,19 +94,22 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
   {jobs.length > 0 ? (
     <table class="jobs" id="jobs-table">
       <thead>
-        <tr><th scope="col">Title</th><th scope="col">Company</th>
+        <tr><th scope="col">Title</th><th scope="col">Company</th><th scope="col">Where</th>
             <th scope="col">Category</th><th scope="col">Salary</th><th scope="col">Posted</th></tr>
       </thead>
       <tbody>
         {visible.map((job) => (
-          <tr data-category={job.category ?? ''} data-salary={job.salary_max ?? job.salary_min ?? ''} data-posted={job.posted_at ?? ''}>
+          <tr data-category={job.category ?? ''} data-zone={jobZone(job.location, siteConfig.cityName)} data-salary={job.salary_max ?? job.salary_min ?? ''} data-posted={job.posted_at ?? ''}>
             <td>
               {job.redirect_url ? (
                 <a href={job.redirect_url} rel="noopener nofollow sponsored">{job.title}</a>
               ) : job.title}
-              {job.location && <span class="loc">{job.location}</span>}
             </td>
             <td>{job.company ?? '—'}</td>
+            <td class="data">
+              {jobZone(job.location, siteConfig.cityName) === 'in_town' ? `In ${siteConfig.cityName}` : 'Nearby'}
+              {job.location && <span class="loc">{job.location}</span>}
+            </td>
             <td class="cat">{job.category ?? '—'}</td>
             <td class="data">{salaryText(job)}</td>
             <td class="data">{job.posted_at ? formatDate(job.posted_at) : '—'}</td>
@@ -152,7 +162,7 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
   function init() {
     initDataTable({
       tableId: 'jobs-table',
-      filters: [{ selectId: 'category-filter', attr: 'category' }],
+      filters: [{ selectId: 'category-filter', attr: 'category' }, { selectId: 'zone-filter', attr: 'zone' }],
       sortSelect: {
         selectId: 'sort-by',
         keys: {

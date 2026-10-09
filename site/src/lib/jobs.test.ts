@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { slugifyCategory, salaryText, capByEmployer } from './jobs';
+import { slugifyCategory, salaryText, capByEmployer, jobZone } from './jobs';
+
+describe('jobZone', () => {
+  // Real stored location.display_name values (last 60 days, all 3 towns).
+  it('is in_town when the location names this town', () => {
+    expect(jobZone('Brookings, Brookings County', 'Brookings')).toBe('in_town');
+    expect(jobZone('Moreno Valley, Riverside County', 'Moreno Valley')).toBe('in_town');
+    expect(jobZone('Broomfield, Colorado', 'Broomfield')).toBe('in_town');
+  });
+
+  it('is nearby for a real same-county town that is not this one', () => {
+    expect(jobZone('Lake Campbell, Brookings County', 'Brookings')).toBe('nearby');
+    expect(jobZone('Perris, Riverside County', 'Moreno Valley')).toBe('nearby');
+    expect(jobZone('Northglenn, Adams County', 'Broomfield')).toBe('nearby');
+  });
+
+  it('is nearby (not in_town) for a null location -- never the benefit of the doubt', () => {
+    expect(jobZone(null, 'Brookings')).toBe('nearby');
+  });
+});
 
 describe('slugifyCategory', () => {
   it('lowercases and hyphenates', () => {

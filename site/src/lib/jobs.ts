@@ -6,6 +6,26 @@
  */
 import { formatPrice, type Job } from './db';
 
+/** Jobs Phase 5 (2026-10-09): Adzuna's own location.display_name is always
+ *  "<place>, <county>" (e.g. "Lake Campbell, Brookings County") -- a job in
+ *  a different same-county town is real, useful context, but wasn't
+ *  filterable or labeled as such before this.
+ *
+ *  Deliberately NOT /events' classifyLocalityByText() (lib/town-boundary.ts):
+ *  that function does a substring .includes() match, which is right for a
+ *  free-text venue string but actively wrong here -- "Brookings County"
+ *  CONTAINS "Brookings", so every Brookings-county town (Lake Campbell,
+ *  Bushnell, Volga, ...) would substring-match as "in_town", defeating the
+ *  entire split. Caught by this file's own test against real stored
+ *  values, not assumed safe from the event-venue precedent. Comparing only
+ *  the part before the first comma, exactly, is both correct and simpler
+ *  for Adzuna's own consistent format. */
+export function jobZone(location: string | null, cityName: string): 'in_town' | 'nearby' {
+  if (!location) return 'nearby';
+  const place = location.split(',')[0]?.trim().toLowerCase();
+  return place === cityName.trim().toLowerCase() ? 'in_town' : 'nearby';
+}
+
 export function slugifyCategory(category: string): string {
   return category
     .toLowerCase()
