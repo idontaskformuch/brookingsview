@@ -767,6 +767,16 @@ describe('selectWeekendNearby (Phase 3, "Event <-> facility hub")', () => {
     return new Date(today.getTime() + n * 86_400_000 + 18 * 3_600_000).toISOString();
   }
 
+  // selectWeekendNearby() calls todayUtcMidnight() internally, which reads
+  // the REAL clock -- without this, every item generated relative to the
+  // fixed `today` above drifts out of the function's own real-time weekend
+  // window as actual time passes (caught live: all 4 tests below started
+  // failing once the real date moved past 2026-10-08). Same fake-timers
+  // pattern as the describe block above. 18:00 UTC is 1pm America/Chicago
+  // (this block's own `timezone`), safely midday with no DST ambiguity.
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-08T18:00:00.000Z')); });
+  afterEach(() => { vi.useRealTimers(); });
+
   it('excludes the current story itself', () => {
     const current = storyItem(story({ slug: 'self', venue_raw: 'Brookings City Hall', occurs_at: atOffsetDays(2) }));
     const items = [current];
