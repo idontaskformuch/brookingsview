@@ -149,19 +149,23 @@ def upsert_project_update(conn, project_id: int, matter: dict, history: dict, ci
         )
         existing = cur.fetchone()
         if existing:
+            # entry_date backfilled here too (2026-10-13) -- this UPDATE path
+            # never set it before, so a row INSERTed before entry_date
+            # existed as a column stayed NULL forever on every later rerun.
             cur.execute(
-                "UPDATE project_updates SET outcome = %(outcome)s, meeting_date = %(meeting_date)s WHERE id = %(id)s",
+                "UPDATE project_updates SET outcome = %(outcome)s, meeting_date = %(meeting_date)s, "
+                "entry_date = %(meeting_date)s WHERE id = %(id)s",
                 {**params, "id": existing[0]},
             )
             return False
         cur.execute(
             """
             INSERT INTO project_updates
-                (project_id, meeting_id, body, meeting_date, agenda_counter,
+                (project_id, meeting_id, entry_date, body, meeting_date, agenda_counter,
                  agenda_title, agenda_url, outcome, vote_yes, vote_no,
                  vote_abstain, vote_absent, source_url)
             VALUES
-                (%(project_id)s, NULL, %(body)s, %(meeting_date)s, %(counter)s,
+                (%(project_id)s, NULL, %(meeting_date)s, %(body)s, %(meeting_date)s, %(counter)s,
                  %(title)s, %(agenda_url)s, %(outcome)s, NULL, NULL, NULL, NULL,
                  %(source_url)s)
             """,

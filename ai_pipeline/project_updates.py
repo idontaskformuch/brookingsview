@@ -137,7 +137,14 @@ def upsert_project_update(conn, project_id: int, meeting: dict, agenda_item: dic
                 vote_abstain = EXCLUDED.vote_abstain,
                 vote_absent  = EXCLUDED.vote_absent,
                 source_url   = EXCLUDED.source_url,
-                synthesis    = COALESCE(EXCLUDED.synthesis, project_updates.synthesis)
+                synthesis    = COALESCE(EXCLUDED.synthesis, project_updates.synthesis),
+                -- meeting_id is part of the conflict key, so EXCLUDED.entry_date
+                -- is always this SAME real meeting's own date -- never a
+                -- different meeting's date overwriting a correct one. Added
+                -- 2026-10-13: entry_date was INSERT-only before, so any row
+                -- created before it existed (or before this column was in
+                -- the INSERT list) stayed NULL forever on every later rerun.
+                entry_date   = EXCLUDED.entry_date
             RETURNING (xmax = 0) AS inserted
             """,
             {
@@ -253,12 +260,16 @@ def main() -> int:
                             print(f"  AI-MATCH ({match['confidence']:.2f}): {matched['title']} <- "
                                   f"{meeting['body']} {item.get('counter')} -- {match['reasoning']}")
                         else:
-                            queue_new_candidate(
+                            queued = queue_new_candidate(
                                 conn, town_id, "meeting", meeting_id=meeting["id"],
                                 candidate_title=title, candidate_summary=description or title,
                                 match_reasoning=match["reasoning"], confidence=match["confidence"],
                             )
-                            new_candidates += 1
+                            if queued:
+                                new_candidates += 1
+                            else:
+                                print(f"  DUPLICATE CANDIDATE (same case number already pending review): "
+                                      f"{meeting['body']} {item.get('counter')} -- {title}")
                     continue
 
                 if args.dry_run:
