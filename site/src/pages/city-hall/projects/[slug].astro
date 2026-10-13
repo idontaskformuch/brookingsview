@@ -18,6 +18,7 @@ import type { ProjectUpdate } from '../../../lib/db';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../../lib/article-jsonld';
 import { siteConfig } from '../../../lib/site-config';
 import SectionHero from '../../../components/SectionHero.astro';
+import { shouldNoindexProject } from '../../../lib/project-noindex';
 
 export async function getStaticPaths() {
   const projects = await getProjects();
@@ -42,6 +43,9 @@ const canonicalUrl = new URL(`/city-hall/projects/${project.slug}/`, Astro.site 
 // while). Computed fresh from updated_at every render, never a stored
 // flag -- see projectActivityState()'s own comment in lib/db.ts.
 const activityState = projectActivityState(project);
+// Phase 6: noindex until >=2 updates or a real confirmed outcome exists
+// -- see lib/project-noindex.ts's own docstring for exactly what counts.
+const noindexThisProject = shouldNoindexProject(updates);
 
 function outcomeLabel(u: ProjectUpdate): string {
   if (u.outcome === 'pending') return 'Reviewed — outcome not available';
@@ -56,12 +60,19 @@ function entryHeadline(u: ProjectUpdate): string {
   return u.synthesis ?? u.agenda_title ?? 'Update';
 }
 
-function voteText(u: ProjectUpdate): string | null {
+/** Always ties the vote tally to what was actually decided (the real
+ *  outcome word, from an Action Summary/Legistar result -- never guessed
+ *  from the agenda) in a single sentence, never a bare "5-0" a reader
+ *  could misattribute to the wrong motion on a multi-item agenda. Returns
+ *  null (never a bare number) when no outcome is confirmed yet -- callers
+ *  must not render a vote tally against a 'pending' row at all. */
+function voteSentence(u: ProjectUpdate): string | null {
   if (u.vote_yes == null && u.vote_no == null) return null;
+  if (u.outcome === 'pending') return null;
   const parts = [`${u.vote_yes ?? 0}-${u.vote_no ?? 0}`];
   if (u.vote_abstain) parts.push(`${u.vote_abstain} abstain`);
   if (u.vote_absent) parts.push(`${u.vote_absent} absent`);
-  return parts.join(', ');
+  return `${u.outcome} by a vote of ${parts.join(', ')}`;
 }
 
 /** Why "pending" is honest, not a placeholder for a guess -- shown inline
@@ -118,7 +129,7 @@ const itemListJsonLd = updates.length > 0 ? {
 } : null;
 ---
 <BaseLayout title={`${project.title} — ${siteConfig.siteName}`} ogSlug="section-city-hall"
-  description={project.description.slice(0, 155)}>
+  description={project.description.slice(0, 155)} noindex={noindexThisProject}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero category="city_hall" />
   <article class="project">
@@ -162,9 +173,9 @@ const itemListJsonLd = updates.length > 0 ? {
             <p class="timeline__title">{entryHeadline(u)}</p>
             <p class="timeline__outcome">
               {u.outcome === 'pending' ? (
-                <>Outcome not available. <span class="reason">{pendingReason(u)}</span></>
+                <>On the agenda. <span class="reason">{pendingReason(u)}</span></>
               ) : (
-                <>{outcomeLabel(u)}{voteText(u) && <> — vote {voteText(u)}</>}</>
+                voteSentence(u) ?? outcomeLabel(u)
               )}
             </p>
             <p class="timeline__sources">

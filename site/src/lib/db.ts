@@ -2835,7 +2835,7 @@ export function projectActivityState(project: Pick<Project, 'updated_at' | 'reso
  *  every project row itself is always one of these five, recomputed by
  *  ai_pipeline/project_updates.py from its most recent update's outcome. */
 export const PROJECT_STATUS_LABELS: Record<string, string> = {
-  under_review: 'Under review',
+  under_review: 'In planning review',
   approved: 'Approved',
   permitted: 'Permitted',
   under_construction: 'Under construction',

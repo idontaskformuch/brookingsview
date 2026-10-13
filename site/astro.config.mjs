@@ -419,6 +419,28 @@ async function buildLastmodMap(townId, databaseUrl) {
   const projects = await sql`SELECT slug, updated_at FROM projects WHERE town_id = ${townId}`;
   for (const p of projects) map.set(`/city-hall/projects/${p.slug}/`, p.updated_at);
 
+  // Phase 6: mirrors site/src/lib/project-noindex.ts's shouldNoindexProject()
+  // exactly -- noindex until >=2 updates or a real confirmed (non-'pending')
+  // outcome exists. Duplicated here rather than imported for the same
+  // reason as this file's own isThinStory()/BRAND_TOKENS duplication
+  // comments above: astro.config.mjs never imports a site/src/lib module.
+  // Keep the two copies in sync by hand -- scripts/verify_sitemap_noindex_
+  // disjoint.mjs catches drift against the page's own <meta robots> tag.
+  const projectUpdateStats = await sql`
+    SELECT p.slug, count(u.id) AS n_updates,
+           count(u.id) FILTER (WHERE u.outcome <> 'pending') AS n_confirmed
+      FROM projects p LEFT JOIN project_updates u ON u.project_id = p.id
+     WHERE p.town_id = ${townId}
+     GROUP BY p.slug
+  `;
+  for (const row of projectUpdateStats) {
+    const nUpdates = Number(row.n_updates);
+    const nConfirmed = Number(row.n_confirmed);
+    if (nUpdates < 2 && nConfirmed === 0) {
+      noindexThinPageUrls.add(`/city-hall/projects/${row.slug}/`);
+    }
+  }
+
   const facilities = await sql`
     SELECT slug, verified_date FROM places
      WHERE town_id = ${townId} AND verified_date IS NOT NULL
