@@ -53,6 +53,18 @@ def match_project(
     return None, None
 
 
+def text_matches_case_numbers(text: str, case_numbers: list[str]) -> bool:
+    """Same substring rule as match_project(), exposed standalone for
+    ai_pipeline/project_fact_check.py -- it needs to ask "does this one
+    agenda item mention any of THIS project's case numbers" directly,
+    without the full projects-list/ambiguity machinery match_project()
+    is built for."""
+    if not case_numbers:
+        return False
+    haystack = _HYPHEN_WRAP_RE.sub(r"-\1", text.upper())
+    return any(cn.upper() in haystack for cn in case_numbers)
+
+
 def status_for_outcome(outcome: str) -> str:
     """A project's overall `status`, derived from its most recent update's
     outcome text -- shared by both ingest pipelines (eSCRIBE's fixed

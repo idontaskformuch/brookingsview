@@ -21,8 +21,10 @@ import sys
 from pathlib import Path
 
 from db.db import get_conn
+from ai_pipeline.project_fact_check import check_project_description
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "projects"
+CONFIG_DIR = Path(__file__).resolve().parent.parent / "configs"
 
 
 def _load_town_file(town_id: str) -> list[dict]:
@@ -33,11 +35,27 @@ def _load_town_file(town_id: str) -> list[dict]:
     return payload["projects"]
 
 
-def seed_town(conn, town_id: str) -> tuple[int, int]:
+def _load_town_config(town_id: str) -> dict:
+    return json.loads((CONFIG_DIR / f"{town_id}.json").read_text(encoding="utf-8"))
+
+
+def seed_town(conn, town_id: str) -> tuple[int, int, int]:
     projects = _load_town_file(town_id)
+    cfg = _load_town_config(town_id)
     inserted = 0
     updated = 0
+    rejected = 0
     for p in projects:
+        # Fact guardrail, fail-closed: a description whose numbers/names
+        # don't verify against this project's own real source text is
+        # never written -- whatever was there before (nothing, on first
+        # seed) stays untouched. See ai_pipeline/project_fact_check.py's
+        # own docstring for exactly what counts as source text.
+        result = check_project_description(conn, town_id, p, cfg)
+        if not result.passed:
+            print(f"  REJECTED (fact guardrail): {town_id}/{p['slug']} -- {result.violations}")
+            rejected += 1
+            continue
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -78,16 +96,16 @@ def seed_town(conn, town_id: str) -> tuple[int, int]:
                 inserted += 1
             else:
                 updated += 1
-    return inserted, updated
+    return inserted, updated, rejected
 
 
 def main() -> None:
     town_ids = sys.argv[1:] or [p.stem for p in DATA_DIR.glob("*.json")]
     with get_conn() as conn:
         for town_id in town_ids:
-            inserted, updated = seed_town(conn, town_id)
+            inserted, updated, rejected = seed_town(conn, town_id)
             conn.commit()
-            print(f"{town_id}: {inserted} inserted, {updated} updated")
+            print(f"{town_id}: {inserted} inserted, {updated} updated, {rejected} rejected")
 
 
 if __name__ == "__main__":
