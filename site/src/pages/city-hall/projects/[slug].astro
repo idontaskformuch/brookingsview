@@ -88,7 +88,7 @@ function voteSentence(u: ProjectUpdate): string | null {
  *  have it. */
 function pendingReason(u: ProjectUpdate): string {
   if (siteConfig.townId === 'moreno_valley_ca' && u.body === 'Planning Commission') {
-    return 'Planning Commission does not post an official outcome record for this platform.';
+    return 'Outcome not yet published.';
   }
   return 'This meeting’s official record does not show an outcome for this item yet.';
 }
