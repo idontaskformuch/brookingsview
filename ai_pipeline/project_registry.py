@@ -26,6 +26,15 @@ import re
 # "PEN26-0019" still matches either form.
 _HYPHEN_WRAP_RE = re.compile(r"-\s+(\d)")
 
+# Best-effort case/application-number SHAPE (e.g. "PEN25-0098", "CUP26-04"),
+# used only to dedupe candidate-queue rows (see
+# ai_pipeline.project_updates's queue_new_candidate call site) -- NOT used
+# for real project matching, which stays case_numbers-registry-only via
+# match_project() above. A false-positive "number" extracted here costs
+# nothing worse than a missed dedupe (two queue rows instead of one); it
+# never creates or appends to a real project.
+_CASE_NUMBER_SHAPE_RE = re.compile(r"[A-Z]{2,5}\d{2}-\d{3,5}")
+
 
 def load_projects(conn, town_id: str) -> list[dict]:
     with conn.cursor() as cur:
@@ -63,6 +72,16 @@ def text_matches_case_numbers(text: str, case_numbers: list[str]) -> bool:
         return False
     haystack = _HYPHEN_WRAP_RE.sub(r"-\1", text.upper())
     return any(cn.upper() in haystack for cn in case_numbers)
+
+
+def extract_case_numbers(text: str) -> list[str]:
+    """Any case/application numbers found in free text (an agenda item's
+    own title+description, or a queued candidate row's stored title+
+    summary), line-wrap-normalized the same way match_project() is.
+    Dedupe-only (see this module's own docstring above) -- never fed back
+    into a real project's case_numbers registry."""
+    haystack = _HYPHEN_WRAP_RE.sub(r"-\1", text.upper())
+    return sorted(set(_CASE_NUMBER_SHAPE_RE.findall(haystack)))
 
 
 def status_for_outcome(outcome: str) -> str:

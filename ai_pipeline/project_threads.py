@@ -34,6 +34,7 @@ import re
 from datetime import datetime, timedelta, timezone
 
 from ai_pipeline import api_usage, guardrails
+from ai_pipeline.project_registry import extract_case_numbers
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, pricing_for, resolve_model, safe_create, strip_json_fence,
@@ -428,11 +429,53 @@ def load_open_projects_for_matching(conn, town_id: str) -> list[dict]:
         return [{"id": r[0], "title": r[1], "description": r[2]} for r in cur.fetchall()]
 
 
+def pending_candidate_case_numbers(conn, town_id: str) -> dict[int, list[str]]:
+    """{queue_row_id: [case numbers found in its own title+summary]} for
+    every still-pending_review row in this town -- the lookup
+    has_pending_case_number_duplicate() below checks a new item's own case
+    numbers against."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, candidate_title, candidate_summary FROM project_new_candidate_queue "
+            "WHERE town_id = %s AND status = 'pending_review'",
+            (town_id,),
+        )
+        rows = cur.fetchall()
+    return {
+        row_id: extract_case_numbers(f"{title} {summary}")
+        for row_id, title, summary in rows
+    }
+
+
+def has_pending_case_number_duplicate(conn, town_id: str, candidate_text: str) -> bool:
+    """True when this candidate shares a case number with a row ALREADY
+    sitting in the pending_review queue for this town -- same real,
+    still-unmatched story surfacing again on a later meeting (a
+    continuance, an appeal, a companion item) should queue ONCE, not once
+    per occurrence. Only compares case numbers (never fuzzy text), and
+    only against rows still pending_review -- an already-approved or
+    -rejected row doesn't block a fresh queue entry, since by then a human
+    has already made the real call on that story. A candidate with NO
+    extractable case number (e.g. Broomfield's resolution/ordinance-
+    numbered items) is never deduped this way -- nothing here claims to
+    cover that numbering scheme."""
+    case_numbers = extract_case_numbers(candidate_text)
+    if not case_numbers:
+        return False
+    existing = pending_candidate_case_numbers(conn, town_id)
+    return any(set(case_numbers) & set(cns) for cns in existing.values())
+
+
 def queue_new_candidate(conn, town_id: str, source_type: str, *, meeting_id: int | None = None,
                          traffic_incident_id: int | None = None, candidate_title: str,
-                         candidate_summary: str, match_reasoning: str, confidence: float) -> None:
+                         candidate_summary: str, match_reasoning: str, confidence: float) -> bool:
     """Never auto-creates a project -- see scripts/review_project_candidates.py
-    for the human-in-the-loop step that turns a queued row into a real one."""
+    for the human-in-the-loop step that turns a queued row into a real one.
+    Returns False (and inserts nothing) when this candidate's own case
+    number already has a pending_review row in this town's queue -- see
+    has_pending_case_number_duplicate()'s own docstring."""
+    if has_pending_case_number_duplicate(conn, town_id, f"{candidate_title} {candidate_summary}"):
+        return False
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -444,6 +487,7 @@ def queue_new_candidate(conn, town_id: str, source_type: str, *, meeting_id: int
             (town_id, source_type, meeting_id, traffic_incident_id,
              candidate_title, candidate_summary, match_reasoning, confidence),
         )
+    return True
 
 
 def regenerate_rolling_summary(conn, project_id: int, cfg: dict, client=None) -> None:

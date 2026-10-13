@@ -2,7 +2,7 @@
 ai_pipeline/project_registry.py and NEEDS-HUMAN-REVIEW.md, "Week 3 -- City
 Hall Project Pages"). Pure logic only, no DB connection.
 """
-from ai_pipeline.project_registry import match_project
+from ai_pipeline.project_registry import extract_case_numbers, match_project
 from ai_pipeline.project_updates import _normalize_counter, action_summary_for_counter
 
 CAR_WASH = {"id": 1, "slug": "car-wash", "title": "Car Wash", "case_numbers": ["PEN25-0098", "PEN25-0100"]}
@@ -68,3 +68,22 @@ def test_action_summary_for_counter_matches_despite_period_difference():
 def test_action_summary_for_counter_returns_none_when_absent():
     meeting = {"raw_data": {}}
     assert action_summary_for_counter(meeting, "I.1") is None
+
+
+def test_extract_case_numbers_finds_multiple():
+    found = extract_case_numbers("CHANGE OF ZONE (PEN23-0076), PLOT PLAN (PEN23-0074)")
+    assert found == ["PEN23-0074", "PEN23-0076"]
+
+
+def test_extract_case_numbers_dedupes():
+    found = extract_case_numbers("PEN24-0154 ... later also mentions PEN24-0154 again")
+    assert found == ["PEN24-0154"]
+
+
+def test_extract_case_numbers_handles_hyphen_line_wrap():
+    found = extract_case_numbers("Ordinance amending PEN26- 0019")
+    assert found == ["PEN26-0019"]
+
+
+def test_extract_case_numbers_empty_when_none_present():
+    assert extract_case_numbers("Ordinance No. 2306 -- Second Reading and Public Hearing") == []

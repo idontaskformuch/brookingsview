@@ -4,13 +4,15 @@ Project Pages system, not a parallel table pair)."""
 import json
 from datetime import datetime, timedelta, timezone
 
+from unittest.mock import MagicMock
+
 import ai_pipeline.format_prompt as format_prompt
 import ai_pipeline.project_threads as project_threads
 from ai_pipeline.guardrails import check_no_project_outcome_prediction
 from ai_pipeline.project_threads import (
     ai_match_candidate, generate_rolling_summary, generate_synthesis,
-    is_candidate_agenda_item, is_candidate_traffic_incident,
-    synthesis_template_fallback, thread_activity_state,
+    has_pending_case_number_duplicate, is_candidate_agenda_item, is_candidate_traffic_incident,
+    queue_new_candidate, synthesis_template_fallback, thread_activity_state,
     MATCH_CONFIDENCE_THRESHOLD, MIN_TRAFFIC_CANDIDATE_AGE_DAYS, STALLED_AFTER_DAYS,
 )
 
@@ -303,3 +305,64 @@ def test_generate_rolling_summary_falls_back_on_predicted_outcome(monkeypatch, t
     text, generated_by, verified = generate_rolling_summary("45 Elm St Rezoning", SOURCE_TEXT, CFG, client=_FakeClient(bad_response))
     assert generated_by == "template_fallback"
     assert "45 Elm St Rezoning" in text
+
+
+# --- candidate-queue dedup by case number (2026-10-13) -----------------------
+
+def _fake_conn(pending_rows):
+    """conn.cursor() returns the SAME cursor every call (both the dedup
+    SELECT and, when it runs, the INSERT) -- fetchall() always answers the
+    canned pending_rows; every execute() call is recorded for assertion."""
+    cur = MagicMock()
+    cur.fetchall.return_value = pending_rows
+    cur.__enter__.return_value = cur
+    cur.__exit__.return_value = False
+    conn = MagicMock()
+    conn.cursor.return_value = cur
+    return conn, cur
+
+
+def _executed_sql(cur, keyword):
+    return [c.args[0] for c in cur.execute.call_args_list if keyword in c.args[0]]
+
+
+def test_dedup_true_when_same_case_number_already_pending():
+    conn, _cur = _fake_conn([(2, 'Conditional Use Permit (PEN24-0154) (DISTRICT 3)', '')])
+    assert has_pending_case_number_duplicate(
+        conn, 'moreno_valley_ca',
+        "APPEAL OF PLANNING COMMISSION'S ACTION TO NOT APPROVE CONDITIONAL USE PERMIT (PEN24-0154)",
+    )
+
+
+def test_dedup_false_when_case_numbers_differ():
+    conn, _cur = _fake_conn([(1, 'Plot Plan (PEN24-0075)', '')])
+    assert not has_pending_case_number_duplicate(conn, 'moreno_valley_ca', 'Conditional Use Permit (PEN25-0183)')
+
+
+def test_dedup_false_when_new_item_has_no_case_number():
+    # Broomfield's own numbering (Ordinance No. 2306) isn't this shape --
+    # never claims to dedupe a scheme it can't parse.
+    conn, _cur = _fake_conn([(1, 'Plot Plan (PEN24-0075)', '')])
+    assert not has_pending_case_number_duplicate(conn, 'broomfield_co', 'Ordinance No. 2306 -- Second Reading')
+
+
+def test_queue_new_candidate_skips_insert_on_duplicate():
+    conn, cur = _fake_conn([(2, 'Conditional Use Permit (PEN24-0154) (DISTRICT 3)', '')])
+    queued = queue_new_candidate(
+        conn, 'moreno_valley_ca', 'meeting', meeting_id=99,
+        candidate_title="APPEAL ... (PEN24-0154)", candidate_summary='',
+        match_reasoning='x', confidence=0.9,
+    )
+    assert queued is False
+    assert _executed_sql(cur, 'INSERT') == []
+
+
+def test_queue_new_candidate_inserts_when_no_duplicate():
+    conn, cur = _fake_conn([])
+    queued = queue_new_candidate(
+        conn, 'moreno_valley_ca', 'meeting', meeting_id=99,
+        candidate_title='Plot Plan (PEN25-9999)', candidate_summary='',
+        match_reasoning='x', confidence=0.9,
+    )
+    assert queued is True
+    assert len(_executed_sql(cur, 'INSERT')) == 1
