@@ -23,6 +23,30 @@
       "case_numbers": ["PEN25-0117"],
       "location_text": "North of Cactus Avenue, south of Brodiaea Avenue, east of Lasselle Street, District 3, Moreno Valley, CA",
       "home_sales_zip": null
+    },
+    {
+      "slug": "self-storage-indian-alessandro",
+      "title": "Self-Storage Facility — Indian Street & Alessandro Boulevard",
+      "description": "A Conditional Use Permit for a 130,764 square-foot public self-storage facility on an approximately 3-acre vacant parcel, located east of Indian Street and north of Alessandro Boulevard (APN: 482-190-022). The Planning Commission's action to not approve the project was appealed to the City Council.",
+      "case_numbers": ["PEN24-0154"],
+      "location_text": "East of Indian Street, north of Alessandro Boulevard, District 3, Moreno Valley, CA (APN 482-190-022)",
+      "home_sales_zip": null
+    },
+    {
+      "slug": "edgemont-commerce-center",
+      "title": "Edgemont Commerce Center — Change of Zone & Light Industrial Plot Plan",
+      "description": "Change of Zone (PEN23-0076) from Business Park to Light Industrial, Plot Plan (PEN23-0074) for a 142,797 square-foot light industrial building, Tentative Parcel Map (PEN23-0075) to consolidate parcels, and an Environmental Impact Report (PEN23-0077) -- on an approximately 7.7-acre vacant site at the southwest corner of Bay Avenue and Day Street.",
+      "case_numbers": ["PEN23-0074", "PEN23-0075", "PEN23-0076", "PEN23-0077"],
+      "location_text": "Southwest corner of Bay Avenue and Day Street, Moreno Valley, CA",
+      "home_sales_zip": null
+    },
+    {
+      "slug": "brodiaea-residential-development",
+      "title": "Brodiaea Residential Development — 134-Lot Subdivision",
+      "description": "General Plan Amendment (PEN25-0011), Change of Zone (PEN25-0012), Vesting Tentative Tract Map 39162 (PEN25-0010), and a Conditional Use Permit for a Planned Unit Development (PEN25-0014) -- the development of 134 single family residential lots on a vacant 14.4-acre site, located on the north side of Brodiaea Avenue and east of Moreno Beach Drive.",
+      "case_numbers": ["PEN25-0010", "PEN25-0011", "PEN25-0012", "PEN25-0014"],
+      "location_text": "North side of Brodiaea Avenue, east of Moreno Beach Drive, Moreno Valley, CA (APNs 478-070-013, -014, -015, 478-080-003, -004, -005)",
+      "home_sales_zip": null
     }
   ]
 }
