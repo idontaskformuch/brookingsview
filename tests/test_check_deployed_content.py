@@ -6,13 +6,16 @@ wrapper around it).
 """
 from datetime import datetime, timedelta, timezone
 
+import scripts.check_deployed_content as check_deployed_content
 from scripts.check_deployed_content import (
     DEPLOY_CHECK_HEADER,
     SIGNATURE_SECTIONS,
     SITE_URLS,
     _request_headers,
     _user_agent,
+    check_homepage_freshness,
     extract_story_slugs,
+    extract_weekly_slugs,
     is_stale,
     resolve_homepage_slugs_to_db_slugs,
     run_with_retry,
@@ -36,6 +39,25 @@ def test_extract_story_slugs_ignores_non_story_links():
 
 def test_extract_story_slugs_empty_page():
     assert extract_story_slugs("<html><body>nothing here</body></html>") == []
+
+
+def test_extract_weekly_slugs_maps_to_the_backing_db_slug():
+    html = '<a href="/this-week/2026-w42/">This week</a>'
+    assert extract_weekly_slugs(html) == ["weekly-2026-w42"]
+
+
+def test_extract_weekly_slugs_dedupes_and_sorts():
+    html = (
+        '<a href="/this-week/2026-w42/">a</a>'
+        '<a href="/this-week/2026-w41/">b</a>'
+        '<a href="/this-week/2026-w42/">c again</a>'
+    )
+    assert extract_weekly_slugs(html) == ["weekly-2026-w41", "weekly-2026-w42"]
+
+
+def test_extract_weekly_slugs_ignores_story_links():
+    html = '<a href="/s/meeting-2026-10-02/">x</a>'
+    assert extract_weekly_slugs(html) == []
 
 
 def test_resolve_homepage_slugs_to_db_slugs_maps_all_four_renamed_prefixes():
@@ -89,6 +111,117 @@ def test_is_stale_older_than_window_is_stale():
     now = datetime(2026, 8, 28, tzinfo=timezone.utc)
     published = now - timedelta(days=10)
     assert is_stale(published, 2, now) is True
+
+
+# 2026-10-13: Broomfield freshness outage follow-up. check_homepage_
+# freshness() now has to query the DB for /this-week/ links too (not just
+# /s/ ones), which test_is_stale_* above can't exercise since they call the
+# pure is_stale() helper directly -- these use a minimal fake psycopg
+# connection/cursor instead of a real DB, and monkeypatch requests.get
+# instead of hitting a real site, same "test the pure/injectable seam, not
+# real I/O" convention the rest of this file already follows.
+class _FakeResponse:
+    def __init__(self, status_code: int, text: str):
+        self.status_code = status_code
+        self.text = text
+
+
+class _FakeCursor:
+    def __init__(self, result):
+        self._result = result
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        return False
+
+    def execute(self, *args, **kwargs):
+        pass
+
+    def fetchone(self):
+        return (self._result,)
+
+
+class _FakeConn:
+    """`result` is whatever max(published_at) should come back as."""
+    def __init__(self, result):
+        self._result = result
+
+    def cursor(self):
+        return _FakeCursor(self._result)
+
+
+def test_check_homepage_freshness_accepts_a_fresh_weekly_link(monkeypatch):
+    now = datetime(2026, 10, 13, tzinfo=timezone.utc)
+    published = now - timedelta(days=1)
+    html = '<a href="/this-week/2026-w42/">This week in Broomfield</a>'
+    monkeypatch.setattr(
+        check_deployed_content.requests, "get",
+        lambda *args, **kwargs: _FakeResponse(200, html),
+    )
+    conn = _FakeConn(published)
+    result = check_homepage_freshness(
+        conn, "broomfield_co", "https://broomfieldview.com", 8, reference_now=now,
+    )
+    assert result is None
+
+
+def test_check_homepage_freshness_treats_zero_links_as_transient(monkeypatch):
+    # A homepage with NO /s/ or /this-week/ links at all is indistinguishable
+    # from mid-deploy propagation lag -- must stay retryable (is_transient
+    # True), unlike the two genuine-content-problem cases below.
+    now = datetime(2026, 10, 13, tzinfo=timezone.utc)
+    monkeypatch.setattr(
+        check_deployed_content.requests, "get",
+        lambda *args, **kwargs: _FakeResponse(200, "<html><body>nothing here</body></html>"),
+    )
+    conn = _FakeConn(None)  # never reached -- no links means no DB query
+    result = check_homepage_freshness(
+        conn, "broomfield_co", "https://broomfieldview.com", 8, reference_now=now,
+    )
+    assert result is not None
+    message, transient = result
+    assert "no /s/<slug>/ or /this-week/<week>/ links at all" in message
+    assert transient is True
+
+
+def test_check_homepage_freshness_treats_unmatched_links_as_non_transient(monkeypatch):
+    # Links are present but match no real DB row (e.g. the 2026-10-02
+    # slug-prefix bug this script already guards against) -- a genuine
+    # content/code problem, not something a retry can fix.
+    now = datetime(2026, 10, 13, tzinfo=timezone.utc)
+    html = '<a href="/this-week/2026-w42/">This week</a>'
+    monkeypatch.setattr(
+        check_deployed_content.requests, "get",
+        lambda *args, **kwargs: _FakeResponse(200, html),
+    )
+    conn = _FakeConn(None)  # max(published_at) finds nothing
+    result = check_homepage_freshness(
+        conn, "broomfield_co", "https://broomfieldview.com", 8, reference_now=now,
+    )
+    assert result is not None
+    message, transient = result
+    assert "matched a real DB row" in message
+    assert transient is False
+
+
+def test_check_homepage_freshness_rejects_a_weekly_link_older_than_the_window(monkeypatch):
+    now = datetime(2026, 10, 13, tzinfo=timezone.utc)
+    published = now - timedelta(days=11)
+    html = '<a href="/this-week/2026-w40/">This week in Broomfield</a>'
+    monkeypatch.setattr(
+        check_deployed_content.requests, "get",
+        lambda *args, **kwargs: _FakeResponse(200, html),
+    )
+    conn = _FakeConn(published)
+    result = check_homepage_freshness(
+        conn, "broomfield_co", "https://broomfieldview.com", 8, reference_now=now,
+    )
+    assert result is not None
+    message, transient = result
+    assert "older than the 8-day freshness window" in message
+    assert transient is False
 
 
 def test_all_three_towns_have_a_site_url_and_signature_section():
@@ -162,7 +295,7 @@ def test_succeeds_immediately_without_ever_sleeping():
 
     def check_fn():
         calls.append(1)
-        return []
+        return [], True
 
     failures = run_with_retry(check_fn, "brookings_sd", timeout_seconds=300,
                                interval_seconds=20, sleep_fn=clock.sleep, clock_fn=clock.clock)
@@ -172,8 +305,10 @@ def test_succeeds_immediately_without_ever_sleeping():
 
 
 def test_retries_then_succeeds_within_the_window():
+    # Transient failures (retryable=True) -- the scenario this loop was
+    # originally built for (Cloudflare propagation / a Neon blip).
     clock = _FakeClock()
-    attempts = [["still propagating"], ["still propagating"], []]
+    attempts = [(["still propagating"], True), (["still propagating"], True), ([], True)]
 
     def check_fn():
         return attempts.pop(0)
@@ -188,7 +323,7 @@ def test_gives_up_after_the_timeout_and_returns_the_last_failure():
     clock = _FakeClock()
 
     def check_fn():
-        return ["still broken"]
+        return ["still broken"], True
 
     failures = run_with_retry(check_fn, "broomfield_co", timeout_seconds=50,
                                interval_seconds=20, sleep_fn=clock.sleep, clock_fn=clock.clock)
@@ -208,10 +343,33 @@ def test_never_sleeps_longer_than_the_remaining_budget():
         clock.sleep(seconds)
 
     def check_fn():
-        return ["broken"]
+        return ["broken"], True
 
     run_with_retry(check_fn, "brookings_sd", timeout_seconds=25,
                     interval_seconds=20, sleep_fn=tracking_sleep, clock_fn=clock.clock)
     # First sleep is the full 20s interval; the second is clamped to the
     # remaining 5s, not another full 20s overshooting the 25s budget.
     assert sleeps == [20.0, 5.0]
+
+
+# 2026-10-13: Broomfield freshness outage follow-up -- a non-transient
+# failure (homepage freshness: genuinely nothing fresh linked) must fail
+# on the FIRST attempt, never sleep, and never touch the retry budget --
+# retrying content that's exactly as stale 20s/5min from now wastes CI
+# time without ever changing the outcome (see run_with_retry's own
+# docstring). Contrast with test_retries_then_succeeds_within_the_window
+# above, which proves a transient failure still gets the old retry
+# behavior.
+def test_non_retryable_failure_fails_on_the_first_attempt_without_sleeping():
+    clock = _FakeClock()
+    calls = []
+
+    def check_fn():
+        calls.append(1)
+        return ["homepage freshness: stale"], False
+
+    failures = run_with_retry(check_fn, "broomfield_co", timeout_seconds=300,
+                               interval_seconds=20, sleep_fn=clock.sleep, clock_fn=clock.clock)
+    assert failures == ["homepage freshness: stale"]
+    assert len(calls) == 1
+    assert clock.now == 0.0  # never slept, gave up immediately

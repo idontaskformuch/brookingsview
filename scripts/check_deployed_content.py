@@ -16,22 +16,32 @@ Two checks, both against the real production URL (never localhost/dist/,
 so a Cloudflare deploy-hook failure or propagation delay is caught too,
 not just a code bug):
 
-  1. Of every /s/<slug>/ link actually present on the homepage, at least
-     one resolves (via the DB, the same source of truth the build itself
-     reads) to a story published within FRESHNESS_DAYS -- not "the single
-     newest DB row is linked" (the homepage's own curation logic doesn't
-     always surface the literal newest item, and 'weekly' stories link
-     via /this-week/ instead of /s/ -- see check_homepage_freshness).
+  1. Of every /s/<slug>/ AND /this-week/<week>/ link actually present on
+     the homepage, at least one resolves (via the DB, the same source of
+     truth the build itself reads) to a story published within
+     DEFAULT_FRESHNESS_DAYS (or a town's own `freshness_check_days`
+     config override) -- not "the single newest DB row is linked" (the
+     homepage's own curation logic doesn't always surface the literal
+     newest item -- see check_homepage_freshness).
   2. The town's own signature section returns real, town-specific content
      -- checked against a literal marker string pulled from the DB for
      that section, not a generic "page looks non-empty" heuristic.
 
-FRESHNESS_DAYS=2 for all three towns: ai_pipeline/daily_content.py runs
-once per day, every day (scheduler.weekly_rotation.ROTATION covers all 7
-weekdays, no gap day), for every town, via its own daily cron -- so under
-normal operation there should never be a 2-day span with zero new
-stories. This catches an outage within a day of it starting without
-false-alarming on a single day's AI-budget skip or transient failure.
+DEFAULT_FRESHNESS_DAYS=8 (overridable per town via configs/<town>.json's
+`freshness_check_days`): today's actual cadence has no single guaranteed-
+daily publish. The generic AI content track (editorials/columns/reviews/
+recipes) that used to publish one new, homepage-linked story every day --
+the assumption an earlier FRESHNESS_DAYS=2 relied on -- was switched off
+config-wide in scheduler/weekly_rotation.py as of the 2026-10-07 AdSense
+remediation (Phase 0) and is no longer linked from the homepage at all.
+What's left (meeting/event scrapers, the weekly roundup) runs on its own
+schedule and genuinely can go several days with nothing new for a given
+town -- confirmed live on Broomfield (2026-10-13): zero new /s/-linkable
+stories for 11 days straight, a real gap FRESHNESS_DAYS=2 could never
+have tolerated even on a perfectly healthy pipeline. 8 days comfortably
+covers the weekly roundup's own 7-day cycle (now counted towards
+freshness too, via its /this-week/ link -- see check_homepage_freshness)
+plus a day of slack, while still catching a real multi-day outage.
 
 Fails loud: non-zero exit (job failure) plus the same ALERT_WEBHOOK every
 scraper failure already posts to (see scrapers/runner.py's own _alert(),
@@ -99,7 +109,7 @@ def resolve_homepage_slugs_to_db_slugs(homepage_slugs: list[str]) -> list[str]:
         out.append(db_prefix + slug[match.end(1):])
     return out
 
-FRESHNESS_DAYS = 2
+DEFAULT_FRESHNESS_DAYS = 8
 
 # NOT read from configs/<town>.json's own "domain" field -- found stale
 # live 2026-08-28 (brookings_sd's says "brookings311.com", the site has
@@ -207,6 +217,20 @@ def extract_story_slugs(html: str) -> list[str]:
     return sorted(set(re.findall(r"/s/([a-z0-9][a-z0-9_-]*)/", html)))
 
 
+def extract_weekly_slugs(html: str) -> list[str]:
+    """Every distinct /this-week/<iso-week>/ link in a page's HTML, mapped
+    directly to the stories.slug it backs ('weekly-<iso-week>' -- see
+    ai_pipeline's weekly-roundup generator and site/src/pages/this-week/
+    [week].astro, the same convention lib/homepage-curation.ts's
+    getLatestWeekly() callers build that href from). A separate function
+    from extract_story_slugs() because this is a different URL path
+    (/this-week/, not /s/), not one of SLUG_PREFIX_OVERRIDES's renamed
+    /s/ prefixes -- see resolve_homepage_slugs_to_db_slugs() for those.
+    Pure, no network/DB -- unit tested directly."""
+    weeks = sorted(set(re.findall(r"/this-week/([0-9]{4}-w[0-9]{2})/", html)))
+    return [f"weekly-{week}" for week in weeks]
+
+
 def is_stale(newest_published_at, freshness_days: int, now: datetime) -> bool:
     """True if `newest_published_at` (a tz-aware datetime, or None) is
     older than `freshness_days` relative to `now`. None counts as stale
@@ -216,30 +240,50 @@ def is_stale(newest_published_at, freshness_days: int, now: datetime) -> bool:
     return newest_published_at < now - timedelta(days=freshness_days)
 
 
-def check_homepage_freshness(conn, town_id: str, site_url: str) -> str | None:
-    """Returns an error string on failure, None on success.
+def check_homepage_freshness(
+    conn,
+    town_id: str,
+    site_url: str,
+    freshness_days: int = DEFAULT_FRESHNESS_DAYS,
+    reference_now: datetime | None = None,
+) -> tuple[str, bool] | None:
+    """Returns (error, is_transient) on failure, None on success.
+    `is_transient` is True for a fetch/DB blip a retry might resolve
+    (network error, non-200 status), False for a genuine content problem
+    (nothing linked, or nothing linked is fresh) that waiting a few more
+    minutes can never fix -- see run_with_retry's own docstring for how
+    that flag is used to decide whether to retry at all.
 
-    Checks that AT LEAST ONE of the homepage's OWN /s/<slug>/ links points
-    at a recent story -- not that the single most-recent DB row by
-    published_at specifically appears. First version asserted the latter
-    and false-failed immediately on real production data: the homepage's
-    curation logic (see lib/homepage-curation.ts) deliberately doesn't
-    always surface the literal newest row (Moreno Valley's newest story
-    that day wasn't selected as lead/worth-knowing), and a 'weekly'
-    story's own permalink is /s/weekly-<slug>/ but the homepage links to
-    it via /this-week/<iso-week>/ instead (see this-week.ts) -- neither is
-    a real problem, both broke the naive version of this check.
+    Checks that AT LEAST ONE of the homepage's OWN /s/<slug>/ OR
+    /this-week/<week>/ links points at a recent story -- not that the
+    single most-recent DB row by published_at specifically appears. First
+    version asserted the latter and false-failed immediately on real
+    production data: the homepage's curation logic (see lib/homepage-
+    curation.ts) deliberately doesn't always surface the literal newest
+    row (Moreno Valley's newest story that day wasn't selected as lead/
+    worth-knowing). /this-week/<week>/ links count towards freshness too
+    (added 2026-10-13, see the module docstring's DEFAULT_FRESHNESS_DAYS
+    paragraph) -- excluding the weekly roundup entirely was itself part of
+    why Broomfield's homepage had nothing fresh left to point at once the
+    generic AI content track was switched off.
     """
     try:
         r = requests.get(site_url + "/", timeout=20, headers=_request_headers(site_url))
     except Exception as exc:
-        return f"could not fetch homepage ({site_url}/): {exc}"
+        return f"could not fetch homepage ({site_url}/): {exc}", True
     if r.status_code != 200:
-        return f"homepage returned HTTP {r.status_code}, expected 200"
+        return f"homepage returned HTTP {r.status_code}, expected 200", True
 
     slugs = extract_story_slugs(r.text)
-    if not slugs:
-        return "homepage has no /s/<slug>/ links at all"
+    weekly_db_slugs = extract_weekly_slugs(r.text)
+    if not slugs and not weekly_db_slugs:
+        # Transient, not a genuine freshness failure: a homepage that
+        # renders with ZERO story/weekly links at all is indistinguishable
+        # from the same propagation lag RETRY_TIMEOUT_SECONDS exists for
+        # (a page mid-deploy can legitimately come back incomplete) --
+        # unlike "links exist but are stale/unmatched" below, there's
+        # nothing here to conclude is a real, settled content problem yet.
+        return "homepage has no /s/<slug>/ or /this-week/<week>/ links at all", True
 
     # Bug fix 2026-10-02: homepage hrefs are PUBLIC slugs (site/src/lib/
     # content-slugs.ts's publicSlug()), which diverge from stories.slug for
@@ -250,7 +294,7 @@ def check_homepage_freshness(conn, town_id: str, site_url: str) -> str | None:
     # own docstring for the live case this was caught on: broomfield_co's
     # genuinely-fresh media_recension-2026-09-30 / public "review-2026-09-30"
     # story, live and 200-ing, that this check reported as 29-day-stale).
-    db_slugs = resolve_homepage_slugs_to_db_slugs(slugs)
+    db_slugs = resolve_homepage_slugs_to_db_slugs(slugs) + weekly_db_slugs
 
     with conn.cursor() as cur:
         cur.execute(
@@ -259,11 +303,17 @@ def check_homepage_freshness(conn, town_id: str, site_url: str) -> str | None:
         )
         newest = cur.fetchone()[0]
     if newest is None:
-        return f"none of the homepage's {len(slugs)} story links matched a real DB row for this town"
+        return (
+            f"none of the homepage's {len(slugs) + len(weekly_db_slugs)} story/weekly "
+            f"links matched a real DB row for this town"
+        ), False
 
-    if is_stale(newest, FRESHNESS_DAYS, datetime.now(timezone.utc)):
-        return (f"newest story linked from the homepage was published {newest}, "
-                f"older than the {FRESHNESS_DAYS}-day freshness window")
+    now = reference_now if reference_now is not None else datetime.now(timezone.utc)
+    if is_stale(newest, freshness_days, now):
+        return (
+            f"newest story linked from the homepage was published {newest}, "
+            f"older than the {freshness_days}-day freshness window"
+        ), False
     return None
 
 
@@ -299,28 +349,38 @@ RETRY_TIMEOUT_SECONDS = 300
 RETRY_INTERVAL_SECONDS = 20
 
 
-def _run_checks_once(town_id: str, site_url: str) -> list[str]:
+def _run_checks_once(town_id: str, site_url: str, freshness_days: int) -> tuple[list[str], bool]:
     """One attempt at both checks, each against a FRESH DB connection (not
     reused across retries -- a connection that failed once is exactly the
-    kind of thing a retry shouldn't trust again). Returns the list of
-    failure strings, empty on success."""
+    kind of thing a retry shouldn't trust again). Returns (failures,
+    retryable): failures is the list of failure strings (empty on
+    success); retryable is False as soon as any failure is a genuine
+    content problem rather than a transient fetch/DB blip (currently only
+    check_homepage_freshness can report that -- see its own (message,
+    is_transient) return shape), so run_with_retry stops immediately
+    instead of burning its retry window on something that will look
+    identical five minutes from now."""
     failures: list[str] = []
+    retryable = True
     try:
         with get_conn() as conn:
-            err = check_homepage_freshness(conn, town_id, site_url)
-            if err:
-                failures.append(f"homepage freshness: {err}")
+            fresh_err = check_homepage_freshness(conn, town_id, site_url, freshness_days)
+            if fresh_err:
+                message, transient = fresh_err
+                failures.append(f"homepage freshness: {message}")
+                if not transient:
+                    retryable = False
             else:
                 print(f"  [{town_id}] homepage freshness: ok")
 
-            err = check_signature_section(town_id, site_url)
-            if err:
-                failures.append(f"signature section: {err}")
+            sig_err = check_signature_section(town_id, site_url)
+            if sig_err:
+                failures.append(f"signature section: {sig_err}")
             else:
                 print(f"  [{town_id}] signature section: ok")
     except Exception as exc:  # noqa: BLE001 -- a DB/network exception counts as a failed attempt, not a crash
         failures.append(f"attempt raised {type(exc).__name__}: {exc}")
-    return failures
+    return failures, retryable
 
 
 def run_with_retry(
@@ -331,9 +391,22 @@ def run_with_retry(
     sleep_fn=time.sleep,
     clock_fn=time.monotonic,
 ) -> list[str]:
-    """Calls check_fn() (no args, returns a list of failure strings, empty
-    on success) repeatedly until it succeeds or timeout_seconds has
-    elapsed. Returns the LAST attempt's failure list (empty = success).
+    """Calls check_fn() (no args, returns (failures, retryable) -- failures
+    is a list of failure strings, empty on success) repeatedly until it
+    succeeds, timeout_seconds has elapsed, or an attempt comes back with
+    retryable=False. Returns the LAST attempt's failure list (empty =
+    success).
+
+    retryable distinguishes a transient fetch/Neon blip (worth waiting out
+    -- see this module's own RETRY_TIMEOUT_SECONDS comment for the original
+    propagation-delay case this loop exists for) from a genuine content
+    problem such as homepage freshness (see check_homepage_freshness's
+    (message, is_transient) return shape): content that's stale right now
+    will still be exactly as stale 20 seconds, or 5 minutes, from now, so
+    retrying it only burns CI time without ever changing the outcome --
+    added 2026-10-13 after the Broomfield freshness outage spent its full
+    5-minute retry budget, 16 attempts, on a failure no retry could ever
+    have fixed.
 
     check_fn/sleep_fn/clock_fn are injectable so this loop's own timing and
     give-up logic can be unit tested without a real clock or real I/O (see
@@ -344,7 +417,7 @@ def run_with_retry(
     failures: list[str] = []
     while True:
         attempt += 1
-        failures = check_fn()
+        failures, retryable = check_fn()
         if not failures:
             print(f"  [{town_id}] post-deploy content check: all clear (attempt {attempt})")
             return failures
@@ -353,6 +426,9 @@ def run_with_retry(
         remaining = timeout_seconds - elapsed
         for f in failures:
             print(f"  [{town_id}] attempt {attempt} failed ({elapsed:.0f}s elapsed) -- {f}", file=sys.stderr)
+        if not retryable:
+            print(f"  [{town_id}] non-transient failure -- not retrying", file=sys.stderr)
+            return failures
         if remaining <= 0:
             return failures
         sleep_for = min(interval_seconds, remaining)
@@ -371,8 +447,9 @@ def main() -> int:
     if not site_url:
         print(f"no known site URL for town_id={town_id!r} -- add it to SITE_URLS", file=sys.stderr)
         return 1
+    freshness_days = cfg.get("freshness_check_days", DEFAULT_FRESHNESS_DAYS)
 
-    failures = run_with_retry(lambda: _run_checks_once(town_id, site_url), town_id)
+    failures = run_with_retry(lambda: _run_checks_once(town_id, site_url, freshness_days), town_id)
     if failures:
         for f in failures:
             print(f"  [{town_id}] FAIL -- {f}", file=sys.stderr)
