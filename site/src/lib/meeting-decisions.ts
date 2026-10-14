@@ -12,7 +12,10 @@ export interface MeetingVote {
 
 export interface MeetingDecision {
   id: number;
-  event_item_id: number;
+  // NULL for a non-Legistar row (e.g. AgendaLink/Broomfield) -- see
+  // db/migrations/055_meeting_decisions_source_system.sql. event_item_id
+  // is only ever a real Legistar EventItemId, never a cross-system key.
+  event_item_id: number | null;
   agenda_number: string | null;
   title: string;
   matter_id: number | null;

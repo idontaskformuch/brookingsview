@@ -115,3 +115,17 @@ describe('consentNote / outcomeLabel', () => {
     expect(outcomeLabel(decision({ outcome: 'received_and_filed' }))).toBe('Received and filed');
   });
 });
+
+describe('non-Legistar rows (event_item_id is NULL)', () => {
+  // See db/migrations/055_meeting_decisions_source_system.sql: event_item_id
+  // is only ever a real Legistar id, NULL for e.g. a future AgendaLink/
+  // Broomfield row. These display functions must not assume it's present.
+  it('partitions, labels and notes a null-event_item_id decision the same as any other', () => {
+    const agendalinkDecision = decision({ event_item_id: null, outcome: 'approved' });
+    const { onAgenda, decided } = partitionDecisions([agendalinkDecision]);
+    expect(onAgenda).toEqual([]);
+    expect(decided).toEqual([agendalinkDecision]);
+    expect(outcomeLabel(agendalinkDecision)).toBe('Approved');
+    expect(consentNote(agendalinkDecision)).toBeNull();
+  });
+});

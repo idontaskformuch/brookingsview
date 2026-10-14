@@ -3252,20 +3252,27 @@ export async function getProjectForMeetingId(meetingId: number): Promise<{ slug:
   return rows[0] ?? null;
 }
 
-/** Phase 7 ("Decisions"): one row per substantive Legistar agenda item that
- *  carries a real Matter -- see ai_pipeline/meeting_decisions_legistar.py's
+/** Phase 7 ("Decisions"): one row per substantive agenda item that carries
+ *  a real Matter/case -- see ai_pipeline/meeting_decisions_legistar.py's
  *  module docstring for how outcome/votes/consent fields are derived and
  *  verified. Ordered by event_item_id, which is monotonically assigned by
  *  Legistar in agenda order within a meeting (confirmed live against
  *  cityofbrookings: item ids within one event increase with agenda
- *  position), so no separate agenda_number sort is needed. */
+ *  position), so no separate agenda_number sort is needed for Legistar
+ *  rows. event_item_id is NULL for any non-Legistar row (see
+ *  db/migrations/055_meeting_decisions_source_system.sql) -- every row for
+ *  one meeting_id is always from the SAME source system (a meeting is
+ *  scraped by exactly one town pipeline), so NULLS LAST never mixes
+ *  Legistar and non-Legistar rows together; it only matters for a future
+ *  non-Legistar meeting's own rows sorting among themselves, where `id ASC`
+ *  (insertion order) is the tiebreak. */
 export async function getMeetingDecisions(meetingId: number): Promise<MeetingDecision[]> {
   const rows = (await sql`
     SELECT id, event_item_id, agenda_number, title, matter_id, matter_file, matter_type,
            action_text, outcome, is_consent_item, consent_block_event_item_id, votes, source_url
       FROM meeting_decisions
      WHERE meeting_id = ${meetingId}
-     ORDER BY event_item_id ASC
+     ORDER BY event_item_id ASC NULLS LAST, id ASC
   `) as MeetingDecision[];
   return rows;
 }

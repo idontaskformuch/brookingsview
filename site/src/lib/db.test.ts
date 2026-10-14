@@ -124,4 +124,21 @@ describe('every reader-facing stories listing excludes superseded rows', () => {
     expect(LISTING_FUNCTIONS).not.toContain('getStoryBySlug');
     expect(LISTING_FUNCTIONS).not.toContain('getAllStories');
   });
+
+  // getMeetingDecisions orders by event_item_id, a Legistar-only id that is
+  // NULL for a non-Legistar row (db/migrations/055_meeting_decisions_source
+  // _system.sql). Without NULLS LAST, Postgres' default NULL-sort-last
+  // behavior for ASC is still correct for a single mixed query, but a
+  // future edit that drops it (e.g. switching to a plain column sort
+  // without rechecking NULL semantics) would make ordering among a non-
+  // Legistar meeting's own all-NULL rows nondeterministic. Source-text
+  // guard, same reasoning as the block above -- no DB mocking seam exists.
+  it('getMeetingDecisions sorts event_item_id with NULLS LAST and a deterministic tiebreak', () => {
+    const start = dbSource.indexOf('function getMeetingDecisions(');
+    expect(start).toBeGreaterThan(-1);
+    const rest = dbSource.slice(start + 1);
+    const nextFn = rest.search(/\nexport (async )?function /);
+    const body = nextFn === -1 ? rest : rest.slice(0, nextFn);
+    expect(body).toContain('ORDER BY event_item_id ASC NULLS LAST, id ASC');
+  });
 });
