@@ -1,47 +1,33 @@
 # State
 
-2026-10-14, 4-point task (pts 0-3) after /clear. Previous task's work
-already pushed (up to 7545e75); see git log for that history.
+2026-10-14, follow-up 4-point task after Phase 7 build (previous task's
+state collapsed; see git log 68196e3..1082270 for the full Phase 7 build).
 
-Pt0 DONE+committed (baa92ba): CLAUDE.md rule 8, "föreslå"/"ändra inget"
-= no code till owner says yes.
-Pt1 DONE (no code): scrape_runs shows no MV run yet since today's 053-fix
-push (0872a4b); last row is pre-fix (Oct 13 22:01 UTC). Cron is every 6h
-(moval-scrape.yml). Will recheck later, not polling continuously.
-Pt2 (Phase 7, Brookings/Legistar) IN PROGRESS, NOT YET LIVE-VERIFIED:
-  - New: db/migrations/054_meeting_decisions.sql, ai_pipeline/
-    meeting_decisions_legistar.py, site/src/lib/meeting-decisions.ts.
-  - Changed: scrapers/parsers/legistar_v1.py (fetches EventItemId/
-    PassedFlagName/Consent/MatterId + /votes, matter+flag items only),
-    site/src/lib/db.ts (getMeetingDecisions, getProjectForMatterId --
-    strict MatterId match, independent of threadProject's meeting_id
-    link which is always NULL for Legistar), s/[slug].astro ("On the
-    agenda"/"Decided").
-  - Verified live against cityofbrookings (not guessed): EventItemConsent
-    flag + a consent sub-item's /votes response resolves to the shared
-    block's own EventItemId; a real source bug where ActionName="approved"
-    but PassedFlagName="Fail" (event 3540/item 100490) -- Pass/Fail flag
-    wins, documented in the ingest script's docstring + a regression test.
-  - vitest 1009/1009, pytest 781/8skip, astro check 0 errors.
-  - BLOCKED: migration 054 NOT applied to live DB (CLAUDE.md rule 7 --
-    asked owner, awaiting approval). Brookings build fails live
-    ("relation meeting_decisions does not exist") until it's run. 3-town
-    build/sitemap check not done yet, pending this.
-Pt3 DONE: verified live (read-only API) against 5 real meetings via
-  scripts/verify_meeting_decisions_legistar.py (events 3541/3540/3365/
-  3368/3831) BEFORE any DB write; found+fixed dedupe_shadow_items() bug
-  (Legistar's signal-less duplicate EventItem for one real decision,
-  event 3368 Clark 2nd Addition). Owner approved migration+live-data
-  step. Applied migration 054 live. Re-scraping surfaced a SECOND real
-  bug: LegistarParser had no update_columns, so db.upsert_records()'s
-  default ON CONFLICT DO NOTHING froze raw_data at first-scrape content
-  forever -- "On the agenda" could never become "Decided". Fixed
-  (update_columns=[raw_data,agenda_url,minutes_url]), re-ran scraper +
-  ai_pipeline/meeting_decisions_legistar.py live (idempotent, confirmed
-  2x) -- 71 real decisions now in meeting_decisions. All 3 towns build
-  clean, sitemap/noindex-disjoint OK (106/139/78, unchanged). Real built
-  pages checked by hand for 3 meetings (12959, 13726, 12462) --
-  consent-agenda label, vote tallies, motion text all render correctly.
+Pt1 (split/denied/absent/tabled examples, verified vs Legistar's own
+  data): DONE. Real cases found+confirmed via scripts/
+  verify_meeting_decisions_legistar.py against events 3365 (split 7-1;
+  denied 3-5/1-7 then approved 6-2, a real reconsideration sequence),
+  3540 (denied 0-7, Human Rights Commission appt -- source's own
+  ActionName says "approved", contradicted by PassedFlagName/
+  MatterStatus/vote text), 3368 (denied 0-9), 3470 (tabled 6-0 with 2
+  real Absent votes). Public MeetingDetail.aspx list view shows "Not
+  available" for ALL rows regardless of real outcome (a template quirk,
+  not missing data) -- compared against EventItemActionText/
+  PassedFlagName/MatterStatus/vote list instead, Legistar's own
+  authoritative fields, not a guess.
+Pt2: DONE. (a) confirmed+verified in code (not just agent claim):
+  ai_pipeline/publish.py's already_has_a_story() (line 563) gates on
+  stories.meeting_id (meetings.id), checked BEFORE any AI/slug work,
+  NOT conditioned on published_at -- raw_data changes can't retrigger
+  it. (b) tests/test_outcome_override_precedence.py (new): override
+  wins per-row (real guarantee), but NOT project-wide over a newer
+  real outcome -- corrected an overclaim in the ask, didn't just
+  confirm it.
+Pt3: DONE, pushed (baa92ba..1082270, includes a 3rd commit for the
+  override test). Live deploy verification in progress (background
+  task polling brookingsview.com for the Decided section).
+Pt4: MV scrape_runs still shows no post-053-fix run as of last check
+  (latest row still Oct 13 22:01 UTC, pre-fix). Will report the row
+  once one lands or on request.
 
-Next: owner approval to PUSH (baa92ba..HEAD). Pt1 (MV scrape_runs) still
-not landed as of last check -- recheck next session or on request.
+Next: report live-deploy result + Pt4 status to owner when they land.
