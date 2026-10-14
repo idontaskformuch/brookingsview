@@ -1,98 +1,109 @@
 # State
 
-Current spec: .claude/spec-phases-3-9.md Phase 6 (Projects & Development),
-scoped to Moreno Valley only. 5 rounds of owner decisions so far
-(2026-10-13 x2, 2026-10-14 x3).
+Current: today's 3-point task (2026-10-14). Point 1 DONE+committed (code+
+tests only -- DB write blocked, see below). Point 2's premise was disproven
+by research -- STOPPED, awaiting owner decision. Point 3 DONE (research
+only, nothing built).
 
-## Pushed+live (origin at 525f762)
-Rounds 1-5 (17 commits) pushed and deployed to all 3 towns. Live-verified
-2026-10-14: `curl -I https://morenovalleyview.com/s/meeting-2026-09-24-12940/`
--> 301 -> `.../s/meeting-2026-09-24-13790/` -> 200. /city-hall/archive/
-live no longer shows the old duplicate.
+## Session-wide blocker: live DB access denied by auto-mode classifier
+EVERY db.get_conn() call this session was denied -- both a SELECT ("Modify
+Shared Resources") and an ALTER TABLE adding nullable columns ("Production
+Deploy"). Not a judgment call on my part; the harness itself blocked it.
+Next session: either run DB scripts in a permission mode that allows it, or
+have the owner run the commands below directly.
 
-## Rounds 1-4 summary (15 commits: 0965e06..8253ff6)
-Fact guardrail, noindex rule, vote/outcome display, Aquabella +3 more
-projects seeded, 7 candidates rejected, candidate-queue dedup, entry_date
-backfilled, meeting content_hash bug fixed + dedup_check_columns safety
-net, outcome_override feature (migration 052 applied live, PEN24-0154's
-Planning Commission row shows "Not approved (2–3)" with a link, project
-status now "Denied"), single pending-outcome wording everywhere. Full
-detail in those 15 commits' own messages + earlier chat, not repeated.
+## Point 1: doc-fetch-failure visibility -- DONE (code+tests), DB write pending
+Commit 0872a4b. escribe_v1.py (agenda/minutes/action-summary) and
+legistar_v1.py (eventitems) now count docs_attempted/docs_failed/
+docs_last_error on FetchResult; runner.py downgrades status to 'degraded'
+when every attempted doc fetch failed (was 'ok' even at 0-of-N). New
+db/migrations/053_scrape_runs_doc_errors.sql adds 3 nullable columns to
+scrape_runs -- additive only, no backfill possible (past rows predate this).
+Tests: test_escribe_v1.py (3 new), test_legistar_v1_fetch.py (new, 2),
+test_runner_doc_errors.py (new, 3). Full pytest 760 passed/8 skipped,
+vitest 998/998, astro check 0 errors (no site/ files touched, so 3-town
+build not run -- see blocker above, it needs DB too).
+NEXT: owner runs `psql "$DATABASE_URL" -f db/migrations/053_scrape_runs_doc_errors.sql`
+(or grants DB access next session). The "report per-city history" ask
+could not be run this session (blocked) -- rerun the report query once
+the migration's applied AND DB access works; before that, scrape_runs has
+no docs_attempted/docs_failed data to report on at all.
 
-## Round 5 (3 follow-ups) -- 1 commit so far: 44d56b6
+## Point 2: Brookings Legistar "duplicates" -- STOPPED, premise disproven
+Root cause found live against webapi.legistar.com/v1/cityofbrookings
+(no DB needed): the 10 Brookings "duplicate (town,body,meeting_date)"
+groups from round 5 are near-entirely **Legistar's own "Notice of Quorum"
+postings** (open-meetings-law notices that a quorum of a body will be
+informally present somewhere) plus a couple of joint City/County meetings
+-- REAL, DISTINCT events that legitimately share a body+calendar-date with
+that body's regular meeting, not duplicate rows. Verified several pairs
+individually (EventId + EventTime + EventLocation + EventComment all
+differ): Historic Preservation Commission 2026-10-10 (3841 11am Children's
+Museum vs 3842 1:30pm Cubby's), City Council 2026-09-15/09-08/08-25 (regular
+6pm Chambers meeting vs a same-day Notice of Quorum at a different venue),
+Planning Commission 2026-02-03/04-07 (regular meeting vs a later joint
+City/County session). One early WebFetch summary falsely claimed a true
+dup on 2026-01-20 (EventId 3553) -- direct re-check proved it was a
+mis-attributed date (3553 is actually 2026-05-19); there is NO confirmed
+true duplicate found yet.
+Conclusion: GROUP BY (town, body, meeting_date) is the wrong duplicate
+definition for Legistar data -- it conflates "same calendar day" with
+"same event." The scraper/DB layer already handles these correctly
+(different EventId -> different content_hash -> correctly separate rows).
+There is no scraper bug to "fixa med test" the way eSCRIBE's hash-drift
+bug was real. **Did NOT dry-run or mark any of the 10 Brookings pairs as
+superseded_by_slug** -- doing so on this premise would hide real, distinct
+meeting content. Did NOT touch duplicate-story-redirects.json.
+NEXT: owner decides whether to (a) drop this as a non-issue for Brookings,
+or (b) have me re-derive the exact 10 pairs from the live `stories`/
+`meetings` table (needs DB access) and check each one's EventTime/location
+before any supersede action -- only pairs with IDENTICAL time+location
+(a true re-entry) would qualify. Moreno Valley's 10-11 pairs were NOT
+re-examined this session (that side's root cause -- content_hash drift --
+was already confirmed real in round 5; this session only found a problem
+with the detection heuristic on the Brookings/Legistar side). The MV dry
+run + mark-as-superseded + duplicate-story-redirects.json replacement is
+still a live ask, just also blocked on DB access this session.
 
-1. DONE: pushed all 15 prior commits (owner approved -- migration already
-   ran, satisfying "never before the migration").
+## Point 3: Phase 7 research -- DONE, nothing built
+(a) Brookings/Legistar coverage, verified live against real data (events
+3360/3797/3835, matter 9342): per real agenda item, Legistar gives
+MatterStatus (Passed/Failed), ActionName/ActionText (full prose: who
+moved/seconded, outcome), Mover/Seconder names, PassedFlag/PassedFlagName.
+**New finding, not yet acted on**: `GET /eventitems/{MatterHistoryId}/votes`
+returns the full PER-MEMBER vote breakdown (name + Yes/No/Absent) --
+confirmed MatterHistoryId IS the same ID as EventItemId (verified: matter
+9342's history row MatterHistoryId=100723 matches eventitems'
+EventItemId=100723 for the same real motion, and the votes response's own
+VoteEventItemId=100723 confirms it). This directly contradicts
+ai_pipeline/project_updates_legistar.py's own docstring claim that "a
+reliable ID mapping wasn't confirmed" for vote_yes/vote_no -- it exists,
+just unused. Coverage of tracked projects: only 2 Brookings projects are
+currently seeded (data/projects/brookings_sd.json), both Legistar-matter-
+sourced, both already getting outcome/action-text; neither gets numeric
+vote tallies (the gap above).
+(b) Moreno Valley HTML-minutes / moval.org: pub-morenovalley.escribemeetings.com
+returned 403 to a plain external fetch (same Cloudflare wall the scraper's
+own filestream.ashx hits) -- per the owner's own "no Cloudflare bypass"
+instruction, did not retry. Could NOT confirm or deny a Meeting.aspx
+HTML view for minutes/Action Summary (only the Agenda HTML view is
+documented/confirmed in escribe_v1.py's own docstring). moval.org's own
+City Clerk pages (www.moval.org/agendas) do NOT host current minutes --
+they link out to the eSCRIBE portal, plus a separate legacy archive
+(movalarchive.org) that stops at 2018-2024 data, nothing for 2025-2026.
+No SimpliCITY encountered or attempted. Net: no alternative path around
+the Cloudflare wall exists for CURRENT Moreno Valley documents.
 
-2. DONE (44d56b6), NOT YET PUSHED:
-   - Dry-run confirmed exactly 1 row before the UPDATE; executed:
-     `UPDATE stories SET superseded_by_slug='meeting-2026-09-24-13790'
-     WHERE slug='meeting-2026-09-24-12940'`.
-   - site/server/duplicate-story-redirects.json (301 via worker.ts, same
-     resolveLegacyMeetingRedirect() pattern as the other 2 redirect
-     files; hand-maintained like facility-redirects.json -- a one-off
-     dedup, not bulk script output).
-   - Generalized past this one pair: audited all 22 "FROM stories" sites
-     in lib/db.ts, added `AND superseded_by_slug IS NULL` to the 11
-     reader-facing listing functions missing it (homepage
-     candidates/compact-content/today's-feature, /city-hall/archive, the
-     weekly digest + its archive, the Google News sitemap,
-     related-stories). getStoryBySlug/getAllStories deliberately
-     untouched (getStaticPaths needs every row so an old URL degrades via
-     this same worker 301, not a 404 -- see getAllStories()'s own doc
-     comment). New regression test (db.test.ts, text-based -- no mocking
-     seam exists for the real Neon-backed functions here) caught a REAL
-     pre-existing gap my own manual audit had missed: getRecentCompactContent
-     was wrongly believed already filtered -- fixed.
-   - Verified on real builds, all 3 towns, disjoint clean (Brookings 106,
-     Moreno Valley 139, Broomfield 78): 12940 gone from /city-hall/archive
-     and rss.xml, 13790 appears once, 12940's own /s/ page still builds
-     (needed for the redirect). Full vitest 998/998.
-   - Pushed (525f762), deployed, LIVE-VERIFIED: real curl against
-     morenovalleyview.com confirms the 301 and the archive fix (see
-     "Pushed+live" above).
-   - MAJOR NEW FINDING while investigating (not yet acted on): **21
-     duplicate (town, body, meeting_date) groups exist**, not just the
-     one pair already fixed -- 11 in Moreno Valley (eSCRIBE, same
-     content_hash bug, now fixed going forward) AND **10 in Brookings**
-     (Legistar -- a completely different scraper/mechanism, root cause
-     NOT investigated). Scrape_runs log data strongly suggests this was
-     an ACTIVE, ONGOING problem, not a one-time event: city_meetings runs
-     showed items_new == items_found on EVERY run checked (should drop
-     to ~0 new after the first successful scrape of stable content if
-     content_hash were stable) -- consistent with the hash drifting on
-     every run before today's fix. Flagged for owner decision, not
-     fixed -- well beyond what was asked this round.
-
-3. DONE (Phase 7 research, nothing built). Verdict: **source counted as
-   blocked**, per the owner's own explicit branching instruction. Real
-   data checked (not assumption): only 3 meetings EVER have
-   minutes_text/action_summary_items populated, ALL from 2026-08-24 (7+
-   weeks ago) -- zero successes since, despite 5 real City Council
-   Regular Meetings since then (Sept 2, Sept 16, Oct 7, etc.) that should
-   carry these documents per the already-established pattern. scrape_runs
-   shows these city_meetings runs completing "ok"/200 daily with no
-   logged error (the per-document fetch failures are swallowed into a
-   print() in escribe_v1.py, never surfaced to the `error` column) --
-   consistent with, not contradicting, the Cloudflare "verifying your
-   browser" challenge this session's own 2 direct fetch attempts hit on
-   the same filestream.ashx endpoint. Per the owner's own instruction
-   ("Om nej... stanna"), did NOT attempt the real-code-path fetch test.
-
-## cf-bot-fight-probe.yml
-Explained (file untouched): one-shot, workflow_dispatch-only diagnostic
-curling all 3 production domains with the deploy-check's own User-Agent,
-to see whether Cloudflare Bot Fight Mode would block GitHub Actions'
-requests. Never fires on push/schedule. NOT created by this session.
-
-## Other known pre-existing issues found, NOT fixed (out of scope)
-- 20 MORE duplicate meeting-row pairs beyond the one fixed this round (11
-  MV/eSCRIBE -- same bug, now prevented going forward; 10 Brookings/
-  Legistar -- separate, uninvestigated root cause). See round 5, point 2.
-- Meeting-listing surfaces are now generally protected (round 5), but no
-  retroactive cleanup has been done for any of the 20 other pairs.
+## Known pre-existing issues, still not fixed (unchanged from round 5)
+20 duplicate meeting-row pairs beyond the one fixed in round 5 (11-ish MV/
+eSCRIBE -- real bug, root cause confirmed, just not yet cleaned up; 10
+Brookings/Legistar -- see Point 2 above, likely NOT real duplicates at
+all, re-scope before touching).
 
 ## Next
-Owner decides whether/how to address the 20 newly-found duplicate meeting
-pairs (11 MV, 10 Brookings) -- separate decision, not yet asked for.
-Everything explicitly requested through round 5 is DONE and live.
+Owner decides: (1) grant DB access or run migration 053 + the historical
+report themselves; (2) Brookings dedup -- drop it, or have me re-verify
+the exact DB-held pairs before any supersede action; (3) whether to act on
+the Legistar per-member-vote-tally finding (point 3a) in a future phase.
+Nothing pushed this session beyond committing locally (0872a4b) -- not
+asked to push.
