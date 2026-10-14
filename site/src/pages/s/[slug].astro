@@ -14,7 +14,7 @@ import {
 } from '../../lib/db';
 import type { Story, Facility } from '../../lib/db';
 import {
-  partitionDecisions, voteTallyText, motionLabel, consentNote, outcomeLabel,
+  partitionDecisions, splitOnAgenda, voteTallyText, motionLabel, consentNote, outcomeLabel,
 } from '../../lib/meeting-decisions';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
 import {
@@ -114,6 +114,12 @@ const meetingDecisionRows = isMeeting && meetingIdMatch
   ? await getMeetingDecisions(Number(meetingIdMatch[1]))
   : [];
 const { onAgenda: decisionsOnAgenda, decided: decisionsDecided } = partitionDecisions(meetingDecisionRows);
+// story.occurs_at is the meeting's real date for a meeting/meeting_followup
+// row (NOT published_at, which is when the story was generated -- see
+// db.ts's getWorthKnowingCandidatesInRange() for the same occurs_at usage).
+const { open: decisionsOpen, noRecordedOutcome: decisionsNoOutcome } = story.occurs_at
+  ? splitOnAgenda(decisionsOnAgenda, new Date(story.occurs_at), new Date(), siteConfig.timezone)
+  : { open: decisionsOnAgenda, noRecordedOutcome: [] };
 const decisionsDecidedWithProjects = await Promise.all(
   decisionsDecided.map(async (decision) => ({
     decision,
@@ -479,16 +485,36 @@ const eventJsonLdObject = buildEventJsonLd(
       </div>
     )}
 
-    {decisionsOnAgenda.length > 0 && (
+    {decisionsOpen.length > 0 && (
       <>
         <h2 class="story__section-label">On the agenda</h2>
         <ul class="decisions__list">
-          {decisionsOnAgenda.map((decision) => (
+          {decisionsOpen.map((decision) => (
             <li>
               <span class="decisions__title">
                 {decision.agenda_number && <span class="decisions__number">{decision.agenda_number}</span>}
                 {decision.title}
               </span>
+              {decision.matter_file && <span class="decisions__matter data">{decision.matter_file}</span>}
+            </li>
+          ))}
+        </ul>
+      </>
+    )}
+
+    {decisionsNoOutcome.length > 0 && (
+      <>
+        <h2 class="story__section-label">No recorded outcome</h2>
+        <ul class="decisions__list">
+          {decisionsNoOutcome.map((decision) => (
+            <li>
+              <span class="decisions__title">
+                {decision.agenda_number && <span class="decisions__number">{decision.agenda_number}</span>}
+                {decision.title}
+              </span>
+              <p class="decisions__outcome">
+                <span class="decisions__badge decisions__badge--no-outcome">No recorded outcome</span>
+              </p>
               {decision.matter_file && <span class="decisions__matter data">{decision.matter_file}</span>}
             </li>
           ))}

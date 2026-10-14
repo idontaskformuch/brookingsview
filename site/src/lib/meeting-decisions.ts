@@ -3,6 +3,7 @@
  *  lib/event-jsonld.ts). See ai_pipeline/meeting_decisions_legistar.py's
  *  module docstring for how these rows are built and verified.
  */
+import { calendarDayDiff } from './time';
 
 export interface MeetingVote {
   person: string;
@@ -90,4 +91,26 @@ export function consentNote(decision: MeetingDecision): string | null {
 export function outcomeLabel(decision: MeetingDecision): string | null {
   if (decision.outcome === 'pending') return null;
   return OUTCOME_LABELS[decision.outcome];
+}
+
+export const STALE_PENDING_DAYS = 60;
+
+/** Per ärende: once a meeting is more than STALE_PENDING_DAYS old, a
+ *  still-'pending' item almost certainly never got a real outcome posted in
+ *  Legistar (the city's own record-keeping gap, not this site's fetch
+ *  window -- see legistar_v1.py's fetch-window docstring for that separate
+ *  concern) and should read as "No recorded outcome" rather than the
+ *  still-open "On the agenda". Display-only split of partitionDecisions()'s
+ *  own `onAgenda` bucket: never rewrites `outcome` in the database, never
+ *  triggers a refetch. `meetingDate` is the meeting's real date
+ *  (stories.occurs_at for a meeting/meeting_followup row, NOT published_at,
+ *  which is when the story was generated); `now`/`timeZone` are threaded
+ *  through explicitly, same deterministic-test reason as time.ts's own
+ *  calendarDayDiff(). */
+export function splitOnAgenda(onAgenda: MeetingDecision[], meetingDate: Date, now: Date, timeZone: string): {
+  open: MeetingDecision[]; noRecordedOutcome: MeetingDecision[];
+} {
+  const daysSinceMeeting = -calendarDayDiff(meetingDate, now, timeZone);
+  if (daysSinceMeeting > STALE_PENDING_DAYS) return { open: [], noRecordedOutcome: onAgenda };
+  return { open: onAgenda, noRecordedOutcome: [] };
 }

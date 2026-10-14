@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  consentNote, motionLabel, outcomeLabel, partitionDecisions, voteTallyText,
+  consentNote, motionLabel, outcomeLabel, partitionDecisions, splitOnAgenda, voteTallyText,
   type MeetingDecision,
 } from './meeting-decisions';
 
@@ -21,6 +21,35 @@ describe('partitionDecisions', () => {
     const { onAgenda, decided } = partitionDecisions([pending, approved]);
     expect(onAgenda).toEqual([pending]);
     expect(decided).toEqual([approved]);
+  });
+});
+
+describe('splitOnAgenda', () => {
+  const tz = 'America/Chicago';
+
+  it('keeps a pending item under "On the agenda" when the meeting is recent', () => {
+    const pending = decision({ outcome: 'pending' });
+    const meetingDate = new Date('2026-09-01T18:00:00Z'); // 30 days before `now`
+    const now = new Date('2026-10-01T12:00:00Z');
+    expect(splitOnAgenda([pending], meetingDate, now, tz)).toEqual({
+      open: [pending], noRecordedOutcome: [],
+    });
+  });
+
+  it('moves a pending item to "No recorded outcome" once the meeting is 61+ days old', () => {
+    const pending = decision({ outcome: 'pending' });
+    const meetingDate = new Date('2026-08-01T18:00:00Z'); // 61 days before `now`
+    const now = new Date('2026-10-01T12:00:00Z');
+    expect(splitOnAgenda([pending], meetingDate, now, tz)).toEqual({
+      open: [], noRecordedOutcome: [pending],
+    });
+  });
+
+  it('stays "On the agenda" at exactly the 60-day boundary', () => {
+    const pending = decision({ outcome: 'pending' });
+    const meetingDate = new Date('2026-08-02T18:00:00Z'); // 60 days before `now`
+    const now = new Date('2026-10-01T12:00:00Z');
+    expect(splitOnAgenda([pending], meetingDate, now, tz).open).toEqual([pending]);
   });
 });
 
