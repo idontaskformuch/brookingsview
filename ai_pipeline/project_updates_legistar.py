@@ -175,9 +175,17 @@ def upsert_project_update(conn, project_id: int, matter: dict, history: dict, ci
 
 
 def recompute_project_status(conn, project_id: int) -> None:
+    """Status follows the LATEST OFFICIAL outcome -- see
+    ai_pipeline/project_updates.py's own recompute_project_status() for
+    the full reasoning (shared with the eSCRIBE pipeline; Legistar rarely
+    needs the override path since it already carries real pass/fail
+    outcomes directly, but a row CAN still be 'pending' here, e.g. a First
+    Reading with no MatterHistoryPassedFlagName yet)."""
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT outcome FROM project_updates WHERE project_id = %s ORDER BY meeting_date DESC LIMIT 1",
+            "SELECT COALESCE(outcome_override, outcome) FROM project_updates "
+            "WHERE project_id = %s AND (outcome_override IS NOT NULL OR outcome <> 'pending') "
+            "ORDER BY meeting_date DESC LIMIT 1",
             (project_id,),
         )
         row = cur.fetchone()

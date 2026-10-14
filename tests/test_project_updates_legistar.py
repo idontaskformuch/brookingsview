@@ -61,6 +61,14 @@ def test_approved_and_denied_status_mapping_matches_escribe_pipeline():
     assert status_for_outcome("Denied") == "denied"
 
 
+def test_not_approved_maps_to_denied_not_approved():
+    # "not approved" contains "approved" as a substring -- must hit the
+    # denied branch first, never fall through to approved. Real phrasing:
+    # a Minute Order's own wording for a failed motion (see
+    # db/migrations/052_project_update_outcome_override.sql).
+    assert status_for_outcome("Not approved (2-3)") == "denied"
+
+
 def test_date_only_action_date_anchors_at_noon_utc_not_midnight():
     # Real bug caught by inspecting an actual built page: storing
     # MatterHistoryActionDate's literal midnight as UTC and rendering it

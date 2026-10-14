@@ -93,9 +93,17 @@ def status_for_outcome(outcome: str) -> str:
     string it hasn't seen before as 'under_review' by falling through --
     it only actually claims 'approved'/'denied', the two states a real
     outcome can confirm; anything else (including a genuinely unresolved
-    procedural step) stays 'under_review', never guessed further."""
+    procedural step) stays 'under_review', never guessed further.
+
+    "not approved" is checked ALONGSIDE "denied"/"fail", before the plain
+    "approved" check below -- "not approved" contains "approved" as a
+    substring, so checking bare "approved" first would misclassify it. A
+    real source for this phrasing: a hand-verified outcome_override (see
+    db/migrations/052_project_update_outcome_override.sql) can legitimately
+    read e.g. "Not approved (2-3)", straight from an official Minute
+    Order's own wording."""
     lowered = outcome.lower()
-    if "denied" in lowered or "fail" in lowered:
+    if "denied" in lowered or "fail" in lowered or "not approved" in lowered:
         return "denied"
     if "approved" in lowered or "passed" in lowered or "adopted" in lowered:
         return "approved"

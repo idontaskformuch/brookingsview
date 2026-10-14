@@ -169,11 +169,18 @@ def upsert_project_update(conn, project_id: int, meeting: dict, agenda_item: dic
 
 
 def recompute_project_status(conn, project_id: int) -> None:
+    """The project's status follows the LATEST OFFICIAL outcome -- a row
+    still 'pending' with no override isn't one, so it's skipped here even
+    if it's chronologically the newest row (e.g. PEN24-0154: a June
+    Planning Commission denial with a real outcome_override, followed by a
+    September City Council appeal that hasn't been decided yet -- status
+    stays 'denied', reflecting the one row that actually has a confirmed
+    outcome, not 'under_review' from the still-pending appeal row)."""
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT outcome FROM project_updates
-             WHERE project_id = %s
+            SELECT COALESCE(outcome_override, outcome) FROM project_updates
+             WHERE project_id = %s AND (outcome_override IS NOT NULL OR outcome <> 'pending')
              ORDER BY meeting_date DESC LIMIT 1
             """,
             (project_id,),
