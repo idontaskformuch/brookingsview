@@ -16,7 +16,10 @@ DONE:
   STEP A: db/migrations/055_meeting_decisions_source_system.sql -- DROP NOT
   NULL on event_item_id (type/values/UNIQUE untouched), add nullable
   source_system/source_item_id, backfill existing 84 Legistar rows. NO
-  CHECK/UNIQUE yet. Written, shown for approval this turn, NOT yet run.
+  CHECK/UNIQUE yet. RUN against live DB 2026-10-14, owner-approved after
+  verifying exact SQL. Verified after: 84/84 rows source_system='legistar'
+  with source_item_id=event_item_id::text, event_item_id nullable, only
+  pre-existing constraints present (no new CHECK/UNIQUE added).
   STEP B (next, after A runs): update meeting_decisions_legistar.py (+
   any other writer) to always set source_system='legistar'/
   source_item_id=event_item_id::text, with test; push after approval;
