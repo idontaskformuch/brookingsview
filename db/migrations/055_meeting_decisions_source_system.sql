@@ -1,17 +1,15 @@
--- Phase 7, AgendaLink generalization (Broomfield) -- additive, per owner
--- decision 2026-10-14. event_item_id's TYPE, VALUES and UNIQUE constraint
--- are all left exactly as they are -- only its NOT NULL is dropped, so a
--- non-Legistar row (AgendaLink has no such numeric id; its native per-topic
--- id is a Mongo-style hex string, see .claude/phase6-7-broomfield-research
--- .md §1) can simply leave it NULL instead of needing a synthesized value.
--- NULL is allowed to repeat under a UNIQUE constraint, so this is safe for
--- any number of future non-Legistar rows.
+-- Phase 7, AgendaLink generalization (Broomfield) -- Migration A of 2 (see
+-- Migration B, db/migrations/056_meeting_decisions_source_system_check.sql,
+-- for the CHECK + UNIQUE). Split deliberately: the CHECK that follows would
+-- reject every row the CURRENT ai_pipeline/meeting_decisions_legistar.py
+-- writes today (it doesn't set source_system/source_item_id yet), which
+-- would silently stop Brookings' scheduled decision updates the moment
+-- this ran. That ingest code is updated first (to always set both fields),
+-- verified against a real scheduled run, THEN Migration B adds the CHECK.
 --
--- source_system/source_item_id identify a decision in ITS OWN system's
--- terms and are mandatory on every row (existing Legistar rows backfilled
--- below, not left NULL). event_item_id is required only when
--- source_system='legistar' -- enforced by the CHECK below, not just a
--- convention.
+-- event_item_id's TYPE, VALUES and UNIQUE constraint are all left exactly
+-- as they are -- only its NOT NULL is dropped, so a future non-Legistar
+-- row (AgendaLink has no such numeric id) can simply leave it NULL.
 
 BEGIN;
 
@@ -26,14 +24,6 @@ UPDATE meeting_decisions
    SET source_system  = 'legistar',
        source_item_id = event_item_id::text
  WHERE source_system IS NULL;
-
-ALTER TABLE meeting_decisions
-    ADD CONSTRAINT meeting_decisions_source_ref_check CHECK (
-        source_system IS NOT NULL
-        AND source_item_id IS NOT NULL
-        AND (source_system <> 'legistar' OR event_item_id IS NOT NULL)
-    ),
-    ADD CONSTRAINT meeting_decisions_source_unique UNIQUE (source_system, source_item_id);
 
 COMMIT;
 

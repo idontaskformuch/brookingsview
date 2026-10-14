@@ -9,14 +9,22 @@ DONE:
   approved, 2 updates threaded. Stale duplicate row id=32 (artifact of the
   pre-counter-fix run) checked for FK references (none found against
   project_updates anywhere) and deleted.
-4. Migration SQL revised per owner's exact spec (no hash surrogate):
-  db/migrations/055_meeting_decisions_source_system.sql -- DROP NOT NULL on
-  event_item_id only (type/values/UNIQUE untouched), add nullable
-  source_system/source_item_id, backfill existing 84 Legistar rows
-  (source_system='legistar', source_item_id=event_item_id::text), CHECK
-  (both always set; event_item_id required when source_system='legistar'),
-  UNIQUE(source_system, source_item_id). Written, NOT yet run against live
-  DB -- shown to owner this turn for one-time approval per rule 7.
+4. Migration split into A/B/C/D per owner (single-step CHECK would have
+  rejected every row current meeting_decisions_legistar.py writes today --
+  it doesn't set source_system/source_item_id yet -- silently breaking
+  Brookings' scheduled decision updates).
+  STEP A: db/migrations/055_meeting_decisions_source_system.sql -- DROP NOT
+  NULL on event_item_id (type/values/UNIQUE untouched), add nullable
+  source_system/source_item_id, backfill existing 84 Legistar rows. NO
+  CHECK/UNIQUE yet. Written, shown for approval this turn, NOT yet run.
+  STEP B (next, after A runs): update meeting_decisions_legistar.py (+
+  any other writer) to always set source_system='legistar'/
+  source_item_id=event_item_id::text, with test; push after approval;
+  confirm against next scheduled Brookings run that new/updated rows carry
+  both fields before moving to Step C.
+  STEP C: Migration B (056, not yet written) adds the CHECK + UNIQUE, once
+  B is confirmed live.
+  STEP D: only then build meeting_decisions_agendalink.py.
 5. Pre-AgendaLink-write code search for event_item_id reads (rule 7's
   "innan AgendaLink-rader skrivs"): meeting_decisions_legistar.py,
   verify_meeting_decisions_legistar.py, both backfill scripts are all
