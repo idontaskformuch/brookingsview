@@ -4,6 +4,8 @@ tests/test_escribe_v1.py's own doc-fetch section and db.finish_run()'s
 docstring): a failed eventitems request used to only reach a print(),
 never scrape_runs.
 """
+from datetime import datetime, timedelta
+
 from scrapers.base_parser import FetchResult
 from scrapers.parsers.legistar_v1 import LegistarParser, _clean_item
 
@@ -115,6 +117,33 @@ def test_parser_sets_update_columns_so_rescrapes_refresh_raw_data():
     scrape -- a real, verified bug (a one-off live rescrape produced "0
     new rows" and left raw_data unchanged before this was set)."""
     assert LegistarParser.update_columns == ["raw_data", "agenda_url", "minutes_url"]
+
+
+def test_fetch_window_is_60_days(monkeypatch):
+    """Widened from 30 to 60 days (Pt2 of the 2026-10-14 follow-up): p95
+    outcome lag measured at ~25 days from source_snapshots history, and 45%
+    of items were right-censored at the old 30-day edge. This only changes
+    which events/votes get (re-)fetched and enriched into raw_data -- it
+    does not touch story generation (ai_pipeline/publish.py decides from
+    raw_data already present, independent of how it got there)."""
+    captured = {}
+
+    def fake_get(url, params=None, timeout=None, headers=None):
+        if url.endswith("/events"):
+            captured["params"] = params
+            return _FakeResponse(200, json_body=[])
+        raise AssertionError(f"unexpected url {url}")
+
+    monkeypatch.setattr("scrapers.parsers.legistar_v1.requests.get", fake_get)
+
+    _parser().fetch()
+
+    assert LegistarParser.FETCH_WINDOW_DAYS == 60
+    expected_since = (datetime.utcnow() - timedelta(days=60)).strftime("%Y-%m-%d")
+    assert expected_since in captured["params"]["$filter"]
+    # sanity: make sure this is actually wider than the old 30-day window
+    old_since = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d")
+    assert old_since not in captured["params"]["$filter"]
 
 
 def test_clean_item_includes_votes_when_present():

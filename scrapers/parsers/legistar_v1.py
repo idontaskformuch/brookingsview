@@ -80,9 +80,16 @@ class LegistarParser(BaseParser):
             "User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)"),
         }
 
+    # Phase 7 ("Decisions"): 30 dagar var för kort -- mätning mot
+    # source_snapshots-historiken visade p95 outcome-lag ~607h (~25 dagar),
+    # och 45% av ärendena var högercensurerade exakt vid den gamla
+    # 30-dagarsgränsen (aldrig omdragna, inte nödvändigtvis fast för alltid).
+    # 60 dagar ger marginal över p95 utan att dra in ett helt års historik.
+    FETCH_WINDOW_DAYS = 60
+
     def fetch(self) -> FetchResult:
         client = self._client()
-        since = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%dT00:00:00")
+        since = (datetime.utcnow() - timedelta(days=self.FETCH_WINDOW_DAYS)).strftime("%Y-%m-%dT00:00:00")
         params = {
             "$filter": f"EventDate ge datetime'{since}'",
             "$orderby": "EventDate desc",
