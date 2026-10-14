@@ -22,13 +22,21 @@ Pt2 (Phase 7, Brookings/Legistar) IN PROGRESS, NOT YET LIVE-VERIFIED:
     block's own EventItemId; a real source bug where ActionName="approved"
     but PassedFlagName="Fail" (event 3540/item 100490) -- Pass/Fail flag
     wins, documented in the ingest script's docstring + a regression test.
-  - vitest 1009/1009, pytest 777/8skip, astro check 0 errors.
+  - vitest 1009/1009, pytest 781/8skip, astro check 0 errors.
   - BLOCKED: migration 054 NOT applied to live DB (CLAUDE.md rule 7 --
     asked owner, awaiting approval). Brookings build fails live
     ("relation meeting_decisions does not exist") until it's run. 3-town
     build/sitemap check not done yet, pending this.
-Pt3 (show 5 real meetings, no push without approval): not started --
-  blocked on Pt2's live verification above.
+Pt3: verified live (read-only API, no DB write) against 5 real meetings
+  via new scripts/verify_meeting_decisions_legistar.py (events 3541,
+  3540, 3365, 3368, 3831). Found+fixed a real bug during this: Legistar
+  sometimes posts a signal-less duplicate EventItem for the same
+  (MatterId, AgendaNumber) within one meeting (event 3368, Clark 2nd
+  Addition rezoning) -- would've shown the same decision twice (On the
+  agenda AND Decided). dedupe_shadow_items() fixes it; kept distinct
+  when siblings each have their own real outcome (event 3365,
+  Subdivision Regs matter voted on 3x in one meeting -- real, not a dup).
+  Shown to owner in chat; awaiting approval to push + apply migration.
 
 Next: get owner approval for migration 054 (+ later, running legistar_v1
 and meeting_decisions_legistar.py against live DB to populate real data).

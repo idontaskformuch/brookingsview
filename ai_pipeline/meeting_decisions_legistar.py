@@ -52,6 +52,59 @@ import psycopg
 OUTCOME_PENDING = "pending"
 
 
+def dedupe_shadow_items(items: list[dict]) -> list[dict]:
+    """A real, live-verified Legistar artifact: cityofbrookings event 3368
+    ("Rezone Lot 1 of Clark 2nd Addition...", MatterId 8903, agenda number
+    "6b.") posts TWO EventItems for the one real vote -- EventItemId 94873
+    (the real Pass/9-0 action) and EventItemId 95301 (same MatterId, SAME
+    agenda number "6b.", but ActionName/PassedFlagName/votes all null).
+    Verified live three times via both the bulk eventitems listing and the
+    single-item endpoint -- both share "6b." (an agenda-number-null
+    heuristic was tried first and discarded: a first live check happened to
+    catch 95301 mid-transient-null on Legistar's own side, which a repeat
+    query immediately contradicted -- the real, stable distinguishing
+    signal is the (MatterId, AgendaNumber) pair, not whether AgendaNumber
+    itself is set).
+
+    Ingesting both would show the SAME real decision twice on the meeting
+    page: once correctly under "Decided" (94873), once falsely under "On
+    the agenda" (95301, since outcome_from_item() on an all-null item
+    resolves to 'pending'). Within one meeting, when two-or-more items
+    share (MatterId, AgendaNumber) and at least one has real outcome
+    signal (ActionName or PassedFlagName) while at least one other has
+    neither, the signal-less ones are dropped as shadow duplicates.
+
+    Deliberately NOT applied when EVERY item in a group has its own real
+    signal (see the Planning Commission "Subdivision Regulations" case,
+    MatterId 9111 in event 3365: three distinct EventItems, each with its
+    own real ActionName/PassedFlagName/vote tally -- a genuine sequence of
+    separate real votes on the same matter within one meeting, e.g. a
+    motion failing and then a reconsidered/amended version passing. That
+    is real information, not a duplicate, and all of it is kept."""
+    groups: dict[tuple, list[dict]] = {}
+    ungrouped: list[dict] = []
+    for item in items:
+        matter_id = item.get("EventItemMatterId")
+        if matter_id is None:
+            ungrouped.append(item)
+            continue
+        key = (matter_id, item.get("EventItemAgendaNumber"))
+        groups.setdefault(key, []).append(item)
+
+    result = list(ungrouped)
+    for group in groups.values():
+        if len(group) == 1:
+            result.extend(group)
+            continue
+        has_signal = [g for g in group if g.get("EventItemActionName") or g.get("EventItemPassedFlagName")]
+        no_signal = [g for g in group if g not in has_signal]
+        # only drop the signal-less ones when at least one sibling DOES
+        # have a real result -- otherwise this is ambiguous and every item
+        # is kept rather than guessed away.
+        result.extend(has_signal if (has_signal and no_signal) else group)
+    return result
+
+
 def outcome_from_item(item: dict) -> str:
     passed = item.get("EventItemPassedFlagName")
     if passed == "Fail":
@@ -187,9 +240,12 @@ def main() -> int:
         new_count = 0
         updated_count = 0
         skipped_no_matter = 0
+        skipped_empty_shadow = 0
 
         for meeting_id, raw_data, agenda_url in meetings:
-            items = raw_data.get("agenda_items") or []
+            raw_items = raw_data.get("agenda_items") or []
+            items = dedupe_shadow_items(raw_items)
+            skipped_empty_shadow += len(raw_items) - len(items)
             for item in items:
                 if not item.get("EventItemId") or not item.get("EventItemMatterId"):
                     skipped_no_matter += 1
@@ -207,7 +263,8 @@ def main() -> int:
         if not args.dry_run:
             conn.commit()
             print(f"\n{new_count} new, {updated_count} updated, "
-                  f"{skipped_no_matter} skipped (no matter attached)")
+                  f"{skipped_no_matter} skipped (no matter attached), "
+                  f"{skipped_empty_shadow} skipped (empty shadow duplicate)")
     return 0
 
 
