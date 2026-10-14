@@ -33,6 +33,22 @@ jobs:
         run: python -m scrapers.runner --config configs/broomfield_co.json
       - name: Formatera och publicera stories (Stage 3 -> stories)
         run: python -m ai_pipeline.publish --config configs/broomfield_co.json
+      # Phase 6 (City Hall Projects): EN gång per dygn, inte var 6:e timme
+      # som resten av jobbet -- se moval-scrape.yml:s identiska steg för
+      # hela resonemanget (gäller identiskt här).
+      - name: Avgör om det är dygnets project_updates-körning (00:00 UTC)
+        id: daily_gate
+        run: |
+          hour=$(date -u +%H)
+          if [ "$hour" = "00" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: "Phase 6 (Projects): tröskla mötesutfall mot projektregistret"
+        if: steps.daily_gate.outputs.run == 'true'
+        continue-on-error: true
+        run: python -m ai_pipeline.project_updates --config configs/broomfield_co.json
       # Closure Watch -- see scrape.yml's identical step for the full
       # comment. Disabled in configs/broomfield_co.json (see that file's own
       # note), so this exits immediately here -- kept in the workflow so

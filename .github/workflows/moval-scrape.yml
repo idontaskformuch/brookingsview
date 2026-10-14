@@ -32,6 +32,29 @@ jobs:
         run: python -m scrapers.runner --config configs/moreno_valley_ca.json
       - name: Formatera och publicera stories (Stage 3 -> stories)
         run: python -m ai_pipeline.publish --config configs/moreno_valley_ca.json
+      # Phase 6 (City Hall Projects): EN gång per dygn, inte var 6:e timme
+      # som resten av jobbet -- ai_pipeline/project_updates.py gör riktiga
+      # Anthropic-anrop (AI-matchning av nya kandidater, se dess egen
+      # moduldocstring om det inkrementella skyddet mot omkörning av redan
+      # avgjorda poster) och 4x/dygn vore onödig kostnad. Gatead på UTC-
+      # timmen i stället för en egen cron, så den stannar i SAMMA jobb/
+      # placering (efter publish, före build) utan att röra skrapnings-/
+      # bygg-/deploy-kadensen ovan/nedan. continue-on-error: true -- ett
+      # fel ska synas i körningen men aldrig stoppa publicering/build/
+      # deploy.
+      - name: Avgör om det är dygnets project_updates-körning (00:00 UTC)
+        id: daily_gate
+        run: |
+          hour=$(date -u +%H)
+          if [ "$hour" = "00" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: "Phase 6 (Projects): tröskla mötesutfall mot projektregistret"
+        if: steps.daily_gate.outputs.run == 'true'
+        continue-on-error: true
+        run: python -m ai_pipeline.project_updates --config configs/moreno_valley_ca.json
       # Closure Watch -- see scrape.yml's identical step for the full comment.
       - name: Closure Watch (history + Watch-state prose)
         run: python -m ai_pipeline.closure_watch_digest --config configs/moreno_valley_ca.json

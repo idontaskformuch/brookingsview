@@ -38,6 +38,33 @@ project_new_candidate_queue for a human to review
 path above is completely unchanged by this -- it's additive, not a
 replacement.
 
+Incremental processing (owner decision 2026-10-14, see
+db/migrations/056_project_updates_checkpoints.sql): a naive rerun of the
+above would rescan EVERY historical meeting and re-call the real Anthropic
+API for every unmatched candidate-shaped item EVERY run, forever -- the
+queue's own dedup only blocks a second QUEUE ROW, not the AI call that
+produced it. Two layers fix this:
+  - Per-meeting checkpoint: a meeting whose agenda_items are byte-for-byte
+    unchanged since the last successful run is skipped ENTIRELY (exact-
+    match, ambiguous-flagging and AI-candidate paths alike) -- see
+    _agenda_items_hash()/get_checkpoint()/set_checkpoint(). NOT written
+    when the AI-call cap below deferred part of a meeting, so it gets a
+    fresh look next run. NOTE: this is keyed on the meeting's OWN content,
+    not the project registry -- adding a brand new project to data/
+    projects/<town>.json does NOT retroactively re-thread already-
+    checkpointed PAST meetings against it. That backfill is the same
+    manual step seeding a new project already requires (seed_projects.py
+    + a manual project_updates.py run), not something a schedule can do
+    silently.
+  - already_considered(): even within a meeting that DID change (so its
+    checkpoint was invalidated), an individual item that already has a
+    project_updates row or a project_new_candidate_queue row from a past
+    run is skipped without a fresh AI call -- it was already decided once.
+  - MAX_AI_CALLS_PER_RUN: a hard ceiling on fresh AI calls in one run
+    regardless of the above, so a large backlog (e.g. right after this
+    fix ships) can't spend a month's budget in one run -- the remainder
+    is deferred to later runs (their meetings aren't checkpointed either).
+
 Usage:
     python -m ai_pipeline.project_updates --config configs/moreno_valley_ca.json
     python -m ai_pipeline.project_updates --config configs/moreno_valley_ca.json --dry-run
@@ -45,6 +72,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -71,6 +99,70 @@ from ai_pipeline.project_threads import (
 # need a different data source (e.g. cross-referencing the `permits` table
 # by address) and are NOT claimed here -- see NEEDS-HUMAN-REVIEW.md for
 # this as a real, scoped follow-up rather than a guess.
+
+# Hard ceiling on fresh AI calls (ai_match_candidate) in a single run --
+# see the module docstring's "Incremental processing" section. 10 is
+# generous for real steady-state traffic (a handful of new candidate-
+# shaped items per day at most across one town) while still bounding
+# worst-case cost from a backlog to ~10 x ~$0.003/call =~ $0.03/run.
+MAX_AI_CALLS_PER_RUN = 10
+
+
+def _agenda_items_hash(items: list[dict]) -> str:
+    """Content hash of a meeting's OWN agenda_items -- deliberately NOT
+    meetings.content_hash, which is an identity hash (source+event_id+date,
+    see db/db.py's content_hash()) that stays the same even when the real
+    agenda_items payload is later amended, so it can't detect a genuine
+    content change."""
+    payload = json.dumps(items, sort_keys=True, default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def get_checkpoint(conn, meeting_id: int) -> str | None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT agenda_hash FROM project_updates_checkpoints WHERE meeting_id = %s",
+            (meeting_id,),
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
+
+
+def set_checkpoint(conn, meeting_id: int, agenda_hash: str) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO project_updates_checkpoints (meeting_id, agenda_hash, processed_at)
+            VALUES (%s, %s, now())
+            ON CONFLICT (meeting_id) DO UPDATE SET
+                agenda_hash = EXCLUDED.agenda_hash,
+                processed_at = now()
+            """,
+            (meeting_id, agenda_hash),
+        )
+
+
+def already_considered(conn, town_id: str, meeting_id: int, counter: str, title: str) -> bool:
+    """True if this exact agenda item already has a project_updates row
+    (threaded via a past AI match) or a project_new_candidate_queue row
+    (queued for human review, any status) from a PRIOR run -- re-calling
+    the AI to re-decide it is pure waste, not a chance at a different real
+    answer."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT 1 FROM project_updates WHERE meeting_id = %s AND agenda_counter = %s LIMIT 1",
+            (meeting_id, counter),
+        )
+        if cur.fetchone():
+            return True
+        cur.execute(
+            """
+            SELECT 1 FROM project_new_candidate_queue
+             WHERE town_id = %s AND meeting_id = %s AND candidate_title = %s LIMIT 1
+            """,
+            (town_id, meeting_id, title),
+        )
+        return cur.fetchone() is not None
 
 
 def find_meetings_with_agenda_items(conn, town_id: str) -> list[dict]:
@@ -227,20 +319,31 @@ def main() -> int:
 
         new_updates = 0
         new_candidates = 0
+        skipped_unchanged_meetings = 0
+        ai_calls_made = 0
+        ai_cap_reached_logged = False
         touched_project_ids: set[int] = set()
 
         for meeting in meetings:
-            for item in meeting["raw_data"].get("agenda_items") or []:
+            items = meeting["raw_data"].get("agenda_items") or []
+            agenda_hash = _agenda_items_hash(items)
+            if get_checkpoint(conn, meeting["id"]) == agenda_hash:
+                skipped_unchanged_meetings += 1
+                continue
+            meeting_fully_processed = True
+
+            for item in items:
                 title = item.get("title") or ""
                 description = agenda_item_text(item)
                 project, ambiguous = match_project(projects, title, description)
+                counter = agenda_item_counter(item)
 
                 if ambiguous:
                     reason = "matches more than one project's case numbers: " + \
                         ", ".join(p["slug"] for p in ambiguous)
-                    print(f"  FLAGGAD (ej trådad): {meeting['body']} {agenda_item_counter(item)} -- {reason}")
+                    print(f"  FLAGGAD (ej trådad): {meeting['body']} {counter} -- {reason}")
                     if not args.dry_run:
-                        queue_for_review(conn, town_id, meeting["id"], agenda_item_counter(item), title, reason)
+                        queue_for_review(conn, town_id, meeting["id"], counter, title, reason)
                     continue
 
                 if project is None:
@@ -255,10 +358,20 @@ def main() -> int:
                         candidate_text = f"{title}\n{description}".strip()
                         if args.dry_run:
                             print(f"  CANDIDATE (dry-run, no AI call): {meeting['body']} "
-                                  f"{agenda_item_counter(item)} -- {title}")
+                                  f"{counter} -- {title}")
+                            continue
+                        if already_considered(conn, town_id, meeting["id"], counter, title):
+                            continue
+                        if ai_calls_made >= MAX_AI_CALLS_PER_RUN:
+                            if not ai_cap_reached_logged:
+                                print(f"  AI-ANROPSTAK NÅTT ({MAX_AI_CALLS_PER_RUN}/körning) -- "
+                                      f"resterande kandidater skjuts upp till nästa körning")
+                                ai_cap_reached_logged = True
+                            meeting_fully_processed = False
                             continue
                         open_projects = load_open_projects_for_matching(conn, town_id)
                         match = ai_match_candidate(candidate_text, open_projects, cfg)
+                        ai_calls_made += 1
                         if match["match_project_id"] is not None:
                             matched = next(p for p in open_projects if p["id"] == match["match_project_id"])
                             synthesis, _generated_by, _verified = generate_synthesis(title, candidate_text, cfg)
@@ -267,7 +380,7 @@ def main() -> int:
                             if inserted:
                                 new_updates += 1
                             print(f"  AI-MATCH ({match['confidence']:.2f}): {matched['title']} <- "
-                                  f"{meeting['body']} {agenda_item_counter(item)} -- {match['reasoning']}")
+                                  f"{meeting['body']} {counter} -- {match['reasoning']}")
                         else:
                             queued = queue_new_candidate(
                                 conn, town_id, "meeting", meeting_id=meeting["id"],
@@ -278,13 +391,13 @@ def main() -> int:
                                 new_candidates += 1
                             else:
                                 print(f"  DUPLICATE CANDIDATE (same case number already pending review): "
-                                      f"{meeting['body']} {agenda_item_counter(item)} -- {title}")
+                                      f"{meeting['body']} {counter} -- {title}")
                     continue
 
                 if args.dry_run:
-                    action_item = action_summary_for_counter(meeting, agenda_item_counter(item))
+                    action_item = action_summary_for_counter(meeting, counter)
                     outcome = (action_item.get("result") if action_item else None) or "pending"
-                    print(f"  {project['slug']}: {meeting['body']} {agenda_item_counter(item)} "
+                    print(f"  {project['slug']}: {meeting['body']} {counter} "
                           f"({meeting['meeting_date']}) -> {outcome}")
                     continue
 
@@ -293,6 +406,9 @@ def main() -> int:
                 if inserted:
                     new_updates += 1
 
+            if not args.dry_run and meeting_fully_processed:
+                set_checkpoint(conn, meeting["id"], agenda_hash)
+
         if not args.dry_run:
             for project_id in touched_project_ids:
                 recompute_project_status(conn, project_id)
@@ -300,7 +416,9 @@ def main() -> int:
             conn.commit()
             print(f"\n{new_updates} new project update{'s' if new_updates != 1 else ''}, "
                   f"{len(touched_project_ids)} project{'s' if len(touched_project_ids) != 1 else ''} touched, "
-                  f"{new_candidates} new candidate{'s' if new_candidates != 1 else ''} queued for review")
+                  f"{new_candidates} new candidate{'s' if new_candidates != 1 else ''} queued for review, "
+                  f"{skipped_unchanged_meetings} unchanged meeting{'s' if skipped_unchanged_meetings != 1 else ''} "
+                  f"skipped, {ai_calls_made} AI call{'s' if ai_calls_made != 1 else ''} made")
     return 0
 
 

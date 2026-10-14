@@ -1,49 +1,45 @@
 # State
 
 2026-10-14, Broomfield decisions + Phase 7 generalization + scheduling.
-  NOT pushed: scrape.yml changes (moved+continue-on-error'd
-  meeting_decisions_legistar, added project_updates_legistar) --
-  awaiting approval.
+  Pushed through fbbda9c (Brookings scrape.yml rework). NOT pushed: this
+  round's work (migration 056 + incremental project_updates.py +
+  moval/broomfield scrape.yml steps) -- awaiting approval.
 
-DONE (pushed through 364b482): Chipotle project seeded, queue decided,
-  AgendaLink key-mismatch bugs fixed+tested, Migration A run live
-  (verified), meeting_decisions_legistar always sets source_system/
-  source_item_id (tested, run live for Brookings), event_item_id
-  null-safety fixes on site. See git log for detail.
+DONE+PUSHED (see git log for detail): Chipotle project seeded, queue
+  decided, AgendaLink key-mismatch bugs fixed, Migration A run live,
+  meeting_decisions_legistar source fields fixed+run live, event_item_id
+  null-safety on site, Brookings scrape.yml reworked (meeting_decisions_
+  legistar + project_updates_legistar after publish/before build,
+  continue-on-error: true).
 
-STEP 1+2a-Brookings (local only, in scrape.yml, NOT PUSHED): moved
-  meeting_decisions_legistar to after publish/before build, added
-  continue-on-error: true (visible-but-non-blocking, per owner). Added
-  project_updates_legistar right after it, same placement, same flag --
-  verified safe: reads ONLY each already-registered project's own
-  legistar_matter_ids (data/projects/brookings_sd.json), zero AI calls,
-  never INSERTs into projects, calls recompute_project_status on every
-  touched project. Cost: $0 Anthropic spend, a handful of Legistar GETs.
+THIS ROUND (local only, NOT PUSHED):
+1. db/migrations/056_project_updates_checkpoints.sql (NEW, NOT RUN) --
+   additive-only table, needs approval before running.
+2. ai_pipeline/project_updates.py: incremental processing, 3 layers --
+   (a) already_considered() skips the AI call for any item that already
+   has a project_updates or project_new_candidate_queue row from a prior
+   run; (b) per-meeting checkpoint (own agenda_items hash, NOT meetings.
+   content_hash -- that's an identity hash, doesn't detect real content
+   change) skips an unchanged meeting ENTIRELY; (c) MAX_AI_CALLS_PER_RUN=10
+   hard ceiling, logged once when hit, deferred items keep their meeting
+   unchecked-pointed so they get retried next run. Tests (tests/
+   test_project_updates_incremental.py, 10 new) PROVE a second run on
+   identical data makes 0 AI calls, via a full fake-conn main() rerun, not
+   just the helpers in isolation. Full project-test suite: 94 passed.
+3. moval-scrape.yml / broomfield-scrape.yml: added project_updates.py
+   right after publish/before build (same position as Brookings), gated
+   by a tiny UTC-hour check step so it only actually runs once/day (at
+   00:00 UTC) while the rest of the job stays on its existing 6h cadence
+   -- continue-on-error: true.
+   Cost re-estimate after the fix: backlog clear (~24 MoVal + ~8
+   Broomfield unmatched candidate-shaped items today) bounded at 10
+   calls/day/town =~ $0.03/day/town for a few days =~ $0.12 one-time
+   total; steady-state after that =~ $0.03-0.06/month/town (only
+   genuinely new/changed meetings' candidates) -- vs. the prior ~$11-12/
+   month estimate for unthrottled 6h/no-incremental scheduling.
 
-STEP 2a-MoVal/Broomfield: BLOCKED, NOT ADDED to moval-scrape.yml or
-  broomfield-scrape.yml. Owner's condition (b) is FALSE as currently
-  coded: the generic ai_pipeline/project_updates.py rescans EVERY
-  historical meeting every run (no incremental filter) and calls the
-  real Anthropic API (ai_match_candidate) for every unmatched candidate-
-  shaped item EVERY run, not just new ones -- queue_new_candidate's dedup
-  only blocks a second QUEUE ROW, not the AI call itself. Measured live:
-  24 such items for Moreno Valley, 8 for Broomfield today, both numbers
-  only grow. Estimated recurring cost at a 6h cadence (claude-sonnet-5,
-  $3/$15 per M tokens, ~500in/100out per call): ~$0.003/call x 32 items x
-  4 runs/day =~ $11-12/month in pure REPROCESSING of already-decided
-  history, out of each town's $20/month cap -- before any genuinely new
-  candidate is evaluated. Flagged to owner, awaiting direction (needs an
-  incremental/already-seen check before this is safe to schedule).
-
-STEP 2e (traffic_project_updates): NOT scheduled, matches an existing
-  in-code decision (project_threads.py's own comment: deferred pending a
-  real calibration example, explicitly "do not point any workflow at
-  traffic_project_updates.py yet"). No town has a traffic-sourced project
-  configured. Reported, no change needed.
-
-NEXT: owner reviews the scrape.yml diff + the cost finding above, decides
-  push vs. hold, and gives direction on fixing project_updates.py's
-  incremental-scan gap before Moreno Valley/Broomfield can be scheduled.
-  Migration B (Step C/point 3 of this round) still waits on the Brookings
-  steps firing correctly on their real 6h cron at least once, which in
-  turn waits on this push.
+NEXT: owner reviews migration 056 SQL + the project_updates.py diff +
+  both scrape.yml diffs, approves migration run, then push. Step C
+  (Migration B: CHECK+UNIQUE on meeting_decisions) still waits on
+  Brookings' scrape.yml steps firing correctly on the real 6h cron at
+  least once (separate thread from this round).
