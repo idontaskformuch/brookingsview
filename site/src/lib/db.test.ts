@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { isAiWrittenContent, CONTENT_TRACK_TYPES, countdown } from './db';
 
@@ -62,5 +64,64 @@ describe('countdown (item B3: town-local calendar days, not raw elapsed time)', 
 
   it('returns an empty string for a null value', () => {
     expect(countdown(null, new Date(), CHI)).toBe('');
+  });
+});
+
+describe('every reader-facing stories listing excludes superseded rows', () => {
+  // db.ts's SQL functions call the live Neon connection (sql = neon(...) at
+  // module scope) -- no mocking seam exists for them in this codebase (see
+  // this file's other describe blocks: only pure exports get unit tests),
+  // so this is a source-text regression guard, not an execution test: it
+  // reads db.ts itself and asserts each listing function's own SQL block
+  // still carries `AND superseded_by_slug IS NULL`. Real bug this guards
+  // against: a duplicate meeting story (two `meetings` rows for the same
+  // real eSCRIBE meeting under different content_hashes, see .claude/
+  // state.md's "meeting 12940/13790") rendered twice on the homepage,
+  // /city-hall/archive, and elsewhere until each listing query got this
+  // filter -- a future listing function that forgets it would reintroduce
+  // the same bug silently.
+  //
+  // getStoryBySlug/getAllStories are DELIBERATELY excluded -- see
+  // getAllStories()'s own doc comment and rss.xml.ts's: getStaticPaths
+  // needs every row (including superseded ones) to keep building a page
+  // for every url that's ever been indexed, so an old URL degrades via the
+  // worker-level 301 redirect rather than a hard 404. getActiveAlerts is
+  // excluded too -- it's hard-filtered to source_type = 'alert', a type
+  // this flag is never set on.
+  const dbSourcePath = fileURLToPath(new URL('./db.ts', import.meta.url));
+  const dbSource = readFileSync(dbSourcePath, 'utf-8');
+
+  const LISTING_FUNCTIONS = [
+    'getWorthKnowingCandidates', 'getLatestFromCandidates', 'getRecentCompactContent',
+    'getPastStories', 'getTodaysFeature', 'getContentByType', 'getStoriesForNewsSitemap',
+    'getLatestWeekly', 'getAllWeeklyStories', 'getStoriesForWeekly',
+    'getWorthKnowingCandidatesInRange', 'getRelatedStories', 'getSignData', 'getUpcomingStories',
+  ];
+
+  it.each(LISTING_FUNCTIONS)('%s filters superseded_by_slug in every one of its SQL blocks', (fnName) => {
+    const start = dbSource.indexOf(`function ${fnName}(`);
+    expect(start, `${fnName} not found in db.ts`).toBeGreaterThan(-1);
+    // Slice to the next top-level `export async function` / `export function`
+    // (or EOF) so a function with multiple SELECTs (getLatestWeekly,
+    // getRelatedStories) gets ALL of them checked, not just the first.
+    const rest = dbSource.slice(start + 1);
+    const nextFn = rest.search(/\nexport (async )?function /);
+    const body = nextFn === -1 ? rest : rest.slice(0, nextFn);
+    const selectBlocks = body.split(/\bFROM stories\b/).slice(1);
+    expect(selectBlocks.length, `${fnName} has no FROM stories query`).toBeGreaterThan(0);
+    for (const block of selectBlocks) {
+      // The filter must appear before the closing of THIS query (the next
+      // `` ` `` that ends the tagged template), not just anywhere later in
+      // the function body (which would pass even if a LATER query has it
+      // but an earlier one doesn't).
+      const queryEnd = block.indexOf('`');
+      const query = queryEnd === -1 ? block : block.slice(0, queryEnd);
+      expect(query, `a FROM stories block in ${fnName} is missing the filter`).toContain('superseded_by_slug IS NULL');
+    }
+  });
+
+  it('getStoryBySlug and getAllStories are deliberately NOT in the list above', () => {
+    expect(LISTING_FUNCTIONS).not.toContain('getStoryBySlug');
+    expect(LISTING_FUNCTIONS).not.toContain('getAllStories');
   });
 });

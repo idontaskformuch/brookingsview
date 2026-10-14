@@ -34,6 +34,7 @@ import {
 } from './_shared';
 import legacyMeetingRedirects from './legacy-meeting-redirects.json';
 import eventSeriesRedirects from './event-series-redirects.json';
+import duplicateStoryRedirects from './duplicate-story-redirects.json';
 import facilityRedirects from './facility-redirects.json';
 import { homeSalesParcelSlugFromPath, wasHomeSalesParcelEverRecorded } from './home-sales-gone';
 import { matchAiCrawler, logAiCrawlerHit } from './ai-crawler-log';
@@ -131,6 +132,26 @@ export default {
     );
     if (eventSeriesRedirectPath) {
       const target = new URL(eventSeriesRedirectPath, url.origin);
+      target.search = url.search;
+      return Response.redirect(target.toString(), 301);
+    }
+
+    // Duplicate-meeting-story merges (2026-10-14, see .claude/state.md's
+    // "meeting 12940/13790") -- a real eSCRIBE content_hash bug (fixed
+    // separately, see scrapers/parsers/escribe_v1.py) let the SAME real
+    // meeting get scraped twice under two different content_hashes,
+    // producing two separate `stories` rows. Same shape as the event-series
+    // merge just above (old row kept, marked superseded_by_slug, no longer
+    // rendered in any listing -- see lib/db.ts's own superseded_by_slug
+    // filters), reusing resolveLegacyMeetingRedirect() itself for the same
+    // reason that one does: a plain slug->slug lookup. Hand-maintained like
+    // facility-redirects.json below (a one-off dedup decision), not bulk
+    // script output like the two files above it.
+    const duplicateStoryRedirectPath = resolveLegacyMeetingRedirect(
+      url.pathname, duplicateStoryRedirects as Record<string, string>,
+    );
+    if (duplicateStoryRedirectPath) {
+      const target = new URL(duplicateStoryRedirectPath, url.origin);
       target.search = url.search;
       return Response.redirect(target.toString(), 301);
     }

@@ -384,6 +384,7 @@ export async function getWorthKnowingCandidates(limit = 12): Promise<Story[]> {
              OR featured = true
            )
        AND (featured = true OR occurs_at IS NULL OR occurs_at >= now() - interval '24 hours')
+       AND superseded_by_slug IS NULL
      ORDER BY featured DESC, occurs_at ASC NULLS LAST
      LIMIT ${limit}
   `) as Story[];
@@ -414,6 +415,7 @@ export async function getLatestFromCandidates(limit = 8): Promise<Story[]> {
        -- NEEDS-HUMAN-REVIEW.md's "unpublished" rows. Explicit filter, not
        -- reliance on ORDER BY placement.
        AND published_at IS NOT NULL
+       AND superseded_by_slug IS NULL
      ORDER BY published_at DESC
      LIMIT ${limit}
   `) as Story[];
@@ -441,6 +443,7 @@ export async function getRecentCompactContent(limit = 3): Promise<Story[]> {
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${SHARED_CONTENT_SOURCE_TYPES})
        AND published_at IS NOT NULL
+       AND superseded_by_slug IS NULL
      ORDER BY published_at DESC
      LIMIT ${limit}
   `) as Story[];
@@ -486,6 +489,7 @@ export async function getTodaysFeature(): Promise<Story | null> {
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${CONTENT_TRACK_TYPES})
        AND published_at::date = (now() AT TIME ZONE ${siteConfig.timezone})::date
+       AND superseded_by_slug IS NULL
      ORDER BY published_at DESC
      LIMIT 1
   `) as Story[];
@@ -507,6 +511,7 @@ export async function getContentByType(sourceTypes: SourceType[], limit = 40): P
        -- see getLatestFromCandidates' comment: NULL sorts first in DESC,
        -- so an unpublished row must be filtered explicitly, not just outranked.
        AND published_at IS NOT NULL
+       AND superseded_by_slug IS NULL
      ORDER BY published_at DESC
      LIMIT ${limit}
   `) as Story[];
@@ -537,6 +542,7 @@ export async function getStoriesForNewsSitemap(): Promise<Story[]> {
      WHERE town_id = ${TOWN_ID}
        AND source_type != ALL(${CONTENT_TRACK_TYPES})
        AND published_at >= now() - interval '48 hours'
+       AND superseded_by_slug IS NULL
      ORDER BY published_at DESC
   `) as Story[];
 }
@@ -617,6 +623,7 @@ export async function getLatestWeekly(): Promise<Story | null> {
      WHERE town_id = ${TOWN_ID}
        AND source_type = 'weekly'
        AND occurs_at >= now() - interval '8 days'
+       AND superseded_by_slug IS NULL
      ORDER BY occurs_at DESC
      LIMIT 1
   `) as Story[];
@@ -630,6 +637,7 @@ export async function getLatestWeekly(): Promise<Story | null> {
      WHERE town_id = ${TOWN_ID}
        AND source_type = 'weekly'
        AND occurs_at >= now() - interval '28 days'
+       AND superseded_by_slug IS NULL
      ORDER BY occurs_at DESC
      LIMIT 1
   `) as Story[];
@@ -648,6 +656,7 @@ export async function getAllWeeklyStories(): Promise<Story[]> {
            byline, image_path, image_alt, rating, ingredients, instructions
       FROM stories
      WHERE town_id = ${TOWN_ID} AND source_type = 'weekly'
+       AND superseded_by_slug IS NULL
      ORDER BY occurs_at ASC
   `) as Story[];
 }
@@ -763,6 +772,7 @@ export async function getStoriesForWeekly(sourceTypes: SourceType[]): Promise<St
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
        AND occurs_at IS NOT NULL
+       AND superseded_by_slug IS NULL
      ORDER BY occurs_at ASC
   `) as Story[];
 }
@@ -780,6 +790,7 @@ export async function getWorthKnowingCandidatesInRange(start: Date, end: Date, l
      WHERE town_id = ${TOWN_ID}
        AND source_type IN ('meeting', 'meeting_followup', 'alert')
        AND occurs_at >= ${start.toISOString()} AND occurs_at < ${end.toISOString()}
+       AND superseded_by_slug IS NULL
      ORDER BY featured DESC, occurs_at ASC
      LIMIT ${limit}
   `) as Story[];
@@ -821,6 +832,7 @@ export async function getRelatedStories(
        -- was generated, so without this it can surface as a "related story"
        -- link on any live page nearby in time -- confirmed live 2026-09-03.
        AND published_at IS NOT NULL
+       AND superseded_by_slug IS NULL
      ORDER BY abs(extract(epoch FROM (occurs_at - ${anchor}::timestamptz)))
      LIMIT ${limit}
   `) as Story[];
@@ -838,6 +850,7 @@ export async function getRelatedStories(
        AND source_type != ALL(${CONTENT_TRACK_TYPES})
        AND occurs_at IS NOT NULL
        AND published_at IS NOT NULL
+       AND superseded_by_slug IS NULL
      ORDER BY abs(extract(epoch FROM (occurs_at - ${anchor}::timestamptz)))
      LIMIT ${limit - sameType.length}
   `) as Story[];
@@ -903,6 +916,7 @@ async function latestStoryByType(sourceType: SourceType): Promise<RelatedItem | 
       FROM stories
      WHERE town_id = ${TOWN_ID} AND source_type = ${sourceType}
        AND published_at IS NOT NULL
+       AND superseded_by_slug IS NULL
      ORDER BY published_at DESC
      LIMIT 1
   `) as { title: string; slug: string; body: string }[];
