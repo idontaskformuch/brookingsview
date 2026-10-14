@@ -22,15 +22,18 @@ DONE:
   pre-existing constraints present (no new CHECK/UNIQUE added).
   STEP B: upsert_decision() in meeting_decisions_legistar.py now always
   sets source_system='legistar'/source_item_id=str(event_item_id), both on
-  INSERT and in the ON CONFLICT...SET clause (the two backfill scripts
-  share this one function, no separate fix needed there). Tests added
-  (fake-conn functional test + a source-text guard on the SET clause).
-  NOT YET PUSHED -- awaiting approval. BLOCKED on "confirm against next
-  scheduled Brookings run": searched every .github/workflows/*.yml, found
-  NO workflow anywhere invokes ai_pipeline.meeting_decisions_legistar --
-  it has only ever been run manually/via the two one-off backfill scripts.
-  No scheduled run exists to confirm against; flagged to owner, awaiting
-  direction (run it manually now vs. something else).
+  INSERT and in the ON CONFLICT...SET clause. Tests added. Ran it manually
+  for Brookings (owner-approved) 2026-10-14: 0 new, 84 updated, all 84
+  verified with source_system='legistar' + correct source_item_id, 0 NULL.
+  PUSHED (5 commits, owner-approved: 4b83bdf..8865ed0, origin/main now at
+  8865ed0).
+  No scheduled workflow previously invoked meeting_decisions_legistar at
+  all (searched every .github/workflows/*.yml -- confirmed) -- fixed:
+  added it as a new step in .github/workflows/scrape.yml right after "Kör
+  scrapers", same 6h cron, no continue-on-error (matches every other step
+  in that file -- a failure fails the job, visible in the Actions run).
+  NOT YET VERIFIED LIVE ON SCHEDULE -- next cron fire will be the first
+  real confirmation; needed before Step C (point 5 below).
   STEP C: Migration B (056, not yet written) adds the CHECK + UNIQUE, once
   B is confirmed live.
   STEP D: only then build meeting_decisions_agendalink.py.

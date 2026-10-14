@@ -37,6 +37,15 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Kör scrapers (skriver rådata till DB)
         run: python -m scrapers.runner --config configs/brookings_sd.json
+      # Phase 7 ("Decisions"): tröskar varje Legistar-agendapunkt med en
+      # riktig Matter till meeting_decisions (se ai_pipeline/
+      # meeting_decisions_legistar.py:s egen moduldocstring). Idempotent
+      # (ON CONFLICT (event_item_id) DO UPDATE), så samma 6-timmarstakt som
+      # skrapningen ovan är rätt -- ingen separat cron. Inget try/except
+      # här eller i skriptet: ett fel ska fälla STEGET (synligt i Actions-
+      # körningen), inte sväljas och tyst lämna meeting_decisions bakom.
+      - name: "Phase 7 (Decisions): uppdatera meeting_decisions från Legistar"
+        run: python -m ai_pipeline.meeting_decisions_legistar --config configs/brookings_sd.json
       - name: Formatera och publicera stories (Stage 3 -> stories)
         run: python -m ai_pipeline.publish --config configs/brookings_sd.json
       # Closure Watch (Handoff: Information Hub Tier 1, Feature A): records
