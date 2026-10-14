@@ -135,15 +135,26 @@ def get_last_success(conn, town_id: str) -> datetime | None:
         return row[0] if row else None
 
 
-def set_last_success(conn, town_id: str, when: datetime) -> None:
+def record_run(conn, town_id: str, when: datetime, *, ai_calls: int = 0,
+               meetings_processed: int = 0, meetings_skipped: int = 0, cap_hit: bool = False) -> None:
+    """Persists this run's own stats (see db/migrations/
+    057_project_updates_runs_counters.sql) so a scheduled run is
+    confirmable from the DB alone -- no need to read the GitHub Actions
+    log for "how many AI calls did it make"."""
     with conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO project_updates_runs (town_id, last_success_at)
-            VALUES (%s, %s)
-            ON CONFLICT (town_id) DO UPDATE SET last_success_at = EXCLUDED.last_success_at
+            INSERT INTO project_updates_runs
+                (town_id, last_success_at, ai_calls, meetings_processed, meetings_skipped, cap_hit)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (town_id) DO UPDATE SET
+                last_success_at    = EXCLUDED.last_success_at,
+                ai_calls           = EXCLUDED.ai_calls,
+                meetings_processed = EXCLUDED.meetings_processed,
+                meetings_skipped   = EXCLUDED.meetings_skipped,
+                cap_hit            = EXCLUDED.cap_hit
             """,
-            (town_id, when),
+            (town_id, when, ai_calls, meetings_processed, meetings_skipped, cap_hit),
         )
 
 
@@ -366,13 +377,14 @@ def main() -> int:
         if not projects and not meetings:
             print("  inga projekt och inga möten med agenda_items för den här orten")
             if not args.dry_run:
-                set_last_success(conn, town_id, datetime.now(timezone.utc))
+                record_run(conn, town_id, datetime.now(timezone.utc))
                 conn.commit()
             return 0
 
         new_updates = 0
         new_candidates = 0
         skipped_unchanged_meetings = 0
+        processed_meetings = 0
         ai_calls_made = 0
         ai_cap_reached_logged = False
         touched_project_ids: set[int] = set()
@@ -383,6 +395,7 @@ def main() -> int:
             if get_checkpoint(conn, meeting["id"]) == agenda_hash:
                 skipped_unchanged_meetings += 1
                 continue
+            processed_meetings += 1
             meeting_fully_processed = True
 
             for item in items:
@@ -466,7 +479,9 @@ def main() -> int:
             for project_id in touched_project_ids:
                 recompute_project_status(conn, project_id)
                 regenerate_rolling_summary(conn, project_id, cfg)
-            set_last_success(conn, town_id, datetime.now(timezone.utc))
+            record_run(conn, town_id, datetime.now(timezone.utc), ai_calls=ai_calls_made,
+                      meetings_processed=processed_meetings, meetings_skipped=skipped_unchanged_meetings,
+                      cap_hit=ai_cap_reached_logged)
             conn.commit()
             print(f"\n{new_updates} new project update{'s' if new_updates != 1 else ''}, "
                   f"{len(touched_project_ids)} project{'s' if len(touched_project_ids) != 1 else ''} touched, "

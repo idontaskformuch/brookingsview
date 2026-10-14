@@ -1,47 +1,36 @@
 # State
 
 2026-10-14, Broomfield decisions + Phase 7 generalization + scheduling.
-  Migration 056 RUN LIVE (owner-approved, verified: both tables exist,
-  meeting_id FK has ON DELETE CASCADE per owner's follow-up ask). Pushing
-  this round's commit now.
+  Pushed through 63c98aa (run-gate rework). Watching for the 18:00 UTC
+  cron (first real scheduled run of project_updates.py for MoVal/
+  Broomfield) in the background to report last_success_at + row counts
+  from the DB, per owner's ask.
 
-DONE+PUSHED (see git log for detail): Chipotle project seeded, queue
-  decided, AgendaLink key-mismatch bugs fixed, Migration A run live,
+DONE+PUSHED (see git log): Chipotle project seeded, queue decided,
+  AgendaLink key-mismatch bugs fixed, Migration A run live,
   meeting_decisions_legistar source fields fixed+run live, event_item_id
-  null-safety on site, Brookings scrape.yml reworked (meeting_decisions_
-  legistar + project_updates_legistar after publish/before build,
-  continue-on-error: true).
+  null-safety on site, all three scrape.yml files reworked (Brookings:
+  meeting_decisions_legistar+project_updates_legistar; MoVal/Broomfield:
+  project_updates.py), Migration 056 run live (checkpoints + runs tables,
+  meeting_id FK ON DELETE CASCADE), incremental processing (4 layers:
+  already_considered, per-meeting checkpoint, AI-call cap, real-elapsed-
+  time run gate) -- all tested, 95 passed at last full run.
 
-THIS ROUND (migration run live, code committed, pushing now):
-1. db/migrations/056_project_updates_checkpoints.sql -- RUN LIVE. Two
-   additive tables: project_updates_checkpoints (meeting_id FK ON DELETE
-   CASCADE, added per owner's follow-up ask), project_updates_runs.
-2. ai_pipeline/project_updates.py: incremental processing, 4 layers --
-   (a) already_considered() skips the AI call for any item already in
-   project_updates/project_new_candidate_queue from a prior run;
-   (b) per-meeting checkpoint (own agenda_items hash, NOT meetings.
-   content_hash -- that's an identity hash, never detects real content
-   change) skips an unchanged meeting entirely; (c) MAX_AI_CALLS_PER_RUN=10
-   hard ceiling per run, deferred items' meetings stay unchecked-pointed;
-   (d) run-level gate -- main() no-ops entirely (before any DB scan) if
-   < MIN_HOURS_BETWEEN_RUNS (~20h) real elapsed time since the last
-   successful run for that town (project_updates_runs.last_success_at) --
-   deliberately real-time-based, not an hour-of-day check, per owner's
-   "scheduled runs start late/get skipped" concern. Tests (tests/
-   test_project_updates_incremental.py, 11) prove both the run-gate and
-   the per-item dedup independently, driving the real main() end to end
-   against a fake connection. Full project-test suite: 95 passed.
-3. moval-scrape.yml / broomfield-scrape.yml: project_updates.py added
-   right after publish/before build, UNCONDITIONAL step (no workflow-
-   level gate -- cadence is self-regulated inside the script per (d)
-   above), continue-on-error: true. Cost after the fix: backlog clear
-   (~24 MoVal + ~8 Broomfield unmatched candidate-shaped items measured
-   live) bounded at 10 calls/run =~ $0.03/run =~ $0.12 one-time total;
-   steady-state after that =~ $0.03-0.06/month/town.
+THIS ROUND (local only, NOT PUSHED, migration NOT yet run):
+  db/migrations/057_project_updates_runs_counters.sql (NEW) -- additive
+  ALTER on project_updates_runs: ai_calls/meetings_processed/
+  meetings_skipped/cap_hit columns (all NOT NULL DEFAULT), so a run's own
+  stats are confirmable from the DB alone, no GitHub Actions log needed.
+  ai_pipeline/project_updates.py: set_last_success() replaced by
+  record_run() storing all four counters; both call sites (early-exit and
+  normal completion) updated. Tests extended (13 passed): round-trip of
+  all counters, overwrite-on-rerun, and an end-to-end assertion that a
+  real main() run persists the correct stats. Full project-test suite: 97
+  passed.
 
-NEXT: push this commit, then after the FIRST scheduled run per town
-  (6h cron, but script self-gates to ~once/day): report AI calls made,
-  meetings skipped, confirm last_success_at got set, per town. Then:
-  Migration B (CHECK+UNIQUE on meeting_decisions) once
-  meeting_decisions_legistar has fired on schedule with correct columns
-  (separate thread, Brookings scrape.yml).
+NEXT: owner approves migration 057 SQL, run it live BEFORE pushing this
+  code (same order as 056). Separately: report back once the 18:00 UTC
+  run is observed (last_success_at per town, checkpoint row count, new
+  project_new_candidate_queue rows per town) -- background poll running.
+  After that: Migration B (CHECK+UNIQUE on meeting_decisions) once
+  meeting_decisions_legistar has fired on schedule with correct columns.

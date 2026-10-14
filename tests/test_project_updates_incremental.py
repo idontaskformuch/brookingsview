@@ -15,7 +15,8 @@ import pytest
 
 from ai_pipeline import project_updates
 from ai_pipeline.project_updates import (
-    MIN_HOURS_BETWEEN_RUNS, _agenda_items_hash, already_considered, get_checkpoint, main, set_checkpoint,
+    MIN_HOURS_BETWEEN_RUNS, _agenda_items_hash, already_considered, get_checkpoint, get_last_success,
+    main, record_run, set_checkpoint,
 )
 
 
@@ -55,6 +56,13 @@ class _FakeCheckpointCursor:
         elif norm.startswith("SELECT 1 FROM project_new_candidate_queue"):
             town_id, meeting_id, title = params
             self._result = (1,) if (town_id, meeting_id, title) in self.store["queue"] else None
+        elif norm.startswith("SELECT last_success_at FROM project_updates_runs"):
+            (town_id,) = params
+            row = self.store["runs"].get(town_id)
+            self._result = (row[0],) if row else None
+        elif norm.startswith("INSERT INTO project_updates_runs"):
+            town_id, when, ai_calls, meetings_processed, meetings_skipped, cap_hit = params
+            self.store["runs"][town_id] = (when, ai_calls, meetings_processed, meetings_skipped, cap_hit)
         else:
             raise AssertionError(f"unexpected SQL: {norm!r}")
 
@@ -70,7 +78,7 @@ class _FakeCheckpointCursor:
 
 class _FakeCheckpointConn:
     def __init__(self):
-        self.store = {"checkpoints": {}, "project_updates": set(), "queue": set()}
+        self.store = {"checkpoints": {}, "project_updates": set(), "queue": set(), "runs": {}}
 
     def cursor(self, row_factory=None):
         return _FakeCheckpointCursor(self.store)
@@ -100,6 +108,31 @@ def test_already_considered_true_from_prior_queue_row():
     conn = _FakeCheckpointConn()
     conn.store["queue"].add(("broomfield_co", 11344, "Some title"))
     assert already_considered(conn, "broomfield_co", 11344, "191", "Some title") is True
+
+
+# --- record_run/get_last_success: the per-run stats are DB-readable -------
+# See db/migrations/057_project_updates_runs_counters.sql -- confirming a
+# scheduled run's behavior shouldn't require reading the GitHub Actions
+# log.
+
+def test_record_run_round_trip_of_all_counters():
+    conn = _FakeCheckpointConn()
+    assert get_last_success(conn, "broomfield_co") is None
+    when = datetime(2026, 10, 14, 18, 0, 0, tzinfo=timezone.utc)
+    record_run(conn, "broomfield_co", when, ai_calls=3, meetings_processed=5,
+              meetings_skipped=20, cap_hit=False)
+    assert get_last_success(conn, "broomfield_co") == when
+    assert conn.store["runs"]["broomfield_co"] == (when, 3, 5, 20, False)
+
+
+def test_record_run_overwrites_the_previous_run_for_the_same_town():
+    conn = _FakeCheckpointConn()
+    record_run(conn, "broomfield_co", datetime(2026, 10, 14, 18, 0, tzinfo=timezone.utc), ai_calls=3)
+    record_run(conn, "broomfield_co", datetime(2026, 10, 15, 18, 0, tzinfo=timezone.utc), ai_calls=0,
+              meetings_skipped=5)
+    _when, ai_calls, _processed, meetings_skipped, _cap = conn.store["runs"]["broomfield_co"]
+    assert ai_calls == 0
+    assert meetings_skipped == 5
 
 
 # --- end-to-end: main() itself makes 0 AI calls on a second identical run -
@@ -141,8 +174,12 @@ class _FakeMainCursor:
             v = self.store["last_success"].get(town_id)
             self._result = (v,) if v is not None else None
         elif norm.startswith("INSERT INTO project_updates_runs"):
-            town_id, when = params
+            town_id, when, ai_calls, meetings_processed, meetings_skipped, cap_hit = params
             self.store["last_success"][town_id] = when
+            self.store["run_stats"][town_id] = {
+                "ai_calls": ai_calls, "meetings_processed": meetings_processed,
+                "meetings_skipped": meetings_skipped, "cap_hit": cap_hit,
+            }
             self._result = None
         else:
             raise AssertionError(f"unexpected SQL: {norm!r}")
@@ -200,7 +237,7 @@ def _backdate_last_success(store, town_id, hours_ago):
 @pytest.fixture
 def fake_run(monkeypatch, tmp_path):
     store = {"meetings": {11344: dict(MEETING)}, "checkpoints": {}, "project_updates": set(),
-             "queue": set(), "last_success": {}}
+             "queue": set(), "last_success": {}, "run_stats": {}}
     conn = _FakeMainConn(store)
 
     monkeypatch.setattr(project_updates.psycopg, "connect", lambda *a, **kw: conn)
@@ -225,6 +262,8 @@ def test_first_run_makes_one_ai_call_and_queues_the_candidate(fake_run):
     main()
     assert len(fake_run.ai_calls) == 1
     assert ("broomfield_co", 11344, "Rezoning of 123 Main Street") in fake_run.store["queue"]
+    stats = fake_run.store["run_stats"]["broomfield_co"]
+    assert stats == {"ai_calls": 1, "meetings_processed": 1, "meetings_skipped": 0, "cap_hit": False}
 
 
 # --- run-level gate: real elapsed time, not an hour-of-day check ----------
