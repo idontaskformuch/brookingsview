@@ -1,124 +1,97 @@
 # State
 
 Current spec: .claude/spec-phases-3-9.md Phase 6 (Projects & Development),
-scoped to Moreno Valley only. 4 rounds of owner decisions so far
-(2026-10-13 x2, 2026-10-14 x2).
+scoped to Moreno Valley only. 5 rounds of owner decisions so far
+(2026-10-13 x2, 2026-10-14 x3).
 
-## Pushed+live (origin at a6f11be)
-About MV/Broomfield restructure. Everything below is NOT pushed yet --
-owner wants final approval before push, and never before migration 052
-(satisfied: migration ran first, in round 4).
+## Pushed+live (origin at 8253ff6, as of round 5 start)
+Rounds 1-4 (15 commits) pushed and deploying. Round 5's commit (44d56b6,
+story dedup + listing filters) is local, NOT yet pushed -- verifying the
+live 301 is the reason to push it, see below.
 
-## Rounds 1+2 (13 decisions, 9 commits)
-Fact guardrail, noindex rule, vote/outcome display, Aquabella seeded,
-candidate-queue dedup (code), 3 more projects seeded+approved, 7 rejected,
-entry_date backfilled, events.test.ts flake fixed. Full detail in those 9
-commits' own messages + earlier chat.
+## Rounds 1-4 summary (15 commits: 0965e06..8253ff6)
+Fact guardrail, noindex rule, vote/outcome display, Aquabella +3 more
+projects seeded, 7 candidates rejected, candidate-queue dedup, entry_date
+backfilled, meeting content_hash bug fixed + dedup_check_columns safety
+net, outcome_override feature (migration 052 applied live, PEN24-0154's
+Planning Commission row shows "Not approved (2–3)" with a link, project
+status now "Denied"), single pending-outcome wording everywhere. Full
+detail in those 15 commits' own messages + earlier chat, not repeated.
 
-## Round 3 (4 follow-ups) -- 3 commits: 701e30e, 0bcab27, 39acbf3
-1. Meeting 12940/13790 duplicate root-caused and fixed. Confirmed BY
-   DIRECT COMPUTATION: 12940's stored content_hash exactly equals hashing
-   the OLD naive-datetime isoformat; 13790's exactly equals the NEW
-   tz-aware one -- a 2026-09-30 _parse_escribe_date timezone fix changed
-   what content_hash computed for the SAME real meeting. Fix: content_hash
-   now hashes the raw StartDate string directly. General backstop:
-   db.upsert_records() gained dedup_check_columns (skips an insert when
-   an existing row matches with semantically-identical raw_data,
-   independent of content_hash). EscribeParser opts in on
-   ("body","meeting_date"). 11 new tests. Dry-run proof (read-only):
-   confirmed the safety net would block a 3rd row. Did NOT touch the
-   existing 12940/13790 rows (resolved in round 4, see below).
-2. outcome_override + outcome_override_source_url designed, migration
-   written, backend (status_for_outcome, recompute_project_status) +
-   frontend (lib/db.ts, [slug].astro, index.astro) all wired -- applied
-   in round 4.
-3. Single wording for "no outcome yet" everywhere --
-   PROJECT_PENDING_OUTCOME_LABEL ("Outcome not yet published."),
-   site/src/lib/db.ts, replacing 3 independently-drifted strings.
+## Round 5 (3 follow-ups) -- 1 commit so far: 44d56b6
 
-## Round 4 (migration approved + 5 follow-ups) -- 1 commit so far: [this one]
+1. DONE: pushed all 15 prior commits (owner approved -- migration already
+   ran, satisfying "never before the migration").
 
-1. DONE: migration 052 applied live (owner approved the exact `psql -f`
-   command). Confirmed via information_schema + pg_constraint:
-   outcome_override/outcome_override_source_url both text/nullable,
-   project_updates_outcome_override_needs_source CHECK present. No
-   migrations-log table exists in this codebase (tracked only by the
-   numbered .sql files in git history) -- flagged, not invented one.
+2. DONE (44d56b6), NOT YET PUSHED:
+   - Dry-run confirmed exactly 1 row before the UPDATE; executed:
+     `UPDATE stories SET superseded_by_slug='meeting-2026-09-24-13790'
+     WHERE slug='meeting-2026-09-24-12940'`.
+   - site/server/duplicate-story-redirects.json (301 via worker.ts, same
+     resolveLegacyMeetingRedirect() pattern as the other 2 redirect
+     files; hand-maintained like facility-redirects.json -- a one-off
+     dedup, not bulk script output).
+   - Generalized past this one pair: audited all 22 "FROM stories" sites
+     in lib/db.ts, added `AND superseded_by_slug IS NULL` to the 11
+     reader-facing listing functions missing it (homepage
+     candidates/compact-content/today's-feature, /city-hall/archive, the
+     weekly digest + its archive, the Google News sitemap,
+     related-stories). getStoryBySlug/getAllStories deliberately
+     untouched (getStaticPaths needs every row so an old URL degrades via
+     this same worker 301, not a 404 -- see getAllStories()'s own doc
+     comment). New regression test (db.test.ts, text-based -- no mocking
+     seam exists for the real Neon-backed functions here) caught a REAL
+     pre-existing gap my own manual audit had missed: getRecentCompactContent
+     was wrongly believed already filtered -- fixed.
+   - Verified on real builds, all 3 towns, disjoint clean (Brookings 106,
+     Moreno Valley 139, Broomfield 78): 12940 gone from /city-hall/archive
+     and rss.xml, 13790 appears once, 12940's own /s/ page still builds
+     (needed for the redirect). Full vitest 998/998.
+   - NOT YET VERIFIED: the live 301 itself (needs push + deploy -- next
+     step, pending owner go-ahead to push this commit).
+   - MAJOR NEW FINDING while investigating (not yet acted on): **21
+     duplicate (town, body, meeting_date) groups exist**, not just the
+     one pair already fixed -- 11 in Moreno Valley (eSCRIBE, same
+     content_hash bug, now fixed going forward) AND **10 in Brookings**
+     (Legistar -- a completely different scraper/mechanism, root cause
+     NOT investigated). Scrape_runs log data strongly suggests this was
+     an ACTIVE, ONGOING problem, not a one-time event: city_meetings runs
+     showed items_new == items_found on EVERY run checked (should drop
+     to ~0 new after the first successful scrape of stable content if
+     content_hash were stable) -- consistent with the hash drifting on
+     every run before today's fix. Flagged for owner decision, not
+     fixed -- well beyond what was asked this round.
 
-2. DONE: wrote the override on project_updates.id=27:
-   outcome_override='Not approved (2–3)', outcome_override_source_url=
-   the Minute Order PDF (moval.org/cdd/pdfs/projects/public-storage/
-   PEN24-0154_MINUTE_ORDER.pdf). Ran recompute_project_status ->
-   self-storage-indian-alessandro status='denied'. Rebuilt all 3 towns,
-   full pytest (752 passed/8 skipped/0 failed) + vitest (981/981) green,
-   sitemap/noindex disjoint clean on all 3 (Brookings 106, Moreno Valley
-   139, Broomfield 78). Self-Storage page live-rendered: "Denied" badge,
-   "Not approved (2–3) · Minute Order" with the link on the Planning
-   Commission row, City Council appeal row still "On the agenda. Outcome
-   not yet published." Aquabella page re-confirmed unaffected. NOT
-   PUSHED -- owner final approval still pending.
+3. DONE (Phase 7 research, nothing built). Verdict: **source counted as
+   blocked**, per the owner's own explicit branching instruction. Real
+   data checked (not assumption): only 3 meetings EVER have
+   minutes_text/action_summary_items populated, ALL from 2026-08-24 (7+
+   weeks ago) -- zero successes since, despite 5 real City Council
+   Regular Meetings since then (Sept 2, Sept 16, Oct 7, etc.) that should
+   carry these documents per the already-established pattern. scrape_runs
+   shows these city_meetings runs completing "ok"/200 daily with no
+   logged error (the per-document fetch failures are swallowed into a
+   print() in escribe_v1.py, never surfaced to the `error` column) --
+   consistent with, not contradicting, the Cloudflare "verifying your
+   browser" challenge this session's own 2 direct fetch attempts hit on
+   the same filestream.ashx endpoint. Per the owner's own instruction
+   ("Om nej... stanna"), did NOT attempt the real-code-path fetch test.
 
-3. DRY RUN DELIVERED, NOT YET EXECUTED (owner asked to see it before
-   approving, separately). Investigated the existing redirect
-   architecture first: wrangler.jsonc sets run_worker_first:["/*"], so
-   worker.ts always runs before any static file is served -- that's what
-   makes event-series-redirects.json/legacy-meeting-redirects.json/
-   facility-redirects.json work (slug->slug JSON, resolveLegacyMeeting
-   Redirect(), 301 before a stale static page would otherwise be served).
-   getAllStories() does NOT filter superseded_by_slug at all (only
-   getUpcomingStories/getPastStories/getSignData do, and only for
-   events). Proposed plan:
-     a) UPDATE stories SET superseded_by_slug='meeting-2026-09-24-13790'
-        WHERE slug='meeting-2026-09-24-12940'; -- 13790 is canonical: the
-        one project_updates.id=26 (Aquabella) already references, and
-        the post-tz-fix correctly-parsed scrape. Both stories published
-        the same day 32s apart, so "older" isn't a meaningful tiebreaker.
-     b) New file site/server/duplicate-story-redirects.json:
-        {"meeting-2026-09-24-12940": "meeting-2026-09-24-13790"} --
-        follows facility-redirects.json's precedent (hand-maintained
-        one-off dedup), not the other two files (different bug classes).
-     c) worker.ts: import it, add a third resolveLegacyMeetingRedirect()
-        check, 301.
-   FLAGGED, not expanded beyond what was asked: does NOT remove the
-   duplicate from meeting-listing surfaces (homepage, /city-hall, RSS) --
-   those queries don't filter superseded_by_slug (only the 3 event-only
-   functions do). A real follow-up gap, not fixed here.
-
-4. DONE (explanation only, file untouched). cf-bot-fight-probe.yml:
-   one-shot, workflow_dispatch-only diagnostic curling all 3 production
-   domains with the deploy-check's own User-Agent, to see whether
-   Cloudflare Bot Fight Mode would block GitHub Actions' requests. Never
-   fires on push/schedule. Standing tool for whenever a WAF rule is
-   considered.
-
-5. DONE (research, nothing built). Searched the 14 already-scraped
-   Moreno Valley Planning Commission agendas for "Approval of Minutes" --
-   0 literal hits, but found the real pattern under a different label:
-   every PC meeting's Consent Calendar carries a "Planning Commission
-   Minutes -- Regular Meeting - <date>" item approving the PRIOR
-   meeting's minutes. Lag confirmed across 3 real examples: ~15 days
-   (next regular PC meeting, roughly biweekly). Fetched the real agenda
-   HTML for one (meeting 11102) and found a real attached document under
-   that item: filestream.ashx?DocumentId=7051, "06.11.26_PC Minutes_
-   Final.pdf" -- same eSCRIBE mechanism already used for Action Summary/
-   PostMinutes elsewhere. Could NOT verify the PDF's own content (per-item
-   outcomes?) -- the download endpoint returned a Cloudflare "verifying
-   your browser" challenge on 2 attempts (plain, and with Referer+delay);
-   did not keep retrying (would cross into working around a bot check).
-   Did not use SimpliCITY.
+## cf-bot-fight-probe.yml
+Explained (file untouched): one-shot, workflow_dispatch-only diagnostic
+curling all 3 production domains with the deploy-check's own User-Agent,
+to see whether Cloudflare Bot Fight Mode would block GitHub Actions'
+requests. Never fires on push/schedule. NOT created by this session.
 
 ## Other known pre-existing issues found, NOT fixed (out of scope)
-- `stories` has 2 duplicate published rows for the 12940/13790 meeting --
-  dry run above, awaiting owner go-ahead to execute.
-- Meeting-listing surfaces don't filter superseded_by_slug (round 4,
-  point 3's flag).
-- Unrelated: .github/workflows/cf-bot-fight-probe.yml sits untracked in
-  the working tree -- NOT created by this session, its own comment says
-  "owner asked to see before deciding on any WAF rule... delete or commit
-  separately once used." Left untouched.
+- 20 MORE duplicate meeting-row pairs beyond the one fixed this round (11
+  MV/eSCRIBE -- same bug, now prevented going forward; 10 Brookings/
+  Legistar -- separate, uninvestigated root cause). See round 5, point 2.
+- Meeting-listing surfaces are now generally protected (round 5), but no
+  retroactive cleanup has been done for any of the 20 other pairs.
 
 ## Next
-Owner reviews the task-3 dry run and either approves it or not. Owner
-gives final push approval (covers all 13 commits across rounds 1-2, 3
-commits in round 3, this round's commit once made -- migration already
-ran live, satisfying "never before the migration").
+Owner decides: (a) push 44d56b6 so the live 301 can be verified (the one
+remaining unverified piece of round 5, point 2), and (b) whether/how to
+address the 20 newly-found duplicate pairs (11 MV, 10 Brookings) --
+separate decision, not yet asked for.
