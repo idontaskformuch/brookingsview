@@ -109,6 +109,14 @@ def test_clean_item_keeps_falsy_consent_flag():
     assert cleaned["EventItemPassedFlagName"] is None
 
 
+def test_parser_sets_update_columns_so_rescrapes_refresh_raw_data():
+    """Phase 7: without this, db.upsert_records()'s default ON CONFLICT DO
+    NOTHING would freeze raw_data at whatever it looked like on first
+    scrape -- a real, verified bug (a one-off live rescrape produced "0
+    new rows" and left raw_data unchanged before this was set)."""
+    assert LegistarParser.update_columns == ["raw_data", "agenda_url", "minutes_url"]
+
+
 def test_clean_item_includes_votes_when_present():
     item = {
         "EventItemId": 100738, "EventItemTitle": "Consent sub-item",

@@ -52,6 +52,21 @@ MAX_VOTE_FETCHES_PER_MEETING = 30
 class LegistarParser(BaseParser):
     table = "meetings"
     platform = "legistar"
+    # Phase 7 ("Decisions"): EventItemPassedFlagName/votes genuinely change
+    # AFTER a meeting happens -- a scrape right after it sees no result yet
+    # (outcome='pending', "On the agenda"); a later rescrape of the SAME
+    # EventId sees the posted result. content_hash is computed from
+    # (platform, event_id, date_str) alone and deliberately does NOT change
+    # when that happens (the meeting's own identity is stable) -- without
+    # this, the default "DO NOTHING on conflict" (see db.upsert_records()'s
+    # own docstring) would freeze raw_data at whatever it looked like on
+    # first scrape, forever, and no agenda item could ever move from "On
+    # the agenda" to "Decided". Verified live this was a real, not
+    # theoretical, bug: a one-off rescrape with the new vote-fetching code
+    # produced "0 new rows" and left raw_data completely unchanged before
+    # this fix. Same pattern this codebase already uses for a live-scoring
+    # sports match.
+    update_columns = ["raw_data", "agenda_url", "minutes_url"]
 
     def _client(self) -> str:
         client = self.source_cfg.get("client_id")

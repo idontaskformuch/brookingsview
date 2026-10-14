@@ -27,16 +27,21 @@ Pt2 (Phase 7, Brookings/Legistar) IN PROGRESS, NOT YET LIVE-VERIFIED:
     asked owner, awaiting approval). Brookings build fails live
     ("relation meeting_decisions does not exist") until it's run. 3-town
     build/sitemap check not done yet, pending this.
-Pt3: verified live (read-only API, no DB write) against 5 real meetings
-  via new scripts/verify_meeting_decisions_legistar.py (events 3541,
-  3540, 3365, 3368, 3831). Found+fixed a real bug during this: Legistar
-  sometimes posts a signal-less duplicate EventItem for the same
-  (MatterId, AgendaNumber) within one meeting (event 3368, Clark 2nd
-  Addition rezoning) -- would've shown the same decision twice (On the
-  agenda AND Decided). dedupe_shadow_items() fixes it; kept distinct
-  when siblings each have their own real outcome (event 3365,
-  Subdivision Regs matter voted on 3x in one meeting -- real, not a dup).
-  Shown to owner in chat; awaiting approval to push + apply migration.
+Pt3 DONE: verified live (read-only API) against 5 real meetings via
+  scripts/verify_meeting_decisions_legistar.py (events 3541/3540/3365/
+  3368/3831) BEFORE any DB write; found+fixed dedupe_shadow_items() bug
+  (Legistar's signal-less duplicate EventItem for one real decision,
+  event 3368 Clark 2nd Addition). Owner approved migration+live-data
+  step. Applied migration 054 live. Re-scraping surfaced a SECOND real
+  bug: LegistarParser had no update_columns, so db.upsert_records()'s
+  default ON CONFLICT DO NOTHING froze raw_data at first-scrape content
+  forever -- "On the agenda" could never become "Decided". Fixed
+  (update_columns=[raw_data,agenda_url,minutes_url]), re-ran scraper +
+  ai_pipeline/meeting_decisions_legistar.py live (idempotent, confirmed
+  2x) -- 71 real decisions now in meeting_decisions. All 3 towns build
+  clean, sitemap/noindex-disjoint OK (106/139/78, unchanged). Real built
+  pages checked by hand for 3 meetings (12959, 13726, 12462) --
+  consent-agenda label, vote tallies, motion text all render correctly.
 
-Next: get owner approval for migration 054 (+ later, running legistar_v1
-and meeting_decisions_legistar.py against live DB to populate real data).
+Next: owner approval to PUSH (baa92ba..HEAD). Pt1 (MV scrape_runs) still
+not landed as of last check -- recheck next session or on request.
