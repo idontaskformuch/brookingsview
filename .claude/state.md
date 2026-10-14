@@ -1,43 +1,43 @@
 # State
 
 2026-10-14, Phase 8 ("Month in <Town>") BUILD -- all 8 owner conditions
-  implemented and verified for moreno_valley_ca. NOT PUSHED (condition 8
-  -- awaiting owner approval after seeing the September page, shown in
-  this session's reply).
+  implemented, then a wording/dedup revision round after owner reviewed
+  the first September preview (commit cb2a9d1). NOT PUSHED -- awaiting
+  explicit push approval after this round's September preview.
 
-DONE (2 commits, both local only): 136f34a (data layer: 6 module
-  fetchers + coverage rule in lib/month-in-review.ts + db.ts siblings) and
-  1bf4bf9 (pages, clusters.ts/BaseLayout wiring, astro.config.mjs noindex
-  mirror, 5 teaser links). Full detail in those commits' own messages.
+DONE (3 commits, all local only): 136f34a (data layer), 1bf4bf9 (pages/
+  routing/clusters/sitemap gate), cb2a9d1 (wording pass: every sentence
+  now names our coverage/source as the actor, not the city; jobs dedup by
+  title+company with a 15% significance threshold; fixed "See all
+  months" link to actually point at /month/, not city-hall; "compiled
+  from public data sources" replaces "no AI narration"; fixed a real bug
+  found while re-verifying -- the Sept digest link pointed at a
+  generated_by='data_pending' placeholder promising "what sold" when the
+  body says data hasn't arrived).
 
-VERIFIED (phase-commit gate, CLAUDE.md rule 3): full vitest 1012/1012,
-  astro check 0 errors, real SITE_CITY builds for all three towns (MV
-  3396 pages/1152s, Brookings 636 pages/319s, Broomfield 1074 pages/266s),
-  scripts/verify_sitemap_noindex_disjoint.mjs green on all three dist/
-  (MV 142 urls, Brookings 106, Broomfield 78) -- confirmed Brookings/
-  Broomfield each produce ONLY a /month/ redirect stub (meta-refresh to
-  /), correctly excluded from their own sitemap via the new
-  TOWN_GATED_PAGES entry (this needed discovering live, not assumed --
-  Astro's Astro.redirect() still emits a static stub file even for a
-  "page doesn't apply to this town" branch). MV's /month/2026-08/ and
-  /month/2026-09/ both confirmed indexable (no noindex meta, both present
-  in sitemap-0.xml) -- matches the >=4-of-6 gate.
+VERIFIED (re-run after the wording round): full vitest 1012/1012, astro
+  check 0 errors, real SITE_CITY=moreno_valley_ca build x3 (once per
+  revision), scripts/verify_sitemap_noindex_disjoint.mjs green each time
+  (142 urls). Extracted and read the ACTUAL built HTML text for Aug+Sep
+  (not just the preview script) to catch the data_pending digest-link
+  bug -- the preview script alone wouldn't have caught it since it only
+  exercises the lib functions, not the page's own digestExists logic.
+  Did not re-run Brookings/Broomfield builds for this wording-only round
+  (astro.config.mjs untouched this round; only lib/page text changed,
+  and those two towns only ever produce the /month/ redirect stub).
 
-DECISIONS/SKÄL (for future reference, git log has full detail too):
-  MONTH_IN_REVIEW_START hardcoded 2026-08 for moreno_valley_ca (avoids a
-  2.5-year noindexed tail back to property_sales' Jan 2024 floor).
-  'month'/'month/detail' are PRIMARY spokes of civic ONLY, no secondary
-  memberships (research file's "secondary of 3 clusters" plan violates
-  validateClusterConfig()'s real max-2 rule) -- cross-links are plain
-  teaser <a> tags instead. Sales module uses its own count>0 rule, not
-  the floor-date coverage rule the other 5 modules share (county data can
-  have mid-timeline gaps a floor date can't see) -- see buildSalesModule()
-  's own comment.
+OPEN ITEM FOR LATER (owner: "note in state.md, bygg inte nu"): richer
+  per-module detail without AI -- top-3 employers (jobs), most-affected
+  roads (traffic), most-used event venues (events). Not scoped or
+  started. Would need its own small design pass (e.g. does "top-3
+  employers" count raw or post-dedup postings; does "most-affected
+  roads" need the same in_town/approach split jobs/events already use)
+  before touching code -- flag for a future session, do not build
+  speculatively.
 
-KNOWN BUGS: none new.
+KNOWN BUGS: none new (the data_pending digest-link bug above was caught
+  and fixed before this commit, not left open).
 
-NEXT: owner reviews the September page's plain-text numbers+sentences
-  (printed in this session's chat, via scripts/preview-month-in-review.ts
-  2026-09, cross-checked against the real built HTML's <meta robots> and
-  sitemap presence). On explicit approval: `git push`. Until then: no
-  push, no further owner-facing changes needed -- feature is complete.
+NEXT: owner reviews this round's September page (shown in chat, cross-
+  checked against real built HTML). On explicit approval: `git push`.
+  Until then: no push.
