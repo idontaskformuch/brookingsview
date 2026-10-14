@@ -30,7 +30,7 @@ from __future__ import annotations
 import json
 
 from ai_pipeline import guardrails
-from ai_pipeline.project_registry import text_matches_case_numbers
+from ai_pipeline.project_registry import agenda_item_text, text_matches_case_numbers
 
 
 def _source_text_case_numbers(conn, town_id: str, case_numbers: list[str]) -> str:
@@ -44,7 +44,7 @@ def _source_text_case_numbers(conn, town_id: str, case_numbers: list[str]) -> st
         if not raw:
             continue
         for item in raw.get("agenda_items") or []:
-            text = f"{item.get('title', '')} {item.get('description', '')}"
+            text = f"{item.get('title', '')} {agenda_item_text(item)}"
             if text_matches_case_numbers(text, case_numbers):
                 texts.append(text)
         for item in raw.get("action_summary_items") or []:

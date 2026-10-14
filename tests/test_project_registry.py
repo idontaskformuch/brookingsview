@@ -2,7 +2,7 @@
 ai_pipeline/project_registry.py and NEEDS-HUMAN-REVIEW.md, "Week 3 -- City
 Hall Project Pages"). Pure logic only, no DB connection.
 """
-from ai_pipeline.project_registry import extract_case_numbers, match_project
+from ai_pipeline.project_registry import agenda_item_counter, agenda_item_text, extract_case_numbers, match_project
 from ai_pipeline.project_updates import _normalize_counter, action_summary_for_counter
 
 CAR_WASH = {"id": 1, "slug": "car-wash", "title": "Car Wash", "case_numbers": ["PEN25-0098", "PEN25-0100"]}
@@ -45,6 +45,49 @@ def test_case_number_match_is_case_insensitive():
 def test_description_is_also_searched():
     project, _ = match_project(PROJECTS, "SOME GENERIC TITLE", "References case PEN26-0019 in the body text.")
     assert project == SPECIFIC_PLAN
+
+
+# --- agenda_item_text: eSCRIBE "description" vs AgendaLink "details" ------
+
+def test_agenda_item_text_prefers_description_when_present():
+    # eSCRIBE shape (scrapers/parsers/escribe_v1.py).
+    assert agenda_item_text({"title": "x", "description": "the escribe body"}) == "the escribe body"
+
+
+def test_agenda_item_text_falls_back_to_details():
+    # AgendaLink shape (scrapers/parsers/agendalink_v1.py) -- no
+    # "description" key at all, the real body is under "details". Before
+    # this fix, every caller reading item.get("description") silently got
+    # "" for every Broomfield agenda item, regardless of how much real
+    # text the parser had actually captured.
+    assert agenda_item_text({"title": "x", "details": "the agendalink body"}) == "the agendalink body"
+
+
+def test_agenda_item_text_empty_when_neither_key_present():
+    assert agenda_item_text({"title": "x"}) == ""
+
+
+# --- agenda_item_counter: eSCRIBE "counter" vs AgendaLink "item_number" ---
+
+def test_agenda_item_counter_prefers_counter_when_present():
+    assert agenda_item_counter({"counter": "K.1.", "item_number": "191"}) == "K.1."
+
+
+def test_agenda_item_counter_falls_back_to_item_number():
+    # Real bug this guards against: two different AgendaLink items in the
+    # SAME meeting (e.g. a Council resolution and its BURA companion) both
+    # had agenda_item.get("counter") == "" before this fix, colliding on
+    # project_updates' (project_id, meeting_id, agenda_counter) uniqueness
+    # and silently overwriting each other -- only one ever got threaded.
+    council_item = {"title": "Resolution No. 2026-107", "item_number": "191"}
+    bura_item = {"title": "Resolution No. 2026-108-UR", "item_number": "194"}
+    assert agenda_item_counter(council_item) == "191"
+    assert agenda_item_counter(bura_item) == "194"
+    assert agenda_item_counter(council_item) != agenda_item_counter(bura_item)
+
+
+def test_agenda_item_counter_empty_when_neither_key_present():
+    assert agenda_item_counter({"title": "x"}) == ""
 
 
 def test_normalize_counter_strips_trailing_period_only():

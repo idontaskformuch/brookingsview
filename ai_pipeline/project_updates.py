@@ -59,7 +59,9 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline import api_usage
-from ai_pipeline.project_registry import load_projects, match_project, queue_for_review, status_for_outcome
+from ai_pipeline.project_registry import (
+    agenda_item_counter, agenda_item_text, load_projects, match_project, queue_for_review, status_for_outcome,
+)
 from ai_pipeline.project_threads import (
     ai_match_candidate, generate_synthesis, is_candidate_agenda_item,
     load_open_projects_for_matching, queue_new_candidate, regenerate_rolling_summary,
@@ -107,7 +109,7 @@ def upsert_project_update(conn, project_id: int, meeting: dict, agenda_item: dic
     below -- the exact-case-number-match path (this function's original
     caller) has never generated one and doesn't need to; NULL there is
     correct, not a gap."""
-    counter = agenda_item.get("counter") or ""
+    counter = agenda_item_counter(agenda_item)
     action_item = action_summary_for_counter(meeting, counter)
 
     if action_item is not None:
@@ -230,15 +232,15 @@ def main() -> int:
         for meeting in meetings:
             for item in meeting["raw_data"].get("agenda_items") or []:
                 title = item.get("title") or ""
-                description = item.get("description") or ""
+                description = agenda_item_text(item)
                 project, ambiguous = match_project(projects, title, description)
 
                 if ambiguous:
                     reason = "matches more than one project's case numbers: " + \
                         ", ".join(p["slug"] for p in ambiguous)
-                    print(f"  FLAGGAD (ej trådad): {meeting['body']} {item.get('counter')} -- {reason}")
+                    print(f"  FLAGGAD (ej trådad): {meeting['body']} {agenda_item_counter(item)} -- {reason}")
                     if not args.dry_run:
-                        queue_for_review(conn, town_id, meeting["id"], item.get("counter"), title, reason)
+                        queue_for_review(conn, town_id, meeting["id"], agenda_item_counter(item), title, reason)
                     continue
 
                 if project is None:
@@ -253,7 +255,7 @@ def main() -> int:
                         candidate_text = f"{title}\n{description}".strip()
                         if args.dry_run:
                             print(f"  CANDIDATE (dry-run, no AI call): {meeting['body']} "
-                                  f"{item.get('counter')} -- {title}")
+                                  f"{agenda_item_counter(item)} -- {title}")
                             continue
                         open_projects = load_open_projects_for_matching(conn, town_id)
                         match = ai_match_candidate(candidate_text, open_projects, cfg)
@@ -265,7 +267,7 @@ def main() -> int:
                             if inserted:
                                 new_updates += 1
                             print(f"  AI-MATCH ({match['confidence']:.2f}): {matched['title']} <- "
-                                  f"{meeting['body']} {item.get('counter')} -- {match['reasoning']}")
+                                  f"{meeting['body']} {agenda_item_counter(item)} -- {match['reasoning']}")
                         else:
                             queued = queue_new_candidate(
                                 conn, town_id, "meeting", meeting_id=meeting["id"],
@@ -276,13 +278,13 @@ def main() -> int:
                                 new_candidates += 1
                             else:
                                 print(f"  DUPLICATE CANDIDATE (same case number already pending review): "
-                                      f"{meeting['body']} {item.get('counter')} -- {title}")
+                                      f"{meeting['body']} {agenda_item_counter(item)} -- {title}")
                     continue
 
                 if args.dry_run:
-                    action_item = action_summary_for_counter(meeting, item.get("counter") or "")
+                    action_item = action_summary_for_counter(meeting, agenda_item_counter(item))
                     outcome = (action_item.get("result") if action_item else None) or "pending"
-                    print(f"  {project['slug']}: {meeting['body']} {item.get('counter')} "
+                    print(f"  {project['slug']}: {meeting['body']} {agenda_item_counter(item)} "
                           f"({meeting['meeting_date']}) -> {outcome}")
                     continue
 

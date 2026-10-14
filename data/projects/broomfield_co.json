@@ -1,0 +1,13 @@
+{
+  "_note": "Hand-curated project registry, same pattern as data/projects/moreno_valley_ca.json (case_numbers match). Seeded 2026-10-14 from Resolution No. 2026-107/2026-108-UR, verified directly against api.agendalink.app's agenda memo for meeting 11344 (2026-09-08/09 Regular Meeting).",
+  "projects": [
+    {
+      "slug": "palisade-park-chipotle-mexican-grill",
+      "title": "Palisade Park Chipotle Mexican Grill",
+      "description": "A Final Plat and Site Development Plan/Urban Renewal Site Plan (SDP/URSP) application from Chipotle Mexican Grill, Inc. for a freestanding restaurant on a 1.03-acre property at 700 W 168th Place, part of Palisade Park Filing No. 1 Replat G, Lot 1. The Final Plat creates two lots, with the restaurant on the eastern lot; the applicant requested a deviation from the Broomfield Municipal Code to exceed the maximum permitted parking spaces. Heard by City Council as Resolution No. 2026-107 and by the Broomfield Urban Renewal Authority (BURA) as its companion Resolution No. 2026-108-UR.",
+      "case_numbers": ["2026-107", "2026-108-UR"],
+      "location_text": "700 W 168th Place, Broomfield, CO (Palisade Park Filing No. 1 Replat G, Lot 1)",
+      "home_sales_zip": null
+    }
+  ]
+}

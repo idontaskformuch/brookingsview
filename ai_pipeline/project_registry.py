@@ -36,6 +36,31 @@ _HYPHEN_WRAP_RE = re.compile(r"-\s+(\d)")
 _CASE_NUMBER_SHAPE_RE = re.compile(r"[A-Z]{2,5}\d{2}-\d{3,5}")
 
 
+def agenda_item_text(item: dict) -> str:
+    """An agenda item's body text, regardless of which parser produced it --
+    eSCRIBE (scrapers/parsers/escribe_v1.py) stores it under "description",
+    AgendaLink (scrapers/parsers/agendalink_v1.py) under "details". Every
+    caller that reads an agenda item's body (matching, candidate summaries,
+    the fact-check guardrail's source text) goes through this one place so
+    the two shapes can't silently drift apart again."""
+    return item.get("description") or item.get("details") or ""
+
+
+def agenda_item_counter(item: dict) -> str:
+    """An agenda item's unique-within-meeting ordinal, regardless of which
+    parser produced it -- eSCRIBE stores it under "counter" (e.g. "K.1."),
+    AgendaLink under "item_number" (e.g. "191"); Legistar towns never go
+    through this module at all (ai_pipeline/project_updates_legistar.py is
+    separate). Real bug this guards against: before this fix,
+    agenda_item.get("counter") was always "" for every AgendaLink item, so
+    two different items in the same meeting (e.g. a Council resolution and
+    its BURA companion) collided on project_updates' own
+    (project_id, meeting_id, agenda_counter) uniqueness and silently
+    overwrote each other -- only one of the two ever ended up threaded onto
+    the project."""
+    return item.get("counter") or item.get("item_number") or ""
+
+
 def load_projects(conn, town_id: str) -> list[dict]:
     with conn.cursor() as cur:
         cur.execute(
