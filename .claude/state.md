@@ -1,43 +1,51 @@
 # State
 
-2026-10-14, Broomfield decisions + Phase 7 generalization + scheduling.
-  All three towns' reworked scrape workflows CONFIRMED WORKING via a
-  manually-triggered run each (owner triggered ~20:27 UTC, since the real
-  6h cron was drifting 4-9h late that day -- itself live confirmation of
-  why the real-elapsed-time run gate was the right call over an hour-of-
-  day check).
+2026-10-14, Broomfield Phase 6/7 generalization -- COMPLETE through
+  Migration B + meeting_decisions_agendalink.py. All three towns'
+  scheduled pipelines confirmed working live.
 
-DONE+PUSHED (see git log through 63c98aa): Chipotle project seeded, queue
-  decided, AgendaLink key-mismatch bugs fixed, Migration A run live,
-  meeting_decisions_legistar source fields fixed+run live, event_item_id
-  null-safety on site, all three scrape.yml reworked, Migration 056 run
-  live (checkpoints + runs tables, ON DELETE CASCADE), incremental
-  processing (4 layers) -- all tested.
+DONE+PUSHED (see git log through 374c623): Chipotle project seeded, two
+  AgendaLink key-mismatch bugs fixed, Migration A+057 run live, all three
+  scrape.yml reworked (meeting_decisions_legistar/project_updates_legistar
+  for Brookings, project_updates.py for MoVal/Broomfield), incremental
+  processing (4 layers, now DB-observable via project_updates_runs
+  counters), confirmed live via manual trigger for all 3 towns.
 
-FIRST REAL RUN RESULTS (confirmed via GitHub API + live DB, no gh CLI
-  needed -- public repo's REST API works unauthenticated for reads):
-  - Brookings (run #855): every step succeeded incl. the two new ones;
-    meeting_decisions_legistar refreshed all 84 rows, project_updates_
-    legistar ran clean (0 new -- nothing new to thread).
-  - Moreno Valley (last_success_at 20:29:24 UTC): 32/33 meetings
-    checkpointed, 1 left un-checkpointed (AI-call cap correctly deferred
-    it to next run), 7 new candidates queued, 6 new project_updates rows.
-  - Broomfield (last_success_at 20:28:26 UTC): 27/27 checkpointed, 0 new
-    queue/update rows -- already_considered() correctly suppressed every
-    AI call (all candidate-shaped items were already decided from
-    earlier manual runs this session). 0 AI calls this run.
-  Confirms both the checkpoint and already_considered layers work as
-  designed in a real run, not just in tests.
+THIS ROUND:
+1. Migration 058 (Migration B: CHECK + UNIQUE on meeting_decisions.
+   source_system/source_item_id) RUN LIVE, both constraints confirmed
+   present. Unblocked because meeting_decisions_legistar had already
+   fired successfully with correct columns.
+2. ai_pipeline/meeting_decisions_agendalink.py BUILT, verified against 8
+   real Broomfield meetings (exceeds the 5-meeting bar), Chipotle meeting
+   shown in full clear text before running. Key design facts, all live-
+   verified before coding: AgendaLink's motions[] array order is NOT
+   chronological (voteIso is -- meeting 11344's EV Charging ordinance
+   proves it: "To Approve" sits before "To Amend" in the array but voted
+   ~35s AFTER it); only "To Approve" is a confirmed dispositive motion
+   type (unrecognized types -> 'other', never guessed); a topic's own
+   hasVote flag does NOT distinguish real decisions from ceremonial items
+   (confirmed True on all 23 real no-motion topics checked) so topics
+   with zero motions are skipped entirely, not ingested as 'pending';
+   Broomfield's whole consent agenda is one unDecomposable bulkTopic.
+   13 tests (tests/test_meeting_decisions_agendalink.py), all against
+   real fixtures from the live meetings. RUN LIVE for Broomfield: 38 new
+   rows, 0 event_item_id set (correct), re-run confirmed idempotent (0
+   new, 38 updated). Chipotle's both resolutions show outcome='approved'
+   matching the live-verified 8-2 vote from earlier this session.
+3. Reported to owner (not persisted anywhere, see chat): Moreno Valley's
+   scrape_runs docs_attempted/docs_failed are 0 on every city_meetings
+   row checked (oldest from July and today's) -- inconclusive without a
+   migrations-tracking table (none exists) to pin "first row after 053";
+   flagged as open, not diagnosed further this round. Also reported and
+   recommended on the 7 new Moreno Valley queue candidates (#40-46): only
+   #42 (Moreno Master Drain Plan Line F Detention Basin, World Logistics
+   Center Specific Plan) has a real site-specific identity worth a
+   project page; the other 6 are city-wide CFD annexations/financing/
+   plan amendments, recommended reject, same bar as Broomfield's earlier
+   Ordinance 2306 rejection.
 
-THIS ROUND (local only, NOT PUSHED, migration NOT yet run):
-  db/migrations/057_project_updates_runs_counters.sql -- additive ALTER
-  on project_updates_runs (ai_calls/meetings_processed/meetings_skipped/
-  cap_hit), so the above numbers are DB-readable next time without the
-  GitHub-API-digging done this round. ai_pipeline/project_updates.py:
-  record_run() replaces set_last_success(), storing all four. Tests
-  extended (13 passed, 97 in full project suite).
-
-NEXT: owner approves migration 057, run it live, then push the code.
-  After that: Migration B (CHECK+UNIQUE on meeting_decisions) -- now
-  unblocked, since meeting_decisions_legistar has fired successfully with
-  source_system/source_item_id correctly set (verified this run).
+NEXT: push this round's commit (migration 058 file + meeting_decisions_
+  agendalink.py + tests). Owner to decide on the Moreno Valley candidate
+  recommendations (#42 approve, rest reject) and whether to dig further
+  into the scrape_runs docs_attempted finding.
