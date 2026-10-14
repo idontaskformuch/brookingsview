@@ -63,14 +63,49 @@ def test_watch_to_confirmed_transition():
 
 
 def test_grounding_text_omits_historical_line_when_count_is_zero():
-    text = build_grounding_text(ALERT, "Brookings School District 05-1", "https://www.brookings.k12.sd.us/", 0)
+    text = build_grounding_text(ALERT, [("Brookings School District 05-1", "https://www.brookings.k12.sd.us/")], 0)
     assert "Historical note" not in text
-    assert "NONE -- no closure has been announced" in text
+    assert "NONE for any listed district -- no closure has been announced" in text
 
 
 def test_grounding_text_includes_historical_line_when_count_is_positive():
-    text = build_grounding_text(ALERT, "Brookings School District 05-1", "https://www.brookings.k12.sd.us/", 3)
+    text = build_grounding_text(ALERT, [("Brookings School District 05-1", "https://www.brookings.k12.sd.us/")], 3)
     assert "3 time(s)" in text
+
+
+def test_grounding_text_lists_every_configured_district_not_just_the_first():
+    text = build_grounding_text(
+        ALERT,
+        [
+            ("Moreno Valley Unified School District", "https://www.mvusd.net/engage/news"),
+            ("Val Verde Unified School District", "https://www.valverde.edu/"),
+        ],
+        0,
+    )
+    assert "School district: Moreno Valley Unified School District" in text
+    assert "School district: Val Verde Unified School District" in text
+    assert "https://www.mvusd.net/engage/news" in text
+    assert "https://www.valverde.edu/" in text
+
+
+def test_compute_closure_watch_state_returns_every_confirmed_district():
+    district_a = dict(CLOSURE, district="Moreno Valley Unified School District")
+    district_b = dict(CLOSURE, district="Val Verde Unified School District")
+    status = compute_closure_watch_state([district_a, district_b], None, 0, 0)
+    assert status["state"] == "confirmed"
+    assert status["closures"] == [district_a, district_b]
+
+
+def test_compute_closure_watch_state_single_district_unchanged():
+    status = compute_closure_watch_state([CLOSURE], None, 0, 0)
+    assert status["state"] == "confirmed"
+    assert status["closures"] == [CLOSURE]
+
+
+def test_compute_closure_watch_state_no_closures_is_empty_list():
+    status = compute_closure_watch_state([], None, 0, 0)
+    assert status["state"] == "clear"
+    assert status["closures"] == []
 
 
 # --- check_no_prediction -----------------------------------------------------

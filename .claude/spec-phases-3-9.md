@@ -74,6 +74,8 @@ One page per month per town; all numbers computed in SQL only: decisions by outc
 
 Fix `computeClosureWatchState` dropping a second simultaneous district's closure (tests with two districts). Investigate whether Moreno Valley needs Val Verde USD; add via config only if a public, robots-compliant closure source exists, otherwise log the finding. A full Schools section is out of scope.
 
+**DONE 2026-10-14:** `computeClosureWatchState`/`compute_closure_watch_state` now return a `closures`/`closures` list instead of silently keeping only `closures[0]` (both `closure-watch.ts` and `closure_watch_digest.py`, plus `closures.astro`'s render side and the Watch-prose grounding text, which previously hardcoded `districts[0]` for the AI paragraph too). Tests: two simultaneous districts (both shown), one district (unchanged behavior), zero. Val Verde USD **not added** as a source -- its real boundary does cover part of Moreno Valley, but valverde.edu's robots.txt disallows `/feed`/`/schoolfeed` and its press-releases content loads dynamically from exactly those paths (same pattern as Broomfield's zero-events gap). Finding logged in `configs/moreno_valley_ca.json`'s `closure_watch._notes`. Added a plain text-plus-link note on `/closures` instead (`site-config.ts`'s `closureWatch.otherDistrictsNote`), pointing readers to valverde.edu directly -- no scraping.
+
 ## Out of scope
 
 New AI content types or columns, mass-generated SEO pages ("10 things to do", "best restaurants"), weekly email digest, Public Safety section, Schools section, any new paid API or routing service, indexable named-event series (until the owner decides).

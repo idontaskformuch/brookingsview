@@ -207,6 +207,16 @@ export interface SiteConfig {
     minHistoricalClosuresForWatch: Record<string, number>;
     districtName: string;
     districtUrl: string;
+    /** This page only reads districtName above -- when another district's
+     *  real boundary overlaps the town (confirmed by the Fas 9 research:
+     *  parts of Moreno Valley fall in Val Verde USD, not MVUSD) but isn't
+     *  itself a tracked source (valverde.edu's own content loads from
+     *  /schoolfeed, which its robots.txt disallows -- not robots-compliant
+     *  to scrape, see configs/moreno_valley_ca.json's closure_watch._notes),
+     *  this renders a plain text-plus-link pointer to that district's own
+     *  site. Never a scraped source, just a disclosure of what this page
+     *  does NOT cover. */
+    otherDistrictsNote?: { districtName: string; url: string };
   };
   /** Local Accent Identity: one restrained per-town accent color, two tokens
    *  (never one -- a hue that reads right decoratively almost never also
@@ -481,6 +491,10 @@ const CITIES: Record<string, SiteConfig> = {
       minHistoricalClosuresForWatch: { default: 0, 'Air Quality Alert': 1 },
       districtName: 'Moreno Valley Unified School District',
       districtUrl: 'https://www.mvusd.net/engage/news',
+      otherDistrictsNote: {
+        districtName: 'Val Verde Unified School District',
+        url: 'https://www.valverde.edu/',
+      },
     },
     hasHousingMarket: true,
     brandLead: 'Moreno Valley',

@@ -34,7 +34,11 @@ export interface WeatherAlert {
 
 export interface ClosureWatchStatus {
   state: ClosureWatchState;
-  closure: SchoolClosure | null;
+  /** All districts with a confirmed closure right now (Confirmed state) --
+   *  a plain array, not just the first one, so a second simultaneous
+   *  district's own notice is never silently dropped. Empty outside the
+   *  Confirmed state. */
+  closures: SchoolClosure[];
   alert: WeatherAlert | null;
   /** How many closure_history rows exist for this alert's event type in this
    *  town -- 0 either means "never correlated" or "no history yet"; the
@@ -58,13 +62,13 @@ export function computeClosureWatchState(
   minHistoricalClosuresForWatch: number,
 ): ClosureWatchStatus {
   if (closures.length > 0) {
-    return { state: 'confirmed', closure: closures[0], alert: null, historicalCount: 0 };
+    return { state: 'confirmed', closures, alert: null, historicalCount: 0 };
   }
   if (!activeAlert) {
-    return { state: 'clear', closure: null, alert: null, historicalCount: 0 };
+    return { state: 'clear', closures: [], alert: null, historicalCount: 0 };
   }
   if (minHistoricalClosuresForWatch > 0 && historicalCount < minHistoricalClosuresForWatch) {
-    return { state: 'clear', closure: null, alert: activeAlert, historicalCount };
+    return { state: 'clear', closures: [], alert: activeAlert, historicalCount };
   }
-  return { state: 'watch', closure: null, alert: activeAlert, historicalCount };
+  return { state: 'watch', closures: [], alert: activeAlert, historicalCount };
 }

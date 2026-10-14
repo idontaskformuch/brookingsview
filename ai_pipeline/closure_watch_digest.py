@@ -178,12 +178,12 @@ def compute_closure_watch_state(
     comment in configs/<town_id>.json for why it ships inert (0) by default.
     """
     if closures:
-        return {"state": "confirmed", "closure": closures[0], "alert": None, "historical_count": 0}
+        return {"state": "confirmed", "closures": closures, "alert": None, "historical_count": 0}
     if alert is None:
-        return {"state": "clear", "closure": None, "alert": None, "historical_count": 0}
+        return {"state": "clear", "closures": [], "alert": None, "historical_count": 0}
     if min_required > 0 and historical_count < min_required:
-        return {"state": "clear", "closure": None, "alert": alert, "historical_count": historical_count}
-    return {"state": "watch", "closure": None, "alert": alert, "historical_count": historical_count}
+        return {"state": "clear", "closures": [], "alert": alert, "historical_count": historical_count}
+    return {"state": "watch", "closures": [], "alert": alert, "historical_count": historical_count}
 
 
 def determine_state(conn, cfg: dict) -> dict:
@@ -214,7 +214,13 @@ def _resolve_min_required(feat: dict, alert_event: str | None) -> int:
     return table.get(alert_event, table.get("default", 0))
 
 
-def build_grounding_text(alert: dict, district: str, district_url: str | None, historical_count: int) -> str:
+def build_grounding_text(
+    alert: dict, districts: list[tuple[str, str | None]], historical_count: int,
+) -> str:
+    """districts is every district this page covers (feat["districts"]), not
+    just the first -- a Watch state means NONE of them has announced a
+    closure, so the grounding text must list each one's own notification
+    channel, not silently drop every district after the first."""
     raw = alert.get("raw_data") or {}
     parts = [
         f"ACTIVE WEATHER ALERT: {alert['title']}",
@@ -226,13 +232,14 @@ def build_grounding_text(alert: dict, district: str, district_url: str | None, h
         parts.append(f"Description: {raw['description']}")
     if raw.get("instruction"):
         parts.append(f"Public instruction: {raw['instruction']}")
-    parts.append(f"School district: {district}")
-    parts.append(f"District's own notification channel: {district_url or 'not on file'}")
-    parts.append("District closure announcement status: NONE -- no closure has been announced.")
+    for name, url in districts:
+        parts.append(f"School district: {name}")
+        parts.append(f"District's own notification channel: {url or 'not on file'}")
+    parts.append("District closure announcement status: NONE for any listed district -- no closure has been announced.")
     if historical_count > 0:
         parts.append(
             f"Historical note: a {alert['title']} alert has preceded a confirmed "
-            f"closure in this district {historical_count} time(s) on record."
+            f"closure in this area {historical_count} time(s) on record."
         )
     return "\n".join(parts)
 
@@ -242,8 +249,11 @@ def build_prompt(cfg: dict) -> str:
 
 FORMAT OVERRIDE -- CLOSURE WATCH (Watch state):
 You are writing a short (2-4 sentence) paragraph for a "Closure Watch" page.
-An active weather alert is in effect, but the school district has NOT
-announced any closure, delay, or cancellation.
+An active weather alert is in effect, but NONE of the school district(s)
+covered by this page (see SOURCE DATA) has announced any closure, delay,
+or cancellation. If more than one district is listed, you may mention more
+than one by name, but never claim a status for a district not in the
+SOURCE DATA.
 
 ABSOLUTE HARD RULES (violating any of these makes the output unusable, not
 just imperfect):
@@ -263,12 +273,12 @@ just imperfect):
 Return ONLY the paragraph. No title, no preamble."""
 
 
-def generate(alert: dict, district: str, district_url: str | None, historical_count: int,
+def generate(alert: dict, districts: list[tuple[str, str | None]], historical_count: int,
              cfg: dict, client=None) -> tuple[str, str] | None:
     """Returns (text, generated_by) on a guardrail-passing draft, or None if
     nothing should be written (budget cap, no client, API failure, or a
     guardrail rejection surviving one retry) -- see module docstring."""
-    src = build_grounding_text(alert, district, district_url, historical_count)
+    src = build_grounding_text(alert, districts, historical_count)
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
     if _spent_this_month() >= cap:
@@ -383,8 +393,7 @@ def main() -> int:
             return 0
 
         alert = status["alert"]
-        district = feat["districts"][0] if feat["districts"] else ""
-        district_url = _district_public_url(cfg, district)
+        districts = [(d, _district_public_url(cfg, d)) for d in feat["districts"]]
 
         with conn.cursor() as cur:
             cur.execute(
@@ -397,7 +406,7 @@ def main() -> int:
             print("  Watch prose already generated for this alert -- skipping (use --force to regenerate)")
             return 0
 
-        result = generate(alert, district, district_url, status["historical_count"], cfg)
+        result = generate(alert, districts, status["historical_count"], cfg)
 
         if args.dry_run:
             if result:

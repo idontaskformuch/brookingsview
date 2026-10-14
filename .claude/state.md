@@ -1,33 +1,30 @@
 # State
 
-2026-10-14, Broomfield Phase 6/7 generalization + Moreno Valley queue
-  cleanup. PUSHED through 1959eb7 (origin/main up to date).
+2026-10-15, Fas 9 (Closure Watch multi-district fix). NOT PUSHED --
+  awaiting owner's yes (rule 9). Spec: .claude/spec-phases-3-9.md (Phase 9).
 
-DONE+PUSHED: Chipotle project, AgendaLink fixes, Migrations A/057/B/058
-  all run live, all 3 scrape.yml reworked+confirmed live, incremental
-  processing (4 layers + run counters), meeting_decisions_agendalink.py
-  (38 rows live, 13 tests), CLAUDE.md rule 9 ("visa X innan push" = stop
-  for explicit yes in a NEW message), routine-administrative filter in
-  project_updates.py (CFD annexations/reimbursement/CIP+budget
-  amendments auto-rejected pre-AI unless a project signal -- case number
-  or Tract Map/Specific Plan/CUP/Plot Plan/Change of Zone/Development
-  Agreement -- overrides it; auto-rejected rows get status=
-  'auto_rejected' + reason, not just logged; 25 tests).
+CHANGED (uncommitted): closure-watch.ts(+test), closure_watch_digest.py,
+  test_closure_watch.py, closures.astro, site-config.ts,
+  configs/moreno_valley_ca.json, spec-phases-3-9.md.
 
-OPEN:
-- Migration 053 trace: ROOT CAUSE CONFIRMED (filestream.ashx 403s,
-  Cloudflare challenge, live-verified; code already classifies this as
-  docs_failed correctly). Waiting on the next NATURAL city_meetings run
-  (throttle NOT bypassed, refresh_minutes=1440) to prove the new counters
-  live. Background poll still running as of this note -- no result yet;
-  check tasks/b97uz0jih.output or re-poll scrape_runs (town=
-  moreno_valley_ca, source_key=city_meetings, started_at > 2026-10-14
-  21:01:51 UTC) next session. Expected: docs_attempted>0, docs_failed>0,
-  status='degraded'.
-- Candidate #42 (Moreno Master Drainage Plan Line F Detention Basin,
-  queue id=42, meeting 13782): left pending, no project created. Revisit
-  if more Line F agenda items appear.
+BESLUT: ClosureWatchStatus.closure(singular)->closures(array) in both TS
+  and Python -- old code kept only closures[0], dropping a 2nd district's
+  notice. Watch-prose grounding text now lists every configured district
+  (was districts[0]); no schema change needed, no town has >1 district
+  yet. Val Verde USD NOT added as source: valverde.edu/robots.txt
+  disallows /feed+/schoolfeed, content loads from exactly those paths
+  (same gap pattern as Broomfield events). Logged in
+  moreno_valley_ca.json; added text+link note to valverde.edu on
+  /closures instead (site-config.ts otherDistrictsNote), no scraping.
 
-NEXT: pick up the 053 confirmation when the background poll resolves or
-  on next session start. State-commits ride along with the next code
-  push, not pushed separately.
+VERIFIED: full vitest 1017 + pytest 839 pass, astro check 0 errors, build
+  clean all 3 towns (636/3397/1076 pages), sitemap/noindex-disjoint OK
+  all 3. MoVal /closures plain-text shown to owner (live state='clear';
+  multi-district path covered by unit tests only, no live trigger exists).
+
+OPEN (carried over): Migration 053 -- no natural city_meetings run yet as
+  of 2026-10-14 21:17 UTC (last run 10-13 22:01:53, next ~10-14 22:01
+  UTC). Re-poll scrape_runs next session (started_at > 2026-10-14 22:02
+  UTC). Candidate #42 (Line F Detention Basin, queue id=42) left pending.
+
+NEXT: push Fas 9 after owner's yes; then 053 recheck; then Phase 8.

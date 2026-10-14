@@ -66,8 +66,8 @@ const pageTitle = status.state === 'confirmed'
 const faqJsonLd = buildFaqJsonLd([
   {
     question: `Is school closed today in ${siteConfig.cityName}?`,
-    answer: status.state === 'confirmed'
-      ? (status.closure?.message ?? 'A closure has been announced -- see the district notice above.')
+    answer: status.state === 'confirmed' && status.closures.length > 0
+      ? status.closures.map((c) => c.message).join(' ')
       : `No closure has been announced as of ${lastChecked} on ${lastCheckedDate}. Check ${feat.districtName}'s own notification channel for the official word.`,
   },
   {
@@ -76,13 +76,14 @@ const faqJsonLd = buildFaqJsonLd([
   },
 ]);
 
-const newsArticleJsonLd = status.state === 'confirmed' && status.closure
-  ? buildSchoolClosureNewsArticleJsonLd(
-      { title: status.closure.title, message: status.closure.message, postedAt: status.closure.posted_at },
-      canonicalUrl,
-      siteConfig.siteName,
-    )
-  : null;
+const newsArticleJsonLd = status.state === 'confirmed'
+  ? status.closures.map((c) =>
+      buildSchoolClosureNewsArticleJsonLd(
+        { title: c.title, message: c.message, postedAt: c.posted_at },
+        canonicalUrl,
+        siteConfig.siteName,
+      ))
+  : [];
 ---
 <BaseLayout
   title={pageTitle}
@@ -112,17 +113,24 @@ const newsArticleJsonLd = status.state === 'confirmed' && status.closure
     <ShareButton title={pageTitle} />
   </header>
 
-  {status.state === 'confirmed' && status.closure && (
+  {status.state === 'confirmed' && status.closures.length > 0 && (
     <section class="cw-panel cw-panel--confirmed" aria-labelledby="cw-state-heading">
       <p class="cw-kicker">Confirmed</p>
-      <h2 id="cw-state-heading">{status.closure.title || 'Closure notice'}</h2>
-      <p class="cw-message">{status.closure.message}</p>
-      <p class="cw-source">
-        Source: {feat.districtName}, posted {new Date(status.closure.posted_at).toLocaleString('en-US', {
-          month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: siteConfig.timezone,
-        })}.
-        {status.closure.url && <a href={status.closure.url} rel="noopener">Read the district's own notice &rarr;</a>}
-      </p>
+      <h2 id="cw-state-heading">
+        {status.closures.length > 1 ? 'Closure notices' : (status.closures[0].title || 'Closure notice')}
+      </h2>
+      {status.closures.map((closure) => (
+        <div class="cw-closure">
+          {status.closures.length > 1 && <h3 class="cw-closure__title">{closure.title || closure.district}</h3>}
+          <p class="cw-message">{closure.message}</p>
+          <p class="cw-source">
+            Source: {closure.district}, posted {new Date(closure.posted_at).toLocaleString('en-US', {
+              month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: siteConfig.timezone,
+            })}.
+            {closure.url && <a href={closure.url} rel="noopener">Read the district's own notice &rarr;</a>}
+          </p>
+        </div>
+      ))}
     </section>
   )}
 
@@ -168,6 +176,14 @@ const newsArticleJsonLd = status.state === 'confirmed' && status.closure
     </section>
   )}
 
+  {feat.otherDistrictsNote && (
+    <p class="cw-coverage-note">
+      This page tracks {feat.districtName}. Parts of {siteConfig.cityName} are served by{' '}
+      {feat.otherDistrictsNote.districtName}; check{' '}
+      <a href={feat.otherDistrictsNote.url} rel="noopener">their site</a> for closures.
+    </p>
+  )}
+
   <details class="cw-methodology">
     <summary>How this page works</summary>
     <p>
@@ -184,9 +200,9 @@ const newsArticleJsonLd = status.state === 'confirmed' && status.closure
   <RelatedContent pageType="closure_watch" />
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(faqJsonLd)} />
-  {newsArticleJsonLd && (
-    <script type="application/ld+json" is:inline set:html={JSON.stringify(newsArticleJsonLd)} />
-  )}
+  {newsArticleJsonLd.map((ld) => (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(ld)} />
+  ))}
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
@@ -220,6 +236,11 @@ const newsArticleJsonLd = status.state === 'confirmed' && status.closure
 .cw-prose { line-height: 1.6; margin: 0 0 0.75rem; }
 .cw-history { font-size: 0.875rem; color: var(--ink-soft); margin: 0 0 0.75rem; }
 .cw-source { font-size: 0.875rem; color: var(--ink-soft); margin: 0; }
+.cw-closure + .cw-closure { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+.cw-closure__title { margin: 0 0 0.5rem; font-size: 1.0625rem; }
+.cw-coverage-note {
+  max-width: 46rem; margin: 0 auto 1.5rem; font-size: 0.8125rem; color: var(--ink-soft); line-height: 1.6;
+}
 .cw-no-announcement {
   margin: 1rem 0 0; padding: 0.875rem 1rem;
   background: var(--panel, rgba(127, 127, 127, 0.06)); border-radius: 6px;

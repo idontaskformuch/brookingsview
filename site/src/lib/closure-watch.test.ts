@@ -73,7 +73,36 @@ describe('computeClosureWatchState -- transition, not expressible as a single go
 
   it('carries the alert through on the status object even though Confirmed wins', () => {
     const status = computeClosureWatchState([CLOSURE], ALERT, 5, 0);
-    expect(status.closure).toBe(CLOSURE);
+    expect(status.closures).toEqual([CLOSURE]);
     expect(status.alert).toBeNull();
+  });
+});
+
+describe('computeClosureWatchState -- multiple simultaneous district closures', () => {
+  const DISTRICT_A: SchoolClosure = {
+    district: 'Moreno Valley Unified School District', title: 'District closed today',
+    message: 'All MVUSD schools are closed today.', url: 'https://www.mvusd.net/engage/news', posted_at: '2026-02-01T12:00:00Z',
+  };
+  const DISTRICT_B: SchoolClosure = {
+    district: 'Val Verde Unified School District', title: 'Schools closed',
+    message: 'All VVUSD schools are closed today.', url: 'https://www.valverde.edu/', posted_at: '2026-02-01T13:00:00Z',
+  };
+
+  it('returns both districts, not just the first, when both have a confirmed closure', () => {
+    const status = computeClosureWatchState([DISTRICT_A, DISTRICT_B], null, 0, 0);
+    expect(status.state).toBe('confirmed');
+    expect(status.closures).toEqual([DISTRICT_A, DISTRICT_B]);
+  });
+
+  it('still returns exactly one district in the single-district case (unchanged behavior)', () => {
+    const status = computeClosureWatchState([DISTRICT_A], null, 0, 0);
+    expect(status.state).toBe('confirmed');
+    expect(status.closures).toEqual([DISTRICT_A]);
+  });
+
+  it('returns an empty closures array when nothing is confirmed', () => {
+    const status = computeClosureWatchState([], null, 0, 0);
+    expect(status.state).toBe('clear');
+    expect(status.closures).toEqual([]);
   });
 });
