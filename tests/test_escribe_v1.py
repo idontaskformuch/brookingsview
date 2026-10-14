@@ -75,3 +75,106 @@ def test_content_hash_still_changes_for_a_genuinely_different_meeting():
     different_date = _parse_one(dict(_minimal_meeting(start_date="2026/10/01 18:00:00")))
     assert base["content_hash"] != different_id["content_hash"]
     assert base["content_hash"] != different_date["content_hash"]
+
+
+# --- document-fetch visibility (2026-10-14: per-document failures used to
+# only reach a print(), never scrape_runs -- see db.finish_run()'s own
+# docstring and scrapers/runner.py's status downgrade) ---------------------
+
+class _FakeResponse:
+    def __init__(self, status_code: int, json_body=None, content: bytes = b""):
+        self.status_code = status_code
+        self._json_body = json_body
+        self.content = content
+        self.text = ""
+
+    def json(self):
+        return self._json_body
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+
+def _parser():
+    return EscribeParser(
+        {"town_id": "moreno_valley_ca", "timezone": "America/Los_Angeles"},
+        {"base_url": "https://pub-example.escribemeetings.com"},
+    )
+
+
+def _calendar_meeting_with_all_three_docs():
+    return {
+        "ID": "m1", "MeetingName": "City Council", "StartDate": "2026/09/24 18:00:00",
+        "HasAgenda": True,
+        "MeetingDocumentLink": [
+            {"Type": "Agenda", "Format": "HTML", "Url": "/Meeting.aspx?Id=m1&Agenda=Agenda"},
+            {"Type": "PostMinutes", "Url": "/FileStream.ashx?DocumentId=minutes1"},
+            {"Type": "AdditionalDocuments", "Title": "ACTION SUMMARY",
+             "Url": "/FileStream.ashx?DocumentId=action1"},
+        ],
+    }
+
+
+def test_fetch_counts_all_three_document_types_as_failed_when_every_request_errors(monkeypatch):
+    """Real-world shape (Moreno Valley, 2026-10-14 investigation): the
+    calendar call itself succeeds (200), but every per-document request --
+    agenda, minutes, action summary -- hits a wall (here: a non-200
+    response, standing in for the real Cloudflare challenge). docs_attempted
+    must equal docs_failed so runner.py can downgrade status to 'degraded'
+    instead of 'ok'."""
+    meeting = _calendar_meeting_with_all_three_docs()
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        return _FakeResponse(200, json_body={"d": [meeting]})
+
+    def fake_get(url, headers=None, timeout=None):
+        return _FakeResponse(403)  # every document fetch blocked
+
+    monkeypatch.setattr("scrapers.parsers.escribe_v1.requests.post", fake_post)
+    monkeypatch.setattr("scrapers.parsers.escribe_v1.requests.get", fake_get)
+
+    result = _parser().fetch()
+
+    assert result.docs_attempted == 3
+    assert result.docs_failed == 3
+    assert result.docs_last_error is not None and "m1" in result.docs_last_error
+
+
+def test_fetch_counts_zero_documents_when_no_meeting_has_any(monkeypatch):
+    meeting = {"ID": "m2", "MeetingName": "Planning Commission",
+               "StartDate": "2026/09/24 18:00:00", "HasAgenda": False,
+               "MeetingDocumentLink": []}
+
+    monkeypatch.setattr(
+        "scrapers.parsers.escribe_v1.requests.post",
+        lambda url, headers=None, json=None, timeout=None: _FakeResponse(200, json_body={"d": [meeting]}),
+    )
+
+    result = _parser().fetch()
+
+    assert result.docs_attempted == 0
+    assert result.docs_failed == 0
+    assert result.docs_last_error is None
+
+
+def test_fetch_partial_document_failure_is_counted_not_hidden(monkeypatch):
+    """Agenda fetch succeeds, minutes and action summary both fail --
+    docs_failed must reflect exactly 2 of 3, not 0 and not 3."""
+    meeting = _calendar_meeting_with_all_three_docs()
+
+    def fake_get(url, headers=None, timeout=None):
+        if "Agenda" in url:
+            return _FakeResponse(200, content=b"")
+        return _FakeResponse(500)
+
+    monkeypatch.setattr(
+        "scrapers.parsers.escribe_v1.requests.post",
+        lambda url, headers=None, json=None, timeout=None: _FakeResponse(200, json_body={"d": [meeting]}),
+    )
+    monkeypatch.setattr("scrapers.parsers.escribe_v1.requests.get", fake_get)
+
+    result = _parser().fetch()
+
+    assert result.docs_attempted == 3
+    assert result.docs_failed == 2

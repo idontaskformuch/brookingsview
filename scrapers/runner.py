@@ -134,9 +134,23 @@ def run_source(conn, cfg: dict, source_key: str, source_cfg: dict) -> None:
                                  conflict_columns=parser.conflict_columns,
                                  update_columns=parser.update_columns,
                                  dedup_check_columns=parser.dedup_check_columns)
-        db.finish_run(conn, run_id, status="ok", http_code=fetched.http_code,
-                      items_found=len(records), items_new=new)
-        print(f"  [{source_key}] ok — {len(records)} poster, {new} nya")
+        # En källa vars huvudhämtning lyckades men vars PER-DOKUMENT-hämtningar
+        # (agenda/minutes/action summary m.fl., se FetchResult-fältens
+        # docstring) alla misslyckades ska inte se ut som 'ok' -- det var
+        # exakt den bugg som gjorde Moreno Valleys Cloudflare-blockerade
+        # minutes/action-summary-hämtningar osynliga i scrape_runs i 7+
+        # veckor (se .claude/state.md, round 5 punkt 3).
+        status = "ok"
+        if fetched.docs_attempted > 0 and fetched.docs_failed >= fetched.docs_attempted:
+            status = "degraded"
+        db.finish_run(conn, run_id, status=status, http_code=fetched.http_code,
+                      items_found=len(records), items_new=new,
+                      docs_attempted=fetched.docs_attempted,
+                      docs_failed=fetched.docs_failed,
+                      docs_last_error=fetched.docs_last_error)
+        print(f"  [{source_key}] {status} — {len(records)} poster, {new} nya"
+              + (f" ({fetched.docs_failed}/{fetched.docs_attempted} dokument misslyckades)"
+                 if fetched.docs_attempted else ""))
     except FileNotFoundError as exc:
         # Källor som rivco_property_sales_v1.py kräver en MÄNSKLIGT nedladdad
         # lokal fil (robots.txt blockerar AI-agenter från själva sajten, se

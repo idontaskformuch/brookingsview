@@ -69,25 +69,39 @@ class LegistarParser(BaseParser):
         r.raise_for_status()
         events = r.json()
 
-        # hämta dagordningspunkter per möte -- det är där det faktiska innehållet finns
+        # hämta dagordningspunkter per möte -- det är där det faktiska innehållet finns.
+        # docs_attempted/docs_failed: se FetchResult-fältens docstring --
+        # tidigare försvann en trasig hämtning in i en print(), aldrig synlig
+        # i scrape_runs.
+        docs_attempted = 0
+        docs_failed = 0
+        docs_last_error: str | None = None
         for event in events[:MAX_AGENDA_FETCHES]:
             event_id = event.get("EventId")
             if not event_id:
                 continue
+            docs_attempted += 1
             try:
                 items_url = f"{WEBAPI}/{client}/events/{event_id}/eventitems"
                 ir = requests.get(items_url, params={"AgendaNote": "1"},
                                   timeout=30, headers=self._headers())
                 if ir.status_code == 200:
                     event["_agenda_items"] = ir.json()
+                else:
+                    docs_failed += 1
+                    docs_last_error = f"eventitems HTTP {ir.status_code} (event {event_id})"
             except Exception as exc:  # noqa: BLE001 -- en trasig agenda ska inte fälla mötet
+                docs_failed += 1
+                docs_last_error = f"eventitems: {exc} (event {event_id})"
                 print(f"    [legistar] kunde inte hämta agenda för event {event_id}: {exc}")
             time.sleep(FETCH_DELAY_SECONDS)
 
         self._events = events
         raw = json.dumps(events, default=str).encode("utf-8")
         return FetchResult(raw=raw, content_type="application/json",
-                           url=r.url, http_code=r.status_code)
+                           url=r.url, http_code=r.status_code,
+                           docs_attempted=docs_attempted, docs_failed=docs_failed,
+                           docs_last_error=docs_last_error)
 
     def parse(self, fetched: FetchResult) -> list[dict]:
         events = getattr(self, "_events", None)

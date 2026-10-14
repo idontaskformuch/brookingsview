@@ -178,23 +178,38 @@ def start_run(conn, town_id: str, source_key: str) -> int:
 
 
 def finish_run(conn, run_id: int, status: str, http_code: int | None = None,
-               items_found: int = 0, items_new: int = 0, error: str | None = None) -> None:
+               items_found: int = 0, items_new: int = 0, error: str | None = None,
+               docs_attempted: int = 0, docs_failed: int = 0,
+               docs_last_error: str | None = None) -> None:
+    """docs_attempted/docs_failed/docs_last_error: per-document fetch attempts
+    WITHIN an otherwise-successful run (e.g. escribe_v1's agenda/minutes/
+    action-summary PDFs) -- separate from `error`, which is this function's
+    caller's own top-level exception for the run as a whole. Before this,
+    a per-document fetch failure only reached a print() (see escribe_v1.py/
+    legistar_v1.py's own try/except around each document request), so a run
+    that fetched 0 of N documents still logged status='ok' here -- see
+    scrapers/runner.py:run_source(), which downgrades status to 'degraded'
+    when docs_attempted > 0 and every attempt failed."""
     with conn.cursor() as cur:
         cur.execute(
             """
             UPDATE scrape_runs
                SET status=%s, http_code=%s, items_found=%s, items_new=%s,
-                   error=%s, finished_at=%s
+                   error=%s, docs_attempted=%s, docs_failed=%s,
+                   docs_last_error=%s, finished_at=%s
              WHERE id=%s
             """,
             (status, http_code, items_found, items_new, error,
+             docs_attempted, docs_failed, docs_last_error,
              datetime.now(timezone.utc), run_id),
         )
 
 
 def record_run(conn, town_id: str, source_key: str, status: str, *,
                http_code: int | None = None, items_found: int = 0,
-               items_new: int = 0, error: str | None = None) -> int:
+               items_new: int = 0, error: str | None = None,
+               docs_attempted: int = 0, docs_failed: int = 0,
+               docs_last_error: str | None = None) -> int:
     """Broomfield place-layer handoff, Section 4.1's own "coverage-log /
     record_run() wrapper" -- confirmed live (see NEEDS-HUMAN-REVIEW.md) that
     this table and start_run()/finish_run() ALREADY are that wrapper, used by
@@ -225,7 +240,9 @@ def record_run(conn, town_id: str, source_key: str, status: str, *,
     """
     run_id = start_run(conn, town_id, source_key)
     finish_run(conn, run_id, status=status, http_code=http_code,
-               items_found=items_found, items_new=items_new, error=error)
+               items_found=items_found, items_new=items_new, error=error,
+               docs_attempted=docs_attempted, docs_failed=docs_failed,
+               docs_last_error=docs_last_error)
     return run_id
 
 

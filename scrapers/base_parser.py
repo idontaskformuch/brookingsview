@@ -24,6 +24,15 @@ class FetchResult:
     content_type: str = "text/html"
     url: str | None = None
     http_code: int | None = 200
+    #: per-document fetch attempts WITHIN this fetch (e.g. escribe_v1's
+    #: agenda/minutes/action-summary PDFs, legistar_v1's eventitems) -- a
+    #: parser that fetches sub-documents after its own main request should
+    #: set these so runner.py can downgrade status='ok' to 'degraded' when
+    #: every attempt failed, instead of a doc-fetch failure only reaching a
+    #: print() (the bug this exists to fix -- see db.finish_run()'s docstring).
+    docs_attempted: int = 0
+    docs_failed: int = 0
+    docs_last_error: str | None = None
 
 
 class BaseParser(abc.ABC):

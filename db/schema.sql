@@ -50,11 +50,19 @@ CREATE TABLE IF NOT EXISTS scrape_runs (
     id            BIGSERIAL PRIMARY KEY,
     town_id       TEXT NOT NULL REFERENCES towns(town_id),
     source_key    TEXT NOT NULL,
-    status        TEXT NOT NULL,          -- 'ok' | 'error' | 'stub' | 'skipped' | 'manual' (see db.py's record_run())
+    status        TEXT NOT NULL,          -- 'ok' | 'degraded' | 'error' | 'stub' | 'skipped' | 'manual' (see db.py's record_run())
     http_code     INT,
     items_found   INT DEFAULT 0,
     items_new     INT DEFAULT 0,
     error         TEXT,
+    -- Per-document fetch attempts within an otherwise-successful run (e.g.
+    -- escribe_v1's agenda/minutes/action-summary PDFs, legistar_v1's
+    -- eventitems) -- these failures used to be swallowed into a print(),
+    -- never reaching this row, so a run with 0 of N documents fetched still
+    -- logged status='ok'. See db.finish_run()'s own docstring.
+    docs_attempted   INT DEFAULT 0,
+    docs_failed      INT DEFAULT 0,
+    docs_last_error  TEXT,
     started_at    TIMESTAMPTZ DEFAULT now(),
     finished_at   TIMESTAMPTZ
 );

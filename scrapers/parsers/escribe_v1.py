@@ -127,6 +127,14 @@ class EscribeParser(BaseParser):
         r.raise_for_status()
         meetings = r.json().get("d") or []
 
+        # Dokumenthämtningar (agenda/minutes/action summary nedan) räknas
+        # samlat i docs_attempted/docs_failed -- se FetchResult-fältens
+        # docstring. En trasig hämtning får fortfarande inte fälla mötet,
+        # men ska inte längre vara osynlig för scrape_runs.
+        docs_attempted = 0
+        docs_failed = 0
+        docs_last_error: str | None = None
+
         # hämta agenda-HTML per möte som faktiskt har en -- det är där
         # innehållet finns, se moduldocstring.
         fetched_count = 0
@@ -136,11 +144,17 @@ class EscribeParser(BaseParser):
             agenda_url = _find_html_agenda_url(m, base)
             if not agenda_url:
                 continue
+            docs_attempted += 1
             try:
                 ar = requests.get(agenda_url, headers=self._headers(), timeout=30)
                 if ar.status_code == 200:
                     m["_agenda_html"] = ar.text
+                else:
+                    docs_failed += 1
+                    docs_last_error = f"agenda HTTP {ar.status_code} (möte {m.get('ID')})"
             except Exception as exc:  # noqa: BLE001 -- en trasig agenda ska inte fälla mötet
+                docs_failed += 1
+                docs_last_error = f"agenda: {exc} (möte {m.get('ID')})"
                 print(f"    [escribe] kunde inte hämta agenda för möte {m.get('ID')}: {exc}")
             fetched_count += 1
             time.sleep(FETCH_DELAY_SECONDS)
@@ -156,6 +170,7 @@ class EscribeParser(BaseParser):
             minutes_url = _find_minutes_pdf_url(m, base)
             if not minutes_url:
                 continue
+            docs_attempted += 1
             try:
                 mr = requests.get(minutes_url, headers=self._headers(), timeout=30)
                 if mr.status_code == 200:
@@ -165,7 +180,12 @@ class EscribeParser(BaseParser):
                     # source_snapshots for no benefit over the text itself).
                     m["_minutes_text"] = _extract_pdf_text(mr.content)
                     m["_minutes_url"] = minutes_url
+                else:
+                    docs_failed += 1
+                    docs_last_error = f"minutes HTTP {mr.status_code} (möte {m.get('ID')})"
             except Exception as exc:  # noqa: BLE001 -- trasiga minutes ska inte fälla mötet
+                docs_failed += 1
+                docs_last_error = f"minutes: {exc} (möte {m.get('ID')})"
                 print(f"    [escribe] kunde inte hämta minutes för möte {m.get('ID')}: {exc}")
             minutes_fetched += 1
             time.sleep(FETCH_DELAY_SECONDS)
@@ -188,19 +208,27 @@ class EscribeParser(BaseParser):
             action_summary_url = _find_action_summary_pdf_url(m, base)
             if not action_summary_url:
                 continue
+            docs_attempted += 1
             try:
                 asr = requests.get(action_summary_url, headers=self._headers(), timeout=30)
                 if asr.status_code == 200:
                     m["_action_summary_text"] = _extract_pdf_text(asr.content, max_chars=_MAX_ACTION_SUMMARY_TEXT_CHARS)
                     m["_action_summary_url"] = action_summary_url
+                else:
+                    docs_failed += 1
+                    docs_last_error = f"action summary HTTP {asr.status_code} (möte {m.get('ID')})"
             except Exception as exc:  # noqa: BLE001 -- ett trasigt action summary-dokument ska inte fälla mötet
+                docs_failed += 1
+                docs_last_error = f"action summary: {exc} (möte {m.get('ID')})"
                 print(f"    [escribe] kunde inte hämta action summary för möte {m.get('ID')}: {exc}")
             action_summary_fetched += 1
             time.sleep(FETCH_DELAY_SECONDS)
 
         self._meetings = meetings
         raw = json.dumps(meetings, default=str).encode("utf-8")
-        return FetchResult(raw=raw, content_type="application/json", url=url, http_code=r.status_code)
+        return FetchResult(raw=raw, content_type="application/json", url=url, http_code=r.status_code,
+                            docs_attempted=docs_attempted, docs_failed=docs_failed,
+                            docs_last_error=docs_last_error)
 
     def parse(self, fetched: FetchResult) -> list[dict]:
         meetings = getattr(self, "_meetings", None)
