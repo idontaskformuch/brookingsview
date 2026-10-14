@@ -2818,6 +2818,16 @@ export interface ProjectUpdate {
   // null for older meeting-sourced rows that predate it and were never
   // backfilled. Callers should fall back to agenda_title when absent.
   synthesis: string | null;
+  // A human-verified REAL outcome the automated pipeline has no path to
+  // (no Action Summary/Legistar history record exists for this row) --
+  // see db/migrations/052_project_update_outcome_override.sql's own
+  // docstring. Always paired with outcome_override_source_url (DB CHECK
+  // constraint enforces both-or-neither); takes display priority over
+  // `outcome`/vote_* wherever a page renders this row -- the pipeline
+  // itself never writes either column, so a set value is durable across
+  // every future rerun.
+  outcome_override: string | null;
+  outcome_override_source_url: string | null;
 }
 
 // Mirrors ai_pipeline/project_threads.py's STALLED_AFTER_DAYS /
@@ -2842,6 +2852,13 @@ export const PROJECT_STATUS_LABELS: Record<string, string> = {
   complete: 'Complete',
   denied: 'Denied',
 };
+
+/** The ONE wording for "no outcome recorded yet" on a project_updates row,
+ *  used everywhere a reader sees one (the project page's own timeline, the
+ *  homepage's recent-updates teaser) -- deliberately a single shared
+ *  constant, not a per-page string, after two call sites independently
+ *  drifted to different wording for the exact same fact. */
+export const PROJECT_PENDING_OUTCOME_LABEL = 'Outcome not yet published.';
 
 export async function getProjects(): Promise<Project[]> {
   return (await sql`
@@ -2878,7 +2895,8 @@ export async function getProjectUpdates(slug: string): Promise<ProjectUpdate[]> 
   return (await sql`
     SELECT u.source_type, u.entry_date, u.body, u.meeting_date, u.agenda_counter,
            u.agenda_title, u.agenda_url, u.outcome, u.vote_yes, u.vote_no,
-           u.vote_abstain, u.vote_absent, u.source_url, u.synthesis
+           u.vote_abstain, u.vote_absent, u.source_url, u.synthesis,
+           u.outcome_override, u.outcome_override_source_url
       FROM project_updates u
       JOIN projects p ON p.id = u.project_id
      WHERE p.town_id = ${TOWN_ID} AND p.slug = ${slug}
@@ -2894,7 +2912,9 @@ export async function getRecentProjectUpdates(limit = 3): Promise<(ProjectUpdate
   return (await sql`
     SELECT u.source_type, u.entry_date, u.body, u.meeting_date, u.agenda_counter, u.agenda_title,
            u.agenda_url, u.outcome, u.vote_yes, u.vote_no, u.vote_abstain,
-           u.vote_absent, u.source_url, u.synthesis, p.slug AS project_slug, p.title AS project_title
+           u.vote_absent, u.source_url, u.synthesis,
+           u.outcome_override, u.outcome_override_source_url,
+           p.slug AS project_slug, p.title AS project_title
       FROM project_updates u
       JOIN projects p ON p.id = u.project_id
      WHERE p.town_id = ${TOWN_ID}

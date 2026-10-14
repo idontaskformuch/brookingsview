@@ -37,7 +37,7 @@ import {
   getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
   getWeather, getAgPrices, getLatestWeekly,
   getEmployerJobStats, getUpcomingArtsEvents, getRecentJobs, getNextMeeting,
-  getWorthKnowingCandidates, getRecentProjectUpdates, formatDate,
+  getWorthKnowingCandidates, getRecentProjectUpdates, PROJECT_PENDING_OUTCOME_LABEL, formatDate,
   getFacilities, getLatestVailNewsItem, getEventDeckDigests,
 } from '../lib/db';
 import { selectWorthKnowing, selectFrontPageRhythm } from '../lib/homepage-curation';
@@ -649,7 +649,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
             <a href={`/city-hall/projects/${u.project_slug}/`}>{u.project_title}</a>
             <span class="project-updates__meta">
               {' '}— {u.body}, {formatDate(u.meeting_date)}:
-              {' '}{u.outcome === 'pending' ? 'reviewed, outcome not yet available' : u.outcome.toLowerCase()}
+              {' '}{u.outcome_override ?? (u.outcome === 'pending' ? PROJECT_PENDING_OUTCOME_LABEL : u.outcome.toLowerCase())}
             </span>
           </li>
         ))}

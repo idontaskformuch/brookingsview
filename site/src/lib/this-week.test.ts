@@ -150,6 +150,7 @@ describe('buildWeekDays', () => {
       body: 'Approved on first reading.', meeting_date: '2026-08-26T00:00:00Z',
       agenda_counter: '1', agenda_title: 'Zoning amendment', agenda_url: null, outcome: 'approved',
       vote_yes: 5, vote_no: 0, vote_abstain: 0, vote_absent: 0, source_url: null, synthesis: null,
+      outcome_override: null, outcome_override_source_url: null,
       project_slug: 'sixth-street-corridor', project_title: '6th Street Corridor',
     }];
     const days = buildWeekDays(WEEK, CHICAGO, {

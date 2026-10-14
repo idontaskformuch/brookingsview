@@ -12,7 +12,7 @@ import ShareButton from '../../../components/ShareButton.astro';
 import Breadcrumbs from '../../../components/Breadcrumbs.astro';
 import {
   getProjects, getProjectBySlug, getProjectUpdates, PROJECT_STATUS_LABELS,
-  formatDate, projectActivityState, STALLED_AFTER_DAYS, isSandboxUrl,
+  PROJECT_PENDING_OUTCOME_LABEL, formatDate, projectActivityState, STALLED_AFTER_DAYS, isSandboxUrl,
 } from '../../../lib/db';
 import type { ProjectUpdate } from '../../../lib/db';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../../lib/article-jsonld';
@@ -48,7 +48,6 @@ const activityState = projectActivityState(project);
 const noindexThisProject = shouldNoindexProject(updates);
 
 function outcomeLabel(u: ProjectUpdate): string {
-  if (u.outcome === 'pending') return 'Reviewed — outcome not available';
   return u.outcome;
 }
 
@@ -66,6 +65,18 @@ function entryHeadline(u: ProjectUpdate): string {
  *  could misattribute to the wrong motion on a multi-item agenda. Returns
  *  null (never a bare number) when no outcome is confirmed yet -- callers
  *  must not render a vote tally against a 'pending' row at all. */
+/** Same spirit as ai_pipeline/project_registry.py's status_for_outcome()
+ *  (order matters there too: "not approved" contains "approved") -- just
+ *  for this page's own data-outcome styling hook, so a hand-verified
+ *  override still gets the right Approved/Denied color instead of
+ *  rendering unstyled or (worse) green for a real denial. */
+function overrideOutcomeAttr(override: string): string {
+  const lowered = override.toLowerCase();
+  if (lowered.includes('denied') || lowered.includes('fail') || lowered.includes('not approved')) return 'Denied';
+  if (lowered.includes('approved') || lowered.includes('passed') || lowered.includes('adopted')) return 'Approved';
+  return override;
+}
+
 function voteSentence(u: ProjectUpdate): string | null {
   if (u.vote_yes == null && u.vote_no == null) return null;
   if (u.outcome === 'pending') return null;
@@ -75,23 +86,16 @@ function voteSentence(u: ProjectUpdate): string | null {
   return `${u.outcome} by a vote of ${parts.join(', ')}`;
 }
 
-/** Why "pending" is honest, not a placeholder for a guess -- shown inline
- *  so a reader (or Google) never mistakes it for missing data. Deliberately
- *  keyed on town, NOT on body name alone: Moreno Valley's Planning
- *  Commission never posts an outcome document on its eSCRIBE portal
- *  (verified live against ~20 real meetings) and this reason is specific
- *  to that real, verified platform limitation -- but Brookings ALSO has a
- *  body called "Planning Commission," and its Legistar source DOES carry
- *  real outcomes for it (see NEEDS-HUMAN-REVIEW.md, "Brookings -- City
- *  Hall Project Pages"). Matching on body name alone would have wrongly
- *  claimed the same eSCRIBE limitation for a Brookings item that doesn't
- *  have it. */
-function pendingReason(u: ProjectUpdate): string {
-  if (siteConfig.townId === 'moreno_valley_ca' && u.body === 'Planning Commission') {
-    return 'Outcome not yet published.';
-  }
-  return 'This meeting’s official record does not show an outcome for this item yet.';
-}
+// "Pending" is honest, not a placeholder for a guess -- shown inline so a
+// reader (or Google) never mistakes it for missing data. ONE wording for
+// this everywhere (PROJECT_PENDING_OUTCOME_LABEL) regardless of town or
+// body -- Moreno Valley's Planning Commission never posts an outcome
+// document on its eSCRIBE portal at all (verified live against ~20 real
+// meetings), while Brookings' own "Planning Commission" body DOES get real
+// outcomes via Legistar (see NEEDS-HUMAN-REVIEW.md, "Brookings -- City Hall
+// Project Pages") -- but a reader doesn't need that platform-level reason
+// to understand "not published yet," and two different sentences for the
+// identical fact is exactly what this constant exists to stop.
 
 const earliestDate = updates[0]?.meeting_date ?? project.updated_at;
 const breadcrumbTrail: BreadcrumbEntry[] = [
@@ -168,12 +172,16 @@ const itemListJsonLd = updates.length > 0 ? {
     {updates.length > 0 ? (
       <ol class="timeline">
         {updates.map((u) => (
-          <li class="timeline__item" data-outcome={u.outcome}>
+          <li class="timeline__item" data-outcome={u.outcome_override ? overrideOutcomeAttr(u.outcome_override) : u.outcome}>
             <p class="timeline__date">{formatDate(u.entry_date)} · {u.body ?? 'Traffic update'}</p>
             <p class="timeline__title">{entryHeadline(u)}</p>
             <p class="timeline__outcome">
-              {u.outcome === 'pending' ? (
-                <>On the agenda. <span class="reason">{pendingReason(u)}</span></>
+              {u.outcome_override ? (
+                <>{u.outcome_override}{u.outcome_override_source_url && (
+                  <> · <a href={u.outcome_override_source_url} target="_blank" rel="noopener">Minute Order</a></>
+                )}</>
+              ) : u.outcome === 'pending' ? (
+                <>On the agenda. <span class="reason">{PROJECT_PENDING_OUTCOME_LABEL}</span></>
               ) : (
                 voteSentence(u) ?? outcomeLabel(u)
               )}
