@@ -26,3 +26,5 @@
    instruktion.
 8. När ägaren skriver "föreslå" eller "ändra inget förrän jag godkänt" skrivs
    ingen kod för den punkten förrän ägaren sagt ja.
+9. "Visa X innan push" betyder: visa X, stanna, och pusha först efter
+   ägarens uttryckliga ja i ett nytt meddelande.
