@@ -74,6 +74,14 @@ const shareUrl = new URL(storyHref(story.slug), siteConfig.siteUrl).href;
 const isAlert = story.source_type === 'alert';
 const isMeeting = story.source_type === 'meeting' || story.source_type === 'meeting_followup';
 const isEvent = story.source_type === 'event';
+// A Legistar "Notice of Quorum" posting (SDCL 1-25-1.1), not a real meeting
+// -- see ai_pipeline/publish.py's build_title()/is_quorum_notice_only() for
+// why its title always starts this way. Listed alongside real meetings
+// (city-hall, city-hall/archive) since residents may still want to know
+// about it, but flagged with its own badge so it doesn't read as a real
+// meeting at a glance -- confirmed live 2026-10-14 that the kicker/chip
+// alone gave no such signal (same "City hall" kicker as a real meeting).
+const isQuorumNotice = isMeeting && story.title.startsWith('Notice: possible quorum');
 const isAiWritten = isAiWrittenContent(story.source_type);
 // 2026-10-02, item C4: strip a "{Town}: " / "{VENUE IN CAPS}: " prefix from
 // an event's displayed title (confirmed live: 1,063 of 1,068 Moreno Valley
@@ -184,6 +192,7 @@ const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCat
       <time class="item__when data" datetime={timeMachineValue}>{timeLabel}</time>
     )}
     {isAiWritten && <span class="item__ai-label">AI-written</span>}
+    {isQuorumNotice && <span class="item__notice-badge">Public notice</span>}
   </p>
   <h3 class="item__title"><a href={href} rel={isExternal ? 'noopener' : undefined}>{displayTitle}</a></h3>
   {venue && <p class="item__venue data">{venue}</p>}
@@ -239,7 +248,7 @@ const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCat
 /* Extra 1: a visible, honest disclosure for AI-generated content-track
    cards (reviews/recipes/editorials/columns) -- quiet enough not to compete
    with the kicker/time it sits beside, but never hidden or color-only. */
-.item__ai-label {
+.item__ai-label, .item__notice-badge {
   font-size: 0.6875rem;
   font-weight: 700;
   text-transform: uppercase;

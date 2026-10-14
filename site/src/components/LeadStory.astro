@@ -25,6 +25,9 @@ const isMeeting = story.source_type === 'meeting';
 const isAlert = story.source_type === 'alert';
 const isEvent = story.source_type === 'event';
 const isAiWritten = isAiWrittenContent(story.source_type);
+// See StoryCard.astro's identical comment -- a Legistar Notice of Quorum
+// posting, not a real meeting.
+const isQuorumNotice = isMeeting && story.title.startsWith('Notice: possible quorum');
 // Item C4 -- see StoryCard.astro's identical comment for the full reasoning.
 const { displayTitle, venue } = isEvent
   ? splitEventTitleAndVenue(story.title, siteConfig.cityName, buildNameAliasIndex(facilities))
@@ -76,6 +79,7 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
       <time class="lead__when data" datetime={timeMachineValue}>{timeLabel}</time>
     )}
     {isAiWritten && <span class="lead__ai-label">AI-written</span>}
+    {isQuorumNotice && <span class="lead__notice-badge">Public notice</span>}
   </p>
   {heroImage && (
     <a class="lead__image-link" href={storyHref(story.slug)} tabindex="-1" aria-hidden="true">
@@ -108,7 +112,7 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
   text-transform: uppercase; color: var(--ink-soft);
 }
 /* Extra 1 -- see StoryCard.astro's identical .item__ai-label comment. */
-.lead__ai-label {
+.lead__ai-label, .lead__notice-badge {
   font-size: 0.6875rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.04em; color: var(--ink-soft);
   padding: 0.0625rem 0.375rem; border: 1px solid var(--rule); border-radius: 999px;
