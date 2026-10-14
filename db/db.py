@@ -81,7 +81,8 @@ def save_snapshot(conn, town_id: str, source_key: str, url: str | None,
 def upsert_records(conn, table: str, town_id: str, records: Iterable[dict],
                    snapshot_id: int | None = None,
                    conflict_columns: tuple[str, ...] | None = None,
-                   update_columns: list[str] | None = None) -> int:
+                   update_columns: list[str] | None = None,
+                   dedup_check_columns: tuple[str, ...] | None = None) -> int:
     """Dedup-säker insert. Varje record MÅSTE ha 'content_hash' (om inte
     conflict_columns anger något annat).
 
@@ -98,6 +99,20 @@ def upsert_records(conn, table: str, town_id: str, records: Iterable[dict],
     conflict_columns (t.ex. ("town_id", "external_game_id")) och vilka fält
     som ska skrivas över vid en omkörning som update_columns. Standardbeteendet
     (inga argument) är oförändrat för alla befintliga anropare.
+
+    dedup_check_columns är ett EXTRA skyddsnät, oberoende av content_hash --
+    en riktig bugg hittad 2026-10-13: en datumparsningsfix (eSCRIBE,
+    _parse_escribe_date) ändrade vad content_hash:ade blev för EXAKT samma
+    riktiga möte (samma eSCRIBE-ID, samma StartDate-sträng), vilket skapade
+    en andra, byte-identisk rad under en ny hash -- ON CONFLICT matchade
+    aldrig den gamla raden, eftersom hash:en den jämförde mot hade ändrats.
+    När satt (t.ex. ("body", "meeting_date") för möten): om en BEFINTLIG
+    rad redan finns för (town_id, *dedup_check_columns) med SEMANTISKT
+    identisk raw_data (Postgres JSONB-likhet -- ignorerar nyckelordning/
+    whitespace) hoppas posten över helt, oavsett vad content_hash säger. En
+    genuint ändrad omskrapning (ny PostMinutes, ny Action Summary) har
+    alltid ANNORLUNDA raw_data och fångas aldrig av detta -- bara en
+    verklig byte-för-byte-dubblett gör.
     """
     records = list(records)
     if not records:
@@ -110,6 +125,20 @@ def upsert_records(conn, table: str, town_id: str, records: Iterable[dict],
             if snapshot_id is not None and "snapshot_id" not in rec:
                 rec["snapshot_id"] = snapshot_id
             rec["town_id"] = town_id
+
+            if (dedup_check_columns is not None and rec.get("raw_data") is not None
+                    and all(c in rec for c in dedup_check_columns)):
+                where = " AND ".join(f"{c} = %s" for c in dedup_check_columns)
+                cur.execute(
+                    f"SELECT 1 FROM {table} WHERE town_id = %s AND {where} "
+                    f"AND raw_data = %s::jsonb LIMIT 1",
+                    [town_id, *[rec[c] for c in dedup_check_columns], _json_dumps(rec["raw_data"])],
+                )
+                if cur.fetchone():
+                    label = ", ".join(f"{c}={rec[c]}" for c in dedup_check_columns)
+                    print(f"  [dedup] hoppar över byte-identisk dubblett: {table} ({label})")
+                    continue
+
             # JSONB-fält
             if "raw_data" in rec and rec["raw_data"] is not None:
                 rec["raw_data"] = Jsonb(rec["raw_data"], dumps=_json_dumps)

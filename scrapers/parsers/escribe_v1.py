@@ -91,6 +91,17 @@ class EscribeParser(BaseParser):
     # ai_pipeline/meeting_followups.py, which reads minutes_text from here.
     conflict_columns = ("town_id", "content_hash")
     update_columns = ["body", "meeting_date", "agenda_url", "minutes_url", "raw_data", "snapshot_id"]
+    # Real bug, 2026-10-13: content_hash depends on meeting_dt (the PARSED
+    # datetime), which changed shape when _parse_escribe_date's own timezone
+    # bug was fixed -- the exact same real meeting (same eSCRIBE ID, same
+    # raw StartDate string) hashed differently before vs. after that fix,
+    # so DO UPDATE's own ON CONFLICT never matched and a byte-identical
+    # second row got inserted (meetings 12940/13790, Moreno Valley). The
+    # content_hash fix below (hash the raw StartDate string, never the
+    # parsed value) closes THIS specific recurrence; this is the general,
+    # content_hash-independent backstop for any other future cause of the
+    # same failure shape. See db.upsert_records()'s own docstring.
+    dedup_check_columns = ("body", "meeting_date")
 
     def _base_url(self) -> str:
         base = self.source_cfg.get("base_url")
@@ -229,9 +240,13 @@ class EscribeParser(BaseParser):
                 "agenda_url": _find_public_agenda_url(m, base),
                 "minutes_url": minutes_url,
                 "raw_data": raw_data,
-                "content_hash": content_hash(
-                    "escribe", meeting_id, meeting_dt.isoformat() if meeting_dt else m.get("StartDate")
-                ),
+                # Hashes the RAW StartDate string, never meeting_dt (the
+                # PARSED datetime) -- see this class's own dedup_check_columns
+                # comment above for the real bug a derived value caused here.
+                # meeting_id (eSCRIBE's own GUID) and StartDate are both
+                # straight off the source API response, so this can only
+                # change if the real meeting's own identity or time changes.
+                "content_hash": content_hash("escribe", meeting_id, m.get("StartDate")),
             })
         return out
 

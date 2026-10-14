@@ -132,7 +132,8 @@ def run_source(conn, cfg: dict, source_key: str, source_cfg: dict) -> None:
         records = parser.parse(fetched)
         new = db.upsert_records(conn, parser.table, town_id, records, snapshot_id,
                                  conflict_columns=parser.conflict_columns,
-                                 update_columns=parser.update_columns)
+                                 update_columns=parser.update_columns,
+                                 dedup_check_columns=parser.dedup_check_columns)
         db.finish_run(conn, run_id, status="ok", http_code=fetched.http_code,
                       items_found=len(records), items_new=new)
         print(f"  [{source_key}] ok — {len(records)} poster, {new} nya")

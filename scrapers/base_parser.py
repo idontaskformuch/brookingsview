@@ -41,6 +41,13 @@ class BaseParser(abc.ABC):
     #: till skillnad från oföränderlig källdata som möten/event/försäljningar.
     conflict_columns: tuple[str, ...] | None = None
     update_columns: list[str] | None = None
+    #: extra safety net, independent of content_hash -- see db.upsert_records()'s
+    #: own docstring and scrapers/parsers/escribe_v1.py's EscribeParser for why
+    #: this exists (a real bug: a date-parsing fix changed what content_hash
+    #: computed for the SAME real meeting, producing a byte-identical-content
+    #: second row under a new hash). Leave None (the default) for any source
+    #: whose content_hash is already a reliable identity on its own.
+    dedup_check_columns: tuple[str, ...] | None = None
 
     def __init__(self, cfg: dict, source_cfg: dict):
         self.cfg = cfg                    # hela town-configen
