@@ -301,6 +301,13 @@ const TOWN_GATED_PAGES = [
   { path: '/burro-bonanza/', activeFor: ['moreno_valley_ca'] },
   { path: '/home-sales/', activeFor: ['moreno_valley_ca'] },
   { path: '/home-sales/archive/', activeFor: ['moreno_valley_ca'] },
+  // Phase 8 ("Month in <Town>") -- moreno_valley_ca only today. Only the
+  // static hub (/month/) needs an entry here; /month/<yyyy-mm>/ detail
+  // pages are dynamic (getStaticPaths-driven) and naturally produce zero
+  // stub files for any other town, same exclusion-by-construction as
+  // city-hall/projects/[slug].astro etc. (see this array's own header
+  // comment).
+  { path: '/month/', activeFor: ['moreno_valley_ca'] },
   { path: '/sports/', activeFor: ['moreno_valley_ca'] },
   { path: '/farm-report/', activeFor: ['brookings_sd'] },
   { path: '/jackrabbits/', activeFor: ['brookings_sd'] },
@@ -524,6 +531,73 @@ async function buildLastmodMap(townId, databaseUrl) {
     }
     for (const [zip, count] of zipCounts) {
       if (count < MIN_TAG_PAGE_ITEMS) noindexThinPageUrls.add(`/home-sales/zip/${zip}/`);
+    }
+  }
+
+  // Phase 8 ("Month in <Town>") noindex mirror -- owner condition 7 (noindex
+  // until >=4 of 6 modules have real data for a given town+month). Mirrors
+  // lib/month-in-review.ts's coverageFromFloor() rule exactly: a module's
+  // status for a given month depends ONLY on its town-wide "first ever"
+  // floor date vs that month's own boundaries -- it never depends on
+  // whether that specific month itself has any rows (see that lib's own
+  // module doc). That means this mirror needs just ONE floor-date query per
+  // module (not one per month) for five of the six; home sales is the one
+  // exception (a real per-month count, no floor rule -- see
+  // buildSalesModule()'s own comment on why a floor date doesn't fit a
+  // gappy quarterly county import). Classification (in-town/approach,
+  // in-town/nearby) is deliberately NOT replicated here -- the gate only
+  // needs each module's status, never its exact count, so the real page's
+  // own geo-filtering (classifyTrafficIncident/classifyEventLocality) has
+  // nothing this mirror could drift against. Keep in sync by hand, same
+  // tradeoff as every other mirror in this file -- scripts/verify_sitemap_
+  // noindex_disjoint.mjs catches drift against the real page's own
+  // <meta robots> tag.
+  const MONTH_IN_REVIEW_START_MIRROR = { moreno_valley_ca: { year: 2026, month: 8 } };
+  if (townId in MONTH_IN_REVIEW_START_MIRROR) {
+    const monthTz = THIS_WEEK_TIMEZONES[townId] ?? THIS_WEEK_TIMEZONES.brookings_sd;
+    const today = localDatePartsMirror(new Date(), monthTz);
+    const { year: startYear, month: startMonth } = MONTH_IN_REVIEW_START_MIRROR[townId];
+
+    const [[decisionsFloor], [projectsFloor], [eventsFloor], [trafficFloor], [jobsFloor], salesRows] = await Promise.all([
+      sql`SELECT MIN(m.meeting_date) AS floor FROM meeting_decisions md JOIN meetings m ON m.id = md.meeting_id WHERE m.town_id = ${townId}`,
+      sql`SELECT MIN(u.entry_date) AS floor FROM project_updates u JOIN projects p ON p.id = u.project_id WHERE p.town_id = ${townId}`,
+      sql`SELECT MIN(published_at) AS floor FROM stories WHERE town_id = ${townId} AND source_type = 'event' AND superseded_by_slug IS NULL`,
+      sql`SELECT MIN(created_at) AS floor FROM traffic_incidents WHERE town_id = ${townId}`,
+      sql`SELECT MIN(created_at) AS floor FROM jobs WHERE town_id = ${townId}`,
+      sql`SELECT sale_date FROM property_sales WHERE town_id = ${townId} AND sale_date IS NOT NULL`,
+    ]);
+    const salesCountByMonth = new Map();
+    for (const s of salesRows) {
+      const { y, m } = utcDatePartsMirror(s.sale_date);
+      const key = `${y}-${String(m).padStart(2, '0')}`;
+      salesCountByMonth.set(key, (salesCountByMonth.get(key) ?? 0) + 1);
+    }
+    const floorStatus = (floor, monthStart, monthEnd) => {
+      if (!floor) return 'none';
+      const f = new Date(floor);
+      if (f < monthStart) return 'full';
+      if (f < monthEnd) return 'partial';
+      return 'none';
+    };
+
+    let y = startYear;
+    let m = startMonth;
+    while (y < today.y || (y === today.y && m < today.m)) {
+      const monthStart = new Date(Date.UTC(y, m - 1, 1));
+      const monthEnd = new Date(Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 1));
+      const monthKey = `${y}-${String(m).padStart(2, '0')}`;
+      const statuses = [
+        floorStatus(decisionsFloor.floor, monthStart, monthEnd),
+        floorStatus(projectsFloor.floor, monthStart, monthEnd),
+        (salesCountByMonth.get(monthKey) ?? 0) > 0 ? 'full' : 'none',
+        floorStatus(eventsFloor.floor, monthStart, monthEnd),
+        floorStatus(trafficFloor.floor, monthStart, monthEnd),
+        floorStatus(jobsFloor.floor, monthStart, monthEnd),
+      ];
+      const cleared = statuses.filter((s) => s !== 'none').length;
+      if (cleared < 4) noindexThinPageUrls.add(`/month/${monthKey}/`);
+      m += 1;
+      if (m > 12) { m = 1; y += 1; }
     }
   }
 

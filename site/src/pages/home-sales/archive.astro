@@ -17,12 +17,16 @@ import { siteConfig } from '../../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 import { storyHref } from '../../lib/content-slugs';
+import { listEligibleMonths, monthLabel, monthSlug } from '../../lib/month-in-review';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
 }
 
 const digests = await getContentByType(['home_sales_digest'], 999);
+// Phase 8 teaser link (research section 3) -- plain link, not a cluster
+// membership.
+const latestMonth = listEligibleMonths(siteConfig.townId, siteConfig.timezone)[0];
 
 const title = `Home Sales Digest Archive — ${siteConfig.cityName}`;
 const description = `Every monthly home-sales digest for ${siteConfig.cityName}, ${siteConfig.stateAbbr}, oldest to newest.`;
@@ -54,6 +58,9 @@ const itemListJsonLd = digests.length > 0 ? {
     <p>Every monthly home-sales digest, oldest to newest. Looking for
     recent individual sales? See <a href="/home-sales/">Recent home sales →</a>.
     {hubBacklink && <> Curious what employees actually say about local employers? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
+    {latestMonth && (
+      <p class="month-teaser">See the full <a href={`/month/${monthSlug(latestMonth.year, latestMonth.month)}/`}>month in review for {monthLabel(latestMonth.year, latestMonth.month)} →</a></p>
+    )}
     <ShareButton title={title} url={canonicalUrl} />
   </header>
 
@@ -82,6 +89,7 @@ const itemListJsonLd = digests.length > 0 ? {
 <style>
 .lede { max-width: 42rem; }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.month-teaser { font-size: 0.875rem; }
 .list { list-style: none; margin: 1.5rem 0 0; padding: 0; max-width: 40rem; }
 .list li {
   display: flex;

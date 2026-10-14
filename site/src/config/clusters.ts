@@ -70,6 +70,15 @@ export const CLUSTERS: Record<string, ClusterDefinition> = {
     primarySpokes: [
       'city-hall/archive', 'city-hall/projects', 'city-hall/projects/detail',
       'story:meeting', 'story:meeting_followup',
+      // Phase 8 ("Month in <Town>"): a numbers-only monthly recap across
+      // six modules (two of which -- decisions, projects -- are civic's
+      // own). Deliberately NOT also a secondary spoke of whats_happening/
+      // getting_around/work_and_money (the research file's own original
+      // plan) -- that would put it at 4 total cluster memberships,
+      // breaking validateClusterConfig()'s real "max 2" rule. Cross-links
+      // to home-sales/traffic/jobs/events are plain teaser links on those
+      // pages instead, not a second cluster membership.
+      'month', 'month/detail',
     ],
     // home-sales: the handoff's own explicit cross-cluster example --
     // "genuinely relevant from /city-hall/ when a development decision is
@@ -239,6 +248,13 @@ export const ROUTE_AVAILABILITY: Record<string, RouteAvailability> = {
   'home-sales/archive': (c) => Boolean(c.hasHousingMarket),
   'home-sales/zip': (c) => Boolean(c.hasHousingMarket),
   'story:home_sales_digest': (c) => Boolean(c.hasHousingMarket),
+  // Phase 8 -- moreno_valley_ca only today (owner condition 6). A hard
+  // townId gate, not a feature flag, since this isn't really about
+  // housing data -- it's "which towns has this brand-new recap shipped
+  // for yet", the same temporary, per-town build-order gate burro-
+  // bonanza/sports use below, not a permanent feature distinction.
+  month: (c) => c.townId === 'moreno_valley_ca',
+  'month/detail': (c) => c.townId === 'moreno_valley_ca',
 
   // Places -- facilities/index.astro and weather.astro have no gate.
   facilities: () => true,
@@ -366,6 +382,11 @@ export const SPOKE_NAV_COPY: Record<string, SpokeNavCopy> = {
     label: 'Active projects',
     href: '/city-hall/projects/',
     description: 'Track a real development or ordinance through every meeting that touches it.',
+  },
+  month: {
+    label: 'Month in review',
+    href: '/month/',
+    description: 'A numbers-only monthly recap: decisions, projects, home sales, events, traffic and jobs in one place.',
   },
   // What's happening
   today: {

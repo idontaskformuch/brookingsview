@@ -23,7 +23,11 @@ import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
 import { classifyTrafficIncident } from '../lib/traffic';
+import { listEligibleMonths, monthLabel, monthSlug } from '../lib/month-in-review';
 
+// Phase 8 teaser link (research section 3) -- plain link, not a cluster
+// membership. Naturally absent for any town with no eligible month yet.
+const latestMonth = listEligibleMonths(siteConfig.townId, siteConfig.timezone)[0];
 const pageMeta = resolvePageMeta('traffic', siteConfig);
 const clusterNavItems = resolveHubNavItems('traffic', siteConfig);
 const rawIncidents = await getActiveTrafficIncidents();
@@ -76,6 +80,9 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
         ? ` (${siteConfig.noTrafficSourceNote})` : ''}. Active weather alerts, which do cover this area, are
       tracked separately on the weather page.</>
     )}</p>
+    {latestMonth && (
+      <p class="month-teaser">See the full <a href={`/month/${monthSlug(latestMonth.year, latestMonth.month)}/`}>month in review for {monthLabel(latestMonth.year, latestMonth.month)} →</a></p>
+    )}
     <ShareButton title={pageMeta.title} />
   </header>
 
@@ -189,6 +196,7 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
   padding-bottom: 1.125rem;
 }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.month-teaser { font-size: 0.875rem; }
 .source a { color: var(--section-accent, var(--navy)); }
 .controls { display: flex; gap: 1.25rem; margin: 0.5rem 0 1rem; font-size: 0.875rem; }
 .controls label { display: flex; align-items: center; gap: 0.4rem; color: var(--ink-soft); }

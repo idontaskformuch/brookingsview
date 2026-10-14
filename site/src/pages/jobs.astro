@@ -23,8 +23,14 @@ import { resolvePageMeta } from '../lib/page-meta';
 import SectionHero from '../components/SectionHero.astro';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
+import { listEligibleMonths, monthLabel, monthSlug } from '../lib/month-in-review';
 
 const jobs = await getRecentJobs();
+// Phase 8 teaser link (research section 3) -- a plain link, not a cluster
+// membership (see config/clusters.ts's own comment on why "Month in
+// review" isn't also a secondary spoke here). Naturally absent for any
+// town with no eligible month yet.
+const latestMonth = listEligibleMonths(siteConfig.townId, siteConfig.timezone)[0];
 
 // Shared with /jobs/category/[category].astro (see lib/jobs.ts) -- one
 // copy of the salary-formatting and employer-diversity-cap logic, not two
@@ -50,6 +56,9 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
     you apply through a listing here — it never affects which jobs are shown
     or how they're ordered.
     {hubBacklink && <> Curious what employees actually say about local employers? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
+    {latestMonth && (
+      <p class="month-teaser">See the full <a href={`/month/${monthSlug(latestMonth.year, latestMonth.month)}/`}>month in review for {monthLabel(latestMonth.year, latestMonth.month)} →</a></p>
+    )}
   </header>
 
   <SectionRule label={jobs.length > 0 ? `${jobs.length} listings` : 'Listings'} />
@@ -179,6 +188,7 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
 <style>
 .lede { max-width: 42rem; }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.month-teaser { font-size: 0.875rem; }
 .category-links { font-size: 0.875rem; color: var(--ink-soft); margin: 0.75rem 0 0; }
 .controls { display: flex; gap: 1.25rem; margin: 0.5rem 0 1rem; font-size: 0.875rem; }
 .controls label { display: flex; align-items: center; gap: 0.4rem; color: var(--ink-soft); }

@@ -1,0 +1,76 @@
+---
+/** Phase 8 ("Month in <Town>") hub + archive -- mirrors home-sales/archive.
+ *  astro's own list shape (newest first, one line per month). moreno_
+ *  valley_ca-only today (owner condition 6): redirects away for any town
+ *  with no MONTH_IN_REVIEW_START entry, same pattern home-sales/archive.
+ *  astro and home-sales.astro already use. */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ShareButton from '../../components/ShareButton.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import { listEligibleMonths, monthLabel, monthSlug, MONTH_IN_REVIEW_START } from '../../lib/month-in-review';
+import { siteConfig } from '../../lib/site-config';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
+import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
+
+if (!(siteConfig.townId in MONTH_IN_REVIEW_START)) {
+  return Astro.redirect('/', 302);
+}
+
+const months = listEligibleMonths(siteConfig.townId, siteConfig.timezone);
+
+const title = `Month in Review Archive — ${siteConfig.cityName}`;
+const description = `Every monthly recap of ${siteConfig.cityName}, ${siteConfig.stateAbbr}, oldest to newest.`;
+const canonicalUrl = new URL('/month/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('month', siteConfig, { label: 'Month in review', href: canonicalUrl });
+const hubBacklink = resolveHubBacklink('month', siteConfig);
+
+const itemListJsonLd = months.length > 0 ? {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: title,
+  itemListElement: months.map((m, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: `${siteConfig.cityName} in ${monthLabel(m.year, m.month)}`,
+    url: new URL(`/month/${monthSlug(m.year, m.month)}/`, Astro.site ?? siteConfig.siteUrl).href,
+  })),
+} : null;
+---
+<BaseLayout title={title} wide ogSlug="section-city-hall" description={description}>
+  <Breadcrumbs trail={breadcrumbTrail} />
+  <header class="lede">
+    <h1>Month in review</h1>
+    <p>A numbers-only monthly recap of {siteConfig.cityName}, {siteConfig.stateAbbr}: city hall
+    decisions, development projects, home sales, events, traffic and jobs, from our own
+    structured data. {hubBacklink && <>See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a> for
+    the full meeting-by-meeting record.</>}</p>
+    <ShareButton title={title} url={canonicalUrl} />
+  </header>
+
+  {months.length > 0 ? (
+    <ul class="list">
+      {months.map((m) => (
+        <li>
+          <a href={`/month/${monthSlug(m.year, m.month)}/`}>{siteConfig.cityName} in {monthLabel(m.year, m.month)}</a>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty">No months published yet.</p>
+  )}
+
+  {itemListJsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
+  )}
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(
+    buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
+  )} />
+</BaseLayout>
+
+<style>
+.lede { max-width: 42rem; }
+.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.list { list-style: none; margin: 1.5rem 0 0; padding: 0; max-width: 40rem; }
+.list li { padding: 0.625rem 0; border-top: 1px solid var(--rule); font-size: 0.9375rem; }
+.empty { color: var(--ink-soft); }
+</style>

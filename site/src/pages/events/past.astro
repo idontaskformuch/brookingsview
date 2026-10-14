@@ -32,11 +32,15 @@ import type { Story } from '../../lib/db';
 import { localDateParts } from '../../lib/events';
 import { siteConfig } from '../../lib/site-config';
 import { storyHref } from '../../lib/content-slugs';
+import { listEligibleMonths, monthLabel as monthInReviewLabel, monthSlug } from '../../lib/month-in-review';
 
 const [allEvents, facilities] = await Promise.all([
   getContentByType(['event'], 5000),
   getFacilities(),
 ]);
+// Phase 8 teaser link (research section 3) -- plain link, not a cluster
+// membership. Naturally absent for any town with no eligible month yet.
+const latestMonth = listEligibleMonths(siteConfig.townId, siteConfig.timezone)[0];
 const events = allEvents.filter((e) => !e.occurs_at || new Date(e.occurs_at) < new Date());
 
 const MONTH_NAMES = [
@@ -88,6 +92,9 @@ const itemListJsonLd = events.length > 0 ? {
     <h1>Past events</h1>
     <p>Every community event covered on this site, oldest to newest within
     each month. Looking for what's coming up? See <a href="/events/">What's on →</a>.</p>
+    {latestMonth && (
+      <p class="month-teaser">See the full <a href={`/month/${monthSlug(latestMonth.year, latestMonth.month)}/`}>month in review for {monthInReviewLabel(latestMonth.year, latestMonth.month)} →</a></p>
+    )}
     <ShareButton title={title} url={canonicalUrl} />
   </header>
 
@@ -110,6 +117,7 @@ const itemListJsonLd = events.length > 0 ? {
 <style>
 .lede { max-width: 42rem; }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
+.month-teaser { font-size: 0.875rem; }
 .month { margin-top: 2rem; }
 .month__heading {
   font-size: 1.0625rem;

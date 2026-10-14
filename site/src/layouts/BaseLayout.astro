@@ -95,6 +95,10 @@ const nav = [
   { href: '/facilities/', label: 'Facilities' },
   ...(isBrookings ? [{ href: '/farm-report/', label: 'Farm report' }] : []),
   ...(isMorenoValley ? [{ href: '/home-sales/', label: 'Home sales' }] : []),
+  // Phase 8: moreno_valley_ca only today (owner condition 6) -- see
+  // config/clusters.ts's own ROUTE_AVAILABILITY comment on why this is a
+  // temporary per-town build-order gate, not a permanent feature flag.
+  ...(isMorenoValley ? [{ href: '/month/', label: 'Month in review' }] : []),
   ...(isMorenoValley ? [{ href: '/sports/', label: 'Sports' }] : []),
   ...(siteConfig.hasWorkplaceWatch ? [{ href: '/workplace-watch/', label: 'Worker Pulse' }] : []),
   ...(isBroomfield ? [{ href: '/vail-resorts/', label: 'Vail Resorts' }] : []),
@@ -143,7 +147,7 @@ const activeInMore = moreNav.some((item) => path.startsWith(item.href));
 // item list that could drift from it.
 const FOOTER_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: 'Today & events', hrefs: ['/today/', '/this-week/', '/events/', '/whats-on/', '/university/', '/jackrabbits/', '/play/', '/burro-bonanza/'] },
-  { label: 'City', hrefs: ['/city-hall/', '/closures/', '/facilities/', '/traffic/', '/farm-report/', '/home-sales/'] },
+  { label: 'City', hrefs: ['/city-hall/', '/closures/', '/facilities/', '/traffic/', '/farm-report/', '/home-sales/', '/month/'] },
   { label: 'Community', hrefs: ['/new-in-town/', '/workplace-watch/', '/vail-resorts/', '/sports/', '/jobs/'] },
   // Phase 0 (2026-10-07): used to also list reviews/recipes/editorials/
   // columns -- see `nav`'s own comment just above for why those hrefs no
