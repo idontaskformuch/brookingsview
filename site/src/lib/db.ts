@@ -518,6 +518,20 @@ export async function getContentByType(sourceTypes: SourceType[], limit = 40): P
   `) as Story[];
 }
 
+/** Month in Review: earliest published_at for a given source_type -- a
+ *  proxy for "when our own scraper/pipeline started covering this town",
+ *  used as the coverage floor the same way getTrafficIncidentsFirstEverSeen()
+ *  etc. are. published_at (when WE published it), not occurs_at (which an
+ *  events scraper can backdate/forward-date arbitrarily on import), is the
+ *  real "source start" signal here. */
+export async function getEarliestPublishedDate(sourceTypes: SourceType[]): Promise<string | null> {
+  const rows = await sql`
+    SELECT MIN(published_at) AS first_published FROM stories
+     WHERE town_id = ${TOWN_ID} AND source_type = ANY(${sourceTypes}) AND superseded_by_slug IS NULL
+  `;
+  return (rows[0] as { first_published: string | null })?.first_published ?? null;
+}
+
 /** Stories eligible for the Google News sitemap (see NEEDS-HUMAN-REVIEW.md,
  *  "Google News sitemap") -- published within the last 48 hours, every real
  *  reported/edited content type EXCEPT the generic AI content track
@@ -1426,6 +1440,11 @@ export interface TrafficIncident {
   lon: number | null;
   ends_at: string | null;
   last_seen_at: string;
+  // Set once on insert, never touched by the ON CONFLICT DO UPDATE re-scrape
+  // (see migration 011 and scrapers/parsers/traffic_v1.py's update_columns) --
+  // the real "first seen" timestamp, unlike last_seen_at. Optional: only
+  // getTrafficIncidentsFirstSeenInMonth() below needs it.
+  created_at?: string;
 }
 
 /** Trafikincidenter som fortfarande verkar aktuella -- (a) ingen känd
@@ -1463,6 +1482,33 @@ export async function getTrafficLastChecked(): Promise<string | null> {
     SELECT MAX(last_seen_at) AS last_checked FROM traffic_incidents WHERE town_id = ${TOWN_ID}
   `;
   return (rows[0] as { last_checked: string | null })?.last_checked ?? null;
+}
+
+/** Month in Review: every incident whose `created_at` -- the real "first
+ *  seen" timestamp, see TrafficIncident's own comment -- falls in
+ *  [start, end). Counts each incident exactly once, in the month it was
+ *  first scraped, never re-counted for a later month it happened to still
+ *  be last_seen_at-bumped in. Unfiltered by zone -- callers re-classify
+ *  with classifyTrafficIncident(), same as traffic.astro, to apply the
+ *  identical boundary/corridor rules. */
+export async function getTrafficIncidentsFirstSeenInMonth(start: Date, end: Date): Promise<TrafficIncident[]> {
+  return (await sql`
+    SELECT incident_type, title, description, road, severity, lat, lon, ends_at, last_seen_at, created_at
+      FROM traffic_incidents
+     WHERE town_id = ${TOWN_ID}
+       AND created_at >= ${start.toISOString()} AND created_at < ${end.toISOString()}
+  `) as TrafficIncident[];
+}
+
+/** Earliest `created_at` ever recorded for this town -- the global floor
+ *  Month in Review uses to decide whether a given month has FULL coverage
+ *  (the scraper was already running for the whole month) or only PARTIAL
+ *  (this is the very month the scraper started) or NONE (before that). */
+export async function getTrafficIncidentsFirstEverSeen(): Promise<string | null> {
+  const rows = await sql`
+    SELECT MIN(created_at) AS first_seen FROM traffic_incidents WHERE town_id = ${TOWN_ID}
+  `;
+  return (rows[0] as { first_seen: string | null })?.first_seen ?? null;
 }
 
 /** FAS 2: rå CHP/Caltrans-text ("C74-R12 WB 91 FROM ADAMS TO VB 3/4 LNS
@@ -1520,6 +1566,11 @@ export interface Job {
   description: string | null;
   redirect_url: string | null;
   posted_at: string | null;
+  // Our own first-scrape timestamp -- append-only table (ON CONFLICT DO
+  // NOTHING, migration 012), so this is a true, immutable "first seen by
+  // us" date, unlike Adzuna's own posted_at (which can predate our own
+  // scraping by years). Optional: only the Month in Review query needs it.
+  created_at?: string;
 }
 
 // FAS 2: jobs ÄR append-only (se migration 012, ON CONFLICT DO NOTHING) --
@@ -1543,6 +1594,32 @@ export async function getRecentJobs(limit = 100): Promise<Job[]> {
      ORDER BY posted_at DESC NULLS LAST
      LIMIT ${limit}
   `) as Job[];
+}
+
+/** Month in Review: distinct postings grouped by OUR OWN first-scrape
+ *  month (created_at), never Adzuna's own posted_at -- see
+ *  .claude/phase8-research.md section 1's "Important nuance for Jobs".
+ *  Distinctness is already guaranteed by the table's own UNIQUE(town_id,
+ *  external_job_id) + append-only insert (no row is ever duplicated or
+ *  updated), so no extra DISTINCT is needed here. */
+export async function getJobsFirstScrapedInMonth(start: Date, end: Date): Promise<Job[]> {
+  return (await sql`
+    SELECT external_job_id, title, company, location, category,
+           salary_min, salary_max, salary_is_predicted, description,
+           redirect_url, posted_at, created_at
+      FROM jobs
+     WHERE town_id = ${TOWN_ID}
+       AND created_at >= ${start.toISOString()} AND created_at < ${end.toISOString()}
+  `) as Job[];
+}
+
+/** Earliest `created_at` ever recorded for this town -- same global-floor
+ *  role as getTrafficIncidentsFirstEverSeen() above. */
+export async function getJobsFirstEverScraped(): Promise<string | null> {
+  const rows = await sql`
+    SELECT MIN(created_at) AS first_scraped FROM jobs WHERE town_id = ${TOWN_ID}
+  `;
+  return (rows[0] as { first_scraped: string | null })?.first_scraped ?? null;
 }
 
 /** En rad ur sdsu_events -- se db/migrations/013_sdsu_events.sql,
@@ -1813,6 +1890,34 @@ export async function getRecentPropertySales(limit = 250): Promise<PropertySale[
      ORDER BY sale_date DESC
      LIMIT ${limit}
   `) as PropertySale[];
+}
+
+/** Month in Review: every recorded sale whose sale_date falls in
+ *  [start, end). Mirrors ai_pipeline/home_sales_digest.py's own
+ *  collect_month() query shape exactly (same bounds, same columns) so this
+ *  page's sales numbers can never disagree with the real monthly digest's
+ *  -- see lib/home-sales.ts's isOutlierSale() for the outlier exclusion
+ *  callers apply before computing a median. */
+export async function getPropertySalesInMonth(start: Date, end: Date): Promise<PropertySale[]> {
+  return (await sql`
+    SELECT address, sale_price, sale_date
+      FROM property_sales
+     WHERE town_id = ${TOWN_ID}
+       AND sale_date >= ${start.toISOString().slice(0, 10)}
+       AND sale_date < ${end.toISOString().slice(0, 10)}
+  `) as PropertySale[];
+}
+
+/** Most recent recorded sale date for this town -- same figure
+ *  home-sales.astro's own lede already discloses ("county records lag
+ *  behind actual sales"). Reused here so Month in Review can tell "this
+ *  month's data hasn't arrived yet" apart from "this month really had
+ *  zero sales". */
+export async function getMostRecentPropertySaleDate(): Promise<string | null> {
+  const rows = await sql`
+    SELECT MAX(sale_date) AS most_recent FROM property_sales WHERE town_id = ${TOWN_ID}
+  `;
+  return (rows[0] as { most_recent: string | null })?.most_recent ?? null;
 }
 
 /** One row per distinct parcel (its most recently-recorded address
@@ -2960,6 +3065,32 @@ export async function getAllProjectUpdatesForWeekly(): Promise<(ProjectUpdate & 
   `) as (ProjectUpdate & { project_slug: string; project_title: string })[];
 }
 
+/** Month in Review: every project update entered in [start, end), bucketed
+ *  by entry_date (not meeting_date, which is NULL for a traffic-sourced
+ *  update -- see migration 032's own comment on why entry_date is the
+ *  source_type-agnostic column every row actually has). */
+export async function getProjectUpdatesInMonth(start: Date, end: Date): Promise<(ProjectUpdate & { project_slug: string })[]> {
+  return (await sql`
+    SELECT u.source_type, u.entry_date, u.body, u.meeting_date, u.outcome,
+           p.slug AS project_slug
+      FROM project_updates u
+      JOIN projects p ON p.id = u.project_id
+     WHERE p.town_id = ${TOWN_ID}
+       AND u.entry_date >= ${start.toISOString()} AND u.entry_date < ${end.toISOString()}
+  `) as (ProjectUpdate & { project_slug: string })[];
+}
+
+/** Earliest entry_date ever recorded for this town's projects -- same
+ *  global-floor role as the traffic/jobs "first ever seen" queries above. */
+export async function getProjectUpdatesFirstEntryDate(): Promise<string | null> {
+  const rows = await sql`
+    SELECT MIN(u.entry_date) AS first_entry
+      FROM project_updates u JOIN projects p ON p.id = u.project_id
+     WHERE p.town_id = ${TOWN_ID}
+  `;
+  return (rows[0] as { first_entry: string | null })?.first_entry ?? null;
+}
+
 /** CityStatus's `next_meeting` module (lib/cityStatus.ts) -- the soonest
  *  upcoming meeting of any body, town-wide. `body` is the meeting type
  *  ("City Council", "Planning Commission", ...).
@@ -3137,6 +3268,37 @@ export async function getMeetingDecisions(meetingId: number): Promise<MeetingDec
      ORDER BY event_item_id ASC
   `) as MeetingDecision[];
   return rows;
+}
+
+/** Month in Review: every decision whose MEETING falls in [start, end) --
+ *  meeting_decisions has no date column of its own, only meeting_id, so
+ *  this joins meetings for meeting_date exactly like
+ *  getProjectForMeetingId() does. NOTE: meeting_decisions is populated
+ *  only by the Legistar pipeline (ai_pipeline/meeting_decisions_legistar.py)
+ *  -- for a town whose city council runs on a different system (Moreno
+ *  Valley's eSCRIBE), this naturally returns rows only for any Legistar-
+ *  sourced body that town also has (e.g. Riverside County), not city
+ *  council votes. City council outcomes for such a town live in
+ *  project_updates.outcome instead -- see getProjectUpdatesInMonth(). */
+export async function getMeetingDecisionsInMonth(start: Date, end: Date): Promise<Pick<MeetingDecision, 'outcome'>[]> {
+  return (await sql`
+    SELECT md.outcome
+      FROM meeting_decisions md
+      JOIN meetings m ON m.id = md.meeting_id
+     WHERE m.town_id = ${TOWN_ID}
+       AND m.meeting_date >= ${start.toISOString()} AND m.meeting_date < ${end.toISOString()}
+  `) as Pick<MeetingDecision, 'outcome'>[];
+}
+
+/** Earliest meeting_date with at least one decision recorded for this
+ *  town -- same global-floor role as the other modules' "first ever" queries. */
+export async function getMeetingDecisionsFirstEverDate(): Promise<string | null> {
+  const rows = await sql`
+    SELECT MIN(m.meeting_date) AS first_decision
+      FROM meeting_decisions md JOIN meetings m ON m.id = md.meeting_id
+     WHERE m.town_id = ${TOWN_ID}
+  `;
+  return (rows[0] as { first_decision: string | null })?.first_decision ?? null;
 }
 
 /** Phase 7, "Link decisions to projects": strict MatterId match only --
