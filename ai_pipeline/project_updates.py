@@ -65,6 +65,16 @@ produced it. Two layers fix this:
     fix ships) can't spend a month's budget in one run -- the remainder
     is deferred to later runs (their meetings aren't checkpointed either).
 
+Run-level cadence (owner decision 2026-10-14, revised): the scheduling
+workflow calls this script every 6h same as everything else in that job
+-- main() itself no-ops immediately (before touching meetings/projects/AI
+at all) unless at least MIN_HOURS_BETWEEN_RUNS have passed since the last
+SUCCESSFUL (non-dry-run) run for this town, per project_updates_runs.
+Deliberately real-elapsed-time based, not an hour-of-day check in the
+workflow: a scheduled GitHub Actions run that starts late or gets skipped
+outright still self-paces correctly the next time it does run, where an
+hour-of-day gate could silently miss a whole day.
+
 Usage:
     python -m ai_pipeline.project_updates --config configs/moreno_valley_ca.json
     python -m ai_pipeline.project_updates --config configs/moreno_valley_ca.json --dry-run
@@ -76,6 +86,7 @@ import hashlib
 import json
 import os
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -106,6 +117,34 @@ from ai_pipeline.project_threads import (
 # shaped items per day at most across one town) while still bounding
 # worst-case cost from a backlog to ~10 x ~$0.003/call =~ $0.03/run.
 MAX_AI_CALLS_PER_RUN = 10
+
+# Minimum real elapsed time between successful runs for a given town --
+# see the module docstring's "Run-level cadence" section. ~20h, not 24h,
+# so a run that drifts an hour or two late on a given day still fires
+# that same day instead of sliding forever.
+MIN_HOURS_BETWEEN_RUNS = 20
+
+
+def get_last_success(conn, town_id: str) -> datetime | None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT last_success_at FROM project_updates_runs WHERE town_id = %s",
+            (town_id,),
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
+
+
+def set_last_success(conn, town_id: str, when: datetime) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO project_updates_runs (town_id, last_success_at)
+            VALUES (%s, %s)
+            ON CONFLICT (town_id) DO UPDATE SET last_success_at = EXCLUDED.last_success_at
+            """,
+            (town_id, when),
+        )
 
 
 def _agenda_items_hash(items: list[dict]) -> str:
@@ -306,6 +345,17 @@ def main() -> int:
         raise RuntimeError("DATABASE_URL saknas i .env")
 
     with psycopg.connect(database_url) as conn:
+        if not args.dry_run:
+            last_success = get_last_success(conn, town_id)
+            if last_success is not None:
+                elapsed = datetime.now(timezone.utc) - last_success
+                if elapsed < timedelta(hours=MIN_HOURS_BETWEEN_RUNS):
+                    hours_left = (timedelta(hours=MIN_HOURS_BETWEEN_RUNS) - elapsed).total_seconds() / 3600
+                    print(f"  senaste lyckade körning för {town_id} var {elapsed} sedan -- "
+                          f"väntar ~{hours_left:.1f}h till, hoppar över denna körning helt "
+                          f"(ingen DB-skanning, inga AI-anrop)")
+                    return 0
+
         projects = load_projects(conn, town_id)
         meetings = find_meetings_with_agenda_items(conn, town_id)
         # A town with zero hand-curated projects still needs its meetings
@@ -315,6 +365,9 @@ def main() -> int:
         # with NEITHER has nothing at all to do here.
         if not projects and not meetings:
             print("  inga projekt och inga möten med agenda_items för den här orten")
+            if not args.dry_run:
+                set_last_success(conn, town_id, datetime.now(timezone.utc))
+                conn.commit()
             return 0
 
         new_updates = 0
@@ -413,6 +466,7 @@ def main() -> int:
             for project_id in touched_project_ids:
                 recompute_project_status(conn, project_id)
                 regenerate_rolling_summary(conn, project_id, cfg)
+            set_last_success(conn, town_id, datetime.now(timezone.utc))
             conn.commit()
             print(f"\n{new_updates} new project update{'s' if new_updates != 1 else ''}, "
                   f"{len(touched_project_ids)} project{'s' if len(touched_project_ids) != 1 else ''} touched, "

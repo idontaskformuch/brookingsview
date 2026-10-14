@@ -9,12 +9,13 @@ main() end to end with psycopg.connect and ai_match_candidate patched out.
 """
 import sys
 import types
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from ai_pipeline import project_updates
 from ai_pipeline.project_updates import (
-    _agenda_items_hash, already_considered, get_checkpoint, main, set_checkpoint,
+    MIN_HOURS_BETWEEN_RUNS, _agenda_items_hash, already_considered, get_checkpoint, main, set_checkpoint,
 )
 
 
@@ -135,6 +136,14 @@ class _FakeMainCursor:
             town_id, _source_type, meeting_id, _traffic_id, candidate_title = params[:5]
             self.store["queue"].add((town_id, meeting_id, candidate_title))
             self._result = None
+        elif norm.startswith("SELECT last_success_at FROM project_updates_runs"):
+            (town_id,) = params
+            v = self.store["last_success"].get(town_id)
+            self._result = (v,) if v is not None else None
+        elif norm.startswith("INSERT INTO project_updates_runs"):
+            town_id, when = params
+            self.store["last_success"][town_id] = when
+            self._result = None
         else:
             raise AssertionError(f"unexpected SQL: {norm!r}")
 
@@ -182,9 +191,16 @@ MEETING = {
 }
 
 
+def _backdate_last_success(store, town_id, hours_ago):
+    """Simulates real elapsed time passing between two scheduled runs --
+    cheaper and more precise than monkeypatching datetime.now()."""
+    store["last_success"][town_id] = datetime.now(timezone.utc) - timedelta(hours=hours_ago)
+
+
 @pytest.fixture
 def fake_run(monkeypatch, tmp_path):
-    store = {"meetings": {11344: dict(MEETING)}, "checkpoints": {}, "project_updates": set(), "queue": set()}
+    store = {"meetings": {11344: dict(MEETING)}, "checkpoints": {}, "project_updates": set(),
+             "queue": set(), "last_success": {}}
     conn = _FakeMainConn(store)
 
     monkeypatch.setattr(project_updates.psycopg, "connect", lambda *a, **kw: conn)
@@ -211,17 +227,35 @@ def test_first_run_makes_one_ai_call_and_queues_the_candidate(fake_run):
     assert ("broomfield_co", 11344, "Rezoning of 123 Main Street") in fake_run.store["queue"]
 
 
-def test_second_run_on_the_same_data_makes_zero_ai_calls(fake_run):
+# --- run-level gate: real elapsed time, not an hour-of-day check ----------
+
+def test_immediate_second_run_is_a_full_noop_via_the_run_gate(fake_run):
+    # A scheduled workflow firing again a few hours later (same day) must
+    # not even scan meetings -- the run-level gate short-circuits main()
+    # before any of the per-meeting/per-item logic runs at all.
     main()
     assert len(fake_run.ai_calls) == 1
-    main()  # a later scheduled run, nothing changed
-    assert len(fake_run.ai_calls) == 1, "second run must not re-call the AI for an already-decided item"
+    main()
+    assert len(fake_run.ai_calls) == 1, "a run inside MIN_HOURS_BETWEEN_RUNS must do nothing at all"
+
+
+def test_run_proceeds_again_once_min_hours_have_elapsed(fake_run):
+    main()
+    assert len(fake_run.ai_calls) == 1
+    _backdate_last_success(fake_run.store, "broomfield_co", hours_ago=MIN_HOURS_BETWEEN_RUNS + 1)
+    main()
+    # The run itself proceeds (not blocked by the gate)... but the ORIGINAL
+    # item is already queued from the first run, so already_considered()
+    # still stops a second AI call for it -- the run-level gate and the
+    # per-item dedup are two independent, both-necessary layers.
+    assert len(fake_run.ai_calls) == 1, "already_considered must still hold even once the run gate reopens"
 
 
 def test_second_run_skips_the_unchanged_meeting_entirely(fake_run):
     main()
     assert fake_run.store["checkpoints"].get(11344) is not None
     checkpoint_after_first_run = fake_run.store["checkpoints"][11344]
+    _backdate_last_success(fake_run.store, "broomfield_co", hours_ago=MIN_HOURS_BETWEEN_RUNS + 1)
     main()
     assert fake_run.store["checkpoints"][11344] == checkpoint_after_first_run
 
@@ -235,5 +269,6 @@ def test_changed_meeting_is_reprocessed_but_already_queued_item_still_skips_ai(f
     fake_run.store["meetings"][11344]["raw_data"]["agenda_items"].append(
         {"title": "Approve meeting minutes", "details": "", "item_number": "192"}
     )
+    _backdate_last_success(fake_run.store, "broomfield_co", hours_ago=MIN_HOURS_BETWEEN_RUNS + 1)
     main()
     assert len(fake_run.ai_calls) == 1, "the already-queued item must not be re-sent to the AI"
