@@ -24,3 +24,5 @@
    godkänd idé på nya rader (t.ex. en omkörning av en tidigare godkänd
    dedup/regenerering) om det inte redan är explicit beordrat i samma
    instruktion.
+8. När ägaren skriver "föreslå" eller "ändra inget förrän jag godkänt" skrivs
+   ingen kod för den punkten förrän ägaren sagt ja.
