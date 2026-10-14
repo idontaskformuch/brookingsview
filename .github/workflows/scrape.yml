@@ -37,17 +37,36 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Kör scrapers (skriver rådata till DB)
         run: python -m scrapers.runner --config configs/brookings_sd.json
+      - name: Formatera och publicera stories (Stage 3 -> stories)
+        run: python -m ai_pipeline.publish --config configs/brookings_sd.json
       # Phase 7 ("Decisions"): tröskar varje Legistar-agendapunkt med en
       # riktig Matter till meeting_decisions (se ai_pipeline/
       # meeting_decisions_legistar.py:s egen moduldocstring). Idempotent
       # (ON CONFLICT (event_item_id) DO UPDATE), så samma 6-timmarstakt som
-      # skrapningen ovan är rätt -- ingen separat cron. Inget try/except
-      # här eller i skriptet: ett fel ska fälla STEGET (synligt i Actions-
-      # körningen), inte sväljas och tyst lämna meeting_decisions bakom.
+      # skrapningen ovan är rätt -- ingen separat cron.
+      #
+      # continue-on-error: true -- ett fel (t.ex. ett Legistar-API-glapp)
+      # ska SYNAS i körningen (steget markeras failed i Actions-loggen,
+      # ALERT_WEBHOOK-räknaren ovan fångar det över tid) men aldrig stoppa
+      # publicering/build/deploy nedan -- ett decision-fel är inte skäl att
+      # hålla tillbaka resten av sajten.
       - name: "Phase 7 (Decisions): uppdatera meeting_decisions från Legistar"
+        continue-on-error: true
         run: python -m ai_pipeline.meeting_decisions_legistar --config configs/brookings_sd.json
-      - name: Formatera och publicera stories (Stage 3 -> stories)
-        run: python -m ai_pipeline.publish --config configs/brookings_sd.json
+      # Phase 6 (City Hall Projects): hämtar Legistar Matter History för
+      # VARJE REDAN REGISTRERAT projekts egna legistar_matter_ids (data/
+      # projects/brookings_sd.json) och trösklar in nya utfall -- se
+      # ai_pipeline/project_updates_legistar.py:s egen moduldocstring.
+      # Skapar ALDRIG ett projekt själv (ingen INSERT INTO projects här
+      # alls) och gör INGA AI-anrop (till skillnad från den generiska
+      # project_updates.py, som även AI-matchar/köar nya kandidater --
+      # den mekanismen finns inte för Legistar-städer alls, flaggat
+      # separat). Kostnad: en handfull Legistar-GET:ar per registrerat
+      # projekt, $0 Anthropic-spend. Samma continue-on-error-resonemang
+      # som Phase 7-steget ovan.
+      - name: "Phase 6 (Projects): tröskla mötesutfall mot projektregistret"
+        continue-on-error: true
+        run: python -m ai_pipeline.project_updates_legistar --config configs/brookings_sd.json
       # Closure Watch (Handoff: Information Hub Tier 1, Feature A): records
       # confirmed-closure history and, only when the town is in the Watch
       # state, tries a guardrailed AI paragraph. Piggybacks this existing
