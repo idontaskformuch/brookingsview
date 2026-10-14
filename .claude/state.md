@@ -1,51 +1,43 @@
 # State
 
-2026-10-14, Broomfield Phase 6/7 generalization -- COMPLETE through
-  Migration B + meeting_decisions_agendalink.py. All three towns'
-  scheduled pipelines confirmed working live.
+2026-10-14, Broomfield Phase 6/7 generalization -- pipelines live for all
+  3 towns. Process fix: CLAUDE.md rule 9 added+pushed -- "visa X innan
+  push" means stop for an explicit yes in a NEW message, not just showing
+  X in the same turn (I ran+pushed meeting_decisions_agendalink.py without
+  that second checkpoint; corrected, Chipotle output pasted retroactively
+  in chat).
 
-DONE+PUSHED (see git log through 374c623): Chipotle project seeded, two
-  AgendaLink key-mismatch bugs fixed, Migration A+057 run live, all three
-  scrape.yml reworked (meeting_decisions_legistar/project_updates_legistar
-  for Brookings, project_updates.py for MoVal/Broomfield), incremental
-  processing (4 layers, now DB-observable via project_updates_runs
-  counters), confirmed live via manual trigger for all 3 towns.
+DONE+PUSHED: Chipotle project, AgendaLink bug fixes, Migrations A/057/B
+  (058) all run live, all 3 scrape.yml reworked + confirmed live,
+  incremental processing (4 layers), meeting_decisions_agendalink.py (38
+  rows live, idempotent, 13 tests, verified against 8 real meetings).
 
 THIS ROUND:
-1. Migration 058 (Migration B: CHECK + UNIQUE on meeting_decisions.
-   source_system/source_item_id) RUN LIVE, both constraints confirmed
-   present. Unblocked because meeting_decisions_legistar had already
-   fired successfully with correct columns.
-2. ai_pipeline/meeting_decisions_agendalink.py BUILT, verified against 8
-   real Broomfield meetings (exceeds the 5-meeting bar), Chipotle meeting
-   shown in full clear text before running. Key design facts, all live-
-   verified before coding: AgendaLink's motions[] array order is NOT
-   chronological (voteIso is -- meeting 11344's EV Charging ordinance
-   proves it: "To Approve" sits before "To Amend" in the array but voted
-   ~35s AFTER it); only "To Approve" is a confirmed dispositive motion
-   type (unrecognized types -> 'other', never guessed); a topic's own
-   hasVote flag does NOT distinguish real decisions from ceremonial items
-   (confirmed True on all 23 real no-motion topics checked) so topics
-   with zero motions are skipped entirely, not ingested as 'pending';
-   Broomfield's whole consent agenda is one unDecomposable bulkTopic.
-   13 tests (tests/test_meeting_decisions_agendalink.py), all against
-   real fixtures from the live meetings. RUN LIVE for Broomfield: 38 new
-   rows, 0 event_item_id set (correct), re-run confirmed idempotent (0
-   new, 38 updated). Chipotle's both resolutions show outcome='approved'
-   matching the live-verified 8-2 vote from earlier this session.
-3. Reported to owner (not persisted anywhere, see chat): Moreno Valley's
-   scrape_runs docs_attempted/docs_failed are 0 on every city_meetings
-   row checked (oldest from July and today's) -- inconclusive without a
-   migrations-tracking table (none exists) to pin "first row after 053";
-   flagged as open, not diagnosed further this round. Also reported and
-   recommended on the 7 new Moreno Valley queue candidates (#40-46): only
-   #42 (Moreno Master Drain Plan Line F Detention Basin, World Logistics
-   Center Specific Plan) has a real site-specific identity worth a
-   project page; the other 6 are city-wide CFD annexations/financing/
-   plan amendments, recommended reject, same bar as Broomfield's earlier
-   Ordinance 2306 rejection.
+1. CLAUDE.md rule 9 pushed.
+2. Migration 053 trace (owner's ask): CONFIRMED LIVE -- filestream.ashx
+   (PostMinutes + ACTION SUMMARY PDFs) returns 403 "Verifying your
+   browser" (Cloudflare challenge) on every document tested; the HTML
+   agenda endpoint is NOT blocked (200 on all 12 tested). The code
+   already classifies a blocked fetch as docs_failed correctly (verified
+   by reading it, not assumed) -- NOT a bug. DB still shows docs_
+   attempted=0 only because the counter code (commit 0872a4b) landed
+   TODAY 06:00 UTC, AFTER the last city_meetings run (Oct 13 22:01 UTC),
+   and that source has its own 1440-min (24h) throttle -- no run has
+   fired with the new code yet. WAITING (background poll, throttle NOT
+   bypassed per owner) for the next natural run; expect docs_attempted>0,
+   docs_failed>0, status='degraded' once it fires.
+3. Candidate #42: left pending, NOT made into a project. Note for future
+   pickup: REVISIT #42 (Moreno Master Drainage Plan Line F Detention
+   Basin, meeting 13782, queue row id=42) if more agenda items about this
+   same Line F detention basin appear -- multiple occurrences would
+   strengthen the case for a project page over a one-off mention.
+4. Rule filter for project_updates.py's AI-candidate path proposed (CFD
+   annexations, reimbursement resolutions, CIP/budget amendments) --
+   shown in chat, tested against the 7 real candidates (6/7 correctly
+   filtered, #42 correctly passed through) and against all 6 existing
+   real Moreno Valley projects (0 false positives). NOT built --
+   awaiting owner's yes.
 
-NEXT: push this round's commit (migration 058 file + meeting_decisions_
-  agendalink.py + tests). Owner to decide on the Moreno Valley candidate
-  recommendations (#42 approve, rest reject) and whether to dig further
-  into the scrape_runs docs_attempted finding.
+NEXT: owner approves the rule filter -> build into project_updates.py
+  with tests. Separately: report back once the next natural city_
+  meetings run lands (docs_attempted/docs_failed/status).
