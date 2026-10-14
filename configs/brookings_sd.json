@@ -5,12 +5,12 @@
   "county": "Brookings County",
   "population": 25000,
   "timezone": "America/Chicago",
-  "domain": "brookings311.com",
+  "domain": "brookingsview.com",
   "coordinates": {
     "lat": 44.3114,
     "lon": -96.7984
   },
-  "_domain_note": "brookings311.com funkar, men '311' drar mot en civik/klagomåls-känsla. Om sajten ska kännas 'kul och härlig' finns lättare alternativ (t.ex. hellobrookings.com, brookingstoday.com, brookingsbuzz.com). Din kallelse – bara en flagga.",
+  "_domain_note": "Rättad 2026-10-14: stod 'brookings311.com' (aldrig det riktiga domännamnet -- site/src/lib/site-config.ts och scripts/check_deployed_content.py har alltid använt brookingsview.com som sanningskälla). Fältet är write-only till towns.domain-kolumnen (db/db.py ensure_town()) -- ingenting i koden läser tillbaka från den, se check_deployed_content.py:s egen kommentar om detta. Synkad till det verkliga domännamnet mest för att undvika framtida förvirring, ingen funktionell effekt.",
   "identity": {
     "terms": [
       "SDSU", "South Dakota State", "Highway 14", "De Smet", "Volga", "Elkton",
