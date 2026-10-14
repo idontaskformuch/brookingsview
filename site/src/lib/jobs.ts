@@ -6,6 +6,12 @@
  */
 import { formatPrice, type Job } from './db';
 
+/** The one name every page that cites this source should use -- matches
+ *  jobs.astro's own attribution link text exactly. Single shared constant
+ *  so Month in Review's own attribution can never drift from the listing
+ *  page's wording. */
+export const JOBS_SOURCE_NAME = 'Adzuna';
+
 /** Jobs Phase 5 (2026-10-09): Adzuna's own location.display_name is always
  *  "<place>, <county>" (e.g. "Lake Campbell, Brookings County") -- a job in
  *  a different same-county town is real, useful context, but wasn't

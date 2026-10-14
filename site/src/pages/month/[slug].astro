@@ -29,7 +29,7 @@ import {
 } from '../../lib/month-in-review';
 import { siteConfig } from '../../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
-import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
+import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
 
 export async function getStaticPaths() {
   const months = listEligibleMonths(siteConfig.townId, siteConfig.timezone);
@@ -63,37 +63,43 @@ const cleared = clearedModuleCount([decisions, projects, sales, events, traffic,
 const isNoindex = cleared < MIN_MODULES_FOR_INDEX;
 
 const digestSlug = `home-sales-digest-${year}-${String(month).padStart(2, '0')}`;
-const digestExists = digests.some((d) => d.slug === digestSlug);
+// generated_by === 'data_pending' is the same "county hasn't released this
+// month yet" placeholder s/[slug].astro and astro.config.mjs's own
+// noindexStoryUrls already treat specially -- its body literally says
+// "Sales data for ... has not yet been released," so linking to it here
+// as "what sold" would be misleading. Only link when a REAL digest exists,
+// which in practice tracks `sales.status === 'full'` anyway, but checking
+// generated_by directly is the one source of truth, not a re-derived proxy.
+const digestExists = digests.some((d) => d.slug === digestSlug && d.generated_by !== 'data_pending');
 
 interface ModuleRow { key: string; label: string; text: string | null; href: string }
+const trafficSourceName = siteConfig.trafficSource?.name ?? 'our traffic coverage';
 const rows = ([
-  { key: 'decisions', label: 'City hall', text: decisionsSentence(decisions, label), href: '/city-hall/' },
-  { key: 'projects', label: 'Active projects', text: projectsSentence(projects, label), href: '/city-hall/projects/' },
+  { key: 'decisions', label: 'City hall', text: decisionsSentence(decisions, label, siteConfig.cityName, siteConfig.siteName), href: '/city-hall/' },
+  { key: 'projects', label: 'Active projects', text: projectsSentence(projects, label, siteConfig.cityName, siteConfig.siteName), href: '/city-hall/projects/' },
   { key: 'sales', label: 'Home sales', text: salesSentence(sales, label, siteConfig.cityName), href: '/home-sales/' },
-  { key: 'events', label: 'Events', text: eventsSentence(events, label, siteConfig.cityName), href: '/events/' },
-  { key: 'traffic', label: 'Traffic', text: trafficSentence(traffic, label, siteConfig.cityName), href: '/traffic/' },
+  { key: 'events', label: 'Events', text: eventsSentence(events, label, siteConfig.cityName, siteConfig.siteName), href: '/events/' },
+  { key: 'traffic', label: 'Traffic', text: trafficSentence(traffic, label, siteConfig.cityName, trafficSourceName), href: '/traffic/' },
   { key: 'jobs', label: 'Jobs', text: jobsSentence(jobs, label, siteConfig.cityName), href: '/jobs/' },
 ] satisfies ModuleRow[]).filter((r): r is ModuleRow & { text: string } => r.text !== null);
 
 const title = `${siteConfig.cityName} in ${label} — ${siteConfig.siteName}`;
 const h1 = `${siteConfig.cityName} in ${label}`;
 const canonicalUrl = new URL(`/month/${slug}/`, Astro.site ?? siteConfig.siteUrl).href;
-const description = `A month-in-review recap of ${siteConfig.cityName}, ${siteConfig.stateAbbr} for ${label}: city hall decisions, development projects, home sales, events, traffic and jobs, from our own structured data.`;
+const description = `A month-in-review recap of ${siteConfig.cityName}, ${siteConfig.stateAbbr} for ${label}: city hall decisions, development projects, home sales, events, traffic and jobs, compiled from public data sources.`;
 
 const breadcrumbTrail: BreadcrumbEntry[] = [
   ...buildClusterBreadcrumbTrail('month', siteConfig, { label: 'Month in review', href: '/month/' }),
   { label, href: canonicalUrl },
 ];
-const hubBacklink = resolveHubBacklink('month', siteConfig);
 ---
 <BaseLayout title={title} ogSlug="section-city-hall" description={description} noindex={isNoindex}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <article class="month-review">
     <header class="lede">
       <h1>{h1}</h1>
-      <p>A numbers-only recap of {siteConfig.cityName}, {siteConfig.stateAbbr} for {label}, straight
-      from our own structured data -- no AI narration. {hubBacklink && <>See every month we've
-      covered in <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
+      <p>A numbers-only recap of {siteConfig.cityName}, {siteConfig.stateAbbr} for {label},
+      compiled from public data sources. <a href="/month/">See all months</a>.</p>
       <ShareButton title={title} url={canonicalUrl} />
     </header>
 

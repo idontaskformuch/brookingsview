@@ -34,12 +34,12 @@ import {
   getContentByType, getEarliestPublishedDate,
   getTrafficIncidentsFirstSeenInMonth, getTrafficIncidentsFirstEverSeen,
   getJobsFirstScrapedInMonth, getJobsFirstEverScraped,
-  getFacilities, formatPrice, calendarDateParts,
+  getFacilities, formatPrice, calendarDateParts, type Job,
 } from './db';
 import { classifyTrafficIncident } from './traffic';
-import { jobZone } from './jobs';
+import { jobZone, JOBS_SOURCE_NAME } from './jobs';
 import { classifyEventLocality, localDateParts, type FeedItem } from './events';
-import { isOutlierSale } from './home-sales';
+import { isOutlierSale, PROPERTY_SALES_SOURCE_NAME } from './home-sales';
 
 export type ModuleStatus = 'full' | 'partial' | 'none';
 
@@ -167,11 +167,15 @@ export async function buildDecisionsModule(start: Date, end: Date): Promise<Deci
   };
 }
 
-export function decisionsSentence(mod: DecisionsModule, label: string): string | null {
+// Owner feedback (2026-10-14): describe OUR coverage and the source, not
+// the city itself -- every sentence below names the source (our own
+// coverage on {siteName}, or an external named source) as the actor,
+// with the city/month as location/time context only.
+export function decisionsSentence(mod: DecisionsModule, label: string, cityName: string, siteName: string): string | null {
   if (mod.status === 'none') return null;
   const note = mod.status === 'partial' ? ` (data from ${formatDisclosureDate(mod.firstEverDate!)})` : '';
-  if (mod.total === 0) return `No council or commission decisions were finalized in ${label}${note}.`;
-  return `${mod.total} ${pluralize(mod.total, 'decision')} were finalized in ${label}${note}: `
+  if (mod.total === 0) return `No council or commission decisions in ${cityName} were covered on ${siteName} in ${label}${note}.`;
+  return `${mod.total} council and commission ${pluralize(mod.total, 'decision')} in ${cityName} were covered on ${siteName} in ${label}${note}: `
     + `${mod.approved} approved, ${mod.denied} denied, ${mod.continued} continued.`;
 }
 
@@ -198,11 +202,11 @@ export async function buildProjectsModule(start: Date, end: Date): Promise<Proje
   };
 }
 
-export function projectsSentence(mod: ProjectsModule, label: string): string | null {
+export function projectsSentence(mod: ProjectsModule, label: string, cityName: string, siteName: string): string | null {
   if (mod.status === 'none') return null;
   const note = mod.status === 'partial' ? ` (data from ${formatDisclosureDate(mod.firstEverDate!)})` : '';
-  if (mod.count === 0) return `No tracked development projects received an update in ${label}${note}.`;
-  return `${mod.count} tracked development ${pluralize(mod.count, 'project')} received an update in ${label}${note}.`;
+  if (mod.count === 0) return `No tracked development projects in ${cityName} were updated on ${siteName} in ${label}${note}.`;
+  return `${mod.count} tracked development ${pluralize(mod.count, 'project')} in ${cityName} were updated on ${siteName} in ${label}${note}.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -265,7 +269,7 @@ export async function buildSalesModule(start: Date, end: Date): Promise<SalesMod
 
 export function salesSentence(mod: SalesModule, label: string, cityName: string): string | null {
   if (mod.status === 'none') return null; // owner condition 1: omit rather than guess at partial-month coverage
-  let sentence = `${mod.count} ${pluralize(mod.count, 'home')} sold in ${cityName} in ${label}`;
+  let sentence = `${mod.count} home ${pluralize(mod.count, 'sale')} in ${cityName} were recorded in the ${PROPERTY_SALES_SOURCE_NAME} for ${label}`;
   if (mod.smallSample) {
     sentence += ', too few recorded sales to report a reliable median price';
   } else if (mod.medianPrice != null) {
@@ -325,12 +329,13 @@ export async function buildEventsModule(
   };
 }
 
-export function eventsSentence(mod: EventsModule, label: string, cityName: string): string | null {
+export function eventsSentence(mod: EventsModule, label: string, cityName: string, siteName: string): string | null {
   if (mod.status === 'none') return null;
   const note = mod.status === 'partial' ? ` (data from ${formatDisclosureDate(mod.firstEverDate!)})` : '';
-  if (mod.inTown === 0 && mod.nearby === 0) return `No community events were recorded in ${cityName} or nearby in ${label}${note}.`;
   const nearbyNote = mod.nearby > 0 ? ` (plus ${mod.nearby} more nearby)` : '';
-  return `${mod.inTown} ${pluralize(mod.inTown, 'event')} took place in ${cityName} in ${label}${nearbyNote}${note}.`;
+  if (mod.inTown === 0) return `No events in ${cityName} were listed on ${siteName} in ${label}${note}${nearbyNote}.`;
+  const verb = mod.inTown === 1 ? 'was' : 'were';
+  return `${mod.inTown} ${pluralize(mod.inTown, 'event')} in ${cityName} ${verb} listed on ${siteName} in ${label}${note}${nearbyNote}.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -373,24 +378,52 @@ export async function buildTrafficModule(
   };
 }
 
-export function trafficSentence(mod: TrafficModule, label: string, cityName: string): string | null {
+export function trafficSentence(mod: TrafficModule, label: string, cityName: string, sourceName: string): string | null {
   if (mod.status === 'none') return null;
   const note = mod.status === 'partial' ? ` (data from ${formatDisclosureDate(mod.firstEverDate!)})` : '';
-  if (mod.inTown === 0 && mod.approach === 0) return `No traffic incidents were recorded on ${cityName}'s roads in ${label}${note}.`;
   const approachNote = mod.approach > 0 ? ` (plus ${mod.approach} more on nearby approach roads)` : '';
+  if (mod.inTown === 0) return `No traffic incidents in ${cityName} were reported by ${sourceName} in ${label}${note}${approachNote}.`;
   const verb = mod.inTown === 1 ? 'was' : 'were';
-  return `${mod.inTown} traffic ${pluralize(mod.inTown, 'incident')} ${verb} recorded on ${cityName}'s roads in ${label}${approachNote}${note}.`;
+  return `${mod.inTown} traffic ${pluralize(mod.inTown, 'incident')} in ${cityName} ${verb} reported by ${sourceName} in ${label}${note}${approachNote}.`;
 }
 
 // ---------------------------------------------------------------------------
 // Jobs
 // ---------------------------------------------------------------------------
 
+// Owner feedback (2026-10-14): Adzuna listings are real but NOT deduped
+// upstream against the same role being re-posted by the same employer
+// (confirmed live: September 2026 in-town postings were 8.4% repeats by
+// title+company, nearby ones 26.7%) -- a raw row count can overstate how
+// many actually distinct openings existed. Chosen as "significant enough
+// to switch the headline number to a distinct count" rather than a lower
+// bar that would also flag the ~8% baseline repost rate seen both months
+// in-town (ordinary, not worth calling out) -- a judgment call, revisit if
+// real data suggests a different line.
+export const JOB_DUPLICATE_SHARE_THRESHOLD = 0.15;
+
+interface JobZoneCount {
+  raw: number;
+  distinct: number;
+  deduped: boolean; // true when `distinct`, not `raw`, is the number to display
+}
+
+function dedupeKey(title: string, company: string | null): string {
+  return `${title.trim().toLowerCase()}|${(company ?? '').trim().toLowerCase()}`;
+}
+
+function countJobZone(rows: Pick<Job, 'title' | 'company'>[]): JobZoneCount {
+  if (rows.length === 0) return { raw: 0, distinct: 0, deduped: false };
+  const distinct = new Set(rows.map((r) => dedupeKey(r.title, r.company))).size;
+  const duplicateShare = 1 - distinct / rows.length;
+  return { raw: rows.length, distinct, deduped: duplicateShare >= JOB_DUPLICATE_SHARE_THRESHOLD };
+}
+
 export interface JobsModule {
   status: ModuleStatus;
   firstEverDate: string | null;
-  inTown: number;
-  nearby: number;
+  inTown: JobZoneCount;
+  nearby: JobZoneCount;
 }
 
 export async function buildJobsModule(start: Date, end: Date, cityName: string): Promise<JobsModule> {
@@ -399,29 +432,48 @@ export async function buildJobsModule(start: Date, end: Date, cityName: string):
     getJobsFirstEverScraped(),
   ]);
   const coverage = coverageFromFloor(firstEverDate, start, end);
+  const empty = { raw: 0, distinct: 0, deduped: false };
   if (coverage.status === 'none') {
-    return { status: 'none', firstEverDate: null, inTown: 0, nearby: 0 };
+    return { status: 'none', firstEverDate: null, inTown: empty, nearby: empty };
   }
-  // Distinctness already guaranteed by jobs' own UNIQUE(town_id,
-  // external_job_id) + append-only insert (owner condition 4) -- counting
-  // by created_at (our own first-scrape date), never Adzuna's posted_at,
-  // is what makes this "after first scrape month", not a re-count of an
-  // old posting we only happened to scrape this month.
-  const zones = rows.map((r) => jobZone(r.location, cityName));
+  // Counting by created_at (our own first-scrape date), never Adzuna's
+  // posted_at, is what makes this "after first scrape month", not a
+  // re-count of an old posting we only happened to scrape this month
+  // (owner condition 4). Dedup (above) is a separate, later concern: the
+  // DB's own UNIQUE(town_id, external_job_id) only rules out the exact
+  // same Adzuna listing ID appearing twice, not the same role reposted
+  // under a new ID.
+  const inTownRows = rows.filter((r) => jobZone(r.location, cityName) === 'in_town');
+  const nearbyRows = rows.filter((r) => jobZone(r.location, cityName) === 'nearby');
   return {
     status: coverage.status,
     firstEverDate: coverage.firstEverDate,
-    inTown: zones.filter((z) => z === 'in_town').length,
-    nearby: zones.filter((z) => z === 'nearby').length,
+    inTown: countJobZone(inTownRows),
+    nearby: countJobZone(nearbyRows),
   };
+}
+
+function jobCountPhrase(zone: JobZoneCount, noun: string): string {
+  return zone.deduped ? `${zone.distinct} distinct ${noun}` : `${zone.raw} ${noun}`;
 }
 
 export function jobsSentence(mod: JobsModule, label: string, cityName: string): string | null {
   if (mod.status === 'none') return null;
   const note = mod.status === 'partial' ? ` (data from ${formatDisclosureDate(mod.firstEverDate!)})` : '';
-  if (mod.inTown === 0 && mod.nearby === 0) return `No new job postings appeared in or around ${cityName} in ${label}${note}.`;
-  const nearbyNote = mod.nearby > 0 ? ` (plus ${mod.nearby} nearby)` : '';
-  return `${mod.inTown} job ${pluralize(mod.inTown, 'posting')} appeared in ${cityName} in ${label}${nearbyNote}${note}.`;
+  if (mod.inTown.raw === 0 && mod.nearby.raw === 0) {
+    return `No new job postings in ${cityName} were listed via ${JOBS_SOURCE_NAME} in ${label}${note}.`;
+  }
+  const nearbyNote = mod.nearby.raw > 0 ? ` (plus ${jobCountPhrase(mod.nearby, 'nearby')})` : '';
+  let sentence = `${jobCountPhrase(mod.inTown, 'new job postings')} in ${cityName} were listed via ${JOBS_SOURCE_NAME} in ${label}${note}${nearbyNote}.`;
+  // Owner condition: report the number before AND after dedup, not just
+  // the one the headline now uses.
+  if (mod.inTown.deduped || mod.nearby.deduped) {
+    const rawParts: string[] = [];
+    if (mod.inTown.deduped) rawParts.push(`${mod.inTown.raw} in ${cityName}`);
+    if (mod.nearby.deduped) rawParts.push(`${mod.nearby.raw} nearby`);
+    sentence += ` (${rawParts.join(' and ')} listed in total before removing repeated reposts of the same title and employer.)`;
+  }
+  return sentence;
 }
 
 // ---------------------------------------------------------------------------

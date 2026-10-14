@@ -48,19 +48,25 @@ async function main() {
 
   const cleared = clearedModuleCount([decisions, projects, sales, events, traffic, jobs]);
   const noindex = cleared < MIN_MODULES_FOR_INDEX;
+  const trafficSourceName = siteConfig.trafficSource?.name ?? 'our traffic coverage';
 
   console.log('='.repeat(78));
-  console.log(`${siteConfig.cityName} in ${label}  (/month/${slugArg}/)`);
+  console.log(`title: ${siteConfig.cityName} in ${label} — ${siteConfig.siteName}`);
+  console.log(`h1:    ${siteConfig.cityName} in ${label}`);
+  console.log(`url:   /month/${slugArg}/`);
   console.log('='.repeat(78));
   console.log(`cleared modules: ${cleared} of 6  (gate: >=${MIN_MODULES_FOR_INDEX})  ->  ${noindex ? 'NOINDEX' : 'indexable'}`);
   console.log();
+  console.log(`lede: A numbers-only recap of ${siteConfig.cityName}, ${siteConfig.stateAbbr} for ${label}, `
+    + `compiled from public data sources. See all months.`);
+  console.log();
 
   const rows: [string, unknown, string | null][] = [
-    ['Decisions', decisions, decisionsSentence(decisions, label)],
-    ['Projects', projects, projectsSentence(projects, label)],
+    ['Decisions', decisions, decisionsSentence(decisions, label, siteConfig.cityName, siteConfig.siteName)],
+    ['Projects', projects, projectsSentence(projects, label, siteConfig.cityName, siteConfig.siteName)],
     ['Home sales', sales, salesSentence(sales, label, siteConfig.cityName)],
-    ['Events', events, eventsSentence(events, label, siteConfig.cityName)],
-    ['Traffic', traffic, trafficSentence(traffic, label, siteConfig.cityName)],
+    ['Events', events, eventsSentence(events, label, siteConfig.cityName, siteConfig.siteName)],
+    ['Traffic', traffic, trafficSentence(traffic, label, siteConfig.cityName, trafficSourceName)],
     ['Jobs', jobs, jobsSentence(jobs, label, siteConfig.cityName)],
   ];
 

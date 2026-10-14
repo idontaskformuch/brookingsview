@@ -10,6 +10,11 @@
  *  already makes for venue_registry.py/db.ts's normalize_venue(). */
 export const OUTLIER_PRICE_FLOOR = 150_000;
 
+/** The one name every page that cites this source should use -- matches
+ *  home-sales.astro's own "Source:" line exactly, so Month in Review's
+ *  attribution can never drift from the listing page's wording. */
+export const PROPERTY_SALES_SOURCE_NAME = "Riverside County Assessor's Property Sales Report";
+
 export function isOutlierSale(price: number | null): boolean {
   return price != null && price > 0 && price < OUTLIER_PRICE_FLOOR;
 }
