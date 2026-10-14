@@ -391,39 +391,25 @@ export function trafficSentence(mod: TrafficModule, label: string, cityName: str
 // Jobs
 // ---------------------------------------------------------------------------
 
-// Owner feedback (2026-10-14): Adzuna listings are real but NOT deduped
-// upstream against the same role being re-posted by the same employer
-// (confirmed live: September 2026 in-town postings were 8.4% repeats by
-// title+company, nearby ones 26.7%) -- a raw row count can overstate how
-// many actually distinct openings existed. Chosen as "significant enough
-// to switch the headline number to a distinct count" rather than a lower
-// bar that would also flag the ~8% baseline repost rate seen both months
-// in-town (ordinary, not worth calling out) -- a judgment call, revisit if
-// real data suggests a different line.
-export const JOB_DUPLICATE_SHARE_THRESHOLD = 0.15;
-
-interface JobZoneCount {
-  raw: number;
-  distinct: number;
-  deduped: boolean; // true when `distinct`, not `raw`, is the number to display
-}
-
+// Owner feedback (2026-10-14, second round): always count distinct
+// postings by title+company, every month, both zones -- no threshold, no
+// before/after parenthetical. Adzuna listings aren't deduped upstream
+// against the same role being re-posted by the same employer, so a raw
+// row count can overstate how many actually distinct openings existed;
+// simplest honest number is always the distinct one.
 function dedupeKey(title: string, company: string | null): string {
   return `${title.trim().toLowerCase()}|${(company ?? '').trim().toLowerCase()}`;
 }
 
-function countJobZone(rows: Pick<Job, 'title' | 'company'>[]): JobZoneCount {
-  if (rows.length === 0) return { raw: 0, distinct: 0, deduped: false };
-  const distinct = new Set(rows.map((r) => dedupeKey(r.title, r.company))).size;
-  const duplicateShare = 1 - distinct / rows.length;
-  return { raw: rows.length, distinct, deduped: duplicateShare >= JOB_DUPLICATE_SHARE_THRESHOLD };
+function countDistinctJobs(rows: Pick<Job, 'title' | 'company'>[]): number {
+  return new Set(rows.map((r) => dedupeKey(r.title, r.company))).size;
 }
 
 export interface JobsModule {
   status: ModuleStatus;
   firstEverDate: string | null;
-  inTown: JobZoneCount;
-  nearby: JobZoneCount;
+  inTown: number;
+  nearby: number;
 }
 
 export async function buildJobsModule(start: Date, end: Date, cityName: string): Promise<JobsModule> {
@@ -432,48 +418,35 @@ export async function buildJobsModule(start: Date, end: Date, cityName: string):
     getJobsFirstEverScraped(),
   ]);
   const coverage = coverageFromFloor(firstEverDate, start, end);
-  const empty = { raw: 0, distinct: 0, deduped: false };
   if (coverage.status === 'none') {
-    return { status: 'none', firstEverDate: null, inTown: empty, nearby: empty };
+    return { status: 'none', firstEverDate: null, inTown: 0, nearby: 0 };
   }
   // Counting by created_at (our own first-scrape date), never Adzuna's
   // posted_at, is what makes this "after first scrape month", not a
   // re-count of an old posting we only happened to scrape this month
-  // (owner condition 4). Dedup (above) is a separate, later concern: the
-  // DB's own UNIQUE(town_id, external_job_id) only rules out the exact
-  // same Adzuna listing ID appearing twice, not the same role reposted
-  // under a new ID.
+  // (owner condition 4). Distinctness by title+company (above) is a
+  // separate, later concern: the DB's own UNIQUE(town_id,
+  // external_job_id) only rules out the exact same Adzuna listing ID
+  // appearing twice, not the same role reposted under a new ID.
   const inTownRows = rows.filter((r) => jobZone(r.location, cityName) === 'in_town');
   const nearbyRows = rows.filter((r) => jobZone(r.location, cityName) === 'nearby');
   return {
     status: coverage.status,
     firstEverDate: coverage.firstEverDate,
-    inTown: countJobZone(inTownRows),
-    nearby: countJobZone(nearbyRows),
+    inTown: countDistinctJobs(inTownRows),
+    nearby: countDistinctJobs(nearbyRows),
   };
-}
-
-function jobCountPhrase(zone: JobZoneCount, noun: string): string {
-  return zone.deduped ? `${zone.distinct} distinct ${noun}` : `${zone.raw} ${noun}`;
 }
 
 export function jobsSentence(mod: JobsModule, label: string, cityName: string): string | null {
   if (mod.status === 'none') return null;
   const note = mod.status === 'partial' ? ` (data from ${formatDisclosureDate(mod.firstEverDate!)})` : '';
-  if (mod.inTown.raw === 0 && mod.nearby.raw === 0) {
+  if (mod.inTown === 0 && mod.nearby === 0) {
     return `No new job postings in ${cityName} were listed via ${JOBS_SOURCE_NAME} in ${label}${note}.`;
   }
-  const nearbyNote = mod.nearby.raw > 0 ? ` (plus ${jobCountPhrase(mod.nearby, 'nearby')})` : '';
-  let sentence = `${jobCountPhrase(mod.inTown, 'new job postings')} in ${cityName} were listed via ${JOBS_SOURCE_NAME} in ${label}${note}${nearbyNote}.`;
-  // Owner condition: report the number before AND after dedup, not just
-  // the one the headline now uses.
-  if (mod.inTown.deduped || mod.nearby.deduped) {
-    const rawParts: string[] = [];
-    if (mod.inTown.deduped) rawParts.push(`${mod.inTown.raw} in ${cityName}`);
-    if (mod.nearby.deduped) rawParts.push(`${mod.nearby.raw} nearby`);
-    sentence += ` (${rawParts.join(' and ')} listed in total before removing repeated reposts of the same title and employer.)`;
-  }
-  return sentence;
+  const nearbyNote = mod.nearby > 0 ? ` (plus ${mod.nearby} distinct nearby)` : '';
+  const verb = mod.inTown === 1 ? 'was' : 'were';
+  return `${mod.inTown} distinct new job ${pluralize(mod.inTown, 'posting')} in ${cityName} ${verb} listed via ${JOBS_SOURCE_NAME} in ${label}${note}${nearbyNote}.`;
 }
 
 // ---------------------------------------------------------------------------
