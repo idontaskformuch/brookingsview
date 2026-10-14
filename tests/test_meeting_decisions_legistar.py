@@ -1,7 +1,11 @@
 """Phase 7 ('Decisions') outcome/consent-vote logic -- see
 ai_pipeline/meeting_decisions_legistar.py's own module docstring for the
 real, live-verified cityofbrookings cases these encode."""
-from ai_pipeline.meeting_decisions_legistar import consent_votes, dedupe_shadow_items, outcome_from_item
+from pathlib import Path
+
+from ai_pipeline.meeting_decisions_legistar import (
+    consent_votes, dedupe_shadow_items, outcome_from_item, upsert_decision,
+)
 
 
 def test_fail_flag_wins_even_when_action_name_says_approved():
@@ -133,3 +137,80 @@ def test_non_consent_item_never_gets_a_block_id():
     is_consent, block_id, votes = consent_votes(item)
     assert is_consent is False
     assert block_id is None
+
+
+# --- upsert_decision: source_system/source_item_id always set -------------
+# See db/migrations/055_meeting_decisions_source_system.sql's own comment:
+# Migration B's later CHECK (source_system/source_item_id always set) would
+# reject every row this writer produces if it didn't set them -- silently
+# stopping Brookings' scheduled decision updates. "fake the storage, run
+# the real logic" -- same approach as tests/test_new_in_town_digest.py's
+# _FakeBizConn.
+
+class _FakeDecisionsCursor:
+    def __init__(self, store: dict):
+        self.store = store
+        self._inserted = None
+
+    def execute(self, sql, params):
+        norm = " ".join(sql.split())
+        assert norm.startswith("INSERT INTO meeting_decisions"), f"unexpected SQL: {norm!r}"
+        key = params["event_item_id"]
+        self._inserted = key not in self.store
+        self.store[key] = dict(params)
+
+    def fetchone(self):
+        return (self._inserted,)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class _FakeDecisionsConn:
+    def __init__(self):
+        self.store: dict = {}
+
+    def cursor(self):
+        return _FakeDecisionsCursor(self.store)
+
+
+def test_upsert_decision_sets_source_system_and_item_id_on_insert():
+    conn = _FakeDecisionsConn()
+    item = {"EventItemId": 100759, "EventItemTitle": "Second Reading",
+            "EventItemActionName": "approved", "EventItemPassedFlagName": "Pass"}
+    inserted = upsert_decision(conn, meeting_id=1, source_url=None, item=item)
+    assert inserted is True
+    row = conn.store[100759]
+    assert row["source_system"] == "legistar"
+    assert row["source_item_id"] == "100759"
+
+
+def test_upsert_decision_sets_source_system_and_item_id_on_reinsert_too():
+    # Same item ingested twice (a later scheduled run re-processing the same
+    # meeting) -- the fields must still be correct the second time, not
+    # just on first insert.
+    conn = _FakeDecisionsConn()
+    item = {"EventItemId": 7, "EventItemTitle": "First Reading"}
+    upsert_decision(conn, meeting_id=1, source_url=None, item=item)
+    second = dict(item, EventItemActionName="approved", EventItemPassedFlagName="Pass")
+    inserted_again = upsert_decision(conn, meeting_id=1, source_url=None, item=second)
+    assert inserted_again is False
+    row = conn.store[7]
+    assert row["source_system"] == "legistar"
+    assert row["source_item_id"] == "7"
+
+
+def test_on_conflict_clause_also_updates_source_fields():
+    # The fake cursor above can't exercise real Postgres ON CONFLICT
+    # semantics -- a source-text guard on the real SQL instead, so a future
+    # edit that adds a column to the INSERT list but forgets the matching
+    # SET clause (an easy copy-paste miss, same class of bug this whole
+    # migration split exists to avoid) gets caught.
+    source = Path(__file__).resolve().parent.parent / "ai_pipeline" / "meeting_decisions_legistar.py"
+    text = source.read_text(encoding="utf-8")
+    on_conflict = text[text.index("ON CONFLICT (event_item_id) DO UPDATE SET"):text.index("RETURNING")]
+    assert "source_system = EXCLUDED.source_system" in on_conflict
+    assert "source_item_id = EXCLUDED.source_item_id" in on_conflict

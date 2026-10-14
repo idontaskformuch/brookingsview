@@ -164,6 +164,12 @@ def upsert_decision(conn, meeting_id: int | None, source_url: str | None, item: 
     params = {
         "meeting_id": meeting_id,
         "event_item_id": item["EventItemId"],
+        # See db/migrations/055_meeting_decisions_source_system.sql --
+        # every writer must set these so Migration B's later CHECK
+        # (source_system/source_item_id always set) doesn't reject rows
+        # this script is still writing.
+        "source_system": "legistar",
+        "source_item_id": str(item["EventItemId"]),
         "agenda_number": item.get("EventItemAgendaNumber"),
         "title": item.get("EventItemTitle") or item.get("EventItemMatterName") or "",
         "matter_id": item.get("EventItemMatterId"),
@@ -183,15 +189,19 @@ def upsert_decision(conn, meeting_id: int | None, source_url: str | None, item: 
         cur.execute(
             """
             INSERT INTO meeting_decisions
-                (meeting_id, event_item_id, agenda_number, title, matter_id, matter_file,
-                 matter_type, action_name, action_text, passed_flag, matter_status, outcome,
-                 is_consent_item, consent_block_event_item_id, votes, source_url, updated_at)
+                (meeting_id, event_item_id, source_system, source_item_id, agenda_number, title,
+                 matter_id, matter_file, matter_type, action_name, action_text, passed_flag,
+                 matter_status, outcome, is_consent_item, consent_block_event_item_id, votes,
+                 source_url, updated_at)
             VALUES
-                (%(meeting_id)s, %(event_item_id)s, %(agenda_number)s, %(title)s, %(matter_id)s,
+                (%(meeting_id)s, %(event_item_id)s, %(source_system)s, %(source_item_id)s,
+                 %(agenda_number)s, %(title)s, %(matter_id)s,
                  %(matter_file)s, %(matter_type)s, %(action_name)s, %(action_text)s,
                  %(passed_flag)s, %(matter_status)s, %(outcome)s, %(is_consent_item)s,
                  %(consent_block_event_item_id)s, %(votes)s, %(source_url)s, now())
             ON CONFLICT (event_item_id) DO UPDATE SET
+                source_system = EXCLUDED.source_system,
+                source_item_id = EXCLUDED.source_item_id,
                 agenda_number = EXCLUDED.agenda_number,
                 title = EXCLUDED.title,
                 matter_id = EXCLUDED.matter_id,

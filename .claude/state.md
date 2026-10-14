@@ -20,11 +20,17 @@ DONE:
   verifying exact SQL. Verified after: 84/84 rows source_system='legistar'
   with source_item_id=event_item_id::text, event_item_id nullable, only
   pre-existing constraints present (no new CHECK/UNIQUE added).
-  STEP B (next, after A runs): update meeting_decisions_legistar.py (+
-  any other writer) to always set source_system='legistar'/
-  source_item_id=event_item_id::text, with test; push after approval;
-  confirm against next scheduled Brookings run that new/updated rows carry
-  both fields before moving to Step C.
+  STEP B: upsert_decision() in meeting_decisions_legistar.py now always
+  sets source_system='legistar'/source_item_id=str(event_item_id), both on
+  INSERT and in the ON CONFLICT...SET clause (the two backfill scripts
+  share this one function, no separate fix needed there). Tests added
+  (fake-conn functional test + a source-text guard on the SET clause).
+  NOT YET PUSHED -- awaiting approval. BLOCKED on "confirm against next
+  scheduled Brookings run": searched every .github/workflows/*.yml, found
+  NO workflow anywhere invokes ai_pipeline.meeting_decisions_legistar --
+  it has only ever been run manually/via the two one-off backfill scripts.
+  No scheduled run exists to confirm against; flagged to owner, awaiting
+  direction (run it manually now vs. something else).
   STEP C: Migration B (056, not yet written) adds the CHECK + UNIQUE, once
   B is confirmed live.
   STEP D: only then build meeting_decisions_agendalink.py.
