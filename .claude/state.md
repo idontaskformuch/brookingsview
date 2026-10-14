@@ -1,59 +1,30 @@
 # State
 
-2026-10-14, 4-point follow-up round 3.
+2026-10-14, Phase 8 ("Month in <Town>") research — no code built, per
+  owner's "research first, build nothing" instruction. Full findings:
+  .claude/phase8-research.md.
 
-Pt1 DONE: meeting-decisions.ts gained splitOnAgenda() (pure, uses
-  time.ts's calendarDayDiff) -- a 'pending' item becomes "No recorded
-  outcome" once stories.occurs_at (the real meeting date, NOT
-  published_at) is >60 days old. s/[slug].astro wired it in + new
-  render block; 3 new tests in meeting-decisions.test.ts. Display-only,
-  no new data, no DB writes. vitest 1012/1012, pytest 786/8skip,
-  astro check 0 errors. Live example once deployed:
-  brookingsview.com/s/meeting-2026-08-25-11005/ (event 3540, item
-  100490) is the exact row flagged in round 2 Pt3 as missing a
-  meeting_decisions row -- still absent, so nothing to show there yet;
-  a synthetic case is in the new tests instead.
-Pt2 DONE: configs/brookings_sd.json "domain" was "brookings311.com" --
-  never the real domain. Confirmed write-only: only db.py's
-  ensure_town() reads it (into towns.domain, itself unread anywhere).
-  Real source of truth is site/src/lib/site-config.ts's SITE_URLS
-  (brookingsview.com/morenovalleyview.com/broomfieldview.com, all
-  correct) -- canonical/sitemap/OG/RSS/worker all read THAT, confirmed
-  via ics.ts, robots.txt.ts, check_deployed_content.py's own comment
-  about this exact staleness (found 2026-08-28). Fixed to
-  brookingsview.com + note rewritten. broomfield_co/moreno_valley_ca's
-  domain fields already correct, no change needed.
-Pt3 DONE (read-only, nothing changed): (a) DEPLOY_CHECK_SECRET is a
-  GitHub Actions secret only (${{ secrets.DEPLOY_CHECK_SECRET }} in all
-  3 deploy.yml variants, os.environ.get() in check_deployed_content.py)
-  -- no hardcoded value anywhere in the tree or git history (checked via
-  git log -S). (b) One call does NOT send X-BV-Deploy-Check by design:
-  the new untracked .github/workflows/cf-bot-fight-probe.yml (Pt6 from
-  round 2) curls all 3 domains deliberately WITHOUT the header/secret,
-  to test whether Bot Fight Mode blocks the bare request shape. Every
-  other self-request (check_deployed_content.py's two requests.get()
-  calls) already sends it via _request_headers().
-Pt4 DONE: queried scrape_runs directly -- newest moreno_valley_ca/
-  city_meetings row is still id=12435, Oct13 22:01:53 GMT, status=ok,
-  docs_attempted=0, docs_failed=0 (pre-053-exercise defaults). Migration
-  053 IS applied (columns exist) and escribe_v1.py's code DOES populate
-  them now -- but runner.py's 24h refresh_minutes throttle means no new
-  city_meetings run has fired since Oct13 22:01 (confirmed current time:
-  Oct14 11:00 UTC). Next real run ~Oct14 22:01 UTC; 053's fix isn't
-  observable before then, exactly as round 2 predicted.
+DECISIONS/FINDINGS: (1) Only moreno_valley_ca clears the spec's "≥4 modules
+  have data" bar, from Aug 2026 (projects+events+traffic+jobs); brookings_sd
+  has 3 real modules (decisions/events/jobs, no sales/traffic), broomfield_co
+  has 2 (traffic/jobs only — its events rows are NWS alerts, not real
+  events, per earlier investigation) — so build order is MV first, matches
+  owner's "city with most data" instruction. (2) No age-based retention/
+  purge found on any of the 6 module tables (grep for DELETE FROM across
+  repo) — traffic_incidents is mutated in place (last_seen_at bumped) not
+  append-only, everything else is append-only forever. (3) Jobs must group
+  by OUR scrape month (created_at, starts Aug 2026 all 3 towns) never
+  Adzuna's own posted_at (goes back to 2024) — grouping by posted_at would
+  invent coverage we don't have. (4) Recommend LINK not replace against the
+  existing moreno-valley-only AI home_sales_digest/archive (Phase 8 is
+  explicitly no-AI v1; replacing would lose the only real editorial content
+  for that topic and 2 of 3 towns have zero property_sales rows anyway).
+  Proposed URLs/linking/noindex gate/template sentences all in the research
+  file, awaiting owner go-ahead before building.
 
-Committed (3 commits: b0e62c2 Pt1, f287026 Pt2, 0fee2a8 state) and
-  PUSHED to origin/main on owner's explicit go-ahead. Deploy confirmed
-  green on all 3 sites (commit 0fee2a8): deploy #90 3m12s, broomfield-
-  deploy #91 2m54s, moval-deploy #90 9m13s -- all "Success", which
-  means each one's final "Kontrollera att den deployade sajten..."
-  freshness-check step passed too (unconditional last step, no
-  continue-on-error -- a script failure there fails the job). Broomfield
-  in particular: the new Managed Challenge WAF rule (non-US/SE/CA
-  traffic) did NOT block check_deployed_content.py's own request, i.e.
-  the X-BV-Deploy-Check bypass rule is working as intended for GitHub
-  Actions' IPs. cf-bot-fight-probe.yml still untouched/uncommitted per
-  round 2 Pt6, owner's call.
+KNOWN BUGS: none new this session.
 
-Next: re-check MV scrape_runs after ~22:01 UTC today for the real 053
-  verification (Pt4, round 3 -- not yet observable as of that round).
+Next: owner reviews .claude/phase8-research.md's proposals (link vs
+  replace, URL structure, publishable-months rule); on approval, build
+  Moreno Valley only, Aug or Sep 2026, noindex until ≥4 modules (already
+  true for both).
