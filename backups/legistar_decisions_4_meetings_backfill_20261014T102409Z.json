@@ -1,0 +1,200 @@
+[
+  {
+    "event_id": 3540,
+    "meeting_id": 11005,
+    "old_raw_data": {
+      "EventId": 3540,
+      "EventDate": "2026-08-25T00:00:00",
+      "EventGuid": "AE6C1D37-9940-4D32-BE53-98BB331E31CB",
+      "EventTime": "6:00 PM",
+      "EventItems": [],
+      "EventMedia": null,
+      "EventBodyId": 138,
+      "agenda_text": "The City of Brookings is committed to providing a high quality of life for its citizens and fostering a diverse economic base through innovative thinking, strategic planning, and proactive, fiscally responsible municipal management.\n6:00 PM. REGULAR MEETING\n1.. Call to Order / Pledge of Allegiance.\n2.. Record of Council Attendance.\n3.. Action to approve the agenda.\n4.. Open Forum. Note: At this time, any member of the public may make a brief announcement or invitation, or request time on the agenda for an item not listed.  Items to be added to the agenda will be scheduled at the end of the meeting.  Individuals will state their name and city of residence for the record.  Public Comment is limited to a maximum of three minutes per person.  The comments and views expressed by the public are those of the speakers and do not necessarily reflect the views or positions of the City of Brookings or City Council.\n5.. Consent Agenda: Note: Action: Motion to Approve, Request Public Comment, Roll Call\r\n\r\nMatters appearing on the Consent Agenda are expected to be non-controversial and will be acted upon by the Council at one time, without discussion.  At the request of any one Council Member or the City Manager, an item may be removed from the Consent Agenda and placed on the regular agenda whenever additional discussion on an item is necessary.  Items removed from the Consent Agenda will be discussed at the beginning of the formal items.\n6.. Presentations/Reports:  NONE\n7.. Contracts/Change Orders:\n8.. Ordinance First Readings: Note: No vote is required on the first reading of an Ordinance.  The title of the Ordinance is read.  Public Comment and Council discussion is permitted.  The date for the second reading or public hearing is announced.\n9.. Public Hearings and Second Readings:\n10.. Other Business:\n12.. City Council member introduction of topics for future discussion. Note: Any Council Member may request discussion of any topic at a future meeting.  Items cannot be added for action at this meeting.  A motion and second is required which states the topic, requested outcome, and time frame.  A majority vote is required.\n13.. Adjourn.\nBrookings City Council:  Oepke G.Niemeyer, Mayor; Nick Wendell, Deputy Mayor\r\nCouncil Members Wayne Avery, Holly Tilton Byrne, Bonny Specker, Brianna Doran, Lisa Hager\nBrookings City Council Staff:\r\nPaul M. Briseno, City Manager                     Bonnie Foster, City Clerk       \r\nJ. Vincent Jones, Attorney-at-Law, Woods, Fuller, Shultz and Smith P.C.\nPublic Comment is limited to a maximum of three minutes per person. Individuals will give their name and city of residence for the record.  Public Comment may be submitted prior to the meeting by the following means: 1) Email comments to the City Clerk (cityclerk@cityofbrookings-sd.gov), or 2) participate remotely.  Comments provided will become part of the official record and subject to review by all parties and the public.  The comments and views expressed by the public are those of the speakers and do not necessarily reflect the views or positions of the City of Brookings or City Council.\nMeetings are broadcast live and recorded.  Go to www.cityofbrookings-sd.gov for more information.  Government Channel Rebroadcast Schedule:  Wednesday 1:00 pm / Thursday 7:00 pm / Friday 9:00 pm / Saturday 1:00 pm  (Swiftel Channel 20 / MediaCom Channel 9)\nUpon request, accommodations for meetings will be provided for persons with disabilities.  Please contact the City ADA Coordinator at (605) 692-6281 at least three (3) business days in advance of the meeting.\n9.C.. Public Hearing and Action on a request for an On-Off Sale Malt License, from Kwik Trip, Inc., dba Kwik Star #1910. [Action Item] Note: Action:  Motion, Open & Close Public Hearing, Roll Call\n9.A.. Public Hearing and Action on a request to transfer an On-Off Sale Malt License, with Video Lottery Authorization, for Casino 2000, Suite B. [Action Item] Note: Action:  Motion, Open & Close Public Hearing, Roll Call\n9.B.. Public Hearing and Action on a request to transfer the location for two On-Off Sale Malt Licenses, with Video Lottery Authorizations, for Casino 2000, Suites A and B (Licenses:  RB-2492 and RB-28012). [Action Item] Note: Action:  Motion, Open & Close Public Hearing, Roll Call\n5.B.. Action on Brookings County Commission recommended appointment to the Brookings Human Rights Commission:  Jeff Struwe. [Action Item]\n10.A.. Action on a Preliminary Plat of Lots 3-5 in Block 2, Lots 1-5 in Block 4 and Block 5 of Legacy Addition. [Action Item] Note: Action:  Motion, Request Public Comment, Roll Call\n8.A.. Introduction and First Reading on Ordinance 26-025, an Ordinance pertaining to Lost, Unclaimed, or Abandoned Property in the City of Brookings, South Dakota.  Second Reading and Action:  September 8, 2026. [Ordinance]\n8.B.. Introduction and First Reading on Ordinance 26-027, an Ordinance for a Conditional Use Permit to Establish an Office in a Residence R-2 Two-Family District (1103 3rd St.).  Public Hearing and Action:  September 8, 2026. [Ordinance]\n9.D.. Public Hearing and Action on Resolution 26-054, a Resolution authorizing the City Manager to enter into a 10-year On-Sale Wine Operating Agreement with Kwik Trip, Inc., dba Kwik Star #1910. [Resolution] Note: Action:  Motion, Open & Close Public Hearing, Roll Call\n5.C.. Action on Resolution 26-055, a Resolution Awarding Bids on the 2026-2027 Contractor Snow Removal Equipment Contracts. [Resolution]\n7.A.. Action on Resolution 26-056, a Resolution Awarding Bid on 2026-01SSI 2026 Drainage Improvements Project. (Res 26-056 - 2026 Drainage Improvements Project) [Resolution] Note: Action:  Motion, Request Public Comment, Roll Call\n5.A.. Action to approve City Council meeting minutes. [Action Item]\n11.. City of Brookings Progress Report. [Informational Report]",
+      "EventComment": null,
+      "agenda_items": [
+        {
+          "EventItemTitle": "The City of Brookings is committed to providing a high quality of life for its citizens and fostering a diverse economic base through innovative thinking, strategic planning, and proactive, fiscally responsible municipal management."
+        },
+        {
+          "EventItemTitle": "REGULAR MEETING",
+          "EventItemAgendaNumber": "6:00 PM"
+        },
+        {
+          "EventItemTitle": "Call to Order / Pledge of Allegiance.",
+          "EventItemAgendaNumber": "1."
+        },
+        {
+          "EventItemTitle": "Record of Council Attendance.",
+          "EventItemAgendaNumber": "2."
+        },
+        {
+          "EventItemTitle": "Action to approve the agenda.",
+          "EventItemAgendaNumber": "3."
+        },
+        {
+          "EventItemTitle": "Open Forum.",
+          "EventItemAgendaNote": "At this time, any member of the public may make a brief announcement or invitation, or request time on the agenda for an item not listed.  Items to be added to the agenda will be scheduled at the end of the meeting.  Individuals will state their name and city of residence for the record.  Public Comment is limited to a maximum of three minutes per person.  The comments and views expressed by the public are those of the speakers and do not necessarily reflect the views or positions of the City of Brookings or City Council.",
+          "EventItemAgendaNumber": "4."
+        },
+        {
+          "EventItemTitle": "Consent Agenda:",
+          "EventItemAgendaNote": "Action: Motion to Approve, Request Public Comment, Roll Call\r\n\r\nMatters appearing on the Consent Agenda are expected to be non-controversial and will be acted upon by the Council at one time, without discussion.  At the request of any one Council Member or the City Manager, an item may be removed from the Consent Agenda and placed on the regular agenda whenever additional discussion on an item is necessary.  Items removed from the Consent Agenda will be discussed at the beginning of the formal items.",
+          "EventItemAgendaNumber": "5."
+        },
+        {
+          "EventItemTitle": "Presentations/Reports:  NONE",
+          "EventItemAgendaNumber": "6."
+        },
+        {
+          "EventItemTitle": "Contracts/Change Orders:",
+          "EventItemAgendaNumber": "7."
+        },
+        {
+          "EventItemTitle": "Ordinance First Readings:",
+          "EventItemAgendaNote": "No vote is required on the first reading of an Ordinance.  The title of the Ordinance is read.  Public Comment and Council discussion is permitted.  The date for the second reading or public hearing is announced.",
+          "EventItemAgendaNumber": "8."
+        },
+        {
+          "EventItemTitle": "Public Hearings and Second Readings:",
+          "EventItemAgendaNumber": "9."
+        },
+        {
+          "EventItemTitle": "Other Business:",
+          "EventItemAgendaNumber": "10."
+        },
+        {
+          "EventItemTitle": "City Council member introduction of topics for future discussion.",
+          "EventItemAgendaNote": "Any Council Member may request discussion of any topic at a future meeting.  Items cannot be added for action at this meeting.  A motion and second is required which states the topic, requested outcome, and time frame.  A majority vote is required.",
+          "EventItemAgendaNumber": "12."
+        },
+        {
+          "EventItemTitle": "Adjourn.",
+          "EventItemAgendaNumber": "13."
+        },
+        {
+          "EventItemTitle": "Brookings City Council:  Oepke G.Niemeyer, Mayor; Nick Wendell, Deputy Mayor\r\nCouncil Members Wayne Avery, Holly Tilton Byrne, Bonny Specker, Brianna Doran, Lisa Hager\r\n"
+        },
+        {
+          "EventItemTitle": "Brookings City Council Staff:\r\nPaul M. Briseno, City Manager                     Bonnie Foster, City Clerk       \r\nJ. Vincent Jones, Attorney-at-Law, Woods, Fuller, Shultz and Smith P.C.       \r\n"
+        },
+        {
+          "EventItemTitle": "Public Comment is limited to a maximum of three minutes per person. Individuals will give their name and city of residence for the record.  Public Comment may be submitted prior to the meeting by the following means: 1) Email comments to the City Clerk (cityclerk@cityofbrookings-sd.gov), or 2) participate remotely.  Comments provided will become part of the official record and subject to review by all parties and the public.  The comments and views expressed by the public are those of the speakers and do not necessarily reflect the views or positions of the City of Brookings or City Council."
+        },
+        {
+          "EventItemTitle": "Meetings are broadcast live and recorded.  Go to www.cityofbrookings-sd.gov for more information.  Government Channel Rebroadcast Schedule:  Wednesday 1:00 pm / Thursday 7:00 pm / Friday 9:00 pm / Saturday 1:00 pm  (Swiftel Channel 20 / MediaCom Channel 9)"
+        },
+        {
+          "EventItemTitle": "Upon request, accommodations for meetings will be provided for persons with disabilities.  Please contact the City ADA Coordinator at (605) 692-6281 at least three (3) business days in advance of the meeting."
+        },
+        {
+          "EventItemTitle": "Public Hearing and Action on a request for an On-Off Sale Malt License, from Kwik Trip, Inc., dba Kwik Star #1910.",
+          "EventItemAgendaNote": "Action:  Motion, Open & Close Public Hearing, Roll Call",
+          "EventItemMatterFile": "ID 26-0324",
+          "EventItemMatterType": "Action Item",
+          "EventItemAgendaNumber": "9.C.",
+          "EventItemMatterStatus": "Public Hearing"
+        },
+        {
+          "EventItemTitle": "Public Hearing and Action on a request to transfer an On-Off Sale Malt License, with Video Lottery Authorization, for Casino 2000, Suite B.",
+          "EventItemAgendaNote": "Action:  Motion, Open & Close Public Hearing, Roll Call",
+          "EventItemMatterFile": "ID 26-0325",
+          "EventItemMatterType": "Action Item",
+          "EventItemAgendaNumber": "9.A.",
+          "EventItemMatterStatus": "Public Hearing"
+        },
+        {
+          "EventItemTitle": "Public Hearing and Action on a request to transfer the location for two On-Off Sale Malt Licenses, with Video Lottery Authorizations, for Casino 2000, Suites A and B (Licenses:  RB-2492 and RB-28012).",
+          "EventItemAgendaNote": "Action:  Motion, Open & Close Public Hearing, Roll Call",
+          "EventItemMatterFile": "ID 26-0326",
+          "EventItemMatterType": "Action Item",
+          "EventItemAgendaNumber": "9.B.",
+          "EventItemMatterStatus": "Public Hearing"
+        },
+        {
+          "EventItemTitle": "Action on Brookings County Commission recommended appointment to the Brookings Human Rights Commission:  Jeff Struwe.",
+          "EventItemMatterFile": "ID 26-0329",
+          "EventItemMatterType": "Action Item",
+          "EventItemAgendaNumber": "5.B.",
+          "EventItemMatterStatus": "Consent Agenda"
+        },
+        {
+          "EventItemTitle": "Action on a Preliminary Plat of Lots 3-5 in Block 2, Lots 1-5 in Block 4 and Block 5 of Legacy Addition.",
+          "EventItemAgendaNote": "Action:  Motion, Request Public Comment, Roll Call",
+          "EventItemMatterFile": "ID 26-0330",
+          "EventItemMatterType": "Action Item",
+          "EventItemAgendaNumber": "10.A.",
+          "EventItemMatterStatus": "Other Business"
+        },
+        {
+          "EventItemTitle": "Introduction and First Reading on Ordinance 26-025, an Ordinance pertaining to Lost, Unclaimed, or Abandoned Property in the City of Brookings, South Dakota.  Second Reading and Action:  September 8, 2026.",
+          "EventItemMatterFile": "ORD 26-025",
+          "EventItemMatterType": "Ordinance",
+          "EventItemAgendaNumber": "8.A.",
+          "EventItemMatterStatus": "First Reading"
+        },
+        {
+          "EventItemTitle": "Introduction and First Reading on Ordinance 26-027, an Ordinance for a Conditional Use Permit to Establish an Office in a Residence R-2 Two-Family District (1103 3rd St.).  Public Hearing and Action:  September 8, 2026.",
+          "EventItemMatterFile": "ORD 26-027",
+          "EventItemMatterType": "Ordinance",
+          "EventItemAgendaNumber": "8.B.",
+          "EventItemMatterStatus": "First Reading"
+        },
+        {
+          "EventItemTitle": "Public Hearing and Action on Resolution 26-054, a Resolution authorizing the City Manager to enter into a 10-year On-Sale Wine Operating Agreement with Kwik Trip, Inc., dba Kwik Star #1910.",
+          "EventItemAgendaNote": "Action:  Motion, Open & Close Public Hearing, Roll Call",
+          "EventItemMatterFile": "RES 26-054",
+          "EventItemMatterType": "Resolution",
+          "EventItemAgendaNumber": "9.D.",
+          "EventItemMatterStatus": "Public Hearing"
+        },
+        {
+          "EventItemTitle": "Action on Resolution 26-055, a Resolution Awarding Bids on the 2026-2027 Contractor Snow Removal Equipment Contracts.",
+          "EventItemMatterFile": "RES 26-055",
+          "EventItemMatterName": "Action on Resolution 26-055, a Resolution Awarding Bids on the 2026-2027 Contractor Snow Removal Equipment Contracts.",
+          "EventItemMatterType": "Resolution",
+          "EventItemAgendaNumber": "5.C.",
+          "EventItemMatterStatus": "Consent Agenda"
+        },
+        {
+          "EventItemTitle": "Action on Resolution 26-056, a Resolution Awarding Bid on 2026-01SSI 2026 Drainage Improvements Project.",
+          "EventItemAgendaNote": "Action:  Motion, Request Public Comment, Roll Call",
+          "EventItemMatterFile": "RES 26-056",
+          "EventItemMatterName": "Res 26-056 - 2026 Drainage Improvements Project",
+          "EventItemMatterType": "Resolution",
+          "EventItemAgendaNumber": "7.A.",
+          "EventItemMatterStatus": "Contracts"
+        },
+        {
+          "EventItemTitle": "Action to approve City Council meeting minutes.",
+          "EventItemMatterFile": "ID 26-0331",
+          "EventItemMatterType": "Action Item",
+          "EventItemAgendaNumber": "5.A.",
+          "EventItemMatterStatus": "Consent Agenda"
+        },
+        {
+          "EventItemTitle": "City of Brookings Progress Report.",
+          "EventItemMatterFile": "ID 26-0332",
+          "EventItemMatterType": "Informational Report",
+          "EventItemAgendaNumber": "11.",
+          "EventItemMatterStatus": "Other Business"
+        }
+      ],
+      "EventBodyName": "City Council",
+      "EventLocation": "Council Chambers",
+      "EventInSiteURL": "https://cityofbrookings.legistar.com/MeetingDetail.aspx?LEGID=3540&GID=507&G=809A1795-9731-4E3D-B6DB-054D856F6EBC",
+      "EventVideoPath": null,
+      "EventAgendaFile": "https://cityofbrookings.legistar1.com/cityofbrookings/meetings/2026/8/3540_A_City_Council_26-08-25_Meeting_Agenda.pdf",
+      "EventRowVersion": "AAAAAACyz7Q=",
+      "EventMinutesFile": null,
+      "EventVideoStatus": "Public",
+      "EventAgendaStatusId": 10,
+      "EventLastModifiedUtc": "2026-08-20T16:16:15.73",
+      "EventMinutesStatusId": 9,
+      "EventAgendaStatusName": "Final",
+      "EventMinutesStatusName": "Draft",
+      "EventAgendaLastPublishedUTC": "2026-08-20T16:16:15.653",
+      "EventMinutesLastPublishedUTC": null
+    }
+  }
+]
