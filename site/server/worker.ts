@@ -144,9 +144,11 @@ export default {
     // merge just above (old row kept, marked superseded_by_slug, no longer
     // rendered in any listing -- see lib/db.ts's own superseded_by_slug
     // filters), reusing resolveLegacyMeetingRedirect() itself for the same
-    // reason that one does: a plain slug->slug lookup. Hand-maintained like
-    // facility-redirects.json below (a one-off dedup decision), not bulk
-    // script output like the two files above it.
+    // reason that one does: a plain slug->slug lookup. Was hand-maintained
+    // for its first entry only; now generated the same way as the two files
+    // above it, by scripts/generate_duplicate_story_redirects.py reading
+    // stories.superseded_by_slug directly (source_type='meeting' only --
+    // event dupes stay in event-series-redirects.json).
     const duplicateStoryRedirectPath = resolveLegacyMeetingRedirect(
       url.pathname, duplicateStoryRedirects as Record<string, string>,
     );
