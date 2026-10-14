@@ -4,10 +4,11 @@ Current spec: .claude/spec-phases-3-9.md Phase 6 (Projects & Development),
 scoped to Moreno Valley only. 5 rounds of owner decisions so far
 (2026-10-13 x2, 2026-10-14 x3).
 
-## Pushed+live (origin at 8253ff6, as of round 5 start)
-Rounds 1-4 (15 commits) pushed and deploying. Round 5's commit (44d56b6,
-story dedup + listing filters) is local, NOT yet pushed -- verifying the
-live 301 is the reason to push it, see below.
+## Pushed+live (origin at 525f762)
+Rounds 1-5 (17 commits) pushed and deployed to all 3 towns. Live-verified
+2026-10-14: `curl -I https://morenovalleyview.com/s/meeting-2026-09-24-12940/`
+-> 301 -> `.../s/meeting-2026-09-24-13790/` -> 200. /city-hall/archive/
+live no longer shows the old duplicate.
 
 ## Rounds 1-4 summary (15 commits: 0965e06..8253ff6)
 Fact guardrail, noindex rule, vote/outcome display, Aquabella +3 more
@@ -47,8 +48,9 @@ detail in those 15 commits' own messages + earlier chat, not repeated.
      Moreno Valley 139, Broomfield 78): 12940 gone from /city-hall/archive
      and rss.xml, 13790 appears once, 12940's own /s/ page still builds
      (needed for the redirect). Full vitest 998/998.
-   - NOT YET VERIFIED: the live 301 itself (needs push + deploy -- next
-     step, pending owner go-ahead to push this commit).
+   - Pushed (525f762), deployed, LIVE-VERIFIED: real curl against
+     morenovalleyview.com confirms the 301 and the archive fix (see
+     "Pushed+live" above).
    - MAJOR NEW FINDING while investigating (not yet acted on): **21
      duplicate (town, body, meeting_date) groups exist**, not just the
      one pair already fixed -- 11 in Moreno Valley (eSCRIBE, same
@@ -91,7 +93,6 @@ requests. Never fires on push/schedule. NOT created by this session.
   retroactive cleanup has been done for any of the 20 other pairs.
 
 ## Next
-Owner decides: (a) push 44d56b6 so the live 301 can be verified (the one
-remaining unverified piece of round 5, point 2), and (b) whether/how to
-address the 20 newly-found duplicate pairs (11 MV, 10 Brookings) --
-separate decision, not yet asked for.
+Owner decides whether/how to address the 20 newly-found duplicate meeting
+pairs (11 MV, 10 Brookings) -- separate decision, not yet asked for.
+Everything explicitly requested through round 5 is DONE and live.
