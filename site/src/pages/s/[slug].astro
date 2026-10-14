@@ -10,9 +10,12 @@ import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
 import {
   getAllStories, getRelatedStories, formatOccursAt, formatDate, CATEGORY_LABELS, CATEGORY_HREFS,
   getWorkerPulseComments, getFacilities, buildVenueIndex, resolveVenue, getProjectForMeetingId,
-  isSandboxUrl, getUpcomingStories, getUpcomingArtsEvents,
+  isSandboxUrl, getUpcomingStories, getUpcomingArtsEvents, getMeetingDecisions, getProjectForMatterId,
 } from '../../lib/db';
 import type { Story, Facility } from '../../lib/db';
+import {
+  partitionDecisions, voteTallyText, motionLabel, consentNote, outcomeLabel,
+} from '../../lib/meeting-decisions';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
 import {
   eventPriceAgeLine, buildEventFeed, eventsAtVenue, selectWeekendNearby, artsEventAsStory,
@@ -97,6 +100,26 @@ const meetingIdMatch = story.source_type === 'meeting' ? story.slug.match(/-(\d+
 const threadProject = meetingIdMatch
   ? await getProjectForMeetingId(Number(meetingIdMatch[1]))
   : null;
+// Phase 7, "Decisions" (2026-10-14, Brookings/Legistar first): per-ärende
+// "On the agenda" (no official result yet) / "Decided" (outcome + votes)
+// split -- see lib/meeting-decisions.ts and ai_pipeline/
+// meeting_decisions_legistar.py's module docstring for how outcome/votes/
+// consent-agenda grouping are derived and verified. Linked to a project via
+// MatterId (strict match, never fuzzy) INDEPENDENT of threadProject above --
+// Legistar-sourced project_updates rows always have meeting_id = NULL (see
+// ai_pipeline/project_updates_legistar.py's own upsert comment), so
+// threadProject never actually resolves for a Brookings meeting; matter_id
+// is the real, working link for this source.
+const meetingDecisionRows = isMeeting && meetingIdMatch
+  ? await getMeetingDecisions(Number(meetingIdMatch[1]))
+  : [];
+const { onAgenda: decisionsOnAgenda, decided: decisionsDecided } = partitionDecisions(meetingDecisionRows);
+const decisionsDecidedWithProjects = await Promise.all(
+  decisionsDecided.map(async (decision) => ({
+    decision,
+    project: decision.matter_id ? await getProjectForMatterId(decision.matter_id) : null,
+  })),
+);
 // Genererat innehåll (krönikor m.fl.) har alltid byline satt -- scraped nyheter
 // har byline = NULL. Byline.astro ersätter story__kind-raden när den finns, i
 // stället för att visa båda (kind skulle ändå bara säga "Event" fel för dessa).
@@ -456,6 +479,55 @@ const eventJsonLdObject = buildEventJsonLd(
       </div>
     )}
 
+    {decisionsOnAgenda.length > 0 && (
+      <>
+        <h2 class="story__section-label">On the agenda</h2>
+        <ul class="decisions__list">
+          {decisionsOnAgenda.map((decision) => (
+            <li>
+              <span class="decisions__title">
+                {decision.agenda_number && <span class="decisions__number">{decision.agenda_number}</span>}
+                {decision.title}
+              </span>
+              {decision.matter_file && <span class="decisions__matter data">{decision.matter_file}</span>}
+            </li>
+          ))}
+        </ul>
+      </>
+    )}
+
+    {decisionsDecidedWithProjects.length > 0 && (
+      <>
+        <h2 class="story__section-label">Decided</h2>
+        <ul class="decisions__list">
+          {decisionsDecidedWithProjects.map(({ decision, project }) => (
+            <li>
+              <span class="decisions__title">
+                {decision.agenda_number && <span class="decisions__number">{decision.agenda_number}</span>}
+                {decision.title}
+              </span>
+              <p class="decisions__outcome">
+                <span class={`decisions__badge decisions__badge--${decision.outcome}`}>
+                  {outcomeLabel(decision)}
+                </span>
+                {voteTallyText(decision.votes) && <span class="data"> · {voteTallyText(decision.votes)}</span>}
+              </p>
+              {consentNote(decision) && <p class="decisions__consent-note data">{consentNote(decision)}</p>}
+              {decision.votes && decision.votes.length > 0 && (
+                <p class="decisions__motion data">On: {motionLabel(decision)}</p>
+              )}
+              {decision.matter_file && (
+                <p class="decisions__matter data">
+                  {decision.matter_file}
+                  {project && <> · Part of: <a href={`/city-hall/projects/${project.slug}/`}>{project.title}</a></>}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      </>
+    )}
+
     <ShareButtons url={canonicalUrl} title={story.title} />
     {icsUrl && <p class="story__add-to-calendar"><a href={icsUrl} download>+ Add to calendar</a></p>}
 
@@ -650,6 +722,25 @@ const eventJsonLdObject = buildEventJsonLd(
 .story__theaters .theater__meta { color: var(--ink-soft); font-size: 0.875rem; margin: 0.125rem 0; }
 .story__theaters .theater__detail { color: var(--ink-soft); font-size: 0.875rem; margin: 0; }
 .story__theaters .theater__note { color: var(--ink-soft); font-size: 0.8125rem; margin: 0.75rem 0 0; }
+.decisions__list { margin: 0; padding: 0; list-style: none; display: grid; gap: 1rem; }
+.decisions__list li { border-top: 1px solid var(--rule); padding-top: 0.75rem; }
+.decisions__number { font-weight: 600; margin-right: 0.375rem; }
+.decisions__title { display: block; font-size: 1.0625rem; }
+.decisions__outcome { margin: 0.375rem 0 0; }
+.decisions__badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: var(--paper-tint, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--rule);
+}
+.decisions__badge--denied { color: #9b1c1c; border-color: #9b1c1c; }
+.decisions__badge--approved, .decisions__badge--adopted { color: #1a6b3c; border-color: #1a6b3c; }
+.decisions__consent-note, .decisions__motion, .decisions__matter {
+  color: var(--ink-soft); font-size: 0.8125rem; margin: 0.25rem 0 0;
+}
 .story__source {
   margin-top: 2.5rem;
   padding-top: 1.25rem;

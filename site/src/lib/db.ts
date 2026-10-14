@@ -28,6 +28,7 @@ import { selectThisWeekImage, type Season } from './this-week-images';
 import type { ThisWeekImage } from '../config/this-week-images';
 import { resolveActiveHoliday, selectHolidayImage, type DateYMD } from './holidays';
 import { HOLIDAYS, holidayImagesFor, type HolidayImage } from '../config/holidays';
+import type { MeetingDecision } from './meeting-decisions';
 
 const sql = neon(import.meta.env.DATABASE_URL);
 
@@ -3115,6 +3116,36 @@ export async function getProjectForMeetingId(meetingId: number): Promise<{ slug:
       FROM project_updates u
       JOIN projects p ON p.id = u.project_id
      WHERE p.town_id = ${TOWN_ID} AND u.meeting_id = ${meetingId}
+     LIMIT 1
+  `) as { slug: string; title: string }[];
+  return rows[0] ?? null;
+}
+
+/** Phase 7 ("Decisions"): one row per substantive Legistar agenda item that
+ *  carries a real Matter -- see ai_pipeline/meeting_decisions_legistar.py's
+ *  module docstring for how outcome/votes/consent fields are derived and
+ *  verified. Ordered by event_item_id, which is monotonically assigned by
+ *  Legistar in agenda order within a meeting (confirmed live against
+ *  cityofbrookings: item ids within one event increase with agenda
+ *  position), so no separate agenda_number sort is needed. */
+export async function getMeetingDecisions(meetingId: number): Promise<MeetingDecision[]> {
+  const rows = (await sql`
+    SELECT id, event_item_id, agenda_number, title, matter_id, matter_file, matter_type,
+           action_text, outcome, is_consent_item, consent_block_event_item_id, votes, source_url
+      FROM meeting_decisions
+     WHERE meeting_id = ${meetingId}
+     ORDER BY event_item_id ASC
+  `) as MeetingDecision[];
+  return rows;
+}
+
+/** Phase 7, "Link decisions to projects": strict MatterId match only --
+ *  same discipline as case_numbers matching elsewhere in this codebase
+ *  (ai_pipeline/project_registry.py), never a fuzzy title/keyword guess. */
+export async function getProjectForMatterId(matterId: number): Promise<{ slug: string; title: string } | null> {
+  const rows = (await sql`
+    SELECT slug, title FROM projects
+     WHERE town_id = ${TOWN_ID} AND ${matterId} = ANY(legistar_matter_ids)
      LIMIT 1
   `) as { slug: string; title: string }[];
   return rows[0] ?? null;

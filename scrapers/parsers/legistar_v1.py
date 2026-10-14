@@ -39,6 +39,15 @@ FETCH_DELAY_SECONDS = 0.25
 
 MAX_AGENDA_TEXT_CHARS = 20_000
 
+# Phase 7 ("Decisions"): röster hämtas bara för ärenden som faktiskt KAN ha
+# en registrerad omröstning -- ett eget Matter (EventItemMatterId) OCH en
+# satt Pass/Fail-flagga (EventItemPassedFlagName). Rena procedurpunkter
+# (upprop, ajournering, dagordningsrubriker) har varken och hoppas över --
+# verifierat live mot cityofbrookings: av ~35 punkter per möte har bara
+# ~10-15 båda, så detta håller anropsvolymen nere utan att gissa bort någon
+# riktig omröstning.
+MAX_VOTE_FETCHES_PER_MEETING = 30
+
 
 class LegistarParser(BaseParser):
     table = "meetings"
@@ -86,7 +95,32 @@ class LegistarParser(BaseParser):
                 ir = requests.get(items_url, params={"AgendaNote": "1"},
                                   timeout=30, headers=self._headers())
                 if ir.status_code == 200:
-                    event["_agenda_items"] = ir.json()
+                    items = ir.json()
+                    event["_agenda_items"] = items
+                    votes_fetched = 0
+                    for item in items:
+                        if votes_fetched >= MAX_VOTE_FETCHES_PER_MEETING:
+                            break
+                        if not item.get("EventItemMatterId") or not item.get("EventItemPassedFlagName"):
+                            continue
+                        votes_fetched += 1
+                        docs_attempted += 1
+                        item_id = item.get("EventItemId")
+                        try:
+                            vr = requests.get(
+                                f"{WEBAPI}/{client}/eventitems/{item_id}/votes",
+                                timeout=30, headers=self._headers(),
+                            )
+                            if vr.status_code == 200:
+                                item["_votes"] = vr.json()
+                            else:
+                                docs_failed += 1
+                                docs_last_error = f"votes HTTP {vr.status_code} (item {item_id})"
+                        except Exception as exc:  # noqa: BLE001 -- en trasig röstlista ska inte fälla mötet
+                            docs_failed += 1
+                            docs_last_error = f"votes: {exc} (item {item_id})"
+                            print(f"    [legistar] kunde inte hämta röster för item {item_id}: {exc}")
+                        time.sleep(FETCH_DELAY_SECONDS)
                 else:
                     docs_failed += 1
                     docs_last_error = f"eventitems HTTP {ir.status_code} (event {event_id})"
@@ -139,7 +173,38 @@ def _clean_item(item: dict) -> dict:
         "EventItemActionName", "EventItemMatterFile", "EventItemMatterName",
         "EventItemMatterType", "EventItemMatterStatus", "EventItemAgendaNote",
     )
-    return {k: item.get(k) for k in keep if item.get(k)}
+    cleaned = {k: item.get(k) for k in keep if item.get(k)}
+
+    # Phase 7 ("Decisions"): id/flagga/matter-id behålls OVILLKORLIGT (till
+    # skillnad från `keep` ovan) -- EventItemConsent=0 och
+    # EventItemPassedFlag=0 är giltiga, meningsfulla värden som `if
+    # item.get(k)` (sant för `keep`) felaktigt skulle filtrera bort som
+    # "saknas". EventItemId krävs för att över huvud taget kunna koppla
+    # tillbaka till Legistar (röster, matter-länkning) -- se
+    # ai_pipeline/meeting_decisions_legistar.py.
+    if item.get("EventItemId") is not None:
+        cleaned["EventItemId"] = item["EventItemId"]
+    cleaned["EventItemPassedFlagName"] = item.get("EventItemPassedFlagName")
+    cleaned["EventItemConsent"] = bool(item.get("EventItemConsent"))
+    cleaned["EventItemMatterId"] = item.get("EventItemMatterId")
+
+    # Röster, om hämtade (se LegistarParser.fetch()) -- bara de fält
+    # sidan faktiskt visar. VoteEventItemId behålls verbatim: det är så en
+    # konsentagenda-underpunkts delade blockröst upptäcks (se
+    # ai_pipeline/meeting_decisions_legistar.py, verifierat live mot
+    # cityofbrookings 2026-10-14 -- en underpunkts /votes-svar pekar på
+    # blockets egna EventItemId, inte punktens egen).
+    votes = item.get("_votes")
+    if votes:
+        cleaned["votes"] = [
+            {
+                "person": v.get("VotePersonName"),
+                "value": v.get("VoteValueName"),
+                "vote_event_item_id": v.get("VoteEventItemId"),
+            }
+            for v in votes
+        ]
+    return cleaned
 
 
 def _items_to_text(items: list[dict]) -> str:
