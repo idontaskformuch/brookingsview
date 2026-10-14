@@ -64,6 +64,17 @@ produced it. Two layers fix this:
     regardless of the above, so a large backlog (e.g. right after this
     fix ships) can't spend a month's budget in one run -- the remainder
     is deferred to later runs (their meetings aren't checkpointed either).
+  - Routine-administrative filter (owner decision 2026-10-14): a known
+    category of recurring non-project item (CFD annexations,
+    reimbursement resolutions, CIP/budget amendments -- see
+    matching_routine_pattern()) is auto-rejected BEFORE the AI call,
+    unless it also carries its own independent project signal (a real
+    case number, or a phrase like "Tract Map"/"Specific Plan" -- see
+    has_project_signal()), in which case it still goes to the AI exactly
+    as before. A rejected item is written to project_new_candidate_queue
+    with status='auto_rejected' and the matching pattern as the reason
+    (not just logged), so it stays visible/auditable AND already_
+    considered() correctly skips it on every later run too.
 
 Run-level cadence (owner decision 2026-10-14, revised): the scheduling
 workflow calls this script every 6h same as everything else in that job
@@ -85,6 +96,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -99,7 +111,8 @@ from psycopg.rows import dict_row
 
 from ai_pipeline import api_usage
 from ai_pipeline.project_registry import (
-    agenda_item_counter, agenda_item_text, load_projects, match_project, queue_for_review, status_for_outcome,
+    agenda_item_counter, agenda_item_text, extract_case_numbers, load_projects, match_project,
+    queue_for_review, status_for_outcome,
 )
 from ai_pipeline.project_threads import (
     ai_match_candidate, generate_synthesis, is_candidate_agenda_item,
@@ -213,6 +226,85 @@ def already_considered(conn, town_id: str, meeting_id: int, counter: str, title:
             (town_id, meeting_id, title),
         )
         return cur.fetchone() is not None
+
+
+# Routine-administrative filter (owner decision 2026-10-14): a cheap,
+# pre-AI gate that drops a known category of recurring non-project item
+# (CFD annexations, reimbursement resolutions, CIP/budget amendments)
+# BEFORE spending an AI call on it -- live-verified against Moreno
+# Valley's own queue that these account for the large majority of
+# "candidate-shaped but not actually a project" items. A false positive
+# here costs nothing worse than a missed candidate (same fail-safe
+# framing as is_candidate_agenda_item's own docstring) -- EXCEPT this
+# filter is itself overridden by has_project_signal() below, so an item
+# that's unambiguously a real entitlement is never dropped even if it
+# also happens to mention e.g. a CFD formation funding its own
+# infrastructure.
+_ROUTINE_ADMINISTRATIVE_PATTERNS: dict[str, re.Pattern] = {
+    "cfd_annexation": re.compile(r"\bANNEX\w*\b.{0,60}\bCFD\b", re.IGNORECASE),
+    "community_facilities_district": re.compile(r"\bCOMMUNITY FACILITIES DISTRICT\b", re.IGNORECASE),
+    "reimbursement_resolution": re.compile(r"\bREIMBURSEMENT OF\b.{0,80}\bEXPENDITURES\b", re.IGNORECASE),
+    "capital_improvement_plan": re.compile(r"\bCAPITAL IMPROVEMENT PLAN\b", re.IGNORECASE),
+    "budget_amendment": re.compile(r"\bBUDGET AMENDMENT\b", re.IGNORECASE),
+    "adopted_or_proposed_budget": re.compile(r"\b(ADOPTED|PROPOSED)\s+BUDGET\b", re.IGNORECASE),
+}
+
+# Phrases that always force full AI-match consideration, bypassing the
+# routine-administrative filter above -- a strong, independent signal
+# this item IS a real entitlement/development action. Checked ALONGSIDE
+# extract_case_numbers() (a real case number is the other such signal).
+_PROJECT_SIGNAL_PHRASES = (
+    "tract map", "specific plan", "conditional use permit",
+    "plot plan", "change of zone", "development agreement",
+)
+
+
+def has_project_signal(title: str, description: str = "") -> bool:
+    """True when this item carries its own strong signal of being a real
+    project -- an extractable case number, or one of the entitlement-type
+    phrases above -- regardless of whether a routine-administrative
+    pattern ALSO matches (e.g. a tract map item that incidentally forms a
+    CFD to fund its own infrastructure must still reach the AI, not be
+    auto-rejected)."""
+    haystack = f"{title} {description}"
+    if extract_case_numbers(haystack):
+        return True
+    lowered = haystack.lower()
+    return any(phrase in lowered for phrase in _PROJECT_SIGNAL_PHRASES)
+
+
+def matching_routine_pattern(title: str, description: str = "") -> str | None:
+    """The name of the first routine-administrative pattern this item
+    matches, or None. Callers must check has_project_signal() FIRST and
+    skip this entirely when it's True."""
+    haystack = f"{title} {description}"
+    for name, pattern in _ROUTINE_ADMINISTRATIVE_PATTERNS.items():
+        if pattern.search(haystack):
+            return name
+    return None
+
+
+def queue_auto_rejected(conn, town_id: str, meeting_id: int, candidate_title: str,
+                        candidate_summary: str, pattern_name: str) -> None:
+    """Records a routine-administrative item the filter rejected BEFORE
+    any AI call, with status='auto_rejected' and the matching pattern
+    name as the reason -- visible/auditable the same way a human-reviewed
+    row is (scripts/review_project_candidates.py simply won't show it,
+    since that script only lists status='pending_review'), and so
+    already_considered() -- which checks project_new_candidate_queue
+    regardless of status, by its own docstring -- correctly skips this
+    exact item on every later run instead of re-deciding it from scratch."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO project_new_candidate_queue
+                (town_id, source_type, meeting_id, candidate_title, candidate_summary,
+                 match_reasoning, confidence, status, reviewed_at)
+            VALUES (%s, 'meeting', %s, %s, %s, %s, 0.0, 'auto_rejected', now())
+            """,
+            (town_id, meeting_id, candidate_title, candidate_summary,
+             f"Auto-rejected: matches routine-administrative pattern '{pattern_name}'"),
+        )
 
 
 def find_meetings_with_agenda_items(conn, town_id: str) -> list[dict]:
@@ -423,11 +515,28 @@ def main() -> int:
                     if is_candidate_agenda_item(title, description):
                         candidate_text = f"{title}\n{description}".strip()
                         if args.dry_run:
+                            if not has_project_signal(title, description):
+                                pattern_name = matching_routine_pattern(title, description)
+                                if pattern_name is not None:
+                                    print(f"  ROUTINE (dry-run, auto-rejected, pattern={pattern_name}, "
+                                          f"no AI call): {meeting['body']} {counter} -- {title}")
+                                    continue
                             print(f"  CANDIDATE (dry-run, no AI call): {meeting['body']} "
                                   f"{counter} -- {title}")
                             continue
                         if already_considered(conn, town_id, meeting["id"], counter, title):
                             continue
+                        if not has_project_signal(title, description):
+                            pattern_name = matching_routine_pattern(title, description)
+                            if pattern_name is not None:
+                                queue_auto_rejected(
+                                    conn, town_id, meeting_id=meeting["id"],
+                                    candidate_title=title, candidate_summary=description or title,
+                                    pattern_name=pattern_name,
+                                )
+                                print(f"  ROUTINE (auto-rejected, pattern={pattern_name}, no AI call): "
+                                      f"{meeting['body']} {counter} -- {title}")
+                                continue
                         if ai_calls_made >= MAX_AI_CALLS_PER_RUN:
                             if not ai_cap_reached_logged:
                                 print(f"  AI-ANROPSTAK NÅTT ({MAX_AI_CALLS_PER_RUN}/körning) -- "

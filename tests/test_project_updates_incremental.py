@@ -16,7 +16,7 @@ import pytest
 from ai_pipeline import project_updates
 from ai_pipeline.project_updates import (
     MIN_HOURS_BETWEEN_RUNS, _agenda_items_hash, already_considered, get_checkpoint, get_last_success,
-    main, record_run, set_checkpoint,
+    has_project_signal, main, matching_routine_pattern, queue_auto_rejected, record_run, set_checkpoint,
 )
 
 
@@ -63,6 +63,9 @@ class _FakeCheckpointCursor:
         elif norm.startswith("INSERT INTO project_updates_runs"):
             town_id, when, ai_calls, meetings_processed, meetings_skipped, cap_hit = params
             self.store["runs"][town_id] = (when, ai_calls, meetings_processed, meetings_skipped, cap_hit)
+        elif norm.startswith("INSERT INTO project_new_candidate_queue") and "auto_rejected" in norm:
+            town_id, meeting_id, candidate_title, _summary, _reason = params
+            self.store["queue"].add((town_id, meeting_id, candidate_title))
         else:
             raise AssertionError(f"unexpected SQL: {norm!r}")
 
@@ -135,6 +138,88 @@ def test_record_run_overwrites_the_previous_run_for_the_same_town():
     assert meetings_skipped == 5
 
 
+# --- routine-administrative filter: real Moreno Valley candidates --------
+# See module docstring's "Routine-administrative filter" section. Titles
+# below are the real, live queue rows (#40-46) this filter was built and
+# tuned against.
+
+CFD_ANNEXATION_TITLE = (
+    "ANNEXATION OF CERTAIN PARCELS INTO CFD NO. 2014-01 (MAINTENANCE SERVICES) "
+    "AND CFD NO. 2023-01 (PUBLIC SAFETY SERVICES)"
+)
+REIMBURSEMENT_TITLE = (
+    "ADOPT A RESOLUTION AUTHORIZING REIMBURSEMENT OF CERTAIN CAPITAL IMPROVEMENT "
+    "EXPENDITURES FROM THE PROCEEDS OF A FUTURE INDEBTEDNESS"
+)
+CIP_AMENDMENT_TITLE = (
+    "AMEND THE ADOPTED CAPITAL IMPROVEMENT PLAN BY ADDING SEGMENTS OF ARTERIAL STREETS "
+    "FOR FUTURE IMPROVEMENTS"
+)
+DRAIN_BASIN_TITLE = (
+    "COOPERATIVE AGREEMENT FOR THE MORENO MASTER DRAIN PLAN LINE F DETENTION BASIN "
+    "PROJECT WITHIN THE WORLD LOGISTICS CENTER SPECIFIC PLAN"
+)
+
+
+def test_cfd_annexation_matches_routine_pattern():
+    assert matching_routine_pattern(CFD_ANNEXATION_TITLE) == "cfd_annexation"
+
+
+def test_reimbursement_resolution_matches_routine_pattern():
+    assert matching_routine_pattern(REIMBURSEMENT_TITLE) == "reimbursement_resolution"
+
+
+def test_cip_amendment_matches_routine_pattern():
+    assert matching_routine_pattern(CIP_AMENDMENT_TITLE) == "capital_improvement_plan"
+
+
+def test_drain_basin_item_matches_no_routine_pattern():
+    # The one real candidate (#42) that IS a genuine site-specific
+    # project -- must not match any routine-administrative pattern.
+    assert matching_routine_pattern(DRAIN_BASIN_TITLE) is None
+
+
+def test_unrelated_title_matches_no_routine_pattern():
+    assert matching_routine_pattern("Rezoning of 123 Main Street") is None
+
+
+def test_has_project_signal_true_for_extractable_case_number():
+    assert has_project_signal("Some item (PEN25-0098)") is True
+
+
+def test_has_project_signal_true_for_each_entitlement_phrase():
+    for phrase in ["Tract Map", "Specific Plan", "Conditional Use Permit",
+                   "Plot Plan", "Change of Zone", "Development Agreement"]:
+        assert has_project_signal(f"Approving a {phrase} for the project") is True
+
+
+def test_has_project_signal_false_for_plain_routine_item():
+    assert has_project_signal(CFD_ANNEXATION_TITLE) is False
+
+
+def test_tract_map_that_also_forms_a_cfd_is_not_filtered():
+    # The exact owner-specified case: a real entitlement (Tract Map) that
+    # ALSO mentions forming a Community Facilities District to fund its
+    # own infrastructure -- matching_routine_pattern() alone WOULD flag
+    # this (it mentions "Community Facilities District"), but
+    # has_project_signal() must override that and keep it headed to the
+    # AI, never auto-rejected.
+    title = ("Approve Vesting Tentative Tract Map No. 39999 and form a Community "
+             "Facilities District to fund related infrastructure")
+    assert matching_routine_pattern(title) == "community_facilities_district"
+    assert has_project_signal(title) is True
+
+
+# --- queue_auto_rejected: traceable, not just logged ----------------------
+
+def test_queue_auto_rejected_writes_status_and_reason():
+    conn = _FakeCheckpointConn()
+    queue_auto_rejected(conn, "moreno_valley_ca", meeting_id=13782,
+                        candidate_title=CFD_ANNEXATION_TITLE, candidate_summary="summary text",
+                        pattern_name="cfd_annexation")
+    assert ("moreno_valley_ca", 13782, CFD_ANNEXATION_TITLE) in conn.store["queue"]
+
+
 # --- end-to-end: main() itself makes 0 AI calls on a second identical run -
 
 class _FakeMainCursor:
@@ -165,6 +250,11 @@ class _FakeMainCursor:
             self._result = (1,) if (town_id, meeting_id, title) in self.store["queue"] else None
         elif norm.startswith("SELECT id, title, description FROM projects"):
             self._result = []  # no open projects for AI matching against
+        elif norm.startswith("INSERT INTO project_new_candidate_queue") and "auto_rejected" in norm:
+            town_id, meeting_id, candidate_title, _summary, _reason = params
+            self.store["queue"].add((town_id, meeting_id, candidate_title))
+            self.store["auto_rejected"].append((town_id, meeting_id, candidate_title))
+            self._result = None
         elif norm.startswith("INSERT INTO project_new_candidate_queue"):
             town_id, _source_type, meeting_id, _traffic_id, candidate_title = params[:5]
             self.store["queue"].add((town_id, meeting_id, candidate_title))
@@ -237,7 +327,7 @@ def _backdate_last_success(store, town_id, hours_ago):
 @pytest.fixture
 def fake_run(monkeypatch, tmp_path):
     store = {"meetings": {11344: dict(MEETING)}, "checkpoints": {}, "project_updates": set(),
-             "queue": set(), "last_success": {}, "run_stats": {}}
+             "queue": set(), "last_success": {}, "run_stats": {}, "auto_rejected": []}
     conn = _FakeMainConn(store)
 
     monkeypatch.setattr(project_updates.psycopg, "connect", lambda *a, **kw: conn)
@@ -311,3 +401,29 @@ def test_changed_meeting_is_reprocessed_but_already_queued_item_still_skips_ai(f
     _backdate_last_success(fake_run.store, "broomfield_co", hours_ago=MIN_HOURS_BETWEEN_RUNS + 1)
     main()
     assert len(fake_run.ai_calls) == 1, "the already-queued item must not be re-sent to the AI"
+
+
+# --- end-to-end: routine-administrative filter inside main() itself ------
+
+def test_routine_item_is_auto_rejected_without_any_ai_call(fake_run):
+    fake_run.store["meetings"][11344]["raw_data"]["agenda_items"] = [
+        {"title": CFD_ANNEXATION_TITLE, "details": "", "item_number": "43"},
+    ]
+    main()
+    assert len(fake_run.ai_calls) == 0
+    assert ("broomfield_co", 11344, CFD_ANNEXATION_TITLE) in fake_run.store["queue"]
+    assert fake_run.store["auto_rejected"] == [("broomfield_co", 11344, CFD_ANNEXATION_TITLE)]
+
+
+def test_routine_item_with_a_project_signal_still_reaches_the_ai(fake_run):
+    # Also mentions "subdivision" so is_candidate_agenda_item's own,
+    # separate keyword gate lets it through in the first place -- the
+    # project-signal exception only matters once past that gate.
+    title = ("Approve Vesting Tentative Tract Map No. 39999, a subdivision, and form a "
+             "Community Facilities District to fund related infrastructure")
+    fake_run.store["meetings"][11344]["raw_data"]["agenda_items"] = [
+        {"title": title, "details": "", "item_number": "44"},
+    ]
+    main()
+    assert len(fake_run.ai_calls) == 1
+    assert fake_run.store["auto_rejected"] == []
