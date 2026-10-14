@@ -42,10 +42,18 @@ Pt4 DONE: queried scrape_runs directly -- newest moreno_valley_ca/
   Oct14 11:00 UTC). Next real run ~Oct14 22:01 UTC; 053's fix isn't
   observable before then, exactly as round 2 predicted.
 
-Changed files (uncommitted): configs/brookings_sd.json,
-  site/src/lib/meeting-decisions.ts, meeting-decisions.test.ts,
-  site/src/pages/s/[slug].astro.
+Committed (3 commits: b0e62c2 Pt1, f287026 Pt2, 0fee2a8 state) and
+  PUSHED to origin/main on owner's explicit go-ahead. Deploy confirmed
+  green on all 3 sites (commit 0fee2a8): deploy #90 3m12s, broomfield-
+  deploy #91 2m54s, moval-deploy #90 9m13s -- all "Success", which
+  means each one's final "Kontrollera att den deployade sajten..."
+  freshness-check step passed too (unconditional last step, no
+  continue-on-error -- a script failure there fails the job). Broomfield
+  in particular: the new Managed Challenge WAF rule (non-US/SE/CA
+  traffic) did NOT block check_deployed_content.py's own request, i.e.
+  the X-BV-Deploy-Check bypass rule is working as intended for GitHub
+  Actions' IPs. cf-bot-fight-probe.yml still untouched/uncommitted per
+  round 2 Pt6, owner's call.
 
-Next: commit locally (not pushed, per rule 6). Re-check MV scrape_runs
-  after ~22:01 UTC today for the real 053 verification. cf-bot-fight-
-  probe.yml still untouched/uncommitted per round 2 Pt6, owner's call.
+Next: re-check MV scrape_runs after ~22:01 UTC today for the real 053
+  verification (Pt4, round 3 -- not yet observable as of that round).
