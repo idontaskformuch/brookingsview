@@ -1,33 +1,28 @@
 # State
 
-2026-10-14, follow-up 4-point task after Phase 7 build (previous task's
-state collapsed; see git log 68196e3..1082270 for the full Phase 7 build).
+2026-10-14, 3-point follow-up after Phase 7 push (git log 68196e3..f1719ce
+for the full build; previous round: pushed + deploy live-verified).
 
-Pt1 (split/denied/absent/tabled examples, verified vs Legistar's own
-  data): DONE. Real cases found+confirmed via scripts/
-  verify_meeting_decisions_legistar.py against events 3365 (split 7-1;
-  denied 3-5/1-7 then approved 6-2, a real reconsideration sequence),
-  3540 (denied 0-7, Human Rights Commission appt -- source's own
-  ActionName says "approved", contradicted by PassedFlagName/
-  MatterStatus/vote text), 3368 (denied 0-9), 3470 (tabled 6-0 with 2
-  real Absent votes). Public MeetingDetail.aspx list view shows "Not
-  available" for ALL rows regardless of real outcome (a template quirk,
-  not missing data) -- compared against EventItemActionText/
-  PassedFlagName/MatterStatus/vote list instead, Legistar's own
-  authoritative fields, not a guess.
-Pt2: DONE. (a) confirmed+verified in code (not just agent claim):
-  ai_pipeline/publish.py's already_has_a_story() (line 563) gates on
-  stories.meeting_id (meetings.id), checked BEFORE any AI/slug work,
-  NOT conditioned on published_at -- raw_data changes can't retrigger
-  it. (b) tests/test_outcome_override_precedence.py (new): override
-  wins per-row (real guarantee), but NOT project-wide over a newer
-  real outcome -- corrected an overclaim in the ask, didn't just
-  confirm it.
-Pt3: DONE, pushed (baa92ba..1082270, includes a 3rd commit for the
-  override test). Live deploy verification in progress (background
-  task polling brookingsview.com for the Decided section).
-Pt4: MV scrape_runs still shows no post-053-fix run as of last check
-  (latest row still Oct 13 22:01 UTC, pre-fix). Will report the row
-  once one lands or on request.
+Pt1 DONE: pushed f1719ce.
+Pt2 DONE, root cause found, nothing changed: moval-scrape.yml is active,
+  fires on schedule (confirmed via GitHub API, run 38500838711, Oct14
+  02:24 UTC, success). NOT a crash/column bug -- runner.py's existing
+  refresh_minutes=1440 (24h) throttle skips city_meetings SILENTLY (no
+  scrape_runs row at all, by design) whenever elapsed since last success
+  < 1440min. Last real scrape: Oct13 22:01:53 GMT -- every run until
+  ~Oct14 22:01 UTC will keep skipping. 053's fix can't be observed before
+  then. Aside (unrelated, not fixed): several Oct11-13 runs show
+  conclusion=failure, but only the LAST step (deploy-freshness check)
+  fails -- scrape/publish/build/deploy already succeeded.
+Pt3 DONE, real gap found: event 3540/item 100490 (Human Rights Commission,
+  Aug25) is OUTSIDE legistar_v1.py's 30-day fetch window -- meetings row
+  11005 exists but was never re-enriched, meeting_decisions has no row
+  for it. Confirmed live: brookingsview.com/s/meeting-2026-08-25-11005/
+  shows neither Decided nor On-the-agenda for it (absent, not a WRONG
+  "Approved" claim). 0 denied rows exist on-site at all right now (DB
+  only covers meetings from the last 30 days). Already confirmed via the
+  live Legistar API (previous round), not via the deployed site. Owner
+  decision needed: backfill older meetings (3540/3365/3368/3470) before
+  this is confirmable ON the site -- not done without approval (rule 7).
 
-Next: report live-deploy result + Pt4 status to owner when they land.
+Next: owner decision on backfilling older meetings.
