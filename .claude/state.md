@@ -1,122 +1,124 @@
 # State
 
 Current spec: .claude/spec-phases-3-9.md Phase 6 (Projects & Development),
-scoped to Moreno Valley only. 3 rounds of owner decisions so far
-(2026-10-13, 2026-10-13, 2026-10-14).
+scoped to Moreno Valley only. 4 rounds of owner decisions so far
+(2026-10-13 x2, 2026-10-14 x2).
 
 ## Pushed+live (origin at a6f11be)
 About MV/Broomfield restructure. Everything below is NOT pushed yet --
-owner wants final approval before push.
+owner wants final approval before push, and never before migration 052
+(satisfied: migration ran first, in round 4).
 
-## Round 1 (6 decisions, 4 commits) + Round 2 (7 follow-ups, 5 commits)
+## Rounds 1+2 (13 decisions, 9 commits)
 Fact guardrail, noindex rule, vote/outcome display, Aquabella seeded,
 candidate-queue dedup (code), 3 more projects seeded+approved, 7 rejected,
-entry_date backfilled, events.test.ts flake fixed. Full detail already in
-those 9 commits' own messages + earlier chat. Not repeated here.
+entry_date backfilled, events.test.ts flake fixed. Full detail in those 9
+commits' own messages + earlier chat.
 
-## Round 3 (4 follow-ups) -- 3 commits: 701e30e, 0bcab27, 39acbf3 -- NOT PUSHED
-
-1. DONE (701e30e): meeting 12940/13790 duplicate root-caused and fixed.
-   Confirmed BY DIRECT COMPUTATION (not just theory): 12940's stored
-   content_hash exactly equals hashing the OLD naive-datetime isoformat;
-   13790's exactly equals the NEW tz-aware one -- a 2026-09-30
-   _parse_escribe_date timezone fix changed what content_hash computed
-   for the SAME real meeting (same GUID, same raw StartDate), so ON
-   CONFLICT never matched the old row. Fix: content_hash now hashes the
-   raw StartDate string directly, never a parsed/derived value. General
-   backstop regardless of hash: db.upsert_records() gained an opt-in
-   dedup_check_columns param -- skips an insert when an existing row
-   already matches (town_id, *cols) with semantically-identical raw_data
-   (JSONB equality), independent of content_hash. EscribeParser opts in
-   with ("body", "meeting_date"). 11 new tests.
-   Dry-run proof (read-only, logged here): simulated a fresh scrape of
-   the exact 12940/13790 meeting with the fixed code -- new hash matches
-   neither existing row, but the dedup_check_columns SELECT correctly
-   found row 12940 and would skip the insert. Did NOT touch the existing
-   12940/13790 rows themselves (no retroactive merge/delete) -- the fix
-   alone already guarantees no third row, confirmed by the dry run, and
-   deleting either row risks the LIVE PUBLISHED stories rows that
-   reference them (see finding below).
-   FINDING, not acted on: `stories` ALSO has two separate published rows
-   for this one real meeting (meeting-2026-09-24-12940 AND -13790) --
-   same root cause, but a content/editorial decision (merge/redirect one)
-   the owner hasn't asked for yet.
-
-2. BLOCKED -- see "Permission needed" below. Code fully written and
-   committed (0bcab27, 39acbf3), migration NOT applied to the live DB.
-   - db/migrations/052_project_update_outcome_override.sql:
-     outcome_override + outcome_override_source_url on project_updates,
-     both-or-neither CHECK. Neither pipeline ever references either
-     column -- that's the actual "pipeline can't overwrite it" guarantee.
-   - recompute_project_status() (both pipelines): follows the LATEST row
-     with an actual confirmed outcome (override or non-pending), not
-     simply the newest row -- so PEN24-0154 (June PC denial with a real
-     override, September CC appeal still pending) shows status='denied',
-     not 'under_review'. No new status enum value -- "denied, appealed"
-     communicated via the description + the timeline's second entry.
-   - status_for_outcome(): "not approved" -> denied (checked before the
-     bare "approved" substring match).
-   - lib/db.ts: ProjectUpdate type + both SQL queries carry the 2 new
-     columns. [slug].astro + index.astro: override takes display
-     priority, shown with a link to outcome_override_source_url.
-   READY TO WRITE once unblocked, exact values (row id=27,
-   self-storage-indian-alessandro, Planning Commission, 2026-06-12):
-     outcome_override = 'Not approved (2–3)'
-     outcome_override_source_url =
-       'https://www.moval.org/cdd/pdfs/projects/public-storage/PEN24-0154_MINUTE_ORDER.pdf'
-   Source: real Minute Order PDF, certified by the Planning Manager,
-   read in full earlier this session (2-3 vote: DeJohnette/Baker yes,
-   Stephan/Taylor/Zeitz no).
-
-3. DONE (0bcab27): single wording for "no outcome yet" everywhere --
+## Round 3 (4 follow-ups) -- 3 commits: 701e30e, 0bcab27, 39acbf3
+1. Meeting 12940/13790 duplicate root-caused and fixed. Confirmed BY
+   DIRECT COMPUTATION: 12940's stored content_hash exactly equals hashing
+   the OLD naive-datetime isoformat; 13790's exactly equals the NEW
+   tz-aware one -- a 2026-09-30 _parse_escribe_date timezone fix changed
+   what content_hash computed for the SAME real meeting. Fix: content_hash
+   now hashes the raw StartDate string directly. General backstop:
+   db.upsert_records() gained dedup_check_columns (skips an insert when
+   an existing row matches with semantically-identical raw_data,
+   independent of content_hash). EscribeParser opts in on
+   ("body","meeting_date"). 11 new tests. Dry-run proof (read-only):
+   confirmed the safety net would block a 3rd row. Did NOT touch the
+   existing 12940/13790 rows (resolved in round 4, see below).
+2. outcome_override + outcome_override_source_url designed, migration
+   written, backend (status_for_outcome, recompute_project_status) +
+   frontend (lib/db.ts, [slug].astro, index.astro) all wired -- applied
+   in round 4.
+3. Single wording for "no outcome yet" everywhere --
    PROJECT_PENDING_OUTCOME_LABEL ("Outcome not yet published."),
-   site/src/lib/db.ts, replacing 3 independently-drifted strings
-   ([slug].astro's outcomeLabel() dead branch + pendingReason()'s generic
-   fallback, index.astro's homepage teaser).
+   site/src/lib/db.ts, replacing 3 independently-drifted strings.
 
-4. NOT DONE -- blocked on #2. Full rebuild/verification was going to
-   include showing Self-Storage's page WITH the override rendered; can't
-   build at all right now without the migration (the new SQL selects
-   columns that don't exist in the live schema yet -- EVERY town's build
-   would fail, not just Moreno Valley's).
+## Round 4 (migration approved + 5 follow-ups) -- 1 commit so far: [this one]
 
-## Permission needed (owner decision required before continuing)
-Claude Code's own auto-mode classifier blocked running migration 052
-directly against the live DB this session, flagged "Production Deploy".
-Two ways to unblock, either is fine:
-  a) Owner runs `psql "$DATABASE_URL" -f
-     db/migrations/052_project_update_outcome_override.sql` themselves,
-     tells Claude to continue -- Claude then writes the PEN24-0154
-     override row (exact values above), rebuilds all 3 towns, verifies,
-     shows the Self-Storage + Aquabella pages in plain text, and the
-     owner does the final push approval from decision 4.
-  b) Owner grants Bash permission for this kind of action (their own
-     settings), Claude runs the migration itself and continues the same
-     way.
-No other code in rounds 1-3 is blocked -- only the override feature's
-live data (point 2) and the rebuild/push (point 4) that depends on it.
+1. DONE: migration 052 applied live (owner approved the exact `psql -f`
+   command). Confirmed via information_schema + pg_constraint:
+   outcome_override/outcome_override_source_url both text/nullable,
+   project_updates_outcome_override_needs_source CHECK present. No
+   migrations-log table exists in this codebase (tracked only by the
+   numbered .sql files in git history) -- flagged, not invented one.
 
-## Other known pre-existing bugs found, NOT fixed (out of scope)
-- `stories` has 2 duplicate published rows for the 12940/13790 meeting
-  (see round 3, point 1's finding above) -- a content decision, not acted
-  on without being asked.
+2. DONE: wrote the override on project_updates.id=27:
+   outcome_override='Not approved (2–3)', outcome_override_source_url=
+   the Minute Order PDF (moval.org/cdd/pdfs/projects/public-storage/
+   PEN24-0154_MINUTE_ORDER.pdf). Ran recompute_project_status ->
+   self-storage-indian-alessandro status='denied'. Rebuilt all 3 towns,
+   full pytest (752 passed/8 skipped/0 failed) + vitest (981/981) green,
+   sitemap/noindex disjoint clean on all 3 (Brookings 106, Moreno Valley
+   139, Broomfield 78). Self-Storage page live-rendered: "Denied" badge,
+   "Not approved (2–3) · Minute Order" with the link on the Planning
+   Commission row, City Council appeal row still "On the agenda. Outcome
+   not yet published." Aquabella page re-confirmed unaffected. NOT
+   PUSHED -- owner final approval still pending.
+
+3. DRY RUN DELIVERED, NOT YET EXECUTED (owner asked to see it before
+   approving, separately). Investigated the existing redirect
+   architecture first: wrangler.jsonc sets run_worker_first:["/*"], so
+   worker.ts always runs before any static file is served -- that's what
+   makes event-series-redirects.json/legacy-meeting-redirects.json/
+   facility-redirects.json work (slug->slug JSON, resolveLegacyMeeting
+   Redirect(), 301 before a stale static page would otherwise be served).
+   getAllStories() does NOT filter superseded_by_slug at all (only
+   getUpcomingStories/getPastStories/getSignData do, and only for
+   events). Proposed plan:
+     a) UPDATE stories SET superseded_by_slug='meeting-2026-09-24-13790'
+        WHERE slug='meeting-2026-09-24-12940'; -- 13790 is canonical: the
+        one project_updates.id=26 (Aquabella) already references, and
+        the post-tz-fix correctly-parsed scrape. Both stories published
+        the same day 32s apart, so "older" isn't a meaningful tiebreaker.
+     b) New file site/server/duplicate-story-redirects.json:
+        {"meeting-2026-09-24-12940": "meeting-2026-09-24-13790"} --
+        follows facility-redirects.json's precedent (hand-maintained
+        one-off dedup), not the other two files (different bug classes).
+     c) worker.ts: import it, add a third resolveLegacyMeetingRedirect()
+        check, 301.
+   FLAGGED, not expanded beyond what was asked: does NOT remove the
+   duplicate from meeting-listing surfaces (homepage, /city-hall, RSS) --
+   those queries don't filter superseded_by_slug (only the 3 event-only
+   functions do). A real follow-up gap, not fixed here.
+
+4. DONE (explanation only, file untouched). cf-bot-fight-probe.yml:
+   one-shot, workflow_dispatch-only diagnostic curling all 3 production
+   domains with the deploy-check's own User-Agent, to see whether
+   Cloudflare Bot Fight Mode would block GitHub Actions' requests. Never
+   fires on push/schedule. Standing tool for whenever a WAF rule is
+   considered.
+
+5. DONE (research, nothing built). Searched the 14 already-scraped
+   Moreno Valley Planning Commission agendas for "Approval of Minutes" --
+   0 literal hits, but found the real pattern under a different label:
+   every PC meeting's Consent Calendar carries a "Planning Commission
+   Minutes -- Regular Meeting - <date>" item approving the PRIOR
+   meeting's minutes. Lag confirmed across 3 real examples: ~15 days
+   (next regular PC meeting, roughly biweekly). Fetched the real agenda
+   HTML for one (meeting 11102) and found a real attached document under
+   that item: filestream.ashx?DocumentId=7051, "06.11.26_PC Minutes_
+   Final.pdf" -- same eSCRIBE mechanism already used for Action Summary/
+   PostMinutes elsewhere. Could NOT verify the PDF's own content (per-item
+   outcomes?) -- the download endpoint returned a Cloudflare "verifying
+   your browser" challenge on 2 attempts (plain, and with Referer+delay);
+   did not keep retrying (would cross into working around a bot check).
+   Did not use SimpliCITY.
+
+## Other known pre-existing issues found, NOT fixed (out of scope)
+- `stories` has 2 duplicate published rows for the 12940/13790 meeting --
+  dry run above, awaiting owner go-ahead to execute.
+- Meeting-listing surfaces don't filter superseded_by_slug (round 4,
+  point 3's flag).
 - Unrelated: .github/workflows/cf-bot-fight-probe.yml sits untracked in
   the working tree -- NOT created by this session, its own comment says
   "owner asked to see before deciding on any WAF rule... delete or commit
-  separately once used." Left untouched, flagged to owner, not part of
-  any commit here.
-
-## Verification (DONE for rounds 1-3's non-blocked parts)
-pytest (all project+escribe+db-dedup test files): 77 passed (was 59
-after round 2 -- +18 from round 3's new tests). vitest: 981/981 (full
-suite, unchanged from round 2 -- astro check also re-run clean, 0 errors,
-after fixing one test fixture (this-week.test.ts) that needed the 2 new
-ProjectUpdate fields). Full 3-town build NOT re-run this round (blocked,
-see above -- would fail without the migration).
+  separately once used." Left untouched.
 
 ## Next
-Owner decides how to unblock migration 052 (see above). Once applied:
-write the PEN24-0154 override row (exact values logged above), rebuild
-all 3 towns, full verification, show Self-Storage + Aquabella pages in
-plain text, then push everything (10 commits from rounds 1-2 + 3 from
-round 3 = 13 total) after owner's final go-ahead.
+Owner reviews the task-3 dry run and either approves it or not. Owner
+gives final push approval (covers all 13 commits across rounds 1-2, 3
+commits in round 3, this round's commit once made -- migration already
+ran live, satisfying "never before the migration").
