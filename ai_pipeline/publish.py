@@ -73,7 +73,7 @@ from psycopg.types.json import Jsonb
 
 from ai_pipeline import guardrails
 from ai_pipeline.format_prompt import format_record, TEMPLATERS
-from ai_pipeline.venue_registry import load_registry, queue_for_review, resolve_venue
+from ai_pipeline.venue_registry import load_registry, normalize_venue, queue_for_review, resolve_venue
 from db.db import content_hash
 
 # A record discarded this many consecutive scheduled runs (both AI attempts
@@ -538,6 +538,139 @@ def group_recurring_events(rows: list[dict], tz: ZoneInfo) -> list[dict]:
     return merged
 
 
+def _event_dedup_venue_key(row: dict, venue_registry: dict) -> str | None:
+    """Canonical venue identity for dedupe_cross_source_events() below: the
+    resolved facility's own slug when venue_raw matches the registry
+    (two sources phrasing the same real place differently still group
+    together), else the normalized raw venue text (two sources agreeing
+    on unresolved text still group together), else None -- no venue
+    anywhere means the group falls back to title+day alone."""
+    facility = resolve_venue(venue_registry, row.get("venue"))
+    if facility:
+        return facility["slug"]
+    return normalize_venue(row.get("venue"))
+
+
+def _event_dedup_richness(row: dict, venue_registry: dict) -> tuple:
+    """Sort key for picking the one row to keep from a duplicate cluster
+    (used with max()) -- prefers a row whose venue resolves to a real
+    registered facility, then one with a real description, then the
+    LOWEST id as a deterministic tiebreak (so a re-run always picks the
+    same winner even when nothing else distinguishes two rows).
+
+    The venue check DOES matter here, despite every member of a cluster
+    sharing a venue-COMPATIBLE identity (see cluster_event_duplicate_
+    indices()) -- compatible is not the same as equally resolved: that
+    function deliberately merges a row with NO venue info into a cluster
+    whose other member DOES resolve to a real facility (live case:
+    event-282136 had venue_raw NULL; event-305361, the same real event,
+    resolved cleanly to South Dakota Art Museum). Picking the resolved
+    one keeps the richer, structurally-usable row (map/venue-page
+    linking, JSON-LD Place) as canonical, even when its own prose
+    happens to be shorter than the venue-less row's."""
+    facility_resolved = resolve_venue(venue_registry, row.get("venue")) is not None
+    raw = row.get("raw_data") or {}
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except ValueError:
+            raw = {}
+    has_description = bool((raw.get("description") or "").strip())
+    return (facility_resolved, has_description, -row["id"])
+
+
+def cluster_event_duplicate_indices(
+    titles_days_venues: list[tuple[str | None, str, str | None]], venue_registry: dict,
+) -> list[list[int]]:
+    """Shared clustering primitive for dedupe_cross_source_events() below
+    AND scripts/merge_cross_source_event_duplicates.py's retroactive
+    backfill -- both call this so the live pipeline and the one-off
+    cleanup can never drift apart on what counts as a duplicate. Takes
+    (title, calendar-day-iso, raw-venue-string-or-None) per row (already
+    resolved to a plain string day by the caller, since `events` rows use
+    `starts_at` and `stories` rows use `occurs_at` -- not this function's
+    concern) and returns groups of ROW INDICES to collapse together.
+
+    Real bug found live building this (2026-10-15): the actual Brookings
+    triple-duplicate case has ONE row with venue_raw NULL (the GrowthZone/
+    chamber mirror never captured it) sitting next to another row for the
+    SAME real event whose venue_raw resolves cleanly to South Dakota Art
+    Museum. An earlier version of this function keyed strictly on (title,
+    day, venue identity) -- None and a resolved facility slug are
+    different keys, so these two never grouped despite being an exact
+    title+day match. Fixed: within a (title, day) bucket, a row with NO
+    venue information is compatible with any ONE named venue already in
+    that bucket (absence isn't a contradiction) -- the whole bucket
+    collapses to one cluster as long as at most one DISTINCT named venue
+    identity appears in it. If a bucket contains two or more genuinely
+    different named venues, that's a real conflict (possibly two
+    different real events sharing a title+day) -- never guessed at: every
+    row in that bucket stays its own singleton rather than picking a side.
+
+    KNOWN LIMITATION (title matching): exact match only, after
+    strip_slot()+lowercasing (same normalization group_event_slots already
+    uses). The live triple-duplicate case's third row ("Free Community Art
+    Day" vs "Community Art Day", same real event) is NOT caught here
+    either, by design -- fuzzy title matching risks merging two genuinely
+    different events that happen to start with the same word, which is a
+    worse failure mode than leaving one known near-miss pattern uncaught.
+    """
+    buckets: dict[tuple, list[int]] = {}
+    order: list[tuple] = []
+    for idx, (title, day, _venue_raw) in enumerate(titles_days_venues):
+        base, _ = strip_slot(title or "")
+        key = (base.lower().strip(), day)
+        if key not in buckets:
+            buckets[key] = []
+            order.append(key)
+        buckets[key].append(idx)
+
+    groups: list[list[int]] = []
+    for key in order:
+        idxs = buckets[key]
+        venue_keys = {idx: _event_dedup_venue_key({"venue": titles_days_venues[idx][2]}, venue_registry) for idx in idxs}
+        distinct_named = {vk for vk in venue_keys.values() if vk is not None}
+        if len(distinct_named) <= 1:
+            groups.append(idxs)
+        else:
+            groups.extend([idx] for idx in idxs)  # real conflict -- never guessed, each its own singleton
+    return groups
+
+
+def dedupe_cross_source_events(rows: list[dict], tz: ZoneInfo, venue_registry: dict) -> list[dict]:
+    """QA finding #3 (2026-10): the SAME real event, scraped via two
+    different source paths (e.g. a city/chamber calendar and its
+    GrowthZone/library mirror), each landed as its own `events` row and
+    so got published as its own separate story -- confirmed live
+    triple-rendered on Brookings' homepage for one real Saturday event
+    ("Community Art Day", three different `source` values, one real
+    event). Runs AFTER group_event_slots/group_recurring_events (so it
+    compares already-source-internal-deduped representatives, not raw
+    scrape rows) and BEFORE story generation -- only the richest row per
+    duplicate cluster survives into this run's candidates. Never deletes
+    or mutates the underlying `events` rows -- a loser row just never
+    gets a `stories` row generated for it, each run, same as any other
+    skip already in this pipeline (pre-existing duplicate STORIES from
+    before this fix shipped are a separate, one-off backfill, not this
+    function's job). See cluster_event_duplicate_indices() for the real
+    clustering rule (title+day+venue-compatibility) and its own known
+    limitation (exact title match only).
+    """
+    if not rows:
+        return rows
+    items = []
+    for row in rows:
+        starts = row.get("starts_at")
+        day = starts.astimezone(tz).date().isoformat() if isinstance(starts, datetime) else str(starts)[:10]
+        items.append((row.get("title"), day, row.get("venue")))
+
+    merged: list[dict] = []
+    for idxs in cluster_event_duplicate_indices(items, venue_registry):
+        members = [rows[i] for i in idxs]
+        merged.append(members[0] if len(members) == 1 else max(members, key=lambda r: _event_dedup_richness(r, venue_registry)))
+    return merged
+
+
 def existing_slugs(conn, town_id: str) -> set[str]:
     with conn.cursor() as cur:
         cur.execute("SELECT slug FROM stories WHERE town_id = %s", (town_id,))
@@ -719,15 +852,18 @@ def publish_table(
         cur.execute(f"SELECT * FROM {table} WHERE town_id = %s ORDER BY id", (town_id,))
         rows = [dict(r) for r in cur.fetchall()]
 
-    if table == "events":
-        rows = group_event_slots(rows, tz)
-        rows = group_recurring_events(rows, tz)
-
     # Event JSON-LD venue resolution (see ai_pipeline/venue_registry.py):
     # loaded once per publish_table() call, not per row -- facilities don't
     # change mid-run. Only relevant for "events"; harmless no-op cost for
-    # "meetings" (empty dict, resolve_venue() always misses).
+    # "meetings" (empty dict, resolve_venue() always misses). Moved ahead
+    # of the grouping calls below (QA finding #3, 2026-10) so dedupe_cross_
+    # source_events() can use it too, not just the JSON-LD step further down.
     venue_registry = load_registry(conn, town_id) if table == "events" else {}
+
+    if table == "events":
+        rows = group_event_slots(rows, tz)
+        rows = group_recurring_events(rows, tz)
+        rows = dedupe_cross_source_events(rows, tz, venue_registry)
 
     # Summary Tone Prompts (see NEEDS-HUMAN-REVIEW.md): the opening-diversity
     # check needs a "what's already out there" baseline per source_type,
