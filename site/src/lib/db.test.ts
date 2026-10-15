@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   isAiWrittenContent, CONTENT_TRACK_TYPES, countdown, formatShortMonthDay, titleTagForStory,
+  type SourceType,
 } from './db';
 
 const CHI = 'America/Chicago';
@@ -86,8 +87,8 @@ describe('formatShortMonthDay', () => {
 });
 
 describe('titleTagForStory', () => {
-  function story(overrides: Partial<{ title: string; source_type: string; occurs_at: string | null }>) {
-    return { title: 'Community Art Day', source_type: 'event', occurs_at: '2026-10-17T15:00:00Z', ...overrides };
+  function story(overrides: Partial<{ title: string; source_type: SourceType; occurs_at: string | null }>) {
+    return { title: 'Community Art Day', source_type: 'event' as SourceType, occurs_at: '2026-10-17T15:00:00Z', ...overrides };
   }
 
   it('appends the short date for an event with occurs_at', () => {
