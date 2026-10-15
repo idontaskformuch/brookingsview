@@ -3,8 +3,11 @@ ai_pipeline/meeting_decisions_agendalink.py's own module docstring for the
 real, live-verified Broomfield cases these encode (meeting 11344, 2026-09-08
 Regular Meeting: Palisade Park Chipotle Mexican Grill resolutions and the
 EV Charging ordinance)."""
+from unittest.mock import MagicMock
+
 from ai_pipeline.meeting_decisions_agendalink import (
-    final_motion, is_eligible_board, outcome_from_motion, votes_for_motion,
+    FETCH_WINDOW_DAYS, final_motion, find_candidate_meetings, is_eligible_board,
+    outcome_from_motion, votes_for_motion,
 )
 
 # Real motion for Resolution No. 2026-107 (Chipotle), meeting 11344.
@@ -108,3 +111,65 @@ def test_votes_for_motion_maps_member_name_and_vote_value():
 
 def test_votes_for_motion_none_when_empty():
     assert votes_for_motion(EV_CHARGING_APPROVE_MOTION) is None
+
+
+def _fake_conn(rows):
+    """Mock connection/cursor (no real DB), same convention as
+    tests/test_db_upsert_dedup.py."""
+    cur = MagicMock()
+    cur.fetchall.return_value = rows
+    cur.__enter__.return_value = cur
+    cur.__exit__.return_value = False
+    conn = MagicMock()
+    conn.cursor.return_value = cur
+    return conn, cur
+
+
+def test_find_candidate_meetings_query_excludes_meetings_that_already_have_decisions():
+    # QA finding #1 (2026-10), owner-approved fix: this must be a NOT EXISTS
+    # in the query itself, not a Python-side filter after the fact -- the
+    # whole point is to never spend an API call on a meeting that's already
+    # done, not just skip using its result.
+    conn, cur = _fake_conn(rows=[])
+    find_candidate_meetings(conn, "broomfield_co")
+    sql = cur.execute.call_args[0][0]
+    assert "NOT EXISTS" in sql
+    assert "meeting_decisions" in sql
+
+
+def test_find_candidate_meetings_uses_a_90_day_window_not_a_60_day_minimum_gate():
+    # The real bug: the old version required a meeting to be >= 60 days old
+    # before even TRYING it, which skipped the Sep 23 Broomfield meeting
+    # even though its minutes were already publishStatus=='minutes' at 22
+    # days old. Now: a real [now - 90 days, now] window, checked every run.
+    conn, cur = _fake_conn(rows=[])
+    find_candidate_meetings(conn, "broomfield_co")
+    sql, params = cur.execute.call_args[0]
+    assert params == ("broomfield_co", FETCH_WINDOW_DAYS)
+    assert FETCH_WINDOW_DAYS == 90
+    assert "meeting_date <= now()" in sql
+    assert "meeting_date >= now() - (%s * interval '1 day')" in sql
+
+
+def test_find_candidate_meetings_does_not_reintroduce_the_quoted_placeholder_bug():
+    # Live-verified against the real DB (2026-10-15): `interval '%s days'`
+    # puts the placeholder INSIDE the quoted literal, which psycopg still
+    # textually substitutes (as `$1`) but Postgres then parses as the
+    # literal STRING "$1 days" -- its interval parser silently accepts
+    # that as exactly 1 day, no matter what value is actually bound. A
+    # future edit reintroducing this form would silently break the window
+    # again (same way it broke the original 60-day gate) without any test
+    # failure from a mocked cursor, so this guards the SQL text itself.
+    conn, cur = _fake_conn(rows=[])
+    find_candidate_meetings(conn, "broomfield_co")
+    sql = cur.execute.call_args[0][0]
+    assert "interval '%s" not in sql
+
+
+def test_find_candidate_meetings_still_filters_ineligible_boards_after_the_query():
+    conn, cur = _fake_conn(rows=[
+        (1, "City Council Study Session", "url1", "native1"),
+        (2, "City Council Regular Meeting", "url2", "native2"),
+    ])
+    result = find_candidate_meetings(conn, "broomfield_co")
+    assert [m["id"] for m in result] == [2]

@@ -33,6 +33,14 @@ jobs:
         run: python -m scrapers.runner --config configs/broomfield_co.json
       - name: Formatera och publicera stories (Stage 3 -> stories)
         run: python -m ai_pipeline.publish --config configs/broomfield_co.json
+      # QA finding #1 (2026-10): denna var byggd och live-verifierad sedan
+      # 2026-08-27 men aldrig kopplad in här -- körd exakt EN gång, manuellt,
+      # 2026-10-14. Samma continue-on-error-resonemang som scrape.yml:s Phase
+      # 7-steg (Brookings/Legistar): ett fel ska synas i Actions-loggen men
+      # aldrig stoppa publicering/build/deploy nedan.
+      - name: "Phase 7 (Decisions): uppdatera meeting_decisions från AgendaLink"
+        continue-on-error: true
+        run: python -m ai_pipeline.meeting_decisions_agendalink --config configs/broomfield_co.json
       # Phase 6 (City Hall Projects): se moval-scrape.yml:s identiska steg
       # för hela resonemanget (real-elapsed-time-gate inne i skriptet
       # självt, inte en timme-på-dygnet-koll här).

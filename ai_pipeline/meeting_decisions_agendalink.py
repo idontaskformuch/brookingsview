@@ -31,11 +31,16 @@ not a claim of completeness):
     publishStatus 'minutes' (confirmed live: a Study Session's own
     minutes text reads "Council takes no official action during Study
     Sessions therefore minutes are n[ot taken]").
-  - Only a meeting >= MIN_DAYS_BEFORE_FETCH days old is even attempted --
-    a live publishStatus=='minutes' check still gates the real ingest
-    (this is just an efficiency prefilter against hitting the API for
-    meetings that can't possibly be ready yet); observed live lag from
-    meeting date to publishStatus=='minutes' was 3-6 weeks.
+  - Every run re-attempts every meeting within FETCH_WINDOW_DAYS that has
+    NO meeting_decisions rows yet at all -- not a fixed "wait N days then
+    try once" gate. QA finding #1 (2026-10) caught the original 60-day-
+    minimum version skipping a meeting whose minutes were ALREADY
+    publishStatus=='minutes' after only 22 days (observed live lag is
+    3-6 weeks, but that's an observed median, not a guarantee -- some
+    meetings post sooner). A meeting that already has at least one
+    meeting_decisions row is excluded from the candidate query itself
+    (not just skipped after a wasted fetch) -- once real outcomes exist
+    for it, it's done and doesn't need re-checking every run.
   - templateTopic rows are skipped, same discipline as the existing
     agenda parser (scrapers/parsers/agendalink_v1.py).
   - A topic with ZERO motions recorded is skipped ENTIRELY -- not
@@ -87,8 +92,11 @@ load_dotenv()
 import psycopg
 import requests
 
-# See module docstring's "Scope" section.
-MIN_DAYS_BEFORE_FETCH = 60
+# See module docstring's "Scope" section. 90 days, not 60 -- gives margin
+# over the observed 3-6-week (21-42 day) lag to publishStatus=='minutes'
+# without the old version's bug of refusing to even CHECK a meeting that
+# might already be ready (see find_candidate_meetings()'s own comment).
+FETCH_WINDOW_DAYS = 90
 FETCH_DELAY_SECONDS = 0.25
 
 # Board names that never reach publishStatus 'minutes' -- confirmed live,
@@ -215,17 +223,39 @@ def upsert_decision(conn, meeting_id: int, source_url: str | None, topic: dict, 
 
 
 def find_candidate_meetings(conn, town_id: str) -> list[dict]:
+    """Every meeting within the last FETCH_WINDOW_DAYS that has already
+    happened and has NO meeting_decisions row yet -- the NOT EXISTS keeps
+    a meeting whose outcomes already landed out of the candidate set
+    entirely (not just skipped after a wasted API call), so a run only
+    ever spends a fetch on a meeting that's still actually missing its
+    outcomes.
+
+    Real bug caught while building this (live-verified against the
+    production DB, 2026-10-15): `interval '%s days'` puts the placeholder
+    INSIDE the quoted literal -- psycopg still substitutes it (textually,
+    as `$1`), but Postgres then parses the whole thing as a STRING
+    containing the literal characters "$1 days", which its interval-input
+    parser silently accepts as exactly 1 day, no matter what value was
+    actually bound. Confirmed this was ALSO true of the original (pre-fix)
+    MIN_DAYS_BEFORE_FETCH=60 gate this function replaces -- it was never
+    really a 60-day floor. `%s * interval '1 day'` keeps the placeholder
+    OUTSIDE any quotes (a real multiplication, not text substitution), so
+    the bound value actually takes effect."""
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT id, body, agenda_url, raw_data->>'id' AS native_id
-              FROM meetings
-             WHERE town_id = %s
-               AND raw_data->>'id' IS NOT NULL
-               AND meeting_date <= now() - interval '%s days'
-             ORDER BY meeting_date DESC
+            SELECT m.id, m.body, m.agenda_url, m.raw_data->>'id' AS native_id
+              FROM meetings m
+             WHERE m.town_id = %s
+               AND m.raw_data->>'id' IS NOT NULL
+               AND m.meeting_date <= now()
+               AND m.meeting_date >= now() - (%s * interval '1 day')
+               AND NOT EXISTS (
+                     SELECT 1 FROM meeting_decisions md WHERE md.meeting_id = m.id
+                   )
+             ORDER BY m.meeting_date DESC
             """,
-            (town_id, MIN_DAYS_BEFORE_FETCH),
+            (town_id, FETCH_WINDOW_DAYS),
         )
         rows = cur.fetchall()
     return [
