@@ -141,4 +141,22 @@ describe('every reader-facing stories listing excludes superseded rows', () => {
     const body = nextFn === -1 ? rest : rest.slice(0, nextFn);
     expect(body).toContain('ORDER BY event_item_id ASC NULLS LAST, id ASC');
   });
+
+  // QA finding #2 (2026-10): a story with occurs_at IS NULL used to be
+  // unconditionally eligible for "Worth knowing" forever (no -24h floor
+  // applied at all), which kept 3-3.5-month-old meeting stories on the
+  // Brookings homepage. Source-text guard, same reasoning as the blocks
+  // above -- this function hits the live Neon connection, no mocking seam.
+  it('getWorthKnowingCandidates ages an occurs_at IS NULL row out by published_at, not forever', () => {
+    const start = dbSource.indexOf('function getWorthKnowingCandidates(');
+    expect(start).toBeGreaterThan(-1);
+    const rest = dbSource.slice(start + 1);
+    const nextFn = rest.search(/\nexport (async )?function /);
+    const body = nextFn === -1 ? rest : rest.slice(0, nextFn);
+    // A bare `occurs_at IS NULL` disjunct with no accompanying age check
+    // would reintroduce the bug -- it must only appear paired with a
+    // published_at floor.
+    expect(body).not.toMatch(/OR occurs_at IS NULL OR/);
+    expect(body).toContain("(occurs_at IS NULL AND published_at >= now() - interval '24 hours')");
+  });
 });

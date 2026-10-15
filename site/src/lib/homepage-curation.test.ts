@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   firstSentence, hasQuorumNoticeSignal, selectLatestFrom, selectWorthKnowing,
-  isSubstantialMeetingSummary, selectFrontPageRhythm, type FrontPageRhythmOptions,
+  isSubstantialMeetingSummary, selectFrontPageRhythm, excludedFromComingUp,
+  type FrontPageRhythmOptions,
 } from './homepage-curation';
 import type { Story } from './db';
 
@@ -157,6 +158,28 @@ describe('selectWorthKnowing', () => {
       const result = selectWorthKnowing([used, promoted], new Set(), [], new Set(['used-1']), 1);
       expect(result.map((s) => s.slug)).toEqual(['promoted']);
     });
+  });
+});
+
+describe('excludedFromComingUp', () => {
+  // QA finding #8 (2026-10): the real bug was a quorum-notice meeting story
+  // rendering once in Worth Knowing and again as the first "Coming up" card
+  // -- usedSlugs (lead/secondary) alone didn't cover that.
+  it('includes a Worth Knowing pick even when usedSlugs is empty', () => {
+    const quorumNotice = story({ slug: 'quorum-notice' });
+    const result = excludedFromComingUp(new Set(), [quorumNotice]);
+    expect(result.has('quorum-notice')).toBe(true);
+  });
+
+  it('still includes the lead/secondary slugs from usedSlugs', () => {
+    const result = excludedFromComingUp(new Set(['lead', 'second']), []);
+    expect(result).toEqual(new Set(['lead', 'second']));
+  });
+
+  it('unions both sources without dropping either', () => {
+    const quorumNotice = story({ slug: 'quorum-notice' });
+    const result = excludedFromComingUp(new Set(['lead']), [quorumNotice]);
+    expect(result).toEqual(new Set(['lead', 'quorum-notice']));
   });
 });
 

@@ -214,3 +214,14 @@ export function selectWorthKnowing(
   }
   return selected;
 }
+
+/** QA finding #8 (2026-10): index.astro's Today/This week/Later rivers
+ *  ("Coming up") used to filter `upcoming` against usedSlugs (the lead +
+ *  secondary cards) only -- selectWorthKnowing()'s own picks were never
+ *  folded in, so a Worth Knowing item (e.g. a quorum-notice meeting story)
+ *  could render a second time as the first card of "Coming up" on the same
+ *  page load. Combines both into the one exclusion set the caller filters
+ *  the remaining candidate pool against. */
+export function excludedFromComingUp(usedSlugs: Set<string>, worthKnowingSelection: Story[]): Set<string> {
+  return new Set([...usedSlugs, ...worthKnowingSelection.map((s) => s.slug)]);
+}

@@ -40,7 +40,7 @@ import {
   getWorthKnowingCandidates, getRecentProjectUpdates, PROJECT_PENDING_OUTCOME_LABEL, formatDate,
   getFacilities, getLatestVailNewsItem, getEventDeckDigests,
 } from '../lib/db';
-import { selectWorthKnowing, selectFrontPageRhythm } from '../lib/homepage-curation';
+import { selectWorthKnowing, selectFrontPageRhythm, excludedFromComingUp } from '../lib/homepage-curation';
 import {
   todayUtcMidnight, buildEventFeed, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent, dayIndex,
   buildWeekendSummary,
@@ -236,7 +236,11 @@ const frontPageImages = dedupeConsecutiveImages(
 );
 const frontPageImageBySlug = new Map(frontPageImages.map(({ item, image }) => [item.slug, image]));
 
-const rest = upcoming.filter((s) => !usedSlugs.has(s.slug));
+// QA finding #8 (2026-10): see excludedFromComingUp()'s own doc comment --
+// usedSlugs alone (lead/secondary) let a Worth Knowing pick repeat as the
+// first card of Today/This week/Later below.
+const comingUpExcluded = excludedFromComingUp(usedSlugs, worthKnowingSelection);
+const rest = upcoming.filter((s) => !comingUpExcluded.has(s.slug));
 
 // Events correctness Phase 1 (2026-10-07): this used to bucket via
 // `new Date().setHours(0,0,0,0)`, which reads the BUILD MACHINE's local

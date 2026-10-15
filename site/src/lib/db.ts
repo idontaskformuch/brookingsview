@@ -385,7 +385,15 @@ export async function getWorthKnowingCandidates(limit = 12): Promise<Story[]> {
              source_type IN ('meeting', 'meeting_followup', 'alert')
              OR featured = true
            )
-       AND (featured = true OR occurs_at IS NULL OR occurs_at >= now() - interval '24 hours')
+       AND (
+             featured = true
+             OR (occurs_at IS NOT NULL AND occurs_at >= now() - interval '24 hours')
+             -- A row with no occurs_at (e.g. a meeting whose date never made it
+             -- onto the story) has no real-world moment to measure the 24h
+             -- floor against -- age it out by published_at instead so it
+             -- doesn't stay eligible forever (see QA finding #2, 2026-10).
+             OR (occurs_at IS NULL AND published_at >= now() - interval '24 hours')
+           )
        AND superseded_by_slug IS NULL
      ORDER BY featured DESC, occurs_at ASC NULLS LAST
      LIMIT ${limit}
