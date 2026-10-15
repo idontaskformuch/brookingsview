@@ -145,9 +145,20 @@ def main() -> int:
         # own comment. Applied as ordinary groups below (same report/
         # update/redirect-map path), just flagged in the printout so a
         # re-read of this output can tell which rows were algorithmic vs
-        # hand-reviewed.
+        # hand-reviewed. Skips an override already applied with this exact
+        # winner (unlike the algorithmic groups above, a hand-written dict
+        # has no WHERE superseded_by_slug IS NULL of its own to naturally
+        # drop off the list once done -- without this check, a re-run
+        # would report it as "would be superseded" forever).
+        with conn.cursor() as cur:
+            cur.execute("SELECT slug, superseded_by_slug FROM stories WHERE slug = ANY(%s)", (
+                [s for overrides in MANUAL_SUPERSEDE_OVERRIDES.values() for s in overrides],
+            ))
+            already_applied = dict(cur.fetchall())
         for town_id, overrides in MANUAL_SUPERSEDE_OVERRIDES.items():
             for loser_slug, winner_slug in overrides.items():
+                if already_applied.get(loser_slug) == winner_slug:
+                    continue
                 groups.append({
                     "town_id": town_id, "title": f"(manual override) {loser_slug} -> {winner_slug}",
                     "day": "", "count": 1, "winner_slug": winner_slug, "loser_slugs": [loser_slug],
