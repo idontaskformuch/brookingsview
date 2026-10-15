@@ -1,89 +1,77 @@
 # State
 
-2026-10-15. Round 2 PUSHED (f7d0da5..b0e9b24..origin/main, incl. the
-  idempotency fix 5cc9a6a pushed separately after). Round 3 (#6, #5)
-  code done + committed, NOT pushed. Local HEAD is 2 commits ahead of
-  origin/main: d523db6 (#6), bb140a3 (#5). Quorum-notice title backfill
-  (23 of 28 rows) shown as dry-run below -- AWAITING OWNER APPROVAL.
+2026-10-15. Round 3 COMPLETE, all verified, awaiting owner's final "ja"
+  to push. Local HEAD is 5 commits ahead of origin/main: 5cc9a6a (round-2
+  idempotency fix), d523db6 (#6), bb140a3 (#5 + quorum build_title fix +
+  backfill script), dad1423 (state), 324e76a (astro-check type fix).
 
-ROUND 2 FOLLOW-UP (this exchange, before round 3): owner asked why the
-  QA report's 45/10 duplicate-group counts didn't match the backfill's
-  3-pair result. Answered: the report counted duplicate RAW `events` rows
-  (same real event re-scraped across runs/sources, among upcoming rows),
-  not duplicate PUBLISHED stories -- checked all 44 Brookings + 562 Moreno
-  Valley raw groups against `stories`, found ZERO others with 2+
-  published rows today (the rest are pending raw rows the already-
-  committed pipeline fix prevents from ever becoming duplicate stories).
-  Also found+fixed a small idempotency bug in the backfill script itself
-  (the manual override kept re-reporting as pending after being applied)
-  -- 5cc9a6a, already pushed. Confirmed via fresh dry-run: 0 remaining
-  duplicate-story groups.
+ROUND 3 RECAP:
+  #6 (static Astro.redirect() -> real 301/302): DONE. New
+    resolveStaticGateRedirect() in site/server/_shared.ts, wired into
+    worker.ts right after the existing /this-week/ block (identical root
+    cause/fix pattern). Covers all 14 live-broken routes across all 3
+    towns; whats-on excluded (hasWhatsOn true everywhere today, never
+    redirects). .astro pages' own Astro.redirect() calls untouched
+    (still correct for local `astro dev`).
 
-ROUND 3:
-  #6 (static Astro.redirect() -> real 301/302): DONE, committed (d523db6).
-    New resolveStaticGateRedirect() in site/server/_shared.ts, checked in
-    worker.ts right after the existing /this-week/ block (same root
-    cause, same fix pattern -- a real Response.redirect() at the
-    Cloudflare Workers edge, before ASSETS). Covers all 14 currently-
-    live-broken routes (sports/jackrabbits/vail-resorts/university/play/
-    farm-report/burro-bonanza/home-sales/home-sales-archive/closures/
-    workplace-watch/new-in-town/month/reviews) across all 3 towns' town-
-    gating conditions, hand-duplicated from each .astro page's own
-    condition (this Worker resolves town from hostname at request time,
-    can't import site-config.ts's build-time SiteConfig). whats-on
-    excluded -- hasWhatsOn is true everywhere today, never redirects.
-    .astro pages' own Astro.redirect() calls left in place (still correct
-    for local `astro dev`). Tests added in _shared.test.ts (28 passing).
+  #5 (duplicate <title> tags): DONE. New titleTagForStory()/
+    formatShortMonthDay() in db.ts, wired into s/[slug].astro's
+    BaseLayout title prop ONLY (never H1/story.title/JSON-LD). Scoped to
+    event+alert per owner approval after I surfaced the alert case (50
+    stories) during investigation -- originally asked about events only.
 
-  #5 (duplicate <title> tags): DONE, committed (bb140a3). New
-    titleTagForStory()/formatShortMonthDay() in db.ts, wired into
-    s/[slug].astro's BaseLayout title prop only (never the H1/story.title/
-    JSON-LD). Scoped to event+alert (confirmed via live DB check: 83
-    event + 50 alert stories affected, owner approved expanding beyond
-    the originally-asked "event" scope after I surfaced this).
-    SEPARATE BUG FOUND+FIXED in the same pass: ai_pipeline/publish.py's
-    build_title() quorum-notice branch never appended the meeting date at
-    all (regular meetings' own fallback branch two lines below it does) --
-    confirmed live, 5 quorum-notice stories for a recurring real event
-    sharing one title across 5 dates. Fixed to match the fallback.
-    BACKFILL (scripts/backfill_quorum_notice_title_dates.py): built,
-    dry-run shows 23 of 28 affected stories safe to update (recomputed by
-    calling the now-fixed build_title() against each one's own
-    underlying meeting -- can't drift from what a fresh publish produces
-    today). NOT YET RUN -- awaiting owner approval.
-    SAFETY FINDING surfaced by the dry-run itself, NOT fixed (separate,
-    real bug, out of scope for today): 5 of the 28 candidates' meetings
-    now have raw_data.agenda_text = NULL -- Legistar returned zero agenda
-    items on a later rescrape of an old EventId, and legistar_v1.py's
-    upsert REPLACES raw_data wholesale (update_columns includes
-    "raw_data") rather than merging, so the richer historical agenda
-    content that originally justified the quorum-notice classification
-    was silently overwritten/lost. Re-running the classifier on today's
-    data wrongly reclassifies these 5 as generic "City Council" meetings
-    -- the backfill script detects this and SKIPS them (reported, never
-    applied) rather than replacing a correct specific title with a
-    misleading generic one. Affected meeting_ids: 1314, 2428, 10973,
-    11006, 11009 (all brookings_sd).
+  #5 SIDE FIX: ai_pipeline/publish.py's build_title() quorum-notice
+    branch never appended the meeting date (regular meetings' own
+    fallback branch does) -- fixed to match.
 
-PRE-PUSH VERIFICATION (all green, this session): pytest 871 passed/8
-  skipped (was 870 -- +1 new quorum-notice test). vitest 1051 passed (was
-  1033 -- +18 new: _shared.test.ts's resolveStaticGateRedirect coverage +
-  db.test.ts's titleTagForStory/formatShortMonthDay coverage). astro
-  check / 3-town build / sitemap-disjoint NOT yet re-run since round 2 --
-  due before next push per CLAUDE.md rule 3.
+  #5 BACKFILL: RAN, 23 of 28 quorum-notice titles updated (title column
+    only). 5 intentionally skipped and left untouched -- their
+    meetings' raw_data.agenda_text is now NULL (see "OPEN ISSUE" below),
+    which would make re-running the classifier mislabel them as generic
+    "City Council" meetings instead of fixing the date. Confirmed live
+    in DB and in a built page (grep'd dist output) before cleanup.
 
-NEXT STEPS:
-  1. Owner approves/declines the quorum-notice backfill dry-run above --
-     on approval, run `python -m scripts.backfill_quorum_notice_title_dates`
-     for real (23 rows, title-only UPDATE).
-  2. Full pre-push battery: astro check + 3-town build + sitemap/noindex-
-     disjoint check (pytest/vitest already green above).
-  3. Push after owner's explicit "ja" (2 local commits + whatever the
-     backfill adds).
-  4. Separately flagged for a future round, NOT auto-scheduled: the
-     Legistar raw_data-overwrite data-loss bug above (5 known-affected
-     meetings, likely more as other old quorum-notice-eligible meetings
-     age past whatever triggers Legistar to stop returning agenda items).
+  POST-HOC BUG CAUGHT: db.test.ts's new titleTagForStory fixture typed
+    source_type as bare `string` -- astro check caught it (5 errors),
+    fixed by typing it as the real SourceType union (324e76a).
+
+  BUILD INFRASTRUCTURE NOTE (this session): discovered the `| tail -N`
+    pattern used for background astro builds all session silently
+    discards the REAL process exit code (bash reports the pipe's last
+    command's exit status, i.e. tail's, always 0) -- a transient Neon
+    "fetch failed" mid-build on the first Moreno Valley rebuild attempt
+    went undetected until I happened to read the tail output's content
+    rather than trust the reported exit code. Switched to `> file 2>&1;
+    echo "REAL EXIT CODE: $?" >> file` for the rest of this round.
+    Rebuilt clean on retry (transient, not a code bug). Worth carrying
+    this redirection pattern into future sessions' builds too.
+
+PRE-PUSH VERIFICATION (all green, this session, after backfill + fix):
+  - pytest: 871 passed, 8 skipped (unchanged -- backfill ran as a one-off).
+  - vitest: 1051 passed, 51 files.
+  - astro check: 0 errors (was 5, fixed in 324e76a), 0 warnings.
+  - astro build all 3 towns (real exit codes checked, not piped through
+    tail): brookings_sd 636 pages, moreno_valley_ca 3407 pages,
+    broomfield_co 1078 pages. Broomfield has 3 pre-existing CSS esbuild
+    warnings (css-syntax-error, unrelated to anything touched this
+    session) -- not new, build still succeeds.
+  - scripts/verify_sitemap_noindex_disjoint.mjs: OK on all 3 (107/140/80
+    URLs, zero offenders). Temp dist-*/build-log files removed after.
+
+NEXT STEP: push the 5 commits above after owner's explicit "ja".
+
+OPEN ISSUE, flagged this round, NOT fixed (separate from today's asks):
+  Legistar raw_data-overwrite data loss. 5 known-affected meeting_ids
+  (1314, 2428, 10973, 11006, 11009, all brookings_sd) now have raw_data.
+  agenda_text = NULL even though they clearly had real agenda content
+  when first scraped (their stories' original titles proved it).
+  Root cause: a later Legistar rescrape of a sufficiently old EventId can
+  return zero agenda items, and legistar_v1.py's upsert REPLACES raw_data
+  wholesale (update_columns includes "raw_data") rather than merging --
+  overwriting richer historical content with an impoverished version.
+  Likely affects more meetings over time as others age past whatever
+  threshold triggers Legistar to stop serving item-level detail. Not
+  scheduled for any round yet.
 
 REMAINING QA FINDINGS, not yet scheduled: #9 (Celebration Park hours,
   Moreno Valley, unverified/info-only -- lowest priority, info-only per
