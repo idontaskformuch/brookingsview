@@ -68,19 +68,19 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
   },
   // Phase 2, item 2c (2026-10-08): was 'Things to Do in {Town} This Week' /
   // '{Town} Events: Today, This Weekend, and Coming Up' -- the phase2 spec
-  // calls for a plain, literal "Events in {Town}" instead, with per-town
-  // tuning against real Bing query data done LATER as its own small change
-  // via TOWN_OVERRIDES (already a general mechanism, see this file's own
-  // module doc and resolvePageMeta() -- no new hook needed, just not used
-  // for this route yet). H1 is "All Events in {Town}," not the bare 3-word
-  // phrase, because of a real build-time gate (src/lib/build-checks.ts's
-  // own assertPageMetaPatternsValid(), MIN_H1_WORDS=4) this caught on a
-  // real build before shipping -- "Events in {Town}" alone is 3 words for
-  // every real town. "All" is the smallest addition that both clears the
-  // gate and stays true to "plain."
+  // called for a plain, literal "Events in {Town}" instead, with per-town
+  // tuning against real Bing query data done LATER via TOWN_OVERRIDES (no
+  // new hook needed). That later pass happened 2026-10-15: Bing data
+  // showed real clicks come from "today/tonight/tomorrow/this weekend"
+  // queries. "{Town} Events Today, Tonight & This Weekend" (the literal
+  // ask) hit 71 chars for Moreno Valley -- over the 65-char hard-fail line
+  // (see TITLE_MAX_LENGTH, build-checks.ts) and well past the ~60 target.
+  // "Tonight"/"Tomorrow" moved into the H1 instead (no length cap there),
+  // keeping the title to just "Today & Weekend" -- 49/57/51 chars for
+  // Brookings/Moreno Valley/Broomfield, all under 60.
   events: {
-    titlePattern: 'Events in {Town} | {Site}',
-    h1Pattern: 'All Events in {Town}',
+    titlePattern: '{Town} Events Today & Weekend | {Site}',
+    h1Pattern: 'Events in {Town} Today, Tonight, Tomorrow and This Weekend',
     ledeRequirement: 'Name the actual sources (library, city, chamber) and the update cadence.',
   },
   'whats-on': {
@@ -137,8 +137,16 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     h1Pattern: 'Current Road Work and Incidents Around {Town}',
     ledeRequirement: 'Name the DOT source and state the refresh interval.',
   },
+  // Bing query pass (2026-10-15, see `events` above): a question-form
+  // title matches real "is there school tomorrow" query intent better
+  // than the old generic "School and Facility Closures" framing. The
+  // literal ask ("Is There School Tomorrow? {Town} School Closures | {Site}")
+  // hit 68-76 chars across the three towns -- over the hard-fail line even
+  // before counting the ~60 target. This rephrasing keeps the brand
+  // suffix and fits all three under 60 (50/58/52 chars). H1 unchanged --
+  // the page still answers only from official status, same as before.
   closures: {
-    titlePattern: '{Town} School and Facility Closures | {Site}',
+    titlePattern: '{Town} School Closed Tomorrow? | {Site}',
     h1Pattern: '{Town} Closure Watch: Schools, Facilities and Weather Alerts',
     ledeRequirement: 'Must include the existing never-predicts-a-closure disclaimer.',
   },
@@ -246,9 +254,12 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     // Was "Vail Resorts Newsroom" -- 3 words, under the 4-word minimum.
     h1Pattern: 'Vail Resorts Corporate Newsroom for {Town}',
   },
+  // Bing query pass (2026-10-15, see `events` above for the full context):
+  // "Today & This Week" over the old generic "Forecast and Alerts" framing
+  // -- matches real "weather today" query intent. 52/60/54 chars.
   weather: {
-    titlePattern: '{Town} Weather Forecast and Alerts | {Site}',
-    h1Pattern: '{Town} Forecast, Alerts and What They Mean',
+    titlePattern: '{Town} Weather Today & This Week | {Site}',
+    h1Pattern: "{Town} Weather: Today's Forecast and the Week Ahead",
   },
   // CORRECTION to the handoff's own claim: it describes this as "built off
   // a real Search Console query," implying the page already exists.

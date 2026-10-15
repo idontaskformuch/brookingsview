@@ -24,6 +24,7 @@ import { SHARED_CONTENT_SOURCE_TYPES } from './cross-site-canonical';
 import { resolveCluster } from './clusters';
 import { storyHref } from './content-slugs';
 import { calendarDayDiff } from './time';
+import { calendarDateParts } from './calendar-date';
 import { selectThisWeekImage, type Season } from './this-week-images';
 import type { ThisWeekImage } from '../config/this-week-images';
 import { resolveActiveHoliday, selectHolidayImage, type DateYMD } from './holidays';
@@ -2724,18 +2725,12 @@ export function formatMonthYear(value: string | Date | null): string {
   }).format(new Date(Date.UTC(y, m, d)));
 }
 
-/** Delad extraktionslogik bakom formatCalendarDate -- se dess kommentar för
- *  varför sträng/Date måste hanteras olika. Egen export så andra sidor (t.ex.
- *  events.astro:s "matchar dagens datum mot en spelad hemmamatch") kan jämföra
- *  ett kalenderdatum mot "idag" utan att själva återuppfinna samma landmina. */
-export function calendarDateParts(value: string | Date | null): { y: number; m: number; d: number } | null {
-  if (!value) return null;
-  if (value instanceof Date) {
-    return { y: value.getFullYear(), m: value.getMonth(), d: value.getDate() };
-  }
-  const [y, m, d] = value.slice(0, 10).split('-').map(Number);
-  return { y, m: m - 1, d };
-}
+// calendarDateParts() moved to lib/calendar-date.ts (2026-10-15, imported
+// above) so it's a dependency-free module place-hours.ts can safely import
+// for client-side bundling -- re-exported here so every existing call site
+// that imports it from THIS module keeps working unchanged. See that
+// file's own comment.
+export { calendarDateParts };
 
 /** Meeting-date display, aware of siteConfig.meetingsHaveTime (see that
  *  flag's own comment on site-config.ts): Brookings/Legistar's meeting_date

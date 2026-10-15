@@ -14,7 +14,6 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { getFacilities, FACILITY_CATEGORY_LABELS } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
-import { computeOpenStatus } from '../../lib/facility-hours';
 import { resolvePageMeta } from '../../lib/page-meta';
 import { resolveHubNavItems } from '../../lib/clusters';
 import ClusterNav from '../../components/ClusterNav.astro';
@@ -22,7 +21,6 @@ import ClusterNav from '../../components/ClusterNav.astro';
 const pageMeta = resolvePageMeta('facilities', siteConfig);
 const clusterNavItems = resolveHubNavItems('facilities', siteConfig);
 const facilities = await getFacilities();
-const now = new Date();
 
 const byCategory = new Map<string, typeof facilities>();
 for (const f of facilities) {
@@ -67,21 +65,25 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   {categories.length > 0 ? categories.map((cat) => (
     <>
       <SectionRule label={FACILITY_CATEGORY_LABELS[cat] ?? cat} />
-      <ul class="list">
-        {byCategory.get(cat)!.map((f) => {
-          const status = computeOpenStatus(f.hours_structured, now, siteConfig.timezone);
-          return (
-            <li>
-              <a href={`/facilities/${f.slug}/`}>{f.name}</a>
-              {f.address && <span class="addr"> — {f.address}</span>}
-              {status.known && (
-                <span class:list={['badge', status.isOpen ? 'badge--open' : 'badge--closed']}>
-                  {status.isOpen ? 'Open now' : `Closed — opens ${status.opensAt} ${status.opensLabel}`}
-                </span>
-              )}
-            </li>
-          );
-        })}
+      {/* Open/Closed badge client-side move (2026-10-15): no more
+          computeOpenStatus() call here -- a static hub page rebuilt every
+          6h (scrape.yml) baking "now" in at build time is exactly the
+          staleness bug facilities/[slug].astro's own script comment
+          describes. data-tz on the <ul> (once per category list, not
+          per-item) + data-hours per <li> that actually has structured
+          hours; the badge <span> is absent entirely for a facility with
+          none, and stays hidden (no badge, just the name/address already
+          shown) until the <script> below fills it in client-side. */}
+      <ul class="list" data-open-status-tz={siteConfig.timezone}>
+        {byCategory.get(cat)!.map((f) => (
+          <li>
+            <a href={`/facilities/${f.slug}/`}>{f.name}</a>
+            {f.address && <span class="addr"> — {f.address}</span>}
+            {f.hours_structured && (
+              <span class="badge" data-open-status-badge data-hours={JSON.stringify(f.hours_structured)} hidden></span>
+            )}
+          </li>
+        ))}
       </ul>
     </>
   )) : (
@@ -93,6 +95,27 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
+  <script>
+    // Same client-side computation move as facilities/[slug].astro's own
+    // script -- see that file's comment. computeOpenStatus() here is the
+    // OLDER hours_structured-based function (lib/facility-hours.ts), not
+    // computePlaceOpenStatus() -- this hub list still reads the same data
+    // source it always has; only WHERE the decision runs changed.
+    import { computeOpenStatus } from '../../lib/facility-hours';
+    import type { StructuredHours } from '../../lib/db';
+
+    document.querySelectorAll<HTMLElement>('[data-open-status-badge]').forEach((badge) => {
+      const tz = badge.closest<HTMLElement>('[data-open-status-tz]')?.dataset.openStatusTz;
+      const raw = badge.dataset.hours;
+      if (!tz || !raw) return;
+      const hours = JSON.parse(raw) as StructuredHours;
+      const status = computeOpenStatus(hours, new Date(), tz);
+      if (!status.known) return;
+      badge.hidden = false;
+      badge.className = `badge ${status.isOpen ? 'badge--open' : 'badge--closed'}`;
+      badge.textContent = status.isOpen ? 'Open now' : `Closed — opens ${status.opensAt} ${status.opensLabel}`;
+    });
+  </script>
 </BaseLayout>
 
 <style>

@@ -37,14 +37,22 @@
  *  none), never a hardcoded slug -- see today.astro/index.astro's own
  *  `.find(f => f.category === 'city_hall')`. Omitted when that facility
  *  has no hours_text at all, or its hours_text couldn't be confidently
- *  parsed (hours_needs_review) -- computeOpenStatus's `known: false`
- *  covers both, same fallback rule as the /facilities pages themselves.
+ *  parsed (hours_needs_review) -- cityHallKnown below covers both, same
+ *  fallback rule as the /facilities pages themselves.
+ *
+ *  Open/Closed badge client-side move (2026-10-15): the open/closed TEXT
+ *  is no longer computed here. asOf can be up to 6h stale (static site,
+ *  scrape.yml cron), so a build-time computation would have the same
+ *  staleness bug facilities/[slug].astro's own script comment describes.
+ *  cityHallKnown only asks whether hours data exists at all (a
+ *  time-independent, build-time-safe fact) to decide whether the row
+ *  renders; the live text is filled in by the script near the bottom of
+ *  this component, from a fresh now.
  */
 import StoryCard from './StoryCard.astro';
 import TrafficWidget from './TrafficWidget.astro';
 import HeatAdvisoryWidget from './HeatAdvisoryWidget.astro';
 import { artsEventAsStory, type FeedItem, type TodayBucket } from '../lib/events';
-import { computeOpenStatus, type OpenStatus } from '../lib/facility-hours';
 import { joinWithOr } from '../lib/status-line';
 import type { Story, TrafficIncident, StructuredHours, Facility } from '../lib/db';
 import type { ClosureWatchStatus } from '../lib/closure-watch';
@@ -64,7 +72,7 @@ export interface Props {
   /** null = no real traffic source for this town -- omit the row. Present
    *  (even with an empty `incidents` array) means the source exists. */
   traffic: { incidents: TrafficIncident[] } | null;
-  cityHallFacility: { hours_structured: StructuredHours | null; name: string } | null;
+  cityHallFacility: { hours_structured: StructuredHours | null; name: string; slug: string } | null;
   /** Item C4 (corrected) -- only needed to resolve an event's venue line via
    *  ground-truth facility alias matching, same reasoning as StoryCard.astro's
    *  own facilities prop. */
@@ -93,9 +101,11 @@ const {
 const Heading = headingLevel;
 const resolvedHeadingText = headingText ?? `Today in ${cityName}`;
 
-const cityHallStatus: OpenStatus = cityHallFacility
-  ? computeOpenStatus(cityHallFacility.hours_structured, asOf, timezone)
-  : { known: false };
+// Time-independent: mirrors computeOpenStatus's own no-hours-data rule,
+// just without calling it, since whether hours_structured exists doesn't
+// depend on now at all -- only the actual open/closed text does, computed
+// client-side below.
+const cityHallKnown = cityHallFacility?.hours_structured != null;
 
 const asOfLabel = asOf.toLocaleTimeString('en-US', {
   hour: 'numeric', minute: '2-digit', hour12: true, timeZone: timezone,
@@ -115,7 +125,7 @@ function toStory(item: FeedItem): { story: Story; href?: string; kicker?: string
 }
 
 const rightNowIsEmpty = activeAlerts.length === 0 && temperature === null
-  && closureStatus === null && traffic === null && !cityHallStatus.known;
+  && closureStatus === null && traffic === null && !cityHallKnown;
 
 // R1 ("all-clear collapses to one line"): alerts/closures/traffic are the
 // same three CONDITIONAL modules cityStatus.ts's applyVisibilityRules()
@@ -171,14 +181,23 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
           <li class:list={[activeClosureClass]}>{activeClosureLabel}</li>
         )}
 
-        {cityHallStatus.known && (
-          <li class:list={['today-block__cityhall', cityHallStatus.isOpen && 'today-block__cityhall--open']}>
-            {cityHallStatus.isOpen
-              ? `City Hall open — closes ${cityHallStatus.closesAt}`
-              : `City Hall closed — opens ${cityHallStatus.opensAt} ${cityHallStatus.opensLabel}`}
+        {cityHallKnown && cityHallFacility && (
+          // Hidden until the script below fills in a live status from a
+          // fresh now -- see this component's own module comment.
+          <li id="today-cityhall" class="today-block__cityhall" hidden>
+            <span data-open-status-text></span>
           </li>
         )}
       </ul>
+      {cityHallKnown && cityHallFacility && (
+        // The noscript row is the only thing a non-JS visitor sees here:
+        // no badge, just a link to where the real hours live.
+        <noscript>
+          <p class="today-block__cityhall">
+            <a href={`/facilities/${cityHallFacility.slug}/`}>City Hall hours</a>
+          </p>
+        </noscript>
+      )}
 
       {temperature !== null && (
         <HeatAdvisoryWidget tempF={temperature} activeAlertTitles={activeAlerts.map((a: AlertItem) => a.title)} />
@@ -225,7 +244,40 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
       <p class="today-block__quiet">Nothing scheduled tomorrow yet</p>
     )}
   </div>
+  {cityHallKnown && cityHallFacility && (
+    // Open/Closed badge client-side move (2026-10-15) -- see this
+    // component's own module comment. Only the decision data is baked in
+    // at build time; what time it is right now is read in the browser.
+    <script type="application/json" id="today-cityhall-data" is:inline set:html={JSON.stringify({
+      hours: cityHallFacility.hours_structured, timezone,
+    })} />
+  )}
 </section>
+{cityHallKnown && (
+  // Module script (not is:inline) -- Astro/Vite bundles this for the
+  // browser, same pattern as components/ShareButton.astro's own inline
+  // client script, reusing the exact same, already-tested
+  // computeOpenStatus() the server used to call.
+  <script>
+    import { computeOpenStatus } from '../lib/facility-hours';
+    import type { StructuredHours } from '../lib/db';
+
+    const dataEl = document.getElementById('today-cityhall-data');
+    const row = document.getElementById('today-cityhall');
+    const text = row?.querySelector<HTMLElement>('[data-open-status-text]');
+    if (dataEl && row && text) {
+      const payload = JSON.parse(dataEl.textContent || '{}') as { hours: StructuredHours | null; timezone: string };
+      const status = computeOpenStatus(payload.hours, new Date(), payload.timezone);
+      if (status.known) {
+        row.hidden = false;
+        row.classList.toggle('today-block__cityhall--open', status.isOpen);
+        text.textContent = status.isOpen
+          ? `City Hall open — closes ${status.closesAt}`
+          : `City Hall closed — opens ${status.opensAt} ${status.opensLabel}`;
+      }
+    }
+  </script>
+)}
 
 <style>
   .today-block { margin-bottom: 1.5rem; }

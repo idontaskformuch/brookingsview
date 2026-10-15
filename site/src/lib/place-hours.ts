@@ -11,13 +11,27 @@
  *  the regular weekly rows for its own date), per the handoff's own 3.3/3.4
  *  rules.
  *
- *  Must be computed server-side at build time in the town's own timezone,
- *  per the handoff's own explicit instruction -- never in browser JS from a
- *  hardcoded offset (the exact Neon DATE/local-time bug that already hit
- *  this project once, see verified_date's own formatCalendarDate() history).
- */
+ *  REVISED 2026-10-15 (Open/Closed badge client-side move): the original
+ *  comment here said this must run server-side at build time, "never in
+ *  browser JS from a hardcoded offset" -- citing a past Neon DATE/
+ *  local-time bug. That bug was about hardcoding a UTC offset instead of
+ *  using the real IANA timezone; this module never did that either way --
+ *  it uses Intl.DateTimeFormat with the town's real timeZone string
+ *  (localParts() below), which resolves DST and offset correctly in a
+ *  browser exactly the same way it does in Node. The REAL problem with
+ *  running this at build time is the opposite one: a static site rebuilt
+ *  every 6h (scrape.yml) bakes in "now" at build time, so the badge can be
+ *  stale for up to 6 hours after a place actually closes. facilities/
+ *  [slug].astro, facilities/index.astro and TodayBlock.astro now import
+ *  this module from an inline client <script> instead (same pattern as
+ *  components/ShareButton.astro) and call it with a freshly-made `now` on
+ *  every page load. That's exactly why calendarDateParts() was pulled out
+ *  into its own dependency-free lib/calendar-date.ts (2026-10-15) -- this
+ *  module must never import a VALUE from lib/db.ts, which calls
+ *  neon(import.meta.env.DATABASE_URL) at module load time and would drag
+ *  that into the client bundle. */
 import type { PlaceHoursRow, PlaceHoursException } from './db';
-import { calendarDateParts } from './db';
+import { calendarDateParts } from './calendar-date';
 import { formatClock } from './facility-hours';
 
 export type PlaceOpenStatus =
