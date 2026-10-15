@@ -43,6 +43,16 @@ export interface SiteConfig {
    *  redan skyddar mot på visningssidan -- se dess kommentar). false för varje
    *  stad tills dess källa bevisat ger ett äkta klockslag. */
   meetingsHaveTime: boolean;
+  /** Does this town's pipeline have ANY post-meeting outcome-tracking
+   *  mechanism wired in at all (writes to `meeting_decisions`)? Legistar
+   *  (Brookings, ai_pipeline/meeting_decisions_legistar.py) and AgendaLink
+   *  (Broomfield, ai_pipeline/meeting_decisions_agendalink.py) both do;
+   *  eSCRIBE (Moreno Valley) has no such script at all (QA finding #1,
+   *  2026-10 -- confirmed zero meeting_decisions rows for the whole town).
+   *  Drives s/[slug].astro's post-meeting banner wording: false gets "not
+   *  available from the city's published records yet" (a structural gap),
+   *  not "not published yet" (which implies it's merely a matter of time). */
+  meetingDecisionsTracked: boolean;
   /** Meta description-standard */
   description: string;
   /** Rader i footerns "var informationen kommer ifrån" */
@@ -370,6 +380,7 @@ const CITIES: Record<string, SiteConfig> = {
     // Legistar's EventDate has no time component (EventTime not fetched
     // yet, see legistar_v1.py) -- meeting_date is a bare calendar date.
     meetingsHaveTime: false,
+    meetingDecisionsTracked: true,
     description:
       'Meetings, events, Jackrabbits games, weather and market prices in Brookings, South Dakota. Updated every 6 hours.',
     sourceBlurb:
@@ -508,6 +519,9 @@ const CITIES: Record<string, SiteConfig> = {
     // escribe_v1.py's _parse_escribe_date()), localized to this zone at
     // scrape time as of the 2026-09-30 timezone fix.
     meetingsHaveTime: true,
+    // No ai_pipeline/meeting_decisions_*.py exists for eSCRIBE -- see this
+    // field's own doc comment.
+    meetingDecisionsTracked: false,
     description:
       'City council decisions, events, weather and local happenings in Moreno Valley, California. Updated every 6 hours.',
     sourceBlurb:
@@ -617,6 +631,7 @@ const CITIES: Record<string, SiteConfig> = {
     // independent 1-hour error -- see agendalink_v1.py's parse comment for
     // the full, corrected investigation).
     meetingsHaveTime: true,
+    meetingDecisionsTracked: true,
     description:
       'City Council decisions, events, weather and local happenings in Broomfield, Colorado. Updated every 6 hours.',
     sourceBlurb:

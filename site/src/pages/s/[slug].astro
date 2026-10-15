@@ -15,6 +15,7 @@ import {
 import type { Story, Facility } from '../../lib/db';
 import {
   partitionDecisions, splitOnAgenda, voteTallyText, motionLabel, consentNote, outcomeLabel,
+  meetingOutcomesBanner,
 } from '../../lib/meeting-decisions';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
 import {
@@ -144,6 +145,16 @@ const coveringMonth = isHomeSalesDigest && story.occurs_at
 const when = hasByline
   ? (coveringMonth ? `Covering ${coveringMonth}` : null)
   : (formatOccursAt(story) || null);
+// QA finding #1 (2026-10), owner-approved fix: see meetingOutcomesBanner()'s
+// own doc comment. `when` is reused as the date text (already formatMeetingDate()
+// for a meeting row) so the banner's date can never drift from the one
+// shown just above it.
+const meetingBanner = isMeeting && story.occurs_at && when
+  ? meetingOutcomesBanner(
+      new Date(story.occurs_at), new Date(), siteConfig.timezone, when,
+      decisionsDecided.length > 0, siteConfig.meetingDecisionsTracked,
+    )
+  : null;
 // "not yet released" placeholders are real, but thin and temporary --
 // noindex until a later reconcile fills them in (generated_by flips away
 // from 'data_pending' automatically once real sales data lands, see
@@ -380,6 +391,7 @@ const eventJsonLdObject = buildEventJsonLd(
     )}
     {when && <p class="story__when data">{when}</p>}
     {eventHasPassed && <p class="story__passed-notice">This event has passed.</p>}
+    {meetingBanner && <p class="story__passed-notice" data-banner-variant={meetingBanner.variant}>{meetingBanner.text}</p>}
 
     {heroImage && (
       <img

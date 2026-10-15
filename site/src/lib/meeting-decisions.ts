@@ -117,3 +117,52 @@ export function splitOnAgenda(onAgenda: MeetingDecision[], meetingDate: Date, no
   if (daysSinceMeeting > STALE_PENDING_DAYS) return { open: [], noRecordedOutcome: onAgenda };
   return { open: onAgenda, noRecordedOutcome: [] };
 }
+
+export type MeetingOutcomesBannerVariant = 'outcomes_listed' | 'outcomes_pending' | 'outcomes_unavailable';
+
+export interface MeetingOutcomesBanner {
+  variant: MeetingOutcomesBannerVariant;
+  text: string;
+}
+
+/** QA finding #1 (2026-10): the AI-written preview paragraph above a
+ *  meeting's own Decisions section is written BEFORE the meeting and never
+ *  rewritten after ("The council will consider..." stays in the HTML
+ *  forever, even once real outcomes exist a few paragraphs below it). The
+ *  owner's approved fix is a date-stamped line ABOVE that paragraph
+ *  instead -- never an AI rewrite of the paragraph itself, and never shown
+ *  at all before the meeting's own calendar day has passed (a future
+ *  meeting's future-tense preview isn't wrong).
+ *
+ *  `dateText` is the caller's own formatted meeting date (db.ts's
+ *  formatMeetingDate(), already town-timezone-correct) -- this module
+ *  takes it as a plain string rather than re-formatting, so it never drifts
+ *  from the date already shown elsewhere on the same page.
+ *  `hasDecidedOutcomes` is whether partitionDecisions() found at least one
+ *  real decision for this meeting. `decisionsTracked` is site-config's
+ *  meetingDecisionsTracked -- false only for a town with no outcome-
+ *  tracking pipeline at all (a structural gap, not a lag), which gets its
+ *  own honest wording rather than implying the outcome is merely running
+ *  late. */
+export function meetingOutcomesBanner(
+  meetingDate: Date, now: Date, timeZone: string, dateText: string,
+  hasDecidedOutcomes: boolean, decisionsTracked: boolean,
+): MeetingOutcomesBanner | null {
+  if (calendarDayDiff(meetingDate, now, timeZone) >= 0) return null;
+  if (hasDecidedOutcomes) {
+    return {
+      variant: 'outcomes_listed',
+      text: `This meeting took place on ${dateText}. The preview below was written before the meeting; outcomes are listed under Decisions.`,
+    };
+  }
+  if (!decisionsTracked) {
+    return {
+      variant: 'outcomes_unavailable',
+      text: `This meeting took place on ${dateText}. Official outcomes aren't available from the city's published records yet.`,
+    };
+  }
+  return {
+    variant: 'outcomes_pending',
+    text: `This meeting took place on ${dateText}. Outcomes have not been published yet.`,
+  };
+}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   consentNote, motionLabel, outcomeLabel, partitionDecisions, splitOnAgenda, voteTallyText,
-  type MeetingDecision,
+  meetingOutcomesBanner, type MeetingDecision,
 } from './meeting-decisions';
 
 function decision(overrides: Partial<MeetingDecision>): MeetingDecision {
@@ -113,6 +113,67 @@ describe('consentNote / outcomeLabel', () => {
   it('shows the real human label for a decided outcome', () => {
     expect(outcomeLabel(decision({ outcome: 'denied' }))).toBe('Denied');
     expect(outcomeLabel(decision({ outcome: 'received_and_filed' }))).toBe('Received and filed');
+  });
+});
+
+describe('meetingOutcomesBanner', () => {
+  // QA finding #1 (2026-10), owner-approved fix. tz/dateText kept simple
+  // and consistent across cases -- the real variants under test are
+  // (meeting passed?) x (has decisions?) x (town tracks decisions at all?).
+  const tz = 'America/Chicago';
+  const dateText = 'Tue, October 13';
+
+  it('returns null before the meeting has happened (today)', () => {
+    // Both at 18:00Z = 1pm CDT, same Chicago calendar day -- a midnight-UTC
+    // meetingDate would land on the PREVIOUS Chicago day instead (the exact
+    // bug class calendarDayDiff()/zonedMidnightUtc() exist to avoid), so
+    // this deliberately mirrors splitOnAgenda's own tests above, not T00:00:00Z.
+    const meetingDate = new Date('2026-10-13T18:00:00Z');
+    const now = new Date('2026-10-13T20:00:00Z'); // same town-local day
+    expect(meetingOutcomesBanner(meetingDate, now, tz, dateText, false, true)).toBeNull();
+  });
+
+  it('returns null for a future meeting', () => {
+    const meetingDate = new Date('2026-10-20T18:00:00Z');
+    const now = new Date('2026-10-13T18:00:00Z');
+    expect(meetingOutcomesBanner(meetingDate, now, tz, dateText, false, true)).toBeNull();
+  });
+
+  it('variant (a): decisions exist -- points to the Decisions section, never rewrites the preview', () => {
+    const meetingDate = new Date('2026-10-13T18:00:00Z');
+    const now = new Date('2026-10-15T18:00:00Z');
+    const result = meetingOutcomesBanner(meetingDate, now, tz, dateText, true, true);
+    expect(result).toEqual({
+      variant: 'outcomes_listed',
+      text: 'This meeting took place on Tue, October 13. The preview below was written before the meeting; outcomes are listed under Decisions.',
+    });
+  });
+
+  it('variant (b): meeting passed, town tracks decisions, but none have landed yet', () => {
+    const meetingDate = new Date('2026-10-13T18:00:00Z');
+    const now = new Date('2026-10-15T18:00:00Z');
+    const result = meetingOutcomesBanner(meetingDate, now, tz, dateText, false, true);
+    expect(result).toEqual({
+      variant: 'outcomes_pending',
+      text: 'This meeting took place on Tue, October 13. Outcomes have not been published yet.',
+    });
+  });
+
+  it('variant (c): town has no outcome-tracking pipeline at all (Moreno Valley) -- honest wording, not "pending"', () => {
+    const meetingDate = new Date('2026-10-13T18:00:00Z');
+    const now = new Date('2026-10-15T18:00:00Z');
+    const result = meetingOutcomesBanner(meetingDate, now, tz, dateText, false, false);
+    expect(result).toEqual({
+      variant: 'outcomes_unavailable',
+      text: "This meeting took place on Tue, October 13. Official outcomes aren't available from the city's published records yet.",
+    });
+  });
+
+  it('decisions existing always wins over decisionsTracked=false (a town could ship tracking later without stale state)', () => {
+    const meetingDate = new Date('2026-10-13T18:00:00Z');
+    const now = new Date('2026-10-15T18:00:00Z');
+    const result = meetingOutcomesBanner(meetingDate, now, tz, dateText, true, false);
+    expect(result?.variant).toBe('outcomes_listed');
   });
 });
 
