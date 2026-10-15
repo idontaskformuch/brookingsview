@@ -175,6 +175,20 @@ describe('resolveHubNavItems', () => {
     const items = resolveHubNavItems('workplace-watch', MORENO_VALLEY);
     expect(items.map((i) => i.label)).toContain('Home sales');
   });
+
+  // QA finding #4 (2026-10): ClusterNav must stop linking to the dead
+  // recipes/editorials/columns track from every town's local_life hub
+  // (sports/jackrabbits/vail-resorts) -- reviews stays (not part of this
+  // finding, still live).
+  it('excludes recipes/editorials/columns from every town\'s local_life hub nav, keeps reviews', () => {
+    for (const [hubRouteKey, town] of [['jackrabbits', BROOKINGS], ['sports', MORENO_VALLEY], ['vail-resorts', BROOMFIELD]] as const) {
+      const labels = resolveHubNavItems(hubRouteKey, town).map((i) => i.label);
+      expect(labels).not.toContain('Recipes');
+      expect(labels).not.toContain('Editorials');
+      expect(labels).not.toContain('Columns');
+    }
+    expect(resolveHubNavItems('jackrabbits', BROOKINGS).map((i) => i.label)).toContain('Reviews');
+  });
 });
 
 describe('resolveHubBacklink', () => {
@@ -192,9 +206,19 @@ describe('resolveHubBacklink', () => {
     expect(resolveHubBacklink('home-sales', BROOKINGS)).toBeNull();
   });
 
-  it("resolves each town's own local_life hub as the backlink target", () => {
-    expect(resolveHubBacklink('recipes', BROOKINGS)?.hubHref).toBe('/jackrabbits/');
-    expect(resolveHubBacklink('recipes', MORENO_VALLEY)?.hubHref).toBe('/sports/');
-    expect(resolveHubBacklink('recipes', BROOMFIELD)?.hubHref).toBe('/vail-resorts/');
+  it("resolves each town's own local_life hub as the backlink target (reviews, still live)", () => {
+    expect(resolveHubBacklink('reviews', BROOKINGS)?.hubHref).toBe('/jackrabbits/');
+    expect(resolveHubBacklink('reviews', BROOMFIELD)?.hubHref).toBe('/vail-resorts/');
+  });
+
+  // QA finding #4 (2026-10): recipes/editorials/columns are now always
+  // unavailable (the dead AI content track) -- this must resolve to null
+  // like any other unavailable route, not the town's local_life hub.
+  it('returns null for recipes/editorials/columns (dead content track, removed from ClusterNav sitewide)', () => {
+    for (const routeKey of ['recipes', 'editorials', 'columns']) {
+      expect(resolveHubBacklink(routeKey, BROOKINGS)).toBeNull();
+      expect(resolveHubBacklink(routeKey, MORENO_VALLEY)).toBeNull();
+      expect(resolveHubBacklink(routeKey, BROOMFIELD)).toBeNull();
+    }
   });
 });

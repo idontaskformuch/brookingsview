@@ -275,10 +275,19 @@ export const ROUTE_AVAILABILITY: Record<string, RouteAvailability> = {
   'farm-report': (c) => c.townId === 'brookings_sd',
   // Moreno-Valley-only spoke.
   'burro-bonanza': (c) => c.townId === 'moreno_valley_ca',
-  // Shared cross-town content-track pages -- no gate on any of them.
-  recipes: () => true,
-  editorials: () => true,
-  columns: () => true,
+  // QA finding #4 (2026-10), owner-approved: the generic AI content track
+  // (recipes/editorials/columns) was shut down 2026-10-07, but these three
+  // stayed `() => true` -- ClusterNav kept funneling readers from live,
+  // indexable hub pages (sports/jackrabbits/vail-resorts, and these pages'
+  // own siblings) into a track that hadn't published anything in 1-2+
+  // weeks. Unlike the per-town hard gates elsewhere in this file, this is
+  // the SAME value for every town -- the track is dead everywhere, not
+  // town-specific -- so it's always false rather than reading a feature
+  // flag that doesn't exist for this. reviews is deliberately NOT included
+  // here (not part of this finding; still live).
+  recipes: () => false,
+  editorials: () => false,
+  columns: () => false,
   // reviews.astro redirects (301) to /columns/ for Moreno Valley
   // specifically -- an editorial merge, not a missing feature, but the
   // route itself genuinely doesn't exist independently there.
