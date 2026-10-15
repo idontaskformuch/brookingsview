@@ -1,30 +1,30 @@
 # State
 
-2026-10-15. Pushed through 9fddfcf (origin/main up to date): Fas 9
-  (d558596), 053-closure (17c7ca2), title/H1+badge (cdf1cb0), CLAUDE.md
-  rule 10 (3dfddcc), migration 059 file (9fddfcf).
+2026-10-15. origin/main up to date through 9fddfcf. c4ae5b5 (state)
+  committed, NOT pushed -- bundle with next approved push.
 
-DONE: Migration 059 (scrape_runs.docs_by_type JSONB) RUN LIVE against
-  prod DB, column confirmed present. CLAUDE.md rule 10 added: approval
-  content goes in the response message, not just tool output.
+CONFIRMED root cause (/closures/ stale after deploy): Cloudflare
+  Workers Static Assets' OWN built-in edge cache -- not a zone Cache
+  Rule (none exist), not worker.ts (no caches.default/cf.cacheEverything;
+  only `env.ASSETS.fetch()` unmodified), not app Cache-Control (correct:
+  max-age=0, must-revalidate). Known Cloudflare product gap -- Static
+  Assets auto-caches with no per-deploy invalidation ("skew protection").
+  Only fix: explicit purge after deploy (owner's manual "Purge
+  Everything" = item-2 below).
+PENDING (owner decision, not run): Briggs Library hours_text UPDATE +
+  Larson Nature Center INSERT -- blocked by Claude Code's auto-mode
+  classifier (Bash+PowerShell both). Live-reconfirmed unchanged.
 
-BLOCKED (owner decision needed): Briggs Library hours_text UPDATE and
-  Larson Nature Center INSERT -- both denied by the Claude Code auto-mode
-  classifier ("Modify Shared Resources") on both Bash and PowerShell.
-  Per that denial's own rule, did not retry via another tool/script/
-  encoding. Owner must either run both statements themselves (exact SQL
-  given in chat, Larson description revised to drop "staffed"/dept
-  attribution -- city's own page doesn't say either for the CENTER
-  specifically, only generically for the park) or add a Bash/PowerShell
-  permission rule and ask me to retry. Also flagged: dakota-nature-park's
-  EXISTING live description has the same unverified "run by Parks,
-  Recreation & Forestry" claim for the center -- not touched, pending
-  owner's call.
+PENDING (proposals only): (1) deploy-freshness check never visits
+  /closures/, never cache-bypasses -- proposed build-SHA meta tag +
+  Cache-Control:no-cache assertion. (2) purge-cache step after
+  `wrangler deploy` in all 8 workflows calling it -- shared
+  scripts/purge_cloudflare_cache.py + Cache-Purge-only token + zone-ID
+  secrets (owner supplies zone IDs).
 
-VERIFYING: /closures/ on Moreno Valley doesn't show the Val Verde note
-  yet as of last check -- likely the ~20min GH Actions build (moval-
-  deploy.yml) just hasn't finished (verified correct in local dist/
-  build earlier). Re-checking automatically.
+QA BACKLOG (not fixed): (a) closures.astro "Last checked" built at
+  build time -- wrong day after midnight, same class as the fixed badge
+  bug. (b) Closure Watch H1 promises "Facilities" page never covers.
 
-OPEN: Candidate #42 (Line F Detention Basin, queue id=42).
-NEXT: confirm Val Verde note live; owner decides Briggs/Larson writes.
+OPEN: Candidate #42 (Line F Detention Basin, queue id=42). NEXT: owner
+  decides proposals 1/2 + Briggs/Larson writes.
