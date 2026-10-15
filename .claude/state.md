@@ -1,71 +1,64 @@
 # State
 
-2026-10-15. QA audit follow-up, round 1. Local HEAD is 2 commits ahead of
-  origin/main (prior session's QA-report commit + this round's #2/#8 fix
-  commit 1d5f934) -- NOT pushed, awaiting owner's "ja" per CLAUDE.md.
+2026-10-15. QA audit follow-up, round 1 COMPLETE. Local HEAD is 5 commits
+  ahead of origin/main -- NOT pushed, awaiting owner's final "ja".
+  Commits: c66fa64 (facility data), 48eb708 (Broomfield wiring+interval
+  bug), c6d3e17 (meeting banner), 4852cef (state), 1d5f934 (#2/#8 fixes).
 
-DONE this round:
-  - H (mobile 390px): CLOSED. Owner manually checked 390px on homepage,
-    /events, event page, facility page, project page, /month/ -- no
-    horizontal scroll anywhere. Was the QA report's one untested item.
-  - #2 (occurs_at IS NULL): FIXED + pushed-pending. site/src/lib/db.ts
-    getWorthKnowingCandidates() -- a NULL-occurs_at row now ages out by
-    published_at (24h) instead of being eligible forever. Test added in
-    db.test.ts (source-text guard, same pattern as the file's other
-    listing-function tests -- no DB mocking seam exists for these).
-  - #8 (Worth Knowing / Coming up dup): FIXED + pushed-pending. New
-    excludedFromComingUp() in homepage-curation.ts unions usedSlugs (lead/
-    secondary) with selectWorthKnowing()'s own picks; index.astro's `rest`
-    (feeds Today/This week/Later) now filters against the union. Unit
-    tests added in homepage-curation.test.ts.
-  - #1 diagnosis (no fix yet, awaiting owner go-ahead):
-    - Brookings: pipeline WORKS, contrary to the QA report's framing.
-      meeting_decisions_legistar DID run after Oct 13 (DB confirms all 17
-      decisions for meeting-2026-10-13-14140 updated 2026-10-15 10:52 GMT,
-      0 pending). Live page's Decisions section already shows the real
-      outcomes correctly. The real bug: the AI-written preview paragraph
-      ABOVE the Decisions section is 100% future tense ("will hold",
-      "will consider") and is NEVER patched post-meeting -- page
-      self-contradicts (future-tense prose sitting above a Decisions list
-      that already shows real outcomes). Confirmed live via curl.
-    - Broomfield: ai_pipeline/meeting_decisions_agendalink.py EXISTS and
-      WORKS (live-verified, 38 real decision rows in DB) but is NOT wired
-      into broomfield-scrape.yml at all -- ran exactly once, manually, on
-      2026-10-14 (all 38 rows share that one timestamp), covering 7
-      meetings. The Sep 23 meeting (id 11341) has 0 decision rows even
-      though its AgendaLink minutes ARE already publishStatus=='minutes'
-      live right now -- confirmed via direct API call. Two stacked bugs:
-      (a) script never scheduled anywhere, (b) its own MIN_DAYS_BEFORE_
-      FETCH=60-day prefilter is stricter than the module's own documented
-      3-6 week observed lag, so even if wired in, a 22-day-old meeting
-      like this one would still be skipped.
-    - Moreno Valley: confirmed 0 meeting_decisions rows for the whole
-      town (DB query) -- expected/blocked, no change from the QA report.
-    - Owner's proposed fix (date-banner line, no AI rewrite of old prose)
-      not yet built -- awaiting go-ahead.
-  - #7 diagnosis (no fix yet, awaiting owner go-ahead):
-    - Root cause CONFIRMED: NOT timezone/DST/parsing. data/facilities/
-      brookings_sd.json is a hand-curated static JSON file -- hours_text
-      is a literal hand-typed string with no date/time computation
-      anywhere in the render path. Public Library and City Hall were
-      simply mistyped during the 2026-08-03 curation pass (verified_date
-      on both). No systemic bug, no browser DST indicator involved.
-    - Scope check (subagent, fresh fetch of all 4 other Brookings
-      facilities with hours_text against their cited source_url):
-      Dakota Nature Park, SD Art Museum, SD Ag Heritage Museum,
-      Children's Museum of SD -- all 4 match their sources exactly.
-      Isolated to the 2 already-known facilities, confirmed not systemic.
-    - McCrory Gardens (subagent fetched its own cited source): phone
-      605-688-6707; hours "Summer: Sunday-Saturday 10am-7pm (last
-      admission 6:30pm)" / "Fall/Winter: Monday-Friday 10am-5pm (last
-      admission 4:30pm)" + a note about extended hours for special events/
-      holiday shopping. Not yet written to the JSON file -- awaiting
-      go-ahead along with the two hour corrections.
+DONE this round, all approved + built + verified:
+  - H (mobile 390px): CLOSED -- owner manually confirmed no horizontal
+    scroll on all 6 page types.
+  - #2 (occurs_at IS NULL) + #8 (Worth Knowing/Coming up dup): fixed, with
+    tests. See prior entry below for detail (unchanged this pass).
+  - #1 (meeting outcomes banner): BUILT. New meetingOutcomesBanner() in
+    site/src/lib/meeting-decisions.ts, wired into s/[slug].astro right
+    after the date line. 3 variants per siteConfig.meetingDecisionsTracked
+    (true for brookings_sd/broomfield_co, false for moreno_valley_ca) and
+    whether partitionDecisions() found a decided item. Never rewrites the
+    AI prose -- only adds a line above it, and only once the meeting's own
+    calendar day has passed. Tests in meeting-decisions.test.ts.
+  - #1 (Broomfield wiring): BUILT + RUN. ai_pipeline/meeting_decisions_
+    agendalink.py added to broomfield-scrape.yml (after publish, before
+    build, continue-on-error). find_candidate_meetings() rewritten: NOT
+    EXISTS (meeting_decisions) over a 90-day window, checked every run,
+    instead of a 60-day-minimum-then-try-once gate. Tests added.
+    SEPARATE BUG FOUND+FIXED while building this: `interval '%s days'`
+    puts the placeholder inside the quoted literal -- psycopg substitutes
+    it textually (as `$1`) but Postgres then parses the literal STRING
+    "$1 days", which its interval parser silently accepts as exactly 1
+    day regardless of the bound value. Live-confirmed this ALSO broke the
+    original 60-day gate the whole time. Fixed with `%s * interval '1
+    day'` (placeholder outside any quotes). Ran manually against
+    production per owner's request: 6 new decisions written, including
+    all 6 for the Sep 23 meeting (id 11341) that motivated this fix --
+    confirmed in DB.
+  - #7 (facility data): WRITTEN + SEEDED. data/facilities/brookings_sd.json:
+    public-library hours_text 9pm->8pm close; city-hall hours_text 7am->8am
+    open (BOTH Mon-Thu and Friday -- the Friday error was NOT caught by
+    the original QA pass, found only when re-verifying the full weekly
+    schedule instead of patching just the flagged clause); library
+    description's derived "66 hours a week" -> "62" (recomputed); McCrory
+    Gardens phone (605-688-6707) + seasonal hours_text added (previously
+    both NULL). Owner approved exact text before seed; python -m
+    scripts.seed_facilities brookings_sd run against production, 17
+    updated, 0 inserted. Confirmed live in `places` table.
 
-NEXT STEPS: Present round-1 diagnosis to owner. On "ja": (a) write the
-  date-banner meeting-page fix, (b) wire+fix the Broomfield AgendaLink
-  decisions script into its cron + loosen MIN_DAYS_BEFORE_FETCH, (c) fix
-  Brookings library/city-hall hours_text + backfill McCrory Gardens
-  phone/hours in data/facilities/brookings_sd.json, (d) run full test
-  suite + astro check + 3-town build + sitemap/noindex check, (e) push.
-  Remaining QA findings (#3-6, #9) not yet scheduled -- round 2+.
+PRE-PUSH VERIFICATION (all green, this session):
+  - pytest: 850 passed, 8 skipped (pre-existing, unrelated).
+  - vitest: 1031 passed, 51 files.
+  - astro check: 0 errors, 0 warnings (pre-existing hints only).
+  - astro build all 3 towns: brookings_sd 635 pages, moreno_valley_ca 3391
+    pages, broomfield_co 1077 pages -- all exit 0.
+  - scripts/verify_sitemap_noindex_disjoint.mjs: OK on all 3 (107/140/80
+    sitemap URLs, all indexable+present, zero offenders). Temp dist-*
+    dirs removed after checking.
+
+NEXT STEP: push all 5 commits after owner's explicit "ja" (per CLAUDE.md
+  rule 6/9 -- never push without approval, even though this round's work
+  was approved).
+
+REMAINING QA FINDINGS, not yet scheduled (round 2+): #3 (dedup at story-
+  generation from events, Brookings+Moreno Valley), #4 (ClusterNav linking
+  to dead content tracks, all 3), #5 (duplicate <title> on recurring/
+  multi-instance pages, all 3), #6 (Astro.redirect() -> 200 not 301/302,
+  all 3), #9 (Celebration Park hours, Moreno Valley, unverified/info-only).
