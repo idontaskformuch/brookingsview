@@ -28,3 +28,7 @@
    ingen kod för den punkten förrän ägaren sagt ja.
 9. "Visa X innan push" betyder: visa X, stanna, och pusha först efter
    ägarens uttryckliga ja i ett nytt meddelande.
+10. Allt som ska godkännas (SQL, migrationer, diffar, borttagna/ändrade
+    rader) skrivs i klartext i svarsmeddelandet, inte bara i
+    verktygsutdata -- ägaren kopierar svarsmeddelandet, inte
+    terminalloggen.
