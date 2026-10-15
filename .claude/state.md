@@ -1,64 +1,79 @@
 # State
 
-2026-10-15. QA audit follow-up, round 1 COMPLETE. Local HEAD is 5 commits
-  ahead of origin/main -- NOT pushed, awaiting owner's final "ja".
-  Commits: c66fa64 (facility data), 48eb708 (Broomfield wiring+interval
-  bug), c6d3e17 (meeting banner), 4852cef (state), 1d5f934 (#2/#8 fixes).
+2026-10-15. Round 1 PUSHED (f7d0da5..origin/main). Round 2 in progress:
+  #4 done+committed, #3 pipeline fix done+committed, #3 backfill dry-run
+  shown below -- AWAITING OWNER APPROVAL to run for real. Local HEAD is
+  3 commits ahead of origin/main (3e662d8, b8d9583, and this state commit)
+  -- not pushed yet.
 
-DONE this round, all approved + built + verified:
-  - H (mobile 390px): CLOSED -- owner manually confirmed no horizontal
-    scroll on all 6 page types.
-  - #2 (occurs_at IS NULL) + #8 (Worth Knowing/Coming up dup): fixed, with
-    tests. See prior entry below for detail (unchanged this pass).
-  - #1 (meeting outcomes banner): BUILT. New meetingOutcomesBanner() in
-    site/src/lib/meeting-decisions.ts, wired into s/[slug].astro right
-    after the date line. 3 variants per siteConfig.meetingDecisionsTracked
-    (true for brookings_sd/broomfield_co, false for moreno_valley_ca) and
-    whether partitionDecisions() found a decided item. Never rewrites the
-    AI prose -- only adds a line above it, and only once the meeting's own
-    calendar day has passed. Tests in meeting-decisions.test.ts.
-  - #1 (Broomfield wiring): BUILT + RUN. ai_pipeline/meeting_decisions_
-    agendalink.py added to broomfield-scrape.yml (after publish, before
-    build, continue-on-error). find_candidate_meetings() rewritten: NOT
-    EXISTS (meeting_decisions) over a 90-day window, checked every run,
-    instead of a 60-day-minimum-then-try-once gate. Tests added.
-    SEPARATE BUG FOUND+FIXED while building this: `interval '%s days'`
-    puts the placeholder inside the quoted literal -- psycopg substitutes
-    it textually (as `$1`) but Postgres then parses the literal STRING
-    "$1 days", which its interval parser silently accepts as exactly 1
-    day regardless of the bound value. Live-confirmed this ALSO broke the
-    original 60-day gate the whole time. Fixed with `%s * interval '1
-    day'` (placeholder outside any quotes). Ran manually against
-    production per owner's request: 6 new decisions written, including
-    all 6 for the Sep 23 meeting (id 11341) that motivated this fix --
-    confirmed in DB.
-  - #7 (facility data): WRITTEN + SEEDED. data/facilities/brookings_sd.json:
-    public-library hours_text 9pm->8pm close; city-hall hours_text 7am->8am
-    open (BOTH Mon-Thu and Friday -- the Friday error was NOT caught by
-    the original QA pass, found only when re-verifying the full weekly
-    schedule instead of patching just the flagged clause); library
-    description's derived "66 hours a week" -> "62" (recomputed); McCrory
-    Gardens phone (605-688-6707) + seasonal hours_text added (previously
-    both NULL). Owner approved exact text before seed; python -m
-    scripts.seed_facilities brookings_sd run against production, 17
-    updated, 0 inserted. Confirmed live in `places` table.
+ITEM 2 (interval-bug repo audit): DONE, no further action needed. Searched
+  all .py/.ts/.mjs/.sql for `interval '<placeholder>'` (placeholder inside
+  the quoted literal, in any unit -- days/hours/etc, psycopg %s, named
+  %(x)s, or $N). Exactly ONE real hit existed anywhere in the repo: the
+  one in ai_pipeline/meeting_decisions_agendalink.py already found+fixed
+  last round. Confirmed clean: Legistar's "60 days" (legistar_v1.py) is
+  pure Python timedelta, never touches SQL -- not affected.
+  project_updates.py/project_updates_legistar.py have no interval usage
+  at all. Every other `interval '...'` in the codebase (db.ts, worker
+  server files, astro.config.mjs, closure_watch_digest.py, eval_tone_v2.py,
+  vail_news_v1.py, regenerate_stale_event_bodies.py) uses a fixed literal
+  number baked into the string, never a parameter -- safe by construction.
 
-PRE-PUSH VERIFICATION (all green, this session):
-  - pytest: 850 passed, 8 skipped (pre-existing, unrelated).
-  - vitest: 1031 passed, 51 files.
-  - astro check: 0 errors, 0 warnings (pre-existing hints only).
-  - astro build all 3 towns: brookings_sd 635 pages, moreno_valley_ca 3391
-    pages, broomfield_co 1077 pages -- all exit 0.
-  - scripts/verify_sitemap_noindex_disjoint.mjs: OK on all 3 (107/140/80
-    sitemap URLs, all indexable+present, zero offenders). Temp dist-*
-    dirs removed after checking.
+ROUND 2:
+  #4 (ClusterNav dead-track removal): DONE, committed (3e662d8), tests
+    added/updated. recipes/editorials/columns -> () => false for every
+    town in site/src/config/clusters.ts ROUTE_AVAILABILITY (same value
+    everywhere, not per-town -- the track is dead sitewide). reviews
+    untouched (not part of this finding). Full vitest suite green (1033).
 
-NEXT STEP: push all 5 commits after owner's explicit "ja" (per CLAUDE.md
-  rule 6/9 -- never push without approval, even though this round's work
-  was approved).
+  #3 (cross-source event duplicates), PIPELINE FIX: DONE, committed
+    (b8d9583), tests added. ai_pipeline/publish.py: new
+    cluster_event_duplicate_indices() (shared primitive) + dedupe_cross_
+    source_events(), wired into publish_table() after group_event_slots/
+    group_recurring_events, before story generation. Key design point
+    found testing against production: clustering is title+day+venue
+    COMPATIBILITY, not exact venue match -- a row with NO venue info
+    (e.g. the GrowthZone mirror never captured one) still merges with a
+    cluster member that resolves to a real facility; two DIFFERENT named
+    venues sharing a title+day is a real conflict, never guessed at.
+    Winner picks: resolved venue first, then has a description, then
+    lowest id. Known, accepted limitation: exact-title match only (the
+    live case's "Free Community Art Day" vs "Community Art Day" near-miss
+    is not caught -- fuzzy matching risks worse false merges).
 
-REMAINING QA FINDINGS, not yet scheduled (round 2+): #3 (dedup at story-
-  generation from events, Brookings+Moreno Valley), #4 (ClusterNav linking
-  to dead content tracks, all 3), #5 (duplicate <title> on recurring/
-  multi-instance pages, all 3), #6 (Astro.redirect() -> 200 not 301/302,
-  all 3), #9 (Celebration Park hours, Moreno Valley, unverified/info-only).
+  #3 (cross-source event duplicates), BACKFILL: scripts/merge_cross_
+    source_event_duplicates.py written, committed, NOT YET RUN for real.
+    Reuses the exact same cluster_event_duplicate_indices() so it can't
+    drift from the pipeline fix. Writes into the SAME site/server/event-
+    series-redirects.json the existing merge_recurring_event_duplicates.py
+    uses (worker.ts already 301s from that file at the edge -- no
+    worker.ts change needed).
+    DRY-RUN RESULT (production, 2026-10-15), shown to owner, awaiting
+    "ja" to run for real:
+      brookings_sd: 'One Day for STATE' (2026-09-09) -> keep event-278302,
+        supersede event-282120
+      brookings_sd: 'They Were There: Witnesses from September 11th'
+        (2026-09-11) -> keep event-278305, supersede event-282123
+      brookings_sd: 'Community Art Day' (2026-10-17) -> keep event-305361,
+        supersede event-282136
+    event-282137 ("Free Community Art Day") stays untouched -- the known,
+    accepted near-miss-title limitation, not a bug.
+
+PRE-PUSH VERIFICATION this round: pytest 870 passed/8 skipped (was 850
+  before round 2 -- +20 new). vitest 1033 passed (was 1031). Full 3-town
+  build/sitemap-check NOT yet re-run since round 1's -- due before next
+  push per CLAUDE.md rule 3.
+
+NEXT STEPS:
+  1. Owner approves/declines the backfill dry-run above -- on approval,
+     run `python -m scripts.merge_cross_source_event_duplicates` for real.
+  2. Full pre-push battery (pytest+vitest already green above; still need
+     astro check + 3-town build + sitemap/noindex-disjoint check before
+     the next push, per CLAUDE.md rule 3).
+  3. Push after owner's explicit "ja" (3 local commits + whatever the
+     backfill run adds).
+
+REMAINING QA FINDINGS, not yet scheduled: #5 (duplicate <title> on
+  recurring/multi-instance pages, all 3), #6 (Astro.redirect() -> 200 not
+  301/302, all 3), #9 (Celebration Park hours, Moreno Valley,
+  unverified/info-only).
