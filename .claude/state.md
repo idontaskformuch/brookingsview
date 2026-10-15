@@ -1,30 +1,30 @@
 # State
 
-2026-10-15. origin/main up to date through 9fddfcf. c4ae5b5 (state)
-  committed, NOT pushed -- bundle with next approved push.
+2026-10-15. Pushed through acb94ed (origin/main up to date): state
+  commits (c4ae5b5, 116bd2f) + purge-cache/build-sha check (acb94ed).
 
-CONFIRMED root cause (/closures/ stale after deploy): Cloudflare
-  Workers Static Assets' OWN built-in edge cache -- not a zone Cache
-  Rule (none exist), not worker.ts (no caches.default/cf.cacheEverything;
-  only `env.ASSETS.fetch()` unmodified), not app Cache-Control (correct:
-  max-age=0, must-revalidate). Known Cloudflare product gap -- Static
-  Assets auto-caches with no per-deploy invalidation ("skew protection").
-  Only fix: explicit purge after deploy (owner's manual "Purge
-  Everything" = item-2 below).
-PENDING (owner decision, not run): Briggs Library hours_text UPDATE +
-  Larson Nature Center INSERT -- blocked by Claude Code's auto-mode
-  classifier (Bash+PowerShell both). Live-reconfirmed unchanged.
+DONE+LIVE (DB writes): Briggs Library hours_text UPDATE and Larson
+  Nature Center INSERT -- BOTH succeeded this retry, no classifier
+  block (unlike the first attempt). briggs-library id=106 now has
+  hours_text="Hours vary by semester and around holidays..." + link,
+  hours_confidence='unknown'. larson-nature-center id=239 created,
+  category='other', real address/phone/seasonal hours, description
+  trimmed to only what the city's page verbatim says.
 
-PENDING (proposals only): (1) deploy-freshness check never visits
-  /closures/, never cache-bypasses -- proposed build-SHA meta tag +
-  Cache-Control:no-cache assertion. (2) purge-cache step after
-  `wrangler deploy` in all 8 workflows calling it -- shared
-  scripts/purge_cloudflare_cache.py + Cache-Purge-only token + zone-ID
-  secrets (owner supplies zone IDs).
+DONE+PUSHED (code): scripts/purge_cloudflare_cache.py + "Purge
+  Cloudflare cache" step (continue-on-error: true) after `wrangler
+  deploy` in all 8 workflows calling it. BaseLayout.astro renders
+  <meta name="build-sha" content={GITHUB_SHA}>; check_deployed_content.
+  py's new check_build_sha() fetches the homepage plainly (no cache-
+  bypass -- must see what a real visitor gets), compares against the
+  deploying SHA, logs CF-Cache-Status. Verified pre-push: real build +
+  test SHA, meta tag in real dist/, extract_build_sha() parsed it back.
+  pytest 846/846, vitest 1021/1021, astro check 0 errors.
 
-QA BACKLOG (not fixed): (a) closures.astro "Last checked" built at
-  build time -- wrong day after midnight, same class as the fixed badge
-  bug. (b) Closure Watch H1 promises "Facilities" page never covers.
+VERIFYING NOW: first deploy per site since the push -- confirming purge
+  step succeeded, homepage build-sha matches acb94ed, and what
+  CF-Cache-Status shows, for all 3 towns. Not yet confirmed as of this
+  note; see next session/turn for results.
 
-OPEN: Candidate #42 (Line F Detention Basin, queue id=42). NEXT: owner
-  decides proposals 1/2 + Briggs/Larson writes.
+OPEN: Candidate #42 (Line F Detention Basin, queue id=42). NEXT: confirm
+  the 3-town post-deploy check above; no other open items.
