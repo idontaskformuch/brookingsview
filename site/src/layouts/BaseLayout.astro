@@ -65,6 +65,17 @@ const canonical = canonicalUrl
   ? new URL(canonicalUrl)
   : new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl);
 const ogImage = new URL(`/og/${ogSlug ?? 'default'}.png`, Astro.site ?? siteConfig.siteUrl).href;
+// Cache-staleness detection (2026-10-15 incident, see .claude/state.md):
+// GITHUB_SHA is a real env var GitHub Actions already sets in every job,
+// no workflow change needed to pass it through -- a real `astro build`
+// exposes every env var server-side via import.meta.env (see astro.config.
+// mjs's own comment on this, and vite-node.config.ts's contrasting case
+// where that ISN'T true). scripts/check_deployed_content.py's
+// check_build_sha() fetches this same tag post-deploy, with no cache-
+// bypass headers (deliberately -- it must see what a real visitor gets),
+// to prove the edge is actually serving THIS deploy and not a stale one
+// Cloudflare's Workers Static Assets cache never invalidated.
+const buildSha = import.meta.env.GITHUB_SHA ?? 'local';
 const siblingSiteUrls = ALL_SITES.filter((s) => s.townId !== siteConfig.townId).map((s) => s.siteUrl);
 const now = new Date();
 const year = now.getFullYear();
@@ -166,6 +177,7 @@ const footerGroups = FOOTER_GROUPS
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>{title}</title>
 <meta name="description" content={description} />
+<meta name="build-sha" content={buildSha} />
 {/* max-image-preview:large -- Google Discover/News eligibility signal (see
     NEEDS-HUMAN-REVIEW.md "Image pipeline overhaul": confirmed absent from
     every page before this, direct source check, not an external re-fetch).

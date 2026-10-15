@@ -231,6 +231,21 @@ def extract_weekly_slugs(html: str) -> list[str]:
     return [f"weekly-{week}" for week in weeks]
 
 
+_BUILD_SHA_RE = re.compile(r'<meta\s+name="build-sha"\s+content="([0-9a-f]+)"')
+
+
+def extract_build_sha(html: str) -> str | None:
+    """The deploying commit's SHA, read from BaseLayout.astro's own
+    <meta name="build-sha"> tag (site/src/layouts/BaseLayout.astro) --
+    None if the tag is absent entirely (shouldn't happen on a real build;
+    BaseLayout.astro falls back to the literal string 'local' when
+    GITHUB_SHA isn't set, which this regex deliberately does NOT match --
+    only a real hex SHA counts). Pure, no network -- unit tested directly,
+    same convention as extract_story_slugs/extract_weekly_slugs above."""
+    match = _BUILD_SHA_RE.search(html)
+    return match.group(1) if match else None
+
+
 def is_stale(newest_published_at, freshness_days: int, now: datetime) -> bool:
     """True if `newest_published_at` (a tz-aware datetime, or None) is
     older than `freshness_days` relative to `now`. None counts as stale
@@ -334,6 +349,50 @@ def check_signature_section(town_id: str, site_url: str) -> str | None:
     return None
 
 
+# 2026-10-15 incident (see .claude/state.md): /closures/ on Moreno Valley
+# stayed stale for 20+ minutes after a build+deploy that GitHub's own API
+# confirmed succeeded -- root cause was Cloudflare Workers Static Assets'
+# own edge cache, which has no automatic per-deploy invalidation. Neither
+# existing check above would have caught it: check_homepage_freshness only
+# cares whether a story is RECENT, not whether the exact bytes being
+# served match this deploy, and check_signature_section never looks at
+# /closures/ (or any page outside each town's one fixed path) at all. This
+# check is the direct test instead: does the live homepage actually carry
+# THIS deploy's own build-sha.
+def check_build_sha(town_id: str, site_url: str, expected_sha: str) -> str | None:
+    """Fetches the homepage with the SAME plain request a real visitor's
+    browser would send (_request_headers() -- no Cache-Control/Pragma
+    override) -- deliberately NOT bypassing cache, since the point is to
+    verify what a real visitor actually gets right now, after the purge
+    step. Forcing a no-cache revalidation would always hit origin and
+    could never catch a purge that silently failed or hasn't finished
+    propagating. Logs the response's own CF-Cache-Status header either
+    way, for visibility into what actually happened -- not a pass/fail
+    condition on its own, since a HIT with the CORRECT build-sha is a
+    perfectly healthy outcome (it just means this exact response was
+    already fresh when it got cached)."""
+    try:
+        r = requests.get(site_url + "/", timeout=20, headers=_request_headers(site_url))
+    except Exception as exc:
+        return f"could not fetch homepage for build-sha check ({site_url}/): {exc}"
+
+    cf_cache_status = r.headers.get("CF-Cache-Status", "(no CF-Cache-Status header)")
+    print(f"  [{town_id}] build-sha check: CF-Cache-Status={cf_cache_status}")
+
+    if r.status_code != 200:
+        return f"homepage returned HTTP {r.status_code}, expected 200 (CF-Cache-Status={cf_cache_status})"
+
+    live_sha = extract_build_sha(r.text)
+    if live_sha is None:
+        return "homepage has no <meta name=\"build-sha\"> tag at all"
+    if live_sha != expected_sha:
+        return (
+            f"homepage build-sha is {live_sha}, expected {expected_sha} -- the edge "
+            f"may still be serving a stale deploy (CF-Cache-Status={cf_cache_status})"
+        )
+    return None
+
+
 # 2026-10-01: both checks hit the live edge (Cloudflare propagation can lag
 # a few seconds to low tens of seconds behind a fresh deploy) and a fresh
 # Neon connection (this exact project has hit a transient "fetch failed"
@@ -349,8 +408,10 @@ RETRY_TIMEOUT_SECONDS = 300
 RETRY_INTERVAL_SECONDS = 20
 
 
-def _run_checks_once(town_id: str, site_url: str, freshness_days: int) -> tuple[list[str], bool]:
-    """One attempt at both checks, each against a FRESH DB connection (not
+def _run_checks_once(
+    town_id: str, site_url: str, freshness_days: int, expected_sha: str | None = None,
+) -> tuple[list[str], bool]:
+    """One attempt at all checks, each against a FRESH DB connection (not
     reused across retries -- a connection that failed once is exactly the
     kind of thing a retry shouldn't trust again). Returns (failures,
     retryable): failures is the list of failure strings (empty on
@@ -359,7 +420,10 @@ def _run_checks_once(town_id: str, site_url: str, freshness_days: int) -> tuple[
     check_homepage_freshness can report that -- see its own (message,
     is_transient) return shape), so run_with_retry stops immediately
     instead of burning its retry window on something that will look
-    identical five minutes from now."""
+    identical five minutes from now. check_build_sha's own failures never
+    set retryable=False -- a build-sha mismatch right after a purge is
+    exactly the "still propagating" case this retry loop exists for,
+    same treatment as check_signature_section's failures."""
     failures: list[str] = []
     retryable = True
     try:
@@ -378,6 +442,13 @@ def _run_checks_once(town_id: str, site_url: str, freshness_days: int) -> tuple[
                 failures.append(f"signature section: {sig_err}")
             else:
                 print(f"  [{town_id}] signature section: ok")
+
+        if expected_sha:
+            sha_err = check_build_sha(town_id, site_url, expected_sha)
+            if sha_err:
+                failures.append(f"build-sha: {sha_err}")
+            else:
+                print(f"  [{town_id}] build-sha: ok (matches {expected_sha})")
     except Exception as exc:  # noqa: BLE001 -- a DB/network exception counts as a failed attempt, not a crash
         failures.append(f"attempt raised {type(exc).__name__}: {exc}")
     return failures, retryable
@@ -448,8 +519,16 @@ def main() -> int:
         print(f"no known site URL for town_id={town_id!r} -- add it to SITE_URLS", file=sys.stderr)
         return 1
     freshness_days = cfg.get("freshness_check_days", DEFAULT_FRESHNESS_DAYS)
+    # Same real env var BaseLayout.astro reads at build time (see that
+    # file's own comment) -- GitHub Actions already sets this in every
+    # job, no workflow change needed. None on a manual/local run, which
+    # just skips the build-sha check entirely (optional, additive, same
+    # pattern as DEPLOY_CHECK_SECRET above).
+    expected_sha = os.environ.get("GITHUB_SHA")
 
-    failures = run_with_retry(lambda: _run_checks_once(town_id, site_url, freshness_days), town_id)
+    failures = run_with_retry(
+        lambda: _run_checks_once(town_id, site_url, freshness_days, expected_sha), town_id,
+    )
     if failures:
         for f in failures:
             print(f"  [{town_id}] FAIL -- {f}", file=sys.stderr)

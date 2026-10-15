@@ -14,6 +14,7 @@ from scripts.check_deployed_content import (
     _request_headers,
     _user_agent,
     check_homepage_freshness,
+    extract_build_sha,
     extract_story_slugs,
     extract_weekly_slugs,
     is_stale,
@@ -58,6 +59,23 @@ def test_extract_weekly_slugs_dedupes_and_sorts():
 def test_extract_weekly_slugs_ignores_story_links():
     html = '<a href="/s/meeting-2026-10-02/">x</a>'
     assert extract_weekly_slugs(html) == []
+
+
+def test_extract_build_sha_finds_the_meta_tag():
+    html = '<head><meta name="build-sha" content="9fddfcff8a1b2c3d4e5f6071829304a5b6c7d8e" /></head>'
+    assert extract_build_sha(html) == "9fddfcff8a1b2c3d4e5f6071829304a5b6c7d8e"
+
+
+def test_extract_build_sha_none_when_tag_is_absent():
+    assert extract_build_sha("<head><title>x</title></head>") is None
+
+
+def test_extract_build_sha_none_for_the_local_dev_fallback_value():
+    # BaseLayout.astro renders content="local" when GITHUB_SHA isn't set
+    # (a local build) -- the regex only matches hex, so this is correctly
+    # treated the same as "no real build-sha", never a false match.
+    html = '<meta name="build-sha" content="local" />'
+    assert extract_build_sha(html) is None
 
 
 def test_resolve_homepage_slugs_to_db_slugs_maps_all_four_renamed_prefixes():
