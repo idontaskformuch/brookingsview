@@ -30,7 +30,7 @@ import { resolveContentSlugRedirect } from './content-slug-redirects';
 import { resolvePlaceRedirect } from './place-redirects';
 import {
   type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug, previousIsoWeekSlug,
-  resolveLegacyMeetingRedirect, resolveFacilityRedirect,
+  resolveLegacyMeetingRedirect, resolveFacilityRedirect, resolveStaticGateRedirect,
 } from './_shared';
 import legacyMeetingRedirects from './legacy-meeting-redirects.json';
 import eventSeriesRedirects from './event-series-redirects.json';
@@ -255,6 +255,24 @@ export default {
         status: 302,
         headers: { Location: target.toString(), 'Cache-Control': 'no-store' },
       });
+    }
+
+    // Static town-gate redirects (QA finding #6, 2026-10) -- the SAME
+    // root cause as the /this-week/ block just above (see
+    // resolveStaticGateRedirect()'s own doc comment in _shared.ts):
+    // sports.astro/jackrabbits.astro/university.astro/etc. each
+    // conditionally Astro.redirect() when their route doesn't apply to
+    // this town, which a static `output: 'static'` build can only ever
+    // turn into a 2-second <meta refresh> + HTTP 200, never a real 3xx.
+    // Resolved from the request's own hostname, same as /this-week/
+    // above -- never a build-time SITE_CITY this Worker bundle lacks.
+    const staticGateRedirect = resolveStaticGateRedirect(
+      url.pathname, townFromHostname(request.url, env.DEV_TOWN_ID),
+    );
+    if (staticGateRedirect) {
+      const target = new URL(staticGateRedirect.to, url.origin);
+      target.search = url.search;
+      return Response.redirect(target.toString(), staticGateRedirect.status);
     }
 
     // Render-window handoff, Phase 5: a home-sales parcel page that USED

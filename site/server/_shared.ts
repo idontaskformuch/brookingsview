@@ -236,3 +236,82 @@ export function resolveFacilityRedirect(
   const canonicalSlug = redirectMap[legacySlug];
   return canonicalSlug ? `/facilities/${canonicalSlug}/` : null;
 }
+
+interface StaticGateRedirect { to: string; status: 301 | 302; }
+
+/** QA finding #6 (2026-10): the same root cause as worker.ts's own
+ *  /this-week/ block above (built as `output: 'static'`, so a page's own
+ *  `Astro.redirect()` only ever bakes to a static HTML fallback with a
+ *  2-second <meta refresh> and HTTP 200 -- never a real 3xx -- since
+ *  there's no server left at request time to run that call). These ~15
+ *  pages each conditionally `Astro.redirect()` depending on whether their
+ *  route applies to the town this build is for (e.g. sports.astro:
+ *  `if (siteConfig.townId !== 'moreno_valley_ca') return Astro.redirect('/', 302)`).
+ *
+ *  Duplicated here by hand (not imported from site/src/lib/site-config.ts)
+ *  for the exact same reason TOWN_HOSTNAMES/TOWN_TIMEZONES above and
+ *  isoWeekSlugForInstant's own doc comment are: this Worker resolves town
+ *  from the request's own hostname at request time, and site-config.ts's
+ *  SiteConfig is a build-time constant baked per Astro build via
+ *  `import.meta.env.SITE_CITY` -- a Vite/Astro mechanism this Worker's
+ *  separate wrangler bundle doesn't have, the same reasoning that already
+ *  ruled out importing this-week.ts directly.
+ *
+ *  Each entry's status mirrors that page's own Astro.redirect() call
+ *  exactly: 302 (temporary -- the route could become available for that
+ *  town later) for every route except reviews.astro's own deliberate 301
+ *  (a retired content track, not expected to come back). whats-on.astro
+ *  isn't listed -- hasWhatsOn is true for all three towns today, so it
+ *  never actually redirects anywhere right now; nothing to fix yet.
+ *
+ *  KEEP IN SYNC BY HAND with each listed .astro file's own condition --
+ *  there is no shared module between the Astro build and this Worker
+ *  bundle for hasClosureWatch/hasWorkplaceWatch/hasNewInTown/
+ *  MONTH_IN_REVIEW_START (none of them were needed server-side before
+ *  this, so nothing existed yet to share). */
+const STATIC_GATE_REDIRECTS: Record<string, Record<string, StaticGateRedirect>> = {
+  brookings_sd: {
+    '/sports/': { to: '/', status: 302 },
+    '/vail-resorts/': { to: '/', status: 302 },
+    '/burro-bonanza/': { to: '/', status: 302 },
+    '/home-sales/': { to: '/', status: 302 },
+    '/home-sales/archive/': { to: '/', status: 302 },
+    '/workplace-watch/': { to: '/', status: 302 },
+    '/new-in-town/': { to: '/', status: 302 },
+    '/month/': { to: '/', status: 302 },
+  },
+  moreno_valley_ca: {
+    '/jackrabbits/': { to: '/', status: 302 },
+    '/vail-resorts/': { to: '/', status: 302 },
+    '/university/': { to: '/', status: 302 },
+    '/play/': { to: '/', status: 302 },
+    '/farm-report/': { to: '/', status: 302 },
+    '/new-in-town/': { to: '/', status: 302 },
+    '/reviews/': { to: '/', status: 301 },
+  },
+  broomfield_co: {
+    '/jackrabbits/': { to: '/', status: 302 },
+    '/sports/': { to: '/', status: 302 },
+    '/university/': { to: '/', status: 302 },
+    '/play/': { to: '/', status: 302 },
+    '/farm-report/': { to: '/', status: 302 },
+    '/burro-bonanza/': { to: '/', status: 302 },
+    '/home-sales/': { to: '/', status: 302 },
+    '/home-sales/archive/': { to: '/', status: 302 },
+    '/closures/': { to: '/', status: 302 },
+    '/new-in-town/': { to: '/', status: 302 },
+    '/month/': { to: '/', status: 302 },
+  },
+};
+
+/** `pathname` with or without a trailing slash resolves the same entry
+ *  (mirrors this-week's own dual `/this-week` + `/this-week/` check in
+ *  worker.ts, generalized via normalization instead of listing both
+ *  forms per route). Unknown town or a route this town's own build
+ *  already serves for real both return null -- same "absence means
+ *  nothing to do" convention as every other resolver in this file. */
+export function resolveStaticGateRedirect(pathname: string, townId: string | null): StaticGateRedirect | null {
+  if (!townId) return null;
+  const normalized = pathname.endsWith('/') ? pathname : `${pathname}/`;
+  return STATIC_GATE_REDIRECTS[townId]?.[normalized] ?? null;
+}

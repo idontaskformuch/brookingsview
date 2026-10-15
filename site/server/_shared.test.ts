@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { isoWeekSlugForInstant, previousIsoWeekSlug, timezoneForTown, townFromHostname } from './_shared';
+import {
+  isoWeekSlugForInstant, previousIsoWeekSlug, timezoneForTown, townFromHostname,
+  resolveStaticGateRedirect,
+} from './_shared';
 
 // Mirrors site/src/lib/this-week.test.ts's own isoWeekInfo coverage --
 // _shared.ts's isoWeekSlugForInstant is a deliberate, self-contained
@@ -102,5 +105,65 @@ describe('timezoneForTown', () => {
 
   it('falls back to Brookings\' zone for an unknown/null town', () => {
     expect(timezoneForTown(null)).toBe('America/Chicago');
+  });
+});
+
+describe('resolveStaticGateRedirect', () => {
+  // QA finding #6 (2026-10) -- mirrors each listed .astro page's own
+  // Astro.redirect() condition exactly (verified by reading each file
+  // directly, not re-derived).
+  it('redirects a route unavailable for this town (sports for brookings_sd)', () => {
+    expect(resolveStaticGateRedirect('/sports/', 'brookings_sd')).toEqual({ to: '/', status: 302 });
+  });
+
+  it('matches with or without a trailing slash', () => {
+    expect(resolveStaticGateRedirect('/sports', 'brookings_sd')).toEqual({ to: '/', status: 302 });
+  });
+
+  it('returns null for a route this town actually serves (sports for moreno_valley_ca)', () => {
+    expect(resolveStaticGateRedirect('/sports/', 'moreno_valley_ca')).toBeNull();
+  });
+
+  it('returns null for an unrelated path', () => {
+    expect(resolveStaticGateRedirect('/events/', 'brookings_sd')).toBeNull();
+  });
+
+  it('returns null for a null/unknown town rather than guessing', () => {
+    expect(resolveStaticGateRedirect('/sports/', null)).toBeNull();
+  });
+
+  it('reviews.astro is the one deliberate 301 (retired content track), everything else is 302', () => {
+    expect(resolveStaticGateRedirect('/reviews/', 'moreno_valley_ca')).toEqual({ to: '/', status: 301 });
+    expect(resolveStaticGateRedirect('/jackrabbits/', 'moreno_valley_ca')).toEqual({ to: '/', status: 302 });
+  });
+
+  it('closures only redirects for broomfield_co (the only town without Closure Watch configured)', () => {
+    expect(resolveStaticGateRedirect('/closures/', 'broomfield_co')).toEqual({ to: '/', status: 302 });
+    expect(resolveStaticGateRedirect('/closures/', 'brookings_sd')).toBeNull();
+    expect(resolveStaticGateRedirect('/closures/', 'moreno_valley_ca')).toBeNull();
+  });
+
+  it('workplace-watch only redirects for brookings_sd (the only town without it)', () => {
+    expect(resolveStaticGateRedirect('/workplace-watch/', 'brookings_sd')).toEqual({ to: '/', status: 302 });
+    expect(resolveStaticGateRedirect('/workplace-watch/', 'moreno_valley_ca')).toBeNull();
+    expect(resolveStaticGateRedirect('/workplace-watch/', 'broomfield_co')).toBeNull();
+  });
+
+  it('month only exists for moreno_valley_ca', () => {
+    expect(resolveStaticGateRedirect('/month/', 'brookings_sd')).toEqual({ to: '/', status: 302 });
+    expect(resolveStaticGateRedirect('/month/', 'broomfield_co')).toEqual({ to: '/', status: 302 });
+    expect(resolveStaticGateRedirect('/month/', 'moreno_valley_ca')).toBeNull();
+  });
+
+  it('new-in-town redirects for every town (hasNewInTown is unset everywhere today)', () => {
+    expect(resolveStaticGateRedirect('/new-in-town/', 'brookings_sd')).toEqual({ to: '/', status: 302 });
+    expect(resolveStaticGateRedirect('/new-in-town/', 'moreno_valley_ca')).toEqual({ to: '/', status: 302 });
+    expect(resolveStaticGateRedirect('/new-in-town/', 'broomfield_co')).toEqual({ to: '/', status: 302 });
+  });
+
+  it('vail-resorts is only available for broomfield_co', () => {
+    expect(resolveStaticGateRedirect('/vail-resorts/', 'brookings_sd')).toEqual({ to: '/', status: 302 });
+    expect(resolveStaticGateRedirect('/vail-resorts/', 'moreno_valley_ca')).toEqual({ to: '/', status: 302 });
+    expect(resolveStaticGateRedirect('/vail-resorts/', 'broomfield_co')).toBeNull();
   });
 });
