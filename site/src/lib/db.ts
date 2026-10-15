@@ -2653,6 +2653,36 @@ export function formatDate(value: string | null): string {
   });
 }
 
+/** "Oct 16" -- QA finding #5 (2026-10): a short, title-tag-sized date
+ *  suffix for disambiguating two real instances (event, alert) that
+ *  share the exact same story.title (the scraped event name / alert
+ *  type, which is correctly the same string across instances -- the
+ *  REAL date lives in occurs_at, same reasoning formatOccursAt()'s own
+ *  comment gives for meeting vs. event dates). Deliberately no weekday
+ *  or year (unlike formatDate() above) -- this is appended to an
+ *  already-long `<title>`/og:title string, not read as its own sentence. */
+export function formatShortMonthDay(value: string | null): string {
+  if (!value) return '';
+  return new Date(value).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', timeZone: TZ,
+  });
+}
+
+/** QA finding #5 (2026-10): the <title>/og:title text for a single story
+ *  permalink -- s/[slug].astro's only caller. Appends formatShortMonthDay()
+ *  for event/alert rows with a real occurs_at (see that function's own
+ *  doc comment for why only these two: their story.title is correctly
+ *  the same string across real different-day instances, and a <title>
+ *  tag has no neighboring date context the way the page's own H1 does).
+ *  Every other source_type's title is returned unchanged -- a meeting's
+ *  own title already includes its date (build_title() in ai_pipeline/
+ *  publish.py), so appending a second one here would just look doubled. */
+export function titleTagForStory(story: Pick<Story, 'title' | 'source_type' | 'occurs_at'>): string {
+  const wantsDateSuffix = (story.source_type === 'event' || story.source_type === 'alert') && story.occurs_at;
+  if (!wantsDateSuffix) return story.title;
+  return `${story.title} — ${formatShortMonthDay(story.occurs_at)}`;
+}
+
 export function formatTime(value: string | null): string {
   if (!value) return '';
   return new Date(value).toLocaleTimeString('en-US', {

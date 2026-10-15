@@ -8,7 +8,7 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Byline from '../../components/Byline.astro';
 import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
 import {
-  getAllStories, getRelatedStories, formatOccursAt, formatDate, CATEGORY_LABELS, CATEGORY_HREFS,
+  getAllStories, getRelatedStories, formatOccursAt, formatDate, titleTagForStory, CATEGORY_LABELS, CATEGORY_HREFS,
   getWorkerPulseComments, getFacilities, buildVenueIndex, resolveVenue, getProjectForMeetingId,
   isSandboxUrl, getUpcomingStories, getUpcomingArtsEvents, getMeetingDecisions, getProjectForMatterId,
 } from '../../lib/db';
@@ -369,6 +369,13 @@ const comments = isWorkerPulseDigest ? await getWorkerPulseComments(story.slug) 
 // and workplace-watch/index.astro).
 const displayBody = redactWorkerPulseBody(story.source_type, story.body);
 
+// QA finding #5 (2026-10): see titleTagForStory()'s own doc comment.
+// Deliberately only the <title>/og:title tag -- the H1 and JSON-LD name/
+// headline stay as story.title (the page's own "story__when" line
+// already shows the real date right below the H1; Event schema
+// disambiguates via startDate, not name).
+const pageTitle = titleTagForStory(story);
+
 // Event JSON-LD -- full decision tree lives in lib/event-jsonld.ts (unit-
 // tested there, see event-jsonld.test.ts) so it's testable independent of
 // Astro's build pipeline. See NEEDS-HUMAN-REVIEW.md, "Event JSON-LD venue
@@ -381,7 +388,7 @@ const eventJsonLdObject = buildEventJsonLd(
 );
 ---
 
-<BaseLayout title={`${story.title} — ${siteConfig.siteName}`} description={displayBody.slice(0, 155)} ogSlug={story.slug} noindex={isNoindex} canonicalUrl={pageCanonicalUrl}>
+<BaseLayout title={`${pageTitle} — ${siteConfig.siteName}`} description={displayBody.slice(0, 155)} ogSlug={story.slug} noindex={isNoindex} canonicalUrl={pageCanonicalUrl}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <article class="story">
     {!hasByline && <p class="story__kind data">{kind}</p>}

@@ -398,12 +398,19 @@ def build_title(table: str, row: dict, cfg: dict | None = None) -> str:
         raw = row.get("raw_data") or {}
         if isinstance(raw, str):
             raw = json.loads(raw)
+        when = _meeting_date_title_part(row.get("meeting_date"), cfg)
         if is_quorum_notice_only(raw):
             event = extract_quorum_event(raw.get("agenda_text") or "")
             if event:
-                return f"Notice: possible quorum — {event}"
+                # QA finding #5 (2026-10): this branch never appended `when`
+                # at all -- unlike the regular-meeting fallback two lines
+                # below, EVERY quorum notice for the same recurring event
+                # (e.g. a weekly "Downtown at Sundown" series) shared the
+                # identical <title>, confirmed live (5 stories, 5 different
+                # real dates, one Brookings title). Same "— {when}" suffix
+                # the fallback already uses, not a new format.
+                return f"Notice: possible quorum — {event} — {when}" if when else f"Notice: possible quorum — {event}"
         body = row.get("body") or "Meeting"
-        when = _meeting_date_title_part(row.get("meeting_date"), cfg)
         return f"{body} — {when}" if when else str(body)
     if table == "events":
         base, _ = strip_slot(row.get("title") or "Event")

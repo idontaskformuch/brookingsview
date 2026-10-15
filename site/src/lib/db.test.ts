@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { isAiWrittenContent, CONTENT_TRACK_TYPES, countdown } from './db';
+import {
+  isAiWrittenContent, CONTENT_TRACK_TYPES, countdown, formatShortMonthDay, titleTagForStory,
+} from './db';
 
 const CHI = 'America/Chicago';
 
@@ -64,6 +66,50 @@ describe('countdown (item B3: town-local calendar days, not raw elapsed time)', 
 
   it('returns an empty string for a null value', () => {
     expect(countdown(null, new Date(), CHI)).toBe('');
+  });
+});
+
+// QA finding #5 (2026-10): formatShortMonthDay()/titleTagForStory() run
+// against the module-scoped TZ constant (siteConfig.timezone), which
+// falls back to America/Chicago (Brookings) when SITE_CITY is unset --
+// see site-config.ts's own top comment -- same as this file's build
+// environment during `vitest run`.
+describe('formatShortMonthDay', () => {
+  it('formats a UTC instant as a short month+day in the town timezone, no year or weekday', () => {
+    // 2026-10-17T15:00:00Z = 10am CDT -- same calendar day in Chicago.
+    expect(formatShortMonthDay('2026-10-17T15:00:00Z')).toBe('Oct 17');
+  });
+
+  it('returns an empty string for null', () => {
+    expect(formatShortMonthDay(null)).toBe('');
+  });
+});
+
+describe('titleTagForStory', () => {
+  function story(overrides: Partial<{ title: string; source_type: string; occurs_at: string | null }>) {
+    return { title: 'Community Art Day', source_type: 'event', occurs_at: '2026-10-17T15:00:00Z', ...overrides };
+  }
+
+  it('appends the short date for an event with occurs_at', () => {
+    expect(titleTagForStory(story({}))).toBe('Community Art Day — Oct 17');
+  });
+
+  it('appends the short date for an alert with occurs_at', () => {
+    expect(titleTagForStory(story({ source_type: 'alert', title: 'Extreme Heat Warning' })))
+      .toBe('Extreme Heat Warning — Oct 17');
+  });
+
+  it('returns the bare title for an event/alert with no occurs_at, rather than a dangling separator', () => {
+    expect(titleTagForStory(story({ occurs_at: null }))).toBe('Community Art Day');
+  });
+
+  it('never appends a date for a meeting -- build_title() already bakes one in', () => {
+    expect(titleTagForStory(story({ source_type: 'meeting', title: 'City Council Regular Meeting — Tue, Oct 13' })))
+      .toBe('City Council Regular Meeting — Tue, Oct 13');
+  });
+
+  it('never appends a date for any other source_type (weekly, recipe, etc.)', () => {
+    expect(titleTagForStory(story({ source_type: 'weekly' }))).toBe('Community Art Day');
   });
 });
 

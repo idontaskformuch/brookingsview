@@ -196,7 +196,24 @@ def test_build_title_labels_quorum_notice_instead_of_meeting():
         "meeting_date": datetime(2026, 10, 1, 0, 0, tzinfo=timezone.utc),
         "raw_data": {"agenda_text": REAL_QUORUM_NOTICE_AGENDA},
     }
-    assert build_title("meetings", row, BROOKINGS_CFG) == "Notice: possible quorum — Brookings Solar Ribbon Cutting Ceremony"
+    # QA finding #5 (2026-10): this branch used to never append `when` at
+    # all -- confirmed live, 5 quorum-notice stories for the same
+    # recurring event sharing one identical <title> across 5 real dates.
+    # Now matches the regular-meeting fallback's own "— {when}" suffix.
+    assert build_title("meetings", row, BROOKINGS_CFG) == (
+        "Notice: possible quorum — Brookings Solar Ribbon Cutting Ceremony — Thu, Oct 1, 2026"
+    )
+
+
+def test_build_title_quorum_notice_omits_date_suffix_when_meeting_date_missing():
+    row = {
+        "body": "City Council",
+        "meeting_date": None,
+        "raw_data": {"agenda_text": REAL_QUORUM_NOTICE_AGENDA},
+    }
+    assert build_title("meetings", row, BROOKINGS_CFG) == (
+        "Notice: possible quorum — Brookings Solar Ribbon Cutting Ceremony"
+    )
 
 
 def test_build_title_still_builds_normal_title_for_genuine_meeting():
