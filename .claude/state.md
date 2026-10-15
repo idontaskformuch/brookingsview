@@ -1,78 +1,90 @@
 # State
 
-2026-10-15. Round 2 COMPLETE, all verified, awaiting owner's final "ja"
-  to push. Local HEAD is 4 commits ahead of origin/main: 3e662d8 (#4
-  ClusterNav), b8d9583 (#3 pipeline fix), 6b74f8e (state), f985be2 (#3
-  backfill run). Round 1 (5 commits) already pushed earlier this session.
+2026-10-15. Round 2 PUSHED (f7d0da5..b0e9b24..origin/main, incl. the
+  idempotency fix 5cc9a6a pushed separately after). Round 3 (#6, #5)
+  code done + committed, NOT pushed. Local HEAD is 2 commits ahead of
+  origin/main: d523db6 (#6), bb140a3 (#5). Quorum-notice title backfill
+  (23 of 28 rows) shown as dry-run below -- AWAITING OWNER APPROVAL.
 
-ROUND 2 RECAP:
-  #4 (ClusterNav dead-track removal): DONE. recipes/editorials/columns ->
-    () => false for every town, reviews untouched. Tests updated.
+ROUND 2 FOLLOW-UP (this exchange, before round 3): owner asked why the
+  QA report's 45/10 duplicate-group counts didn't match the backfill's
+  3-pair result. Answered: the report counted duplicate RAW `events` rows
+  (same real event re-scraped across runs/sources, among upcoming rows),
+  not duplicate PUBLISHED stories -- checked all 44 Brookings + 562 Moreno
+  Valley raw groups against `stories`, found ZERO others with 2+
+  published rows today (the rest are pending raw rows the already-
+  committed pipeline fix prevents from ever becoming duplicate stories).
+  Also found+fixed a small idempotency bug in the backfill script itself
+  (the manual override kept re-reporting as pending after being applied)
+  -- 5cc9a6a, already pushed. Confirmed via fresh dry-run: 0 remaining
+  duplicate-story groups.
 
-  #3 (cross-source event duplicates), PIPELINE FIX: DONE. ai_pipeline/
-    publish.py's new cluster_event_duplicate_indices()/dedupe_cross_
-    source_events(), wired into publish_table() before story generation.
-    Clustering: title+day+venue COMPATIBILITY (not exact match) -- a row
-    with no venue info merges into a cluster with one resolved named
-    venue; two distinct named venues in one title+day bucket is a real
-    conflict, never guessed at. Winner: resolved venue first, then has a
-    description, then lowest id.
+ROUND 3:
+  #6 (static Astro.redirect() -> real 301/302): DONE, committed (d523db6).
+    New resolveStaticGateRedirect() in site/server/_shared.ts, checked in
+    worker.ts right after the existing /this-week/ block (same root
+    cause, same fix pattern -- a real Response.redirect() at the
+    Cloudflare Workers edge, before ASSETS). Covers all 14 currently-
+    live-broken routes (sports/jackrabbits/vail-resorts/university/play/
+    farm-report/burro-bonanza/home-sales/home-sales-archive/closures/
+    workplace-watch/new-in-town/month/reviews) across all 3 towns' town-
+    gating conditions, hand-duplicated from each .astro page's own
+    condition (this Worker resolves town from hostname at request time,
+    can't import site-config.ts's build-time SiteConfig). whats-on
+    excluded -- hasWhatsOn is true everywhere today, never redirects.
+    .astro pages' own Astro.redirect() calls left in place (still correct
+    for local `astro dev`). Tests added in _shared.test.ts (28 passing).
 
-  #3 BACKFILL INVESTIGATION (this exchange): owner asked why the QA
-    report's "45 Brookings / 10 Moreno Valley duplicate groups" didn't
-    match the backfill's original 3-pair dry-run. Root cause found: the
-    QA report counted duplicate RAW `events` rows (same real event
-    re-scraped across runs/sources, among UPCOMING rows) -- a different,
-    much larger population than duplicate PUBLISHED `stories`. Checked
-    all 44 Brookings + 562 Moreno Valley raw-duplicate groups against
-    `stories`: ZERO others have 2+ published, unsuperseded rows today --
-    only one row per group has ever been published; the rest are pending
-    raw rows the already-committed pipeline fix will prevent from ever
-    becoming duplicate stories (no backfill needed for them). Confirms
-    the original 3 pairs were already the true, complete backfill target
-    -- nothing was being missed by the algorithm itself.
-    SIDE FINDING (flagged, NOT fixed -- out of scope for #3): Moreno
-    Valley's "MAIN LIBRARY: Family Fun" etc. duplicate groups are SAME-
-    SOURCE (source='library') re-scrapes producing NEW rows under
-    DIFFERENT content_hash for what looks like identical content -- a
-    content_hash-instability bug, not cross-source duplication. Separate
-    investigation needed if the owner wants this picked up later.
+  #5 (duplicate <title> tags): DONE, committed (bb140a3). New
+    titleTagForStory()/formatShortMonthDay() in db.ts, wired into
+    s/[slug].astro's BaseLayout title prop only (never the H1/story.title/
+    JSON-LD). Scoped to event+alert (confirmed via live DB check: 83
+    event + 50 alert stories affected, owner approved expanding beyond
+    the originally-asked "event" scope after I surfaced this).
+    SEPARATE BUG FOUND+FIXED in the same pass: ai_pipeline/publish.py's
+    build_title() quorum-notice branch never appended the meeting date at
+    all (regular meetings' own fallback branch two lines below it does) --
+    confirmed live, 5 quorum-notice stories for a recurring real event
+    sharing one title across 5 dates. Fixed to match the fallback.
+    BACKFILL (scripts/backfill_quorum_notice_title_dates.py): built,
+    dry-run shows 23 of 28 affected stories safe to update (recomputed by
+    calling the now-fixed build_title() against each one's own
+    underlying meeting -- can't drift from what a fresh publish produces
+    today). NOT YET RUN -- awaiting owner approval.
+    SAFETY FINDING surfaced by the dry-run itself, NOT fixed (separate,
+    real bug, out of scope for today): 5 of the 28 candidates' meetings
+    now have raw_data.agenda_text = NULL -- Legistar returned zero agenda
+    items on a later rescrape of an old EventId, and legistar_v1.py's
+    upsert REPLACES raw_data wholesale (update_columns includes
+    "raw_data") rather than merging, so the richer historical agenda
+    content that originally justified the quorum-notice classification
+    was silently overwritten/lost. Re-running the classifier on today's
+    data wrongly reclassifies these 5 as generic "City Council" meetings
+    -- the backfill script detects this and SKIPS them (reported, never
+    applied) rather than replacing a correct specific title with a
+    misleading generic one. Affected meeting_ids: 1314, 2428, 10973,
+    11006, 11009 (all brookings_sd).
 
-  #3 MANUAL OVERRIDE: event-282137 ("Free Community Art Day") added via
-    a new, explicitly-labeled MANUAL_SUPERSEDE_OVERRIDES dict in
-    scripts/merge_cross_source_event_duplicates.py (owner-reviewed: same
-    occurs_at as event-305361, compatible/missing venue, title-matching
-    algorithm's own documented exact-match limitation doesn't catch the
-    "Free ..." wording difference -- a hand reviewed one-off, not a
-    loosening of the general algorithm).
+PRE-PUSH VERIFICATION (all green, this session): pytest 871 passed/8
+  skipped (was 870 -- +1 new quorum-notice test). vitest 1051 passed (was
+  1033 -- +18 new: _shared.test.ts's resolveStaticGateRedirect coverage +
+  db.test.ts's titleTagForStory/formatShortMonthDay coverage). astro
+  check / 3-town build / sitemap-disjoint NOT yet re-run since round 2 --
+  due before next push per CLAUDE.md rule 3.
 
-  #3 BACKFILL RUN: DONE, ran for real against production per owner
-    approval. 4 rows marked superseded_by_slug (nothing deleted):
-      event-282120 -> event-278302 (One Day for STATE)
-      event-282123 -> event-278305 (They Were There: Witnesses from 9/11)
-      event-282136 -> event-305361 (Community Art Day)
-      event-282137 -> event-305361 (Community Art Day, manual override)
-    event-series-redirects.json updated (1037 entries total, 4 new) --
-    worker.ts already reads this file, no code change needed for the
-    301s to take effect.
+NEXT STEPS:
+  1. Owner approves/declines the quorum-notice backfill dry-run above --
+     on approval, run `python -m scripts.backfill_quorum_notice_title_dates`
+     for real (23 rows, title-only UPDATE).
+  2. Full pre-push battery: astro check + 3-town build + sitemap/noindex-
+     disjoint check (pytest/vitest already green above).
+  3. Push after owner's explicit "ja" (2 local commits + whatever the
+     backfill adds).
+  4. Separately flagged for a future round, NOT auto-scheduled: the
+     Legistar raw_data-overwrite data-loss bug above (5 known-affected
+     meetings, likely more as other old quorum-notice-eligible meetings
+     age past whatever triggers Legistar to stop returning agenda items).
 
-PRE-PUSH VERIFICATION (all green, this session, after the backfill run):
-  - pytest: 870 passed, 8 skipped (unchanged from before backfill -- the
-    backfill script itself IS tested, just doesn't add new pytest count
-    since it ran as a one-off, not part of the suite).
-  - vitest: 1033 passed, 51 files.
-  - astro check: 0 errors, 0 warnings (pre-existing hints only).
-  - astro build all 3 towns (fresh rebuild post-backfill): brookings_sd
-    635 pages, moreno_valley_ca 3407 pages, broomfield_co 1078 pages --
-    all exit 0.
-  - scripts/verify_sitemap_noindex_disjoint.mjs: OK on all 3 (107/140/80
-    sitemap URLs, all indexable+present, zero offenders). Temp dist-*
-    dirs removed after checking.
-
-NEXT STEP: push the 4 commits above after owner's explicit "ja".
-
-REMAINING QA FINDINGS, not yet scheduled: #5 (duplicate <title> on
-  recurring/multi-instance pages, all 3), #6 (Astro.redirect() -> 200 not
-  301/302, all 3), #9 (Celebration Park hours, Moreno Valley, unverified/
-  info-only). Also newly flagged (not a QA-report item, found this round):
-  Moreno Valley library-source content_hash instability -- see above.
+REMAINING QA FINDINGS, not yet scheduled: #9 (Celebration Park hours,
+  Moreno Valley, unverified/info-only -- lowest priority, info-only per
+  the original report).
