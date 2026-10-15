@@ -1,5 +1,5 @@
 {
-  "_notes": "Handkurerat 2026-08-03 mot cityofbrookings-sd.gov och brookingslibrary.org. Library-timmar bekräftade mot två oberoende källor (Yelp och countyoffice.org), samstämmiga. City Hall/Parks & Rec-timmar från cityofbrookings-sd.gov facility- och directory-sidor. Inga personnamn utom offentliga tjänstemän i officiell roll. SDSU campus-anläggningarna (2026-08-23, se NEEDS-HUMAN-REVIEW.md 'Brookings Full Audit P3') tillagda för att dela venue-registret med Jackrabbits/university-täckningen -- adresser korsverifierade mot minst två oberoende källor (gojacks.com, Wikipedia, SDSU:s egen sdstate.edu/buildings, Waze) vardera. 23 stadsparker tillagda samma dag via scripts/ingest_brookings_facilities.py (GIS-import, se det skriptets docstring), inte i den här handkuraterade filen. 2026-08-25 (se NEEDS-HUMAN-REVIEW.md, 'Brookings Venue Registry'): street_address/postal_code/aliases tillagda på de befintliga posterna nedan (matchar nu venue-resolution), plus fyra nya venues (Outdoor Adventure Center, Downtown Main Avenue, Edgebrook Golf Course, Good Roots Farm) -- alla adresser oförändrade mot vad som redan var handverifierat, endast maskinläsbar struktur tillagd. lat/lon geokodade via samma publika Esri World Geocoding Service (geocode.arcgis.com, ingen nyckel) som scripts/ingest_moval_facilities.py redan använder -- alla 10 träffar score >= 98.87 (de flesta exakt 100), inga gissade koordinater. Wooden Legs Brewing Company tillagd samma dag efter att ha stått olöst i venue-resolution-passet (1 förekomst) -- adress/aliaser lämnade direkt av ägaren, geokodad samma väg (score 100).",
+  "_notes": "Handkurerat 2026-08-03 mot cityofbrookings-sd.gov och brookingslibrary.org. Library-timmar bekräftade mot två oberoende källor (Yelp och countyoffice.org), samstämmiga. City Hall/Parks & Rec-timmar från cityofbrookings-sd.gov facility- och directory-sidor. Inga personnamn utom offentliga tjänstemän i officiell roll. SDSU campus-anläggningarna (2026-08-23, se NEEDS-HUMAN-REVIEW.md 'Brookings Full Audit P3') tillagda för att dela venue-registret med Jackrabbits/university-täckningen -- adresser korsverifierade mot minst två oberoende källor (gojacks.com, Wikipedia, SDSU:s egen sdstate.edu/buildings, Waze) vardera. 23 stadsparker tillagda samma dag via scripts/ingest_brookings_facilities.py (GIS-import, se det skriptets docstring), inte i den här handkuraterade filen. 2026-08-25 (se NEEDS-HUMAN-REVIEW.md, 'Brookings Venue Registry'): street_address/postal_code/aliases tillagda på de befintliga posterna nedan (matchar nu venue-resolution), plus fyra nya venues (Outdoor Adventure Center, Downtown Main Avenue, Edgebrook Golf Course, Good Roots Farm) -- alla adresser oförändrade mot vad som redan var handverifierat, endast maskinläsbar struktur tillagd. lat/lon geokodade via samma publika Esri World Geocoding Service (geocode.arcgis.com, ingen nyckel) som scripts/ingest_moval_facilities.py redan använder -- alla 10 träffar score >= 98.87 (de flesta exakt 100), inga gissade koordinater. Wooden Legs Brewing Company tillagd samma dag efter att ha stått olöst i venue-resolution-passet (1 förekomst) -- adress/aliaser lämnade direkt av ägaren, geokodad samma väg (score 100). 2026-10-15 (QA-genomgång, fynd #7): public-library och city-hall hours_text var fel sedan den ursprungliga 2026-08-03-kureringen -- library stängde 1h tidigare än angivet (8pm, inte 9pm) och city-hall öppnade 1h senare än angivet (8am, inte 7am, både mån-tors OCH fredag -- fredagsfelet missades av den ursprungliga QA-granskningen, hittat vid omverifiering mot hela veckoschemat, inte bara den redan flaggade raden). library-beskrivningens 'roughly 66 hours a week' omräknat till 62 (det gamla talet var härlett från samma fel stängningstid). mccrory-gardens phone+hours_text tillagda (saknades helt) från samma redan citerade källa.",
   "facilities": [
     {
       "slug": "public-library",
@@ -11,10 +11,10 @@
       "aliases": ["Brookings Public Library", "BPL", "515 3rd St"],
       "phone": "(605) 692-9407",
       "website": "https://www.brookingslibrary.org/",
-      "hours_text": "Mon–Thu 9:30am–9pm, Fri–Sat 9:30am–5:30pm, Sun 1pm–5pm",
-      "description": "The city's public library, located one block east of downtown and adjacent to the Children's Museum of South Dakota. Offers books, DVDs, audiobooks, board games, video games, maker kits, and a full calendar of community programs. Open roughly 66 hours a week.",
+      "hours_text": "Mon–Thu 9:30am–8pm, Fri–Sat 9:30am–5:30pm, Sun 1pm–5pm",
+      "description": "The city's public library, located one block east of downtown and adjacent to the Children's Museum of South Dakota. Offers books, DVDs, audiobooks, board games, video games, maker kits, and a full calendar of community programs. Open roughly 62 hours a week.",
       "source_url": "https://www.cityofbrookings-sd.gov/facilities/facility/details/Brookings-Public-Library-8",
-      "verified_date": "2026-08-03",
+      "verified_date": "2026-10-15",
       "lat": 44.308250,
       "lon": -96.796070
     },
@@ -28,10 +28,10 @@
       "aliases": ["City & County Government Center", "City Council Chambers", "Government Center", "Community Room 300", "Conference Room 241", "520 3rd Street", "520 3rd St", "520 Third Street"],
       "phone": "(605) 692-6281",
       "website": "https://www.cityofbrookings-sd.gov/",
-      "hours_text": "Mon–Thu 7am–5pm, Fri 7am–noon",
+      "hours_text": "Mon–Thu 8am–5pm, Fri 8am–noon",
       "description": "Houses the City Clerk's Office, City Manager's Office, Community Development, Engineering, Finance, Human Resources, and Parks & Recreation departments. Shares the building with Brookings County offices; City Council and County Commission meetings are held in the third-floor chambers.",
       "source_url": "https://www.cityofbrookings-sd.gov/facilities/facility/details/City-and-County-Government-Center-16",
-      "verified_date": "2026-08-03",
+      "verified_date": "2026-10-15",
       "lat": 44.307554,
       "lon": -96.795883
     },
@@ -114,10 +114,12 @@
       "street_address": "631 22nd Ave",
       "postal_code": "57007",
       "aliases": ["McCrory Gardens", "McCrory Gardens Education & Visitor Center", "631 22nd Ave"],
+      "phone": "(605) 688-6707",
       "website": "https://www.sdstate.edu/mccrory-gardens",
+      "hours_text": "Summer: Sun–Sat 10am–7pm (last admission 6:30pm); Fall/Winter: Mon–Fri 10am–5pm (last admission 4:30pm). Extended hours for special events and holiday shopping.",
       "description": "SDSU's public garden and arboretum -- part of the South Dakota Arboretum.",
       "source_url": "https://www.sdstate.edu/mccrory-gardens/plan-your-visit-mccrory",
-      "verified_date": "2026-08-23",
+      "verified_date": "2026-10-15",
       "lat": 44.313530,
       "lon": -96.768987
     },
