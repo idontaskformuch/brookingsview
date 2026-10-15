@@ -60,6 +60,18 @@ from db.db import get_conn
 
 REDIRECT_MAP_PATH = Path(__file__).resolve().parent.parent / "site" / "server" / "event-series-redirects.json"
 
+# Owner-reviewed manual addition (2026-10-15): event-282137 ("Free
+# Community Art Day") is the SAME real event as event-305361 above --
+# confirmed same exact occurs_at (2026-10-17 15:00 UTC) and a compatible
+# (missing, not conflicting) venue. The algorithm's own documented "exact
+# title only" limitation doesn't catch this (different wording, "Free
+# Community Art Day" vs "Community Art Day") -- this is a hand-reviewed,
+# one-time exception, not a loosening of the general title-matching rule
+# (which stays exact-match-only for every other, unreviewed case).
+MANUAL_SUPERSEDE_OVERRIDES: dict[str, dict[str, str]] = {
+    "brookings_sd": {"event-282137": "event-305361"},
+}
+
 # Mirrors site/src/lib/site-config.ts's per-town timezone -- kept here
 # rather than importing TS, same duplication this codebase already
 # accepts elsewhere (see venue_registry.py <-> db.ts's own comment).
@@ -129,10 +141,25 @@ def main() -> int:
             venue_registry = load_registry(conn, town_id)
             groups.extend(find_duplicate_story_groups(conn, town_id, venue_registry, tz))
 
+        # Owner-reviewed manual additions -- see MANUAL_SUPERSEDE_OVERRIDES'
+        # own comment. Applied as ordinary groups below (same report/
+        # update/redirect-map path), just flagged in the printout so a
+        # re-read of this output can tell which rows were algorithmic vs
+        # hand-reviewed.
+        for town_id, overrides in MANUAL_SUPERSEDE_OVERRIDES.items():
+            for loser_slug, winner_slug in overrides.items():
+                groups.append({
+                    "town_id": town_id, "title": f"(manual override) {loser_slug} -> {winner_slug}",
+                    "day": "", "count": 1, "winner_slug": winner_slug, "loser_slugs": [loser_slug],
+                    "manual": True,
+                })
+
         print(f"\n=== Cross-source event duplicates: {len(groups)} group(s) found across all towns ===")
         for g in groups:
-            print(f"  {g['town_id']}: {g['count']}x {g['title']!r} on {g['day']} "
-                  f"-> keep {g['winner_slug']!r}, supersede {g['loser_slugs']!r}")
+            tag = " [MANUAL, owner-reviewed 2026-10-15]" if g.get("manual") else ""
+            day_part = f" on {g['day']}" if g["day"] else ""
+            print(f"  {g['town_id']}: {g['count']}x {g['title']!r}{day_part} "
+                  f"-> keep {g['winner_slug']!r}, supersede {g['loser_slugs']!r}{tag}")
             for loser_slug in g["loser_slugs"]:
                 redirect_map[loser_slug] = g["winner_slug"]
             total += len(g["loser_slugs"])
