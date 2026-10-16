@@ -105,6 +105,12 @@ class AgendaLinkParser(BaseParser):
     # frysa den vid första skrapningen.
     conflict_columns = ("town_id", "content_hash")
     update_columns = ["body", "meeting_date", "agenda_url", "raw_data", "snapshot_id"]
+    # QA finding (2026-10-15): same architectural risk as legistar_v1.py's
+    # own merge_raw_data (no PROVEN live loss here yet, but the pattern --
+    # agenda_items/agenda_text only set when the fetch returns items, raw_data
+    # otherwise fully replaced -- is identical). See db.upsert_records()'s
+    # own doc comment for the merge tradeoff.
+    merge_raw_data = True
 
     def _client_id(self) -> str:
         client_id = self.source_cfg.get("client_id")

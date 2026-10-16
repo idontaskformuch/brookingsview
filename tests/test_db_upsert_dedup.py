@@ -66,3 +66,45 @@ def test_no_dedup_check_ran_when_columns_not_given():
     new_count = upsert_records(conn, "meetings", "moreno_valley_ca", [RECORD])
     assert new_count == 1
     assert _executed_sql(cur, "SELECT") == []
+
+
+# merge_raw_data -- see db.upsert_records()'s own doc comment for the real
+# live data-loss bug this closes (2026-10-15): Legistar/AgendaLink/eSCRIBE
+# only set raw_data["agenda_items"] when a fetch returns items, and the
+# OLD blind `raw_data = EXCLUDED.raw_data` replace erased the richer
+# historical value the first time a source answered empty for an event
+# that used to have items.
+def test_merge_raw_data_true_uses_jsonb_merge_not_blind_replace():
+    conn, cur = _fake_conn(select_result=None)
+    upsert_records(
+        conn, "meetings", "brookings_sd", [RECORD],
+        update_columns=["raw_data"], merge_raw_data=True,
+    )
+    sql = _executed_sql(cur, "INSERT")[0]
+    assert "raw_data = meetings.raw_data || EXCLUDED.raw_data" in sql
+
+
+def test_merge_raw_data_false_default_is_byte_identical_to_before():
+    # The ~10 other existing update_columns+raw_data callers (traffic,
+    # sports, events, property sales, ...) must see EXACTLY today's SQL --
+    # no merge, no regression -- since merge_raw_data defaults to False.
+    conn, cur = _fake_conn(select_result=None)
+    upsert_records(
+        conn, "meetings", "brookings_sd", [RECORD],
+        update_columns=["raw_data"],
+    )
+    sql = _executed_sql(cur, "INSERT")[0]
+    assert "raw_data = EXCLUDED.raw_data" in sql
+    assert "||" not in sql
+
+
+def test_merge_raw_data_only_changes_the_raw_data_clause_not_other_columns():
+    conn, cur = _fake_conn(select_result=None)
+    upsert_records(
+        conn, "meetings", "brookings_sd", [RECORD],
+        update_columns=["body", "raw_data", "meeting_date"], merge_raw_data=True,
+    )
+    sql = _executed_sql(cur, "INSERT")[0]
+    assert "body = EXCLUDED.body" in sql
+    assert "meeting_date = EXCLUDED.meeting_date" in sql
+    assert "raw_data = meetings.raw_data || EXCLUDED.raw_data" in sql

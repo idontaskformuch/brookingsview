@@ -39,7 +39,7 @@ class _RecordingDb:
 
     def upsert_records(self, conn, table, town_id, records, snapshot_id,
                         conflict_columns=None, update_columns=None,
-                        dedup_check_columns=None):
+                        dedup_check_columns=None, merge_raw_data=False):
         return len(records)
 
     def last_run_at(self, conn, town_id, source_key):

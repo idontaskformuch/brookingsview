@@ -67,6 +67,13 @@ class LegistarParser(BaseParser):
     # this fix. Same pattern this codebase already uses for a live-scoring
     # sports match.
     update_columns = ["raw_data", "agenda_url", "minutes_url"]
+    # QA finding (2026-10-15, live data loss): Legistar stops exposing
+    # EventItem-level detail for an event once it's old enough (confirmed
+    # live, ~51-58 days) -- a rescrape then returns zero items, and
+    # without this, the blind replace above would erase the richer
+    # historical agenda_items/agenda_text permanently. See db.upsert_
+    # records()'s own merge_raw_data doc comment for the full tradeoff.
+    merge_raw_data = True
 
     def _client(self) -> str:
         client = self.source_cfg.get("client_id")

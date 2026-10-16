@@ -133,7 +133,8 @@ def run_source(conn, cfg: dict, source_key: str, source_cfg: dict) -> None:
         new = db.upsert_records(conn, parser.table, town_id, records, snapshot_id,
                                  conflict_columns=parser.conflict_columns,
                                  update_columns=parser.update_columns,
-                                 dedup_check_columns=parser.dedup_check_columns)
+                                 dedup_check_columns=parser.dedup_check_columns,
+                                 merge_raw_data=parser.merge_raw_data)
         # En källa vars huvudhämtning lyckades men vars PER-DOKUMENT-hämtningar
         # (agenda/minutes/action summary m.fl., se FetchResult-fältens
         # docstring) alla misslyckades ska inte se ut som 'ok' -- det var

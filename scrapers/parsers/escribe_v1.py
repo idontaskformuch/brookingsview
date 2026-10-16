@@ -102,6 +102,13 @@ class EscribeParser(BaseParser):
     # content_hash-independent backstop for any other future cause of the
     # same failure shape. See db.upsert_records()'s own docstring.
     dedup_check_columns = ("body", "meeting_date")
+    # QA finding (2026-10-15): same architectural risk as legistar_v1.py's
+    # own merge_raw_data (no PROVEN live loss here yet, but the pattern --
+    # agenda_items/agenda_text/action_summary_items only set when the
+    # fetch returns them, raw_data otherwise fully replaced -- is
+    # identical). See db.upsert_records()'s own doc comment for the merge
+    # tradeoff.
+    merge_raw_data = True
 
     def _base_url(self) -> str:
         base = self.source_cfg.get("base_url")

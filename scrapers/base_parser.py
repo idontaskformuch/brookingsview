@@ -57,6 +57,14 @@ class BaseParser(abc.ABC):
     #: second row under a new hash). Leave None (the default) for any source
     #: whose content_hash is already a reliable identity on its own.
     dedup_check_columns: tuple[str, ...] | None = None
+    #: see db.upsert_records()'s own merge_raw_data doc comment -- opt-in,
+    #: default False (unchanged behavior) for every existing parser. Only
+    #: the three meetings parsers (Legistar/AgendaLink/eSCRIBE) set this
+    #: True, after a real live data-loss bug (2026-10-15): a source
+    #: answering empty for an event that previously had agenda_items
+    #: permanently erased the richer historical data on the very next
+    #: scrape, since raw_data was always fully replaced, never merged.
+    merge_raw_data: bool = False
 
     def __init__(self, cfg: dict, source_cfg: dict):
         self.cfg = cfg                    # hela town-configen

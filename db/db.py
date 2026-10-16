@@ -82,7 +82,8 @@ def upsert_records(conn, table: str, town_id: str, records: Iterable[dict],
                    snapshot_id: int | None = None,
                    conflict_columns: tuple[str, ...] | None = None,
                    update_columns: list[str] | None = None,
-                   dedup_check_columns: tuple[str, ...] | None = None) -> int:
+                   dedup_check_columns: tuple[str, ...] | None = None,
+                   merge_raw_data: bool = False) -> int:
     """Dedup-säker insert. Varje record MÅSTE ha 'content_hash' (om inte
     conflict_columns anger något annat).
 
@@ -113,6 +114,43 @@ def upsert_records(conn, table: str, town_id: str, records: Iterable[dict],
     genuint ändrad omskrapning (ny PostMinutes, ny Action Summary) har
     alltid ANNORLUNDA raw_data och fångas aldrig av detta -- bara en
     verklig byte-för-byte-dubblett gör.
+
+    merge_raw_data (default False, dvs. oförändrat beteende för alla
+    befintliga anropare): styr HUR raw_data-kolumnen skrivs vid en
+    DO UPDATE. False = total ersättning (raw_data = EXCLUDED.raw_data),
+    samma som idag. True = en ytlig jsonb-sammanslagning
+    (raw_data = {table}.raw_data || EXCLUDED.raw_data) -- en nyckel som
+    finns i BÅDA tar det NYA värdet (en riktig omröstning/action-summary-
+    uppdatering fungerar precis som förut), men en nyckel som bara finns
+    i den GAMLA raden bevaras istället för att försvinna.
+
+    Verklig bugg detta fixar (hittad 2026-10-15, se .claude/state.md):
+    legistar_v1.py/agendalink_v1.py/escribe_v1.py sätter bara
+    raw_data["agenda_items"]/["agenda_text"] NÄR hämtningen gav några
+    ärenden -- om källan en dag svarar tomt för ett event som tidigare
+    HADE ärenden (bekräftat live: Legistar slutar exponera ärende-nivå-
+    detalj för ett event runt 51-58 dagars ålder, oberoende av vårt eget
+    60-dagarsfönster), skrev den gamla totala ersättningen bort den
+    rikare historiska datan permanent, första gången det hände.
+
+    AVVÄGNING, medvetet accepterad: om källan en dag MEDVETET tar bort
+    ett ärende (en genuin rättelse, inte bara en tillfälligt tom
+    API-sida) kommer det gamla ärendet att leva kvar här ändå -- en
+    sammanslagning kan bara LÄGGA TILL/BEVARA nycklar, aldrig ta bort en
+    nyckel den gamla raden redan hade. Detta är avsiktligt: att bevara
+    en möjligen inaktuell historisk rad är ett mindre fel än att tyst
+    tappa ett ärende en läsare redan kunnat se, och matchar samma
+    "behåll data, sluta visa den" -princip resten av kodbasen redan
+    använder för dubblett-hantering (superseded_by_slug) snarare än att
+    radera.
+
+    Opt-in, inte default: ~10 andra befintliga anropare (traffic, sport,
+    events, fastighetsförsäljningar m.fl.) sätter redan raw_data i sin
+    update_columns och förlitar sig på total ersättning för FÄLT SOM
+    LEGITIMT SKA FÖRSVINNA (t.ex. en pågående-match-markör som inte
+    längre är relevant när matchen är klar) -- en global sammanslagning
+    där skulle vara en annan, oavsiktlig bugg. Bara de tre mötesskraperna
+    sätter merge_raw_data=True (se BaseParser-flaggan med samma namn).
     """
     records = list(records)
     if not records:
@@ -154,7 +192,11 @@ def upsert_records(conn, table: str, town_id: str, records: Iterable[dict],
                 conflict = "(town_id, content_hash)" if "content_hash" in cols else "(town_id, observed_for)"
 
             if update_columns:
-                action = "DO UPDATE SET " + ", ".join(f"{c} = EXCLUDED.{c}" for c in update_columns)
+                def _set_clause(c: str) -> str:
+                    if c == "raw_data" and merge_raw_data:
+                        return f"raw_data = {table}.raw_data || EXCLUDED.raw_data"
+                    return f"{c} = EXCLUDED.{c}"
+                action = "DO UPDATE SET " + ", ".join(_set_clause(c) for c in update_columns)
             else:
                 action = "DO NOTHING"
 
