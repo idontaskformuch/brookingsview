@@ -32,3 +32,6 @@
     rader) skrivs i klartext i svarsmeddelandet, inte bara i
     verktygsutdata -- ägaren kopierar svarsmeddelandet, inte
     terminalloggen.
+11. Bygg- och testkommandon får aldrig pipas genom tail/head utan
+    set -o pipefail eller kontroll av PIPESTATUS. Exit-koden ska alltid
+    kontrolleras.
