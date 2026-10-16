@@ -1,10 +1,8 @@
 # State
 
-2026-10-16. Round 3 pushed (53b629c, confirmed earlier this session).
-  One new commit since, NOT yet pushed: d81837e (CLAUDE.md rule #11,
-  pipefail/exit-code requirement) -- awaiting owner's explicit push "ja"
-  (not covered by the prior "pusha de 6 committarna" approval, which was
-  for the round-3 commits specifically).
+2026-10-16. Everything pushed, nothing outstanding. HEAD = origin/main =
+  9358540. d81837e (CLAUDE.md rule #11) + 9358540 (state) pushed this
+  turn per owner's explicit "ja".
 
 THIS EXCHANGE:
   1. CLAUDE.md rule #11 added (committed, not pushed): build/test
@@ -12,11 +10,20 @@ THIS EXCHANGE:
      or a PIPESTATUS check -- exit codes must always be checked. Direct
      result of this session's own `| tail -10` masking a transient Neon
      "fetch failed" during a Moreno Valley build (see round-3 notes).
-  2. Answered in plain text (not repeated here, see conversation): the
-     45/10 vs 3-pair discrepancy (raw `events`-table duplication vs.
-     duplicate PUBLISHED stories -- only 3 pairs + 1 manual were ever
-     actually live), and the quorum-notice backfill's exact scope (23
-     rows updated, 5 skipped, why, owner's explicit approval).
+  2. Answered in plain text, twice (owner asked for it isolated/restated
+     a second time -- not repeated here, see conversation for the full
+     text): (a) 45/10 vs. 3+1 -- the QA report counted raw `events`-table
+     duplication (same real event re-scraped, among upcoming rows), not
+     duplicate PUBLISHED stories; checked all 44 Brookings + 562 Moreno
+     Valley raw groups against `stories`, found only the 3 pairs + 1
+     manual override ever had 2+ published rows; a post-backfill re-check
+     confirmed 0 remaining duplicate-story groups visible to readers.
+     (b) quorum-notice backfill -- 23 of 28 rows updated (title only),
+     5 explicitly skipped (their meetings' raw_data.agenda_text is now
+     NULL, a separate Legistar data-loss bug -- re-running the
+     classifier on them today would mislabel them as generic meetings),
+     approved by owner 2026-10-15 via explicit "Ja, kör skarpt" before
+     the UPDATE ran.
   3. QA follow-up (read-only, reported, nothing changed): supplementary
      sampling for Moreno Valley + Broomfield since the original Oct audit
      gave them a smaller sample than Brookings (subagent rate-limit
@@ -55,6 +62,7 @@ PRE-EXISTING OPEN ITEMS, unchanged:
     the structural reason Broomfield has zero real "events" content to
     sample; not something this session was asked to fix.
 
-NEXT STEP: push d81837e (CLAUDE.md rule) after owner's explicit "ja".
-  Nothing else pending -- all three approved rounds live, QA follow-up
-  clean.
+NEXT STEP: none pending. All three approved rounds live, QA follow-up
+  clean, CLAUDE.md rule pushed. Open items above are flagged, not
+  scheduled -- awaiting owner's choice of what (if anything) to pick up
+  next.
