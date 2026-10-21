@@ -1,25 +1,19 @@
-2026-10-21 (spec .claude/spec-time-alerts-heroes.md). Fas 1-5 PUSHADE (32b8a1b),
-  ägaren bekräftade på telefon. Lokala commits efter push, EJ pushade:
-  c82bf26 Hobo Week -> campus-bucket (Python, självläker vid nästa scrape),
-  077fb8c låga mobil-heroes + bort Badlands (Brookings autumn-08/09/10),
-  c9de086 sektionshero byter månadsvis/högtid (2-månadersregeln gäller bara
-  startsidans This week).
-  ÖPPET (ägarens bildbeslut 2026-10-21):
-  (a) Inget foto i fler än en stad: dubbletter kvar = Moreno school_alerts-4
-      (=Brookings school_alerts-1) och Moreno sports-5 (=Brookings sports-4);
-      Broomfields kategoripooler LÅNAR Moreno/Brookings-filer -> ska få egna
-      (city_hall, jobs, traffic, weather_alert, workplace_watch + reserv för
-      events/today). Verktyg: scripts/source_category_images.py (--montage;
-      OBS --apply skriver om hela category-images.ts och återinför borttagna
-      bilder om CATEGORY_SEARCHES inte synkas). Ej påbörjat.
+2026-10-21 (spec .claude/spec-time-alerts-heroes.md). Fas 1-5 pushade tidigare
+  (32b8a1b). PUSHAT i ett svep efter fullt batteri (vitest 1127 UTC+Stockholm,
+  pytest 900, astro check 0, 3 byggen, sitemap/noindex x3, heat-läckage x3):
+  Hobo Week -> campus (namnregel + datumregel, Hobo Day härleds ur HDC-event),
+  låga mobil-heroes + bort Badlands, månadsvis hero-rotation, skyltremsan med
+  sport + prioritering (football inom 7 d > närmaste hemmamatch) + klientdagar,
+  top_events-marquee (configs/brookings_sd.json features.top_events, mönster ej
+  datum, speglas i site-config.ts, kollas av tests/test_top_events_config.py).
+  ÖPPET, senare push (ägarens bildbeslut): (a) en bild = en stad; Broomfield egna
+  kategoripooler (val klara i scripts/source_category_images.py, EJ applicerade;
+  denylist scripts/category_image_denylist.json + cross-town-guard i --apply),
+  de 2 Moreno-dubbletterna (school_alerts-4, sports-5) ligger i denylisten.
   (b) PUNKT FÖR SIG, bygg inte nu: VÅR- och SOMMARPOOLER för "This week" +
-      sektionshero (Brookings/Moreno/Broomfield) måste finnas före 1 mars 2027,
-      annars faller heroes till kategori-reserv och startsidans This week
-      kastar. Verktyg: scripts/source_this_week_images.py.
-  (c) Ägarens fynd 1 (skyltremsan matchrad): utrett, rapporterat, väntar svar
-      innan ändring. Fas 6 (dark mode) väntar tills (a) och (c) är klara.
-  Känd: skyltremsans "in N days" (db.ts countdown) är byggräknad -- missad i
-  Fas 1, ska bli klientberäknad.
+  sektionshero (alla tre städer) måste finnas före 1 mars 2027, annars faller
+  heroes till kategori-reserv och startsidans This week kastar. Verktyg:
+  scripts/source_this_week_images.py. Fas 6 (dark mode) väntar på (a).
 
 2026-10-16. merge_raw_data fix + restore built, tested, run, and about
   to be pushed (this commit). Moreno Valley duplicate-row cleanup
