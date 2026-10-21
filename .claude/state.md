@@ -4,6 +4,19 @@ Historik: se .claude/state-archive.md, läs bara vid behov.
 Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 
 ## 1. Nu
+- VÄNTAR PÅ ÄGAREN (hemma), i denna ordning (Kö 9 Steg 1; 09ea03f committad, EJ pushad):
+  1. Ägaren slår på Secret scanning + Push protection (+ Dependabot alerts) i repots Settings -> Advanced Security
+     (kontrollerat 2026-10-21: alla fem står "disabled").
+  2. Ägaren säger ja -> `wrangler deploy` av cron-dispatcher/ (deploya INTE före token finns).
+  3. Ägaren skapar fine-grained token (90 d, bara brookingsview, Actions: Read and write) och kör
+     `npx wrangler secret put GITHUB_TOKEN` i cron-dispatcher/. Fyll i utgångsdatum under Gällande beslut.
+  4. Manuell dispatch-test. Ta bort schedule:-blocken (scrape.yml, moval-/broomfield-scrape.yml, closure-watch-morning.yml,
+     moval-closure-watch-morning.yml) FÖRST när minst en cron-startad scrape gått grönt; visa diffen innan.
+  5. ALERT_WEBHOOK är INTE satt (inte bland repots 19 Actions-secrets, inte i lokala .env; kontrollerat 2026-10-21). Vakthunden
+     (scrape-liveness-check) larmar därför bara genom att workflow-körningen blir röd; GitHub mejlar då den som senast ändrade
+     cron-raden i den filen (ägaren, via commit-e-posten) om Notifications -> Actions är påslaget (github.com/settings/notifications).
+     Vill ägaren ha push/Slack/Discord: skapa en inkommande webhook, lägg som Actions-secret ALERT_WEBHOOK (samma secret läses av
+     staleness-check, liveness-check och scraper-larmen).
 - Fas 6 (dark mode) KLAR och pushad 2026-10-21 (ägaren godkände). Alla tre städer byggda, vitest 1148 +
   pytest 919 gröna, astro check 0 fel, sitemap/noindex OK (Brookings 109, Moreno 141, Broomfield 79).
   Ägaren kollar mörkt läge på telefon; inga Moreno/Broomfield-skärmbilder gjorda.
@@ -21,7 +34,7 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 - FLAKY? 2 vitest-tester föll en gång 2026-10-21 (66 s körning, direkt efter en astro build), ej
   identifierade; 5 omkörningar (varav 1 under CPU-last) = 1152/1152 gröna. Om det återkommer: kör
   --reporter=verbose och logga namnen här.
-- NÄSTA: Kö 9 Steg 1 -- plan + token-scope visad, VÄNTAR PÅ ÄGARENS JA innan bygge. Därefter Kö 2+.
+- NÄSTA: Kö 9 Steg 1 byggt+committat (09ea03f), väntar på ägarens punkter 1-5 ovan. Därefter Kö 9 Steg 2, Steg 3, sen Kö 2+.
 
 ## 2. Kö
 1. (Fas 6 klar.)
