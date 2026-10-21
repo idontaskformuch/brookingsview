@@ -62,9 +62,17 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 - NÄSTA: Kö 9 Steg 1 byggt+committat (09ea03f), väntar på ägarens punkter 1-5 ovan. Därefter Kö 9 Steg 2, Steg 3, sen Kö 2+.
 
 ## 2. Kö (bara pågående + närmaste 3 steg; resten i .claude/backlog.md)
-1. NAV FAS 1 (pågår, i Nu): spec .claude/spec-section-nav.md.
-2. Kö 9 Steg 1 -- väntar på ägarens punkter 1-5 (se Nu) + Steg 2, Steg 3 (text nedan).
-3. QA Q2 (DB-invarianter), sedan Q3-Q4: .claude/spec-qa-automation.md.
+ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med 2) VAL FAS 1 klar fre 23 okt; 3) helgen 24-25 okt GLASGOW;
+4) mån 26 okt VAL FAS 2 (2a-inventering först, rapportera innan kod).
+1. NAV FAS 1 (pågår, bygger + verifierar; Brookings klar, Moreno/Broomfield väntar på ägarens ja till förslag): .claude/spec-section-nav.md.
+2. VAL FAS 1 (/vote, alla tre städer, klar fre 23 okt): .claude/specs/election-2026.md. Hårda regler: ingen AI-text, endast officiella källor,
+   käll-URL per datum/adress (bygget failar annars), fail closed. COMMITTA INGET förrän ägaren säger till (gäller valarbetet).
+3. GLASGOW (helgen 24-25 okt): .claude/specs/glasgow-loop.md. Fas 0 (rapport docs/uk-audit.md, stanna) -> fas 1 (landsprofil, US byte-identiska) ->
+   fas 2 (skelett) -> snabbaste källor: Ticketmaster GB, Adzuna gb, Met Office (när nyckel finns), kommunens möten. Mål: scrapers igång och data
+   samlas från dag ett; noindex av när första riktiga datan flödar. COMMITTA INGET förrän ägaren säger till. Inga referenser till ägarens arbetsgivare.
+4. VAL FAS 2 (mån 26 okt): 2a källinventering först.
+5. Kö 9 Steg 1 -- väntar på ägarens punkter 1-5 (se Nu) + Steg 2, Steg 3 (text nedan).
+6. QA Q2 (DB-invarianter), sedan Q3-Q4: .claude/spec-qa-automation.md.
 
 9. ACTIONS-KOSTNAD/SCHEMA (utredning 2026-10-21, 30 d 21/9-21/10, 981 körn.; repot förblir PUBLIKT = 0 kr, siffror gäller om privat):
    4 965 fakt.min (privat ≈ $17,8/mån): scrape 2 070 (42 %), push-deploy 1 177 (24 %, alla 3 städer vid varje push, ingen
