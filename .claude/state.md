@@ -1,22 +1,25 @@
-2026-10-21 (spec .claude/spec-time-alerts-heroes.md). Fas 1+2 godkända och
-  committade (8980ee1, cd17e85) + render-test (a3e92ca). INGET PUSHAT: ägaren
-  vill pusha allt i ett svep när Fas 5 är verifierad (en omcrawlning).
-  Fas 3 (📅 -> DateBadge.astro) committad 615ad2d. Fas 4 (lib/section-hero.ts:
-  getSectionHero, SectionHero.astro, hero på /today + Farm Report) committad.
-  Fas 4 BEGRÄNSNING: pooler ~15/säsong/stad räcker inte för 2-månadersregeln
-  (kräver 9 v x ~9 sektioner); build-check varnar med exakta tal. Spring/summer
-  saknar pool -> reserv (kategoribild). Borttagna bilder: Brookings events-1/2,
-  city_hall-1/4; Moreno events-3, city_hall-2, school_alerts-3.
-  Fas 5 (stavning organizer/summarized/theater, konsekvent event-kicker
-  'Around Town'/'Arts & Culture') committad. Full batteri grön: vitest 1113
-  (UTC+Stockholm), pytest 878, astro check 0, 3 byggen, sitemap/noindex x3,
-  heat-läckage x3. Ägaren beordrade push i ett svep efter verifierad Fas 5.
-  Inga skärmbilder (ägaren kollar på telefon efter push). Fas 6 dark mode först
-  efter Fas 1-5 godkända+committade; STATUS_TOKENS.dark läggs då till.
-  ÖVRIGA ikon-emojier kvar för senare (ej Fas 3): StoryCard CHIP (🏛️🚗🏠💼🏈🎒⚠️
-  🏭🎓), widgetar (🐴📊🏔️🐇), university.astro (🎵🎭🎉🏕️ + sport-emojis),
-  📍 (s/[slug], city-hall/projects), 🏟️ (events), 📦 (weather).
-  Känd restpost: HeatAdvisoryWidget scopad CSS (inert) finns i alla byggen.
+2026-10-21 (spec .claude/spec-time-alerts-heroes.md). Fas 1-5 PUSHADE (32b8a1b),
+  ägaren bekräftade på telefon. Lokala commits efter push, EJ pushade:
+  c82bf26 Hobo Week -> campus-bucket (Python, självläker vid nästa scrape),
+  077fb8c låga mobil-heroes + bort Badlands (Brookings autumn-08/09/10),
+  c9de086 sektionshero byter månadsvis/högtid (2-månadersregeln gäller bara
+  startsidans This week).
+  ÖPPET (ägarens bildbeslut 2026-10-21):
+  (a) Inget foto i fler än en stad: dubbletter kvar = Moreno school_alerts-4
+      (=Brookings school_alerts-1) och Moreno sports-5 (=Brookings sports-4);
+      Broomfields kategoripooler LÅNAR Moreno/Brookings-filer -> ska få egna
+      (city_hall, jobs, traffic, weather_alert, workplace_watch + reserv för
+      events/today). Verktyg: scripts/source_category_images.py (--montage;
+      OBS --apply skriver om hela category-images.ts och återinför borttagna
+      bilder om CATEGORY_SEARCHES inte synkas). Ej påbörjat.
+  (b) PUNKT FÖR SIG, bygg inte nu: VÅR- och SOMMARPOOLER för "This week" +
+      sektionshero (Brookings/Moreno/Broomfield) måste finnas före 1 mars 2027,
+      annars faller heroes till kategori-reserv och startsidans This week
+      kastar. Verktyg: scripts/source_this_week_images.py.
+  (c) Ägarens fynd 1 (skyltremsan matchrad): utrett, rapporterat, väntar svar
+      innan ändring. Fas 6 (dark mode) väntar tills (a) och (c) är klara.
+  Känd: skyltremsans "in N days" (db.ts countdown) är byggräknad -- missad i
+  Fas 1, ska bli klientberäknad.
 
 2026-10-16. merge_raw_data fix + restore built, tested, run, and about
   to be pushed (this commit). Moreno Valley duplicate-row cleanup
