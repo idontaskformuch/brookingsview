@@ -48,12 +48,11 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 5. Broomfield facility name_aliases (data/facilities/broomfield_co.json): VÄNTA tills det första riktiga
    eventet har kommit in från stadskalenderns flöde (riktiga LOCATION-strängar), SEEDA INGET NU.
    Sen: lägg alias efter de verkliga strängarna och kör seed_facilities -- en LIVE-DB-skrivning, fråga först.
-6. UTRED (rapportera, ändra inget): varför skapades Moreno-dubbletterna meetings 13786/13788 2026-10-01
-   (created_at 22:05:02Z, samma sekund för båda) trots det unika indexet från Phase B? Vilken kod skrev
-   raderna? Täcker indexet eSCRIBE-guid + datum, eller bara content_hash? (Raderna delade raw_data->>'ID'
-   och meeting_date med 2193/2194 men hade annan content_hash. Kontext: gammal hypotes i arkivet = ett
-   ospårat engångsskript runt "mass insert" 1 okt som kringgick dedup_check_columns. Raderna är redan
-   borttagna 2026-10-21; kolla ändå att samma sak inte kan hända igen.)
+6. Moreno meetings-dubbletter: UTREDD 2026-10-21, PLAN i .claude/plan-ko6-meetings-dedup.md, väntar ägarens ja.
+   BESLUT/FAKTA: orsak = vanlig scrape 11502 efter tidszonsfixen (hashen ändrades), inget skript; PREMISSEN
+   "unikt index från Phase B" VAR FEL (bara UNIQUE town_id+content_hash). 11 av 13 grupper redan sup+301 (14 okt),
+   OHANTERADE live-dubbelsidor: 6918217e (story 4008) och c47d15ac (3944/3974). Brookings/Broomfield 0 dubbletter.
+   Ordning: kodfix+push -> städskript -> UNIQUE-index. Öppet beslut: flippa de 9 gammal->ny-redirectsen?
 7. QA #9 Celebration Park-öppettider (Moreno, info, lägst prio).
 
 8. (Låg prio) Kontrollera i scrape_runs att Brookings eventkällor och Moreno Valleys events/meetings går ok
