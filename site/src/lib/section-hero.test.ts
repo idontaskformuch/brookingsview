@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getSectionHero, sectionsFor, slotIndex, type PoolImage } from './section-hero';
 import { thisWeekImagesFor } from '../config/this-week-images';
+import { categoryImagesFor } from '../config/category-images';
 import { HOLIDAYS, holidayImagesFor } from '../config/holidays';
 import { resolveActiveHoliday } from './holidays';
 import { weekInfoForInstant } from './this-week';
@@ -125,6 +126,6 @@ describe('reserve behavior', () => {
     const r = getSectionHero('brookings_sd', 'events', spring);
     expect(r.source).toBe('reserve');
     expect(r.image.path).toMatch(/categories\/brookings_sd-events-/);
-    expect(r.image.path).not.toMatch(/events-(1|2)\.png$/);
+    expect(categoryImagesFor('brookings_sd').events?.map((i) => i.path)).toContain(r.image.path); // a curated reserve photo
   });
 });

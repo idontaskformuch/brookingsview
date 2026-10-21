@@ -87,6 +87,33 @@ REQUEST_TIMEOUT = 30
 CATEGORIES_DIR = Path("site/public/assets/images/categories")
 CATEGORY_IMAGES_TS = Path("site/src/config/category-images.ts")
 MONTAGE_DIR = Path(".review_montages")
+DENYLIST_PATH = Path(__file__).resolve().parent / "category_image_denylist.json"
+
+
+def load_denylist() -> list[dict]:
+    """Rejected Pexels photos -- see scripts/category_image_denylist.json."""
+    import json
+    if not DENYLIST_PATH.exists():
+        return []
+    return json.loads(DENYLIST_PATH.read_text(encoding="utf-8")).get("denied", [])
+
+
+def is_denied(town: str, photo_id: int | str, denylist: list[dict] | None = None) -> bool:
+    for d in (load_denylist() if denylist is None else denylist):
+        if str(d["pexels_id"]) == str(photo_id) and (not d.get("towns") or town in d["towns"]):
+            return True
+    return False
+
+
+def duplicate_photos_across_towns(searches: dict, denylist: list[dict] | None = None) -> dict[str, set[str]]:
+    """Pexels ids that would be used by more than one town (after the denylist) --
+    owner rule 2026-10-21: no photo may appear in more than one town."""
+    owners: dict[str, set[str]] = {}
+    for (town, _category), entry in searches.items():
+        for c in entry.get("chosen", []):
+            if c.get("source", "pexels") == "pexels" and not is_denied(town, c["id"], denylist):
+                owners.setdefault(str(c["id"]), set()).add(town)
+    return {pid: towns for pid, towns in owners.items() if len(towns) > 1}
 # How many images to actually keep per category pool -- raised from 3
 # (module docstring's original target) per the image-pool-rotation
 # follow-up (Addendum 2, 2026-09-09): a real incrementing rotation
@@ -126,6 +153,12 @@ ALT_TEXT: dict[tuple[str, str], str] = {
     ("moreno_valley_ca", "weather_alert"): "Weather conditions in Moreno Valley.",
     ("moreno_valley_ca", "traffic"): "Freeway traffic in Moreno Valley.",
     ("moreno_valley_ca", "workplace_watch"): "Warehouse and logistics workplaces in Moreno Valley.",
+    ("broomfield_co", "city_hall"): "Civic buildings in Broomfield.",
+    ("broomfield_co", "events"): "Community events in Broomfield.",
+    ("broomfield_co", "jobs"): "Local employers in Broomfield.",
+    ("broomfield_co", "traffic"): "Traffic in Broomfield.",
+    ("broomfield_co", "weather_alert"): "Weather conditions in Broomfield.",
+    ("broomfield_co", "workplace_watch"): "Workplaces in Broomfield.",
 }
 
 # (town, category) -> {"query": str, "chosen": [(source, id), ...]}. `query`
@@ -347,6 +380,16 @@ CATEGORY_SEARCHES: dict[tuple[str, str], CategorySearch] = {
     # Moreno Valley's actual desert-adjacent Southern California setting
     # never sees. Only one generic shipping-yard shot survived.
     ("moreno_valley_ca", "workplace_watch"): {"query": "warehouse loading dock semi trucks", "chosen": _pool(35501716, 1267325, 27099093, 29348624)},
+    # Broomfield's OWN pools (owner decision 2026-10-21: no photo in more than one
+    # town -- Broomfield used to borrow Moreno Valley's and Brookings' files).
+    # `chosen` is filled in after reviewing --montage grids (full-resolution recheck
+    # of every pick, see the notes above).
+    ("broomfield_co", "city_hall"): {"query": "american flag government office building facade", "chosen": _pool(36671564, 34995746, 8175097)},
+    ("broomfield_co", "events"): {"query": "farmers market tents park", "chosen": _pool(19757180, 36856348, 17202364, 29567618)},
+    ("broomfield_co", "jobs"): {"query": "corporate office campus building", "chosen": _pool(859220, 33766834, 36363671, 34649284)},
+    ("broomfield_co", "traffic"): {"query": "suburban highway traffic aerial colorado", "chosen": _pool(161190, 12350992, 4030647, 32954612, 8811580)},
+    ("broomfield_co", "weather_alert"): {"query": "colorado storm clouds plains", "chosen": _pool(1000737, 951422, 1592259, 5129887, 21371049, 29383926)},
+    ("broomfield_co", "workplace_watch"): {"query": "modern office workspace empty desks", "chosen": _pool(12703094, 6794967, 8297846, 8353764, 8353774)},
 }
 
 
@@ -486,7 +529,7 @@ def build_montage(town: str, category: str, entry: dict, pexels_key: str) -> Pat
     for i, (p, thumb) in enumerate(thumbs):
         x, y = (i % cols) * cell_w, (i // cols) * (cell_h + caption_h)
         grid.paste(thumb, (x, y))
-        mark = "[IN POOL] " if p["id"] in already_chosen_ids else ""
+        mark = "[DENIED] " if is_denied(town, p["id"]) else ("[IN POOL] " if p["id"] in already_chosen_ids else "")
         caption = f"#{i} {mark}id={p['id']} {p['photographer'][:20]}"
         draw.rectangle([x, y + cell_h, x + cell_w, y + cell_h + caption_h], fill="black")
         draw.text((x + 4, y + cell_h + 4), caption, fill="white")
@@ -521,6 +564,14 @@ def main() -> int:
               "other category's pool (see _write_category_images_ts()). Fix CATEGORY_SEARCHES "
               "for the one you need to change, then run a full --apply.")
         return 1
+
+    if args.apply:
+        dupes = duplicate_photos_across_towns(CATEGORY_SEARCHES)
+        if dupes:
+            for pid, towns in sorted(dupes.items()):
+                print(f"Pexels photo {pid} is chosen for more than one town: {sorted(towns)}")
+            print("A photo may be used in only one town -- fix CATEGORY_SEARCHES or the denylist.")
+            return 2
 
     searches = CATEGORY_SEARCHES
     if args.only:
@@ -572,14 +623,22 @@ def main() -> int:
         alt = ALT_TEXT[(town, category)]
         pool: list[dict] = []
 
-        for i, choice in enumerate(entry["chosen"], start=1):
+        kept = []
+        for choice in entry["chosen"]:
+            if choice.get("source", "pexels") == "pexels" and is_denied(town, choice["id"]):
+                print(f"[{town}/{category}] SKIPPING denied Pexels photo {choice['id']} (see scripts/category_image_denylist.json)")
+                continue
+            kept.append(choice)
+        if not kept:
+            raise RuntimeError(f"{town}/{category}: every chosen photo is denylisted -- pick replacements before --apply")
+        for i, choice in enumerate(kept, start=1):
             source, ident = choice["source"], choice["id"]
             if source == "pexels":
                 if not pexels_key:
                     raise RuntimeError("PEXELS_API_KEY required for a pexels selection")
                 photo = pexels_get_photo(ident, pexels_key)
                 out_path = CATEGORIES_DIR / f"{town}-{category}-{i}.png"
-                print(f"[{town}/{category}] downloading Pexels photo {ident} ({i}/{len(entry['chosen'])}) ...")
+                print(f"[{town}/{category}] downloading Pexels photo {ident} ({i}/{len(kept)}) ...")
                 _download_and_save_pexels(photo, out_path)
                 web_path = "/" + str(out_path.relative_to("site/public")).replace("\\", "/")
                 pool.append({
@@ -591,7 +650,7 @@ def main() -> int:
                 if not unsplash_key:
                     raise RuntimeError("UNSPLASH_ACCESS_KEY required for an unsplash selection")
                 photo = unsplash_get_photo(ident, unsplash_key)
-                print(f"[{town}/{category}] hotlinking Unsplash photo {ident} ({i}/{len(entry['chosen'])}) ...")
+                print(f"[{town}/{category}] hotlinking Unsplash photo {ident} ({i}/{len(kept)}) ...")
                 hotlink = _unsplash_hotlink_entry(photo, unsplash_key)
                 pool.append({"path": hotlink["path"], "alt": alt, "attribution_html": hotlink["attribution_html"]})
             else:
@@ -609,7 +668,7 @@ def _write_category_images_ts(generated: dict[tuple[str, str], list[dict]]) -> N
     """Same preserve-what-you-don't-manage discipline as the retired
     generate_venue_category_images.py's writer -- Broomfield's empty
     placeholder + the categoryImagesFor() helper must survive this rewrite."""
-    _MANAGED_TOWNS = {"brookings_sd", "moreno_valley_ca"}
+    _MANAGED_TOWNS = {"brookings_sd", "moreno_valley_ca", "broomfield_co"}
 
     def entry_literal(data: dict) -> str:
         parts = [f"path: {data['path']!r}", f"alt: {data['alt']!r}", f"width: {IMAGE_WIDTH}", f"height: {IMAGE_HEIGHT}"]
@@ -640,6 +699,16 @@ def _write_category_images_ts(generated: dict[tuple[str, str], list[dict]]) -> N
     unmanaged = ("\n\n" + "\n\n".join(unmanaged_blocks)) if unmanaged_blocks else ""
     trailing_match = re.search(r"\n\};\n(.*)", existing_source, re.DOTALL)
     trailing = trailing_match.group(1) if trailing_match else ""
+    # media_recension's hand-made illustration pool (MOVIE_REVIEW_POOL) lives in this
+    # same file but is not a sourced photo pool: carry the block over verbatim and
+    # re-attach `movie_review: MOVIE_REVIEW_POOL` to every town (it used to be
+    # silently dropped by a rewrite).
+    movie_pool_match = re.search(
+        r"/\*\* TMDB/pool handoff.*?const MOVIE_REVIEW_POOL: ImageRef\[\] = \[.*?\n\];\n",
+        existing_source, re.DOTALL,
+    )
+    movie_pool_block = (movie_pool_match.group(0) + "\n") if movie_pool_match else ""
+    movie_line = "\n    movie_review: MOVIE_REVIEW_POOL," if movie_pool_block else ""
     town_type_match = re.search(r"export type Town = .+;", existing_source)
     town_type_line = town_type_match.group(0) if town_type_match else "export type Town = 'brookings_sd' | 'moreno_valley_ca';"
 
@@ -660,12 +729,15 @@ import type {{ ImageCategory, ImageRef }} from '../lib/images';
 
 {town_type_line}
 
-export const CATEGORY_IMAGES: Record<Town, Partial<Record<ImageCategory, ImageRef[]>>> = {{
+{movie_pool_block}export const CATEGORY_IMAGES: Record<Town, Partial<Record<ImageCategory, ImageRef[]>>> = {{
   brookings_sd: {{
-{town_block('brookings_sd')}
+{town_block('brookings_sd')}{movie_line}
   }},
   moreno_valley_ca: {{
-{town_block('moreno_valley_ca')}
+{town_block('moreno_valley_ca')}{movie_line}
+  }},
+  broomfield_co: {{
+{town_block('broomfield_co')}{movie_line}
   }},{unmanaged}
 }};
 {trailing}"""

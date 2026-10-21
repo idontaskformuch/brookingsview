@@ -1,0 +1,68 @@
+{
+  "_notes": "Pexels photos rejected for the category pools. scripts/source_category_images.py --apply skips any `chosen` id listed here for the listed town(s) (all towns when \"towns\" is omitted), and --montage marks them [DENIED]. Reasons follow the site's identifiable-place rule (no readable shop names or signs, no landmark buildings, no photographer watermark) and the owner's one-photo-one-town rule (2026-10-21).",
+  "denied": [
+    {
+      "pexels_id": 10148954,
+      "reason": "Brookings events-1: parade with readable shop names (Varieties & Toys, Fresh Wok, PostBank) -- another real town's main street"
+    },
+    {
+      "pexels_id": 10130178,
+      "reason": "Brookings events-2: parade street with readable shop names (Realty, Fitness Center)"
+    },
+    {
+      "pexels_id": 38855972,
+      "reason": "Brookings city_hall-1: distinctive landmark courthouse of another place"
+    },
+    {
+      "pexels_id": 38855973,
+      "reason": "Brookings city_hall-4: same landmark courthouse"
+    },
+    {
+      "pexels_id": 33273893,
+      "reason": "Moreno Valley events-3: carnival aerial with the photographer's readable watermark"
+    },
+    {
+      "pexels_id": 1422407,
+      "reason": "Moreno Valley city_hall-2: distinctive non-US building"
+    },
+    {
+      "pexels_id": 10127241,
+      "reason": "Moreno Valley school_alerts-3: readable donor plaque (family name)"
+    },
+    {
+      "pexels_id": 35758714,
+      "towns": [
+        "moreno_valley_ca"
+      ],
+      "reason": "same photo as Brookings school_alerts-1 -- one photo, one town"
+    },
+    {
+      "pexels_id": 13345808,
+      "towns": [
+        "moreno_valley_ca"
+      ],
+      "reason": "same photo as Brookings sports-4 -- one photo, one town"
+    },
+    {
+      "pexels_id": 7016965,
+      "towns": [
+        "broomfield_co"
+      ],
+      "reason": "Broomfield city_hall: dome and balustrade read as a state/national capitol landmark"
+    },
+    {
+      "pexels_id": 40353981,
+      "towns": [
+        "broomfield_co"
+      ],
+      "reason": "Broomfield events: readable farm business name on the tent, faces turned to camera"
+    },
+    {
+      "pexels_id": 13230750,
+      "towns": [
+        "broomfield_co"
+      ],
+      "reason": "Broomfield events: identifiable faces at the front of a crowd"
+    }
+  ]
+}
