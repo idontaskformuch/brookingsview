@@ -42,7 +42,16 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   (egna aborter + Cloudflare challenge-platform-skript), qa.tracking (Cloudflares kant-injicerade cloudflareinsights-beacon, ej sajtkod),
   web.leak /about (före deploy av undantaget; Moreno deployades senast). Körtid ~1-2 min/stad (ej 5-7), requests_total 1 900-4 000/stad/körn.
   Lokal commit EJ pushad: brusfilter + cf-mitigated-detektion + README-siffror (väntar på ja). GA4 laddas aldrig (samtycke förinställt).
-  Nästa: Q1 efter ägarens ok på baslinjen.
+  Brusfilter-committen pushad (fc459f9). Baslinjen godkänd av ägaren.
+- QA Q1 KLAR (lokal commit, EJ pushad): Pass A utan bilder/typsnitt/media, Pass B (nyckelsidor x desktop/mobil x ljust/mörkt, axe-core
+  som site-devDependency, bilder bara i ljusa kombon), Pass C (klocka 07:00/19:00/23:30 stadstid på /today,/events,/), nya kontroller
+  web.axe/-minor, web.empty, web.clientfill, web.stale-alert, web.past-event, web.extlink; länkar utanför sitemap + externa bara måndagar
+  (--links on) eller via dispatch-input. BESLUT: pastEvent-proben speglar lib/local-day.ts eventEndsAt (end gäller bara om > start, annars
+  start+3 h) -- Moreno har data-end == data-start. Anrop/körning (länkar av): Brookings 1 335, Moreno 1 579, Broomfield 1 118 = ~4 000/dygn
+  (var ~8 000). Måndagslänkpass: Brookings 405 interna + 392 externa, ~8 min p g a 1 s/host.
+  FYND (riktiga, Q1-baslinje lokalt): web.axe 14/14/10 (Brookings/Moreno/Broomfield): color-contrast på time/kicker/.marquee-card__when i ljust
+  läge (+1 mörkt), scrollable-region-focusable på .hourly (/weather/); inga web.empty/clientfill/stale/past-event efter proben fixats.
+  Nästa: ägaren tittar på axe-fynden; Q2 (DB-invarianter) eller trig av QA_REPORT_ONLY=0 efter triage.
 - NÄSTA: Kö 9 Steg 1 byggt+committat (09ea03f), väntar på ägarens punkter 1-5 ovan. Därefter Kö 9 Steg 2, Steg 3, sen Kö 2+.
 
 ## 2. Kö

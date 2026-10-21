@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 // plain .mjs shared with the Node QA runner (qa/web/run.mjs)
-import { checkPage, checkRun, compileBlocklist, applyWaivers } from '../../../qa/web/checks.mjs';
+import { checkPage, checkDiag, checkRun, compileBlocklist, applyWaivers, zonedInstant } from '../../../qa/web/checks.mjs';
 
 const base = {
   url: 'https://x.test/a/', path: '/a/', status: 200, redirects: 0, inSitemap: true,
@@ -54,5 +54,36 @@ describe('qa run-level + waivers', () => {
     const w = [{ check: 'web.img', town: 'brookings_sd', url_pattern: '/a/', expires: '2026-12-01' }];
     expect(applyWaivers(f, w, '2026-11-01')).toEqual([]);
     expect(applyWaivers(f, w, '2026-12-02')).toHaveLength(1);
+  });
+});
+
+describe('qa Q1 diag checks', () => {
+  const d = (x: object) => checkDiag({ ...base, label: 'desktop-dark', emptySections: [], clientfill: null, staleAlerts: [], pastEvents: [], axe: [], ...x }, 'brookings_sd').map((f: { check: string }) => f.check);
+  it('nothing to report on a clean probe', () => expect(d({})).toEqual([]));
+  it('empty section', () => expect(d({ emptySections: ['Weather'] })).toEqual(['web.empty']));
+  it('client fill: events in template, nothing shown, no note -> hard; any shown part is fine', () => {
+    expect(d({ clientfill: { items: 4, tonight: false, tomorrow: false, none: false } })).toEqual(['web.clientfill']);
+    expect(d({ clientfill: { items: 4, tonight: true, tomorrow: false, none: false } })).toEqual([]);
+    expect(d({ clientfill: { items: 0, tonight: false, tomorrow: false, none: false } })).toEqual([]);
+    expect(d({ clientfill: { items: 3, tonight: false, tomorrow: false, none: true } })).toEqual([]);
+  });
+  it('stale alert and past event', () => {
+    expect(d({ staleAlerts: ['2026-10-20T01:00:00Z :: Winter storm'] })).toEqual(['web.stale-alert']);
+    expect(d({ pastEvents: ['tonight: Concert'] })).toEqual(['web.past-event']);
+  });
+  it('axe: serious/critical hard, others soft', () => {
+    expect(d({ axe: [{ id: 'color-contrast', impact: 'serious', help: 'x', count: 2, targets: ['a'] }] })).toEqual(['web.axe']);
+    expect(d({ axe: [{ id: 'region', impact: 'moderate', help: 'x', count: 1, targets: ['a'] }] })).toEqual(['web.axe-minor']);
+  });
+  it('images blocked -> no broken-image finding', () => {
+    expect(ids({ brokenImgs: ['/i.png'], imagesBlocked: true })).not.toContain('web.img');
+  });
+});
+
+describe('qa zonedInstant', () => {
+  it('town-local wall time -> UTC instant, DST aware', () => {
+    expect(zonedInstant('2026-10-21', '19:00', 'America/Chicago').toISOString()).toBe('2026-10-22T00:00:00.000Z'); // CDT = UTC-5
+    expect(zonedInstant('2026-12-21', '07:00', 'America/Denver').toISOString()).toBe('2026-12-21T14:00:00.000Z'); // MST = UTC-7
+    expect(zonedInstant('2026-10-21', '23:30', 'America/Los_Angeles').toISOString()).toBe('2026-10-22T06:30:00.000Z'); // PDT = UTC-7
   });
 });

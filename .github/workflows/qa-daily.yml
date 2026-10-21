@@ -1,5 +1,5 @@
 name: qa-daily
-# Daily QA sweep of the LIVE sites (qa/, spec: .claude/spec-qa-automation.md, phase Q0).
+# Daily QA sweep of the LIVE sites (qa/, spec: .claude/spec-qa-automation.md, phases Q0-Q1).
 # Every sitemap URL per town is loaded in a real browser and checked (status, images,
 # console errors, "undefined/NaN/null/--", H1/title, wrong-town terms, broken links).
 #
@@ -19,6 +19,9 @@ on:
       limit:
         description: "Max pages per town (0 = all)"
         default: "0"
+      links:
+        description: "Check links outside the sitemap + external links (on/off; default: Mondays only)"
+        default: ""
 
 permissions:
   contents: read
@@ -49,11 +52,16 @@ jobs:
       - run: pip install -r requirements.txt
       - run: npm ci
         working-directory: site
-      - run: npx playwright-core install --with-deps chromium
+      - run: npx playwright-core install --with-deps chromium  # axe-core comes with npm ci (site devDependency)
         working-directory: site
       - run: python -m qa.export_blocklist
       - name: Sweep ${{ matrix.town }}
-        run: node qa/web/run.mjs --town ${{ matrix.town }} --limit "${{ inputs.limit || 0 }}"
+        # Pass A (all sitemap URLs, no images/fonts), B (key pages, 4 combos, axe), C (clock 07:00/19:00/23:30).
+        # Links outside the sitemap + external links only on Mondays (UTC) or when asked: load reduction.
+        run: |
+          LINKS="${{ inputs.links }}"
+          if [ -z "$LINKS" ]; then if [ "$(date -u +%u)" = "1" ]; then LINKS=on; else LINKS=off; fi; fi
+          node qa/web/run.mjs --town ${{ matrix.town }} --limit "${{ inputs.limit || 0 }}" --links "$LINKS"
       - name: Report
         if: always()
         run: python -m qa.report --in qa/out/${{ matrix.town }}.json --summary-file "$GITHUB_STEP_SUMMARY"

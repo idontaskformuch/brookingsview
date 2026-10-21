@@ -180,8 +180,11 @@ def summary_md(res: dict) -> str:
     for f in res["findings"]:
         by[f["check"]] = by.get(f["check"], 0) + 1
     rows = "\n".join(f"| `{c}` | {severity(c)} | {n} |" for c, n in sorted(by.items())) or "| (inga) | | |"
-    return (f"### QA {res['town']}\n{res['pages']} sidor, {res['links_checked']} extra länkar, "
-            f"{res['requests_total']} förfrågningar (UA `{res['user_agent']}`, bypass-header: {res['bypass_header']}).\n\n"
+    rq = res.get("requests", {})
+    per = ", ".join(f"{k} {v}" for k, v in rq.items() if v) or "-"
+    return (f"### QA {res['town']}\n"
+            f"Sidladdningar {res.get('loads', {})}, extra länkar {res.get('links_checked', 0)}. "
+            f"Förfrågningar mot sajten: **{res['requests_total']}** ({per}). UA `{res['user_agent']}`, bypass-header: {res['bypass_header']}.\n\n"
             f"| kontroll | allvar | antal |\n|---|---|---|\n{rows}\n")
 
 

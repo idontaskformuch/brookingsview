@@ -10,6 +10,27 @@
  *  disclosed cross-town references (about page: sister sites, Phase H) never trip web.leak. */
 export const ALLOW_SIBLING_SELECTOR = '[data-qa-allow-sibling-sites]';
 
+/** Key pages for Pass B (kept only if they are in the town's sitemap). */
+export const KEY_PAGES = ['/', '/today/', '/events/', '/whats-on/', '/this-week/', '/city-hall/', '/weather/', '/traffic/', '/closures/', '/jobs/', '/about/'];
+/** Pass C: browser clock at these town-local times, on these pages. */
+export const CLOCK_TIMES = ['07:00', '19:00', '23:30'];
+export const CLOCK_PAGES = ['/today/', '/events/', '/'];
+
+/** The UTC instant at which `tz` shows `day` ('YYYY-MM-DD') at `hhmm`. */
+export function zonedInstant(day, hhmm, tz) {
+  const [y, mo, d] = day.split('-').map(Number);
+  const [h, mi] = hhmm.split(':').map(Number);
+  const want = Date.UTC(y, mo - 1, d, h, mi);
+  let t = want;
+  for (let i = 0; i < 3; i++) {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit',
+      day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date(t)).map((x) => [x.type, x.value]));
+    const shown = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute);
+    t += want - shown;
+  }
+  return new Date(t);
+}
+
 export const LITERAL_RE = /\b(undefined|NaN|null)\b|\[object Object\]|Invalid Date|\{\{|\}\}/g;
 
 export function finding(check, town, snap, message, extra = {}) {
@@ -33,7 +54,7 @@ export function checkPage(snap, town, compiled) {
   else if (snap.redirects > 2) f.push(finding('web.status', town, snap, `${snap.redirects} redirects`));
   if (snap.status !== 200) return f; // content checks are meaningless on an error page
 
-  for (const src of snap.brokenImgs) f.push(finding('web.img', town, snap, `broken image ${src}`));
+  if (!snap.imagesBlocked) for (const src of snap.brokenImgs) f.push(finding('web.img', town, snap, `broken image ${src}`));
   for (const m of snap.consoleErrors) f.push(finding('web.console', town, snap, m.slice(0, 300)));
   for (const m of snap.failedRequests) f.push(finding('web.console', town, snap, `failed request ${m}`.slice(0, 300)));
 
@@ -57,6 +78,25 @@ export function checkPage(snap, town, compiled) {
   }
   if (snap.blockedAttempts.length) {
     f.push(finding('qa.tracking', town, snap, `tried: ${[...new Set(snap.blockedAttempts)].slice(0, 3).join(', ')}`));
+  }
+  return f;
+}
+
+/** Checks on what the page showed (Pass B/C probe + axe). Messages carry the combo/time label only where it matters. */
+export function checkDiag(snap, town) {
+  const f = [];
+  if (snap.status !== 200) return f;
+  const lab = snap.label ? ` [${snap.label}]` : '';
+  for (const h of snap.emptySections ?? []) f.push(finding('web.empty', town, snap, `section "${h}" has a heading and no content`));
+  const cf = snap.clientfill;
+  if (cf && cf.items > 0 && !cf.tonight && !cf.tomorrow && !cf.none) {
+    f.push(finding('web.clientfill', town, snap, `${cf.items} events in the template but Tonight/Tomorrow never filled and no "nothing scheduled" note${lab}`));
+  }
+  for (const a of snap.staleAlerts ?? []) f.push(finding('web.stale-alert', town, snap, `alert shown after its end: ${a}${lab}`));
+  for (const e of snap.pastEvents ?? []) f.push(finding('web.past-event', town, snap, `${e}${lab}`));
+  for (const v of snap.axe ?? []) {
+    const hard = v.impact === 'serious' || v.impact === 'critical';
+    f.push(finding(hard ? 'web.axe' : 'web.axe-minor', town, snap, `${v.id} (${v.impact}, ${v.count} nodes): ${v.help}; e.g. ${v.targets.join(' | ')}${lab}`));
   }
   return f;
 }
