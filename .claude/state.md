@@ -21,7 +21,7 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 - FLAKY? 2 vitest-tester föll en gång 2026-10-21 (66 s körning, direkt efter en astro build), ej
   identifierade; 5 omkörningar (varav 1 under CPU-last) = 1152/1152 gröna. Om det återkommer: kör
   --reporter=verbose och logga namnen här.
-- NÄSTA: Kö 2+ (Kö 1 Fas 6 klar).
+- NÄSTA: Kö 9 Steg 1 -- plan + token-scope visad, VÄNTAR PÅ ÄGARENS JA innan bygge. Därefter Kö 2+.
 
 ## 2. Kö
 1. (Fas 6 klar.)
@@ -59,6 +59,23 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 
 8. (Låg prio) Kontrollera i scrape_runs att Brookings eventkällor och Moreno Valleys events/meetings går ok
    med nya User-Agent efter deras nästa körning.
+
+9. ACTIONS-KOSTNAD/SCHEMA (utredning 2026-10-21, 30 d 21/9-21/10, 981 körn.; repot förblir PUBLIKT = 0 kr, siffror gäller om privat):
+   4 965 fakt.min (privat ≈ $17,8/mån): scrape 2 070 (42 %), push-deploy 1 177 (24 %, alla 3 städer vid varje push, ingen
+   concurrency), dagliga/veckovisa 1 566 (32 %), tests+staleness 152. Per stad: Moreno 2 347 (bygge 4 min), Brookings 1 378,
+   Broomfield 1 088. Byggena sker på GitHub (Workers Builds avstängt). Nattliga roundups/whats-on-intro bygger+deployar
+   ovillkorligen (~350 min slöseri). "Deploya bara vid ändring" sparar bara ~9 % ensamt; paket (2x/dygn scrape + bygg vid
+   ändring + roundups + concurrency/stadsfilter) ≈ 3 000 min (~$6). 5 städer ≈ $37 (nu)/$17 (optimerat), 20 ≈ $180/$100.
+   GitHub-cron startar 4,5-9,5 h SENT (closure-watch 10:30Z startar 15-20Z; scrape ~4 h sen) -> morgonkörningen är värdelös.
+   Källor: jobs/events/SDSU/möten nya nästan dagligen (1x/dygn räcker); ag_markets 1 dag/30; Moreno traffic ändras i 110/114
+   körningar (får EJ räknas som ändring); road_conditions + business_licenses 0 ok-körningar; Moreno school_alerts 0 rader/30 d.
+   NWS api.weather.gov: CORS *, ingen preflight, UA ej krävd i praktiken, cache 5 s; ingen CSP i repot.
+   BESLUT (ägaren): Steg 1 (prio före första snön) Cloudflare Worker + cron triggers -> workflow_dispatch för scrape +
+   closure-watch, fin-grained token (bara Actions write, detta repo) som Worker-secret, closure-watch morgon i ALLA tre städer;
+   VISA plan+token-scope före bygge. Steg 2: roundups bygger bara vid ny text, concurrency + stadsfilter push-deploy, scrape
+   2x/dygn bygg bara vid ändring (traffic räknas ej), stäng road_conditions+business_licenses, verifiera Moreno school_alerts.
+   Steg 3: NWS i webbläsaren med samma alerts.ts-filter. En commit per steg, pusha ej utan ja.
+   FYND: Broomfield har school_alerts_adams12/_bvsd men INGEN closureWatch-config (hasClosureWatch=false, /closures redirectar).
 
 ## 3. Gällande beslut (kortform)
 - En push per batch, efter fullt batteri; pusha inte utan ägarens ja (undantag: ägaren
