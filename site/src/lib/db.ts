@@ -20,6 +20,7 @@
 import { neon } from '@neondatabase/serverless';
 import { siteConfig } from './site-config';
 import { activeAlerts, isAlertActive } from './alerts';
+import { pickSignGame } from './sign-game';
 import { computeClosureWatchState, type ClosureWatchStatus, type WeatherAlert } from './closure-watch';
 import { SHARED_CONTENT_SOURCE_TYPES } from './cross-site-canonical';
 import { resolveCluster } from './clusters';
@@ -2651,7 +2652,7 @@ export async function getSignData(): Promise<SignData> {
   const [periods, alerts, games, todayRows] = await Promise.all([
     getWeather(),
     getActiveAlerts(),
-    getUpcomingGames(1),
+    getUpcomingGames(12),
     sql`
       SELECT occurs_at, ends_at
         FROM stories
@@ -2672,7 +2673,7 @@ export async function getSignData(): Promise<SignData> {
     conditions: current?.short ?? null,
     alert: alerts[0]?.title ?? null,
     alertEndsAt: alerts[0]?.ends_at ?? null,
-    nextGame: games[0] ?? null,
+    nextGame: pickSignGame(games, new Date(), siteConfig.timezone),
     todayEvents: todayRows.map((r) => ({
       start: new Date(r.occurs_at).toISOString(),
       end: r.ends_at ? new Date(r.ends_at).toISOString() : null,

@@ -1,0 +1,46 @@
+---
+/** Front-page marquee card for a town's configured top event (e.g. Brookings'
+ *  "Hobo Day", configs/<town>.json features.top_events). The event comes from
+ *  existing story data; lib/top-event.ts decides whether it is on show. The card
+ *  carries data-start/data-end and sits in a data-hide-ended container, so the
+ *  browser removes it once the day has passed even on a stale static page. */
+import type { Story } from '../lib/db';
+import { storyHref } from '../lib/content-slugs';
+import DateBadge from './DateBadge.astro';
+
+interface Props { story: Story; timezone: string }
+const { story, timezone } = Astro.props;
+const when = story.occurs_at as string;
+const day = new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(when));
+const start = new Date(when).toISOString();
+const end = story.ends_at ? new Date(story.ends_at).toISOString() : undefined;
+---
+<section class="top-event" aria-label="Featured event" data-hide-ended data-hide-when-empty>
+  <a class="top-event__card" href={storyHref(story.slug)} data-start={start} data-end={end}>
+    <DateBadge iso={when} timezone={timezone} color="var(--brand-accent-ink, var(--navy))" />
+    <span class="top-event__text">
+      <span class="top-event__kicker">Featured event</span>
+      <span class="top-event__title">{story.title}</span>
+      <span class="top-event__meta">{day}{story.venue_raw ? ` · ${story.venue_raw}` : ''}</span>
+    </span>
+    <span class="top-event__cta" aria-hidden="true">Details →</span>
+  </a>
+</section>
+
+<style>
+  .top-event { max-width: 60rem; margin: 0 auto 1.5rem; }
+  .top-event__card {
+    display: flex; align-items: center; gap: 0.9rem; padding: 0.9rem 1rem;
+    border: 1px solid var(--rule); border-top: 3px solid var(--brand-accent, var(--rule-strong));
+    border-radius: 10px; background: var(--surface, #fff); color: var(--ink); text-decoration: none;
+  }
+  .top-event__card:hover .top-event__title { text-decoration: underline; }
+  .top-event__text { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; flex: 1; }
+  .top-event__kicker {
+    font-family: var(--font-ui); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);
+  }
+  .top-event__title { font-family: var(--font-head); font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
+  .top-event__meta { font-size: 0.875rem; color: var(--ink-soft); }
+  .top-event__cta { font-family: var(--font-ui); font-size: 0.85rem; color: var(--brand-accent-ink, var(--navy)); white-space: nowrap; }
+  @media (max-width: 480px) { .top-event__cta { display: none; } }
+</style>

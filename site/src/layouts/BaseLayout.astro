@@ -16,7 +16,8 @@
  * Typografin är omvänd mot första versionen: Newsreader (designad för nyheter)
  * bär rubrikerna, grotesken är degraderad till kickers och metadata.
  */
-import { getSignData, countdown } from '../lib/db';
+import { getSignData } from '../lib/db';
+import { signGameText } from '../lib/sign-game';
 import { siteConfig, ALL_SITES } from '../lib/site-config';
 import { runBuildTimeChecks } from '../lib/build-checks';
 import { assertAccentContrast } from '../lib/accent-contrast';
@@ -684,8 +685,10 @@ main { padding-block: 1.75rem 3.5rem; }
         data-events={JSON.stringify(sign.todayEvents)}></span>
     )}
     {sign.nextGame?.starts_at && (
-      <span class="sign__item">
-        Jacks {sign.nextGame.home_away === 'home' ? 'vs' : 'at'} {sign.nextGame.opponent} {countdown(sign.nextGame.starts_at, now, siteConfig.timezone)}
+      <span class="sign__item" data-ends={new Date(new Date(sign.nextGame.starts_at).getTime() + 3 * 3_600_000).toISOString()}>
+        {signGameText(sign.nextGame)}{' '}
+        {/* No-JS text is an absolute date (never goes stale); the script swaps in today/tomorrow/in N days from the real clock. */}
+        <span data-day-label data-when={new Date(sign.nextGame.starts_at).toISOString()} data-tz={siteConfig.timezone}>{new Intl.DateTimeFormat('en-US', { timeZone: siteConfig.timezone, weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(sign.nextGame.starts_at))}</span>
       </span>
     )}
   </div>
@@ -711,7 +714,11 @@ main { padding-block: 1.75rem 3.5rem; }
     </script>
     <script>
       import { relativeTime } from '../lib/time';
-      import { countToday, hasEnded, type TimedEvent } from '../lib/local-day';
+      import { countToday, hasEnded, relativeDayLabel, type TimedEvent } from '../lib/local-day';
+      document.querySelectorAll<HTMLElement>('[data-day-label]').forEach((el) => {
+        const when = el.dataset.when;
+        if (when) el.textContent = relativeDayLabel(new Date(when), new Date(), el.dataset.tz || 'America/Chicago');
+      });
       // Containers marked data-hide-ended drop event cards (data-start/data-end)
       // that have already finished -- a "Today" list must never show a passed event.
       const pageTz = document.getElementById('sign-events-today')?.dataset.tz

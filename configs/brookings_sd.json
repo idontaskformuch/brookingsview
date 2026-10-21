@@ -390,6 +390,11 @@
     }
   },
   "features": {
+    "top_events": {
+      "_notes": "Toppevenemang som får en marquee-ruta på förstasidan. Nyckelord/mönster (skiftlägesokänsliga delsträngar i eventtiteln) -- INTE datum: eventet hämtas ur befintliga events/stories och rutan försvinner av sig själv när dagen passerat. Speglas i site/src/lib/site-config.ts (topEvents); tests/test_top_events_config.py kollar att de är i synk.",
+      "patterns": ["Hobo Day"],
+      "lead_days": 14
+    },
     "closure_watch": {
       "enabled": true,
       "districts": ["Brookings School District 05-1"],

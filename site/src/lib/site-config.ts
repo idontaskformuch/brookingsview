@@ -173,6 +173,12 @@ export interface SiteConfig {
    *  hasClosureWatch/hasNewInTown/hasHousingMarket/hasWhatsOn which all
    *  gate a real Python-side pipeline too. */
   hasPlaces?: boolean;
+  /** Top-event marquee (configs/<town_id>.json features.top_events): events whose
+   *  title contains one of `patterns` (case-insensitive) get a marquee card on the
+   *  front page from `leadDays` days before until the event has ended. Patterns,
+   *  not dates -- the event itself comes from existing data. Absent = off.
+   *  Keep in sync with the JSON by hand; tests/test_top_events_config.py checks. */
+  topEvents?: { patterns: string[]; leadDays: number };
   /** Heat/dust advisory for outdoor and warehouse shift work (Worker Pulse's
    *  HeatAdvisoryWidget, CityStatus's worker_pulse row, the /weather heat
    *  cross-link). Shift/dock framing fits Moreno Valley's employer set only.
@@ -363,6 +369,8 @@ const CITIES: Record<string, SiteConfig> = {
     // ticketmaster blocks below), done as a Phase 7 follow-up before they
     // were enabled too.
     hasWhatsOn: true,
+    // Hobo Day gets a front-page marquee card (configs/brookings_sd.json features.top_events).
+    topEvents: { patterns: ['Hobo Day'], leadDays: 14 },
     // 'whats_on' (Phase 6a) wired in now, same "route exists, flag decides"
     // convention as hasWhatsOn itself -- safe with hasWhatsOn:false above
     // since that module isn't ALWAYS_RENDERED (see cityStatus.ts's own

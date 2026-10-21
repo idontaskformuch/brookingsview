@@ -30,6 +30,8 @@ import TrafficWidget from '../components/TrafficWidget.astro';
 import Tile from '../components/Tile.astro';
 import CityStatus from '../components/CityStatus.astro';
 import MarqueeCard from '../components/MarqueeCard.astro';
+import TopEventCard from '../components/TopEventCard.astro';
+import { selectTopEvent } from '../lib/top-event';
 import OrientationHeader from '../components/OrientationHeader.astro';
 import QuickLinks from '../components/QuickLinks.astro';
 import {
@@ -336,6 +338,13 @@ const latestVailNews = isBroomfield ? await getLatestVailNewsItem() : null;
 // dropped -- an unknown distance is not a confirmed "too far," and this cap
 // exists to stop a KNOWN-far venue from reading as local, not to penalize a
 // missing field.
+// Top-event marquee (configs/<town>.json features.top_events): a configured event
+// such as Hobo Day gets its own card ahead of the Ticketmaster marquee, found in
+// the event stories we already hold, and gone once the day has passed.
+const topEvent = siteConfig.topEvents
+  ? selectTopEvent(await getUpcomingStories(['event'], 200), siteConfig.topEvents, new Date(), siteConfig.timezone)
+  : null;
+
 const HOMEPAGE_MARQUEE_RADIUS_MILES = 25;
 const nearbyWhatsOnItems = (siteConfig.hasWhatsOn ? await getTicketmasterEventsForTown(siteConfig) : [])
   .filter((item) => {
@@ -448,6 +457,8 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       logic. Sits between the status line and the page's original content,
       per the handoff's own page-order table. Omitted entirely (not a
       placeholder) when marqueeHero is null. */}
+  {topEvent && <TopEventCard story={topEvent} timezone={siteConfig.timezone} />}
+
   {marqueeHero && (
     <section class="marquee-module" aria-label="What's On this week">
       <MarqueeCard
