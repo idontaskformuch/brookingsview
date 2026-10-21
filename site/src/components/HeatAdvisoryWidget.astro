@@ -10,6 +10,7 @@
 // uppgiften -- se nws_alerts.py, som skriver NWS:s eget "event"-namn rakt av
 // som story-titel.
 import { computeHeatTier, HEAT_TIER_TEXT } from '../lib/heat-advisory';
+import { siteConfig } from '../lib/site-config';
 
 interface Props {
   tempF: number | null;
@@ -21,15 +22,19 @@ const { tempF, activeAlertTitles } = Astro.props;
 // `worker_pulse` module needs the exact same decision (see
 // lib/cityStatus.ts), extracted so both consume one set of thresholds.
 const { tier, label } = computeHeatTier(tempF, activeAlertTitles);
+// Rendered only where the town opted in (siteConfig.hasHeatAdvisory) and only
+// when there is an actual advisory level -- "safe" is the absence of news and
+// is never shown (a green "Safe" box is a claim we can't stand behind).
+const show = siteConfig.hasHeatAdvisory === true && tier !== 'safe';
 ---
 
-<div class={`heat-advisory heat-advisory--${tier}`}>
+{show && <div class={`heat-advisory heat-advisory--${tier}`}>
   <div class="heat-advisory__dot" aria-hidden="true"></div>
   <div class="heat-advisory__text">
     <div class="heat-advisory__tier">{HEAT_TIER_TEXT[tier]} for outdoor &amp; loading-dock work</div>
     <div class="heat-advisory__label">{label}</div>
   </div>
-</div>
+</div>}
 
 <style>
   .heat-advisory {
@@ -38,24 +43,18 @@ const { tier, label } = computeHeatTier(tempF, activeAlertTitles);
     gap: 0.75rem;
     padding: 0.75rem 1rem;
     border-radius: 10px;
-    border: 2px solid var(--ha-border);
+    border: 2px solid var(--ha-mark);
     background: var(--ha-bg);
-    color: var(--ha-fg);
+    color: var(--ink);
     max-width: 60rem;
     margin: 0 auto 1.25rem;
   }
-  .heat-advisory--safe {
-    --ha-border: var(--status-good); --ha-bg: var(--status-good-tint); --ha-fg: var(--status-good);
-  }
-  .heat-advisory--caution {
-    --ha-border: var(--status-caution); --ha-bg: var(--status-caution-tint); --ha-fg: var(--status-caution-ink);
-  }
-  .heat-advisory--high-risk {
-    --ha-border: var(--status-bad); --ha-bg: var(--status-bad-tint); --ha-fg: var(--status-bad);
-  }
+  /* Marked by the dot and border; the words stay in ordinary text color. */
+  .heat-advisory--caution { --ha-mark: var(--status-warn); --ha-bg: var(--status-warn-bg); }
+  .heat-advisory--high-risk { --ha-mark: var(--status-alert); --ha-bg: var(--status-alert-bg); }
   .heat-advisory__dot {
     width: 0.85rem; height: 0.85rem; border-radius: 50%;
-    background: var(--ha-fg); flex-shrink: 0;
+    background: var(--ha-mark); flex-shrink: 0;
   }
   .heat-advisory__tier { font-weight: 700; font-size: 0.9rem; }
   .heat-advisory__label { font-size: 0.85rem; opacity: 0.9; }

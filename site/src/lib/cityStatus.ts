@@ -292,7 +292,7 @@ const MODULES: Record<string, ModuleDef> = {
   traffic: { resolve: resolveTraffic, hasSource: (cfg) => !!cfg.trafficSource },
   events_today: { resolve: resolveEventsToday, hasSource: (cfg) => !!cfg.hasEventsSource },
   next_meeting: { resolve: resolveNextMeeting, hasSource: () => true },
-  worker_pulse: { resolve: resolveWorkerPulse, hasSource: (cfg) => cfg.townId === 'moreno_valley_ca' },
+  worker_pulse: { resolve: resolveWorkerPulse, hasSource: (cfg) => cfg.hasHeatAdvisory === true },
   university: { resolve: resolveUniversity, hasSource: (cfg) => cfg.townId === 'brookings_sd' },
   // NOT in ALWAYS_RENDERED, deliberately: unlike university/next_meeting
   // (whose real capability is unconditional per town), this module's real

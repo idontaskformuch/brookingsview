@@ -1,4 +1,26 @@
-# State
+2026-10-20 (NY SESSION): spec .claude/spec-time-alerts-heroes.md (inkl. Fas 6
+  dark mode, startar först när Fas 1-5 godkända+committade). Allt ocommittat.
+  FAS 1 + FAS 2 KODADE, väntar ägarens godkännande (ingen commit/push).
+  BESLUT: ingen ny cron; Today/Tonight klientberäknas; "as of"->"Updated";
+  county_alert med category 'Hazardous Weather Alerts' filtreras bort ur
+  varningsytorna, gamla county_alert (>24h) når aldrig ytorna; ends_at NULL
+  -> dölj efter 24 h; bara 📅 byts i Fas 3 (övriga ikon-emojier listas då);
+  Fas 4 återanvänder selectThisWeekImage.
+  Fas 1 filer: lib/{alerts,local-day}.ts(+test), db.ts, events.ts,
+  cityStatus.ts, TodayBlock/CityStatus/StoryCard/Lead/Secondary, BaseLayout,
+  pages/{today,index,events/[facet]}.astro.
+  Fas 2: lib/site-config.ts hasHeatAdvisory (bara MV), HeatAdvisoryWidget
+  (bara vid caution/high-risk), lib/status-tokens.mjs (källa) ->
+  public/status-tokens.css (genererad, gitignorad) + lib/status-contrast.ts
+  (bygget fallerar <4.5/3:1), scripts/verify_heat_advisory_leak.mjs.
+  ROTORSAK mintgrönt: dark-mode-override av --status-good låg på en ljus sida
+  (inget dark theme finns) -> mint på mint. Overriden borttagen; Fas 6 lägger
+  tillbaka dark-värden via STATUS_TOKENS.dark.
+  Verifierat: vitest 1087 (UTC+Stockholm), pytest 878, astro check 0 fel,
+  3 byggen OK, sitemap/noindex-disjoint OK x3, heat-läckage OK.
+  KÄND RESTPOST: widgetens scopade CSS (inert) följer med i Brookings/
+  Broomfield-bygget; text+markup läcker inte.
+  Ej gjort: skärmbilder före/efter. NÄSTA: godkännande -> commit, sen Fas 3.
 
 2026-10-16. merge_raw_data fix + restore built, tested, run, and about
   to be pushed (this commit). Moreno Valley duplicate-row cleanup

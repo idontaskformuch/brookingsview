@@ -28,19 +28,19 @@ describe('computeHeatTier', () => {
   it('105F or above is high-risk without any alert', () => {
     const r = computeHeatTier(107, []);
     expect(r.tier).toBe('high-risk');
-    expect(r.label).toBe('107°F -- high heat risk');
+    expect(r.label).toBe('107°F – high heat risk');
   });
 
   it('90-104F is caution without any alert', () => {
     const r = computeHeatTier(92, []);
     expect(r.tier).toBe('caution');
-    expect(r.label).toBe('92°F -- use caution outdoors');
+    expect(r.label).toBe('92°F – use caution outdoors');
   });
 
   it('below 90F with no alert is safe', () => {
     const r = computeHeatTier(75, []);
     expect(r.tier).toBe('safe');
-    expect(r.label).toBe('75°F -- safe conditions');
+    expect(r.label).toBe('75°F – safe conditions');
   });
 
   it('null temperature and no alert is safe with an honest "no advisory" label', () => {

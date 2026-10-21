@@ -173,6 +173,13 @@ export interface SiteConfig {
    *  hasClosureWatch/hasNewInTown/hasHousingMarket/hasWhatsOn which all
    *  gate a real Python-side pipeline too. */
   hasPlaces?: boolean;
+  /** Heat/dust advisory for outdoor and warehouse shift work (Worker Pulse's
+   *  HeatAdvisoryWidget, CityStatus's worker_pulse row, the /weather heat
+   *  cross-link). Shift/dock framing fits Moreno Valley's employer set only.
+   *  OFF by default, on for Moreno Valley alone -- a flag, not a town-name
+   *  check, so a future town opts in here. TS-only like hasPlaces: no Python
+   *  side reads it. */
+  hasHeatAdvisory?: boolean;
   /** Staleness thresholds for the place layer (handoff Section 4) -- how
    *  many days old verified_date/last_verified_at can be before a place's
    *  hours/address downgrade from a bare present-tense fact to "Last
@@ -455,6 +462,7 @@ const CITIES: Record<string, SiteConfig> = {
     // types, since events/meetings will have their own version of the
     // same "is the cutoff measured against the right clock" question.
     renderWindow: { homeSales: 24, meetings: null, events: null },
+    hasHeatAdvisory: true,
     cityName: 'Moreno Valley',
     stateName: 'California',
     stateAbbr: 'CA',

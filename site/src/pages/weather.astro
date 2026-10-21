@@ -90,7 +90,7 @@ function hourLabel(start: string): string {
     </section>
   )}
 
-  {siteConfig.townId === 'moreno_valley_ca' && alerts.some((a) => /heat/i.test(a.title)) && (
+  {siteConfig.hasHeatAdvisory && alerts.some((a) => /heat/i.test(a.title)) && (
     // Same heat-risk cross-link Worker Pulse already surfaces the other
     // direction (HeatAdvisoryWidget, weather -> workplace-watch) --
     // extended here so a reader who lands on /weather during an active

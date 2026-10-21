@@ -20,6 +20,7 @@ import { getSignData, countdown } from '../lib/db';
 import { siteConfig, ALL_SITES } from '../lib/site-config';
 import { runBuildTimeChecks } from '../lib/build-checks';
 import { assertAccentContrast } from '../lib/accent-contrast';
+import { assertStatusContrast } from '../lib/status-contrast';
 import { buildOrganizationJsonLd } from '../lib/article-jsonld';
 import CookieBanner from '../components/CookieBanner.astro';
 
@@ -60,6 +61,7 @@ const {
 
 await runBuildTimeChecks();
 assertAccentContrast(siteConfig.townId, siteConfig.brand);
+assertStatusContrast();
 const sign = await getSignData();
 const canonical = canonicalUrl
   ? new URL(canonicalUrl)
@@ -230,6 +232,7 @@ const footerGroups = FOOTER_GROUPS
     tuning a color later only ever changes this file's content, never any
     page's HTML. */}
 <link rel="stylesheet" href="/accent-tokens.css" />
+<link rel="stylesheet" href="/status-tokens.css" />
 
 <script type="application/ld+json" is:inline set:html={JSON.stringify(
   buildOrganizationJsonLd(siteConfig, siblingSiteUrls)
@@ -341,12 +344,12 @@ const footerGroups = FOOTER_GROUPS
 )}
 
 <style is:global>
-:root {
-  /* Sitewide presentation-layer pass: retuned to a warmer, quieter neutral
-     scale (was #f4f6f7/#14120f/#4d5862/#c9d3da) -- same editorial intent as
   /* Expired time-limited items (see the data-ends sweep script) must vanish
      even from elements whose own CSS sets display. */
   [data-ends][hidden], [data-start][hidden], #sign-events-today[hidden] { display: none !important; }
+:root {
+  /* Sitewide presentation-layer pass: retuned to a warmer, quieter neutral
+     scale (was #f4f6f7/#14120f/#4d5862/#c9d3da) -- same editorial intent as
      before, just closer to newsprint than to a UI grey. --ink-faint is new: a
      third text tier (timestamps, drive-time, captions) below --ink-soft
      (decks, venue lines, secondary copy). --paper-raised is a new alias for
@@ -373,29 +376,9 @@ const footerGroups = FOOTER_GROUPS
   --rule: rgba(22, 22, 20, 0.11);
   --rule-strong: rgba(22, 22, 20, 0.22);
 
-  /* Consistency pass (2026-09-10): green/red/amber status colors had been
-     hand-copied as raw hex into 9 separate files (CityStatus, HeatAdvisory-
-     Widget, TodayBlock, facilities/[slug], facilities/index, workplace-
-     watch, city-hall/projects/[slug], closures, new-in-town) -- consistent
-     by copy-paste convention, not by a shared source, the same pattern
-     that already caused real drift bugs earlier tonight. One definition
-     each, referenced everywhere. `-tint`/`-ink` follow the existing
-     --alert/--alert-tint shape: `-tint` is a badge/chip background, `-ink`
-     is the higher-contrast text color that goes ON that tint (plain usage
-     directly on --paper uses the bare color instead). Distinct from
-     --alert/--alert-tint on purpose -- that pair means "a genuine active
-     alert" (weather/school alerts, closures), this means "good/bad/
-     caution status," a different semantic role even where the color
-     happens to be similar. */
-  --status-good: #1a9850;
-  --status-good-tint: #dcfce7;
-  --status-good-ink: #14532d;
-  --status-bad: #d73027;
-  --status-bad-tint: #fee2e2;
-  --status-bad-ink: #7f1d1d;
-  --status-caution: #d9a441;
-  --status-caution-tint: rgba(217, 164, 65, 0.12);
-  --status-caution-ink: #a3711b;
+  /* Status colors (--status-ok/-warn/-alert + -bg/-text, and the legacy
+     --status-good/-bad/-caution aliases) live in /status-tokens.css, generated
+     from lib/status-tokens.mjs and WCAG-checked at build time. */
 
   /* Mirrors lib/section-theme.ts's SECTION_THEME.workplace_watch.
      interactiveAccent exactly -- kept as its own CSS custom property
@@ -413,27 +396,6 @@ const footerGroups = FOOTER_GROUPS
 
   --measure: 74rem;
   --measure-narrow: 40rem;
-}
-
-/* Dark-mode status token overrides -- centralized here instead of
-   per-component (CityStatus/HeatAdvisoryWidget/TodayBlock each used to
-   define their own copy of the same three light/dark pairs). A file that
-   only ever wrote `color: var(--status-good)` etc. in light mode gets
-   correct dark-mode contrast for free the moment it switches to the
-   token -- see city-hall/projects/[slug].astro and new-in-town.astro,
-   neither of which had ANY dark-mode handling before this pass. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --status-good: #6ee7b7;
-    --status-good-tint: rgba(26, 152, 80, 0.18);
-    --status-good-ink: #6ee7b7;
-    --status-bad: #fca5a5;
-    --status-bad-tint: rgba(215, 48, 39, 0.2);
-    --status-bad-ink: #fca5a5;
-    --status-caution: #fbbf24;
-    --status-caution-tint: rgba(217, 164, 65, 0.2);
-    --status-caution-ink: #fbbf24;
-  }
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -694,6 +656,44 @@ main { padding-block: 1.75rem 3.5rem; }
         </a>
       ))}
       {moreNav.length > 0 && (
+        <details class="nav__more" open={activeInMore || undefined}>
+          <summary aria-current={activeInMore ? 'page' : undefined}>More</summary>
+          <div class="nav__more-panel">
+            {moreNav.map((item) => (
+              <a href={item.href} aria-current={path.startsWith(item.href) ? 'page' : undefined}>
+                {item.label}
+              </a>
+            ))}
+          </div>
+        </details>
+      )}
+    </nav>
+  </div>
+</header>
+
+<div class="sign">
+  <div class="shell sign__inner">
+    {sign.temp !== null && (
+      <span class="sign__item">
+        {sign.isDaytime ? 'High' : 'Low'}&nbsp;{Math.round(sign.temp)}&deg;{sign.unit}{sign.conditions && <>&nbsp;{sign.conditions.toLowerCase()}</>}
+      </span>
+    )}
+    {sign.alert && <span class="sign__item sign__item--alert" data-ends={sign.alertEndsAt ?? undefined}>{sign.alert}</span>}
+    {sign.todayEvents.length > 0 && (
+      <span class="sign__item" id="sign-events-today" hidden data-tz={siteConfig.timezone}
+        data-events={JSON.stringify(sign.todayEvents)}></span>
+    )}
+    {sign.nextGame?.starts_at && (
+      <span class="sign__item">
+        Jacks {sign.nextGame.home_away === 'home' ? 'vs' : 'at'} {sign.nextGame.opponent} {countdown(sign.nextGame.starts_at, now, siteConfig.timezone)}
+      </span>
+    )}
+  </div>
+</div>
+
+<main id="main">
+  <div class:list={['shell', !wide && 'shell--narrow']}>
+    <slot />
     <script is:inline>
       /* Time-limited items (alerts) carry data-ends=<ISO instant>. The page is
          static and can be hours old, so hide anything whose end has passed. */
@@ -745,44 +745,6 @@ main { padding-block: 1.75rem 3.5rem; }
         } catch { /* keep the build-time text */ }
       });
     </script>
-        <details class="nav__more" open={activeInMore || undefined}>
-          <summary aria-current={activeInMore ? 'page' : undefined}>More</summary>
-          <div class="nav__more-panel">
-            {moreNav.map((item) => (
-              <a href={item.href} aria-current={path.startsWith(item.href) ? 'page' : undefined}>
-                {item.label}
-              </a>
-            ))}
-          </div>
-        </details>
-      )}
-    </nav>
-  </div>
-</header>
-
-<div class="sign">
-  <div class="shell sign__inner">
-    {sign.temp !== null && (
-      <span class="sign__item">
-        {sign.isDaytime ? 'High' : 'Low'}&nbsp;{Math.round(sign.temp)}&deg;{sign.unit}{sign.conditions && <>&nbsp;{sign.conditions.toLowerCase()}</>}
-      </span>
-    )}
-    {sign.alert && <span class="sign__item sign__item--alert" data-ends={sign.alertEndsAt ?? undefined}>{sign.alert}</span>}
-    {sign.todayEvents.length > 0 && (
-      <span class="sign__item" id="sign-events-today" hidden data-tz={siteConfig.timezone}
-        data-events={JSON.stringify(sign.todayEvents)}></span>
-    )}
-    {sign.nextGame?.starts_at && (
-      <span class="sign__item">
-        Jacks {sign.nextGame.home_away === 'home' ? 'vs' : 'at'} {sign.nextGame.opponent} {countdown(sign.nextGame.starts_at, now, siteConfig.timezone)}
-      </span>
-    )}
-  </div>
-</div>
-
-<main id="main">
-  <div class:list={['shell', !wide && 'shell--narrow']}>
-    <slot />
   </div>
 </main>
 

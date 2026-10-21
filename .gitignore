@@ -45,3 +45,6 @@ scratch_shots/
 
 # Scratch build-log captures from manual verify runs -- disposable.
 .verify_*.txt
+
+# Manual per-town verification builds (site/dist_<town>/) -- disposable.
+site/dist_*/

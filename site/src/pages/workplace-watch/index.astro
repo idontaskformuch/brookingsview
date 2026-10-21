@@ -136,7 +136,7 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
     </p>
   )}
 
-  {isMorenoValley && (
+  {siteConfig.hasHeatAdvisory && (
     <HeatAdvisoryWidget
       tempF={todayPeriod?.temp ?? null}
       activeAlertTitles={alerts.map((a) => a.title)}
@@ -272,8 +272,8 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
 .wp-name small { display: block; font-weight: 400; color: var(--ink-soft); font-size: 0.75rem; }
 .wp-hiring { font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 .wp-hiring small { display: block; color: var(--ink-soft); font-size: 0.72rem; }
-.wp-hiring small.up { color: var(--status-good); }
-.wp-hiring small.down { color: var(--status-bad); }
+.wp-hiring small.up { color: var(--status-ok-text); }
+.wp-hiring small.down { color: var(--status-alert-text); }
 .wp-summary { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
 .excerpt { color: var(--ink-soft); }
 .excerpt.muted { font-style: italic; }

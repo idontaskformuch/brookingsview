@@ -4,6 +4,7 @@ import { neon } from '@neondatabase/serverless';
 import { loadEnv } from 'vite';
 import fs from 'node:fs';
 import path from 'node:path';
+import { statusTokensCss } from './src/lib/status-tokens.mjs';
 
 // Statiskt bygge: all data hämtas från Neon vid build-time, sedan serveras rena
 // HTML-filer från Cloudflares edge. GitHub Actions pingar deploy-hooken efter
@@ -64,6 +65,12 @@ const accentTokensCss = brand
   ? `:root {\n  --brand-accent: ${brand.accent};\n  --brand-accent-ink: ${brand.accentInk};\n}\n`
   : ':root {\n  --brand-accent: #0b2e55;\n  --brand-accent-ink: #0b2e55;\n}\n';
 fs.writeFileSync(path.join(process.cwd(), 'public', 'accent-tokens.css'), accentTokensCss);
+
+// Shared status colors (ok/warn/alert) -- same stable-URL reasoning as
+// accent-tokens.css above. The values live in src/lib/status-tokens.mjs, the
+// same table lib/status-contrast.ts checks at build time (BaseLayout calls
+// assertStatusContrast), so shipped CSS and checked contrast cannot drift.
+fs.writeFileSync(path.join(process.cwd(), 'public', 'status-tokens.css'), statusTokensCss());
 
 // Mirrors lib/home-sales.ts's slugifyAddress() exactly -- deliberately
 // duplicated rather than imported, since this file runs before Vite's
