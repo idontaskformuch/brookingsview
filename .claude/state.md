@@ -56,7 +56,10 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
    äldsta story canonical, nyare får superseded_by_slug+301; content_hash sätts bara om ledig. Kodfix: identity_key
    (ID/EventId/id) i BaseParser+upsert_records, uppdaterar ÄLDSTA raden. OBS städskriptet: skrapningar mellan push
    och städning uppdaterar äldsta raden, så merga raw_data från ALLA rader i gruppen in i behållaren (nyaste vinner).
-   NÄSTA: ta fram städskript (före/efter-kontroll), VISA innan körning (live-DB-skrivning, ägarens ja).
+   Städskript KLART (ej körd): scripts/merge_duplicate_meetings_by_source_id.py (dry-run default, --apply = live-DB,
+   en transaktion, backup i backups/). Dry-run fann: de 13 dubblettraderna bär project_updates(6)/candidate_queue(11)/
+   checkpoints(10) -> repointas/slängs enligt skriptdoc. NÄSTA: ägarens ja till --apply, sen generate_duplicate_story_
+   redirects + push, sen migration UNIQUE-index (steg 3), sen steg 4-rapport (Brookings/Broomfield 0 dubbletter).
 7. QA #9 Celebration Park-öppettider (Moreno, info, lägst prio).
 
 8. (Låg prio) Kontrollera i scrape_runs att Brookings eventkällor och Moreno Valleys events/meetings går ok
