@@ -51,4 +51,5 @@ jobs:
       # test skips itself where no browser exists, but under CI=true it FAILS
       # instead of skipping, so this install step is what keeps it honest.
       - run: npx playwright-core install --with-deps chromium
-      - run: npm run test
+      # github-actions reporter: failures become annotations (readable via the API).
+      - run: npm run test -- --reporter=default --reporter=github-actions
