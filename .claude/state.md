@@ -27,6 +27,13 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   'needs-review', gissar aldrig). BESLUT: Broomfield-bas = A (statsvida totaler + turnout, lokala val länkas); county-feed tar över vid 'ready'.
   Mejl till Broomfields valkontor skrivet i chatten (ägaren skickar). Kvar: Worker (cron + JSON-endpoint utan rebuild) + Neon-skrivning (kräver 061 godkänd),
   sidan /election-results, torrtest mot juni, indexNow, cityStatus-rad.
+  MIGRATION 061 KÖRD mot live 2026-10-21 (ägaren godkände): 4 tabeller (9/6/13/5 kolumner), 0 rader, index finns, verifierat i ny anslutning.
+  WORKER KLAR (lokal commit, EJ deployad): election-results/src/{phase,towns,sources,pipeline,store,api,worker}.ts + wrangler.jsonc (cron */10, ingen route satt).
+  BESLUT: fetch startar 19:00 lokalt (SD/CO stänger 19:00; spec sa 20:00), 'after' = 07:00+19:00 lokalt, fetchUntil 2026-11-30 = ANTAGANDE (certifieringsdatum ej belagt);
+  scope för valideringen = föregående giltiga snapshots contest-id (november-id:n okända); all-noll-svar blockeras (regel 5); källfel sparar inget; Neon-skrivning
+  = ETT CTE-statement; JSON-endpoint GET /api/election-results?town=<id> läser senaste VALID snapshot direkt ur Neon (ingen rebuild). Torrtest (test/dry-run.test.ts) mot
+  juni: 35 tester gröna. OTESTAT: store.ts SQL mot riktig Postgres (kräver rolled-back testskrivning mot live -> fråga ägaren), deploy kräver secret DATABASE_URL + route per sajt.
+  Kvar: sida /election-results (site), CityStatus-raden, sitemap/noindex-gating, page-meta.
   Security (API 2026-10-21): Secret scanning + Push protection = ENABLED, Dependabot alerts = enabled; dependabot_security_updates,
   non_provider_patterns, validity_checks = disabled (ej begärda).
   Cron-dispatcher deployad+verifierad (version 33925058 + secret 97cc8bae, GITHUB_TOKEN utgår 2027-10-21). Workerns egen token OTESTAD

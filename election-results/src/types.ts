@@ -27,6 +27,14 @@ export interface Snapshot {
   precinctsReported: number | null;
   precinctsTotal: number | null;
   contests: Contest[];
+  turnout?: Turnout;
+}
+
+export interface Turnout {
+  ballotsCounted: number | null;
+  registered: number | null;
+  precinctsReporting: number | null;
+  precinctsTotal: number | null;
 }
 
 export interface ValidationResult {

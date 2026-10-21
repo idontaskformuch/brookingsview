@@ -16,6 +16,11 @@ export function validateSnapshot(
 
   if (next.contests.length === 0) problems.push('empty response: no contests');
 
+  // Hard rule 5: zeroed data is never published (polls closed but nothing counted yet).
+  if (next.contests.length > 0 && next.contests.every((c) => c.choices.every((ch) => ch.votes === 0))) {
+    problems.push('zeroed response: every vote count is 0');
+  }
+
   const byId = new Map(next.contests.map((c) => [c.sourceContestId, c]));
   for (const id of scope) {
     if (!byId.has(id)) problems.push(`contest ${id} in scope is missing from the response`);

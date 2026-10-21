@@ -89,10 +89,18 @@ describe('validateSnapshot (spec 2c)', () => {
     expect(validateSnapshot(snap([c('1', ['A', 1.5])]), null, ['1']).valid).toBe(false);
   });
   it('accepts the first snapshot with no predecessor', () => {
-    expect(validateSnapshot(snap([c('1', ['A', 0])]), null, ['1']).valid).toBe(true);
+    expect(validateSnapshot(snap([c('1', ['A', 1])]), null, ['1']).valid).toBe(true);
   });
   it('computes percentages from votes, 0 for an empty contest', () => {
     expect(pctOf(2506, 2506 + 1141)).toBe(68.7);
     expect(pctOf(0, 0)).toBe(0);
+  });
+});
+
+describe('zeroed data (hard rule 5)', () => {
+  it('blocks a snapshot where every vote is 0', () => {
+    const r = validateSnapshot(snap([{ sourceContestId: '1', name: 'x', party: null, choices: [{ name: 'A', votes: 0 }, { name: 'B', votes: 0 }] }]), null, ['1']);
+    expect(r.valid).toBe(false);
+    expect(r.problems.join()).toMatch(/zeroed/);
   });
 });

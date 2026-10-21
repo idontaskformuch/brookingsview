@@ -50,3 +50,14 @@ export async function checkBroomfieldCountyFeed(expectedElectionDate: string, f:
   const json = await (await get(f, `${HOST}/CO/Broomfield/elections.json`)).text();
   return inspectCountyElections(json, expectedElectionDate);
 }
+
+/** Colorado's November event id is NOT guessed: it is read from the SoS ENR page, then the caller must
+ *  confirm detail.xml's ElectionDate matches (a stale link to June's event is therefore refused). */
+export async function resolveColoradoStateEvent(f: typeof fetch = fetch): Promise<string | null> {
+  const r = await f('https://www.sos.state.co.us/pubs/elections/Results/ENR/countyLevelResults.html', {
+    headers: { 'User-Agent': CLARITY_USER_AGENT },
+  });
+  if (!r.ok) throw new Error(`clarity: SoS ENR page -> ${r.status}`);
+  const id = /results\.enr\.clarityelections\.com\/CO\/(\d+)\//.exec(await r.text())?.[1];
+  return id ? `${HOST}/CO/${id}` : null;
+}

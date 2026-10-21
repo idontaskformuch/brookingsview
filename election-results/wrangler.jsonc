@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // NOT DEPLOYED. Needs: secret DATABASE_URL (npx wrangler secret put DATABASE_URL) and one
+  // route per site zone (<site>/api/election-results*) so the page calls its own origin.
+  // Routes are intentionally not set here: the zones/routes are the owner's call before deploy.
+  "name": "viewmedia-election-results",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "triggers": { "crons": ["*/10 * * * *"] },
+  "observability": { "enabled": true }
+}

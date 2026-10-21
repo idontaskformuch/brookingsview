@@ -74,3 +74,14 @@ describe('Broomfield county feed watcher', () => {
     expect(inspectCountyElections(JSON.stringify([{ foo: 1 }]), '2026-11-03').status).toBe('needs-review');
   });
 });
+
+import { resolveColoradoStateEvent } from '../src/fetch/clarity';
+describe('resolveColoradoStateEvent', () => {
+  it('reads the event id from the SoS page link', async () => {
+    const f = (async () => new Response('<a href="https://results.enr.clarityelections.com/CO/126592/web.345435/#/summary">x</a>')) as unknown as typeof fetch;
+    expect(await resolveColoradoStateEvent(f)).toBe('https://results.enr.clarityelections.com/CO/126592');
+  });
+  it('returns null when the page has no Clarity link', async () => {
+    expect(await resolveColoradoStateEvent((async () => new Response('<p>none</p>')) as unknown as typeof fetch)).toBeNull();
+  });
+});
