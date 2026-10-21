@@ -505,7 +505,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       deliberate fix. "Today" gets the same strong heading treatment as
       "Right Now" (CityStatus) -- see SectionRule's own `strong` prop. */}
   {(todayStories.length > 0 || todayHomeGame) && (
-    <section aria-label="Today">
+    <section aria-label="Today" data-hide-ended data-hide-when-empty={todayHomeGame ? undefined : ''}>
       <SectionRule label="Today" href="/events/" strong />
       {todayHomeGame && (
         <div class="river">

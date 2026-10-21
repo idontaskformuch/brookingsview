@@ -52,11 +52,12 @@
 import StoryCard from './StoryCard.astro';
 import TrafficWidget from './TrafficWidget.astro';
 import HeatAdvisoryWidget from './HeatAdvisoryWidget.astro';
-import { artsEventAsStory, type FeedItem, type TodayBucket } from '../lib/events';
+import { artsEventAsStory, type FeedItem } from '../lib/events';
 import { joinWithOr } from '../lib/status-line';
 import type { Story, TrafficIncident, StructuredHours, Facility } from '../lib/db';
 import type { ClosureWatchStatus } from '../lib/closure-watch';
 import { storyHref } from '../lib/content-slugs';
+import { formatAlertUntil } from '../lib/alerts';
 
 export interface Props {
   cityName: string;
@@ -66,7 +67,7 @@ export interface Props {
    *  shown, not implied. */
   asOf: Date;
   temperature: number | null;
-  activeAlerts: Pick<Story, 'slug' | 'title'>[];
+  activeAlerts: Pick<Story, 'slug' | 'title' | 'ends_at'>[];
   /** null = Closure Watch not live for this town yet -- omit the row. */
   closureStatus: (ClosureWatchStatus & { prose: string | null }) | null;
   /** null = no real traffic source for this town -- omit the row. Present
@@ -77,8 +78,9 @@ export interface Props {
    *  ground-truth facility alias matching, same reasoning as StoryCard.astro's
    *  own facilities prop. */
   facilities?: Pick<Facility, 'slug' | 'name_aliases'>[];
-  tonight: TodayBucket;
-  tomorrow: TodayBucket;
+  /** Every event starting on the build's local day or the next two, date-sorted
+   *  (see events.ts selectBucketCandidates). The browser buckets them. */
+  candidates: FeedItem[];
   /** The dedicated /today/ page wants its own <h1>+chrome around this
    *  block; the homepage mount wants a plain heading, no page-level
    *  semantics duplicated inside a component that isn't the page itself. */
@@ -95,7 +97,7 @@ export interface Props {
 
 const {
   cityName, timezone, asOf, temperature, activeAlerts, closureStatus, traffic,
-  cityHallFacility, facilities = [], tonight, tomorrow, headingLevel = 'h2', headingText,
+  cityHallFacility, facilities = [], candidates, headingLevel = 'h2', headingText,
 } = Astro.props;
 
 const Heading = headingLevel;
@@ -117,7 +119,7 @@ const CLOSURE_LABEL: Record<ClosureWatchStatus['state'], string> = {
   clear: 'Schools open, no closures reported',
 };
 
-type AlertItem = Pick<Story, 'slug' | 'title'>;
+type AlertItem = Pick<Story, 'slug' | 'title' | 'ends_at'>;
 
 function toStory(item: FeedItem): { story: Story; href?: string; kicker?: string } {
   if (item.sourceKind === 'story') return { story: item.story };
@@ -161,7 +163,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
 
 <section class="today-block" aria-label={`Today in ${cityName}`}>
   <Heading class="today-block__heading">
-    {resolvedHeadingText} <span class="today-block__asof">as of {asOfLabel} local</span>
+    {resolvedHeadingText} <span class="today-block__asof">Updated {asOfLabel}</span>
   </Heading>
 
   {!rightNowIsEmpty && (
@@ -174,7 +176,10 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
         )}
 
         {!consolidatedQuietLine && activeAlerts.length > 0 && activeAlerts.map((alert: AlertItem) => (
-          <li><a href={storyHref(alert.slug)}>{alert.title}</a></li>
+          <li data-ends={alert.ends_at ?? undefined}>
+            <a href={storyHref(alert.slug)}>{alert.title}</a>
+            {alert.ends_at && <span class="today-block__until"> · {formatAlertUntil(new Date(alert.ends_at), timezone)}</span>}
+          </li>
         ))}
 
         {activeClosureLabel && (
@@ -209,41 +214,34 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
     </div>
   )}
 
-  <div class="today-block__bucket">
+  {/* Tonight / Tomorrow are decided in the BROWSER (script at the bottom), from
+      data-start/data-end instants and the town's timezone -- the page can be
+      hours old, and an event that has already ended must never sit under
+      Tonight. The <template> holds every candidate event for the build day
+      and the two days after it; nothing is visible until the script runs. */}
+  <div class="today-block__bucket" id="today-tonight">
     <p class="today-block__section-label">Tonight</p>
-    {tonight.total > 0 ? (
-      <>
-        <ul class="today-block__cards">
-          {tonight.items.map((item) => {
-            const { story, href, kicker } = toStory(item);
-            return <li><StoryCard story={story} compact href={href} kicker={kicker} facilities={facilities} /></li>;
-          })}
-        </ul>
-        {tonight.total > tonight.items.length && (
-          <p class="today-block__more">+{tonight.total - tonight.items.length} more tonight</p>
-        )}
-      </>
-    ) : (
-      <p class="today-block__quiet">Nothing scheduled tonight</p>
-    )}
+    <div data-bucket-body></div>
   </div>
 
-  <div class="today-block__bucket">
+  <div class="today-block__bucket" id="today-tomorrow">
     <p class="today-block__section-label">Tomorrow</p>
-    {tomorrow.total > 0 ? (
-      <>
-        <p class="today-block__count">{tomorrow.total} event{tomorrow.total === 1 ? '' : 's'}</p>
-        <ul class="today-block__cards">
-          {tomorrow.items.map((item) => {
-            const { story, href, kicker } = toStory(item);
-            return <li><StoryCard story={story} compact href={href} kicker={kicker} facilities={facilities} /></li>;
-          })}
-        </ul>
-      </>
-    ) : (
-      <p class="today-block__quiet">Nothing scheduled tomorrow yet</p>
-    )}
+    <div data-bucket-body></div>
   </div>
+  <noscript>
+    <p class="today-block__quiet">Turn on JavaScript to see tonight's and tomorrow's events, or <a href="/events/">browse all events</a>.</p>
+  </noscript>
+  <template id="today-event-items" data-tz={timezone}>
+    {candidates.map((item) => {
+      const { story, href, kicker } = toStory(item);
+      const end = item.sourceKind === 'story' ? item.story.ends_at : item.event.ends_at;
+      return (
+        <li data-start={item.occurs_at ?? undefined} data-end={end ?? undefined}>
+          <StoryCard story={story} compact href={href} kicker={kicker} facilities={facilities} />
+        </li>
+      );
+    })}
+  </template>
   {cityHallKnown && cityHallFacility && (
     // Open/Closed badge client-side move (2026-10-15) -- see this
     // component's own module comment. Only the decision data is baked in
@@ -253,6 +251,50 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
     })} />
   )}
 </section>
+<script>
+  import { bucketOf, type TimedEvent } from '../lib/local-day';
+
+  const tpl = document.getElementById('today-event-items') as HTMLTemplateElement | null;
+  if (tpl) {
+    const tz = tpl.dataset.tz || 'America/Chicago';
+    const now = new Date();
+    const entries = Array.from(tpl.content.querySelectorAll<HTMLLIElement>(':scope > li')).map((li) => {
+      const ev: TimedEvent = { start: li.dataset.start || '', end: li.dataset.end || null };
+      return { li, bucket: ev.start ? bucketOf(ev, now, tz) : null };
+    });
+    const fill = (id: string, which: 'tonight' | 'tomorrow', limit: number, empty: string) => {
+      const body = document.querySelector(`#${id} [data-bucket-body]`);
+      if (!body) return;
+      const hits = entries.filter((e) => e.bucket === which);
+      body.textContent = '';
+      if (hits.length === 0) {
+        const p = document.createElement('p');
+        p.className = 'today-block__quiet';
+        p.textContent = empty;
+        body.appendChild(p);
+        return;
+      }
+      if (which === 'tomorrow') {
+        const c = document.createElement('p');
+        c.className = 'today-block__count';
+        c.textContent = `${hits.length} event${hits.length === 1 ? '' : 's'}`;
+        body.appendChild(c);
+      }
+      const ul = document.createElement('ul');
+      ul.className = 'today-block__cards';
+      hits.slice(0, limit).forEach((e) => ul.appendChild(e.li.cloneNode(true)));
+      body.appendChild(ul);
+      if (hits.length > limit) {
+        const more = document.createElement('p');
+        more.className = 'today-block__more';
+        more.textContent = `+${hits.length - limit} more ${which === 'tonight' ? 'tonight' : 'tomorrow'}`;
+        body.appendChild(more);
+      }
+    };
+    fill('today-tonight', 'tonight', 5, 'Nothing scheduled tonight');
+    fill('today-tomorrow', 'tomorrow', 3, 'Nothing scheduled tomorrow yet');
+  }
+</script>
 {cityHallKnown && (
   // Module script (not is:inline) -- Astro/Vite bundles this for the
   // browser, same pattern as components/ShareButton.astro's own inline

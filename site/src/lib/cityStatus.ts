@@ -41,7 +41,7 @@ import {
   getUpcomingStories, getUpcomingArtsEvents, getNextMeeting, getNextSdsuMarqueeEvent,
   formatMeetingWhen, isSandboxUrl,
 } from './db';
-import { buildEventFeed, todayUtcMidnight, isTonight, selectTodayBucket } from './events';
+import { buildEventFeed, todayUtcMidnight, selectBucketCandidates } from './events';
 import { computeHeatTier } from './heat-advisory';
 import { siteConfig, type SiteConfig } from './site-config';
 import { getTicketmasterEventsForTown, distanceLabel, type TicketmasterFeedItem } from './ticketmaster';
@@ -59,6 +59,12 @@ export interface CityStatusModule {
   tone: StatusTone;
   href?: string;
   asOf: Date;
+  /** ISO instant after which the module is stale (alerts: the LATEST end among
+   *  the active ones). Written as data-ends; the browser hides it once passed. */
+  expiresAt?: string;
+  /** Modules whose text depends on "now" (Tonight count) ship the underlying
+   *  event instants instead; the browser computes the text and reveals the row. */
+  clientEvents?: { start: string; end: string | null }[];
 }
 
 type ModuleResolver = () => Promise<CityStatusModule | null>;
@@ -123,6 +129,7 @@ async function resolveAlerts(): Promise<CityStatusModule | null> {
   return {
     id: 'alerts', icon: ICONS.alerts, label: 'Alerts', value, tone: 'alert',
     href: storyHref(alerts[0].slug), asOf: new Date(alerts[0].published_at),
+    expiresAt: alerts.map((a) => a.ends_at).filter(Boolean).sort().at(-1) ?? undefined,
   };
 }
 
@@ -162,13 +169,17 @@ async function resolveEventsToday(): Promise<CityStatusModule | null> {
   ]);
   const { items } = buildEventFeed(upcomingStories, artsEvents, siteConfig.timezone);
   const today = todayUtcMidnight(siteConfig.timezone);
-  const tonight = selectTodayBucket(items, today, siteConfig.timezone, isTonight, 1);
-  const value = tonight.total === 0
-    ? 'Nothing scheduled tonight'
-    : `${tonight.total} event${tonight.total === 1 ? '' : 's'} tonight`;
+  const clientEvents = selectBucketCandidates(items, today, siteConfig.timezone, 200).map((i) => ({
+    start: new Date(i.occurs_at as string).toISOString(),
+    end: (i.sourceKind === 'story' ? i.story.ends_at : i.event.ends_at)
+      ? new Date((i.sourceKind === 'story' ? i.story.ends_at : i.event.ends_at) as string).toISOString() : null,
+  }));
   return {
     id: 'events_today', icon: ICONS.events_today, label: 'Tonight',
-    value, tone: 'quiet', href: '/today/', asOf: new Date(),
+    // Placeholder only: the browser replaces it with a count computed from
+    // the real clock (clientEvents); the row stays hidden until then.
+    value: 'Nothing scheduled tonight', tone: 'quiet', href: '/today/', asOf: new Date(),
+    clientEvents,
   };
 }
 

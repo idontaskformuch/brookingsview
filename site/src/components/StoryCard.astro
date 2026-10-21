@@ -155,6 +155,9 @@ const timeLabel = hasByline
 // (`typeof date === 'string' ? new Date(date) : date`), so only this raw
 // attribute value needed normalizing.
 const timeSource = hasByline ? story.published_at : when;
+// True when timeLabel came from relativeTime() ("just now", "this morning", ...) -- a
+// build-time guess that goes stale, so the layout's sweep script recomputes it live.
+const isRelativeLabel = hasByline ? Boolean(story.published_at) : Boolean(when) && !isMeeting && !isAlert && !isEvent;
 const timeMachineValue = timeSource ? new Date(timeSource).toISOString() : null;
 
 // R4 (sitewide presentation-layer pass): a plain 'event' row's kicker used
@@ -176,7 +179,7 @@ const kicker = kickerOverride ?? (isAlert ? 'Alert' : isMeeting ? 'City hall'
 // to color, so it's gated on `kicker` being present too.
 const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCategory] ?? null) : null;
 ---
-<article class:list={['item', { 'item--alert': isAlert }]}>
+<article class:list={['item', { 'item--alert': isAlert }]} data-start={isEvent && story.occurs_at ? new Date(story.occurs_at).toISOString() : undefined} data-end={isEvent && story.ends_at ? new Date(story.ends_at).toISOString() : undefined} data-ends={isAlert ? (story.ends_at ?? undefined) : undefined}>
   {/* 2026-10-02, item C1: the 46px fixed-width time RAIL (R5) is gone --
       it collided with long titles (confirmed on real Moreno Valley titles,
       which run longer once a venue line is no longer baked into them, see
@@ -189,7 +192,7 @@ const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCat
     {chip && <span class="item__chip" style={`--chip-color: ${chip.color}`} aria-hidden="true">{chip.icon}</span>}
     {kicker && <span class="kicker">{kicker}</span>}
     {timeLabel && timeMachineValue && (
-      <time class="item__when data" datetime={timeMachineValue}>{timeLabel}</time>
+      <time class="item__when data" datetime={timeMachineValue} data-rel={isRelativeLabel ? "1" : undefined} data-rel-end={isRelativeLabel ? (story.ends_at ?? undefined) : undefined} data-tz={siteConfig.timezone}>{timeLabel}</time>
     )}
     {isAiWritten && <span class="item__ai-label">AI-written</span>}
     {isQuorumNotice && <span class="item__notice-badge">Public notice</span>}

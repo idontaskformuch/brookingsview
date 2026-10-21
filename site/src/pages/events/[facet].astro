@@ -174,9 +174,11 @@ const hubBacklink = resolveHubBacklink('events/facet', siteConfig);
       below it. Every other facet keeps its existing empty-state behavior. */}
   {(facet.slug === 'free' ? items.length > 0 : true) && (
     items.length > 0 ? (
-      <div class="grid">
+      <div class="grid" data-hide-ended={facet.slug === 'today' || facet.slug === 'this-weekend' ? '' : undefined}>
         {items.map((item) => (
-          <div class="event-cell">
+          <div class="event-cell"
+            data-start={item.occurs_at ? new Date(item.occurs_at).toISOString() : undefined}
+            data-end={(item.sourceKind === 'story' ? item.story.ends_at : item.event.ends_at) ? new Date((item.sourceKind === 'story' ? item.story.ends_at : item.event.ends_at) as string).toISOString() : undefined}>
             {item.sourceKind === 'story'
               ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} facilities={facilities} />
               : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" facilities={facilities} />}
@@ -189,6 +191,9 @@ const hubBacklink = resolveHubBacklink('events/facet', siteConfig);
     ) : (
       <p class="empty">{facet.emptyMessage}</p>
     )
+  )}
+  {(facet.slug === 'today' || facet.slug === 'this-weekend') && items.length > 0 && (
+    <p class="empty" id="facet-empty-fallback" hidden>{facet.emptyMessage}</p>
   )}
 
   {facilityGroups.length > 0 && (

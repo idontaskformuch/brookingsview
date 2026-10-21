@@ -19,7 +19,7 @@ import {
   getWeather, getActiveAlerts, getClosureWatchStatus, getActiveTrafficIncidents,
   getUpcomingStories, getUpcomingArtsEvents, getFacilities,
 } from '../lib/db';
-import { buildEventFeed, todayUtcMidnight, isTonight, isTomorrow, selectTodayBucket } from '../lib/events';
+import { buildEventFeed, todayUtcMidnight, selectBucketCandidates } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
@@ -41,8 +41,7 @@ const temperature = currentPeriod?.temp ?? null;
 
 const today = todayUtcMidnight(siteConfig.timezone);
 const { items } = buildEventFeed(upcomingEvents, artsEvents, siteConfig.timezone);
-const tonight = selectTodayBucket(items, today, siteConfig.timezone, isTonight, 5);
-const tomorrow = selectTodayBucket(items, today, siteConfig.timezone, isTomorrow, 3);
+const candidates = selectBucketCandidates(items, today, siteConfig.timezone);
 
 const canonicalUrl = new URL('/today/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('today', siteConfig, { label: 'Today', href: canonicalUrl });
@@ -54,7 +53,7 @@ const hubBacklink = resolveHubBacklink('today', siteConfig);
 ---
 
 <BaseLayout title={pageTitle} ogSlug="section-today"
-  description={`What's happening today in ${siteConfig.cityName}, ${siteConfig.stateAbbr} — active alerts, school status, traffic, and tonight's and tomorrow's events, updated every 6 hours.`}>
+  description={`What's happening today in ${siteConfig.cityName}, ${siteConfig.stateAbbr} — active alerts, school status, traffic, and tonight's and tomorrow's events.`}>
   <script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumbJsonLd)} />
   <Breadcrumbs trail={breadcrumbTrail} />
   <div class="lede">
@@ -72,8 +71,7 @@ const hubBacklink = resolveHubBacklink('today', siteConfig);
     traffic={trafficIncidents ? { incidents: trafficIncidents } : null}
     cityHallFacility={cityHallFacility}
     facilities={facilities}
-    tonight={tonight}
-    tomorrow={tomorrow}
+    candidates={candidates}
     headingLevel="h1"
     headingText={pageMeta.h1}
   />

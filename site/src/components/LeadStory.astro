@@ -57,6 +57,9 @@ const timeLabel = hasByline
 // despite db.ts's `string` type annotation; passed raw into
 // datetime={...}, that renders in the build machine's local timezone).
 const timeSource = hasByline ? story.published_at : when;
+// True when timeLabel came from relativeTime() ("just now", "this morning", ...) -- a
+// build-time guess that goes stale, so the layout's sweep script recomputes it live.
+const isRelativeLabel = hasByline ? Boolean(story.published_at) : Boolean(when) && !isMeeting && !isAlert;
 const timeMachineValue = timeSource ? new Date(timeSource).toISOString() : null;
 const kicker = isAlert ? 'Alert' : isMeeting ? 'City hall'
   : hasByline ? (CATEGORY_LABELS[story.source_type] ?? 'Feature') : 'Events';
@@ -72,11 +75,11 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
   categoryImages: categoryImagesFor(siteConfig.townId),
 });
 ---
-<article class="lead">
+<article class="lead" data-ends={isAlert ? (story.ends_at ?? undefined) : undefined}>
   <p class="lead__kicker">
     <span class="kicker">{kicker}</span>
     {timeLabel && timeMachineValue && (
-      <time class="lead__when data" datetime={timeMachineValue}>{timeLabel}</time>
+      <time class="lead__when data" datetime={timeMachineValue} data-rel={isRelativeLabel ? "1" : undefined} data-rel-end={isRelativeLabel ? (story.ends_at ?? undefined) : undefined} data-tz={siteConfig.timezone}>{timeLabel}</time>
     )}
     {isAiWritten && <span class="lead__ai-label">AI-written</span>}
     {isQuorumNotice && <span class="lead__notice-badge">Public notice</span>}

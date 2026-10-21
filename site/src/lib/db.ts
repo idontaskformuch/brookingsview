@@ -19,6 +19,7 @@
  */
 import { neon } from '@neondatabase/serverless';
 import { siteConfig } from './site-config';
+import { activeAlerts, isAlertActive } from './alerts';
 import { computeClosureWatchState, type ClosureWatchStatus, type WeatherAlert } from './closure-watch';
 import { SHARED_CONTENT_SOURCE_TYPES } from './cross-site-canonical';
 import { resolveCluster } from './clusters';
@@ -376,7 +377,7 @@ export async function getUpcomingStories(
  *  just gathers real, town-scoped candidates.
  */
 export async function getWorthKnowingCandidates(limit = 12): Promise<Story[]> {
-  return (await sql`
+  const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at,
            generated_by, byline, image_path, image_alt, rating, ingredients, instructions, featured
       FROM stories
@@ -398,6 +399,12 @@ export async function getWorthKnowingCandidates(limit = 12): Promise<Story[]> {
      ORDER BY featured DESC, occurs_at ASC NULLS LAST
      LIMIT ${limit}
   `) as Story[];
+  // Alert-type candidates must still be in force (same rule as every other
+  // alert surface) -- the 24 h occurs_at window above only bounds how old.
+  const live = new Map((await getActiveAlerts()).map((a) => [a.id, a]));
+  return rows
+    .filter((r) => r.source_type !== 'alert' || live.has(r.id))
+    .map((r) => (r.source_type === 'alert' ? { ...r, ends_at: live.get(r.id)!.ends_at } : r));
 }
 
 /** Candidates for the homepage "Latest from <site>" strip -- the site's
@@ -596,25 +603,50 @@ export async function getAllStories(): Promise<Story[]> {
 }
 
 /**
- * Varningar som fortfarande gäller.
+ * Varningar som fortfarande gäller -- den ENDA källan för alla varningsytor
+ * (statusremsa, Right Now, /today, startsidans lead, CityStatus).
  *
- * publish.py vägrar redan publicera inaktuella varningar, men den kör bara varje
- * timme -- en varning kan löpa ut mellan två körningar. Dubbelkollen här gör att
- * sajten aldrig visar en utgången varning, oavsett när bygget skedde.
+ * Slutregeln bor i lib/alerts.ts: events.ends_at, annars sluttid parsad ur
+ * texten (county_alert), annars 24 h efter start. Tidigare släpptes rader med
+ * ends_at NULL igenom i 14 dagar. Den returnerade storyn får sin upplösta
+ * sluttid i `ends_at` så att sidorna kan skriva ut den (data-ends) och dölja
+ * varningen i webbläsaren om den löper ut mellan två byggen.
  */
-export async function getActiveAlerts(): Promise<Story[]> {
-  return (await sql`
+export async function getActiveAlerts(now: Date = new Date()): Promise<Story[]> {
+  const rows = (await sql`
     SELECT s.id, s.title, s.slug, s.body, s.source_type, s.source_url,
            s.occurs_at, s.published_at, s.generated_by,
-           s.byline, s.image_path, s.rating, s.ingredients, s.instructions
+           s.byline, s.image_path, s.rating, s.ingredients, s.instructions,
+           e.ends_at AS event_ends_at, e.starts_at AS event_starts_at,
+           e.title AS raw_title, e.raw_data->>'body' AS raw_body,
+           e.source AS event_source, e.raw_data->>'category' AS event_category
       FROM stories s
       LEFT JOIN events e ON e.town_id = s.town_id AND s.slug = 'alert-' || e.id
      WHERE s.town_id = ${TOWN_ID}
        AND s.source_type = 'alert'
-       AND (e.ends_at IS NULL OR e.ends_at >= now())
-       AND s.occurs_at >= now() - interval '14 days'
+       AND s.occurs_at >= now() - interval '60 days'
      ORDER BY s.occurs_at DESC
-  `) as Story[];
+  `) as (Story & {
+    event_ends_at: string | null; event_starts_at: string | null;
+    raw_title: string | null; raw_body: string | null;
+    event_source: string | null; event_category: string | null;
+  })[];
+  const live = activeAlerts(
+    rows.map((row) => ({
+      row,
+      ends_at: row.event_ends_at,
+      starts_at: row.event_starts_at ?? row.occurs_at,
+      title: row.raw_title ?? row.title,
+      body: row.raw_body,
+      source: row.event_source,
+      category: row.event_category,
+    })),
+    now, siteConfig.timezone,
+  );
+  return live.map(({ row, endsAt }) => {
+    const { event_ends_at: _a, event_starts_at: _b, raw_title: _c, raw_body: _d, event_source: _e, event_category: _f, ...story } = row;
+    return { ...story, ends_at: endsAt.toISOString() } as Story;
+  });
 }
 
 /**
@@ -1297,10 +1329,14 @@ async function getActiveWeatherAlerts(relevantEvents: string[]): Promise<Weather
       FROM events
      WHERE town_id = ${TOWN_ID} AND source = 'nws_alert'
        AND title = ANY(${relevantEvents})
-       AND (ends_at IS NULL OR ends_at >= now())
+       AND starts_at >= now() - interval '60 days'
      ORDER BY starts_at DESC
   `) as { title: string; venue: string | null; url: string | null; starts_at: string; ends_at: string | null; raw_data: Record<string, unknown> | null }[];
-  return rows.map((r) => ({
+  // Same end rule as every other alert surface (lib/alerts.ts).
+  const now = new Date();
+  return rows
+    .filter((r) => isAlertActive({ ends_at: r.ends_at, starts_at: r.starts_at, title: r.title }, now, siteConfig.timezone))
+    .map((r) => ({
     event: r.title,
     areaDesc: r.venue,
     url: r.url,
@@ -2590,8 +2626,12 @@ export interface SignData {
   isDaytime: boolean;
   conditions: string | null;
   alert: string | null;
+  /** ISO end of `alert` (lib/alerts.ts) -- the browser hides the strip item once passed. */
+  alertEndsAt: string | null;
   nextGame: Game | null;
-  eventsToday: number;
+  /** Instants (not a count) -- "N events today" is computed in the browser from the
+   *  real clock, see BaseLayout's sign script and lib/local-day.ts. */
+  todayEvents: { start: string; end: string | null }[];
 }
 
 /** Datan till skyltremsan högst upp. En fråga per fält, körs vid build.
@@ -2613,13 +2653,14 @@ export async function getSignData(): Promise<SignData> {
     getActiveAlerts(),
     getUpcomingGames(1),
     sql`
-      SELECT count(*)::int AS n
+      SELECT occurs_at, ends_at
         FROM stories
        WHERE town_id = ${TOWN_ID}
          AND source_type = 'event'
          AND superseded_by_slug IS NULL
-         AND (occurs_at AT TIME ZONE ${siteConfig.timezone})::date = (now() AT TIME ZONE ${siteConfig.timezone})::date
-    ` as unknown as Promise<{ n: number }[]>,
+         AND occurs_at >= now() - interval '1 day'
+         AND occurs_at < now() + interval '3 days'
+    ` as unknown as Promise<{ occurs_at: string; ends_at: string | null }[]>,
   ]);
 
   const current = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
@@ -2630,8 +2671,12 @@ export async function getSignData(): Promise<SignData> {
     isDaytime: current?.is_daytime ?? true,
     conditions: current?.short ?? null,
     alert: alerts[0]?.title ?? null,
+    alertEndsAt: alerts[0]?.ends_at ?? null,
     nextGame: games[0] ?? null,
-    eventsToday: todayRows[0]?.n ?? 0,
+    todayEvents: todayRows.map((r) => ({
+      start: new Date(r.occurs_at).toISOString(),
+      end: r.ends_at ? new Date(r.ends_at).toISOString() : null,
+    })),
   };
 }
 

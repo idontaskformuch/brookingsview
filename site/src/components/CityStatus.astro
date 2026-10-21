@@ -32,7 +32,7 @@ const ctaLabel = `Full ${siteConfig.cityName} rundown →`;
 ---
 
 {modules.length > 0 && (
-  <section class="city-status" aria-label={`${siteConfig.cityName} right now`}>
+  <section class="city-status" aria-label={`${siteConfig.cityName} right now`} data-tz={siteConfig.timezone}>
     <div class="city-status__head">
       {/* Front-page orientation pass, Phase 3: "Right now" alone, not
           "<Town> Right Now" -- OrientationHeader already names the town
@@ -43,7 +43,9 @@ const ctaLabel = `Full ${siteConfig.cityName} rundown →`;
     </div>
     <ul class="city-status__list">
       {modules.map((mod) => (
-        <li class="city-status__item">
+        <li class="city-status__item" data-ends={mod.expiresAt}
+            hidden={mod.clientEvents ? true : undefined}
+            data-tonight-events={mod.clientEvents ? JSON.stringify(mod.clientEvents) : undefined}>
           {mod.href ? (
             <a class="city-status__link" href={mod.href}>
               <span class:list={['city-status__dot', `city-status__dot--${mod.tone}`]} aria-hidden="true"></span>
@@ -67,6 +69,23 @@ const ctaLabel = `Full ${siteConfig.cityName} rundown →`;
     <a class="city-status__cta" href="/today/">{ctaLabel}</a>
   </section>
 )}
+
+<script>
+  import { countTonight, type TimedEvent } from '../lib/local-day';
+  // "N events tonight" depends on the real clock, so it is computed here (town
+  // zone, ended events excluded), not at build time. Hidden until then.
+  const section = document.querySelector<HTMLElement>('.city-status');
+  const tz = section?.dataset.tz || 'America/Chicago';
+  document.querySelectorAll<HTMLElement>('[data-tonight-events]').forEach((li) => {
+    try {
+      const events = JSON.parse(li.dataset.tonightEvents || '[]') as TimedEvent[];
+      const n = countTonight(events, new Date(), tz);
+      const value = li.querySelector('.city-status__value');
+      if (value) value.textContent = n === 0 ? 'Nothing scheduled tonight' : `${n} event${n === 1 ? '' : 's'} tonight`;
+      li.hidden = false;
+    } catch { /* stay hidden */ }
+  });
+</script>
 
 <style>
   .city-status {

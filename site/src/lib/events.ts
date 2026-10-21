@@ -320,6 +320,20 @@ export function selectTodayBucket(
   return { items: matching.slice(0, limit), total: matching.length };
 }
 
+/** Every item starting on the build's local day or the next two (date-sorted
+ *  input stays sorted), capped at `limit`. The browser (lib/local-day.ts)
+ *  decides which of these are Tonight / Tomorrow at the moment of viewing --
+ *  three days so a page that is hours old still has tomorrow's events after
+ *  the town's midnight has passed. */
+export function selectBucketCandidates(
+  items: FeedItem[], today: Date, timezone: string, limit = 60,
+): FeedItem[] {
+  return items
+    .filter((item) => item.occurs_at && dayIndex(item.occurs_at, today, timezone) >= 0
+      && dayIndex(item.occurs_at, today, timezone) <= 2)
+    .slice(0, limit);
+}
+
 export interface EventFeedResult {
   items: FeedItem[];
   alsoListedBy: Map<FeedItem, string[]>;

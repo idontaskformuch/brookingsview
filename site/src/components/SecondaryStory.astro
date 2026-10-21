@@ -52,6 +52,9 @@ const timeLabel = hasByline
 // despite db.ts's `string` type annotation; passed raw into
 // datetime={...}, that renders in the build machine's local timezone).
 const timeSource = hasByline ? story.published_at : when;
+// True when timeLabel came from relativeTime() ("just now", "this morning", ...) -- a
+// build-time guess that goes stale, so the layout's sweep script recomputes it live.
+const isRelativeLabel = hasByline ? Boolean(story.published_at) : Boolean(when) && !isMeeting && !isAlert;
 const timeMachineValue = timeSource ? new Date(timeSource).toISOString() : null;
 // R4 (sitewide presentation-layer pass): see StoryCard.astro's identical
 // comment -- two or more of these sit side by side (unlike LeadStory,
@@ -71,7 +74,7 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
   categoryImages: categoryImagesFor(siteConfig.townId),
 });
 ---
-<article class="secondary">
+<article class="secondary" data-ends={isAlert ? (story.ends_at ?? undefined) : undefined}>
   {heroImage && (
     <a class="secondary__image-link" href={storyHref(story.slug)} tabindex="-1" aria-hidden="true">
       <img
@@ -90,7 +93,7 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
     <p class="secondary__kicker">
       {kicker && <span class="kicker">{kicker}</span>}
       {timeLabel && timeMachineValue && (
-        <time class="secondary__when data" datetime={timeMachineValue}>{timeLabel}</time>
+        <time class="secondary__when data" datetime={timeMachineValue} data-rel={isRelativeLabel ? "1" : undefined} data-rel-end={isRelativeLabel ? (story.ends_at ?? undefined) : undefined} data-tz={siteConfig.timezone}>{timeLabel}</time>
       )}
       {isAiWritten && <span class="secondary__ai-label">AI-written</span>}
       {isQuorumNotice && <span class="secondary__notice-badge">Public notice</span>}

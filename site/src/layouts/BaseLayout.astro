@@ -344,6 +344,9 @@ const footerGroups = FOOTER_GROUPS
 :root {
   /* Sitewide presentation-layer pass: retuned to a warmer, quieter neutral
      scale (was #f4f6f7/#14120f/#4d5862/#c9d3da) -- same editorial intent as
+  /* Expired time-limited items (see the data-ends sweep script) must vanish
+     even from elements whose own CSS sets display. */
+  [data-ends][hidden], [data-start][hidden], #sign-events-today[hidden] { display: none !important; }
      before, just closer to newsprint than to a UI grey. --ink-faint is new: a
      third text tier (timestamps, drive-time, captions) below --ink-soft
      (decks, venue lines, secondary copy). --paper-raised is a new alias for
@@ -691,6 +694,57 @@ main { padding-block: 1.75rem 3.5rem; }
         </a>
       ))}
       {moreNav.length > 0 && (
+    <script is:inline>
+      /* Time-limited items (alerts) carry data-ends=<ISO instant>. The page is
+         static and can be hours old, so hide anything whose end has passed. */
+      (function () {
+        function sweep() {
+          var now = Date.now();
+          document.querySelectorAll('[data-ends]').forEach(function (el) {
+            var t = Date.parse(el.getAttribute('data-ends'));
+            if (!isNaN(t) && t <= now) el.hidden = true;
+          });
+        }
+        sweep();
+        setInterval(sweep, 60000);
+      })();
+    </script>
+    <script>
+      import { relativeTime } from '../lib/time';
+      import { countToday, hasEnded, type TimedEvent } from '../lib/local-day';
+      // Containers marked data-hide-ended drop event cards (data-start/data-end)
+      // that have already finished -- a "Today" list must never show a passed event.
+      const pageTz = document.getElementById('sign-events-today')?.dataset.tz
+        || document.querySelector<HTMLElement>('[data-tz]')?.dataset.tz || 'America/Chicago';
+      document.querySelectorAll<HTMLElement>('[data-hide-ended]').forEach((box) => {
+        const cards = Array.from(box.querySelectorAll<HTMLElement>('[data-start]'));
+        cards.forEach((el) => {
+          if (hasEnded({ start: el.dataset.start || '', end: el.dataset.end || null }, new Date(), pageTz)) el.hidden = true;
+        });
+        const anyLeft = cards.some((el) => !el.hidden);
+        if (cards.length > 0 && !anyLeft) {
+          if (box.hasAttribute('data-hide-when-empty')) box.hidden = true;
+          const fb = document.getElementById('facet-empty-fallback');
+          if (fb) { fb.hidden = false; box.hidden = true; }
+        }
+      });
+      const signEl = document.getElementById('sign-events-today');
+      if (signEl) {
+        try {
+          const n = countToday(JSON.parse(signEl.dataset.events || '[]') as TimedEvent[], new Date(), signEl.dataset.tz || 'America/Chicago');
+          if (n > 0) { signEl.textContent = `${n} ${n === 1 ? 'event' : 'events'} today`; signEl.hidden = false; }
+        } catch { /* stay hidden */ }
+      }
+      /* Build-time relative labels ("just now", "this morning") go stale on a
+         static page; recompute them from the real clock in the town's zone. */
+      document.querySelectorAll<HTMLTimeElement>('time[data-rel]').forEach((el) => {
+        const when = el.getAttribute('datetime');
+        if (!when) return;
+        try {
+          el.textContent = relativeTime(when, new Date(), el.dataset.tz || 'America/Chicago', el.dataset.relEnd || null);
+        } catch { /* keep the build-time text */ }
+      });
+    </script>
         <details class="nav__more" open={activeInMore || undefined}>
           <summary aria-current={activeInMore ? 'page' : undefined}>More</summary>
           <div class="nav__more-panel">
@@ -713,9 +767,10 @@ main { padding-block: 1.75rem 3.5rem; }
         {sign.isDaytime ? 'High' : 'Low'}&nbsp;{Math.round(sign.temp)}&deg;{sign.unit}{sign.conditions && <>&nbsp;{sign.conditions.toLowerCase()}</>}
       </span>
     )}
-    {sign.alert && <span class="sign__item sign__item--alert">{sign.alert}</span>}
-    {sign.eventsToday > 0 && (
-      <span class="sign__item">{sign.eventsToday} {sign.eventsToday === 1 ? 'event' : 'events'} today</span>
+    {sign.alert && <span class="sign__item sign__item--alert" data-ends={sign.alertEndsAt ?? undefined}>{sign.alert}</span>}
+    {sign.todayEvents.length > 0 && (
+      <span class="sign__item" id="sign-events-today" hidden data-tz={siteConfig.timezone}
+        data-events={JSON.stringify(sign.todayEvents)}></span>
     )}
     {sign.nextGame?.starts_at && (
       <span class="sign__item">
