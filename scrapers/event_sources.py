@@ -205,6 +205,50 @@ def _parse_ical(source_name: str, ics_bytes: bytes, tzname: str) -> list[dict]:
     return records
 
 
+# CivicPlus / CivicEngage city calendars (e.g. broomfield.org, which publishes one
+# iCal feed per calendar category at /common/modules/iCalendar/iCalendar.aspx?
+# catID=N&feed=calendar -- robots.txt allows /common/modules/ and only forbids
+# /RSS.aspx, which is never fetched). Two properties make the generic "ical" kind
+# unfit as-is:
+#   * most categories are GOVERNANCE calendars (council, boards, commissions,
+#     hearings), not public events -- only public events may be published, so
+#     meeting-type titles are dropped here;
+#   * LOCATION carries HTML (a <p><a href=google-maps>... block) and the event's own
+#     page link sits in DESCRIPTION as a bare URL rather than in URL.
+# Everything else (floating-time localisation, text sanity, content_hash keyed on
+# the feed's own UID) is the shared _parse_ical().
+_NON_EVENT_TITLE_RE = re.compile(
+    r"\b(meeting|hearing|study session|work session|special session|board|commission|committee|council|"
+    r"trustees|public notice|notice of|agenda|executive session)\b",
+    re.IGNORECASE,
+)
+_TAG_RE = re.compile(r"<[^>]+>")
+_URL_ONLY_RE = re.compile(r"^https?://\S+$")
+
+
+def _strip_html(text: str) -> str:
+    import html as _html
+    return " ".join(_html.unescape(_TAG_RE.sub(" ", text)).split())
+
+
+def _parse_ical_civicplus(source_name: str, ics_bytes: bytes, tzname: str) -> list[dict]:
+    out = []
+    for rec in _parse_ical(source_name, ics_bytes, tzname):
+        if _NON_EVENT_TITLE_RE.search(rec["title"]):
+            print(f"    [events:{source_name}] hoppar över styrelse-/mötespost: {rec['title'][:70]!r}")
+            continue
+        venue = rec.get("venue")
+        if venue and "<" in venue:
+            venue = _strip_html(venue) or None
+        rec["venue"] = venue
+        desc = ((rec.get("raw_data") or {}).get("description") or "").strip()
+        if not rec.get("url") and _URL_ONLY_RE.match(desc):
+            rec["url"] = desc
+            rec["raw_data"]["description"] = None
+        out.append(rec)
+    return out
+
+
 # ChamberMaster/GrowthZone (Brookings Area Chamber of Commerce, verified live
 # 2026-09-05) publishes no bulk feed -- only a paginated HTML calendar-grid
 # listing (source_cfg["listing_url"], e.g. .../events/Search) and a real
@@ -308,5 +352,6 @@ class EventSourceKind:
 # kind with a real, working fetch+parse implementation belongs here.
 EVENT_SOURCE_KINDS: dict[str, EventSourceKind] = {
     "ical": EventSourceKind(fetch=_fetch_ical, parse=_parse_ical),
+    "ical_civicplus": EventSourceKind(fetch=_fetch_ical, parse=_parse_ical_civicplus),
     "html_listing_ics": EventSourceKind(fetch=_fetch_html_listing_ical, parse=_parse_html_listing_ical),
 }

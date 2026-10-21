@@ -9,7 +9,7 @@ from datetime import datetime
 
 from scrapers.event_sources import (
     EVENT_SOURCE_KINDS, _BAD_REFRESH_PROPS, _BLOB_SEPARATOR, _decode_ics,
-    _extract_event_slugs, _parse_html_listing_ical, _parse_ical,
+    _extract_event_slugs, _parse_html_listing_ical, _parse_ical, _parse_ical_civicplus,
 )
 
 
@@ -24,7 +24,7 @@ def _vevent(uid: str, title: str, dtstart: str = "20260101T100000Z") -> str:
 def test_registry_has_ical_and_html_listing_ics_kinds():
     # "blocked"/"unconfirmed" are inert markers handled in events.py before
     # the registry is even consulted -- see event_sources.py's own comment.
-    assert set(EVENT_SOURCE_KINDS) == {"ical", "html_listing_ics"}
+    assert set(EVENT_SOURCE_KINDS) == {"ical", "ical_civicplus", "html_listing_ics"}
 
 
 def test_decode_ics_prefers_utf8():
@@ -330,3 +330,43 @@ def test_html_listing_ical_survives_outer_events_py_wrapping_roundtrip():
     assert reconstructed["chamber_business"] == inner_combined
     records = _parse_html_listing_ical("chamber_business", reconstructed["chamber_business"], "America/Chicago")
     assert sorted(r["title"] for r in records) == ["Event A", "Event B"]
+
+
+# --- ical_civicplus (broomfield.org city calendar feeds) -------------------------
+
+def _civicplus_vevent(uid, title, location="", description="", dtstart="20261114T100000"):
+    loc = f"LOCATION:{location}\r\n" if location else ""
+    desc = f"DESCRIPTION:{description}\r\n" if description else ""
+    return f"BEGIN:VEVENT\r\nUID:{uid}\r\nSUMMARY:{title}\r\nDTSTART:{dtstart}\r\n{loc}{desc}END:VEVENT\r\n"
+
+
+def test_civicplus_keeps_public_events_and_drops_governance_meetings():
+    ics = _ics(
+        _civicplus_vevent("1", "Holiday Cheer Tree Lighting")
+        + _civicplus_vevent("2", "Arts\\, History and Cultural Council Meeting - 6:30 p.m.")
+        + _civicplus_vevent("3", "Building Corporation Meeting - 5:15 p.m.")
+        + _civicplus_vevent("4", "Library Advisory Board")
+        + _civicplus_vevent("5", "Planning Commission Public Hearing")
+        + _civicplus_vevent("6", "Broomfield Out Loud: Storytelling Night"),
+    )
+    titles = [r["title"] for r in _parse_ical_civicplus("city_out_loud", ics, "America/Denver")]
+    assert titles == ["Holiday Cheer Tree Lighting", "Broomfield Out Loud: Storytelling Night"]
+
+
+def test_civicplus_strips_html_from_location_and_lifts_description_url():
+    loc = '<p><a href="https://www.google.com/maps/place/3+Community+Park+Rd">3 Community Park Road</a></p>'
+    ics = _ics(_civicplus_vevent("9", "Holiday Cheer", location=loc,
+                                 description="https://www.broomfield.org/calendar.aspx?EID=11038"))
+    (rec,) = _parse_ical_civicplus("city_holiday_cheer", ics, "America/Denver")
+    assert rec["venue"] == "3 Community Park Road"
+    assert "<" not in rec["venue"]
+    assert rec["url"] == "https://www.broomfield.org/calendar.aspx?EID=11038"
+    assert rec["raw_data"]["description"] is None            # a bare link is not a description
+    assert rec["source"] == "city_holiday_cheer"
+    assert rec["starts_at"].startswith("2026-11-14T10:00:00-07:00")   # floating time = town wall clock
+
+
+def test_civicplus_identity_is_the_feeds_own_uid():
+    a = _parse_ical_civicplus("s", _ics(_civicplus_vevent("U1", "Holiday Cheer", dtstart="20261114T100000")), "America/Denver")[0]
+    b = _parse_ical_civicplus("s", _ics(_civicplus_vevent("U1", "Holiday Cheer", dtstart="20261115T110000")), "America/Denver")[0]
+    assert a["content_hash"] == b["content_hash"]

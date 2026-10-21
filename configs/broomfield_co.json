@@ -119,6 +119,30 @@
       "_enabled_note": "Set back to false 2026-10-08 (owner decision, post-2d review): all three known sources are now documented dead ends (see each one's own _note below) -- no scheduled job will fetch any of them while this stays false (scrapers/runner.py's own run loop skips a disabled data_sources entry before ever consulting its sources[]). Broomfield gets zero events until a real one is found. Flipping this back to true alone is NOT enough to resume scraping -- the 'chamber' source below must also have its kind changed back from 'blocked' to 'ical' first.",
       "sources": [
         {
+          "name": "city_out_loud",
+          "kind": "ical_civicplus",
+          "url": "https://www.broomfield.org/common/modules/iCalendar/iCalendar.aspx?feed=calendar&catID=65",
+          "_note": "City and County of Broomfield's own CivicEngage calendar (broomfield.org), one iCal feed per calendar category. APPROVED by the owner 2026-10-21. robots.txt (checked 2026-10-21) allows /common/modules/ and forbids only /RSS.aspx, which is NEVER fetched; no terms of use restrict the calendar beyond 'All content (c) City and County of Broomfield, all rights reserved' -- so only facts (title, date, time, place) plus our own short summary go through the normal rewrite/originality guardrails, every listing links back to the city's calendar page as its source, and the feed is fetched at most once a day (refresh_minutes 1440). Only PUBLIC EVENT categories are listed here: the other ~20 feeds are boards/commissions/council meetings (not events) and the ical_civicplus kind drops meeting-type titles anyway. Categories checked 2026-10-21: 65/66/73/77 were empty (seasonal), 68 and 79 held only board meetings. -- calendar category 65, 'Broomfield Out Loud'."
+        },
+        {
+          "name": "city_out_loud_create",
+          "kind": "ical_civicplus",
+          "url": "https://www.broomfield.org/common/modules/iCalendar/iCalendar.aspx?feed=calendar&catID=66",
+          "_note": "City and County of Broomfield's own CivicEngage calendar (broomfield.org), one iCal feed per calendar category. APPROVED by the owner 2026-10-21. robots.txt (checked 2026-10-21) allows /common/modules/ and forbids only /RSS.aspx, which is NEVER fetched; no terms of use restrict the calendar beyond 'All content (c) City and County of Broomfield, all rights reserved' -- so only facts (title, date, time, place) plus our own short summary go through the normal rewrite/originality guardrails, every listing links back to the city's calendar page as its source, and the feed is fetched at most once a day (refresh_minutes 1440). Only PUBLIC EVENT categories are listed here: the other ~20 feeds are boards/commissions/council meetings (not events) and the ical_civicplus kind drops meeting-type titles anyway. Categories checked 2026-10-21: 65/66/73/77 were empty (seasonal), 68 and 79 held only board meetings. -- calendar category 66, 'Broomfield Outloud: Create'."
+        },
+        {
+          "name": "city_holiday_cheer",
+          "kind": "ical_civicplus",
+          "url": "https://www.broomfield.org/common/modules/iCalendar/iCalendar.aspx?feed=calendar&catID=73",
+          "_note": "City and County of Broomfield's own CivicEngage calendar (broomfield.org), one iCal feed per calendar category. APPROVED by the owner 2026-10-21. robots.txt (checked 2026-10-21) allows /common/modules/ and forbids only /RSS.aspx, which is NEVER fetched; no terms of use restrict the calendar beyond 'All content (c) City and County of Broomfield, all rights reserved' -- so only facts (title, date, time, place) plus our own short summary go through the normal rewrite/originality guardrails, every listing links back to the city's calendar page as its source, and the feed is fetched at most once a day (refresh_minutes 1440). Only PUBLIC EVENT categories are listed here: the other ~20 feeds are boards/commissions/council meetings (not events) and the ical_civicplus kind drops meeting-type titles anyway. Categories checked 2026-10-21: 65/66/73/77 were empty (seasonal), 68 and 79 held only board meetings. -- calendar category 73, 'Holiday Cheer'."
+        },
+        {
+          "name": "city_waste_recycling",
+          "kind": "ical_civicplus",
+          "url": "https://www.broomfield.org/common/modules/iCalendar/iCalendar.aspx?feed=calendar&catID=77",
+          "_note": "City and County of Broomfield's own CivicEngage calendar (broomfield.org), one iCal feed per calendar category. APPROVED by the owner 2026-10-21. robots.txt (checked 2026-10-21) allows /common/modules/ and forbids only /RSS.aspx, which is NEVER fetched; no terms of use restrict the calendar beyond 'All content (c) City and County of Broomfield, all rights reserved' -- so only facts (title, date, time, place) plus our own short summary go through the normal rewrite/originality guardrails, every listing links back to the city's calendar page as its source, and the feed is fetched at most once a day (refresh_minutes 1440). Only PUBLIC EVENT categories are listed here: the other ~20 feeds are boards/commissions/council meetings (not events) and the ical_civicplus kind drops meeting-type titles anyway. Categories checked 2026-10-21: 65/66/73/77 were empty (seasonal), 68 and 79 held only board meetings. -- calendar category 77, 'Waste and Recycling'."
+        },
+        {
           "name": "webtrac",
           "kind": "blocked",
           "url": "https://cobroomfieldweb.myvscloud.com/webtrac/web/",

@@ -1,6 +1,7 @@
 ---
 /** Enskild story. Varje sida länkar tillbaka till sin primärkälla -- det är både
  *  hederligt mot läsaren och det som gör E-E-A-T-anspråket på metodsidan sant. */
+import { sourceCreditName } from '../../lib/source-credit';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ShareButtons from '../../components/ShareButtons.astro';
 import RelatedStories from '../../components/RelatedStories.astro';
@@ -579,7 +580,7 @@ const eventJsonLdObject = buildEventJsonLd(
     <footer class="story__source">
       {story.source_url && !isSandboxUrl(story.source_url) ? (
         <p>
-          Source: <a href={story.source_url} rel="noopener">the original agenda or listing</a>.
+          Source: {sourceCreditName(story.source_url) && <>{sourceCreditName(story.source_url)} — </>}<a href={story.source_url} rel="noopener">the original {sourceCreditName(story.source_url) ? 'listing' : 'agenda or listing'}</a>.
           Read it if you need the full detail — this summary is deliberately short.
         </p>
       ) : (
