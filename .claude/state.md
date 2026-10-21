@@ -66,10 +66,13 @@ ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med
 4) mån 26 okt VAL FAS 2 (2a-inventering först, rapportera innan kod).
 1. NAV FAS 1: KLAR för alla tre städer + committad lokalt (EJ pushad). Push-beslut (ägaren 2026-10-21): kontrastfix + nav + /vote pushas i ETT svep fre 23 okt
    när /vote är klar (en omcrawlning). Konfig godkänd: Brookings (båda antaganden), Moreno tabs today/events/whatson/cityhall/traffic/facilities/workplace
-   (Home sales i Work & Home), Broomfield tabs today/cityhall/facilities/whatson/traffic/jobs (6 st; SJUNDE FLIKEN VÄNTAR på ägarens val: events/workplace/vail/weather;
-   obs Search Console: Broomfield rankar på "civil reference"). Gamla headern + MORE-koden borttagna; `nav` är obligatorisk i SiteConfig. Spec: .claude/spec-section-nav.md.
+   (Home sales i Work & Home), Broomfield tabs today/cityhall/facilities/whatson/traffic/jobs (6 flikar, BESLUTAT: behåll sex). Gamla headern + MORE-koden borttagna; `nav` är obligatorisk i SiteConfig. Spec: .claude/spec-section-nav.md.
    Fas 2 (sammanslagning) = bara granskning, ingen kod. Glasgow: samtycke v1 = egen opt-in-banner, GA4 först efter ja, inga annonser; Google CMP när AdSense blir aktuellt;
    Glasgow-raden i live-DB godkänd när skelettet är klart.
+   FÖRE FREDAGENS PUSH (ägaren 2026-10-21), ska göras i samma push som nav:
+   a) Kör 360 px- och UI-testet (navcheck: en rad, ingen sidscroll, All synlig, sheet stänger på alla sätt, fokus, axe ljust/mörkt) även mot Moreno och Broomfield.
+   b) /vail-resorts/ (Broomfield) visar Vail Resorts teasers ORDAGRANT. Kontrollerat 2026-10-21: live-sidan är INDEXERBAR (ingen noindex, ligger i sitemap-0.xml).
+      Åtgärd: sätt noindex direkt (och ta bort ur sitemap, annars bryter sitemap/noindex-kontrollen) + föreslå för ägaren om sidan bara ska visa rubrik + länk.
 2. VAL FAS 1 (/vote, alla tre städer, klar fre 23 okt): .claude/specs/election-2026.md. Hårda regler: ingen AI-text, endast officiella källor,
    käll-URL per datum/adress (bygget failar annars), fail closed. COMMITTA INGET förrän ägaren säger till (gäller valarbetet).
 3. GLASGOW (helgen 24-25 okt): .claude/specs/glasgow-loop.md. Fas 0 (rapport docs/uk-audit.md, stanna) -> fas 1 (landsprofil, US byte-identiska) ->
