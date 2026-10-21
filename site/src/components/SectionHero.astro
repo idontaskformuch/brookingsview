@@ -14,8 +14,8 @@ import { thisWeekImagesFor } from '../config/this-week-images';
 import { siteConfig } from '../lib/site-config';
 import ImageAttribution from './ImageAttribution.astro';
 
-interface Props { section: HeroSection; }
-const { section } = Astro.props;
+interface Props { section: HeroSection; /** A shorter hero for pages where the content must start near the top (/today). */ compact?: boolean; }
+const { section, compact = false } = Astro.props;
 
 const now = new Date();
 const week = weekInfoForInstant(now, siteConfig.timezone);
@@ -29,7 +29,7 @@ const { image } = getSectionHero(siteConfig.townId, section, now, {
 });
 ---
 <img
-  class="section-hero"
+  class:list={['section-hero', { 'section-hero--compact': compact }]}
   src={image.path}
   alt={image.alt}
   width={image.width}
@@ -48,5 +48,13 @@ const { image } = getSectionHero(siteConfig.townId, section, now, {
   object-fit: cover;
   border-radius: 0.375rem;
   margin: 0 0 1.25rem;
+}
+.section-hero--compact { max-height: 14rem; }
+/* On a phone the hero must never push the page content off the first screen:
+   at most about a third of the viewport height (svh = small viewport, so the
+   browser toolbar does not change it), a fifth for the compact /today one. */
+@media (max-width: 640px) {
+  .section-hero { max-height: 32vh; max-height: 32svh; }
+  .section-hero--compact { max-height: 20vh; max-height: 20svh; }
 }
 </style>
