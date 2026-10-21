@@ -9,7 +9,7 @@ const BROOMFIELD: NavGate = { townId: 'broomfield_co', hasWhatsOn: true, hasWork
 const BROOKINGS_NAV: NavConfig = {
   tabs: ['today', 'events', 'university', 'jacks', 'cityhall', 'traffic', 'jobs'],
   groups: {
-    Now: ['today', 'events', 'whatson', 'thisweek', 'weather'],
+    Now: ['today', 'events', 'whatson', 'thisweek', 'weather', 'vote'],
     Campus: ['university', 'jacks'],
     City: ['cityhall', 'traffic', 'closures', 'facilities'],
     More: ['jobs', 'play', 'farm'],
@@ -19,11 +19,11 @@ const BROOKINGS_NAV: NavConfig = {
 describe('registry == the old nav array (footer links must not change)', () => {
   const hrefs = (c: NavGate) => enabledSections(c).map((s) => s.href);
   it('Brookings', () => expect(hrefs(BROOKINGS)).toEqual(['/today/', '/this-week/', '/events/', '/whats-on/', '/university/', '/jackrabbits/', '/play/',
-    '/city-hall/', '/closures/', '/facilities/', '/farm-report/', '/traffic/', '/jobs/', '/weather/']));
+    '/city-hall/', '/closures/', '/facilities/', '/farm-report/', '/traffic/', '/jobs/', '/weather/', '/vote/']));
   it('Moreno Valley', () => expect(hrefs(MORENO)).toEqual(['/today/', '/this-week/', '/events/', '/whats-on/', '/burro-bonanza/', '/city-hall/', '/closures/',
-    '/facilities/', '/home-sales/', '/month/', '/sports/', '/workplace-watch/', '/traffic/', '/jobs/', '/weather/']));
+    '/facilities/', '/home-sales/', '/month/', '/sports/', '/workplace-watch/', '/traffic/', '/jobs/', '/weather/', '/vote/']));
   it('Broomfield', () => expect(hrefs(BROOMFIELD)).toEqual(['/today/', '/this-week/', '/events/', '/whats-on/', '/city-hall/', '/facilities/',
-    '/workplace-watch/', '/vail-resorts/', '/traffic/', '/jobs/', '/weather/']));
+    '/workplace-watch/', '/vail-resorts/', '/traffic/', '/jobs/', '/weather/', '/vote/']));
   it('footer labels keep their old capitalisation', () => {
     const l = enabledSections(BROOKINGS).map((s) => s.label);
     expect(l).toContain('City hall');

@@ -83,7 +83,9 @@ ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med
    AVVIKELSER MOT SPECEN: Broomfield postade valsedlar 2 okt (broomfield.org), ej 9 okt. voteinfo.net ligger bakom Cloudflare-utmaning (ej kringgått) -> Moreno-datum
    från rivco.gov + ROV:s vote center-PDF; spec-URL node/1276 ej läst/citerad. Brookings: ingen kontestlista publicerad av countyt, inga drop boxes (ej officiellt belagt),
    öppen fråga om kommunala nov-val OBESVARAD (ej belagd, publiceras ej). Moreno registreringsdeadline ej officiellt belagd -> utelämnad.
-   KVAR Fas 1: CityStatus-modul 'election', nav-länk "Election 2026", RelatedContent från /city-hall + /events, IndexNow vid publicering (kräver push), pytest+fullt batteri före push.
+   STEG 2 KLAR (lokal commit): CityStatus-modul 'election' ("Election Day: Tue Nov 3 · How to vote", null dagen efter), nav-sektion 'vote' ("Election 2026", footer "How to vote",
+   i All-sheet-gruppen Now, EJ som tab), RelatedContent 'How to vote' först på /city-hall + /events t.o.m. valdagen. Stänga av: election.enabled=false + ta bort 'vote' ur nav-groups (bygget säger till).
+   KVAR Fas 1: fullt batteri (bygge x3, pytest, sitemap-kontroll) efter steg 2, IndexNow vid publicering (kräver push), ägarens genomgång av avvikelserna ovan.
 3. GLASGOW (helgen 24-25 okt): .claude/specs/glasgow-loop.md. Fas 0 (rapport docs/uk-audit.md, stanna) -> fas 1 (landsprofil, US byte-identiska) ->
    fas 2 (skelett) -> snabbaste källor: Ticketmaster GB, Adzuna gb, Met Office (när nyckel finns), kommunens möten. Mål: scrapers igång och data
    samlas från dag ett; noindex av när första riktiga datan flödar. COMMITTA INGET förrän ägaren säger till. Inga referenser till ägarens arbetsgivare.

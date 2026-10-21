@@ -165,3 +165,20 @@ export const NOINDEX_AFTER_DAYS = 30;
 export function isPastNoindexWindow(today: string, electionDate: string): boolean {
   return daysBetween(electionDate, today) > NOINDEX_AFTER_DAYS;
 }
+
+/** CityStatus row: "Election Day: Tue Nov 3 · How to vote" until the end of Election Day, null after
+ *  (null-means-omit; the results line is phase 2). `expiresAt` makes the browser drop the row once the
+ *  day is over even if the page was built earlier: next day 12:00 UTC is 4-8 a.m. in the US towns. */
+export function buildElectionStatus(
+  electionDate: string, timezone: string, now: Date = new Date(),
+): { value: string; asOf: Date; expiresAt: string } | null {
+  const today = todayIn(timezone, now);
+  if (daysBetween(today, electionDate) < 0) return null;
+  const [y, m, d] = electionDate.split('-').map(Number);
+  const short = formatYmd(electionDate).replace(/^(\w{3})\w*, (\w{3})\w* (\d+)$/, '$1 $2 $3');
+  return {
+    value: `Election Day: ${short} · How to vote`,
+    asOf: now,
+    expiresAt: new Date(Date.UTC(y, m - 1, d + 1, 12)).toISOString(),
+  };
+}

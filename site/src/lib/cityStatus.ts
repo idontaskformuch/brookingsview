@@ -48,6 +48,8 @@ import { getTicketmasterEventsForTown, distanceLabel, type TicketmasterFeedItem 
 import { rankTicketmasterEvents, collapseMarqueeRuns } from './whats-on';
 import { joinWithOr } from './status-line';
 import { storyHref } from './content-slugs';
+import { ELECTION_BY_TOWN } from '../config/election';
+import { buildElectionStatus } from './election';
 
 export type StatusTone = 'quiet' | 'notice' | 'alert';
 
@@ -84,6 +86,7 @@ const ICONS: Record<string, string> = {
   worker_pulse: 'heat',
   university: 'athletics',
   whats_on: 'ticket',
+  election: 'vote',
 };
 
 const CLOSURE_LABEL: Record<'confirmed' | 'watch' | 'clear', string> = {
@@ -264,6 +267,14 @@ async function resolveWhatsOn(): Promise<CityStatusModule | null> {
   return buildWhatsOnStatus(items, siteConfig);
 }
 
+async function resolveElection(): Promise<CityStatusModule | null> {
+  const cfg = ELECTION_BY_TOWN[siteConfig.townId];
+  if (!cfg?.enabled) return null;
+  const built = buildElectionStatus(cfg.election_date, siteConfig.timezone);
+  if (!built) return null;
+  return { id: 'election', icon: ICONS.election, label: 'Election', tone: 'notice', href: '/vote/', ...built };
+}
+
 // Always rendered: their quiet state is still informative (handoff's own
 // "Visibility rules"). `university`/`next_meeting` weren't explicitly
 // classified in the handoff's Always/Conditional split -- both follow the
@@ -305,6 +316,8 @@ const MODULES: Record<string, ModuleDef> = {
   // every other module, even though only an ALWAYS_RENDERED id actually
   // has it enforced by validateStatusModules().
   whats_on: { resolve: resolveWhatsOn, hasSource: (cfg) => !!cfg.hasWhatsOn },
+  // Election 2026 (/vote): not ALWAYS_RENDERED -- null outside the window, rendered as a normal row.
+  election: { resolve: resolveElection, hasSource: (cfg) => !!ELECTION_BY_TOWN[cfg.townId]?.enabled },
 };
 
 /** Validates a town's `statusModules` config against real capability --

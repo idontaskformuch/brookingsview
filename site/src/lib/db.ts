@@ -26,6 +26,8 @@ import { SHARED_CONTENT_SOURCE_TYPES } from './cross-site-canonical';
 import { resolveCluster } from './clusters';
 import { storyHref } from './content-slugs';
 import { calendarDayDiff } from './time';
+import { ELECTION_BY_TOWN } from '../config/election';
+import { daysBetween, todayIn } from './election';
 import { calendarDateParts } from './calendar-date';
 import { selectThisWeekImage, type Season } from './this-week-images';
 import type { ThisWeekImage } from '../config/this-week-images';
@@ -1226,6 +1228,12 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
   const merged: RelatedItem[] = priorityItems.map((p) => items.find((i) => i.href === p.href) ?? p);
   for (const item of items) {
     if (!priorityHrefs.has(item.href)) merged.push(item);
+  }
+  // Election 2026 (/vote): linked from city hall and events until the election is over (static, no copy of its content).
+  const election = ELECTION_BY_TOWN[siteConfig.townId];
+  if ((pageType === 'city_hall' || pageType === 'events') && election?.enabled
+      && daysBetween(todayIn(siteConfig.timezone), election.election_date) >= 0) {
+    merged.unshift({ href: '/vote/', title: 'How to vote', kicker: 'Election 2026', description: 'Key dates, where to vote and what is on the ballot, from official sources.' });
   }
   return merged;
 }

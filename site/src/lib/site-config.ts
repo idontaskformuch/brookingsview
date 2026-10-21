@@ -360,7 +360,7 @@ const CITIES: Record<string, SiteConfig> = {
     nav: {
       tabs: ['today', 'events', 'university', 'jacks', 'cityhall', 'traffic', 'jobs'],
       groups: {
-        Now: ['today', 'events', 'whatson', 'thisweek', 'weather'],
+        Now: ['today', 'events', 'whatson', 'thisweek', 'weather', 'vote'],
         Campus: ['university', 'jacks'],
         City: ['cityhall', 'traffic', 'closures', 'facilities'],
         More: ['jobs', 'play', 'farm'],
@@ -392,7 +392,7 @@ const CITIES: Record<string, SiteConfig> = {
     // convention as hasWhatsOn itself -- safe with hasWhatsOn:false above
     // since that module isn't ALWAYS_RENDERED (see cityStatus.ts's own
     // MODULES comment), so validateStatusModules() never throws over it.
-    statusModules: ['weather', 'alerts', 'closures', 'events_today', 'next_meeting', 'university', 'whats_on'],
+    statusModules: ['weather', 'alerts', 'closures', 'events_today', 'next_meeting', 'university', 'whats_on', 'election'],
     closureWatch: {
       relevantAlertEvents: [
         'Winter Storm Warning', 'Blizzard Warning', 'Ice Storm Warning',
@@ -463,7 +463,7 @@ const CITIES: Record<string, SiteConfig> = {
     nav: {
       tabs: ['today', 'events', 'whatson', 'cityhall', 'traffic', 'facilities', 'workplace'],
       groups: {
-        Now: ['today', 'events', 'whatson', 'thisweek', 'weather'],
+        Now: ['today', 'events', 'whatson', 'thisweek', 'weather', 'vote'],
         City: ['cityhall', 'traffic', 'closures', 'facilities'],
         'Work & Home': ['workplace', 'homesales', 'jobs'],
         More: ['sports', 'play', 'month'],
@@ -533,7 +533,7 @@ const CITIES: Record<string, SiteConfig> = {
     // own MODULES comment for why it's safe to list even while hasWhatsOn
     // was false (not ALWAYS_RENDERED), same reasoning that already applied
     // to Brookings in Phase 6a.
-    statusModules: ['weather', 'alerts', 'traffic', 'closures', 'events_today', 'next_meeting', 'worker_pulse', 'whats_on'],
+    statusModules: ['weather', 'alerts', 'traffic', 'closures', 'events_today', 'next_meeting', 'worker_pulse', 'whats_on', 'election'],
     closureWatch: {
       relevantAlertEvents: ['Red Flag Warning', 'Fire Weather Watch', 'Air Quality Alert'],
       // Measured 2026-08-28 against real scrape history: Air Quality Alert
@@ -623,7 +623,7 @@ const CITIES: Record<string, SiteConfig> = {
     nav: {
       tabs: ['today', 'cityhall', 'facilities', 'whatson', 'traffic', 'jobs'],
       groups: {
-        Now: ['today', 'whatson', 'events', 'thisweek', 'weather'],
+        Now: ['today', 'whatson', 'events', 'thisweek', 'weather', 'vote'],
         City: ['cityhall', 'traffic', 'facilities'],
         Community: ['workplace', 'jobs'],
         More: ['vail'],
@@ -660,7 +660,7 @@ const CITIES: Record<string, SiteConfig> = {
     hasWhatsOn: true,
     // 'whats_on' added alongside the enable above -- see Moreno Valley's
     // identical comment just above for why.
-    statusModules: ['weather', 'alerts', 'traffic', 'next_meeting', 'whats_on'],
+    statusModules: ['weather', 'alerts', 'traffic', 'next_meeting', 'whats_on', 'election'],
     // Local Accent Identity, Broomfield-first rollout. A muted Front Range
     // slate-teal (H185) -- deliberately not green (avoids reading as an
     // interpretation of Vail Resorts' own branding, which this town's

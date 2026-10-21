@@ -110,3 +110,16 @@ describe('election date helpers', () => {
     expect(isPastNoindexWindow('2026-12-04', '2026-11-03')).toBe(true);
   });
 });
+
+import { buildElectionStatus } from './election';
+describe('CityStatus election row', () => {
+  it('shows "Election Day: Tue Nov 3 · How to vote" before and on Election Day', () => {
+    const r = buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-10-21T18:00:00Z'));
+    expect(r?.value).toBe('Election Day: Tue Nov 3 · How to vote');
+    expect(r?.expiresAt).toBe('2026-11-04T12:00:00.000Z');
+    expect(buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-11-03T20:00:00Z'))).not.toBeNull();
+  });
+  it('is omitted (null) the day after', () => {
+    expect(buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-11-04T18:00:00Z'))).toBeNull();
+  });
+});
