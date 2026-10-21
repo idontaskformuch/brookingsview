@@ -7,6 +7,13 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 - NÄSTA (ägaren 2026-10-21, går före Kö 9 Steg 2, Glasgow och Q2): VAL FAS 2, deadline 2 nov. Beslut: Kö 4 + .claude/election-2a-inventory.md.
   Broomfield via Clarity, SD via XLSX, Moreno bara länk (ROV-mejl skickas av ägaren), Worker-JSON utan rebuilds, torrtest mot junivalen.
   Commit lokalt per steg, pusha ej utan ja.
+  FYND Broomfield/Clarity 2026-10-21: data ligger på results.enr.clarityelections.com/CO/126592/<ver>/ (current_ver.txt på EVENT-nivå /CO/126592/, ej under
+  web.345435 -> 404; inventory-filens sökväg var fel). Flödet är STATEWIDE: 197 contests (Federal/State/State House/State Senate), bara statsvida summor;
+  Broomfield syns bara som turnout + precincts (2/2), INGA Broomfield-röster per contest, INGA lokala val.
+  ÄGARBESLUT: B (undersök Broomfield-källa, deadline ons 28 okt, annars A = statsvida totaler + turnout, lokala val länkas) + bygg SD-adaptern parallellt.
+  B-RESULTAT hittills: (1) results.enr.clarityelections.com/CO/Broomfield/ finns men elections.json = [] (inga val); (2) sos.state.co.us/.../ENR/files/
+  Broomfield.pdf = 1 sida "No data available."; broomfield.org Election-Information/Important-Dates länkar inga resultat (robots: inget som hindrar).
+  Hittills INGET automatiskt hämtbart -> lutar mot A. Kvar före 28 okt: kolla om elections.json fylls vid valet, ev. fråga Broomfield elections.
 - Kö 9 Steg 1 (väntar bara på natten): 09ea03f ÄR pushad (ingår i origin/main, kontrollerat 2026-10-21).
   Security (API 2026-10-21): Secret scanning + Push protection = ENABLED, Dependabot alerts = enabled; dependabot_security_updates,
   non_provider_patterns, validity_checks = disabled (ej begärda).
