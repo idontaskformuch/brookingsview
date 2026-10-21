@@ -94,7 +94,7 @@ from __future__ import annotations
 
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from bs4 import BeautifulSoup
@@ -250,7 +250,47 @@ class SdsuEventsParser(BaseParser):
                 if row and row["external_event_id"] not in seen_ids:
                     seen_ids.add(row["external_event_id"])
                     rows.append(row)
+        apply_hobo_week(rows)
         return rows
+
+
+HOBO_WEEK_DAYS = 6  # Hobo Week runs the 6 days before Hobo Day itself
+_HOBO_COMMITTEE_RE = re.compile(r"hobo day committee|\bhdc\b", re.IGNORECASE)
+
+
+def _local_date(dt):
+    if dt is None:
+        return None
+    return dt.astimezone(_SD_TZ).date() if dt.tzinfo else dt.date()
+
+
+def hobo_day_date(rows: list[dict]):
+    """The Hobo Day date, derived from the calendar itself: the first Saturday on
+    or after the latest Hobo Day Committee (HDC) item. The committee's events run
+    Monday to Friday of Hobo Week and Hobo Day is the Saturday that follows, so no
+    yearly date has to be kept in config. None when no committee item is listed."""
+    dates = [d for d in (_local_date(r.get("starts_at")) for r in rows
+                         if _HOBO_COMMITTEE_RE.search(r.get("title") or "")) if d]
+    if not dates:
+        return None
+    last = max(dates)
+    return last + timedelta(days=(5 - last.weekday()) % 7)
+
+
+def apply_hobo_week(rows: list[dict]) -> None:
+    """SDSU files everything during Hobo Week under "Special Events", which
+    BUCKET_MAP sends to arts_culture. Inside Hobo Week (HOBO_WEEK_DAYS before Hobo
+    Day through Hobo Day itself) those are campus events -- Trustees dinner, UPC
+    shows, the Saturday-night concert -- so they move to the campus bucket,
+    whatever venue keyword would otherwise have pulled them into arts."""
+    day = hobo_day_date(rows)
+    if day is None:
+        return
+    start = day - timedelta(days=HOBO_WEEK_DAYS)
+    for r in rows:
+        d = _local_date(r.get("starts_at"))
+        if d and start <= d <= day and r.get("primary_category") == "Special Events":
+            r["bucket"] = "university"
 
 
 def _extract_event_blocks(html: str) -> list:
