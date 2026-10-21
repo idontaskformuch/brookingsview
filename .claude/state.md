@@ -56,6 +56,9 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
    borttagna 2026-10-21; kolla ändå att samma sak inte kan hända igen.)
 7. QA #9 Celebration Park-öppettider (Moreno, info, lägst prio).
 
+8. (Låg prio) Kontrollera i scrape_runs att Brookings eventkällor och Moreno Valleys events/meetings går ok
+   med nya User-Agent efter deras nästa körning.
+
 ## 3. Gällande beslut (kortform)
 - En push per batch, efter fullt batteri; pusha inte utan ägarens ja (undantag: ägaren
   beordrar uttryckligen en push). "Visa X innan push" = stanna och vänta på nytt ja.
