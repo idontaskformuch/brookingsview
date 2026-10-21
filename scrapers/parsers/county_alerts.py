@@ -52,6 +52,7 @@ from bs4 import BeautifulSoup
 
 from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
+from scrapers.user_agent import user_agent
 
 
 class CountyAlertsParser(BaseParser):
@@ -59,7 +60,7 @@ class CountyAlertsParser(BaseParser):
     platform = "civicplus_alerts"
 
     def _headers(self) -> dict:
-        return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
+        return {"User-Agent": user_agent(self.town_id)}
 
     def fetch(self) -> FetchResult:
         url = self.source_cfg.get("url", "https://www.brookingscountysd.gov") \

@@ -58,6 +58,7 @@ from bs4 import BeautifulSoup
 
 from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
+from scrapers.user_agent import user_agent
 
 # Finalsites robots.txt anger "Crawl-delay: 5" för alla bottar -- respekteras
 # här trots att vi bara gör ETT anrop per körning (source_cfg kan i teorin
@@ -101,7 +102,7 @@ class SchoolAlertsParser(BaseParser):
     conflict_columns = ("town_id", "external_alert_id")
 
     def _headers(self) -> dict:
-        return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
+        return {"User-Agent": user_agent(self.town_id)}
 
     def fetch(self) -> FetchResult:
         source = self.source_cfg.get("source", "")

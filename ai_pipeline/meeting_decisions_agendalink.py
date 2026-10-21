@@ -91,6 +91,7 @@ load_dotenv()
 
 import psycopg
 import requests
+from scrapers.user_agent import user_agent
 
 # See module docstring's "Scope" section. 90 days, not 60 -- gives margin
 # over the observed 3-6-week (21-42 day) lag to publishStatus=='minutes'
@@ -112,7 +113,7 @@ _DISPOSITIVE_MOTION_OUTCOMES: dict[str, tuple[str, str]] = {
 
 
 def _headers() -> dict:
-    return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
+    return {"User-Agent": user_agent()}
 
 
 def is_eligible_board(body: str | None) -> bool:

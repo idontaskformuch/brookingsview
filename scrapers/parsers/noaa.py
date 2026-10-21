@@ -28,6 +28,7 @@ from datetime import date
 import requests
 
 from scrapers.base_parser import BaseParser, FetchResult
+from scrapers.user_agent import user_agent
 
 API = "https://api.weather.gov"
 
@@ -41,7 +42,7 @@ class NoaaParser(BaseParser):
     platform = "noaa"
 
     def _headers(self) -> dict:
-        ua = os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")
+        ua = user_agent(self.town_id)
         return {"User-Agent": ua, "Accept": "application/geo+json"}
 
     def fetch(self) -> FetchResult:

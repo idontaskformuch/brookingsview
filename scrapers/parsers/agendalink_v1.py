@@ -77,6 +77,7 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 from bs4 import BeautifulSoup
+from scrapers.user_agent import user_agent
 
 from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
@@ -122,7 +123,7 @@ class AgendaLinkParser(BaseParser):
         return self.source_cfg.get("base_url", "https://api.agendalink.app").rstrip("/")
 
     def _headers(self) -> dict:
-        return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
+        return {"User-Agent": user_agent(self.town_id)}
 
     def fetch(self) -> FetchResult:
         base = self._base_url()

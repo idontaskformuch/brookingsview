@@ -44,6 +44,7 @@ import psycopg
 import requests
 
 from ai_pipeline.project_registry import status_for_outcome
+from scrapers.user_agent import user_agent
 
 WEBAPI = "https://webapi.legistar.com/v1"
 FETCH_DELAY_SECONDS = 0.25
@@ -52,7 +53,7 @@ FETCH_DELAY_SECONDS = 0.25
 def _headers() -> dict:
     return {
         "Accept": "application/json",
-        "User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)"),
+        "User-Agent": user_agent(),
     }
 
 

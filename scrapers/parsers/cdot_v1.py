@@ -59,6 +59,7 @@ import requests
 
 from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
+from scrapers.user_agent import user_agent
 
 # Regelbaserad klassificering, samma stil/begränsning som traffic_v1.py:
 # CDOT ger ingen färdig "closure vs. planned"-tagg, bara fritext + typ.
@@ -74,7 +75,7 @@ class CdotParser(BaseParser):
     update_columns = ["description", "road", "severity", "ends_at", "last_seen_at", "raw_data", "content_hash"]
 
     def _headers(self) -> dict:
-        return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
+        return {"User-Agent": user_agent(self.town_id)}
 
     def _url(self) -> str:
         # Nyckeln lever ENDAST i miljövariabeln (.env / GitHub secret) --

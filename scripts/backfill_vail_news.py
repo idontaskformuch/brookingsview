@@ -29,6 +29,8 @@ import argparse
 import time
 from datetime import date, timedelta
 
+from scrapers.user_agent import user_agent_for_domain
+
 import requests
 
 from db.db import content_hash, get_conn, save_snapshot, upsert_records
@@ -45,7 +47,7 @@ PAGE_SIZE = 50
 
 
 def _headers() -> dict:
-    return {"User-Agent": "broomfieldview.com (contact: hello@broomfieldview.com)"}
+    return {"User-Agent": user_agent_for_domain("broomfieldview.com")}
 
 
 def _fetch_page(offset: int) -> str:

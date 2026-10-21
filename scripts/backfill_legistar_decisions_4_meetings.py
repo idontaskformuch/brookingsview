@@ -50,6 +50,7 @@ from scrapers.parsers.legistar_v1 import _clean_item, _items_to_text, MAX_AGENDA
 from ai_pipeline.meeting_decisions_legistar import dedupe_shadow_items, outcome_from_item, upsert_decision
 
 import requests
+from scrapers.user_agent import user_agent
 
 CLIENT = "cityofbrookings"
 TOWN_ID = "brookings_sd"
@@ -62,7 +63,7 @@ BACKUP_DIR = Path(__file__).resolve().parent.parent / "backups"
 def _headers() -> dict:
     return {
         "Accept": "application/json",
-        "User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)"),
+        "User-Agent": user_agent(),
     }
 
 

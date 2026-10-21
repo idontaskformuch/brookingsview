@@ -18,7 +18,7 @@ jobs:
       DATABASE_URL:      ${{ secrets.DATABASE_URL }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       FAL_KEY:           ${{ secrets.FAL_KEY }}
-      USER_AGENT:        "morenovalleyview.com (contact: hello@morenovalleyview.com)"
+      USER_AGENT:        "ViewMediaBot (+https://morenovalleyview.com/contact)"
       AI_BUDGET_STATE:   ".ai_budget_moreno_valley_ca.json"
     steps:
       - uses: actions/checkout@v5

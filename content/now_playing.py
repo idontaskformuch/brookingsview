@@ -30,6 +30,7 @@ import os
 import re
 
 import requests
+from scrapers.user_agent import user_agent
 
 WIKIDATA_SPARQL_URL = "https://query.wikidata.org/sparql"
 WIKIPEDIA_SUMMARY_URL = "https://en.wikipedia.org/api/rest_v1/page/summary/{title}"
@@ -45,7 +46,7 @@ CANDIDATE_LIMIT = 15
 
 
 def _user_agent() -> str:
-    return os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")
+    return user_agent()
 
 
 def _recent_films(today: datetime.date) -> list[dict]:

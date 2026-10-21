@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import requests
 
 from ai_pipeline.meeting_decisions_legistar import consent_votes, dedupe_shadow_items, outcome_from_item
+from scrapers.user_agent import user_agent
 
 WEBAPI = "https://webapi.legistar.com/v1"
 
@@ -31,7 +32,7 @@ WEBAPI = "https://webapi.legistar.com/v1"
 def _headers() -> dict:
     return {
         "Accept": "application/json",
-        "User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)"),
+        "User-Agent": user_agent(),
     }
 
 

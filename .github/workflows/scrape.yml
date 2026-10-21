@@ -26,7 +26,7 @@ jobs:
       NASS_API_KEY:       ${{ secrets.NASS_API_KEY }}
       ADZUNA_APP_ID:      ${{ secrets.ADZUNA_APP_ID }}
       ADZUNA_APP_KEY:     ${{ secrets.ADZUNA_APP_KEY }}
-      USER_AGENT:         "brookingsview.com (contact: hello@brookingsview.com)"
+      USER_AGENT:         "ViewMediaBot (+https://brookingsview.com/contact)"
       ALERT_WEBHOOK:      ${{ secrets.ALERT_WEBHOOK }}
       ALERT_AFTER_FAILURES: "3"
     steps:

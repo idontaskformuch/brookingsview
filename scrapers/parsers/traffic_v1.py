@@ -61,6 +61,7 @@ warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
+from scrapers.user_agent import user_agent
 
 # Källans egna sluttidsformat, t.ex. "6:01pm Aug 31, 2026"
 _END_TIME_RE = re.compile(
@@ -79,7 +80,7 @@ class TrafficParser(BaseParser):
     update_columns = ["description", "road", "severity", "ends_at", "last_seen_at", "raw_data", "content_hash"]
 
     def _headers(self) -> dict:
-        return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
+        return {"User-Agent": user_agent(self.town_id)}
 
     def fetch(self) -> FetchResult:
         source = self.source_cfg.get("source", "")

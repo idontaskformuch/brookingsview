@@ -57,6 +57,7 @@ from bs4 import BeautifulSoup
 
 from db.db import content_hash, get_conn
 from scrapers.base_parser import BaseParser, FetchResult
+from scrapers.user_agent import user_agent
 
 BASE_URL = "https://news.vailresorts.com"
 LISTING_PATH = "/news-and-stories"
@@ -78,8 +79,7 @@ class VailNewsParser(BaseParser):
                        "is_translation", "content_hash"]
 
     def _headers(self) -> dict:
-        return {"User-Agent": os.environ.get(
-            "USER_AGENT", "broomfieldview.com (contact: hello@broomfieldview.com)")}
+        return {"User-Agent": user_agent(self.town_id)}
 
     def _fetch_page(self, offset: int, page_size: int) -> str:
         url = f"{BASE_URL}{LISTING_PATH}?o={offset}&l={page_size}"

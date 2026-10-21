@@ -252,17 +252,17 @@ def test_all_three_towns_have_a_site_url_and_signature_section():
 
 def test_user_agent_strips_scheme_and_identifies_domain():
     assert _user_agent("https://broomfieldview.com") == (
-        "broomfieldview.com (contact: hello@broomfieldview.com)"
+        "ViewMediaBot (+https://broomfieldview.com/contact)"
     )
 
 
 def test_user_agent_matches_scrape_workflow_convention_for_all_three_towns():
-    # Same "<domain> (contact: hello@<domain>)" string each town's own
+    # Same neutral "ViewMediaBot (+https://<domain>/contact)" string each town's own
     # *-scrape.yml sets as USER_AGENT -- derived from SITE_URLS rather than
     # hardcoded a second time, so the two can't drift apart.
     for town_id, site_url in SITE_URLS.items():
         domain = site_url.removeprefix("https://")
-        assert _user_agent(site_url) == f"{domain} (contact: hello@{domain})"
+        assert _user_agent(site_url) == f"ViewMediaBot (+https://{domain}/contact)"
 
 
 def test_request_headers_omits_bypass_header_when_secret_unset(monkeypatch):

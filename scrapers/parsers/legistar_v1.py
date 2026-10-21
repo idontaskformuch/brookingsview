@@ -29,6 +29,7 @@ import requests
 
 from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
+from scrapers.user_agent import user_agent
 
 WEBAPI = "https://webapi.legistar.com/v1"
 
@@ -84,7 +85,7 @@ class LegistarParser(BaseParser):
     def _headers(self) -> dict:
         return {
             "Accept": "application/json",
-            "User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)"),
+            "User-Agent": user_agent(self.town_id),
         }
 
     # Phase 7 ("Decisions"): 30 dagar var för kort -- mätning mot

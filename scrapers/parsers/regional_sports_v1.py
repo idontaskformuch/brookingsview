@@ -47,6 +47,7 @@ import requests
 
 from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
+from scrapers.user_agent import user_agent
 
 DAYS_BACK = 3
 DAYS_FORWARD = 7
@@ -69,7 +70,7 @@ class RegionalSportsParser(BaseParser):
     update_columns = ["status", "team_score", "opponent_score", "raw_data", "content_hash"]
 
     def _headers(self) -> dict:
-        return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
+        return {"User-Agent": user_agent(self.town_id)}
 
     def _teams(self) -> list[dict]:
         """Bara lag med en riktig källa -- "unconfirmed"-lag (Ducks/Lakers/

@@ -16,7 +16,7 @@ jobs:
     env:
       DATABASE_URL:       ${{ secrets.DATABASE_URL }}
       ANTHROPIC_API_KEY:  ${{ secrets.ANTHROPIC_API_KEY }}
-      USER_AGENT:         "morenovalleyview.com (contact: hello@morenovalleyview.com)"
+      USER_AGENT:         "ViewMediaBot (+https://morenovalleyview.com/contact)"
       AI_BUDGET_STATE:    ".ai_budget_moreno_valley_ca.json"
       ADZUNA_APP_ID:      ${{ secrets.ADZUNA_APP_ID }}
       ADZUNA_APP_KEY:     ${{ secrets.ADZUNA_APP_KEY }}

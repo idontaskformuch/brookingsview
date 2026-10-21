@@ -33,11 +33,12 @@ import requests
 
 from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
+from scrapers.user_agent import user_agent
 
 # CivicPlus-sajter (Akamai) 404:ar på requests default User-Agent
 # ("python-requests/x.x") — kräver en webbläsarliknande UA för att släppa igenom.
 _PDF_HEADERS = {
-    "User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")
+    "User-Agent": user_agent()
 }
 
 # hur långt bak/fram vi hämtar möten. County-möten är sällan superfärska, så vi

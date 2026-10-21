@@ -35,6 +35,7 @@ import os
 
 from scrapers.base_parser import BaseParser, FetchResult
 from scrapers.event_sources import EVENT_SOURCE_KINDS
+from scrapers.user_agent import user_agent
 
 _INERT_KINDS = {
     "blocked": "policyblockerad (robots.txt) -- skrapas aldrig",
@@ -61,7 +62,7 @@ class EventsParser(BaseParser):
     update_columns = ["title", "starts_at", "ends_at", "venue", "url", "raw_data"]
 
     def _headers(self) -> dict:
-        return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
+        return {"User-Agent": user_agent(self.town_id)}
 
     def fetch(self) -> FetchResult:
         sources = self.source_cfg.get("sources", [])

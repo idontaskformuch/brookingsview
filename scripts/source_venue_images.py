@@ -53,6 +53,7 @@ import requests
 from PIL import Image
 
 from db.db import get_conn
+from scrapers.user_agent import user_agent
 
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 REQUEST_TIMEOUT = 30
@@ -64,7 +65,7 @@ VENUES_DIR = Path("site/public/assets/images/venues")
 # same convention this codebase already follows for NOAA/NWS -- see
 # scrapers/parsers/noaa.py) -- anonymous/generic User-Agents are rate-limited
 # or blocked.
-HEADERS = {"User-Agent": "BrookingsViewBot/1.0 (hello@brookingsview.com; local-news image sourcing)"}
+HEADERS = {"User-Agent": user_agent()}
 
 # (town, facility_slug) -> search query. `commons_file` is filled in by hand
 # ONLY after visually confirming the match (see module docstring) -- None

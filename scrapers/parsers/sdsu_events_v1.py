@@ -102,6 +102,7 @@ import requests
 
 from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
+from scrapers.user_agent import user_agent
 
 _BASE_URL = "https://www.sdstate.edu/event-calendar"
 _RESULTS_PER_PAGE = 10
@@ -204,7 +205,7 @@ class SdsuEventsParser(BaseParser):
                        "filter_reason", "raw_data", "content_hash"]
 
     def _headers(self) -> dict:
-        return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
+        return {"User-Agent": user_agent(self.town_id)}
 
     def fetch(self) -> FetchResult:
         max_pages = int(self.source_cfg.get("max_pages", 6))

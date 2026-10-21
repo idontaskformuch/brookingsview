@@ -66,6 +66,7 @@ import requests
 
 from ai_pipeline.daily_content import SLUG_PREFIX_OVERRIDES
 from db.db import get_conn
+from scrapers.user_agent import user_agent_for_domain
 
 # Reverse of SLUG_PREFIX_OVERRIDES (content_type -> public prefix), keyed by
 # the PUBLIC prefix instead, for matching a homepage-scraped /s/<slug>/ href
@@ -138,8 +139,7 @@ def _user_agent(site_url: str) -> str:
     inventing a second convention -- derived from SITE_URLS itself so the
     two can never drift apart the way the (now-removed) hardcoded domain
     field in configs/*.json once did (see this file's own comment above)."""
-    domain = site_url.removeprefix("https://").removeprefix("http://")
-    return f"{domain} (contact: hello@{domain})"
+    return user_agent_for_domain(site_url)
 
 
 # Broomfield 403 investigation (2026-09-09): the User-Agent fix above did NOT

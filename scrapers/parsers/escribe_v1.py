@@ -55,6 +55,7 @@ from bs4 import BeautifulSoup
 
 from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
+from scrapers.user_agent import user_agent
 
 # Möten hämtas för ett fönster runt idag, likt civicengage_pdf_v1 (Legistars
 # API strömmar redan färskt framåt via sortering, men eSCRIBE:s kalenderanrop
@@ -117,7 +118,7 @@ class EscribeParser(BaseParser):
         return base.rstrip("/")
 
     def _headers(self) -> dict:
-        return {"User-Agent": os.environ.get("USER_AGENT", "brookingsview.com (contact: hello@brookingsview.com)")}
+        return {"User-Agent": user_agent(self.town_id)}
 
     def fetch(self) -> FetchResult:
         base = self._base_url()
