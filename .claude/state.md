@@ -56,10 +56,11 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
    äldsta story canonical, nyare får superseded_by_slug+301; content_hash sätts bara om ledig. Kodfix: identity_key
    (ID/EventId/id) i BaseParser+upsert_records, uppdaterar ÄLDSTA raden. OBS städskriptet: skrapningar mellan push
    och städning uppdaterar äldsta raden, så merga raw_data från ALLA rader i gruppen in i behållaren (nyaste vinner).
-   Städskript KLART (ej körd): scripts/merge_duplicate_meetings_by_source_id.py (dry-run default, --apply = live-DB,
-   en transaktion, backup i backups/). Dry-run fann: de 13 dubblettraderna bär project_updates(6)/candidate_queue(11)/
-   checkpoints(10) -> repointas/slängs enligt skriptdoc. NÄSTA: ägarens ja till --apply, sen generate_duplicate_story_
-   redirects + push, sen migration UNIQUE-index (steg 3), sen steg 4-rapport (Brookings/Broomfield 0 dubbletter).
+   STEG 2 KÖRD 2026-10-21 (ägaren godkände): 12 grupper, 13 meetings raderade, 6 dubblett-project_updates raderade,
+   11 candidate-rader + checkpoints omkopplade; 4008 och 3974 supersedade (+301 i duplicate-story-redirects.json,
+   13 poster, worker-fetch bevisad lokalt). Efterkoll: 0 dubblettgrupper. Backup backups/merge_duplicate_meetings_*
+   .json (495 KB) OTRACKAD -- backups/ är INTE gitignorad (äldre backuper är incheckade); väntar på ägarens val.
+   NÄSTA: steg 3 migration 060 UNIQUE (town_id,(raw_data->>'ID')) -- VISA innan körning (live-DB). Steg 4 klart i sak.
 7. QA #9 Celebration Park-öppettider (Moreno, info, lägst prio).
 
 8. (Låg prio) Kontrollera i scrape_runs att Brookings eventkällor och Moreno Valleys events/meetings går ok

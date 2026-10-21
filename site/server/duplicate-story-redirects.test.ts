@@ -29,4 +29,15 @@ describe('duplicate-story-redirects.json', () => {
     );
     expect(path).toBe('/s/meeting-2026-09-24-13790/');
   });
+
+  // 2026-10-21 (Kö 6 cleanup): two duplicate stories that were still live.
+  it.each([
+    ['meeting-2026-08-27-14970', 'meeting-2026-08-27-13780'],
+    ['meeting-2026-10-13-14586', 'meeting-2026-10-13-14192'],
+  ])('301s the formerly live duplicate %s to %s', (oldSlug, canonicalSlug) => {
+    const map = duplicateStoryRedirects as Record<string, string>;
+    expect(resolveLegacyMeetingRedirect(`/s/${oldSlug}/`, map)).toBe(`/s/${canonicalSlug}/`);
+    // no chain: a canonical slug is never itself redirected
+    expect(map[canonicalSlug]).toBeUndefined();
+  });
 });
