@@ -65,6 +65,12 @@ class BaseParser(abc.ABC):
     #: permanently erased the richer historical data on the very next
     #: scrape, since raw_data was always fully replaced, never merged.
     merge_raw_data: bool = False
+    #: see db.upsert_records()'s own identity_key doc comment -- the raw_data
+    #: key holding the source's OWN stable id for the record. When set, an
+    #: existing row for (town_id, that id) is updated in place instead of a
+    #: new row being inserted under a changed content_hash. Set by the three
+    #: meetings parsers; None (the default) leaves every other source as is.
+    identity_key: str | None = None
 
     def __init__(self, cfg: dict, source_cfg: dict):
         self.cfg = cfg                    # hela town-configen

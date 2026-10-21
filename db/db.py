@@ -83,7 +83,8 @@ def upsert_records(conn, table: str, town_id: str, records: Iterable[dict],
                    conflict_columns: tuple[str, ...] | None = None,
                    update_columns: list[str] | None = None,
                    dedup_check_columns: tuple[str, ...] | None = None,
-                   merge_raw_data: bool = False) -> int:
+                   merge_raw_data: bool = False,
+                   identity_key: str | None = None) -> int:
     """Dedup-säker insert. Varje record MÅSTE ha 'content_hash' (om inte
     conflict_columns anger något annat).
 
@@ -151,6 +152,23 @@ def upsert_records(conn, table: str, town_id: str, records: Iterable[dict],
     längre är relevant när matchen är klar) -- en global sammanslagning
     där skulle vara en annan, oavsiktlig bugg. Bara de tre mötesskraperna
     sätter merge_raw_data=True (se BaseParser-flaggan med samma namn).
+
+    identity_key (default None = oförändrat beteende): namnet på en nyckel i
+    raw_data som är källans EGEN stabila id för posten (eSCRIBE "ID",
+    Legistar "EventId", AgendaLink "id"). När satt och posten har ett värde
+    för den slås raden upp på (town_id, raw_data->>identity_key) INNAN
+    content_hash tittas på: finns den uppdateras den ÄLDSTA matchande raden
+    (update_columns, med merge_raw_data om satt) i stället för att en ny
+    infogas. content_hash är inte en identitet -- den ändras när hash-
+    indatan ändras (meetings 13779-13791, Moreno, 2026-10-01: en tidszonsfix
+    ändrade hashen för 13 redan lagrade möten, varje omskrapning infogade en
+    ny dubblettrad; samma sak hände igen 15 och 20 okt, där raw_data skilde
+    så dedup_check_columns inte fångade dem). content_hash på den uppdaterade
+    raden sätts till postens nya hash BARA om ingen annan rad redan har den
+    (UNIQUE (town_id, content_hash) -- en kvarvarande dubblett kan hålla den).
+    Utan update_columns görs ingenting för en befintlig rad (som DO NOTHING).
+    Raden räknas som 1 i returvärdet vid uppdatering, precis som DO UPDATE
+    gjorde tidigare, så scrape_runs.items_new betyder detsamma.
     """
     records = list(records)
     if not records:
@@ -163,6 +181,21 @@ def upsert_records(conn, table: str, town_id: str, records: Iterable[dict],
             if snapshot_id is not None and "snapshot_id" not in rec:
                 rec["snapshot_id"] = snapshot_id
             rec["town_id"] = town_id
+
+            if identity_key is not None and isinstance(rec.get("raw_data"), dict):
+                identity = rec["raw_data"].get(identity_key)
+                if identity is not None:
+                    cur.execute(
+                        f"SELECT id FROM {table} WHERE town_id = %s "
+                        f"AND raw_data->>%s = %s ORDER BY id LIMIT 1",
+                        [town_id, identity_key, str(identity)],
+                    )
+                    existing = cur.fetchone()
+                    if existing:
+                        new_count += _update_by_identity(
+                            cur, table, town_id, existing[0], rec,
+                            update_columns, merge_raw_data)
+                        continue
 
             if (dedup_check_columns is not None and rec.get("raw_data") is not None
                     and all(c in rec for c in dedup_check_columns)):
@@ -207,6 +240,35 @@ def upsert_records(conn, table: str, town_id: str, records: Iterable[dict],
             )
             new_count += cur.rowcount
     return new_count
+
+
+def _update_by_identity(cur, table: str, town_id: str, row_id: int, rec: dict,
+                        update_columns: list[str] | None, merge_raw_data: bool) -> int:
+    """UPDATE-halvan av upsert_records(identity_key=...) -- se dess docstring."""
+    if not update_columns:
+        return 0
+    sets, params = [], []
+    for c in update_columns:
+        if c not in rec:
+            continue
+        value = rec[c]
+        if c in ("raw_data", "payload") and value is not None:
+            value = Jsonb(value, dumps=_json_dumps)
+        if c == "raw_data" and merge_raw_data:
+            sets.append(f"raw_data = COALESCE({table}.raw_data, '{{}}'::jsonb) || %s")
+        else:
+            sets.append(f"{c} = %s")
+        params.append(value)
+    if "content_hash" in rec:
+        sets.append(
+            "content_hash = CASE WHEN NOT EXISTS (SELECT 1 FROM "
+            f"{table} o WHERE o.town_id = %s AND o.content_hash = %s AND o.id <> %s) "
+            "THEN %s ELSE content_hash END")
+        params += [town_id, rec["content_hash"], row_id, rec["content_hash"]]
+    if not sets:
+        return 0
+    cur.execute(f"UPDATE {table} SET {', '.join(sets)} WHERE id = %s", [*params, row_id])
+    return cur.rowcount
 
 
 def start_run(conn, town_id: str, source_key: str) -> int:

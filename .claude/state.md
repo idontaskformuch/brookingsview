@@ -48,11 +48,15 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 5. Broomfield facility name_aliases (data/facilities/broomfield_co.json): VÄNTA tills det första riktiga
    eventet har kommit in från stadskalenderns flöde (riktiga LOCATION-strängar), SEEDA INGET NU.
    Sen: lägg alias efter de verkliga strängarna och kör seed_facilities -- en LIVE-DB-skrivning, fråga först.
-6. Moreno meetings-dubbletter: UTREDD 2026-10-21, PLAN i .claude/plan-ko6-meetings-dedup.md, väntar ägarens ja.
-   BESLUT/FAKTA: orsak = vanlig scrape 11502 efter tidszonsfixen (hashen ändrades), inget skript; PREMISSEN
-   "unikt index från Phase B" VAR FEL (bara UNIQUE town_id+content_hash). 11 av 13 grupper redan sup+301 (14 okt),
-   OHANTERADE live-dubbelsidor: 6918217e (story 4008) och c47d15ac (3944/3974). Brookings/Broomfield 0 dubbletter.
-   Ordning: kodfix+push -> städskript -> UNIQUE-index. Öppet beslut: flippa de 9 gammal->ny-redirectsen?
+6. Moreno meetings-dubbletter: steg 1 (kodfix) KLAR+pushad 2026-10-21; steg 2 (städskript) och 3 (UNIQUE-index) kvar.
+   Plan: .claude/plan-ko6-meetings-dedup.md. Orsak: vanlig scrape 11502 efter tidszonsfixen; "unikt index från
+   Phase B" VAR FEL premiss. BESLUT (ägaren): behåll redirect-riktningen för de 11 hanterade grupperna (vänd
+   inget); per grupp behåll meetings-raden som hör till canonical live-story oavsett ålder, nollställ meeting_id
+   på supersedade stories, radera övriga meetings-rader; oavgjorda 6918217e (story 4008) + c47d15ac (3944/3974):
+   äldsta story canonical, nyare får superseded_by_slug+301; content_hash sätts bara om ledig. Kodfix: identity_key
+   (ID/EventId/id) i BaseParser+upsert_records, uppdaterar ÄLDSTA raden. OBS städskriptet: skrapningar mellan push
+   och städning uppdaterar äldsta raden, så merga raw_data från ALLA rader i gruppen in i behållaren (nyaste vinner).
+   NÄSTA: ta fram städskript (före/efter-kontroll), VISA innan körning (live-DB-skrivning, ägarens ja).
 7. QA #9 Celebration Park-öppettider (Moreno, info, lägst prio).
 
 8. (Låg prio) Kontrollera i scrape_runs att Brookings eventkällor och Moreno Valleys events/meetings går ok

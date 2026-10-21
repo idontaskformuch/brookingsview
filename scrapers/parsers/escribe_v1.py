@@ -110,6 +110,10 @@ class EscribeParser(BaseParser):
     # identical). See db.upsert_records()'s own doc comment for the merge
     # tradeoff.
     merge_raw_data = True
+    # The source's own id is the meeting's identity, not content_hash (which
+    # changes whenever its inputs do -- Moreno Valley got 13+ duplicate rows
+    # that way, 2026-10-01 and again 10-15/10-20). See db.upsert_records().
+    identity_key = "ID"
 
     def _base_url(self) -> str:
         base = self.source_cfg.get("base_url")

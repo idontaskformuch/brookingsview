@@ -75,6 +75,10 @@ class LegistarParser(BaseParser):
     # historical agenda_items/agenda_text permanently. See db.upsert_
     # records()'s own merge_raw_data doc comment for the full tradeoff.
     merge_raw_data = True
+    # The source's own id is the meeting's identity, not content_hash (which
+    # changes whenever its inputs do -- Moreno Valley got 13+ duplicate rows
+    # that way, 2026-10-01 and again 10-15/10-20). See db.upsert_records().
+    identity_key = "EventId"
 
     def _client(self) -> str:
         client = self.source_cfg.get("client_id")
