@@ -79,6 +79,7 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   publicera bara fakta + egen kort sammanfattning, kreditera källan med länk, hämta högst dagligen.
 - Skrivningar mot LIVE-databasen kräver ägarens godkännande (även omkörningar).
 - Allt som ska godkännas skrivs i klartext i svaret, inte bara i verktygsutdata.
+- Ändras beroenden eller nya testfiler: kör npm ci + testsviten i ren miljö före push.
 - Hobo Week-"Special Events" -> campus; SDSU-bucket är update-kolumn (självläker vid scrape).
 
 ## 4. Kända luckor
