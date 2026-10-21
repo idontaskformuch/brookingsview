@@ -83,7 +83,10 @@ const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
     from Sweden, and this is what that looks like pointed at local news. I'd
     rather say that plainly than dress up an automated site with a fake
     masthead.</p>
-    <p>I run the same software pointed at a few other towns too: {siblingSites.map((s, i) => (
+    {/* data-qa-allow-sibling-sites: this paragraph intentionally names the sister towns (Phase H
+        disclosure). qa/web/run.mjs skips elements carrying this attribute in the web.leak check --
+        a permanent, markup-level exemption for exactly this reference, not a waiver. */}
+    <p data-qa-allow-sibling-sites>I run the same software pointed at a few other towns too: {siblingSites.map((s, i) => (
       <>{i > 0 && ' and '}<a href={s.siteUrl} rel="noopener">{s.siteName}</a></>
     ))}. Same pipeline, same sourcing rules, same disclosures -- just a
     different town's public records feeding it. Saying that plainly here

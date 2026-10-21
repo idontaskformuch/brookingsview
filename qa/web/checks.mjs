@@ -6,6 +6,10 @@
 //          brokenImgs: string[], consoleErrors: string[], failedRequests: string[],
 //          blockedAttempts: string[] }
 
+/** Elements carrying this attribute are hidden before the page text is read, so deliberate,
+ *  disclosed cross-town references (about page: sister sites, Phase H) never trip web.leak. */
+export const ALLOW_SIBLING_SELECTOR = '[data-qa-allow-sibling-sites]';
+
 export const LITERAL_RE = /\b(undefined|NaN|null)\b|\[object Object\]|Invalid Date|\{\{|\}\}/g;
 
 export function finding(check, town, snap, message, extra = {}) {

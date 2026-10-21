@@ -16,7 +16,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkPage, checkRun, compileBlocklist, applyWaivers } from './checks.mjs';
+import { checkPage, checkRun, compileBlocklist, applyWaivers, ALLOW_SIBLING_SELECTOR } from './checks.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const { chromium } = createRequire(resolve(root, 'site/package.json'))('playwright-core');
@@ -89,7 +89,8 @@ async function snapshot(context, path, inSitemap) {
     for (let r = resp?.request().redirectedFrom(); r; r = r.redirectedFrom()) redirects++;
     await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});
     await page.waitForTimeout(500); // let client-rendered blocks settle
-    const data = await page.evaluate(() => {
+    const data = await page.evaluate((allowSel) => {
+      document.querySelectorAll(allowSel).forEach((el) => { el.style.display = 'none'; });
       const txt = (el) => (el ? el.innerText : '');
       let lone = 0;
       const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -107,7 +108,7 @@ async function snapshot(context, path, inSitemap) {
         brokenImgs: [...document.images].filter((i) => i.complete && i.naturalWidth === 0 && i.currentSrc && !i.currentSrc.startsWith('data:')).map((i) => i.currentSrc),
         links: [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute('href')),
       };
-    });
+    }, ALLOW_SIBLING_SELECTOR);
     return { url, path, status, redirects, inSitemap, consoleErrors, failedRequests, blockedAttempts, ...data };
   } catch (e) {
     return { url, path, status: status || 0, redirects, inSitemap, title: '', titleCount: 0, h1: [], metaRobots: '', metaDescription: '',
