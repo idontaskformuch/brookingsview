@@ -14,6 +14,15 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 - BESLUT Fas 6: --navy ljus (#9bbbe3) i dark, fyllda knappar inverteras av sig själva; nya variabler
   --sign-bg/--on-accent/--paper-tint; sektionsaccent via body --section-accent-l/-d + has-accent;
   tema i localStorage 'bv_theme'. Skärmbildsverktyg: playwright python, channel msedge.
+- /today Tonight/Tomorrow-bugg (trasig live sedan Fas 1, alla städer) FIXAD 2026-10-21: skriptet använde
+  querySelectorAll(':scope > li') på mallens fragment (matchar inget i Chromium) + villkorligt City Hall-
+  <script> fick Astro att tappa bucket-skriptet på Broomfield. Nu lib/today-buckets.ts + test i riktig
+  Chromium (hoppas över om ingen finns); tomma buckets dolda, en rad -> /whats-on/ när båda tomma.
+- scrape_runs (UA-bytet): 07:48Z hade fortfarande 0 körningar startat efter 05:35Z (DB-klockan, inte
+  lokal tid). Kör om efter ~09:00-09:30Z.
+- FLAKY? 2 vitest-tester föll en gång 2026-10-21 (66 s körning, direkt efter en astro build), ej
+  identifierade; 5 omkörningar (varav 1 under CPU-last) = 1152/1152 gröna. Om det återkommer: kör
+  --reporter=verbose och logga namnen här.
 - NÄSTA: Kö 2+ (Kö 1 Fas 6 klar).
 
 ## 2. Kö
