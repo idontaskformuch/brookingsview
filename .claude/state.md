@@ -20,6 +20,13 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   pct-kontroll utelämnad: SD ger ingen pct), fixtur test/fixtures/sd-brookings-2026-06-primary.xlsx (juni, eid 773). Contest-id = siffrorna efter 3-bokstavs
   partykod i bladnamnet. Ej gjort: hämtning (postback + __VIEWSTATE), Neon-schema/migration, Worker-JSON, sida, cron. NÄSTA: Steg B = fetch-lager SD +
   migration 061 (skrivs, körs EJ mot live utan ja) + Worker-endpoint.
+  STEG B-D KLARA (lokala commits, vitest 28 gröna, tsc 0): migration 061_election_results.sql SKRIVEN, EJ körd mot live (visas för ägaren först); src/fetch/sd.ts
+  (GET ResultsExport.aspx utan eid = pågående val, vägrar om sidans hidElectionDate != förväntat; POST county-target); src/adapters/clarity.ts +
+  src/fetch/clarity.ts (statsvida juni-fixturen, current_ver på event-nivå, bara hämta data när version ändrats) + inspectCountyElections: bevakar
+  CO/Broomfield/elections.json, 'ready' bara om en post nämner datumet + /CO/Broomfield/<id> (postformen aldrig observerad -> syntetiska testposter, annars
+  'needs-review', gissar aldrig). BESLUT: Broomfield-bas = A (statsvida totaler + turnout, lokala val länkas); county-feed tar över vid 'ready'.
+  Mejl till Broomfields valkontor skrivet i chatten (ägaren skickar). Kvar: Worker (cron + JSON-endpoint utan rebuild) + Neon-skrivning (kräver 061 godkänd),
+  sidan /election-results, torrtest mot juni, indexNow, cityStatus-rad.
   Security (API 2026-10-21): Secret scanning + Push protection = ENABLED, Dependabot alerts = enabled; dependabot_security_updates,
   non_provider_patterns, validity_checks = disabled (ej begärda).
   Cron-dispatcher deployad+verifierad (version 33925058 + secret 97cc8bae, GITHUB_TOKEN utgår 2027-10-21). Workerns egen token OTESTAD
