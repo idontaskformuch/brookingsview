@@ -64,11 +64,12 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 ## 2. Kö (bara pågående + närmaste 3 steg; resten i .claude/backlog.md)
 ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med 2) VAL FAS 1 klar fre 23 okt; 3) helgen 24-25 okt GLASGOW;
 4) mån 26 okt VAL FAS 2 (2a-inventering först, rapportera innan kod).
-1. NAV FAS 1: Brookings KLAR + committad lokalt (EJ pushad; pushas ihop med kontrastfixen = en omcrawlning). Komponent components/SectionNav.astro,
-   lib/nav-sections.ts (registry + resolveNav som failar bygget; bevisat med avsiktligt trasig config), lib/section-nav-ui.ts (beteende, testat i Chromium),
-   `nav` i site-config.ts. Moreno/Broomfield kör TILLFÄLLIGT kvar på gamla headern tills ägaren godkänt förslagen (se svar 2026-10-21); då tas
-   gamla .nav/MORE-koden bort. Spec: .claude/spec-section-nav.md. Brookings-label "Traffic" (inte "Traffic & Closures") tills fas 2; sheet-grupper kompletterade
-   med This week/What's On/Closure Watch (specens exempel saknade dem men validering kräver alla aktiverade sektioner).
+1. NAV FAS 1: KLAR för alla tre städer + committad lokalt (EJ pushad). Push-beslut (ägaren 2026-10-21): kontrastfix + nav + /vote pushas i ETT svep fre 23 okt
+   när /vote är klar (en omcrawlning). Konfig godkänd: Brookings (båda antaganden), Moreno tabs today/events/whatson/cityhall/traffic/facilities/workplace
+   (Home sales i Work & Home), Broomfield tabs today/cityhall/facilities/whatson/traffic/jobs (6 st; SJUNDE FLIKEN VÄNTAR på ägarens val: events/workplace/vail/weather;
+   obs Search Console: Broomfield rankar på "civil reference"). Gamla headern + MORE-koden borttagna; `nav` är obligatorisk i SiteConfig. Spec: .claude/spec-section-nav.md.
+   Fas 2 (sammanslagning) = bara granskning, ingen kod. Glasgow: samtycke v1 = egen opt-in-banner, GA4 först efter ja, inga annonser; Google CMP när AdSense blir aktuellt;
+   Glasgow-raden i live-DB godkänd när skelettet är klart.
 2. VAL FAS 1 (/vote, alla tre städer, klar fre 23 okt): .claude/specs/election-2026.md. Hårda regler: ingen AI-text, endast officiella källor,
    käll-URL per datum/adress (bygget failar annars), fail closed. COMMITTA INGET förrän ägaren säger till (gäller valarbetet).
 3. GLASGOW (helgen 24-25 okt): .claude/specs/glasgow-loop.md. Fas 0 (rapport docs/uk-audit.md, stanna) -> fas 1 (landsprofil, US byte-identiska) ->

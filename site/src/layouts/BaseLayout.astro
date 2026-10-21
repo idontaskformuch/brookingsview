@@ -98,32 +98,9 @@ const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 // entries here: Phase 8 Month/Sports are moreno_valley_ca only (config/clusters.ts ROUTE_AVAILABILITY);
 // the Reviews/Recipes/Editorials/Columns links were removed 2026-10-07 (AdSense remediation Phase 0).
 const nav = enabledSections(siteConfig);
-// Towns with a nav config get the shared SectionNav; resolveNav() throws (fails the build) on a bad config.
-const sectionNav = siteConfig.nav ? resolveNav(siteConfig.nav, siteConfig) : null;
+// Every town has a nav config; resolveNav() throws (fails the build) on a bad one.
+const sectionNav = resolveNav(siteConfig.nav, siteConfig);
 const path = Astro.url.pathname;
-
-// Front-page orientation pass, Phase 4 (two-tier nav): at most 6 primary
-// items per town, including one town-signature item (Jackrabbits/Worker
-// Pulse/What's On) -- everything else in `nav` above still gets a link,
-// just inside "More" (a native <details>/<summary>, no JS) instead of the
-// always-visible bar. Nothing is removed -- hard rule 1 -- `nav` itself
-// (every section's own href/label) is unchanged; this only splits it into
-// two visibility tiers. The footer below carries the SAME full list again,
-// grouped, so every section keeps a sitewide crawlable link even for a
-// visitor/crawler that never opens "More".
-const PRIMARY_HREFS: Record<string, string[]> = {
-  brookings_sd: ['/today/', '/events/', '/city-hall/', '/closures/', '/jackrabbits/', '/farm-report/'],
-  moreno_valley_ca: ['/today/', '/events/', '/traffic/', '/city-hall/', '/workplace-watch/', '/home-sales/'],
-  broomfield_co: ['/today/', '/whats-on/', '/traffic/', '/city-hall/', '/facilities/', '/jobs/'],
-};
-const primaryHrefSet = new Set(PRIMARY_HREFS[siteConfig.townId] ?? []);
-const primaryNav = nav.filter((item) => primaryHrefSet.has(item.href));
-const moreNav = nav.filter((item) => !primaryHrefSet.has(item.href));
-// "More" should open pre-expanded on any page it's the ONLY way to reach
-// (hard rule 5/1: a page under More must still show as the active section
-// when visited directly), so a reader landing on e.g. /recipes/ sees
-// immediately why the nav bar doesn't show it highlighted.
-const activeInMore = moreNav.some((item) => path.startsWith(item.href));
 
 // Footer: the FULL list again, grouped -- this is what guarantees every
 // section keeps a sitewide, crawlable internal link (hard rule 1/2) even
@@ -565,76 +542,6 @@ a { color: var(--navy); text-underline-offset: 2px; }
   color: var(--ink-soft);
 }
 
-.nav {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0 1.75rem;
-  padding-block: 0.625rem;
-}
-.nav a {
-  font-family: var(--font-ui);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink);
-  text-decoration: none;
-  padding-block: 0.125rem;
-}
-.nav a:hover { color: var(--navy); }
-/* Local Accent Identity: --section-accent (a per-PAGE override, see this
-   layout's own accentColor prop) still wins when a page sets one -- the
-   town's brand accent only replaces the previous plain navy fallback for
-   pages that don't. */
-.nav a[aria-current='page'] { box-shadow: inset 0 -3px 0 var(--section-accent, var(--brand-accent, var(--navy))); }
-
-/* Front-page orientation pass, Phase 4: "More" -- a native <details>, no
-   JS. summary gets the exact same type treatment as a primary nav <a> so
-   it doesn't read as a different kind of control. */
-.nav__more { position: relative; }
-.nav__more summary {
-  cursor: pointer;
-  list-style: none;
-  font-family: var(--font-ui);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink);
-  padding-block: 0.125rem;
-}
-.nav__more summary::-webkit-details-marker { display: none; }
-.nav__more summary:hover { color: var(--navy); }
-.nav__more summary[aria-current='page'] { box-shadow: inset 0 -3px 0 var(--section-accent, var(--brand-accent, var(--navy))); }
-.nav__more summary::after { content: ' \25BE'; font-size: 0.7em; }
-.nav__more-panel {
-  position: absolute;
-  top: 100%; left: 0;
-  z-index: 5;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  min-width: 11rem;
-  margin-top: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: var(--paper-raised);
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-}
-.nav__more-panel a {
-  font-family: var(--font-ui);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: normal;
-  color: var(--ink);
-  text-decoration: none;
-}
-.nav__more-panel a:hover { color: var(--navy); text-decoration: underline; }
-.nav__more-panel a[aria-current='page'] { color: var(--section-accent, var(--brand-accent, var(--navy))); }
-
 /* --- Skyltremsan: nu en ticker ------------------------------------------ */
 .sign {
   background: var(--sign-bg);
@@ -726,27 +633,7 @@ main { padding-block: 1.75rem 3.5rem; }
   </div>
   <div class="dateline">{dateline} &middot; {siteConfig.cityName}, {siteConfig.stateName}</div>
   <div class="shell">
-    {sectionNav ? (
-      <SectionNav nav={sectionNav} path={path} />
-    ) : (
-    <nav class="nav" aria-label="Sections">
-      {primaryNav.map((item) => (
-        <a href={item.href} aria-current={path.startsWith(item.href) ? 'page' : undefined}>
-          {item.label}
-        </a>
-      ))}
-      {moreNav.length > 0 && (
-        <details class="nav__more" open={activeInMore || undefined}>
-          <summary aria-current={activeInMore ? 'page' : undefined}>More</summary>
-          <div class="nav__more-panel">
-            {moreNav.map((item) => (
-              <a href={item.href} aria-current={path.startsWith(item.href) ? 'page' : undefined}>
-                {item.label}
-              </a>
-            ))}
-          </div>
-        </details>
-      )}
+    <SectionNav nav={sectionNav} path={path} />
     </nav>
     )}
   </div>

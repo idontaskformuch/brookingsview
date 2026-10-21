@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { enabledSections, resolveNav, SECTIONS, type NavConfig, type NavGate } from './nav-sections';
-import { ALL_SITES } from './site-config';
+import { ALL_CONFIGS, ALL_SITES } from './site-config';
 
 const BROOKINGS: NavGate = { townId: 'brookings_sd', hasWhatsOn: true, hasClosureWatch: true };
 const MORENO: NavGate = { townId: 'moreno_valley_ca', hasWhatsOn: true, hasClosureWatch: true, hasWorkplaceWatch: true };
@@ -65,6 +65,23 @@ describe('resolveNav', () => {
 });
 
 describe('real town configs', () => {
+  it('every town in site-config resolves against the registry, and its sheet reaches every enabled section', () => {
+    expect(ALL_CONFIGS.length).toBe(3);
+    for (const c of ALL_CONFIGS) {
+      const r = resolveNav(c.nav, c);
+      const inSheet = new Set(r.groups.flatMap((g) => g.items.map((i) => i.href)));
+      for (const s of enabledSections(c)) expect(inSheet.has(s.href), `${c.townId} ${s.href}`).toBe(true);
+      expect(r.tabs.length, c.townId).toBeLessThanOrEqual(7);
+    }
+  });
+  it('no cross-town sections: University/Jackrabbits only Brookings, Worker Pulse never Brookings, Vail only Broomfield', () => {
+    const hrefs = (id: string) => ALL_CONFIGS.filter((c) => resolveNav(c.nav, c).groups.some((g) => g.items.some((i) => i.id === id))).map((c) => c.townId);
+    expect(hrefs('university')).toEqual(['brookings_sd']);
+    expect(hrefs('jacks')).toEqual(['brookings_sd']);
+    expect(hrefs('vail')).toEqual(['broomfield_co']);
+    expect(hrefs('homesales')).toEqual(['moreno_valley_ca']);
+    expect(hrefs('workplace').sort()).toEqual(['broomfield_co', 'moreno_valley_ca']);
+  });
   it('Brookings in site-config resolves', async () => {
     const { siteConfig } = await import('./site-config');
     if (siteConfig.nav) expect(() => resolveNav(siteConfig.nav!, siteConfig)).not.toThrow();

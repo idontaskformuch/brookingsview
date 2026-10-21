@@ -15,9 +15,9 @@ import type { NavConfig } from './nav-sections';
 export interface SiteConfig {
   townId: string;
   /** Section navigation (tabs + All-sheet groups), see lib/nav-sections.ts and
-   *  .claude/spec-section-nav.md. A town without it still gets the legacy two-tier
-   *  header nav until its config is approved and added. */
-  nav?: NavConfig;
+   *  .claude/spec-section-nav.md. Required: every town gets the shared SectionNav and
+   *  resolveNav() fails the build when the config disagrees with the section registry. */
+  nav: NavConfig;
   /** Visningsnamn, t.ex. "Moreno Valley" */
   cityName: string;
   /** Delstatens fulla namn, t.ex. "California" */
@@ -459,6 +459,16 @@ const CITIES: Record<string, SiteConfig> = {
 
   moreno_valley_ca: {
     townId: 'moreno_valley_ca',
+    // Owner-approved 2026-10-21. Tabs follow GA4 traffic (facilities, not home sales); Home sales sits in Work & Home.
+    nav: {
+      tabs: ['today', 'events', 'whatson', 'cityhall', 'traffic', 'facilities', 'workplace'],
+      groups: {
+        Now: ['today', 'events', 'whatson', 'thisweek', 'weather'],
+        City: ['cityhall', 'traffic', 'closures', 'facilities'],
+        'Work & Home': ['workplace', 'homesales', 'jobs'],
+        More: ['sports', 'play', 'month'],
+      },
+    },
     // Render-window handoff, Phase 3+4 (merged, per that spec's own
     // review): home sales enabled first -- see NEEDS-HUMAN-REVIEW.md for
     // the Phase 0a link-audit evidence that motivated shipping this
@@ -609,6 +619,16 @@ const CITIES: Record<string, SiteConfig> = {
 
   broomfield_co: {
     townId: 'broomfield_co',
+    // Owner-approved 2026-10-21: six tabs for now, a seventh to be chosen (events / workplace / vail / weather).
+    nav: {
+      tabs: ['today', 'cityhall', 'facilities', 'whatson', 'traffic', 'jobs'],
+      groups: {
+        Now: ['today', 'whatson', 'events', 'thisweek', 'weather'],
+        City: ['cityhall', 'traffic', 'facilities'],
+        Community: ['workplace', 'jobs'],
+        More: ['vail'],
+      },
+    },
     renderWindow: NO_RENDER_WINDOW,
     cityName: 'Broomfield',
     stateName: 'Colorado',
@@ -708,6 +728,9 @@ export function getSiteConfig(): SiteConfig {
  *  existing). CITIES itself isn't exported -- it carries every town's full
  *  config (theaters, closure-watch params, etc.), more than a disclosure
  *  line needs -- this is a purpose-built, minimal projection of it. */
+/** Every town's config (tests: each town's nav must resolve against the section registry). */
+export const ALL_CONFIGS: SiteConfig[] = Object.values(CITIES);
+
 export const ALL_SITES: { townId: string; cityName: string; siteName: string; siteUrl: string }[] =
   Object.values(CITIES).map((c) => ({
     townId: c.townId, cityName: c.cityName, siteName: c.siteName, siteUrl: c.siteUrl,
