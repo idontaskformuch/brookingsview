@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getSectionHero, sectionsFor, sectionHeroGapWeeks, slotIndex, type HeroSection, type PoolImage } from './section-hero';
+import { getSectionHero, sectionsFor, slotIndex, type PoolImage } from './section-hero';
 import { thisWeekImagesFor } from '../config/this-week-images';
 import { HOLIDAYS, holidayImagesFor } from '../config/holidays';
 import { resolveActiveHoliday } from './holidays';
@@ -9,7 +9,7 @@ import { seasonForMonth } from './this-week-images';
 const TOWNS = ['brookings_sd', 'moreno_valley_ca', 'broomfield_co'] as const;
 const TZ: Record<string, string> = { brookings_sd: 'America/Chicago', moreno_valley_ca: 'America/Los_Angeles', broomfield_co: 'America/Denver' };
 
-/** Noon UTC on the Wednesday of each of the next `weeks` weeks from 2026-10-21. */
+/** Noon UTC on the Wednesday of each of `weeks` consecutive weeks from 2026-10-21. */
 function weekDates(weeks: number): Date[] {
   return Array.from({ length: weeks }, (_, i) => new Date(Date.UTC(2026, 9, 21 + 7 * i, 12)));
 }
@@ -18,7 +18,7 @@ function img(id: string): PoolImage {
   return { id, path: `/x/${id}.jpg`, alt: id, width: 1200, height: 800 };
 }
 
-/** A stand-in for the homepage's own pick: whatever the real pool would give section slot 0, +1. */
+/** A stand-in for the homepage's own pick for that week. */
 function homepagePick(town: string, date: Date): string | null {
   const w = weekInfoForInstant(date, TZ[town]);
   const season = seasonForMonth(w.monday.m);
@@ -52,40 +52,52 @@ describe('getSectionHero (real pools, 10 weeks forward from 2026-10-21)', () => 
       }
     });
   }
-
-  it('the real pools are too small for a 60-day no-repeat: report the true gap', () => {
-    // 15 images / 9 sections: an image can return after 1 week, not 9. This is the
-    // arithmetic the build-time warning (build-checks.ts) prints; the rule cannot
-    // be met without ~9 weeks x sections distinct photos per season and town.
-    const n = thisWeekImagesFor('brookings_sd').filter((i) => i.seasons.includes('autumn')).length;
-    expect(sectionHeroGapWeeks(n, sectionsFor('brookings_sd').length)).toBe(Math.floor(n / 9));
-    expect(sectionHeroGapWeeks(n, 9)).toBeLessThan(9);
-  });
 });
 
-describe('getSectionHero (a pool big enough for the 60-day rule)', () => {
-  const S = sectionsFor('brookings_sd').length;
-  const big = Array.from({ length: S * 10 + 1 }, (_, i) => img(`brookings_sd-autumn-${String(i).padStart(3, '0')}`));
+describe('hero changes at month, season and holiday boundaries (not weekly)', () => {
+  const town = 'brookings_sd';
+  const pathFor = (d: Date) => getSectionHero(town, 'events', d).image.path;
 
-  it('no section repeats an image within 60 days (9 weeks), no repeats across sections within a week, homepage excluded', () => {
-    const weeks = weekDates(10); // 10 consecutive weeks, all drawn from the one synthetic pool
-    const hpPerWeek = weeks.map((_, i) => big[(i * 13) % big.length].id);
-    const bySection = new Map<HeroSection, { week: number; id: string }[]>();
-    weeks.forEach((date, w) => {
-      const ids = sectionsFor('brookings_sd').map((s) => {
-        const r = getSectionHero('brookings_sd', s, date, { seasonPool: big, holidayPool: [], homepageImageId: hpPerWeek[w] });
-        const list = bySection.get(s) ?? []; list.push({ week: w, id: (r.image as PoolImage).id }); bySection.set(s, list);
-        return (r.image as PoolImage).id;
-      });
-      expect(new Set(ids).size).toBe(ids.length);
-      expect(ids).not.toContain(hpPerWeek[w]);
+  it('stays the same for every week inside one plain month', () => {
+    // Mon Nov 2 .. Mon Nov 23 2026: November, no holiday window yet (Thanksgiving window starts later)
+    const weeks = [2, 9, 16].map((day) => new Date(Date.UTC(2026, 10, day, 18)));
+    const picks = weeks.map((d) => {
+      const w = weekInfoForInstant(d, TZ[town]);
+      return { holiday: resolveActiveHoliday(HOLIDAYS, w.monday, w.sunday), path: pathFor(d) };
     });
-    for (const list of bySection.values()) {
-      for (let i = 0; i < list.length; i++) {
-        for (let j = i + 1; j < list.length; j++) {
-          if (list[i].id === list[j].id) expect(list[j].week - list[i].week).toBeGreaterThan(8); // 60 days = 8.6 weeks, so a repeat must be 9+ weeks apart
-        }
-      }
+    const plain = picks.filter((p) => !p.holiday);
+    expect(plain.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(plain.map((p) => p.path)).size).toBe(1);
+  });
+
+  it('changes when the month changes (holiday windows aside)', () => {
+    const all = (d: Date) => sectionsFor(town).map((s) => getSectionHero(town, s, d).image.path);
+    const plain = Array.from({ length: 40 }, (_, i) => new Date(Date.UTC(2026, 7, 5 + 7 * i, 18))).filter((d) => {
+      const w = weekInfoForInstant(d, TZ[town]);
+      return !resolveActiveHoliday(HOLIDAYS, w.monday, w.sunday) && thisWeekImagesFor(town).some((i) => i.seasons.includes(seasonForMonth(w.monday.m)));
+    });
+    const monthOf = (d: Date) => weekInfoForInstant(d, TZ[town]).monday.m;
+    let checked = 0;
+    for (let i = 1; i < plain.length; i++) {
+      const prev = plain[i - 1], cur = plain[i];
+      const same = monthOf(prev) === monthOf(cur);
+      const diff = all(prev).filter((p, k) => p !== all(cur)[k]).length;
+      if (same) expect(diff).toBe(0);                       // same month: nothing changes
+      else if (cur.getTime() - prev.getTime() <= 8 * 86_400_000) { expect(diff).toBeGreaterThanOrEqual(5); checked++; } // new month: most heroes change
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it('images from each season come only from that season (or the active holiday)', () => {
+    for (const date of weekDates(14)) {
+      const w = weekInfoForInstant(date, TZ[town]);
+      const season = seasonForMonth(w.monday.m);
+      const holiday = resolveActiveHoliday(HOLIDAYS, w.monday, w.sunday);
+      const allowed = new Set([
+        ...thisWeekImagesFor(town).filter((i) => i.seasons.includes(season)).map((i) => i.path),
+        ...(holiday ? holidayImagesFor(town, holiday.holiday).map((i) => i.path) : []),
+      ]);
+      for (const s of sectionsFor(town)) expect(allowed.has(getSectionHero(town, s, date).image.path)).toBe(true);
     }
   });
 
@@ -113,6 +125,6 @@ describe('reserve behavior', () => {
     const r = getSectionHero('brookings_sd', 'events', spring);
     expect(r.source).toBe('reserve');
     expect(r.image.path).toMatch(/categories\/brookings_sd-events-/);
-    expect(r.image.path).not.toMatch(/events-(1|2)\.png$/); // the parade photos with readable shop signs are gone
+    expect(r.image.path).not.toMatch(/events-(1|2)\.png$/);
   });
 });

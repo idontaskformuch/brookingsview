@@ -3,25 +3,25 @@
  *  image -- no hard-coded pictures per section.
  *
  *  getSectionHero(town, section, date) is pure and DB-free so the rotation is
- *  unit-testable and two builds in the same ISO week always agree:
+ *  unit-testable and two builds in the same period always agree:
  *
  *   - Candidates = this town's pool for the week's meteorological season, plus
  *     the active holiday's pool when the week overlaps one (lib/holidays.ts).
- *   - The candidate list gets a FIXED per-(town, season) order, and week k's
- *     window is the next S entries of that cycle (S = how many sections the town
- *     has). Section j shows entry j of the window. So within a week every
- *     section gets a different image, and an image comes back only after
- *     floor(n / S) weeks.
+ *   - The candidate list gets a FIXED per-(town, season) order. A section's
+ *     image changes only when the PERIOD changes: each calendar month, or the
+ *     holiday itself while a holiday window is active (so a hero changes at
+ *     every season and holiday boundary, and monthly in between). Owner
+ *     decision 2026-10-21: the two-month no-repeat rule belongs to the
+ *     homepage's "This week" image only; section heroes may repeat between
+ *     periods.
+ *   - Within one period every section gets a different image (period k's window
+ *     is the next S entries of the cycle, section j takes entry j).
  *   - The homepage's own image for the week (chosen with DB history in
  *     db.ts's resolveThisWeekImage) is passed in as `homepageImageId` and is
- *     never shown on a section that week.
+ *     never shown on a section that week -- a section swaps to a spare image
+ *     for just that week if it would collide.
  *   - The section's reserve image (its curated category photo) is used ONLY when
  *     the pool is empty for the date. No pool and no reserve throws.
- *
- *  HONEST LIMIT: "no repeat within two months" needs n >= 9 weeks x S distinct
- *  images per season and town. Pools hold ~15 today, so sectionHeroGapWeeks()
- *  reports the real gap and build-checks warns -- the rotation cannot create
- *  photos the pool does not have.
  */
 import type { ImageRef } from './images';
 import { stableHash, seasonForMonth, type Season } from './this-week-images';
@@ -94,13 +94,11 @@ export function slotIndex(town: string, section: HeroSection): number {
   return active.length + Math.max(0, rest.indexOf(section));
 }
 
-function weekOrdinal(monday: { y: number; m: number; d: number }): number {
-  return Math.round(Date.UTC(monday.y, monday.m - 1, monday.d) / (7 * 86_400_000));
-}
-
-/** Weeks before an image can recur in any section, given the pool size. */
-export function sectionHeroGapWeeks(poolSize: number, sectionCount: number): number {
-  return sectionCount <= 0 ? Infinity : Math.floor(poolSize / sectionCount);
+/** The rotation period a week belongs to: the active holiday (for its whole
+ *  window), otherwise the calendar month of the week's Monday. */
+function periodNumber(monday: { y: number; m: number }, holiday: string | null): number {
+  if (holiday) return stableHash(`${holiday}:${monday.y}`);
+  return monday.y * 12 + (monday.m - 1);
 }
 
 function stableOrder<T extends { id: string }>(items: T[], seed: string): T[] {
@@ -116,11 +114,8 @@ export function getSectionHero(
 
   const seasonPool: PoolImage[] = opts.seasonPool
     ?? thisWeekImagesFor(town).filter((img) => img.seasons.includes(season));
-  let holidayPool = opts.holidayPool;
-  if (!holidayPool) {
-    const match = resolveActiveHoliday(HOLIDAYS, week.monday, week.sunday);
-    holidayPool = match ? holidayImagesFor(town, match.holiday) : [];
-  }
+  const match = resolveActiveHoliday(HOLIDAYS, week.monday, week.sunday);
+  const holidayPool = opts.holidayPool ?? (match ? holidayImagesFor(town, match.holiday) : []);
 
   const seen = new Set<string>();
   const candidates = [...holidayPool, ...seasonPool].filter((img) => (seen.has(img.id) ? false : (seen.add(img.id), true)));
@@ -134,14 +129,14 @@ export function getSectionHero(
         'Add images to config/this-week-images.ts, or a reserve to config/category-images.ts.',
       );
     }
-    const pick = reservePool[stableHash(`${town}:${section}:${week.slug}`) % reservePool.length];
+    const pick = reservePool[stableHash(`${town}:${section}:${week.monday.y}-${week.monday.m}`) % reservePool.length];
     return { image: pick, source: 'reserve', poolSize: 0 };
   }
 
   const order = stableOrder(candidates, `${town}:${season}`);
   const n = order.length;
   const S = sectionsFor(town).length;
-  const k = weekOrdinal(week.monday);
+  const k = periodNumber(week.monday, match && holidayPool.length > 0 ? match.holiday : null);
   const base = ((k * S) % n + n) % n;
   const j = slotIndex(town, section);
   let pick = order[(base + j) % n];

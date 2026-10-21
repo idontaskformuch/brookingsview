@@ -55,7 +55,7 @@ import {
 import { THIS_WEEK_IMAGES } from '../config/this-week-images';
 import { holidayPoolSizesDueSoon, holidayPoolSizeForWeek as _holidayPoolSizeForWeek, type DateYMD } from './holidays';
 import { HOLIDAYS, HOLIDAY_IMAGES } from '../config/holidays';
-import { sectionsFor, sectionHeroGapWeeks } from './section-hero';
+import { sectionsFor } from './section-hero';
 
 let checked = false;
 
@@ -623,23 +623,19 @@ function assertHolidayPoolSizes(now: Date): void {
   );
 }
 
-const SECTION_HERO_TARGET_GAP_WEEKS = 9; // 60 days is 8.6 weeks
-
-/** WARN only: section heroes rotate through the same pool as the homepage, with
- *  each section on its own slot, so an image can come back after
- *  floor(pool / sections) weeks. The "no repeat within two months" rule needs
- *  9 weeks, i.e. pool >= 9 x sections. Says so plainly instead of pretending. */
-function warnSectionHeroPoolGap(now: Date): void {
+/** WARN only: two sections in the same period can only show different images
+ *  if the pool holds at least one image per section. (Owner decision
+ *  2026-10-21: no two-month no-repeat rule for section heroes -- that is the
+ *  homepage "This week" image only.) */
+function warnSectionHeroPoolSize(now: Date): void {
   const week = weekInfoForInstant(now, siteConfig.timezone);
   const season = seasonForMonth(week.monday.m);
   const n = THIS_WEEK_IMAGES.filter((i) => i.town_ids.includes(TOWN_ID as never) && i.seasons.includes(season)).length;
   const sections = sectionsFor(TOWN_ID).length;
-  const gap = sectionHeroGapWeeks(n, sections);
-  if (gap >= SECTION_HERO_TARGET_GAP_WEEKS) return;
+  if (n === 0 || n >= sections) return;
   console.warn(
-    `\n⚠️  Section heroes for "${TOWN_ID}": the "${season}" pool has ${n} images for ${sections} sections, so an ` +
-    `image can return after ${gap} week(s); the two-month no-repeat rule needs ${SECTION_HERO_TARGET_GAP_WEEKS * sections}+ ` +
-    '(9 weeks x sections). Add curated images via scripts/source_this_week_images.py.\n',
+    `\n⚠️  Section heroes for "${TOWN_ID}": the "${season}" pool has ${n} image(s) for ${sections} sections, so ` +
+    'some sections will share a picture. Add curated images via scripts/source_this_week_images.py.\n',
   );
 }
 
@@ -659,5 +655,5 @@ export async function runBuildTimeChecks(): Promise<void> {
   await assertPlaceLayerConsistent();
   await assertNoSandboxSourceUrls();
   assertThisWeekImageCoverage();
-  warnSectionHeroPoolGap(new Date());
+  warnSectionHeroPoolSize(new Date());
 }
