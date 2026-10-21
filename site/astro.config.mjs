@@ -35,9 +35,9 @@ const activeCity = env.SITE_CITY ?? 'brookings_sd';
 // module scope, which isn't available yet when this file evaluates, so it
 // can't be imported directly here. Keep both in sync by hand.
 const BRAND_TOKENS = {
-  brookings_sd: { accent: '#746311', accentInk: '#473d0a' },
-  moreno_valley_ca: { accent: '#4f6b2e', accentInk: '#38491f' },
-  broomfield_co: { accent: '#2d7980', accentInk: '#124549' },
+  brookings_sd: { accent: '#746311', accentInk: '#473d0a', accentDark: '#a08918', accentInkDark: '#c4a91c' },
+  moreno_valley_ca: { accent: '#4f6b2e', accentInk: '#38491f', accentDark: '#6f9640', accentInkDark: '#8db551' },
+  broomfield_co: { accent: '#2d7980', accentInk: '#124549', accentDark: '#3897a0', accentInkDark: '#30b9c4' },
 };
 
 // Emits the per-town accent tokens as ONE plain static asset in publicDir
@@ -61,9 +61,17 @@ const BRAND_TOKENS = {
 // solely on BaseLayout's own inline var() fallback -- so "no brand block"
 // is a visible, checked-in fallback rather than an implicit one.
 const brand = BRAND_TOKENS[activeCity];
-const accentTokensCss = brand
-  ? `:root {\n  --brand-accent: ${brand.accent};\n  --brand-accent-ink: ${brand.accentInk};\n}\n`
-  : ':root {\n  --brand-accent: #0b2e55;\n  --brand-accent-ink: #0b2e55;\n}\n';
+// Dark mode (Fas 6): the generated stylesheet carries BOTH modes, selected the
+// same way as status-tokens.css (OS preference unless the visitor forced light,
+// or data-theme="dark" forced by the header toggle). A town with no brand block
+// falls back to a light navy in dark mode (the shared --navy dark value).
+const accentVars = (a, ink) => `  --brand-accent: ${a};\n  --brand-accent-ink: ${ink};\n`;
+const accentLight = brand ? accentVars(brand.accent, brand.accentInk) : accentVars('#0b2e55', '#0b2e55');
+const accentDark = brand ? accentVars(brand.accentDark, brand.accentInkDark) : accentVars('#9bbbe3', '#9bbbe3');
+const accentTokensCss =
+  `:root {\n${accentLight}}\n` +
+  `@media (prefers-color-scheme: dark) {\n  :root:not([data-theme="light"]) {\n${accentDark.replace(/^/gm, '  ')}  }\n}\n` +
+  `:root[data-theme="dark"] {\n${accentDark}}\n`;
 fs.writeFileSync(path.join(process.cwd(), 'public', 'accent-tokens.css'), accentTokensCss);
 
 // Shared status colors (ok/warn/alert) -- same stable-URL reasoning as

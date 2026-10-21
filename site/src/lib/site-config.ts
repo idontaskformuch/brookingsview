@@ -259,7 +259,7 @@ export interface SiteConfig {
    *  cleared). Completed for all three towns in the sitewide presentation-
    *  layer pass -- see each town's own `brand` value below for its hue
    *  reasoning and contrast ratios. */
-  brand?: { accent: string; accentInk: string };
+  brand?: { accent: string; accentInk: string; accentDark: string; accentInkDark: string };
   /** What's On Phase 3: Ticketmaster Discovery API adapter (lib/
    *  ticketmaster.ts). Object-shaped (not a bare boolean) the same way
    *  closureWatch is above. `enabled: false` everywhere until Phase 7
@@ -437,7 +437,7 @@ const CITIES: Record<string, SiteConfig> = {
     // lib/accent-contrast.ts against real WCAG minimums, not eyeballed --
     // accent 5.94:1 / accentInk 10.83:1 against the page background. Mirror
     // this exactly in astro.config.mjs's BRAND_TOKENS.
-    brand: { accent: '#746311', accentInk: '#473d0a' },
+    brand: { accent: '#746311', accentInk: '#473d0a', accentDark: '#a08918', accentInkDark: '#c4a91c' },
   },
 
   moreno_valley_ca: {
@@ -587,7 +587,7 @@ const CITIES: Record<string, SiteConfig> = {
     // lib/accent-contrast.ts -- accent 6.04:1 / accentInk 9.81:1 against the
     // page background. Mirror this exactly in astro.config.mjs's
     // BRAND_TOKENS.
-    brand: { accent: '#4f6b2e', accentInk: '#38491f' },
+    brand: { accent: '#4f6b2e', accentInk: '#38491f', accentDark: '#6f9640', accentInkDark: '#8db551' },
   },
 
   broomfield_co: {
@@ -632,7 +632,7 @@ const CITIES: Record<string, SiteConfig> = {
     // (H17) to never be confused with either. Both values verified via
     // lib/accent-contrast.ts against real WCAG minimums, not eyeballed --
     // accent 5.05:1 / accentInk 10.64:1 against the page background.
-    brand: { accent: '#2d7980', accentInk: '#124549' },
+    brand: { accent: '#2d7980', accentInk: '#124549', accentDark: '#3897a0', accentInkDark: '#30b9c4' },
     brandLead: 'Broomfield',
     brandTail: 'View',
     siteName: 'Broomfield View',

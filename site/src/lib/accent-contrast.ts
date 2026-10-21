@@ -22,10 +22,19 @@
 export interface BrandTokens {
   accent: string;
   accentInk: string;
+  /** Dark-mode variants (Fas 6): lighter, checked against the dark page. */
+  accentDark: string;
+  accentInkDark: string;
 }
+
+import { PAGE } from './status-tokens.mjs';
 
 const PAGE_BACKGROUND = '#ffffff';
 const WHITE_TEXT = '#ffffff';
+// Dark mode: --surface is again the stricter (lighter) of the two dark page
+// backgrounds; text on a filled dark-mode accent is the dark page ink color.
+const DARK_PAGE_BACKGROUND = PAGE.dark.surface;
+const DARK_TEXT_ON_FILL = PAGE.dark.paper;
 
 const MIN_ACCENT_INK_TEXT = 4.5;
 const MIN_ACCENT_NON_TEXT = 3;
@@ -93,6 +102,32 @@ export function assertAccentContrast(townId: string, brand: BrandTokens | undefi
       `Build-time accent contrast check failed for "${townId}": white text on a filled accent ` +
       `(${brand.accent}) surface measures ${filledRatio.toFixed(2)}:1, below the required ` +
       `${MIN_TEXT_ON_FILLED_ACCENT}:1. Darken accent if it will ever hold text, or keep it strictly decorative.`,
+    );
+  }
+
+  // Dark mode: same three checks against the dark page (lighter accents).
+  const darkInk = contrastRatio(brand.accentInkDark, DARK_PAGE_BACKGROUND);
+  if (darkInk < MIN_ACCENT_INK_TEXT) {
+    throw new Error(
+      `Build-time accent contrast check failed for "${townId}": accentInkDark (${brand.accentInkDark}) ` +
+      `measures ${darkInk.toFixed(2)}:1 against the dark page background (${DARK_PAGE_BACKGROUND}), below ` +
+      `the required ${MIN_ACCENT_INK_TEXT}:1 for text/interactive use. Lighten accentInkDark.`,
+    );
+  }
+  const darkAccent = contrastRatio(brand.accentDark, DARK_PAGE_BACKGROUND);
+  if (darkAccent < MIN_ACCENT_NON_TEXT) {
+    throw new Error(
+      `Build-time accent contrast check failed for "${townId}": accentDark (${brand.accentDark}) measures ` +
+      `${darkAccent.toFixed(2)}:1 against the dark page background (${DARK_PAGE_BACKGROUND}), below the ` +
+      `required ${MIN_ACCENT_NON_TEXT}:1 for UI boundaries/non-text indicators.`,
+    );
+  }
+  const darkFilled = contrastRatio(DARK_TEXT_ON_FILL, brand.accentDark);
+  if (darkFilled < MIN_TEXT_ON_FILLED_ACCENT) {
+    throw new Error(
+      `Build-time accent contrast check failed for "${townId}": dark text on a filled dark-mode accent ` +
+      `(${brand.accentDark}) surface measures ${darkFilled.toFixed(2)}:1, below the required ` +
+      `${MIN_TEXT_ON_FILLED_ACCENT}:1. Lighten accentDark if it will ever hold text, or keep it strictly decorative.`,
     );
   }
 }
