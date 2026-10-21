@@ -8,8 +8,9 @@ nothing would complain -- source-staleness-check only notices after DAYS
 (events: 2 d). This check is deliberately NOT dispatched by the Worker: it
 runs on GitHub's own schedule (.github/workflows/scrape-liveness-check.yml)
 so a dead Worker cannot also silence its own alarm. A red X on that workflow
-IS the alert (plus ALERT_WEBHOOK if set), same convention as the staleness
-check.
+IS the alert, plus a GitHub issue per stale town (qa/report.py; GitHub's own
+notification mail delivers it -- no ALERT_WEBHOOK needed; ALERT_WEBHOOK is still
+honoured if set). The issue closes itself after 2 clean runs in a row.
 
 "Succeeded" = at least one scrape_runs row with status='ok' for the town
 whose started_at is within MAX_HOURS. 18 h = three missed 6-hourly slots.
@@ -25,6 +26,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 from db.db import get_conn
+from qa.report import report
 
 MAX_HOURS = 18
 
@@ -48,6 +50,11 @@ def _alert(msg: str) -> None:
             pass
 
 
+def _run_url() -> str:
+    repo, run = os.environ.get("GITHUB_REPOSITORY"), os.environ.get("GITHUB_RUN_ID")
+    return f"https://github.com/{repo}/actions/runs/{run}" if repo and run else ""
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("towns", nargs="+", help="town_id values, e.g. brookings_sd")
@@ -56,6 +63,7 @@ def main() -> int:
 
     now = datetime.now(timezone.utc)
     stale: list[str] = []
+    findings: list[dict] = []
     with get_conn() as conn:
         for town in args.towns:
             row = conn.execute(
@@ -66,9 +74,17 @@ def main() -> int:
             if is_stale(last_ok, now, args.max_hours):
                 age = "never" if last_ok is None else f"{(now - last_ok).total_seconds() / 3600:.1f} h ago"
                 stale.append(f"[{town}] last successful scrape: {age} (limit {args.max_hours:g} h)")
+                findings.append({"check": "ops.scrape-liveness", "town": town, "pattern": town, "path": f"/{town}",
+                                 "message": f"last successful scrape: {age} (limit {args.max_hours:g} h). "
+                                            "Check the Cloudflare cron-dispatcher Worker and its GITHUB_TOKEN expiry."})
                 print(f"  [liveness] {town}: STALE -- {age}")
             else:
                 print(f"  [liveness] {town}: ok -- {(now - last_ok).total_seconds() / 3600:.1f} h ago")
+    try:  # always called (also with no findings) so a fixed town's issue can close itself
+        report(findings, report_only=False, scope_towns=set(args.towns), clean_to_close=2,
+               run_url=_run_url())
+    except Exception as exc:  # pragma: no cover -- the red X below must never depend on GitHub's API
+        print(f"  [liveness] issue reporting failed: {exc}", file=sys.stderr)
     if stale:
         _alert("No recent successful scrape:\n  " + "\n  ".join(stale)
                + "\nCheck the Cloudflare cron-dispatcher Worker and its GITHUB_TOKEN expiry.")

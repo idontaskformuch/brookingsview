@@ -1,0 +1,4 @@
+{
+  "_doc": "Waivers: [{check, town, url_pattern, reason, expires}]. A waiver stops a finding from being reported until `expires` (YYYY-MM-DD). url_pattern is a substring of the URL path ('*' = any).",
+  "waivers": []
+}

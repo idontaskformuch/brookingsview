@@ -1,0 +1,82 @@
+// Pure per-page QA checks (no browser needed) -- unit-tested in
+// site/src/lib/qa-checks.test.ts. run.mjs builds a `snap` per page and feeds it here.
+//
+// snap = { url, path, status, redirects, title, titleCount, h1: string[], metaRobots,
+//          mainText, metaDescription, imgAlts: string[], loneDashNodes: number,
+//          brokenImgs: string[], consoleErrors: string[], failedRequests: string[],
+//          blockedAttempts: string[] }
+
+export const LITERAL_RE = /\b(undefined|NaN|null)\b|\[object Object\]|Invalid Date|\{\{|\}\}/g;
+
+export function finding(check, town, snap, message, extra = {}) {
+  return { check, town, url: snap.url, path: snap.path, message, ...extra };
+}
+
+/** Compile a town's blocklist ({town: terms[]}) into one RegExp per town. */
+export function compileBlocklist(blocklist) {
+  const out = {};
+  for (const [town, terms] of Object.entries(blocklist)) {
+    const parts = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    out[town] = parts.length ? new RegExp(`(?<![\\w])(?:${parts.join('|')})(?![\\w])`, 'gi') : null;
+  }
+  return out;
+}
+
+export function checkPage(snap, town, compiled) {
+  const f = [];
+  if (snap.status !== 200) f.push(finding('web.status', town, snap, `HTTP ${snap.status}`));
+  else if (snap.redirects > 2) f.push(finding('web.status', town, snap, `${snap.redirects} redirects`));
+  if (snap.status !== 200) return f; // content checks are meaningless on an error page
+
+  for (const src of snap.brokenImgs) f.push(finding('web.img', town, snap, `broken image ${src}`));
+  for (const m of snap.consoleErrors) f.push(finding('web.console', town, snap, m.slice(0, 300)));
+  for (const m of snap.failedRequests) f.push(finding('web.console', town, snap, `failed request ${m}`.slice(0, 300)));
+
+  const lits = new Set((snap.mainText.match(LITERAL_RE) ?? []));
+  if (snap.loneDashNodes > 0) lits.add('--');
+  if (lits.size) f.push(finding('web.literal', town, snap, `visible: ${[...lits].join(', ')}`));
+
+  if (snap.h1.length !== 1) f.push(finding('web.h1', town, snap, `${snap.h1.length} <h1> elements`));
+  if (snap.titleCount !== 1) f.push(finding('web.h1', town, snap, `${snap.titleCount} <title> elements`));
+  else if (!snap.title.trim()) f.push(finding('web.h1', town, snap, 'empty <title>'));
+
+  const re = compiled?.[town];
+  if (re) {
+    const hay = [snap.title, snap.metaDescription, snap.mainText, ...snap.imgAlts].join('\n');
+    const hits = new Set([...hay.matchAll(re)].map((m) => m[0]));
+    if (hits.size) f.push(finding('web.leak', town, snap, `other-town terms: ${[...hits].slice(0, 6).join(', ')}`));
+  }
+
+  if (/noindex/i.test(snap.metaRobots ?? '') && snap.inSitemap) {
+    f.push(finding('web.noindex-sitemap', town, snap, 'noindex page listed in sitemap'));
+  }
+  if (snap.blockedAttempts.length) {
+    f.push(finding('qa.tracking', town, snap, `tried: ${[...new Set(snap.blockedAttempts)].slice(0, 3).join(', ')}`));
+  }
+  return f;
+}
+
+/** Run-level checks (cross-page). */
+export function checkRun(snaps, town) {
+  const f = [];
+  const byTitle = new Map();
+  for (const s of snaps) {
+    if (s.status !== 200 || !s.title) continue;
+    (byTitle.get(s.title) ?? byTitle.set(s.title, []).get(s.title)).push(s);
+  }
+  for (const [title, list] of byTitle) {
+    if (list.length > 1) {
+      f.push({ check: 'web.title-dup', town, url: list[0].url, path: '(multiple)',
+        message: `"${title.slice(0, 80)}" on ${list.length} URLs, e.g. ${list.slice(0, 3).map((s) => s.path).join(' ')}` });
+    }
+  }
+  return f;
+}
+
+/** Drop findings covered by an unexpired waiver. */
+export function applyWaivers(findings, waivers, today) {
+  return findings.filter((x) => !waivers.some((w) =>
+    w.check === x.check && (!w.town || w.town === x.town) &&
+    (w.url_pattern === '*' || (x.path ?? '').includes(w.url_pattern)) &&
+    (!w.expires || w.expires >= today)));
+}

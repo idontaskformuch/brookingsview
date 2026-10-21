@@ -1,7 +1,9 @@
 name: scrape-liveness-check
 # Watchdog for the Cloudflare cron-dispatcher Worker (cron-dispatcher/,
 # .claude/state.md Kö 9). Fails (red X + ALERT_WEBHOOK) if any town has had
-# no successful scrape_runs row in 18 h.
+# no successful scrape_runs row in 18 h. Also opens a GitHub issue per stale town
+# (qa/report.py) -- GitHub mails it via the owner's notification settings (Watch +
+# e-mail on); closes itself after 2 clean runs. ALERT_WEBHOOK is optional.
 #
 # DELIBERATELY on GitHub's own `schedule:` and NOT dispatched by the Worker:
 # if the Worker, its 90-day GitHub token or the dispatch breaks, this must
@@ -17,12 +19,17 @@ on:
     - cron: "47 */6 * * *"   # odd minute: the top of the hour is GitHub's busiest
   workflow_dispatch: {}
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   check:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL:   ${{ secrets.DATABASE_URL }}
       ALERT_WEBHOOK:  ${{ secrets.ALERT_WEBHOOK }}
+      GITHUB_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

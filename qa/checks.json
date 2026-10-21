@@ -1,0 +1,15 @@
+{
+  "_doc": "Registry of QA checks. severity: hard = files a GitHub issue (once QA_REPORT_ONLY is off), soft = weekly summary only. born_from = the real incident that created the check (rule: every manually found defect becomes a check + a fixture, see CLAUDE.md).",
+  "checks": {
+    "web.status":   {"severity": "hard", "born_from": "Q0 baseline: any sitemap URL or internal link that is not a clean 200 (the 'unpublish never gated the site' class, 2026-09-03)", "what": "HTTP status != 200 for a sitemap URL, redirect chain > 2, or a broken internal link"},
+    "web.img":      {"severity": "hard", "born_from": "Q0 baseline", "what": "<img> that failed to load (naturalWidth 0)"},
+    "web.console":  {"severity": "hard", "born_from": "/today Tonight/Tomorrow script dead in production since Fas 1 (2026-10-21)", "what": "console.error, uncaught page error or failed first-party request"},
+    "web.literal":  {"severity": "hard", "born_from": "Q0 baseline (spec item: undefined/NaN/null/--)", "what": "visible 'undefined', 'NaN', 'null', '[object Object]', 'Invalid Date', '{{' or a lone '--'"},
+    "web.h1":       {"severity": "hard", "born_from": "Q0 baseline (spec item: dubbla titlar/H1)", "what": "not exactly one <h1>, missing/empty/duplicate <title>"},
+    "web.title-dup":{"severity": "soft", "born_from": "Q0 baseline", "what": "the same <title> on more than one URL in a run"},
+    "web.leak":     {"severity": "hard", "born_from": "culture essay on moreno_valley_ca that belonged to Brookings (2026-08, see CONTAMINATION_REPORT.md)", "what": "another town's identity term (ai_pipeline/town_guard.py HARD_BLOCKLIST) in <main>, title, meta description or img alt"},
+    "web.noindex-sitemap": {"severity": "hard", "born_from": "sitemap/noindex-disjoint check in the build", "what": "URL in sitemap carries noindex"},
+    "ops.scrape-liveness": {"severity": "hard", "born_from": "GitHub cron started scrapes 4.5-9.5 h late; Cloudflare cron-dispatcher + watchdog (Kö 9 Steg 1, 2026-10-21)", "what": "a town has had no successful scrape_runs row for 18 h"},
+    "qa.tracking":  {"severity": "soft", "born_from": "QA must never count as a visitor (owner requirement 2026-10-21)", "what": "page tried to load analytics/ads scripts although QA declined consent (they were aborted)"}
+  }
+}

@@ -1,0 +1,65 @@
+name: qa-daily
+# Daily QA sweep of the LIVE sites (qa/, spec: .claude/spec-qa-automation.md, phase Q0).
+# Every sitemap URL per town is loaded in a real browser and checked (status, images,
+# console errors, "undefined/NaN/null/--", H1/title, wrong-town terms, broken links).
+#
+# QA_REPORT_ONLY=1 until the owner has triaged the first baseline: findings are listed in
+# the run summary and nothing is filed. Set the repo variable QA_REPORT_ONLY to 0 to switch
+# on GitHub issues (one per fingerprint, mailed via GitHub notifications).
+#
+# TRAFFIC HYGIENE: see qa/web/run.mjs header -- own User-Agent, consent pre-declined (GA4 and
+# AdSense never load), analytics hosts aborted, secret bypass header on first-party only.
+# Must stay off the Cloudflare cron-dispatcher's deploy path: this workflow never deploys.
+
+on:
+  schedule:
+    - cron: "23 6 * * *"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Max pages per town (0 = all)"
+        default: "0"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        town: [brookings_sd, moreno_valley_ca, broomfield_co]
+    env:
+      QA_BYPASS_TOKEN: ${{ secrets.QA_BYPASS_TOKEN }}
+      QA_REPORT_ONLY:  ${{ vars.QA_REPORT_ONLY || '1' }}
+      GITHUB_TOKEN:    ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: npm ci
+        working-directory: site
+      - run: npx playwright-core install --with-deps chromium
+        working-directory: site
+      - run: python -m qa.export_blocklist
+      - name: Sweep ${{ matrix.town }}
+        run: node qa/web/run.mjs --town ${{ matrix.town }} --limit "${{ inputs.limit || 0 }}"
+      - name: Report
+        if: always()
+        run: python -m qa.report --in qa/out/${{ matrix.town }}.json --summary-file "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa-${{ matrix.town }}
+          path: qa/out/${{ matrix.town }}.json
+          retention-days: 14

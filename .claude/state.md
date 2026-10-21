@@ -34,7 +34,15 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 - FLAKY? 2 vitest-tester föll en gång 2026-10-21 (66 s körning, direkt efter en astro build), ej
   identifierade; 5 omkörningar (varav 1 under CPU-last) = 1152/1152 gröna. Om det återkommer: kör
   --reporter=verbose och logga namnen här.
-- PLAN QA-automation (2026-10-21) skriven, väntar på ägarens godkännande: .claude/spec-qa-automation.md. Inget byggt.
+- QA-automation Q0 KLAR (commit, EJ pushad). Spec: .claude/spec-qa-automation.md; kod: qa/ (web/run.mjs, web/checks.mjs, report.py, checks.json,
+  README.md), .github/workflows/qa-daily.yml (rapportera-bara, QA_REPORT_ONLY=1). Ägaren godkände 2026-10-21: GitHub-notiser, Opus 5.5
+  (ANTHROPIC_API_KEY finns som secret, bekräftat), WAF-undantag på hemlig header QA_BYPASS_TOKEN (ej IP), CLAUDE.md regel 12.
+  BESLUT: vakthunden (check_scrape_liveness) öppnar nu GitHub-issue per stad (stänger sig efter 2 rena körn.) i st f ALERT_WEBHOOK;
+  QA-trafik: samtycke förinställt 'declined' (GA4 laddas aldrig), analysvärdar aborteras, egen UA ViewMediaQA, header bara mot egen origin.
+  Cloudflare server-side-statistik går EJ att stänga av; UA-filter i dashboarden ej verifierat; requests_total loggas per körning.
+  KVAR (ägaren): skapa secret QA_BYPASS_TOKEN + WAF-regel (jag gör den via CLOUDFLARE_API_TOKEN först efter ja); kolla Watch + e-post
+  (github.com/settings/notifications). Första baslinjen: /about/ ger web.leak (syskonsajter nämns) -> triagera innan QA_REPORT_ONLY=0.
+  Nästa: Q1 (Pass B/C, mörkt, axe, tidsresa, clientfill/empty/past-event/stale-alert).
 - NÄSTA: Kö 9 Steg 1 byggt+committat (09ea03f), väntar på ägarens punkter 1-5 ovan. Därefter Kö 9 Steg 2, Steg 3, sen Kö 2+.
 
 ## 2. Kö

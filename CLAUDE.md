@@ -35,3 +35,8 @@
 11. Bygg- och testkommandon får aldrig pipas genom tail/head utan
     set -o pipefail eller kontroll av PIPESTATUS. Exit-koden ska alltid
     kontrolleras.
+12. Varje manuellt funnet fel är inte klart förrän det har en QA-kontroll i
+    qa/checks.json (med born_from) och en regressionsfixtur som faller före
+    fixen -- eller en rad som motiverar varför det inte går. QA-trafik ska
+    aldrig räknas som besökare: ändra inte qa/web/run.mjs så att
+    samtyckes-/analysblockeringen försvinner.
