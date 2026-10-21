@@ -1,0 +1,33 @@
+name: scrape-liveness-check
+# Watchdog for the Cloudflare cron-dispatcher Worker (cron-dispatcher/,
+# .claude/state.md Kö 9). Fails (red X + ALERT_WEBHOOK) if any town has had
+# no successful scrape_runs row in 18 h.
+#
+# DELIBERATELY on GitHub's own `schedule:` and NOT dispatched by the Worker:
+# if the Worker, its 90-day GitHub token or the dispatch breaks, this must
+# still fire. GitHub's schedule runs late (hours) but that only delays the
+# alarm; the 18 h limit plus 6-hourly checks still catches an outage within
+# about a day. See scripts/check_scrape_liveness.py.
+#
+# One job loops over all three towns (a matrix would cost 3 setup rounds per
+# check for no benefit); the script reports every town before failing.
+
+on:
+  schedule:
+    - cron: "47 */6 * * *"   # odd minute: the top of the hour is GitHub's busiest
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL:   ${{ secrets.DATABASE_URL }}
+      ALERT_WEBHOOK:  ${{ secrets.ALERT_WEBHOOK }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Kontrollera att varje stad har en lyckad scrape inom 18 h
+        run: python -m scripts.check_scrape_liveness brookings_sd moreno_valley_ca broomfield_co

@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Cron-only Worker: no routes, no public URL. Starts GitHub Actions
+  // workflows via workflow_dispatch because GitHub's own `schedule:` runs
+  // 4.5-9.5 h late on this repo. See src/schedule.ts and README.md.
+  "name": "viewmedia-cron-dispatcher",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "triggers": {
+    // Keep in sync with SCRAPE_CRON / MORNING_CRON in src/schedule.ts
+    // (test/schedule.test.ts fails if dueWorkflows() stops matching them).
+    "crons": ["0 */6 * * *", "30 10-13 * * 1-5"]
+  },
+  "observability": { "enabled": true }
+}

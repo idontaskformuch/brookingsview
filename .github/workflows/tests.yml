@@ -28,6 +28,21 @@ jobs:
   # silently shipping. Pure static analysis, same as `astro check` run
   # locally -- no DATABASE_URL needed, sql`` template calls are never
   # executed during type-checking.
+  # Pure schedule/DST logic of the Cloudflare cron-dispatcher Worker.
+  cron-dispatcher:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cron-dispatcher
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+
   astro-check:
     runs-on: ubuntu-latest
     defaults:

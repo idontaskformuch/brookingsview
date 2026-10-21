@@ -77,7 +77,19 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
    Steg 3: NWS i webbläsaren med samma alerts.ts-filter. En commit per steg, pusha ej utan ja.
    FYND: Broomfield har school_alerts_adams12/_bvsd men INGEN closureWatch-config (hasClosureWatch=false, /closures redirectar).
 
+   STEG 1 (2026-10-21): Broomfield-morgonkörning UTESLUTEN (väg 3): scrape_runs har 0 körningar/0 rader någonsin för
+   school_alerts_adams12/_bvsd (båda enabled:false, Adams 12 bot-challenge, BVSD app) -> ta upp igen när en källa finns.
+   Byggt (EJ deployat, EJ pushat): cron-dispatcher/ (Worker, crons "0 */6 * * *" + "30 10-13 * * 1-5", lokal-05:30-filter för
+   Chicago/LA), scripts/check_scrape_liveness.py + .github/workflows/scrape-liveness-check.yml (GitHubs eget schedule, 18 h,
+   alla tre städer, ALERT_WEBHOOK). KVAR: ägaren godkänner wrangler deploy; ägaren skapar token + `wrangler secret put`;
+   först DÄREFTER tas schedule:-blocken bort ur scrape.yml, moval-scrape.yml, broomfield-scrape.yml, closure-watch-morning.yml,
+   moval-closure-watch-morning.yml (visa diff först). Tills dess kör både GitHub och Worker = dubbla körningar.
+
 ## 3. Gällande beslut (kortform)
+- Repot förblir publikt tills sajterna drar in pengar, görs då privat (Actions-kostnad vid privat: se Kö 9).
+- Cloudflare cron-dispatcher-token (fine-grained PAT, Actions:write, bara detta repo): giltig 90 dagar från skapande.
+  UTGÅNGSDATUM: fylls i av ägaren när token skapats (senast 2027-01-19 om den skapas 2026-10-21); lägg en påminnelse 14 d före.
+  Utgången token => 401 i Worker-loggen + scrape-liveness-check röd efter 18 h.
 - En push per batch, efter fullt batteri; pusha inte utan ägarens ja (undantag: ägaren
   beordrar uttryckligen en push). "Visa X innan push" = stanna och vänta på nytt ja.
 - Ingen ny cron; allt tidsrelativt (Today/Tonight, N events today, dagräkning, öppet/stängt)
