@@ -75,7 +75,7 @@ const iconFor = (cat: string | null, title: string = '') => {
   if (cat === 'Athletics') {
     return ATHLETICS_ICONS.find(([re]) => re.test(title))?.[1] ?? '🏟️';
   }
-  return cat ? CATEGORY_ICONS[cat] ?? '📅' : '📅';
+  return cat ? CATEGORY_ICONS[cat] ?? '' : '';
 };
 
 // "Marquee" = det som fyller hero-remsan: de närmaste Athletics/Music-

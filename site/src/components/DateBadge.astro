@@ -1,0 +1,26 @@
+---
+/** Small CSS calendar badge ("OCT / 20") for an event's real month and day in
+ *  the TOWN's timezone -- replaces the calendar emoji, which Apple devices draw as a
+ *  fixed "JUL 17" no matter what the event date is. Purely decorative
+ *  (aria-hidden): the date is always stated in text next to it. */
+interface Props { iso: string | Date; timezone: string; color?: string }
+const { iso, timezone, color = 'var(--ink-soft)' } = Astro.props;
+const parts = new Intl.DateTimeFormat('en-US', { timeZone: timezone, month: 'short', day: 'numeric' })
+  .formatToParts(new Date(iso));
+const mon = (parts.find((p) => p.type === 'month')?.value ?? '').toUpperCase();
+const day = parts.find((p) => p.type === 'day')?.value ?? '';
+---
+<span class="date-badge" style={`--badge-color: ${color}`} aria-hidden="true"><span class="date-badge__mon">{mon}</span><span class="date-badge__day">{day}</span></span>
+
+<style>
+  .date-badge {
+    display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 1.75rem; border: 1px solid var(--badge-color); border-radius: 0.25rem;
+    overflow: hidden; line-height: 1; font-family: var(--font-ui); background: var(--surface, #fff);
+  }
+  .date-badge__mon {
+    width: 100%; text-align: center; font-size: 0.5rem; font-weight: 700; letter-spacing: 0.04em;
+    padding: 0.1rem 0; background: var(--badge-color); color: #fff;
+  }
+  .date-badge__day { font-size: 0.8125rem; font-weight: 700; padding: 0.1rem 0 0.15rem; color: var(--ink); }
+</style>

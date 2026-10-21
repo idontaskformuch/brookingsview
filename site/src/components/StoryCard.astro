@@ -1,6 +1,7 @@
 ---
 /** En post i nyhetsströmmen. Avdelad med hårfin linje, inte inramad som ett
  *  kort -- kortramar plattar ut hierarkin och får allt att se lika viktigt ut. */
+import DateBadge from './DateBadge.astro';
 import type { Story, Facility } from '../lib/db';
 import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
 import ShareButtons from './ShareButtons.astro';
@@ -34,7 +35,8 @@ const MAROON_CHIP_COLOR = '#a1272f';
 
 const CHIP: Partial<Record<ImageCategory, { icon: string; color: string }>> = {
   city_hall: { icon: '🏛️', color: 'var(--navy)' },
-  events: { icon: '📅', color: SECTION_THEME.events.accent },
+  // Events get a CSS date badge (DateBadge.astro), not an emoji: no icon string.
+  events: { icon: '', color: SECTION_THEME.events.accent },
   traffic: { icon: '🚗', color: SECTION_THEME.traffic.accent },
   home_sales: { icon: '🏠', color: SECTION_THEME.home_sales.accent },
   jobs: { icon: '💼', color: JOBS_CHIP_COLOR },
@@ -189,7 +191,8 @@ const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCat
       the alert branch already looked like this; this just generalizes it,
       so there's one layout to reason about instead of two. */}
   <p class="item__kicker">
-    {chip && <span class="item__chip" style={`--chip-color: ${chip.color}`} aria-hidden="true">{chip.icon}</span>}
+    {chip && chip.icon && <span class="item__chip" style={`--chip-color: ${chip.color}`} aria-hidden="true">{chip.icon}</span>}
+    {chip && !chip.icon && story.occurs_at && <DateBadge iso={story.occurs_at} timezone={siteConfig.timezone} color={chip.color} />}
     {kicker && <span class="kicker">{kicker}</span>}
     {timeLabel && timeMachineValue && (
       <time class="item__when data" datetime={timeMachineValue} data-rel={isRelativeLabel ? "1" : undefined} data-rel-end={isRelativeLabel ? (story.ends_at ?? undefined) : undefined} data-tz={siteConfig.timezone}>{timeLabel}</time>
