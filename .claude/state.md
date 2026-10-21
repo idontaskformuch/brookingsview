@@ -7,7 +7,10 @@
   (kräver 9 v x ~9 sektioner); build-check varnar med exakta tal. Spring/summer
   saknar pool -> reserv (kategoribild). Borttagna bilder: Brookings events-1/2,
   city_hall-1/4; Moreno events-3, city_hall-2, school_alerts-3.
-  Kvar: Fas 5 (textpolish), sen full batteri + push-godkännande.
+  Fas 5 (stavning organizer/summarized/theater, konsekvent event-kicker
+  'Around Town'/'Arts & Culture') committad. Full batteri grön: vitest 1113
+  (UTC+Stockholm), pytest 878, astro check 0, 3 byggen, sitemap/noindex x3,
+  heat-läckage x3. Ägaren beordrade push i ett svep efter verifierad Fas 5.
   Inga skärmbilder (ägaren kollar på telefon efter push). Fas 6 dark mode först
   efter Fas 1-5 godkända+committade; STATUS_TOKENS.dark läggs då till.
   ÖVRIGA ikon-emojier kvar för senare (ej Fas 3): StoryCard CHIP (🏛️🚗🏠💼🏈🎒⚠️

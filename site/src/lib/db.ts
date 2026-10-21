@@ -1165,7 +1165,7 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
     if (nextEvent) {
       items.push({ href: storyHref(nextEvent.slug), title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
     }
-    items.push({ href: '/events/campus/', title: 'Arts & culture at SDSU', kicker: 'Events', description: 'Music, theatre and special events on campus.' });
+    items.push({ href: '/events/campus/', title: 'Arts & culture at SDSU', kicker: 'Events', description: 'Music, theater and special events on campus.' });
     items.push({ href: '/jackrabbits/', title: 'Jackrabbits', kicker: 'Sports', description: 'Schedule and results.' });
     items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
     if (gameItem) items.push(gameItem);

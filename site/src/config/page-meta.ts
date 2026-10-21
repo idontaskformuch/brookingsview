@@ -85,7 +85,7 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
   },
   'whats-on': {
     titlePattern: 'Concerts and Shows Near {Town} | {Site}',
-    h1Pattern: 'Live Music, Theatre and Festivals Within Driving Distance of {Town}',
+    h1Pattern: 'Live Music, Theater and Festivals Within Driving Distance of {Town}',
     ledeRequirement: 'NON-NEGOTIABLE anti-doorway disclosure: must state the radius and that drive times are shown.',
   },
   today: {

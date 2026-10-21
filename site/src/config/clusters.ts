@@ -411,7 +411,7 @@ export const SPOKE_NAV_COPY: Record<string, SpokeNavCopy> = {
   'whats-on': {
     label: 'Concerts & shows',
     href: '/whats-on/',
-    description: 'Touring concerts, theatre and festivals within driving distance, ranked by how big they actually are.',
+    description: 'Touring concerts, theater and festivals within driving distance, ranked by how big they actually are.',
   },
   // Getting around
   closures: {

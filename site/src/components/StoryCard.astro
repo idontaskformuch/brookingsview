@@ -7,7 +7,7 @@ import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS, isAiWritten
 import ShareButtons from './ShareButtons.astro';
 import { siteConfig } from '../lib/site-config';
 import { categoryForSourceType, splitEventTitleAndVenue, buildNameAliasIndex, type ImageCategory } from '../lib/images';
-import { eventPriceAgeLine } from '../lib/events';
+import { eventPriceAgeLine, TOWN_EVENT_KICKER } from '../lib/events';
 import { SECTION_THEME } from '../lib/section-theme';
 import { relativeTime, dayTimeKicker } from '../lib/time';
 import { storyHref } from '../lib/content-slugs';
@@ -174,6 +174,7 @@ const timeMachineValue = timeSource ? new Date(timeSource).toISOString() : null;
 // nothing else. `null` here means "no kicker line at all" for that row, not
 // an empty string.
 const kicker = kickerOverride ?? (isAlert ? 'Alert' : isMeeting ? 'City hall'
+  : isEvent ? TOWN_EVENT_KICKER
   : hasByline ? (CATEGORY_LABELS[story.source_type] ?? 'Feature') : null);
 
 // The chip is the SAME information as `kicker`, just as a colored dot --

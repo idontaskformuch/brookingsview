@@ -8,7 +8,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getUpcomingStories, getPastStories, getUpcomingArtsEvents, getRegionalSports, getFacilities, calendarDateParts } from '../lib/db';
 import {
   buildEventFeed, artsEventAsStory, withAttribution, localDateParts, utcMidnight, classifyEventLocality,
-  weekendAnchorOffset, buildEventSections,
+  weekendAnchorOffset, buildEventSections, TOWN_EVENT_KICKER, ARTS_EVENT_KICKER,
   type FeedItem,
 } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
@@ -34,7 +34,7 @@ const clusterNavItems = resolveHubNavItems('events', siteConfig);
 // vanlig 'event'-rad (sitewide presentation-layer pass, R4: sidans egen
 // rubrik säger redan "Events", en upprepad generisk kicker var bara brus).
 const isBrookings = siteConfig.townId === 'brookings_sd';
-const townwideKicker = isBrookings ? 'Around Town' : undefined;
+const townwideKicker = TOWN_EVENT_KICKER;
 
 const [upcoming, past, artsEvents, facilities] = await Promise.all([
   getUpcomingStories(['event'], 120),
@@ -276,7 +276,7 @@ const webPageJsonLd = dateModified ? {
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
     <p>Community events in {siteConfig.cityName}, {siteConfig.stateName} —
-    library programs, city events and more, gathered from each organiser's own
+    library programs, city events and more, gathered from each organizer's own
     calendar. Times and registration details come straight from the source,
     never guessed or rewritten. For a shorter list, see what's happening
     <a href="/today/">today</a> or over <a href="/this-week/">the week ahead</a>.
@@ -318,7 +318,7 @@ const webPageJsonLd = dateModified ? {
           <div class="grid">
             {day.items.map((item) => item.sourceKind === 'story'
               ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={townwideKicker} facilities={facilities} />
-              : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" facilities={facilities} />
+              : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker={ARTS_EVENT_KICKER} facilities={facilities} />
             )}
           </div>
         </div>
@@ -341,7 +341,7 @@ const webPageJsonLd = dateModified ? {
           <div class="event-cell">
             {item.sourceKind === 'story'
               ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={townwideKicker} facilities={facilities} />
-              : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" facilities={facilities} />}
+              : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker={ARTS_EVENT_KICKER} facilities={facilities} />}
             {distanceMiles != null && <p class="distance">{Math.round(distanceMiles)} mi away</p>}
           </div>
         ))}
@@ -363,7 +363,7 @@ const webPageJsonLd = dateModified ? {
         <div class="grid">
           {list.map((item) => item.sourceKind === 'story'
             ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={townwideKicker} facilities={facilities} />
-            : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" facilities={facilities} />
+            : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker={ARTS_EVENT_KICKER} facilities={facilities} />
           )}
         </div>
       )}

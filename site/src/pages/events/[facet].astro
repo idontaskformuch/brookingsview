@@ -23,7 +23,7 @@ import {
   getUpcomingStories, getUpcomingArtsEvents, getFacilities, FACILITY_CATEGORY_LABELS, type Facility,
 } from '../../lib/db';
 import {
-  buildEventFeed, artsEventAsStory, withAttribution, todayUtcMidnight, FREE_VENUE_CATEGORIES, type FeedItem,
+  buildEventFeed, artsEventAsStory, withAttribution, todayUtcMidnight, FREE_VENUE_CATEGORIES, ARTS_EVENT_KICKER, type FeedItem,
 } from '../../lib/events';
 import { buildEventJsonLd } from '../../lib/event-jsonld';
 import { EVENT_FACETS, type EventFacet } from '../../lib/event-facets';
@@ -181,7 +181,7 @@ const hubBacklink = resolveHubBacklink('events/facet', siteConfig);
             data-end={(item.sourceKind === 'story' ? item.story.ends_at : item.event.ends_at) ? new Date((item.sourceKind === 'story' ? item.story.ends_at : item.event.ends_at) as string).toISOString() : undefined}>
             {item.sourceKind === 'story'
               ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} facilities={facilities} />
-              : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker="Arts & Culture" facilities={facilities} />}
+              : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker={ARTS_EVENT_KICKER} facilities={facilities} />}
             {facet.slug === 'free' && item.sourceKind === 'story' && item.story.free_teaser && (
               <p class="free-teaser">{item.story.free_teaser}</p>
             )}

@@ -35,6 +35,13 @@ export type FeedItem =
   | { sourceKind: 'story'; occurs_at: string | null; story: Story }
   | { sourceKind: 'arts'; occurs_at: string | null; event: SdsuEvent };
 
+/** Category label every event card carries, in every list and every town --
+ *  a town/library/city event is "Around Town", an SDSU arts item "Arts &
+ *  Culture". Before this, some cards in the same list had a label and others
+ *  none (it depended on the town and on which page rendered the card). */
+export const TOWN_EVENT_KICKER = 'Around Town';
+export const ARTS_EVENT_KICKER = 'Arts & Culture';
+
 export function itemTitle(item: FeedItem): string {
   return item.sourceKind === 'story' ? item.story.title : item.event.title;
 }

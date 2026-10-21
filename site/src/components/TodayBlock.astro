@@ -52,7 +52,7 @@
 import StoryCard from './StoryCard.astro';
 import TrafficWidget from './TrafficWidget.astro';
 import HeatAdvisoryWidget from './HeatAdvisoryWidget.astro';
-import { artsEventAsStory, type FeedItem } from '../lib/events';
+import { artsEventAsStory, ARTS_EVENT_KICKER, type FeedItem } from '../lib/events';
 import { joinWithOr } from '../lib/status-line';
 import type { Story, TrafficIncident, StructuredHours, Facility } from '../lib/db';
 import type { ClosureWatchStatus } from '../lib/closure-watch';
@@ -123,7 +123,7 @@ type AlertItem = Pick<Story, 'slug' | 'title' | 'ends_at'>;
 
 function toStory(item: FeedItem): { story: Story; href?: string; kicker?: string } {
   if (item.sourceKind === 'story') return { story: item.story };
-  return { story: artsEventAsStory(item.event), href: item.event.event_url, kicker: 'Arts & Culture' };
+  return { story: artsEventAsStory(item.event), href: item.event.event_url, kicker: ARTS_EVENT_KICKER };
 }
 
 const rightNowIsEmpty = activeAlerts.length === 0 && temperature === null

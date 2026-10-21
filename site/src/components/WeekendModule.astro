@@ -12,7 +12,7 @@
  *  follows, rather than rendering an empty/placeholder state. */
 import StoryCard from './StoryCard.astro';
 import SectionRule from './SectionRule.astro';
-import { artsEventAsStory, type WeekendSummary } from '../lib/events';
+import { artsEventAsStory, ARTS_EVENT_KICKER, type WeekendSummary } from '../lib/events';
 import type { Facility } from '../lib/db';
 
 interface Props {
@@ -35,7 +35,7 @@ const { counts, items } = summary;
   <div class="weekend-module__grid">
     {items.map((item) => item.sourceKind === 'story'
       ? <StoryCard story={item.story} compact facilities={facilities} />
-      : <StoryCard story={artsEventAsStory(item.event)} href={item.event.event_url} kicker="Arts & Culture" compact facilities={facilities} />
+      : <StoryCard story={artsEventAsStory(item.event)} href={item.event.event_url} kicker={ARTS_EVENT_KICKER} compact facilities={facilities} />
     )}
   </div>
 </section>
