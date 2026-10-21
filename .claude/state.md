@@ -33,7 +33,17 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   scope för valideringen = föregående giltiga snapshots contest-id (november-id:n okända); all-noll-svar blockeras (regel 5); källfel sparar inget; Neon-skrivning
   = ETT CTE-statement; JSON-endpoint GET /api/election-results?town=<id> läser senaste VALID snapshot direkt ur Neon (ingen rebuild). Torrtest (test/dry-run.test.ts) mot
   juni: 35 tester gröna. OTESTAT: store.ts SQL mot riktig Postgres (kräver rolled-back testskrivning mot live -> fråga ägaren), deploy kräver secret DATABASE_URL + route per sajt.
-  Kvar: sida /election-results (site), CityStatus-raden, sitemap/noindex-gating, page-meta.
+  SIDAN KLAR (b53ec46, lokal): /election-results (site/src/pages/election-results.astro) renderas i webbläsaren från /api/election-results?town=<id> (poll 60 s, textContent
+  bara, källordning, ingen "winner"), fallback-text + officiell länk i HTML; config/election.ts `results` per stad (Brookings+Broomfield live:true, Moreno live:false = bara länk
+  + CA-notis källa sos.ca.gov); page-meta 'election-results'; sitemap/noindex-gating som /vote; CityStatus-raden byts i webbläsaren till "Results: unofficial · see results" kl 20:00
+  lokal valdag (swapAt, ingen rebuild) och bygger in resultatraden t.o.m. 27 dagar efter. /vote länkar till resultatsidan. IndexNow: först vid push (EJ pingat).
+  BATTERI 2026-10-21: election-results vitest 36 gröna + tsc 0; site vitest 1251 gröna (+section-nav-ui 33/33 gröna med --testTimeout=90000; bara afterAll-hook timeout kvar);
+  pytest 942 gröna; astro check 0 fel; bygge x3 OK, sitemap/noindex-disjoint OK (80/144/110 = Broomfield/Moreno/Brookings), ingen stadsläcka i resultatsidans HTML (Brookings kontrollerat utan scripts).
+  MILJÖPROBLEM: ströprocesser `astro dev --port 4400/4401/4402` (PID 13072, 10592, 11348, 27588; 40 000-54 000 CPU-sekunder) håller CPU på 100 % och ger Chromium-timeouts i
+  section-nav-ui (den "flaky" testen). Ej dödade (inte startade i denna session) -- ägaren avgör.
+  KVAR FÖRE VALET: (1) deploy av Worker: secret DATABASE_URL + route <sajt>/api/election-results* per zon (annars visar sidan "could not be loaded"); (2) ROLLED-BACK testskrivning av
+  store.ts-SQL mot live (ej gjord, kräver ägarens ja); (3) Broomfield: svar på mejlet / elections.json före ons 28 okt, annars A; (4) ägaren skickar ROV-mejlet; (5) fetchUntil 2026-11-30 = antagande;
+  (6) första riktiga snapshot granskas manuellt mot källan innan länk delas; (7) push + IndexNow (/election-results på alla tre) när ägaren säger ja.
   Security (API 2026-10-21): Secret scanning + Push protection = ENABLED, Dependabot alerts = enabled; dependabot_security_updates,
   non_provider_patterns, validity_checks = disabled (ej begärda).
   Cron-dispatcher deployad+verifierad (version 33925058 + secret 97cc8bae, GITHUB_TOKEN utgår 2027-10-21). Workerns egen token OTESTAD
