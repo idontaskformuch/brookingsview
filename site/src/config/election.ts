@@ -89,13 +89,15 @@ const broomfield: ElectionConfig = {
 // ------------------------------------------------------------- Moreno Valley
 const MV_CLERK = 'https://moval.gov/departments/city-clerk/2026-election.html';
 const MV_PR = 'https://rivco.gov/news/vote-mail-ballots-november-3-2026-general-election-way-voters';
+const MV_SOS = 'https://www.sos.ca.gov/elections/upcoming-elections/general-election-november-3-2026/key-dates-deadlines';
+const MV_SOSREG = 'https://www.sos.ca.gov/elections/voter-registration';
 const MV_VC = 'https://voteinfo.net/sites/g/files/aldnop371/files/2026-10/Nov%203%20VC_Sites_November_General%202026.pdf';
 
 const morenoValley: ElectionConfig = {
   enabled: true,
   election_date: '2026-11-03',
   checked_on: '2026-10-21',
-  officialHosts: ['moval.gov', 'rivco.gov', 'voteinfo.net', 'registertovote.ca.gov'],
+  officialHosts: ['moval.gov', 'rivco.gov', 'voteinfo.net', 'registertovote.ca.gov', 'sos.ca.gov'],
   authority: {
     name: 'Riverside County Registrar of Voters',
     url: MV_PR, phone: '(951) 486-7200', phone_note: 'The number the Registrar lists for requesting a paper registration application.',
@@ -104,19 +106,23 @@ const morenoValley: ElectionConfig = {
   sources: [
     { label: 'Moreno Valley City Clerk: 2026 Election', url: MV_CLERK },
     { label: 'Riverside County: Vote-by-mail ballots on the way to voters', url: MV_PR },
+    { label: 'California Secretary of State: Voter Registration', url: MV_SOSREG },
+    { label: 'California Secretary of State: Key Dates and Deadlines, November 3, 2026 General Election', url: MV_SOS },
     { label: 'Riverside County Registrar of Voters: Vote Centers, November 3, 2026 General Election (PDF)', url: MV_VC },
   ],
   key_dates: [
     { id: 'mailed', date: '2026-10-05', label: 'Vote-by-mail ballots sent to the U.S. Postal Service', source_url: MV_PR },
     { id: 'roc-early', date: '2026-10-05', label: 'Early voting begins at the Registrar of Voters office', detail: 'Monday through Friday, 8 a.m. to 5 p.m.', source_url: MV_PR },
+    { id: 'register-by', date: '2026-10-19', label: 'Last day to register to vote', detail: 'California’s deadline is 15 days before Election Day.', prominent: true, source_url: MV_SOSREG },
+    { id: 'cvr', date: '2026-10-20', label: 'Same Day (conditional) registration available through Election Day', detail: 'October 20 to November 3: register “conditionally” and vote a provisional ballot.', source_url: MV_SOS },
     { id: 'vc-open', date: '2026-10-24', label: 'Vote centers begin to open', detail: 'Most sites October 24 to November 2, 9:00 a.m. to 5:00 p.m.; some sites open only October 24–25 or from October 31. Check the official vote center list.', source_url: MV_VC },
     { id: 'election-day', date: '2026-11-03', label: 'Election Day', detail: 'All vote centers are open 7:00 a.m. to 8:00 p.m.', prominent: true, source_url: MV_VC },
     { id: 'mail-received', date: '2026-11-10', label: 'Last day for a mailed ballot to arrive', detail: 'Mailed ballots must be postmarked on or before Election Day and received no later than this date. Ballots returned by mail need no postage.', source_url: MV_PR },
   ],
   registration: {
-    text: 'Check your eligibility and register online at registertovote.ca.gov, or call the Registrar to request a paper application.',
+    text: 'The deadline to register for this election was October 19. Voters who missed it can still register “conditionally” and vote a provisional ballot from October 20 through Election Day, November 3. Check your eligibility and register online at registertovote.ca.gov, or call the Registrar to request a paper application.',
     link: { label: 'Register to vote (California Secretary of State)', url: 'https://registertovote.ca.gov/', source_url: MV_CLERK },
-    source_url: MV_PR,
+    source_url: MV_SOS,
   },
   mail_ballot: {
     text: 'Ballots were sent to the U.S. Postal Service on October 5. Mail yours back with no postage, or return it to the Registrar of Voters office or any vote center in Riverside County by 8 p.m. on Election Day.',
