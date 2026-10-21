@@ -17,7 +17,6 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   källan via USER_AGENT i dess workflow, rapportera till ägaren.)
 - ÅTGÄRD 2: Fas 6 (dark mode) enligt spec. Commit per steg, pusha inte utan ja.
   STATUS_TOKENS.dark läggs i site/src/lib/status-tokens.mjs; kontrasttestet körs då på båda lägen.
-- ÄGAREN KÖR SJÄLV: .claude/moreno-duplicate-meetings.sql i Neon-konsolen (se Kö 6).
 
 ## 2. Kö
 1. Fas 6 dark mode (spec). Börja på Brookings, sedan alla tre. Skärmbilder i båda lägen.
@@ -44,13 +43,7 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 5. Broomfield facility name_aliases (data/facilities/broomfield_co.json): VÄNTA tills det första riktiga
    eventet har kommit in från stadskalenderns flöde (riktiga LOCATION-strängar), SEEDA INGET NU.
    Sen: lägg alias efter de verkliga strängarna och kör seed_facilities -- en LIVE-DB-skrivning, fråga först.
-6. Moreno Valley dubblettMÖTEN (rader i `meetings`, INTE bilderna -- bilddubbletterna school_alerts-4/
-   sports-5 är redan denylistade). SQL för ägaren att köra själv: .claude/moreno-duplicate-meetings.sql
-   (SELECT -> referenskontroll -> DELETE i transaktion med guard -> kontroll-SELECT). Verifierat read-only
-   2026-10-21: inget refererar 13786/13788 (6 FK-tabeller 0 rader, inga stories för något av de fyra
-   id:na, inga slugs/URL:er/redirects i DB eller repo); guarden matchar exakt 13786 och 13788.
-   Ta bort punkten när ägaren har kört den.
-7. QA #9 Celebration Park-öppettider (Moreno, info, lägst prio).
+6. QA #9 Celebration Park-öppettider (Moreno, info, lägst prio).
 
 ## 3. Gällande beslut (kortform)
 - En push per batch, efter fullt batteri; pusha inte utan ägarens ja (undantag: ägaren

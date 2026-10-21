@@ -117,3 +117,9 @@ Hellre utelämna än visa fel.
 ## Fas 5: Textpolish
 - "organiser's" -> "organizer's" i /events-intro. Sök övriga brittiska stavningar (-ise, -our, -tre) i statisk text; AI-genererat orört. Konsekventa kategorietiketter på evenemang.
 
+
+---
+
+## C. Utfört 2026-10-21
+
+- Moreno Valley dubblettmöten: meetings 13786 och 13788 raderade i produktion på ägarens uttryckliga godkännande (SQL .claude/moreno-duplicate-meetings.sql, steg 1-4; guard: keeper 2193/2194 med samma eSCRIBE-guid och datum; 6 FK-tabeller 0 rader; RETURNING exakt 13786+13788; efterkontroll: bara 2193 och 2194 kvar).
