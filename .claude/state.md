@@ -7,10 +7,12 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 - VÄNTAR PÅ ÄGAREN (hemma), i denna ordning (Kö 9 Steg 1; 09ea03f committad, EJ pushad):
   1. Ägaren slår på Secret scanning + Push protection (+ Dependabot alerts) i repots Settings -> Advanced Security
      (kontrollerat 2026-10-21: alla fem står "disabled").
-  2. Ägaren säger ja -> `wrangler deploy` av cron-dispatcher/ (deploya INTE före token finns).
-  3. Ägaren skapar fine-grained token (90 d, bara brookingsview, Actions: Read and write) och kör
-     `npx wrangler secret put GITHUB_TOKEN` i cron-dispatcher/. Fyll i utgångsdatum under Gällande beslut.
-  4. Manuell dispatch-test. Ta bort schedule:-blocken (scrape.yml, moval-/broomfield-scrape.yml, closure-watch-morning.yml,
+  2. KLAR 2026-10-21: viewmedia-cron-dispatcher deployad (version 33925058 19:38Z, + secret-version 97cc8bae 19:48Z). Verifierat via API:
+     båda cron-schedules finns (0 */6 * * *, 30 10-13 * * 1-5), live-kod == lokal dry-run-bygge (3006 B identiska), handler=scheduled,
+     secret GITHUB_TOKEN finns, workers.dev av. OBS: Workern har ingen route, så dess egen token är OTESTAD tills första cron (nästa 00:00Z).
+  3. KLAR 2026-10-21: GITHUB_TOKEN satt av ägaren, utgår 2027-10-21 (ägaren; avviker från planerade 90 d, se Gällande beslut).
+  4. Manuell workflow_dispatch av scrape.yml 19:51Z (mina git-credentials, ej Workerns token) = grön (run 39665261416). Schedule-block ÄNNU
+     INTE borttagna: väntar på första CRON-STARTADE (Worker, event=workflow_dispatch från 00:00Z) gröna scrape. Ta bort schedule:-blocken (scrape.yml, moval-/broomfield-scrape.yml, closure-watch-morning.yml,
      moval-closure-watch-morning.yml) FÖRST när minst en cron-startad scrape gått grönt; visa diffen innan.
   5. ALERT_WEBHOOK är INTE satt (inte bland repots 19 Actions-secrets, inte i lokala .env; kontrollerat 2026-10-21). Vakthunden
      (scrape-liveness-check) larmar därför bara genom att workflow-körningen blir röd; GitHub mejlar då den som senast ändrade
@@ -91,7 +93,7 @@ ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med
 3. GLASGOW (helgen 24-25 okt): .claude/specs/glasgow-loop.md. Fas 0 (rapport docs/uk-audit.md, stanna) -> fas 1 (landsprofil, US byte-identiska) ->
    fas 2 (skelett) -> snabbaste källor: Ticketmaster GB, Adzuna gb, Met Office (när nyckel finns), kommunens möten. Mål: scrapers igång och data
    samlas från dag ett; noindex av när första riktiga datan flödar. COMMITTA INGET förrän ägaren säger till. Inga referenser till ägarens arbetsgivare.
-4. VAL FAS 2 (mån 26 okt): 2a källinventering först.
+4. VAL FAS 2: 2a-inventering KLAR 2026-10-21 (rapport .claude/election-2a-inventory.md, väntar ägarens beslut om Riverside/Broomfield/SD-öppna punkter; ingen kod).
 5. Kö 9 Steg 1 -- väntar på ägarens punkter 1-5 (se Nu) + Steg 2, Steg 3 (text nedan).
 6. QA Q2 (DB-invarianter), sedan Q3-Q4: .claude/spec-qa-automation.md.
 
@@ -124,7 +126,7 @@ ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med
 ## 3. Gällande beslut (kortform)
 - Repot förblir publikt tills sajterna drar in pengar, görs då privat (Actions-kostnad vid privat: se Kö 9).
 - Cloudflare cron-dispatcher-token (fine-grained PAT, Actions:write, bara detta repo): giltig 90 dagar från skapande.
-  UTGÅNGSDATUM: fylls i av ägaren när token skapats (senast 2027-01-19 om den skapas 2026-10-21); lägg en påminnelse 14 d före.
+  UTGÅNGSDATUM: 2027-10-21 (uppgivet av ägaren 2026-10-21; ej verifierat av mig). Påminnelse senast 2027-10-07.
   Utgången token => 401 i Worker-loggen + scrape-liveness-check röd efter 18 h.
 - En push per batch, efter fullt batteri; pusha inte utan ägarens ja (undantag: ägaren
   beordrar uttryckligen en push). "Visa X innan push" = stanna och vänta på nytt ja.
