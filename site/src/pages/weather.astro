@@ -106,7 +106,7 @@ function hourLabel(start: string): string {
   {hourly.length > 0 && (
     <>
       <SectionRule label="Next 24 hours" />
-      <div class="hourly">
+      <div class="hourly" tabindex="0" role="region" aria-label="Hourly forecast, next 24 hours (scrollable)">
         {hourly.map((h) => (
           <div class="hour">
             <p class="hour__time data">{hourLabel(h.start)}</p>

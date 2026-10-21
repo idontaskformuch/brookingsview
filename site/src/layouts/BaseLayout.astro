@@ -387,7 +387,10 @@ const footerGroups = FOOTER_GROUPS
   --paper-raised: #ffffff;
   --ink: #161614;
   --ink-soft: #55554f;
-  --ink-faint: #8a8a82;
+  /* #6b6a63 (was #8a8a82 = 3.33:1, failed WCAG AA on every <time>/kicker/meta line; QA Q1 axe
+     2026-10-21). Now >= 4.5:1 on paper, surface and the tints -- guarded at build time by
+     lib/status-contrast.ts (PAGE.*.inkFaint/inkSoft) and lib/theme-tokens.test.ts. */
+  --ink-faint: #6b6a63;
   /* Marinblå bär struktur och förtroende (12.6:1 mot papperet).
      Orange är enbart CTA -- "läs mer", knappar, aktiva lägen.
      Rött enbart varningar, skilt från CTA så en värmevarning aldrig ser ut
@@ -442,7 +445,7 @@ const footerGroups = FOOTER_GROUPS
     --paper-raised: #1c1c19;
     --ink: #ece9e1;
     --ink-soft: #b8b5ab;
-    --ink-faint: #918e84;
+    --ink-faint: #9b988e;
     --navy: #9bbbe3;
     --navy-tint: #1b2a3d;
     --accent: #fb923c;
@@ -464,7 +467,7 @@ const footerGroups = FOOTER_GROUPS
   --paper-raised: #1c1c19;
   --ink: #ece9e1;
   --ink-soft: #b8b5ab;
-  --ink-faint: #918e84;
+  --ink-faint: #9b988e;
   --navy: #9bbbe3;
   --navy-tint: #1b2a3d;
   --accent: #fb923c;

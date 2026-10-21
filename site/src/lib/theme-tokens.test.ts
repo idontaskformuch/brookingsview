@@ -58,8 +58,26 @@ describe('dark palette in BaseLayout', () => {
     expect(contrastRatio(forced['--on-accent'], forced['--accent'])).toBeGreaterThanOrEqual(MIN_TEXT);
   });
   it('light palette text colors still clear 4.5:1 (regression guard)', () => {
-    for (const k of ['--ink', '--ink-soft', '--navy', '--accent', '--alert']) {
+    for (const k of ['--ink', '--ink-soft', '--ink-faint', '--navy', '--accent', '--alert']) {
       expect(contrastRatio(light[k], light['--surface'])).toBeGreaterThanOrEqual(MIN_TEXT);
+      expect(contrastRatio(light[k], light['--paper']), `${k} on paper`).toBeGreaterThanOrEqual(MIN_TEXT);
+    }
+  });
+  it('the shared secondary/faint ink clears 4.5:1 on paper, surface and the tints in BOTH modes (axe color-contrast, QA Q1)', () => {
+    for (const [mode, v] of [['light', light], ['dark', forced]] as const) {
+      for (const k of ['--ink-soft', '--ink-faint']) {
+        for (const bg of ['--paper', '--surface', '--navy-tint', '--accent-tint']) {
+          expect(contrastRatio(v[k], v[bg]), `${mode} ${k} on ${bg}`).toBeGreaterThanOrEqual(MIN_TEXT);
+        }
+      }
+    }
+  });
+  it('PAGE (the build-time check source) mirrors BaseLayout for the shared ink', () => {
+    for (const [mode, v] of [['light', light], ['dark', forced]] as const) {
+      expect(v['--ink-soft']).toBe(PAGE[mode].inkSoft);
+      expect(v['--ink-faint']).toBe(PAGE[mode].inkFaint);
+      expect(v['--navy-tint']).toBe(PAGE[mode].navyTint);
+      expect(v['--accent-tint']).toBe(PAGE[mode].accentTint);
     }
   });
   it('ticker strip: white text on both fills', () => {

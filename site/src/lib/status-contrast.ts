@@ -15,6 +15,16 @@ export function checkStatusContrast(
     const ratio = contrastRatio(a, b);
     if (ratio < min) failures.push({ mode, pair, ratio: Math.round(ratio * 100) / 100, min });
   };
+  // Shared text palette (the secondary/faint ink used by every <time>, kicker and meta line) on every
+  // surface it sits on. Added 2026-10-21 after --ink-faint (3.33:1) slipped past all checks.
+  for (const [mode, p] of Object.entries(page)) {
+    for (const [name, fg] of [['ink-soft', p.inkSoft], ['ink-faint', p.inkFaint]] as const) {
+      if (!fg) continue;
+      for (const [bgName, bg] of [['paper', p.paper], ['surface', p.surface], ['navy-tint', p.navyTint], ['accent-tint', p.accentTint]] as const) {
+        if (bg) check(mode, `${name} on ${bgName}`, fg, bg, MIN_TEXT);
+      }
+    }
+  }
   for (const [mode, statuses] of Object.entries(tokens)) {
     const p = page[mode];
     for (const [name, v] of Object.entries(statuses) as [StatusName, { marker: string; bg: string; text: string }][]) {

@@ -13,12 +13,14 @@
 // MODES: `light` and `dark`. Each mode has its own page/paper values and the
 // SAME checks run on both (lib/status-contrast.ts); no component needs to
 // change because they only ever read the CSS variables. PAGE.dark must equal
-// the dark --paper/--surface/--ink in BaseLayout.astro (guarded by
+// the dark --paper/--surface/--ink/--ink-soft/--ink-faint/-tint values in BaseLayout.astro (guarded by
 // lib/theme-tokens.test.ts).
 
 export const PAGE = {
-  light: { paper: '#fbfaf7', surface: '#ffffff', ink: '#161614' },
-  dark:  { paper: '#121210', surface: '#1c1c19', ink: '#ece9e1' },
+  light: { paper: '#fbfaf7', surface: '#ffffff', ink: '#161614',
+           inkSoft: '#55554f', inkFaint: '#6b6a63', navyTint: '#e7edf4', accentTint: '#fbede4' },
+  dark:  { paper: '#121210', surface: '#1c1c19', ink: '#ece9e1',
+           inkSoft: '#b8b5ab', inkFaint: '#9b988e', navyTint: '#1b2a3d', accentTint: '#3a2415' },
 };
 
 export const STATUS_TOKENS = {
