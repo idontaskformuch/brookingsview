@@ -11,16 +11,23 @@
 -- now dedupes on the source's own id (db.upsert_records identity_key); this
 -- is the backstop if that is ever bypassed.
 --
--- Scope: eSCRIBE's raw_data key is 'ID'. Legistar rows (EventId) and AgendaLink
--- rows (id, lowercase) have no 'ID' key, so ->> yields NULL and Postgres
--- treats NULLs as distinct: those towns are unaffected. A plain (non-
--- partial) index is therefore enough. (Brookings/Broomfield: 0 duplicates by
--- their own keys, checked 2026-10-21.)
+-- Scope: one index per source's own id key, for parity -- eSCRIBE 'ID'
+-- (Moreno Valley), Legistar 'EventId' (Brookings), AgendaLink 'id' (Broomfield).
+-- Keys are case-sensitive and each town's rows carry only its own key, so
+-- ->> yields NULL for the other two and Postgres treats NULLs as distinct:
+-- no index touches another town's rows. Plain (non-partial) indexes suffice.
+-- Verified 2026-10-21 before applying: 0 duplicate groups for any of the three
+-- keys in any town (rows with key: Moreno 'ID' 34, Brookings 'EventId' 93,
+-- Broomfield 'id' 34).
 
 BEGIN;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_meetings_town_source_id_unique
     ON meetings (town_id, (raw_data->>'ID'));
+CREATE UNIQUE INDEX IF NOT EXISTS idx_meetings_town_event_id_unique
+    ON meetings (town_id, (raw_data->>'EventId'));
+CREATE UNIQUE INDEX IF NOT EXISTS idx_meetings_town_lc_id_unique
+    ON meetings (town_id, (raw_data->>'id'));
 
 COMMIT;
 

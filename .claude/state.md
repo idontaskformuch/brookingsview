@@ -48,19 +48,13 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 5. Broomfield facility name_aliases (data/facilities/broomfield_co.json): VÄNTA tills det första riktiga
    eventet har kommit in från stadskalenderns flöde (riktiga LOCATION-strängar), SEEDA INGET NU.
    Sen: lägg alias efter de verkliga strängarna och kör seed_facilities -- en LIVE-DB-skrivning, fråga först.
-6. Moreno meetings-dubbletter: steg 1 (kodfix) KLAR+pushad 2026-10-21; steg 2 (städskript) och 3 (UNIQUE-index) kvar.
-   Plan: .claude/plan-ko6-meetings-dedup.md. Orsak: vanlig scrape 11502 efter tidszonsfixen; "unikt index från
-   Phase B" VAR FEL premiss. BESLUT (ägaren): behåll redirect-riktningen för de 11 hanterade grupperna (vänd
-   inget); per grupp behåll meetings-raden som hör till canonical live-story oavsett ålder, nollställ meeting_id
-   på supersedade stories, radera övriga meetings-rader; oavgjorda 6918217e (story 4008) + c47d15ac (3944/3974):
-   äldsta story canonical, nyare får superseded_by_slug+301; content_hash sätts bara om ledig. Kodfix: identity_key
-   (ID/EventId/id) i BaseParser+upsert_records, uppdaterar ÄLDSTA raden. OBS städskriptet: skrapningar mellan push
-   och städning uppdaterar äldsta raden, så merga raw_data från ALLA rader i gruppen in i behållaren (nyaste vinner).
-   STEG 2 KÖRD 2026-10-21 (ägaren godkände): 12 grupper, 13 meetings raderade, 6 dubblett-project_updates raderade,
-   11 candidate-rader + checkpoints omkopplade; 4008 och 3974 supersedade (+301 i duplicate-story-redirects.json,
-   13 poster, worker-fetch bevisad lokalt). Efterkoll: 0 dubblettgrupper. Backup backups/merge_duplicate_meetings_*
-   .json (495 KB) OTRACKAD -- backups/ är INTE gitignorad (äldre backuper är incheckade); väntar på ägarens val.
-   NÄSTA: steg 3 migration 060 UNIQUE (town_id,(raw_data->>'ID')) -- VISA innan körning (live-DB). Steg 4 klart i sak.
+6. (Kö 6 KLAR 2026-10-21.) Moreno meetings-dubbletter: kodfix (identity_key, 69996a3), städning (12 grupper, 13 meetings
+   + 6 dubblett-project_updates raderade, 4008/3974 -> 301, 9cce4ee) och migration 060 (3 UNIQUE-index: ID/EventId/id per
+   town_id, verifierade 0 dubbletter först) KLARA och live. Premissen "unikt index från Phase B" var fel (bara hash-index).
+   BESLUT: redirect-riktningen behölls (inget vändes); keeper = meetings-raden för canonical live-story; raw_data-merge
+   keeper-först (tom/false skriver aldrig över riktigt värde). backups/ nu gitignorad (repot är PUBLIKT); de 6 äldre
+   incheckade backuperna granskade: bara offentlig data (stadens kontakt-mejl/telefon ur agendatext, AI-essäer, titlar);
+   ingen IP/kommentar-data. Nya backupen backups/merge_duplicate_meetings_*.json ligger kvar lokalt (bevara).
 7. QA #9 Celebration Park-öppettider (Moreno, info, lägst prio).
 
 8. (Låg prio) Kontrollera i scrape_runs att Brookings eventkällor och Moreno Valleys events/meetings går ok

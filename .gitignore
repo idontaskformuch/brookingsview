@@ -48,3 +48,7 @@ scratch_shots/
 
 # Manual per-town verification builds (site/dist_<town>/) -- disposable.
 site/dist_*/
+
+# Local one-off backfill/cleanup backups (older ones were committed before this rule
+# and stay tracked; new ones stay local -- the repo is public)
+backups/
