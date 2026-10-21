@@ -34,6 +34,7 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 - FLAKY? 2 vitest-tester föll en gång 2026-10-21 (66 s körning, direkt efter en astro build), ej
   identifierade; 5 omkörningar (varav 1 under CPU-last) = 1152/1152 gröna. Om det återkommer: kör
   --reporter=verbose och logga namnen här.
+- PLAN QA-automation (2026-10-21) skriven, väntar på ägarens godkännande: .claude/spec-qa-automation.md. Inget byggt.
 - NÄSTA: Kö 9 Steg 1 byggt+committat (09ea03f), väntar på ägarens punkter 1-5 ovan. Därefter Kö 9 Steg 2, Steg 3, sen Kö 2+.
 
 ## 2. Kö
