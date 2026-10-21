@@ -4,12 +4,11 @@ Historik: se .claude/state-archive.md, läs bara vid behov.
 Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 
 ## 1. Nu
-- origin/main = 43bd3f3 (pushat: Fas 1-5, Hobo Week -> campus, skyltremsa med sport,
-  top_events-marquee, månadsvisa sektionsheroes, bildbeslut 2, neutral User-Agent).
-- LOKALT OPUSHAT (2 commits): bb0e5c0 "Broomfield city calendar (broomfield.org iCal)" och
-  "chore: compact state" (denna docs-omstrukturering). Ägaren godkänner push separat;
-  push-batchen ska ha fullt batteri först (vitest UTC+Stockholm, pytest, astro check,
-  3 byggen, sitemap/noindex, heat-läckage). Arbetsträdet är rent.
+- origin/main = 1d2648a = lokalt HEAD; inget opushat, arbetsträdet rent. Pushat: Fas 1-5, Hobo Week ->
+  campus, skyltremsa med sport, top_events-marquee, månadsvisa sektionsheroes, bildbeslut 2,
+  neutral User-Agent, Broomfield-stadskalendern (bb0e5c0), komprimerad state.
+- UA-VERIFIERING: första schemalagda scrape-körningarna efter UA-bytet (UA pushad 2026-10-21 05:35Z)
+  kontrolleras mot scrape_runs (http_code/status/error) -- resultat i avsnitt 4 nedan.
 - Nästa steg: starta Fas 6 (dark mode) enligt spec. Commit per steg, pusha inte utan ja.
   STATUS_TOKENS.dark läggs i site/src/lib/status-tokens.mjs; kontrasttestet körs då på båda lägen.
 
@@ -35,10 +34,12 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 4. Övriga ikon-emojier (bara 📅 är borta): StoryCard CHIP (🏛️🚗🏠💼🏈🎒⚠️🏭🎓), widgetar
    (🐴📊🏔️🐇), university.astro (🎵🎭🎉🏕️ + sport), 📍 (s/[slug], city-hall/projects), 🏟️ (events),
    📦 (weather).
-5. Broomfield facility name_aliases (data/facilities/broomfield_co.json) när stadskalendern
-   ger riktiga LOCATION-strängar; `seed_facilities` är en LIVE-DB-skrivning -> fråga först.
-6. Moreno Valley dubblettmöten: DELETE FROM meetings WHERE id IN (13786, 13788) (behåll
-   2193/2194; inga referenser). Blockerades av säkerhetsklassificeraren 2026-10-16; ägarens val.
+5. Broomfield facility name_aliases (data/facilities/broomfield_co.json): VÄNTA tills det första riktiga
+   eventet har kommit in från stadskalenderns flöde (riktiga LOCATION-strängar), SEEDA INGET NU.
+   Sen: lägg alias efter de verkliga strängarna och kör seed_facilities -- en LIVE-DB-skrivning, fråga först.
+6. Moreno Valley dubblettMÖTEN (rader i tabellen `meetings`, INTE bilderna -- bilddubbletterna
+   school_alerts-4/sports-5 är redan denylistade): DELETE FROM meetings WHERE id IN (13786, 13788)
+   (behåll 2193/2194; inga referenser). Blockerades av säkerhetsklassificeraren 2026-10-16; ägarens val.
 7. QA #9 Celebration Park-öppettider (Moreno, info, lägst prio).
 
 ## 3. Gällande beslut (kortform)
