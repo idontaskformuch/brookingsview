@@ -86,7 +86,8 @@ ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med
    STEG 2 KLAR (lokal commit): CityStatus-modul 'election' ("Election Day: Tue Nov 3 · How to vote", null dagen efter), nav-sektion 'vote' ("Election 2026", footer "How to vote",
    i All-sheet-gruppen Now, EJ som tab), RelatedContent 'How to vote' först på /city-hall + /events t.o.m. valdagen. Stänga av: election.enabled=false + ta bort 'vote' ur nav-groups (bygget säger till).
    FULLT BATTERI GRÖNT 2026-10-21 efter steg 2: vitest 1246, pytest 942, astro check 0 fel, bygge x3 OK, sitemap/noindex-disjoint 109/141/79.
-   KVAR Fas 1: IndexNow vid publicering (kräver push), ägarens genomgång av avvikelserna ovan. EJ pushat.
+   PUSHAD 2026-10-21 (e126a24, kontrast + nav + /vote + vail, ägaren godkände avvikelserna); /vote live 200 på alla tre. Moreno: CA-deadline 19 okt + villkorad reg. 20 okt-3 nov från sos.ca.gov.
+   IndexNow: fanns ej i repot -> nyckelfil site/public/1fdbd9a2782398d4ca47d6c335de0ecf.txt (publik per design) + POST api.indexnow.org, 202 för /vote på alla tre. Ägaren kollar telefon. Fas 1 KLAR.
 3. GLASGOW (helgen 24-25 okt): .claude/specs/glasgow-loop.md. Fas 0 (rapport docs/uk-audit.md, stanna) -> fas 1 (landsprofil, US byte-identiska) ->
    fas 2 (skelett) -> snabbaste källor: Ticketmaster GB, Adzuna gb, Met Office (när nyckel finns), kommunens möten. Mål: scrapers igång och data
    samlas från dag ett; noindex av när första riktiga datan flödar. COMMITTA INGET förrän ägaren säger till. Inga referenser till ägarens arbetsgivare.
