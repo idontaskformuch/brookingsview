@@ -64,6 +64,9 @@ export interface CityStatusModule {
   /** ISO instant after which the module is stale (alerts: the LATEST end among
    *  the active ones). Written as data-ends; the browser hides it once passed. */
   expiresAt?: string;
+  /** The browser replaces text + link with these once `at` (ISO instant) has passed -- used by the
+   *  election row so "How to vote" turns into the results link at 20:00 without a rebuild. */
+  swapAt?: { at: string; value: string; href: string };
   /** Modules whose text depends on "now" (Tonight count) ship the underlying
    *  event instants instead; the browser computes the text and reveals the row. */
   clientEvents?: { start: string; end: string | null }[];
@@ -272,7 +275,8 @@ async function resolveElection(): Promise<CityStatusModule | null> {
   if (!cfg?.enabled) return null;
   const built = buildElectionStatus(cfg.election_date, siteConfig.timezone);
   if (!built) return null;
-  return { id: 'election', icon: ICONS.election, label: 'Election', tone: 'notice', href: '/vote/', ...built };
+  const { then, href, ...rest } = built;
+  return { id: 'election', icon: ICONS.election, label: 'Election', tone: 'notice', href: href ?? '/vote/', swapAt: then, ...rest };
 }
 
 // Always rendered: their quiet state is still informative (handoff's own

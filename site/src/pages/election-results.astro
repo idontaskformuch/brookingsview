@@ -1,0 +1,139 @@
+---
+/** /election-results -- unofficial results for the 3 Nov 2026 election (election 2026, phase 2).
+ *  Spec: .claude/specs/election-2026.md. No AI text; numbers come from the Worker's JSON
+ *  (/api/election-results, latest VALID snapshot read from the database) and are rendered in the
+ *  browser, so a new snapshot appears without a site rebuild. Static fallback text and the official
+ *  link are in the HTML for crawlers and for visitors whose script/endpoint fails (fail closed). */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import { siteConfig } from '../lib/site-config';
+import { ELECTION_BY_TOWN } from '../config/election';
+import { resolvePageMeta } from '../lib/page-meta';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+import { assertElectionValid, todayIn, isPastNoindexWindow, formatYmd } from '../lib/election';
+import { endpointFor } from '../lib/election-results';
+
+const election = ELECTION_BY_TOWN[siteConfig.townId];
+if (!election || !election.enabled || !election.results) {
+  return Astro.redirect('/', 302);
+}
+assertElectionValid(siteConfig.townId, election);
+const results = election.results;
+
+const today = todayIn(siteConfig.timezone);
+const pageMeta = resolvePageMeta('election-results', siteConfig);
+const canonicalUrl = new URL('/election-results/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'How to vote', href: '/vote/' },
+  { label: 'Election results', href: canonicalUrl },
+];
+const noindex = isPastNoindexWindow(today, election.election_date);
+const hostOf = (u: string) => new URL(u).hostname.replace(/^www\./, '');
+const electionLabel = formatYmd(election.election_date, true);
+---
+<BaseLayout
+  title={pageMeta.title}
+  description={`Unofficial results for the ${electionLabel} election in ${siteConfig.cityName}, taken from the official source and labeled with the time the source last updated.`}
+  canonicalUrl={canonicalUrl}
+  noindex={noindex}
+>
+  <Breadcrumbs trail={breadcrumbTrail} />
+  <header class="er-hero">
+    <h1>{pageMeta.h1}</h1>
+    <p class="er-unofficial"><strong>Unofficial results.</strong> Final results are the ones the election authority certifies.</p>
+    {results.notice && <p class="er-notice">{results.notice.text}</p>}
+  </header>
+
+  <section class="er-live" aria-labelledby="er-heading" data-live={results.live ? 'true' : 'false'} data-town={siteConfig.townId}
+           data-endpoint={endpointFor(siteConfig.townId)} data-source={results.source_name} data-tz={siteConfig.timezone}>
+    <h2 id="er-heading">Results</h2>
+    {results.live
+      ? <p class="er-status" id="er-status" role="status">Results will appear after polls close on {electionLabel}.</p>
+      : <p class="er-status" id="er-status">{siteConfig.siteName} does not copy these numbers. The official results are published by {results.source_name}.</p>}
+    <p class="er-meta" id="er-meta" hidden></p>
+    <p class="er-progress" id="er-progress" hidden></p>
+    <div id="er-contests"></div>
+    <noscript><p class="er-status">Turn on JavaScript to see live results here, or use the official source below.</p></noscript>
+  </section>
+
+  <section class="er-official" aria-labelledby="er-official-h">
+    <h2 id="er-official-h">Official source</h2>
+    <ul>
+      <li><a href={results.link.url} rel="noopener">{results.link.label}</a> <span class="er-host">({hostOf(results.link.url)})</span></li>
+      {results.local_link && <li><a href={results.local_link.url} rel="noopener">{results.local_link.label}</a> <span class="er-host">({hostOf(results.local_link.url)})</span></li>}
+    </ul>
+    {results.local_link && <p class="er-note">Local Broomfield contests and ballot questions are not in the state's results feed, so they are linked, not copied.</p>}
+    <p class="er-note">How to vote, key dates and drop-off locations: <a href="/vote/">{siteConfig.cityName} voter guide</a>.</p>
+  </section>
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl))} />
+</BaseLayout>
+
+<script>
+  import { metaLine, precinctsLine, turnoutLine, viewState, type ResultsPayload } from '../lib/election-results';
+
+  const root = document.querySelector<HTMLElement>('.er-live');
+  if (root && root.dataset.live === 'true') {
+    const el = (id: string) => document.getElementById(id)!;
+    const status = el('er-status'), meta = el('er-meta'), progress = el('er-progress'), list = el('er-contests');
+    const mk = (tag: string, cls?: string, text?: string) => {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (text !== undefined) n.textContent = text; // textContent only: source strings are never parsed as HTML
+      return n;
+    };
+    const render = (p: ResultsPayload | null) => {
+      const v = viewState(p);
+      if (v.kind !== 'results' || !p) { status.textContent = v.kind === 'results' ? '' : v.text; return; }
+      status.textContent = '';
+      meta.hidden = false;
+      meta.textContent = metaLine(p, root.dataset.source ?? '', root.dataset.tz ?? 'UTC');
+      const pl = [precinctsLine(p), turnoutLine(p)].filter(Boolean).join(' · ');
+      progress.hidden = !pl; progress.textContent = pl;
+      list.replaceChildren(...(p.contests ?? []).map((c) => {
+        const card = mk('article', 'er-card');
+        card.appendChild(mk('h3', 'er-contest', c.name));
+        const ol = mk('ul', 'er-choices');
+        for (const ch of c.choices) { // source order, never re-sorted
+          const li = mk('li', 'er-choice');
+          const head = mk('div', 'er-choice-head');
+          head.append(mk('span', 'er-name', ch.name), mk('span', 'er-votes', `${ch.votes.toLocaleString('en-US')} · ${ch.pct.toFixed(1)}%`));
+          const bar = mk('div', 'er-bar'); const fill = mk('div', 'er-fill'); fill.style.width = `${Math.min(100, Math.max(0, ch.pct))}%`;
+          bar.appendChild(fill); li.append(head, bar); ol.appendChild(li);
+        }
+        card.appendChild(ol);
+        return card;
+      }));
+    };
+    const load = async () => {
+      try {
+        const r = await fetch(root.dataset.endpoint!, { headers: { Accept: 'application/json' } });
+        if (!r.ok) throw new Error(String(r.status));
+        render((await r.json()) as ResultsPayload);
+      } catch { render(null); }
+    };
+    void load();
+    setInterval(load, 60_000);
+  }
+</script>
+
+<style>
+.er-hero { max-width: 46rem; margin: 0 auto 1.5rem; border-bottom: 3px solid var(--rule-strong); padding-bottom: 1.125rem; }
+.er-unofficial { font-size: 1.125rem; margin: 0.5rem 0; }
+.er-notice { color: var(--ink-soft); margin: 0; }
+section { max-width: 46rem; margin: 0 auto 2rem; }
+section h2 { margin: 0 0 0.75rem; }
+.er-status { margin: 0 0 0.75rem; }
+.er-meta { font-weight: 600; margin: 0 0 0.25rem; }
+.er-progress { color: var(--ink-soft); margin: 0 0 1rem; }
+.er-card { border-top: 1px solid var(--rule); padding: 0.875rem 0; }
+.er-contest { margin: 0 0 0.625rem; font-size: 1.0625rem; }
+.er-choices { list-style: none; margin: 0; padding: 0; }
+.er-choice { margin-bottom: 0.625rem; }
+.er-choice-head { display: flex; justify-content: space-between; gap: 1rem; }
+.er-votes { font-variant-numeric: tabular-nums; color: var(--ink-soft); white-space: nowrap; }
+.er-bar { height: 0.5rem; background: var(--paper-tint, var(--surface)); margin-top: 0.25rem; }
+.er-fill { height: 100%; background: var(--ink-soft); }
+.er-host, .er-note { color: var(--ink-soft); font-size: 0.9375rem; }
+</style>

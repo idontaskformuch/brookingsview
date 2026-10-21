@@ -111,15 +111,28 @@ describe('election date helpers', () => {
   });
 });
 
-import { buildElectionStatus } from './election';
+import { buildElectionStatus, zonedInstant } from './election';
+describe('zonedInstant', () => {
+  it('maps local wall-clock to UTC across DST/standard time', () => {
+    expect(zonedInstant('2026-11-03', '20:00', 'America/Denver').toISOString()).toBe('2026-11-04T03:00:00.000Z');
+    expect(zonedInstant('2026-11-03', '20:00', 'America/Los_Angeles').toISOString()).toBe('2026-11-04T04:00:00.000Z');
+    expect(zonedInstant('2026-11-03', '20:00', 'America/Chicago').toISOString()).toBe('2026-11-04T02:00:00.000Z');
+  });
+});
 describe('CityStatus election row', () => {
-  it('shows "Election Day: Tue Nov 3 · How to vote" before and on Election Day', () => {
+  it('shows "Election Day: Tue Nov 3 · How to vote" before 20:00 on Election Day, with a swap instant', () => {
     const r = buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-10-21T18:00:00Z'));
     expect(r?.value).toBe('Election Day: Tue Nov 3 · How to vote');
-    expect(r?.expiresAt).toBe('2026-11-04T12:00:00.000Z');
-    expect(buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-11-03T20:00:00Z'))).not.toBeNull();
+    expect(r?.then).toEqual({ at: '2026-11-04T03:00:00.000Z', value: 'Results: unofficial · see results', href: '/election-results/' });
+    expect(buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-11-03T20:00:00Z'))?.value).toMatch(/^Election Day/);
   });
-  it('is omitted (null) the day after', () => {
-    expect(buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-11-04T18:00:00Z'))).toBeNull();
+  it('turns into the results row from 20:00 local on Election Day, and the day after', () => {
+    const at = buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-11-04T03:00:00Z'));
+    expect(at).toMatchObject({ value: 'Results: unofficial · see results', href: '/election-results/' });
+    expect(at?.then).toBeUndefined();
+    expect(buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-11-05T18:00:00Z'))?.href).toBe('/election-results/');
+  });
+  it('is omitted (null) after the results window', () => {
+    expect(buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-12-05T18:00:00Z'))).toBeNull();
   });
 });

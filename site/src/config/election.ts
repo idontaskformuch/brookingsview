@@ -15,18 +15,26 @@ import type { ElectionConfig } from '../lib/election';
 const BF_DATES = 'https://www.broomfield.org/3530/Important-Dates';
 const BF_WHERE = 'https://www.broomfield.org/1872/Where-can-I-drop-off-ballot-vote-in-pers';
 const BF_INFO = 'https://broomfield.org/4369/Election-Information';
+const BF_RES = 'https://www.sos.state.co.us/pubs/elections/Results/ENR/countyLevelResults.html';
 const BF_Q = 'https://broomfield.org/4198/Broomfield-Specific-Ballot-Questions';
 
 const broomfield: ElectionConfig = {
   enabled: true,
   election_date: '2026-11-03',
+  results: {
+    live: true,
+    source_name: 'Colorado Secretary of State (statewide and federal contests; Broomfield turnout)',
+    link: { label: 'Colorado election night results (Secretary of State)', url: BF_RES, source_url: BF_RES },
+    local_link: { label: 'Broomfield-specific contests and ballot questions (City and County of Broomfield)', url: BF_Q, source_url: BF_Q },
+  },
   checked_on: '2026-10-21',
-  officialHosts: ['broomfield.org', 'coloradosos.gov'],
+  officialHosts: ['broomfield.org', 'coloradosos.gov', 'sos.state.co.us'],
   authority: {
     name: 'City and County Clerk and Recorder, City and County of Broomfield',
     url: BF_INFO, phone: '303-469-3301', source_url: BF_INFO,
   },
   sources: [
+    { label: 'Colorado Secretary of State: county-level election night results', url: BF_RES },
     { label: 'Important Election Dates (broomfield.org)', url: BF_DATES },
     { label: 'Polling Center and Drop-box Locations (broomfield.org)', url: BF_WHERE },
     { label: 'Election Information (broomfield.org)', url: BF_INFO },
@@ -91,11 +99,18 @@ const MV_CLERK = 'https://moval.gov/departments/city-clerk/2026-election.html';
 const MV_PR = 'https://rivco.gov/news/vote-mail-ballots-november-3-2026-general-election-way-voters';
 const MV_SOS = 'https://www.sos.ca.gov/elections/upcoming-elections/general-election-november-3-2026/key-dates-deadlines';
 const MV_SOSREG = 'https://www.sos.ca.gov/elections/voter-registration';
+const MV_RES = 'https://voteinfo.net/';
 const MV_VC = 'https://voteinfo.net/sites/g/files/aldnop371/files/2026-10/Nov%203%20VC_Sites_November_General%202026.pdf';
 
 const morenoValley: ElectionConfig = {
   enabled: true,
   election_date: '2026-11-03',
+  results: {
+    live: false,
+    source_name: 'Riverside County Registrar of Voters',
+    link: { label: 'Official results: Riverside County Registrar of Voters', url: MV_RES, source_url: MV_RES },
+    notice: { text: 'California counties keep counting and reporting after Election Day and certify the final results later, so the numbers on the official site will keep changing until then.', source_url: MV_SOS },
+  },
   checked_on: '2026-10-21',
   officialHosts: ['moval.gov', 'rivco.gov', 'voteinfo.net', 'registertovote.ca.gov', 'sos.ca.gov'],
   authority: {
@@ -104,6 +119,7 @@ const morenoValley: ElectionConfig = {
     source_url: MV_PR,
   },
   sources: [
+    { label: 'Riverside County Registrar of Voters (voteinfo.net)', url: MV_RES },
     { label: 'Moreno Valley City Clerk: 2026 Election', url: MV_CLERK },
     { label: 'Riverside County: Vote-by-mail ballots on the way to voters', url: MV_PR },
     { label: 'California Secretary of State: Voter Registration', url: MV_SOSREG },
@@ -149,18 +165,25 @@ const morenoValley: ElectionConfig = {
 const BK_COUNTY = 'https://brookingscountysd.gov/118/Elections';
 const SD_CAL = 'https://sdsos.gov/elections-voting/upcoming-elections/general-information/2026%20Election%20Information/2026%20Election%20Assets/Election%20Information/updated2026electioncalendar.pdf';
 const SD_ABS = 'https://sdsos.gov/elections-voting/voting/absentee-voting.aspx';
+const SD_RES = 'https://electionresults.sd.gov/';
 const SD_VIP = 'https://vip.sdsos.gov/VIPLogin.aspx';
 const SD_PP = 'https://sdsos.gov/elections-voting/upcoming-elections/general-information/2026%20Election%20Information/2026-Election-Polling-Places.aspx';
 
 const brookings: ElectionConfig = {
   enabled: true,
   election_date: '2026-11-03',
+  results: {
+    live: true,
+    source_name: 'South Dakota Secretary of State (Brookings County results)',
+    link: { label: 'South Dakota election results (Secretary of State)', url: SD_RES, source_url: SD_RES },
+  },
   checked_on: '2026-10-21',
-  officialHosts: ['brookingscountysd.gov', 'sdsos.gov'],
+  officialHosts: ['brookingscountysd.gov', 'sdsos.gov', 'sd.gov'],
   authority: {
     name: 'Brookings County Finance Office & Elections', url: BK_COUNTY, phone: '605-696-8250', source_url: BK_COUNTY,
   },
   sources: [
+    { label: 'South Dakota Secretary of State: election results', url: SD_RES },
     { label: 'Brookings County Finance Office & Elections', url: BK_COUNTY },
     { label: 'South Dakota Secretary of State: 2026 election calendar (PDF)', url: SD_CAL },
     { label: 'South Dakota Secretary of State: Absentee voting', url: SD_ABS },

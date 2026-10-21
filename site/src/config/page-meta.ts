@@ -95,6 +95,11 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     h1Pattern: "{Town} Voter Guide: Key Dates, Where to Vote and What's on the Ballot",
     ledeRequirement: 'State the election date and days left; no commentary on contests.',
   },
+  'election-results': {
+    titlePattern: 'Election Results in {Town}: Nov 3, 2026 (Unofficial)',
+    h1Pattern: '{Town} Election Results: Unofficial Numbers From the Official Source',
+    ledeRequirement: 'State that results are unofficial and name the source; no commentary on contests.',
+  },
   today: {
     titlePattern: '{Town} Today: Weather and Events | {Site}',
     h1Pattern: "What's Happening in {Town} Today",

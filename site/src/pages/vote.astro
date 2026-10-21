@@ -57,6 +57,7 @@ const checked = formatYmd(election.checked_on, true);
       </>)}
       <a href={election.authority.url} rel="noopener">Official election page</a>.
     </p>
+    {election.results && <p class="vote-meta"><a href="/election-results/">Election results</a> (unofficial, after polls close).</p>}
     <ShareButton title={pageMeta.title} />
   </header>
 

@@ -57,6 +57,18 @@ export interface ElectionConfig {
   ballot: { items: { name: string }[]; source_url: string; note?: string };
   /** Used by phase 2. */
   races_in_scope?: string[];
+  /** Phase 2 (/election-results): where the official numbers live. Every link needs a source_url in `sources`. */
+  results?: {
+    /** Name of the body whose numbers are shown/linked, e.g. "Riverside County Registrar of Voters". */
+    source_name: string;
+    /** True when the Worker fetches this town's results (/api/election-results); false = link only. */
+    live: boolean;
+    link: SourcedLink;
+    /** Broomfield: local contests are not in the state feed, so they are linked, never copied. */
+    local_link?: SourcedLink;
+    /** Extra sourced line shown on the results page (e.g. California's counting-continues notice). */
+    notice?: { text: string; source_url: string };
+  };
 }
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
@@ -113,6 +125,10 @@ export function assertElectionValid(townId: string, cfg: ElectionConfig): void {
   link('polling_place_lookup', cfg.polling_place_lookup);
   link('drop_boxes', cfg.drop_boxes);
   link('sample_ballot', cfg.sample_ballot);
+  if (cfg.results) {
+    link('results.link', cfg.results.link); link('results.local_link', cfg.results.local_link);
+    if (cfg.results.notice) needSource('results.notice', cfg.results.notice.source_url);
+  }
   needSource('ballot', cfg.ballot.source_url);
 
   if (p.length > 0) {
@@ -166,19 +182,53 @@ export function isPastNoindexWindow(today: string, electionDate: string): boolea
   return daysBetween(electionDate, today) > NOINDEX_AFTER_DAYS;
 }
 
-/** CityStatus row: "Election Day: Tue Nov 3 · How to vote" until the end of Election Day, null after
- *  (null-means-omit; the results line is phase 2). `expiresAt` makes the browser drop the row once the
- *  day is over even if the page was built earlier: next day 12:00 UTC is 4-8 a.m. in the US towns. */
+/** The UTC instant at which local wall-clock `hhmm` occurs on `ymd` in `timezone`. */
+export function zonedInstant(ymd: string, hhmm: string, timezone: string): Date {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const [hh, mm] = hhmm.split(':').map(Number);
+  const guess = Date.UTC(y, m - 1, d, hh, mm);
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(new Date(guess)).map((x) => [x.type, x.value]),
+  );
+  const asLocal = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute));
+  return new Date(guess - (asLocal - guess));
+}
+
+/** Days after Election Day during which the CityStatus row points at /election-results (certification
+ *  is not source-verified; matches the Worker's fetchUntil of 2026-11-30). */
+export const RESULTS_WINDOW_DAYS = 27;
+/** Spec: results line from 20:00 local on Election Day. */
+export const RESULTS_FROM_LOCAL = '20:00';
+
+export interface ElectionStatusBuilt {
+  value: string;
+  asOf: Date;
+  expiresAt: string;
+  href?: string;
+  /** The browser swaps the row to this text/link once `at` has passed (no rebuild needed). */
+  then?: { at: string; value: string; href: string };
+}
+
+/** CityStatus row: "Election Day: Tue Nov 3 · How to vote" until 20:00 on Election Day, then
+ *  "Results: unofficial · see results" (swapped in the browser at that instant and also what a later
+ *  build ships) until RESULTS_WINDOW_DAYS after the election, then null (null-means-omit). */
 export function buildElectionStatus(
   electionDate: string, timezone: string, now: Date = new Date(),
-): { value: string; asOf: Date; expiresAt: string } | null {
+): ElectionStatusBuilt | null {
   const today = todayIn(timezone, now);
-  if (daysBetween(today, electionDate) < 0) return null;
   const [y, m, d] = electionDate.split('-').map(Number);
+  const resultsAt = zonedInstant(electionDate, RESULTS_FROM_LOCAL, timezone);
+  const windowEnd = new Date(Date.UTC(y, m - 1, d + RESULTS_WINDOW_DAYS + 1, 12)).toISOString();
+  const results = { value: 'Results: unofficial · see results', href: '/election-results/' };
+  const days = daysBetween(today, electionDate);
+  if (days < -RESULTS_WINDOW_DAYS) return null;
+  if (days < 0 || now >= resultsAt) return { ...results, asOf: now, expiresAt: windowEnd };
   const short = formatYmd(electionDate).replace(/^(\w{3})\w*, (\w{3})\w* (\d+)$/, '$1 $2 $3');
   return {
     value: `Election Day: ${short} · How to vote`,
     asOf: now,
-    expiresAt: new Date(Date.UTC(y, m - 1, d + 1, 12)).toISOString(),
+    expiresAt: windowEnd,
+    then: { at: resultsAt.toISOString(), ...results },
   };
 }

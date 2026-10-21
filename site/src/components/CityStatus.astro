@@ -45,7 +45,8 @@ const ctaLabel = `Full ${siteConfig.cityName} rundown →`;
       {modules.map((mod) => (
         <li class="city-status__item" data-ends={mod.expiresAt}
             hidden={mod.clientEvents ? true : undefined}
-            data-tonight-events={mod.clientEvents ? JSON.stringify(mod.clientEvents) : undefined}>
+            data-tonight-events={mod.clientEvents ? JSON.stringify(mod.clientEvents) : undefined}
+            data-swap-at={mod.swapAt?.at} data-swap-value={mod.swapAt?.value} data-swap-href={mod.swapAt?.href}>
           {mod.href ? (
             <a class="city-status__link" href={mod.href}>
               <span class:list={['city-status__dot', `city-status__dot--${mod.tone}`]} aria-hidden="true"></span>
@@ -76,6 +77,15 @@ const ctaLabel = `Full ${siteConfig.cityName} rundown →`;
   // zone, ended events excluded), not at build time. Hidden until then.
   const section = document.querySelector<HTMLElement>('.city-status');
   const tz = section?.dataset.tz || 'America/Chicago';
+  // Election row: once the instant has passed, "How to vote" becomes the results link (no rebuild).
+  document.querySelectorAll<HTMLElement>('[data-swap-at]').forEach((li) => {
+    const at = Date.parse(li.dataset.swapAt || '');
+    if (Number.isNaN(at) || Date.now() < at) return;
+    const value = li.querySelector('.city-status__value');
+    const link = li.querySelector<HTMLAnchorElement>('a.city-status__link');
+    if (value && li.dataset.swapValue) value.textContent = li.dataset.swapValue;
+    if (link && li.dataset.swapHref) link.href = li.dataset.swapHref;
+  });
   document.querySelectorAll<HTMLElement>('[data-tonight-events]').forEach((li) => {
     try {
       const events = JSON.parse(li.dataset.tonightEvents || '[]') as TimedEvent[];
