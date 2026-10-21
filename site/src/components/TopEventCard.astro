@@ -17,7 +17,7 @@ const end = story.ends_at ? new Date(story.ends_at).toISOString() : undefined;
 ---
 <section class="top-event" aria-label="Featured event" data-hide-ended data-hide-when-empty>
   <a class="top-event__card" href={storyHref(story.slug)} data-start={start} data-end={end}>
-    <DateBadge iso={when} timezone={timezone} color="var(--brand-accent-ink, var(--navy))" />
+    <DateBadge iso={when} timezone={timezone} color="var(--brand-accent-ink, var(--navy))" ink="var(--on-accent)" />
     <span class="top-event__text">
       <span class="top-event__kicker">Featured event</span>
       <span class="top-event__title">{story.title}</span>

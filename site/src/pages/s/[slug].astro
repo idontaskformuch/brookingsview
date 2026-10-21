@@ -782,8 +782,8 @@ const eventJsonLdObject = buildEventJsonLd(
   background: var(--paper-tint, rgba(0, 0, 0, 0.03));
   border: 1px solid var(--rule);
 }
-.decisions__badge--denied { color: #9b1c1c; border-color: #9b1c1c; }
-.decisions__badge--approved, .decisions__badge--adopted { color: #1a6b3c; border-color: #1a6b3c; }
+.decisions__badge--denied { color: var(--status-alert-text); border-color: var(--status-alert); }
+.decisions__badge--approved, .decisions__badge--adopted { color: var(--status-ok-text); border-color: var(--status-ok); }
 .decisions__consent-note, .decisions__motion, .decisions__matter {
   color: var(--ink-soft); font-size: 0.8125rem; margin: 0.25rem 0 0;
 }
