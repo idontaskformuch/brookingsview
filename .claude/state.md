@@ -1,67 +1,79 @@
-2026-10-21 (spec .claude/spec-time-alerts-heroes.md). Fas 1-5 pushade tidigare
-  (32b8a1b). PUSHAT i ett svep efter fullt batteri (vitest 1127 UTC+Stockholm,
-  pytest 900, astro check 0, 3 byggen, sitemap/noindex x3, heat-läckage x3):
-  Hobo Week -> campus (namnregel + datumregel, Hobo Day härleds ur HDC-event),
-  låga mobil-heroes + bort Badlands, månadsvis hero-rotation, skyltremsan med
-  sport + prioritering (football inom 7 d > närmaste hemmamatch) + klientdagar,
-  top_events-marquee (configs/brookings_sd.json features.top_events, mönster ej
-  datum, speglas i site-config.ts, kollas av tests/test_top_events_config.py).
-  ÖPPET, senare push (ägarens bildbeslut): (a) en bild = en stad; Broomfield egna
-  kategoripooler (val klara i scripts/source_category_images.py, EJ applicerade;
-  denylist scripts/category_image_denylist.json + cross-town-guard i --apply),
-  de 2 Moreno-dubbletterna (school_alerts-4, sports-5) ligger i denylisten.
-  (b) PUNKT FÖR SIG, bygg inte nu: VÅR- och SOMMARPOOLER för "This week" +
-  sektionshero (alla tre städer) måste finnas före 1 mars 2027, annars faller
-  heroes till kategori-reserv och startsidans This week kastar. Verktyg:
-  scripts/source_this_week_images.py. Fas 6 (dark mode) väntar på (a).
+# State (komprimerad 2026-10-21)
 
-2026-10-16. merge_raw_data fix + restore built, tested, run, and about
-  to be pushed (this commit). Moreno Valley duplicate-row cleanup
-  SKIPPED this session -- see NEXT STEP. No full pre-push battery
-  (astro check/3-town build/sitemap) run for this change -- owner said
-  "gör inget mer" after confirming the push; it's a pure backend/DB
-  change (scraper + one-off script), no site/build code touched.
+Historik: se .claude/state-archive.md, läs bara vid behov.
+Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 
-DONE, pushed with this commit:
-  - db.upsert_records() new opt-in merge_raw_data=True param: raw_data
-    merges (jsonb ||) instead of blind-replacing on rescrape. Default
-    False, zero change for ~10 other existing callers.
-  - LegistarParser/AgendaLinkParser/EscribeParser set merge_raw_data=True
-    (base_parser.py new attribute, runner.py reads it generically).
-  - Tests added (test_db_upsert_dedup.py, merge SQL shape + regression
-    safety) and test_runner_doc_errors.py's fake db stub fixed (missing
-    kwarg). Full pytest green (878 passed, 8 skipped) before this push.
-  - scripts/restore_legistar_agenda_from_snapshot.py: dry-run shown,
-    owner approved, RAN for real against production. Restored 9
-    Brookings meetings' agenda_items/agenda_text from their last known-
-    good source_snapshots entry (merge, not overwrite). Verified live in
-    DB (all 9 now have the expected item counts: 1314=6, 2428=6,
-    10737=14, 10811=10, 10969=14, 10971=4, 10973=6, 11006=6, 11009=6).
-    13 other candidates reported, correctly left untouched (3 predate
-    the snapshot archive, 10 genuinely never had items).
+## 1. Nu
+- origin/main = 43bd3f3 (pushat: Fas 1-5, Hobo Week -> campus, skyltremsa med sport,
+  top_events-marquee, månadsvisa sektionsheroes, bildbeslut 2, neutral User-Agent).
+- LOKALT OPUSHAT (2 commits): bb0e5c0 "Broomfield city calendar (broomfield.org iCal)" och
+  "chore: compact state" (denna docs-omstrukturering). Ägaren godkänner push separat;
+  push-batchen ska ha fullt batteri först (vitest UTC+Stockholm, pytest, astro check,
+  3 byggen, sitemap/noindex, heat-läckage). Arbetsträdet är rent.
+- Nästa steg: starta Fas 6 (dark mode) enligt spec. Commit per steg, pusha inte utan ja.
+  STATUS_TOKENS.dark läggs i site/src/lib/status-tokens.mjs; kontrasttestet körs då på båda lägen.
 
-SKIPPED THIS SESSION, owner's explicit call ("Skippa dubbletterna"):
-  Moreno Valley duplicate meetings rows (2193/13786, 2194/13788 pairs --
-  same real eSCRIBE meeting, duplicate row under a different content_hash,
-  most likely from an un-tracked one-off backfill script around the Oct 1
-  "mass insert" that bypassed dedup_check_columns -- see prior investigation
-  for full reasoning). Confirmed safe to delete 13786+13788 (keep the
-  older 2193+2194): zero references from stories, meeting_decisions,
-  project_updates, project_match_review_queue, project_new_candidate_queue,
-  or project_updates_checkpoints. Attempting to write/run the DELETE was
-  blocked by Claude Code's own safety classifier (flagged as a dangerous
-  action, generic reason given); did not attempt a workaround per that
-  denial's own instructions -- handed the decision back to the owner
-  instead of retrying through another tool/script.
+## 2. Kö
+1. Fas 6 dark mode (spec). Börja på Brookings, sedan alla tre. Skärmbilder i båda lägen.
+2. Compass-källan för Broomfield (compass.broomfield.org) -- VÄNTAR PÅ SVAR FRÅN BIBLIOTEKET.
+   Biblioteket mejlades 2026-10-20; påminnelse tidigast 2026-11-03. Rör inte källan:
+   robots.txt stänger oss ute (`User-agent: *` Disallow: / utom statiska filer; bara namngivna
+   sök-/social-/annonsbotar släpps in). Löften i mejlet som MÅSTE hållas när det byggs:
+   - bara publika, biblioteksarrangerade program; inga auditorie-/rumsuthyrningar alls,
+     inte heller namngivna (t.ex. symfoniorkestern);
+   - titel, datum, tid, plats + kort sammanfattning med egna ord (genom omformuleringskontrollen);
+   - biblioteket krediteras som källa på varje listning, plus länk till Compass
+     (lib/source-credit.ts har redan host-etiketten);
+   - hämtning högst några gånger per dag;
+   - påminnelse tidigast 2026-11-03.
+   Plattform: Drupal 11 / LibraryMarket "Library Calendar" (lc_calendar). Flödestyp ej bekräftad
+   (kräver tillåtelse). Discover Vail ska INTE kopplas in (annan ort).
+3. Vår- och sommarpooler före 1 mars 2027: "This week" + sektionshero, alla tre städer.
+   Annars faller heroes till kategori-reserv och startsidans This week kastar (60-dagarsregeln).
+   Verktyg: scripts/source_this_week_images.py (har ingen denylist än -- lägg till som i
+   scripts/source_category_images.py). Bygg inte förrän ägaren säger till.
+4. Övriga ikon-emojier (bara 📅 är borta): StoryCard CHIP (🏛️🚗🏠💼🏈🎒⚠️🏭🎓), widgetar
+   (🐴📊🏔️🐇), university.astro (🎵🎭🎉🏕️ + sport), 📍 (s/[slug], city-hall/projects), 🏟️ (events),
+   📦 (weather).
+5. Broomfield facility name_aliases (data/facilities/broomfield_co.json) när stadskalendern
+   ger riktiga LOCATION-strängar; `seed_facilities` är en LIVE-DB-skrivning -> fråga först.
+6. Moreno Valley dubblettmöten: DELETE FROM meetings WHERE id IN (13786, 13788) (behåll
+   2193/2194; inga referenser). Blockerades av säkerhetsklassificeraren 2026-10-16; ägarens val.
+7. QA #9 Celebration Park-öppettider (Moreno, info, lägst prio).
 
-NEXT STEP: Moreno Valley duplicate-row cleanup is still open. Owner can
-  either run this directly against the DB, or add a permission rule
-  that lets a scripted DELETE through and ask for a retry:
-    DELETE FROM meetings WHERE id = 13786;  -- duplicate of 2193 (kept)
-    DELETE FROM meetings WHERE id = 13788;  -- duplicate of 2194 (kept)
-  No other table references either row (confirmed above) -- safe
-  whenever the owner wants to act on it. Not scheduled/blocking anything
-  else.
+## 3. Gällande beslut (kortform)
+- En push per batch, efter fullt batteri; pusha inte utan ägarens ja (undantag: ägaren
+  beordrar uttryckligen en push). "Visa X innan push" = stanna och vänta på nytt ja.
+- Ingen ny cron; allt tidsrelativt (Today/Tonight, N events today, dagräkning, öppet/stängt)
+  räknas i webbläsaren i stadens tidszon; byggtid visas som "Updated <tid>".
+- Varningar: slut = ends_at, annars parsat ur texten, annars +24 h; county_alert i kategorin
+  'Hazardous Weather Alerts' och gamla county_alert (>24 h) når aldrig varningsytorna.
+- Inga datum i config: top_events anger titelmönster ("Hobo Day"), Hobo Day-datumet härleds
+  ur kalendern (första lördag efter sista HDC-event).
+- Skyltremsan: alltid sport; football inom 7 kalenderdagar > närmaste hemmamatch > nästa.
+- Inga foton i fler än en stad (denylist + cross-town-guard i source_category_images.py);
+  inga bilder med identifierbar plats (skyltar, butiksnamn, landmärken, vattenstämplar).
+- Tvåmånadersregeln gäller bara startsidans "This week". Sektionsheroes byter månadsvis och
+  vid säsongs-/högtidsgräns; repriser mellan perioder är OK.
+- Heat/dust-widget bara Moreno Valley (flagga hasHeatAdvisory), aldrig nivån "safe".
+- Statusfärger via lib/status-tokens.mjs (en källa), WCAG-kontroll fallerar bygget.
+- User-Agent: "ViewMediaBot (+https://<stad>view.com/contact)" per stad (scrapers/user_agent.py).
+- Källor: följ robots.txt; ingen RSS.aspx på broomfield.org; sluta hämta en blockerad källa;
+  publicera bara fakta + egen kort sammanfattning, kreditera källan med länk, hämta högst dagligen.
+- Skrivningar mot LIVE-databasen kräver ägarens godkännande (även omkörningar).
+- Allt som ska godkännas skrivs i klartext i svaret, inte bara i verktygsutdata.
+- Hobo Week-"Special Events" -> campus; SDSU-bucket är update-kolumn (självläker vid scrape).
 
-PRE-EXISTING OPEN ITEMS, unchanged: QA finding #9 (Celebration Park
-  hours, Moreno Valley, info-only, lowest priority) -- not scheduled.
+## 4. Kända luckor
+- Bildpooler ~12-16/säsong/stad; vår/sommar saknas helt (se Kö 3). Broomfield events-pool tunn.
+- Gränsfallsbilder kvar (ägaren: OK): university-2/3/4, city_hall-2/3/5, "CIVIC CENTER"-skylt.
+- Skyltremsans temperatur/prognos och Weekend-modulens Fri/Sat/Sun-siffror är byggräknade.
+- CityStatus: vid flera varningar döljs modulen först när den sista löpt ut (antalet kan vara för högt).
+- Widgetens scopade CSS (.heat-advisory) ligger kvar i alla byggen (inert; text/markup läcker inte).
+- User-Agent-bytet rök-testades mot 8 källvärdar; Akamai/Cloudflare-skyddade källor kan
+  reagera -- kolla första schemalagda scrape-körningarna efter push.
+- Broomfield stadskalender: alla 4 event-kategorier var tomma 2026-10-21 (säsong); övriga
+  ~20 flöden är styrelse-/rådsmöten och ingesteras inte. Inget publiceras förrän events dyker upp.
+- Hobo Week-omklassningen syns först efter nästa schemalagda SDSU-scrape (verifiera i DB).
+- Pexels API: 200 anrop/timme -- source_category_images.py --apply tar ~125.
+- tests/test_feature_flags m.fl. förutsätter hand-synkade configs (JSON <-> site-config.ts).

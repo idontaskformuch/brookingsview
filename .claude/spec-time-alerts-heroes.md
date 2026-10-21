@@ -12,44 +12,13 @@ Ingen stadssajt ska kunna visa utgången varning, felaktig status eller fel datu
 6. Hero på /events alltid samma sommarparad från Pexels, annan stad, läsbara butiksskyltar.
 Allt byggs i gemensam kod: Brookings, Moreno Valley, Broomfield.
 
-## Fas 0: Utred (belagda fynd, anta inget)
-1. Var kommer gröna rutan ifrån? (Troligen heat/dust-advisory från Workplace Watch Phase 2, bara MV.) Komponent, hur den hamnar på /today, varför gating inte stoppar Brookings.
-2. Varför /today 3 h gammal? Körs timbygget + deployar för alla tre? Senaste lyckade deploy per Cloudflare-projekt mot schema.
-3. Tidsfält på sparade varningar (effective, onset, expires, ends, sent): vad lagras, vad filtrerar listningen på. Ta fram fog (10/12) och freeze i DB, förklara varför de visas.
-4. Inventera tidsrelativ text vid build ("today","tonight","open/closed","in N days","N events today","as of"): build- eller browser-beräknat, vilken tidszon.
-5. Emojier som ikoner i src/ (📅 m.fl.).
-6. Hero-val per sektion: var /events-bilden sätts, andra fasta sektionsbilder vs rotationen för "This week".
-
-## Fas 1: Varningar och tidskänsliga statusar
-Hellre utelämna än visa fel.
-- Visa varning bara om slut i framtiden: ends först, annars expires. Saknas båda: dölj 12 h efter sent.
-- En delad funktion activeAlerts(town, now) för statusremsa, Right Now, /today, Closure Watch, CityStatus.
-- data-ends-attribut; dölj i browser när tiden passerat.
-- Visa sluttid i stadens lokala tid med veckodag+datum ("until 9 AM Sat Oct 24").
-- Öppet/stängt räknas i browser från strukturerade öppettider i stadens tz (America/Chicago, Los_Angeles, Denver). Utan JS: bara öppettider, aldrig open/closed.
-- "N events today", "in N days", Today/Tonight/This weekend: browser-beräknat, eller dolt när bygget >2 h gammalt.
-- Passerade evenemang aldrig under Today/Tonight.
-- "as of" = riktig byggtid; >2 h gammal: diskret markering.
-- Om Fas 0 visar att timbygget inte körs: åtgärda, högljutt fel vid misslyckad deploy.
-
-## Fas 2: Gating och status-styling
-- Heat/dust-advisory: flagga i per-stad features-config, default av, på bara för MV. Rendera bara vid faktisk varningsnivå ("safe" visas inte). Läckagetest: Brookings/Broomfield-bygget får inte innehålla "loading-dock" eller komponenten.
-- Statusfärger via gemensamma CSS-variabler (--status-ok/-warn/-alert, separata text/bakgrund). Utöka WCAG-kontrollen (Local Accent Identity) till dem; bygget fallerar under 4.5:1. Ingen mintgrön-på-mintgrön; status = liten färgad punkt/kant, text i vanlig färg. "--" -> "–". Variablerna ska kunna få mörka värden under prefers-color-scheme: dark (själva dark theme ingår inte).
-
-## Fas 3: Emojin och datumbrickor
-- Ta bort 📅 överallt; ersätt med CSS-datumbricka ("OCT / 20", stadens tz) eller ingen ikon. Samma för andra ikon-emojier. Test som fallerar om 📅 eller 🗓 finns i src/ (sajtkoden).
-
-## Fas 4: Sektions-heroes via säsongsrotation
-- Delad resolver getSectionHero(town, section, date) på befintlig rotationspool/datumintervall. Inga hårdkodade bilder.
-- Startsidans regler: ny bild minst varje vecka, ingen repris inom 2 mån, säsong/högtider, mix stad/byggnader/natur.
-- Deterministiskt per stad+sektion+ISO-vecka; sektioner delar inte bild med startsidan eller varandra.
-- Valfri reservbild per sektion, bara om poolen tom; saknas båda: bygget fallerar.
-- Inga bilder med annan identifierbar plats (skyltar, butiksnamn, landmärken). Ta bort paradbilden från /events, kontrollera övriga fasta.
-- Behåll fotografattribuering.
-- Minst /events, /today, /city-hall, /closures, Farm Report + alla Fas 0 hittar.
-
-## Fas 5: Textpolish
-- "organiser's" -> "organizer's" i /events-intro. Sök övriga brittiska stavningar (-ise, -our, -tre) i statisk text; AI-genererat orört. Konsekventa kategorietiketter på evenemang.
+## Fas 0-5 (klara och pushade; detaljer i .claude/state-archive.md, avsnitt B)
+- Fas 0 utredning: klar, inga ändringar (fynd rapporterade 2026-10-20).
+- Fas 1 varningar och tidskänsliga statusar: 8980ee1 (+ county_alert/skyltremsa senare: ea8ff6b, 09ba9ae).
+- Fas 2 gating av heat/dust och statusfärger: cd17e85 (renderingstest a3e92ca).
+- Fas 3 datumbricka i stället för kalender-emoji: 615ad2d.
+- Fas 4 sektionshero via säsongsrotation: 0b69943 (månadsvis rotation c9de086, låga mobil-heroes 077fb8c).
+- Fas 5 stavning och konsekventa etiketter: 32b8a1b.
 
 ## Verifiering (tester med fejkad klocka, alla tre städer)
 - 23:59/00:01 lokal tid, 16:59/17:01 öppettider, 3 h gammalt bygge.
