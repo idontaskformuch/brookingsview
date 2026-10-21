@@ -1,0 +1,19 @@
+{
+  "name": "viewmedia-election-results",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "test": "vitest run",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.10.1",
+    "fflate": "^0.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

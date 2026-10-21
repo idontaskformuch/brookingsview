@@ -15,6 +15,11 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   Broomfield.pdf = 1 sida "No data available."; broomfield.org Election-Information/Important-Dates länkar inga resultat (robots: inget som hindrar).
   Hittills INGET automatiskt hämtbart -> lutar mot A. Kvar före 28 okt: kolla om elections.json fylls vid valet, ev. fråga Broomfield elections.
 - Kö 9 Steg 1 (väntar bara på natten): 09ea03f ÄR pushad (ingår i origin/main, kontrollerat 2026-10-21).
+  VAL FAS 2 STEG A KLAR (lokal commit): election-results/ (eget npm-paket, vitest 14 gröna, tsc 0): src/types.ts, src/adapters/sd-xlsx.ts (fflate +
+  fast-xml-parser, removeNSPrefix -- SD-filen använder x:-prefix), src/validate.ts (spec 2c: tom, saknad contest, minskning, ändrad kandidatmängd, ej heltal;
+  pct-kontroll utelämnad: SD ger ingen pct), fixtur test/fixtures/sd-brookings-2026-06-primary.xlsx (juni, eid 773). Contest-id = siffrorna efter 3-bokstavs
+  partykod i bladnamnet. Ej gjort: hämtning (postback + __VIEWSTATE), Neon-schema/migration, Worker-JSON, sida, cron. NÄSTA: Steg B = fetch-lager SD +
+  migration 061 (skrivs, körs EJ mot live utan ja) + Worker-endpoint.
   Security (API 2026-10-21): Secret scanning + Push protection = ENABLED, Dependabot alerts = enabled; dependabot_security_updates,
   non_provider_patterns, validity_checks = disabled (ej begärda).
   Cron-dispatcher deployad+verifierad (version 33925058 + secret 97cc8bae, GITHUB_TOKEN utgår 2027-10-21). Workerns egen token OTESTAD
