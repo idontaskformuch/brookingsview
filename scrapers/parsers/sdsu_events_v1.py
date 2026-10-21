@@ -164,7 +164,19 @@ _SD_TZ = ZoneInfo("America/Chicago")
 _MONTH_DAY_RE = re.compile(r"^[A-Za-z]{3}$")
 
 
-def _bucket_for(primary_category: str | None, location: str | None) -> str:
+# Hobo Day Committee / Hobo Week programming (Bum Over, Rally at the Rails, Bum
+# Fire, HOBO Bingo, Bum Alum Social, ...) is SDSU campus life. SDSU files it under
+# the generic "Special Events" category, which BUCKET_MAP sends to arts_culture
+# (right for recitals and exhibits, wrong for a student homecoming tradition), so
+# it is recognised by name and kept on the campus (university) side.
+_CAMPUS_TRADITION_RE = re.compile(
+    r"\bhobo\b|\bhdc\b|\bbum[\s-]+(?:over|fire|alum|a[\s-]*meal)\b", re.IGNORECASE,
+)
+
+
+def _bucket_for(primary_category: str | None, location: str | None, title: str | None = None) -> str:
+    if title and _CAMPUS_TRADITION_RE.search(title):
+        return "university"
     loc_low = (location or "").lower()
     if any(kw in loc_low for kw in _ARTS_VENUE_KEYWORDS):
         return "arts_culture"
@@ -274,7 +286,7 @@ def _parse_event_block(block) -> dict | None:
 
     categories = [a.get_text(strip=True) for a in block.select(".sds-ec__date-item--tags a")]
     primary_category = next((c for c in categories if c in CATEGORY_WHITELIST.values()), None)
-    bucket = _bucket_for(primary_category, location)
+    bucket = _bucket_for(primary_category, location, title)
     filter_reason = _filter_reason(title, teaser)
 
     # VIKTIGT: URL:en ensam är INTE ett stabilt dedup-nyckel -- verifierat
