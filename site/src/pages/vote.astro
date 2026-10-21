@@ -1,0 +1,215 @@
+---
+/** /vote -- how to vote on 3 Nov 2026 (election 2026, phase 1). Spec: .claude/specs/election-2026.md.
+ *  Static page built from the town's `election` block (config/election.ts). Hard rules:
+ *  no AI text anywhere on this page, official sources only, and every date/address has a source
+ *  URL (assertElectionValid() throws -- failing the build -- otherwise). No API calls at view time;
+ *  the browser script below only recomputes "days left" and passed/upcoming in the town's timezone. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import ShareButton from '../components/ShareButton.astro';
+import { siteConfig } from '../lib/site-config';
+import { ELECTION_BY_TOWN } from '../config/election';
+import { resolvePageMeta } from '../lib/page-meta';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+import {
+  assertElectionValid, todayIn, statusFor, daysBetween, formatYmd, leadSentence, isPastNoindexWindow,
+} from '../lib/election';
+
+const election = ELECTION_BY_TOWN[siteConfig.townId];
+if (!election || !election.enabled) {
+  return Astro.redirect('/', 302);
+}
+assertElectionValid(siteConfig.townId, election);
+
+const today = todayIn(siteConfig.timezone);
+const pageMeta = resolvePageMeta('vote', siteConfig);
+const canonicalUrl = new URL('/vote/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [
+  { label: 'Home', href: '/' },
+  { label: 'How to vote', href: canonicalUrl },
+];
+const noindex = isPastNoindexWindow(today, election.election_date);
+const electionOver = daysBetween(today, election.election_date) < 0;
+
+const dates = [...election.key_dates].sort((a, b) => a.date.localeCompare(b.date));
+const earlyPlaces = election.places.filter((p) => p.kind === 'early');
+const dayPlaces = election.places.filter((p) => p.kind === 'election_day');
+const hostOf = (u: string) => new URL(u).hostname.replace(/^www\./, '');
+const checked = formatYmd(election.checked_on, true);
+---
+<BaseLayout
+  title={pageMeta.title}
+  description={`Dates, deadlines, where to vote and what is on the ballot for the November 3, 2026 election in ${siteConfig.cityName}, taken from official sources.`}
+  canonicalUrl={canonicalUrl}
+  noindex={noindex}
+>
+  <Breadcrumbs trail={breadcrumbTrail} />
+  <header class="vote-hero">
+    <h1>{pageMeta.h1}</h1>
+    <p class="vote-lead" id="vote-lead" data-date={election.election_date} data-city={siteConfig.cityName} data-tz={siteConfig.timezone}>
+      {leadSentence(today, election.election_date, siteConfig.cityName)}
+    </p>
+    <p class="vote-meta">
+      Run by {election.authority.name}.
+      {election.authority.phone && (<>
+        Phone <a href={`tel:${election.authority.phone.replace(/[^\d]/g, '')}`}>{election.authority.phone}</a>
+        {election.authority.phone_note && <> ({election.authority.phone_note})</>}.
+      </>)}
+      <a href={election.authority.url} rel="noopener">Official election page</a>.
+    </p>
+    <ShareButton title={pageMeta.title} />
+  </header>
+
+  {electionOver && (
+    <p class="vote-over" role="note">The election is over. This page stays up for reference.</p>
+  )}
+
+  <section aria-labelledby="vote-dates">
+    <h2 id="vote-dates">Key dates</h2>
+    <table class="vote-table" data-tz={siteConfig.timezone}>
+      <thead><tr><th scope="col">Date</th><th scope="col">What happens</th></tr></thead>
+      <tbody>
+        {dates.map((d) => {
+          const status = statusFor(today, d.date);
+          return (
+            <tr class={`vote-row${d.prominent ? ' vote-row--prominent' : ''}`} data-date={d.date} data-status={status}>
+              <th scope="row" class="data">
+                <span class="vote-date">{formatYmd(d.date)}</span>
+                <span class="vote-status" data-role="status">{status === 'passed' ? 'Passed' : status === 'today' ? 'Today' : ''}</span>
+              </th>
+              <td>
+                <strong>{d.label}</strong>
+                {d.detail && <span class="vote-detail">{d.detail}</span>}
+                <a class="vote-src" href={d.source_url} rel="noopener">Source: {hostOf(d.source_url)}</a>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </section>
+
+  {(election.registration || election.mail_ballot) && (
+    <section aria-labelledby="vote-reg">
+      <h2 id="vote-reg">Register and return your ballot</h2>
+      {election.registration && (
+        <p>
+          {election.registration.text}
+          {election.registration.link && <> <a href={election.registration.link.url} rel="noopener">{election.registration.link.label}</a>.</>}
+        </p>
+      )}
+      {election.mail_ballot && (
+        <p>
+          {election.mail_ballot.text}
+          {election.mail_ballot.link && <> <a href={election.mail_ballot.link.url} rel="noopener">{election.mail_ballot.link.label}</a>.</>}
+          {election.mail_ballot.tracking && <> <a href={election.mail_ballot.tracking.url} rel="noopener">{election.mail_ballot.tracking.label}</a>.</>}
+        </p>
+      )}
+    </section>
+  )}
+
+  <section aria-labelledby="vote-where">
+    <h2 id="vote-where">Where to vote</h2>
+    {election.places_note && <p>{election.places_note.text}</p>}
+    {earlyPlaces.length > 0 && (<>
+      <h3>Before Election Day</h3>
+      <ul class="vote-places">
+        {earlyPlaces.map((p) => (
+          <li>
+            <strong>{p.name}</strong><br />{p.address}
+            {p.schedule && <ul class="vote-sched">{p.schedule.map((s) => <li>{s}</li>)}</ul>}
+          </li>
+        ))}
+      </ul>
+    </>)}
+    {dayPlaces.length > 0 && (<>
+      <h3>{dayPlaces.some((p) => p.schedule) ? 'Voting locations' : 'Vote centers'}</h3>
+      <ul class="vote-places">
+        {dayPlaces.map((p) => (
+          <li>
+            <strong>{p.name}</strong><br />{p.address}
+            {p.schedule && <ul class="vote-sched">{p.schedule.map((s) => <li>{s}</li>)}</ul>}
+          </li>
+        ))}
+      </ul>
+    </>)}
+    <ul class="vote-links">
+      {election.polling_place_lookup && <li><a href={election.polling_place_lookup.url} rel="noopener">{election.polling_place_lookup.label}</a></li>}
+      {election.drop_boxes && <li><a href={election.drop_boxes.url} rel="noopener">{election.drop_boxes.label}</a></li>}
+    </ul>
+  </section>
+
+  <section aria-labelledby="vote-ballot">
+    <h2 id="vote-ballot">What's on the ballot</h2>
+    {election.ballot.items.length > 0 && (
+      <ul class="vote-ballot">
+        {election.ballot.items.map((i) => <li>{i.name}</li>)}
+      </ul>
+    )}
+    {election.ballot.note && <p>{election.ballot.note}</p>}
+    <ul class="vote-links">
+      {election.sample_ballot && <li><a href={election.sample_ballot.url} rel="noopener">{election.sample_ballot.label}</a></li>}
+      <li><a href={election.ballot.source_url} rel="noopener">Source for this list: {hostOf(election.ballot.source_url)}</a></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="vote-sources" class="vote-sources">
+    <h2 id="vote-sources">Sources</h2>
+    <p>Everything on this page is copied from the official pages below. {siteConfig.siteName} is not an election authority; check the official pages before you rely on a date or address.</p>
+    <ul>
+      {election.sources.map((s) => <li><a href={s.url} rel="noopener">{s.label}</a></li>)}
+    </ul>
+    <p class="vote-checked">Last checked: <time datetime={election.checked_on}>{checked}</time>.</p>
+  </section>
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl))} />
+</BaseLayout>
+
+<script>
+  import { todayIn, statusFor, leadSentence } from '../lib/election';
+  const lead = document.getElementById('vote-lead');
+  if (lead?.dataset.date && lead.dataset.tz && lead.dataset.city) {
+    const today = todayIn(lead.dataset.tz);
+    lead.textContent = leadSentence(today, lead.dataset.date, lead.dataset.city);
+    document.querySelectorAll<HTMLElement>('.vote-row').forEach((row) => {
+      const date = row.dataset.date;
+      if (!date) return;
+      const s = statusFor(today, date);
+      row.dataset.status = s;
+      const el = row.querySelector<HTMLElement>('[data-role="status"]');
+      if (el) el.textContent = s === 'passed' ? 'Passed' : s === 'today' ? 'Today' : '';
+    });
+  }
+</script>
+
+<style>
+.vote-hero { max-width: 46rem; margin: 0 auto 1.5rem; border-bottom: 3px solid var(--rule-strong); padding-bottom: 1.125rem; }
+.vote-lead { font-size: 1.25rem; font-weight: 600; margin: 0.5rem 0; }
+.vote-meta { color: var(--ink-soft); margin: 0 0 0.75rem; }
+.vote-over { max-width: 46rem; margin: 0 auto 1rem; padding: 0.75rem 1rem; border: 1px solid var(--rule-strong); }
+section { max-width: 46rem; margin: 0 auto 2rem; }
+section h2 { margin: 0 0 0.75rem; }
+section h3 { margin: 1rem 0 0.5rem; font-size: 1rem; }
+.vote-table { width: 100%; border-collapse: collapse; }
+.vote-table th, .vote-table td { text-align: left; vertical-align: top; padding: 0.625rem 0.5rem; border-top: 1px solid var(--rule); }
+.vote-table thead th { border-top: 0; font-size: 0.8125rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.vote-table tbody th { width: 11rem; font-weight: 600; }
+.vote-date { display: block; }
+.vote-status { display: block; font-size: 0.8125rem; color: var(--ink-soft); }
+.vote-detail, .vote-src { display: block; color: var(--ink-soft); font-size: 0.9375rem; }
+.vote-src { font-size: 0.8125rem; }
+.vote-row--prominent td, .vote-row--prominent th { background: var(--paper-tint, var(--surface)); }
+.vote-row--prominent td strong { font-size: 1.0625rem; }
+.vote-row[data-status='passed'] { opacity: 1; }
+.vote-row[data-status='passed'] td strong, .vote-row[data-status='passed'] .vote-date { text-decoration: line-through; text-decoration-thickness: 1px; }
+.vote-places, .vote-links, .vote-ballot, .vote-sched { padding-left: 1.125rem; }
+.vote-places > li { margin-bottom: 0.75rem; }
+.vote-sched { margin: 0.25rem 0 0; color: var(--ink-soft); font-size: 0.9375rem; }
+.vote-checked { color: var(--ink-soft); }
+@media (max-width: 36rem) {
+  .vote-table, .vote-table tbody, .vote-table tr, .vote-table th, .vote-table td { display: block; width: auto; }
+  .vote-table thead { display: none; }
+  .vote-table tbody th { width: auto; padding-bottom: 0; border-top: 1px solid var(--rule); }
+  .vote-table td { border-top: 0; padding-top: 0.25rem; }
+}
+</style>

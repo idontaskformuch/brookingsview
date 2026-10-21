@@ -329,6 +329,9 @@ const TOWN_GATED_PAGES = [
   { path: '/play/', activeFor: ['brookings_sd'] },
   { path: '/university/', activeFor: ['brookings_sd'] },
   { path: '/vail-resorts/', activeFor: ['broomfield_co'] },
+  // Election 2026 /vote/: every town has an enabled `election` block today (config/election.ts); a town
+  // without one redirects, so it must be listed here before it can be dropped from the sitemap.
+  { path: '/vote/', activeFor: ['brookings_sd', 'moreno_valley_ca', 'broomfield_co'] },
   // 301s to /columns/ for Moreno Valley only (media_recension folded in
   // there -- see reviews.astro's own comment); real content for the other
   // two towns.
@@ -394,6 +397,9 @@ async function buildLastmodMap(townId, databaseUrl) {
   // never built).
   // /vail-resorts/ (Broomfield) joined 2026-10-21: a headline+link mirror of Vail Resorts' newsroom, noindex in the page itself.
   const noindexThinPageUrls = new Set(['/reviews/', '/recipes/', '/editorials/', '/columns/', '/vail-resorts/']);
+  // /vote/ (election 2026): the page itself sets noindex 30 days after the election (lib/election.ts
+  // isPastNoindexWindow); mirror that here so the sitemap and the noindex tag never disagree.
+  if (Date.now() > Date.parse('2026-11-03T00:00:00Z') + 30 * 86_400_000) noindexThinPageUrls.add('/vote/');
   // Town/feature-gated stub pages excluded for THIS build's town -- see
   // TOWN_GATED_PAGES' own comment above.
   const excludedGatedPages = new Set(

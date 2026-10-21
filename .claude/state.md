@@ -75,7 +75,15 @@ ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med
       KLART (lokal commit, ingår i nav-pushen): ägaren valde rubrik + datum + länk, ingen teasertext/kategorier; noindex i sidan + ur sitemap (astro.config.mjs
       noindexThinPageUrls). Broomfield-bygge: sitemap 79->78, sitemap/noindex-kontrollen OK, robots noindex,follow, 0 teaser i HTML.
 2. VAL FAS 1 (/vote, alla tre städer, klar fre 23 okt): .claude/specs/election-2026.md. Hårda regler: ingen AI-text, endast officiella källor,
-   käll-URL per datum/adress (bygget failar annars), fail closed. COMMITTA INGET förrän ägaren säger till (gäller valarbetet).
+   käll-URL per datum/adress (bygget failar annars), fail closed. Ägaren 2026-10-21: commit lokalt per steg, pusha EJ utan ja (ihop med kontrast + nav).
+   STEG 1 KLAR (lokal commit): site/src/pages/vote.astro, lib/election.ts (+test), config/election.ts (data per stad, checked_on 2026-10-21),
+   page-meta 'vote', astro.config (sitemap-gating + noindex 30 d efter valet). Bygge alla tre OK (sitemap 109/141/79, disjoint OK), vitest 1244 gröna.
+   BESLUT: data i config/election.ts (ej SiteConfig); varje fält har source_url som måste stå i sources + värd på officialHosts, annars kastar sidan = bygget faller;
+   passerade datum visas som "Passed" (genomstruket), dagräkning räknas om i webbläsaren i stadens tidszon.
+   AVVIKELSER MOT SPECEN: Broomfield postade valsedlar 2 okt (broomfield.org), ej 9 okt. voteinfo.net ligger bakom Cloudflare-utmaning (ej kringgått) -> Moreno-datum
+   från rivco.gov + ROV:s vote center-PDF; spec-URL node/1276 ej läst/citerad. Brookings: ingen kontestlista publicerad av countyt, inga drop boxes (ej officiellt belagt),
+   öppen fråga om kommunala nov-val OBESVARAD (ej belagd, publiceras ej). Moreno registreringsdeadline ej officiellt belagd -> utelämnad.
+   KVAR Fas 1: CityStatus-modul 'election', nav-länk "Election 2026", RelatedContent från /city-hall + /events, IndexNow vid publicering (kräver push), pytest+fullt batteri före push.
 3. GLASGOW (helgen 24-25 okt): .claude/specs/glasgow-loop.md. Fas 0 (rapport docs/uk-audit.md, stanna) -> fas 1 (landsprofil, US byte-identiska) ->
    fas 2 (skelett) -> snabbaste källor: Ticketmaster GB, Adzuna gb, Met Office (när nyckel finns), kommunens möten. Mål: scrapers igång och data
    samlas från dag ett; noindex av när första riktiga datan flödar. COMMITTA INGET förrän ägaren säger till. Inga referenser till ägarens arbetsgivare.

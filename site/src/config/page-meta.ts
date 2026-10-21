@@ -88,6 +88,13 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     h1Pattern: 'Live Music, Theater and Festivals Within Driving Distance of {Town}',
     ledeRequirement: 'NON-NEGOTIABLE anti-doorway disclosure: must state the radius and that drive times are shown.',
   },
+  // Election 2026 phase 1 (.claude/specs/election-2026.md). No "| {Site}" suffix: the spec's
+  // example title is the bare query phrase, and Moreno Valley's would pass 65 chars with it.
+  vote: {
+    titlePattern: 'How to Vote in {Town}: Nov 3, 2026 Election',
+    h1Pattern: "{Town} Voter Guide: Key Dates, Where to Vote and What's on the Ballot",
+    ledeRequirement: 'State the election date and days left; no commentary on contests.',
+  },
   today: {
     titlePattern: '{Town} Today: Weather and Events | {Site}',
     h1Pattern: "What's Happening in {Town} Today",
