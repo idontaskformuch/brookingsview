@@ -4,21 +4,16 @@ Historik: se .claude/state-archive.md, läs bara vid behov.
 Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 
 ## 1. Nu
-- VÄNTAR PÅ ÄGAREN (hemma), i denna ordning (Kö 9 Steg 1; 09ea03f committad, EJ pushad):
-  1. Ägaren slår på Secret scanning + Push protection (+ Dependabot alerts) i repots Settings -> Advanced Security
-     (kontrollerat 2026-10-21: alla fem står "disabled").
-  2. KLAR 2026-10-21: viewmedia-cron-dispatcher deployad (version 33925058 19:38Z, + secret-version 97cc8bae 19:48Z). Verifierat via API:
-     båda cron-schedules finns (0 */6 * * *, 30 10-13 * * 1-5), live-kod == lokal dry-run-bygge (3006 B identiska), handler=scheduled,
-     secret GITHUB_TOKEN finns, workers.dev av. OBS: Workern har ingen route, så dess egen token är OTESTAD tills första cron (nästa 00:00Z).
-  3. KLAR 2026-10-21: GITHUB_TOKEN satt av ägaren, utgår 2027-10-21 (1 år är avsiktligt).
-  4. Manuell workflow_dispatch av scrape.yml 19:51Z (mina git-credentials, ej Workerns token) = grön (run 39665261416). Schedule-block ÄNNU
-     INTE borttagna: väntar på första CRON-STARTADE (Worker, event=workflow_dispatch från 00:00Z) gröna scrape. Ta bort schedule:-blocken (scrape.yml, moval-/broomfield-scrape.yml, closure-watch-morning.yml,
-     moval-closure-watch-morning.yml) FÖRST när minst en cron-startad scrape gått grönt; visa diffen innan.
-  5. ALERT_WEBHOOK är INTE satt (inte bland repots 19 Actions-secrets, inte i lokala .env; kontrollerat 2026-10-21). Vakthunden
-     (scrape-liveness-check) larmar därför bara genom att workflow-körningen blir röd; GitHub mejlar då den som senast ändrade
-     cron-raden i den filen (ägaren, via commit-e-posten) om Notifications -> Actions är påslaget (github.com/settings/notifications).
-     Vill ägaren ha push/Slack/Discord: skapa en inkommande webhook, lägg som Actions-secret ALERT_WEBHOOK (samma secret läses av
-     staleness-check, liveness-check och scraper-larmen).
+- NÄSTA (ägaren 2026-10-21, går före Kö 9 Steg 2, Glasgow och Q2): VAL FAS 2, deadline 2 nov. Beslut: Kö 4 + .claude/election-2a-inventory.md.
+  Broomfield via Clarity, SD via XLSX, Moreno bara länk (ROV-mejl skickas av ägaren), Worker-JSON utan rebuilds, torrtest mot junivalen.
+  Commit lokalt per steg, pusha ej utan ja.
+- Kö 9 Steg 1 (väntar bara på natten): 09ea03f ÄR pushad (ingår i origin/main, kontrollerat 2026-10-21).
+  Security (API 2026-10-21): Secret scanning + Push protection = ENABLED, Dependabot alerts = enabled; dependabot_security_updates,
+  non_provider_patterns, validity_checks = disabled (ej begärda).
+  Cron-dispatcher deployad+verifierad (version 33925058 + secret 97cc8bae, GITHUB_TOKEN utgår 2027-10-21). Workerns egen token OTESTAD
+  tills första cron (00:00Z). Ta bort schedule:-blocken (scrape.yml, moval-/broomfield-scrape.yml, closure-watch-morning.yml,
+  moval-closure-watch-morning.yml) FÖRST när en cron-startad (event=workflow_dispatch) scrape gått grönt; visa diffen innan.
+  Vakthunden larmar via GitHub-issues sedan Q0 (ALERT_WEBHOOK används ej).
 - Fas 6 (dark mode) KLAR och pushad 2026-10-21 (ägaren godkände). Alla tre städer byggda, vitest 1148 +
   pytest 919 gröna, astro check 0 fel, sitemap/noindex OK (Brookings 109, Moreno 141, Broomfield 79).
   Ägaren kollar mörkt läge på telefon; inga Moreno/Broomfield-skärmbilder gjorda.
@@ -61,7 +56,7 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   steg, pusha inte utan ja. Moreno/Broomfield: inventera + föreslå tabs/groups, VÄNTA på ja innan de byggs. Fas 2 (sammanslagning) = bara
   granskning efter fas 1, ingen kod.
 - Arbetsregel: Idéer läggs i backlog.md, avbryter inte pågående arbete. Läs backlog.md bara när ägaren ber om nästa steg.
-- NÄSTA: Kö 9 Steg 1 byggt+committat (09ea03f), väntar på ägarens punkter 1-5 ovan. Därefter Kö 9 Steg 2, Steg 3, sen Kö 2+.
+- NÄSTA: Val fas 2 (se överst), sen Kö 9 Steg 2/3, Glasgow, Q2.
 
 ## 2. Kö (bara pågående + närmaste 3 steg; resten i .claude/backlog.md)
 ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med 2) VAL FAS 1 klar fre 23 okt; 3) helgen 24-25 okt GLASGOW;
