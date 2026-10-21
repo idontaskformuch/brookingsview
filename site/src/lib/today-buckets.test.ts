@@ -28,7 +28,8 @@ const browser = await launch();
 // In CI a missing browser is a broken workflow, not a reason to skip.
 if (!browser && process.env.CI) throw new Error('CI: no Chromium available for today-buckets.test.ts (workflow must run `playwright-core install chromium`)');
 
-describe.skipIf(!browser)('fillTodayBuckets in a real browser', () => {
+// 30 s per test: the first page.setContent on a cold CI Chromium exceeds vitest's 5 s default.
+describe.skipIf(!browser)('fillTodayBuckets in a real browser', { timeout: 30_000 }, () => {
   const bundle = buildSync({
     entryPoints: [new URL('./today-buckets.ts', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')],
     bundle: true, format: 'iife', globalName: 'TB', write: false,
