@@ -4,22 +4,20 @@ Historik: se .claude/state-archive.md, läs bara vid behov.
 Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 
 ## 1. Nu
-- origin/main = 1d2648a. Lokalt 2 opushade docs-commits ovanpå (state.md + moreno-duplicate-meetings.sql), bara .claude/-filer.
-  Allt annat är pushat: Fas 1-5, Hobo Week -> campus, skyltremsa med sport, top_events-marquee,
-  månadsvisa sektionsheroes, bildbeslut 2, neutral User-Agent, Broomfield-stadskalendern, komprimerad state.
-- ÅTGÄRD 1 (GÖR FÖRST I NÄSTA SESSION, FÖRE FAS 6): Kontrollera scrape_runs för körningar efter
-  2026-10-21 05:35 UTC, alla tre städer, rapportera 403/fel.
-  (User-Agent byttes till "ViewMediaBot (+https://<stad>view.com/contact)" och pushades 05:35Z; schemalagda
-  scrape-körningar går var 6:e timme med flera timmars försening. Fråga: SELECT town_id, source_key, status,
-  http_code, error, started_at FROM scrape_runs WHERE started_at >= '2026-10-21 05:35+00' ORDER BY started_at;
-  baslinje före bytet: 28 körningar sedan 02:00Z, 0 st 403, bara de kända 'stub'/'skipped'. Jämför med
-  data.cotrip.org som redan gav 403 med gamla UA. Vid 403: lägg tillbaka den gamla UA-formen för just den
-  källan via USER_AGENT i dess workflow, rapportera till ägaren.)
-- ÅTGÄRD 2: Fas 6 (dark mode) enligt spec. Commit per steg, pusha inte utan ja.
-  STATUS_TOKENS.dark läggs i site/src/lib/status-tokens.mjs; kontrasttestet körs då på båda lägen.
+- Fas 6 (dark mode) KLAR och pushad 2026-10-21 (ägaren godkände). Alla tre städer byggda, vitest 1148 +
+  pytest 919 gröna, astro check 0 fel, sitemap/noindex OK (Brookings 109, Moreno 141, Broomfield 79).
+  Ägaren kollar mörkt läge på telefon; inga Moreno/Broomfield-skärmbilder gjorda.
+- ÅTGÄRD 1 (blockerar inget): kör scrape_runs efter nästa schemalagda körning (~09:00-09:30Z) och
+  rapportera 403/fel: SELECT town_id, source_key, status, http_code, error, started_at FROM scrape_runs
+  WHERE started_at >= '2026-10-21 05:35+00' ORDER BY started_at; (06:08Z hade 0 körningar startat).
+  Vid 403: gamla UA-formen via USER_AGENT i den källans workflow, rapportera till ägaren.
+- BESLUT Fas 6: --navy ljus (#9bbbe3) i dark, fyllda knappar inverteras av sig själva; nya variabler
+  --sign-bg/--on-accent/--paper-tint; sektionsaccent via body --section-accent-l/-d + has-accent;
+  tema i localStorage 'bv_theme'. Skärmbildsverktyg: playwright python, channel msedge.
+- NÄSTA: Kö 2+ (Kö 1 Fas 6 klar).
 
 ## 2. Kö
-1. Fas 6 dark mode (spec). Börja på Brookings, sedan alla tre. Skärmbilder i båda lägen.
+1. (Fas 6 klar.)
 2. Compass-källan för Broomfield (compass.broomfield.org) -- VÄNTAR PÅ SVAR FRÅN BIBLIOTEKET.
    Biblioteket mejlades 2026-10-20; påminnelse tidigast 2026-11-03. Rör inte källan:
    robots.txt stänger oss ute (`User-agent: *` Disallow: / utom statiska filer; bara namngivna
