@@ -25,6 +25,8 @@ async function launch(): Promise<Browser | null> {
   return null;
 }
 const browser = await launch();
+// In CI a missing browser is a broken workflow, not a reason to skip.
+if (!browser && process.env.CI) throw new Error('CI: no Chromium available for today-buckets.test.ts (workflow must run `playwright-core install chromium`)');
 
 describe.skipIf(!browser)('fillTodayBuckets in a real browser', () => {
   const bundle = buildSync({

@@ -46,4 +46,9 @@ jobs:
       # the actual emitted shape, not just that types line up. Also runs
       # with no real DATABASE_URL (see vitest.config.ts) -- pure-function
       # tests, no DB access, same principle as the Python suite.
+      # today-buckets.test.ts runs the real Tonight/Tomorrow script in a real
+      # browser (the :scope-on-template bug only reproduces in Chromium). The
+      # test skips itself where no browser exists, but under CI=true it FAILS
+      # instead of skipping, so this install step is what keeps it honest.
+      - run: npx playwright-core install --with-deps chromium
       - run: npm run test
