@@ -1,0 +1,167 @@
+---
+/** Shared section navigation (spec: .claude/spec-section-nav.md). One swipeable
+ *  row of priority tabs, an "All" button pinned at the right edge, and a grouped
+ *  list of every section (bottom sheet on phones, anchored panel on desktop).
+ *  No town logic here: the order and grouping come from siteConfig.nav, already
+ *  validated against the section registry by resolveNav() (build fails loudly).
+ *  Behaviour lives in lib/section-nav-ui.ts; without JS the row scrolls and the
+ *  All <details> lists every section. */
+import type { ResolvedNav } from '../lib/nav-sections';
+
+interface Props { nav: ResolvedNav; path: string }
+const { nav, path } = Astro.props;
+const isActive = (href: string) => path === href || path.startsWith(href);
+---
+
+<nav class="snav" aria-label="Sections" data-snav>
+  <div class="snav__rowwrap">
+    <div class="snav__row" data-snav-row>
+      {nav.tabs.map((t) => (
+        <a href={t.href} data-nav-id={t.id} aria-current={isActive(t.href) ? 'page' : undefined}>{t.label}</a>
+      ))}
+    </div>
+  </div>
+
+  <details class="snav__fallback" data-snav-fallback>
+    <summary class="snav__allbtn">
+      <svg class="snav__icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M1 1h6v6H1zM9 1h6v6H9zM1 9h6v6H1zM9 9h6v6H9z"/></svg>
+      <span>All</span>
+    </summary>
+    <div class="snav__panel">
+      <div class="snav__groups" data-snav-groups>
+        {nav.groups.map((g) => (
+          <section class="snav__group">
+            <h3 class="snav__group-title">{g.title}</h3>
+            <ul class="snav__list">
+              {g.items.map((i) => (
+                <li><a href={i.href} data-nav-id={i.id} aria-current={isActive(i.href) ? 'page' : undefined}>{i.label}</a></li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    </div>
+  </details>
+
+  <button type="button" class="snav__allbtn snav__allbtn--js" data-snav-open hidden
+    aria-haspopup="dialog" aria-expanded="false" aria-controls="snav-sheet">
+    <svg class="snav__icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M1 1h6v6H1zM9 1h6v6H9zM1 9h6v6H1zM9 9h6v6H9z"/></svg>
+    <span>All</span>
+  </button>
+
+  <div class="snav__layer" data-snav-layer hidden>
+    <div class="snav__scrim" data-snav-scrim></div>
+    <div class="snav__sheet" id="snav-sheet" data-snav-sheet role="dialog" aria-modal="true" aria-labelledby="snav-title" tabindex="-1">
+      <div class="snav__sheet-head">
+        <h2 class="snav__sheet-title" id="snav-title">All sections</h2>
+        <button type="button" class="snav__close" data-snav-close-btn aria-label="Close all sections">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M3 3l10 10M13 3L3 13"/></svg>
+        </button>
+      </div>
+      <div data-snav-groups-slot></div>
+    </div>
+  </div>
+</nav>
+
+<script>
+  import { initSectionNav } from '../lib/section-nav-ui';
+  document.querySelectorAll<HTMLElement>('[data-snav]').forEach((el) => initSectionNav(el));
+</script>
+
+<style is:global>
+  .snav { position: relative; display: flex; align-items: stretch; padding-block: 0.25rem; }
+  .snav__rowwrap { position: relative; flex: 1 1 auto; min-width: 0; }
+  .snav__row {
+    display: flex; gap: 1.25rem; overflow-x: auto; scrollbar-width: none;
+    -webkit-overflow-scrolling: touch; padding-inline-end: 0.5rem;
+  }
+  .snav__row::-webkit-scrollbar { display: none; }
+  .snav__row a {
+    flex: none; display: inline-flex; align-items: center; min-height: 44px;
+    font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--ink); text-decoration: none; white-space: nowrap;
+  }
+  .snav__row a:hover { color: var(--navy); }
+  .snav a[aria-current='page'] { font-weight: 800; }
+  .snav__row a[aria-current='page'] { box-shadow: inset 0 -3px 0 var(--section-accent, var(--brand-accent, var(--navy))); }
+  /* the row continues to the right: short fade before the All button */
+  .snav__rowwrap::after {
+    content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 2rem; pointer-events: none;
+    background: linear-gradient(to right, transparent, var(--paper)); transition: opacity 0.15s;
+  }
+  .snav--end .snav__rowwrap::after { opacity: 0; }
+
+  .snav__allbtn {
+    flex: none; display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; min-width: 44px;
+    padding-inline: 0.75rem; margin: 0; cursor: pointer; list-style: none;
+    font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--navy); background: var(--paper); border: 0; border-left: 1px solid var(--rule);
+  }
+  .snav__allbtn::-webkit-details-marker { display: none; }
+  .snav__allbtn:hover { background: var(--navy-tint); }
+  .snav__icon { flex: none; }
+
+  /* no-JS fallback: native <details>, panel under the button */
+  .snav__fallback { flex: none; }
+  .snav__fallback[open] > .snav__panel {
+    position: absolute; z-index: 60; top: 100%; right: 0; width: min(34rem, calc(100vw - 2.5rem));
+    max-height: 70vh; overflow: auto; background: var(--surface); border: 1px solid var(--rule-strong);
+    border-radius: 0.5rem; padding: 0.75rem; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  }
+
+  /* groups: identical wherever they end up (details panel or dialog) */
+  .snav__group + .snav__group { margin-top: 1rem; }
+  .snav__group-title {
+    margin: 0 0 0.375rem; font-family: var(--font-ui); font-size: 0.6875rem; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft);
+  }
+  .snav__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .snav__list a {
+    display: flex; align-items: center; min-height: 44px; padding: 0.5rem 0.75rem; border: 1px solid var(--rule);
+    border-radius: 0.5rem; font-family: var(--font-ui); font-size: 0.9375rem; font-weight: 600;
+    color: var(--ink); text-decoration: none; background: var(--surface);
+  }
+  .snav__list a:hover { border-color: var(--navy); color: var(--navy); }
+  .snav__list a[aria-current='page'] {
+    background: var(--navy-tint); color: var(--navy); border-color: var(--section-accent, var(--brand-accent, var(--navy)));
+  }
+
+  /* dialog (JS) */
+  .snav__layer { position: fixed; inset: 0; z-index: 1000; }
+  .snav__layer[hidden] { display: none; }
+  .snav__scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); }
+  .snav__sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; max-height: 82vh; overflow-y: auto; overscroll-behavior: contain;
+    background: var(--surface); color: var(--ink); border-radius: 1rem 1rem 0 0; padding: 0 1rem 1.25rem;
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom)); outline: none;
+    animation: snav-up 0.2s ease-out;
+  }
+  .snav__sheet-head {
+    position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface); padding-block: 0.5rem; margin-bottom: 0.25rem;
+  }
+  .snav__sheet-title { margin: 0; font-family: var(--font-head); font-size: 1.125rem; font-weight: 700; color: var(--ink); }
+  .snav__close {
+    display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-right: -0.5rem;
+    background: none; border: 0; border-radius: 50%; color: var(--ink); cursor: pointer;
+  }
+  .snav__close:hover { background: var(--navy-tint); }
+  @keyframes snav-up { from { transform: translateY(2rem); opacity: 0; } to { transform: none; opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .snav__sheet { animation: none; } }
+  html.snav-lock { overflow: hidden; }
+
+  /* desktop: all the tabs that fit on one line, All opens an anchored panel */
+  @media (min-width: 56rem) {
+    .snav__row { flex-wrap: wrap; height: 44px; overflow: hidden; justify-content: center; gap: 0 1.75rem; padding-inline-end: 0; }
+    .snav__rowwrap::after { display: none; }
+    .snav__scrim { background: transparent; }
+    .snav__sheet {
+      left: auto; bottom: auto; top: var(--snav-top, 8rem);
+      right: max(1.25rem, calc((100vw - var(--measure)) / 2 + 1.25rem));
+      width: min(34rem, calc(100vw - 2.5rem)); max-height: calc(100vh - var(--snav-top, 8rem) - 1rem);
+      border-radius: 0.5rem; border: 1px solid var(--rule-strong); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+      padding: 0 1rem 1rem; animation: none;
+    }
+    html.snav-lock { overflow: auto; }
+  }
+</style>

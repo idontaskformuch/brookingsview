@@ -19,6 +19,8 @@
 import { getSignData } from '../lib/db';
 import { signGameText } from '../lib/sign-game';
 import { siteConfig, ALL_SITES } from '../lib/site-config';
+import { enabledSections, resolveNav } from '../lib/nav-sections';
+import SectionNav from '../components/SectionNav.astro';
 import { runBuildTimeChecks } from '../lib/build-checks';
 import { assertAccentContrast } from '../lib/accent-contrast';
 import { assertStatusContrast } from '../lib/status-contrast';
@@ -90,46 +92,14 @@ const dateline = now.toLocaleDateString('en-US', {
   timeZone: siteConfig.timezone,
 });
 
-const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
-const isBroomfield = siteConfig.townId === 'broomfield_co';
-const nav = [
-  // Recurring-traffic layer, Phase 1: the daily-return core product, first
-  // in nav for every town -- universal, config-free gating (unlike most
-  // entries below, this one needs no per-town check; the page itself omits
-  // whatever sections a given town has no source for).
-  { href: '/today/', label: 'Today' },
-  { href: '/this-week/', label: 'This week' },
-  { href: '/events/', label: 'Events' },
-  ...(siteConfig.hasWhatsOn ? [{ href: '/whats-on/', label: "What's On" }] : []),
-  ...(isBrookings ? [{ href: '/university/', label: 'University' }] : []),
-  ...(isBrookings ? [{ href: '/jackrabbits/', label: 'Jackrabbits' }] : []),
-  ...(isBrookings ? [{ href: '/play/', label: 'Play' }] : []),
-  { href: '/city-hall/', label: 'City hall' },
-  ...(siteConfig.hasClosureWatch ? [{ href: '/closures/', label: 'Closure Watch' }] : []),
-  ...(siteConfig.hasNewInTown ? [{ href: '/new-in-town/', label: 'New in Town' }] : []),
-  { href: '/facilities/', label: 'Facilities' },
-  ...(isBrookings ? [{ href: '/farm-report/', label: 'Farm report' }] : []),
-  ...(isMorenoValley ? [{ href: '/home-sales/', label: 'Home sales' }] : []),
-  // Phase 8: moreno_valley_ca only today (owner condition 6) -- see
-  // config/clusters.ts's own ROUTE_AVAILABILITY comment on why this is a
-  // temporary per-town build-order gate, not a permanent feature flag.
-  ...(isMorenoValley ? [{ href: '/month/', label: 'Month in review' }] : []),
-  ...(isMorenoValley ? [{ href: '/sports/', label: 'Sports' }] : []),
-  ...(siteConfig.hasWorkplaceWatch ? [{ href: '/workplace-watch/', label: 'Worker Pulse' }] : []),
-  ...(isBroomfield ? [{ href: '/vail-resorts/', label: 'Vail Resorts' }] : []),
-  ...(isMorenoValley ? [{ href: '/burro-bonanza/', label: 'Play' }] : []),
-  { href: '/traffic/', label: 'Traffic' },
-  { href: '/jobs/', label: 'Jobs' },
-  // AdSense "low value content" remediation, Phase 0 (2026-10-07): the
-  // Reviews/Recipes/Editorials/Columns nav links were here, removed --
-  // that generic AI content track stopped generating and was unlinked
-  // from every surface. The four pages themselves still exist and still
-  // build (see reviews.astro/recipes.astro/editorials.astro/columns.astro),
-  // just noindexed and with no link anywhere on the site pointing to them
-  // ("do not 404 them yet" per the handoff spec).
-  { href: '/weather/', label: 'Weather' },
-];
+// The section list (route, label, per-town gating) lives in lib/nav-sections.ts -- one registry for the
+// header (SectionNav / legacy two-tier nav) and the footer below. Notes that used to sit on individual
+// entries here: Phase 8 Month/Sports are moreno_valley_ca only (config/clusters.ts ROUTE_AVAILABILITY);
+// the Reviews/Recipes/Editorials/Columns links were removed 2026-10-07 (AdSense remediation Phase 0).
+const nav = enabledSections(siteConfig);
+// Towns with a nav config get the shared SectionNav; resolveNav() throws (fails the build) on a bad config.
+const sectionNav = siteConfig.nav ? resolveNav(siteConfig.nav, siteConfig) : null;
 const path = Astro.url.pathname;
 
 // Front-page orientation pass, Phase 4 (two-tier nav): at most 6 primary
@@ -756,6 +726,9 @@ main { padding-block: 1.75rem 3.5rem; }
   </div>
   <div class="dateline">{dateline} &middot; {siteConfig.cityName}, {siteConfig.stateName}</div>
   <div class="shell">
+    {sectionNav ? (
+      <SectionNav nav={sectionNav} path={path} />
+    ) : (
     <nav class="nav" aria-label="Sections">
       {primaryNav.map((item) => (
         <a href={item.href} aria-current={path.startsWith(item.href) ? 'page' : undefined}>
@@ -775,6 +748,7 @@ main { padding-block: 1.75rem 3.5rem; }
         </details>
       )}
     </nav>
+    )}
   </div>
 </header>
 

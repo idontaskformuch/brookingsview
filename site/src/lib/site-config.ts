@@ -10,8 +10,14 @@
  * OBS: håll värdena i synk med configs/<town_id>.json (samma town_id).
  */
 
+import type { NavConfig } from './nav-sections';
+
 export interface SiteConfig {
   townId: string;
+  /** Section navigation (tabs + All-sheet groups), see lib/nav-sections.ts and
+   *  .claude/spec-section-nav.md. A town without it still gets the legacy two-tier
+   *  header nav until its config is approved and added. */
+  nav?: NavConfig;
   /** Visningsnamn, t.ex. "Moreno Valley" */
   cityName: string;
   /** Delstatens fulla namn, t.ex. "California" */
@@ -349,6 +355,17 @@ const CITIES: Record<string, SiteConfig> = {
     townId: 'brookings_sd',
     renderWindow: NO_RENDER_WINDOW,
     cityName: 'Brookings',
+    // Spec example + the sections it left out (This week, What's On, Closure Watch are enabled here and
+    // must be in a group; phase 2 merges them later).
+    nav: {
+      tabs: ['today', 'events', 'university', 'jacks', 'cityhall', 'traffic', 'jobs'],
+      groups: {
+        Now: ['today', 'events', 'whatson', 'thisweek', 'weather'],
+        Campus: ['university', 'jacks'],
+        City: ['cityhall', 'traffic', 'closures', 'facilities'],
+        More: ['jobs', 'play', 'farm'],
+      },
+    },
     stateName: 'South Dakota',
     stateAbbr: 'SD',
     hasClosureWatch: true,

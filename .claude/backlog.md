@@ -13,3 +13,4 @@ Fullständig ursprungstext för äldre punkter: .claude/state-archive.md, rubrik
 - Eventsidor som landningssidor: varje eventdetaljsida visar "fler event i helgen/denna vecka" + länk till /events (data: GA4 visar att event-sidor delade på Facebook är största ingången, Moreno).
 - Säsongssidor per stad, indexerbara: "Halloween events in <stad> <år>", Thanksgiving, julbelysning, nyår; kuraterad sammanställning med egna korta texter, byggs ur befintlig eventdata.
 - AdSense-genomgång per stad: lista alla indexerbara sidtyper med antal och andel (eget/kuraterat innehåll, datadrivet [meetings, home sales, facilities], AI-skrivet, skrapade listor), markera vilka typer som är tunna. Rapportera, ändra inget.
+- Horisontell sidöverflöde vid 360 px (fanns före nav): /university/ (docW 394, .academic-list__label), /jackrabbits/ (398, tabellen .sched), /jobs/ (939, filter-labels/selects) -- hittat vid nav-verifiering; idé: QA-kontroll web.overflow-x i Pass B mobil.
