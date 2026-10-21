@@ -10,6 +10,7 @@
 //    as qa.tracking (soft) -- if one ever shows up, a script ignores the consent gate;
 //  * x-qa-bypass header (QA_BYPASS_TOKEN) is attached ONLY to first-party requests, never to
 //    third parties;
+//  * Cloudflare's edge-injected Web Analytics beacon (cloudflareinsights) is aborted too but not reported (not site code);
 //  * the run counts every request it makes (requests_total) so the baseline can be subtracted
 //    where server-side analytics cannot filter by UA.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -69,10 +70,19 @@ async function snapshot(context, path, inSitemap) {
   const page = await context.newPage();
   const consoleErrors = [], failedRequests = [], blockedAttempts = [];
   let redirects = 0;
-  page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
+  // Our own network aborts (BLOCKED hosts) and Cloudflare's injected challenge-platform script are not
+  // site defects: console.error lines located in those resources are dropped.
+  const NOISE = /(challenges\.cloudflare\.com|challenges\.cloud|cdn-cgi\/challenge-platform)/i;
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    const loc = m.location()?.url ?? '';
+    if (BLOCKED.test(loc) || NOISE.test(loc)) return;
+    if (/^Refused to connect to 'data:,'/.test(m.text()) || /^%c%d font-size:0/.test(m.text())) return;
+    consoleErrors.push(m.text());
+  });
   page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${e.message}`));
   page.on('requestfailed', (r) => {
-    if (BLOCKED.test(r.url())) return;
+    if (BLOCKED.test(r.url()) || NOISE.test(r.url())) return;
     failedRequests.push(`${r.url()} (${r.failure()?.errorText ?? '?'})`);
   });
   page.on('response', (r) => {
@@ -80,12 +90,13 @@ async function snapshot(context, path, inSitemap) {
       failedRequests.push(`${r.url()} (HTTP ${r.status()})`);
     }
   });
-  page.on('request', (r) => { if (BLOCKED.test(r.url())) blockedAttempts.push(r.url()); });
+  page.on('request', (r) => { if (BLOCKED.test(r.url()) && !/cloudflareinsights/i.test(r.url())) blockedAttempts.push(r.url()); });
   const url = `${base}${path}`;
-  let status = 0;
+  let status = 0, cfMitigated = '';
   try {
     const resp = await page.goto(url, { waitUntil: 'load', timeout: 30000 });
     status = resp?.status() ?? 0;
+    cfMitigated = resp?.headers()['cf-mitigated'] ?? '';
     for (let r = resp?.request().redirectedFrom(); r; r = r.redirectedFrom()) redirects++;
     await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});
     await page.waitForTimeout(500); // let client-rendered blocks settle
@@ -109,7 +120,7 @@ async function snapshot(context, path, inSitemap) {
         links: [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute('href')),
       };
     }, ALLOW_SIBLING_SELECTOR);
-    return { url, path, status, redirects, inSitemap, consoleErrors, failedRequests, blockedAttempts, ...data };
+    return { url, path, status, cfMitigated, redirects, inSitemap, consoleErrors, failedRequests, blockedAttempts, ...data };
   } catch (e) {
     return { url, path, status: status || 0, redirects, inSitemap, title: '', titleCount: 0, h1: [], metaRobots: '', metaDescription: '',
       mainText: '', imgAlts: [], loneDashNodes: 0, brokenImgs: [], links: [], consoleErrors: [], failedRequests: [], blockedAttempts: [],

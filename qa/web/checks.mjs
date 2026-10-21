@@ -28,7 +28,8 @@ export function compileBlocklist(blocklist) {
 
 export function checkPage(snap, town, compiled) {
   const f = [];
-  if (snap.status !== 200) f.push(finding('web.status', town, snap, `HTTP ${snap.status}`));
+  if (snap.cfMitigated) f.push(finding('web.status', town, snap, `Cloudflare ${snap.cfMitigated} (cf-mitigated) -- QA traffic is being challenged/blocked, see qa/README.md (WAF header)`));
+  else if (snap.status !== 200) f.push(finding('web.status', town, snap, `HTTP ${snap.status}`));
   else if (snap.redirects > 2) f.push(finding('web.status', town, snap, `${snap.redirects} redirects`));
   if (snap.status !== 200) return f; // content checks are meaningless on an error page
 

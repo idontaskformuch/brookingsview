@@ -35,6 +35,11 @@ describe('qa checkPage', () => {
     expect(ids({ mainText: 'Call 951 555' })).toContain('web.leak');
     expect(ids({ mainText: 'Route 19512 closed' })).not.toContain('web.leak');
   });
+  it('Cloudflare challenge is named in the status finding', () => {
+    const f = checkPage({ ...base, status: 403, cfMitigated: 'challenge' }, 'brookings_sd', compiled);
+    expect(f).toHaveLength(1);
+    expect(f[0].message).toMatch(/cf-mitigated/);
+  });
   it('noindex in sitemap', () => expect(ids({ metaRobots: 'noindex,follow' })).toContain('web.noindex-sitemap'));
   it('tracking attempts are reported (soft) not hidden', () => expect(ids({ blockedAttempts: ['https://www.googletagmanager.com/gtag/js'] })).toContain('qa.tracking'));
 });
