@@ -52,6 +52,13 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   FYND (riktiga, Q1-baslinje lokalt): web.axe 14/14/10 (Brookings/Moreno/Broomfield): color-contrast på time/kicker/.marquee-card__when i ljust
   läge (+1 mörkt), scrollable-region-focusable på .hourly (/weather/); inga web.empty/clientfill/stale/past-event efter proben fixats.
   Nästa: ägaren tittar på axe-fynden; Q2 (DB-invarianter) eller trig av QA_REPORT_ONLY=0 efter triage.
+- Kontrastfix KLAR (lokal commit, EJ pushad -- pushas ihop med nav fas 1 = en omcrawlning): --ink-faint ljus #8a8a82->#6b6a63, mörk ->#9b988e,
+  .hourly tabindex/aria, bygg-gaten utökad (ink-soft/faint på paper/surface/tints i båda lägen). Pass B axe före/efter (lokalt bygge):
+  Brookings 14->0, Moreno 14->0, Broomfield 10->0. (Övriga lokala fynd = /img/ticketmaster saknas på statisk testserver, ej regression.)
+- PRIORITET (ägaren 2026-10-21): sektionsnavigering fas 1 (spec: .claude/spec-section-nav.md) FÖRE Q2. Avvikelse från specen: commit lokalt per
+  steg, pusha inte utan ja. Moreno/Broomfield: inventera + föreslå tabs/groups, VÄNTA på ja innan de byggs. Fas 2 (sammanslagning) = bara
+  granskning efter fas 1, ingen kod.
+- Arbetsregel: Nya idéer går till kön, avbryter inte pågående arbete.
 - NÄSTA: Kö 9 Steg 1 byggt+committat (09ea03f), väntar på ägarens punkter 1-5 ovan. Därefter Kö 9 Steg 2, Steg 3, sen Kö 2+.
 
 ## 2. Kö
