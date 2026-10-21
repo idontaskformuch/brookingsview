@@ -4,13 +4,20 @@ Historik: se .claude/state-archive.md, läs bara vid behov.
 Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 
 ## 1. Nu
-- origin/main = 1d2648a = lokalt HEAD; inget opushat, arbetsträdet rent. Pushat: Fas 1-5, Hobo Week ->
-  campus, skyltremsa med sport, top_events-marquee, månadsvisa sektionsheroes, bildbeslut 2,
-  neutral User-Agent, Broomfield-stadskalendern (bb0e5c0), komprimerad state.
-- UA-VERIFIERING: första schemalagda scrape-körningarna efter UA-bytet (UA pushad 2026-10-21 05:35Z)
-  kontrolleras mot scrape_runs (http_code/status/error) -- resultat i avsnitt 4 nedan.
-- Nästa steg: starta Fas 6 (dark mode) enligt spec. Commit per steg, pusha inte utan ja.
+- origin/main = 1d2648a. Lokalt 2 opushade docs-commits ovanpå (state.md + moreno-duplicate-meetings.sql), bara .claude/-filer.
+  Allt annat är pushat: Fas 1-5, Hobo Week -> campus, skyltremsa med sport, top_events-marquee,
+  månadsvisa sektionsheroes, bildbeslut 2, neutral User-Agent, Broomfield-stadskalendern, komprimerad state.
+- ÅTGÄRD 1 (GÖR FÖRST I NÄSTA SESSION, FÖRE FAS 6): Kontrollera scrape_runs för körningar efter
+  2026-10-21 05:35 UTC, alla tre städer, rapportera 403/fel.
+  (User-Agent byttes till "ViewMediaBot (+https://<stad>view.com/contact)" och pushades 05:35Z; schemalagda
+  scrape-körningar går var 6:e timme med flera timmars försening. Fråga: SELECT town_id, source_key, status,
+  http_code, error, started_at FROM scrape_runs WHERE started_at >= '2026-10-21 05:35+00' ORDER BY started_at;
+  baslinje före bytet: 28 körningar sedan 02:00Z, 0 st 403, bara de kända 'stub'/'skipped'. Jämför med
+  data.cotrip.org som redan gav 403 med gamla UA. Vid 403: lägg tillbaka den gamla UA-formen för just den
+  källan via USER_AGENT i dess workflow, rapportera till ägaren.)
+- ÅTGÄRD 2: Fas 6 (dark mode) enligt spec. Commit per steg, pusha inte utan ja.
   STATUS_TOKENS.dark läggs i site/src/lib/status-tokens.mjs; kontrasttestet körs då på båda lägen.
+- ÄGAREN KÖR SJÄLV: .claude/moreno-duplicate-meetings.sql i Neon-konsolen (se Kö 6).
 
 ## 2. Kö
 1. Fas 6 dark mode (spec). Börja på Brookings, sedan alla tre. Skärmbilder i båda lägen.
@@ -37,9 +44,12 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 5. Broomfield facility name_aliases (data/facilities/broomfield_co.json): VÄNTA tills det första riktiga
    eventet har kommit in från stadskalenderns flöde (riktiga LOCATION-strängar), SEEDA INGET NU.
    Sen: lägg alias efter de verkliga strängarna och kör seed_facilities -- en LIVE-DB-skrivning, fråga först.
-6. Moreno Valley dubblettMÖTEN (rader i tabellen `meetings`, INTE bilderna -- bilddubbletterna
-   school_alerts-4/sports-5 är redan denylistade): DELETE FROM meetings WHERE id IN (13786, 13788)
-   (behåll 2193/2194; inga referenser). Blockerades av säkerhetsklassificeraren 2026-10-16; ägarens val.
+6. Moreno Valley dubblettMÖTEN (rader i `meetings`, INTE bilderna -- bilddubbletterna school_alerts-4/
+   sports-5 är redan denylistade). SQL för ägaren att köra själv: .claude/moreno-duplicate-meetings.sql
+   (SELECT -> referenskontroll -> DELETE i transaktion med guard -> kontroll-SELECT). Verifierat read-only
+   2026-10-21: inget refererar 13786/13788 (6 FK-tabeller 0 rader, inga stories för något av de fyra
+   id:na, inga slugs/URL:er/redirects i DB eller repo); guarden matchar exakt 13786 och 13788.
+   Ta bort punkten när ägaren har kört den.
 7. QA #9 Celebration Park-öppettider (Moreno, info, lägst prio).
 
 ## 3. Gällande beslut (kortform)
