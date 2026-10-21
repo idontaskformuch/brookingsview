@@ -24,9 +24,10 @@
  *     renders as an honest "no active incidents" line via TrafficWidget's
  *     own empty list, not a hidden section -- source presence and a quiet
  *     day are different states, and must read differently.
- *  TONIGHT/TOMORROW always render (event-scraping capability is universal
- *  across all three towns, never "absent" the way traffic/closures can be)
- *  -- a quiet night/day is a real, honest state, not a missing source.
+ *  TONIGHT/TOMORROW: event-scraping capability is universal across all three
+ *  towns, so these are never "absent" -- but a bucket with no events is HIDDEN
+ *  (no bare heading); if both are empty one quiet line links to What's On.
+ *  Decided in the browser, see the script at the bottom.
  *
  *  Phase 2 addition: City Hall open/closed. The one facility category
  *  every town has exactly one of (unlike Library, which Moreno Valley has
@@ -218,16 +219,19 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
       data-start/data-end instants and the town's timezone -- the page can be
       hours old, and an event that has already ended must never sit under
       Tonight. The <template> holds every candidate event for the build day
-      and the two days after it; nothing is visible until the script runs. */}
-  <div class="today-block__bucket" id="today-tonight">
+      and the two days after it; nothing is visible until the script runs. A
+      bucket with no events stays hidden (no empty heading); when both are
+      empty one quiet line links to What's On instead. */}
+  <div class="today-block__bucket" id="today-tonight" hidden>
     <p class="today-block__section-label">Tonight</p>
     <div data-bucket-body></div>
   </div>
 
-  <div class="today-block__bucket" id="today-tomorrow">
+  <div class="today-block__bucket" id="today-tomorrow" hidden>
     <p class="today-block__section-label">Tomorrow</p>
     <div data-bucket-body></div>
   </div>
+  <p class="today-block__quiet" id="today-no-events" hidden>Nothing scheduled tonight or tomorrow. See <a href="/whats-on/">What's On</a> for what's coming up.</p>
   <noscript>
     <p class="today-block__quiet">Turn on JavaScript to see tonight's and tomorrow's events, or <a href="/events/">browse all events</a>.</p>
   </noscript>
@@ -258,22 +262,20 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
   if (tpl) {
     const tz = tpl.dataset.tz || 'America/Chicago';
     const now = new Date();
-    const entries = Array.from(tpl.content.querySelectorAll<HTMLLIElement>(':scope > li')).map((li) => {
+    // Not querySelectorAll(':scope > li'): :scope matches nothing on a template's
+    // DocumentFragment in Chromium, so Tonight/Tomorrow were always empty.
+    const entries = (Array.from(tpl.content.children) as HTMLLIElement[]).filter((el) => el.tagName === 'LI').map((li) => {
       const ev: TimedEvent = { start: li.dataset.start || '', end: li.dataset.end || null };
       return { li, bucket: ev.start ? bucketOf(ev, now, tz) : null };
     });
-    const fill = (id: string, which: 'tonight' | 'tomorrow', limit: number, empty: string) => {
-      const body = document.querySelector(`#${id} [data-bucket-body]`);
-      if (!body) return;
+    const fill = (id: string, which: 'tonight' | 'tomorrow', limit: number): number => {
+      const bucket = document.getElementById(id);
+      const body = bucket?.querySelector('[data-bucket-body]');
+      if (!bucket || !body) return 0;
       const hits = entries.filter((e) => e.bucket === which);
       body.textContent = '';
-      if (hits.length === 0) {
-        const p = document.createElement('p');
-        p.className = 'today-block__quiet';
-        p.textContent = empty;
-        body.appendChild(p);
-        return;
-      }
+      if (hits.length === 0) return 0;
+      bucket.hidden = false;
       if (which === 'tomorrow') {
         const c = document.createElement('p');
         c.className = 'today-block__count';
@@ -290,17 +292,22 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
         more.textContent = `+${hits.length - limit} more ${which === 'tonight' ? 'tonight' : 'tomorrow'}`;
         body.appendChild(more);
       }
+      return hits.length;
     };
-    fill('today-tonight', 'tonight', 5, 'Nothing scheduled tonight');
-    fill('today-tomorrow', 'tomorrow', 3, 'Nothing scheduled tomorrow yet');
+    const shown = fill('today-tonight', 'tonight', 5) + fill('today-tomorrow', 'tomorrow', 3);
+    const none = document.getElementById('today-no-events');
+    if (none) none.hidden = shown > 0;
   }
 </script>
-{cityHallKnown && (
-  // Module script (not is:inline) -- Astro/Vite bundles this for the
-  // browser, same pattern as components/ShareButton.astro's own inline
-  // client script, reusing the exact same, already-tested
-  // computeOpenStatus() the server used to call.
-  <script>
+{/* Module script (not is:inline) -- Astro/Vite bundles this for the
+    browser, same pattern as components/ShareButton.astro's own inline
+    client script, reusing the exact same, already-tested
+    computeOpenStatus() the server used to call. Deliberately NOT wrapped in
+    {cityHallKnown && ...}: a conditionally rendered <script> made Astro drop
+    the OTHER (Tonight/Tomorrow) script from pages where it did not render
+    (Broomfield /today/ shipped without it, 2026-10-21). The script already
+    does nothing when the city-hall elements are absent. */}
+<script>
     import { computeOpenStatus } from '../lib/facility-hours';
     import type { StructuredHours } from '../lib/db';
 
@@ -318,8 +325,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
           : `City Hall closed — opens ${status.opensAt} ${status.opensLabel}`;
       }
     }
-  </script>
-)}
+</script>
 
 <style>
   .today-block { margin-bottom: 1.5rem; }
