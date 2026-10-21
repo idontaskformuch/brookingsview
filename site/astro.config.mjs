@@ -392,7 +392,8 @@ async function buildLastmodMap(townId, databaseUrl) {
   // TOWN_GATED_PAGES/excludedGatedPages above) -- adding it here too is
   // harmless for that town (the Set just never matches a pathname that was
   // never built).
-  const noindexThinPageUrls = new Set(['/reviews/', '/recipes/', '/editorials/', '/columns/']);
+  // /vail-resorts/ (Broomfield) joined 2026-10-21: a headline+link mirror of Vail Resorts' newsroom, noindex in the page itself.
+  const noindexThinPageUrls = new Set(['/reviews/', '/recipes/', '/editorials/', '/columns/', '/vail-resorts/']);
   // Town/feature-gated stub pages excluded for THIS build's town -- see
   // TOWN_GATED_PAGES' own comment above.
   const excludedGatedPages = new Set(

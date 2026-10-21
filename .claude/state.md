@@ -31,7 +31,7 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   workflow_dispatch för alla tre scrape-workflows (09:36Z, via git-credential, ägaren godkände).
   Resultat: 21 körningar, 15 ok/200, 5 skipped, 1 stub (road_conditions), 0 st 403/fel.
   Broomfield traffic (data.cotrip.org, gav 403 med gamla UA) = ok 200. Ingen UA-återställning behövs.
-- FLAKY? 2 vitest-tester föll en gång 2026-10-21 (66 s körning, direkt efter en astro build), ej
+- FLAKY (återkom 2026-10-21 18:18, 1 test föll direkt efter astro build; 3 omkörningar 1199/1199 gröna, namn ej fångat; misstänkt Chromium-test under last: kör --reporter=verbose om igen) -- tidigare: 2 vitest-tester föll en gång 2026-10-21 (66 s körning, direkt efter en astro build), ej
   identifierade; 5 omkörningar (varav 1 under CPU-last) = 1152/1152 gröna. Om det återkommer: kör
   --reporter=verbose och logga namnen här.
 - QA Q0 PUSHAD (8a649b4) + första qa-daily (run 39603952998, rapportera-bara) grön. Spec: .claude/spec-qa-automation.md; kod: qa/, qa-daily.yml.
@@ -72,7 +72,8 @@ ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med
    FÖRE FREDAGENS PUSH (ägaren 2026-10-21), ska göras i samma push som nav:
    a) Kör 360 px- och UI-testet (navcheck: en rad, ingen sidscroll, All synlig, sheet stänger på alla sätt, fokus, axe ljust/mörkt) även mot Moreno och Broomfield.
    b) /vail-resorts/ (Broomfield) visar Vail Resorts teasers ORDAGRANT. Kontrollerat 2026-10-21: live-sidan är INDEXERBAR (ingen noindex, ligger i sitemap-0.xml).
-      Åtgärd: sätt noindex direkt (och ta bort ur sitemap, annars bryter sitemap/noindex-kontrollen) + föreslå för ägaren om sidan bara ska visa rubrik + länk.
+      KLART (lokal commit, ingår i nav-pushen): ägaren valde rubrik + datum + länk, ingen teasertext/kategorier; noindex i sidan + ur sitemap (astro.config.mjs
+      noindexThinPageUrls). Broomfield-bygge: sitemap 79->78, sitemap/noindex-kontrollen OK, robots noindex,follow, 0 teaser i HTML.
 2. VAL FAS 1 (/vote, alla tre städer, klar fre 23 okt): .claude/specs/election-2026.md. Hårda regler: ingen AI-text, endast officiella källor,
    käll-URL per datum/adress (bygget failar annars), fail closed. COMMITTA INGET förrän ägaren säger till (gäller valarbetet).
 3. GLASGOW (helgen 24-25 okt): .claude/specs/glasgow-loop.md. Fas 0 (rapport docs/uk-audit.md, stanna) -> fas 1 (landsprofil, US byte-identiska) ->
