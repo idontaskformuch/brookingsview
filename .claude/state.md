@@ -70,7 +70,7 @@ ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med
    Fas 2 (sammanslagning) = bara granskning, ingen kod. Glasgow: samtycke v1 = egen opt-in-banner, GA4 först efter ja, inga annonser; Google CMP när AdSense blir aktuellt;
    Glasgow-raden i live-DB godkänd när skelettet är klart.
    FÖRE FREDAGENS PUSH (ägaren 2026-10-21), ska göras i samma push som nav:
-   a) Kör 360 px- och UI-testet (navcheck: en rad, ingen sidscroll, All synlig, sheet stänger på alla sätt, fokus, axe ljust/mörkt) även mot Moreno och Broomfield.
+   a) KLAR 2026-10-21 (lokal commit): section-nav-ui.test.ts loopar över alla tre städernas riktiga nav-konfig (33 tester gröna i Edge): en rad, ingen sidscroll, All inom viewport, sheet stänger på alla sätt, fokusfälla. axe ljust/mörkt ligger kvar i QA Pass B (kräver sajtens CSS-variabler), ej i enhetstestet.
    b) /vail-resorts/ (Broomfield) visar Vail Resorts teasers ORDAGRANT. Kontrollerat 2026-10-21: live-sidan är INDEXERBAR (ingen noindex, ligger i sitemap-0.xml).
       KLART (lokal commit, ingår i nav-pushen): ägaren valde rubrik + datum + länk, ingen teasertext/kategorier; noindex i sidan + ur sitemap (astro.config.mjs
       noindexThinPageUrls). Broomfield-bygge: sitemap 79->78, sitemap/noindex-kontrollen OK, robots noindex,follow, 0 teaser i HTML.
