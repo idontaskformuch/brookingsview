@@ -1,8 +1,13 @@
 2026-10-21 (spec .claude/spec-time-alerts-heroes.md). Fas 1+2 godkända och
   committade (8980ee1, cd17e85) + render-test (a3e92ca). INGET PUSHAT: ägaren
   vill pusha allt i ett svep när Fas 5 är verifierad (en omcrawlning).
-  Fas 3 (📅 -> DateBadge.astro) committad. Kvar: Fas 4 (sektionshero via
-  selectThisWeekImage), Fas 5 (textpolish), sen full batteri + push-godkännande.
+  Fas 3 (📅 -> DateBadge.astro) committad 615ad2d. Fas 4 (lib/section-hero.ts:
+  getSectionHero, SectionHero.astro, hero på /today + Farm Report) committad.
+  Fas 4 BEGRÄNSNING: pooler ~15/säsong/stad räcker inte för 2-månadersregeln
+  (kräver 9 v x ~9 sektioner); build-check varnar med exakta tal. Spring/summer
+  saknar pool -> reserv (kategoribild). Borttagna bilder: Brookings events-1/2,
+  city_hall-1/4; Moreno events-3, city_hall-2, school_alerts-3.
+  Kvar: Fas 5 (textpolish), sen full batteri + push-godkännande.
   Inga skärmbilder (ägaren kollar på telefon efter push). Fas 6 dark mode först
   efter Fas 1-5 godkända+committade; STATUS_TOKENS.dark läggs då till.
   ÖVRIGA ikon-emojier kvar för senare (ej Fas 3): StoryCard CHIP (🏛️🚗🏠💼🏈🎒⚠️

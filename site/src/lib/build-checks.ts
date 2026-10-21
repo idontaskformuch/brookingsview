@@ -49,12 +49,13 @@ import { facilityTitleElements } from './facility-lede';
 import { weekInfoForInstant, currentWeekInfo } from './this-week';
 import { localDateParts } from './events';
 import {
-  weeksCoverage, forwardCoverageWeeks, seasonPoolSizes, MIN_POOL_SIZE_FOR_60_DAY_RULE, RECOMMENDED_MIN_POOL_SIZE,
+  weeksCoverage, forwardCoverageWeeks, seasonPoolSizes, seasonForMonth, MIN_POOL_SIZE_FOR_60_DAY_RULE, RECOMMENDED_MIN_POOL_SIZE,
   type WeekCoverage, type SeasonPoolSize,
 } from './this-week-images';
 import { THIS_WEEK_IMAGES } from '../config/this-week-images';
 import { holidayPoolSizesDueSoon, holidayPoolSizeForWeek as _holidayPoolSizeForWeek, type DateYMD } from './holidays';
 import { HOLIDAYS, HOLIDAY_IMAGES } from '../config/holidays';
+import { sectionsFor, sectionHeroGapWeeks } from './section-hero';
 
 let checked = false;
 
@@ -622,6 +623,26 @@ function assertHolidayPoolSizes(now: Date): void {
   );
 }
 
+const SECTION_HERO_TARGET_GAP_WEEKS = 9; // 60 days is 8.6 weeks
+
+/** WARN only: section heroes rotate through the same pool as the homepage, with
+ *  each section on its own slot, so an image can come back after
+ *  floor(pool / sections) weeks. The "no repeat within two months" rule needs
+ *  9 weeks, i.e. pool >= 9 x sections. Says so plainly instead of pretending. */
+function warnSectionHeroPoolGap(now: Date): void {
+  const week = weekInfoForInstant(now, siteConfig.timezone);
+  const season = seasonForMonth(week.monday.m);
+  const n = THIS_WEEK_IMAGES.filter((i) => i.town_ids.includes(TOWN_ID as never) && i.seasons.includes(season)).length;
+  const sections = sectionsFor(TOWN_ID).length;
+  const gap = sectionHeroGapWeeks(n, sections);
+  if (gap >= SECTION_HERO_TARGET_GAP_WEEKS) return;
+  console.warn(
+    `\n⚠️  Section heroes for "${TOWN_ID}": the "${season}" pool has ${n} images for ${sections} sections, so an ` +
+    `image can return after ${gap} week(s); the two-month no-repeat rule needs ${SECTION_HERO_TARGET_GAP_WEEKS * sections}+ ` +
+    '(9 weeks x sections). Add curated images via scripts/source_this_week_images.py.\n',
+  );
+}
+
 /** Renamed from runBuildTimeImageChecks: this single build-time hook (still
  *  called once from BaseLayout.astro, still guarded by the same module-level
  *  `checked` flag) now also runs page_meta_check -- see
@@ -638,4 +659,5 @@ export async function runBuildTimeChecks(): Promise<void> {
   await assertPlaceLayerConsistent();
   await assertNoSandboxSourceUrls();
   assertThisWeekImageCoverage();
+  warnSectionHeroPoolGap(new Date());
 }

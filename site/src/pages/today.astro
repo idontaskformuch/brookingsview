@@ -15,6 +15,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import ShareButton from '../components/ShareButton.astro';
 import TodayBlock from '../components/TodayBlock.astro';
+import SectionHero from '../components/SectionHero.astro';
 import {
   getWeather, getActiveAlerts, getClosureWatchStatus, getActiveTrafficIncidents,
   getUpcomingStories, getUpcomingArtsEvents, getFacilities,
@@ -60,6 +61,8 @@ const hubBacklink = resolveHubBacklink('today', siteConfig);
     {hubBacklink && <p class="lede__backlink">A quick daily snapshot — for the full week's picture, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</p>}
     <ShareButton title={pageTitle} />
   </div>
+
+  <SectionHero section="today" />
 
   <TodayBlock
     cityName={siteConfig.cityName}

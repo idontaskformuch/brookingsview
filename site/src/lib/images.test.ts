@@ -589,9 +589,9 @@ describe('resolveImage', () => {
   // distinct on-disk files (not the shared EXISTING_IMAGE constant, which
   // would make "different path" assertions meaningless) so
   // assertImageExists() exercises the real success path too.
-  const A = '/assets/images/categories/brookings_sd-events-1.png';
-  const B = '/assets/images/categories/brookings_sd-events-2.png';
-  const C = '/assets/images/categories/brookings_sd-events-3.png';
+  const A = '/assets/images/categories/brookings_sd-home_sales-1.png';
+  const B = '/assets/images/categories/brookings_sd-home_sales-2.png';
+  const C = '/assets/images/categories/brookings_sd-home_sales-3.png';
 
   it('tier 4: usedImagePaths steers the pick away from an already-used pool entry when an alternative exists', () => {
     const pool: ImageRef[] = [

@@ -18,6 +18,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { getAgPriceSeries, formatMonthYear } from '../lib/db';
 import { buildSeriesDisplay } from '../lib/farm-report';
 import { siteConfig } from '../lib/site-config';
+import SectionHero from '../components/SectionHero.astro';
 import { resolveHubBacklink } from '../lib/clusters';
 
 if (siteConfig.townId !== 'brookings_sd') {
@@ -41,6 +42,8 @@ const cards = series
     price-received series for those in USDA's data.
     {hubBacklink && <> For Jackrabbits schedules and results, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
   </header>
+
+  <SectionHero section="farm_report" />
 
   {cards.length > 0 ? (
     <div class="grid">

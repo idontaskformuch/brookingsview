@@ -1,44 +1,43 @@
 ---
-/** Category-image hero for a section landing page (/events/, /city-hall/,
- *  /traffic/, /home-sales/, /jobs/, /sports/, /workplace-watch/,
- *  /university/) -- see NEEDS-HUMAN-REVIEW.md "Venue & Category Image
- *  Identity", rendering-rules table: "Section landing hero -> Category
- *  image." Renders nothing until a real asset exists for this
- *  town/category in config/category-images.ts (Step 4 of resolveImage()'s
- *  tiers is "nothing", never the /og/ social card) -- an absent hero here
- *  is the honest, expected state before that art-direction pass ships.
+/** Hero image for a section landing page (/events/, /today/, /city-hall/,
+ *  /closures/, /farm-report/, ...). The image comes from lib/section-hero.ts's
+ *  getSectionHero(): the same seasonal / holiday rotation as the homepage's
+ *  "This week" image, never the homepage's own image that week, and a
+ *  different image per section. The section's curated category photo is only
+ *  a reserve for a date whose pool is empty; with neither, the build fails.
  */
-import { resolveImage, type ImageCategory } from '../lib/images';
-import { categoryImagesFor } from '../config/category-images';
+import { getSectionHero, type HeroSection } from '../lib/section-hero';
+import { resolveThisWeekImage } from '../lib/db';
+import { weekInfoForInstant } from '../lib/this-week';
+import { seasonForMonth } from '../lib/this-week-images';
+import { thisWeekImagesFor } from '../config/this-week-images';
 import { siteConfig } from '../lib/site-config';
 import ImageAttribution from './ImageAttribution.astro';
 
-interface Props { category: ImageCategory; }
-const { category } = Astro.props;
+interface Props { section: HeroSection; }
+const { section } = Astro.props;
 
-const image = resolveImage(
-  { title: siteConfig.cityName, source_type: 'announcement', image_path: null, image_alt: null, venue_raw: null },
-  {
-    town: siteConfig.townId,
-    cityName: siteConfig.cityName,
-    facilities: [],
-    categoryImages: categoryImagesFor(siteConfig.townId),
-    category,
-  },
+const now = new Date();
+const week = weekInfoForInstant(now, siteConfig.timezone);
+// The homepage's pick for this exact week (history-backed, persisted) -- read
+// so a section can never show the same picture as the homepage that week.
+const homepage = await resolveThisWeekImage(
+  week.slug, seasonForMonth(week.monday.m), thisWeekImagesFor(siteConfig.townId), week.monday, week.sunday,
 );
+const { image } = getSectionHero(siteConfig.townId, section, now, {
+  timezone: siteConfig.timezone, homepageImageId: homepage.id,
+});
 ---
-{image && (
-  <img
-    class="section-hero"
-    src={image.path}
-    alt={image.alt}
-    width={image.width}
-    height={image.height}
-    loading="eager"
-    decoding="async"
-  />
-)}
-{image && <ImageAttribution image={image} />}
+<img
+  class="section-hero"
+  src={image.path}
+  alt={image.alt}
+  width={image.width}
+  height={image.height}
+  loading="eager"
+  decoding="async"
+/>
+<ImageAttribution image={image} />
 
 <style>
 .section-hero {
