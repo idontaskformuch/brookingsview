@@ -116,6 +116,12 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
    först DÄREFTER tas schedule:-blocken bort ur scrape.yml, moval-scrape.yml, broomfield-scrape.yml, closure-watch-morning.yml,
    moval-closure-watch-morning.yml (visa diff först). Tills dess kör både GitHub och Worker = dubbla körningar.
 
+10. QA Q5 (efter Q2-Q4; BYGG INGET NU, ägarens beslut 2026-10-21): Auto-fix-agent via Claude Code GitHub Actions
+   (anthropics/claude-code-action). Nivå 1 först: hårt QA-fel -> issue -> agenten skriver fix som PR -> CI + QA körs på PR ->
+   ägaren godkänner från telefonen. Nivå 2 (senare, efter några veckor med bra träffsäkerhet): auto-merge för smal vitlista
+   (stavning i statisk text, denylista bild, utgången waiver) bara om allt är grönt. Nivå 3, aldrig automatiskt: live-DB-skrivningar,
+   nya beroenden, workflows/hemligheter, innehåll och design. Kostnad: API per fix + Actions-minuter (gratis så länge repot är publikt).
+
 ## 3. Gällande beslut (kortform)
 - Repot förblir publikt tills sajterna drar in pengar, görs då privat (Actions-kostnad vid privat: se Kö 9).
 - Cloudflare cron-dispatcher-token (fine-grained PAT, Actions:write, bara detta repo): giltig 90 dagar från skapande.
