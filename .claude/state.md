@@ -58,45 +58,13 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 - PRIORITET (ägaren 2026-10-21): sektionsnavigering fas 1 (spec: .claude/spec-section-nav.md) FÖRE Q2. Avvikelse från specen: commit lokalt per
   steg, pusha inte utan ja. Moreno/Broomfield: inventera + föreslå tabs/groups, VÄNTA på ja innan de byggs. Fas 2 (sammanslagning) = bara
   granskning efter fas 1, ingen kod.
-- Arbetsregel: Nya idéer går till kön, avbryter inte pågående arbete.
+- Arbetsregel: Idéer läggs i backlog.md, avbryter inte pågående arbete. Läs backlog.md bara när ägaren ber om nästa steg.
 - NÄSTA: Kö 9 Steg 1 byggt+committat (09ea03f), väntar på ägarens punkter 1-5 ovan. Därefter Kö 9 Steg 2, Steg 3, sen Kö 2+.
 
-## 2. Kö
-1. (Fas 6 klar.)
-2. Compass-källan för Broomfield (compass.broomfield.org) -- VÄNTAR PÅ SVAR FRÅN BIBLIOTEKET.
-   Biblioteket mejlades 2026-10-20; påminnelse tidigast 2026-11-03. Rör inte källan:
-   robots.txt stänger oss ute (`User-agent: *` Disallow: / utom statiska filer; bara namngivna
-   sök-/social-/annonsbotar släpps in). Löften i mejlet som MÅSTE hållas när det byggs:
-   - bara publika, biblioteksarrangerade program; inga auditorie-/rumsuthyrningar alls,
-     inte heller namngivna (t.ex. symfoniorkestern);
-   - titel, datum, tid, plats + kort sammanfattning med egna ord (genom omformuleringskontrollen);
-   - biblioteket krediteras som källa på varje listning, plus länk till Compass
-     (lib/source-credit.ts har redan host-etiketten);
-   - hämtning högst några gånger per dag;
-   - påminnelse tidigast 2026-11-03.
-   Plattform: Drupal 11 / LibraryMarket "Library Calendar" (lc_calendar). Flödestyp ej bekräftad
-   (kräver tillåtelse). Discover Vail ska INTE kopplas in (annan ort).
-3. Vår- och sommarpooler före 1 mars 2027: "This week" + sektionshero, alla tre städer.
-   Annars faller heroes till kategori-reserv och startsidans This week kastar (60-dagarsregeln).
-   Verktyg: scripts/source_this_week_images.py (har ingen denylist än -- lägg till som i
-   scripts/source_category_images.py). Bygg inte förrän ägaren säger till.
-4. Övriga ikon-emojier (bara 📅 är borta): StoryCard CHIP (🏛️🚗🏠💼🏈🎒⚠️🏭🎓), widgetar
-   (🐴📊🏔️🐇), university.astro (🎵🎭🎉🏕️ + sport), 📍 (s/[slug], city-hall/projects), 🏟️ (events),
-   📦 (weather).
-5. Broomfield facility name_aliases (data/facilities/broomfield_co.json): VÄNTA tills det första riktiga
-   eventet har kommit in från stadskalenderns flöde (riktiga LOCATION-strängar), SEEDA INGET NU.
-   Sen: lägg alias efter de verkliga strängarna och kör seed_facilities -- en LIVE-DB-skrivning, fråga först.
-6. (Kö 6 KLAR 2026-10-21.) Moreno meetings-dubbletter: kodfix (identity_key, 69996a3), städning (12 grupper, 13 meetings
-   + 6 dubblett-project_updates raderade, 4008/3974 -> 301, 9cce4ee) och migration 060 (3 UNIQUE-index: ID/EventId/id per
-   town_id, verifierade 0 dubbletter först) KLARA och live. Premissen "unikt index från Phase B" var fel (bara hash-index).
-   BESLUT: redirect-riktningen behölls (inget vändes); keeper = meetings-raden för canonical live-story; raw_data-merge
-   keeper-först (tom/false skriver aldrig över riktigt värde). backups/ nu gitignorad (repot är PUBLIKT); de 6 äldre
-   incheckade backuperna granskade: bara offentlig data (stadens kontakt-mejl/telefon ur agendatext, AI-essäer, titlar);
-   ingen IP/kommentar-data. Nya backupen backups/merge_duplicate_meetings_*.json ligger kvar lokalt (bevara).
-7. QA #9 Celebration Park-öppettider (Moreno, info, lägst prio).
-
-8. (Låg prio) Kontrollera i scrape_runs att Brookings eventkällor och Moreno Valleys events/meetings går ok
-   med nya User-Agent efter deras nästa körning.
+## 2. Kö (bara pågående + närmaste 3 steg; resten i .claude/backlog.md)
+1. NAV FAS 1 (pågår, i Nu): spec .claude/spec-section-nav.md.
+2. Kö 9 Steg 1 -- väntar på ägarens punkter 1-5 (se Nu) + Steg 2, Steg 3 (text nedan).
+3. QA Q2 (DB-invarianter), sedan Q3-Q4: .claude/spec-qa-automation.md.
 
 9. ACTIONS-KOSTNAD/SCHEMA (utredning 2026-10-21, 30 d 21/9-21/10, 981 körn.; repot förblir PUBLIKT = 0 kr, siffror gäller om privat):
    4 965 fakt.min (privat ≈ $17,8/mån): scrape 2 070 (42 %), push-deploy 1 177 (24 %, alla 3 städer vid varje push, ingen
@@ -123,11 +91,6 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
    först DÄREFTER tas schedule:-blocken bort ur scrape.yml, moval-scrape.yml, broomfield-scrape.yml, closure-watch-morning.yml,
    moval-closure-watch-morning.yml (visa diff först). Tills dess kör både GitHub och Worker = dubbla körningar.
 
-10. QA Q5 (efter Q2-Q4; BYGG INGET NU, ägarens beslut 2026-10-21): Auto-fix-agent via Claude Code GitHub Actions
-   (anthropics/claude-code-action). Nivå 1 först: hårt QA-fel -> issue -> agenten skriver fix som PR -> CI + QA körs på PR ->
-   ägaren godkänner från telefonen. Nivå 2 (senare, efter några veckor med bra träffsäkerhet): auto-merge för smal vitlista
-   (stavning i statisk text, denylista bild, utgången waiver) bara om allt är grönt. Nivå 3, aldrig automatiskt: live-DB-skrivningar,
-   nya beroenden, workflows/hemligheter, innehåll och design. Kostnad: API per fix + Actions-minuter (gratis så länge repot är publikt).
 
 ## 3. Gällande beslut (kortform)
 - Repot förblir publikt tills sajterna drar in pengar, görs då privat (Actions-kostnad vid privat: se Kö 9).

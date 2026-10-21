@@ -1,0 +1,13 @@
+# Backlog (en rad per idé, ingen ordning -- läs bara när ägaren ber om nästa steg)
+Fullständig ursprungstext för äldre punkter: .claude/state-archive.md, rubriken "Flyttat från Kö i state.md 2026-10-21".
+
+- Compass-källan för Broomfield (compass.broomfield.org): VÄNTAR på biblioteket (mejlat 2026-10-20, påminn tidigast 2026-11-03); robots.txt stänger ute oss -- rör inte källan; löften som MÅSTE hållas när den byggs: bara publika biblioteksprogram, inga rumsuthyrningar, egen sammanfattning, biblioteket krediteras + länk, hämtning högst några ggr/dag (Drupal 11 / LibraryMarket Library Calendar; Discover Vail ska INTE kopplas in).
+- Vår- och sommarpooler före 1 mars 2027 ("This week" + sektionshero, alla tre städer; annars faller heroes till kategori-reserv och startsidans This week kastar enligt 60-dagarsregeln): verktyg scripts/source_this_week_images.py (saknar denylist -- lägg till som i source_category_images.py); bygg inte förrän ägaren säger till.
+- Övriga ikon-emojier (bara 📅 är borta): StoryCard CHIP, widgetar (🐴📊🏔️🐇), university.astro (🎵🎭🎉🏕️ + sport), 📍 (s/[slug], city-hall/projects), 🏟️ (events), 📦 (weather).
+- Broomfield facility name_aliases (data/facilities/broomfield_co.json): vänta tills första riktiga eventet kommit från stadskalenderns flöde, seeda inget nu; sen alias + seed_facilities (LIVE-DB-skrivning, fråga först).
+- QA #9 Celebration Park-öppettider (Moreno, info, lägst prio).
+- (Låg prio) Kontrollera i scrape_runs att Brookings eventkällor och Moreno events/meetings går ok med nya User-Agent efter nästa körning.
+- QA Q5: auto-fix-agent via anthropics/claude-code-action -- nivå 1: hårt QA-fel -> issue -> agenten skriver fix som PR -> CI + QA på PR -> ägaren godkänner från telefonen; nivå 2 (efter några veckor med bra träffsäkerhet): auto-merge för smal vitlista (stavning i statisk text, denylista bild, utgången waiver) bara om allt grönt; nivå 3 aldrig automatiskt: live-DB-skrivningar, nya beroenden, workflows/hemligheter, innehåll och design; kostnad: API per fix + Actions-minuter (gratis så länge repot är publikt). Bygg inget nu.
+- Brottsdata-utredningen: (ägarens idé; ingen text finns i repot eller state -- ägaren kompletterar scope/källor när den tas upp).
+- Fas 2 sektionssammanslagning (This week/What's On/Events -> Events, Closure Watch + Traffic -> Traffic & Closures, 301:or): bara granskning efter nav fas 1, ingen kod (spec: .claude/spec-section-nav.md).
+- Moreno Valley + Broomfield multi-district-hälften av recurring-traffic fas 2 (öppen bugg noterad i minnet), faser 3-5 av recurring-traffic-lagret: ej startade.

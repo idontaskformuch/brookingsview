@@ -123,3 +123,47 @@ Hellre utelämna än visa fel.
 ## C. Utfört 2026-10-21
 
 - Moreno Valley dubblettmöten: meetings 13786 och 13788 raderade i produktion på ägarens uttryckliga godkännande (SQL .claude/moreno-duplicate-meetings.sql, steg 1-4; guard: keeper 2193/2194 med samma eSCRIBE-guid och datum; 6 FK-tabeller 0 rader; RETURNING exakt 13786+13788; efterkontroll: bara 2193 och 2194 kvar).
+
+## Flyttat från Kö i state.md 2026-10-21 (backlog.md har enradsversioner)
+1. (Fas 6 klar.)
+2. Compass-källan för Broomfield (compass.broomfield.org) -- VÄNTAR PÅ SVAR FRÅN BIBLIOTEKET.
+   Biblioteket mejlades 2026-10-20; påminnelse tidigast 2026-11-03. Rör inte källan:
+   robots.txt stänger oss ute (`User-agent: *` Disallow: / utom statiska filer; bara namngivna
+   sök-/social-/annonsbotar släpps in). Löften i mejlet som MÅSTE hållas när det byggs:
+   - bara publika, biblioteksarrangerade program; inga auditorie-/rumsuthyrningar alls,
+     inte heller namngivna (t.ex. symfoniorkestern);
+   - titel, datum, tid, plats + kort sammanfattning med egna ord (genom omformuleringskontrollen);
+   - biblioteket krediteras som källa på varje listning, plus länk till Compass
+     (lib/source-credit.ts har redan host-etiketten);
+   - hämtning högst några gånger per dag;
+   - påminnelse tidigast 2026-11-03.
+   Plattform: Drupal 11 / LibraryMarket "Library Calendar" (lc_calendar). Flödestyp ej bekräftad
+   (kräver tillåtelse). Discover Vail ska INTE kopplas in (annan ort).
+3. Vår- och sommarpooler före 1 mars 2027: "This week" + sektionshero, alla tre städer.
+   Annars faller heroes till kategori-reserv och startsidans This week kastar (60-dagarsregeln).
+   Verktyg: scripts/source_this_week_images.py (har ingen denylist än -- lägg till som i
+   scripts/source_category_images.py). Bygg inte förrän ägaren säger till.
+4. Övriga ikon-emojier (bara 📅 är borta): StoryCard CHIP (🏛️🚗🏠💼🏈🎒⚠️🏭🎓), widgetar
+   (🐴📊🏔️🐇), university.astro (🎵🎭🎉🏕️ + sport), 📍 (s/[slug], city-hall/projects), 🏟️ (events),
+   📦 (weather).
+5. Broomfield facility name_aliases (data/facilities/broomfield_co.json): VÄNTA tills det första riktiga
+   eventet har kommit in från stadskalenderns flöde (riktiga LOCATION-strängar), SEEDA INGET NU.
+   Sen: lägg alias efter de verkliga strängarna och kör seed_facilities -- en LIVE-DB-skrivning, fråga först.
+6. (Kö 6 KLAR 2026-10-21.) Moreno meetings-dubbletter: kodfix (identity_key, 69996a3), städning (12 grupper, 13 meetings
+   + 6 dubblett-project_updates raderade, 4008/3974 -> 301, 9cce4ee) och migration 060 (3 UNIQUE-index: ID/EventId/id per
+   town_id, verifierade 0 dubbletter först) KLARA och live. Premissen "unikt index från Phase B" var fel (bara hash-index).
+   BESLUT: redirect-riktningen behölls (inget vändes); keeper = meetings-raden för canonical live-story; raw_data-merge
+   keeper-först (tom/false skriver aldrig över riktigt värde). backups/ nu gitignorad (repot är PUBLIKT); de 6 äldre
+   incheckade backuperna granskade: bara offentlig data (stadens kontakt-mejl/telefon ur agendatext, AI-essäer, titlar);
+   ingen IP/kommentar-data. Nya backupen backups/merge_duplicate_meetings_*.json ligger kvar lokalt (bevara).
+7. QA #9 Celebration Park-öppettider (Moreno, info, lägst prio).
+
+8. (Låg prio) Kontrollera i scrape_runs att Brookings eventkällor och Moreno Valleys events/meetings går ok
+   med nya User-Agent efter deras nästa körning.
+
+10. QA Q5 (efter Q2-Q4; BYGG INGET NU, ägarens beslut 2026-10-21): Auto-fix-agent via Claude Code GitHub Actions
+   (anthropics/claude-code-action). Nivå 1 först: hårt QA-fel -> issue -> agenten skriver fix som PR -> CI + QA körs på PR ->
+   ägaren godkänner från telefonen. Nivå 2 (senare, efter några veckor med bra träffsäkerhet): auto-merge för smal vitlista
+   (stavning i statisk text, denylista bild, utgången waiver) bara om allt är grönt. Nivå 3, aldrig automatiskt: live-DB-skrivningar,
+   nya beroenden, workflows/hemligheter, innehåll och design. Kostnad: API per fix + Actions-minuter (gratis så länge repot är publikt).
+
