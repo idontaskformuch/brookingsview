@@ -7,10 +7,6 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 - Fas 6 (dark mode) KLAR och pushad 2026-10-21 (ägaren godkände). Alla tre städer byggda, vitest 1148 +
   pytest 919 gröna, astro check 0 fel, sitemap/noindex OK (Brookings 109, Moreno 141, Broomfield 79).
   Ägaren kollar mörkt läge på telefon; inga Moreno/Broomfield-skärmbilder gjorda.
-- ÅTGÄRD 1 (blockerar inget): kör scrape_runs efter nästa schemalagda körning (~09:00-09:30Z) och
-  rapportera 403/fel: SELECT town_id, source_key, status, http_code, error, started_at FROM scrape_runs
-  WHERE started_at >= '2026-10-21 05:35+00' ORDER BY started_at; (06:08Z hade 0 körningar startat).
-  Vid 403: gamla UA-formen via USER_AGENT i den källans workflow, rapportera till ägaren.
 - BESLUT Fas 6: --navy ljus (#9bbbe3) i dark, fyllda knappar inverteras av sig själva; nya variabler
   --sign-bg/--on-accent/--paper-tint; sektionsaccent via body --section-accent-l/-d + has-accent;
   tema i localStorage 'bv_theme'. Skärmbildsverktyg: playwright python, channel msedge.
@@ -18,8 +14,10 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   querySelectorAll(':scope > li') på mallens fragment (matchar inget i Chromium) + villkorligt City Hall-
   <script> fick Astro att tappa bucket-skriptet på Broomfield. Nu lib/today-buckets.ts + test i riktig
   Chromium (hoppas över om ingen finns); tomma buckets dolda, en rad -> /whats-on/ när båda tomma.
-- scrape_runs (UA-bytet): 07:48Z hade fortfarande 0 körningar startat efter 05:35Z (DB-klockan, inte
-  lokal tid). Kör om efter ~09:00-09:30Z.
+- scrape_runs (UA-bytet) KLAR 2026-10-21: schemalagda körningar var >3 h försenade, så ägaren lät mig köra
+  workflow_dispatch för alla tre scrape-workflows (09:36Z, via git-credential, ägaren godkände).
+  Resultat: 21 körningar, 15 ok/200, 5 skipped, 1 stub (road_conditions), 0 st 403/fel.
+  Broomfield traffic (data.cotrip.org, gav 403 med gamla UA) = ok 200. Ingen UA-återställning behövs.
 - FLAKY? 2 vitest-tester föll en gång 2026-10-21 (66 s körning, direkt efter en astro build), ej
   identifierade; 5 omkörningar (varav 1 under CPU-last) = 1152/1152 gröna. Om det återkommer: kör
   --reporter=verbose och logga namnen här.
