@@ -10,12 +10,15 @@
 // color placed on that tint (4.5:1). A status is *marked* by the dot/border;
 // its words stay in ordinary text color -- never mint-on-mint again.
 //
-// MODES: only `light` exists today. Dark mode (a later phase) adds a `dark`
-// entry with its own page/paper values and the SAME checks run on it; no
-// component needs to change because they only ever read the CSS variables.
+// MODES: `light` and `dark`. Each mode has its own page/paper values and the
+// SAME checks run on both (lib/status-contrast.ts); no component needs to
+// change because they only ever read the CSS variables. PAGE.dark must equal
+// the dark --paper/--surface/--ink in BaseLayout.astro (guarded by
+// lib/theme-tokens.test.ts).
 
 export const PAGE = {
   light: { paper: '#fbfaf7', surface: '#ffffff', ink: '#161614' },
+  dark:  { paper: '#121210', surface: '#1c1c19', ink: '#ece9e1' },
 };
 
 export const STATUS_TOKENS = {
@@ -23,6 +26,11 @@ export const STATUS_TOKENS = {
     ok:    { marker: '#1a7f45', bg: '#dcfce7', text: '#14532d' },
     warn:  { marker: '#a86b00', bg: '#fdf1cf', text: '#5c3b00' },
     alert: { marker: '#c0261c', bg: '#fee2e2', text: '#7f1d1d' },
+  },
+  dark: {
+    ok:    { marker: '#4ade80', bg: '#10301d', text: '#bbf7d0' },
+    warn:  { marker: '#fbbf24', bg: '#33260a', text: '#fde68a' },
+    alert: { marker: '#f87171', bg: '#3b1616', text: '#fecaca' },
   },
 };
 
@@ -45,5 +53,10 @@ export function statusTokensCss() {
     lines.push('  --status-caution: var(--status-warn);', '  --status-caution-tint: var(--status-warn-bg);', '  --status-caution-ink: var(--status-warn-text);');
     return lines.join('\n');
   };
-  return `:root {\n${block('light')}\n}\n`;
+  // Dark applies when the OS prefers it AND the visitor has not forced light,
+  // or when the visitor forced dark with the header toggle (data-theme on <html>).
+  const indent = (text) => text.replace(/^/gm, '  ');
+  return `:root {\n${block('light')}\n}\n` +
+    `@media (prefers-color-scheme: dark) {\n  :root:not([data-theme="light"]) {\n${indent(block('dark'))}\n  }\n}\n` +
+    `:root[data-theme="dark"] {\n${block('dark')}\n}\n`;
 }
