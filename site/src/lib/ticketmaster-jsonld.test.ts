@@ -96,4 +96,29 @@ describe('buildTicketmasterEventJsonLd', () => {
     const result = buildTicketmasterEventJsonLd(item, CANONICAL, 'Brookings View');
     expect(result?.organizer).toEqual({ '@type': 'Organization', name: 'Brookings View' });
   });
+
+  it('keeps addressCountry US for a US venue and does not require a state for a GB one', () => {
+    const us = buildTicketmasterEventJsonLd(tmItem('2026-12-13T01:30:00Z', {
+      venueName: 'Denny Sanford PREMIER Center', venueAddress: '1201 N West Ave', venueCity: 'Sioux Falls',
+      venueStateCode: 'SD', venuePostalCode: '57104',
+    }), CANONICAL, 'Brookings View');
+    expect((us?.location as any).address.addressCountry).toBe('US');
+
+    // Real Discovery shape for Celtic Park, Glasgow: state is null, country GB
+    const gb = buildTicketmasterEventJsonLd(tmItem('2026-10-22T19:00:00Z', {
+      venueName: 'Celtic Park', venueAddress: '18 Kerrydale Street', venueCity: 'Glasgow',
+      venueStateCode: null, venueCountryCode: 'GB', venuePostalCode: 'G40 3RE',
+    }), CANONICAL, 'Glasgow Loop');
+    expect((gb?.location as any).address).toMatchObject({
+      streetAddress: '18 Kerrydale Street', addressLocality: 'Glasgow', postalCode: 'G40 3RE', addressCountry: 'GB',
+    });
+    expect((gb?.location as any).address.addressRegion).toBeUndefined();
+  });
+
+  it('still omits location for a US venue without a state (unchanged behaviour)', () => {
+    const r = buildTicketmasterEventJsonLd(tmItem('2026-12-13T01:30:00Z', {
+      venueName: 'X', venueAddress: '1 Main', venueCity: 'Town', venueStateCode: null, venuePostalCode: '57104',
+    }), CANONICAL, 'Brookings View');
+    expect(r?.location).toBeUndefined();
+  });
 });

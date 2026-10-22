@@ -32,7 +32,7 @@ describe('Glasgow skeleton config', () => {
 
   it('has every feature off', () => {
     for (const k of ['hasWhatsOn', 'hasClosureWatch', 'hasNewInTown', 'hasWorkplaceWatch', 'hasPlaces', 'hasHeatAdvisory', 'hasEventsSource'] as const) {
-      expect(!!(glasgow as Record<string, unknown>)[k], k).toBe(false);
+      expect(!!(glasgow as unknown as Record<string, unknown>)[k], k).toBe(false);
     }
     expect(glasgow.ticketmaster).toBeUndefined();
     expect(glasgow.statusModules ?? []).toEqual([]);

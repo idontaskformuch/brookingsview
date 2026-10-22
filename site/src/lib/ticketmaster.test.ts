@@ -61,6 +61,7 @@ describe('normalizeTicketmasterEvent', () => {
         venueAddress: '1396 Stadium Rd',
         venueCity: 'Brookings',
         venueStateCode: 'SD',
+        venueCountryCode: null,
         venuePostalCode: '57006',
         venueDistanceMiles: 3.57,
         ticketUrl: 'https://www.ticketmaster.com/event/Z7r9jZ1A70S3p',
@@ -120,6 +121,7 @@ describe('normalizeTicketmasterEvent', () => {
     expect(e.venueAddress).toBeNull();
     expect(e.venueCity).toBeNull();
     expect(e.venueStateCode).toBeNull();
+    expect(e.venueCountryCode).toBeNull();
     expect(e.venuePostalCode).toBeNull();
   });
 

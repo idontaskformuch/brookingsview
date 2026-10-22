@@ -45,6 +45,7 @@ export interface RawTicketmasterEvent {
       address?: { line1?: string };
       city?: { name?: string };
       state?: { stateCode?: string };
+      country?: { countryCode?: string };
       postalCode?: string;
       location?: { latitude?: string; longitude?: string };
       /** Discovery API computes this itself, in whatever `unit` the search
@@ -145,6 +146,9 @@ export interface TicketmasterEvent {
   venueAddress: string | null;
   venueCity: string | null;
   venueStateCode: string | null;
+  /** ISO country of the venue ("US", "GB"); optional so the JSON-LD builder
+   *  falls back to "US" for any caller that predates it. */
+  venueCountryCode?: string | null;
   venuePostalCode: string | null;
   /** Miles from the search origin (this town's own coordinates) -- see the
    *  raw venue type's own comment on `distance` above. Null when Discovery
@@ -282,6 +286,7 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
     venueAddress: venue?.address?.line1 ?? null,
     venueCity: venue?.city?.name ?? null,
     venueStateCode: venue?.state?.stateCode ?? null,
+    venueCountryCode: venue?.country?.countryCode ?? null,
     venuePostalCode: venue?.postalCode ?? null,
     venueDistanceMiles: venue?.distance ?? null,
     ticketUrl: raw.url ?? '',

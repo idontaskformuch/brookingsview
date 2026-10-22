@@ -30,7 +30,12 @@ export function buildTicketmasterEventJsonLd(
   if (!item.occurs_at) return null;
   const e = item.ticketmasterEvent;
 
-  const hasAddress = Boolean(e.venueName && e.venueAddress && e.venueCity && e.venueStateCode);
+  const country = e.venueCountryCode ?? 'US';
+  // US venues need a state; UK venues have none (Discovery returns state: null
+  // for Glasgow) and are identified by city + postcode instead.
+  const hasAddress = Boolean(
+    e.venueName && e.venueAddress && e.venueCity && (e.venueStateCode || (country !== 'US' && e.venuePostalCode)),
+  );
   const location = hasAddress ? {
     '@type': 'Place',
     name: e.venueName,
@@ -38,9 +43,9 @@ export function buildTicketmasterEventJsonLd(
       '@type': 'PostalAddress',
       streetAddress: e.venueAddress,
       addressLocality: e.venueCity,
-      addressRegion: e.venueStateCode,
+      addressRegion: e.venueStateCode ?? undefined,
       postalCode: e.venuePostalCode ?? undefined,
-      addressCountry: 'US',
+      addressCountry: country,
     },
     ...(e.venueLatitude != null && e.venueLongitude != null
       ? { geo: { '@type': 'GeoCoordinates', latitude: e.venueLatitude, longitude: e.venueLongitude } }
