@@ -59,8 +59,13 @@ describe('Glasgow skeleton config', () => {
     expect(others).not.toContain(glasgow.brand?.accent);
   });
 
-  it('lists no sources on /about until a source is enabled', () => {
-    expect(aboutSourcesFor('glasgow')).toEqual([]);
+  it('lists only the enabled sources on /about (council meetings so far)', () => {
+    expect(aboutSourcesFor('glasgow')).toEqual([
+      {
+        name: 'Glasgow City Council committees and councillors',
+        url: 'https://onlineservices.glasgow.gov.uk/councillorsandcommittees/',
+      },
+    ]);
   });
 
   it('mirrors its identity in astro.config.mjs (url, accent, zone, noindex set)', () => {

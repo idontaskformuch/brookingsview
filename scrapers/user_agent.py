@@ -19,6 +19,7 @@ SITE_DOMAINS: dict[str, str] = {
     "brookings_sd": "brookingsview.com",
     "moreno_valley_ca": "morenovalleyview.com",
     "broomfield_co": "broomfieldview.com",
+    "glasgow": "glasgowloop.co.uk",
 }
 DEFAULT_TOWN = "brookings_sd"
 

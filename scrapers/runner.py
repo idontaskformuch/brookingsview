@@ -37,6 +37,7 @@ REGISTRY: dict[str, str] = {
     "legistar":        "scrapers.parsers.legistar_v1:LegistarParser",
     "escribe":         "scrapers.parsers.escribe_v1:EscribeParser",
     "agendalink":      "scrapers.parsers.agendalink_v1:AgendaLinkParser",
+    "coins":           "scrapers.parsers.glasgow_coins_v1:GlasgowCoinsParser",
     "jobs":            "scrapers.parsers.jobs_v1:JobsParser",
     "rivco_assessor":  "scrapers.parsers.rivco_property_sales_v1:PropertySalesParser",
     # OBS: "pro_sports" är MEDVETET en annan nyckel än "sports" (=gojacks_v1,
