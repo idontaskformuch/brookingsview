@@ -41,6 +41,11 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   pytest 942 gröna; astro check 0 fel; bygge x3 OK, sitemap/noindex-disjoint OK (80/144/110 = Broomfield/Moreno/Brookings), ingen stadsläcka i resultatsidans HTML (Brookings kontrollerat utan scripts).
   MILJÖPROBLEM: ströprocesser `astro dev --port 4400/4401/4402` (PID 13072, 10592, 11348, 27588; 40 000-54 000 CPU-sekunder) håller CPU på 100 % och ger Chromium-timeouts i
   section-nav-ui (den "flaky" testen). Ej dödade (inte startade i denna session) -- ägaren avgör.
+  2026-10-22 (ägaren beordrade deploy+push): strö-astro-dev dödade (4 st); SQL-test: Neon-gren ej möjlig (ingen API-nyckel) -> samma frågor (fångade ur store.ts) körda i transaktion mot live
+  med ROLLBACK: 11 contests, 31 resultatrader, turnout, blockerad snapshot med problems[], bytea-roundtrip, pct 68.7; alla fyra tabeller tomma efteråt. ARKITEKTUR: GET /api/election-results
+  ligger nu i sajternas worker (site/server/election-results.ts, town från HOSTNAME, ?town= ignoreras, read-only, Cache 30 s); valets Worker viewmedia-election-results är cron-only (*/10),
+  DEPLOYAD (version d00fe4f8), secret DATABASE_URL satt via stdin (aldrig visat), första cron 03:00 UTC = Ok, alla tre 'skipped' (före valet). Fullt batteri: site vitest 1257, election-results 36,
+  pytest 942, astro check 0, bygge x3 OK, disjoint 80/144/110.
   KVAR FÖRE VALET: (1) deploy av Worker: secret DATABASE_URL + route <sajt>/api/election-results* per zon (annars visar sidan "could not be loaded"); (2) ROLLED-BACK testskrivning av
   store.ts-SQL mot live (ej gjord, kräver ägarens ja); (3) Broomfield: svar på mejlet / elections.json före ons 28 okt, annars A; (4) ägaren skickar ROV-mejlet; (5) fetchUntil 2026-11-30 = antagande;
   (6) första riktiga snapshot granskas manuellt mot källan innan länk delas; (7) push + IndexNow (/election-results på alla tre) när ägaren säger ja.
