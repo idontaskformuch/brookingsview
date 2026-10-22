@@ -10,7 +10,7 @@
 import type { SiteConfig } from './site-config';
 import { ELECTION_BY_TOWN } from '../config/election';
 
-export type NavGate = Pick<SiteConfig, 'townId' | 'hasWhatsOn' | 'hasClosureWatch' | 'hasNewInTown' | 'hasWorkplaceWatch'>;
+export type NavGate = Pick<SiteConfig, 'townId' | 'hasWhatsOn' | 'hasClosureWatch' | 'hasNewInTown' | 'hasWorkplaceWatch' | 'disabledSections' | 'navLabels'>;
 
 export interface NavSection {
   id: string;
@@ -21,6 +21,9 @@ export interface NavSection {
   footerLabel?: string;
   enabled: (c: NavGate) => boolean;
 }
+
+/** A section is on when its own gate passes and the town has not switched it off (SiteConfig.disabledSections). */
+const isOn = (s: NavSection, c: NavGate) => s.enabled(c) && !c.disabledSections?.includes(s.id);
 
 const BROOKINGS = (c: NavGate) => c.townId === 'brookings_sd';
 const MORENO = (c: NavGate) => c.townId === 'moreno_valley_ca';
@@ -70,7 +73,7 @@ const hrefOf = (s: NavSection, c: NavGate) => (typeof s.href === 'function' ? s.
 
 /** Enabled sections of a town in registry order, as the footer/legacy nav list them. */
 export function enabledSections(c: NavGate): ResolvedSection[] {
-  return SECTIONS.filter((s) => s.enabled(c)).map((s) => ({ id: s.id, href: hrefOf(s, c), label: s.footerLabel ?? s.label }));
+  return SECTIONS.filter((s) => isOn(s, c)).map((s) => ({ id: s.id, href: hrefOf(s, c), label: c.navLabels?.[s.id] ?? s.footerLabel ?? s.label }));
 }
 
 /** Validate a town's nav config against the registry and the town's gating; throws on any problem. */
@@ -80,7 +83,7 @@ export function resolveNav(cfg: NavConfig, c: NavGate): ResolvedNav {
   const known = (id: string, where: string): NavSection | null => {
     const s = byId.get(id);
     if (!s) { problems.push(`${where}: unknown section id "${id}"`); return null; }
-    if (!s.enabled(c)) { problems.push(`${where}: "${id}" is disabled for ${c.townId}`); return null; }
+    if (!isOn(s, c)) { problems.push(`${where}: "${id}" is disabled for ${c.townId}`); return null; }
     return s;
   };
   const dup = (ids: string[], where: string) => {
@@ -98,7 +101,7 @@ export function resolveNav(cfg: NavConfig, c: NavGate): ResolvedNav {
   }
   for (const [title, ids] of Object.entries(cfg.groups)) for (const id of ids) known(id, `groups.${title}`);
   for (const s of SECTIONS) {
-    if (s.enabled(c) && !grouped.has(s.id)) problems.push(`groups: enabled section "${s.id}" (${hrefOf(s, c)}) is not in any group`);
+    if (isOn(s, c) && !grouped.has(s.id)) problems.push(`groups: enabled section "${s.id}" (${hrefOf(s, c)}) is not in any group`);
   }
   if (problems.length) {
     throw new Error(`Invalid nav config for ${c.townId}:\n  ` + problems.join('\n  '));
@@ -106,7 +109,7 @@ export function resolveNav(cfg: NavConfig, c: NavGate): ResolvedNav {
 
   const resolve = (id: string): ResolvedSection => {
     const s = byId.get(id)!;
-    return { id, href: hrefOf(s, c), label: s.label };
+    return { id, href: hrefOf(s, c), label: c.navLabels?.[id] ?? s.label };
   };
   return {
     tabs: cfg.tabs.map(resolve),

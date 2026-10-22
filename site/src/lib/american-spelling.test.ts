@@ -10,7 +10,11 @@ import { forbiddenSpellingFor, findSpellingViolations } from './spelling-gate';
  *  are checked against the British rule instead. AI-generated content is
  *  untouched (it is not in src/). Comment lines are skipped; proper nouns that
  *  really are spelled "Theatre" (venues) are not in the word lists. */
-const GB_PATH = /(^|[\/])gb[\/]|\.gb\.(ts|astro)$/;
+const GB_PATH = /(^|[\\/])gb[\\/]|\.gb\.(ts|astro)$/;
+/** Shared templates carry the British branch of a country-specific word inline, e.g.
+ *  forCountry(siteConfig.country, 'summarized', 'summarised'): such a line (or one marked
+ *  `gb-spelling`) is checked by the built-output gate for gb towns instead. */
+const GB_BRANCH_LINE = /forCountry\(|gb-spelling/;
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
@@ -27,6 +31,7 @@ function scan(files: string[], root: string, rule: RegExp): string[] {
     readFileSync(file, 'utf-8').split(/\r?\n/).forEach((line, i) => {
       const t = line.trim();
       if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('{/*')) return;
+      if (rule === forbiddenSpellingFor('american') && GB_BRANCH_LINE.test(t)) return;
       const m = rule.exec(t);
       if (m) hits.push(`${file.replace(root, '')}:${i + 1}: ${m[0]}`);
     });

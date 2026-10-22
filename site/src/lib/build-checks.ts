@@ -648,12 +648,19 @@ function warnSectionHeroPoolSize(now: Date): void {
 export async function runBuildTimeChecks(): Promise<void> {
   if (checked) return;
   checked = true;
-  assertCategoryImagesComplete(siteConfig, categoryImagesFor(siteConfig.townId));
+  // A pre-launch town (SiteConfig.noindexSite, e.g. the Glasgow skeleton) has no photo pools yet and is noindex
+  // site-wide: the photo-coverage checks protect LAUNCHED towns, so they are skipped here, loudly, and come back
+  // automatically the moment the flag is removed.
+  const prelaunch = !!siteConfig.noindexSite;
+  if (prelaunch) console.warn(`[build-checks] ${siteConfig.townId}: noindexSite -- skipping photo-pool coverage checks (category, this-week, section-hero).`);
+  else assertCategoryImagesComplete(siteConfig, categoryImagesFor(siteConfig.townId));
   await assertVenueMatchingReachable();
   await assertContentTrackImagesComplete();
   await assertPageMetaPatternsValid();
   await assertPlaceLayerConsistent();
   await assertNoSandboxSourceUrls();
-  assertThisWeekImageCoverage();
-  warnSectionHeroPoolSize(new Date());
+  if (!prelaunch) {
+    assertThisWeekImageCoverage();
+    warnSectionHeroPoolSize(new Date());
+  }
 }

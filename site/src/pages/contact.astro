@@ -9,6 +9,7 @@
 // dashboard, not by anything build-time here.
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
+import { forCountry } from '../lib/country-profile';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const TURNSTILE_SITE_KEY = '0x4AAAAAAEhMDgrHEob53wfv';
@@ -43,9 +44,10 @@ const TURNSTILE_SITE_KEY = '0x4AAAAAAEhMDgrHEob53wfv';
     log</a> for what's been fixed so far.</p>
 
     <h2>Missing an event?</h2>
-    <p>If your organization runs public events in {siteConfig.cityName} and you'd like them
-    included, get in touch. Right now the site covers the library, the city and
-    county{isBrookings ? ', and SDSU athletics' : ''} — we're always looking to add more.</p>
+    <p>If your {forCountry(siteConfig.country, 'organization', 'organisation')} runs public events in {siteConfig.cityName} and you'd like them
+    included, get in touch. {forCountry(siteConfig.country,
+      `Right now the site covers the library, the city and county${isBrookings ? ', and SDSU athletics' : ''} — we're always looking to add more.`,
+      "The site is still being set up and its sources are being added one by one — we're always looking to add more.")}</p>
   </article>
 </BaseLayout>
 

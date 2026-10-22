@@ -1,0 +1,51 @@
+{
+  "town_id": "glasgow",
+  "country": "gb",
+  "nation": "scotland",
+  "region": "Scotland",
+  "display_name": "Glasgow",
+  "county": "Glasgow City",
+  "population": 635000,
+  "_population_note": "Approximate (council area, mid-2020s). Not used in any published copy; replace with a cited figure before it is.",
+  "timezone": "Europe/London",
+  "domain": "glasgowloop.co.uk",
+  "coordinates": {
+    "lat": 55.8642,
+    "lon": -4.2518
+  },
+  "_coordinates_note": "Approximate city centre (George Square). Replace with a verified point before any radius/geo query uses it (Ticketmaster GB, Met Office).",
+  "_status": "SKELETON (Glasgow Phase 2, 2026-10-22): site-wide noindex ON, every data source and feature disabled. Nothing scrapes or publishes for this town yet. Phase 3 adds sources one by one, each behind its own enabled flag, after reachability and robots/ToS are verified.",
+  "identity": {
+    "terms": ["Glasgow City Council", "Strathclyde", "Kelvingrove", "Ibrox", "Celtic Park"],
+    "_terms_note": "ai_pipeline/town_guard.py cross-site contamination guard: terms a US town must never mention. Chosen to be unambiguous; display_name (Glasgow) and county (Glasgow City) are added automatically."
+  },
+  "compliance": {
+    "publish_named_private_individuals": false,
+    "removal_contact_email": "hello@glasgowloop.co.uk",
+    "_note": "Scottish contempt-of-court rule (Phase 5): any item about arrests, charges, sheriff or High Court proceedings or named suspects is held, never auto-published."
+  },
+  "output": {
+    "prefer_digests_over_single_item_pages": true
+  },
+  "data_sources": {
+    "city_meetings": { "type": "custom_asp", "enabled": false, "_notes": "Phase 3.1: onlineservices.glasgow.gov.uk/councillorsandcommittees. Verify reachability and robots/ToS first." },
+    "weather": { "type": "api", "enabled": false, "provider": "met_office_datahub", "_notes": "Phase 3.2: needs the owner's DataHub key. The US NWS parsers do not apply." },
+    "weather_alerts": { "type": "met_office_warnings", "enabled": false, "_notes": "Phase 3.2: Met Office warnings + SEPA flood warnings." },
+    "traffic": { "type": "traffic_scotland", "enabled": false, "_notes": "Phase 3.3: DATEX II needs an approved subscription; tellmescotland.gov.uk notices." },
+    "events": { "type": "multi", "enabled": false, "_notes": "Phase 3.4: Glasgow Life what's-on + Ticketmaster Discovery (countryCode=GB)." },
+    "sports": { "type": "sportmonks", "enabled": false, "_notes": "Phase 3.5: Scottish Premiership, free plan." },
+    "jobs": { "type": "jobs", "enabled": false, "country": "gb", "where": "Glasgow", "_notes": "Phase 3.6: Adzuna country=gb (the parser already takes a country)." },
+    "school_closures": { "type": "school_alerts", "enabled": false, "_notes": "Phase 3.7: find a Glasgow City Council closure source or report that none exists." },
+    "food_hygiene": { "type": "fhis", "enabled": false, "_notes": "Phase 3.8: Scotland uses FHIS Pass / Improvement Required, not FSA 0-5 stars." }
+  },
+  "features": {
+    "closure_watch": { "enabled": false, "districts": [], "weather_zones": [] },
+    "new_in_town": { "enabled": false },
+    "housing_market": { "enabled": false, "sales_source": null },
+    "whats_on": { "enabled": false },
+    "workplace_watch": { "enabled": false },
+    "comments": { "enabled": false },
+    "games": { "enabled": false }
+  },
+  "local_theaters": []
+}

@@ -84,11 +84,14 @@ const ogImage = new URL(`/og/${ogSlug ?? 'default'}.png`, Astro.site ?? siteConf
 // to prove the edge is actually serving THIS deploy and not a stale one
 // Cloudflare's Workers Static Assets cache never invalidated.
 const buildSha = import.meta.env.GITHUB_SHA ?? 'local';
+if (siteConfig.country === 'gb' && siteConfig.ga4MeasurementId) {
+  throw new Error(`${siteConfig.townId}: a UK town cannot set ga4MeasurementId yet -- GA4 must not load before opt-in consent (PECR), and the opt-in-first banner is not built. See docs/uk-audit.md section 8.`);
+}
 const siblingSiteUrls = ALL_SITES.filter((s) => s.townId !== siteConfig.townId).map((s) => s.siteUrl);
 const now = new Date();
 const year = now.getFullYear();
 // Datumraden byggs om varje timme tillsammans med resten av sajten.
-const dateline = now.toLocaleDateString('en-US', {
+const dateline = now.toLocaleDateString(countryProfile(siteConfig.country).locale, {
   weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
   timeZone: siteConfig.timezone,
 });
@@ -138,7 +141,7 @@ const footerGroups = FOOTER_GROUPS
     Google's own guidance allows comma-combining robots directives in one
     tag, and a noindex page still benefits from a large-image allowance in
     the rare case it's later flipped back to indexable. */}
-<meta name="robots" content={noindex ? 'noindex,follow,max-image-preview:large' : 'max-image-preview:large'} />
+<meta name="robots" content={(noindex || siteConfig.noindexSite) ? 'noindex,follow,max-image-preview:large' : 'max-image-preview:large'} />
 <link rel="canonical" href={canonical.href} />
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
@@ -797,7 +800,8 @@ main { padding-block: 1.75rem 3.5rem; }
   </div>
 </footer>
 
-<CookieBanner />
+{/* UK towns (PECR): no banner while nothing needs consent. A gb town with analytics is refused above until an opt-in-first banner exists. */}
+{!(siteConfig.country === 'gb') && <CookieBanner />}
 
 <script is:inline>
 if ('serviceWorker' in navigator) {

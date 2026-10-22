@@ -1,8 +1,10 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
+import CookiesGb from '../components/legal/gb/CookiesBody.astro';
 ---
 <BaseLayout title={`Cookies — ${siteConfig.siteName}`} description={`${siteConfig.siteName}'s current cookie use.`}>
+  {siteConfig.country === 'gb' ? <CookiesGb /> : (
   <article class="prose">
     <h1>Cookies</h1>
     <p><em>Last updated October 2026.</em></p>
@@ -37,6 +39,7 @@ import { siteConfig } from '../lib/site-config';
     <p>Questions? <a href="/contact/">Contact us</a>. See also our
     <a href="/privacy/">privacy policy</a>.</p>
   </article>
+)}
 </BaseLayout>
 
 <style>

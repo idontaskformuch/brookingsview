@@ -21,6 +21,18 @@ export interface SiteConfig {
   nav: NavConfig;
   /** Visningsnamn, t.ex. "Moreno Valley" */
   cityName: string;
+  /** Section ids (lib/nav-sections.ts SECTIONS) switched off for this town: they leave the
+   *  nav/footer, and their page redirects to / (see isSectionDisabled). Used by towns whose
+   *  data source for that section does not exist yet (Glasgow skeleton). */
+  disabledSections?: string[];
+  /** Per-town nav/footer label overrides by section id (Glasgow: cityhall -> "Council"). */
+  navLabels?: Record<string, string>;
+  /** Site-wide noindex until the town has real data (Glasgow Phase 2): every page carries
+   *  noindex, robots.txt advertises no sitemap, and the sitemap is empty. */
+  noindexSite?: boolean;
+  /** false = not listed in the other towns' multi-site disclosure yet (an unlaunched, noindexed
+   *  site is not advertised from the live ones). Default true. */
+  listedInNetwork?: boolean;
   /** Land (config/countries/<id>.json). Styr locale, valuta, helgdagar, juridiska
    *  sidor m.m. Alla amerikanska orter är 'us'. */
   country: CountryId;
@@ -720,6 +732,46 @@ const CITIES: Record<string, SiteConfig> = {
     // No verified movie theater yet either -- undefined (never guessed)
     // until one is cross-checked the way Brookings/Moreno Valley's were.
   },
+
+  // Glasgow Loop (Glasgow Phase 2 skeleton, 2026-10-22): first non-US town, template for the UK.
+  // Everything is off: no sources scrape, no feature is enabled, the whole site is noindex and not
+  // yet listed in the US towns' network disclosure. Phase 3 enables sources one by one.
+  glasgow: {
+    townId: 'glasgow',
+    nav: {
+      tabs: ['today', 'events', 'cityhall'],
+      groups: {
+        Now: ['today', 'thisweek', 'events'],
+        City: ['cityhall'],
+      },
+    },
+    disabledSections: ['facilities', 'traffic', 'jobs', 'weather', 'advertising', 'reviews', 'recipes', 'editorials', 'columns'],
+    noindexSite: true,
+    listedInNetwork: false,
+    navLabels: { cityhall: 'Council' },
+    renderWindow: NO_RENDER_WINDOW,
+    cityName: 'Glasgow',
+    country: 'gb',
+    nation: 'scotland',
+    region: 'Scotland',
+    townCenter: { lat: 55.8642, lon: -4.2518 },
+    statusModules: [],
+    // Local Accent Identity: an indigo-violet (H~255), far in hue from the shared navy (H212), the CTA
+    // orange and the three US accents (olive, sage, teal). Contrast verified with lib/accent-contrast.ts.
+    // Mirror this exactly in astro.config.mjs BRAND_TOKENS.
+    brand: { accent: '#5a4a9a', accentInk: '#352b63', accentDark: '#8a79d1', accentInkDark: '#b0a2ee' },
+    brandLead: 'Glasgow',
+    brandTail: 'Loop',
+    siteName: 'Glasgow Loop',
+    domain: 'glasgowloop.co.uk',
+    siteUrl: 'https://glasgowloop.co.uk',
+    timezone: 'Europe/London',
+    meetingsHaveTime: false,
+    meetingDecisionsTracked: false,
+    description: 'Council decisions, events and local happenings in Glasgow, Scotland.',
+    sourceBlurb: 'Glasgow Loop gathers public information from Glasgow City Council and other official Scottish sources.',
+    removalEmail: 'hello@glasgowloop.co.uk',
+  },
 };
 
 // Astro exposer env via import.meta.env vid byggtid. SITE_CITY sätts i varje
@@ -732,6 +784,11 @@ export const siteConfig: SiteConfig = CITIES[active] ?? CITIES.brookings_sd;
 const placeProblems = Object.values(CITIES).flatMap((c) => validatePlaceConfig(c));
 if (placeProblems.length > 0) {
   throw new Error(['Invalid town place config:', ...placeProblems].join(String.fromCharCode(10)));
+}
+
+/** True when the active town has switched this nav section off (see SiteConfig.disabledSections). */
+export function isSectionDisabled(id: string): boolean {
+  return siteConfig.disabledSections?.includes(id) ?? false;
 }
 
 export function getSiteConfig(): SiteConfig {
@@ -749,6 +806,6 @@ export function getSiteConfig(): SiteConfig {
 export const ALL_CONFIGS: SiteConfig[] = Object.values(CITIES);
 
 export const ALL_SITES: { townId: string; cityName: string; siteName: string; siteUrl: string }[] =
-  Object.values(CITIES).map((c) => ({
+  Object.values(CITIES).filter((c) => c.listedInNetwork !== false).map((c) => ({
     townId: c.townId, cityName: c.cityName, siteName: c.siteName, siteUrl: c.siteUrl,
   }));

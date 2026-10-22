@@ -12,7 +12,7 @@ import {
   type FeedItem,
 } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
-import { placeLabel, countryProfile } from '../lib/country-profile';
+import { placeLabel, countryProfile, forCountry } from '../lib/country-profile';
 import { EVENT_FACETS } from '../lib/event-facets';
 import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
@@ -277,7 +277,7 @@ const webPageJsonLd = dateModified ? {
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
     <p>Community events in {placeLabel(siteConfig)} —
-    library programs, city events and more, gathered from each organizer's own
+    library programs, city events and more, gathered from each {forCountry(siteConfig.country, 'organizer', 'organiser')}'s own
     calendar. Times and registration details come straight from the source,
     never guessed or rewritten. For a shorter list, see what's happening
     <a href="/today/">today</a> or over <a href="/this-week/">the week ahead</a>.

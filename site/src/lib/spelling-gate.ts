@@ -14,7 +14,7 @@ export const BRITISH_SPELLINGS =
 
 /** American spellings that must not appear in British copy. */
 export const AMERICAN_SPELLINGS =
-  /\b(organiz\w*|summariz\w*|recogniz\w*|customiz\w*|specializ\w*|apologiz\w*|prioritiz\w*|color\w*|neighbor\w*|favorite\w*|behavior\w*|honor(s|ed|ing)?|labor(s|ed|ing)?|harbor\w*|flavor\w*|centers?|centered|centering|meters?|liters?|fibers?|theaters?|defense|offense|canceled|canceling|traveler\w*|catalog(s|ed)?)\b/i;
+  /\b(organiz\w*|summariz\w*|recogniz\w*|customiz\w*|specializ\w*|apologiz\w*|prioritiz\w*|colors?|colored|coloring|colorful|colorless|neighbor\w*|favorite\w*|behavior\w*|honor(s|ed|ing)?|labor(s|ed|ing)?|harbor\w*|flavor\w*|centers?|centered|centering|meters?|liters?|fibers?|theaters?|defense|offense|canceled|canceling|traveler\w*|catalog(s|ed)?)\b/i;
 
 /** The forbidden pattern for copy written for `spelling`. */
 export function forbiddenSpellingFor(spelling: CountryProfile['spelling']): RegExp {

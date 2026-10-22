@@ -15,6 +15,7 @@
 import brookingsConfig from '../../../configs/brookings_sd.json';
 import morenoValleyConfig from '../../../configs/moreno_valley_ca.json';
 import broomfieldConfig from '../../../configs/broomfield_co.json';
+import glasgowConfig from '../../../configs/glasgow.json';
 
 export interface AboutSource { name: string; url: string; }
 
@@ -81,10 +82,23 @@ const BROOMFIELD_CURATED: CuratedSource[] = [
   { configKey: 'whats_on_ticketmaster', name: 'Ticketmaster (concerts & tickets)', url: 'https://www.ticketmaster.com' },
 ];
 
+// Glasgow (skeleton): every entry is pre-written and only appears once its config flips to enabled:true, same
+// "can't drift" guarantee as above. Nothing is enabled yet, so /about says so plainly.
+const GLASGOW_CURATED: CuratedSource[] = [
+  { configKey: 'city_meetings', name: 'Glasgow City Council committees and councillors', url: 'https://onlineservices.glasgow.gov.uk/councillorsandcommittees/' },
+  { configKey: 'weather', name: 'Met Office forecast', url: 'https://www.metoffice.gov.uk' },
+  { configKey: 'weather_alerts', name: 'Met Office weather warnings and SEPA flood warnings', url: 'https://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings' },
+  { configKey: 'traffic', name: 'Traffic Scotland', url: 'https://www.trafficscotland.org' },
+  { configKey: 'events', name: "Glasgow Life what's on", url: 'https://www.glasgowlife.org.uk' },
+  { configKey: 'jobs', name: 'Adzuna job listings', url: 'https://www.adzuna.co.uk' },
+  { configKey: 'whats_on_ticketmaster', name: 'Ticketmaster (concerts & tickets)', url: 'https://www.ticketmaster.co.uk' },
+];
+
 const CURATED_BY_TOWN: Record<string, { config: any; curated: CuratedSource[] }> = {
   brookings_sd: { config: brookingsConfig, curated: BROOKINGS_CURATED },
   moreno_valley_ca: { config: morenoValleyConfig, curated: MORENO_VALLEY_CURATED },
   broomfield_co: { config: broomfieldConfig, curated: BROOMFIELD_CURATED },
+  glasgow: { config: glasgowConfig, curated: GLASGOW_CURATED },
 };
 
 // 'whats_on_ticketmaster' isn't a data_sources entry at all -- Ticketmaster

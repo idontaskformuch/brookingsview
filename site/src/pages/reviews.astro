@@ -12,7 +12,8 @@ import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getContentByType } from '../lib/db';
-import { siteConfig } from '../lib/site-config';
+import { siteConfig, isSectionDisabled } from '../lib/site-config';
+if (isSectionDisabled('reviews')) return Astro.redirect('/', 302);
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
 

@@ -7,6 +7,7 @@
  *  aspirationally, so this page stays honest as the guardrails evolve. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
+import { forCountry } from '../lib/country-profile';
 
 const canonicalUrl = new URL('/editorial-policy/', Astro.site ?? siteConfig.siteUrl).href;
 const title = `Editorial Policy — ${siteConfig.siteName}`;
@@ -61,7 +62,7 @@ const webPageJsonLd = {
       </div>
       <div class="check">
         <dt>Claims about a named employer or business are always attributed</dt>
-        <dd>Worker Pulse and New in Town summarize what reviews or outlets
+        <dd>Worker Pulse and New in Town {forCountry(siteConfig.country, 'summarize', 'summarise')} what reviews or outlets
         say about a real, named company — never as settled fact. A sentence
         naming a tracked business has to say "reviews mention…" or
         "according to…"; a bare, unhedged claim fails.</dd>
@@ -78,7 +79,7 @@ const webPageJsonLd = {
       <div class="check">
         <dt>Home sales coverage is never financial advice</dt>
         <dd>The monthly home-sales digest reports what was recorded —
-        prices, counts, ZIP-level activity. It never tells a reader it's a
+        prices, counts, {forCountry(siteConfig.country, 'ZIP', 'postcode')}-level activity. It never tells a reader it's a
         good or bad time to buy or sell, and never speculates on future
         prices beyond a real prior figure already in the data.</dd>
       </div>

@@ -36,12 +36,18 @@ def test_unknown_country_raises():
         load_country("xx")
 
 
-def test_town_configs_default_to_us_and_pass_the_gate():
+US_TOWNS = {"brookings_sd", "moreno_valley_ca", "broomfield_co"}
+
+
+def test_town_configs_declare_their_country_and_pass_the_gate():
     assert TOWN_CONFIGS
     for path in TOWN_CONFIGS:
         cfg = json.loads(path.read_text(encoding="utf-8"))
-        assert country_of(cfg) == "us" and is_us(cfg)
         assert validate_place_config(cfg) == [], path.name
+        if cfg["town_id"] in US_TOWNS:
+            assert country_of(cfg) == "us" and is_us(cfg)
+        else:
+            assert country_of(cfg) == "gb" and not is_us(cfg), path.name
 
 
 def test_missing_country_key_means_us():

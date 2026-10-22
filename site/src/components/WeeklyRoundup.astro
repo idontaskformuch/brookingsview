@@ -47,7 +47,8 @@ const isCurrentWeek = weekInfo !== null && weekInfo.slug === currentWeekInfo(sit
 // image identity fix (the social card reused as an article image) -- still
 // never that: resolveThisWeekImage() throws rather than returning null, so
 // there's no "no image" case left to fall back from here.
-const heroImage = weekInfo
+const noPool = !!siteConfig.noindexSite && thisWeekImagesFor(siteConfig.townId).length === 0;
+const heroImage = weekInfo && !noPool
   ? await resolveThisWeekImage(
       weekInfo.slug, seasonForMonth(weekInfo.monday.m), thisWeekImagesFor(siteConfig.townId),
       weekInfo.monday, weekInfo.sunday,

@@ -26,6 +26,7 @@
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
+import { forCountry } from '../lib/country-profile';
 import { aboutSourcesFor } from '../lib/about-sources';
 
 const sources = aboutSourcesFor(siteConfig.townId);
@@ -56,7 +57,7 @@ const sources = aboutSourcesFor(siteConfig.townId);
 
     <h2>News, meetings, and listings</h2>
     <p>Meeting agendas, calendar listings, weather alerts, and similar
-    factual items are summarized by Claude, an AI model made by Anthropic,
+    factual items are {forCountry(siteConfig.country, 'summarized', 'summarised')} by Claude, an AI model made by Anthropic,
     working only from the source text — the actual agenda, the actual
     listing. It's instructed to use only facts present in that source and
     never to add names, numbers, or details that aren't there. A summary
@@ -87,7 +88,7 @@ const sources = aboutSourcesFor(siteConfig.townId);
     <p>Meeting agendas sometimes include the names of private individuals —
     someone applying for a variance, say, or a permit. We refer to people by
     role instead ("an applicant for the variance") rather than by name.
-    Organizations, businesses, and public officials acting in their official
+    {forCountry(siteConfig.country, 'Organizations', 'Organisations')}, businesses, and public officials acting in their official
     capacity are named normally.</p>
 
     <h2>Photos</h2>

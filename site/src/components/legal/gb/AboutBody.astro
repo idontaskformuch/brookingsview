@@ -1,0 +1,68 @@
+---
+/** /about for UK towns (Glasgow Phase 2): static, hand-written, never passes through the content
+ *  pipeline. Same honesty rules as the US page: say plainly that this is an automated site run by one
+ *  person, and disclose the sister sites from day one. */
+import { siteConfig, ALL_SITES } from '../../../lib/site-config';
+import { aboutSourcesFor } from '../../../lib/about-sources';
+
+const sources = aboutSourcesFor(siteConfig.townId);
+const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
+---
+<article class="prose">
+  <h1>About {siteConfig.siteName}</h1>
+
+  <p>{siteConfig.siteName} is a local information service for {siteConfig.cityName}, {siteConfig.region}. It is
+  being built to bring council and committee papers, events, alerts, travel and weather into one place, updated
+  automatically through the day. Every item will link to its original source. The site is at an early stage and
+  is not yet open to search engines.</p>
+
+  <h2>How it is made</h2>
+  <p>Software checks the sources listed below on a schedule. An AI language model summarises new items, working
+  only from what those sources say, and automated checks run before anything publishes. Items go live without a
+  person reviewing each one, and no one reports from the ground: every summary is a digest of a public document or
+  feed, linked back to the original so you can read the full thing yourself. Read the full, source-by-source
+  breakdown on <a href="/how-we-gather-this/">how we gather this</a>.</p>
+
+  <h2>What you won't find here</h2>
+  <p>{siteConfig.siteName} does not cover arrests, charges, court proceedings or obituaries. That is a deliberate
+  choice, not an oversight: this site exists to tell you what is happening in your city, not to follow anyone
+  through a hard moment in their life, and in Scotland reporting on live criminal proceedings carries real legal
+  risk.</p>
+
+  <h2>Who built it</h2>
+  <p>I am one person, building this in my spare time outside a day job. I am not a journalist and I do not live in
+  {siteConfig.cityName}: I write software, from Sweden, and this is what that looks like pointed at local
+  information. I would rather say that plainly than dress up an automated site with a fake masthead.</p>
+  <p data-qa-allow-sibling-sites>I run the same software pointed at a few other towns too: {siblingSites.map((s, i) => (
+    <>{i > 0 && ' and '}<a href={s.siteUrl} rel="noopener">{s.siteName}</a></>
+  ))}. Same pipeline, same sourcing rules, same disclosures, just a different place's public records feeding it.
+  Saying that plainly here rather than having each site look like an independent operation.</p>
+
+  <h2>Sources</h2>
+  {sources.length > 0 ? (
+    <>
+      <p>Everything on this site traces back to one of these, checked on a schedule and never altered beyond the
+      plain-language summary:</p>
+      <ul class="sources">
+        {sources.map((s) => (
+          <li><a href={s.url} rel="noopener">{s.name}</a></li>
+        ))}
+      </ul>
+    </>
+  ) : (
+    <p>No sources are switched on yet. Each one is added only after its availability and terms of use have been
+    checked, and appears here when it goes live.</p>
+  )}
+
+  <h2>Corrections</h2>
+  <p>Automated summaries occasionally get something wrong. Errors are corrected as soon as they are reported:
+  <a href="/contact/">use the contact form</a> to flag one.</p>
+</article>
+
+<style>
+.prose { max-width: 38rem; }
+.prose h2 { margin-top: 2.25rem; margin-bottom: 0.75rem; }
+.prose p { margin: 0 0 1rem; }
+.sources { margin: 0 0 1rem; padding-left: 1.25rem; }
+.sources li { margin: 0.25rem 0; }
+</style>

@@ -4,6 +4,7 @@ import { neon } from '@neondatabase/serverless';
 import { loadEnv } from 'vite';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { statusTokensCss } from './src/lib/status-tokens.mjs';
 
 // Statiskt bygge: all data hämtas från Neon vid build-time, sedan serveras rena
@@ -16,6 +17,7 @@ const SITE_URLS = {
   brookings_sd: 'https://brookingsview.com',
   moreno_valley_ca: 'https://morenovalleyview.com',
   broomfield_co: 'https://broomfieldview.com',
+  glasgow: 'https://glasgowloop.co.uk',
 };
 
 // astro.config.mjs itself loads BEFORE Vite's own env pipeline populates
@@ -34,10 +36,14 @@ const activeCity = env.SITE_CITY ?? 'brookings_sd';
 // slugifyCategory below: site-config.ts reads import.meta.env.SITE_CITY at
 // module scope, which isn't available yet when this file evaluates, so it
 // can't be imported directly here. Keep both in sync by hand.
+// Mirrors SiteConfig.noindexSite (site-config.ts): the whole site is noindex and the sitemap is empty.
+const NOINDEX_SITE_TOWNS = new Set(['glasgow']);
+
 const BRAND_TOKENS = {
   brookings_sd: { accent: '#746311', accentInk: '#473d0a', accentDark: '#a08918', accentInkDark: '#c4a91c' },
   moreno_valley_ca: { accent: '#4f6b2e', accentInk: '#38491f', accentDark: '#6f9640', accentInkDark: '#8db551' },
   broomfield_co: { accent: '#2d7980', accentInk: '#124549', accentDark: '#3897a0', accentInkDark: '#30b9c4' },
+  glasgow: { accent: '#5a4a9a', accentInk: '#352b63', accentDark: '#8a79d1', accentInkDark: '#b0a2ee' },
 };
 
 // Emits the per-town accent tokens as ONE plain static asset in publicDir
@@ -216,6 +222,7 @@ const THIS_WEEK_TIMEZONES = {
   brookings_sd: 'America/Chicago',
   moreno_valley_ca: 'America/Los_Angeles',
   broomfield_co: 'America/Denver',
+  glasgow: 'Europe/London',
 };
 
 function localDatePartsMirror(instant, timeZone) {
@@ -755,8 +762,25 @@ export default defineConfig({
   site: SITE_URLS[activeCity] ?? SITE_URLS.brookings_sd,
   output: 'static',
   integrations: [
+    {
+      // Pre-launch towns (SiteConfig.noindexSite): public/ is copied into every build, so strip what belongs to the
+      // LIVE sites (their games, Google/IndexNow verification files) and what advertises a site to crawlers/LLMs
+      // (llms.txt, the news sitemap). Nothing here is needed for the pages themselves.
+      name: 'prelaunch-cleanup',
+      hooks: {
+        'astro:build:done': async ({ dir }) => {
+          if (!NOINDEX_SITE_TOWNS.has(activeCity)) return;
+          const root = fileURLToPath(dir);
+          for (const rel of ['games', 'google1f70310a17e1b00a.html', '1fdbd9a2782398d4ca47d6c335de0ecf.txt', 'ads.txt', 'llms.txt', 'news-sitemap.xml']) {
+            fs.rmSync(path.join(root, rel), { recursive: true, force: true });
+          }
+        },
+      },
+    },
     sitemap({
       filter: (page) => {
+        // Towns with SiteConfig.noindexSite (Glasgow until real data flows): nothing is advertised.
+        if (NOINDEX_SITE_TOWNS.has(activeCity)) return false;
         const pathname = new URL(page).pathname;
         // Pre-existing bug, unrelated to the recipe/front-page work this
         // build was actually verifying -- found by scripts/verify_sitemap_

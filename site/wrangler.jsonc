@@ -102,6 +102,11 @@
     },
     "broomfield": {
       "name": "broomfieldview"
+    },
+    // Glasgow Loop (Phase 2 skeleton). Secrets must be set per environment:
+    //   wrangler secret put <NAME> --env glasgow   (dashboard secrets did NOT bind to named envs last time)
+    "glasgow": {
+      "name": "glasgowloop"
     }
   }
 }

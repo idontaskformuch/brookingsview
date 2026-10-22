@@ -59,6 +59,7 @@ export const TOWN_SEND_DOMAIN: Record<string, string> = {
   brookings_sd: 'brookingsview.com',
   moreno_valley_ca: 'morenovalleyview.com',
   broomfield_co: 'broomfieldview.com',
+  glasgow: 'glasgowloop.co.uk',
 };
 
 const TOWN_HOSTNAMES: Record<string, string> = {
@@ -68,6 +69,8 @@ const TOWN_HOSTNAMES: Record<string, string> = {
   'www.brookingsview.com': 'brookings_sd',
   'broomfieldview.com': 'broomfield_co',
   'www.broomfieldview.com': 'broomfield_co',
+  'glasgowloop.co.uk': 'glasgow',
+  'www.glasgowloop.co.uk': 'glasgow',
 };
 
 /** town_id från requestens hostname. Okänt hostname (localhost,
@@ -105,6 +108,7 @@ const TOWN_TIMEZONES: Record<string, string> = {
   moreno_valley_ca: 'America/Los_Angeles',
   brookings_sd: 'America/Chicago',
   broomfield_co: 'America/Denver',
+  glasgow: 'Europe/London',
 };
 
 /** IANA timezone for a town_id -- unknown/undefined town_id falls back to

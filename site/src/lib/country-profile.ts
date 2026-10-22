@@ -63,6 +63,13 @@ export function holidayIdsFor(country: CountryId | undefined, nation?: string): 
   return [...countryProfile(country).holidays, ...(nationProfile(country, nation)?.holidays ?? [])];
 }
 
+/** Pick the wording for a country: `forCountry(c, 'summarized', 'summarised')`. Shared templates use this
+ *  for the few words that differ (spelling, civic vocabulary); the `us` branch must stay byte-identical to
+ *  the text it replaced. */
+export function forCountry<T>(country: CountryId | undefined, us: T, gb: T): T {
+  return country === 'gb' ? gb : us;
+}
+
 /** "21 October 2026" (gb) / "October 21, 2026" (us), in the given IANA zone. */
 export function formatDateLong(date: Date, timeZone: string, country: CountryId | undefined): string {
   return new Intl.DateTimeFormat(countryProfile(country).locale, {

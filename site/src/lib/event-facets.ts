@@ -13,6 +13,8 @@ import {
   type FeedItem, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent, isCampusEvent, isOutdoorEvent,
 } from './events';
 import { EMPTY_STATES } from './empty-states';
+import { siteConfig } from './site-config';
+import { forCountry } from './country-profile';
 
 export interface FacetContext {
   facilities: Facility[];
@@ -68,10 +70,10 @@ export const EVENT_FACETS: EventFacet[] = [
     heading: 'Free events',
     titleTemplate: (cityName, siteName) => `Free Events in ${cityName} This Week — ${siteName}`,
     descriptionTemplate: (cityName) =>
-      `Free things to do in ${cityName} this week — library, park and community-center programs, updated daily.`,
+      `Free things to do in ${cityName} this week — library, park and ${forCountry(siteConfig.country, 'community-center', 'community-centre')} programs, updated daily.`,
     intro: (cityName) =>
       `Free things to do in ${cityName} this week, updated daily. Limited to events at the ` +
-      'library, parks and community centers -- the only venues where "free" is a known fact, not a guess.',
+      'library, parks and ' + forCountry(siteConfig.country, 'community centers', 'community centres') + ' -- the only venues where "free" is a known fact, not a guess.',
     emptyMessage: EMPTY_STATES.eventsFree,
     matches: (item, ctx) => isFreeEvent(item, ctx.facilities),
   },

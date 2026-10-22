@@ -1,0 +1,30 @@
+name: glasgow-deploy
+# Glasgow Loop (Phase 2 skeleton). MANUAL ONLY on purpose: the site is noindex and has no data sources yet, and the
+# Cloudflare project, custom domain and secrets (`wrangler secret put <NAME> --env glasgow`) are owner steps that
+# do not exist until the owner has done them. Add the `push` trigger (copy broomfield-deploy.yml) when the site is
+# meant to deploy on every push. No cache purge / content-freshness step yet: there is no zone secret for the
+# domain and nothing scrapes for this town.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+      - name: Install site deps
+        working-directory: site
+        run: npm ci
+      - name: Build (Glasgow)
+        working-directory: site
+        env:
+          SITE_CITY: glasgow
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx astro build
+      - name: Deploy to Cloudflare Workers (Glasgow)
+        working-directory: site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --env glasgow

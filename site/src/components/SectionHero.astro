@@ -21,23 +21,30 @@ const now = new Date();
 const week = weekInfoForInstant(now, siteConfig.timezone);
 // The homepage's pick for this exact week (history-backed, persisted) -- read
 // so a section can never show the same picture as the homepage that week.
-const homepage = await resolveThisWeekImage(
+// A pre-launch town (SiteConfig.noindexSite) with no photo pool yet shows no hero at all, rather than failing
+// the build (resolveThisWeekImage throws on an empty pool by design for launched towns).
+const noPool = !!siteConfig.noindexSite && thisWeekImagesFor(siteConfig.townId).length === 0;
+const homepage = noPool ? null : await resolveThisWeekImage(
   week.slug, seasonForMonth(week.monday.m), thisWeekImagesFor(siteConfig.townId), week.monday, week.sunday,
 );
-const { image } = getSectionHero(siteConfig.townId, section, now, {
-  timezone: siteConfig.timezone, homepageImageId: homepage.id,
-});
+const image = homepage
+  ? getSectionHero(siteConfig.townId, section, now, { timezone: siteConfig.timezone, homepageImageId: homepage.id }).image
+  : null;
 ---
-<img
-  class:list={['section-hero', { 'section-hero--compact': compact }]}
-  src={image.path}
-  alt={image.alt}
-  width={image.width}
-  height={image.height}
-  loading="eager"
-  decoding="async"
-/>
-<ImageAttribution image={image} />
+{image && (
+  <>
+    <img
+      class:list={['section-hero', { 'section-hero--compact': compact }]}
+      src={image.path}
+      alt={image.alt}
+      width={image.width}
+      height={image.height}
+      loading="eager"
+      decoding="async"
+    />
+    <ImageAttribution image={image} />
+  </>
+)}
 
 <style>
 .section-hero {

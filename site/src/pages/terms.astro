@@ -6,6 +6,7 @@
  *  that page's "Who built it" section for the real, disclosed operator. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
+import TermsGb from '../components/legal/gb/TermsBody.astro';
 
 const canonicalUrl = new URL('/terms/', Astro.site ?? siteConfig.siteUrl).href;
 const title = `Terms of Use — ${siteConfig.siteName}`;
@@ -26,6 +27,7 @@ const webPageJsonLd = {
 };
 ---
 <BaseLayout title={title} description={description}>
+  {siteConfig.country === 'gb' ? <TermsGb /> : (
   <article class="prose">
     <h1>Terms of Use</h1>
     <p><em>Last updated August 2026.</em></p>
@@ -86,6 +88,7 @@ const webPageJsonLd = {
 
     <p>Questions? <a href="/contact/">Contact us</a>.</p>
   </article>
+)}
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(webPageJsonLd)} />
 </BaseLayout>

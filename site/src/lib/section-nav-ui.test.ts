@@ -127,9 +127,11 @@ describe.each(NAVS)('SectionNav $town', ({ town, nav }: { town: string; nav: Res
     if (!browser) return;
     const page = await open(town);
     await page.click('[data-snav-open]');
-    await page.click('[data-snav-sheet] a[href="/weather/"]');
-    await page.waitForURL('**/weather/');
-    expect(new URL(page.url()).pathname).toBe('/weather/');
+    // any section other than the page we are on (/city-hall/); not every town has /weather/ (Glasgow skeleton)
+    const target = nav.groups.flatMap((g) => g.items.map((i) => i.href)).find((h) => h !== '/city-hall/')!;
+    await page.click(`[data-snav-sheet] a[href="${target}"]`);
+    await page.waitForURL(`**${target}`);
+    expect(new URL(page.url()).pathname).toBe(target);
     await page.close();
   });
   it('reports tab taps and sheet opens through gtag', async () => {

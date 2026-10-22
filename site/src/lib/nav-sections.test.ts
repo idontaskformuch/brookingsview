@@ -66,7 +66,7 @@ describe('resolveNav', () => {
 
 describe('real town configs', () => {
   it('every town in site-config resolves against the registry, and its sheet reaches every enabled section', () => {
-    expect(ALL_CONFIGS.length).toBe(3);
+    expect(ALL_CONFIGS.length).toBe(4); // brookings, moreno, broomfield, glasgow
     for (const c of ALL_CONFIGS) {
       const r = resolveNav(c.nav, c);
       const inSheet = new Set(r.groups.flatMap((g) => g.items.map((i) => i.href)));

@@ -1,8 +1,10 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
+import PrivacyGb from '../components/legal/gb/PrivacyBody.astro';
 ---
 <BaseLayout title={`Privacy — ${siteConfig.siteName}`} description={`What ${siteConfig.siteName} does and doesn't collect.`}>
+  {siteConfig.country === 'gb' ? <PrivacyGb /> : (
   <article class="prose">
     <h1>Privacy</h1>
     <p><em>Last updated October 2026.</em></p>
@@ -47,6 +49,7 @@ import { siteConfig } from '../lib/site-config';
 
     <p>Questions? <a href="/contact/">Contact us</a>.</p>
   </article>
+)}
 </BaseLayout>
 
 <style>

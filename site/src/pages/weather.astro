@@ -24,7 +24,8 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import { getWeather, getHourlyWeather, getActiveAlerts } from '../lib/db';
-import { siteConfig } from '../lib/site-config';
+import { siteConfig, isSectionDisabled } from '../lib/site-config';
+if (isSectionDisabled('weather')) return Astro.redirect('/', 302);
 import { placeLabel } from '../lib/country-profile';
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubBacklink } from '../lib/clusters';

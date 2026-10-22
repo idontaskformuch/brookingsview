@@ -31,7 +31,13 @@ _STATE_BBOX = {
     "SD": {"lat": (42.4, 45.95), "lon": (-104.1, -96.35)},
     "CA": {"lat": (32.4, 42.1), "lon": (-124.5, -114.0)},
     "CO": {"lat": (36.9, 41.05), "lon": (-109.15, -101.95)},
+    # Non-US towns have a nation instead of a state (config/country_profile.py).
+    "scotland": {"lat": (54.6, 60.9), "lon": (-8.7, -0.7)},
 }
+
+
+def _region_key(cfg: dict) -> str:
+    return cfg.get("state") or cfg["nation"]
 
 
 def _load_cfg(town_id: str) -> dict:
@@ -76,7 +82,7 @@ def test_local_theaters_each_carry_the_towns_own_state(town_id):
 def test_town_coordinates_are_within_its_own_state(town_id):
     cfg = _load_cfg(town_id)
     coords = cfg["coordinates"]
-    _assert_coordinates_in_state(coords["lat"], coords["lon"], cfg["state"],
+    _assert_coordinates_in_state(coords["lat"], coords["lon"], _region_key(cfg),
                                   f"configs/{town_id}.json's top-level coordinates")
 
 
@@ -103,9 +109,10 @@ def test_jobs_source_geography_matches_own_state(town_id):
     where = jobs.get("where")
     if not where:
         pytest.skip(f"{town_id}'s jobs source has no 'where' geography field")
-    assert cfg["state"] in where, (
+    own = cfg.get("state") or cfg["display_name"]  # non-US: the town itself (no state)
+    assert own in where, (
         f"{town_id}: jobs source 'where' ({where!r}) doesn't mention the "
-        f"town's own state ({cfg['state']}) -- looks like a wrong-geography query"
+        f"town's own state/name ({own}) -- looks like a wrong-geography query"
     )
 
 

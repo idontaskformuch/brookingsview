@@ -50,7 +50,7 @@ import {
 import WeekendModule from '../components/WeekendModule.astro';
 import { resolveQuickLinks, type QuickLinkContext } from '../lib/quick-links';
 import { siteConfig } from '../lib/site-config';
-import { placeAbbr } from '../lib/country-profile';
+import { placeAbbr, forCountry } from '../lib/country-profile';
 import { resolveImage, dedupeConsecutiveImages } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
@@ -704,7 +704,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       )}
       <a class="panel" href="/city-hall/">
         <h3>City hall</h3>
-        <p>What the council, county commission and committees are deciding.</p>
+        <p>What the {forCountry(siteConfig.country, 'council, county commission and committees', 'council and committees')} are deciding.</p>
       </a>
       {isBrookings && (
         <a class="panel" href="/farm-report/">

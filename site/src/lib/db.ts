@@ -18,7 +18,8 @@
  * ort utan ändring.
  */
 import { neon } from '@neondatabase/serverless';
-import { siteConfig } from './site-config';
+import { siteConfig, isSectionDisabled } from './site-config';
+import { forCountry } from './country-profile';
 import { activeAlerts, isAlertActive } from './alerts';
 import { pickSignGame } from './sign-game';
 import { computeClosureWatchState, type ClosureWatchStatus, type WeatherAlert } from './closure-watch';
@@ -1156,7 +1157,9 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
         title: weekly.title, kicker: 'This week', description: null,
       });
     }
-    items.push({ href: '/facilities/', title: 'Venues & facilities', kicker: 'Facilities', description: 'Parks, libraries and community centers that host these events.' });
+    if (!isSectionDisabled('facilities')) {
+      items.push({ href: '/facilities/', title: 'Venues & facilities', kicker: 'Facilities', description: `Parks, libraries and ${forCountry(siteConfig.country, 'community centers', 'community centres')} that host these events.` });
+    }
     items.push({ href: '/events/free/', title: 'Free things to do', kicker: 'Free', description: 'Always-free facilities and free events, in one place.' });
     items.push({ href: '/events/past/', title: 'Past events', kicker: 'Archive', description: 'Every community event covered here, by month.' });
     if (isBrookings) {

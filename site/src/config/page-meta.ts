@@ -296,4 +296,12 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
  *  real mechanism, not deleted, since a genuine same-route per-town
  *  variation is still a plausible future need (mirrors category-images.ts's
  *  own CATEGORY_IMAGES/Broomfield-aliasing shape). */
-export const TOWN_OVERRIDES: Record<string, Partial<Record<string, Partial<PageMetaPattern>>>> = {};
+export const TOWN_OVERRIDES: Record<string, Partial<Record<string, Partial<PageMetaPattern>>>> = {
+  // Glasgow (Phase 2): British spelling, and the council seat is the City Chambers, not a "City Hall".
+  glasgow: {
+    'city-hall': {
+      titlePattern: '{Town} Council Meetings, Summarised | {Site}', // gb-spelling
+      h1Pattern: '{Town} City Chambers: Council and Planning Meetings in Plain Language',
+    },
+  },
+};

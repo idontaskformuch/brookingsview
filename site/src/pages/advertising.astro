@@ -13,7 +13,8 @@
  *  replace that section, not the rest of the page, once it ships.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { siteConfig } from '../lib/site-config';
+import { siteConfig, isSectionDisabled } from '../lib/site-config';
+if (isSectionDisabled('advertising')) return Astro.redirect('/', 302);
 
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 
