@@ -70,7 +70,7 @@ import PageGuide from '../components/PageGuide.astro';
     shows={`What matters in ${siteConfig.cityName} right now: active alerts, school status, road conditions and today's and tonight's events.`}
     use="Check it before you leave the house or plan the evening. Anything with a warning or closure links to the official notice, which is the one to rely on."
   >
-    {forCountry(siteConfig.country, 'National Weather Service alerts, ', 'Met Office warnings, ')}local school and road-condition sources, and event organisers' own calendars. <a href="/how-we-gather-this/">How we gather this</a>.
+    {forCountry(siteConfig.country, 'National Weather Service alerts, ', 'Met Office warnings, ')}local school and road-condition sources, and event {forCountry(siteConfig.country, 'organizers', 'organisers')}' own calendars. <a href="/how-we-gather-this/">How we gather this</a>.
   </PageGuide>
 
   <TodayBlock
