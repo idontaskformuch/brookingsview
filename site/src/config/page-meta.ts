@@ -237,6 +237,12 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
   // other town away) -- SDSU is a real, specific, already-covered-in-
   // depth program, a stronger keyword than a generic "sports" framing
   // would be for this town specifically.
+  // Brookings-only game day guide (site/src/pages/game-day.astro), owner-ordered 2026-10-22.
+  'game-day': {
+    titlePattern: 'SDSU Football Game Day Guide | {Site}',
+    h1Pattern: 'SDSU football game day in {Town}: parking, tailgating and what to bring',
+    ledeRequirement: 'Answers: when do I arrive, where do I park, what can I bring, and how bad is leaving. Every rule links its official source.',
+  },
   jackrabbits: {
     titlePattern: 'SDSU Jackrabbits Schedules and Results | {Site}',
     h1Pattern: 'SDSU Jackrabbits in {Town}: Schedules and Results',

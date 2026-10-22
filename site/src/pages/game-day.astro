@@ -1,0 +1,215 @@
+---
+/** SDSU football game day guide (Brookings only; owner-ordered 2026-10-22, Brookings AdSense review).
+ *
+ *  Resident question it answers: "I am going to (or driving past) a Jackrabbits home game: when do
+ *  I need to arrive, where do I park, what can I bring, what will the weather be like at kickoff,
+ *  and what else is going on in town that day?"
+ *
+ *  Pattern (CLAUDE.md editorial rule): data (home schedule, kickoff forecast, the day's events) ->
+ *  what it means (when tailgating opens, how long to allow, whether it is also Hobo Day) -> what
+ *  the reader can do (links to the official rules, tickets, live traffic, the forecast).
+ *
+ *  Every rule below is a paraphrase of an SDSU source linked in SOURCES; nothing is invented. Facts
+ *  the official pages state generally ("most games") are shown as such. Season-specific details
+ *  that SDSU changes (prices, lot rules) are labelled "recent seasons" and point to the live page.
+ *  No SDSU logos or marks are used -- names and facts only. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import SectionHero from '../components/SectionHero.astro';
+import { getSeasonGames, getWeather, getUpcomingStories } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
+import { resolvePageMeta } from '../lib/page-meta';
+import { localDayNumber } from '../lib/local-day';
+
+if (siteConfig.townId !== 'brookings_sd') {
+  return Astro.redirect('/', 302);
+}
+
+const pageMeta = resolvePageMeta('game-day', siteConfig);
+const TZ = siteConfig.timezone;
+const CHECKED = 'October 22, 2026';
+
+const SOURCES = {
+  gameDay: { name: 'SDSU: Football game day', url: 'https://www.sdstate.edu/sdstate-event-experience/football-game-day' },
+  bags: { name: 'SDSU Athletics: Bag policy for Dana J. Dykhouse Stadium', url: 'https://gojacks.com/sports/2021/2/10/bag-policy' },
+  tailgating: { name: 'SDSU Athletics: Tailgating', url: 'https://gojacks.com/sports/2019/7/8/tailgating' },
+  procedures: { name: 'SDSU Athletics: Gameday procedures (2024)', url: 'https://gojacks.com/news/2024/9/4/football-new-gameday-procedures-outlined' },
+  schedule: { name: 'SDSU Athletics: Football schedule', url: 'https://gojacks.com/sports/football/schedule' },
+  tickets: { name: 'SDSU Athletics tickets', url: 'https://gojacks.evenue.net' },
+};
+
+const [games, periods, eventStories] = await Promise.all([
+  getSeasonGames('football'), getWeather(), getUpcomingStories(['event'], 200),
+]);
+
+const nowMs = Date.now();
+const home = games
+  .filter((g) => g.home_away === 'home' && g.starts_at)
+  .map((g) => ({ ...g, start: new Date(g.starts_at as string) }))
+  .filter((g) => g.start.getTime() > Date.UTC(new Date().getUTCFullYear(), 6, 1)); // this season only
+const upcoming = home.filter((g) => g.start.getTime() > nowMs - 4 * 3_600_000);
+const next = upcoming[0] ?? null;
+
+const fmtTime = (d: Date) => {
+  const s = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: TZ }).format(d);
+  return s.replace(':00', '').replace(' AM', ' a.m.').replace(' PM', ' p.m.');
+};
+const fmtDay = (d: Date) => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: TZ }).format(d);
+const fmtDayShort = (d: Date) => new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: TZ }).format(d);
+const hoursBefore = (d: Date, h: number) => new Date(d.getTime() - h * 3_600_000);
+
+/** The National Weather Service daytime period for the game's local date, if the forecast reaches that far
+ *  (the site stores about a week of day/night periods). It is a whole-day forecast, not a kickoff-hour one. */
+function gameDayForecast(start: Date) {
+  const day = localDayNumber(start, TZ);
+  return periods.find((p) => p.is_daytime && localDayNumber(new Date(p.start), TZ) === day) ?? null;
+}
+
+/** Events (event stories) on the local day of a game, other than the game itself. */
+function eventsOnDay(start: Date) {
+  const day = localDayNumber(start, TZ);
+  return eventStories
+    .filter((s) => s.occurs_at && localDayNumber(new Date(s.occurs_at), TZ) === day)
+    .filter((s) => !/\b(football|jackrabbits?)\b/i.test(s.title))
+    .slice(0, 6);
+}
+const isHoboDay = (start: Date) => eventsOnDay(start).concat(
+  eventStories.filter((s) => s.occurs_at && localDayNumber(new Date(s.occurs_at), TZ) === localDayNumber(start, TZ)),
+).some((s) => /hobo day/i.test(s.title));
+
+const nextForecast = next ? gameDayForecast(next.start) : null;
+const nextEvents = next ? eventsOnDay(next.start) : [];
+const nextHobo = next ? isHoboDay(next.start) : false;
+---
+<BaseLayout title={pageMeta.title} wide
+  description="When to arrive, where to park, what you can bring and how to get home after a South Dakota State football game in Brookings, with the home schedule and the game day forecast."
+  >
+  <SectionHero section="sports" />
+  <header class="lede">
+    <h1>{pageMeta.h1}</h1>
+    <p>Football Saturdays bring thousands of people to the north side of Brookings. This guide turns
+    South Dakota State's own game day rules into a plan: when to leave, where to park, what you can
+    bring through the gate and how long to allow to get home. Every rule links to the official page it comes from,
+    and was last checked {CHECKED}. Rules and prices can change from season to season, so use the links
+    before you go.</p>
+  </header>
+
+  {next ? (
+    <section class="gd-next" aria-labelledby="gd-next-h">
+      <p class="gd-kicker">Next home game</p>
+      <h2 id="gd-next-h">{next.opponent}: {fmtDay(next.start)}, {fmtTime(next.start)} kickoff</h2>
+      <ul class="gd-plan">
+        <li><strong>Tailgating starts about {fmtTime(hoursBefore(next.start, 5))}</strong>. SDSU says it begins five hours before kickoff for most games.</li>
+        <li><strong>Be on campus early.</strong> Parking is spread over several lots; open the season's parking map first (see Parking below).</li>
+        <li><strong>Allow extra time to leave.</strong> See "After the game".</li>
+        {nextForecast && (
+          <li><strong>Forecast for the day:</strong> {nextForecast.temp !== null ? `high ${nextForecast.temp}°${nextForecast.unit}, ` : ''}{nextForecast.short.toLowerCase()}, wind {nextForecast.wind}.
+          National Weather Service, as of the last site update. It changes: check the <a href="/weather/">weather page</a> on game day and dress for a long time outside.</li>
+        )}
+        {!nextForecast && (
+          <li><strong>Forecast:</strong> the National Weather Service forecast reaches about a week ahead. Check the <a href="/weather/">weather page</a> in the days before.</li>
+        )}
+        {nextHobo && (
+          <li><strong>This is also Hobo Day.</strong> The town's biggest event brings extra traffic and event closures around Brookings; see the <a href="/events/">events calendar</a> and check <a href="/traffic/">live traffic</a> before you drive.</li>
+        )}
+      </ul>
+      {nextEvents.length > 0 && (
+        <div class="gd-also">
+          <p><strong>Also happening in Brookings that day</strong> (so you can plan a meal or an outing around the game):</p>
+          <ul>
+            {nextEvents.map((s) => <li><a href={`/s/${s.slug}/`}>{s.title}</a></li>)}
+          </ul>
+        </div>
+      )}
+    </section>
+  ) : (
+    <section class="gd-next">
+      <p class="gd-kicker">Home schedule</p>
+      <h2>No more home games on the schedule this season</h2>
+      <p>The guide below stays valid for next season. The full schedule is on <a href={SOURCES.schedule.url} rel="noopener">SDSU Athletics</a>.</p>
+    </section>
+  )}
+
+  <SectionRule label="Home games this season" />
+  <table class="gd-table">
+    <caption class="sr-only">SDSU football home games this season</caption>
+    <thead><tr><th scope="col">Date</th><th scope="col">Opponent</th><th scope="col">Kickoff</th><th scope="col">Tailgating opens (about)</th><th scope="col">Result</th></tr></thead>
+    <tbody>
+      {home.map((g) => (
+        <tr>
+          <th scope="row">{fmtDayShort(g.start)}</th>
+          <td>{g.opponent}</td>
+          <td>{fmtTime(g.start)}</td>
+          <td>{g.start.getTime() > nowMs ? fmtTime(hoursBefore(g.start, 5)) : '—'}</td>
+          <td>{g.result ?? (g.start.getTime() > nowMs ? 'Upcoming' : '—')}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+  <p class="gd-note">Tailgating time is kickoff minus five hours, the rule SDSU states for most games; a few games differ, so check the
+  official <a href={SOURCES.tailgating.url} rel="noopener">tailgating page</a>. Kickoff times are from the athletics schedule and can move (for example for TV).</p>
+
+  <SectionRule label="Parking" />
+  <p>SDSU's game day page lists three kinds of parking: Jackrabbit Club lots, paid parking near the stadium, and guest lots across campus.
+  It shows a parking map for the season. Open the map before you leave home and pick a lot rather than driving around the stadium.</p>
+  <p><strong>In recent seasons</strong> athletics notices have described paid general parking in lots south of North Campus Drive
+  at $10 a stall, cash only, with lots and tailgate areas opening five hours before kickoff, and part of North Campus Drive near the stadium
+  closed to through traffic from five hours before kickoff. Treat these as what to expect, not as this season's rule; confirm on the
+  <a href={SOURCES.gameDay.url} rel="noopener">game day page</a> and the <a href={SOURCES.procedures.url} rel="noopener">athletics gameday procedures</a>.
+  Bring cash just in case.</p>
+
+  <SectionRule label="Tailgating" />
+  <p>Tailgating starts five hours before kickoff for most games. SDSU's Alumni and Foundation runs a tailgating area southwest of the stadium that is
+  open to alumni and fans. The athletics department publishes a full tailgating policy that covers alcohol, space reservations and what you may set up;
+  read it before you pack the car: <a href={SOURCES.tailgating.url} rel="noopener">SDSU Athletics tailgating policy</a>.</p>
+
+  <SectionRule label="Getting in: tickets and bags" />
+  <ul>
+    <li><strong>Tickets are mobile-only</strong> for Jackrabbit home events. Buy and load them through <a href={SOURCES.tickets.url} rel="noopener">gojacks.evenue.net</a>
+    before you leave so a weak signal near the gate does not hold you up.</li>
+    <li><strong>One bag per ticketed guest.</strong> Allowed: a clear one-gallon zipper bag, or a clear stadium bag no larger than 12" x 12" x 6", or a small clutch
+    no bigger than 4.5" x 6.5" with a fabric, nylon or leather strap (no chain straps). Tinted bags are not allowed. Opaque bags larger than the clutch size are refused entry,
+    and staff will not hold bags for you. All bags are searched.</li>
+    <li><strong>Diaper bags</strong> must also fit these rules unless needed for a medical reason. Children with their own ticket may each carry a bag.</li>
+    <li><strong>Medical items</strong> are allowed but are still searched. If you are unsure what to bring, call 605-688-5422, the number given in the official bag policy.</li>
+  </ul>
+  <p>Source: <a href={SOURCES.bags.url} rel="noopener">SDSU Athletics bag policy</a>.</p>
+
+  <SectionRule label="After the game" />
+  <p>SDSU's athletics notices have warned that getting out of the stadium area can take 35 to 45 minutes after the game ends, so allow that on top of your
+  drive if you have a flight, a shift or a long road home. Check <a href="/traffic/">live road conditions</a> before you leave town, especially in winter.</p>
+
+  <SectionRule label="Questions people ask" />
+  <dl class="gd-faq">
+    <dt>What time should I get there?</dt>
+    <dd>For a typical game, tailgaters arrive about five hours before kickoff; if you are only going to the game, aim to be parked well before kickoff. The table above lists the time for each home game.</dd>
+    <dt>Where do I see the parking map?</dt>
+    <dd>On SDSU's <a href={SOURCES.gameDay.url} rel="noopener">football game day page</a>. Check that the map is for the current season.</dd>
+    <dt>Is there live music or a pregame show?</dt>
+    <dd>SDSU's Pride of the Dakotas Marching Band performs at pregame and halftime of every home game, according to the game day page.</dd>
+    <dt>Who do I call with a question about game day?</dt>
+    <dd>SDSU's game day page lists 605-688-6127.</dd>
+  </dl>
+
+  <SectionRule label="Sources" />
+  <ul class="gd-sources">
+    {Object.values(SOURCES).map((s) => <li><a href={s.url} rel="noopener">{s.name}</a></li>)}
+  </ul>
+  <p class="gd-note">Unofficial guide by {siteConfig.siteName}. We are not affiliated with South Dakota State University or its athletics department.
+  Weather from the National Weather Service. Home schedule from the athletics department's published schedule. Updated with each site refresh;
+  rules last checked {CHECKED}. See also <a href="/jackrabbits/">Jackrabbits schedules and results</a>, <a href="/university/">SDSU news and events</a> and <a href="/corrections/">corrections</a>.</p>
+</BaseLayout>
+
+<style>
+  .gd-next { border-left: 4px solid var(--section-accent, #2f5f8f); padding: 0.75rem 1rem; margin: 0 0 2rem; background: var(--surface, transparent); max-width: 46rem; }
+  .gd-kicker { text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.06em; margin: 0 0 0.25rem; }
+  .gd-plan li { margin: 0.35rem 0; }
+  .gd-also { margin-top: 0.75rem; }
+  .gd-table { border-collapse: collapse; width: 100%; max-width: 46rem; margin: 0 0 0.5rem; }
+  .gd-table th, .gd-table td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--rule, #ddd); }
+  .gd-note { font-size: 0.9rem; max-width: 46rem; }
+  .gd-faq dt { font-weight: 600; margin-top: 0.75rem; }
+  .gd-faq dd { margin: 0.2rem 0 0; max-width: 46rem; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  p, li { max-width: 46rem; }
+</style>
