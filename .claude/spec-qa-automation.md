@@ -87,6 +87,7 @@ Q1 Pass B/C: matris, tema, axe, tidsresa, clientfill/empty/past-event/stale-aler
 Q2 DB-invarianter
 Q3 AI-veckogranskning (efter godkänd kostnad + secret)
 Q4 retro-fixturer för retro-tabellen + CLAUDE.md-regeln + slå på issues efter baslinjetriage
+Q4 (tillägg 2026-10-22): utred varför site/src/lib/section-nav-ui.test.ts timear ut på CI (föll vid 2 pushar; timeouts höjda till hook 90 s / test 60 s som tillfällig maskering). Mät beforeAll + första page.goto på CI; åtgärda orsaken, ta sedan bort höjningen.
 Totalt ~3-4 arbetssessioner.
 
 ## Total körkostnad

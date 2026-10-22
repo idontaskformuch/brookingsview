@@ -5,7 +5,7 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 
 ## 1. Nu
 - NÄSTA (ägaren 2026-10-21, går före Kö 9 Steg 2, Glasgow och Q2): VAL FAS 2, deadline 2 nov. Beslut: Kö 4 + .claude/election-2a-inventory.md.
-  Broomfield via Clarity, SD via XLSX, Moreno bara länk (ROV-mejl skickas av ägaren), Worker-JSON utan rebuilds, torrtest mot junivalen.
+  Broomfield via Clarity, SD via XLSX, Moreno bara länk (ROV-mejl SKICKAT 2026-10-21, väntar på svar), Worker-JSON utan rebuilds, torrtest mot junivalen.
   Commit lokalt per steg, pusha ej utan ja.
   FYND Broomfield/Clarity 2026-10-21: data ligger på results.enr.clarityelections.com/CO/126592/<ver>/ (current_ver.txt på EVENT-nivå /CO/126592/, ej under
   web.345435 -> 404; inventory-filens sökväg var fel). Flödet är STATEWIDE: 197 contests (Federal/State/State House/State Senate), bara statsvida summor;
@@ -50,7 +50,7 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   föll på CI även vid e126a24 (10 s hook / 5 s test på kall runner) -> hook 90 s, testTimeout 60 s. LIVE: /election-results/ 200 + /api/election-results 200 (available:false, phase before)
   på alla tre domäner; IndexNow /election-results pingat (200 x3). Valets Worker kör cron (03:00 UTC Ok, 'skipped' x3).
   KVAR FÖRE VALET: (1) deploy av Worker: secret DATABASE_URL + route <sajt>/api/election-results* per zon (annars visar sidan "could not be loaded"); (2) ROLLED-BACK testskrivning av
-  store.ts-SQL mot live (ej gjord, kräver ägarens ja); (3) Broomfield: svar på mejlet / elections.json före ons 28 okt, annars A; (4) ägaren skickar ROV-mejlet; (5) fetchUntil 2026-11-30 = antagande;
+  store.ts-SQL mot live (ej gjord, kräver ägarens ja); (3) Broomfield: mejl till valkontoret SKICKAT 2026-10-21, väntar på svar; kolla även elections.json före ons 28 okt, annars A; (4) ROV-mejl SKICKAT 2026-10-21, väntar på svar (tills dess bara länk för Moreno); (5) fetchUntil 2026-11-30 = antagande;
   (6) första riktiga snapshot granskas manuellt mot källan innan länk delas; (7) push + IndexNow (/election-results på alla tre) när ägaren säger ja.
   Security (API 2026-10-21): Secret scanning + Push protection = ENABLED, Dependabot alerts = enabled; dependabot_security_updates,
   non_provider_patterns, validity_checks = disabled (ej begärda).
@@ -72,6 +72,10 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   workflow_dispatch för alla tre scrape-workflows (09:36Z, via git-credential, ägaren godkände).
   Resultat: 21 körningar, 15 ok/200, 5 skipped, 1 stub (road_conditions), 0 st 403/fel.
   Broomfield traffic (data.cotrip.org, gav 403 med gamla UA) = ok 200. Ingen UA-återställning behövs.
+- FLAKY section-nav-ui (CI): föll på CI vid TVÅ pushar (e126a24 och 1479c1f; 10 s hook-timeout, sedan 5 s testtimeout på de första sidöppningarna i riktig Chromium). Lokalt gröna när CPU är fri;
+  lokalt föll den också under CPU-last (strö-astro-dev, parallella byggen). Timeouterna höjdes (hook 90 s, test 60 s, 9b507f5/45f8ae7) -- det är en MASKERING av långsamhet, inte en förklaring.
+  Loggad i Q4-listan (Kö 6) för riktig orsaksutredning: mät hur lång tid beforeAll/första page.goto faktiskt tar på CI, se om AstroContainer-rendering av 3 städer eller Chromium-start dominerar,
+  och om testet bör splittras eller dela en browser. Om den fallerar IGEN trots 60-90 s = verkligt fel (hängning), inte timing: undersök, höj inte mer.
 - FLAKY (återkom 2026-10-21 18:18, 1 test föll direkt efter astro build; 3 omkörningar 1199/1199 gröna, namn ej fångat; misstänkt Chromium-test under last: kör --reporter=verbose om igen) -- tidigare: 2 vitest-tester föll en gång 2026-10-21 (66 s körning, direkt efter en astro build), ej
   identifierade; 5 omkörningar (varav 1 under CPU-last) = 1152/1152 gröna. Om det återkommer: kör
   --reporter=verbose och logga namnen här.
@@ -135,6 +139,7 @@ ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med
 4. VAL FAS 2: 2a KLAR + ägarbeslut 2026-10-21 (se .claude/election-2a-inventory.md, avsnitt Beslut). Moreno: /election-results visar BARA "Official results: Riverside County Registrar of Voters" + länk, inga egna siffror, tills ägaren sagt ja till ROV-åtkomst (mejlutkast i inventory-filen; ägaren skickar). Broomfield = Clarity ENR (JSON/XML). SD = XLSX per county. Ingen adapterkod ännu.
 5. Kö 9 Steg 1 -- väntar på ägarens punkter 1-5 (se Nu) + Steg 2, Steg 3 (text nedan).
 6. QA Q2 (DB-invarianter), sedan Q3-Q4: .claude/spec-qa-automation.md.
+   Q4-lista: + utred section-nav-ui CI-flakiness (se FLAKY ovan) innan timeouterna får stå kvar som slutlösning.
 
 9. ACTIONS-KOSTNAD/SCHEMA (utredning 2026-10-21, 30 d 21/9-21/10, 981 körn.; repot förblir PUBLIKT = 0 kr, siffror gäller om privat):
    4 965 fakt.min (privat ≈ $17,8/mån): scrape 2 070 (42 %), push-deploy 1 177 (24 %, alla 3 städer vid varje push, ingen
