@@ -41,7 +41,7 @@ export async function getStaticPaths() {
   // small (a handful of rows) and doesn't vary per story. `upcomingEvents`/
   // `upcomingArts` likewise (Phase 3, "Event <-> facility hub," 2026-10-09):
   // the same shape events.astro itself fetches, reused here for "Other
-  // events at this venue" and "Also this weekend nearby" -- a second query
+  // events at this venue" and "More this weekend" -- a second query
   // pair for the whole build, not per-page, and the one correct way to stay
   // in sync with getUpcomingStories()'s own real filtering (published,
   // non-superseded, upcoming) rather than re-deriving that from
@@ -217,7 +217,7 @@ const otherEventsHere = venueFacility
   ? eventsAtVenue(upcomingEvents, facilities, venueFacility.slug, story.slug, 5)
   : [];
 
-// "Also this weekend nearby" -- independent of whether THIS event's own
+// "More this weekend" -- independent of whether THIS event's own
 // venue resolved (it's about OTHER events, not this one), gated only on
 // actually being an event page. Reuses the exact same weekendAnchorOffset()
 // /classifyEventLocality() pipeline /events/'s own Nearby section and
@@ -599,8 +599,8 @@ const eventJsonLdObject = buildEventJsonLd(
       nothing (not an empty heading) when there's nothing real to show --
       an event with no resolved venue gets no "Other events here" at all
       (common for Brookings, whose source feeds often carry no venue name),
-      and a quiet weekend with nothing else scheduled gets no "Also this
-      weekend nearby" either. */}
+      and a quiet weekend with nothing else scheduled gets no weekend list
+      (only the /events/ link below). */}
   {otherEventsHere.length > 0 && (
     <nav class="venue-events" aria-label={`Other events at ${venueFacility?.name}`}>
       <h2 class="story__section-label">Other events at {venueFacility?.name}</h2>
@@ -615,21 +615,30 @@ const eventJsonLdObject = buildEventJsonLd(
     </nav>
   )}
 
-  {weekendNearby.length > 0 && (
-    <nav class="venue-events" aria-label="Also this weekend nearby">
-      <h2 class="story__section-label">Also this weekend{weekendNearby.some((n) => n.zone === 'nearby') ? '' : ` in ${siteConfig.cityName}`}</h2>
-      <ul class="venue-events__list">
-        {weekendNearby.map(({ item, distanceMiles }) => {
-          const s = item.sourceKind === 'story' ? item.story : artsEventAsStory(item.event);
-          const href = item.sourceKind === 'story' ? storyHref(s.slug) : item.event.event_url;
-          return (
-            <li>
-              <a href={href}>{s.title}</a>
-              <span class="when data">{formatOccursAt(s)}{distanceMiles != null && ` · ${Math.round(distanceMiles)} mi away`}</span>
-            </li>
-          );
-        })}
-      </ul>
+  {/* "More this weekend" (2026-10-22): the weekend list shows only when there
+      are real items (never an empty heading, same rule as the venue block
+      above); the link to /events/ is always there on an event page, so a quiet
+      weekend or a locality-less feed still leaves the reader a next step. */}
+  {isEvent && (
+    <nav class="venue-events" aria-label="More this weekend">
+      {weekendNearby.length > 0 && (
+        <>
+          <h2 class="story__section-label">More this weekend</h2>
+          <ul class="venue-events__list">
+            {weekendNearby.map(({ item, distanceMiles }) => {
+              const s = item.sourceKind === 'story' ? item.story : artsEventAsStory(item.event);
+              const href = item.sourceKind === 'story' ? storyHref(s.slug) : item.event.event_url;
+              return (
+                <li>
+                  <a href={href}>{s.title}</a>
+                  <span class="when data">{formatOccursAt(s)}{distanceMiles != null && ` · ${Math.round(distanceMiles)} mi away`}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+      <p class="venue-events__all"><a href="/events/">All upcoming events in {siteConfig.cityName} &rarr;</a></p>
     </nav>
   )}
 
@@ -729,6 +738,7 @@ const eventJsonLdObject = buildEventJsonLd(
 .venue-events__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
 .venue-events__list li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--rule); }
 .venue-events__list a { font-weight: 600; }
+.venue-events__all { margin: 0.75rem 0 0; font-family: var(--font-ui); font-size: 0.875rem; font-weight: 600; }
 .venue-events__list .when { color: var(--ink-soft); white-space: nowrap; font-size: 0.8125rem; }
 .story__ingredients {
   margin: 0;
