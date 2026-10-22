@@ -35,6 +35,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 from db.db import content_hash
+from scrapers import glasgow_life_events
 from scrapers.text_sanity import is_suspicious
 
 # Events correctness Phase 1 (2026-10-08): confirmed live -- a Brookings
@@ -354,4 +355,6 @@ EVENT_SOURCE_KINDS: dict[str, EventSourceKind] = {
     "ical": EventSourceKind(fetch=_fetch_ical, parse=_parse_ical),
     "ical_civicplus": EventSourceKind(fetch=_fetch_ical, parse=_parse_ical_civicplus),
     "html_listing_ics": EventSourceKind(fetch=_fetch_html_listing_ical, parse=_parse_html_listing_ical),
+    # Glasgow Life what's-on cards (see scrapers/glasgow_life_events.py)
+    "glasgow_life": EventSourceKind(fetch=glasgow_life_events.fetch_pages, parse=glasgow_life_events.parse_pages),
 }

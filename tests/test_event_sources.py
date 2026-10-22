@@ -21,10 +21,10 @@ def _vevent(uid: str, title: str, dtstart: str = "20260101T100000Z") -> str:
     return f"BEGIN:VEVENT\r\nUID:{uid}\r\nSUMMARY:{title}\r\nDTSTART:{dtstart}\r\nEND:VEVENT\r\n"
 
 
-def test_registry_has_ical_and_html_listing_ics_kinds():
+def test_registry_has_the_known_kinds():
     # "blocked"/"unconfirmed" are inert markers handled in events.py before
     # the registry is even consulted -- see event_sources.py's own comment.
-    assert set(EVENT_SOURCE_KINDS) == {"ical", "ical_civicplus", "html_listing_ics"}
+    assert set(EVENT_SOURCE_KINDS) == {"ical", "ical_civicplus", "html_listing_ics", "glasgow_life"}
 
 
 def test_decode_ics_prefers_utf8():

@@ -32,7 +32,20 @@
     "weather": { "type": "api", "enabled": false, "provider": "met_office_datahub", "_notes": "Phase 3.2: needs the owner's DataHub key. The US NWS parsers do not apply." },
     "weather_alerts": { "type": "met_office_warnings", "enabled": false, "_notes": "Phase 3.2: Met Office warnings + SEPA flood warnings." },
     "traffic": { "type": "traffic_scotland", "enabled": false, "_notes": "Phase 3.3: DATEX II needs an approved subscription; tellmescotland.gov.uk notices." },
-    "events": { "type": "multi", "enabled": false, "_notes": "Phase 3.4: Glasgow Life what's-on + Ticketmaster Discovery (countryCode=GB)." },
+    "events": { "type": "multi", "enabled": false, "refresh_minutes": 1440,
+      "sources": [
+        { "name": "glasgow_life", "kind": "glasgow_life",
+          "urls": [
+            "https://www.glasgowlife.org.uk/whats-on",
+            "https://www.glasgowlife.org.uk/whats-on?channel=Arts,%20Music%20and%20Culture",
+            "https://www.glasgowlife.org.uk/whats-on?channel=Communities",
+            "https://www.glasgowlife.org.uk/whats-on?channel=Libraries",
+            "https://www.glasgowlife.org.uk/whats-on?channel=Museums",
+            "https://www.glasgowlife.org.uk/whats-on?channel=Sport"
+          ],
+          "_note": "Phase 3.4a, built 2026-10-22: Glasgow Life (council culture/libraries/sport trust) what's-on cards, scrapers/glasgow_life_events.py. robots.txt allows the paths, no bot challenge, no terms page found; listing pages only (6 requests/day, 2 s apart), facts + link back, no detail pages/images/prices. About 41 distinct events (curated slice, no pagination). Dry-run verified; enabled stays false until the owner approves the first events write to the live DB (the meetings approval did not cover events)." }
+      ],
+      "_notes": "Ticketmaster GB is NOT a scraper source: it is fetched at build time by site/src/lib/ticketmaster.ts (latlong search, see site-config ticketmaster block) and is verified separately (phase 3.4b)." },
     "sports": { "type": "sportmonks", "enabled": false, "_notes": "Phase 3.5: Scottish Premiership, free plan." },
     "jobs": { "type": "jobs", "enabled": false, "country": "gb", "where": "Glasgow", "_notes": "Phase 3.6: Adzuna country=gb (the parser already takes a country)." },
     "school_closures": { "type": "school_alerts", "enabled": false, "_notes": "Phase 3.7: find a Glasgow City Council closure source or report that none exists." },
