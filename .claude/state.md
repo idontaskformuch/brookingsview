@@ -133,7 +133,7 @@ ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med
    FULLT BATTERI GRÖNT 2026-10-21 efter steg 2: vitest 1246, pytest 942, astro check 0 fel, bygge x3 OK, sitemap/noindex-disjoint 109/141/79.
    PUSHAD 2026-10-21 (e126a24, kontrast + nav + /vote + vail, ägaren godkände avvikelserna); /vote live 200 på alla tre. Moreno: CA-deadline 19 okt + villkorad reg. 20 okt-3 nov från sos.ca.gov.
    IndexNow: fanns ej i repot -> nyckelfil site/public/1fdbd9a2782398d4ca47d6c335de0ecf.txt (publik per design) + POST api.indexnow.org, 202 för /vote på alla tre. Ägaren kollar telefon. Fas 1 KLAR.
-3. GLASGOW (helgen 24-25 okt): .claude/specs/glasgow-loop.md. Fas 0 (rapport docs/uk-audit.md, stanna) -> fas 1 (landsprofil, US byte-identiska) ->
+3. GLASGOW [2026-10-22: FAS 0 KLAR, docs/uk-audit.md, väntar på ägarens granskning + 4 frågor i rapportens avsnitt 11 innan fas 1; ägaren sa 2026-10-22 'committa lokalt per steg']: .claude/specs/glasgow-loop.md. Fas 0 (rapport docs/uk-audit.md, stanna) -> fas 1 (landsprofil, US byte-identiska) ->
    fas 2 (skelett) -> snabbaste källor: Ticketmaster GB, Adzuna gb, Met Office (när nyckel finns), kommunens möten. Mål: scrapers igång och data
    samlas från dag ett; noindex av när första riktiga datan flödar. COMMITTA INGET förrän ägaren säger till. Inga referenser till ägarens arbetsgivare.
 4. VAL FAS 2: 2a KLAR + ägarbeslut 2026-10-21 (se .claude/election-2a-inventory.md, avsnitt Beslut). Moreno: /election-results visar BARA "Official results: Riverside County Registrar of Voters" + länk, inga egna siffror, tills ägaren sagt ja till ROV-åtkomst (mejlutkast i inventory-filen; ägaren skickar). Broomfield = Clarity ENR (JSON/XML). SD = XLSX per county. Ingen adapterkod ännu.
