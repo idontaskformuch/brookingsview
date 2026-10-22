@@ -1,0 +1,38 @@
+{
+  "code": "GB",
+  "id": "gb",
+  "label": "United Kingdom",
+  "locale": "en-GB",
+  "htmlLang": "en-GB",
+  "ogLocale": "en_GB",
+  "spelling": "british",
+  "currency": "GBP",
+  "currencySymbol": "£",
+  "temperatureUnit": "C",
+  "distanceUnit": "miles",
+  "dateStyle": "day-first",
+  "dateExample": "21 October 2026",
+  "timeStyle": "12h-compact",
+  "defaultTimezone": "Europe/London",
+  "addressCountry": "GB",
+  "regionKind": "nation",
+  "regionRequired": false,
+  "holidays": ["new_year_day", "valentines", "easter", "bonfire_night", "halloween", "christmas"],
+  "legal": {
+    "variant": "gb",
+    "framework": "UK GDPR, Data Protection Act 2018, PECR; regulator ICO",
+    "consent": "opt-in-before-any-ad-or-analytics-cookie"
+  },
+  "nations": {
+    "scotland": {
+      "label": "Scotland",
+      "holidays": ["second_january", "burns_night", "st_andrews_day", "hogmanay"],
+      "sources": { "police": "police-scotland", "planning": "scottish-planning-portal", "property": "registers-of-scotland", "foodHygiene": "fhis", "floodWarnings": "sepa", "traffic": "traffic-scotland" }
+    },
+    "england": {
+      "label": "England",
+      "holidays": [],
+      "sources": { "police": "police-uk", "planning": "planning-portal", "property": "hm-land-registry", "foodHygiene": "fhrs", "floodWarnings": "environment-agency", "traffic": "national-highways" }
+    }
+  }
+}

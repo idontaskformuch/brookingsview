@@ -28,6 +28,7 @@ import {
   clearedModuleCount, MIN_MODULES_FOR_INDEX,
 } from '../../lib/month-in-review';
 import { siteConfig } from '../../lib/site-config';
+import { placeAbbr } from '../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
 
@@ -86,7 +87,7 @@ const rows = ([
 const title = `${siteConfig.cityName} in ${label} — ${siteConfig.siteName}`;
 const h1 = `${siteConfig.cityName} in ${label}`;
 const canonicalUrl = new URL(`/month/${slug}/`, Astro.site ?? siteConfig.siteUrl).href;
-const description = `A month-in-review recap of ${siteConfig.cityName}, ${siteConfig.stateAbbr} for ${label}: city hall decisions, development projects, home sales, events, traffic and jobs, compiled from public data sources.`;
+const description = `A month-in-review recap of ${placeAbbr(siteConfig)} for ${label}: city hall decisions, development projects, home sales, events, traffic and jobs, compiled from public data sources.`;
 
 const breadcrumbTrail: BreadcrumbEntry[] = [
   ...buildClusterBreadcrumbTrail('month', siteConfig, { label: 'Month in review', href: '/month/' }),
@@ -98,7 +99,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   <article class="month-review">
     <header class="lede">
       <h1>{h1}</h1>
-      <p>A numbers-only recap of {siteConfig.cityName}, {siteConfig.stateAbbr} for {label},
+      <p>A numbers-only recap of {placeAbbr(siteConfig)} for {label},
       compiled from public data sources. <a href="/month/">See all months</a>.</p>
       <ShareButton title={title} url={canonicalUrl} />
     </header>

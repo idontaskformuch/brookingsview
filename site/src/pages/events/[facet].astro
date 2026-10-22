@@ -28,6 +28,7 @@ import {
 import { buildEventJsonLd } from '../../lib/event-jsonld';
 import { EVENT_FACETS, type EventFacet } from '../../lib/event-facets';
 import { siteConfig } from '../../lib/site-config';
+import { countryProfile } from '../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 import { storyHref } from '../../lib/content-slugs';
@@ -113,7 +114,7 @@ function eventJsonLdFor(item: FeedItem): Record<string, unknown> | null {
   const heroUrl = new URL(asStory.image_path ?? `/og/${asStory.slug}.png`, Astro.site ?? siteConfig.siteUrl).href;
   return buildEventJsonLd(
     asStory, facilities,
-    { cityName: siteConfig.cityName, stateAbbr: siteConfig.stateAbbr, siteName: siteConfig.siteName, timezone: siteConfig.timezone },
+    { cityName: siteConfig.cityName, stateAbbr: siteConfig.stateAbbr, region: siteConfig.region, addressCountry: countryProfile(siteConfig.country).addressCountry, siteName: siteConfig.siteName, timezone: siteConfig.timezone },
     itemUrl, heroUrl,
   );
 }

@@ -11,6 +11,7 @@
  */
 
 import type { NavConfig } from './nav-sections';
+import { validatePlaceConfig, type CountryId, type NationId } from './country-profile';
 
 export interface SiteConfig {
   townId: string;
@@ -20,10 +21,17 @@ export interface SiteConfig {
   nav: NavConfig;
   /** Visningsnamn, t.ex. "Moreno Valley" */
   cityName: string;
-  /** Delstatens fulla namn, t.ex. "California" */
-  stateName: string;
-  /** Delstatens förkortning, t.ex. "CA" */
-  stateAbbr: string;
+  /** Land (config/countries/<id>.json). Styr locale, valuta, helgdagar, juridiska
+   *  sidor m.m. Alla amerikanska orter är 'us'. */
+  country: CountryId;
+  /** Nation inom landet (gb: 'scotland' | 'england'); väljer standardkällor. */
+  nation?: NationId;
+  /** Region för orter utan delstat (Glasgow: "Scotland"). Krävs för country 'gb'. */
+  region?: string;
+  /** Delstatens fulla namn, t.ex. "California". Krävs för country 'us' (validatePlaceConfig). */
+  stateName?: string;
+  /** Delstatens förkortning, t.ex. "CA". Krävs för country 'us' (validatePlaceConfig). */
+  stateAbbr?: string;
   /** Varumärke i sidhuvudet. "View"-delen kursiveras. */
   brandLead: string;   // "Moreno Valley"
   brandTail: string;   // "View"
@@ -366,6 +374,7 @@ const CITIES: Record<string, SiteConfig> = {
         More: ['jobs', 'play', 'farm'],
       },
     },
+    country: 'us',
     stateName: 'South Dakota',
     stateAbbr: 'SD',
     hasClosureWatch: true,
@@ -499,6 +508,7 @@ const CITIES: Record<string, SiteConfig> = {
     renderWindow: { homeSales: 24, meetings: null, events: null },
     hasHeatAdvisory: true,
     cityName: 'Moreno Valley',
+    country: 'us',
     stateName: 'California',
     stateAbbr: 'CA',
     hasWorkplaceWatch: true,
@@ -631,6 +641,7 @@ const CITIES: Record<string, SiteConfig> = {
     },
     renderWindow: NO_RENDER_WINDOW,
     cityName: 'Broomfield',
+    country: 'us',
     stateName: 'Colorado',
     stateAbbr: 'CO',
     hasWorkplaceWatch: true,
@@ -716,6 +727,12 @@ const CITIES: Record<string, SiteConfig> = {
 const active = (import.meta.env.SITE_CITY as string | undefined) ?? 'brookings_sd';
 
 export const siteConfig: SiteConfig = CITIES[active] ?? CITIES.brookings_sd;
+
+// Config gate (Glasgow Phase 1): us towns must carry a state, gb towns a region + nation.
+const placeProblems = Object.values(CITIES).flatMap((c) => validatePlaceConfig(c));
+if (placeProblems.length > 0) {
+  throw new Error(['Invalid town place config:', ...placeProblems].join(String.fromCharCode(10)));
+}
 
 export function getSiteConfig(): SiteConfig {
   return siteConfig;

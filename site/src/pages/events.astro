@@ -12,6 +12,7 @@ import {
   type FeedItem,
 } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
+import { placeLabel, countryProfile } from '../lib/country-profile';
 import { EVENT_FACETS } from '../lib/event-facets';
 import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
@@ -227,7 +228,7 @@ const itemListJsonLd = allDisplayedItems.length > 0 ? {
     const heroUrl = new URL(asStory.image_path ?? `/og/${asStory.slug}.png`, Astro.site ?? siteConfig.siteUrl).href;
     const eventJsonLd = buildEventJsonLd(
       asStory, facilities,
-      { cityName: siteConfig.cityName, stateAbbr: siteConfig.stateAbbr, siteName: siteConfig.siteName, timezone: siteConfig.timezone },
+      { cityName: siteConfig.cityName, stateAbbr: siteConfig.stateAbbr, region: siteConfig.region, addressCountry: countryProfile(siteConfig.country).addressCountry, siteName: siteConfig.siteName, timezone: siteConfig.timezone },
       itemUrl, heroUrl,
     );
     return {
@@ -269,13 +270,13 @@ const webPageJsonLd = dateModified ? {
 } : null;
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-events"
-  description={`What's on this weekend in ${siteConfig.cityName}, ${siteConfig.stateName} — library programs, city events and community happenings.`}
+  description={`What's on this weekend in ${placeLabel(siteConfig)} — library programs, city events and community happenings.`}
   accentColor={SECTION_THEME.events.accent}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero section="events" />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>Community events in {siteConfig.cityName}, {siteConfig.stateName} —
+    <p>Community events in {placeLabel(siteConfig)} —
     library programs, city events and more, gathered from each organizer's own
     calendar. Times and registration details come straight from the source,
     never guessed or rewritten. For a shorter list, see what's happening

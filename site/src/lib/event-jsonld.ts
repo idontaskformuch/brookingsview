@@ -28,7 +28,11 @@ export interface EventJsonLdStory {
 
 export interface EventJsonLdSite {
   cityName: string;
-  stateAbbr: string;
+  stateAbbr?: string;
+  /** Region for towns without a state (country gb). */
+  region?: string;
+  /** schema.org addressCountry; omitted = 'US' (the pre-profile behaviour). */
+  addressCountry?: string;
   siteName: string;
   timezone: string;
 }
@@ -74,9 +78,9 @@ export function buildEventJsonLd(
       '@type': 'PostalAddress',
       streetAddress: resolvedVenue!.street_address,
       addressLocality: site.cityName,
-      addressRegion: site.stateAbbr,
+      addressRegion: site.stateAbbr ?? site.region,
       postalCode: resolvedVenue!.postal_code,
-      addressCountry: 'US',
+      addressCountry: site.addressCountry ?? 'US',
     },
     ...(resolvedVenue!.lat != null && resolvedVenue!.lon != null
       ? { geo: { '@type': 'GeoCoordinates', latitude: resolvedVenue!.lat, longitude: resolvedVenue!.lon } }

@@ -19,6 +19,7 @@
 import { getSignData } from '../lib/db';
 import { signGameText } from '../lib/sign-game';
 import { siteConfig, ALL_SITES } from '../lib/site-config';
+import { placeLabel, countryProfile } from '../lib/country-profile';
 import { enabledSections, resolveNav } from '../lib/nav-sections';
 import SectionNav from '../components/SectionNav.astro';
 import { runBuildTimeChecks } from '../lib/build-checks';
@@ -123,7 +124,7 @@ const footerGroups = FOOTER_GROUPS
 ---
 
 <!doctype html>
-<html lang="en" data-timezone={siteConfig.timezone}>
+<html lang={countryProfile(siteConfig.country).htmlLang} data-timezone={siteConfig.timezone}>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -147,7 +148,7 @@ const footerGroups = FOOTER_GROUPS
 <meta property="og:image" content={ogImage} />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:locale" content="en_US" />
+<meta property="og:locale" content={countryProfile(siteConfig.country).ogLocale} />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content={ogImage} />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -631,7 +632,7 @@ main { padding-block: 1.75rem 3.5rem; }
   <div class="shell">
     <a class="masthead__name" href="/">{siteConfig.brandLead} <em>{siteConfig.brandTail}</em></a>
   </div>
-  <div class="dateline">{dateline} &middot; {siteConfig.cityName}, {siteConfig.stateName}</div>
+  <div class="dateline">{dateline} &middot; {placeLabel(siteConfig)}</div>
   <div class="shell">
     <SectionNav nav={sectionNav} path={path} />
     </nav>

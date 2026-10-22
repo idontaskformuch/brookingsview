@@ -13,6 +13,7 @@ import ShareButton from '../../components/ShareButton.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { getFacilities, FACILITY_CATEGORY_LABELS } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
+import { placeAbbr } from '../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { resolvePageMeta } from '../../lib/page-meta';
 import { resolveHubNavItems } from '../../lib/clusters';
@@ -50,7 +51,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 ];
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-facilities"
-  description={`Addresses, phone numbers and hours for libraries, parks, city hall and other public facilities in ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`}>
+  description={`Addresses, phone numbers and hours for libraries, parks, city hall and other public facilities in ${placeAbbr(siteConfig)}.`}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>

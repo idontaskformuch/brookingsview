@@ -1,0 +1,27 @@
+{
+  "code": "US",
+  "id": "us",
+  "label": "United States",
+  "locale": "en-US",
+  "htmlLang": "en",
+  "ogLocale": "en_US",
+  "spelling": "american",
+  "currency": "USD",
+  "currencySymbol": "$",
+  "temperatureUnit": "F",
+  "distanceUnit": "miles",
+  "dateStyle": "month-first",
+  "dateExample": "October 21, 2026",
+  "timeStyle": "12h",
+  "defaultTimezone": null,
+  "addressCountry": "US",
+  "regionKind": "state",
+  "regionRequired": true,
+  "holidays": ["halloween", "thanksgiving", "christmas", "new_years", "valentines", "easter", "memorial_day", "july_4", "labor_day", "veterans_day"],
+  "legal": {
+    "variant": "us",
+    "framework": "US state privacy law; AdSense and Google Analytics opt-out wording",
+    "consent": "opt-out"
+  },
+  "nations": {}
+}

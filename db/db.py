@@ -410,7 +410,7 @@ def ensure_town(conn, cfg: dict) -> None:
                 display_name=EXCLUDED.display_name, domain=EXCLUDED.domain,
                 lat=EXCLUDED.lat, lon=EXCLUDED.lon
             """,
-            (cfg["town_id"], cfg["display_name"], cfg["state"], cfg.get("county"),
+            (cfg["town_id"], cfg["display_name"], cfg.get("state") or cfg.get("region"), cfg.get("county"),
              cfg.get("population"), cfg.get("domain"), cfg.get("timezone"),
              coords.get("lat"), coords.get("lon")),
         )

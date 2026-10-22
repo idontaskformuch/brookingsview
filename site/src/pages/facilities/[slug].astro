@@ -33,6 +33,7 @@ import {
 import { eventsAtVenue } from '../../lib/events';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
+import { placeAbbr, countryProfile } from '../../lib/country-profile';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 import { formatClock } from '../../lib/facility-hours';
 import { buildPlaceOpeningHoursSpecification, isPastStalenessThreshold } from '../../lib/place-hours';
@@ -55,7 +56,7 @@ if (!facility) {
 const categoryLabel = FACILITY_CATEGORY_LABELS[facility.category] ?? facility.category;
 const description = facility.description
   ? facility.description.slice(0, 155)
-  : `Address, phone number and hours for ${facility.name} in ${siteConfig.cityName}, ${siteConfig.stateAbbr}.`;
+  : `Address, phone number and hours for ${facility.name} in ${placeAbbr(siteConfig)}.`;
 // Sitewide title/H1/lede handoff, facility-detail rule: the lede must
 // include the street address in prose form -- see buildFacilityLede's own
 // comment for why this is synthesized at render time (varied connector
@@ -343,9 +344,9 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
         '@type': 'PostalAddress',
         streetAddress: facility.street_address,
         addressLocality: siteConfig.cityName,
-        addressRegion: siteConfig.stateAbbr,
+        addressRegion: siteConfig.stateAbbr ?? siteConfig.region,
         postalCode: facility.postal_code,
-        addressCountry: 'US',
+        addressCountry: countryProfile(siteConfig.country).addressCountry,
       },
       ...(facility.lat != null && facility.lon != null
         ? { geo: { '@type': 'GeoCoordinates', latitude: facility.lat, longitude: facility.lon } }

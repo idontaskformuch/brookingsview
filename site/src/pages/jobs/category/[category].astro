@@ -14,6 +14,7 @@ import Breadcrumbs from '../../../components/Breadcrumbs.astro';
 import { getRecentJobs, formatDate } from '../../../lib/db';
 import { salaryText, capByEmployer, slugifyCategory } from '../../../lib/jobs';
 import { siteConfig } from '../../../lib/site-config';
+import { placeAbbr } from '../../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../../lib/clusters';
 
@@ -32,7 +33,7 @@ const { visible, overflowByCompany } = capByEmployer(jobs);
 
 const canonicalUrl = new URL(`/jobs/category/${slugifyCategory(category)}/`, Astro.site ?? siteConfig.siteUrl).href;
 const title = `${category} in ${siteConfig.cityName} — ${siteConfig.siteName}`;
-const description = `${jobs.length} recent ${category.toLowerCase()} listing${jobs.length === 1 ? '' : 's'} in and near ${siteConfig.cityName}, ${siteConfig.stateAbbr}, from Adzuna's job search.`;
+const description = `${jobs.length} recent ${category.toLowerCase()} listing${jobs.length === 1 ? '' : 's'} in and near ${placeAbbr(siteConfig)}, from Adzuna's job search.`;
 
 const itemListJsonLd = jobs.length > 0 ? {
   '@context': 'https://schema.org',

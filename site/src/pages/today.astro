@@ -22,6 +22,7 @@ import {
 } from '../lib/db';
 import { buildEventFeed, todayUtcMidnight, selectBucketCandidates } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
+import { placeAbbr } from '../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
 import { resolvePageMeta } from '../lib/page-meta';
@@ -54,7 +55,7 @@ const hubBacklink = resolveHubBacklink('today', siteConfig);
 ---
 
 <BaseLayout title={pageTitle} ogSlug="section-today"
-  description={`What's happening today in ${siteConfig.cityName}, ${siteConfig.stateAbbr} — active alerts, school status, traffic, and tonight's and tomorrow's events.`}>
+  description={`What's happening today in ${placeAbbr(siteConfig)} — active alerts, school status, traffic, and tonight's and tomorrow's events.`}>
   <script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumbJsonLd)} />
   <Breadcrumbs trail={breadcrumbTrail} />
   <div class="lede">

@@ -30,6 +30,7 @@ import ShareButton from '../../components/ShareButton.astro';
 import { getContentByType, formatMonthYear, calendarDateParts } from '../../lib/db';
 import type { Story } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
+import { placeLabel } from '../../lib/country-profile';
 import { resolvePageMeta } from '../../lib/page-meta';
 import { storyHref } from '../../lib/content-slugs';
 import { listEligibleMonths, monthLabel, monthSlug } from '../../lib/month-in-review';
@@ -61,7 +62,7 @@ const sortedMonths = [...groups.keys()].sort().reverse();
 
 const pageMeta = resolvePageMeta('city-hall/archive', siteConfig);
 const title = pageMeta.title;
-const description = `Every past city council, county commission and committee meeting covered in ${siteConfig.cityName}, ${siteConfig.stateName}, grouped by month.`;
+const description = `Every past city council, county commission and committee meeting covered in ${placeLabel(siteConfig)}, grouped by month.`;
 const canonicalUrl = new URL('/city-hall/archive/', Astro.site ?? siteConfig.siteUrl).href;
 
 const itemListJsonLd = meetings.length > 0 ? {

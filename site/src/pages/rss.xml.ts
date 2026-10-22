@@ -2,6 +2,7 @@ import rss from '@astrojs/rss';
 import type { APIContext } from 'astro';
 import { getAllStories, CONTENT_TRACK_TYPES } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import { placeLabel } from '../lib/country-profile';
 import { storyHref } from '../lib/content-slugs';
 import { redactWorkerPulseBody } from '../lib/content-redaction';
 
@@ -34,7 +35,7 @@ export async function GET(context: APIContext) {
       && !story.superseded_by_slug);
   return rss({
     title: siteConfig.siteName,
-    description: `What's happening in ${siteConfig.cityName}, ${siteConfig.stateName}.`,
+    description: `What's happening in ${placeLabel(siteConfig)}.`,
     site: context.site!,
     items: stories.map((story) => ({
       title: story.title,

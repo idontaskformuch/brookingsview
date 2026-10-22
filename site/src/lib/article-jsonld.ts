@@ -16,6 +16,7 @@
  * the trust signal, not something to hide to look more human.
  */
 import { formatPrice, isSandboxUrl, type SourceType, type Story, type PropertySale } from './db';
+import { countryProfile, type CountryId } from './country-profile';
 
 const ARTICLE_TYPE_BY_SOURCE_TYPE: Partial<Record<SourceType, string>> = {
   editorial: 'OpinionNewsArticle',
@@ -195,7 +196,7 @@ export function buildPropertySaleJsonLd(
   sales: Pick<PropertySale, 'sale_price' | 'sale_date'>[],
   canonicalUrl: string,
   cityName: string,
-  stateAbbr: string,
+  stateAbbr: string | undefined,
   zip: string,
 ): Record<string, unknown> | null {
   if (sales.length === 0) return null;
@@ -302,7 +303,9 @@ export interface OrganizationSite {
   siteName: string;
   siteUrl: string;
   cityName: string;
-  stateAbbr: string;
+  stateAbbr?: string;
+  region?: string;
+  country?: CountryId;
 }
 
 /** AdSense remediation Phase E -- the sitewide NewsMediaOrganization block
@@ -325,7 +328,7 @@ export function buildOrganizationJsonLd(
     '@type': 'NewsMediaOrganization',
     name: site.siteName,
     url: site.siteUrl,
-    areaServed: { '@type': 'City', name: site.cityName, addressRegion: site.stateAbbr, addressCountry: 'US' },
+    areaServed: { '@type': 'City', name: site.cityName, addressRegion: site.stateAbbr ?? site.region, addressCountry: countryProfile(site.country).addressCountry },
     publishingPrinciples: new URL('/editorial-policy/', site.siteUrl).href,
     sameAs: siblingSiteUrls,
   };

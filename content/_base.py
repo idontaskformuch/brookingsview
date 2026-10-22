@@ -28,6 +28,7 @@ from ai_pipeline.format_prompt import (
     GenerationUnavailable, _record_spend, _spent_this_month, pricing_for, resolve_model, safe_create,
 )
 from ai_pipeline.town_guard import STATE_NAMES, has_local_anchor
+from config.country_profile import is_us
 from guardrails.originality_check import is_original
 from guardrails.style_filter import clean
 from validation import pre_publish_check
@@ -111,6 +112,10 @@ def town_label(cfg: dict | None) -> str:
     """
     cfg = cfg or {}
     name = cfg.get("display_name")
+    if not is_us(cfg):
+        # Towns outside the US have a region (nation) instead of a state.
+        region = cfg.get("region")
+        return f"{name}, {region}" if name and region else name or "its coverage area"
     state_abbr = cfg.get("state")
     state = STATE_NAMES.get(state_abbr, state_abbr)
     if name and state:

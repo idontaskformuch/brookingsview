@@ -9,6 +9,7 @@ import type { APIRoute } from 'astro';
 import { getAllStories, getFacilities, getAllWeeklyStories, formatDate } from '../../lib/db';
 import { renderOgImage } from '../../lib/og';
 import { siteConfig } from '../../lib/site-config';
+import { placeLabel } from '../../lib/country-profile';
 import { weekInfoForInstant, currentWeekInfo, type WeekInfo } from '../../lib/this-week';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
@@ -96,7 +97,7 @@ export async function getStaticPaths() {
       props: {
         title: `What's happening in ${siteConfig.cityName}`,
         sourceType: 'weekly',
-        dateline: `${siteConfig.cityName}, ${siteConfig.stateName}`,
+        dateline: `${placeLabel(siteConfig)}`,
       },
     },
     ...SECTION_CARDS.map((s) => ({

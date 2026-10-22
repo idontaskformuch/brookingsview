@@ -26,6 +26,7 @@ import MarqueeCard from '../../components/MarqueeCard.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import { siteConfig } from '../../lib/site-config';
+import { placeLabel } from '../../lib/country-profile';
 import { getTicketmasterEventsForTown } from '../../lib/ticketmaster';
 import { rankTicketmasterEvents, splitMarquee, isWhatsOnIntroFresh, ticketmasterResolvableImage, marqueeDigestKey } from '../../lib/whats-on';
 import { getWhatsOnIntro, getFacilities, getEventDeckDigests } from '../../lib/db';
@@ -115,7 +116,7 @@ const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
 const pageMeta = resolvePageMeta('whats-on', siteConfig);
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-whats-on"
-  description={`Concerts, theater and touring shows within ${radiusMiles ?? 75} miles of ${siteConfig.cityName}, ${siteConfig.stateName} — with real distance shown, never a hidden away-game.`}
+  description={`Concerts, theater and touring shows within ${radiusMiles ?? 75} miles of ${placeLabel(siteConfig)} — with real distance shown, never a hidden away-game.`}
   accentColor={SECTION_THEME.events.accent}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">

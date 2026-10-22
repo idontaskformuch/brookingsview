@@ -25,6 +25,7 @@
  *  this file exists for. */
 import type { APIRoute } from 'astro';
 import { siteConfig } from '../lib/site-config';
+import { placeAbbr } from '../lib/country-profile';
 import { computeTownGraph } from '../lib/clusters';
 import { HUB_HREF, HUB_NAV_COPY, SPOKE_NAV_COPY } from '../config/clusters';
 import { getFacilities, FACILITY_CATEGORY_LABELS } from '../lib/db';
@@ -44,7 +45,7 @@ export const GET: APIRoute = async () => {
   const lines: string[] = [
     `# ${siteConfig.siteName}`,
     '',
-    `> Local public-information coverage for ${siteConfig.cityName}, ${siteConfig.stateAbbr}. ` +
+    `> Local public-information coverage for ${placeAbbr(siteConfig)}. ` +
       `${siteConfig.sourceBlurb} News and listings link back to their original source. Refreshed every 6 hours.`,
     '',
     // Paraphrased from how-we-gather-this.astro's own real "How the

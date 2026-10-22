@@ -26,6 +26,7 @@ import re
 from dataclasses import dataclass, field
 
 from ai_pipeline.town_guard import STATE_NAMES
+from config.country_profile import is_us
 from validation._text import flatten_records
 
 # Every US state (plus DC) by full name -- deliberately the complete list,
@@ -61,6 +62,10 @@ def _word_boundary_search(term: str, text: str) -> bool:
 
 
 def check_place_state(text: str, source_records: list[dict] | dict | None, cfg: dict) -> CheckResult:
+    if not is_us(cfg):
+        # US state names are not a leakage signal for a town outside the US
+        # ("Georgia", "Washington" are ordinary words in UK text).
+        return CheckResult(passed=True)
     active_state = STATE_NAMES.get((cfg or {}).get("state"), (cfg or {}).get("state"))
     haystack = flatten_records(source_records)
 

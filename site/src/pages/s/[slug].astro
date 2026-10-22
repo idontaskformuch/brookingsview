@@ -25,6 +25,7 @@ import {
 } from '../../lib/events';
 import { buildArticleJsonLd, buildDatasetJsonLd, buildRecipeJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { siteConfig } from '../../lib/site-config';
+import { countryProfile } from '../../lib/country-profile';
 import { resolveImage, contentTrackCropPaths } from '../../lib/images';
 import { categoryImagesFor } from '../../config/category-images';
 import ImageAttribution from '../../components/ImageAttribution.astro';
@@ -383,7 +384,8 @@ const pageTitle = titleTagForStory(story);
 // resolution & emission rules" for the reasoning.
 const eventJsonLdObject = buildEventJsonLd(
   story, facilities,
-  { cityName: siteConfig.cityName, stateAbbr: siteConfig.stateAbbr,
+  { cityName: siteConfig.cityName, stateAbbr: siteConfig.stateAbbr, region: siteConfig.region,
+    addressCountry: countryProfile(siteConfig.country).addressCountry,
     siteName: siteConfig.siteName, timezone: siteConfig.timezone },
   canonicalUrl, ogImageUrl,
 );

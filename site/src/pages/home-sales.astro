@@ -21,6 +21,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getRecentPropertySales, getContentByType, formatPrice } from '../lib/db';
 import { titleCaseAddress as sharedTitleCaseAddress, extractZip as sharedExtractZip, slugifyAddress, isOutlierSale } from '../lib/home-sales';
 import { siteConfig } from '../lib/site-config';
+import { placeAbbr } from '../lib/country-profile';
 import { resolvePageMeta } from '../lib/page-meta';
 import { isWithinRenderWindow } from '../lib/render-window';
 import SectionHero from '../components/SectionHero.astro';
@@ -81,7 +82,7 @@ function monthYear(occursAt: string | null): string {
   <SectionHero section="home_sales" />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>Recently recorded home sales in {siteConfig.cityName}, {siteConfig.stateAbbr},
+    <p>Recently recorded home sales in {placeAbbr(siteConfig)},
     straight from Riverside County's public assessor data. County records
     lag behind actual sales{mostRecentSaleDate && <> — the most recent
     recorded sale currently available is from {new Date(mostRecentSaleDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</>}.

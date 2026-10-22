@@ -22,7 +22,9 @@ import type { Town } from './category-images';
 
 export type HolidayId =
   | 'halloween' | 'thanksgiving' | 'christmas'
-  | 'new_years' | 'valentines' | 'easter' | 'memorial_day' | 'july_4' | 'labor_day' | 'veterans_day';
+  | 'new_years' | 'valentines' | 'easter' | 'memorial_day' | 'july_4' | 'labor_day' | 'veterans_day'
+  // UK / Scotland (Glasgow Phase 1) -- see UK_HOLIDAYS below.
+  | 'new_year_day' | 'second_january' | 'burns_night' | 'bonfire_night' | 'st_andrews_day' | 'hogmanay';
 
 /** `kind: 'fixed'` -- same month/day every year (Halloween, Christmas,
  *  New Year's, Valentine's, July 4th, Veterans Day).
@@ -62,6 +64,31 @@ export const HOLIDAYS: HolidayDefinition[] = [
   { id: 'labor_day', label: 'Labor Day', dateRule: { kind: 'nth_weekday', month: 9, weekday: 1, n: 1 }, windowDays: 5, active: false },
   { id: 'veterans_day', label: 'Veterans Day', dateRule: { kind: 'fixed', month: 11, day: 11 }, windowDays: 3, active: false },
 ];
+
+/** UK-only definitions (config/countries/gb.json lists which ids a gb town uses;
+ *  nations add their own, e.g. Scotland's 2 January, Burns Night, St Andrew's
+ *  Day, Hogmanay). All inactive until a real photo pool exists for a gb town,
+ *  same rule as the US level-2 holidays. Shared ids (halloween, christmas,
+ *  valentines, easter) reuse the HOLIDAYS entries above. */
+export const UK_HOLIDAYS: HolidayDefinition[] = [
+  { id: 'new_year_day', label: "New Year's Day", dateRule: { kind: 'fixed', month: 1, day: 1 }, windowDays: 3, active: false },
+  { id: 'second_january', label: '2 January', dateRule: { kind: 'fixed', month: 1, day: 2 }, windowDays: 1, active: false },
+  { id: 'burns_night', label: 'Burns Night', dateRule: { kind: 'fixed', month: 1, day: 25 }, windowDays: 5, active: false },
+  { id: 'bonfire_night', label: 'Bonfire Night', dateRule: { kind: 'fixed', month: 11, day: 5 }, windowDays: 5, active: false },
+  { id: 'st_andrews_day', label: "St Andrew's Day", dateRule: { kind: 'fixed', month: 11, day: 30 }, windowDays: 5, active: false },
+  { id: 'hogmanay', label: 'Hogmanay', dateRule: { kind: 'fixed', month: 12, day: 31 }, windowDays: 7, active: false },
+];
+
+/** Holiday definitions for a country (+ nation): the profile's id list resolved
+ *  against HOLIDAYS and UK_HOLIDAYS. The `us` result is exactly HOLIDAYS. */
+export function holidayDefinitionsFor(ids: string[]): HolidayDefinition[] {
+  const all = [...HOLIDAYS, ...UK_HOLIDAYS];
+  return ids.map((id) => {
+    const def = all.find((h) => h.id === id);
+    if (!def) throw new Error(`Unknown holiday id in country profile: ${id}`);
+    return def;
+  });
+}
 
 export interface HolidayImage {
   /** e.g. "brookings_sd-halloween-01" -- same id scheme as ThisWeekImage,

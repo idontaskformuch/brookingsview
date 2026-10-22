@@ -24,6 +24,7 @@ import sharp from 'sharp';
 // lokalt. Base64-konstanter i en vanlig .ts-fil har inget sådant beroende.
 import { LORA_BOLD_BASE64, INSTRUMENT_SANS_BOLD_BASE64 } from './fonts-embedded';
 import { siteConfig } from './site-config';
+import { placeLabel } from './country-profile';
 
 const serif = Buffer.from(LORA_BOLD_BASE64, 'base64');
 const sans = Buffer.from(INSTRUMENT_SANS_BOLD_BASE64, 'base64');
@@ -134,7 +135,7 @@ export async function renderOgImage({ title, sourceType = 'event', dateline, kic
                       display: 'flex', fontFamily: 'Instrument Sans', fontSize: 22,
                       color: 'rgba(255,255,255,0.66)', letterSpacing: '0.06em',
                     },
-                    children: dateline ?? `${siteConfig.cityName}, ${siteConfig.stateName}`,
+                    children: dateline ?? `${placeLabel(siteConfig)}`,
                   },
                 },
               ],
