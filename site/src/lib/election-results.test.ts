@@ -4,8 +4,8 @@ import { endpointFor, metaLine, precinctsLine, turnoutLine, viewState, type Resu
 const base: ResultsPayload = { available: true, town: 'brookings_sd', electionDate: '2026-11-03', phase: 'night', unofficial: true };
 
 describe('election-results helpers', () => {
-  it('builds the endpoint with an encoded town', () => {
-    expect(endpointFor('brookings_sd')).toBe('/api/election-results?town=brookings_sd');
+  it('uses a town-less endpoint (the Worker reads the hostname)', () => {
+    expect(endpointFor()).toBe('/api/election-results');
   });
   it('meta line has source, source time and fetch time, and says Unofficial', () => {
     const l = metaLine({ ...base, sourceUpdatedAt: '9:05 PM CT', fetchedAt: '2026-11-04T03:07:00Z' }, 'South Dakota Secretary of State', 'America/Chicago');

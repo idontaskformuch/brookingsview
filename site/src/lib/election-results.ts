@@ -18,8 +18,9 @@ export interface ResultsPayload {
 
 export const RESULTS_ENDPOINT = '/api/election-results';
 
-export function endpointFor(townId: string): string {
-  return `${RESULTS_ENDPOINT}?town=${encodeURIComponent(townId)}`;
+/** The town is never sent: the site Worker derives it from the request hostname (server/election-results.ts). */
+export function endpointFor(): string {
+  return RESULTS_ENDPOINT;
 }
 
 /** The single line above the results (spec 2e). */

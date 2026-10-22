@@ -25,6 +25,7 @@ import { neon } from '@neondatabase/serverless';
 import { handleComment } from './comment';
 import { handleShiftPollVote } from './shift-poll-vote';
 import { handleContact } from './contact';
+import { handleElectionResults } from './election-results';
 import { handleTicketmasterImage, handleTicketmasterImagePurge } from './ticketmaster-image';
 import { resolveContentSlugRedirect } from './content-slug-redirects';
 import { resolvePlaceRedirect } from './place-redirects';
@@ -75,6 +76,9 @@ export default {
     }
     if (request.method === 'POST' && url.pathname === '/api/shift-poll-vote') {
       return handleShiftPollVote(request, env);
+    }
+    if (request.method === 'GET' && url.pathname === '/api/election-results') {
+      return handleElectionResults(request, env);
     }
     if (request.method === 'POST' && url.pathname === '/api/contact') {
       return handleContact(request, env);

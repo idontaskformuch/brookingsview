@@ -46,7 +46,7 @@ const electionLabel = formatYmd(election.election_date, true);
   </header>
 
   <section class="er-live" aria-labelledby="er-heading" data-live={results.live ? 'true' : 'false'} data-town={siteConfig.townId}
-           data-endpoint={endpointFor(siteConfig.townId)} data-source={results.source_name} data-tz={siteConfig.timezone}>
+           data-endpoint={endpointFor()} data-source={results.source_name} data-tz={siteConfig.timezone}>
     <h2 id="er-heading">Results</h2>
     {results.live
       ? <p class="er-status" id="er-status" role="status">Results will appear after polls close on {electionLabel}.</p>
