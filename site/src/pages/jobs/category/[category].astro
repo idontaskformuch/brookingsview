@@ -93,7 +93,7 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
               {job.location && <span class="loc">{job.location}</span>}
             </td>
             <td>{job.company ?? '—'}</td>
-            <td class="data">{salaryText(job)}</td>
+            <td class="data">{salaryText(job, siteConfig.country)}</td>
             <td class="data">{job.posted_at ? formatDate(job.posted_at) : '—'}</td>
           </tr>
         ))}
@@ -116,7 +116,7 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
                 ) : job.title}
                 {job.location && <span class="loc">{job.location}</span>}
               </td>
-              <td class="data">{salaryText(job)}</td>
+              <td class="data">{salaryText(job, siteConfig.country)}</td>
               <td class="data">{job.posted_at ? formatDate(job.posted_at) : '—'}</td>
             </tr>
           ))}

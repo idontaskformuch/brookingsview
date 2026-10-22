@@ -4,7 +4,8 @@
  *  "Week 4 -- Jobs Landing Pages") so they never compute the same facts
  *  two different ways.
  */
-import { formatPrice, type Job } from './db';
+import type { Job } from './db';
+import { countryProfile, type CountryId } from './country-profile';
 
 /** The one name every page that cites this source should use -- matches
  *  jobs.astro's own attribution link text exactly. Single shared constant
@@ -39,13 +40,22 @@ export function slugifyCategory(category: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-export function salaryText(job: Pick<Job, 'salary_min' | 'salary_max' | 'salary_is_predicted'>): string {
+/** Whole-unit money in the country's own currency and locale ($ for us, £ for gb). */
+function salaryMoney(value: number, country: CountryId | undefined): string {
+  const p = countryProfile(country);
+  return new Intl.NumberFormat(p.locale, { style: 'currency', currency: p.currency, maximumFractionDigits: 0 }).format(value);
+}
+
+export function salaryText(
+  job: Pick<Job, 'salary_min' | 'salary_max' | 'salary_is_predicted'>,
+  country?: CountryId,
+): string {
   const { salary_min: lo, salary_max: hi, salary_is_predicted: predicted } = job;
   let range: string;
   if (lo == null && hi == null) return '—';
-  else if (lo == null) range = `up to ${formatPrice(hi)}`;
-  else if (hi == null || lo === hi) range = formatPrice(lo);
-  else range = `${formatPrice(lo)}–${formatPrice(hi)}`;
+  else if (lo == null) range = `up to ${salaryMoney(hi as number, country)}`;
+  else if (hi == null || lo === hi) range = salaryMoney(lo, country);
+  else range = `${salaryMoney(lo, country)}–${salaryMoney(hi, country)}`;
   return predicted ? `${range} (est.)` : range;
 }
 

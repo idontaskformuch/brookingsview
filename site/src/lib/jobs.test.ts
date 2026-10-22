@@ -38,6 +38,9 @@ describe('salaryText', () => {
   });
   it('handles a one-sided "up to" range', () => {
     expect(salaryText({ salary_min: null, salary_max: 45000, salary_is_predicted: false })).toBe('up to $45,000');
+    // UK towns: pounds, never dollars (Adzuna gb returns GBP)
+    expect(salaryText({ salary_min: 38000, salary_max: 42000, salary_is_predicted: false }, 'gb')).toBe('£38,000–£42,000');
+    expect(salaryText({ salary_min: 45719, salary_max: 45719, salary_is_predicted: true }, 'gb')).toBe('£45,719 (est.)');
   });
   it('handles no salary data at all', () => {
     expect(salaryText({ salary_min: null, salary_max: null, salary_is_predicted: false })).toBe('—');

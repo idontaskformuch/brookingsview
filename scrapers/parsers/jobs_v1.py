@@ -78,8 +78,19 @@ _CATEGORY_KEYWORDS: dict[str, tuple[str, ...]] = {
 }
 _GENERIC_ADZUNA_LABELS = {"Other/General Jobs", "Unknown"}
 
+# UK-only title words (Adzuna gb), checked BEFORE the shared US list and only
+# when the source's country is "gb", so US classification is untouched.
+_UK_CATEGORY_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "Healthcare & Nursing": ("care assistant", "carer", "support worker", "healthcare assistant", "staff nurse"),
+    "Transportation & Driving": ("hgv", "lgv", "van driver"),
+    "Food Service": ("chef", "waiter", "waitress", "kitchen assistant", "bar staff"),
+    "Retail": ("sales assistant", "shop assistant"),
+    "Construction & Trades": ("joiner", "bricklayer", "labourer", "scaffolder"),
+    "Education & Childcare": ("teaching assistant", "nursery practitioner"),
+}
 
-def _classify_category(title: str, adzuna_label: str | None) -> str | None:
+
+def _classify_category(title: str, adzuna_label: str | None, country: str = "us") -> str | None:
     # FAS 2-FIX: en tidigare `kw in lowered`-substrängmatchning missklassade
     # t.ex. "...Microvascular Reconstruction Fellowship" som Construction &
     # Trades, eftersom "construction" är en substräng av "reconstruction"
@@ -87,7 +98,9 @@ def _classify_category(title: str, adzuna_label: str | None) -> str | None:
     # data innan den här backfillen kördes på riktigt). Ordgräns-regex i
     # stället, samma princip som ai_pipeline/town_guard.py:s blocklista.
     lowered = title.lower()
-    for category, keywords in _CATEGORY_KEYWORDS.items():
+    keyword_sets = [_UK_CATEGORY_KEYWORDS, _CATEGORY_KEYWORDS] if country == "gb" else [_CATEGORY_KEYWORDS]
+    for keyword_set in keyword_sets:
+      for category, keywords in keyword_set.items():
         for kw in keywords:
             if re.search(r"\b" + re.escape(kw) + r"\b", lowered):
                 return category
@@ -183,6 +196,7 @@ class JobsParser(BaseParser):
         if pages is None:
             pages = json.loads(fetched.raw.decode("utf-8"))
 
+        country = self.source_cfg.get("country", "us")
         rows = []
         for page in pages:
             for job in page.get("results", []):
@@ -200,7 +214,7 @@ class JobsParser(BaseParser):
                     "title": title,
                     "company": (job.get("company") or {}).get("display_name"),
                     "location": (job.get("location") or {}).get("display_name"),
-                    "category": _classify_category(title, adzuna_label),
+                    "category": _classify_category(title, adzuna_label, country),
                     "salary_min": salary_min,
                     "salary_max": salary_max,
                     "salary_is_predicted": job.get("salary_is_predicted") == "1",

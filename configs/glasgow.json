@@ -47,7 +47,7 @@
       ],
       "_notes": "Ticketmaster GB is NOT a scraper source: it is fetched at build time by site/src/lib/ticketmaster.ts (latlong search, see site-config ticketmaster block) and is verified separately (phase 3.4b)." },
     "sports": { "type": "sportmonks", "enabled": false, "_notes": "Phase 3.5: Scottish Premiership, free plan." },
-    "jobs": { "type": "jobs", "enabled": false, "country": "gb", "where": "Glasgow", "_notes": "Phase 3.6: Adzuna country=gb (the parser already takes a country)." },
+    "jobs": { "type": "jobs", "enabled": false, "country": "gb", "where": "Glasgow", "results_per_page": 50, "max_pages": 1, "parser": "jobs_v1", "refresh_minutes": 1440, "_notes": "Phase 3.6, verified 2026-10-22: the existing ADZUNA_APP_ID/ADZUNA_APP_KEY work for the gb endpoint (5 336 Glasgow results; dry run of the parser 50 rows, 46 with salary, 24 predicted = flagged est.). GBP, so the site renders pound signs for country gb (lib/jobs.ts) and the parser uses UK title keywords for gb only. One call/day (free tier). enabled stays false until the owner approves the first jobs write to the live DB; the jobs section is also still in disabledSections for glasgow." },
     "school_closures": { "type": "school_alerts", "enabled": false, "_notes": "Phase 3.7: find a Glasgow City Council closure source or report that none exists." },
     "food_hygiene": { "type": "fhis", "enabled": false, "_notes": "Phase 3.8: Scotland uses FHIS Pass / Improvement Required, not FSA 0-5 stars." }
   },
