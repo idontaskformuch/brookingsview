@@ -85,6 +85,11 @@
       "severity": "soft",
       "born_from": "Q1: external links checked weekly only (load reduction)",
       "what": "external link answering 4xx/5xx (401/403/429 ignored as bot walls) or unreachable"
+    },
+    "web.allday-clock": {
+      "severity": "soft",
+      "born_from": "2026-10-22 owner: all-day events (e.g. 114th Hobo Day, start 00:00 local, no end) rendered as \"12:00 AM\"; fixed with lib/local-day.ts isAllDay; regression tests in local-day/time/db test files",
+      "what": "An event element with a local-midnight start and no real end whose visible time label shows 12 AM instead of \"All day\""
     }
   }
 }

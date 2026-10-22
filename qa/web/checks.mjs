@@ -94,6 +94,7 @@ export function checkDiag(snap, town) {
   }
   for (const a of snap.staleAlerts ?? []) f.push(finding('web.stale-alert', town, snap, `alert shown after its end: ${a}${lab}`));
   for (const e of snap.pastEvents ?? []) f.push(finding('web.past-event', town, snap, `${e}${lab}`));
+  for (const e of snap.allDayClock ?? []) f.push(finding('web.allday-clock', town, snap, `all-day event shows a clock: ${e}${lab}`));
   for (const v of snap.axe ?? []) {
     const hard = v.impact === 'serious' || v.impact === 'critical';
     f.push(finding(hard ? 'web.axe' : 'web.axe-minor', town, snap, `${v.id} (${v.impact}, ${v.count} nodes): ${v.help}; e.g. ${v.targets.join(' | ')}${lab}`));

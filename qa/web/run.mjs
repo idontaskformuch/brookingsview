@@ -166,6 +166,18 @@ function pageProbe({ allowSel, wantLinks }) {
       } else if (dayKey(new Date(s)) !== wantDay) pastEvents.push(label + ' [not tomorrow]');
     });
   }
+  // all-day events (local midnight start, no real end -- lib/local-day.ts isAllDay) must say "All day", never a clock
+  const allDayClock = [];
+  const pageTz = document.documentElement.dataset.timezone || tz;
+  document.querySelectorAll('[data-start]').forEach((el) => {
+    const s = Date.parse(el.getAttribute('data-start'));
+    const e = el.getAttribute('data-end') ? Date.parse(el.getAttribute('data-end')) : null;
+    if (Number.isNaN(s) || (e !== null && e > s) || !pageTz) return;
+    const hm = new Intl.DateTimeFormat('en-GB', { timeZone: pageTz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(s));
+    if (hm !== '00:00') return;
+    const when = (el.querySelector('.item__when')?.innerText || '').trim();
+    if (/12(:00)?\s?(AM|am)/.test(when)) allDayClock.push(`${when} (${el.getAttribute('data-start')})`);
+  });
   return {
     nowIso: now.toISOString(),
     title: document.title, titleCount: document.querySelectorAll('title').length,
@@ -176,7 +188,7 @@ function pageProbe({ allowSel, wantLinks }) {
     imgAlts: [...document.querySelectorAll('main img')].map((i) => i.alt || ''),
     loneDashNodes: lone,
     brokenImgs: [...document.images].filter((i) => i.complete && i.naturalWidth === 0 && i.currentSrc && !i.currentSrc.startsWith('data:')).map((i) => i.currentSrc),
-    emptySections, clientfill, staleAlerts, pastEvents,
+    emptySections, clientfill, staleAlerts, pastEvents, allDayClock,
     links: wantLinks ? [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute('href')) : [],
   };
 }
@@ -226,7 +238,7 @@ async function snapshot(context, path, { inSitemap = false, blockHeavy = true, a
   } catch (e) {
     return { ...snap, status: status || 0, cfMitigated, redirects, title: '', titleCount: 0, h1: [], metaRobots: '', metaDescription: '',
       mainText: '', imgAlts: [], loneDashNodes: 0, brokenImgs: [], links: [], consoleErrors: [], failedRequests: [], blockedAttempts: [],
-      emptySections: [], clientfill: null, staleAlerts: [], pastEvents: [], axe: [], navError: String(e.message).slice(0, 200) };
+      emptySections: [], clientfill: null, staleAlerts: [], pastEvents: [], allDayClock: [], axe: [], navError: String(e.message).slice(0, 200) };
   } finally { await page.close(); }
 }
 
