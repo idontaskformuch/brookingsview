@@ -12,6 +12,7 @@
  */
 import { getCityStatus, applyVisibilityRules, oldestAsOf } from '../lib/cityStatus';
 import { siteConfig } from '../lib/site-config';
+import { formatClockCompact } from '../lib/country-profile';
 
 const hasStatusModules = !!siteConfig.statusModules && siteConfig.statusModules.length > 0;
 
@@ -22,7 +23,9 @@ const modules = hasStatusModules ? applyVisibilityRules(await getCityStatus()) :
 const updated = oldestAsOf(modules);
 
 const updatedLabel = updated
-  ? updated.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: siteConfig.timezone })
+  ? (siteConfig.country === 'gb'
+    ? formatClockCompact(updated, siteConfig.timezone)
+    : updated.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: siteConfig.timezone }))
   : null;
 
 // A real CTA label per town (handoff's own "Presentation notes"), not a

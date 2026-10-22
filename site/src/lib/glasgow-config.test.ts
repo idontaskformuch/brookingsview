@@ -59,12 +59,14 @@ describe('Glasgow skeleton config', () => {
     expect(others).not.toContain(glasgow.brand?.accent);
   });
 
-  it('lists only the enabled sources on /about (council meetings so far)', () => {
+  it('lists only the enabled sources on /about (meetings, Glasgow Life events, Adzuna jobs)', () => {
     expect(aboutSourcesFor('glasgow')).toEqual([
       {
         name: 'Glasgow City Council committees and councillors',
         url: 'https://onlineservices.glasgow.gov.uk/councillorsandcommittees/',
       },
+      { name: "Glasgow Life what's on", url: 'https://www.glasgowlife.org.uk' },
+      { name: 'Adzuna job listings', url: 'https://www.adzuna.co.uk' },
     ]);
   });
 

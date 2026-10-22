@@ -59,6 +59,8 @@ import type { Story, TrafficIncident, StructuredHours, Facility } from '../lib/d
 import type { ClosureWatchStatus } from '../lib/closure-watch';
 import { storyHref } from '../lib/content-slugs';
 import { formatAlertUntil } from '../lib/alerts';
+import { siteConfig } from '../lib/site-config';
+import { formatClockCompact } from '../lib/country-profile';
 
 export interface Props {
   cityName: string;
@@ -110,9 +112,11 @@ const resolvedHeadingText = headingText ?? `Today in ${cityName}`;
 // client-side below.
 const cityHallKnown = cityHallFacility?.hours_structured != null;
 
-const asOfLabel = asOf.toLocaleTimeString('en-US', {
-  hour: 'numeric', minute: '2-digit', hour12: true, timeZone: timezone,
-});
+const asOfLabel = siteConfig.country === 'gb'
+  ? formatClockCompact(asOf, timezone)
+  : asOf.toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit', hour12: true, timeZone: timezone,
+  });
 
 const CLOSURE_LABEL: Record<ClosureWatchStatus['state'], string> = {
   confirmed: 'Schools closed',

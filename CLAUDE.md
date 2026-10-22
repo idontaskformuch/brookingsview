@@ -40,3 +40,11 @@
     fixen -- eller en rad som motiverar varför det inte går. QA-trafik ska
     aldrig räknas som besökare: ändra inte qa/web/run.mjs så att
     samtyckes-/analysblockeringen försvinner.
+
+## Redaktionell grundregel
+
+Varje sida ska hjälpa en invånare att förstå eller göra något. Listor och
+data är råmaterial, inte slutprodukt. Mönster: data -> vad betyder det ->
+vad kan läsaren göra. Ny funktion eller sida: ange vilken konkret fråga från
+en invånare den besvarar. Om den inte besvarar någon: bygg den inte, eller
+ge den noindex.

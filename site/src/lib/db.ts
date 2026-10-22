@@ -19,7 +19,7 @@
  */
 import { neon } from '@neondatabase/serverless';
 import { siteConfig, isSectionDisabled } from './site-config';
-import { forCountry } from './country-profile';
+import { forCountry, formatClockCompact } from './country-profile';
 
 /** Locale for calendar-date text ("Tue, October 27" vs "Tue 27 October"). Times still en-US. */
 const DATE_LOCALE = forCountry(siteConfig.country, 'en-US', 'en-GB');
@@ -1608,6 +1608,7 @@ export function plainLanguageTraffic(text: string | null): string | null {
  *  ändra utseendet på bylines/datumstämplar sitewide utan att det bads om. */
 export function formatTimeWithZone(value: string | null): string {
   if (!value) return '';
+  if (siteConfig.country === 'gb') return formatClockCompact(new Date(value), TZ);
   return new Date(value).toLocaleTimeString('en-US', {
     hour: 'numeric', minute: '2-digit', timeZone: TZ, timeZoneName: 'short',
   });
@@ -2746,6 +2747,7 @@ export function titleTagForStory(story: Pick<Story, 'title' | 'source_type' | 'o
 
 export function formatTime(value: string | null): string {
   if (!value) return '';
+  if (siteConfig.country === 'gb') return formatClockCompact(new Date(value), TZ);
   return new Date(value).toLocaleTimeString('en-US', {
     hour: 'numeric', minute: '2-digit', timeZone: TZ,
   });
@@ -3298,7 +3300,9 @@ export function formatMeetingWhen(meeting: NextMeeting): string {
   if (!siteConfig.meetingsHaveTime) return formatCalendarDate(meeting.meeting_date);
   const date = new Date(meeting.meeting_date);
   const weekday = date.toLocaleDateString('en-US', { weekday: 'short', timeZone: TZ });
-  const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: TZ });
+  const time = siteConfig.country === 'gb'
+    ? formatClockCompact(date, TZ)
+    : date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: TZ });
   return `${weekday}, ${time}`;
 }
 
