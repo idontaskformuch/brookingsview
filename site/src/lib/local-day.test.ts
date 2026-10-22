@@ -108,9 +108,17 @@ describe('isAllDay (start at local midnight, no real end)', () => {
 
   it('is false with a real end, or when the start is not local midnight', () => {
     expect(isAllDay({ start: '2026-10-24T05:00:00Z', end: '2026-10-24T07:00:00Z' }, CHI)).toBe(false);
+    expect(isAllDay({ start: '2026-10-24T05:00:00Z', end: '2026-10-24T23:59:00Z' }, CHI)).toBe(false); // ends 18:59 local
     expect(isAllDay({ start: '2026-10-24T00:00:00Z' }, CHI)).toBe(false); // 7 PM CDT the day before
     expect(isAllDay({ start: '2026-10-24T05:01:00Z' }, CHI)).toBe(false); // 00:01
     expect(isAllDay({ start: 'garbage' }, CHI)).toBe(false);
+  });
+
+  it('is true when the end is itself a later local midnight (00:00 -> 00:00 sources, e.g. Hobo Day)', () => {
+    expect(isAllDay({ start: '2026-10-24T05:00:00Z', end: '2026-10-25T05:00:00Z' }, CHI)).toBe(true);
+    expect(isAllDay({ start: '2026-10-24T05:00:00Z', end: '2026-10-26T05:00:00Z' }, CHI)).toBe(true); // multi-day
+    // across the fall-back day the next local midnight is 25 h later
+    expect(isAllDay({ start: '2026-11-01T05:00:00Z', end: '2026-11-02T06:00:00Z' }, CHI)).toBe(true);
   });
 
   it('follows the town zone and DST', () => {

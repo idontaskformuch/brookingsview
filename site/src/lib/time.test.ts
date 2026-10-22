@@ -215,6 +215,7 @@ describe('dayTimeKicker', () => {
     expect(dayTimeKicker('2026-08-28T05:00:00Z', CHI)).toBe('Fri · All day');
     expect(dayTimeKicker('2026-08-28T05:00:00Z', CHI, null)).toBe('Fri · All day');
     expect(dayTimeKicker('2026-08-28T05:00:00Z', CHI, '2026-08-28T05:00:00Z')).toBe('Fri · All day');
+    expect(dayTimeKicker('2026-08-28T05:00:00Z', CHI, '2026-08-29T05:00:00Z')).toBe('Fri · All day'); // 00:00 -> next 00:00
     expect(dayTimeKicker('2026-08-28T05:01:00Z', CHI)).toBe('Fri · 12:01 AM');
   });
 

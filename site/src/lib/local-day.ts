@@ -41,17 +41,24 @@ export function localHourOf(d: Date, timezone: string): number {
 }
 
 /** All-day item: starts at local midnight and has no real end (none, or not after
- *  the start). Same rule eventEndsAt() applies below; display code shows
- *  "All day" for these instead of "12:00 AM". */
+ *  the start) -- the rule eventEndsAt() applies below -- or whose "end" is itself
+ *  a later local midnight (a source that writes an all-day event as 00:00 ->
+ *  next 00:00, e.g. Hobo Day 2026-10-24 -> 2026-10-25). Display code shows
+ *  "All day" for these instead of "12:00 AM". An end at any other time of day
+ *  is a real end and keeps the clock. */
 export function isAllDay(e: TimedEvent, timezone: string): boolean {
   const start = new Date(e.start);
   if (Number.isNaN(start.getTime())) return false;
+  const sp = parts(start, timezone);
+  if (sp.h !== 0 || sp.min !== 0) return false;
   if (e.end) {
     const end = new Date(e.end);
-    if (!Number.isNaN(end.getTime()) && end.getTime() > start.getTime()) return false;
+    if (!Number.isNaN(end.getTime()) && end.getTime() > start.getTime()) {
+      const ep = parts(end, timezone);
+      return ep.h === 0 && ep.min === 0;
+    }
   }
-  const p = parts(start, timezone);
-  return p.h === 0 && p.min === 0;
+  return true;
 }
 
 /** The instant an event stops counting as "happening". A no-end event that

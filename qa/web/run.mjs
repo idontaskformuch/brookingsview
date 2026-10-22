@@ -172,9 +172,10 @@ function pageProbe({ allowSel, wantLinks }) {
   document.querySelectorAll('[data-start]').forEach((el) => {
     const s = Date.parse(el.getAttribute('data-start'));
     const e = el.getAttribute('data-end') ? Date.parse(el.getAttribute('data-end')) : null;
-    if (Number.isNaN(s) || (e !== null && e > s) || !pageTz) return;
-    const hm = new Intl.DateTimeFormat('en-GB', { timeZone: pageTz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(s));
-    if (hm !== '00:00') return;
+    if (Number.isNaN(s) || !pageTz) return;
+    const hmOf = (ms) => new Intl.DateTimeFormat('en-GB', { timeZone: pageTz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(ms));
+    if (hmOf(s) !== '00:00') return;
+    if (e !== null && e > s && hmOf(e) !== '00:00') return; // a real end (not a later local midnight) keeps the clock
     const when = (el.querySelector('.item__when')?.innerText || '').trim();
     if (/12(:00)?\s?(AM|am)/.test(when)) allDayClock.push(`${when} (${el.getAttribute('data-start')})`);
   });

@@ -215,6 +215,8 @@ describe('all-day events show "All day", not "12:00 AM"', () => {
   it('formatOccursAt: midnight start, no end', () => {
     expect(formatOccursAt({ source_type: 'event', occurs_at: midnight })).toBe('Sat, October 24 · All day');
     expect(formatOccursAt({ source_type: 'event', occurs_at: midnight, ends_at: null })).toBe('Sat, October 24 · All day');
+    // Hobo Day as stored: 2026-10-24 00:00 -> 2026-10-25 00:00 local
+    expect(formatOccursAt({ source_type: 'event', occurs_at: midnight, ends_at: '2026-10-25T05:00:00Z' })).toBe('Sat, October 24 · All day');
   });
   it('formatOccursAt: real start time or real end keeps the clock', () => {
     expect(formatOccursAt({ source_type: 'event', occurs_at: '2026-10-24T19:30:00Z' })).toBe('Sat, October 24 at 2:30 PM');
