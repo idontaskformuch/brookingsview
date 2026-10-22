@@ -347,6 +347,8 @@ def _meeting_date_title_part(value, cfg: dict | None) -> str | None:
         tzname = (cfg or {}).get("timezone")
         if tzname:
             dt = dt.astimezone(ZoneInfo(tzname))
+    if (cfg or {}).get("country") == "gb":
+        return f"{dt.strftime('%a')} {dt.day} {dt.strftime('%b')} {dt.year}"
     return f"{dt.strftime('%a, %b')} {dt.day}, {dt.year}"
 
 

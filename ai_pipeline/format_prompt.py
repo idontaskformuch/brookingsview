@@ -99,13 +99,31 @@ def safe_create(client, *, attempt: int = 1, **kwargs):
 
 # --- systemprompt byggd ur configen ----------------------------------------
 
+# --- UK adaptation (country "gb"; US towns get empty strings = byte-identical) --
+
+def _place(cfg: dict) -> str:
+    """Display name plus state (US) or region (UK), e.g. Glasgow, Scotland."""
+    return f"{cfg['display_name']}, {cfg.get('state') or cfg['region']}"
+
+
+def _uk_rules(cfg: dict) -> str:
+    if cfg.get("country") != "gb":
+        return ""
+    return (
+        "- UK style (this is a Scottish site): British spelling (organisation, centre, licence as a noun, "
+        "neighbourhood), dates as \"23 July\" (never \"July 23\"), times as \"7pm\" or \"10:30am\", "
+        "money in pounds (£). \"The council\" is Glasgow City Council; committee chairs are \"conveners\".\n"
+        "- Say nothing about arrests, charges, court proceedings or suspects.\n"
+    )
+
+
 def build_system_prompt(cfg: dict) -> str:
     ed = cfg.get("editorial", {})
     ai = cfg.get("ai", {})
     pos = cfg.get("positioning", {})
     never = "\n".join(f"- {x}" for x in ed.get("never_publish", []))
     tone = ai.get("tone_guidelines", "Warm, friendly, plain-language, strictly factual.")
-    return f"""You write short local-news blurbs for {cfg['display_name']}, {cfg['state']}.
+    return f"""You write short local-news blurbs for {_place(cfg)}.
 The site answers: "{pos.get('question_we_answer', "What's happening?")}" and must feel
 {pos.get('feeling', 'positive and welcoming')}.
 
@@ -131,7 +149,7 @@ HARD RULES:
   roads, taxes, safety, and access than to internal administration, merchandise, or
   scheduling. Not every agenda item deserves equal weight.
 - Write dates in one consistent form: "July 23", never "July 23rd" or "7/23".
-- Never write any of the following:
+{_uk_rules(cfg)}- Never write any of the following:
 {never}
 - Keep it short (2-5 sentences), concrete, and genuinely useful to a resident.
 
@@ -266,7 +284,7 @@ TONE_V2_MAX_SENTENCES: dict[str, int] = {"meeting": 8, "event": 4, "alert": 7}
 
 def build_system_prompt_v2(cfg: dict, source_type: str) -> str:
     type_rules = TONE_V2_TYPE_RULES.get(source_type, "")
-    return f"""You write short local-news items for {cfg['display_name']}, {cfg['state']}.
+    return f"""You write short local-news items for {_place(cfg)}.
 
 HARD RULES (fact/safety, unconditional):
 - ALWAYS write in English, regardless of what language any guidance here is
@@ -281,7 +299,7 @@ HARD RULES (fact/safety, unconditional):
   businesses, agencies, and place names are fine to name.
 - Explain jargon and acronyms in plain words on first use, or avoid them.
 - Write dates in one consistent form: "July 23", never "July 23rd" or "7/23".
-{TONE_V2_SHARED_RULES}
+{_uk_rules(cfg)}{TONE_V2_SHARED_RULES}
 {type_rules}
 OUTPUT FORMAT -- return ONLY a single JSON object, no markdown fences, no
 preamble, matching exactly this shape (omit a `meta` key entirely if it has

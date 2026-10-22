@@ -15,6 +15,20 @@
   },
   "_coordinates_note": "Approximate city centre (George Square). Replace with a verified point before any radius/geo query uses it (Ticketmaster GB, Met Office).",
   "_status": "SKELETON (Glasgow Phase 2, 2026-10-22): site-wide noindex ON, every data source and feature disabled. Nothing scrapes or publishes for this town yet. Phase 3 adds sources one by one, each behind its own enabled flag, after reachability and robots/ToS are verified.",
+  "ai": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-5",
+    "mode": "batch",
+    "monthly_budget_usd": 20,
+    "tone_v2": true,
+    "max_new_per_run_per_table": 10,
+    "tone_guidelines": "Plain, neutral, concrete. Explain what the council or committee is deciding or hearing, in everyday words. Facts from the source only.",
+    "guardrails": {
+      "extractive_for_structured_fields": true,
+      "no_opinion_on_contested_topics": true,
+      "reject_if_output_contains_facts_not_in_source": true
+    }
+  },
   "identity": {
     "terms": ["Glasgow City Council", "Strathclyde", "Kelvingrove", "Ibrox", "Celtic Park"],
     "_terms_note": "ai_pipeline/town_guard.py cross-site contamination guard: terms a US town must never mention. Chosen to be unambiguous; display_name (Glasgow) and county (Glasgow City) are added automatically."
@@ -28,7 +42,7 @@
     "prefer_digests_over_single_item_pages": true
   },
   "data_sources": {
-    "city_meetings": { "type": "coins", "enabled": true, "refresh_minutes": 1440, "exclude_bodies": ["Personnel Appeals Committee"], "public_viewer": "https://onlineservices.glasgow.gov.uk/councillorsandcommittees/", "_notes": "Phase 3.1 DONE 2026-10-22: CoInS (Northgate) via scrapers/parsers/glasgow_coins_v1.py. No robots.txt (404), no ToS found, no bot challenge on this host; www.glasgow.gov.uk is behind a Cloudflare challenge and is never touched. 49 meetings incl. 18 Area Partnerships + Licensing Board; agenda item titles only (papers are PDFs, not fetched). Personnel Appeals Committee (dismissal appeals) excluded. enabled:true only means the scraper CAN run: no scrape workflow/cron exists for glasgow yet and nothing has been written to the live DB." },
+    "city_meetings": { "type": "coins", "enabled": true, "meetings_have_time": true, "refresh_minutes": 1440, "exclude_bodies": ["Personnel Appeals Committee"], "public_viewer": "https://onlineservices.glasgow.gov.uk/councillorsandcommittees/", "_notes": "Phase 3.1 DONE 2026-10-22: CoInS (Northgate) via scrapers/parsers/glasgow_coins_v1.py. No robots.txt (404), no ToS found, no bot challenge on this host; www.glasgow.gov.uk is behind a Cloudflare challenge and is never touched. 49 meetings incl. 18 Area Partnerships + Licensing Board; agenda item titles only (papers are PDFs, not fetched). Personnel Appeals Committee (dismissal appeals) excluded. enabled:true only means the scraper CAN run: no scrape workflow/cron exists for glasgow yet and nothing has been written to the live DB." },
     "weather": { "type": "api", "enabled": false, "provider": "met_office_datahub", "_notes": "Phase 3.2: needs the owner's DataHub key. The US NWS parsers do not apply." },
     "weather_alerts": { "type": "met_office_warnings", "enabled": false, "_notes": "Phase 3.2: Met Office warnings + SEPA flood warnings." },
     "traffic": { "type": "traffic_scotland", "enabled": false, "_notes": "Phase 3.3: DATEX II needs an approved subscription; tellmescotland.gov.uk notices." },

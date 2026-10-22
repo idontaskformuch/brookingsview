@@ -106,7 +106,13 @@
     // Glasgow Loop (Phase 2 skeleton). Secrets must be set per environment:
     //   wrangler secret put <NAME> --env glasgow   (dashboard secrets did NOT bind to named envs last time)
     "glasgow": {
-      "name": "glasgowloop"
+      "name": "glasgowloop",
+      "routes": [
+        { "pattern": "glasgowloop.co.uk", "custom_domain": true },
+        { "pattern": "www.glasgowloop.co.uk", "custom_domain": true },
+        { "pattern": "glasgowloop.uk", "custom_domain": true },
+        { "pattern": "www.glasgowloop.uk", "custom_domain": true }
+      ]
     }
   }
 }

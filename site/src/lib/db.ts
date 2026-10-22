@@ -20,6 +20,9 @@
 import { neon } from '@neondatabase/serverless';
 import { siteConfig, isSectionDisabled } from './site-config';
 import { forCountry } from './country-profile';
+
+/** Locale for calendar-date text ("Tue, October 27" vs "Tue 27 October"). Times still en-US. */
+const DATE_LOCALE = forCountry(siteConfig.country, 'en-US', 'en-GB');
 import { activeAlerts, isAlertActive } from './alerts';
 import { pickSignGame } from './sign-game';
 import { computeClosureWatchState, type ClosureWatchStatus, type WeatherAlert } from './closure-watch';
@@ -2706,7 +2709,7 @@ const TZ = siteConfig.timezone;
 
 export function formatDate(value: string | null): string {
   if (!value) return '';
-  return new Date(value).toLocaleDateString('en-US', {
+  return new Date(value).toLocaleDateString(DATE_LOCALE, {
     weekday: 'short', month: 'long', day: 'numeric', timeZone: TZ,
   });
 }
@@ -2721,7 +2724,7 @@ export function formatDate(value: string | null): string {
  *  already-long `<title>`/og:title string, not read as its own sentence. */
 export function formatShortMonthDay(value: string | null): string {
   if (!value) return '';
-  return new Date(value).toLocaleDateString('en-US', {
+  return new Date(value).toLocaleDateString(DATE_LOCALE, {
     month: 'short', day: 'numeric', timeZone: TZ,
   });
 }
@@ -2797,7 +2800,7 @@ export function formatCalendarDate(value: string | Date | null): string {
   // vad vi fick (sträng-split eller lokala Date-komponenter), och bygg om till
   // UTC-midnatt själva -- oberoende av byggmaskinens egen tidszon.
   const { y, m, d } = calendarDateParts(value)!;
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(DATE_LOCALE, {
     weekday: 'short', month: 'long', day: 'numeric', timeZone: 'UTC',
   }).format(new Date(Date.UTC(y, m, d)));
 }
@@ -2813,7 +2816,7 @@ export function formatCalendarDate(value: string | Date | null): string {
 export function formatFullCalendarDate(value: string | Date | null): string {
   if (!value) return '';
   const { y, m, d } = calendarDateParts(value)!;
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(DATE_LOCALE, {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
   }).format(new Date(Date.UTC(y, m, d)));
 }
@@ -2827,7 +2830,7 @@ export function formatFullCalendarDate(value: string | Date | null): string {
 export function formatMonthYear(value: string | Date | null): string {
   if (!value) return '';
   const { y, m, d } = calendarDateParts(value)!;
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(DATE_LOCALE, {
     month: 'long', year: 'numeric', timeZone: 'UTC',
   }).format(new Date(Date.UTC(y, m, d)));
 }
@@ -2856,7 +2859,7 @@ export { calendarDateParts };
 export function formatMeetingDate(value: string | Date | null): string {
   if (!siteConfig.meetingsHaveTime) return formatCalendarDate(value);
   if (!value) return '';
-  return new Date(value).toLocaleDateString('en-US', {
+  return new Date(value).toLocaleDateString(DATE_LOCALE, {
     weekday: 'short', month: 'long', day: 'numeric', timeZone: TZ,
   });
 }

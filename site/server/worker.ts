@@ -40,6 +40,13 @@ import facilityRedirects from './facility-redirects.json';
 import { homeSalesParcelSlugFromPath, wasHomeSalesParcelEverRecorded } from './home-sales-gone';
 import { matchAiCrawler, logAiCrawlerHit } from './ai-crawler-log';
 
+/** Alias host -> canonical host. glasgowloop.uk and www redirect to glasgowloop.co.uk. */
+const HOST_ALIASES: Record<string, string> = {
+  'www.glasgowloop.co.uk': 'glasgowloop.co.uk',
+  'glasgowloop.uk': 'glasgowloop.co.uk',
+  'www.glasgowloop.uk': 'glasgowloop.co.uk',
+};
+
 interface WorkerEnv extends Env {
   // Bound via wrangler.jsonc `assets.binding` -- serves the static Astro
   // build output (site/dist) for every request this Worker doesn't
@@ -50,6 +57,14 @@ interface WorkerEnv extends Env {
 export default {
   async fetch(request: Request, env: WorkerEnv, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    // Alias hosts -> canonical host (301, path and query kept). Only hosts
+    // listed here are touched, so the other sites' behaviour is unchanged.
+    const canonicalHost = HOST_ALIASES[url.hostname];
+    if (canonicalHost) {
+      url.hostname = canonicalHost;
+      return Response.redirect(url.toString(), 301);
+    }
 
     // Answer-engine-visibility handoff, Section 6 item 2 -- see
     // ai-crawler-log.ts's own doc for why this is narrower than "log every

@@ -766,7 +766,7 @@ const CITIES: Record<string, SiteConfig> = {
     domain: 'glasgowloop.co.uk',
     siteUrl: 'https://glasgowloop.co.uk',
     timezone: 'Europe/London',
-    meetingsHaveTime: false,
+    meetingsHaveTime: true,
     meetingDecisionsTracked: false,
     description: 'Council decisions, events and local happenings in Glasgow, Scotland.',
     sourceBlurb: 'Glasgow Loop gathers public information from Glasgow City Council and other official Scottish sources.',
