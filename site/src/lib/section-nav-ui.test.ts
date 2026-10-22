@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright-core';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { buildSync } from 'esbuild';
@@ -25,6 +25,9 @@ async function launch(): Promise<Browser | null> {
   }
   return null;
 }
+
+// Real-browser tests: the first page open on a cold CI runner exceeds vitest's 5 s default.
+vi.setConfig({ testTimeout: 60_000 });
 
 beforeAll(async () => {
   const container = await AstroContainer.create();

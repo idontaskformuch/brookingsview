@@ -46,6 +46,9 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   ligger nu i sajternas worker (site/server/election-results.ts, town från HOSTNAME, ?town= ignoreras, read-only, Cache 30 s); valets Worker viewmedia-election-results är cron-only (*/10),
   DEPLOYAD (version d00fe4f8), secret DATABASE_URL satt via stdin (aldrig visat), första cron 03:00 UTC = Ok, alla tre 'skipped' (före valet). Fullt batteri: site vitest 1257, election-results 36,
   pytest 942, astro check 0, bygge x3 OK, disjoint 80/144/110.
+  PUSHAD 2026-10-22 (1479c1f + fix 9b507f5): första CI-deploy föll (site-bundlen importerade store.ts -> neon ej löst ur election-results/) -> read.ts utan beroenden; section-nav-ui
+  föll på CI även vid e126a24 (10 s hook / 5 s test på kall runner) -> hook 90 s, testTimeout 60 s. LIVE: /election-results/ 200 + /api/election-results 200 (available:false, phase before)
+  på alla tre domäner; IndexNow /election-results pingat (200 x3). Valets Worker kör cron (03:00 UTC Ok, 'skipped' x3).
   KVAR FÖRE VALET: (1) deploy av Worker: secret DATABASE_URL + route <sajt>/api/election-results* per zon (annars visar sidan "could not be loaded"); (2) ROLLED-BACK testskrivning av
   store.ts-SQL mot live (ej gjord, kräver ägarens ja); (3) Broomfield: svar på mejlet / elections.json före ons 28 okt, annars A; (4) ägaren skickar ROV-mejlet; (5) fetchUntil 2026-11-30 = antagande;
   (6) första riktiga snapshot granskas manuellt mot källan innan länk delas; (7) push + IndexNow (/election-results på alla tre) när ägaren säger ja.
