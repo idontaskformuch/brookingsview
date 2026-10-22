@@ -71,7 +71,7 @@ import requests
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from ai_pipeline import guardrails
+from ai_pipeline import guardrails, uk_guardrails
 from ai_pipeline.format_prompt import format_record, TEMPLATERS
 from ai_pipeline.venue_registry import load_registry, normalize_venue, queue_for_review, resolve_venue
 from db.db import content_hash
@@ -945,6 +945,14 @@ def publish_table(
         # Ren brus för modellen, och gör outputen mindre förutsägbar.
         ai_record = {k: v for k, v in row.items() if k not in _INTERNAL_FIELDS}
         ai_record = _localize_datetime_fields(ai_record, tz)
+        # UK gate (Glasgow spec phase 5), BEFORE any AI spend: contempt of
+        # court + no names of private individuals. A hold is not remembered
+        # (not in known_slugs, no discard streak) so it is re-judged each run.
+        held = uk_guardrails.hold_reasons(cfg, guardrails.source_to_text(ai_record))
+        if held:
+            print(f"    HOLD     {source_type}-{record_id}  ({'; '.join(held[:4])})")
+            thin += 1
+            continue
         result = format_record(
             ai_record, source_type, cfg,
             recent_openings=recent_openings_by_type.get(source_type),
@@ -956,6 +964,13 @@ def publish_table(
             recent_openings_by_type.setdefault(source_type, []).append(
                 guardrails.classify_opening(result.text)
             )
+
+        # UK gate, second line: the generated text itself (title included).
+        held = uk_guardrails.hold_reasons(cfg, result.text, build_title(table, row, cfg))
+        if held:
+            print(f"    HOLD     {source_type}-{record_id}  generated text: ({'; '.join(held[:4])})")
+            thin += 1
+            continue
 
         # SUBSTANSKRAV, del 2: has_substance() ovan skyddar bara mot tunn
         # KÄLLDATA innan AI-anropet. Men även med gott källunderlag kan

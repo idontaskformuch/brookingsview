@@ -52,10 +52,18 @@ def test_licensing_board_and_licensing_committee_are_present():
     assert any("Area Partnership" in b for b in boards)
 
 
-def test_identity_is_body_and_local_date_and_stable_when_agenda_appears():
+def test_identity_is_the_coins_meeting_id_when_there_is_one():
     rows = parse_meeting_list(_read("latest_meetings_p1.html"))
     first = next(r for r in rows if r["local_date"] == "22/10/2026")
-    assert first["id"] == "1875-20261022"
+    assert first["id"] == "coins-20670"
+    # the key it had before the agenda existed, so db.upsert_records re-keys the same row
+    assert first["identity_aliases"] == ["pending-1875-20261022"]
+
+
+def test_meeting_without_agenda_is_pending_keyed_with_no_aliases():
+    rows = parse_meeting_list(_read("latest_meetings_p1.html"))
+    calton = next(r for r in rows if r["board"] == "Calton Area Partnership")
+    assert calton["id"] == "pending-1765-20261111" and calton["identity_aliases"] == []
 
 
 def test_row_with_bad_date_or_time_is_skipped():

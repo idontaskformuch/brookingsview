@@ -1,0 +1,25 @@
+name: glasgow-scrape
+# Glasgow: BARA insamling av rådata till DB. Medvetet inget publish-steg, inget
+# bygge och ingen deploy -- Glasgow är noindex och får inte publicera något
+# förrän fas 5-spärrarna (.claude/state.md, "BLOCKERANDE före Glasgow-lansering")
+# är byggda och ägaren sagt till. Startas av cron-dispatchern (workflow_dispatch);
+# källor med refresh_minutes (city_meetings = 1440) hoppas över av runnern om
+# de körts nyligen, så 6-timmarsklockan ger ändå högst en hämtning per dygn.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      USER_AGENT:   "ViewMediaBot (+https://glasgowloop.co.uk/contact)"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Kör scrapers (skriver rådata till DB)
+        run: python -m scrapers.runner --config configs/glasgow.json

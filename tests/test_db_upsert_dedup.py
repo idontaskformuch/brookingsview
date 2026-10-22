@@ -148,7 +148,7 @@ def test_identity_lookup_takes_the_oldest_row_and_is_scoped_to_the_town():
     _, cur = _run_identity(select_result=(11040,))
     select = _executed_sql(cur, "SELECT id FROM meetings")[0]
     assert "ORDER BY id LIMIT 1" in select and "town_id = %s" in select
-    assert cur.execute.call_args_list[0].args[1] == ["moreno_valley_ca", "ID", "6918217e"]
+    assert cur.execute.call_args_list[0].args[1] == ["moreno_valley_ca", "ID", ["6918217e"]]
 
 
 def test_identity_no_match_falls_through_to_normal_insert():
@@ -196,3 +196,19 @@ def test_meetings_parsers_declare_their_sources_own_id():
     from scrapers.parsers.legistar_v1 import LegistarParser
     assert (EscribeParser.identity_key, LegistarParser.identity_key,
             AgendaLinkParser.identity_key) == ("ID", "EventId", "id")
+
+
+def test_identity_aliases_find_the_row_stored_under_the_pending_key():
+    """Glasgow/CoInS: the meeting's own id appears only once the agenda is
+    published; the row stored earlier under the pending key must be updated,
+    not duplicated."""
+    conn, cur = _fake_conn((42,))
+    rec = {"body": "Licensing Board", "meeting_date": "2026-11-06T10:00:00+00:00",
+           "content_hash": "h2",
+           "raw_data": {"id": "coins-21001", "identity_aliases": ["pending-1381-20261106"]}}
+    upsert_records(conn, "meetings", "glasgow", [rec], update_columns=["raw_data"],
+                   merge_raw_data=True, identity_key="id")
+    select = [c for c in cur.execute.call_args_list if "SELECT id FROM meetings" in c.args[0]][0]
+    assert "= ANY(%s)" in select.args[0]
+    assert select.args[1] == ["glasgow", "id", ["coins-21001", "pending-1381-20261106"]]
+    assert not _executed_sql(cur, "INSERT INTO")

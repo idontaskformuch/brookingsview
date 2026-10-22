@@ -17,6 +17,8 @@ export const SCRAPE_WORKFLOWS = [
   'scrape.yml',
   'moval-scrape.yml',
   'broomfield-scrape.yml',
+  // Glasgow: scrape only (no publish/build/deploy in the workflow).
+  'glasgow-scrape.yml',
 ];
 
 // Broomfield is deliberately absent: its school_alerts sources are disabled

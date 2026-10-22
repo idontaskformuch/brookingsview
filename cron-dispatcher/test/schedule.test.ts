@@ -12,7 +12,7 @@ describe('wrangler.jsonc', () => {
 });
 
 describe('scrape cron', () => {
-  it('dispatches all three scrape workflows', () => {
+  it('dispatches all four scrape workflows (Glasgow included)', () => {
     expect(dueWorkflows(SCRAPE_CRON, at('2026-10-21T06:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
   });
   it('unknown cron dispatches nothing', () => {

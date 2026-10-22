@@ -21,10 +21,14 @@ TWO PAGE TYPES ARE USED:
            papers themselves are PDFs and are not fetched.
 
 The meeting_date is the local wall clock converted to UTC (tz from the town
-config), same as the other meetings parsers. Identity is body + local date
-(raw_data["id"]) so the row survives the agenda being published later (the
-meetingid only exists then); the meetingid is kept in raw_data. A meeting
-moved to another date therefore shows up as a new row.
+config), same as the other meetings parsers. IDENTITY is CoInS's own meetingid
+(raw_data["id"] = "coins-<meetingid>"). Verified 2026-10-22: that id exists
+ONLY once an agenda is published (list rows, the calendar and committee.asp
+show no id for unscheduled meetings), so until then the row is keyed
+"pending-<bodyid>-<local date>" and, when the meetingid appears, the same row
+is found through raw_data["identity_aliases"] (db.upsert_records) and
+re-keyed -- no duplicate. A meeting with an id that is moved to another date
+stays one row; a pending one that is moved shows up as a new pending row.
 
 exclude_bodies (source config) drops whole bodies before anything is stored, e.g.
 the Personnel Appeals Committee (employment dismissal appeals).
@@ -97,8 +101,11 @@ def parse_meeting_list(html: str, tz: str = "Europe/London") -> list[dict]:
         agenda_a = cells[1].find("a", href=_MEETING_ID_RE)
         agenda_href = agenda_a["href"] if agenda_a else None
         body_id = _BODY_ID_RE.search(body_a["href"])[1]
+        meeting_id = _MEETING_ID_RE.search(agenda_href)[1] if agenda_href else None
+        pending_id = f"pending-{body_id}-{when.astimezone(ZoneInfo(tz)).strftime('%Y%m%d')}"
         out.append({
-            "id": f"{body_id}-{when.astimezone(ZoneInfo(tz)).strftime('%Y%m%d')}",
+            "id": f"coins-{meeting_id}" if meeting_id else pending_id,
+            "identity_aliases": [pending_id] if meeting_id else [],
             "body_id": body_id,
             "board": _text(body_a),
             "local_date": date_s,
@@ -106,7 +113,7 @@ def parse_meeting_list(html: str, tz: str = "Europe/London") -> list[dict]:
             "schedule_iso": when.isoformat(),
             "agenda_published": _text(cells[3]) or None,
             "location": _text(cells[4]) or None,
-            "meeting_id": _MEETING_ID_RE.search(agenda_href)[1] if agenda_href else None,
+            "meeting_id": meeting_id,
             "agenda_url": urljoin(BASE_URL, agenda_href) if agenda_href else None,
             "committee_url": urljoin(BASE_URL, body_a["href"].split("&bodytitle=")[0]),
         })

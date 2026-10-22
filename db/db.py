@@ -185,10 +185,14 @@ def upsert_records(conn, table: str, town_id: str, records: Iterable[dict],
             if identity_key is not None and isinstance(rec.get("raw_data"), dict):
                 identity = rec["raw_data"].get(identity_key)
                 if identity is not None:
+                    # identity_aliases (valfri lista i raw_data): tidigare id:n som
+                    # SAMMA post kan ha lagrats under (Glasgow/CoInS: ett möte får
+                    # sitt egna id först när agendan publiceras).
+                    ids = [str(identity), *map(str, rec["raw_data"].get("identity_aliases") or [])]
                     cur.execute(
                         f"SELECT id FROM {table} WHERE town_id = %s "
-                        f"AND raw_data->>%s = %s ORDER BY id LIMIT 1",
-                        [town_id, identity_key, str(identity)],
+                        f"AND raw_data->>%s = ANY(%s) ORDER BY id LIMIT 1",
+                        [town_id, identity_key, ids],
                     )
                     existing = cur.fetchone()
                     if existing:
