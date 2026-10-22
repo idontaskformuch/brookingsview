@@ -71,6 +71,7 @@ function relabelPeriod(p: { start: string; is_daytime: boolean; name: string }):
 function hourLabel(start: string): string {
   return new Date(start).toLocaleTimeString('en-US', { hour: 'numeric', timeZone: siteConfig.timezone });
 }
+import PageGuide from '../components/PageGuide.astro';
 ---
 <BaseLayout title={pageMeta.title} ogSlug="section-weather"
   description={`Forecast for ${placeLabel(siteConfig)}, from the National Weather Service.`}>
@@ -80,6 +81,13 @@ function hourLabel(start: string): string {
     with the rest of the site.
     {hubBacklink && <> Looking for a specific address instead? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
   </header>
+
+  <PageGuide
+    shows={`The forecast for ${siteConfig.cityName}: hour by hour for the next day and day by day for the week, plus any active weather alerts.`}
+    use="Use the hourly view to time a commute or an outdoor plan, and open an alert for what it means and how long it lasts. Forecasts change: the National Weather Service page is the authority."
+  >
+    <a href="https://www.weather.gov" rel="noopener">National Weather Service</a> forecast and alerts for this location.
+  </PageGuide>
 
   {alerts.length > 0 && (
     <section aria-label="Active weather alerts" class="alerts">

@@ -45,7 +45,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('jobs', s
 const hubBacklink = resolveHubBacklink('jobs', siteConfig);
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-jobs"
-  description={`Recent job listings in and near ${placeAbbr(siteConfig)}.`}>
+  description={`Recent job listings in and near ${placeAbbr(siteConfig)}.`} noindex>
   <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero section="jobs" />
   <header class="lede">

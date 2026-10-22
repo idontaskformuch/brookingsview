@@ -50,7 +50,9 @@ const itemListJsonLd = jobs.length > 0 ? {
 // generates a page for every category with at least one job, no minimum --
 // a category sitting at 1-2 listings today is a thin tag page, noindex
 // rather than removed since it's real content once more listings land.
-const isNoindex = jobs.length < 3;
+// 2026-10-22 (owner, Brookings AdSense review): ALL job pages are noindex now -- Adzuna listings
+// are identical on hundreds of other sites. The pages stay up for readers.
+const isNoindex = true;
 
 // One level deeper than buildClusterBreadcrumbTrail's own 3-crumb model --
 // see home-sales/[slug].astro's identical comment.

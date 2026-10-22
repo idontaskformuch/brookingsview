@@ -84,6 +84,7 @@ const newsArticleJsonLd = status.state === 'confirmed'
         siteConfig.siteName,
       ))
   : [];
+import PageGuide from '../components/PageGuide.astro';
 ---
 <BaseLayout
   title={pageTitle}
@@ -112,6 +113,13 @@ const newsArticleJsonLd = status.state === 'confirmed'
     {hubBacklink && <p class="cw-checked">Checking road conditions too? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</p>}
     <ShareButton title={pageTitle} />
   </header>
+
+  <PageGuide
+    shows={`Whether ${feat.districtName} has announced a school closure, delay or early release, alongside any weather alerts that could cause one.`}
+    use="Check it on a snowy or stormy morning. If nothing is confirmed here, confirm with the district before assuming school is on: this page never predicts a closure."
+  >
+    {feat.districtName}'s own announcements and National Weather Service alerts. <a href="/how-we-gather-this/">How we gather this</a>.
+  </PageGuide>
 
   {status.state === 'confirmed' && status.closures.length > 0 && (
     <section class="cw-panel cw-panel--confirmed" aria-labelledby="cw-state-heading">

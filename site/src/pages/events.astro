@@ -268,6 +268,7 @@ const webPageJsonLd = dateModified ? {
   url: canonicalUrl,
   dateModified,
 } : null;
+import PageGuide from '../components/PageGuide.astro';
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-events"
   description={`What's on this weekend in ${placeLabel(siteConfig)} — library programs, city events and community happenings.`}
@@ -282,6 +283,12 @@ const webPageJsonLd = dateModified ? {
     never guessed or rewritten. For a shorter list, see what's happening
     <a href="/today/">today</a> or over <a href="/this-week/">the week ahead</a>.
     Check back — this updates daily.</p>
+    <PageGuide
+      shows={`Upcoming events in and around ${siteConfig.cityName}, soonest first, with the date, time and venue the organiser published.`}
+      use="Scan by day, use the filters for a kind of event, and follow the link on any listing to the organiser for tickets, registration or changes. Times can change: check the organiser before you go."
+    >
+      Each listing links to the organiser's or venue's own page. <a href="/how-we-gather-this/">How we gather this</a>.
+    </PageGuide>
     {siteConfig.hasWhatsOn && (
       // Front-page orientation pass, Phase 4: "a first-time reader can't
       // tell Events and What's On apart" -- only one goes in primary nav

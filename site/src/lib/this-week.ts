@@ -382,6 +382,15 @@ export function buildDisplayRows(days: DayBucket[], timezone: string, dropPastDa
  *  this one directly. */
 export const THIS_WEEK_MIN_ITEMS = 3;
 
+/** Only the newest N weeks stay indexable (owner, 2026-10-22, Brookings AdSense review): older
+ *  /this-week/<week>/ pages and their /s/weekly-* stories are noindex,follow. Slugs are
+ *  zero-padded ISO weeks ("2026-w05"), so a plain string sort is chronological. */
+export const RECENT_WEEKS_INDEXED = 8;
+
+export function recentWeekSlugs(weekSlugs: Iterable<string>, n: number = RECENT_WEEKS_INDEXED): Set<string> {
+  return new Set([...new Set(weekSlugs)].sort().reverse().slice(0, n));
+}
+
 export function shouldNoindexWeekPage(days: DayBucket[]): boolean {
   const totalItems = days.reduce((n, d) => n + d.items.length, 0);
   return totalItems < THIS_WEEK_MIN_ITEMS;

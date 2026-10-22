@@ -78,7 +78,9 @@ const canonicalUrl = new URL(`/events/${facet.slug}/`, Astro.site ?? siteConfig.
 // facilities section below (see freeFacilities) even on a week with zero
 // qualifying events, so it never counts as thin the way the other facets
 // can -- never noindexed, regardless of item count.
-const isNoindex = facet.slug === 'free' ? false : items.length < 3;
+// 2026-10-22 (owner, Brookings AdSense review): every facet is noindex -- derived event lists;
+// /events/ itself stays indexed. 'free' can be flipped back once the facilities pages are enriched.
+const isNoindex = true;
 
 // "Free Things To Do" handoff, Decision 1: extend this existing facet
 // rather than a new page. Same facilities list getStaticPaths already

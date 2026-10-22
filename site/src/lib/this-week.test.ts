@@ -282,3 +282,20 @@ describe('shouldNoindexWeekPage', () => {
     expect(shouldNoindexWeekPage(days)).toBe(false);
   });
 });
+
+describe('recentWeekSlugs', () => {
+  it('keeps the newest N distinct weeks, chronologically across a year change', async () => {
+    const { recentWeekSlugs } = await import('./this-week');
+    const slugs = ['2025-w50', '2025-w51', '2025-w52', '2026-w01', '2026-w02', '2026-w03', '2026-w04', '2026-w05', '2026-w06', '2026-w05'];
+    const recent = recentWeekSlugs(slugs, 8);
+    expect(recent.size).toBe(8);
+    expect(recent.has('2025-w50')).toBe(false);
+    expect(recent.has('2025-w51')).toBe(true);
+    expect(recent.has('2026-w06')).toBe(true);
+  });
+  it('defaults to 8 weeks', async () => {
+    const { recentWeekSlugs, RECENT_WEEKS_INDEXED } = await import('./this-week');
+    expect(RECENT_WEEKS_INDEXED).toBe(8);
+    expect(recentWeekSlugs(Array.from({ length: 20 }, (_, i) => `2026-w${String(i + 1).padStart(2, '0')}`)).size).toBe(8);
+  });
+});

@@ -22,7 +22,7 @@ import {
 } from '../lib/db';
 import { buildEventFeed, todayUtcMidnight, selectBucketCandidates } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
-import { placeAbbr } from '../lib/country-profile';
+import { placeAbbr, forCountry } from '../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
 import { resolvePageMeta } from '../lib/page-meta';
@@ -52,6 +52,7 @@ const breadcrumbJsonLd = buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl);
 const pageMeta = resolvePageMeta('today', siteConfig);
 const pageTitle = pageMeta.title;
 const hubBacklink = resolveHubBacklink('today', siteConfig);
+import PageGuide from '../components/PageGuide.astro';
 ---
 
 <BaseLayout title={pageTitle} ogSlug="section-today"
@@ -64,6 +65,13 @@ const hubBacklink = resolveHubBacklink('today', siteConfig);
   </div>
 
   <SectionHero section="today" compact />
+
+  <PageGuide
+    shows={`What matters in ${siteConfig.cityName} right now: active alerts, school status, road conditions and today's and tonight's events.`}
+    use="Check it before you leave the house or plan the evening. Anything with a warning or closure links to the official notice, which is the one to rely on."
+  >
+    {forCountry(siteConfig.country, 'National Weather Service alerts, ', 'Met Office warnings, ')}local school and road-condition sources, and event organisers' own calendars. <a href="/how-we-gather-this/">How we gather this</a>.
+  </PageGuide>
 
   <TodayBlock
     cityName={siteConfig.cityName}

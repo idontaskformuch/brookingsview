@@ -29,7 +29,7 @@ import {
 import type { Story } from '../../lib/db';
 import {
   weekInfoForInstant, currentWeekInfo, previousWeekInfo, buildWeekDays, selectWeeklyLead,
-  buildDisplayRows, shouldNoindexWeekPage, type WeekInfo, type DayBucket, type Vertical,
+  buildDisplayRows, shouldNoindexWeekPage, recentWeekSlugs, type WeekInfo, type DayBucket, type Vertical,
 } from '../../lib/this-week';
 import { siteConfig } from '../../lib/site-config';
 import { placeAbbr } from '../../lib/country-profile';
@@ -64,6 +64,7 @@ export async function getStaticPaths() {
   }
   const current = currentWeekInfo(siteConfig.timezone);
   weekInfos.set(current.slug, current); // "week ahead" -- real data, narrative may not exist yet
+  const recentSlugs = recentWeekSlugs(weekInfos.keys());
 
   return Promise.all([...weekInfos.values()].map(async (week) => {
     const days = buildWeekDays(week, siteConfig.timezone, {
@@ -81,12 +82,14 @@ export async function getStaticPaths() {
         weeklyStory: weeklyBySlug.get(week.slug) ?? null,
         prevWeek: hasPrev ? prev : null,
         isCurrent: week.slug === current.slug,
+        isRecent: recentSlugs.has(week.slug),
       },
     };
   }));
 }
 
-const { week, days, lead, weeklyStory, prevWeek, isCurrent } = Astro.props as {
+const { week, days, lead, weeklyStory, prevWeek, isCurrent, isRecent } = Astro.props as {
+  isRecent: boolean;
   week: WeekInfo; days: DayBucket[]; lead: Story | null;
   weeklyStory: Story | null; prevWeek: WeekInfo | null; isCurrent: boolean;
 };
@@ -115,7 +118,7 @@ const itemListJsonLd = hasAnyItems ? {
   })),
 } : null;
 ---
-<BaseLayout title={title} wide ogSlug={`this-week-${week.slug}`} description={description} noindex={shouldNoindexWeekPage(days)}>
+<BaseLayout title={title} wide ogSlug={`this-week-${week.slug}`} description={description} noindex={shouldNoindexWeekPage(days) || !isRecent}>
   <header class="lede">
     <p class="kicker">This week in {siteConfig.cityName}</p>
     <h1>{pageMeta.h1}</h1>

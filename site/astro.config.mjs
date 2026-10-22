@@ -405,7 +405,11 @@ async function buildLastmodMap(townId, databaseUrl) {
   // harmless for that town (the Set just never matches a pathname that was
   // never built).
   // /vail-resorts/ (Broomfield) joined 2026-10-21: a headline+link mirror of Vail Resorts' newsroom, noindex in the page itself.
-  const noindexThinPageUrls = new Set(['/reviews/', '/recipes/', '/editorials/', '/columns/', '/vail-resorts/']);
+  // 2026-10-22 (owner, Brookings AdSense review): /jobs/ (+ every category, below), every /events/<facet>/,
+  // /events/past/ and /offline/ are noindex in the page itself -- mirrored here.
+  const noindexThinPageUrls = new Set(['/reviews/', '/recipes/', '/editorials/', '/columns/', '/vail-resorts/',
+    '/jobs/', '/events/past/', '/offline/',
+    ...['today', 'this-weekend', 'free', 'kids', 'library', 'outdoor', 'campus'].map((f) => `/events/${f}/`)]);
   // /vote/ (election 2026): the page itself sets noindex 30 days after the election (lib/election.ts
   // isPastNoindexWindow); mirror that here so the sitemap and the noindex tag never disagree.
   if (Date.now() > Date.parse('2026-11-03T00:00:00Z') + 30 * 86_400_000) { noindexThinPageUrls.add('/vote/'); noindexThinPageUrls.add('/election-results/'); }
@@ -539,8 +543,8 @@ async function buildLastmodMap(townId, databaseUrl) {
     if (!j.category) continue;
     jobCategoryCounts.set(j.category, (jobCategoryCounts.get(j.category) ?? 0) + 1);
   }
-  for (const [category, count] of jobCategoryCounts) {
-    if (count < MIN_TAG_PAGE_ITEMS) noindexThinPageUrls.add(`/jobs/category/${slugifyCategory(category)}/`);
+  for (const category of jobCategoryCounts.keys()) {
+    noindexThinPageUrls.add(`/jobs/category/${slugifyCategory(category)}/`); // all job categories noindex (2026-10-22)
   }
 
   // property_sales only exists for Moreno Valley -- home-sales/zip/[zip].astro
@@ -666,8 +670,18 @@ async function buildLastmodMap(townId, databaseUrl) {
     for (const g of regionalGames) bumpWeek(isoWeekSlugMirror(utcDatePartsMirror(g.game_date)));
   }
 
+  // Only the newest RECENT_WEEKS_INDEXED weeks stay indexable -- mirrors lib/this-week.ts's
+  // recentWeekSlugs(): older /this-week/<week>/ pages AND their /s/weekly-* stories are noindex.
+  const RECENT_WEEKS_INDEXED = 8;
+  const recentWeekSlugsMirror = new Set([...pageWeekSlugs].sort().reverse().slice(0, RECENT_WEEKS_INDEXED));
   for (const slug of pageWeekSlugs) {
-    if ((weekItemCounts.get(slug) ?? 0) < MIN_TAG_PAGE_ITEMS) noindexThinPageUrls.add(`/this-week/${slug}/`);
+    if ((weekItemCounts.get(slug) ?? 0) < MIN_TAG_PAGE_ITEMS || !recentWeekSlugsMirror.has(slug)) noindexThinPageUrls.add(`/this-week/${slug}/`);
+  }
+  for (const s of stories) {
+    if (s.source_type !== 'weekly' || !s.occurs_at) continue;
+    if (!recentWeekSlugsMirror.has(isoWeekSlugMirror(localDatePartsMirror(new Date(s.occurs_at), thisWeekTz)))) {
+      noindexStoryUrls.add(`/s/${publicSlugMirror(s.slug)}/`);
+    }
   }
 
   // /events/<facet>/ thin-facet mirror (2026-10-07, Broomfield sitemap fix;

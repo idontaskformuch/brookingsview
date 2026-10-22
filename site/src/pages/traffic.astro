@@ -60,6 +60,7 @@ const SEVERITY_LABELS: Record<string, string> = {
 };
 const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | null }) =>
   i.zone === 'in_town' ? `In ${siteConfig.cityName}` : `Approach roads · ${Math.round(i.distanceMiles ?? 0)} mi out`;
+import PageGuide from '../components/PageGuide.astro';
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-traffic"
   description={`Current road incidents and lane closures affecting ${placeAbbr(siteConfig)}.`}
@@ -87,6 +88,15 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
     )}
     <ShareButton title={pageMeta.title} />
   </header>
+
+  <PageGuide
+    shows={`Road incidents, lane closures and construction reported near ${siteConfig.cityName}, with severity and location.`}
+    use="Look before you drive, filter by severity, and treat an empty table as 'nothing reported', not 'guaranteed clear'. For road conditions in snow or ice, check the official source too."
+  >
+    {siteConfig.trafficSource
+      ? <><a href={siteConfig.trafficSource.url} rel="noopener">{siteConfig.trafficSource.name}</a>, refreshed with each site update.</>
+      : <>No public live incident feed has been found for this area; weather alerts are on the weather page.</>}
+  </PageGuide>
 
   <SectionRule label={incidents.length > 0 ? `${incidents.length} active` : 'Current incidents'} />
 

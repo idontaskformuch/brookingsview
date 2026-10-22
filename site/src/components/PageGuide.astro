@@ -1,0 +1,28 @@
+---
+/** Short "what this page is for" block (owner, 2026-10-22, editorial rule in CLAUDE.md:
+ *  data -> what it means -> what the reader can do). Three labelled lines:
+ *  what the page shows, how to use it, where the data comes from. The sources line is a
+ *  slot so a page can link its real sources. */
+interface Props {
+  shows: string;
+  use: string;
+}
+const { shows, use } = Astro.props;
+---
+<aside class="page-guide" aria-label="About this page">
+  <p><strong>What this shows.</strong> {shows}</p>
+  <p><strong>How to use it.</strong> {use}</p>
+  <p><strong>Sources.</strong> <slot /></p>
+</aside>
+<style>
+  .page-guide {
+    margin: 0 0 1.5rem;
+    padding: 0.75rem 1rem;
+    border-left: 3px solid var(--rule, #c8c6bd);
+    background: var(--surface, transparent);
+    font-size: 0.95rem;
+    max-width: 44rem;
+  }
+  .page-guide p { margin: 0 0 0.4rem; }
+  .page-guide p:last-child { margin-bottom: 0; }
+</style>
