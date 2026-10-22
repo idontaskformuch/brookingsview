@@ -55,7 +55,7 @@ Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
   Security (API 2026-10-21): Secret scanning + Push protection = ENABLED, Dependabot alerts = enabled; dependabot_security_updates,
   non_provider_patterns, validity_checks = disabled (ej begärda).
   Cron-dispatcher deployad+verifierad (version 33925058 + secret 97cc8bae, GITHUB_TOKEN utgår 2027-10-21). Workerns egen token OTESTAD
-  tills första cron (00:00Z). Ta bort schedule:-blocken (scrape.yml, moval-/broomfield-scrape.yml, closure-watch-morning.yml,
+  tills första cron (00:00Z). [2026-10-22: scrape.yml/moval-scrape/broomfield-scrape schedule BORTTAGNA (Worker-dispatch 00:01Z grön x3). KVAR: closure-watch-morning.yml + moval-closure-watch-morning.yml schedule tas bort FÖRST när Workerns körning fre 23 okt 10:30Z är verifierad grön.] Ta bort schedule:-blocken (scrape.yml, moval-/broomfield-scrape.yml, closure-watch-morning.yml,
   moval-closure-watch-morning.yml) FÖRST när en cron-startad (event=workflow_dispatch) scrape gått grönt; visa diffen innan.
   Vakthunden larmar via GitHub-issues sedan Q0 (ALERT_WEBHOOK används ej).
 - Fas 6 (dark mode) KLAR och pushad 2026-10-21 (ägaren godkände). Alla tre städer byggda, vitest 1148 +

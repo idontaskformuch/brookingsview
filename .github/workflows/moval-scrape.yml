@@ -6,8 +6,6 @@ name: moval-scrape-and-publish
 # egen kommentar för hela resonemanget (gäller identiskt här).
 
 on:
-  schedule:
-    - cron: "0 */6 * * *"
   workflow_dispatch: {}       # tillåt manuell körning
 
 jobs:

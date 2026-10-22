@@ -13,8 +13,6 @@ name: scrape-and-publish
 # att bryta ut den separat är en STÖRRE ändring (egen build+deploy-pipeline,
 # inte bara ett extra scrape-jobb) än vad som görs här -- flaggat, inte byggt.
 on:
-  schedule:
-    - cron: "0 */6 * * *"
   workflow_dispatch: {}       # tillåt manuell körning
 
 jobs:
