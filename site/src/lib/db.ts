@@ -26,6 +26,7 @@ import { SHARED_CONTENT_SOURCE_TYPES } from './cross-site-canonical';
 import { resolveCluster } from './clusters';
 import { storyHref } from './content-slugs';
 import { calendarDayDiff } from './time';
+import { isAllDay } from './local-day';
 import { ELECTION_BY_TOWN } from '../config/election';
 import { daysBetween, todayIn } from './election';
 import { calendarDateParts } from './calendar-date';
@@ -2744,9 +2745,20 @@ export function formatTime(value: string | null): string {
   });
 }
 
-export function formatDateTime(value: string | null): string {
+export function formatDateTime(value: string | null, endsAt?: string | null): string {
   if (!value) return '';
+  if (isAllDay({ start: new Date(value).toISOString(), end: endsAt ? new Date(endsAt).toISOString() : null }, TZ)) {
+    return `${formatDate(value)} · All day`;
+  }
   return `${formatDate(value)} at ${formatTime(value)}`;
+}
+
+/** "· 7:30 PM" suffix for a list row, or "· All day" for a midnight start with no
+ *  real end (same rule as local-day.ts); '' when there is no start. */
+export function formatTimeOrAllDay(start: string | null, end?: string | null): string {
+  if (!start) return '';
+  return isAllDay({ start: new Date(start).toISOString(), end: end ? new Date(end).toISOString() : null }, TZ)
+    ? 'All day' : formatTime(start);
 }
 
 /** Husförsäljningspris -- "$350,000", inga decimaler (öre är aldrig relevant här). */
@@ -2848,10 +2860,10 @@ export function formatMeetingDate(value: string | Date | null): string {
 
 /** Rätt formatering av story.occurs_at givet KÄLLTYP -- enda stället den
  *  distinktionen behöver göras, så inget anropsställe kan glömma den. */
-export function formatOccursAt(story: Pick<Story, 'source_type' | 'occurs_at'>): string {
+export function formatOccursAt(story: Pick<Story, 'source_type' | 'occurs_at'> & { ends_at?: string | null }): string {
   if (!story.occurs_at) return '';
   if (story.source_type === 'meeting' || story.source_type === 'meeting_followup') return formatMeetingDate(story.occurs_at);
-  return formatDateTime(story.occurs_at);
+  return formatDateTime(story.occurs_at, story.ends_at);
 }
 
 /** "in 6 days" / "tomorrow" / "today" -- för skyltremsan.

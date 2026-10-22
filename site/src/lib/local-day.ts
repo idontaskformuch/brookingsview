@@ -40,6 +40,20 @@ export function localHourOf(d: Date, timezone: string): number {
   return parts(d, timezone).h;
 }
 
+/** All-day item: starts at local midnight and has no real end (none, or not after
+ *  the start). Same rule eventEndsAt() applies below; display code shows
+ *  "All day" for these instead of "12:00 AM". */
+export function isAllDay(e: TimedEvent, timezone: string): boolean {
+  const start = new Date(e.start);
+  if (Number.isNaN(start.getTime())) return false;
+  if (e.end) {
+    const end = new Date(e.end);
+    if (!Number.isNaN(end.getTime()) && end.getTime() > start.getTime()) return false;
+  }
+  const p = parts(start, timezone);
+  return p.h === 0 && p.min === 0;
+}
+
 /** The instant an event stops counting as "happening". A no-end event that
  *  starts at local midnight is an all-day item: it lasts until local midnight. */
 export function eventEndsAt(e: TimedEvent, timezone: string): Date {

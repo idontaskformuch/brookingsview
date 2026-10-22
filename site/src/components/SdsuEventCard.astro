@@ -5,7 +5,7 @@
  *  nästa match för Brookings, se index.astro:s tie-break-logik
  *  (whichever is chronologically sooner). */
 import type { SdsuEvent } from '../lib/db';
-import { formatDate, formatTime } from '../lib/db';
+import { formatDate, formatTimeOrAllDay } from '../lib/db';
 
 interface Props { event: SdsuEvent; feature?: boolean; }
 const { event, feature = false } = Astro.props;
@@ -14,7 +14,7 @@ const { event, feature = false } = Astro.props;
   <p class="event__meta"><span class="kicker">{event.primary_category ?? 'SDSU'}</span></p>
   <p class="event__title">{event.title}</p>
   <p class="event__when data">
-    {event.starts_at && formatDate(event.starts_at)}{event.starts_at && ` · ${formatTime(event.starts_at)}`}
+    {event.starts_at && formatDate(event.starts_at)}{event.starts_at && ` · ${formatTimeOrAllDay(event.starts_at, event.ends_at)}`}
     {event.location && <><br />{event.location}</>}
   </p>
 </div>

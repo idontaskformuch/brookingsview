@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   isAiWrittenContent, CONTENT_TRACK_TYPES, countdown, formatShortMonthDay, titleTagForStory,
+  formatOccursAt, formatTimeOrAllDay,
   type SourceType,
 } from './db';
 
@@ -205,5 +206,24 @@ describe('every reader-facing stories listing excludes superseded rows', () => {
     // published_at floor.
     expect(body).not.toMatch(/OR occurs_at IS NULL OR/);
     expect(body).toContain("(occurs_at IS NULL AND published_at >= now() - interval '24 hours')");
+  });
+});
+
+describe('all-day events show "All day", not "12:00 AM"', () => {
+  // Brookings builds use America/Chicago; 2026-10-24 00:00 CDT = 05:00Z.
+  const midnight = '2026-10-24T05:00:00Z';
+  it('formatOccursAt: midnight start, no end', () => {
+    expect(formatOccursAt({ source_type: 'event', occurs_at: midnight })).toBe('Sat, October 24 · All day');
+    expect(formatOccursAt({ source_type: 'event', occurs_at: midnight, ends_at: null })).toBe('Sat, October 24 · All day');
+  });
+  it('formatOccursAt: real start time or real end keeps the clock', () => {
+    expect(formatOccursAt({ source_type: 'event', occurs_at: '2026-10-24T19:30:00Z' })).toBe('Sat, October 24 at 2:30 PM');
+    expect(formatOccursAt({ source_type: 'event', occurs_at: midnight, ends_at: '2026-10-24T07:00:00Z' })).toBe('Sat, October 24 at 12:00 AM');
+  });
+  it('formatTimeOrAllDay for list rows', () => {
+    expect(formatTimeOrAllDay(midnight, null)).toBe('All day');
+    expect(formatTimeOrAllDay(midnight, '2026-10-24T07:00:00Z')).toBe('12:00 AM');
+    expect(formatTimeOrAllDay('2026-10-24T19:30:00Z')).toBe('2:30 PM');
+    expect(formatTimeOrAllDay(null)).toBe('');
   });
 });

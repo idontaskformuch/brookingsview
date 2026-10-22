@@ -207,8 +207,15 @@ describe('dayTimeKicker', () => {
   it('uses 12 for both noon and midnight, never 0', () => {
     // 2026-08-27T17:00:00Z = 12:00 CDT noon
     expect(dayTimeKicker('2026-08-27T17:00:00Z', CHI)).toBe('Thu · 12 PM');
-    // 2026-08-28T05:00:00Z = 00:00 CDT midnight -> Friday local
-    expect(dayTimeKicker('2026-08-28T05:00:00Z', CHI)).toBe('Fri · 12 AM');
+    // 2026-08-28T05:00:00Z = 00:00 CDT midnight -> Friday local, with a real end (not all-day)
+    expect(dayTimeKicker('2026-08-28T05:00:00Z', CHI, '2026-08-28T07:00:00Z')).toBe('Fri · 12 AM');
+  });
+
+  it('says "All day" for a midnight start with no real end', () => {
+    expect(dayTimeKicker('2026-08-28T05:00:00Z', CHI)).toBe('Fri · All day');
+    expect(dayTimeKicker('2026-08-28T05:00:00Z', CHI, null)).toBe('Fri · All day');
+    expect(dayTimeKicker('2026-08-28T05:00:00Z', CHI, '2026-08-28T05:00:00Z')).toBe('Fri · All day');
+    expect(dayTimeKicker('2026-08-28T05:01:00Z', CHI)).toBe('Fri · 12:01 AM');
   });
 
   it('is timezone-aware, not UTC', () => {
@@ -244,5 +251,18 @@ describe('hasEventPassed', () => {
 
   it('accepts real Date objects, not just ISO strings', () => {
     expect(hasEventPassed(new Date('2026-08-26T19:00:00Z'), null, NOW)).toBe(true);
+  });
+});
+
+describe('relativeTime for all-day items', () => {
+  const now = new Date('2026-10-22T15:00:00Z'); // 10:00 CDT Thu Oct 22
+  it('drops the clock for a midnight start with no end', () => {
+    expect(relativeTime('2026-10-23T05:00:00Z', now, CHI)).toBe('tomorrow');          // Fri 00:00
+    expect(relativeTime('2026-10-24T05:00:00Z', now, CHI)).toBe('Saturday');
+    expect(relativeTime('2026-10-22T05:00:00Z', now, CHI)).toBe('today');             // started 00:00 today, still today
+  });
+  it('keeps the clock when the item has a real end or a real start time', () => {
+    expect(relativeTime('2026-10-23T05:00:00Z', now, CHI, '2026-10-23T07:00:00Z')).toBe('tomorrow at 12am');
+    expect(relativeTime('2026-10-23T19:30:00Z', now, CHI)).toBe('tomorrow at 2:30pm');
   });
 });

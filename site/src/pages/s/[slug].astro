@@ -631,7 +631,7 @@ const eventJsonLdObject = buildEventJsonLd(
               return (
                 <li>
                   <a href={href}>{s.title}</a>
-                  <span class="when data">{formatOccursAt(s)}{distanceMiles != null && ` · ${Math.round(distanceMiles)} mi away`}</span>
+                  <span class="when data">{formatOccursAt({ ...s, ends_at: item.sourceKind === 'story' ? s.ends_at : item.event.ends_at })}{distanceMiles != null && ` · ${Math.round(distanceMiles)} mi away`}</span>
                 </li>
               );
             })}

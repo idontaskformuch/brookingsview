@@ -30,6 +30,14 @@
  *     ISO value as the machine-readable attribute
  */
 
+import { isAllDay } from './local-day';
+
+function allDayOf(date: Date, endsAt: Date | string | null | undefined, timeZone: string): boolean {
+  if (Number.isNaN(date.getTime())) return false;
+  const end = endsAt == null ? null : new Date(endsAt);
+  return isAllDay({ start: date.toISOString(), end: end && !Number.isNaN(end.getTime()) ? end.toISOString() : null }, timeZone);
+}
+
 function zonedParts(date: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone, hourCycle: 'h23',
@@ -72,14 +80,15 @@ function monthDay(date: Date, timeZone: string, withYear: boolean): string {
   }).format(date);
 }
 
-function pastText(date: Date, now: Date, timeZone: string): string {
+function pastText(date: Date, now: Date, timeZone: string, allDay = false): string {
   const diffMinutes = (now.getTime() - date.getTime()) / 60_000;
-  if (diffMinutes < 60) return 'just now';
+  if (diffMinutes < 60 && !allDay) return 'just now';
 
   const dayDiff = calendarDayDiff(date, now, timeZone); // negative: date is before now
   const { hour, year } = zonedParts(date, timeZone);
 
   if (dayDiff === 0) {
+    if (allDay) return 'today';
     if (hour < 12) return 'this morning';
     if (hour < 17) return 'this afternoon';
     return 'this evening';
@@ -91,14 +100,15 @@ function pastText(date: Date, now: Date, timeZone: string): string {
   return monthDay(date, timeZone, !sameYear);
 }
 
-function futureText(date: Date, now: Date, timeZone: string): string {
+function futureText(date: Date, now: Date, timeZone: string, allDay = false): string {
   const dayDiff = calendarDayDiff(date, now, timeZone); // positive: date is after now
   const { hour, minute, year } = zonedParts(date, timeZone);
-  const clock = formatClockTime(hour, minute);
+  // An all-day item has no clock: "tomorrow", not "tomorrow at 12am".
+  const at = allDay ? '' : ` at ${formatClockTime(hour, minute)}`;
 
-  if (dayDiff === 0) return `today at ${clock}`;
-  if (dayDiff === 1) return `tomorrow at ${clock}`;
-  if (dayDiff <= 6) return `${weekdayName(date, timeZone)} at ${clock}`;
+  if (dayDiff === 0) return `today${at}`;
+  if (dayDiff === 1) return `tomorrow${at}`;
+  if (dayDiff <= 6) return `${weekdayName(date, timeZone)}${at}`;
   if (dayDiff <= 13) return `next ${weekdayName(date, timeZone)}`;
 
   const sameYear = year === zonedParts(now, timeZone).year;
@@ -128,7 +138,8 @@ export function relativeTime(
     const end = typeof endsAt === 'string' ? new Date(endsAt) : endsAt;
     if (d.getTime() <= now.getTime() && now.getTime() < end.getTime()) return 'now';
   }
-  return d.getTime() <= now.getTime() ? pastText(d, now, timeZone) : futureText(d, now, timeZone);
+  const allDay = allDayOf(d, endsAt, timeZone);
+  return d.getTime() <= now.getTime() ? pastText(d, now, timeZone, allDay) : futureText(d, now, timeZone, allDay);
 }
 
 /** 2026-10-02, item C1: a compact "{DAY} · {TIME}" kicker for an event's
@@ -143,10 +154,11 @@ export function relativeTime(
  *  the exact date is already shown elsewhere on the card (or is today/soon
  *  by construction of whatever list rendered the card), not a general-
  *  purpose "how far away is this" sentence. */
-export function dayTimeKicker(date: Date | string, timeZone: string): string {
+export function dayTimeKicker(date: Date | string, timeZone: string, endsAt?: Date | string | null): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   const { hour, minute } = zonedParts(d, timeZone);
   const day = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(d);
+  if (allDayOf(d, endsAt, timeZone)) return `${day} · All day`;
   const period = hour < 12 ? 'AM' : 'PM';
   const hour12 = hour % 12 || 12;
   const clock = minute === 0 ? `${hour12} ${period}` : `${hour12}:${String(minute).padStart(2, '0')} ${period}`;

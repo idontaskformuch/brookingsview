@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bucketOf, countToday, countTonight, eventEndsAt, hasEnded, localDayNumber, relativeDayLabel } from './local-day';
+import { bucketOf, countToday, countTonight, eventEndsAt, hasEnded, isAllDay, localDayNumber, relativeDayLabel } from './local-day';
 
 const CHI = 'America/Chicago';
 const LA = 'America/Los_Angeles';
@@ -94,5 +94,35 @@ describe('counts and relative labels', () => {
     expect(relativeDayLabel(at('2026-10-21T04:59:00Z'), now, CHI)).toBe('today');
     expect(relativeDayLabel(at('2026-10-21T05:01:00Z'), now, CHI)).toBe('tomorrow');
     expect(relativeDayLabel(at('2026-10-23T18:00:00Z'), now, CHI)).toBe('in 3 days');
+  });
+});
+
+describe('isAllDay (start at local midnight, no real end)', () => {
+  it('is true for a midnight start with no end, an empty end, or an end not after the start', () => {
+    // 2026-10-24 00:00 CDT = 05:00Z
+    expect(isAllDay({ start: '2026-10-24T05:00:00Z' }, CHI)).toBe(true);
+    expect(isAllDay({ start: '2026-10-24T05:00:00Z', end: null }, CHI)).toBe(true);
+    expect(isAllDay({ start: '2026-10-24T05:00:00Z', end: '' }, CHI)).toBe(true);
+    expect(isAllDay({ start: '2026-10-24T05:00:00Z', end: '2026-10-24T05:00:00Z' }, CHI)).toBe(true);
+  });
+
+  it('is false with a real end, or when the start is not local midnight', () => {
+    expect(isAllDay({ start: '2026-10-24T05:00:00Z', end: '2026-10-24T07:00:00Z' }, CHI)).toBe(false);
+    expect(isAllDay({ start: '2026-10-24T00:00:00Z' }, CHI)).toBe(false); // 7 PM CDT the day before
+    expect(isAllDay({ start: '2026-10-24T05:01:00Z' }, CHI)).toBe(false); // 00:01
+    expect(isAllDay({ start: 'garbage' }, CHI)).toBe(false);
+  });
+
+  it('follows the town zone and DST', () => {
+    expect(isAllDay({ start: '2026-10-24T07:00:00Z' }, LA)).toBe(true);   // 00:00 PDT
+    expect(isAllDay({ start: '2026-11-01T05:00:00Z' }, CHI)).toBe(true);  // 00:00 CDT on the fall-back day
+    expect(isAllDay({ start: '2026-11-02T06:00:00Z' }, CHI)).toBe(true);  // 00:00 CST after it
+    expect(isAllDay({ start: '2026-10-24T05:00:00Z' }, 'UTC')).toBe(false);
+  });
+
+  it('agrees with eventEndsAt: all-day ends at the next local midnight', () => {
+    const e = { start: '2026-10-24T05:00:00Z' };
+    expect(isAllDay(e, CHI)).toBe(true);
+    expect(eventEndsAt(e, CHI).toISOString()).toBe('2026-10-25T05:00:00.000Z');
   });
 });

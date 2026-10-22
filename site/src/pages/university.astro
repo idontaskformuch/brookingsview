@@ -21,7 +21,7 @@ import ShareButton from '../components/ShareButton.astro';
 import type { SdsuEvent } from '../lib/db';
 import {
   getUpcomingSdsuEvents, getUpcomingArtsEvents, getUpcomingAcademicDates, getContentByType,
-  formatCalendarDate, formatDate, formatTime,
+  formatCalendarDate, formatDate, formatTime, formatTimeOrAllDay,
 } from '../lib/db';
 import SectionHero from '../components/SectionHero.astro';
 import { SECTION_THEME } from '../lib/section-theme';
@@ -154,7 +154,7 @@ const sections = (
           <a class="hero-card" href={event.event_url} rel="noopener">
             <p class="hero-card__date data">
               {event.starts_at && formatDate(event.starts_at)}
-              {event.starts_at && ` · ${formatTime(event.starts_at)}`}
+              {event.starts_at && ` · ${formatTimeOrAllDay(event.starts_at, event.ends_at)}`}
             </p>
             <p class="hero-card__title">{iconFor(event.primary_category, event.title)} {event.title}</p>
             {event.location && <p class="hero-card__loc">{event.location}</p>}
@@ -174,7 +174,7 @@ const sections = (
             <p class="event-card__meta data">
               {iconFor(event.primary_category, event.title)} {event.primary_category ?? 'Event'}
               {event.starts_at && ` · ${formatDate(event.starts_at)}`}
-              {event.starts_at && ` · ${formatTime(event.starts_at)}`}
+              {event.starts_at && ` · ${formatTimeOrAllDay(event.starts_at, event.ends_at)}`}
             </p>
             <p class="event-card__title">{event.title}</p>
             {event.location && <p class="event-card__loc">{event.location}</p>}
@@ -214,7 +214,7 @@ const sections = (
             <p class="event-card__meta data">
               {iconFor(event.primary_category, event.title)} {event.primary_category ?? 'Event'}
               {event.starts_at && ` · ${formatDate(event.starts_at)}`}
-              {event.starts_at && ` · ${formatTime(event.starts_at)}`}
+              {event.starts_at && ` · ${formatTimeOrAllDay(event.starts_at, event.ends_at)}`}
             </p>
             <p class="event-card__title">{event.title}</p>
             {event.location && <p class="event-card__loc">{event.location}</p>}
