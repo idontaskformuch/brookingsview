@@ -31,8 +31,8 @@ beforeAll(async () => {
   for (const { town, nav } of NAVS) htmlOf.set(town, await container.renderToString(SectionNav, { props: { nav, path: '/city-hall/' } }));
   bundle = buildSync({ entryPoints: [here('./section-nav-ui.ts')], bundle: true, format: 'iife', globalName: 'SNAV', write: false }).outputFiles[0].text;
   browser = await launch();
-});
-afterAll(async () => { await browser?.close(); });
+}, 90_000); // renders 3 towns' nav + bundles + launches a browser: > the 10 s default on a loaded CI runner
+afterAll(async () => { await browser?.close(); }, 30_000);
 
 async function open(town: string): Promise<Page> {
   const page = await browser!.newPage({ viewport: { width: 360, height: 740 } });
