@@ -4,6 +4,13 @@ Historik: se .claude/state-archive.md, läs bara vid behov.
 Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 
 ## 1. Nu
+- RUNDA 2026-10-24 KLAR (spec: .claude/spec-round-2026-10-24.md). PUSHAD (origin/main 5e42af2 + backlog-commit lokalt, ej pushad); Glasgow DEPLOYAD via wrangler (version 2ade247d) inkl. kompakt varningsruta (en rad, högsta varning + "+1 yellow warning", Details -> /weather/#weather-warnings, "What should I do?" bara på /weather/). US-sajterna deployas av CI: status EJ kontrollerad (gh saknas) -- verifiera live.
+  Gjort: denylist 5 bilder; modeller Sonnet=event+möten, Haiku=övrigt (mät med scripts/model_quality_report.py efter ~1 vecka; baslinje event 34 %, meeting 50 % första försök); Glasgow Life-serier expanderas 30 dagar; Public Library 20:00 + migrate_facility_hours live (Glasgow 12 st).
+  Batteri en gång: pytest 1081, vitest 1430, astro check 0 fel, bygge x4 OK, sitemap/noindex-disjoint OK.
+  Q3 (Sonnet) före/efter: Brookings 146 -> 132 fynd (42 lösta, 28 nya), Glasgow 71 -> 74 (OBS före=Opus, efter=Sonnet; olika granskare, jämför med försiktighet). Rapporter: qa/out/q3/after-2026-10-24-{brookings,glasgow}/. Första körningen var ogiltig (--review stängde av AI), kasserad.
+  ÖPPNA FYND (inte åtgärdade, ägaren sa "börja inte på nytt"): Glasgow /events/ visar gamla serie-startsidor under "Recently" (JUN2 Board Games, FEB22 Colouring Club, NOV27 Soft Play) och "TODAY"-rubrik tom trots Max Richter 23 okt; ~40 kommande serieförekomster saknar story (19 föll på incoherent_fragments, 4 UK-HOLD); Glasgow event-sida visar "upcoming" efter start; Brookings /events/ dubbletter (Yule Market x3) + "Today" under söndag; /today/ visar båda varningarna fullt; meetings/digest-brister (dåtida rader i veckodigest).
+  Nytt i backlog: veckolistor-redesign (efter Glasgow-lansering).
+
 - ÅRLIGA UPPDATERINGAR: se .claude/annual.md (Thanksgiving-config, game day-säsong, Hobo Day, sophämtning, valsidor, campusguide, facilities m.fl., med datum). Gå igenom listan i januari, juli och augusti och före 1 november.
 - NÄSTA (ägaren 2026-10-21, går före Kö 9 Steg 2, Glasgow och Q2): VAL FAS 2, deadline 2 nov. Beslut: Kö 4 + .claude/election-2a-inventory.md.
   Broomfield via Clarity, SD via XLSX, Moreno bara länk (ROV-mejl SKICKAT 2026-10-21, väntar på svar), Worker-JSON utan rebuilds, torrtest mot junivalen.
