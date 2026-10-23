@@ -93,7 +93,13 @@ async function newContext(browser, { theme, tz, base, origin }) {
 
 /** Runs inside the page: facts the checks and the reviewer need. */
 function probe() {
-  const txt = (el) => (el ? (el.innerText || '').replace(/[ \t]+\n/g, '\n').trim() : '');
+  // textContent of a clone without script/style: innerText would apply CSS text-transform (kickers come out ALL CAPS)
+  const txt = (el) => {
+    if (!el) return '';
+    const c = el.cloneNode(true);
+    c.querySelectorAll('script, style, noscript, template, svg').forEach((e) => e.remove());
+    return (c.textContent || '').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+  };
   const main = document.querySelector('main') || document.body;
   const shell = (() => {
     const c = document.body.cloneNode(true);
@@ -103,8 +109,12 @@ function probe() {
   const headings = [...main.querySelectorAll('h1,h2,h3')];
   const emptyHeadings = [];
   for (const h of headings) {
-    let n = h.nextElementSibling; let has = false;
-    while (n && !/^H[1-3]$/.test(n.tagName)) { if ((n.innerText || '').trim().length > 0 || n.querySelector('img,a,li')) { has = true; break; } n = n.nextElementSibling; }
+    let has = false;
+    // content follows the heading, or follows the wrapper the heading sits in (one level up)
+    for (let node = h, lvl = 0; lvl < 2 && !has && node; lvl++, node = node.parentElement) {
+      let n = node.nextElementSibling;
+      while (n && !/^H[1-3]$/.test(n.tagName)) { if ((n.textContent || '').trim().length > 0 || n.querySelector('img,a,li')) { has = true; break; } n = n.nextElementSibling; }
+    }
     if (!has && !(h.tagName === 'H1')) emptyHeadings.push(h.innerText.trim());
   }
   const paras = [...main.querySelectorAll('p')].map((p) => (p.innerText || '').trim().split(/\s+/).filter(Boolean).length);
@@ -167,6 +177,14 @@ async function reviewWithAi(prompt, images) {
 }
 
 let spentUsd = 0, inTok = 0, outTok = 0;
+const perTown = {}; // town -> {input, output, usd, calls}
+function addUsage(town, rec, usage) {
+  const i = usage.input_tokens ?? 0, o = usage.output_tokens ?? 0;
+  inTok += i; outTok += o; spentUsd = inTok * PRICE_IN + outTok * PRICE_OUT;
+  const t = (perTown[town] ??= { input: 0, output: 0, usd: 0, calls: 0 });
+  t.input += i; t.output += o; t.calls += 1; t.usd = t.input * PRICE_IN + t.output * PRICE_OUT;
+  rec.usage = { input: (rec.usage?.input ?? 0) + i, output: (rec.usage?.output ?? 0) + o };
+}
 
 async function runTown(browser, town) {
   const cfg = JSON.parse(readFileSync(resolve(root, `configs/${town}.json`), 'utf8'));
@@ -180,7 +198,8 @@ async function runTown(browser, town) {
   for (const p of CANDIDATES) {
     try {
       const r = await fetch(base + p, { headers: hdr, redirect: 'manual' });
-      if (r.status === 200) found.push(p);
+      // a gated page in a static build answers 200 with a meta-refresh to / (Astro.redirect): not a real page of this town
+      if (r.status === 200 && !/http-equiv=["']refresh/i.test(await r.text())) found.push(p);
     } catch { /* unreachable */ }
     await sleep(120);
   }
@@ -246,8 +265,7 @@ async function runTown(browser, town) {
     }
     try {
       const out = await reviewWithAi(prompt, images);
-      inTok += out.usage.input_tokens ?? 0; outTok += out.usage.output_tokens ?? 0;
-      spentUsd = inTok * PRICE_IN + outTok * PRICE_OUT;
+      addUsage(town, rec, out.usage);
       rec.findings.push(...parseReview(out.text));
       process.stdout.write('.');
     } catch (e) {
@@ -268,8 +286,7 @@ async function runTown(browser, town) {
           if (seg) images.push({ path: seg, caption: `${name} page, phone, light mode, first part:` });
         }
         const out = await reviewWithAi(prompt, images);
-        inTok += out.usage.input_tokens ?? 0; outTok += out.usage.output_tokens ?? 0;
-        spentUsd = inTok * PRICE_IN + outTok * PRICE_OUT;
+        addUsage(town, list, out.usage);
         const parsed = parsePairReview(out.text, list.path, det.path);
         list.findings.push(...parsed.findings);
         list.pair = parsed.pair;
@@ -288,11 +305,12 @@ async function main() {
   const all = [];
   for (const town of TOWNS) all.push(...(await runTown(browser, town)));
   await browser.close();
-  const summary = { date: today, model: REVIEW ? MODEL : null, tokens: { input: inTok, output: outTok }, estimatedUsd: Number(spentUsd.toFixed(2)),
+  const summary = { date: today, model: REVIEW ? MODEL : null, tokens: { input: inTok, output: outTok }, perTown, estimatedUsd: Number(spentUsd.toFixed(2)),
     priceAssumption: 'USD 15 / 75 per million input/output tokens (assumed Opus-class; no Opus price in the repo)', checklist: CHECKLIST };
   // drop bulky per-page raw text from the JSON we keep, but keep facts the report needs
   writeFileSync(resolve(outDir, 'pages.json'), JSON.stringify({ summary, pages: all }, null, 1));
   writeReport(outDir, { summary, pages: all });
+  for (const [t, v] of Object.entries(perTown)) console.log(`  ${t}: ${v.calls} calls, ${v.input} in / ${v.output} out tokens, ~$${v.usd.toFixed(2)}`);
   console.log(`\nReport: ${resolve(outDir, 'report.html')}\nAI: ${inTok} in / ${outTok} out tokens, ~$${spentUsd.toFixed(2)} (assumed price)`);
 }
 

@@ -35,3 +35,13 @@ Veckovis automatisering först efter att ägaren sett första rapporten.
   datum: tar gammalt innehåll för stor plats?
 - **born_from** för båda: "University digest-fyndet 2026-10-23" (/university/ visade digestens långa text som kort och detaljsidan samma text igen).
   Regressionsfixtur: tests/fixtures/qa_duplicate_university_2026-10-23.json (verklig text från live före ändringen).
+
+## Kalibreringsplan 2026-10-23 (ägaren, efter första körningen)
+Första körningen (Opus 5.5, spärr 12 USD totalt): Brookings ~6,78 USD, Moreno nådde spärren (~12,04 USD ackumulerat), Broomfield + Glasgow bara regelkontroller.
+Ordning:
+1. Åtgärda FÖRST de gemensamma grundorsakerna från Brookings + Moreno (delade mallar), inte enskilda fynd.
+2. Kör sedan Opus på Broomfield och Glasgow (Glasgow FÖRE noindex tas bort). Spärr 12 USD PER STAD.
+3. Kör Sonnet på SAMMA Brookings-sidor som Opus granskade och jämför: andel av Opus fynd som Sonnet också hittar, och falska larm.
+   Rapportera -> ägaren väljer modell för veckokörningen.
+Veckokörning (förslag begärt): under 2 USD/vecka: bara ändrade sidor, mörkt läge bara där det behövs, Sonnet om träffsäkerheten räcker.
+Faktisk kostnad (tokens in/ut, USD) rapporteras per stad och totalt efter varje körning (qa/q3/run.mjs loggar nu perTown + usage per sida).
