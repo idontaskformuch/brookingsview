@@ -1,0 +1,142 @@
+---
+/** How the Brookings City Council works and how to follow it (Brookings only; owner-ordered 2026-10-22).
+ *
+ *  Resident question it answers: "When does the council meet, how do I see what it will decide, how do I
+ *  watch, and how do I say something to it?"
+ *
+ *  Pattern (CLAUDE.md editorial rule): the city's own meeting rules and our upcoming-meeting data -> what
+ *  the two kinds of meeting mean for you (who may speak, where decisions are made) -> exactly how to follow
+ *  or comment. Every fact is from the City of Brookings' own pages (SOURCES), read 2026-10-23; the plain-language
+ *  agenda glossary is general civics and is labelled as ours, not the city's text. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import { getUpcomingStories, formatOccursAt } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
+import { resolvePageMeta } from '../lib/page-meta';
+
+if (siteConfig.townId !== 'brookings_sd') {
+  return Astro.redirect('/', 302);
+}
+
+const pageMeta = resolvePageMeta('council-guide', siteConfig);
+const CHECKED = 'October 23, 2026';
+const BASE = 'https://www.cityofbrookings-sd.gov';
+const SOURCES = [
+  { name: 'City of Brookings: City Council meeting information', url: `${BASE}/861/City-Council-Meeting-Information` },
+  { name: 'City of Brookings: City Council frequently asked questions', url: `${BASE}/m/faq?cat=26` },
+  { name: 'City of Brookings: City Council (members)', url: `${BASE}/75/City-Council` },
+  { name: 'City of Brookings: Council resources and governing documents', url: `${BASE}/863/Resources` },
+  { name: 'City Council public comment policy (PDF)', url: `${BASE}/DocumentCenter/View/17684/City-Council-Public-Comment-Policy` },
+  { name: 'Agendas and minutes (Legistar, 2014 to present)', url: 'https://cityofbrookings.legistar.com/calendar.aspx' },
+];
+
+const upcoming = (await getUpcomingStories(['meeting'], 12))
+  .filter((s) => /city council/i.test(s.title))
+  .slice(0, 4);
+---
+<BaseLayout title={pageMeta.title} wide
+  description="When the Brookings City Council meets, how to read the agenda, watch live, and speak at a meeting or comment in writing, with links to the city's own pages."
+  >
+  <header class="lede">
+    <h1>{pageMeta.h1}</h1>
+    <p>The Brookings City Council makes the decisions about city streets, budgets, development and local rules, and almost all of it happens in public. This guide explains
+    when it meets, the difference between its two kinds of meeting, how to see what it will decide before it does, how to watch, and how to speak or write to the council.
+    It is based on the City of Brookings' own pages, last checked {CHECKED}, and links to each one.</p>
+  </header>
+
+  <SectionRule label="Who is on the council" />
+  <p>The council is a part-time body responsible for the city's legislative work, reviewing and adopting policy. Its seven members are the mayor, a deputy mayor and five council members, and
+  <strong>all serve at large</strong>, so each one represents the whole city, not a ward or neighborhood. That means you can contact any of them about any issue.</p>
+  <p class="gc-note">As listed on the city's website: Mayor Oepke "Ope" Niemeyer; Deputy Mayor Nick Wendell; council members Holly Tilton Byrne, Lisa Hager, Wayne Avery, Bonny Specker and Brianna Doran.
+  Membership changes after elections: <a href={`${BASE}/75/City-Council`} rel="noopener">the city's council page</a> is the current list and has a directory for contacting each member.</p>
+
+  <SectionRule label="When and where it meets" />
+  <table class="gc-table">
+    <caption class="sr-only">City Council meeting types</caption>
+    <thead><tr><th scope="col">Meeting</th><th scope="col">When</th><th scope="col">Can the public speak?</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Regular meeting</th><td>Second and fourth Tuesday of each month, 6:00 p.m.</td><td>Yes (see "How to speak" below)</td></tr>
+      <tr><th scope="row">Study session</th><td>Third Tuesday of each month, 6:00 p.m. Not scheduled for June, July or August, except as needed.</td><td>No public hearings or public input, except by the council's specific invitation</td></tr>
+    </tbody>
+  </table>
+  <p>Both are open to the public in the City Council Chambers, Room 310 (third floor) of the Brookings City &amp; County Government Center, 520 3rd Street. Meetings sometimes move off the usual Tuesday,
+  so check the agenda: the city publishes meeting calendars for <a href={`${BASE}/DocumentCenter/View/19573`} rel="noopener">2026</a> and
+  <a href={`${BASE}/DocumentCenter/View/20405/2027-CC-6-Month-Calendars`} rel="noopener">2027</a>.</p>
+  <p><strong>What this means for you:</strong> if you want to be heard on an issue, go to a regular meeting. Study sessions are where the council discusses topics in depth before votes, and they are worth
+  watching, but you cannot comment unless invited.</p>
+
+  {upcoming.length > 0 && (
+    <>
+      <SectionRule label="Coming up" />
+      <ul>
+        {upcoming.map((s) => (
+          <li><a href={`/s/${s.slug}/`}>{s.title}</a>{s.occurs_at ? <> ({formatOccursAt(s.occurs_at)})</> : null}</li>
+        ))}
+      </ul>
+      <p class="gc-note">Plain-language summaries of upcoming and past meetings are on the <a href="/city-hall/">City Hall page</a>.</p>
+    </>
+  )}
+
+  <SectionRule label="See what it will decide: the agenda" />
+  <p>Agendas, including the full packet of supporting documents, are posted before each meeting on the city's <a href="https://cityofbrookings.legistar.com/calendar.aspx" rel="noopener">Legistar calendar</a>,
+  which also holds minutes and video back to 2014. Printed copies are available at the City Manager's Office. Our <a href="/city-hall/">City Hall page</a> summarizes each agenda in plain language and links back to the original.</p>
+  <p><strong>Reading an agenda</strong> (our plain-language explanation, not the city's wording):</p>
+  <dl class="gc-dl">
+    <dt>Ordinance</dt>
+    <dd>A local law. The city's FAQ says public comment is taken on ordinances at both readings, so there are two chances to speak before one is final.</dd>
+    <dt>Resolution</dt>
+    <dd>A formal decision or statement of the council, such as approving a contract, a plan or an action. It is voted once.</dd>
+    <dt>Public hearing</dt>
+    <dd>A set time on the agenda for comments about one specific item. If you want to speak about an item that is on the agenda, this is when to do it.</dd>
+    <dt>Open forum</dt>
+    <dd>A time to speak about anything that is <em>not</em> on the agenda.</dd>
+    <dt>Executive session</dt>
+    <dd>A closed part of a meeting for the limited reasons South Dakota law allows. The public cannot attend it, and decisions are made back in open session.</dd>
+  </dl>
+
+  <SectionRule label="How to watch" />
+  <ul>
+    <li><strong>Live and recorded online:</strong> the city's <a href="https://www.youtube.com/channel/UC8PsskypqXzN3gV1x33haaw" rel="noopener">YouTube channel</a> and
+    <a href="https://cityofbrookings.granicus.com/MediaPlayer.php?publish_id=7" rel="noopener">live stream page</a>.</li>
+    <li><strong>On cable:</strong> Channel 20 on Swiftel and Channel 9 on Mediacom, with rebroadcasts Wednesday 1:00 p.m., Thursday 7:00 p.m., Friday 9:00 p.m. and Saturday 1:00 p.m.</li>
+  </ul>
+
+  <SectionRule label="How to speak or write to the council" />
+  <p><strong>In person</strong> at a regular meeting:</p>
+  <ul>
+    <li>You get <strong>3 minutes</strong>, and the time cannot be given to another speaker.</li>
+    <li>State your first and last name and your city of residence.</li>
+    <li><strong>About something not on the agenda?</strong> Use the open forum. <strong>About an agenda item?</strong> Speak during the public hearing for that item.</li>
+    <li>Speaking for a group? Explain how the group arrived at its position. Be concise and avoid repeating what others have said.</li>
+  </ul>
+  <p><strong>In writing:</strong></p>
+  <ul>
+    <li>Email the City Clerk's Office at <a href="mailto:cityclerk@cityofbrookings-sd.gov">cityclerk@cityofbrookings-sd.gov</a>, email council members directly (the council page has a directory), or mail
+    Brookings City Council, 520 3rd Street, Suite 230, Brookings, SD 57006.</li>
+    <li>The city's FAQ says an eComment tool is available to submit public comment for council meetings digitally.</li>
+  </ul>
+  <p>The full rules are in the city's <a href={`${BASE}/DocumentCenter/View/17684/City-Council-Public-Comment-Policy`} rel="noopener">City Council Public Comment Policy</a>. Not sure which meeting or item to comment on?
+  Look for your issue on the agenda first, then comment at the matching time.</p>
+
+  <SectionRule label="After the meeting" />
+  <p>Minutes and video are posted after the council approves them. Recent minutes are published on the city's website as news posts and in <a href="https://cityofbrookings.legistar.com/calendar.aspx" rel="noopener">Legistar</a>.
+  To follow one project through several meetings, see <a href="/city-hall/projects/">our city hall projects tracker</a>. To read the rules the council follows, see its
+  <a href={`${BASE}/863/Resources`} rel="noopener">governing documents</a>: the city charter, code of ethics and conflict-of-interest policy, plus the municipal code on Municode.</p>
+
+  <SectionRule label="Sources" />
+  <ul class="gc-sources">
+    {SOURCES.map((s) => <li><a href={s.url} rel="noopener">{s.name}</a></li>)}
+  </ul>
+  <p class="gc-note">Unofficial guide by {siteConfig.siteName}, summarizing the City of Brookings' published information; the city's pages are the authority and can change. Last checked {CHECKED}.
+  Spot a mistake? See <a href="/corrections/">corrections</a> or <a href="/contact/">contact us</a>.</p>
+</BaseLayout>
+
+<style>
+  .gc-note { font-size: 0.9rem; max-width: 46rem; }
+  .gc-table { border-collapse: collapse; width: 100%; max-width: 46rem; margin: 0 0 0.75rem; }
+  .gc-table th, .gc-table td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--rule, #ddd); vertical-align: top; }
+  .gc-dl dt { font-weight: 600; margin-top: 0.75rem; }
+  .gc-dl dd { margin: 0.2rem 0 0; max-width: 46rem; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  p, li { max-width: 46rem; }
+</style>

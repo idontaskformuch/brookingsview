@@ -239,6 +239,12 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
   // would be for this town specifically.
   // Brookings-only game day guide (site/src/pages/game-day.astro), owner-ordered 2026-10-22.
   // Brookings-only trash/recycling guide (site/src/pages/trash-recycling.astro), owner-ordered 2026-10-22.
+  // Brookings-only council guide (site/src/pages/how-city-council-works.astro), owner-ordered 2026-10-22.
+  'council-guide': {
+    titlePattern: 'How the City Council Works | {Site}',
+    h1Pattern: '{Town} City Council: how it works and how to follow it',
+    ledeRequirement: 'Answers: when does the council meet, how do I see the agenda, watch, and speak. Every rule from the city pages.',
+  },
   'trash-recycling': {
     titlePattern: 'Trash & Recycling Guide | {Site}',
     h1Pattern: '{Town} trash, recycling and yard waste: pickup days and what goes where',
