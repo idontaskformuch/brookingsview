@@ -263,6 +263,13 @@ def validate(generated_text: str, source_text: str, cfg: dict) -> GuardrailResul
     if opinion:
         violations.append(f"möjlig åsikt/vinkling: {', '.join(opinion)}")
 
+    # 4. UK-spärrarna (Glasgow fas 5: contempt of court, privatpersoner). Varje generator (publish, weekly, digester, deck,
+    #    möten, projekt ...) går genom validate(), så det här är den ENDA grinden som täcker ALLA publiceringsvägar --
+    #    tests/test_uk_gate_coverage.py kontrollerar att ingen generator kringgår den. No-op för icke-UK-orter.
+    from ai_pipeline import uk_guardrails
+    for reason in uk_guardrails.hold_reasons(cfg, generated_text):
+        violations.append(f"UK-spärr: {reason}")
+
     return GuardrailResult(passed=len(violations) == 0, violations=violations)
 
 
