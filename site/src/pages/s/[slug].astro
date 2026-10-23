@@ -38,7 +38,7 @@ import { publicSlug, storyHref } from '../../lib/content-slugs';
 import { redactWorkerPulseBody } from '../../lib/content-redaction';
 import { getSdsuEventsBetween } from '../../lib/db';
 import { buildWeekDays } from '../../lib/this-week';
-import { groupWeekItems, type WeekGroup } from '../../lib/week-groups';
+import { groupWeekItems, isQuorumNotice, type WeekGroup } from '../../lib/week-groups';
 import WeekGroupList from '../../components/WeekGroupList.astro';
 
 export async function getStaticPaths() {
@@ -218,7 +218,9 @@ const mentionedZips = isMeeting
 const venueFacility = story.source_type === 'event' && !story.is_recurring_series
   ? resolveVenue(buildVenueIndex(facilities), story.venue_raw)
   : null;
-const cityHallFacility = isMeeting ? facilities.find((f) => f.slug === 'city-hall') ?? null : null;
+// Not for a quorum notice (council members attending a parade, say): it names its own place, and "Meets at City Hall" would be wrong.
+const isQuorumNoticeStory = isQuorumNotice(story.title) || /notice of quorum/i.test(story.body);
+const cityHallFacility = isMeeting && !isQuorumNoticeStory ? facilities.find((f) => f.slug === 'city-hall') ?? null : null;
 
 // Phase 3, "Event <-> facility hub" (2026-10-09): "Other events at this
 // venue" -- only possible when this event's own venue actually resolved

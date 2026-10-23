@@ -115,14 +115,19 @@ function probe() {
       let n = node.nextElementSibling;
       while (n && !/^H[1-3]$/.test(n.tagName)) { if ((n.textContent || '').trim().length > 0 || n.querySelector('img,a,li')) { has = true; break; } n = n.nextElementSibling; }
     }
-    if (!has && !(h.tagName === 'H1')) emptyHeadings.push(h.innerText.trim());
+    // a card title (heading inside an article/list item/card) is not a section heading: its text sits around it, not below it
+    if (!has && !(h.tagName === 'H1') && !h.closest('article, li, [class*="card"], [class*="item"]')) emptyHeadings.push((h.textContent || '').trim());
   }
   const paras = [...main.querySelectorAll('p')].map((p) => (p.innerText || '').trim().split(/\s+/).filter(Boolean).length);
   const imgs = [...main.querySelectorAll('img')].map((i) => ({
     src: i.currentSrc || i.src, alt: i.alt || '', w: i.naturalWidth, h: i.naturalHeight, ok: i.complete && i.naturalWidth > 0,
     credit: (i.closest('figure')?.innerText || '').trim().slice(0, 120),
   }));
-  const times = [...main.querySelectorAll('time[datetime], [data-start]')].map((e) => e.getAttribute('datetime') || e.getAttribute('data-start')).filter(Boolean);
+  // dated items, except those under a heading that says they are past on purpose ("Recently", "Past events", "Earlier weeks")
+  const PAST_SECTION = /recent|past|earlier|archive|last week|ago/i;
+  const times = [...main.querySelectorAll('time[datetime], [data-start]')]
+    .filter((e) => { const sec = e.closest('section'); const h = sec && sec.querySelector('h2, h3'); return !(h && PAST_SECTION.test(h.textContent || '')); })
+    .map((e) => e.getAttribute('datetime') || e.getAttribute('data-start')).filter(Boolean);
   const links = [...document.querySelectorAll('main a[href^="/"]')].map((a) => a.getAttribute('href'));
   return {
     title: document.title, h1: [...document.querySelectorAll('h1')].map((h) => h.innerText.trim()),
@@ -169,7 +174,7 @@ async function reviewWithAi(prompt, images) {
   }
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: MODEL, max_tokens: 2000, system: prompt.system, messages: [{ role: 'user', content }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 3500, system: prompt.system, messages: [{ role: 'user', content }] }),
   });
   const body = await r.json();
   if (!r.ok) throw new Error(`Anthropic ${r.status}: ${JSON.stringify(body).slice(0, 300)}`);
@@ -219,7 +224,9 @@ async function runTown(browser, town) {
     for (const [mode, ctx] of [['light', light], ['dark', dark]]) {
       const page = await ctx.context.newPage();
       try {
-        const resp = await page.goto(base + item.path, { waitUntil: 'networkidle', timeout: 30000 });
+        // 'load' + a short idle wait: a page with a challenge widget (the contact form's Turnstile) never reaches full network idle
+        const resp = await page.goto(base + item.path, { waitUntil: 'load', timeout: 30000 });
+        await page.waitForLoadState('networkidle', { timeout: 6000 }).catch(() => {});
         rec.status = resp?.status();
         const facts = await page.evaluate(probe);
         const shots = await shoot(page, base, `${label}-${mode}`);
@@ -266,6 +273,7 @@ async function runTown(browser, town) {
     try {
       const out = await reviewWithAi(prompt, images);
       addUsage(town, rec, out.usage);
+      rec.aiRaw = out.text.slice(0, 6000); // kept so a bad reply can be inspected, not guessed at
       rec.findings.push(...parseReview(out.text));
       process.stdout.write('.');
     } catch (e) {

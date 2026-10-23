@@ -142,6 +142,8 @@ export interface SiteConfig {
    *  2026-08-26 building Broomfield's first real production build.
    *  Undefined = a generic, still-honest fallback (see traffic.astro). */
   noTrafficSourceNote?: string;
+  /** Reader-facing official page to send people to when the town has no live incident feed (shown instead of the developer note above). */
+  trafficFallback?: { name: string; url: string };
   /** Whether this town's config has data_sources.workplace_watch enabled --
    *  a separate flag from the town-equality checks elsewhere (home-sales,
    *  pro_sports, burro-bonanza are still genuinely Moreno-Valley-only), so
@@ -443,6 +445,7 @@ const CITIES: Record<string, SiteConfig> = {
     removalEmail: 'hello@brookingsview.com',
     noTrafficSourceNote:
       "checked SD511.org and South Dakota DOT's GIS server directly -- neither exposes an open incident API at this time",
+    trafficFallback: { name: 'SD511, the state road conditions service', url: 'https://www.sd511.org' },
     // No live traffic source yet (see noTrafficSourceNote above) so this is
     // inert today -- configured ahead of time per the Traffic Phase 5 spec's
     // own "per-town list" instruction, not validated against real data the

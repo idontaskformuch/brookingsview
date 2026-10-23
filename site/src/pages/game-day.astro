@@ -132,6 +132,7 @@ const nextHobo = next ? isHoboDay(next.start) : false;
   )}
 
   <SectionRule label="Home games this season" />
+  <div class="gd-scroll" role="region" aria-label="Home games table (scrolls sideways on a phone)" tabindex="0">
   <table class="gd-table">
     <caption class="sr-only">SDSU football home games this season</caption>
     <thead><tr><th scope="col">Date</th><th scope="col">Opponent</th><th scope="col">Kickoff</th><th scope="col">Tailgating opens (about)</th><th scope="col">Result</th></tr></thead>
@@ -147,6 +148,7 @@ const nextHobo = next ? isHoboDay(next.start) : false;
       ))}
     </tbody>
   </table>
+  </div>
   <p class="gd-note">Tailgating time is kickoff minus five hours, the rule SDSU states for most games; a few games differ, so check the
   official <a href={SOURCES.tailgating.url} rel="noopener">tailgating page</a>. Gates open 90 minutes before kickoff. Kickoff times are from the athletics schedule and can move (for example for TV).</p>
 
@@ -217,7 +219,9 @@ const nextHobo = next ? isHoboDay(next.start) : false;
   .gd-kicker { text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.06em; margin: 0 0 0.25rem; }
   .gd-plan li { margin: 0.35rem 0; }
   .gd-also { margin-top: 0.75rem; }
-  .gd-table { border-collapse: collapse; width: 100%; max-width: 46rem; margin: 0 0 0.5rem; }
+  .gd-scroll { overflow-x: auto; max-width: 46rem; margin: 0 0 0.5rem; }
+  .gd-table { border-collapse: collapse; width: 100%; min-width: 30rem; margin: 0; }
+  .gd-table th, .gd-table td { white-space: nowrap; }
   .gd-table th, .gd-table td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--rule, #ddd); }
   .gd-note { font-size: 0.9rem; max-width: 46rem; }
   .gd-faq dt { font-weight: 600; margin-top: 0.75rem; }

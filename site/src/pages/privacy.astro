@@ -18,6 +18,7 @@ import PrivacyGb from '../components/legal/gb/PrivacyBody.astro';
     <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">Cloudflare's
     own privacy policy</a>.</p>
 
+    {siteConfig.hasWorkplaceWatch && (<>
     <h2>Comments and polls</h2>
     <p>If you leave a Worker Pulse comment or vote in a shift poll, we don't
     store your raw IP address. It's converted with a one-way hash (combined
@@ -25,6 +26,7 @@ import PrivacyGb from '../components/legal/gb/PrivacyBody.astro';
     your real IP) and kept only to prevent the same visitor from submitting
     repeated comments or votes in a short window. That hash isn't linked to
     anything else about you, and isn't shared with anyone.</p>
+    </>)}
 
     <h2>Advertising</h2>
     <p>This site may show advertising served by Google AdSense, gated behind

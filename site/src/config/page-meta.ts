@@ -159,7 +159,7 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
   // the page still answers only from official status, same as before.
   closures: {
     titlePattern: '{Town} School Closed Tomorrow? | {Site}',
-    h1Pattern: '{Town} Closure Watch: Schools, Facilities and Weather Alerts',
+    h1Pattern: '{Town} Closure Watch: Schools and Weather Alerts',
     ledeRequirement: 'Must include the existing never-predicts-a-closure disclaimer.',
   },
   facilities: {

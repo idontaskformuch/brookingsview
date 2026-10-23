@@ -79,9 +79,9 @@ import PageGuide from '../components/PageGuide.astro';
       the state's own public incident feed. {siteConfig.trafficSource.scopeNote} The table below refreshes
       automatically as new incidents are reported, with no manual review in between.</>
     ) : (
-      <> though no public live incident feed has been found for this area yet{siteConfig.noTrafficSourceNote
-        ? ` (${siteConfig.noTrafficSourceNote})` : ''}. Active weather alerts, which do cover this area, are
-      tracked separately on the weather page.</>
+      <> though no public live incident feed exists for this area that we can show. {siteConfig.trafficFallback
+        ? <>For current road conditions and closures, use <a href={siteConfig.trafficFallback.url} rel="noopener">{siteConfig.trafficFallback.name}</a>. </>
+        : null}Active weather alerts, which do cover this area, are on <a href="/weather/">the weather page</a>.</>
     )}</p>
     {latestMonth && (
       <p class="month-teaser">See the full <a href={`/month/${monthSlug(latestMonth.year, latestMonth.month)}/`}>month in review for {monthLabel(latestMonth.year, latestMonth.month)} →</a></p>
@@ -95,7 +95,7 @@ import PageGuide from '../components/PageGuide.astro';
   >
     {siteConfig.trafficSource
       ? <><a href={siteConfig.trafficSource.url} rel="noopener">{siteConfig.trafficSource.name}</a>, refreshed with each site update.</>
-      : <>No public live incident feed has been found for this area; weather alerts are on the weather page.</>}
+      : <>No public live incident feed exists for this area that we can show; weather alerts are on the weather page.</>}
   </PageGuide>
 
   <SectionRule label={incidents.length > 0 ? `${incidents.length} active` : 'Current incidents'} />
@@ -163,20 +163,18 @@ import PageGuide from '../components/PageGuide.astro';
     // ("we don't have a live feed for this area yet"). See
     // NEEDS-HUMAN-REVIEW.md "Traffic wrong-state source fix".
     <p class="empty no-source">
-      No public live traffic-incident feed has been found for {siteConfig.cityName} yet{
-      siteConfig.noTrafficSourceNote ? ` (${siteConfig.noTrafficSourceNote})` : ''}. For
-      closures and road-safety notices, <a href="/weather/">check active weather alerts</a>, which does
-      cover this area.
+      There is no live incident data to show for {siteConfig.cityName}, so this page cannot tell you the roads are clear.
+      {siteConfig.trafficFallback
+        ? <>Check <a href={siteConfig.trafficFallback.url} rel="noopener">{siteConfig.trafficFallback.name}</a> before you drive, and </>
+        : <>For closures and road-safety notices, </>}<a href="/weather/">see active weather alerts</a>, which do cover this area.
     </p>
   )}
 
-  <p class="source">
-    {siteConfig.trafficSource ? (
-      <>Source: <a href={siteConfig.trafficSource.url} rel="noopener">{siteConfig.trafficSource.name}</a>, refreshed regularly. {siteConfig.trafficSource.scopeNote}</>
-    ) : (
-      <>No traffic data source configured for {siteConfig.cityName} yet.</>
-    )}
-  </p>
+  {siteConfig.trafficSource && (
+    <p class="source">
+      Source: <a href={siteConfig.trafficSource.url} rel="noopener">{siteConfig.trafficSource.name}</a>, refreshed regularly. {siteConfig.trafficSource.scopeNote}
+    </p>
+  )}
 
   <ClusterNav clusterLabel="Getting around" items={clusterNavItems} />
 

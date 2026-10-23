@@ -116,3 +116,18 @@ describe('Q3 list + detail pair review (born_from: University digest finding 202
     expect(parsePairReview('nope', '/a/', '/b/').findings).toHaveLength(1);
   });
 });
+
+describe('Q3 reviewer reply parsing survives real-world damage (25 of 72 replies were unusable in the first run)', () => {
+  it('code fences, prose around the JSON and a reply cut off mid-finding keep the complete findings', () => {
+    const one = '{"check":5,"severity":"high","where":"hero","evidence":"gothic campus","cause":"wrong pool"}';
+    const two = '{"check":7,"severity":"low","where":"list","evidence":"VB vs USD","cause":"abbreviation"}';
+    expect(parseReview('```json\n{"findings":[' + one + ']}\n```').map((x: { check: number }) => x.check)).toEqual([5]);
+    const cut = `{"findings":[${one},${two},{"check":3,"severity":"low","where":"both","evidence":"same para`;
+    expect(parseReview(cut).map((x: { check: number }) => x.check)).toEqual([5, 7]);
+    expect(parseReview('{"findings":[{"check":5,"severity":"low","evidence":"has \\"quotes\\" inside","cause":"x"}],"helps_resident":{"verdict":"yes"}}')).toHaveLength(1);
+  });
+  it('a pair reply that is cut off is still usable', () => {
+    const cut = '{"detail_adds":"no","adds":"repeats","findings":[{"check":3,"severity":"high","where":"both","evidence":"same","cause":"card"},{"check":4,"sev';
+    expect(parsePairReview(cut, '/a/', '/b/').findings.length).toBeGreaterThanOrEqual(1);
+  });
+});

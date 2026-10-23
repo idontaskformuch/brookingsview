@@ -15,7 +15,7 @@ export const CHECKLIST = [
   { id: 10, key: 'helps', label: 'Does the page help a resident? (data -> what it means -> what the reader can do)' },
 ];
 
-const ABBR_ALLOW = new Set(['US', 'USA', 'SD', 'CO', 'CA', 'UK', 'GB', 'SDSU', 'NWS', 'AM', 'PM', 'FAQ', 'ID', 'TV', 'PDF', 'RSS', 'API', 'USDA', 'DOT', 'HOA',
+const ABBR_ALLOW = new Set(['CC', 'BY', 'SA', 'US', 'USA', 'SD', 'CO', 'CA', 'UK', 'GB', 'SDSU', 'NWS', 'AM', 'PM', 'FAQ', 'ID', 'TV', 'PDF', 'RSS', 'API', 'USDA', 'DOT', 'HOA',
   'ICE', 'NYC', 'LA', 'DC', 'II', 'III', 'IV', 'VI', 'VII', 'VIII', 'IX', 'XI', 'XII', 'NCAA', 'FCS', 'PAC', 'EV', 'ADA', 'ER', 'ICO', 'GA', 'CDOT', 'ROV', 'MSP',
   'BST', 'GMT', 'CDT', 'CST', 'MDT', 'MST', 'PDT', 'PST', 'UV', 'WIFI', 'SUV', 'RV', 'LED', 'OK', 'NO', 'CEO', 'CFO', 'DJ', 'FM', 'AA', 'JR', 'SR', 'NW', 'NE', 'SW', 'SE',
   'GLASGOW', 'BROOKINGS', 'MORENO', 'VALLEY', 'BROOMFIELD', 'WITH', 'NEW', 'THE', 'AND', 'FOR', 'ALL', 'FREE', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']);
@@ -115,7 +115,7 @@ export function buildReviewPrompt(rec, { town, cfg, now }) {
     '- an image is wrong if it shows another town, the wrong season, a clearly different identifiable place (another university, readable shop signs, landmarks) or does not fit the page;',
     '- also say whether dark mode has unreadable text, invisible controls or wrong backgrounds.',
     'Checklist ids: ' + CHECKLIST.map((c) => `${c.id}=${c.label}`).join('; ') + '.',
-    'Answer with JSON ONLY, no prose: {"findings":[{"check":<1-10>,"severity":"high|medium|low","where":"<where on the page>","evidence":"<exact visible text or description>","cause":"<suggested cause>"}],"helps_resident":{"verdict":"yes|partly|no","why":"<one sentence>"}}. At most 8 findings, most important first.',
+    'Keep every string under 220 characters. Answer with JSON ONLY, no prose, no code fence: {"findings":[{"check":<1-10>,"severity":"high|medium|low","where":"<where on the page>","evidence":"<exact visible text or description>","cause":"<suggested cause>"}],"helps_resident":{"verdict":"yes|partly|no","why":"<one sentence>"}}. At most 8 findings, most important first.',
   ].join('\n');
   const L = rec.light?.facts ?? {};
   const hints = (rec.findings ?? []).map((x) => `- [check ${x.check}] ${x.evidence}`).join('\n') || '(none)';
@@ -129,11 +129,35 @@ export function buildReviewPrompt(rec, { town, cfg, now }) {
   return { system, user };
 }
 
+/** Tolerant JSON extraction: strips code fences, and when the reply was cut off (max_tokens) or has a bad tail, keeps every
+ *  complete object of the "findings" array instead of throwing the whole review away. Returns null when nothing is usable. */
+export function extractJson(text) {
+  const t = text.replace(/```(?:json)?/gi, '');
+  const a = t.indexOf('{');
+  if (a < 0) return null;
+  const b = t.lastIndexOf('}');
+  if (b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch { /* repair below */ } }
+  const fi = t.indexOf('"findings"', a);
+  if (fi < 0) return null;
+  const arrStart = t.indexOf('[', fi);
+  if (arrStart < 0) return null;
+  const findings = [];
+  let depth = 0, objStart = -1, inStr = false, esc = false;
+  for (let i = arrStart + 1; i < t.length; i++) {
+    const c = t[i];
+    if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; continue; }
+    if (c === '"') { inStr = true; continue; }
+    if (c === '{') { if (depth === 0) objStart = i; depth++; }
+    else if (c === '}') { depth--; if (depth === 0 && objStart >= 0) { try { findings.push(JSON.parse(t.slice(objStart, i + 1))); } catch { /* skip */ } objStart = -1; } }
+    else if (c === ']' && depth === 0) break;
+  }
+  return findings.length ? { findings, _repaired: true } : null;
+}
+
 export function parseReview(text) {
-  const a = text.indexOf('{'); const b = text.lastIndexOf('}');
-  if (a < 0 || b < a) return [f(10, 'low', '-', 'AI reviewer returned no JSON', 'reviewer prompt/format problem', 'ai')];
-  let data;
-  try { data = JSON.parse(text.slice(a, b + 1)); } catch { return [f(10, 'low', '-', 'AI reviewer returned unparsable JSON', 'reviewer prompt/format problem', 'ai')]; }
+  const data0 = extractJson(text);
+  if (!data0) return [f(10, 'low', '-', 'AI reviewer returned no usable JSON', 'reviewer prompt/format problem', 'ai')];
+  const data = data0;
   const out = [];
   for (const x of Array.isArray(data.findings) ? data.findings : []) {
     const check = Number(x.check);
@@ -168,10 +192,8 @@ export function buildPairPrompt(listRec, detailRec, { town, cfg, now }) {
 }
 
 export function parsePairReview(text, listPath, detailPath) {
-  const a = text.indexOf('{'); const b = text.lastIndexOf('}');
-  if (a < 0 || b < a) return { findings: [f(10, 'low', '-', 'pair reviewer returned no JSON', 'reviewer prompt/format problem', 'ai')], pair: null };
-  let data;
-  try { data = JSON.parse(text.slice(a, b + 1)); } catch { return { findings: [f(10, 'low', '-', 'pair reviewer returned unparsable JSON', 'reviewer prompt/format problem', 'ai')], pair: null }; }
+  const data = extractJson(text);
+  if (!data) return { findings: [f(10, 'low', '-', 'pair reviewer returned no usable JSON', 'reviewer prompt/format problem', 'ai')], pair: null };
   const out = [];
   for (const x of Array.isArray(data.findings) ? data.findings : []) {
     const check = [3, 4, 10].includes(Number(x.check)) ? Number(x.check) : 10;

@@ -34,7 +34,7 @@ import CookiesGb from '../components/legal/gb/CookiesBody.astro';
     way.</p>
 
     <p>Your choice is remembered in your browser only (via local storage),
-    not sent to us or stored on our servers.</p>
+    not sent to us or stored on our servers. <button type="button" id="cookie-reset" class="linklike">Change cookie settings</button></p>
 
     <p>Questions? <a href="/contact/">Contact us</a>. See also our
     <a href="/privacy/">privacy policy</a>.</p>
@@ -42,7 +42,16 @@ import CookiesGb from '../components/legal/gb/CookiesBody.astro';
 )}
 </BaseLayout>
 
+<script>
+  // Forget the stored choice and reload: with no choice stored the cookie banner asks again (CookieBanner.astro).
+  document.getElementById('cookie-reset')?.addEventListener('click', () => {
+    try { localStorage.removeItem('bv_cookie_consent'); } catch { /* storage blocked: the banner asks anyway */ }
+    location.reload();
+  });
+</script>
+
 <style>
+.linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--navy); text-decoration: underline; cursor: pointer; }
 .prose { max-width: 36rem; }
 .prose p { margin: 0 0 1rem; }
 </style>

@@ -34,7 +34,7 @@ import { storyHref } from '../lib/content-slugs';
 const pageMeta = resolvePageMeta('weather', siteConfig);
 const hubBacklink = resolveHubBacklink('weather', siteConfig);
 
-const [periods, hourly, alerts] = await Promise.all([
+const [periodsRaw, hourlyRaw, alerts] = await Promise.all([
   getWeather(),
   getHourlyWeather(),
   getActiveAlerts(),
@@ -51,6 +51,11 @@ function daysBetween(a: { y: number; m: number; d: number }, b: { y: number; m: 
   return Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(a.y, a.m - 1, a.d)) / 86_400_000);
 }
 const todayYMD = localYMD(new Date());
+// The snapshot can be older than the build (and the build older than the reader): drop hours that are already over and
+// day-periods that started on an earlier local day, so the strip starts at "now" and "Tonight" is not listed twice.
+const buildMs = Date.now();
+const hourly = hourlyRaw.filter((h) => new Date(h.start).getTime() >= buildMs - 3_600_000).slice(0, 24);
+const periods = periodsRaw.filter((p) => !p.start || daysBetween(todayYMD, localYMD(new Date(p.start))) >= 0);
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /** Ersätter NWS:s egen `name` med en etikett räknad från sajtens lokala
