@@ -75,7 +75,7 @@ export const UK_HOLIDAYS: HolidayDefinition[] = [
   { id: 'new_year_day', label: "New Year's Day", dateRule: { kind: 'fixed', month: 1, day: 1 }, windowDays: 3, active: false },
   { id: 'second_january', label: '2 January', dateRule: { kind: 'fixed', month: 1, day: 2 }, windowDays: 1, active: false },
   { id: 'burns_night', label: 'Burns Night', dateRule: { kind: 'fixed', month: 1, day: 25 }, windowDays: 5, active: false },
-  { id: 'bonfire_night', label: 'Bonfire Night', dateRule: { kind: 'fixed', month: 11, day: 5 }, windowDays: 5, active: false },
+  { id: 'bonfire_night', label: 'Bonfire Night', dateRule: { kind: 'fixed', month: 11, day: 5 }, windowDays: 5, active: true },
   { id: 'st_andrews_day', label: "St Andrew's Day", dateRule: { kind: 'fixed', month: 11, day: 30 }, windowDays: 5, active: false },
   { id: 'hogmanay', label: 'Hogmanay', dateRule: { kind: 'fixed', month: 12, day: 31 }, windowDays: 7, active: false },
 ];

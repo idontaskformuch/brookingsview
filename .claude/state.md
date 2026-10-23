@@ -244,3 +244,4 @@ ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med
 - Hobo Week-omklassningen syns först efter nästa schemalagda SDSU-scrape (verifiera i DB).
 - Pexels API: 200 anrop/timme -- source_category_images.py --apply tar ~125.
 - tests/test_feature_flags m.fl. förutsätter hand-synkade configs (JSON <-> site-config.ts).
+   2026-10-23: GLASGOW-BILDER OMGÅNG 4 (Bonfire Night) AKTIVERAD lokalt: 15 Pexels-bilder (BON-003..048) -> holidays/glasgow-bonfire_night-01..15.jpg + rader i config/gb/glasgow-images.ts (alt-texter colour*-stavning pga gb-gaten); UK_HOLIDAYS bonfire_night active:true (fönster 5 dagar före 5 nov). vitest 1360 gröna, astro check 0, Glasgow-bygge OK (78 sidor). Glasgow EJ deployad (wrangler deploy nekades av auto-läget -- ägaren kör eller godkänner), EJ pushad. KVAR: St Andrew's, jul, Hogmanay (inga id:n skickade), kategoribilder; sedan ta bort /qa/images/.
