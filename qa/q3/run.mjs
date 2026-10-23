@@ -30,6 +30,8 @@ const AXE_SRC = readFileSync(req.resolve('axe-core/axe.min.js'), 'utf8');
 const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i > -1 ? process.argv[i + 1] : d; };
 const TOWNS = arg('towns', 'brookings_sd,moreno_valley_ca,broomfield_co,glasgow').split(',');
 const REVIEW = arg('review', 'on') === 'on';
+// --reuse <dir>: do NOT load the sites again; re-run only the AI step on the screenshots and facts of an earlier run (same inputs for a fair model comparison)
+const REUSE = arg('reuse', null);
 const MODEL = arg('model', 'claude-opus-5-5');
 const MAX_USD = Number(arg('max-usd', 12));
 const LIMIT = Number(arg('limit', 0));
@@ -40,7 +42,8 @@ mkdirSync(shotDir, { recursive: true });
 const BYPASS = process.env.QA_BYPASS_TOKEN;
 const BLOCKED = /(googletagmanager|google-analytics|analytics\.google|googlesyndication|doubleclick|googleadservices|cloudflareinsights|adsbygoogle)/i;
 // Assumed Opus-class price (USD per million tokens) used ONLY for the --max-usd cap and the cost line; the repo has no Opus price.
-const PRICE_IN = 15 / 1e6, PRICE_OUT = 75 / 1e6;
+const SONNET_CLASS = /sonnet/i.test(MODEL);
+const PRICE_IN = (SONNET_CLASS ? 3 : 15) / 1e6, PRICE_OUT = (SONNET_CLASS ? 15 : 75) / 1e6;
 
 function loadEnv() {
   try {
@@ -257,6 +260,11 @@ async function runTown(browser, town) {
   console.log('');
   await light.context.close(); await dark.context.close();
 
+  return analyse(town, cfg, pages, now);
+}
+
+/** Cross-page checks, deterministic findings, the AI review and the list/detail pair review for one town's visited pages. */
+async function analyse(town, cfg, pages, now) {
   // 2. cross-page checks for the town, then deterministic findings and the AI review
   const dup = duplicateSentences(pages.map((p) => ({ path: p.path, text: p.light?.facts?.mainText ?? '' })));
   const season = currentSeason(now, cfg.coordinates?.lat ?? 40);
@@ -309,12 +317,26 @@ async function runTown(browser, town) {
 }
 
 async function main() {
-  const browser = await launch();
   const all = [];
-  for (const town of TOWNS) all.push(...(await runTown(browser, town)));
-  await browser.close();
+  if (REUSE) {
+    const old = JSON.parse(readFileSync(resolve(root, REUSE, 'pages.json'), 'utf8'));
+    for (const town of TOWNS) {
+      const cfg = JSON.parse(readFileSync(resolve(root, `configs/${town}.json`), 'utf8'));
+      const pages = old.pages.filter((p) => p.town === town).map((p) => {
+        const { usage, pair, aiRaw, reviewError, reviewSkipped, ...rest } = p;
+        return { ...rest, findings: p.findings.filter((x) => x.check === 'load') };
+      });
+      console.log(`
+== ${town}: re-reviewing ${pages.length} stored pages with ${MODEL}`);
+      all.push(...(await analyse(town, cfg, pages, new Date(old.summary.date + 'T18:00:00Z'))));
+    }
+  } else {
+    const browser = await launch();
+    for (const town of TOWNS) all.push(...(await runTown(browser, town)));
+    await browser.close();
+  }
   const summary = { date: today, model: REVIEW ? MODEL : null, tokens: { input: inTok, output: outTok }, perTown, estimatedUsd: Number(spentUsd.toFixed(2)),
-    priceAssumption: 'USD 15 / 75 per million input/output tokens (assumed Opus-class; no Opus price in the repo)', checklist: CHECKLIST };
+    priceAssumption: SONNET_CLASS ? 'USD 3 / 15 per million input/output tokens (the Sonnet price in config/pricing.py, assumed for this Sonnet model)' : 'USD 15 / 75 per million input/output tokens (assumed Opus-class; no Opus price in the repo)', checklist: CHECKLIST };
   // drop bulky per-page raw text from the JSON we keep, but keep facts the report needs
   writeFileSync(resolve(outDir, 'pages.json'), JSON.stringify({ summary, pages: all }, null, 1));
   writeReport(outDir, { summary, pages: all });
