@@ -194,7 +194,8 @@ function isThinStory(sourceType, body, ingredients, instructions) {
   const isThinType = THIN_SCRAPED_SOURCE_TYPES.includes(sourceType);
   const structuredText = [...(ingredients ?? []), ...(instructions ?? [])].join(' ');
   const wordCount = `${body} ${structuredText}`.split(/\s+/).filter(Boolean).length;
-  return isThinType || wordCount < THIN_CONTENT_WORD_THRESHOLD;
+  // university_digest: short body by design, the page lists the week's events itself (mirrors lib/noindex.ts)
+  return isThinType || (sourceType !== 'university_digest' && wordCount < THIN_CONTENT_WORD_THRESHOLD);
 }
 
 // Broomfield handoff (2026-09-30), Issue 3: /this-week/<slug>/ pages with
@@ -413,7 +414,7 @@ async function buildLastmodMap(townId, databaseUrl) {
   // 2026-10-22 (owner, Brookings AdSense review): /jobs/ (+ every category, below), every /events/<facet>/,
   // /events/past/ and /offline/ are noindex in the page itself -- mirrored here.
   const noindexThinPageUrls = new Set(['/reviews/', '/recipes/', '/editorials/', '/columns/', '/vail-resorts/',
-    '/jobs/', '/events/past/', '/offline/',
+    '/jobs/', '/events/past/', '/offline/', '/university/weeks/',
     ...['today', 'this-weekend', 'free', 'kids', 'library', 'outdoor', 'campus'].map((f) => `/events/${f}/`)]);
   // /vote/ (election 2026): the page itself sets noindex 30 days after the election (lib/election.ts
   // isPastNoindexWindow); mirror that here so the sitemap and the noindex tag never disagree.
@@ -691,7 +692,7 @@ async function buildLastmodMap(townId, databaseUrl) {
     if ((weekItemCounts.get(slug) ?? 0) < MIN_TAG_PAGE_ITEMS || !recentWeekSlugsMirror.has(slug)) noindexThinPageUrls.add(`/this-week/${slug}/`);
   }
   for (const s of stories) {
-    if (s.source_type !== 'weekly' || !s.occurs_at) continue;
+    if ((s.source_type !== 'weekly' && s.source_type !== 'university_digest') || !s.occurs_at) continue;
     if (!recentWeekSlugsMirror.has(isoWeekSlugMirror(localDatePartsMirror(new Date(s.occurs_at), thisWeekTz)))) {
       noindexStoryUrls.add(`/s/${publicSlugMirror(s.slug)}/`);
     }

@@ -46,9 +46,17 @@ const RULES: { id: ThemeId; re: RegExp }[] = [
 
 type ThemeInput = Pick<DayItem, 'vertical' | 'title'> & Partial<Pick<DayItem, 'venue' | 'categories'>>;
 
+/** A sports fixture: the sports vertical, an "SDSU ..."/"Jackrabbits ..." title, an athletics-category event, or a
+ *  "<sport code> vs <opponent>" title from the SDSU feed ("VB vs USD", "MBB vs Valpo", "Soccer vs Idaho"). */
+const FIXTURE_TITLE = /^(vb|mbb|wbb|fb|soccer|volleyball|football|basketball|baseball|softball|wrestling|hockey|rugby|tennis|golf)\s+(vs\.?|at)\s/i;
+export function isSportItem(item: ThemeInput): boolean {
+  return item.vertical === 'sports' || /^(sdsu|jackrabbits?)\s/i.test(item.title) || FIXTURE_TITLE.test(item.title.trim().replace(/\s+/g, ' '))
+    || (item.vertical === 'sdsu' && (item.categories ?? []).some((c) => /athletics/i.test(c)) && /\s(vs\.?|at)\s/i.test(item.title));
+}
+
 export function themeOf(item: ThemeInput): ThemeId {
   if (item.vertical === 'city_hall') return 'city';
-  if (item.vertical === 'sports') return 'sports';
+  if (isSportItem(item)) return 'sports';
   const hay = `${item.title} ${item.venue ?? ''} ${(item.categories ?? []).join(' ')}`;
   for (const rule of RULES) if (rule.re.test(hay)) return rule.id;
   return item.vertical === 'sdsu' ? 'campus' : 'community';
@@ -213,7 +221,7 @@ export function groupWeekItems(
     const dayIndex = allDays.indexOf(day);
     for (const item of day.items) {
       if (isQuorumNotice(item.title)) continue;
-      const isSport = item.vertical === 'sports' || /^(sdsu|jackrabbits?)\s/i.test(item.title);
+      const isSport = isSportItem(item);
       const start = item.startsAt ? new Date(item.startsAt).getTime() : 0;
       flat.push({
         dayIndex, timeLabel: timeLabel(item, timezone), startMs: Number.isFinite(start) ? start : 0, item,

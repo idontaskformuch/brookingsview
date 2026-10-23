@@ -94,7 +94,8 @@ def test_template_fallback_never_lists_more_than_one_line_per_cluster():
 def test_template_fallback_includes_academic_dates():
     academic_dates = [{"label": "Fall classes begin", "starts_on": "2026-08-24"}]
     text = template_fallback([], "August 23-29", CT, academic_dates)
-    assert "Fall classes begin" in text
+    # 2026-10-23: the fallback is a count-only intro; the page itself lists the academic dates
+    assert "1 academic date" in text
 
 
 def test_content_hash_changes_when_academic_dates_change():

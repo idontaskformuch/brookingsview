@@ -1,0 +1,43 @@
+---
+/** Earlier SDSU weeks: the archive behind the small "Earlier weeks" link on /university/ (owner 2026-10-23). Only titles and
+ *  links, no digest text, so nothing here repeats a digest page. Kept out of the sitemap and noindex (astro.config.mjs):
+ *  it exists so that older digest pages are reachable and not orphaned, not to rank. Brookings only. */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getContentByType } from '../../lib/db';
+import { siteConfig } from '../../lib/site-config';
+import { currentWeekInfo, weekInfoForInstant } from '../../lib/this-week';
+import { storyHref } from '../../lib/content-slugs';
+
+if (siteConfig.townId !== 'brookings_sd') {
+  return Astro.redirect('/', 302);
+}
+
+const digests = await getContentByType(['university_digest'], 500);
+const currentSlug = currentWeekInfo(siteConfig.timezone).slug;
+const earlier = digests
+  .filter((d) => d.occurs_at && weekInfoForInstant(new Date(d.occurs_at), siteConfig.timezone).slug !== currentSlug)
+  .sort((a, b) => new Date(b.occurs_at as string).getTime() - new Date(a.occurs_at as string).getTime());
+const canonicalUrl = new URL('/university/weeks/', Astro.site ?? siteConfig.siteUrl).href;
+---
+<BaseLayout title={`Earlier weeks at SDSU — ${siteConfig.siteName}`} description="Weekly previews of what was on at South Dakota State University, most recent first." noindex canonicalUrl={canonicalUrl}>
+  <header class="lede">
+    <p class="kicker"><a href="/university/">← SDSU</a></p>
+    <h1>Earlier weeks at SDSU</h1>
+    <p>One page per week, from the university's own calendar. This week is on <a href="/university/">the SDSU page</a>.</p>
+  </header>
+  {earlier.length > 0 ? (
+    <ul class="weeks">
+      {earlier.map((d) => <li><a href={storyHref(d.slug)}>{d.title.replace(/^Brookings:\s*/, '')}</a></li>)}
+    </ul>
+  ) : (
+    <p class="empty">No earlier weeks yet.</p>
+  )}
+</BaseLayout>
+
+<style>
+.lede { max-width: 38rem; }
+.kicker { margin: 0 0 0.25rem; font-family: var(--font-ui); font-size: 0.8125rem; }
+.lede p { color: var(--ink-soft); }
+.weeks { list-style: none; margin: 1.5rem 0; padding: 0; display: grid; gap: 0.5rem; max-width: 38rem; }
+.empty { color: var(--ink-soft); }
+</style>

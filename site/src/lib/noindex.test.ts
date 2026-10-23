@@ -88,6 +88,9 @@ describe('shouldNoindexStory', () => {
   // (used here before Phase 0) are no longer suitable for isolating the
   // word-count safety net from the type-based rule, since they're now
   // thin-by-type themselves.
+  it('a university digest is short by design (the page lists the events itself), so it is not thin by word count', () => {
+    expect(shouldNoindexStory({ source_type: 'university_digest', body: longBody(55) })).toBe(false);
+  });
   it('word-count safety net catches a thin digest regardless of type', () => {
     expect(shouldNoindexStory({ source_type: 'workplace_watch_digest', body: longBody(10) })).toBe(true);
   });

@@ -113,7 +113,10 @@ export function shouldNoindexStory(
 ): boolean {
   const isThinType = THIN_SCRAPED_SOURCE_TYPES.includes(story.source_type);
   const structuredText = [...(story.ingredients ?? []), ...(story.instructions ?? [])].join(' ');
-  const isThinByWordCount = countWords(`${story.body} ${structuredText}`) < THIN_CONTENT_WORD_THRESHOLD;
+  // University digest (owner 2026-10-23): the model writes only a short introduction; the week's events are listed
+  // below it by the page itself (/s/university-digest-*), so the stored body is short by design.
+  const listIsRenderedByThePage = story.source_type === 'university_digest';
+  const isThinByWordCount = !listIsRenderedByThePage && countWords(`${story.body} ${structuredText}`) < THIN_CONTENT_WORD_THRESHOLD;
   const isUnpublished = story.published_at === null;
   if (isThinByWordCount && !isThinType) {
     wordCountNoindexTally += 1;

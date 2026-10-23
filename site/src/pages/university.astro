@@ -15,7 +15,6 @@
  *  moduldocstring för upphovsrättsresonemanget. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
-import StoryCard from '../components/StoryCard.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
 import type { SdsuEvent } from '../lib/db';
@@ -28,6 +27,8 @@ import { SECTION_THEME } from '../lib/section-theme';
 import { siteConfig } from '../lib/site-config';
 import { resolveHubBacklink } from '../lib/clusters';
 import { resolvePageMeta } from '../lib/page-meta';
+import { currentWeekInfo, weekInfoForInstant } from '../lib/this-week';
+import { storyHref } from '../lib/content-slugs';
 
 if (siteConfig.townId !== 'brookings_sd') {
   return Astro.redirect('/', 302);
@@ -46,6 +47,19 @@ const [events, artsEvents, academicDates, digests] = await Promise.all([
   getUpcomingAcademicDates(10),
   getContentByType(['university_digest'], 12),
 ]);
+
+// Owner 2026-10-23: only THIS week's digest on the hub, as its short introduction plus "See the full week" (the grouped
+// list lives on the digest page, so no text is repeated here); older weeks sit behind one small "Earlier weeks" link.
+const currentWeekSlug = currentWeekInfo(siteConfig.timezone).slug;
+const digestWeekSlug = (s: { occurs_at: string | null }) => (s.occurs_at ? weekInfoForInstant(new Date(s.occurs_at), siteConfig.timezone).slug : null);
+const thisWeekDigest = digests.find((d) => digestWeekSlug(d) === currentWeekSlug) ?? null;
+const hasEarlierDigests = digests.some((d) => d !== thisWeekDigest);
+// A digest written before the restructure is long prose: show only its first paragraph, cut to a short introduction.
+const digestIntro = (() => {
+  const first = (thisWeekDigest?.body ?? '').split('\n').find((p) => p.trim()) ?? '';
+  const words = first.trim().split(/\s+/);
+  return words.length > 80 ? `${words.slice(0, 80).join(' ')}…` : first.trim();
+})();
 
 const CATEGORY_ICONS: Record<string, string> = {
   Music: '🎵',
@@ -140,10 +154,16 @@ const sections = (
     <ShareButton title={pageMeta.title} />
   </header>
 
-  {digests.length > 0 && (
+  {(thisWeekDigest || hasEarlierDigests) && (
     <>
-      <SectionRule label="Weekly preview" />
-      <div class="grid">{digests.map((story) => <StoryCard story={story} />)}</div>
+      <SectionRule label="The week at State" />
+      {thisWeekDigest && (
+        <div class="digest">
+          <p class="digest__intro">{digestIntro}</p>
+          <p class="digest__more"><a href={storyHref(thisWeekDigest.slug)}>See the full week →</a></p>
+        </div>
+      )}
+      {hasEarlierDigests && <p class="digest__earlier"><a href="/university/weeks/">Earlier weeks</a></p>}
     </>
   )}
 
@@ -296,6 +316,10 @@ const sections = (
 .jackrabbits-card__body { margin: 0; font-size: 0.875rem; color: var(--ink-soft); }
 
 .grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+.digest { max-width: 42rem; margin-bottom: 0.25rem; }
+.digest__intro { font-size: 1.0625rem; line-height: 1.55; margin: 0 0 0.5rem; }
+.digest__more, .digest__earlier { margin: 0 0 0.5rem; }
+.digest__earlier { font-size: 0.875rem; }
 .event-card {
   display: block;
   border: 1px solid var(--rule);

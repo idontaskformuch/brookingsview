@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatDays, formatWhen, groupWeekItems, isQuorumNotice, normalizeSportTitle, shortVenue, themeOf, titleIncludes,
+  formatDays, formatWhen, groupWeekItems, isQuorumNotice, isSportItem, normalizeSportTitle, shortVenue, themeOf, titleIncludes,
 } from './week-groups';
 import type { DayBucket, DayItem } from './this-week';
 
@@ -184,5 +184,17 @@ describe('groupWeekItems: sports rows', () => {
     const sports = groupWeekItems(all, all, TZ).find((g) => g.id === 'sports')!;
     expect(sports.rows).toHaveLength(1);
     expect(sports.rows[0]).toMatchObject({ when: 'Sat 2pm', title: 'Football vs Murray State', href: '/s/football-murray/', venue: 'Dana J. Dykhouse Stadium' });
+  });
+});
+
+describe('isSportItem / themeOf: SDSU feed fixtures land in Sports with a readable title (2026-10-23)', () => {
+  it('recognises sport-code fixtures and athletics-category fixtures, not other campus events', () => {
+    expect(isSportItem({ vertical: 'sdsu', title: 'VB vs USD' })).toBe(true);
+    expect(isSportItem({ vertical: 'sdsu', title: 'MBB vs  Valpo' })).toBe(true);
+    expect(isSportItem({ vertical: 'sdsu', title: 'Soccer vs Idaho' })).toBe(true);
+    expect(isSportItem({ vertical: 'sdsu', title: 'NAU vs Bradley', categories: ['Athletics'] })).toBe(true);
+    expect(isSportItem({ vertical: 'sdsu', title: 'Jazz at the Union' })).toBe(false);
+    expect(isSportItem({ vertical: 'sdsu', title: 'Bum Over - Winning Displays' })).toBe(false);
+    expect(themeOf({ vertical: 'sdsu', title: 'VB vs USD' })).toBe('sports');
   });
 });

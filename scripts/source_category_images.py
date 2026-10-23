@@ -271,7 +271,7 @@ CATEGORY_SEARCHES: dict[tuple[str, str], CategorySearch] = {
     # monumental single clock tower distinctive enough to likely be a real
     # named campus landmark on its own). Only one genuinely generic,
     # low-detail campus-lawn shot survived.
-    ("brookings_sd", "university"): {"query": "university campus lawn trees buildings", "chosen": _pool(7752993, 27276232, 36725428, 16275762)},
+    ("brookings_sd", "university"): {"query": "university campus lawn trees buildings", "chosen": _pool(7752993, 36725428, 16275762)},
     # Addendum 2: this query is dominated by nationally-iconic, unmistakably
     # identifiable landmarks (Beverly Hills City Hall's own gold-domed
     # tower appeared TWICE more in the 24-candidate re-search, LA City

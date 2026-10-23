@@ -7,9 +7,15 @@ veckan som precis tog slut. Rimligt eftersom sdsu_events är schemalagda
 kommande evenemang (matcher, konserter, föreställningar), inte resultat att
 recensera i efterhand.
 
-Läser sdsu_events (se scrapers/parsers/sdsu_events_v1.py) inom veckofönstret,
-väver ihop till EN kort text i stället för att bara upprepa /university.astro:s
-tabell. Delar bas-röst och hårda regler med format_prompt.build_system_prompt.
+Läser sdsu_events (se scrapers/parsers/sdsu_events_v1.py) inom veckofönstret.
+
+2026-10-23 (ägaren, .claude/spec-university-digest.md): SAMMA STRUKTUR SOM STADENS
+VECKOSAMMANFATTNING (ai_pipeline/weekly.py). Modellen skriver BARA en kort ingress
+(ett stycke, 3-4 meningar, max ~80 ord, inga dagar/tider/datum/listor); själva
+eventlistan, grupperad per tema med dag och tid på varje rad, byggs av sajten
+deterministiskt ur data (lib/week-groups.ts) på /s/<slug>/. Ingressen kontrolleras
+av weekly.intro_format_violations. Delar bas-röst och hårda regler med
+format_prompt.build_system_prompt.
 
 IDEMPOTENS OCH KOSTNAD: sluggen är deterministisk per vecka
 ("university-digest-2026-w34"), och underlaget hashas på VILKA event-id:n
@@ -41,6 +47,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline import api_usage, guardrails
+from ai_pipeline.weekly import intro_format_violations
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
@@ -54,8 +61,8 @@ except ImportError:  # pragma: no cover
 
 SOURCE_TYPE = "university_digest"
 
-# under så här många ord är resultatet inte en riktig sammanfattning
-MIN_WORDS = 60
+# under så här många ord är resultatet inte en riktig ingress (3-4 meningar, max ~80 ord)
+MIN_WORDS = 25
 
 
 def _day(dt) -> str:
@@ -225,53 +232,51 @@ def build_grounding_text(events: list[dict], label: str, tz: ZoneInfo,
 def build_prompt(cfg: dict, label: str) -> str:
     return build_system_prompt(cfg) + f"""
 
-FORMAT OVERRIDE -- THE WEEKLY UNIVERSITY DIGEST:
-You are now writing a short "what's on at SDSU" preview for the week of
-{label}: ONE short piece (2-3 short paragraphs) previewing the events below.
-This replaces the "keep it short (2-5 sentences)" instruction above with a
-slightly longer, but still compact, format.
+FORMAT OVERRIDE -- THE WEEKLY UNIVERSITY DIGEST INTRO (2026-10-23 restructure):
+You are writing ONLY the short introduction to the "what's on at SDSU" page for
+the week of {label}: ONE paragraph of 3 to 4 sentences, at most 80 words. This
+replaces the "keep it short (2-5 sentences)" instruction above. The page lists
+every game, concert and campus event itself, grouped by theme, right below your
+paragraph, with the day and time on each line -- so your paragraph must NOT
+repeat that list.
 
-STRUCTURE:
-- If a SIGNIFICANT ACADEMIC DATE is listed (term start, finals, commencement,
-  a major break), lead with it -- it affects the whole university, ahead of
-  any single campus event, even a marquee one.
-- Otherwise, lead with whichever event is the biggest draw (a marquee
-  athletics game, a notable concert or show) -- not necessarily the first
-  one chronologically.
-- Group similar events together (athletics together, arts/music together)
-  so it reads as a preview, not a list. Where the source data already
-  collapsed several simultaneous events into one item, describe them as a
-  group (e.g. "several colleges held welcome events"), never enumerate them
-  individually.
-- This is a PREVIEW of what's scheduled, not a recap -- do not describe
-  outcomes, scores, or how anything went, since these events haven't
-  happened yet.
-- For the lead item, add a short clause on why it stands out this week (a
-  season opener, the first of the term, a rivalry game, the only ticketed
-  event) ONLY if that stands-out quality is explicitly stated or clearly
-  implied by the source data itself -- never invent significance the
-  source doesn't support.
+WHAT TO WRITE:
+- Say what marks this week at State. If a SIGNIFICANT ACADEMIC DATE is listed
+  (term start, finals, commencement, a major break), lead with that -- it affects
+  the whole university. Otherwise lead with the biggest draw (a marquee athletics
+  game, a notable concert or show). One or two things, named plainly, then a
+  sentence on the general character of the rest of the week (for example "a
+  busy week for campus music").
+- NO days of the week, NO times, NO dates, NO lists, NO bullet points, NO
+  headers. Do not write "on Friday" or "at 7 p.m."; the list carries those.
+- Where the source data already collapsed several simultaneous events into one
+  item, describe them as a group, never enumerate them.
+- This is a PREVIEW of what is scheduled, not a recap -- do not describe
+  outcomes, scores, or how anything went, since these events haven't happened yet.
+- For the lead item, add a short clause on why it stands out this week (a season
+  opener, a rivalry game) ONLY if that quality is explicitly stated or clearly
+  implied by the source data itself -- never invent significance the source
+  doesn't support.
 
-Return ONLY the article text. No preamble, no title."""
+Return ONLY the paragraph. No preamble, no title."""
 
 
 def template_fallback(events: list[dict], label: str, tz: ZoneInfo,
                        academic_dates: list[dict] | None = None) -> str:
-    """Ren, korrekt lista när AI-vägen inte håller. Torr men sann."""
-    lines = [f"SDSU events for the week of {label}:"]
-    for d in (academic_dates or []):
-        lines.append(f"- {d['label']}: {d['starts_on']}")
-    if not events:
-        if not academic_dates:
-            return f"No tracked SDSU events for the week of {label}."
-        return "\n".join(lines)
-    for item in _collapse_simultaneous(events):
-        if isinstance(item, list):
-            lines.append(f"- {len(item)} events at {_fmt(item[0].get('starts_at'), tz)}")
-            continue
-        where = f", {item['location']}" if item.get("location") else ""
-        lines.append(f"- {item['title']}: {_fmt(item.get('starts_at'), tz)}{where}")
-    return "\n".join(lines)
+    """Kort, sann ingress när AI-vägen inte håller: bara antal. Sidan listar posterna."""
+    n_events = len(_collapse_simultaneous(events))
+    n_dates = len(academic_dates or [])
+    if not n_events and not n_dates:
+        return f"No tracked SDSU events for the week of {label}."
+    parts = []
+    if n_events:
+        parts.append(f"{n_events} campus event{'s' if n_events != 1 else ''}")
+    if n_dates:
+        parts.append(f"{n_dates} academic date{'s' if n_dates != 1 else ''}")
+    what = " and ".join(parts)
+    return (f"South Dakota State University has {what} on the calendar for the week of {label}. "
+            "Everything below comes from SDSU's own calendar and links to the original, "
+            "with the day and time on each line.")
 
 
 def generate(events: list[dict], label: str, cfg: dict, tz: ZoneInfo, client=None,
@@ -298,7 +303,7 @@ def generate(events: list[dict], label: str, cfg: dict, tz: ZoneInfo, client=Non
     def call(extra: str = "") -> str:
         msg = safe_create(
             client,
-            model=model, max_tokens=800, system=system + extra,
+            model=model, max_tokens=400, system=system + extra,
             messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}],
             attempt=len(usage_ids) + 1,
         )
@@ -312,7 +317,7 @@ def generate(events: list[dict], label: str, cfg: dict, tz: ZoneInfo, client=Non
     # guardrail-avslag. Se GenerationUnavailable-docstringen i format_prompt.py.
     def _checks_pass(candidate: str) -> tuple[bool, list[str]]:
         result = guardrails.validate(candidate, src, cfg)
-        violations = list(result.violations)
+        violations = list(result.violations) + intro_format_violations(candidate)
         if not violations:
             violations = pre_publish_check(
                 candidate, source_records=events, cfg=cfg, content_type=SOURCE_TYPE,
@@ -324,9 +329,11 @@ def generate(events: list[dict], label: str, cfg: dict, tz: ZoneInfo, client=Non
         passed, violations = _checks_pass(text)
 
         if not passed:
-            text = call("\n\nYour previous attempt included details not found in the "
-                        "source, or described events as if they'd already happened. "
-                        "Rewrite using ONLY facts explicitly present in the SOURCE DATA.")
+            text = call("\n\nYour previous attempt was rejected: " + "; ".join(violations[:4]) + ". "
+                        "Rewrite it as ONE paragraph of 3 to 4 sentences, under 70 words, with NO "
+                        "day names, NO clock times and NO dates anywhere (say 'this week' or describe "
+                        "the event instead), describing events as upcoming, not as if they had already "
+                        "happened, using ONLY facts explicitly present in the SOURCE DATA.")
             passed, violations = _checks_pass(text)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")

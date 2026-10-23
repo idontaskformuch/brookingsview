@@ -1263,7 +1263,8 @@ export async function getUpcomingCouncilMeetings(limit = 6): Promise<CouncilMeet
   return (await sql`
     SELECT meeting_date,
            raw_data->>'EventTime' AS time,
-           replace(raw_data->>'EventLocation', E'
+           replace(raw_data->>'EventLocation', E'
+
 ', ', ') AS location,
            agenda_url,
            raw_data->>'EventAgendaStatusName' AS agenda_status
@@ -1784,6 +1785,22 @@ export async function getUpcomingArtsEvents(limit = 40): Promise<SdsuEvent[]> {
  *  (e.g. Moreno Valley), same pattern as getRegionalSports() being
  *  naturally empty for Brookings. Limit is generous headroom, not a real
  *  cap: confirmed live at 122 rows for Brookings' whole ~5-month feed. */
+/** SDSU calendar events (athletics, campus and arts buckets) starting in [start, end): the deterministic list under a
+ *  university digest's short introduction (/s/university-digest-*, grouped by lib/week-groups.ts). */
+export async function getSdsuEventsBetween(start: Date, end: Date): Promise<SdsuEvent[]> {
+  return (await sql`
+    SELECT external_event_id, title, teaser, location, starts_at, ends_at,
+           categories, primary_category, event_url
+      FROM sdsu_events
+     WHERE town_id = ${TOWN_ID}
+       AND bucket IN ('university', 'arts_culture')
+       AND NOT is_filtered
+       AND starts_at >= ${start.toISOString()}
+       AND starts_at < ${end.toISOString()}
+     ORDER BY starts_at ASC
+  `) as SdsuEvent[];
+}
+
 export async function getAllArtsEvents(limit = 1000): Promise<SdsuEvent[]> {
   return (await sql`
     SELECT external_event_id, title, teaser, location, starts_at, ends_at,
