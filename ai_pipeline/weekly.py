@@ -30,6 +30,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -82,7 +83,7 @@ def _clock(dt, tz: ZoneInfo | None = None) -> str:
 
 
 # under så här många ord är resultatet inte en sammanfattning -- då är något fel
-MIN_WORDS = 180
+MIN_WORDS = 25  # intro paragraph only (3-4 sentences); the lists on the page are built from data, not by the model
 
 
 def week_bounds(tz: ZoneInfo, offset_weeks: int = 0) -> tuple[datetime, datetime, str, str]:
@@ -205,6 +206,32 @@ def source_text(data: dict, label: str, tz: ZoneInfo) -> str:
     return "\n".join(parts)
 
 
+_WEEKDAY_RE = re.compile(r"\b(?:mon|tues?|wednes|thurs?|fri|satur|sun)day\b", re.IGNORECASE)
+_CLOCK_RE = re.compile(r"\b\d{1,2}(?::\d{2})?\s?(?:a\.?m\.?|p\.?m\.?)(?!\w)|\b\d{1,2}:\d{2}\b|\b(?:noon|midnight)\b", re.IGNORECASE)
+_MONTH_DAY_RE = re.compile(r"\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\b|\b\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b", re.IGNORECASE)
+MAX_INTRO_WORDS = 90
+
+
+def intro_format_violations(text: str) -> list[str]:
+    """The roundup intro must not carry days, clock times, dates or lists: the page's own list has them
+    on every line. A deterministic check on top of the prompt, because a model drifts."""
+    out: list[str] = []
+    if _WEEKDAY_RE.search(text):
+        out.append("intro names a day of the week (the list carries days)")
+    if _CLOCK_RE.search(text):
+        out.append("intro states a clock time (the list carries times)")
+    if _MONTH_DAY_RE.search(text):
+        out.append("intro states a calendar date (the list carries dates)")
+    if len(text.split()) > MAX_INTRO_WORDS:
+        out.append(f"intro is longer than {MAX_INTRO_WORDS} words")
+    if len([p for p in text.split(chr(10)) if p.strip()]) > 1:
+        out.append("intro is more than one paragraph")
+    if any(line.lstrip().startswith(("-", "*", "#")) for line in text.split(chr(10))):
+        out.append("intro contains a list or header")
+    return out
+
+
+
 def build_prompt(cfg: dict, label: str) -> str:
     """Basrösten + hårda reglerna ÅTERANVÄNDS från format_prompt.build_system_prompt.
 
@@ -215,56 +242,48 @@ def build_prompt(cfg: dict, label: str) -> str:
     """
     return build_system_prompt(cfg) + f"""
 
-FORMAT OVERRIDE -- THE WEEKLY ROUNDUP:
-You are now writing the weekly roundup for the week of {label}: ONE connected
-article of 400-600 words. This replaces the "keep it short" instruction above.
+FORMAT OVERRIDE -- THE WEEKLY ROUNDUP INTRO (2026-10-23 restructure):
+You are writing ONLY the short introduction to the roundup for the week of {label}:
+ONE paragraph of 3 to 4 sentences, at most 80 words. This replaces the "keep it
+short (2-5 sentences)" instruction above. The page lists every meeting, event and
+game itself, grouped by theme, right below your paragraph, with the day and time
+on each line -- so your paragraph must NOT repeat that list.
 
-STRUCTURE:
-- Open with the most consequential thing happening this week for residents.
-  Usually that is a decision at a public meeting, not an entertainment listing.
-- Group related items so it reads as one article, not a list. Public business
-  together, community life together, Jackrabbits together.
-- Short paragraphs, connected prose. No bullet points, no markdown headers.
-- Close with what residents can attend or take part in.
+WHAT TO WRITE:
+- Say what marks this week for residents. Lead with the most consequential public
+  decision or meeting if there is one; otherwise with the biggest community or
+  campus occasion. One or two things, named plainly, then a sentence on the
+  general character of the rest of the week (for example "a busy week for
+  campus concerts").
+- NO days of the week, NO times, NO dates, NO lists, NO bullet points, NO
+  headers. Do not write "on Tuesday" or "at 7 p.m."; the list carries those.
+- Connected prose in one paragraph. Do not name every event.
 
-WEIGHTING: give the most space to decisions about housing, roads, taxes, safety
-and access. A permit hearing outranks a craft class. Equal length for every item
-is exactly what makes an automated roundup read as automated.
+WEIGHTING: decisions about housing, roads, taxes, safety and access outrank
+entertainment. A permit hearing outranks a craft class.
 
-SYNTHESIS: for the 1-2 items you lead with, add a short clause on what it
-practically means for residents -- what changes, who it affects, what a
-resident might notice -- grounded ONLY in what the source data states.
-Never predict an outcome, a vote result, or a timeline beyond what the
-source explicitly says. A restated headline is not synthesis; "and that
-means residents on X can expect Y" is, as long as Y is already in the
-source, not inferred.
+SYNTHESIS: for the one item you lead with, add a short clause on what it
+practically means for residents -- what changes, who it affects -- and keep it
+grounded ONLY in what the source data states, never inferred. Never predict an outcome, a vote result, or a timeline beyond what the
+source explicitly says. A restated headline is not synthesis.
 
-Return ONLY the article text. No preamble, no title."""
+Return ONLY the paragraph. No preamble, no title."""
 
 
 def template_fallback(data: dict, label: str, cfg: dict) -> str:
-    """Ren, korrekt lista när AI-vägen inte håller. Torr men sann."""
+    """Short, true intro when the AI path does not hold: counts only. The page lists the items."""
     town = cfg["display_name"]
-    tz = ZoneInfo(cfg.get("timezone", "America/Chicago"))
-    lines = [f"Here is what is on the calendar in {town} for the week of {label}."]
+    parts = []
     if data["meetings"]:
-        lines.append("\nPublic meetings:")
-        lines += [f"{m.get('body')} meets {_fmt(m.get('meeting_date'), False)}."
-                  for m in data["meetings"]]
+        parts.append(f"{len(data['meetings'])} public meeting{'s' if len(data['meetings']) != 1 else ''}")
     if data["events"]:
-        lines.append("\nCommunity events:")
-        lines += [f"{e.get('title')}, {_fmt(e.get('starts_at'), tz=tz)}"
-                  + (f", {e['venue']}" if e.get("venue") else "") + "."
-                  for e in data["events"]]
+        parts.append(f"{len(data['events'])} community event{'s' if len(data['events']) != 1 else ''}")
     if data["games"]:
-        lines.append("\nSDSU Jackrabbits:")
-        lines += [f"{g.get('sport')} "
-                  + ("vs " if g.get("home_away") == "home" else "at ")
-                  + f"{g.get('opponent')}, {_fmt(g.get('starts_at'), tz=tz)}."
-                  for g in data["games"]]
-    lines.append("\nEvery item above comes from a public source. See the section "
-                 "pages for full agendas, schedules and registration details.")
-    return "\n".join(lines)
+        parts.append(f"{len(data['games'])} Jackrabbits game{'s' if len(data['games']) != 1 else ''}")
+    what = ", ".join(parts[:-1]) + (" and " if len(parts) > 1 else "") + parts[-1] if parts else "no scheduled items"
+    return (f"The calendar in {town} for the week of {label} has {what}. "
+            "Everything below comes from a public source and links to the original, "
+            "with the day and time on each line.")
 
 
 def generate(data: dict, label: str, cfg: dict, client=None, dry_run: bool = False) -> tuple[str, str, bool]:
@@ -300,7 +319,7 @@ def generate(data: dict, label: str, cfg: dict, client=None, dry_run: bool = Fal
         with api_usage.usage_context(generator="weekly", town_id=cfg.get("town_id")):
             msg = safe_create(
                 client,
-                model=model, max_tokens=1600, system=system + extra,
+                model=model, max_tokens=400, system=system + extra,
                 messages=[{"role": "user", "content": f"SOURCE DATA:\n{src}"}],
                 attempt=len(usage_ids) + 1,
             )
@@ -315,7 +334,7 @@ def generate(data: dict, label: str, cfg: dict, client=None, dry_run: bool = Fal
     # för incidenten (2026-08-09) det här skyddar mot.
     def _checks_pass(candidate: str) -> tuple[bool, list[str]]:
         result = guardrails.validate(candidate, src, cfg)
-        violations = list(result.violations)
+        violations = list(result.violations) + intro_format_violations(candidate)
         if not violations:
             violations = pre_publish_check(
                 candidate, source_records=data, cfg=cfg, content_type="weekly",
@@ -327,9 +346,11 @@ def generate(data: dict, label: str, cfg: dict, client=None, dry_run: bool = Fal
         passed, violations = _checks_pass(text)
 
         if not passed:
-            text = call("\n\nYour previous attempt included details not found in the "
-                        "source. Rewrite using ONLY facts explicitly present in the "
-                        "SOURCE DATA.")
+            text = call("\n\nYour previous attempt was rejected: " + "; ".join(violations[:4]) + ". "
+                        "Rewrite it as ONE paragraph of 3 to 4 sentences, under 70 words, with NO "
+                        "day names, NO clock times and NO dates anywhere (not even 'Tuesday' or "
+                        "'this Saturday': say 'this week' or describe the event instead), using "
+                        "ONLY facts explicitly present in the SOURCE DATA.")
             passed, violations = _checks_pass(text)
     except GenerationUnavailable as exc:
         print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall")

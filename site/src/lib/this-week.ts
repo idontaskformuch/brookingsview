@@ -223,6 +223,12 @@ export interface DayItem {
   href: string | null;
   external: boolean;
   detail: string;
+  /** ISO start instant when the source has a real time (events, games); null for date-only items (meetings). */
+  startsAt?: string | null;
+  endsAt?: string | null;
+  /** Venue text and source categories, used only to place the item in a theme group (lib/week-groups.ts). */
+  venue?: string | null;
+  categories?: string[];
 }
 
 export interface DayBucket {
@@ -272,6 +278,10 @@ export function buildWeekDays(
         href: item.sourceKind === 'story' ? storyHref(item.story.slug) : itemUrl(item),
         external: item.sourceKind === 'arts',
         detail: item.sourceKind === 'story' ? firstLine(item.story.body) : (item.event.teaser ?? ''),
+        startsAt: item.occurs_at,
+        endsAt: item.sourceKind === 'story' ? (item.story.ends_at ?? null) : item.event.ends_at,
+        venue: item.sourceKind === 'story' ? (item.story.venue_raw ?? null) : item.event.location,
+        categories: item.sourceKind === 'arts' ? item.event.categories : [],
       });
     }
 
@@ -301,6 +311,7 @@ export function buildWeekDays(
         vertical: 'sports', title: `${game.sport} ${gameHomeAway(game)} ${game.opponent}`,
         href: '/jackrabbits/', external: false,
         detail: game.result ?? (game.venue ?? ''),
+        startsAt: game.starts_at, venue: game.venue,
       });
     }
 
@@ -313,6 +324,7 @@ export function buildWeekDays(
         vertical: 'sports', title: `${game.team_name} ${gameHomeAway(game)} ${game.opponent_name}`,
         href: '/sports/', external: false,
         detail: score ?? (game.status === 'scheduled' ? (game.venue ?? '') : game.status),
+        startsAt: game.game_time_utc, venue: game.venue,
       });
     }
 

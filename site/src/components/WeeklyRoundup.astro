@@ -21,7 +21,6 @@ const { story } = Astro.props;
 // Första stycket som ingress, resten bakom länken.
 const paragraphs = story.body.split('\n').map((p) => p.trim()).filter(Boolean);
 const standfirst = paragraphs[0] ?? '';
-const words = story.body.split(/\s+/).length;
 
 // Länkar till den nya /this-week/<iso-week>/-sidan (dag-för-dag-vyn), inte
 // längre direkt till story-sidan -- se NEEDS-HUMAN-REVIEW.md "This Week".
@@ -76,7 +75,7 @@ const heroImage = weekInfo && !noPool
   {heroImage && <ImageAttribution image={heroImage} />}
   <p class="roundup__standfirst">{standfirst}</p>
   <a class="roundup__more" href={weekHref}>
-    Read this week in full &rarr; <span class="roundup__words data">{words} words</span>
+    See everything on this week's list &rarr;
   </a>
 </article>
 

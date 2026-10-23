@@ -35,6 +35,7 @@ import { siteConfig } from '../../lib/site-config';
 import { placeAbbr } from '../../lib/country-profile';
 import { resolvePageMeta } from '../../lib/page-meta';
 import { resolveHubBacklink } from '../../lib/clusters';
+import { groupWeekItems } from '../../lib/week-groups';
 import { storyHref } from '../../lib/content-slugs';
 
 const VERTICAL_LABELS: Record<Vertical, string> = {
@@ -105,6 +106,11 @@ const hasAnyItems = days.some((d) => d.items.length > 0);
 // Past-day omission only makes sense for the still-in-progress current
 // week -- a completed historical week keeps all 7 days as its own record.
 const displayRows = buildDisplayRows(days, siteConfig.timezone, isCurrent);
+// 2026-10-23 restructure: the body of the page is a deterministic theme-grouped list (lib/week-groups.ts),
+// with the day and time on each line; the model only writes the short introduction above it.
+const weekGroups = groupWeekItems(
+  displayRows.flatMap((r) => (r.kind === 'day' ? [r.day] : [])), days, siteConfig.timezone,
+);
 
 const itemListJsonLd = hasAnyItems ? {
   '@context': 'https://schema.org',
@@ -124,7 +130,9 @@ const itemListJsonLd = hasAnyItems ? {
     <h1>{pageMeta.h1}</h1>
     {weeklyStory ? (
       <p class="intro">{weeklyStory.body.split('\n').map((p) => p.trim()).filter(Boolean)[0]}{' '}
-        <a href={storyHref(weeklyStory.slug)}>Read the full week in review →</a></p>
+        {weeklyStory.body.split('\n').filter((p) => p.trim()).length > 1 && (
+          <a href={storyHref(weeklyStory.slug)}>Read the full week in review →</a>
+        )}</p>
     ) : (
       <p class="intro">{isCurrent
         ? `What's on this week in ${siteConfig.cityName}, day by day, built from real scheduled meetings, events${isBrookings ? ', SDSU listings' : ''} and games.`
@@ -142,30 +150,19 @@ const itemListJsonLd = hasAnyItems ? {
     </aside>
   )}
 
-  <div class="days">
-    {displayRows.map((row) => row.kind === 'empty-range' ? (
-      <p class="day__quiet day__quiet--range">
-        Nothing recorded for {row.days.length === 1
-          ? `${row.days[0].weekdayName}.`
-          : `${row.days[0].weekdayName} to ${row.days[row.days.length - 1].weekdayName}.`}
-      </p>
-    ) : (
-      <section class="day">
-        <h2 class="day__heading">
-          {row.day.weekdayName}
-          <span class="day__date">{new Date(Date.UTC(row.day.date.y, row.day.date.m - 1, row.day.date.d))
-            .toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>
-        </h2>
-        <ul class="day__items">
-          {row.day.items.map((item) => (
-            <li class="day__item">
-              <span class="day__vertical">{VERTICAL_LABELS[item.vertical]}</span>
-              {item.href ? (
-                <a href={item.href} target={item.external ? '_blank' : undefined} rel={item.external ? 'noopener' : undefined}>
-                  {item.title}
-                </a>
-              ) : <span>{item.title}</span>}
-              {item.detail && <span class="day__detail">{item.detail}</span>}
+  <div class="wk-groups">
+    {weekGroups.map((group) => (
+      <section class="wk-group" aria-labelledby={`wk-${group.id}`}>
+        <h2 class="wk-group__heading" id={`wk-${group.id}`}>{group.label}</h2>
+        <ul class="wk-list">
+          {group.rows.map((row) => (
+            <li class="wk-row">
+              <span class="wk-when">{row.when}</span>
+              <span class="wk-sep" aria-hidden="true"> · </span>
+              {row.href ? (
+                <a href={row.href} target={row.external ? '_blank' : undefined} rel={row.external ? 'noopener' : undefined}>{row.title}</a>
+              ) : <span>{row.title}</span>}
+              {row.venue && <span class="wk-venue"> · {row.venue}</span>}
             </li>
           ))}
         </ul>
@@ -237,6 +234,12 @@ const itemListJsonLd = hasAnyItems ? {
 .lead-callout__title a { color: var(--ink); }
 .lead-callout__when { font-size: 0.8125rem; color: var(--ink-soft); margin: 0.25rem 0 0; }
 
+.wk-groups { margin-top: 2rem; display: grid; gap: 1.75rem; max-width: 42rem; }
+.wk-group__heading { font-size: 1.0625rem; margin: 0 0 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--rule); }
+.wk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.wk-row { font-size: 0.9375rem; line-height: 1.4; }
+.wk-when { font-family: var(--font-ui); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wk-venue { color: var(--ink-soft); font-size: 0.875rem; }
 .days { margin-top: 2rem; display: grid; gap: 0; }
 .day { padding: 1rem 0; border-top: 1px solid var(--rule); }
 .day:last-child { border-bottom: 1px solid var(--rule); }
