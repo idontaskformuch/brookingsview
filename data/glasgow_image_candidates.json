@@ -1,7 +1,7 @@
 {
  "generated": "2026-10-23",
  "source": "Wikimedia Commons (commons.wikimedia.org), queried via the public API",
- "license_policy": "CC0, public domain, CC BY, CC BY-SA only; never NC or ND",
+ "license_policy": "Commons: CC0, public domain, CC BY, CC BY-SA only; never NC or ND. Pexels: owner-approved exception for generic Bonfire Night fireworks and bonfires only",
  "attribution": "photographer, license and a link to the Commons file page per image",
  "status": "CANDIDATES ONLY: nothing here is activated until the owner approves ids on /qa/images/",
  "rejected_by_reason": {
@@ -38,7 +38,8 @@
     "British Rail Class 314 interiors"
    ],
    "taken": "2017-05-03 10:11:00",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-002",
@@ -66,7 +67,8 @@
     "Files uploaded with For the Common Good"
    ],
    "taken": "2008-12-22",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-003",
@@ -93,7 +95,8 @@
     "British Rail Class 156s of Abellio ScotRail"
    ],
    "taken": "2015-09-11",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-004",
@@ -122,7 +125,8 @@
     "Trains of ScotRail Trains on the Glasgow South Western Line"
    ],
    "taken": "2023-04-27",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-005",
@@ -149,7 +153,8 @@
     "British Rail Class 380s of ScotRail Trains"
    ],
    "taken": "2023-10-24",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-006",
@@ -176,7 +181,8 @@
     "British Rail Class 385 385032"
    ],
    "taken": "2024-04-30",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-007",
@@ -204,7 +210,8 @@
     "British Rail Class 380 380009"
    ],
    "taken": "2024-11-13",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-008",
@@ -230,7 +237,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2025-10-19",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-009",
@@ -260,7 +268,8 @@
     "British Rail Class 318s at Glasgow Central railway station"
    ],
    "taken": "2026-08-29 20:30:01",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-010",
@@ -286,7 +295,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2023-07-27 21:45:42",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-011",
@@ -314,7 +324,8 @@
     "Media needing categories as of 18 April 2026"
    ],
    "taken": "2025-11-30 20:55:43",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-012",
@@ -344,7 +355,8 @@
     "Images from Wiki Loves Monuments missing SDC location of creation"
    ],
    "taken": "2012-12-29",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-013",
@@ -374,7 +386,8 @@
     "Images from Wiki Loves Monuments 2018 in the United Kingdom"
    ],
    "taken": "2016-09-17 15:51:29",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-014",
@@ -404,7 +417,8 @@
     "Images from Wiki Loves Monuments 2018 in the United Kingdom"
    ],
    "taken": "2016-09-17 16:14:14",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-015",
@@ -428,7 +442,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2015-08-17",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-016",
@@ -452,7 +467,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2019-06-27",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-017",
@@ -477,7 +493,8 @@
     "Govan (civil parish)"
    ],
    "taken": "1982-01",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AND-018",
@@ -507,7 +524,8 @@
     "Images from Wiki Loves Monuments 2026 in Scotland"
    ],
    "taken": "2016-08-01",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-001",
@@ -534,7 +552,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2019-10-20 08:10",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-002",
@@ -561,7 +580,8 @@
     "Acer platanoides leaves in the Northern Hemisphere in November 2013"
    ],
    "taken": "2013-11-18 15:48",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-003",
@@ -586,7 +606,8 @@
     "Images by Caitriana Nicholson"
    ],
    "taken": "2013-11-18 15:30",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-004",
@@ -611,7 +632,8 @@
     "Images by Caitriana Nicholson"
    ],
    "taken": "2013-11-18 15:32",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-005",
@@ -636,7 +658,8 @@
     "Images by Caitriana Nicholson"
    ],
    "taken": "2013-11-18 15:32",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-006",
@@ -660,7 +683,8 @@
     "Eastwood (civil parish)"
    ],
    "taken": "2012-10-26",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-007",
@@ -684,7 +708,8 @@
     "Eastwood (civil parish)"
    ],
    "taken": "2022-10-28",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-008",
@@ -708,7 +733,8 @@
     "Eastwood (civil parish)"
    ],
    "taken": "2022-10-28",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-009",
@@ -738,7 +764,8 @@
     "River Clyde in Glasgow"
    ],
    "taken": "2019-10-24 08:52:51",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-010",
@@ -762,7 +789,8 @@
     "Glasgow (civil parish)"
    ],
    "taken": "2021-10-17",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-011",
@@ -786,7 +814,8 @@
     "Glasgow (civil parish)"
    ],
    "taken": "2021-10-17",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-012",
@@ -811,7 +840,8 @@
     "Landscapes of England"
    ],
    "taken": "2020-10-04 14:03:35",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-013",
@@ -835,7 +865,8 @@
     "Govan (civil parish)"
    ],
    "taken": "2018-10-18",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-014",
@@ -859,7 +890,8 @@
     "Govan (civil parish)"
    ],
    "taken": "2024-10-10",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-015",
@@ -883,7 +915,8 @@
     "Govan (civil parish)"
    ],
    "taken": "2024-10-10",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-016",
@@ -907,7 +940,8 @@
     "Govan (civil parish)"
    ],
    "taken": "2024-10-10",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-017",
@@ -937,7 +971,8 @@
     "Argyle Street Ash"
    ],
    "taken": "2024-09-19",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-018",
@@ -965,7 +1000,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 4° W)"
    ],
    "taken": "Taken on 18 January 2017",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-019",
@@ -992,7 +1028,8 @@
     "The Queen's Empire (book)"
    ],
    "taken": "between 1897 and 1899<div style=\"display: none;\">date QS:P,+1897-00-00T00:00:00Z/8,P1319,+1897-00-00T00:00:00Z/9,P1326,+1899-00-00T00:00:00Z/9</div>",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-020",
@@ -1019,7 +1056,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2019-10-20 08:38",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-021",
@@ -1049,7 +1087,8 @@
     "Sunrises in 2019"
    ],
    "taken": "2019-10-20 08:38",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-022",
@@ -1073,7 +1112,8 @@
     "Govan (civil parish)"
    ],
    "taken": "2010-10-31",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-023",
@@ -1097,7 +1137,8 @@
     "Glasgow (civil parish)"
    ],
    "taken": "2015-10-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "AUT-024",
@@ -1121,7 +1162,1162 @@
     "Govan (civil parish)"
    ],
    "taken": "2023-10-02",
-   "flags": []
+   "flags": [],
+   "source": "commons"
+  },
+  {
+   "id": "BON-001",
+   "pageid": 1503520,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-1503520",
+   "page_url": "https://www.pexels.com/photo/fireworks-display-1503520/",
+   "thumb_url": "https://images.pexels.com/photos/1503520/pexels-photo-1503520.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 301,
+   "width": 5472,
+   "height": 3437,
+   "artist": "Craig Adderley",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Vibrant fireworks illuminating the night sky with colorful bursts.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-002",
+   "pageid": 27051702,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-27051702",
+   "page_url": "https://www.pexels.com/photo/view-of-fireworks-at-night-27051702/",
+   "thumb_url": "https://images.pexels.com/photos/27051702/pexels-photo-27051702.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 365,
+   "width": 5081,
+   "height": 3867,
+   "artist": "Robert So",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "A colorful explosion of fireworks brightens the dark night sky, creating a festive atmosphere.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-003",
+   "pageid": 949592,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-949592",
+   "page_url": "https://www.pexels.com/photo/low-angle-photo-of-fireworks-949592/",
+   "thumb_url": "https://images.pexels.com/photos/949592/pexels-photo-949592.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 3000,
+   "height": 2000,
+   "artist": "rovenimages.com",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Colorful fireworks exploding in the night sky creating a festive atmosphere.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-004",
+   "pageid": 6942352,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-6942352",
+   "page_url": "https://www.pexels.com/photo/glowing-fireworks-under-black-sky-at-night-6942352/",
+   "thumb_url": "https://images.pexels.com/photos/6942352/pexels-photo-6942352.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 5616,
+   "height": 3744,
+   "artist": "Daniel Eliashevsky",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Breathtaking view of illuminated red and golden fireworks bursting into dark cloudless sky at night",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-005",
+   "pageid": 30097155,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-30097155",
+   "page_url": "https://www.pexels.com/photo/vibrant-fireworks-exploding-against-night-sky-30097155/",
+   "thumb_url": "https://images.pexels.com/photos/30097155/pexels-photo-30097155.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 5616,
+   "height": 3744,
+   "artist": "Thể Phạm",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Colorful fireworks burst into the night sky, creating a vibrant and festive display.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-006",
+   "pageid": 38128369,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-38128369",
+   "page_url": "https://www.pexels.com/photo/colorful-fireworks-display-at-night-sky-celebration-38128369/",
+   "thumb_url": "https://images.pexels.com/photos/38128369/pexels-photo-38128369.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6058,
+   "height": 4038,
+   "artist": "Toni Seyfert",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Vibrant fireworks explode in the night sky, creating a stunning celebration scene.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-007",
+   "pageid": 6358546,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-6358546",
+   "page_url": "https://www.pexels.com/photo/fireworks-in-the-sky-6358546/",
+   "thumb_url": "https://images.pexels.com/photos/6358546/pexels-photo-6358546.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 5184,
+   "height": 3456,
+   "artist": "Lucas Pezeta",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "A captivating display of fireworks lighting up a dark night sky, perfect for celebrations.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-008",
+   "pageid": 12755184,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-12755184",
+   "page_url": "https://www.pexels.com/photo/a-photo-of-fireworks-12755184/",
+   "thumb_url": "https://images.pexels.com/photos/12755184/pexels-photo-12755184.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 4821,
+   "height": 3214,
+   "artist": "Aaron J Hill",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Colorful fireworks burst against a dark sky, capturing the essence of celebration and festivity.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-009",
+   "pageid": 19720556,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-19720556",
+   "page_url": "https://www.pexels.com/photo/fireworks-in-asia-19720556/",
+   "thumb_url": "https://images.pexels.com/photos/19720556/pexels-photo-19720556.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6000,
+   "height": 4000,
+   "artist": "Hoàng Tiến Việt",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Vivid fireworks burst over a peaceful water scene, lighting up the night sky with colorful reflections.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)",
+    "place?"
+   ]
+  },
+  {
+   "id": "BON-010",
+   "pageid": 36715178,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-36715178",
+   "page_url": "https://www.pexels.com/photo/vibrant-fireworks-display-in-night-sky-36715178/",
+   "thumb_url": "https://images.pexels.com/photos/36715178/pexels-photo-36715178.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6240,
+   "height": 4160,
+   "artist": "Jobert Enamno",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "A stunning showcase of fireworks illuminating the night sky with vibrant colors.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-011",
+   "pageid": 9906405,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-9906405",
+   "page_url": "https://www.pexels.com/photo/fireworks-in-sky-at-night-9906405/",
+   "thumb_url": "https://images.pexels.com/photos/9906405/pexels-photo-9906405.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 5568,
+   "height": 3712,
+   "artist": "Grigoriy Konsevich",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Stunning fireworks burst across the dark night sky, ideal for celebration themes.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-012",
+   "pageid": 38128367,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-38128367",
+   "page_url": "https://www.pexels.com/photo/vibrant-fireworks-burst-against-night-sky-38128367/",
+   "thumb_url": "https://images.pexels.com/photos/38128367/pexels-photo-38128367.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 5947,
+   "height": 3965,
+   "artist": "Toni Seyfert",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Colorful fireworks explode beautifully in a dark night sky, creating a vibrant spectacle.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-013",
+   "pageid": 36234335,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-36234335",
+   "page_url": "https://www.pexels.com/photo/vibrant-fireworks-exploding-in-night-sky-36234335/",
+   "thumb_url": "https://images.pexels.com/photos/36234335/pexels-photo-36234335.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 360,
+   "width": 2674,
+   "height": 2006,
+   "artist": "MochiBlink",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "A mesmerizing burst of colorful fireworks illuminating the dark night sky.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-014",
+   "pageid": 33253,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-33253",
+   "page_url": "https://www.pexels.com/photo/fireworks-display-33253/",
+   "thumb_url": "https://images.pexels.com/photos/33253/rocket-red-orange-fireworks.jpg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6000,
+   "height": 4000,
+   "artist": "Pixabay",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Colorful fireworks explode in the night sky, celebrating an event or festival.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-015",
+   "pageid": 12745599,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-12745599",
+   "page_url": "https://www.pexels.com/photo/fireworks-against-black-background-12745599/",
+   "thumb_url": "https://images.pexels.com/photos/12745599/pexels-photo-12745599.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6240,
+   "height": 4160,
+   "artist": "Prathyusha Mettupalle",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Colorful fireworks exploding against a black night sky, capturing celebration and light.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-016",
+   "pageid": 9906411,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-9906411",
+   "page_url": "https://www.pexels.com/photo/blue-fireworks-exploding-in-sky-9906411/",
+   "thumb_url": "https://images.pexels.com/photos/9906411/pexels-photo-9906411.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 5568,
+   "height": 3712,
+   "artist": "Grigoriy Konsevich",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Captivating fireworks exploding in a vivid night sky, showcasing celebration and joy.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-017",
+   "pageid": 22361403,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-22361403",
+   "page_url": "https://www.pexels.com/photo/fireworks-to-celebrate-new-years-eve-22361403/",
+   "thumb_url": "https://images.pexels.com/photos/22361403/pexels-photo-22361403.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 321,
+   "width": 6020,
+   "height": 4024,
+   "artist": "Jens Mahnke",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "A captivating fireworks display lighting up the night sky, perfect for festive celebrations.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-018",
+   "pageid": 36715186,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-36715186",
+   "page_url": "https://www.pexels.com/photo/vibrant-fireworks-display-at-night-36715186/",
+   "thumb_url": "https://images.pexels.com/photos/36715186/pexels-photo-36715186.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6240,
+   "height": 4160,
+   "artist": "Jobert Enamno",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Dazzling fireworks burst in the night sky, showcasing a vibrant celebration with colorful explosions.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-019",
+   "pageid": 39429955,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-39429955",
+   "page_url": "https://www.pexels.com/photo/vibrant-fireworks-display-in-night-sky-39429955/",
+   "thumb_url": "https://images.pexels.com/photos/39429955/pexels-photo-39429955.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 5616,
+   "height": 3744,
+   "artist": "Thể Phạm",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Colorful fireworks explode against a clear night sky, celebrating a festive occasion.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-020",
+   "pageid": 12755081,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-12755081",
+   "page_url": "https://www.pexels.com/photo/fireworks-on-a-night-sky-12755081/",
+   "thumb_url": "https://images.pexels.com/photos/12755081/pexels-photo-12755081.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 3961,
+   "height": 2641,
+   "artist": "Aaron J Hill",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Bright fireworks burst in the night sky, showcasing colorful pyrotechnics perfect for celebrations.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-021",
+   "pageid": 9906415,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-9906415",
+   "page_url": "https://www.pexels.com/photo/pink-and-green-fireworks-exploding-9906415/",
+   "thumb_url": "https://images.pexels.com/photos/9906415/pexels-photo-9906415.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 5568,
+   "height": 3712,
+   "artist": "Grigoriy Konsevich",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Colorful fireworks display with green and pink bursts lighting up the night sky.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-022",
+   "pageid": 30690347,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-30690347",
+   "page_url": "https://www.pexels.com/photo/stunning-purple-fireworks-display-at-night-30690347/",
+   "thumb_url": "https://images.pexels.com/photos/30690347/pexels-photo-30690347.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 4272,
+   "height": 2848,
+   "artist": "Thomas Blue Stones Design",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Vibrant purple fireworks illuminate the night sky with golden centers.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-023",
+   "pageid": 34667204,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-34667204",
+   "page_url": "https://www.pexels.com/photo/stunning-firework-display-against-night-sky-34667204/",
+   "thumb_url": "https://images.pexels.com/photos/34667204/pexels-photo-34667204.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6984,
+   "height": 4660,
+   "artist": "Bernhard Ederer",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "A vibrant burst of fireworks illuminates the night sky, showcasing pyrotechnic artistry.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-024",
+   "pageid": 20093607,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-20093607",
+   "page_url": "https://www.pexels.com/photo/new-year-fireworks-at-night-20093607/",
+   "thumb_url": "https://images.pexels.com/photos/20093607/pexels-photo-20093607.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 4000,
+   "height": 2667,
+   "artist": "Anya  Juárez Tenorio",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Vibrant fireworks exploding against a dark night sky, capturing a festive celebration.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-025",
+   "pageid": 6358761,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-6358761",
+   "page_url": "https://www.pexels.com/photo/bright-fireworks-in-night-sky-6358761/",
+   "thumb_url": "https://images.pexels.com/photos/6358761/pexels-photo-6358761.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6000,
+   "height": 4000,
+   "artist": "Omar Ramadan",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Amazing view of vivid glowing fireworks exploding in dark night sky over trees",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)",
+    "place?"
+   ]
+  },
+  {
+   "id": "BON-026",
+   "pageid": 30150738,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-30150738",
+   "page_url": "https://www.pexels.com/photo/vibrant-fireworks-display-lighting-up-the-night-sky-30150738/",
+   "thumb_url": "https://images.pexels.com/photos/30150738/pexels-photo-30150738.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 306,
+   "width": 4675,
+   "height": 2977,
+   "artist": "Bernhard Ederer",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Colorful fireworks burst in the night, creating a dazzling display of light and color.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-027",
+   "pageid": 27051707,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-27051707",
+   "page_url": "https://www.pexels.com/photo/golden-explosions-of-new-year-fireworks-27051707/",
+   "thumb_url": "https://images.pexels.com/photos/27051707/pexels-photo-27051707.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6000,
+   "height": 4000,
+   "artist": "Robert So",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Bright fireworks lighting up a clear night sky during a festive celebration.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-028",
+   "pageid": 34010367,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-34010367",
+   "page_url": "https://www.pexels.com/photo/vibrant-fireworks-display-against-night-sky-34010367/",
+   "thumb_url": "https://images.pexels.com/photos/34010367/pexels-photo-34010367.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 9504,
+   "height": 6336,
+   "artist": "ViAn Photography",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Colorful fireworks burst against a dark night sky, creating a vivid and celebratory scene.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-029",
+   "pageid": 12571648,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-12571648",
+   "page_url": "https://www.pexels.com/photo/fireworks-on-night-sky-12571648/",
+   "thumb_url": "https://images.pexels.com/photos/12571648/pexels-photo-12571648.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6000,
+   "height": 4000,
+   "artist": "Денис Нагайцев",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Vibrant fireworks burst in the night sky, showcasing a colorful pyrotechnic display.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-030",
+   "pageid": 36726897,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-36726897",
+   "page_url": "https://www.pexels.com/photo/spectacular-nighttime-fireworks-display-36726897/",
+   "thumb_url": "https://images.pexels.com/photos/36726897/pexels-photo-36726897.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6240,
+   "height": 4160,
+   "artist": "Jobert Enamno",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Dazzling fireworks burst in the night sky, creating a vibrant spectacle.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-031",
+   "pageid": 6388824,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-6388824",
+   "page_url": "https://www.pexels.com/photo/fireworks-in-the-night-sky-6388824/",
+   "thumb_url": "https://images.pexels.com/photos/6388824/pexels-photo-6388824.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6384,
+   "height": 4256,
+   "artist": "Juha Tuomi",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "A stunning fireworks display bursts against a dark night sky.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-032",
+   "pageid": 15538429,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-15538429",
+   "page_url": "https://www.pexels.com/photo/display-of-colorful-fireworks-15538429/",
+   "thumb_url": "https://images.pexels.com/photos/15538429/pexels-photo-15538429.png?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 3072,
+   "height": 2048,
+   "artist": "Sam Fire",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "A vibrant fireworks display illuminates the night sky with reds and blues.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-033",
+   "pageid": 33851784,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-33851784",
+   "page_url": "https://www.pexels.com/photo/vibrant-fireworks-display-against-night-sky-33851784/",
+   "thumb_url": "https://images.pexels.com/photos/33851784/pexels-photo-33851784.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 270,
+   "width": 3508,
+   "height": 1974,
+   "artist": "Peter Platou",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Stunning fireworks bursting with vivid colors in a clear night sky, perfect for holiday celebrations.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-034",
+   "pageid": 36715173,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-36715173",
+   "page_url": "https://www.pexels.com/photo/vibrant-fireworks-exploding-at-night-36715173/",
+   "thumb_url": "https://images.pexels.com/photos/36715173/pexels-photo-36715173.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6240,
+   "height": 4160,
+   "artist": "Jobert Enamno",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "A vivid display of colorful fireworks lighting up the night sky during a celebration.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-035",
+   "pageid": 36715170,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-36715170",
+   "page_url": "https://www.pexels.com/photo/vibrant-fireworks-display-at-nighttime-celebration-36715170/",
+   "thumb_url": "https://images.pexels.com/photos/36715170/pexels-photo-36715170.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6240,
+   "height": 4160,
+   "artist": "Jobert Enamno",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "A stunning fireworks display lighting up the night sky with vibrant colors during a festive celebration.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-036",
+   "pageid": 36726896,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-36726896",
+   "page_url": "https://www.pexels.com/photo/spectacular-fireworks-display-against-night-sky-36726896/",
+   "thumb_url": "https://images.pexels.com/photos/36726896/pexels-photo-36726896.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6240,
+   "height": 4160,
+   "artist": "Jobert Enamno",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Vibrant fireworks exploding in a dazzling display against a clear night sky, perfect for celebrations and holidays.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-037",
+   "pageid": 11255621,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-11255621",
+   "page_url": "https://www.pexels.com/photo/fireworks-in-night-sky-11255621/",
+   "thumb_url": "https://images.pexels.com/photos/11255621/pexels-photo-11255621.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 318,
+   "width": 4928,
+   "height": 3264,
+   "artist": "Steward Masweneng",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Red fireworks burst against night sky at outdoor celebration, creating a vivid spectacle.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-038",
+   "pageid": 31210662,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-31210662",
+   "page_url": "https://www.pexels.com/photo/vibrant-fireworks-display-lighting-up-night-sky-31210662/",
+   "thumb_url": "https://images.pexels.com/photos/31210662/pexels-photo-31210662.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6240,
+   "height": 4160,
+   "artist": "Jobert Enamno",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Bursting fireworks illuminate the night sky with vivid colors.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-039",
+   "pageid": 12701467,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-12701467",
+   "page_url": "https://www.pexels.com/photo/colorful-fireworks-during-the-night-12701467/",
+   "thumb_url": "https://images.pexels.com/photos/12701467/pexels-photo-12701467.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 270,
+   "width": 3035,
+   "height": 1707,
+   "artist": "Dusty Rainbows",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Bright and colorful fireworks display lighting up the night sky, perfect for festive occasions.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-040",
+   "pageid": 33672895,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-33672895",
+   "page_url": "https://www.pexels.com/photo/vibrant-fireworks-display-against-night-sky-33672895/",
+   "thumb_url": "https://images.pexels.com/photos/33672895/pexels-photo-33672895.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6000,
+   "height": 4000,
+   "artist": "John Davis",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Colorful fireworks explode in the night sky, creating a vivid display of light and color.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-041",
+   "pageid": 31196841,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-31196841",
+   "page_url": "https://www.pexels.com/photo/dazzling-green-fireworks-display-at-night-31196841/",
+   "thumb_url": "https://images.pexels.com/photos/31196841/pexels-photo-31196841.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6240,
+   "height": 4160,
+   "artist": "Jobert Enamno",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Spectacular green fireworks bursting in the night sky, creating a vibrant celebratory atmosphere.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-042",
+   "pageid": 31196840,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-31196840",
+   "page_url": "https://www.pexels.com/photo/spectacular-fireworks-display-at-night-sky-31196840/",
+   "thumb_url": "https://images.pexels.com/photos/31196840/pexels-photo-31196840.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6240,
+   "height": 4160,
+   "artist": "Jobert Enamno",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Vibrant night fireworks illuminating the sky with colorful explosions.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-043",
+   "pageid": 27051704,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-27051704",
+   "page_url": "https://www.pexels.com/photo/fireworks-at-night-27051704/",
+   "thumb_url": "https://images.pexels.com/photos/27051704/pexels-photo-27051704.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 317,
+   "width": 5273,
+   "height": 3483,
+   "artist": "Robert So",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Bright fireworks lighting up the night sky with vibrant colors and patterns.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-044",
+   "pageid": 31196802,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-31196802",
+   "page_url": "https://www.pexels.com/photo/vibrant-fireworks-display-at-night-sky-31196802/",
+   "thumb_url": "https://images.pexels.com/photos/31196802/pexels-photo-31196802.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6240,
+   "height": 4160,
+   "artist": "Jobert Enamno",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Spectacular fireworks lighting up a clear night sky in vibrant colors.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-045",
+   "pageid": 36715167,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-36715167",
+   "page_url": "https://www.pexels.com/photo/spectacular-nighttime-fireworks-display-36715167/",
+   "thumb_url": "https://images.pexels.com/photos/36715167/pexels-photo-36715167.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6240,
+   "height": 4160,
+   "artist": "Jobert Enamno",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Vibrant fireworks exploding against the night sky, creating a breathtaking visual spectacle.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-046",
+   "pageid": 31196846,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-31196846",
+   "page_url": "https://www.pexels.com/photo/vibrant-nighttime-fireworks-display-31196846/",
+   "thumb_url": "https://images.pexels.com/photos/31196846/pexels-photo-31196846.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6240,
+   "height": 4160,
+   "artist": "Jobert Enamno",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "Stunning display of vibrant fireworks illuminating the night sky.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-047",
+   "pageid": 27500104,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-27500104",
+   "page_url": "https://www.pexels.com/photo/fireworks-27500104/",
+   "thumb_url": "https://images.pexels.com/photos/27500104/pexels-photo-27500104.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6000,
+   "height": 4000,
+   "artist": "Alper Çakır",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "A spectacular fireworks display with vibrant colors lighting up the night sky.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
+  },
+  {
+   "id": "BON-048",
+   "pageid": 15828924,
+   "buckets": [
+    "holiday:bonfire_night"
+   ],
+   "source": "pexels",
+   "title": "pexels-15828924",
+   "page_url": "https://www.pexels.com/photo/large-bonfire-at-night-15828924/",
+   "thumb_url": "https://images.pexels.com/photos/15828924/pexels-photo-15828924.jpeg?auto=compress&cs=tinysrgb&h=650&w=940",
+   "thumb_w": 480,
+   "thumb_h": 320,
+   "width": 6000,
+   "height": 4000,
+   "artist": "Nikola Sivkov",
+   "license": "Pexels License",
+   "license_url": "https://www.pexels.com/license/",
+   "description": "A vivid campfire with glowing flames and charred logs in the dark night atmosphere.",
+   "categories": [],
+   "taken": null,
+   "flags": [
+    "Pexels (not a Commons license)"
+   ]
   },
   {
    "id": "CIT-001",
@@ -1149,7 +2345,8 @@
     "Glasgow City Chambers - Entrance hall"
    ],
    "taken": "2015-08-20 10:50:42",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-002",
@@ -1176,7 +2373,8 @@
     "Glasgow City Chambers - Entrance hall"
    ],
    "taken": "2015-08-20 10:43:14",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-003",
@@ -1203,7 +2401,8 @@
     "Photographs by User:Colin"
    ],
    "taken": "2015-08-20 10:37:56",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-004",
@@ -1230,7 +2429,8 @@
     "Glasgow City Chambers Staircase"
    ],
    "taken": "2015-08-20 10:08:13",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-005",
@@ -1257,7 +2457,8 @@
     "Glasgow City Chambers Staircase"
    ],
    "taken": "2015-08-20 10:11:58",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-006",
@@ -1284,7 +2485,8 @@
     "Photographs by User:Colin"
    ],
    "taken": "2015-08-20 13:55:55",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-007",
@@ -1313,7 +2515,8 @@
     "Photographs by User:Colin"
    ],
    "taken": "2015-08-20 14:37:41",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-008",
@@ -1342,7 +2545,8 @@
     "Files by User:W. Bulach"
    ],
    "taken": "2004-05-06 16:03:31",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-009",
@@ -1368,7 +2572,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2017-05-08 15:04:29",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-010",
@@ -1394,7 +2599,8 @@
     "Glasgow City Chambers Staircase"
    ],
    "taken": "2017-06-06 08:45:01",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-011",
@@ -1420,7 +2626,8 @@
     "Glasgow City Chambers - Debating chamber"
    ],
    "taken": "2017-06-06 08:20:28",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-012",
@@ -1450,7 +2657,8 @@
     "Images from Wiki Loves Monuments 2017 in Scotland"
    ],
    "taken": "2017-09-15 14:18:07",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-013",
@@ -1480,7 +2688,8 @@
     "Images from Wiki Loves Monuments 2017 in Scotland"
    ],
    "taken": "2017-09-15 14:18:07",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-014",
@@ -1504,7 +2713,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2010-12-04",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-015",
@@ -1529,7 +2739,8 @@
     "Night in Glasgow"
    ],
    "taken": "2011-12-21",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-016",
@@ -1553,7 +2764,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2013-08-31",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-017",
@@ -1577,7 +2789,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2019-06-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-018",
@@ -1601,7 +2814,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2019-07-26",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-019",
@@ -1631,7 +2845,8 @@
     "Images from Wiki Loves Monuments missing SDC location of creation"
    ],
    "taken": "2016-09-25 17:29:51",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-020",
@@ -1661,7 +2876,8 @@
     "Images from Wiki Loves Monuments missing SDC location of creation"
    ],
    "taken": "2016-09-25 17:34:55",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-021",
@@ -1689,7 +2905,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "Taken on 2 October 2011",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-022",
@@ -1715,7 +2932,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2015-09-26 19:33",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-023",
@@ -1741,7 +2959,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2015-09-26 19:33",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-024",
@@ -1771,7 +2990,8 @@
     "Images from Wiki Loves Monuments 2019 in the United Kingdom"
    ],
    "taken": "2019-09-09 18:50:12",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-025",
@@ -1801,7 +3021,8 @@
     "Images from Wiki Loves Monuments 2019 in Scotland"
    ],
    "taken": "2019-09-09 19:13:19",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-026",
@@ -1831,7 +3052,8 @@
     "Images from Wiki Loves Monuments 2019 in Scotland"
    ],
    "taken": "2019-09-09 19:14:55",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-027",
@@ -1855,7 +3077,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2015-08-24",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-028",
@@ -1880,7 +3103,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2010-01-01",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-029",
@@ -1905,7 +3129,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-27 12:56:44",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-030",
@@ -1930,7 +3155,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-27 12:56:47",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-031",
@@ -1954,7 +3180,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2023-04-26",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-032",
@@ -1984,7 +3211,8 @@
     "GWToolset Batch Upload"
    ],
    "taken": "between 1890 and 1900<div style=\"display: none;\">date QS:P571,+1500-00-00T00:00:00Z/6,P1319,+1890-00-00T00:00:00Z/9,P1326,+1900-00-00T00:00:00Z/9</div>",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-033",
@@ -2010,7 +3238,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2015-05-08 17:29:24",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-034",
@@ -2040,7 +3269,8 @@
     "Images from Wiki Loves Monuments 2016 in Scotland"
    ],
    "taken": "2016-09-25 17:15:42",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-035",
@@ -2070,7 +3300,8 @@
     "Images from Wiki Loves Monuments 2017 in Scotland"
    ],
    "taken": "2017-09-15 14:13:50",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-036",
@@ -2096,7 +3327,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2019-03-11 11:48:50",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-037",
@@ -2123,7 +3355,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2019-07-10 19:31:14",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-038",
@@ -2149,7 +3382,8 @@
     "Night in Glasgow"
    ],
    "taken": "2011-12-21",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-039",
@@ -2181,7 +3415,8 @@
    "taken": "2023-02-16",
    "flags": [
     "people?"
-   ]
+   ],
+   "source": "commons"
   },
   {
    "id": "CIT-040",
@@ -2208,7 +3443,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2014-07-25 20:47",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "CIT-041",
@@ -2234,7 +3470,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-06-05 15:51",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-001",
@@ -2260,7 +3497,8 @@
     "Interiors of art museums"
    ],
    "taken": "2015-06-11 16:35:12",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-002",
@@ -2290,7 +3528,8 @@
     "United Kingdom photographs taken on 2017-05-06"
    ],
    "taken": "2017-05-06 16:37:30",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-003",
@@ -2320,7 +3559,8 @@
     "Images from Wiki Loves Monuments 2020"
    ],
    "taken": "2020-01-18 15:36:23",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-004",
@@ -2344,7 +3584,8 @@
     "North porch of the Kelvingrove Art Gallery and Museum"
    ],
    "taken": "2013-04-16",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-005",
@@ -2368,7 +3609,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2013-04-20",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-006",
@@ -2392,7 +3634,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2022-06-22",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-007",
@@ -2416,7 +3659,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2022-07-10",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-008",
@@ -2440,7 +3684,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2023-11-12",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-009",
@@ -2464,7 +3709,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2023-11-12",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-010",
@@ -2492,7 +3738,8 @@
     "Entrances in Glasgow"
    ],
    "taken": "September 28, 2005 (28 September 2005 (according to <span lang=\"en\" dir=\"ltr\"><a href=\"https://en.wikipedia.org/wiki/Exif\" class=\"extiw\" title=\"en:Exif\">Exif</a></span> data))",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-011",
@@ -2517,7 +3764,8 @@
     "Flickr images uploaded by Flickr upload bot"
    ],
    "taken": "2008-05-08 20:50:06",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-012",
@@ -2546,7 +3794,8 @@
     "Files by Wikivoyage user Jtesla16"
    ],
    "taken": "2008-07-12",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-013",
@@ -2573,7 +3822,8 @@
     "Self-published work"
    ],
    "taken": "2009-10",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-014",
@@ -2601,7 +3851,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2009-08-04 15:07",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-015",
@@ -2626,7 +3877,8 @@
     "Wikivoyage banners of Scotland"
    ],
    "taken": "2009-10-08 16:01:15",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-016",
@@ -2656,7 +3908,8 @@
     "Photos from Panoramio ID 2480797"
    ],
    "taken": "Taken on 10 April 2006",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-017",
@@ -2683,7 +3936,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "17 July 2010 (original upload date)",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-018",
@@ -2710,7 +3964,8 @@
     "Photographs by dun deagh"
    ],
    "taken": "2016-03-29 10:01:25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-019",
@@ -2737,7 +3992,8 @@
     "Photographs by Phil Whitehouse"
    ],
    "taken": "Taken on 16 January 2008, 12:48",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-020",
@@ -2766,7 +4022,8 @@
     "Flickr images missing SDC published in"
    ],
    "taken": "Taken on 16 January 2008, 12:46",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-021",
@@ -2795,7 +4052,8 @@
     "Images by Keith Edkins"
    ],
    "taken": "2014-10-07",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-022",
@@ -2823,7 +4081,8 @@
     "Files from Son of Groucho Flickr stream"
    ],
    "taken": "Taken on 13 February 2009, 12:00",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-023",
@@ -2847,7 +4106,8 @@
     "Flickr images reviewed by FlickreviewR 2"
    ],
    "taken": "2007-03-31 16:51",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-024",
@@ -2872,7 +4132,8 @@
     "River Clyde in Glasgow"
    ],
    "taken": "2012-07-31",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-025",
@@ -2897,7 +4158,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2015-04-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-026",
@@ -2924,7 +4186,8 @@
     "River Clyde in Glasgow"
    ],
    "taken": "2004-10-23",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-027",
@@ -2949,7 +4212,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2017-06-07",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-028",
@@ -2975,7 +4239,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2013-11-29 15:37",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-029",
@@ -3004,7 +4269,8 @@
     "Flickr images missing SDC published in"
    ],
    "taken": "2007-05-25 14:18",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-030",
@@ -3030,7 +4296,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2011-10-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-031",
@@ -3056,7 +4323,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2016-04-09 20:12:11",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-032",
@@ -3082,7 +4350,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2011-09-17 11:31",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-033",
@@ -3106,7 +4375,8 @@
     "Glasgow (civil parish)"
    ],
    "taken": "2017-04-02",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-034",
@@ -3133,7 +4403,8 @@
     "Interiors of concert halls in the United Kingdom"
    ],
    "taken": "2023-11-12",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-035",
@@ -3157,7 +4428,8 @@
     "Glasgow (civil parish)"
    ],
    "taken": "2023-07-30",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-036",
@@ -3182,7 +4454,8 @@
     "Self-published work"
    ],
    "taken": "2022-06-16 14:40:00",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-037",
@@ -3210,7 +4483,8 @@
     "September 2005 in Scotland"
    ],
    "taken": "2005-09-03",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-038",
@@ -3236,7 +4510,8 @@
     "Images with extracted images"
    ],
    "taken": "2016-03-05 22:53:20",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-039",
@@ -3260,7 +4535,8 @@
     "Self-published work"
    ],
    "taken": "2016-10-28",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-040",
@@ -3290,7 +4566,8 @@
     "Concerts in Glasgow"
    ],
    "taken": "2018-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-041",
@@ -3320,7 +4597,8 @@
     "Concerts in Glasgow"
    ],
    "taken": "Taken on 14 February 2022, 20:13:45",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-042",
@@ -3345,7 +4623,8 @@
     "Flickr images reviewed by FlickreviewR 2"
    ],
    "taken": "2010-02-13 23:54:32",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-043",
@@ -3375,7 +4654,8 @@
     "Uploaded with Monumental"
    ],
    "taken": "2024-05-19 03:16:25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-044",
@@ -3399,7 +4679,8 @@
     "Barrowland Ballroom"
    ],
    "taken": "2024-11-15",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-045",
@@ -3423,7 +4704,8 @@
     "Glasgow (civil parish)"
    ],
    "taken": "2024-02-28",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-046",
@@ -3453,7 +4735,8 @@
     "United Kingdom photographs taken on 2010-09-05"
    ],
    "taken": "2010-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-047",
@@ -3483,7 +4766,8 @@
     "United Kingdom photographs taken on 2010-09-05"
    ],
    "taken": "2010-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-048",
@@ -3513,7 +4797,8 @@
     "Photos by Postdlf"
    ],
    "taken": "2010-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-049",
@@ -3543,7 +4828,8 @@
     "Photos by Postdlf"
    ],
    "taken": "2010-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-050",
@@ -3573,7 +4859,8 @@
     "United Kingdom photographs taken on 2010-09-05"
    ],
    "taken": "2010-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-051",
@@ -3603,7 +4890,8 @@
     "United Kingdom photographs taken on 2010-09-05"
    ],
    "taken": "2010-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-052",
@@ -3633,7 +4921,8 @@
     "United Kingdom photographs taken on 2010-09-05"
    ],
    "taken": "2010-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-053",
@@ -3663,7 +4952,8 @@
     "Photos by Postdlf"
    ],
    "taken": "2010-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-054",
@@ -3692,7 +4982,8 @@
     "Site St Mary's & St Anne's Church of Scotland & BG, Merchant City"
    ],
    "taken": "2010-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-055",
@@ -3722,7 +5013,8 @@
     "United Kingdom photographs taken on 2010-09-05"
    ],
    "taken": "2010-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-056",
@@ -3752,7 +5044,8 @@
     "United Kingdom photographs taken on 2010-09-05"
    ],
    "taken": "2010-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-057",
@@ -3782,7 +5075,8 @@
     "2010 in Glasgow"
    ],
    "taken": "2010-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-058",
@@ -3812,7 +5106,8 @@
     "2010 in Glasgow"
    ],
    "taken": "2010-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-059",
@@ -3842,7 +5137,8 @@
     "United Kingdom photographs taken on 2010-09-05"
    ],
    "taken": "2010-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-060",
@@ -3871,7 +5167,8 @@
     "Flickr images missing SDC published in"
    ],
    "taken": "2013-10-18 18:52",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-061",
@@ -3900,7 +5197,8 @@
     "Flickr images missing SDC published in"
    ],
    "taken": "2013-10-18 18:49",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-062",
@@ -3924,7 +5222,8 @@
     "Self-published work"
    ],
    "taken": "2016-11-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-063",
@@ -3952,7 +5251,8 @@
     "Night in Glasgow"
    ],
    "taken": "26 October 2007 (according to <span lang=\"en\" dir=\"ltr\"><a href=\"https://en.wikipedia.org/wiki/Exif\" class=\"extiw\" title=\"en:Exif\">Exif</a></span> data)",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-064",
@@ -3976,7 +5276,8 @@
     "City of Glasgow College Riverside Campus"
    ],
    "taken": "2017-06-17",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-065",
@@ -4001,7 +5302,8 @@
     "Glasgow Apostolic Christian Church, Merchant City"
    ],
    "taken": "2014-10-30 03:37:48",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-066",
@@ -4026,7 +5328,8 @@
     "Glasgow Apostolic Christian Church, Merchant City"
    ],
    "taken": "2014-10-30 03:37:48",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-067",
@@ -4051,7 +5354,8 @@
     "Glasgow Apostolic Christian Church, Merchant City"
    ],
    "taken": "2014-10-30 03:37:48",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-068",
@@ -4076,7 +5380,8 @@
     "Glasgow Apostolic Christian Church, Merchant City"
    ],
    "taken": "2014-10-30 03:37:48",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-069",
@@ -4103,7 +5408,8 @@
     "Exterior of the Riverside Museum (Glasgow)"
    ],
    "taken": "2010-02-14 12:02",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-070",
@@ -4133,7 +5439,8 @@
     "Cygnus olor in November"
    ],
    "taken": "2012",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-071",
@@ -4162,7 +5469,8 @@
     "Glasgow Museums GLAMWiki"
    ],
    "taken": "2014",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-072",
@@ -4187,7 +5495,8 @@
     "Exterior of the Riverside Museum (Glasgow)"
    ],
    "taken": "2013-11-10",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-073",
@@ -4214,7 +5523,8 @@
     "Photographs by dun deagh"
    ],
    "taken": "2012-03-15 17:17:28",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-074",
@@ -4241,7 +5551,8 @@
     "Photographs by dun deagh"
    ],
    "taken": "2012-03-15 17:13:23",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-075",
@@ -4268,7 +5579,8 @@
     "Photographs by dun deagh"
    ],
    "taken": "2012-03-15 17:12:38",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-076",
@@ -4298,7 +5610,8 @@
     "Exterior of the Riverside Museum (Glasgow)"
    ],
    "taken": "2013-12-13 15:21",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-077",
@@ -4327,7 +5640,8 @@
     "Exterior of the Riverside Museum (Glasgow)"
    ],
    "taken": "2018-08-07",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-078",
@@ -4351,7 +5665,8 @@
     "Main Street (Riverside Museum, Glasgow)"
    ],
    "taken": "2015-10-29 14:07:47",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-079",
@@ -4375,7 +5690,8 @@
     "Main Street (Riverside Museum, Glasgow)"
    ],
    "taken": "2015-10-29 14:14:23",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-080",
@@ -4399,7 +5715,8 @@
     "Flickr images reviewed by FlickreviewR 2"
    ],
    "taken": "2015-10-29 14:19:47",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-081",
@@ -4423,7 +5740,8 @@
     "Flickr images reviewed by FlickreviewR 2"
    ],
    "taken": "2015-10-29 14:20:08",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-082",
@@ -4447,7 +5765,8 @@
     "Flickr images reviewed by FlickreviewR 2"
    ],
    "taken": "2015-10-29 14:24:28",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-083",
@@ -4471,7 +5790,8 @@
     "Flickr images reviewed by FlickreviewR 2"
    ],
    "taken": "2015-10-29 14:26:19",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-084",
@@ -4495,7 +5815,8 @@
     "Motorcycles in the Riverside Museum (Glasgow)"
    ],
    "taken": "2015-10-29 14:25:49",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-085",
@@ -4521,7 +5842,8 @@
     "Automobiles in the Riverside Museum (Glasgow)"
    ],
    "taken": "2015-10-29 15:23:48",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-086",
@@ -4546,7 +5868,8 @@
     "Automobiles in the Riverside Museum (Glasgow)"
    ],
    "taken": "2015-10-29 15:24:40",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-087",
@@ -4571,7 +5894,8 @@
     "Bedford CF2 ambulance in the Riverside Museum, Glasgow"
    ],
    "taken": "2015-10-29 15:24:03",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-088",
@@ -4595,7 +5919,8 @@
     "Automobiles in the Riverside Museum (Glasgow)"
    ],
    "taken": "2015-10-29 15:48:11",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-089",
@@ -4619,7 +5944,8 @@
     "Automobiles in the Riverside Museum (Glasgow)"
    ],
    "taken": "2015-10-29 15:49:07",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-090",
@@ -4643,7 +5969,8 @@
     "Flickr images reviewed by FlickreviewR 2"
    ],
    "taken": "2015-10-29 15:57:05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-091",
@@ -4667,7 +5994,8 @@
     "Automobiles in the Riverside Museum (Glasgow)"
    ],
    "taken": "2015-10-29 15:57:57",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-092",
@@ -4692,7 +6020,8 @@
     "Exterior of the Riverside Museum (Glasgow)"
    ],
    "taken": "2011-06-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-093",
@@ -4717,7 +6046,8 @@
     "Main Street (Riverside Museum, Glasgow)"
    ],
    "taken": "2012-02-03 15:31:21",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-094",
@@ -4742,7 +6072,8 @@
     "Interior of the Riverside Museum (Glasgow)"
    ],
    "taken": "2012-02-03 15:42:46",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-095",
@@ -4767,7 +6098,8 @@
     "Interior of the Riverside Museum (Glasgow)"
    ],
    "taken": "2012-02-03 15:45:27",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-096",
@@ -4792,7 +6124,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2012-02-03 15:50:21",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "EVT-097",
@@ -4817,7 +6150,8 @@
     "Exterior of the Riverside Museum (Glasgow)"
    ],
    "taken": "2022-08-18",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-001",
@@ -4847,7 +6181,8 @@
     "Assumed own work"
    ],
    "taken": "16 January 2006 (original upload date)",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-002",
@@ -4877,7 +6212,8 @@
     "Images from Wiki Loves Monuments 2016 in Scotland"
    ],
    "taken": "2016-09-25 18:04:56",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-003",
@@ -4907,7 +6243,8 @@
     "Images from Wiki Loves Monuments 2016 in Scotland"
    ],
    "taken": "2016-09-25 18:00:36",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-004",
@@ -4937,7 +6274,8 @@
     "Images from Wiki Loves Monuments 2017 in the United Kingdom"
    ],
    "taken": "2017-09-16 16:54:02",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-005",
@@ -4967,7 +6305,8 @@
     "Images from Wiki Loves Monuments 2017 in the United Kingdom"
    ],
    "taken": "2017-09-16 16:54:02",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-006",
@@ -4997,7 +6336,8 @@
     "Images from Wiki Loves Monuments 2017 in the United Kingdom"
    ],
    "taken": "2017-09-16 16:54:02",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-007",
@@ -5027,7 +6367,8 @@
     "Images from Wiki Loves Monuments 2017 in the United Kingdom"
    ],
    "taken": "2017-09-16 16:54:02",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-008",
@@ -5057,7 +6398,8 @@
     "Images from Wiki Loves Monuments 2017 in Scotland"
    ],
    "taken": "2017-09-28 16:21:03",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-009",
@@ -5087,7 +6429,8 @@
     "Images from Wiki Loves Monuments 2017 in Scotland"
    ],
    "taken": "2017-09-28 16:21:03",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-010",
@@ -5117,7 +6460,8 @@
     "Images from Wiki Loves Monuments 2017 in Scotland"
    ],
    "taken": "2017-09-28 16:21:03",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-011",
@@ -5147,7 +6491,8 @@
     "United Kingdom photographs taken on 2017-09-28"
    ],
    "taken": "2017-09-28 16:21:03",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-012",
@@ -5177,7 +6522,8 @@
     "Images from Wiki Loves Monuments 2017 in Scotland"
    ],
    "taken": "2017-09-28 16:21:03",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-013",
@@ -5207,7 +6553,8 @@
     "Images from Wiki Loves Monuments 2017 in Scotland"
    ],
    "taken": "2017-09-28 16:21:03",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-014",
@@ -5237,7 +6584,8 @@
     "Uploaded via Campaign:wlm-gb-sct"
    ],
    "taken": "2018-08-23 14:40:34",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-015",
@@ -5267,7 +6615,8 @@
     "Uploaded via Campaign:wlm-gb-sct"
    ],
    "taken": "2018-08-23 14:35:46",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-016",
@@ -5297,7 +6646,8 @@
     "Images from Wiki Loves Monuments 2018 in Scotland"
    ],
    "taken": "2018-08-23 14:44:23",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-017",
@@ -5327,7 +6677,8 @@
     "Uploaded via Campaign:wlm-gb-sct"
    ],
    "taken": "2018-08-23 14:49:25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-018",
@@ -5357,7 +6708,8 @@
     "Images from Wiki Loves Monuments 2018 in Scotland"
    ],
    "taken": "2018-08-23 14:41:18",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-019",
@@ -5387,7 +6739,8 @@
     "Historic Scotland listings with known IDs"
    ],
    "taken": "2018-08-23 14:39:12",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-020",
@@ -5412,7 +6765,8 @@
     "William Burns (Scottish historian)"
    ],
    "taken": "2020-09-27 13:05:23",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-021",
@@ -5442,7 +6796,8 @@
     "Images from Wiki Loves Monuments 2022 in Scotland"
    ],
    "taken": "2015-12-27 14:34:17",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-022",
@@ -5472,7 +6827,8 @@
     "WLM-UK 2024 unfiltered 09-30"
    ],
    "taken": "2024-05-19 11:14:05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HAL-023",
@@ -5502,7 +6858,8 @@
     "Halloween in Glasgow"
    ],
    "taken": "Taken on 6 October 2018, 11:07:09",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HOG-001",
@@ -5532,7 +6889,8 @@
     "December 2008 in Glasgow"
    ],
    "taken": "2008-12-31",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HOG-002",
@@ -5556,7 +6914,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2010-01-01",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HOG-003",
@@ -5582,7 +6941,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2024-01-01 13:17",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HOG-004",
@@ -5608,7 +6968,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2024-01-01 13:23",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HOG-005",
@@ -5634,7 +6995,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2024-01-01 13:18",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HOG-006",
@@ -5659,7 +7021,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2024-01-01 13:29",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HOG-007",
@@ -5685,7 +7048,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2024-01-01 13:26",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HOG-008",
@@ -5711,7 +7075,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2024-01-01 13:27",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HOG-009",
@@ -5737,7 +7102,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2024-01-01 13:33",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HOG-010",
@@ -5763,7 +7129,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2024-01-01 13:34",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HOG-011",
@@ -5789,7 +7156,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2024-01-01 13:37",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "HOG-012",
@@ -5813,7 +7181,8 @@
     "Glasgow (civil parish)"
    ],
    "taken": "2020-01-01",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-001",
@@ -5842,7 +7211,8 @@
     "Panoramics of stadiums"
    ],
    "taken": "2004-04-11",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-002",
@@ -5868,7 +7238,8 @@
     "Photographs of places of worship by Hassocks5489"
    ],
    "taken": "2010-03-27",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-003",
@@ -5896,7 +7267,8 @@
    "taken": "2015-05-30 13:59:00",
    "flags": [
     "people?"
-   ]
+   ],
+   "source": "commons"
   },
   {
    "id": "SPO-004",
@@ -5926,7 +7298,8 @@
     "Panoramio images reviewed by trusted users"
    ],
    "taken": "17 July 2010 (original upload date)",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-005",
@@ -5952,7 +7325,8 @@
     "Aerial photographs of Glasgow"
    ],
    "taken": "17 July 2010 (original upload date)",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-006",
@@ -5982,7 +7356,8 @@
     "Matches of association football clubs in the United Kingdom in 2010"
    ],
    "taken": "2010-05-15",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-007",
@@ -6009,7 +7384,8 @@
    "taken": "2010-05-15",
    "flags": [
     "people?"
-   ]
+   ],
+   "source": "commons"
   },
   {
    "id": "SPO-008",
@@ -6035,7 +7411,8 @@
     "Images by Richard Sutcliffe"
    ],
    "taken": "2018-03-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-009",
@@ -6065,7 +7442,8 @@
     "United Kingdom photographs taken on 2022-03-27"
    ],
    "taken": "Taken on 27 March 2022",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-010",
@@ -6089,7 +7467,8 @@
     "Self-published work"
    ],
    "taken": "2023-01-14 21:53:57",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-011",
@@ -6117,7 +7496,8 @@
     "2021 events in Glasgow"
    ],
    "taken": "2021-06-14 16:27:14",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-012",
@@ -6142,7 +7522,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2018-09-10 19:06:40",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-013",
@@ -6166,7 +7547,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-27 09:43:25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-014",
@@ -6190,7 +7572,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-27 09:43:33",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-015",
@@ -6216,7 +7599,8 @@
     "Turnstiles in the United Kingdom"
    ],
    "taken": "2018-03-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-016",
@@ -6240,7 +7624,8 @@
     "Flickr images reviewed by FlickreviewR 2"
    ],
    "taken": "2011-09-03 13:45",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-017",
@@ -6264,7 +7649,8 @@
     "Flickr images reviewed by FlickreviewR 2"
    ],
    "taken": "2012-07-26 12:45",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-018",
@@ -6288,7 +7674,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2019-08-31",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-019",
@@ -6313,7 +7700,8 @@
     "Self-published work"
    ],
    "taken": "2024-06-07",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-020",
@@ -6337,7 +7725,8 @@
     "Celtic Park"
    ],
    "taken": "2009-06-29",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-021",
@@ -6365,7 +7754,8 @@
     "Template Unknown (author)"
    ],
    "taken": "1906",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-022",
@@ -6395,7 +7785,8 @@
     "Matches of Celtic F.C."
    ],
    "taken": "2019-12-29 13:54:55",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-023",
@@ -6425,7 +7816,8 @@
    "taken": "2011-05-15",
    "flags": [
     "people?"
-   ]
+   ],
+   "source": "commons"
   },
   {
    "id": "SPO-024",
@@ -6453,7 +7845,8 @@
     "Aerial photographs of Glasgow"
    ],
    "taken": "2022-03-27",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-025",
@@ -6477,7 +7870,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2013-11-14",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-026",
@@ -6501,7 +7895,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-28 17:30:33",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-027",
@@ -6525,7 +7920,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-28 17:30:10",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-028",
@@ -6549,7 +7945,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-28 17:30:15",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-029",
@@ -6573,7 +7970,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-28 17:41:47",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-030",
@@ -6597,7 +7995,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-28 17:43:38",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-031",
@@ -6623,7 +8022,8 @@
     "Images by Thomas Nugent"
    ],
    "taken": "2024-03-22",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-032",
@@ -6650,7 +8050,8 @@
     "Stained-glass windows in Glasgow"
    ],
    "taken": "2024-03-22",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-033",
@@ -6677,7 +8078,8 @@
     "Sports venue dressing rooms"
    ],
    "taken": "2024-03-22",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-034",
@@ -6703,7 +8105,8 @@
     "Images by Thomas Nugent"
    ],
    "taken": "2024-03-22",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-035",
@@ -6729,7 +8132,8 @@
     "Images by Thomas Nugent"
    ],
    "taken": "2024-03-22",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-036",
@@ -6758,7 +8162,8 @@
     "Images by Thomas Nugent"
    ],
    "taken": "2024-03-22",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-037",
@@ -6789,7 +8194,8 @@
    "taken": "2024-08-18",
    "flags": [
     "people?"
-   ]
+   ],
+   "source": "commons"
   },
   {
    "id": "SPO-038",
@@ -6815,7 +8221,8 @@
     "PD-self"
    ],
    "taken": "2006-10-14",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-039",
@@ -6839,7 +8246,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2012-02-18",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-040",
@@ -6863,7 +8271,8 @@
     "Self-published work"
    ],
    "taken": "2021-05-31 17:59:39",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-041",
@@ -6887,7 +8296,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2006-05-10",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-042",
@@ -6911,7 +8321,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2006-05-04",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-043",
@@ -6934,7 +8345,8 @@
     "Ibrox Stadium"
    ],
    "taken": "2021-05-31",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-044",
@@ -6958,7 +8370,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-27 19:23:30",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-045",
@@ -6982,7 +8395,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-27 19:22:36",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-046",
@@ -7010,7 +8424,8 @@
     "Files by User:Nicola/Radsport/2012-2013 UCI Track World Cup in Glasgow"
    ],
    "taken": "2012-11-16 10:48:59",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-047",
@@ -7037,7 +8452,8 @@
     "Files by User:Nicola/Radsport/2012-2013 UCI Track World Cup in Glasgow"
    ],
    "taken": "2012-11-16 10:50:40",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-048",
@@ -7064,7 +8480,8 @@
     "Files by User:Nicola/Radsport/2012-2013 UCI Track World Cup in Glasgow"
    ],
    "taken": "2012-11-20 20:48:39",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-049",
@@ -7090,7 +8507,8 @@
     "Files by User:Nicola/Radsport/2012-2013 UCI Track World Cup in Glasgow"
    ],
    "taken": "2012-11-20 20:48:57",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-050",
@@ -7116,7 +8534,8 @@
     "Files by User:Nicola/Radsport/2012-2013 UCI Track World Cup in Glasgow"
    ],
    "taken": "2012-11-20 20:48:48",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-051",
@@ -7141,7 +8560,8 @@
     "Files by User:Nicola/Radsport/2012-2013 UCI Track World Cup in Glasgow"
    ],
    "taken": "2012-11-20 20:48:01",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-052",
@@ -7167,7 +8587,8 @@
     "Files by User:Nicola/Radsport/2012-2013 UCI Track World Cup in Glasgow"
    ],
    "taken": "2012-11-20 20:50:52",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-053",
@@ -7193,7 +8614,8 @@
     "Files by User:Nicola/Radsport/2012-2013 UCI Track World Cup in Glasgow"
    ],
    "taken": "2012-11-20 20:50:43",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-054",
@@ -7223,7 +8645,8 @@
     "Views of Glasgow from Bluevale and Whitevale Towers"
    ],
    "taken": "2013-09-21 14:16:44",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-055",
@@ -7250,7 +8673,8 @@
     "Files by User:Nicola/Radsport/2012-2013 UCI Track World Cup in Glasgow"
    ],
    "taken": "2012-11-16 10:48:59",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-056",
@@ -7280,7 +8704,8 @@
     "August 2018 in Glasgow"
    ],
    "taken": "Taken on<span typeof=\"mw:Entity\"> </span>4 August 2018<link rel=\"mw:PageProp/Category\" href=\"./Category:Scotland_photographs_taken_on_2018-08-04\">",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-057",
@@ -7307,7 +8732,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2019-03-01 09:47",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-058",
@@ -7331,7 +8757,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-28 17:35:52",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-059",
@@ -7355,7 +8782,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-28 17:39:43",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-060",
@@ -7379,7 +8807,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-28 17:36:04",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-061",
@@ -7403,7 +8832,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-28 17:44:31",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-062",
@@ -7427,7 +8857,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-28 17:43:57",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-063",
@@ -7451,7 +8882,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-28 17:45:13",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-064",
@@ -7475,7 +8907,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-28 17:45:19",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-065",
@@ -7499,7 +8932,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-28 17:47:02",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-066",
@@ -7523,7 +8957,8 @@
     "Self-published work"
    ],
    "taken": "2023-09-28 17:46:55",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-067",
@@ -7549,7 +8984,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2014-07-27 08:40",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-068",
@@ -7575,7 +9011,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2014-07-27 08:43",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-069",
@@ -7605,7 +9042,8 @@
     "Images from Wiki Loves Monuments 2024 in the United Kingdom for prejury"
    ],
    "taken": "2015-09-10 16:26:21",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "SPO-070",
@@ -7632,7 +9070,8 @@
     "River Clyde in Glasgow"
    ],
    "taken": "2021-07-01",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-001",
@@ -7662,7 +9101,8 @@
     "Images from Wiki Loves Monuments 2017 in Scotland"
    ],
    "taken": "2017-09-17 13:54:55",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-002",
@@ -7686,7 +9126,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2011-09-02",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-003",
@@ -7712,7 +9153,8 @@
     "Gordon Street, Glasgow"
    ],
    "taken": "2012-04-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-004",
@@ -7738,7 +9180,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2015-05-09 17:05:45",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-005",
@@ -7764,7 +9207,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2015-05-09 17:05:42",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-006",
@@ -7788,7 +9232,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2010-06-02",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-007",
@@ -7813,7 +9258,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2010-04-13",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-008",
@@ -7837,7 +9283,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2012-07-31",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-009",
@@ -7861,7 +9308,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2014-02-16",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-010",
@@ -7886,7 +9334,8 @@
     "A814 road (Scotland)"
    ],
    "taken": "2016-04-09",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-011",
@@ -7910,7 +9359,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2017-07-19",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-012",
@@ -7934,7 +9384,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2017-07-19",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-013",
@@ -7958,7 +9409,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2016-07-28",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-014",
@@ -7983,7 +9435,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2013-11-29 15:35",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-015",
@@ -8012,7 +9465,8 @@
     "Baillieston Interchange"
    ],
    "taken": "2016-04-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-016",
@@ -8042,7 +9496,8 @@
     "Road bridges over highways"
    ],
    "taken": "2016-01-13",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-017",
@@ -8071,7 +9526,8 @@
     "Images by Lairich Rig"
    ],
    "taken": "2010-10-11",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-018",
@@ -8099,7 +9555,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2018-02-12 07:57:59",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-019",
@@ -8129,7 +9586,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2018-02-12 07:59:39",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-020",
@@ -8155,7 +9613,8 @@
     "Road bridges over highways"
    ],
    "taken": "2013-09-05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-021",
@@ -8182,7 +9641,8 @@
     "Footbridges in Glasgow"
    ],
    "taken": "2016-04-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-022",
@@ -8206,7 +9666,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2016-04-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-023",
@@ -8230,7 +9691,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2016-04-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-024",
@@ -8254,7 +9716,8 @@
     "Glasgow (civil parish)"
    ],
    "taken": "2016-04-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-025",
@@ -8278,7 +9741,8 @@
     "Glasgow (civil parish)"
    ],
    "taken": "2016-04-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-026",
@@ -8305,7 +9769,8 @@
     "Footbridges over highways"
    ],
    "taken": "2016-04-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-027",
@@ -8329,7 +9794,8 @@
     "Glasgow (civil parish)"
    ],
    "taken": "2016-04-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-028",
@@ -8357,7 +9823,8 @@
     "Anderston Interchange"
    ],
    "taken": "2023-12-29",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-029",
@@ -8381,7 +9848,8 @@
     "Glasgow (civil parish)"
    ],
    "taken": "2023-12-29",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-030",
@@ -8405,7 +9873,8 @@
     "Glasgow (civil parish)"
    ],
    "taken": "2023-12-29",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-031",
@@ -8435,7 +9904,8 @@
     "July 2005 in rail transport in Scotland"
    ],
    "taken": "23 July 2005 (according to <span lang=\"en\" dir=\"ltr\"><a href=\"https://en.wikipedia.org/wiki/Exif\" class=\"extiw\" title=\"en:Exif\">Exif</a></span> data)",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-032",
@@ -8465,7 +9935,8 @@
     "British Rail Class 156s of Abellio ScotRail"
    ],
    "taken": "2015-08-05 13:03:44",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-033",
@@ -8495,7 +9966,8 @@
     "British Rail Class 170s on the Glasgow to Edinburgh via Falkirk Line"
    ],
    "taken": "2015-08-05 13:12:06",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-034",
@@ -8522,7 +9994,8 @@
     "Ticket barriers in Scotland"
    ],
    "taken": "2015-08-06 10:18:52",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-035",
@@ -8549,7 +10022,8 @@
     "Ticket barriers in Scotland"
    ],
    "taken": "2019-08-26 18:41:59",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-036",
@@ -8579,7 +10053,8 @@
     "British Rail Class 385s at Glasgow Queen Street railway station"
    ],
    "taken": "2019-08-26 18:37:57",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-037",
@@ -8609,7 +10084,8 @@
     "British Rail Class 385s at Glasgow Queen Street railway station"
    ],
    "taken": "2019-08-26 18:37:42",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-038",
@@ -8637,7 +10113,8 @@
     "Cathedral Street bridge, Glasgow"
    ],
    "taken": "2019-08-25 11:45:54",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-039",
@@ -8667,7 +10144,8 @@
     "British Rail Class 385s at Glasgow Queen Street railway station"
    ],
    "taken": "2019-08-25 11:43:31",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-040",
@@ -8697,7 +10175,8 @@
     "British Rail Class 170s on the Glasgow to Edinburgh via Falkirk Line"
    ],
    "taken": "2019-08-25 11:44:53",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-041",
@@ -8727,7 +10206,8 @@
     "British Rail Class 170s on the Glasgow to Edinburgh via Falkirk Line"
    ],
    "taken": "2019-08-25 11:43:50",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-042",
@@ -8757,7 +10237,8 @@
     "British Rail Class 156s at Glasgow Queen Street railway station"
    ],
    "taken": "2019-08-25 11:40:14",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-043",
@@ -8787,7 +10268,8 @@
     "British Rail Class 170s on the Glasgow to Edinburgh via Falkirk Line"
    ],
    "taken": "2019-08-25 11:43:57",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-044",
@@ -8817,7 +10299,8 @@
     "British Rail Class 170s at Glasgow Queen Street railway station"
    ],
    "taken": "2019-08-25 11:36:08",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-045",
@@ -8847,7 +10330,8 @@
     "British Rail Class 170s on the Glasgow to Edinburgh via Falkirk Line"
    ],
    "taken": "2019-08-25 11:31:34",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-046",
@@ -8873,7 +10357,8 @@
     "Photographs by Tbatb taken in 2019"
    ],
    "taken": "2019-08-25 11:30:17",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-047",
@@ -8899,7 +10384,8 @@
     "Photographs by Tbatb taken in 2019"
    ],
    "taken": "2019-08-25 11:30:42",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-048",
@@ -8931,7 +10417,8 @@
    "taken": "2019-08-25 11:41:31",
    "flags": [
     "people?"
-   ]
+   ],
+   "source": "commons"
   },
   {
    "id": "TRF-049",
@@ -8958,7 +10445,8 @@
     "August 2019 in Glasgow"
    ],
    "taken": "2019-08-25 11:33:21",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-050",
@@ -8985,7 +10473,8 @@
     "August 2019 in Glasgow"
    ],
    "taken": "2019-08-25 11:46:14",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-051",
@@ -9017,7 +10506,8 @@
    "taken": "2019-08-25 11:49:51",
    "flags": [
     "people?"
-   ]
+   ],
+   "source": "commons"
   },
   {
    "id": "TRF-052",
@@ -9043,7 +10533,8 @@
     "Photographs by Tbatb taken in 2019"
    ],
    "taken": "2019-08-26 11:21:56",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-053",
@@ -9071,7 +10562,8 @@
     "Construction sites in Glasgow"
    ],
    "taken": "2019-08-26 11:10:05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-054",
@@ -9101,7 +10593,8 @@
     "Images from Wiki Loves Monuments 2019 in Scotland"
    ],
    "taken": "2015-09-19 12:43:23",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-055",
@@ -9131,7 +10624,8 @@
     "Images from Wiki Loves Monuments 2019 in Scotland"
    ],
    "taken": "2015-09-19 12:43:15",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-056",
@@ -9161,7 +10655,8 @@
     "United Kingdom photographs taken on 2015-09-19"
    ],
    "taken": "2015-09-19 12:52:48",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-057",
@@ -9185,7 +10680,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2017-10-14",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-058",
@@ -9211,7 +10707,8 @@
     "West George Street, Glasgow"
    ],
    "taken": "2019-03-26",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-059",
@@ -9239,7 +10736,8 @@
     "Cathedral Street bridge, Glasgow"
    ],
    "taken": "2019-09-15",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-060",
@@ -9265,7 +10763,8 @@
     "Images by Richard Sutcliffe"
    ],
    "taken": "2022-12-09",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "TRF-061",
@@ -9291,7 +10790,8 @@
     "North Hanover Street, Glasgow"
    ],
    "taken": "2024-11-27 20:12:30",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-001",
@@ -9317,7 +10817,8 @@
     "PD-self"
    ],
    "taken": "2006-11-11",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-002",
@@ -9342,7 +10843,8 @@
     "Images by Astrid Horn"
    ],
    "taken": "2004-06-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-003",
@@ -9367,7 +10869,8 @@
     "Self-published work"
    ],
    "taken": "2011-08-17",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-004",
@@ -9393,7 +10896,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2015-05-09 15:08:54",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-005",
@@ -9419,7 +10923,8 @@
     "Information field template with formatting"
    ],
    "taken": "2015-05-09 15:08:51",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-006",
@@ -9445,7 +10950,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2015-05-09 15:13:03",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-007",
@@ -9471,7 +10977,8 @@
     "Files with coordinates missing SDC location of creation (55° N, 5° W)"
    ],
    "taken": "2015-05-09 15:18:28",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-008",
@@ -9501,7 +11008,8 @@
     "Images from Wiki Loves Monuments 2017 in Scotland"
    ],
    "taken": "2017-05-06 13:58:10",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-009",
@@ -9531,7 +11039,8 @@
     "Images from Wiki Loves Monuments 2017 in Scotland"
    ],
    "taken": "2017-05-06 14:11:59",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-010",
@@ -9555,7 +11064,8 @@
     "Self-published work"
    ],
    "taken": "2018-12-03 14:58:36",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-011",
@@ -9585,7 +11095,8 @@
     "Images from Wiki Loves Monuments 2019 in Scotland"
    ],
    "taken": "2018-10-19 16:47:03",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-012",
@@ -9615,7 +11126,8 @@
     "Images from Wiki Loves Monuments missing SDC location of creation"
    ],
    "taken": "2020-01-18 15:33:14",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-013",
@@ -9639,7 +11151,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2016-11-24",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-014",
@@ -9663,7 +11176,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2017-07-19",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-015",
@@ -9693,7 +11207,8 @@
     "Images from Wiki Loves Monuments 2024 in the United Kingdom"
    ],
    "taken": "2024-05-17 06:06:59",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-016",
@@ -9719,7 +11234,8 @@
     "Cloisters, University of Glasgow"
    ],
    "taken": "2009-05-02",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-017",
@@ -9749,7 +11265,8 @@
     "Uploaded via Campaign:wlm-gb-sct"
    ],
    "taken": "2011-06-16 15:13:27",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-018",
@@ -9773,7 +11290,8 @@
     "Cloisters, University of Glasgow"
    ],
    "taken": "2015-06-11 14:29:40",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-019",
@@ -9799,7 +11317,8 @@
     "Photographs by User:Vysotsky"
    ],
    "taken": "2017-03-28 10:55:36",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-020",
@@ -9829,7 +11348,8 @@
     "Photos from Panoramio ID 6502482"
    ],
    "taken": "Taken on 11 June 2015",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-021",
@@ -9856,7 +11376,8 @@
     "Flickr images missing SDC published in"
    ],
    "taken": "2015-06-11 14:29",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-022",
@@ -9882,7 +11403,8 @@
     "Cloisters, University of Glasgow"
    ],
    "taken": "11 June 2015, 18:29:40 (UTC)",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-023",
@@ -9909,7 +11431,8 @@
     "Flickr images missing SDC published in"
    ],
    "taken": "2015-06-11 14:29",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-024",
@@ -9933,7 +11456,8 @@
     "Cloisters, University of Glasgow"
    ],
    "taken": "2022-07-21 10:38:42",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-025",
@@ -9957,7 +11481,8 @@
     "Cloisters, University of Glasgow"
    ],
    "taken": "2018-06-08",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-026",
@@ -9981,7 +11506,8 @@
     "Cloisters, University of Glasgow"
    ],
    "taken": "2018-11-22",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-027",
@@ -10007,7 +11533,8 @@
     "Images by Richard Sutcliffe"
    ],
    "taken": "2020-01-14",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-028",
@@ -10031,7 +11558,8 @@
     "Cloisters, University of Glasgow"
    ],
    "taken": "2017-08-02 13:18:52",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "UNI-029",
@@ -10061,7 +11589,8 @@
     "Images from Wiki Loves Monuments missing SDC depicts"
    ],
    "taken": "2009-05-02",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-001",
@@ -10091,7 +11620,8 @@
     "Wright Eclipse Gemini buses in the United Kingdom"
    ],
    "taken": "2010-02-02",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-002",
@@ -10118,7 +11648,8 @@
     "Ultra7 temp 43"
    ],
    "taken": "2015-03-28 11:07",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-003",
@@ -10145,7 +11676,8 @@
     "Flickr images missing SDC published in"
    ],
    "taken": "2007-08-11 09:57",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-004",
@@ -10171,7 +11703,8 @@
     "Northern Constabulary Pipe Band"
    ],
    "taken": "2007-08-11 09:06",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-005",
@@ -10198,7 +11731,8 @@
     "Photos in Flickr Explore"
    ],
    "taken": "Taken on 31 October 2018, 14:05",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-006",
@@ -10224,7 +11758,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-08-19 12:18",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-007",
@@ -10248,7 +11783,8 @@
     "Glasgow (civil parish)"
    ],
    "taken": "2019-06-24",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-008",
@@ -10275,7 +11811,8 @@
    "taken": "2023-08-06 13:11:04",
    "flags": [
     "people?"
-   ]
+   ],
+   "source": "commons"
   },
   {
    "id": "WEA-009",
@@ -10301,7 +11838,8 @@
     "Views of Glasgow Cathedral from Glasgow Necropolis"
    ],
    "taken": "2013-11-08 14:11:49",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-010",
@@ -10325,7 +11863,8 @@
     "Renfrew (civil parish)"
    ],
    "taken": "2025-02-23",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-011",
@@ -10351,7 +11890,8 @@
     "River Clyde in Glasgow"
    ],
    "taken": "2020-10-18 16:43:22",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-012",
@@ -10378,7 +11918,8 @@
     "Waddell Court tower blocks"
    ],
    "taken": "2021-07-21 13:25:13",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-013",
@@ -10405,7 +11946,8 @@
     "Clyde Street, Glasgow"
    ],
    "taken": "2022-04-22 13:18:37",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-014",
@@ -10431,7 +11973,8 @@
     "Clyde Arc, Glasgow at night"
    ],
    "taken": "2014-10-07",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-015",
@@ -10458,7 +12001,8 @@
     "River Clyde in Glasgow"
    ],
    "taken": "2023-06-17 11:23:13",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-016",
@@ -10484,7 +12028,8 @@
     "City of Glasgow College Riverside Campus"
    ],
    "taken": "2018-02-06",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-017",
@@ -10508,7 +12053,8 @@
     "River Clyde in Glasgow"
    ],
    "taken": "2019-06-26",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-018",
@@ -10536,7 +12082,8 @@
     "Photographs by 瑞丽江的河水/2025-04-17"
    ],
    "taken": "2025-04-17 18:01:52",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-019",
@@ -10566,7 +12113,8 @@
     "River Clyde in Glasgow"
    ],
    "taken": "2025-04-18 01:10:19",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-020",
@@ -10596,7 +12144,8 @@
     "River Clyde in Glasgow"
    ],
    "taken": "2025-04-18 01:20:09",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-021",
@@ -10623,7 +12172,8 @@
     "River Clyde in Glasgow"
    ],
    "taken": "2024-02-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-022",
@@ -10650,7 +12200,8 @@
     "River Clyde in Glasgow"
    ],
    "taken": "2024-02-25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WEA-023",
@@ -10677,7 +12228,8 @@
     "Self-published work missing SDC copyright license"
    ],
    "taken": "2011-07-02 06:38:52",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-001",
@@ -10707,7 +12259,8 @@
     "Images by Richard Sutcliffe"
    ],
    "taken": "2018-08-13",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-002",
@@ -10732,7 +12285,8 @@
     "Snow Bridge, Glasgow"
    ],
    "taken": "1999-10",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-003",
@@ -10759,7 +12313,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2021-02-09 09:49",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-004",
@@ -10786,7 +12341,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2021-02-09 09:52",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-005",
@@ -10813,7 +12369,8 @@
     "Construction sites in Glasgow"
    ],
    "taken": "2018-09-16",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-006",
@@ -10840,7 +12397,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-03-01 11:44",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-007",
@@ -10868,7 +12426,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-03-01 11:43",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-008",
@@ -10894,7 +12453,8 @@
     "Railings in Glasgow"
    ],
    "taken": "2019-06-26",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-009",
@@ -10918,7 +12478,8 @@
     "Snow Bridge, Glasgow"
    ],
    "taken": "2019-06-26",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-010",
@@ -10944,7 +12505,8 @@
     "Images by Richard Sutcliffe"
    ],
    "taken": "2023-02-24",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-011",
@@ -10974,7 +12536,8 @@
     "Images from Wiki Loves Monuments 2017 in the United Kingdom"
    ],
    "taken": "2017-09-14 14:45:30",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-012",
@@ -10999,7 +12562,8 @@
     "Govan (civil parish)"
    ],
    "taken": "2023-07-17",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-013",
@@ -11028,7 +12592,8 @@
     "January 2010 in Glasgow"
    ],
    "taken": "2010-01",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-014",
@@ -11060,7 +12625,8 @@
    "taken": "2013-12-05 14:19",
    "flags": [
     "people?"
-   ]
+   ],
+   "source": "commons"
   },
   {
    "id": "WIN-015",
@@ -11090,7 +12656,8 @@
     "Forests in Jackson County, Oregon"
    ],
    "taken": "2013-12-05 13:50",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-016",
@@ -11116,7 +12683,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2021-02-12 12:55",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-017",
@@ -11142,7 +12710,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2021-02-12 12:56",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-018",
@@ -11169,7 +12738,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2021-02-12 12:54",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-019",
@@ -11197,7 +12767,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-03-03 15:13",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-020",
@@ -11224,7 +12795,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-03-03 15:13",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-021",
@@ -11251,7 +12823,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-03-03 15:14",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-022",
@@ -11278,7 +12851,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-03-03 15:14",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-023",
@@ -11305,7 +12879,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-03-03 15:15",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-024",
@@ -11332,7 +12907,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-01-21 15:03",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-025",
@@ -11359,7 +12935,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-01-21 15:02",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-026",
@@ -11386,7 +12963,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-01-21 15:02",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-027",
@@ -11411,7 +12989,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2019-06-27",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-028",
@@ -11437,7 +13016,8 @@
     "Dogs at sunset"
    ],
    "taken": "2015-01-10",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-029",
@@ -11461,7 +13041,8 @@
     "Renfrew (civil parish)"
    ],
    "taken": "2026-01-04",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "WIN-030",
@@ -11485,7 +13066,8 @@
     "Renfrew (civil parish)"
    ],
    "taken": "2026-01-04",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-001",
@@ -11515,7 +13097,8 @@
     "Statues of stags in Scotland"
    ],
    "taken": "2019-11-11 17:01",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-002",
@@ -11543,7 +13126,8 @@
     "Arches in Glasgow"
    ],
    "taken": "2019-11-11 17:10",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-003",
@@ -11567,7 +13151,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2022-12-29",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-004",
@@ -11591,7 +13176,8 @@
     "Port Glasgow (civil parish)"
    ],
    "taken": "2023-12-20",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-005",
@@ -11615,7 +13201,8 @@
     "Port Glasgow (civil parish)"
    ],
    "taken": "2023-12-20",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-006",
@@ -11645,7 +13232,8 @@
     "December 2007 in Glasgow"
    ],
    "taken": "2007-12-21",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-007",
@@ -11675,7 +13263,8 @@
     "Funfairs in Scotland"
    ],
    "taken": "2022-12",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-008",
@@ -11702,7 +13291,8 @@
     "Night in Glasgow"
    ],
    "taken": "2022-12",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-009",
@@ -11726,7 +13316,8 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2022-12-29",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-010",
@@ -11751,7 +13342,8 @@
     "Christmas markets in Scotland"
    ],
    "taken": "2016-11-23 14:45:52",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-011",
@@ -11776,7 +13368,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2022-11-21 13:37",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-012",
@@ -11801,7 +13394,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2022-11-21 13:37",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-013",
@@ -11828,7 +13422,8 @@
     "Christmas markets in Scotland"
    ],
    "taken": "2023-11-12 14:10",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-014",
@@ -11855,7 +13450,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2023-11-12 14:11",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-015",
@@ -11883,7 +13479,8 @@
     "Christmas markets in Scotland"
    ],
    "taken": "2019-11-11 16:50",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-016",
@@ -11911,7 +13508,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2019-11-11 17:11",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-017",
@@ -11935,7 +13533,8 @@
     "Glasgow (civil parish)"
    ],
    "taken": "2025-11-06",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-018",
@@ -11961,7 +13560,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-12-25 14:34",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-019",
@@ -11986,7 +13586,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-12-25 14:35",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-020",
@@ -12012,7 +13613,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-12-25 14:26",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-021",
@@ -12038,7 +13640,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-12-25 14:28",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-022",
@@ -12064,7 +13667,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-12-25 14:25",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-023",
@@ -12089,7 +13693,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2018-12-25 14:24",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-024",
@@ -12115,7 +13720,8 @@
     "Photographs by Daniel Richardson"
    ],
    "taken": "2017-12-25 13:51",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-025",
@@ -12143,7 +13749,8 @@
     "Night in Glasgow"
    ],
    "taken": "2023-12-18",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   },
   {
    "id": "XMS-026",
@@ -12167,7 +13774,14 @@
     "Images from Geograph Britain and Ireland"
    ],
    "taken": "2023-12-18",
-   "flags": []
+   "flags": [],
+   "source": "commons"
   }
- ]
+ ],
+ "pexels_rejected_by_reason": {
+  "not-fireworks-or-bonfire": 4,
+  "people": 30,
+  "place": 9,
+  "size-or-aspect": 15
+ }
 }

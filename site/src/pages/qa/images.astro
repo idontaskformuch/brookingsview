@@ -17,7 +17,7 @@ if (siteConfig.townId !== 'glasgow') {
 interface Candidate {
   id: string; pageid: number; buckets: string[]; title: string; page_url: string; thumb_url: string | null;
   thumb_w: number | null; thumb_h: number | null; width: number; height: number; artist: string | null;
-  license: string; license_url: string | null; description: string; categories: string[]; taken: string | null; flags: string[];
+  source?: string; license: string; license_url: string | null; description: string; categories: string[]; taken: string | null; flags: string[];
 }
 const data = (await import('../../../../data/glasgow_image_candidates.json')).default as unknown as {
   generated: string; rejected_by_reason: Record<string, number>; candidates: Candidate[];
@@ -51,14 +51,15 @@ const sections = BUCKET_ORDER.map((b) => ({
   }),
 }));
 const total = data.candidates.length;
-const credit = (c: Candidate) => `Photo: ${c.artist ?? 'unknown author'}, ${c.license}, via Wikimedia Commons`;
+const credit = (c: Candidate) =>
+  `Photo: ${c.artist ?? 'unknown author'}, ${c.license}, via ${c.source === 'pexels' ? 'Pexels' : 'Wikimedia Commons'}`;
 ---
 <BaseLayout title="Glasgow image candidates (review)" noindex>
   <header class="qa-head">
     <h1>Glasgow image candidates</h1>
     <p>{total} candidates from Wikimedia Commons, collected {data.generated}. <strong>Nothing here is live.</strong>
     Tap <strong>Keep</strong> on the pictures you approve, then <strong>Copy approved ids</strong> and paste the list into the chat.</p>
-    <p class="qa-rules">Allowed licenses only: CC0, public domain, CC BY, CC BY-SA. Dropped automatically: murals and other 2D artworks,
+    <p class="qa-rules">Allowed licenses: CC0, public domain, CC BY, CC BY-SA (Wikimedia Commons), plus Pexels for generic Bonfire Night fireworks and bonfires only (owner-approved exception). Dropped automatically: murals and other 2D artworks,
     portraits and crowds, other places called Glasgow, anything without a named author when the license needs one. Check what is left:
     <strong>no mural or 2D artwork, and no identifiable person, as the main subject.</strong></p>
     <nav class="qa-jump" aria-label="Jump to a group">
@@ -85,7 +86,7 @@ const credit = (c: Candidate) => `Photo: ${c.artist ?? 'unknown author'}, ${c.li
             <div class="qa-meta">
               <p class="qa-id"><strong>{c.id}</strong> <button type="button" class="qa-keep" aria-pressed="false">Keep</button></p>
               <p class="qa-title">{c.title}</p>
-              <p>{credit(c)} · {c.license_url ? <a href={c.license_url} rel="noopener">license</a> : 'license'} · <a href={c.page_url} rel="noopener">Commons page</a></p>
+              <p>{credit(c)} · {c.license_url ? <a href={c.license_url} rel="noopener">license</a> : 'license'} · <a href={c.page_url} rel="noopener">{c.source === 'pexels' ? 'Pexels page' : 'Commons page'}</a></p>
               <p class="qa-small">{c.width}×{c.height}{c.taken ? ` · ${c.taken}` : ''}{c.buckets.length > 1 ? ` · also: ${c.buckets.filter((b) => b !== s.bucket).map((b) => LABELS[b] ?? b).join('; ')}` : ''}</p>
               {c.flags.length > 0 && <p class="qa-flag">Check: {c.flags.join(', ')}</p>}
               {c.description && <p class="qa-small">{c.description}</p>}

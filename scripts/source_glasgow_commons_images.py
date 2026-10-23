@@ -168,7 +168,7 @@ def main() -> None:
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
     existing = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {"candidates": []}
-    known_ids = {c["pageid"]: c["id"] for c in existing.get("candidates", [])}
+    known_ids = {c["pageid"]: c["id"] for c in existing.get("candidates", []) if c.get("source", "commons") == "commons"}
     counters: dict[str, int] = {}
     for cid in known_ids.values():
         prefix, _, n = cid.partition("-")
@@ -196,10 +196,12 @@ def main() -> None:
                 else:
                     counters[prefix] = counters.get(prefix, 0) + 1
                     cid = f"{prefix}-{counters[prefix]:03d}"
-                found[pid] = {"id": cid, "pageid": pid, "buckets": [bucket], **cand}
+                found[pid] = {"id": cid, "pageid": pid, "source": "commons", "buckets": [bucket], **cand}
             print(f"  {bucket:26} {q!r}: {len(found)} candidates so far")
 
-    candidates = sorted(found.values(), key=lambda c: c["id"])
+    # candidates from other sources (Pexels, see source_glasgow_pexels_images.py) are kept as they are
+    others = [c for c in existing.get("candidates", []) if c.get("source") == "pexels"]
+    candidates = sorted(list(found.values()) + others, key=lambda c: c["id"])
     payload = {
         "generated": date.today().isoformat(),
         "source": "Wikimedia Commons (commons.wikimedia.org), queried via the public API",
