@@ -53,6 +53,12 @@ const clusterNavItems = resolveHubNavItems('city-hall', siteConfig);
     </p>
   )}
 
+  {siteConfig.townId === 'brookings_sd' && (
+    <p class="projects-teaser">
+      Garbage, recycling and yard waste: <a href="/trash-recycling/">pickup days and what goes where →</a>
+    </p>
+  )}
+
   <SectionRule label="Coming up" />
   {upcoming.length > 0 ? (
     <div class="stack">{upcoming.map((story) => <StoryCard story={story} />)}</div>

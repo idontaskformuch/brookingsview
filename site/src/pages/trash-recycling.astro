@@ -1,0 +1,222 @@
+---
+/** Brookings trash, recycling and yard waste guide (Brookings only; owner-ordered 2026-10-22).
+ *
+ *  Resident question it answers: "Which day is my garbage and recycling picked up, what goes in which
+ *  cart, and what do I do with things that do not fit (big items, branches, electronics, paint)?"
+ *
+ *  Pattern (CLAUDE.md editorial rule): the city's rules and schedule (data) -> which day is yours and
+ *  what goes where (what it means) -> a next-pickup picker, cart-request and landfill details (what to do).
+ *
+ *  Every fact below is from the City of Brookings' own solid-waste pages (SOURCES), read 2026-10-23.
+ *  Nothing is predicted: the next-pickup picker only applies the weekly schedule and says plainly
+ *  that holiday weeks shift. Dates and fees are the 2026 ones and are labelled as such. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import { siteConfig } from '../lib/site-config';
+import { resolvePageMeta } from '../lib/page-meta';
+
+if (siteConfig.townId !== 'brookings_sd') {
+  return Astro.redirect('/', 302);
+}
+
+const pageMeta = resolvePageMeta('trash-recycling', siteConfig);
+const CHECKED = 'October 23, 2026';
+const BASE = 'https://www.cityofbrookings-sd.gov';
+const SOURCES = [
+  { name: 'City of Brookings: Garbage collection (schedule, set-out, fees)', url: `${BASE}/260/Garbage-Collection` },
+  { name: 'City of Brookings: Garbage', url: `${BASE}/261/Garbage` },
+  { name: 'City of Brookings: Recycling', url: `${BASE}/262/Recycling` },
+  { name: 'City of Brookings: Yard waste', url: `${BASE}/264/Yard-Waste` },
+  { name: 'City of Brookings: Landfill information', url: `${BASE}/255/Landfill-Information` },
+  { name: 'City of Brookings: Landfill fees (effective January 1, 2026)', url: `${BASE}/257/Fees` },
+  { name: 'City of Brookings: Spring bulky item pickup', url: `${BASE}/258/Spring-Bulky-Item-Pickup` },
+  { name: 'City of Brookings: Household hazardous waste event', url: `${BASE}/330/Household-Hazardous-Waste-HHW-Event` },
+  { name: 'City of Brookings: Electronic waste recycling', url: `${BASE}/927/Electronic-Waste-Recycling` },
+];
+const phoneLandfill = '605-693-3667';
+---
+<BaseLayout title={pageMeta.title} wide
+  description="Brookings garbage, recycling and yard waste: which day is yours, what goes in each cart, holiday changes, and what to do with big items, branches, electronics and paint."
+  >
+  <header class="lede">
+    <h1>{pageMeta.h1}</h1>
+    <p>The City of Brookings picks up garbage, recycling and yard waste every week, and the day depends on which side of 8th Street South you live on.
+    This guide puts the city's rules in one place: find your day, see what goes in each cart, and learn what to do with the things that do not fit,
+    like couches, branches, old computers and paint. Everything comes from the city's own pages, last checked {CHECKED}; fees and dates are the 2026 ones.</p>
+  </header>
+
+  <SectionRule label="Find your pickup day" />
+  <div class="tr-picker">
+    <label for="tr-side"><strong>Where do you live?</strong></label>
+    <select id="tr-side">
+      <option value="">Choose…</option>
+      <option value="south">South of 8th Street South</option>
+      <option value="north">North of 8th Street South</option>
+    </select>
+    <div id="tr-result" aria-live="polite" hidden></div>
+    <p class="tr-note">The next-pickup dates apply the normal weekly schedule only. They do not shift for holidays, so in a holiday week check the holiday rules below
+    or the city's <a href={`${BASE}/DocumentCenter/View/19767/2026-Solid-Waste-Calendar-and-Guide`} rel="noopener">2026 Solid Waste Calendar and Guide</a>.</p>
+  </div>
+  <table class="tr-table">
+    <caption class="sr-only">Pickup days by area</caption>
+    <thead><tr><th scope="col">Area</th><th scope="col">Garbage</th><th scope="col">Recycling</th><th scope="col">Yard waste (seasonal)</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">South of 8th St. S.</th><td>Monday</td><td>Thursday</td><td>Monday and Thursday</td></tr>
+      <tr><th scope="row">North of 8th St. S.</th><td>Tuesday</td><td>Friday</td><td>Tuesday and Friday</td></tr>
+    </tbody>
+  </table>
+  <p>The city's <a href={`${BASE}/DocumentCenter/View/19360`} rel="noopener">collection map (PDF)</a> shows the boundary if you are not sure which side you are on.
+  Yard waste collection runs April 6 to November 24, 2026 and does not run in winter.</p>
+
+  <SectionRule label="Putting your carts out" />
+  <ul>
+    <li><strong>Be at the curb by 7:00 a.m.</strong> on your collection day. The city says this is what ensures pickup.</li>
+    <li><strong>Leave room for the truck:</strong> at least 3 feet clear on each side of a cart and 1.5 feet behind it. Keep carts away from mailboxes, trees, parked vehicles, trailers and boats.
+    If the crew does not have room, the cart is not emptied.</li>
+    <li><strong>Boulevard only, and bring it back the same day.</strong> Under city ordinance 40-10, carts go on the parkway or boulevard next to your property and must be removed the same day.</li>
+    <li><strong>In winter,</strong> keep a spot cleared on either side of the driveway so the cart can be placed there.</li>
+  </ul>
+
+  <SectionRule label="Holiday weeks" />
+  <p>These holidays change pickup: New Year's Day, Martin Luther King Jr. Day, Presidents' Day, Memorial Day, Juneteenth, Independence Day, Labor Day, Native American Day,
+  Veterans Day, Thanksgiving Day and Christmas Day. The city's rules:</p>
+  <ul>
+    <li>Sunday (except Easter) or Monday holiday: Monday's garbage and yard waste move to Tuesday, and Tuesday's move to Wednesday.</li>
+    <li>Tuesday holiday: garbage and yard waste move to Wednesday.</li>
+    <li>Thursday holiday: recycling and yard waste move to Wednesday.</li>
+    <li>Friday or Saturday holiday: Friday's recycling and yard waste move to Thursday, and Thursday's move to Wednesday.</li>
+  </ul>
+  <p>Example from the rules above: Thanksgiving falls on a Thursday (November 26, 2026), so Thursday recycling moves to Wednesday, November 25.</p>
+
+  <SectionRule label="What goes where" />
+  <div class="tr-cols">
+    <section>
+      <h3>Green cart: garbage</h3>
+      <p>The city provides a 90-gallon green cart to each home. It is for <strong>household garbage only</strong>. Put garbage and pet waste in a tied plastic bag first to control odor,
+      and keep the cart clean.</p>
+      <p><strong>Never in the garbage cart:</strong> car batteries or lithium batteries, hot ashes, oil products, paint cans (unless empty), tree trimmings and yard waste.</p>
+    </section>
+    <section>
+      <h3>Blue cart: recycling</h3>
+      <p><strong>Empty, rinsed, loose.</strong> That is the city's rule for everything in the blue cart.</p>
+      <p><strong>Yes:</strong> plastic bottles, tubs, jugs and jars (put plastic lids back on unless they are pumps or nozzles); glass bottles and jars of any color; aluminum, steel and tin cans, clean foil and
+      trays, and empty aerosol cans; paper, newspaper, magazines, mail and envelopes; cardboard and cartons, including cereal, shipping and shoe boxes. Shredded paper goes in a clear plastic bag, the only bag
+      allowed.</p>
+      <p><strong>No:</strong> plastic bags and wrappers, clamshells, straws, red Solo cups, Styrofoam, batteries, food and plant waste, diapers, clothing and fabric, hoses, cords and string lights, glass
+      drinking glasses, dishware, mirrors and window glass, light bulbs, pots and pans, and soiled paper, paper towels and napkins. <strong>Greasy pizza boxes go in the garbage.</strong></p>
+    </section>
+    <section>
+      <h3>Brown cart: yard waste</h3>
+      <p><strong>Yes:</strong> grass clippings, leaves, flowers, weeds, stalks, vines and small twigs under half an inch across.</p>
+      <p><strong>No:</strong> trees and branches. Take them to the landfill (free) or put them out during the spring bulky item pickup.</p>
+      <p>Adding a yard waste cart costs nothing; an optional second cart is $6.40 a month plus sales tax. Collection runs April 6 to November 24, 2026.</p>
+    </section>
+  </div>
+  <p>Not sure about an item? The city has a <a href={`${BASE}/928/What-Goes-Where-Search-Tool`} rel="noopener">What Goes Where search tool</a>.</p>
+
+  <SectionRule label="Big things, branches, electronics and paint" />
+  <dl class="tr-dl">
+    <dt>Couches, furniture, metal and branches (once a year)</dt>
+    <dd>The city runs a <strong>Spring Bulky Item Pickup</strong>. In 2026, residents could put items out from April 8 (all items out by April 12) and crews went through April 13 to 17. Sort into three piles (metals,
+    bulky items, branches) at least 4 feet apart, on the boulevard, even with snow. Branches can be up to 12 inches across and 6 feet long, placed parallel to the street. Crews pass each street one time, do not
+    do alleys, and serve city residents only. Not taken at the curb: e-waste, household trash, cardboard, grass and leaves, whole trees, remodeling material and concrete, paint, batteries, oil and chemicals.
+    Dates for the next spring pickup are announced by the city each year.</dd>
+    <dt>Anything else: the landfill</dt>
+    <dd>The Brookings Regional Landfill is at 4101 30th Street ({phoneLandfill}). It is open Monday to Friday 7:30 a.m. to 4:15 p.m. and Saturday 8:00 to 11:45 a.m. (closed Saturdays December 1 through March 31;
+    holiday closures are on the city's landfill calendar). <strong>Cover your load:</strong> an uncovered load is a $25 fee, and straps do not count as a cover. It takes clean lumber and trees, tires, metal and appliances.
+    Scavenging is not allowed.
+    2026 fees: tires $4.70 (car), $7.00 (pickup), $14.80 (truck) and $39.75 (tractor) each, rims $9.15; refrigerators, freezers, air conditioners and dehumidifiers $20 each (no need to remove the coolant).
+    Garbage and demolition loads are $49.25 a ton and lumber or trees $24.10 a ton.</dd>
+    <dt>Branches and yard waste, any time</dt>
+    <dd>The landfill's yard waste drop-off is free, open 24 hours a day all year. Residents can pick up free compost there too.</dd>
+    <dt>Old computers, TVs and electronics</dt>
+    <dd>Take e-waste to the electronic storage shed south of the landfill office (the page lists no separate hours, so use the landfill's). Since April 20, 2026 the fee is $0.75 a pound, weighed at drop-off. Accepted:
+    computers, laptops, tablets, monitors, TVs, printers, keyboards, routers and similar. Not accepted: fluorescent bulbs, medical equipment and mercury-containing items. Lithium and single-use batteries can also go in the drop-box
+    near the west door of the Brookings East Fire Station.</dd>
+    <dt>Paint, chemicals and other household hazardous waste</dt>
+    <dd>Never put these in the trash, a sink, the ground or a storm drain. The city holds a free household hazardous waste event once a year; in 2026 it was Saturday, August 15 at the Dacotah Bank Center, for residents
+    of Brookings, Deuel, Hamlin, Kingsbury, Lake and Moody counties (limit 15 gallons or 125 pounds per vehicle). The city's page lists no year-round option, so call the landfill at {phoneLandfill} between events.</dd>
+  </dl>
+
+  <SectionRule label="Cost, new carts and who to call" />
+  <ul>
+    <li><strong>Garbage service</strong> is $19.70 a month plus sales tax, billed through Brookings Municipal Utilities. An additional garbage cart is $6.40 a month plus sales tax.</li>
+    <li><strong>New to town, or need a recycling or yard waste cart?</strong> Call the Brookings Collection Department at {phoneLandfill}, use the
+    <a href="https://seeclickfix.com/web_portal/PFjWLgnz21kvWrNXMprhZAyM/report/category/27568/location" rel="noopener">city's cart request form</a>, or the Engage Brookings app.</li>
+    <li><strong>City of Brookings:</strong> 605-692-6281, 520 3rd Street, Suite 230. The city lists its collection hours of operation as 6:30 a.m. to 4:30 p.m. Monday, Tuesday, Thursday and Friday.</li>
+  </ul>
+
+  <SectionRule label="Sources" />
+  <ul class="tr-sources">
+    {SOURCES.map((s) => <li><a href={s.url} rel="noopener">{s.name}</a></li>)}
+  </ul>
+  <p class="tr-note">Unofficial guide by {siteConfig.siteName}, summarizing the City of Brookings' published rules; the city's pages are the authority and can change. Last checked {CHECKED}.
+  Found a mistake? See <a href="/corrections/">corrections</a> or <a href="/contact/">contact us</a>. Related: <a href="/city-hall/">City Hall</a>, <a href="/closures/">closures</a>.</p>
+</BaseLayout>
+
+<script>
+  // Next pickup for the chosen side of 8th Street South: the normal weekly schedule only (no holiday shifts).
+  const TZ = 'America/Chicago';
+  const DAYS = { south: { garbage: 1, recycling: 4, yard: [1, 4] }, north: { garbage: 2, recycling: 5, yard: [2, 5] } } as const;
+  const YARD_END = Date.UTC(2026, 10, 24); // November 24, 2026
+  const YARD_START = Date.UTC(2026, 3, 6); // April 6, 2026
+
+  function todayParts(): { y: number; m: number; d: number } {
+    const p = new Intl.DateTimeFormat('en-US', { timeZone: TZ, year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(new Date());
+    const get = (t: string) => Number(p.find((x) => x.type === t)!.value);
+    return { y: get('year'), m: get('month'), d: get('day') };
+  }
+  function nextOn(weekdays: readonly number[], from: number): number {
+    for (let i = 0; i < 8; i++) {
+      const t = from + i * 86_400_000;
+      if (weekdays.includes(new Date(t).getUTCDay())) return t;
+    }
+    return from;
+  }
+  const fmt = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(t));
+
+  const select = document.getElementById('tr-side') as HTMLSelectElement | null;
+  const out = document.getElementById('tr-result');
+  select?.addEventListener('change', () => {
+    const side = select.value as 'south' | 'north' | '';
+    if (!out) return;
+    if (!side) { out.hidden = true; out.textContent = ''; return; }
+    const { y, m, d } = todayParts();
+    const today = Date.UTC(y, m - 1, d);
+    const days = DAYS[side];
+    const rows: [string, string][] = [
+      ['Garbage', fmt(nextOn([days.garbage], today))],
+      ['Recycling', fmt(nextOn([days.recycling], today))],
+    ];
+    const yard = nextOn(days.yard, today);
+    rows.push(['Yard waste', yard > YARD_END || yard < YARD_START
+      ? 'Not in season (2026 collection ran April 6 to November 24)' : fmt(yard)]);
+    out.textContent = '';
+    const ul = document.createElement('ul');
+    for (const [label, when] of rows) {
+      const li = document.createElement('li');
+      const b = document.createElement('strong');
+      b.textContent = `${label}: `;
+      li.append(b, document.createTextNode(`${when}${when.startsWith('Not in') ? '' : ' (if it is not a holiday week)'}`));
+      ul.append(li);
+    }
+    out.append(ul);
+    out.hidden = false;
+  });
+</script>
+
+<style>
+  .tr-picker { margin: 0 0 1rem; max-width: 46rem; }
+  .tr-picker select { font: inherit; padding: 0.35rem 0.5rem; margin-left: 0.5rem; }
+  #tr-result { margin-top: 0.75rem; padding: 0.5rem 1rem; border-left: 4px solid var(--section-accent, #2f5f8f); background: var(--surface, transparent); }
+  #tr-result ul { margin: 0; padding-left: 1.1rem; }
+  .tr-note { font-size: 0.9rem; max-width: 46rem; }
+  .tr-table { border-collapse: collapse; width: 100%; max-width: 46rem; margin: 0 0 0.75rem; }
+  .tr-table th, .tr-table td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--rule, #ddd); }
+  .tr-cols { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); max-width: 62rem; }
+  .tr-cols h3 { margin: 0 0 0.4rem; }
+  .tr-dl dt { font-weight: 600; margin-top: 1rem; }
+  .tr-dl dd { margin: 0.25rem 0 0; max-width: 46rem; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  p, li { max-width: 46rem; }
+</style>

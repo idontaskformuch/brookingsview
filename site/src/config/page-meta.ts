@@ -238,6 +238,12 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
   // depth program, a stronger keyword than a generic "sports" framing
   // would be for this town specifically.
   // Brookings-only game day guide (site/src/pages/game-day.astro), owner-ordered 2026-10-22.
+  // Brookings-only trash/recycling guide (site/src/pages/trash-recycling.astro), owner-ordered 2026-10-22.
+  'trash-recycling': {
+    titlePattern: 'Trash & Recycling Guide | {Site}',
+    h1Pattern: '{Town} trash, recycling and yard waste: pickup days and what goes where',
+    ledeRequirement: 'Answers: which day is mine, what goes in which cart, what do I do with big items, branches, electronics and paint. Every rule from the city pages.',
+  },
   'game-day': {
     titlePattern: 'SDSU Football Game Day Guide | {Site}',
     h1Pattern: 'SDSU football game day in {Town}: parking, tailgating and what to bring',
