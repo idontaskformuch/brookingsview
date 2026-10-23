@@ -186,11 +186,19 @@ function pageProbe({ allowSel, wantLinks }) {
     metaRobots: document.querySelector('meta[name=robots]')?.content ?? '',
     metaDescription: document.querySelector('meta[name=description]')?.content ?? '',
     mainText: txt(document.querySelector('main')) || txt(document.body),
+    // visible text OUTSIDE <main> (header, navigation, sign strip, footer): web.literal reads it too
+    shellText: (() => {
+      const c = document.body.cloneNode(true);
+      c.querySelectorAll('main, script, style, noscript, template, svg, [data-qa-allow-sibling-sites]').forEach((e) => e.remove());
+      return (c.textContent || '').replace(/\s+/g, ' ').trim();
+    })(),
     imgAlts: [...document.querySelectorAll('main img')].map((i) => i.alt || ''),
     loneDashNodes: lone,
     brokenImgs: [...document.images].filter((i) => i.complete && i.naturalWidth === 0 && i.currentSrc && !i.currentSrc.startsWith('data:')).map((i) => i.currentSrc),
     emptySections, clientfill, staleAlerts, pastEvents, allDayClock,
     links: wantLinks ? [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute('href')) : [],
+    // internal links inside <main>, collected on every page (no extra request) for web.duplicate-content
+    outLinks: [...new Set([...document.querySelectorAll('main a[href^="/"]')].map((a) => a.getAttribute('href')))],
   };
 }
 

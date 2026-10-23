@@ -47,6 +47,7 @@ import { siteConfig, type SiteConfig } from './site-config';
 import { getTicketmasterEventsForTown, distanceLabel, type TicketmasterFeedItem } from './ticketmaster';
 import { rankTicketmasterEvents, collapseMarqueeRuns } from './whats-on';
 import { joinWithOr } from './status-line';
+import { normalizeSportTitle } from './week-groups';
 import { storyHref } from './content-slugs';
 import { ELECTION_BY_TOWN } from '../config/election';
 import { buildElectionStatus } from './election';
@@ -220,7 +221,7 @@ async function resolveUniversity(): Promise<CityStatusModule | null> {
   }
   return {
     id: 'university', icon: ICONS.university, label: 'SDSU',
-    value: event.title, tone: 'quiet', href: '/university/',
+    value: normalizeSportTitle(event.title), tone: 'quiet', href: '/university/',
     asOf: event.starts_at ? new Date(event.starts_at) : new Date(),
   };
 }

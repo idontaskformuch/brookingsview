@@ -2,7 +2,7 @@
 // site/src/lib/qa-checks.test.ts. run.mjs builds a `snap` per page and feeds it here.
 //
 // snap = { url, path, status, redirects, title, titleCount, h1: string[], metaRobots,
-//          mainText, metaDescription, imgAlts: string[], loneDashNodes: number,
+//          mainText, shellText, metaDescription, imgAlts: string[], loneDashNodes: number,
 //          brokenImgs: string[], consoleErrors: string[], failedRequests: string[],
 //          blockedAttempts: string[] }
 
@@ -31,7 +31,10 @@ export function zonedInstant(day, hhmm, tz) {
   return new Date(t);
 }
 
-export const LITERAL_RE = /\b(undefined|NaN|null)\b|\[object Object\]|Invalid Date|\{\{|\}\}/g;
+/** Loose code characters in visible text: undefined/NaN/null, [object Object], Invalid Date, "{{", "}}", "${" and ")}".
+ *  ")}" and "${" were added 2026-10-23 after a stray ")}" sat under the navigation on every page for two days
+ *  (a leftover `</nav> )}` in BaseLayout.astro): the header is outside <main>, so the check also reads shellText. */
+export const LITERAL_RE = /\b(undefined|NaN|null)\b|\[object Object\]|Invalid Date|\{\{|\}\}|\$\{|\)\}/g;
 
 export function finding(check, town, snap, message, extra = {}) {
   return { check, town, url: snap.url, path: snap.path, message, ...extra };
@@ -58,7 +61,8 @@ export function checkPage(snap, town, compiled) {
   for (const m of snap.consoleErrors) f.push(finding('web.console', town, snap, m.slice(0, 300)));
   for (const m of snap.failedRequests) f.push(finding('web.console', town, snap, `failed request ${m}`.slice(0, 300)));
 
-  const lits = new Set((snap.mainText.match(LITERAL_RE) ?? []));
+  // mainText = <main>; shellText = everything else visible (header, nav, sign strip, footer)
+  const lits = new Set([...(snap.mainText.match(LITERAL_RE) ?? []), ...((snap.shellText ?? '').match(LITERAL_RE) ?? [])]);
   if (snap.loneDashNodes > 0) lits.add('--');
   if (lits.size) f.push(finding('web.literal', town, snap, `visible: ${[...lits].join(', ')}`));
 
@@ -103,8 +107,52 @@ export function checkDiag(snap, town) {
 }
 
 /** Run-level checks (cross-page). */
-export function checkRun(snaps, town) {
+/** web.duplicate-content (owner 2026-10-23, born_from the University digest finding): when a page is MOSTLY (> 60 %) made of text
+ *  that is already on a page that links to it, flag BOTH. Measured with 8-word shingles so a truncated teaser still counts
+ *  as the same text. Needs snap.outLinks (internal hrefs found in <main>). Pages under 300 characters are never flagged. */
+/** The owner said "t.ex. > 70 %"; the real University digest case measured 66 % (the card showed a truncated excerpt and the
+ *  detail page adds breadcrumb, byline and related links), so the threshold is 60 %. */
+export const DUP_THRESHOLD = 0.6;
+export const DUP_MIN_CHARS = 300;
+const SHINGLE = 8;
+const norm = (p) => { try { return new URL(p, 'https://x.invalid').pathname.replace(/\/?$/, '/'); } catch { return null; } };
+function shingles(text) {
+  const w = text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean);
+  const out = new Set();
+  for (let i = 0; i + SHINGLE <= w.length; i++) out.add(w.slice(i, i + SHINGLE).join(' '));
+  return out;
+}
+export function duplicateContentFindings(snaps, town) {
+  const ok = snaps.filter((s) => s.status === 200 && s.mainText && (s.outLinks ?? []).length >= 0);
+  const byPath = new Map(ok.map((s) => [norm(s.path), s]));
+  const cache = new Map();
+  const sh = (s) => cache.get(s) ?? cache.set(s, shingles(s.mainText)).get(s);
   const f = [];
+  const seen = new Set();
+  for (const a of ok) {
+    for (const href of new Set((a.outLinks ?? []).map(norm))) {
+      const b = byPath.get(href);
+      if (!b || b === a || b.mainText.length < DUP_MIN_CHARS) continue;
+      const sb = sh(b);
+      if (sb.size === 0) continue;
+      const sa = sh(a);
+      let hit = 0;
+      for (const g of sb) if (sa.has(g)) hit++;
+      const ratio = hit / sb.size;
+      const key = `${a.path}>${b.path}`;
+      if (ratio > DUP_THRESHOLD && !seen.has(key)) {
+        seen.add(key);
+        const pct = Math.round(ratio * 100);
+        f.push({ check: 'web.duplicate-content', town, url: a.url, path: a.path, message: `${pct}% of the text of ${b.path} is repeated on this page, which links to it` });
+        f.push({ check: 'web.duplicate-content', town, url: b.url, path: b.path, message: `${pct}% of this page's text is already on ${a.path}, which links here` });
+      }
+    }
+  }
+  return f;
+}
+
+export function checkRun(snaps, town) {
+  const f = [...duplicateContentFindings(snaps, town)];
   const byTitle = new Map();
   for (const s of snaps) {
     if (s.status !== 200 || !s.title) continue;

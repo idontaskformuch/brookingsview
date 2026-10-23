@@ -16,10 +16,20 @@
       "born_from": "/today Tonight/Tomorrow script dead in production since Fas 1 (2026-10-21)",
       "what": "console.error, uncaught page error or failed first-party request"
     },
+    "web.duplicate-content": {
+      "severity": "soft",
+      "born_from": "University digest finding 2026-10-23: /university/ showed the long digest text as cards and the digest page showed the same text again (list vs detail). Regression fixture: tests/fixtures/qa_duplicate_university_2026-10-23.json",
+      "what": "a page is mostly (> 60 %, 8-word shingles, pages >= 300 chars) made of text already on a page that links to it; BOTH pages are flagged"
+    },
+    "q3.pair-review": {
+      "severity": "soft",
+      "born_from": "University digest finding 2026-10-23 (list vs detail page); weekly AI review of list + detail pair: does the detail page add anything the list lacks, and does old content take too much room",
+      "what": "AI review of a list page and its detail page side by side (qa/q3)"
+    },
     "web.literal": {
       "severity": "hard",
-      "born_from": "Q0 baseline (spec item: undefined/NaN/null/--)",
-      "what": "visible 'undefined', 'NaN', 'null', '[object Object]', 'Invalid Date', '{{' or a lone '--'"
+      "born_from": "Q0 baseline (spec item: undefined/NaN/null/--); extended 2026-10-23 after a stray ')}' showed under the navigation on every page for two days (leftover '</nav> )}' in BaseLayout.astro; the header is outside <main>, so the check now also reads shellText). Regression fixture: tests/fixtures/qa_literal_stray_header_2026-10-23.html",
+      "what": "visible 'undefined', 'NaN', 'null', '[object Object]', 'Invalid Date', '{{', '}}', '${', ')}' or a lone '--', in <main> or in the page shell (header, nav, footer)"
     },
     "web.h1": {
       "severity": "hard",

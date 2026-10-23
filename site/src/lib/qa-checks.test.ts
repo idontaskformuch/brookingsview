@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 // plain .mjs shared with the Node QA runner (qa/web/run.mjs)
-import { checkPage, checkDiag, checkRun, compileBlocklist, applyWaivers, zonedInstant } from '../../../qa/web/checks.mjs';
+import { checkPage, checkDiag, checkRun, compileBlocklist, applyWaivers, zonedInstant, duplicateContentFindings } from '../../../qa/web/checks.mjs';
 
 const base = {
   url: 'https://x.test/a/', path: '/a/', status: 200, redirects: 0, inSitemap: true,
@@ -85,5 +86,61 @@ describe('qa zonedInstant', () => {
     expect(zonedInstant('2026-10-21', '19:00', 'America/Chicago').toISOString()).toBe('2026-10-22T00:00:00.000Z'); // CDT = UTC-5
     expect(zonedInstant('2026-12-21', '07:00', 'America/Denver').toISOString()).toBe('2026-12-21T14:00:00.000Z'); // MST = UTC-7
     expect(zonedInstant('2026-10-21', '23:30', 'America/Los_Angeles').toISOString()).toBe('2026-10-22T06:30:00.000Z'); // PDT = UTC-7
+  });
+});
+
+describe('web.literal reads the page shell, not only <main> (born_from: stray ")}" under the nav, 2026-10-23)', () => {
+  // Header HTML captured from the live site while the bug was live: `</nav> )}` left behind in BaseLayout.astro.
+  const html = readFileSync(new URL('../../../tests/fixtures/qa_literal_stray_header_2026-10-23.html', import.meta.url), 'utf8');
+  const shellText = html
+    .replace(/<main[\s\S]*?<\/main>|<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<svg[\s\S]*?<\/svg>|<title[\s\S]*?<\/title>/g, ' ')
+    .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  it('flags the captured buggy header', () => {
+    expect(shellText).toContain(')}');
+    const found = checkPage({ ...base, mainText: 'Body text', shellText }, 'brookingsview', compiled).filter((f: { check: string }) => f.check === 'web.literal');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain(')}');
+  });
+  it('flags loose code characters in the shell and in main', () => {
+    for (const bad of [')}', '{{', '}}', '${']) {
+      expect(ids({ shellText: `Menu ${bad} Today` })).toContain('web.literal');
+      expect(ids({ mainText: `Hello ${bad} world` })).toContain('web.literal');
+    }
+  });
+  it('a clean shell passes', () => expect(ids({ shellText: 'Skip to content Today Events (3) All sections' })).not.toContain('web.literal'));
+});
+
+describe('web.duplicate-content (born_from: University digest finding 2026-10-23)', () => {
+  const snap = (path: string, mainText: string, outLinks: string[] = []) => ({ url: `https://x.test${path}`, path, status: 200, mainText, outLinks });
+  const para = (n: number, seed: string) => Array.from({ length: n }, (_, i) => `${seed}${i % 17}`).join(' ');
+
+  it('flags BOTH pages when the linked page is mostly text already on the linking page (real capture, before the fix)', () => {
+    const fx = JSON.parse(readFileSync(new URL('../../../tests/fixtures/qa_duplicate_university_2026-10-23.json', import.meta.url), 'utf8')) as
+      { town: string; pages: { path: string; text: string; outLinks: string[] }[] };
+    const snaps = fx.pages.map((p) => snap(p.path, p.text, p.outLinks));
+    const found = duplicateContentFindings(snaps, fx.town);
+    expect(found.map((x: { path: string }) => x.path).sort()).toEqual(['/s/university-digest-2026-w34/', '/university/']);
+    expect(found.every((x: { check: string }) => x.check === 'web.duplicate-content')).toBe(true);
+    expect(found[0].message).toMatch(/\d+%/);
+  });
+  it('through checkRun, so the runner reports it with the other run-level checks', () => {
+    const a = 'The strongest games this week include a home volleyball match and a choir concert in the evening on campus. '.repeat(6);
+    const found = checkRun([{ ...snap('/list/', `${a} Plus other things here.`, ['/detail/']), title: 'L' }, { ...snap('/detail/', a), title: 'D' }], 'brookings_sd');
+    expect(found.filter((x: { check: string }) => x.check === 'web.duplicate-content')).toHaveLength(2);
+  });
+  it('does not flag a detail page that adds real content beyond the teaser', () => {
+    const teaser = para(60, 'alpha');
+    const detail = `${teaser} ${para(200, 'beta')}`;
+    expect(duplicateContentFindings([snap('/list/', teaser, ['/d/']), snap('/d/', detail)], 't')).toEqual([]);
+  });
+  it('only counts pages that LINK to it (two pages with similar text and no link are not flagged)', () => {
+    const t = para(120, 'gamma');
+    expect(duplicateContentFindings([snap('/a/', t), snap('/b/', t)], 't')).toEqual([]);
+  });
+  it('ignores short pages and survives a truncated teaser', () => {
+    expect(duplicateContentFindings([snap('/a/', 'tiny text here', ['/b/']), snap('/b/', 'tiny text here')], 't')).toEqual([]);
+    const full = para(150, 'delta');
+    const truncated = full.split(' ').slice(0, 130).join(' ') + '…';
+    expect(duplicateContentFindings([snap('/a/', `${truncated} more`, ['/b/']), snap('/b/', full)], 't').length).toBe(2);
   });
 });

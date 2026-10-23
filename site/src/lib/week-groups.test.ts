@@ -69,6 +69,17 @@ describe('helpers', () => {
     expect(normalizeSportTitle('volleyball vs South Dakota')).toBe('Volleyball vs South Dakota');
     expect(normalizeSportTitle('SDSU Football vs Murray State')).toBe('Football vs Murray State');
     expect(normalizeSportTitle('wbb vs St. Thomas')).toBe("Women's basketball vs St. Thomas");
+    // SDSU athletics feed abbreviations (2026-10-23: CityStatus showed "VB vs USD")
+    expect(normalizeSportTitle('VB vs USD')).toBe('Volleyball vs South Dakota');
+    expect(normalizeSportTitle('WBB vs  UNI')).toBe("Women's basketball vs Northern Iowa");
+    expect(normalizeSportTitle('MBB vs Valpo')).toBe("Men's basketball vs Valpo");
+    expect(normalizeSportTitle('SDSU VB vs Nebraska')).toBe('Volleyball vs Nebraska');
+    expect(normalizeSportTitle('Soccer Vs Washington State')).toBe('Soccer vs Washington State');
+    expect(normalizeSportTitle('Soccer vs NDSU')).toBe('Soccer vs North Dakota State');
+    expect(normalizeSportTitle('VB vs Omaha, TBD')).toBe('Volleyball vs Omaha, TBD');
+    expect(normalizeSportTitle('SDSU vs Bradley')).toBe('SDSU vs Bradley');
+    expect(normalizeSportTitle('Jack 15 Road Race')).toBe('Jack 15 Road Race');
+    expect(normalizeSportTitle('Football at USD')).toBe('Football at South Dakota');
     expect(normalizeSportTitle('mbb at Omaha')).toBe("Men's basketball at Omaha");
     expect(normalizeSportTitle('Jacks Club Hockey vs Crookston')).toBe('Jacks Club Hockey vs Crookston');
   });
@@ -98,7 +109,7 @@ describe('groupWeekItems: ordering and the top-event group', () => {
     const groups = groupWeekItems(all, all, TZ, ['Hobo Day']);
     expect(groups.map((g) => g.id)).toEqual(['big', 'city', 'music', 'sports']);
     expect(groups[0].rows[0]).toMatchObject({ when: 'Fri all day', title: '114th Hobo Day' });
-    expect(groups.find((g) => g.id === 'sports')!.rows[0]).toMatchObject({ when: 'Fri 7pm', title: 'Volleyball vs USD', venue: 'First Bank & Trust Arena' });
+    expect(groups.find((g) => g.id === 'sports')!.rows[0]).toMatchObject({ when: 'Fri 7pm', title: 'Volleyball vs South Dakota', venue: 'First Bank & Trust Arena' });
   });
   it('without top patterns the same event stays in its normal theme', () => {
     expect(groupWeekItems(all, all, TZ).map((g) => g.id)).toEqual(['city', 'music', 'sports', 'community']);

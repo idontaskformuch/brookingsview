@@ -1,11 +1,11 @@
 /** Theme groups for the weekly page (owner restructure, 2026-10-23): under a short AI introduction the
- *  week is a DETERMINISTIC list, grouped by theme, one line per item: "Fri 7pm · Volleyball vs USD",
+ *  week is a DETERMINISTIC list, grouped by theme, one line per item: "Fri 7pm · Volleyball vs South Dakota",
  *  each linked to the event page. Nothing here is written by a model, and the day and time only ever
  *  appear in these lines, never in the introduction. Empty themes are omitted.
  *
  *  Order of work (owner corrections, 2026-10-23):
  *    1. quorum notices ("Notice: possible quorum ...") are dropped: not something a resident attends;
- *    2. sport titles are normalized ("Volleyball vs USD", "Football vs Murray State");
+ *    2. sport titles are normalized ("Volleyball vs South Dakota", "Football vs Murray State");
  *    3. rows listed twice (same day and time, compatible venue, one title contained in the other) are merged;
  *    4. a recurring item on several days becomes one row with a day interval ("Fri–Sun 8am");
  *    5. the site's top events (siteConfig.topEvents, e.g. Hobo Day) get their own first group, "Big this week";
@@ -101,14 +101,31 @@ export function shortVenue(venue: string | null | undefined): string | null {
   return first || null;
 }
 
-const SPORT_LABELS: Record<string, string> = { mbb: "Men's basketball", wbb: "Women's basketball" };
+const SPORT_LABELS: Record<string, string> = {
+  mbb: "Men's basketball", wbb: "Women's basketball", vb: 'Volleyball', fb: 'Football',
+};
+
+/** Opponent abbreviations the SDSU athletics feed uses (seen in sdsu_events 2026-10-23); expanded so a reader who
+ *  does not follow college sport sees "Volleyball vs South Dakota", not "VB vs USD". Whole-word, case-sensitive. */
+const OPPONENT_NAMES: Record<string, string> = {
+  USD: 'South Dakota', NDSU: 'North Dakota State', UNI: 'Northern Iowa', WIU: 'Western Illinois',
+};
 
 /** "volleyball vs South Dakota" -> "Volleyball vs South Dakota"; "SDSU Football vs Murray State" -> "Football vs
- *  Murray State". Only a leading "SDSU"/"Jackrabbits" brand word is dropped; team names like "Jacks Club" stay. */
+ *  Murray State"; "VB vs USD" -> "Volleyball vs South Dakota"; "WBB vs  UNI" -> "Women's basketball vs Northern
+ *  Iowa". Only a leading "SDSU"/"Jackrabbits" brand word is dropped, and not when the rest would start with
+ *  "vs"/"at" ("SDSU vs Bradley" stays); team names like "Jacks Club" stay. */
 export function normalizeSportTitle(title: string): string {
-  let t = title.trim().replace(/^(sdsu|jackrabbits?)\s+/i, '');
-  const m = t.match(/^(\w+)(\s+(?:vs|at)\s+.*)$/i);
-  if (m && SPORT_LABELS[m[1].toLowerCase()]) t = SPORT_LABELS[m[1].toLowerCase()] + m[2];
+  let t = title.trim().replace(/\s+/g, ' ');
+  const stripped = t.replace(/^(sdsu|jackrabbits?)\s+/i, '');
+  if (!/^(vs\.?|at)(?![A-Za-z])/i.test(stripped)) t = stripped;
+  const m = t.match(/^(\w+)\s+(?:vs\.?|at)\s+(.*)$/i);
+  if (m) {
+    const verb = /^\w+\s+at\s/i.test(t) ? 'at' : 'vs';
+    const sport = SPORT_LABELS[m[1].toLowerCase()] ?? m[1];
+    const opponent = m[2].replace(/(?<![A-Za-z])(USD|NDSU|UNI|WIU)(?![A-Za-z])/g, (abbr) => OPPONENT_NAMES[abbr]);
+    t = `${sport} ${verb} ${opponent}`;
+  }
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
