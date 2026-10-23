@@ -204,6 +204,8 @@ ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med
 
 
 ## 3. Gällande beslut (kortform)
+- INGA NYA STÄDER FÖRRÄN NÅGON SAJT DRAR IN PENGAR (ägaren 2026-10-23). Fokus: kvalitet (Q3-fynd), Brookings AdSense, Glasgow-lansering,
+  mer värde per befintlig stad. London och övriga stadsidéer ligger i backlog.md under "Efter intäkter".
 - Repot förblir publikt tills sajterna drar in pengar, görs då privat (Actions-kostnad vid privat: se Kö 9).
 - Cloudflare cron-dispatcher-token (fine-grained PAT, Actions:write, bara detta repo): giltig 90 dagar från skapande.
   UTGÅNGSDATUM: 2027-10-21 (1 år avsiktligt, ägaren 2026-10-21). Påminnelse senast 2027-10-07.
