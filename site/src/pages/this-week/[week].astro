@@ -110,6 +110,7 @@ const displayRows = buildDisplayRows(days, siteConfig.timezone, isCurrent);
 // with the day and time on each line; the model only writes the short introduction above it.
 const weekGroups = groupWeekItems(
   displayRows.flatMap((r) => (r.kind === 'day' ? [r.day] : [])), days, siteConfig.timezone,
+  siteConfig.topEvents?.patterns ?? [],
 );
 
 const itemListJsonLd = hasAnyItems ? {
