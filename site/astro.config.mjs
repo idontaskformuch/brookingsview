@@ -337,6 +337,7 @@ const TOWN_GATED_PAGES = [
   { path: '/trash-recycling/', activeFor: ['brookings_sd'] },
   { path: '/how-city-council-works/', activeFor: ['brookings_sd'] },
   { path: '/sdsu-campus-open-to-public/', activeFor: ['brookings_sd'] },
+  { path: '/thanksgiving/', activeFor: ['brookings_sd', 'moreno_valley_ca', 'broomfield_co'] },
   { path: '/play/', activeFor: ['brookings_sd'] },
   { path: '/university/', activeFor: ['brookings_sd'] },
   { path: '/vail-resorts/', activeFor: ['broomfield_co'] },
@@ -417,6 +418,9 @@ async function buildLastmodMap(townId, databaseUrl) {
   // /vote/ (election 2026): the page itself sets noindex 30 days after the election (lib/election.ts
   // isPastNoindexWindow); mirror that here so the sitemap and the noindex tag never disagree.
   if (Date.now() > Date.parse('2026-11-03T00:00:00Z') + 30 * 86_400_000) { noindexThinPageUrls.add('/vote/'); noindexThinPageUrls.add('/election-results/'); }
+  // /thanksgiving/ (lib/thanksgiving.ts): the page's 2026 facts go stale a week after Thanksgiving Day (Nov 26, 2026),
+  // so it turns noindex then; mirror that here so the sitemap and the noindex tag never disagree.
+  if (Date.now() >= Date.parse('2026-11-26T00:00:00Z') + 7 * 86_400_000) noindexThinPageUrls.add('/thanksgiving/');
   // Town/feature-gated stub pages excluded for THIS build's town -- see
   // TOWN_GATED_PAGES' own comment above.
   const excludedGatedPages = new Set(

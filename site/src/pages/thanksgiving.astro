@@ -1,0 +1,156 @@
+---
+/** Thanksgiving week guide, one per US town (owner-ordered 2026-10-23; out by early November).
+ *
+ *  Resident question it answers: "What is open and closed around Thanksgiving, how does trash and recycling
+ *  change, and what is going on in town that week?"
+ *
+ *  Pattern (CLAUDE.md editorial rule): the town's own holiday rules and our event data -> what changes for you
+ *  (which pickup day moves, which services close) -> where to check for last-minute changes. Every service fact is
+ *  from the town's own pages (config/thanksgiving.ts, each with its source); a fact a town had not posted yet is
+ *  said to be unposted, never guessed. The event list is built from our event data at each site update. The page
+ *  is indexable only around the holiday (lib/thanksgiving.ts) and noindex after, until the config is refreshed. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import { getUpcomingStories, getUpcomingArtsEvents, formatCalendarDate } from '../lib/db';
+import { siteConfig } from '../lib/site-config';
+import { resolvePageMeta } from '../lib/page-meta';
+import { THANKSGIVING_TOWNS } from '../config/thanksgiving';
+import {
+  THANKSGIVING_PAGE_YEAR, thanksgivingDay, thanksgivingWeekMonday, isPastThanksgivingWindow,
+} from '../lib/thanksgiving';
+import { buildWeekDays, weekInfoForInstant } from '../lib/this-week';
+import { groupWeekItems } from '../lib/week-groups';
+import { upcomingHolidayShifts } from '../lib/trash-schedule';
+
+const town = THANKSGIVING_TOWNS[siteConfig.townId];
+if (!town || siteConfig.country !== 'us') {
+  return Astro.redirect('/', 302);
+}
+
+const pageMeta = resolvePageMeta('thanksgiving', siteConfig);
+const TZ = siteConfig.timezone;
+const isBrookings = siteConfig.townId === 'brookings_sd';
+const holiday = thanksgivingDay(THANKSGIVING_PAGE_YEAR);
+const holidayLabel = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(holiday));
+const noindex = isPastThanksgivingWindow(Date.now());
+
+// Brookings: the city's Thursday-holiday rule applied to the Thanksgiving week (lib/trash-schedule.ts).
+const trashRows = isBrookings
+  ? (['south', 'north'] as const).map((side) => ({
+      side,
+      label: side === 'south' ? 'South of 8th St. S.' : 'North of 8th St. S.',
+      moves: upcomingHolidayShifts(thanksgivingWeekMonday(THANKSGIVING_PAGE_YEAR), 6, side)
+        .find((h) => h.name === 'Thanksgiving Day')?.moves ?? [],
+    }))
+  : [];
+
+// What is on that week, from our event data, grouped like the weekly page.
+const [eventStories, artsEvents] = await Promise.all([
+  getUpcomingStories(['event'], 200),
+  isBrookings ? getUpcomingArtsEvents(60) : Promise.resolve([]),
+]);
+const week = weekInfoForInstant(new Date(holiday + 12 * 3_600_000), TZ);
+const days = buildWeekDays(week, TZ, {
+  eventStories, meetingStories: [], artsEvents, projectUpdates: [], games: [], regionalGames: [],
+});
+const groups = groupWeekItems(days, days, TZ, siteConfig.topEvents?.patterns ?? []);
+const hasClosures = !!siteConfig.hasClosureWatch;
+---
+<BaseLayout title={pageMeta.title} wide noindex={noindex}
+  description={`What is open and closed around Thanksgiving ${THANKSGIVING_PAGE_YEAR} in ${siteConfig.cityName}, how trash and recycling change, and what is happening that week.`}
+  >
+  <header class="lede">
+    <h1>{pageMeta.h1}</h1>
+    <p>Thanksgiving Day is {holidayLabel}. Around it, trash pickup can move, some city services close and the calendar fills with
+    holiday events. This guide collects what {siteConfig.cityName} has published, with each rule linked to the page it came from,
+    and shows what is on for the week. Anything {siteConfig.cityName} had not posted yet is marked as not posted so you know to check
+    again: it was last checked October 24, 2026.</p>
+  </header>
+
+  <SectionRule label="Trash and recycling" />
+  <p>{town.trashIntro}</p>
+  {isBrookings && (
+    <table class="tg-table">
+      <caption class="sr-only">Pickup changes for Thanksgiving week</caption>
+      <thead><tr><th scope="col">Where you live</th><th scope="col">What moves</th></tr></thead>
+      <tbody>
+        {trashRows.map((r) => (
+          <tr>
+            <th scope="row">{r.label}</th>
+            <td>{r.moves.length > 0 ? r.moves.join('; ') : 'Nothing moves'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+  <ul class="tg-facts">
+    {town.trash.map((f) => (
+      <li><strong>{f.label}:</strong> {f.text} <span class="tg-src">(<a href={f.source.url} rel="noopener">{f.source.name}</a>)</span></li>
+    ))}
+  </ul>
+  {isBrookings && (
+    <p class="tg-note">Find your exact days, and what goes in each cart, in our <a href="/trash-recycling/">trash, recycling and yard waste guide</a>.</p>
+  )}
+
+  <SectionRule label="What is open and closed" />
+  <ul class="tg-facts">
+    {town.services.map((f) => (
+      <li><strong>{f.label}:</strong> {f.text} <span class="tg-src">(<a href={f.source.url} rel="noopener">{f.source.name}</a>)</span></li>
+    ))}
+  </ul>
+
+  <SectionRule label={`What is on, week of ${formatCalendarDate(new Date(thanksgivingWeekMonday(THANKSGIVING_PAGE_YEAR)).toISOString().slice(0, 10))}`} />
+  {groups.length > 0 ? (
+    <>
+      <p>Listed as organizers publish them, so this fills in as the week gets closer. Each line links to the event page; check the organizer for holiday changes.</p>
+      <div class="tg-groups">
+        {groups.map((g) => (
+          <section aria-labelledby={`tg-${g.id}`}>
+            <h3 id={`tg-${g.id}`}>{g.label}</h3>
+            <ul class="tg-list">
+              {g.rows.map((row) => (
+                <li>
+                  <span class="tg-when">{row.when}</span> ·{' '}
+                  {row.href ? <a href={row.href} target={row.external ? '_blank' : undefined} rel={row.external ? 'noopener' : undefined}>{row.title}</a> : row.title}
+                  {row.venue && <span class="tg-venue"> · {row.venue}</span>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    </>
+  ) : (
+    <p>No events for Thanksgiving week have been published yet. See <a href="/events/">all upcoming events</a> and check back: this list updates with each site refresh.</p>
+  )}
+
+  <SectionRule label="Getting around" />
+  <ul>
+    <li>Check the <a href="/weather/">forecast and weather alerts</a> before holiday travel, and <a href="/traffic/">current road incidents</a> before you drive.</li>
+    {hasClosures && <li>Winter weather can close schools: see <a href="/closures/">school closures</a>, which reports only what the district has announced.</li>}
+    <li>Today's picture for the town is on <a href="/today/">today</a>.</li>
+  </ul>
+
+  <SectionRule label="Where to look for changes" />
+  <ul>
+    {town.watch.map((w) => <li><a href={w.url} rel="noopener">{w.label}</a></li>)}
+  </ul>
+  <p class="tg-note">Unofficial guide by {siteConfig.siteName}, summarizing what {siteConfig.cityName} and its service providers have published; their pages are the authority and can change.
+  Found a mistake? See <a href="/corrections/">corrections</a> or <a href="/contact/">contact us</a>.</p>
+</BaseLayout>
+
+<style>
+  .tg-facts { padding-left: 1.1rem; max-width: 46rem; }
+  .tg-facts li { margin: 0.6rem 0; }
+  .tg-src { font-size: 0.85rem; }
+  .tg-note { font-size: 0.9rem; max-width: 46rem; }
+  .tg-table { border-collapse: collapse; width: 100%; max-width: 46rem; margin: 0 0 0.75rem; }
+  .tg-table th, .tg-table td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--rule, #ddd); vertical-align: top; }
+  .tg-groups { display: grid; gap: 1.25rem; max-width: 42rem; }
+  .tg-groups h3 { margin: 0 0 0.4rem; font-size: 1.0625rem; }
+  .tg-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+  .tg-when { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tg-venue { color: var(--ink-soft); font-size: 0.875rem; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  p, li { max-width: 46rem; }
+</style>

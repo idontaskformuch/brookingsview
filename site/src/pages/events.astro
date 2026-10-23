@@ -269,6 +269,7 @@ const webPageJsonLd = dateModified ? {
   dateModified,
 } : null;
 import PageGuide from '../components/PageGuide.astro';
+import { isThanksgivingSeason } from '../lib/thanksgiving';
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-events"
   description={`What's on this weekend in ${placeLabel(siteConfig)} — library programs, city events and community happenings.`}
@@ -283,6 +284,10 @@ import PageGuide from '../components/PageGuide.astro';
     never guessed or rewritten. For a shorter list, see what's happening
     <a href="/today/">today</a> or over <a href="/this-week/">the week ahead</a>.
     Check back — this updates daily.</p>
+    {isThanksgivingSeason(Date.now()) && (
+      <p>Planning for the holiday? See what is open, how trash pickup changes and what is on in our
+      <a href="/thanksgiving/">Thanksgiving week guide</a>.</p>
+    )}
     <PageGuide
       shows={`Upcoming events in and around ${siteConfig.cityName}, soonest first, with the date, time and venue the ${forCountry(siteConfig.country, 'organizer', 'organiser')} published.`}
       use={`Scan by day, use the filters for a kind of event, and follow the link on any listing to the ${forCountry(siteConfig.country, 'organizer', 'organiser')} for tickets, registration or changes. Times can change: check with them before you go.`}

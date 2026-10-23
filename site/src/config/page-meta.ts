@@ -241,6 +241,12 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
   // Brookings-only trash/recycling guide (site/src/pages/trash-recycling.astro), owner-ordered 2026-10-22.
   // Brookings-only council guide (site/src/pages/how-city-council-works.astro), owner-ordered 2026-10-22.
   // Brookings-only campus guide (site/src/pages/sdsu-campus-open-to-public.astro), owner-ordered 2026-10-22.
+  // Thanksgiving week guide, one per US town (site/src/pages/thanksgiving.astro), owner-ordered 2026-10-23.
+  thanksgiving: {
+    titlePattern: 'Thanksgiving Week Guide | {Site}',
+    h1Pattern: 'Thanksgiving in {Town}: what is open, what is on and what changes',
+    ledeRequirement: 'Answers: what closes, how does trash move, what is on that week. Every service fact from the town pages; unposted facts say so.',
+  },
   'campus-guide': {
     titlePattern: 'SDSU Campus Open to the Public | {Site}',
     h1Pattern: 'SDSU campus open to the public in {Town}: museums, gardens, concerts and parking',
