@@ -1,6 +1,6 @@
 ---
-/** UK cookies notice (PECR), Glasgow Phase 2. Describes only what the site does today: nothing
- *  that needs consent is set. A build-time guard in BaseLayout refuses a gb town with a GA4 id
+/** UK cookies notice (PECR), Glasgow Phase 2. Describes only what the site does today: no cookies
+ *  that need consent are set; Cloudflare Web Analytics (cookie-free) is disclosed (owner decision 2026-10-23). A build-time guard in BaseLayout refuses a gb town with a GA4 id
  *  until an opt-in-first consent banner exists. Not legal advice. */
 import { siteConfig } from '../../../lib/site-config';
 ---
@@ -8,8 +8,12 @@ import { siteConfig } from '../../../lib/site-config';
   <h1>Cookies</h1>
   <p><em>Last updated October 2026.</em></p>
 
-  <p>{siteConfig.siteName} does not currently set any analytics or advertising cookies, so there is no cookie
-  banner and nothing for you to accept or refuse.</p>
+  <p>{siteConfig.siteName} does not set any analytics or advertising cookies, so there is no cookie banner and
+  nothing for you to accept or refuse.</p>
+
+  <p>We use Cloudflare Web Analytics to measure page views and page performance. It is cookie-free and does not
+  track you between sites. Our lawful basis is legitimate interests; see our
+  <a href="/privacy/">privacy notice</a> for details.</p>
 
   <p>Cloudflare, our hosting provider, may use a small number of strictly necessary cookies to keep the site
   secure and running smoothly. These are exempt from the consent requirement in the Privacy and Electronic
@@ -18,8 +22,8 @@ import { siteConfig } from '../../../lib/site-config';
   <p>Your browser's local storage may hold display preferences such as light or dark mode. These stay on your
   device and are not sent to us.</p>
 
-  <p>If we ever add analytics or advertising, we will ask for your consent before any such cookie is set, make
-  refusing as easy as accepting, and update this page first.</p>
+  <p>If we ever add advertising, or any analytics that uses cookies or tracks you, we will ask for your consent
+  before any such cookie is set, make refusing as easy as accepting, and update this page first.</p>
 
   <p>Questions? <a href="/contact/">Contact us</a>. See also our <a href="/privacy/">privacy notice</a>.</p>
 </article>
