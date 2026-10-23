@@ -27,3 +27,11 @@ Veckovis automatisering först efter att ägaren sett första rapporten.
 - [ ] skärmbilder (mobil, ljust/mörkt)
 - [ ] AI-granskning mot checklistan
 - [ ] rapport visad för ägaren
+
+## Tillägg 2026-10-23 (ägaren)
+- **Regel `web.duplicate-content`**: om en sida till största delen (> 70 %) består av text som redan finns på en sida som LÄNKAR TILL den,
+  flagga BÅDA sidorna. Körs över alla sidor (Pass A i qa/web/run.mjs, alla sitemap-URL:er; kräver att run.mjs alltid samlar interna länkar).
+- **AI-granskning av sidpar**: lista + detaljsida bredvid varandra. Frågor: tillför detaljsidan något som listan saknar? Skicka med dagens
+  datum: tar gammalt innehåll för stor plats?
+- **born_from** för båda: "University digest-fyndet 2026-10-23" (/university/ visade digestens långa text som kort och detaljsidan samma text igen).
+  Regressionsfixtur: tests/fixtures/qa_duplicate_university_2026-10-23.json (verklig text från live före ändringen).
