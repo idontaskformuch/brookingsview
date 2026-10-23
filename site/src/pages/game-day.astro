@@ -100,6 +100,7 @@ const nextHobo = next ? isHoboDay(next.start) : false;
       <h2 id="gd-next-h">{next.opponent}: {fmtDay(next.start)}, {fmtTime(next.start)} kickoff</h2>
       <ul class="gd-plan">
         <li><strong>Tailgating starts about {fmtTime(hoursBefore(next.start, 5))}</strong>. SDSU says it begins five hours before kickoff for most games.</li>
+        <li><strong>Gates open 90 minutes before kickoff</strong>, about {fmtTime(hoursBefore(next.start, 1.5))}.</li>
         <li><strong>Be on campus early.</strong> Parking is spread over several lots; open the season's parking map first (see Parking below).</li>
         <li><strong>Allow extra time to leave.</strong> See "After the game".</li>
         {nextForecast && (
@@ -147,21 +148,32 @@ const nextHobo = next ? isHoboDay(next.start) : false;
     </tbody>
   </table>
   <p class="gd-note">Tailgating time is kickoff minus five hours, the rule SDSU states for most games; a few games differ, so check the
-  official <a href={SOURCES.tailgating.url} rel="noopener">tailgating page</a>. Kickoff times are from the athletics schedule and can move (for example for TV).</p>
+  official <a href={SOURCES.tailgating.url} rel="noopener">tailgating page</a>. Gates open 90 minutes before kickoff. Kickoff times are from the athletics schedule and can move (for example for TV).</p>
 
   <SectionRule label="Parking" />
   <p>SDSU's game day page lists three kinds of parking: Jackrabbit Club lots, paid parking near the stadium, and guest lots across campus.
   It shows a parking map for the season. Open the map before you leave home and pick a lot rather than driving around the stadium.</p>
-  <p><strong>In recent seasons</strong> athletics notices have described paid general parking in lots south of North Campus Drive
-  at $10 a stall, cash only, with lots and tailgate areas opening five hours before kickoff, and part of North Campus Drive near the stadium
-  closed to through traffic from five hours before kickoff. Treat these as what to expect, not as this season's rule; confirm on the
-  <a href={SOURCES.gameDay.url} rel="noopener">game day page</a> and the <a href={SOURCES.procedures.url} rel="noopener">athletics gameday procedures</a>.
-  Bring cash just in case.</p>
+  <ul>
+    <li><strong>Pay lots</strong> are south of North Campus Drive. Payment is cash, and the price is posted on site, so bring cash.</li>
+    <li><strong>East PAC Lot (#160)</strong> opens three hours before kickoff.</li>
+    <li><strong>Gates open 90 minutes before kickoff.</strong></li>
+  </ul>
+  <p>Source: <a href={SOURCES.tailgating.url} rel="noopener">SDSU Athletics tailgating page (2026)</a>. Lot rules and the season's map are on the
+  <a href={SOURCES.gameDay.url} rel="noopener">game day page</a>.</p>
+  <p><strong>In recent seasons</strong> SDSU's 2024 game day notices also had part of North Campus Drive near the stadium closed to through traffic from five hours before
+  kickoff. Treat that as what to expect, not as this season's rule, and check the
+  <a href={SOURCES.procedures.url} rel="noopener">athletics gameday procedures</a> and the <a href={SOURCES.gameDay.url} rel="noopener">game day page</a>.</p>
 
   <SectionRule label="Tailgating" />
   <p>Tailgating starts five hours before kickoff for most games. SDSU's Alumni and Foundation runs a tailgating area southwest of the stadium that is
   open to alumni and fans. The athletics department publishes a full tailgating policy that covers alcohol, space reservations and what you may set up;
   read it before you pack the car: <a href={SOURCES.tailgating.url} rel="noopener">SDSU Athletics tailgating policy</a>.</p>
+  <ul>
+    <li><strong>Reserve ahead:</strong> tailgate spaces in the Pink Lot can be reserved in advance.</li>
+    <li><strong>Tailgating lots close at kickoff.</strong> There is no tailgating during or after the game.</li>
+    <li><strong>Vacate within one hour after the game.</strong></li>
+  </ul>
+  <p>Source: SDSU Athletics' 2025 tailgating policies, as posted on the <a href={SOURCES.tailgating.url} rel="noopener">tailgating page</a>.</p>
 
   <SectionRule label="Getting in: tickets and bags" />
   <ul>
@@ -176,13 +188,13 @@ const nextHobo = next ? isHoboDay(next.start) : false;
   <p>Source: <a href={SOURCES.bags.url} rel="noopener">SDSU Athletics bag policy</a>.</p>
 
   <SectionRule label="After the game" />
-  <p>SDSU's athletics notices have warned that getting out of the stadium area can take 35 to 45 minutes after the game ends, so allow that on top of your
-  drive if you have a flight, a shift or a long road home. Check <a href="/traffic/">live road conditions</a> before you leave town, especially in winter.</p>
+  <p><strong>In recent seasons</strong> SDSU's 2024 game day notices said that getting out of the stadium area can take 30 to 45 minutes after the game ends, so allow that on top of your
+  drive if you have a flight, a shift or a long road home (<a href={SOURCES.gameDay.url} rel="noopener">sdstate.edu game day page</a>). Check <a href="/traffic/">live road conditions</a> before you leave town, especially in winter.</p>
 
   <SectionRule label="Questions people ask" />
   <dl class="gd-faq">
     <dt>What time should I get there?</dt>
-    <dd>For a typical game, tailgaters arrive about five hours before kickoff; if you are only going to the game, aim to be parked well before kickoff. The table above lists the time for each home game.</dd>
+    <dd>For a typical game, tailgating starts about five hours before kickoff, the East PAC Lot (#160) opens three hours before, and gates open 90 minutes before. If you are only going to the game, aim to be parked well before the gates open. The table above lists the time for each home game.</dd>
     <dt>Where do I see the parking map?</dt>
     <dd>On SDSU's <a href={SOURCES.gameDay.url} rel="noopener">football game day page</a>. Check that the map is for the current season.</dd>
     <dt>Is there live music or a pregame show?</dt>
