@@ -52,13 +52,17 @@ def seed_town(conn, town_id: str) -> tuple[int, int]:
                     (town_id, slug, name, category, address, street_address,
                      postal_code, aliases, phone, website, hours_text,
                      description, lat, lon, source_url, verified_date,
-                     content_hash, updated_at)
+                     content_hash, updated_at,
+                     is_free, fee_note, accessibility_note, services,
+                     parking_note, visit_notes)
                 VALUES
                     (%(town_id)s, %(slug)s, %(name)s, %(category)s, %(address)s,
                      %(street_address)s, %(postal_code)s, %(aliases)s,
                      %(phone)s, %(website)s, %(hours_text)s, %(description)s,
                      %(lat)s, %(lon)s, %(source_url)s, %(verified_date)s,
-                     %(content_hash)s, now())
+                     %(content_hash)s, now(),
+                     %(is_free)s, %(fee_note)s, %(accessibility_note)s,
+                     %(services)s, %(parking_note)s, %(visit_notes)s)
                 ON CONFLICT (town_id, slug) DO UPDATE SET
                     name           = EXCLUDED.name,
                     category       = EXCLUDED.category,
@@ -75,6 +79,15 @@ def seed_town(conn, town_id: str) -> tuple[int, int]:
                     source_url     = EXCLUDED.source_url,
                     verified_date  = EXCLUDED.verified_date,
                     content_hash   = EXCLUDED.content_hash,
+                    -- Optional enrichment fields: COALESCE so a town file that
+                    -- omits them (Brookings, whose values were written by
+                    -- seed_brookings_places_enrichment.py) never nulls them.
+                    is_free            = COALESCE(EXCLUDED.is_free, places.is_free),
+                    fee_note           = COALESCE(EXCLUDED.fee_note, places.fee_note),
+                    accessibility_note = COALESCE(EXCLUDED.accessibility_note, places.accessibility_note),
+                    services           = COALESCE(EXCLUDED.services, places.services),
+                    parking_note       = COALESCE(EXCLUDED.parking_note, places.parking_note),
+                    visit_notes        = COALESCE(EXCLUDED.visit_notes, places.visit_notes),
                     updated_at     = now()
                 RETURNING (xmax = 0) AS inserted
                 """,
@@ -96,6 +109,12 @@ def seed_town(conn, town_id: str) -> tuple[int, int]:
                     "source_url": f.get("source_url"),
                     "verified_date": f.get("verified_date"),
                     "content_hash": chash,
+                    "is_free": f.get("is_free"),
+                    "fee_note": f.get("fee_note"),
+                    "accessibility_note": f.get("accessibility_note"),
+                    "services": f.get("services"),
+                    "parking_note": f.get("parking_note"),
+                    "visit_notes": f.get("visit_notes"),
                 },
             )
             row = cur.fetchone()

@@ -2383,6 +2383,8 @@ export const FACILITY_CATEGORY_LABELS: Record<string, string> = {
   // search hours for) to earn their own label rather than falling into
   // "Other" alongside unrelated landmarks.
   museum: 'Museums',
+  // Glasgow Club gyms, pools and pitches fit neither community centre nor museum.
+  leisure: 'Sport and leisure',
   other: 'Other',
 };
 
@@ -2412,6 +2414,7 @@ export const FACILITY_SCHEMA_TYPE: Record<string, string> = {
   transit: 'BusStation',
   // Step 5: also a real, dedicated schema.org type, not a fallback.
   museum: 'Museum',
+  leisure: 'SportsActivityLocation',
   other: 'CivicStructure',
 };
 
