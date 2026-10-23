@@ -3,7 +3,7 @@
 Takes candidate ids from data/glasgow_image_candidates.json, downloads each file (Wikimedia Commons: a 1600 px
 rendition via Special:FilePath; Pexels: the large2x file via the API), center-crops to 3:2 and saves a 1200x800 JPEG
 under site/public/assets/images/{this-week|holidays}/, then appends the pool entries (with attribution: photographer,
-license, link to the source page) to site/src/config/this-week-images.ts or holidays.ts.
+license, link to the source page) to site/src/config/gb/glasgow-images.ts (spread into the shared pools).
 
 The destination follows the candidate's bucket: season:autumn / season:winter -> this-week pool; holiday:* -> holiday
 pool. Category-image buckets (category:*) are not handled here: they need a decision about which section uses them.
@@ -31,8 +31,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data" / "glasgow_image_candidates.json"
 PUBLIC = ROOT / "site" / "public" / "assets" / "images"
-THIS_WEEK_TS = ROOT / "site" / "src" / "config" / "this-week-images.ts"
-HOLIDAYS_TS = ROOT / "site" / "src" / "config" / "holidays.ts"
+GB_TS = ROOT / "site" / "src" / "config" / "gb" / "glasgow-images.ts"  # gb/ so the spelling gate treats it as British
 UA = "ViewMediaBot (+https://glasgowloop.co.uk/contact) glasgow-image-activation"
 TOWN = "glasgow"
 W, H = 1200, 800
@@ -139,8 +138,8 @@ def main() -> None:
     if missing:
         raise SystemExit(f"unknown ids: {missing}")
 
-    tw_text = THIS_WEEK_TS.read_text(encoding="utf-8")
-    hol_text = HOLIDAYS_TS.read_text(encoding="utf-8")
+    gb_text = GB_TS.read_text(encoding="utf-8")
+    tw_text = hol_text = gb_text
     session = requests.Session()
     session.headers["User-Agent"] = UA
     season_lines: list[str] = []
@@ -170,10 +169,12 @@ def main() -> None:
     if not args.apply:
         print("dry run: nothing written")
         return
+    out = gb_text
     if season_lines:
-        THIS_WEEK_TS.write_text(insert_before_array_end(tw_text, "THIS_WEEK_IMAGES", season_lines), encoding="utf-8")
+        out = insert_before_array_end(out, "GLASGOW_THIS_WEEK_IMAGES", season_lines)
     if holiday_lines:
-        HOLIDAYS_TS.write_text(insert_before_array_end(hol_text, "HOLIDAY_IMAGES", holiday_lines), encoding="utf-8")
+        out = insert_before_array_end(out, "GLASGOW_HOLIDAY_IMAGES", holiday_lines)
+    GB_TS.write_text(out, encoding="utf-8")
     print(f"activated {len(season_lines)} season and {len(holiday_lines)} holiday images")
 
 

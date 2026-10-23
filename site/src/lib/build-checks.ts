@@ -49,7 +49,7 @@ import { facilityTitleElements } from './facility-lede';
 import { weekInfoForInstant, currentWeekInfo } from './this-week';
 import { localDateParts } from './events';
 import {
-  weeksCoverage, forwardCoverageWeeks, seasonPoolSizes, seasonForMonth, MIN_POOL_SIZE_FOR_60_DAY_RULE, RECOMMENDED_MIN_POOL_SIZE,
+  weeksCoverage, forwardCoverageWeeks, seasonPoolSizes, seasonForMonth, missingSeasonPools, seasonPoolGapSeverity, MIN_POOL_SIZE_FOR_60_DAY_RULE, RECOMMENDED_MIN_POOL_SIZE,
   type WeekCoverage, type SeasonPoolSize,
 } from './this-week-images';
 import { THIS_WEEK_IMAGES } from '../config/this-week-images';
@@ -528,6 +528,21 @@ function assertThisWeekImageCoverage(): void {
 
 const SEASON_POOL_SHIFT_WARNING_DAYS = 30;
 
+/** Pre-launch towns (noindexSite) skip the photo-pool checks above. A pre-launch town that already HAS some "This
+ *  week" images but not every season gets a loud warning, and an error once the first missing season begins
+ *  (owner, 2026-10-24: Glasgow's spring/summer pools are allowed to be missing until 1 March 2027). */
+const PRELAUNCH_SEASON_POOL_DEADLINE_MS = Date.parse('2027-03-01T00:00:00Z');
+function checkPrelaunchSeasonPools(): void {
+  if (!THIS_WEEK_IMAGES.some((img) => img.town_ids.includes(siteConfig.townId as never))) return;
+  const missing = missingSeasonPools(THIS_WEEK_IMAGES, TOWN_ID);
+  if (missing.length === 0) return;
+  const msg = `"${TOWN_ID}" has no "This week" images for: ${missing.join(', ')}. Add curated pools before 1 March 2027 (see .claude/annual.md).`;
+  if (seasonPoolGapSeverity(Date.now(), PRELAUNCH_SEASON_POOL_DEADLINE_MS) === 'error') throw new Error(`Build-time season pool check failed: ${msg}`);
+  console.warn(`
+⚠️  [build-checks] ${msg}
+`);
+}
+
 function describeSeasonPools(sizes: SeasonPoolSize[]): string {
   return sizes.map((s) => `${s.scope} season "${s.season}": ${s.poolSize} image(s)`).join('; ');
 }
@@ -652,7 +667,10 @@ export async function runBuildTimeChecks(): Promise<void> {
   // site-wide: the photo-coverage checks protect LAUNCHED towns, so they are skipped here, loudly, and come back
   // automatically the moment the flag is removed.
   const prelaunch = !!siteConfig.noindexSite;
-  if (prelaunch) console.warn(`[build-checks] ${siteConfig.townId}: noindexSite -- skipping photo-pool coverage checks (category, this-week, section-hero).`);
+  if (prelaunch) {
+    console.warn(`[build-checks] ${siteConfig.townId}: noindexSite -- skipping photo-pool coverage checks (category, this-week, section-hero).`);
+    checkPrelaunchSeasonPools();
+  }
   else assertCategoryImagesComplete(siteConfig, categoryImagesFor(siteConfig.townId));
   await assertVenueMatchingReachable();
   await assertContentTrackImagesComplete();

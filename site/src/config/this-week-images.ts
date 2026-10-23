@@ -30,6 +30,7 @@
  */
 import type { Season } from '../lib/this-week-images';
 import type { Town } from './category-images';
+import { GLASGOW_THIS_WEEK_IMAGES } from './gb/glasgow-images';
 
 export interface ThisWeekImage {
   /** Stable id, e.g. "brookings_sd-winter-01" -- this is what
@@ -156,6 +157,7 @@ export const THIS_WEEK_IMAGES: ThisWeekImage[] = [
   { id: 'broomfield_co-winter-12', path: '/assets/images/this-week/broomfield_co-winter-12.jpg', alt: 'Winter in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Michael Job Loquellano on Pexels', attributionUrl: 'https://www.pexels.com/@michael-job-loquellano-376432', seasons: ['winter'], town_ids: ['broomfield_co'], sourcePhotoId: 11372225 },
   { id: 'broomfield_co-winter-13', path: '/assets/images/this-week/broomfield_co-winter-13.jpg', alt: 'Winter in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Michael Solo on Pexels', attributionUrl: 'https://www.pexels.com/@roboseal34', seasons: ['winter'], town_ids: ['broomfield_co'], sourcePhotoId: 30577910 },
   { id: 'broomfield_co-winter-14', path: '/assets/images/this-week/broomfield_co-winter-14.jpg', alt: 'Winter in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Cara Denison on Pexels', attributionUrl: 'https://www.pexels.com/@cara-denison-886614634', seasons: ['winter'], town_ids: ['broomfield_co'], sourcePhotoId: 36423709 },
+  ...GLASGOW_THIS_WEEK_IMAGES,
 ];
 
 export function thisWeekImagesFor(townId: string): ThisWeekImage[] {

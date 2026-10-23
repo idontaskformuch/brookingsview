@@ -13,7 +13,7 @@
  */
 import type { ImageCategory, ImageRef } from '../lib/images';
 
-export type Town = 'brookings_sd' | 'moreno_valley_ca' | 'broomfield_co';
+export type Town = 'brookings_sd' | 'moreno_valley_ca' | 'broomfield_co' | 'glasgow';
 
 /** TMDB/pool handoff: media_recension's replacement for per-title
  *  generation (see lib/images.ts's CATEGORY_BY_SOURCE_TYPE comment on
@@ -65,6 +65,8 @@ export const CATEGORY_IMAGES: Record<Town, Partial<Record<ImageCategory, ImageRe
     workplace_watch: [{ path: '/assets/images/categories/moreno_valley_ca-workplace_watch-1.png', alt: 'Warehouse and logistics workplaces in Moreno Valley.', width: 1200, height: 800, attributionText: 'Photo by Giant Asparagus on Pexels', attributionUrl: 'https://www.pexels.com/@giantasparagus' }, { path: '/assets/images/categories/moreno_valley_ca-workplace_watch-2.png', alt: 'Warehouse and logistics workplaces in Moreno Valley.', width: 1200, height: 800, attributionText: 'Photo by ELEVATE on Pexels', attributionUrl: 'https://www.pexels.com/@elevate' }, { path: '/assets/images/categories/moreno_valley_ca-workplace_watch-3.png', alt: 'Warehouse and logistics workplaces in Moreno Valley.', width: 1200, height: 800, attributionText: 'Photo by Tom Jackson on Pexels', attributionUrl: 'https://www.pexels.com/@themrjaxon' }, { path: '/assets/images/categories/moreno_valley_ca-workplace_watch-4.png', alt: 'Warehouse and logistics workplaces in Moreno Valley.', width: 1200, height: 800, attributionText: 'Photo by Robert So on Pexels', attributionUrl: 'https://www.pexels.com/@robertkso' }],
     movie_review: MOVIE_REVIEW_POOL,
   },
+  // Glasgow: category pools are chosen later from the approved Commons candidates (data/glasgow_image_candidates.json).
+  glasgow: {},
   broomfield_co: {
     city_hall: [{ path: '/assets/images/categories/broomfield_co-city_hall-1.png', alt: 'Civic buildings in Broomfield.', width: 1200, height: 800, attributionText: 'Photo by Quang Vuong on Pexels', attributionUrl: 'https://www.pexels.com/@quang-vuong-724225078' }, { path: '/assets/images/categories/broomfield_co-city_hall-2.png', alt: 'Civic buildings in Broomfield.', width: 1200, height: 800, attributionText: 'Photo by Beth Fitzpatrick on Pexels', attributionUrl: 'https://www.pexels.com/@beth-fitzpatrick-742222899' }, { path: '/assets/images/categories/broomfield_co-city_hall-3.png', alt: 'Civic buildings in Broomfield.', width: 1200, height: 800, attributionText: 'Photo by Thuan Vo on Pexels', attributionUrl: 'https://www.pexels.com/@thuanvo09' }],
     events: [{ path: '/assets/images/categories/broomfield_co-events-1.png', alt: 'Community events in Broomfield.', width: 1200, height: 800, attributionText: 'Photo by Don Rey Aranas on Pexels', attributionUrl: 'https://www.pexels.com/@don-rey-aranas-188404615' }, { path: '/assets/images/categories/broomfield_co-events-2.png', alt: 'Community events in Broomfield.', width: 1200, height: 800, attributionText: 'Photo by Marvellous Adu on Pexels', attributionUrl: 'https://www.pexels.com/@marvellous-adu-2148798496' }, { path: '/assets/images/categories/broomfield_co-events-3.png', alt: 'Community events in Broomfield.', width: 1200, height: 800, attributionText: 'Photo by Derrick Robinson on Pexels', attributionUrl: 'https://www.pexels.com/@derrick-robinson-341985084' }, { path: '/assets/images/categories/broomfield_co-events-4.png', alt: 'Community events in Broomfield.', width: 1200, height: 800, attributionText: 'Photo by Jan van der Wolf on Pexels', attributionUrl: 'https://www.pexels.com/@jan-van-der-wolf-11680885' }],

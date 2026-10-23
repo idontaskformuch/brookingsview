@@ -7,6 +7,7 @@ import {
 } from './this-week-images';
 import { THIS_WEEK_IMAGES, type ThisWeekImage } from '../config/this-week-images';
 import type { Town } from '../config/category-images';
+import { missingSeasonPools, seasonPoolGapSeverity } from './this-week-images';
 
 function img(id: string, seasons: Season[], townIds: Town[] = ['brookings_sd']): ThisWeekImage {
   return {
@@ -362,5 +363,20 @@ describe('THIS_WEEK_IMAGES pool disjointness (2026-10-03 review instruction)', (
     }
     const violations = [...townsForPhoto.entries()].filter(([, towns]) => towns.size > 1);
     expect(violations.length).toBe(1);
+  });
+});
+
+describe('missingSeasonPools (pre-launch towns)', () => {
+  const img = (season: ThisWeekImage['seasons'][number]): ThisWeekImage => ({
+    id: `glasgow-${season}-01`, path: '/x.jpg', alt: 'x', width: 1200, height: 800, seasons: [season], town_ids: ['glasgow'], sourcePhotoId: 1,
+  });
+  it('lists the seasons with no image for the town', () => {
+    expect(missingSeasonPools([img('autumn'), img('winter')], 'glasgow').sort()).toEqual(['spring', 'summer']);
+    expect(missingSeasonPools([img('autumn'), img('winter')], 'brookings_sd').length).toBe(4);
+  });
+  it('is a warning before 1 March 2027 and an error from then on', () => {
+    const deadline = Date.parse('2027-03-01T00:00:00Z');
+    expect(seasonPoolGapSeverity(Date.parse('2027-02-28T23:59:00Z'), deadline)).toBe('warn');
+    expect(seasonPoolGapSeverity(deadline, deadline)).toBe('error');
   });
 });

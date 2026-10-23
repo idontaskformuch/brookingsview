@@ -19,6 +19,7 @@
  * ones with a real homepage-visual case for one).
  */
 import type { Town } from './category-images';
+import { GLASGOW_HOLIDAY_IMAGES } from './gb/glasgow-images';
 
 export type HolidayId =
   | 'halloween' | 'thanksgiving' | 'christmas'
@@ -159,6 +160,7 @@ export const HOLIDAY_IMAGES: HolidayImage[] = [
   { id: 'broomfield_co-thanksgiving-03', path: '/assets/images/holidays/broomfield_co-thanksgiving-03.jpg', alt: 'Thanksgiving in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Monstera Production on Pexels', attributionUrl: 'https://www.pexels.com/@gabby-k', holiday: 'thanksgiving', town_ids: ['broomfield_co'], sourcePhotoId: 5876742 },
   { id: 'broomfield_co-thanksgiving-04', path: '/assets/images/holidays/broomfield_co-thanksgiving-04.jpg', alt: 'Thanksgiving in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by Sóc Năng Động on Pexels', attributionUrl: 'https://www.pexels.com/@soc-nang-d-ng-2150345854', holiday: 'thanksgiving', town_ids: ['broomfield_co'], sourcePhotoId: 35692185 },
   { id: 'broomfield_co-thanksgiving-05', path: '/assets/images/holidays/broomfield_co-thanksgiving-05.jpg', alt: 'Thanksgiving in Broomfield, Colorado.', width: 1200, height: 800, attributionText: 'Photo by RDNE Stock project on Pexels', attributionUrl: 'https://www.pexels.com/@rdne', holiday: 'thanksgiving', town_ids: ['broomfield_co'], sourcePhotoId: 5848148 },
+  ...GLASGOW_HOLIDAY_IMAGES,
 ];
 
 export function holidayImagesFor(townId: string, holiday: HolidayId): HolidayImage[] {

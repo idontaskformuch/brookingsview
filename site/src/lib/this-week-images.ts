@@ -102,6 +102,18 @@ export interface SeasonPoolSize {
  * most -- this can warn earlier, independent of that horizon, and keeps
  * firing every build until the gap is actually closed, not just once).
  */
+/** Seasons for which a town has no "This week" image at all. Used for a pre-launch town (noindexSite, Glasgow), whose
+ *  full pool checks are skipped: a missing season is a WARNING until `deadlineMs` (owner, 2026-10-24: Glasgow's spring
+ *  and summer pools may be missing until 1 March 2027) and an ERROR from then on, since spring would render with none. */
+export function missingSeasonPools(pool: ThisWeekImage[], townId: string): Season[] {
+  const seasons: Season[] = ['winter', 'spring', 'summer', 'autumn'];
+  return seasons.filter((s) => !pool.some((img) => img.town_ids.includes(townId as ThisWeekImage['town_ids'][number]) && img.seasons.includes(s)));
+}
+
+export function seasonPoolGapSeverity(nowMs: number, deadlineMs: number): 'warn' | 'error' {
+  return nowMs < deadlineMs ? 'warn' : 'error';
+}
+
 export function seasonPoolSizes(
   pool: ThisWeekImage[],
   townId: string,

@@ -44,6 +44,7 @@ export interface QuickLinkContext {
 const THINGS_TO_DO: QuickLinkCandidate = { label: 'Things to do', route: '/events/today/', check: 'hasToday' };
 
 const CANDIDATES: Record<Town, QuickLinkCandidate[]> = {
+  glasgow: [],
   brookings_sd: [
     THINGS_TO_DO,
     { label: 'Free', route: '/events/free/', check: 'hasFree' },
