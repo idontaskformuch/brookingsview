@@ -743,11 +743,11 @@ const CITIES: Record<string, SiteConfig> = {
     nav: {
       tabs: ['today', 'events', 'cityhall'],
       groups: {
-        Now: ['today', 'thisweek', 'events'],
+        Now: ['today', 'thisweek', 'events', 'weather'],
         City: ['cityhall', 'facilities'],
       },
     },
-    disabledSections: ['traffic', 'jobs', 'weather', 'advertising', 'reviews', 'recipes', 'editorials', 'columns'],
+    disabledSections: ['traffic', 'jobs', 'advertising', 'reviews', 'recipes', 'editorials', 'columns'],
     noindexSite: true,
     listedInNetwork: false,
     hasMetOfficeWarnings: true,

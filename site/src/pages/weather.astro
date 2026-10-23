@@ -26,7 +26,7 @@ import SectionRule from '../components/SectionRule.astro';
 import { getWeather, getHourlyWeather, getActiveAlerts } from '../lib/db';
 import { siteConfig, isSectionDisabled } from '../lib/site-config';
 if (isSectionDisabled('weather')) return Astro.redirect('/', 302);
-import { placeLabel } from '../lib/country-profile';
+import { placeLabel, forCountry, formatClockCompact } from '../lib/country-profile';
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubBacklink } from '../lib/clusters';
 import { storyHref } from '../lib/content-slugs';
@@ -68,25 +68,31 @@ function relabelPeriod(p: { start: string; is_daytime: boolean; name: string }):
   return p.is_daytime ? dow : `${dow} Night`;
 }
 
+// UK: "7pm" (owner decision for gb), US: "7 PM".
 function hourLabel(start: string): string {
+  if (siteConfig.country === 'gb') return formatClockCompact(new Date(start), siteConfig.timezone);
   return new Date(start).toLocaleTimeString('en-US', { hour: 'numeric', timeZone: siteConfig.timezone });
 }
+const source = forCountry(siteConfig.country,
+  { name: 'National Weather Service', url: 'https://www.weather.gov' },
+  { name: 'Met Office', url: 'https://www.metoffice.gov.uk/weather/forecast' });
 import PageGuide from '../components/PageGuide.astro';
 ---
 <BaseLayout title={pageMeta.title} ogSlug="section-weather"
-  description={`Forecast for ${placeLabel(siteConfig)}, from the National Weather Service.`}>
+  description={`Forecast for ${placeLabel(siteConfig)}, from the ${source.name}.`}>
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>Straight from the National Weather Service, updated every 6 hours along
-    with the rest of the site.
+    <p>{forCountry(siteConfig.country,
+      'Straight from the National Weather Service, updated every 6 hours along with the rest of the site.',
+      'Straight from the Met Office. The forecast is refreshed as the site is, so check the Met Office for the latest.')}
     {hubBacklink && <> Looking for a specific address instead? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
   </header>
 
   <PageGuide
     shows={`The forecast for ${siteConfig.cityName}: hour by hour for the next day and day by day for the week, plus any active weather alerts.`}
-    use="Use the hourly view to time a commute or an outdoor plan, and open an alert for what it means and how long it lasts. Forecasts change: the National Weather Service page is the authority."
+    use={`Use the hourly view to time a commute or an outdoor plan, and open an alert for what it means and how long it lasts. Forecasts change: the ${source.name} page is the authority.`}
   >
-    <a href="https://www.weather.gov" rel="noopener">National Weather Service</a> forecast and alerts for this location.
+    <a href={source.url} rel="noopener">{source.name}</a> forecast{siteConfig.country === 'gb' ? ' (weather warnings appear at the top of every page)' : ' and alerts'} for this location.
   </PageGuide>
 
   {alerts.length > 0 && (

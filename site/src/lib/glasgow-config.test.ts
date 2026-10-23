@@ -42,7 +42,7 @@ describe('Glasgow skeleton config', () => {
     const nav = resolveNav(glasgow.nav, glasgow);
     expect(nav.tabs.map((t) => t.id)).toEqual(['today', 'events', 'cityhall']);
     const ids = enabledSections(glasgow).map((s) => s.id);
-    expect(ids).toEqual(['today', 'thisweek', 'events', 'cityhall', 'facilities']);
+    expect(ids).toEqual(['today', 'thisweek', 'events', 'cityhall', 'facilities', 'weather']);
     expect(enabledSections(glasgow).find((s) => s.id === 'cityhall')!.label).toBe('Council');
     expect(nav.tabs.find((t) => t.id === 'cityhall')!.label).toBe('Council');
   });
@@ -59,12 +59,13 @@ describe('Glasgow skeleton config', () => {
     expect(others).not.toContain(glasgow.brand?.accent);
   });
 
-  it('lists only the enabled sources on /about (meetings, Met Office warnings, Glasgow Life events, Adzuna jobs)', () => {
+  it('lists only the enabled sources on /about (meetings, Met Office forecast and warnings, Glasgow Life events, Adzuna jobs)', () => {
     expect(aboutSourcesFor('glasgow')).toEqual([
       {
         name: 'Glasgow City Council committees and councillors',
         url: 'https://onlineservices.glasgow.gov.uk/councillorsandcommittees/',
       },
+      { name: 'Met Office forecast', url: 'https://www.metoffice.gov.uk' },
       { name: 'Met Office weather warnings', url: 'https://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings' },
       { name: "Glasgow Life what's on", url: 'https://www.glasgowlife.org.uk' },
       { name: 'Adzuna job listings', url: 'https://www.adzuna.co.uk' },

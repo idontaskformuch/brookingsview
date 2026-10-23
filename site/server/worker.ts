@@ -27,6 +27,7 @@ import { handleShiftPollVote } from './shift-poll-vote';
 import { handleContact } from './contact';
 import { handleElectionResults } from './election-results';
 import { handleWeatherWarnings } from './weather-warnings';
+import { handleContactStatus } from './contact-status';
 import { handleTicketmasterImage, handleTicketmasterImagePurge } from './ticketmaster-image';
 import { resolveContentSlugRedirect } from './content-slug-redirects';
 import { resolvePlaceRedirect } from './place-redirects';
@@ -95,6 +96,9 @@ export default {
     }
     if (request.method === 'GET' && url.pathname === '/api/election-results') {
       return handleElectionResults(request, env);
+    }
+    if (request.method === 'GET' && url.pathname === '/api/contact-status') {
+      return handleContactStatus(env);
     }
     if (request.method === 'GET' && url.pathname === '/api/weather-warnings') {
       return handleWeatherWarnings(request, env);

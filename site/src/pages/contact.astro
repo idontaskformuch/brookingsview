@@ -13,14 +13,20 @@ import { forCountry } from '../lib/country-profile';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const TURNSTILE_SITE_KEY = '0x4AAAAAAEhMDgrHEob53wfv';
+// Glasgow (owner 2026-10-23): until the Resend + Turnstile secrets exist on its Worker the form is hidden and the
+// email address is the contact route. The page asks /api/contact-status and reveals the form (and loads Turnstile)
+// by itself once both secrets are set. US towns keep the always-visible form.
+const formGated = siteConfig.country === 'gb';
 ---
 <BaseLayout title={`Contact — ${siteConfig.siteName}`} description={`Get in touch with ${siteConfig.siteName}.`}>
   <article class="prose">
     <h1>Contact</h1>
     <p>Spotted a mistake, know about an event we're missing, or just want to
-    say hello? Use the form below, or email <a href={`mailto:${siteConfig.removalEmail}`}>{siteConfig.removalEmail}</a> directly.</p>
+    say hello? {formGated
+      ? <>Email <a href={`mailto:${siteConfig.removalEmail}`}>{siteConfig.removalEmail}</a>.</>
+      : <>Use the form below, or email <a href={`mailto:${siteConfig.removalEmail}`}>{siteConfig.removalEmail}</a> directly.</>}</p>
 
-    <form class="contact-form" id="contact-form" data-contact-form>
+    <form class="contact-form" id="contact-form" data-contact-form data-gated={formGated ? '' : undefined} hidden={formGated}>
       <label for="contact-name">Name <span class="optional">(optional)</span></label>
       <input type="text" id="contact-name" name="name" maxlength="200" autocomplete="name" />
 
@@ -51,12 +57,31 @@ const TURNSTILE_SITE_KEY = '0x4AAAAAAEhMDgrHEob53wfv';
   </article>
 </BaseLayout>
 
-<script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+{!formGated && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
 <script>
+  /** Gated form (Glasgow): reveal it, and only then load Turnstile, once the Worker says its secrets exist. */
+  async function revealIfAvailable(form: HTMLFormElement) {
+    try {
+      const r = await fetch('/api/contact-status', { headers: { Accept: 'application/json' } });
+      if (!r.ok) return;
+      const data = (await r.json()) as { available?: boolean };
+      if (data.available !== true) return;
+      const s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+      s.async = true;
+      s.defer = true;
+      document.head.appendChild(s);
+      form.hidden = false;
+    } catch {
+      /* stay hidden: the email address above is the contact route */
+    }
+  }
+
   function init() {
     const form = document.querySelector<HTMLFormElement>('[data-contact-form]');
     const statusEl = document.querySelector<HTMLElement>('[data-contact-status]');
     if (!form || !statusEl) return;
+    if (form.hasAttribute('data-gated')) void revealIfAvailable(form);
     const submitBtn = form.querySelector<HTMLButtonElement>('.contact-form__submit');
 
     form.addEventListener('submit', async (e) => {
@@ -115,6 +140,7 @@ const TURNSTILE_SITE_KEY = '0x4AAAAAAEhMDgrHEob53wfv';
 .prose h2 { margin-top: 2rem; margin-bottom: 0.5rem; }
 .prose p { margin: 0 0 1rem; }
 .contact-form { display: grid; gap: 0.375rem; margin: 1.5rem 0 2rem; max-width: 28rem; }
+.contact-form[hidden] { display: none; }
 .contact-form label { font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600; margin-top: 0.5rem; }
 .contact-form label:first-child { margin-top: 0; }
 .contact-form .optional { font-weight: 400; color: var(--ink-soft); }

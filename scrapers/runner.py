@@ -35,6 +35,7 @@ REGISTRY: dict[str, str] = {
     "noaa":            "scrapers.parsers.noaa:NoaaParser",
     "nws":             "scrapers.parsers.nws_alerts:NwsAlertsParser",
     "met_office_warnings": "scrapers.parsers.met_office_warnings_v1:MetOfficeWarningsParser",
+    "met_office_datahub": "scrapers.parsers.met_office_site_specific_v1:MetOfficeSiteSpecificParser",
     "legistar":        "scrapers.parsers.legistar_v1:LegistarParser",
     "escribe":         "scrapers.parsers.escribe_v1:EscribeParser",
     "agendalink":      "scrapers.parsers.agendalink_v1:AgendaLinkParser",

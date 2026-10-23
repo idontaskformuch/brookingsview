@@ -15,6 +15,7 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       MET_OFFICE_WARNINGS_API_KEY: ${{ secrets.MET_OFFICE_WARNINGS_API_KEY }}
+      MET_OFFICE_API_KEY: ${{ secrets.MET_OFFICE_API_KEY }}
       USER_AGENT:   "ViewMediaBot (+https://glasgowloop.co.uk/contact)"
     steps:
       - uses: actions/checkout@v5
