@@ -338,6 +338,8 @@ const TOWN_GATED_PAGES = [
   { path: '/how-city-council-works/', activeFor: ['brookings_sd'] },
   { path: '/sdsu-campus-open-to-public/', activeFor: ['brookings_sd'] },
   { path: '/thanksgiving/', activeFor: ['brookings_sd', 'moreno_valley_ca', 'broomfield_co'] },
+  // Glasgow image review (owner phone QA): a stub redirect everywhere else, never listed.
+  { path: '/qa/images/', activeFor: [] },
   { path: '/play/', activeFor: ['brookings_sd'] },
   { path: '/university/', activeFor: ['brookings_sd'] },
   { path: '/vail-resorts/', activeFor: ['broomfield_co'] },
