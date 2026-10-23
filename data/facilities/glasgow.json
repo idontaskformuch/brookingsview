@@ -118,7 +118,7 @@
       "postal_code": "G3 8AW",
       "phone": "0141 276 1450",
       "website": "https://www.glasgowlife.org.uk/museums/venues/kelvin-hall",
-      "hours_text": "Mon-Fri 6am-10pm, Sat 8am-6pm, Sun 8am-8pm (cafe Mon-Fri 8am-5pm, Sat-Sun 8.30am-5pm)",
+      "hours_text": "Mon-Fri 6am-10pm, Sat 8am-6pm, Sun 8am-8pm",
       "description": "A building shared by Glasgow Club (gym, sports halls, gymnastics), Glasgow Museums, the National Library of Scotland and the Hunterian, with a cafe and a soft-play area for ages 0-12.",
       "source_url": "https://www.glasgowlife.org.uk/museums/venues/kelvin-hall",
       "verified_date": "2026-10-23",
@@ -135,7 +135,7 @@
       ],
       "accessibility_note": "Wheelchair and pram access to all public areas by lift, with free wheelchair hire at reception; Changing Places toilet; quiet room on the ground floor; sensory bags with ear defenders from reception; fixed loop hearing system; only assistance dogs are permitted.",
       "parking_note": "Paid parking at the Bunhouse Road car park (maximum stay 10 hours, coins or the RingGo app); Blue Badge bays near the entrance on Bunhouse Road; electric charging via ChargePlace Scotland.",
-      "visit_notes": "Partner organisations and the cafe may keep different hours from the building."
+      "visit_notes": "The cafe is open Mon-Fri 8am-5pm and Sat-Sun 8.30am-5pm. Partner organisations and the cafe may keep different hours from the building."
     },
     {
       "slug": "the-mitchell-library",
@@ -146,7 +146,7 @@
       "postal_code": "G3 7DN",
       "phone": "0141 287 2999",
       "website": "https://www.glasgowlife.org.uk/libraries/venues/the-mitchell-library",
-      "hours_text": "Mon 9am-5pm, Tue 9am-8pm, Wed 9am-5pm, Thu 9am-8pm, Fri 9am-5pm, Sat 9am-5pm, Sun closed",
+      "hours_text": "Mon 9am-5pm, Tue 9am-8pm, Wed 9am-5pm, Thu 9am-8pm, Fri 9am-5pm, Sat 9am-5pm, closed Sunday",
       "description": "A large public library that also houses Glasgow City Archives.",
       "source_url": "https://www.glasgowlife.org.uk/libraries/venues/the-mitchell-library",
       "verified_date": "2026-10-23",
@@ -172,7 +172,7 @@
       "postal_code": "G5 9XD",
       "phone": "0141 429 0949",
       "website": "https://www.glasgowlife.org.uk/libraries/venues/gorbals-library",
-      "hours_text": "Mon 10am-5pm, Tue 10am-8pm, Wed 10am-5pm, Thu 10am-8pm, Fri 10am-5pm, Sat 10am-5pm, Sun closed",
+      "hours_text": "Mon 10am-5pm, Tue 10am-8pm, Wed 10am-5pm, Thu 10am-8pm, Fri 10am-5pm, Sat 10am-5pm, closed Sunday",
       "description": "A Glasgow Life public library in the Gorbals.",
       "source_url": "https://www.glasgowlife.org.uk/libraries/venues/gorbals-library",
       "verified_date": "2026-10-23",
@@ -192,7 +192,7 @@
       "postal_code": "G40 3HG",
       "phone": "0141 287 7000",
       "website": "https://www.glasgowlife.org.uk/sport/venues/glasgow-international-arena",
-      "hours_text": "Mon-Fri 6am-10pm, Sat 8am-6pm, Sun 8am-8pm (last admission 1 hour before closing)",
+      "hours_text": "Mon-Fri 6am-10pm, Sat 8am-6pm, Sun 8am-8pm",
       "description": "A Glasgow Club sports and fitness venue with a velodrome, a 100m indoor running track and a gym.",
       "source_url": "https://www.glasgowlife.org.uk/sport/venues/glasgow-international-arena",
       "verified_date": "2026-10-23",
@@ -207,7 +207,7 @@
       ],
       "accessibility_note": "Changing Places toilets; guide and assistance dogs welcome.",
       "parking_note": "Free. The main car park is on the left and the overflow car park on the right; both can be very busy at major events.",
-      "visit_notes": "Dalmarnock station is a short walk away. Pitch and court booking: 0141 287 7000, option 4."
+      "visit_notes": "Last admission is 1 hour before closing. Dalmarnock station is a short walk away. Pitch and court booking: 0141 287 7000, option 4."
     },
     {
       "slug": "tollcross-international-swimming-centre",
@@ -244,7 +244,7 @@
       "postal_code": "G40 1HB",
       "phone": "0141 276 0680",
       "website": "https://www.glasgowlife.org.uk/sport/venues/glasgow-green-football-centre",
-      "hours_text": "Mon-Fri 3pm-10.30pm, Sat-Sun 8.30am-6.30pm",
+      "hours_text": "Mon-Fri 3pm-10:30pm, Sat-Sun 8:30am-6:30pm",
       "description": "A Glasgow Life football centre with floodlit 3G, synthetic and grass pitches.",
       "source_url": "https://www.glasgowlife.org.uk/sport/venues/glasgow-green-football-centre",
       "verified_date": "2026-10-23",

@@ -31,9 +31,15 @@ A date text that matches none of these is skipped (logged), not stored.
 
 Date-only entries are stored as local midnight with no end (single) or with an
 end at the following local midnight after the last day (range), which the site
-already renders as "All day". Recurring entries store the first date and keep
-the recurrence sentence and the until-date in raw_data (no occurrences are
-expanded).
+already renders as "All day". Recurring entries used to store only the first date (a start in 2025 or
+earlier, so a whole series sat in the past and /events/ looked empty). Since
+2026-10-24 (owner) a recurring series is EXPANDED into its occurrences in the
+next EXPAND_DAYS days (30) -- "Every week on <weekday>" and "Every month on the
+<nth> <weekday>" -- one record per occurrence (date only: the listing gives no
+time for a series, so it renders as "All day"), each linking to the series page
+and keeping the sentence in raw_data. A recurrence that matches neither shape is
+kept as the single first-date record, exactly as before. The window rolls forward
+with each daily run.
 """
 from __future__ import annotations
 
@@ -200,9 +206,74 @@ def parse_listing(source_name: str, page: bytes, tz: str) -> list[dict]:
     return records
 
 
-def parse_pages(source_name: str, combined: bytes, tz: str) -> list[dict]:
+EXPAND_DAYS = 30
+_WEEKDAYS = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3, "friday": 4, "saturday": 5, "sunday": 6}
+_WEEKLY = re.compile(r"^Every week on (\w+)", re.IGNORECASE)
+_MONTHLY = re.compile(r"^Every month on the (\d)(?:st|nd|rd|th) (\w+)", re.IGNORECASE)
+
+
+def _nth_weekday(year: int, month: int, nth: int, weekday: int) -> date | None:
+    first = date(year, month, 1)
+    d = first + timedelta(days=(weekday - first.weekday()) % 7)
+    d += timedelta(weeks=nth - 1)
+    return d if d.month == month else None
+
+
+def occurrences(recurrence: str, first: date, until: date | None, today: date, days: int = EXPAND_DAYS) -> list[date] | None:
+    """Dates of a recurring series inside [today, today+days], never before `first`, never after `until`.
+    None when the sentence is not one of the two supported shapes (the caller then keeps the plain series record)."""
+    lo, hi = max(first, today), today + timedelta(days=days)
+    if until is not None:
+        hi = min(hi, until)
+    m = _WEEKLY.match(recurrence.strip())
+    if m and m.group(1).lower() in _WEEKDAYS:
+        wd = _WEEKDAYS[m.group(1).lower()]
+        d = lo + timedelta(days=(wd - lo.weekday()) % 7)
+        out = []
+        while d <= hi:
+            out.append(d)
+            d += timedelta(weeks=1)
+        return out
+    m = _MONTHLY.match(recurrence.strip())
+    if m and m.group(2).lower() in _WEEKDAYS:
+        nth, wd = int(m.group(1)), _WEEKDAYS[m.group(2).lower()]
+        out = []
+        y, mo = lo.year, lo.month
+        while date(y, mo, 1) <= hi:
+            d = _nth_weekday(y, mo, nth, wd)
+            if d is not None and lo <= d <= hi:
+                out.append(d)
+            y, mo = (y + 1, 1) if mo == 12 else (y, mo + 1)
+        return out
+    return None
+
+
+def expand_recurring(rec: dict, tz: str, today: date) -> list[dict]:
+    """A recurring series record -> one record per occurrence in the next EXPAND_DAYS days; any other record unchanged."""
+    raw = rec["raw_data"]
+    if raw.get("kind") != "recurring":
+        return [rec]
+    first = datetime.fromisoformat(rec["starts_at"]).date()
+    until = date.fromisoformat(raw["until"]) if raw.get("until") else None
+    days = occurrences(raw.get("recurrence") or raw["date_text"], first, until, today)
+    if days is None:
+        return [rec]
+    zone = ZoneInfo(tz)
+    out = []
+    for d in days:
+        r = dict(rec)
+        r["starts_at"] = datetime(d.year, d.month, d.day, tzinfo=zone).isoformat()
+        r["ends_at"] = None
+        r["raw_data"] = {**raw, "kind": "recurring_occurrence", "series_uid": raw["uid"], "occurrence_date": d.isoformat()}
+        r["content_hash"] = content_hash("events", rec["source"], raw["uid"], d.isoformat())
+        out.append(r)
+    return out
+
+
+def parse_pages(source_name: str, combined: bytes, tz: str, today: date | None = None) -> list[dict]:
     """All fetched listing pages; the same event on several channel pages is
-    kept once (first occurrence)."""
+    kept once (first occurrence). Recurring series become their next occurrences."""
+    today = today or datetime.now(ZoneInfo(tz)).date()
     seen: set[str] = set()
     out: list[dict] = []
     for page in combined.split(_PAGE_SEPARATOR):
@@ -212,5 +283,5 @@ def parse_pages(source_name: str, combined: bytes, tz: str) -> list[dict]:
             if rec["raw_data"]["uid"] in seen:
                 continue
             seen.add(rec["raw_data"]["uid"])
-            out.append(rec)
+            out.extend(expand_recurring(rec, tz, today))
     return out

@@ -82,8 +82,62 @@ def test_unparseable_date_text_is_none(text):
 
 def test_venue_and_category_are_kept_and_duplicates_across_pages_collapse():
     recs = parse_pages("glasgow_life", PAGE + b"\n--GLPAGE--\n" + PAGE, TZ)
-    assert len(recs) == 41
+    # still 41 distinct events (a recurring one now contributes one record per upcoming date)
+    assert len({r['raw_data']['uid'] for r in recs}) == 41
     agatha = next(r for r in recs if "agatha-christie" in r["url"])
     assert agatha["venue"] == "Mitchell Library"
     assert agatha["raw_data"]["category"] == "Living Knowledge Network"
     assert agatha["title"].startswith("Agatha Christie")
+
+
+# --- recurring series are expanded into the next 30 days (owner 2026-10-24: /events/ looked empty) ---------------------------
+from datetime import date  # noqa: E402
+
+from scrapers.glasgow_life_events import EXPAND_DAYS, expand_recurring, occurrences  # noqa: E402
+
+TODAY = date(2026, 10, 23)  # a Friday
+
+
+def test_weekly_series_gives_every_matching_weekday_in_the_window():
+    days = occurrences("Every week on Wednesday from 12th Nov 2025 until 21st Dec 2026", date(2025, 11, 12), date(2026, 12, 21), TODAY)
+    assert [d.isoformat() for d in days] == ["2026-10-28", "2026-11-04", "2026-11-11", "2026-11-18"]
+    assert all(d.weekday() == 2 for d in days)
+
+
+def test_window_is_30_days_and_never_after_until_or_before_the_first_date():
+    assert EXPAND_DAYS == 30
+    assert occurrences("Every week on Thursday from 8th Jan 2026 until 5th Nov 2026", date(2026, 1, 8), date(2026, 11, 5), TODAY) == [date(2026, 10, 29), date(2026, 11, 5)]
+    future = occurrences("Every week on Sunday from 8th Nov 2026", date(2026, 11, 8), None, TODAY)
+    assert future[0] == date(2026, 11, 8) and future[-1] <= date(2026, 11, 22)
+
+
+def test_monthly_nth_weekday():
+    days = occurrences("Every month on the 1st Monday from 5th Jan 2026 until 6th Dec 2026", date(2026, 1, 5), date(2026, 12, 6), TODAY)
+    assert days == [date(2026, 11, 2)]  # 1st Monday of November; December's (7th) is past 'until' and outside the window
+
+
+def test_unknown_shapes_are_left_alone_not_guessed():
+    assert occurrences("Every other Friday from 1st Jan 2026", date(2026, 1, 1), None, TODAY) is None
+
+
+def test_real_listing_expands_every_recurring_card_and_fills_the_next_month():
+    plain = parse_pages("glasgow_life", PAGE, "Europe/London", today=TODAY)
+    series_cards = [r for r in parse_listing("glasgow_life", PAGE, "Europe/London") if r["raw_data"]["kind"] == "recurring"]
+    assert series_cards, "the fixture is expected to contain recurring cards"
+    occ = [r for r in plain if r["raw_data"]["kind"] == "recurring_occurrence"]
+    assert len(occ) >= len(series_cards)  # at least one upcoming date for most series, several for the weekly ones
+    for r in occ:
+        d = date.fromisoformat(r["raw_data"]["occurrence_date"])
+        assert TODAY <= d <= date(2026, 11, 22)
+        assert r["ends_at"] is None and r["starts_at"].startswith(r["raw_data"]["occurrence_date"])
+        assert r["url"].startswith("https://www.glasgowlife.org.uk/event/")
+    # one record per series+date, so the same occurrence never lands twice
+    assert len({r["content_hash"] for r in occ}) == len(occ)
+    # no series-start record from 2025 is left behind for a series that was expanded
+    assert not [r for r in plain if r["raw_data"]["kind"] == "recurring"]
+
+
+def test_expand_recurring_passes_other_kinds_through():
+    single = parse_listing("glasgow_life", PAGE, "Europe/London")[0]
+    if single["raw_data"]["kind"] != "recurring":
+        assert expand_recurring(single, "Europe/London", TODAY) == [single]
