@@ -82,6 +82,7 @@ const source = forCountry(siteConfig.country,
   { name: 'National Weather Service', url: 'https://www.weather.gov' },
   { name: 'Met Office', url: 'https://www.metoffice.gov.uk/weather/forecast' });
 import PageGuide from '../components/PageGuide.astro';
+import MetOfficeWarnings from '../components/MetOfficeWarnings.astro';
 ---
 <BaseLayout title={pageMeta.title} ogSlug="section-weather"
   description={`Forecast for ${placeLabel(siteConfig)}, from the ${source.name}.`}>
@@ -94,11 +95,13 @@ import PageGuide from '../components/PageGuide.astro';
   </header>
 
   <PageGuide
-    shows={`The forecast for ${siteConfig.cityName}: hour by hour for the next day and day by day for the week, plus any active weather alerts.`}
+    shows={`The forecast for ${siteConfig.cityName}: hour by hour for the next day and day by day for the week${siteConfig.hasMetOfficeWarnings ? ', with any Met Office weather warning in force shown first' : ', plus any active weather alerts'}.`}
     use={`Use the hourly view to time a commute or an outdoor plan, and open an alert for what it means and how long it lasts. Forecasts change: the ${source.name} page is the authority.`}
   >
     <a href={source.url} rel="noopener">{source.name}</a> forecast{siteConfig.country === 'gb' ? ' (weather warnings appear at the top of every page)' : ' and alerts'} for this location.
   </PageGuide>
+
+  {siteConfig.hasMetOfficeWarnings && <MetOfficeWarnings timezone={siteConfig.timezone} variant="full" />}
 
   {alerts.length > 0 && (
     <section aria-label="Active weather alerts" class="alerts">

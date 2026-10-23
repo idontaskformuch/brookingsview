@@ -131,8 +131,10 @@ function toStory(item: FeedItem): { story: Story; href?: string; kicker?: string
   return { story: artsEventAsStory(item.event), href: item.event.event_url, kicker: ARTS_EVENT_KICKER };
 }
 
+// A town with Met Office warnings always has a Right now line (filled in the browser from /api/weather-warnings).
+const metWarningsLine = siteConfig.hasMetOfficeWarnings === true;
 const rightNowIsEmpty = activeAlerts.length === 0 && temperature === null
-  && closureStatus === null && traffic === null && !cityHallKnown;
+  && closureStatus === null && traffic === null && !cityHallKnown && !metWarningsLine;
 
 // R1 ("all-clear collapses to one line"): alerts/closures/traffic are the
 // same three CONDITIONAL modules cityStatus.ts's applyVisibilityRules()
@@ -151,14 +153,14 @@ const rightNowIsEmpty = activeAlerts.length === 0 && temperature === null
 // checker bug, confirmed against plain tsc on the equivalent logic in
 // isolation -- not a real type error), even though it's never actually
 // unsound.
-const alertsQuiet = activeAlerts.length === 0;
+const alertsQuiet = activeAlerts.length === 0 && !metWarningsLine;
 const closuresQuiet = !closureStatus || closureStatus.state === 'clear';
 const trafficQuiet = !traffic || traffic.incidents.length === 0;
 const allConditionalQuiet = alertsQuiet && closuresQuiet && trafficQuiet;
-const quietNouns: string[] = ['weather alerts'];
+const quietNouns: string[] = metWarningsLine ? [] : ['weather alerts'];
 if (closureStatus) quietNouns.push('closures');
 if (traffic) quietNouns.push('traffic incidents');
-const consolidatedQuietLine = allConditionalQuiet ? `No ${joinWithOr(quietNouns)}` : null;
+const consolidatedQuietLine = allConditionalQuiet && quietNouns.length > 0 ? `No ${joinWithOr(quietNouns)}` : null;
 
 const closureState = closureStatus?.state;
 const showClosureLine = !consolidatedQuietLine && closureState !== undefined && closureState !== 'clear';
@@ -179,6 +181,8 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
         {consolidatedQuietLine && (
           <li class="today-block__quiet">{consolidatedQuietLine}</li>
         )}
+
+        {metWarningsLine && <li id="today-met-line" data-met-line hidden></li>}
 
         {!consolidatedQuietLine && activeAlerts.length > 0 && activeAlerts.map((alert: AlertItem) => (
           <li data-ends={alert.ends_at ?? undefined}>
@@ -290,8 +294,46 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
       }
     }
 </script>
+{/* Met Office warnings (Glasgow): the "Right now" line is filled from /api/weather-warnings, never a static "No weather alerts". */}
+<script>
+  import { fetchWarnings } from '../lib/met-warnings-client';
+  import { isInForce, sortWarnings, formatValidity, warningName } from '../lib/met-warnings';
+
+  const line = document.querySelector<HTMLElement>('[data-met-line]');
+  if (line) {
+    const paint = async () => {
+      const got = await fetchWarnings();
+      if (got === null) return; // API unreachable: say nothing rather than claim there are no warnings
+      const live = sortWarnings(got.filter((w) => isInForce(w, new Date())));
+      line.replaceChildren();
+      if (live.length === 0) {
+        line.textContent = 'No weather warnings in force';
+        line.className = 'today-block__quiet';
+      } else {
+        line.className = 'today-block__met';
+        for (const w of live) {
+          const item = document.createElement('span');
+          item.className = `today-block__met-item today-block__met-item--${w.level}`;
+          item.append(`${warningName(w)} · ${formatValidity(w.validFrom, w.validTo, 'Europe/London').replace(/^Valid /, '')} · `);
+          const a = document.createElement('a');
+          a.href = '/weather/#weather-warnings';
+          a.textContent = 'Details';
+          item.appendChild(a);
+          line.appendChild(item);
+        }
+      }
+      line.hidden = false;
+    };
+    paint();
+    setInterval(paint, 60_000);
+  }
+</script>
 
 <style>
+  .today-block__met { display: grid; gap: 0.25rem; font-weight: 600; }
+  .today-block__met-item--amber { border-left: 4px solid var(--status-warn); padding-left: 0.5rem; }
+  .today-block__met-item--red { border-left: 4px solid var(--status-alert); padding-left: 0.5rem; }
+  .today-block__met-item--yellow { border-left: 4px solid var(--status-warn); padding-left: 0.5rem; }
   .today-block { margin-bottom: 1.5rem; }
   .today-block__heading {
     display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap;

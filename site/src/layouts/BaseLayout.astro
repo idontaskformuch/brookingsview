@@ -664,7 +664,7 @@ main { padding-block: 1.75rem 3.5rem; }
   </div>
 </div>
 
-{siteConfig.hasMetOfficeWarnings && <MetOfficeWarnings timezone={siteConfig.timezone} />}
+{siteConfig.hasMetOfficeWarnings && path !== '/weather/' && path !== '/today/' && <MetOfficeWarnings timezone={siteConfig.timezone} variant="compact" />}
 
 <main id="main">
   <div class:list={['shell', !wide && 'shell--narrow']}>

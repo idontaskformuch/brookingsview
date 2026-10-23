@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatValidity, isInForce, levelLabel, sortWarnings, weatherTypeText } from './met-warnings';
+import { formatValidity, isInForce, levelLabel, sortWarnings, splitParagraphs, warningName, weatherTypeText } from './met-warnings';
 
 describe('met-warnings helpers', () => {
   it('is in force only while validTo is in the future', () => {
@@ -27,4 +27,19 @@ describe('met-warnings helpers', () => {
     expect(weatherTypeText(['WIND'])).toBe('wind');
     expect(weatherTypeText(['EXTREME_HEAT', 'WIND'])).toBe('extreme heat and wind');
   });
+});
+
+describe('splitParagraphs / warningName', () => {
+  const long = 'Driving in these conditions can be dangerous, for yourself and other road users. If you must drive, take care. Being outside in high winds makes you more vulnerable to injury. Stay indoors as much as possible. In advance of high winds, check for loose items outside your home and secure them. If you are on the coast, stay safe during stormy weather. In an emergency, call 999.';
+  it('splits at sentence ends into short paragraphs and loses no text', () => {
+    const p = splitParagraphs(long, 160);
+    expect(p.length).toBeGreaterThan(2);
+    expect(p.every((x) => x.length <= 160 || !/[.!?] /.test(x))).toBe(true);
+    expect(p.join(' ')).toBe(long);
+  });
+  it('keeps one long sentence whole and handles empty text', () => {
+    expect(splitParagraphs('One very long sentence without any stop that goes on and on', 20)).toHaveLength(1);
+    expect(splitParagraphs('  ')).toEqual([]);
+  });
+  it('names a warning', () => expect(warningName({ level: 'amber', weatherTypes: ['WIND'] })).toBe('Amber warning: wind'));
 });

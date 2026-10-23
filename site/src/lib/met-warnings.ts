@@ -60,3 +60,22 @@ export function formatValidity(validFrom: string, validTo: string, timeZone: str
   if (fromDay === toDay) return `Valid from ${f} to ${t} on ${fromDay}`;
   return `Valid from ${f} ${fromDay} to ${t} ${toDay}`;
 }
+
+/** Break a long text into short paragraphs at sentence ends (each at most `max` characters, a single longer sentence stays
+ *  whole). The Met Office "what should I do" text arrives as one block of 800+ characters; /weather/ shows it in paragraphs. */
+export function splitParagraphs(text: string, max = 240): string[] {
+  const sentences = text.replace(/\s+/g, ' ').trim().match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) ?? [];
+  const out: string[] = [];
+  let cur = '';
+  for (const s of sentences) {
+    if (cur && (cur.length + 1 + s.length) > max) { out.push(cur); cur = s; }
+    else cur = cur ? `${cur} ${s}` : s;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+/** "Amber warning: wind" -- the one-line name of a warning, used by the compact box and the "Right now" line. */
+export function warningName(w: Pick<PublicWarning, 'level' | 'weatherTypes'>): string {
+  return `${levelLabel(w.level)} warning: ${weatherTypeText(w.weatherTypes)}`;
+}

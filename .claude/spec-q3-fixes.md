@@ -17,7 +17,7 @@ Efteråt: kör Q3 (Sonnet) på berörda sidor och visa före/efter.
 6. **Moreno /home-sales** enligt tidigare utredning (digester för framtida månader, stale data, arkivsortering, daggertförklaring).
 
 ## Status
-- [ ] 1 Glasgow-varningar
+- [x] 1 Glasgow-varningar (kompakt ruta + Details -> /weather/#weather-warnings med full text i stycken; Right now fylls ur API:et, aldrig statiskt "No weather alerts"; /today/ visar bara Right now-raden; verifierat i Chromium med riktig Storm Boelo-data, med och utan varningar)
 - [ ] 2 tidsberoende innehåll
 - [ ] 3 deterministiska ingresser
 - [ ] 4 tomma sidor + jobb

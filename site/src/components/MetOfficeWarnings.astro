@@ -1,40 +1,51 @@
 ---
 /**
- * Met Office weather-warning banner (Glasgow). Answers "is there a weather warning where I live, and
- * what should I do?". Hidden until the browser has fetched /api/weather-warnings (same host, read from
- * the database at request time, so a new or cancelled warning needs no rebuild). Each warning is hidden
- * again in the browser once its valid-to time passes, even if the page stays open.
+ * Met Office weather warnings (Glasgow). Two variants of the same data (GET /api/weather-warnings, read from the database at
+ * request time, so a new or cancelled warning needs no rebuild; each warning is hidden in the browser once its valid-to passes):
+ *
+ *   compact  a short box under the header on every page: level + name, headline, validity, "Details" -> /weather/#weather-warnings.
+ *            Owner 2026-10-23: the full text on every page pushed the whole page down a screen.
+ *   full     the complete text on /weather/: what to expect, and what to do split into short paragraphs.
+ *
  * All text is set with textContent. Attribution: "Source: Met Office" with a link (Met Office terms).
  */
-interface Props { timezone: string }
-const { timezone } = Astro.props;
+interface Props { timezone: string; variant?: 'compact' | 'full' }
+const { timezone, variant = 'compact' } = Astro.props;
+const id = variant === 'full' ? 'weather-warnings' : 'met-warnings';
 ---
-<section id="met-warnings" class="met-warnings" aria-label="Weather warnings" data-tz={timezone} hidden>
-  <div class="shell met-warnings__inner" id="met-warnings-list"></div>
+<section id={id} class={`met-warnings met-warnings--${variant}`} aria-label="Weather warnings" data-met-warnings={variant} data-tz={timezone} hidden>
+  {variant === 'full' && <h2 class="met-warnings__heading">Weather warnings</h2>}
+  <div class="shell met-warnings__inner"></div>
+  {variant === 'full' && <p class="met-warnings__none" hidden>No Met Office weather warnings are in force for Glasgow right now.</p>}
 </section>
 
 <style is:global>
   .met-warnings { margin: 0; padding: 0; }
-  .met-warnings__inner { display: grid; gap: 0.75rem; padding-block: 0.75rem; }
-  .mw { background: var(--status-warn-bg); color: var(--status-warn-text); border-left: 6px solid var(--status-warn); padding: 0.75rem 1rem; }
+  .met-warnings--full { margin: 1.25rem 0; }
+  .met-warnings__heading { margin: 0 0 0.5rem; font-size: 1.125rem; }
+  .met-warnings__none { margin: 0; color: var(--ink-soft); }
+  .met-warnings__inner { display: grid; gap: 0.625rem; padding-block: 0.625rem; }
+  .met-warnings--full .met-warnings__inner { padding-inline: 0; }
+  .mw { background: var(--status-warn-bg); color: var(--status-warn-text); border-left: 6px solid var(--status-warn); padding: 0.625rem 0.875rem; }
   .mw--amber { border-left-width: 10px; }
   .mw--red { background: var(--status-alert-bg); color: var(--status-alert-text); border-left: 10px solid var(--status-alert); }
-  .mw__title { margin: 0; font-size: 1.05rem; font-weight: 700; }
-  .mw__headline, .mw__valid, .mw__do, .mw__src { margin: 0.35rem 0 0; }
-  .mw__valid { font-weight: 600; }
-  .mw__sub { margin: 0.5rem 0 0; font-weight: 700; }
+  .mw__title { margin: 0; font-size: 1rem; font-weight: 700; }
+  .mw__headline, .mw__valid, .mw__do, .mw__src, .mw__more { margin: 0.3rem 0 0; }
+  .mw__headline { font-size: 0.9375rem; }
+  .mw__valid { font-weight: 600; font-size: 0.9375rem; }
+  .mw__sub { margin: 0.6rem 0 0; font-weight: 700; }
   .mw ul { margin: 0.25rem 0 0; padding-left: 1.25rem; }
   .mw__src { font-size: 0.875rem; }
+  .mw__more { font-weight: 700; }
   .mw a { color: inherit; text-decoration: underline; }
 </style>
 
 <script>
-  import { isInForce, sortWarnings, levelLabel, weatherTypeText, formatValidity, type PublicWarning } from '../lib/met-warnings';
+  import { isInForce, sortWarnings, formatValidity, splitParagraphs, warningName, type PublicWarning } from '../lib/met-warnings';
+  import { fetchWarnings } from '../lib/met-warnings-client';
 
-  const root = document.getElementById('met-warnings');
-  const list = document.getElementById('met-warnings-list');
-  if (root && list) {
-    const tz = root.dataset.tz || 'Europe/London';
+  const roots = [...document.querySelectorAll<HTMLElement>('[data-met-warnings]')];
+  if (roots.length) {
     let warnings: PublicWarning[] = [];
 
     const el = (tag: string, cls: string | null, text?: string) => {
@@ -43,47 +54,66 @@ const { timezone } = Astro.props;
       if (text !== undefined) n.textContent = text;
       return n;
     };
+    const link = (text: string, href: string) => {
+      const a = el('a', null, text) as HTMLAnchorElement;
+      a.href = href;
+      return a;
+    };
+
+    const renderOne = (w: PublicWarning, tz: string, variant: string) => {
+      const a = el('article', `mw mw--${w.level}`);
+      a.appendChild(el('h3', 'mw__title', warningName(w)));
+      if (w.headline) a.appendChild(el('p', 'mw__headline', w.headline));
+      a.appendChild(el('p', 'mw__valid', formatValidity(w.validFrom, w.validTo, tz)));
+      if (variant === 'compact') {
+        const more = el('p', 'mw__more');
+        more.appendChild(link('Details', '/weather/#weather-warnings'));
+        more.append(' · Source: ');
+        const src = link(w.sourceName, w.sourceUrl);
+        src.rel = 'noopener';
+        more.appendChild(src);
+        a.appendChild(more);
+        return a;
+      }
+      if (w.whatToExpect.length) {
+        a.appendChild(el('p', 'mw__sub', 'What to expect'));
+        const ul = el('ul', null);
+        for (const t of w.whatToExpect) ul.appendChild(el('li', null, t));
+        a.appendChild(ul);
+      }
+      if (w.whatShouldIDo) {
+        a.appendChild(el('p', 'mw__sub', 'What should I do?'));
+        for (const para of splitParagraphs(w.whatShouldIDo)) a.appendChild(el('p', 'mw__do', para));
+      }
+      const src = el('p', 'mw__src');
+      src.append('Source: ');
+      const l = link(w.sourceName, w.sourceUrl);
+      l.rel = 'noopener';
+      src.appendChild(l);
+      a.appendChild(src);
+      return a;
+    };
 
     const render = () => {
       const live = sortWarnings(warnings.filter((w) => isInForce(w, new Date())));
-      list.replaceChildren();
-      for (const w of live) {
-        const a = el('article', `mw mw--${w.level}`);
-        a.appendChild(el('h2', 'mw__title', `${levelLabel(w.level)} weather warning: ${weatherTypeText(w.weatherTypes)}`));
-        if (w.headline) a.appendChild(el('p', 'mw__headline', w.headline));
-        a.appendChild(el('p', 'mw__valid', formatValidity(w.validFrom, w.validTo, tz)));
-        if (w.whatToExpect.length) {
-          a.appendChild(el('p', 'mw__sub', 'What to expect'));
-          const ul = el('ul', null);
-          for (const t of w.whatToExpect) ul.appendChild(el('li', null, t));
-          a.appendChild(ul);
-        }
-        if (w.whatShouldIDo) {
-          a.appendChild(el('p', 'mw__sub', 'What should I do?'));
-          a.appendChild(el('p', 'mw__do', w.whatShouldIDo));
-        }
-        const src = el('p', 'mw__src');
-        src.append('Source: ');
-        const link = el('a', null, w.sourceName) as HTMLAnchorElement;
-        link.href = w.sourceUrl;
-        link.rel = 'noopener';
-        src.appendChild(link);
-        a.appendChild(src);
-        list.appendChild(a);
+      for (const root of roots) {
+        const variant = root.dataset.metWarnings || 'compact';
+        const tz = root.dataset.tz || 'Europe/London';
+        const inner = root.querySelector('.met-warnings__inner');
+        if (!inner) continue;
+        inner.replaceChildren(...live.map((w) => renderOne(w, tz, variant)));
+        const none = root.querySelector<HTMLElement>('.met-warnings__none');
+        if (none) none.hidden = live.length > 0;
+        // compact: only when there is something to show; full (/weather/): always, with an explicit "none in force" line
+        root.hidden = variant === 'compact' ? live.length === 0 : false;
       }
-      root.hidden = live.length === 0;
     };
 
     const load = async () => {
-      try {
-        const r = await fetch('/api/weather-warnings', { headers: { Accept: 'application/json' } });
-        if (!r.ok) return;
-        const data = (await r.json()) as { warnings?: PublicWarning[] };
-        warnings = Array.isArray(data.warnings) ? data.warnings : [];
-        render();
-      } catch {
-        /* offline or API down: keep what is shown; the expiry check below still applies */
-      }
+      const got = await fetchWarnings();
+      if (got === null) return; // API down: keep what is shown; expiry below still applies
+      warnings = got;
+      render();
     };
 
     load();
