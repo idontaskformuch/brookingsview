@@ -1,0 +1,145 @@
+---
+/** SDSU campus open to the public (Brookings only; owner-ordered 2026-10-22).
+ *
+ *  Resident question it answers: "I am not a student: what can I visit or do on the SDSU campus, what
+ *  does it cost, when is it open, and where do I park?"
+ *
+ *  Pattern (CLAUDE.md editorial rule): what is open to the public (data from SDSU's own pages) -> what
+ *  it costs and when (what it means for planning) -> how to park and where to find current events (what
+ *  to do). Every fact is from sdstate.edu, read 2026-10-23, linked in SOURCES. Names and facts only: no
+ *  SDSU logos or marks. Where SDSU's page did not state something (a fee, a weekend rule, public access),
+ *  the page says so and points to the number to call; nothing is guessed. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import { siteConfig } from '../lib/site-config';
+import { resolvePageMeta } from '../lib/page-meta';
+
+if (siteConfig.townId !== 'brookings_sd') {
+  return Astro.redirect('/', 302);
+}
+
+const pageMeta = resolvePageMeta('campus-guide', siteConfig);
+const CHECKED = 'October 23, 2026';
+const SDSU = 'https://www.sdstate.edu';
+const SOURCES = [
+  { name: 'SDSU: Community (attractions open to the public)', url: `${SDSU}/community` },
+  { name: 'SDSU: South Dakota Art Museum', url: `${SDSU}/south-dakota-art-museum` },
+  { name: 'SDSU: McCrory Gardens', url: `${SDSU}/mccrory-gardens` },
+  { name: 'SDSU: South Dakota Agricultural Heritage Museum', url: `${SDSU}/south-dakota-agricultural-heritage-museum` },
+  { name: 'SDSU: Dairy Bar', url: `${SDSU}/dairy-food-science/sdsu-dairy-bar` },
+  { name: 'SDSU: Oscar Larson Performing Arts Center', url: `${SDSU}/oscar-larson-performing-arts-center` },
+  { name: 'SDSU: Visitor parking', url: `${SDSU}/card-parking-service-center/parking-services/visitor-parking` },
+  { name: 'SDSU: Visit (maps, events calendar, tours)', url: `${SDSU}/visit` },
+  { name: 'SDSU: Miller Wellness Center', url: `${SDSU}/university-wellbeing` },
+  { name: 'SDSU: Hilton M. Briggs Library', url: `${SDSU}/hilton-m-briggs-library` },
+];
+---
+<BaseLayout title={pageMeta.title} wide
+  description="What you can visit on the South Dakota State campus without being a student: the art museum, McCrory Gardens, the Dairy Bar and more, with hours, costs and visitor parking."
+  >
+  <header class="lede">
+    <h1>{pageMeta.h1}</h1>
+    <p>South Dakota State University is a big part of Brookings, and much of it is open to everyone: a free art museum, a 25-acre garden, a dairy bar, concerts and performances. This guide
+    lists what is open to the public, what each place costs and when it is open, and how to park when you are not a student or employee. Everything comes from SDSU's own pages, last checked
+    {CHECKED}; hours change by season, so use the links before you go.</p>
+  </header>
+
+  <SectionRule label="What is open to the public" />
+  <table class="cp-table">
+    <caption class="sr-only">Campus places open to the public</caption>
+    <thead><tr><th scope="col">Place</th><th scope="col">When</th><th scope="col">Cost</th><th scope="col">Good to know</th></tr></thead>
+    <tbody>
+      <tr>
+        <th scope="row"><a href={`${SDSU}/south-dakota-art-museum`} rel="noopener">South Dakota Art Museum</a><br /><span class="cp-addr">1036 Medary Ave.</span></th>
+        <td>Mon-Fri 10 a.m.-5 p.m.; Sat 10 a.m.-4 p.m.; Sun noon-4 p.m. Closed Sundays January-March and state holidays.</td>
+        <td>Free for everyone</td>
+        <td>Harvey Dunn, Oscar Howe, Marghab Linens and Paul Goble collections, plus rotating exhibitions and a summer performance series on Anderson Plaza. Parking just west of the museum on Harvey Dunn Street; check in at the front desk for a parking pass.</td>
+      </tr>
+      <tr>
+        <th scope="row"><a href={`${SDSU}/mccrory-gardens`} rel="noopener">McCrory Gardens</a><br /><span class="cp-addr">631 22nd Ave.</span></th>
+        <td>May-October: daily 10 a.m.-7 p.m. November-April: Mon-Fri 10 a.m.-5 p.m.</td>
+        <td>Adults $6; seniors 65+ and youth 6-17 $4; 5 and under free; military $4 with ID. Free on Community Days (fourth Wednesday, May-October).</td>
+        <td>About 25 acres of formal gardens, walking paths and the South Dakota State Arboretum. The gardens state that accessible routes run throughout. Has a winter Garden Glow event.</td>
+      </tr>
+      <tr>
+        <th scope="row"><a href={`${SDSU}/south-dakota-agricultural-heritage-museum`} rel="noopener">South Dakota Agricultural Heritage Museum</a><br /><span class="cp-addr">977 11th St.</span></th>
+        <td>Mon-Sat 10 a.m.-5 p.m.; Sun 1-5 p.m. Closed Sundays January-March.</td>
+        <td>Not listed on the museum's main page; call 605-688-6226</td>
+        <td>Exhibits on South Dakota agricultural history, culture and science, the Ag-Xploration Gallery and collections of agricultural tools and artifacts.</td>
+      </tr>
+      <tr>
+        <th scope="row"><a href={`${SDSU}/dairy-food-science/sdsu-dairy-bar`} rel="noopener">SDSU Dairy Bar</a><br /><span class="cp-addr">Alfred Dairy Science Hall, 1224 Medary Ave.</span></th>
+        <td>Mon-Fri 8:30 a.m.-5:30 p.m. (no weekend hours listed)</td>
+        <td>Purchase (ice cream and coffee)</td>
+        <td>Student-made ice cream, more than 30 flavors. Parking is in the lot north of the Dairy Bar. Dairy plant tours can be scheduled in advance.</td>
+      </tr>
+      <tr>
+        <th scope="row"><a href={`${SDSU}/oscar-larson-performing-arts-center`} rel="noopener">Oscar Larson Performing Arts Center</a><br /><span class="cp-addr">1601 University Blvd.</span></th>
+        <td>Building open to the public Mon-Sun 7 a.m.-11 p.m.; events as scheduled</td>
+        <td>Varies by event; the page does not say which are free</td>
+        <td>Concerts, theater and dance, and the University Chamber Music Series. Brookings Community Theatre sells tickets through its own site. Questions: 605-688-5188.</td>
+      </tr>
+      <tr>
+        <th scope="row"><a href={`${SDSU}/hilton-m-briggs-library`} rel="noopener">Hilton M. Briggs Library</a><br /><span class="cp-addr">1300 N. Campus Dr.</span></th>
+        <td>See SDSU's library hours guide</td>
+        <td>Not stated</td>
+        <td>Archives and Special Collections, the Wokini Knowledge Circle and the Jackrabbit Gallery Art Show. SDSU's page does not say whether visitors can borrow materials: call 605-688-5107.</td>
+      </tr>
+      <tr>
+        <th scope="row"><a href={`${SDSU}/university-wellbeing`} rel="noopener">Miller Wellness Center</a><br /><span class="cp-addr">1440 N. Campus Dr.</span></th>
+        <td>See the center's hours page</td>
+        <td>Not stated; SDSU lists it as promoting healthy lifestyles for students and community members</td>
+        <td>Ask about community memberships and day passes at 605-697-9355: the main page does not list them.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>SDSU also lists the Meat Counter (retail meat, west end of the Animal Science Complex), Jackrabbit Central (apparel and merchandise at the University Student Union and, on game days, at the stadium)
+  and campus dining as open to the public. For football, see our <a href="/game-day/">game day guide</a>; for the full home schedule, <a href="/jackrabbits/">Jackrabbits schedules and results</a>.</p>
+
+  <SectionRule label="Plan a free afternoon" />
+  <p>Start at the <strong>South Dakota Art Museum</strong>, which is free every day it is open. If it is a Community Day (the fourth Wednesday of the month from May through October), add
+  <strong>McCrory Gardens</strong> for free the same day. On a weekday, finish with ice cream at the <strong>Dairy Bar</strong> before it closes at 5:30 p.m. Check the hours above first: the museum
+  closes Sundays from January to March and on state holidays, and the gardens' hours change in November.</p>
+
+  <SectionRule label="Parking if you are a visitor" />
+  <ul>
+    <li><strong>Register your vehicle.</strong> With a visitor registration you may park in any stall signed "visitor" or in any commuter lot across campus. Register at the Card and Parking Service Center in the University Student Union
+    (1421 Student Union Ln.), at the University Police Department (east of the stadium off Jackrabbit Avenue), or by phone at 605-688-7275. You will need your license plate number or the last five digits of your VIN.</li>
+    <li><strong>The pay lot is the exception:</strong> registration is required everywhere except the pay lot.</li>
+    <li><strong>Check the lot signs</strong> for the orange (EC) or blue (SC) medallion that marks commuter lots.</li>
+    <li><strong>What SDSU's page does not say:</strong> whether visitor registration is free, evening and weekend rules, enforcement hours, event parking and accessible parking. Call 605-688-7275 or email sdsu.parkinginfo@sdstate.edu
+    (Monday to Friday, 8 a.m.-5 p.m.) before you go, especially for an evening concert or weekend visit.</li>
+    <li><strong>Some places have their own parking:</strong> the Art Museum's pass lot on Harvey Dunn Street and the Dairy Bar's lot (see the table).</li>
+  </ul>
+  <p>Source: <a href={`${SDSU}/card-parking-service-center/parking-services/visitor-parking`} rel="noopener">SDSU visitor parking</a>. Students' and employees' vehicles cannot use visitor areas.</p>
+
+  <SectionRule label="Find out what is happening" />
+  <ul>
+    <li>SDSU's <a href={`${SDSU}/event-calendar`} rel="noopener">event calendar</a> lists campus events; some are for prospective students, so check who an event is for.</li>
+    <li>Our <a href="/events/campus/">campus events</a> and <a href="/university/">SDSU news and events</a> pages collect what is coming up.</li>
+    <li><strong>Tours:</strong> daily campus visits with an admissions ambassador are aimed at prospective students (<a href={`${SDSU}/admissions/plan-your-visit/daily-campus-visit-registration`} rel="noopener">register here</a>), and there is a self-guided
+    <a href="https://www.youtube.com/playlist?list=PL86prdbnzAUJAex41eNiuOUxTlP-s2vne" rel="noopener">virtual tour</a>. Maps: <a href="https://map.concept3d.com/?id=1971" rel="noopener">campus map</a>.</li>
+  </ul>
+
+  <SectionRule label="Sources" />
+  <ul class="cp-sources">
+    {SOURCES.map((s) => <li><a href={s.url} rel="noopener">{s.name}</a></li>)}
+  </ul>
+  <p class="cp-note">Unofficial guide by {siteConfig.siteName}. We are not affiliated with South Dakota State University; SDSU's own pages are the authority and can change. Last checked {CHECKED}.
+  Found a mistake? See <a href="/corrections/">corrections</a> or <a href="/contact/">contact us</a>.</p>
+</BaseLayout>
+
+<style>
+  .cp-table { border-collapse: collapse; width: 100%; max-width: 62rem; margin: 0 0 1rem; font-size: 0.95rem; }
+  .cp-table th, .cp-table td { text-align: left; padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--rule, #ddd); vertical-align: top; }
+  .cp-addr { font-weight: 400; font-size: 0.85rem; }
+  .cp-note { font-size: 0.9rem; max-width: 46rem; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  p, li { max-width: 46rem; }
+  @media (max-width: 40rem) {
+    .cp-table, .cp-table tbody, .cp-table tr, .cp-table th, .cp-table td { display: block; }
+    .cp-table thead { position: absolute; left: -9999px; }
+    .cp-table tr { margin-bottom: 1rem; border-bottom: 1px solid var(--rule, #ddd); }
+    .cp-table td { border: 0; padding: 0.15rem 0.6rem; }
+  }
+</style>

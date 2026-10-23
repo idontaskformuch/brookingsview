@@ -336,6 +336,7 @@ const TOWN_GATED_PAGES = [
   { path: '/game-day/', activeFor: ['brookings_sd'] },
   { path: '/trash-recycling/', activeFor: ['brookings_sd'] },
   { path: '/how-city-council-works/', activeFor: ['brookings_sd'] },
+  { path: '/sdsu-campus-open-to-public/', activeFor: ['brookings_sd'] },
   { path: '/play/', activeFor: ['brookings_sd'] },
   { path: '/university/', activeFor: ['brookings_sd'] },
   { path: '/vail-resorts/', activeFor: ['broomfield_co'] },

@@ -240,6 +240,12 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
   // Brookings-only game day guide (site/src/pages/game-day.astro), owner-ordered 2026-10-22.
   // Brookings-only trash/recycling guide (site/src/pages/trash-recycling.astro), owner-ordered 2026-10-22.
   // Brookings-only council guide (site/src/pages/how-city-council-works.astro), owner-ordered 2026-10-22.
+  // Brookings-only campus guide (site/src/pages/sdsu-campus-open-to-public.astro), owner-ordered 2026-10-22.
+  'campus-guide': {
+    titlePattern: 'SDSU Campus Open to the Public | {Site}',
+    h1Pattern: 'SDSU campus open to the public in {Town}: museums, gardens, concerts and parking',
+    ledeRequirement: 'Answers: what can a non-student visit on campus, what does it cost, when is it open, where do I park. Every fact from sdstate.edu.',
+  },
   'council-guide': {
     titlePattern: 'How the City Council Works | {Site}',
     h1Pattern: '{Town} City Council: how it works and how to follow it',
