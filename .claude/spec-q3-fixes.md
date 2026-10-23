@@ -9,6 +9,8 @@ Efteråt: kör Q3 (Sonnet) på berörda sidor och visa före/efter.
    tidszon; "last checked" i stadens tidszon; "right now" bara om data < 1 h, annars visa tidpunkten; mötessidor efter mötesdatum:
    "This meeting took place on ..." i stället för framtidsform.
 3. **Ingresser** på facilities och liknande genereras deterministiskt ur samma data som tabellen. Inga löften som sidan inte uppfyller.
+   **Tillägg (ägaren, andra sändningen):** City Hall: kontrollera tiderna mot stadens egen sida och rätta så att `place_hours` och `hours_text` stämmer överens.
+   (Den andra sändningen av listan var avkortad efter punkt 5; punkt 5-6 gäller som i den första.)
 4. **Tomma/meningslösa sidor**: noindex och ut ur navigeringen tills de har innehåll (Brookings /traffic, Broomfield /events,
    Broomfield Workplace Watch). **Jobb**: slå ihop identiska annonser per företag+titel, gör tabellen läsbar på mobil.
 5. **What's On**: filtrera "Club Level Seating" och liknande uppgraderingar, ingen konsert både i Marquee och Also on, visa årtal.
