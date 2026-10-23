@@ -79,3 +79,23 @@ export function splitParagraphs(text: string, max = 240): string[] {
 export function warningName(w: Pick<PublicWarning, 'level' | 'weatherTypes'>): string {
   return `${levelLabel(w.level)} warning: ${weatherTypeText(w.weatherTypes)}`;
 }
+
+/** First "what to expect" point, shortened at a word boundary for the one-line box (null if the warning has none). */
+export function firstExpectation(w: Pick<PublicWarning, 'whatToExpect'>, max = 90): string | null {
+  const t = (w.whatToExpect[0] ?? '').replace(/\s+/g, ' ').trim().replace(/[.;:,]+$/, '');
+  if (!t) return null;
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max).replace(/\s+\S*$/, '');
+  return `${cut}…`;
+}
+
+/** The warnings after the highest one, as "+1 yellow warning" / "+2 yellow warnings" / "+1 amber warning · +1 yellow warning"
+ *  (list already sorted, highest first). Empty string when there is nothing more. */
+export function moreWarningsText(rest: Pick<PublicWarning, 'level'>[]): string {
+  const order: WarningLevel[] = ['red', 'amber', 'yellow'];
+  return order
+    .map((lv) => ({ lv, n: rest.filter((w) => w.level === lv).length }))
+    .filter((x) => x.n > 0)
+    .map((x) => `+${x.n} ${x.lv} warning${x.n === 1 ? '' : 's'}`)
+    .join(' · ');
+}

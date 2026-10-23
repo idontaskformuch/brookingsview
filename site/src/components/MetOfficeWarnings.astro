@@ -3,7 +3,8 @@
  * Met Office weather warnings (Glasgow). Two variants of the same data (GET /api/weather-warnings, read from the database at
  * request time, so a new or cancelled warning needs no rebuild; each warning is hidden in the browser once its valid-to passes):
  *
- *   compact  a short box under the header on every page: level + name, headline, validity, "Details" -> /weather/#weather-warnings.
+ *   compact  ONE line under the header on every page: highest warning (level + type, validity, first "what to expect" point),
+ *            "+1 yellow warning" for the rest, "Details" -> /weather/#weather-warnings. No "What should I do?" outside /weather/.
  *            Owner 2026-10-23: the full text on every page pushed the whole page down a screen.
  *   full     the complete text on /weather/: what to expect, and what to do split into short paragraphs.
  *
@@ -29,6 +30,8 @@ const id = variant === 'full' ? 'weather-warnings' : 'met-warnings';
   .mw { background: var(--status-warn-bg); color: var(--status-warn-text); border-left: 6px solid var(--status-warn); padding: 0.625rem 0.875rem; }
   .mw--amber { border-left-width: 10px; }
   .mw--red { background: var(--status-alert-bg); color: var(--status-alert-text); border-left: 10px solid var(--status-alert); }
+  .mw--compact { padding: 0.5rem 0.875rem; }
+  .mw__line { margin: 0; font-size: 0.9375rem; line-height: 1.4; }
   .mw__title { margin: 0; font-size: 1rem; font-weight: 700; }
   .mw__headline, .mw__valid, .mw__do, .mw__src, .mw__more { margin: 0.3rem 0 0; }
   .mw__headline { font-size: 0.9375rem; }
@@ -41,7 +44,7 @@ const id = variant === 'full' ? 'weather-warnings' : 'met-warnings';
 </style>
 
 <script>
-  import { isInForce, sortWarnings, formatValidity, splitParagraphs, warningName, type PublicWarning } from '../lib/met-warnings';
+  import { isInForce, sortWarnings, formatValidity, splitParagraphs, warningName, firstExpectation, moreWarningsText, type PublicWarning } from '../lib/met-warnings';
   import { fetchWarnings } from '../lib/met-warnings-client';
 
   const roots = [...document.querySelectorAll<HTMLElement>('[data-met-warnings]')];
@@ -65,16 +68,6 @@ const id = variant === 'full' ? 'weather-warnings' : 'met-warnings';
       a.appendChild(el('h3', 'mw__title', warningName(w)));
       if (w.headline) a.appendChild(el('p', 'mw__headline', w.headline));
       a.appendChild(el('p', 'mw__valid', formatValidity(w.validFrom, w.validTo, tz)));
-      if (variant === 'compact') {
-        const more = el('p', 'mw__more');
-        more.appendChild(link('Details', '/weather/#weather-warnings'));
-        more.append(' · Source: ');
-        const src = link(w.sourceName, w.sourceUrl);
-        src.rel = 'noopener';
-        more.appendChild(src);
-        a.appendChild(more);
-        return a;
-      }
       if (w.whatToExpect.length) {
         a.appendChild(el('p', 'mw__sub', 'What to expect'));
         const ul = el('ul', null);
@@ -94,6 +87,30 @@ const id = variant === 'full' ? 'weather-warnings' : 'met-warnings';
       return a;
     };
 
+    // One short box: the highest warning (level + type, validity, first "what to expect" point), the rest as "+1 yellow warning",
+    // and "Details" -> /weather/#weather-warnings where the whole text sits. No "What should I do?" here (owner 2026-10-24).
+    const renderCompact = (live: PublicWarning[], tz: string) => {
+      const [top, ...rest] = live;
+      const a = el('article', `mw mw--${top.level} mw--compact`);
+      const line = el('p', 'mw__line');
+      line.appendChild(el('strong', 'mw__title', warningName(top)));
+      line.append(` · ${formatValidity(top.validFrom, top.validTo, tz).replace(/^Valid /, '')}`);
+      const first = firstExpectation(top);
+      if (first) line.append(` · ${first}`);
+      line.append(' · ');
+      line.appendChild(link('Details', '/weather/#weather-warnings'));
+      if (rest.length) {
+        line.append(' · ');
+        line.appendChild(link(moreWarningsText(rest), '/weather/#weather-warnings'));
+      }
+      line.append(' · Source: ');
+      const src = link(top.sourceName, top.sourceUrl);
+      src.rel = 'noopener';
+      line.appendChild(src);
+      a.appendChild(line);
+      return a;
+    };
+
     const render = () => {
       const live = sortWarnings(warnings.filter((w) => isInForce(w, new Date())));
       for (const root of roots) {
@@ -101,7 +118,8 @@ const id = variant === 'full' ? 'weather-warnings' : 'met-warnings';
         const tz = root.dataset.tz || 'Europe/London';
         const inner = root.querySelector('.met-warnings__inner');
         if (!inner) continue;
-        inner.replaceChildren(...live.map((w) => renderOne(w, tz, variant)));
+        if (variant === 'compact') inner.replaceChildren(...(live.length ? [renderCompact(live, tz)] : []));
+        else inner.replaceChildren(...live.map((w) => renderOne(w, tz, variant)));
         const none = root.querySelector<HTMLElement>('.met-warnings__none');
         if (none) none.hidden = live.length > 0;
         // compact: only when there is something to show; full (/weather/): always, with an explicit "none in force" line

@@ -43,3 +43,21 @@ describe('splitParagraphs / warningName', () => {
   });
   it('names a warning', () => expect(warningName({ level: 'amber', weatherTypes: ['WIND'] })).toBe('Amber warning: wind'));
 });
+
+import { firstExpectation, moreWarningsText } from './met-warnings';
+
+describe('compact warning box helpers', () => {
+  it('shortens the first expectation at a word boundary and drops trailing punctuation', () => {
+    expect(firstExpectation({ whatToExpect: ['Some damage to buildings and trees is likely.'] })).toBe('Some damage to buildings and trees is likely');
+    const long = firstExpectation({ whatToExpect: ['Injuries and danger to life are likely from flying debris and large waves around exposed coasts and bridges'] }, 60)!;
+    expect(long.endsWith('…')).toBe(true);
+    expect(long.length).toBeLessThanOrEqual(61);
+    expect(firstExpectation({ whatToExpect: [] })).toBeNull();
+  });
+  it('summarises the other warnings, highest level first', () => {
+    expect(moreWarningsText([])).toBe('');
+    expect(moreWarningsText([{ level: 'yellow' }])).toBe('+1 yellow warning');
+    expect(moreWarningsText([{ level: 'yellow' }, { level: 'yellow' }])).toBe('+2 yellow warnings');
+    expect(moreWarningsText([{ level: 'yellow' }, { level: 'amber' }])).toBe('+1 amber warning · +1 yellow warning');
+  });
+});
