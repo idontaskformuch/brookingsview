@@ -229,6 +229,17 @@ describe('splitMarquee', () => {
     expect(alsoOn).toHaveLength(3);
   });
 
+  it('nothing is in BOTH Marquee and Also on: every date of a Marquee run leaves Also on (owner 2026-10-23)', () => {
+    const run = [0, 1, 2].map((i) => tmItem(`2026-11-1${4 + i}T19:00:00Z`, { id: `disney${i}`, title: 'Disney On Ice', attractionId: 'att-disney', venueId: 'v1' }));
+    const ranked = rankTicketmasterEvents(run, 'brookings_sd');
+    const { marquee, alsoOn } = splitMarquee(ranked);
+    expect(marquee).toHaveLength(1);
+    expect(marquee[0].members).toHaveLength(3);
+    expect(alsoOn).toHaveLength(0);
+    const inBoth = marquee.flatMap((m) => m.members).filter((m) => alsoOn.includes(m));
+    expect(inBoth).toEqual([]);
+  });
+
   it('handles an empty ranked list', () => {
     const { marquee, alsoOn } = splitMarquee([]);
     expect(marquee).toEqual([]);
@@ -264,7 +275,7 @@ describe('splitMarquee', () => {
     expect(disneyEntry?.members).toHaveLength(6);
   });
 
-  it('Also-On is NOT collapsed -- non-primary run members still appear individually, each a real bookable date', () => {
+  it('REVERSED 2026-10-23 (owner): the other dates of a Marquee run are NOT repeated in Also on -- the card says "3 dates" and links them', () => {
     const runStops = Array.from({ length: 3 }, (_, i) =>
       tmItem(`2026-12-0${i + 1}T16:00:00Z`, {
         id: `run-${i}`, title: 'Touring Show', attractionId: 'attr-1', venueId: 'v1',
@@ -273,8 +284,9 @@ describe('splitMarquee', () => {
     const { marquee, alsoOn } = splitMarquee(ranked, 1); // cutoff=1: run's primary fills the only slot
     expect(marquee).toHaveLength(1);
     expect(marquee[0].members).toHaveLength(3);
-    // The other 2 dates are NOT hidden -- they still show individually in Also-On.
-    expect(alsoOn.map((i) => i.ticketmasterEvent.id).sort()).toEqual(['run-1', 'run-2']);
+    // Nothing is in both lists: the run's other dates left Also on (they used to be listed one by one, which printed
+    // "Disney On Ice" six times in a row under the Marquee card for the same show).
+    expect(alsoOn.map((i) => i.ticketmasterEvent.id)).toEqual([]);
   });
 });
 

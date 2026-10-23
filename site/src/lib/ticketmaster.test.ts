@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   normalizeTicketmasterEvent, fetchTicketmasterEvents, getTicketmasterEventsForTown, isSportsEvent,
-  isNonEventListing, distanceLabel, _resetTicketmasterCacheForTests,
+  isNonEventListing, isUpgradeProductTitle, distanceLabel, _resetTicketmasterCacheForTests,
   type RawTicketmasterEvent,
 } from './ticketmaster';
 import { siteConfig } from './site-config';
@@ -627,5 +627,24 @@ describe('distanceLabel (What\'s On Phase 5: anti-doorway-pattern transparency)'
   it('rounds to the nearest whole mile', () => {
     expect(distanceLabel(48.6, 'Brookings')).toBe('~49 miles away');
     expect(distanceLabel(48.4, 'Brookings')).toBe('~48 miles away');
+  });
+});
+
+describe('isUpgradeProductTitle: seating and hospitality upgrades are not events (owner 2026-10-23)', () => {
+  it('filters the products seen live on /whats-on/', () => {
+    for (const t of ['Club Level Seating: The Smashing Pumpkins', 'Club Level Seating: Hilary Duff', 'VIP Package - Dan + Shay', 'Premium Seating: Journey',
+      'Parking: Gracie Abrams', 'Meet & Greet Package: Teddy Swims', 'Suite: Denver Nuggets', 'Hospitality Package: Kenny Chesney']) {
+      expect(isUpgradeProductTitle(t), t).toBe(true);
+    }
+  });
+  it('keeps real shows, including ones whose name merely contains a product word', () => {
+    for (const t of ['The Smashing Pumpkins: The Rats In A Cage Tour', 'Suite Life Live', 'Parking Lot Party Tour', 'VIPs of Comedy', 'Club Night with DJ Kai',
+      'Disney On Ice presents Find Your Hero', 'Meet Me in St. Louis']) {
+      expect(isUpgradeProductTitle(t), t).toBe(false);
+    }
+  });
+  it('isNonEventListing sees the title even when the classification is an ordinary one', () => {
+    expect(isNonEventListing({ id: '1', name: 'Club Level Seating: Hilary Duff', classifications: [{ primary: true, type: { name: 'Music' } }] } as never)).toBe(true);
+    expect(isNonEventListing({ id: '2', name: 'Hilary Duff', classifications: [{ primary: true, type: { name: 'Music' } }] } as never)).toBe(false);
   });
 });

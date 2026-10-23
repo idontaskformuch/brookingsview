@@ -194,10 +194,12 @@ export interface MarqueeSplit {
 export function splitMarquee(ranked: RankedTicketmasterEvent[], marqueeSize: number = MARQUEE_SIZE): MarqueeSplit {
   const allEntries = collapseMarqueeRuns(ranked);
   const marquee = allEntries.slice(0, marqueeSize);
-  const marqueePrimaryIds = new Set(marquee.map((entry) => entry.primary.ticketmasterEvent.id));
+  // Owner 2026-10-23: nothing appears in BOTH Marquee and Also on. A Marquee card stands for the whole run (its label says
+  // "6 dates, ..."), so every date of that run leaves Also on, not only the date shown on the card.
+  const inMarquee = new Set(marquee.flatMap((entry) => entry.members.map((m) => m.ticketmasterEvent.id)));
   const alsoOn = ranked
     .map((r) => r.item)
-    .filter((item) => !marqueePrimaryIds.has(item.ticketmasterEvent.id));
+    .filter((item) => !inMarquee.has(item.ticketmasterEvent.id));
   return { marquee, alsoOn };
 }
 

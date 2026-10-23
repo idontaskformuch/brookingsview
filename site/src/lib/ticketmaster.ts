@@ -261,7 +261,16 @@ export function isSportsEvent(raw: RawTicketmasterEvent): boolean {
  *  data. */
 export function isNonEventListing(raw: RawTicketmasterEvent): boolean {
   const classification = raw.classifications?.find((c) => c.primary) ?? raw.classifications?.[0];
-  return classification?.type?.name === 'Upsell';
+  return classification?.type?.name === 'Upsell' || isUpgradeProductTitle(raw.name);
+}
+
+/** Seating/hospitality upgrades Ticketmaster lists as if they were shows: "Club Level Seating: Hilary Duff", "VIP Package: ...",
+ *  "Parking: ...". Seen live 2026-10-23 on /whats-on/ (owner: filter them). Deliberately narrow: the product word must START the title
+ *  and be followed by a colon or dash, so a real show whose name merely contains one of these words stays. The structural
+ *  classification check above stays the primary signal; this catches the products Ticketmaster files as ordinary events. */
+const UPGRADE_PRODUCT = /^(club level seating|club seats?|premium seating|vip(?:\s+(?:package|experience|ticket|upgrade|lounge))?|suites?|loge boxes?|hospitality(?:\s+package)?|parking(?:\s+pass)?|fast\s*lane|early entry|meet\s*(?:&|and)\s*greet(?:\s+package)?|pre-?show(?:\s+party)?|lounge access)\s*[:\-–—]/i;
+export function isUpgradeProductTitle(title: string | null | undefined): boolean {
+  return !!title && UPGRADE_PRODUCT.test(title.trim());
 }
 
 /** Pure -- unit-tested directly against captured fixture responses (see

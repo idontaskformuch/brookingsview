@@ -14,6 +14,7 @@
 import { siteConfig } from '../lib/site-config';
 import { distanceLabel, type TicketmasterFeedItem } from '../lib/ticketmaster';
 import { ticketmasterSlug } from '../lib/whats-on';
+import { runLabel, showDate } from '../lib/whats-on-dates';
 
 interface Props {
   item: TicketmasterFeedItem;
@@ -32,23 +33,15 @@ const e = item.ticketmasterEvent;
 const href = `/whats-on/${ticketmasterSlug(e)}/`;
 const distance = distanceLabel(e.venueDistanceMiles, siteConfig.cityName);
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric', timeZone: siteConfig.timezone,
-  });
-}
-function formatDayOnly(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: siteConfig.timezone });
-}
-
+const buildNow = new Date();
 const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
-  ? `${runSize} dates, ${formatDate(item.occurs_at)} – ${formatDate(lastOccursAt)}`
+  ? runLabel(runSize, item.occurs_at, lastOccursAt, siteConfig.timezone, buildNow)
   : null;
 // R5's left-rail column: a SHORT label (fits a 46px column), not the full
 // weekday+month+day string dateLabel uses for the multi-date-run case --
 // that longer string still renders, but as ordinary meta text, not
 // squeezed into the rail.
-const railLabel = item.occurs_at ? formatDayOnly(item.occurs_at) : null;
+const railLabel = item.occurs_at ? showDate(item.occurs_at, siteConfig.timezone, buildNow, false) : null;
 ---
 <article class="whats-on-row">
   <div class="whats-on-row__rail">
