@@ -217,7 +217,7 @@ _MV_CITY_HALL_V2_QUERY = "american municipal government building generic"
 # still didn't reach 6 -- their own per-category comments below say why;
 # a smaller honest pool over a padded risky one, same rule as before.
 CATEGORY_SEARCHES: dict[tuple[str, str], CategorySearch] = {
-    ("brookings_sd", "city_hall"): {"query": "small town city hall brick building", "chosen": _pool(38855972, 37485219, 37469663, 38855973, 14456574)},
+    ("brookings_sd", "city_hall"): {"query": "small town city hall brick building", "chosen": _pool(38855972, 14456574)},
     # Addendum 2: 3 of the 4 montage-thumbnail picks failed the mandatory
     # FULL-RESOLUTION recheck this file already requires (see city_hall/
     # traffic notes above) -- a parade truck with "MAYO CLINIC" branding
@@ -233,7 +233,7 @@ CATEGORY_SEARCHES: dict[tuple[str, str], CategorySearch] = {
     # a readable sign, or whether a face is actually identifiable --
     # crowd/parade/market photography specifically needs the full-res
     # check applied to EVERY candidate, not just aerial/wide ones.
-    ("brookings_sd", "events"): {"query": "small town street festival community", "chosen": _pool(10148954, 10130178, 8839417, 34003747)},
+    ("brookings_sd", "events"): {"query": "small town street festival community", "chosen": _pool(10148954, 10130178, 8839417)},
     ("brookings_sd", "home_sales"): {"query": "midwest suburban houses tree lined street", "chosen": _pool(38211756, 8148346, 5846801, 19278016, 1546166, 33711126, 2758265)},
     # Addendum 2: 2 of the 5 montage picks failed the FULL-RESOLUTION
     # recheck -- 221369 had a manufacturer nameplate ("BROCK") clearly
@@ -271,7 +271,7 @@ CATEGORY_SEARCHES: dict[tuple[str, str], CategorySearch] = {
     # monumental single clock tower distinctive enough to likely be a real
     # named campus landmark on its own). Only one genuinely generic,
     # low-detail campus-lawn shot survived.
-    ("brookings_sd", "university"): {"query": "university campus lawn trees buildings", "chosen": _pool(7752993, 36725428, 16275762)},
+    ("brookings_sd", "university"): {"query": "university campus lawn trees buildings", "chosen": _pool(7752993, 16275762)},
     # Addendum 2: this query is dominated by nationally-iconic, unmistakably
     # identifiable landmarks (Beverly Hills City Hall's own gold-domed
     # tower appeared TWICE more in the 24-candidate re-search, LA City
@@ -287,7 +287,7 @@ CATEGORY_SEARCHES: dict[tuple[str, str], CategorySearch] = {
     # forcing a risky pick just to hit a bigger number.
     ("moreno_valley_ca", "city_hall"): {
         "query": "modern civic building palm trees california",
-        "chosen": _pool(32957453, 1422407) + _pool(12567141, query=_MV_CITY_HALL_V2_QUERY),
+        "chosen": _pool(32957453, 1422407),
     },
     # All 3 of this category's original picks failed a FULL-RESOLUTION
     # recheck (montage thumbnails are too small to catch small background

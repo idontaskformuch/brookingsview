@@ -70,6 +70,41 @@
         "brookings_sd"
       ],
       "reason": "Brookings university-2 (Quang Vuong): collegiate-gothic campus that Pexels itself captions as in Chicago (University of Chicago look) -- another real place, not SDSU. Removed 2026-10-23 (owner)"
+    },
+    {
+      "pexels_id": 37485219,
+      "towns": [
+        "brookings_sd"
+      ],
+      "reason": "Brookings city_hall-1: winter snowfall scene in Wabasha, Minnesota -- another place, wrong season half the year (owner 2026-10-24)"
+    },
+    {
+      "pexels_id": 37469663,
+      "towns": [
+        "brookings_sd"
+      ],
+      "reason": "Brookings city_hall-2: winter snowfall scene in Wabasha, Minnesota -- another place, wrong season half the year (owner 2026-10-24)"
+    },
+    {
+      "pexels_id": 34003747,
+      "towns": [
+        "brookings_sd"
+      ],
+      "reason": "Brookings events-2: aerial of a street festival in Chattanooga, Tennessee -- another identifiable city (owner 2026-10-24)"
+    },
+    {
+      "pexels_id": 12567141,
+      "towns": [
+        "moreno_valley_ca"
+      ],
+      "reason": "Moreno Valley city_hall-2: modern high-rise facade that does not look like Moreno Valley's low-rise civic buildings (owner 2026-10-24)"
+    },
+    {
+      "pexels_id": 36725428,
+      "towns": [
+        "brookings_sd"
+      ],
+      "reason": "Brookings university-3: monumental limestone building that reads as a state courthouse, not SDSU (owner 2026-10-24)"
     }
   ]
 }
