@@ -11,7 +11,7 @@
   "triggers": {
     // Keep in sync with SCRAPE_CRON / MORNING_CRON in src/schedule.ts
     // (test/schedule.test.ts fails if dueWorkflows() stops matching them).
-    "crons": ["0 */6 * * *", "30 10-13 * * 1-5"]
+    "crons": ["0 */6 * * *", "30 10-13 * * MON-FRI"]
   },
   "observability": { "enabled": true }
 }

@@ -11,7 +11,9 @@ export const SCRAPE_CRON = '0 */6 * * *';
 // 10:30/11:30Z, Pacific 12:30/13:30Z, across DST); dueWorkflows() then keeps
 // only the towns whose LOCAL clock actually reads 05:30. Cloudflare's free
 // plan caps cron triggers per account, so this is one trigger, not four.
-export const MORNING_CRON = '30 10-13 * * 1-5';
+// Day names, not 1-5: Cloudflare numbers weekdays 1-7 with 1 = Sunday, so "1-5"
+// meant Sun-Thu and silently skipped Friday (found 2026-10-23).
+export const MORNING_CRON = '30 10-13 * * MON-FRI';
 
 export const SCRAPE_WORKFLOWS = [
   'scrape.yml',

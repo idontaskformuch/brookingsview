@@ -53,7 +53,7 @@ describe('morning closure-watch', () => {
   });
 
   it('never fires on a local weekend even if the cron slot is a UTC weekday', () => {
-    // Sat 2026-10-24 05:30 CDT = 10:30Z Saturday; the cron's 1-5 filter would
+    // Sat 2026-10-24 05:30 CDT = 10:30Z Saturday; the cron's MON-FRI filter would
     // normally stop this, the weekday check is a second guard.
     expect(dueWorkflows(MORNING_CRON, at('2026-10-24T10:30:00Z'))).toEqual([]);
     expect(dueWorkflows(MORNING_CRON, at('2026-10-25T10:30:00Z'))).toEqual([]);

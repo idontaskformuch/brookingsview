@@ -8,7 +8,7 @@ late on this repo; Cloudflare cron fires on the minute. Background and numbers:
 | Cron (UTC) | What it dispatches |
 |---|---|
 | `0 */6 * * *` | `scrape.yml`, `moval-scrape.yml`, `broomfield-scrape.yml`, `glasgow-scrape.yml` (scrape only) |
-| `30 10-13 * * 1-5` | `closure-watch-morning.yml` when it is 05:30 in Chicago, `moval-closure-watch-morning.yml` when it is 05:30 in Los Angeles (DST handled in `src/schedule.ts`) |
+| `30 10-13 * * MON-FRI` | `closure-watch-morning.yml` when it is 05:30 in Chicago, `moval-closure-watch-morning.yml` when it is 05:30 in Los Angeles (DST handled in `src/schedule.ts`) |
 
 Broomfield has no morning run: its school_alerts sources are disabled.
 
