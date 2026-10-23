@@ -670,9 +670,14 @@ export async function runBuildTimeChecks(): Promise<void> {
   if (prelaunch) {
     console.warn(`[build-checks] ${siteConfig.townId}: noindexSite -- skipping photo-pool coverage checks (category, this-week, section-hero).`);
     checkPrelaunchSeasonPools();
+    // Venue-based image matching feeds the photo pools, which a pre-launch town does not use yet; Glasgow got its
+    // 12 curated facilities on 2026-10-23 without aliases or venue_raw. Comes back with the flag (launch checklist).
+    console.warn(`[build-checks] ${siteConfig.townId}: noindexSite -- skipping venue-image matching check.`);
   }
-  else assertCategoryImagesComplete(siteConfig, categoryImagesFor(siteConfig.townId));
-  await assertVenueMatchingReachable();
+  else {
+    assertCategoryImagesComplete(siteConfig, categoryImagesFor(siteConfig.townId));
+    await assertVenueMatchingReachable();
+  }
   await assertContentTrackImagesComplete();
   await assertPageMetaPatternsValid();
   await assertPlaceLayerConsistent();

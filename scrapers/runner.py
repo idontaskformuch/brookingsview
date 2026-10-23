@@ -34,6 +34,7 @@ REGISTRY: dict[str, str] = {
     # verifierade / dokumenterade API:er (byggda på riktigt)
     "noaa":            "scrapers.parsers.noaa:NoaaParser",
     "nws":             "scrapers.parsers.nws_alerts:NwsAlertsParser",
+    "met_office_warnings": "scrapers.parsers.met_office_warnings_v1:MetOfficeWarningsParser",
     "legistar":        "scrapers.parsers.legistar_v1:LegistarParser",
     "escribe":         "scrapers.parsers.escribe_v1:EscribeParser",
     "agendalink":      "scrapers.parsers.agendalink_v1:AgendaLinkParser",

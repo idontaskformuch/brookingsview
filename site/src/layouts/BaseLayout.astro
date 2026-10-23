@@ -28,6 +28,7 @@ import { assertStatusContrast } from '../lib/status-contrast';
 import { toDarkAccent } from '../lib/dark-color';
 import { buildOrganizationJsonLd } from '../lib/article-jsonld';
 import CookieBanner from '../components/CookieBanner.astro';
+import MetOfficeWarnings from '../components/MetOfficeWarnings.astro';
 
 interface Props {
   title: string;
@@ -664,6 +665,8 @@ main { padding-block: 1.75rem 3.5rem; }
     )}
   </div>
 </div>
+
+{siteConfig.hasMetOfficeWarnings && <MetOfficeWarnings timezone={siteConfig.timezone} />}
 
 <main id="main">
   <div class:list={['shell', !wide && 'shell--narrow']}>

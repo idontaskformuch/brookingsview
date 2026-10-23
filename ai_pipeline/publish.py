@@ -93,7 +93,7 @@ SOURCES: dict[str, str] = {
 _SLOT_RE = re.compile(r"\s*[-–—]\s*slot\s+\d+\s*$", re.IGNORECASE)
 
 # källor i events-tabellen som EGENTLIGEN är varningar, inte evenemang
-_ALERT_SOURCES = {"nws_alert", "county_alert"}
+_ALERT_SOURCES = {"nws_alert", "county_alert", "met_office_warning"}
 
 # minsta agendatext för att ett möte ska vara värt en egen story
 _MIN_AGENDA_CHARS = 200

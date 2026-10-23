@@ -44,7 +44,7 @@
   "data_sources": {
     "city_meetings": { "type": "coins", "enabled": true, "meetings_have_time": true, "refresh_minutes": 1440, "exclude_bodies": ["Personnel Appeals Committee"], "public_viewer": "https://onlineservices.glasgow.gov.uk/councillorsandcommittees/", "_notes": "Phase 3.1 DONE 2026-10-22: CoInS (Northgate) via scrapers/parsers/glasgow_coins_v1.py. No robots.txt (404), no ToS found, no bot challenge on this host; www.glasgow.gov.uk is behind a Cloudflare challenge and is never touched. 49 meetings incl. 18 Area Partnerships + Licensing Board; agenda item titles only (papers are PDFs, not fetched). Personnel Appeals Committee (dismissal appeals) excluded. enabled:true only means the scraper CAN run: no scrape workflow/cron exists for glasgow yet and nothing has been written to the live DB." },
     "weather": { "type": "api", "enabled": false, "provider": "met_office_datahub", "_notes": "Phase 3.2: needs the owner's DataHub key. The US NWS parsers do not apply." },
-    "weather_alerts": { "type": "met_office_warnings", "enabled": false, "_notes": "Phase 3.2: Met Office warnings + SEPA flood warnings." },
+    "weather_alerts": { "type": "met_office_warnings", "enabled": true, "_notes": "Met Office NSWWS (DataHub v1.1, MET_OFFICE_WARNINGS_API_KEY), scrapers/parsers/met_office_warnings_v1.py: a warning is stored only when the town point is inside its polygon. Served live by GET /api/weather-warnings (no rebuild). SEPA flood warnings are still to do." },
     "traffic": { "type": "traffic_scotland", "enabled": false, "_notes": "Phase 3.3: DATEX II needs an approved subscription; tellmescotland.gov.uk notices." },
     "events": { "type": "multi", "enabled": true, "refresh_minutes": 1440,
       "sources": [

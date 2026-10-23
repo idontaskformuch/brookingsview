@@ -131,7 +131,7 @@ def collect(conn, town_id: str, start: datetime, end: datetime) -> dict:
             SELECT id, title, starts_at, venue, source, url, raw_data
               FROM events
              WHERE town_id = %s AND starts_at >= %s AND starts_at < %s
-               AND source NOT IN ('nws_alert', 'county_alert')
+               AND source NOT IN ('nws_alert', 'county_alert', 'met_office_warning')
              ORDER BY starts_at
             """, (town_id, start, end))
         events = [dict(r) for r in cur.fetchall()]

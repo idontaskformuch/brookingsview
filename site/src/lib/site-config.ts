@@ -161,6 +161,8 @@ export interface SiteConfig {
   /** Mirrors configs/<town_id>.json's features.new_in_town.enabled. See
    *  hasClosureWatch above for the sync requirement. */
   hasNewInTown?: boolean;
+  /** Show the Met Office warning banner (fed by GET /api/weather-warnings, no rebuild). UK towns only. */
+  hasMetOfficeWarnings?: boolean;
   /** Mirrors configs/<town_id>.json's features.housing_market.enabled. See
    *  hasClosureWatch above for the sync requirement. */
   hasHousingMarket?: boolean;
@@ -742,12 +744,13 @@ const CITIES: Record<string, SiteConfig> = {
       tabs: ['today', 'events', 'cityhall'],
       groups: {
         Now: ['today', 'thisweek', 'events'],
-        City: ['cityhall'],
+        City: ['cityhall', 'facilities'],
       },
     },
-    disabledSections: ['facilities', 'traffic', 'jobs', 'weather', 'advertising', 'reviews', 'recipes', 'editorials', 'columns'],
+    disabledSections: ['traffic', 'jobs', 'weather', 'advertising', 'reviews', 'recipes', 'editorials', 'columns'],
     noindexSite: true,
     listedInNetwork: false,
+    hasMetOfficeWarnings: true,
     navLabels: { cityhall: 'Council' },
     renderWindow: NO_RENDER_WINDOW,
     cityName: 'Glasgow',

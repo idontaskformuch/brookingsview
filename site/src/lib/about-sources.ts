@@ -87,7 +87,7 @@ const BROOMFIELD_CURATED: CuratedSource[] = [
 const GLASGOW_CURATED: CuratedSource[] = [
   { configKey: 'city_meetings', name: 'Glasgow City Council committees and councillors', url: 'https://onlineservices.glasgow.gov.uk/councillorsandcommittees/' },
   { configKey: 'weather', name: 'Met Office forecast', url: 'https://www.metoffice.gov.uk' },
-  { configKey: 'weather_alerts', name: 'Met Office weather warnings and SEPA flood warnings', url: 'https://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings' },
+  { configKey: 'weather_alerts', name: 'Met Office weather warnings', url: 'https://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings' },
   { configKey: 'traffic', name: 'Traffic Scotland', url: 'https://www.trafficscotland.org' },
   { configKey: 'events', name: "Glasgow Life what's on", url: 'https://www.glasgowlife.org.uk' },
   { configKey: 'jobs', name: 'Adzuna job listings', url: 'https://www.adzuna.co.uk' },
