@@ -2119,6 +2119,9 @@ export interface Facility {
   services: string[] | null;
   verification_method: string | null;
   hours_confidence: string | null;
+  /** Where to park / what to know before going, from the place's own official source (migration 062). */
+  parking_note?: string | null;
+  visit_notes?: string | null;
 }
 
 /** One facility's whole week, 24h local "HH:MM" strings -- mirrors
@@ -2155,7 +2158,8 @@ export async function getFacilities(): Promise<Facility[]> {
            image_path, image_alt, name_aliases,
            image_attribution_text, image_attribution_url, image_needs_review, free_teaser,
            hours_structured, hours_needs_review,
-           is_free, fee_note, accessibility_note, services, verification_method, hours_confidence
+           is_free, fee_note, accessibility_note, services, verification_method, hours_confidence,
+           parking_note, visit_notes
       FROM places
      WHERE town_id = ${TOWN_ID}
      ORDER BY category, name
@@ -2219,7 +2223,8 @@ export async function getFacilityBySlug(slug: string): Promise<Facility | null> 
            image_path, image_alt, name_aliases,
            image_attribution_text, image_attribution_url, image_needs_review, free_teaser,
            hours_structured, hours_needs_review,
-           is_free, fee_note, accessibility_note, services, verification_method, hours_confidence
+           is_free, fee_note, accessibility_note, services, verification_method, hours_confidence,
+           parking_note, visit_notes
       FROM places
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
      LIMIT 1
