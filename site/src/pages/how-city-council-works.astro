@@ -70,7 +70,7 @@ const upcoming = (await getUpcomingStories(['meeting'], 12))
       <SectionRule label="Coming up" />
       <ul>
         {upcoming.map((s) => (
-          <li><a href={`/s/${s.slug}/`}>{s.title}</a>{s.occurs_at ? <> ({formatOccursAt(s.occurs_at)})</> : null}</li>
+          <li><a href={`/s/${s.slug}/`}>{s.title}</a>{s.occurs_at ? <> ({formatOccursAt(s)})</> : null}</li>
         ))}
       </ul>
       <p class="gc-note">Plain-language summaries of upcoming and past meetings are on the <a href="/city-hall/">City Hall page</a>.</p>
