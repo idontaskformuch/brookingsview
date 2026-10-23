@@ -24,13 +24,17 @@ if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
 }
 
-const digests = await getContentByType(['home_sales_digest'], 999);
+// Only months the county has released (a "data_pending" notice is not a digest), newest first by the month they cover -- the stored
+// order followed the day each page was last regenerated, which put 2025 months between 2026 ones (Q3 2026-10-23).
+const digests = (await getContentByType(['home_sales_digest'], 999))
+  .filter((d) => d.generated_by !== 'data_pending')
+  .sort((a, b) => new Date(b.occurs_at ?? 0).getTime() - new Date(a.occurs_at ?? 0).getTime());
 // Phase 8 teaser link (research section 3) -- plain link, not a cluster
 // membership.
 const latestMonth = listEligibleMonths(siteConfig.townId, siteConfig.timezone)[0];
 
 const title = `Home Sales Digest Archive — ${siteConfig.cityName}`;
-const description = `Every monthly home-sales digest for ${placeAbbr(siteConfig)}, oldest to newest.`;
+const description = `Every monthly home-sales digest for ${placeAbbr(siteConfig)} that the county has released, newest first.`;
 const canonicalUrl = new URL('/home-sales/archive/', Astro.site ?? siteConfig.siteUrl).href;
 // One level deeper than buildClusterBreadcrumbTrail's own 3-crumb model --
 // see home-sales/[slug].astro's identical comment.
@@ -56,7 +60,7 @@ const itemListJsonLd = digests.length > 0 ? {
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>Home sales digest archive</h1>
-    <p>Every monthly home-sales digest, oldest to newest. Looking for
+    <p>Every monthly home-sales digest the county has released, newest first. Looking for
     recent individual sales? See <a href="/home-sales/">Recent home sales →</a>.
     {hubBacklink && <> Curious what employees actually say about local employers? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
     {latestMonth && (

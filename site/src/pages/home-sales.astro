@@ -35,10 +35,15 @@ if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
 }
 
-const [allRecentSales, digests] = await Promise.all([
+const [allRecentSales, allDigests] = await Promise.all([
   getRecentPropertySales(),
-  getContentByType(['home_sales_digest'], 12),
+  getContentByType(['home_sales_digest'], 60),
 ]);
+// Q3 2026-10-23: a month the county has not released yet ("data_pending") is a notice page, not a digest -- it is never listed as a
+// card. The hub shows the two latest real digests and links the archive for the rest.
+const digests = allDigests.filter((d) => d.generated_by !== 'data_pending')
+  .sort((a, b) => new Date(b.occurs_at ?? 0).getTime() - new Date(a.occurs_at ?? 0).getTime())
+  .slice(0, 2);
 // Render-window handoff, merged Phase 3+4: this table must never link to
 // a parcel page that isn't actually being built (see home-sales/[slug].astro's
 // own getStaticPaths -- same isWithinRenderWindow() call, same window).
@@ -56,6 +61,8 @@ const sales = allRecentSales.filter((s) => isWithinRenderWindow(s.sale_date, 'ho
 // page, not to describe the data itself) so its first row's date is the
 // real max -- computed from the data, never a guessed/rounded figure.
 const mostRecentSaleDate = allRecentSales[0]?.sale_date ?? null;
+// County records are quarterly; when the newest sale is more than 4 months old at build time, say plainly that nothing newer exists.
+const recordsAreStale = mostRecentSaleDate !== null && Date.now() - new Date(mostRecentSaleDate).getTime() > 120 * 86_400_000;
 
 const pageMeta = resolvePageMeta('home-sales', siteConfig);
 const canonicalUrl = new URL('/home-sales/', Astro.site ?? siteConfig.siteUrl).href;
@@ -86,6 +93,7 @@ function monthYear(occursAt: string | null): string {
     straight from Riverside County's public assessor data. County records
     lag behind actual sales{mostRecentSaleDate && <> — the most recent
     recorded sale currently available is from {new Date(mostRecentSaleDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</>}.
+    {recordsAreStale && <> The county has not published newer records, so this page stops there: sales recorded since then are not shown, and the monthly digests below cover only the months the county has released.</>}
     {hubBacklink && <> Wondering what local employers pay? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
   </header>
 
@@ -106,6 +114,7 @@ function monthYear(occursAt: string | null): string {
   <SectionRule label={mostRecentSaleDate
     ? `${sales.length} most recent, through ${monthYear(mostRecentSaleDate)}`
     : `${sales.length} most recent`} />
+  <p class="footnote footnote--top">A † next to a price marks a likely non-market transfer (family transfer, partial interest, or a recording artifact); those are left out of the digests' median and range.</p>
 
   <p class="zip-links">
     Browse by ZIP: {zips.map((z, i) => (
@@ -159,7 +168,6 @@ function monthYear(occursAt: string | null): string {
           ))}
         </tbody>
       </table>
-      <p class="footnote">† Likely non-market transfer (family transfer, partial interest, or a recording artifact) — excluded from the monthly digest's median/range figures.</p>
       <p class="pager-status" id="pager-status" aria-live="polite"></p>
     </>
   ) : (
