@@ -103,6 +103,10 @@ import MetOfficeWarnings from '../components/MetOfficeWarnings.astro';
 
   {siteConfig.hasMetOfficeWarnings && <MetOfficeWarnings timezone={siteConfig.timezone} variant="full" />}
 
+  {!siteConfig.hasMetOfficeWarnings && alerts.length === 0 && (
+    <p class="empty">No active weather alerts for {siteConfig.cityName} as of the last site update.</p>
+  )}
+
   {alerts.length > 0 && (
     <section aria-label="Active weather alerts" class="alerts">
       {alerts.map((alert) => (

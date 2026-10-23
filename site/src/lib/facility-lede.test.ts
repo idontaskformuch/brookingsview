@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildFacilityLede, pickAddressConnector, facilityTitleElements, facilityMapLink } from './facility-lede';
+import { buildFacilityLede, pickAddressConnector, facilityTitleElements, facilityMapLink, summarizeHours } from './facility-lede';
 
 describe('buildFacilityLede', () => {
   it('appends the address as a second sentence after the description', () => {
@@ -164,5 +164,32 @@ describe('hours text ending in a period', () => {
     const { buildFacilityLede } = await import('./facility-lede');
     const lede = buildFacilityLede('A museum.', '1 Main St', 'test-museum', 'Mon-Fri 9-5. Closed holidays.', '(605) 555-0100');
     expect(lede).not.toContain('..');
+  });
+});
+
+describe('summarizeHours / buildFacilityLede: the lede hours come from the same rows as the table (Q3 2026-10-23)', () => {
+  const row = (day_of_week: number, opens: string | null, closes: string | null) => ({ day_of_week, opens, closes });
+  // Brookings City Hall after the fix: Mon-Thu 8-5, Fri 8-noon, weekend closed (day_of_week 0 = Sunday)
+  const cityHall = [row(0, null, null), row(1, '08:00:00', '17:00:00'), row(2, '08:00:00', '17:00:00'), row(3, '08:00:00', '17:00:00'),
+    row(4, '08:00:00', '17:00:00'), row(5, '08:00:00', '12:00:00'), row(6, null, null)];
+  it('joins consecutive equal days and writes noon', () => {
+    expect(summarizeHours(cityHall)).toBe('Mon–Thu 8am–5pm, Fri 8am–noon');
+  });
+  it('handles half hours, a lone Sunday and Saturday that equals Friday', () => {
+    const library = [row(0, '13:00:00', '17:00:00'), row(1, '09:30:00', '20:00:00'), row(2, '09:30:00', '20:00:00'), row(3, '09:30:00', '20:00:00'),
+      row(4, '09:30:00', '20:00:00'), row(5, '09:30:00', '17:30:00'), row(6, '09:30:00', '17:30:00')];
+    expect(summarizeHours(library)).toBe('Mon–Thu 9:30am–8pm, Fri–Sat 9:30am–5:30pm, Sun 1pm–5pm');
+  });
+  it('is null when nothing is open or there are no rows', () => {
+    expect(summarizeHours([])).toBeNull();
+    expect(summarizeHours([row(1, null, null)])).toBeNull();
+  });
+  it('the lede prefers the structured summary over a stale hours_text (the City Hall defect)', () => {
+    const lede = buildFacilityLede('Houses the clerk.', '520 3rd St', 'city-hall', 'Mon–Thu 7am–5pm, Fri 7am–noon', '(605) 692-6281', summarizeHours(cityHall));
+    expect(lede).toContain('8am–5pm');
+    expect(lede).not.toContain('7am');
+  });
+  it('falls back to hours_text when there are no structured hours', () => {
+    expect(buildFacilityLede(null, null, 'x', 'Daily 6am–10pm', null, null)).toContain('Daily 6am–10pm');
   });
 });

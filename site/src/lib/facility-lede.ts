@@ -60,18 +60,54 @@ function pickPhoneConnector(slug: string): string {
  *  rendering already follows (see hasResolvedAddress() in lib/db.ts):
  *  returns whichever parts are available, or null if none are.
  */
+const DAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function clockWord(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  if (h === 12 && m === 0) return 'noon';
+  if ((h === 0 || h === 24) && m === 0) return 'midnight';
+  const h12 = h % 12 || 12;
+  return `${h12}${m ? `:${String(m).padStart(2, '0')}` : ''}${h < 12 ? 'am' : 'pm'}`;
+}
+
+/** The weekly hours as one line, built from the SAME place_hours rows the table on the page is built from (Q3 2026-10-23: the
+ *  lede used the free-text hours_text, which had drifted from the table). Consecutive days with the same window are joined:
+ *  "Mon–Thu 8am–5pm, Fri 8am–noon". Closed days are left out; returns null when no day has hours. */
+export function summarizeHours(rows: { day_of_week: number; opens: string | null; closes: string | null }[]): string | null {
+  const byDay = new Map<number, string>();
+  for (const r of rows) {
+    if (r.opens && r.closes) byDay.set(r.day_of_week, `${clockWord(r.opens.slice(0, 5))}–${clockWord(r.closes.slice(0, 5))}`);
+  }
+  if (byDay.size === 0) return null;
+  const order = [1, 2, 3, 4, 5, 6, 0]; // Monday first
+  const parts: string[] = [];
+  let i = 0;
+  while (i < order.length) {
+    const w = byDay.get(order[i]);
+    if (!w) { i += 1; continue; }
+    let j = i;
+    while (j + 1 < order.length && byDay.get(order[j + 1]) === w) j += 1;
+    parts.push(`${j > i ? `${DAY_ABBR[order[i]]}–${DAY_ABBR[order[j]]}` : DAY_ABBR[order[i]]} ${w}`);
+    i = j + 1;
+  }
+  return parts.join(', ');
+}
+
 export function buildFacilityLede(
   description: string | null,
   address: string | null,
   slug: string,
   hoursText: string | null = null,
   phone: string | null = null,
+  structuredHours: string | null = null,
 ): string | null {
   const sentences: string[] = [];
   if (description) sentences.push(description);
   if (address) sentences.push(`${pickAddressConnector(slug)} ${address}.`);
   // hours text that already ends in a period ("... closed on holidays.") must not get a second one
-  if (hoursText) sentences.push(`${pickHoursConnector(slug)} ${hoursText.replace(/[.\s]+$/, '')}.`);
+  // the structured summary (same rows as the table) wins; the free text is only the fallback when there are no structured hours
+  const hoursPart = structuredHours ?? hoursText;
+  if (hoursPart) sentences.push(`${pickHoursConnector(slug)} ${hoursPart.replace(/[.\s]+$/, '')}.`);
   if (phone) sentences.push(`${pickPhoneConnector(slug)} ${phone}.`);
   return sentences.length > 0 ? sentences.join(' ') : null;
 }

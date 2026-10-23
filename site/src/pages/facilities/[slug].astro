@@ -37,7 +37,7 @@ import { placeAbbr, countryProfile } from '../../lib/country-profile';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 import { formatClock } from '../../lib/facility-hours';
 import { buildPlaceOpeningHoursSpecification, isPastStalenessThreshold } from '../../lib/place-hours';
-import { buildFacilityLede, facilityTitleElements, facilityMapLink } from '../../lib/facility-lede';
+import { buildFacilityLede, facilityTitleElements, facilityMapLink, summarizeHours } from '../../lib/facility-lede';
 import { resolvePageMeta } from '../../lib/page-meta';
 import { storyHref } from '../../lib/content-slugs';
 
@@ -64,7 +64,6 @@ const description = facility.description
 // descriptions. Distinct from `description` above (the <meta
 // name="description"> value, which keeps its own 155-char truncation and
 // doesn't need the address baked in).
-const lede = buildFacilityLede(facility.description, facility.address, facility.slug, facility.hours_text, facility.phone);
 const hubBacklink = resolveHubBacklink('facilities/detail', siteConfig);
 
 // Cross-link upcoming events held at this facility -- the venue registry
@@ -102,6 +101,9 @@ const [hours, exceptions] = await Promise.all([
 const now = new Date();
 const staleness = siteConfig.placeStaleness ?? { hoursDays: 45, addressPhoneDays: 180 };
 const hoursStale = isPastStalenessThreshold(facility.verified_date, staleness.hoursDays, now);
+// The lede's hours come from the SAME place_hours rows as the table below (Q3 2026-10-23), so the first paragraph can never
+// contradict the table; hours_text is only the fallback when there are no structured rows.
+const lede = buildFacilityLede(facility.description, facility.address, facility.slug, facility.hours_text, facility.phone, summarizeHours(hours));
 // Handoff 5.2's own rule, carried over unchanged: "emitting stale hours as
 // schema is worse than emitting none." Staleness is a 45/180-DAY threshold
 // check, not an "is it open now" check -- still correct to compute at
@@ -333,9 +335,9 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
     {upcomingHere.length > 0 && (
       <>
         <h2 class="section-label">Upcoming events here</h2>
-        <ul class="events">
+        <ul class="events" data-hide-ended>
           {upcomingHere.map((s) => (
-            <li>
+            <li data-start={s.occurs_at ? new Date(s.occurs_at).toISOString() : undefined} data-end={s.ends_at ? new Date(s.ends_at).toISOString() : undefined}>
               <a href={storyHref(s.slug)}>{s.title}</a>
               <span class="when data">{formatOccursAt(s)}</span>
             </li>
