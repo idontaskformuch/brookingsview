@@ -19,6 +19,17 @@ Fullständig ursprungstext för äldre punkter: .claude/state-archive.md, rubrik
 - BERIKA PARKER UR OPENSTREETMAP (ägaren 2026-10-23, alla städer): de 11 Brookings-stubparkerna (noindex idag: arrowhead, camelot, hillcrest, indian-hills, larson, mcclemans, rotary, sarah-renee, southside, valley-view, veterans-memorial) + Broomfields Broadlands West Park saknar all data utom namn. OSM har ofta lekplatser, toaletter, parkering, stigar, sportplaner per park. Gör det automatiskt, inte för hand: Overpass-fråga per park (leisure=park/playground/pitch, amenity=toilets/parking/shelter, highway=path inom parkens polygon), mappa till services[] + parking_note, spara källa. Krav: ODbL-attribution ("(c) OpenStreetMap contributors", länk till openstreetmap.org/copyright) på varje sida som använder datan + i facilities-sidans Source-rad; share-alike gäller bara vår härledda databas om vi publicerar den, inte sidorna -- dubbelkolla villkoren före bygge. Hämta med artig takt (Overpass-policy), cache lokalt, kör som engångs-/periodiskt skript, UPDATE bara mot live efter ägarens ja. Stubregeln (noindex) lyfts automatiskt när en park får services/gata. Verifiera mot stadens GIS (befintlig amenity-text vinner vid konflikt).
 - BILDPOOLER: FLYTTA FRÅN GIT TILL CLOUDFLARE R2 när antalet städer växer (ägaren 2026-10-24). Idag ligger alla pool-/kategori-/högtidsbilder som JPEG i repot (site/public/assets/images/, Glasgows 45 nya = ~10 MB; .git är redan ~720 MB) och byggs in i varje stads deploy. Mål: bilderna i en R2-bucket (publik via egen domän/Cloudflare-cache), config pekar på absoluta URL:er (eller en bild-bas-URL per miljö), attribution och dimensioner kvar i configen; engångsmigrering av befintliga filer, build-checks (assertImageExists) måste kunna kolla mot en manifest-fil i stället för disk; aktiveringsskripten (activate_glasgow_images.py, source_*_images.py) laddar upp till R2 i stället för att skriva till public/. Överväg samtidigt att ta bort bildhistoriken ur git (git filter-repo) -- kräver ägarens ja och en tvingad push.
 
+## Efter Glasgow-lansering (ägaren 2026-10-24; byggs först när ägaren säger go)
+
+- **Veckolistor ny design** (/this-week, digest-sidor, alla städer) -- de ser platta ut. Inget byggs än. Ingen ny AI-text.
+  - Highlights: 3-4 kort överst (top_events/rank, datumbricka, kategoribild).
+  - Kompakta rader: tid i vänsterkolumn, fet titel, plats under, pil i stället för understruken länk.
+  - Gruppera serier: gemensamt prefix (t.ex. "Hobo Day Committee (HDC)") en gång som underrubrik. Samma titel + dag = en rad med flera tider ("Thu 12pm & 8pm").
+  - Dagväljare (Mån-Sön) som filtrerar, idag markerad.
+  - Max 5 rader per grupp + "Show N more".
+  - Etiketter (Free, All ages, Outdoor) från källdata.
+  - Kontrollera mobil och mörkt läge.
+
 ## Efter intäkter
 Beslut 2026-10-23 (ägaren): inga nya städer förrän någon sajt drar in pengar. Idéer att ta upp då, inte före:
 - LONDON (UK-mallen efter Glasgow; per borough enligt .claude/specs/glasgow-loop.md rad 10): bygg som config-driven "area hub" (se punkten om Glasgow neighbourhood hubs ovan). Kräver Met Office/SEPA-motsvarighet (Environment Agency), egna möteskällor per borough, UK-spärrarna (uk_guardrails) och en egen juridisk granskning per land/stad.
