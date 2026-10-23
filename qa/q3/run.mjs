@@ -32,9 +32,12 @@ const TOWNS = arg('towns', 'brookings_sd,moreno_valley_ca,broomfield_co,glasgow'
 const REVIEW = arg('review', 'on') === 'on';
 // --reuse <dir>: do NOT load the sites again; re-run only the AI step on the screenshots and facts of an earlier run (same inputs for a fair model comparison)
 const REUSE = arg('reuse', null);
-const MODEL = arg('model', 'claude-opus-5-5');
+// Owner 2026-10-23: the QA review stays on Sonnet (the text pipeline is on Haiku, see ai_pipeline/format_prompt.py TEXT_MODEL).
+const MODEL = arg('model', 'claude-sonnet-5-5');
 const MAX_USD = Number(arg('max-usd', 12));
 const LIMIT = Number(arg('limit', 0));
+// --paths /a/,/b/ : visit ONLY these section paths (and the detail page found in each), for a before/after check of fixed pages
+const ONLY_PATHS = arg('paths', null)?.split(',').map((p) => p.trim()).filter(Boolean) ?? null;
 const today = new Date().toISOString().slice(0, 10);
 const outDir = resolve(root, arg('out', `qa/out/q3/${today}`));
 const shotDir = resolve(outDir, 'screenshots');
@@ -58,7 +61,7 @@ loadEnv();
 /** Candidate section paths; kept only when they answer 200 without redirecting away. */
 const CANDIDATES = ['/', '/today/', '/events/', '/whats-on/', '/this-week/', '/city-hall/', '/weather/', '/traffic/', '/closures/', '/jobs/',
   '/facilities/', '/university/', '/sports/', '/jackrabbits/', '/vote/', '/election-results/', '/thanksgiving/', '/trash-recycling/', '/game-day/',
-  '/how-city-council-works/', '/sdsu-campus-open-to-public/', '/new-in-town/', '/workplace-watch/', '/home-sales/', '/farm-report/', '/vail-resorts/',
+  '/how-city-council-works/', '/sdsu-campus-open-to-public/', '/home-sales/archive/', '/new-in-town/', '/workplace-watch/', '/home-sales/', '/farm-report/', '/vail-resorts/',
   '/about/', '/contact/', '/privacy/', '/cookies/'];
 /** list page -> link pattern of a representative DETAIL page found inside it. */
 const DETAIL_OF = { '/events/': /^\/s\/event-[^/]+\/$/, '/city-hall/': /^\/s\/[^/]+\/$/, '/this-week/': /^\/this-week\/[^/]+\/$/,
@@ -215,7 +218,7 @@ async function runTown(browser, town) {
 
   const light = await newContext(browser, { theme: 'light', tz: cfg.timezone, base, origin });
   const dark = await newContext(browser, { theme: 'dark', tz: cfg.timezone, base, origin });
-  const todo = found.map((p) => ({ path: p, kind: 'section' }));
+  const todo = found.filter((p) => !ONLY_PATHS || ONLY_PATHS.includes(p)).map((p) => ({ path: p, kind: 'section' }));
   const pages = [];
   const seen = new Set();
   const now = new Date();

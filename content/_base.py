@@ -25,6 +25,7 @@ except ImportError:  # pragma: no cover
 
 from ai_pipeline import api_usage
 from ai_pipeline.format_prompt import (
+    TEXT_MODEL,
     GenerationUnavailable, _record_spend, _spent_this_month, pricing_for, resolve_model, safe_create,
 )
 from ai_pipeline.town_guard import STATE_NAMES, has_local_anchor
@@ -38,7 +39,7 @@ from validation import pre_publish_check
 # cfg inte heller anger något) -- den faktiska per-typ-styrningen sker via
 # resolve_model()/CONTENT_TYPE_MODELS i ai_pipeline/format_prompt.py, enda
 # källan att ändra vid ett modellbyte.
-DEFAULT_MODEL = "claude-sonnet-5"
+DEFAULT_MODEL = TEXT_MODEL
 # Svensk text kostar ~4 tokens/ord med den här modellens tokenizer (mätt: 701 ord =
 # 2783 output-tokens), mot engelskans ~1.3. 900 ord (culture_essay, längsta målet) kan
 # därför kosta ~3600 tokens redan innan icke-deterministisk variation räknas in --

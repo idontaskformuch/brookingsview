@@ -447,46 +447,41 @@ TEMPLATERS = {
 # modellkvalitet än vetenskapskrönikan (ordlekar som inte landar är sämre än
 # neutral text), och en recension bygger på samma trovärdiga-röst-krav som en
 # ledare.
-CONTENT_TYPE_MODELS: dict[str, str] = {
-    # Haiku -- strukturerad/extraktiv, hög volym, lägre kreativitetskrav
-    "vardagsmiddag": "claude-haiku-4-5-20251001",
-    "home_sales_digest": "claude-haiku-4-5-20251001",
-    "sports_digest": "claude-haiku-4-5-20251001",
-    "jackrabbits_season_summary": "claude-haiku-4-5-20251001",
-    "university_digest": "claude-haiku-4-5-20251001",
-    "workplace_watch_digest": "claude-haiku-4-5-20251001",
-    "closure_watch": "claude-haiku-4-5-20251001",
-    "new_in_town_extraction": "claude-haiku-4-5-20251001",
-    "new_in_town_digest": "claude-haiku-4-5-20251001",
-    "weekly": "claude-haiku-4-5-20251001",
-    "meeting": "claude-haiku-4-5-20251001",
-    "event": "claude-haiku-4-5-20251001",
-    "alert": "claude-haiku-4-5-20251001",
-    "whats_on_intro": "claude-haiku-4-5-20251001",
-    "event_deck": "claude-haiku-4-5-20251001",
-    # Sonnet -- tolkande/kreativ text, röst- och kvalitetskänslig
-    "editorial": "claude-sonnet-5",
-    "culture_essay": "claude-sonnet-5",
-    "vetenskap_kronika": "claude-sonnet-5",
-    "kvick_essa": "claude-sonnet-5",
-    "media_recension": "claude-sonnet-5",
-}
+HAIKU = "claude-haiku-4-5-20251001"
+SONNET = "claude-sonnet-5"
 
-DEFAULT_MODEL = "claude-sonnet-5"
+# ===========================================================================================================
+# ONE LINE TO UPGRADE EVERY TEXT TYPE: change TEXT_MODEL to SONNET.  *** Upgrade when the sites earn money. ***
+# Owner decision 2026-10-23 (.claude/spec-model-choice.md): Haiku for ALL AI text (summaries, weekly intros, digests, meetings,
+# moderation) until a site earns revenue. QA review (qa/q3) is separate and stays on Sonnet; the comment moderator in
+# site/server/comment.ts already runs on Haiku. To upgrade ONE type only, add it to CONTENT_TYPE_MODEL_OVERRIDES below.
+# Quality is tracked per type by scripts/model_quality_report.py (first-attempt pass rate, retries, fallbacks from api_usage);
+# it REPORTS when Haiku is clearly worse, it never switches a type back by itself.
+# ===========================================================================================================
+TEXT_MODEL = HAIKU
+
+# Per-type exceptions (type -> model). Empty on purpose.
+CONTENT_TYPE_MODEL_OVERRIDES: dict[str, str] = {}
+
+# Every content type the pipeline knows (kept as the single list other modules and tests import).
+_TEXT_TYPES = (
+    "vardagsmiddag", "home_sales_digest", "sports_digest", "jackrabbits_season_summary", "university_digest",
+    "workplace_watch_digest", "closure_watch", "new_in_town_extraction", "new_in_town_digest", "weekly", "meeting",
+    "event", "alert", "whats_on_intro", "event_deck", "editorial", "culture_essay", "vetenskap_kronika", "kvick_essa",
+    "media_recension",
+)
+CONTENT_TYPE_MODELS: dict[str, str] = {t: CONTENT_TYPE_MODEL_OVERRIDES.get(t, TEXT_MODEL) for t in _TEXT_TYPES}
+
+DEFAULT_MODEL = TEXT_MODEL
 
 
 def resolve_model(content_type: str | None, cfg: dict | None = None) -> str:
-    """Vilken modell en given content-typ ska skriva med.
+    """Which model writes a given content type: a per-type override, else TEXT_MODEL (one line, see above).
 
-    Ordning: CONTENT_TYPE_MODELS (explicit per-typ-styrning) -> cfg["ai"]["model"]
-    (stadens egen configinställning, om satt) -> DEFAULT_MODEL. En config med
-    en avvikande modell vinner ALDRIG över en explicit CONTENT_TYPE_MODELS-post
-    -- den senare är ett medvetet kostnads-/kvalitetsval per innehållstyp,
-    inte något en stads config ska kunna råka skriva över.
-    """
-    if content_type and content_type in CONTENT_TYPE_MODELS:
-        return CONTENT_TYPE_MODELS[content_type]
-    return (cfg or {}).get("ai", {}).get("model", DEFAULT_MODEL)
+    A town's configs/<town>.json "ai.model" is deliberately NOT consulted any more (2026-10-23): the model is chosen in ONE place,
+    so a stale value in a town config can never keep a type on a more expensive model by accident. `cfg` stays in the signature
+    for the callers that pass it."""
+    return CONTENT_TYPE_MODEL_OVERRIDES.get(content_type or "", TEXT_MODEL)
 
 
 # USD per token, per modell -- håller budgetspårningen (_record_spend nedan)
