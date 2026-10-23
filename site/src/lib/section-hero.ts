@@ -47,12 +47,15 @@ const TOWN_SECTIONS: Record<string, HeroSection[]> = {
   brookings_sd: ['events', 'today', 'city_hall', 'closures', 'farm_report', 'home_sales', 'jobs', 'sports', 'university'],
   moreno_valley_ca: ['events', 'today', 'city_hall', 'closures', 'traffic', 'home_sales', 'jobs', 'sports', 'workplace_watch'],
   broomfield_co: ['events', 'today', 'city_hall', 'traffic', 'jobs', 'workplace_watch'],
+  // Glasgow: only the sections that render today (everything else is in disabledSections).
+  glasgow: ['events', 'today', 'city_hall'],
 };
 
 const TOWN_TIMEZONE: Record<string, string> = {
   brookings_sd: 'America/Chicago',
   moreno_valley_ca: 'America/Los_Angeles',
   broomfield_co: 'America/Denver',
+  glasgow: 'Europe/London',
 };
 
 /** The curated category photo each section falls back to (reserve). */
