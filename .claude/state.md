@@ -4,6 +4,7 @@ Historik: se .claude/state-archive.md, läs bara vid behov.
 Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 
 ## 1. Nu
+- ÅRLIGA UPPDATERINGAR: se .claude/annual.md (Thanksgiving-config, game day-säsong, Hobo Day, sophämtning, valsidor, campusguide, facilities m.fl., med datum). Gå igenom listan i januari, juli och augusti och före 1 november.
 - NÄSTA (ägaren 2026-10-21, går före Kö 9 Steg 2, Glasgow och Q2): VAL FAS 2, deadline 2 nov. Beslut: Kö 4 + .claude/election-2a-inventory.md.
   Broomfield via Clarity, SD via XLSX, Moreno bara länk (ROV-mejl SKICKAT 2026-10-21, väntar på svar), Worker-JSON utan rebuilds, torrtest mot junivalen.
   Commit lokalt per steg, pusha ej utan ja.
