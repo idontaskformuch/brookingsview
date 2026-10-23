@@ -10,7 +10,7 @@
 import type { SiteConfig } from './site-config';
 import { ELECTION_BY_TOWN } from '../config/election';
 
-export type NavGate = Pick<SiteConfig, 'townId' | 'hasWhatsOn' | 'hasClosureWatch' | 'hasNewInTown' | 'hasWorkplaceWatch' | 'disabledSections' | 'navLabels'>;
+export type NavGate = Pick<SiteConfig, 'townId' | 'hasWhatsOn' | 'hasClosureWatch' | 'hasNewInTown' | 'hasWorkplaceWatch' | 'disabledSections' | 'quietSections' | 'navLabels'>;
 
 export interface NavSection {
   id: string;
@@ -23,7 +23,7 @@ export interface NavSection {
 }
 
 /** A section is on when its own gate passes and the town has not switched it off (SiteConfig.disabledSections). */
-const isOn = (s: NavSection, c: NavGate) => s.enabled(c) && !c.disabledSections?.includes(s.id);
+const isOn = (s: NavSection, c: NavGate) => s.enabled(c) && !c.disabledSections?.includes(s.id) && !c.quietSections?.includes(s.id);
 
 const BROOKINGS = (c: NavGate) => c.townId === 'brookings_sd';
 const MORENO = (c: NavGate) => c.townId === 'moreno_valley_ca';

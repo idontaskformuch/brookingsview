@@ -12,14 +12,14 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ShareButton from '../../../components/ShareButton.astro';
 import Breadcrumbs from '../../../components/Breadcrumbs.astro';
 import { getRecentJobs, formatDate } from '../../../lib/db';
-import { salaryText, capByEmployer, slugifyCategory } from '../../../lib/jobs';
+import { salaryText, capByEmployer, slugifyCategory, dedupeJobs } from '../../../lib/jobs';
 import { siteConfig } from '../../../lib/site-config';
 import { placeAbbr } from '../../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../../lib/clusters';
 
 export async function getStaticPaths() {
-  const jobs = await getRecentJobs();
+  const jobs = dedupeJobs(await getRecentJobs());
   const categories = [...new Set(jobs.map((j) => j.category).filter((c): c is string => Boolean(c)))];
 
   return categories.map((category) => ({
@@ -28,7 +28,7 @@ export async function getStaticPaths() {
   }));
 }
 
-const { category, jobs } = Astro.props as { category: string; jobs: Awaited<ReturnType<typeof getRecentJobs>> };
+const { category, jobs } = Astro.props as { category: string; jobs: ReturnType<typeof dedupeJobs<Awaited<ReturnType<typeof getRecentJobs>>[number]>> };
 const { visible, overflowByCompany } = capByEmployer(jobs);
 
 const canonicalUrl = new URL(`/jobs/category/${slugifyCategory(category)}/`, Astro.site ?? siteConfig.siteUrl).href;

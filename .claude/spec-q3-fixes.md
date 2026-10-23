@@ -20,7 +20,7 @@ Efteråt: kör Q3 (Sonnet) på berörda sidor och visa före/efter.
 - [x] 1 Glasgow-varningar (kompakt ruta + Details -> /weather/#weather-warnings med full text i stycken; Right now fylls ur API:et, aldrig statiskt "No weather alerts"; /today/ visar bara Right now-raden; verifierat i Chromium med riktig Storm Boelo-data, med och utan varningar)
 - [x] 2 tidsberoende innehåll (data-hide-ended på kommande-listor; Right now -> "As of <tid>" efter 1 h; möte efter dagen -> "This meeting took place on ..." i webbläsaren; veckodagsetikett i stadens tidszon (bugg: place-hours.ts); verifierat i Chromium med fejkad klocka)
 - [x] 3 deterministiska ingresser (facility-lede: timmar ur samma place_hours-rader som tabellen; City Hall place_hours + hours_structured rättade mot stadens sida (live-DB, beordrat); scripts/check_hours_consistency.py + sync_place_hours_from_text.py; /weather/ säger "No active weather alerts"). KVAR hos ägaren: public-library (Mon-Thu 8pm enligt bibliotekets sida; place_hours/hours_structured säger 9pm) + Glasgows 9 platser utan hours_structured.
-- [ ] 4 tomma sidor + jobb
+- [x] 4 tomma sidor + jobb (SiteConfig.quietSections: Brookings traffic, Broomfield events + workplace = noindex i sidan, ur sitemap (astro.config QUIET_PAGES + test), ur nav/footer; jobb: dedupeJobs per företag+titel (100 -> 67 rader, 18 med "N more identical listings"), korttabell på mobil, filterraden bryter rad -- scrollWidth 390/390; lyft genom att ta bort id:t ur quietSections och lägga tillbaka sektionen i nav)
 - [ ] 5 What's On
 - [ ] 6 Moreno home-sales
 - [ ] Q3 före/efter (Sonnet) på berörda sidor

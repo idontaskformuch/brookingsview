@@ -416,6 +416,10 @@ async function buildLastmodMap(townId, databaseUrl) {
   const noindexThinPageUrls = new Set(['/reviews/', '/recipes/', '/editorials/', '/columns/', '/vail-resorts/',
     '/jobs/', '/events/past/', '/offline/', '/university/weeks/',
     ...['today', 'this-weekend', 'free', 'kids', 'library', 'outdoor', 'campus'].map((f) => `/events/${f}/`)]);
+  // Quiet sections (SiteConfig.quietSections, owner 2026-10-23): reachable, noindex in the page, out of the sitemap here. Mirrors
+  // site-config.ts by hand; src/lib/quiet-sections.test.ts fails if the two disagree.
+  const QUIET_PAGES = { brookings_sd: ['/traffic/'], broomfield_co: ['/events/', '/workplace-watch/'] };
+  for (const p of QUIET_PAGES[townId] ?? []) noindexThinPageUrls.add(p);
   // /vote/ (election 2026): the page itself sets noindex 30 days after the election (lib/election.ts
   // isPastNoindexWindow); mirror that here so the sitemap and the noindex tag never disagree.
   if (Date.now() > Date.parse('2026-11-03T00:00:00Z') + 30 * 86_400_000) { noindexThinPageUrls.add('/vote/'); noindexThinPageUrls.add('/election-results/'); }

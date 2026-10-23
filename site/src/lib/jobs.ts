@@ -69,6 +69,33 @@ export function salaryText(
  *  category even when it doesn't dominate the whole site. */
 const EMPLOYER_CAP_RATIO = 0.3;
 
+function normaliseForKey(s: string | null): string {
+  return (s ?? '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/** One row per company + title (Q3 2026-10-23: dozens of identical "Earn with Uber Eats" ads filled most of the 100 slots).
+ *  Keeps the newest listing (jobs arrive newest first, so the first one seen) and counts the rest in `duplicateCount`.
+ *  A job with no company or no title is never merged. */
+export function dedupeJobs<T extends { company: string | null; title: string | null; posted_at?: string | null }>(
+  jobs: T[],
+): (T & { duplicateCount: number })[] {
+  const seen = new Map<string, number>();
+  const out: (T & { duplicateCount: number })[] = [];
+  for (const job of jobs) {
+    const company = normaliseForKey(job.company);
+    const title = normaliseForKey(job.title);
+    if (!company || !title) { out.push({ ...job, duplicateCount: 1 }); continue; }
+    const key = `${company}|${title}`;
+    const at = seen.get(key);
+    if (at === undefined) { seen.set(key, out.length); out.push({ ...job, duplicateCount: 1 }); continue; }
+    const kept = out[at];
+    kept.duplicateCount += 1;
+    // keep the newest posting when the feed was not strictly newest-first
+    if (job.posted_at && (!kept.posted_at || job.posted_at > kept.posted_at)) out[at] = { ...job, duplicateCount: kept.duplicateCount };
+  }
+  return out;
+}
+
 export function capByEmployer<T extends { company: string | null }>(
   jobs: T[],
 ): { visible: T[]; overflowByCompany: Map<string, T[]> } {

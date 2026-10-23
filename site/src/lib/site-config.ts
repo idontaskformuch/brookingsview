@@ -25,6 +25,10 @@ export interface SiteConfig {
    *  nav/footer, and their page redirects to / (see isSectionDisabled). Used by towns whose
    *  data source for that section does not exist yet (Glasgow skeleton). */
   disabledSections?: string[];
+  /** Sections that exist but have no real content yet (owner 2026-10-23): the page stays reachable by URL but is noindex, out of the
+   *  sitemap (astro.config.mjs QUIET_PAGES mirrors this) and out of the nav and footer. Lift it by removing the id here and adding
+   *  the section back to `nav`. */
+  quietSections?: string[];
   /** Per-town nav/footer label overrides by section id (Glasgow: cityhall -> "Council"). */
   navLabels?: Record<string, string>;
   /** Site-wide noindex until the town has real data (Glasgow Phase 2): every page carries
@@ -382,14 +386,16 @@ const CITIES: Record<string, SiteConfig> = {
     // Spec example + the sections it left out (This week, What's On, Closure Watch are enabled here and
     // must be in a group; phase 2 merges them later).
     nav: {
-      tabs: ['today', 'events', 'university', 'jacks', 'cityhall', 'traffic', 'jobs'],
+      tabs: ['today', 'events', 'university', 'jacks', 'cityhall', 'jobs'],
       groups: {
         Now: ['today', 'events', 'whatson', 'thisweek', 'weather', 'vote'],
         Campus: ['university', 'jacks'],
-        City: ['cityhall', 'traffic', 'closures', 'facilities'],
+        City: ['cityhall', 'closures', 'facilities'],
         More: ['jobs', 'play', 'farm'],
       },
     },
+    // /traffic/ has no live incident feed (and nothing but a pointer to SD511): noindex and out of the nav until it has content.
+    quietSections: ['traffic'],
     country: 'us',
     stateName: 'South Dakota',
     stateAbbr: 'SD',
@@ -650,12 +656,15 @@ const CITIES: Record<string, SiteConfig> = {
     nav: {
       tabs: ['today', 'cityhall', 'facilities', 'whatson', 'traffic', 'jobs'],
       groups: {
-        Now: ['today', 'whatson', 'events', 'thisweek', 'weather', 'vote'],
+        Now: ['today', 'whatson', 'thisweek', 'weather', 'vote'],
         City: ['cityhall', 'traffic', 'facilities'],
-        Community: ['workplace', 'jobs'],
+        Community: ['jobs'],
         More: ['vail'],
       },
     },
+    // /events/ has no events (the city calendar feed is empty) and Workplace Watch shows only withheld summaries and 0 listings:
+    // noindex and out of the nav until they have content.
+    quietSections: ['events', 'workplace'],
     renderWindow: NO_RENDER_WINDOW,
     cityName: 'Broomfield',
     country: 'us',
@@ -795,6 +804,11 @@ if (placeProblems.length > 0) {
 /** True when the active town has switched this nav section off (see SiteConfig.disabledSections). */
 export function isSectionDisabled(id: string): boolean {
   return siteConfig.disabledSections?.includes(id) ?? false;
+}
+
+/** True when the section is "quiet" for the active town (see SiteConfig.quietSections): reachable, but noindex and out of the nav. */
+export function isQuietSection(id: string): boolean {
+  return siteConfig.quietSections?.includes(id) ?? false;
 }
 
 export function getSiteConfig(): SiteConfig {

@@ -11,7 +11,7 @@ import {
   weekendAnchorOffset, buildEventSections, TOWN_EVENT_KICKER, ARTS_EVENT_KICKER,
   type FeedItem,
 } from '../lib/events';
-import { siteConfig } from '../lib/site-config';
+import { siteConfig, isQuietSection } from '../lib/site-config';
 import { placeLabel, countryProfile, forCountry } from '../lib/country-profile';
 import { EVENT_FACETS } from '../lib/event-facets';
 import SectionHero from '../components/SectionHero.astro';
@@ -271,7 +271,7 @@ const webPageJsonLd = dateModified ? {
 import PageGuide from '../components/PageGuide.astro';
 import { isThanksgivingSeason } from '../lib/thanksgiving';
 ---
-<BaseLayout title={pageMeta.title} wide ogSlug="section-events"
+<BaseLayout title={pageMeta.title} wide ogSlug="section-events" noindex={isQuietSection('events')}
   description={`What's on this weekend in ${placeLabel(siteConfig)} — library programs, city events and community happenings.`}
   accentColor={SECTION_THEME.events.accent}>
   <Breadcrumbs trail={breadcrumbTrail} />

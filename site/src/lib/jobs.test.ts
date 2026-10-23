@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { slugifyCategory, salaryText, capByEmployer, jobZone } from './jobs';
+import { slugifyCategory, salaryText, capByEmployer, jobZone, dedupeJobs } from './jobs';
 
 describe('jobZone', () => {
   // Real stored location.display_name values (last 60 days, all 3 towns).
@@ -67,5 +67,21 @@ describe('capByEmployer', () => {
     const { visible, overflowByCompany } = capByEmployer(jobs);
     expect(visible).toHaveLength(3);
     expect(overflowByCompany.size).toBe(0);
+  });
+});
+
+describe('dedupeJobs (Q3 2026-10-23: identical Uber Eats ads filled most of the page)', () => {
+  const job = (company: string | null, title: string | null, posted_at: string | null = '2026-10-07') => ({ company, title, posted_at });
+  it('merges identical company + title, ignoring case and punctuation, and counts them', () => {
+    const out = dedupeJobs([job('Uber Eats', 'Earn with Uber Eats, cash out up to 6x a day'), job('UBER EATS', 'earn with uber eats cash out up to 6x a day'), job('Uber Eats', 'Earn with Uber Eats, cash out up to 6x a day'), job('Costco', 'Cashier')]);
+    expect(out.map((j) => [j.company, j.duplicateCount])).toEqual([['Uber Eats', 3], ['Costco', 1]]);
+  });
+  it('keeps the newest posting', () => {
+    const out = dedupeJobs([job('A', 'Driver', '2026-10-01'), job('A', 'Driver', '2026-10-09')]);
+    expect(out).toHaveLength(1);
+    expect(out[0].posted_at).toBe('2026-10-09');
+  });
+  it('never merges a job with no company or no title, nor different titles', () => {
+    expect(dedupeJobs([job(null, 'Driver'), job(null, 'Driver'), job('A', null), job('A', null), job('A', 'Driver'), job('A', 'Driver II')])).toHaveLength(6);
   });
 });

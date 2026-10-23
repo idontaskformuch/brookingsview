@@ -24,7 +24,7 @@ import {
   getLatestEmployerRatings, getEmployerJobStats, getWeather, getActiveAlerts,
   getShiftPollResults, getWorkerPulseComments,
 } from '../../lib/db';
-import { siteConfig } from '../../lib/site-config';
+import { siteConfig, isQuietSection } from '../../lib/site-config';
 import { resolvePageMeta } from '../../lib/page-meta';
 import SectionHero from '../../components/SectionHero.astro';
 import { EMPTY_STATES } from '../../lib/empty-states';
@@ -101,6 +101,7 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
   wide
   description={`Monthly review-trend digests for ${siteConfig.cityName}'s major employers — check before your shift.`}
   ogSlug="section-workplace-watch"
+  noindex={isQuietSection('workplace')}
   accentColor={SECTION_THEME.workplace_watch.accent}
 >
   <Breadcrumbs trail={breadcrumbTrail} />

@@ -80,7 +80,8 @@ describe('real town configs', () => {
     expect(hrefs('jacks')).toEqual(['brookings_sd']);
     expect(hrefs('vail')).toEqual(['broomfield_co']);
     expect(hrefs('homesales')).toEqual(['moreno_valley_ca']);
-    expect(hrefs('workplace').sort()).toEqual(['broomfield_co', 'moreno_valley_ca']);
+    // Broomfield's Worker Pulse is quiet (2026-10-23, SiteConfig.quietSections): out of the nav until it has content
+    expect(hrefs('workplace').sort()).toEqual(['moreno_valley_ca']);
   });
   it('Brookings in site-config resolves', async () => {
     const { siteConfig } = await import('./site-config');

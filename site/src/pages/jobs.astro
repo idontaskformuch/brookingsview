@@ -17,7 +17,7 @@ import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getRecentJobs, formatDate } from '../lib/db';
-import { salaryText, capByEmployer, slugifyCategory, jobZone } from '../lib/jobs';
+import { salaryText, capByEmployer, slugifyCategory, jobZone, dedupeJobs } from '../lib/jobs';
 import { siteConfig, isSectionDisabled } from '../lib/site-config';
 if (isSectionDisabled('jobs')) return Astro.redirect('/', 302);
 import { placeAbbr } from '../lib/country-profile';
@@ -27,7 +27,7 @@ import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-json
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
 import { listEligibleMonths, monthLabel, monthSlug } from '../lib/month-in-review';
 
-const jobs = await getRecentJobs();
+const jobs = dedupeJobs(await getRecentJobs());
 // Phase 8 teaser link (research section 3) -- a plain link, not a cluster
 // membership (see config/clusters.ts's own comment on why "Month in
 // review" isn't also a secondary spoke here). Naturally absent for any
@@ -111,19 +111,20 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
       <tbody>
         {visible.map((job) => (
           <tr data-category={job.category ?? ''} data-zone={jobZone(job.location, siteConfig.cityName)} data-salary={job.salary_max ?? job.salary_min ?? ''} data-posted={job.posted_at ?? ''}>
-            <td>
+            <td class="jobs__title">
               {job.redirect_url ? (
                 <a href={job.redirect_url} rel="noopener nofollow sponsored">{job.title}</a>
               ) : job.title}
+              {job.duplicateCount > 1 && <span class="loc">{job.duplicateCount - 1} more identical listing{job.duplicateCount - 1 === 1 ? '' : 's'} from this employer</span>}
             </td>
-            <td>{job.company ?? '—'}</td>
-            <td class="data">
+            <td data-label="Company">{job.company ?? '—'}</td>
+            <td class="data" data-label="Where">
               {jobZone(job.location, siteConfig.cityName) === 'in_town' ? `In ${siteConfig.cityName}` : 'Nearby'}
               {job.location && <span class="loc">{job.location}</span>}
             </td>
-            <td class="cat">{job.category ?? '—'}</td>
-            <td class="data">{salaryText(job, siteConfig.country)}</td>
-            <td class="data">{job.posted_at ? formatDate(job.posted_at) : '—'}</td>
+            <td class="cat" data-label="Category">{job.category ?? '—'}</td>
+            <td class="data" data-label="Salary">{salaryText(job, siteConfig.country)}</td>
+            <td class="data" data-label="Posted">{job.posted_at ? formatDate(job.posted_at) : '—'}</td>
           </tr>
         ))}
       </tbody>
@@ -192,9 +193,9 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
 .month-teaser { font-size: 0.875rem; }
 .category-links { font-size: 0.875rem; color: var(--ink-soft); margin: 0.75rem 0 0; }
-.controls { display: flex; gap: 1.25rem; margin: 0.5rem 0 1rem; font-size: 0.875rem; }
+.controls { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin: 0.5rem 0 1rem; font-size: 0.875rem; }
 .controls label { display: flex; align-items: center; gap: 0.4rem; color: var(--ink-soft); }
-.controls select { font: inherit; padding: 0.2rem 0.4rem; }
+.controls select { font: inherit; padding: 0.2rem 0.4rem; max-width: 100%; min-width: 0; }
 .jobs { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.9375rem; }
 .jobs th {
   text-align: left;
@@ -216,5 +217,16 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
 .overflow { margin-top: 0.75rem; font-size: 0.9375rem; }
 .overflow summary { cursor: pointer; color: var(--ink-soft); padding: 0.5rem 0; }
 .source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }
-@media (max-width: 40rem) { .cat { display: none; } }
+/* Phone: each listing is a short card (title, then labelled facts) instead of a six-column table cut off at the screen edge. */
+@media (max-width: 40rem) {
+  .jobs thead { position: absolute; left: -9999px; }
+  .jobs, .jobs tbody, .jobs tr, .jobs td { display: block; }
+  .jobs tr { padding: 0.625rem 0; border-bottom: 1px solid var(--rule); }
+  .jobs td { padding: 0.125rem 0.875rem; border: 0; }
+  .jobs td[data-label]::before { content: attr(data-label) ": "; font-weight: 600; color: var(--ink-soft); }
+  .jobs__title { font-weight: 600; font-size: 1rem; }
+  .data { white-space: normal; }
+  .loc { display: inline; margin-left: 0.35rem; }
+  .jobs__title .loc { display: block; margin-left: 0; }
+}
 </style>
