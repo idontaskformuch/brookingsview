@@ -452,16 +452,21 @@ SONNET = "claude-sonnet-5"
 
 # ===========================================================================================================
 # ONE LINE TO UPGRADE EVERY TEXT TYPE: change TEXT_MODEL to SONNET.  *** Upgrade when the sites earn money. ***
-# Owner decision 2026-10-23 (.claude/spec-model-choice.md): Haiku for ALL AI text (summaries, weekly intros, digests, meetings,
-# moderation) until a site earns revenue. QA review (qa/q3) is separate and stays on Sonnet; the comment moderator in
+# Owner decision 2026-10-23 (.claude/spec-model-choice.md): Haiku for AI text (summaries, weekly intros, digests, moderation) until a site
+# earns revenue; 2026-10-24: events and meetings are the exception (Sonnet). QA review (qa/q3) is separate and stays on Sonnet; the comment moderator in
 # site/server/comment.ts already runs on Haiku. To upgrade ONE type only, add it to CONTENT_TYPE_MODEL_OVERRIDES below.
 # Quality is tracked per type by scripts/model_quality_report.py (first-attempt pass rate, retries, fallbacks from api_usage);
 # it REPORTS when Haiku is clearly worse, it never switches a type back by itself.
 # ===========================================================================================================
 TEXT_MODEL = HAIKU
 
-# Per-type exceptions (type -> model). Empty on purpose.
-CONTENT_TYPE_MODEL_OVERRIDES: dict[str, str] = {}
+# Per-type exceptions (type -> model). Owner 2026-10-24: events and meetings on Sonnet (their first-try pass rate on Haiku was 34 % and
+# 50 % over 60 days, with 152 and 191 template fallbacks); everything else stays on Haiku. Measure with scripts/model_quality_report.py.
+CONTENT_TYPE_MODEL_OVERRIDES: dict[str, str] = {
+    "event": SONNET,
+    "meeting": SONNET,
+    "meeting_followup": SONNET,
+}
 
 # Every content type the pipeline knows (kept as the single list other modules and tests import).
 _TEXT_TYPES = (
@@ -481,7 +486,7 @@ def resolve_model(content_type: str | None, cfg: dict | None = None) -> str:
     A town's configs/<town>.json "ai.model" is deliberately NOT consulted any more (2026-10-23): the model is chosen in ONE place,
     so a stale value in a town config can never keep a type on a more expensive model by accident. `cfg` stays in the signature
     for the callers that pass it."""
-    return CONTENT_TYPE_MODEL_OVERRIDES.get(content_type or "", TEXT_MODEL)
+    return CONTENT_TYPE_MODEL_OVERRIDES.get(content_type or "", TEXT_MODEL)  # an override wins; everything else is TEXT_MODEL
 
 
 # USD per token, per modell -- håller budgetspårningen (_record_spend nedan)
