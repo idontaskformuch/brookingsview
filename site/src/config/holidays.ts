@@ -77,7 +77,7 @@ export const UK_HOLIDAYS: HolidayDefinition[] = [
   { id: 'burns_night', label: 'Burns Night', dateRule: { kind: 'fixed', month: 1, day: 25 }, windowDays: 5, active: false },
   { id: 'bonfire_night', label: 'Bonfire Night', dateRule: { kind: 'fixed', month: 11, day: 5 }, windowDays: 5, active: true },
   { id: 'st_andrews_day', label: "St Andrew's Day", dateRule: { kind: 'fixed', month: 11, day: 30 }, windowDays: 5, active: true },
-  { id: 'hogmanay', label: 'Hogmanay', dateRule: { kind: 'fixed', month: 12, day: 31 }, windowDays: 7, active: false },
+  { id: 'hogmanay', label: 'Hogmanay', dateRule: { kind: 'fixed', month: 12, day: 31 }, windowDays: 7, active: true },
 ];
 
 /** Holiday definitions for a country (+ nation): the profile's id list resolved

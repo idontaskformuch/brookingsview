@@ -16,11 +16,12 @@ def test_ids_from_accepts_commas_and_spaces_any_case():
     assert ids_from("aut-001, AUT-003 win-010") == ["AUT-001", "AUT-003", "WIN-010"]
 
 
-def test_destination_picks_season_then_holiday_and_rejects_category_only():
+def test_destination_picks_season_then_holiday_and_falls_back_to_category_and_rejects_no_bucket():
     assert destination(CAND) == ("season", "autumn")
     assert destination({"id": "X", "buckets": ["category:events", "holiday:halloween"]}) == ("holiday", "halloween")
+    assert destination({"id": "Y", "buckets": ["category:sports"]}) == ("category", "sports")
     with pytest.raises(ValueError):
-        destination({"id": "Y", "buckets": ["category:sports"]})
+        destination({"id": "Z", "buckets": []})
 
 
 def test_credit_names_photographer_license_source_and_links_to_the_page():
