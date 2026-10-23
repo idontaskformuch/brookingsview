@@ -121,7 +121,8 @@ def park_update(description: str | None) -> dict | None:
     amenities = park_amenities(description)
     if not amenities:
         return None
-    services = [a[:1].upper() + a[1:] for a in amenities if "parking" not in a.lower()]
+    # "pets no" is an ambiguous GIS code (not allowed? not recorded?): left out rather than interpreted.
+    services = [a[:1].upper() + a[1:] for a in amenities if "parking" not in a.lower() and a.lower() != "pets no"]
     has_parking = any("parking" in a.lower() for a in amenities)
     return {"services": services or None,
             "parking_note": "On-site parking (per the city's park records)." if has_parking else None}

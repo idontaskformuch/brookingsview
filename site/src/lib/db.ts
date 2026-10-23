@@ -1247,6 +1247,36 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
 
 /* -------------------------------------------------- strukturerad data ------ */
 
+/** A City Council row straight from the meetings table (Legistar), for the council guide's "Coming up". */
+export interface CouncilMeetingRow {
+  meeting_date: string;
+  time: string | null;
+  location: string | null;
+  agenda_url: string | null;
+  agenda_status: string | null;
+}
+
+/** Upcoming City Council meetings, read directly from `meetings` (not stories). Only rows held in the
+ *  council chambers: the Legistar calendar also lists off-site quorum notices for the same body (a
+ *  parade, a ribbon cutting) that are not meetings residents can attend to speak at. Date-only column. */
+export async function getUpcomingCouncilMeetings(limit = 6): Promise<CouncilMeetingRow[]> {
+  return (await sql`
+    SELECT meeting_date,
+           raw_data->>'EventTime' AS time,
+           replace(raw_data->>'EventLocation', E'
+', ', ') AS location,
+           agenda_url,
+           raw_data->>'EventAgendaStatusName' AS agenda_status
+      FROM meetings
+     WHERE town_id = ${TOWN_ID}
+       AND body = 'City Council'
+       AND meeting_date >= (now() AT TIME ZONE 'UTC')::date
+       AND raw_data->>'EventLocation' ILIKE '%Chambers%'
+     ORDER BY meeting_date ASC
+     LIMIT ${limit}
+  `) as CouncilMeetingRow[];
+}
+
 export async function getUpcomingGames(limit = 10): Promise<Game[]> {
   return (await sql`
     SELECT id, sport, opponent, home_away, starts_at, venue, result

@@ -158,3 +158,11 @@ describe('facilityMapLink (Phase 2, item 2f)', () => {
     expect(facilityMapLink(null, null, null)).toBeNull();
   });
 });
+
+describe('hours text ending in a period', () => {
+  it('does not produce a double period', async () => {
+    const { buildFacilityLede } = await import('./facility-lede');
+    const lede = buildFacilityLede('A museum.', '1 Main St', 'test-museum', 'Mon-Fri 9-5. Closed holidays.', '(605) 555-0100');
+    expect(lede).not.toContain('..');
+  });
+});

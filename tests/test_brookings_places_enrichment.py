@@ -22,3 +22,8 @@ def test_every_curated_entry_names_an_official_source_and_no_guessed_fields():
         assert set(item) <= allowed, item["slug"]
         if item.get("is_free") is False:
             assert item.get("fee_note"), item["slug"]
+
+
+def test_ambiguous_pets_no_code_is_not_published():
+    d = "Amenities: baseball, softball, modern restrooms, on-site parking, pets no."
+    assert "Pets no" not in park_update(d)["services"]

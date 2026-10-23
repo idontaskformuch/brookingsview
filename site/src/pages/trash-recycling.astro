@@ -14,6 +14,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import { siteConfig } from '../lib/site-config';
 import { resolvePageMeta } from '../lib/page-meta';
+import { upcomingHolidayShifts } from '../lib/trash-schedule';
 
 if (siteConfig.townId !== 'brookings_sd') {
   return Astro.redirect('/', 302);
@@ -34,6 +35,15 @@ const SOURCES = [
   { name: 'City of Brookings: Electronic waste recycling', url: `${BASE}/927/Electronic-Waste-Recycling` },
 ];
 const phoneLandfill = '605-693-3667';
+
+// Holiday weeks in the next 120 days, with the city's rule applied (lib/trash-schedule.ts), computed at build time.
+const todayUtc = (() => { const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(new Date());
+  const g = (t: string) => Number(p.find((x) => x.type === t)!.value); return Date.UTC(g('year'), g('month') - 1, g('day')); })();
+const southShifts = upcomingHolidayShifts(todayUtc, 120, 'south');
+const northShifts = upcomingHolidayShifts(todayUtc, 120, 'north');
+const holidayRows = southShifts.map((h, i) => ({ name: h.name, date: h.date, south: h.moves, north: northShifts[i].moves }))
+  .filter((h) => h.south.length > 0 || h.north.length > 0);
+const fmtHoliday = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(t));
 ---
 <BaseLayout title={pageMeta.title} wide
   description="Brookings garbage, recycling and yard waste: which day is yours, what goes in each cart, holiday changes, and what to do with big items, branches, electronics and paint."
@@ -54,8 +64,8 @@ const phoneLandfill = '605-693-3667';
       <option value="north">North of 8th Street South</option>
     </select>
     <div id="tr-result" aria-live="polite" hidden></div>
-    <p class="tr-note">The next-pickup dates apply the normal weekly schedule only. They do not shift for holidays, so in a holiday week check the holiday rules below
-    or the city's <a href={`${BASE}/DocumentCenter/View/19767/2026-Solid-Waste-Calendar-and-Guide`} rel="noopener">2026 Solid Waste Calendar and Guide</a>.</p>
+    <p class="tr-note">Dates apply the city's holiday rule (see "Holiday weeks" below). The city's
+    <a href={`${BASE}/DocumentCenter/View/19767/2026-Solid-Waste-Calendar-and-Guide`} rel="noopener">2026 Solid Waste Calendar and Guide</a> is the authority if a date looks wrong.</p>
   </div>
   <table class="tr-table">
     <caption class="sr-only">Pickup days by area</caption>
@@ -86,7 +96,27 @@ const phoneLandfill = '605-693-3667';
     <li>Thursday holiday: recycling and yard waste move to Wednesday.</li>
     <li>Friday or Saturday holiday: Friday's recycling and yard waste move to Thursday, and Thursday's move to Wednesday.</li>
   </ul>
-  <p>Example from the rules above: Thanksgiving falls on a Thursday (November 26, 2026), so Thursday recycling moves to Wednesday, November 25.</p>
+  {holidayRows.length > 0 ? (
+    <>
+      <p><strong>Coming up</strong> (the rules above applied to the next few holidays):</p>
+      <table class="tr-table">
+        <caption class="sr-only">Pickup changes for upcoming holidays</caption>
+        <thead><tr><th scope="col">Holiday</th><th scope="col">South of 8th St. S.</th><th scope="col">North of 8th St. S.</th></tr></thead>
+        <tbody>
+          {holidayRows.map((h) => (
+            <tr>
+              <th scope="row">{h.name}, {fmtHoliday(h.date)}</th>
+              <td>{h.south.length > 0 ? h.south.join('; ') : 'No change'}</td>
+              <td>{h.north.length > 0 ? h.north.join('; ') : 'No change'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p class="tr-note">Yard waste collection ends November 24, 2026, so yard waste changes after that date do not apply this year.</p>
+    </>
+  ) : (
+    <p>No collection holidays fall in the next four months.</p>
+  )}
 
   <SectionRule label="What goes where" />
   <div class="tr-cols">
@@ -155,49 +185,37 @@ const phoneLandfill = '605-693-3667';
 </BaseLayout>
 
 <script>
-  // Next pickup for the chosen side of 8th Street South: the normal weekly schedule only (no holiday shifts).
-  const TZ = 'America/Chicago';
-  const DAYS = { south: { garbage: 1, recycling: 4, yard: [1, 4] }, north: { garbage: 2, recycling: 5, yard: [2, 5] } } as const;
-  const YARD_END = Date.UTC(2026, 10, 24); // November 24, 2026
-  const YARD_START = Date.UTC(2026, 3, 6); // April 6, 2026
+  // Next pickup for the chosen side of 8th Street South, applying the city's holiday rule (lib/trash-schedule.ts).
+  import { nextPickup, type Side } from '../lib/trash-schedule';
 
-  function todayParts(): { y: number; m: number; d: number } {
+  const TZ = 'America/Chicago';
+  function todayUtc(): number {
     const p = new Intl.DateTimeFormat('en-US', { timeZone: TZ, year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(new Date());
     const get = (t: string) => Number(p.find((x) => x.type === t)!.value);
-    return { y: get('year'), m: get('month'), d: get('day') };
-  }
-  function nextOn(weekdays: readonly number[], from: number): number {
-    for (let i = 0; i < 8; i++) {
-      const t = from + i * 86_400_000;
-      if (weekdays.includes(new Date(t).getUTCDay())) return t;
-    }
-    return from;
+    return Date.UTC(get('year'), get('month') - 1, get('day'));
   }
   const fmt = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(t));
 
   const select = document.getElementById('tr-side') as HTMLSelectElement | null;
   const out = document.getElementById('tr-result');
   select?.addEventListener('change', () => {
-    const side = select.value as 'south' | 'north' | '';
+    const side = select.value as Side | '';
     if (!out) return;
     if (!side) { out.hidden = true; out.textContent = ''; return; }
-    const { y, m, d } = todayParts();
-    const today = Date.UTC(y, m - 1, d);
-    const days = DAYS[side];
-    const rows: [string, string][] = [
-      ['Garbage', fmt(nextOn([days.garbage], today))],
-      ['Recycling', fmt(nextOn([days.recycling], today))],
-    ];
-    const yard = nextOn(days.yard, today);
-    rows.push(['Yard waste', yard > YARD_END || yard < YARD_START
-      ? 'Not in season (2026 collection ran April 6 to November 24)' : fmt(yard)]);
+    const today = todayUtc();
+    const rows: [string, string][] = [];
+    for (const [label, stream] of [['Garbage', 'garbage'], ['Recycling', 'recycling'], ['Yard waste', 'yard']] as const) {
+      const n = nextPickup(side, stream, today);
+      if (!n) rows.push([label, 'Not in season (2026 collection ran April 6 to November 24)']);
+      else rows.push([label, `${fmt(n.date)}${n.shifted ? ` (moved for ${n.holiday ?? 'a holiday'})` : ''}`]);
+    }
     out.textContent = '';
     const ul = document.createElement('ul');
     for (const [label, when] of rows) {
       const li = document.createElement('li');
       const b = document.createElement('strong');
       b.textContent = `${label}: `;
-      li.append(b, document.createTextNode(`${when}${when.startsWith('Not in') ? '' : ' (if it is not a holiday week)'}`));
+      li.append(b, document.createTextNode(when));
       ul.append(li);
     }
     out.append(ul);

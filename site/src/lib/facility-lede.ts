@@ -70,7 +70,8 @@ export function buildFacilityLede(
   const sentences: string[] = [];
   if (description) sentences.push(description);
   if (address) sentences.push(`${pickAddressConnector(slug)} ${address}.`);
-  if (hoursText) sentences.push(`${pickHoursConnector(slug)} ${hoursText}.`);
+  // hours text that already ends in a period ("... closed on holidays.") must not get a second one
+  if (hoursText) sentences.push(`${pickHoursConnector(slug)} ${hoursText.replace(/[.\s]+$/, '')}.`);
   if (phone) sentences.push(`${pickPhoneConnector(slug)} ${phone}.`);
   return sentences.length > 0 ? sentences.join(' ') : null;
 }

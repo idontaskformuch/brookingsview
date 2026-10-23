@@ -10,7 +10,8 @@
  *  agenda glossary is general civics and is labelled as ours, not the city's text. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
-import { getUpcomingStories, formatOccursAt } from '../lib/db';
+import { getUpcomingCouncilMeetings, formatCalendarDate } from '../lib/db';
+import { expectedMeetings } from '../lib/council-schedule';
 import { siteConfig } from '../lib/site-config';
 import { resolvePageMeta } from '../lib/page-meta';
 
@@ -30,9 +31,16 @@ const SOURCES = [
   { name: 'Agendas and minutes (Legistar, 2014 to present)', url: 'https://cityofbrookings.legistar.com/calendar.aspx' },
 ];
 
-const upcoming = (await getUpcomingStories(['meeting'], 12))
-  .filter((s) => /city council/i.test(s.title))
+// Confirmed meetings come straight from the meetings table; the standing schedule fills in dates the
+// calendar has not posted yet, labelled as expected.
+const confirmed = await getUpcomingCouncilMeetings(4);
+const confirmedDays = new Set(confirmed.map((m) => String(m.meeting_date).slice(0, 10)));
+const todayUtc = (() => { const p = new Intl.DateTimeFormat('en-US', { timeZone: siteConfig.timezone, year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(new Date());
+  const g = (t: string) => Number(p.find((x) => x.type === t)!.value); return Date.UTC(g('year'), g('month') - 1, g('day')); })();
+const expected = expectedMeetings(todayUtc, 60)
+  .filter((e) => !confirmedDays.has(new Date(e.date).toISOString().slice(0, 10)))
   .slice(0, 4);
+const fmtDay = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(t));
 ---
 <BaseLayout title={pageMeta.title} wide
   description="When the Brookings City Council meets, how to read the agenda, watch live, and speak at a meeting or comment in writing, with links to the city's own pages."
@@ -65,17 +73,31 @@ const upcoming = (await getUpcomingStories(['meeting'], 12))
   <p><strong>What this means for you:</strong> if you want to be heard on an issue, go to a regular meeting. Study sessions are where the council discusses topics in depth before votes, and they are worth
   watching, but you cannot comment unless invited.</p>
 
-  {upcoming.length > 0 && (
+  <SectionRule label="Coming up" />
+  {confirmed.length > 0 && (
     <>
-      <SectionRule label="Coming up" />
+      <p><strong>On the city's calendar</strong> (from the city's Legistar meeting calendar):</p>
       <ul>
-        {upcoming.map((s) => (
-          <li><a href={`/s/${s.slug}/`}>{s.title}</a>{s.occurs_at ? <> ({formatOccursAt(s)})</> : null}</li>
+        {confirmed.map((m) => (
+          <li>
+            {formatCalendarDate(m.meeting_date)}{m.time ? `, ${m.time}` : ''}{m.location ? `, ${m.location}` : ''}
+            {m.agenda_url && <> (<a href={m.agenda_url} rel="noopener">agenda</a>)</>}
+          </li>
         ))}
       </ul>
-      <p class="gc-note">Plain-language summaries of upcoming and past meetings are on the <a href="/city-hall/">City Hall page</a>.</p>
     </>
   )}
+  {expected.length > 0 && (
+    <>
+      <p><strong>Expected from the regular schedule</strong> (not yet on the calendar, and dates can move, so confirm on the <a href="https://cityofbrookings.legistar.com/calendar.aspx" rel="noopener">Legistar calendar</a>):</p>
+      <ul>
+        {expected.map((e) => (
+          <li>{fmtDay(e.date)}, 6:00 p.m., {e.kind === 'regular' ? 'regular meeting (public comment allowed)' : 'study session (no public comment)'}</li>
+        ))}
+      </ul>
+    </>
+  )}
+  <p class="gc-note">Plain-language summaries of past meetings are on the <a href="/city-hall/">City Hall page</a>.</p>
 
   <SectionRule label="See what it will decide: the agenda" />
   <p>Agendas, including the full packet of supporting documents, are posted before each meeting on the city's <a href="https://cityofbrookings.legistar.com/calendar.aspx" rel="noopener">Legistar calendar</a>,
