@@ -6,7 +6,8 @@ under site/public/assets/images/{this-week|holidays}/, then appends the pool ent
 license, link to the source page) to site/src/config/gb/glasgow-images.ts (spread into the shared pools).
 
 The destination follows the candidate's bucket: season:autumn / season:winter -> this-week pool; holiday:* -> holiday
-pool. Category-image buckets (category:*) are not handled here: they need a decision about which section uses them.
+pool; category:* (only when no season/holiday bucket) -> category pool (GLASGOW_CATEGORY_IMAGES, grouped per category
+in config/category-images.ts, files under images/categories/).
 
     python -m scripts.activate_glasgow_images --ids "AUT-001, AUT-003"            # dry run: prints what would happen
     python -m scripts.activate_glasgow_images --ids "AUT-001, AUT-003" --apply    # download, write files, edit config
@@ -52,7 +53,10 @@ def destination(candidate: dict) -> tuple[str, str]:
     for b in candidate["buckets"]:
         if b.startswith("holiday:"):
             return "holiday", b.split(":", 1)[1]
-    raise ValueError(f"{candidate['id']} has no season or holiday bucket ({candidate['buckets']}); not handled here")
+    for b in candidate["buckets"]:
+        if b.startswith("category:"):
+            return "category", b.split(":", 1)[1]
+    raise ValueError(f"{candidate['id']} has no season, holiday or category bucket ({candidate['buckets']}); not handled here")
 
 
 def alt_text(candidate: dict) -> str:
@@ -84,6 +88,12 @@ def holiday_line(entry_id: str, rel_path: str, candidate: dict, holiday: str) ->
     source_id = candidate["pageid"] + (COMMONS_OFFSET if candidate.get("source") != "pexels" else 0)
     return (f"  {{ id: {ts_string(entry_id)}, path: {ts_string(rel_path)}, alt: {ts_string(alt_text(candidate))}, width: {W}, height: {H}, "
             f"attributionText: {ts_string(text)}, attributionUrl: {ts_string(url)}, holiday: '{holiday}', town_ids: ['{TOWN}'], sourcePhotoId: {source_id} }},")
+
+
+def category_line(entry_id: str, rel_path: str, candidate: dict, category: str) -> str:
+    text, url = credit(candidate)
+    return (f"  {{ category: '{category}', path: {ts_string(rel_path)}, alt: {ts_string(alt_text(candidate))}, width: {W}, height: {H}, "
+            f"attributionText: {ts_string(text)}, attributionUrl: {ts_string(url)} }},")
 
 
 def next_number(ts_text: str, prefix: str) -> int:
@@ -142,18 +152,23 @@ def main() -> None:
     tw_text = hol_text = gb_text
     session = requests.Session()
     session.headers["User-Agent"] = UA
-    season_lines: list[str] = []
-    holiday_lines: list[str] = []
+    lines: dict[str, list[str]] = {"season": [], "holiday": [], "category": []}
+    FOLDER = {"season": "this-week", "holiday": "holidays", "category": "categories"}
     for cid in wanted:
         c = by_id[cid]
         kind, name = destination(c)
-        folder = "this-week" if kind == "season" else "holidays"
+        folder = FOLDER[kind]
         prefix = f"{TOWN}-{name}"
-        existing = tw_text if kind == "season" else hol_text
-        if f"sourcePhotoId: {c['pageid'] + (COMMONS_OFFSET if c.get('source') != 'pexels' else 0)}" in existing and f"id: '{prefix}-" in existing:
+        existing = gb_text
+        if kind == "category":
+            already = f"path: '/assets/images/categories/{prefix}-" in existing and credit(c)[1] in existing
+            n = 1 + len(re.findall(rf"/categories/{re.escape(prefix)}-\d+\.jpg", existing)) + len(lines["category"] and [l for l in lines["category"] if f"/{prefix}-" in l])
+        else:
+            already = f"sourcePhotoId: {c['pageid'] + (COMMONS_OFFSET if c.get('source') != 'pexels' else 0)}" in existing and f"id: '{prefix}-" in existing
+            n = next_number(existing, prefix) + sum(1 for l in lines[kind] if f"id: '{prefix}-" in l)
+        if already:
             print(f"{cid}: already active, skipped")
             continue
-        n = next_number(existing, prefix) + sum(1 for l in (season_lines if kind == "season" else holiday_lines) if f"id: '{prefix}-" in l)
         entry_id = f"{prefix}-{n:02d}"
         rel = f"/assets/images/{folder}/{entry_id}.jpg"
         print(f"{cid} -> {kind} pool '{name}' as {entry_id}  ({credit(c)[0]})")
@@ -163,19 +178,17 @@ def main() -> None:
             dest = PUBLIC / folder / f"{entry_id}.jpg"
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(data)
-        (season_lines if kind == "season" else holiday_lines).append(
-            season_line(entry_id, rel, c, name) if kind == "season" else holiday_line(entry_id, rel, c, name))
+        lines[kind].append({"season": season_line, "holiday": holiday_line, "category": category_line}[kind](entry_id, rel, c, name))
 
     if not args.apply:
         print("dry run: nothing written")
         return
     out = gb_text
-    if season_lines:
-        out = insert_before_array_end(out, "GLASGOW_THIS_WEEK_IMAGES", season_lines)
-    if holiday_lines:
-        out = insert_before_array_end(out, "GLASGOW_HOLIDAY_IMAGES", holiday_lines)
+    for kind, array in (("season", "GLASGOW_THIS_WEEK_IMAGES"), ("holiday", "GLASGOW_HOLIDAY_IMAGES"), ("category", "GLASGOW_CATEGORY_IMAGES")):
+        if lines[kind]:
+            out = insert_before_array_end(out, array, lines[kind])
     GB_TS.write_text(out, encoding="utf-8")
-    print(f"activated {len(season_lines)} season and {len(holiday_lines)} holiday images")
+    print(f"activated {len(lines['season'])} season, {len(lines['holiday'])} holiday and {len(lines['category'])} category images")
 
 
 if __name__ == "__main__":
