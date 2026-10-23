@@ -159,7 +159,7 @@ export function computePlaceOpenStatus(
       if (offset === 0 && toMinutes(w.opens) <= minutesOfDay) continue; // today's window already passed
       const label = offset === 0 ? 'today'
         : offset === 1 ? 'tomorrow'
-        : new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(future);
+        : new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: timezone }).format(future); // the TOWN's weekday, not the reader's or the build machine's
       return { known: true, isOpen: false, opensAt: formatClock(w.opens), opensLabel: label };
     }
   }

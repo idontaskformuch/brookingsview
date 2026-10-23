@@ -429,6 +429,12 @@ const eventJsonLdObject = buildEventJsonLd(
     {when && <p class="story__when data">{when}</p>}
     {eventHasPassed && <p class="story__passed-notice">This event has passed.</p>}
     {meetingBanner && <p class="story__passed-notice" data-banner-variant={meetingBanner.variant}>{meetingBanner.text}</p>}
+    {isMeeting && story.occurs_at && when && !meetingBanner && (
+      // Built before the meeting day: the browser shows "This meeting took place on ..." once the day has passed in the town's zone.
+      <p class="story__passed-notice" data-meeting-banner hidden
+        data-meeting-date={new Date(story.occurs_at).toISOString()} data-date-text={when} data-tz={siteConfig.timezone}
+        data-decided={decisionsDecided.length > 0 ? '1' : ''} data-tracked={siteConfig.meetingDecisionsTracked ? '1' : ''}></p>
+    )}
 
     {heroImage && (
       <img
@@ -631,11 +637,11 @@ const eventJsonLdObject = buildEventJsonLd(
       and a quiet weekend with nothing else scheduled gets no weekend list
       (only the /events/ link below). */}
   {otherEventsHere.length > 0 && (
-    <nav class="venue-events" aria-label={`Other events at ${venueFacility?.name}`}>
+    <nav class="venue-events" aria-label={`Other events at ${venueFacility?.name}`} data-hide-ended data-hide-when-empty>
       <h2 class="story__section-label">Other events at {venueFacility?.name}</h2>
       <ul class="venue-events__list">
         {otherEventsHere.map((s) => (
-          <li>
+          <li data-start={s.occurs_at ? new Date(s.occurs_at).toISOString() : undefined} data-end={s.ends_at ? new Date(s.ends_at).toISOString() : undefined}>
             <a href={storyHref(s.slug)}>{s.title}</a>
             <span class="when data">{formatOccursAt(s)}</span>
           </li>
@@ -649,7 +655,7 @@ const eventJsonLdObject = buildEventJsonLd(
       above); the link to /events/ is always there on an event page, so a quiet
       weekend or a locality-less feed still leaves the reader a next step. */}
   {isEvent && (
-    <nav class="venue-events" aria-label="More this weekend">
+    <nav class="venue-events" aria-label="More this weekend" data-hide-ended>
       {weekendNearby.length > 0 && (
         <>
           <h2 class="story__section-label">More this weekend</h2>
@@ -657,8 +663,9 @@ const eventJsonLdObject = buildEventJsonLd(
             {weekendNearby.map(({ item, distanceMiles }) => {
               const s = item.sourceKind === 'story' ? item.story : artsEventAsStory(item.event);
               const href = item.sourceKind === 'story' ? storyHref(s.slug) : item.event.event_url;
+              const endsAt = item.sourceKind === 'story' ? s.ends_at : item.event.ends_at;
               return (
-                <li>
+                <li data-start={s.occurs_at ? new Date(s.occurs_at).toISOString() : undefined} data-end={endsAt ? new Date(endsAt).toISOString() : undefined}>
                   <a href={href}>{s.title}</a>
                   <span class="when data">{formatOccursAt({ ...s, ends_at: item.sourceKind === 'story' ? s.ends_at : item.event.ends_at })}{distanceMiles != null && ` · ${Math.round(distanceMiles)} mi away`}</span>
                 </li>
@@ -728,6 +735,23 @@ const eventJsonLdObject = buildEventJsonLd(
     <script type="application/ld+json" is:inline set:html={JSON.stringify(eventJsonLdObject)} />
   )}
 </BaseLayout>
+
+<script>
+  // Meeting pages built before the meeting: once the meeting day has passed in the town's zone, say so (owner 2026-10-23).
+  import { meetingOutcomesBanner } from '../../lib/meeting-decisions';
+  const banner = document.querySelector<HTMLElement>('[data-meeting-banner]');
+  if (banner && banner.dataset.meetingDate) {
+    const show = () => {
+      const b = meetingOutcomesBanner(
+        new Date(banner.dataset.meetingDate as string), new Date(), banner.dataset.tz || 'America/Chicago',
+        banner.dataset.dateText || '', banner.dataset.decided === '1', banner.dataset.tracked === '1',
+      );
+      if (b) { banner.textContent = b.text; banner.dataset.bannerVariant = b.variant; banner.hidden = false; }
+    };
+    show();
+    setInterval(show, 60_000);
+  }
+</script>
 
 <style>
 .story { max-width: 38rem; }

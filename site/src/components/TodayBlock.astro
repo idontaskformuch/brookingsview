@@ -175,7 +175,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
 
   {!rightNowIsEmpty && (
     <div class="today-block__right-now">
-      <p class="today-block__section-label">Right now</p>
+      <p class="today-block__section-label" data-right-now-label data-asof={asOf.toISOString()} data-asof-label={asOfLabel}>Right now</p>
 
       <ul class="today-block__list">
         {consolidatedQuietLine && (
@@ -293,6 +293,20 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
           : `City Hall closed — opens ${status.opensAt} ${status.opensLabel}`;
       }
     }
+</script>
+{/* "Right now" is only honest while the data is fresh: the page is built at asOf, so after an hour the label says "As of <time>" instead
+    (owner 2026-10-23). The check runs in the browser against its own clock, and again every minute. */}
+<script>
+  const rn = document.querySelector<HTMLElement>('[data-right-now-label]');
+  if (rn && rn.dataset.asof) {
+    const asOf = Date.parse(rn.dataset.asof);
+    const sync = () => {
+      const stale = Date.now() - asOf > 3_600_000;
+      rn.textContent = stale ? `As of ${rn.dataset.asofLabel}` : 'Right now';
+    };
+    sync();
+    setInterval(sync, 60_000);
+  }
 </script>
 {/* Met Office warnings (Glasgow): the "Right now" line is filled from /api/weather-warnings, never a static "No weather alerts". */}
 <script>

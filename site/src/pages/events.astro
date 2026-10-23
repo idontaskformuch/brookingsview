@@ -328,7 +328,7 @@ import { isThanksgivingSeason } from '../lib/thanksgiving';
       {weekendDays.filter((d) => d.items.length > 0).map((day) => (
         <div class="weekend-day">
           <h3 class="weekend-day__label">{day.label}</h3>
-          <div class="grid">
+          <div class="grid" data-hide-ended>
             {day.items.map((item) => item.sourceKind === 'story'
               ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={townwideKicker} facilities={facilities} />
               : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker={ARTS_EVENT_KICKER} facilities={facilities} />
@@ -373,7 +373,7 @@ import { isThanksgivingSeason } from '../lib/thanksgiving';
         </p>
       )}
       {list.length > 0 && (
-        <div class="grid">
+        <div class="grid" data-hide-ended>
           {list.map((item) => item.sourceKind === 'story'
             ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={townwideKicker} facilities={facilities} />
             : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker={ARTS_EVENT_KICKER} facilities={facilities} />

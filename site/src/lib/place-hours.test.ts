@@ -16,6 +16,15 @@ function denverInstant(hour: number, minute: number, day = 7): Date {
   return new Date(Date.UTC(2026, 8, day, hour + 6, minute));
 }
 
+describe('computePlaceOpenStatus: the weekday label is the weekday in the town (Q3 2026-10-23)', () => {
+  it('names Monday, not the reader/build machine weekday, when UTC is already a day ahead of the town', () => {
+    // Fri 2026-10-23 19:30 in Chicago (CDT) is 00:30Z on Saturday. Mon-Fri 9-5. Next opening: Monday 9:00 AM.
+    const hours: PlaceHoursRow[] = [1, 2, 3, 4, 5].map((day_of_week) => ({ day_of_week, opens: '09:00:00', closes: '17:00:00', valid_from: null, valid_to: null }));
+    const status = computePlaceOpenStatus(hours, [], new Date('2026-10-24T00:30:00Z'), 'America/Chicago');
+    expect(status).toEqual({ known: true, isOpen: false, opensAt: '9:00 AM', opensLabel: 'Monday' });
+  });
+});
+
 describe('computePlaceOpenStatus', () => {
   it('unknown when there are no place_hours rows at all', () => {
     expect(computePlaceOpenStatus([], [], denverInstant(10, 0), TZ)).toEqual({ known: false });

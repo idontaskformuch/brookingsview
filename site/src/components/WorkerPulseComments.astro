@@ -7,6 +7,7 @@
 // to the Function directly.
 import type { WorkerPulseComment } from '../lib/db';
 import { EMPTY_STATES } from '../lib/empty-states';
+import { siteConfig } from '../lib/site-config';
 
 interface Props {
   pageSlug: string;
@@ -19,7 +20,7 @@ const { pageSlug, comments } = Astro.props;
 // säkert att formatera direkt via toLocaleDateString utan tidszons-
 // ambiguitet, det är bara ETT ögonblick oavsett vilken tidszon man läser det i.
 function formatCommentDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: siteConfig.timezone });
 }
 ---
 
