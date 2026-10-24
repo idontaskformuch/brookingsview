@@ -90,7 +90,7 @@ import MetOfficeWarnings from '../components/MetOfficeWarnings.astro';
     <h1>{pageMeta.h1}</h1>
     <p>{forCountry(siteConfig.country,
       'Straight from the National Weather Service, updated every 6 hours along with the rest of the site.',
-      'Straight from the Met Office. The forecast is refreshed as the site is, so check the Met Office for the latest.')}
+      'Straight from the Met Office, updated every 6 hours along with the rest of the site. Check the Met Office for the latest.')}
     {hubBacklink && <> Looking for a specific address instead? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
   </header>
 
@@ -102,6 +102,10 @@ import MetOfficeWarnings from '../components/MetOfficeWarnings.astro';
   </PageGuide>
 
   {siteConfig.hasMetOfficeWarnings && <MetOfficeWarnings timezone={siteConfig.timezone} variant="full" />}
+
+  {siteConfig.country === 'gb' && (
+    <p class="flood-link">Flood warnings: <a href="https://floodline.sepa.org.uk/live-flood-information/" rel="noopener">SEPA Floodline</a> (live flood alerts and warnings for Scotland).</p>
+  )}
 
   {!siteConfig.hasMetOfficeWarnings && alerts.length === 0 && (
     <p class="empty">No active weather alerts for {siteConfig.cityName} as of the last site update.</p>
@@ -193,6 +197,7 @@ import MetOfficeWarnings from '../components/MetOfficeWarnings.astro';
 .forecast__short { color: var(--ink-soft); }
 .forecast__wind { color: var(--ink-soft); font-size: 0.8125rem; text-align: right; }
 .empty { color: var(--ink-soft); }
+.flood-link { margin: 0.75rem 0 1.25rem; font-size: 0.9375rem; }
 @media (max-width: 32rem) {
   .forecast__row { grid-template-columns: 1fr auto; grid-template-areas: "name temp" "short wind"; }
   .forecast__name { grid-area: name; }

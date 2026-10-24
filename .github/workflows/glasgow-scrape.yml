@@ -1,10 +1,14 @@
 name: glasgow-scrape
-# Glasgow: BARA insamling av rådata till DB. Medvetet inget publish-steg, inget
-# bygge och ingen deploy -- Glasgow är noindex och får inte publicera något
-# förrän fas 5-spärrarna (.claude/state.md, "BLOCKERANDE före Glasgow-lansering")
-# är byggda och ägaren sagt till. Startas av cron-dispatchern (workflow_dispatch);
-# källor med refresh_minutes (city_meetings = 1440) hoppas över av runnern om
-# de körts nyligen, så 6-timmarsklockan ger ändå högst en hämtning per dygn.
+# Glasgow: insamling -> publicering -> bygge -> deploy -> kontroll av den live
+# sajten, i samma takt som US-städerna (scrape.yml). Startas av cron-dispatchern
+# (workflow_dispatch, var 6:e timme); källor med refresh_minutes (city_meetings
+# = 1440) hoppas över av runnern om de körts nyligen.
+# Publiceringen går genom samma ai_pipeline.publish som övriga städer, och
+# UK-spärrarna (uk_guardrails + UK-grinden i guardrails.validate, loggen
+# reports/uk_gate_log.jsonl) gäller där -- tests/test_uk_gate_coverage.py faller
+# om en generator kringgår dem. Sajten är fortfarande noindex tills ägaren sagt
+# ja (lanseringschecklistan i .claude/state.md). Ingen cache-purge: Glasgow har
+# ingen zon-secret ännu (lägg CLOUDFLARE_CACHE_PURGE_TOKEN + zon-id när den finns).
 
 on:
   workflow_dispatch: {}
@@ -16,6 +20,7 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       MET_OFFICE_WARNINGS_API_KEY: ${{ secrets.MET_OFFICE_WARNINGS_API_KEY }}
       MET_OFFICE_API_KEY: ${{ secrets.MET_OFFICE_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       USER_AGENT:   "ViewMediaBot (+https://glasgowloop.co.uk/contact)"
     steps:
       - uses: actions/checkout@v5
@@ -25,3 +30,30 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Kör scrapers (skriver rådata till DB)
         run: python -m scrapers.runner --config configs/glasgow.json
+      - name: Formatera och publicera stories (Stage 3 -> stories, UK-spärrar)
+        run: python -m ai_pipeline.publish --config configs/glasgow.json
+      - name: Image pool rotation (category images)
+        run: python -m ai_pipeline.assign_category_image_rotation --config configs/glasgow.json
+      - uses: actions/setup-node@v4
+      - name: Install site deps
+        working-directory: site
+        run: npm ci
+      - name: Build (Glasgow)
+        working-directory: site
+        env:
+          SITE_CITY: glasgow
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx astro build
+      - name: Deploy to Cloudflare Workers (Glasgow)
+        working-directory: site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --env glasgow
+      # Kontrollerar den RIKTIGA sajten: prognosen visar idag + imorgon i degC och
+      # inga passerade event ligger kvar i listorna (se scripts/check_glasgow_live.py).
+      - name: Kontrollera den deployade Glasgow-sajten
+        if: success()
+        run: |
+          sleep 15
+          python -m scripts.check_glasgow_live

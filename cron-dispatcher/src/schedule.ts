@@ -19,7 +19,7 @@ export const SCRAPE_WORKFLOWS = [
   'scrape.yml',
   'moval-scrape.yml',
   'broomfield-scrape.yml',
-  // Glasgow: scrape only (no publish/build/deploy in the workflow).
+  // Glasgow: scrape + publish + build + deploy + live check (since 2026-10-24).
   'glasgow-scrape.yml',
 ];
 
