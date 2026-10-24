@@ -9,9 +9,16 @@ agent, two pages), no bot challenge, no terms-of-use page found (the guessed
 terms URLs 404; only /privacy and /cookie-policy exist). The pages are plain
 server-rendered HTML with no JSON-LD, iCal or API. So: facts only (title,
 date text, venue, the trust's own category label), every record links back to
-the trust's own event page, and only the listing pages are read (a handful
-of requests, 2 s apart, one run per day) -- the event detail pages, images
-and prices are NOT fetched or stored.
+the trust's own event page. Images are NOT fetched or stored.
+
+Detail pages (added 2026-10-24): the listing card carries only title, date and
+venue, so the writer had nothing to base a summary on and padded it with
+plausible-sounding sentences that the incoherent_fragments gate (rightly)
+rejected -- 19 of the ~40 new occurrences never got a story. Each distinct event
+page (about 40, 2 s apart, once per daily run; robots.txt allows /event/) is now
+read once for its own description paragraphs plus the "Tickets" and "Age"
+lines, stored as raw_data.description / .tickets / .age. Only those three
+fields are kept, never the page.
 
 The listing is a curated slice (about 41 distinct events across the main page
 and the five channel pages), not the trust's full programme; there is no
@@ -44,6 +51,7 @@ with each daily run.
 from __future__ import annotations
 
 import html as htmllib
+import json
 import re
 import time
 from datetime import date, datetime, timedelta
@@ -59,6 +67,8 @@ from scrapers.text_sanity import is_suspicious
 BASE_URL = "https://www.glasgowlife.org.uk/"
 REQUEST_DELAY_SECONDS = 2.0
 _PAGE_SEPARATOR = b"\n--GLPAGE--\n"
+_DETAIL_MARKER = b"--GLDETAIL--\n"
+MAX_DESCRIPTION_CHARS = 1200
 
 _MONTHS = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
            "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
@@ -81,7 +91,62 @@ def fetch_pages(source_cfg: dict, headers: dict) -> bytes | None:
             pages.append(r.content)
         except Exception as exc:  # noqa: BLE001 -- one channel page must not sink the others
             print(f"    [events:glasgow_life] fel vid hämtning av {url}: {exc}")
-    return _PAGE_SEPARATOR.join(pages) if pages else None
+    if not pages:
+        return None
+    details = _fetch_details(pages, headers) if source_cfg.get("detail_pages", False) else {}
+    if details:
+        pages.append(_DETAIL_MARKER + json.dumps(details, ensure_ascii=False).encode("utf-8"))
+    return _PAGE_SEPARATOR.join(pages)
+
+
+def _fetch_details(pages: list[bytes], headers: dict) -> dict[str, dict]:
+    """href -> parse_detail() for every distinct event link on the listing pages.
+    A page that fails is simply absent (that event keeps the thin listing facts)."""
+    hrefs: list[str] = []
+    for page in pages:
+        soup = BeautifulSoup(page.decode("utf-8", errors="replace"), "html.parser")
+        for a in soup.select("article.swiper-card a.card__link[href^='/event/']"):
+            if a["href"] not in hrefs:
+                hrefs.append(a["href"])
+    out: dict[str, dict] = {}
+    for href in hrefs:
+        time.sleep(REQUEST_DELAY_SECONDS)
+        try:
+            r = requests.get(urljoin(BASE_URL, href), headers=headers, timeout=30)
+            r.raise_for_status()
+        except Exception as exc:  # noqa: BLE001 -- one detail page must not sink the others
+            print(f"    [events:glasgow_life] fel vid hämtning av {href}: {exc}")
+            continue
+        detail = parse_detail(r.content)
+        if detail:
+            out[href] = detail
+    return out
+
+
+def parse_detail(page: bytes) -> dict:
+    """{"description", "tickets", "age"} from one event page; keys with no (or
+    garbled) text are left out. Description = the page's own article paragraphs,
+    cut at a sentence/word boundary."""
+    soup = BeautifulSoup(page.decode("utf-8", errors="replace"), "html.parser")
+    out: dict[str, str] = {}
+    paras = [" ".join(p.get_text(" ", strip=True).split()) for p in soup.select("div.editor--article p")]
+    text = " ".join(t for t in paras if t)
+    if len(text) > MAX_DESCRIPTION_CHARS:
+        cut = text[:MAX_DESCRIPTION_CHARS]
+        end = max(cut.rfind(". "), cut.rfind("! "), cut.rfind("? "))
+        text = cut[:end + 1] if end > MAX_DESCRIPTION_CHARS // 2 else cut.rsplit(" ", 1)[0]
+    if text and not is_suspicious(text):
+        out["description"] = text
+    for item in soup.select(".event-details__item"):
+        label = item.select_one("dt")
+        value = item.select_one("dd")
+        if not label or not value:
+            continue
+        key = {"tickets": "tickets", "age": "age"}.get(label.get_text(" ", strip=True).lower())
+        val = " ".join(value.get_text(" ", strip=True).split())[:200]
+        if key and val and not is_suspicious(val):
+            out[key] = val
+    return out
 
 
 def _month(name: str | None) -> int | None:
@@ -167,7 +232,7 @@ def parse_date_text(text: str, tz: str) -> dict | None:
     return None
 
 
-def parse_listing(source_name: str, page: bytes, tz: str) -> list[dict]:
+def parse_listing(source_name: str, page: bytes, tz: str, details: dict | None = None) -> list[dict]:
     soup = BeautifulSoup(page.decode("utf-8", errors="replace"), "html.parser")
     records = []
     for art in soup.select("article.swiper-card"):
@@ -193,6 +258,7 @@ def parse_listing(source_name: str, page: bytes, tz: str) -> list[dict]:
         for k in ("until", "recurrence"):
             if k in when:
                 raw[k] = when[k]
+        raw.update((details or {}).get(href, {}))
         records.append({
             "title": title,
             "starts_at": when["starts_at"],
@@ -272,14 +338,23 @@ def expand_recurring(rec: dict, tz: str, today: date) -> list[dict]:
 
 def parse_pages(source_name: str, combined: bytes, tz: str, today: date | None = None) -> list[dict]:
     """All fetched listing pages; the same event on several channel pages is
-    kept once (first occurrence). Recurring series become their next occurrences."""
+    kept once (first occurrence). Recurring series become their next occurrences.
+    The trailing detail section (see fetch_pages) adds description/tickets/age."""
     today = today or datetime.now(ZoneInfo(tz)).date()
+    details: dict = {}
+    pages = []
+    for page in combined.split(_PAGE_SEPARATOR):
+        if page.startswith(_DETAIL_MARKER):
+            try:
+                details = json.loads(page[len(_DETAIL_MARKER):].decode("utf-8"))
+            except ValueError:
+                print("    [events:glasgow_life] detaljavsnittet gick inte att läsa, hoppar över")
+        else:
+            pages.append(page)
     seen: set[str] = set()
     out: list[dict] = []
-    for page in combined.split(_PAGE_SEPARATOR):
-        if not page.strip():
-            continue
-        for rec in parse_listing(source_name, page, tz):
+    for page in pages:
+        for rec in parse_listing(source_name, page, tz, details):
             if rec["raw_data"]["uid"] in seen:
                 continue
             seen.add(rec["raw_data"]["uid"])

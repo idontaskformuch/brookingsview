@@ -647,7 +647,11 @@ def format_record(record: dict, source_type: str, cfg: dict,
     def _call(extra: str = "") -> tuple[str, object]:
         msg = safe_create(
             client,
-            model=model, max_tokens=500 if tone_v2 else 400, system=system + extra,
+            # 2026-10-24: Sonnet 5 may think before it answers and the thinking counts against
+            # max_tokens; at 500 a long event description left too little room and the JSON was
+            # cut mid-string ("response was not valid {summary, meta} JSON"). Billing is per
+            # token used, so the higher ceiling costs nothing when the model is short.
+            model=model, max_tokens=1500 if tone_v2 else 400, system=system + extra,
             messages=[{"role": "user",
                        "content": f"SOURCE DATA (source_type={source_type}):\n{source_text}"}],
             attempt=len(usage_ids) + 1,

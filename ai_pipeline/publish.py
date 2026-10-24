@@ -100,7 +100,7 @@ _MIN_AGENDA_CHARS = 200
 
 # databas-bokföringsfält som SELECT * drar med sig men som AI-lagret aldrig
 # ska se (rena DB-interna, inget en läsare eller modellen har nytta av)
-_INTERNAL_FIELDS = {"id", "town_id", "content_hash", "snapshot_id", "created_at"}
+_INTERNAL_FIELDS = {"id", "town_id", "content_hash", "snapshot_id", "created_at", "series_has_upcoming"}
 
 # Varningar äldre än detta publiceras inte. County:ts Alert Center rensar aldrig
 # gamla poster, så en vägavstängning från 2023 låg kvar och lästes som aktuell.
@@ -507,12 +507,21 @@ _MIN_RECURRING_OCCURRENCES = 3
 _MAX_SERIES_DATES_SHOWN = 8
 
 
-def group_recurring_events(rows: list[dict], tz: ZoneInfo) -> list[dict]:
+def group_recurring_events(rows: list[dict], tz: ZoneInfo, now: datetime | None = None) -> list[dict]:
     """Kollapsa ett återkommande programs många nästan identiska instanser
     till EN kanonisk serie-rad. Körs EFTER group_event_slots (som bara
     slår ihop tidsluckor SAMMA DAG) -- den här grupperar över HELA
     tidsfönstret, oavsett datum.
+
+    Serien presenteras med sina KOMMANDE förekomster (lokalt datum >= idag):
+    starts_at/occurs_at = nästa förekomst och series_dates = kommande datum.
+    Förut var det alltid den äldsta raden i tabellen, så en serie hamnade
+    under "Recently" med sitt startdatum (Glasgow, 2026-10-24).
+    series_has_upcoming säger om det fanns någon; finns ingen (alla passerade)
+    behålls det gamla beteendet och publish_table rör inte en publicerad serie.
     """
+    now = now or datetime.now(timezone.utc)
+    today_local = now.astimezone(tz).date()
     groups: dict[tuple, list[dict]] = {}
     order: list[tuple] = []
     for row in rows:
@@ -531,7 +540,12 @@ def group_recurring_events(rows: list[dict], tz: ZoneInfo) -> list[dict]:
             continue
 
         members = sorted(members, key=lambda r: (r.get("starts_at") or datetime.max, r["id"]))
-        base_row = dict(members[0])
+        upcoming = [
+            m for m in members
+            if isinstance(m.get("starts_at"), datetime) and m["starts_at"].astimezone(tz).date() >= today_local
+        ]
+        shown = upcoming or members
+        base_row = dict(shown[0])
         # Stabil serie-slug: hash på (källa, bastitel) -- INTE en specifik
         # instans-id, som skulle driva iväg sluggen så fort just den äldsta
         # instansen rullar ur fönstret eller tas bort ur events-tabellen.
@@ -539,10 +553,11 @@ def group_recurring_events(rows: list[dict], tz: ZoneInfo) -> list[dict]:
         base_row["id"] = f"series-{series_hash}"
         base_row["title"], _ = strip_slot(base_row.get("title") or "")
         base_row["is_recurring_series"] = True
+        base_row["series_has_upcoming"] = bool(upcoming)
         base_row["series_dates"] = [
-            fmt_dt(m.get("starts_at"), with_time=True, tz=tz) for m in members[:_MAX_SERIES_DATES_SHOWN]
+            fmt_dt(m.get("starts_at"), with_time=True, tz=tz) for m in shown[:_MAX_SERIES_DATES_SHOWN]
         ]
-        base_row["series_count"] = len(members)
+        base_row["series_count"] = len(shown)
         merged.append(base_row)
     return merged
 
@@ -849,6 +864,21 @@ def _localize_datetime_fields(record: dict, tz: ZoneInfo) -> dict:
     return out
 
 
+def _refresh_series_occurs_at(conn, town_id: str, slug: str, next_start) -> int:
+    """1 if the published series story's occurs_at was moved to `next_start`, else 0.
+    Only a story that is flagged as a series and whose date actually differs."""
+    if not isinstance(next_start, datetime):
+        return 0
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE stories SET occurs_at = %s "
+            "WHERE town_id = %s AND slug = %s AND is_recurring_series "
+            "AND occurs_at IS DISTINCT FROM %s",
+            (next_start, town_id, slug, next_start),
+        )
+        return cur.rowcount
+
+
 def publish_table(
     conn, cfg: dict, table: str, known_slugs: set[str], max_new: int = DEFAULT_MAX_NEW_PER_RUN,
     known_meeting_ids: set[int] | None = None, verbose: bool = False,
@@ -885,7 +915,7 @@ def publish_table(
         if tone_v2 else {}
     )
 
-    published = skipped = thin = stale = remaining = abandoned = 0
+    published = skipped = thin = stale = remaining = abandoned = series_refreshed = 0
     for row in rows:
         if not has_substance(table, row):
             thin += 1
@@ -929,6 +959,11 @@ def publish_table(
         date_part = slug_date(row.get("meeting_date"), cfg) if source_type == "meeting" else None
         slug = f"{source_type}-{date_part}-{row['id']}" if date_part else f"{source_type}-{row['id']}"
         if slug in known_slugs:
+            # An already published series keeps its slug but not its date: bring occurs_at
+            # forward to the next upcoming occurrence, or the story stays under "Recently"
+            # with the date it was first seen (Glasgow 2026-10-24; Brookings/Moreno alike).
+            if table == "events" and row.get("is_recurring_series") and row.get("series_has_upcoming"):
+                series_refreshed += _refresh_series_occurs_at(conn, town_id, slug, row.get("starts_at"))
             skipped += 1
             continue
 
@@ -1071,6 +1106,8 @@ def publish_table(
         if verbose:
             occurs_label = occurs_at.date().isoformat() if occurs_at else "(no date)"
             print(f"    PUBLISH  {slug}  occurs_at={occurs_label}  generated_by={result.generated_by}")
+    if series_refreshed:
+        print(f"    {series_refreshed} återkommande serie(r): occurs_at flyttad till nästa förekomst")
     return published, skipped, thin, stale, remaining, abandoned
 
 

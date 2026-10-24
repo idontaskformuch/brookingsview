@@ -48,7 +48,7 @@
     "traffic": { "type": "traffic_scotland", "enabled": false, "_notes": "Phase 3.3: DATEX II needs an approved subscription; tellmescotland.gov.uk notices." },
     "events": { "type": "multi", "enabled": true, "refresh_minutes": 1440,
       "sources": [
-        { "name": "glasgow_life", "kind": "glasgow_life",
+        { "name": "glasgow_life", "kind": "glasgow_life", "detail_pages": true,
           "urls": [
             "https://www.glasgowlife.org.uk/whats-on",
             "https://www.glasgowlife.org.uk/whats-on?channel=Arts,%20Music%20and%20Culture",
@@ -57,7 +57,7 @@
             "https://www.glasgowlife.org.uk/whats-on?channel=Museums",
             "https://www.glasgowlife.org.uk/whats-on?channel=Sport"
           ],
-          "_note": "Phase 3.4a, built 2026-10-22: Glasgow Life (council culture/libraries/sport trust) what's-on cards, scrapers/glasgow_life_events.py. robots.txt allows the paths, no bot challenge, no terms page found; listing pages only (6 requests/day, 2 s apart), facts + link back, no detail pages/images/prices. About 41 distinct events (curated slice, no pagination). Dry-run verified; enabled 2026-10-22 after the owner approved the first events write." }
+          "_note": "Phase 3.4a, built 2026-10-22: Glasgow Life (council culture/libraries/sport trust) what's-on cards, scrapers/glasgow_life_events.py. robots.txt allows the paths, no bot challenge, no terms page found; listing pages (6 requests/day, 2 s apart) + since 2026-10-24 each distinct event page once a day (~40 requests, 2 s apart; description, tickets and age lines only) because the listing alone gave the writer nothing to summarise -- set detail_pages to false to stop; facts + link back, no images. About 41 distinct events (curated slice, no pagination). Dry-run verified; enabled 2026-10-22 after the owner approved the first events write." }
       ],
       "_notes": "Ticketmaster GB is NOT a scraper source: it is fetched at build time by site/src/lib/ticketmaster.ts (latlong search, see site-config ticketmaster block) and is verified separately (phase 3.4b)." },
     "sports": { "type": "sportmonks", "enabled": false, "_notes": "Phase 3.5: Scottish Premiership, free plan." },

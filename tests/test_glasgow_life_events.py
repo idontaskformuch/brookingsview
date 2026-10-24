@@ -141,3 +141,87 @@ def test_expand_recurring_passes_other_kinds_through():
     single = parse_listing("glasgow_life", PAGE, "Europe/London")[0]
     if single["raw_data"]["kind"] != "recurring":
         assert expand_recurring(single, "Europe/London", TODAY) == [single]
+
+
+# --- detail pages: real description for the writer (2026-10-24; was title+venue+date only, so the model padded) ---------------
+import json  # noqa: E402
+
+from scrapers import glasgow_life_events as gle  # noqa: E402
+
+DETAIL = (Path(__file__).parent / "fixtures" / "glasgow_life_event_detail.html").read_bytes()
+
+
+def test_parse_detail_keeps_description_tickets_and_age_only():
+    d = gle.parse_detail(DETAIL)
+    assert set(d) == {"description", "tickets", "age"}
+    assert d["description"].startswith("Greater Govanhill presents MUMS")
+    assert "maternal time" in d["description"]
+    assert len(d["description"]) <= gle.MAX_DESCRIPTION_CHARS
+    assert d["tickets"] == "Free - Drop-in - no ticket required"
+    assert d["age"] == "All ages"
+    assert "Accessible toilets" not in d["description"]  # the accessibility boilerplate is outside the article body
+
+
+def test_parse_detail_of_an_empty_page_is_empty():
+    assert gle.parse_detail(b"<html><body><p>nothing here</p></body></html>") == {}
+
+
+def test_long_description_is_cut_at_a_sentence_boundary():
+    para = " ".join(f"Sentence number {i} says something." for i in range(200))
+    page = f'<div class="editor editor--article"><p>{para}</p></div>'.encode()
+    text = gle.parse_detail(page)["description"]
+    assert len(text) <= gle.MAX_DESCRIPTION_CHARS and text.endswith(".")
+
+
+def test_details_section_reaches_the_records_and_is_not_parsed_as_a_listing():
+    first = parse_listing("glasgow_life", PAGE, TZ)[0]
+    href = first["raw_data"]["uid"]
+    blob = PAGE + gle._PAGE_SEPARATOR + gle._DETAIL_MARKER + json.dumps({href: {"description": "Real text.", "age": "All ages"}}).encode()
+    recs = parse_pages("glasgow_life", blob, TZ, today=TODAY)
+    mine = [r for r in recs if r["raw_data"]["uid"] == href]
+    assert mine and all(r["raw_data"]["description"] == "Real text." and r["raw_data"]["age"] == "All ages" for r in mine)
+    others = [r for r in recs if r["raw_data"]["uid"] != href]
+    assert others and all("description" not in r["raw_data"] for r in others)
+
+
+def test_a_broken_details_section_is_skipped_not_fatal():
+    blob = PAGE + gle._PAGE_SEPARATOR + gle._DETAIL_MARKER + b"{not json"
+    assert len(parse_pages("glasgow_life", blob, TZ, today=TODAY)) == len(parse_pages("glasgow_life", PAGE, TZ, today=TODAY))
+
+
+def test_fetch_reads_each_distinct_event_page_once_and_survives_a_failing_one(monkeypatch):
+    calls = []
+
+    class Resp:
+        def __init__(self, content): self.content = content
+        def raise_for_status(self): pass
+
+    def fake_get(url, headers=None, timeout=None):
+        calls.append(url)
+        if "/event/" in url and "agatha" in url:
+            raise RuntimeError("boom")
+        return Resp(PAGE if "/event/" not in url else DETAIL)
+
+    monkeypatch.setattr(gle.requests, "get", fake_get)
+    monkeypatch.setattr(gle.time, "sleep", lambda s: None)
+    blob = gle.fetch_pages({"detail_pages": True, "urls": ["https://www.glasgowlife.org.uk/whats-on", "https://www.glasgowlife.org.uk/whats-on?channel=x"]}, {})
+    event_calls = [c for c in calls if "/event/" in c]
+    assert len(event_calls) == len(set(event_calls)) == 41
+    recs = parse_pages("glasgow_life", blob, TZ, today=TODAY)
+    agatha = next(r for r in recs if "agatha-christie" in r["url"])
+    assert "description" not in agatha["raw_data"]
+    other = next(r for r in recs if "agatha-christie" not in r["url"])
+    assert other["raw_data"]["description"].startswith("Greater Govanhill")
+
+
+def test_detail_pages_are_off_unless_the_source_config_asks(monkeypatch):
+    calls = []
+
+    class Resp:
+        content = PAGE
+        def raise_for_status(self): pass
+
+    monkeypatch.setattr(gle.requests, "get", lambda url, headers=None, timeout=None: calls.append(url) or Resp())
+    monkeypatch.setattr(gle.time, "sleep", lambda s: None)
+    blob = gle.fetch_pages({"urls": ["https://www.glasgowlife.org.uk/whats-on"]}, {})
+    assert calls == ["https://www.glasgowlife.org.uk/whats-on"] and gle._DETAIL_MARKER not in blob

@@ -90,3 +90,18 @@ def test_tone_v2_date_incoherent_event_falls_back_to_the_safe_raw_title():
     assert result.generated_by == "template_fallback"
     assert result.text == "Fall Festival"
     assert client.calls == 2
+
+
+def test_tone_v2_leaves_room_for_thinking_before_the_json():
+    # Sonnet 5 can think first and the thinking counts against max_tokens; at 500 a long event
+    # description cut the JSON mid-string ("not valid {summary, meta} JSON"). 2026-10-24.
+    seen = []
+
+    class _Client(_ScriptedClient):
+        def _create(self, **kwargs):
+            seen.append(kwargs["max_tokens"])
+            return super()._create(**kwargs)
+
+    client = _Client(['{"summary": "x", "meta": {}}'] * 2)
+    format_record({"title": "Spring Concert", "venue": "City Hall", "id": 1}, "event", BROOKINGS_TONE_V2_CFG, client=client)
+    assert seen and min(seen) >= 1500
