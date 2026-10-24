@@ -44,6 +44,7 @@ SITE_URLS = {
     "brookings_sd": "https://brookingsview.com",
     "moreno_valley_ca": "https://morenovalleyview.com",
     "broomfield_co": "https://broomfieldview.com",
+    "glasgow": "https://glasgowloop.co.uk",
 }
 
 

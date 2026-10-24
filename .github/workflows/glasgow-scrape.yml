@@ -8,7 +8,8 @@ name: glasgow-scrape
 # reports/uk_gate_log.jsonl) gäller där -- tests/test_uk_gate_coverage.py faller
 # om en generator kringgår dem. Sajten är fortfarande noindex tills ägaren sagt
 # ja (lanseringschecklistan i .claude/state.md). Ingen cache-purge: Glasgow har
-# ingen zon-secret ännu (lägg CLOUDFLARE_CACHE_PURGE_TOKEN + zon-id när den finns).
+# zon-secret förrän ägaren lagt in CLOUDFLARE_ZONE_ID_GLASGOW (purge-steget nedan
+# är continue-on-error och rapporterar tydligt om secret eller behörighet saknas).
 
 on:
   workflow_dispatch: {}
@@ -50,6 +51,16 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy --env glasgow
+      # Se deploy.yml:s purge-steg (2026-10-15-incidenten): Workers Static Assets
+      # cachar HTML vid kanten utan automatisk invalidering. continue-on-error så
+      # att ett purge-fel syns men inte stoppar live-kontrollen nedan.
+      - name: Purge Cloudflare cache
+        if: success()
+        continue-on-error: true
+        env:
+          CLOUDFLARE_CACHE_PURGE_TOKEN: ${{ secrets.CLOUDFLARE_CACHE_PURGE_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID_GLASGOW }}
+        run: python -m scripts.purge_cloudflare_cache --town glasgow
       # Kontrollerar den RIKTIGA sajten: prognosen visar idag + imorgon i degC och
       # inga passerade event ligger kvar i listorna (se scripts/check_glasgow_live.py).
       - name: Kontrollera den deployade Glasgow-sajten
