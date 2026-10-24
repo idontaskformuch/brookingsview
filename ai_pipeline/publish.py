@@ -879,6 +879,26 @@ def _refresh_series_occurs_at(conn, town_id: str, slug: str, next_start) -> int:
         return cur.rowcount
 
 
+UK_GATE_LOG = Path(__file__).resolve().parent.parent / "reports" / "uk_gate_log.jsonl"
+
+
+def log_uk_gate(cfg: dict, source_type: str, record_id: str, title, stage: str, held: list[str], relaxed: list[str],
+                dry: bool = False) -> None:
+    """One JSON line per record the UK gate held or relaxed (owner 2026-10-24: so every decision can be sampled).
+    Append-only file reports/uk_gate_log.jsonl; nothing is written when the gate had nothing to say or the town is not UK."""
+    if not (held or relaxed) or not uk_guardrails.is_uk(cfg):
+        return
+    entry = {"ts": datetime.now(timezone.utc).isoformat(timespec="seconds"), "town": cfg.get("town_id"),
+             "type": source_type, "id": record_id, "title": title, "stage": stage,
+             "decision": "hold" if held else "relaxed-pass", "reasons": held, "relaxed": relaxed, "dry_run": dry}
+    try:
+        UK_GATE_LOG.parent.mkdir(exist_ok=True)
+        with UK_GATE_LOG.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except OSError as exc:  # logging must never stop publishing
+        print(f"    (UK-spärrlogg kunde inte skrivas: {exc})", file=sys.stderr)
+
+
 def publish_table(
     conn, cfg: dict, table: str, known_slugs: set[str], max_new: int = DEFAULT_MAX_NEW_PER_RUN,
     known_meeting_ids: set[int] | None = None, verbose: bool = False,
@@ -985,7 +1005,9 @@ def publish_table(
         # UK gate (Glasgow spec phase 5), BEFORE any AI spend: contempt of
         # court + no names of private individuals. A hold is not remembered
         # (not in known_slugs, no discard streak) so it is re-judged each run.
-        held = uk_guardrails.hold_reasons(cfg, guardrails.source_to_text(ai_record))
+        uk_ctx = uk_guardrails.event_context(row, source_type)
+        held, relaxed = uk_guardrails.evaluate(cfg, guardrails.source_to_text(ai_record, sep=chr(10)), **uk_ctx)
+        log_uk_gate(cfg, source_type, record_id, row.get("title"), "source", held, relaxed, dry=verbose)
         if held:
             print(f"    HOLD     {source_type}-{record_id}  ({'; '.join(held[:4])})")
             thin += 1
@@ -1003,7 +1025,8 @@ def publish_table(
             )
 
         # UK gate, second line: the generated text itself (title included).
-        held = uk_guardrails.hold_reasons(cfg, result.text, build_title(table, row, cfg))
+        held, relaxed = uk_guardrails.evaluate(cfg, result.text, build_title(table, row, cfg), **uk_ctx)
+        log_uk_gate(cfg, source_type, record_id, row.get("title"), "generated", held, relaxed, dry=verbose)
         if held:
             print(f"    HOLD     {source_type}-{record_id}  generated text: ({'; '.join(held[:4])})")
             thin += 1

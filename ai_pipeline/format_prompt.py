@@ -19,6 +19,7 @@ import sys
 from dataclasses import dataclass
 
 from ai_pipeline import guardrails
+from ai_pipeline import uk_guardrails
 from ai_pipeline import api_usage
 from config import pricing
 from validation import pre_publish_check
@@ -460,6 +461,12 @@ SONNET = "claude-sonnet-5"
 # ===========================================================================================================
 TEXT_MODEL = HAIKU
 
+
+def no_thinking(model: str) -> dict:
+    """Extra messages.create() kwargs that switch extended thinking off for Sonnet (owner 2026-10-24: event and
+    meeting summaries). Empty for Haiku, which does not think."""
+    return {"thinking": {"type": "disabled"}} if str(model).startswith("claude-sonnet") else {}
+
 # Per-type exceptions (type -> model). Owner 2026-10-24: events and meetings on Sonnet (their first-try pass rate on Haiku was 34 % and
 # 50 % over 60 days, with 152 and 191 template fallbacks); everything else stays on Haiku. Measure with scripts/model_quality_report.py.
 CONTENT_TYPE_MODEL_OVERRIDES: dict[str, str] = {
@@ -652,6 +659,9 @@ def format_record(record: dict, source_type: str, cfg: dict,
             # cut mid-string ("response was not valid {summary, meta} JSON"). Billing is per
             # token used, so the higher ceiling costs nothing when the model is short.
             model=model, max_tokens=1500 if tone_v2 else 400, system=system + extra,
+            # Owner 2026-10-24: no extended thinking for these short summaries (Sonnet may otherwise think first);
+            # the 1500-token ceiling stays as the safety margin.
+            **no_thinking(model),
             messages=[{"role": "user",
                        "content": f"SOURCE DATA (source_type={source_type}):\n{source_text}"}],
             attempt=len(usage_ids) + 1,
@@ -662,6 +672,7 @@ def format_record(record: dict, source_type: str, cfg: dict,
         return "".join(b.text for b in msg.content if getattr(b, "type", "") == "text"), msg.usage
 
     record_date = _record_date(record)
+    uk_context = uk_guardrails.event_context(record, source_type)
 
     def _pre_publish(candidate_text: str, meta: dict | None) -> list[str]:
         """validation.pre_publish_check() (Recurring-traffic layer handoff,
@@ -685,7 +696,7 @@ def format_record(record: dict, source_type: str, cfg: dict,
         malformed JSON is treated exactly like a guardrail rejection (see
         parse_tone_v2_response()'s own docstring) -- never raises."""
         if not tone_v2:
-            result = guardrails.validate(raw_text, source_text, cfg)
+            result = guardrails.validate(raw_text, source_text, cfg, uk_context=uk_context)
             violations = list(result.violations)
             # Events correctness Phase 1, point 1: the tone_v2 path gets
             # this via validate_tone_v2()'s own source_type-gated check;
@@ -702,7 +713,7 @@ def format_record(record: dict, source_type: str, cfg: dict,
         if parsed is None:
             return False, ["tone_v2: response was not valid {summary, meta} JSON"], raw_text, None
         summary, meta = parsed
-        fact_result = guardrails.validate(summary, source_text, cfg)
+        fact_result = guardrails.validate(summary, source_text, cfg, uk_context=uk_context)
         tone_result = guardrails.validate_tone_v2(
             summary, meta, source_text, source_type, cfg,
             has_venue_in_source=_source_has_venue(record),

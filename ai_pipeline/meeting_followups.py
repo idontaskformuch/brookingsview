@@ -47,7 +47,7 @@ from ai_pipeline import api_usage, guardrails
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
-    resolve_model, pricing_for, safe_create,
+    resolve_model, pricing_for, safe_create, no_thinking,
 )
 
 try:
@@ -129,7 +129,7 @@ def generate(cfg: dict, body: str, label: str, minutes_text: str, client=None) -
 
     def call(extra: str = "") -> str:
         msg = safe_create(
-            client, model=model, max_tokens=400, system=system + extra,
+            client, model=model, max_tokens=400, system=system + extra, **no_thinking(model),
             messages=[{"role": "user", "content": src}],
             attempt=len(usage_ids) + 1,
         )

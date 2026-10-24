@@ -9,6 +9,9 @@ describe('sourceCreditName', () => {
   it('credits the library calendar separately', () => {
     expect(sourceCreditName('https://compass.broomfield.org/events/x')).toBe('Broomfield Library (Compass)');
   });
+  it('credits Glasgow Life for its event pages', () => {
+    expect(sourceCreditName('https://www.glasgowlife.org.uk/event/1/sunday-colouring-club')).toBe('Glasgow Life');
+  });
   it('returns null for unknown hosts and bad input', () => {
     expect(sourceCreditName('https://example.com/x')).toBeNull();
     expect(sourceCreditName('not a url')).toBeNull();

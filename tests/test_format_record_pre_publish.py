@@ -105,3 +105,19 @@ def test_tone_v2_leaves_room_for_thinking_before_the_json():
     client = _Client(['{"summary": "x", "meta": {}}'] * 2)
     format_record({"title": "Spring Concert", "venue": "City Hall", "id": 1}, "event", BROOKINGS_TONE_V2_CFG, client=client)
     assert seen and min(seen) >= 1500
+
+
+def test_sonnet_summaries_run_without_extended_thinking_and_haiku_is_untouched():
+    from ai_pipeline.format_prompt import no_thinking
+    assert no_thinking("claude-sonnet-5") == {"thinking": {"type": "disabled"}}
+    assert no_thinking("claude-haiku-4-5-20251001") == {}
+    seen = []
+
+    class _Client(_ScriptedClient):
+        def _create(self, **kwargs):
+            seen.append(kwargs)
+            return super()._create(**kwargs)
+
+    format_record({"title": "Spring Concert", "venue": "City Hall", "id": 1}, "event", BROOKINGS_TONE_V2_CFG,
+                  client=_Client(['{"summary": "x", "meta": {}}'] * 2))
+    assert seen and all(k.get("thinking") == {"type": "disabled"} and k["max_tokens"] == 1500 for k in seen)

@@ -4,6 +4,7 @@
 const CREDITS: Record<string, string> = {
   'broomfield.org': 'City and County of Broomfield',
   'compass.broomfield.org': 'Broomfield Library (Compass)',
+  'glasgowlife.org.uk': 'Glasgow Life',
 };
 
 export function sourceCreditName(url: string | null | undefined): string | null {

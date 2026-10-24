@@ -297,7 +297,9 @@ import { isThanksgivingSeason } from '../lib/thanksgiving';
       shows={`Upcoming events in and around ${siteConfig.cityName}, soonest first, with the date, time and venue the ${forCountry(siteConfig.country, 'organizer', 'organiser')} published.`}
       use={`Scan by day, use the filters for a kind of event, and follow the link on any listing to the ${forCountry(siteConfig.country, 'organizer', 'organiser')} for tickets, registration or changes. Times can change: check with them before you go.`}
     >
-      Each listing links to the {forCountry(siteConfig.country, 'organizer', 'organiser')}'s or venue's own page. <a href="/how-we-gather-this/">How we gather this</a>.
+      Each listing links to the {forCountry(siteConfig.country, 'organizer', 'organiser')}'s or venue's own page.
+      {siteConfig.townId === 'glasgow' && <> Many listings come from <a href="https://www.glasgowlife.org.uk/whats-on" rel="noopener">Glasgow Life</a>, the council's culture, libraries and sport trust.</>}
+      <a href="/how-we-gather-this/">How we gather this</a>.
     </PageGuide>
     {siteConfig.hasWhatsOn && (
       // Front-page orientation pass, Phase 4: "a first-time reader can't

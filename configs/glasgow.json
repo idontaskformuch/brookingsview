@@ -15,6 +15,7 @@
   },
   "_coordinates_note": "Approximate city centre (George Square). Replace with a verified point before any radius/geo query uses it (Ticketmaster GB, Met Office).",
   "_status": "SKELETON (Glasgow Phase 2, 2026-10-22): site-wide noindex ON, every data source and feature disabled. Nothing scrapes or publishes for this town yet. Phase 3 adds sources one by one, each behind its own enabled flag, after reachability and robots/ToS are verified.",
+  "uk_gate": { "relaxed_event_sources": ["glasgow_life"], "_note": "Owner 2026-10-24: for events from these sources only, (a) names in the organiser's own description/title are not private individuals and (b) an offence name alone (murder, assault ...) does not hold; arrest/charge/trial/conviction etc. still hold. Meetings and everything else keep the full gate (ai_pipeline/uk_guardrails.py). Every hold/relaxation is logged to reports/uk_gate_log.jsonl." },
   "ai": {
     "provider": "anthropic",
     "model": "claude-sonnet-5",

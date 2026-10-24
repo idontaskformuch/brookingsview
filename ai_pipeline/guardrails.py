@@ -227,8 +227,11 @@ def _is_spelled_out_acronym(phrase: str, haystack: str) -> bool:
 
 # --- huvud-API --------------------------------------------------------------
 
-def validate(generated_text: str, source_text: str, cfg: dict) -> GuardrailResult:
-    """Validera genererad text mot källdatan + redaktionella regler."""
+def validate(generated_text: str, source_text: str, cfg: dict, uk_context: dict | None = None) -> GuardrailResult:
+    """Validera genererad text mot källdatan + redaktionella regler.
+
+    uk_context (valfri): {"source_type", "source", "organiser_text"} för ett event -- se uk_guardrails (snävare regel för
+    kulturkällor listade i cfg.uk_gate.relaxed_event_sources). Utan den gäller full spärr."""
     violations: list[str] = []
 
     # 2. förbjudet innehåll först (billigast, hårdast)
@@ -267,7 +270,7 @@ def validate(generated_text: str, source_text: str, cfg: dict) -> GuardrailResul
     #    möten, projekt ...) går genom validate(), så det här är den ENDA grinden som täcker ALLA publiceringsvägar --
     #    tests/test_uk_gate_coverage.py kontrollerar att ingen generator kringgår den. No-op för icke-UK-orter.
     from ai_pipeline import uk_guardrails
-    for reason in uk_guardrails.hold_reasons(cfg, generated_text):
+    for reason in uk_guardrails.hold_reasons(cfg, generated_text, **(uk_context or {})):
         violations.append(f"UK-spärr: {reason}")
 
     return GuardrailResult(passed=len(violations) == 0, violations=violations)
@@ -916,8 +919,9 @@ def check_weekday_consistency(text: str, real_weekdays: set[str]) -> GuardrailRe
 
 
 # bekväm sträng-serialisering av källfält för validering
-def source_to_text(record: dict) -> str:
-    """Platta ut en DB-post/raw_data till en textmassa guardrails kan söka i."""
+def source_to_text(record: dict, sep: str = " ") -> str:
+    """Platta ut en DB-post/raw_data till en textmassa guardrails kan söka i. sep=newline håller fälten isär (UK-spärren:
+    ett namn får inte uppstå över en fältgräns, t.ex. '...Alison Murray' + 'Sat, Oct 31')."""
     parts: list[str] = []
 
     def walk(v):
@@ -931,4 +935,4 @@ def source_to_text(record: dict) -> str:
             parts.append(str(v))
 
     walk(record)
-    return " ".join(parts)
+    return sep.join(parts)

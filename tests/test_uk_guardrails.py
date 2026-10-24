@@ -71,3 +71,80 @@ def test_gate_is_off_for_us_towns():
     assert not is_uk(US)
     assert hold_reasons(US, "A man was arrested; applicant John Smith") == []
     assert is_uk(GB)
+
+
+# --- narrower rule for events from a listed culture source (owner 2026-10-24) -------------------------------------
+from ai_pipeline.uk_guardrails import evaluate, event_context  # noqa: E402
+from ai_pipeline import guardrails  # noqa: E402
+
+GB_EV = {"country": "gb", "uk_gate": {"relaxed_event_sources": ["glasgow_life"]}}
+EV = dict(source_type="event", source="glasgow_life")
+
+
+def test_a_fictional_character_in_the_organisers_own_description_passes():
+    desc = "An exhibition on Agatha Christie and the world of Miss Marple at the Mitchell Library."
+    reasons, notes = evaluate(GB_EV, desc, organiser_text="Agatha Christie: A World of Mystery " + desc, **EV)
+    assert reasons == [] and any("Miss Marple" in n for n in notes)
+
+
+def test_the_playwriting_workshop_passes_but_is_noted():
+    title = "Getting Away with Murder: Playwriting workshops with John Binnie"
+    reasons, notes = evaluate(GB_EV, title, organiser_text=title, **EV)
+    assert reasons == []
+    assert any("murder" in n for n in notes) and any("John Binnie" in n for n in notes)
+
+
+@pytest.mark.parametrize("text", [
+    "Man arrested for murder after the play",
+    "A man was charged after the performance",
+    "The trial of the accused is described in this talk",
+    "Sentenced to life: a play about the assault",
+])
+def test_proceedings_still_hold_an_event(text):
+    reasons, _ = evaluate(GB_EV, text, organiser_text=text, **EV)
+    assert any(r.startswith("contempt") for r in reasons)
+
+
+def test_a_name_the_organiser_did_not_write_is_still_held():
+    reasons, _ = evaluate(GB_EV, "Host: Alison Murray", organiser_text="Halloween party at Partick Library", **EV)
+    assert any("Alison Murray" in r for r in reasons)
+
+
+def test_role_plus_name_is_never_relaxed():
+    text = "planning applicant: Margaret Campbell"
+    reasons, _ = evaluate(GB_EV, text, organiser_text=text, **EV)
+    assert any(r.startswith("private person: role+name") for r in reasons)
+
+
+def test_meetings_and_unlisted_sources_keep_the_full_gate():
+    text = "Getting Away with Murder with John Binnie"
+    assert hold_reasons(GB_EV, text)                                                     # no event context at all
+    assert hold_reasons(GB_EV, text, source_type="meeting", source="glasgow_life", organiser_text=text)
+    assert hold_reasons(GB_EV, text, source_type="event", source="ticketmaster", organiser_text=text)
+    assert hold_reasons(GB, text, organiser_text=text, **EV)                              # config lists no relaxed source
+
+
+def test_adjacent_words_only_so_a_colon_does_not_invent_a_name():
+    assert not any("Campbell A" in h for h in private_person_hits("Duncan Campbell: A New No"))
+    assert any("Duncan Campbell" in h for h in private_person_hits("Duncan Campbell: A New No"))
+
+
+def test_event_context_is_empty_for_other_types_and_reads_the_description():
+    assert event_context({"source": "glasgow_life", "title": "x"}, "meeting") == {}
+    ctx = event_context({"source": "glasgow_life", "title": "Title", "raw_data": {"description": "Desc"}}, "event")
+    assert ctx == {"source_type": "event", "source": "glasgow_life", "organiser_text": "Title Desc"}
+
+
+def test_validate_accepts_the_organisers_name_in_generated_event_text_only_with_context():
+    text = "The exhibition looks at Miss Marple."
+    ctx = {"source_type": "event", "source": "glasgow_life", "organiser_text": "Exhibition on Miss Marple"}
+    assert not any("UK-spärr" in v for v in guardrails.validate(text, "Exhibition on Miss Marple", GB_EV, uk_context=ctx).violations)
+    assert any("UK-spärr" in v for v in guardrails.validate(text, "Exhibition on Miss Marple", GB_EV).violations)
+
+
+def test_a_name_never_forms_across_a_field_boundary():
+    # source fields are joined with newlines for the gate: "...with Alison Murray" + "Sat, Oct 31" is not the name "Murray Sat"
+    src = guardrails.source_to_text({"title": "Halloween Party with Alison Murray", "when": "Sat, Oct 31"}, sep="\n")
+    reasons, _ = evaluate(GB_EV, src, organiser_text="Halloween Party with Alison Murray", **EV)
+    assert reasons == []
+    assert hold_reasons(GB, "Halloween Party with Alison Murray Sat, Oct 31")                 # joined by spaces the old way: held

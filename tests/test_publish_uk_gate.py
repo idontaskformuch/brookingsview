@@ -48,3 +48,17 @@ def test_us_town_is_not_gated(monkeypatch):
     except RuntimeError as e:
         assert str(e) == "AI called"
     assert calls == [1]
+
+
+def test_every_hold_and_relaxation_is_logged_as_one_json_line(tmp_path, monkeypatch):
+    import json
+    from ai_pipeline import publish
+    log = tmp_path / "uk.jsonl"
+    monkeypatch.setattr(publish, "UK_GATE_LOG", log)
+    cfg = {"country": "gb", "town_id": "glasgow"}
+    publish.log_uk_gate(cfg, "event", "7", "Title", "source", ["contempt: arrested"], [])
+    publish.log_uk_gate(cfg, "event", "8", "Other", "source", [], ["name in organiser's own text: Miss Marple"])
+    publish.log_uk_gate(cfg, "event", "9", "Clean", "source", [], [])                    # nothing to say: nothing written
+    publish.log_uk_gate({"country": "us"}, "event", "10", "US", "source", ["x"], [])      # not a UK town
+    rows = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
+    assert [(r["id"], r["decision"]) for r in rows] == [("7", "hold"), ("8", "relaxed-pass")]
