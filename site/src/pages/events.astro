@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
+import EventBucket from '../components/EventBucket.astro';
 import StoryCard from '../components/StoryCard.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
@@ -12,6 +13,7 @@ import {
   type FeedItem,
 } from '../lib/events';
 import { siteConfig, isQuietSection } from '../lib/site-config';
+import { withoutEnded } from '../lib/local-day';
 import { placeLabel, countryProfile, forCountry } from '../lib/country-profile';
 import { EVENT_FACETS } from '../lib/event-facets';
 import SectionHero from '../components/SectionHero.astro';
@@ -69,7 +71,7 @@ const regionalGames = siteConfig.townId === 'moreno_valley_ca' ? await getRegion
  * This page's own "Today / This weekend / Coming up / Further out"
  * sequential bucket loop below is unchanged and stays page-local.
  */
-const { items, alsoListedBy } = buildEventFeed(upcoming, artsEvents, siteConfig.timezone);
+const { items, alsoListedBy } = buildEventFeed(withoutEnded(upcoming, new Date(), siteConfig.timezone), artsEvents, siteConfig.timezone);
 
 /**
  * Phase 2, item 2a: "In <Town>" vs "Nearby" -- see lib/town-boundary.ts's
@@ -172,9 +174,12 @@ const weekendDays = ([
   ['Sunday', daysToFriday + 2],
 ] as [string, number][]).map(([label, offset]) => ({
   label,
-  items: buckets.weekend.filter((item) => item.occurs_at && dayIndex(item.occurs_at, today) === offset),
+  offset,
+  // Counts include today's events (they sit in the Today bucket above); only the days after today
+  // are listed here, so nothing is printed twice.
+  items: [...buckets.today, ...buckets.weekend].filter((item) => item.occurs_at && dayIndex(item.occurs_at, today) === offset),
 }));
-const weekendTotal = buckets.weekend.length;
+const weekendTotal = weekendDays.reduce((n, d) => n + d.items.length, 0);
 
 const sections = (
   [
@@ -309,6 +314,12 @@ import { isThanksgivingSeason } from '../lib/thanksgiving';
     ))}
   </nav>
 
+  {/* Owner 2026-10-24: Today leads the page (it used to sit below the weekend block, so on a Saturday
+      the first thing shown was Sunday). */}
+  {sections.filter(([label]) => label === 'Today').map(([label, list]) => (
+    <EventBucket label={label} list={list} alsoListedBy={alsoListedBy} kicker={townwideKicker} facilities={facilities} homeGame={todaysHomeGame} />
+  ))}
+
   {/* Phase 2, item 2a: "This weekend in <Town>" split Fri/Sat/Sun with
       counts -- the hero this whole restructure exists for (see
       news-aggregator return-visit reasoning in this file's own history).
@@ -325,10 +336,10 @@ import { isThanksgivingSeason } from '../lib/thanksgiving';
           </>
         ))}
       </p>
-      {weekendDays.filter((d) => d.items.length > 0).map((day) => (
+      {weekendDays.filter((d) => d.items.length > 0 && d.offset > 0).map((day) => (
         <div class="weekend-day">
           <h3 class="weekend-day__label">{day.label}</h3>
-          <div class="grid" data-hide-ended>
+          <div class="grid" data-hide-ended data-hide-heading>
             {day.items.map((item) => item.sourceKind === 'story'
               ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={townwideKicker} facilities={facilities} />
               : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker={ARTS_EVENT_KICKER} facilities={facilities} />
@@ -362,25 +373,8 @@ import { isThanksgivingSeason } from '../lib/thanksgiving';
     </section>
   )}
 
-  {(sections.length > 0 || weekendTotal > 0 || nearbyItems.length > 0 || todaysHomeGame) ? sections.map(([label, list]) => (
-    <>
-      <SectionRule label={label} />
-      {label === 'Today' && todaysHomeGame && (
-        <p class="game-note">
-          🏟️ {todaysHomeGame.team_name} play {todaysHomeGame.opponent_name} at home today
-          {todaysHomeGame.venue && ` at ${todaysHomeGame.venue}`}.
-          <a href="/sports/">See the schedule</a>
-        </p>
-      )}
-      {list.length > 0 && (
-        <div class="grid" data-hide-ended>
-          {list.map((item) => item.sourceKind === 'story'
-            ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={townwideKicker} facilities={facilities} />
-            : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker={ARTS_EVENT_KICKER} facilities={facilities} />
-          )}
-        </div>
-      )}
-    </>
+  {(sections.length > 0 || weekendTotal > 0 || nearbyItems.length > 0 || todaysHomeGame) ? sections.filter(([label]) => label !== 'Today').map(([label, list]) => (
+    <EventBucket label={label} list={list} alsoListedBy={alsoListedBy} kicker={townwideKicker} facilities={facilities} />
   )) : (
     <p class="empty">{EMPTY_STATES.eventsAll}</p>
   )}

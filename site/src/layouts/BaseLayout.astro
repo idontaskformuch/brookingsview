@@ -723,7 +723,8 @@ main { padding-block: 1.75rem 3.5rem; }
     </script>
     <script>
       import { relativeTime } from '../lib/time';
-      import { countToday, hasEnded, relativeDayLabel, type TimedEvent } from '../lib/local-day';
+      import { countToday, relativeDayLabel, type TimedEvent } from '../lib/local-day';
+      import { sweepEnded } from '../lib/hide-ended';
       document.querySelectorAll<HTMLElement>('[data-day-label]').forEach((el) => {
         const when = el.dataset.when;
         if (when) el.textContent = relativeDayLabel(new Date(when), new Date(), el.dataset.tz || 'America/Chicago');
@@ -732,18 +733,7 @@ main { padding-block: 1.75rem 3.5rem; }
       // that have already finished -- a "Today" list must never show a passed event.
       const pageTz = document.getElementById('sign-events-today')?.dataset.tz
         || document.querySelector<HTMLElement>('[data-tz]')?.dataset.tz || 'America/Chicago';
-      document.querySelectorAll<HTMLElement>('[data-hide-ended]').forEach((box) => {
-        const cards = Array.from(box.querySelectorAll<HTMLElement>('[data-start]'));
-        cards.forEach((el) => {
-          if (hasEnded({ start: el.dataset.start || '', end: el.dataset.end || null }, new Date(), pageTz)) el.hidden = true;
-        });
-        const anyLeft = cards.some((el) => !el.hidden);
-        if (cards.length > 0 && !anyLeft) {
-          if (box.hasAttribute('data-hide-when-empty')) box.hidden = true;
-          const fb = document.getElementById('facet-empty-fallback');
-          if (fb) { fb.hidden = false; box.hidden = true; }
-        }
-      });
+      sweepEnded(document, new Date(), pageTz);
       const signEl = document.getElementById('sign-events-today');
       if (signEl) {
         try {

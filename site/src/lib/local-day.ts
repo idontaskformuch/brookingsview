@@ -46,6 +46,17 @@ export function localHourOf(d: Date, timezone: string): number {
  *  next 00:00, e.g. Hobo Day 2026-10-24 -> 2026-10-25). Display code shows
  *  "All day" for these instead of "12:00 AM". An end at any other time of day
  *  is a real end and keeps the clock. */
+/** ISO instant of local midnight at the start of the given calendar day in `timezone`. */
+export function localMidnightIso(day: { y: number; m: number; d: number }, timezone: string): string {
+  const want = Date.UTC(day.y, day.m - 1, day.d);
+  let t = want;
+  for (let i = 0; i < 3; i++) {
+    const p = parts(new Date(t), timezone);
+    t += want - Date.UTC(p.y, p.m - 1, p.d, p.h, p.min);
+  }
+  return new Date(t).toISOString();
+}
+
 export function isAllDay(e: TimedEvent, timezone: string): boolean {
   const start = new Date(e.start);
   if (Number.isNaN(start.getTime())) return false;
@@ -115,4 +126,19 @@ export function relativeDayLabel(target: Date, now: Date, timezone: string): str
   if (n <= 0) return 'today';
   if (n === 1) return 'tomorrow';
   return `in ${n} days`;
+}
+
+/** Build-time companion to the browser's data-hide-ended sweep: drops stories that
+ *  have already finished, so a page built after an event never prints it as upcoming
+ *  (the listing query keeps a 12 h grace window, which put last night's concert
+ *  under "Today"). Stories without a start are kept. */
+export function withoutEnded<T extends { occurs_at?: string | Date | null; ends_at?: string | Date | null }>(
+  items: T[], now: Date, timezone: string,
+): T[] {
+  return items.filter((s) => {
+    if (!s.occurs_at) return true;
+    const start = new Date(s.occurs_at).toISOString();
+    const end = s.ends_at ? new Date(s.ends_at).toISOString() : null;
+    return !hasEnded({ start, end }, now, timezone);
+  });
 }

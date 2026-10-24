@@ -28,6 +28,7 @@ import {
 import { buildEventJsonLd } from '../../lib/event-jsonld';
 import { EVENT_FACETS, type EventFacet } from '../../lib/event-facets';
 import { siteConfig } from '../../lib/site-config';
+import { withoutEnded } from '../../lib/local-day';
 import { countryProfile } from '../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
@@ -40,7 +41,7 @@ export async function getStaticPaths() {
     getUpcomingArtsEvents(60),
     getFacilities(),
   ]);
-  const { items, alsoListedBy } = buildEventFeed(upcoming, artsEvents, siteConfig.timezone);
+  const { items, alsoListedBy } = buildEventFeed(withoutEnded(upcoming, new Date(), siteConfig.timezone), artsEvents, siteConfig.timezone);
   const today = todayUtcMidnight(siteConfig.timezone);
   const ctx = { facilities, today, timezone: siteConfig.timezone };
 

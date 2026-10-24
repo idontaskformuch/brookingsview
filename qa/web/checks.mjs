@@ -97,6 +97,7 @@ export function checkDiag(snap, town) {
     f.push(finding('web.clientfill', town, snap, `${cf.items} events in the template but Tonight/Tomorrow never filled and no "nothing scheduled" note${lab}`));
   }
   for (const a of snap.staleAlerts ?? []) f.push(finding('web.stale-alert', town, snap, `alert shown after its end: ${a}${lab}`));
+  for (const e of snap.staleRecently ?? []) f.push(finding('web.stale-recently', town, snap, `"Recently" shows an event from more than 90 days ago: ${e}${lab}`));
   for (const e of snap.pastEvents ?? []) f.push(finding('web.past-event', town, snap, `${e}${lab}`));
   for (const e of snap.allDayClock ?? []) f.push(finding('web.allday-clock', town, snap, `all-day event shows a clock: ${e}${lab}`));
   for (const v of snap.axe ?? []) {

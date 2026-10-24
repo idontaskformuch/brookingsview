@@ -1,0 +1,46 @@
+---
+/** One time bucket of /events/ ("Today", "Coming up", "Further out"): the rule, an
+ *  optional home-game note, and the cards. Split out of events.astro so "Today"
+ *  can sit above the weekend block while the other buckets stay below it. */
+import SectionRule from './SectionRule.astro';
+import StoryCard from './StoryCard.astro';
+import { artsEventAsStory, withAttribution, ARTS_EVENT_KICKER, type FeedItem } from '../lib/events';
+
+interface Props {
+  label: string;
+  list: FeedItem[];
+  alsoListedBy: Map<FeedItem, string[]>;
+  kicker: string;
+  facilities: any[];
+  homeGame?: { team_name: string; opponent_name: string; venue?: string | null } | null;
+}
+const { label, list, alsoListedBy, kicker, facilities, homeGame = null } = Astro.props;
+---
+<SectionRule label={label} />
+{homeGame && (
+  <p class="game-note">
+    🏟️ {homeGame.team_name} play {homeGame.opponent_name} at home today
+    {homeGame.venue && ` at ${homeGame.venue}`}.
+    <a href="/sports/">See the schedule</a>
+  </p>
+)}
+{list.length > 0 && (
+  <div class="grid" data-hide-ended data-hide-heading={homeGame ? undefined : ''}>
+    {list.map((item) => item.sourceKind === 'story'
+      ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={kicker} facilities={facilities} />
+      : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker={ARTS_EVENT_KICKER} facilities={facilities} />
+    )}
+  </div>
+)}
+
+<style>
+.grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+.game-note {
+  margin: 0 0 0.75rem;
+  padding: 0.625rem 0.875rem;
+  background: var(--navy-tint);
+  border-left: 4px solid var(--navy);
+  font-size: 0.9375rem;
+}
+.game-note a { margin-left: 0.375rem; }
+</style>

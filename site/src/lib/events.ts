@@ -405,6 +405,63 @@ export function findCrossSourceMatch<T>(
  * and deterministic on purpose -- see findCrossSourceMatch() above for the
  * matching rule itself.
  */
+const TITLE_STOPWORDS = new Set(['the', 'a', 'an', 'at', 'of', 'and', 'for', 'in', 'on', 'to', 'with']);
+
+function titleTokens(title: string): Set<string> {
+  return new Set(normalizeTitle(title).split(' ').filter((w) => w && !TITLE_STOPWORDS.has(w)));
+}
+
+function hostOf(item: FeedItem): string {
+  const url = itemUrl(item);
+  try { return url ? new URL(url).hostname.replace(/^www\./, '') : ''; } catch { return ''; }
+}
+
+/** The same real event listed by two calendars under differently worded titles
+ *  ("The Yule Market" / "The Yule Market Opening Day" / "Museum Shop Yule Market
+ *  Opens", all 10 AM on Oct 24). Second pass of buildEventFeed(), narrower than
+ *  the exact-title rule on purpose: SAME start instant, DIFFERENT calendar
+ *  (link host), and the shorter title's words (stopwords dropped, at least two)
+ *  all appear in the longer one. Two sessions on one calendar never merge. The
+ *  survivor is the one that names a venue (a page of its own beats an outbound
+ *  link), then the first in list order. */
+function mergeSameStartTitleContainment(items: FeedItem[], alsoListedBy: Map<FeedItem, string[]>): FeedItem[] {
+  const byStart = new Map<string, FeedItem[]>();
+  for (const it of items) {
+    if (!it.occurs_at) continue;
+    const key = new Date(it.occurs_at).toISOString();
+    byStart.set(key, [...(byStart.get(key) ?? []), it]);
+  }
+  const dropped = new Set<FeedItem>();
+  for (const group of byStart.values()) {
+    if (group.length < 2) continue;
+    const tokens = group.map((it) => titleTokens(itemTitle(it)));
+    // union-find over "one title contains the other" (C and A may only be linked through B)
+    const parent = group.map((_, i) => i);
+    const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+    for (let i = 0; i < group.length; i++) {
+      for (let j = i + 1; j < group.length; j++) {
+        if (hostOf(group[i]) === hostOf(group[j])) continue;
+        const [small, large] = tokens[i].size <= tokens[j].size ? [tokens[i], tokens[j]] : [tokens[j], tokens[i]];
+        if (small.size >= 2 && [...small].every((w) => large.has(w))) parent[find(i)] = find(j);
+      }
+    }
+    const clusters = new Map<number, FeedItem[]>();
+    group.forEach((it, i) => clusters.set(find(i), [...(clusters.get(find(i)) ?? []), it]));
+    for (const members of clusters.values()) {
+      if (members.length < 2) continue;
+      const keep = members.find((m) => itemVenue(m)) ?? members[0];
+      const hosts = new Set(alsoListedBy.get(keep) ?? []);
+      for (const m of members) {
+        if (m === keep) continue;
+        dropped.add(m);
+        for (const h of [hostOf(m), ...(alsoListedBy.get(m) ?? [])]) if (h && h !== hostOf(keep)) hosts.add(h);
+      }
+      if (hosts.size > 0) alsoListedBy.set(keep, [...hosts]);
+    }
+  }
+  return items.filter((it) => !dropped.has(it));
+}
+
 export function buildEventFeed(stories: Story[], artsEvents: SdsuEvent[], timezone: string): EventFeedResult {
   const rawItems: FeedItem[] = [
     ...stories.map((story): FeedItem => ({ sourceKind: 'story', occurs_at: story.occurs_at, story })),
@@ -434,13 +491,14 @@ export function buildEventFeed(stories: Story[], artsEvents: SdsuEvent[], timezo
     if (ownKey) canonicalByKey.set(ownKey, item);
     items.push(item);
   }
+  const deduped = mergeSameStartTitleContainment(items, alsoListedBy);
 
-  items.sort((a, b) => {
+  deduped.sort((a, b) => {
     if (!a.occurs_at) return 1;
     if (!b.occurs_at) return -1;
     return new Date(a.occurs_at).getTime() - new Date(b.occurs_at).getTime();
   });
-  return { items, alsoListedBy };
+  return { items: deduped, alsoListedBy };
 }
 
 export function withAttribution(body: string, item: FeedItem, alsoListedBy: Map<FeedItem, string[]>): string {

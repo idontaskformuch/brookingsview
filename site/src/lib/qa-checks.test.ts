@@ -144,3 +144,10 @@ describe('web.duplicate-content (born_from: University digest finding 2026-10-23
     expect(duplicateContentFindings([snap('/a/', `${truncated} more`, ['/b/']), snap('/b/', full)], 't').length).toBe(2);
   });
 });
+
+describe('web.stale-recently (born 2026-10-24: series start pages under "Recently")', () => {
+  const snap = { ...base, label: 'desktop-light', emptySections: [], clientfill: null, staleAlerts: [], pastEvents: [], axe: [] };
+  const ids = (x: object) => checkDiag({ ...snap, ...x }, 'glasgow').map((f: { check: string }) => f.check);
+  it('flags an old card under Recently', () => expect(ids({ staleRecently: ['Board Games More Games (2026-06-01T23:00:00.000Z)'] })).toEqual(['web.stale-recently']));
+  it('is quiet when there is none', () => expect(ids({ staleRecently: [] })).toEqual([]));
+});

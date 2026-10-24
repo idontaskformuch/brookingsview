@@ -11,9 +11,9 @@ const { groups, idPrefix = 'wk' } = Astro.props;
   {groups.map((group) => (
     <section class="wk-group" aria-labelledby={`${idPrefix}-${group.id}`}>
       <h2 class="wk-group__heading" id={`${idPrefix}-${group.id}`}>{group.label}</h2>
-      <ul class="wk-list">
+      <ul class="wk-list" data-hide-ended data-hide-section>
         {group.rows.map((row) => (
-          <li class="wk-row">
+          <li class="wk-row" data-start={row.start} data-end={row.end ?? undefined}>
             <span class="wk-when">{row.when}</span>
             <span class="wk-sep" aria-hidden="true"> · </span>
             {row.href ? (

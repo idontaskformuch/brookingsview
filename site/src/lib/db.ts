@@ -487,6 +487,11 @@ export async function getPastStories(
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
        AND occurs_at < now() - interval '12 hours'
+       -- "Recently" is what has ENDED. A recurring programme is not a past event
+       -- (its occurs_at is just the date it was first seen), and a multi-week
+       -- exhibition that started a while ago is still on.
+       AND NOT COALESCE(is_recurring_series, false)
+       AND COALESCE(ends_at, occurs_at) < now() - interval '12 hours'
        AND superseded_by_slug IS NULL
      ORDER BY occurs_at DESC
      LIMIT ${limit}

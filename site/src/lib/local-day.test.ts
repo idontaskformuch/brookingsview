@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bucketOf, countToday, countTonight, eventEndsAt, hasEnded, isAllDay, localDayNumber, relativeDayLabel } from './local-day';
+import { bucketOf, countToday, countTonight, eventEndsAt, hasEnded, isAllDay, localDayNumber, localMidnightIso, relativeDayLabel, withoutEnded } from './local-day';
 
 const CHI = 'America/Chicago';
 const LA = 'America/Los_Angeles';
@@ -132,5 +132,34 @@ describe('isAllDay (start at local midnight, no real end)', () => {
     const e = { start: '2026-10-24T05:00:00Z' };
     expect(isAllDay(e, CHI)).toBe(true);
     expect(eventEndsAt(e, CHI).toISOString()).toBe('2026-10-25T05:00:00.000Z');
+  });
+});
+
+describe('withoutEnded (build-time)', () => {
+  const tz = 'Europe/London';
+  const now = new Date('2026-10-24T05:42:00Z');
+  const ev = (occurs_at: string, ends_at: string | null = null) => ({ occurs_at, ends_at });
+
+  it('drops last night\'s concert that the 12 h listing window still returns', () => {
+    const kept = withoutEnded([ev('2026-10-23T18:30:00Z'), ev('2026-10-24T10:00:00Z')], now, tz);
+    expect(kept.map((s) => s.occurs_at)).toEqual(['2026-10-24T10:00:00Z']);
+  });
+
+  it('keeps an event that has started but not ended, and an all-day event on today\'s date', () => {
+    expect(withoutEnded([ev('2026-10-24T04:00:00Z')], now, tz)).toHaveLength(1);       // 05:00 BST start, +3 h default
+    expect(withoutEnded([ev('2026-10-23T23:00:00Z')], now, tz)).toHaveLength(1);       // 00:00 BST on the 24th = all day today
+  });
+
+  it('keeps a story with no date', () => {
+    expect(withoutEnded([{ occurs_at: null }], now, tz)).toHaveLength(1);
+  });
+});
+
+describe('localMidnightIso', () => {
+  it('is the start of the local day across zones and DST', () => {
+    expect(localMidnightIso({ y: 2026, m: 10, d: 19 }, 'America/Chicago')).toBe('2026-10-19T05:00:00.000Z');
+    expect(localMidnightIso({ y: 2026, m: 10, d: 24 }, 'Europe/London')).toBe('2026-10-23T23:00:00.000Z');   // BST
+    expect(localMidnightIso({ y: 2026, m: 10, d: 26 }, 'Europe/London')).toBe('2026-10-26T00:00:00.000Z');   // GMT after the 25th
+    expect(localMidnightIso({ y: 2026, m: 11, d: 1 }, 'America/Chicago')).toBe('2026-11-01T05:00:00.000Z');  // fall-back day starts in CDT
   });
 });

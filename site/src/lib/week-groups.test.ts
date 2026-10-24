@@ -198,3 +198,24 @@ describe('isSportItem / themeOf: SDSU feed fixtures land in Sports with a readab
     expect(themeOf({ vertical: 'sdsu', title: 'VB vs USD' })).toBe('sports');
   });
 });
+
+describe('rows carry start/end so the browser can drop passed ones (university digest, 2026-10-24)', () => {
+  it('a timed row starts at its own instant; a merged multi-day row at its LAST day', () => {
+    const fri = item({ title: 'Hobo Day Expo', startsAt: '2026-10-24T13:00:00Z', endsAt: '2026-10-24T15:00:00Z' });
+    const sat = item({ title: 'Hobo Day Expo', startsAt: '2026-10-25T13:00:00Z', endsAt: '2026-10-25T15:00:00Z' });
+    const all = week({ 4: [fri], 5: [sat] });
+    const groups = groupWeekItems(all, all, TZ);
+    const rows = groups.flatMap((g) => g.rows);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].start).toBe('2026-10-25T13:00:00Z');
+    expect(rows[0].end).toBe('2026-10-25T15:00:00Z');
+  });
+
+  it('a date-only item (a meeting) starts at local midnight of its day, so it is gone the day after', () => {
+    const council = item({ vertical: 'city_hall', title: 'City Council', startsAt: null });
+    const all = week({ 0: [council] });  // Mon 19 Oct 2026, Chicago (CDT, UTC-5)
+    const rows = groupWeekItems(all, all, TZ).flatMap((g) => g.rows);
+    expect(rows[0].start).toBe('2026-10-19T05:00:00.000Z');
+    expect(rows[0].end).toBeNull();
+  });
+});

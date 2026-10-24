@@ -168,6 +168,15 @@ describe('every reader-facing stories listing excludes superseded rows', () => {
     }
   });
 
+  it('getPastStories ("Recently") excludes recurring series and anything still running', () => {
+    // 2026-10-24: Glasgow /events/ listed series by the date they were first seen and a running
+    // exhibition as "recent".
+    const start = dbSource.indexOf('function getPastStories(');
+    const body = dbSource.slice(start, dbSource.indexOf('\nexport ', start + 1));
+    expect(body).toContain('NOT COALESCE(is_recurring_series, false)');
+    expect(body).toContain('COALESCE(ends_at, occurs_at) < now()');
+  });
+
   it('getStoryBySlug and getAllStories are deliberately NOT in the list above', () => {
     expect(LISTING_FUNCTIONS).not.toContain('getStoryBySlug');
     expect(LISTING_FUNCTIONS).not.toContain('getAllStories');

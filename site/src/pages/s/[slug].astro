@@ -31,7 +31,7 @@ import { resolveImage, contentTrackCropPaths } from '../../lib/images';
 import { categoryImagesFor } from '../../config/category-images';
 import ImageAttribution from '../../components/ImageAttribution.astro';
 import { shouldNoindexStory, THIN_SCRAPED_SOURCE_TYPES } from '../../lib/noindex';
-import { hasEventPassed } from '../../lib/time';
+import { hasEnded } from '../../lib/local-day';
 import { canonicalUrlForStory } from '../../lib/cross-site-canonical';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 import { publicSlug, storyHref } from '../../lib/content-slugs';
@@ -88,8 +88,13 @@ const kind = isAlert ? 'Alert' : isMeeting ? 'Meeting' : 'Event';
 // never get an ends_at at all. Never shown for a recurring series page
 // (is_recurring_series -- see venueFacility's identical guard above it):
 // that page represents MANY future instances, not one date that can "pass".
-const eventHasPassed = isEvent && !story.is_recurring_series
-  && hasEventPassed(story.occurs_at, story.ends_at, new Date());
+// Same end rule as the Today lists (local-day.ts): a no-end event is over 3 h after it starts,
+// an all-day one at local midnight -- not the instant it starts, which called a concert
+// "passed" while it was still playing.
+const eventHasPassed = isEvent && !story.is_recurring_series && !!story.occurs_at
+  && hasEnded({ start: new Date(story.occurs_at).toISOString(), end: story.ends_at ? new Date(story.ends_at).toISOString() : null }, new Date(), siteConfig.timezone);
+// Built before the event: the browser swaps in "This event is on now." / "has passed." (data-event-status).
+const eventStatusProbe = isEvent && !story.is_recurring_series && !!story.occurs_at && !eventHasPassed;
 // Phase 4, "Add to calendar" (2026-10-09): same eligibility as the .ics
 // file itself (site/src/pages/s/[slug].ics.ts's own getStaticPaths) --
 // a recurring-series page has no single date to add, and a past event
@@ -428,6 +433,10 @@ const eventJsonLdObject = buildEventJsonLd(
     )}
     {when && <p class="story__when data">{when}</p>}
     {eventHasPassed && <p class="story__passed-notice">This event has passed.</p>}
+    {eventStatusProbe && (
+      <p class="story__passed-notice" data-event-status hidden
+        data-start={new Date(story.occurs_at!).toISOString()} data-end={story.ends_at ? new Date(story.ends_at).toISOString() : ''} data-tz={siteConfig.timezone}></p>
+    )}
     {meetingBanner && <p class="story__passed-notice" data-banner-variant={meetingBanner.variant}>{meetingBanner.text}</p>}
     {isMeeting && story.occurs_at && when && !meetingBanner && (
       // Built before the meeting day: the browser shows "This meeting took place on ..." once the day has passed in the town's zone.
@@ -775,6 +784,7 @@ const eventJsonLdObject = buildEventJsonLd(
   font-size: 0.8125rem;
   font-weight: 600;
 }
+.story__passed-notice[hidden] { display: none; }
 .story__hero {
   display: block;
   width: 100%;

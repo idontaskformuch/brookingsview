@@ -12,7 +12,7 @@
  *    6. everything else is grouped by theme from its vertical, title, venue and source categories by plain
  *       keyword rules, first match wins. An item that matches no rule lands in "Around town": the grouping
  *       can only under-describe an item, never invent a fact. */
-import { isAllDay } from './local-day';
+import { isAllDay, localMidnightIso } from './local-day';
 import { formatClockCompact } from './country-profile';
 import type { DayBucket, DayItem } from './this-week';
 
@@ -69,6 +69,10 @@ export interface WeekRow {
   href: string | null;
   external: boolean;
   venue: string | null;
+  /** When the LAST occurrence behind this row starts / ends (ISO), so the browser can hide the row once it is over.
+   *  A date-only item (a meeting) starts at local midnight of its day and lasts the day. */
+  start: string;
+  end: string | null;
 }
 
 export interface WeekGroup { id: ThemeId; label: string; rows: WeekRow[] }
@@ -233,6 +237,7 @@ export function groupWeekItems(
   const byTheme = new Map<ThemeId, { sort: number; row: WeekRow }[]>();
   for (const merged of mergeAcrossDays(mergeSameDay(flat))) {
     const first = merged.rows[0];
+    const last = merged.rows[merged.rows.length - 1];
     const lower = first.title.toLowerCase();
     const theme: ThemeId = topPatterns.some((p) => lower.includes(p.toLowerCase()))
       ? 'big' : themeOf({ ...first.item, title: first.title, venue: first.venue });
@@ -240,6 +245,8 @@ export function groupWeekItems(
     const row: WeekRow = {
       when: first.timeLabel ? `${dayText} ${first.timeLabel}` : dayText,
       title: first.title, href: first.item.href, external: first.item.external, venue: first.venue,
+      start: last.item.startsAt ?? localMidnightIso(allDays[last.dayIndex].date, timezone),
+      end: last.item.endsAt ?? null,
     };
     const list = byTheme.get(theme) ?? [];
     list.push({ sort: Math.min(...merged.days) * 1e14 + (first.startMs % 1e14), row });

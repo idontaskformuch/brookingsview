@@ -443,6 +443,32 @@ describe('buildEventFeed cross-source dedup', () => {
     expect(items).toHaveLength(2);
   });
 
+  // Brookings /events/ 2026-10-24: the same Yule Market listed three times.
+  const yule = () => [
+    story({ slug: 'event-308037', title: 'The Yule Market Opening Day', occurs_at: '2026-10-24T15:00:00Z', venue_raw: 'South Dakota Art Museum', source_url: 'https://visitbrookingssd.com/event/the-yule-market-opening-day/' }),
+    story({ slug: 'event-297380', title: 'The Yule Market', occurs_at: '2026-10-24T15:00:00Z', source_url: 'https://brookingsareachamberofcommerce.growthzoneapp.com/bpnevents/Details/the-yule-market-1936962' }),
+  ];
+  const yuleArts = () => artsEvent({ external_event_id: 'sdsu-yule', title: 'Museum Shop Yule Market Opens', starts_at: '2026-10-24T15:00:00Z', location: 'South Dakota Art Museum', event_url: 'https://www.sdstate.edu/events/yule' });
+
+  it('merges one event listed under differently worded titles by different calendars at the same start (Yule Market x3)', () => {
+    const { items, alsoListedBy } = buildEventFeed(yule(), [yuleArts()], 'America/Chicago');
+    expect(items).toHaveLength(1);
+    expect(items[0].sourceKind === 'story' && items[0].story.title).toBe('The Yule Market Opening Day');
+    expect(alsoListedBy.get(items[0])).toEqual(expect.arrayContaining(['brookingsareachamberofcommerce.growthzoneapp.com', 'sdstate.edu']));
+  });
+
+  it('does not merge on title containment when the start times differ or the calendar is the same', () => {
+    const [a, b] = yule();
+    expect(buildEventFeed([a, { ...b, occurs_at: '2026-10-24T18:00:00Z' }], [], 'America/Chicago').items).toHaveLength(2);
+    expect(buildEventFeed([a, { ...b, source_url: 'https://visitbrookingssd.com/event/the-yule-market/' }], [], 'America/Chicago').items).toHaveLength(2);
+  });
+
+  it('needs two real words in the shorter title ("Concert" is not "Fall Choir Concert")', () => {
+    const a = story({ slug: 'c1', title: 'Concert', occurs_at: '2026-10-26T00:00:00Z', source_url: 'https://a.example/1' });
+    const b = story({ slug: 'c2', title: 'BHS Fall Choir Concert', occurs_at: '2026-10-26T00:00:00Z', source_url: 'https://b.example/2' });
+    expect(buildEventFeed([a, b], [], 'America/Chicago').items).toHaveLength(2);
+  });
+
   it('sorts by occurs_at ascending, undated items last', () => {
     const later = story({ slug: 'b', occurs_at: '2026-08-10T12:00:00Z' });
     const earlier = story({ slug: 'a', occurs_at: '2026-08-05T12:00:00Z' });

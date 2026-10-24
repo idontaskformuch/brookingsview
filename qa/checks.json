@@ -73,7 +73,7 @@
     },
     "web.empty": {
       "severity": "hard",
-      "born_from": "Broomfield /this-week empty (events table only had NWS alerts, 2026-10)",
+      "born_from": "Broomfield /this-week empty (events table only had NWS alerts, 2026-10); extended 2026-10-24 after Glasgow /events/ kept an empty TODAY heading once its only card had ended (the probe counted hidden cards' links as content). Regression: site/src/lib/hide-ended.test.ts",
       "what": "visible <h2> section with no content"
     },
     "web.clientfill": {
@@ -86,7 +86,12 @@
       "born_from": "expired weather/closure alerts kept showing (Time/alerts handoff Phase 1, 2026-10-20)",
       "what": "element with data-ends in the past that is still visible (real clock and the 07:00/19:00/23:30 clock passes)"
     },
-    "web.past-event": {
+    "web.stale-recently": {
+    "severity": "soft",
+    "born_from": "2026-10-24 owner: Glasgow /events/ showed recurring series under \"Recently\" with the date they were first seen (JUN 2, FEB 22, NOV 27); fixed in db.ts getPastStories + publish.py series refresh. Regression: site/src/lib/db.test.ts, tests/test_events_grouping.py, site/src/lib/qa-checks.test.ts",
+    "what": "a card under the \"Recently\" heading whose start is more than 90 days before the page clock"
+  },
+  "web.past-event": {
       "severity": "hard",
       "born_from": "passed events shown under Today/Tonight (Time/alerts handoff)",
       "what": "event in the Tonight bucket that is over (or not today), or in Tomorrow that is not tomorrow, at the page's clock"

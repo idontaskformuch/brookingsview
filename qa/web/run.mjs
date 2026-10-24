@@ -129,10 +129,19 @@ function pageProbe({ allowSel, wantLinks }) {
       box = box.parentElement;
       if (!box || box === mainEl) { box = null; break; }
       const rest = (box.innerText || '').replace(hText, '').trim();
-      ok = rest.length >= 3 || !!box.querySelector('img, a, li, table, canvas, svg, iframe, input, button');
+      ok = rest.length >= 3 || [...box.querySelectorAll('img, a, li, table, canvas, svg, iframe, input, button')].some(visible); // visible only: hidden (ended) cards do not count
       if (!ok && ['SECTION', 'ARTICLE', 'ASIDE'].includes(box.tagName)) break;
     }
     if (!ok && box) emptySections.push(hText.trim().slice(0, 60));
+  });
+  // "Recently" listing cards that started more than 90 days ago: a programme's first-seen date, not a recent event
+  const staleRecently = [];
+  document.querySelectorAll('main h2').forEach((h) => {
+    if (!/^recently$/i.test(h.innerText.trim())) return;
+    h.closest('.sec')?.nextElementSibling?.querySelectorAll('[data-start]').forEach((el) => {
+      if (now.getTime() - Date.parse(el.dataset.start) > 90 * 24 * 3600 * 1000) staleRecently.push(`${(el.innerText || '').trim().split('
+').filter(Boolean).slice(0, 2).join(' / ').slice(0, 70)} (${el.dataset.start})`);
+    });
   });
   // /today: template has events but nothing was filled and no "nothing scheduled" note
   const tpl = document.getElementById('today-event-items');
@@ -195,7 +204,7 @@ function pageProbe({ allowSel, wantLinks }) {
     imgAlts: [...document.querySelectorAll('main img')].map((i) => i.alt || ''),
     loneDashNodes: lone,
     brokenImgs: [...document.images].filter((i) => i.complete && i.naturalWidth === 0 && i.currentSrc && !i.currentSrc.startsWith('data:')).map((i) => i.currentSrc),
-    emptySections, clientfill, staleAlerts, pastEvents, allDayClock,
+    emptySections, staleRecently, clientfill, staleAlerts, pastEvents, allDayClock,
     links: wantLinks ? [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute('href')) : [],
     // internal links inside <main>, collected on every page (no extra request) for web.duplicate-content
     outLinks: [...new Set([...document.querySelectorAll('main a[href^="/"]')].map((a) => a.getAttribute('href')))],
@@ -247,7 +256,7 @@ async function snapshot(context, path, { inSitemap = false, blockHeavy = true, a
   } catch (e) {
     return { ...snap, status: status || 0, cfMitigated, redirects, title: '', titleCount: 0, h1: [], metaRobots: '', metaDescription: '',
       mainText: '', imgAlts: [], loneDashNodes: 0, brokenImgs: [], links: [], consoleErrors: [], failedRequests: [], blockedAttempts: [],
-      emptySections: [], clientfill: null, staleAlerts: [], pastEvents: [], allDayClock: [], axe: [], navError: String(e.message).slice(0, 200) };
+      emptySections: [], staleRecently: [], clientfill: null, staleAlerts: [], pastEvents: [], allDayClock: [], axe: [], navError: String(e.message).slice(0, 200) };
   } finally { await page.close(); }
 }
 
