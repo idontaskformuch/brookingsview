@@ -69,7 +69,8 @@ _CONTEMPT_OFFENCE_ONLY = re.compile(rf"\b({_OFFENCE_NAMES})\b", re.IGNORECASE)
 
 _PERSONAL_LICENCE = re.compile(r"\bpersonal\s+licen[cs]e", re.IGNORECASE)
 _ROLE_NAME = re.compile(
-    r"\b(?:applicants?|appellants?|objectors?|complainers?|complainants?|respondents?|"
+    # role words are case-insensitive ("Applicant:" as well as "applicant:"); the name itself must still be Capitalised
+    r"\b(?i:applicants?|appellants?|objectors?|complainers?|complainants?|respondents?|"
     r"licen[cs]e\s*holders?|licen[cs]ees?|(?:premises|personal)\s+licen[cs]e\s*holders?|"
     r"on\s+behalf\s+of|application\s+by|appeal\s+by|objection\s+by|submitted\s+by|"
     r"agent)\s*[:\-–]?\s*(?:is\s+|are\s+)?(?:(?:Mr|Mrs|Ms|Miss|Mx|Dr)\.?\s+)?"

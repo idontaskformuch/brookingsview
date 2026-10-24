@@ -148,3 +148,21 @@ def test_a_name_never_forms_across_a_field_boundary():
     reasons, _ = evaluate(GB_EV, src, organiser_text="Halloween Party with Alison Murray", **EV)
     assert reasons == []
     assert hold_reasons(GB, "Halloween Party with Alison Murray Sat, Oct 31")                 # joined by spaces the old way: held
+
+
+@pytest.mark.parametrize("text", [
+    "Planning permission at 45 Byres Road. Applicant: Jane Smith",
+    "Planning permission at 45 Byres Road. applicant: Jane Smith",
+    "Licensing Board hearing. Objector: Priya Kapoor",
+    "Review of premises. Licence Holder: Rowan Atkinson",
+])
+def test_role_labels_hold_in_any_case_in_a_meeting_listing(text):
+    # the name pair (Jane Smith, ...) is deliberately NOT in the first-name list here for Kapoor/Atkinson -> only the role rule can hold it
+    hits = private_person_hits(text)
+    assert any(h.startswith("role+name") for h in hits), hits
+    assert any(r.startswith("private person") for r in hold_reasons(GB, text, source_type="meeting", source="coins"))
+
+
+def test_role_words_are_case_insensitive_but_the_name_must_still_be_capitalised():
+    assert not any(h.startswith("role+name") for h in private_person_hits("the applicant is the council"))
+    assert not any(h.startswith("role+name") for h in private_person_hits("Applicant: the council"))
