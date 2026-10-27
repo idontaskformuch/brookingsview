@@ -21,6 +21,8 @@ Fullständig ursprungstext för äldre punkter: .claude/state-archive.md, rubrik
 
 ## Efter Glasgow-lansering (ägaren 2026-10-24; byggs först när ägaren säger go)
 
+- **Glasgow sport**: Sportmonks-adapter förberedd (.claude/specs/glasgow-sportmonks.md), byggs när ägaren lagt in SPORTMONKS_API_KEY. **Matchdagsguide Celtic Park och Ibrox** (avspark, resväg, avstängningar, tunnelbana) ur klubbarnas och Police Scotlands officiella reseråd (+ SPT för tunnelbana/tåg). Övriga lag (Glasgow Warriors, Clyde/Clan, Partick Thistle): utred källor först (officiella klubbsidor/ligor, villkor, robots). Inget byggs än.
+- **Frågekarta per stad** klar som rapport: .claude/question-map.md (50 frågor x 4 städer, topp 10 per stad). Sökvolym saknas: lägg in Search Console-export i .claude/gsc/<stad>-queries.csv. Inget byggs än.
 - **Tonight & weekend layer** (HÖG PRIO, efter Glasgow-lansering och Brookings AdSense-fixar; ägaren 2026-10-27). Spec: .claude/specs/weekend-layer.md (T1-T5 + skydd mot low value content). Inget byggs än.
 - **Public safety** (ej brott; efter Glasgow-lansering, MORENO-DELEN FÖRST pga brandsäsong: CAL FIRE + luftkvalitet; ägaren 2026-10-27). Spec: .claude/specs/public-safety.md. Inget byggs än.
 - **Veckolistor ny design** (/this-week, digest-sidor, alla städer) -- de ser platta ut. Inget byggs än. Ingen ny AI-text.
