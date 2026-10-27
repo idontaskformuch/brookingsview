@@ -240,6 +240,9 @@ export interface EventMeta {
   audience?: string;
   cost?: string;
   registration?: string;
+  /** Not model output: the source's own category (Glasgow Life channel, or "Kids & families" from its age text),
+   *  set by ai_pipeline/publish.py and shown as the card kicker instead of "Around Town". */
+  category?: string;
 }
 
 export interface Game {

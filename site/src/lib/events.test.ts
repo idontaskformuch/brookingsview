@@ -5,7 +5,7 @@ import {
   findCrossSourceMatch, eventPriceAgeLine,
   todayUtcMidnight, utcMidnight, localDateParts, artsEventAsStory, dayIndex, weekendAnchorOffset,
   buildWeekendSummary, buildEventSections, eventsAtVenue, selectWeekendNearby,
-  EVENT_SOURCES,
+  EVENT_SOURCES, selectBucketCandidates,
   type FeedItem, type EventSourceConfig,
 } from './events';
 import type { Story, SdsuEvent, Facility } from './db';
@@ -928,5 +928,17 @@ describe('artsEventAsStory', () => {
     expect(s.body).toBe('Live jazz on the quad.');
     expect(s.occurs_at).toBe('2026-08-07T20:00:00Z');
     expect(s.source_type).toBe('event');
+  });
+});
+
+describe('selectBucketCandidates -- recurring series', () => {
+  it('leaves series out of the Today lists (and so out of the header count)', () => {
+    const mk = (slug: string, series: boolean) => ({
+      sourceKind: 'story', occurs_at: '2026-10-27T12:00:00.000Z',
+      story: { slug, is_recurring_series: series, occurs_at: '2026-10-27T12:00:00.000Z', ends_at: null },
+    }) as unknown as FeedItem;
+    const today = new Date('2026-10-27T00:00:00.000Z');
+    const out = selectBucketCandidates([mk('one-off', false), mk('weekly', true)], today, 'Europe/London');
+    expect(out.map((i) => (i as { story: { slug: string } }).story.slug)).toEqual(['one-off']);
   });
 });

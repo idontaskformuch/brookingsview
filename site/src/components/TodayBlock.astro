@@ -230,6 +230,11 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
       and the two days after it; nothing is visible until the script runs. A
       bucket with no events stays hidden (no empty heading); when both are
       empty one quiet line links to What's On instead. */}
+  <div class="today-block__bucket" id="today-now" hidden>
+    <p class="today-block__section-label">Today</p>
+    <div data-bucket-body></div>
+  </div>
+
   <div class="today-block__bucket" id="today-tonight" hidden>
     <p class="today-block__section-label">Tonight</p>
     <div data-bucket-body></div>
@@ -239,7 +244,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
     <p class="today-block__section-label">Tomorrow</p>
     <div data-bucket-body></div>
   </div>
-  <p class="today-block__quiet" id="today-no-events" hidden>Nothing scheduled tonight or tomorrow. See <a href="/whats-on/">What's On</a> for what's coming up.</p>
+  <p class="today-block__quiet" id="today-no-events" hidden>Nothing scheduled today or tomorrow. See <a href="/whats-on/">What's On</a> for what's coming up.</p>
   <noscript>
     <p class="today-block__quiet">Turn on JavaScript to see tonight's and tomorrow's events, or <a href="/events/">browse all events</a>.</p>
   </noscript>

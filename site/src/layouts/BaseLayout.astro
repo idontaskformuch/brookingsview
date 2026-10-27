@@ -17,6 +17,7 @@
  * bär rubrikerna, grotesken är degraderad till kickers och metadata.
  */
 import { getSignData } from '../lib/db';
+import { getTodayInstants } from '../lib/today-instants';
 import { signGameText } from '../lib/sign-game';
 import { siteConfig, ALL_SITES } from '../lib/site-config';
 import { placeLabel, countryProfile } from '../lib/country-profile';
@@ -70,6 +71,8 @@ assertAccentContrast(siteConfig.townId, siteConfig.brand);
 assertStatusContrast();
 const accentColorDark = accentColor ? toDarkAccent(accentColor) : undefined;
 const sign = await getSignData();
+// "N events today" counts the same entries /today/ lists (lib/today-instants.ts), not its own query.
+const todayInstants = await getTodayInstants();
 const canonical = canonicalUrl
   ? new URL(canonicalUrl)
   : new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl);
@@ -650,9 +653,9 @@ main { padding-block: 1.75rem 3.5rem; }
       </span>
     )}
     {sign.alert && <span class="sign__item sign__item--alert" data-ends={sign.alertEndsAt ?? undefined}>{sign.alert}</span>}
-    {sign.todayEvents.length > 0 && (
+    {todayInstants.length > 0 && (
       <span class="sign__item" id="sign-events-today" hidden data-tz={siteConfig.timezone}
-        data-events={JSON.stringify(sign.todayEvents)}></span>
+        data-events={JSON.stringify(todayInstants)}></span>
     )}
     {sign.nextGame?.starts_at && (
       <span class="sign__item" data-ends={new Date(new Date(sign.nextGame.starts_at).getTime() + 3 * 3_600_000).toISOString()}>

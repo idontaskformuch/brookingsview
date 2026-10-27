@@ -95,7 +95,7 @@ export function hasEnded(e: TimedEvent, now: Date, timezone: string): boolean {
   return eventEndsAt(e, timezone).getTime() <= now.getTime();
 }
 
-export type DayBucket = 'tonight' | 'tomorrow' | null;
+export type DayBucket = 'today' | 'tonight' | 'tomorrow' | null;
 
 /** Which /today bucket an event belongs to RIGHT NOW. Ended events belong to
  *  none. "Tonight" = starts today (local) at/after 17:00. */
@@ -104,16 +104,15 @@ export function bucketOf(e: TimedEvent, now: Date, timezone: string): DayBucket 
   const start = new Date(e.start);
   const delta = localDayNumber(start, timezone) - localDayNumber(now, timezone);
   if (delta === 0 && localHourOf(start, timezone) >= TONIGHT_FROM_HOUR) return 'tonight';
+  if (delta === 0) return 'today';
   if (delta === 1) return 'tomorrow';
   return null;
 }
 
-/** Events on today's local calendar day that haven't ended yet ("N events
- *  today"). */
+/** "N events today" = exactly the entries /today/ lists under Today and Tonight right now (same bucketOf(), so the header
+ *  count and the list can never disagree; a test pins it). */
 export function countToday(events: TimedEvent[], now: Date, timezone: string): number {
-  const today = localDayNumber(now, timezone);
-  return events.filter((e) =>
-    localDayNumber(new Date(e.start), timezone) === today && !hasEnded(e, now, timezone)).length;
+  return events.filter((e) => { const b = bucketOf(e, now, timezone); return b === 'today' || b === 'tonight'; }).length;
 }
 
 export function countTonight(events: TimedEvent[], now: Date, timezone: string): number {

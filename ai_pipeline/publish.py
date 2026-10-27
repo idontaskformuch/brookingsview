@@ -1016,6 +1016,11 @@ def publish_table(
             ai_record, source_type, cfg,
             recent_openings=recent_openings_by_type.get(source_type),
         )
+        raw_for_category = row.get("raw_data")
+        site_category = raw_for_category.get("site_category") if source_type == "event" and isinstance(raw_for_category, dict) else None
+        if site_category and isinstance(result.meta, dict):
+            # The source's own category (Glasgow Life channel / age text), not model output: shown instead of "Around town".
+            result.meta = {**result.meta, "category": site_category}
         if result.meta is not None:
             # Keep this run's own baseline current so the 5th event
             # published in one run is judged against the 4 that just

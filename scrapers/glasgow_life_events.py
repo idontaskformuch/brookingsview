@@ -56,7 +56,7 @@ import json
 import re
 import time
 from datetime import date, datetime, timedelta
-from urllib.parse import urljoin
+from urllib.parse import parse_qs, urljoin, urlparse
 from zoneinfo import ZoneInfo
 
 import requests
@@ -69,6 +69,9 @@ BASE_URL = "https://www.glasgowlife.org.uk/"
 REQUEST_DELAY_SECONDS = 2.0
 _PAGE_SEPARATOR = b"\n--GLPAGE--\n"
 _DETAIL_MARKER = b"--GLDETAIL--\n"
+# The channel pages (?channel=Libraries ...) are the source's own categories. A first line tells the parser which one a page is.
+_CHANNEL_TAG = "<!--GLCHANNEL:%s-->\n"
+_CHANNEL_RE = re.compile(r"^<!--GLCHANNEL:(.*?)-->")
 MAX_DESCRIPTION_CHARS = 1200
 
 _MONTHS = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
@@ -89,7 +92,8 @@ def fetch_pages(source_cfg: dict, headers: dict) -> bytes | None:
         try:
             r = requests.get(url, headers=headers, timeout=30)
             r.raise_for_status()
-            pages.append(r.content)
+            channel = (parse_qs(urlparse(url).query).get("channel") or [""])[0]
+            pages.append((_CHANNEL_TAG % channel).encode("utf-8") + r.content if channel else r.content)
         except Exception as exc:  # noqa: BLE001 -- one channel page must not sink the others
             print(f"    [events:glasgow_life] fel vid hämtning av {url}: {exc}")
     if not pages:
@@ -267,8 +271,40 @@ def parse_date_text(text: str, tz: str) -> dict | None:
     return None
 
 
+# The source's channels -> what the site shows instead of "Around town" (owner 2026-10-27). Kids come from the source's
+# own age text, not a channel.
+CHANNEL_CATEGORY = {"Arts, Music and Culture": "Arts & music", "Communities": "Community", "Libraries": "Libraries",
+                    "Museums": "Museums", "Sport": "Sport & leisure"}
+_KIDS_WORDS = re.compile(r"\b(pre-?5|babies|baby|infants?|toddlers?|child(?:ren)?|kids?|famil(?:y|ies)|under[- ]?\d+s?)\b", re.IGNORECASE)
+
+
+def _is_kids_age(age: str | None) -> bool:
+    if not age:
+        return False
+    if _KIDS_WORDS.search(age):
+        return True
+    rng = re.search(r"(\d+)\s*[-–]\s*(\d+)", age)
+    if rng:
+        return int(rng[2]) <= 16
+    plus = re.search(r"(\d+)\s*\+", age)
+    return bool(plus) and int(plus[1]) <= 12
+
+
+def event_category(raw: dict) -> str | None:
+    """'Kids & families' when the source's age text says children, else the first known channel's label, else None."""
+    if _is_kids_age(raw.get("age")):
+        return "Kids & families"
+    for ch in raw.get("channels") or []:
+        if ch in CHANNEL_CATEGORY:
+            return CHANNEL_CATEGORY[ch]
+    return None
+
+
 def parse_listing(source_name: str, page: bytes, tz: str, details: dict | None = None) -> list[dict]:
-    soup = BeautifulSoup(page.decode("utf-8", errors="replace"), "html.parser")
+    text = page.decode("utf-8", errors="replace")
+    tag = _CHANNEL_RE.match(text)
+    channel = tag[1] if tag else None
+    soup = BeautifulSoup(text, "html.parser")
     records = []
     for art in soup.select("article.swiper-card"):
         link = art.select_one("a.card__link[href^='/event/']")
@@ -290,6 +326,8 @@ def parse_listing(source_name: str, page: bytes, tz: str, details: dict | None =
         href = link["href"]
         raw = {"uid": href, "date_text": metas[0], "kind": when["kind"],
                "category": label.get_text(" ", strip=True) if label else None}
+        if channel:
+            raw["channels"] = [channel]
         for k in ("until", "recurrence"):
             if k in when:
                 raw[k] = when[k]
@@ -391,12 +429,20 @@ def parse_pages(source_name: str, combined: bytes, tz: str, today: date | None =
                 print("    [events:glasgow_life] detaljavsnittet gick inte att läsa, hoppar över")
         else:
             pages.append(page)
-    seen: set[str] = set()
-    out: list[dict] = []
+    parsed: dict[str, dict] = {}
     for page in pages:
         for rec in parse_listing(source_name, page, tz, details):
-            if rec["raw_data"]["uid"] in seen:
-                continue
-            seen.add(rec["raw_data"]["uid"])
-            out.extend(expand_recurring(rec, tz, today))
+            uid = rec["raw_data"]["uid"]
+            if uid in parsed:
+                # the same event on several channel pages: keep the first record, collect every channel
+                have = parsed[uid]["raw_data"].setdefault("channels", [])
+                have.extend(c for c in rec["raw_data"].get("channels", []) if c not in have)
+            else:
+                parsed[uid] = rec
+    out: list[dict] = []
+    for rec in parsed.values():
+        cat = event_category(rec["raw_data"])
+        if cat:
+            rec["raw_data"]["site_category"] = cat
+        out.extend(expand_recurring(rec, tz, today))
     return out

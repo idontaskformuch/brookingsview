@@ -336,6 +336,9 @@ export function selectBucketCandidates(
   items: FeedItem[], today: Date, timezone: string, limit = 60,
 ): FeedItem[] {
   return items
+    // Recurring series have no real start time and are not "an event today": left out here AND in the header count,
+    // which is built from this same list (lib/today-instants.ts).
+    .filter((item) => !(item.sourceKind === 'story' && item.story.is_recurring_series))
     .filter((item) => item.occurs_at && dayIndex(item.occurs_at, today, timezone) >= 0
       && dayIndex(item.occurs_at, today, timezone) <= 2)
     .slice(0, limit);

@@ -260,3 +260,28 @@ def test_expanded_series_occurrences_keep_the_clock():
                         "date_text": "Every week on Tuesday from 2nd Jun 2026", "clock": [18, 0, 19, 30]}}
     occ = expand_recurring(rec, TZ, date(2026, 10, 23))
     assert occ and all("T18:00" in o["starts_at"] and "T19:30" in o["ends_at"] for o in occ)
+
+
+# ---- categories from the source's channels (owner 2026-10-27) -------------------------------------------------------
+from scrapers.glasgow_life_events import event_category  # noqa: E402
+
+
+def test_event_category_prefers_kids_from_the_source_age_text_then_the_channel():
+    assert event_category({"age": "Pre-5", "channels": ["Libraries"]}) == "Kids & families"
+    assert event_category({"age": "Children 3-12", "channels": ["Museums"]}) == "Kids & families"
+    assert event_category({"age": "5-11 years", "channels": ["Sport"]}) == "Kids & families"
+    assert event_category({"age": "16+ years", "channels": ["Libraries"]}) == "Libraries"
+    assert event_category({"age": "Adult", "channels": ["Arts, Music and Culture", "Libraries"]}) == "Arts & music"
+    assert event_category({"channels": ["Sport"]}) == "Sport & leisure"
+    assert event_category({"channels": []}) is None
+    assert event_category({"channels": ["Something new"]}) is None
+
+
+def test_channel_pages_tag_and_merge_into_one_record_per_event():
+    card = (b'<article class="swiper-card"><a class="card__link" href="/event/1/x">X</a>'
+            b'<div class="card__meta">Saturday 31st Oct 2026 11:00am</div><div class="card__meta">Venue</div></article>')
+    blob = card + b"\n--GLPAGE--\n<!--GLCHANNEL:Libraries-->\n" + card + b"\n--GLPAGE--\n<!--GLCHANNEL:Sport-->\n" + card
+    recs = parse_pages("glasgow_life", blob, TZ, today=date(2026, 10, 23))
+    assert len(recs) == 1
+    assert recs[0]["raw_data"]["channels"] == ["Libraries", "Sport"]
+    assert recs[0]["raw_data"]["site_category"] == "Libraries"

@@ -11,7 +11,7 @@ export function templateItems(tpl: { content: { children: ArrayLike<Element> } }
   return (Array.from(tpl.content.children) as HTMLLIElement[]).filter((el) => el.tagName === 'LI');
 }
 
-/** Fills #today-tonight / #today-tomorrow from #today-event-items, unhides the
+/** Fills #today-now / #today-tonight / #today-tomorrow from #today-event-items, unhides the
  *  buckets that have events, and shows #today-no-events only when both are
  *  empty. Returns the number of events shown. */
 export function fillTodayBuckets(doc: Document, now: Date = new Date()): number {
@@ -22,7 +22,7 @@ export function fillTodayBuckets(doc: Document, now: Date = new Date()): number 
     const ev: TimedEvent = { start: li.dataset.start || '', end: li.dataset.end || null };
     return { li, bucket: ev.start ? bucketOf(ev, now, tz) : null };
   });
-  const fill = (id: string, which: 'tonight' | 'tomorrow', limit: number): number => {
+  const fill = (id: string, which: 'today' | 'tonight' | 'tomorrow', limit: number): number => {
     const bucket = doc.getElementById(id);
     const body = bucket?.querySelector('[data-bucket-body]');
     if (!bucket || !body) return 0;
@@ -43,12 +43,12 @@ export function fillTodayBuckets(doc: Document, now: Date = new Date()): number 
     if (hits.length > limit) {
       const more = doc.createElement('p');
       more.className = 'today-block__more';
-      more.textContent = `+${hits.length - limit} more ${which === 'tonight' ? 'tonight' : 'tomorrow'}`;
+      more.textContent = `+${hits.length - limit} more ${which === 'today' ? 'today' : which === 'tonight' ? 'tonight' : 'tomorrow'}`;
       body.appendChild(more);
     }
     return hits.length;
   };
-  const shown = fill('today-tonight', 'tonight', 5) + fill('today-tomorrow', 'tomorrow', 3);
+  const shown = fill('today-now', 'today', 5) + fill('today-tonight', 'tonight', 5) + fill('today-tomorrow', 'tomorrow', 3);
   const none = doc.getElementById('today-no-events');
   if (none) none.hidden = shown > 0;
   return shown;

@@ -13,11 +13,14 @@
  *  "empty is the reassuring answer" case §4 calls out). */
 import type { SchoolAlert } from '../lib/db';
 import { EMPTY_STATES } from '../lib/empty-states';
+import { siteConfig } from '../lib/site-config';
 
 interface Props { alerts: SchoolAlert[]; }
 const { alerts } = Astro.props;
+// "Schools are open" is a claim, so it needs a source: a town with no closure source (Glasgow) renders nothing, not a reassurance (owner 2026-10-27).
+const hasSource = siteConfig.hasClosureWatch === true || alerts.length > 0;
 ---
-<section aria-label="School alerts" class="school-alerts">
+{hasSource && <section aria-label="School alerts" class="school-alerts">
   {alerts.length > 0 ? alerts.map((alert) => (
     <div class="school-alert">
       <p class="school-alert__meta"><span class="kicker">{alert.district}</span></p>
@@ -28,7 +31,7 @@ const { alerts } = Astro.props;
   )) : (
     <p class="school-alerts__empty">{EMPTY_STATES.schoolClosures}</p>
   )}
-</section>
+</section>}
 
 <style>
 .school-alerts { display: grid; gap: 0.75rem; margin-bottom: 1.25rem; }

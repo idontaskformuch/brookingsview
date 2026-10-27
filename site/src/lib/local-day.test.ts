@@ -12,7 +12,7 @@ describe('bucketOf', () => {
 
   it('puts a 7 PM CDT event tonight, a 3 PM one in none, tomorrow 10 AM tomorrow', () => {
     expect(bucketOf(ev('2026-10-21T00:00:00Z', '2026-10-21T02:00:00Z'), now, CHI)).toBe('tonight'); // 7 PM CDT
-    expect(bucketOf(ev('2026-10-20T20:00:00Z'), now, CHI)).toBeNull();                              // 3 PM CDT, before 17:00
+    expect(bucketOf(ev('2026-10-20T20:00:00Z'), now, CHI)).toBe('today');                           // 3 PM CDT, before 17:00, not ended
     expect(bucketOf(ev('2026-10-21T15:00:00Z'), now, CHI)).toBe('tomorrow');                        // 10 AM CDT Oct 21
     expect(bucketOf(ev('2026-10-22T15:00:00Z'), now, CHI)).toBeNull();
   });
@@ -30,7 +30,7 @@ describe('bucketOf', () => {
   });
 
   it('16:59 vs 17:00 local start decides tonight', () => {
-    expect(bucketOf(ev('2026-10-20T21:59:00Z', '2026-10-20T23:00:00Z'), now, CHI)).toBeNull();      // 4:59 PM
+    expect(bucketOf(ev('2026-10-20T21:59:00Z', '2026-10-20T23:00:00Z'), now, CHI)).toBe('today');   // 4:59 PM: Today, not Tonight
     expect(bucketOf(ev('2026-10-20T22:00:00Z', '2026-10-21T00:00:00Z'), now, CHI)).toBe('tonight'); // 5:00 PM
   });
 
@@ -39,7 +39,7 @@ describe('bucketOf', () => {
     const nextDay = ev('2026-10-21T15:00:00Z');                           // 10 AM Oct 21 CDT
     expect(bucketOf(lateEvent, at('2026-10-21T04:59:00Z'), CHI)).toBe('tonight'); // 11:59 PM Oct 20
     expect(bucketOf(nextDay, at('2026-10-21T04:59:00Z'), CHI)).toBe('tomorrow');
-    expect(bucketOf(nextDay, at('2026-10-21T05:01:00Z'), CHI)).toBeNull();        // 12:01 AM Oct 21: now today, before 17:00
+    expect(bucketOf(nextDay, at('2026-10-21T05:01:00Z'), CHI)).toBe('today');     // 12:01 AM Oct 21: now today, before 17:00
     expect(bucketOf(lateEvent, at('2026-10-21T05:01:00Z'), CHI)).toBeNull();      // started yesterday-local
   });
 
@@ -161,5 +161,25 @@ describe('localMidnightIso', () => {
     expect(localMidnightIso({ y: 2026, m: 10, d: 24 }, 'Europe/London')).toBe('2026-10-23T23:00:00.000Z');   // BST
     expect(localMidnightIso({ y: 2026, m: 10, d: 26 }, 'Europe/London')).toBe('2026-10-26T00:00:00.000Z');   // GMT after the 25th
     expect(localMidnightIso({ y: 2026, m: 11, d: 1 }, 'America/Chicago')).toBe('2026-11-01T05:00:00.000Z');  // fall-back day starts in CDT
+  });
+});
+
+describe('"N events today" and the Today list are the same set', () => {
+  const now = at('2026-10-20T19:25:00Z'); // 2:25 PM CDT
+  const events = [
+    { start: '2026-10-20T14:00:00Z', end: '2026-10-20T15:00:00Z' }, // ended
+    { start: '2026-10-20T18:00:00Z', end: '2026-10-20T21:00:00Z' }, // on now -> Today bucket
+    { start: '2026-10-20T20:00:00Z' },                              // 3 PM -> Today bucket
+    { start: '2026-10-20T05:00:00Z' },                              // all-day (midnight CDT), runs to midnight -> Today bucket
+    { start: '2026-10-21T00:00:00Z' },                              // 7 PM -> Tonight
+    { start: '2026-10-21T15:00:00Z' },                              // tomorrow
+  ];
+  it('countToday equals the entries bucketed today or tonight, at every minute of the day', () => {
+    for (let m = 0; m < 24 * 60; m += 53) {
+      const t = new Date(Date.parse('2026-10-20T05:00:00Z') + m * 60_000);
+      const listed = events.filter((e) => ['today', 'tonight'].includes(bucketOf(e, t, CHI) ?? '')).length;
+      expect(countToday(events, t, CHI)).toBe(listed);
+    }
+    expect(countToday(events, now, CHI)).toBe(4);
   });
 });
