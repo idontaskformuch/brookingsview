@@ -11,6 +11,7 @@
  * (väder, nästa match, råvarupriser -- tidningens väderruta och börstabell),
  * och därunder en spaltström avdelad med hårfina linjer.
  */
+import { withoutEnded } from '../lib/local-day';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
@@ -60,7 +61,7 @@ const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const isBroomfield = siteConfig.townId === 'broomfield_co';
 
-const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, worthKnowingCandidates, facilities, quickLinkEvents, quickLinkArtsEvents, quickLinkJobs, quickLinkNextMeeting] = await Promise.all([
+const [alerts, schoolAlerts, trafficIncidents, upcomingRaw, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, worthKnowingCandidates, facilities, quickLinkEvents, quickLinkArtsEvents, quickLinkJobs, quickLinkNextMeeting] = await Promise.all([
   getActiveAlerts(),
   getActiveSchoolAlerts(),
   getActiveTrafficIncidents(),
@@ -97,6 +98,9 @@ const [alerts, schoolAlerts, trafficIncidents, upcoming, games, nextRegionalGame
 // against the SAME predicates the real facet pages use (see the fetch
 // comment above for why this is its own feed, not a reuse of `upcoming`).
 const quickLinkDate = todayUtcMidnight(siteConfig.timezone);
+// The listing query keeps a 12 h grace window, so a page built in the evening led with this afternoon's finished events
+// (Glasgow Q3 2026-10-27: "this afternoon" at 19:12). Same build-time filter as /events/ and /today/.
+const upcoming = withoutEnded(upcomingRaw, new Date(), siteConfig.timezone);
 const { items: quickLinkFeed } = buildEventFeed(quickLinkEvents, quickLinkArtsEvents, siteConfig.timezone);
 const quickLinkContext: QuickLinkContext = {
   hasToday: quickLinkFeed.some((i) => isToday(i, quickLinkDate, siteConfig.timezone)),

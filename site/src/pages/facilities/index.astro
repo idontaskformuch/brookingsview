@@ -44,6 +44,9 @@ const categoryOrder = [
 const categories = [...byCategory.keys()].sort(
   (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b)
 );
+// Only the kinds this town actually lists (Glasgow has no parks or city hall here; the old fixed sentence promised them).
+const kindLabels = categories.map((c) => (FACILITY_CATEGORY_LABELS[c] ?? c).toLowerCase());
+const placeKinds = kindLabels.length > 1 ? `${kindLabels.slice(0, -1).join(', ')} and ${kindLabels[kindLabels.length - 1]}` : kindLabels[0] ?? '';
 
 const canonicalUrl = new URL('/facilities/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
@@ -56,7 +59,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>Libraries, parks, city hall and other public places in {siteConfig.cityName}, with
+    <p>Public places in {siteConfig.cityName}{placeKinds ? ` (${placeKinds})` : ''}, with
     the address and whether it is open right now. Open a place for its phone number, full hours
     and how to get there. Every fact is checked against the facility's own official page, and
     each place page shows the date it was last confirmed, so you know how current it is.</p>

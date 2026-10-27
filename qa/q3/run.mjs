@@ -99,16 +99,26 @@ async function newContext(browser, { theme, tz, base, origin }) {
 
 /** Runs inside the page: facts the checks and the reviewer need. */
 function probe() {
+  // Drop from the clone every element the browser does not show (hidden attribute, display:none / visibility:hidden), e.g. the
+  // "no warnings" line and the gated contact form. textContent otherwise hands the reviewer text no visitor sees, and it reported
+  // contradictions that do not exist (2026-10-27: /weather/ "none in force" next to a live warning, /contact/ "form missing").
+  const dropInvisible = (orig, clone) => {
+    const a = [orig, ...orig.querySelectorAll('*')], b = [clone, ...clone.querySelectorAll('*')];
+    a.forEach((e, i) => { if (i) { const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden') b[i].setAttribute('data-q3-drop', ''); } });
+    clone.querySelectorAll('[data-q3-drop]').forEach((e) => e.remove());
+  };
   // textContent of a clone without script/style: innerText would apply CSS text-transform (kickers come out ALL CAPS)
   const txt = (el) => {
     if (!el) return '';
     const c = el.cloneNode(true);
+    dropInvisible(el, c);
     c.querySelectorAll('script, style, noscript, template, svg').forEach((e) => e.remove());
     return (c.textContent || '').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
   };
   const main = document.querySelector('main') || document.body;
   const shell = (() => {
     const c = document.body.cloneNode(true);
+    dropInvisible(document.body, c);
     c.querySelectorAll('main, script, style, noscript, template, svg').forEach((e) => e.remove());
     return (c.textContent || '').replace(/\s+/g, ' ').trim();
   })();
