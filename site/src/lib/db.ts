@@ -2814,16 +2814,22 @@ export function formatTime(value: string | null): string {
   });
 }
 
-/** What a midnight start with no end is called. Glasgow Life gives a date and no time for many listings, so on the
- *  UK site that is "Time TBC" (the US sources' midnight starts are real all-day items). */
+/** What a midnight start with no end is called. Glasgow Life gives a date and no time for some listings (after its detail
+ *  pages have been read), and on the UK site the list then shows the day only, never "TBC" or "All day" (owner 2026-10-27;
+ *  the event page says "Time not listed"). The US sources' midnight starts are real all-day items. */
 export function allDayWord(): string {
-  return siteConfig.country === 'gb' ? 'Time TBC' : 'All day';
+  return siteConfig.country === 'gb' ? '' : 'All day';
+}
+
+/** "6pm" for a series occurrence with a real clock time, '' for a date-only one (midnight with no end). */
+export function seriesClockText(occursAt: string): string {
+  return isAllDay({ start: new Date(occursAt).toISOString(), end: null }, TZ) ? '' : formatTime(occursAt);
 }
 
 export function formatDateTime(value: string | null, endsAt?: string | null): string {
   if (!value) return '';
   if (isAllDay({ start: new Date(value).toISOString(), end: endsAt ? new Date(endsAt).toISOString() : null }, TZ)) {
-    return `${formatDate(value)} · ${allDayWord()}`;
+    return allDayWord() ? `${formatDate(value)} · ${allDayWord()}` : formatDate(value);
   }
   return `${formatDate(value)} at ${formatTime(value)}`;
 }
@@ -2938,7 +2944,7 @@ export function formatMeetingDate(value: string | Date | null): string {
 export function formatOccursAt(story: Pick<Story, 'source_type' | 'occurs_at'> & { ends_at?: string | null; is_recurring_series?: boolean; meta?: { recurrence?: string } | null }): string {
   if (!story.occurs_at) return '';
   if (siteConfig.country === 'gb' && story.source_type === 'event' && story.is_recurring_series) {
-    return seriesKicker(story.meta?.recurrence, story.occurs_at, TZ);
+    return seriesKicker(story.meta?.recurrence, story.occurs_at, TZ, seriesClockText(story.occurs_at));
   }
   if (story.source_type === 'meeting' || story.source_type === 'meeting_followup') return formatMeetingDate(story.occurs_at);
   return formatDateTime(story.occurs_at, story.ends_at);

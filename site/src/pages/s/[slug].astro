@@ -9,7 +9,7 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Byline from '../../components/Byline.astro';
 import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
 import {
-  getAllStories, getRelatedStories, formatOccursAt, formatDate, formatTime, formatMeetingDate, formatDateTime, titleTagForStory, CATEGORY_LABELS, CATEGORY_HREFS,
+  getAllStories, getRelatedStories, formatOccursAt, formatDate, formatTime, formatMeetingDate, formatDateTime, seriesClockText, titleTagForStory, CATEGORY_LABELS, CATEGORY_HREFS,
   getWorkerPulseComments, getFacilities, buildVenueIndex, resolveVenue, getProjectForMeetingId,
   isSandboxUrl, getUpcomingStories, getAllWeeklyStories, getUpcomingArtsEvents, getMeetingDecisions, getProjectForMatterId,
 } from '../../lib/db';
@@ -32,7 +32,7 @@ import { resolveImage, contentTrackCropPaths } from '../../lib/images';
 import { categoryImagesFor } from '../../config/category-images';
 import ImageAttribution from '../../components/ImageAttribution.astro';
 import { shouldNoindexStory, THIN_SCRAPED_SOURCE_TYPES } from '../../lib/noindex';
-import { hasEnded } from '../../lib/local-day';
+import { hasEnded, isAllDay } from '../../lib/local-day';
 import { canonicalUrlForStory } from '../../lib/cross-site-canonical';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 import { publicSlug, storyHref } from '../../lib/content-slugs';
@@ -171,7 +171,8 @@ const ukFacts = siteConfig.country === 'gb' && (isEvent || story.source_type ===
       whenText: story.source_type === 'meeting'
         ? `${formatMeetingDate(story.occurs_at)}${siteConfig.meetingsHaveTime && formatTime(story.occurs_at) ? ` at ${formatTime(story.occurs_at)}` : ''}`
         : story.is_recurring_series ? '' : formatDateTime(story.occurs_at, story.ends_at),
-      timeUnknown: !!story.is_recurring_series,
+      timeUnknown: isEvent && isAllDay({ start: new Date(story.occurs_at).toISOString(), end: story.ends_at ? new Date(story.ends_at).toISOString() : null }, siteConfig.timezone),
+      seriesTime: story.is_recurring_series ? seriesClockText(story.occurs_at) : undefined,
     })
   : [];
 // QA finding #1 (2026-10), owner-approved fix: see meetingOutcomesBanner()'s

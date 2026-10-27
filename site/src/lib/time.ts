@@ -158,7 +158,7 @@ export function dayTimeKicker(date: Date | string, timeZone: string, endsAt?: Da
   const d = typeof date === 'string' ? new Date(date) : date;
   const { hour, minute } = zonedParts(d, timeZone);
   const day = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(d);
-  if (allDayOf(d, endsAt, timeZone)) return `${day} · ${allDayLabel}`;
+  if (allDayOf(d, endsAt, timeZone)) return allDayLabel ? `${day} · ${allDayLabel}` : day;
   const period = hour < 12 ? 'AM' : 'PM';
   const hour12 = hour % 12 || 12;
   const clock = minute === 0 ? `${hour12} ${period}` : `${hour12}:${String(minute).padStart(2, '0')} ${period}`;
@@ -168,16 +168,17 @@ export function dayTimeKicker(date: Date | string, timeZone: string, endsAt?: Da
 /** Kicker for a recurring series ("Weekly · Wed"): its stored start is only the NEXT occurrence's date, never a real
  *  time, so no clock time is claimed. `recurrence` is the source's own text ("Every week on Tuesday"); anything not
  *  recognised reads "Regular". */
-export function seriesKicker(recurrence: string | null | undefined, date: Date | string, timeZone: string): string {
+export function seriesKicker(recurrence: string | null | undefined, date: Date | string, timeZone: string, timeText = ''): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   const day = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(d);
+  const at = timeText ? ` ${timeText}` : '';
   const r = (recurrence ?? '').toLowerCase();
   const n = r.match(/every\s+(\d+)\s+weeks?/);
-  if (n) return `Every ${n[1]} weeks · ${day}`;
-  if (/every\s+week|weekly/.test(r)) return `Weekly · ${day}`;
-  if (/every\s+day|daily/.test(r)) return 'Daily';
-  if (/month/.test(r)) return `Monthly · ${day}`;
-  return `Regular · ${day}`;
+  if (n) return `Every ${n[1]} weeks · ${day}${at}`;
+  if (/every\s+week|weekly/.test(r)) return `Weekly · ${day}${at}`;
+  if (/every\s+day|daily/.test(r)) return `Daily${at}`;
+  if (/month/.test(r)) return `Monthly · ${day}${at}`;
+  return `Regular · ${day}${at}`;
 }
 
 /** Item D2: whether a single event instance is over, for the detail page's

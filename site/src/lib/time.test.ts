@@ -276,12 +276,13 @@ describe('seriesKicker', () => {
     expect(seriesKicker('Every day', tue, 'Europe/London')).toBe('Daily');
     expect(seriesKicker('Every month on the first Tuesday', tue, 'Europe/London')).toBe('Monthly · Tue');
     expect(seriesKicker(undefined, tue, 'Europe/London')).toBe('Regular · Tue');
+    expect(seriesKicker('Every week on Tuesday', tue, 'Europe/London', '6pm')).toBe('Weekly · Tue 6pm');
   });
 });
 
 describe('dayTimeKicker -- custom all-day label', () => {
   it('uses the label given for a midnight start with no end', () => {
-    expect(dayTimeKicker('2026-10-30T00:00:00.000Z', 'Europe/London', null, 'Time TBC')).toBe('Fri · Time TBC');
+    expect(dayTimeKicker('2026-10-30T00:00:00.000Z', 'Europe/London', null, '')).toBe('Fri');
     expect(dayTimeKicker('2026-10-30T00:00:00.000Z', 'Europe/London')).toBe('Fri · All day');
   });
 });

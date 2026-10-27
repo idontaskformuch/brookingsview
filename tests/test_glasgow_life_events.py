@@ -151,9 +151,9 @@ from scrapers import glasgow_life_events as gle  # noqa: E402
 DETAIL = (Path(__file__).parent / "fixtures" / "glasgow_life_event_detail.html").read_bytes()
 
 
-def test_parse_detail_keeps_description_tickets_and_age_only():
+def test_parse_detail_keeps_description_tickets_and_age_and_times():
     d = gle.parse_detail(DETAIL)
-    assert set(d) == {"description", "tickets", "age"}
+    assert set(d) == {"description", "tickets", "age", "dates_times"}  # dates_times: the clock time, see detail_clock
     assert d["description"].startswith("Greater Govanhill presents MUMS")
     assert "maternal time" in d["description"]
     assert len(d["description"]) <= gle.MAX_DESCRIPTION_CHARS
@@ -225,3 +225,38 @@ def test_detail_pages_are_off_unless_the_source_config_asks(monkeypatch):
     monkeypatch.setattr(gle.time, "sleep", lambda s: None)
     blob = gle.fetch_pages({"urls": ["https://www.glasgowlife.org.uk/whats-on"]}, {})
     assert calls == ["https://www.glasgowlife.org.uk/whats-on"] and gle._DETAIL_MARKER not in blob
+
+
+# ---- clock time from the detail page's "Dates and times" (owner 2026-10-27) ----------------------------------------
+from scrapers.glasgow_life_events import apply_detail_clock, detail_clock, expand_recurring, parse_detail  # noqa: E402
+
+
+def test_detail_clock_reads_one_time_or_a_dashed_range_and_nothing_else():
+    assert detail_clock("Friday 30th - Saturday 31st Oct 2026 7:30pm") == ((19, 30), None)
+    assert detail_clock("Every week on Tuesday from 2nd Jun 2026 until 31st Dec 2026 6:00pm") == ((18, 0), None)
+    assert detail_clock("Saturday 31st Oct 2026 7:30pm - 9pm") == ((19, 30), (21, 0))
+    assert detail_clock("Saturday 31st Oct 2026 10am and 2pm") is None   # two sessions: not guessed
+    assert detail_clock("Saturday 31st Oct 2026") is None
+    assert detail_clock(None) is None
+
+
+def test_parse_detail_keeps_dates_and_times():
+    html = (b'<div class="event-details__item"><dt>Dates and times</dt><dd>Friday 30th Oct 2026 7:30pm</dd></div>'
+            b'<div class="event-details__item"><dt>Venue</dt><dd>Tramway</dd></div>')
+    assert parse_detail(html)["dates_times"] == "Friday 30th Oct 2026 7:30pm"
+
+
+def test_clock_goes_on_date_only_entries_only():
+    date_only = {"kind": "single", "starts_at": "2026-10-30T00:00:00+00:00", "ends_at": None}
+    out = apply_detail_clock(date_only, ((19, 30), (21, 0)), TZ)
+    assert out["starts_at"].startswith("2026-10-30T19:30") and out["ends_at"].startswith("2026-10-30T21:00")
+    timed = {"kind": "single", "starts_at": "2026-10-30T11:00:00+00:00", "ends_at": None}
+    assert apply_detail_clock(timed, ((19, 30), None), TZ) == timed
+
+
+def test_expanded_series_occurrences_keep_the_clock():
+    rec = {"starts_at": "2026-06-02T18:00:00+01:00", "ends_at": None, "source": "glasgow_life",
+           "raw_data": {"uid": "/event/1/x", "kind": "recurring", "recurrence": "Every week on Tuesday from 2nd Jun 2026",
+                        "date_text": "Every week on Tuesday from 2nd Jun 2026", "clock": [18, 0, 19, 30]}}
+    occ = expand_recurring(rec, TZ, date(2026, 10, 23))
+    assert occ and all("T18:00" in o["starts_at"] and "T19:30" in o["ends_at"] for o in occ)

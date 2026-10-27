@@ -12,8 +12,10 @@ interface FactsInput {
 interface FactsContext {
   /** Already formatted by the page: "Fri 30 October · Time TBC" / "Tue 27 October at 12:30pm". */
   whenText: string;
-  /** Series only: the clock time is unknown, say so. */
+  /** The source lists no clock time (date only): the page says so and links the original listing. */
   timeUnknown?: boolean;
+  /** Series with a real clock time ("6pm"): its own row, since whenText has only the cadence. */
+  seriesTime?: string;
 }
 
 const isUrl = (s: string | undefined): s is string => !!s && /^https?:\/\//i.test(s.trim());
@@ -42,13 +44,17 @@ export function storyFacts(story: FactsInput, ctx: FactsContext): FactRow[] {
   if (story.source_type === 'event') {
     if (story.is_recurring_series) {
       const rec = (m.recurrence ?? m.when ?? '').replace(/\s+from\s+\d.*$/i, '');
-      add('When', rec ? `${rec}${ctx.timeUnknown ? '. Start time to be confirmed.' : ''}` : ctx.whenText);
+      add('When', rec || ctx.whenText);
+      if (ctx.seriesTime && !ctx.timeUnknown) add('Time', ctx.seriesTime);
     } else {
       add('When', ctx.whenText);
       if (m.when && !ctx.whenText.includes(m.when)) add('Dates', m.when);
     }
     add('Where', [m.venue, m.address].filter(Boolean).join(', '));
     add('Cost', m.cost);
+    if (ctx.timeUnknown) {
+      rows.push({ label: 'Time', text: 'Time not listed, check with the venue.', href: story.source_url ?? undefined, linkText: 'Original listing' });
+    }
     if (isUrl(m.registration)) rows.push({ label: 'Book', text: 'Booking or details:', href: m.registration, linkText: 'Open the booking page' });
     else if (m.registration) add('Book', `${m.registration}. Use the link to the original listing below.`);
     return rows;

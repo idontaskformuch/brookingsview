@@ -3,7 +3,7 @@
  *  kort -- kortramar plattar ut hierarkin och får allt att se lika viktigt ut. */
 import DateBadge from './DateBadge.astro';
 import type { Story, Facility } from '../lib/db';
-import { formatDate, formatTime, formatMeetingDate, allDayWord, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
+import { formatDate, formatTime, formatMeetingDate, allDayWord, seriesClockText, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
 import ShareButtons from './ShareButtons.astro';
 import { siteConfig } from '../lib/site-config';
 import { categoryForSourceType, splitEventTitleAndVenue, buildNameAliasIndex, type ImageCategory } from '../lib/images';
@@ -159,7 +159,7 @@ const timeLabel = hasByline
         ? `${formatDate(when)}${formatTime(when) ? ` · ${formatTime(when)}` : ''}`
         : isEvent
           ? (siteConfig.country === 'gb' && story.is_recurring_series
-              ? seriesKicker(story.meta?.recurrence, when, siteConfig.timezone)
+              ? seriesKicker(story.meta?.recurrence, when, siteConfig.timezone, seriesClockText(when))
               : dayTimeKicker(when, siteConfig.timezone, story.ends_at, allDayWord()))
           : relativeTime(when, now, siteConfig.timezone, story.ends_at);
 // .toISOString(), not a raw passthrough of the source value: the DB driver

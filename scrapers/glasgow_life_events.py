@@ -38,12 +38,13 @@ A date text that matches none of these is skipped (logged), not stored.
 
 Date-only entries are stored as local midnight with no end (single) or with an
 end at the following local midnight after the last day (range), which the site
-already renders as "All day". Recurring entries used to store only the first date (a start in 2025 or
+renders as "Time not listed" (owner 2026-10-27) -- unless the event's detail page lists a
+time, which is then used (detail_clock(); several sessions or no time = left as date-only). Recurring entries used to store only the first date (a start in 2025 or
 earlier, so a whole series sat in the past and /events/ looked empty). Since
 2026-10-24 (owner) a recurring series is EXPANDED into its occurrences in the
 next EXPAND_DAYS days (30) -- "Every week on <weekday>" and "Every month on the
-<nth> <weekday>" -- one record per occurrence (date only: the listing gives no
-time for a series, so it renders as "All day"), each linking to the series page
+<nth> <weekday>" -- one record per occurrence (date only on the listing; the
+detail page's "Dates and times" gives the clock time when there is one, see detail_clock()), each linking to the series page
 and keeping the sentence in raw_data. A recurrence that matches neither shape is
 kept as the single first-date record, exactly as before. The window rolls forward
 with each daily run.
@@ -142,10 +143,44 @@ def parse_detail(page: bytes) -> dict:
         value = item.select_one("dd")
         if not label or not value:
             continue
-        key = {"tickets": "tickets", "age": "age"}.get(label.get_text(" ", strip=True).lower())
+        key = {"tickets": "tickets", "age": "age", "dates and times": "dates_times"}.get(label.get_text(" ", strip=True).lower())
         val = " ".join(value.get_text(" ", strip=True).split())[:200]
         if key and val and not is_suspicious(val):
             out[key] = val
+    return out
+
+
+def detail_clock(text: str | None) -> tuple[tuple[int, int], tuple[int, int] | None] | None:
+    """Start (and end) clock time from a detail page's "Dates and times" text, or None. One time = the start; two joined by a
+    dash = start and end; anything else (several sessions, no time) is left alone rather than guessed."""
+    if not text:
+        return None
+    found = [(m, _clock(m)) for m in _TIME_TOKEN.finditer(text)]
+    if any(c is None for _, c in found):
+        return None
+    times = [c for _, c in found]
+    if len(times) == 1:
+        return times[0], None
+    if len(times) == 2 and re.fullmatch(r"\s*[-–]\s*", text[found[0][0].end():found[1][0].start()]) and times[1] > times[0]:
+        return times[0], times[1]
+    return None
+
+
+def _at_local_midnight(iso_text: str) -> bool:
+    d = datetime.fromisoformat(iso_text)
+    return d.hour == 0 and d.minute == 0
+
+
+def apply_detail_clock(when: dict, clock, tz: str) -> dict:
+    """Put the detail page's start (and end) time on a date-only listing entry (single day, range or series start)."""
+    if not clock or not _at_local_midnight(when["starts_at"]):
+        return when
+    zone = ZoneInfo(tz)
+    d = datetime.fromisoformat(when["starts_at"]).date()
+    start, end = clock
+    out = {**when, "starts_at": datetime(d.year, d.month, d.day, *start, tzinfo=zone).isoformat()}
+    if when["kind"] == "single" and end:
+        out["ends_at"] = datetime(d.year, d.month, d.day, *end, tzinfo=zone).isoformat()
     return out
 
 
@@ -259,6 +294,10 @@ def parse_listing(source_name: str, page: bytes, tz: str, details: dict | None =
             if k in when:
                 raw[k] = when[k]
         raw.update((details or {}).get(href, {}))
+        clock = detail_clock(raw.get("dates_times"))
+        if clock:
+            when = apply_detail_clock(when, clock, tz)
+            raw["clock"] = [*clock[0], *(clock[1] or ())]
         records.append({
             "title": title,
             "starts_at": when["starts_at"],
@@ -320,6 +359,7 @@ def expand_recurring(rec: dict, tz: str, today: date) -> list[dict]:
     if raw.get("kind") != "recurring":
         return [rec]
     first = datetime.fromisoformat(rec["starts_at"]).date()
+    clock = raw.get("clock") or []
     until = date.fromisoformat(raw["until"]) if raw.get("until") else None
     days = occurrences(raw.get("recurrence") or raw["date_text"], first, until, today)
     if days is None:
@@ -328,8 +368,8 @@ def expand_recurring(rec: dict, tz: str, today: date) -> list[dict]:
     out = []
     for d in days:
         r = dict(rec)
-        r["starts_at"] = datetime(d.year, d.month, d.day, tzinfo=zone).isoformat()
-        r["ends_at"] = None
+        r["starts_at"] = datetime(d.year, d.month, d.day, *clock[:2], tzinfo=zone).isoformat()
+        r["ends_at"] = datetime(d.year, d.month, d.day, *clock[2:4], tzinfo=zone).isoformat() if len(clock) == 4 else None
         r["raw_data"] = {**raw, "kind": "recurring_occurrence", "series_uid": raw["uid"], "occurrence_date": d.isoformat()}
         r["content_hash"] = content_hash("events", rec["source"], raw["uid"], d.isoformat())
         out.append(r)

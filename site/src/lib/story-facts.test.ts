@@ -21,15 +21,21 @@ describe('storyFacts', () => {
       { source_type: 'event', is_recurring_series: true, meta: { recurrence: 'Every week on Thursday from 27th Nov 2025', venue: 'Kelvin Hall', cost: 'Free' } },
       { whenText: 'Weekly · Thu', timeUnknown: true },
     );
-    expect(rows[0].text).toBe('Every week on Thursday. Start time to be confirmed.');
-    expect(rows.map((r) => r.label)).toEqual(['When', 'Where', 'Cost']);
+    expect(rows[0].text).toBe('Every week on Thursday');
+    expect(rows.map((r) => r.label)).toEqual(['When', 'Where', 'Cost', 'Time']);
+    expect(rows[3]).toMatchObject({ text: 'Time not listed, check with the venue.' });
+    const timed = storyFacts({ source_type: 'event', is_recurring_series: true, meta: { recurrence: 'Every week on Tuesday' } }, { whenText: '', seriesTime: '6:00pm' });
+    expect(timed.map((r) => [r.label, r.text])).toEqual([['When', 'Every week on Tuesday'], ['Time', '6:00pm']]);
   });
   it('event: dates, venue, cost, non-URL booking text, nothing invented', () => {
     const rows = storyFacts(
       { source_type: 'event', meta: { when: '30 October to 1 November 2026', venue: 'Tramway', cost: '£18 / £12 concession', registration: 'Buy tickets now' } },
-      { whenText: 'Fri 30 October · Time TBC' },
+      { whenText: 'Fri 30 October', timeUnknown: true },
     );
-    expect(rows.map((r) => r.label)).toEqual(['When', 'Dates', 'Where', 'Cost', 'Book']);
+    expect(rows.map((r) => r.label)).toEqual(['When', 'Dates', 'Where', 'Cost', 'Time', 'Book']);
+    expect(rows[4].href).toBeUndefined();
+    const withLink = storyFacts({ source_type: 'event', source_url: 'https://x.example/e', meta: {} }, { whenText: 'Fri 30 October', timeUnknown: true });
+    expect(withLink.find((r) => r.label === 'Time')).toMatchObject({ href: 'https://x.example/e' });
     expect(storyFacts({ source_type: 'event', meta: null }, { whenText: '' })).toEqual([]);
   });
 });
