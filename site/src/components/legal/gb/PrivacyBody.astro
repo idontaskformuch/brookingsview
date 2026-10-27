@@ -10,47 +10,60 @@ import { siteConfig } from '../../../lib/site-config';
   <h1>Privacy</h1>
   <p><em>Last updated October 2026.</em></p>
 
-  <p>{siteConfig.siteName} is a simple website with no user accounts or logins. This page explains what
-  personal data we handle, why, and what your rights are under UK data protection law (the UK GDPR, the Data
-  Protection Act 2018 and the Privacy and Electronic Communications Regulations).</p>
+  <p>{siteConfig.siteName} is a simple website with no user accounts or logins.</p>
+  <p>This page explains what personal data we handle, why, and what your rights are under UK data protection law
+  (the UK GDPR, the Data Protection Act 2018 and the Privacy and Electronic Communications Regulations).</p>
 
   <h2>Who is responsible</h2>
-  <p>{siteConfig.siteName} is run by Claudio Fransson, an individual based in Sweden (see <a href="/about/">about</a>).
-  Claudio Fransson is the data controller: the controller decides how the data described here is used, and is the contact for anything on this page:
-  <a href={`mailto:${siteConfig.removalEmail}`}>{siteConfig.removalEmail}</a>.</p>
+  <p>{siteConfig.siteName} is run by Claudio Fransson, an individual based in Sweden (see <a href="/about/">about</a>).</p>
+  <p>Claudio Fransson is the data controller: the controller decides how the data described here is used.
+  For anything on this page, contact <a href={`mailto:${siteConfig.removalEmail}`}>{siteConfig.removalEmail}</a>.</p>
 
   <h2>What we collect, and why</h2>
-  <p><strong>Server logs.</strong> Our hosting provider, Cloudflare, keeps standard logs (such as IP address and
-  browser type) so the site can be delivered securely and reliably. Our lawful basis is legitimate interests:
-  keeping the site working and protecting it from abuse. See
+  <h3>Server logs</h3>
+  <p>Our hosting provider, Cloudflare, keeps standard logs (such as IP address and browser type) so the site can be
+  delivered securely and reliably.</p>
+  <p>Our lawful basis is legitimate interests: keeping the site working and protecting it from abuse. See
   <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">Cloudflare's privacy policy</a>.</p>
-  <p><strong>If you email us or use the contact form.</strong> We use your email address and message only to
-  reply to you. We do not add you to a mailing list or share your details. Our lawful basis is legitimate
-  interests (answering you); we keep correspondence only as long as we need it to deal with your request.</p>
-  <p><strong>Choices stored in your browser.</strong> Your browser's local storage may hold preferences such as
-  light or dark mode. These stay on your device and are not sent to us.</p>
+  <h3>If you email us or use the contact form</h3>
+  <p>We use your email address and message only to reply to you. We do not add you to a mailing list or share your details.</p>
+  <p>Our lawful basis is legitimate interests (answering you). We keep correspondence only as long as we need it to deal
+  with your request.</p>
+  <h3>Choices stored in your browser</h3>
+  <p>Your browser's local storage may hold preferences such as light or dark mode. These stay on your device and are not
+  sent to us.</p>
 
   <h2>Analytics and advertising</h2>
-  <p><strong>Analytics.</strong> We use Cloudflare Web Analytics to see how many pages are viewed and how fast
-  they load. It is cookie-free: it does not set cookies or build a profile of you, and it does not track you
-  between sites. Our lawful basis is legitimate interests: understanding how the site is used and keeping it
-  fast. See <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">Cloudflare's privacy policy</a>.</p>
-  <p><strong>Advertising.</strong> This site shows no advertising and sets no advertising cookies. If that ever
-  changes, or if we add any other analytics that uses cookies or tracks you, we will ask for your consent
+  <h3>Analytics</h3>
+  <p>We use Cloudflare Web Analytics to see how many pages are viewed and how fast they load.</p>
+  <p>It is cookie-free: it does not set cookies or build a profile of you, and it does not track you between sites.</p>
+  <p>Our lawful basis is legitimate interests: understanding how the site is used and keeping it fast. See
+  <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">Cloudflare's privacy policy</a>.</p>
+  <h3>Advertising</h3>
+  <p>This site shows no advertising and sets no advertising cookies.</p>
+  <p>If that ever changes, or if we add any other analytics that uses cookies or tracks you, we will ask for your consent
   <em>before</em> anything is set, make refusing as easy as accepting, and update this page and the
   <a href="/cookies/">cookies page</a> first.</p>
 
   <h2>Where data goes</h2>
-  <p>Our hosting and email providers may process data outside the UK, including in the United States. Where they
-  do, they rely on the safeguards UK law requires, such as the UK's approved transfer mechanisms.</p>
+  <p>Our hosting and email providers may process data outside the UK, including in the United States.</p>
+  <p>Where they do, they rely on the safeguards UK law requires, such as the UK's approved transfer mechanisms.</p>
 
   <h2>Your rights</h2>
-  <p>You can ask us to give you a copy of the personal data we hold about you, correct it, erase it, restrict how
-  we use it, or stop using it for legitimate interests, and you can ask for it in a portable format. Email
+  <p>You can ask us to:</p>
+  <ul>
+    <li>give you a copy of the personal data we hold about you</li>
+    <li>correct it</li>
+    <li>erase it</li>
+    <li>restrict how we use it</li>
+    <li>stop using it for legitimate interests</li>
+  </ul>
+  <p>You can also ask for it in a portable format. Email
   <a href={`mailto:${siteConfig.removalEmail}`}>{siteConfig.removalEmail}</a> and we will reply within one month.</p>
+  <h3>Complaints</h3>
   <p>If you are unhappy with how we handle your data, you have the right to complain to the Information
-  Commissioner's Office: <a href="https://ico.org.uk/make-a-complaint/" rel="noopener">ico.org.uk</a>. We would
-  appreciate the chance to put things right first.</p>
+  Commissioner's Office: <a href="https://ico.org.uk/make-a-complaint/" rel="noopener">ico.org.uk</a>.</p>
+  <p>We would appreciate the chance to put things right first.</p>
 
   <h2>Changes</h2>
   <p>If what we collect changes beyond what is described here, this page and the
@@ -62,5 +75,7 @@ import { siteConfig } from '../../../lib/site-config';
 <style>
 .prose { max-width: 36rem; }
 .prose h2 { margin-top: 2rem; margin-bottom: 0.5rem; }
+.prose h3 { margin: 1.25rem 0 0.35rem; font-size: 1rem; }
+.prose ul { margin: 0 0 1rem; padding-left: 1.25rem; }
 .prose p { margin: 0 0 1rem; }
 </style>

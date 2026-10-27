@@ -47,11 +47,11 @@ describe('splitParagraphs / warningName', () => {
 import { firstExpectation, moreWarningsText } from './met-warnings';
 
 describe('compact warning box helpers', () => {
-  it('shortens the first expectation at a word boundary and drops trailing punctuation', () => {
+  it('uses a whole point (never cut mid-sentence) and drops trailing punctuation', () => {
     expect(firstExpectation({ whatToExpect: ['Some damage to buildings and trees is likely.'] })).toBe('Some damage to buildings and trees is likely');
-    const long = firstExpectation({ whatToExpect: ['Injuries and danger to life are likely from flying debris and large waves around exposed coasts and bridges'] }, 60)!;
-    expect(long.endsWith('…')).toBe(true);
-    expect(long.length).toBeLessThanOrEqual(61);
+    const longFirst = 'Injuries and danger to life are likely from flying debris and large waves around exposed coasts and bridges';
+    expect(firstExpectation({ whatToExpect: [longFirst, 'Some roads may close.'] }, 60)).toBe('Some roads may close');
+    expect(firstExpectation({ whatToExpect: [longFirst] }, 60)).toBeNull();
     expect(firstExpectation({ whatToExpect: [] })).toBeNull();
   });
   it('summarises the other warnings, highest level first', () => {

@@ -3,13 +3,13 @@
  *  kort -- kortramar plattar ut hierarkin och får allt att se lika viktigt ut. */
 import DateBadge from './DateBadge.astro';
 import type { Story, Facility } from '../lib/db';
-import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
+import { formatDate, formatTime, formatMeetingDate, allDayWord, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
 import ShareButtons from './ShareButtons.astro';
 import { siteConfig } from '../lib/site-config';
 import { categoryForSourceType, splitEventTitleAndVenue, buildNameAliasIndex, type ImageCategory } from '../lib/images';
 import { eventPriceAgeLine, TOWN_EVENT_KICKER } from '../lib/events';
 import { SECTION_THEME } from '../lib/section-theme';
-import { relativeTime, dayTimeKicker } from '../lib/time';
+import { relativeTime, dayTimeKicker, seriesKicker } from '../lib/time';
 import { storyHref } from '../lib/content-slugs';
 import { teaser } from '../lib/teaser';
 
@@ -74,7 +74,15 @@ const href = hrefOverride ?? storyHref(story.slug);
 // Q3 calibration 2026-10-23: a list shows the START of the story (the detail page shows all of it), so a whole summary is not
 // printed twice. The cross-source note "Also listed by ..." (lib/events.ts withAttribution) is kept whole.
 const alsoListed = story.body.match(/^([\s\S]*?)\s*(Also listed by .+\.)$/);
-const listBody = alsoListed ? `${teaser(alsoListed[1])} ${alsoListed[2]}`.trim() : teaser(story.body);
+const listTeaser = alsoListed ? `${teaser(alsoListed[1])} ${alsoListed[2]}`.trim() : teaser(story.body);
+// UK site (owner 2026-10-27): when a short summary would be printed whole in the list AND on the detail page, the list shows
+// the practical facts from the source (place, cost) instead, so the detail page is never a repeat of the list text.
+const wholeTextInList = !alsoListed && listTeaser === story.body.replace(/\s+/g, ' ').trim();
+const listFacts = siteConfig.country === 'gb' && wholeTextInList
+  ? (story.source_type === 'event' ? [story.meta?.venue, story.meta?.cost] : story.source_type === 'meeting' ? [story.meta?.address] : [])
+      .filter(Boolean).join(' · ')
+  : '';
+const listBody = listFacts || listTeaser;
 const isExternal = Boolean(hrefOverride);
 const shareUrl = new URL(storyHref(story.slug), siteConfig.siteUrl).href;
 
@@ -150,7 +158,9 @@ const timeLabel = hasByline
       : isAlert
         ? `${formatDate(when)}${formatTime(when) ? ` · ${formatTime(when)}` : ''}`
         : isEvent
-          ? dayTimeKicker(when, siteConfig.timezone, story.ends_at)
+          ? (siteConfig.country === 'gb' && story.is_recurring_series
+              ? seriesKicker(story.meta?.recurrence, when, siteConfig.timezone)
+              : dayTimeKicker(when, siteConfig.timezone, story.ends_at, allDayWord()))
           : relativeTime(when, now, siteConfig.timezone, story.ends_at);
 // .toISOString(), not a raw passthrough of the source value: the DB driver
 // returns a real Date object for timestamptz columns at runtime despite

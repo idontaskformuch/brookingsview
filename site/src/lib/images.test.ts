@@ -947,3 +947,18 @@ describe('contentTrackCropPaths', () => {
     expect(contentTrackCropPaths('/assets/images/something.jpg')).toEqual([]);
   });
 });
+
+describe('resolveImage -- Glasgow landmark pools', () => {
+  const pool = { events: [{ path: EXISTING_IMAGE, alt: 'The Armadillo', width: 1200, height: 800 }], city_hall: [{ path: EXISTING_IMAGE, alt: 'City Chambers', width: 1200, height: 800 }] };
+  const opts = (town: string) => ({ town, cityName: 'Glasgow', facilities: [] as Facility[], categoryImages: pool });
+  const event: ResolvableStory = { title: 'Pub history handling session', source_type: 'event', image_path: null, image_alt: null, venue_raw: null };
+
+  it('gives a Glasgow event or meeting no hero from the landmark pool (owner 2026-10-27)', () => {
+    expect(resolveImage(event, opts('glasgow'))).toBeNull();
+    expect(resolveImage({ ...event, source_type: 'meeting' }, opts('glasgow'))).toBeNull();
+  });
+  it('still serves a section hero from the pool, and other towns are unchanged', () => {
+    expect(resolveImage(event, { ...opts('glasgow'), category: 'events' })?.alt).toBe('The Armadillo');
+    expect(resolveImage(event, opts('brookings_sd'))?.alt).toBe('The Armadillo');
+  });
+});

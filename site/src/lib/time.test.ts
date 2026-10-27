@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { relativeTime, dayTimeKicker, hasEventPassed } from './time';
+import { relativeTime, dayTimeKicker, hasEventPassed, seriesKicker } from './time';
 
 const LA = 'America/Los_Angeles';
 const CHI = 'America/Chicago';
@@ -265,5 +265,23 @@ describe('relativeTime for all-day items', () => {
   it('keeps the clock when the item has a real end or a real start time', () => {
     expect(relativeTime('2026-10-23T05:00:00Z', now, CHI, '2026-10-23T07:00:00Z')).toBe('tomorrow at 12am');
     expect(relativeTime('2026-10-23T19:30:00Z', now, CHI)).toBe('tomorrow at 2:30pm');
+  });
+});
+
+describe('seriesKicker', () => {
+  const tue = '2026-10-27T00:00:00.000Z';
+  it('names the cadence and the weekday and never a clock time', () => {
+    expect(seriesKicker('Every week on Tuesday', tue, 'Europe/London')).toBe('Weekly · Tue');
+    expect(seriesKicker('Every 2 weeks on Tuesday', tue, 'Europe/London')).toBe('Every 2 weeks · Tue');
+    expect(seriesKicker('Every day', tue, 'Europe/London')).toBe('Daily');
+    expect(seriesKicker('Every month on the first Tuesday', tue, 'Europe/London')).toBe('Monthly · Tue');
+    expect(seriesKicker(undefined, tue, 'Europe/London')).toBe('Regular · Tue');
+  });
+});
+
+describe('dayTimeKicker -- custom all-day label', () => {
+  it('uses the label given for a midnight start with no end', () => {
+    expect(dayTimeKicker('2026-10-30T00:00:00.000Z', 'Europe/London', null, 'Time TBC')).toBe('Fri · Time TBC');
+    expect(dayTimeKicker('2026-10-30T00:00:00.000Z', 'Europe/London')).toBe('Fri · All day');
   });
 });

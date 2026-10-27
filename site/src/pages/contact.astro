@@ -51,7 +51,7 @@ const formGated = siteConfig.country === 'gb';
 
     <h2>Missing an event?</h2>
     <p>If your {forCountry(siteConfig.country, 'organization', 'organisation')} runs public events in {siteConfig.cityName} and you'd like them
-    included, get in touch. {forCountry(siteConfig.country,
+    included, <a href={`mailto:${siteConfig.removalEmail}`}>get in touch</a>. {forCountry(siteConfig.country,
       `Right now the site covers the library, the city and county${isBrookings ? ', and SDSU athletics' : ''} — we're always looking to add more.`,
       "The site is still being set up and its sources are being added one by one — we're always looking to add more.")}</p>
   </article>

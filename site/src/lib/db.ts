@@ -29,7 +29,7 @@ import { computeClosureWatchState, type ClosureWatchStatus, type WeatherAlert } 
 import { SHARED_CONTENT_SOURCE_TYPES } from './cross-site-canonical';
 import { resolveCluster } from './clusters';
 import { storyHref } from './content-slugs';
-import { calendarDayDiff } from './time';
+import { calendarDayDiff, seriesKicker } from './time';
 import { isAllDay } from './local-day';
 import { ELECTION_BY_TOWN } from '../config/election';
 import { daysBetween, todayIn } from './election';
@@ -2735,6 +2735,7 @@ export async function getSignData(): Promise<SignData> {
        WHERE town_id = ${TOWN_ID}
          AND source_type = 'event'
          AND superseded_by_slug IS NULL
+         AND NOT COALESCE(is_recurring_series, false)
          AND occurs_at >= now() - interval '1 day'
          AND occurs_at < now() + interval '3 days'
     ` as unknown as Promise<{ occurs_at: string; ends_at: string | null }[]>,
@@ -2813,10 +2814,16 @@ export function formatTime(value: string | null): string {
   });
 }
 
+/** What a midnight start with no end is called. Glasgow Life gives a date and no time for many listings, so on the
+ *  UK site that is "Time TBC" (the US sources' midnight starts are real all-day items). */
+export function allDayWord(): string {
+  return siteConfig.country === 'gb' ? 'Time TBC' : 'All day';
+}
+
 export function formatDateTime(value: string | null, endsAt?: string | null): string {
   if (!value) return '';
   if (isAllDay({ start: new Date(value).toISOString(), end: endsAt ? new Date(endsAt).toISOString() : null }, TZ)) {
-    return `${formatDate(value)} · All day`;
+    return `${formatDate(value)} · ${allDayWord()}`;
   }
   return `${formatDate(value)} at ${formatTime(value)}`;
 }
@@ -2826,7 +2833,7 @@ export function formatDateTime(value: string | null, endsAt?: string | null): st
 export function formatTimeOrAllDay(start: string | null, end?: string | null): string {
   if (!start) return '';
   return isAllDay({ start: new Date(start).toISOString(), end: end ? new Date(end).toISOString() : null }, TZ)
-    ? 'All day' : formatTime(start);
+    ? allDayWord() : formatTime(start);
 }
 
 /** Husförsäljningspris -- "$350,000", inga decimaler (öre är aldrig relevant här). */
@@ -2928,8 +2935,11 @@ export function formatMeetingDate(value: string | Date | null): string {
 
 /** Rätt formatering av story.occurs_at givet KÄLLTYP -- enda stället den
  *  distinktionen behöver göras, så inget anropsställe kan glömma den. */
-export function formatOccursAt(story: Pick<Story, 'source_type' | 'occurs_at'> & { ends_at?: string | null }): string {
+export function formatOccursAt(story: Pick<Story, 'source_type' | 'occurs_at'> & { ends_at?: string | null; is_recurring_series?: boolean; meta?: { recurrence?: string } | null }): string {
   if (!story.occurs_at) return '';
+  if (siteConfig.country === 'gb' && story.source_type === 'event' && story.is_recurring_series) {
+    return seriesKicker(story.meta?.recurrence, story.occurs_at, TZ);
+  }
   if (story.source_type === 'meeting' || story.source_type === 'meeting_followup') return formatMeetingDate(story.occurs_at);
   return formatDateTime(story.occurs_at, story.ends_at);
 }

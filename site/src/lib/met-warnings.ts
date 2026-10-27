@@ -80,13 +80,14 @@ export function warningName(w: Pick<PublicWarning, 'level' | 'weatherTypes'>): s
   return `${levelLabel(w.level)} warning: ${weatherTypeText(w.weatherTypes)}`;
 }
 
-/** First "what to expect" point, shortened at a word boundary for the one-line box (null if the warning has none). */
-export function firstExpectation(w: Pick<PublicWarning, 'whatToExpect'>, max = 90): string | null {
-  const t = (w.whatToExpect[0] ?? '').replace(/\s+/g, ' ').trim().replace(/[.;:,]+$/, '');
-  if (!t) return null;
-  if (t.length <= max) return t;
-  const cut = t.slice(0, max).replace(/\s+\S*$/, '');
-  return `${cut}…`;
+/** A "what to expect" point for the one-line box, always a WHOLE point (owner 2026-10-27: never cut mid-sentence). The first
+ *  point is used when it fits in `max` characters, otherwise the shortest point that does; null when none fits or there are none. */
+export function firstExpectation(w: Pick<PublicWarning, 'whatToExpect'>, max = 160): string | null {
+  const points = w.whatToExpect.map((p) => p.replace(/\s+/g, ' ').trim().replace(/[.;:,]+$/, '')).filter(Boolean);
+  if (points.length === 0) return null;
+  if (points[0].length <= max) return points[0];
+  const fits = points.filter((p) => p.length <= max).sort((a, b) => a.length - b.length);
+  return fits[0] ?? null;
 }
 
 /** The warnings after the highest one, as "+1 yellow warning" / "+2 yellow warnings" / "+1 amber warning · +1 yellow warning"

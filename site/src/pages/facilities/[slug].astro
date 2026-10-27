@@ -103,7 +103,12 @@ const staleness = siteConfig.placeStaleness ?? { hoursDays: 45, addressPhoneDays
 const hoursStale = isPastStalenessThreshold(facility.verified_date, staleness.hoursDays, now);
 // The lede's hours come from the SAME place_hours rows as the table below (Q3 2026-10-23), so the first paragraph can never
 // contradict the table; hours_text is only the fallback when there are no structured rows.
-const lede = buildFacilityLede(facility.description, facility.address, facility.slug, facility.hours_text, facility.phone, summarizeHours(hours));
+// UK site (owner 2026-10-27): hours once (the table, plus the "open now" line), address and phone once (the facts below), so
+// the lede is just the description there. The US sites keep the address/hours/phone sentences their lede spec asks for.
+const isGb = siteConfig.country === 'gb';
+const lede = isGb
+  ? (facility.description || null)
+  : buildFacilityLede(facility.description, facility.address, facility.slug, facility.hours_text, facility.phone, summarizeHours(hours));
 // Handoff 5.2's own rule, carried over unchanged: "emitting stale hours as
 // schema is worse than emitting none." Staleness is a 45/180-DAY threshold
 // check, not an "is it open now" check -- still correct to compute at
@@ -313,7 +318,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
       </table>
     )}
 
-    {hours.length > 0 && facility.hours_text && facility.hours_text.length > 70 && (
+    {!isGb && hours.length > 0 && facility.hours_text && facility.hours_text.length > 70 && (
       <p class="hours-note">{facility.hours_text}</p>
     )}
 

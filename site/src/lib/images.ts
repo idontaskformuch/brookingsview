@@ -616,6 +616,9 @@ export function pickFromPoolByIndex<T>(
 // db.ts's resolveThisWeekImage(), which track REAL 60-day usage history per
 // town instead of this "exclude only last week's would-be pick" heuristic.
 
+/** Towns whose category pools hold landmark photos only -- see resolveImage() tier 4. */
+const POOL_LANDMARKS_ONLY_TOWNS = new Set(['glasgow']);
+
 /** The single entry point every rendering surface should call. Never
  *  fabricates a return value -- step 4 (null) is a normal, expected
  *  outcome, not a failure. */
@@ -687,7 +690,12 @@ export function resolveImage(story: ResolvableStory & { slug?: string }, options
   // script's next run, or predating this feature) falls back to the
   // original stable per-item hash pick (pickFromPool()) -- either way
   // deterministic, never random, never imageless while waiting.
-  const category = options.category ?? categoryForSourceType(story.source_type);
+  // Glasgow's pools are photos of specific landmarks (Kelvingrove, the Armadillo, City Chambers), so a pool pick on a single
+  // event or meeting is a photo of somewhere unrelated to it (owner 2026-10-27: "never an unrelated pool image"). Those
+  // stories get a venue image (tier 3) or no hero; section/hub heroes (options.category set) still use the pool.
+  const poolIsLandmarksOnly = POOL_LANDMARKS_ONLY_TOWNS.has(options.town) && options.category == null
+    && (story.source_type === 'event' || story.source_type === 'meeting' || story.source_type === 'meeting_followup');
+  const category = poolIsLandmarksOnly ? null : (options.category ?? categoryForSourceType(story.source_type));
   if (category) {
     const pool = options.categoryImages[category];
     if (pool && pool.length > 0) {

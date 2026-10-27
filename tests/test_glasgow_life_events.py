@@ -81,7 +81,7 @@ def test_unparseable_date_text_is_none(text):
 
 
 def test_venue_and_category_are_kept_and_duplicates_across_pages_collapse():
-    recs = parse_pages("glasgow_life", PAGE + b"\n--GLPAGE--\n" + PAGE, TZ)
+    recs = parse_pages("glasgow_life", PAGE + b"\n--GLPAGE--\n" + PAGE, TZ, today=date(2026, 10, 23))  # fixed clock: the fixture is a Fri 23 Oct snapshot
     # still 41 distinct events (a recurring one now contributes one record per upcoming date)
     assert len({r['raw_data']['uid'] for r in recs}) == 41
     agatha = next(r for r in recs if "agatha-christie" in r["url"])

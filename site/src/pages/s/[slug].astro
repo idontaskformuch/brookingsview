@@ -9,11 +9,12 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Byline from '../../components/Byline.astro';
 import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
 import {
-  getAllStories, getRelatedStories, formatOccursAt, formatDate, titleTagForStory, CATEGORY_LABELS, CATEGORY_HREFS,
+  getAllStories, getRelatedStories, formatOccursAt, formatDate, formatTime, formatMeetingDate, formatDateTime, titleTagForStory, CATEGORY_LABELS, CATEGORY_HREFS,
   getWorkerPulseComments, getFacilities, buildVenueIndex, resolveVenue, getProjectForMeetingId,
   isSandboxUrl, getUpcomingStories, getAllWeeklyStories, getUpcomingArtsEvents, getMeetingDecisions, getProjectForMatterId,
 } from '../../lib/db';
 import type { Story, Facility } from '../../lib/db';
+import { storyFacts } from '../../lib/story-facts';
 import { recentWeekSlugs, currentWeekInfo, weekInfoForInstant } from '../../lib/this-week';
 import {
   partitionDecisions, splitOnAgenda, voteTallyText, motionLabel, consentNote, outcomeLabel,
@@ -163,6 +164,16 @@ const coveringMonth = isHomeSalesDigest && story.occurs_at
 const when = hasByline
   ? (coveringMonth ? `Covering ${coveringMonth}` : null)
   : (formatOccursAt(story) || null);
+// UK site (owner 2026-10-27): when/where/cost/how-to-take-part from the source's own fields, so the page adds what the list
+// does not say. A series has no real start time, only the next date.
+const ukFacts = siteConfig.country === 'gb' && (isEvent || story.source_type === 'meeting') && story.occurs_at
+  ? storyFacts(story, {
+      whenText: story.source_type === 'meeting'
+        ? `${formatMeetingDate(story.occurs_at)}${siteConfig.meetingsHaveTime && formatTime(story.occurs_at) ? ` at ${formatTime(story.occurs_at)}` : ''}`
+        : story.is_recurring_series ? '' : formatDateTime(story.occurs_at, story.ends_at),
+      timeUnknown: !!story.is_recurring_series,
+    })
+  : [];
 // QA finding #1 (2026-10), owner-approved fix: see meetingOutcomesBanner()'s
 // own doc comment. `when` is reused as the date text (already formatMeetingDate()
 // for a meeting row) so the banner's date can never drift from the one
@@ -474,6 +485,17 @@ const eventJsonLdObject = buildEventJsonLd(
       {displayBody.split('\n').filter(Boolean).map((para) => <p>{para}</p>)}
     </div>
 
+    {ukFacts.length > 0 && (
+      <dl class="story__facts">
+        {ukFacts.map((row) => (
+          <div class="story__fact">
+            <dt>{row.label}</dt>
+            <dd>{row.text}{row.href && <> <a href={row.href} rel="noopener">{row.linkText ?? 'Link'}</a></>}</dd>
+          </div>
+        ))}
+      </dl>
+    )}
+
     {digestGroups.length > 0 && <WeekGroupList groups={digestGroups} idPrefix="ud" />}
 
     {mentionedZips.length > 0 && (
@@ -508,7 +530,7 @@ const eventJsonLdObject = buildEventJsonLd(
       </p>
     )}
 
-    {priceAge && <p class="story__price-age data">{priceAge}</p>}
+    {priceAge && !ukFacts.some((r) => r.label === 'Cost') && <p class="story__price-age data">{priceAge}</p>}
 
     {story.ingredients && story.ingredients.length > 0 && (
       <>
@@ -834,6 +856,10 @@ const eventJsonLdObject = buildEventJsonLd(
 .story__body { margin-top: 1.75rem; font-size: 1.125rem; max-width: 68ch; }
 .story__body p { margin: 0 0 1rem; }
 .story__zip-links { color: var(--ink-soft); font-size: 0.875rem; margin: -0.5rem 0 1.25rem; }
+.story__facts { margin: 1.25rem 0; padding: 0; border-top: 1px solid var(--rule); }
+.story__fact { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid var(--rule); }
+.story__fact dt { font-family: var(--font-ui); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.story__fact dd { margin: 0; overflow-wrap: anywhere; }
 .story__venue-link { color: var(--ink-soft); font-size: 0.875rem; margin: -0.5rem 0 1.25rem; }
 .story__price-age { color: var(--ink-soft); font-size: 0.875rem; margin: -0.5rem 0 1.25rem; }
 .story__theaters { margin: 1.75rem 0; }
