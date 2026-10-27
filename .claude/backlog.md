@@ -21,6 +21,8 @@ Fullständig ursprungstext för äldre punkter: .claude/state-archive.md, rubrik
 
 ## Efter Glasgow-lansering (ägaren 2026-10-24; byggs först när ägaren säger go)
 
+- **Tonight & weekend layer** (HÖG PRIO, efter Glasgow-lansering och Brookings AdSense-fixar; ägaren 2026-10-27). Spec: .claude/specs/weekend-layer.md (T1-T5 + skydd mot low value content). Inget byggs än.
+- **Public safety** (ej brott; efter Glasgow-lansering, MORENO-DELEN FÖRST pga brandsäsong: CAL FIRE + luftkvalitet; ägaren 2026-10-27). Spec: .claude/specs/public-safety.md. Inget byggs än.
 - **Veckolistor ny design** (/this-week, digest-sidor, alla städer) -- de ser platta ut. Inget byggs än. Ingen ny AI-text.
   - Highlights: 3-4 kort överst (top_events/rank, datumbricka, kategoribild).
   - Kompakta rader: tid i vänsterkolumn, fet titel, plats under, pil i stället för understruken länk.
