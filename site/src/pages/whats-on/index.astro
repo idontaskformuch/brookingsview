@@ -128,9 +128,16 @@ const pageMeta = resolvePageMeta('whats-on', siteConfig);
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>Concerts, theater and touring shows within {radiusMiles ?? 75} miles of {siteConfig.cityName},
-    {siteConfig.stateName} — including nearby regional venues. Every listing shows how far it actually is,
-    so a regional show never reads as a downtown event. Powered by Ticketmaster.</p>
+    {siteConfig.country === 'gb' ? (
+      // Q3 live 2026-10-28: "every listing shows how far" contradicted the rows that just say "In Glasgow".
+      <p>Concerts, theatre and touring shows within {radiusMiles ?? 75} miles of {siteConfig.cityName}.
+      Shows outside the city say how far away they are, so a regional show never reads as a city-centre one;
+      the rest say "In {siteConfig.cityName}". Powered by Ticketmaster.</p>
+    ) : (
+      <p>Concerts, theater and touring shows within {radiusMiles ?? 75} miles of {siteConfig.cityName},
+      {siteConfig.stateName} — including nearby regional venues. Every listing shows how far it actually is,
+      so a regional show never reads as a downtown event. Powered by Ticketmaster.</p>
+    )}
     {/* Front-page orientation pass, Phase 4: "a first-time reader can't
         tell Events and What's On apart" -- only one goes in primary nav
         per town, this line points to whichever one doesn't. */}

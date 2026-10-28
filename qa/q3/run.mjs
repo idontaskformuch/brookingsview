@@ -142,8 +142,8 @@ function probe() {
   }));
   // dated items, except those under a heading that says they are past on purpose ("Recently", "Past events", "Earlier weeks")
   const PAST_SECTION = /recent|past|earlier|archive|last week|ago/i;
-  // the heading an element sits under = the last heading before it in document order (a SectionRule is a sibling label, not a wrapping <section>)
-  const heads = [...main.querySelectorAll('.sec__label, h2, h3')];
+  // the heading an element sits under = the last heading before it in document order (a SectionRule is a sibling label, not a wrapping <section>); an item's own title (h3 inside an article) is not a section heading, it made every row under "Recently" look upcoming
+  const heads = [...main.querySelectorAll('.sec__label, h2, h3:not(article h3)')];
   const headingOf = (e) => { let last = null; for (const h of heads) { if (h.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING) last = h; else break; } return last; };
   const times = [...main.querySelectorAll('time[datetime], [data-start]')]
     .filter((e) => { const h = headingOf(e); return !(h && PAST_SECTION.test(h.textContent || '')); })
