@@ -29,6 +29,16 @@ Mål: sajten svarar på "vad ska vi göra ikväll?" och "vad gör vi i helgen?".
 ## Fas T5: Mat och dryck som data
 - /food-drink/ med verifierbara filter: open late tonight, live music this weekend, new in town, hygienbetyg (Glasgow FSA/FHIS; US-länens inspektioner där datan är öppen).
 - Inga AI-omdömen om mat, stämning eller kvalitet. Ställessidor bara med eget innehåll, annars noindex.
+TILLÄGG (ägaren 2026-10-28): tre NAVSIDOR per stad, var och en svarar på EN fråga från en invånare:
+- /food-drink/happy-hour/ -- "När är det happy hour och vad ingår?" (dagar, tider, vad som ingår).
+- /food-drink/open-late/ -- "Var kan jag äta efter 22?" (kök som serverar efter 22).
+- /food-drink/coffee/ -- "Vart går jag för kaffe nära campus/centrum, och går det att sitta och jobba?" (öppettider, läge nära campus/centrum, uteservering, wifi, studieplats ur OSM-taggar: opening_hours, outdoor_seating, internet_access, osv).
+Regler för navsidorna:
+- Inga AI-omdömen och inget "best" som inte går att belägga. Rubriker efter vad sidan faktiskt visar ("Happy hour i Glasgow: dagar och tider"), inte efter värderingar.
+- Källor: ställenas egna sidor/menyer och OpenStreetMap. ALDRIG Google Maps eller Yelp.
+- Varje rad bär "checked <datum>" och källänk. En rad som inte bekräftats på 30 dagar tas bort (inte "visas med gammalt datum").
+- Samma tröskel per stad som /tonight (minst 10 aktuella poster i minst 3 grupper) innan sidan indexeras; under tröskeln noindex och ur sitemap.
+- Mät efter lansering: visningar och klick per navsida i Search Console (ägaren exporterar till .claude/gsc/).
 
 ## T1-utredning (omgång 2a, ägaren 2026-10-28): ren utredning, inget skrivande mot live-DB, ingen kod utöver testskript
 Per stad (Glasgow, Brookings, Moreno Valley, Broomfield) rapporteras, ingenting byggs:
@@ -40,6 +50,7 @@ Per stad (Glasgow, Brookings, Moreno Valley, Broomfield) rapporteras, ingenting 
 6. TILLÄGG: föreslå ett KURATERAT REGISTER på 15-30 ställen per stad (inte hela OSM), med källa och hur ofta varje ställe uppdaterar.
 7. TILLÄGG: ange per stad vilken RADIE (miles/körtid) som ger tillräckligt innehåll: Brookings -> Sioux Falls, Broomfield -> Boulder/Denver, Moreno Valley -> Riverside/Temecula.
 8. TILLÄGG: bedöm hur stor ANDEL av ställena som bara använder Facebook/Instagram (ingen skrapning där, se Fas T1) och föreslå om en "Add your event"-sida med moderering behövs som komplement. Bara förslag, inget byggs.
+10. TILLÄGG (ägaren 2026-10-28, för Fas T5): bedöm per stad (a) hur många ställen som publicerar HAPPY HOUR-tider, maskinläsbart (JSON-LD/schema.org specialOpeningHoursSpecification, iCal, RSS) respektive i löptext på sin egen sida/meny, och (b) hur många som har öppettider i OSM (opening_hours), särskilt kök/kaféer öppna efter 22 och kaféer med outdoor_seating / internet_access. Rapportera också om varje navsida (happy hour, open late, coffee) når tröskeln (minst 10 poster i minst 3 grupper) per stad. Bara utredning, ingenting byggs. Aldrig Google Maps eller Yelp som källa.
 9. Slutsats: vilka städer når tröskeln (minst 10 aktuella poster i minst 3 grupper) för /tonight. Rapportera, bygg inget.
 Arbetsmaterial 2026-10-28 (påbörjat, ej klart): Overpass-skript i sessionens scratchpad (t1_osm.py; overpass-api.de svarade 502 vid första försöket, försök igen/annan instans).
 
