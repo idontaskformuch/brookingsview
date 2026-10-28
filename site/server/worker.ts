@@ -33,6 +33,7 @@ import { resolveContentSlugRedirect } from './content-slug-redirects';
 import { resolvePlaceRedirect } from './place-redirects';
 import { withPrunedEventRedirect } from './pruned-events';
 import { handleAlerts } from './alerts';
+import { handleWeather } from './weather';
 import {
   type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug, previousIsoWeekSlug,
   resolveLegacyMeetingRedirect, resolveFacilityRedirect, resolveStaticGateRedirect,
@@ -107,6 +108,9 @@ export default {
     }
     if (request.method === 'GET' && url.pathname === '/api/contact-status') {
       return handleContactStatus(env);
+    }
+    if (request.method === 'GET' && url.pathname === '/api/weather') {
+      return handleWeather(request, env);
     }
     if (request.method === 'GET' && url.pathname === '/api/alerts') {
       return handleAlerts(request, env);
@@ -315,7 +319,7 @@ export default {
 
     // Render-window handoff, Phase 5: a home-sales parcel page that USED
     // to build (its most recent sale was once inside the render window)
-    // and no longer does gets a real 410 Gone, not a 404 -- see
+    // and no longer does gets a 301 to /home-sales/ (owner 2026-10-28; it was a 410 Gone) -- see
     // home-sales-gone.ts's own module doc for why this is a live query
     // rather than a precomputed/diffed list. Only touches the DB on the
     // (rare) 404 case for a genuine parcel-detail path -- every page still
@@ -337,7 +341,8 @@ export default {
         `) as { address: string | null }[];
         const everRecorded = await wasHomeSalesParcelEverRecorded(parcelSlug, townId, querySales);
         if (everRecorded) {
-          return new Response('Gone', { status: 410, headers: { 'Content-Type': 'text/plain' } });
+          // 301 to the index, not 410 (owner 2026-10-28): the parcel's sales are still listed there and a link someone shared still lands somewhere useful.
+          return Response.redirect(new URL('/home-sales/', url.origin).toString(), 301);
         }
       }
       return assetResponse; // genuinely never existed (or town unresolved) -- the normal 404

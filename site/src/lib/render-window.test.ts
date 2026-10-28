@@ -1,6 +1,8 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { isWithinRenderWindow } from './render-window';
+import { readFileSync } from 'node:fs';
 import type { RenderWindow } from './site-config';
+import { ALL_CONFIGS } from './site-config';
 
 function configWith(overrides: Partial<RenderWindow>) {
   return { renderWindow: { homeSales: null, meetings: null, events: null, ...overrides } };
@@ -53,5 +55,14 @@ describe('isWithinRenderWindow', () => {
     expect(isWithinRenderWindow('2024-01-01', 'meetings', config)).toBe(true);
     // ...and events' tighter 3mo window excludes it too.
     expect(isWithinRenderWindow('2024-01-01', 'events', config)).toBe(false);
+  });
+});
+
+describe('astro.config.mjs sitemap mirror', () => {
+  it("uses the same home-sales window as Moreno Valley's site-config (a drift made /home-sales/zip/92551/ noindex-but-in-sitemap, 2026-10-28)", () => {
+    const cfg = readFileSync(new URL('../../astro.config.mjs', import.meta.url), 'utf8');
+    const mirrored = Number(/const RENDER_WINDOW_HOME_SALES_MONTHS = (\d+);/.exec(cfg)?.[1]);
+    const moreno = ALL_CONFIGS.find((c) => c.townId === 'moreno_valley_ca')!;
+    expect(mirrored).toBe(moreno.renderWindow.homeSales);
   });
 });

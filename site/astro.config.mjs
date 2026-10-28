@@ -274,7 +274,7 @@ function isoWeekSlugMirror({ y, m, d }) {
 // with site-config.ts's own value, or this thin-page count silently
 // drifts from what home-sales/zip/[zip].astro's own getStaticPaths
 // actually builds.
-const RENDER_WINDOW_HOME_SALES_MONTHS = 24;
+const RENDER_WINDOW_HOME_SALES_MONTHS = 12; // keep equal to site-config.ts moreno_valley_ca renderWindow.homeSales (render-window.test.ts checks)
 function isWithinRenderWindowMirror(saleDate, months) {
   if (months === null || !saleDate) return true;
   const cutoff = new Date();

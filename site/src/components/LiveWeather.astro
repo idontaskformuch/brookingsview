@@ -1,0 +1,9 @@
+---
+/** Newer forecast from GET /api/weather (see lib/live-weather.ts). No markup of its own: it rewrites the sign strip and, on /weather/, the
+ *  hourly strip and day list that the build already rendered. With no JavaScript, or the API down, the built forecast stays. */
+---
+<script>
+  import { refreshLiveWeather } from '../lib/live-weather';
+  refreshLiveWeather(document);
+  setInterval(() => refreshLiveWeather(document), 15 * 60_000);
+</script>

@@ -528,7 +528,9 @@ const CITIES: Record<string, SiteConfig> = {
     // before extending the render-window mechanism to more towns or page
     // types, since events/meetings will have their own version of the
     // same "is the cutoff measured against the right clock" question.
-    renderWindow: { homeSales: 24, meetings: null, events: null },
+    // 12 months (owner 2026-10-28, was 24): the 1 236 parcel pages were a third of Moreno's build time. A parcel outside the window
+    // gets a 301 to /home-sales/ from the Worker (server/worker.ts), not a 410.
+    renderWindow: { homeSales: 12, meetings: null, events: null },
     hasHeatAdvisory: true,
     cityName: 'Moreno Valley',
     country: 'us',

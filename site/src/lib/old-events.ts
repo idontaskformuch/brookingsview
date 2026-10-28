@@ -9,7 +9,7 @@
  *  and an event with no date (nothing says it is old). */
 import type { Story } from './db';
 
-export const PRUNE_EVENT_AFTER_DAYS = 60;
+export const PRUNE_EVENT_AFTER_DAYS = 30; // owner 2026-10-28 (was 60)
 
 type Prunable = Pick<Story, 'source_type' | 'occurs_at'> & { ends_at?: string | null; is_recurring_series?: boolean };
 

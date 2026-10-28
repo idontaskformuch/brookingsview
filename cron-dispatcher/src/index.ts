@@ -3,6 +3,8 @@ import { refreshAlerts } from './alerts/refresh';
 import type { Sql } from './alerts/store';
 import { ALERTS_CRON } from './alerts/towns';
 import { dueWorkflows } from './schedule';
+import { refreshWeather } from './weather/refresh';
+import { isWeatherTick } from './weather/towns';
 
 export interface Env {
   // Fine-grained PAT, repo idontaskformuch/brookingsview only, Actions: write.
@@ -11,6 +13,8 @@ export interface Env {
   // Live warnings (every 15 min, src/alerts/): `npx wrangler secret put DATABASE_URL` and `... MET_OFFICE_WARNINGS_API_KEY`.
   DATABASE_URL: string;
   MET_OFFICE_WARNINGS_API_KEY?: string;
+  // Glasgow's forecast (Site Specific, hourly on the whole hour): `... wrangler secret put MET_OFFICE_API_KEY`.
+  MET_OFFICE_API_KEY?: string;
 }
 
 const REPO = 'idontaskformuch/brookingsview';
@@ -46,7 +50,14 @@ export default {
       const results = await refreshAlerts(env, { sql: neon(env.DATABASE_URL) as unknown as Sql });
       console.log(JSON.stringify(results));
       const failed = results.filter((r) => !r.ok);
-      if (failed.length) throw new Error(`${failed.length}/${results.length} towns failed: ${failed.map((f) => `${f.townId}: ${f.error}`).join('; ')}`);
+      // Forecasts (NWS, Met Office) -> weather_snapshots, on the whole-hour ticks only. Independent of the warnings above: one failing
+      // must not hide the other, so both run and the errors are raised together.
+      if (isWeatherTick(controller.scheduledTime)) {
+        const weather = await refreshWeather(env, { sql: neon(env.DATABASE_URL) as unknown as Sql });
+        console.log(JSON.stringify(weather));
+        failed.push(...weather.filter((r) => !r.ok));
+      }
+      if (failed.length) throw new Error(`${failed.length} failed: ${failed.map((f) => `${f.townId}: ${f.error}`).join('; ')}`);
       return;
     }
     const due = dueWorkflows(controller.cron, controller.scheduledTime);

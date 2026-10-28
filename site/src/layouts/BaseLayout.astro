@@ -31,6 +31,7 @@ import { buildOrganizationJsonLd } from '../lib/article-jsonld';
 import CookieBanner from '../components/CookieBanner.astro';
 import MetOfficeWarnings from '../components/MetOfficeWarnings.astro';
 import LiveAlerts from '../components/LiveAlerts.astro';
+import LiveWeather from '../components/LiveWeather.astro';
 
 interface Props {
   title: string;
@@ -649,7 +650,7 @@ main { padding-block: 1.75rem 3.5rem; }
 <div class="sign">
   <div class="shell sign__inner">
     {sign.temp !== null && (
-      <span class="sign__item">
+      <span class="sign__item" data-weather-sign>
         {sign.isDaytime ? 'High' : 'Low'}&nbsp;{Math.round(sign.temp)}&deg;{sign.unit}{sign.conditions && <>&nbsp;{sign.conditions.toLowerCase()}</>}
       </span>
     )}
@@ -670,6 +671,7 @@ main { padding-block: 1.75rem 3.5rem; }
 
 {siteConfig.hasMetOfficeWarnings && path !== '/weather/' && path !== '/today/' && <MetOfficeWarnings timezone={siteConfig.timezone} variant="compact" />}
 {!siteConfig.hasMetOfficeWarnings && siteConfig.country === 'us' && <LiveAlerts />}
+<LiveWeather />
 
 <main id="main">
   <div class:list={['shell', !wide && 'shell--narrow']}>

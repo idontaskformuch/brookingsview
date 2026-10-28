@@ -30,6 +30,7 @@ import { placeLabel, forCountry, formatClockCompact } from '../lib/country-profi
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubBacklink } from '../lib/clusters';
 import { storyHref } from '../lib/content-slugs';
+import { upcomingHours, currentPeriods, relabelPeriod, hourLabel } from '../lib/weather-format';
 
 const pageMeta = resolvePageMeta('weather', siteConfig);
 const hubBacklink = resolveHubBacklink('weather', siteConfig);
@@ -40,44 +41,14 @@ const [periodsRaw, hourlyRaw, alerts] = await Promise.all([
   getActiveAlerts(),
 ]);
 
-function localYMD(instant: Date): { y: number; m: number; d: number } {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: siteConfig.timezone, year: 'numeric', month: '2-digit', day: '2-digit',
-  }).formatToParts(instant);
-  const get = (t: string) => Number(parts.find((p) => p.type === t)!.value);
-  return { y: get('year'), m: get('month'), d: get('day') };
-}
-function daysBetween(a: { y: number; m: number; d: number }, b: { y: number; m: number; d: number }): number {
-  return Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(a.y, a.m - 1, a.d)) / 86_400_000);
-}
-const todayYMD = localYMD(new Date());
 // The snapshot can be older than the build (and the build older than the reader): drop hours that are already over and
 // day-periods that started on an earlier local day, so the strip starts at "now" and "Tonight" is not listed twice.
-const buildMs = Date.now();
-const hourly = hourlyRaw.filter((h) => new Date(h.start).getTime() >= buildMs - 3_600_000).slice(0, 24);
-const periods = periodsRaw.filter((p) => !p.start || daysBetween(todayYMD, localYMD(new Date(p.start))) >= 0);
-const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-/** Ersätter NWS:s egen `name` med en etikett räknad från sajtens lokala
- *  "idag" -- se moduldocstringen ovan. Utan ett giltigt `start` (skulle
- *  inte hända i praktiken, men inget krascher värt) faller den tillbaka på
- *  källans egen sträng hellre än att gissa. */
-function relabelPeriod(p: { start: string; is_daytime: boolean; name: string }): string {
-  if (!p.start) return p.name;
-  const periodYMD = localYMD(new Date(p.start));
-  const offset = daysBetween(todayYMD, periodYMD);
-  if (offset === 0) return p.is_daytime ? 'Today' : 'Tonight';
-  if (offset === 1) return p.is_daytime ? 'Tomorrow' : 'Tomorrow Night';
-  if (offset < 0) return p.name;
-  const dow = WEEKDAYS[new Date(Date.UTC(periodYMD.y, periodYMD.m - 1, periodYMD.d)).getUTCDay()];
-  return p.is_daytime ? dow : `${dow} Night`;
-}
-
-// UK: "7pm" (owner decision for gb), US: "7 PM".
-function hourLabel(start: string): string {
-  if (siteConfig.country === 'gb') return formatClockCompact(new Date(start), siteConfig.timezone);
-  return new Date(start).toLocaleTimeString('en-US', { hour: 'numeric', timeZone: siteConfig.timezone });
-}
+// The same helpers run in the browser (lib/live-weather.ts) when /api/weather answers with a newer forecast.
+const buildNow = new Date();
+const hourly = upcomingHours(hourlyRaw, buildNow);
+const periods = currentPeriods(periodsRaw, siteConfig.timezone, buildNow);
+const relabel = (p: (typeof periods)[number]) => relabelPeriod(p, siteConfig.timezone, buildNow);
+const hourLabelFor = (start: string) => hourLabel(start, siteConfig.timezone, siteConfig.country);
 const source = forCountry(siteConfig.country,
   { name: 'National Weather Service', url: 'https://www.weather.gov' },
   { name: 'Met Office', url: 'https://www.metoffice.gov.uk/weather/forecast' });
@@ -138,10 +109,10 @@ import MetOfficeWarnings from '../components/MetOfficeWarnings.astro';
   {hourly.length > 0 && (
     <>
       <SectionRule label="Next 24 hours" />
-      <div class="hourly" tabindex="0" role="region" aria-label="Hourly forecast, next 24 hours (scrollable)">
+      <div class="hourly" tabindex="0" role="region" aria-label="Hourly forecast, next 24 hours (scrollable)" data-weather-hourly>
         {hourly.map((h) => (
           <div class="hour">
-            <p class="hour__time data">{hourLabel(h.start)}</p>
+            <p class="hour__time data">{hourLabelFor(h.start)}</p>
             <p class="hour__temp data">{h.temp !== null ? Math.round(h.temp) : '—'}&deg;{h.unit}</p>
             <p class="hour__short">{h.short}</p>
           </div>
@@ -152,10 +123,10 @@ import MetOfficeWarnings from '../components/MetOfficeWarnings.astro';
 
   <SectionRule label="Forecast" />
   {periods.length > 0 ? (
-    <ul class="forecast">
+    <ul class="forecast" data-weather-forecast>
       {periods.map((p) => (
         <li class="forecast__row">
-          <span class="forecast__name">{relabelPeriod(p)}</span>
+          <span class="forecast__name">{relabel(p)}</span>
           <span class="forecast__temp data">
             {p.temp !== null ? Math.round(p.temp) : '—'}&deg;{p.unit}
           </span>

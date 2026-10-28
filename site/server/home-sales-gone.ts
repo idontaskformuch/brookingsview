@@ -1,3 +1,4 @@
+// (2026-10-28: the Worker now answers such a parcel with a 301 to /home-sales/ instead of a 410; the detection below is unchanged.)
 // Render-window handoff, Phase 5: 410 Gone (not 404) for a home-sales
 // parcel page that USED to build and no longer does, because its most
 // recent recorded sale fell outside the render window (see
