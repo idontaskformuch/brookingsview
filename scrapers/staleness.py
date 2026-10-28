@@ -68,13 +68,13 @@ SOURCE_TABLES: dict[str, tuple[str, str]] = {
 # that simply had nothing new (read-only comparison against eSCRIBE/Tockify, nothing
 # missing on our side); gaps of 2+ weeks between posted meetings are normal.
 # Per-town override: "staleness_days" on the source in configs/<town>.json.
-# county_meetings gets a longer default (14) -- a county commission/school
+# county_meetings: 21 (raised 2026-10-28 with city_meetings) -- a county commission/school
 # board meets less often than a city council, so the same 7-day leash
 # would false-alarm on its normal cadence (confirmed against this
 # project's own real county_meetings data before picking this number).
 DEFAULT_STALENESS_DAYS: dict[str, int] = {
     "city_meetings": 21,
-    "county_meetings": 14,
+    "county_meetings": 21,
     "events": 7,
 }
 
