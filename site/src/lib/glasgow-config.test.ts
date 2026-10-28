@@ -23,10 +23,10 @@ describe('Glasgow skeleton config', () => {
     expect(glasgow.domain).toBe('glasgowloop.co.uk');
   });
 
-  it('is noindex site-wide, not advertised from the live sites, and has no GA id', () => {
-    expect(glasgow.noindexSite).toBe(true);
-    expect(glasgow.listedInNetwork).toBe(false);
-    expect(ALL_SITES.map((s) => s.townId)).not.toContain('glasgow');
+  it('is launched (indexable, listed as a sibling site on the other towns) and has no GA id', () => {
+    expect(glasgow.noindexSite).toBe(false);
+    expect(glasgow.listedInNetwork).not.toBe(false);
+    expect(ALL_SITES.map((s) => s.townId)).toContain('glasgow');
     expect(glasgow.ga4MeasurementId).toBeUndefined();
   });
 
@@ -80,7 +80,7 @@ describe('Glasgow skeleton config', () => {
     expect(cfg).toContain("glasgow: 'https://glasgowloop.co.uk'");
     expect(cfg).toContain(`glasgow: { accent: '${glasgow.brand!.accent}', accentInk: '${glasgow.brand!.accentInk}', accentDark: '${glasgow.brand!.accentDark}', accentInkDark: '${glasgow.brand!.accentInkDark}' }`);
     expect(cfg).toContain("glasgow: 'Europe/London'");
-    expect(cfg).toContain("NOINDEX_SITE_TOWNS = new Set(['glasgow'])");
+    expect(cfg).toContain('NOINDEX_SITE_TOWNS = new Set([])');
   });
 
   it('gb legal/about components are British-spelled', () => {

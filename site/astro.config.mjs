@@ -38,7 +38,7 @@ const activeCity = env.SITE_CITY ?? 'brookings_sd';
 // module scope, which isn't available yet when this file evaluates, so it
 // can't be imported directly here. Keep both in sync by hand.
 // Mirrors SiteConfig.noindexSite (site-config.ts): the whole site is noindex and the sitemap is empty.
-const NOINDEX_SITE_TOWNS = new Set(['glasgow']);
+const NOINDEX_SITE_TOWNS = new Set([]);
 
 const BRAND_TOKENS = {
   brookings_sd: { accent: '#746311', accentInk: '#473d0a', accentDark: '#a08918', accentInkDark: '#c4a91c' },

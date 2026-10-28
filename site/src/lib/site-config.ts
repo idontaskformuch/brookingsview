@@ -766,9 +766,9 @@ const CITIES: Record<string, SiteConfig> = {
       },
     },
     disabledSections: ['traffic', 'jobs', 'advertising', 'reviews', 'recipes', 'editorials', 'columns'],
-    noindexSite: true,
+    // Launched 2026-10-28/29 (owner's yes): indexable, sitemap on; thin facility pages keep noindex via thinFacilityMinOwnWords.
+    noindexSite: false,
     thinFacilityMinOwnWords: 25,
-    listedInNetwork: false,
     hasMetOfficeWarnings: true,
     // What's On (owner 2026-10-28): Ticketmaster GB within 15 miles of the centre; venue tiers in lib/venue-tiers.ts. Mirrors configs/glasgow.json.
     hasWhatsOn: true,
