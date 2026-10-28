@@ -112,6 +112,7 @@ describe('election date helpers', () => {
 });
 
 import { buildElectionStatus, zonedInstant } from './election';
+import { TOWNS as WORKER_TOWNS } from '../../../election-results/src/towns';
 describe('zonedInstant', () => {
   it('maps local wall-clock to UTC across DST/standard time', () => {
     expect(zonedInstant('2026-11-03', '20:00', 'America/Denver').toISOString()).toBe('2026-11-04T03:00:00.000Z');
@@ -134,5 +135,31 @@ describe('CityStatus election row', () => {
   });
   it('is omitted (null) after the results window', () => {
     expect(buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-12-05T18:00:00Z'))).toBeNull();
+  });
+});
+
+describe('Election night dry run: all three cities, fake clock, real config', () => {
+  const zones: Record<string, string> = { brookings_sd: 'America/Chicago', broomfield_co: 'America/Denver', moreno_valley_ca: 'America/Los_Angeles' };
+  for (const [town, tz] of Object.entries(zones)) {
+    const cfg = ELECTION_BY_TOWN[town];
+    it(`${town}: "How to vote" until 19:59 local on Election Day, results link from 20:00`, () => {
+      const at = zonedInstant(cfg.election_date, '20:00', tz).getTime();
+      const before = buildElectionStatus(cfg.election_date, tz, new Date(at - 60_000));
+      expect(before?.value).toMatch(/^Election Day: Tue Nov 3/);
+      expect(before?.then?.at).toBe(new Date(at).toISOString());
+      expect(before?.then).toMatchObject({ href: '/election-results/' });
+      const after = buildElectionStatus(cfg.election_date, tz, new Date(at));
+      expect(after).toMatchObject({ value: 'Results: unofficial · see results', href: '/election-results/' });
+      expect(after?.then).toBeUndefined();
+    });
+    it(`${town}: the Worker config and the site config agree on the election date and zone`, () => {
+      expect(WORKER_TOWNS[town].cadence.electionDate).toBe(cfg.election_date);
+      expect(WORKER_TOWNS[town].cadence.timezone).toBe(tz);
+    });
+  }
+  it('Moreno Valley shows only the official link (no live results, no fetching)', () => {
+    expect(ELECTION_BY_TOWN.moreno_valley_ca.results.live).toBe(false);
+    expect(WORKER_TOWNS.moreno_valley_ca.source.kind).toBe('link_only');
+    expect(ELECTION_BY_TOWN.brookings_sd.results.live && ELECTION_BY_TOWN.broomfield_co.results.live).toBe(true);
   });
 });

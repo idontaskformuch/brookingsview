@@ -73,8 +73,9 @@ export function parseSdWorkbook(bytes: Uint8Array): SdWorkbook {
   const result: SdWorkbook = { title: '', county: '', precinctsReported: null, precinctsTotal: null, downloadedAt: null, contests: [] };
   for (const sheet of sheets) {
     const name = sheet['@_name'];
-    const m = /^([A-Z]{3})(\d+)/.exec(name);
-    if (!m) throw new Error(`sd-xlsx: sheet "${name}" has no <party><contest id> prefix`);
+    // Primaries: "<PARTY><id>..." (REP13297...); general election: "<id>..." (14412United States Senator).
+    const m = /^([A-Z]{3})?(\d+)/.exec(name);
+    if (!m) throw new Error(`sd-xlsx: sheet "${name}" has no contest id prefix`);
     const path = target.get(sheet['@_id']);
     if (!path) throw new Error(`sd-xlsx: no relationship for sheet "${name}"`);
     const rows = readSheet(get(path), shared);
@@ -109,7 +110,7 @@ export function parseSdWorkbook(bytes: Uint8Array): SdWorkbook {
     result.contests.push({
       sourceContestId: m[2],
       name: normalizeName((header[0] ?? '').replace(/\n/g, ' - ')),
-      party: m[1] === 'NON' ? null : m[1],
+      party: !m[1] || m[1] === 'NON' ? null : m[1],
       choices,
     });
   }

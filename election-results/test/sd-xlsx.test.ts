@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { parseSdWorkbook, normalizeName } from '../src/adapters/sd-xlsx';
 import { validateSnapshot, pctOf } from '../src/validate';
 import type { Contest, Snapshot } from '../src/types';
@@ -102,5 +103,29 @@ describe('zeroed data (hard rule 5)', () => {
     const r = validateSnapshot(snap([{ sourceContestId: '1', name: 'x', party: null, choices: [{ name: 'A', votes: 0 }, { name: 'B', votes: 0 }] }]), null, ['1']);
     expect(r.valid).toBe(false);
     expect(r.problems.join()).toMatch(/zeroed/);
+  });
+});
+
+describe('parseSdWorkbook, general-election sheet names (no party prefix)', () => {
+  /** The November 2026 workbook names sheets "<contestId><name>" ("14412United States Senator"), not
+   *  "<PARTY><contestId>...": derived here from the June fixture by dropping the 3-letter prefix. */
+  const general = (() => {
+    const files = unzipSync(bytes);
+    files['xl/workbook.xml'] = strToU8(strFromU8(files['xl/workbook.xml']).replace(/(<(?:\w+:)?sheet [^>]*name=")[A-Z]{3}(\d+)/g, '$1$2'));
+    return new Uint8Array(zipSync(files));
+  })();
+
+  it('reads every contest with party null and the same ids and totals', () => {
+    const a = parseSdWorkbook(bytes);
+    const b = parseSdWorkbook(general);
+    expect(b.contests.map((c) => c.sourceContestId)).toEqual(a.contests.map((c) => c.sourceContestId));
+    expect(b.contests.every((c) => c.party === null)).toBe(true);
+    expect(b.contests.map((c) => c.choices)).toEqual(a.contests.map((c) => c.choices));
+  });
+
+  it('still rejects a sheet with no contest id at all', () => {
+    const files = unzipSync(bytes);
+    files['xl/workbook.xml'] = strToU8(strFromU8(files['xl/workbook.xml']).replace(/name="[A-Z]{3}\d+/, 'name="Summary'));
+    expect(() => parseSdWorkbook(new Uint8Array(zipSync(files)))).toThrow(/contest id/);
   });
 });
