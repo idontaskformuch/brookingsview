@@ -74,7 +74,7 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
   categoryImages: categoryImagesFor(siteConfig.townId),
 });
 ---
-<article class="secondary" data-ends={isAlert ? (story.ends_at ?? undefined) : undefined}>
+<article class="secondary" data-ends={isAlert ? (story.ends_at ?? undefined) : undefined} data-alert-slug={isAlert ? story.slug : undefined}>
   {heroImage && (
     <a class="secondary__image-link" href={storyHref(story.slug)} tabindex="-1" aria-hidden="true">
       <img

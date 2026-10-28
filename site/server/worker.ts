@@ -31,6 +31,8 @@ import { handleContactStatus } from './contact-status';
 import { handleTicketmasterImage, handleTicketmasterImagePurge } from './ticketmaster-image';
 import { resolveContentSlugRedirect } from './content-slug-redirects';
 import { resolvePlaceRedirect } from './place-redirects';
+import { withPrunedEventRedirect } from './pruned-events';
+import { handleAlerts } from './alerts';
 import {
   type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug, previousIsoWeekSlug,
   resolveLegacyMeetingRedirect, resolveFacilityRedirect, resolveStaticGateRedirect,
@@ -105,6 +107,9 @@ export default {
     }
     if (request.method === 'GET' && url.pathname === '/api/contact-status') {
       return handleContactStatus(env);
+    }
+    if (request.method === 'GET' && url.pathname === '/api/alerts') {
+      return handleAlerts(request, env);
     }
     if (request.method === 'GET' && url.pathname === '/api/weather-warnings') {
       return handleWeatherWarnings(request, env);
@@ -337,6 +342,10 @@ export default {
       }
       return assetResponse; // genuinely never existed (or town unresolved) -- the normal 404
     }
+
+    // Old events have no page (lib/old-events.ts): a missing /s/event-N/ is a permanent redirect to the archive, not a 404.
+    const prunedEvent = await withPrunedEventRedirect(request, (r) => env.ASSETS.fetch(r));
+    if (prunedEvent) return prunedEvent;
 
     return env.ASSETS.fetch(request);
   },

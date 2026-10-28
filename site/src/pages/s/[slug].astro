@@ -32,6 +32,7 @@ import { resolveImage, contentTrackCropPaths } from '../../lib/images';
 import { categoryImagesFor } from '../../config/category-images';
 import ImageAttribution from '../../components/ImageAttribution.astro';
 import { shouldNoindexStory, THIN_SCRAPED_SOURCE_TYPES } from '../../lib/noindex';
+import { isPrunedEvent } from '../../lib/old-events';
 import { hasEnded, isAllDay } from '../../lib/local-day';
 import { canonicalUrlForStory } from '../../lib/cross-site-canonical';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
@@ -68,7 +69,8 @@ export async function getStaticPaths() {
   // below, WorkerPulseComments' pageSlug, etc. all need the real slug, not
   // the public one, since they're DB keys, not URLs. Old-prefixed requests
   // 301 to this new path via server/content-slug-redirects.ts.
-  return stories.map((story) => ({
+  // Old events are not built (lib/old-events.ts); the Worker 301s their URLs to /events/past/.
+  return stories.filter((story) => !isPrunedEvent(story)).map((story) => ({
     params: { slug: publicSlug(story.slug) }, props: { story, facilities, upcomingEvents, upcomingEventItems, recentWeeks },
   }));
 }

@@ -1,0 +1,24 @@
+---
+/** Alerts that appeared after the build, from GET /api/alerts (see lib/live-alerts.ts). Empty and hidden in the built HTML: the alerts the build
+ *  knows about are rendered by the usual surfaces (sign strip, Today, lead story), so with no JavaScript, or with the API down, nothing is lost.
+ *  US towns only; Glasgow's Met Office warnings have their own component (MetOfficeWarnings.astro). */
+import { siteConfig } from '../lib/site-config';
+import { getKnownAlertEventIds } from '../lib/db';
+
+const known = (await getKnownAlertEventIds()).join(',');
+---
+<section id="live-alerts" class="live-alerts" aria-label="Weather alerts issued since this page was built" aria-live="polite"
+  data-tz={siteConfig.timezone} data-known={known} hidden></section>
+
+<style is:global>
+  .live-alerts { background: var(--status-warn-bg); color: var(--status-warn-text); border-left: 6px solid var(--status-warn); padding: 0.5rem 0.875rem; }
+  .live-alerts[hidden] { display: none; }
+  .live-alerts__item { margin: 0.2rem 0; font-size: 0.9375rem; line-height: 1.4; }
+  .live-alerts a { color: inherit; text-decoration: underline; }
+</style>
+
+<script>
+  import { refreshLiveAlerts } from '../lib/live-alerts';
+  refreshLiveAlerts(document);
+  setInterval(() => refreshLiveAlerts(document), 5 * 60_000);
+</script>

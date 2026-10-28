@@ -21,8 +21,8 @@ def test_exactly_at_limit_is_fresh_just_over_is_stale():
     assert is_stale(NOW - timedelta(hours=MAX_HOURS, minutes=1), NOW)
 
 
-def test_limit_is_18_hours():
-    assert MAX_HOURS == 18
+def test_limit_is_26_hours():
+    assert MAX_HOURS == 26
 
 
 def test_custom_limit():

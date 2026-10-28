@@ -31,8 +31,13 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
+      - name: Fingerprint before
+        run: python -m scripts.ci_changed before brookings_sd --preset content
       - name: Generera veckans What's On-intro (Brookings)
         run: python -m ai_pipeline.whats_on_intro --config configs/brookings_sd.json
+      - name: Did the site content change?
+        id: changed
+        run: python -m scripts.ci_changed after brookings_sd --preset content
       # DEPLOY: replaces the old PAGES_DEPLOY_HOOK curl step (2026-09-09) --
       # see scrape.yml's own comment and NEEDS-HUMAN-REVIEW.md #38. The hook
       # built independently inside Cloudflare from its own env vars and
@@ -41,10 +46,13 @@ jobs:
       # relevant here: this workflow's whole purpose is a What's On/
       # Ticketmaster block, exactly the content that went missing.
       - uses: actions/setup-node@v4
+        if: steps.changed.outputs.changed == 'true'
       - name: Install site deps
+        if: steps.changed.outputs.changed == 'true'
         working-directory: site
         run: npm ci
       - name: Build (Brookings)
+        if: steps.changed.outputs.changed == 'true'
         working-directory: site
         env:
           SITE_CITY: brookings_sd
@@ -52,6 +60,7 @@ jobs:
           TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
         run: npx astro build
       - name: Deploy to Cloudflare Workers (Brookings)
+        if: steps.changed.outputs.changed == 'true'
         working-directory: site
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

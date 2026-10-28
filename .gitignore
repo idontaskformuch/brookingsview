@@ -53,3 +53,4 @@ site/dist_*/
 # and stay tracked; new ones stay local -- the repo is public)
 backups/
 qa/out/
+.ci_fingerprint

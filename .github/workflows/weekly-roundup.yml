@@ -26,18 +26,26 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
+      - name: Fingerprint before
+        run: python -m scripts.ci_changed before brookings_sd --preset content
       - name: Generera veckosammanfattning
         run: python -m ai_pipeline.weekly --config configs/brookings_sd.json
+      - name: Did the site content change?
+        id: changed
+        run: python -m scripts.ci_changed after brookings_sd --preset content
       # DEPLOY: replaces the old PAGES_DEPLOY_HOOK curl step (2026-09-09) --
       # see scrape.yml's own comment and NEEDS-HUMAN-REVIEW.md #38. The hook
       # built independently inside Cloudflare from its own env vars and
       # could race/overwrite a correct wrangler deploy landing around the
       # same time -- wrangler deploy is now the only deploy path.
       - uses: actions/setup-node@v4
+        if: steps.changed.outputs.changed == 'true'
       - name: Install site deps
+        if: steps.changed.outputs.changed == 'true'
         working-directory: site
         run: npm ci
       - name: Build (Brookings)
+        if: steps.changed.outputs.changed == 'true'
         working-directory: site
         env:
           SITE_CITY: brookings_sd
@@ -45,6 +53,7 @@ jobs:
           TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
         run: npx astro build
       - name: Deploy to Cloudflare Workers (Brookings)
+        if: steps.changed.outputs.changed == 'true'
         working-directory: site
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

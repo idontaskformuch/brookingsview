@@ -33,6 +33,7 @@ import { localDateParts } from '../../lib/events';
 import { siteConfig } from '../../lib/site-config';
 import { placeLabel } from '../../lib/country-profile';
 import { storyHref } from '../../lib/content-slugs';
+import { isPrunedEvent } from '../../lib/old-events';
 import { listEligibleMonths, monthLabel as monthInReviewLabel, monthSlug } from '../../lib/month-in-review';
 
 const [allEvents, facilities] = await Promise.all([
@@ -80,7 +81,7 @@ const itemListJsonLd = events.length > 0 ? {
   '@context': 'https://schema.org',
   '@type': 'ItemList',
   name: title,
-  itemListElement: events.map((e, i) => ({
+  itemListElement: events.filter((e) => !isPrunedEvent(e)).map((e, i) => ({
     '@type': 'ListItem',
     position: i + 1,
     name: e.title,
@@ -103,7 +104,9 @@ const itemListJsonLd = events.length > 0 ? {
     <section class="month">
       <h2 class="month__heading">{key === 'undated' ? 'Undated' : monthLabel(key)}</h2>
       <div class="grid">
-        {groups.get(key)!.map((story) => <StoryCard story={story} compact facilities={facilities} />)}
+        {groups.get(key)!.map((story) => isPrunedEvent(story)
+          ? <p class="pruned"><span class="pruned__title">{story.title}</span> <span class="pruned__date">{story.occurs_at ? new Date(story.occurs_at).toLocaleDateString(siteConfig.country === 'gb' ? 'en-GB' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: siteConfig.timezone }) : ''}</span></p>
+          : <StoryCard story={story} compact facilities={facilities} />)}
       </div>
     </section>
   )) : (
@@ -128,4 +131,6 @@ const itemListJsonLd = events.length > 0 ? {
 }
 .grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
 .empty { color: var(--ink-soft); }
+.pruned { margin: 0; padding: 0.5rem 0; border-bottom: 1px solid var(--rule); font-size: 0.9375rem; }
+.pruned__date { color: var(--ink-soft); white-space: nowrap; }
 </style>

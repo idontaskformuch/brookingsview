@@ -197,7 +197,7 @@ const kicker = kickerOverride ?? (isAlert ? 'Alert' : isMeeting ? 'City hall'
 // to color, so it's gated on `kicker` being present too.
 const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCategory] ?? null) : null;
 ---
-<article class:list={['item', { 'item--alert': isAlert }]} data-start={isEvent && story.occurs_at ? new Date(story.occurs_at).toISOString() : undefined} data-end={isEvent && story.ends_at ? new Date(story.ends_at).toISOString() : undefined} data-ends={isAlert ? (story.ends_at ?? undefined) : undefined}>
+<article class:list={['item', { 'item--alert': isAlert }]} data-start={isEvent && story.occurs_at ? new Date(story.occurs_at).toISOString() : undefined} data-end={isEvent && story.ends_at ? new Date(story.ends_at).toISOString() : undefined} data-ends={isAlert ? (story.ends_at ?? undefined) : undefined} data-alert-slug={isAlert ? story.slug : undefined}>
   {/* 2026-10-02, item C1: the 46px fixed-width time RAIL (R5) is gone --
       it collided with long titles (confirmed on real Moreno Valley titles,
       which run longer once a venue line is no longer baked into them, see

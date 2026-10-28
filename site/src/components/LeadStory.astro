@@ -75,7 +75,7 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
   categoryImages: categoryImagesFor(siteConfig.townId),
 });
 ---
-<article class="lead" data-ends={isAlert ? (story.ends_at ?? undefined) : undefined}>
+<article class="lead" data-ends={isAlert ? (story.ends_at ?? undefined) : undefined} data-alert-slug={isAlert ? story.slug : undefined}>
   <p class="lead__kicker">
     <span class="kicker">{kicker}</span>
     {timeLabel && timeMachineValue && (

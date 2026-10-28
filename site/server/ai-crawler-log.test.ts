@@ -5,7 +5,7 @@ import { matchAiCrawler } from './ai-crawler-log';
 // in the answer-engine-visibility handoff's crawler-access audit (see
 // NEEDS-HUMAN-REVIEW.md #60) -- not invented shapes.
 describe('matchAiCrawler', () => {
-  it('matches each of the nine audited crawlers by their real UA string', () => {
+  it('matches each of the audited crawlers by their real UA string', () => {
     const cases: [string, string][] = [
       ['Mozilla/5.0 (compatible; GPTBot/1.2; +https://openai.com/gptbot)', 'GPTBot'],
       ['Mozilla/5.0 (compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot)', 'OAI-SearchBot'],
@@ -13,6 +13,10 @@ describe('matchAiCrawler', () => {
       ['Mozilla/5.0 (compatible; ClaudeBot/1.0; +claudebot@anthropic.com)', 'ClaudeBot'],
       ['Mozilla/5.0 (compatible; Claude-Web/1.0; +https://www.anthropic.com)', 'Claude-Web'],
       ['Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)', 'PerplexityBot'],
+      ['Mozilla/5.0 (compatible; Claude-SearchBot/1.0; +https://www.anthropic.com)', 'Claude-SearchBot'],
+      ['Mozilla/5.0 (compatible; Claude-User/1.0; +Claude-User@anthropic.com)', 'Claude-User'],
+      ['Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexity-user)', 'Perplexity-User'],
+      ['CCBot/2.0 (https://commoncrawl.org/faq/)', 'CCBot'],
       ['Mozilla/5.0 (compatible; Google-Extended)', 'Google-Extended'],
       ['Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)', 'Bingbot'],
       ['Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)', 'Googlebot'],

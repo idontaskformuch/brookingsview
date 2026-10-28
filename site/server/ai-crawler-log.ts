@@ -20,7 +20,12 @@ const AI_CRAWLER_PATTERNS: { name: string; pattern: RegExp }[] = [
   { name: 'ChatGPT-User', pattern: /ChatGPT-User/ },
   { name: 'ClaudeBot', pattern: /ClaudeBot/ },
   { name: 'Claude-Web', pattern: /Claude-Web/ },
+  // Added 2026-10-28 (GEO check): the search/answer agents and the Common Crawl training crawler, so the weekly report can show them.
+  { name: 'Claude-SearchBot', pattern: /Claude-SearchBot/ },
+  { name: 'Claude-User', pattern: /Claude-User/ },
   { name: 'PerplexityBot', pattern: /PerplexityBot/ },
+  { name: 'Perplexity-User', pattern: /Perplexity-User/ },
+  { name: 'CCBot', pattern: /CCBot/ },
   { name: 'Google-Extended', pattern: /Google-Extended/ },
   { name: 'Bingbot', pattern: /bingbot/i },
   { name: 'Googlebot', pattern: /Googlebot/ },

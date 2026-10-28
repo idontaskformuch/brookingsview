@@ -1,9 +1,16 @@
+import { neon } from '@neondatabase/serverless';
+import { refreshAlerts } from './alerts/refresh';
+import type { Sql } from './alerts/store';
+import { ALERTS_CRON } from './alerts/towns';
 import { dueWorkflows } from './schedule';
 
 export interface Env {
   // Fine-grained PAT, repo idontaskformuch/brookingsview only, Actions: write.
   // Set with `npx wrangler secret put GITHUB_TOKEN` -- never committed.
   GITHUB_TOKEN: string;
+  // Live warnings (every 15 min, src/alerts/): `npx wrangler secret put DATABASE_URL` and `... MET_OFFICE_WARNINGS_API_KEY`.
+  DATABASE_URL: string;
+  MET_OFFICE_WARNINGS_API_KEY?: string;
 }
 
 const REPO = 'idontaskformuch/brookingsview';
@@ -34,6 +41,14 @@ async function dispatch(token: string, workflow: string): Promise<void> {
 
 export default {
   async scheduled(controller: ScheduledController, env: Env): Promise<void> {
+    if (controller.cron === ALERTS_CRON) {
+      // NWS (US towns) and Met Office (Glasgow) warnings -> the events table; no GitHub Actions minutes involved.
+      const results = await refreshAlerts(env, { sql: neon(env.DATABASE_URL) as unknown as Sql });
+      console.log(JSON.stringify(results));
+      const failed = results.filter((r) => !r.ok);
+      if (failed.length) throw new Error(`${failed.length}/${results.length} towns failed: ${failed.map((f) => `${f.townId}: ${f.error}`).join('; ')}`);
+      return;
+    }
     const due = dueWorkflows(controller.cron, controller.scheduledTime);
     if (due.length === 0) {
       console.log(`cron "${controller.cron}" at ${new Date(controller.scheduledTime).toISOString()}: nothing due`);

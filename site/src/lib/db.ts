@@ -671,6 +671,14 @@ export async function getActiveAlerts(now: Date = new Date()): Promise<Story[]> 
   });
 }
 
+let knownAlertIds: Promise<number[]> | null = null;
+/** events.id of every alert the pages of THIS build show (alert stories are 'alert-<events.id>'). Asked once per build; the browser compares it
+ *  with /api/alerts (lib/live-alerts.ts) to find alerts that appeared, or ended early, after the build. */
+export function getKnownAlertEventIds(): Promise<number[]> {
+  knownAlertIds ??= getActiveAlerts().then((rows) => rows.map((r) => Number(/^alert-(\d+)$/.exec(r.slug)?.[1])).filter((n) => Number.isFinite(n) && n > 0));
+  return knownAlertIds;
+}
+
 /**
  * Veckosammanfattningen för innevarande vecka -- med fallback till senast
  * tillgängliga vecka (2026-10-07, Broomfield-spåret) när ingen finns inom
@@ -2714,6 +2722,8 @@ export interface SignData {
   alert: string | null;
   /** ISO end of `alert` (lib/alerts.ts) -- the browser hides the strip item once passed. */
   alertEndsAt: string | null;
+  /** Story slug of `alert` ('alert-<events.id>'): lets the browser hide the strip item when the alert is cancelled early (lib/live-alerts.ts). */
+  alertSlug?: string | null;
   nextGame: Game | null;
   /** Instants (not a count) -- "N events today" is computed in the browser from the
    *  real clock, see BaseLayout's sign script and lib/local-day.ts. */
@@ -2759,6 +2769,7 @@ export async function getSignData(): Promise<SignData> {
     conditions: current?.short ?? null,
     alert: alerts[0]?.title ?? null,
     alertEndsAt: alerts[0]?.ends_at ?? null,
+    alertSlug: alerts[0]?.slug ?? null,
     nextGame: pickSignGame(games, new Date(), siteConfig.timezone),
     todayEvents: todayRows.map((r) => ({
       start: new Date(r.occurs_at).toISOString(),

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { ALERTS_CRON } from '../src/alerts/towns';
 import { MORNING_CRON, SCRAPE_CRON, SCRAPE_WORKFLOWS, dueWorkflows } from '../src/schedule';
 
 const at = (iso: string) => Date.parse(iso);
@@ -7,7 +8,7 @@ const at = (iso: string) => Date.parse(iso);
 describe('wrangler.jsonc', () => {
   it('registers exactly the crons schedule.ts dispatches on', () => {
     const cfg = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
-    expect(cfg).toContain(`"crons": ["${SCRAPE_CRON}", "${MORNING_CRON}"]`);
+    expect(cfg).toContain(`"crons": ["${SCRAPE_CRON}", "${MORNING_CRON}", "${ALERTS_CRON}"]`);
   });
 });
 

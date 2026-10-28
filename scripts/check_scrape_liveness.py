@@ -13,7 +13,7 @@ notification mail delivers it -- no ALERT_WEBHOOK needed; ALERT_WEBHOOK is still
 honoured if set). The issue closes itself after 2 clean runs in a row.
 
 "Succeeded" = at least one scrape_runs row with status='ok' for the town
-whose started_at is within MAX_HOURS. 18 h = three missed 6-hourly slots.
+whose started_at is within MAX_HOURS. 26 h = two missed twice-daily slots (11:00 and 23:00 UTC).
 
 Usage:
     python -m scripts.check_scrape_liveness brookings_sd moreno_valley_ca broomfield_co
@@ -28,7 +28,7 @@ from datetime import datetime, timedelta, timezone
 from db.db import get_conn
 from qa.report import report
 
-MAX_HOURS = 18
+MAX_HOURS = 26  # scrape runs twice a day (11:00 and 23:00 UTC): one missed slot is 13 h late, two missed is 26 h
 
 
 def is_stale(last_ok: datetime | None, now: datetime, max_hours: float = MAX_HOURS) -> bool:

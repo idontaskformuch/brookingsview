@@ -1,0 +1,22 @@
+#!/bin/sh
+# Secret scan of the STAGED changes before every commit (gitleaks, runs locally: no Actions minutes, no GitHub secret scanning).
+# Install once per clone:  git config core.hooksPath .githooks   (scripts/install_hooks.sh does it)
+# Tool:  winget install Gitleaks.Gitleaks   (Windows)  |  brew install gitleaks
+# A false positive: add its fingerprint to .gitleaksignore (never use --no-verify).
+if ! command -v gitleaks >/dev/null 2>&1; then
+  # winget puts it outside the PATH of an already-open shell; look where it lands
+  for c in "$LOCALAPPDATA"/Microsoft/WinGet/Packages/Gitleaks*/gitleaks.exe /c/Users/*/AppData/Local/Microsoft/WinGet/Packages/Gitleaks*/gitleaks.exe; do
+    [ -x "$c" ] && GITLEAKS="$c" && break
+  done
+else
+  GITLEAKS=gitleaks
+fi
+if [ -z "$GITLEAKS" ]; then
+  echo "pre-commit: gitleaks is not installed, so this commit was NOT scanned for secrets." >&2
+  echo "            Install it:  winget install Gitleaks.Gitleaks   then restart the shell." >&2
+  exit 0
+fi
+"$GITLEAKS" protect --staged --redact --no-banner --verbose || {
+  echo "pre-commit: gitleaks found something that looks like a secret (see above). Commit blocked." >&2
+  exit 1
+}

@@ -6,10 +6,17 @@ name: tests
 # ai_pipeline/town_guard.py). Kräver ingen DATABASE_URL/ANTHROPIC_API_KEY --
 # alla tester kör mot fixtur-data, ingen nätverks-/DB-åtkomst.
 
+# Actions minutes: docs/state-only pushes run no tests; a newer push to the same branch cancels the older run.
 on:
   push:
+    paths-ignore: ['.claude/**', '**/*.md', 'docs/**', 'backups/**', 'qa/out/**', 'reports/**']
   pull_request:
+    paths-ignore: ['.claude/**', '**/*.md', 'docs/**', 'backups/**', 'qa/out/**', 'reports/**']
   workflow_dispatch: {}
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   pytest:

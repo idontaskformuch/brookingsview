@@ -41,15 +41,23 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
+      - name: Fingerprint before
+        run: python -m scripts.ci_changed before brookings_sd --preset data
       - name: Refresh only weather_alerts + school_alerts
         run: python -m scrapers.runner --config configs/brookings_sd.json --only weather_alerts school_alerts
       - name: Closure Watch (history + Watch-state prose)
         run: python -m ai_pipeline.closure_watch_digest --config configs/brookings_sd.json
+      - name: Did the site content change?
+        id: changed
+        run: python -m scripts.ci_changed after brookings_sd --preset data
       - uses: actions/setup-node@v4
+        if: steps.changed.outputs.changed == 'true'
       - name: Install site deps
+        if: steps.changed.outputs.changed == 'true'
         working-directory: site
         run: npm ci
       - name: Build (Brookings)
+        if: steps.changed.outputs.changed == 'true'
         working-directory: site
         env:
           SITE_CITY: brookings_sd
@@ -66,6 +74,7 @@ jobs:
           TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
         run: npx astro build
       - name: Deploy to Cloudflare Workers (Brookings)
+        if: steps.changed.outputs.changed == 'true'
         working-directory: site
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -77,7 +86,7 @@ jobs:
       # applies so a purge failure is visible without failing the whole
       # job over a step that runs last anyway.
       - name: Purge Cloudflare cache
-        if: success()
+        if: success() && steps.changed.outputs.changed == 'true'
         continue-on-error: true
         env:
           CLOUDFLARE_CACHE_PURGE_TOKEN: ${{ secrets.CLOUDFLARE_CACHE_PURGE_TOKEN }}

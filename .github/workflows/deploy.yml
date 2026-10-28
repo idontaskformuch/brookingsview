@@ -17,10 +17,30 @@ name: deploy
 # scrape.yml's own cron-triggered run still does the real job of scraping +
 # republishing; this one exists purely so a code-only change goes live
 # within minutes instead of waiting for that cron.
+# Actions minutes (private repo, 2026-10-28; .claude/specs/actions-minutes-plan.md): deploys only when a file that reaches THIS town changed
+# (paths filter; shared site code = every town), and a newer push cancels an older, still-running deploy of the same town.
 on:
   push:
     branches: [main]
+    paths:
+      - 'site/**'
+      - 'configs/brookings_sd.json'
+      - 'scripts/wrangler_deploy_retry.sh'
+      - 'scripts/purge_cloudflare_cache.py'
+      - 'scripts/check_deployed_content.py'
+      - '.github/workflows/deploy.yml'
+      # not part of any build:
+      - '!site/**/*.test.ts'
+      - '!site/**/*.md'
+      # Glasgow-only files do not rebuild the US towns:
+      - '!site/src/config/gb/**'
+      - '!site/src/components/legal/gb/**'
+      - '!site/public/assets/images/**/glasgow-*'
   workflow_dispatch: {}
+
+concurrency:
+  group: deploy-push-brookings_sd
+  cancel-in-progress: true
 
 jobs:
   deploy:

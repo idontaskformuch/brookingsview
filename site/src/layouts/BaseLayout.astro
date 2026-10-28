@@ -30,6 +30,7 @@ import { toDarkAccent } from '../lib/dark-color';
 import { buildOrganizationJsonLd } from '../lib/article-jsonld';
 import CookieBanner from '../components/CookieBanner.astro';
 import MetOfficeWarnings from '../components/MetOfficeWarnings.astro';
+import LiveAlerts from '../components/LiveAlerts.astro';
 
 interface Props {
   title: string;
@@ -326,7 +327,7 @@ const footerGroups = FOOTER_GROUPS
 <style is:global>
   /* Expired time-limited items (see the data-ends sweep script) must vanish
      even from elements whose own CSS sets display. */
-  [data-ends][hidden], [data-start][hidden], #sign-events-today[hidden] { display: none !important; }
+  [data-ends][hidden], [data-start][hidden], [data-alert-slug][hidden], #sign-events-today[hidden] { display: none !important; }
 :root {
   /* Sitewide presentation-layer pass: retuned to a warmer, quieter neutral
      scale (was #f4f6f7/#14120f/#4d5862/#c9d3da) -- same editorial intent as
@@ -652,7 +653,7 @@ main { padding-block: 1.75rem 3.5rem; }
         {sign.isDaytime ? 'High' : 'Low'}&nbsp;{Math.round(sign.temp)}&deg;{sign.unit}{sign.conditions && <>&nbsp;{sign.conditions.toLowerCase()}</>}
       </span>
     )}
-    {sign.alert && <span class="sign__item sign__item--alert" data-ends={sign.alertEndsAt ?? undefined}>{sign.alert}</span>}
+    {sign.alert && <span class="sign__item sign__item--alert" data-ends={sign.alertEndsAt ?? undefined} data-alert-slug={sign.alertSlug ?? undefined}>{sign.alert}</span>}
     {todayInstants.length > 0 && (
       <span class="sign__item" id="sign-events-today" hidden data-tz={siteConfig.timezone}
         data-events={JSON.stringify(todayInstants)}></span>
@@ -668,6 +669,7 @@ main { padding-block: 1.75rem 3.5rem; }
 </div>
 
 {siteConfig.hasMetOfficeWarnings && path !== '/weather/' && path !== '/today/' && <MetOfficeWarnings timezone={siteConfig.timezone} variant="compact" />}
+{!siteConfig.hasMetOfficeWarnings && siteConfig.country === 'us' && <LiveAlerts />}
 
 <main id="main">
   <div class:list={['shell', !wide && 'shell--narrow']}>

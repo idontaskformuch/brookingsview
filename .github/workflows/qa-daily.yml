@@ -52,16 +52,24 @@ jobs:
       - run: pip install -r requirements.txt
       - run: npm ci
         working-directory: site
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
       - run: npx playwright-core install --with-deps chromium  # axe-core comes with npm ci (site devDependency)
         working-directory: site
       - run: python -m qa.export_blocklist
       - name: Sweep ${{ matrix.town }}
         # Pass A (all sitemap URLs, no images/fonts), B (key pages, 4 combos, axe), C (clock 07:00/19:00/23:30).
         # Links outside the sitemap + external links only on Mondays (UTC) or when asked: load reduction.
+        # Actions minutes (private repo, 2026-10-28): Pass A (every sitemap URL) runs every third day, and the link check only on such
+        # a day in the first half of the week; Pass B (key pages x 4 combos) and C (clock times) run every day on the key pages only.
         run: |
+          PASSES="B,C"
           LINKS="${{ inputs.links }}"
-          if [ -z "$LINKS" ]; then if [ "$(date -u +%u)" = "1" ]; then LINKS=on; else LINKS=off; fi; fi
-          node qa/web/run.mjs --town ${{ matrix.town }} --limit "${{ inputs.limit || 0 }}" --links "$LINKS"
+          if [ "$(( $(date -u +%j | sed 's/^0*//') % 3 ))" = "0" ] || [ -n "${{ inputs.limit }}" ] || [ "$LINKS" = "on" ]; then PASSES="A,B,C"; fi
+          if [ -z "$LINKS" ]; then if [ "$PASSES" = "A,B,C" ] && [ "$(date -u +%u)" -le 3 ]; then LINKS=on; else LINKS=off; fi; fi
+          node qa/web/run.mjs --town ${{ matrix.town }} --pass "$PASSES" --limit "${{ inputs.limit || 0 }}" --links "$LINKS"
       - name: Report
         if: always()
         run: python -m qa.report --in qa/out/${{ matrix.town }}.json --summary-file "$GITHUB_STEP_SUMMARY"

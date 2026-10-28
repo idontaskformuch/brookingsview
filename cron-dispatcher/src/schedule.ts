@@ -6,7 +6,9 @@
 // started 15:09-19:53Z), which makes a "05:30 local" run pointless.
 // Cloudflare cron triggers fire on the minute.
 
-export const SCRAPE_CRON = '0 */6 * * *';
+// Twice a day (owner 2026-10-28, Actions minutes): 11:00 UTC = early morning in the US towns, 23:00 UTC = evening. Warnings no longer
+// depend on this: the 15-minute alerts cron (src/alerts/) writes them. Deploy order matters -- see cron-dispatcher/README.md.
+export const SCRAPE_CRON = '0 11,23 * * *';
 // One trigger covers every UTC hour a 05:30 local time can land on (Central
 // 10:30/11:30Z, Pacific 12:30/13:30Z, across DST); dueWorkflows() then keeps
 // only the towns whose LOCAL clock actually reads 05:30. Cloudflare's free

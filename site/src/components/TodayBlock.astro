@@ -185,7 +185,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
         {metWarningsLine && <li id="today-met-line" data-met-line hidden></li>}
 
         {!consolidatedQuietLine && activeAlerts.length > 0 && activeAlerts.map((alert: AlertItem) => (
-          <li data-ends={alert.ends_at ?? undefined}>
+          <li data-ends={alert.ends_at ?? undefined} data-alert-slug={alert.slug}>
             <a href={storyHref(alert.slug)}>{alert.title}</a>
             {alert.ends_at && <span class="today-block__until"> · {formatAlertUntil(new Date(alert.ends_at), timezone)}</span>}
           </li>

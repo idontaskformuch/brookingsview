@@ -29,23 +29,34 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
+      - name: Fingerprint before
+        run: python -m scripts.ci_changed before glasgow --preset data
       - name: Kör scrapers (skriver rådata till DB)
         run: python -m scrapers.runner --config configs/glasgow.json
       - name: Formatera och publicera stories (Stage 3 -> stories, UK-spärrar)
         run: python -m ai_pipeline.publish --config configs/glasgow.json
       - name: Image pool rotation (category images)
         run: python -m ai_pipeline.assign_category_image_rotation --config configs/glasgow.json
+      - name: Did the site content change?
+        id: changed
+        run: python -m scripts.ci_changed after glasgow --preset data
       - uses: actions/setup-node@v4
+        if: steps.changed.outputs.changed == 'true'
       - name: Install site deps
+        if: steps.changed.outputs.changed == 'true'
         working-directory: site
         run: npm ci
       - name: Build (Glasgow)
+        if: steps.changed.outputs.changed == 'true'
         working-directory: site
         env:
           SITE_CITY: glasgow
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # What's On (Ticketmaster GB, 15 mi) is fetched at build time; without the key the page would be empty (the Moreno 2026-09 bug).
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
         run: npx astro build
       - name: Deploy to Cloudflare Workers (Glasgow)
+        if: steps.changed.outputs.changed == 'true'
         working-directory: site
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -55,7 +66,7 @@ jobs:
       # cachar HTML vid kanten utan automatisk invalidering. continue-on-error så
       # att ett purge-fel syns men inte stoppar live-kontrollen nedan.
       - name: Purge Cloudflare cache
-        if: success()
+        if: success() && steps.changed.outputs.changed == 'true'
         continue-on-error: true
         env:
           CLOUDFLARE_CACHE_PURGE_TOKEN: ${{ secrets.CLOUDFLARE_CACHE_PURGE_TOKEN }}
@@ -64,7 +75,7 @@ jobs:
       # Kontrollerar den RIKTIGA sajten: prognosen visar idag + imorgon i degC och
       # inga passerade event ligger kvar i listorna (se scripts/check_glasgow_live.py).
       - name: Kontrollera den deployade Glasgow-sajten
-        if: success()
+        if: success() && steps.changed.outputs.changed == 'true'
         run: |
           sleep 15
           python -m scripts.check_glasgow_live

@@ -4,8 +4,26 @@ name: glasgow-deploy
 # do not exist until the owner has done them. Add the `push` trigger (copy broomfield-deploy.yml) when the site is
 # meant to deploy on every push. No cache purge / content-freshness step yet: there is no zone secret for the
 # domain and nothing scrapes for this town.
+# Actions minutes (private repo, 2026-10-28; .claude/specs/actions-minutes-plan.md): deploys only when a file that reaches THIS town changed
+# (paths filter; shared site code = every town), and a newer push cancels an older, still-running deploy of the same town.
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'configs/glasgow.json'
+      - 'scripts/wrangler_deploy_retry.sh'
+      - 'scripts/purge_cloudflare_cache.py'
+      - 'scripts/check_deployed_content.py'
+      - '.github/workflows/glasgow-deploy.yml'
+      # not part of any build:
+      - '!site/**/*.test.ts'
+      - '!site/**/*.md'
   workflow_dispatch: {}
+
+concurrency:
+  group: deploy-push-glasgow
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -21,6 +39,8 @@ jobs:
         env:
           SITE_CITY: glasgow
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # What's On (Ticketmaster GB, 15 mi) is fetched at build time; without the key the page would be empty (the Moreno 2026-09 bug).
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
         run: npx astro build
       - name: Deploy to Cloudflare Workers (Glasgow)
         working-directory: site

@@ -5,10 +5,30 @@ name: broomfield-deploy
 # git integration with a second TRIGGER for the same single deploy
 # mechanism, rather than leaving wrangler deploy reachable only from the
 # 6-hour scrape cron).
+# Actions minutes (private repo, 2026-10-28; .claude/specs/actions-minutes-plan.md): deploys only when a file that reaches THIS town changed
+# (paths filter; shared site code = every town), and a newer push cancels an older, still-running deploy of the same town.
 on:
   push:
     branches: [main]
+    paths:
+      - 'site/**'
+      - 'configs/broomfield_co.json'
+      - 'scripts/wrangler_deploy_retry.sh'
+      - 'scripts/purge_cloudflare_cache.py'
+      - 'scripts/check_deployed_content.py'
+      - '.github/workflows/broomfield-deploy.yml'
+      # not part of any build:
+      - '!site/**/*.test.ts'
+      - '!site/**/*.md'
+      # Glasgow-only files do not rebuild the US towns:
+      - '!site/src/config/gb/**'
+      - '!site/src/components/legal/gb/**'
+      - '!site/public/assets/images/**/glasgow-*'
   workflow_dispatch: {}
+
+concurrency:
+  group: deploy-push-broomfield_co
+  cancel-in-progress: true
 
 jobs:
   deploy:

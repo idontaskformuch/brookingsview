@@ -8,6 +8,7 @@
 import type { APIRoute } from 'astro';
 import { getAllStories, getFacilities, getAllWeeklyStories, formatDate } from '../../lib/db';
 import { renderOgImage } from '../../lib/og';
+import { isPrunedEvent } from '../../lib/old-events';
 import { siteConfig } from '../../lib/site-config';
 import { placeLabel } from '../../lib/country-profile';
 import { weekInfoForInstant, currentWeekInfo, type WeekInfo } from '../../lib/this-week';
@@ -112,7 +113,7 @@ export async function getStaticPaths() {
       params: { slug: `facility-${f.slug}` },
       props: { title: f.name, sourceType: 'facility', dateline: null },
     })),
-    ...stories.map((story) => ({
+    ...stories.filter((story) => !isPrunedEvent(story)).map((story) => ({
       params: { slug: story.slug },
       props: {
         title: story.title,
