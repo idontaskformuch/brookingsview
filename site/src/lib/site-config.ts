@@ -38,6 +38,9 @@ export interface SiteConfig {
    *  hours). Unset = the older rule only (no address/phone/hours at all). Glasgow 25 (owner 2026-10-28). Mirrored in astro.config.mjs
    *  THIN_FACILITY_MIN_OWN_WORDS; src/lib/thin-facility-mirror.test.ts fails if the two disagree. */
   thinFacilityMinOwnWords?: number;
+  /** Evening layer (/tonight, /this-weekend), see lib/evening-threshold.ts. 'threshold' = indexable once the median over the next 14 evenings
+   *  reaches 10 items in 3 groups (8 to stay); 'never' = always noindex (Brookings). Unset = the town has no evening layer. Owner 2026-10-28. */
+  eveningLayer?: { mode: 'threshold' | 'never' };
   /** false = not listed in the other towns' multi-site disclosure yet (an unlaunched, noindexed
    *  site is not advertised from the live ones). Default true. */
   listedInNetwork?: boolean;
@@ -385,6 +388,7 @@ const NO_RENDER_WINDOW: RenderWindow = { homeSales: null, meetings: null, events
 const CITIES: Record<string, SiteConfig> = {
   brookings_sd: {
     townId: 'brookings_sd',
+    eveningLayer: { mode: 'never' },
     renderWindow: NO_RENDER_WINDOW,
     cityName: 'Brookings',
     // Spec example + the sections it left out (This week, What's On, Closure Watch are enabled here and
@@ -495,6 +499,7 @@ const CITIES: Record<string, SiteConfig> = {
 
   moreno_valley_ca: {
     townId: 'moreno_valley_ca',
+    eveningLayer: { mode: 'threshold' },
     // Owner-approved 2026-10-21. Tabs follow GA4 traffic (facilities, not home sales); Home sales sits in Work & Home.
     nav: {
       tabs: ['today', 'events', 'whatson', 'cityhall', 'traffic', 'facilities', 'workplace'],
@@ -658,6 +663,7 @@ const CITIES: Record<string, SiteConfig> = {
 
   broomfield_co: {
     townId: 'broomfield_co',
+    eveningLayer: { mode: 'threshold' },
     // Owner-approved 2026-10-21: six tabs for now, a seventh to be chosen (events / workplace / vail / weather).
     nav: {
       tabs: ['today', 'cityhall', 'facilities', 'whatson', 'traffic', 'jobs'],
@@ -758,6 +764,7 @@ const CITIES: Record<string, SiteConfig> = {
   // yet listed in the US towns' network disclosure. Phase 3 enables sources one by one.
   glasgow: {
     townId: 'glasgow',
+    eveningLayer: { mode: 'threshold' },
     nav: {
       tabs: ['today', 'events', 'cityhall'],
       groups: {
