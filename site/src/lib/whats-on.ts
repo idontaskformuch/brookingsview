@@ -203,6 +203,49 @@ export function splitMarquee(ranked: RankedTicketmasterEvent[], marqueeSize: num
   return { marquee, alsoOn };
 }
 
+/** A listing that started more than this long ago is over (no end time in the Discovery API for most listings). */
+export const ENDED_AFTER_MS = 3 * 3_600_000;
+
+/** Drops listings that have already happened (owner 2026-10-28, Q3: a run's first date from August was still listed on 28 October).
+ *  A listing with no start time is kept: nothing says it is over. */
+export function dropEnded<T extends { occurs_at: string | null }>(items: T[], now: Date): T[] {
+  return items.filter((i) => !i.occurs_at || new Date(i.occurs_at).getTime() >= now.getTime() - ENDED_AFTER_MS);
+}
+
+/** One "Also on" row: a single listing, or a series (the same title at the same venue on `minRun` or more dates) folded into one row. */
+export interface SeriesRow {
+  /** The next date of the series (the soonest member), shown as the row's date. */
+  primary: TicketmasterFeedItem;
+  members: TicketmasterFeedItem[];
+}
+
+const seriesKey = (e: TicketmasterEvent): string =>
+  `${e.title.toLowerCase().replace(/\s+/g, ' ').trim()}::${e.venueId ?? e.venueName ?? ''}`;
+
+/** Folds daily and repeated rows (Glasgow 2026-10-28: "The Irn-Bru Carnival" 22 days in a row, a Christmas panto 65 times, ...) into one
+ *  row each: title, venue, the first-to-last date range and the next date. Same title AND same venue, `minRun` or more members;
+ *  a title that merely repeats at two venues, or twice, stays as it is. Keeps the position of a series' first member. Ended listings
+ *  must be dropped first (dropEnded) so the range and "next date" are about what is still to come. */
+export function collapseSeriesRows(items: TicketmasterFeedItem[], minRun = 3): SeriesRow[] {
+  const groups = new Map<string, TicketmasterFeedItem[]>();
+  for (const item of items) {
+    const key = seriesKey(item.ticketmasterEvent);
+    (groups.get(key) ?? groups.set(key, []).get(key)!).push(item);
+  }
+  const rows: SeriesRow[] = [];
+  const seen = new Set<string>();
+  for (const item of items) {
+    const key = seriesKey(item.ticketmasterEvent);
+    const group = groups.get(key)!;
+    if (group.length < minRun) { rows.push({ primary: item, members: [item] }); continue; }
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const members = [...group].sort((a, b) => (a.occurs_at ?? '').localeCompare(b.occurs_at ?? ''));
+    rows.push({ primary: members[0], members });
+  }
+  return rows;
+}
+
 /** What's On Phase 6b: is a stored weekly-intro row (identified by its own
  *  ISO year/week -- see lib/db.ts's WhatsOnIntroRow and
  *  ai_pipeline/whats_on_intro.py's week_bounds()) still describing the

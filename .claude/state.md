@@ -3,24 +3,14 @@
 Historik: se .claude/state-archive.md, läs bara vid behov.
 Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 
-## Q3 GLASGOW (lanseringsförhandsgranskning, 2026-10-28) -- SAMMANFATTNING
-Körning: Sonnet, lokal build med noindex av (29 indexerbara sidor, tillfälliga ändringar återställda), 17 anrop, ~0,50 USD av spärren 1 USD. Rapport: qa/out/q3/2026-10-28-glasgow-launch-preview/report.html (pages.json).
-FYND: 118 totalt = 10 high, 44 medium, 64 low (97 från AI-granskaren, 21 deterministiska).
-BEKRÄFTAT: noindex ÄR PÅ i koden (site-config.ts glasgow noindexSite: true, astro.config.mjs NOINDEX_SITE_TOWNS = ['glasgow']; live-HTML har fortfarande `noindex,follow`). INGET är deployat eller pushat sedan Glasgow-versionen 91c6fc3b (före förberedelsen); 7 lokala commits + 2 ocommitade filändringar väntar på ägaren.
-ÅTGÄRDAT lokalt (denna omgång): (1) bygget med noindex av föll på att Glasgow saknade jobs/movie_review-bildpooler fast sektionerna är avstängda -> krävs inte längre; (2) sitemap listade /traffic/ och /advertising/ trots noindex -> avstängda sektioner ur sitemap (test mot site-config); (3) /about-fragment ("Saying that plainly here rather than ...") omskrivet; (4) /facilities/ titel "Libraries, Parks and Buildings" stämde inte med innehållet -> "Libraries, Museums and Leisure Centres"; (5) /about lanseringstext, /contact utan "still being set up"; (6) byggspärren på nya indexerbara sidor (29 < 30, rapporterat vid bygget; live-sitemap är tom så allt räknas som nytt, kan åsidosättas med ALLOW_NEW_INDEXABLE_PAGES=yes).
-FALSKA FYND ur den lokala miljön (ingen åtgärd): sönderbrutna ticketmaster-bilder (/img/ticketmaster är en Worker-route som saknas i statisk lokal server), tom "Right now"-rad på /today/ (fylls av /api/weather-warnings i webbläsaren), "In Glasgow" utan avstånd/tider (Ticketmaster-data i lokal snapshot).
-ÅTERSTÅR FÖRE NOINDEX AV (frågor till ägaren, ej åtgärdade):
- A. Alias: kör `python -m scripts.seed_facility_name_aliases --apply` (12 Glasgow-rader, additivt)? Venue-bildkontrollen går först igenom efter det (just nu endast tillfälligt förbigången lokalt).
- B. /whats-on/: Ticketmaster "Venue Premium - ..." är mångdagarsserier ("57 dates, Aug 29 - Apr 30 2027") som listas som ikväll; ~25 Irn-Bru Carnival-rader (en per dag) och upprepade Strictly/Lord of the Rings. Vill du ha: slå ihop serier till en rad med datumintervall, dölj "Venue Premium"-paket, tak per titel?
- C. /events/ och /whats-on/ innehåller poster äldre än ett dygn i "upcoming"-listor (deterministiska fynd: 10 poster från 23 okt, en från 29 aug). Behöver felsökas (troligen Recently-/serielistor som flaggas fel av Q3, men en 29 aug-serie visas som kommande).
- D. /today/ lovar "tomorrow" och "road conditions"/"school status" som Glasgow saknar; ett pågående event utan sluttid visas som "on now" -> ändra texten till "started"?
- E. Mötesbeskrivningar (/city-hall/, /s/meeting-...) saknar "vad betyder det för invånare/kan allmänheten delta"; "Recent meetings" (5 passerade) dominerar över "Coming up" (2). Vill du begränsa Recent till 3?
- F. /facilities/: elva poster visar bara namn, adress och "Open now" (inga telefon/öppettider); /facilities/gorbals-library/ visar "closes 5:00 PM today" med källa "checked 23 Oct" (färskhet).
- G. Dubblerade "Meeting archive"/"Active projects" på /city-hall/ och dubblerad When/Dates på eventsida; hur ska de lösas?
- H. Bilder: "Autumn colours, Dorchester Avenue" och "West Carriageway, The Green" (Wikimedia) passar inte som illustration under City Chambers/Events; vill du byta ut dessa två poolbilder?
- I. Cloudflare Web Analytics: privacy/cookies beskriver det, men beacon finns inte i HTML:en -> slå på i dashboarden (eller lägg in beacon) före lansering, annars beskriver texterna något som inte körs.
- J. Resten av checklistan (juridik: UK GDPR-representant m.fl., "GLASGOW LANSERINGSCHECKLISTA" nedan) gäller oförändrad.
+## Q3 GLASGOW (lanseringsförhandsgranskning, 2026-10-28) -- SAMMANFATTNING (körning 2)
+Körning 1: 118 fynd (10 high/44 medium/64 low). Körning 2 (efter ägarens beslut A-J): 120 fynd = 9 high, 40 medium, 71 low, ~0,49 USD (Sonnet, spärr 1 USD); lokal build med noindex av (21 indexerbara sidor, spärr 30 hålls, sitemap/noindex-disjoint OK), koden återställd. Rapporter: qa/out/q3/2026-10-28-glasgow-launch-preview{,-2}/.
+NOINDEX ÄR PÅ i koden och live. INGET pushat eller deployat (Glasgow live = 91c6fc3b); lokala commits + ocommitade ändringar väntar på ägaren.
+BESLUT A-J (status): A alias seedade live (backup backups/glasgow_place_aliases_before_20261028T123948Z.json, 12/12) KLAR. B Ticketmaster "Venue Premium"/VIP-uppgraderingar filtreras, serier (>=3 rader) slås ihop till en rad med datumintervall + nästa datum KLAR. C passerade poster ur upcoming (dropEnded), Also-on begränsad till 60 dagar KLAR. D /today-text byggd från källor staden har; event utan sluttid "on now" max 3 h KLAR. G dubbletter på /city-hall/ (RelatedContent exclude) KLAR. H två Wikimedia-bilder i denylist KLAR. F tunna faciliteter noindex (<25 egna ord; 8 av 12) KLAR. E och övrigt -> backlog. I Web Analytics: beacon finns INTE i live-HTML (inget att slå på i koden) ÄGAREN. J juridik-checklistan oförändrad.
+Q3-omkörning: körning 2 gjord; de 9 high är mest lokala miljöfalsklarm (ingen /api, ingen /img/ticketmaster). Äkta kvar: stadshusbilden (Argyle Street-trädet) ej denylistad = ägarbeslut; mötessammanfattningar i futurum för passerade möten; kortdatum utan tid; öppettider i 12-timmarsformat (UK: 10am-5pm). Åtgärder efter körningen (60-dagarshorisont, RelatedContent) är ännu inte omkörda: körning 3 behövs innan raden "Glasgow redo för ägarens ja till noindex" får läggas överst (läggs ENDAST när Q3 saknar high).
 STOPP: omgång 1 punkt 2 (valgenomkörningen) är INTE påbörjad.
+Met Office (punkt 3): orsak var felformad/dålig lagrad nyckel (HTTP 500 kod 900900). Nyckeln omlagd via stdin, dispatcher deployad (46e56873) med "auth failure"-klassning utan återförsök; 14:00 UTC-tickan skrev prognoser för alla fyra städer inkl. Glasgow (ok:true, 24 timmar, 14 perioder).
+
 
 ## NÄSTA (ägaren 2026-10-28; ERSÄTTER alla tidigare NÄSTA-rader och ordningar nedan)
 Regler: lokala commits, EN push per omgång (ägarens ja), testbatteri en gång per omgång, effektivitetsreglerna under Gällande beslut gäller. Efter varje punkt i omgång 1: stanna och rapportera. Skriv "klar för /clear" efter varje omgång.
@@ -254,6 +244,7 @@ ORDNING (ägaren 2026-10-21, uppdaterad): 1) Nav fas 1 görs klar parallellt med
 
 
 ## 3. Gällande beslut (kortform)
+- Långa secrets (t.ex. Met Office, ca 1 700 tecken) sätts via stdin från .env, aldrig via inklistring i terminalen. (ägaren 2026-10-28)
 - Ingen Stripe-annonsförsäljning ännu. Byggs när en sajt har ca 1 000-3 000 besök/månad eller 2-3 företag har frågat, och efter beslut om företagsform. (ägaren 2026-10-27)
 - AdSense: aktivera Privacy & messaging (certifierad CMP för EU/UK) DIREKT efter godkännande. Inga annonsrutor före godkännande. Brookings ads.txt: live /ads.txt ger status 200 med kroppen "Not found" (soft-404, public/ads.txt kolliderar med ads.txt.ts-routen) -- städas när pub-id finns. (ägaren 2026-10-27)
 - INGA NYA STÄDER FÖRRÄN NÅGON SAJT DRAR IN PENGAR (ägaren 2026-10-23). Fokus: kvalitet (Q3-fynd), Brookings AdSense, Glasgow-lansering,

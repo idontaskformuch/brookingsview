@@ -3,6 +3,11 @@
 # assets-upload-session) must not cost a whole scrape/build cycle. Usage: bash ../scripts/wrangler_deploy_retry.sh --env <name>
 # Run from site/. DEPLOY_RETRY_PAUSE (seconds, default 30) and DEPLOY_CMD (default "npx wrangler deploy") exist for the test.
 set -u
+# A local launch preview of Glasgow (scripts/glasgow_preview_build.sh, noindex OFF) must never be deployed.
+if [ -f dist/.launch-preview ]; then
+  echo "refusing to deploy: dist/ is a local launch preview (dist/.launch-preview exists). Rebuild normally first." >&2
+  exit 4
+fi
 pause="${DEPLOY_RETRY_PAUSE:-30}"
 cmd="${DEPLOY_CMD:-npx wrangler deploy}"
 attempt=1

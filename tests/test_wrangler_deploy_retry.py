@@ -39,3 +39,16 @@ def test_succeeds_on_third_attempt(tmp_path):
 @pytest.mark.skipif(BASH is None, reason="bash not available")
 def test_gives_up_after_three_attempts_with_the_exit_code(tmp_path):
     assert _run(tmp_path, 4) == (1, 3)
+
+
+@pytest.mark.skipif(BASH is None, reason="bash not available")
+def test_refuses_to_deploy_a_local_launch_preview(tmp_path):
+    """scripts/glasgow_preview_build.sh writes dist/.launch-preview (noindex OFF build); the deploy script must refuse it."""
+    (tmp_path / "dist").mkdir()
+    (tmp_path / "dist" / ".launch-preview").write_text("x")
+    marker = tmp_path / "ran"
+    env = dict(os.environ, DEPLOY_RETRY_PAUSE="0", DEPLOY_CMD=f"touch {marker.as_posix()}")
+    r = subprocess.run([BASH, SCRIPT.as_posix(), "--env", "glasgow"], env=env, capture_output=True, text=True, cwd=tmp_path)
+    assert r.returncode == 4
+    assert "launch preview" in r.stderr
+    assert not marker.exists()

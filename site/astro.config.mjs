@@ -513,6 +513,8 @@ async function buildLastmodMap(townId, databaseUrl) {
   // simplified approximation like the events-facet mirror above -- the
   // EXISTS subquery gives exact parity with the real page's structured-
   // hours check (place_hours rows), no overcounting needed here.
+  // Mirrors SiteConfig.thinFacilityMinOwnWords (site-config.ts); src/lib/thin-facility-mirror.test.ts fails if they disagree.
+  const THIN_FACILITY_MIN_OWN_WORDS = { glasgow: 25 };
   const thinFacilities = await sql`
     SELECT p.slug,
            (p.address IS NULL OR p.address = '') AS no_address,
@@ -520,7 +522,8 @@ async function buildLastmodMap(townId, databaseUrl) {
            (p.hours_text IS NULL OR p.hours_text = '') AS no_hours_text,
            NOT EXISTS(SELECT 1 FROM place_hours ph WHERE ph.place_id = p.id) AS no_structured_hours,
            (p.street_address IS NULL OR p.street_address = '') AS no_street,
-           (p.services IS NULL OR cardinality(p.services) = 0) AS no_services
+           (p.services IS NULL OR cardinality(p.services) = 0) AS no_services,
+           p.description AS description, p.services AS services
       FROM places p
      WHERE p.town_id = ${townId}
   `;
@@ -530,6 +533,12 @@ async function buildLastmodMap(townId, databaseUrl) {
     if ((f.no_address && f.no_phone && f.no_hours_text && f.no_structured_hours)
       || (f.no_street && f.no_phone && f.no_hours_text && f.no_structured_hours && f.no_services)) {
       noindexThinPageUrls.add(`/facilities/${f.slug}/`);
+    }
+    // Text-thin rule (owner 2026-10-28): only where the town sets a minimum for the facility's own text (description + services).
+    const minOwn = THIN_FACILITY_MIN_OWN_WORDS[townId];
+    if (minOwn !== undefined) {
+      const words = (t) => String(t ?? '').split(/\s+/).filter(Boolean).length;
+      if (words(f.description) + words((f.services ?? []).join(' ')) < minOwn) noindexThinPageUrls.add(`/facilities/${f.slug}/`);
     }
   }
 

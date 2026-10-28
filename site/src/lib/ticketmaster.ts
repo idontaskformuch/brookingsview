@@ -268,9 +268,11 @@ export function isNonEventListing(raw: RawTicketmasterEvent): boolean {
  *  "Parking: ...". Seen live 2026-10-23 on /whats-on/ (owner: filter them). Deliberately narrow: the product word must START the title
  *  and be followed by a colon or dash, so a real show whose name merely contains one of these words stays. The structural
  *  classification check above stays the primary signal; this catches the products Ticketmaster files as ordinary events. */
-const UPGRADE_PRODUCT = /^(club level seating|club seats?|premium seating|vip(?:\s+(?:package|experience|ticket|upgrade|lounge))?|suites?|loge boxes?|hospitality(?:\s+package)?|parking(?:\s+pass)?|fast\s*lane|early entry|meet\s*(?:&|and)\s*greet(?:\s+package)?|pre-?show(?:\s+party)?|lounge access)\s*[:\-–—]/i;
+const UPGRADE_PRODUCT = /^(venue premium|club level seating|club seats?|premium seating|vip(?:\s+(?:package|experience|ticket|upgrade|lounge))?|suites?|loge boxes?|hospitality(?:\s+package)?|parking(?:\s+pass)?|fast\s*lane|early entry|meet\s*(?:&|and)\s*greet(?:\s+package)?|pre-?show(?:\s+party)?|lounge access)\s*[:\-–—]/i;
+/** Suffix form: "N-Dubz Official Vip Ticket Experiences" (OVO Hydro, seen live 2026-10-28) is a hospitality product, not a show. */
+const UPGRADE_SUFFIX = /\b(?:official\s+)?vip\s+(?:ticket\s+)?experiences?\s*$/i;
 export function isUpgradeProductTitle(title: string | null | undefined): boolean {
-  return !!title && UPGRADE_PRODUCT.test(title.trim());
+  return !!title && (UPGRADE_PRODUCT.test(title.trim()) || UPGRADE_SUFFIX.test(title.trim()));
 }
 
 /** Pure -- unit-tested directly against captured fixture responses (see

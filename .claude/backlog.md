@@ -45,3 +45,10 @@ Beslut 2026-10-23 (ägaren): inga nya städer förrän någon sajt drar in penga
 ## Parkerat (ägaren 2026-10-28: efter intäkter)
 
 - Auto-fix-agent (QA Q5), Stripe-annonser, Best of-röstning, London (UK-mall). Inget av detta byggs före intäkter.
+
+## Glasgow efter lansering (ägarens beslut 2026-10-28, från Q3-förhandsgranskningen; inget påhittat)
+- Mötesbeskrivningar på /city-hall/ och /s/meeting-...: "vad betyder det för invånare / kan allmänheten delta" bara om källan säger det (agendans "how to attend"); ingen AI-gissning. "Recent meetings" begränsas till 3 mot "Coming up".
+- Tunna facility-sidor (8 av 12, noindex sedan 2026-10-28): fyll beskrivning/services ur officiella källor (Glasgow Life/Museums-sidor) för att kunna indexeras; tröskel thinFacilityMinOwnWords = 25 ord.
+- /facilities/-listan: telefon/öppettider på raderna; "checked <datum>" på öppettider äldre än 7 dagar.
+- Cloudflare Web Analytics: skriptet finns INTE i live-HTML (2026-10-28). Privacy/cookies beskriver det. Lägg in beacon (token) eller ändra texterna innan indexering.
+- Venue-bildkontrollen: aliaset för de 12 anläggningarna är seedat (2026-10-28); venues Glasgow Life nämner utan anläggningssida (Tramway, City Halls, filialbibliotek) får kategoribild.

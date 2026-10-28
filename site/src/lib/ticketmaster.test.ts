@@ -633,13 +633,15 @@ describe('distanceLabel (What\'s On Phase 5: anti-doorway-pattern transparency)'
 describe('isUpgradeProductTitle: seating and hospitality upgrades are not events (owner 2026-10-23)', () => {
   it('filters the products seen live on /whats-on/', () => {
     for (const t of ['Club Level Seating: The Smashing Pumpkins', 'Club Level Seating: Hilary Duff', 'VIP Package - Dan + Shay', 'Premium Seating: Journey',
-      'Parking: Gracie Abrams', 'Meet & Greet Package: Teddy Swims', 'Suite: Denver Nuggets', 'Hospitality Package: Kenny Chesney']) {
+      'Parking: Gracie Abrams', 'Meet & Greet Package: Teddy Swims', 'Suite: Denver Nuggets', 'Hospitality Package: Kenny Chesney',
+      // Glasgow, OVO Hydro (2026-10-28): 90 of 1 200 listings in 15 miles are "Venue Premium - <show>" hospitality products
+      "Venue Premium - The Waterboys - Fisherman's Blues Revue", 'Venue Premium - Kevin Bridges:  Here If You Need Me', 'N-Dubz Official Vip Ticket Experiences']) {
       expect(isUpgradeProductTitle(t), t).toBe(true);
     }
   });
   it('keeps real shows, including ones whose name merely contains a product word', () => {
     for (const t of ['The Smashing Pumpkins: The Rats In A Cage Tour', 'Suite Life Live', 'Parking Lot Party Tour', 'VIPs of Comedy', 'Club Night with DJ Kai',
-      'Disney On Ice presents Find Your Hero', 'Meet Me in St. Louis']) {
+      'Disney On Ice presents Find Your Hero', 'Meet Me in St. Louis', 'Venue Premium Nights', 'The VIP Experiences of Glasgow Tour']) {
       expect(isUpgradeProductTitle(t), t).toBe(false);
     }
   });

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error plain .mjs shared with astro.config.mjs
 import { MAX_NEW_INDEXABLE, checkNewIndexable, childSitemaps, fetchLiveSitemapPaths, newIndexable, sitemapPaths } from '../../scripts/new-indexable.mjs';
 
 const xml = (paths: string[]) => `<urlset>${paths.map((p) => `<url><loc>https://x.test${p}</loc></url>`).join('')}</urlset>`;

@@ -12,9 +12,12 @@ import { getRelatedContent, type RelatedPageType } from '../lib/db';
 
 interface Props {
   pageType: RelatedPageType;
+  /** Hrefs already offered elsewhere on the page (a ClusterNav block above): not repeated here (Q3 2026-10-28, /city-hall/ listed
+   *  "Meeting archive" and "Active projects" twice). */
+  exclude?: string[];
 }
-const { pageType } = Astro.props;
-const items = await getRelatedContent(pageType);
+const { pageType, exclude = [] } = Astro.props;
+const items = (await getRelatedContent(pageType)).filter((item) => !exclude.includes(item.href));
 ---
 {items.length > 0 && (
   <nav class="related-content" aria-label="You might also like">

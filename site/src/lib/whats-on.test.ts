@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  rankTicketmasterEvents, splitMarquee, collapseMarqueeRuns, MARQUEE_SIZE,
+  rankTicketmasterEvents, splitMarquee, collapseMarqueeRuns, MARQUEE_SIZE, dropEnded, collapseSeriesRows,
   ticketmasterSlug, ticketmasterResolvableImage, isWhatsOnIntroFresh, marqueeDigestKey,
   type MarqueeEntry,
 } from './whats-on';
@@ -359,5 +359,39 @@ describe('isWhatsOnIntroFresh (What\'s On Phase 6b)', () => {
 
   it('is stale when isoYear differs even if isoWeek number matches (year-boundary case)', () => {
     expect(isWhatsOnIntroFresh({ isoYear: 2025, isoWeek: 37 }, { isoYear: 2026, isoWeek: 37 })).toBe(false);
+  });
+});
+
+describe('dropEnded (Q3 2026-10-28: a run whose first date is months old was still listed)', () => {
+  const now = new Date('2026-10-28T13:00:00Z');
+  it('keeps what is still to come and what started less than three hours ago, drops the rest, keeps undated listings', () => {
+    const items = [tmItem('2026-08-29T19:00:00Z', { id: 'old' }), tmItem('2026-10-28T10:30:00Z', { id: 'under3h' }), tmItem('2026-10-28T09:30:00Z', { id: 'over3h' }),
+      tmItem('2026-11-01T19:00:00Z', { id: 'future' }), tmItem(null, { id: 'undated' })];
+    expect(dropEnded(items, now).map((i) => i.ticketmasterEvent.id)).toEqual(['under3h', 'future', 'undated']);
+  });
+});
+
+describe('collapseSeriesRows (Glasgow 2026-10-28: 22 daily rows of one carnival, a panto 65 times)', () => {
+  const day = (n: number) => `2026-12-${String(n).padStart(2, '0')}T11:00:00Z`;
+  const run = (title: string, venue: string, days: number[]) => days.map((d, i) => tmItem(day(d), { id: `${title}-${venue}-${i}`, title, venueName: venue, venueId: venue }));
+
+  it('folds 3+ dates of the same title at the same venue into one row: next date first, members in date order', () => {
+    const rows = collapseSeriesRows([...run('The Irn-Bru Carnival', 'SEC Centre', [20, 18, 19, 21])]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].primary.occurs_at).toBe(day(18));
+    expect(rows[0].members.map((m) => m.occurs_at)).toEqual([day(18), day(19), day(20), day(21)]);
+  });
+  it('leaves two dates, and the same title at two venues, as separate rows', () => {
+    expect(collapseSeriesRows(run('Two Nights', 'Hydro', [1, 2]))).toHaveLength(2);
+    expect(collapseSeriesRows([...run('Tour', 'Hydro', [1, 2]), ...run('Tour', 'Armadillo', [3, 4])])).toHaveLength(4);
+  });
+  it('keeps the position of the first member and never merges different titles', () => {
+    const a = tmItem(day(5), { id: 'solo', title: 'Solo Show', venueName: 'X', venueId: 'X' });
+    const rows = collapseSeriesRows([a, ...run('Panto', 'Oran Mor', [6, 7, 8])]);
+    expect(rows.map((r) => r.primary.ticketmasterEvent.title)).toEqual(['Solo Show', 'Panto']);
+  });
+  it('title matching ignores case and spacing', () => {
+    const rows = collapseSeriesRows([tmItem(day(1), { id: '1', title: 'Scrooge  The Musical', venueId: 'v' }), tmItem(day(2), { id: '2', title: 'scrooge the musical', venueId: 'v' }), tmItem(day(3), { id: '3', title: 'Scrooge The Musical ', venueId: 'v' })]);
+    expect(rows).toHaveLength(1);
   });
 });

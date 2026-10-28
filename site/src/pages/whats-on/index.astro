@@ -28,7 +28,7 @@ import ShareButton from '../../components/ShareButton.astro';
 import { siteConfig } from '../../lib/site-config';
 import { placeLabel } from '../../lib/country-profile';
 import { getTicketmasterEventsForTown } from '../../lib/ticketmaster';
-import { rankTicketmasterEvents, splitMarquee, isWhatsOnIntroFresh, ticketmasterResolvableImage, marqueeDigestKey } from '../../lib/whats-on';
+import { rankTicketmasterEvents, splitMarquee, isWhatsOnIntroFresh, ticketmasterResolvableImage, marqueeDigestKey, dropEnded, collapseSeriesRows } from '../../lib/whats-on';
 import { getWhatsOnIntro, getFacilities, getEventDeckDigests } from '../../lib/db';
 import { currentWeekInfo } from '../../lib/this-week';
 import { EMPTY_STATES } from '../../lib/empty-states';
@@ -60,7 +60,9 @@ const [items, facilities] = await Promise.all([
   getTicketmasterEventsForTown(siteConfig),
   getFacilities(),
 ]);
-const ranked = rankTicketmasterEvents(items, siteConfig.townId);
+// Listings that already happened are dropped (a run's first date can be months old); see lib/whats-on.ts dropEnded().
+const buildNow = new Date();
+const ranked = rankTicketmasterEvents(dropEnded(items, buildNow), siteConfig.townId);
 const { marquee, alsoOn } = splitMarquee(ranked, siteConfig.ticketmaster.marqueeSize);
 
 // Sitewide presentation-layer pass: Marquee cards now need a real resolved
@@ -86,7 +88,12 @@ for (const entry of marquee) {
     demotedToAlsoOn.push(entry.primary);
   }
 }
-const alsoOnFinal = [...demotedToAlsoOn, ...alsoOn];
+// Daily and repeated rows (same title, same venue, 3+ dates) become one row with the date range and the next date.
+// Only the next 60 days are listed: a show a year away crowds out this week (Q3 2026-10-28: 100+ rows to October 2027).
+const ALSO_ON_HORIZON_MS = 60 * 86_400_000;
+const allAlsoOnRows = collapseSeriesRows([...demotedToAlsoOn, ...alsoOn]);
+const alsoOnRows = allAlsoOnRows.filter((r) => !r.primary.occurs_at || new Date(r.primary.occurs_at).getTime() <= buildNow.getTime() + ALSO_ON_HORIZON_MS);
+const laterCount = allAlsoOnRows.length - alsoOnRows.length;
 
 // Marquee deck sentences follow-up: one batch lookup for every Marquee
 // card's own key, rather than one query per card -- see
@@ -169,12 +176,13 @@ const pageMeta = resolvePageMeta('whats-on', siteConfig);
           </div>
         </>
       )}
-      {alsoOnFinal.length > 0 && (
+      {alsoOnRows.length > 0 && (
         <>
           <SectionRule label="Also on" />
           <div class="also-on-list">
-            {alsoOnFinal.map((item) => <WhatsOnCard item={item} />)}
+            {alsoOnRows.map((row) => <WhatsOnCard item={row.primary} runSize={row.members.length} lastOccursAt={row.members[row.members.length - 1].occurs_at} />)}
           </div>
+          {laterCount > 0 && <p class="also-on-later">Showing the next 60 days. {laterCount} more listing{laterCount === 1 ? '' : 's'} further ahead are on Ticketmaster.</p>}
         </>
       )}
     </>
@@ -206,5 +214,6 @@ const pageMeta = resolvePageMeta('whats-on', siteConfig);
 .whats-on-intro__disclosure { font-size: 0.75rem; color: var(--ink-soft); margin: 0; }
 .marquee-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); margin-bottom: 1.5rem; }
 .also-on-list { display: block; }
+.also-on-later { margin: 0.75rem 0 0; color: var(--ink-soft); font-size: 0.9375rem; }
 .empty { color: var(--ink-soft); }
 </style>

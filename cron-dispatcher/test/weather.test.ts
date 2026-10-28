@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { buildPayload, compass, windText, weatherText, fetchMetOfficeForecast, RETRY_DELAYS_MS } from '../src/weather/metoffice';
+import { buildPayload, compass, windText, weatherText, fetchMetOfficeForecast, isAuthFailure, RETRY_DELAYS_MS } from '../src/weather/metoffice';
 import { normalizeNws, fetchNwsForecast } from '../src/weather/nws';
 import { refreshWeather, storeWeather } from '../src/weather/refresh';
 import { WEATHER_TOWNS, isWeatherTick } from '../src/weather/towns';
@@ -116,9 +116,28 @@ describe('Met Office retries and error text', () => {
     await expect(fetchMetOfficeForecast(55.86, -4.25, 'Europe/London', 'secret-key', fetcher, now, [0, 0, 0])).rejects.toThrow(
       /Met Office hourly -> HTTP 500 after 4 attempts; body: \{"code":"500","message":"Internal error from gateway"\}; content-type=application\/json via=1\.1 cloudfront/);
   });
+  it('HTTP 500 with the gateway auth code 900900 is an auth failure: logged as such and NOT retried', async () => {
+    let n = 0;
+    const fetcher = (async () => { n++; return new Response('{"code":"900900","message":"Unclassified Authentication Failure"}', { status: 500, headers: { 'content-type': 'application/json' } }); }) as typeof fetch;
+    await expect(fetchMetOfficeForecast(55.86, -4.25, 'Europe/London', 'k', fetcher, now, [0, 0, 0])).rejects.toThrow(/auth failure \(HTTP 500, not retried\): check MET_OFFICE_API_KEY/);
+    expect(n).toBe(1);
+  });
+  it('isAuthFailure: 401/403 and any 9009xx code, but not a plain 5xx', () => {
+    expect(isAuthFailure(401, '')).toBe(true);
+    expect(isAuthFailure(403, 'x')).toBe(true);
+    expect(isAuthFailure(500, '{"code":"900900"}')).toBe(true);
+    expect(isAuthFailure(500, '{"code":900901,"message":"Invalid Credentials"}')).toBe(true);
+    expect(isAuthFailure(503, 'upstream timeout')).toBe(false);
+    expect(isAuthFailure(500, '{"code":"500","message":"boom"}')).toBe(false);
+  });
+  it('a real 5xx without an auth code is still retried', async () => {
+    let n = 0;
+    await expect(fetchMetOfficeForecast(1, 2, 'Europe/London', 'k', (async () => { n++; return new Response('{"code":"500"}', { status: 502 }); }) as typeof fetch, now, [0, 0])).rejects.toThrow('HTTP 502 after 3 attempts');
+    expect(n).toBe(3);
+  });
   it('a 4xx is not retried and a network error is', async () => {
     let n = 0;
-    await expect(fetchMetOfficeForecast(1, 2, 'Europe/London', 'k', (async () => { n++; return new Response('nope', { status: 403 }); }) as typeof fetch, now, [0, 0, 0])).rejects.toThrow('HTTP 403 after 1 attempt;');
+    await expect(fetchMetOfficeForecast(1, 2, 'Europe/London', 'k', (async () => { n++; return new Response('nope', { status: 404 }); }) as typeof fetch, now, [0, 0, 0])).rejects.toThrow('HTTP 404 after 1 attempt;');
     expect(n).toBe(1);
     let m = 0;
     await expect(fetchMetOfficeForecast(1, 2, 'Europe/London', 'k', (async () => { m++; throw new Error('connection reset'); }) as typeof fetch, now, [0, 0])).rejects.toThrow('network error after 3 attempts: connection reset');

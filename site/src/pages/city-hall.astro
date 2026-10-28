@@ -78,7 +78,7 @@ const clusterNavItems = resolveHubNavItems('city-hall', siteConfig);
 
   <ClusterNav clusterLabel="City hall" items={clusterNavItems} />
 
-  <RelatedContent pageType="city_hall" />
+  <RelatedContent pageType="city_hall" exclude={clusterNavItems.map((i) => i.href)} />
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)

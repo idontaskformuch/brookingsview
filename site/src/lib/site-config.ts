@@ -34,6 +34,10 @@ export interface SiteConfig {
   /** Site-wide noindex until the town has real data (Glasgow Phase 2): every page carries
    *  noindex, robots.txt advertises no sitemap, and the sitemap is empty. */
   noindexSite?: boolean;
+  /** A facility page whose OWN text (description + services) is shorter than this many words is noindex: it is only fact rows (address, phone,
+   *  hours). Unset = the older rule only (no address/phone/hours at all). Glasgow 25 (owner 2026-10-28). Mirrored in astro.config.mjs
+   *  THIN_FACILITY_MIN_OWN_WORDS; src/lib/thin-facility-mirror.test.ts fails if the two disagree. */
+  thinFacilityMinOwnWords?: number;
   /** false = not listed in the other towns' multi-site disclosure yet (an unlaunched, noindexed
    *  site is not advertised from the live ones). Default true. */
   listedInNetwork?: boolean;
@@ -763,6 +767,7 @@ const CITIES: Record<string, SiteConfig> = {
     },
     disabledSections: ['traffic', 'jobs', 'advertising', 'reviews', 'recipes', 'editorials', 'columns'],
     noindexSite: true,
+    thinFacilityMinOwnWords: 25,
     listedInNetwork: false,
     hasMetOfficeWarnings: true,
     // What's On (owner 2026-10-28): Ticketmaster GB within 15 miles of the centre; venue tiers in lib/venue-tiers.ts. Mirrors configs/glasgow.json.

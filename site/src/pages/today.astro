@@ -53,10 +53,11 @@ const pageMeta = resolvePageMeta('today', siteConfig);
 const pageTitle = pageMeta.title;
 const hubBacklink = resolveHubBacklink('today', siteConfig);
 import PageGuide from '../components/PageGuide.astro';
+import { todayDescription, todayShows, todaySources } from '../lib/today-copy';
 ---
 
 <BaseLayout title={pageTitle} ogSlug="section-today"
-  description={`What's happening today in ${placeAbbr(siteConfig)} — active alerts, school status, traffic, and events today and tomorrow.`}>
+  description={todayDescription(siteConfig, placeAbbr(siteConfig))}>
   <script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumbJsonLd)} />
   <Breadcrumbs trail={breadcrumbTrail} />
   <div class="lede">
@@ -67,10 +68,10 @@ import PageGuide from '../components/PageGuide.astro';
   <SectionHero section="today" compact />
 
   <PageGuide
-    shows={`What matters in ${siteConfig.cityName} right now: active alerts, school status, road conditions and events today and tomorrow.`}
+    shows={todayShows(siteConfig, siteConfig.cityName)}
     use="Check it before you leave the house or plan the evening. Anything with a warning or closure links to the official notice, which is the one to rely on."
   >
-    {forCountry(siteConfig.country, 'National Weather Service alerts, ', 'Met Office warnings, ')}local school and road-condition sources, and event {forCountry(siteConfig.country, 'organizers', 'organisers')}' own calendars. <a href="/how-we-gather-this/">How we gather this</a>.
+    {todaySources(siteConfig)}. <a href="/how-we-gather-this/">How we gather this</a>.
   </PageGuide>
 
   <TodayBlock

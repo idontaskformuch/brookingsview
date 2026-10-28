@@ -140,16 +140,27 @@ export const RETRY_DELAYS_MS = [5_000, 15_000, 30_000];
 
 const sleep = (ms: number): Promise<void> => (ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve());
 
-/** What the error message carries about a failed answer: status, the first 200 characters of the body and a few headers. The key is never in
- *  a URL or a header we print. */
-async function describeFailure(label: string, r: Response, attempts: number): Promise<string> {
-  const body = (await r.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200);
-  const hdr = ['content-type', 'retry-after', 'via', 'x-request-id'].map((k) => (r.headers.get(k) ? `${k}=${r.headers.get(k)}` : '')).filter(Boolean).join(' ');
-  return `Met Office ${label} -> HTTP ${r.status} after ${attempts} attempt${attempts === 1 ? '' : 's'}; body: ${body || '(empty)'}${hdr ? `; ${hdr}` : ''}`;
+/** An authentication problem, not an outage: 401/403, or the gateway's own auth codes (WSO2 9009xx: 900900 "Unclassified Authentication
+ *  Failure" arrives as HTTP 500, 900901 invalid credentials, 900908 resource forbidden). Seen 2026-10-28: a malformed stored key made every
+ *  hourly request answer 500/900900, and four retries only repeated it. Never retried. */
+export function isAuthFailure(status: number, bodyText: string): boolean {
+  if (status === 401 || status === 403) return true;
+  const code = /"code"\s*:\s*"?(\d+)"?/.exec(bodyText)?.[1];
+  return !!code && code.startsWith('9009');
 }
 
-/** Throws on a non-200 or empty answer: the caller then keeps the stored snapshot. A 5xx or a network error is retried (RETRY_DELAYS_MS);
- *  a 4xx (a wrong or forbidden key) is not, it will not get better. */
+/** What the error message carries about a failed answer: status, the first 200 characters of the body and a few headers. The key is never in
+ *  a URL or a header we print. */
+async function describeFailure(label: string, r: Response, attempts: number): Promise<{ message: string; auth: boolean }> {
+  const body = (await r.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200);
+  const hdr = ['content-type', 'retry-after', 'via', 'x-request-id'].map((k) => (r.headers.get(k) ? `${k}=${r.headers.get(k)}` : '')).filter(Boolean).join(' ');
+  const auth = isAuthFailure(r.status, body);
+  const head = auth ? `Met Office ${label} -> auth failure (HTTP ${r.status}, not retried): check MET_OFFICE_API_KEY on the Worker` : `Met Office ${label} -> HTTP ${r.status} after ${attempts} attempt${attempts === 1 ? '' : 's'}`;
+  return { message: `${head}; body: ${body || '(empty)'}${hdr ? `; ${hdr}` : ''}`, auth };
+}
+
+/** Throws on a non-200 or empty answer: the caller then keeps the stored snapshot. A real 5xx or a network error is retried (RETRY_DELAYS_MS);
+ *  an auth failure (see isAuthFailure) and any 4xx are not. */
 export async function fetchMetOfficeForecast(
   lat: number, lon: number, tz: string, apiKey: string, fetcher: typeof fetch = fetch, nowMs = Date.now(), delays: number[] = RETRY_DELAYS_MS,
 ): Promise<WeatherPayload> {
@@ -160,8 +171,9 @@ export async function fetchMetOfficeForecast(
       try {
         const r = await fetcher(`${API}/${kind}?latitude=${lat}&longitude=${lon}`, { headers: { apikey: apiKey, Accept: 'application/json', 'User-Agent': 'ViewMediaBot/1.0 (+https://glasgowloop.co.uk)' } });
         if (r.status === 200) return (await r.json()) as Doc;
-        lastError = await describeFailure(kind, r, attempt + 1);
-        if (r.status < 500) break; // 4xx: retrying will not help
+        const failure = await describeFailure(kind, r, attempt + 1);
+        lastError = failure.message;
+        if (failure.auth || r.status < 500) break; // an auth failure or a 4xx will not get better; only a real 5xx is retried
       } catch (e) {
         lastError = `Met Office ${kind} -> network error after ${attempt + 1} attempt${attempt === 0 ? '' : 's'}: ${String((e as Error)?.message ?? e).slice(0, 120)}`;
       }
