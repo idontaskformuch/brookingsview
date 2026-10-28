@@ -37,7 +37,8 @@ const clusterNavItems = resolveHubNavItems('events', siteConfig);
 // vanlig 'event'-rad (sitewide presentation-layer pass, R4: sidans egen
 // rubrik säger redan "Events", en upprepad generisk kicker var bara brus).
 const isBrookings = siteConfig.townId === 'brookings_sd';
-const townwideKicker = TOWN_EVENT_KICKER;
+// gb: no override, so StoryCard shows the story's own category (meta.category) and falls back to "Around Town" itself.
+const townwideKicker = siteConfig.country === 'gb' ? undefined : TOWN_EVENT_KICKER;
 
 const [upcoming, past, artsEvents, facilities] = await Promise.all([
   getUpcomingStories(['event'], 120),

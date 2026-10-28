@@ -10,7 +10,7 @@ interface Props {
   label: string;
   list: FeedItem[];
   alsoListedBy: Map<FeedItem, string[]>;
-  kicker: string;
+  kicker?: string;
   facilities: any[];
   homeGame?: { team_name: string; opponent_name: string; venue?: string | null } | null;
 }
