@@ -1,0 +1,1747 @@
+{
+ "data": [
+  {
+   "id": 19722764,
+   "sport_id": 1,
+   "league_id": 501,
+   "season_id": 28275,
+   "stage_id": 77482564,
+   "group_id": null,
+   "aggregate_id": null,
+   "round_id": 407964,
+   "state_id": 5,
+   "venue_id": 8879,
+   "name": "St. Mirren vs Dundee",
+   "starting_at": "2026-10-24 14:00:00",
+   "result_info": "St. Mirren won after full-time.",
+   "leg": "1/1",
+   "details": null,
+   "length": 90,
+   "placeholder": false,
+   "has_odds": true,
+   "has_premium_odds": true,
+   "starting_at_timestamp": 1792850400,
+   "participants": [
+    {
+     "id": 284,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 284597,
+     "gender": "male",
+     "name": "Dundee",
+     "short_code": "DUD",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/28/284.png",
+     "founded": 1893,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "away",
+      "winner": false,
+      "position": 4
+     }
+    },
+    {
+     "id": 496,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8879,
+     "gender": "male",
+     "name": "St. Mirren",
+     "short_code": "STM",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/16/496.png",
+     "founded": 1877,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "home",
+      "winner": true,
+      "position": 8
+     }
+    }
+   ],
+   "venue": {
+    "id": 8879,
+    "country_id": 1161,
+    "city_id": 66569,
+    "name": "The Smisa Stadium",
+    "address": "Greenhill Road",
+    "zipcode": null,
+    "latitude": "55.85046",
+    "longitude": "-4.44421",
+    "capacity": 8016,
+    "image_path": null,
+    "city_name": "Greenhill Road",
+    "surface": "grass",
+    "national_team": false
+   },
+   "scores": [
+    {
+     "id": 36710361,
+     "fixture_id": 19722764,
+     "type_id": 1,
+     "participant_id": 284,
+     "score": {
+      "goals": 0,
+      "participant": "away"
+     },
+     "description": "1ST_HALF"
+    },
+    {
+     "id": 36710366,
+     "fixture_id": 19722764,
+     "type_id": 1,
+     "participant_id": 496,
+     "score": {
+      "goals": 1,
+      "participant": "home"
+     },
+     "description": "1ST_HALF"
+    },
+    {
+     "id": 36710368,
+     "fixture_id": 19722764,
+     "type_id": 2,
+     "participant_id": 284,
+     "score": {
+      "goals": 1,
+      "participant": "away"
+     },
+     "description": "2ND_HALF"
+    },
+    {
+     "id": 36710372,
+     "fixture_id": 19722764,
+     "type_id": 2,
+     "participant_id": 496,
+     "score": {
+      "goals": 2,
+      "participant": "home"
+     },
+     "description": "2ND_HALF"
+    },
+    {
+     "id": 36710357,
+     "fixture_id": 19722764,
+     "type_id": 1525,
+     "participant_id": 284,
+     "score": {
+      "goals": 1,
+      "participant": "away"
+     },
+     "description": "CURRENT"
+    },
+    {
+     "id": 36710359,
+     "fixture_id": 19722764,
+     "type_id": 1525,
+     "participant_id": 496,
+     "score": {
+      "goals": 2,
+      "participant": "home"
+     },
+     "description": "CURRENT"
+    },
+    {
+     "id": 36715475,
+     "fixture_id": 19722764,
+     "type_id": 48996,
+     "participant_id": 284,
+     "score": {
+      "goals": 1,
+      "participant": "away"
+     },
+     "description": "2ND_HALF_ONLY"
+    },
+    {
+     "id": 36715474,
+     "fixture_id": 19722764,
+     "type_id": 48996,
+     "participant_id": 496,
+     "score": {
+      "goals": 1,
+      "participant": "home"
+     },
+     "description": "2ND_HALF_ONLY"
+    }
+   ],
+   "state": {
+    "id": 5,
+    "state": "FT",
+    "name": "Full Time",
+    "short_name": "FT",
+    "developer_name": "FT"
+   },
+   "round": {
+    "id": 407964,
+    "sport_id": 1,
+    "league_id": 501,
+    "season_id": 28275,
+    "stage_id": 77482564,
+    "name": "10",
+    "finished": true,
+    "is_current": false,
+    "starting_at": "2026-10-24",
+    "ending_at": "2026-10-25",
+    "games_in_current_week": false
+   }
+  },
+  {
+   "id": 19722765,
+   "sport_id": 1,
+   "league_id": 501,
+   "season_id": 28275,
+   "stage_id": 77482564,
+   "group_id": null,
+   "aggregate_id": null,
+   "round_id": 407964,
+   "state_id": 5,
+   "venue_id": 8914,
+   "name": "Rangers vs St. Johnstone",
+   "starting_at": "2026-10-24 14:00:00",
+   "result_info": "Rangers won after full-time.",
+   "leg": "1/1",
+   "details": null,
+   "length": 90,
+   "placeholder": false,
+   "has_odds": true,
+   "has_premium_odds": true,
+   "starting_at_timestamp": 1792850400,
+   "participants": [
+    {
+     "id": 734,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 219,
+     "gender": "male",
+     "name": "St. Johnstone",
+     "short_code": "STJ",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/30/734.png",
+     "founded": 1885,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "away",
+      "winner": false,
+      "position": 5
+     }
+    },
+    {
+     "id": 62,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8914,
+     "gender": "male",
+     "name": "Rangers",
+     "short_code": "RAN",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/30/62.png",
+     "founded": 1873,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "home",
+      "winner": true,
+      "position": 2
+     }
+    }
+   ],
+   "venue": {
+    "id": 8914,
+    "country_id": 1161,
+    "city_id": 32191,
+    "name": "Ibrox Stadium",
+    "address": "150 Edmiston Drive",
+    "zipcode": null,
+    "latitude": "55.853206",
+    "longitude": "-4.309256",
+    "capacity": 51700,
+    "image_path": "https://cdn.sportmonks.com/images/soccer/venues/18/8914.png",
+    "city_name": "Glasgow",
+    "surface": "grass",
+    "national_team": false
+   },
+   "scores": [
+    {
+     "id": 36710641,
+     "fixture_id": 19722765,
+     "type_id": 1,
+     "participant_id": 62,
+     "score": {
+      "goals": 1,
+      "participant": "home"
+     },
+     "description": "1ST_HALF"
+    },
+    {
+     "id": 36710640,
+     "fixture_id": 19722765,
+     "type_id": 1,
+     "participant_id": 734,
+     "score": {
+      "goals": 0,
+      "participant": "away"
+     },
+     "description": "1ST_HALF"
+    },
+    {
+     "id": 36710643,
+     "fixture_id": 19722765,
+     "type_id": 2,
+     "participant_id": 62,
+     "score": {
+      "goals": 4,
+      "participant": "home"
+     },
+     "description": "2ND_HALF"
+    },
+    {
+     "id": 36710642,
+     "fixture_id": 19722765,
+     "type_id": 2,
+     "participant_id": 734,
+     "score": {
+      "goals": 0,
+      "participant": "away"
+     },
+     "description": "2ND_HALF"
+    },
+    {
+     "id": 36710639,
+     "fixture_id": 19722765,
+     "type_id": 1525,
+     "participant_id": 62,
+     "score": {
+      "goals": 4,
+      "participant": "home"
+     },
+     "description": "CURRENT"
+    },
+    {
+     "id": 36710638,
+     "fixture_id": 19722765,
+     "type_id": 1525,
+     "participant_id": 734,
+     "score": {
+      "goals": 0,
+      "participant": "away"
+     },
+     "description": "CURRENT"
+    },
+    {
+     "id": 36715752,
+     "fixture_id": 19722765,
+     "type_id": 48996,
+     "participant_id": 62,
+     "score": {
+      "goals": 3,
+      "participant": "home"
+     },
+     "description": "2ND_HALF_ONLY"
+    },
+    {
+     "id": 36715753,
+     "fixture_id": 19722765,
+     "type_id": 48996,
+     "participant_id": 734,
+     "score": {
+      "goals": 0,
+      "participant": "away"
+     },
+     "description": "2ND_HALF_ONLY"
+    }
+   ],
+   "state": {
+    "id": 5,
+    "state": "FT",
+    "name": "Full Time",
+    "short_name": "FT",
+    "developer_name": "FT"
+   },
+   "round": {
+    "id": 407964,
+    "sport_id": 1,
+    "league_id": 501,
+    "season_id": 28275,
+    "stage_id": 77482564,
+    "name": "10",
+    "finished": true,
+    "is_current": false,
+    "starting_at": "2026-10-24",
+    "ending_at": "2026-10-25",
+    "games_in_current_week": false
+   }
+  },
+  {
+   "id": 19722768,
+   "sport_id": 1,
+   "league_id": 501,
+   "season_id": 28275,
+   "stage_id": 77482564,
+   "group_id": null,
+   "aggregate_id": null,
+   "round_id": 407964,
+   "state_id": 5,
+   "venue_id": 245,
+   "name": "Falkirk vs Kilmarnock",
+   "starting_at": "2026-10-24 14:00:00",
+   "result_info": "Falkirk won after full-time.",
+   "leg": "1/1",
+   "details": null,
+   "length": 90,
+   "placeholder": false,
+   "has_odds": true,
+   "has_premium_odds": true,
+   "starting_at_timestamp": 1792850400,
+   "participants": [
+    {
+     "id": 180,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8906,
+     "gender": "male",
+     "name": "Kilmarnock",
+     "short_code": "KIL",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/20/180.png",
+     "founded": 1869,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "away",
+      "winner": false,
+      "position": 11
+     }
+    },
+    {
+     "id": 770,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 245,
+     "gender": "male",
+     "name": "Falkirk",
+     "short_code": "FAL",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/2/770.png",
+     "founded": 1876,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "home",
+      "winner": true,
+      "position": 9
+     }
+    }
+   ],
+   "venue": {
+    "id": 245,
+    "country_id": 1161,
+    "city_id": 28100,
+    "name": "Falkirk Community Stadium",
+    "address": "Westfield",
+    "zipcode": null,
+    "latitude": "56.0055",
+    "longitude": "-3.75258",
+    "capacity": 7937,
+    "image_path": "https://cdn.sportmonks.com/images/soccer/venues/21/245.png",
+    "city_name": "Falkirk",
+    "surface": "artificial turf",
+    "national_team": false
+   },
+   "scores": [
+    {
+     "id": 36710124,
+     "fixture_id": 19722768,
+     "type_id": 1,
+     "participant_id": 180,
+     "score": {
+      "goals": 0,
+      "participant": "away"
+     },
+     "description": "1ST_HALF"
+    },
+    {
+     "id": 36710126,
+     "fixture_id": 19722768,
+     "type_id": 1,
+     "participant_id": 770,
+     "score": {
+      "goals": 2,
+      "participant": "home"
+     },
+     "description": "1ST_HALF"
+    },
+    {
+     "id": 36710128,
+     "fixture_id": 19722768,
+     "type_id": 2,
+     "participant_id": 180,
+     "score": {
+      "goals": 0,
+      "participant": "away"
+     },
+     "description": "2ND_HALF"
+    },
+    {
+     "id": 36710131,
+     "fixture_id": 19722768,
+     "type_id": 2,
+     "participant_id": 770,
+     "score": {
+      "goals": 3,
+      "participant": "home"
+     },
+     "description": "2ND_HALF"
+    },
+    {
+     "id": 36710122,
+     "fixture_id": 19722768,
+     "type_id": 1525,
+     "participant_id": 180,
+     "score": {
+      "goals": 0,
+      "participant": "away"
+     },
+     "description": "CURRENT"
+    },
+    {
+     "id": 36710123,
+     "fixture_id": 19722768,
+     "type_id": 1525,
+     "participant_id": 770,
+     "score": {
+      "goals": 3,
+      "participant": "home"
+     },
+     "description": "CURRENT"
+    },
+    {
+     "id": 36715431,
+     "fixture_id": 19722768,
+     "type_id": 48996,
+     "participant_id": 180,
+     "score": {
+      "goals": 0,
+      "participant": "away"
+     },
+     "description": "2ND_HALF_ONLY"
+    },
+    {
+     "id": 36715430,
+     "fixture_id": 19722768,
+     "type_id": 48996,
+     "participant_id": 770,
+     "score": {
+      "goals": 1,
+      "participant": "home"
+     },
+     "description": "2ND_HALF_ONLY"
+    }
+   ],
+   "state": {
+    "id": 5,
+    "state": "FT",
+    "name": "Full Time",
+    "short_name": "FT",
+    "developer_name": "FT"
+   },
+   "round": {
+    "id": 407964,
+    "sport_id": 1,
+    "league_id": 501,
+    "season_id": 28275,
+    "stage_id": 77482564,
+    "name": "10",
+    "finished": true,
+    "is_current": false,
+    "starting_at": "2026-10-24",
+    "ending_at": "2026-10-25",
+    "games_in_current_week": false
+   }
+  },
+  {
+   "id": 19722769,
+   "sport_id": 1,
+   "league_id": 501,
+   "season_id": 28275,
+   "stage_id": 77482564,
+   "group_id": null,
+   "aggregate_id": null,
+   "round_id": 407964,
+   "state_id": 5,
+   "venue_id": 8947,
+   "name": "Dundee United vs Aberdeen",
+   "starting_at": "2026-10-24 14:00:00",
+   "result_info": "Dundee United won after full-time.",
+   "leg": "1/1",
+   "details": null,
+   "length": 90,
+   "placeholder": false,
+   "has_odds": true,
+   "has_premium_odds": true,
+   "starting_at_timestamp": 1792850400,
+   "participants": [
+    {
+     "id": 273,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8928,
+     "gender": "male",
+     "name": "Aberdeen",
+     "short_code": "ABE",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/17/273.png",
+     "founded": 1903,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "away",
+      "winner": false,
+      "position": 7
+     }
+    },
+    {
+     "id": 282,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8947,
+     "gender": "male",
+     "name": "Dundee United",
+     "short_code": "DUD",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/26/282.png",
+     "founded": 1909,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "home",
+      "winner": true,
+      "position": 6
+     }
+    }
+   ],
+   "venue": {
+    "id": 8947,
+    "country_id": 1161,
+    "city_id": 24865,
+    "name": "Tannadice Park",
+    "address": "Tannadice Street",
+    "zipcode": null,
+    "latitude": "56.47458035",
+    "longitude": "-2.969046257",
+    "capacity": 14268,
+    "image_path": "https://cdn.sportmonks.com/images/soccer/venues/19/8947.png",
+    "city_name": "Dundee",
+    "surface": "grass",
+    "national_team": false
+   },
+   "scores": [
+    {
+     "id": 36710145,
+     "fixture_id": 19722769,
+     "type_id": 1,
+     "participant_id": 273,
+     "score": {
+      "goals": 1,
+      "participant": "away"
+     },
+     "description": "1ST_HALF"
+    },
+    {
+     "id": 36710147,
+     "fixture_id": 19722769,
+     "type_id": 1,
+     "participant_id": 282,
+     "score": {
+      "goals": 2,
+      "participant": "home"
+     },
+     "description": "1ST_HALF"
+    },
+    {
+     "id": 36710148,
+     "fixture_id": 19722769,
+     "type_id": 2,
+     "participant_id": 273,
+     "score": {
+      "goals": 2,
+      "participant": "away"
+     },
+     "description": "2ND_HALF"
+    },
+    {
+     "id": 36710150,
+     "fixture_id": 19722769,
+     "type_id": 2,
+     "participant_id": 282,
+     "score": {
+      "goals": 3,
+      "participant": "home"
+     },
+     "description": "2ND_HALF"
+    },
+    {
+     "id": 36710138,
+     "fixture_id": 19722769,
+     "type_id": 1525,
+     "participant_id": 273,
+     "score": {
+      "goals": 2,
+      "participant": "away"
+     },
+     "description": "CURRENT"
+    },
+    {
+     "id": 36710142,
+     "fixture_id": 19722769,
+     "type_id": 1525,
+     "participant_id": 282,
+     "score": {
+      "goals": 3,
+      "participant": "home"
+     },
+     "description": "CURRENT"
+    },
+    {
+     "id": 36715545,
+     "fixture_id": 19722769,
+     "type_id": 48996,
+     "participant_id": 273,
+     "score": {
+      "goals": 1,
+      "participant": "away"
+     },
+     "description": "2ND_HALF_ONLY"
+    },
+    {
+     "id": 36715544,
+     "fixture_id": 19722769,
+     "type_id": 48996,
+     "participant_id": 282,
+     "score": {
+      "goals": 1,
+      "participant": "home"
+     },
+     "description": "2ND_HALF_ONLY"
+    }
+   ],
+   "state": {
+    "id": 5,
+    "state": "FT",
+    "name": "Full Time",
+    "short_name": "FT",
+    "developer_name": "FT"
+   },
+   "round": {
+    "id": 407964,
+    "sport_id": 1,
+    "league_id": 501,
+    "season_id": 28275,
+    "stage_id": 77482564,
+    "name": "10",
+    "finished": true,
+    "is_current": false,
+    "starting_at": "2026-10-24",
+    "ending_at": "2026-10-25",
+    "games_in_current_week": false
+   }
+  },
+  {
+   "id": 19722767,
+   "sport_id": 1,
+   "league_id": 501,
+   "season_id": 28275,
+   "stage_id": 77482564,
+   "group_id": null,
+   "aggregate_id": null,
+   "round_id": 407964,
+   "state_id": 5,
+   "venue_id": 8946,
+   "name": "Hibernian vs Celtic",
+   "starting_at": "2026-10-25 12:00:00",
+   "result_info": "Celtic won after full-time.",
+   "leg": "1/1",
+   "details": null,
+   "length": 90,
+   "placeholder": false,
+   "has_odds": true,
+   "has_premium_odds": true,
+   "starting_at_timestamp": 1792929600,
+   "participants": [
+    {
+     "id": 53,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8909,
+     "gender": "male",
+     "name": "Celtic",
+     "short_code": "CEL",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/21/53.png",
+     "founded": 1888,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-25 12:00:00",
+     "meta": {
+      "location": "away",
+      "winner": true,
+      "position": 1
+     }
+    },
+    {
+     "id": 66,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8946,
+     "gender": "male",
+     "name": "Hibernian",
+     "short_code": "HIB",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/2/66.png",
+     "founded": 1875,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-25 12:00:00",
+     "meta": {
+      "location": "home",
+      "winner": false,
+      "position": 12
+     }
+    }
+   ],
+   "venue": {
+    "id": 8946,
+    "country_id": 1161,
+    "city_id": 25809,
+    "name": "Easter Road Stadium",
+    "address": "12 Albion Place",
+    "zipcode": null,
+    "latitude": "55.9618324",
+    "longitude": "-3.1661498",
+    "capacity": 20421,
+    "image_path": "https://cdn.sportmonks.com/images/soccer/venues/18/8946.png",
+    "city_name": "Edinburgh",
+    "surface": "grass",
+    "national_team": false
+   },
+   "scores": [
+    {
+     "id": 36727113,
+     "fixture_id": 19722767,
+     "type_id": 1,
+     "participant_id": 53,
+     "score": {
+      "goals": 2,
+      "participant": "away"
+     },
+     "description": "1ST_HALF"
+    },
+    {
+     "id": 36727114,
+     "fixture_id": 19722767,
+     "type_id": 1,
+     "participant_id": 66,
+     "score": {
+      "goals": 1,
+      "participant": "home"
+     },
+     "description": "1ST_HALF"
+    },
+    {
+     "id": 36727115,
+     "fixture_id": 19722767,
+     "type_id": 2,
+     "participant_id": 53,
+     "score": {
+      "goals": 2,
+      "participant": "away"
+     },
+     "description": "2ND_HALF"
+    },
+    {
+     "id": 36727116,
+     "fixture_id": 19722767,
+     "type_id": 2,
+     "participant_id": 66,
+     "score": {
+      "goals": 1,
+      "participant": "home"
+     },
+     "description": "2ND_HALF"
+    },
+    {
+     "id": 36727111,
+     "fixture_id": 19722767,
+     "type_id": 1525,
+     "participant_id": 53,
+     "score": {
+      "goals": 2,
+      "participant": "away"
+     },
+     "description": "CURRENT"
+    },
+    {
+     "id": 36727112,
+     "fixture_id": 19722767,
+     "type_id": 1525,
+     "participant_id": 66,
+     "score": {
+      "goals": 1,
+      "participant": "home"
+     },
+     "description": "CURRENT"
+    },
+    {
+     "id": 36730331,
+     "fixture_id": 19722767,
+     "type_id": 48996,
+     "participant_id": 53,
+     "score": {
+      "goals": 0,
+      "participant": "away"
+     },
+     "description": "2ND_HALF_ONLY"
+    },
+    {
+     "id": 36730330,
+     "fixture_id": 19722767,
+     "type_id": 48996,
+     "participant_id": 66,
+     "score": {
+      "goals": 0,
+      "participant": "home"
+     },
+     "description": "2ND_HALF_ONLY"
+    }
+   ],
+   "state": {
+    "id": 5,
+    "state": "FT",
+    "name": "Full Time",
+    "short_name": "FT",
+    "developer_name": "FT"
+   },
+   "round": {
+    "id": 407964,
+    "sport_id": 1,
+    "league_id": 501,
+    "season_id": 28275,
+    "stage_id": 77482564,
+    "name": "10",
+    "finished": true,
+    "is_current": false,
+    "starting_at": "2026-10-24",
+    "ending_at": "2026-10-25",
+    "games_in_current_week": false
+   }
+  },
+  {
+   "id": 19722766,
+   "sport_id": 1,
+   "league_id": 501,
+   "season_id": 28275,
+   "stage_id": 77482564,
+   "group_id": null,
+   "aggregate_id": null,
+   "round_id": 407964,
+   "state_id": 5,
+   "venue_id": 8922,
+   "name": "Motherwell vs Hearts",
+   "starting_at": "2026-10-25 14:00:00",
+   "result_info": "Hearts won after full-time.",
+   "leg": "1/1",
+   "details": null,
+   "length": 90,
+   "placeholder": false,
+   "has_odds": true,
+   "has_premium_odds": true,
+   "starting_at_timestamp": 1792936800,
+   "participants": [
+    {
+     "id": 314,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 336296,
+     "gender": "male",
+     "name": "Hearts",
+     "short_code": "HEA",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/26/314.png",
+     "founded": 1874,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-25 14:00:00",
+     "meta": {
+      "location": "away",
+      "winner": true,
+      "position": 3
+     }
+    },
+    {
+     "id": 309,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8922,
+     "gender": "male",
+     "name": "Motherwell",
+     "short_code": "MOT",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/21/309.png",
+     "founded": 1886,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-25 14:00:00",
+     "meta": {
+      "location": "home",
+      "winner": false,
+      "position": 10
+     }
+    }
+   ],
+   "venue": {
+    "id": 8922,
+    "country_id": 1161,
+    "city_id": 59448,
+    "name": "Fir Park",
+    "address": "Fir Park Street",
+    "zipcode": null,
+    "latitude": "55.7804229",
+    "longitude": "-3.980262682",
+    "capacity": 13742,
+    "image_path": "https://cdn.sportmonks.com/images/soccer/venues/26/8922.png",
+    "city_name": "Motherwell",
+    "surface": "grass",
+    "national_team": false
+   },
+   "scores": [
+    {
+     "id": 36729655,
+     "fixture_id": 19722766,
+     "type_id": 1,
+     "participant_id": 309,
+     "score": {
+      "goals": 0,
+      "participant": "home"
+     },
+     "description": "1ST_HALF"
+    },
+    {
+     "id": 36729653,
+     "fixture_id": 19722766,
+     "type_id": 1,
+     "participant_id": 314,
+     "score": {
+      "goals": 1,
+      "participant": "away"
+     },
+     "description": "1ST_HALF"
+    },
+    {
+     "id": 36729659,
+     "fixture_id": 19722766,
+     "type_id": 2,
+     "participant_id": 309,
+     "score": {
+      "goals": 0,
+      "participant": "home"
+     },
+     "description": "2ND_HALF"
+    },
+    {
+     "id": 36729657,
+     "fixture_id": 19722766,
+     "type_id": 2,
+     "participant_id": 314,
+     "score": {
+      "goals": 2,
+      "participant": "away"
+     },
+     "description": "2ND_HALF"
+    },
+    {
+     "id": 36729651,
+     "fixture_id": 19722766,
+     "type_id": 1525,
+     "participant_id": 309,
+     "score": {
+      "goals": 0,
+      "participant": "home"
+     },
+     "description": "CURRENT"
+    },
+    {
+     "id": 36729648,
+     "fixture_id": 19722766,
+     "type_id": 1525,
+     "participant_id": 314,
+     "score": {
+      "goals": 2,
+      "participant": "away"
+     },
+     "description": "CURRENT"
+    },
+    {
+     "id": 36732802,
+     "fixture_id": 19722766,
+     "type_id": 48996,
+     "participant_id": 309,
+     "score": {
+      "goals": 0,
+      "participant": "home"
+     },
+     "description": "2ND_HALF_ONLY"
+    },
+    {
+     "id": 36732803,
+     "fixture_id": 19722766,
+     "type_id": 48996,
+     "participant_id": 314,
+     "score": {
+      "goals": 1,
+      "participant": "away"
+     },
+     "description": "2ND_HALF_ONLY"
+    }
+   ],
+   "state": {
+    "id": 5,
+    "state": "FT",
+    "name": "Full Time",
+    "short_name": "FT",
+    "developer_name": "FT"
+   },
+   "round": {
+    "id": 407964,
+    "sport_id": 1,
+    "league_id": 501,
+    "season_id": 28275,
+    "stage_id": 77482564,
+    "name": "10",
+    "finished": true,
+    "is_current": false,
+    "starting_at": "2026-10-24",
+    "ending_at": "2026-10-25",
+    "games_in_current_week": false
+   }
+  },
+  {
+   "id": 19722758,
+   "sport_id": 1,
+   "league_id": 501,
+   "season_id": 28275,
+   "stage_id": 77482564,
+   "group_id": null,
+   "aggregate_id": null,
+   "round_id": 407963,
+   "state_id": 1,
+   "venue_id": 8879,
+   "name": "St. Mirren vs Hibernian",
+   "starting_at": "2026-10-28 19:45:00",
+   "result_info": null,
+   "leg": "1/1",
+   "details": null,
+   "length": 90,
+   "placeholder": false,
+   "has_odds": true,
+   "has_premium_odds": true,
+   "starting_at_timestamp": 1793216700,
+   "participants": [
+    {
+     "id": 66,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8946,
+     "gender": "male",
+     "name": "Hibernian",
+     "short_code": "HIB",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/2/66.png",
+     "founded": 1875,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-25 12:00:00",
+     "meta": {
+      "location": "away",
+      "winner": null,
+      "position": 12
+     }
+    },
+    {
+     "id": 496,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8879,
+     "gender": "male",
+     "name": "St. Mirren",
+     "short_code": "STM",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/16/496.png",
+     "founded": 1877,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "home",
+      "winner": null,
+      "position": 6
+     }
+    }
+   ],
+   "venue": {
+    "id": 8879,
+    "country_id": 1161,
+    "city_id": 66569,
+    "name": "The Smisa Stadium",
+    "address": "Greenhill Road",
+    "zipcode": null,
+    "latitude": "55.85046",
+    "longitude": "-4.44421",
+    "capacity": 8016,
+    "image_path": null,
+    "city_name": "Greenhill Road",
+    "surface": "grass",
+    "national_team": false
+   },
+   "scores": [],
+   "state": {
+    "id": 1,
+    "state": "NS",
+    "name": "Not Started",
+    "short_name": "NS",
+    "developer_name": "NS"
+   },
+   "round": {
+    "id": 407963,
+    "sport_id": 1,
+    "league_id": 501,
+    "season_id": 28275,
+    "stage_id": 77482564,
+    "name": "11",
+    "finished": false,
+    "is_current": true,
+    "starting_at": "2026-10-28",
+    "ending_at": "2026-10-28",
+    "games_in_current_week": true
+   }
+  },
+  {
+   "id": 19722759,
+   "sport_id": 1,
+   "league_id": 501,
+   "season_id": 28275,
+   "stage_id": 77482564,
+   "group_id": null,
+   "aggregate_id": null,
+   "round_id": 407963,
+   "state_id": 1,
+   "venue_id": 219,
+   "name": "St. Johnstone vs Motherwell",
+   "starting_at": "2026-10-28 19:45:00",
+   "result_info": null,
+   "leg": "1/1",
+   "details": null,
+   "length": 90,
+   "placeholder": false,
+   "has_odds": true,
+   "has_premium_odds": true,
+   "starting_at_timestamp": 1793216700,
+   "participants": [
+    {
+     "id": 309,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8922,
+     "gender": "male",
+     "name": "Motherwell",
+     "short_code": "MOT",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/21/309.png",
+     "founded": 1886,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-25 14:00:00",
+     "meta": {
+      "location": "away",
+      "winner": null,
+      "position": 10
+     }
+    },
+    {
+     "id": 734,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 219,
+     "gender": "male",
+     "name": "St. Johnstone",
+     "short_code": "STJ",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/30/734.png",
+     "founded": 1885,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "home",
+      "winner": null,
+      "position": 8
+     }
+    }
+   ],
+   "venue": {
+    "id": 219,
+    "country_id": 1161,
+    "city_id": 68322,
+    "name": "McDiarmid Park",
+    "address": "Crieff Road",
+    "zipcode": null,
+    "latitude": "56.40987085",
+    "longitude": "-3.476894035",
+    "capacity": 10696,
+    "image_path": "https://cdn.sportmonks.com/images/soccer/venues/27/219.png",
+    "city_name": "Perth",
+    "surface": "grass",
+    "national_team": false
+   },
+   "scores": [],
+   "state": {
+    "id": 1,
+    "state": "NS",
+    "name": "Not Started",
+    "short_name": "NS",
+    "developer_name": "NS"
+   },
+   "round": {
+    "id": 407963,
+    "sport_id": 1,
+    "league_id": 501,
+    "season_id": 28275,
+    "stage_id": 77482564,
+    "name": "11",
+    "finished": false,
+    "is_current": true,
+    "starting_at": "2026-10-28",
+    "ending_at": "2026-10-28",
+    "games_in_current_week": true
+   }
+  },
+  {
+   "id": 19722761,
+   "sport_id": 1,
+   "league_id": 501,
+   "season_id": 28275,
+   "stage_id": 77482564,
+   "group_id": null,
+   "aggregate_id": null,
+   "round_id": 407963,
+   "state_id": 1,
+   "venue_id": 284597,
+   "name": "Dundee vs Kilmarnock",
+   "starting_at": "2026-10-28 19:45:00",
+   "result_info": null,
+   "leg": "1/1",
+   "details": null,
+   "length": 90,
+   "placeholder": false,
+   "has_odds": true,
+   "has_premium_odds": true,
+   "starting_at_timestamp": 1793216700,
+   "participants": [
+    {
+     "id": 180,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8906,
+     "gender": "male",
+     "name": "Kilmarnock",
+     "short_code": "KIL",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/20/180.png",
+     "founded": 1869,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "away",
+      "winner": null,
+      "position": 11
+     }
+    },
+    {
+     "id": 284,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 284597,
+     "gender": "male",
+     "name": "Dundee",
+     "short_code": "DUD",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/28/284.png",
+     "founded": 1893,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "home",
+      "winner": null,
+      "position": 5
+     }
+    }
+   ],
+   "venue": {
+    "id": 284597,
+    "country_id": 1161,
+    "city_id": 24865,
+    "name": "Kilmac Stadium at Dens Park",
+    "address": "Sandeman Street",
+    "zipcode": null,
+    "latitude": "56.475264",
+    "longitude": "-2.973194",
+    "capacity": 11775,
+    "image_path": "https://cdn.sportmonks.com/images/soccer/venues/21/284597.png",
+    "city_name": "Dundee",
+    "surface": "grass",
+    "national_team": false
+   },
+   "scores": [],
+   "state": {
+    "id": 1,
+    "state": "NS",
+    "name": "Not Started",
+    "short_name": "NS",
+    "developer_name": "NS"
+   },
+   "round": {
+    "id": 407963,
+    "sport_id": 1,
+    "league_id": 501,
+    "season_id": 28275,
+    "stage_id": 77482564,
+    "name": "11",
+    "finished": false,
+    "is_current": true,
+    "starting_at": "2026-10-28",
+    "ending_at": "2026-10-28",
+    "games_in_current_week": true
+   }
+  },
+  {
+   "id": 19722762,
+   "sport_id": 1,
+   "league_id": 501,
+   "season_id": 28275,
+   "stage_id": 77482564,
+   "group_id": null,
+   "aggregate_id": null,
+   "round_id": 407963,
+   "state_id": 1,
+   "venue_id": 8909,
+   "name": "Celtic vs Dundee United",
+   "starting_at": "2026-10-28 19:45:00",
+   "result_info": null,
+   "leg": "1/1",
+   "details": null,
+   "length": 90,
+   "placeholder": false,
+   "has_odds": true,
+   "has_premium_odds": true,
+   "starting_at_timestamp": 1793216700,
+   "participants": [
+    {
+     "id": 282,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8947,
+     "gender": "male",
+     "name": "Dundee United",
+     "short_code": "DUD",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/26/282.png",
+     "founded": 1909,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "away",
+      "winner": null,
+      "position": 4
+     }
+    },
+    {
+     "id": 53,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8909,
+     "gender": "male",
+     "name": "Celtic",
+     "short_code": "CEL",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/21/53.png",
+     "founded": 1888,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-25 12:00:00",
+     "meta": {
+      "location": "home",
+      "winner": null,
+      "position": 1
+     }
+    }
+   ],
+   "venue": {
+    "id": 8909,
+    "country_id": 1161,
+    "city_id": 32191,
+    "name": "Celtic Park",
+    "address": "The Celtic Way Parkhead, Glasgow",
+    "zipcode": null,
+    "latitude": "55.849722",
+    "longitude": "-4.205556",
+    "capacity": 60832,
+    "image_path": "https://cdn.sportmonks.com/images/core/venues/13/8909.png",
+    "city_name": "Glasgow",
+    "surface": "grass",
+    "national_team": false
+   },
+   "scores": [],
+   "state": {
+    "id": 1,
+    "state": "NS",
+    "name": "Not Started",
+    "short_name": "NS",
+    "developer_name": "NS"
+   },
+   "round": {
+    "id": 407963,
+    "sport_id": 1,
+    "league_id": 501,
+    "season_id": 28275,
+    "stage_id": 77482564,
+    "name": "11",
+    "finished": false,
+    "is_current": true,
+    "starting_at": "2026-10-28",
+    "ending_at": "2026-10-28",
+    "games_in_current_week": true
+   }
+  },
+  {
+   "id": 19722763,
+   "sport_id": 1,
+   "league_id": 501,
+   "season_id": 28275,
+   "stage_id": 77482564,
+   "group_id": null,
+   "aggregate_id": null,
+   "round_id": 407963,
+   "state_id": 1,
+   "venue_id": 8928,
+   "name": "Aberdeen vs Falkirk",
+   "starting_at": "2026-10-28 19:45:00",
+   "result_info": null,
+   "leg": "1/1",
+   "details": null,
+   "length": 90,
+   "placeholder": false,
+   "has_odds": true,
+   "has_premium_odds": true,
+   "starting_at_timestamp": 1793216700,
+   "participants": [
+    {
+     "id": 770,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 245,
+     "gender": "male",
+     "name": "Falkirk",
+     "short_code": "FAL",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/2/770.png",
+     "founded": 1876,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "away",
+      "winner": null,
+      "position": 7
+     }
+    },
+    {
+     "id": 273,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8928,
+     "gender": "male",
+     "name": "Aberdeen",
+     "short_code": "ABE",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/17/273.png",
+     "founded": 1903,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "home",
+      "winner": null,
+      "position": 9
+     }
+    }
+   ],
+   "venue": {
+    "id": 8928,
+    "country_id": 1161,
+    "city_id": 163,
+    "name": "Pittodrie Stadium",
+    "address": "Pittodrie Street",
+    "zipcode": null,
+    "latitude": "57.1592769",
+    "longitude": "-2.088628691",
+    "capacity": 20866,
+    "image_path": "https://cdn.sportmonks.com/images/soccer/venues/0/8928.png",
+    "city_name": "Aberdeen",
+    "surface": "grass",
+    "national_team": false
+   },
+   "scores": [],
+   "state": {
+    "id": 1,
+    "state": "NS",
+    "name": "Not Started",
+    "short_name": "NS",
+    "developer_name": "NS"
+   },
+   "round": {
+    "id": 407963,
+    "sport_id": 1,
+    "league_id": 501,
+    "season_id": 28275,
+    "stage_id": 77482564,
+    "name": "11",
+    "finished": false,
+    "is_current": true,
+    "starting_at": "2026-10-28",
+    "ending_at": "2026-10-28",
+    "games_in_current_week": true
+   }
+  },
+  {
+   "id": 19722760,
+   "sport_id": 1,
+   "league_id": 501,
+   "season_id": 28275,
+   "stage_id": 77482564,
+   "group_id": null,
+   "aggregate_id": null,
+   "round_id": 407963,
+   "state_id": 1,
+   "venue_id": 336296,
+   "name": "Hearts vs Rangers",
+   "starting_at": "2026-10-28 20:00:00",
+   "result_info": null,
+   "leg": "1/1",
+   "details": null,
+   "length": 90,
+   "placeholder": false,
+   "has_odds": true,
+   "has_premium_odds": true,
+   "starting_at_timestamp": 1793217600,
+   "participants": [
+    {
+     "id": 62,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 8914,
+     "gender": "male",
+     "name": "Rangers",
+     "short_code": "RAN",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/30/62.png",
+     "founded": 1873,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-24 14:00:00",
+     "meta": {
+      "location": "away",
+      "winner": null,
+      "position": 2
+     }
+    },
+    {
+     "id": 314,
+     "sport_id": 1,
+     "country_id": 1161,
+     "venue_id": 336296,
+     "gender": "male",
+     "name": "Hearts",
+     "short_code": "HEA",
+     "image_path": "https://cdn.sportmonks.com/images/soccer/teams/26/314.png",
+     "founded": 1874,
+     "type": "domestic",
+     "placeholder": false,
+     "last_played_at": "2026-10-25 14:00:00",
+     "meta": {
+      "location": "home",
+      "winner": null,
+      "position": 3
+     }
+    }
+   ],
+   "venue": {
+    "id": 336296,
+    "country_id": 1161,
+    "city_id": 25809,
+    "name": "Tynecastle Park",
+    "address": "Gorgie Road",
+    "zipcode": null,
+    "latitude": "55.93901965",
+    "longitude": "-3.232270872",
+    "capacity": 19852,
+    "image_path": "https://cdn.sportmonks.com/images/soccer/venues/8/336296.png",
+    "city_name": "Edinburgh",
+    "surface": "grass",
+    "national_team": false
+   },
+   "scores": [],
+   "state": {
+    "id": 1,
+    "state": "NS",
+    "name": "Not Started",
+    "short_name": "NS",
+    "developer_name": "NS"
+   },
+   "round": {
+    "id": 407963,
+    "sport_id": 1,
+    "league_id": 501,
+    "season_id": 28275,
+    "stage_id": 77482564,
+    "name": "11",
+    "finished": false,
+    "is_current": true,
+    "starting_at": "2026-10-28",
+    "ending_at": "2026-10-28",
+    "games_in_current_week": true
+   }
+  }
+ ],
+ "pagination": {
+  "count": 12,
+  "per_page": 50,
+  "has_more": false,
+  "current_page": 1,
+  "next_page": null,
+  "next_cursor": null
+ },
+ "subscription": [
+  {
+   "meta": [],
+   "plans": [
+    {
+     "plan": "Cricket Free Plan",
+     "sport": "Cricket",
+     "category": "Standard"
+    },
+    {
+     "plan": "Football Free Plan",
+     "sport": "Football",
+     "category": "Standard"
+    }
+   ],
+   "add_ons": [],
+   "widgets": []
+  }
+ ],
+ "rate_limit": {
+  "resets_in_seconds": 3600,
+  "remaining": 178,
+  "requested_entity": "Fixture"
+ },
+ "timezone": "UTC"
+}
