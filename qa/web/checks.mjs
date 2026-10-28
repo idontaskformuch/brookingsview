@@ -107,6 +107,26 @@ export function checkDiag(snap, town) {
   return f;
 }
 
+/** web.routes (born 2026-10-28, owner): /ads.txt answered 200 with the body "Not found" on a site without an AdSense publisher id
+ *  (a soft 404 that crawlers read as a broken ads.txt), and /advertise, what people type, 404ed instead of going to /advertising/.
+ *  probes = { adsTxt: { status, body }, advertise: { status, location } } (redirects NOT followed). A 200 /ads.txt is fine only when
+ *  it holds a real record (pub- plus 16 digits, not all zeros); otherwise it must be a real 404. */
+export function routeFindings(town, base, probes) {
+  const f = [];
+  const ads = probes.adsTxt;
+  if (ads) {
+    const real = /^\s*[a-z0-9.-]+\.[a-z]+,\s*pub-(?!0{16}\b)\d{16},\s*(DIRECT|RESELLER)/im.test(ads.body ?? '');
+    if (ads.status === 200 && !real) f.push({ check: 'web.routes', town, url: `${base}/ads.txt`, path: '/ads.txt', message: 'ads.txt answers 200 without a valid record (soft 404); it must be a real 404 until there is a publisher id' });
+    else if (ads.status !== 200 && ads.status !== 404) f.push({ check: 'web.routes', town, url: `${base}/ads.txt`, path: '/ads.txt', message: `ads.txt answers HTTP ${ads.status}, expected 404 (or 200 with a real record)` });
+  }
+  const adv = probes.advertise;
+  if (adv) {
+    const to = adv.location ? new URL(adv.location, base).pathname : '';
+    if (adv.status !== 301 || to !== '/advertising/') f.push({ check: 'web.routes', town, url: `${base}/advertise`, path: '/advertise', message: `/advertise answers HTTP ${adv.status}${adv.location ? ` -> ${adv.location}` : ''}, expected a 301 to /advertising/` });
+  }
+  return f;
+}
+
 /** Run-level checks (cross-page). */
 /** web.duplicate-content (owner 2026-10-23, born_from the University digest finding): when a page is MOSTLY (> 60 %) made of text
  *  that is already on a page that links to it, flag BOTH. Measured with 8-word shingles so a truncated teaser still counts

@@ -271,10 +271,19 @@ def parse_date_text(text: str, tz: str) -> dict | None:
     return None
 
 
-# The source's channels -> what the site shows instead of "Around town" (owner 2026-10-27). Kids come from the source's
-# own age text, not a channel.
-CHANNEL_CATEGORY = {"Arts, Music and Culture": "Arts & music", "Communities": "Community", "Libraries": "Libraries",
-                    "Museums": "Museums", "Sport": "Sport & leisure"}
+# What the site shows instead of "Around town" (owner 2026-10-28; no reading of the source's channel pages). Order:
+# 1) the venue (library / museum or gallery / concert venue), 2) keywords in the title and description,
+# 3) the source's age text, only when it plainly says children or family, 4) otherwise None = "Around town".
+_VENUE_CATEGORIES = [
+    ("Libraries", re.compile(r"\blibrar(?:y|ies)\b", re.IGNORECASE)),
+    ("Museums & exhibitions", re.compile(r"\b(?:museums?|galler(?:y|ies)|kelvingrove|burrell|riverside museum|provand)", re.IGNORECASE)),
+    ("Music", re.compile(r"\b(?:concert halls?|city halls|barrowland|o2 academy|king tuts|ovo hydro|usher hall|oran mor|st luke)", re.IGNORECASE)),
+]
+_KEYWORD_CATEGORIES = [
+    ("Music", re.compile(r"\b(?:concerts?|orchestra|symphon\w*|choirs?|gigs?|live music|jazz|folk music|singer|music for)\b", re.IGNORECASE)),
+    ("Sport & leisure", re.compile(r"\b(?:padel|football|swimming|fitness|gym|yoga|pilates|running|sports?|badminton|tennis|golf|bowls)\b", re.IGNORECASE)),
+    ("Talks & workshops", re.compile(r"\b(?:talks?|lectures?|workshops?|book launch|author|storytelling|reading group|tours?)\b", re.IGNORECASE)),
+]
 _KIDS_WORDS = re.compile(r"\b(pre-?5|babies|baby|infants?|toddlers?|child(?:ren)?|kids?|famil(?:y|ies)|under[- ]?\d+s?)\b", re.IGNORECASE)
 
 
@@ -292,13 +301,18 @@ def _is_kids_age(age: str | None) -> bool:
     return bool(plus) and int(plus[1]) <= 12
 
 
-def event_category(raw: dict) -> str | None:
-    """'Kids & families' when the source's age text says children, else the first known channel's label, else None."""
+def event_category(raw: dict, title: str | None = None, venue: str | None = None) -> str | None:
+    """Category label for a Glasgow Life event, or None (= "Around town"). Rules and order: see _VENUE_CATEGORIES above."""
+    for label, rx in _VENUE_CATEGORIES:
+        if venue and rx.search(venue):
+            return label
+    text = f"{title or ''} {(raw.get('description') or '')[:300]}"  # the opening of the description, not all of it
+    for label, rx in _KEYWORD_CATEGORIES:
+        # "talk", "tour" and "workshop" turn up in any description; for those only the title counts
+        if rx.search(title or "" if label == "Talks & workshops" else text):
+            return label
     if _is_kids_age(raw.get("age")):
         return "Kids & families"
-    for ch in raw.get("channels") or []:
-        if ch in CHANNEL_CATEGORY:
-            return CHANNEL_CATEGORY[ch]
     return None
 
 
@@ -443,7 +457,7 @@ def parse_pages(source_name: str, combined: bytes, tz: str, today: date | None =
                 parsed[uid] = rec
     out: list[dict] = []
     for rec in parsed.values():
-        cat = event_category(rec["raw_data"])
+        cat = event_category(rec["raw_data"], rec["title"], rec.get("venue"))
         if cat:
             rec["raw_data"]["site_category"] = cat
         out.extend(expand_recurring(rec, tz, today))

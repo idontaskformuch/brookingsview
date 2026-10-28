@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 // plain .mjs shared with the Node QA runner (qa/web/run.mjs)
-import { checkPage, checkDiag, checkRun, compileBlocklist, applyWaivers, zonedInstant, duplicateContentFindings } from '../../../qa/web/checks.mjs';
+import { checkPage, checkDiag, checkRun, compileBlocklist, applyWaivers, zonedInstant, duplicateContentFindings, routeFindings } from '../../../qa/web/checks.mjs';
 
 const base = {
   url: 'https://x.test/a/', path: '/a/', status: 200, redirects: 0, inSitemap: true,
@@ -150,4 +150,24 @@ describe('web.stale-recently (born 2026-10-24: series start pages under "Recentl
   const ids = (x: object) => checkDiag({ ...snap, ...x }, 'glasgow').map((f: { check: string }) => f.check);
   it('flags an old card under Recently', () => expect(ids({ staleRecently: ['Board Games More Games (2026-06-01T23:00:00.000Z)'] })).toEqual(['web.stale-recently']));
   it('is quiet when there is none', () => expect(ids({ staleRecently: [] })).toEqual([]));
+});
+
+describe('web.routes (born 2026-10-28: soft-404 /ads.txt, /advertise without redirect)', () => {
+  const run = (adsTxt: object | null, advertise: object | null) => routeFindings('brookings_sd', 'https://x.test', { adsTxt, advertise }).map((f: { path: string }) => f.path);
+  const ok301 = { status: 301, location: 'https://x.test/advertising/' };
+  it('fails the pre-fix behaviour: 200 "Not found" body on /ads.txt', () => expect(run({ status: 200, body: 'Not found' }, ok301)).toEqual(['/ads.txt']));
+  it('fails the pre-fix behaviour: the commented placeholder file', () => expect(run({ status: 200, body: '# google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0' }, ok301)).toEqual(['/ads.txt']));
+  it('accepts a real 404', () => expect(run({ status: 404, body: '' }, ok301)).toEqual([]));
+  it('accepts a 200 with a real record (Moreno Valley)', () => expect(run({ status: 200, body: 'google.com, pub-9173970727436631, DIRECT, f08c47fec0942fa0' }, ok301)).toEqual([]));
+  it('rejects an all-zero placeholder id even when uncommented', () => expect(run({ status: 200, body: 'google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0' }, ok301)).toEqual(['/ads.txt']));
+  it('flags a 5xx on /ads.txt', () => expect(run({ status: 500, body: '' }, ok301)).toEqual(['/ads.txt']));
+  it('flags /advertise as a 404, a 302 or a wrong target', () => {
+    expect(run(null, { status: 404, location: null })).toEqual(['/advertise']);
+    expect(run(null, { status: 302, location: '/advertising/' })).toEqual(['/advertise']);
+    expect(run(null, { status: 301, location: '/contact/' })).toEqual(['/advertise']);
+  });
+  it('accepts a 301 to /advertising/, relative or absolute', () => {
+    expect(run(null, { status: 301, location: '/advertising/' })).toEqual([]);
+    expect(run(null, ok301)).toEqual([]);
+  });
 });

@@ -24,7 +24,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   checkPage, checkDiag, checkRun, compileBlocklist, applyWaivers, zonedInstant, ALLOW_SIBLING_SELECTOR,
-  KEY_PAGES, CLOCK_TIMES, CLOCK_PAGES,
+  KEY_PAGES, CLOCK_TIMES, CLOCK_PAGES, routeFindings,
 } from './checks.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -48,7 +48,7 @@ const NOISE = /(challenges\.cloudflare\.com|challenges\.cloud|cdn-cgi\/challenge
 const HEAVY = new Set(['image', 'font', 'media']);
 const origin = new URL(base).origin;
 
-const requests = { A: 0, B: 0, C: 0, links: 0, sitemap: 0 };
+const requests = { A: 0, B: 0, C: 0, links: 0, sitemap: 0, routes: 0 };
 let curPass = 'sitemap';
 const firstPartyHeaders = () => ({ 'user-agent': UA, ...(BYPASS ? { 'x-qa-bypass': BYPASS } : {}) });
 
@@ -139,8 +139,7 @@ function pageProbe({ allowSel, wantLinks }) {
   document.querySelectorAll('main h2').forEach((h) => {
     if (!/^recently$/i.test(h.innerText.trim())) return;
     h.closest('.sec')?.nextElementSibling?.querySelectorAll('[data-start]').forEach((el) => {
-      if (now.getTime() - Date.parse(el.dataset.start) > 90 * 24 * 3600 * 1000) staleRecently.push(`${(el.innerText || '').trim().split('
-').filter(Boolean).slice(0, 2).join(' / ').slice(0, 70)} (${el.dataset.start})`);
+      if (now.getTime() - Date.parse(el.dataset.start) > 90 * 24 * 3600 * 1000) staleRecently.push(`${(el.innerText || '').trim().split('\n').filter(Boolean).slice(0, 2).join(' / ').slice(0, 70)} (${el.dataset.start})`);
     });
   });
   // /today: template has events but nothing was filled and no "nothing scheduled" note
@@ -366,6 +365,19 @@ async function main() {
   }
   await browser.close();
 
+  // web.routes: two plain requests, redirects not followed (the browser passes above would hide a 301/soft 404)
+  curPass = 'routes';
+  const probe = async (p) => {
+    requests.routes++;
+    try {
+      const r = await fetch(`${base}${p}`, { redirect: 'manual', headers: firstPartyHeaders(), signal: AbortSignal.timeout(20000) });
+      const body = r.status === 200 ? (await r.text()).slice(0, 2000) : (await r.body?.cancel(), '');
+      return { status: r.status, body, location: r.headers.get('location') };
+    } catch { return null; }
+  };
+  const routeProbes = { adsTxt: await probe('/ads.txt'), advertise: await probe('/advertise') };
+  const routeResults = routeFindings(town, base, routeProbes);
+
   const blocklist = JSON.parse(readFileSync(resolve(root, 'qa/out/blocklist.json'), 'utf8'));
   const compiled = compileBlocklist(blocklist);
   const waivers = JSON.parse(readFileSync(resolve(root, 'qa/known-issues.json'), 'utf8')).waivers;
@@ -374,7 +386,7 @@ async function main() {
   const all = [
     ...snapsA.flatMap((s) => checkPage(s, town, compiled)),
     ...snapsBC.flatMap((s) => [...checkPage(s, town, compiled), ...checkDiag(s, town)]),
-    ...checkRun(snapsA, town), ...linkFindings,
+    ...checkRun(snapsA, town), ...linkFindings, ...routeResults,
   ];
   // the same defect seen in several combos is one finding per (check, path, message-sans-label)
   const seen = new Set();

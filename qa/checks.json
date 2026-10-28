@@ -101,6 +101,11 @@
       "born_from": "Q1: external links checked weekly only (load reduction)",
       "what": "external link answering 4xx/5xx (401/403/429 ignored as bot walls) or unreachable"
     },
+    "web.routes": {
+      "severity": "hard",
+      "born_from": "2026-10-28 owner: live /ads.txt answered 200 with the body \"Not found\" (public/ads.txt collided with the ads.txt.ts route) and /advertise had no redirect to /advertising/; fixed in astro.config.mjs (ads.txt only for the town with a publisher id) and server/worker.ts; regression fixtures in site/src/lib/qa-checks.test.ts (routeFindings)",
+      "what": "/ads.txt answers 200 without a valid record, or anything but 404/200; /advertise is not a 301 to /advertising/"
+    },
     "web.allday-clock": {
       "severity": "soft",
       "born_from": "2026-10-22 owner: all-day events (e.g. 114th Hobo Day, start 00:00 local, no end) rendered as \"12:00 AM\"; fixed with lib/local-day.ts isAllDay; regression tests in local-day/time/db test files",

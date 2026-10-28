@@ -262,19 +262,42 @@ def test_expanded_series_occurrences_keep_the_clock():
     assert occ and all("T18:00" in o["starts_at"] and "T19:30" in o["ends_at"] for o in occ)
 
 
-# ---- categories from the source's channels (owner 2026-10-27) -------------------------------------------------------
+# ---- categories (owner 2026-10-28): venue, then keywords, then plain child/family age text, else Around town ---------
 from scrapers.glasgow_life_events import event_category  # noqa: E402
 
 
-def test_event_category_prefers_kids_from_the_source_age_text_then_the_channel():
-    assert event_category({"age": "Pre-5", "channels": ["Libraries"]}) == "Kids & families"
-    assert event_category({"age": "Children 3-12", "channels": ["Museums"]}) == "Kids & families"
-    assert event_category({"age": "5-11 years", "channels": ["Sport"]}) == "Kids & families"
-    assert event_category({"age": "16+ years", "channels": ["Libraries"]}) == "Libraries"
-    assert event_category({"age": "Adult", "channels": ["Arts, Music and Culture", "Libraries"]}) == "Arts & music"
-    assert event_category({"channels": ["Sport"]}) == "Sport & leisure"
-    assert event_category({"channels": []}) is None
-    assert event_category({"channels": ["Something new"]}) is None
+def test_category_from_the_venue_first():
+    assert event_category({"age": "Family"}, "Anything", "Partick Library") == "Libraries"
+    assert event_category({}, "Concert about art", "Kelvingrove Art Gallery and Museum") == "Museums & exhibitions"
+    assert event_category({}, "Duncan Campbell: A New No", "Gallery of Modern Art") == "Museums & exhibitions"
+    assert event_category({}, "Van Morrison", "Glasgow Royal Concert Hall") == "Music"
+    assert event_category({}, "SCO 26/27: Max Richter+", "City Halls") == "Music"
+
+
+def test_category_from_keywords_when_the_venue_says_nothing():
+    assert event_category({}, "Music for Memories", "Various Locations") == "Music"
+    assert event_category({}, "Padel Pay as You Go Programme", "Glasgow Club Scotstoun") == "Sport & leisure"
+    assert event_category({}, "Playwriting workshops with John Binnie", None) == "Talks & workshops"
+    assert event_category({"description": "A free talk on the tram."}, "Tram history", None) is None  # title only
+    # only the opening of the description counts
+    assert event_category({"description": "x" * 400 + " a concert"}, "Plain title", None) is None
+
+
+def test_category_from_age_only_for_plain_child_or_family_content():
+    assert event_category({"age": "Pre-5"}, "Play", "Various Locations") == "Kids & families"
+    assert event_category({"age": "All ages, Pre-5, Family"}, "Infant Feeding Support Groups", "Various Locations") == "Kids & families"
+    assert event_category({"age": "5-11 years"}, "Craft", None) == "Kids & families"
+    assert event_category({"age": "16+ years"}, "Craft", None) is None
+    assert event_category({"age": "All ages"}, "Craft", None) is None
+    assert event_category({"age": "See age restrictions"}, "Kid's Chess Clubs", None) is None
+
+
+def test_an_entry_rule_about_under_16s_is_not_a_kids_event():
+    # Van Morrison / Lang Lang were labelled "Kids & families" by this line (found when backfilling 2026-10-28)
+    for age in ("Under 16s must be accompanied by an adult.", "Under 16s must be accompanied by an adult., 15+",
+                "All children must be accompanied by an adult"):
+        assert event_category({"age": age}, "Some show", "Some hall") is None
+    assert event_category({"age": "Family"}, "Show", None) == "Kids & families"
 
 
 def test_channel_pages_tag_and_merge_into_one_record_per_event():
@@ -284,11 +307,5 @@ def test_channel_pages_tag_and_merge_into_one_record_per_event():
     recs = parse_pages("glasgow_life", blob, TZ, today=date(2026, 10, 23))
     assert len(recs) == 1
     assert recs[0]["raw_data"]["channels"] == ["Libraries", "Sport"]
-    assert recs[0]["raw_data"]["site_category"] == "Libraries"
+    
 
-
-def test_under_16s_must_be_accompanied_is_an_entry_rule_not_a_kids_event():
-    # Van Morrison / Lang Lang were labelled "Kids & families" by this line (found when backfilling 2026-10-28)
-    assert event_category({"age": "Under 16s must be accompanied by an adult.", "channels": ["Arts, Music and Culture"]}) == "Arts & music"
-    assert event_category({"age": "Under 16s must be accompanied by an adult., 15+", "channels": ["Arts, Music and Culture"]}) == "Arts & music"
-    assert event_category({"age": "Family", "channels": ["Museums"]}) == "Kids & families"
