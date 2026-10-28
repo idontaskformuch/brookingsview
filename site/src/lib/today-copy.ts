@@ -4,7 +4,7 @@
 import type { SiteConfig } from './site-config';
 import { joinWithOr } from './status-line';
 
-type Cfg = Pick<SiteConfig, 'country' | 'hasClosureWatch' | 'trafficSource'>;
+type Cfg = Pick<SiteConfig, 'country' | 'hasClosureWatch' | 'trafficSource'> & { hasWhatsOn?: boolean };
 
 /** What the page can honestly show, in reading order. Weather warnings and the day's events exist for every town. */
 export function todayModules(c: Cfg): string[] {
@@ -33,6 +33,7 @@ export function todaySources(c: Cfg): string {
   if (c.hasClosureWatch) local.push('school');
   if (c.trafficSource) local.push('road-condition');
   if (local.length) parts.push(`local ${joinWithOr(local).replace(' or ', ' and ')} sources`);
+  if (gb && c.hasWhatsOn) parts.push('Ticketmaster');
   parts.push(`event ${gb ? 'organisers' : 'organizers'}' own calendars`); // gb-spelling
   return list(parts);
 }

@@ -129,3 +129,17 @@ describe('reserve behavior', () => {
     expect(categoryImagesFor('brookings_sd').events?.map((i) => i.path)).toContain(r.image.path); // a curated reserve photo
   });
 });
+
+describe('Glasgow city_hall hero is always a landmark photo (owner 2026-10-28)', () => {
+  it('every week of a year picks from the city_hall category, never the seasonal pool', () => {
+    const landmarks = new Set(categoryImagesFor('glasgow').city_hall!.map((i) => i.path));
+    for (let w = 0; w < 52; w++) {
+      const r = getSectionHero('glasgow', 'city_hall', new Date(Date.UTC(2026, 9, 28 + 7 * w, 12)), { timezone: 'Europe/London' });
+      expect(landmarks.has(r.image.path)).toBe(true);
+    }
+  });
+  it('the other Glasgow sections keep the seasonal rotation', () => {
+    const r = getSectionHero('glasgow', 'events', new Date(Date.UTC(2026, 9, 28, 12)), { timezone: 'Europe/London' });
+    expect(r.source).toBe('rotation');
+  });
+});

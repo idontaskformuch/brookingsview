@@ -56,6 +56,8 @@ import HeatAdvisoryWidget from './HeatAdvisoryWidget.astro';
 import { artsEventAsStory, ARTS_EVENT_KICKER, type FeedItem } from '../lib/events';
 import { joinWithOr } from '../lib/status-line';
 import type { Story, TrafficIncident, StructuredHours, Facility } from '../lib/db';
+import type { TodayShow } from '../lib/today-shows';
+import TodayShowItem from './TodayShowItem.astro';
 import type { ClosureWatchStatus } from '../lib/closure-watch';
 import { storyHref } from '../lib/content-slugs';
 import { formatAlertUntil } from '../lib/alerts';
@@ -84,6 +86,8 @@ export interface Props {
   /** Every event starting on the build's local day or the next two, date-sorted
    *  (see events.ts selectBucketCandidates). The browser buckets them. */
   candidates: FeedItem[];
+  /** Ticketmaster shows in the town (gb only, at most 3; lib/today-shows.ts). Bucketed in the browser like the candidates. */
+  tmShows?: TodayShow[];
   /** The dedicated /today/ page wants its own <h1>+chrome around this
    *  block; the homepage mount wants a plain heading, no page-level
    *  semantics duplicated inside a component that isn't the page itself. */
@@ -100,7 +104,7 @@ export interface Props {
 
 const {
   cityName, timezone, asOf, temperature, activeAlerts, closureStatus, traffic,
-  cityHallFacility, facilities = [], candidates, headingLevel = 'h2', headingText,
+  cityHallFacility, facilities = [], candidates, tmShows = [], headingLevel = 'h2', headingText,
 } = Astro.props;
 
 const Heading = headingLevel;
@@ -258,6 +262,9 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
         </li>
       );
     })}
+    {tmShows.map((s) => (
+      <li data-start={s.start} data-end={s.end}><TodayShowItem show={s} cityName={cityName} /></li>
+    ))}
   </template>
   {cityHallKnown && cityHallFacility && (
     // Open/Closed badge client-side move (2026-10-15) -- see this

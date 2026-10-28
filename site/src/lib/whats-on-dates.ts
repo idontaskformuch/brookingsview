@@ -4,6 +4,16 @@ function localYear(d: Date, timeZone: string): number {
   return Number(new Intl.DateTimeFormat('en-US', { year: 'numeric', timeZone }).format(d));
 }
 
+/** "7pm" / "7:30pm" (UK clock, owner 2026-10-28) for a single show, in the venue's zone; '' when the listing has no real time
+ *  (local midnight is how a date-only listing arrives), so no time is claimed. */
+export function showTimeGb(iso: string, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hourCycle: 'h23', timeZone }).formatToParts(new Date(iso));
+  const hour = Number(parts.find((p) => p.type === 'hour')!.value) % 24;
+  const minute = Number(parts.find((p) => p.type === 'minute')!.value);
+  if (hour === 0 && minute === 0) return '';
+  return `${hour % 12 || 12}${minute ? `:${String(minute).padStart(2, '0')}` : ''}${hour < 12 ? 'am' : 'pm'}`;
+}
+
 /** "Tue, Oct 27" this year, "Sun, Jul 17, 2027" in another year. `withWeekday` false gives "Oct 27" / "Jul 17, 2027". */
 export function showDate(iso: string, timeZone: string, now: Date, withWeekday = true): string {
   const d = new Date(iso);

@@ -28,7 +28,8 @@ import { distanceLabel, type TicketmasterFeedItem } from '../lib/ticketmaster';
 import { ticketmasterSlug } from '../lib/whats-on';
 import type { ImageRef } from '../lib/images';
 import ImageAttribution from './ImageAttribution.astro';
-import { runLabel, showDate } from '../lib/whats-on-dates';
+import { runLabel, showDate, showTimeGb } from '../lib/whats-on-dates';
+import { siteConfig } from '../lib/site-config';
 
 interface Props {
   item: TicketmasterFeedItem;
@@ -71,7 +72,9 @@ const distance = distanceLabel(e.venueDistanceMiles, cityName);
 const buildNow = new Date();
 const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
   ? runLabel(runSize, item.occurs_at, lastOccursAt, timezone, buildNow)
-  : item.occurs_at ? showDate(item.occurs_at, timezone, buildNow) : null;
+  : item.occurs_at
+    ? [showDate(item.occurs_at, timezone, buildNow), siteConfig.country === 'gb' ? showTimeGb(item.occurs_at, timezone) : ''].filter(Boolean).join(' · ')
+    : null;
 ---
 <article class:list={['marquee-card', `marquee-card--${variant}`]}>
   <a class="marquee-card__image-link" href={href} tabindex="-1" aria-hidden="true">

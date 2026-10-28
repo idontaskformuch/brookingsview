@@ -14,7 +14,7 @@
 import { siteConfig } from '../lib/site-config';
 import { distanceLabel, type TicketmasterFeedItem } from '../lib/ticketmaster';
 import { ticketmasterSlug } from '../lib/whats-on';
-import { runLabel, showDate } from '../lib/whats-on-dates';
+import { runLabel, showDate, showTimeGb } from '../lib/whats-on-dates';
 
 interface Props {
   item: TicketmasterFeedItem;
@@ -41,6 +41,7 @@ const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
 // weekday+month+day string dateLabel uses for the multi-date-run case --
 // that longer string still renders, but as ordinary meta text, not
 // squeezed into the rail.
+const clock = runSize <= 1 && item.occurs_at && siteConfig.country === 'gb' ? showTimeGb(item.occurs_at, siteConfig.timezone) : '';
 const railLabel = item.occurs_at ? showDate(item.occurs_at, siteConfig.timezone, buildNow, false) : null;
 ---
 <article class="whats-on-row">
@@ -51,6 +52,7 @@ const railLabel = item.occurs_at ? showDate(item.occurs_at, siteConfig.timezone,
     <h3 class="whats-on-row__title"><a href={href}>{e.title}</a></h3>
     <p class="whats-on-row__meta">
       <span class="kicker">{e.venueName ?? 'Venue TBA'}</span>
+      {clock && <span class="whats-on-row__clock data">{clock}</span>}
       {dateLabel && <span class="whats-on-row__daterange data">{dateLabel}</span>}
       {distance && <span class="whats-on-row__distance">{distance}</span>}
       {e.priceRangeText && <span class="whats-on-row__price">{e.priceRangeText}</span>}
@@ -84,7 +86,7 @@ const railLabel = item.occurs_at ? showDate(item.occurs_at, siteConfig.timezone,
   display: flex; flex-wrap: wrap; align-items: baseline;
   gap: 0.375rem 0.625rem; margin: 0; font-size: 0.8125rem; color: var(--ink-soft);
 }
-.whats-on-row__daterange { font-size: 0.75rem; }
+.whats-on-row__daterange, .whats-on-row__clock { font-size: 0.75rem; }
 .whats-on-row__distance { font-size: 0.8125rem; }
 .whats-on-row__price { font-size: 0.8125rem; }
 </style>

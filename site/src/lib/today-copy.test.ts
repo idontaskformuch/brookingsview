@@ -10,7 +10,7 @@ describe('/today copy only promises what the town has', () => {
     expect(todayModules(g)).toEqual(['weather warnings', 'events today and tomorrow']);
     expect(todayShows(g, 'Glasgow')).toBe('What matters in Glasgow right now: weather warnings and events today and tomorrow.');
     expect(todayDescription(g, 'Glasgow')).not.toMatch(/school|road|traffic/i);
-    expect(todaySources(g)).toBe('Met Office warnings and event organisers\' own calendars');
+    expect(todaySources(g)).toBe('Met Office warnings, Ticketmaster and event organisers\' own calendars');
   });
   it('a US town with closure watch and a traffic source keeps all four promises', () => {
     const us = { country: 'us', hasClosureWatch: true, trafficSource: { name: 'x', url: 'https://x.test', scopeNote: '' } } as const;

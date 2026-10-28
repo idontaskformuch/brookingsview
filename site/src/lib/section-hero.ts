@@ -65,6 +65,10 @@ const RESERVE_CATEGORY: Record<HeroSection, ImageCategory> = {
   sports: 'sports', university: 'university', workplace_watch: 'workplace_watch',
 };
 
+/** Sections whose hero is ALWAYS the curated landmark photo of the section's category, never the seasonal rotation (owner 2026-10-28:
+ *  Glasgow's City Chambers page got a tree, then a patch of grass, from the autumn pool). One photo per month, stable. */
+const LANDMARK_HERO: Record<string, HeroSection[]> = { glasgow: ['city_hall'] };
+
 export interface SectionHeroOptions {
   timezone?: string;
   /** The homepage "This week" image id for the same week -- never repeated. */
@@ -114,6 +118,13 @@ export function getSectionHero(
   const timezone = opts.timezone ?? TOWN_TIMEZONE[town] ?? 'America/Chicago';
   const week = weekInfoForInstant(date, timezone);
   const season: Season = seasonForMonth(week.monday.m);
+
+  if (LANDMARK_HERO[town]?.includes(section)) {
+    const landmarks = opts.reserve ?? categoryImagesFor(town)[RESERVE_CATEGORY[section]] ?? [];
+    if (landmarks.length > 0) {
+      return { image: landmarks[stableHash(`${town}:${section}:${week.monday.y}-${week.monday.m}`) % landmarks.length], source: 'reserve', poolSize: 0 };
+    }
+  }
 
   const seasonPool: PoolImage[] = opts.seasonPool
     ?? thisWeekImagesFor(town).filter((img) => img.seasons.includes(season));

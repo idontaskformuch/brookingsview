@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { runLabel, showDate } from './whats-on-dates';
+import { runLabel, showDate, showTimeGb } from './whats-on-dates';
 
 const TZ = 'America/Chicago';
 const now = new Date('2026-10-23T18:00:00Z');
@@ -25,5 +25,13 @@ describe('runLabel', () => {
   it('a single date has no run label; a run into next year shows the year', () => {
     expect(runLabel(1, '2026-10-27T19:00:00Z', '2026-10-27T19:00:00Z', TZ, now)).toBeNull();
     expect(runLabel(3, '2026-12-30T20:00:00Z', '2027-01-02T20:00:00Z', TZ, now)).toBe('3 dates, Wed, Dec 30 – Sat, Jan 2, 2027');
+  });
+});
+
+describe('showTimeGb (owner 2026-10-28: a clock time on every Glasgow show row)', () => {
+  it('UK clock in the venue zone, nothing for a date-only listing', () => {
+    expect(showTimeGb('2026-10-28T19:00:00Z', 'Europe/London')).toBe('7pm');
+    expect(showTimeGb('2026-12-06T19:30:00Z', 'Europe/London')).toBe('7:30pm');
+    expect(showTimeGb('2026-07-01T23:00:00Z', 'Europe/London')).toBe('');
   });
 });
