@@ -1,7 +1,7 @@
 /** One cron tick for one town: gate by phase -> read source -> hash -> validate -> store.
  *  Fail closed: a source error stores nothing; an invalid snapshot is stored with valid=false and
  *  never shown, so the last valid snapshot keeps being served with its own timestamp. */
-import { shouldFetch } from './phase';
+import { closesAt, shouldFetch } from './phase';
 import type { SourceReading } from './sources';
 import type { TownElection } from './towns';
 import type { Snapshot } from './types';
@@ -12,6 +12,7 @@ export interface SaveRecord {
   hash: string;
   valid: boolean;
   problems: string[];
+  review: string[];
 }
 
 export interface Store {
@@ -29,7 +30,7 @@ export interface Deps {
 export type TickOutcome =
   | { action: 'skipped'; reason: 'phase' | 'link-only' | 'no-source' }
   | { action: 'unchanged' }
-  | { action: 'saved'; valid: boolean; problems: string[] }
+  | { action: 'saved'; valid: boolean; problems: string[]; review: string[] }
   | { action: 'error'; message: string };
 
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
@@ -50,9 +51,9 @@ export async function runTown(town: TownElection, deps: Deps): Promise<TickOutco
 
     const previous = await deps.store.lastValid(town.townId, date);
     const scope = previous ? previous.contests.map((c) => c.sourceContestId) : [];
-    const result = validateSnapshot(reading.snapshot, previous, scope);
-    await deps.store.save({ reading, hash, valid: result.valid, problems: result.problems });
-    return { action: 'saved', valid: result.valid, problems: result.problems };
+    const result = validateSnapshot(reading.snapshot, previous, scope, { closesAt: closesAt(town.cadence), timezone: town.cadence.timezone });
+    await deps.store.save({ reading, hash, valid: result.valid, problems: result.problems, review: result.review });
+    return { action: 'saved', valid: result.valid, problems: result.problems, review: result.review };
   } catch (e) {
     return { action: 'error', message: e instanceof Error ? e.message : String(e) };
   }

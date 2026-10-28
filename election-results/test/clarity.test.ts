@@ -85,3 +85,43 @@ describe('resolveColoradoStateEvent', () => {
     expect(await resolveColoradoStateEvent((async () => new Response('<p>none</p>')) as unknown as typeof fetch)).toBeNull();
   });
 });
+
+import { pickStateEvent } from '../src/adapters/clarity';
+import { resolveColoradoEventForDate } from '../src/fetch/clarity';
+describe('Colorado event discovery by date (owner decision 2026-10-28)', () => {
+  const entry = (EID: string, ElectionName: string, Date: string, County = '') => ({ State: 'CO', StateId: '286', County, CountyId: '', EID, ElectionName, Date });
+  const june = entry('126592', '2026 Primary', '6/30/2026 12:00:00 AM');
+  const nov = entry('130001', '2026 General', '11/3/2026 12:00:00 AM');
+  const list = (...e: object[]) => JSON.stringify(e);
+  const SOS = '<a href="https://results.enr.clarityelections.com/CO/126592/web.345435/#/summary">x</a>';
+  const mk = (stateList: string | Error, sos = SOS) => (async (u: string) => {
+    if (String(u).endsWith('/CO/elections.json')) { if (stateList instanceof Error) throw stateList; return new Response(stateList); }
+    return new Response(sos);
+  }) as unknown as typeof fetch;
+
+  it('matches the event on the election DATE, not its name', () => {
+    expect(pickStateEvent(list(june, nov), '2026-11-03')).toEqual({ status: 'found', eid: '130001' });
+    expect(pickStateEvent(list(june, { ...nov, ElectionName: 'Anything' }), '2026-11-03')).toMatchObject({ status: 'found' });
+  });
+  it('reports none (with the known ids) before the November event exists, and ambiguous for two on one date', () => {
+    expect(pickStateEvent(list(june), '2026-11-03')).toEqual({ status: 'none', knownEids: ['126592'] });
+    expect(pickStateEvent(list(nov, { ...nov, EID: '130002' }), '2026-11-03')).toEqual({ status: 'ambiguous', eids: ['130001', '130002'] });
+  });
+  it('ignores county-level entries and junk', () => {
+    expect(pickStateEvent(list(entry('5', 'x', '11/3/2026 12:00:00 AM', 'Broomfield'), { foo: 1 }), '2026-11-03').status).toBe('none');
+  });
+  it('finds November in the state list even while the SoS page still links June', async () => {
+    expect(await resolveColoradoEventForDate('2026-11-03', mk(list(june, nov)))).toBe('https://results.enr.clarityelections.com/CO/130001');
+  });
+  it('manual override in config wins over discovery', async () => {
+    expect(await resolveColoradoEventForDate('2026-11-03', mk(list(june, nov)), '999')).toBe('https://results.enr.clarityelections.com/CO/999');
+  });
+  it('no event for the date -> null (option A), and the stale June SoS link is not used', async () => {
+    expect(await resolveColoradoEventForDate('2026-11-03', mk(list(june)))).toBeNull();
+  });
+  it('uses the SoS page when it is not a known event of another date, and when the list is down', async () => {
+    const sosNew = '<a href="https://results.enr.clarityelections.com/CO/140000/web.1/#/summary">x</a>';
+    expect(await resolveColoradoEventForDate('2026-11-03', mk(list(june), sosNew))).toBe('https://results.enr.clarityelections.com/CO/140000');
+    expect(await resolveColoradoEventForDate('2026-11-03', mk(new Error('503')))).toBe('https://results.enr.clarityelections.com/CO/126592');
+  });
+});

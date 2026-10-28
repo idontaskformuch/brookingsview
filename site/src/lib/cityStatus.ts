@@ -274,7 +274,7 @@ async function resolveWhatsOn(): Promise<CityStatusModule | null> {
 async function resolveElection(): Promise<CityStatusModule | null> {
   const cfg = ELECTION_BY_TOWN[siteConfig.townId];
   if (!cfg?.enabled) return null;
-  const built = buildElectionStatus(cfg.election_date, siteConfig.timezone);
+  const built = buildElectionStatus(cfg.election_date, siteConfig.timezone, cfg.polls_close_local);
   if (!built) return null;
   const { then, href, ...rest } = built;
   return { id: 'election', icon: ICONS.election, label: 'Election', tone: 'notice', href: href ?? '/vote/', swapAt: then, ...rest };

@@ -2,7 +2,7 @@
  *  changed. The host publishes no robots/terms and its CDN rejects UA-less requests, so we always
  *  identify as ViewMediaBot. Keep polling to <= once per 5 min on election night. */
 import { unzipSync, strFromU8 } from 'fflate';
-import { inspectCountyElections, parseClarityDetail, parseClaritySummary, type ClarityDetail, type CountyFeed } from '../adapters/clarity';
+import { inspectCountyElections, parseClarityDetail, pickStateEvent, parseClaritySummary, type ClarityDetail, type CountyFeed } from '../adapters/clarity';
 import type { Contest } from '../types';
 
 export const CLARITY_USER_AGENT = 'ViewMediaBot (+https://broomfieldview.com/contact)';
@@ -60,4 +60,23 @@ export async function resolveColoradoStateEvent(f: typeof fetch = fetch): Promis
   if (!r.ok) throw new Error(`clarity: SoS ENR page -> ${r.status}`);
   const id = /results\.enr\.clarityelections\.com\/CO\/(\d+)\//.exec(await r.text())?.[1];
   return id ? `${HOST}/CO/${id}` : null;
+}
+
+/** November's (or any) Colorado event, found by DATE, in this order: manual override from config ->
+ *  Clarity's own state list (/CO/elections.json) -> the SoS ENR page. Null = no event for that date yet
+ *  (Broomfield then stays on option A: link only). The SoS link is refused when the state list shows it
+ *  belongs to a different date, so a stale June link never produces errors or numbers. */
+export async function resolveColoradoEventForDate(expectedDate: string, f: typeof fetch = fetch, override?: string): Promise<string | null> {
+  if (override) return `${HOST}/CO/${override}`;
+  let known: string[] | null = null;
+  try {
+    const pick = pickStateEvent(await (await get(f, `${HOST}/CO/elections.json`)).text(), expectedDate);
+    if (pick.status === 'found') return `${HOST}/CO/${pick.eid}`;
+    if (pick.status === 'ambiguous') { console.error(`election: Clarity lists several Colorado events on ${expectedDate} (${pick.eids.join(', ')}) -- set stateEventId in towns.ts`); return null; }
+    known = pick.knownEids;
+  } catch (e) {
+    console.error('election: Clarity state list unavailable, falling back to the SoS page:', e instanceof Error ? e.message : e);
+  }
+  const sos = await resolveColoradoStateEvent(f);
+  return sos && known && known.some((k) => sos.endsWith(`/${k}`)) ? null : sos;
 }

@@ -4,7 +4,8 @@ import type { Cadence } from './phase';
 
 export type TownSource =
   | { kind: 'sd_xlsx'; county: string }
-  | { kind: 'clarity_co'; county: string }
+  /** `stateEventId`: manual override of the Colorado Clarity event id (wins over discovery). */
+  | { kind: 'clarity_co'; county: string; stateEventId?: string }
   /** No automatic fetch: the page links to the official results (Riverside ROV, pending permission). */
   | { kind: 'link_only' };
 

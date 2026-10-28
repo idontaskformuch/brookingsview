@@ -37,6 +37,8 @@ export interface ElectionConfig {
   enabled: boolean;
   /** YYYY-MM-DD */
   election_date: string;
+  /** Local "HH:MM" the polls close; the CityStatus row and the results fetch both start here. */
+  polls_close_local: string;
   authority: { name: string; url: string; phone?: string; phone_note?: string; source_url: string };
   /** Official hosts (exact, or a parent domain) any URL in this block may point to. */
   officialHosts: string[];
@@ -198,8 +200,8 @@ export function zonedInstant(ymd: string, hhmm: string, timezone: string): Date 
 /** Days after Election Day during which the CityStatus row points at /election-results (certification
  *  is not source-verified; matches the Worker's fetchUntil of 2026-11-30). */
 export const RESULTS_WINDOW_DAYS = 27;
-/** Spec: results line from 20:00 local on Election Day. */
-export const RESULTS_FROM_LOCAL = '20:00';
+/** The row turns into the results link when that town's polls close (ElectionConfig.polls_close_local):
+ *  owner decision 2026-10-28, Brookings and Broomfield 19:00, Moreno Valley 20:00 local. */
 
 export interface ElectionStatusBuilt {
   value: string;
@@ -210,15 +212,15 @@ export interface ElectionStatusBuilt {
   then?: { at: string; value: string; href: string };
 }
 
-/** CityStatus row: "Election Day: Tue Nov 3 · How to vote" until 20:00 on Election Day, then
+/** CityStatus row: "Election Day: Tue Nov 3 · How to vote" until the polls close on Election Day, then
  *  "Results: unofficial · see results" (swapped in the browser at that instant and also what a later
  *  build ships) until RESULTS_WINDOW_DAYS after the election, then null (null-means-omit). */
 export function buildElectionStatus(
-  electionDate: string, timezone: string, now: Date = new Date(),
+  electionDate: string, timezone: string, pollsCloseLocal: string, now: Date = new Date(),
 ): ElectionStatusBuilt | null {
   const today = todayIn(timezone, now);
   const [y, m, d] = electionDate.split('-').map(Number);
-  const resultsAt = zonedInstant(electionDate, RESULTS_FROM_LOCAL, timezone);
+  const resultsAt = zonedInstant(electionDate, pollsCloseLocal, timezone);
   const windowEnd = new Date(Date.UTC(y, m - 1, d + RESULTS_WINDOW_DAYS + 1, 12)).toISOString();
   const results = { value: 'Results: unofficial · see results', href: '/election-results/' };
   const days = daysBetween(today, electionDate);

@@ -92,3 +92,29 @@ export function inspectCountyElections(json: string, expectedElectionDate: strin
   }
   return { status: 'needs-review', raw: json };
 }
+
+export type StateEventPick =
+  | { status: 'found'; eid: string }
+  /** No event on that date. `knownEids` lets a caller refuse a stale link to some OTHER date's event. */
+  | { status: 'none'; knownEids: string[] }
+  | { status: 'ambiguous'; eids: string[] };
+
+/** State-level Clarity list (/CO/elections.json: [{EID, ElectionName, Date: "6/30/2026 12:00:00 AM", County: ""}]).
+ *  Matches on DATE only, never on the election's name; two events on one date are not guessed between. */
+export function pickStateEvent(json: string, expectedElectionDate: string): StateEventPick {
+  const list = JSON.parse(json) as unknown;
+  const [y, m, d] = expectedElectionDate.split('-').map(Number);
+  const want = `${m}/${d}/${y}`;
+  const known: string[] = [];
+  const hits: string[] = [];
+  for (const e of Array.isArray(list) ? list : []) {
+    const rec = e as { EID?: unknown; Date?: unknown; County?: unknown };
+    const eid = String(rec.EID ?? '');
+    if (!/^\d+$/.test(eid) || (rec.County ?? '') !== '') continue;
+    known.push(eid);
+    if (String(rec.Date ?? '').split(' ')[0] === want) hits.push(eid);
+  }
+  if (hits.length === 1) return { status: 'found', eid: hits[0] };
+  if (hits.length > 1) return { status: 'ambiguous', eids: hits };
+  return { status: 'none', knownEids: known };
+}

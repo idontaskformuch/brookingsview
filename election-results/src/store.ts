@@ -42,7 +42,7 @@ export function neonStore(databaseUrl: string): Store & { latestValidPublic(town
     await q(
       `WITH snap AS (
          INSERT INTO election_snapshots (town_id, election_date, source_kind, source_url, source_updated_at, raw_hash, raw_payload, valid, problems, precincts_reported, precincts_total)
-         VALUES ($1,$2,$3,$4,$5,$6,$7::bytea,TRUE,'{}',$8,$9) RETURNING id
+         VALUES ($1,$2,$3,$4,$5,$6,$7::bytea,TRUE,$16::text[],$8,$9) RETURNING id
        ), c AS (
          INSERT INTO election_contests (town_id, election_date, source_contest_id, name, party, ballot_order)
          SELECT $1, $2::date, x.sid, x.name, x.party, x.ord
@@ -63,6 +63,7 @@ export function neonStore(databaseUrl: string): Store & { latestValidPublic(town
         s.townId, s.electionDate, kind, s.sourceUrl, s.sourceUpdatedAt, rec.hash, hex, s.precinctsReported, s.precinctsTotal,
         JSON.stringify(contests), JSON.stringify(results),
         t?.ballotsCounted ?? null, t?.registered ?? null, t?.precinctsReporting ?? s.precinctsReported, t?.precinctsTotal ?? s.precinctsTotal,
+        rec.review.map((r) => `REVIEW: ${r}`),
       ],
     );
   }

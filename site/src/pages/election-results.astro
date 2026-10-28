@@ -71,7 +71,7 @@ const electionLabel = formatYmd(election.election_date, true);
 </BaseLayout>
 
 <script>
-  import { metaLine, precinctsLine, turnoutLine, viewState, type ResultsPayload } from '../lib/election-results';
+  import { metaLine, nextPollDelay, precinctsLine, turnoutLine, viewState, type ResultsPayload } from '../lib/election-results';
 
   const root = document.querySelector<HTMLElement>('.er-live');
   if (root && root.dataset.live === 'true') {
@@ -106,15 +106,20 @@ const electionLabel = formatYmd(election.election_date, true);
         return card;
       }));
     };
+    // Every 3 minutes while results are live (the Worker fetches every 10); every minute before that and
+    // after an error so the page notices the moment results start; stops once automatic updates end.
     const load = async () => {
+      let next = 60_000;
       try {
         const r = await fetch(root.dataset.endpoint!, { headers: { Accept: 'application/json' } });
         if (!r.ok) throw new Error(String(r.status));
-        render((await r.json()) as ResultsPayload);
+        const payload = (await r.json()) as ResultsPayload;
+        render(payload);
+        next = nextPollDelay(payload.phase) ?? 0;
       } catch { render(null); }
+      if (next > 0) setTimeout(load, next);
     };
     void load();
-    setInterval(load, 60_000);
   }
 </script>
 

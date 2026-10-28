@@ -4,7 +4,7 @@ import { countyTargets, fetchSdCounty, hiddenFields } from '../src/fetch/sd';
 
 const xlsx = readFileSync(new URL('./fixtures/sd-brookings-2026-06-primary.xlsx', import.meta.url));
 
-const PAGE = (date: string) => `<html><span>Results last updated: 6/3/2026 1:05 AM CT</span>
+const PAGE = (date: string) => `<html><div class="last-updated"><span>Results last updated:</span><span>6/3/2026 1:05 AM CT</span></div>
 <input type="hidden" name="__VIEWSTATE" value="abc+/=&amp;x" />
 <input type="hidden" name="ctl00$hidElectionDate" id="d" value="${date}" />
 <div><a onclick="DownloadFile();" href="javascript:__doPostBack(&#39;ctl00$MainContent$ctl12&#39;,&#39;&#39;)">Brookings</a></div>

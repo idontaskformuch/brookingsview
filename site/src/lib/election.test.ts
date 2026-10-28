@@ -121,45 +121,48 @@ describe('zonedInstant', () => {
   });
 });
 describe('CityStatus election row', () => {
-  it('shows "Election Day: Tue Nov 3 · How to vote" before 20:00 on Election Day, with a swap instant', () => {
-    const r = buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-10-21T18:00:00Z'));
+  it('shows "Election Day: Tue Nov 3 · How to vote" until the polls close on Election Day, with a swap instant', () => {
+    const r = buildElectionStatus('2026-11-03', 'America/Denver', '19:00', new Date('2026-10-21T18:00:00Z'));
     expect(r?.value).toBe('Election Day: Tue Nov 3 · How to vote');
-    expect(r?.then).toEqual({ at: '2026-11-04T03:00:00.000Z', value: 'Results: unofficial · see results', href: '/election-results/' });
-    expect(buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-11-03T20:00:00Z'))?.value).toMatch(/^Election Day/);
+    expect(r?.then).toEqual({ at: '2026-11-04T02:00:00.000Z', value: 'Results: unofficial · see results', href: '/election-results/' });
+    expect(buildElectionStatus('2026-11-03', 'America/Denver', '19:00', new Date('2026-11-03T20:00:00Z'))?.value).toMatch(/^Election Day/);
   });
-  it('turns into the results row from 20:00 local on Election Day, and the day after', () => {
-    const at = buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-11-04T03:00:00Z'));
+  it('turns into the results row when the polls close, and the day after', () => {
+    const at = buildElectionStatus('2026-11-03', 'America/Denver', '19:00', new Date('2026-11-04T02:00:00Z'));
     expect(at).toMatchObject({ value: 'Results: unofficial · see results', href: '/election-results/' });
     expect(at?.then).toBeUndefined();
-    expect(buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-11-05T18:00:00Z'))?.href).toBe('/election-results/');
+    expect(buildElectionStatus('2026-11-03', 'America/Denver', '19:00', new Date('2026-11-05T18:00:00Z'))?.href).toBe('/election-results/');
   });
   it('is omitted (null) after the results window', () => {
-    expect(buildElectionStatus('2026-11-03', 'America/Denver', new Date('2026-12-05T18:00:00Z'))).toBeNull();
+    expect(buildElectionStatus('2026-11-03', 'America/Denver', '19:00', new Date('2026-12-05T18:00:00Z'))).toBeNull();
   });
 });
 
 describe('Election night dry run: all three cities, fake clock, real config', () => {
   const zones: Record<string, string> = { brookings_sd: 'America/Chicago', broomfield_co: 'America/Denver', moreno_valley_ca: 'America/Los_Angeles' };
+  const closes: Record<string, string> = { brookings_sd: '19:00', broomfield_co: '19:00', moreno_valley_ca: '20:00' };
   for (const [town, tz] of Object.entries(zones)) {
     const cfg = ELECTION_BY_TOWN[town];
-    it(`${town}: "How to vote" until 19:59 local on Election Day, results link from 20:00`, () => {
-      const at = zonedInstant(cfg.election_date, '20:00', tz).getTime();
-      const before = buildElectionStatus(cfg.election_date, tz, new Date(at - 60_000));
+    it(`${town}: "How to vote" until a minute before the polls close (${closes[town]} local), results link from then`, () => {
+      expect(cfg.polls_close_local).toBe(closes[town]);
+      const at = zonedInstant(cfg.election_date, cfg.polls_close_local, tz).getTime();
+      const before = buildElectionStatus(cfg.election_date, tz, cfg.polls_close_local, new Date(at - 60_000));
       expect(before?.value).toMatch(/^Election Day: Tue Nov 3/);
       expect(before?.then?.at).toBe(new Date(at).toISOString());
       expect(before?.then).toMatchObject({ href: '/election-results/' });
-      const after = buildElectionStatus(cfg.election_date, tz, new Date(at));
+      const after = buildElectionStatus(cfg.election_date, tz, cfg.polls_close_local, new Date(at));
       expect(after).toMatchObject({ value: 'Results: unofficial · see results', href: '/election-results/' });
       expect(after?.then).toBeUndefined();
     });
     it(`${town}: the Worker config and the site config agree on the election date and zone`, () => {
       expect(WORKER_TOWNS[town].cadence.electionDate).toBe(cfg.election_date);
       expect(WORKER_TOWNS[town].cadence.timezone).toBe(tz);
+      expect(WORKER_TOWNS[town].cadence.startLocal).toBe(cfg.polls_close_local);
     });
   }
   it('Moreno Valley shows only the official link (no live results, no fetching)', () => {
-    expect(ELECTION_BY_TOWN.moreno_valley_ca.results.live).toBe(false);
+    expect(ELECTION_BY_TOWN.moreno_valley_ca.results?.live).toBe(false);
     expect(WORKER_TOWNS.moreno_valley_ca.source.kind).toBe('link_only');
-    expect(ELECTION_BY_TOWN.brookings_sd.results.live && ELECTION_BY_TOWN.broomfield_co.results.live).toBe(true);
+    expect(ELECTION_BY_TOWN.brookings_sd.results?.live && ELECTION_BY_TOWN.broomfield_co.results?.live).toBe(true);
   });
 });

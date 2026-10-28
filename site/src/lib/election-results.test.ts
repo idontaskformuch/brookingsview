@@ -29,3 +29,14 @@ describe('election-results helpers', () => {
     expect(turnoutLine({ ...base, turnout: { ballotsCounted: null, registered: null } })).toBeNull();
   });
 });
+
+import { nextPollDelay } from './election-results';
+describe('results page polling', () => {
+  it('asks every 3 minutes while live, every minute before and after errors, and stops when updates have ended', () => {
+    expect(nextPollDelay('night')).toBe(180_000);
+    expect(nextPollDelay('after')).toBe(180_000);
+    expect(nextPollDelay('before')).toBe(60_000);
+    expect(nextPollDelay(null)).toBe(60_000);
+    expect(nextPollDelay('done')).toBeNull();
+  });
+});

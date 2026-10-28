@@ -41,4 +41,6 @@ export interface ValidationResult {
   valid: boolean;
   /** Empty when valid. Every blocking reason is listed, not only the first. */
   problems: string[];
+  /** Valid but needs a human look (source reset to a new baseline). Stored on the row, logged by the Worker. */
+  review: string[];
 }

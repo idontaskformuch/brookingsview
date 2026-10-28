@@ -104,10 +104,10 @@ describe('simulated election night, Brookings County (June primary data)', () =>
     expect(await tick('19:20', '2026-06-02', wrap(scale(base, 0.3), '7:10 PM CT'))).toEqual({ action: 'unchanged' });
     // 19:30: growth accepted.
     expect(await tick('19:30', '2026-06-02', wrap(scale(base, 0.6), '7:30 PM CT'))).toMatchObject({ action: 'saved', valid: true });
-    // 19:40: a decrease is blocked and flagged; last valid (0.6) stays.
+    // 19:40: a decrease = source reset (owner 2026-10-28): accepted as the new baseline, flagged for review.
     const dec = await tick('19:40', '2026-06-02', wrap(scale(base, 0.5), '7:40 PM CT'));
-    expect(dec).toMatchObject({ action: 'saved', valid: false });
-    expect((dec as { problems: string[] }).problems.join()).toMatch(/decreased/);
+    expect(dec).toMatchObject({ action: 'saved', valid: true, problems: [] });
+    expect((dec as { review: string[] }).review.join()).toMatch(/source reset, new baseline.*decreased/);
     // 19:50: source error -> nothing stored.
     const before = saved.length;
     expect(await tick('19:50', '2026-06-02', () => new Error('sd: GET -> 503'))).toMatchObject({ action: 'error' });
@@ -162,5 +162,36 @@ describe('link-only town (Moreno Valley)', () => {
     const { store } = memoryStore();
     const town: TownElection = { townId: 'moreno_valley_ca', source: { kind: 'link_only' }, cadence: BROOKINGS.cadence };
     expect(await runTown(town, { now: () => at('2026-06-02', '21:00', 5), read: async () => { throw new Error('no'); }, store })).toEqual({ action: 'skipped', reason: 'link-only' });
+  });
+});
+
+describe('SD serves test data into election night (live 2026-10-28: 671/671 precincts, stamped 10/28)', () => {
+  const town: TownElection = {
+    townId: 'brookings_sd', source: { kind: 'sd_xlsx', county: 'Brookings' },
+    cadence: { electionDate: '2026-11-03', timezone: 'America/Chicago', startLocal: '19:00', fetchUntil: '2026-11-30' },
+  };
+  it('is never shown before real results arrive, then real results are accepted without being compared to the test data', async () => {
+    const { saved, store } = memoryStore();
+    const base = parseSdWorkbook(sdBytes).contests;
+    let now = at('2026-11-03', '19:00', 6);
+    let stamp = '10/28/2026 2:39 PM CT';
+    const deps = {
+      now: () => now,
+      store,
+      read: async () => {
+        const r = reading(town, base, now, stamp);
+        r.snapshot.precinctsReported = 671; r.snapshot.precinctsTotal = 671;
+        return r;
+      },
+    };
+    const first = await runTown(town, deps);
+    expect(first).toMatchObject({ action: 'saved', valid: false });
+    expect((first as { problems: string[] }).problems.join()).toMatch(/before the polls closed.*all precincts already reported/);
+    expect(await store.lastValid('brookings_sd', '2026-11-03')).toBeNull();
+    // Real numbers (smaller than the test data) stamped after close: the first valid snapshot.
+    now = at('2026-11-03', '19:20', 6); stamp = '11/3/2026 7:15 PM CT';
+    const real = { ...deps, read: async () => reading(town, scale(base, 0.1), now, stamp) };
+    expect(await runTown(town, real)).toMatchObject({ action: 'saved', valid: true, review: [] });
+    expect(saved.filter((s) => s.valid)).toHaveLength(1);
   });
 });

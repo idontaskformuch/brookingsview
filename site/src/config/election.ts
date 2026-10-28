@@ -21,6 +21,7 @@ const BF_Q = 'https://broomfield.org/4198/Broomfield-Specific-Ballot-Questions';
 const broomfield: ElectionConfig = {
   enabled: true,
   election_date: '2026-11-03',
+  polls_close_local: '19:00',
   results: {
     live: true,
     source_name: 'Colorado Secretary of State (statewide and federal contests; Broomfield turnout)',
@@ -105,6 +106,7 @@ const MV_VC = 'https://voteinfo.net/sites/g/files/aldnop371/files/2026-10/Nov%20
 const morenoValley: ElectionConfig = {
   enabled: true,
   election_date: '2026-11-03',
+  polls_close_local: '20:00',
   results: {
     live: false,
     source_name: 'Riverside County Registrar of Voters',
@@ -172,6 +174,7 @@ const SD_PP = 'https://sdsos.gov/elections-voting/upcoming-elections/general-inf
 const brookings: ElectionConfig = {
   enabled: true,
   election_date: '2026-11-03',
+  polls_close_local: '19:00',
   results: {
     live: true,
     source_name: 'South Dakota Secretary of State (Brookings County results)',

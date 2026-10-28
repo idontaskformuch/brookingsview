@@ -1,6 +1,6 @@
 /** Turns a town's configured source into a Snapshot. All I/O goes through the injected `f`. */
 import { fetchSdCounty } from './fetch/sd';
-import { checkBroomfieldCountyFeed, fetchClarity, resolveColoradoStateEvent } from './fetch/clarity';
+import { checkBroomfieldCountyFeed, fetchClarity, resolveColoradoEventForDate } from './fetch/clarity';
 import type { Snapshot } from './types';
 import type { TownElection } from './towns';
 
@@ -45,7 +45,7 @@ export async function readSource(town: TownElection, now: Date, f: typeof fetch 
     let base: string | null;
     let kind: SourceKind;
     if (feed.status === 'ready') { base = feed.base; kind = 'clarity_county'; }
-    else { base = await resolveColoradoStateEvent(f); kind = 'clarity_state'; }
+    else { base = await resolveColoradoEventForDate(date, f, src.stateEventId); kind = 'clarity_state'; }
     if (!base) return null;
 
     const c = await fetchClarity(base, f);

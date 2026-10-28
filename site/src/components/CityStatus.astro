@@ -76,19 +76,14 @@ const ctaLabel = `Full ${siteConfig.cityName} rundown →`;
 
 <script>
   import { countTonight, type TimedEvent } from '../lib/local-day';
+  import { watchElectionRows } from '../lib/election-swap';
   // "N events tonight" depends on the real clock, so it is computed here (town
   // zone, ended events excluded), not at build time. Hidden until then.
   const section = document.querySelector<HTMLElement>('.city-status');
   const tz = section?.dataset.tz || 'America/Chicago';
   // Election row: once the instant has passed, "How to vote" becomes the results link (no rebuild).
-  document.querySelectorAll<HTMLElement>('[data-swap-at]').forEach((li) => {
-    const at = Date.parse(li.dataset.swapAt || '');
-    if (Number.isNaN(at) || Date.now() < at) return;
-    const value = li.querySelector('.city-status__value');
-    const link = li.querySelector<HTMLAnchorElement>('a.city-status__link');
-    if (value && li.dataset.swapValue) value.textContent = li.dataset.swapValue;
-    if (link && li.dataset.swapHref) link.href = li.dataset.swapHref;
-  });
+  // Checked every minute so a tab that is already open flips when the polls close.
+  watchElectionRows(document);
   document.querySelectorAll<HTMLElement>('[data-tonight-events]').forEach((li) => {
     try {
       const events = JSON.parse(li.dataset.tonightEvents || '[]') as TimedEvent[];

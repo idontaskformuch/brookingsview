@@ -18,7 +18,10 @@ export default {
       const out = await runTown(town, { now: () => new Date(), read: (t, n) => readSource(t, n), store });
       if (out.action === 'error') console.error(`election ${town.townId}: ${out.message}`);
       else if (out.action === 'saved' && !out.valid) console.error(`election ${town.townId}: snapshot BLOCKED: ${out.problems.join('; ')}`);
-      else console.log(`election ${town.townId}: ${out.action}`);
+      else {
+        if (out.action === 'saved' && out.review.length > 0) console.error(`election ${town.townId}: REVIEW NEEDED (accepted as new baseline): ${out.review.join('; ')}`);
+        console.log(`election ${town.townId}: ${out.action}`);
+      }
     }
   },
 } satisfies ExportedHandler<Env>;

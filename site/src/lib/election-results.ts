@@ -58,3 +58,11 @@ export function turnoutLine(p: ResultsPayload): string | null {
   const reg = t.registered != null && t.registered > 0 ? ` of ${t.registered.toLocaleString('en-US')} registered voters` : '';
   return `${t.ballotsCounted.toLocaleString('en-US')} ballots counted${reg}`;
 }
+
+/** Milliseconds until the results page asks again, or null to stop. 3 minutes while results are live
+ *  (the Worker fetches every 10), 1 minute before they start (so the page notices) and after an error. */
+export function nextPollDelay(phase: string | null): number | null {
+  if (phase === 'night' || phase === 'after') return 180_000;
+  if (phase === 'done') return null;
+  return 60_000;
+}

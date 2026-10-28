@@ -90,7 +90,7 @@ export async function fetchSdCounty(opts: {
 
   return {
     sourceUrl: url,
-    sourceUpdatedAt: /Results last updated:\s*([^<]+?)\s*</i.exec(html)?.[1] ?? null,
+    sourceUpdatedAt: /Results last updated:\s*(?:<\/span>\s*<span[^>]*>)?\s*([^<]+?)\s*</i.exec(html)?.[1] ?? null,
     electionDate: date,
     raw,
     workbook: parseSdWorkbook(raw),
