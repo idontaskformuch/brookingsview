@@ -45,8 +45,11 @@ import facilityRedirects from './facility-redirects.json';
 import { homeSalesParcelSlugFromPath, wasHomeSalesParcelEverRecorded } from './home-sales-gone';
 import { matchAiCrawler, logAiCrawlerHit } from './ai-crawler-log';
 
-/** Alias host -> canonical host. glasgowloop.uk and www redirect to glasgowloop.co.uk. */
+/** Alias host -> canonical host. glasgowloop.uk and every www. redirect to the apex. */
 const HOST_ALIASES: Record<string, string> = {
+  'www.brookingsview.com': 'brookingsview.com',
+  'www.morenovalleyview.com': 'morenovalleyview.com',
+  'www.broomfieldview.com': 'broomfieldview.com',
   'www.glasgowloop.co.uk': 'glasgowloop.co.uk',
   'glasgowloop.uk': 'glasgowloop.co.uk',
   'www.glasgowloop.uk': 'glasgowloop.co.uk',
