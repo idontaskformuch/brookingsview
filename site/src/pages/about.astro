@@ -79,6 +79,9 @@ const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
     it — by design.</p>
 
     <h2>Who built it</h2>
+    {isBrookings && (
+      <p>{siteConfig.siteName} is run by Claudio Fransson. Email <a href={`mailto:${siteConfig.removalEmail}`}>{siteConfig.removalEmail}</a>.</p>
+    )}
     <p>I'm one person, building this in my spare time outside a day job,
     because {siteConfig.cityName} didn't have a site like it. I'm not a
     journalist and I don't live in {siteConfig.cityName} -- I write software,
@@ -106,7 +109,15 @@ const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
     <h2>Corrections</h2>
     <p>Automated summaries occasionally get something wrong. Errors are
     corrected as soon as they're reported -- <a href="/contact/">use the
-    contact form</a> to flag one.</p>
+    contact form</a> to flag one.{isBrookings && <> What has been corrected is
+    listed on the <a href="/corrections/">corrections page</a>.</>}</p>
+    {isBrookings && (
+      <>
+        <h2>Advertising</h2>
+        <p>How sponsorship and advertising are kept apart from the news is set out in
+        the <a href="/advertising/">advertising and sponsorship policy</a>.</p>
+      </>
+    )}
   </article>
 )}
 </BaseLayout>

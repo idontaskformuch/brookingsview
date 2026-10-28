@@ -225,3 +225,14 @@ describe('isVenueCurated (What\'s On Phase 5 follow-up -- distinguishes "genuine
     expect(isVenueCurated('brookings_sd', undefined, null)).toBe(false);
   });
 });
+
+describe('Glasgow venue tiers (15 mi Ticketmaster feed)', () => {
+  it('ranks arenas above halls above clubs, by id and by name', () => {
+    expect(venueTierFor('glasgow', 'OVO Hydro', 'KovZ9177Sq0')).toBe('large');
+    expect(venueTierFor('glasgow', 'Celtic Park')).toBe('large');
+    expect(venueTierFor('glasgow', 'Barrowland Ballroom', 'unknown-id')).toBe('medium');
+    expect(venueTierFor('glasgow', "Saint Luke's")).toBe('small');
+    expect(isVenueCurated('glasgow', "Saint Luke's")).toBe(true);
+    expect(isVenueCurated('glasgow', 'Some New Bar')).toBe(false);
+  });
+});

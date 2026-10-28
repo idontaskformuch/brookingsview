@@ -70,7 +70,7 @@
     "closure_watch": { "enabled": false, "districts": [], "weather_zones": [] },
     "new_in_town": { "enabled": false },
     "housing_market": { "enabled": false, "sales_source": null },
-    "whats_on": { "enabled": false },
+    "whats_on": { "enabled": true, "ticketmaster": { "enabled": true, "radius_miles": 15, "marquee_size": 6, "_notes": "Owner 2026-10-28: 15 miles (10 mi = 54 venues almost all Glasgow; 25 mi adds a handful; 50 mi pulls in Edinburgh/Dunfermline). Mirrors site-config.ts ticketmaster block." } },
     "workplace_watch": { "enabled": false },
     "comments": { "enabled": false },
     "games": { "enabled": false }

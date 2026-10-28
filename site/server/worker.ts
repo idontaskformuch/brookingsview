@@ -68,6 +68,12 @@ export default {
       return Response.redirect(url.toString(), 301);
     }
 
+    // The page is /advertising/; /advertise is what people (and old links) type.
+    if ((request.method === 'GET' || request.method === 'HEAD') && (url.pathname === '/advertise' || url.pathname === '/advertise/')) {
+      url.pathname = '/advertising/';
+      return Response.redirect(url.toString(), 301);
+    }
+
     // Answer-engine-visibility handoff, Section 6 item 2 -- see
     // ai-crawler-log.ts's own doc for why this is narrower than "log every
     // visitor's referrer" (that idea was explicitly decided against to

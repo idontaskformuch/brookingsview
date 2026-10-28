@@ -30,11 +30,13 @@ describe('Glasgow skeleton config', () => {
     expect(glasgow.ga4MeasurementId).toBeUndefined();
   });
 
-  it('has every feature off', () => {
-    for (const k of ['hasWhatsOn', 'hasClosureWatch', 'hasNewInTown', 'hasWorkplaceWatch', 'hasPlaces', 'hasHeatAdvisory', 'hasEventsSource'] as const) {
+  it("has every feature off except What's On", () => {
+    for (const k of ['hasClosureWatch', 'hasNewInTown', 'hasWorkplaceWatch', 'hasPlaces', 'hasHeatAdvisory', 'hasEventsSource'] as const) {
       expect(!!(glasgow as unknown as Record<string, unknown>)[k], k).toBe(false);
     }
-    expect(glasgow.ticketmaster).toBeUndefined();
+    // What's On is the one feature switched on (owner 2026-10-28)
+    expect(glasgow.hasWhatsOn).toBe(true);
+    expect(glasgow.ticketmaster).toMatchObject({ enabled: true, radiusMiles: 15 });
     expect(glasgow.statusModules ?? []).toEqual([]);
   });
 
@@ -42,7 +44,7 @@ describe('Glasgow skeleton config', () => {
     const nav = resolveNav(glasgow.nav, glasgow);
     expect(nav.tabs.map((t) => t.id)).toEqual(['today', 'events', 'cityhall']);
     const ids = enabledSections(glasgow).map((s) => s.id);
-    expect(ids).toEqual(['today', 'thisweek', 'events', 'cityhall', 'facilities', 'weather']);
+    expect(ids).toEqual(['today', 'thisweek', 'events', 'whatson', 'cityhall', 'facilities', 'weather']);
     expect(enabledSections(glasgow).find((s) => s.id === 'cityhall')!.label).toBe('Council');
     expect(nav.tabs.find((t) => t.id === 'cityhall')!.label).toBe('Council');
   });
@@ -59,7 +61,7 @@ describe('Glasgow skeleton config', () => {
     expect(others).not.toContain(glasgow.brand?.accent);
   });
 
-  it('lists only the enabled sources on /about (meetings, Met Office forecast and warnings, Glasgow Life events, Adzuna jobs)', () => {
+  it('lists only the enabled sources on /about (meetings, Met Office forecast and warnings, Glasgow Life events, Adzuna jobs, Ticketmaster)', () => {
     expect(aboutSourcesFor('glasgow')).toEqual([
       {
         name: 'Glasgow City Council committees and councillors',
@@ -69,6 +71,7 @@ describe('Glasgow skeleton config', () => {
       { name: 'Met Office weather warnings', url: 'https://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings' },
       { name: "Glasgow Life what's on", url: 'https://www.glasgowlife.org.uk' },
       { name: 'Adzuna job listings', url: 'https://www.adzuna.co.uk' },
+      { name: 'Ticketmaster (concerts & tickets)', url: 'https://www.ticketmaster.co.uk' },
     ]);
   });
 

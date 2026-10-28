@@ -175,6 +175,16 @@ describe('every reader-facing stories listing excludes superseded rows', () => {
     const body = dbSource.slice(start, dbSource.indexOf('\nexport ', start + 1));
     expect(body).toContain('NOT COALESCE(is_recurring_series, false)');
     expect(body).toContain('COALESCE(ends_at, occurs_at) < now()');
+    // an unexpandable series (scraper kind 'recurring') is a programme too (Make 2nds Count, Q3 2026-10-27)
+    expect(body).toContain("ev.raw_data->>'kind' = 'recurring'");
+  });
+
+  it('upcoming/recent split treats a timed meeting as held 2 h after it starts', () => {
+    for (const fn of ['function getUpcomingStories(', 'function getPastStories(']) {
+      const start = dbSource.indexOf(fn);
+      const body = dbSource.slice(start, dbSource.indexOf('export ', start + 1));
+      expect(body, fn).toContain("source_type = 'meeting' AND ${siteConfig.meetingsHaveTime ?? false}::boolean THEN interval '2 hours'");
+    }
   });
 
   it('getStoryBySlug and getAllStories are deliberately NOT in the list above', () => {

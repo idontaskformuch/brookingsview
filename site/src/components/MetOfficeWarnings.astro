@@ -33,6 +33,7 @@ const id = variant === 'full' ? 'weather-warnings' : 'met-warnings';
   .mw--compact { padding: 0.5rem 0.875rem; }
   .mw__line { margin: 0; font-size: 0.9375rem; line-height: 1.4; }
   .mw__title { margin: 0; font-size: 1rem; font-weight: 700; }
+  .mw__means { margin: 0.3rem 0 0; font-size: 0.9375rem; font-weight: 600; }
   .mw__headline, .mw__valid, .mw__do, .mw__src, .mw__more { margin: 0.3rem 0 0; }
   .mw__headline { font-size: 0.9375rem; }
   .mw__valid { font-weight: 600; font-size: 0.9375rem; }
@@ -68,6 +69,9 @@ const id = variant === 'full' ? 'weather-warnings' : 'met-warnings';
       a.appendChild(el('h3', 'mw__title', warningName(w)));
       if (w.headline) a.appendChild(el('p', 'mw__headline', w.headline));
       a.appendChild(el('p', 'mw__valid', formatValidity(w.validFrom, w.validTo, tz)));
+      // One plain line on what the warning means: the source's own first "what to expect" point, never reworded.
+      const means = firstExpectation(w, 220);
+      if (means) a.appendChild(el('p', 'mw__means', `What it means: ${means}.`));
       if (w.whatToExpect.length) {
         a.appendChild(el('p', 'mw__sub', 'What to expect'));
         const ul = el('ul', null);

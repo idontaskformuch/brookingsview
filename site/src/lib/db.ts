@@ -367,7 +367,8 @@ export async function getUpcomingStories(
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
-       AND occurs_at >= now() - interval '12 hours'
+       -- A meeting with a real start time counts as held 2 h after it starts (everything else keeps 12 h; date-only meetings are midnight anchors).
+       AND occurs_at >= now() - CASE WHEN source_type = 'meeting' AND ${siteConfig.meetingsHaveTime ?? false}::boolean THEN interval '2 hours' ELSE interval '12 hours' END
        AND superseded_by_slug IS NULL
      ORDER BY occurs_at ASC
      LIMIT ${limit}
@@ -489,12 +490,15 @@ export async function getPastStories(
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
-       AND occurs_at < now() - interval '12 hours'
+       AND occurs_at < now() - CASE WHEN source_type = 'meeting' AND ${siteConfig.meetingsHaveTime ?? false}::boolean THEN interval '2 hours' ELSE interval '12 hours' END
        -- "Recently" is what has ENDED. A recurring programme is not a past event
        -- (its occurs_at is just the date it was first seen), and a multi-week
        -- exhibition that started a while ago is still on.
        AND NOT COALESCE(is_recurring_series, false)
-       AND COALESCE(ends_at, occurs_at) < now() - interval '12 hours'
+       AND COALESCE(ends_at, occurs_at) < now() - CASE WHEN source_type = 'meeting' AND ${siteConfig.meetingsHaveTime ?? false}::boolean THEN interval '2 hours' ELSE interval '12 hours' END
+       -- A series the scraper could not expand into dated occurrences (kind 'recurring') is still a programme, not a past event.
+       AND NOT EXISTS (SELECT 1 FROM events ev WHERE ev.town_id = stories.town_id AND stories.slug = 'event-' || ev.id::text
+                          AND ev.raw_data->>'kind' = 'recurring')
        AND superseded_by_slug IS NULL
      ORDER BY occurs_at DESC
      LIMIT ${limit}

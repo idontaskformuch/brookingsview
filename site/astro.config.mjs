@@ -801,8 +801,11 @@ export default defineConfig({
       name: 'prelaunch-cleanup',
       hooks: {
         'astro:build:done': async ({ dir }) => {
-          if (!NOINDEX_SITE_TOWNS.has(activeCity)) return;
           const root = fileURLToPath(dir);
+          // /ads.txt exists only for a town with a real AdSense publisher id (src/pages/ads.txt.ts serves one for Moreno Valley
+          // only). Everywhere else the route's placeholder body is removed so the host answers a real 404, not a 200 "Not found".
+          if (activeCity !== 'moreno_valley_ca') fs.rmSync(path.join(root, 'ads.txt'), { force: true });
+          if (!NOINDEX_SITE_TOWNS.has(activeCity)) return;
           for (const rel of ['games', 'google1f70310a17e1b00a.html', '1fdbd9a2782398d4ca47d6c335de0ecf.txt', 'ads.txt', 'llms.txt', 'news-sitemap.xml']) {
             fs.rmSync(path.join(root, rel), { recursive: true, force: true });
           }

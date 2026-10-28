@@ -150,6 +150,7 @@ const VENUE_TIERS: Record<string, Record<string, VenueTier>> = {
   // just the Ticketmaster fallback itself.
   moreno_valley_ca: {},
   broomfield_co: {},
+  glasgow: {},
 };
 
 /**
@@ -305,6 +306,32 @@ const VENUE_TIERS_BY_ID: Record<string, Record<string, VenueTier>> = {
     KovZpa3Wne: 'large', // Empower Field at Mile High
     KovZpZAaeIvA: 'large', // Red Rocks Amphitheatre
   },
+  /**
+   * Glasgow (owner 2026-10-28, 15-mile radius). Ids from the live Ticketmaster GB feed (54 venues within 15 mi, 2026-10-28).
+   * Tiers are approximate public capacities from general knowledge, NOT re-verified against the venues' own pages:
+   * large = stadium/arena (5,000+), medium = ~900-5,000 seated or standing halls, small = clubs/theatres under ~900.
+   * Top-end curated; the many small clubs stay on the default tier (small) on purpose.
+   */
+  glasgow: {
+    KovZ9177Sq0: 'large', // OVO Hydro (~14,300)
+    KovZ9177ly7: 'large', // SEC Centre (halls) (gb-spelling: venue name)
+    KovZ9177Plf: 'large', // Celtic Park (~60,000)
+    KovZ9177mPV: 'large', // Barclays Hampden (~51,000)
+    KovZ9177mGV: 'large', // Glasgow Green (outdoor concerts)
+    KovZ9177sSV: 'medium', // SEC Armadillo (~3,000)
+    KovZ9177VR7: 'medium', // SEC Centre - Lomond Auditorium (~1,000) (gb-spelling: venue name)
+    KovZ9177aJf: 'medium', // O2 Academy Glasgow (~2,500)
+    KovZ9177m6f: 'medium', // Barrowland Ballroom (~1,900)
+    KovZ9177Yn0: 'medium', // Glasgow Royal Concert Hall (~2,475)
+    KovZ9177B10: 'medium', // Theatre Royal Glasgow (~1,500)
+    KovZ9177g50: 'medium', // Kings Theatre Glasgow (~1,780)
+    KovZ9177na7: 'medium', // Pavilion Theatre Glasgow (~1,400)
+    KovZ9177Ynf: 'medium', // The Old Fruitmarket (~1,200)
+    KovZ9177wff: 'medium', // Galvanizers SWG3
+    KovZ9177Vu0: 'small', // Saint Luke's (~600) -- deliberately curated
+    KovZ9177YV0: 'small', // King Tuts Wah Wah Hut (~300)
+    KovZ9177YZf: 'small', // Glasgow Garage (~700)
+  },
 };
 
 /** Name-keyed fallback for the same real Ticketmaster venues curated by id
@@ -365,6 +392,29 @@ const BROOMFIELD_VENUE_TIERS_BY_NAME: Record<string, VenueTier> = {
   'red rocks amphitheatre': 'large',
 };
 Object.assign(VENUE_TIERS.broomfield_co, BROOMFIELD_VENUE_TIERS_BY_NAME);
+
+/** Name-keyed fallback for Glasgow's id-curated venues (see the id map above). */
+const GLASGOW_VENUE_TIERS_BY_NAME: Record<string, VenueTier> = {
+  'ovo hydro': 'large',
+  'sec centre': 'large',  // gb-spelling: venue name
+  'celtic park': 'large',
+  'barclays hampden': 'large',
+  'glasgow green': 'large',
+  'sec armadillo': 'medium',
+  'sec centre - lomond auditorium': 'medium',  // gb-spelling: venue name
+  'o2 academy glasgow': 'medium',
+  'barrowland ballroom': 'medium',
+  'glasgow royal concert hall': 'medium',
+  'theatre royal glasgow': 'medium',
+  'kings theatre glasgow': 'medium',
+  'pavilion theatre glasgow': 'medium',
+  'the old fruitmarket': 'medium',
+  'galvanizers swg3': 'medium',
+  'saint lukes': 'small',
+  'king tuts wah wah hut': 'small',
+  'glasgow garage': 'small',
+};
+Object.assign(VENUE_TIERS.glasgow, GLASGOW_VENUE_TIERS_BY_NAME);
 
 /**
  * `venueName` is whatever a FeedItem's own venue field holds -- a

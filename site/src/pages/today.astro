@@ -56,7 +56,7 @@ import PageGuide from '../components/PageGuide.astro';
 ---
 
 <BaseLayout title={pageTitle} ogSlug="section-today"
-  description={`What's happening today in ${placeAbbr(siteConfig)} — active alerts, school status, traffic, and tonight's and tomorrow's events.`}>
+  description={`What's happening today in ${placeAbbr(siteConfig)} — active alerts, school status, traffic, and events today and tomorrow.`}>
   <script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumbJsonLd)} />
   <Breadcrumbs trail={breadcrumbTrail} />
   <div class="lede">
@@ -67,7 +67,7 @@ import PageGuide from '../components/PageGuide.astro';
   <SectionHero section="today" compact />
 
   <PageGuide
-    shows={`What matters in ${siteConfig.cityName} right now: active alerts, school status, road conditions and today's and tonight's events.`}
+    shows={`What matters in ${siteConfig.cityName} right now: active alerts, school status, road conditions and events today and tomorrow.`}
     use="Check it before you leave the house or plan the evening. Anything with a warning or closure links to the official notice, which is the one to rely on."
   >
     {forCountry(siteConfig.country, 'National Weather Service alerts, ', 'Met Office warnings, ')}local school and road-condition sources, and event {forCountry(siteConfig.country, 'organizers', 'organisers')}' own calendars. <a href="/how-we-gather-this/">How we gather this</a>.

@@ -755,7 +755,7 @@ const CITIES: Record<string, SiteConfig> = {
     nav: {
       tabs: ['today', 'events', 'cityhall'],
       groups: {
-        Now: ['today', 'thisweek', 'events', 'weather'],
+        Now: ['today', 'thisweek', 'events', 'whatson', 'weather'],
         City: ['cityhall', 'facilities'],
       },
     },
@@ -763,6 +763,9 @@ const CITIES: Record<string, SiteConfig> = {
     noindexSite: true,
     listedInNetwork: false,
     hasMetOfficeWarnings: true,
+    // What's On (owner 2026-10-28): Ticketmaster GB within 15 miles of the centre; venue tiers in lib/venue-tiers.ts. Mirrors configs/glasgow.json.
+    hasWhatsOn: true,
+    ticketmaster: { enabled: true, latitude: 55.8642, longitude: -4.2518, radiusMiles: 15, marqueeSize: 6 },
     navLabels: { cityhall: 'Council' },
     renderWindow: NO_RENDER_WINDOW,
     cityName: 'Glasgow',
