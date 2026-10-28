@@ -962,3 +962,14 @@ describe('resolveImage -- Glasgow landmark pools', () => {
     expect(resolveImage(event, opts('brookings_sd'))?.alt).toBe('The Armadillo');
   });
 });
+
+describe('requiredCategoriesFor: sections a town has switched off need no photo pool', () => {
+  const base = { townId: 'glasgow', hasWorkplaceWatch: false, hasClosureWatch: false, hasHousingMarket: false, trafficSource: undefined } as const;
+  it('jobs and movie_review are required unless the town disables jobs / reviews', () => {
+    expect(requiredCategoriesFor(base)).toEqual(expect.arrayContaining(['jobs', 'movie_review']));
+    const off = requiredCategoriesFor({ ...base, disabledSections: ['jobs', 'reviews', 'traffic'] });
+    expect(off).not.toContain('jobs');
+    expect(off).not.toContain('movie_review');
+    expect(off).toEqual(expect.arrayContaining(['city_hall', 'events', 'weather_alert']));
+  });
+});

@@ -11,10 +11,9 @@ const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
 <article class="prose">
   <h1>About {siteConfig.siteName}</h1>
 
-  <p>{siteConfig.siteName} is a local information service for {siteConfig.cityName}, {siteConfig.region}. It is
-  being built to bring council and committee papers, events, alerts, travel and weather into one place, updated
-  automatically through the day. Every item will link to its original source. The site is at an early stage and
-  is not yet open to search engines.</p>
+  <p>{siteConfig.siteName} is a local information service for {siteConfig.cityName}, {siteConfig.region}. It brings
+  council and committee papers, events, alerts, travel and weather into one place, updated automatically through
+  the day. Every item links to its original source.</p>
 
   <h2>How it is made</h2>
   <p>Software checks the sources listed below on a schedule. An AI language model summarises new items, working
@@ -56,7 +55,8 @@ const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
 
   <h2>Corrections</h2>
   <p>Automated summaries occasionally get something wrong. Errors are corrected as soon as they are reported:
-  <a href="/contact/">use the contact form</a> to flag one.</p>
+  <a href="/contact/">get in touch</a> to flag one. What has been corrected is listed on the
+  <a href="/corrections/">corrections page</a>.</p>
 </article>
 
 <style>

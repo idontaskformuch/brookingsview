@@ -182,9 +182,13 @@ const ALWAYS_REQUIRED: ImageCategory[] = ['city_hall', 'events', 'weather_alert'
  *  would wrongly demand a 'university' pool for Broomfield, which has no
  *  SDSU-equivalent and can never produce a university_digest story). */
 export function requiredCategoriesFor(config: Pick<SiteConfig,
-  'townId' | 'hasWorkplaceWatch' | 'hasClosureWatch' | 'hasHousingMarket' | 'trafficSource'>,
+  'townId' | 'hasWorkplaceWatch' | 'hasClosureWatch' | 'hasHousingMarket' | 'trafficSource'> & { disabledSections?: string[] },
 ): ImageCategory[] {
+  const off = config.disabledSections ?? [];
   const required = ALWAYS_REQUIRED.filter((cat) =>
+    // A section a town has switched off (SiteConfig.disabledSections) never renders its pool: Glasgow disables 'jobs' and 'reviews',
+    // so it needs no jobs / movie_review photos (found 2026-10-28 when its build was tried with noindex off).
+    !(cat === 'jobs' && off.includes('jobs')) && !(cat === 'movie_review' && off.includes('reviews')) &&
     // 'events' temporarily excluded for broomfield_co (2026-10-07): its
     // former pool entries were cross-town references (brookings_sd's own
     // event photo files, relabeled) -- removed in config/category-images.ts
@@ -224,7 +228,7 @@ export function findContentTrackRowsMissingImage<T extends { image_path: string 
  *  silently missing its ENTIRE pool with no build signal at all, so "fail
  *  loud, name everything" beats a vague warning. */
 export function assertCategoryImagesComplete(
-  config: Pick<SiteConfig, 'townId' | 'hasWorkplaceWatch' | 'hasClosureWatch' | 'hasHousingMarket' | 'trafficSource'>,
+  config: Pick<SiteConfig, 'townId' | 'hasWorkplaceWatch' | 'hasClosureWatch' | 'hasHousingMarket' | 'trafficSource'> & { disabledSections?: string[] },
   categoryImages: Partial<Record<ImageCategory, ImageRef[]>>,
 ): void {
   const required = requiredCategoriesFor(config);

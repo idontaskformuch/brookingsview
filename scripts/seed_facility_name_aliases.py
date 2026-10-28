@@ -76,6 +76,23 @@ SEED: dict[tuple[str, str], list[str]] = {
     ("broomfield_co", "broomfield-community-center"): [
         "Broomfield Community Center",
     ],
+    # Glasgow (2026-10-28, launch prep): the 12 curated facilities, aliased to the venue names Glasgow Life prints on its event cards
+    # (stories.venue_raw, observed live: "Mitchell Library" 7, "Gallery of Modern Art" 5, "Kelvin Hall" 2, "The Burrell Collection" 2,
+    # "Kelvingrove Art Gallery and Museum" 2, ...). Venues Glasgow Life names that are not among the 12 (Tramway, City Halls, the branch
+    # libraries ...) have no facility page and so no alias; they get the category image. The venue-image build check
+    # (build-checks.ts assertVenueMatchingReachable) needs at least one alias and some venue_raw to pass once noindex is removed.
+    ("glasgow", "the-mitchell-library"): ["Mitchell Library", "The Mitchell Library"],
+    ("glasgow", "gallery-of-modern-art-goma"): ["Gallery of Modern Art", "GoMA"],
+    ("glasgow", "kelvin-hall"): ["Kelvin Hall"],
+    ("glasgow", "kelvingrove-art-gallery-and-museum"): ["Kelvingrove Art Gallery and Museum", "Kelvingrove"],
+    ("glasgow", "the-burrell-collection"): ["The Burrell Collection", "Burrell Collection"],
+    ("glasgow", "riverside-museum"): ["Riverside Museum"],
+    ("glasgow", "provands-lordship"): ["Provand's Lordship", "Provands Lordship"],
+    ("glasgow", "st-mungo-museum-of-religious-life-and-art"): ["St Mungo Museum of Religious Life and Art", "St Mungo Museum"],
+    ("glasgow", "gorbals-library"): ["Gorbals Library"],
+    ("glasgow", "glasgow-green-football-centre"): ["Glasgow Green Football Centre"],
+    ("glasgow", "glasgow-international-arena"): ["Glasgow International Arena"],
+    ("glasgow", "tollcross-international-swimming-centre"): ["Tollcross International Swimming Centre", "Tollcross"],
 }
 
 

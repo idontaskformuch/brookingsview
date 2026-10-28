@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { statusTokensCss } from './src/lib/status-tokens.mjs';
+import { checkNewIndexable, fetchLiveSitemapPaths, sitemapPaths } from './scripts/new-indexable.mjs';
 
 // Statiskt bygge: all data hämtas från Neon vid build-time, sedan serveras rena
 // HTML-filer från Cloudflares edge. GitHub Actions pingar deploy-hooken efter
@@ -420,6 +421,10 @@ async function buildLastmodMap(townId, databaseUrl) {
   // site-config.ts by hand; src/lib/quiet-sections.test.ts fails if the two disagree.
   const QUIET_PAGES = { brookings_sd: ['/traffic/'], broomfield_co: ['/events/', '/workplace-watch/'] };
   for (const p of QUIET_PAGES[townId] ?? []) noindexThinPageUrls.add(p);
+  // Sections a town has switched off (SiteConfig.disabledSections) still build a stub page that redirects home and carries noindex;
+  // keep those out of the sitemap. Mirrors site-config.ts by hand; src/lib/disabled-sections-sitemap.test.ts fails if the two disagree.
+  const DISABLED_PAGES = { glasgow: ['/traffic/', '/jobs/', '/advertising/', '/reviews/', '/recipes/', '/editorials/', '/columns/'] };
+  for (const p of DISABLED_PAGES[townId] ?? []) noindexThinPageUrls.add(p);
   // /vote/ (election 2026): the page itself sets noindex 30 days after the election (lib/election.ts
   // isPastNoindexWindow); mirror that here so the sitemap and the noindex tag never disagree.
   if (Date.now() > Date.parse('2026-11-03T00:00:00Z') + 30 * 86_400_000) { noindexThinPageUrls.add('/vote/'); noindexThinPageUrls.add('/election-results/'); }
@@ -847,5 +852,27 @@ export default defineConfig({
         return lastmod ? { ...item, lastmod: new Date(lastmod).toISOString() } : item;
       },
     }),
+    {
+      // Build guard (owner 2026-10-28): at most 30 NEW indexable pages compared with the live sitemap, unless
+      // ALLOW_NEW_INDEXABLE_PAGES=yes. Runs after the sitemap integration has written dist/sitemap-0.xml. A site with no sitemap yet
+      // (noindexSite) has nothing to check; an unreadable live sitemap only warns.
+      name: 'new-indexable-guard',
+      hooks: {
+        'astro:build:done': async ({ dir }) => {
+          if (NOINDEX_SITE_TOWNS.has(activeCity)) return;
+          const file = path.join(fileURLToPath(dir), 'sitemap-0.xml');
+          if (!fs.existsSync(file)) return;
+          const built = sitemapPaths(fs.readFileSync(file, 'utf8'));
+          const live = await fetchLiveSitemapPaths(SITE_URLS[activeCity] ?? SITE_URLS.brookings_sd);
+          if (live === null) {
+            console.warn(`[build] new-indexable guard: live sitemap unreadable, ${built.length} indexable page(s) built, nothing to compare with`);
+            return;
+          }
+          const res = checkNewIndexable(built, live, env.ALLOW_NEW_INDEXABLE_PAGES);
+          console.log(`[build] indexable pages: ${built.length} built, ${res.message}`);
+          if (!res.ok) throw new Error(`[build] new-indexable guard: ${res.message}`);
+        },
+      },
+    },
   ],
 });

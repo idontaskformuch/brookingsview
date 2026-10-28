@@ -7,7 +7,7 @@
 // (pages.json, report.html, screenshots/).
 //
 // Usage: node qa/q3/run.mjs [--towns brookings_sd,moreno_valley_ca,broomfield_co,glasgow] [--review on|off]
-//                           [--model claude-opus-5-5] [--max-usd 12] [--limit N] [--out dir]
+//                           [--model claude-opus-5-5] [--max-usd 12] [--limit N] [--out dir] [--base http://127.0.0.1:8081 (one town)]
 //
 // TRAFFIC HYGIENE (same rules as qa/web/run.mjs -- CLAUDE.md rule 12; do not weaken):
 //  * own User-Agent "ViewMediaQA/1.0 (+<base>/contact)";
@@ -36,6 +36,7 @@ const REUSE = arg('reuse', null);
 const MODEL = arg('model', 'claude-sonnet-5-5');
 const MAX_USD = Number(arg('max-usd', 12));
 const LIMIT = Number(arg('limit', 0));
+const BASE_OVERRIDE = arg('base', null);
 // --paths /a/,/b/ : visit ONLY these section paths (and the detail page found in each), for a before/after check of fixed pages
 const ONLY_PATHS = arg('paths', null)?.split(',').map((p) => p.trim()).filter(Boolean) ?? null;
 const today = new Date().toISOString().slice(0, 10);
@@ -209,7 +210,8 @@ function addUsage(town, rec, usage) {
 
 async function runTown(browser, town) {
   const cfg = JSON.parse(readFileSync(resolve(root, `configs/${town}.json`), 'utf8'));
-  const base = `https://${cfg.domain}`; const origin = new URL(base).origin;
+  // --base http://127.0.0.1:8081 reviews a local build of ONE town (launch preview with noindex off); default is the live site
+  const base = (BASE_OVERRIDE && TOWNS.length === 1) ? BASE_OVERRIDE.replace(/\/$/, '') : `https://${cfg.domain}`; const origin = new URL(base).origin;
   const UA = `ViewMediaQA/1.0 (+${base}/contact)`;
   const hdr = { 'user-agent': UA, ...(BYPASS ? { 'x-qa-bypass': BYPASS } : {}) };
   console.log(`\n== ${town} (${base})`);
