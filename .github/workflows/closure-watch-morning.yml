@@ -24,8 +24,7 @@ name: closure-watch-morning
 # at 6:30 AM local in summer, too late to matter).
 
 on:
-  schedule:
-    - cron: "30 10 * * 1-5"
+  # No schedule: started by the Cloudflare cron Worker (workflow_dispatch, weekdays 10:30 UTC). GitHub cron ran 4-9 h late.
   workflow_dispatch: {}
 
 jobs:

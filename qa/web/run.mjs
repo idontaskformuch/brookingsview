@@ -52,11 +52,23 @@ const requests = { A: 0, B: 0, C: 0, links: 0, sitemap: 0, routes: 0 };
 let curPass = 'sitemap';
 const firstPartyHeaders = () => ({ 'user-agent': UA, ...(BYPASS ? { 'x-qa-bypass': BYPASS } : {}) });
 
+// A single network blip (ETIMEDOUT from a runner, 2026-10-28) must not fail the whole sweep:
+// 3 attempts, 30 s each, 5 s apart. An HTTP error status is a real answer and is not retried.
 async function getText(url) {
-  requests.sitemap++;
-  const r = await fetch(url, { headers: firstPartyHeaders(), redirect: 'follow' });
-  if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`);
-  return r.text();
+  let lastErr;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    requests.sitemap++;
+    try {
+      const r = await fetch(url, { headers: firstPartyHeaders(), redirect: 'follow', signal: AbortSignal.timeout(30000) });
+      if (!r.ok) throw Object.assign(new Error(`${url} -> HTTP ${r.status}`), { final: true });
+      return await r.text();
+    } catch (e) {
+      lastErr = e;
+      if (e.final || attempt === 3) break;
+      await new Promise((res) => setTimeout(res, 5000));
+    }
+  }
+  throw lastErr;
 }
 
 async function sitemapPaths() {

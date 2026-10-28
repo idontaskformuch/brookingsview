@@ -7,8 +7,7 @@ name: moval-closure-watch-morning
 # Standard Time in winter -- early but harmless, not late).
 
 on:
-  schedule:
-    - cron: "30 12 * * 1-5"
+  # No schedule: started by the Cloudflare cron Worker (workflow_dispatch, weekdays 12:30 UTC). GitHub cron ran 4-9 h late.
   workflow_dispatch: {}
 
 jobs:
