@@ -285,3 +285,10 @@ def test_channel_pages_tag_and_merge_into_one_record_per_event():
     assert len(recs) == 1
     assert recs[0]["raw_data"]["channels"] == ["Libraries", "Sport"]
     assert recs[0]["raw_data"]["site_category"] == "Libraries"
+
+
+def test_under_16s_must_be_accompanied_is_an_entry_rule_not_a_kids_event():
+    # Van Morrison / Lang Lang were labelled "Kids & families" by this line (found when backfilling 2026-10-28)
+    assert event_category({"age": "Under 16s must be accompanied by an adult.", "channels": ["Arts, Music and Culture"]}) == "Arts & music"
+    assert event_category({"age": "Under 16s must be accompanied by an adult., 15+", "channels": ["Arts, Music and Culture"]}) == "Arts & music"
+    assert event_category({"age": "Family", "channels": ["Museums"]}) == "Kids & families"

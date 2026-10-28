@@ -279,7 +279,9 @@ _KIDS_WORDS = re.compile(r"\b(pre-?5|babies|baby|infants?|toddlers?|child(?:ren)
 
 
 def _is_kids_age(age: str | None) -> bool:
-    if not age:
+    # "Under 16s must be accompanied by an adult" is an entry rule on adult shows (Van Morrison), not a children's event.
+    age = re.sub(r"[^.,;]*accompanied[^.,;]*", " ", age or "", flags=re.IGNORECASE)
+    if not age.strip():
         return False
     if _KIDS_WORDS.search(age):
         return True
