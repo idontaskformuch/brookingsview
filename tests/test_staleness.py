@@ -35,10 +35,10 @@ def test_age_days_handles_naive_datetime_as_utc():
     assert 4.9 < result.age_days < 5.1
 
 
-def test_default_thresholds_match_the_handoff_examples():
-    # "meetings 7 days, events 2 days" -- the Broomfield handoff's own examples.
-    assert DEFAULT_STALENESS_DAYS["city_meetings"] == 7
-    assert DEFAULT_STALENESS_DAYS["events"] == 2
+def test_default_thresholds_are_the_owner_chosen_values():
+    # Owner decision 2026-10-28 (was 7 / 2 from the Broomfield handoff): a quiet source is not a broken one.
+    assert DEFAULT_STALENESS_DAYS["city_meetings"] == 21
+    assert DEFAULT_STALENESS_DAYS["events"] == 7
 
 
 def test_source_tables_only_covers_verified_mappings():
