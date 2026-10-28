@@ -34,6 +34,10 @@ export interface EveningEntry {
   /** Site-relative page (own events, Ticketmaster detail) or the source's external link. */
   href: string | null;
   source: EveningSource;
+  /** Straight-line miles from the town centre when the source says (Ticketmaster); null for own events. */
+  distanceMiles: number | null;
+  /** Estimated drive time for a row outside the town, null inside it. Always shown with "about" -- see driveMinutes(). */
+  driveMinutes: number | null;
   /** Local date (YYYY-MM-DD) the row was last read from its source: the build date for feed-based sources. */
   checked: string;
 }
@@ -55,7 +59,7 @@ export function groupForTitle(title: string): EveningGroup | null {
   return null;
 }
 
-/** Ticketmaster: its own classification. Sports are not fetched at all (ticketmaster.ts), so no Sport group here. */
+/** Ticketmaster: its own classification. Sport reaches here only for towns with eveningLayer.includeTicketmasterSports. */
 export function groupForTicketmaster(segment: string | null | undefined, genre: string | null | undefined): EveningGroup | null {
   const seg = (segment ?? '').toLowerCase();
   const gen = (genre ?? '').toLowerCase();
@@ -76,6 +80,17 @@ export function ageLabel(audience: string | null | undefined): EveningLabel | nu
   return null;
 }
 
+/** Rough drive time from straight-line miles (no routing service is used): road factor 1.3, average speed 25 mph under 10 miles,
+ *  35 mph to 30, 50 mph beyond, rounded to 5 minutes. Rows say "about" and the page says it is an estimate. */
+export function driveMinutes(miles: number): number {
+  const mph = miles < 10 ? 25 : miles < 30 ? 35 : 50;
+  return Math.max(5, Math.round(((miles * 1.3) / mph) * 12) * 5);
+}
+
+export function driveLabel(minutes: number | null): string | null {
+  return minutes == null ? null : `about ${minutes} min drive`;
+}
+
 export interface EveningEntryOptions {
   feed: FeedItem[];
   ticketmaster?: TicketmasterFeedItem[];
@@ -86,8 +101,10 @@ export interface EveningEntryOptions {
   cityName: string;
   /** Whether an own event is knowably free (venue registry, see events.ts isFreeEvent). */
   isFree?: (item: FeedItem) => boolean;
-  /** Ticketmaster shows further away than this are left out (a regional arena is not tonight in the town). Default: in-town only. */
+  /** Ticketmaster shows further away than this are left out (siteConfig.eveningLayer.maxMiles). Default: in-town only. */
   ticketmasterMaxMiles?: number | 'in-town';
+  /** Ticketmaster sport counts (siteConfig.eveningLayer.includeTicketmasterSports). Default false: Brookings' SDSU feed already carries it. */
+  includeTicketmasterSports?: boolean;
 }
 
 function endIso(end: string | null | undefined): string | null {
@@ -112,6 +129,8 @@ function ownEntry(item: FeedItem, o: EveningEntryOptions): EveningEntry | null {
     venue: itemVenue(item),
     href: story ? storyHref(story.slug) : itemUrl(item),
     source: 'own',
+    distanceMiles: null,
+    driveMinutes: null,
     checked: o.checked,
   };
 }
@@ -119,6 +138,7 @@ function ownEntry(item: FeedItem, o: EveningEntryOptions): EveningEntry | null {
 function ticketmasterEntry(item: TicketmasterFeedItem, o: EveningEntryOptions): EveningEntry | null {
   const e = item.ticketmasterEvent;
   if (!item.occurs_at || Number.isNaN(new Date(item.occurs_at).getTime())) return null;
+  if (!o.includeTicketmasterSports && e.segment === 'Sports') return null;
   const max = o.ticketmasterMaxMiles ?? 'in-town';
   if (max === 'in-town') {
     if (distanceLabel(e.venueDistanceMiles, o.cityName) !== `In ${o.cityName}`) return null;
@@ -133,6 +153,8 @@ function ticketmasterEntry(item: TicketmasterFeedItem, o: EveningEntryOptions): 
     venue: e.venueName,
     href: `/whats-on/${ticketmasterSlug(e)}/`,
     source: 'ticketmaster',
+    distanceMiles: e.venueDistanceMiles,
+    driveMinutes: distanceLabel(e.venueDistanceMiles, o.cityName) === `In ${o.cityName}` || e.venueDistanceMiles == null ? null : driveMinutes(e.venueDistanceMiles),
     checked: o.checked,
   };
 }

@@ -525,6 +525,21 @@ describe('getTicketmasterEventsForTown', () => {
     expect(calledUrl.searchParams.get('radius')).toBe('75');
   });
 
+  it('one shared fetch serves both: sport only when the caller asks for it (evening layer), never in the What is On list or Today', async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    const musicEvent = realFixture({ id: 'concert-1', name: 'A Touring Band', classifications: [{ primary: true, segment: { name: 'Music' } }] });
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true, json: async () => ({ _embedded: { events: [realFixture(), musicEvent] }, page: { totalPages: 1, number: 0 } }),
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+    const cfg = { ticketmaster: { enabled: true, latitude: 44.3114, longitude: -96.7984, radiusMiles: 75 } };
+    const noSport = await getTicketmasterEventsForTown(cfg);
+    const withSport = await getTicketmasterEventsForTown(cfg, { includeSports: true });
+    expect(noSport.map((i) => i.ticketmasterEvent.id)).toEqual(['concert-1']);
+    expect(withSport).toHaveLength(2);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('when enabled, passes the real coordinates/radius through to fetchTicketmasterEvents unchanged', async () => {
     vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
     const fetchSpy = vi.fn().mockResolvedValue({

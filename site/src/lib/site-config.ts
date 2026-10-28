@@ -40,7 +40,15 @@ export interface SiteConfig {
   thinFacilityMinOwnWords?: number;
   /** Evening layer (/tonight, /this-weekend), see lib/evening-threshold.ts. 'threshold' = indexable once the median over the next 14 evenings
    *  reaches 10 items in 3 groups (8 to stay); 'never' = always noindex (Brookings). Unset = the town has no evening layer. Owner 2026-10-28. */
-  eveningLayer?: { mode: 'threshold' | 'never' };
+  eveningLayer?: {
+    mode: 'threshold' | 'never';
+    /** Ticketmaster shows up to this many miles from the centre count for /tonight (T1, owner 2026-10-29): Glasgow 15, Broomfield 20, Moreno Valley 35,
+     *  Brookings 75. Rows outside the town show an estimated drive time. */
+    maxMiles: number;
+    /** Ticketmaster sport counts toward the evening layer. true where the town has no sport source of its own (Broomfield, Moreno Valley, Glasgow);
+     *  false in Brookings, where it would duplicate the SDSU feed. */
+    includeTicketmasterSports: boolean;
+  };
   /** false = not listed in the other towns' multi-site disclosure yet (an unlaunched, noindexed
    *  site is not advertised from the live ones). Default true. */
   listedInNetwork?: boolean;
@@ -388,7 +396,7 @@ const NO_RENDER_WINDOW: RenderWindow = { homeSales: null, meetings: null, events
 const CITIES: Record<string, SiteConfig> = {
   brookings_sd: {
     townId: 'brookings_sd',
-    eveningLayer: { mode: 'never' },
+    eveningLayer: { mode: 'never', maxMiles: 75, includeTicketmasterSports: false },
     renderWindow: NO_RENDER_WINDOW,
     cityName: 'Brookings',
     // Spec example + the sections it left out (This week, What's On, Closure Watch are enabled here and
@@ -499,7 +507,7 @@ const CITIES: Record<string, SiteConfig> = {
 
   moreno_valley_ca: {
     townId: 'moreno_valley_ca',
-    eveningLayer: { mode: 'threshold' },
+    eveningLayer: { mode: 'threshold', maxMiles: 35, includeTicketmasterSports: true },
     // Owner-approved 2026-10-21. Tabs follow GA4 traffic (facilities, not home sales); Home sales sits in Work & Home.
     nav: {
       tabs: ['today', 'events', 'whatson', 'cityhall', 'traffic', 'facilities', 'workplace'],
@@ -663,7 +671,7 @@ const CITIES: Record<string, SiteConfig> = {
 
   broomfield_co: {
     townId: 'broomfield_co',
-    eveningLayer: { mode: 'threshold' },
+    eveningLayer: { mode: 'threshold', maxMiles: 20, includeTicketmasterSports: true },
     // Owner-approved 2026-10-21: six tabs for now, a seventh to be chosen (events / workplace / vail / weather).
     nav: {
       tabs: ['today', 'cityhall', 'facilities', 'whatson', 'traffic', 'jobs'],
@@ -764,7 +772,7 @@ const CITIES: Record<string, SiteConfig> = {
   // yet listed in the US towns' network disclosure. Phase 3 enables sources one by one.
   glasgow: {
     townId: 'glasgow',
-    eveningLayer: { mode: 'threshold' },
+    eveningLayer: { mode: 'threshold', maxMiles: 15, includeTicketmasterSports: true },
     nav: {
       tabs: ['today', 'events', 'cityhall'],
       groups: {

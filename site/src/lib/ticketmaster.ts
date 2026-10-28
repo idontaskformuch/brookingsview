@@ -365,6 +365,7 @@ export async function fetchTicketmasterEvents(
   latitude: number,
   longitude: number,
   radiusMiles: number,
+  opts: { includeSports?: boolean } = {},
 ): Promise<TicketmasterFeedItem[]> {
   const geoLabel = `${latitude},${longitude} (${radiusMiles}mi)`;
   const apiKey = import.meta.env.TICKETMASTER_API_KEY;
@@ -444,7 +445,7 @@ export async function fetchTicketmasterEvents(
   }
 
   const normalized = results
-    .filter((raw) => !isSportsEvent(raw) && !isNonEventListing(raw))
+    .filter((raw) => (opts.includeSports || !isSportsEvent(raw)) && !isNonEventListing(raw))
     .map(normalizeTicketmasterEvent);
 
   // The success case, always logged (not just failures) -- a plain
@@ -494,6 +495,7 @@ export function _resetTicketmasterCacheForTests(): void {
  *  resolveWhatsOn() actually call. */
 export async function getTicketmasterEventsForTown(
   siteConfig: { ticketmaster?: { enabled: boolean; latitude: number; longitude: number; radiusMiles: number } },
+  opts: { includeSports?: boolean } = {},
 ): Promise<TicketmasterFeedItem[]> {
   // TEMPORARY diagnostic (2026-09-08, "zero Ticketmaster log lines in
   // production" investigation) -- unconditional, before any gate/logic
@@ -508,9 +510,12 @@ export async function getTicketmasterEventsForTown(
   if (!siteConfig.ticketmaster?.enabled) return [];
   const { latitude, longitude, radiusMiles } = siteConfig.ticketmaster;
   const cacheKey = `${latitude},${longitude},${radiusMiles}`;
-  const cached = _eventsCache.get(cacheKey);
-  if (cached) return cached;
-  const promise = fetchTicketmasterEvents(latitude, longitude, radiusMiles);
-  _eventsCache.set(cacheKey, promise);
-  return promise;
+  let cached = _eventsCache.get(cacheKey);
+  if (!cached) {
+    // One real fetch per build, sport included; callers that do not want sport (What's On, /today) filter it out of the shared result.
+    cached = fetchTicketmasterEvents(latitude, longitude, radiusMiles, { includeSports: true });
+    _eventsCache.set(cacheKey, cached);
+  }
+  const all = await cached;
+  return opts.includeSports ? all : all.filter((i) => i.ticketmasterEvent.segment !== 'Sports');
 }

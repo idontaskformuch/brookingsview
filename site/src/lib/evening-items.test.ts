@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ageLabel, buildEveningEntries, groupForTicketmaster, groupForTitle, toThresholdItems } from './evening-items';
+import { ageLabel, driveLabel, driveMinutes, buildEveningEntries, groupForTicketmaster, groupForTitle, toThresholdItems } from './evening-items';
 import { evaluateEveningThreshold } from './evening-threshold';
 import type { FeedItem } from './events';
 import type { Story } from './db';
@@ -95,5 +95,38 @@ describe('toThresholdItems', () => {
     expect(v.medianGroups).toBe(0);
     expect(v.indexable).toBe(false);
     expect(v.reason).toBe('below-groups');
+  });
+});
+
+describe('Ticketmaster sport', () => {
+  const sport = tm('s', 'Rovers v United', '2026-10-30T19:45:00Z', 2, 'Sports', 'Football');
+  it('counts as Sport tonight where the town has no sport source of its own', () => {
+    const [e] = buildEveningEntries({ ...OPTS, feed: [], ticketmaster: [sport], includeTicketmasterSports: true });
+    expect(e).toMatchObject({ title: 'Rovers v United', group: 'Sport tonight' });
+  });
+  it('is left out where it would duplicate the town own sport feed (Brookings)', () => {
+    expect(buildEveningEntries({ ...OPTS, feed: [], ticketmaster: [sport] })).toEqual([]);
+    expect(buildEveningEntries({ ...OPTS, feed: [], ticketmaster: [sport], includeTicketmasterSports: false })).toEqual([]);
+  });
+});
+
+describe('drive time outside the town', () => {
+  it('is an estimate with "about", rounded to 5 minutes', () => {
+    expect(driveMinutes(35) % 5).toBe(0);
+    expect(driveMinutes(35)).toBeGreaterThan(driveMinutes(12));
+    expect(driveLabel(driveMinutes(35))).toMatch(/^about \d+ min drive$/);
+    expect(driveLabel(null)).toBeNull();
+  });
+  it('is set on rows beyond the town and null inside it', () => {
+    const entries = buildEveningEntries({ ...OPTS, feed: [], ticketmaster: [tm('a', 'In Town', '2026-10-30T19:00:00Z', 1), tm('b', 'Out Of Town', '2026-10-30T20:00:00Z', 12)], ticketmasterMaxMiles: 15 });
+    expect(entries.find((e) => e.title === 'In Town')!.driveMinutes).toBeNull();
+    const out = entries.find((e) => e.title === 'Out Of Town')!;
+    expect(out.distanceMiles).toBe(12);
+    expect(out.driveMinutes).toBe(driveMinutes(12));
+  });
+  it('honours maxMiles per town (Glasgow 15 drops a 20-mile show, Broomfield 20 keeps it)', () => {
+    const far = tm('c', 'Twenty Miles', '2026-10-30T19:00:00Z', 20);
+    expect(buildEveningEntries({ ...OPTS, feed: [], ticketmaster: [far], ticketmasterMaxMiles: 15 })).toEqual([]);
+    expect(buildEveningEntries({ ...OPTS, feed: [], ticketmaster: [far], ticketmasterMaxMiles: 20 })).toHaveLength(1);
   });
 });
