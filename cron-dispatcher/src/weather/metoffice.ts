@@ -134,12 +134,39 @@ export function buildPayload(hourlyDoc: Doc, dailyDoc: Doc, nowMs: number, lat: 
   return { periods: periods.slice(0, MAX_PERIODS), hourly, issued: runH ?? runD, source: 'Met Office' };
 }
 
-/** Throws on a non-200 or empty answer: the caller then keeps the stored snapshot. */
-export async function fetchMetOfficeForecast(lat: number, lon: number, tz: string, apiKey: string, fetcher: typeof fetch = fetch, nowMs = Date.now()): Promise<WeatherPayload> {
+/** Waits between retries of a failed Met Office request (ms). Met Office answered HTTP 500 to the hourly request at 10:00 and 12:00 UTC on
+ *  2026-10-28, i.e. right at the whole hour when it publishes a new model run; a few patient retries cover that. Tests pass zeros. */
+export const RETRY_DELAYS_MS = [5_000, 15_000, 30_000];
+
+const sleep = (ms: number): Promise<void> => (ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve());
+
+/** What the error message carries about a failed answer: status, the first 200 characters of the body and a few headers. The key is never in
+ *  a URL or a header we print. */
+async function describeFailure(label: string, r: Response, attempts: number): Promise<string> {
+  const body = (await r.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200);
+  const hdr = ['content-type', 'retry-after', 'via', 'x-request-id'].map((k) => (r.headers.get(k) ? `${k}=${r.headers.get(k)}` : '')).filter(Boolean).join(' ');
+  return `Met Office ${label} -> HTTP ${r.status} after ${attempts} attempt${attempts === 1 ? '' : 's'}; body: ${body || '(empty)'}${hdr ? `; ${hdr}` : ''}`;
+}
+
+/** Throws on a non-200 or empty answer: the caller then keeps the stored snapshot. A 5xx or a network error is retried (RETRY_DELAYS_MS);
+ *  a 4xx (a wrong or forbidden key) is not, it will not get better. */
+export async function fetchMetOfficeForecast(
+  lat: number, lon: number, tz: string, apiKey: string, fetcher: typeof fetch = fetch, nowMs = Date.now(), delays: number[] = RETRY_DELAYS_MS,
+): Promise<WeatherPayload> {
   const get = async (kind: 'hourly' | 'daily'): Promise<Doc> => {
-    const r = await fetcher(`${API}/${kind}?latitude=${lat}&longitude=${lon}`, { headers: { apikey: apiKey, Accept: 'application/json', 'User-Agent': 'ViewMediaBot/1.0 (+https://glasgowloop.co.uk)' } });
-    if (r.status !== 200) throw new Error(`Met Office ${kind} -> HTTP ${r.status}`);
-    return (await r.json()) as Doc;
+    let lastError = '';
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+      if (attempt > 0) await sleep(delays[attempt - 1]);
+      try {
+        const r = await fetcher(`${API}/${kind}?latitude=${lat}&longitude=${lon}`, { headers: { apikey: apiKey, Accept: 'application/json', 'User-Agent': 'ViewMediaBot/1.0 (+https://glasgowloop.co.uk)' } });
+        if (r.status === 200) return (await r.json()) as Doc;
+        lastError = await describeFailure(kind, r, attempt + 1);
+        if (r.status < 500) break; // 4xx: retrying will not help
+      } catch (e) {
+        lastError = `Met Office ${kind} -> network error after ${attempt + 1} attempt${attempt === 0 ? '' : 's'}: ${String((e as Error)?.message ?? e).slice(0, 120)}`;
+      }
+    }
+    throw new Error(lastError);
   };
   const [hourly, daily] = [await get('hourly'), await get('daily')];
   const payload = buildPayload(hourly, daily, nowMs, lat, lon, tz);

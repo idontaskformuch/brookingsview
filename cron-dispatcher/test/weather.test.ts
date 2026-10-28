@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { buildPayload, compass, windText, weatherText } from '../src/weather/metoffice';
+import { buildPayload, compass, windText, weatherText, fetchMetOfficeForecast, RETRY_DELAYS_MS } from '../src/weather/metoffice';
 import { normalizeNws, fetchNwsForecast } from '../src/weather/nws';
 import { refreshWeather, storeWeather } from '../src/weather/refresh';
 import { WEATHER_TOWNS, isWeatherTick } from '../src/weather/towns';
@@ -87,5 +87,48 @@ describe('storeWeather / refreshWeather', () => {
     expect(res.map((r) => r.ok)).toEqual([false, false]);
     expect(res[1].error).toContain('MET_OFFICE_API_KEY');
     expect(calls).toEqual([]);
+  });
+});
+
+describe('Met Office retries and error text', () => {
+  const fx = JSON.parse(readFileSync(new URL('./fixtures/met_office_parity.json', import.meta.url), 'utf8'));
+  const now = Date.parse('2026-10-28T09:30:00Z');
+  const ok = (doc: unknown) => new Response(JSON.stringify(doc), { status: 200 });
+
+  it('keeps patient delays for the whole-hour publication window', () => {
+    expect(RETRY_DELAYS_MS).toEqual([5000, 15000, 30000]);
+  });
+  it('a 500 followed by a good answer succeeds, and the key never leaves the apikey header', async () => {
+    const calls: { url: string; h: Record<string, string> }[] = [];
+    const fetcher = (async (u: any, init: any) => {
+      calls.push({ url: String(u), h: init.headers });
+      const hourlyCalls = calls.filter((c) => c.url.includes('/hourly')).length;
+      if (String(u).includes('/hourly')) return hourlyCalls === 1 ? new Response('upstream broke', { status: 500 }) : ok(fx.hourly);
+      return ok(fx.daily);
+    }) as typeof fetch;
+    const p = await fetchMetOfficeForecast(55.86, -4.25, 'Europe/London', 'secret-key', fetcher, now, [0, 0, 0]);
+    expect(p.periods.length).toBeGreaterThan(0);
+    expect(calls.filter((c) => c.url.includes('/hourly'))).toHaveLength(2);
+    for (const c of calls) { expect(c.url).not.toContain('secret-key'); expect(c.h.apikey).toBe('secret-key'); }
+  });
+  it('after the last retry the error carries status, attempts and the start of the body', async () => {
+    const fetcher = (async () => new Response('{"code":"500","message":"Internal   error from gateway"}', { status: 500, headers: { via: '1.1 cloudfront', 'content-type': 'application/json' } })) as typeof fetch;
+    await expect(fetchMetOfficeForecast(55.86, -4.25, 'Europe/London', 'secret-key', fetcher, now, [0, 0, 0])).rejects.toThrow(
+      /Met Office hourly -> HTTP 500 after 4 attempts; body: \{"code":"500","message":"Internal error from gateway"\}; content-type=application\/json via=1\.1 cloudfront/);
+  });
+  it('a 4xx is not retried and a network error is', async () => {
+    let n = 0;
+    await expect(fetchMetOfficeForecast(1, 2, 'Europe/London', 'k', (async () => { n++; return new Response('nope', { status: 403 }); }) as typeof fetch, now, [0, 0, 0])).rejects.toThrow('HTTP 403 after 1 attempt;');
+    expect(n).toBe(1);
+    let m = 0;
+    await expect(fetchMetOfficeForecast(1, 2, 'Europe/London', 'k', (async () => { m++; throw new Error('connection reset'); }) as typeof fetch, now, [0, 0])).rejects.toThrow('network error after 3 attempts: connection reset');
+    expect(m).toBe(3);
+  });
+  it('refreshWeather passes its retry delays through, and the message ends up in the town result', async () => {
+    const sql = (async () => []) as any;
+    const res = await refreshWeather({ DATABASE_URL: 'x', MET_OFFICE_API_KEY: 'k' }, {
+      sql, towns: [WEATHER_TOWNS[3]], retryDelaysMs: [0], fetcher: (async () => new Response('bad', { status: 502 })) as typeof fetch });
+    expect(res[0].ok).toBe(false);
+    expect(res[0].error).toContain('HTTP 502 after 2 attempts; body: bad');
   });
 });

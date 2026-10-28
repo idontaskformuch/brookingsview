@@ -31,7 +31,7 @@ export async function storeWeather(sql: Sql, townId: string, payload: WeatherPay
 
 export async function refreshWeather(
   env: WeatherEnv,
-  deps: { sql: Sql; fetcher?: typeof fetch; towns?: WeatherTown[]; now?: () => number },
+  deps: { sql: Sql; fetcher?: typeof fetch; towns?: WeatherTown[]; now?: () => number; retryDelaysMs?: number[] },
 ): Promise<WeatherResult[]> {
   const now = deps.now ?? Date.now;
   const results: WeatherResult[] = [];
@@ -42,7 +42,7 @@ export async function refreshWeather(
         payload = await fetchNwsForecast(town.lat, town.lon, deps.fetcher);
       } else {
         if (!env.MET_OFFICE_API_KEY) throw new Error('MET_OFFICE_API_KEY is not set');
-        payload = await fetchMetOfficeForecast(town.lat, town.lon, town.timezone, env.MET_OFFICE_API_KEY, deps.fetcher, now());
+        payload = await fetchMetOfficeForecast(town.lat, town.lon, town.timezone, env.MET_OFFICE_API_KEY, deps.fetcher, now(), deps.retryDelaysMs);
       }
       await storeWeather(deps.sql, town.townId, payload, now());
       results.push({ townId: town.townId, ok: true, periods: payload.periods.length, hourly: payload.hourly.length });
