@@ -55,6 +55,16 @@ export function currentPeriods<T extends { start: string | null }>(periods: T[],
   return periods.filter((p) => !p.start || daysBetween(today, localYMD(new Date(p.start), tz)) >= 0);
 }
 
+/** /today's one-line forecast: "Today: 14°C cloudy. Tonight: 8°C clear." from the first two periods that are not in the past. '' when there is none. */
+export function forecastLine(periods: FPeriod[], tz: string, now: Date): string {
+  const text = currentPeriods(periods, tz, now)
+    .filter((p) => p.temp !== null && p.temp !== undefined)
+    .slice(0, 2)
+    .map((p) => `${relabelPeriod(p, tz, now)}: ${Math.round(p.temp as number)}°${p.unit ?? ''}${p.short ? ` ${p.short.toLowerCase()}` : ''}`)
+    .join('. ');
+  return text ? `${text}.` : '';
+}
+
 export interface SignWeather { temp: number; unit: string; isDaytime: boolean; conditions: string | null }
 
 /** The sign strip's weather item: the first daytime period (db.ts getSignData), else the first period. */

@@ -1,6 +1,7 @@
 ---
 /** Ettan. Dominerar sidan i skala -- det är så en tidning uttrycker redaktionell
  *  bedömning visuellt, i stället för att ge varje post lika stor vikt. */
+import { meetingCardTitle } from '../lib/meeting-title';
 import type { Story, Facility } from '../lib/db';
 import { formatDate, formatTime, formatMeetingDate, formatMeetingKicker, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
 import { resolveImage, splitEventTitleAndVenue, buildNameAliasIndex, type ImageRef } from '../lib/images';
@@ -31,7 +32,7 @@ const isQuorumNotice = isMeeting && story.title.startsWith('Notice: possible quo
 // Item C4 -- see StoryCard.astro's identical comment for the full reasoning.
 const { displayTitle, venue } = isEvent
   ? splitEventTitleAndVenue(story.title, siteConfig.cityName, buildNameAliasIndex(facilities))
-  : { displayTitle: story.title, venue: null };
+  : { displayTitle: meetingCardTitle(story.title, story.source_type), venue: null };
 // Se StoryCard.astro för samma resonemang: byline betyder Content Track-innehåll,
 // och då är occurs_at inte en riktig tidsangivelse -- publiceringsdatum är rätt.
 const hasByline = Boolean(story.byline);

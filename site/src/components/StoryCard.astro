@@ -1,6 +1,7 @@
 ---
 /** En post i nyhetsströmmen. Avdelad med hårfin linje, inte inramad som ett
  *  kort -- kortramar plattar ut hierarkin och får allt att se lika viktigt ut. */
+import { meetingCardTitle } from '../lib/meeting-title';
 import DateBadge from './DateBadge.astro';
 import type { Story, Facility } from '../lib/db';
 import { formatDate, formatTime, formatMeetingDate, formatMeetingKicker, allDayWord, seriesClockText, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
@@ -78,8 +79,9 @@ const listTeaser = alsoListed ? `${teaser(alsoListed[1])} ${alsoListed[2]}`.trim
 // UK site (owner 2026-10-27): when a short summary would be printed whole in the list AND on the detail page, the list shows
 // the practical facts from the source (place, cost) instead, so the detail page is never a repeat of the list text.
 const wholeTextInList = !alsoListed && listTeaser === story.body.replace(/\s+/g, ' ').trim();
+// An event whose price line already shows the cost does not repeat it here (Q3 2026-10-28).
 const listFacts = siteConfig.country === 'gb' && wholeTextInList
-  ? (story.source_type === 'event' ? [story.meta?.venue, story.meta?.cost] : story.source_type === 'meeting' ? [story.meta?.address] : [])
+  ? (story.source_type === 'event' ? [story.meta?.venue, eventPriceAgeLine(story) ? '' : story.meta?.cost] : story.source_type === 'meeting' ? [story.meta?.address] : [])
       .filter(Boolean).join(' · ')
   : '';
 const listBody = listFacts || listTeaser;
@@ -107,7 +109,7 @@ const isAiWritten = isAiWrittenContent(story.source_type);
 // title instead of staying silently baked into it.
 const { displayTitle, venue } = isEvent
   ? splitEventTitleAndVenue(story.title, siteConfig.cityName, buildNameAliasIndex(facilities))
-  : { displayTitle: story.title, venue: null };
+  : { displayTitle: meetingCardTitle(story.title, story.source_type), venue: null };
 // Events correctness Step A, point 3: "Free"/price + age, structured-only
 // (see eventPriceAgeLine's own comment) -- null, so nothing renders, for
 // the vast majority of rows the source never mentioned a price/age for.

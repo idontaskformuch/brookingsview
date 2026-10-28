@@ -333,6 +333,10 @@ export const TOWN_OVERRIDES: Record<string, Partial<Record<string, Partial<PageM
       titlePattern: '{Town} Council Meetings, Summarised | {Site}', // gb-spelling
       h1Pattern: '{Town} City Chambers: Council and Planning Meetings in Plain Language',
     },
+    // Q3 live 2026-10-28: the H1 said "Theater" over an intro that says "theatre".
+    'whats-on': {
+      h1Pattern: 'Live Music, Theatre and Festivals Within Driving Distance of {Town}', // gb-spelling
+    },
     // Q3 2026-10-28: the list holds libraries, museums and leisure centres, not parks or council buildings.
     facilities: {
       titlePattern: '{Town} Libraries, Museums and Leisure Centres | {Site}', // gb-spelling

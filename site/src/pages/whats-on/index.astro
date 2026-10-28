@@ -93,7 +93,10 @@ for (const entry of marquee) {
 // Glasgow lists 30 days (owner 2026-10-28: the 60-day list was still ~100 rows); the US towns keep 60.
 const ALSO_ON_DAYS = siteConfig.country === 'gb' ? 30 : 60;
 const ALSO_ON_HORIZON_MS = ALSO_ON_DAYS * 86_400_000;
-const allAlsoOnRows = collapseSeriesRows([...demotedToAlsoOn, ...alsoOn]);
+// Marquee cards keep the venue-rank order; "Also on" is by date (owner 2026-10-28), so the dates never restart halfway down.
+const allAlsoOnRows = collapseSeriesRows([...demotedToAlsoOn, ...alsoOn]).sort((x, y) =>
+  (x.primary.occurs_at ? new Date(x.primary.occurs_at).getTime() : Infinity) - (y.primary.occurs_at ? new Date(y.primary.occurs_at).getTime() : Infinity)
+  || x.primary.ticketmasterEvent.title.localeCompare(y.primary.ticketmasterEvent.title));
 const alsoOnRows = allAlsoOnRows.filter((r) => !r.primary.occurs_at || new Date(r.primary.occurs_at).getTime() <= buildNow.getTime() + ALSO_ON_HORIZON_MS);
 const laterCount = allAlsoOnRows.length - alsoOnRows.length;
 

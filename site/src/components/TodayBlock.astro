@@ -88,6 +88,8 @@ export interface Props {
   candidates: FeedItem[];
   /** Ticketmaster shows in the town (gb only, at most 3; lib/today-shows.ts). Bucketed in the browser like the candidates. */
   tmShows?: TodayShow[];
+  /** gb: the built one-line forecast (lib/weather-format.ts forecastLine); the browser replaces it with /api/weather's when that answers. */
+  forecastText?: string;
   /** The dedicated /today/ page wants its own <h1>+chrome around this
    *  block; the homepage mount wants a plain heading, no page-level
    *  semantics duplicated inside a component that isn't the page itself. */
@@ -104,7 +106,7 @@ export interface Props {
 
 const {
   cityName, timezone, asOf, temperature, activeAlerts, closureStatus, traffic,
-  cityHallFacility, facilities = [], candidates, tmShows = [], headingLevel = 'h2', headingText,
+  cityHallFacility, facilities = [], candidates, tmShows = [], forecastText, headingLevel = 'h2', headingText,
 } = Astro.props;
 
 const Heading = headingLevel;
@@ -176,6 +178,8 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
   <Heading class="today-block__heading">
     {resolvedHeadingText} <span class="today-block__asof">Updated {asOfLabel}</span>
   </Heading>
+
+  {forecastText !== undefined && <p class="today-block__forecast" data-weather-today hidden={!forecastText}>{forecastText}</p>}
 
   {!rightNowIsEmpty && (
     <div class="today-block__right-now">
@@ -361,6 +365,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
   .today-block__met-item--red { border-left: 4px solid var(--status-alert); padding-left: 0.5rem; }
   .today-block__met-item--yellow { border-left: 4px solid var(--status-warn); padding-left: 0.5rem; }
   .today-block { margin-bottom: 1.5rem; }
+  .today-block__forecast { margin: 0 0 0.75rem; font-size: 0.9375rem; color: var(--ink-soft); }
   .today-block__heading {
     display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap;
     font-family: var(--font-head); margin: 0 0 0.75rem;

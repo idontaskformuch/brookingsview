@@ -28,6 +28,7 @@ import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters
 import { resolvePageMeta } from '../lib/page-meta';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
 import { selectTodayShows } from '../lib/today-shows';
+import { forecastLine } from '../lib/weather-format';
 
 const [periods, alerts, upcomingEvents, artsEvents, trafficIncidents, closureStatus, facilities] = await Promise.all([
   getWeather(),
@@ -92,6 +93,7 @@ import { todayDescription, todayShows, todaySources } from '../lib/today-copy';
     facilities={facilities}
     candidates={candidates}
     tmShows={todayShows3}
+    forecastText={siteConfig.country === 'gb' ? forecastLine(periods, siteConfig.timezone, new Date()) : undefined}
     headingLevel="h1"
     headingText={pageMeta.h1}
   />

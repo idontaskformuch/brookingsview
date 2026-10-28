@@ -4,6 +4,7 @@
  *  beside each other under the lead, so the emphasis has to come from
  *  scale (bigger than a dense StoryCard row, smaller than the lead), not
  *  from repeating the same amount of text at a smaller size. */
+import { meetingCardTitle } from '../lib/meeting-title';
 import type { Story, Facility } from '../lib/db';
 import { formatDate, formatTime, formatMeetingDate, formatMeetingKicker, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
 import { resolveImage, splitEventTitleAndVenue, buildNameAliasIndex, type ImageRef } from '../lib/images';
@@ -30,7 +31,7 @@ const isQuorumNotice = isMeeting && story.title.startsWith('Notice: possible quo
 // Item C4 -- see StoryCard.astro's identical comment for the full reasoning.
 const { displayTitle, venue } = isEvent
   ? splitEventTitleAndVenue(story.title, siteConfig.cityName, buildNameAliasIndex(facilities))
-  : { displayTitle: story.title, venue: null };
+  : { displayTitle: meetingCardTitle(story.title, story.source_type), venue: null };
 const when = story.occurs_at;
 const now = new Date();
 // Relative time (Liveliness Spec §2) -- same exceptions as StoryCard.astro/

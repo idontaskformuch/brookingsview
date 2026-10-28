@@ -2,7 +2,7 @@
  *  fresh one every hour. When the API answers, the sign strip and (on /weather/) the hourly strip and the day list are rewritten with it.
  *  A failed request, an empty answer or a page without these elements changes nothing. Lives here, not inline, so a test can run it
  *  in a real browser (live-weather.test.ts). All text is set with textContent. */
-import { currentPeriods, hourLabel, relabelPeriod, signWeather, signWeatherText, upcomingHours, type FPeriod } from './weather-format';
+import { currentPeriods, forecastLine, hourLabel, relabelPeriod, signWeather, signWeatherText, upcomingHours, type FPeriod } from './weather-format';
 
 export interface WeatherAnswer {
   periods?: FPeriod[];
@@ -32,6 +32,10 @@ export function applyWeather(doc: Document, w: WeatherAnswer, tz: string, countr
   const signEl = doc.querySelector('[data-weather-sign]');
   if (sign && signEl) signEl.textContent = signWeatherText(sign);
 
+  const todayEl = doc.querySelector<HTMLElement>('[data-weather-today]');
+  const line = forecastLine(periods, tz, now);
+  if (todayEl && line) { todayEl.textContent = line; todayEl.hidden = false; }
+
   const hourlyEl = doc.querySelector('[data-weather-hourly]');
   const hours = upcomingHours(w.hourly ?? [], now);
   if (hourlyEl) {
@@ -54,7 +58,7 @@ export function applyWeather(doc: Document, w: WeatherAnswer, tz: string, countr
 }
 
 export async function refreshLiveWeather(doc: Document, fetcher: typeof fetch = fetch, now: Date = new Date()): Promise<void> {
-  if (!doc.querySelector('[data-weather-sign], [data-weather-hourly], [data-weather-forecast]')) return;
+  if (!doc.querySelector('[data-weather-sign], [data-weather-hourly], [data-weather-forecast], [data-weather-today]')) return;
   const tz = doc.documentElement.dataset.timezone || 'America/Chicago';
   const country = doc.documentElement.lang === 'en-GB' ? 'gb' : 'us';
   let body: WeatherAnswer;
