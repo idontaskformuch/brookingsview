@@ -238,6 +238,9 @@ MEETING RULES -- length scales to substance, this is the main thing to get right
 - Procedural facts that constrain the public (comment limits, speaker slips,
   where the packet is available) get one plain sentence at the end. State
   the limit; do not characterise it.
+- TENSE: timeless present, so the text is still true after the meeting day. Open with "The agenda includes ..." or "Items on the agenda:" 
+  style phrasing. Never "will", "is scheduled to", "is set to", "upcoming", "tonight", "tomorrow", "next week"; and never the past tense about
+  the meeting itself ("met", "discussed", "approved"), since outcomes are not in the agenda. The page itself says when the meeting took place.
 - Do not connect two agenda items into a pattern, note what a decision
   "could affect", or describe anything as contested -- that is editorial
   work, not this pipeline's job.

@@ -264,7 +264,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
     // component's own module comment. Only the decision data is baked in
     // at build time; what time it is right now is read in the browser.
     <script type="application/json" id="today-cityhall-data" is:inline set:html={JSON.stringify({
-      hours: cityHallFacility.hours_structured, timezone,
+      hours: cityHallFacility.hours_structured, timezone, gb: siteConfig.country === 'gb',
     })} />
   )}
 </section>
@@ -288,8 +288,8 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
     const row = document.getElementById('today-cityhall');
     const text = row?.querySelector<HTMLElement>('[data-open-status-text]');
     if (dataEl && row && text) {
-      const payload = JSON.parse(dataEl.textContent || '{}') as { hours: StructuredHours | null; timezone: string };
-      const status = computeOpenStatus(payload.hours, new Date(), payload.timezone);
+      const payload = JSON.parse(dataEl.textContent || '{}') as { hours: StructuredHours | null; timezone: string; gb?: boolean };
+      const status = computeOpenStatus(payload.hours, new Date(), payload.timezone, !!payload.gb);
       if (status.known) {
         row.hidden = false;
         row.classList.toggle('today-block__cityhall--open', status.isOpen);

@@ -2,7 +2,7 @@
 /** Ettan. Dominerar sidan i skala -- det är så en tidning uttrycker redaktionell
  *  bedömning visuellt, i stället för att ge varje post lika stor vikt. */
 import type { Story, Facility } from '../lib/db';
-import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
+import { formatDate, formatTime, formatMeetingDate, formatMeetingKicker, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
 import { resolveImage, splitEventTitleAndVenue, buildNameAliasIndex, type ImageRef } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import ImageAttribution from './ImageAttribution.astro';
@@ -48,7 +48,7 @@ const timeLabel = hasByline
   : !when
     ? ''
     : isMeeting
-      ? formatMeetingDate(when)
+      ? formatMeetingKicker(when)
       : isAlert
         ? `${formatDate(when)}${formatTime(when) ? ` · ${formatTime(when)}` : ''}`
         : relativeTime(when, now, siteConfig.timezone, story.ends_at);

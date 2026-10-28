@@ -78,7 +78,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
           hours; the badge <span> is absent entirely for a facility with
           none, and stays hidden (no badge, just the name/address already
           shown) until the <script> below fills it in client-side. */}
-      <ul class="list" data-open-status-tz={siteConfig.timezone}>
+      <ul class="list" data-open-status-tz={siteConfig.timezone} data-gb={siteConfig.country === 'gb' ? '1' : ''}>
         {byCategory.get(cat)!.map((f) => (
           <li>
             <a href={`/facilities/${f.slug}/`}>{f.name}</a>
@@ -113,7 +113,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
       const raw = badge.dataset.hours;
       if (!tz || !raw) return;
       const hours = JSON.parse(raw) as StructuredHours;
-      const status = computeOpenStatus(hours, new Date(), tz);
+      const status = computeOpenStatus(hours, new Date(), tz, badge.closest<HTMLElement>('[data-open-status-tz]')?.dataset.gb === '1');
       if (!status.known) return;
       badge.hidden = false;
       badge.className = `badge ${status.isOpen ? 'badge--open' : 'badge--closed'}`;

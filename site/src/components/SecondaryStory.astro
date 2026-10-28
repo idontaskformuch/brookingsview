@@ -5,7 +5,7 @@
  *  scale (bigger than a dense StoryCard row, smaller than the lead), not
  *  from repeating the same amount of text at a smaller size. */
 import type { Story, Facility } from '../lib/db';
-import { formatDate, formatTime, formatMeetingDate, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
+import { formatDate, formatTime, formatMeetingDate, formatMeetingKicker, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
 import { resolveImage, splitEventTitleAndVenue, buildNameAliasIndex, type ImageRef } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import { siteConfig } from '../lib/site-config';
@@ -43,7 +43,7 @@ const timeLabel = hasByline
   : !when
     ? ''
     : isMeeting
-      ? formatMeetingDate(when)
+      ? formatMeetingKicker(when)
       : isAlert
         ? `${formatDate(when)}${formatTime(when) ? ` · ${formatTime(when)}` : ''}`
         : relativeTime(when, now, siteConfig.timezone, story.ends_at);

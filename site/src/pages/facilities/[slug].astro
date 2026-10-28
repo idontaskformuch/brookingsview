@@ -314,7 +314,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
               <tr>
                 <th scope="row">{name}</th>
                 <td>{windows.length > 0
-                  ? windows.map((r) => `${formatClock(r.opens!)}–${formatClock(r.closes!)}`).join(', ')
+                  ? windows.map((r) => `${formatClock(r.opens!, siteConfig.country === 'gb')}–${formatClock(r.closes!, siteConfig.country === 'gb')}`).join(', ')
                   : 'Closed'}</td>
               </tr>
             );
@@ -334,7 +334,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
           {exceptions.map((e) => (
             <li>
               <strong>{formatFullCalendarDate(e.date)}</strong>:{' '}
-              {e.opens && e.closes ? `${formatClock(e.opens)}–${formatClock(e.closes)}` : 'Closed'}
+              {e.opens && e.closes ? `${formatClock(e.opens, siteConfig.country === 'gb')}–${formatClock(e.closes, siteConfig.country === 'gb')}` : 'Closed'}
               {e.reason && <> — {e.reason}</>}
             </li>
           ))}
@@ -399,7 +399,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
     // right now" must come from the visitor's own browser, so that's the
     // one thing NOT embedded here.
     <script type="application/json" id="open-status-data" is:inline set:html={JSON.stringify({
-      hours, exceptions, timezone: siteConfig.timezone,
+      hours, exceptions, timezone: siteConfig.timezone, gb: siteConfig.country === 'gb',
     })} />
   )}
   <script>
@@ -414,9 +414,9 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
     const badge = document.querySelector<HTMLElement>('[data-open-status-badge]');
     if (dataEl && badge) {
       const payload = JSON.parse(dataEl.textContent || '{}') as {
-        hours: PlaceHoursRow[]; exceptions: PlaceHoursException[]; timezone: string;
+        hours: PlaceHoursRow[]; exceptions: PlaceHoursException[]; timezone: string; gb?: boolean;
       };
-      const status = computePlaceOpenStatus(payload.hours, payload.exceptions, new Date(), payload.timezone);
+      const status = computePlaceOpenStatus(payload.hours, payload.exceptions, new Date(), payload.timezone, !!payload.gb);
       if (status.known) {
         badge.hidden = false;
         badge.className = `open-status ${status.isOpen ? 'open-status--open' : 'open-status--closed'}`;

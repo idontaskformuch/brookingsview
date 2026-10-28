@@ -138,7 +138,7 @@ function windowsForDate(
  *  than a wrong date -- the exceptions list itself still tells the
  *  reader when it actually reopens. */
 export function computePlaceOpenStatus(
-  hours: PlaceHoursRow[], exceptions: PlaceHoursException[], now: Date, timezone: string,
+  hours: PlaceHoursRow[], exceptions: PlaceHoursException[], now: Date, timezone: string, gb = false,
 ): PlaceOpenStatus {
   if (hours.length === 0) return { known: false };
 
@@ -147,7 +147,7 @@ export function computePlaceOpenStatus(
 
   for (const w of todayWindows) {
     if (minutesOfDay >= toMinutes(w.opens) && minutesOfDay < toMinutes(w.closes)) {
-      return { known: true, isOpen: true, closesAt: formatClock(w.closes) };
+      return { known: true, isOpen: true, closesAt: formatClock(w.closes, gb) };
     }
   }
 
@@ -160,7 +160,7 @@ export function computePlaceOpenStatus(
       const label = offset === 0 ? 'today'
         : offset === 1 ? 'tomorrow'
         : new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: timezone }).format(future); // the TOWN's weekday, not the reader's or the build machine's
-      return { known: true, isOpen: false, opensAt: formatClock(w.opens), opensLabel: label };
+      return { known: true, isOpen: false, opensAt: formatClock(w.opens, gb), opensLabel: label };
     }
   }
 

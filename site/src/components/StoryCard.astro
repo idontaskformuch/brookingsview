@@ -3,7 +3,7 @@
  *  kort -- kortramar plattar ut hierarkin och får allt att se lika viktigt ut. */
 import DateBadge from './DateBadge.astro';
 import type { Story, Facility } from '../lib/db';
-import { formatDate, formatTime, formatMeetingDate, allDayWord, seriesClockText, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
+import { formatDate, formatTime, formatMeetingDate, formatMeetingKicker, allDayWord, seriesClockText, CATEGORY_LABELS, isAiWrittenContent } from '../lib/db';
 import ShareButtons from './ShareButtons.astro';
 import { siteConfig } from '../lib/site-config';
 import { categoryForSourceType, splitEventTitleAndVenue, buildNameAliasIndex, type ImageCategory } from '../lib/images';
@@ -154,7 +154,7 @@ const timeLabel = hasByline
   : !when
     ? ''
     : isMeeting
-      ? formatMeetingDate(when)  // meetingsHaveTime-medveten -- se db.ts
+      ? formatMeetingKicker(when)  // meetingsHaveTime-medveten -- se db.ts
       : isAlert
         ? `${formatDate(when)}${formatTime(when) ? ` · ${formatTime(when)}` : ''}`
         : isEvent

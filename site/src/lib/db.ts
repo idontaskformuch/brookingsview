@@ -2959,6 +2959,16 @@ export function formatMeetingDate(value: string | Date | null): string {
   });
 }
 
+/** A meeting card's date line: the day, plus the clock time where one was read (owner 2026-10-28: the card said "Tue 3 November" while
+ *  the page said "Tue 3 November at 1pm"). Midnight with no end is a date with no time and stays day-only. The page itself builds
+ *  "<day> at <time>" from formatMeetingDate() + formatTime(), so only cards use this. */
+export function formatMeetingKicker(value: string | Date | null): string {
+  const day = formatMeetingDate(value);
+  if (!value || !siteConfig.meetingsHaveTime) return day;
+  const iso = new Date(value).toISOString();
+  return isAllDay({ start: iso, end: null }, TZ) ? day : `${day} · ${formatTime(iso)}`;
+}
+
 /** Rätt formatering av story.occurs_at givet KÄLLTYP -- enda stället den
  *  distinktionen behöver göras, så inget anropsställe kan glömma den. */
 export function formatOccursAt(story: Pick<Story, 'source_type' | 'occurs_at'> & { ends_at?: string | null; is_recurring_series?: boolean; meta?: { recurrence?: string } | null }): string {

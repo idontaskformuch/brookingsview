@@ -27,10 +27,12 @@ const DAY_KEYS: (keyof StructuredHours)[] = [
  *  no-leading-zero convention this site's other time formatting already
  *  uses (see lib/publish.py's fmt_time()/_fmt() equivalents on the Python
  *  side, same reasoning: readers think in 12-hour clock time). */
-export function formatClock(hhmm: string): string {
+export function formatClock(hhmm: string, gb = false): string {
   const [h, m] = hhmm.split(':').map(Number);
-  const period = h < 12 ? 'AM' : 'PM';
   const hour12 = h % 12 || 12;
+  // gb (owner 2026-10-28): "10am", "5:30pm" -- the same shape as country-profile's formatClockCompact.
+  if (gb) return `${hour12}${m === 0 ? '' : `:${m.toString().padStart(2, '0')}`}${h < 12 ? 'am' : 'pm'}`;
+  const period = h < 12 ? 'AM' : 'PM';
   return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
 }
 
@@ -52,7 +54,7 @@ function toMinutes(hhmm: string): number {
   return h * 60 + m;
 }
 
-export function computeOpenStatus(hours: StructuredHours | null, now: Date, timezone: string): OpenStatus {
+export function computeOpenStatus(hours: StructuredHours | null, now: Date, timezone: string, gb = false): OpenStatus {
   if (!hours) return { known: false };
 
   const { weekday, minutesOfDay } = localParts(now, timezone);
@@ -61,7 +63,7 @@ export function computeOpenStatus(hours: StructuredHours | null, now: Date, time
   if (todayWindow) {
     const [open, close] = todayWindow;
     if (minutesOfDay >= toMinutes(open) && minutesOfDay < toMinutes(close)) {
-      return { known: true, isOpen: true, closesAt: formatClock(close) };
+      return { known: true, isOpen: true, closesAt: formatClock(close, gb) };
     }
   }
 
@@ -78,7 +80,7 @@ export function computeOpenStatus(hours: StructuredHours | null, now: Date, time
     const label = offset === 0 ? 'today'
       : offset === 1 ? 'tomorrow'
       : DAY_KEYS[dayIndex].replace(/^(.)/, (c) => c.toUpperCase());
-    return { known: true, isOpen: false, opensAt: formatClock(open), opensLabel: label };
+    return { known: true, isOpen: false, opensAt: formatClock(open, gb), opensLabel: label };
   }
 
   // Every day is null -- a real, if unusual, "never open" facility record.

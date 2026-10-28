@@ -5,6 +5,7 @@
 export const DENIED_SOURCE_PHOTO_IDS: Record<number, string> = {
   1155440286: 'West Carriageway, The Green (Wikimedia, Richard Sutcliffe): grass, trees and a car park; not a Glasgow landmark',
   1142360231: 'Autumn colours, Dorchester Avenue (Wikimedia, Richard Sutcliffe): a tree-lined avenue, a named street, not a landmark',
+  1170150598: 'The Argyle Street Ash (Wikimedia, Talesfromthecanopy): a single tree in front of tenements, not a landmark (owner 2026-10-28, under the City Chambers hero)',
 };
 
 export const notDenied = <T extends { sourcePhotoId?: number }>(image: T): boolean =>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeOpenStatus } from './facility-hours';
+import { computeOpenStatus, formatClock } from './facility-hours';
 import type { StructuredHours } from './db';
 
 const TZ = 'America/Chicago';
@@ -81,5 +81,16 @@ describe('computeOpenStatus', () => {
     };
     const status = computeOpenStatus(halfHour, chicagoInstant(6, 0), TZ);
     expect(status).toEqual({ known: true, isOpen: true, closesAt: '6:30 PM' });
+  });
+});
+
+describe('formatClock gb (owner 2026-10-28: Glasgow shows 10am-5pm, not 10:00 AM-5:00 PM)', () => {
+  it('compact lower-case for gb, unchanged for us', () => {
+    expect(formatClock('10:00', true)).toBe('10am');
+    expect(formatClock('17:30', true)).toBe('5:30pm');
+    expect(formatClock('12:00', true)).toBe('12pm');
+    expect(formatClock('00:00', true)).toBe('12am');
+    expect(formatClock('10:00')).toBe('10:00 AM');
+    expect(formatClock('17:00')).toBe('5:00 PM');
   });
 });

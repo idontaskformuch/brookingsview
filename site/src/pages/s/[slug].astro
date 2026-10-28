@@ -181,6 +181,8 @@ const ukFacts = siteConfig.country === 'gb' && (isEvent || story.source_type ===
 // own doc comment. `when` is reused as the date text (already formatMeetingDate()
 // for a meeting row) so the banner's date can never drift from the one
 // shown just above it.
+// Owner 2026-10-28: once the day has passed the page says it took place and points to the council's own agenda/minutes.
+const meetingRecordUrl = isMeeting && story.source_url && !isSandboxUrl(story.source_url) ? story.source_url : null;
 const meetingBanner = isMeeting && story.occurs_at && when
   ? meetingOutcomesBanner(
       new Date(story.occurs_at), new Date(), siteConfig.timezone, when,
@@ -451,12 +453,12 @@ const eventJsonLdObject = buildEventJsonLd(
       <p class="story__passed-notice" data-event-status hidden
         data-start={new Date(story.occurs_at!).toISOString()} data-end={story.ends_at ? new Date(story.ends_at).toISOString() : ''} data-tz={siteConfig.timezone}></p>
     )}
-    {meetingBanner && <p class="story__passed-notice" data-banner-variant={meetingBanner.variant}>{meetingBanner.text}</p>}
+    {meetingBanner && <p class="story__passed-notice" data-banner-variant={meetingBanner.variant}>{meetingBanner.text}{meetingRecordUrl && <> <a href={meetingRecordUrl} rel="noopener">Agenda and minutes</a>.</>}</p>}
     {isMeeting && story.occurs_at && when && !meetingBanner && (
       // Built before the meeting day: the browser shows "This meeting took place on ..." once the day has passed in the town's zone.
       <p class="story__passed-notice" data-meeting-banner hidden
         data-meeting-date={new Date(story.occurs_at).toISOString()} data-date-text={when} data-tz={siteConfig.timezone}
-        data-decided={decisionsDecided.length > 0 ? '1' : ''} data-tracked={siteConfig.meetingDecisionsTracked ? '1' : ''}></p>
+        data-decided={decisionsDecided.length > 0 ? '1' : ''} data-tracked={siteConfig.meetingDecisionsTracked ? '1' : ''} data-record-url={meetingRecordUrl ?? ''}></p>
     )}
 
     {heroImage && (
@@ -780,7 +782,16 @@ const eventJsonLdObject = buildEventJsonLd(
         new Date(banner.dataset.meetingDate as string), new Date(), banner.dataset.tz || 'America/Chicago',
         banner.dataset.dateText || '', banner.dataset.decided === '1', banner.dataset.tracked === '1',
       );
-      if (b) { banner.textContent = b.text; banner.dataset.bannerVariant = b.variant; banner.hidden = false; }
+      if (b) {
+        banner.textContent = b.text;
+        const url = banner.dataset.recordUrl;
+        if (url) {
+          const a = document.createElement('a');
+          a.href = url; a.rel = 'noopener'; a.textContent = 'Agenda and minutes';
+          banner.append(' ', a, '.');
+        }
+        banner.dataset.bannerVariant = b.variant; banner.hidden = false;
+      }
     };
     show();
     setInterval(show, 60_000);
