@@ -14,6 +14,16 @@ STOPP: omgång 1 punkt 2 (valgenomkörningen, deadline 2 nov) är INTE påbörja
 Met Office (punkt 3): orsak felformad lagrad nyckel (HTTP 500/900900); omlagd via stdin, dispatcher deployad (46e56873) med "auth failure"-klassning utan återförsök; 14:00 UTC-tickan skrev prognoser för alla fyra städer inkl. Glasgow.
 
 
+## FRÅGOR TILL ÄGAREN (Glasgow, Q3 live 2026-10-28) -- ändra INGET av dessa förrän ägaren svarat
+1. /whats-on/ "Also on": ~100 rader, 3 800 ord. Orsak: Ticketmaster-flödet renderas 60 dagar fram utan sidbrytning. Rek: korta till 30 dagar och visa "N fler" med länk till Ticketmaster; marquee-korten opåverkade.
+2. Startsidans och /whats-on/-korten: "In Glasgow" utan tid, pris eller biljettlänk. Orsak: listraden har bara titel+arena+avståndsetikett; tid/pris finns på detaljsidan. Rek: lägg till klockslag (UK-format) på varje rad; pris och biljettlänk stannar på detaljsidan.
+3. /today/ saknar kvällens Ticketmaster-konserter (t.ex. Manic Street Preachers, OVO Hydro) och visar bara arrangörskalendrar; "Nothing scheduled today or tomorrow" visas när allt passerat. Orsak: /today-sektionerna byggs bara från events-tabellen, inte Ticketmaster-flödet (beslut D). Rek: ta med Ticketmaster-shower i staden (max 3, "In Glasgow") under Tonight/Tomorrow.
+4. /whats-on/-intro lovade "Every listing shows how far". Orsak: rader i staden säger bara "In Glasgow". STATUS: texten omskriven (pushad aea477f, live); inget beslut krävs om inte ägaren vill ha avstånd även för stadens arenor.
+5. City-hall-heron blev ett gräs/träd-foto (Pollok Country Park) efter att Argyle-bilden stängdes av. Orsak: sidan drar ur den säsongsbaserade poolen. Rek: city-hall ska alltid använda en landmärkesbild ur kategoripoolen (City Chambers/George Square), inte denylista bild för bild.
+6. Titeln "Agatha Christie: The HallowQueen of Crime": KÄLLANS EGEN. Glasgow Lifes URL-slug är "agatha-christie-the-hallowqueen-of-crime" och events-radens råtitel är identisk; pipelinen ändrar inte titeln. Rek: lämna (vi rättar inte källtitlar för hand).
+7. (tidigare) Två listor på /whats-on/ (stora arenor, övriga) ger sned datumordning; mötessammanfattningar för redan passerade möten ligger i futurum (omgenerering mot live-DB kräver ja); Cloudflare Web Analytics slås på av ägaren i dashboarden.
+
+
 ## NÄSTA (ägaren 2026-10-28; ERSÄTTER alla tidigare NÄSTA-rader och ordningar nedan)
 Regler: lokala commits, EN push per omgång (ägarens ja), testbatteri en gång per omgång, effektivitetsreglerna under Gällande beslut gäller. Efter varje punkt i omgång 1: stanna och rapportera. Skriv "klar för /clear" efter varje omgång.
 
