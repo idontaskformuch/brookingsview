@@ -154,13 +154,15 @@ export function relativeTime(
  *  the exact date is already shown elsewhere on the card (or is today/soon
  *  by construction of whatever list rendered the card), not a general-
  *  purpose "how far away is this" sentence. */
-export function dayTimeKicker(date: Date | string, timeZone: string, endsAt?: Date | string | null, allDayLabel = 'All day'): string {
+export function dayTimeKicker(date: Date | string, timeZone: string, endsAt?: Date | string | null, allDayLabel = 'All day', gb = false): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   const { hour, minute } = zonedParts(d, timeZone);
   const day = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(d);
   if (allDayOf(d, endsAt, timeZone)) return allDayLabel ? `${day} · ${allDayLabel}` : day;
   const period = hour < 12 ? 'AM' : 'PM';
   const hour12 = hour % 12 || 12;
+  // gb: "Sat · 11am", the 7pm convention used everywhere else on the UK site (Q3 2026-10-28 found "11 AM" on Glasgow cards).
+  if (gb) return `${day} · ${hour12}${minute === 0 ? '' : `:${String(minute).padStart(2, '0')}`}${period.toLowerCase()}`;
   const clock = minute === 0 ? `${hour12} ${period}` : `${hour12}:${String(minute).padStart(2, '0')} ${period}`;
   return `${day} · ${clock}`;
 }

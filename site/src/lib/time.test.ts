@@ -193,6 +193,13 @@ describe('relativeTime -- endsAt (real in-progress window)', () => {
   });
 });
 
+describe('dayTimeKicker gb clock', () => {
+  it('Glasgow shows 11am / 7:30pm, not 11 AM', () => {
+    expect(dayTimeKicker('2026-10-31T11:00:00Z', 'Europe/London', null, '', true)).toBe('Sat · 11am');
+    expect(dayTimeKicker('2026-12-01T19:30:00Z', 'Europe/London', null, '', true)).toBe('Tue · 7:30pm');
+  });
+});
+
 describe('dayTimeKicker', () => {
   it('formats as "{short weekday} · {h:mm AM/PM}"', () => {
     // 2026-08-27T19:30:00Z = 14:30 CDT (UTC-5 in August) = Thursday

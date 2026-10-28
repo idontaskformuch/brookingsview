@@ -160,7 +160,7 @@ const timeLabel = hasByline
         : isEvent
           ? (siteConfig.country === 'gb' && story.is_recurring_series
               ? seriesKicker(story.meta?.recurrence, when, siteConfig.timezone, seriesClockText(when))
-              : dayTimeKicker(when, siteConfig.timezone, story.ends_at, allDayWord()))
+              : dayTimeKicker(when, siteConfig.timezone, story.ends_at, allDayWord(), siteConfig.country === 'gb'))
           : relativeTime(when, now, siteConfig.timezone, story.ends_at);
 // .toISOString(), not a raw passthrough of the source value: the DB driver
 // returns a real Date object for timestamptz columns at runtime despite
