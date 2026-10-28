@@ -35,7 +35,7 @@ const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
   <p data-qa-allow-sibling-sites>I run the same software pointed at a few other towns too: {siblingSites.map((s, i) => (
     <>{i > 0 && ' and '}<a href={s.siteUrl} rel="noopener">{s.siteName}</a></>
   ))}. Same pipeline, same sourcing rules, same disclosures, just a different place's public records feeding it.
-  Saying that plainly here rather than having each site look like an independent operation.</p>
+  I say so here so that no site looks like an independent operation.</p>
 
   <h2>Sources</h2>
   {sources.length > 0 ? (

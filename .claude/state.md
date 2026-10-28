@@ -3,6 +3,25 @@
 Historik: se .claude/state-archive.md, läs bara vid behov.
 Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 
+## Q3 GLASGOW (lanseringsförhandsgranskning, 2026-10-28) -- SAMMANFATTNING
+Körning: Sonnet, lokal build med noindex av (29 indexerbara sidor, tillfälliga ändringar återställda), 17 anrop, ~0,50 USD av spärren 1 USD. Rapport: qa/out/q3/2026-10-28-glasgow-launch-preview/report.html (pages.json).
+FYND: 118 totalt = 10 high, 44 medium, 64 low (97 från AI-granskaren, 21 deterministiska).
+BEKRÄFTAT: noindex ÄR PÅ i koden (site-config.ts glasgow noindexSite: true, astro.config.mjs NOINDEX_SITE_TOWNS = ['glasgow']; live-HTML har fortfarande `noindex,follow`). INGET är deployat eller pushat sedan Glasgow-versionen 91c6fc3b (före förberedelsen); 7 lokala commits + 2 ocommitade filändringar väntar på ägaren.
+ÅTGÄRDAT lokalt (denna omgång): (1) bygget med noindex av föll på att Glasgow saknade jobs/movie_review-bildpooler fast sektionerna är avstängda -> krävs inte längre; (2) sitemap listade /traffic/ och /advertising/ trots noindex -> avstängda sektioner ur sitemap (test mot site-config); (3) /about-fragment ("Saying that plainly here rather than ...") omskrivet; (4) /facilities/ titel "Libraries, Parks and Buildings" stämde inte med innehållet -> "Libraries, Museums and Leisure Centres"; (5) /about lanseringstext, /contact utan "still being set up"; (6) byggspärren på nya indexerbara sidor (29 < 30, rapporterat vid bygget; live-sitemap är tom så allt räknas som nytt, kan åsidosättas med ALLOW_NEW_INDEXABLE_PAGES=yes).
+FALSKA FYND ur den lokala miljön (ingen åtgärd): sönderbrutna ticketmaster-bilder (/img/ticketmaster är en Worker-route som saknas i statisk lokal server), tom "Right now"-rad på /today/ (fylls av /api/weather-warnings i webbläsaren), "In Glasgow" utan avstånd/tider (Ticketmaster-data i lokal snapshot).
+ÅTERSTÅR FÖRE NOINDEX AV (frågor till ägaren, ej åtgärdade):
+ A. Alias: kör `python -m scripts.seed_facility_name_aliases --apply` (12 Glasgow-rader, additivt)? Venue-bildkontrollen går först igenom efter det (just nu endast tillfälligt förbigången lokalt).
+ B. /whats-on/: Ticketmaster "Venue Premium - ..." är mångdagarsserier ("57 dates, Aug 29 - Apr 30 2027") som listas som ikväll; ~25 Irn-Bru Carnival-rader (en per dag) och upprepade Strictly/Lord of the Rings. Vill du ha: slå ihop serier till en rad med datumintervall, dölj "Venue Premium"-paket, tak per titel?
+ C. /events/ och /whats-on/ innehåller poster äldre än ett dygn i "upcoming"-listor (deterministiska fynd: 10 poster från 23 okt, en från 29 aug). Behöver felsökas (troligen Recently-/serielistor som flaggas fel av Q3, men en 29 aug-serie visas som kommande).
+ D. /today/ lovar "tomorrow" och "road conditions"/"school status" som Glasgow saknar; ett pågående event utan sluttid visas som "on now" -> ändra texten till "started"?
+ E. Mötesbeskrivningar (/city-hall/, /s/meeting-...) saknar "vad betyder det för invånare/kan allmänheten delta"; "Recent meetings" (5 passerade) dominerar över "Coming up" (2). Vill du begränsa Recent till 3?
+ F. /facilities/: elva poster visar bara namn, adress och "Open now" (inga telefon/öppettider); /facilities/gorbals-library/ visar "closes 5:00 PM today" med källa "checked 23 Oct" (färskhet).
+ G. Dubblerade "Meeting archive"/"Active projects" på /city-hall/ och dubblerad When/Dates på eventsida; hur ska de lösas?
+ H. Bilder: "Autumn colours, Dorchester Avenue" och "West Carriageway, The Green" (Wikimedia) passar inte som illustration under City Chambers/Events; vill du byta ut dessa två poolbilder?
+ I. Cloudflare Web Analytics: privacy/cookies beskriver det, men beacon finns inte i HTML:en -> slå på i dashboarden (eller lägg in beacon) före lansering, annars beskriver texterna något som inte körs.
+ J. Resten av checklistan (juridik: UK GDPR-representant m.fl., "GLASGOW LANSERINGSCHECKLISTA" nedan) gäller oförändrad.
+STOPP: omgång 1 punkt 2 (valgenomkörningen) är INTE påbörjad.
+
 ## NÄSTA (ägaren 2026-10-28; ERSÄTTER alla tidigare NÄSTA-rader och ordningar nedan)
 Regler: lokala commits, EN push per omgång (ägarens ja), testbatteri en gång per omgång, effektivitetsreglerna under Gällande beslut gäller. Efter varje punkt i omgång 1: stanna och rapportera. Skriv "klar för /clear" efter varje omgång.
 
