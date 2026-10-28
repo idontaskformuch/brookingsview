@@ -189,7 +189,7 @@ const timeMachineValue = timeSource ? new Date(timeSource).toISOString() : null;
 // nothing else. `null` here means "no kicker line at all" for that row, not
 // an empty string.
 const kicker = kickerOverride ?? (isAlert ? 'Alert' : isMeeting ? 'City hall'
-  : isEvent ? (siteConfig.country === 'gb' && story.meta?.category ? story.meta.category : TOWN_EVENT_KICKER)
+  : isEvent ? (siteConfig.country === 'gb' && story.meta?.category ? story.meta.category : TOWN_EVENT_KICKER) + (siteConfig.country === 'gb' && story.meta?.tags?.length ? ` · ${story.meta.tags.join(' · ')}` : '')
   : hasByline ? (CATEGORY_LABELS[story.source_type] ?? 'Feature') : null);
 
 // The chip is the SAME information as `kicker`, just as a colored dot --

@@ -56,6 +56,11 @@
       "born_from": "GitHub cron started scrapes 4.5-9.5 h late; Cloudflare cron-dispatcher + watchdog (Kö 9 Steg 1, 2026-10-21)",
       "what": "a town has had no successful scrape_runs row for 18 h"
     },
+    "ops.qa-liveness": {
+      "severity": "hard",
+      "born_from": "2026-10-28: qa/web/run.mjs had a syntax error from 2026-10-24 and no QA ran for four days without anything complaining; watchdog scripts/check_qa_liveness.py on GitHub's own schedule",
+      "what": "qa-daily has not finished green for 30 h"
+    },
     "qa.tracking": {
       "severity": "soft",
       "born_from": "QA must never count as a visitor (owner requirement 2026-10-21)",

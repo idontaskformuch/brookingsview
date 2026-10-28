@@ -1021,6 +1021,9 @@ def publish_table(
         if site_category and isinstance(result.meta, dict):
             # The source's own category (Glasgow Life channel / age text), not model output: shown instead of "Around town".
             result.meta = {**result.meta, "category": site_category}
+        site_tags = raw_for_category.get("site_tags") if source_type == "event" and isinstance(raw_for_category, dict) else None
+        if site_tags and isinstance(result.meta, dict):
+            result.meta = {**result.meta, "tags": list(site_tags)}  # extra tags (Kids & families), from the source's text, not the model
         if result.meta is not None:
             # Keep this run's own baseline current so the 5th event
             # published in one run is judged against the 4 that just

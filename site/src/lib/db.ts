@@ -243,6 +243,8 @@ export interface EventMeta {
   /** Not model output: the source's own category (Glasgow Life channel, or "Kids & families" from its age text),
    *  set by ai_pipeline/publish.py and shown as the card kicker instead of "Around Town". */
   category?: string;
+  /** Extra tags beside the category, from the source's own text (Glasgow: "Kids & families"), set by publish.py. */
+  tags?: string[];
 }
 
 export interface Game {

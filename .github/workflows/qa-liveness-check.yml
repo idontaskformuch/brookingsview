@@ -1,0 +1,29 @@
+name: qa-liveness-check
+# Watchdog for qa-daily: if it has not finished green for 30 h, open a GitHub issue (qa/report.py, mailed through the
+# owner's GitHub notifications; closes itself after 2 clean runs) and fail this workflow. Same pattern as
+# scrape-liveness-check. Runs on GitHub's own schedule on GitHub's machines: nothing of ours has to be alive for it to fire.
+# See scripts/check_qa_liveness.py. Needs no secrets beyond the automatic GITHUB_TOKEN.
+
+on:
+  schedule:
+    - cron: "37 9,21 * * *"   # twice a day, odd minute; qa-daily finishes ~07:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Check that qa-daily has been green within 30 h
+        run: python -m scripts.check_qa_liveness

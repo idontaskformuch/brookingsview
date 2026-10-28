@@ -28,6 +28,7 @@
  * partition of one shared list.
  */
 import type { Story, SdsuEvent, Facility } from './db';
+import { siteConfig } from './site-config';
 import { buildVenueIndex, resolveVenue, isVirtualVenue } from './db';
 import { classifyLocalityByCoords, classifyLocalityByText, type LocalityResult, type LocalityMethod } from './town-boundary';
 
@@ -590,6 +591,9 @@ export function isLibraryEvent(item: FeedItem, facilities: Facility[]): boolean 
 const KIDS_RE = /\b(kids?|children|childrens?|toddler|preschool|storytime|story time|famil(?:y|ies)|youth|teens?|tween)\b/i;
 
 export function isKidsEvent(item: FeedItem): boolean {
+  // gb towns: the story's own "Kids & families" tag (set from the source's text when it addresses children or families),
+  // never the keyword guess below -- "family" in a title is too often a family history talk.
+  if (siteConfig.country === 'gb') return item.sourceKind === 'story' && !!item.story.meta?.tags?.includes('Kids & families');
   const title = itemTitle(item);
   const body = item.sourceKind === 'story' ? item.story.body : (item.event.teaser ?? '');
   return KIDS_RE.test(title) || KIDS_RE.test(body.slice(0, 200));

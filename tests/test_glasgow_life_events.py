@@ -283,21 +283,32 @@ def test_category_from_keywords_when_the_venue_says_nothing():
     assert event_category({"description": "x" * 400 + " a concert"}, "Plain title", None) is None
 
 
-def test_category_from_age_only_for_plain_child_or_family_content():
-    assert event_category({"age": "Pre-5"}, "Play", "Various Locations") == "Kids & families"
-    assert event_category({"age": "All ages, Pre-5, Family"}, "Infant Feeding Support Groups", "Various Locations") == "Kids & families"
-    assert event_category({"age": "5-11 years"}, "Craft", None) == "Kids & families"
-    assert event_category({"age": "16+ years"}, "Craft", None) is None
-    assert event_category({"age": "All ages"}, "Craft", None) is None
-    assert event_category({"age": "See age restrictions"}, "Kid's Chess Clubs", None) is None
+def test_kids_and_families_is_a_tag_not_a_main_category():
+    from scrapers.glasgow_life_events import event_tags
+    assert event_category({"age": "Family"}, "Wintering Animals", "Kelvingrove Art Gallery and Museum") == "Museums & exhibitions"
+    assert event_tags({"age": "Family"}, "Wintering Animals") == ["Kids & families"]
+    assert event_category({"age": "Pre-5"}, "Play", "Various Locations") is None
+
+
+def test_tag_when_the_text_plainly_addresses_children_or_families():
+    from scrapers.glasgow_life_events import event_tags
+    assert event_tags({"age": "All ages, Pre-5, Family"}, "Infant Feeding Support Groups") == ["Kids & families"]
+    assert event_tags({"age": "5-11 years"}, "Craft") == ["Kids & families"]
+    assert event_tags({"description": "Storytime and songs for toddlers and their grown-ups."}, "Wee Rhymes") == ["Kids & families"]
+    assert event_tags({}, "Family Fun Day at the Riverside") == ["Kids & families"]
+    assert event_tags({}, "Family history: tracing your ancestors") == []
+    assert event_tags({"age": "16+ years"}, "Craft") == []
+    assert event_tags({"age": "All ages"}, "Craft") == []
+    assert event_tags({"age": "See age restrictions"}, "Chess Club") == []
 
 
 def test_an_entry_rule_about_under_16s_is_not_a_kids_event():
     # Van Morrison / Lang Lang were labelled "Kids & families" by this line (found when backfilling 2026-10-28)
+    from scrapers.glasgow_life_events import event_tags
     for age in ("Under 16s must be accompanied by an adult.", "Under 16s must be accompanied by an adult., 15+",
                 "All children must be accompanied by an adult"):
-        assert event_category({"age": age}, "Some show", "Some hall") is None
-    assert event_category({"age": "Family"}, "Show", None) == "Kids & families"
+        assert event_tags({"age": age}, "Some show") == []
+    assert event_tags({"description": "Under 16s must be accompanied by an adult."}, "Van Morrison") == []
 
 
 def test_channel_pages_tag_and_merge_into_one_record_per_event():

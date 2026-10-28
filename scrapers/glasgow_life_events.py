@@ -302,7 +302,8 @@ def _is_kids_age(age: str | None) -> bool:
 
 
 def event_category(raw: dict, title: str | None = None, venue: str | None = None) -> str | None:
-    """Category label for a Glasgow Life event, or None (= "Around town"). Rules and order: see _VENUE_CATEGORIES above."""
+    """Main category label for a Glasgow Life event, or None (= "Around town"). Rules and order: see _VENUE_CATEGORIES above.
+    Kids & families is a tag (event_tags), not a main category."""
     for label, rx in _VENUE_CATEGORIES:
         if venue and rx.search(venue):
             return label
@@ -311,9 +312,23 @@ def event_category(raw: dict, title: str | None = None, venue: str | None = None
         # "talk", "tour" and "workshop" turn up in any description; for those only the title counts
         if rx.search(title or "" if label == "Talks & workshops" else text):
             return label
-    if _is_kids_age(raw.get("age")):
-        return "Kids & families"
     return None
+
+
+KIDS_TAG = "Kids & families"
+# words that address children or families in a title or the opening of a description
+_KIDS_TEXT = re.compile(r"\b(pre-?5|babies|baby|infants?|toddlers?|child(?:ren)?|children's|kids?|famil(?:y|ies)|storytime|story time)\b", re.IGNORECASE)
+
+
+def event_tags(raw: dict, title: str | None = None) -> list[str]:
+    """Extra tags beside the main category. KIDS_TAG when the event's own text plainly addresses children or families:
+    the source's age text (not its 'must be accompanied' entry rule), or the title / opening of the description."""
+    text = f"{title or ''} {(raw.get('description') or '')[:300]}"
+    text = re.sub(r"[^.,;]*accompanied[^.,;]*", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"family (?:history|tree|business|name|law)|famil(?:y|ies) of", " ", text, flags=re.IGNORECASE)  # not about children
+    if _is_kids_age(raw.get("age")) or _KIDS_TEXT.search(text):
+        return [KIDS_TAG]
+    return []
 
 
 def parse_listing(source_name: str, page: bytes, tz: str, details: dict | None = None) -> list[dict]:
@@ -460,5 +475,8 @@ def parse_pages(source_name: str, combined: bytes, tz: str, today: date | None =
         cat = event_category(rec["raw_data"], rec["title"], rec.get("venue"))
         if cat:
             rec["raw_data"]["site_category"] = cat
+        tags = event_tags(rec["raw_data"], rec["title"])
+        if tags:
+            rec["raw_data"]["site_tags"] = tags
         out.extend(expand_recurring(rec, tz, today))
     return out
