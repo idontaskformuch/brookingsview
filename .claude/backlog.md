@@ -41,3 +41,7 @@ Beslut 2026-10-23 (ägaren): inga nya städer förrän någon sajt drar in penga
 - LONDON (UK-mallen efter Glasgow; per borough enligt .claude/specs/glasgow-loop.md rad 10): bygg som config-driven "area hub" (se punkten om Glasgow neighbourhood hubs ovan). Kräver Met Office/SEPA-motsvarighet (Environment Agency), egna möteskällor per borough, UK-spärrarna (uk_guardrails) och en egen juridisk granskning per land/stad.
 - Övriga stadsidéer: samlas här när de kommer upp (inga finns nedskrivna i repot idag). Kostnadsunderlag för fler städer: state.md Kö 9 (Actions-kostnad per stad, ~$7-9/mån vid optimerat schema).
 - Modeller: uppgradera från Haiku när intäkter finns (se .claude/spec-model-choice.md).
+
+## Parkerat (ägaren 2026-10-28: efter intäkter)
+
+- Auto-fix-agent (QA Q5), Stripe-annonser, Best of-röstning, London (UK-mall). Inget av detta byggs före intäkter.

@@ -30,6 +30,19 @@ Mål: sajten svarar på "vad ska vi göra ikväll?" och "vad gör vi i helgen?".
 - /food-drink/ med verifierbara filter: open late tonight, live music this weekend, new in town, hygienbetyg (Glasgow FSA/FHIS; US-länens inspektioner där datan är öppen).
 - Inga AI-omdömen om mat, stämning eller kvalitet. Ställessidor bara med eget innehåll, annars noindex.
 
+## T1-utredning (omgång 2a, ägaren 2026-10-28): ren utredning, inget skrivande mot live-DB, ingen kod utöver testskript
+Per stad (Glasgow, Brookings, Moreno Valley, Broomfield) rapporteras, ingenting byggs:
+1. OpenStreetMap: antal pubar, barer, musiklokaler, nattklubbar (och teatrar/evenemangslokaler), hur många har webbadress och öppettider.
+2. Stickprov på 10 ställen per stad: har sidan schema.org Event (JSON-LD), iCal eller RSS? Robots och villkor (ViewMediaBot, högst en hämtning per ställe och dygn).
+3. Biljettplattformar med öppet API (Skiddle m.fl. för UK; US-motsvarigheter): villkor, nyckelkrav, kostnad. Inga nya betalda API:er.
+4. Realistiskt antal aktuella kvällsevent per stad och vecka (mät mot vår egen events-tabell + Ticketmaster).
+5. TILLÄGG: leta särskilt efter ÅTERKOMMANDE KVÄLLAR (quiz, livemusik, open mic, sport på storbild) och vilka ställen som publicerar dem maskinläsbart (JSON-LD/iCal/RSS) respektive bara som löptext.
+6. TILLÄGG: föreslå ett KURATERAT REGISTER på 15-30 ställen per stad (inte hela OSM), med källa och hur ofta varje ställe uppdaterar.
+7. TILLÄGG: ange per stad vilken RADIE (miles/körtid) som ger tillräckligt innehåll: Brookings -> Sioux Falls, Broomfield -> Boulder/Denver, Moreno Valley -> Riverside/Temecula.
+8. TILLÄGG: bedöm hur stor ANDEL av ställena som bara använder Facebook/Instagram (ingen skrapning där, se Fas T1) och föreslå om en "Add your event"-sida med moderering behövs som komplement. Bara förslag, inget byggs.
+9. Slutsats: vilka städer når tröskeln (minst 10 aktuella poster i minst 3 grupper) för /tonight. Rapportera, bygg inget.
+Arbetsmaterial 2026-10-28 (påbörjat, ej klart): Overpass-skript i sessionens scratchpad (t1_osm.py; overpass-api.de svarade 502 vid första försöket, försök igen/annan instans).
+
 ## Roller (inga dubbletter)
 /tonight = ikväll, /this-weekend = helgen, /events = hela listan, /today = dagens överblick med kort Tonight-teaser och länk.
 
