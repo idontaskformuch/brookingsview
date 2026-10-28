@@ -72,6 +72,8 @@ describe('normalizeTicketmasterEvent', () => {
         priceMin: null,
         priceMax: null,
         priceCurrency: null,
+        segment: 'Sports',
+        genre: null,
       },
     });
   });

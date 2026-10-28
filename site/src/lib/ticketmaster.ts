@@ -71,6 +71,7 @@ export interface RawTicketmasterEvent {
   classifications?: {
     primary?: boolean;
     segment?: { name?: string };
+    genre?: { name?: string };
     /** Discovery API's own signal for a non-event listing (a parking pass,
      *  a seating upsell, ...) riding along in the events endpoint --
      *  confirmed live: every one of 3 real "Premium Perch Add-On" listings
@@ -162,6 +163,9 @@ export interface TicketmasterEvent {
   priceMin: number | null;
   priceMax: number | null;
   priceCurrency: string | null;
+  /** Discovery API's own primary classification ("Music", "Arts & Theatre", ...), for the evening layer's groups. Optional: older fixtures lack it. */
+  segment?: string | null;
+  genre?: string | null;
 }
 
 function formatPriceRange(ranges: RawTicketmasterEvent['priceRanges']): string | null {
@@ -286,6 +290,7 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
   const image = bestImage(raw.images);
   const venue = raw._embedded?.venues?.[0];
   const priceRange = raw.priceRanges?.[0];
+  const primary = raw.classifications?.find((c) => c.primary) ?? raw.classifications?.[0];
   const event: TicketmasterEvent = {
     id: raw.id,
     title: raw.name,
@@ -308,6 +313,8 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
     priceMin: priceRange?.min ?? null,
     priceMax: priceRange?.max ?? null,
     priceCurrency: priceRange?.currency ?? null,
+    segment: primary?.segment?.name ?? null,
+    genre: primary?.genre?.name ?? null,
   };
   return {
     sourceKind: 'ticketmaster',
