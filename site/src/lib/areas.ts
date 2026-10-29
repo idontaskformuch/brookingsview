@@ -42,3 +42,10 @@ export function withAreas(entries: EveningEntry[], data: AreaData | null | undef
     return area ? { ...e, area } : e;
   });
 }
+
+const FILES = import.meta.glob<AreaData>('../config/areas/*.json', { eager: true, import: 'default' });
+
+/** The town's static area file (site/src/config/areas/<town>.json), or null when none has been generated. */
+export function areasFor(townId: string): AreaData | null {
+  return FILES[`../config/areas/${townId}.json`] ?? null;
+}

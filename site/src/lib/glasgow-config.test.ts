@@ -42,11 +42,11 @@ describe('Glasgow skeleton config', () => {
 
   it('resolves its nav; sections with no source yet are off; cityhall is labelled Council', () => {
     const nav = resolveNav(glasgow.nav, glasgow);
-    expect(nav.tabs.map((t) => t.id)).toEqual(['today', 'events', 'cityhall']);
+    expect(nav.tabs.map((t) => t.id)).toEqual(['today', 'tonight', 'events']);
     const ids = enabledSections(glasgow).map((s) => s.id);
     expect(ids).toEqual(['today', 'thisweek', 'events', 'tonight', 'whatson', 'cityhall', 'facilities', 'weather']);
     expect(enabledSections(glasgow).find((s) => s.id === 'cityhall')!.label).toBe('Council');
-    expect(nav.tabs.find((t) => t.id === 'cityhall')!.label).toBe('Council');
+    expect(nav.groups.flatMap((g) => g.items).find((t) => t.id === 'cityhall')!.label).toBe('Council');
   });
 
   it('keeps US nav labels untouched', () => {

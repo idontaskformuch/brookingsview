@@ -407,10 +407,10 @@ const CITIES: Record<string, SiteConfig> = {
     // Spec example + the sections it left out (This week, What's On, Closure Watch are enabled here and
     // must be in a group; phase 2 merges them later).
     nav: {
-      tabs: ['today', 'events', 'university', 'jacks', 'cityhall', 'jobs'],
+      tabs: ['today', 'events', 'gameday'],
       groups: {
         Now: ['today', 'events', 'whatson', 'thisweek', 'weather', 'vote'],
-        Campus: ['university', 'jacks'],
+        Campus: ['gameday', 'university', 'jacks'],
         City: ['cityhall', 'closures', 'facilities'],
         More: ['jobs', 'play', 'farm'],
       },
@@ -515,7 +515,7 @@ const CITIES: Record<string, SiteConfig> = {
     eveningLayer: { mode: 'threshold', maxMiles: 35, includeTicketmasterSports: true },
     // Owner-approved 2026-10-21. Tabs follow GA4 traffic (facilities, not home sales); Home sales sits in Work & Home.
     nav: {
-      tabs: ['today', 'events', 'whatson', 'cityhall', 'traffic', 'facilities', 'workplace'],
+      tabs: ['today', 'tonight', 'events'],
       groups: {
         Now: ['today', 'tonight', 'events', 'whatson', 'thisweek', 'weather', 'vote'],
         City: ['cityhall', 'traffic', 'closures', 'facilities'],
@@ -679,7 +679,7 @@ const CITIES: Record<string, SiteConfig> = {
     eveningLayer: { mode: 'threshold', maxMiles: 20, includeTicketmasterSports: true, openLate: true, register: true },
     // Owner-approved 2026-10-21: six tabs for now, a seventh to be chosen (events / workplace / vail / weather).
     nav: {
-      tabs: ['today', 'cityhall', 'facilities', 'whatson', 'traffic', 'jobs'],
+      tabs: ['today', 'tonight', 'whatson'],
       groups: {
         Now: ['today', 'tonight', 'whatson', 'thisweek', 'weather', 'vote'],
         City: ['cityhall', 'traffic', 'facilities'],
@@ -779,7 +779,7 @@ const CITIES: Record<string, SiteConfig> = {
     townId: 'glasgow',
     eveningLayer: { mode: 'threshold', maxMiles: 15, includeTicketmasterSports: true, openLate: true, register: true },
     nav: {
-      tabs: ['today', 'events', 'cityhall'],
+      tabs: ['today', 'tonight', 'events'],
       groups: {
         Now: ['today', 'tonight', 'thisweek', 'events', 'whatson', 'weather'],
         City: ['cityhall', 'facilities'],

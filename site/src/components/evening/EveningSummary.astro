@@ -1,0 +1,25 @@
+---
+/** One line of facts at the top, computed from the page's own data (lib/evening-summary.ts). No generated text.
+ *  data-sum-* hooks let the browser re-count what is still on after the build went stale (lib/evening-client.ts). */
+import type { SummaryPart } from '../../lib/evening-summary';
+
+interface Props { parts: SummaryPart[]; label: string; train?: { monSat: string; sunday: string; name: string } | null }
+const { parts, label, train = null } = Astro.props;
+---
+{parts.length > 0 && (
+  <ul class="ev-summary" aria-label={label} data-ev-summary>
+    {parts.map((p) => (
+      <li data-sum={p.key}>
+        {p.key === 'train' && train
+          ? <span>Last {train.name} train <strong data-train data-mon-sat={train.monSat} data-sunday={train.sunday}>{p.text.replace(/^Last .* train /, '')}</strong></span>
+          : p.key === 'count'
+            ? <span data-sum-text>{p.text}</span>
+            : <span>{p.text}</span>}
+      </li>
+    ))}
+  </ul>
+)}
+<style is:global>
+  .ev-summary { display: flex; flex-wrap: wrap; gap: 0.2rem 1.5rem; list-style: none; margin: 0 0 1.25rem; padding: 0.6rem 0; border-top: 1px solid var(--rule, #c8c6bd); border-bottom: 1px solid var(--rule, #c8c6bd); font-weight: 600; font-size: 1rem; }
+  .ev-summary strong { font-variant-numeric: tabular-nums; }
+</style>

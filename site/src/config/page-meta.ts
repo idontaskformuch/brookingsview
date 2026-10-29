@@ -105,6 +105,11 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     h1Pattern: 'What to Do Tonight in {Town}',
     ledeRequirement: 'Say what is listed (evening events by group), where it comes from, and that times should be checked with the source.',
   },
+  'this-weekend': {
+    titlePattern: 'Things to Do This Weekend in {Town} | {Site}',
+    h1Pattern: 'What to Do This Weekend in {Town}',
+    ledeRequirement: 'Say what is listed (Friday evening to Sunday, by group), where it comes from, and that times should be checked with the source.',
+  },
   today: {
     titlePattern: '{Town} Today: Weather and Events | {Site}',
     h1Pattern: "What's Happening in {Town} Today",

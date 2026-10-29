@@ -37,6 +37,7 @@ export const SECTIONS: NavSection[] = [
   // Evening layer: towns with mode 'threshold' only (Brookings is 'never'; its /tonight/ page still builds, noindex, unlinked from the nav).
   { id: 'tonight', href: '/tonight/', label: 'Tonight', enabled: (c) => c.eveningLayer?.mode === 'threshold' },
   { id: 'whatson', href: '/whats-on/', label: "What's On", enabled: (c) => !!c.hasWhatsOn },
+  { id: 'gameday', href: '/game-day/', label: 'Game day', enabled: BROOKINGS },
   { id: 'university', href: '/university/', label: 'University', enabled: BROOKINGS },
   { id: 'jacks', href: '/jackrabbits/', label: 'Jackrabbits', enabled: BROOKINGS },
   { id: 'play', href: (c) => (MORENO(c) ? '/burro-bonanza/' : '/play/'), label: 'Play', enabled: (c) => BROOKINGS(c) || MORENO(c) },

@@ -1,0 +1,16 @@
+---
+/** The full "what this is / how to use it / sources" text, at the bottom of the page. The top of the page carries only
+ *  "Updated <date> · How we gather this" (EveningUpdated). */
+import PageGuide from '../PageGuide.astro';
+
+interface Props { shows: string; use: string }
+const { shows, use } = Astro.props;
+---
+<div id="about-this-page" class="ev-about">
+  <PageGuide shows={shows} use={use}><slot name="sources" /></PageGuide>
+  <slot />
+</div>
+<style is:global>
+  .ev-about { margin: 2rem 0 0; }
+  .ev-about p.ev-note { color: var(--ink-soft); font-size: 0.9375rem; max-width: 44rem; }
+</style>

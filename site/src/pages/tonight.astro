@@ -1,23 +1,30 @@
 ---
-/** /tonight -- "What can we do tonight?" (evening layer, steg 3; spec .claude/specs/weekend-layer.md T2).
- *  Rows come from lib/evening-items.ts (own events, SDSU, Ticketmaster); layout from lib/evening-page.ts. No AI text.
+/** /tonight -- "What can we do tonight?" (evening layer; spec .claude/specs/weekend-layer.md T2). Same components as /this-weekend
+ *  (components/evening/). Rows come from lib/evening-items.ts (own events, SDSU, Ticketmaster, the curated venue register); layout from
+ *  lib/evening-page.ts. No generated text: the summary line is counted from the data.
  *  Built for tonight and tomorrow night; the browser hides what has ended and flips the headings (script below + hide-ended sweep).
  *  Indexing: ALWAYS noindex and out of the sitemap until step 7 wires the threshold verdict (lib/evening-threshold.ts) to both,
  *  so the tag and the sitemap can never disagree. The verdict is only logged at build. Brookings (mode 'never') stays noindex for good. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
-import PageGuide from '../components/PageGuide.astro';
 import ShareButton from '../components/ShareButton.astro';
+import SectionHero from '../components/SectionHero.astro';
+import EveningDay from '../components/evening/EveningDay.astro';
+import EveningSummary from '../components/evening/EveningSummary.astro';
+import EveningAbout from '../components/evening/EveningAbout.astro';
 import { getWeather, getActiveAlerts, getUpcomingStories, getUpcomingArtsEvents, getFacilities, getOsmSnapshot, getEveningRegister } from '../lib/db';
 import { buildEventFeed, isFreeEvent } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
-import { buildEveningEntries, toThresholdItems, driveLabel } from '../lib/evening-items';
+import { buildEveningEntries, toThresholdItems } from '../lib/evening-items';
 import { evaluateEveningThreshold } from '../lib/evening-threshold';
 import { buildEveningSections } from '../lib/evening-page';
-import { placesFromSnapshot, openLateRows } from '../lib/osm-open-late';
+import { placesFromSnapshot, openLateRows, openLateCounts } from '../lib/osm-open-late';
+import { areasFor, withAreas } from '../lib/areas';
 import { gettingHomeFor } from '../lib/getting-home';
-import { showTimeGb } from '../lib/whats-on-dates';
+import { buildSummary, openAfterOneCount, lastSubwayTime } from '../lib/evening-summary';
+import { localDayNumber, localHourOf } from '../lib/local-day';
+import { EVENING_LAST_START_HOUR } from '../lib/evening-threshold';
 import { forecastLine } from '../lib/weather-format';
 import { resolvePageMeta } from '../lib/page-meta';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
@@ -34,32 +41,47 @@ const [periods, alerts, stories, arts, facilities] = await Promise.all([
 ]);
 const { items } = buildEventFeed(stories, arts, tz);
 const tm = siteConfig.hasWhatsOn ? await getTicketmasterEventsForTown(siteConfig, { includeSports: layer.includeTicketmasterSports }) : [];
-const checked = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
 const register = layer.register ? await getEveningRegister() : [];
-const entries = buildEveningEntries({
+const checked = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+const areaData = areasFor(siteConfig.townId);
+const entries = withAreas(buildEveningEntries({
   feed: items, ticketmaster: tm, register, now, timezone: tz, checked, cityName: siteConfig.cityName,
   isFree: (i) => isFreeEvent(i, facilities),
   ticketmasterMaxMiles: layer.maxMiles,
   includeTicketmasterSports: layer.includeTicketmasterSports,
-});
-const verdict = evaluateEveningThreshold({ items: toThresholdItems(entries), now, timezone: tz, mode: layer.mode });
-console.log(`[evening] ${siteConfig.townId}: indexable=${verdict.indexable} (${verdict.reason}) median items ${verdict.medianItems}, groups ${verdict.medianGroups}`);
+}), areaData);
 
-const sections = buildEveningSections(entries, now, tz);
 const osmSnapshot = layer.openLate ? await getOsmSnapshot() : null;
 const osm = placesFromSnapshot(osmSnapshot, now) ?? [];
 const osmChecked = osmSnapshot ? osmSnapshot.fetchedAt.slice(0, 10) : checked;
+const firstNight = localDayNumber(now, tz) + (localHourOf(now, tz) >= EVENING_LAST_START_HOUR ? 1 : 0);
+const verdict = evaluateEveningThreshold({
+  items: toThresholdItems(entries), now, timezone: tz, mode: layer.mode, openLateByDay: openLateCounts(osm, firstNight, 14, tz),
+});
+console.log(`[evening] ${siteConfig.townId}: indexable=${verdict.indexable} (${verdict.reason}) median items ${verdict.medianItems}, groups ${verdict.medianGroups}`);
+
+const sections = buildEveningSections(entries, now, tz);
 const lateBySection = new Map(sections.map((s) => [s.day, openLateRows(osm, s.day, tz)]));
 const anyLate = [...lateBySection.values()].some((r) => r.length > 0);
 const anyRows = sections.some((s) => s.count > 0) || anyLate;
 const home = gettingHomeFor(siteConfig.townId, now);
 const outside = entries.some((e) => e.driveMinutes !== null);
+const anyArea = entries.some((e) => e.area);
 const forecast = forecastLine(periods, tz, now);
 const alertCount = alerts.length;
-const timeText = (e: { start: string; laterStarts?: string[] }) => [e.start, ...(e.laterStarts ?? [])].map((t) => showTimeGb(t, tz)).join(', ');
-const label = { 'Free': 'Free', '18+': '18+', 'All ages': 'All ages' } as const;
-const dateOf = (iso: string) => new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(iso));
+
+const tonight = sections[0];
+const tonightLate = openLateRows(osm, tonight.day, tz, Number.MAX_SAFE_INTEGER);
+const isSunday = new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'short' }).format(now) === 'Sun';
+const lastTrain = lastSubwayTime(home, isSunday);
+const summary = buildSummary({
+  count: tonight.count, period: 'tonight', openAfterOne: openAfterOneCount(tonightLate, tonight.day, tz),
+  lastTrain, subwayName: home?.subway.name,
+});
+const train = home && lastTrain ? { monSat: lastSubwayTime(home, false) ?? lastTrain, sunday: lastSubwayTime(home, true) ?? lastTrain, name: home.subway.name } : null;
+
 const dayLabelOf = (day: number) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(day * 86_400_000));
+const updatedLabel = new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: 'numeric', month: 'long', year: 'numeric' }).format(now);
 
 const pageMeta = resolvePageMeta('tonight', siteConfig);
 const canonicalUrl = new URL('/tonight/', Astro.site ?? siteConfig.siteUrl).href;
@@ -69,20 +91,18 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
 <BaseLayout title={pageMeta.title} canonicalUrl={canonicalUrl} noindex={true}
   description={`Things to do tonight and tomorrow night in ${siteConfig.cityName}: live music, comedy, quiz nights and more, with times, venues and what is free.`}>
   <Breadcrumbs trail={breadcrumbTrail} />
-  <header class="tn-head">
+  <header class="ev-head">
     <h1>{pageMeta.h1}</h1>
     <ShareButton title={pageMeta.title} />
   </header>
+  <p class="ev-updated">Updated {updatedLabel} · <a href="#about-this-page">How we gather this</a></p>
 
-  <PageGuide
-    shows={`Events in ${siteConfig.cityName} that start this evening or tomorrow evening, grouped by what they are, with the start time, the venue and what is free.`}
-    use={`Pick the group that fits the night, then open the listing for the source's own details before you go. Times can change, so check the source for anything you plan around.${layer.maxMiles > 15 ? ' Rows outside town show an estimated drive time.' : ''}`}
-  >
-    {sourceNames}, read {checked}. <a href="/how-we-gather-this/">How we gather this</a>.
-  </PageGuide>
+  <SectionHero section="today" evening compact />
+
+  <EveningSummary parts={summary} label="Tonight at a glance" train={train} />
 
   {(forecast || alertCount > 0) && (
-    <p class="tn-weather">
+    <p class="ev-weather">
       {forecast && <span>{forecast} </span>}
       {alertCount > 0
         ? <a href="/weather/">{alertCount} active weather {alertCount === 1 ? 'alert' : 'alerts'}: check before you head out</a>
@@ -90,72 +110,26 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
     </p>
   )}
 
-  {sections.map((s) => (
-    <section class="tn-day" data-evening-day={s.day} data-tz={tz} data-built-kind={s.kind} aria-labelledby={`tn-h-${s.kind}`} hidden={s.count === 0 && lateBySection.get(s.day)!.length === 0 && s.kind === 'tomorrow' ? true : undefined}>
-      <h2 id={`tn-h-${s.kind}`}><span data-evening-heading>{s.kind === 'tonight' ? 'Tonight' : 'Tomorrow night'}</span> <span class="tn-date">{dayLabelOf(s.day)}</span></h2>
-      {s.count === 0 && <p class="tn-empty">Nothing listed for this evening yet.</p>}
-      {s.highlights.length > 0 && (
-        <ul class="tn-highlights" data-hide-ended>
-          {s.highlights.map((e) => (
-            <li class="tn-card" data-start={e.start} data-end={e.end ?? undefined}>
-              <p class="tn-time">{timeText(e)}{e.group && <span class="tn-group"> · {e.group}</span>}</p>
-              <h3>{e.href ? <a href={e.href}>{e.title}</a> : e.title}</h3>
-              {e.venue && <p class="tn-venue">{e.venue}</p>}
-              {e.driveMinutes !== null && <p class="tn-drive">{driveLabel(e.driveMinutes)}</p>}
-              {e.labels.length > 0 && <p class="tn-labels">{e.labels.map((l) => <span class="tn-label">{label[l]}</span>)}</p>}
-            </li>
-          ))}
-        </ul>
-      )}
-      {s.groups.map((g) => (
-        <div class="tn-group-block">
-          <h3 class="tn-group-name">{g.name}</h3>
-          <ul class="tn-rows" data-hide-ended data-hide-when-empty>
-            {g.entries.map((e) => (
-              <li class="tn-row" data-start={e.start} data-end={e.end ?? undefined}>
-                <span class="tn-time">{timeText(e)}</span>
-                <span class="tn-title">{e.href ? <a href={e.href}>{e.title}</a> : e.title}</span>
-                {e.venue && <span class="tn-venue"> at {e.venue}</span>}
-                {e.driveMinutes !== null && <span class="tn-drive"> ({driveLabel(e.driveMinutes)})</span>}
-                {e.labels.map((l) => <span class="tn-label">{label[l]}</span>)}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-      {lateBySection.get(s.day)!.length > 0 && (
-        <div class="tn-group-block">
-          <h3 class="tn-group-name">Open late</h3>
-          <ul class="tn-rows" data-hide-ended data-hide-when-empty>
-            {lateBySection.get(s.day)!.map((p) => (
-              <li class="tn-row" data-start={p.start} data-end={p.end}>
-                <span class="tn-title">{p.website ? <a href={p.website} rel="noopener">{p.name}</a> : p.name}</span>
-                <span class="tn-venue"> · {p.kind}, {p.closing}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </section>
-  ))}
-
-  {anyLate && (
-    <p class="tn-note">Open late lists pubs, bars, nightclubs and restaurants whose opening hours keep them open past 11 pm, latest closing first. Hours come from <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, read {osmChecked}. People edit them by hand, so check with the place before you go.</p>
-  )}
+  <div data-ev-page>
+    {sections.map((s) => (
+      <EveningDay
+        id={`tn-${s.kind}`} heading={s.kind === 'tonight' ? 'Tonight' : 'Tomorrow night'} dateLabel={dayLabelOf(s.day)}
+        highlights={s.highlights} groups={s.groups} count={s.count} late={lateBySection.get(s.day)!} tz={tz}
+        hidden={s.count === 0 && lateBySection.get(s.day)!.length === 0 && s.kind === 'tomorrow'}
+        attrs={{ 'data-evening-day': s.day, 'data-tz': tz, 'data-built-kind': s.kind }}
+      />
+    ))}
+  </div>
 
   {!anyRows && (
-    <p class="tn-none">Nothing is listed for this evening or the next. The <a href="/events/">full events list</a>{siteConfig.hasWhatsOn && <span> and <a href="/whats-on/">bigger shows in the region</a></span>} show what is coming later.</p>
-  )}
-
-  {outside && (
-    <p class="tn-note">Drive times are estimates from straight-line distance to the venue, not a route plan. Only shows within {layer.maxMiles} miles of {siteConfig.cityName} are listed.</p>
+    <p class="ev-empty">Nothing is listed for this evening or the next. The <a href="/events/">full events list</a>{siteConfig.hasWhatsOn && <span> and <a href="/whats-on/">bigger shows in the region</a></span>} show what is coming later.</p>
   )}
 
   {home && (
-    <section class="tn-home" aria-labelledby="tn-home-h">
-      <h2 id="tn-home-h">Getting home from {siteConfig.cityName}</h2>
+    <section class="ev-home" aria-labelledby="ev-home-h">
+      <h2 id="ev-home-h">Getting home from {siteConfig.cityName}</h2>
       <p>The {home.subway.name} runs {home.subway.hours.monSat} Monday to Saturday and {home.subway.hours.sunday} on Sunday. Last trains:</p>
-      <table class="tn-table">
+      <table class="ev-table">
         <thead><tr><th scope="col">Circle</th><th scope="col">From</th><th scope="col">Mon to Sat</th><th scope="col">Sunday</th></tr></thead>
         <tbody>
           {home.subway.lastTrains.map((r) => <tr><td>{r.circle}</td><td>{r.from}</td><td>{r.monSat}</td><td>{r.sunday}</td></tr>)}
@@ -163,45 +137,55 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
       </table>
       <p>Event nights and holidays can change these times. Check the source before you rely on a last train.</p>
       <p>{home.rail.name} publishes last trains route by route, so use the planner for your own journey: <a href={home.rail.plannerUrl} rel="noopener">{home.rail.sourceLabel}</a>.</p>
-      <p class="tn-checked">Source: <a href={home.subway.sourceUrl} rel="noopener">{home.subway.sourceLabel}</a>. Checked {home.checked}.</p>
+      <p class="ev-note">Source: <a href={home.subway.sourceUrl} rel="noopener">{home.subway.sourceLabel}</a>. Checked {home.checked}.</p>
     </section>
   )}
 
-  <p class="tn-more">More than tonight: the <a href="/events/">full events list</a>.</p>
+  <p class="ev-more-links">More than tonight: <a href="/this-weekend/">this weekend</a> · the <a href="/events/">full events list</a>.</p>
+
+  <EveningAbout
+    shows={`Events in ${siteConfig.cityName} that start this evening or tomorrow evening, grouped by what they are, with the start time, the venue and what is free.`}
+    use={`Pick the group that fits the night, then open the listing for the source's own details before you go. Times can change, so check the source for anything you plan around.${layer.maxMiles > 15 ? ' Rows outside town show an estimated drive time.' : ''}`}
+  >
+    <Fragment slot="sources">{sourceNames}, read {checked}. <a href="/how-we-gather-this/">How we gather this</a>.</Fragment>
+    {anyLate && (
+      <p class="ev-note">Open late lists pubs, bars, nightclubs and restaurants whose opening hours keep them open past 11 pm, latest closing first. Hours come from <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, read {osmChecked}. People edit them by hand, so check with the place before you go.</p>
+    )}
+    {anyArea && areaData && <p class="ev-note">{areaData.attribution}. The area shown is the nearest mapped one to the venue, so treat it as a guide.</p>}
+    {outside && (
+      <p class="ev-note">Drive times are estimates from straight-line distance to the venue, not a route plan. Only shows within {layer.maxMiles} miles of {siteConfig.cityName} are listed.</p>
+    )}
+  </EveningAbout>
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl))} />
 </BaseLayout>
 
 <script>
   import { sectionState } from '../lib/evening-page';
+  import { refreshSummary } from '../lib/evening-client';
   // The build can be hours old: hide an evening that is over, and turn "Tomorrow night" into "Tonight" after midnight.
+  let pageTz = 'UTC';
   document.querySelectorAll<HTMLElement>('[data-evening-day]').forEach((sec) => {
-    const state = sectionState(Number(sec.dataset.eveningDay), new Date(), sec.dataset.tz || 'UTC');
+    pageTz = sec.dataset.tz || pageTz;
+    const state = sectionState(Number(sec.dataset.eveningDay), new Date(), pageTz);
     if (state.hidden) { sec.hidden = true; return; }
     const heading = sec.querySelector<HTMLElement>('[data-evening-heading]');
     if (heading) heading.textContent = state.kind === 'tonight' ? 'Tonight' : 'Tomorrow night';
   });
+  // After the hide-ended sweep (BaseLayout) has run: re-count what is still on.
+  window.addEventListener('load', () => setTimeout(() => refreshSummary(document, pageTz, new Date(), (doc) => {
+    const first = doc.querySelector<HTMLElement>('.ev-day:not([hidden]) [data-evening-heading]');
+    return (first?.textContent ?? 'tonight').toLowerCase();
+  }), 0));
 </script>
 
 <style>
-  .tn-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.5rem; }
-  .tn-weather { margin: 0 0 1.25rem; color: var(--ink-soft); }
-  .tn-day { margin: 0 0 2rem; }
-  .tn-date { font-size: 0.9rem; font-weight: 400; color: var(--ink-soft); }
-  .tn-highlights { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); list-style: none; padding: 0; margin: 0 0 1.25rem; }
-  .tn-card { border: 1px solid var(--rule, #c8c6bd); padding: 0.75rem 0.9rem; background: var(--surface, transparent); }
-  .tn-card h3 { margin: 0.15rem 0 0.25rem; font-size: 1.05rem; }
-  .tn-card p { margin: 0; }
-  .tn-time { font-variant-numeric: tabular-nums; font-weight: 600; }
-  .tn-group, .tn-venue, .tn-drive { color: var(--ink-soft); font-weight: 400; }
-  .tn-group-name { margin: 1rem 0 0.35rem; font-size: 1rem; }
-  .tn-rows { list-style: none; padding: 0; margin: 0; }
-  .tn-row { padding: 0.3rem 0; border-bottom: 1px solid var(--rule, #e4e2da); }
-  .tn-row .tn-time { display: inline-block; min-width: 4.2rem; }
-  .tn-label { display: inline-block; margin-left: 0.4rem; padding: 0 0.4rem; border: 1px solid var(--rule, #c8c6bd); font-size: 0.8rem; }
-  .tn-labels { margin-top: 0.35rem; }
-  .tn-note, .tn-checked, .tn-empty, .tn-none { color: var(--ink-soft); font-size: 0.9375rem; }
-  .tn-home { margin: 2rem 0; max-width: 44rem; }
-  .tn-table { border-collapse: collapse; margin: 0.5rem 0 1rem; }
-  .tn-table th, .tn-table td { text-align: left; padding: 0.25rem 1rem 0.25rem 0; font-variant-numeric: tabular-nums; }
+  .ev-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.25rem; }
+  .ev-updated { margin: 0 0 1rem; color: var(--ink-soft); font-size: 0.9375rem; }
+  .ev-weather { margin: 0 0 1.25rem; color: var(--ink-soft); }
+  .ev-note, .ev-empty { color: var(--ink-soft); font-size: 0.9375rem; }
+  .ev-home { margin: 2rem 0; max-width: 44rem; }
+  .ev-table { border-collapse: collapse; margin: 0.5rem 0 1rem; }
+  .ev-table th, .ev-table td { text-align: left; padding: 0.25rem 1rem 0.25rem 0; font-variant-numeric: tabular-nums; }
+  .ev-more-links { margin: 1.5rem 0 0; }
 </style>

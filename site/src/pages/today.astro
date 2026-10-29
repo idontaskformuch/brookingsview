@@ -29,6 +29,7 @@ import { resolvePageMeta } from '../lib/page-meta';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
 import { selectTodayShows } from '../lib/today-shows';
 import { forecastLine } from '../lib/weather-format';
+import { enabledSections } from '../lib/nav-sections';
 
 const [periods, alerts, upcomingEvents, artsEvents, trafficIncidents, closureStatus, facilities] = await Promise.all([
   getWeather(),
@@ -61,6 +62,8 @@ const pageTitle = pageMeta.title;
 const hubBacklink = resolveHubBacklink('today', siteConfig);
 import PageGuide from '../components/PageGuide.astro';
 import { todayDescription, todayShows, todaySources } from '../lib/today-copy';
+// Facilities, council/city hall and traffic are not tabs (owner 2026-10-29); they are linked from here and from the footer.
+const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facilities', 'traffic'].includes(s.id));
 ---
 
 <BaseLayout title={pageTitle} ogSlug="section-today"
@@ -98,9 +101,13 @@ import { todayDescription, todayShows, todaySources } from '../lib/today-copy';
     headingText={pageMeta.h1}
   />
   {siteConfig.eveningLayer && <p class="today-tonight">Planning the evening? <a href="/tonight/">Things to do tonight in {siteConfig.cityName}</a>.</p>}
+  {moreLinks.length > 0 && (
+    <p class="today-more">Also in {siteConfig.cityName}: {moreLinks.map((l, i) => <>{i > 0 && (i === moreLinks.length - 1 ? ' and ' : ', ')}<a href={l.href}>{l.label}</a></>)}.</p>
+  )}
 </BaseLayout>
 
 <style>
+  .today-more { margin: 0.5rem 0 0; }
   .lede { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.5rem; }
   .today-tonight { margin: 1rem 0 0; }
   .lede__backlink { margin: 0; color: var(--ink-soft); font-size: 0.9375rem; }

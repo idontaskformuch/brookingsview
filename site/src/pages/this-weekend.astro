@@ -1,0 +1,157 @@
+---
+/** /this-weekend -- "What can we do this weekend?" (evening layer step 4; spec .claude/specs/weekend-layer.md T3). Friday evening to
+ *  Sunday night from the same rows and components as /tonight (components/evening/). Groups: Nights out & live music, Sport,
+ *  Markets & food, Family, Free (lib/evening-weekend.ts). No generated text: the summary line is counted from the data, so there is no
+ *  AI introduction (the spec allowed a three-sentence one; the counted line says the same without a model).
+ *  Indexing: ALWAYS noindex and out of the sitemap until step 7, like /tonight. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import ShareButton from '../components/ShareButton.astro';
+import SectionHero from '../components/SectionHero.astro';
+import EveningDay from '../components/evening/EveningDay.astro';
+import EveningSummary from '../components/evening/EveningSummary.astro';
+import EveningAbout from '../components/evening/EveningAbout.astro';
+import { getWeather, getActiveAlerts, getUpcomingStories, getUpcomingArtsEvents, getFacilities, getOsmSnapshot, getEveningRegister } from '../lib/db';
+import { buildEventFeed, isFreeEvent } from '../lib/events';
+import { siteConfig } from '../lib/site-config';
+import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
+import { buildEveningEntries } from '../lib/evening-items';
+import { buildWeekendSections, weekendDayHidden } from '../lib/evening-weekend';
+import { placesFromSnapshot, openLateRows } from '../lib/osm-open-late';
+import { areasFor, withAreas } from '../lib/areas';
+import { gettingHomeFor } from '../lib/getting-home';
+import { buildSummary, openAfterOneCount, lastSubwayTime } from '../lib/evening-summary';
+import { forecastLine } from '../lib/weather-format';
+import { resolvePageMeta } from '../lib/page-meta';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+
+const layer = siteConfig.eveningLayer;
+if (!layer) {
+  return Astro.redirect('/', 302);
+}
+
+const now = new Date();
+const tz = siteConfig.timezone;
+const [periods, alerts, stories, arts, facilities] = await Promise.all([
+  getWeather(), getActiveAlerts(), getUpcomingStories(['event'], 200), getUpcomingArtsEvents(60), getFacilities(),
+]);
+const { items } = buildEventFeed(stories, arts, tz);
+const tm = siteConfig.hasWhatsOn ? await getTicketmasterEventsForTown(siteConfig, { includeSports: layer.includeTicketmasterSports }) : [];
+const register = layer.register ? await getEveningRegister() : [];
+const checked = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+const areaData = areasFor(siteConfig.townId);
+const entries = withAreas(buildEveningEntries({
+  feed: items, ticketmaster: tm, register, now, timezone: tz, checked, cityName: siteConfig.cityName,
+  isFree: (i) => isFreeEvent(i, facilities),
+  ticketmasterMaxMiles: layer.maxMiles,
+  includeTicketmasterSports: layer.includeTicketmasterSports,
+}), areaData);
+
+const osmSnapshot = layer.openLate ? await getOsmSnapshot() : null;
+const osm = placesFromSnapshot(osmSnapshot, now) ?? [];
+const osmChecked = osmSnapshot ? osmSnapshot.fetchedAt.slice(0, 10) : checked;
+
+const sections = buildWeekendSections(entries, now, tz);
+const saturday = sections[1];
+const lateByDay = new Map(sections.map((s) => [s.day, s.kind === 'sunday' ? [] : openLateRows(osm, s.day, tz)]));
+const anyLate = [...lateByDay.values()].some((r) => r.length > 0);
+const anyRows = sections.some((s) => s.count > 0) || anyLate;
+const home = gettingHomeFor(siteConfig.townId, now);
+const outside = entries.some((e) => e.driveMinutes !== null);
+const anyArea = entries.some((e) => e.area);
+const forecast = forecastLine(periods, tz, now);
+const alertCount = alerts.length;
+
+const total = sections.filter((s) => !weekendDayHidden(s.day, now, tz)).reduce((n, s) => n + s.count, 0);
+const saturdayLate = openLateRows(osm, saturday.day, tz, Number.MAX_SAFE_INTEGER);
+const monSat = lastSubwayTime(home, false);
+const summary = buildSummary({
+  count: total, period: 'this weekend', openAfterOne: openAfterOneCount(saturdayLate, saturday.day, tz), lastTrain: monSat, subwayName: home?.subway.name,
+});
+const train = home && monSat ? { monSat, sunday: lastSubwayTime(home, true) ?? monSat, name: home.subway.name } : null;
+
+const dayLabelOf = (day: number) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(day * 86_400_000));
+const headingOf = { friday: 'Friday night', saturday: 'Saturday', sunday: 'Sunday' } as const;
+const updatedLabel = new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: 'numeric', month: 'long', year: 'numeric' }).format(now);
+
+const pageMeta = resolvePageMeta('this-weekend', siteConfig);
+const canonicalUrl = new URL('/this-weekend/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [{ label: 'Home', href: '/' }, { label: 'This weekend', href: canonicalUrl }];
+const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketmaster listings' : 'Local event calendars') + (register.length > 0 ? ' and venue websites' : '');
+---
+<BaseLayout title={pageMeta.title} canonicalUrl={canonicalUrl} noindex={true}
+  description={`Things to do this weekend in ${siteConfig.cityName}: Friday night, Saturday and Sunday, with times, venues and what is free.`}>
+  <Breadcrumbs trail={breadcrumbTrail} />
+  <header class="ev-head">
+    <h1>{pageMeta.h1}</h1>
+    <ShareButton title={pageMeta.title} />
+  </header>
+  <p class="ev-updated">Updated {updatedLabel} · <a href="#about-this-page">How we gather this</a></p>
+
+  <SectionHero section="today" evening compact />
+
+  <EveningSummary parts={summary} label="This weekend at a glance" train={train} />
+
+  {(forecast || alertCount > 0) && (
+    <p class="ev-weather">
+      {forecast && <span>{forecast} </span>}
+      {alertCount > 0
+        ? <a href="/weather/">{alertCount} active weather {alertCount === 1 ? 'alert' : 'alerts'}: check before you head out</a>
+        : <a href="/weather/">Full forecast</a>}
+    </p>
+  )}
+
+  <div data-ev-page>
+    {sections.map((s) => (
+      <EveningDay
+        id={`wk-${s.kind}`} heading={headingOf[s.kind]} dateLabel={dayLabelOf(s.day)}
+        highlights={s.highlights} groups={s.groups} count={s.count} late={lateByDay.get(s.day)!} tz={tz}
+        hidden={weekendDayHidden(s.day, now, tz)} moreHref="/events/" moreLabel="on the full events list"
+        attrs={{ 'data-weekend-day': s.day, 'data-tz': tz }}
+      />
+    ))}
+  </div>
+
+  {!anyRows && (
+    <p class="ev-empty">Nothing is listed for this weekend yet. The <a href="/events/">full events list</a>{siteConfig.hasWhatsOn && <span> and <a href="/whats-on/">bigger shows in the region</a></span>} show what is coming later.</p>
+  )}
+
+  <p class="ev-more-links">Just tonight? See <a href="/tonight/">what is on tonight</a> · the <a href="/events/">full events list</a>.</p>
+
+  <EveningAbout
+    shows={`Events in ${siteConfig.cityName} from Friday evening to Sunday night, grouped into nights out and live music, sport, markets and food, family, and free, with the start time, the venue and what is free.`}
+    use={`Pick the day, then the group that fits. Open the listing for the source's own details before you go: times and tickets can change. Saturday and Sunday show the first ${8} per group; the rest are on the full events list.`}
+  >
+    <Fragment slot="sources">{sourceNames}, read {checked}. <a href="/how-we-gather-this/">How we gather this</a>.</Fragment>
+    {anyLate && (
+      <p class="ev-note">Open late lists pubs, bars, nightclubs and restaurants whose opening hours keep them open past 11 pm on Friday and Saturday, latest closing first. Hours come from <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, read {osmChecked}. People edit them by hand, so check with the place before you go.</p>
+    )}
+    {anyArea && areaData && <p class="ev-note">{areaData.attribution}. The area shown is the nearest mapped one to the venue, so treat it as a guide.</p>}
+    {outside && (
+      <p class="ev-note">Drive times are estimates from straight-line distance to the venue, not a route plan. Only shows within {layer.maxMiles} miles of {siteConfig.cityName} are listed.</p>
+    )}
+    {home && <p class="ev-note">Last trains: see <a href="/tonight/#ev-home-h">getting home on the tonight page</a> ({home.subway.name}, checked {home.checked}).</p>}
+  </EveningAbout>
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl))} />
+</BaseLayout>
+
+<script>
+  import { weekendDayHidden } from '../lib/evening-weekend';
+  import { refreshSummary } from '../lib/evening-client';
+  // The build can be a day old: hide a day that is over, then re-count what is still on.
+  let pageTz = 'UTC';
+  document.querySelectorAll<HTMLElement>('[data-weekend-day]').forEach((sec) => {
+    pageTz = sec.dataset.tz || pageTz;
+    if (weekendDayHidden(Number(sec.dataset.weekendDay), new Date(), pageTz)) sec.hidden = true;
+  });
+  window.addEventListener('load', () => setTimeout(() => refreshSummary(document, pageTz, new Date(), () => 'this weekend'), 0));
+</script>
+
+<style>
+  .ev-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.25rem; }
+  .ev-updated { margin: 0 0 1rem; color: var(--ink-soft); font-size: 0.9375rem; }
+  .ev-weather { margin: 0 0 1.25rem; color: var(--ink-soft); }
+  .ev-note, .ev-empty { color: var(--ink-soft); font-size: 0.9375rem; }
+  .ev-more-links { margin: 1.5rem 0 0; }
+</style>

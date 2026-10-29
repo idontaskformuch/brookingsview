@@ -1,0 +1,66 @@
+---
+/** One evening or day of /tonight and /this-weekend: highlight cards, then compact rows per group, then the Open late block.
+ *  `attrs` carries the page's own data attributes (the browser scripts find the section through them). */
+import EveningCard from './EveningCard.astro';
+import EveningRow from './EveningRow.astro';
+import type { EveningEntry } from '../../lib/evening-items';
+import type { OpenLateRow } from '../../lib/osm-open-late';
+
+interface Group { name: string; entries: EveningEntry[]; more?: number }
+interface Props {
+  id: string;
+  heading: string;
+  dateLabel: string;
+  highlights: EveningEntry[];
+  groups: Group[];
+  count: number;
+  late?: OpenLateRow[];
+  tz: string;
+  attrs?: Record<string, string | number | undefined>;
+  hidden?: boolean;
+  moreHref?: string;
+  moreLabel?: string;
+}
+const { id, heading, dateLabel, highlights, groups, count, late = [], tz, attrs = {}, hidden = false, moreHref, moreLabel } = Astro.props;
+---
+<section class="ev-day" aria-labelledby={`${id}-h`} hidden={hidden || undefined} {...attrs}>
+  <h2 id={`${id}-h`}><span data-evening-heading>{heading}</span> <span class="ev-date">{dateLabel}</span></h2>
+  {count === 0 && late.length === 0 && <p class="ev-empty">Nothing listed for this day yet.</p>}
+  {highlights.length > 0 && (
+    <ul class="ev-highlights" data-hide-ended>
+      {highlights.map((e) => <EveningCard e={e} tz={tz} />)}
+    </ul>
+  )}
+  {groups.map((g) => (
+    <div class="ev-group">
+      <h3 class="ev-group-name">{g.name}</h3>
+      <ul class="ev-rows" data-hide-ended data-hide-when-empty>
+        {g.entries.map((e) => <EveningRow e={e} tz={tz} />)}
+      </ul>
+      {g.more ? <p class="ev-more">{g.more} more {moreHref ? <a href={moreHref}>{moreLabel ?? 'on the full list'}</a> : 'on the full list'}</p> : null}
+    </div>
+  ))}
+  {late.length > 0 && (
+    <div class="ev-group">
+      <h3 class="ev-group-name">Open late</h3>
+      <ul class="ev-rows" data-hide-ended data-hide-when-empty>
+        {late.map((p) => (
+          <li class="ev-row" data-start={p.start} data-end={p.end} data-late>
+            <span class="ev-time"><span>{p.closing}</span></span>
+            <span class="ev-main">
+              {p.website ? <a class="ev-title" href={p.website} rel="noopener">{p.name}</a> : <span class="ev-title">{p.name}</span>}
+              <span class="ev-meta">{p.kind}, closes {p.closing}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )}
+</section>
+<style is:global>
+  .ev-day { margin: 0 0 2rem; }
+  .ev-date { font-size: 0.9rem; font-weight: 400; color: var(--ink-soft); }
+  .ev-group-name { margin: 1.25rem 0 0.25rem; font-size: 1rem; }
+  .ev-empty, .ev-more { color: var(--ink-soft); font-size: 0.9375rem; }
+  .ev-more { margin: 0.4rem 0 0; }
+</style>

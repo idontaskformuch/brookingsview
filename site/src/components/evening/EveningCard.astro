@@ -1,0 +1,36 @@
+---
+/** Highlight card. The picture is Ticketmaster's licensed image when the show has one (served through our own /img/ticketmaster route);
+ *  no picture otherwise -- never a stand-in. */
+import type { EveningEntry } from '../../lib/evening-items';
+import { driveLabel } from '../../lib/evening-items';
+import { showTimeGb } from '../../lib/whats-on-dates';
+
+interface Props { e: EveningEntry; tz: string }
+const { e, tz } = Astro.props;
+const times = [e.start, ...(e.laterStarts ?? [])].map((t) => showTimeGb(t, tz)).join(', ');
+const meta = [e.venue, e.area, driveLabel(e.driveMinutes)].filter(Boolean).join(' · ');
+const external = !!e.href && /^https?:/i.test(e.href);
+---
+<li class="ev-card" data-start={e.start} data-end={e.end ?? undefined}>
+  {e.image && <img class="ev-card-img" src={e.image.src} alt={e.image.alt} width={e.image.width} height={e.image.height} loading="lazy" decoding="async" onerror="this.remove()" />}
+  <div class="ev-card-body">
+    <p class="ev-card-time"><span class="ev-card-clock">{times}</span>{e.group && <span class="ev-card-group"> · {e.group}</span>}</p>
+    <h3 class="ev-card-title">{e.href ? <a href={e.href} rel={external ? 'noopener' : undefined}>{e.title}</a> : e.title}</h3>
+    {meta && <p class="ev-meta">{meta}</p>}
+    {e.labels.length > 0 && <p class="ev-card-labels">{e.labels.map((l) => <span class="ev-label">{l}</span>)}</p>}
+  </div>
+</li>
+<style is:global>
+  .ev-highlights { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); list-style: none; padding: 0; margin: 0 0 1.25rem; }
+  .ev-card { border: 1px solid var(--rule, #c8c6bd); background: var(--surface, transparent); overflow: hidden; display: flex; flex-direction: column; }
+  .ev-card-img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; background: var(--rule, #e4e2da); }
+  .ev-card-body { padding: 0.75rem 0.9rem; }
+  .ev-card-body p { margin: 0; }
+  .ev-card-time { font-variant-numeric: tabular-nums; }
+  .ev-card-clock { font-weight: 600; }
+  .ev-card-group { color: var(--ink-soft); }
+  .ev-card-title { margin: 0.2rem 0 0.25rem; font-size: 1.05rem; }
+  .ev-card-title a { color: inherit; text-decoration: none; }
+  .ev-card-title a:hover, .ev-card-title a:focus-visible { text-decoration: underline; text-underline-offset: 0.15em; }
+  .ev-card-labels { margin-top: 0.4rem !important; display: flex; gap: 0.35rem; flex-wrap: wrap; }
+</style>

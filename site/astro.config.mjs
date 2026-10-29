@@ -415,7 +415,7 @@ async function buildLastmodMap(townId, databaseUrl) {
   // 2026-10-22 (owner, Brookings AdSense review): /jobs/ (+ every category, below), every /events/<facet>/,
   // /events/past/ and /offline/ are noindex in the page itself -- mirrored here.
   // /tonight/ (evening layer, steg 3): noindex in the page itself until step 7 ties the threshold verdict to tag and sitemap.
-  const noindexThinPageUrls = new Set(['/tonight/', '/reviews/', '/recipes/', '/editorials/', '/columns/', '/vail-resorts/',
+  const noindexThinPageUrls = new Set(['/tonight/', '/this-weekend/', '/reviews/', '/recipes/', '/editorials/', '/columns/', '/vail-resorts/',
     '/jobs/', '/events/past/', '/offline/', '/university/weeks/',
     ...['today', 'this-weekend', 'free', 'kids', 'library', 'outdoor', 'campus'].map((f) => `/events/${f}/`)]);
   // Quiet sections (SiteConfig.quietSections, owner 2026-10-23): reachable, noindex in the page, out of the sitemap here. Mirrors

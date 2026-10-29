@@ -10,7 +10,7 @@ const BROOKINGS_NAV: NavConfig = {
   tabs: ['today', 'events', 'university', 'jacks', 'cityhall', 'traffic', 'jobs'],
   groups: {
     Now: ['today', 'events', 'whatson', 'thisweek', 'weather', 'vote'],
-    Campus: ['university', 'jacks'],
+    Campus: ['gameday', 'university', 'jacks'],
     City: ['cityhall', 'traffic', 'closures', 'facilities'],
     More: ['jobs', 'play', 'farm'],
   },
@@ -18,7 +18,7 @@ const BROOKINGS_NAV: NavConfig = {
 
 describe('registry == the old nav array (footer links must not change)', () => {
   const hrefs = (c: NavGate) => enabledSections(c).map((s) => s.href);
-  it('Brookings', () => expect(hrefs(BROOKINGS)).toEqual(['/today/', '/this-week/', '/events/', '/whats-on/', '/university/', '/jackrabbits/', '/play/',
+  it('Brookings', () => expect(hrefs(BROOKINGS)).toEqual(['/today/', '/this-week/', '/events/', '/whats-on/', '/game-day/', '/university/', '/jackrabbits/', '/play/',
     '/city-hall/', '/closures/', '/facilities/', '/farm-report/', '/traffic/', '/jobs/', '/weather/', '/vote/']));
   it('Moreno Valley', () => expect(hrefs(MORENO)).toEqual(['/today/', '/this-week/', '/events/', '/whats-on/', '/burro-bonanza/', '/city-hall/', '/closures/',
     '/facilities/', '/home-sales/', '/month/', '/sports/', '/workplace-watch/', '/traffic/', '/jobs/', '/weather/', '/vote/']));
@@ -90,5 +90,25 @@ describe('real town configs', () => {
   it('registry ids are unique', () => {
     expect(new Set(SECTIONS.map((s) => s.id)).size).toBe(SECTIONS.length);
     expect(ALL_SITES.length).toBeGreaterThan(0);
+  });
+});
+
+
+/** Owner 2026-10-29: tabs follow intent, everything else lives in the All panel (clicks per tab and All opens are logged as
+ *  nav_tab_click / nav_all_open; evaluate 2026-11-26). Facilities, council and traffic are linked from /today and the footer. */
+describe('tabs by intent (all towns)', () => {
+  const tabsOf = (id: string) => ALL_CONFIGS.find((c) => c.townId === id)!.nav!.tabs;
+  it('Glasgow and Moreno Valley: today, tonight, events', () => {
+    expect(tabsOf('glasgow')).toEqual(['today', 'tonight', 'events']);
+    expect(tabsOf('moreno_valley_ca')).toEqual(['today', 'tonight', 'events']);
+  });
+  it("Broomfield: today, tonight, What's On (its own /events/ is empty and quiet)", () => {
+    expect(tabsOf('broomfield_co')).toEqual(['today', 'tonight', 'whatson']);
+  });
+  it('Brookings: today, events, game day', () => {
+    expect(tabsOf('brookings_sd')).toEqual(['today', 'events', 'gameday']);
+  });
+  it('facilities, council/city hall and traffic are never tabs', () => {
+    for (const c of ALL_CONFIGS) for (const id of ['facilities', 'cityhall', 'traffic']) expect(c.nav?.tabs ?? []).not.toContain(id);
   });
 });
