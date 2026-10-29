@@ -48,9 +48,9 @@ export interface SiteConfig {
     /** Ticketmaster sport counts toward the evening layer. true where the town has no sport source of its own (Broomfield, Moreno Valley, Glasgow);
      *  false in Brookings, where it would duplicate the SDSU feed. */
     includeTicketmasterSports: boolean;
-    /** "Open late" ur OpenStreetMap (step 5): centre and radius for the Overpass query. Unset = no block (Brookings and Moreno Valley have almost
-     *  no opening hours mapped, t1-report.md section 1). */
-    openLate?: { latitude: number; longitude: number; radiusKm: number };
+    /** "Open late" block from the weekly OpenStreetMap snapshot (osm_places, scripts/refresh_osm_places.py; centre and radius live in configs/<town>.json).
+     *  Set only where OSM has opening hours mapped (Brookings and Moreno Valley have almost none, t1-report.md section 1). */
+    openLate?: true;
   };
   /** false = not listed in the other towns' multi-site disclosure yet (an unlaunched, noindexed
    *  site is not advertised from the live ones). Default true. */
@@ -674,7 +674,7 @@ const CITIES: Record<string, SiteConfig> = {
 
   broomfield_co: {
     townId: 'broomfield_co',
-    eveningLayer: { mode: 'threshold', maxMiles: 20, includeTicketmasterSports: true, openLate: { latitude: 39.9205, longitude: -105.0866, radiusKm: 8 } },
+    eveningLayer: { mode: 'threshold', maxMiles: 20, includeTicketmasterSports: true, openLate: true },
     // Owner-approved 2026-10-21: six tabs for now, a seventh to be chosen (events / workplace / vail / weather).
     nav: {
       tabs: ['today', 'cityhall', 'facilities', 'whatson', 'traffic', 'jobs'],
@@ -775,7 +775,7 @@ const CITIES: Record<string, SiteConfig> = {
   // yet listed in the US towns' network disclosure. Phase 3 enables sources one by one.
   glasgow: {
     townId: 'glasgow',
-    eveningLayer: { mode: 'threshold', maxMiles: 15, includeTicketmasterSports: true, openLate: { latitude: 55.8642, longitude: -4.2518, radiusKm: 5 } },
+    eveningLayer: { mode: 'threshold', maxMiles: 15, includeTicketmasterSports: true, openLate: true },
     nav: {
       tabs: ['today', 'events', 'cityhall'],
       groups: {

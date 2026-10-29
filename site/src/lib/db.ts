@@ -2235,6 +2235,19 @@ export async function getFacilities(): Promise<Facility[]> {
   `) as Facility[];
 }
 
+/** The weekly OpenStreetMap snapshot for this town (scripts/refresh_osm_places.py), or null when there is none or the table is not there
+ *  yet. Builds read this and never call Overpass; lib/osm-open-late.ts applies the 14-day freshness rule. */
+export async function getOsmSnapshot(): Promise<{ fetchedAt: string; elements: unknown[] } | null> {
+  try {
+    const rows = (await sql`SELECT fetched_at, elements FROM osm_places WHERE town_id = ${TOWN_ID}`) as Array<{ fetched_at: string | Date; elements: unknown }>;
+    if (rows.length === 0 || !Array.isArray(rows[0].elements)) return null;
+    return { fetchedAt: new Date(rows[0].fetched_at).toISOString(), elements: rows[0].elements };
+  } catch (e) {
+    console.warn(`[evening] open late left out, osm_places unreadable (${e instanceof Error ? e.message : String(e)})`);
+    return null;
+  }
+}
+
 /** Whether this town has AT LEAST ONE story with a real, non-empty
  *  venue_raw -- the actual input signal resolveVenueSlugForImage() matches
  *  facilities.name_aliases against (see lib/images.ts). Backs

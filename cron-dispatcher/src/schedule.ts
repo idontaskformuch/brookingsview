@@ -25,6 +25,10 @@ export const SCRAPE_WORKFLOWS = [
   'glasgow-scrape.yml',
 ];
 
+// Weekly OpenStreetMap snapshot for /tonight's "Open late" (owner 2026-10-29): rides the Monday 11:00 UTC scrape tick, so no extra cron
+// trigger is needed (Cloudflare's free plan caps them). Overpass policy: one run per town per week.
+export const OSM_WORKFLOW = 'osm-open-late.yml';
+
 // Broomfield is deliberately absent: its school_alerts sources are disabled
 // (zero runs/rows ever, Adams 12 bot-challenge, BVSD app-only), so a morning
 // run there would only rebuild with nothing to show. Revisit when a source
@@ -53,7 +57,11 @@ export function localParts(scheduledTime: number, timeZone: string) {
 
 /** Workflow files to workflow_dispatch for a given cron + fire time. */
 export function dueWorkflows(cron: string, scheduledTime: number): string[] {
-  if (cron === SCRAPE_CRON) return [...SCRAPE_WORKFLOWS];
+  if (cron === SCRAPE_CRON) {
+    const at = new Date(scheduledTime);
+    const mondayMorning = at.getUTCDay() === 1 && at.getUTCHours() === 11;
+    return mondayMorning ? [...SCRAPE_WORKFLOWS, OSM_WORKFLOW] : [...SCRAPE_WORKFLOWS];
+  }
   if (cron === MORNING_CRON) {
     return MORNING_TOWNS.filter(({ timeZone }) => {
       const { hour, minute, weekday } = localParts(scheduledTime, timeZone);

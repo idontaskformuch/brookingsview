@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { placesFromOverpass, openLateRows, overpassQuery, getOsmPlaces, _resetOsmCacheForTests } from './osm-open-late';
+import { describe, expect, it } from 'vitest';
+import { placesFromOverpass, openLateRows, placesFromSnapshot } from './osm-open-late';
 
 const el = (id: number, tags: Record<string, string>) => ({ type: 'node', id, tags });
 // 2026-10-30 is a Friday; day number = days since epoch.
@@ -49,31 +49,28 @@ describe('openLateRows', () => {
   });
 });
 
-describe('overpassQuery', () => {
-  it('asks for named places with opening hours inside the radius', () => {
-    const q = overpassQuery(55.8642, -4.2518, 5);
-    expect(q).toContain('around:5000,55.8642,-4.2518');
-    expect(q).toContain('["opening_hours"]["name"]');
+describe('placesFromSnapshot', () => {
+  const now = new Date('2026-11-02T12:00:00Z');
+  const elements = [el(1, { name: 'A', amenity: 'pub', opening_hours: '24/7' })];
+  it('reads a fresh snapshot', () => {
+    expect(placesFromSnapshot({ fetchedAt: '2026-10-30T11:00:00Z', elements }, now)).toHaveLength(1);
+  });
+  it('accepts 14 days, refuses 15', () => {
+    expect(placesFromSnapshot({ fetchedAt: '2026-10-19T12:00:00Z', elements }, now)).toHaveLength(1);
+    expect(placesFromSnapshot({ fetchedAt: '2026-10-18T11:00:00Z', elements }, now)).toBeNull();
+  });
+  it('gives null (no block) when there is no snapshot or the date is unreadable', () => {
+    expect(placesFromSnapshot(null, now)).toBeNull();
+    expect(placesFromSnapshot({ fetchedAt: 'not a date', elements }, now)).toBeNull();
   });
 });
 
-describe('getOsmPlaces', () => {
-  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); _resetOsmCacheForTests(); });
-  it('shares one fetch per town', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ elements: [el(1, { name: 'A', amenity: 'pub', opening_hours: '24/7' })] })));
-    vi.stubGlobal('fetch', fetchMock);
-    const [a, b] = await Promise.all([getOsmPlaces(1, 2, 3), getOsmPlaces(1, 2, 3)]);
-    expect(a).toHaveLength(1);
-    expect(b).toBe(a);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-  it('returns an empty list, not an error, when Overpass is down', async () => {
-    vi.useFakeTimers();
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('busy', { status: 502 })));
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const p = getOsmPlaces(9, 9, 9);
-    await vi.runAllTimersAsync();
-    expect(await p).toEqual([]);
-    expect(warn).toHaveBeenCalled();
+describe('builds never call Overpass', () => {
+  it('no site source file mentions the Overpass endpoint or fetches it', async () => {
+    const { readdirSync, readFileSync } = await import('node:fs');
+    const dir = new URL('.', import.meta.url);
+    const offenders = readdirSync(dir).filter((f) => /\.(ts|astro)$/.test(f) && !f.endsWith('.test.ts'))
+      .filter((f) => /overpass-api|overpass\.kumi|interpreter/i.test(readFileSync(new URL(f, dir), 'utf8')));
+    expect(offenders).toEqual([]);
   });
 });

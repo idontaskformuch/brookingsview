@@ -1,9 +1,9 @@
 /** "Open late" for the evening layer (step 5, spec .claude/specs/weekend-layer.md T2): pubs, bars, nightclubs and restaurants whose
- *  OpenStreetMap `opening_hours` keep them open past 11 pm on a given evening. Read from Overpass at every build, so the rows follow
- *  the source (freshness rule, spec Skydd punkt 4). Data © OpenStreetMap contributors, ODbL: the page credits and links it.
+ *  OpenStreetMap `opening_hours` keep them open past 11 pm on a given evening. Read from the weekly snapshot in osm_places
+ *  (scripts/refresh_osm_places.py): builds never call Overpass. No snapshot, or one older than 14 days, means no block (freshness rule,
+ *  spec Skydd punkt 4). Data © OpenStreetMap contributors, ODbL: the page credits and links it.
  *
- *  A failed fetch gives an empty list and a console warning, never a failed build: the block is simply left out. Places whose hours
- *  we cannot read exactly (lib/osm-hours.ts) are left out too. Open-late places are NOT events and never count toward the
+ *  Places whose hours we cannot read exactly (lib/osm-hours.ts) are left out. Open-late places are NOT events and never count toward the
  *  indexing threshold. */
 import { parseOpeningHours, lateRange, closingLabel, type WeekHours } from './osm-hours';
 import { localMidnightIso } from './local-day';
@@ -30,15 +30,12 @@ export interface OpenLateRow {
   end: string;
 }
 
-export const OVERPASS_ENDPOINTS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 export const OPEN_LATE_MAX_ROWS = 12;
+/** A snapshot older than this gives no Open late block (owner 2026-10-29). */
+export const SNAPSHOT_MAX_AGE_DAYS = 14;
 const KINDS: Record<string, OpenLateKind> = { pub: 'Pub', bar: 'Bar', nightclub: 'Nightclub', restaurant: 'Restaurant' };
 
 interface OverpassElement { type: string; id: number; tags?: Record<string, string> }
-
-export function overpassQuery(lat: number, lon: number, radiusKm: number): string {
-  return `[out:json][timeout:25];nwr["amenity"~"^(pub|bar|nightclub|restaurant)$"]["opening_hours"]["name"](around:${Math.round(radiusKm * 1000)},${lat},${lon});out tags;`;
-}
 
 function safeWebsite(raw: string | undefined): string | null {
   if (!raw) return null;
@@ -87,37 +84,12 @@ export function openLateRows(places: OsmPlace[], day: number, tz: string, max = 
   return rows.slice(0, max).map(({ endMin: _e, ...row }) => row);
 }
 
-async function fetchPlaces(lat: number, lon: number, radiusKm: number): Promise<OsmPlace[]> {
-  const body = new URLSearchParams({ data: overpassQuery(lat, lon, radiusKm) });
-  let lastError = 'no endpoint tried';
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const endpoint = OVERPASS_ENDPOINTS[attempt % OVERPASS_ENDPOINTS.length];
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST', body, headers: { 'User-Agent': 'ViewMediaBot (evening layer build)' }, signal: AbortSignal.timeout(30_000),
-      });
-      if (res.ok) {
-        const json = (await res.json()) as { elements?: OverpassElement[] };
-        return placesFromOverpass(json.elements ?? []);
-      }
-      lastError = `${endpoint} answered ${res.status}`;
-    } catch (e) {
-      lastError = `${endpoint}: ${e instanceof Error ? e.message : String(e)}`;
-    }
-    await new Promise((r) => setTimeout(r, 2_000 * (attempt + 1)));
-  }
-  console.warn(`[evening] open late left out, Overpass unavailable (${lastError})`);
-  return [];
+export interface OsmSnapshot { fetchedAt: string; elements: unknown[] }
+
+/** The stored snapshot as places, or null when there is none or it is older than SNAPSHOT_MAX_AGE_DAYS (then the page has no Open late block). */
+export function placesFromSnapshot(snapshot: OsmSnapshot | null, now: Date): OsmPlace[] | null {
+  if (!snapshot) return null;
+  const age = now.getTime() - new Date(snapshot.fetchedAt).getTime();
+  if (Number.isNaN(age) || age > SNAPSHOT_MAX_AGE_DAYS * 86_400_000) return null;
+  return placesFromOverpass(snapshot.elements as OverpassElement[]);
 }
-
-const _cache = new Map<string, Promise<OsmPlace[]>>();
-
-/** One real fetch per town per build process, shared by /tonight and /this-weekend. */
-export function getOsmPlaces(lat: number, lon: number, radiusKm: number): Promise<OsmPlace[]> {
-  const key = `${lat},${lon},${radiusKm}`;
-  let hit = _cache.get(key);
-  if (!hit) { hit = fetchPlaces(lat, lon, radiusKm); _cache.set(key, hit); }
-  return hit;
-}
-
-export function _resetOsmCacheForTests(): void { _cache.clear(); }

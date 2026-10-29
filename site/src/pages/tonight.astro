@@ -8,14 +8,14 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import PageGuide from '../components/PageGuide.astro';
 import ShareButton from '../components/ShareButton.astro';
-import { getWeather, getActiveAlerts, getUpcomingStories, getUpcomingArtsEvents, getFacilities } from '../lib/db';
+import { getWeather, getActiveAlerts, getUpcomingStories, getUpcomingArtsEvents, getFacilities, getOsmSnapshot } from '../lib/db';
 import { buildEventFeed, isFreeEvent } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
 import { buildEveningEntries, toThresholdItems, driveLabel } from '../lib/evening-items';
 import { evaluateEveningThreshold } from '../lib/evening-threshold';
 import { buildEveningSections } from '../lib/evening-page';
-import { getOsmPlaces, openLateRows } from '../lib/osm-open-late';
+import { placesFromSnapshot, openLateRows } from '../lib/osm-open-late';
 import { gettingHomeFor } from '../lib/getting-home';
 import { showTimeGb } from '../lib/whats-on-dates';
 import { forecastLine } from '../lib/weather-format';
@@ -45,7 +45,9 @@ const verdict = evaluateEveningThreshold({ items: toThresholdItems(entries), now
 console.log(`[evening] ${siteConfig.townId}: indexable=${verdict.indexable} (${verdict.reason}) median items ${verdict.medianItems}, groups ${verdict.medianGroups}`);
 
 const sections = buildEveningSections(entries, now, tz);
-const osm = layer.openLate ? await getOsmPlaces(layer.openLate.latitude, layer.openLate.longitude, layer.openLate.radiusKm) : [];
+const osmSnapshot = layer.openLate ? await getOsmSnapshot() : null;
+const osm = placesFromSnapshot(osmSnapshot, now) ?? [];
+const osmChecked = osmSnapshot ? osmSnapshot.fetchedAt.slice(0, 10) : checked;
 const lateBySection = new Map(sections.map((s) => [s.day, openLateRows(osm, s.day, tz)]));
 const anyLate = [...lateBySection.values()].some((r) => r.length > 0);
 const anyRows = sections.some((s) => s.count > 0) || anyLate;
@@ -136,7 +138,7 @@ const sourceNames = siteConfig.hasWhatsOn ? 'Local event calendars and Ticketmas
   ))}
 
   {anyLate && (
-    <p class="tn-note">Open late lists pubs, bars, nightclubs and restaurants whose opening hours keep them open past 11 pm, latest closing first. Hours come from <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, read {checked}. People edit them by hand, so check with the place before you go.</p>
+    <p class="tn-note">Open late lists pubs, bars, nightclubs and restaurants whose opening hours keep them open past 11 pm, latest closing first. Hours come from <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, read {osmChecked}. People edit them by hand, so check with the place before you go.</p>
   )}
 
   {!anyRows && (

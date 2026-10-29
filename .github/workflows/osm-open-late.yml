@@ -1,0 +1,26 @@
+name: osm-open-late
+# Weekly OpenStreetMap snapshot for /tonight's "Open late" block. Started by the cron dispatcher on Mondays (11:00 UTC tick), or by hand.
+# Writes osm_places only; the site builds read that row and never call Overpass. One Overpass request per town per week
+# (scripts/refresh_osm_places.py skips a town whose snapshot is younger than 6 days unless --force).
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Ignore the one-run-per-week guard"
+        type: boolean
+        default: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Refresh OpenStreetMap snapshot
+        run: python -m scripts.refresh_osm_places --apply ${{ inputs.force && '--force' || '' }}

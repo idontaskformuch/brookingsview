@@ -11,6 +11,7 @@
     "lat": 39.9205,
     "lon": -105.0866
   },
+  "open_late": { "radius_km": 8, "_note": "Weekly OpenStreetMap opening-hours snapshot for /tonight (scripts/refresh_osm_places.py -> osm_places). Centre = coordinates above." },
   "_domain_note": "broomfieldview.com -- matchar 'View'-varumärket (Brookings View, Moreno Valley View). Konsekvent med fleet-namngivningen.",
   "identity": {
     "terms": ["Adams 12", "Boulder Valley", "Interlocken", "Flatirons"],
