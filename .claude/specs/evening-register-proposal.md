@@ -1,6 +1,6 @@
 # Kuraterat register (2026-10-29)
 
-STATUS: Glasgow-listan GODKÄND av ägaren 2026-10-29 (+ Stereo och Cathouse efter ny robots-kontroll, se nedan). Broomfield-tillägg i slutet VÄNTAR på godkännande.
+STATUS: Glasgow-listan GODKÄND av ägaren 2026-10-29 (+ Stereo och Cathouse efter ny robots-kontroll, se nedan). Broomfield-tillägg GODKÄNDA 2026-10-29: Louisville Underground, Westminster Brewing Company, Bambei Brewing, Arvada Center och Trailside Saloon (Thornton); bekräftas mot ställenas egna sidor vid extraktion. Broomfield-registret = 9 ställen (4 Broomfield + 5). Identitetskontroll före varje extraktion: se weekend-layer.md, Registret.
 
 Status: FÖRSLAG, inget byggt, ingen extraktion körd, ingen tabell skapad (steg 6, kräver ägarens ja; migration + live-skrivning = regel 7).
 Robots lästes 2026-10-29 med UA "ViewMediaBot" (redirects följda). Regel (ägaren 2026-10-28): utesluts om robots nämner GPTBot/ClaudeBot/anthropic-ai/CCBot/Google-Extended/PerplexityBot ELLER `User-agent: *` har `Disallow: /`.

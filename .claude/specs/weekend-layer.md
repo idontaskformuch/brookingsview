@@ -57,6 +57,7 @@ Arbetsmaterial 2026-10-28 (påbörjat, ej klart): Overpass-skript i sessionens s
 ## Registret (steg 6): beslut 2026-10-29
 - Glasgow-listan godkänd (.claude/specs/evening-register-proposal.md). Robots för ej bedömda: 404 = tillåtet; 403/timeout/5xx/ingen DNS = hoppa över, ingen kringgång. Kontrollera även att domänen är ställets egen (kapade domäner som the13thnote.co.uk och frontrangebrewingcompany.com visar kasinosidor och ska aldrig användas).
 - Glasgow Film Theatre: EN rad per film och kväll med ALLA visningstider den kvällen.
+- IDENTITETSKONTROLL före VARJE extraktion (ägaren 2026-10-29): sidan måste fortfarande handla om stället, dvs ställets namn finns i <title> eller en rubrik (h1/h2) och sidan visar inga tecken på kapad domän (kasino, betting, spelrecensioner, 'for sale'-sida, parkerad domän). Faller kontrollen: INGEN extraktion, INGEN länk till stället på sajten, raden flaggas för ägaren (synlig i rapporten/loggen) och ligger kvar avstängd tills ägaren avgör. Kontrollen körs vid varje extraktion, inte bara första gången (en domän kan kapas senare).
 - Broomfield: registret får omfatta ställen inom ca 12 mi (Westminster, Louisville, Lafayette, Superior, Arvada, Boulder i utkanten); Ticketmaster behåller 20 mi. Ägaren godkänner varje tillägg.
 
 ## Roller (inga dubbletter)
