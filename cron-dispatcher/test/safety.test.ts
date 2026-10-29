@@ -55,21 +55,45 @@ describe('parseWfigs', () => {
   });
 });
 
-const air = (aqi: number, name: string, hour = 11) => ({ DateObserved: '2026-10-29', HourObserved: hour, LocalTimeZone: 'PDT', ReportingArea: 'Riverside', ParameterName: name, AQI: aqi, Category: { Number: aqi > 100 ? 3 : 2, Name: aqi > 100 ? 'Unhealthy for Sensitive Groups' : 'Moderate' } });
+const air = (aqi: number | null, name: string, hour = '08:00') => ({ dateObserved: '2026-10-29', hourObserved: hour, localTimeZone: 'PDT', reportingAreaName: 'Perris Vly', siteName: 'Riverside - Rubidoux', reportingAgency: 'South Coast AQMD', parameterName: name, nowcastAQI: aqi, aqiCategoryName: 'x' });
+const fixture = JSON.parse(readFileSync(new URL('./fixtures/airnow_ziplatlong_moreno_2026-10-29.json', import.meta.url), 'utf8'));
 
+const AIR_NOW = new Date('2026-10-29T16:00:00Z');
 describe('parseAirNow', () => {
-  it('uses the highest parameter and dates the reading in UTC', () => {
-    const n = parseAirNow([air(62, 'PM2.5'), air(88, 'O3')], NOW)!;
-    expect(n.raw).toMatchObject({ aqi: 88, parameter: 'O3', category: 'Moderate', source: 'AirNow' });
-    expect(n.observedAt).toBe('2026-10-29T18:00:00.000Z');
+  it('real Moreno response (key-free fixture): highest pollutant, EPA category, UTC time', () => {
+    const n = parseAirNow(fixture, AIR_NOW)!;
+    expect(n.raw).toMatchObject({ aqi: 54, parameter: 'PM2.5', category: 'Moderate', categoryNumber: 2, reportingArea: 'Perris Vly', station: 'Riverside - Rubidoux', source: 'AirNow' });
+    expect(n.observedAt).toBe('2026-10-29T15:00:00.000Z');
+    expect(n.title).toBe('Air quality: Perris Vly');
   });
-  it('shows nothing for old, undatable or empty readings', () => {
-    expect(parseAirNow([air(50, 'O3', 3)], NOW)).toBeNull();
-    expect(parseAirNow([{ ...air(50, 'O3'), LocalTimeZone: 'XYZ' }], NOW)).toBeNull();
-    expect(parseAirNow([], NOW)).toBeNull();
-    expect(() => parseAirNow({}, NOW)).toThrow();
+  it('category and number come from EPA breakpoints, not from the source text', () => {
+    const at = (v: number) => parseAirNow([air(v, 'PM2.5')], AIR_NOW)!.raw;
+    expect([0, 50, 51, 100, 101, 150, 151, 200, 201, 300, 301, 480].map((v) => at(v).categoryNumber)).toEqual([1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6]);
+    expect(at(120).category).toBe('Unhealthy for Sensitive Groups');
+    expect(at(120).categoryNumber).toBe(3);
+  });
+  it('uses the highest parameter', () => {
+    expect(parseAirNow([air(62, 'PM2.5'), air(88, 'OZONE')], AIR_NOW)!.raw.parameter).toBe('OZONE');
+  });
+  it('shows nothing for old (3 h limit), undatable, missing or empty readings', () => {
+    expect(parseAirNow([air(50, 'OZONE', '03:00')], AIR_NOW)).toBeNull();
+    expect(parseAirNow([{ ...air(50, 'OZONE'), localTimeZone: 'XYZ' }], AIR_NOW)).toBeNull();
+    expect(parseAirNow([air(null, 'OZONE'), air(-999, 'PM2.5')], AIR_NOW)).toBeNull();
+    expect(parseAirNow([], AIR_NOW)).toBeNull();
+    expect(() => parseAirNow({}, AIR_NOW)).toThrow();
+  });
+  it('asks the ziplatlong endpoint and never puts the key in an error', async () => {
+    let url = '';
+    await refreshSafetyUrl((u) => { url = u; });
+    expect(url).toContain('/aq/observation/current/ziplatlong/');
+    expect(url).not.toContain('distance');
   });
 });
+
+async function refreshSafetyUrl(seen: (u: string) => void) {
+  const { fetchAir } = await import('../src/safety/airnow');
+  await fetchAir(moreno, 'K', NOW, (async (u: any) => { seen(String(u)); return new Response('[]', { status: 200 }); }) as typeof fetch);
+}
 
 describe('refreshSafety', () => {
   const ok = (async () => new Response(JSON.stringify({ features: [fire()] }), { status: 200 })) as typeof fetch;

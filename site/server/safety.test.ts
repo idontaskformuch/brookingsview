@@ -12,7 +12,7 @@ const fireRow = (title: string, over: Partial<NoticeRow> = {}, raw: Record<strin
 });
 const airRow = (over: Partial<NoticeRow> = {}, raw: Record<string, unknown> = {}): NoticeRow => ({
   kind: 'air', title: 'Air quality: Riverside', url: 'https://www.airnow.gov/', observed_at: '2026-10-29T18:00:00Z', last_seen: '2026-10-29T19:50:00Z',
-  raw_data: { aqi: 88, category: 'Moderate', parameter: 'O3', reportingArea: 'Riverside', observedLocal: '2026-10-29 11:00 PDT', ...raw }, ...over,
+  raw_data: { aqi: 88, category: 'Moderate', categoryNumber: 2, parameter: 'PM2.5', station: 'Riverside - Rubidoux', reportingArea: 'Riverside', observedLocal: '2026-10-29 11:00 PDT', ...raw }, ...over,
 });
 
 describe('toPublicSafety', () => {
@@ -27,7 +27,7 @@ describe('toPublicSafety', () => {
     expect(air).toBeNull();
   });
   it('air carries the number, EPA category, time, preliminary flag and airnow.gov', () => {
-    expect(toPublicSafety([airRow()], NOW).air).toMatchObject({ aqi: 88, category: 'Moderate', preliminary: true, sourceUrl: 'https://www.airnow.gov/', observedLocal: '2026-10-29 11:00 PDT' });
+    expect(toPublicSafety([airRow()], NOW).air).toMatchObject({ aqi: 88, category: 'Moderate', categoryNumber: 2, color: '#FFFF00', preliminary: true, sourceUrl: 'https://www.airnow.gov/', observedLocal: '2026-10-29 11:00 PDT' });
   });
   it('holds back a notice with a crime word and counts it', () => {
     const r = toPublicSafety([fireRow('Missing Link Fire'), fireRow('Sage Fire')], NOW);

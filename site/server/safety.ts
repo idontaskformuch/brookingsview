@@ -41,7 +41,9 @@ export interface NoticeRow {
 }
 
 export interface PublicFire { id: string; name: string; acres: number | null; percentContained: number | null; county: string | null; distanceMiles: number | null; updated: string | null; sourceName: string; sourceUrl: string }
-export interface PublicAir { aqi: number; category: string; parameter: string; reportingArea: string; observed: string; observedLocal: string; preliminary: true; sourceName: string; sourceUrl: string }
+/** EPA's AQI colours by category number 1-6 (Good ... Hazardous). */
+export const AQI_COLORS = ['#00E400', '#FFFF00', '#FF7E00', '#FF0000', '#8F3F97', '#7E0023'];
+export interface PublicAir { aqi: number; category: string; categoryNumber: number; color: string; parameter: string; reportingArea: string; station: string; observed: string; observedLocal: string; preliminary: true; sourceName: string; sourceUrl: string }
 
 const iso = (v: string | Date | null): string | null => (v instanceof Date ? v.toISOString() : v ? new Date(v).toISOString() : null);
 const numOrNull = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
@@ -65,8 +67,9 @@ export function toPublicSafety(rows: NoticeRow[], now: Date): { fires: PublicFir
       const observed = iso(r.observed_at);
       const aqi = numOrNull(d.aqi);
       if (!observed || aqi === null || !strOrNull(d.category) || now.getTime() - new Date(observed).getTime() > AIR_MAX_AGE_MS) continue;
+      const cat = Math.min(6, Math.max(1, numOrNull(d.categoryNumber) ?? 1));
       air = {
-        aqi, category: String(d.category), parameter: String(d.parameter ?? ''), reportingArea: String(d.reportingArea ?? ''), observed, observedLocal: String(d.observedLocal ?? ''),
+        aqi, category: String(d.category), categoryNumber: cat, color: AQI_COLORS[cat - 1], parameter: String(d.parameter ?? ''), reportingArea: String(d.reportingArea ?? ''), station: String(d.station ?? ''), observed, observedLocal: String(d.observedLocal ?? ''),
         preliminary: true, sourceName: 'AirNow (EPA)', sourceUrl: r.url ?? 'https://www.airnow.gov/',
       };
     }
