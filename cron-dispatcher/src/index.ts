@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { refreshAlerts } from './alerts/refresh';
+import { refreshSafety } from './safety/refresh';
 import type { Sql } from './alerts/store';
 import { ALERTS_CRON } from './alerts/towns';
 import { dueWorkflows } from './schedule';
@@ -15,6 +16,8 @@ export interface Env {
   MET_OFFICE_WARNINGS_API_KEY?: string;
   // Glasgow's forecast (Site Specific, hourly on the whole hour): `... wrangler secret put MET_OFFICE_API_KEY`.
   MET_OFFICE_API_KEY?: string;
+  // Air quality (src/safety/, optional: without it only the wildfire part runs): `... wrangler secret put AIRNOW_API_KEY`.
+  AIRNOW_API_KEY?: string;
 }
 
 const REPO = 'idontaskformuch/brookingsview';
@@ -57,6 +60,10 @@ export default {
         console.log(JSON.stringify(weather));
         failed.push(...weather.filter((r) => !r.ok));
       }
+      // Wildfires (NIFC WFIGS) and air quality (AirNow) -> public_safety_notices; independent of the above, errors raised together.
+      const safety = await refreshSafety(env, { sql: neon(env.DATABASE_URL) as unknown as Sql });
+      console.log(JSON.stringify(safety));
+      failed.push(...safety.filter((r) => !r.ok).map((r) => ({ townId: `${r.townId}/${r.part}`, ok: false, error: r.error })));
       if (failed.length) throw new Error(`${failed.length} failed: ${failed.map((f) => `${f.townId}: ${f.error}`).join('; ')}`);
       return;
     }

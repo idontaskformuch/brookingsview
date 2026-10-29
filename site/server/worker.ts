@@ -26,6 +26,7 @@ import { handleComment } from './comment';
 import { handleShiftPollVote } from './shift-poll-vote';
 import { handleContact } from './contact';
 import { handleElectionResults } from './election-results';
+import { handleSafety } from './safety';
 import { handleWeatherWarnings } from './weather-warnings';
 import { handleContactStatus } from './contact-status';
 import { handleTicketmasterImage, handleTicketmasterImagePurge } from './ticketmaster-image';
@@ -117,6 +118,9 @@ export default {
     }
     if (request.method === 'GET' && url.pathname === '/api/alerts') {
       return handleAlerts(request, env);
+    }
+    if (request.method === 'GET' && url.pathname === '/api/safety') {
+      return handleSafety(request, env);
     }
     if (request.method === 'GET' && url.pathname === '/api/weather-warnings') {
       return handleWeatherWarnings(request, env);
