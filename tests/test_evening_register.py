@@ -253,3 +253,64 @@ def test_json_with_fence_and_trailing_remark_is_still_read():
     raw = "```json\n" + reply(entry()) + "\n```\n\nThe page lists one night."
     kept, rej = er.validate_extraction(raw, PAGE, TODAY)
     assert len(kept) == 1 and not rej
+
+
+# --- owner 2026-10-29: og:site_name / header identity, detail pages ----------------------------------------------------------
+
+def test_identity_accepts_og_site_name_and_header():
+    og = '<html><head><title>Event Calendar</title><meta property="og:site_name" content="Arvada Center"></head><body></body></html>'
+    assert er.identity_check("Arvada Center", og).ok
+    hdr = "<html><head><title>Home</title></head><body><header><a>Arvada Center for the Arts</a></header></body></html>"
+    assert er.identity_check("Arvada Center", hdr).ok
+    assert not er.identity_check("Arvada Center", "<html><head><title>Home</title></head><body><p>Arvada Center</p></body></html>").ok
+
+
+def test_hijack_marker_in_og_site_name_still_fails():
+    og = '<html><head><title>The Stand</title><meta property="og:site_name" content="Casino Royale"></head></html>'
+    assert not er.identity_check("The Stand", og).ok
+
+
+LIST_PAGE = ("<html><head><title>What's On | The Stand</title></head><body><h1>The Stand</h1>" + "<p>" + "Welcome to the venue. " * 20 + "</p>"
+             '<ul><li><a href="/event/idlewild">Idlewild</a> Nov 14</li><li><a href="https://other.example/x">Idlewild elsewhere</a></li></ul></body></html>')
+DETAIL = ("<html><head><title>Idlewild | The Stand</title></head><body><h1>Idlewild</h1><p>" + "Details about the night. " * 10 +
+          "</p><p>Nov 14 Idlewild live, doors 19:00 £25</p></body></html>")
+
+
+def detail_routes(extra=None):
+    r = {"https://venue.example/robots.txt": (404, "", None), URL: (200, LIST_PAGE, None), "https://venue.example/event/idlewild": (200, DETAIL, None)}
+    r.update(extra or {})
+    return r
+
+
+def detail_extract(system, text):
+    if "doors 19:00" in text:
+        return reply({"kind": "dated", "title": "Idlewild", "weekdays": [], "date": "2026-11-14", "times": ["19:00"], "quote": "Nov 14 Idlewild live, doors 19:00 £25"})
+    return reply({"kind": "dated", "title": "Idlewild", "weekdays": [], "date": "2026-11-14", "times": [], "quote": "Idlewild Nov 14"})
+
+
+def test_detail_page_read_only_for_entries_without_time_and_same_domain():
+    sess = FakeSession(detail_routes())
+    res = er.check_venue(VENUE, sess, "ViewMediaBot", detail_extract, TODAY)
+    assert [r.title for r in res.rules] == ["Idlewild"] and res.rules[0].times == ["19:00"] and res.rules[0].price == "£25"
+    assert res.rules[0].source_url == "https://venue.example/event/idlewild"
+    assert res.detail_urls == ["https://venue.example/event/idlewild"]
+    assert "https://other.example/x" not in sess.calls
+
+
+def test_detail_page_skipped_when_fetched_today_or_blocked_by_robots_or_identity():
+    res = er.check_venue(VENUE, FakeSession(detail_routes()), "ViewMediaBot", detail_extract, TODAY, detail_allowed=lambda u: False)
+    assert not res.rules and not res.detail_urls and any("24 h" in n for n in res.notes)
+    robots = detail_routes({"https://venue.example/robots.txt": (200, "User-agent: *\nDisallow: /event/\n", None)})
+    res = er.check_venue(VENUE, FakeSession(robots), "ViewMediaBot", detail_extract, TODAY)
+    assert not res.rules and any("robots" in n for n in res.notes)
+    hijacked = detail_routes({"https://venue.example/event/idlewild": (200, DETAIL.replace("The Stand", "Best Online Casino"), None)})
+    res = er.check_venue(VENUE, FakeSession(hijacked), "ViewMediaBot", detail_extract, TODAY)
+    assert not res.rules and any("identity" in n for n in res.notes)
+
+
+def test_detail_pages_capped_at_ten():
+    links = "".join(f'<a href="/event/e{i}">Event number {i} show</a>' for i in range(15))
+    page_html = LIST_PAGE.replace("</body>", links + "</body>")
+    rejected = [er.Rejected({"title": f"Event number {i} show", "times": []}, "times must be HH:MM") for i in range(15)]
+    p, _ = er.parse_page(page_html)
+    assert len(er.detail_links(rejected, p.links, URL)) == er.MAX_DETAIL_PAGES

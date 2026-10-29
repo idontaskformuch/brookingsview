@@ -28,7 +28,7 @@ from scrapers.user_agent import user_agent
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "configs"
 MIN_DAYS_BETWEEN_RUNS = 6
 PAUSE_BETWEEN_VENUES_S = 5
-KEEP_DAYS = 60  # entries not confirmed for this long are deleted (the site stops showing them after 7 / 35 days)
+INACTIVE_AFTER_DAYS = 60  # entries not confirmed for this long are set inactive, never deleted (owner 2026-10-29)
 MODEL = "claude-haiku-4-5-20251001"
 
 
@@ -73,6 +73,8 @@ def report(town_id: str, venue: dict, res: VenueResult, show: bool) -> None:
     print(f"  [{mark}] {town_id}/{venue['venue_id']}: {res.reason}")
     if res.status == "flagged":
         print(f"::warning::evening register: {town_id}/{venue['venue_id']} flagged for the owner: {res.reason}")
+    for note in res.notes:
+        print(f"      note: {note}")
     if show:
         for r in res.rules:
             when = ",".join(map(str, r.weekdays)) if r.kind == "recurring" else r.on_date
@@ -98,10 +100,13 @@ def write_result(cur, town_id: str, venue: dict, res: VenueResult) -> None:
             "default_group, source_url, evidence) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
             "ON CONFLICT (town_id, venue_id, entry_key) DO UPDATE SET title = EXCLUDED.title, weekdays = EXCLUDED.weekdays, "
             "on_date = EXCLUDED.on_date, times = EXCLUDED.times, price = EXCLUDED.price, age = EXCLUDED.age, "
-            "default_group = EXCLUDED.default_group, source_url = EXCLUDED.source_url, evidence = EXCLUDED.evidence, last_confirmed_at = now()",
+            "default_group = EXCLUDED.default_group, source_url = EXCLUDED.source_url, evidence = EXCLUDED.evidence, last_confirmed_at = now(), active = true",
             (town_id, venue["venue_id"], r.key, r.kind, r.title, r.weekdays, r.on_date, r.times, r.price, r.age,
-             venue["default_group"], res.final_url or venue["url"], r.quote),
+             venue["default_group"], r.source_url or res.final_url or venue["url"], r.quote),
         )
+    for durl in res.detail_urls:
+        cur.execute("INSERT INTO evening_register_detail_fetches (url, town_id, fetched_at) VALUES (%s, %s, now()) "
+                    "ON CONFLICT (url) DO UPDATE SET fetched_at = now()", (durl, town_id))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -125,6 +130,7 @@ def main(argv: list[str] | None = None) -> int:
     now = datetime.now(timezone.utc)
     session = requests.Session()
     state: dict[tuple[str, str], tuple[str, datetime]] = {}
+    recent_details: set[str] = set()
     conn = None
     if args.apply:
         from db.db import get_conn
@@ -133,6 +139,8 @@ def main(argv: list[str] | None = None) -> int:
         with conn.cursor() as cur:
             cur.execute("SELECT town_id, venue_id, status, checked_at FROM evening_register_venues")
             state = {(t, v): (s, c) for t, v, s, c in cur.fetchall()}
+            cur.execute("SELECT url FROM evening_register_detail_fetches WHERE fetched_at > now() - interval '24 hours'")
+            recent_details = {u for (u,) in cur.fetchall()}
     try:
         first = True
         for town in towns_with_register():
@@ -153,7 +161,9 @@ def main(argv: list[str] | None = None) -> int:
                     time.sleep(PAUSE_BETWEEN_VENUES_S)
                 first = False
                 extract = extract or make_extractor(town["town_id"], log_usage=args.apply)
-                res = check_venue(venue, session, user_agent(town["town_id"]), extract, local_today(now, town["timezone"]))
+                res = check_venue(venue, session, user_agent(town["town_id"]), extract, local_today(now, town["timezone"]),
+                                  detail_allowed=lambda u: u not in recent_details)
+                recent_details.update(res.detail_urls)
                 report(town["town_id"], venue, res, args.show)
                 if args.apply:
                     with conn.cursor() as cur:
@@ -161,8 +171,9 @@ def main(argv: list[str] | None = None) -> int:
                     conn.commit()
         if args.apply:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM evening_register_entries WHERE last_confirmed_at < now() - make_interval(days => %s)", (KEEP_DAYS,))
-                print(f"deleted {cur.rowcount} entries not confirmed for {KEEP_DAYS} days")
+                cur.execute("UPDATE evening_register_entries SET active = false WHERE active AND last_confirmed_at < now() - make_interval(days => %s)",
+                            (INACTIVE_AFTER_DAYS,))
+                print(f"set {cur.rowcount} entries inactive (not confirmed for {INACTIVE_AFTER_DAYS} days; nothing deleted)")
             conn.commit()
     finally:
         if conn is not None:

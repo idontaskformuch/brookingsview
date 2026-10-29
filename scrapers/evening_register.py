@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from html.parser import HTMLParser
 from typing import Any, Callable
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 from urllib.robotparser import RobotFileParser
 
 BOT_TOKEN = "ViewMediaBot"
@@ -87,6 +87,11 @@ class _Page(HTMLParser):
         self.title = ""
         self.headings: list[str] = []
         self.meta_description = ""
+        self.site_name = ""  # og:site_name
+        self.header_text = ""  # text inside <header>, first 300 chars
+        self.links: list[tuple[str, str]] = []  # (href, anchor text)
+        self._header_depth = 0
+        self._link: tuple[str, list[str]] | None = None
         self.lines: list[str] = []
         self._skip = 0
         self._in_title = False
@@ -99,8 +104,14 @@ class _Page(HTMLParser):
             self._in_title = True
         elif tag in ("h1", "h2"):
             self._heading = []
+        elif tag == "header":
+            self._header_depth += 1
+        elif tag == "a" and dict(attrs).get("href"):
+            self._link = (dict(attrs)["href"], [])
         elif tag == "meta" and dict(attrs).get("name", "").lower() == "description":
             self.meta_description = dict(attrs).get("content") or ""
+        elif tag == "meta" and dict(attrs).get("property", "").lower() == "og:site_name":
+            self.site_name = dict(attrs).get("content") or ""
         if tag in ("p", "li", "div", "br", "tr", "h1", "h2", "h3", "h4", "section", "article"):
             self.lines.append("\n")
 
@@ -109,6 +120,11 @@ class _Page(HTMLParser):
             self._skip = max(0, self._skip - 1)
         elif tag == "title":
             self._in_title = False
+        elif tag == "header":
+            self._header_depth = max(0, self._header_depth - 1)
+        elif tag == "a" and self._link is not None:
+            self.links.append((self._link[0], " ".join("".join(self._link[1]).split())))
+            self._link = None
         elif tag in ("h1", "h2") and self._heading is not None:
             self.headings.append(" ".join("".join(self._heading).split()))
             self._heading = None
@@ -120,6 +136,10 @@ class _Page(HTMLParser):
             self.title += data
         if self._heading is not None:
             self._heading.append(data)
+        if self._header_depth and len(self.header_text) < 300:
+            self.header_text = (self.header_text + " " + data.strip()).strip()
+        if self._link is not None:
+            self._link[1].append(data)
         self.lines.append(data)
 
 
@@ -147,11 +167,12 @@ def _norm(s: str) -> str:
 def identity_check(name: str, html: str, aliases: tuple[str, ...] = ()) -> Verdict:
     """The venue's name in <title> or an h1/h2, and no hijack markers in title, headings or description (or 3+ in the text)."""
     page, text = parse_page(html)
-    head = " | ".join([page.title, *page.headings])
+    head = " | ".join([page.title, *page.headings, page.site_name])
+    name_text = " | ".join([head, page.header_text])  # owner 2026-10-29: og:site_name and the page header count as the venue name too
     wanted = {_norm(n).removeprefix("the ").strip() for n in (name, *aliases)}
-    haystack = _norm(head)
+    haystack = _norm(name_text)
     if not any(w and w in haystack for w in wanted):
-        return Verdict(False, f"identity: '{name}' not found in the title or headings (title: {page.title[:80]!r})")
+        return Verdict(False, f"identity: '{name}' not found in the title, headings, og:site_name or header (title: {page.title[:80]!r})")
     marker = _HIJACK_RE.search(" ".join([head, page.meta_description]))
     if marker:
         return Verdict(False, f"identity: hijack marker '{marker.group(0)}' in title/headings/description")
@@ -177,6 +198,11 @@ EXTRACTION_SYSTEM = (
 )
 
 
+def system_prompt(today: date) -> str:
+    return (EXTRACTION_SYSTEM + f" Today is {today.isoformat()} ({today.strftime('%A')}). A date shown without a year means its next "
+            "occurrence on or after today.")
+
+
 @dataclass
 class Rule:
     kind: str
@@ -188,6 +214,7 @@ class Rule:
     age: str | None
     quote: str
     key: str = ""
+    source_url: str = ""  # set when the rule came from an event's own detail page
 
 
 @dataclass
@@ -319,6 +346,34 @@ def _date_in_quote(quote: str, d: date) -> bool:
 
 # --- network + one venue ----------------------------------------------------------------------------------------------------
 
+MAX_DETAIL_PAGES = 10  # per venue and run (owner 2026-10-29)
+
+
+def detail_links(rejected: list["Rejected"], links: list[tuple[str, str]], base_url: str) -> list[str]:
+    """For list entries rejected ONLY because the list page shows no time: the venue's own link whose anchor text names the event.
+    Same registrable domain only, http(s) only, at most MAX_DETAIL_PAGES, each URL once."""
+    base_dom = _registrable(urlparse(base_url).netloc)
+    out: list[str] = []
+    for rej in rejected:
+        e = rej.entry
+        if rej.why != "times must be HH:MM" or not isinstance(e, dict) or e.get("times") or not isinstance(e.get("title"), str):
+            continue
+        want = _norm(e["title"])
+        if len(want) < 4:
+            continue
+        for href, text in links:
+            t = _norm(text)
+            if len(t) < 4 or not (want in t or t in want):
+                continue
+            url = urljoin(base_url, href).split("#")[0]
+            if urlparse(url).scheme in ("http", "https") and _registrable(urlparse(url).netloc) == base_dom and url != base_url and url not in out:
+                out.append(url)
+                break
+        if len(out) >= MAX_DETAIL_PAGES:
+            break
+    return out
+
+
 @dataclass
 class VenueResult:
     venue_id: str
@@ -327,6 +382,8 @@ class VenueResult:
     rules: list[Rule] = field(default_factory=list)
     rejected: list[Rejected] = field(default_factory=list)
     final_url: str = ""
+    detail_urls: list[str] = field(default_factory=list)  # detail pages fetched (for the once-a-day record)
+    notes: list[str] = field(default_factory=list)
 
 
 def _registrable(host: str) -> str:
@@ -348,12 +405,16 @@ def fetch_text(session, url: str, ua: str) -> tuple[int | None, str, str]:
         return None, "", url
 
 
-def check_venue(venue: dict, session, ua: str, extract: Callable[[str, str], str], today: date) -> VenueResult:
-    """robots -> fetch -> identity -> extract -> validate. `extract(system, page_text)` returns the model's raw reply."""
+def check_venue(venue: dict, session, ua: str, extract: Callable[[str, str], str], today: date,
+                detail_allowed: Callable[[str], bool] = lambda url: True) -> VenueResult:
+    """robots -> fetch -> identity -> extract -> validate. `extract(system, page_text)` returns the model's raw reply.
+
+    Detail pages (owner 2026-10-29): only for list entries that lack a time, at most MAX_DETAIL_PAGES per venue, one fetch per URL per
+    day (`detail_allowed(url)` says whether it may be fetched), robots and the identity check apply to each."""
     vid, url = venue["venue_id"], venue["url"]
     origin = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
-    status, body, _ = fetch_text(session, f"{origin}/robots.txt", ua)
-    verdict = robots_verdict(status, body, url)
+    robots_status, robots_body, _ = fetch_text(session, f"{origin}/robots.txt", ua)
+    verdict = robots_verdict(robots_status, robots_body, url)
     if not verdict.ok:
         return VenueResult(vid, "skipped", verdict.reason)
     status, html, final = fetch_text(session, url, ua)
@@ -361,14 +422,44 @@ def check_venue(venue: dict, session, ua: str, extract: Callable[[str, str], str
         return VenueResult(vid, "skipped", f"page answered {status if status else 'nothing'}", final_url=final)
     if _registrable(urlparse(final).netloc) != _registrable(urlparse(url).netloc):
         return VenueResult(vid, "flagged", f"redirected to another domain ({urlparse(final).netloc})", final_url=final)
-    ident = identity_check(venue["name"], html, tuple(venue.get("aliases", ())))
+    aliases = tuple(venue.get("aliases", ()))
+    ident = identity_check(venue["name"], html, aliases)
     if not ident.ok:
         return VenueResult(vid, "flagged", ident.reason, final_url=final)
-    _, text = parse_page(html)
+    page, text = parse_page(html)
     if len(text) < 200:
         return VenueResult(vid, "ok", "page has almost no text (script-rendered?): nothing extracted", final_url=final)
-    rules, rejected = validate_extraction(extract(EXTRACTION_SYSTEM, text), text, today)
-    return VenueResult(vid, "ok", f"{len(rules)} rules kept, {len(rejected)} rejected", rules, rejected, final)
+    rules, rejected = validate_extraction(extract(system_prompt(today), text), text, today)
+    res = VenueResult(vid, "ok", "", rules, rejected, final)
+    seen = {r.key for r in rules}
+    for durl in detail_links(rejected, page.links, final):
+        if not robots_verdict(robots_status, robots_body, durl).ok:
+            res.notes.append(f"detail page not allowed by robots: {durl}")
+            continue
+        if not detail_allowed(durl):
+            res.notes.append(f"detail page fetched within 24 h, skipped: {durl}")
+            continue
+        dstatus, dhtml, dfinal = fetch_text(session, durl, ua)
+        res.detail_urls.append(durl)
+        if dstatus != 200 or _registrable(urlparse(dfinal).netloc) != _registrable(urlparse(url).netloc):
+            res.notes.append(f"detail page unusable ({dstatus}): {durl}")
+            continue
+        dident = identity_check(venue["name"], dhtml, aliases)
+        if not dident.ok:
+            res.notes.append(f"detail page failed identity ({dident.reason}): {durl}")
+            continue
+        _, dtext = parse_page(dhtml)
+        if len(dtext) < 100:
+            continue
+        drules, drej = validate_extraction(extract(system_prompt(today), dtext), dtext, today)
+        for r in drules:
+            if r.key not in seen:
+                seen.add(r.key)
+                r.source_url = dfinal
+                res.rules.append(r)
+        res.rejected.extend(drej)
+    res.reason = f"{len(res.rules)} rules kept, {len(res.rejected)} rejected, {len(res.detail_urls)} detail pages read"
+    return res
 
 
 def local_today(now: datetime, tz: str) -> date:

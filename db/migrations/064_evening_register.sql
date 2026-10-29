@@ -37,7 +37,19 @@ CREATE TABLE IF NOT EXISTS evening_register_entries (
     evidence           TEXT NOT NULL,
     first_seen_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_confirmed_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- Never deleted (owner 2026-10-29: keep the data for analysis). A rule not confirmed for 60 days is set inactive;
+    -- the venue page showing it again sets it active. The site reads active rows only.
+    active             BOOLEAN NOT NULL DEFAULT true,
     UNIQUE (town_id, venue_id, entry_key),
-    FOREIGN KEY (town_id, venue_id) REFERENCES evening_register_venues (town_id, venue_id) ON DELETE CASCADE
+    FOREIGN KEY (town_id, venue_id) REFERENCES evening_register_venues (town_id, venue_id)
 );
-CREATE INDEX IF NOT EXISTS evening_register_entries_town_idx ON evening_register_entries (town_id, last_confirmed_at);
+CREATE INDEX IF NOT EXISTS evening_register_entries_town_idx ON evening_register_entries (town_id, active, last_confirmed_at);
+
+-- One row per event detail page the job has fetched (owner 2026-10-29: at most one fetch per event page per day, at most 10 per venue
+-- and run, only when the list page shows no times). The job skips a URL fetched in the last 24 hours.
+CREATE TABLE IF NOT EXISTS evening_register_detail_fetches (
+    url        TEXT PRIMARY KEY,
+    town_id    TEXT NOT NULL,
+    fetched_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+

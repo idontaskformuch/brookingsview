@@ -2258,7 +2258,7 @@ export async function getEveningRegister(): Promise<RegisterRow[]> {
              e.default_group, e.source_url, e.last_confirmed_at
         FROM evening_register_entries e
         JOIN evening_register_venues v ON v.town_id = e.town_id AND v.venue_id = e.venue_id
-       WHERE e.town_id = ${TOWN_ID} AND v.status = 'ok'
+       WHERE e.town_id = ${TOWN_ID} AND v.status = 'ok' AND e.active
     `) as Array<Record<string, unknown>>;
     return rows.map((r) => ({
       venueName: String(r.venue_name), kind: r.kind as RegisterRow['kind'], title: String(r.title),
