@@ -44,7 +44,7 @@ describe('Glasgow skeleton config', () => {
     const nav = resolveNav(glasgow.nav, glasgow);
     expect(nav.tabs.map((t) => t.id)).toEqual(['today', 'events', 'cityhall']);
     const ids = enabledSections(glasgow).map((s) => s.id);
-    expect(ids).toEqual(['today', 'thisweek', 'events', 'whatson', 'cityhall', 'facilities', 'weather']);
+    expect(ids).toEqual(['today', 'thisweek', 'events', 'tonight', 'whatson', 'cityhall', 'facilities', 'weather']);
     expect(enabledSections(glasgow).find((s) => s.id === 'cityhall')!.label).toBe('Council');
     expect(nav.tabs.find((t) => t.id === 'cityhall')!.label).toBe('Council');
   });

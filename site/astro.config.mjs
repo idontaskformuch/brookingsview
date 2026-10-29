@@ -414,7 +414,8 @@ async function buildLastmodMap(townId, databaseUrl) {
   // /vail-resorts/ (Broomfield) joined 2026-10-21: a headline+link mirror of Vail Resorts' newsroom, noindex in the page itself.
   // 2026-10-22 (owner, Brookings AdSense review): /jobs/ (+ every category, below), every /events/<facet>/,
   // /events/past/ and /offline/ are noindex in the page itself -- mirrored here.
-  const noindexThinPageUrls = new Set(['/reviews/', '/recipes/', '/editorials/', '/columns/', '/vail-resorts/',
+  // /tonight/ (evening layer, steg 3): noindex in the page itself until step 7 ties the threshold verdict to tag and sitemap.
+  const noindexThinPageUrls = new Set(['/tonight/', '/reviews/', '/recipes/', '/editorials/', '/columns/', '/vail-resorts/',
     '/jobs/', '/events/past/', '/offline/', '/university/weeks/',
     ...['today', 'this-weekend', 'free', 'kids', 'library', 'outdoor', 'campus'].map((f) => `/events/${f}/`)]);
   // Quiet sections (SiteConfig.quietSections, owner 2026-10-23): reachable, noindex in the page, out of the sitemap here. Mirrors

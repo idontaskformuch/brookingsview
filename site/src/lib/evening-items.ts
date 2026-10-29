@@ -159,10 +159,19 @@ function ticketmasterEntry(item: TicketmasterFeedItem, o: EveningEntryOptions): 
   };
 }
 
-/** All evening candidates, passed events dropped, the same title + venue + start counted once (a Ticketmaster show a
- *  venue also lists itself, or a series row repeated), sorted by start. */
+const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+/** The same show listed by two sources ("DF Concerts Presents: NOAHFINNCE" from the venue's calendar and "NOAHFINNCE" from
+ *  Ticketmaster): same start instant and one title contains the other. */
+function sameShow(a: EveningEntry, b: EveningEntry): boolean {
+  if (a.start !== b.start) return false;
+  const x = norm(a.title), y = norm(b.title);
+  return x.length > 0 && y.length > 0 && (x === y || x.includes(y) || y.includes(x));
+}
+
+/** All evening candidates, passed events dropped, one row per show (same start and overlapping title; the shorter title is kept),
+ *  sorted by start. The same title at the same venue and start, listed twice by one source (a series row), counts once too. */
 export function buildEveningEntries(o: EveningEntryOptions): EveningEntry[] {
-  const seen = new Set<string>();
   const out: EveningEntry[] = [];
   const candidates = [
     ...o.feed.map((i) => ownEntry(i, o)),
@@ -171,10 +180,10 @@ export function buildEveningEntries(o: EveningEntryOptions): EveningEntry[] {
   for (const c of candidates) {
     if (!c) continue;
     if (hasEnded({ start: c.start, end: c.end ?? new Date(new Date(c.start).getTime() + DEFAULT_EVENT_MS).toISOString() }, o.now, o.timezone)) continue;
-    const key = `${c.title.trim().toLowerCase()}|${(c.venue ?? '').trim().toLowerCase()}|${c.start}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(c);
+    const at = out.findIndex((x) => sameShow(x, c));
+    if (at === -1) out.push(c);
+    else if (c.title.length < out[at].title.length) out[at] = { ...c, labels: [...new Set([...c.labels, ...out[at].labels])] };
+    else out[at] = { ...out[at], labels: [...new Set([...out[at].labels, ...c.labels])] };
   }
   return out.sort((a, b) => a.start.localeCompare(b.start));
 }

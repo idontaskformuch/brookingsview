@@ -512,7 +512,7 @@ const CITIES: Record<string, SiteConfig> = {
     nav: {
       tabs: ['today', 'events', 'whatson', 'cityhall', 'traffic', 'facilities', 'workplace'],
       groups: {
-        Now: ['today', 'events', 'whatson', 'thisweek', 'weather', 'vote'],
+        Now: ['today', 'tonight', 'events', 'whatson', 'thisweek', 'weather', 'vote'],
         City: ['cityhall', 'traffic', 'closures', 'facilities'],
         'Work & Home': ['workplace', 'homesales', 'jobs'],
         More: ['sports', 'play', 'month'],
@@ -676,7 +676,7 @@ const CITIES: Record<string, SiteConfig> = {
     nav: {
       tabs: ['today', 'cityhall', 'facilities', 'whatson', 'traffic', 'jobs'],
       groups: {
-        Now: ['today', 'whatson', 'thisweek', 'weather', 'vote'],
+        Now: ['today', 'tonight', 'whatson', 'thisweek', 'weather', 'vote'],
         City: ['cityhall', 'traffic', 'facilities'],
         Community: ['jobs'],
         More: ['vail'],
@@ -776,7 +776,7 @@ const CITIES: Record<string, SiteConfig> = {
     nav: {
       tabs: ['today', 'events', 'cityhall'],
       groups: {
-        Now: ['today', 'thisweek', 'events', 'whatson', 'weather'],
+        Now: ['today', 'tonight', 'thisweek', 'events', 'whatson', 'weather'],
         City: ['cityhall', 'facilities'],
       },
     },

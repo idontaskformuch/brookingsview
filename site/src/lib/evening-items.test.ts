@@ -130,3 +130,19 @@ describe('drive time outside the town', () => {
     expect(buildEveningEntries({ ...OPTS, feed: [], ticketmaster: [far], ticketmasterMaxMiles: 20 })).toHaveLength(1);
   });
 });
+
+describe('the same show from two sources', () => {
+  it('is one row: same start, one title contains the other; the shorter title wins and labels merge', () => {
+    const entries = buildEveningEntries({
+      ...OPTS,
+      feed: [own('DF Concerts Presents: NOAHFINNCE', '2026-10-29T19:00:00Z', { meta: { audience: '18+' } })],
+      ticketmaster: [tm('n', 'NOAHFINNCE', '2026-10-29T19:00:00Z', 1)],
+    });
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ title: 'NOAHFINNCE', source: 'ticketmaster', labels: ['18+'] });
+  });
+  it('keeps different shows at the same time apart', () => {
+    const entries = buildEveningEntries({ ...OPTS, feed: [own('Pub Quiz', '2026-10-29T19:00:00Z')], ticketmaster: [tm('n', 'Big Band', '2026-10-29T19:00:00Z', 1)] });
+    expect(entries).toHaveLength(2);
+  });
+});

@@ -97,9 +97,11 @@ import { todayDescription, todayShows, todaySources } from '../lib/today-copy';
     headingLevel="h1"
     headingText={pageMeta.h1}
   />
+  {siteConfig.eveningLayer && <p class="today-tonight">Planning the evening? <a href="/tonight/">Things to do tonight in {siteConfig.cityName}</a>.</p>}
 </BaseLayout>
 
 <style>
   .lede { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.5rem; }
+  .today-tonight { margin: 1rem 0 0; }
   .lede__backlink { margin: 0; color: var(--ink-soft); font-size: 0.9375rem; }
 </style>

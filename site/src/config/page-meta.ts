@@ -100,6 +100,11 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     h1Pattern: '{Town} Election Results: Unofficial Numbers From the Official Source',
     ledeRequirement: 'State that results are unofficial and name the source; no commentary on contests.',
   },
+  tonight: {
+    titlePattern: 'Things to Do Tonight in {Town} | {Site}',
+    h1Pattern: 'What to Do Tonight in {Town}',
+    ledeRequirement: 'Say what is listed (evening events by group), where it comes from, and that times should be checked with the source.',
+  },
   today: {
     titlePattern: '{Town} Today: Weather and Events | {Site}',
     h1Pattern: "What's Happening in {Town} Today",

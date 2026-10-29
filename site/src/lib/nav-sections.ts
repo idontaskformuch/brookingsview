@@ -10,7 +10,7 @@
 import type { SiteConfig } from './site-config';
 import { ELECTION_BY_TOWN } from '../config/election';
 
-export type NavGate = Pick<SiteConfig, 'townId' | 'hasWhatsOn' | 'hasClosureWatch' | 'hasNewInTown' | 'hasWorkplaceWatch' | 'disabledSections' | 'quietSections' | 'navLabels'>;
+export type NavGate = Pick<SiteConfig, 'townId' | 'hasWhatsOn' | 'hasClosureWatch' | 'hasNewInTown' | 'hasWorkplaceWatch' | 'disabledSections' | 'quietSections' | 'navLabels' | 'eveningLayer'>;
 
 export interface NavSection {
   id: string;
@@ -34,6 +34,8 @@ export const SECTIONS: NavSection[] = [
   { id: 'today', href: '/today/', label: 'Today', enabled: () => true },
   { id: 'thisweek', href: '/this-week/', label: 'This week', enabled: () => true },
   { id: 'events', href: '/events/', label: 'Events', enabled: () => true },
+  // Evening layer: towns with mode 'threshold' only (Brookings is 'never'; its /tonight/ page still builds, noindex, unlinked from the nav).
+  { id: 'tonight', href: '/tonight/', label: 'Tonight', enabled: (c) => c.eveningLayer?.mode === 'threshold' },
   { id: 'whatson', href: '/whats-on/', label: "What's On", enabled: (c) => !!c.hasWhatsOn },
   { id: 'university', href: '/university/', label: 'University', enabled: BROOKINGS },
   { id: 'jacks', href: '/jackrabbits/', label: 'Jackrabbits', enabled: BROOKINGS },

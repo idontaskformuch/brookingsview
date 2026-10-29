@@ -22,3 +22,4 @@ Allt som visar fakta ur stadens/universitetets egna sidor ska läsas om mot käl
 | API-nycklar med utgång | Adzuna, Ticketmaster, Pexels, Met Office DataHub (när den finns), Companies House, Sportmonks | Kolla utgångs-/kvotvillkor | januari | - |
 | Nyckelord i veckosammanfattningens teman | `site/src/lib/week-groups.ts` | Granska om tomma eller feltaggade grupper dyker upp (t.ex. nya typer av event) | oktober | 2026-10-24 |
 | Copyright/år i sidfot och `Last updated`-texter | juridiska sidor (privacy, cookies, terms), about | "Last updated" ska stämma med verklig ändring | vid varje ändring, minst årligen i januari | - |
+| Glasgow /tonight "Getting home": Subway sista tåg | `site/src/lib/getting-home.ts` (SPT:s tidtabell, ScotRails planerare) | Läs spt.co.uk/subway/subway-timetables/ igen, uppdatera tider + `checked`. Blocket döljs av sig självt efter 30 dagar | var 4:e vecka, och före jul/nyår | 2026-10-29 |
