@@ -57,7 +57,7 @@ const indexing = await indexingForTown({ townId: siteConfig.townId, siteUrl: sit
 const sections = buildWeekendSections(entries, now, tz, undefined, layer.nearMiles);
 const anyFree = sections.some((s) => [...s.highlights, ...s.groups.flatMap((g) => g.entries), ...s.farGroups.flatMap((g) => g.entries)].some((e) => e.labels.includes('Free')));
 const saturday = sections[1];
-const lateByDay = new Map(sections.map((s) => [s.day, s.kind === 'sunday' ? [] : decorateOpenLate(openLateRows(osm, s.day, tz), siteConfig.townId, areaData)]));
+const lateByDay = new Map(sections.map((s) => [s.day, s.kind === 'sunday' ? [] : decorateOpenLate(openLateRows(osm, s.day, tz, Number.MAX_SAFE_INTEGER), siteConfig.townId, areaData)]));
 const anyLate = [...lateByDay.values()].some((r) => r.length > 0);
 const anyRows = sections.some((s) => s.count > 0) || anyLate;
 const home = gettingHomeFor(siteConfig.townId, now);

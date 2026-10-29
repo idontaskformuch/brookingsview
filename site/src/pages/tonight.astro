@@ -59,7 +59,7 @@ const indexing = await indexingForTown({ townId: siteConfig.townId, siteUrl: sit
 
 const sections = buildEveningSections(entries, now, tz, layer.nearMiles);
 const anyFree = sections.some((s) => [...s.highlights, ...s.groups.flatMap((g) => g.entries), ...s.farGroups.flatMap((g) => g.entries)].some((e) => e.labels.includes('Free')));
-const lateBySection = new Map(sections.map((s) => [s.day, decorateOpenLate(openLateRows(osm, s.day, tz), siteConfig.townId, areaData)]));
+const lateBySection = new Map(sections.map((s) => [s.day, decorateOpenLate(openLateRows(osm, s.day, tz, Number.MAX_SAFE_INTEGER), siteConfig.townId, areaData)]));
 const anyLate = [...lateBySection.values()].some((r) => r.length > 0);
 const anyRows = sections.some((s) => s.count > 0) || anyLate;
 const home = gettingHomeFor(siteConfig.townId, now);

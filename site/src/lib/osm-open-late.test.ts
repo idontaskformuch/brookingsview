@@ -77,9 +77,15 @@ describe('builds never call Overpass', () => {
 
 describe('Open late by neighbourhood (owner 2026-10-29)', () => {
   const row = (name: string, area: string | null) => ({ osmId: `node/${name}`, name, kind: 'Pub' as const, closing: 'until 3am', website: null, start: '2026-10-29T22:00:00Z', end: '2026-10-30T03:00:00Z', area });
-  it('groups by area in order of first (latest-closing) row, places without an area last', () => {
+  it('single-place neighbourhoods and places without an area go under Elsewhere, last', () => {
     const g = groupOpenLateByArea([row('A', 'Merchant City'), row('B', null), row('C', 'Finnieston'), row('D', 'Merchant City')]);
-    expect(g.map((x) => [x.area, x.rows.map((r) => r.name)])).toEqual([['Merchant City', ['A', 'D']], ['Finnieston', ['C']], [null, ['B']]]);
+    expect(g.map((x) => [x.area, x.rows.map((r) => r.name)])).toEqual([['Merchant City', ['A', 'D']], [null, ['B', 'C']]]);
+  });
+  it('keeps at most 4 per neighbourhood and 24 in all', () => {
+    const many = Array.from({ length: 6 }, (_, i) => row(`M${i}`, 'Merchant City'));
+    expect(groupOpenLateByArea(many)[0].rows.map((r) => r.name)).toEqual(['M0', 'M1', 'M2', 'M3']);
+    const lots = Array.from({ length: 40 }, (_, i) => row(`P${i}`, i % 2 ? `Area${i >> 1}` : null));
+    expect(groupOpenLateByArea(lots).flatMap((g) => g.rows)).toHaveLength(24);
   });
   it('decorateOpenLate gives the canonical spelling and the area from the static file', () => {
     const out = decorateOpenLate([row('Oran Mor', null), row('Unknown Bar', null)], 'glasgow',

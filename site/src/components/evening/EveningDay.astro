@@ -24,7 +24,8 @@ interface Props {
   moreLabel?: string;
 }
 const { id, heading, dateLabel, highlights, groups, farGroups = [], count, late = [], tz, attrs = {}, hidden = false, moreHref, moreLabel } = Astro.props;
-const groupedLate = late.some((r) => r.area);
+const lateGroups = groupOpenLateByArea(late);
+const groupedLate = lateGroups.some((g) => g.area);
 ---
 <section class="ev-day" aria-labelledby={`${id}-h`} hidden={hidden || undefined} {...attrs}>
   <h2 id={`${id}-h`}><span data-evening-heading>{heading}</span> <span class="ev-date">{dateLabel}</span></h2>
@@ -46,7 +47,7 @@ const groupedLate = late.some((r) => r.area);
   {late.length > 0 && (
     <div class="ev-group">
       <h3 class="ev-group-name">Open late</h3>
-      {groupOpenLateByArea(late).map((g) => (
+      {lateGroups.map((g) => (
         <>
           {groupedLate && <h4 class="ev-area-name">{g.area ?? 'Elsewhere'}</h4>}
           <ul class="ev-rows" data-hide-ended data-hide-when-empty>

@@ -34,7 +34,10 @@ export interface OpenLateRow {
   end: string;
 }
 
-export const OPEN_LATE_MAX_ROWS = 12;
+export const OPEN_LATE_MAX_ROWS = 24;
+/** A neighbourhood gets its own heading only with at least this many places open late; the rest go under "Elsewhere". */
+export const OPEN_LATE_MIN_PER_AREA = 2;
+export const OPEN_LATE_MAX_PER_AREA = 4;
 /** A snapshot older than this gives no Open late block (owner 2026-10-29). */
 export const SNAPSHOT_MAX_AGE_DAYS = 14;
 const KINDS: Record<string, OpenLateKind> = { pub: 'Pub', bar: 'Bar', nightclub: 'Nightclub', restaurant: 'Restaurant' };
@@ -95,14 +98,27 @@ export function decorateOpenLate(rows: OpenLateRow[], townId: string, areaData: 
 
 export interface OpenLateGroup { area: string | null; rows: OpenLateRow[] }
 
-/** Rows grouped by neighbourhood where there is one: areas in the order of their latest-closing row, places without an area last. */
-export function groupOpenLateByArea(rows: OpenLateRow[]): OpenLateGroup[] {
+/** Open late as shown: neighbourhoods with at least OPEN_LATE_MIN_PER_AREA places keep their OPEN_LATE_MAX_PER_AREA latest-closing ones,
+ *  every other place (single-place or unmapped neighbourhoods) goes under "Elsewhere" (area null, last), OPEN_LATE_MAX_ROWS in all,
+ *  latest closing first. `rows` must be in that order (openLateRows) and carry their area (decorateOpenLate). */
+export function groupOpenLateByArea(rows: OpenLateRow[], maxRows = OPEN_LATE_MAX_ROWS): OpenLateGroup[] {
+  const perArea = new Map<string, number>();
+  for (const r of rows) if (r.area) perArea.set(r.area, (perArea.get(r.area) ?? 0) + 1);
+  const taken = new Map<string, number>();
+  const chosen = rows.filter((r) => {
+    if (!r.area || (perArea.get(r.area) ?? 0) < OPEN_LATE_MIN_PER_AREA) return true;
+    const n = taken.get(r.area) ?? 0;
+    taken.set(r.area, n + 1);
+    return n < OPEN_LATE_MAX_PER_AREA;
+  }).slice(0, maxRows);
   const groups: OpenLateGroup[] = [];
-  for (const r of rows) {
-    const at = groups.find((g) => g.area === (r.area ?? null));
-    if (at) at.rows.push(r); else groups.push({ area: r.area ?? null, rows: [r] });
+  const elsewhere: OpenLateRow[] = [];
+  for (const r of chosen) {
+    if (!r.area || (perArea.get(r.area) ?? 0) < OPEN_LATE_MIN_PER_AREA) { elsewhere.push(r); continue; }
+    const at = groups.find((g) => g.area === r.area);
+    if (at) at.rows.push(r); else groups.push({ area: r.area, rows: [r] });
   }
-  return [...groups.filter((g) => g.area), ...groups.filter((g) => !g.area)];
+  return elsewhere.length ? [...groups, { area: null, rows: elsewhere }] : groups;
 }
 
 export interface OsmSnapshot { fetchedAt: string; elements: unknown[] }
