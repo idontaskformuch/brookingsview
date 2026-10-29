@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
-  normalizeTicketmasterEvent, fetchTicketmasterEvents, getTicketmasterEventsForTown, isSportsEvent,
+  normalizeTicketmasterEvent, cleanTicketmasterTitle, fetchTicketmasterEvents, getTicketmasterEventsForTown, isSportsEvent,
   isNonEventListing, isUpgradeProductTitle, distanceLabel, _resetTicketmasterCacheForTests,
   type RawTicketmasterEvent,
 } from './ticketmaster';
@@ -665,5 +665,15 @@ describe('isUpgradeProductTitle: seating and hospitality upgrades are not events
   it('isNonEventListing sees the title even when the classification is an ordinary one', () => {
     expect(isNonEventListing({ id: '1', name: 'Club Level Seating: Hilary Duff', classifications: [{ primary: true, type: { name: 'Music' } }] } as never)).toBe(true);
     expect(isNonEventListing({ id: '2', name: 'Hilary Duff', classifications: [{ primary: true, type: { name: 'Music' } }] } as never)).toBe(false);
+  });
+});
+
+describe('cleanTicketmasterTitle', () => {
+  it('repairs a lost apostrophe', () => expect(cleanTicketmasterTitle('Disney Tim Burton???s The Nightmare Before Christmas')).toBe('Disney Tim Burton’s The Nightmare Before Christmas'));
+  it('keeps the intact side of a bilingual title and collapses CR/LF', () =>
+    expect(cleanTicketmasterTitle('D??a de Muertos Festival / Day of the Dead Festival - \r\n(Ages 18 & Under Free)')).toBe('Day of the Dead Festival - (Ages 18 & Under Free)'));
+  it('drops question marks it cannot repair; leaves normal titles alone', () => {
+    expect(cleanTicketmasterTitle('Caf?? Tacvba')).toBe('Caf Tacvba');
+    expect(cleanTicketmasterTitle('Who? What?')).toBe('Who? What?');
   });
 });

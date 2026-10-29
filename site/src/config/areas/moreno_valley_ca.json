@@ -1,0 +1,51 @@
+{
+  "attribution": "Neighbourhoods: © OpenStreetMap contributors (ODbL)",
+  "areas": [
+    {
+      "name": "Alessandro",
+      "lat": 33.88628,
+      "lon": -117.26993
+    },
+    {
+      "name": "Cobblestone",
+      "lat": 33.93231,
+      "lon": -117.19
+    },
+    {
+      "name": "Edgemont",
+      "lat": 33.92029,
+      "lon": -117.27865
+    },
+    {
+      "name": "Goldenfields",
+      "lat": 33.93338,
+      "lon": -117.19022
+    },
+    {
+      "name": "Moreno",
+      "lat": 33.91752,
+      "lon": -117.15781
+    },
+    {
+      "name": "Serrano Heights",
+      "lat": 33.95807,
+      "lon": -117.20782
+    },
+    {
+      "name": "Sunnymead",
+      "lat": 33.94002,
+      "lon": -117.24365
+    },
+    {
+      "name": "Sycamore Canyon/Canyon Springs",
+      "lat": 33.93584,
+      "lon": -117.29308
+    },
+    {
+      "name": "West March",
+      "lat": 33.90361,
+      "lon": -117.27852
+    }
+  ],
+  "venues": {}
+}

@@ -2,7 +2,7 @@
  *  Ticketmaster shows into one list of EveningEntry rows (group, labels, source link, "checked" date) and feeds the
  *  threshold engine (lib/evening-threshold.ts). Owner decisions 2026-10-28, .claude/specs/weekend-layer.md.
  *
- *  Groups (T2): Live music, Comedy & shows, Quiz & pub nights, Clubs & late, Sport tonight. "Free tonight" is a LABEL, not
+ *  Groups (T2): Live music, Comedy & shows, Quiz & pub nights, Clubs & late, Sport. "Free tonight" is a LABEL, not
  *  a group: a page of free library programmes must not satisfy the "3 groups" bar on its own, so Free never counts toward
  *  the threshold. Items without a recognisable group still count as items.
  *
@@ -18,7 +18,7 @@ import { hasEnded, DEFAULT_EVENT_MS, localDayNumber, localHourOf, localInstantIs
 import { ticketmasterImageProxyPath } from './images';
 import type { EveningItem } from './evening-threshold';
 
-export type EveningGroup = 'Live music' | 'Comedy & shows' | 'Quiz & pub nights' | 'Clubs & late' | 'Sport tonight' | 'Family' | 'Festivals & fairs' | 'Film';
+export type EveningGroup = 'Live music' | 'Comedy & shows' | 'Quiz & pub nights' | 'Clubs & late' | 'Sport' | 'Family' | 'Festivals & fairs' | 'Film';
 export type EveningLabel = 'Free' | '18+' | 'All ages';
 export type EveningSource = 'ticketmaster' | 'own' | 'register';
 
@@ -95,7 +95,7 @@ export function groupForTitle(title: string): EveningGroup | null {
   if (CLUB_RE.test(title)) return 'Clubs & late';
   if (COMEDY_RE.test(title)) return 'Comedy & shows';
   if (MUSIC_RE.test(title)) return 'Live music';
-  if (SPORT_RE.test(title)) return 'Sport tonight';
+  if (SPORT_RE.test(title)) return 'Sport';
   return null;
 }
 
@@ -108,7 +108,7 @@ export function groupForTicketmaster(segment: string | null | undefined, genre: 
   if (/\b(family|children|kids)\b/.test(gen)) return 'Family';
   if (seg === 'music') return /dance|electronic|club|house|techno/.test(gen) ? 'Clubs & late' : 'Live music';
   if (seg === 'arts & theatre') return 'Comedy & shows';
-  if (seg === 'sports') return 'Sport tonight';
+  if (seg === 'sports') return 'Sport';
   if (seg === 'film') return 'Film';
   if (seg === 'miscellaneous') return /fair|festival|expo|community|civic|hobby/.test(gen) ? 'Festivals & fairs' : null;
   if (seg === '' || seg === 'undefined') {

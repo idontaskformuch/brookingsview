@@ -5,7 +5,7 @@ import type { EveningEntry, EveningGroup } from './evening-items';
 import { localDayNumber, localHourOf, TONIGHT_FROM_HOUR } from './local-day';
 import { EVENING_LAST_START_HOUR } from './evening-threshold';
 
-export const GROUP_ORDER: EveningGroup[] = ['Live music', 'Comedy & shows', 'Quiz & pub nights', 'Clubs & late', 'Sport tonight', 'Family', 'Festivals & fairs', 'Film'];
+export const GROUP_ORDER: EveningGroup[] = ['Live music', 'Comedy & shows', 'Quiz & pub nights', 'Clubs & late', 'Sport', 'Family', 'Festivals & fairs', 'Film'];
 export const FREE_GROUP = 'Free tonight';
 export const OTHER_GROUP = 'Also on';
 export const MAX_HIGHLIGHTS = 3;

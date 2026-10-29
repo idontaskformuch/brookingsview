@@ -12,7 +12,7 @@ export const WEEKEND_ROWS_PER_GROUP = 8;
 
 export function weekendGroupOf(e: EveningEntry): string {
   switch (e.group) {
-    case 'Sport tonight': return 'Sport';
+    case 'Sport': return 'Sport';
     case 'Festivals & fairs': return 'Markets & food';
     case 'Family': return 'Family';
     case 'Live music': case 'Comedy & shows': case 'Quiz & pub nights': case 'Clubs & late': case 'Film': return 'Nights out & live music';

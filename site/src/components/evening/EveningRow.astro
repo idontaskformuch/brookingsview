@@ -22,6 +22,8 @@ const external = !!e.href && /^https?:/i.test(e.href);
 <style is:global>
   .ev-rows { list-style: none; padding: 0; margin: 0; }
   .ev-row { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr) auto; column-gap: 0.75rem; align-items: baseline; padding: 0.6rem 0; border-bottom: 1px solid var(--rule, #e4e2da); }
+  /* Open late rows put a phrase in the time column ("until midnight", "open 24 hours"): let it wrap instead of running into the name */
+  .ev-row[data-late] .ev-time { white-space: normal; }
   .ev-time { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
   .ev-main { display: flex; flex-direction: column; min-width: 0; }
   .ev-title { color: inherit; text-decoration: none; font-weight: 500; overflow-wrap: anywhere; }

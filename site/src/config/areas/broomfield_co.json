@@ -1,0 +1,56 @@
+{
+  "attribution": "Neighbourhoods: © OpenStreetMap contributors (ODbL)",
+  "areas": [
+    {
+      "name": "Abbey",
+      "lat": 39.86225,
+      "lon": -105.0361
+    },
+    {
+      "name": "Arrowhead",
+      "lat": 39.89999,
+      "lon": -105.05899
+    },
+    {
+      "name": "Bradburn",
+      "lat": 39.9116,
+      "lon": -105.04005
+    },
+    {
+      "name": "Brandywine",
+      "lat": 39.92354,
+      "lon": -105.03939
+    },
+    {
+      "name": "Cedar Bridge",
+      "lat": 39.89939,
+      "lon": -105.0199
+    },
+    {
+      "name": "County Vista",
+      "lat": 39.91981,
+      "lon": -105.0484
+    },
+    {
+      "name": "Flatiron Crossing",
+      "lat": 39.93114,
+      "lon": -105.12826
+    },
+    {
+      "name": "Hillcrest",
+      "lat": 39.8616,
+      "lon": -105.03818
+    },
+    {
+      "name": "Interlocken",
+      "lat": 39.92371,
+      "lon": -105.1205
+    },
+    {
+      "name": "Northridge Manor",
+      "lat": 39.86158,
+      "lon": -105.04118
+    }
+  ],
+  "venues": {}
+}

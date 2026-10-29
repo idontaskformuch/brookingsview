@@ -29,7 +29,7 @@ describe('groupForTitle', () => {
     expect(groupForTitle('Stand-up Showcase')).toBe('Comedy & shows');
     expect(groupForTitle('Open Mic Night')).toBe('Live music');
     expect(groupForTitle('Saturday Club Night')).toBe('Clubs & late');
-    expect(groupForTitle('Rovers vs Celtic')).toBe('Sport tonight');
+    expect(groupForTitle('Rovers vs Celtic')).toBe('Sport');
     expect(groupForTitle('Knitting group')).toBeNull();
   });
 });
@@ -100,9 +100,9 @@ describe('toThresholdItems', () => {
 
 describe('Ticketmaster sport', () => {
   const sport = tm('s', 'Rovers v United', '2026-10-30T19:45:00Z', 2, 'Sports', 'Football');
-  it('counts as Sport tonight where the town has no sport source of its own', () => {
+  it('counts as Sport where the town has no sport source of its own', () => {
     const [e] = buildEveningEntries({ ...OPTS, feed: [], ticketmaster: [sport], includeTicketmasterSports: true });
-    expect(e).toMatchObject({ title: 'Rovers v United', group: 'Sport tonight' });
+    expect(e).toMatchObject({ title: 'Rovers v United', group: 'Sport' });
   });
   it('is left out where it would duplicate the town own sport feed (Brookings)', () => {
     expect(buildEveningEntries({ ...OPTS, feed: [], ticketmaster: [sport] })).toEqual([]);

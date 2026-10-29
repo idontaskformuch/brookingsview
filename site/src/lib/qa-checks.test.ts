@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 // plain .mjs shared with the Node QA runner (qa/web/run.mjs)
-import { checkPage, checkDiag, checkRun, compileBlocklist, applyWaivers, zonedInstant, duplicateContentFindings, routeFindings } from '../../../qa/web/checks.mjs';
+import { checkPage, checkDiag, checkRun, compileBlocklist, applyWaivers, zonedInstant, duplicateContentFindings, routeFindings, eveningFindings } from '../../../qa/web/checks.mjs';
 
 const base = {
   url: 'https://x.test/a/', path: '/a/', status: 200, redirects: 0, inSitemap: true,
@@ -170,4 +170,27 @@ describe('web.routes (born 2026-10-28: soft-404 /ads.txt, /advertise without red
     expect(run(null, { status: 301, location: '/advertising/' })).toEqual([]);
     expect(run(null, ok301)).toEqual([]);
   });
+});
+
+describe('evening layer checks (Pass E)', () => {
+  const fx = JSON.parse(readFileSync(new URL('../../../tests/fixtures/qa_evening_2026-10-29.json', import.meta.url), 'utf8')) as
+    { approved: string[]; bad: Record<string, unknown>; good: Record<string, unknown> };
+  const run = (snap: Record<string, unknown>, approved: string[] = []) =>
+    (eveningFindings(snap, 'glasgow', approved) as { check: string }[]).map((f) => f.check);
+  it('the page as found 2026-10-29 trips every evening check', () => {
+    const got = new Set(run(fx.bad));
+    for (const id of ['evening.index-gate', 'evening.summary-count', 'evening.open-late-wording', 'evening.group-misfit', 'evening.dup-row',
+      'evening.row-source', 'evening.garbled-title', 'evening.ended-row', 'evening.order', 'evening.stale-read']) expect(got.has(id), id).toBe(true);
+  });
+  it('the same page after the fixes is clean', () => expect(run(fx.good)).toEqual([]));
+  it('an approved path may be indexable; any other may not', () => {
+    const open = { ...fx.good, metaRobots: 'index,follow' };
+    expect(run(open)).toContain('evening.index-gate');
+    expect(run(open, ['/tonight/'])).not.toContain('evening.index-gate');
+  });
+  it('every evening check is registered with born_from', () => {
+    const reg = JSON.parse(readFileSync(new URL('../../../qa/checks.json', import.meta.url), 'utf8')).checks as Record<string, { born_from: string }>;
+    for (const id of new Set(run(fx.bad))) expect(reg[id]?.born_from, id).toBeTruthy();
+  });
+  it('non-evening pages are untouched', () => expect(run({ ...fx.bad, evening: null })).toEqual([]));
 });

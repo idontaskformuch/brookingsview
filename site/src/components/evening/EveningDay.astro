@@ -49,7 +49,7 @@ const { id, heading, dateLabel, highlights, groups, count, late = [], tz, attrs 
             <span class="ev-time"><span>{p.closing}</span></span>
             <span class="ev-main">
               {p.website ? <a class="ev-title" href={p.website} rel="noopener">{p.name}</a> : <span class="ev-title">{p.name}</span>}
-              <span class="ev-meta">{p.kind}, closes {p.closing}</span>
+              <span class="ev-meta">{p.kind}</span>
             </span>
           </li>
         ))}

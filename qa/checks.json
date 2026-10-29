@@ -92,11 +92,11 @@
       "what": "element with data-ends in the past that is still visible (real clock and the 07:00/19:00/23:30 clock passes)"
     },
     "web.stale-recently": {
-    "severity": "soft",
-    "born_from": "2026-10-24 owner: Glasgow /events/ showed recurring series under \"Recently\" with the date they were first seen (JUN 2, FEB 22, NOV 27); fixed in db.ts getPastStories + publish.py series refresh. Regression: site/src/lib/db.test.ts, tests/test_events_grouping.py, site/src/lib/qa-checks.test.ts",
-    "what": "a card under the \"Recently\" heading whose start is more than 90 days before the page clock"
-  },
-  "web.past-event": {
+      "severity": "soft",
+      "born_from": "2026-10-24 owner: Glasgow /events/ showed recurring series under \"Recently\" with the date they were first seen (JUN 2, FEB 22, NOV 27); fixed in db.ts getPastStories + publish.py series refresh. Regression: site/src/lib/db.test.ts, tests/test_events_grouping.py, site/src/lib/qa-checks.test.ts",
+      "what": "a card under the \"Recently\" heading whose start is more than 90 days before the page clock"
+    },
+    "web.past-event": {
       "severity": "hard",
       "born_from": "passed events shown under Today/Tonight (Time/alerts handoff)",
       "what": "event in the Tonight bucket that is over (or not today), or in Tomorrow that is not tomorrow, at the page's clock"
@@ -115,6 +115,61 @@
       "severity": "soft",
       "born_from": "2026-10-22 owner: all-day events (e.g. 114th Hobo Day, start 00:00 local, no end) rendered as \"12:00 AM\"; fixed with lib/local-day.ts isAllDay; regression tests in local-day/time/db test files",
       "what": "An event element with a local-midnight start and no real end whose visible time label shows 12 AM instead of \"All day\""
+    },
+    "evening.index-gate": {
+      "severity": "hard",
+      "born_from": "Owner 2026-10-28/29: /tonight and /this-weekend stay noindex until the owner says yes (weekend-layer.md, 'Före indexering'). Regression fixture: tests/fixtures/qa_evening_2026-10-29.json (site/src/lib/qa-checks.test.ts).",
+      "what": "an evening page has no noindex while its path is not in qa/evening-index-approved.json"
+    },
+    "evening.summary-count": {
+      "severity": "hard",
+      "born_from": "Step-7 review 2026-10-29: after the browser re-count /tonight said '24 things on tonight' with 12 tonight and 12 tomorrow night (countVisibleThings counted every day). Fixed in evening-client.ts (firstDayOnly). Regression fixture: tests/fixtures/qa_evening_2026-10-29.json (site/src/lib/qa-checks.test.ts).",
+      "what": "the 'N things on tonight' line differs from the entries shown in the first day section"
+    },
+    "evening.open-late-wording": {
+      "severity": "soft",
+      "born_from": "Step-7 review 2026-10-29: Open late rows read 'Pub, closes until 3am' (the time was said twice, 'closes until' is wrong English). Regression fixture: tests/fixtures/qa_evening_2026-10-29.json (site/src/lib/qa-checks.test.ts).",
+      "what": "an Open late row meta contains 'closes until' or 'closes open'"
+    },
+    "evening.group-misfit": {
+      "severity": "hard",
+      "born_from": "Owner 2026-10-29: Essy Sparrow, a singer at SWG3 at 7 pm, was listed under Clubs & late (settleGroup in evening-items.ts now demands start >= 22:00 or a club word). Regression fixture: tests/fixtures/qa_evening_2026-10-29.json (site/src/lib/qa-checks.test.ts).",
+      "what": "a row under Clubs & late starts between 05:00 and 22:00 local without a club word in its title"
+    },
+    "evening.dup-row": {
+      "severity": "hard",
+      "born_from": "Evening layer step 3 (dedup across sources: same start + overlapping title); guard against the same event listed from two sources, and an Open late place listed twice. Regression fixture: tests/fixtures/qa_evening_2026-10-29.json (site/src/lib/qa-checks.test.ts).",
+      "what": "the same start + title twice on a page, or an Open late place twice in a day"
+    },
+    "evening.row-source": {
+      "severity": "hard",
+      "born_from": "weekend-layer.md Skydd punkt 4: every row carries a source link. Regression fixture: tests/fixtures/qa_evening_2026-10-29.json (site/src/lib/qa-checks.test.ts).",
+      "what": "a card or row without a link"
+    },
+    "evening.ended-row": {
+      "severity": "hard",
+      "born_from": "Time/alerts handoff (web.past-event covers /today only); Pass E loads the evening pages with the clock at 19:00 and 23:30. Regression fixture: tests/fixtures/qa_evening_2026-10-29.json (site/src/lib/qa-checks.test.ts).",
+      "what": "a visible row that started more than 3 h ago (or past its end)"
+    },
+    "evening.order": {
+      "severity": "soft",
+      "born_from": "Evening layer design pass: rows inside a group are sorted by start. Regression fixture: tests/fixtures/qa_evening_2026-10-29.json (site/src/lib/qa-checks.test.ts).",
+      "what": "rows in a group are not in start order"
+    },
+    "evening.stale-read": {
+      "severity": "hard",
+      "born_from": "weekend-layer.md Skydd punkt 4 + GETTING_HOME_MAX_AGE_DAYS: sources 'read <date>' older than 3 days means the page was not rebuilt; Getting home 'Checked <date>' older than 30 days. Regression fixture: tests/fixtures/qa_evening_2026-10-29.json (site/src/lib/qa-checks.test.ts).",
+      "what": "the About text carries a read/Checked date that is too old"
+    },
+    "evening.sources": {
+      "severity": "hard",
+      "born_from": "weekend-layer.md Skydd punkt 4/5: the 'How we gather this' text must exist (source, date, what is estimated). Regression fixture: tests/fixtures/qa_evening_2026-10-29.json (site/src/lib/qa-checks.test.ts).",
+      "what": "#about-this-page is missing or empty"
+    },
+    "evening.garbled-title": {
+      "severity": "hard",
+      "born_from": "Q3 2026-10-29 on Broomfield /tonight: Ticketmaster's own data had 'Tim Burton???s' and 'D??a de Muertos' (cleanTicketmasterTitle in ticketmaster.ts repairs it). Regression fixture: tests/fixtures/qa_evening_2026-10-29.json.",
+      "what": "a card or row title contains two or more question marks in a row"
     }
   }
 }

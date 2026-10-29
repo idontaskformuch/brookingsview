@@ -24,7 +24,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   checkPage, checkDiag, checkRun, compileBlocklist, applyWaivers, zonedInstant, ALLOW_SIBLING_SELECTOR,
-  KEY_PAGES, CLOCK_TIMES, CLOCK_PAGES, routeFindings,
+  KEY_PAGES, CLOCK_TIMES, CLOCK_PAGES, routeFindings, EVENING_PAGES, eveningFindings,
 } from './checks.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -37,7 +37,7 @@ const town = arg('town');
 if (!town) { console.error('--town required'); process.exit(2); }
 const cfg = JSON.parse(readFileSync(resolve(root, `configs/${town}.json`), 'utf8'));
 const base = (arg('base') ?? `https://${cfg.domain}`).replace(/\/$/, '');
-const passes = new Set(arg('pass', 'A,B,C').split(','));
+const passes = new Set(arg('pass', 'A,B,C,E').split(','));
 const withLinks = arg('links', 'off') === 'on';
 const limit = Number(arg('limit', 0));
 const outFile = resolve(root, arg('out', `qa/out/${town}.json`));
@@ -48,7 +48,7 @@ const NOISE = /(challenges\.cloudflare\.com|challenges\.cloud|cdn-cgi\/challenge
 const HEAVY = new Set(['image', 'font', 'media']);
 const origin = new URL(base).origin;
 
-const requests = { A: 0, B: 0, C: 0, links: 0, sitemap: 0, routes: 0 };
+const requests = { A: 0, B: 0, C: 0, E: 0, links: 0, sitemap: 0, routes: 0 };
 let curPass = 'sitemap';
 const firstPartyHeaders = () => ({ 'user-agent': UA, ...(BYPASS ? { 'x-qa-bypass': BYPASS } : {}) });
 
@@ -199,8 +199,31 @@ function pageProbe({ allowSel, wantLinks }) {
     const when = (el.querySelector('.item__when')?.innerText || '').trim();
     if (/12(:00)?\s?(AM|am)/.test(when)) allDayClock.push(`${when} (${el.getAttribute('data-start')})`);
   });
+  // evening layer (/tonight, /this-weekend): every card/row with what the checks need; null on other pages
+  let evening = null;
+  const evRoot = document.querySelector('[data-ev-page]');
+  if (evRoot) {
+    const hourIn = (iso, z) => Number(new Intl.DateTimeFormat('en-GB', { timeZone: z, hour: '2-digit', hourCycle: 'h23' }).format(new Date(iso)));
+    const days = [...evRoot.querySelectorAll('.ev-day')].map((d, i) => {
+      const z = d.dataset.tz || pageTz;
+      const entries = [...d.querySelectorAll('.ev-card, .ev-row:not([data-late])')].map((el) => {
+        const a = el.querySelector('a.ev-title, .ev-card-title a');
+        const isCard = el.classList.contains('ev-card');
+        const group = isCard ? (el.querySelector('.ev-card-group')?.innerText ?? '').replace(/^[\s·]+/, '').trim() : (el.closest('.ev-group')?.querySelector('.ev-group-name')?.innerText ?? '').trim();
+        return { list: isCard ? 'cards' : 'rows', start: el.dataset.start, end: el.dataset.end ?? null, visible: visible(el), group,
+          title: (a ?? el.querySelector('.ev-title, .ev-card-title'))?.innerText.trim() ?? '', href: a?.getAttribute('href') ?? '',
+          localHour: el.dataset.start ? hourIn(el.dataset.start, z) : -1 };
+      });
+      const late = [...d.querySelectorAll('.ev-row[data-late]')].map((el) => ({ name: el.querySelector('.ev-title')?.innerText.trim() ?? '', meta: el.querySelector('.ev-meta')?.innerText.trim() ?? '' }));
+      return { id: i, visible: visible(d), entries, late };
+    });
+    const sumText = document.querySelector('[data-sum="count"] [data-sum-text]');
+    const sumMatch = sumText && visible(sumText) ? /^([\d,]+) things? on (.+)$/.exec(sumText.innerText.trim()) : null;
+    evening = { nowIso: now.toISOString(), days, summaryCount: sumMatch ? Number(sumMatch[1].replace(/,/g, '')) : null, period: sumMatch ? sumMatch[2] : '',
+      aboutText: document.getElementById('about-this-page')?.innerText ?? '' };
+  }
   return {
-    nowIso: now.toISOString(),
+    nowIso: now.toISOString(), evening,
     title: document.title, titleCount: document.querySelectorAll('title').length,
     h1: [...document.querySelectorAll('h1')].map((h) => h.innerText.trim()),
     metaRobots: document.querySelector('meta[name=robots]')?.content ?? '',
@@ -368,6 +391,22 @@ async function main() {
     }
   }
 
+  if (passes.has('E')) {
+    // Evening layer: noindex, so not in the sitemap and not in Pass A. Desktop light now, then with the page clock at 19:00 and 23:30
+    // town time (rows that ended must be hidden). A town without the page answers 404 and is skipped.
+    curPass = 'E';
+    counts.E = 0;
+    const day = new Intl.DateTimeFormat('en-CA', { timeZone: cfg.timezone }).format(new Date());
+    for (const clock of [null, '19:00', '23:30']) {
+      const ctx = await newContext(browser, clock ? { clockAt: zonedInstant(day, clock, cfg.timezone) } : { blockHeavy: true });
+      await pool(EVENING_PAGES, 2, async (p) => {
+        const sn = await snapshot(ctx, p, { inSitemap: false, label: clock ? `@${clock}` : 'evening', blockHeavy: true });
+        if (sn.status === 200) { snapsBC.push(sn); counts.E++; }
+      });
+      await ctx.close();
+    }
+  }
+
   let linkFindings = [], linksChecked = 0;
   if (withLinks) {
     const ctx = await newContext(browser, {});
@@ -394,11 +433,13 @@ async function main() {
   const compiled = compileBlocklist(blocklist);
   const waivers = JSON.parse(readFileSync(resolve(root, 'qa/known-issues.json'), 'utf8')).waivers;
   const today = new Date().toISOString().slice(0, 10);
+  // paths the owner has approved for indexing; empty until the owner says yes (a page without noindex outside this list is a hard finding)
+  const eveningApproved = (JSON.parse(readFileSync(resolve(root, 'qa/evening-index-approved.json'), 'utf8'))[town] ?? []);
   snapsA.sort((a, b) => a.path.localeCompare(b.path));
   const all = [
     ...snapsA.flatMap((s) => checkPage(s, town, compiled)),
-    ...snapsBC.flatMap((s) => [...checkPage(s, town, compiled), ...checkDiag(s, town)]),
-    ...checkRun(snapsA, town), ...linkFindings, ...routeResults,
+    ...snapsBC.flatMap((s) => [...checkPage(s, town, compiled), ...checkDiag(s, town), ...eveningFindings(s, town, eveningApproved)]),
+    ...checkRun([...snapsA, ...snapsBC.filter((x) => x.label === 'evening')], town), ...linkFindings, ...routeResults,
   ];
   // the same defect seen in several combos is one finding per (check, path, message-sans-label)
   const seen = new Set();

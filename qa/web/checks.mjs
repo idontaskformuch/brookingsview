@@ -15,6 +15,8 @@ export const KEY_PAGES = ['/', '/today/', '/events/', '/whats-on/', '/this-week/
 /** Pass C: browser clock at these town-local times, on these pages. */
 export const CLOCK_TIMES = ['07:00', '19:00', '23:30'];
 export const CLOCK_PAGES = ['/today/', '/events/', '/'];
+/** Evening layer (/tonight, /this-weekend): noindex, so never in the sitemap and never crawled by Pass A; Pass E loads them by name. */
+export const EVENING_PAGES = ['/tonight/', '/this-weekend/'];
 
 /** The UTC instant at which `tz` shows `day` ('YYYY-MM-DD') at `hhmm`. */
 export function zonedInstant(day, hhmm, tz) {
@@ -194,4 +196,52 @@ export function applyWaivers(findings, waivers, today) {
     w.check === x.check && (!w.town || w.town === x.town) &&
     (w.url_pattern === '*' || (x.path ?? '').includes(w.url_pattern)) &&
     (!w.expires || w.expires >= today)));
+}
+
+/** Evening-layer checks (Pass E, snap.evening from the page probe). Born 2026-10-29/30 from the step-7 review of the live pages:
+ *  (1) the browser re-count said "24 things on tonight" with 12 tonight + 12 tomorrow night; (2) Open late rows read "Pub, closes
+ *  until 3am"; (3) Essy Sparrow, a singer at SWG3, had been grouped "Clubs & late" at 7 pm (fixed earlier, now guarded here).
+ *  approved = paths the owner has said yes to index (qa/evening-index-approved.json); everything else MUST stay noindex. */
+const CLUB_WORDS = /(club night|dj set|dj|rave|disco|late night)/i; // mirrors CLUB_RE in site/src/lib/evening-items.ts
+const normTitle = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+export function eveningFindings(snap, town, approved = []) {
+  const f = [];
+  const ev = snap.evening;
+  if (snap.status !== 200 || !ev) return f;
+  const lab = snap.label ? ` [${snap.label}]` : '';
+  const add = (check, message) => f.push(finding(check, town, snap, /ended-row|summary-count/.test(check) ? message + lab : message));
+  if (!/noindex/i.test(snap.metaRobots ?? '') && !approved.includes(snap.path)) add('evening.index-gate', 'indexable without the owner approving it (no noindex in the robots meta)');
+  const seen = new Map();
+  for (const d of ev.days) {
+    let prev = null;
+    for (const e of d.entries) {
+      if (!e.visible) continue;
+      if (/\?{2,}/.test(e.title)) add('evening.garbled-title', `"${e.title}" has lost characters ("??")`);
+      if (!e.href) add('evening.row-source', `"${e.title}" has no link to its source`);
+      const k = `${e.start}|${normTitle(e.title)}`;
+      if (seen.has(k)) add('evening.dup-row', `"${e.title}" (${e.start}) is listed twice`); else seen.set(k, 1);
+      if (e.end !== null ? Date.parse(e.end) <= Date.parse(ev.nowIso) : Date.parse(e.start) + 3 * 3600_000 <= Date.parse(ev.nowIso)) add('evening.ended-row', `"${e.title}" started ${e.start} and is over but still shown`);
+      if (e.group === 'Clubs & late' && e.localHour >= 5 && e.localHour < 22 && !CLUB_WORDS.test(e.title)) add('evening.group-misfit', `"${e.title}" starts at ${e.localHour}:00 but sits under Clubs & late`);
+      if (e.list === 'rows') {
+        if (prev && prev.group === e.group && prev.day === d.id && Date.parse(e.start) < Date.parse(prev.start)) add('evening.order', `"${e.title}" comes after a later start in ${e.group}`);
+        prev = { group: e.group, day: d.id, start: e.start };
+      }
+    }
+    const lateNames = new Set();
+    for (const p of d.late) {
+      if (/closes\s+(until|open)/i.test(p.meta)) add('evening.open-late-wording', `"${p.name}": "${p.meta}" (the time is already in the time column)`);
+      if (lateNames.has(p.name)) add('evening.dup-row', `Open late lists "${p.name}" twice`); else lateNames.add(p.name);
+    }
+  }
+  const first = ev.days.find((d) => d.visible);
+  if (ev.summaryCount !== null && first && ev.period === 'tonight') {
+    const shown = first.entries.filter((e) => e.visible).length;
+    if (ev.summaryCount !== shown) add('evening.summary-count', `summary says ${ev.summaryCount} things on tonight but the first section shows ${shown}`);
+  }
+  const read = /read (\d{4}-\d{2}-\d{2})/.exec(ev.aboutText ?? '');
+  if (!ev.aboutText) add('evening.sources', 'the "How we gather this" text is missing');
+  else if (read && Date.parse(ev.nowIso) - Date.parse(read[1]) > 3 * 86_400_000) add('evening.stale-read', `sources "read ${read[1]}" is more than 3 days old; the page was not rebuilt`);
+  const checked = /Checked (\d{4}-\d{2}-\d{2})/.exec(ev.aboutText ?? '');
+  if (checked && Date.parse(ev.nowIso) - Date.parse(checked[1]) > 30 * 86_400_000) add('evening.stale-read', `Getting home "Checked ${checked[1]}" is more than 30 days old (annual.md: re-check)`);
+  return f;
 }

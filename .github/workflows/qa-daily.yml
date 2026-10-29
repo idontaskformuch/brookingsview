@@ -60,15 +60,15 @@ jobs:
         working-directory: site
       - run: python -m qa.export_blocklist
       - name: Sweep ${{ matrix.town }}
-        # Pass A (all sitemap URLs, no images/fonts), B (key pages, 4 combos, axe), C (clock 07:00/19:00/23:30).
+        # Pass A (all sitemap URLs, no images/fonts), B (key pages, 4 combos, axe), C (clock 07:00/19:00/23:30). E (/tonight + /this-weekend, noindex so not in the sitemap: 3 clocks).
         # Links outside the sitemap + external links only on Mondays (UTC) or when asked: load reduction.
         # Actions minutes (private repo, 2026-10-28): Pass A (every sitemap URL) runs every third day, and the link check only on such
         # a day in the first half of the week; Pass B (key pages x 4 combos) and C (clock times) run every day on the key pages only.
         run: |
-          PASSES="B,C"
+          PASSES="B,C,E"
           LINKS="${{ inputs.links }}"
-          if [ "$(( $(date -u +%j | sed 's/^0*//') % 3 ))" = "0" ] || [ -n "${{ inputs.limit }}" ] || [ "$LINKS" = "on" ]; then PASSES="A,B,C"; fi
-          if [ -z "$LINKS" ]; then if [ "$PASSES" = "A,B,C" ] && [ "$(date -u +%u)" -le 3 ]; then LINKS=on; else LINKS=off; fi; fi
+          if [ "$(( $(date -u +%j | sed 's/^0*//') % 3 ))" = "0" ] || [ -n "${{ inputs.limit }}" ] || [ "$LINKS" = "on" ]; then PASSES="A,B,C,E"; fi
+          if [ -z "$LINKS" ]; then if [ "$PASSES" = "A,B,C,E" ] && [ "$(date -u +%u)" -le 3 ]; then LINKS=on; else LINKS=off; fi; fi
           node qa/web/run.mjs --town ${{ matrix.town }} --pass "$PASSES" --limit "${{ inputs.limit || 0 }}" --links "$LINKS"
       - name: Report
         if: always()

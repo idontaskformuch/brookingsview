@@ -22,7 +22,7 @@ describe('weekendGroupOf', () => {
   it('derives the spec groups from the entry group, Free from the label', () => {
     const at = '2026-11-07T19:00:00Z';
     expect(weekendGroupOf(entry('a', at, { group: 'Clubs & late' }))).toBe('Nights out & live music');
-    expect(weekendGroupOf(entry('a', at, { group: 'Sport tonight' }))).toBe('Sport');
+    expect(weekendGroupOf(entry('a', at, { group: 'Sport' }))).toBe('Sport');
     expect(weekendGroupOf(entry('a', at, { group: 'Festivals & fairs' }))).toBe('Markets & food');
     expect(weekendGroupOf(entry('a', at, { group: 'Family' }))).toBe('Family');
     expect(weekendGroupOf(entry('a', at, { group: null, labels: ['Free'] }))).toBe('Free');

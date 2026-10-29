@@ -176,7 +176,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
   window.addEventListener('load', () => setTimeout(() => refreshSummary(document, pageTz, new Date(), (doc) => {
     const first = doc.querySelector<HTMLElement>('.ev-day:not([hidden]) [data-evening-heading]');
     return (first?.textContent ?? 'tonight').toLowerCase();
-  }), 0));
+  }, true), 0));
 </script>
 
 <style>

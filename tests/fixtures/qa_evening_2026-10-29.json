@@ -1,0 +1,181 @@
+{
+ "_doc": "Trimmed snapshot of Glasgow /tonight (probe shape of qa/web/run.mjs) with the defects found 2026-10-29. 'bad' must trip every evening check; 'good' is the same page after the fixes and must trip none.",
+ "bad": {
+  "url": "https://x.test/tonight/",
+  "path": "/tonight/",
+  "status": 200,
+  "redirects": 0,
+  "inSitemap": false,
+  "title": "t",
+  "titleCount": 1,
+  "h1": [
+   "h"
+  ],
+  "metaRobots": "index,follow",
+  "mainText": "x",
+  "metaDescription": "",
+  "imgAlts": [],
+  "loneDashNodes": 0,
+  "brokenImgs": [],
+  "consoleErrors": [],
+  "failedRequests": [],
+  "blockedAttempts": [],
+  "label": "evening",
+  "evening": {
+   "nowIso": "2026-10-29T20:00:00.000Z",
+   "summaryCount": 24,
+   "period": "tonight",
+   "aboutText": "Sources read 2026-10-20. Checked 2026-09-01.",
+   "days": [
+    {
+     "id": 0,
+     "visible": true,
+     "entries": [
+      {
+       "list": "rows",
+       "start": "2026-10-29T19:00:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Clubs & late",
+       "title": "Essy Sparrow",
+       "href": "/whats-on/x/",
+       "localHour": 19
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T19:30:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Mama Terra",
+       "href": "/whats-on/x/",
+       "localHour": 19
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T19:15:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Early gig",
+       "href": "/whats-on/x/",
+       "localHour": 19
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T19:30:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Mama  Terra!",
+       "href": "/whats-on/x/",
+       "localHour": 19
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T14:00:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Afternoon thing",
+       "href": "",
+       "localHour": 14
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T20:30:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Disney Tim Burton???s Nightmare",
+       "href": "/x/",
+       "localHour": 20
+      }
+     ],
+     "late": [
+      {
+       "name": "Mango",
+       "meta": "Nightclub, closes until 3am"
+      },
+      {
+       "name": "Mango",
+       "meta": "Nightclub"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "good": {
+  "url": "https://x.test/tonight/",
+  "path": "/tonight/",
+  "status": 200,
+  "redirects": 0,
+  "inSitemap": false,
+  "title": "t",
+  "titleCount": 1,
+  "h1": [
+   "h"
+  ],
+  "metaRobots": "noindex,follow",
+  "mainText": "x",
+  "metaDescription": "",
+  "imgAlts": [],
+  "loneDashNodes": 0,
+  "brokenImgs": [],
+  "consoleErrors": [],
+  "failedRequests": [],
+  "blockedAttempts": [],
+  "label": "evening",
+  "evening": {
+   "nowIso": "2026-10-29T20:00:00.000Z",
+   "summaryCount": 3,
+   "period": "tonight",
+   "aboutText": "Sources read 2026-10-29. Checked 2026-10-29.",
+   "days": [
+    {
+     "id": 0,
+     "visible": true,
+     "entries": [
+      {
+       "list": "rows",
+       "start": "2026-10-29T19:00:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Essy Sparrow",
+       "href": "/whats-on/x/",
+       "localHour": 19
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T19:30:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Mama Terra",
+       "href": "/whats-on/x/",
+       "localHour": 19
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T22:00:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Clubs & late",
+       "title": "Nice N Sleazy: club night",
+       "href": "/whats-on/x/",
+       "localHour": 22
+      }
+     ],
+     "late": [
+      {
+       "name": "Mango",
+       "meta": "Nightclub, open until 3am"
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

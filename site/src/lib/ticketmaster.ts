@@ -279,6 +279,19 @@ export function isUpgradeProductTitle(title: string | null | undefined): boolean
   return !!title && (UPGRADE_PRODUCT.test(title.trim()) || UPGRADE_SUFFIX.test(title.trim()));
 }
 
+/** Ticketmaster's own data sometimes carries "?" where a character was lost on their side ("Tim Burton???s The Nightmare Before
+ *  Christmas", "D??a de Muertos Festival / Day of the Dead Festival"; seen live 2026-10-29, Q3 on /tonight). Repair a lost apostrophe
+ *  in a contraction; otherwise keep the part of a bilingual " / " title that is intact; otherwise drop the question marks. Also
+ *  collapses the CR/LF the feed puts inside titles. */
+export function cleanTicketmasterTitle(name: string): string {
+  let t = name.replace(/\s+/g, ' ').trim().replace(/(\w)\?{2,}(s|t|re|ve|ll|d|m)\b/gi, '$1\u2019$2');
+  if (!/\?{2,}/.test(t)) return t;
+  const parts = t.split(' / ');
+  const clean = parts.filter((p) => !/\?{2,}/.test(p));
+  if (parts.length > 1 && clean.length > 0) return clean.join(' / ');
+  return t.replace(/\?{2,}/g, '');
+}
+
 /** Pure -- unit-tested directly against captured fixture responses (see
  *  ticketmaster.test.ts), no network. `dates.start.dateTime` is Discovery
  *  API's own UTC instant when present; a small number of listings only
@@ -293,7 +306,7 @@ export function normalizeTicketmasterEvent(raw: RawTicketmasterEvent): Ticketmas
   const primary = raw.classifications?.find((c) => c.primary) ?? raw.classifications?.[0];
   const event: TicketmasterEvent = {
     id: raw.id,
-    title: raw.name,
+    title: cleanTicketmasterTitle(raw.name),
     attractionId: raw._embedded?.attractions?.[0]?.id ?? null,
     venueId: venue?.id ?? null,
     venueName: venue?.name ?? null,

@@ -63,7 +63,7 @@ loadEnv();
 const CANDIDATES = ['/', '/today/', '/events/', '/whats-on/', '/this-week/', '/city-hall/', '/weather/', '/traffic/', '/closures/', '/jobs/',
   '/facilities/', '/university/', '/sports/', '/jackrabbits/', '/vote/', '/election-results/', '/thanksgiving/', '/trash-recycling/', '/game-day/',
   '/how-city-council-works/', '/sdsu-campus-open-to-public/', '/home-sales/archive/', '/new-in-town/', '/workplace-watch/', '/home-sales/', '/farm-report/', '/vail-resorts/',
-  '/about/', '/contact/', '/privacy/', '/cookies/'];
+  '/tonight/', '/this-weekend/', '/about/', '/contact/', '/privacy/', '/cookies/'];
 /** list page -> link pattern of a representative DETAIL page found inside it. */
 const DETAIL_OF = { '/events/': /^\/s\/event-[^/]+\/$/, '/city-hall/': /^\/s\/[^/]+\/$/, '/this-week/': /^\/this-week\/[^/]+\/$/,
   '/facilities/': /^\/facilities\/[^/]+\/$/, '/jobs/': /^\/jobs\/[^/]+\/$/, '/university/': /^\/s\/university-digest-[^/]+\/$/, '/home-sales/': /^\/home-sales\/[^/]+\/$/ };
@@ -229,7 +229,7 @@ async function runTown(browser, town) {
     } catch { /* unreachable */ }
     await sleep(120);
   }
-  console.log(`   sections: ${found.length}`);
+  console.log(`   sections: ${found.length}${process.env.Q3_DEBUG ? ' ' + found.join(' ') : ''}`);
 
   const light = await newContext(browser, { theme: 'light', tz: cfg.timezone, base, origin });
   const dark = await newContext(browser, { theme: 'dark', tz: cfg.timezone, base, origin });
