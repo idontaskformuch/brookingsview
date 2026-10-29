@@ -1,1 +1,13 @@
-{"_doc":"Paths of the evening layer the owner has approved for indexing, per town id. Empty = every /tonight and /this-weekend must stay noindex (check evening.index-gate). Add a path only after the owner says yes in chat.","glasgow":[],"broomfield_co":[],"moreno_valley_ca":[],"brookings_sd":[]}
+{
+  "_doc": "Paths of the evening layer the owner has approved for indexing, per town id. Empty = every /tonight and /this-weekend must stay noindex (check evening.index-gate). Add a path only after the owner says yes in chat. Owner's yes 2026-10-29: Glasgow and Broomfield (both pages). Keep in step with eveningLayer.indexApproved in site/src/lib/site-config.ts (evening-config.test.ts fails if they differ).",
+  "glasgow": [
+    "/tonight/",
+    "/this-weekend/"
+  ],
+  "broomfield_co": [
+    "/tonight/",
+    "/this-weekend/"
+  ],
+  "moreno_valley_ca": [],
+  "brookings_sd": []
+}

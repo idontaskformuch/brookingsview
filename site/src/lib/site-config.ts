@@ -682,7 +682,7 @@ const CITIES: Record<string, SiteConfig> = {
 
   broomfield_co: {
     townId: 'broomfield_co',
-    eveningLayer: { mode: 'threshold', maxMiles: 20, includeTicketmasterSports: true, openLate: true, register: true, nearMiles: 5, h1: 'Tonight in and around Broomfield' },
+    eveningLayer: { mode: 'threshold', maxMiles: 20, includeTicketmasterSports: true, openLate: true, register: true, nearMiles: 5, h1: 'Tonight in and around Broomfield', indexApproved: true },
     // Owner-approved 2026-10-21: six tabs for now, a seventh to be chosen (events / workplace / vail / weather).
     nav: {
       tabs: ['today', 'tonight', 'whatson'],
@@ -783,7 +783,7 @@ const CITIES: Record<string, SiteConfig> = {
   // yet listed in the US towns' network disclosure. Phase 3 enables sources one by one.
   glasgow: {
     townId: 'glasgow',
-    eveningLayer: { mode: 'threshold', maxMiles: 15, includeTicketmasterSports: true, openLate: true, register: true },
+    eveningLayer: { mode: 'threshold', maxMiles: 15, includeTicketmasterSports: true, openLate: true, register: true, indexApproved: true },
     nav: {
       tabs: ['today', 'tonight', 'events'],
       groups: {

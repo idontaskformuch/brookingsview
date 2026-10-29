@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { ALL_CONFIGS } from './site-config';
 
 const byTown = (id: string) => ALL_CONFIGS.find((c) => c.townId === id)!;
@@ -23,5 +24,11 @@ describe('eveningLayer config per town', () => {
   });
   it('never looks further than the Ticketmaster fetch radius', () => {
     for (const c of ALL_CONFIGS) if (c.eveningLayer && c.ticketmaster) expect(c.eveningLayer.maxMiles).toBeLessThanOrEqual(c.ticketmaster.radiusMiles);
+  });
+  it("indexing is approved only where the owner said yes (2026-10-29: Glasgow, Broomfield), and the QA list agrees", () => {
+    const approved = ALL_CONFIGS.filter((c) => c.eveningLayer?.indexApproved).map((c) => c.townId).sort();
+    expect(approved).toEqual(['broomfield_co', 'glasgow']);
+    const qa = JSON.parse(readFileSync(new URL('../../../qa/evening-index-approved.json', import.meta.url), 'utf8')) as Record<string, string[]>;
+    for (const c of ALL_CONFIGS) expect(qa[c.townId] ?? [], c.townId).toEqual(c.eveningLayer?.indexApproved ? ['/tonight/', '/this-weekend/'] : []);
   });
 });
