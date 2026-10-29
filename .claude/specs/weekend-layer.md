@@ -54,6 +54,11 @@ Per stad (Glasgow, Brookings, Moreno Valley, Broomfield) rapporteras, ingenting 
 9. Slutsats: vilka städer når tröskeln (minst 10 aktuella poster i minst 3 grupper) för /tonight. Rapportera, bygg inget.
 Arbetsmaterial 2026-10-28 (påbörjat, ej klart): Overpass-skript i sessionens scratchpad (t1_osm.py; overpass-api.de svarade 502 vid första försöket, försök igen/annan instans).
 
+## Registret (steg 6): beslut 2026-10-29
+- Glasgow-listan godkänd (.claude/specs/evening-register-proposal.md). Robots för ej bedömda: 404 = tillåtet; 403/timeout/5xx/ingen DNS = hoppa över, ingen kringgång. Kontrollera även att domänen är ställets egen (kapade domäner som the13thnote.co.uk och frontrangebrewingcompany.com visar kasinosidor och ska aldrig användas).
+- Glasgow Film Theatre: EN rad per film och kväll med ALLA visningstider den kvällen.
+- Broomfield: registret får omfatta ställen inom ca 12 mi (Westminster, Louisville, Lafayette, Superior, Arvada, Boulder i utkanten); Ticketmaster behåller 20 mi. Ägaren godkänner varje tillägg.
+
 ## Roller (inga dubbletter)
 /tonight = ikväll, /this-weekend = helgen, /events = hela listan, /today = dagens överblick med kort Tonight-teaser och länk.
 
@@ -66,7 +71,7 @@ Arbetsmaterial 2026-10-28 (påbörjat, ej klart): Overpass-skript i sessionens s
 1. Indexera bara navsidor: /tonight, /this-weekend, /food-drink. Event- och ställessidor noindex tills de har eget innehåll. Inga arkivsidor per datum, en URL per vy.
 2. Tröskel per stad för indexering: minst 10 aktuella poster i minst 3 grupper, annars noindex för den staden (config-styrt, så Brookings kan ligga kvar med noindex).
 3. Mervärde utöver listorna: filter efter fråga (free, late, all ages), kvällens väder och varningar, "Getting home" (sista tunnelbana/tåg i Glasgow, ur officiella källor).
-4. Färskhet: "checked today" + källänk per rad. Poster som inte bekräftats på 7 dagar tas bort.
+4. Färskhet (ägaren 2026-10-29, ersätter tidigare 7-dagarsregel för alla rader): "checked <datum>" + källänk per rad. DATERADE event: tas bort om de inte setts i källan på 7 dagar. ÅTERKOMMANDE regler (quiz, livemusik m.m.): kontrolleras månadsvis och tas bort om de inte bekräftats inom 35 dagar. Samma regler gäller registret (steg 6) och OSM-rader (steg 5: 'Open late' omläses vid varje bygge, så de följer källan).
 5. Ingen AI-text på /tonight. Ingressen på /this-weekend max 3 meningar, faktabaserad.
 6. Byggspärr: deploy som lägger till fler än 30 nya indexerbara sidor fallerar, och kräver uttryckligt ja.
 7. Före indexering: web.duplicate-content och Q3 på de nya sidtyperna.
