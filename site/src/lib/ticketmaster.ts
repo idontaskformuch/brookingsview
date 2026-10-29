@@ -31,7 +31,7 @@ export interface RawTicketmasterEvent {
   id: string;
   name: string;
   url?: string;
-  images?: { url: string; width: number; height: number; ratio?: string }[];
+  images?: { url: string; width: number; height: number; ratio?: string; fallback?: boolean }[];
   dates?: { start?: { dateTime?: string; localDate?: string; localTime?: string } };
   priceRanges?: { min?: number; max?: number; currency?: string }[];
   _embedded?: {
@@ -221,8 +221,11 @@ export function distanceLabel(miles: number | null, cityName: string): string | 
  *  needs an accurate size, the same way every other tier already provides
  *  one, rather than a guessed fixed size. */
 function bestImage(images: RawTicketmasterEvent['images']): { url: string; width: number; height: number } | null {
-  if (!images || images.length === 0) return null;
-  return images.reduce((best, img) => (img.width > best.width ? img : best), images[0]);
+  // Ticketmaster marks its generic placeholder pictures `fallback: true` (45 of 200 events near Broomfield carried only those);
+  // a placeholder is not a picture of the show, so it is never used (owner 2026-10-29).
+  const real = (images ?? []).filter((img) => img.fallback !== true);
+  if (real.length === 0) return null;
+  return real.reduce((best, img) => (img.width > best.width ? img : best), real[0]);
 }
 
 /** Athletics/Sports filter -- What's On is meant to surface entertainment
@@ -265,7 +268,14 @@ export function isSportsEvent(raw: RawTicketmasterEvent): boolean {
  *  data. */
 export function isNonEventListing(raw: RawTicketmasterEvent): boolean {
   const classification = raw.classifications?.find((c) => c.primary) ?? raw.classifications?.[0];
-  return classification?.type?.name === 'Upsell' || isUpgradeProductTitle(raw.name);
+  return classification?.type?.name === 'Upsell' || isUpgradeProductTitle(raw.name) || isVenueTourTitle(raw.name);
+}
+
+/** Guided building tours listed as if they were shows ("KSE Venue Ball Arena Tours" at Ball Arena, seen live 2026-10-29): a venue word
+ *  followed by "Tours" (plural) at the end of the title. An artist's "The Eras Tour" has neither the venue word nor the plural. */
+const VENUE_TOUR = /\b(?:venue|arena|stadium|theat(?:re|er)|backstage|behind[- ]the[- ]scenes|facility|building)\s+tours\s*$/i;
+export function isVenueTourTitle(title: string | null | undefined): boolean {
+  return !!title && VENUE_TOUR.test(title.trim());
 }
 
 /** Seating/hospitality upgrades Ticketmaster lists as if they were shows: "Club Level Seating: Hilary Duff", "VIP Package: ...",
@@ -280,16 +290,11 @@ export function isUpgradeProductTitle(title: string | null | undefined): boolean
 }
 
 /** Ticketmaster's own data sometimes carries "?" where a character was lost on their side ("Tim Burton???s The Nightmare Before
- *  Christmas", "D??a de Muertos Festival / Day of the Dead Festival"; seen live 2026-10-29, Q3 on /tonight). Repair a lost apostrophe
- *  in a contraction; otherwise keep the part of a bilingual " / " title that is intact; otherwise drop the question marks. Also
- *  collapses the CR/LF the feed puts inside titles. */
+ *  Christmas", "D??a de Muertos Festival"; seen live 2026-10-29, Q3 on /tonight). Only the one known pattern is repaired (a lost
+ *  apostrophe inside a contraction); every other character is left exactly as the source has it (owner 2026-10-29: never remove
+ *  characters). Also collapses the CR/LF the feed puts inside titles. */
 export function cleanTicketmasterTitle(name: string): string {
-  let t = name.replace(/\s+/g, ' ').trim().replace(/(\w)\?{2,}(s|t|re|ve|ll|d|m)\b/gi, '$1\u2019$2');
-  if (!/\?{2,}/.test(t)) return t;
-  const parts = t.split(' / ');
-  const clean = parts.filter((p) => !/\?{2,}/.test(p));
-  if (parts.length > 1 && clean.length > 0) return clean.join(' / ');
-  return t.replace(/\?{2,}/g, '');
+  return name.replace(/\s+/g, ' ').trim().replace(/(\w)\?{2,}(s|t|re|ve|ll|d|m)\b/gi, '$1\u2019$2');
 }
 
 /** Pure -- unit-tested directly against captured fixture responses (see

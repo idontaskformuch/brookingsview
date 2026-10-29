@@ -1,0 +1,73 @@
+{
+  "glasgow": {
+    "Òran Mór": [
+      "Oran Mor",
+      "Oran Mor Auditorium"
+    ],
+    "Nice N Sleazy": [
+      "Nice n Sleazy"
+    ],
+    "The Mackintosh Church": [
+      "Mackintosh Church"
+    ],
+    "Cottiers": [
+      "Cottiers Bar and Restaurant",
+      "Cottiers Theatre"
+    ],
+    "Glasgow Garage": [
+      "G2",
+      "G2 (Glasgow Garage)",
+      "Attic Bar - Glasgow Garage"
+    ],
+    "SEC Centre": [
+      "SEC Centre - Lomond Auditorium"
+    ],
+    "Glasgow Royal Concert Hall": [
+      "Glasgow Royal Concert Hall, Strathclyde Suite"
+    ],
+    "Audio": [
+      "Audio, Glasgow"
+    ],
+    "SWG3": [
+      "Galvanizers SWG3"
+    ],
+    "King's Theatre": [
+      "Kings Theatre Glasgow"
+    ],
+    "King Tut's Wah Wah Hut": [
+      "King Tuts Wah Wah Hut"
+    ],
+    "Chaakoo Bombay Cafe": [
+      "Chaakoo Bombay"
+    ],
+    "Ga Ga Kitchen + Bar": [
+      "Ga Ga"
+    ],
+    "Frank's Pizza": [
+      "Frank's"
+    ]
+  },
+  "broomfield_co": {
+    "Oriental Theater": [
+      "Oriental Theatre-CO",
+      "Oriental Theatre"
+    ],
+    "Meow Wolf Denver": [
+      "Meow Wolf Denver Convergence Station"
+    ],
+    "National Western Complex": [
+      "National Western Events Center"
+    ],
+    "Fillmore Auditorium": [
+      "Fillmore Auditorium (Denver)"
+    ],
+    "Globe Hall": [
+      "Globe Hall - CO"
+    ],
+    "Westminster Brewing Company": [
+      "Westminster Brewing Co"
+    ]
+  },
+  "moreno_valley_ca": {},
+  "brookings_sd": {}
+}

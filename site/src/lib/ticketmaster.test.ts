@@ -670,10 +670,23 @@ describe('isUpgradeProductTitle: seating and hospitality upgrades are not events
 
 describe('cleanTicketmasterTitle', () => {
   it('repairs a lost apostrophe', () => expect(cleanTicketmasterTitle('Disney Tim Burton???s The Nightmare Before Christmas')).toBe('Disney Tim Burton’s The Nightmare Before Christmas'));
-  it('keeps the intact side of a bilingual title and collapses CR/LF', () =>
-    expect(cleanTicketmasterTitle('D??a de Muertos Festival / Day of the Dead Festival - \r\n(Ages 18 & Under Free)')).toBe('Day of the Dead Festival - (Ages 18 & Under Free)'));
-  it('drops question marks it cannot repair; leaves normal titles alone', () => {
-    expect(cleanTicketmasterTitle('Caf?? Tacvba')).toBe('Caf Tacvba');
-    expect(cleanTicketmasterTitle('Who? What?')).toBe('Who? What?');
+});
+
+describe('Ticketmaster placeholders and tours (owner 2026-10-29)', () => {
+  const base = { id: 'x', name: 'A Show', dates: { start: { dateTime: '2026-11-01T20:00:00Z' } } } as RawTicketmasterEvent;
+  it('a fallback picture is never used; a real one is', () => {
+    const only = normalizeTicketmasterEvent({ ...base, images: [{ url: 'https://x/f.jpg', width: 2000, height: 1000, fallback: true }] });
+    expect(only.ticketmasterEvent.imageUrl).toBeNull();
+    const mixed = normalizeTicketmasterEvent({ ...base, images: [{ url: 'https://x/f.jpg', width: 2000, height: 1000, fallback: true }, { url: 'https://x/r.jpg', width: 640, height: 360, fallback: false }] });
+    expect(mixed.ticketmasterEvent.imageUrl).toBe('https://x/r.jpg');
+  });
+  it('building tours are not events; an artist tour is', () => {
+    expect(isNonEventListing({ ...base, name: 'KSE Venue Ball Arena Tours' })).toBe(true);
+    expect(isNonEventListing({ ...base, name: 'Teddy Swims: The UGLY Tour' })).toBe(false);
+    expect(isNonEventListing({ ...base, name: 'Taylor Swift | The Eras Tour' })).toBe(false);
+  });
+  it('cleanTicketmasterTitle leaves unknown patterns untouched', () => {
+    expect(cleanTicketmasterTitle('D??a de Muertos Festival / Day of the Dead')).toBe('D??a de Muertos Festival / Day of the Dead');
+    expect(cleanTicketmasterTitle('Caf?? Tacvba')).toBe('Caf?? Tacvba');
   });
 });

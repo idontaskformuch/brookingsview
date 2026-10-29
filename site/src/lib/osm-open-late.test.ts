@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { placesFromOverpass, openLateRows, placesFromSnapshot } from './osm-open-late';
+import { placesFromOverpass, openLateRows, placesFromSnapshot, groupOpenLateByArea, decorateOpenLate } from './osm-open-late';
 
 const el = (id: number, tags: Record<string, string>) => ({ type: 'node', id, tags });
 // 2026-10-30 is a Friday; day number = days since epoch.
@@ -72,5 +72,18 @@ describe('builds never call Overpass', () => {
     const offenders = readdirSync(dir).filter((f) => /\.(ts|astro)$/.test(f) && !f.endsWith('.test.ts'))
       .filter((f) => /overpass-api|overpass\.kumi|interpreter/i.test(readFileSync(new URL(f, dir), 'utf8')));
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('Open late by neighbourhood (owner 2026-10-29)', () => {
+  const row = (name: string, area: string | null) => ({ osmId: `node/${name}`, name, kind: 'Pub' as const, closing: 'until 3am', website: null, start: '2026-10-29T22:00:00Z', end: '2026-10-30T03:00:00Z', area });
+  it('groups by area in order of first (latest-closing) row, places without an area last', () => {
+    const g = groupOpenLateByArea([row('A', 'Merchant City'), row('B', null), row('C', 'Finnieston'), row('D', 'Merchant City')]);
+    expect(g.map((x) => [x.area, x.rows.map((r) => r.name)])).toEqual([['Merchant City', ['A', 'D']], ['Finnieston', ['C']], [null, ['B']]]);
+  });
+  it('decorateOpenLate gives the canonical spelling and the area from the static file', () => {
+    const out = decorateOpenLate([row('Oran Mor', null), row('Unknown Bar', null)], 'glasgow',
+      { attribution: '', areas: [], venues: {}, places: { 'oran mor': 'Hillhead' } });
+    expect(out.map((r) => [r.name, r.area])).toEqual([['Òran Mór', 'Hillhead'], ['Unknown Bar', null]]);
   });
 });

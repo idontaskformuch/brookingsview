@@ -32,6 +32,17 @@ const SITE_URLS = {
 const env = { ...loadEnv('', process.cwd(), ''), ...process.env };
 const activeCity = env.SITE_CITY ?? 'brookings_sd';
 
+// Evening layer verdict written by the pages during the build (lib/evening-verdict.ts). A stale file from an earlier build is removed here;
+// a missing or foreign file means "noindex".
+const EVENING_VERDICT_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '.evening-verdict.json');
+try { fs.rmSync(EVENING_VERDICT_PATH, { force: true }); } catch { /* nothing to remove */ }
+function eveningIndexable(townId) {
+  try {
+    const v = JSON.parse(fs.readFileSync(EVENING_VERDICT_PATH, 'utf8'));
+    return v.townId === townId && v.indexable === true;
+  } catch { return false; }
+}
+
 // Local Accent Identity. Mirrors site-config.ts's per-town `brand` field
 // exactly -- same duplication tradeoff as slugifyAddress/extractZip/
 // slugifyCategory below: site-config.ts reads import.meta.env.SITE_CITY at
@@ -414,8 +425,9 @@ async function buildLastmodMap(townId, databaseUrl) {
   // /vail-resorts/ (Broomfield) joined 2026-10-21: a headline+link mirror of Vail Resorts' newsroom, noindex in the page itself.
   // 2026-10-22 (owner, Brookings AdSense review): /jobs/ (+ every category, below), every /events/<facet>/,
   // /events/past/ and /offline/ are noindex in the page itself -- mirrored here.
-  // /tonight/ (evening layer, steg 3): noindex in the page itself until step 7 ties the threshold verdict to tag and sitemap.
-  const noindexThinPageUrls = new Set(['/tonight/', '/this-weekend/', '/reviews/', '/recipes/', '/editorials/', '/columns/', '/vail-resorts/',
+  // /tonight/ and /this-weekend/ (evening layer, step 7): NOT in this set. The pages decide (threshold verdict AND the owner's yes, lib/evening-verdict.ts),
+  // write the answer to .evening-verdict.json and the sitemap filter below reads it, so tag and sitemap cannot disagree.
+  const noindexThinPageUrls = new Set(['/reviews/', '/recipes/', '/editorials/', '/columns/', '/vail-resorts/',
     '/jobs/', '/events/past/', '/offline/', '/university/weeks/',
     ...['today', 'this-weekend', 'free', 'kids', 'library', 'outdoor', 'campus'].map((f) => `/events/${f}/`)]);
   // Quiet sections (SiteConfig.quietSections, owner 2026-10-23): reachable, noindex in the page, out of the sitemap here. Mirrors
@@ -849,7 +861,9 @@ export default defineConfig({
         // keep them out of the sitemap the same way the HTML event pages
         // they belong to are already noindexed (see lib/noindex.ts).
         const isIcsFile = pathname.endsWith('.ics');
+        const isEveningNoindex = (pathname === '/tonight/' || pathname === '/this-weekend/') && !eveningIndexable(activeCity);
         return !noindexHomeSaleUrls.has(pathname)
+          && !isEveningNoindex
           && !excludedGatedPages.has(pathname)
           && !noindexStoryUrls.has(pathname)
           && !noindexThinPageUrls.has(pathname)

@@ -212,6 +212,7 @@ function pageProbe({ allowSel, wantLinks }) {
         const group = isCard ? (el.querySelector('.ev-card-group')?.innerText ?? '').replace(/^[\s·]+/, '').trim() : (el.closest('.ev-group')?.querySelector('.ev-group-name')?.innerText ?? '').trim();
         return { list: isCard ? 'cards' : 'rows', start: el.dataset.start, end: el.dataset.end ?? null, visible: visible(el), group,
           title: (a ?? el.querySelector('.ev-title, .ev-card-title'))?.innerText.trim() ?? '', href: a?.getAttribute('href') ?? '',
+          venue: (el.querySelector('.ev-meta')?.innerText ?? '').split(' · ')[0].trim(),
           localHour: el.dataset.start ? hourIn(el.dataset.start, z) : -1 };
       });
       const late = [...d.querySelectorAll('.ev-row[data-late]')].map((el) => ({ name: el.querySelector('.ev-title')?.innerText.trim() ?? '', meta: el.querySelector('.ev-meta')?.innerText.trim() ?? '' }));
@@ -220,7 +221,9 @@ function pageProbe({ allowSel, wantLinks }) {
     const sumText = document.querySelector('[data-sum="count"] [data-sum-text]');
     const sumMatch = sumText && visible(sumText) ? /^([\d,]+) things? on (.+)$/.exec(sumText.innerText.trim()) : null;
     evening = { nowIso: now.toISOString(), days, summaryCount: sumMatch ? Number(sumMatch[1].replace(/,/g, '')) : null, period: sumMatch ? sumMatch[2] : '',
-      aboutText: document.getElementById('about-this-page')?.innerText ?? '' };
+      aboutText: document.getElementById('about-this-page')?.innerText ?? '',
+      weatherText: document.querySelector('.ev-weather')?.innerText ?? '',
+      freeCount: [...evRoot.querySelectorAll('.ev-label')].filter((l) => visible(l) && l.innerText.trim() === 'Free').length + [...evRoot.querySelectorAll('.ev-group-name')].filter((h) => visible(h) && /^free/i.test(h.innerText.trim())).length };
   }
   return {
     nowIso: now.toISOString(), evening,

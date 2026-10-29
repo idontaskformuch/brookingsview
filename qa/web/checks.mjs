@@ -202,7 +202,9 @@ export function applyWaivers(findings, waivers, today) {
  *  (1) the browser re-count said "24 things on tonight" with 12 tonight + 12 tomorrow night; (2) Open late rows read "Pub, closes
  *  until 3am"; (3) Essy Sparrow, a singer at SWG3, had been grouped "Clubs & late" at 7 pm (fixed earlier, now guarded here).
  *  approved = paths the owner has said yes to index (qa/evening-index-approved.json); everything else MUST stay noindex. */
-const CLUB_WORDS = /(club night|dj set|dj|rave|disco|late night)/i; // mirrors CLUB_RE in site/src/lib/evening-items.ts
+const CLUB_WORDS = /\b(club night|dj set|dj|rave|disco|late night)\b/i; // mirrors CLUB_RE in site/src/lib/evening-items.ts
+/** Titles that are fine in capitals: a known abbreviation only ("OVO"), mirrors KEEP_UPPER in site/src/lib/evening-names.ts. */
+const ALLCAPS_OK = /^(OVO|SEC|BBC|DJ|UK|USA|FC|AFC|UFC|WWE|NBA|NFL|NHL|MLS|CU|DU|TV|VIP|SWG3|IHOP|HQ)(\s|$)/;
 const normTitle = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 export function eveningFindings(snap, town, approved = []) {
   const f = [];
@@ -216,6 +218,8 @@ export function eveningFindings(snap, town, approved = []) {
     let prev = null;
     for (const e of d.entries) {
       if (!e.visible) continue;
+      if (e.title.length >= 4 && /[A-Z]{3}/.test(e.title) && !/[a-z]/.test(e.title) && !ALLCAPS_OK.test(e.title)) add('evening.allcaps-title', `"${e.title}" is shown entirely in capitals`);
+      if (/\b(venue|arena|stadium|theat(re|er)|backstage|facility|building)\s+tours\s*$/i.test(e.title)) add('evening.tour-listing', `"${e.title}" is a building tour, not an event`);
       if (/\?{2,}/.test(e.title)) add('evening.garbled-title', `"${e.title}" has lost characters ("??")`);
       if (!e.href) add('evening.row-source', `"${e.title}" has no link to its source`);
       const k = `${e.start}|${normTitle(e.title)}`;
@@ -233,6 +237,17 @@ export function eveningFindings(snap, town, approved = []) {
       if (lateNames.has(p.name)) add('evening.dup-row', `Open late lists "${p.name}" twice`); else lateNames.add(p.name);
     }
   }
+  // one spelling per venue: the same venue folded (case, accents, leading The, punctuation) must not appear spelled two ways
+  const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/^the /, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  const spellings = new Map();
+  for (const d of ev.days) for (const x of [...d.entries.map((e) => e.venue), ...d.late.map((p) => p.name)]) {
+    if (!x) continue;
+    const k = fold(x);
+    (spellings.get(k) ?? spellings.set(k, new Set()).get(k)).add(x);
+  }
+  for (const set of spellings.values()) if (set.size > 1) add('evening.venue-spelling', `one venue spelled ${[...set].map((x) => `"${x}"`).join(' and ')}`);
+  if (/what is free|and free,/i.test(ev.aboutText ?? '') && !ev.freeCount) add('evening.free-claim', 'the page says it shows what is free, but no Free label or group is shown');
+  if (/this-weekend/.test(snap.path) && ev.weatherText && !/(Friday|Saturday|Sunday)/.test(ev.weatherText)) add('evening.weekend-forecast', `the weather line does not cover the weekend: "${ev.weatherText.slice(0, 80)}"`);
   const first = ev.days.find((d) => d.visible);
   if (ev.summaryCount !== null && first && ev.period === 'tonight') {
     const shown = first.entries.filter((e) => e.visible).length;

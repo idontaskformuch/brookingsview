@@ -56,3 +56,19 @@ describe('sectionState', () => {
     expect(sectionState(day, next, TZ).hidden).toBe(true);
   });
 });
+
+describe('near / further afield (owner 2026-10-29, Broomfield 5 mi)', () => {
+  const at = (miles: number | null) => ({ ...e('2026-10-28T19:00:00Z', 'Live music'), distanceMiles: miles });
+  it('rows within the radius (or without a distance) first, the rest in farGroups', () => {
+    const s = buildSection([at(1), at(null), at(5), at(12), at(30)], localDayNumber(NOW, TZ), 'tonight', TZ, false, 5);
+    expect(s.groups.flatMap((g) => g.entries).map((x) => x.distanceMiles)).toEqual([1, null, 5]);
+    expect(s.farGroups.flatMap((g) => g.entries).map((x) => x.distanceMiles)).toEqual([12, 30]);
+    expect(s.count).toBe(5);
+  });
+  it('highlights come from the near rows; no split without nearMiles', () => {
+    const s = buildSection([at(30), at(1)], localDayNumber(NOW, TZ), 'tonight', TZ, true, 5);
+    expect(s.highlights.map((x) => x.distanceMiles)).toEqual([1]);
+    const all = buildSection([at(30), at(1)], localDayNumber(NOW, TZ), 'tonight', TZ, false);
+    expect(all.farGroups).toEqual([]);
+  });
+});

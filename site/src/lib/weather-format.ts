@@ -78,3 +78,19 @@ export function signWeather(periods: FPeriod[]): SignWeather | null {
 export function signWeatherText(w: SignWeather): string {
   return `${w.isDaytime ? 'High' : 'Low'} ${Math.round(w.temp)}°${w.unit}${w.conditions ? ` ${w.conditions.toLowerCase()}` : ''}`;
 }
+
+/** /this-weekend's forecast: "Friday: 12°C light rain. Saturday: 11°C cloudy. Sunday: 9°C sunny." One part per local day number in
+ *  `days` (days since epoch) that the forecast covers: the day period, or the night period when the day period is already over
+ *  (Friday evening). A day the forecast does not reach is left out; '' when none is covered. */
+export function weekendForecastLine(periods: FPeriod[], tz: string, now: Date, days: number[]): string {
+  const dayOf = (p: FPeriod) => { const y = localYMD(new Date(p.start as string), tz); return Date.UTC(y.y, y.m - 1, y.d) / 86_400_000; };
+  const usable = periods.filter((p) => p.start && p.temp !== null && p.temp !== undefined && new Date(p.start).getTime() + 12 * 3_600_000 > now.getTime());
+  const parts = days.map((day) => {
+    const mine = usable.filter((p) => dayOf(p) === day);
+    const p = mine.find((x) => x.is_daytime) ?? mine[0];
+    if (!p) return '';
+    const name = WEEKDAYS[new Date(day * 86_400_000).getUTCDay()];
+    return `${name}${p.is_daytime ? '' : ' night'}: ${Math.round(p.temp as number)}°${p.unit ?? ''}${p.short ? ` ${p.short.toLowerCase()}` : ''}`;
+  }).filter(Boolean);
+  return parts.length ? `${parts.join('. ')}.` : '';
+}

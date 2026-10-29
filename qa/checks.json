@@ -167,9 +167,34 @@
       "what": "#about-this-page is missing or empty"
     },
     "evening.garbled-title": {
-      "severity": "hard",
+      "severity": "soft",
       "born_from": "Q3 2026-10-29 on Broomfield /tonight: Ticketmaster's own data had 'Tim Burton???s' and 'D??a de Muertos' (cleanTicketmasterTitle in ticketmaster.ts repairs it). Regression fixture: tests/fixtures/qa_evening_2026-10-29.json.",
-      "what": "a card or row title contains two or more question marks in a row"
+      "what": "a card or row title contains two or more question marks in a row (soft: it is Ticketmaster's own data; only the apostrophe pattern is repaired, owner 2026-10-29)"
+    },
+    "evening.allcaps-title": {
+      "severity": "hard",
+      "born_from": "Q3 2026-10-29: titles in capitals ('MAMA TERRA', 'NOAHFINNCE'); owner: show ordinary capitalisation, keep known abbreviations (displayTitle in evening-names.ts). Regression fixture: tests/fixtures/qa_evening_2026-10-29.json.",
+      "what": "a card or row title is entirely in capitals and is not a known abbreviation"
+    },
+    "evening.tour-listing": {
+      "severity": "hard",
+      "born_from": "Q3 2026-10-29: 'KSE Venue Ball Arena Tours' (a guided building tour) led the Broomfield marquee; owner: filter tours (isVenueTourTitle in ticketmaster.ts). Regression fixture: tests/fixtures/qa_evening_2026-10-29.json.",
+      "what": "a title ends in 'Venue/Arena/Stadium ... Tours'"
+    },
+    "evening.venue-spelling": {
+      "severity": "hard",
+      "born_from": "Q3 2026-10-29: 'Oran Mor' (Ticketmaster) beside 'Òran Mór' (OpenStreetMap); owner: canonical venue list (src/config/venue-names.json). Regression fixture: tests/fixtures/qa_evening_2026-10-29.json.",
+      "what": "the same venue appears with two spellings on one page"
+    },
+    "evening.free-claim": {
+      "severity": "hard",
+      "born_from": "Q3 2026-10-29: the page text promised 'what is free' while no Free label was shown; owner: say it only when Free items exist. Regression fixture: tests/fixtures/qa_evening_2026-10-29.json.",
+      "what": "the About text claims to show what is free but no Free label or group is visible"
+    },
+    "evening.weekend-forecast": {
+      "severity": "hard",
+      "born_from": "Q3 2026-10-29: /this-weekend showed Thursday's weather; owner: forecast Friday to Sunday (weekendForecastLine). Regression fixture: tests/fixtures/qa_evening_2026-10-29.json.",
+      "what": "the /this-weekend weather line does not mention Friday, Saturday or Sunday"
     }
   }
 }

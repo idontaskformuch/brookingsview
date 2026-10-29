@@ -52,5 +52,36 @@
       "lon": -105.04118
     }
   ],
-  "venues": {}
+  "venues": {},
+  "venueMiles": {
+    "wonderland brewing": 1.7,
+    "westminster brewing company": 1.9,
+    "bambei brewing": 4.8,
+    "arvada center": 6.7,
+    "trailside saloon": 8.2
+  },
+  "places": {
+    "5280 burger bar": "Bradburn",
+    "azafran": "Flatiron Crossing",
+    "double d s sourdough pizzeria and taphouse": "Flatiron Crossing",
+    "eat food drink": "Flatiron Crossing",
+    "el tapatio mexican restaurant": "Flatiron Crossing",
+    "gque championship barbeque": "County Vista",
+    "huakee barbeque": "Northridge Manor",
+    "ihop": "Bradburn",
+    "jason s deli": "Flatiron Crossing",
+    "modern market eatery": "County Vista",
+    "north side tavern": "Brandywine",
+    "old philly town": "County Vista",
+    "paris bahn mi": "County Vista",
+    "smokin oak": "Flatiron Crossing",
+    "someplace else brewery": "Flatiron Crossing",
+    "sorry umma": "Northridge Manor",
+    "the crab house": "County Vista",
+    "the old man": "Bradburn",
+    "tuk tuk thai bistro": "Arrowhead",
+    "twenty brew": "Arrowhead",
+    "twin peaks": "Flatiron Crossing",
+    "wishbone family restaurant": "Abbey"
+  }
 }

@@ -30,3 +30,6 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# evening layer verdict written during the build (lib/evening-verdict.ts), read by the sitemap filter
+.evening-verdict.json

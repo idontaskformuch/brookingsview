@@ -7,6 +7,8 @@
  *  indexing threshold. */
 import { parseOpeningHours, lateRange, closingLabel, type WeekHours } from './osm-hours';
 import { localMidnightIso } from './local-day';
+import { canonicalVenue } from './evening-names';
+import { normVenue, type AreaData } from './areas';
 
 export type OpenLateKind = 'Pub' | 'Bar' | 'Nightclub' | 'Restaurant';
 
@@ -25,6 +27,8 @@ export interface OpenLateRow {
   kind: OpenLateKind;
   closing: string;
   website: string | null;
+  /** Neighbourhood from the static area file (lib/areas.ts), null when the place has none. */
+  area?: string | null;
   /** ISO instants the browser sweep hides the row by: opening time and closing time of the late range. */
   start: string;
   end: string;
@@ -82,6 +86,23 @@ export function openLateRows(places: OsmPlace[], day: number, tz: string, max = 
   }
   rows.sort((a, b) => b.endMin - a.endMin || KIND_RANK[a.kind] - KIND_RANK[b.kind] || a.name.localeCompare(b.name));
   return rows.slice(0, max).map(({ endMin: _e, ...row }) => row);
+}
+
+/** Canonical venue spelling (lib/evening-names.ts) and neighbourhood for each row. `areas.places` is keyed by the normalised OSM name. */
+export function decorateOpenLate(rows: OpenLateRow[], townId: string, areaData: AreaData | null | undefined): OpenLateRow[] {
+  return rows.map((r) => ({ ...r, name: canonicalVenue(r.name, townId) ?? r.name, area: areaData?.places?.[normVenue(r.name)] ?? null }));
+}
+
+export interface OpenLateGroup { area: string | null; rows: OpenLateRow[] }
+
+/** Rows grouped by neighbourhood where there is one: areas in the order of their latest-closing row, places without an area last. */
+export function groupOpenLateByArea(rows: OpenLateRow[]): OpenLateGroup[] {
+  const groups: OpenLateGroup[] = [];
+  for (const r of rows) {
+    const at = groups.find((g) => g.area === (r.area ?? null));
+    if (at) at.rows.push(r); else groups.push({ area: r.area ?? null, rows: [r] });
+  }
+  return [...groups.filter((g) => g.area), ...groups.filter((g) => !g.area)];
 }
 
 export interface OsmSnapshot { fetchedAt: string; elements: unknown[] }

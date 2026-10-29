@@ -3,7 +3,7 @@
  *  Sunday night from the same rows and components as /tonight (components/evening/). Groups: Nights out & live music, Sport,
  *  Markets & food, Family, Free (lib/evening-weekend.ts). No generated text: the summary line is counted from the data, so there is no
  *  AI introduction (the spec allowed a three-sentence one; the counted line says the same without a model).
- *  Indexing: ALWAYS noindex and out of the sitemap until step 7, like /tonight. */
+ *  Indexing: the same verdict as /tonight (lib/evening-verdict.ts), so both pages are indexable or noindex together. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import ShareButton from '../components/ShareButton.astro';
@@ -17,11 +17,12 @@ import { siteConfig } from '../lib/site-config';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
 import { buildEveningEntries } from '../lib/evening-items';
 import { buildWeekendSections, weekendDayHidden } from '../lib/evening-weekend';
-import { placesFromSnapshot, openLateRows } from '../lib/osm-open-late';
+import { placesFromSnapshot, openLateRows, decorateOpenLate } from '../lib/osm-open-late';
 import { areasFor, withAreas } from '../lib/areas';
+import { indexingForTown } from '../lib/evening-verdict';
 import { gettingHomeFor } from '../lib/getting-home';
 import { buildSummary, openAfterOneCount, lastSubwayTime } from '../lib/evening-summary';
-import { forecastLine } from '../lib/weather-format';
+import { weekendForecastLine } from '../lib/weather-format';
 import { resolvePageMeta } from '../lib/page-meta';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 
@@ -41,7 +42,7 @@ const register = layer.register ? await getEveningRegister() : [];
 const checked = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
 const areaData = areasFor(siteConfig.townId);
 const entries = withAreas(buildEveningEntries({
-  feed: items, ticketmaster: tm, register, now, timezone: tz, checked, cityName: siteConfig.cityName,
+  feed: items, ticketmaster: tm, register, now, timezone: tz, checked, cityName: siteConfig.cityName, townId: siteConfig.townId, venueMiles: areaData?.venueMiles,
   isFree: (i) => isFreeEvent(i, facilities),
   ticketmasterMaxMiles: layer.maxMiles,
   includeTicketmasterSports: layer.includeTicketmasterSports,
@@ -51,15 +52,18 @@ const osmSnapshot = layer.openLate ? await getOsmSnapshot() : null;
 const osm = placesFromSnapshot(osmSnapshot, now) ?? [];
 const osmChecked = osmSnapshot ? osmSnapshot.fetchedAt.slice(0, 10) : checked;
 
-const sections = buildWeekendSections(entries, now, tz);
+const indexing = await indexingForTown({ townId: siteConfig.townId, siteUrl: siteConfig.siteUrl, layer, entries, osm, now, tz });
+
+const sections = buildWeekendSections(entries, now, tz, undefined, layer.nearMiles);
+const anyFree = sections.some((s) => [...s.highlights, ...s.groups.flatMap((g) => g.entries), ...s.farGroups.flatMap((g) => g.entries)].some((e) => e.labels.includes('Free')));
 const saturday = sections[1];
-const lateByDay = new Map(sections.map((s) => [s.day, s.kind === 'sunday' ? [] : openLateRows(osm, s.day, tz)]));
+const lateByDay = new Map(sections.map((s) => [s.day, s.kind === 'sunday' ? [] : decorateOpenLate(openLateRows(osm, s.day, tz), siteConfig.townId, areaData)]));
 const anyLate = [...lateByDay.values()].some((r) => r.length > 0);
 const anyRows = sections.some((s) => s.count > 0) || anyLate;
 const home = gettingHomeFor(siteConfig.townId, now);
 const outside = entries.some((e) => e.driveMinutes !== null);
 const anyArea = entries.some((e) => e.area);
-const forecast = forecastLine(periods, tz, now);
+const forecast = weekendForecastLine(periods, tz, now, sections.map((s) => s.day));
 const alertCount = alerts.length;
 
 const total = sections.filter((s) => !weekendDayHidden(s.day, now, tz)).reduce((n, s) => n + s.count, 0);
@@ -79,8 +83,8 @@ const canonicalUrl = new URL('/this-weekend/', Astro.site ?? siteConfig.siteUrl)
 const breadcrumbTrail: BreadcrumbEntry[] = [{ label: 'Home', href: '/' }, { label: 'This weekend', href: canonicalUrl }];
 const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketmaster listings' : 'Local event calendars') + (register.length > 0 ? ' and venue websites' : '');
 ---
-<BaseLayout title={pageMeta.title} canonicalUrl={canonicalUrl} noindex={true}
-  description={`Things to do this weekend in ${siteConfig.cityName}: Friday night, Saturday and Sunday, with times, venues and what is free.`}>
+<BaseLayout title={pageMeta.title} canonicalUrl={canonicalUrl} noindex={!indexing.indexable}
+  description={`Things to do this weekend in ${siteConfig.cityName}: Friday night, Saturday and Sunday, with times and venues${anyFree ? ', and what is free' : ''}.`}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="ev-head">
     <h1>{pageMeta.h1}</h1>
@@ -105,7 +109,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
     {sections.map((s) => (
       <EveningDay
         id={`wk-${s.kind}`} heading={headingOf[s.kind]} dateLabel={dayLabelOf(s.day)}
-        highlights={s.highlights} groups={s.groups} count={s.count} late={lateByDay.get(s.day)!} tz={tz}
+        highlights={s.highlights} groups={s.groups} farGroups={s.farGroups} count={s.count} late={lateByDay.get(s.day)!} tz={tz}
         hidden={weekendDayHidden(s.day, now, tz)} moreHref="/events/" moreLabel="on the full events list"
         attrs={{ 'data-weekend-day': s.day, 'data-tz': tz }}
       />
@@ -119,7 +123,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
   <p class="ev-more-links">Just tonight? See <a href="/tonight/">what is on tonight</a> · the <a href="/events/">full events list</a>.</p>
 
   <EveningAbout
-    shows={`Events in ${siteConfig.cityName} from Friday evening to Sunday night, grouped into nights out and live music, sport, markets and food, family, and free, with the start time, the venue and what is free.`}
+    shows={`Events in ${siteConfig.cityName} from Friday evening to Sunday night, grouped into nights out and live music, sport, markets and food and family${anyFree ? ', and free' : ''}, with the start time and the venue${anyFree ? ', and what is free' : ''}.`}
     use={`Pick the day, then the group that fits. Open the listing for the source's own details before you go: times and tickets can change. Saturday and Sunday show the first ${8} per group; the rest are on the full events list.`}
   >
     <Fragment slot="sources">{sourceNames}, read {checked}. <a href="/how-we-gather-this/">How we gather this</a>.</Fragment>

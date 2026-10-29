@@ -3,7 +3,7 @@
  *  derived from the entry's own group, so no source is classified twice. Saturday and Sunday run all day, Friday from 17:00. */
 import type { EveningEntry } from './evening-items';
 import { localDayNumber, localHourOf, TONIGHT_FROM_HOUR } from './local-day';
-import { pickHighlights, type EveningListGroup } from './evening-page';
+import { pickHighlights, isNearEntry, type EveningListGroup } from './evening-page';
 
 export type WeekendKind = 'friday' | 'saturday' | 'sunday';
 export const WEEKEND_GROUP_ORDER = ['Nights out & live music', 'Sport', 'Markets & food', 'Family', 'Free', 'Also on'] as const;
@@ -36,10 +36,12 @@ export interface WeekendSection {
   kind: WeekendKind;
   highlights: EveningEntry[];
   groups: Array<EveningListGroup & { more: number }>;
+  /** Rows beyond nearMiles, under "Further afield" (same per-group cap). */
+  farGroups: Array<EveningListGroup & { more: number }>;
   count: number;
 }
 
-export function buildWeekendSections(entries: EveningEntry[], now: Date, tz: string, perGroup = WEEKEND_ROWS_PER_GROUP): WeekendSection[] {
+export function buildWeekendSections(entries: EveningEntry[], now: Date, tz: string, perGroup = WEEKEND_ROWS_PER_GROUP, nearMiles?: number): WeekendSection[] {
   const friday = weekendFriday(now, tz);
   const kinds: WeekendKind[] = ['friday', 'saturday', 'sunday'];
   return kinds.map((kind, i) => {
@@ -49,15 +51,18 @@ export function buildWeekendSections(entries: EveningEntry[], now: Date, tz: str
       const at = new Date(e.start);
       return localDayNumber(at, tz) === day && localHourOf(at, tz) >= from;
     });
-    const highlights = pickHighlights(dayEntries);
+    const near = dayEntries.filter((e) => isNearEntry(e, nearMiles));
+    const highlights = pickHighlights(near.length > 0 ? near : dayEntries);
+    const groupsOf = (list: EveningEntry[]) => {
+      const byName = new Map<string, EveningEntry[]>();
+      for (const e of list) byName.set(weekendGroupOf(e), [...(byName.get(weekendGroupOf(e)) ?? []), e]);
+      return WEEKEND_GROUP_ORDER.filter((n) => byName.has(n)).map((name) => {
+        const all = byName.get(name)!.sort((a, b) => a.start.localeCompare(b.start));
+        return { name, entries: all.slice(0, perGroup), more: Math.max(0, all.length - perGroup) };
+      });
+    };
     const rest = dayEntries.filter((e) => !highlights.includes(e));
-    const byName = new Map<string, EveningEntry[]>();
-    for (const e of rest) byName.set(weekendGroupOf(e), [...(byName.get(weekendGroupOf(e)) ?? []), e]);
-    const groups = WEEKEND_GROUP_ORDER.filter((n) => byName.has(n)).map((name) => {
-      const all = byName.get(name)!.sort((a, b) => a.start.localeCompare(b.start));
-      return { name, entries: all.slice(0, perGroup), more: Math.max(0, all.length - perGroup) };
-    });
-    return { day, kind, highlights, groups, count: dayEntries.length };
+    return { day, kind, highlights, groups: groupsOf(rest.filter((e) => isNearEntry(e, nearMiles))), farGroups: groupsOf(rest.filter((e) => !isNearEntry(e, nearMiles))), count: dayEntries.length };
   });
 }
 

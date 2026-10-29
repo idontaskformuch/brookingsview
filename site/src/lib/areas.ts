@@ -11,6 +11,10 @@ export interface AreaData {
   areas: AreaNode[];
   /** Normalised venue name -> area name, resolved by the script for venues without coordinates in our data. */
   venues: Record<string, string>;
+  /** Normalised open-late place name (pub, bar, nightclub, restaurant in OSM) -> area, for grouping "Open late" by neighbourhood. */
+  places?: Record<string, string>;
+  /** Normalised register venue name -> straight-line miles from the town centre (scripts/fetch_city_areas.py), for the near / further-afield split. */
+  venueMiles?: Record<string, number>;
 }
 
 export const MAX_AREA_KM = 1.2;

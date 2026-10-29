@@ -4,7 +4,7 @@
 import EveningCard from './EveningCard.astro';
 import EveningRow from './EveningRow.astro';
 import type { EveningEntry } from '../../lib/evening-items';
-import type { OpenLateRow } from '../../lib/osm-open-late';
+import { groupOpenLateByArea, type OpenLateRow } from '../../lib/osm-open-late';
 
 interface Group { name: string; entries: EveningEntry[]; more?: number }
 interface Props {
@@ -13,6 +13,8 @@ interface Props {
   dateLabel: string;
   highlights: EveningEntry[];
   groups: Group[];
+  /** Rows beyond the town's near radius, shown under "Further afield" after the near groups and the Open late block. */
+  farGroups?: Group[];
   count: number;
   late?: OpenLateRow[];
   tz: string;
@@ -21,7 +23,8 @@ interface Props {
   moreHref?: string;
   moreLabel?: string;
 }
-const { id, heading, dateLabel, highlights, groups, count, late = [], tz, attrs = {}, hidden = false, moreHref, moreLabel } = Astro.props;
+const { id, heading, dateLabel, highlights, groups, farGroups = [], count, late = [], tz, attrs = {}, hidden = false, moreHref, moreLabel } = Astro.props;
+const groupedLate = late.some((r) => r.area);
 ---
 <section class="ev-day" aria-labelledby={`${id}-h`} hidden={hidden || undefined} {...attrs}>
   <h2 id={`${id}-h`}><span data-evening-heading>{heading}</span> <span class="ev-date">{dateLabel}</span></h2>
@@ -43,21 +46,43 @@ const { id, heading, dateLabel, highlights, groups, count, late = [], tz, attrs 
   {late.length > 0 && (
     <div class="ev-group">
       <h3 class="ev-group-name">Open late</h3>
-      <ul class="ev-rows" data-hide-ended data-hide-when-empty>
-        {late.map((p) => (
-          <li class="ev-row" data-start={p.start} data-end={p.end} data-late>
-            <span class="ev-time"><span>{p.closing}</span></span>
-            <span class="ev-main">
-              {p.website ? <a class="ev-title" href={p.website} rel="noopener">{p.name}</a> : <span class="ev-title">{p.name}</span>}
-              <span class="ev-meta">{p.kind}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
+      {groupOpenLateByArea(late).map((g) => (
+        <>
+          {groupedLate && <h4 class="ev-area-name">{g.area ?? 'Elsewhere'}</h4>}
+          <ul class="ev-rows" data-hide-ended data-hide-when-empty>
+            {g.rows.map((p) => (
+              <li class="ev-row" data-start={p.start} data-end={p.end} data-late>
+                <span class="ev-time"><span>{p.closing}</span></span>
+                <span class="ev-main">
+                  {p.website ? <a class="ev-title" href={p.website} rel="noopener">{p.name}</a> : <span class="ev-title">{p.name}</span>}
+                  <span class="ev-meta">{p.kind}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ))}
+    </div>
+  )}
+  {farGroups.length > 0 && (
+    <div class="ev-far">
+      <h3 class="ev-far-name">Further afield</h3>
+      {farGroups.map((g) => (
+        <div class="ev-group">
+          <h4 class="ev-group-name">{g.name}</h4>
+          <ul class="ev-rows" data-hide-ended data-hide-when-empty>
+            {g.entries.map((e) => <EveningRow e={e} tz={tz} />)}
+          </ul>
+          {g.more ? <p class="ev-more">{g.more} more {moreHref ? <a href={moreHref}>{moreLabel ?? 'on the full list'}</a> : 'on the full list'}</p> : null}
+        </div>
+      ))}
     </div>
   )}
 </section>
 <style is:global>
+  .ev-far { margin-top: 1.5rem; }
+  .ev-far-name { margin: 0 0 0.25rem; font-size: 1.125rem; }
+  .ev-area-name { margin: 0.9rem 0 0; font-size: 0.9375rem; font-weight: 600; color: var(--ink-soft); }
   .ev-day { margin: 0 0 2rem; }
   .ev-date { font-size: 0.9rem; font-weight: 400; color: var(--ink-soft); }
   .ev-group-name { margin: 1.25rem 0 0.25rem; font-size: 1rem; }

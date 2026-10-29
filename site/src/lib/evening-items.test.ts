@@ -139,7 +139,7 @@ describe('the same show from two sources', () => {
       ticketmaster: [tm('n', 'NOAHFINNCE', '2026-10-29T19:00:00Z', 1)],
     });
     expect(entries).toHaveLength(1);
-    expect(entries[0]).toMatchObject({ title: 'NOAHFINNCE', source: 'ticketmaster', labels: ['18+'] });
+    expect(entries[0]).toMatchObject({ title: 'Noahfinnce', source: 'ticketmaster', labels: ['18+'] });
   });
   it('keeps different shows at the same time apart', () => {
     const entries = buildEveningEntries({ ...OPTS, feed: [own('Pub Quiz', '2026-10-29T19:00:00Z')], ticketmaster: [tm('n', 'Big Band', '2026-10-29T19:00:00Z', 1)] });
@@ -215,5 +215,18 @@ describe('settleGroup: "Clubs & late" only for late starts or club words', () =>
     expect(registerEntries([{ ...row, times: ['22:30'] }], { ...OPTS, feed: [] })[0].group).toBe('Clubs & late');
     const dance = buildEveningEntries({ ...OPTS, feed: [], ticketmaster: [tm('d1', 'Warehouse Project', '2026-10-29T19:30:00Z', 1, 'Music', 'Dance/Electronic')] });
     expect(dance[0].group).toBe('Live music');
+  });
+});
+
+describe('display names (owner 2026-10-29)', () => {
+  it('a title in capitals is re-cased and the venue gets its canonical spelling', () => {
+    const e = buildEveningEntries({
+      feed: [], now: new Date('2026-10-29T10:00:00Z'), timezone: 'Europe/London', checked: '2026-10-29', cityName: 'Glasgow', townId: 'glasgow',
+      ticketmaster: [{
+        sourceKind: 'ticketmaster', occurs_at: '2026-10-29T20:00:00Z',
+        ticketmasterEvent: { id: 'o', title: 'MAMA TERRA', venueName: 'Oran Mor', venueDistanceMiles: 0.5, segment: 'Music', genre: 'Rock', imageUrl: null },
+      } as never],
+    });
+    expect(e[0]).toMatchObject({ title: 'Mama Terra', venue: 'Òran Mór' });
   });
 });

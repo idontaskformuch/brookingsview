@@ -3,8 +3,9 @@
  *  (components/evening/). Rows come from lib/evening-items.ts (own events, SDSU, Ticketmaster, the curated venue register); layout from
  *  lib/evening-page.ts. No generated text: the summary line is counted from the data.
  *  Built for tonight and tomorrow night; the browser hides what has ended and flips the headings (script below + hide-ended sweep).
- *  Indexing: ALWAYS noindex and out of the sitemap until step 7 wires the threshold verdict (lib/evening-threshold.ts) to both,
- *  so the tag and the sitemap can never disagree. The verdict is only logged at build. Brookings (mode 'never') stays noindex for good. */
+ *  Indexing (lib/evening-verdict.ts): indexable only when the threshold verdict (lib/evening-threshold.ts) AND the owner's yes
+ *  (siteConfig.eveningLayer.indexApproved) both hold. The one answer feeds the robots tag here and the sitemap filter (astro.config.mjs, via
+ *  .evening-verdict.json), so tag and sitemap cannot disagree. Brookings (mode 'never') stays noindex for good. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import ShareButton from '../components/ShareButton.astro';
@@ -17,9 +18,9 @@ import { buildEventFeed, isFreeEvent } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
 import { buildEveningEntries, toThresholdItems } from '../lib/evening-items';
-import { evaluateEveningThreshold } from '../lib/evening-threshold';
+import { indexingForTown } from '../lib/evening-verdict';
 import { buildEveningSections } from '../lib/evening-page';
-import { placesFromSnapshot, openLateRows, openLateCounts } from '../lib/osm-open-late';
+import { placesFromSnapshot, openLateRows, openLateCounts, decorateOpenLate } from '../lib/osm-open-late';
 import { areasFor, withAreas } from '../lib/areas';
 import { gettingHomeFor } from '../lib/getting-home';
 import { buildSummary, openAfterOneCount, lastSubwayTime } from '../lib/evening-summary';
@@ -45,7 +46,7 @@ const register = layer.register ? await getEveningRegister() : [];
 const checked = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
 const areaData = areasFor(siteConfig.townId);
 const entries = withAreas(buildEveningEntries({
-  feed: items, ticketmaster: tm, register, now, timezone: tz, checked, cityName: siteConfig.cityName,
+  feed: items, ticketmaster: tm, register, now, timezone: tz, checked, cityName: siteConfig.cityName, townId: siteConfig.townId, venueMiles: areaData?.venueMiles,
   isFree: (i) => isFreeEvent(i, facilities),
   ticketmasterMaxMiles: layer.maxMiles,
   includeTicketmasterSports: layer.includeTicketmasterSports,
@@ -54,14 +55,11 @@ const entries = withAreas(buildEveningEntries({
 const osmSnapshot = layer.openLate ? await getOsmSnapshot() : null;
 const osm = placesFromSnapshot(osmSnapshot, now) ?? [];
 const osmChecked = osmSnapshot ? osmSnapshot.fetchedAt.slice(0, 10) : checked;
-const firstNight = localDayNumber(now, tz) + (localHourOf(now, tz) >= EVENING_LAST_START_HOUR ? 1 : 0);
-const verdict = evaluateEveningThreshold({
-  items: toThresholdItems(entries), now, timezone: tz, mode: layer.mode, openLateByDay: openLateCounts(osm, firstNight, 14, tz),
-});
-console.log(`[evening] ${siteConfig.townId}: indexable=${verdict.indexable} (${verdict.reason}) median items ${verdict.medianItems}, groups ${verdict.medianGroups}`);
+const indexing = await indexingForTown({ townId: siteConfig.townId, siteUrl: siteConfig.siteUrl, layer, entries, osm, now, tz });
 
-const sections = buildEveningSections(entries, now, tz);
-const lateBySection = new Map(sections.map((s) => [s.day, openLateRows(osm, s.day, tz)]));
+const sections = buildEveningSections(entries, now, tz, layer.nearMiles);
+const anyFree = sections.some((s) => [...s.highlights, ...s.groups.flatMap((g) => g.entries), ...s.farGroups.flatMap((g) => g.entries)].some((e) => e.labels.includes('Free')));
+const lateBySection = new Map(sections.map((s) => [s.day, decorateOpenLate(openLateRows(osm, s.day, tz), siteConfig.townId, areaData)]));
 const anyLate = [...lateBySection.values()].some((r) => r.length > 0);
 const anyRows = sections.some((s) => s.count > 0) || anyLate;
 const home = gettingHomeFor(siteConfig.townId, now);
@@ -88,11 +86,11 @@ const canonicalUrl = new URL('/tonight/', Astro.site ?? siteConfig.siteUrl).href
 const breadcrumbTrail: BreadcrumbEntry[] = [{ label: 'Home', href: '/' }, { label: 'Tonight', href: canonicalUrl }];
 const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketmaster listings' : 'Local event calendars') + (register.length > 0 ? ' and venue websites' : '');
 ---
-<BaseLayout title={pageMeta.title} canonicalUrl={canonicalUrl} noindex={true}
-  description={`Things to do tonight and tomorrow night in ${siteConfig.cityName}: live music, comedy, quiz nights and more, with times, venues and what is free.`}>
+<BaseLayout title={pageMeta.title} canonicalUrl={canonicalUrl} noindex={!indexing.indexable}
+  description={`Things to do tonight and tomorrow night in ${siteConfig.cityName}: live music, comedy, quiz nights and more, with times and venues${anyFree ? ', and what is free' : ''}.`}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="ev-head">
-    <h1>{pageMeta.h1}</h1>
+    <h1>{layer.h1 ?? pageMeta.h1}</h1>
     <ShareButton title={pageMeta.title} />
   </header>
   <p class="ev-updated">Updated {updatedLabel} · <a href="#about-this-page">How we gather this</a></p>
@@ -114,7 +112,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
     {sections.map((s) => (
       <EveningDay
         id={`tn-${s.kind}`} heading={s.kind === 'tonight' ? 'Tonight' : 'Tomorrow night'} dateLabel={dayLabelOf(s.day)}
-        highlights={s.highlights} groups={s.groups} count={s.count} late={lateBySection.get(s.day)!} tz={tz}
+        highlights={s.highlights} groups={s.groups} farGroups={s.farGroups} count={s.count} late={lateBySection.get(s.day)!} tz={tz}
         hidden={s.count === 0 && lateBySection.get(s.day)!.length === 0 && s.kind === 'tomorrow'}
         attrs={{ 'data-evening-day': s.day, 'data-tz': tz, 'data-built-kind': s.kind }}
       />
@@ -144,7 +142,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
   <p class="ev-more-links">More than tonight: <a href="/this-weekend/">this weekend</a> · the <a href="/events/">full events list</a>.</p>
 
   <EveningAbout
-    shows={`Events in ${siteConfig.cityName} that start this evening or tomorrow evening, grouped by what they are, with the start time, the venue and what is free.`}
+    shows={`Events in ${siteConfig.cityName} that start this evening or tomorrow evening, grouped by what they are, with the start time and the venue${anyFree ? ', and what is free' : ''}.`}
     use={`Pick the group that fits the night, then open the listing for the source's own details before you go. Times can change, so check the source for anything you plan around.${layer.maxMiles > 15 ? ' Rows outside town show an estimated drive time.' : ''}`}
   >
     <Fragment slot="sources">{sourceNames}, read {checked}. <a href="/how-we-gather-this/">How we gather this</a>.</Fragment>

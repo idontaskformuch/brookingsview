@@ -9,6 +9,8 @@
  *  Labels come from source data only (Free, 18+, All ages), never from guesses about the text of the description.
  *  Pure functions: no I/O, no globals; `isFree` is injected so the caller decides how free-ness is known (venue registry).
  *  Later steps add OSM "Open late" (5) and the curated register (6) as further sources of EveningEntry. */
+import { displayTitle, canonicalVenue } from './evening-names';
+import { normVenue } from './areas';
 import type { FeedItem } from './events';
 import { itemTitle, itemUrl, itemVenue } from './events';
 import { storyHref } from './content-slugs';
@@ -150,6 +152,10 @@ export interface EveningEntryOptions {
   /** Local date the data was read, YYYY-MM-DD (the build date). */
   checked: string;
   cityName: string;
+  /** Town id: picks the canonical venue-name list (lib/evening-names.ts). Without it venue names are shown as the source wrote them. */
+  townId?: string;
+  /** Register venue (normalised name) -> straight-line miles from the town centre, from the static area file; gives register rows a distance. */
+  venueMiles?: Record<string, number>;
   /** Whether an own event is knowably free (venue registry, see events.ts isFreeEvent). */
   isFree?: (item: FeedItem) => boolean;
   /** Ticketmaster shows further away than this are left out (siteConfig.eveningLayer.maxMiles). Default: in-town only. */
@@ -160,6 +166,8 @@ export interface EveningEntryOptions {
   includeTicketmasterSports?: boolean;
 }
 
+const venueOf = (name: string | null | undefined, o: EveningEntryOptions): string | null => (o.townId ? canonicalVenue(name, o.townId) : (name ?? null));
+
 function endIso(end: string | null | undefined): string | null {
   return end && !Number.isNaN(new Date(end).getTime()) ? new Date(end).toISOString() : null;
 }
@@ -167,7 +175,7 @@ function endIso(end: string | null | undefined): string | null {
 function ownEntry(item: FeedItem, o: EveningEntryOptions): EveningEntry | null {
   if (!item.occurs_at || Number.isNaN(new Date(item.occurs_at).getTime())) return null;
   const story = item.sourceKind === 'story' ? item.story : null;
-  const title = itemTitle(item);
+  const title = displayTitle(itemTitle(item));
   const labels: EveningLabel[] = [];
   if (o.isFree?.(item)) labels.push('Free');
   const age = ageLabel(story?.meta?.audience);
@@ -179,7 +187,7 @@ function ownEntry(item: FeedItem, o: EveningEntryOptions): EveningEntry | null {
     end: endIso(story?.ends_at),
     group: settleGroup(groupForTitle(title), title, new Date(item.occurs_at).toISOString(), o.timezone),
     labels,
-    venue: itemVenue(item),
+    venue: venueOf(itemVenue(item), o),
     href: story ? storyHref(story.slug) : itemUrl(item),
     source: 'own',
     distanceMiles: null,
@@ -198,12 +206,12 @@ function ticketmasterEntry(item: TicketmasterFeedItem, o: EveningEntryOptions): 
   } else if (e.venueDistanceMiles == null || e.venueDistanceMiles > max) return null;
   return {
     id: `tm:${e.id}`,
-    title: e.title,
+    title: displayTitle(e.title),
     start: new Date(item.occurs_at).toISOString(),
     end: null,
     group: settleGroup(groupForTicketmaster(e.segment, e.genre, e.title), e.title, new Date(item.occurs_at).toISOString(), o.timezone),
     labels: [],
-    venue: e.venueName,
+    venue: venueOf(e.venueName, o),
     href: `/whats-on/${ticketmasterSlug(e)}/`,
     source: 'ticketmaster',
     distanceMiles: e.venueDistanceMiles,
@@ -233,6 +241,7 @@ export function registerEntries(rows: RegisterRow[], o: EveningEntryOptions): Ev
     const labels: EveningLabel[] = [];
     if (r.price === 'Free') labels.push('Free');
     if (r.age === '18+' || r.age === 'All ages') labels.push(r.age);
+    const miles = o.venueMiles?.[normVenue(r.venueName)] ?? null;
     const confirmed = new Intl.DateTimeFormat('en-CA', { timeZone: o.timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(r.lastConfirmedAt));
     for (let day = today; day <= today + REGISTER_HORIZON_DAYS; day++) {
       const d = new Date(day * 86_400_000);
@@ -241,10 +250,10 @@ export function registerEntries(rows: RegisterRow[], o: EveningEntryOptions): Ev
       if (r.kind === 'dated' ? r.onDate !== iso : !r.weekdays.includes(isoWeekday(day))) continue;
       const starts = r.times.map((t) => localInstantIso(ymd, Number(t.slice(0, 2)), Number(t.slice(3, 5)), o.timezone));
       out.push({
-        id: `reg:${r.venueName}|${r.title}|${iso}`, title: r.title, start: starts[0],
+        id: `reg:${r.venueName}|${r.title}|${iso}`, title: displayTitle(r.title), start: starts[0],
         end: starts.length > 1 ? new Date(new Date(starts[starts.length - 1]).getTime() + DEFAULT_EVENT_MS).toISOString() : null,
-        group: settleGroup(groupForTitle(r.title) ?? fallback, r.title, starts[0], o.timezone), labels, venue: r.venueName,
-        href: r.sourceUrl, source: 'register', distanceMiles: null, driveMinutes: null, checked: confirmed,
+        group: settleGroup(groupForTitle(r.title) ?? fallback, r.title, starts[0], o.timezone), labels, venue: venueOf(r.venueName, o),
+        href: r.sourceUrl, source: 'register', distanceMiles: miles, driveMinutes: miles != null && distanceLabel(miles, o.cityName) !== `In ${o.cityName}` ? driveMinutes(miles) : null, checked: confirmed,
         ...(starts.length > 1 ? { laterStarts: starts.slice(1) } : {}),
       });
     }

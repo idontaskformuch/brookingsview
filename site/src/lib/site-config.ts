@@ -53,6 +53,12 @@ export interface SiteConfig {
     openLate?: true;
     /** Curated venue register (evening_register_* tables, scripts/refresh_evening_register.py; the venue list lives in configs/<town>.json). Set where a list exists. */
     register?: true;
+    /** Rows within this many miles come first; the rest follow under "Further afield" (Broomfield 5, owner 2026-10-29). Absent = one list. */
+    nearMiles?: number;
+    /** The owner's yes to index /tonight and /this-weekend (2026-10-29: Glasgow and Broomfield). Without it both pages stay noindex whatever the threshold says. */
+    indexApproved?: true;
+    /** Page heading when the town's own pattern does not fit (Broomfield: "Tonight in and around Broomfield"). */
+    h1?: string;
   };
   /** false = not listed in the other towns' multi-site disclosure yet (an unlaunched, noindexed
    *  site is not advertised from the live ones). Default true. */
@@ -676,7 +682,7 @@ const CITIES: Record<string, SiteConfig> = {
 
   broomfield_co: {
     townId: 'broomfield_co',
-    eveningLayer: { mode: 'threshold', maxMiles: 20, includeTicketmasterSports: true, openLate: true, register: true },
+    eveningLayer: { mode: 'threshold', maxMiles: 20, includeTicketmasterSports: true, openLate: true, register: true, nearMiles: 5, h1: 'Tonight in and around Broomfield' },
     // Owner-approved 2026-10-21: six tabs for now, a seventh to be chosen (events / workplace / vail / weather).
     nav: {
       tabs: ['today', 'tonight', 'whatson'],

@@ -174,15 +174,17 @@ describe('web.routes (born 2026-10-28: soft-404 /ads.txt, /advertise without red
 
 describe('evening layer checks (Pass E)', () => {
   const fx = JSON.parse(readFileSync(new URL('../../../tests/fixtures/qa_evening_2026-10-29.json', import.meta.url), 'utf8')) as
-    { approved: string[]; bad: Record<string, unknown>; good: Record<string, unknown> };
+    { bad: Record<string, unknown>; good: Record<string, unknown>; bad_weekend: Record<string, unknown>; good_weekend: Record<string, unknown> };
   const run = (snap: Record<string, unknown>, approved: string[] = []) =>
     (eveningFindings(snap, 'glasgow', approved) as { check: string }[]).map((f) => f.check);
   it('the page as found 2026-10-29 trips every evening check', () => {
     const got = new Set(run(fx.bad));
     for (const id of ['evening.index-gate', 'evening.summary-count', 'evening.open-late-wording', 'evening.group-misfit', 'evening.dup-row',
-      'evening.row-source', 'evening.garbled-title', 'evening.ended-row', 'evening.order', 'evening.stale-read']) expect(got.has(id), id).toBe(true);
+      'evening.row-source', 'evening.garbled-title', 'evening.ended-row', 'evening.order', 'evening.stale-read',
+      'evening.allcaps-title', 'evening.tour-listing', 'evening.venue-spelling', 'evening.free-claim']) expect(got.has(id), id).toBe(true);
+    expect(run(fx.bad_weekend)).toContain('evening.weekend-forecast');
   });
-  it('the same page after the fixes is clean', () => expect(run(fx.good)).toEqual([]));
+  it('the same page after the fixes is clean', () => { expect(run(fx.good)).toEqual([]); expect(run(fx.good_weekend)).toEqual([]); });
   it('an approved path may be indexable; any other may not', () => {
     const open = { ...fx.good, metaRobots: 'index,follow' };
     expect(run(open)).toContain('evening.index-gate');

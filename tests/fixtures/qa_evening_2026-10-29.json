@@ -25,7 +25,7 @@
    "nowIso": "2026-10-29T20:00:00.000Z",
    "summaryCount": 24,
    "period": "tonight",
-   "aboutText": "Sources read 2026-10-20. Checked 2026-09-01.",
+   "aboutText": "Sources read 2026-10-20. Checked 2026-09-01. Shows events with times and what is free.",
    "days": [
     {
      "id": 0,
@@ -39,7 +39,8 @@
        "group": "Clubs & late",
        "title": "Essy Sparrow",
        "href": "/whats-on/x/",
-       "localHour": 19
+       "localHour": 19,
+       "venue": "Stereo"
       },
       {
        "list": "rows",
@@ -49,7 +50,8 @@
        "group": "Live music",
        "title": "Mama Terra",
        "href": "/whats-on/x/",
-       "localHour": 19
+       "localHour": 19,
+       "venue": "Stereo"
       },
       {
        "list": "rows",
@@ -59,7 +61,8 @@
        "group": "Live music",
        "title": "Early gig",
        "href": "/whats-on/x/",
-       "localHour": 19
+       "localHour": 19,
+       "venue": "Stereo"
       },
       {
        "list": "rows",
@@ -69,7 +72,8 @@
        "group": "Live music",
        "title": "Mama  Terra!",
        "href": "/whats-on/x/",
-       "localHour": 19
+       "localHour": 19,
+       "venue": "Stereo"
       },
       {
        "list": "rows",
@@ -79,7 +83,8 @@
        "group": "Live music",
        "title": "Afternoon thing",
        "href": "",
-       "localHour": 14
+       "localHour": 14,
+       "venue": "Stereo"
       },
       {
        "list": "rows",
@@ -89,7 +94,41 @@
        "group": "Live music",
        "title": "Disney Tim Burton???s Nightmare",
        "href": "/x/",
-       "localHour": 20
+       "localHour": 20,
+       "venue": "Stereo"
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T20:45:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "MAMA TERRA",
+       "href": "/x/",
+       "localHour": 20,
+       "venue": "Oran Mor"
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T21:00:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "KSE Venue Ball Arena Tours",
+       "href": "/x/",
+       "localHour": 21,
+       "venue": "Ball Arena"
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T21:15:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Gig",
+       "href": "/x/",
+       "localHour": 21,
+       "venue": "Òran Mór"
       }
      ],
      "late": [
@@ -103,7 +142,8 @@
       }
      ]
     }
-   ]
+   ],
+   "freeCount": 0
   }
  },
  "good": {
@@ -131,7 +171,7 @@
    "nowIso": "2026-10-29T20:00:00.000Z",
    "summaryCount": 3,
    "period": "tonight",
-   "aboutText": "Sources read 2026-10-29. Checked 2026-10-29.",
+   "aboutText": "Sources read 2026-10-29. Checked 2026-10-29. what is free.",
    "days": [
     {
      "id": 0,
@@ -145,7 +185,8 @@
        "group": "Live music",
        "title": "Essy Sparrow",
        "href": "/whats-on/x/",
-       "localHour": 19
+       "localHour": 19,
+       "venue": "Stereo"
       },
       {
        "list": "rows",
@@ -155,7 +196,8 @@
        "group": "Live music",
        "title": "Mama Terra",
        "href": "/whats-on/x/",
-       "localHour": 19
+       "localHour": 19,
+       "venue": "Stereo"
       },
       {
        "list": "rows",
@@ -165,7 +207,8 @@
        "group": "Clubs & late",
        "title": "Nice N Sleazy: club night",
        "href": "/whats-on/x/",
-       "localHour": 22
+       "localHour": 22,
+       "venue": "Stereo"
       }
      ],
      "late": [
@@ -175,7 +218,232 @@
       }
      ]
     }
-   ]
+   ],
+   "freeCount": 1
+  }
+ },
+ "bad_weekend": {
+  "url": "https://x.test/tonight/",
+  "path": "/this-weekend/",
+  "status": 200,
+  "redirects": 0,
+  "inSitemap": false,
+  "title": "t",
+  "titleCount": 1,
+  "h1": [
+   "h"
+  ],
+  "metaRobots": "index,follow",
+  "mainText": "x",
+  "metaDescription": "",
+  "imgAlts": [],
+  "loneDashNodes": 0,
+  "brokenImgs": [],
+  "consoleErrors": [],
+  "failedRequests": [],
+  "blockedAttempts": [],
+  "label": "evening",
+  "evening": {
+   "nowIso": "2026-10-29T20:00:00.000Z",
+   "summaryCount": 24,
+   "period": "tonight",
+   "aboutText": "Sources read 2026-10-20. Checked 2026-09-01. Shows events with times and what is free.",
+   "days": [
+    {
+     "id": 0,
+     "visible": true,
+     "entries": [
+      {
+       "list": "rows",
+       "start": "2026-10-29T19:00:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Clubs & late",
+       "title": "Essy Sparrow",
+       "href": "/whats-on/x/",
+       "localHour": 19,
+       "venue": "Stereo"
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T19:30:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Mama Terra",
+       "href": "/whats-on/x/",
+       "localHour": 19,
+       "venue": "Stereo"
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T19:15:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Early gig",
+       "href": "/whats-on/x/",
+       "localHour": 19,
+       "venue": "Stereo"
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T19:30:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Mama  Terra!",
+       "href": "/whats-on/x/",
+       "localHour": 19,
+       "venue": "Stereo"
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T14:00:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Afternoon thing",
+       "href": "",
+       "localHour": 14,
+       "venue": "Stereo"
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T20:30:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Disney Tim Burton???s Nightmare",
+       "href": "/x/",
+       "localHour": 20,
+       "venue": "Stereo"
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T20:45:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "MAMA TERRA",
+       "href": "/x/",
+       "localHour": 20,
+       "venue": "Oran Mor"
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T21:00:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "KSE Venue Ball Arena Tours",
+       "href": "/x/",
+       "localHour": 21,
+       "venue": "Ball Arena"
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T21:15:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Gig",
+       "href": "/x/",
+       "localHour": 21,
+       "venue": "Òran Mór"
+      }
+     ],
+     "late": [
+      {
+       "name": "Mango",
+       "meta": "Nightclub, closes until 3am"
+      },
+      {
+       "name": "Mango",
+       "meta": "Nightclub"
+      }
+     ]
+    }
+   ],
+   "freeCount": 0,
+   "weatherText": "Today: 15°C cloudy. Tonight: 10°C cloudy. Full forecast"
+  }
+ },
+ "good_weekend": {
+  "url": "https://x.test/tonight/",
+  "path": "/this-weekend/",
+  "status": 200,
+  "redirects": 0,
+  "inSitemap": false,
+  "title": "t",
+  "titleCount": 1,
+  "h1": [
+   "h"
+  ],
+  "metaRobots": "noindex,follow",
+  "mainText": "x",
+  "metaDescription": "",
+  "imgAlts": [],
+  "loneDashNodes": 0,
+  "brokenImgs": [],
+  "consoleErrors": [],
+  "failedRequests": [],
+  "blockedAttempts": [],
+  "label": "evening",
+  "evening": {
+   "nowIso": "2026-10-29T20:00:00.000Z",
+   "summaryCount": 3,
+   "period": "tonight",
+   "aboutText": "Sources read 2026-10-29. Checked 2026-10-29. what is free.",
+   "days": [
+    {
+     "id": 0,
+     "visible": true,
+     "entries": [
+      {
+       "list": "rows",
+       "start": "2026-10-29T19:00:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Essy Sparrow",
+       "href": "/whats-on/x/",
+       "localHour": 19,
+       "venue": "Stereo"
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T19:30:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Live music",
+       "title": "Mama Terra",
+       "href": "/whats-on/x/",
+       "localHour": 19,
+       "venue": "Stereo"
+      },
+      {
+       "list": "rows",
+       "start": "2026-10-29T22:00:00.000Z",
+       "end": null,
+       "visible": true,
+       "group": "Clubs & late",
+       "title": "Nice N Sleazy: club night",
+       "href": "/whats-on/x/",
+       "localHour": 22,
+       "venue": "Stereo"
+      }
+     ],
+     "late": [
+      {
+       "name": "Mango",
+       "meta": "Nightclub, open until 3am"
+      }
+     ]
+    }
+   ],
+   "freeCount": 1,
+   "weatherText": "Friday: 12°C light rain. Saturday: 11°C cloudy. Sunday: 9°C sunny. Full forecast"
   }
  }
 }

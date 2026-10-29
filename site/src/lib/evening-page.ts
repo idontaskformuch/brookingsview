@@ -11,12 +11,17 @@ export const OTHER_GROUP = 'Also on';
 export const MAX_HIGHLIGHTS = 3;
 
 export interface EveningListGroup { name: string; entries: EveningEntry[] }
+/** Near / far split (siteConfig.eveningLayer.nearMiles): a row with no distance (own events, register rows without one) counts as near. */
+export const isNearEntry = (e: EveningEntry, nearMiles: number | undefined) => nearMiles == null || e.distanceMiles == null || e.distanceMiles <= nearMiles;
+
 export interface EveningSection {
   /** Local calendar day number of the evening. */
   day: number;
   kind: 'tonight' | 'tomorrow';
   highlights: EveningEntry[];
   groups: EveningListGroup[];
+  /** Groups of the rows beyond nearMiles, shown under "Further afield"; empty when no split is configured. */
+  farGroups: EveningListGroup[];
   count: number;
 }
 
@@ -53,18 +58,23 @@ export function groupEntries(entries: EveningEntry[]): EveningListGroup[] {
 }
 
 /** The evening of `day`: entries starting at/after 17:00 local that day. Highlights come out of the compact rows (no row twice). */
-export function buildSection(entries: EveningEntry[], day: number, kind: 'tonight' | 'tomorrow', tz: string, withHighlights: boolean): EveningSection {
+export function buildSection(entries: EveningEntry[], day: number, kind: 'tonight' | 'tomorrow', tz: string, withHighlights: boolean, nearMiles?: number): EveningSection {
   const evening = entries.filter((e) => {
     const at = new Date(e.start);
     return localDayNumber(at, tz) === day && localHourOf(at, tz) >= TONIGHT_FROM_HOUR;
   });
-  const highlights = withHighlights ? pickHighlights(evening) : [];
-  return { day, kind, highlights, groups: groupEntries(evening.filter((e) => !highlights.includes(e))), count: evening.length };
+  const near = evening.filter((e) => isNearEntry(e, nearMiles));
+  const far = evening.filter((e) => !isNearEntry(e, nearMiles));
+  const highlights = withHighlights ? pickHighlights(near.length > 0 ? near : evening) : [];
+  return {
+    day, kind, highlights, groups: groupEntries(near.filter((e) => !highlights.includes(e))),
+    farGroups: groupEntries(far.filter((e) => !highlights.includes(e))), count: evening.length,
+  };
 }
 
-export function buildEveningSections(entries: EveningEntry[], now: Date, tz: string): EveningSection[] {
+export function buildEveningSections(entries: EveningEntry[], now: Date, tz: string, nearMiles?: number): EveningSection[] {
   const today = localDayNumber(now, tz);
-  return [buildSection(entries, today, 'tonight', tz, true), buildSection(entries, today + 1, 'tomorrow', tz, false)];
+  return [buildSection(entries, today, 'tonight', tz, true, nearMiles), buildSection(entries, today + 1, 'tomorrow', tz, false, nearMiles)];
 }
 
 export interface SectionState { hidden: boolean; kind: 'tonight' | 'tomorrow' }
