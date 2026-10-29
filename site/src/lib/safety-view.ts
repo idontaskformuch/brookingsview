@@ -43,10 +43,27 @@ export function fireLine(f: PublicFire, tz: string): string {
   return parts.join(' · ');
 }
 
+/** AirNow abbreviates reporting-area names ("Perris Vly"); spell the known ones out, word by word. Anything not listed is left as the source wrote it. */
+const AREA_WORDS: Record<string, string> = {
+  Vly: 'Valley', Mtn: 'Mountain', Mtns: 'Mountains', Cnty: 'County', Pk: 'Park', Hts: 'Heights', Spgs: 'Springs', Cyn: 'Canyon', Bch: 'Beach', Lk: 'Lake',
+};
+export function reportingAreaName(name: string): string {
+  return name.replace(/[A-Za-z]+\.?/g, (w) => AREA_WORDS[w.replace(/\.$/, '')] ?? w);
+}
+
+/** True when the front page should show the safety box: a wildfire inside the radius, or an air-quality index of 101 or more ("Unhealthy for
+ *  Sensitive Groups" and worse, EPA). Otherwise the box stays away. Fail closed like everything else here. */
+export const AQI_SHOW_FROM = 101;
+export function needsAttention(p: SafetyPayload | null, nowMs: number): boolean {
+  if (!isFresh(p, nowMs)) return false;
+  if (p.fires.length > 0) return true;
+  return !!p.air && nowMs - new Date(p.air.observed).getTime() <= AIR_MAX_AGE_MS && p.air.aqi >= AQI_SHOW_FROM;
+}
+
 /** "Air quality index 54 (Moderate), PM2.5, Perris Vly. Preliminary data, observed 2026-10-29 08:00 PDT." */
 export function airLine(a: PublicAir, nowMs: number): string | null {
   if (nowMs - new Date(a.observed).getTime() > AIR_MAX_AGE_MS) return null;
-  const where = a.reportingArea ? `, ${a.reportingArea}` : '';
+  const where = a.reportingArea ? `, ${reportingAreaName(a.reportingArea)}` : '';
   const what = a.parameter ? `, ${a.parameter}` : '';
   return `Air quality index ${a.aqi} (${a.category})${what}${where}. Preliminary data, observed ${a.observedLocal}.`;
 }

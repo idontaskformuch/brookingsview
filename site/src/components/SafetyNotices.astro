@@ -9,12 +9,12 @@
  *   full     the lists on /safety/.
  */
 import { SAFETY_TOWNS } from '../lib/safety-towns';
-interface Props { townId: string; timezone: string; variant?: 'compact' | 'full' }
-const { townId, timezone, variant = 'compact' } = Astro.props;
+interface Props { townId: string; timezone: string; variant?: 'compact' | 'full'; /** Front page: show only with a wildfire inside the radius or an air-quality index of 101+ (owner 2026-10-29). */ onlyWhenActive?: boolean }
+const { townId, timezone, variant = 'compact', onlyWhenActive = false } = Astro.props;
 const info = SAFETY_TOWNS[townId];
 ---
 {info && variant === 'compact' && (
-  <p class="safety-compact" data-safety="compact" data-tz={timezone} data-radius={info.radiusMiles} hidden>
+  <p class="safety-compact" data-safety="compact" data-active-only={onlyWhenActive ? "1" : undefined} data-tz={timezone} data-radius={info.radiusMiles} hidden>
     <strong>Fire and air:</strong> <span data-safety-line></span> <a href="/safety/">Details and evacuation links</a>
   </p>
 )}
@@ -38,7 +38,7 @@ const info = SAFETY_TOWNS[townId];
 </style>
 
 <script>
-  import { airLine, compactLine, fireLine, isFresh, type SafetyPayload } from '../lib/safety-view';
+  import { airLine, compactLine, fireLine, isFresh, needsAttention, type SafetyPayload } from '../lib/safety-view';
 
   const REFRESH_MS = 5 * 60_000;
   const roots = [...document.querySelectorAll<HTMLElement>('[data-safety]')];
@@ -51,7 +51,7 @@ const info = SAFETY_TOWNS[townId];
         const tz = root.dataset.tz ?? 'UTC';
         const radius = Number(root.dataset.radius ?? 25);
         if (root.dataset.safety === 'compact') {
-          const line = compactLine(payload, now, radius);
+          const line = root.dataset.activeOnly && !needsAttention(payload, now) ? null : compactLine(payload, now, radius);
           const target = root.querySelector('[data-safety-line]');
           if (line && target) { target.textContent = `${line}.`; root.hidden = false; } else root.hidden = true;
           continue;

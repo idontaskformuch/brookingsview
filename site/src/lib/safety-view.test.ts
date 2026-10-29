@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { SAFETY_TOWNS } from './safety-towns';
 import { ALL_CONFIGS } from './site-config';
-import { airLine, compactLine, fireLine, isFresh, type PublicAir, type PublicFire, type SafetyPayload } from './safety-view';
+import { airLine, compactLine, fireLine, isFresh, needsAttention, reportingAreaName, type PublicAir, type PublicFire, type SafetyPayload } from './safety-view';
 import { hasCrimeWord } from './safety-filter';
 
 const NOW = new Date('2026-10-29T20:00:00Z').getTime();
@@ -37,7 +37,7 @@ describe('fireLine', () => {
 
 describe('airLine and compactLine', () => {
   it('air line carries the number, category, preliminary and the source time', () => {
-    expect(airLine(air(), NOW)).toBe('Air quality index 54 (Moderate), PM2.5, Perris Vly. Preliminary data, observed 2026-10-29 11:00 PDT.');
+    expect(airLine(air(), NOW)).toBe('Air quality index 54 (Moderate), PM2.5, Perris Valley. Preliminary data, observed 2026-10-29 11:00 PDT.');
   });
   it('shows nothing for a reading older than 3 hours', () => {
     expect(airLine(air({ observed: '2026-10-29T16:00:00Z' }), NOW)).toBeNull();
@@ -55,5 +55,35 @@ describe('airLine and compactLine', () => {
   it('none of the lines we build contains a crime word', () => {
     const lines = [fireLine(fire(), 'America/Los_Angeles'), airLine(air(), NOW) ?? '', compactLine(payload({ fires: [fire()], air: air() }), NOW, 25) ?? ''];
     for (const l of lines) expect(hasCrimeWord(l)).toBe(false);
+  });
+});
+
+describe('reportingAreaName', () => {
+  it('spells out known AirNow abbreviations word by word, leaves the rest alone', () => {
+    expect(reportingAreaName('Perris Vly')).toBe('Perris Valley');
+    expect(reportingAreaName('San Bernardino Mtns')).toBe('San Bernardino Mountains');
+    expect(reportingAreaName('Denver-Boulder')).toBe('Denver-Boulder');
+    expect(reportingAreaName('Vlyfoo Valley')).toBe('Vlyfoo Valley');
+  });
+  it('the air line uses the spelled-out name', () => {
+    expect(airLine(air({ reportingArea: 'Perris Vly' }), NOW)).toContain(', Perris Valley.');
+  });
+});
+
+describe('needsAttention (front-page box)', () => {
+  it('is quiet with no fire and AQI below 101, at 100 and with no air reading', () => {
+    expect(needsAttention(payload({ air: air({ aqi: 54 }) }), NOW)).toBe(false);
+    expect(needsAttention(payload({ air: air({ aqi: 100 }) }), NOW)).toBe(false);
+    expect(needsAttention(payload(), NOW)).toBe(false);
+  });
+  it('shows for a wildfire inside the radius or an AQI of 101 or more', () => {
+    expect(needsAttention(payload({ fires: [fire()] }), NOW)).toBe(true);
+    expect(needsAttention(payload({ air: air({ aqi: 101, category: 'Unhealthy for Sensitive Groups', categoryNumber: 3 }) }), NOW)).toBe(true);
+  });
+  it('fails closed: unavailable, stale answer or a stale reading never triggers the box', () => {
+    expect(needsAttention(payload({ available: false, fires: [fire()] }), NOW)).toBe(false);
+    expect(needsAttention(payload({ checkedAt: '2026-10-29T19:30:00Z', fires: [fire()] }), NOW)).toBe(false);
+    expect(needsAttention(payload({ air: air({ aqi: 180, observed: '2026-10-29T15:00:00Z' }) }), NOW)).toBe(false);
+    expect(needsAttention(null, NOW)).toBe(false);
   });
 });

@@ -30,6 +30,7 @@ import SchoolAlertBanner from '../components/SchoolAlertBanner.astro';
 import TrafficWidget from '../components/TrafficWidget.astro';
 import Tile from '../components/Tile.astro';
 import CityStatus from '../components/CityStatus.astro';
+import SafetyNotices from '../components/SafetyNotices.astro';
 import MarqueeCard from '../components/MarqueeCard.astro';
 import TopEventCard from '../components/TopEventCard.astro';
 import { selectTopEvent } from '../lib/top-event';
@@ -454,6 +455,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       CityStatus's own alerts module. */}
   <OrientationHeader />
   <CityStatus />
+  {siteConfig.safetyNotices && <SafetyNotices townId={siteConfig.townId} timezone={siteConfig.timezone} variant="compact" onlyWhenActive />}
   <QuickLinks links={quickLinks} omitted={omittedQuickLinks} />
 
   {/* Marquee module (sitewide presentation-layer pass): the single
