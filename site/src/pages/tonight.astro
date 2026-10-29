@@ -15,6 +15,7 @@ import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
 import { buildEveningEntries, toThresholdItems, driveLabel } from '../lib/evening-items';
 import { evaluateEveningThreshold } from '../lib/evening-threshold';
 import { buildEveningSections } from '../lib/evening-page';
+import { getOsmPlaces, openLateRows } from '../lib/osm-open-late';
 import { gettingHomeFor } from '../lib/getting-home';
 import { showTimeGb } from '../lib/whats-on-dates';
 import { forecastLine } from '../lib/weather-format';
@@ -44,7 +45,10 @@ const verdict = evaluateEveningThreshold({ items: toThresholdItems(entries), now
 console.log(`[evening] ${siteConfig.townId}: indexable=${verdict.indexable} (${verdict.reason}) median items ${verdict.medianItems}, groups ${verdict.medianGroups}`);
 
 const sections = buildEveningSections(entries, now, tz);
-const anyRows = sections.some((s) => s.count > 0);
+const osm = layer.openLate ? await getOsmPlaces(layer.openLate.latitude, layer.openLate.longitude, layer.openLate.radiusKm) : [];
+const lateBySection = new Map(sections.map((s) => [s.day, openLateRows(osm, s.day, tz)]));
+const anyLate = [...lateBySection.values()].some((r) => r.length > 0);
+const anyRows = sections.some((s) => s.count > 0) || anyLate;
 const home = gettingHomeFor(siteConfig.townId, now);
 const outside = entries.some((e) => e.driveMinutes !== null);
 const forecast = forecastLine(periods, tz, now);
@@ -83,7 +87,7 @@ const sourceNames = siteConfig.hasWhatsOn ? 'Local event calendars and Ticketmas
   )}
 
   {sections.map((s) => (
-    <section class="tn-day" data-evening-day={s.day} data-tz={tz} data-built-kind={s.kind} aria-labelledby={`tn-h-${s.kind}`} hidden={s.count === 0 && s.kind === 'tomorrow' ? true : undefined}>
+    <section class="tn-day" data-evening-day={s.day} data-tz={tz} data-built-kind={s.kind} aria-labelledby={`tn-h-${s.kind}`} hidden={s.count === 0 && lateBySection.get(s.day)!.length === 0 && s.kind === 'tomorrow' ? true : undefined}>
       <h2 id={`tn-h-${s.kind}`}><span data-evening-heading>{s.kind === 'tonight' ? 'Tonight' : 'Tomorrow night'}</span> <span class="tn-date">{dayLabelOf(s.day)}</span></h2>
       {s.count === 0 && <p class="tn-empty">Nothing listed for this evening yet.</p>}
       {s.highlights.length > 0 && (
@@ -115,8 +119,25 @@ const sourceNames = siteConfig.hasWhatsOn ? 'Local event calendars and Ticketmas
           </ul>
         </div>
       ))}
+      {lateBySection.get(s.day)!.length > 0 && (
+        <div class="tn-group-block">
+          <h3 class="tn-group-name">Open late</h3>
+          <ul class="tn-rows" data-hide-ended data-hide-when-empty>
+            {lateBySection.get(s.day)!.map((p) => (
+              <li class="tn-row" data-start={p.start} data-end={p.end}>
+                <span class="tn-title">{p.website ? <a href={p.website} rel="noopener">{p.name}</a> : p.name}</span>
+                <span class="tn-venue"> · {p.kind}, {p.closing}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   ))}
+
+  {anyLate && (
+    <p class="tn-note">Open late lists pubs, bars, nightclubs and restaurants whose opening hours keep them open past 11 pm, latest closing first. Hours come from <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, read {checked}. People edit them by hand, so check with the place before you go.</p>
+  )}
 
   {!anyRows && (
     <p class="tn-none">Nothing is listed for this evening or the next. The <a href="/events/">full events list</a>{siteConfig.hasWhatsOn && <span> and <a href="/whats-on/">bigger shows in the region</a></span>} show what is coming later.</p>
