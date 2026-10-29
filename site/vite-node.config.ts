@@ -29,6 +29,7 @@ export default defineConfig(({ mode }) => {
   return {
     define: {
       'import.meta.env.DATABASE_URL': JSON.stringify(env.DATABASE_URL ?? ''),
+      'import.meta.env.TICKETMASTER_API_KEY': JSON.stringify(env.TICKETMASTER_API_KEY ?? ''),
       'import.meta.env.SITE_CITY': JSON.stringify(process.env.SITE_CITY ?? ''),
     },
   };
