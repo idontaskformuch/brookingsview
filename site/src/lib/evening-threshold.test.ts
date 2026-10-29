@@ -45,12 +45,12 @@ describe('eveningNights', () => {
 });
 
 describe('evaluateEveningThreshold', () => {
-  it('enters at 10 items in 3 groups per evening', () => {
-    const v = evaluateEveningThreshold({ items: every(10, 3), now: NOW, timezone: TZ });
-    expect(v).toMatchObject({ indexable: true, reason: 'enter', medianItems: 10, medianGroups: 3 });
+  it('enters at 6 items in 3 groups per evening', () => {
+    const v = evaluateEveningThreshold({ items: every(6, 3), now: NOW, timezone: TZ });
+    expect(v).toMatchObject({ indexable: true, reason: 'enter', medianItems: 6, medianGroups: 3 });
   });
-  it('does not enter at 9 items', () => {
-    expect(evaluateEveningThreshold({ items: every(9, 3), now: NOW, timezone: TZ })).toMatchObject({ indexable: false, reason: 'below-items' });
+  it('does not enter at 5 items', () => {
+    expect(evaluateEveningThreshold({ items: every(5, 3), now: NOW, timezone: TZ })).toMatchObject({ indexable: false, reason: 'below-items' });
   });
   it('does not enter on 2 groups however many items', () => {
     expect(evaluateEveningThreshold({ items: every(20, 2), now: NOW, timezone: TZ })).toMatchObject({ indexable: false, reason: 'below-groups' });
@@ -60,10 +60,20 @@ describe('evaluateEveningThreshold', () => {
     expect(v.indexable).toBe(false);
     expect(v.medianItems).toBe(1);
   });
-  it('hysteresis: 8 keeps an indexable town, 7 drops it, 9 does not let a new one in', () => {
-    expect(evaluateEveningThreshold({ items: every(8, 3), now: NOW, timezone: TZ, previouslyIndexable: true })).toMatchObject({ indexable: true, reason: 'stay' });
-    expect(evaluateEveningThreshold({ items: every(7, 3), now: NOW, timezone: TZ, previouslyIndexable: true })).toMatchObject({ indexable: false, reason: 'below-items' });
-    expect(evaluateEveningThreshold({ items: every(9, 3), now: NOW, timezone: TZ, previouslyIndexable: false }).indexable).toBe(false);
+  it('hysteresis: 5 keeps an indexable town, 4 drops it, 5 does not let a new one in', () => {
+    expect(evaluateEveningThreshold({ items: every(5, 3), now: NOW, timezone: TZ, previouslyIndexable: true })).toMatchObject({ indexable: true, reason: 'stay' });
+    expect(evaluateEveningThreshold({ items: every(4, 3), now: NOW, timezone: TZ, previouslyIndexable: true })).toMatchObject({ indexable: false, reason: 'below-items' });
+    expect(evaluateEveningThreshold({ items: every(5, 3), now: NOW, timezone: TZ, previouslyIndexable: false }).indexable).toBe(false);
+  });
+  it('Open late is a group (>= 3 places that evening) and never an item', () => {
+    const first = Math.round(Date.UTC(2026, 9, 28) / 86_400_000);
+    const late = (n: number) => Object.fromEntries(Array.from({ length: 14 }, (_, i) => [first + i, n]));
+    const base = { items: every(6, 2), now: NOW, timezone: TZ };
+    expect(evaluateEveningThreshold(base)).toMatchObject({ indexable: false, reason: 'below-groups' });
+    const v = evaluateEveningThreshold({ ...base, openLateByDay: late(3) });
+    expect(v).toMatchObject({ indexable: true, medianGroups: 3, medianItems: 6 });
+    expect(evaluateEveningThreshold({ ...base, openLateByDay: late(2) })).toMatchObject({ indexable: false, medianGroups: 2 });
+    expect(evaluateEveningThreshold({ items: [], now: NOW, timezone: TZ, openLateByDay: late(50) })).toMatchObject({ indexable: false, reason: 'below-items', medianItems: 0 });
   });
   it('hysteresis does not relax the group bar', () => {
     expect(evaluateEveningThreshold({ items: every(12, 2), now: NOW, timezone: TZ, previouslyIndexable: true })).toMatchObject({ indexable: false, reason: 'below-groups' });

@@ -14,10 +14,11 @@ import { itemTitle, itemUrl, itemVenue } from './events';
 import { storyHref } from './content-slugs';
 import { distanceLabel, type TicketmasterFeedItem } from './ticketmaster';
 import { ticketmasterSlug } from './whats-on';
-import { hasEnded, DEFAULT_EVENT_MS, localDayNumber, localInstantIso } from './local-day';
+import { hasEnded, DEFAULT_EVENT_MS, localDayNumber, localHourOf, localInstantIso } from './local-day';
+import { ticketmasterImageProxyPath } from './images';
 import type { EveningItem } from './evening-threshold';
 
-export type EveningGroup = 'Live music' | 'Comedy & shows' | 'Quiz & pub nights' | 'Clubs & late' | 'Sport tonight';
+export type EveningGroup = 'Live music' | 'Comedy & shows' | 'Quiz & pub nights' | 'Clubs & late' | 'Sport tonight' | 'Family' | 'Festivals & fairs' | 'Film';
 export type EveningLabel = 'Free' | '18+' | 'All ages';
 export type EveningSource = 'ticketmaster' | 'own' | 'register';
 
@@ -42,6 +43,12 @@ export interface EveningEntry {
   checked: string;
   /** Later start times the same night for the same title (a film with several screenings); register rows only. */
   laterStarts?: string[];
+  /** Licensed Ticketmaster picture (proxied through our own route), shown on highlight cards only. null/absent = no picture. */
+  image?: { src: string; alt: string; width: number; height: number } | null;
+  /** Neighbourhood ("Merchant City") from OpenStreetMap place data, see lib/areas.ts; null/absent when unknown. */
+  area?: string | null;
+  lat?: number | null;
+  lon?: number | null;
 }
 
 /** One row of the curated venue register (db.getEveningRegister): a rule the weekly job read off the venue's own page. */
@@ -66,6 +73,15 @@ export interface RegisterRow {
 export const REGISTER_MAX_AGE_DAYS = { dated: 7, recurring: 35 } as const;
 export const REGISTER_HORIZON_DAYS = 14;
 
+/** "Clubs & late" is for late starts and club words only (owner 2026-10-29: Essy Sparrow, a singer at SWG3, was a "club night").
+ *  A venue or source that says "club" for an early evening show falls back to Live music. */
+export const CLUB_FROM_HOUR = 22;
+export function settleGroup(group: EveningGroup | null, title: string, startIso: string, timezone: string): EveningGroup | null {
+  if (group !== 'Clubs & late') return group;
+  const hour = localHourOf(new Date(startIso), timezone);
+  return CLUB_RE.test(title) || hour >= CLUB_FROM_HOUR || hour < 5 ? group : 'Live music';
+}
+
 const QUIZ_RE = /\b(quiz|trivia|pub quiz|bingo)\b/i;
 const COMEDY_RE = /\b(comedy|comedian|stand-?up|improv|panel show)\b/i;
 const CLUB_RE = /\b(club night|dj set|\bdj\b|rave|disco|late night)\b/i;
@@ -83,13 +99,24 @@ export function groupForTitle(title: string): EveningGroup | null {
   return null;
 }
 
-/** Ticketmaster: its own classification. Sport reaches here only for towns with eveningLayer.includeTicketmasterSports. */
-export function groupForTicketmaster(segment: string | null | undefined, genre: string | null | undefined): EveningGroup | null {
+/** Ticketmaster: its own classification first (segment and genre), the title only for events Ticketmaster leaves unclassified
+ *  (segment "Undefined": mostly gigs promoted as "<promoter> presents ..."). Sport reaches here only for towns with
+ *  eveningLayer.includeTicketmasterSports. */
+export function groupForTicketmaster(segment: string | null | undefined, genre: string | null | undefined, title = ''): EveningGroup | null {
   const seg = (segment ?? '').toLowerCase();
   const gen = (genre ?? '').toLowerCase();
+  if (/\b(family|children|kids)\b/.test(gen)) return 'Family';
   if (seg === 'music') return /dance|electronic|club|house|techno/.test(gen) ? 'Clubs & late' : 'Live music';
   if (seg === 'arts & theatre') return 'Comedy & shows';
   if (seg === 'sports') return 'Sport tonight';
+  if (seg === 'film') return 'Film';
+  if (seg === 'miscellaneous') return /fair|festival|expo|community|civic|hobby/.test(gen) ? 'Festivals & fairs' : null;
+  if (seg === '' || seg === 'undefined') {
+    const byTitle = groupForTitle(title);
+    if (byTitle) return byTitle;
+    if (/\b(cabaret|panto|pantomime|musical|variety show)\b/i.test(title)) return 'Comedy & shows';
+    if (/\b(presents?|live|band|concert|tour|gig|orchestra|choir|tribute)\b/i.test(title)) return 'Live music';
+  }
   return null;
 }
 
@@ -150,7 +177,7 @@ function ownEntry(item: FeedItem, o: EveningEntryOptions): EveningEntry | null {
     title,
     start: new Date(item.occurs_at).toISOString(),
     end: endIso(story?.ends_at),
-    group: groupForTitle(title),
+    group: settleGroup(groupForTitle(title), title, new Date(item.occurs_at).toISOString(), o.timezone),
     labels,
     venue: itemVenue(item),
     href: story ? storyHref(story.slug) : itemUrl(item),
@@ -174,7 +201,7 @@ function ticketmasterEntry(item: TicketmasterFeedItem, o: EveningEntryOptions): 
     title: e.title,
     start: new Date(item.occurs_at).toISOString(),
     end: null,
-    group: groupForTicketmaster(e.segment, e.genre),
+    group: settleGroup(groupForTicketmaster(e.segment, e.genre, e.title), e.title, new Date(item.occurs_at).toISOString(), o.timezone),
     labels: [],
     venue: e.venueName,
     href: `/whats-on/${ticketmasterSlug(e)}/`,
@@ -182,6 +209,8 @@ function ticketmasterEntry(item: TicketmasterFeedItem, o: EveningEntryOptions): 
     distanceMiles: e.venueDistanceMiles,
     driveMinutes: distanceLabel(e.venueDistanceMiles, o.cityName) === `In ${o.cityName}` || e.venueDistanceMiles == null ? null : driveMinutes(e.venueDistanceMiles),
     checked: o.checked,
+    image: e.imageUrl ? { src: ticketmasterImageProxyPath(e.imageUrl), alt: `Photo for "${e.title}"`, width: e.imageWidth ?? 1600, height: e.imageHeight ?? 900 } : null,
+    lat: e.venueLatitude, lon: e.venueLongitude,
   };
 }
 
@@ -200,7 +229,7 @@ export function registerEntries(rows: RegisterRow[], o: EveningEntryOptions): Ev
   for (const r of rows) {
     const ageDays = (o.now.getTime() - new Date(r.lastConfirmedAt).getTime()) / 86_400_000;
     if (!(ageDays <= REGISTER_MAX_AGE_DAYS[r.kind])) continue;
-    const group = groupForTitle(r.title) ?? (REGISTER_GROUPS.find((g) => g === r.defaultGroup) ?? null);
+    const fallback = REGISTER_GROUPS.find((g) => g === r.defaultGroup) ?? null;
     const labels: EveningLabel[] = [];
     if (r.price === 'Free') labels.push('Free');
     if (r.age === '18+' || r.age === 'All ages') labels.push(r.age);
@@ -213,7 +242,8 @@ export function registerEntries(rows: RegisterRow[], o: EveningEntryOptions): Ev
       const starts = r.times.map((t) => localInstantIso(ymd, Number(t.slice(0, 2)), Number(t.slice(3, 5)), o.timezone));
       out.push({
         id: `reg:${r.venueName}|${r.title}|${iso}`, title: r.title, start: starts[0],
-        end: starts.length > 1 ? new Date(new Date(starts[starts.length - 1]).getTime() + DEFAULT_EVENT_MS).toISOString() : null, group, labels, venue: r.venueName,
+        end: starts.length > 1 ? new Date(new Date(starts[starts.length - 1]).getTime() + DEFAULT_EVENT_MS).toISOString() : null,
+        group: settleGroup(groupForTitle(r.title) ?? fallback, r.title, starts[0], o.timezone), labels, venue: r.venueName,
         href: r.sourceUrl, source: 'register', distanceMiles: null, driveMinutes: null, checked: confirmed,
         ...(starts.length > 1 ? { laterStarts: starts.slice(1) } : {}),
       });

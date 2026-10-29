@@ -87,6 +87,13 @@ export function openLateRows(places: OsmPlace[], day: number, tz: string, max = 
 export interface OsmSnapshot { fetchedAt: string; elements: unknown[] }
 
 /** The stored snapshot as places, or null when there is none or it is older than SNAPSHOT_MAX_AGE_DAYS (then the page has no Open late block). */
+/** Places open late per local day number for `days` evenings from `fromDay` (feeds the threshold's Open late group, never its items). */
+export function openLateCounts(places: OsmPlace[], fromDay: number, days: number, tz: string): Record<number, number> {
+  const out: Record<number, number> = {};
+  for (let d = fromDay; d < fromDay + days; d++) out[d] = openLateRows(places, d, tz, Number.MAX_SAFE_INTEGER).length;
+  return out;
+}
+
 export function placesFromSnapshot(snapshot: OsmSnapshot | null, now: Date): OsmPlace[] | null {
   if (!snapshot) return null;
   const age = now.getTime() - new Date(snapshot.fetchedAt).getTime();

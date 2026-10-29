@@ -6,7 +6,7 @@
  *  different image per section. The section's curated category photo is only
  *  a reserve for a date whose pool is empty; with neither, the build fails.
  */
-import { getSectionHero, type HeroSection } from '../lib/section-hero';
+import { getSectionHero, getEveningHero, type HeroSection } from '../lib/section-hero';
 import { resolveThisWeekImage } from '../lib/db';
 import { weekInfoForInstant } from '../lib/this-week';
 import { seasonForMonth } from '../lib/this-week-images';
@@ -14,8 +14,8 @@ import { thisWeekImagesFor } from '../config/this-week-images';
 import { siteConfig } from '../lib/site-config';
 import ImageAttribution from './ImageAttribution.astro';
 
-interface Props { section: HeroSection; /** A shorter hero for pages where the content must start near the top (/today). */ compact?: boolean; }
-const { section, compact = false } = Astro.props;
+interface Props { section: HeroSection; /** A shorter hero for pages where the content must start near the top (/today). */ compact?: boolean; /** Prefer an evening picture (/tonight, /this-weekend): used when the town's pools hold one, else the section's ordinary hero. */ evening?: boolean; }
+const { section, compact = false, evening = false } = Astro.props;
 
 const now = new Date();
 const week = weekInfoForInstant(now, siteConfig.timezone);
@@ -27,9 +27,10 @@ const noPool = !!siteConfig.noindexSite && thisWeekImagesFor(siteConfig.townId).
 const homepage = noPool ? null : await resolveThisWeekImage(
   week.slug, seasonForMonth(week.monday.m), thisWeekImagesFor(siteConfig.townId), week.monday, week.sunday,
 );
-const image = homepage
+const eveningImage = evening ? getEveningHero(siteConfig.townId, now, { timezone: siteConfig.timezone }) : null;
+const image = eveningImage ?? (homepage
   ? getSectionHero(siteConfig.townId, section, now, { timezone: siteConfig.timezone, homepageImageId: homepage.id }).image
-  : null;
+  : null);
 ---
 {image && (
   <>

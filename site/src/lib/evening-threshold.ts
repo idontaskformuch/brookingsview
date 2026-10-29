@@ -4,8 +4,8 @@
  *
  *   - Measure: the MEDIAN over the next 14 evenings of (a) items and (b) distinct
  *     groups on that evening. A single big night (a stadium show) cannot carry a town.
- *   - Enter at >= 10 items and >= 3 groups; once indexable, stay until the median falls
- *     below 8 items or 3 groups (hysteresis, so a town does not flap in and out of the
+ *   - Enter at a median of >= 6 items and >= 3 groups; once indexable, stay until the median falls
+ *     below 5 items or 3 groups (hysteresis, so a town does not flap in and out of the
  *     sitemap on a quiet week).
  *   - Config-driven: a town whose `eveningLayer.mode` is 'never' stays noindex whatever
  *     the data says (Brookings).
@@ -17,8 +17,11 @@
 import { TONIGHT_FROM_HOUR, localDayNumber, localHourOf } from './local-day';
 
 export const EVENING_NIGHTS = 14;
-export const EVENING_ENTER_ITEMS = 10;
-export const EVENING_EXIT_ITEMS = 8;
+/** Owner 2026-10-29 (was 10 in / 8 out): median 6 items per evening in, below 5 out. */
+export const EVENING_ENTER_ITEMS = 6;
+export const EVENING_EXIT_ITEMS = 5;
+/** Owner 2026-10-29: "Open late" counts as ONE group on an evening with at least this many places open late. Never as items. */
+export const EVENING_OPEN_LATE_MIN_PLACES = 3;
 export const EVENING_MIN_GROUPS = 3;
 /** From this local hour "tonight" is as good as over and the window starts tomorrow. */
 export const EVENING_LAST_START_HOUR = 23;
@@ -55,7 +58,7 @@ export function median(values: number[]): number {
 }
 
 /** Items and distinct groups per evening for the next `nights` evenings. */
-export function eveningNights(items: EveningItem[], now: Date, timezone: string, nights = EVENING_NIGHTS): EveningNight[] {
+export function eveningNights(items: EveningItem[], now: Date, timezone: string, nights = EVENING_NIGHTS, openLateByDay: Record<number, number> = {}): EveningNight[] {
   const first = localDayNumber(now, timezone) + (localHourOf(now, timezone) >= EVENING_LAST_START_HOUR ? 1 : 0);
   const byDay = new Map<number, { items: number; groups: Set<string> }>();
   for (const it of items) {
@@ -70,7 +73,8 @@ export function eveningNights(items: EveningItem[], now: Date, timezone: string,
   }
   return Array.from({ length: nights }, (_, i) => {
     const slot = byDay.get(first + i);
-    return { day: first + i, items: slot?.items ?? 0, groups: slot?.groups.size ?? 0 };
+    const lateGroup = (openLateByDay[first + i] ?? 0) >= EVENING_OPEN_LATE_MIN_PLACES ? 1 : 0;
+    return { day: first + i, items: slot?.items ?? 0, groups: (slot?.groups.size ?? 0) + lateGroup };
   });
 }
 
@@ -80,8 +84,10 @@ export function evaluateEveningThreshold(opts: {
   timezone: string;
   mode?: EveningLayerMode;
   previouslyIndexable?: boolean;
+  /** Places open late per local day number (days since epoch); >= EVENING_OPEN_LATE_MIN_PLACES adds one group, never an item. */
+  openLateByDay?: Record<number, number>;
 }): EveningVerdict {
-  const nights = eveningNights(opts.items, opts.now, opts.timezone);
+  const nights = eveningNights(opts.items, opts.now, opts.timezone, EVENING_NIGHTS, opts.openLateByDay);
   const medianItems = median(nights.map((n) => n.items));
   const medianGroups = median(nights.map((n) => n.groups));
   const base = { medianItems, medianGroups, nights };

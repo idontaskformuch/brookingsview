@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ageLabel, driveLabel, driveMinutes, buildEveningEntries, registerEntries, groupForTicketmaster, groupForTitle, toThresholdItems } from './evening-items';
+import { ageLabel, driveLabel, driveMinutes, buildEveningEntries, registerEntries, settleGroup, groupForTicketmaster, groupForTitle, toThresholdItems } from './evening-items';
 import { evaluateEveningThreshold } from './evening-threshold';
 import type { FeedItem } from './events';
 import type { Story } from './db';
@@ -179,5 +179,41 @@ describe('registerEntries (curated venue register)', () => {
       register: rows([{}]) });
     expect(out.filter((e) => e.start === '2026-11-03T20:00:00.000Z')).toHaveLength(1);
     expect(out).toHaveLength(2);
+  });
+});
+
+
+describe('Ticketmaster groups from their own classification', () => {
+  it('maps segment and genre, family first, unclassified events by title', () => {
+    expect(groupForTicketmaster('Miscellaneous', 'Family')).toBe('Family');
+    expect(groupForTicketmaster('Arts & Theatre', "Children's Theatre")).toBe('Family');
+    expect(groupForTicketmaster('Arts & Theatre', 'Comedy')).toBe('Comedy & shows');
+    expect(groupForTicketmaster('Film', 'Drama')).toBe('Film');
+    expect(groupForTicketmaster('Miscellaneous', 'Fairs & Festivals')).toBe('Festivals & fairs');
+    expect(groupForTicketmaster('Miscellaneous', 'Hobby/Special Interest Expos')).toBe('Festivals & fairs');
+    expect(groupForTicketmaster('Miscellaneous', 'Undefined')).toBeNull();
+    expect(groupForTicketmaster('Undefined', null, 'PCL Presents: Goldie Boutilier')).toBe('Live music');
+    expect(groupForTicketmaster('Undefined', null, "Stella's Christmas Cabaret")).toBe('Comedy & shows');
+    expect(groupForTicketmaster('Undefined', null, 'Hogmanay in Main Bar')).toBeNull();
+    expect(groupForTicketmaster(undefined, undefined, 'Quiz Night')).toBe('Quiz & pub nights');
+  });
+});
+
+describe('settleGroup: "Clubs & late" only for late starts or club words', () => {
+  it('Essy Sparrow at 19:00 is Live music, at 22:30 a club night; club words keep it early', () => {
+    expect(settleGroup('Clubs & late', 'Essy Sparrow', '2026-11-05T19:00:00Z', TZ)).toBe('Live music');
+    expect(settleGroup('Clubs & late', 'Essy Sparrow', '2026-11-05T22:30:00Z', TZ)).toBe('Clubs & late');
+    expect(settleGroup('Clubs & late', 'Friday Club Night', '2026-11-05T19:00:00Z', TZ)).toBe('Clubs & late');
+    expect(settleGroup('Clubs & late', 'FLY with DJ Tommy', '2026-11-05T20:00:00Z', TZ)).toBe('Clubs & late');
+    expect(settleGroup('Comedy & shows', 'Anything', '2026-11-05T19:00:00Z', TZ)).toBe('Comedy & shows');
+    expect(settleGroup(null, 'Anything', '2026-11-05T23:00:00Z', TZ)).toBeNull();
+  });
+  it('applies to register rows (SWG3 default) and Ticketmaster dance events', () => {
+    const row = { venueName: 'SWG3', kind: 'dated' as const, title: 'Essy Sparrow', weekdays: [], onDate: '2026-10-29', times: ['19:00'], price: null, age: null,
+      defaultGroup: 'Clubs & late', sourceUrl: 'https://swg3.tv/', lastConfirmedAt: '2026-10-27T11:00:00Z' };
+    expect(registerEntries([row], { ...OPTS, feed: [] })[0].group).toBe('Live music');
+    expect(registerEntries([{ ...row, times: ['22:30'] }], { ...OPTS, feed: [] })[0].group).toBe('Clubs & late');
+    const dance = buildEveningEntries({ ...OPTS, feed: [], ticketmaster: [tm('d1', 'Warehouse Project', '2026-10-29T19:30:00Z', 1, 'Music', 'Dance/Electronic')] });
+    expect(dance[0].group).toBe('Live music');
   });
 });

@@ -386,6 +386,9 @@ export async function fetchTicketmasterEvents(
       url.searchParams.set('unit', 'miles');
       url.searchParams.set('size', String(PAGE_SIZE));
       url.searchParams.set('page', String(page));
+      // Soonest first (owner 2026-10-29): without a sort the API returns "relevance" order and the MAX_PAGES x PAGE_SIZE cap cut off
+      // near-term shows (Glasgow: 159 events in the next 14 days at the API, ~85 reached the site, 1483 in all).
+      url.searchParams.set('sort', 'date,asc');
 
       let res = await fetch(url.toString());
 

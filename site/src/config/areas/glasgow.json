@@ -1,0 +1,1335 @@
+{
+  "attribution": "Neighbourhoods: © OpenStreetMap contributors (ODbL)",
+  "areas": [
+    {
+      "name": "Alyth",
+      "lat": 55.7942,
+      "lon": -4.26452
+    },
+    {
+      "name": "Anderston",
+      "lat": 55.86155,
+      "lon": -4.2728
+    },
+    {
+      "name": "Anniesland",
+      "lat": 55.89002,
+      "lon": -4.33274
+    },
+    {
+      "name": "Auchenshuggle",
+      "lat": 55.84268,
+      "lon": -4.17485
+    },
+    {
+      "name": "Auchinairn",
+      "lat": 55.8994,
+      "lon": -4.21348
+    },
+    {
+      "name": "Auldhouse",
+      "lat": 55.81926,
+      "lon": -4.29285
+    },
+    {
+      "name": "Balgrayhill",
+      "lat": 55.89081,
+      "lon": -4.22998
+    },
+    {
+      "name": "Balmore",
+      "lat": 55.89395,
+      "lon": -4.25637
+    },
+    {
+      "name": "Balornock",
+      "lat": 55.88629,
+      "lon": -4.2159
+    },
+    {
+      "name": "Bankhead",
+      "lat": 55.82046,
+      "lon": -4.22562
+    },
+    {
+      "name": "Barlanark",
+      "lat": 55.85732,
+      "lon": -4.13708
+    },
+    {
+      "name": "Barmulloch",
+      "lat": 55.88429,
+      "lon": -4.20307
+    },
+    {
+      "name": "Barnhill",
+      "lat": 55.87903,
+      "lon": -4.21834
+    },
+    {
+      "name": "Barrachnie",
+      "lat": 55.85134,
+      "lon": -4.13179
+    },
+    {
+      "name": "Barrowfield",
+      "lat": 55.85134,
+      "lon": -4.21258
+    },
+    {
+      "name": "Battlefield",
+      "lat": 55.82449,
+      "lon": -4.2666
+    },
+    {
+      "name": "Bellahouston",
+      "lat": 55.84813,
+      "lon": -4.30292
+    },
+    {
+      "name": "Bellgrove",
+      "lat": 55.85764,
+      "lon": -4.22036
+    },
+    {
+      "name": "Blackhill",
+      "lat": 55.87489,
+      "lon": -4.19109
+    },
+    {
+      "name": "Blairbeth",
+      "lat": 55.81525,
+      "lon": -4.21054
+    },
+    {
+      "name": "Blairdardie",
+      "lat": 55.90189,
+      "lon": -4.35931
+    },
+    {
+      "name": "Blawarthill",
+      "lat": 55.88417,
+      "lon": -4.3666
+    },
+    {
+      "name": "Blochairn",
+      "lat": 55.87032,
+      "lon": -4.21259
+    },
+    {
+      "name": "Blythswood Hill",
+      "lat": 55.86332,
+      "lon": -4.26167
+    },
+    {
+      "name": "Blythswood Holm",
+      "lat": 55.85946,
+      "lon": -4.26313
+    },
+    {
+      "name": "Bogton",
+      "lat": 55.80601,
+      "lon": -4.27211
+    },
+    {
+      "name": "Braehead",
+      "lat": 55.87552,
+      "lon": -4.36381
+    },
+    {
+      "name": "Braidbar",
+      "lat": 55.80596,
+      "lon": -4.28267
+    },
+    {
+      "name": "Braidfauld",
+      "lat": 55.84116,
+      "lon": -4.17951
+    },
+    {
+      "name": "Briarcroft",
+      "lat": 55.8944,
+      "lon": -4.19296
+    },
+    {
+      "name": "Bridgeton",
+      "lat": 55.84627,
+      "lon": -4.22223
+    },
+    {
+      "name": "Brookfield",
+      "lat": 55.89782,
+      "lon": -4.19498
+    },
+    {
+      "name": "Broomhill",
+      "lat": 55.87734,
+      "lon": -4.32175
+    },
+    {
+      "name": "Budhill",
+      "lat": 55.85474,
+      "lon": -4.15862
+    },
+    {
+      "name": "Burgh",
+      "lat": 55.82843,
+      "lon": -4.2145
+    },
+    {
+      "name": "Burnhill",
+      "lat": 55.8279,
+      "lon": -4.22421
+    },
+    {
+      "name": "Burnside",
+      "lat": 55.81426,
+      "lon": -4.20206
+    },
+    {
+      "name": "Cadder",
+      "lat": 55.89676,
+      "lon": -4.27607
+    },
+    {
+      "name": "Caledonian Circuit",
+      "lat": 55.81901,
+      "lon": -4.15537
+    },
+    {
+      "name": "Calton",
+      "lat": 55.85372,
+      "lon": -4.23282
+    },
+    {
+      "name": "Camlachie",
+      "lat": 55.8552,
+      "lon": -4.21131
+    },
+    {
+      "name": "Campsie Meadows",
+      "lat": 55.896,
+      "lon": -4.18553
+    },
+    {
+      "name": "Cardonald",
+      "lat": 55.84855,
+      "lon": -4.34889
+    },
+    {
+      "name": "Carmyle",
+      "lat": 55.83111,
+      "lon": -4.15549
+    },
+    {
+      "name": "Carntyne",
+      "lat": 55.86149,
+      "lon": -4.18209
+    },
+    {
+      "name": "Carnwadric",
+      "lat": 55.81052,
+      "lon": -4.31737
+    },
+    {
+      "name": "Castlemilk",
+      "lat": 55.80527,
+      "lon": -4.23039
+    },
+    {
+      "name": "Cathcart",
+      "lat": 55.81699,
+      "lon": -4.26242
+    },
+    {
+      "name": "Cathedral Precinct",
+      "lat": 55.86225,
+      "lon": -4.23566
+    },
+    {
+      "name": "Cathkin",
+      "lat": 55.80444,
+      "lon": -4.19004
+    },
+    {
+      "name": "Cessnock",
+      "lat": 55.85415,
+      "lon": -4.2944
+    },
+    {
+      "name": "Chinatown",
+      "lat": 55.86932,
+      "lon": -4.26152
+    },
+    {
+      "name": "City Centre",
+      "lat": 55.86116,
+      "lon": -4.25017
+    },
+    {
+      "name": "Claythorn",
+      "lat": 55.88629,
+      "lon": -4.32072
+    },
+    {
+      "name": "Clincarthill",
+      "lat": 55.82468,
+      "lon": -4.21322
+    },
+    {
+      "name": "Colston",
+      "lat": 55.89841,
+      "lon": -4.23657
+    },
+    {
+      "name": "Corkerhill",
+      "lat": 55.83532,
+      "lon": -4.33261
+    },
+    {
+      "name": "Cowcaddens",
+      "lat": 55.86877,
+      "lon": -4.25461
+    },
+    {
+      "name": "Cowglen",
+      "lat": 55.82079,
+      "lon": -4.33355
+    },
+    {
+      "name": "Cowlairs",
+      "lat": 55.88215,
+      "lon": -4.2385
+    },
+    {
+      "name": "Craigend",
+      "lat": 55.8744,
+      "lon": -4.15625
+    },
+    {
+      "name": "Craighall",
+      "lat": 55.87685,
+      "lon": -4.25155
+    },
+    {
+      "name": "Craigton",
+      "lat": 55.8492,
+      "lon": -4.33113
+    },
+    {
+      "name": "Cranhill",
+      "lat": 55.86511,
+      "lon": -4.16594
+    },
+    {
+      "name": "Cranstonhill",
+      "lat": 55.86115,
+      "lon": -4.27757
+    },
+    {
+      "name": "Croftfoot",
+      "lat": 55.81484,
+      "lon": -4.23329
+    },
+    {
+      "name": "Crookston",
+      "lat": 55.84432,
+      "lon": -4.36418
+    },
+    {
+      "name": "Crookston Home",
+      "lat": 55.82769,
+      "lon": -4.35918
+    },
+    {
+      "name": "Crookston Road",
+      "lat": 55.829,
+      "lon": -4.36296
+    },
+    {
+      "name": "Crosshill",
+      "lat": 55.83324,
+      "lon": -4.26089
+    },
+    {
+      "name": "Crossmyloof",
+      "lat": 55.83252,
+      "lon": -4.28123
+    },
+    {
+      "name": "Dalbeth",
+      "lat": 55.83811,
+      "lon": -4.18467
+    },
+    {
+      "name": "Dalmarnock",
+      "lat": 55.84127,
+      "lon": -4.21334
+    },
+    {
+      "name": "Dawsholm",
+      "lat": 55.89508,
+      "lon": -4.30703
+    },
+    {
+      "name": "Dean Park",
+      "lat": 55.87133,
+      "lon": -4.37689
+    },
+    {
+      "name": "Dennistoun",
+      "lat": 55.86174,
+      "lon": -4.21901
+    },
+    {
+      "name": "Dowanhill",
+      "lat": 55.87615,
+      "lon": -4.29959
+    },
+    {
+      "name": "Drumoyne",
+      "lat": 55.85488,
+      "lon": -4.33052
+    },
+    {
+      "name": "Dumbreck",
+      "lat": 55.84528,
+      "lon": -4.30663
+    },
+    {
+      "name": "Eastfield",
+      "lat": 55.82394,
+      "lon": -4.18869
+    },
+    {
+      "name": "Easthall",
+      "lat": 55.86281,
+      "lon": -4.12608
+    },
+    {
+      "name": "Eastpark",
+      "lat": 55.88395,
+      "lon": -4.28165
+    },
+    {
+      "name": "Eastwood",
+      "lat": 55.81592,
+      "lon": -4.30689
+    },
+    {
+      "name": "Egypt",
+      "lat": 55.84632,
+      "lon": -4.17277
+    },
+    {
+      "name": "Evan",
+      "lat": 55.7996,
+      "lon": -4.28667
+    },
+    {
+      "name": "Farme Cross",
+      "lat": 55.83311,
+      "lon": -4.20798
+    },
+    {
+      "name": "Fernhill",
+      "lat": 55.80889,
+      "lon": -4.20646
+    },
+    {
+      "name": "Finnieston",
+      "lat": 55.86155,
+      "lon": -4.28599
+    },
+    {
+      "name": "Firhill",
+      "lat": 55.88093,
+      "lon": -4.27019
+    },
+    {
+      "name": "Fountainwell",
+      "lat": 55.87439,
+      "lon": -4.23892
+    },
+    {
+      "name": "Foxley",
+      "lat": 55.84052,
+      "lon": -4.15818
+    },
+    {
+      "name": "Fullarton",
+      "lat": 55.83941,
+      "lon": -4.16578
+    },
+    {
+      "name": "Gairbraid",
+      "lat": 55.89004,
+      "lon": -4.29386
+    },
+    {
+      "name": "Gallowflat",
+      "lat": 55.82756,
+      "lon": -4.20327
+    },
+    {
+      "name": "Gallowgate",
+      "lat": 55.85455,
+      "lon": -4.22074
+    },
+    {
+      "name": "Garnethill",
+      "lat": 55.86686,
+      "lon": -4.26397
+    },
+    {
+      "name": "Garngad",
+      "lat": 55.86951,
+      "lon": -4.22549
+    },
+    {
+      "name": "Garscadden",
+      "lat": 55.88752,
+      "lon": -4.36311
+    },
+    {
+      "name": "Garthamlock",
+      "lat": 55.87324,
+      "lon": -4.14397
+    },
+    {
+      "name": "Germiston",
+      "lat": 55.87591,
+      "lon": -4.2137
+    },
+    {
+      "name": "Gilshochill",
+      "lat": 55.89562,
+      "lon": -4.29031
+    },
+    {
+      "name": "Glasgow Cross",
+      "lat": 55.85659,
+      "lon": -4.24377
+    },
+    {
+      "name": "Glendale",
+      "lat": 55.89308,
+      "lon": -4.18221
+    },
+    {
+      "name": "Gorbals",
+      "lat": 55.84892,
+      "lon": -4.25011
+    },
+    {
+      "name": "Govan",
+      "lat": 55.86084,
+      "lon": -4.31459
+    },
+    {
+      "name": "Govanhill",
+      "lat": 55.83774,
+      "lon": -4.25641
+    },
+    {
+      "name": "Greenfield",
+      "lat": 55.85608,
+      "lon": -4.16996
+    },
+    {
+      "name": "Haghill",
+      "lat": 55.86071,
+      "lon": -4.20424
+    },
+    {
+      "name": "Halfwayhouse",
+      "lat": 55.84642,
+      "lon": -4.33576
+    },
+    {
+      "name": "Hamiltonhill",
+      "lat": 55.88047,
+      "lon": -4.25997
+    },
+    {
+      "name": "Hangingshaw",
+      "lat": 55.82855,
+      "lon": -4.24844
+    },
+    {
+      "name": "Hazelwood",
+      "lat": 55.84319,
+      "lon": -4.31082
+    },
+    {
+      "name": "High Balornock",
+      "lat": 55.89038,
+      "lon": -4.20775
+    },
+    {
+      "name": "High Crosshill",
+      "lat": 55.8187,
+      "lon": -4.20871
+    },
+    {
+      "name": "High Knightswood",
+      "lat": 55.90075,
+      "lon": -4.34111
+    },
+    {
+      "name": "High Possil",
+      "lat": 55.89883,
+      "lon": -4.25798
+    },
+    {
+      "name": "Hillend",
+      "lat": 55.89342,
+      "lon": -4.26606
+    },
+    {
+      "name": "Hillfoot",
+      "lat": 55.92058,
+      "lon": -4.32084
+    },
+    {
+      "name": "Hillhead",
+      "lat": 55.87562,
+      "lon": -4.2871
+    },
+    {
+      "name": "Hillington",
+      "lat": 55.85076,
+      "lon": -4.36212
+    },
+    {
+      "name": "Hillpark",
+      "lat": 55.81573,
+      "lon": -4.29569
+    },
+    {
+      "name": "Hogganfield",
+      "lat": 55.88135,
+      "lon": -4.18013
+    },
+    {
+      "name": "Househillwood",
+      "lat": 55.82213,
+      "lon": -4.34921
+    },
+    {
+      "name": "Huntly",
+      "lat": 55.80201,
+      "lon": -4.28891
+    },
+    {
+      "name": "Hutchesontown",
+      "lat": 55.84707,
+      "lon": -4.2446
+    },
+    {
+      "name": "Hyndland",
+      "lat": 55.87856,
+      "lon": -4.30871
+    },
+    {
+      "name": "Ibrox",
+      "lat": 55.85313,
+      "lon": -4.30929
+    },
+    {
+      "name": "Ibroxholm",
+      "lat": 55.85172,
+      "lon": -4.30225
+    },
+    {
+      "name": "Jordanhill",
+      "lat": 55.8851,
+      "lon": -4.33457
+    },
+    {
+      "name": "Kelvindale",
+      "lat": 55.88983,
+      "lon": -4.30849
+    },
+    {
+      "name": "Kelvingrove",
+      "lat": 55.86629,
+      "lon": -4.28125
+    },
+    {
+      "name": "Kelvinhaugh",
+      "lat": 55.8646,
+      "lon": -4.29254
+    },
+    {
+      "name": "Kelvinside",
+      "lat": 55.88309,
+      "lon": -4.30278
+    },
+    {
+      "name": "Kennishead",
+      "lat": 55.8107,
+      "lon": -4.32841
+    },
+    {
+      "name": "Kennishead Flats",
+      "lat": 55.81389,
+      "lon": -4.32174
+    },
+    {
+      "name": "Keppochhill",
+      "lat": 55.8778,
+      "lon": -4.24235
+    },
+    {
+      "name": "Kessington",
+      "lat": 55.91418,
+      "lon": -4.31241
+    },
+    {
+      "name": "Killermont",
+      "lat": 55.90867,
+      "lon": -4.31615
+    },
+    {
+      "name": "King's Park",
+      "lat": 55.82252,
+      "lon": -4.2445
+    },
+    {
+      "name": "Kingston",
+      "lat": 55.8523,
+      "lon": -4.26982
+    },
+    {
+      "name": "Kinning Park",
+      "lat": 55.85102,
+      "lon": -4.28134
+    },
+    {
+      "name": "Kirkhill",
+      "lat": 55.81384,
+      "lon": -4.16337
+    },
+    {
+      "name": "Knightswood",
+      "lat": 55.89504,
+      "lon": -4.34542
+    },
+    {
+      "name": "Knightswood Park",
+      "lat": 55.89706,
+      "lon": -4.359
+    },
+    {
+      "name": "Lambhill",
+      "lat": 55.89593,
+      "lon": -4.26525
+    },
+    {
+      "name": "Langside",
+      "lat": 55.8253,
+      "lon": -4.27725
+    },
+    {
+      "name": "Laurieston",
+      "lat": 55.8508,
+      "lon": -4.25644
+    },
+    {
+      "name": "Lightburn",
+      "lat": 55.85955,
+      "lon": -4.16824
+    },
+    {
+      "name": "Lilybank",
+      "lat": 55.84669,
+      "lon": -4.19245
+    },
+    {
+      "name": "Linthouse",
+      "lat": 55.86394,
+      "lon": -4.33086
+    },
+    {
+      "name": "Low Balornock",
+      "lat": 55.88216,
+      "lon": -4.21519
+    },
+    {
+      "name": "Low Knightswood",
+      "lat": 55.89188,
+      "lon": -4.34539
+    },
+    {
+      "name": "Mansewood",
+      "lat": 55.81283,
+      "lon": -4.3017
+    },
+    {
+      "name": "Maryhill",
+      "lat": 55.88713,
+      "lon": -4.28637
+    },
+    {
+      "name": "Maryhill Park",
+      "lat": 55.90061,
+      "lon": -4.30141
+    },
+    {
+      "name": "Merchant City",
+      "lat": 55.85913,
+      "lon": -4.24632
+    },
+    {
+      "name": "Merrylee",
+      "lat": 55.81372,
+      "lon": -4.28524
+    },
+    {
+      "name": "Merrylee Park",
+      "lat": 55.80999,
+      "lon": -4.28881
+    },
+    {
+      "name": "Mile End",
+      "lat": 55.85086,
+      "lon": -4.22055
+    },
+    {
+      "name": "Millerston",
+      "lat": 55.88571,
+      "lon": -4.16354
+    },
+    {
+      "name": "Milnbank",
+      "lat": 55.86526,
+      "lon": -4.22165
+    },
+    {
+      "name": "Milton",
+      "lat": 55.897,
+      "lon": -4.24668
+    },
+    {
+      "name": "Mosspark",
+      "lat": 55.84054,
+      "lon": -4.32622
+    },
+    {
+      "name": "Mount Florida",
+      "lat": 55.82669,
+      "lon": -4.25579
+    },
+    {
+      "name": "Mount Vernon",
+      "lat": 55.84418,
+      "lon": -4.14247
+    },
+    {
+      "name": "Muirend",
+      "lat": 55.81099,
+      "lon": -4.27308
+    },
+    {
+      "name": "Netherlee",
+      "lat": 55.80229,
+      "lon": -4.27025
+    },
+    {
+      "name": "Netherton",
+      "lat": 55.89771,
+      "lon": -4.32903
+    },
+    {
+      "name": "New Cathcart",
+      "lat": 55.81342,
+      "lon": -4.26942
+    },
+    {
+      "name": "Newbank",
+      "lat": 55.8468,
+      "lon": -4.20198
+    },
+    {
+      "name": "Newfield",
+      "lat": 55.82502,
+      "lon": -4.22376
+    },
+    {
+      "name": "Newlands",
+      "lat": 55.81715,
+      "lon": -4.28044
+    },
+    {
+      "name": "North Kelvinside",
+      "lat": 55.88115,
+      "lon": -4.28357
+    },
+    {
+      "name": "North Williamwood",
+      "lat": 55.80141,
+      "lon": -4.27523
+    },
+    {
+      "name": "North Woodside",
+      "lat": 55.87711,
+      "lon": -4.27582
+    },
+    {
+      "name": "Northern Stamperland",
+      "lat": 55.79852,
+      "lon": -4.26695
+    },
+    {
+      "name": "Oakbank",
+      "lat": 55.87562,
+      "lon": -4.26358
+    },
+    {
+      "name": "Oatlands",
+      "lat": 55.84062,
+      "lon": -4.23702
+    },
+    {
+      "name": "Orchard Park",
+      "lat": 55.80438,
+      "lon": -4.30096
+    },
+    {
+      "name": "Orchardhill",
+      "lat": 55.80059,
+      "lon": -4.29076
+    },
+    {
+      "name": "Otterburn",
+      "lat": 55.79722,
+      "lon": -4.29631
+    },
+    {
+      "name": "Park District",
+      "lat": 55.86941,
+      "lon": -4.27899
+    },
+    {
+      "name": "Parkhead",
+      "lat": 55.85124,
+      "lon": -4.19685
+    },
+    {
+      "name": "Parkhouse",
+      "lat": 55.89074,
+      "lon": -4.24774
+    },
+    {
+      "name": "Partick",
+      "lat": 55.87149,
+      "lon": -4.30872
+    },
+    {
+      "name": "Partickhill",
+      "lat": 55.87479,
+      "lon": -4.30824
+    },
+    {
+      "name": "Penilee",
+      "lat": 55.85256,
+      "lon": -4.37471
+    },
+    {
+      "name": "Petershill",
+      "lat": 55.87638,
+      "lon": -4.22456
+    },
+    {
+      "name": "Pinkston",
+      "lat": 55.87389,
+      "lon": -4.24448
+    },
+    {
+      "name": "Plantation",
+      "lat": 55.85474,
+      "lon": -4.28284
+    },
+    {
+      "name": "Pollok",
+      "lat": 55.83073,
+      "lon": -4.34736
+    },
+    {
+      "name": "Pollokshaws",
+      "lat": 55.82529,
+      "lon": -4.29427
+    },
+    {
+      "name": "Pollokshields",
+      "lat": 55.84227,
+      "lon": -4.285
+    },
+    {
+      "name": "Polmadie",
+      "lat": 55.83553,
+      "lon": -4.24435
+    },
+    {
+      "name": "Port Dundas",
+      "lat": 55.87285,
+      "lon": -4.25354
+    },
+    {
+      "name": "Port Eglinton",
+      "lat": 55.84782,
+      "lon": -4.26685
+    },
+    {
+      "name": "Possilpark",
+      "lat": 55.88476,
+      "lon": -4.25362
+    },
+    {
+      "name": "Priesthill",
+      "lat": 55.81653,
+      "lon": -4.34731
+    },
+    {
+      "name": "Provanhall",
+      "lat": 55.87191,
+      "lon": -4.12589
+    },
+    {
+      "name": "Provanmill",
+      "lat": 55.87823,
+      "lon": -4.1923
+    },
+    {
+      "name": "Queen's Cross",
+      "lat": 55.88021,
+      "lon": -4.2724
+    },
+    {
+      "name": "Regent's Park",
+      "lat": 55.81417,
+      "lon": -4.31552
+    },
+    {
+      "name": "Riddrie",
+      "lat": 55.8692,
+      "lon": -4.19322
+    },
+    {
+      "name": "Riddrie Knowes",
+      "lat": 55.86704,
+      "lon": -4.18707
+    },
+    {
+      "name": "Riverside",
+      "lat": 55.80323,
+      "lon": -4.26702
+    },
+    {
+      "name": "Robroyston",
+      "lat": 55.89145,
+      "lon": -4.18272
+    },
+    {
+      "name": "Robslee",
+      "lat": 55.80581,
+      "lon": -4.30721
+    },
+    {
+      "name": "Rockvilla",
+      "lat": 55.87663,
+      "lon": -4.25755
+    },
+    {
+      "name": "Rosshall",
+      "lat": 55.83965,
+      "lon": -4.36515
+    },
+    {
+      "name": "Ruchazie",
+      "lat": 55.87368,
+      "lon": -4.16656
+    },
+    {
+      "name": "Ruchill",
+      "lat": 55.88833,
+      "lon": -4.26875
+    },
+    {
+      "name": "Sandyford",
+      "lat": 55.8647,
+      "lon": -4.27779
+    },
+    {
+      "name": "Sandyhills",
+      "lat": 55.84953,
+      "lon": -4.14673
+    },
+    {
+      "name": "Scotstoun",
+      "lat": 55.88279,
+      "lon": -4.35158
+    },
+    {
+      "name": "Scotstounhill",
+      "lat": 55.88567,
+      "lon": -4.35031
+    },
+    {
+      "name": "Shawfield",
+      "lat": 55.83558,
+      "lon": -4.2266
+    },
+    {
+      "name": "Shawlands",
+      "lat": 55.82846,
+      "lon": -4.2852
+    },
+    {
+      "name": "Shawmoss",
+      "lat": 55.83358,
+      "lon": -4.2904
+    },
+    {
+      "name": "Shettleston",
+      "lat": 55.85172,
+      "lon": -4.16958
+    },
+    {
+      "name": "Shieldhall",
+      "lat": 55.86467,
+      "lon": -4.34714
+    },
+    {
+      "name": "Sighthill",
+      "lat": 55.87249,
+      "lon": -4.2388
+    },
+    {
+      "name": "Simshill",
+      "lat": 55.81172,
+      "lon": -4.24952
+    },
+    {
+      "name": "South Cardonald",
+      "lat": 55.84294,
+      "lon": -4.34677
+    },
+    {
+      "name": "South Westerton",
+      "lat": 55.90541,
+      "lon": -4.34035
+    },
+    {
+      "name": "Spittal",
+      "lat": 55.81558,
+      "lon": -4.22162
+    },
+    {
+      "name": "Springboig",
+      "lat": 55.85821,
+      "lon": -4.15327
+    },
+    {
+      "name": "Springburn",
+      "lat": 55.88406,
+      "lon": -4.22961
+    },
+    {
+      "name": "Springhall",
+      "lat": 55.80834,
+      "lon": -4.18997
+    },
+    {
+      "name": "St Enoch",
+      "lat": 55.85619,
+      "lon": -4.25084
+    },
+    {
+      "name": "St Rollox",
+      "lat": 55.87211,
+      "lon": -4.23363
+    },
+    {
+      "name": "Stamperland",
+      "lat": 55.79358,
+      "lon": -4.27135
+    },
+    {
+      "name": "Stobcross",
+      "lat": 55.86175,
+      "lon": -4.28999
+    },
+    {
+      "name": "Stonedyke",
+      "lat": 55.90872,
+      "lon": -4.34691
+    },
+    {
+      "name": "Stonelaw",
+      "lat": 55.82033,
+      "lon": -4.19668
+    },
+    {
+      "name": "Strathbungo",
+      "lat": 55.83663,
+      "lon": -4.27207
+    },
+    {
+      "name": "Strathview",
+      "lat": 55.80047,
+      "lon": -4.27589
+    },
+    {
+      "name": "Summerston",
+      "lat": 55.90301,
+      "lon": -4.29094
+    },
+    {
+      "name": "Switchback",
+      "lat": 55.906,
+      "lon": -4.32717
+    },
+    {
+      "name": "Temple",
+      "lat": 55.89416,
+      "lon": -4.3237
+    },
+    {
+      "name": "The Butney",
+      "lat": 55.89489,
+      "lon": -4.29945
+    },
+    {
+      "name": "The Drives",
+      "lat": 55.86082,
+      "lon": -4.21616
+    },
+    {
+      "name": "The Oval",
+      "lat": 55.7955,
+      "lon": -4.26861
+    },
+    {
+      "name": "The Valley",
+      "lat": 55.89105,
+      "lon": -4.29472
+    },
+    {
+      "name": "Thornwood",
+      "lat": 55.87321,
+      "lon": -4.31958
+    },
+    {
+      "name": "Tollcross",
+      "lat": 55.84328,
+      "lon": -4.1708
+    },
+    {
+      "name": "Toryglen",
+      "lat": 55.82849,
+      "lon": -4.23671
+    },
+    {
+      "name": "Townhead",
+      "lat": 55.86614,
+      "lon": -4.24265
+    },
+    {
+      "name": "Tradeston",
+      "lat": 55.85311,
+      "lon": -4.26268
+    },
+    {
+      "name": "Wardlawhill",
+      "lat": 55.82452,
+      "lon": -4.20323
+    },
+    {
+      "name": "Waverley Park",
+      "lat": 55.82971,
+      "lon": -4.28929
+    },
+    {
+      "name": "Wellhouse",
+      "lat": 55.86221,
+      "lon": -4.13669
+    },
+    {
+      "name": "Wellmeadow",
+      "lat": 55.81916,
+      "lon": -4.30536
+    },
+    {
+      "name": "West Drumoyne",
+      "lat": 55.85846,
+      "lon": -4.34401
+    },
+    {
+      "name": "West End",
+      "lat": 55.87821,
+      "lon": -4.29571
+    },
+    {
+      "name": "Westerton",
+      "lat": 55.90776,
+      "lon": -4.33652
+    },
+    {
+      "name": "Westthorn",
+      "lat": 55.83796,
+      "lon": -4.19225
+    },
+    {
+      "name": "Whiteinch",
+      "lat": 55.87534,
+      "lon": -4.33719
+    },
+    {
+      "name": "Whitlawburn",
+      "lat": 55.81042,
+      "lon": -4.18213
+    },
+    {
+      "name": "Woodfarm",
+      "lat": 55.80255,
+      "lon": -4.30983
+    },
+    {
+      "name": "Woodlands",
+      "lat": 55.87075,
+      "lon": -4.27339
+    },
+    {
+      "name": "Woodside",
+      "lat": 55.87245,
+      "lon": -4.26825
+    },
+    {
+      "name": "Wyndford",
+      "lat": 55.88773,
+      "lon": -4.29129
+    },
+    {
+      "name": "Yorkhill",
+      "lat": 55.86686,
+      "lon": -4.29797
+    }
+  ],
+  "venues": {
+    "the stand comedy club": "Park District",
+    "king tut s wah wah hut": "Blythswood Hill",
+    "swg3": "Yorkhill",
+    "st luke s": "Calton",
+    "ran m r": "Hillhead",
+    "sub club": "Blythswood Holm",
+    "drygate brewery": "Cathedral Precinct",
+    "the horseshoe bar": "City Centre",
+    "cottiers": "Dowanhill",
+    "tron theatre": "Glasgow Cross",
+    "glasgow film theatre": "Garnethill",
+    "stereo": "Blythswood Hill",
+    "cathouse rock club": "Blythswood Holm"
+  }
+}

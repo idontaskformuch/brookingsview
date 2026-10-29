@@ -168,3 +168,21 @@ export function getSectionHero(
   }
   return { image: pick, source: 'rotation', poolSize: n };
 }
+
+const EVENING_ALT = /\b(night|evening|dusk|twilight|sunset|illuminated|lights?)\b/i;
+
+/** Hero for /tonight and /this-weekend: an evening picture ("... at night", "Christmas lights") from the town's own licensed pools when one
+ *  exists (events category + seasonal pool, alt text names the evening), one stable pick per calendar month; null when the pools hold none,
+ *  and the caller falls back to the ordinary section hero. Credit and licence travel with the ImageRef (attributionText/Url). */
+export function getEveningHero(town: string, date: Date, opts: { timezone?: string; events?: ImageRef[]; seasonPool?: ImageRef[] } = {}): ImageRef | null {
+  const timezone = opts.timezone ?? TOWN_TIMEZONE[town] ?? 'America/Chicago';
+  const week = weekInfoForInstant(date, timezone);
+  const season: Season = seasonForMonth(week.monday.m);
+  const events = opts.events ?? categoryImagesFor(town).events ?? [];
+  const seasonal = opts.seasonPool ?? thisWeekImagesFor(town).filter((img) => img.seasons.includes(season));
+  const seen = new Set<string>();
+  const pool = [...events, ...seasonal].filter((img) => EVENING_ALT.test(img.alt) && !seen.has(img.path) && (seen.add(img.path), true));
+  if (pool.length === 0) return null;
+  const ordered = [...pool].sort((a, b) => a.path.localeCompare(b.path));
+  return ordered[stableHash(`${town}:evening:${week.monday.y}-${week.monday.m}`) % ordered.length];
+}
