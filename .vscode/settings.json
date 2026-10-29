@@ -1,0 +1,4 @@
+{
+  "files.watcherExclude": { "**/site/dist/**": true, "**/site/.astro/**": true },
+  "search.exclude": { "**/site/dist": true }
+}
