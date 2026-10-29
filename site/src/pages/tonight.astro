@@ -8,7 +8,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import PageGuide from '../components/PageGuide.astro';
 import ShareButton from '../components/ShareButton.astro';
-import { getWeather, getActiveAlerts, getUpcomingStories, getUpcomingArtsEvents, getFacilities, getOsmSnapshot } from '../lib/db';
+import { getWeather, getActiveAlerts, getUpcomingStories, getUpcomingArtsEvents, getFacilities, getOsmSnapshot, getEveningRegister } from '../lib/db';
 import { buildEventFeed, isFreeEvent } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
@@ -35,8 +35,9 @@ const [periods, alerts, stories, arts, facilities] = await Promise.all([
 const { items } = buildEventFeed(stories, arts, tz);
 const tm = siteConfig.hasWhatsOn ? await getTicketmasterEventsForTown(siteConfig, { includeSports: layer.includeTicketmasterSports }) : [];
 const checked = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+const register = layer.register ? await getEveningRegister() : [];
 const entries = buildEveningEntries({
-  feed: items, ticketmaster: tm, now, timezone: tz, checked, cityName: siteConfig.cityName,
+  feed: items, ticketmaster: tm, register, now, timezone: tz, checked, cityName: siteConfig.cityName,
   isFree: (i) => isFreeEvent(i, facilities),
   ticketmasterMaxMiles: layer.maxMiles,
   includeTicketmasterSports: layer.includeTicketmasterSports,
@@ -55,6 +56,7 @@ const home = gettingHomeFor(siteConfig.townId, now);
 const outside = entries.some((e) => e.driveMinutes !== null);
 const forecast = forecastLine(periods, tz, now);
 const alertCount = alerts.length;
+const timeText = (e: { start: string; laterStarts?: string[] }) => [e.start, ...(e.laterStarts ?? [])].map((t) => showTimeGb(t, tz)).join(', ');
 const label = { 'Free': 'Free', '18+': '18+', 'All ages': 'All ages' } as const;
 const dateOf = (iso: string) => new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(iso));
 const dayLabelOf = (day: number) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(day * 86_400_000));
@@ -62,7 +64,7 @@ const dayLabelOf = (day: number) => new Intl.DateTimeFormat('en-GB', { timeZone:
 const pageMeta = resolvePageMeta('tonight', siteConfig);
 const canonicalUrl = new URL('/tonight/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [{ label: 'Home', href: '/' }, { label: 'Tonight', href: canonicalUrl }];
-const sourceNames = siteConfig.hasWhatsOn ? 'Local event calendars and Ticketmaster listings' : 'Local event calendars';
+const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketmaster listings' : 'Local event calendars') + (register.length > 0 ? ' and venue websites' : '');
 ---
 <BaseLayout title={pageMeta.title} canonicalUrl={canonicalUrl} noindex={true}
   description={`Things to do tonight and tomorrow night in ${siteConfig.cityName}: live music, comedy, quiz nights and more, with times, venues and what is free.`}>
@@ -96,7 +98,7 @@ const sourceNames = siteConfig.hasWhatsOn ? 'Local event calendars and Ticketmas
         <ul class="tn-highlights" data-hide-ended>
           {s.highlights.map((e) => (
             <li class="tn-card" data-start={e.start} data-end={e.end ?? undefined}>
-              <p class="tn-time">{showTimeGb(e.start, tz)}{e.group && <span class="tn-group"> · {e.group}</span>}</p>
+              <p class="tn-time">{timeText(e)}{e.group && <span class="tn-group"> · {e.group}</span>}</p>
               <h3>{e.href ? <a href={e.href}>{e.title}</a> : e.title}</h3>
               {e.venue && <p class="tn-venue">{e.venue}</p>}
               {e.driveMinutes !== null && <p class="tn-drive">{driveLabel(e.driveMinutes)}</p>}
@@ -111,7 +113,7 @@ const sourceNames = siteConfig.hasWhatsOn ? 'Local event calendars and Ticketmas
           <ul class="tn-rows" data-hide-ended data-hide-when-empty>
             {g.entries.map((e) => (
               <li class="tn-row" data-start={e.start} data-end={e.end ?? undefined}>
-                <span class="tn-time">{showTimeGb(e.start, tz)}</span>
+                <span class="tn-time">{timeText(e)}</span>
                 <span class="tn-title">{e.href ? <a href={e.href}>{e.title}</a> : e.title}</span>
                 {e.venue && <span class="tn-venue"> at {e.venue}</span>}
                 {e.driveMinutes !== null && <span class="tn-drive"> ({driveLabel(e.driveMinutes)})</span>}

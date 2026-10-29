@@ -14,6 +14,149 @@
     "lon": -4.2518
   },
   "open_late": { "radius_km": 5, "_note": "Weekly OpenStreetMap opening-hours snapshot for /tonight (scripts/refresh_osm_places.py -> osm_places). Centre = coordinates above." },
+  "evening_register": {
+    "_note": "Curated venue register for /tonight (scrapers/evening_register.py -> scripts/refresh_evening_register.py). Venue list approved by the owner 2026-10-29; each run re-checks robots.txt and the venue's identity first.",
+    "venues": [
+      {
+        "venue_id": "the-stand",
+        "name": "The Stand Comedy Club",
+        "type": "comedy",
+        "url": "https://www.thestand.co.uk/whats-on/glasgow",
+        "default_group": "Comedy & shows",
+        "aliases": [
+          "The Stand"
+        ]
+      },
+      {
+        "venue_id": "nice-n-sleazy",
+        "name": "Nice N Sleazy",
+        "type": "bar/live music",
+        "url": "https://www.nicensleazy.com/events",
+        "default_group": "Live music"
+      },
+      {
+        "venue_id": "kings-tuts",
+        "name": "King Tut's Wah Wah Hut",
+        "type": "music venue",
+        "url": "https://www.kingtuts.co.uk/whats-on",
+        "default_group": "Live music",
+        "aliases": [
+          "King Tuts",
+          "kingtuts"
+        ]
+      },
+      {
+        "venue_id": "swg3",
+        "name": "SWG3",
+        "type": "club/music venue",
+        "url": "https://swg3.tv/events/",
+        "default_group": "Clubs & late"
+      },
+      {
+        "venue_id": "st-lukes",
+        "name": "St Luke's",
+        "type": "music venue",
+        "url": "https://www.stlukesglasgow.com/whats-on/",
+        "default_group": "Live music",
+        "aliases": [
+          "Saint Luke's"
+        ]
+      },
+      {
+        "venue_id": "oran-mor",
+        "name": "Òran Mór",
+        "type": "arts/music",
+        "url": "https://oran-mor.co.uk/whats-on/",
+        "default_group": "Live music",
+        "aliases": [
+          "Oran Mor"
+        ]
+      },
+      {
+        "venue_id": "sub-club",
+        "name": "Sub Club",
+        "type": "club",
+        "url": "https://subclub.co.uk/",
+        "default_group": "Clubs & late"
+      },
+      {
+        "venue_id": "drygate",
+        "name": "Drygate Brewery",
+        "type": "brewery/bar",
+        "url": "https://www.drygate.com/events",
+        "default_group": "Quiz & pub nights",
+        "aliases": [
+          "Drygate"
+        ]
+      },
+      {
+        "venue_id": "horseshoe-bar",
+        "name": "The Horseshoe Bar",
+        "type": "pub",
+        "url": "https://horseshoebar.co.uk/",
+        "default_group": "Quiz & pub nights",
+        "aliases": [
+          "Horse Shoe Bar"
+        ]
+      },
+      {
+        "venue_id": "cottiers",
+        "name": "Cottiers",
+        "type": "theatre/music",
+        "url": "https://cottiers.com/whats-on-at-cottiers/",
+        "default_group": "Live music"
+      },
+      {
+        "venue_id": "tron-theatre",
+        "name": "Tron Theatre",
+        "type": "theatre",
+        "url": "https://www.tron.co.uk/whats-on/",
+        "default_group": "Comedy & shows"
+      },
+      {
+        "venue_id": "citizens-theatre",
+        "name": "Citizens Theatre",
+        "type": "theatre",
+        "url": "https://citz.co.uk/whats-on/",
+        "default_group": "Comedy & shows"
+      },
+      {
+        "venue_id": "gft",
+        "name": "Glasgow Film Theatre",
+        "type": "cinema",
+        "url": "https://www.glasgowfilm.org/",
+        "default_group": "Comedy & shows",
+        "aliases": [
+          "Glasgow Film"
+        ],
+        "one_row_per_film": true
+      },
+      {
+        "venue_id": "mackintosh-church",
+        "name": "Mackintosh Church",
+        "type": "concert venue",
+        "url": "https://mackintoshchurch.com/",
+        "default_group": "Live music"
+      },
+      {
+        "venue_id": "stereo",
+        "name": "Stereo",
+        "type": "bar/music",
+        "url": "https://www.stereocafebar.com/",
+        "default_group": "Live music"
+      },
+      {
+        "venue_id": "cathouse",
+        "name": "Cathouse Rock Club",
+        "type": "club/live music",
+        "url": "https://cathouse.co.uk/gigs/",
+        "default_group": "Clubs & late",
+        "aliases": [
+          "Cathouse"
+        ]
+      }
+    ]
+  },
   "_coordinates_note": "Approximate city centre (George Square). Replace with a verified point before any radius/geo query uses it (Ticketmaster GB, Met Office).",
   "_status": "SKELETON (Glasgow Phase 2, 2026-10-22): site-wide noindex ON, every data source and feature disabled. Nothing scrapes or publishes for this town yet. Phase 3 adds sources one by one, each behind its own enabled flag, after reachability and robots/ToS are verified.",
   "uk_gate": { "relaxed_event_sources": ["glasgow_life"], "_note": "Owner 2026-10-24: for events from these sources only, (a) names in the organiser's own description/title are not private individuals and (b) an offence name alone (murder, assault ...) does not hold; arrest/charge/trial/conviction etc. still hold. Meetings and everything else keep the full gate (ai_pipeline/uk_guardrails.py). Every hold/relaxation is logged to reports/uk_gate_log.jsonl." },

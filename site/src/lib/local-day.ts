@@ -57,6 +57,17 @@ export function localMidnightIso(day: { y: number; m: number; d: number }, timez
   return new Date(t).toISOString();
 }
 
+/** ISO instant of a local wall-clock time (hour, minute) on the given calendar day in `timezone`. */
+export function localInstantIso(day: { y: number; m: number; d: number }, hour: number, minute: number, timezone: string): string {
+  const want = Date.UTC(day.y, day.m - 1, day.d, hour, minute);
+  let t = want;
+  for (let i = 0; i < 3; i++) {
+    const p = parts(new Date(t), timezone);
+    t += want - Date.UTC(p.y, p.m - 1, p.d, p.h, p.min);
+  }
+  return new Date(t).toISOString();
+}
+
 export function isAllDay(e: TimedEvent, timezone: string): boolean {
   const start = new Date(e.start);
   if (Number.isNaN(start.getTime())) return false;

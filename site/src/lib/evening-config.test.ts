@@ -17,6 +17,10 @@ describe('eveningLayer config per town', () => {
     const withBlock = ALL_CONFIGS.filter((c) => c.eveningLayer?.openLate).map((c) => c.townId).sort();
     expect(withBlock).toEqual(['broomfield_co', 'glasgow']);
   });
+  it('reads the venue register only where configs/<town>.json lists venues', () => {
+    const withRegister = ALL_CONFIGS.filter((c) => c.eveningLayer?.register).map((c) => c.townId).sort();
+    expect(withRegister).toEqual(['broomfield_co', 'glasgow']);
+  });
   it('never looks further than the Ticketmaster fetch radius', () => {
     for (const c of ALL_CONFIGS) if (c.eveningLayer && c.ticketmaster) expect(c.eveningLayer.maxMiles).toBeLessThanOrEqual(c.ticketmaster.radiusMiles);
   });

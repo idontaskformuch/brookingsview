@@ -14,12 +14,12 @@ import { itemTitle, itemUrl, itemVenue } from './events';
 import { storyHref } from './content-slugs';
 import { distanceLabel, type TicketmasterFeedItem } from './ticketmaster';
 import { ticketmasterSlug } from './whats-on';
-import { hasEnded, DEFAULT_EVENT_MS } from './local-day';
+import { hasEnded, DEFAULT_EVENT_MS, localDayNumber, localInstantIso } from './local-day';
 import type { EveningItem } from './evening-threshold';
 
 export type EveningGroup = 'Live music' | 'Comedy & shows' | 'Quiz & pub nights' | 'Clubs & late' | 'Sport tonight';
 export type EveningLabel = 'Free' | '18+' | 'All ages';
-export type EveningSource = 'ticketmaster' | 'own';
+export type EveningSource = 'ticketmaster' | 'own' | 'register';
 
 export interface EveningEntry {
   id: string;
@@ -40,7 +40,31 @@ export interface EveningEntry {
   driveMinutes: number | null;
   /** Local date (YYYY-MM-DD) the row was last read from its source: the build date for feed-based sources. */
   checked: string;
+  /** Later start times the same night for the same title (a film with several screenings); register rows only. */
+  laterStarts?: string[];
 }
+
+/** One row of the curated venue register (db.getEveningRegister): a rule the weekly job read off the venue's own page. */
+export interface RegisterRow {
+  venueName: string;
+  kind: 'recurring' | 'dated';
+  title: string;
+  /** ISO weekdays 1 (Monday) to 7 (Sunday), recurring only. */
+  weekdays: number[];
+  /** YYYY-MM-DD in the venue's local time, dated only. */
+  onDate: string | null;
+  /** 'HH:MM' local start times, ascending. */
+  times: string[];
+  price: string | null;
+  age: string | null;
+  defaultGroup: string;
+  sourceUrl: string;
+  lastConfirmedAt: string;
+}
+
+/** Owner 2026-10-29: a dated event is dropped unless the venue's page still showed it within 7 days, a recurring rule within 35. */
+export const REGISTER_MAX_AGE_DAYS = { dated: 7, recurring: 35 } as const;
+export const REGISTER_HORIZON_DAYS = 14;
 
 const QUIZ_RE = /\b(quiz|trivia|pub quiz|bingo)\b/i;
 const COMEDY_RE = /\b(comedy|comedian|stand-?up|improv|panel show)\b/i;
@@ -103,6 +127,8 @@ export interface EveningEntryOptions {
   isFree?: (item: FeedItem) => boolean;
   /** Ticketmaster shows further away than this are left out (siteConfig.eveningLayer.maxMiles). Default: in-town only. */
   ticketmasterMaxMiles?: number | 'in-town';
+  /** Rows of the curated venue register (siteConfig has no switch: an empty or unreadable table gives no rows). */
+  register?: RegisterRow[];
   /** Ticketmaster sport counts (siteConfig.eveningLayer.includeTicketmasterSports). Default false: Brookings' SDSU feed already carries it. */
   includeTicketmasterSports?: boolean;
 }
@@ -159,6 +185,43 @@ function ticketmasterEntry(item: TicketmasterFeedItem, o: EveningEntryOptions): 
   };
 }
 
+const REGISTER_GROUPS: EveningGroup[] = ['Live music', 'Comedy & shows', 'Quiz & pub nights', 'Clubs & late'];
+
+function isoWeekday(day: number): number {
+  const dow = new Date(day * 86_400_000).getUTCDay();
+  return dow === 0 ? 7 : dow;
+}
+
+/** Register rules expanded to concrete evenings: today and the next REGISTER_HORIZON_DAYS days, stale rules left out. A rule with several
+ *  times on one night becomes ONE row (first start, the rest in laterStarts). Price and age labels were taken from the venue's text by the job. */
+export function registerEntries(rows: RegisterRow[], o: EveningEntryOptions): EveningEntry[] {
+  const today = localDayNumber(o.now, o.timezone);
+  const out: EveningEntry[] = [];
+  for (const r of rows) {
+    const ageDays = (o.now.getTime() - new Date(r.lastConfirmedAt).getTime()) / 86_400_000;
+    if (!(ageDays <= REGISTER_MAX_AGE_DAYS[r.kind])) continue;
+    const group = groupForTitle(r.title) ?? (REGISTER_GROUPS.find((g) => g === r.defaultGroup) ?? null);
+    const labels: EveningLabel[] = [];
+    if (r.price === 'Free') labels.push('Free');
+    if (r.age === '18+' || r.age === 'All ages') labels.push(r.age);
+    const confirmed = new Intl.DateTimeFormat('en-CA', { timeZone: o.timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(r.lastConfirmedAt));
+    for (let day = today; day <= today + REGISTER_HORIZON_DAYS; day++) {
+      const d = new Date(day * 86_400_000);
+      const ymd = { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() };
+      const iso = `${ymd.y}-${String(ymd.m).padStart(2, '0')}-${String(ymd.d).padStart(2, '0')}`;
+      if (r.kind === 'dated' ? r.onDate !== iso : !r.weekdays.includes(isoWeekday(day))) continue;
+      const starts = r.times.map((t) => localInstantIso(ymd, Number(t.slice(0, 2)), Number(t.slice(3, 5)), o.timezone));
+      out.push({
+        id: `reg:${r.venueName}|${r.title}|${iso}`, title: r.title, start: starts[0],
+        end: starts.length > 1 ? new Date(new Date(starts[starts.length - 1]).getTime() + DEFAULT_EVENT_MS).toISOString() : null, group, labels, venue: r.venueName,
+        href: r.sourceUrl, source: 'register', distanceMiles: null, driveMinutes: null, checked: confirmed,
+        ...(starts.length > 1 ? { laterStarts: starts.slice(1) } : {}),
+      });
+    }
+  }
+  return out;
+}
+
 const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
 /** The same show listed by two sources ("DF Concerts Presents: NOAHFINNCE" from the venue's calendar and "NOAHFINNCE" from
@@ -176,6 +239,7 @@ export function buildEveningEntries(o: EveningEntryOptions): EveningEntry[] {
   const candidates = [
     ...o.feed.map((i) => ownEntry(i, o)),
     ...(o.ticketmaster ?? []).map((i) => ticketmasterEntry(i, o)),
+    ...registerEntries(o.register ?? [], o),
   ];
   for (const c of candidates) {
     if (!c) continue;

@@ -65,3 +65,16 @@ Glasgow = 17 ställen. GFT: en rad per film och kväll med alla tider.
 Avvisade: Colorado Tap House (Arvada), Odd13 Brewing (Lafayette), Liquid Mechanics (Lafayette) -- robots nämner AI-botar. frontrangebrewingcompany.com är en kapad kasinodomän. Parish Brewing, Resolute Brewing, Rayback Collective, Front Range Brewing: egen domän ej hittad (ingen DNS på prövade adresser). People's Brewing i sökträffen ligger troligen i Lafayette, Indiana: utesluten.
 Lafayette har därmed inga verifierbara ställen; Boulder i utkanten ej föreslaget (Ticketmaster täcker de stora lokalerna).
 Registret blir 4 + 4 = 8 (9 med Thornton) i Broomfield-området: fortfarande under 15, men tröskeln avgörs av Ticketmaster + egna event.
+
+## Bygge och torrkörning 2026-10-29 (steg 6, inget skrivet mot live-DB)
+Konfig: configs/glasgow.json och configs/broomfield_co.json, nyckeln `evening_register` (venue_id, namn, URL till programsidan, standardgrupp, alias). Torrkörning mot de riktiga sidorna med ViewMediaBot (`python -m scripts.refresh_evening_register --show`, inget DB, ingen usage-logg).
+Ändringar mot det godkända underlaget (ägaren avgör):
+| Ställe | Utfall |
+|---|---|
+| 4 Noses Brewing | robots.txt nämner nu `anthropic-ai` -> UTESLUTEN enligt regeln (fanns i godkänd lista; borttagen ur konfig) |
+| Nighthawk Brewery | nighthawkbrewery.com ligger på HugeDomains ("for sale") -> identitetskontrollen faller; borttagen ur konfig, rätt domän måste hittas |
+| Barrowland Ballroom | barrowland-ballroom.co.uk svarar 429 (och .barrowlandballroom.co.uk saknar DNS) -> ej i konfig tills en nåbar adress finns |
+| Westminster Brewing Company | westminsterbrewingco.com skickar vidare till webrewco.com (titeln "Westminster Brewing Company, 7655 W 108th Ave, Broomfield"). Konfigurerad direkt mot webrewco.com; ägaren bekräftar att det är ställets egen domän |
+| Arvada Center | programsidans <title> är "Event Calendar" utan ställets namn -> identitetskontrollen faller (FLAGGAD vid körning); ägaren avgör om en annan sida ska användas |
+| GFT, Stereo, Trailside Saloon | sidan är skriptrenderad (nästan ingen text) -> inget extraheras utan ytterligare källa (ingen webbläsarrendering) |
+Utfall torrkörning 2 (23 ställen): 20 regler godkända av valideringen. Vanligaste avslagen är rätt avslag: sidan visar datum men ingen starttid (72 st), modellen skrev en tid som inte står i citatet (31), datum utanför 60 dagar eller fel år (3). Programsidor utan tider på listan (Òran Mór, Sub Club, Cathouse, Citizens m.fl.) kräver detaljsidor (en hämtning till per evenemang), vilket specen inte tillåter (högst en hämtning per ställe och dygn) -> ägaren avgör.

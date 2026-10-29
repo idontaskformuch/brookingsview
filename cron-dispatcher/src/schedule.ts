@@ -29,6 +29,9 @@ export const SCRAPE_WORKFLOWS = [
 // trigger is needed (Cloudflare's free plan caps them). Overpass policy: one run per town per week.
 export const OSM_WORKFLOW = 'osm-open-late.yml';
 
+// Curated venue register for /tonight (steg 6): same Monday 11:00 UTC tick, one fetch per venue per week.
+export const REGISTER_WORKFLOW = 'evening-register.yml';
+
 // Broomfield is deliberately absent: its school_alerts sources are disabled
 // (zero runs/rows ever, Adams 12 bot-challenge, BVSD app-only), so a morning
 // run there would only rebuild with nothing to show. Revisit when a source
@@ -60,7 +63,7 @@ export function dueWorkflows(cron: string, scheduledTime: number): string[] {
   if (cron === SCRAPE_CRON) {
     const at = new Date(scheduledTime);
     const mondayMorning = at.getUTCDay() === 1 && at.getUTCHours() === 11;
-    return mondayMorning ? [...SCRAPE_WORKFLOWS, OSM_WORKFLOW] : [...SCRAPE_WORKFLOWS];
+    return mondayMorning ? [...SCRAPE_WORKFLOWS, OSM_WORKFLOW, REGISTER_WORKFLOW] : [...SCRAPE_WORKFLOWS];
   }
   if (cron === MORNING_CRON) {
     return MORNING_TOWNS.filter(({ timeZone }) => {

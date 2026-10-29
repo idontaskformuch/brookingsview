@@ -1,0 +1,28 @@
+name: evening-register
+# Weekly refresh of the curated venue register behind /tonight. Started by the cron dispatcher on Mondays (11:00 UTC tick), or by hand.
+# For each venue in configs/<town>.json "evening_register": robots.txt, ONE page fetch (ViewMediaBot), identity check, then Haiku
+# reads the text and scripts validate every rule against the page. Writes evening_register_* only. Venues checked <6 days ago are
+# skipped (one fetch per venue per week unless forced); a venue that fails the identity check is flagged and annotated here.
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Ignore the one-fetch-per-venue-per-week guard"
+        type: boolean
+        default: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Refresh venue register
+        run: python -m scripts.refresh_evening_register --apply ${{ inputs.force && '--force' || '' }}

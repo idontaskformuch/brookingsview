@@ -51,6 +51,8 @@ export interface SiteConfig {
     /** "Open late" block from the weekly OpenStreetMap snapshot (osm_places, scripts/refresh_osm_places.py; centre and radius live in configs/<town>.json).
      *  Set only where OSM has opening hours mapped (Brookings and Moreno Valley have almost none, t1-report.md section 1). */
     openLate?: true;
+    /** Curated venue register (evening_register_* tables, scripts/refresh_evening_register.py; the venue list lives in configs/<town>.json). Set where a list exists. */
+    register?: true;
   };
   /** false = not listed in the other towns' multi-site disclosure yet (an unlaunched, noindexed
    *  site is not advertised from the live ones). Default true. */
@@ -674,7 +676,7 @@ const CITIES: Record<string, SiteConfig> = {
 
   broomfield_co: {
     townId: 'broomfield_co',
-    eveningLayer: { mode: 'threshold', maxMiles: 20, includeTicketmasterSports: true, openLate: true },
+    eveningLayer: { mode: 'threshold', maxMiles: 20, includeTicketmasterSports: true, openLate: true, register: true },
     // Owner-approved 2026-10-21: six tabs for now, a seventh to be chosen (events / workplace / vail / weather).
     nav: {
       tabs: ['today', 'cityhall', 'facilities', 'whatson', 'traffic', 'jobs'],
@@ -775,7 +777,7 @@ const CITIES: Record<string, SiteConfig> = {
   // yet listed in the US towns' network disclosure. Phase 3 enables sources one by one.
   glasgow: {
     townId: 'glasgow',
-    eveningLayer: { mode: 'threshold', maxMiles: 15, includeTicketmasterSports: true, openLate: true },
+    eveningLayer: { mode: 'threshold', maxMiles: 15, includeTicketmasterSports: true, openLate: true, register: true },
     nav: {
       tabs: ['today', 'events', 'cityhall'],
       groups: {

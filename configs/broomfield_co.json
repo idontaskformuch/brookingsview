@@ -12,6 +12,60 @@
     "lon": -105.0866
   },
   "open_late": { "radius_km": 8, "_note": "Weekly OpenStreetMap opening-hours snapshot for /tonight (scripts/refresh_osm_places.py -> osm_places). Centre = coordinates above." },
+  "evening_register": {
+    "_note": "Curated venue register for /tonight (scrapers/evening_register.py -> scripts/refresh_evening_register.py). Venue list approved by the owner 2026-10-29; each run re-checks robots.txt and the venue's identity first.",
+    "venues": [
+      {
+        "venue_id": "wonderland",
+        "name": "Wonderland Brewing",
+        "type": "brewery",
+        "url": "https://www.wonderlandbrewing.com/events",
+        "default_group": "Quiz & pub nights"
+      },
+      {
+        "venue_id": "big-choice",
+        "name": "Big Choice Brewing",
+        "type": "brewery",
+        "url": "https://www.bigchoicebrewing.com/",
+        "default_group": "Quiz & pub nights"
+      },
+      {
+        "venue_id": "louisville-underground",
+        "name": "Louisville Underground",
+        "type": "comedy/live music",
+        "url": "https://louisvilleunderground.com/",
+        "default_group": "Comedy & shows"
+      },
+      {
+        "venue_id": "westminster-brewing",
+        "name": "Westminster Brewing Company",
+        "type": "brewery",
+        "url": "https://www.webrewco.com/events",
+        "default_group": "Quiz & pub nights"
+      },
+      {
+        "venue_id": "bambei",
+        "name": "Bambei Brewing",
+        "type": "brewery",
+        "url": "https://bambeibrewing.com/events",
+        "default_group": "Quiz & pub nights"
+      },
+      {
+        "venue_id": "arvada-center",
+        "name": "Arvada Center",
+        "type": "arts",
+        "url": "https://arvadacenter.org/events",
+        "default_group": "Comedy & shows"
+      },
+      {
+        "venue_id": "trailside-saloon",
+        "name": "Trailside Saloon",
+        "type": "bar/live music",
+        "url": "https://www.trailsidesaloon.com/events-calendar",
+        "default_group": "Live music"
+      }
+    ]
+  },
   "_domain_note": "broomfieldview.com -- matchar 'View'-varumärket (Brookings View, Moreno Valley View). Konsekvent med fleet-namngivningen.",
   "identity": {
     "terms": ["Adams 12", "Boulder Valley", "Interlocken", "Flatirons"],

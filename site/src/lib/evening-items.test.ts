@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ageLabel, driveLabel, driveMinutes, buildEveningEntries, groupForTicketmaster, groupForTitle, toThresholdItems } from './evening-items';
+import { ageLabel, driveLabel, driveMinutes, buildEveningEntries, registerEntries, groupForTicketmaster, groupForTitle, toThresholdItems } from './evening-items';
 import { evaluateEveningThreshold } from './evening-threshold';
 import type { FeedItem } from './events';
 import type { Story } from './db';
@@ -144,5 +144,40 @@ describe('the same show from two sources', () => {
   it('keeps different shows at the same time apart', () => {
     const entries = buildEveningEntries({ ...OPTS, feed: [own('Pub Quiz', '2026-10-29T19:00:00Z')], ticketmaster: [tm('n', 'Big Band', '2026-10-29T19:00:00Z', 1)] });
     expect(entries).toHaveLength(2);
+  });
+});
+
+describe('registerEntries (curated venue register)', () => {
+  const rows = (over: Partial<import('./evening-items').RegisterRow>[]) => over.map((o) => ({
+    venueName: 'The Stand', kind: 'recurring' as const, title: 'Comedy Night', weekdays: [2], onDate: null, times: ['20:00'], price: null, age: null,
+    defaultGroup: 'Comedy & shows', sourceUrl: 'https://venue.example/whats-on', lastConfirmedAt: '2026-10-27T11:00:00Z', ...o,
+  }));
+  // 2026-10-28 is a Wednesday: the next Tuesday is 2026-11-03, then 11-10 (14-day horizon ends 11-11).
+  it('expands a weekly rule to the evenings inside the horizon, in local time (GMT in November)', () => {
+    const out = registerEntries(rows([{}]), { ...OPTS, feed: [] });
+    expect(out.map((e: { start: string }) => e.start)).toEqual(['2026-11-03T20:00:00.000Z', '2026-11-10T20:00:00.000Z']);
+    expect(out[0]).toMatchObject({ source: 'register', group: 'Comedy & shows', venue: 'The Stand', href: 'https://venue.example/whats-on', checked: '2026-10-27' });
+  });
+  it('local time follows daylight saving: a 20:00 show on 2026-10-22 (BST, ends 25 Oct) starts 19:00Z', () => {
+    const out = registerEntries(rows([{ kind: 'dated', weekdays: [], onDate: '2026-10-22' }]), { ...OPTS, feed: [], now: new Date('2026-10-20T12:00:00Z') });
+    expect(out.map((e: { start: string }) => e.start)).toEqual(['2026-10-22T19:00:00.000Z']);
+  });
+  it('drops stale rules: dated after 7 days, recurring after 35', () => {
+    expect(registerEntries(rows([{ kind: 'dated', weekdays: [], onDate: '2026-10-28', lastConfirmedAt: '2026-10-20T11:00:00Z' }]), { ...OPTS, feed: [] })).toHaveLength(0);
+    expect(registerEntries(rows([{ lastConfirmedAt: '2026-09-20T11:00:00Z' }]), { ...OPTS, feed: [] })).toHaveLength(0);
+    expect(registerEntries(rows([{ lastConfirmedAt: '2026-09-25T11:00:00Z' }]), { ...OPTS, feed: [] }).length).toBeGreaterThan(0);
+  });
+  it('one row per film and night with every time, labels from price and age, title keyword beats the venue default', () => {
+    const [e] = registerEntries(rows([{ kind: 'dated', weekdays: [], onDate: '2026-10-29', title: 'Pub Quiz', times: ['18:30', '20:45'], price: 'Free', age: '18+' }]), { ...OPTS, feed: [] });
+    expect(e.start).toBe('2026-10-29T18:30:00.000Z');
+    expect(e.laterStarts).toEqual(['2026-10-29T20:45:00.000Z']);
+    expect(e.labels).toEqual(['Free', '18+']);
+    expect(e.group).toBe('Quiz & pub nights');
+  });
+  it('feeds the build and dedups against Ticketmaster at the same start', () => {
+    const out = buildEveningEntries({ ...OPTS, feed: [], ticketmaster: [tm('t1', 'Comedy Night', '2026-11-03T20:00:00Z', 0.5, 'Arts & Theatre', 'Comedy')],
+      register: rows([{}]) });
+    expect(out.filter((e) => e.start === '2026-11-03T20:00:00.000Z')).toHaveLength(1);
+    expect(out).toHaveLength(2);
   });
 });
