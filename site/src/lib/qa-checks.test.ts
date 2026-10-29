@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 // plain .mjs shared with the Node QA runner (qa/web/run.mjs)
-import { checkPage, checkDiag, checkRun, compileBlocklist, applyWaivers, zonedInstant, duplicateContentFindings, routeFindings, eveningFindings } from '../../../qa/web/checks.mjs';
+import { checkPage, checkDiag, checkRun, compileBlocklist, applyWaivers, zonedInstant, duplicateContentFindings, routeFindings, eveningFindings, safetyFindings } from '../../../qa/web/checks.mjs';
 
 const base = {
   url: 'https://x.test/a/', path: '/a/', status: 200, redirects: 0, inSitemap: true,
@@ -195,4 +195,16 @@ describe('evening layer checks (Pass E)', () => {
     for (const id of new Set(run(fx.bad))) expect(reg[id]?.born_from, id).toBeTruthy();
   });
   it('non-evening pages are untouched', () => expect(run({ ...fx.bad, evening: null })).toEqual([]));
+});
+
+describe('public-safety checks', () => {
+  const fx = JSON.parse(readFileSync(new URL('../../../tests/fixtures/qa_safety_2026-10-29.json', import.meta.url), 'utf8')) as { bad: Record<string, unknown>; good: Record<string, unknown> };
+  const run = (snap: Record<string, unknown>) => (safetyFindings(snap, 'moreno_valley_ca') as { check: string }[]).map((f) => f.check);
+  it('a notice with a crime word, or a page that cannot reach its data, trips the checks', () => expect(run(fx.bad).sort()).toEqual(['safety.crime-word', 'safety.unavailable']));
+  it('a normal fire and air page is clean', () => expect(run(fx.good)).toEqual([]));
+  it('pages without notices are untouched', () => expect(run({ ...fx.bad, safety: null })).toEqual([]));
+  it('both checks are registered with born_from', () => {
+    const reg = JSON.parse(readFileSync(new URL('../../../qa/checks.json', import.meta.url), 'utf8')).checks as Record<string, { born_from: string }>;
+    for (const id of ['safety.crime-word', 'safety.unavailable']) expect(reg[id]?.born_from, id).toBeTruthy();
+  });
 });

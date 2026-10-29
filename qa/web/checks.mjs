@@ -260,3 +260,16 @@ export function eveningFindings(snap, town, approved = []) {
   if (checked && Date.parse(ev.nowIso) - Date.parse(checked[1]) > 30 * 86_400_000) add('evening.stale-read', `Getting home "Checked ${checked[1]}" is more than 30 days old (annual.md: re-check)`);
   return f;
 }
+
+/** Public-safety notices (/today line and /safety/, snap.safety = the text the browser built from /api/safety). Born 2026-10-29 from the
+ *  public-safety plan (.claude/specs/public-safety.md, "QA-regel"): these pages are about fire and air, never about crime, and a page that
+ *  cannot reach its data must say so instead of showing nothing. Mirrors CRIME_WORDS in site/src/lib/safety-filter.ts. */
+const SAFETY_CRIME = /\b(arrest|arrested|charged|charges|court|trial|sentenced|convicted|victims?|missing|murder|homicide|assault|stabbing|shooting|suspects?|manhunt|wanted|bail|died|dead|death|killed|fatal|body)\b/i;
+export function safetyFindings(snap, town) {
+  const f = [];
+  if (snap.status !== 200 || !snap.safety) return f;
+  const hit = SAFETY_CRIME.exec(snap.safety.text);
+  if (hit) f.push(finding('safety.crime-word', town, snap, `a public-safety notice contains "${hit[0]}"`));
+  if (snap.safety.unavailable) f.push(finding('safety.unavailable', town, snap, 'the page says it cannot reach the fire or air data (is /api/safety or the cron job down?)'));
+  return f;
+}

@@ -10,7 +10,7 @@
 import type { SiteConfig } from './site-config';
 import { ELECTION_BY_TOWN } from '../config/election';
 
-export type NavGate = Pick<SiteConfig, 'townId' | 'hasWhatsOn' | 'hasClosureWatch' | 'hasNewInTown' | 'hasWorkplaceWatch' | 'disabledSections' | 'quietSections' | 'navLabels' | 'eveningLayer'>;
+export type NavGate = Pick<SiteConfig, 'townId' | 'hasWhatsOn' | 'hasClosureWatch' | 'hasNewInTown' | 'hasWorkplaceWatch' | 'disabledSections' | 'quietSections' | 'navLabels' | 'eveningLayer' | 'safetyNotices'>;
 
 export interface NavSection {
   id: string;
@@ -54,6 +54,8 @@ export const SECTIONS: NavSection[] = [
   { id: 'traffic', href: '/traffic/', label: 'Traffic', enabled: () => true },
   { id: 'jobs', href: '/jobs/', label: 'Jobs', enabled: () => true },
   { id: 'weather', href: '/weather/', label: 'Weather', enabled: () => true },
+  // Wildfires near the town and the air-quality index (Moreno Valley, Broomfield; public-safety plan, owner 2026-10-29).
+  { id: 'safety', href: '/safety/', label: 'Fire & air', enabled: (c) => !!c.safetyNotices },
   // Election 2026 (/vote): temporary. Turning election.enabled off removes it, and resolveNav() then fails the
   // build until 'vote' is also removed from the town's nav groups -- deliberate, so it can't be forgotten.
   { id: 'vote', href: '/vote/', label: 'Election 2026', footerLabel: 'How to vote', enabled: (c) => !!ELECTION_BY_TOWN[c.townId]?.enabled },

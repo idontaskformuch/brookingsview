@@ -100,6 +100,11 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     h1Pattern: '{Town} Election Results: Unofficial Numbers From the Official Source',
     ledeRequirement: 'State that results are unofficial and name the source; no commentary on contests.',
   },
+  safety: {
+    titlePattern: 'Wildfires and Air Quality Near {Town} | {Site}',
+    h1Pattern: 'Is There a Fire Near {Town}? Wildfires, Air Quality and Evacuation Links',
+    ledeRequirement: 'Say what is listed (wildfires within 25 miles, the current air-quality index), who it comes from, and where the official evacuation information is; no advice of our own.',
+  },
   tonight: {
     titlePattern: 'Things to Do Tonight in {Town} | {Site}',
     h1Pattern: 'What to Do Tonight in {Town}',

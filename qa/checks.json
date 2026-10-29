@@ -195,6 +195,16 @@
       "severity": "hard",
       "born_from": "Q3 2026-10-29: /this-weekend showed Thursday's weather; owner: forecast Friday to Sunday (weekendForecastLine). Regression fixture: tests/fixtures/qa_evening_2026-10-29.json.",
       "what": "the /this-weekend weather line does not mention Friday, Saturday or Sunday"
+    },
+    "safety.crime-word": {
+      "severity": "hard",
+      "born_from": "Public-safety plan 2026-10-29 (.claude/specs/public-safety.md, QA-regel): no crime words (arrested, charged, court, victim, missing ...) in published fire/air notices. Regression fixture: tests/fixtures/qa_safety_2026-10-29.json (site/src/lib/qa-checks.test.ts).",
+      "what": "text built from /api/safety on /today or /safety/ contains a crime or person word"
+    },
+    "safety.unavailable": {
+      "severity": "soft",
+      "born_from": "Public-safety plan 2026-10-29: fail closed means the page shows nothing when data is stale; this makes a silent outage visible. Regression fixture: tests/fixtures/qa_safety_2026-10-29.json.",
+      "what": "/safety/ says it cannot reach the fire or air data"
     }
   }
 }

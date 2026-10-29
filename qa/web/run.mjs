@@ -24,7 +24,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   checkPage, checkDiag, checkRun, compileBlocklist, applyWaivers, zonedInstant, ALLOW_SIBLING_SELECTOR,
-  KEY_PAGES, CLOCK_TIMES, CLOCK_PAGES, routeFindings, EVENING_PAGES, eveningFindings,
+  KEY_PAGES, CLOCK_TIMES, CLOCK_PAGES, routeFindings, EVENING_PAGES, eveningFindings, safetyFindings,
 } from './checks.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -225,8 +225,12 @@ function pageProbe({ allowSel, wantLinks }) {
       weatherText: document.querySelector('.ev-weather')?.innerText ?? '',
       freeCount: [...evRoot.querySelectorAll('.ev-label')].filter((l) => visible(l) && l.innerText.trim() === 'Free').length + [...evRoot.querySelectorAll('.ev-group-name')].filter((h) => visible(h) && /^free/i.test(h.innerText.trim())).length };
   }
+  // public-safety notices (/today line, /safety/): the text the browser built from /api/safety, null on pages without them
+  const safetyEls = [...document.querySelectorAll('[data-safety]')];
+  const safety = safetyEls.length ? { text: safetyEls.map((e) => e.innerText || '').join('
+').trim(), unavailable: safetyEls.some((e) => /cannot reach/i.test(e.innerText || '')) } : null;
   return {
-    nowIso: now.toISOString(), evening,
+    nowIso: now.toISOString(), evening, safety,
     title: document.title, titleCount: document.querySelectorAll('title').length,
     h1: [...document.querySelectorAll('h1')].map((h) => h.innerText.trim()),
     metaRobots: document.querySelector('meta[name=robots]')?.content ?? '',
@@ -440,8 +444,8 @@ async function main() {
   const eveningApproved = (JSON.parse(readFileSync(resolve(root, 'qa/evening-index-approved.json'), 'utf8'))[town] ?? []);
   snapsA.sort((a, b) => a.path.localeCompare(b.path));
   const all = [
-    ...snapsA.flatMap((s) => checkPage(s, town, compiled)),
-    ...snapsBC.flatMap((s) => [...checkPage(s, town, compiled), ...checkDiag(s, town), ...eveningFindings(s, town, eveningApproved)]),
+    ...snapsA.flatMap((s) => [...checkPage(s, town, compiled), ...safetyFindings(s, town)]),
+    ...snapsBC.flatMap((s) => [...checkPage(s, town, compiled), ...checkDiag(s, town), ...eveningFindings(s, town, eveningApproved), ...safetyFindings(s, town)]),
     ...checkRun([...snapsA, ...snapsBC.filter((x) => x.label === 'evening')], town), ...linkFindings, ...routeResults,
   ];
   // the same defect seen in several combos is one finding per (check, path, message-sans-label)

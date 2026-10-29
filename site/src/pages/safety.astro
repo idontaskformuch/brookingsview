@@ -1,0 +1,67 @@
+---
+/** /safety -- "Is there a fire near me, how is the air, and where is the official evacuation information?" (public-safety plan, owner 2026-10-29).
+ *  Moreno Valley and Broomfield only (siteConfig.safetyNotices); every other town redirects to /. The fire and air lists are read in the
+ *  browser from GET /api/safety (components/SafetyNotices.astro), so the page itself is static, indexable text: what it shows, where it comes
+ *  from, its limits, and the official evacuation links. Evacuation facts are never stated here, only linked. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import ShareButton from '../components/ShareButton.astro';
+import PageGuide from '../components/PageGuide.astro';
+import SafetyNotices from '../components/SafetyNotices.astro';
+import { siteConfig } from '../lib/site-config';
+import { SAFETY_TOWNS } from '../lib/safety-towns';
+import { resolvePageMeta } from '../lib/page-meta';
+import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
+
+const info = SAFETY_TOWNS[siteConfig.townId];
+if (!siteConfig.safetyNotices || !info) return Astro.redirect('/', 302);
+
+const pageMeta = resolvePageMeta('safety', siteConfig);
+const canonicalUrl = new URL('/safety/', Astro.site ?? siteConfig.siteUrl).href;
+const breadcrumbTrail: BreadcrumbEntry[] = [{ label: 'Home', href: '/' }, { label: 'Fire and air', href: canonicalUrl }];
+---
+<BaseLayout title={pageMeta.title} canonicalUrl={canonicalUrl}
+  description={`Wildfires within ${info.radiusMiles} miles of ${siteConfig.cityName}, the current air-quality index, and links to the official evacuation information.`}>
+  <Breadcrumbs trail={breadcrumbTrail} />
+  <header class="safety-head">
+    <h1>{pageMeta.h1}</h1>
+    <ShareButton title={pageMeta.title} />
+  </header>
+
+  <section class="safety-evac" aria-labelledby="safety-evac-h">
+    <h2 id="safety-evac-h">Evacuation information</h2>
+    <p>We do not publish evacuation orders or maps. The official pages do, and they are the ones to rely on:</p>
+    <ul>
+      {info.evacuation.map((l) => <li><a href={l.url} rel="noopener">{l.label}</a></li>)}
+    </ul>
+    <p class="safety-note">{info.evacuationNote} In an emergency call 911.</p>
+  </section>
+
+  <PageGuide
+    shows={`Wildfires within ${info.radiusMiles} miles of ${siteConfig.cityName} and the current air-quality index, each with the source's own numbers and the time it was last updated.`}
+    use="Check here when you see smoke or hear about a fire. For a decision about leaving or staying, use the official evacuation pages above, not this list."
+  >
+    Fires: the <a href="https://data-nifc.opendata.arcgis.com/" rel="noopener">National Interagency Fire Center (NIFC)</a>. Air quality: <a href="https://www.airnow.gov/" rel="noopener">AirNow</a>, run by the US EPA.
+  </PageGuide>
+
+  <SafetyNotices townId={siteConfig.townId} timezone={siteConfig.timezone} variant="full" />
+  <noscript><p>This page loads the current fire and air notices with JavaScript. Without it, use the official links above and <a href="https://www.airnow.gov/" rel="noopener">AirNow</a>.</p></noscript>
+
+  <section class="safety-about" aria-labelledby="safety-about-h">
+    <h2 id="safety-about-h">About these notices</h2>
+    <ul>
+      <li>The fire list is wildfire data from NIFC's national incident feed, checked about every 15 minutes. It shows fires reported by the agencies fighting them, so a new fire can take time to appear and the size and containment can be behind what is happening on the ground.</li>
+      <li>The air-quality index is AirNow's current reading from the nearest monitor, which can be miles away. It is preliminary data that has not been fully checked and can change. The color and category follow the EPA's standard index ranges.</li>
+      <li>If we cannot confirm the data is recent, we show nothing rather than an old number.</li>
+      <li>This is not an alert system. Sign up for the official alerts from the links above.</li>
+    </ul>
+  </section>
+
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl))} />
+</BaseLayout>
+
+<style>
+  .safety-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+  .safety-evac h2, .safety-about h2 { margin: 1.25rem 0 0.4rem; font-size: 1.125rem; }
+  .safety-note { color: var(--ink-soft); font-size: 0.9375rem; }
+</style>

@@ -7,29 +7,12 @@
  *  facts ourselves, we only link the official map/notice pages (links only, broomfield.org is never fetched). */
 import { neon } from '@neondatabase/serverless';
 import { hasCrimeWord } from '../src/lib/safety-filter';
+import { SAFETY_TOWNS } from '../src/lib/safety-towns';
 import { townFromHostname, type Env } from './_shared';
 
 const HEADERS = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=60' };
 export const FIRE_CONFIRMED_WITHIN_MS = 60 * 60_000;
 export const AIR_MAX_AGE_MS = 3 * 60 * 60_000;
-
-export interface SafetyLink { label: string; url: string }
-export interface SafetyTownInfo { evacuation: SafetyLink[]; evacuationNote: string }
-
-/** Evacuation pages per town (owner 2026-10-29). Towns not listed get no safety block and no database read. */
-export const SAFETY_TOWNS: Record<string, SafetyTownInfo> = {
-  moreno_valley_ca: {
-    evacuation: [{ label: 'Riverside County evacuation map (Genasys Protect)', url: 'https://protect.genasys.com/search?z=12&latlon=33.9425,-117.2297' }],
-    evacuationNote: 'Evacuation maps can lag behind a fast-moving fire. If you are told to leave, leave.',
-  },
-  broomfield_co: {
-    evacuation: [
-      { label: 'City and County of Broomfield: emergency status', url: 'https://www.broomfield.org/EmergencyStatus' },
-      { label: 'LookoutAlert, Broomfield’s warning system', url: 'https://www.broomfield.org/LookoutAlert' },
-    ],
-    evacuationNote: 'Maps and notices can lag behind a fast-moving fire. If you are told to leave, leave.',
-  },
-};
 
 export interface NoticeRow {
   kind: 'fire' | 'air';

@@ -60,6 +60,9 @@ export interface SiteConfig {
     /** Page heading when the town's own pattern does not fit (Broomfield: "Tonight in and around Broomfield"). */
     h1?: string;
   };
+  /** Public-safety notices (wildfires near the town, air quality, evacuation links): /safety/ and the line on /today. Moreno Valley and Broomfield
+   *  (owner 2026-10-29); the towns must also exist in lib/safety-towns.ts. Other towns redirect /safety/ to /. */
+  safetyNotices?: true;
   /** false = not listed in the other towns' multi-site disclosure yet (an unlaunched, noindexed
    *  site is not advertised from the live ones). Default true. */
   listedInNetwork?: boolean;
@@ -518,12 +521,13 @@ const CITIES: Record<string, SiteConfig> = {
 
   moreno_valley_ca: {
     townId: 'moreno_valley_ca',
+    safetyNotices: true,
     eveningLayer: { mode: 'threshold', maxMiles: 35, includeTicketmasterSports: true },
     // Owner-approved 2026-10-21. Tabs follow GA4 traffic (facilities, not home sales); Home sales sits in Work & Home.
     nav: {
       tabs: ['today', 'tonight', 'events'],
       groups: {
-        Now: ['today', 'tonight', 'events', 'whatson', 'thisweek', 'weather', 'vote'],
+        Now: ['today', 'tonight', 'events', 'whatson', 'thisweek', 'weather', 'safety', 'vote'],
         City: ['cityhall', 'traffic', 'closures', 'facilities'],
         'Work & Home': ['workplace', 'homesales', 'jobs'],
         More: ['sports', 'play', 'month'],
@@ -682,12 +686,13 @@ const CITIES: Record<string, SiteConfig> = {
 
   broomfield_co: {
     townId: 'broomfield_co',
+    safetyNotices: true,
     eveningLayer: { mode: 'threshold', maxMiles: 20, includeTicketmasterSports: true, openLate: true, register: true, nearMiles: 5, h1: 'Tonight in and around Broomfield', indexApproved: true },
     // Owner-approved 2026-10-21: six tabs for now, a seventh to be chosen (events / workplace / vail / weather).
     nav: {
       tabs: ['today', 'tonight', 'whatson'],
       groups: {
-        Now: ['today', 'tonight', 'whatson', 'thisweek', 'weather', 'vote'],
+        Now: ['today', 'tonight', 'whatson', 'thisweek', 'weather', 'safety', 'vote'],
         City: ['cityhall', 'traffic', 'facilities'],
         Community: ['jobs'],
         More: ['vail'],

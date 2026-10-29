@@ -438,6 +438,9 @@ async function buildLastmodMap(townId, databaseUrl) {
   // keep those out of the sitemap. Mirrors site-config.ts by hand; src/lib/disabled-sections-sitemap.test.ts fails if the two disagree.
   const DISABLED_PAGES = { glasgow: ['/traffic/', '/jobs/', '/advertising/', '/reviews/', '/recipes/', '/editorials/', '/columns/'] };
   for (const p of DISABLED_PAGES[townId] ?? []) noindexThinPageUrls.add(p);
+  // /safety/ exists only where siteConfig.safetyNotices is set (mirror, checked by src/lib/safety-view.test.ts); elsewhere it is a redirect stub and stays out of the sitemap.
+  const SAFETY_TOWNS_MIRROR = ['moreno_valley_ca', 'broomfield_co'];
+  if (!SAFETY_TOWNS_MIRROR.includes(townId)) noindexThinPageUrls.add('/safety/');
   // /vote/ (election 2026): the page itself sets noindex 30 days after the election (lib/election.ts
   // isPastNoindexWindow); mirror that here so the sitemap and the noindex tag never disagree.
   if (Date.now() > Date.parse('2026-11-03T00:00:00Z') + 30 * 86_400_000) { noindexThinPageUrls.add('/vote/'); noindexThinPageUrls.add('/election-results/'); }

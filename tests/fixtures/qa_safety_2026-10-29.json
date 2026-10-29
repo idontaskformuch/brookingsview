@@ -1,0 +1,21 @@
+{
+  "_doc": "Snapshot fragments for safetyFindings (qa/web/checks.mjs). bad = a notice with a crime word and a page that cannot reach its data; good = a normal fire/air page.",
+  "bad": {
+    "url": "https://x.test/safety/",
+    "path": "/safety/",
+    "status": 200,
+    "safety": {
+      "text": "1 wildfire listed within 25 miles, nearest first:\nMISSING LINK \u00b7 120 acres",
+      "unavailable": true
+    }
+  },
+  "good": {
+    "url": "https://x.test/safety/",
+    "path": "/safety/",
+    "status": 200,
+    "safety": {
+      "text": "No wildfires are listed within 25 miles right now.\nAir quality index 54 (Moderate), PM2.5, Perris Vly. Preliminary data, observed 2026-10-29 11:00 PDT.",
+      "unavailable": false
+    }
+  }
+}

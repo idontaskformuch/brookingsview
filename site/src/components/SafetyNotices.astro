@@ -1,0 +1,105 @@
+---
+/**
+ * Public-safety notices (spec .claude/specs/public-safety.md): wildfires near the town (NIFC WFIGS) and the current air-quality reading
+ * (AirNow, preliminary). Read in the browser from GET /api/safety, so a new fire needs no rebuild; nothing is shown when the service says
+ * `available: false`, the answer is older than 15 minutes, or a reading is older than its limit (fail closed, lib/safety-view.ts).
+ * Official fields only, set with textContent: no AI text, no advice of our own. Evacuation: only links to the official pages (lib/safety-towns.ts).
+ *
+ *   compact  ONE line on /today: counts, the nearest fire, the air reading, and a link to /safety/.
+ *   full     the lists on /safety/.
+ */
+import { SAFETY_TOWNS } from '../lib/safety-towns';
+interface Props { townId: string; timezone: string; variant?: 'compact' | 'full' }
+const { townId, timezone, variant = 'compact' } = Astro.props;
+const info = SAFETY_TOWNS[townId];
+---
+{info && variant === 'compact' && (
+  <p class="safety-compact" data-safety="compact" data-tz={timezone} data-radius={info.radiusMiles} hidden>
+    <strong>Fire and air:</strong> <span data-safety-line></span> <a href="/safety/">Details and evacuation links</a>
+  </p>
+)}
+{info && variant === 'full' && (
+  <section class="safety-full" data-safety="full" data-tz={timezone} data-radius={info.radiusMiles} aria-live="polite">
+    <h2>Wildfires within {info.radiusMiles} miles</h2>
+    <p class="safety-status" data-safety-status>Checking the latest notices…</p>
+    <ul class="safety-list" data-safety-fires></ul>
+    <h2>Air quality</h2>
+    <p class="safety-air" data-safety-air>Checking the latest reading…</p>
+  </section>
+)}
+
+<style is:global>
+  .safety-compact { margin: 0.75rem 0 0; font-size: 0.9375rem; }
+  .safety-full h2 { margin: 1.25rem 0 0.4rem; font-size: 1.125rem; }
+  .safety-list { margin: 0.25rem 0 0; padding-left: 1.25rem; }
+  .safety-list li { margin: 0.35rem 0; }
+  .safety-status, .safety-air { margin: 0.25rem 0; }
+  .safety-air__swatch { display: inline-block; width: 0.8em; height: 0.8em; margin-right: 0.4em; border: 1px solid var(--ink-soft); vertical-align: baseline; }
+</style>
+
+<script>
+  import { airLine, compactLine, fireLine, isFresh, type SafetyPayload } from '../lib/safety-view';
+
+  const REFRESH_MS = 5 * 60_000;
+  const roots = [...document.querySelectorAll<HTMLElement>('[data-safety]')];
+  if (roots.length) {
+    let payload: SafetyPayload | null = null;
+
+    const render = () => {
+      const now = Date.now();
+      for (const root of roots) {
+        const tz = root.dataset.tz ?? 'UTC';
+        const radius = Number(root.dataset.radius ?? 25);
+        if (root.dataset.safety === 'compact') {
+          const line = compactLine(payload, now, radius);
+          const target = root.querySelector('[data-safety-line]');
+          if (line && target) { target.textContent = `${line}.`; root.hidden = false; } else root.hidden = true;
+          continue;
+        }
+        const status = root.querySelector('[data-safety-status]');
+        const list = root.querySelector('[data-safety-fires]');
+        const air = root.querySelector('[data-safety-air]');
+        if (!status || !list || !air) continue;
+        list.replaceChildren();
+        if (!isFresh(payload, now)) {
+          status.textContent = 'We cannot reach the fire data right now, so nothing is listed. Use the official links below.';
+          air.textContent = 'We cannot reach the air-quality data right now.';
+          continue;
+        }
+        if (payload.fires.length === 0) status.textContent = `No wildfires are listed within ${radius} miles right now.`;
+        else {
+          status.textContent = `${payload.fires.length} wildfire${payload.fires.length === 1 ? '' : 's'} listed within ${radius} miles, nearest first:`;
+          for (const f of payload.fires) {
+            const li = document.createElement('li');
+            li.textContent = fireLine(f, tz);
+            list.appendChild(li);
+          }
+        }
+        const a = payload.air;
+        const text = a ? airLine(a, now) : null;
+        air.replaceChildren();
+        if (a && text) {
+          const sw = document.createElement('span');
+          sw.className = 'safety-air__swatch';
+          sw.style.background = a.color;
+          air.append(sw, text, ' ');
+          const l = document.createElement('a');
+          l.href = a.sourceUrl;
+          l.rel = 'noopener';
+          l.textContent = 'AirNow.gov';
+          air.append('Source: ', l, '.');
+        } else air.textContent = 'No current air-quality reading is available.';
+      }
+    };
+
+    const load = async () => {
+      try {
+        const res = await fetch('/api/safety', { headers: { Accept: 'application/json' } });
+        payload = res.ok ? ((await res.json()) as SafetyPayload) : null;
+      } catch { payload = null; }
+      render();
+    };
+    void load();
+    setInterval(() => void load(), REFRESH_MS);
+  }
+</script>
