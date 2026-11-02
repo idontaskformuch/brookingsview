@@ -79,6 +79,12 @@ export function signWeatherText(w: SignWeather): string {
   return `${w.isDaytime ? 'High' : 'Low'} ${Math.round(w.temp)}°${w.unit}${w.conditions ? ` ${w.conditions.toLowerCase()}` : ''}`;
 }
 
+/** CityStatus' Weather row: "High 54°F, Mostly Cloudy" (lib/cityStatus.ts weatherValueLabel uses this too, so the build and the
+ *  browser print the same thing). */
+export function statusWeatherText(w: SignWeather): string {
+  return `${w.isDaytime ? 'High' : 'Low'} ${Math.round(w.temp)}°${w.unit}, ${w.conditions ?? ''}`;
+}
+
 /** /this-weekend's forecast: "Friday: 12°C light rain. Saturday: 11°C cloudy. Sunday: 9°C sunny." One part per local day number in
  *  `days` (days since epoch) that the forecast covers: the day period, or the night period when the day period is already over
  *  (Friday evening). A day the forecast does not reach is left out; '' when none is covered. */

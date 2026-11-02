@@ -96,6 +96,59 @@ describe.skipIf(!browser)('live weather in a real browser', { timeout: 30_000 },
       expect(out.hours, r).toEqual(['old']);
     }
   });
+  // Round 4 (2026-11-02): CityStatus' Weather/Worker Pulse rows and the heat box followed only the build's forecast.
+  const statusHtml = `<section class="city-status"><ul>
+    <li data-status-module="weather"><a class="city-status__link"><span class="city-status__dot city-status__dot--quiet"></span><span class="city-status__value">High 40°F, Old</span></a></li>
+    <li data-status-module="worker_pulse" data-heat-alerts="[]"><a class="city-status__link"><span class="city-status__dot city-status__dot--quiet"></span><span class="city-status__value">80°F – safe conditions</span></a></li>
+    </ul></section>
+    <div class="heat-advisory heat-advisory--safe" hidden data-heat-advisory data-heat-alerts="[]"><div class="heat-advisory__tier" data-heat-tier></div><div class="heat-advisory__label" data-heat-label></div></div>`;
+  async function runStatus(dayTemp: number, unit = 'F', alerts = '[]') {
+    const page = await browser!.newPage();
+    await page.setContent(`<!doctype html><html lang="en" data-timezone="America/Chicago"><body>${statusHtml.replaceAll('data-heat-alerts="[]"', `data-heat-alerts='${alerts}'`)}</body></html>`);
+    await page.addScriptTag({ content: bundle });
+    const out = await page.evaluate(async ([ans, nowIso]) => {
+      const fetcher = (async () => new Response(JSON.stringify(ans))) as typeof fetch;
+      await (window as any).LW.refreshLiveWeather(document, fetcher, new Date(nowIso));
+      const box = document.querySelector<HTMLElement>('[data-heat-advisory]')!;
+      const pulse = document.querySelector('[data-status-module="worker_pulse"]')!;
+      return {
+        weather: document.querySelector('[data-status-module="weather"] .city-status__value')?.textContent,
+        pulse: pulse.querySelector('.city-status__value')?.textContent,
+        pulseDot: pulse.querySelector('.city-status__dot')?.className,
+        boxHidden: box.hidden, boxClass: box.className,
+        boxTier: box.querySelector('[data-heat-tier]')?.textContent, boxLabel: box.querySelector('[data-heat-label]')?.textContent,
+      };
+    }, [{ periods: [p('2026-10-28T23:00:00Z', 70, false, { unit }), p('2026-10-29T15:00:00Z', dayTemp, true, { short: 'Sunny', unit })] }, NOW.toISOString()] as const);
+    await page.close();
+    return out;
+  }
+  it('Right now: the Weather row follows /api/weather', async () => {
+    const r = await runStatus(55);
+    expect(r.weather).toBe('High 55°F, Sunny');
+  });
+  it('heat: a newer 96°F forecast reveals the caution box and turns Worker Pulse to notice', async () => {
+    const r = await runStatus(96);
+    expect(r.boxHidden).toBe(false);
+    expect(r.boxClass).toContain('heat-advisory--caution');
+    expect(r.boxTier).toBe('Caution for outdoor & loading-dock work');
+    expect(r.boxLabel).toBe('96°F – use caution outdoors');
+    expect(r.pulse).toBe('96°F – use caution outdoors');
+    expect(r.pulseDot).toContain('city-status__dot--notice');
+  });
+  it('heat: an active heat warning still wins over a mild newer forecast; a safe tier stays hidden and empty', async () => {
+    const warned = await runStatus(80, 'F', '["Excessive Heat Warning"]');
+    expect(warned.boxClass).toContain('heat-advisory--high-risk');
+    expect(warned.boxLabel).toBe('Excessive Heat Warning');
+    const safe = await runStatus(70);
+    expect(safe.boxHidden).toBe(true);
+    expect(safe.boxTier).toBe('');
+    expect(safe.pulseDot).toContain('city-status__dot--quiet');
+  });
+  it('heat: a Celsius answer never feeds the °F thresholds', async () => {
+    const r = await runStatus(36, 'C');
+    expect(r.boxHidden).toBe(true);
+    expect(r.pulse).toBe('80°F – safe conditions');
+  });
   it('a page with none of the elements makes no request at all', async () => {
     const out = await run('ok', '<p>no forecast here</p>');
     expect(out.calls).toBe(0);

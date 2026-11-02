@@ -9,7 +9,7 @@
 // dess titel (t.ex. "Excessive Heat Warning") ÄR den mest exakta tillgängliga
 // uppgiften -- se nws_alerts.py, som skriver NWS:s eget "event"-namn rakt av
 // som story-titel.
-import { computeHeatTier, HEAT_TIER_TEXT } from '../lib/heat-advisory';
+import { computeHeatTier, heatTierLine } from '../lib/heat-advisory';
 import { siteConfig } from '../lib/site-config';
 
 interface Props {
@@ -22,21 +22,23 @@ const { tempF, activeAlertTitles } = Astro.props;
 // `worker_pulse` module needs the exact same decision (see
 // lib/cityStatus.ts), extracted so both consume one set of thresholds.
 const { tier, label } = computeHeatTier(tempF, activeAlertTitles);
-// Rendered only where the town opted in (siteConfig.hasHeatAdvisory) and only
-// when there is an actual advisory level -- "safe" is the absence of news and
-// is never shown (a green "Safe" box is a claim we can't stand behind).
-const show = siteConfig.hasHeatAdvisory === true && tier !== 'safe';
+// Rendered only where the town opted in (siteConfig.hasHeatAdvisory). A "safe" tier is never shown (a green "Safe" box is a claim we
+// can't stand behind): the box is then shipped hidden, so lib/live-weather.ts can reveal it if /api/weather's newer forecast crosses a
+// threshold -- and hide it again if the newer forecast falls below one.
+const show = siteConfig.hasHeatAdvisory === true;
+const hidden = tier === 'safe';
 ---
 
-{show && <div class={`heat-advisory heat-advisory--${tier}`}>
+{show && <div class={`heat-advisory heat-advisory--${tier}`} hidden={hidden} data-heat-advisory data-heat-alerts={JSON.stringify(activeAlertTitles)}>
   <div class="heat-advisory__dot" aria-hidden="true"></div>
   <div class="heat-advisory__text">
-    <div class="heat-advisory__tier">{HEAT_TIER_TEXT[tier]} for outdoor &amp; loading-dock work</div>
-    <div class="heat-advisory__label">{label}</div>
+    <div class="heat-advisory__tier" data-heat-tier>{hidden ? '' : heatTierLine(tier)}</div>
+    <div class="heat-advisory__label" data-heat-label>{hidden ? '' : label}</div>
   </div>
 </div>}
 
 <style>
+  .heat-advisory[hidden] { display: none; }
   .heat-advisory {
     display: flex;
     align-items: center;

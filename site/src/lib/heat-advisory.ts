@@ -38,3 +38,8 @@ export const HEAT_TIER_TEXT: Record<HeatTier, string> = {
   caution: 'Caution',
   'high-risk': 'High risk',
 };
+
+/** The box's first line, "Caution for outdoor & loading-dock work" (built by the widget, rewritten by lib/live-weather.ts). */
+export function heatTierLine(tier: HeatTier): string {
+  return `${HEAT_TIER_TEXT[tier]} for outdoor & loading-dock work`;
+}

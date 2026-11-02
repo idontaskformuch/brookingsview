@@ -35,10 +35,12 @@ describe('HeatAdvisoryWidget rendering', () => {
     expect(html).toContain('Excessive Heat Warning');
   });
 
-  it('Moreno Valley, safe conditions: nothing is rendered', async () => {
+  it('Moreno Valley, safe conditions: only an empty, hidden box for /api/weather to fill (no "Safe" claim)', async () => {
     const html = await render('moreno_valley_ca', { tempF: 75, activeAlertTitles: [] });
-    expect(html).not.toContain('heat-advisory');
+    expect(html).toMatch(/<div[^>]*class="heat-advisory heat-advisory--safe"[^>]*hidden/);
     expect(html).not.toContain('loading-dock');
+    expect(html).not.toContain('Safe');
+    expect(html).not.toContain('75°F');
   });
 
   it.each(['brookings_sd', 'broomfield_co'])('%s: never renders, even for a high-risk fixture', async (city) => {
