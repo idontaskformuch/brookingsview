@@ -26,7 +26,7 @@ def _run(tmp_path, fails_until):
     counter.write_text("0")
     fake = tmp_path / "fake.sh"
     fake.write_text(f'n=$(cat "{counter.as_posix()}"); n=$((n+1)); echo $n > "{counter.as_posix()}"; [ $n -ge {fails_until} ]\n')
-    env = dict(os.environ, DEPLOY_RETRY_PAUSE="0", DEPLOY_CMD=f"bash {fake.as_posix()}")
+    env = dict(os.environ, DEPLOY_RETRY_PAUSE="0", INDEXNOW_DELAY="0", DEPLOY_CMD=f"bash {fake.as_posix()}")
     r = subprocess.run([BASH, SCRIPT.as_posix(), "--env", "x"], env=env, capture_output=True, text=True)
     return r.returncode, int(counter.read_text())
 
@@ -47,7 +47,7 @@ def test_refuses_to_deploy_a_local_launch_preview(tmp_path):
     (tmp_path / "dist").mkdir()
     (tmp_path / "dist" / ".launch-preview").write_text("x")
     marker = tmp_path / "ran"
-    env = dict(os.environ, DEPLOY_RETRY_PAUSE="0", DEPLOY_CMD=f"touch {marker.as_posix()}")
+    env = dict(os.environ, DEPLOY_RETRY_PAUSE="0", INDEXNOW_DELAY="0", DEPLOY_CMD=f"touch {marker.as_posix()}")
     r = subprocess.run([BASH, SCRIPT.as_posix(), "--env", "glasgow"], env=env, capture_output=True, text=True, cwd=tmp_path)
     assert r.returncode == 4
     assert "launch preview" in r.stderr

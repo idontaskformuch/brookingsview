@@ -8,14 +8,29 @@ if [ -f dist/.launch-preview ]; then
   echo "refusing to deploy: dist/ is a local launch preview (dist/.launch-preview exists). Rebuild normally first." >&2
   exit 4
 fi
+# IndexNow (owner 2026-11-03, scripts/indexnow.py): prepare before the deploy (diff against the live manifest), ping after a
+# successful one. Best effort: neither step can change the exit code. INDEXNOW_SKIP=1 turns both off.
+indexnow_env=""
+prev=""
+for a in "$@"; do [ "$prev" = "--env" ] && indexnow_env="$a"; prev="$a"; done
+indexnow() {
+  [ -n "$indexnow_env" ] && [ "${INDEXNOW_SKIP:-}" != "1" ] && command -v python >/dev/null 2>&1 || return 0
+  (cd .. && python -m scripts.indexnow "$1" --env "$indexnow_env" --dist site/dist) || echo "indexnow $1 failed (ignored)" >&2
+}
+indexnow prepare
 pause="${DEPLOY_RETRY_PAUSE:-30}"
 cmd="${DEPLOY_CMD:-npx wrangler deploy}"
 attempt=1
 max=3
 while true; do
   # shellcheck disable=SC2086
-  $cmd "$@" && exit 0
+  $cmd "$@"
   rc=$?
+  if [ "$rc" -eq 0 ]; then
+    [ -n "$indexnow_env" ] && sleep "${INDEXNOW_DELAY:-20}"  # let the edge serve the new HTML before crawlers are told
+    indexnow ping
+    exit 0
+  fi
   if [ "$attempt" -ge "$max" ]; then
     echo "wrangler deploy failed after $attempt attempts (exit $rc)" >&2
     exit "$rc"

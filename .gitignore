@@ -54,3 +54,4 @@ site/dist_*/
 backups/
 qa/out/
 .ci_fingerprint
+site/indexnow-pending.json
