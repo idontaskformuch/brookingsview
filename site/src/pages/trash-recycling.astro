@@ -13,6 +13,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import { siteConfig } from '../lib/site-config';
+import { fitDescription } from '../lib/meta-description';
 import { resolvePageMeta } from '../lib/page-meta';
 import { upcomingHolidayShifts } from '../lib/trash-schedule';
 
@@ -46,7 +47,7 @@ const holidayRows = southShifts.map((h, i) => ({ name: h.name, date: h.date, sou
 const fmtHoliday = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(t));
 ---
 <BaseLayout title={pageMeta.title} wide
-  description="Brookings garbage, recycling and yard waste: which day is yours, what goes in each cart, holiday changes, and what to do with big items, branches, electronics and paint."
+  description={fitDescription("Brookings garbage, recycling and yard waste: which day is yours, what goes in each cart, holiday changes, and what to do with big items, branches, electronics and paint.")}
   >
   <header class="lede">
     <h1>{pageMeta.h1}</h1>

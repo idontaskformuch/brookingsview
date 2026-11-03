@@ -7,11 +7,12 @@
  *  aspirationally, so this page stays honest as the guardrails evolve. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
+import { metaDescription } from '../lib/meta-description';
 import { forCountry } from '../lib/country-profile';
 
 const canonicalUrl = new URL('/editorial-policy/', Astro.site ?? siteConfig.siteUrl).href;
 const title = `Editorial Policy — ${siteConfig.siteName}`;
-const description = `How ${siteConfig.siteName} is written, and exactly what its automated fact-checks require before anything publishes.`;
+const description = metaDescription('editorial-policy', siteConfig);
 
 const PUBLISHED_DATE = '2026-08-29';
 

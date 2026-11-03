@@ -11,6 +11,7 @@ import SectionRule from '../components/SectionRule.astro';
 import GameCard from '../components/GameCard.astro';
 import { getSeasonGames, getUpcomingGames, getContentByType, formatDate, formatTime } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import { fitDescription } from '../lib/meta-description';
 import { resolvePageMeta } from '../lib/page-meta';
 import SectionHero from '../components/SectionHero.astro';
 import { SECTION_THEME } from '../lib/section-theme';
@@ -49,7 +50,7 @@ const summaryBySport = new Map(
 );
 ---
 <BaseLayout title={pageMeta.title} wide
-  description="Full SDSU Jackrabbits schedules and results for football, basketball and volleyball."
+  description={fitDescription("Full SDSU Jackrabbits schedules and results for football, basketball and volleyball, with dates, opponents and scores for each game in Brookings.")}
   accentColor={SECTION_THEME.university.accent}>
   <SectionHero section="sports" />
   <header class="lede">

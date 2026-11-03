@@ -21,6 +21,7 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getRecentPropertySales, getContentByType, formatPrice } from '../lib/db';
 import { titleCaseAddress as sharedTitleCaseAddress, extractZip as sharedExtractZip, slugifyAddress, isOutlierSale } from '../lib/home-sales';
 import { siteConfig } from '../lib/site-config';
+import { fitDescription, descriptionFillers } from '../lib/meta-description';
 import { placeAbbr } from '../lib/country-profile';
 import { resolvePageMeta } from '../lib/page-meta';
 import { isWithinRenderWindow } from '../lib/render-window';
@@ -83,7 +84,7 @@ function monthYear(occursAt: string | null): string {
 }
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-home-sales"
-  description="Recently recorded home sales in Moreno Valley: address, price, and date, from Riverside County's public assessor data."
+  description={fitDescription("Recently recorded home sales in Moreno Valley: address, price, and date, from Riverside County's public assessor data.", descriptionFillers(siteConfig))}
   accentColor={SECTION_THEME.home_sales.accent}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero section="home_sales" />

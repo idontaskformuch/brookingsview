@@ -6,11 +6,12 @@
  *  that page's "Who built it" section for the real, disclosed operator. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
+import { metaDescription } from '../lib/meta-description';
 import TermsGb from '../components/legal/gb/TermsBody.astro';
 
 const canonicalUrl = new URL('/terms/', Astro.site ?? siteConfig.siteUrl).href;
 const title = `Terms of Use — ${siteConfig.siteName}`;
-const description = `The terms for using ${siteConfig.siteName}.`;
+const description = metaDescription('terms', siteConfig);
 
 const PUBLISHED_DATE = '2026-08-29';
 

@@ -14,13 +14,14 @@
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig, isSectionDisabled } from '../lib/site-config';
+import { metaDescription } from '../lib/meta-description';
 if (isSectionDisabled('advertising')) return Astro.redirect('/', 302);
 
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 
 const canonicalUrl = new URL('/advertising/', Astro.site ?? siteConfig.siteUrl).href;
 const title = `Advertising & Sponsorship — ${siteConfig.siteName}`;
-const description = `How sponsorship and advertising work on ${siteConfig.siteName} — what we accept, what we never do, and how it's disclosed.`;
+const description = metaDescription('advertising', siteConfig);
 
 // A hand-authored policy page has no natural "occurs_at"/"published_at"
 // column the way a scraped story does -- set once, by hand, when the page

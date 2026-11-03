@@ -26,6 +26,7 @@ import SectionHero from '../components/SectionHero.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getClosureWatchStatus } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import { metaDescription } from '../lib/meta-description';
 import { resolvePageMeta } from '../lib/page-meta';
 import { SECTION_THEME } from '../lib/section-theme';
 import { buildFaqJsonLd, buildSchoolClosureNewsArticleJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
@@ -88,7 +89,7 @@ import PageGuide from '../components/PageGuide.astro';
 ---
 <BaseLayout
   title={pageTitle}
-  description={`Official school-closure status for ${siteConfig.cityName}, sourced from ${feat.districtName} and active weather alerts – never a prediction.`}
+  description={metaDescription('closures', siteConfig)}
   ogSlug="section-closure-watch"
   accentColor={SECTION_THEME.closure_watch.accent}
 >

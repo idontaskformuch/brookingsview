@@ -28,6 +28,7 @@ import {
   clearedModuleCount, MIN_MODULES_FOR_INDEX,
 } from '../../lib/month-in-review';
 import { siteConfig } from '../../lib/site-config';
+import { monthDescription } from '../../lib/meta-description';
 import { placeAbbr } from '../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
@@ -87,7 +88,7 @@ const rows = ([
 const title = `${siteConfig.cityName} in ${label} — ${siteConfig.siteName}`;
 const h1 = `${siteConfig.cityName} in ${label}`;
 const canonicalUrl = new URL(`/month/${slug}/`, Astro.site ?? siteConfig.siteUrl).href;
-const description = `A month-in-review recap of ${placeAbbr(siteConfig)} for ${label}: city hall decisions, development projects, home sales, events, traffic and jobs, compiled from public data sources.`;
+const description = monthDescription(siteConfig, label);
 
 const breadcrumbTrail: BreadcrumbEntry[] = [
   ...buildClusterBreadcrumbTrail('month', siteConfig, { label: 'Month in review', href: '/month/' }),

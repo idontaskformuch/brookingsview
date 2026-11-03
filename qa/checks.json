@@ -205,6 +205,11 @@
       "severity": "soft",
       "born_from": "Public-safety plan 2026-10-29: fail closed means the page shows nothing when data is stale; this makes a silent outage visible. Regression fixture: tests/fixtures/qa_safety_2026-10-29.json.",
       "what": "/safety/ says it cannot reach the fire or air data"
+    },
+    "web.description": {
+      "severity": "soft",
+      "born_from": "Bing Webmaster Tools 2026-11-03: \"meta description too short\" on many pages (e.g. /contact/ 33 characters, /terms/ 35, /privacy/ 45). Regression fixture: tests/fixtures/qa_description_2026-11-03.json.",
+      "what": "indexable page whose meta description is missing, under 70 or over 160 characters, or identical to another page's in the same town"
     }
   }
 }

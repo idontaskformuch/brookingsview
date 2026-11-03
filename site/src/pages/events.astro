@@ -13,6 +13,7 @@ import {
   type FeedItem,
 } from '../lib/events';
 import { siteConfig, isQuietSection } from '../lib/site-config';
+import { metaDescription } from '../lib/meta-description';
 import { withoutEnded } from '../lib/local-day';
 import { placeLabel, countryProfile, forCountry } from '../lib/country-profile';
 import { EVENT_FACETS } from '../lib/event-facets';
@@ -278,7 +279,7 @@ import PageGuide from '../components/PageGuide.astro';
 import { isThanksgivingSeason } from '../lib/thanksgiving';
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-events" noindex={isQuietSection('events')}
-  description={`What's on this weekend in ${placeLabel(siteConfig)} — library programs, city events and community happenings.`}
+  description={metaDescription('events', siteConfig)}
   accentColor={SECTION_THEME.events.accent}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero section="events" />

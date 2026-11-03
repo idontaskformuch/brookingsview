@@ -22,6 +22,7 @@ import {
 } from '../lib/db';
 import { buildEventFeed, todayUtcMidnight, selectBucketCandidates } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
+import { metaDescription } from '../lib/meta-description';
 import { placeAbbr, forCountry } from '../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
@@ -68,7 +69,7 @@ const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facili
 ---
 
 <BaseLayout title={pageTitle} ogSlug="section-today"
-  description={todayDescription(siteConfig, placeAbbr(siteConfig))}>
+  description={metaDescription('today', siteConfig)}>
   <script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumbJsonLd)} />
   <Breadcrumbs trail={breadcrumbTrail} />
   <div class="lede">

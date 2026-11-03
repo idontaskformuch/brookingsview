@@ -13,6 +13,7 @@ import ShareButton from '../../components/ShareButton.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { getFacilities, FACILITY_CATEGORY_LABELS } from '../../lib/db';
 import { siteConfig, isSectionDisabled } from '../../lib/site-config';
+import { metaDescription } from '../../lib/meta-description';
 if (isSectionDisabled('facilities')) return Astro.redirect('/', 302);
 import { placeAbbr } from '../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
@@ -55,7 +56,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 ];
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-facilities"
-  description={`Addresses, phone numbers and hours for libraries, parks, city hall and other public facilities in ${placeAbbr(siteConfig)}.`}>
+  description={metaDescription('facilities', siteConfig)}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>

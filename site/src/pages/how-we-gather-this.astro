@@ -26,13 +26,14 @@
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
+import { metaDescription } from '../lib/meta-description';
 import { forCountry } from '../lib/country-profile';
 import { aboutSourcesFor } from '../lib/about-sources';
 
 const sources = aboutSourcesFor(siteConfig.townId);
 ---
 <BaseLayout title={`How we gather this — ${siteConfig.siteName}`}
-  description={`Every source ${siteConfig.siteName} draws from, how the AI-written pieces are checked, and what's reviewed by a person (nothing, before publish).`}>
+  description={metaDescription('how-we-gather', siteConfig)}>
   <article class="prose">
     <h1>How we gather this</h1>
     <p>{siteConfig.siteName} doesn't have a newsroom. It has a set of public

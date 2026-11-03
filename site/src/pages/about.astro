@@ -6,6 +6,7 @@
  *  has to come from somewhere -- saying plainly what the site is. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig, ALL_SITES } from '../lib/site-config';
+import { metaDescription } from '../lib/meta-description';
 import AboutGb from '../components/legal/gb/AboutBody.astro';
 import { aboutSourcesFor } from '../lib/about-sources';
 
@@ -15,7 +16,7 @@ const sources = aboutSourcesFor(siteConfig.townId);
 const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
 ---
 <BaseLayout title={`About — ${siteConfig.siteName}`}
-  description={`What ${siteConfig.siteName} is, how it's made, and who built it.`}>
+  description={metaDescription('about', siteConfig)}>
   {siteConfig.country === 'gb' ? <AboutGb /> : (
   <article class="prose">
     <h1>About {siteConfig.siteName}</h1>

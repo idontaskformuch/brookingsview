@@ -1,9 +1,10 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
+import { metaDescription } from '../lib/meta-description';
 import PrivacyGb from '../components/legal/gb/PrivacyBody.astro';
 ---
-<BaseLayout title={`Privacy — ${siteConfig.siteName}`} description={`What ${siteConfig.siteName} does and doesn't collect.`}>
+<BaseLayout title={`Privacy — ${siteConfig.siteName}`} description={metaDescription('privacy', siteConfig)}>
   {siteConfig.country === 'gb' ? <PrivacyGb /> : (
   <article class="prose">
     <h1>Privacy</h1>

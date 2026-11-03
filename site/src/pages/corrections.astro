@@ -19,6 +19,7 @@
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
+import { metaDescription } from '../lib/meta-description';
 
 interface Correction {
   date: string; // YYYY-MM-DD
@@ -29,7 +30,7 @@ interface Correction {
 const CORRECTIONS: Correction[] = [];
 ---
 <BaseLayout title={`Corrections — ${siteConfig.siteName}`}
-  description={`A public record of corrections made on ${siteConfig.siteName}.`}
+  description={metaDescription('corrections', siteConfig)}
   ogSlug="section-corrections">
   <article class="prose">
     <h1>Corrections</h1>

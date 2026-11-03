@@ -32,6 +32,7 @@ import {
   buildDisplayRows, shouldNoindexWeekPage, recentWeekSlugs, type WeekInfo, type DayBucket, type Vertical,
 } from '../../lib/this-week';
 import { siteConfig } from '../../lib/site-config';
+import { weekDescription } from '../../lib/meta-description';
 import { placeAbbr } from '../../lib/country-profile';
 import { resolvePageMeta } from '../../lib/page-meta';
 import { resolveHubBacklink } from '../../lib/clusters';
@@ -98,7 +99,7 @@ const { week, days, lead, weeklyStory, prevWeek, isCurrent, isRecent } = Astro.p
 const pageMeta = resolvePageMeta('this-week', siteConfig, { WeekLabel: week.label });
 const hubBacklink = resolveHubBacklink('this-week', siteConfig);
 const title = pageMeta.title;
-const description = `A day-by-day look at ${placeAbbr(siteConfig)} for the week of ${week.label}: meetings, events${siteConfig.townId === 'brookings_sd' ? ', SDSU' : ''} and sports.`;
+const description = weekDescription(siteConfig, week.label, siteConfig.townId === 'brookings_sd');
 const canonicalUrl = new URL(`/this-week/${week.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
 const isBrookings = siteConfig.townId === 'brookings_sd';
 

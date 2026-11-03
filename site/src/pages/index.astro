@@ -52,6 +52,7 @@ import {
 import WeekendModule from '../components/WeekendModule.astro';
 import { resolveQuickLinks, type QuickLinkContext } from '../lib/quick-links';
 import { siteConfig } from '../lib/site-config';
+import { metaDescription } from '../lib/meta-description';
 import { placeAbbr, forCountry } from '../lib/country-profile';
 import { resolveImage, dedupeConsecutiveImages } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
@@ -438,7 +439,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     : null;
 ---
 
-<BaseLayout title={`${siteConfig.siteName} — what's happening in ${placeAbbr(siteConfig)}`} wide>
+<BaseLayout title={`${siteConfig.siteName} — what's happening in ${placeAbbr(siteConfig)}`} wide description={metaDescription('home', siteConfig)}>
 
   {/* CityStatus: the front-page condensed status strip (lib/cityStatus.ts),
       mounted here at the top of the front page, above the Phase F original-

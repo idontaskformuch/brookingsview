@@ -9,6 +9,7 @@ import SectionHero from '../components/SectionHero.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getUpcomingStories, getPastStories, getProjects, formatMeetingDate } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import { metaDescription } from '../lib/meta-description';
 import { placeLabel, forCountry } from '../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { resolvePageMeta } from '../lib/page-meta';
@@ -33,7 +34,7 @@ const pageMeta = resolvePageMeta('city-hall', siteConfig);
 const clusterNavItems = resolveHubNavItems('city-hall', siteConfig);
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-city-hall"
-  description={`${forCountry(siteConfig.country, 'City council, county commission and committee', 'Council and committee')} meetings in ${placeLabel(siteConfig)}, in plain language.`}>
+  description={metaDescription('city-hall', siteConfig)}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero section="city_hall" />
   <header class="lede">

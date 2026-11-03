@@ -1,0 +1,41 @@
+{
+ "_doc": "Real descriptions Bing flagged on 2026-11-03 (Brookings, before the templates). Every entry must trip web.description; good must stay clean.",
+ "bad": [
+  {
+   "path": "/contact/",
+   "metaDescription": "Get in touch with Brookings View."
+  },
+  {
+   "path": "/terms/",
+   "metaDescription": "The terms for using Brookings View."
+  },
+  {
+   "path": "/privacy/",
+   "metaDescription": "What Brookings View does and doesn't collect."
+  },
+  {
+   "path": "/missing/",
+   "metaDescription": ""
+  },
+  {
+   "path": "/long/",
+   "metaDescription": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  }
+ ],
+ "dup": [
+  {
+   "path": "/a/",
+   "metaDescription": "A perfectly long enough description of one page that is repeated word for word on another page, which Bing treats as a duplicate."
+  },
+  {
+   "path": "/b/",
+   "metaDescription": "A perfectly long enough description of one page that is repeated word for word on another page, which Bing treats as a duplicate."
+  }
+ ],
+ "good": [
+  {
+   "path": "/contact/",
+   "metaDescription": "Contact the Brookings View team: send a tip, report a mistake, ask about advertising or tell us what your neighborhood needs covered next."
+  }
+ ]
+}

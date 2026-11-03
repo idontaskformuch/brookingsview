@@ -16,6 +16,7 @@ import ShareButton from '../components/ShareButton.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getActiveTrafficIncidents, getTrafficLastChecked, formatTimeWithZone, plainLanguageTraffic } from '../lib/db';
 import { siteConfig, isSectionDisabled, isQuietSection } from '../lib/site-config';
+import { metaDescription } from '../lib/meta-description';
 if (isSectionDisabled('traffic')) return Astro.redirect('/', 302);
 import { placeAbbr } from '../lib/country-profile';
 import SectionHero from '../components/SectionHero.astro';
@@ -63,7 +64,7 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
 import PageGuide from '../components/PageGuide.astro';
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-traffic" noindex={isQuietSection('traffic')}
-  description={`Current road incidents and lane closures affecting ${placeAbbr(siteConfig)}.`}
+  description={metaDescription('traffic', siteConfig)}
   accentColor={SECTION_THEME.traffic.accent}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <SectionHero section="traffic" />

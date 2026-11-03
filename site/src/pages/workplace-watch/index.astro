@@ -25,6 +25,7 @@ import {
   getShiftPollResults, getWorkerPulseComments,
 } from '../../lib/db';
 import { siteConfig, isQuietSection } from '../../lib/site-config';
+import { metaDescription } from '../../lib/meta-description';
 import { resolvePageMeta } from '../../lib/page-meta';
 import SectionHero from '../../components/SectionHero.astro';
 import { EMPTY_STATES } from '../../lib/empty-states';
@@ -99,7 +100,7 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
 <BaseLayout
   title={pageMeta.title}
   wide
-  description={`Monthly review-trend digests for ${siteConfig.cityName}'s major employers — check before your shift.`}
+  description={metaDescription('workplace-watch', siteConfig)}
   ogSlug="section-workplace-watch"
   noindex={isQuietSection('workplace')}
   accentColor={SECTION_THEME.workplace_watch.accent}

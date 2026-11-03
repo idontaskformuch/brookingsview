@@ -9,6 +9,7 @@ import ShareButton from '../../components/ShareButton.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { listEligibleMonths, monthLabel, monthSlug, MONTH_IN_REVIEW_START } from '../../lib/month-in-review';
 import { siteConfig } from '../../lib/site-config';
+import { metaDescription } from '../../lib/meta-description';
 import { placeAbbr } from '../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
@@ -20,7 +21,7 @@ if (!(siteConfig.townId in MONTH_IN_REVIEW_START)) {
 const months = listEligibleMonths(siteConfig.townId, siteConfig.timezone);
 
 const title = `Month in Review Archive — ${siteConfig.cityName}`;
-const description = `Every monthly recap of ${placeAbbr(siteConfig)}, oldest to newest.`;
+const description = metaDescription('month-index', siteConfig);
 const canonicalUrl = new URL('/month/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('month', siteConfig, { label: 'Month in review', href: canonicalUrl });
 const hubBacklink = resolveHubBacklink('month', siteConfig);

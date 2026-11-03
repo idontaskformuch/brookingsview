@@ -10,6 +10,10 @@
  *  disclosed cross-town references (about page: sister sites, Phase H) never trip web.leak. */
 export const ALLOW_SIBLING_SELECTOR = '[data-qa-allow-sibling-sites]';
 
+/** Meta description length limits (web.description). */
+export const DESCRIPTION_MIN = 70;
+export const DESCRIPTION_MAX = 160;
+
 /** Key pages for Pass B (kept only if they are in the town's sitemap). */
 export const KEY_PAGES = ['/', '/today/', '/events/', '/whats-on/', '/this-week/', '/city-hall/', '/weather/', '/traffic/', '/closures/', '/jobs/', '/about/'];
 /** Pass C: browser clock at these town-local times, on these pages. */
@@ -77,6 +81,15 @@ export function checkPage(snap, town, compiled) {
     const hay = [snap.title, snap.metaDescription, snap.mainText, ...snap.imgAlts].join('\n');
     const hits = new Set([...hay.matchAll(re)].map((m) => m[0]));
     if (hits.size) f.push(finding('web.leak', town, snap, `other-town terms: ${[...hits].slice(0, 6).join(', ')}`));
+  }
+
+  // web.description (owner 2026-11-03, Bing "too short"): every indexable page needs a 70-160 character description.
+  // The templates (site/src/lib/meta-description.ts) aim for 120-160; below 70 or above 160 is a hard miss, 70-119 is only a nudge.
+  if (!/noindex/i.test(snap.metaRobots ?? '')) {
+    const n = (snap.metaDescription ?? '').trim().length;
+    if (n === 0) f.push(finding('web.description', town, snap, 'meta description missing'));
+    else if (n < DESCRIPTION_MIN) f.push(finding('web.description', town, snap, `meta description is ${n} characters (minimum ${DESCRIPTION_MIN})`));
+    else if (n > DESCRIPTION_MAX) f.push(finding('web.description', town, snap, `meta description is ${n} characters (maximum ${DESCRIPTION_MAX})`));
   }
 
   if (/noindex/i.test(snap.metaRobots ?? '') && snap.inSitemap) {
@@ -176,6 +189,19 @@ export function duplicateContentFindings(snaps, town) {
 
 export function checkRun(snaps, town) {
   const f = [...duplicateContentFindings(snaps, town)];
+  const byDesc = new Map();
+  for (const s of snaps) {
+    const d = (s.metaDescription ?? '').trim();
+    if (s.status !== 200 || !d || /noindex/i.test(s.metaRobots ?? '')) continue;
+    (byDesc.get(d) ?? byDesc.set(d, []).get(d)).push(s);
+  }
+  for (const [d, list] of byDesc) {
+    const paths = [...new Set(list.map((s) => s.path))];
+    if (paths.length > 1) {
+      f.push({ check: 'web.description', town, url: list[0].url, path: '(multiple)',
+        message: `same meta description on ${paths.length} URLs, e.g. ${paths.slice(0, 3).join(' ')}: "${d.slice(0, 70)}"` });
+    }
+  }
   const byTitle = new Map();
   for (const s of snaps) {
     if (s.status !== 200 || !s.title) continue;

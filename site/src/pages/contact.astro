@@ -9,6 +9,7 @@
 // dashboard, not by anything build-time here.
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
+import { metaDescription } from '../lib/meta-description';
 import { forCountry } from '../lib/country-profile';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
@@ -18,7 +19,7 @@ const TURNSTILE_SITE_KEY = '0x4AAAAAAEhMDgrHEob53wfv';
 // by itself once both secrets are set. US towns keep the always-visible form.
 const formGated = siteConfig.country === 'gb';
 ---
-<BaseLayout title={`Contact — ${siteConfig.siteName}`} description={`Get in touch with ${siteConfig.siteName}.`}>
+<BaseLayout title={`Contact — ${siteConfig.siteName}`} description={metaDescription('contact', siteConfig)}>
   <article class="prose">
     <h1>Contact</h1>
     <p>Spotted a mistake, know about an event we're missing, or just want to

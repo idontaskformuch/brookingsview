@@ -12,6 +12,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import { siteConfig } from '../lib/site-config';
+import { fitDescription } from '../lib/meta-description';
 import { resolvePageMeta } from '../lib/page-meta';
 
 if (siteConfig.townId !== 'brookings_sd') {
@@ -35,7 +36,7 @@ const SOURCES = [
 ];
 ---
 <BaseLayout title={pageMeta.title} wide
-  description="What you can visit on the South Dakota State campus without being a student: the art museum, McCrory Gardens, the Dairy Bar and more, with hours, costs and visitor parking."
+  description={fitDescription("What you can visit on the South Dakota State campus without being a student: the art museum, McCrory Gardens, the Dairy Bar and more, with hours, costs and visitor parking.")}
   >
   <header class="lede">
     <h1>{pageMeta.h1}</h1>

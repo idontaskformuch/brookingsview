@@ -18,6 +18,7 @@ import SectionRule from '../components/SectionRule.astro';
 import SectionHero from '../components/SectionHero.astro';
 import { getSeasonGames, getWeather, getUpcomingStories } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import { fitDescription } from '../lib/meta-description';
 import { resolvePageMeta } from '../lib/page-meta';
 import { localDayNumber } from '../lib/local-day';
 
@@ -82,7 +83,7 @@ const nextEvents = next ? eventsOnDay(next.start) : [];
 const nextHobo = next ? isHoboDay(next.start) : false;
 ---
 <BaseLayout title={pageMeta.title} wide
-  description="When to arrive, where to park, what you can bring and how to get home after a South Dakota State football game in Brookings, with the home schedule and the game day forecast."
+  description={fitDescription("When to arrive, where to park, what you can bring and how to get home after a South Dakota State football game in Brookings, with the home schedule and the game day forecast.")}
   >
   <SectionHero section="sports" />
   <header class="lede">

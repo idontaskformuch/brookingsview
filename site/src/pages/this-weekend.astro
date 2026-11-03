@@ -14,6 +14,7 @@ import EveningAbout from '../components/evening/EveningAbout.astro';
 import { getWeather, getActiveAlerts, getUpcomingStories, getUpcomingArtsEvents, getFacilities, getOsmSnapshot, getEveningRegister } from '../lib/db';
 import { buildEventFeed, isFreeEvent } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
+import { metaDescription } from '../lib/meta-description';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
 import { buildEveningEntries } from '../lib/evening-items';
 import { buildWeekendSections, weekendDayHidden } from '../lib/evening-weekend';
@@ -84,7 +85,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [{ label: 'Home', href: '/' }, { labe
 const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketmaster listings' : 'Local event calendars') + (register.length > 0 ? ' and venue websites' : '');
 ---
 <BaseLayout title={pageMeta.title} canonicalUrl={canonicalUrl} noindex={!indexing.indexable}
-  description={`Things to do this weekend in ${siteConfig.cityName}: Friday night, Saturday and Sunday, with times and venues${anyFree ? ', and what is free' : ''}.`}>
+  description={metaDescription('this-weekend', siteConfig)}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="ev-head">
     <h1>{pageMeta.h1}</h1>

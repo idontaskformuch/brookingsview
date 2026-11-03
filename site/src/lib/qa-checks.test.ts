@@ -3,9 +3,10 @@ import { readFileSync } from 'node:fs';
 // plain .mjs shared with the Node QA runner (qa/web/run.mjs)
 import { checkPage, checkDiag, checkRun, compileBlocklist, applyWaivers, zonedInstant, duplicateContentFindings, routeFindings, eveningFindings, safetyFindings } from '../../../qa/web/checks.mjs';
 
+const GOOD_DESC = 'A page about hello world in town, with enough words to read as a real description of what the page answers for a resident.';
 const base = {
   url: 'https://x.test/a/', path: '/a/', status: 200, redirects: 0, inSitemap: true,
-  title: 'A page', titleCount: 1, h1: ['A'], metaRobots: '', mainText: 'Hello world', metaDescription: '',
+  title: 'A page', titleCount: 1, h1: ['A'], metaRobots: '', mainText: 'Hello world', metaDescription: GOOD_DESC,
   imgAlts: [], loneDashNodes: 0, brokenImgs: [], consoleErrors: [], failedRequests: [], blockedAttempts: [],
 };
 const compiled = compileBlocklist({ brookings_sd: ['Moreno Valley', 'Inland Empire', '951'] });
@@ -47,7 +48,7 @@ describe('qa checkPage', () => {
 
 describe('qa run-level + waivers', () => {
   it('duplicate titles', () => {
-    const f = checkRun([{ ...base, path: '/a/' }, { ...base, path: '/b/' }], 'brookings_sd');
+    const f = checkRun([{ ...base, path: '/a/' }, { ...base, path: '/b/', metaDescription: `${GOOD_DESC} Second.` }], 'brookings_sd');
     expect(f.map((x: { check: string }) => x.check)).toEqual(['web.title-dup']);
   });
   it('waiver hides until expiry', () => {
@@ -217,5 +218,22 @@ describe('QA runner files parse (a stray newline in run.mjs broke qa-daily 2026-
     for (const f of readdirSync(dir).filter((n) => n.endsWith('.mjs'))) {
       expect(() => execFileSync(process.execPath, ['--check', new URL(f, dir).pathname.replace(/^\/([A-Za-z]:)/, '$1')], { stdio: 'pipe' }), f).not.toThrow();
     }
+  });
+});
+
+describe('web.description (Bing "too short", 2026-11-03)', () => {
+  const fx = JSON.parse(readFileSync(new URL('../../../tests/fixtures/qa_description_2026-11-03.json', import.meta.url), 'utf8')) as {
+    bad: { path: string; metaDescription: string }[]; dup: { path: string; metaDescription: string }[]; good: { path: string; metaDescription: string }[];
+  };
+  const snap = (x: { path: string; metaDescription: string }) => ({ ...base, ...x, url: `https://x.test${x.path}` });
+  it('every real bad description trips the check, a good one does not', () => {
+    for (const x of fx.bad) expect(ids(snap(x)), x.path).toContain('web.description');
+    for (const x of fx.good) expect(ids(snap(x)), x.path).not.toContain('web.description');
+  });
+  it('noindex pages are not checked', () => expect(ids({ metaDescription: '', metaRobots: 'noindex,follow' })).not.toContain('web.description'));
+  it('the same description on two URLs in a run is reported once, a repeat of the same URL is not', () => {
+    const found = (checkRun(fx.dup.map(snap), 'brookings_sd') as { check: string }[]).filter((f) => f.check === 'web.description');
+    expect(found).toHaveLength(1);
+    expect((checkRun([snap(fx.dup[0]), snap(fx.dup[0])], 'brookings_sd') as { check: string }[]).filter((f) => f.check === 'web.description')).toHaveLength(0);
   });
 });
