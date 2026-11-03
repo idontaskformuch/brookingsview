@@ -348,6 +348,7 @@ const TOWN_GATED_PAGES = [
   { path: '/jackrabbits/', activeFor: ['brookings_sd'] },
   { path: '/game-day/', activeFor: ['brookings_sd'] },
   { path: '/trash-recycling/', activeFor: ['brookings_sd'] },
+  { path: '/winter-guide/', activeFor: ['brookings_sd'] },
   { path: '/how-city-council-works/', activeFor: ['brookings_sd'] },
   { path: '/sdsu-campus-open-to-public/', activeFor: ['brookings_sd'] },
   { path: '/thanksgiving/', activeFor: ['brookings_sd', 'moreno_valley_ca', 'broomfield_co'] },

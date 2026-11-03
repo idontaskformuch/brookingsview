@@ -277,6 +277,12 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     h1Pattern: '{Town} trash, recycling and yard waste: pickup days and what goes where',
     ledeRequirement: 'Answers: which day is mine, what goes in which cart, what do I do with big items, branches, electronics and paint. Every rule from the city pages.',
   },
+  // Brookings-only winter guide (site/src/pages/winter-guide.astro), owner-ordered 2026-11-03.
+  'winter-guide': {
+    titlePattern: 'Snow & Winter Guide | {Site}',
+    h1Pattern: '{Town} in snow: parking bans, plowing, sidewalks and trash',
+    ledeRequirement: 'Answers: when must I move my car, which streets are plowed first, who clears my sidewalk, and what happens to trash pickup. Every rule from the city pages; unposted facts say so.',
+  },
   'game-day': {
     titlePattern: 'SDSU Football Game Day Guide | {Site}',
     h1Pattern: 'SDSU football game day in {Town}: parking, tailgating and what to bring',

@@ -1,0 +1,111 @@
+---
+/** Brookings snow and winter guide (Brookings only; owner-ordered 2026-11-03).
+ *
+ *  Resident question it answers: "Snow is coming: when do I have to move my car, which streets get plowed
+ *  first, who has to clear my sidewalk, and does the garbage still get picked up?"
+ *
+ *  Pattern (CLAUDE.md editorial rule): the city's rules (data) -> what they mean on a snow day (the order of
+ *  things to do) -> how to get alerts and who to call (what to do).
+ *
+ *  Every fact below is from the City of Brookings' own pages (SOURCES), read 2026-11-03. Nothing is predicted.
+ *  Facts the city does not post (fine amounts, plow timing, trash delays) are said to be unposted, not guessed. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionRule from '../components/SectionRule.astro';
+import { siteConfig } from '../lib/site-config';
+import { resolvePageMeta } from '../lib/page-meta';
+
+if (siteConfig.townId !== 'brookings_sd') {
+  return Astro.redirect('/', 302);
+}
+
+const pageMeta = resolvePageMeta('winter-guide', siteConfig);
+const CHECKED = 'November 3, 2026';
+const BASE = 'https://www.cityofbrookings-sd.gov';
+const SOURCES = [
+  { name: 'City of Brookings: Snow Removal / Ice Alert & Removal Info', url: `${BASE}/275/Snow-RemovalIce-Alert-Removal-Info` },
+  { name: 'City of Brookings: Snow Removal Routes', url: `${BASE}/448/Snow-Removal-Routes` },
+  { name: 'City of Brookings FAQ: Who is responsible for the sidewalk in front of my house?', url: `${BASE}/faq.aspx?qid=59` },
+  { name: 'City of Brookings: Garbage collection', url: `${BASE}/260/Garbage-Collection` },
+];
+const SNOW_URL = SOURCES[0].url;
+const ROUTES_URL = SOURCES[1].url;
+---
+<BaseLayout title={pageMeta.title} wide
+  description="Brookings snow rules in one place: when parking bans start and how to get the alert, which streets are plowed first, who clears the sidewalk and how fast, and what to do about the garbage cart."
+  >
+  <header class="lede">
+    <h1>{pageMeta.h1}</h1>
+    <p><strong>The short version:</strong> when the city announces a snow parking ban, move your car off every street, avenue and alley until the plows have cleared it curb to curb.
+    Clear your own sidewalk within 48 hours after the snow stops. Sign up for the city's text alert so you hear about a ban before the plows come.
+    This guide puts the city's snow rules in one place, in the order you will need them. Everything comes from the city's own pages, last checked {CHECKED}.</p>
+  </header>
+
+  <SectionRule label="Get the alert first" />
+  <p>The city announces a ban at least four hours before it starts, through mass media, social media and its website. The fastest way to hear is to sign up:</p>
+  <ul>
+    <li><strong>Text "BrookingsSnow" to 38276.</strong></li>
+    <li>Register for email or text alerts at <a href="https://www.cityofbrookings-sd.gov/alerts" rel="noopener">cityofbrookings-sd.gov/alerts</a>. If you used the city's old Notify Me service, update your account there.</li>
+    <li>Or download the free myAlerts app (App Store or Google Play) and turn on Community Alerts.</li>
+  </ul>
+
+  <SectionRule label="Snow parking ban: what to do with your car" />
+  <ul>
+    <li><strong>No parking on city streets, avenues or alleys</strong> once the city announces a ban, and you may not park there again until the streets are cleared curb to curb. The city manager or a designee makes the announcement.</li>
+    <li><strong>Alerts usually come at 4 inches of snow or more</strong>, but the city can call a ban for less. The city also suggests moving your vehicle whenever snow piles up, so plows can get through.</li>
+    <li><strong>If you stay parked on the street</strong> you may get a parking ticket or have the vehicle towed. The city's page does not list a fine amount.</li>
+    <li><strong>Where to park instead:</strong> the city publishes a Snow Ban Public Parking Map of free parking locations, linked from its <a href={SNOW_URL} rel="noopener">snow removal page</a>.</li>
+  </ul>
+
+  <SectionRule label="Which streets are plowed first" />
+  <p>Crews work in this order, and the city says residential streets and alleys come after the routes below are finished. The city does not post how long that takes, because each storm is different.
+  Sanding starts as soon as braking gets worse on ice or snow. Crews can also plow right away, without a formal snow emergency declaration, when drifting, deep snow, slush or re-freezing make driving unsafe.</p>
+  <ol>
+    <li><strong>Emergency routes:</strong> 3rd Street from 1st Avenue to 22nd Avenue; Medary Avenue from the north city limits to 20th Street South.</li>
+    <li><strong>Arterial streets:</strong> 6th Street (Western Avenue to 34th Avenue); 22nd Avenue (Highway 14 Bypass to 32nd Street South); 8th Street South (22nd Avenue to the west city limits); Main Avenue South (downtown to 32nd Street South).</li>
+    <li><strong>Collector streets and school zones:</strong> including 8th Street by SDSU, 17th Avenue (Hillcrest Elementary and Mickelson Middle School), 5th Street South (Medary Elementary and the high school), Elm Avenue (high school), 15th Street South and Christine Avenue (Camelot School), 32nd Avenue (Daktronics and Dacotah Bank Center), 34th Avenue (Dacotah Bank Center and the landfill), and Larkspur Ridge Drive and 26th Street South (Dakota Prairie School).</li>
+    <li><strong>Everything else:</strong> residential streets and alleys.</li>
+  </ol>
+  <p>What this means for you: if you live on a residential street, expect to wait until the main routes are done, and keep your car off the street anyway while a ban is on. The exact segments are on the city's
+  <a href={ROUTES_URL} rel="noopener">Snow Removal Routes page</a>.</p>
+
+  <SectionRule label="Your sidewalk" />
+  <ul>
+    <li><strong>It is yours to clear.</strong> The property owner is responsible for the sidewalk in front of the home, and the city's FAQ says renters must shovel too.</li>
+    <li><strong>Within 48 hours after the snow stops falling</strong>, clear the sidewalk and the crosswalk curb ramps. If ice builds up, make every effort to clear it; salt, sand or other materials may be used.</li>
+    <li><strong>If you do not,</strong> the city mails a warning. If the snow is still there after that, the city clears it and bills the owner. The sidewalk rules are in city ordinance sections 74-211 through 74-216.</li>
+    <li><strong>Do not push snow into the street.</strong> Shoveling or blowing snow from private property onto a public street violates city ordinance. Keep fire hydrants clear too.</li>
+    <li><strong>Cannot do it yourself?</strong> The Brookings Police Department gives a bucket of sand to senior residents who cannot get one themselves (Sand for Seniors). For help with snow removal, dial 211 or email help@helplinecenter.org.</li>
+  </ul>
+
+  <SectionRule label="Garbage and recycling in snow" />
+  <p>The city's solid waste page has no snow-day delay policy. What it does say: in winter, keep a spot cleared on either side of your driveway to place the cart, and leave room for the truck. If the crew
+  does not have room, the cart will not be picked up. Holiday weeks and pickup days are in our <a href="/trash-recycling/">trash, recycling and yard waste guide</a>. After a big storm, check the city's alerts and
+  website before assuming pickup is on or off.</p>
+
+  <SectionRule label="Driving near plows" />
+  <ul>
+    <li>Stay at least 70 feet (four car lengths) behind a plow.</li>
+    <li>Do not pass beside a plow; snow can push it sideways.</li>
+    <li>Expect sudden backing and wide turns, and yield when amber lights are flashing.</li>
+  </ul>
+
+  <SectionRule label="Who to call" />
+  <ul>
+    <li><strong>Snow hotline:</strong> (605) 696-7669</li>
+    <li><strong>Community Service Officer</strong> (weekdays 8 a.m. to 5 p.m.): (605) 692-2113</li>
+    <li><strong>City of Brookings:</strong> (605) 692-6281</li>
+    <li>Report a concern through <a href="https://www.engagebrookings.com" rel="noopener">Engage Brookings</a>.</li>
+  </ul>
+
+  <SectionRule label="Sources" />
+  <ul class="wg-sources">
+    {SOURCES.map((s) => <li><a href={s.url} rel="noopener">{s.name}</a></li>)}
+  </ul>
+  <p class="wg-note">Unofficial guide by {siteConfig.siteName}, summarizing the City of Brookings' published rules; the city's pages are the authority and can change. Last checked {CHECKED}.
+  Found a mistake? See <a href="/corrections/">corrections</a> or <a href="/contact/">contact us</a>. Related: <a href="/closures/">closures</a>, <a href="/weather/">weather</a>, <a href="/city-hall/">City Hall</a>.</p>
+</BaseLayout>
+
+<style>
+  .wg-note { font-size: 0.9rem; max-width: 46rem; }
+  p, li { max-width: 46rem; }
+</style>
