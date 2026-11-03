@@ -208,3 +208,14 @@ describe('public-safety checks', () => {
     for (const id of ['safety.crime-word', 'safety.unavailable']) expect(reg[id]?.born_from, id).toBeTruthy();
   });
 });
+
+describe('QA runner files parse (a stray newline in run.mjs broke qa-daily 2026-10-24..27 and again 2026-10-29)', () => {
+  it('node --check passes for every qa/web/*.mjs', async () => {
+    const { execFileSync } = await import('node:child_process');
+    const { readdirSync } = await import('node:fs');
+    const dir = new URL('../../../qa/web/', import.meta.url);
+    for (const f of readdirSync(dir).filter((n) => n.endsWith('.mjs'))) {
+      expect(() => execFileSync(process.execPath, ['--check', new URL(f, dir).pathname.replace(/^\/([A-Za-z]:)/, '$1')], { stdio: 'pipe' }), f).not.toThrow();
+    }
+  });
+});

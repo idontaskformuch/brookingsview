@@ -227,8 +227,7 @@ function pageProbe({ allowSel, wantLinks }) {
   }
   // public-safety notices (/today line, /safety/): the text the browser built from /api/safety, null on pages without them
   const safetyEls = [...document.querySelectorAll('[data-safety]')];
-  const safety = safetyEls.length ? { text: safetyEls.map((e) => e.innerText || '').join('
-').trim(), unavailable: safetyEls.some((e) => /cannot reach/i.test(e.innerText || '')) } : null;
+  const safety = safetyEls.length ? { text: safetyEls.map((e) => e.innerText || '').join('\n').trim(), unavailable: safetyEls.some((e) => /cannot reach/i.test(e.innerText || '')) } : null;
   return {
     nowIso: now.toISOString(), evening, safety,
     title: document.title, titleCount: document.querySelectorAll('title').length,
