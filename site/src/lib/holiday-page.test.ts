@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildHolidayMeta, buildHolidayEventsJsonLd, lastChecked, localIso, formatIsoDate, formatClock, eventWhenWhere,
-  sectionsWithRows, isBlockedHost, BLOCKED_SOURCE_HOSTS, type HolidayFact, type HolidayPageData,
+  sectionsWithRows, regularHours, DESCRIPTION_MAX, isBlockedHost, BLOCKED_SOURCE_HOSTS, type HolidayFact, type HolidayPageData,
 } from './holiday-page';
 import { buildThanksgivingPage, THANKSGIVING_TOWN_IDS } from '../config/holiday-pages/thanksgiving';
 import { CHRISTMAS_EVENTS } from '../config/holiday-pages/christmas';
@@ -91,18 +91,51 @@ describe('Broomfield data as approved 2026-11-04', () => {
 });
 
 describe('deterministic meta', () => {
-  it('Broomfield names only sections with a confirmed row', () => {
+  it('Broomfield description names the confirmed items, then what is not confirmed', () => {
     const m = buildHolidayMeta(pageFor('broomfield_co'), 'Thanksgiving', 'Broomfield');
     expect(m.title).toBe('Thanksgiving 2026 in Broomfield: closures, events, food help');
     expect(m.h1).toBe('Thanksgiving 2026: closures, events, food help');
     expect(m.description).toBe(
-      'Thanksgiving 2026 in Broomfield. Confirmed: closures (3), events (1), food help (3). Not yet confirmed: trash pickup, transit. Last checked Nov 4, 2026.',
+      'Turkey Day 5K/10K Nov 26 · Tree Branch Recycle closed Nov 28 · FISH food bank closed Nov 26–27. Trash and RTD not yet confirmed. Checked Nov 4, 2026.',
     );
   });
-  it('Brookings and Moreno name trash pickup', () => {
+  it('Brookings and Moreno: title names only sections with a confirmed row', () => {
     expect(buildHolidayMeta(pageFor('brookings_sd'), 'Thanksgiving', 'Brookings').h1).toBe('Thanksgiving 2026: closures, trash pickup');
     expect(buildHolidayMeta(pageFor('moreno_valley_ca'), 'Thanksgiving', 'Moreno Valley').title)
-      .toBe('Thanksgiving 2026 in Moreno Valley: closures, trash pickup');
+      .toBe('Thanksgiving 2026 in Moreno Valley: trash pickup');
+    expect(buildHolidayMeta(pageFor('moreno_valley_ca'), 'Thanksgiving', 'Moreno Valley').description)
+      .toBe('Trash pickup one day late after Nov 26. City offices, Landfill and Library not yet confirmed. Checked Oct 24, 2026.');
+  });
+  it('every description is at most 155 characters, with no digits-free filler', () => {
+    for (const id of THANKSGIVING_TOWN_IDS) {
+      const d = buildHolidayMeta(pageFor(id), 'Thanksgiving', 'X').description;
+      expect(d.length).toBeLessThanOrEqual(DESCRIPTION_MAX);
+      expect(d).toMatch(/Checked [A-Z][a-z]{2} \d+, 2026\.$/);
+    }
+  });
+  it('drops whole phrases from the end of the confirmed list to fit, events first in priority', () => {
+    const base = pageFor('broomfield_co');
+    const long: HolidayPageData = {
+      ...base,
+      facts: base.facts.map((f) => (f.status === 'confirmed' && f.meta ? { ...f, meta: `${f.meta} with a much longer wording than before` } : f)),
+    };
+    const d = buildHolidayMeta(long, 'Thanksgiving', 'Broomfield').description;
+    expect(d.length).toBeLessThanOrEqual(DESCRIPTION_MAX);
+    expect(d.startsWith('Turkey Day 5K/10K Nov 26')).toBe(true);
+    expect(d).not.toContain('FISH');
+    expect(d).toContain('Trash and RTD not yet confirmed.');
+  });
+  it('standing hours are not closures: the closures table holds only closure facts', () => {
+    for (const id of THANKSGIVING_TOWN_IDS) {
+      const page = pageFor(id);
+      for (const f of page.facts.filter((x) => x.section === 'closures')) expect(f.label).not.toMatch(/regular hours/i);
+      expect(regularHours(page).every((f) => /regular hours/i.test(f.label))).toBe(true);
+    }
+    const confirmedClosures = pageFor('broomfield_co').facts.filter((f) => f.section === 'closures' && f.status === 'confirmed');
+    expect(confirmedClosures.map((f) => f.label)).toEqual(['Tree Branch Recycle and RV Wastewater Disposal Facility']);
+    expect(regularHours(pageFor('broomfield_co')).map((f) => f.label)).toEqual([
+      'Library (regular hours)', 'Recreation centers (regular hours)', 'Broomfield FISH marketplace (regular hours)',
+    ]);
   });
   it('lastChecked is the newest checkedOn; dates format without a time zone', () => {
     expect(lastChecked(pageFor('broomfield_co'))).toBe('2026-11-04');

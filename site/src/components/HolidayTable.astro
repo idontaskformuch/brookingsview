@@ -1,0 +1,54 @@
+---
+/** One What / Details / Source / Checked table for the holiday template (HolidayPage.astro). */
+import { formatIsoDate, type HolidayRow } from '../lib/holiday-page';
+
+interface Props { rows: HolidayRow[]; year: number }
+const { rows: r_, year } = Astro.props;
+---
+      <div class="hp-scroll">
+        <table class="hp-table">
+          <thead>
+            <tr><th scope="col">What</th><th scope="col">Details</th><th scope="col">Source</th><th scope="col">Checked</th></tr>
+          </thead>
+          <tbody>
+            {r_.map((r) => (
+              <tr>
+                <th scope="row">{r.what}</th>
+                <td>
+                  {r.value !== null ? (
+                    <>
+                      {r.value}
+                      {r.extra?.map((line) => <span class="hp-line">{line}</span>)}
+                    </>
+                  ) : (
+                    <>
+                      <span class="hp-unconfirmed">Not confirmed for {year}</span>
+                      {r.lastYear && (
+                        <span class="hp-line">Last year: {r.lastYear.value} (<a href={r.lastYear.source.url} rel="noopener">{r.lastYear.source.name}</a>)</span>
+                      )}
+                      {r.checkAt && (
+                        <span class="hp-line">Check: {r.checkAt.url ? <a href={r.checkAt.url} rel="noopener">{r.checkAt.label}</a> : r.checkAt.label}{r.checkAt.phone && <> · <a href={`tel:${r.checkAt.phone.replace(/[^0-9+]/g, '').replace(/^(\d{10})(\d+)$/, '$1,$2')}`}>{r.checkAt.phone}</a></>}</span>
+                      )}
+                    </>
+                  )}
+                  {r.clarify && <span class="hp-line hp-clarify">{r.clarify}</span>}
+                </td>
+                <td><a href={r.source.url} rel="noopener">{r.source.name}</a></td>
+                <td><time datetime={r.checkedOn}>{formatIsoDate(r.checkedOn)}</time></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+<style>
+  .hp-scroll { overflow-x: auto; }
+  .hp-table { border-collapse: collapse; width: 100%; max-width: 62rem; font-size: 0.9375rem; }
+  .hp-table th, .hp-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--rule, #ddd); vertical-align: top; }
+  .hp-table thead th { font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ink-soft); }
+  .hp-table tbody th { font-weight: 600; min-width: 9rem; }
+  .hp-table td:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .hp-line { display: block; margin-top: 0.2rem; }
+  .hp-clarify { font-size: 0.875rem; color: var(--ink-soft); }
+  .hp-unconfirmed { font-weight: 600; }
+</style>

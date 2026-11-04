@@ -34,13 +34,19 @@ export type CheckAt =
 
 export interface LastYear { value: string; source: Source }
 
+/** `hours` = standing opening hours: shown under "More", never in the closures table. */
+export type FactSection = Exclude<HolidaySection, 'events'> | 'hours';
+
 interface FactBase {
-  section: Exclude<HolidaySection, 'events'>;
+  section: FactSection;
   label: string;
   /** ISO date (YYYY-MM-DD) the source was last read. Shown on the page. */
   checkedOn: string;
   /** One sentence at most, only to make the value understandable. */
   clarify?: string;
+  /** Meta description: for a confirmed fact the short phrase that names it ("FISH food bank closed Nov 26–27"),
+   *  for an unconfirmed one the short name ("Trash"). A fact without one is left out of the description. */
+  meta?: string;
 }
 
 export interface ConfirmedFact extends FactBase {
@@ -75,6 +81,8 @@ interface EventBase {
   checkedOn: string;
   source: Source;
   clarify?: string;
+  /** Meta description phrase, e.g. "Turkey Day 5K/10K Nov 26". */
+  meta?: string;
 }
 
 export interface ConfirmedEvent extends EventBase {
@@ -129,6 +137,11 @@ export function sectionsWithRows(page: HolidayPageData): HolidaySection[] {
     s === 'events' ? page.events.length > 0 : page.facts.some((f) => f.section === s));
 }
 
+/** Standing opening hours (rendered under "More"). */
+export function regularHours(page: HolidayPageData): HolidayFact[] {
+  return page.facts.filter((f) => f.section === 'hours');
+}
+
 function confirmedSections(page: HolidayPageData): HolidaySection[] {
   return SECTION_ORDER.filter((s) =>
     s === 'events'
@@ -159,28 +172,45 @@ function joinWords(words: string[]): string {
 
 export interface HolidayMeta { title: string; h1: string; description: string }
 
-/** Deterministic title, H1 and description. Only sections with a confirmed row are named, so the title never
- *  promises what the page does not yet have. `holidayLabel` is e.g. "Thanksgiving". */
+/** Meta descriptions stay under this many characters (search results cut near 155-160). */
+export const DESCRIPTION_MAX = 155;
+
+/** Priority for naming confirmed items in the description: events, closures, help, then the rest. */
+const DESCRIPTION_ORDER: HolidaySection[] = ['events', 'closures', 'help', 'trash', 'transit'];
+
+function listWords(words: string[]): string {
+  return words.length <= 1 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`;
+}
+
+/** Deterministic title, H1 and description. Title and H1 name only sections with a confirmed row, so they never
+ *  promise what the page does not yet have. The description names the confirmed items themselves (their `meta`
+ *  phrases, in DESCRIPTION_ORDER), then what is not yet confirmed, then the check date, and drops whole phrases
+ *  from the end of the confirmed list to stay within DESCRIPTION_MAX. `holidayLabel` is e.g. "Thanksgiving". */
 export function buildHolidayMeta(page: HolidayPageData, holidayLabel: string, cityName: string): HolidayMeta {
   const confirmed = confirmedSections(page);
   const words = joinWords(confirmed.map((s) => SECTION_META_WORD[s]));
   const h1 = `${holidayLabel} ${page.year}${words ? `: ${words}` : ''}`;
   const title = `${holidayLabel} ${page.year} in ${cityName}${words ? `: ${words}` : ''}`;
 
-  const counts = confirmed.map((s) => {
-    const n = s === 'events'
-      ? page.events.filter((e) => e.status === 'confirmed').length
-      : page.facts.filter((f) => f.section === s && f.status === 'confirmed').length;
-    return `${SECTION_META_WORD[s]} (${n})`;
-  });
-  const pending = sectionsWithRows(page).filter((s) => !confirmed.includes(s));
-  const notYet = pending.map((s) => SECTION_META_WORD[s]);
-  const parts = [
-    counts.length ? `Confirmed: ${joinWords(counts)}.` : '',
-    notYet.length ? `Not yet confirmed: ${joinWords(notYet)}.` : '',
-    `Last checked ${formatIsoDate(lastChecked(page))}.`,
-  ].filter(Boolean);
-  return { title, h1, description: `${holidayLabel} ${page.year} in ${cityName}. ${parts.join(' ')}` };
+  const phrases: string[] = [];
+  for (const s of DESCRIPTION_ORDER) {
+    if (s === 'events') {
+      for (const e of page.events) if (e.status === 'confirmed' && e.meta) phrases.push(e.meta);
+    } else {
+      for (const f of page.facts) if (f.section === s && f.status === 'confirmed' && f.meta) phrases.push(f.meta);
+    }
+  }
+  const pendingNames = page.facts.flatMap((f) => (f.status === 'unconfirmed' && f.meta ? [f.meta] : []));
+  const tail = [
+    pendingNames.length ? ` ${listWords(pendingNames)} not yet confirmed.` : '',
+    ` Checked ${formatIsoDate(lastChecked(page))}.`,
+  ].join('');
+
+  const kept = [...phrases];
+  while (kept.length > 0 && kept.join(' · ').length + 1 + tail.length > DESCRIPTION_MAX) kept.pop();
+  const head = kept.length ? `${kept.join(' · ')}.` : '';
+  const description = (head + tail).trim();
+  return { title, h1, description };
 }
 
 /** Local wall-clock date + time in an IANA zone -> ISO string with the zone's offset on that date. */
@@ -242,4 +272,16 @@ export function eventWhenWhere(e: HolidayEvent): string {
   if (e.status !== 'confirmed') return formatEventDay(e.date);
   const time = e.endTime ? `${formatClock(e.startTime)}–${formatClock(e.endTime)}` : formatClock(e.startTime);
   return `${formatEventDay(e.date)} · ${time} · ${e.venue.name}, ${e.venue.street}`;
+}
+
+/** One rendered table row (fact or event), see components/HolidayTable.astro. */
+export interface HolidayRow {
+  what: string;
+  value: string | null;
+  clarify?: string;
+  lastYear?: LastYear;
+  checkAt?: CheckAt;
+  extra?: string[];
+  source: Source;
+  checkedOn: string;
 }
