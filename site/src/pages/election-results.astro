@@ -7,6 +7,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { siteConfig } from '../lib/site-config';
+import { fitDescription } from '../lib/meta-description';
 import { ELECTION_BY_TOWN } from '../config/election';
 import { resolvePageMeta } from '../lib/page-meta';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
@@ -34,7 +35,7 @@ const electionLabel = formatYmd(election.election_date, true);
 ---
 <BaseLayout
   title={pageMeta.title}
-  description={`Unofficial results for the ${electionLabel} election in ${siteConfig.cityName}, taken from the official source and labeled with the time the source last updated.`}
+  description={fitDescription(`Unofficial results for the ${electionLabel} election in ${siteConfig.cityName}, taken from the official source and labeled with the time the source last updated.`)}
   canonicalUrl={canonicalUrl}
   noindex={noindex}
 >
@@ -71,7 +72,7 @@ const electionLabel = formatYmd(election.election_date, true);
 </BaseLayout>
 
 <script>
-  import { metaLine, nextPollDelay, precinctsLine, turnoutLine, viewState, type ResultsPayload } from '../lib/election-results';
+  import { contestsInScope, metaLine, nextPollDelay, precinctsLine, turnoutLine, viewState, type ResultsPayload } from '../lib/election-results';
 
   const root = document.querySelector<HTMLElement>('.er-live');
   if (root && root.dataset.live === 'true') {
@@ -91,7 +92,7 @@ const electionLabel = formatYmd(election.election_date, true);
       meta.textContent = metaLine(p, root.dataset.source ?? '', root.dataset.tz ?? 'UTC');
       const pl = [precinctsLine(p), turnoutLine(p)].filter(Boolean).join(' · ');
       progress.hidden = !pl; progress.textContent = pl;
-      list.replaceChildren(...(p.contests ?? []).map((c) => {
+      list.replaceChildren(...contestsInScope(p).map((c) => {
         const card = mk('article', 'er-card');
         card.appendChild(mk('h3', 'er-contest', c.name));
         const ol = mk('ul', 'er-choices');

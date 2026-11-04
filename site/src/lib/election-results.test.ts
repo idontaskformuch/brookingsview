@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { endpointFor, metaLine, precinctsLine, turnoutLine, viewState, type ResultsPayload } from './election-results';
+import { contestsInScope, endpointFor, metaLine, precinctsLine, turnoutLine, viewState, type ResultsPayload } from './election-results';
 
 const base: ResultsPayload = { available: true, town: 'brookings_sd', electionDate: '2026-11-03', phase: 'night', unofficial: true };
 
@@ -38,5 +38,20 @@ describe('results page polling', () => {
     expect(nextPollDelay('before')).toBe(60_000);
     expect(nextPollDelay(null)).toBe(60_000);
     expect(nextPollDelay('done')).toBeNull();
+  });
+});
+
+describe('contestsInScope (Broomfield shows statewide and federal contests only)', () => {
+  const mk = (id: string, name: string) => ({ id, name, choices: [] });
+  const contests = [mk('20', 'United States Senator'), mk('150', 'Representative - District 5'), mk('210', 'Governor'), mk('3600', 'Supreme Court Justice - Hood'),
+    mk('6000', 'Amendment 81'), mk('6130', 'Proposition 137'), mk('1010', 'State Senator - District 1'), mk('2001', 'State Representative - District 1'),
+    mk('4020', 'District Court Judge - 2nd'), mk('5120', 'County Court Judge - Denver'), mk('7306', 'City of Aurora Ballot Issue 3A'), mk('7702', '17th Judicial District Ballot Question 7E')];
+  const base = { available: true, town: 'broomfield_co', electionDate: '2026-11-03', phase: 'night', unofficial: true, sourceUrl: 'https://results.enr.clarityelections.com/CO/127407/384556/', contests } as ResultsPayload;
+  it('drops legislative seats, judges of other districts and other towns ballot issues from the state event', () => {
+    expect(contestsInScope(base).map((c) => c.id)).toEqual(['20', '150', '210', '3600', '6000', '6130']);
+  });
+  it('keeps everything once the Broomfield county event is the source, and for other towns', () => {
+    expect(contestsInScope({ ...base, sourceUrl: 'https://results.enr.clarityelections.com/CO/Broomfield/130000/1/' })).toHaveLength(contests.length);
+    expect(contestsInScope({ ...base, town: 'brookings_sd' })).toHaveLength(contests.length);
   });
 });
