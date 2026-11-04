@@ -543,7 +543,7 @@ const CITIES: Record<string, SiteConfig> = {
     contentTrackRetired: true,
     disabledSections: ['reviews', 'recipes', 'editorials', 'columns'],
     safetyNotices: true,
-    eveningLayer: { mode: 'threshold', maxMiles: 35, includeTicketmasterSports: true },
+    eveningLayer: { mode: 'threshold', maxMiles: 35, includeTicketmasterSports: true, cards: { regions: {}, hidePrice: true, cityLabels: true } },
     // Owner-approved 2026-10-21. Tabs follow GA4 traffic (facilities, not home sales); Home sales sits in Work & Home.
     nav: {
       tabs: ['today', 'tonight', 'events'],
