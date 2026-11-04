@@ -10,6 +10,11 @@ and a backoff when a mirror answers 429/5xx. Data (c) OpenStreetMap contributors
 
     python -m scripts.refresh_osm_places            # dry run: fetch and report, write nothing
     python -m scripts.refresh_osm_places --apply    # write (what the osm-open-late workflow runs)
+    python -m scripts.refresh_osm_places --town glasgow --out snapshot.json     # one Overpass call, result to a file, DB untouched
+    python -m scripts.refresh_osm_places --town glasgow --from-file snapshot.json --apply   # write that file, no second Overpass call
+
+Every place carries its coordinates (`lat`, `lon`: a node's own, or the `center` of a way or relation), which the evening layer's
+"Make a night of it" needs to work out a walk; a place Overpass gives none for has no `lat`/`lon` and is never paired.
 """
 from __future__ import annotations
 
@@ -37,23 +42,40 @@ KEEP_TAGS = ("name", "amenity", "opening_hours", "website", "contact:website")
 def overpass_query(lat: float, lon: float, radius_km: float) -> str:
     return (
         '[out:json][timeout:25];nwr["amenity"~"^(pub|bar|nightclub|restaurant)$"]["opening_hours"]["name"]'
-        f"(around:{round(radius_km * 1000)},{lat},{lon});out tags;"
+        f"(around:{round(radius_km * 1000)},{lat},{lon});out tags center;"
     )
 
 
+def coordinates(el: dict[str, Any]) -> dict[str, float]:
+    """{'lat', 'lon'} from a node's own position or a way's/relation's center; {} when Overpass gave none (never guessed)."""
+    pos = el.get("center") or el
+    lat, lon = pos.get("lat"), pos.get("lon")
+    if isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
+        return {"lat": round(float(lat), 6), "lon": round(float(lon), 6)}
+    return {}
+
+
 def slim_elements(elements: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Only what the site reads: type, id and five tags. Elements without a name or opening_hours are dropped."""
+    """Only what the site reads: type, id, position and five tags. Elements without a name or opening_hours are dropped."""
     out = []
     for el in elements:
         tags = el.get("tags") or {}
         if not tags.get("name") or not tags.get("opening_hours"):
             continue
-        out.append({"type": el.get("type"), "id": el.get("id"), "tags": {k: tags[k] for k in KEEP_TAGS if k in tags}})
+        out.append({"type": el.get("type"), "id": el.get("id"), **coordinates(el), "tags": {k: tags[k] for k in KEEP_TAGS if k in tags}})
     return out
 
 
 def due(last_fetched: datetime | None, now: datetime, force: bool = False) -> bool:
     return force or last_fetched is None or now - last_fetched >= timedelta(days=MIN_DAYS_BETWEEN_RUNS)
+
+
+def read_snapshot_file(path: Path) -> list[dict[str, Any]]:
+    return json.loads(path.read_text(encoding="utf-8"))["elements"]
+
+
+def write_snapshot_file(path: Path, town_id: str, elements: list[dict[str, Any]], fetched_at: datetime) -> None:
+    path.write_text(json.dumps({"town_id": town_id, "fetched_at": fetched_at.isoformat(), "elements": elements}, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
 def towns_with_open_late() -> list[dict[str, Any]]:
@@ -89,13 +111,22 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="write to osm_places (default: dry run)")
     ap.add_argument("--force", action="store_true", help="ignore the one-run-per-week guard")
+    ap.add_argument("--town", help="only this town_id (needed with --out and --from-file)")
+    ap.add_argument("--out", type=Path, help="fetch once and write the result to this file; nothing is written to the database")
+    ap.add_argument("--from-file", type=Path, help="with --apply: write this file's elements to the database instead of calling Overpass")
     args = ap.parse_args()
+    if (args.out or args.from_file) and not args.town:
+        ap.error("--out and --from-file need --town")
+    if args.out and args.from_file:
+        ap.error("--out and --from-file are separate steps")
+    if args.from_file and not args.apply:
+        ap.error("--from-file only makes sense with --apply")
 
     now = datetime.now(timezone.utc)
     failures = 0
     with get_conn() as conn:
         with conn.cursor() as cur:
-            for i, town in enumerate(towns_with_open_late()):
+            for i, town in enumerate(t for t in towns_with_open_late() if not args.town or t["town_id"] == args.town):
                 cur.execute("SELECT fetched_at FROM osm_places WHERE town_id = %s", (town["town_id"],))
                 row = cur.fetchone()
                 if not due(row[0] if row else None, now, args.force):
@@ -103,20 +134,27 @@ def main() -> int:
                     continue
                 if i:
                     time.sleep(PAUSE_BETWEEN_TOWNS_S)
-                try:
-                    elements = fetch(town)
-                except RuntimeError as e:
-                    print(f"  [FAILED] {e}")
-                    failures += 1
-                    continue
+                if args.from_file:
+                    elements = read_snapshot_file(args.from_file)
+                else:
+                    try:
+                        elements = fetch(town)
+                    except RuntimeError as e:
+                        print(f"  [FAILED] {e}")
+                        failures += 1
+                        continue
                 print(f"  [ok]     {town['town_id']}: {len(elements)} places with opening hours within {town['radius_km']} km")
+                if args.out:
+                    write_snapshot_file(args.out, town["town_id"], elements, now)
+                    print(f"  [file]   {args.out}")
+                    continue
                 if args.apply:
                     cur.execute(
                         "INSERT INTO osm_places (town_id, fetched_at, radius_km, elements) VALUES (%s, now(), %s, %s) "
                         "ON CONFLICT (town_id) DO UPDATE SET fetched_at = now(), radius_km = EXCLUDED.radius_km, elements = EXCLUDED.elements",
                         (town["town_id"], town["radius_km"], Jsonb(elements)),
                     )
-    print("written to DB" if args.apply else "DRY RUN -- nothing written, pass --apply to write")
+    print("written to DB" if args.apply and not args.out else "DRY RUN -- nothing written to the database, pass --apply to write")
     return 1 if failures else 0
 
 
