@@ -19,6 +19,9 @@ export interface OsmPlace {
   kind: OpenLateKind;
   week: WeekHours;
   website: string | null;
+  /** From the snapshot's `center` (or `lat`/`lon` on a node); null in snapshots written before the refresh asked for coordinates. */
+  lat: number | null;
+  lon: number | null;
 }
 
 export interface OpenLateRow {
@@ -27,6 +30,8 @@ export interface OpenLateRow {
   kind: OpenLateKind;
   closing: string;
   website: string | null;
+  lat?: number | null;
+  lon?: number | null;
   /** Neighbourhood from the static area file (lib/areas.ts), null when the place has none. */
   area?: string | null;
   /** ISO instants the browser sweep hides the row by: opening time and closing time of the late range. */
@@ -42,7 +47,13 @@ export const OPEN_LATE_MAX_PER_AREA = 4;
 export const SNAPSHOT_MAX_AGE_DAYS = 14;
 const KINDS: Record<string, OpenLateKind> = { pub: 'Pub', bar: 'Bar', nightclub: 'Nightclub', restaurant: 'Restaurant' };
 
-interface OverpassElement { type: string; id: number; tags?: Record<string, string> }
+interface OverpassElement { type: string; id: number; tags?: Record<string, string>; lat?: number; lon?: number; center?: { lat: number; lon: number } }
+
+function coordOf(el: OverpassElement): { lat: number | null; lon: number | null } {
+  const lat = el.center?.lat ?? el.lat;
+  const lon = el.center?.lon ?? el.lon;
+  return typeof lat === 'number' && typeof lon === 'number' && Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : { lat: null, lon: null };
+}
 
 function safeWebsite(raw: string | undefined): string | null {
   if (!raw) return null;
@@ -64,7 +75,7 @@ export function placesFromOverpass(elements: OverpassElement[]): OsmPlace[] {
     const key = `${t.name.toLowerCase()}|${t.amenity}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ osmId: `${el.type}/${el.id}`, name: t.name, kind: KINDS[t.amenity], week, website: safeWebsite(t.website ?? t['contact:website']) });
+    out.push({ osmId: `${el.type}/${el.id}`, name: t.name, kind: KINDS[t.amenity], week, website: safeWebsite(t.website ?? t['contact:website']), ...coordOf(el) });
   }
   return out;
 }
@@ -83,7 +94,7 @@ export function openLateRows(places: OsmPlace[], day: number, tz: string, max = 
     const r = lateRange(p.week, weekdayOf(day));
     if (!r) continue;
     rows.push({
-      osmId: p.osmId, name: p.name, kind: p.kind, closing: closingLabel(r), website: p.website,
+      osmId: p.osmId, name: p.name, kind: p.kind, closing: closingLabel(r), website: p.website, lat: p.lat, lon: p.lon,
       start: new Date(midnight + r.start * 60_000).toISOString(), end: new Date(midnight + r.end * 60_000).toISOString(), endMin: r.end,
     });
   }

@@ -204,26 +204,29 @@ function pageProbe({ allowSel, wantLinks }) {
   const evRoot = document.querySelector('[data-ev-page]');
   if (evRoot) {
     const hourIn = (iso, z) => Number(new Intl.DateTimeFormat('en-GB', { timeZone: z, hour: '2-digit', hourCycle: 'h23' }).format(new Date(iso)));
-    const days = [...evRoot.querySelectorAll('.ev-day')].map((d, i) => {
+    const days = [...evRoot.querySelectorAll('.ev-day, .tc-day')].map((d, i) => {
       const z = d.dataset.tz || pageTz;
-      const entries = [...d.querySelectorAll('.ev-card, .ev-row:not([data-late])')].map((el) => {
-        const a = el.querySelector('a.ev-title, .ev-card-title a');
+      const entries = [...d.querySelectorAll('.ev-card, .ev-row:not([data-late]), [data-tc-rows] .tc-card:not([data-late])')].map((el) => {
+        const a = el.querySelector('a.ev-title, .ev-card-title a, a.tc-link');
         const isCard = el.classList.contains('ev-card');
-        const group = isCard ? (el.querySelector('.ev-card-group')?.innerText ?? '').replace(/^[\s·]+/, '').trim() : (el.closest('.ev-group')?.querySelector('.ev-group-name')?.innerText ?? '').trim();
+        const isTc = el.classList.contains('tc-card');
+        const group = isTc ? (el.querySelector('.tc-tag')?.innerText ?? '').trim() : isCard ? (el.querySelector('.ev-card-group')?.innerText ?? '').replace(/^[\s·]+/, '').trim() : (el.closest('.ev-group')?.querySelector('.ev-group-name')?.innerText ?? '').trim();
         return { list: isCard ? 'cards' : 'rows', start: el.dataset.start, end: el.dataset.end ?? null, visible: visible(el), group,
-          title: (a ?? el.querySelector('.ev-title, .ev-card-title'))?.innerText.trim() ?? '', href: a?.getAttribute('href') ?? '',
-          venue: (el.querySelector('.ev-meta')?.innerText ?? '').split(' · ')[0].trim(),
+          title: (isTc ? el.querySelector('.tc-title') : (a ?? el.querySelector('.ev-title, .ev-card-title')))?.innerText.trim() ?? '', href: a?.getAttribute('href') ?? '',
+          venue: (el.querySelector('.ev-meta, .tc-meta')?.innerText ?? '').split(' · ')[0].trim(),
           localHour: el.dataset.start ? hourIn(el.dataset.start, z) : -1 };
       });
-      const late = [...d.querySelectorAll('.ev-row[data-late]')].map((el) => ({ name: el.querySelector('.ev-title')?.innerText.trim() ?? '', meta: el.querySelector('.ev-meta')?.innerText.trim() ?? '' }));
+      const late = [...d.querySelectorAll('.ev-row[data-late], .tc-card[data-late]')].map((el) => ({ name: el.querySelector('.ev-title, .tc-title')?.innerText.trim() ?? '', meta: el.querySelector('.ev-meta, .tc-meta')?.innerText.trim() ?? '' }));
       return { id: i, visible: visible(d), entries, late };
     });
+    const tcCount = document.querySelector('[data-tc-count]');
+    const tcLabel = document.querySelector('[data-tc-count-label]');
     const sumText = document.querySelector('[data-sum="count"] [data-sum-text]');
-    const sumMatch = sumText && visible(sumText) ? /^([\d,]+) things? on (.+)$/.exec(sumText.innerText.trim()) : null;
+    const sumMatch = tcCount && tcLabel && visible(tcCount) ? /^([\d,]+) things? on (.+)$/.exec(`${tcCount.innerText.trim()} ${tcLabel.innerText.trim()}`) : sumText && visible(sumText) ? /^([\d,]+) things? on (.+)$/.exec(sumText.innerText.trim()) : null;
     evening = { nowIso: now.toISOString(), days, summaryCount: sumMatch ? Number(sumMatch[1].replace(/,/g, '')) : null, period: sumMatch ? sumMatch[2] : '',
       aboutText: document.getElementById('about-this-page')?.innerText ?? '',
       weatherText: document.querySelector('.ev-weather')?.innerText ?? '',
-      freeCount: [...evRoot.querySelectorAll('.ev-label')].filter((l) => visible(l) && l.innerText.trim() === 'Free').length + [...evRoot.querySelectorAll('.ev-group-name')].filter((h) => visible(h) && /^free/i.test(h.innerText.trim())).length };
+      freeCount: [...evRoot.querySelectorAll('.ev-label, .tc-badge--free')].filter((l) => visible(l) && l.innerText.trim() === 'Free').length + [...evRoot.querySelectorAll('.ev-group-name')].filter((h) => visible(h) && /^free/i.test(h.innerText.trim())).length };
   }
   // public-safety notices (/today line, /safety/): the text the browser built from /api/safety, null on pages without them
   const safetyEls = [...document.querySelectorAll('[data-safety]')];

@@ -5,7 +5,7 @@ import type { EveningEntry, EveningGroup } from './evening-items';
 import { localDayNumber, localHourOf, TONIGHT_FROM_HOUR } from './local-day';
 import { EVENING_LAST_START_HOUR } from './evening-threshold';
 
-export const GROUP_ORDER: EveningGroup[] = ['Live music', 'Comedy & shows', 'Quiz & pub nights', 'Clubs & late', 'Sport', 'Family', 'Festivals & fairs', 'Film'];
+export const GROUP_ORDER: EveningGroup[] = ['Live music', 'Comedy & shows', 'Theatre', 'Quiz & pub nights', 'Clubs & late', 'Sport', 'Family', 'Festivals & fairs', 'Film'];
 export const FREE_GROUP = 'Free tonight';
 export const OTHER_GROUP = 'Also on';
 export const MAX_HIGHLIGHTS = 3;
@@ -58,11 +58,15 @@ export function groupEntries(entries: EveningEntry[]): EveningListGroup[] {
 }
 
 /** The evening of `day`: entries starting at/after 17:00 local that day. Highlights come out of the compact rows (no row twice). */
-export function buildSection(entries: EveningEntry[], day: number, kind: 'tonight' | 'tomorrow', tz: string, withHighlights: boolean, nearMiles?: number): EveningSection {
-  const evening = entries.filter((e) => {
+export function eveningEntries(entries: EveningEntry[], day: number, tz: string): EveningEntry[] {
+  return entries.filter((e) => {
     const at = new Date(e.start);
     return localDayNumber(at, tz) === day && localHourOf(at, tz) >= TONIGHT_FROM_HOUR;
   });
+}
+
+export function buildSection(entries: EveningEntry[], day: number, kind: 'tonight' | 'tomorrow', tz: string, withHighlights: boolean, nearMiles?: number): EveningSection {
+  const evening = eveningEntries(entries, day, tz);
   const near = evening.filter((e) => isNearEntry(e, nearMiles));
   const far = evening.filter((e) => !isNearEntry(e, nearMiles));
   const highlights = withHighlights ? pickHighlights(near.length > 0 ? near : evening) : [];

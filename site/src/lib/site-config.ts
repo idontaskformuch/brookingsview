@@ -65,6 +65,8 @@ export interface SiteConfig {
     indexApproved?: true;
     /** Page heading when the town's own pattern does not fit (Broomfield: "Tonight in and around Broomfield"). */
     h1?: string;
+    /** Card layout of /tonight (spec .claude/specs/tonight-cards.md) instead of rows. maxChips = most area chips shown; the chips come from the data's own areas. */
+    cards?: { maxChips: number };
   };
   /** Public-safety notices (wildfires near the town, air quality, evacuation links): /safety/ and the line on /today. Moreno Valley and Broomfield
    *  (owner 2026-10-29); the towns must also exist in lib/safety-towns.ts. Other towns redirect /safety/ to /. */
@@ -806,7 +808,7 @@ const CITIES: Record<string, SiteConfig> = {
   // yet listed in the US towns' network disclosure. Phase 3 enables sources one by one.
   glasgow: {
     townId: 'glasgow',
-    eveningLayer: { mode: 'threshold', maxMiles: 15, includeTicketmasterSports: true, openLate: true, register: true, indexApproved: true },
+    eveningLayer: { mode: 'threshold', maxMiles: 15, includeTicketmasterSports: true, openLate: true, register: true, indexApproved: true, cards: { maxChips: 8 } },
     nav: {
       tabs: ['today', 'tonight', 'events'],
       groups: {

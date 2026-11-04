@@ -20,7 +20,7 @@ import { hasEnded, DEFAULT_EVENT_MS, localDayNumber, localHourOf, localInstantIs
 import { ticketmasterImageProxyPath } from './images';
 import type { EveningItem } from './evening-threshold';
 
-export type EveningGroup = 'Live music' | 'Comedy & shows' | 'Quiz & pub nights' | 'Clubs & late' | 'Sport' | 'Family' | 'Festivals & fairs' | 'Film';
+export type EveningGroup = 'Live music' | 'Comedy & shows' | 'Quiz & pub nights' | 'Clubs & late' | 'Theatre' | 'Sport' | 'Family' | 'Festivals & fairs' | 'Film';
 export type EveningLabel = 'Free' | '18+' | 'All ages';
 export type EveningSource = 'ticketmaster' | 'own' | 'register';
 
@@ -51,6 +51,10 @@ export interface EveningEntry {
   area?: string | null;
   lat?: number | null;
   lon?: number | null;
+  /** Lowest ticket price when the source states one (Ticketmaster priceRanges); null/absent = unknown, never a guess. */
+  priceMin?: number | null;
+  /** ISO 4217 code of priceMin ("GBP"); null/absent when the source gives none. */
+  priceCurrency?: string | null;
 }
 
 /** One row of the curated venue register (db.getEveningRegister): a rule the weekly job read off the venue's own page. */
@@ -109,7 +113,7 @@ export function groupForTicketmaster(segment: string | null | undefined, genre: 
   const gen = (genre ?? '').toLowerCase();
   if (/\b(family|children|kids)\b/.test(gen)) return 'Family';
   if (seg === 'music') return /dance|electronic|club|house|techno/.test(gen) ? 'Clubs & late' : 'Live music';
-  if (seg === 'arts & theatre') return 'Comedy & shows';
+  if (seg === 'arts & theatre') return gen === 'theatre' ? 'Theatre' : 'Comedy & shows';
   if (seg === 'sports') return 'Sport';
   if (seg === 'film') return 'Film';
   if (seg === 'miscellaneous') return /fair|festival|expo|community|civic|hobby/.test(gen) ? 'Festivals & fairs' : null;
@@ -219,6 +223,7 @@ function ticketmasterEntry(item: TicketmasterFeedItem, o: EveningEntryOptions): 
     checked: o.checked,
     image: e.imageUrl ? { src: ticketmasterImageProxyPath(e.imageUrl), alt: `Photo for "${e.title}"`, width: e.imageWidth ?? 1600, height: e.imageHeight ?? 900 } : null,
     lat: e.venueLatitude, lon: e.venueLongitude,
+    priceMin: e.priceMin ?? null, priceCurrency: e.priceCurrency ?? null,
   };
 }
 

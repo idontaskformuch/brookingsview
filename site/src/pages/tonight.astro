@@ -20,7 +20,12 @@ import { metaDescription } from '../lib/meta-description';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
 import { buildEveningEntries, toThresholdItems } from '../lib/evening-items';
 import { indexingForTown } from '../lib/evening-verdict';
-import { buildEveningSections } from '../lib/evening-page';
+import { buildEveningSections, eveningEntries } from '../lib/evening-page';
+import TonightCard from '../components/tonight/TonightCard.astro';
+import TonightRows from '../components/tonight/TonightRows.astro';
+import TonightStyles from '../components/tonight/TonightStyles.astro';
+import { chipsFor, pairNights, SOON_MAX_CARDS } from '../lib/tonight-cards';
+import { showTimeGb } from '../lib/whats-on-dates';
 import { placesFromSnapshot, openLateRows, openLateCounts, decorateOpenLate } from '../lib/osm-open-late';
 import { areasFor, withAreas } from '../lib/areas';
 import { gettingHomeFor } from '../lib/getting-home';
@@ -70,6 +75,13 @@ const forecast = forecastLine(periods, tz, now);
 const alertCount = alerts.length;
 
 const tonight = sections[0];
+const cards = layer.cards;
+const eveningOf = new Map(sections.map((s) => [s.day, eveningEntries(entries, s.day, tz)]));
+const tonightEvents = [...(eveningOf.get(tonight.day) ?? [])].sort((a, b) => a.start.localeCompare(b.start));
+const upNext = tonightEvents.filter((e) => new Date(e.start).getTime() > now.getTime() - 3 * 3_600_000).slice(0, SOON_MAX_CARDS);
+const chips = cards ? chipsFor([...eveningOf.values()].flat().map((e) => e.area), cards.maxChips) : [];
+const chipCount = (area: string) => tonightEvents.filter((e) => e.area === area).length;
+const pairs = cards ? pairNights(tonightEvents, lateBySection.get(tonight.day) ?? [], now, tz) : [];
 const tonightLate = openLateRows(osm, tonight.day, tz, Number.MAX_SAFE_INTEGER);
 const isSunday = new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'short' }).format(now) === 'Sun';
 const lastTrain = lastSubwayTime(home, isSunday);
@@ -90,12 +102,79 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
 <BaseLayout title={pageMeta.title} canonicalUrl={canonicalUrl} noindex={!indexing.indexable}
   description={metaDescription('tonight', siteConfig)}>
   <Breadcrumbs trail={breadcrumbTrail} />
-  <header class="ev-head">
+  <header class:list={['ev-head', { 'ev-head--cards': !!cards }]}>
     <h1>{layer.h1 ?? pageMeta.h1}</h1>
     <ShareButton title={pageMeta.title} />
   </header>
   <p class="ev-updated">Updated {updatedLabel} · <a href="#about-this-page">How we gather this</a></p>
 
+  {cards ? (
+    <div class="tc" data-tc data-tz={tz}>
+      <TonightStyles />
+      <section class="tc-hero" aria-label="Tonight at a glance">
+        <p class="tc-count"><span class="tc-big" data-tc-count>{tonightEvents.length}</span> <span class="tc-count-label" data-tc-count-label>{tonightEvents.length === 1 ? 'thing' : 'things'} on tonight</span></p>
+        <p class="tc-next" data-tc-next hidden></p>
+      </section>
+
+      {upNext.length > 0 && (
+        <section class="tc-soon" data-tc-soon-box aria-labelledby="tc-soon-h">
+          <h2 id="tc-soon-h" data-tc-soon-h>Up next</h2>
+          <ul class="tc-row tc-row--lg" data-tc-soon>
+            {upNext.map((e) => <TonightCard e={e} tz={tz} lg />)}
+          </ul>
+        </section>
+      )}
+
+      {(forecast || alertCount > 0) && (
+        <p class="ev-weather">
+          {forecast && <span>{forecast} </span>}
+          {alertCount > 0
+            ? <a href="/weather/">{alertCount} active weather {alertCount === 1 ? 'alert' : 'alerts'}: check before you head out</a>
+            : <a href="/weather/">Full forecast</a>}
+        </p>
+      )}
+
+      {chips.length > 0 && (
+        <nav class="tc-chips" aria-label="Filter by area">
+          <button type="button" class="tc-chip" data-tc-chip="" aria-pressed="true">All <span data-tc-chip-n>{tonightEvents.length}</span></button>
+          {chips.map((c) => <button type="button" class="tc-chip" data-tc-chip={c.area} aria-pressed="false">{c.area} <span data-tc-chip-n>{chipCount(c.area)}</span></button>)}
+        </nav>
+      )}
+
+      <div data-ev-page>
+        {sections.map((s) => (
+          <section class="tc-day" aria-labelledby={`tn-${s.kind}-h`} data-evening-day={s.day} data-tz={tz} data-built-kind={s.kind}
+            hidden={s.count === 0 && lateBySection.get(s.day)!.length === 0 && s.kind === 'tomorrow' ? true : undefined}>
+            <h2 id={`tn-${s.kind}-h`} class="tc-day-h"><span data-evening-heading>{s.kind === 'tonight' ? 'Tonight' : 'Tomorrow night'}</span> <span class="ev-date">{dayLabelOf(s.day)}</span></h2>
+            {s.kind === 'tonight' && pairs.length > 0 && (
+              <section class="tc-night" data-tc-pairs aria-labelledby="tc-night-h">
+                <h3 id="tc-night-h">Make a night of it</h3>
+                <ul class="tc-pairs">
+                  {pairs.map((p) => (
+                    <li class="tc-pair" data-pair data-start={p.event.start} data-end={p.event.end ?? undefined} data-area={p.event.area ?? undefined}>
+                      <span class="tc-pair-time">{showTimeGb(p.event.start, tz)}</span>
+                      <span class="tc-pair-main">
+                        <a class="tc-pair-event" href={p.event.href ?? undefined}>{p.event.title}</a>
+                        <span class="tc-meta">{[p.event.venue, p.event.area].filter(Boolean).join(' · ')}</span>
+                      </span>
+                      <span class="tc-pair-arrow" aria-hidden="true">→</span>
+                      <span class="tc-pair-main">
+                        <span class="tc-pair-place">{p.place.name} <span class="tc-pair-until">{p.place.closing}</span></span>
+                        <span class="tc-meta">{p.walk} min walk (approx)</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            <TonightRows id={`tn-${s.kind}`} entries={eveningOf.get(s.day) ?? []} late={lateBySection.get(s.day)!} tz={tz} />
+          </section>
+        ))}
+      </div>
+
+      <button type="button" class="tc-surprise" data-tc-surprise hidden>Surprise me</button>
+    </div>
+  ) : (<>
   <SectionHero section="today" evening compact />
 
   <EveningSummary parts={summary} label="Tonight at a glance" train={train} />
@@ -119,6 +198,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
       />
     ))}
   </div>
+  </>)}
 
   {!anyRows && (
     <p class="ev-empty">Nothing is listed for this evening or the next. The <a href="/events/">full events list</a>{siteConfig.hasWhatsOn && <span> and <a href="/whats-on/">bigger shows in the region</a></span>} show what is coming later.</p>
@@ -160,6 +240,11 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
 </BaseLayout>
 
 <script>
+  import { initTonightCards } from '../lib/tonight-cards-client';
+  initTonightCards(document);
+</script>
+
+<script>
   import { sectionState } from '../lib/evening-page';
   import { refreshSummary } from '../lib/evening-client';
   // The build can be hours old: hide an evening that is over, and turn "Tomorrow night" into "Tonight" after midnight.
@@ -180,6 +265,8 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
 
 <style>
   .ev-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.25rem; }
+  .ev-head--cards h1 { font-size: 1.625rem; line-height: 1.15; margin: 0.25rem 0 0; }
+  .ev-head--cards + .ev-updated { font-size: 0.8125rem; margin-bottom: 0.25rem; }
   .ev-updated { margin: 0 0 1rem; color: var(--ink-soft); font-size: 0.9375rem; }
   .ev-weather { margin: 0 0 1.25rem; color: var(--ink-soft); }
   .ev-note, .ev-empty { color: var(--ink-soft); font-size: 0.9375rem; }

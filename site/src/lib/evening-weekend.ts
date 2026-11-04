@@ -15,7 +15,7 @@ export function weekendGroupOf(e: EveningEntry): string {
     case 'Sport': return 'Sport';
     case 'Festivals & fairs': return 'Markets & food';
     case 'Family': return 'Family';
-    case 'Live music': case 'Comedy & shows': case 'Quiz & pub nights': case 'Clubs & late': case 'Film': return 'Nights out & live music';
+    case 'Live music': case 'Comedy & shows': case 'Theatre': case 'Quiz & pub nights': case 'Clubs & late': case 'Film': return 'Nights out & live music';
     default: return e.labels.includes('Free') ? 'Free' : 'Also on';
   }
 }
