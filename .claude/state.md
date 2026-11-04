@@ -3,6 +3,7 @@
 Historik: se .claude/state-archive.md, läs bara vid behov.
 
 **HÖGTIDSLAGER START 2026-11-04 (Session 1: ramverk + Broomfield /thanksgiving/):** Handoff-spec från ägaren (innehållsregler, meta, session 1-3, senare) ska sparas i .claude/specs/holiday-layer.md. NOTERAT: (a) FÖRE NÄSTA VAL: koppla in Broomfields county-källa (/CO/Broomfield/) så att lokala ballot measures (1A/1B/1C) kommer med. (b) 2462990 (state-commit) ligger lokalt och följer med nästa push.
+**SESSION 1 STATUS 2026-11-04:** modell/mall/meta GODKÄNT med ändringar (se .claude/specs/holiday-layer.md, 'Beslut 2026-11-04'). Punkt 2 klar: Broomfield-tabell levererad i chatten, läsning bara, väntar ägarens godkännande; INGEN kod skriven. Robots: broomfield.org spärrar /rss, /common/modules/icalendar/, sök, CurrentEvents (rörs ej); compass.broomfield.org spärrad (använd inte, ej heller som 'förra året'-källa); runsignup/wasteconnections/broomfieldfish tillåtna; rtd-denver.com saknar robots.txt (404).
 
 **FRÅGA→SIDA BROOMFIELD 2026-11-04 (punkt 1, bara analys, ingen kod):** GSC-export (3 mån, 51 klick, 3 256 vis.) sparad som .claude/gsc/broomfield-queries.csv + broomfield-pages.csv (gitignorad). Exporten har INGEN fråga×sida-koppling, så landningssida är härledd efter ämne. Fynd: 31 av 51 klick = /vote/ + /election-results/; facility/place-sidor 1 377 vis. men 2 klick; borttagna AI-/s/-sidor 3 klick/94 vis.; stubbarna 0 klick. Väntar på ägarens besked; punkt 2 (stubbar 301/410, Ticketmaster-versaler) och 3 (stadshus+polis) ej påbörjade.
 
