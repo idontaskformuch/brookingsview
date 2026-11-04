@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
-  badgesFor, timeState, isStartingSoon, walkMinutes, pairNights, chipsFor, matchesArea, surprisePick, surpriseCandidates,
+  badgesFor, timeState, isStartingSoon, walkMinutes, pairNights, regionOf, unmappedAreas, chipPlan, countByRegion, matchesArea, surprisePick, surpriseCandidates,
   nextUp, untilLabel, bucketOf, type SurpriseCard, type LatePlace,
 } from './tonight-cards';
 import { groupForTicketmaster, type EveningEntry } from './evening-items';
 import { hasEnded } from './local-day';
+import { readFileSync } from 'node:fs';
+import { ALL_CONFIGS } from './site-config';
+import { experimental_AstroContainer as AstroContainer } from 'astro/container';
+import TonightChips from '../components/tonight/TonightChips.astro';
 
 const TZ = 'Europe/London';
 const now = new Date('2026-11-04T19:00:00Z'); // GMT: 19:00 local
@@ -91,14 +95,61 @@ describe('pairNights (Make a night of it)', () => {
   });
 });
 
-describe('area chips and filtering', () => {
-  it('counts per area, biggest first, rows without area only in All', () => {
-    expect(chipsFor(['West End', 'Merchant City', 'West End', null, undefined, 'Finnieston', 'West End', 'Merchant City']))
-      .toEqual([{ area: 'West End', count: 3 }, { area: 'Merchant City', count: 2 }, { area: 'Finnieston', count: 1 }]);
+const REGIONS = ALL_CONFIGS.find((c) => c.townId === 'glasgow')!.eveningLayer!.cards!.regions;
+const ORDER = Object.keys(REGIONS);
+const FIXTURE = JSON.parse(readFileSync(new URL('./fixtures/glasgow-neighbourhoods-2026-11-04.json', import.meta.url), 'utf8')).neighbourhoods as string[];
+
+describe('region mapping (Glasgow, owner-approved table)', () => {
+  it('maps a neighbourhood to its region', () => {
+    expect(regionOf('Merchant City', REGIONS)).toBe('Merchant City');
+    expect(regionOf('Yorkhill', REGIONS)).toBe('Finnieston');
+    expect(regionOf('Sandyford', REGIONS)).toBe('Finnieston');
+    expect(regionOf('Cathedral Precinct', REGIONS)).toBe('Merchant City');
+    expect(regionOf("Queen's Cross", REGIONS)).toBe('West End');
   });
-  it('limits the number of chips', () => expect(chipsFor(['a', 'b', 'c'], 2)).toHaveLength(2));
+  it('unmapped or missing means no region (shown under All only)', () => { expect(regionOf('Nowhere', REGIONS)).toBeNull(); expect(regionOf(null, REGIONS)).toBeNull(); });
+  it('a neighbourhood is in one region only', () => {
+    const all = Object.values(REGIONS).flat();
+    expect(new Set(all).size).toBe(all.length);
+  });
+  it('the table covers every neighbourhood in the fixture (a miss is listed here and logged at build)', () => expect(unmappedAreas(FIXTURE, REGIONS)).toEqual([]));
+  it('unmappedAreas reports new neighbourhoods, sorted and once', () => expect(unmappedAreas(['Hillhead', 'Zed', 'Alpha', 'Zed', null], REGIONS)).toEqual(['Alpha', 'Zed']));
+  it('region order is the chip order', () => expect(ORDER).toEqual(['City Centre', 'Finnieston', 'West End', 'Merchant City', 'East End', 'Southside']));
+});
+
+describe('chip plan (>= 3 things per chip, >= 2 chips for the row)', () => {
+  it('no chip under the threshold', () => expect(chipPlan({ 'City Centre': 5, 'West End': 2, Southside: 3 }, ORDER, null).visible).toEqual(['City Centre', 'Southside']));
+  it('fewer than two qualifying chips hides the whole row', () => {
+    expect(chipPlan({ 'City Centre': 9, 'West End': 2 }, ORDER, null).showRow).toBe(false);
+    expect(chipPlan({}, ORDER, null).showRow).toBe(false);
+  });
+  it('two qualifying chips show the row', () => expect(chipPlan({ 'City Centre': 3, 'West End': 3 }, ORDER, null).showRow).toBe(true));
+  it('the selected chip stays while selected even if it fell under', () => expect(chipPlan({ 'City Centre': 4, Southside: 3, 'West End': 1 }, ORDER, 'West End').visible).toContain('West End'));
+  it('counts are events + Open late: the same function counts both', () => expect(countByRegion(['West End', 'West End', null, undefined, 'City Centre'])).toEqual({ 'West End': 2, 'City Centre': 1 }));
+  it('chips keep the config order', () => expect(chipPlan({ Southside: 4, 'City Centre': 4 }, ORDER, null).visible).toEqual(['City Centre', 'Southside']));
+});
+
+describe('chips never render a number', () => {
+  it('names only, and below-threshold chips are hidden', async () => {
+    const c = await AstroContainer.create();
+    const html = await c.renderToString(TonightChips, { props: { order: ORDER, plan: chipPlan({ 'City Centre': 12, 'West End': 30, Southside: 1 }, ORDER, null) } });
+    const labels = [...html.matchAll(/<button[^>]*>([^<]*)<\/button>/g)].map((m) => m[1].trim());
+    expect(labels).toEqual(['All', ...ORDER]);
+    for (const l of labels) expect(l).not.toMatch(/\d/);
+    expect(html).not.toContain('data-tc-chip-n');
+    expect(html).toMatch(/data-tc-chip="Southside"[^>]*hidden/);
+    expect(html).not.toMatch(/data-tc-chip="West End"[^>]*hidden/);
+  });
+  it('the row itself is hidden when fewer than two chips qualify', async () => {
+    const c = await AstroContainer.create();
+    const html = await c.renderToString(TonightChips, { props: { order: ORDER, plan: chipPlan({ 'City Centre': 12 }, ORDER, null) } });
+    expect(html).toMatch(/<nav[^>]*data-tc-chips[^>]*hidden/);
+  });
+});
+
+describe('area filtering', () => {
   it('All (null) matches everything', () => { expect(matchesArea('West End', null)).toBe(true); expect(matchesArea(null, null)).toBe(true); });
-  it('a chip matches only its own area', () => { expect(matchesArea('West End', 'West End')).toBe(true); expect(matchesArea('Finnieston', 'West End')).toBe(false); expect(matchesArea(null, 'West End')).toBe(false); });
+  it('a chip matches only its own region; unmapped cards only show under All', () => { expect(matchesArea('West End', 'West End')).toBe(true); expect(matchesArea('Finnieston', 'West End')).toBe(false); expect(matchesArea(null, 'West End')).toBe(false); });
 });
 
 describe('Surprise me', () => {

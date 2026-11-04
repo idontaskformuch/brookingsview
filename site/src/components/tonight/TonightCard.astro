@@ -7,8 +7,8 @@ import { showTimeGb } from '../../lib/whats-on-dates';
 import { bucketOf, badgesFor, BUCKET_LABEL } from '../../lib/tonight-cards';
 import type { OpenLateRow } from '../../lib/osm-open-late';
 
-interface Props { e?: EveningEntry; place?: OpenLateRow; tz: string; lg?: boolean }
-const { e, place, tz, lg = false } = Astro.props;
+interface Props { e?: EveningEntry; place?: OpenLateRow; tz: string; lg?: boolean; /** Coarse area the chips filter by (lib/tonight-cards.ts regionOf); null = only under All. */ region?: string | null }
+const { e, place, tz, lg = false, region = null } = Astro.props;
 const bucket = place ? 'late' : bucketOf(e!.group);
 const href = place ? place.website : e!.href;
 const external = !!href && /^https?:/i.test(href);
@@ -20,7 +20,7 @@ const badges = place ? [] : badgesFor(e!);
 const Tag = href ? 'a' : 'div';
 ---
 <li class:list={['tc-card', { 'tc-card--lg': lg }]} data-card data-bucket={bucket} data-id={place ? place.osmId : e!.id}
-  data-start={place ? place.start : e!.start} data-end={(place ? place.end : e!.end) ?? undefined} data-area={(place ? place.area : e!.area) ?? undefined}
+  data-start={place ? place.start : e!.start} data-end={(place ? place.end : e!.end) ?? undefined} data-area={region ?? undefined}
   data-late={place ? '' : undefined} style={`--c: var(--tc-${bucket})`}>
   <Tag class="tc-link" href={href ?? undefined} rel={external ? 'noopener' : undefined}>
     <span class="tc-time" data-tc-time>{time}</span>

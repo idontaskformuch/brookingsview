@@ -1,0 +1,14 @@
+---
+/** The area chips: region names only, no numbers (the header's count is events; a chip's count would be events + Open late and the two would
+ *  disagree). `plan` says which chips show and whether the row shows at all (lib/tonight-cards.ts chipPlan); the browser re-plans from the live clock. */
+import type { ChipPlan } from '../../lib/tonight-cards';
+
+interface Props { order: string[]; plan: ChipPlan }
+const { order, plan } = Astro.props;
+---
+{order.length > 0 && (
+  <nav class="tc-chips" aria-label="Filter by area" data-tc-chips hidden={!plan.showRow || undefined}>
+    <button type="button" class="tc-chip" data-tc-chip="" aria-pressed="true">All</button>
+    {order.map((r) => <button type="button" class="tc-chip" data-tc-chip={r} aria-pressed="false" hidden={!plan.visible.includes(r) || undefined}>{r}</button>)}
+  </nav>
+)}

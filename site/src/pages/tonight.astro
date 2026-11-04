@@ -24,7 +24,9 @@ import { buildEveningSections, eveningEntries } from '../lib/evening-page';
 import TonightCard from '../components/tonight/TonightCard.astro';
 import TonightRows from '../components/tonight/TonightRows.astro';
 import TonightStyles from '../components/tonight/TonightStyles.astro';
-import { chipsFor, pairNights, SOON_MAX_CARDS } from '../lib/tonight-cards';
+import { chipPlan, countByRegion, pairNights, regionOf, unmappedAreas, SOON_MAX_CARDS } from '../lib/tonight-cards';
+import { OPEN_LATE_MAX_ROWS } from '../lib/osm-open-late';
+import TonightChips from '../components/tonight/TonightChips.astro';
 import { showTimeGb } from '../lib/whats-on-dates';
 import { placesFromSnapshot, openLateRows, openLateCounts, decorateOpenLate } from '../lib/osm-open-late';
 import { areasFor, withAreas } from '../lib/areas';
@@ -79,8 +81,16 @@ const cards = layer.cards;
 const eveningOf = new Map(sections.map((s) => [s.day, eveningEntries(entries, s.day, tz)]));
 const tonightEvents = [...(eveningOf.get(tonight.day) ?? [])].sort((a, b) => a.start.localeCompare(b.start));
 const upNext = tonightEvents.filter((e) => new Date(e.start).getTime() > now.getTime() - 3 * 3_600_000).slice(0, SOON_MAX_CARDS);
-const chips = cards ? chipsFor([...eveningOf.values()].flat().map((e) => e.area), cards.maxChips) : [];
-const chipCount = (area: string) => tonightEvents.filter((e) => e.area === area).length;
+const regions = cards?.regions ?? {};
+const regionOrder = Object.keys(regions);
+const tonightLateCards = (lateBySection.get(tonight.day) ?? []).slice(0, OPEN_LATE_MAX_ROWS);
+// what a chip tap shows tonight: events + Open late places in the region
+const chipThings = countByRegion([...tonightEvents.map((e) => regionOf(e.area, regions)), ...tonightLateCards.map((p) => regionOf(p.area, regions))]);
+const plan = chipPlan(chipThings, regionOrder, null);
+if (cards) {
+  const missing = unmappedAreas([...[...eveningOf.values()].flat().map((e) => e.area), ...[...lateBySection.values()].flat().map((p) => p.area)], regions);
+  if (missing.length > 0) console.warn(`[tonight] neighbourhoods in no chip region (shown under All only): ${missing.join(', ')}`);
+}
 const pairs = cards ? pairNights(tonightEvents, lateBySection.get(tonight.day) ?? [], now, tz) : [];
 const tonightLate = openLateRows(osm, tonight.day, tz, Number.MAX_SAFE_INTEGER);
 const isSunday = new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'short' }).format(now) === 'Sun';
@@ -120,7 +130,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
         <section class="tc-soon" data-tc-soon-box aria-labelledby="tc-soon-h">
           <h2 id="tc-soon-h" data-tc-soon-h>Up next</h2>
           <ul class="tc-row tc-row--lg" data-tc-soon>
-            {upNext.map((e) => <TonightCard e={e} tz={tz} lg />)}
+            {upNext.map((e) => <TonightCard e={e} tz={tz} lg region={regionOf(e.area, regions)} />)}
           </ul>
         </section>
       )}
@@ -134,12 +144,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
         </p>
       )}
 
-      {chips.length > 0 && (
-        <nav class="tc-chips" aria-label="Filter by area">
-          <button type="button" class="tc-chip" data-tc-chip="" aria-pressed="true">All <span data-tc-chip-n>{tonightEvents.length}</span></button>
-          {chips.map((c) => <button type="button" class="tc-chip" data-tc-chip={c.area} aria-pressed="false">{c.area} <span data-tc-chip-n>{chipCount(c.area)}</span></button>)}
-        </nav>
-      )}
+      <TonightChips order={regionOrder} plan={plan} />
 
       <div data-ev-page>
         {sections.map((s) => (
@@ -151,7 +156,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
                 <h3 id="tc-night-h">Make a night of it</h3>
                 <ul class="tc-pairs">
                   {pairs.map((p) => (
-                    <li class="tc-pair" data-pair data-start={p.event.start} data-end={p.event.end ?? undefined} data-area={p.event.area ?? undefined}>
+                    <li class="tc-pair" data-pair data-start={p.event.start} data-end={p.event.end ?? undefined} data-area={regionOf(p.event.area, regions) ?? undefined}>
                       <span class="tc-pair-time">{showTimeGb(p.event.start, tz)}</span>
                       <span class="tc-pair-main">
                         <a class="tc-pair-event" href={p.event.href ?? undefined}>{p.event.title}</a>
@@ -167,7 +172,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
                 </ul>
               </section>
             )}
-            <TonightRows id={`tn-${s.kind}`} entries={eveningOf.get(s.day) ?? []} late={lateBySection.get(s.day)!} tz={tz} />
+            <TonightRows id={`tn-${s.kind}`} entries={eveningOf.get(s.day) ?? []} late={lateBySection.get(s.day)!} tz={tz} regions={regions} />
           </section>
         ))}
       </div>

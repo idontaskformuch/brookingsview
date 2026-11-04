@@ -6,7 +6,7 @@ import { hasEnded } from './local-day';
 import { sectionState } from './evening-page';
 import { showTimeGb } from './whats-on-dates';
 import {
-  timeState, isStartingSoon, matchesArea, nextUp, untilLabel, surprisePick, surpriseCandidates, SOON_MAX_CARDS,
+  timeState, isStartingSoon, matchesArea, nextUp, untilLabel, surprisePick, surpriseCandidates, chipPlan, countByRegion, SOON_MAX_CARDS,
   type SurpriseCard, type Bucket,
 } from './tonight-cards';
 
@@ -27,6 +27,12 @@ export function initTonightCards(doc: Document): void {
 
   const sections = () => $$(doc, '[data-evening-day]');
   const visibleSections = () => sections().filter((s) => !s.hidden);
+
+  /** Every card (events and Open late) in the first visible evening that is not over: what a chip tap shows. */
+  const firstDayEverything = (): Card[] => {
+    const sec = visibleSections()[0];
+    return sec ? $$(sec, '[data-tc-rows] [data-card]').map(readCard) : [];
+  };
 
   /** Cards in the first visible evening (what the header counts). */
   const firstDayCards = (): Card[] => {
@@ -140,17 +146,22 @@ export function initTonightCards(doc: Document): void {
     }
   }
 
+  /** Chips carry no numbers. A chip shows with >= 3 things tonight (events + Open late), the row with >= 2 such chips; the selected chip stays. */
   function renderChips(now: Date): void {
-    const live = liveCards(now);
-    const chips = $$<HTMLButtonElement>(doc, '[data-tc-chip]');
-    chips.forEach((chip) => {
-      const a = chip.dataset.tcChip || '';
-      const n = a === '' ? live.length : live.filter((c) => c.area === a).length;
-      const num = chip.querySelector('[data-tc-chip-n]');
-      if (num) num.textContent = String(n);
-      chip.hidden = a !== '' && n === 0 && area !== a;
-      chip.setAttribute('aria-pressed', String((a === '' ? null : a) === area));
-    });
+    const nav = doc.querySelector<HTMLElement>('[data-tc-chips]');
+    if (!nav) return;
+    const chips = $$<HTMLButtonElement>(nav, '[data-tc-chip]').filter((c) => c.dataset.tcChip);
+    const order = chips.map((c) => c.dataset.tcChip!);
+    const live = firstDayEverything().filter((c) => !hasEnded({ start: c.start, end: c.end }, now, tz));
+    let plan = chipPlan(countByRegion(live.map((c) => c.area)), order, area);
+    if (!plan.showRow && area !== null) {
+      area = null; // never leave a filter on with no chip to clear it
+      plan = chipPlan(countByRegion(live.map((c) => c.area)), order, null);
+      applyFilter();
+    }
+    nav.hidden = !plan.showRow;
+    chips.forEach((chip) => { chip.hidden = !plan.visible.includes(chip.dataset.tcChip!); });
+    $$<HTMLButtonElement>(nav, '[data-tc-chip]').forEach((chip) => chip.setAttribute('aria-pressed', String((chip.dataset.tcChip || null) === area)));
   }
 
   function renderSurprise(now: Date): void {

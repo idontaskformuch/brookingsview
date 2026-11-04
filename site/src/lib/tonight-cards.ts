@@ -105,13 +105,39 @@ export function pairNights(events: EveningEntry[], late: LatePlace[], now: Date,
   return out.sort((a, b) => a.event.start.localeCompare(b.event.start));
 }
 
-export interface Chip { area: string; count: number }
+/** The town's coarse areas for the chips (siteConfig.eveningLayer.cards.regions): region -> the OSM neighbourhoods inside it. Key order = chip order. */
+export type Regions = Record<string, string[]>;
 
-/** Area chips from the data itself: the areas with the most things on, biggest first, at most `max`. Rows with no area are only in "All". */
-export function chipsFor(areas: Array<string | null | undefined>, max = 8): Chip[] {
-  const counts = new Map<string, number>();
-  for (const a of areas) if (a) counts.set(a, (counts.get(a) ?? 0) + 1);
-  return [...counts].map(([area, count]) => ({ area, count })).sort((a, b) => b.count - a.count || a.area.localeCompare(b.area)).slice(0, max);
+/** The region a neighbourhood belongs to, or null (the card then only shows under "All"). */
+export function regionOf(area: string | null | undefined, regions: Regions): string | null {
+  if (!area) return null;
+  for (const [region, hoods] of Object.entries(regions)) if (hoods.includes(area)) return region;
+  return null;
+}
+
+/** Neighbourhoods that appear in the data but in no region, sorted: logged at build so the owner can map them. */
+export function unmappedAreas(areas: Array<string | null | undefined>, regions: Regions): string[] {
+  return [...new Set(areas.filter((a): a is string => !!a && regionOf(a, regions) === null))].sort();
+}
+
+/** A chip needs this many things tonight (events + Open late places: what a tap actually shows); the row needs this many chips. */
+export const CHIP_MIN_THINGS = 3;
+export const CHIP_MIN_CHIPS = 2;
+
+export interface ChipPlan { visible: string[]; showRow: boolean }
+
+/** Which region chips show. Chips carry no number, so this is the only place counts matter. The selected region stays visible while it is
+ *  selected; the row hides altogether with fewer than CHIP_MIN_CHIPS qualifying chips. `order` is the config order. */
+export function chipPlan(counts: Record<string, number>, order: string[], selected: string | null): ChipPlan {
+  const qualifying = order.filter((r) => (counts[r] ?? 0) >= CHIP_MIN_THINGS);
+  return { visible: order.filter((r) => qualifying.includes(r) || r === selected), showRow: qualifying.length >= CHIP_MIN_CHIPS };
+}
+
+/** Things per region from cards' regions (null = unmapped, counted nowhere). */
+export function countByRegion(regions: Array<string | null | undefined>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const r of regions) if (r) out[r] = (out[r] ?? 0) + 1;
+  return out;
 }
 
 /** The filter: no area selected shows everything, otherwise only the cards in that area. */
