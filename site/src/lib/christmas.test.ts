@@ -91,14 +91,44 @@ describe('Glasgow /christmas/ data as approved 2026-11-04', () => {
     }
   });
 
-  it('council rows are unconfirmed with a check pointer until the owner pastes a value (glasgow.gov.uk is never fetched)', () => {
+  it('council rows are unconfirmed with a check pointer (glasgow.gov.uk is never fetched); the office rows carry 2025/26 values with the year in every line', () => {
     const council = [...page.facts, ...page.events].filter((r) => new URL(r.source.url).hostname.endsWith('glasgow.gov.uk'));
-    expect(council).toHaveLength(4);
+    expect(council).toHaveLength(9);
     for (const r of council) {
       expect(r.status).toBe('unconfirmed');
       expect(r.status === 'unconfirmed' && r.checkAt?.url).toBeTruthy();
-      expect(r.status === 'unconfirmed' && r.lastYear).toBeFalsy();
     }
+    const offices = page.facts.filter((f) => f.section === 'closures' && f.status === 'unconfirmed' && f.lastYear?.season === '2025/26' && f.source.url.endsWith('/article/11458'));
+    expect(offices.map((f) => f.label)).toEqual([
+      'Registrars', 'Housing Benefit and Council Tax', 'Scottish Welfare Fund, phone', 'Scottish Welfare Fund, online', 'Social work offices', 'Home care',
+    ]);
+    for (const f of offices) {
+      if (f.status !== 'unconfirmed') continue;
+      expect(f.checkAt?.url).toBe('https://www.glasgow.gov.uk/article/11458');
+      const v = f.lastYear!.value;
+      if (f.label !== 'Scottish Welfare Fund, online') expect(v, f.label).toMatch(/202[56]/);
+      // 2025/26 values only: no 2026 festive weekday is ever stated
+      expect(v, f.label).not.toMatch(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} Dec 2026/);
+      expect(v, f.label).not.toMatch(/2027/);
+    }
+    const swfOnline = offices.find((f) => f.label === 'Scottish Welfare Fund, online')!;
+    expect(swfOnline.status === 'unconfirmed' && swfOnline.lastYear?.source.url).toBe('https://www.glasgow.gov.uk/article/992/Scottish-Welfare-Fund');
+  });
+
+  it('recycling centres: no festive hours on the page, so unconfirmed with the Easter Queenslie note and no last-year value; bins: address lookup, no last-year value', () => {
+    const rc = page.facts.find((f) => f.label === 'Recycling centres')!;
+    expect(rc.status).toBe('unconfirmed');
+    expect(rc.status === 'unconfirmed' && rc.lastYear).toBeUndefined();
+    expect(rc.clarify).toBe('Easter Queenslie HWRC closed from 20 Apr 2026 for redevelopment; reopening was expected late summer or early autumn 2026.');
+    expect(rc.status === 'unconfirmed' && rc.checkAt?.url).toBe('https://www.glasgow.gov.uk/article/1529/Household-Waste-Recycling-Centres');
+    const bins = page.facts.find((f) => f.section === 'trash')!;
+    expect(bins.status).toBe('unconfirmed');
+    expect(bins.status === 'unconfirmed' && bins.lastYear).toBeUndefined();
+    expect(bins.status === 'unconfirmed' && bins.checkAt).toMatchObject({
+      label: 'Enter your address to see your collection days', url: 'https://www.glasgow.gov.uk/article/1524/Bin-Collection-Days',
+    });
+    const gs = page.events.find((e) => e.name.startsWith('George Square'))!;
+    expect(gs.status).toBe('unconfirmed');
   });
 
   it('keeps the 403 coach operators link-only, grouped, and out of the rows', () => {

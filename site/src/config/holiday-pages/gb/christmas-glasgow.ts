@@ -12,6 +12,7 @@ const GL_LIBRARIES: Source = { name: 'Glasgow Life: libraries and community venu
 const GL_SPORT: Source = { name: 'Glasgow Life: sport festive opening hours', url: 'https://www.glasgowlife.org.uk/festive-opening-hours/sport-festive-opening-hours' };
 const GL_CHRISTMAS: Source = { name: 'Glasgow Life: Christmas in Glasgow', url: 'https://www.glasgowlife.org.uk/christmas-in-glasgow' };
 const COUNCIL_HOURS: Source = { name: 'Glasgow City Council: Christmas and New Year opening times', url: 'https://www.glasgow.gov.uk/article/11458' };
+const COUNCIL_SWF: Source = { name: 'Glasgow City Council: Scottish Welfare Fund', url: 'https://www.glasgow.gov.uk/article/992/Scottish-Welfare-Fund' };
 const COUNCIL_RECYCLING: Source = { name: 'Glasgow City Council: household waste recycling centres', url: 'https://www.glasgow.gov.uk/article/1529/Household-Waste-Recycling-Centres' };
 const COUNCIL_BINS: Source = { name: 'Glasgow City Council: bin collection days', url: 'https://www.glasgow.gov.uk/article/1524/Bin-Collection-Days' };
 const COUNCIL_NEWS: Source = { name: 'Glasgow City Council: news', url: 'https://www.glasgow.gov.uk/Avenuesnews' };
@@ -26,6 +27,25 @@ const FB_NE: Source = { name: 'Glasgow North East Foodbank: locations', url: 'ht
 const FB_NW: Source = { name: 'Glasgow North West Foodbank: locations', url: 'https://glasgownw.foodbank.org.uk/locations/' };
 const FB_CLARIFY = 'Christmas hours not yet published; call before you go.';
 const SHELTER: Source = { name: 'Shelter Scotland', url: 'https://scotland.shelter.org.uk/' };
+
+/** Council office rows: read by the owner on glasgow.gov.uk 2026-11-04, all of it the 2025/26 festive period, so every
+ *  row is unconfirmed for 2026 with last year's value (source: the council page). No 2026 weekdays are stated. */
+function councilOfficeRows(): HolidayFact[] {
+  const row = (label: string, value: string, source: Source = COUNCIL_HOURS): HolidayFact => ({
+    section: 'closures', status: 'unconfirmed', label,
+    lastYear: { value, source, season: '2025/26' },
+    checkAt: { label: COUNCIL_HOURS.name, url: COUNCIL_HOURS.url },
+    source: COUNCIL_HOURS, checkedOn: CHECKED,
+  });
+  return [
+    row('Registrars', 'Closed 4pm Wed 24 Dec 2025, reopened Mon 29 Dec 2025 at 9am. Closed again 12.30pm Wed 31 Dec 2025, reopened Mon 5 Jan 2026 at 9am.'),
+    row('Housing Benefit and Council Tax', 'Priority phone line closed 12pm Tue 23 Dec 2025, reopened Mon 5 Jan 2026 at 9am. Council Tax live chat closed 12pm Wed 24 Dec 2025.'),
+    row('Scottish Welfare Fund, phone', 'Phone service closed 4pm Wed 24 Dec 2025, reopened Mon 5 Jan 2026.'),
+    row('Scottish Welfare Fund, online', 'Online applications were open 24 hours a day.', COUNCIL_SWF),
+    row('Social work offices', 'Open 8.45am–4.45pm Mon–Thu and 8.45am–3.55pm Fri. Closed 25 and 26 Dec 2025 and 1 and 2 Jan 2026, and from 12 noon on 31 Dec 2025 (Alcohol and Drug Recovery Services open until 5pm). Castlemilk (10 Ardencraig Place) and Mercat2 (35 Hecla Avenue) closed 4.45pm Wed 24 Dec 2025 and reopened 3 Jan 2026. Emergency Social Work Service 0300 343 1505. Homelessness out of hours 0800 838 502.'),
+    row('Home care', 'Limited service on 25 and 26 Dec 2025, the afternoon of 31 Dec 2025, and 1 and 2 Jan 2026.'),
+  ];
+}
 
 const GLASGOW_FACTS: HolidayFact[] = [
   /* closures */
@@ -44,7 +64,7 @@ const GLASGOW_FACTS: HolidayFact[] = [
     section: 'closures', status: 'unconfirmed', label: 'Libraries (Glasgow Life)',
     lastYear: {
       value: 'Closed 25 and 26 Dec 2025. Most branches 10am–4pm on 24 Dec; hours varied by branch after that.',
-      source: GL_LIBRARIES,
+      source: GL_LIBRARIES, season: '2025/26',
     },
     checkAt: { label: 'Glasgow Life festive opening hours', url: GL_LIBRARIES.url },
     source: GL_LIBRARIES, checkedOn: CHECKED,
@@ -53,25 +73,22 @@ const GLASGOW_FACTS: HolidayFact[] = [
     section: 'closures', status: 'unconfirmed', label: 'Sport and leisure centres (Glasgow Life)',
     lastYear: {
       value: 'Most venues closed 25 and 26 Dec 2025 and 1 and 2 Jan, reopening 3 Jan. Many had reduced hours on 24 Dec; a few closed longer.',
-      source: GL_SPORT,
+      source: GL_SPORT, season: '2025/26',
     },
     checkAt: { label: 'Glasgow Life sport festive opening hours', url: GL_SPORT.url },
     source: GL_SPORT, checkedOn: CHECKED,
   },
-  {
-    section: 'closures', status: 'unconfirmed', label: 'Council offices and services',
-    checkAt: { label: COUNCIL_HOURS.name, url: COUNCIL_HOURS.url },
-    source: COUNCIL_HOURS, checkedOn: CHECKED,
-  },
+  ...councilOfficeRows(),
   {
     section: 'closures', status: 'unconfirmed', label: 'Recycling centres',
+    clarify: 'Easter Queenslie HWRC closed from 20 Apr 2026 for redevelopment; reopening was expected late summer or early autumn 2026.',
     checkAt: { label: COUNCIL_RECYCLING.name, url: COUNCIL_RECYCLING.url },
     source: COUNCIL_RECYCLING, checkedOn: CHECKED,
   },
   /* trash */
   {
     section: 'trash', status: 'unconfirmed', label: 'Christmas and New Year collections', meta: 'bins',
-    checkAt: { label: COUNCIL_BINS.name, url: COUNCIL_BINS.url },
+    checkAt: { label: 'Enter your address to see your collection days', url: COUNCIL_BINS.url },
     source: COUNCIL_BINS, checkedOn: CHECKED,
   },
   /* transit */

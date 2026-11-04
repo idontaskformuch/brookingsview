@@ -50,7 +50,8 @@ export type CheckAt =
   | { label: string; url: string; phone?: string }
   | { label: string; phone: string; url?: string };
 
-export interface LastYear { value: string; source: Source }
+/** `season` (e.g. "2025/26") is shown as "Last year (2025/26):" when the source's season is not a plain calendar year. */
+export interface LastYear { value: string; source: Source; season?: string }
 
 /** `hours` = standing opening hours: shown under "More", never in the closures table. */
 export type FactSection = Exclude<HolidaySection, 'events'> | 'hours';
