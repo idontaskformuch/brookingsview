@@ -65,6 +65,9 @@ interface FactBase {
   /** Meta description: for a confirmed fact the short phrase that names it ("FISH food bank closed Nov 26–27"),
    *  for an unconfirmed one the short name ("Trash"). A fact without one is left out of the description. */
   meta?: string;
+  /** Confirmed phrases (facts and events) with the same `metaGroup` are merged into one description phrase,
+   *  "<group>: <meta>, <meta>", placed where the first of them would have been. */
+  metaGroup?: string;
 }
 
 export interface ConfirmedFact extends FactBase {
@@ -103,6 +106,8 @@ interface EventBase {
   clarify?: string;
   /** Meta description phrase, e.g. "Turkey Day 5K/10K Nov 26". */
   meta?: string;
+  /** See FactBase.metaGroup. */
+  metaGroup?: string;
 }
 
 export interface ConfirmedEvent extends EventBase {
@@ -220,6 +225,11 @@ export const DESCRIPTION_MAX = 155;
 /** Priority for naming confirmed items in the description: events, closures, help, then the rest. */
 const DESCRIPTION_ORDER: HolidaySection[] = ['events', 'closures', 'help', 'trash', 'transit'];
 
+/** A common-noun name written in lower case in the data ("bins") starts the sentence with a capital. */
+function upperFirst(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function listWords(words: string[]): string {
   return words.length <= 1 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`;
 }
@@ -234,17 +244,26 @@ export function buildHolidayMeta(page: HolidayPageData, holidayLabel: string, ci
   const h1 = `${holidayLabel} ${page.year}${words ? `: ${words}` : ''}`;
   const title = `${holidayLabel} ${page.year} in ${cityName}${words ? `: ${words}` : ''}`;
 
-  const phrases: string[] = [];
+  const items: { text: string; group?: string }[] = [];
   for (const s of DESCRIPTION_ORDER) {
     if (s === 'events') {
-      for (const e of page.events) if (e.status === 'confirmed' && e.meta) phrases.push(e.meta);
+      for (const e of page.events) if (e.status === 'confirmed' && e.meta) items.push({ text: e.meta, group: e.metaGroup });
     } else {
-      for (const f of page.facts) if (f.section === s && f.status === 'confirmed' && f.meta) phrases.push(f.meta);
+      for (const f of page.facts) if (f.section === s && f.status === 'confirmed' && f.meta) items.push({ text: f.meta, group: f.metaGroup });
     }
+  }
+  // Same group -> one phrase at the position of its first member.
+  const phrases: string[] = [];
+  const seen = new Set<string>();
+  for (const it of items) {
+    if (!it.group) { phrases.push(it.text); continue; }
+    if (seen.has(it.group)) continue;
+    seen.add(it.group);
+    phrases.push(`${it.group}: ${items.filter((x) => x.group === it.group).map((x) => x.text).join(', ')}`);
   }
   const pendingNames = page.facts.flatMap((f) => (f.status === 'unconfirmed' && f.meta ? [f.meta] : []));
   const tail = [
-    pendingNames.length ? ` ${listWords(pendingNames)} not yet confirmed.` : '',
+    pendingNames.length ? ` ${upperFirst(listWords(pendingNames))} not yet confirmed.` : '',
     ` Checked ${formatIsoDate(lastChecked(page), false, page.locale)}.`,
   ].join('');
 

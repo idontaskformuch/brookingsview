@@ -113,6 +113,27 @@ describe('deterministic meta', () => {
       expect(d).toMatch(/Checked [A-Z][a-z]{2} \d+, 2026\.$/);
     }
   });
+  it('regression: the three US descriptions are exactly what they were before the metaGroup change', () => {
+    expect(buildHolidayMeta(pageFor('brookings_sd'), 'Thanksgiving', 'Brookings').description).toBe(
+      'City offices mostly closed Nov 26 · Landfill closed Nov 26 · Recycling and yard waste move to Wed Nov 25. Library not yet confirmed. Checked Oct 24, 2026.',
+    );
+  });
+  it('phrases with the same metaGroup merge into one, at the position of the first; an upper-case pending name is untouched', () => {
+    const base = pageFor('broomfield_co');
+    const src = { name: 'x', url: 'https://example.org' };
+    const page: HolidayPageData = {
+      ...base,
+      events: [{ status: 'confirmed', name: 'A', date: '2026-11-26', startTime: '09:00', venue: { name: 'v', locality: 'l' }, url: src.url,
+        source: src, checkedOn: '2026-11-04', metaGroup: 'Fair', meta: 'north site from 6 Nov' }],
+      facts: [
+        { section: 'closures', status: 'confirmed', label: 'a', value: 'v', source: src, checkedOn: '2026-11-04', metaGroup: 'Fair', meta: 'closed 25 Dec' },
+        { section: 'closures', status: 'confirmed', label: 'b', value: 'v', source: src, checkedOn: '2026-11-04', meta: 'Office closed' },
+        { section: 'trash', status: 'unconfirmed', label: 'c', source: src, checkedOn: '2026-11-04', checkAt: { label: 'x', url: src.url }, meta: 'Trash' },
+      ],
+    };
+    expect(buildHolidayMeta(page, 'Thanksgiving', 'X').description)
+      .toBe('Fair: north site from 6 Nov, closed 25 Dec · Office closed. Trash not yet confirmed. Checked Nov 4, 2026.');
+  });
   it('drops whole phrases from the end of the confirmed list to fit, events first in priority', () => {
     const base = pageFor('broomfield_co');
     const long: HolidayPageData = {

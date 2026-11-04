@@ -32,7 +32,7 @@ const GLASGOW_FACTS: HolidayFact[] = [
   {
     section: 'closures', status: 'confirmed', label: 'Winter Wonderland, St Enoch Square',
     value: 'Thu 24 Dec 10am–8pm. Closed Fri 25 Dec. Sat 26 and Sun 27 Dec 12 noon–8pm.',
-    meta: 'Winter Wonderland closed 25 Dec',
+    metaGroup: 'Winter Wonderland', meta: 'closed 25 Dec',
     source: WW_FAQ, checkedOn: CHECKED,
   },
   {
@@ -59,7 +59,7 @@ const GLASGOW_FACTS: HolidayFact[] = [
     source: GL_SPORT, checkedOn: CHECKED,
   },
   {
-    section: 'closures', status: 'unconfirmed', label: 'Council offices and services', meta: 'Council offices',
+    section: 'closures', status: 'unconfirmed', label: 'Council offices and services',
     checkAt: { label: COUNCIL_HOURS.name, url: COUNCIL_HOURS.url },
     source: COUNCIL_HOURS, checkedOn: CHECKED,
   },
@@ -70,14 +70,14 @@ const GLASGOW_FACTS: HolidayFact[] = [
   },
   /* trash */
   {
-    section: 'trash', status: 'unconfirmed', label: 'Christmas and New Year collections', meta: 'Bin collections',
+    section: 'trash', status: 'unconfirmed', label: 'Christmas and New Year collections', meta: 'bins',
     checkAt: { label: COUNCIL_BINS.name, url: COUNCIL_BINS.url },
     source: COUNCIL_BINS, checkedOn: CHECKED,
   },
   /* transit */
   {
     section: 'transit', status: 'confirmed', label: 'ScotRail, Fri 25 Dec', value: 'No trains run on Christmas Day.',
-    meta: 'no ScotRail trains 25 Dec',
+    meta: 'No ScotRail trains 25 Dec',
     source: SCOTRAIL, checkedOn: CHECKED,
   },
   {
@@ -91,7 +91,7 @@ const GLASGOW_FACTS: HolidayFact[] = [
     source: SCOTRAIL, checkedOn: CHECKED,
   },
   {
-    section: 'transit', status: 'unconfirmed', label: 'Glasgow Subway', meta: 'Subway',
+    section: 'transit', status: 'unconfirmed', label: 'Glasgow Subway',
     checkAt: { label: SPT_TIMETABLES.name, url: SPT_TIMETABLES.url },
     source: SPT_TIMETABLES, checkedOn: CHECKED,
   },
@@ -168,7 +168,7 @@ const GLASGOW_EVENTS: HolidayEvent[] = [
     date: '2026-11-06', endDate: '2026-12-27', seasonJsonLd: true,
     venue: { name: 'St Enoch Square', locality: 'Glasgow' },
     url: WW_ENOCH.url, source: WW_ENOCH, checkedOn: CHECKED,
-    meta: 'Winter Wonderland from 6 Nov',
+    metaGroup: 'Winter Wonderland', meta: 'St Enoch from 6 Nov',
     clarify: 'Hours change on 24 to 27 Dec (see Closures and changed hours); regular hours are under More.',
     details: [
       'Entry is free; you pay for the attractions, including the solar-powered observation wheel.',
@@ -180,6 +180,7 @@ const GLASGOW_EVENTS: HolidayEvent[] = [
     date: '2026-11-20', endDate: '2027-01-03', seasonJsonLd: true,
     venue: { name: 'Glasgow Green', locality: 'Glasgow' },
     url: WW_GREEN.url, source: WW_GREEN, checkedOn: CHECKED,
+    metaGroup: 'Winter Wonderland', meta: 'Glasgow Green from 20 Nov',
     clarify: 'Hours change on 24 to 26 Dec (see Closures and changed hours); regular hours are under More.',
     details: [
       'Entry is free; the ice rink, circus and Santa’s Grotto are ticketed.',
