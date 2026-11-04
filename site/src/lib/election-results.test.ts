@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contestsInScope, endpointFor, metaLine, precinctsLine, turnoutLine, viewState, type ResultsPayload } from './election-results';
+import { lastUpdatedLabel, progressRow, contestsInScope, endpointFor, metaLine, precinctsLine, turnoutLine, viewState, type ResultsPayload } from './election-results';
 
 const base: ResultsPayload = { available: true, town: 'brookings_sd', electionDate: '2026-11-03', phase: 'night', unofficial: true };
 
@@ -53,5 +53,24 @@ describe('contestsInScope (Broomfield shows statewide and federal contests only)
   it('keeps everything once the Broomfield county event is the source, and for other towns', () => {
     expect(contestsInScope({ ...base, sourceUrl: 'https://results.enr.clarityelections.com/CO/Broomfield/130000/1/' })).toHaveLength(contests.length);
     expect(contestsInScope({ ...base, town: 'brookings_sd' })).toHaveLength(contests.length);
+  });
+});
+
+describe('progressRow / lastUpdatedLabel (Colorado precinct count is not shown)', () => {
+  const bf = { available: true, town: 'broomfield_co', electionDate: '2026-11-03', phase: 'night', unofficial: true, sourceUpdatedAt: '11/3/2026 8:47:06 PM MST',
+    precincts: { reported: 0, total: 59 }, turnout: { ballotsCounted: 37961, registered: 57682 } } as ResultsPayload;
+  it('Broomfield: unofficial label, last-updated time and turnout, never the precinct count', () => {
+    const row = progressRow(bf);
+    expect(row).toBe('Unofficial results · Last updated 8:47 PM MT · 37,961 ballots counted of 57,682 registered voters');
+    expect(row).not.toMatch(/precinct/i);
+  });
+  it('Brookings keeps its reporting count', () => {
+    expect(progressRow({ ...bf, town: 'brookings_sd', precincts: { reported: 12, total: 40 } })).toContain('12 of 40 precincts reporting');
+  });
+  it('time labels', () => {
+    expect(lastUpdatedLabel('11/3/2026 9:45 PM CT')).toBe('9:45 PM CT');
+    expect(lastUpdatedLabel('11/3/2026 9:14:10 PM MDT')).toBe('9:14 PM MT');
+    expect(lastUpdatedLabel(null)).toBeNull();
+    expect(lastUpdatedLabel('yesterday')).toBe('yesterday');
   });
 });

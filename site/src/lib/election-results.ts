@@ -71,6 +71,26 @@ export function turnoutLine(p: ResultsPayload): string | null {
   return `${t.ballotsCounted.toLocaleString('en-US')} ballots counted${reg}`;
 }
 
+/** "8:47 PM MT" from a source stamp like "11/3/2026 8:47:06 PM MST" (seconds dropped, MST/MDT -> MT); the raw stamp when it has no clock time. */
+export function lastUpdatedLabel(stamp: string | null | undefined): string | null {
+  if (!stamp) return null;
+  const m = /(\d{1,2}:\d{2})(?::\d{2})?\s*(AM|PM)\s*([A-Z]{2,4})?/i.exec(stamp);
+  if (!m) return stamp;
+  const tz = m[3] ? ` ${m[3].toUpperCase().replace(/^([CMPE])[SD]T$/, '$1T')}` : '';
+  return `${m[1]} ${m[2].toUpperCase()}${tz}`;
+}
+
+/** The progress row under the meta line. Colorado's state feed does not fill its precinct counts as mail ballots are
+ *  counted ("0 of 59" beside real vote totals looks broken), so Broomfield shows the unofficial label, the source's
+ *  last-updated time and turnout instead; Brookings keeps its reporting count. */
+export function progressRow(p: ResultsPayload): string {
+  if (p.town === 'broomfield_co') {
+    const updated = lastUpdatedLabel(p.sourceUpdatedAt);
+    return ['Unofficial results', updated ? `Last updated ${updated}` : null, turnoutLine(p)].filter(Boolean).join(' · ');
+  }
+  return [precinctsLine(p), turnoutLine(p)].filter(Boolean).join(' · ');
+}
+
 /** Milliseconds until the results page asks again, or null to stop. 3 minutes while results are live
  *  (the Worker fetches every 10), 1 minute before they start (so the page notices) and after an error. */
 export function nextPollDelay(phase: string | null): number | null {

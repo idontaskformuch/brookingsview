@@ -72,7 +72,7 @@ const electionLabel = formatYmd(election.election_date, true);
 </BaseLayout>
 
 <script>
-  import { contestsInScope, metaLine, nextPollDelay, precinctsLine, turnoutLine, viewState, type ResultsPayload } from '../lib/election-results';
+  import { contestsInScope, metaLine, nextPollDelay, progressRow, viewState, type ResultsPayload } from '../lib/election-results';
 
   const root = document.querySelector<HTMLElement>('.er-live');
   if (root && root.dataset.live === 'true') {
@@ -90,7 +90,7 @@ const electionLabel = formatYmd(election.election_date, true);
       status.textContent = '';
       meta.hidden = false;
       meta.textContent = metaLine(p, root.dataset.source ?? '', root.dataset.tz ?? 'UTC');
-      const pl = [precinctsLine(p), turnoutLine(p)].filter(Boolean).join(' · ');
+      const pl = progressRow(p);
       progress.hidden = !pl; progress.textContent = pl;
       list.replaceChildren(...contestsInScope(p).map((c) => {
         const card = mk('article', 'er-card');
