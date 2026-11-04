@@ -253,6 +253,8 @@ export interface ResultsBannerBuilt {
   swapAt: string;
   /** Visible at `now` (the build's own verdict; the browser re-checks the clock). */
   visible: boolean;
+  /** The window is over at `now`: the page ships no card at all (crawlers and no-JS visitors). */
+  expired: boolean;
   /** Text at `now`. */
   text: string;
 }
@@ -281,6 +283,7 @@ export function buildResultsBanner(cfg: ElectionConfig, timezone: string, now: D
     href: '/election-results/', before, after,
     showFrom: showFrom.toISOString(), showUntil: showUntil.toISOString(), swapAt: swapAt.toISOString(),
     visible: now >= showFrom && now < showUntil,
+    expired: now >= showUntil,
     text: now >= swapAt ? after : before,
   };
 }

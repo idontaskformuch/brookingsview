@@ -64,6 +64,7 @@ const hubBacklink = resolveHubBacklink('today', siteConfig);
 import PageGuide from '../components/PageGuide.astro';
 import SafetyNotices from '../components/SafetyNotices.astro';
 import ResultsBanner from '../components/ResultsBanner.astro';
+import { ELECTION_BY_TOWN } from '../config/election';
 import { todayDescription, todayShows, todaySources } from '../lib/today-copy';
 // Facilities, council/city hall and traffic are not tabs (owner 2026-10-29); they are linked from here and from the footer.
 const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facilities', 'traffic'].includes(s.id));
@@ -79,7 +80,7 @@ const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facili
   </div>
 
   <SectionHero section="today" compact />
-  <ResultsBanner />
+  {ELECTION_BY_TOWN[siteConfig.townId] && <ResultsBanner />}
 
   <PageGuide
     shows={todayShows(siteConfig, siteConfig.cityName)}

@@ -11,7 +11,7 @@ const cfg = ELECTION_BY_TOWN[siteConfig.townId];
 const banner = cfg ? buildResultsBanner(cfg, siteConfig.timezone) : null;
 ---
 
-{banner && (
+{banner && !banner.expired && (
   <aside class="results-banner" aria-label="Election results" hidden={!banner.visible}
     data-results-banner data-show-from={banner.showFrom} data-show-until={banner.showUntil} data-swap-at={banner.swapAt}
     data-before={banner.before} data-after={banner.after}>
