@@ -26,6 +26,7 @@
 import type { APIRoute } from 'astro';
 import { siteConfig } from '../lib/site-config';
 import { placeAbbr } from '../lib/country-profile';
+import { llmsAboutLines } from '../lib/llms-about';
 import { computeTownGraph } from '../lib/clusters';
 import { HUB_HREF, HUB_NAV_COPY, SPOKE_NAV_COPY } from '../config/clusters';
 import { getFacilities, FACILITY_CATEGORY_LABELS } from '../lib/db';
@@ -45,8 +46,7 @@ export const GET: APIRoute = async () => {
   const lines: string[] = [
     `# ${siteConfig.siteName}`,
     '',
-    `> Local public-information coverage for ${placeAbbr(siteConfig)}. ` +
-      `${siteConfig.sourceBlurb} News and listings link back to their original source. Refreshed every 6 hours.`,
+    ...llmsAboutLines({ siteName: siteConfig.siteName, place: placeAbbr(siteConfig), sourceBlurb: siteConfig.sourceBlurb }),
     '',
     // Paraphrased from how-we-gather-this.astro's own real "How the
     // summaries are written" section -- the provenance/method sentence

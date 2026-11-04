@@ -85,3 +85,8 @@ Varje steg: lokal commit, tester för berörd fil, ställelistan visas för äga
 - Skotska betyg är bara "Pass", "Improvement Required" (m.fl. statusvärden) och i stickprovet "Pass and Eat Safe"; inga poäng. 494 av 500 i provet var "Pass", så ett filter skiljer nästan inget åt. Många betyg är gamla (2019).
 - Risker: koppling ställe -> inspektion saknar gemensamt id (matchning på namn + postnummer/koordinat; fel koppling ger ett felaktigt påstående om ett namngivet ställe), AddressLine1 tom, kedjor och flera ställen på samma adress, ett gammalt betyg visas som aktuellt.
 - Rekommendation: litet värde som filter ("bara Pass" separerar inget). Om det byggs: visa bara betyg + datum + länk till FSS-posten, bara vid säker matchning (FHRSID bekräftat manuellt för registrets 17 Glasgow-ställen), aldrig som ranking. Beslutet är ägarens; ingenting byggt.
+
+### Uppdatering 2026-11-04 (senare, ägarens beslut)
+- AdSense-målet byts från Brookings till Broomfield (ca 300 impressions/dag på civila uppslagsfrågor; Brookings nästan noll). Punkt 1 ovan ("Brookings bara kaffe/open-late inför AdSense") är därmed ersatt: ingen Brookings-AdSense-vinkel. Granskning av Broomfield: .claude/specs/broomfield-adsense-audit.md (bara rapport).
+- Punkt 2 (Brookings-lista): Parkerad – under tröskel, noindex, ger inget för AdSense. Tas upp igen om Brookings får fler källor. Inget hämtas. brookings-places-proposal.md behålls.
+- Punkt 4 (FHIS/hygienbetyg): avfärdad. Gå inte vidare. Utredningen ovan behålls bara som dokumentation.
