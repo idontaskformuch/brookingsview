@@ -41,3 +41,15 @@
 ## Noterat i state.md
 - Före nästa val: koppla in Broomfields county-källa (/CO/Broomfield/) så att lokala ballot measures kommer med.
 - 2462990 (state-commit) ligger lokalt och följer med nästa push.
+
+## Beslut 2026-11-04 (ägaren, godkänt med ändringar) — datamodell/mall/meta
+1. Befintliga /thanksgiving/ byggs om på nya modellen.
+2. Brookings och Moreno flyttas till nya mallen nu: dagens fakta omskrivna till fält, status unconfirmed där källa saknas. Ingen lede/prosa kvar på någon sajt.
+3. H1 = "Thanksgiving 2026: closures, trash pickup, events" (utan stadsnamn).
+- All synlig text engelska: kolumner "What / Details / Source / Checked", "Not confirmed for 2026 · Last year: …", "Last checked: …".
+- skippedSources renderas INTE som "skippad källa": vanlig länk till källans publika sida (t.ex. "Library events: see the Broomfield Library calendar" -> compass.broomfield.org). Länka, hämta aldrig.
+- Beräknad trash (Brookings) har också source + checkedOn (samma union).
+- lastYear = { value: string; source: { name; url } }.
+- year: number, inte literal.
+- Efter fönstret: visa förra årets fakta + "2027 dates not yet published" i stället för noindex. Kräver det mycket mer jobb: behåll noindex och flagga.
+- Inget byggs förrän Broomfield-tabellen (Session 1 punkt 2) är godkänd.
