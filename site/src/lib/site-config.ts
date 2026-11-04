@@ -416,6 +416,9 @@ const NO_RENDER_WINDOW: RenderWindow = { homeSales: null, meetings: null, events
 const CITIES: Record<string, SiteConfig> = {
   brookings_sd: {
     townId: 'brookings_sd',
+    // Owner 2026-11-05: the AI content track (essays, recipes, reviews, columns) is retired here too: no /s/ pages (404), sections redirect to /.
+    contentTrackRetired: true,
+    disabledSections: ['reviews', 'recipes', 'editorials', 'columns'],
     eveningLayer: { mode: 'never', maxMiles: 75, includeTicketmasterSports: false },
     renderWindow: NO_RENDER_WINDOW,
     cityName: 'Brookings',
@@ -527,6 +530,9 @@ const CITIES: Record<string, SiteConfig> = {
 
   moreno_valley_ca: {
     townId: 'moreno_valley_ca',
+    // Owner 2026-11-05: the AI content track (essays, recipes, reviews, columns) is retired here too: no /s/ pages (404), sections redirect to /.
+    contentTrackRetired: true,
+    disabledSections: ['reviews', 'recipes', 'editorials', 'columns'],
     safetyNotices: true,
     eveningLayer: { mode: 'threshold', maxMiles: 35, includeTicketmasterSports: true },
     // Owner-approved 2026-10-21. Tabs follow GA4 traffic (facilities, not home sales); Home sales sits in Work & Home.
@@ -809,6 +815,7 @@ const CITIES: Record<string, SiteConfig> = {
       },
     },
     disabledSections: ['traffic', 'jobs', 'advertising', 'reviews', 'recipes', 'editorials', 'columns'],
+    contentTrackRetired: true,
     // Launched 2026-10-28/29 (owner's yes): indexable, sitemap on; thin facility pages keep noindex via thinFacilityMinOwnWords.
     noindexSite: false,
     thinFacilityMinOwnWords: 25,

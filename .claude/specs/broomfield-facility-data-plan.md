@@ -33,8 +33,12 @@ Källa som redan finns i raden (source_url): www.broomfield.org 35, northmetrofi
 5. Platser som efter detta fortfarande har under 25 egna ord eller saknar tider/parkering förblir noindex (regeln thinFacilityMinOwnWords är redan införd för Broomfield i den samlade ändringen).
 6. Färskhet: verified_date sätts per fält-hämtning; rader äldre än 90 dagar flaggas för omkontroll (förslag).
 
-## Ordning (förslag)
-1. Gruppen med bäst utdelning (14 platser, broomfield.org + bibliotek + museer): tider, parkering, telefon. 2. Sjukhus och RTD. 3. Parker (25) där sidan faktiskt anger uppgifterna. 4. Brandstationer och postkontor sist (störst risk att inte kunna belägga). Efter varje grupp: tabell till ägaren, godkännande, skrivning, bygge, kontroll av noindex-listan.
+## Ordning (ägarens beslut 2026-11-05)
+Brandstationerna förblir indexerbara. Prioritet:
+1. STADSHUSET (George Di Ciero City and County Building, `city-hall`) och POLISEN (`broomfield-police-department`) först: dessa två är de viktigaste uppslagssidorna och föll nyss ur sitemap (24 respektive 16 egna ord, under tröskeln 25). Fält: öppettider, adress, telefon (för polisen den ICKE-AKUTA numret, aldrig 911; verifiera mot polisens egen sida och märk det "non-emergency"), parkering, med källa per fält (egen sida på broomfield.org, citat + URL + hämtdatum). Båda väntar sedan på ägarens tabellgodkännande innan skrivning.
+2. Brandstationerna (7 st: HQ och station 61, 64, 65, 66, 67, 68): adress, icke-akut telefon, källa per fält ur northmetrofire.org stationssidor. Behåller indexering enligt ägaren; sidorna har idag 28-53 egna ord och passerar tröskeln, men saknar tider och parkering, så ingenting får påstås utöver det sidan belägger (t.ex. ingen "öppet 24/7" utan källa; stationer är normalt inte öppna för besök och det ska sägas om källan säger det).
+3. Därefter gruppen med bäst utdelning (bibliotek, rec/community center, museer, återvinning, övriga kommunala tjänster), sjukhus och RTD, parker, postkontor, enligt tabellen ovan.
+Efter varje steg: tabell till ägaren (plats, fält, gammalt/nytt värde, citat, URL), godkännande, skrivning via committad skriptfil, bygge, kontroll av noindex-listan.
 
 ## Vad jag inte vet än
 - Vilka av de 25 parksidorna anger tider eller parkering alls (inte läst parksida för parksida).

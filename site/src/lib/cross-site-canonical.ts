@@ -22,7 +22,7 @@
  *  Rotated one content type per town (not one town for everything) so no
  *  single site reads as a pure mirror of another. */
 import type { SourceType } from './db';
-import { ALL_SITES } from './site-config';
+import { ALL_SITES, ALL_CONFIGS } from './site-config';
 import { storyHref } from './content-slugs';
 
 export const CROSS_SITE_CANONICAL_ORIGINS: Partial<Record<SourceType, string>> = {
@@ -61,14 +61,20 @@ export const SHARED_CONTENT_SOURCE_TYPES: SourceType[] =
  * same slug. Never returns null/undefined -- every story has SOME
  * canonical URL, self or cross.
  */
+const isTrackRetired = (townId: string) => ALL_CONFIGS.find((c) => c.townId === townId)?.contentTrackRetired === true;
+
 export function canonicalUrlForStory(
   sourceType: SourceType,
   slug: string,
   currentTownId: string,
   selfUrl: string,
+  originRetired: (townId: string) => boolean = isTrackRetired,
 ): string {
   const originTownId = CROSS_SITE_CANONICAL_ORIGINS[sourceType];
   if (!originTownId || originTownId === currentTownId) return selfUrl;
+
+  // Never point at a page that is not built: once the origin town has retired the AI content track its story pages are 404 (owner 2026-11-05).
+  if (originRetired(originTownId)) return selfUrl;
 
   const origin = ALL_SITES.find((s) => s.townId === originTownId);
   if (!origin) return selfUrl; // defensive only -- every real townId is in ALL_SITES

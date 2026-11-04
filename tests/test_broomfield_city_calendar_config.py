@@ -1,6 +1,6 @@
-"""The Broomfield city-calendar sources must stay within what robots.txt allows and what the
-owner approved (2026-10-21): iCal feeds only, never RSS.aspx, fetched at most daily, public-event
-categories only."""
+"""The Broomfield city-calendar sources are INERT since broomfield.org/robots.txt disallowed
+/common/modules/icalendar/ (2026-10-21). The remaining checks keep the old shape rules (iCal URLs only,
+never RSS.aspx, at most daily, public-event categories) for the day the city grants permission."""
 import json
 import re
 from pathlib import Path
@@ -13,9 +13,14 @@ CITY = [s for s in EVENTS["sources"] if s.get("url", "").startswith("https://www
 GOVERNANCE_CAT_IDS = {24, 40, 43, 47, 49, 50, 51, 57, 58, 59, 60, 62, 68, 69, 70, 71, 72, 75, 76, 78, 79, 80}
 
 
-def test_city_feeds_are_registered_as_civicplus_ical():
+def test_city_feeds_are_inert_because_robots_txt_blocks_them():
+    # broomfield.org/robots.txt has disallowed /common/modules/icalendar/ since 2026-10-21 (owner 2026-11-04):
+    # a URL robots.txt blocks is never fetched, not even to test the status code.
     assert len(CITY) >= 4
-    assert all(s["kind"] == "ical_civicplus" for s in CITY)
+    for s in CITY:
+        assert s["kind"] == "blocked", s["name"]
+        assert s.get("enabled") is False, s["name"]
+    assert EVENTS["enabled"] is False
 
 
 def test_no_forbidden_or_non_feed_url():

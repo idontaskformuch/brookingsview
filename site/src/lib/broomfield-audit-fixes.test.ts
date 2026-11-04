@@ -27,4 +27,7 @@ describe('Broomfield audit fixes', () => {
   it('contact page does not claim a library for Broomfield', () => {
     expect(read('../pages/contact.astro')).toMatch(/isBroomfield \? 'the city and county'/);
   });
+  it('the AI content track is retired in every town (owner 2026-11-05): no AI /s/ pages, so nothing may canonicalize to them', () => {
+    for (const c of ALL_CONFIGS) expect(c.contentTrackRetired, c.townId).toBe(true);
+  });
 });

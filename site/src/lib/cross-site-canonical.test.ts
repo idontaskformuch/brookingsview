@@ -6,6 +6,8 @@ import { ALL_SITES } from './site-config';
 import type { SourceType } from './db';
 
 const SELF_URL = 'https://example-self.test/s/some-slug/';
+// Mapping tests below describe a world where the origin towns still publish the track; the real configs have retired it everywhere (see the last describe).
+const LIVE = () => false;
 
 describe('canonicalUrlForStory', () => {
   it('is self-canonical for a non-shared source_type regardless of town', () => {
@@ -25,16 +27,16 @@ describe('canonicalUrlForStory', () => {
     // URL must use the public slug ("recipe-...") since that's the actual
     // path the origin town now serves -- see content-slugs.ts's own
     // storyHref().
-    const url = canonicalUrlForStory('vardagsmiddag', 'vardagsmiddag-2026-08-28', 'moreno_valley_ca', SELF_URL);
+    const url = canonicalUrlForStory('vardagsmiddag', 'vardagsmiddag-2026-08-28', 'moreno_valley_ca', SELF_URL, LIVE);
     expect(url).toBe('https://brookingsview.com/s/recipe-2026-08-28/');
   });
 
   it('covers all three shared types pointing away from a non-origin town', () => {
-    expect(canonicalUrlForStory('vardagsmiddag', 'x', 'broomfield_co', SELF_URL))
+    expect(canonicalUrlForStory('vardagsmiddag', 'x', 'broomfield_co', SELF_URL, LIVE))
       .toBe('https://brookingsview.com/s/x/');
-    expect(canonicalUrlForStory('media_recension', 'x', 'brookings_sd', SELF_URL))
+    expect(canonicalUrlForStory('media_recension', 'x', 'brookings_sd', SELF_URL, LIVE))
       .toBe('https://morenovalleyview.com/s/x/');
-    expect(canonicalUrlForStory('vetenskap_kronika', 'x', 'moreno_valley_ca', SELF_URL))
+    expect(canonicalUrlForStory('vetenskap_kronika', 'x', 'moreno_valley_ca', SELF_URL, LIVE))
       .toBe('https://broomfieldview.com/s/x/');
   });
 
@@ -45,7 +47,7 @@ describe('canonicalUrlForStory', () => {
     const towns = ALL_SITES.map((s) => s.townId);
     for (const sourceType of Object.keys(CROSS_SITE_CANONICAL_ORIGINS) as SourceType[]) {
       const selfCanonicalTowns = towns.filter(
-        (townId) => canonicalUrlForStory(sourceType, 'x', townId, SELF_URL) === SELF_URL,
+        (townId) => canonicalUrlForStory(sourceType, 'x', townId, SELF_URL, LIVE) === SELF_URL,
       );
       expect(selfCanonicalTowns).toHaveLength(1);
     }
@@ -81,5 +83,17 @@ describe('isSharedContentType', () => {
 
   it('SHARED_CONTENT_SOURCE_TYPES is exactly CROSS_SITE_CANONICAL_ORIGINS\' keys', () => {
     expect(new Set(SHARED_CONTENT_SOURCE_TYPES)).toEqual(new Set(Object.keys(CROSS_SITE_CANONICAL_ORIGINS)));
+  });
+});
+
+// Regression (owner 2026-11-05): Brookings and Moreno science columns had canonical URLs on Broomfield; once the track is retired those pages are 404.
+describe('canonical never points at a page that is not built', () => {
+  it('with the real configs (track retired in every town) every shared type is self-canonical', () => {
+    for (const sourceType of Object.keys(CROSS_SITE_CANONICAL_ORIGINS) as SourceType[]) {
+      for (const s of ALL_SITES) expect(canonicalUrlForStory(sourceType, 'x', s.townId, SELF_URL)).toBe(SELF_URL);
+    }
+  });
+  it('falls back to self when only the origin town has retired the track', () => {
+    expect(canonicalUrlForStory('vetenskap_kronika', 'x', 'moreno_valley_ca', SELF_URL, (t) => t === 'broomfield_co')).toBe(SELF_URL);
   });
 });
