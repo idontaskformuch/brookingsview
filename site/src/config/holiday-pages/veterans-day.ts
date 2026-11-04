@@ -6,7 +6,9 @@
  *  so it appears only in `linkOnly`. Notice 3155 is a rolling notice: it was the Thanksgiving closures notice and
  *  became the Veterans Day one on Nov 2, so the Thanksgiving recheck must look for a new notice in the newsflash list. */
 import type { HolidayFact, HolidayEvent, HolidayPageData, Source } from '../../lib/holiday-page';
-import { VETERANS_DAY_PAGE_YEAR } from '../../lib/veterans-day';
+import { dataUpdatedOn } from './data-updated';
+
+const VETERANS_DAY_PAGE_YEAR = 2026;
 
 const CHECKED = '2026-11-04';
 const NOTICE: Source = {
@@ -87,6 +89,13 @@ export const VETERANS_DAY_META = {
   description: 'Nov 11: Broomfield city offices, courts, inventHQ and library closed. Police run 24/7 but the front desk is unstaffed. Trash, RTD and rec hours unconfirmed.',
 };
 
+/** Outside the window: no year in the title, the description names the season it covers. */
+export const VETERANS_DAY_META_EVERGREEN = {
+  title: 'Veterans Day in Broomfield: closures and hours',
+  h1: 'Veterans Day: closures and hours',
+  description: '2026: Broomfield city offices, courts, inventHQ and library closed Nov 11; police ran 24/7. Each row shows its source and check date.',
+};
+
 /** The Veterans Day page, or null for a town without one. */
 export function buildVeteransDayPage(townId: string): HolidayPageData | null {
   if (townId !== 'broomfield_co') return null;
@@ -95,6 +104,8 @@ export function buildVeteransDayPage(townId: string): HolidayPageData | null {
     facts: FACTS, events: EVENTS,
     linkOnly: [{ label: 'City events', linkText: 'Broomfield events calendar', url: 'https://compass.broomfield.org/events/week' }],
     metaOverride: VETERANS_DAY_META,
+    metaOverrideEvergreen: VETERANS_DAY_META_EVERGREEN,
+    dataUpdatedOn: dataUpdatedOn('veterans-day', townId),
     related: [
       { label: 'All upcoming events', href: '/events/' },
       { label: 'Today in town', href: '/today/' },

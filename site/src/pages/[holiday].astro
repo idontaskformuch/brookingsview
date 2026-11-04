@@ -1,0 +1,22 @@
+---
+/** The holiday pages (/veterans-day/, /thanksgiving/, /christmas/), rendered from data by the shared template.
+ *  One route so a town without a page simply gets no file: the host then answers a real 404 (wrangler
+ *  not_found_handling), not a redirect. A page exists for a town only with at least one confirmed row from an
+ *  official source (config/holiday-pages/registry.ts). Never noindex: inside the window the title carries the
+ *  year, outside it the page is a standing page with last season's facts labelled by year
+ *  (.claude/specs/evergreen-holidays.md). */
+import HolidayPage from '../components/HolidayPage.astro';
+import { siteConfig } from '../lib/site-config';
+import { HOLIDAY_PAGE_DEFS } from '../config/holiday-pages/calendar';
+import { holidayPageFor } from '../config/holiday-pages/registry';
+import { resolvePageState } from '../lib/holiday-calendar';
+
+export function getStaticPaths() {
+  return HOLIDAY_PAGE_DEFS.flatMap((d) => (holidayPageFor(d.slug, siteConfig.townId) ? [{ params: { holiday: d.slug } }] : []));
+}
+
+const entry = holidayPageFor(Astro.params.holiday as string, siteConfig.townId);
+if (!entry) throw new Error(`no holiday page for ${Astro.params.holiday} / ${siteConfig.townId}`);
+const state = resolvePageState(entry.def, entry.page.year, Date.now());
+---
+<HolidayPage page={entry.page} def={entry.def} state={state} hasClosures={!!siteConfig.hasClosureWatch} />

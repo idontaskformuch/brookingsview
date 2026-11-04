@@ -29,7 +29,7 @@ const telDigits = (phone: string, loc: HolidayLocale) => {
                     <>
                       <span class="hp-unconfirmed">Not confirmed for {year}</span>
                       {r.lastYear && (
-                        <span class="hp-line">Last year{r.lastYear.season ? ` (${r.lastYear.season})` : ''}: {r.lastYear.value} (<a href={r.lastYear.source.url} rel="noopener">{r.lastYear.source.name}</a>)</span>
+                        <span class="hp-line">{r.lastYear.season ?? year - 1}: {r.lastYear.value} (<a href={r.lastYear.source.url} rel="noopener">{r.lastYear.source.name}</a>)</span>
                       )}
                       {r.checkAt && (
                         <span class="hp-line">Check: {r.checkAt.url ? <a href={r.checkAt.url} rel="noopener">{r.checkAt.label}</a> : r.checkAt.label}{r.checkAt.phone && <> · <a href={`tel:${telDigits(r.checkAt.phone, locale)}`}>{r.checkAt.phone}</a></>}</span>

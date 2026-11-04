@@ -1,7 +1,9 @@
 /** Glasgow /christmas/ data (British spelling, hence gb/). Rendered by components/HolidayPage.astro; see
  *  config/holiday-pages/christmas.ts for the sourcing rules (council behind Cloudflare, 403 hosts). */
 import type { HolidayEvent, HolidayFact, HolidayPageData, Source } from '../../../lib/holiday-page';
-import { CHRISTMAS_PAGE_YEAR } from '../../../lib/christmas';
+import { dataUpdatedOn } from '../data-updated';
+
+const CHRISTMAS_PAGE_YEAR = 2026;
 
 const CHECKED = '2026-11-04';
 const WW = 'https://www.glasgowswinterwonderland.com';
@@ -252,6 +254,7 @@ const GLASGOW_EVENTS: HolidayEvent[] = [
 export function buildGlasgowChristmasPage(): HolidayPageData {
   return {
     holiday: 'christmas', year: CHRISTMAS_PAGE_YEAR, locale: 'en-GB', townId: 'glasgow',
+    dataUpdatedOn: dataUpdatedOn('christmas', 'glasgow'),
     facts: GLASGOW_FACTS,
     events: GLASGOW_EVENTS,
     linkOnly: [

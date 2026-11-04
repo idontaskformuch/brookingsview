@@ -50,7 +50,7 @@ export type CheckAt =
   | { label: string; url: string; phone?: string }
   | { label: string; phone: string; url?: string };
 
-/** `season` (e.g. "2025/26") is shown as "Last year (2025/26):" when the source's season is not a plain calendar year. */
+/** `season` (e.g. "2025/26") labels the value ("2025/26: ..."); without it the label is the year before the page's. Never "last year". */
 export interface LastYear { value: string; source: Source; season?: string }
 
 /** `hours` = standing opening hours: shown under "More", never in the closures table. */
@@ -161,6 +161,11 @@ export interface HolidayPageData {
   /** Fixed title/H1/description for a page whose wording the owner approved word for word (/veterans-day/).
    *  Replaces what buildHolidayMeta would derive; still data, never generated text. */
   metaOverride?: HolidayMeta;
+  /** The same, used outside the page window (no year, no date; the page is then showing a past season's facts). */
+  metaOverrideEvergreen?: HolidayMeta;
+  /** The day a row's value, status or source last changed (config/holiday-pages/data-updated.json). Sitemap
+   *  lastmod and the page's dateModified. Not the check date, not the build date. */
+  dataUpdatedOn: string;
   /** Plain navigation to other pages of the site. */
   related: { label: string; href: string }[];
 }
@@ -180,6 +185,11 @@ export function isBlockedHost(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** A page exists for a town only with at least one confirmed row (a fact or an event) from an official source. */
+export function hasConfirmedRow(page: HolidayPageData): boolean {
+  return page.facts.some((f) => f.status === 'confirmed') || page.events.some((e) => e.status === 'confirmed');
 }
 
 export function sectionsWithRows(page: HolidayPageData): HolidaySection[] {
@@ -242,12 +252,14 @@ function listWords(words: string[]): string {
  *  promise what the page does not yet have. The description names the confirmed items themselves (their `meta`
  *  phrases, in DESCRIPTION_ORDER), then what is not yet confirmed, then the check date, and drops whole phrases
  *  from the end of the confirmed list to stay within DESCRIPTION_MAX. `holidayLabel` is e.g. "Thanksgiving". */
-export function buildHolidayMeta(page: HolidayPageData, holidayLabel: string, cityName: string): HolidayMeta {
-  if (page.metaOverride) return page.metaOverride;
+export function buildHolidayMeta(page: HolidayPageData, holidayLabel: string, cityName: string, evergreen = false): HolidayMeta {
+  if (evergreen ? page.metaOverrideEvergreen : page.metaOverride) return (evergreen ? page.metaOverrideEvergreen : page.metaOverride) as HolidayMeta;
   const confirmed = confirmedSections(page);
   const words = joinWords(confirmed.map((s) => sectionMetaWord(s, page.locale)));
-  const h1 = `${holidayLabel} ${page.year}${words ? `: ${words}` : ''}`;
-  const title = `${holidayLabel} ${page.year} in ${cityName}${words ? `: ${words}` : ''}`;
+  // Outside the window the title and H1 carry no year (the page is a standing page); the description does, because it names the season's facts.
+  const h1 = evergreen ? `${holidayLabel}${words ? `: ${words}` : ''}` : `${holidayLabel} ${page.year}${words ? `: ${words}` : ''}`;
+  const title = evergreen ? `${holidayLabel} in ${cityName}${words ? `: ${words}` : ''}` : `${holidayLabel} ${page.year} in ${cityName}${words ? `: ${words}` : ''}`;
+  const seasonPrefix = evergreen ? `${page.year}: ` : '';
 
   const items: { text: string; group?: string }[] = [];
   for (const s of DESCRIPTION_ORDER) {
@@ -273,8 +285,8 @@ export function buildHolidayMeta(page: HolidayPageData, holidayLabel: string, ci
   ].join('');
 
   const kept = [...phrases];
-  while (kept.length > 0 && kept.join(' · ').length + 1 + tail.length > DESCRIPTION_MAX) kept.pop();
-  const head = kept.length ? `${kept.join(' · ')}.` : '';
+  while (kept.length > 0 && seasonPrefix.length + kept.join(' · ').length + 1 + tail.length > DESCRIPTION_MAX) kept.pop();
+  const head = kept.length ? `${seasonPrefix}${kept.join(' · ')}.` : '';
   const description = (head + tail).trim();
   return { title, h1, description };
 }
@@ -285,11 +297,24 @@ export function localIso(date: string, time: string, timeZone: string): string {
   return `${date}T${time}:00${offset}`;
 }
 
+/** Today's local calendar date (YYYY-MM-DD) in an IANA zone. */
+export function localToday(nowMs: number, timeZone: string): string {
+  return toZonedISOString(new Date(nowMs).toISOString(), timeZone).slice(0, 10);
+}
+
+/** True once the event's last day (the day itself for a one-day event) is before today. */
+export function isEventPast(e: HolidayEvent, today: string): boolean {
+  if (e.status !== 'confirmed') return false;
+  return (e.endDate ?? e.date) < today;
+}
+
 /** Event JSON-LD for the confirmed events only. An unconfirmed event never gets markup, nor does a confirmed one
- *  without a start time, unless it is a run flagged `seasonJsonLd` (date-only startDate/endDate). */
-export function buildHolidayEventsJsonLd(page: HolidayPageData, timeZone: string, country = 'US'): Record<string, unknown>[] {
+ *  without a start time, unless it is a run flagged `seasonJsonLd` (date-only startDate/endDate). With `today`
+ *  (local date), an event whose last day has passed gets none: markup is only for events still ahead. */
+export function buildHolidayEventsJsonLd(page: HolidayPageData, timeZone: string, country = 'US', today?: string): Record<string, unknown>[] {
   return page.events.flatMap((e) => {
     if (e.status !== 'confirmed') return [];
+    if (today !== undefined && isEventPast(e, today)) return [];
     const season = e.seasonJsonLd === true && e.endDate !== undefined;
     if (!e.startTime && !season) return [];
     const address: Record<string, unknown> = { '@type': 'PostalAddress' };

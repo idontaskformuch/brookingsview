@@ -1,9 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { buildHolidayMeta, buildHolidayEventsJsonLd, isBlockedHost, formatIsoDate, type HolidayPageData } from './holiday-page';
-import {
-  VETERANS_DAY, VETERANS_DAY_WINDOW_START, VETERANS_DAY_WINDOW_END, isOutsideVeteransDayWindow,
-} from './veterans-day';
 import { buildVeteransDayPage, VETERANS_DAY_META, VETERANS_DAY_TOWN_IDS } from '../config/holiday-pages/veterans-day';
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -90,28 +87,5 @@ describe('Veterans Day meta (owner wording 2026-11-04)', () => {
     expect(meta.description.length).toBeLessThanOrEqual(160);
     expect(meta.description).toContain('Police run 24/7 but the front desk is unstaffed.');
     expect(meta.description).toContain('Trash, RTD and rec hours unconfirmed.');
-  });
-});
-
-describe('window and sitemap gating', () => {
-  it('is indexable Nov 1 through Nov 12 2026, noindex outside', () => {
-    expect(isOutsideVeteransDayWindow(Date.UTC(2026, 9, 31, 23, 59))).toBe(true);
-    expect(isOutsideVeteransDayWindow(Date.UTC(2026, 10, 1))).toBe(false);
-    expect(isOutsideVeteransDayWindow(Date.UTC(2026, 10, 4, 12))).toBe(false); // today when ordered
-    expect(isOutsideVeteransDayWindow(Date.UTC(2026, 10, 12, 23, 59))).toBe(false);
-    expect(isOutsideVeteransDayWindow(Date.UTC(2026, 10, 13))).toBe(true);
-    expect(VETERANS_DAY).toBe(Date.UTC(2026, 10, 11));
-  });
-
-  const cfg = read('../../astro.config.mjs');
-  it('/veterans-day/ is in the sitemap for Broomfield only', () => {
-    const m = /\{ path: '\/veterans-day\/', activeFor: \[([^\]]*)\] \}/.exec(cfg);
-    expect(m).not.toBeNull();
-    expect(m![1].replace(/\s/g, '')).toBe("'broomfield_co'");
-  });
-  it('astro.config mirrors the window so the sitemap and the noindex tag never disagree', () => {
-    expect(cfg).toContain(`Date.parse('${new Date(VETERANS_DAY_WINDOW_START).toISOString().slice(0, 10)}T00:00:00Z')`);
-    expect(cfg).toContain(`Date.parse('${new Date(VETERANS_DAY_WINDOW_END).toISOString().slice(0, 10)}T00:00:00Z')`);
-    expect(cfg).toMatch(/noindexThinPageUrls\.add\('\/veterans-day\/'\)/);
   });
 });

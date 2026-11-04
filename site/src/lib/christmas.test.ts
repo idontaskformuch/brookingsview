@@ -4,9 +4,6 @@ import {
   buildHolidayMeta, buildHolidayEventsJsonLd, formatIsoDate, formatClock, formatEventDay, eventWhenWhere, localIso,
   sectionHeading, sectionMetaWord, isBlockedHost, DESCRIPTION_MAX, type HolidayEvent,
 } from './holiday-page';
-import {
-  CHRISTMAS_PAGE_YEAR, CHRISTMAS_WINDOW_START, CHRISTMAS_WINDOW_END, CHRISTMAS_FIRST_EVENT, isOutsideChristmasWindow,
-} from './christmas';
 import { buildChristmasPage, CHRISTMAS_EVENTS, CHRISTMAS_TOWN_IDS } from '../config/holiday-pages/christmas';
 import { buildThanksgivingPage } from '../config/holiday-pages/thanksgiving';
 
@@ -71,7 +68,7 @@ describe('Glasgow /christmas/ data as approved 2026-11-04', () => {
   it('exists only for Glasgow', () => {
     expect(CHRISTMAS_TOWN_IDS).toEqual(['glasgow']);
     for (const id of ['brookings_sd', 'moreno_valley_ca', 'broomfield_co']) expect(buildChristmasPage(id)).toBeNull();
-    expect(page.year).toBe(CHRISTMAS_PAGE_YEAR);
+    expect(page.year).toBe(2026);
     expect(page.townId).toBe('glasgow');
   });
 
@@ -252,29 +249,5 @@ describe('Glasgow Event JSON-LD', () => {
     const noEnd = { ...base, endDate: undefined } as HolidayEvent;
     const untimed = { ...base, seasonJsonLd: false } as HolidayEvent;
     expect(buildHolidayEventsJsonLd({ ...page, events: [noEnd, untimed] }, TZ, 'GB')).toEqual([]);
-  });
-});
-
-describe('window and sitemap gating', () => {
-  it('is indexable from six weeks before the first event (Sep 25 2026) through Jan 3 2027, noindex outside', () => {
-    expect(isOutsideChristmasWindow(Date.UTC(2026, 8, 24, 23, 59))).toBe(true);
-    expect(isOutsideChristmasWindow(Date.UTC(2026, 8, 25))).toBe(false);
-    expect(isOutsideChristmasWindow(Date.UTC(2026, 10, 4, 12))).toBe(false); // today when ordered
-    expect(CHRISTMAS_WINDOW_START).toBe(CHRISTMAS_FIRST_EVENT - 42 * 86_400_000);
-    expect(new Date(CHRISTMAS_FIRST_EVENT).toISOString().slice(0, 10)).toBe(page.events[0].status === 'confirmed' ? (page.events[0] as { date: string }).date : '');
-    expect(isOutsideChristmasWindow(Date.UTC(2027, 0, 3, 23, 59))).toBe(false);
-    expect(isOutsideChristmasWindow(Date.UTC(2027, 0, 4))).toBe(true);
-  });
-
-  const cfg = read('../../astro.config.mjs');
-  it('/christmas/ is in the sitemap for Glasgow only', () => {
-    const m = /\{ path: '\/christmas\/', activeFor: \[([^\]]*)\] \}/.exec(cfg);
-    expect(m).not.toBeNull();
-    expect(m![1].replace(/\s/g, '')).toBe("'glasgow'");
-  });
-  it('astro.config mirrors the window so the sitemap and the noindex tag never disagree', () => {
-    expect(cfg).toContain(`Date.parse('${new Date(CHRISTMAS_WINDOW_START).toISOString().slice(0, 10)}T00:00:00Z')`);
-    expect(cfg).toContain(`Date.parse('${new Date(CHRISTMAS_WINDOW_END).toISOString().slice(0, 10)}T00:00:00Z')`);
-    expect(cfg).toMatch(/noindexThinPageUrls\.add\('\/christmas\/'\)/);
   });
 });

@@ -1,0 +1,27 @@
+---
+/** Holiday context card, front page and /events/. At most one: the holiday whose page window is open (the nearest
+ *  if two are); outside every window nothing renders. A name, a date and a link, no text. Not a nav item. */
+import { siteConfig } from '../lib/site-config';
+import { activeHolidayCard } from '../config/holiday-pages/registry';
+import { formatDayShort } from '../lib/holiday-calendar';
+
+const card = activeHolidayCard(siteConfig.townId, Date.now());
+const locale = siteConfig.country === 'gb' ? 'en-GB' : 'en-US';
+---
+{card && (
+  <aside class="holiday-card" aria-label={card.def.label}>
+    <a class="holiday-card__link" href={`/${card.def.slug}/`}>
+      <span class="holiday-card__name">{card.def.label}</span>
+      <span class="holiday-card__date">{formatDayShort(card.day, locale)}</span>
+      <span class="holiday-card__go" aria-hidden="true">→</span>
+    </a>
+  </aside>
+)}
+
+<style>
+  .holiday-card { margin: 0 0 1rem; }
+  .holiday-card__link { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 1rem; border: 1px solid var(--rule, #ccc); border-radius: 8px; text-decoration: none; }
+  .holiday-card__name { font-weight: 600; }
+  .holiday-card__date { color: var(--ink-soft); }
+  .holiday-card__go { margin-left: auto; }
+</style>

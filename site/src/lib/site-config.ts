@@ -429,7 +429,7 @@ const CITIES: Record<string, SiteConfig> = {
       groups: {
         Now: ['today', 'events', 'whatson', 'thisweek', 'weather', 'vote'],
         Campus: ['gameday', 'university', 'jacks'],
-        City: ['cityhall', 'closures', 'facilities'],
+        City: ['cityhall', 'closures', 'facilities', 'holidays'],
         More: ['jobs', 'play', 'farm'],
       },
     },
@@ -540,7 +540,7 @@ const CITIES: Record<string, SiteConfig> = {
       tabs: ['today', 'tonight', 'events'],
       groups: {
         Now: ['today', 'tonight', 'events', 'whatson', 'thisweek', 'weather', 'safety', 'vote'],
-        City: ['cityhall', 'traffic', 'closures', 'facilities'],
+        City: ['cityhall', 'traffic', 'closures', 'facilities', 'holidays'],
         'Work & Home': ['workplace', 'homesales', 'jobs'],
         More: ['sports', 'play', 'month'],
       },
@@ -711,7 +711,7 @@ const CITIES: Record<string, SiteConfig> = {
       tabs: ['today', 'tonight', 'whatson'],
       groups: {
         Now: ['today', 'tonight', 'whatson', 'thisweek', 'weather', 'safety', 'vote'],
-        City: ['cityhall', 'traffic', 'facilities'],
+        City: ['cityhall', 'traffic', 'facilities', 'holidays'],
         Community: ['jobs'],
         More: ['vail'],
       },
@@ -811,7 +811,7 @@ const CITIES: Record<string, SiteConfig> = {
       tabs: ['today', 'tonight', 'events'],
       groups: {
         Now: ['today', 'tonight', 'thisweek', 'events', 'whatson', 'weather'],
-        City: ['cityhall', 'facilities'],
+        City: ['cityhall', 'facilities', 'holidays'],
       },
     },
     disabledSections: ['traffic', 'jobs', 'advertising', 'reviews', 'recipes', 'editorials', 'columns'],

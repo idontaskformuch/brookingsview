@@ -1,11 +1,16 @@
 /** Thanksgiving 2026 facts per US town (model: lib/holiday-page.ts). Each row is a value plus the page it came from
  *  and the date it was read; a fact a town has not posted is `unconfirmed` and says where to check. Nothing is
- *  predicted or paraphrased from memory. Refresh every year (lib/thanksgiving.ts THANKSGIVING_PAGE_YEAR).
+ *  predicted or paraphrased from memory. Refresh every year (THANKSGIVING_PAGE_YEAR below, and data-updated.json).
  *
  *  Brookings and Moreno Valley: rewritten 2026-11-04 from the 2026-10-24 read (checkedOn stays 2026-10-24).
  *  Broomfield: read 2026-11-04. compass.broomfield.org is blocked by robots.txt, so it appears only in `linkOnly`. */
 import type { HolidayFact, HolidayEvent, HolidayPageData, Source } from '../../lib/holiday-page';
-import { THANKSGIVING_PAGE_YEAR } from '../../lib/thanksgiving';
+import { dataUpdatedOn } from './data-updated';
+import { occurrenceDay } from '../../lib/holiday-calendar';
+import { holidayPageDef } from './calendar';
+import { upcomingHolidayShifts } from '../../lib/trash-schedule';
+
+const THANKSGIVING_PAGE_YEAR = 2026;
 
 const base = { holiday: 'thanksgiving', year: THANKSGIVING_PAGE_YEAR, locale: 'en-US' } as const;
 
@@ -17,6 +22,14 @@ const BK_CHECKED = '2026-10-24';
 
 /** What the Thursday-holiday rule moves for each side of town (lib/trash-schedule.ts upcomingHolidayShifts). */
 export interface BrookingsTrashMoves { south: string[]; north: string[] }
+
+/** The moves for Thanksgiving week of the page's year, from the city's Thursday-holiday rule (lib/trash-schedule.ts). */
+export function computeBrookingsMoves(): BrookingsTrashMoves {
+  const monday = occurrenceDay(holidayPageDef('thanksgiving')!, THANKSGIVING_PAGE_YEAR) - 3 * 86_400_000; // Thursday - 3 days
+  const movesFor = (side: 'south' | 'north') =>
+    upcomingHolidayShifts(monday, 6, side).find((h) => h.name === 'Thanksgiving Day')?.moves ?? [];
+  return { south: movesFor('south'), north: movesFor('north') };
+}
 
 function brookingsFacts(moves: BrookingsTrashMoves): HolidayFact[] {
   const row = (label: string, m: string[]): HolidayFact => ({
@@ -198,6 +211,7 @@ export const THANKSGIVING_TOWN_IDS = ['brookings_sd', 'moreno_valley_ca', 'broom
 
 /** Page data for a town, or null where there is no Thanksgiving page. Brookings needs the computed pickup moves. */
 export function buildThanksgivingPage(townId: string, brookingsMoves?: BrookingsTrashMoves): HolidayPageData | null {
+  if (townId === 'brookings_sd' && !brookingsMoves) brookingsMoves = computeBrookingsMoves();
   const related = [
     { label: 'Forecast and weather alerts', href: '/weather/' },
     { label: 'Road incidents', href: '/traffic/' },
@@ -206,14 +220,14 @@ export function buildThanksgivingPage(townId: string, brookingsMoves?: Brookings
   ];
   if (townId === 'brookings_sd') {
     if (!brookingsMoves) throw new Error('Brookings Thanksgiving page needs the computed pickup moves');
-    return { ...base, townId, facts: brookingsFacts(brookingsMoves), events: [], linkOnly: [], related: [{ label: 'Trash, recycling and yard waste guide', href: '/trash-recycling/' }, ...related] };
+    return { ...base, townId, dataUpdatedOn: dataUpdatedOn('thanksgiving', townId), facts: brookingsFacts(brookingsMoves), events: [], linkOnly: [], related: [{ label: 'Trash, recycling and yard waste guide', href: '/trash-recycling/' }, ...related] };
   }
   if (townId === 'moreno_valley_ca') {
-    return { ...base, townId, facts: MORENO_FACTS, events: [], linkOnly: [], related };
+    return { ...base, townId, dataUpdatedOn: dataUpdatedOn('thanksgiving', townId), facts: MORENO_FACTS, events: [], linkOnly: [], related };
   }
   if (townId === 'broomfield_co') {
     return {
-      ...base, townId, facts: BROOMFIELD_FACTS, events: BROOMFIELD_EVENTS, related,
+      ...base, townId, dataUpdatedOn: dataUpdatedOn('thanksgiving', townId), facts: BROOMFIELD_FACTS, events: BROOMFIELD_EVENTS, related,
       linkOnly: [{ label: 'Library events', linkText: 'Broomfield Library calendar', url: 'https://compass.broomfield.org/events/week' }],
     };
   }

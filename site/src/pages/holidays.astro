@@ -1,0 +1,44 @@
+---
+/** /holidays/: the town's holiday pages in calendar order, the next one first. A name, a date and a link per row,
+ *  no body text. It is the one way in (the "Holidays" entry of the All sheet); holiday pages never get a tab.
+ *  Built only for a town that has at least one holiday page, so elsewhere it is a real 404.
+ *
+ *  Resident question it answers: which holidays does this town have local closures and hours for, and when is the next one? */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../lib/site-config';
+import { holidayListing, townHasHolidayPages } from '../config/holiday-pages/registry';
+import { formatDayLong } from '../lib/holiday-calendar';
+
+export function getStaticPaths() {
+  return townHasHolidayPages(siteConfig.townId) ? [{ params: {} }] : [];
+}
+
+const now = Date.now();
+const locale = siteConfig.country === 'gb' ? 'en-GB' : 'en-US';
+const rows = holidayListing(siteConfig.townId, now).map((e) => ({
+  slug: e.def.slug,
+  label: e.def.label,
+  when: formatDayLong(e.day, locale),
+}));
+const modified = holidayListing(siteConfig.townId, now).map((e) => e.page.dataUpdatedOn).sort().pop();
+---
+<BaseLayout title={`Holidays in ${siteConfig.cityName}: closures and hours`} description={`${siteConfig.cityName} holiday pages: what is closed or changed, with the next date for each.`} modified={modified}>
+  <h1>Holidays in {siteConfig.cityName}</h1>
+  <ul class="holiday-list">
+    {rows.map((r) => (
+      <li>
+        <a href={`/${r.slug}/`}>
+          <span class="holiday-name">{r.label}</span>
+          <span class="holiday-when">{r.when}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+</BaseLayout>
+
+<style>
+  .holiday-list { list-style: none; padding: 0; margin: 1rem 0; display: grid; gap: 0.5rem; }
+  .holiday-list a { display: flex; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem; border: 1px solid var(--rule, #ccc); border-radius: 8px; text-decoration: none; }
+  .holiday-name { font-weight: 600; }
+  .holiday-when { color: var(--ink-soft); }
+</style>

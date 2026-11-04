@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { statusTokensCss } from './src/lib/status-tokens.mjs';
+import { holidayLastmodEntries } from './src/config/holiday-pages/lastmod.mjs';
 import { checkNewIndexable, fetchLiveSitemapPaths, sitemapPaths } from './scripts/new-indexable.mjs';
 
 // Statiskt bygge: all data hämtas från Neon vid build-time, sedan serveras rena
@@ -351,9 +352,6 @@ const TOWN_GATED_PAGES = [
   { path: '/winter-guide/', activeFor: ['brookings_sd'] },
   { path: '/how-city-council-works/', activeFor: ['brookings_sd'] },
   { path: '/sdsu-campus-open-to-public/', activeFor: ['brookings_sd'] },
-  { path: '/thanksgiving/', activeFor: ['brookings_sd', 'moreno_valley_ca', 'broomfield_co'] },
-  { path: '/christmas/', activeFor: ['glasgow'] },
-  { path: '/veterans-day/', activeFor: ['broomfield_co'] },
   { path: '/play/', activeFor: ['brookings_sd'] },
   { path: '/university/', activeFor: ['brookings_sd'] },
   { path: '/vail-resorts/', activeFor: ['broomfield_co'] },
@@ -447,13 +445,8 @@ async function buildLastmodMap(townId, databaseUrl) {
   // /vote/ (election 2026): the page itself sets noindex 30 days after the election (lib/election.ts
   // isPastNoindexWindow); mirror that here so the sitemap and the noindex tag never disagree.
   if (Date.now() > Date.parse('2026-11-03T00:00:00Z') + 30 * 86_400_000) { noindexThinPageUrls.add('/vote/'); noindexThinPageUrls.add('/election-results/'); }
-  // /thanksgiving/ (lib/thanksgiving.ts): the page's 2026 facts go stale a week after Thanksgiving Day (Nov 26, 2026),
-  // so it turns noindex then; mirror that here so the sitemap and the noindex tag never disagree.
-  if (Date.now() >= Date.parse('2026-11-26T00:00:00Z') + 7 * 86_400_000) noindexThinPageUrls.add('/thanksgiving/');
-  // /christmas/ (lib/christmas.ts): indexable from Sep 25 2026 (six weeks before the first event, Nov 6) through Jan 3 2027; mirror the page's noindex here.
-  if (Date.now() < Date.parse('2026-09-25T00:00:00Z') || Date.now() >= Date.parse('2027-01-04T00:00:00Z')) noindexThinPageUrls.add('/christmas/');
-  // /veterans-day/ (lib/veterans-day.ts): indexable Nov 1 through Nov 12 2026; mirror the page's noindex here.
-  if (Date.now() < Date.parse('2026-11-01T00:00:00Z') || Date.now() >= Date.parse('2026-11-13T00:00:00Z')) noindexThinPageUrls.add('/veterans-day/');
+  // Holiday pages (/thanksgiving/, /veterans-day/, /christmas/, /holidays/) are never noindex (owner 2026-11-04, evergreen pages), so there is
+  // nothing to mirror here; a town without one gets no file at all (pages/[holiday].astro), hence no sitemap entry.
   // Town/feature-gated stub pages excluded for THIS build's town -- see
   // TOWN_GATED_PAGES' own comment above.
   const excludedGatedPages = new Set(
@@ -828,6 +821,8 @@ const {
   map: lastmodMap, noindexHomeSaleUrls, excludedGatedPages, noindexStoryUrls, noindexThinPageUrls,
   crossCanonicalStoryUrls,
 } = await buildLastmodMap(activeCity, env.DATABASE_URL);
+// Holiday pages: lastmod = the day a row last changed (data-updated.json), never the build date.
+for (const [pathname, date] of holidayLastmodEntries(activeCity)) lastmodMap.set(pathname, date);
 
 export default defineConfig({
   site: SITE_URLS[activeCity] ?? SITE_URLS.brookings_sd,

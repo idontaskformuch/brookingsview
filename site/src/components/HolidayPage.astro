@@ -1,5 +1,5 @@
 ---
-/** Shared template for the holiday pages (/thanksgiving/ now; /christmas/, /new-years/, /hogmanay/ later).
+/** Shared template for the holiday pages (/thanksgiving/, /veterans-day/, /christmas/; /hogmanay/ later).
  *  Rendered from data only (lib/holiday-page.ts): one table per section with What / Details / Source / Checked,
  *  an empty section is not rendered, no introduction. Owner-ordered 2026-11-04, .claude/specs/holiday-layer.md.
  *
@@ -10,29 +10,35 @@ import HolidayTable from './HolidayTable.astro';
 import { siteConfig } from '../lib/site-config';
 import {
   SECTION_ORDER, sectionHeading, buildHolidayMeta, buildHolidayEventsJsonLd, lastChecked, formatIsoDate,
-  eventWhenWhere, regularHours, type HolidayPageData, type HolidayFact, type HolidayEvent, type HolidayRow,
+  eventWhenWhere, regularHours, localToday, isEventPast, type HolidayPageData, type HolidayFact, type HolidayEvent, type HolidayRow,
 } from '../lib/holiday-page';
+import { evergreenLines, type HolidayPageState } from '../lib/holiday-calendar';
+import type { HolidayPageDef } from '../config/holiday-pages/calendar';
 
 interface Props {
   page: HolidayPageData;
-  /** "Thanksgiving" */
-  holidayLabel: string;
-  noindex?: boolean;
+  def: HolidayPageDef;
+  /** Active = this season's wording; evergreen = the same facts under a standing, year-free title. Never noindex. */
+  state: Extract<HolidayPageState, { kind: 'active' | 'evergreen' }>;
   /** Link to /closures/ (towns with a closure watch). */
   hasClosures?: boolean;
 }
-const { page, holidayLabel, noindex = false, hasClosures = false } = Astro.props;
+const { page, def, state, hasClosures = false } = Astro.props;
+const holidayLabel = def.label;
+const evergreen = state.kind === 'evergreen';
+const lines = state.kind === 'evergreen' ? evergreenLines(def, page.year, state, page.locale) : null;
+const today = localToday(Date.now(), siteConfig.timezone);
 
-const meta = buildHolidayMeta(page, holidayLabel, siteConfig.cityName);
+const meta = buildHolidayMeta(page, holidayLabel, siteConfig.cityName, evergreen);
 const checked = lastChecked(page);
-const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, siteConfig.country === 'gb' ? 'GB' : 'US');
+const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, siteConfig.country === 'gb' ? 'GB' : 'US', today);
 const pageUrl = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl).href;
 const webPage = {
   '@context': 'https://schema.org',
   '@type': 'WebPage',
   name: meta.title,
   url: pageUrl,
-  dateModified: checked,
+  dateModified: page.dataUpdatedOn,
 };
 
 const year = page.year;
@@ -53,20 +59,29 @@ const factRow = (f: HolidayFact): HolidayRow => ({
   checkAt: f.status === 'unconfirmed' ? f.checkAt : undefined,
   source: f.source, checkedOn: f.checkedOn,
 });
+// A confirmed event whose last day has passed stays as text, dated with its year (no markup, see JSON-LD above).
 const eventRow = (e: HolidayEvent): HolidayRow => ({
   what: e.name, value: e.status === 'confirmed' ? eventWhenWhere(e, page.locale) : null, clarify: e.clarify,
-  extra: e.status === 'confirmed' ? e.details : undefined,
+  extra: e.status === 'confirmed'
+    ? [...(isEventPast(e, today) ? [`Held ${formatIsoDate(e.endDate ?? e.date, true, page.locale)}`] : []), ...(e.details ?? [])]
+    : undefined,
   lastYear: e.status === 'unconfirmed' ? e.lastYear : undefined,
   checkAt: e.status === 'unconfirmed' ? e.checkAt : undefined,
   source: e.source, checkedOn: e.checkedOn,
 });
 ---
-<BaseLayout title={meta.title} description={meta.description} wide noindex={noindex} modified={checked}>
+<BaseLayout title={meta.title} description={meta.description} wide modified={page.dataUpdatedOn}>
   <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(webPage)} />
   {jsonLd.map((ld) => <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(ld)} />)}
 
   <header class="hp-head">
     <h1>{meta.h1}</h1>
+    {lines && (
+      <p class="hp-state">
+        {lines.note && <>{lines.note}<br /></>}
+        {lines.next}
+      </p>
+    )}
     <p class="hp-checked">Last checked: <time datetime={checked}>{formatIsoDate(checked, true, page.locale)}</time></p>
   </header>
 
@@ -105,6 +120,7 @@ const eventRow = (e: HolidayEvent): HolidayRow => ({
 
 <style>
   .hp-head h1 { margin-bottom: 0.25rem; }
+  .hp-state { margin: 0 0 0.5rem; }
   .hp-checked { margin: 0 0 1.25rem; font-size: 0.9rem; color: var(--ink-soft); }
   section { margin: 0 0 1.75rem; }
   h3 { font-size: 1.0625rem; margin: 0 0 0.4rem; }

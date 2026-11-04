@@ -276,7 +276,7 @@ const webPageJsonLd = dateModified ? {
   dateModified,
 } : null;
 import PageGuide from '../components/PageGuide.astro';
-import { isThanksgivingSeason } from '../lib/thanksgiving';
+import HolidayContextCard from '../components/HolidayContextCard.astro';
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-events" noindex={isQuietSection('events')}
   description={metaDescription('events', siteConfig)}
@@ -291,10 +291,6 @@ import { isThanksgivingSeason } from '../lib/thanksgiving';
     never guessed or rewritten. For a shorter list, see what's happening
     <a href="/today/">today</a> or over <a href="/this-week/">the week ahead</a>.
     Check back — this updates daily.</p>
-    {isThanksgivingSeason(Date.now()) && (
-      <p>Planning for the holiday? See what is open, how trash pickup changes and what is on in our
-      <a href="/thanksgiving/">Thanksgiving week guide</a>.</p>
-    )}
     <PageGuide
       shows={`Upcoming events in and around ${siteConfig.cityName}, soonest first, with the date, time and venue the ${forCountry(siteConfig.country, 'organizer', 'organiser')} published.`}
       use={`Scan by day, use the filters for a kind of event, and follow the link on any listing to the ${forCountry(siteConfig.country, 'organizer', 'organiser')} for tickets, registration or changes. Times can change: check with them before you go.`}
@@ -311,6 +307,7 @@ import { isThanksgivingSeason } from '../lib/thanksgiving';
     )}
     <ShareButton title={pageMeta.title} />
   </header>
+  <HolidayContextCard />
 
   <nav class="facet-nav" aria-label="Event filters">
     {EVENT_FACETS.filter((f) => !f.brookingsOnly || isBrookings).map((f) => (
