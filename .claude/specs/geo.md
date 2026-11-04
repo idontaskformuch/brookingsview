@@ -51,3 +51,6 @@ Gränser: en bots träff är inte en citering; rapporten får inte påstå att e
 4. llms.txt-ändringar (punkt 1).
 5. Veckorapporten (punkt 5).
 Inget byggs förrän ägaren sagt ja till ordningen. Frågor till ägaren: (a) GA4 Data API-nyckel eller manuell CSV? (b) ska /election-results/ få statisk reservtext (se punkt 2)? (c) ska llms.txt få en "om oss"-sats enligt punkt 1.3?
+
+## Ägarens beslut 2026-11-04
+Ordningen godkänd med en ändring: GA4-exporten (steg 3/punkt 5) ska ha dimensionen Week (inte Date) tillsammans med Session source/medium och Landing page + query string. Mått: Sessions, Engaged sessions. Börja med steg 1: reservtext på /election-results/ (gjort lokalt 2026-11-04, ej pushat). Inget pushas utan ägarens ja.

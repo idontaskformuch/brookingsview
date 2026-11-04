@@ -2,6 +2,8 @@
 
 Historik: se .claude/state-archive.md, läs bara vid behov.
 
+**GEO STEG 1 + DEL 2 SVAR 2026-11-04 (lokal commit, EJ pushad):** /election-results/ rå-HTML säger nu att live-resultat laddas i webbläsaren från källan + noscript pekar på officiell länk (tidigare 'Results will appear after polls close', osant efter stängning). Test: election-results-static.test.ts. vitest 1843, astro check 0, bygge x4 OK (Glasgow redirect-stub, Moreno link-only). Väntar på ägarens push-ja. Ägarens beslut: GA4-export med Week (geo.md), Glasgow prioriterat, Brookings bara coffee/open-late (lista i .claude/specs/brookings-places-proposal.md, väntar på godkännande), ingen happy hour under tröskel, FHIS-utredning klar i tonight.md §8 (ingen kod), inga nya schemalagda workflows före minutplanen. Nästa: GEO steg 1-2 (server-render/JSON-LD-inventering) efter push-ja.
+
 **HANDOFF 2026-11-04 (GEO + kvällslager):** Del 2 KLAR: .claude/specs/tonight.md skriven (bara spec; /tonight, /this-weekend, Open late och registret FINNS redan, kvar är T5-navsidorna food-drink, Brookings/Moreno-register, Brookings-AdSense-vinkel; 5 frågor till ägaren). BESLUT/SKÄL: specen byggd som delta mot weekend-layer.md, inte omskrivning. Del 1 (GEO) EJ påbörjad i kod: väntar på ägarens ok till ordningen (se chattens lista). Valpunkterna (ballots-rad, Worker-filter) väntar på färdig räkning; Workern och /api/election-results orörda. Inget pushat. Obs: 'site-navigation' = .claude/spec-section-nav.md (ingen fil med det namnet).
 Aktiv spec: .claude/spec-time-alerts-heroes.md (Fas 0-5 klara, Fas 6 kvar).
 

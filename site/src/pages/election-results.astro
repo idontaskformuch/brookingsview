@@ -50,12 +50,12 @@ const electionLabel = formatYmd(election.election_date, true);
            data-endpoint={endpointFor()} data-source={results.source_name} data-tz={siteConfig.timezone}>
     <h2 id="er-heading">Results</h2>
     {results.live
-      ? <p class="er-status" id="er-status" role="status">Results will appear after polls close on {electionLabel}.</p>
+      ? <p class="er-status" id="er-status" role="status">Live results for the {electionLabel} election load in your browser from {results.source_name} and change as counting continues. If nothing appears here, the official numbers are linked under Official source below.</p>
       : <p class="er-status" id="er-status">{siteConfig.siteName} does not copy these numbers. The official results are published by {results.source_name}.</p>}
     <p class="er-meta" id="er-meta" hidden></p>
     <p class="er-progress" id="er-progress" hidden></p>
     <div id="er-contests"></div>
-    <noscript><p class="er-status">Turn on JavaScript to see live results here, or use the official source below.</p></noscript>
+    <noscript><p class="er-status">Live results need JavaScript. The official numbers from {results.source_name} are under Official source below.</p></noscript>
   </section>
 
   <section class="er-official" aria-labelledby="er-official-h">

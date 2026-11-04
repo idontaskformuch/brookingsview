@@ -71,3 +71,17 @@ Varje steg: lokal commit, tester för berörd fil, ställelistan visas för äga
 3. Ska happy hour-sidan finnas överhuvudtaget i Brookings och Moreno, där 0 av 40 sidor publicerar det maskinläsbart och troligen bara en handfull i löptext? Förslag: bygg den bara i städer som når tröskeln, annars ingen sida.
 4. Hygienbetyg (Glasgow FSA/FHIS, US-länens inspektioner): får jag utreda öppna data som ett fjärde filter, eller hellre avstå (risk: fel koppling ställe-inspektion)?
 5. Actions-minuterna ligger över gränsen. Ska registerjobbet vänta tills minutplanen är genomförd, eller godkänner du merkostnaden?
+
+## 8. Ägarens svar 2026-11-04 (BESLUT)
+1. Glasgow har prioritet för kvällslagret. Brookings får bara de handkontrollerade kaffe- och open-late-sidorna kring SDSU inför AdSense. Inget mer Brookings-specifikt arbete.
+2. Ja till en lista på ca 15 Brookings-ställen, godkänns av ägaren före publicering, källa per ställe: se .claude/specs/brookings-places-proposal.md.
+3. Nej till happy hour-sida i städer under tröskeln: bygg inte där, eller håll noindex och olänkad.
+4. Hygienbetyg: bara utredning, ingen kod. FHIS för Glasgow först; US-län parkeras. Utredning nedan.
+5. Registerjobbet väntar på Actions-minutplanen. Inga nya schemalagda workflows tills dess.
+
+### FHIS-utredning (Glasgow, läst 2026-11-04, ingen kod)
+- Källa: FSA:s öppna API (api.ratings.food.gov.uk) täcker även Skottland (FHIS). Kräver headern x-api-version: 2, ingen nyckel, ingen registrering ("kan ändras"). Rate limit och licenstext står inte på hjälpsidan: licensen (troligen Open Government Licence) och kravet på attribution/bildregler för betygsmärken MÅSTE verifieras före publicering.
+- Glasgow City = LocalAuthorityId 213, 6 686 ställen (14 sidor à 500). Typ-filter fungerar (Pub/bar/nightclub = businessTypeId 7843, 361 st). Fält: FHRSID, BusinessName, BusinessType, RatingValue, RatingDate, SchemeType, PostCode, AddressLine1 (ofta tom), geocode (lat/long; 495 av 500 i provet), NewRatingPending.
+- Skotska betyg är bara "Pass", "Improvement Required" (m.fl. statusvärden) och i stickprovet "Pass and Eat Safe"; inga poäng. 494 av 500 i provet var "Pass", så ett filter skiljer nästan inget åt. Många betyg är gamla (2019).
+- Risker: koppling ställe -> inspektion saknar gemensamt id (matchning på namn + postnummer/koordinat; fel koppling ger ett felaktigt påstående om ett namngivet ställe), AddressLine1 tom, kedjor och flera ställen på samma adress, ett gammalt betyg visas som aktuellt.
+- Rekommendation: litet värde som filter ("bara Pass" separerar inget). Om det byggs: visa bara betyg + datum + länk till FSS-posten, bara vid säker matchning (FHRSID bekräftat manuellt för registrets 17 Glasgow-ställen), aldrig som ranking. Beslutet är ägarens; ingenting byggt.
