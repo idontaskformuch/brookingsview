@@ -428,7 +428,7 @@ const CITIES: Record<string, SiteConfig> = {
     // Owner 2026-11-05: the AI content track (essays, recipes, reviews, columns) is retired here too: no /s/ pages (404), sections redirect to /.
     contentTrackRetired: true,
     disabledSections: ['reviews', 'recipes', 'editorials', 'columns'],
-    eveningLayer: { mode: 'never', maxMiles: 75, includeTicketmasterSports: false },
+    eveningLayer: { mode: 'never', maxMiles: 75, includeTicketmasterSports: false, cards: { regions: {}, hidePrice: true, cityLabels: true } },
     renderWindow: NO_RENDER_WINDOW,
     cityName: 'Brookings',
     // Spec example + the sections it left out (This week, What's On, Closure Watch are enabled here and
