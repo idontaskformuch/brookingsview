@@ -38,6 +38,12 @@ export interface SiteConfig {
    *  hours). Unset = the older rule only (no address/phone/hours at all). Glasgow 25 (owner 2026-10-28). Mirrored in astro.config.mjs
    *  THIN_FACILITY_MIN_OWN_WORDS; src/lib/thin-facility-mirror.test.ts fails if the two disagree. */
   thinFacilityMinOwnWords?: number;
+  /** The AI content track (recipes, reviews, editorials, columns, essays) is retired for this town (owner 2026-11-04, Broomfield): its stories are
+   *  not built (no /s/ page, 404), not listed on the front page, and the pages that described the track as live drop that text. Rows stay in the database. */
+  contentTrackRetired?: boolean;
+  /** How many of the newest weeks keep /this-week/<week>/ and their weekly story indexable. Unset = RECENT_WEEKS_INDEXED (8). Broomfield 1 = only the
+   *  current week; a passed week is noindex (owner 2026-11-04). */
+  recentWeeksIndexed?: number;
   /** Evening layer (/tonight, /this-weekend), see lib/evening-threshold.ts. 'threshold' = indexable once the median over the next 14 evenings
    *  reaches 10 items in 3 groups (8 to stay); 'never' = always noindex (Brookings). Unset = the town has no evening layer. Owner 2026-10-28. */
   eveningLayer?: {
@@ -687,6 +693,12 @@ const CITIES: Record<string, SiteConfig> = {
   broomfield_co: {
     townId: 'broomfield_co',
     safetyNotices: true,
+    // Owner 2026-11-04 (Broomfield AdSense audit #2, #4, #5): AI essays/recipes/reviews retired; facility pages with under 25 own words are
+    // noindex until real data is added; only the current week page stays indexable.
+    contentTrackRetired: true,
+    disabledSections: ['reviews', 'recipes', 'editorials', 'columns'],
+    thinFacilityMinOwnWords: 25,
+    recentWeeksIndexed: 1,
     eveningLayer: { mode: 'threshold', maxMiles: 20, includeTicketmasterSports: true, openLate: true, register: true, nearMiles: 5, h1: 'Tonight in and around Broomfield', indexApproved: true },
     // Owner-approved 2026-10-21: six tabs for now, a seventh to be chosen (events / workplace / vail / weather).
     nav: {
@@ -761,7 +773,7 @@ const CITIES: Record<string, SiteConfig> = {
     description:
       'City Council decisions, events, weather and local happenings in Broomfield, Colorado. Updated every 6 hours.',
     sourceBlurb:
-      'Broomfield View gathers public information from the City and County of Broomfield, Adams 12 Five Star Schools, and Boulder Valley School District.',
+      'Broomfield View gathers public information from the City and County of Broomfield, the National Weather Service, and the Colorado Department of Transportation.',
     removalEmail: 'hello@broomfieldview.com',
     trafficSource: {
       name: 'CDOT / COtrip',
@@ -825,7 +837,7 @@ const CITIES: Record<string, SiteConfig> = {
     meetingsHaveTime: true,
     meetingDecisionsTracked: false,
     description: 'Council decisions, events and local happenings in Glasgow, Scotland.',
-    sourceBlurb: 'Glasgow Loop gathers public information from Glasgow City Council and other official Scottish sources.',
+    sourceBlurb: 'Glasgow Loop gathers public information from Glasgow City Council, Glasgow Life, and the Met Office.',
     removalEmail: 'hello@glasgowloop.co.uk',
   },
 };

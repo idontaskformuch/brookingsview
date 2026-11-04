@@ -66,7 +66,7 @@ export async function getStaticPaths() {
   }
   const current = currentWeekInfo(siteConfig.timezone);
   weekInfos.set(current.slug, current); // "week ahead" -- real data, narrative may not exist yet
-  const recentSlugs = recentWeekSlugs(weekInfos.keys());
+  const recentSlugs = recentWeekSlugs(weekInfos.keys(), siteConfig.recentWeeksIndexed);
 
   return Promise.all([...weekInfos.values()].map(async (week) => {
     const days = buildWeekDays(week, siteConfig.timezone, {

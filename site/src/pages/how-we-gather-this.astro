@@ -67,6 +67,8 @@ const sources = aboutSourcesFor(siteConfig.townId);
     to its original source, so you can always read the full agenda or
     listing yourself.</p>
 
+    {!siteConfig.contentTrackRetired && (
+    <>
     <h2>Reviews, recipes, editorials, and columns</h2>
     <p>Some of what's on this site isn't a summary of one source document at
     all — film/TV reviews, recipes, editorials, and the science and
@@ -84,6 +86,9 @@ const sources = aboutSourcesFor(siteConfig.townId);
     no actual data for. A draft that fails gets one rewrite attempt with the
     specific problem pointed out; if it still fails, nothing is published —
     there's no template fallback for a piece that fails these checks.</p>
+
+    </>
+    )}
 
     <h2>What we choose not to name</h2>
     <p>Meeting agendas sometimes include the names of private individuals —

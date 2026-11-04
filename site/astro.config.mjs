@@ -531,7 +531,7 @@ async function buildLastmodMap(townId, databaseUrl) {
   // EXISTS subquery gives exact parity with the real page's structured-
   // hours check (place_hours rows), no overcounting needed here.
   // Mirrors SiteConfig.thinFacilityMinOwnWords (site-config.ts); src/lib/thin-facility-mirror.test.ts fails if they disagree.
-  const THIN_FACILITY_MIN_OWN_WORDS = { glasgow: 25 };
+  const THIN_FACILITY_MIN_OWN_WORDS = { glasgow: 25, broomfield_co: 25 };
   const thinFacilities = await sql`
     SELECT p.slug,
            (p.address IS NULL OR p.address = '') AS no_address,
@@ -721,7 +721,9 @@ async function buildLastmodMap(townId, databaseUrl) {
 
   // Only the newest RECENT_WEEKS_INDEXED weeks stay indexable -- mirrors lib/this-week.ts's
   // recentWeekSlugs(): older /this-week/<week>/ pages AND their /s/weekly-* stories are noindex.
-  const RECENT_WEEKS_INDEXED = 8;
+  // Per-town override mirrors SiteConfig.recentWeeksIndexed (Broomfield 1 = only the current week); src/lib/recent-weeks-mirror.test.ts fails if they disagree.
+  const RECENT_WEEKS_OVERRIDE = { broomfield_co: 1 };
+  const RECENT_WEEKS_INDEXED = RECENT_WEEKS_OVERRIDE[townId] ?? 8;
   const recentWeekSlugsMirror = new Set([...pageWeekSlugs].sort().reverse().slice(0, RECENT_WEEKS_INDEXED));
   for (const slug of pageWeekSlugs) {
     if ((weekItemCounts.get(slug) ?? 0) < MIN_TAG_PAGE_ITEMS || !recentWeekSlugsMirror.has(slug)) noindexThinPageUrls.add(`/this-week/${slug}/`);

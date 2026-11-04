@@ -55,3 +55,7 @@ backups/
 qa/out/
 .ci_fingerprint
 site/indexnow-pending.json
+
+# Traffic exports (Search Console, GA4) are not committed
+.claude/gsc/
+.claude/ga4/

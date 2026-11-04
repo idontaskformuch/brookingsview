@@ -61,7 +61,7 @@ export async function getStaticPaths() {
   const recentWeeks = recentWeekSlugs([
     currentWeekInfo(siteConfig.timezone).slug,
     ...weeklyStories.filter((w) => w.occurs_at).map((w) => weekInfoForInstant(new Date(w.occurs_at as string), siteConfig.timezone).slug),
-  ]);
+  ], siteConfig.recentWeeksIndexed);
   const { items: upcomingEventItems } = buildEventFeed(upcomingEvents, upcomingArts, siteConfig.timezone);
   // 2026-10-01, item 4: the route param is the PUBLIC slug (publicSlug());
   // `story.slug` itself (passed through unchanged via props) stays the

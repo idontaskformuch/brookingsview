@@ -57,7 +57,9 @@ export const GET: APIRoute = async () => {
     // columns are checked a different way (see how-we-gather-this.astro's
     // own "Reviews, recipes, editorials, and columns" section).
     "News and listing summaries are written by an AI model working only from the named source above -- never adding a fact, name or number that isn't in it -- and checked against that source before publishing.",
-    "Reviews, recipes, editorials, and columns are AI-written original pieces, labeled as such, checked by automated rules (town/date/fact consistency, no election or private-business endorsement, no unverified showtime claims) rather than against a single source document.",
+    ...(siteConfig.contentTrackRetired ? [] : [
+      "Reviews, recipes, editorials, and columns are AI-written original pieces, labeled as such, checked by automated rules (town/date/fact consistency, no election or private-business endorsement, no unverified showtime claims) rather than against a single source document.",
+    ]),
   ];
 
   for (const cluster of graph.clusters) {

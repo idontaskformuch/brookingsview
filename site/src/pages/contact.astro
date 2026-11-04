@@ -13,6 +13,8 @@ import { metaDescription } from '../lib/meta-description';
 import { forCountry } from '../lib/country-profile';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
+// Broomfield's library calendar (compass.broomfield.org) is not a source (waiting on the library), so the page must not claim it.
+const isBroomfield = siteConfig.townId === 'broomfield_co';
 const TURNSTILE_SITE_KEY = '0x4AAAAAAEhMDgrHEob53wfv';
 // Glasgow (owner 2026-10-23): until the Resend + Turnstile secrets exist on its Worker the form is hidden and the
 // email address is the contact route. The page asks /api/contact-status and reveals the form (and loads Turnstile)
@@ -53,7 +55,7 @@ const formGated = siteConfig.country === 'gb';
     <h2>Missing an event?</h2>
     <p>If your {forCountry(siteConfig.country, 'organization', 'organisation')} runs public events in {siteConfig.cityName} and you'd like them
     included, <a href={`mailto:${siteConfig.removalEmail}`}>get in touch</a>. {forCountry(siteConfig.country,
-      `Right now the site covers the library, the city and county${isBrookings ? ', and SDSU athletics' : ''} — we're always looking to add more.`,
+      `Right now the site covers ${isBroomfield ? 'the city and county' : 'the library, the city and county'}${isBrookings ? ', and SDSU athletics' : ''} — we're always looking to add more.`,
       "Right now the site covers Glasgow City Council, Glasgow Life events and venues, Ticketmaster listings, and Met Office weather and warnings — we're always looking to add more.")}</p>
   </article>
 </BaseLayout>

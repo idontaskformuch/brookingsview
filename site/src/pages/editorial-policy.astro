@@ -91,6 +91,7 @@ const webPageJsonLd = {
         fact. It can't say a decision is likely, expected, or on track to
         happen, because that hasn't occurred yet.</dd>
       </div>
+      {!siteConfig.contentTrackRetired && (
       <div class="check">
         <dt>Culture and science columns are third person, no invented experience</dt>
         <dd>The model has no experiences of its own to draw on, so it's
@@ -99,6 +100,7 @@ const webPageJsonLd = {
         work, a trend, a local angle — grounded in what's actually true
         about it, not a fabricated first-person voice.</dd>
       </div>
+      )}
       <div class="check">
         <dt>No arrests, court records, or obituaries</dt>
         <dd>Covered on <a href="/about/">/about</a> too — this is enforced

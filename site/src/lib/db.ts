@@ -107,6 +107,10 @@ export const CONTENT_TRACK_TYPES: SourceType[] = [
  *  of these categories, not a per-row generated_by sniff that would quietly
  *  stop labeling a row if some future editorial workflow ever hand-wrote
  *  one under the same source_type. */
+/** Source types a retired content track (SiteConfig.contentTrackRetired) must never read back: empty for towns that still show the track.
+ *  `source_type != ALL(empty array)` is true, so the filter is a no-op there. */
+const RETIRED_TYPES: SourceType[] = siteConfig.contentTrackRetired ? CONTENT_TRACK_TYPES : [];
+
 export function isAiWrittenContent(sourceType: SourceType): boolean {
   return CONTENT_TRACK_TYPES.includes(sourceType);
 }
@@ -440,6 +444,7 @@ export async function getLatestFromCandidates(limit = 8): Promise<Story[]> {
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${EDITORIAL_SOURCE_TYPES})
+       AND source_type != ALL(${RETIRED_TYPES})
        -- Postgres sorts NULL first in DESC order, so an unpublished row
        -- (published_at set back to NULL, e.g. scripts/scan_contamination.py's
        -- quarantine flow) would otherwise outrank every real published story
@@ -474,6 +479,7 @@ export async function getRecentCompactContent(limit = 3): Promise<Story[]> {
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${SHARED_CONTENT_SOURCE_TYPES})
+       AND source_type != ALL(${RETIRED_TYPES})
        AND published_at IS NOT NULL
        AND superseded_by_slug IS NULL
      ORDER BY published_at DESC
@@ -493,6 +499,7 @@ export async function getPastStories(
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
+       AND source_type != ALL(${RETIRED_TYPES})
        AND occurs_at < now() - CASE WHEN source_type = 'meeting' AND ${siteConfig.meetingsHaveTime ?? false}::boolean THEN interval '2 hours' ELSE interval '12 hours' END
        -- "Recently" is what has ENDED. A recurring programme is not a past event
        -- (its occurs_at is just the date it was first seen), and a multi-week
@@ -528,6 +535,7 @@ export async function getTodaysFeature(): Promise<Story | null> {
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${CONTENT_TRACK_TYPES})
+       AND source_type != ALL(${RETIRED_TYPES})
        AND published_at::date = (now() AT TIME ZONE ${siteConfig.timezone})::date
        AND superseded_by_slug IS NULL
      ORDER BY published_at DESC
@@ -548,6 +556,7 @@ export async function getContentByType(sourceTypes: SourceType[], limit = 40): P
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
+       AND source_type != ALL(${RETIRED_TYPES})
        -- see getLatestFromCandidates' comment: NULL sorts first in DESC,
        -- so an unpublished row must be filtered explicitly, not just outranked.
        AND published_at IS NOT NULL
@@ -621,6 +630,7 @@ export async function getAllStories(): Promise<Story[]> {
            venue_raw, is_recurring_series, ends_at, category_image_index, superseded_by_slug, meta
       FROM stories
      WHERE town_id = ${TOWN_ID}
+       AND source_type != ALL(${RETIRED_TYPES})
      ORDER BY occurs_at DESC NULLS LAST
   `) as Story[];
 }
