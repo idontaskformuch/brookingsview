@@ -104,6 +104,9 @@ const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facili
   />
   {siteConfig.safetyNotices && <SafetyNotices townId={siteConfig.townId} timezone={siteConfig.timezone} variant="compact" />}
   {siteConfig.eveningLayer && <p class="today-tonight">Planning the evening? <a href="/tonight/">Things to do tonight in {siteConfig.cityName}</a>.</p>}
+  {siteConfig.country === 'gb' && siteConfig.townId === 'glasgow' && (
+    <p class="today-official">Official warnings and safety information, from the services themselves: <a href="https://weather.metoffice.gov.uk/warnings-and-advice/uk-warnings" rel="noopener">Met Office weather warnings</a>, <a href="https://www.scotland.police.uk/" rel="noopener">Police Scotland</a> and <a href="https://www.firescotland.gov.uk/" rel="noopener">Scottish Fire and Rescue Service</a>. Links only: we do not copy their updates. In an emergency, call 999.</p>
+  )}
   {moreLinks.length > 0 && (
     <p class="today-more">Also in {siteConfig.cityName}: {moreLinks.map((l, i) => <>{i > 0 && (i === moreLinks.length - 1 ? ' and ' : ', ')}<a href={l.href}>{l.label}</a></>)}.</p>
   )}
@@ -113,5 +116,6 @@ const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facili
   .today-more { margin: 0.5rem 0 0; }
   .lede { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.5rem; }
   .today-tonight { margin: 1rem 0 0; }
+  .today-official { margin: 1rem 0 0; font-size: 0.9375rem; color: var(--ink-soft); max-width: 46rem; }
   .lede__backlink { margin: 0; color: var(--ink-soft); font-size: 0.9375rem; }
 </style>
