@@ -37,7 +37,7 @@ import { handleAlerts } from './alerts';
 import { handleWeather } from './weather';
 import {
   type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug, previousIsoWeekSlug,
-  resolveLegacyMeetingRedirect, resolveFacilityRedirect, resolveStaticGateRedirect,
+  resolveLegacyMeetingRedirect, resolveFacilityRedirect, resolveStaticGateRedirect, isGoneSection,
 } from './_shared';
 import legacyMeetingRedirects from './legacy-meeting-redirects.json';
 import eventSeriesRedirects from './event-series-redirects.json';
@@ -315,6 +315,14 @@ export default {
     // turn into a 2-second <meta refresh> + HTTP 200, never a real 3xx.
     // Resolved from the request's own hostname, same as /this-week/
     // above -- never a build-time SITE_CITY this Worker bundle lacks.
+    // Retired content-track sections: 410 Gone (see GONE_SECTIONS in _shared.ts).
+    if (isGoneSection(url.pathname, townFromHostname(request.url, env.DEV_TOWN_ID))) {
+      return new Response(
+        '<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>Gone</title><p>This section has been retired. <a href="/">Back to the front page</a>.</p>',
+        { status: 410, headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex', 'Cache-Control': 'no-store' } },
+      );
+    }
+
     const staticGateRedirect = resolveStaticGateRedirect(
       url.pathname, townFromHostname(request.url, env.DEV_TOWN_ID),
     );

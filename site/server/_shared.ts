@@ -291,7 +291,6 @@ const STATIC_GATE_REDIRECTS: Record<string, Record<string, StaticGateRedirect>> 
     '/play/': { to: '/', status: 302 },
     '/farm-report/': { to: '/', status: 302 },
     '/new-in-town/': { to: '/', status: 302 },
-    '/reviews/': { to: '/', status: 301 },
   },
   broomfield_co: {
     '/jackrabbits/': { to: '/', status: 302 },
@@ -307,6 +306,31 @@ const STATIC_GATE_REDIRECTS: Record<string, Record<string, StaticGateRedirect>> 
     '/month/': { to: '/', status: 302 },
   },
 };
+
+/** Content-track sections a town has switched off (SiteConfig.disabledSections)
+ *  for good: the Worker answers 410 Gone, not a redirect. A 301 to the home page
+ *  from a recipe or column section reads to Google as a soft 404; 410 says the
+ *  page is gone on purpose (owner 2026-11-04). Moreno's /reviews/ used to be a
+ *  301 in STATIC_GATE_REDIRECTS above and moved here.
+ *
+ *  KEEP IN SYNC BY HAND with each town's disabledSections in
+ *  site/src/lib/site-config.ts; src/lib/gone-sections-mirror.test.ts fails if
+ *  the two disagree. */
+const GONE_SECTIONS = ['/recipes/', '/reviews/', '/columns/', '/editorials/'];
+export const GONE_SECTIONS_BY_TOWN: Record<string, string[]> = {
+  brookings_sd: GONE_SECTIONS,
+  moreno_valley_ca: GONE_SECTIONS,
+  broomfield_co: GONE_SECTIONS,
+  glasgow: GONE_SECTIONS,
+};
+
+/** True when `pathname` (with or without a trailing slash) is a section this
+ *  town has retired. Unknown town = false, same convention as the resolvers here. */
+export function isGoneSection(pathname: string, townId: string | null): boolean {
+  if (!townId) return false;
+  const normalized = pathname.endsWith('/') ? pathname : `${pathname}/`;
+  return GONE_SECTIONS_BY_TOWN[townId]?.includes(normalized) ?? false;
+}
 
 /** `pathname` with or without a trailing slash resolves the same entry
  *  (mirrors this-week's own dual `/this-week` + `/this-week/` check in

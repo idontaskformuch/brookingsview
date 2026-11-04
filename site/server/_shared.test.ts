@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   isoWeekSlugForInstant, previousIsoWeekSlug, timezoneForTown, townFromHostname,
-  resolveStaticGateRedirect,
+  resolveStaticGateRedirect, isGoneSection,
 } from './_shared';
 
 // Mirrors site/src/lib/this-week.test.ts's own isoWeekInfo coverage --
@@ -132,9 +132,9 @@ describe('resolveStaticGateRedirect', () => {
     expect(resolveStaticGateRedirect('/sports/', null)).toBeNull();
   });
 
-  it('reviews.astro is the one deliberate 301 (retired content track), everything else is 302', () => {
-    expect(resolveStaticGateRedirect('/reviews/', 'moreno_valley_ca')).toEqual({ to: '/', status: 301 });
+  it('every gate redirect is a 302 (retired sections are 410 instead, see isGoneSection)', () => {
     expect(resolveStaticGateRedirect('/jackrabbits/', 'moreno_valley_ca')).toEqual({ to: '/', status: 302 });
+    expect(resolveStaticGateRedirect('/reviews/', 'moreno_valley_ca')).toBeNull();
   });
 
   it('closures only redirects for broomfield_co (the only town without Closure Watch configured)', () => {
@@ -165,5 +165,23 @@ describe('resolveStaticGateRedirect', () => {
     expect(resolveStaticGateRedirect('/vail-resorts/', 'brookings_sd')).toEqual({ to: '/', status: 302 });
     expect(resolveStaticGateRedirect('/vail-resorts/', 'moreno_valley_ca')).toEqual({ to: '/', status: 302 });
     expect(resolveStaticGateRedirect('/vail-resorts/', 'broomfield_co')).toBeNull();
+  });
+});
+
+describe('isGoneSection', () => {
+  it('is true for each retired section in every town, with or without trailing slash', () => {
+    for (const town of ['brookings_sd', 'moreno_valley_ca', 'broomfield_co', 'glasgow']) {
+      for (const p of ['/recipes/', '/reviews/', '/columns/', '/editorials/']) {
+        expect(isGoneSection(p, town)).toBe(true);
+        expect(isGoneSection(p.slice(0, -1), town)).toBe(true);
+      }
+    }
+  });
+
+  it('is false for live pages, nested paths and an unknown town', () => {
+    expect(isGoneSection('/events/', 'broomfield_co')).toBe(false);
+    expect(isGoneSection('/recipes/x/', 'broomfield_co')).toBe(false);
+    expect(isGoneSection('/recipes/', null)).toBe(false);
+    expect(isGoneSection('/recipes/', 'unknown_town')).toBe(false);
   });
 });
