@@ -8,6 +8,8 @@ import { showTimeGb } from './whats-on-dates';
 /** Card colour buckets. The three event categories and Open late each have an accent; everything else is neutral "Also on". */
 export type Bucket = 'music' | 'comedy' | 'theatre' | 'late' | 'other';
 export const BUCKET_LABEL: Record<Bucket, string> = { music: 'Live music', comedy: 'Comedy & shows', theatre: 'Theatre', late: 'Open late', other: 'Also on' };
+/** The bucket's heading as the reader sees it: "Theater" in a US town. */
+export const bucketLabel = (bucket: Bucket, country: string): string => (bucket === 'theatre' && country === 'us' ? 'Theater' : BUCKET_LABEL[bucket]);
 /** Category rows in page order (Open late is its own row, placed by the page). */
 export const EVENT_BUCKETS: Bucket[] = ['music', 'comedy', 'theatre', 'other'];
 
@@ -49,11 +51,12 @@ export interface Badge { kind: 'free' | 'price'; text: string }
 
 /** Badges only from stated data: Free from the source's own label, a price from the source's lowest price in a currency we can write.
  *  No data, no badge (Glasgow has no price at all today: Ticketmaster returns none for it). */
-export function badgesFor(e: Pick<EveningEntry, 'labels' | 'priceMin' | 'priceCurrency'>): Badge[] {
+export function badgesFor(e: Pick<EveningEntry, 'labels' | 'priceMin' | 'priceCurrency'>, hidePrice = false): Badge[] {
   const out: Badge[] = [];
   if (e.labels.includes('Free')) out.push({ kind: 'free', text: 'Free' });
   const symbol = e.priceCurrency ? CURRENCY_SYMBOL[e.priceCurrency] : undefined;
-  if (e.priceMin != null && e.priceMin > 0 && symbol && !out.length) {
+  // hidePrice: the US towns, until we know what Ticketmaster's priceRanges contain (fees in or out; owner 2026-11-04)
+  if (!hidePrice && e.priceMin != null && e.priceMin > 0 && symbol && !out.length) {
     out.push({ kind: 'price', text: `${symbol}${Number.isInteger(e.priceMin) ? e.priceMin : e.priceMin.toFixed(2)}` });
   }
   return out;
@@ -70,6 +73,37 @@ export function distanceMetres(a: { lat: number; lon: number }, b: { lat: number
 /** Approximate walking minutes: straight-line distance x 1.3 at 80 m a minute, so always shown as "approx". */
 export function walkMinutes(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
   return Math.round((distanceMetres(a, b) * 1.3) / 80);
+}
+
+/** Town facts the card needs: country (spelling), and for the US towns the home city and center behind "Denver · 15 mi". */
+export interface CardTown { country: string; homeCity: string; center: { lat: number; lon: number }; hidePrice?: boolean; cityLabels?: boolean }
+
+const METERS_PER_MILE = 1609.344;
+export type CityScope = 'home' | 'near' | 'unknown';
+const sameCity = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** Where the event is, by the source's own venue city: the home town, somewhere else ("nearby"), or unknown (no city stated: never guessed). */
+export function cityScope(venueCity: string | null | undefined, homeCity: string): CityScope {
+  if (!venueCity) return 'unknown';
+  return sameCity(venueCity, homeCity) ? 'home' : 'near';
+}
+
+export interface CityLabel { text: string; title: string | null }
+
+/** "Denver · 15 mi" for an event outside the home town, null when the source states no city or the city is the home town. The distance is
+ *  straight-line from the town center, computed from the venue's coordinates and rounded to whole miles ("<1 mi" under half a mile);
+ *  without coordinates only the city name shows. */
+export function cityLabel(e: Pick<EveningEntry, 'venueCity' | 'lat' | 'lon'>, homeCity: string, center: { lat: number; lon: number }): CityLabel | null {
+  if (cityScope(e.venueCity, homeCity) !== 'near') return null;
+  if (e.lat == null || e.lon == null) return { text: e.venueCity!, title: null };
+  const miles = Math.round(distanceMetres(center, { lat: e.lat, lon: e.lon }) / METERS_PER_MILE);
+  return { text: `${e.venueCity} · ${miles < 1 ? '<1' : miles} mi`, title: `About ${miles < 1 ? 'less than 1' : miles} ${miles === 1 ? 'mile' : 'miles'} in a straight line from the center of ${homeCity}, not a driving distance` };
+}
+
+/** The second header line: "12 in Broomfield · 31 nearby". Only shown when something is outside town; events with no stated city are in neither count. */
+export function scopeLine(counts: { home: number; near: number }, homeCity: string): string | null {
+  if (counts.near === 0) return null;
+  return `${counts.home > 0 ? `${counts.home} in ${homeCity} · ` : ''}${counts.near} nearby`;
 }
 
 export interface LatePlace { osmId: string; name: string; closing: string; end: string; lat?: number | null; lon?: number | null }

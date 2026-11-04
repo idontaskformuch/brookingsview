@@ -24,7 +24,7 @@ import { buildEveningSections, eveningEntries } from '../lib/evening-page';
 import TonightCard from '../components/tonight/TonightCard.astro';
 import TonightRows from '../components/tonight/TonightRows.astro';
 import TonightStyles from '../components/tonight/TonightStyles.astro';
-import { chipPlan, countByRegion, pairNights, regionOf, unmappedAreas, SOON_MAX_CARDS } from '../lib/tonight-cards';
+import { chipPlan, countByRegion, cityScope, pairNights, regionOf, scopeLine, unmappedAreas, SOON_MAX_CARDS, type CardTown } from '../lib/tonight-cards';
 import { OPEN_LATE_MAX_ROWS } from '../lib/osm-open-late';
 import TonightChips from '../components/tonight/TonightChips.astro';
 import { showTimeGb } from '../lib/whats-on-dates';
@@ -82,12 +82,17 @@ const eveningOf = new Map(sections.map((s) => [s.day, eveningEntries(entries, s.
 const tonightEvents = [...(eveningOf.get(tonight.day) ?? [])].sort((a, b) => a.start.localeCompare(b.start));
 const upNext = tonightEvents.filter((e) => new Date(e.start).getTime() > now.getTime() - 3 * 3_600_000).slice(0, SOON_MAX_CARDS);
 const regions = cards?.regions ?? {};
+const town: CardTown = { country: siteConfig.country, homeCity: siteConfig.cityName, center: siteConfig.townCenter, hidePrice: !!cards?.hidePrice, cityLabels: !!cards?.cityLabels };
+// "12 in Broomfield · 31 nearby": by the source's own venue city; events with no stated city are in neither count
+const scopeCounts = { home: 0, near: 0 };
+if (town.cityLabels) for (const e of tonightEvents) { const sc = cityScope(e.venueCity, town.homeCity); if (sc !== 'unknown') scopeCounts[sc]++; }
+const scopeText = town.cityLabels ? scopeLine(scopeCounts, town.homeCity) : null;
 const regionOrder = Object.keys(regions);
 const tonightLateCards = (lateBySection.get(tonight.day) ?? []).slice(0, OPEN_LATE_MAX_ROWS);
 // what a chip tap shows tonight: events + Open late places in the region
 const chipThings = countByRegion([...tonightEvents.map((e) => regionOf(e.area, regions)), ...tonightLateCards.map((p) => regionOf(p.area, regions))]);
 const plan = chipPlan(chipThings, regionOrder, null);
-if (cards) {
+if (cards && regionOrder.length > 0) {
   const missing = unmappedAreas([...[...eveningOf.values()].flat().map((e) => e.area), ...[...lateBySection.values()].flat().map((p) => p.area)], regions);
   if (missing.length > 0) console.warn(`[tonight] areas in no chip region (shown under All only): ${missing.join(', ')}`);
 }
@@ -101,8 +106,9 @@ const summary = buildSummary({
 });
 const train = home && lastTrain ? { monSat: lastSubwayTime(home, false) ?? lastTrain, sunday: lastSubwayTime(home, true) ?? lastTrain, name: home.subway.name } : null;
 
-const dayLabelOf = (day: number) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(day * 86_400_000));
-const updatedLabel = new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: 'numeric', month: 'long', year: 'numeric' }).format(now);
+const dateLocale = siteConfig.country === 'us' ? 'en-US' : 'en-GB';
+const dayLabelOf = (day: number) => new Intl.DateTimeFormat(dateLocale, { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(day * 86_400_000));
+const updatedLabel = new Intl.DateTimeFormat(dateLocale, { timeZone: tz, day: 'numeric', month: 'long', year: 'numeric' }).format(now);
 
 const pageMeta = resolvePageMeta('tonight', siteConfig);
 const canonicalUrl = new URL('/tonight/', Astro.site ?? siteConfig.siteUrl).href;
@@ -123,6 +129,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
       <TonightStyles />
       <section class="tc-hero" aria-label="Tonight at a glance">
         <p class="tc-count"><span class="tc-big" data-tc-count>{tonightEvents.length}</span> <span class="tc-count-label" data-tc-count-label>{tonightEvents.length === 1 ? 'thing' : 'things'} on tonight</span></p>
+        {town.cityLabels && <p class="tc-scope" data-tc-scope data-home={town.homeCity} hidden={scopeText ? undefined : true}>{scopeText}</p>}
         <p class="tc-next" data-tc-next hidden></p>
       </section>
 
@@ -130,7 +137,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
         <section class="tc-soon" data-tc-soon-box aria-labelledby="tc-soon-h">
           <h2 id="tc-soon-h" data-tc-soon-h>Up next</h2>
           <ul class="tc-row tc-row--lg" data-tc-soon>
-            {upNext.map((e) => <TonightCard e={e} tz={tz} lg region={regionOf(e.area, regions)} />)}
+            {upNext.map((e) => <TonightCard town={town} e={e} tz={tz} lg region={regionOf(e.area, regions)} />)}
           </ul>
         </section>
       )}
@@ -172,7 +179,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
                 </ul>
               </section>
             )}
-            <TonightRows id={`tn-${s.kind}`} entries={eveningOf.get(s.day) ?? []} late={lateBySection.get(s.day)!} tz={tz} regions={regions} />
+            <TonightRows id={`tn-${s.kind}`} entries={eveningOf.get(s.day) ?? []} late={lateBySection.get(s.day)!} tz={tz} regions={regions} town={town} />
           </section>
         ))}
       </div>

@@ -2,7 +2,8 @@
 /** Highlight card. The picture is Ticketmaster's licensed image when the show has one (served through our own /img/ticketmaster route);
  *  no picture otherwise -- never a stand-in. */
 import type { EveningEntry } from '../../lib/evening-items';
-import { driveLabel } from '../../lib/evening-items';
+import { driveLabel, groupLabel } from '../../lib/evening-items';
+import { siteConfig } from '../../lib/site-config';
 import { showTimeGb } from '../../lib/whats-on-dates';
 
 interface Props { e: EveningEntry; tz: string }
@@ -14,7 +15,7 @@ const external = !!e.href && /^https?:/i.test(e.href);
 <li class="ev-card" data-start={e.start} data-end={e.end ?? undefined}>
   {e.image && <img class="ev-card-img" src={e.image.src} alt={e.image.alt} width={e.image.width} height={e.image.height} loading="lazy" decoding="async" onerror="this.remove()" />}
   <div class="ev-card-body">
-    <p class="ev-card-time"><span class="ev-card-clock">{times}</span>{e.group && <span class="ev-card-group"> · {e.group}</span>}</p>
+    <p class="ev-card-time"><span class="ev-card-clock">{times}</span>{e.group && <span class="ev-card-group"> · {groupLabel(e.group, siteConfig.country)}</span>}</p>
     <h3 class="ev-card-title">{e.href ? <a href={e.href} rel={external ? 'noopener' : undefined}>{e.title}</a> : e.title}</h3>
     {meta && <p class="ev-meta">{meta}</p>}
     {e.labels.length > 0 && <p class="ev-card-labels">{e.labels.map((l) => <span class="ev-label">{l}</span>)}</p>}

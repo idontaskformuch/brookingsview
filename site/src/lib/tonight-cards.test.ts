@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   badgesFor, timeState, isStartingSoon, walkMinutes, pairNights, regionOf, unmappedAreas, chipPlan, countByRegion, matchesArea, surprisePick, surpriseCandidates,
-  nextUp, untilLabel, bucketOf, type SurpriseCard, type LatePlace,
+  nextUp, untilLabel, bucketOf, bucketLabel, cityLabel, cityScope, scopeLine, type SurpriseCard, type LatePlace,
 } from './tonight-cards';
-import { groupForTicketmaster, type EveningEntry } from './evening-items';
+import { groupForTicketmaster, groupLabel, cleanCity, type EveningEntry } from './evening-items';
 import { hasEnded } from './local-day';
 import { readFileSync } from 'node:fs';
 import { ALL_CONFIGS } from './site-config';
@@ -190,5 +190,72 @@ describe('Theatre group (Ticketmaster genre Theatre only)', () => {
     expect(bucketOf('Theatre')).toBe('theatre');
     expect(bucketOf('Sport')).toBe('other');
     expect(bucketOf(null)).toBe('other');
+  });
+});
+
+describe('US towns: price hidden, Theater spelling', () => {
+  it('hidePrice drops the price badge but keeps Free', () => {
+    expect(badgesFor(entry({ priceMin: 12, priceCurrency: 'USD' }), true)).toEqual([]);
+    expect(badgesFor(entry({ labels: ['Free'], priceMin: 12, priceCurrency: 'USD' }), true)).toEqual([{ kind: 'free', text: 'Free' }]);
+  });
+  it('Theater in a US town, Theatre elsewhere', () => {
+    expect(bucketLabel('theatre', 'us')).toBe('Theater');
+    expect(bucketLabel('theatre', 'gb')).toBe('Theatre');
+    expect(groupLabel('Theatre', 'us')).toBe('Theater');
+    expect(groupLabel('Live music', 'us')).toBe('Live music');
+  });
+});
+
+describe('venueCity labels (US towns)', () => {
+  const center = { lat: 39.9205, lon: -105.0866 }; // Broomfield
+  const denver = { venueCity: 'Denver', lat: 39.7392, lon: -104.9903 }; // about 13 mi
+  it('no venueCity: no label, and the event is in neither count', () => {
+    expect(cityLabel({ venueCity: null, lat: 39.7392, lon: -104.9903 }, 'Broomfield', center)).toBeNull();
+    expect(cityLabel({ lat: 39.7392, lon: -104.9903 }, 'Broomfield', center)).toBeNull();
+    expect(cityScope(null, 'Broomfield')).toBe('unknown');
+  });
+  it('the home town gets no label, whatever the case', () => {
+    expect(cityLabel({ venueCity: 'Broomfield', lat: 39.92, lon: -105.08 }, 'Broomfield', center)).toBeNull();
+    expect(cityLabel({ venueCity: 'BROOMFIELD', lat: 39.92, lon: -105.08 }, 'Broomfield', center)).toBeNull();
+    expect(cityScope('broomfield', 'Broomfield')).toBe('home');
+  });
+  it('the distance is computed from the coordinates, in whole straight-line miles, with a title saying so', () => {
+    const l = cityLabel(denver, 'Broomfield', center)!;
+    const miles = Number(/(\d+) mi$/.exec(l.text)![1]);
+    expect(l.text).toBe(`Denver · ${miles} mi`);
+    expect(miles).toBeGreaterThanOrEqual(12);
+    expect(miles).toBeLessThanOrEqual(14);
+    expect(l.title).toMatch(/straight line from the center of Broomfield/);
+    const farther = cityLabel({ venueCity: 'Boulder', lat: 40.015, lon: -105.2705 }, 'Broomfield', center)!;
+    expect(farther.text).not.toBe(l.text);
+  });
+  it('a different venue position gives a different distance (it is not copied from the source)', () => {
+    expect(cityLabel({ venueCity: 'Denver', lat: 39.7392, lon: -104.9903 }, 'Broomfield', center)!.text)
+      .not.toBe(cityLabel({ venueCity: 'Denver', lat: 39.62, lon: -104.99 }, 'Broomfield', center)!.text);
+  });
+  it('a city without coordinates shows the name only, no invented distance', () => {
+    expect(cityLabel({ venueCity: 'Denver', lat: null, lon: null }, 'Broomfield', center)).toEqual({ text: 'Denver', title: null });
+  });
+  it('under half a mile reads <1 mi', () => expect(cityLabel({ venueCity: 'Denver', lat: 39.9206, lon: -105.0867 }, 'Broomfield', center)!.text).toBe('Denver · <1 mi'));
+  it('cleanCity strips a glued state code and empty values', () => {
+    expect(cleanCity('Denver CO')).toBe('Denver');
+    expect(cleanCity(' Boulder ')).toBe('Boulder');
+    expect(cleanCity('')).toBeNull();
+    expect(cleanCity(null)).toBeNull();
+  });
+  it('scopeLine: only with events outside town; home count only when above zero', () => {
+    expect(scopeLine({ home: 5, near: 0 }, 'Broomfield')).toBeNull();
+    expect(scopeLine({ home: 0, near: 0 }, 'Broomfield')).toBeNull();
+    expect(scopeLine({ home: 12, near: 31 }, 'Broomfield')).toBe('12 in Broomfield · 31 nearby');
+    expect(scopeLine({ home: 0, near: 2 }, 'Moreno Valley')).toBe('2 nearby');
+  });
+});
+
+describe('Open late dot is fixed, never animated (owner 2026-11-04)', () => {
+  it('the card styles have no pulse animation or keyframes', () => {
+    const css = readFileSync(new URL('../components/tonight/TonightStyles.astro', import.meta.url), 'utf8');
+    expect(css).not.toMatch(/tc-pulse/);
+    expect(css).toMatch(/\.tc-card\.is-now \.tc-time::before \{[^}]*background: var\(--c\)/);
+    expect(css).not.toMatch(/\.is-now[^{]*\{[^}]*animation/);
   });
 });

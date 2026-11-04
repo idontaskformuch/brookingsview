@@ -7,7 +7,7 @@ import { sectionState } from './evening-page';
 import { showTimeGb } from './whats-on-dates';
 import {
   timeState, isStartingSoon, matchesArea, nextUp, untilLabel, surprisePick, surpriseCandidates, chipPlan, countByRegion, SOON_MAX_CARDS,
-  type SurpriseCard, type Bucket,
+  scopeLine, type SurpriseCard, type Bucket,
 } from './tonight-cards';
 
 const $$ = <T extends HTMLElement = HTMLElement>(root: ParentNode, sel: string) => Array.from(root.querySelectorAll<T>(sel));
@@ -131,6 +131,14 @@ export function initTonightCards(doc: Document): void {
     const word = (visibleSections()[0]?.querySelector('[data-evening-heading]')?.textContent ?? 'Tonight').toLowerCase();
     if (count) count.textContent = String(live.length);
     if (label) label.textContent = `${live.length === 1 ? 'thing' : 'things'} on ${word}`;
+    const scope = doc.querySelector<HTMLElement>('[data-tc-scope]');
+    if (scope) {
+      const counts = { home: 0, near: 0 };
+      for (const c of live) { const sc = c.el.dataset.scope; if (sc === 'home' || sc === 'near') counts[sc]++; }
+      const text = scopeLine(counts, scope.dataset.home ?? '');
+      scope.hidden = !text;
+      scope.textContent = text ?? '';
+    }
     const next = doc.querySelector<HTMLElement>('[data-tc-next]');
     if (next) {
       const n = nextUp(live, now);

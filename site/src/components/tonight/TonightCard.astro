@@ -2,30 +2,33 @@
 /** One card of /tonight (spec .claude/specs/tonight-cards.md). The whole card is the link. The big line is the time; the category colour is
  *  the top edge and the tag. Badges only from stated data (lib/tonight-cards.ts badgesFor). `lg` = the large Starting soon size. */
 import type { EveningEntry } from '../../lib/evening-items';
-import { driveLabel } from '../../lib/evening-items';
+import { driveLabel, groupLabel } from '../../lib/evening-items';
 import { showTimeGb } from '../../lib/whats-on-dates';
-import { bucketOf, badgesFor, BUCKET_LABEL } from '../../lib/tonight-cards';
+import { bucketOf, badgesFor, bucketLabel, cityLabel, cityScope, type CardTown } from '../../lib/tonight-cards';
 import type { OpenLateRow } from '../../lib/osm-open-late';
 
-interface Props { e?: EveningEntry; place?: OpenLateRow; tz: string; lg?: boolean; /** Coarse area the chips filter by (lib/tonight-cards.ts regionOf); null = only under All. */ region?: string | null }
-const { e, place, tz, lg = false, region = null } = Astro.props;
+interface Props { e?: EveningEntry; place?: OpenLateRow; tz: string; lg?: boolean; /** Coarse area the chips filter by (lib/tonight-cards.ts regionOf); null = only under All. */ region?: string | null; town: CardTown }
+const { e, place, tz, lg = false, region = null, town } = Astro.props;
 const bucket = place ? 'late' : bucketOf(e!.group);
 const href = place ? place.website : e!.href;
 const external = !!href && /^https?:/i.test(href);
 const time = place ? place.closing : [e!.start, ...(e!.laterStarts ?? [])].map((t) => showTimeGb(t, tz)).filter(Boolean)[0] ?? '';
 const title = place ? place.name : e!.title;
-const meta = place ? [place.kind, place.area].filter(Boolean).join(' · ') : [e!.venue, e!.area, driveLabel(e!.driveMinutes)].filter(Boolean).join(' · ');
-const tag = place ? BUCKET_LABEL.late : (e!.group ?? BUCKET_LABEL.other);
-const badges = place ? [] : badgesFor(e!);
+const city = !place && town.cityLabels ? cityLabel(e!, town.homeCity, town.center) : null;
+const metaParts = place ? [place.kind, place.area] : [e!.venue, e!.area, town.cityLabels ? null : driveLabel(e!.driveMinutes)];
+const meta = metaParts.filter(Boolean).join(' · ');
+const tag = place ? bucketLabel('late', town.country) : (e!.group ? groupLabel(e!.group, town.country) : bucketLabel('other', town.country));
+const badges = place ? [] : badgesFor(e!, town.hidePrice);
+const scope = !place && town.cityLabels ? cityScope(e!.venueCity, town.homeCity) : undefined;
 const Tag = href ? 'a' : 'div';
 ---
 <li class:list={['tc-card', { 'tc-card--lg': lg }]} data-card data-bucket={bucket} data-id={place ? place.osmId : e!.id}
   data-start={place ? place.start : e!.start} data-end={(place ? place.end : e!.end) ?? undefined} data-area={region ?? undefined}
-  data-late={place ? '' : undefined} style={`--c: var(--tc-${bucket})`}>
+  data-scope={scope} data-late={place ? '' : undefined} style={`--c: var(--tc-${bucket})`}>
   <Tag class="tc-link" href={href ?? undefined} rel={external ? 'noopener' : undefined}>
     <span class="tc-time" data-tc-time>{time}</span>
     <span class="tc-title">{title}</span>
-    {meta && <span class="tc-meta">{meta}</span>}
+    {(meta || city) && <span class="tc-meta">{meta}{meta && city && ' · '}{city && <span class="tc-city" title={city.title ?? undefined}>{city.text}</span>}</span>}
     <span class="tc-foot">
       <span class="tc-tag">{tag}</span>
       {badges.map((b) => <span class={`tc-badge tc-badge--${b.kind}`}>{b.text}</span>)}

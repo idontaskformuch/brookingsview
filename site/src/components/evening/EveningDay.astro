@@ -3,6 +3,8 @@
  *  `attrs` carries the page's own data attributes (the browser scripts find the section through them). */
 import EveningCard from './EveningCard.astro';
 import EveningRow from './EveningRow.astro';
+import { groupLabel } from '../../lib/evening-items';
+import { siteConfig } from '../../lib/site-config';
 import type { EveningEntry } from '../../lib/evening-items';
 import { groupOpenLateByArea, type OpenLateRow } from '../../lib/osm-open-late';
 
@@ -37,7 +39,7 @@ const groupedLate = lateGroups.some((g) => g.area);
   )}
   {groups.map((g) => (
     <div class="ev-group">
-      <h3 class="ev-group-name">{g.name}</h3>
+      <h3 class="ev-group-name">{groupLabel(g.name, siteConfig.country)}</h3>
       <ul class="ev-rows" data-hide-ended data-hide-when-empty>
         {g.entries.map((e) => <EveningRow e={e} tz={tz} />)}
       </ul>

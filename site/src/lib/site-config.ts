@@ -67,7 +67,13 @@ export interface SiteConfig {
     h1?: string;
     /** Card layout of /tonight (spec .claude/specs/tonight-cards.md) instead of rows. regions = the coarse areas of the chips (region -> OSM neighbourhoods
      *  in it, owner-approved table; chip order = key order). A neighbourhood in no region shows only under "All" and is logged at build. */
-    cards?: { regions: Record<string, string[]> };
+    cards?: {
+      regions: Record<string, string[]>;
+      /** US towns (owner 2026-11-04): no price badge until we know what Ticketmaster's priceRanges contain, and "Denver · 15 mi" (the venue's own city
+       *  and straight-line miles from the town centre) instead of the estimated drive time. */
+      hidePrice?: true;
+      cityLabels?: true;
+    };
   };
   /** Public-safety notices (wildfires near the town, air quality, evacuation links): /safety/ and the line on /today. Moreno Valley and Broomfield
    *  (owner 2026-10-29); the towns must also exist in lib/safety-towns.ts. Other towns redirect /safety/ to /. */
@@ -708,7 +714,7 @@ const CITIES: Record<string, SiteConfig> = {
     disabledSections: ['reviews', 'recipes', 'editorials', 'columns'],
     thinFacilityMinOwnWords: 25,
     recentWeeksIndexed: 1,
-    eveningLayer: { mode: 'threshold', maxMiles: 20, includeTicketmasterSports: true, openLate: true, register: true, nearMiles: 5, h1: 'Tonight in and around Broomfield', indexApproved: true },
+    eveningLayer: { mode: 'threshold', maxMiles: 20, includeTicketmasterSports: true, openLate: true, register: true, nearMiles: 5, h1: 'Tonight in and around Broomfield', indexApproved: true, cards: { regions: {}, hidePrice: true, cityLabels: true } },
     // Owner-approved 2026-10-21: six tabs for now, a seventh to be chosen (events / workplace / vail / weather).
     nav: {
       tabs: ['today', 'tonight', 'whatson'],

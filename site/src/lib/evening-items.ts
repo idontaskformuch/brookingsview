@@ -55,6 +55,8 @@ export interface EveningEntry {
   priceMin?: number | null;
   /** ISO 4217 code of priceMin ("GBP"); null/absent when the source gives none. */
   priceCurrency?: string | null;
+  /** City the venue is in, as Ticketmaster states it ("Denver"); null/absent when the source gives none (own events, register). Never inferred. */
+  venueCity?: string | null;
 }
 
 /** One row of the curated venue register (db.getEveningRegister): a rule the weekly job read off the venue's own page. */
@@ -130,6 +132,17 @@ const ADULTS_RE = /(^|[^\d])(18\+|18 ?plus|over[- ]18s?|18 and over|adults only|
 const ALL_AGES_RE = /\ball ages\b|\bfamily[- ]friendly\b/i;
 
 /** Age label from the structured audience field only. */
+/** Ticketmaster writes a few venue cities with the state glued on ("Denver CO"): the plain city name, or null when there is none. */
+export function cleanCity(city: string | null | undefined): string | null {
+  const c = (city ?? '').trim().replace(/\s+[A-Z]{2}$/, '');
+  return c === '' ? null : c;
+}
+
+/** The group's name as the reader sees it: US towns write "Theater". The group value itself stays 'Theatre' (it is a key, not text). */
+export function groupLabel(group: string, country: string): string {
+  return group === 'Theatre' && country === 'us' ? 'Theater' : group;
+}
+
 export function ageLabel(audience: string | null | undefined): EveningLabel | null {
   if (!audience) return null;
   if (ADULTS_RE.test(audience)) return '18+';
@@ -223,7 +236,7 @@ function ticketmasterEntry(item: TicketmasterFeedItem, o: EveningEntryOptions): 
     checked: o.checked,
     image: e.imageUrl ? { src: ticketmasterImageProxyPath(e.imageUrl), alt: `Photo for "${e.title}"`, width: e.imageWidth ?? 1600, height: e.imageHeight ?? 900 } : null,
     lat: e.venueLatitude, lon: e.venueLongitude,
-    priceMin: e.priceMin ?? null, priceCurrency: e.priceCurrency ?? null,
+    priceMin: e.priceMin ?? null, priceCurrency: e.priceCurrency ?? null, venueCity: cleanCity(e.venueCity),
   };
 }
 

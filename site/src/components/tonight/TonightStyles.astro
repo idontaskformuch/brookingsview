@@ -32,6 +32,7 @@
   .tc-count { margin: 0; display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
   .tc-big { font-size: clamp(3.25rem, 16vw, 5rem); font-weight: 800; line-height: 0.95; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
   .tc-count-label { font-size: 1.25rem; font-weight: 600; }
+  .tc-scope { margin: 0.2rem 0 0; font-size: 1rem; color: var(--ink-soft); }
   .tc-next { margin: 0.4rem 0 0; font-size: 1.0625rem; font-weight: 600; color: var(--tc-music); }
   .tc-next-title { color: var(--ink-soft); font-weight: 500; }
 
@@ -53,7 +54,7 @@
   a.tc-link:focus-visible { outline: 3px solid var(--c); outline-offset: -3px; }
   .tc-time { color: var(--c); font-size: 1.625rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
   .tc-card--lg .tc-time { font-size: 2.25rem; }
-  .tc-card.is-now .tc-time::before { content: ''; display: inline-block; width: 0.55em; height: 0.55em; margin-right: 0.35em; border-radius: 50%; background: var(--c); vertical-align: 0.08em; animation: tc-pulse 1.6s ease-in-out infinite; }
+  .tc-card.is-now .tc-time::before { content: ''; display: inline-block; width: 0.55em; height: 0.55em; margin-right: 0.35em; border-radius: 50%; background: var(--c); vertical-align: 0.08em; }
   .tc-title { font-size: 1.1875rem; font-weight: 700; line-height: 1.22; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
   .tc-card--lg .tc-title { font-size: 1.3125rem; }
   .tc-meta { font-size: 0.9375rem; color: var(--ink-soft); }
@@ -89,9 +90,8 @@
   .tc-surprise[hidden] { display: none; }
   .tc-card.tc-hit { animation: tc-hit 0.7s ease-out; z-index: 1; }
   .tc-card.tc-enter { animation: tc-enter 0.22s ease-out; }
-  .tc-chips[hidden], .tc-card[hidden], .tc-pair[hidden], .tc-cat[hidden], .tc-soon[hidden], .tc-chip[hidden], .tc-next[hidden] { display: none; }
+  .tc-chips[hidden], .tc-card[hidden], .tc-pair[hidden], .tc-cat[hidden], .tc-soon[hidden], .tc-chip[hidden], .tc-next[hidden], .tc-scope[hidden] { display: none; }
 
-  @keyframes tc-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.8); } }
   @keyframes tc-hit { 0% { transform: scale(1); } 20% { transform: scale(1.06) rotate(-1.2deg); } 40% { transform: scale(1.06) rotate(1.2deg); } 60% { transform: scale(1.04) rotate(-0.6deg); } 100% { transform: scale(1); } }
   @keyframes tc-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
@@ -99,7 +99,7 @@
     .tc-pairs { grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); }
   }
   @media (prefers-reduced-motion: reduce) {
-    .tc-card, .tc-chip, .tc-card.is-now .tc-time::before { animation: none !important; transition: none !important; }
+    .tc-card, .tc-chip { animation: none !important; transition: none !important; }
     .tc-row { scroll-behavior: auto; }
   }
 </style>

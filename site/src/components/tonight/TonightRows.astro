@@ -5,14 +5,14 @@ import TonightCard from './TonightCard.astro';
 import type { EveningEntry } from '../../lib/evening-items';
 import type { OpenLateRow } from '../../lib/osm-open-late';
 import { OPEN_LATE_MAX_ROWS } from '../../lib/osm-open-late';
-import { bucketOf, BUCKET_LABEL, EVENT_BUCKETS, regionOf, type Bucket, type Regions } from '../../lib/tonight-cards';
+import { bucketOf, bucketLabel, EVENT_BUCKETS, regionOf, type Bucket, type CardTown, type Regions } from '../../lib/tonight-cards';
 
-interface Props { id: string; entries: EveningEntry[]; late: OpenLateRow[]; tz: string; regions?: Regions }
-const { id, entries, late, tz, regions = {} } = Astro.props;
+interface Props { id: string; entries: EveningEntry[]; late: OpenLateRow[]; tz: string; regions?: Regions; town: CardTown }
+const { id, entries, late, tz, regions = {}, town } = Astro.props;
 const sorted = [...entries].sort((a, b) => a.start.localeCompare(b.start));
 const rows = EVENT_BUCKETS.map((bucket) => ({ bucket, cards: sorted.filter((e) => bucketOf(e.group) === bucket) })).filter((r) => r.cards.length > 0);
 const lateRows = late.slice(0, OPEN_LATE_MAX_ROWS);
-const catHeading = (b: Bucket) => BUCKET_LABEL[b];
+const catHeading = (b: Bucket) => bucketLabel(b, town.country);
 ---
 {rows.map((r) => (
   <section class="tc-cat" data-tc-cat data-bucket={r.bucket} style={`--c: var(--tc-${r.bucket})`} aria-labelledby={`${id}-${r.bucket}`}>
@@ -21,7 +21,7 @@ const catHeading = (b: Bucket) => BUCKET_LABEL[b];
       <button type="button" class="tc-all" data-tc-toggle aria-expanded="false" hidden>See all</button>
     </header>
     <ul class="tc-row" data-tc-rows data-hide-ended>
-      {r.cards.map((e) => <TonightCard e={e} tz={tz} region={regionOf(e.area, regions)} />)}
+      {r.cards.map((e) => <TonightCard town={town} e={e} tz={tz} region={regionOf(e.area, regions)} />)}
     </ul>
   </section>
 ))}
@@ -32,7 +32,7 @@ const catHeading = (b: Bucket) => BUCKET_LABEL[b];
       <button type="button" class="tc-all" data-tc-toggle aria-expanded="false" hidden>See all</button>
     </header>
     <ul class="tc-row tc-row--late" data-tc-rows data-hide-ended>
-      {lateRows.map((p) => <TonightCard place={p} tz={tz} region={regionOf(p.area, regions)} />)}
+      {lateRows.map((p) => <TonightCard town={town} place={p} tz={tz} region={regionOf(p.area, regions)} />)}
     </ul>
   </section>
 )}
