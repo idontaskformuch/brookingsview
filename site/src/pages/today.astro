@@ -63,6 +63,7 @@ const pageTitle = pageMeta.title;
 const hubBacklink = resolveHubBacklink('today', siteConfig);
 import PageGuide from '../components/PageGuide.astro';
 import SafetyNotices from '../components/SafetyNotices.astro';
+import ResultsBanner from '../components/ResultsBanner.astro';
 import { todayDescription, todayShows, todaySources } from '../lib/today-copy';
 // Facilities, council/city hall and traffic are not tabs (owner 2026-10-29); they are linked from here and from the footer.
 const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facilities', 'traffic'].includes(s.id));
@@ -78,6 +79,7 @@ const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facili
   </div>
 
   <SectionHero section="today" compact />
+  <ResultsBanner />
 
   <PageGuide
     shows={todayShows(siteConfig, siteConfig.cityName)}

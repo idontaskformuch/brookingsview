@@ -30,6 +30,7 @@ import SchoolAlertBanner from '../components/SchoolAlertBanner.astro';
 import TrafficWidget from '../components/TrafficWidget.astro';
 import Tile from '../components/Tile.astro';
 import CityStatus from '../components/CityStatus.astro';
+import ResultsBanner from '../components/ResultsBanner.astro';
 import SafetyNotices from '../components/SafetyNotices.astro';
 import MarqueeCard from '../components/MarqueeCard.astro';
 import TopEventCard from '../components/TopEventCard.astro';
@@ -455,6 +456,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       above for selectFrontPageRhythm/SchoolAlertBanner below, unrelated to
       CityStatus's own alerts module. */}
   <OrientationHeader />
+  <ResultsBanner />
   <CityStatus />
   {siteConfig.safetyNotices && <SafetyNotices townId={siteConfig.townId} timezone={siteConfig.timezone} variant="compact" onlyWhenActive />}
   <QuickLinks links={quickLinks} omitted={omittedQuickLinks} />

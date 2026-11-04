@@ -59,6 +59,9 @@ export interface ElectionConfig {
   ballot: { items: { name: string }[]; source_url: string; note?: string };
   /** Used by phase 2. */
   races_in_scope?: string[];
+  /** Days (YYYY-MM-DD, local, both inclusive) the front-page / today results link card is shown. The
+   *  browser hides it after `until` without a rebuild (ResultsBanner.astro). */
+  results_banner?: { from: string; until: string };
   /** Phase 2 (/election-results): where the official numbers live. Every link needs a source_url in `sources`. */
   results?: {
     /** Name of the body whose numbers are shown/linked, e.g. "Riverside County Registrar of Voters". */
@@ -104,6 +107,10 @@ export function assertElectionValid(townId: string, cfg: ElectionConfig): void {
 
   if (!YMD.test(cfg.election_date)) p.push(`election_date "${cfg.election_date}" is not YYYY-MM-DD`);
   if (!YMD.test(cfg.checked_on)) p.push(`checked_on "${cfg.checked_on}" is not YYYY-MM-DD`);
+  if (cfg.results_banner) {
+    const { from, until } = cfg.results_banner;
+    if (!YMD.test(from) || !YMD.test(until) || from > until) p.push(`results_banner ${from}..${until} is not a YYYY-MM-DD range`);
+  }
   if (cfg.officialHosts.length === 0) p.push('officialHosts is empty');
   for (const s of cfg.sources) needHost(`sources[${s.label}]`, s.url);
   needSource('authority', cfg.authority.source_url); needHost('authority.url', cfg.authority.url);
@@ -232,5 +239,48 @@ export function buildElectionStatus(
     asOf: now,
     expiresAt: windowEnd,
     then: { at: resultsAt.toISOString(), ...results },
+  };
+}
+
+export interface ResultsBannerBuilt {
+  href: string;
+  /** Text before the polls close and after (the browser swaps at `swapAt`). */
+  before: string;
+  after: string;
+  /** The card is visible from `showFrom` (inclusive) until `showUntil` (exclusive), ISO instants. */
+  showFrom: string;
+  showUntil: string;
+  swapAt: string;
+  /** Visible at `now` (the build's own verdict; the browser re-checks the clock). */
+  visible: boolean;
+  /** Text at `now`. */
+  text: string;
+}
+
+function clockLabel(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  return `${h % 12 || 12}${m ? `:${String(m).padStart(2, '0')}` : ''} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+function nextDay(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+}
+
+/** The "Election results" card on the front page and /today. Null when the town has no election block or
+ *  no window. Texts follow the clock: before the polls close, then after. A link-only town (results.live
+ *  false) never says "live updates". */
+export function buildResultsBanner(cfg: ElectionConfig, timezone: string, now: Date = new Date()): ResultsBannerBuilt | null {
+  if (!cfg.enabled || !cfg.results_banner) return null;
+  const showFrom = zonedInstant(cfg.results_banner.from, '00:00', timezone);
+  const showUntil = zonedInstant(nextDay(cfg.results_banner.until), '00:00', timezone);
+  const swapAt = zonedInstant(cfg.election_date, cfg.polls_close_local, timezone);
+  const before = `Election night results — polls close ${clockLabel(cfg.polls_close_local)}`;
+  const after = cfg.results?.live === false ? 'Election results — where to find the official numbers' : 'Election results — live updates';
+  return {
+    href: '/election-results/', before, after,
+    showFrom: showFrom.toISOString(), showUntil: showUntil.toISOString(), swapAt: swapAt.toISOString(),
+    visible: now >= showFrom && now < showUntil,
+    text: now >= swapAt ? after : before,
   };
 }

@@ -1,0 +1,40 @@
+---
+/** Election results card, front page and /today (US sites with an election block; not Glasgow). A single
+ *  link to /election-results/, not a nav item. Window and texts come from the town's election config
+ *  (results_banner, polls_close_local); the build decides the initial state and the browser re-checks the
+ *  clock, so it appears and disappears without a deploy. */
+import { ELECTION_BY_TOWN } from '../config/election';
+import { buildResultsBanner } from '../lib/election';
+import { siteConfig } from '../lib/site-config';
+
+const cfg = ELECTION_BY_TOWN[siteConfig.townId];
+const banner = cfg ? buildResultsBanner(cfg, siteConfig.timezone) : null;
+---
+
+{banner && (
+  <aside class="results-banner" aria-label="Election results" hidden={!banner.visible}
+    data-results-banner data-show-from={banner.showFrom} data-show-until={banner.showUntil} data-swap-at={banner.swapAt}
+    data-before={banner.before} data-after={banner.after}>
+    <a class="results-banner__link" href={banner.href}>
+      <span class="results-banner__text">{banner.text}</span>
+      <span class="results-banner__go" aria-hidden="true">→</span>
+    </a>
+  </aside>
+)}
+
+<script>
+  import { watchResultsBanner } from '../lib/election-banner';
+  watchResultsBanner(document);
+</script>
+
+<style>
+  .results-banner { max-width: 60rem; margin: 0 auto 1rem; }
+  .results-banner[hidden] { display: none; }
+  .results-banner__link {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+    padding: 0.7rem 1rem; border: 1px solid var(--rule); border-left: 4px solid var(--brand-accent, var(--rule-strong));
+    border-radius: 10px; font-family: var(--font-ui); font-weight: 600; color: var(--ink); text-decoration: none;
+  }
+  .results-banner__link:hover, .results-banner__link:focus-visible { text-decoration: underline; }
+  .results-banner__go { color: var(--brand-accent, var(--ink-soft)); }
+</style>
