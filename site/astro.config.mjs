@@ -353,6 +353,7 @@ const TOWN_GATED_PAGES = [
   { path: '/sdsu-campus-open-to-public/', activeFor: ['brookings_sd'] },
   { path: '/thanksgiving/', activeFor: ['brookings_sd', 'moreno_valley_ca', 'broomfield_co'] },
   { path: '/christmas/', activeFor: ['glasgow'] },
+  { path: '/veterans-day/', activeFor: ['broomfield_co'] },
   { path: '/play/', activeFor: ['brookings_sd'] },
   { path: '/university/', activeFor: ['brookings_sd'] },
   { path: '/vail-resorts/', activeFor: ['broomfield_co'] },
@@ -451,6 +452,8 @@ async function buildLastmodMap(townId, databaseUrl) {
   if (Date.now() >= Date.parse('2026-11-26T00:00:00Z') + 7 * 86_400_000) noindexThinPageUrls.add('/thanksgiving/');
   // /christmas/ (lib/christmas.ts): indexable from Sep 25 2026 (six weeks before the first event, Nov 6) through Jan 3 2027; mirror the page's noindex here.
   if (Date.now() < Date.parse('2026-09-25T00:00:00Z') || Date.now() >= Date.parse('2027-01-04T00:00:00Z')) noindexThinPageUrls.add('/christmas/');
+  // /veterans-day/ (lib/veterans-day.ts): indexable Nov 1 through Nov 12 2026; mirror the page's noindex here.
+  if (Date.now() < Date.parse('2026-11-01T00:00:00Z') || Date.now() >= Date.parse('2026-11-13T00:00:00Z')) noindexThinPageUrls.add('/veterans-day/');
   // Town/feature-gated stub pages excluded for THIS build's town -- see
   // TOWN_GATED_PAGES' own comment above.
   const excludedGatedPages = new Set(

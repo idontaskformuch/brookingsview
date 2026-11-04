@@ -158,6 +158,9 @@ export interface HolidayPageData {
   facts: HolidayFact[];
   events: HolidayEvent[];
   linkOnly: LinkOnly[];
+  /** Fixed title/H1/description for a page whose wording the owner approved word for word (/veterans-day/).
+   *  Replaces what buildHolidayMeta would derive; still data, never generated text. */
+  metaOverride?: HolidayMeta;
   /** Plain navigation to other pages of the site. */
   related: { label: string; href: string }[];
 }
@@ -240,6 +243,7 @@ function listWords(words: string[]): string {
  *  phrases, in DESCRIPTION_ORDER), then what is not yet confirmed, then the check date, and drops whole phrases
  *  from the end of the confirmed list to stay within DESCRIPTION_MAX. `holidayLabel` is e.g. "Thanksgiving". */
 export function buildHolidayMeta(page: HolidayPageData, holidayLabel: string, cityName: string): HolidayMeta {
+  if (page.metaOverride) return page.metaOverride;
   const confirmed = confirmedSections(page);
   const words = joinWords(confirmed.map((s) => sectionMetaWord(s, page.locale)));
   const h1 = `${holidayLabel} ${page.year}${words ? `: ${words}` : ''}`;
