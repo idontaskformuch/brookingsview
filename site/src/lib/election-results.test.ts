@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lastUpdatedLabel, progressRow, contestsInScope, endpointFor, metaLine, precinctsLine, turnoutLine, viewState, type ResultsPayload } from './election-results';
+import { lastUpdatedLabel, progressRow, endpointFor, metaLine, precinctsLine, turnoutLine, viewState, type ResultsPayload } from './election-results';
 
 const base: ResultsPayload = { available: true, town: 'brookings_sd', electionDate: '2026-11-03', phase: 'night', unofficial: true };
 
@@ -27,6 +27,10 @@ describe('election-results helpers', () => {
     expect(precinctsLine(base)).toBeNull();
     expect(turnoutLine({ ...base, turnout: { ballotsCounted: 22906, registered: 56478 } })).toBe('22,906 ballots counted of 56,478 registered voters');
     expect(turnoutLine({ ...base, turnout: { ballotsCounted: null, registered: null } })).toBeNull();
+    expect(turnoutLine({ ...base, turnout: { ballotsCounted: 22906, registered: null } })).toBe('22,906 ballots counted');
+  });
+  it('Broomfield turnout reads "N ballots counted · M registered voters"', () => {
+    expect(turnoutLine({ ...base, town: 'broomfield_co', turnout: { ballotsCounted: 37961, registered: 57682 } })).toBe('37,961 ballots counted · 57,682 registered voters');
   });
 });
 
@@ -41,27 +45,12 @@ describe('results page polling', () => {
   });
 });
 
-describe('contestsInScope (Broomfield shows statewide and federal contests only)', () => {
-  const mk = (id: string, name: string) => ({ id, name, choices: [] });
-  const contests = [mk('20', 'United States Senator'), mk('150', 'Representative - District 5'), mk('210', 'Governor'), mk('3600', 'Supreme Court Justice - Hood'),
-    mk('6000', 'Amendment 81'), mk('6130', 'Proposition 137'), mk('1010', 'State Senator - District 1'), mk('2001', 'State Representative - District 1'),
-    mk('4020', 'District Court Judge - 2nd'), mk('5120', 'County Court Judge - Denver'), mk('7306', 'City of Aurora Ballot Issue 3A'), mk('7702', '17th Judicial District Ballot Question 7E')];
-  const base = { available: true, town: 'broomfield_co', electionDate: '2026-11-03', phase: 'night', unofficial: true, sourceUrl: 'https://results.enr.clarityelections.com/CO/127407/384556/', contests } as ResultsPayload;
-  it('drops legislative seats, judges of other districts and other towns ballot issues from the state event', () => {
-    expect(contestsInScope(base).map((c) => c.id)).toEqual(['20', '150', '210', '3600', '6000', '6130']);
-  });
-  it('keeps everything once the Broomfield county event is the source, and for other towns', () => {
-    expect(contestsInScope({ ...base, sourceUrl: 'https://results.enr.clarityelections.com/CO/Broomfield/130000/1/' })).toHaveLength(contests.length);
-    expect(contestsInScope({ ...base, town: 'brookings_sd' })).toHaveLength(contests.length);
-  });
-});
-
 describe('progressRow / lastUpdatedLabel (Colorado precinct count is not shown)', () => {
   const bf = { available: true, town: 'broomfield_co', electionDate: '2026-11-03', phase: 'night', unofficial: true, sourceUpdatedAt: '11/3/2026 8:47:06 PM MST',
     precincts: { reported: 0, total: 59 }, turnout: { ballotsCounted: 37961, registered: 57682 } } as ResultsPayload;
   it('Broomfield: unofficial label, last-updated time and turnout, never the precinct count', () => {
     const row = progressRow(bf);
-    expect(row).toBe('Unofficial results · Last updated 8:47 PM MT · 37,961 ballots counted of 57,682 registered voters');
+    expect(row).toBe('Unofficial results · Last updated 8:47 PM MT · 37,961 ballots counted · 57,682 registered voters');
     expect(row).not.toMatch(/precinct/i);
   });
   it('Brookings keeps its reporting count', () => {

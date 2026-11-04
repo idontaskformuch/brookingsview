@@ -151,7 +151,9 @@ describe('simulated election night, Broomfield (Colorado June primary, Clarity)'
     expect(await runTown(BROOMFIELD, deps)).toEqual({ action: 'unchanged' });
     const pub = toPublic(BROOMFIELD, await store.lastValid('broomfield_co', '2026-06-30'), now);
     expect(pub.turnout).toEqual({ ballotsCounted: 22906, registered: 56478 });
-    expect(pub.contests).toHaveLength(197);
+    // The store keeps every contest in the state feed; the public JSON carries only Broomfield's statewide and federal ones (api.ts contestsInScope).
+    expect(saved[0].reading.snapshot.contests).toHaveLength(197);
+    expect(pub.contests).toHaveLength(33);
     expect(saved).toHaveLength(1);
     expect(await sha256Hex(new TextEncoder().encode('a'))).toHaveLength(64);
   });

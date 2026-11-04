@@ -16,18 +16,6 @@ export interface ResultsPayload {
   contests?: Array<{ id: string; name: string; choices: Array<{ name: string; votes: number; pct: number }> }>;
 }
 
-/** Colorado's state event (CO/<id>/) carries every contest in the state: all legislative seats, judges of other
- *  districts, other towns' ballot issues (302 on 2026-11-03). Broomfield's page promises "statewide and federal
- *  contests" (config/election.ts source_name), so those are the ones shown: U.S. Senate (20), U.S. House (110-180),
- *  statewide offices (210-240), appellate retention (3600-3660) and statewide amendments/propositions (6000-6130).
- *  Once Broomfield's own county event takes over (/CO/Broomfield/ in the source URL) every contest is local and nothing is dropped. */
-export function contestsInScope(p: ResultsPayload): NonNullable<ResultsPayload['contests']> {
-  const all = p.contests ?? [];
-  if (p.town !== 'broomfield_co' || !p.sourceUrl || p.sourceUrl.includes('/CO/Broomfield/')) return all;
-  const inRange = (n: number) => n === 20 || (n >= 110 && n <= 180) || (n >= 210 && n <= 240) || (n >= 3600 && n <= 3660) || (n >= 6000 && n <= 6130);
-  return all.filter((c) => inRange(Number(c.id)));
-}
-
 export const RESULTS_ENDPOINT = '/api/election-results';
 
 /** The town is never sent: the site Worker derives it from the request hostname (server/election-results.ts). */
@@ -67,8 +55,11 @@ export function precinctsLine(p: ResultsPayload): string | null {
 export function turnoutLine(p: ResultsPayload): string | null {
   const t = p.turnout;
   if (!t || t.ballotsCounted == null) return null;
-  const reg = t.registered != null && t.registered > 0 ? ` of ${t.registered.toLocaleString('en-US')} registered voters` : '';
-  return `${t.ballotsCounted.toLocaleString('en-US')} ballots counted${reg}`;
+  const registered = t.registered != null && t.registered > 0 ? t.registered.toLocaleString('en-US') : null;
+  const counted = `${t.ballotsCounted.toLocaleString('en-US')} ballots counted`;
+  if (!registered) return counted;
+  // Broomfield's row reads as two facts ("N ballots counted · M registered voters"); "of" implied a share of the electorate the state feed cannot back up.
+  return p.town === 'broomfield_co' ? `${counted} · ${registered} registered voters` : `${counted} of ${registered} registered voters`;
 }
 
 /** "8:47 PM MT" from a source stamp like "11/3/2026 8:47:06 PM MST" (seconds dropped, MST/MDT -> MT); the raw stamp when it has no clock time. */
