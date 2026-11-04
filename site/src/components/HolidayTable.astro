@@ -4,6 +4,11 @@ import { formatIsoDate, type HolidayRow, type HolidayLocale } from '../lib/holid
 
 interface Props { rows: HolidayRow[]; year: number; locale?: HolidayLocale }
 const { rows: r_, year, locale = 'en-US' } = Astro.props;
+/** US numbers written "3035551212 12345" carry an extension (dialled after a comma); GB numbers have no such form. */
+const telDigits = (phone: string, loc: HolidayLocale) => {
+  const d = phone.replace(/[^0-9+]/g, '');
+  return loc === 'en-US' ? d.replace(/^(\d{10})(\d+)$/, '$1,$2') : d;
+};
 ---
       <div class="hp-scroll">
         <table class="hp-table">
@@ -27,10 +32,11 @@ const { rows: r_, year, locale = 'en-US' } = Astro.props;
                         <span class="hp-line">Last year: {r.lastYear.value} (<a href={r.lastYear.source.url} rel="noopener">{r.lastYear.source.name}</a>)</span>
                       )}
                       {r.checkAt && (
-                        <span class="hp-line">Check: {r.checkAt.url ? <a href={r.checkAt.url} rel="noopener">{r.checkAt.label}</a> : r.checkAt.label}{r.checkAt.phone && <> · <a href={`tel:${r.checkAt.phone.replace(/[^0-9+]/g, '').replace(/^(\d{10})(\d+)$/, '$1,$2')}`}>{r.checkAt.phone}</a></>}</span>
+                        <span class="hp-line">Check: {r.checkAt.url ? <a href={r.checkAt.url} rel="noopener">{r.checkAt.label}</a> : r.checkAt.label}{r.checkAt.phone && <> · <a href={`tel:${telDigits(r.checkAt.phone, locale)}`}>{r.checkAt.phone}</a></>}</span>
                       )}
                     </>
                   )}
+                  {r.usual && <span class="hp-line">Usual hours: {r.usual}</span>}
                   {r.clarify && <span class="hp-line hp-clarify">{r.clarify}</span>}
                 </td>
                 <td><a href={r.source.url} rel="noopener">{r.source.name}</a></td>

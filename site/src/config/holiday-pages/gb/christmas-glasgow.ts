@@ -21,6 +21,10 @@ const FIRST: Source = { name: 'First Bus Glasgow: festive service levels', url: 
 const SAMARITANS: Source = { name: 'Samaritans: contact', url: 'https://www.samaritans.org/how-we-can-help/contact-samaritan/' };
 const CITY_MISSION: Source = { name: 'Glasgow City Mission', url: 'https://www.glasgowcitymission.com/' };
 const SOCIAL_BITE: Source = { name: 'Social Bite: Festival of Kindness', url: 'https://www.social-bite.co.uk/festival-of-kindness/' };
+const FB_SW: Source = { name: 'Glasgow South West Foodbank: locations', url: 'https://glasgowsw.foodbank.org.uk/locations/' };
+const FB_NE: Source = { name: 'Glasgow North East Foodbank: locations', url: 'https://glasgowne.foodbank.org.uk/locations/' };
+const FB_NW: Source = { name: 'Glasgow North West Foodbank: locations', url: 'https://glasgownw.foodbank.org.uk/locations/' };
+const FB_CLARIFY = 'Christmas hours not yet published; call before you go.';
 const SHELTER: Source = { name: 'Shelter Scotland', url: 'https://scotland.shelter.org.uk/' };
 
 const GLASGOW_FACTS: HolidayFact[] = [
@@ -101,6 +105,27 @@ const GLASGOW_FACTS: HolidayFact[] = [
     section: 'help', status: 'confirmed', label: 'Samaritans',
     value: 'Call 116 123, free, 24 hours a day, every day of the year.',
     source: SAMARITANS, checkedOn: CHECKED,
+  },
+  {
+    section: 'help', status: 'unconfirmed', label: 'Glasgow South West Foodbank',
+    usual: 'Ibrox Mon 12 noon–2pm; Penilee Tue 10:30am–12:30pm; Linthouse Tue 2–4pm; Priesthill Thu 10am–12 noon; Cardonald Fri 10am–12:45pm. You need a voucher.',
+    clarify: FB_CLARIFY,
+    checkAt: { label: FB_SW.name, url: FB_SW.url, phone: '07437 910115' },
+    source: FB_SW, checkedOn: CHECKED,
+  },
+  {
+    section: 'help', status: 'unconfirmed', label: 'Glasgow North East Foodbank',
+    usual: 'Parkhead Mon 1–3pm, Wed 10:30am–12:30pm, Fri 1–3pm; Bridgeton Thu 10:45am–12:45pm; Shettleston Thu 1:30–3:30pm; Riddrie Wed 1:30–3:30pm; Easterhouse Thu 2–4pm; The Story Coffee (Bridgeton) Mon 5–6:30pm. You need a voucher.',
+    clarify: FB_CLARIFY,
+    checkAt: { label: FB_NE.name, url: FB_NE.url, phone: '07951 749373' },
+    source: FB_NE, checkedOn: CHECKED,
+  },
+  {
+    section: 'help', status: 'unconfirmed', label: 'Glasgow North West Foodbank',
+    usual: 'Blawarthill Church (Scotstoun) Tue and Fri 12 noon–2pm; Victory Family Centre (Possilpark) Wed and Thu 12 noon–2pm. You need a voucher.',
+    clarify: FB_CLARIFY,
+    checkAt: { label: FB_NW.name, url: FB_NW.url, phone: '07735 522621' },
+    source: FB_NW, checkedOn: CHECKED,
   },
   {
     section: 'help', status: 'unconfirmed', label: 'Glasgow City Mission',
@@ -215,6 +240,7 @@ export function buildGlasgowChristmasPage(): HolidayPageData {
       { group: 'Other bus and coach operators', label: "McGill's", linkText: 'mcgillsbuses.co.uk', url: 'https://www.mcgillsbuses.co.uk/' },
       { group: 'Other bus and coach operators', label: 'Stagecoach', linkText: 'stagecoachbus.com', url: 'https://www.stagecoachbus.com/' },
       { group: 'Other bus and coach operators', label: 'Citylink', linkText: 'citylink.co.uk', url: 'https://www.citylink.co.uk/' },
+      { label: 'SEIN Glasgow', linkText: 'festive activities and support', url: 'https://seinglasgow.org.uk/news/festive-activities-and-support' },
     ],
     related: [{ label: 'All upcoming events in Glasgow', href: '/events/' }],
   };

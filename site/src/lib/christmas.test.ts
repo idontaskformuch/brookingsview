@@ -5,7 +5,7 @@ import {
   sectionHeading, sectionMetaWord, isBlockedHost, DESCRIPTION_MAX, type HolidayEvent,
 } from './holiday-page';
 import {
-  CHRISTMAS_PAGE_YEAR, CHRISTMAS_WINDOW_START, CHRISTMAS_WINDOW_END, isOutsideChristmasWindow,
+  CHRISTMAS_PAGE_YEAR, CHRISTMAS_WINDOW_START, CHRISTMAS_WINDOW_END, CHRISTMAS_FIRST_EVENT, isOutsideChristmasWindow,
 } from './christmas';
 import { buildChristmasPage, CHRISTMAS_EVENTS, CHRISTMAS_TOWN_IDS } from '../config/holiday-pages/christmas';
 import { buildThanksgivingPage } from '../config/holiday-pages/thanksgiving';
@@ -47,6 +47,12 @@ describe('en-GB locale', () => {
         expect(call, `${f}: ${call}`).toMatch(/locale/);
       }
     }
+  });
+
+  it('only US phone numbers get the extension comma in tel: links (a GB 11-digit number must stay intact)', () => {
+    const src = read('../components/HolidayTable.astro');
+    expect(src).toMatch(/loc === 'en-US' \? d\.replace\(/);
+    expect(src).toContain('telDigits(r.checkAt.phone, locale)');
   });
 
   it('formats a multi-day run and an event without a street', () => {
@@ -96,18 +102,31 @@ describe('Glasgow /christmas/ data as approved 2026-11-04', () => {
   });
 
   it('keeps the 403 coach operators link-only, grouped, and out of the rows', () => {
-    expect(page.linkOnly.map((l) => l.label)).toEqual(["McGill's", 'Stagecoach', 'Citylink']);
+    expect(page.linkOnly.map((l) => l.label)).toEqual(["McGill's", 'Stagecoach', 'Citylink', 'SEIN Glasgow']);
     for (const l of page.linkOnly) {
-      expect(l.group).toBe('Other bus and coach operators');
+      expect(l.group).toBe(l.label === 'SEIN Glasgow' ? undefined : 'Other bus and coach operators');
       expect(isBlockedHost(l.url)).toBe(true);
     }
     const urls = [...page.facts, ...page.events].flatMap((r) => [r.source.url, r.status === 'unconfirmed' ? r.checkAt?.url ?? '' : '']);
-    expect(urls.some((u) => /mcgills|stagecoach|citylink/.test(u))).toBe(false);
+    expect(urls.some((u) => /mcgills|stagecoach|citylink|seinglasgow/.test(u))).toBe(false);
   });
 
-  it('renders no food-bank or free-meal row before the owner approves one', () => {
-    const labels = page.facts.filter((f) => f.section === 'help').map((f) => f.label);
-    expect(labels).toEqual(['Samaritans', 'Glasgow City Mission', 'Social Bite Christmas dinner', 'Shelter Scotland housing advice']);
+  it('help: three food banks (owner-approved 2026-11-04) with usual hours on their own row, Christmas hours unconfirmed; no meal row beyond Social Bite', () => {
+    const help = page.facts.filter((f) => f.section === 'help');
+    expect(help.map((f) => f.label)).toEqual([
+      'Samaritans', 'Glasgow South West Foodbank', 'Glasgow North East Foodbank', 'Glasgow North West Foodbank',
+      'Glasgow City Mission', 'Social Bite Christmas dinner', 'Shelter Scotland housing advice',
+    ]);
+    for (const f of help.filter((x) => x.label.endsWith('Foodbank'))) {
+      expect(f.status).toBe('unconfirmed');
+      if (f.status !== 'unconfirmed') continue;
+      expect(f.clarify).toBe('Christmas hours not yet published; call before you go.');
+      expect(f.usual).toMatch(/voucher/);
+      expect(f.checkAt?.url).toMatch(/^https:\/\/glasgow(sw|ne|nw)\.foodbank\.org\.uk\/locations\/$/);
+      expect(f.checkAt?.phone).toMatch(/^0\d{4} ?\d{6}$/);
+      expect(f.source.url).toBe(f.checkAt?.url);
+    }
+    expect(page.facts.some((f) => f.section === 'hours' && /foodbank/i.test(f.label))).toBe(false);
   });
 
   it('ScotRail Christmas Day is confirmed (owner 2026-11-04); the full timetable is not', () => {
@@ -200,9 +219,12 @@ describe('Glasgow Event JSON-LD', () => {
 });
 
 describe('window and sitemap gating', () => {
-  it('is indexable Nov 6 2026 through Jan 3 2027 and noindex outside', () => {
-    expect(isOutsideChristmasWindow(Date.UTC(2026, 10, 5, 23, 59))).toBe(true);
-    expect(isOutsideChristmasWindow(Date.UTC(2026, 10, 6))).toBe(false);
+  it('is indexable from six weeks before the first event (Sep 25 2026) through Jan 3 2027, noindex outside', () => {
+    expect(isOutsideChristmasWindow(Date.UTC(2026, 8, 24, 23, 59))).toBe(true);
+    expect(isOutsideChristmasWindow(Date.UTC(2026, 8, 25))).toBe(false);
+    expect(isOutsideChristmasWindow(Date.UTC(2026, 10, 4, 12))).toBe(false); // today when ordered
+    expect(CHRISTMAS_WINDOW_START).toBe(CHRISTMAS_FIRST_EVENT - 42 * 86_400_000);
+    expect(new Date(CHRISTMAS_FIRST_EVENT).toISOString().slice(0, 10)).toBe(page.events[0].status === 'confirmed' ? (page.events[0] as { date: string }).date : '');
     expect(isOutsideChristmasWindow(Date.UTC(2027, 0, 3, 23, 59))).toBe(false);
     expect(isOutsideChristmasWindow(Date.UTC(2027, 0, 4))).toBe(true);
   });

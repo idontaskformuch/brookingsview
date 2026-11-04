@@ -48,6 +48,7 @@ const sections = SECTION_ORDER.map((id) => ({
 
 const factRow = (f: HolidayFact): HolidayRow => ({
   what: f.label, value: f.status === 'confirmed' ? f.value : null, clarify: f.clarify,
+  usual: f.status === 'unconfirmed' ? f.usual : undefined,
   lastYear: f.status === 'unconfirmed' ? f.lastYear : undefined,
   checkAt: f.status === 'unconfirmed' ? f.checkAt : undefined,
   source: f.source, checkedOn: f.checkedOn,

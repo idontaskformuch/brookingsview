@@ -77,6 +77,9 @@ export interface ConfirmedFact extends FactBase {
 export type UnconfirmedFact = FactBase & {
   status: 'unconfirmed';
   source: Source;
+  /** Standing hours/terms read from the source, shown as "Usual hours: ..." under the not-confirmed line
+   *  (e.g. a food bank's weekly hours while its Christmas hours are not out). Never a 2026 holiday fact. */
+  usual?: string;
 } & (
   | { lastYear: LastYear; checkAt?: CheckAt }
   | { checkAt: CheckAt; lastYear?: LastYear }
@@ -158,6 +161,8 @@ export const BLOCKED_SOURCE_HOSTS = [
   'compass.broomfield.org',
   // 403 to a plain client even though robots.txt allows (owner rule 2026-11-04, CLAUDE.md #13): link-only.
   'www.mcgillsbuses.co.uk', 'www.stagecoachbus.com', 'www.citylink.co.uk',
+  // robots.txt disallows AI crawlers (ClaudeBot, anthropic-ai) site-wide.
+  'seinglasgow.org.uk',
 ];
 
 export function isBlockedHost(url: string): boolean {
@@ -327,6 +332,7 @@ export interface HolidayRow {
   what: string;
   value: string | null;
   clarify?: string;
+  usual?: string;
   lastYear?: LastYear;
   checkAt?: CheckAt;
   extra?: string[];
