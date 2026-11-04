@@ -9,6 +9,11 @@ import { toZonedISOString } from './db';
 export type HolidaySection = 'closures' | 'trash' | 'transit' | 'events' | 'help';
 /** Render order of the sections. A section without rows is not rendered. */
 export const SECTION_ORDER: HolidaySection[] = ['closures', 'trash', 'transit', 'events', 'help'];
+
+/** Date, clock and wording conventions of a page (config/countries/<id>.json `locale`). The section keys in the
+ *  data never change with the locale, only the words shown for them. */
+export type HolidayLocale = 'en-US' | 'en-GB';
+
 export const SECTION_HEADING: Record<HolidaySection, string> = {
   closures: 'Closures and changed hours',
   trash: 'Trash and recycling',
@@ -24,6 +29,19 @@ export const SECTION_META_WORD: Record<HolidaySection, string> = {
   events: 'events',
   help: 'food help',
 };
+/** Where a locale words a section differently from the US default. */
+const LOCALE_HEADING: Partial<Record<HolidayLocale, Partial<Record<HolidaySection, string>>>> = {
+  'en-GB': { trash: 'Bin collections' },
+};
+const LOCALE_META_WORD: Partial<Record<HolidayLocale, Partial<Record<HolidaySection, string>>>> = {
+  'en-GB': { trash: 'bin collections', help: 'support' },
+};
+export function sectionHeading(section: HolidaySection, locale: HolidayLocale): string {
+  return LOCALE_HEADING[locale]?.[section] ?? SECTION_HEADING[section];
+}
+export function sectionMetaWord(section: HolidaySection, locale: HolidayLocale): string {
+  return LOCALE_META_WORD[locale]?.[section] ?? SECTION_META_WORD[section];
+}
 
 export interface Source { name: string; url: string }
 
@@ -66,18 +84,17 @@ export type UnconfirmedFact = FactBase & {
 
 export type HolidayFact = ConfirmedFact | UnconfirmedFact;
 
+/** `street` and `region` are left out where the organizer's page does not give them (nothing is looked up elsewhere). */
 export interface EventVenue {
   name: string;
-  street: string;
+  street?: string;
   locality: string;
-  region: string;
+  region?: string;
   postalCode?: string;
 }
 
 interface EventBase {
   name: string;
-  /** Local calendar date, YYYY-MM-DD. */
-  date: string;
   checkedOn: string;
   source: Source;
   clarify?: string;
@@ -87,9 +104,15 @@ interface EventBase {
 
 export interface ConfirmedEvent extends EventBase {
   status: 'confirmed';
-  /** Local 24-hour times, HH:MM. Required for confirmed: no time, no confirmation. */
-  startTime: string;
+  /** Local calendar date, YYYY-MM-DD (the first day of a run). */
+  date: string;
+  /** Last day of a multi-day run, YYYY-MM-DD. */
+  endDate?: string;
+  /** Local 24-hour times, HH:MM. Without a start time the event is shown but gets no JSON-LD, unless `seasonJsonLd`. */
+  startTime?: string;
   endTime?: string;
+  /** Emit date-only JSON-LD (startDate/endDate) for a run whose hours vary by day. Needs `endDate`. */
+  seasonJsonLd?: boolean;
   venue: EventVenue;
   /** The organizer's own page. */
   url: string;
@@ -99,6 +122,8 @@ export interface ConfirmedEvent extends EventBase {
 
 export type UnconfirmedEvent = EventBase & {
   status: 'unconfirmed';
+  /** Reference day only when there is one (last year's); never shown as a 2026 fact. */
+  date?: string;
 } & (
   | { lastYear: LastYear; checkAt?: CheckAt }
   | { checkAt: CheckAt; lastYear?: LastYear }
@@ -107,12 +132,19 @@ export type UnconfirmedEvent = EventBase & {
 export type HolidayEvent = ConfirmedEvent | UnconfirmedEvent;
 
 /** A source we must not fetch (robots.txt). Rendered as a plain pointer to the public page. */
-export interface LinkOnly { label: string; linkText: string; url: string }
+export interface LinkOnly {
+  label: string;
+  linkText: string;
+  url: string;
+  /** Rows with the same group are listed together under that heading (e.g. "Other bus and coach operators"). */
+  group?: string;
+}
 
 export interface HolidayPageData {
   holiday: string;
   /** Four-digit year the facts are for. */
   year: number;
+  locale: HolidayLocale;
   townId: string;
   facts: HolidayFact[];
   events: HolidayEvent[];
@@ -122,7 +154,11 @@ export interface HolidayPageData {
 }
 
 /** Hosts whose robots.txt blocks us: they may appear in `linkOnly`, never as a fact source or check pointer. */
-export const BLOCKED_SOURCE_HOSTS = ['compass.broomfield.org'];
+export const BLOCKED_SOURCE_HOSTS = [
+  'compass.broomfield.org',
+  // 403 to a plain client even though robots.txt allows (owner rule 2026-11-04, CLAUDE.md #13): link-only.
+  'www.mcgillsbuses.co.uk', 'www.stagecoachbus.com', 'www.citylink.co.uk',
+];
 
 export function isBlockedHost(url: string): boolean {
   try {
@@ -158,12 +194,13 @@ export function lastChecked(page: HolidayPageData): string {
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-/** "2026-11-04" -> "Nov 4, 2026". Pure string arithmetic, no time zone. */
-export function formatIsoDate(iso: string, long = false): string {
+/** "2026-11-04" -> "Nov 4, 2026" (en-GB: "4 Nov 2026"). Pure string arithmetic, no time zone. */
+export function formatIsoDate(iso: string, long = false, locale: HolidayLocale = 'en-US'): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (!m) throw new Error(`not an ISO date: ${iso}`);
   const month = MONTHS[Number(m[2]) - 1];
-  return `${long ? month : month.slice(0, 3)} ${Number(m[3])}, ${m[1]}`;
+  const name = long ? month : month.slice(0, 3);
+  return locale === 'en-GB' ? `${Number(m[3])} ${name} ${m[1]}` : `${name} ${Number(m[3])}, ${m[1]}`;
 }
 
 function joinWords(words: string[]): string {
@@ -188,7 +225,7 @@ function listWords(words: string[]): string {
  *  from the end of the confirmed list to stay within DESCRIPTION_MAX. `holidayLabel` is e.g. "Thanksgiving". */
 export function buildHolidayMeta(page: HolidayPageData, holidayLabel: string, cityName: string): HolidayMeta {
   const confirmed = confirmedSections(page);
-  const words = joinWords(confirmed.map((s) => SECTION_META_WORD[s]));
+  const words = joinWords(confirmed.map((s) => sectionMetaWord(s, page.locale)));
   const h1 = `${holidayLabel} ${page.year}${words ? `: ${words}` : ''}`;
   const title = `${holidayLabel} ${page.year} in ${cityName}${words ? `: ${words}` : ''}`;
 
@@ -203,7 +240,7 @@ export function buildHolidayMeta(page: HolidayPageData, holidayLabel: string, ci
   const pendingNames = page.facts.flatMap((f) => (f.status === 'unconfirmed' && f.meta ? [f.meta] : []));
   const tail = [
     pendingNames.length ? ` ${listWords(pendingNames)} not yet confirmed.` : '',
-    ` Checked ${formatIsoDate(lastChecked(page))}.`,
+    ` Checked ${formatIsoDate(lastChecked(page), false, page.locale)}.`,
   ].join('');
 
   const kept = [...phrases];
@@ -219,59 +256,70 @@ export function localIso(date: string, time: string, timeZone: string): string {
   return `${date}T${time}:00${offset}`;
 }
 
-/** Event JSON-LD for the confirmed events only. An unconfirmed event never gets markup. */
+/** Event JSON-LD for the confirmed events only. An unconfirmed event never gets markup, nor does a confirmed one
+ *  without a start time, unless it is a run flagged `seasonJsonLd` (date-only startDate/endDate). */
 export function buildHolidayEventsJsonLd(page: HolidayPageData, timeZone: string, country = 'US'): Record<string, unknown>[] {
   return page.events.flatMap((e) => {
     if (e.status !== 'confirmed') return [];
+    const season = e.seasonJsonLd === true && e.endDate !== undefined;
+    if (!e.startTime && !season) return [];
+    const address: Record<string, unknown> = { '@type': 'PostalAddress' };
+    if (e.venue.street) address.streetAddress = e.venue.street;
+    address.addressLocality = e.venue.locality;
+    if (e.venue.region) address.addressRegion = e.venue.region;
+    if (e.venue.postalCode) address.postalCode = e.venue.postalCode;
+    address.addressCountry = country;
     const ld: Record<string, unknown> = {
       '@context': 'https://schema.org',
       '@type': 'Event',
       name: e.name,
-      startDate: localIso(e.date, e.startTime, timeZone),
+      startDate: e.startTime ? localIso(e.date, e.startTime, timeZone) : e.date,
       eventStatus: 'https://schema.org/EventScheduled',
       eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
       url: e.url,
-      location: {
-        '@type': 'Place',
-        name: e.venue.name,
-        address: {
-          '@type': 'PostalAddress',
-          streetAddress: e.venue.street,
-          addressLocality: e.venue.locality,
-          addressRegion: e.venue.region,
-          ...(e.venue.postalCode ? { postalCode: e.venue.postalCode } : {}),
-          addressCountry: country,
-        },
-      },
+      location: { '@type': 'Place', name: e.venue.name, address },
     };
-    if (e.endTime) ld.endDate = localIso(e.date, e.endTime, timeZone);
+    if (e.endTime) ld.endDate = localIso(e.endDate ?? e.date, e.endTime, timeZone);
+    else if (e.endDate) ld.endDate = e.endDate;
     return [ld];
   });
 }
 
-/** "17:30" -> "5:30 p.m.", "09:00" -> "9:00 a.m." */
-export function formatClock(hhmm: string): string {
+/** "17:30" -> "5:30 p.m.", "09:00" -> "9:00 a.m."; en-GB: "5:30pm", "9am", "12 noon", "midnight". */
+export function formatClock(hhmm: string, locale: HolidayLocale = 'en-US'): string {
   const m = /^(\d{2}):(\d{2})$/.exec(hhmm);
   if (!m) throw new Error(`not a HH:MM time: ${hhmm}`);
   const h = Number(m[1]);
-  return `${h % 12 === 0 ? 12 : h % 12}:${m[2]} ${h < 12 ? 'a.m.' : 'p.m.'}`;
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  if (locale === 'en-GB') {
+    if (hhmm === '12:00') return '12 noon';
+    if (hhmm === '00:00') return 'midnight';
+    return `${h12}${m[2] === '00' ? '' : `:${m[2]}`}${h < 12 ? 'am' : 'pm'}`;
+  }
+  return `${h12}:${m[2]} ${h < 12 ? 'a.m.' : 'p.m.'}`;
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/** "2026-11-26" -> "Thu, Nov 26" (weekday from the calendar date itself, no time zone). */
-export function formatEventDay(iso: string): string {
+/** "2026-11-26" -> "Thu, Nov 26" (en-GB: "Thu 26 Nov"); weekday from the calendar date itself, no time zone. */
+export function formatEventDay(iso: string, locale: HolidayLocale = 'en-US'): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (!m) throw new Error(`not an ISO date: ${iso}`);
   const weekday = WEEKDAYS[new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).getUTCDay()];
-  return `${weekday}, ${MONTHS[Number(m[2]) - 1].slice(0, 3)} ${Number(m[3])}`;
+  const month = MONTHS[Number(m[2]) - 1].slice(0, 3);
+  return locale === 'en-GB' ? `${weekday} ${Number(m[3])} ${month}` : `${weekday}, ${month} ${Number(m[3])}`;
 }
 
-/** One-line "when and where" for a confirmed event; an unconfirmed one has only its (reference) day. */
-export function eventWhenWhere(e: HolidayEvent): string {
-  if (e.status !== 'confirmed') return formatEventDay(e.date);
-  const time = e.endTime ? `${formatClock(e.startTime)}–${formatClock(e.endTime)}` : formatClock(e.startTime);
-  return `${formatEventDay(e.date)} · ${time} · ${e.venue.name}, ${e.venue.street}`;
+/** One-line "when and where" for a confirmed event; an unconfirmed one has only its (reference) day, if any. */
+export function eventWhenWhere(e: HolidayEvent, locale: HolidayLocale = 'en-US'): string {
+  if (e.status !== 'confirmed') return e.date ? formatEventDay(e.date, locale) : '';
+  const first = formatEventDay(e.date, locale);
+  const day = e.endDate && e.endDate !== e.date ? `${first} – ${formatEventDay(e.endDate, locale)}` : first;
+  const time = e.startTime
+    ? e.endTime ? `${formatClock(e.startTime, locale)}–${formatClock(e.endTime, locale)}` : formatClock(e.startTime, locale)
+    : null;
+  const place = e.venue.street ? `${e.venue.name}, ${e.venue.street}` : e.venue.name;
+  return [day, time, place].filter((p): p is string => p !== null).join(' · ');
 }
 
 /** One rendered table row (fact or event), see components/HolidayTable.astro. */

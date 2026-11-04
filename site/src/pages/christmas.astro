@@ -1,0 +1,15 @@
+---
+/** Christmas page (Glasgow only so far), rendered from data (config/holiday-pages/christmas.ts) by the shared holiday
+ *  template. Indexable only inside the owner-approved window (lib/christmas.ts); outside it the page is noindex until
+ *  the data is refreshed. Towns without a page redirect home and stay out of the sitemap (astro.config.mjs). */
+import HolidayPage from '../components/HolidayPage.astro';
+import { siteConfig } from '../lib/site-config';
+import { buildChristmasPage } from '../config/holiday-pages/christmas';
+import { isOutsideChristmasWindow } from '../lib/christmas';
+
+const page = buildChristmasPage(siteConfig.townId);
+if (!page) {
+  return Astro.redirect('/', 302);
+}
+---
+<HolidayPage page={page} holidayLabel="Christmas" noindex={isOutsideChristmasWindow(Date.now())} hasClosures={!!siteConfig.hasClosureWatch} />

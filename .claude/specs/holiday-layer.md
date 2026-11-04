@@ -37,6 +37,8 @@
 ## Senare
 - Veterans Day-stängningar (11 nov) som rad på /today/ eller /closures/, inte egen sida.
 - Interna länkar från startsidan och /events/ till högtidssidan medan den är aktuell.
+- Glasgow: St Andrew's Day (30 nov) och vad som är öppet = egen sida, INTE på /christmas/ (ägarens beslut 2026-11-04).
+- Glasgow: /hogmanay/ (31 dec–1 jan) egen sida. Funna fakta så långt: Winter Wonderland Glasgow Green öppet 1 jan 14:00–22:00 (glasgowswinterwonderland.com/faq/); ScotRail kör inga tåg 1 jan; Glasgow Life-bibliotek 2025/26 stängda 1–2 jan.
 
 ## Noterat i state.md
 - Före nästa val: koppla in Broomfields county-källa (/CO/Broomfield/) så att lokala ballot measures kommer med.

@@ -7,7 +7,7 @@
 import type { HolidayFact, HolidayEvent, HolidayPageData, Source } from '../../lib/holiday-page';
 import { THANKSGIVING_PAGE_YEAR } from '../../lib/thanksgiving';
 
-const base = { holiday: 'thanksgiving', year: THANKSGIVING_PAGE_YEAR } as const;
+const base = { holiday: 'thanksgiving', year: THANKSGIVING_PAGE_YEAR, locale: 'en-US' } as const;
 
 /* ------------------------------------------------------------ Brookings */
 const BK_COLLECTIONS: Source = { name: 'City of Brookings: Landfill and Collections Calendar', url: 'https://cityofbrookings-sd.gov/265/Landfill-and-Collections-Calendar' };

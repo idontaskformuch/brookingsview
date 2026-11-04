@@ -352,6 +352,7 @@ const TOWN_GATED_PAGES = [
   { path: '/how-city-council-works/', activeFor: ['brookings_sd'] },
   { path: '/sdsu-campus-open-to-public/', activeFor: ['brookings_sd'] },
   { path: '/thanksgiving/', activeFor: ['brookings_sd', 'moreno_valley_ca', 'broomfield_co'] },
+  { path: '/christmas/', activeFor: ['glasgow'] },
   { path: '/play/', activeFor: ['brookings_sd'] },
   { path: '/university/', activeFor: ['brookings_sd'] },
   { path: '/vail-resorts/', activeFor: ['broomfield_co'] },
@@ -448,6 +449,8 @@ async function buildLastmodMap(townId, databaseUrl) {
   // /thanksgiving/ (lib/thanksgiving.ts): the page's 2026 facts go stale a week after Thanksgiving Day (Nov 26, 2026),
   // so it turns noindex then; mirror that here so the sitemap and the noindex tag never disagree.
   if (Date.now() >= Date.parse('2026-11-26T00:00:00Z') + 7 * 86_400_000) noindexThinPageUrls.add('/thanksgiving/');
+  // /christmas/ (lib/christmas.ts): indexable only from Nov 6 2026 through Jan 3 2027; mirror the page's noindex here.
+  if (Date.now() < Date.parse('2026-11-06T00:00:00Z') || Date.now() >= Date.parse('2027-01-04T00:00:00Z')) noindexThinPageUrls.add('/christmas/');
   // Town/feature-gated stub pages excluded for THIS build's town -- see
   // TOWN_GATED_PAGES' own comment above.
   const excludedGatedPages = new Set(

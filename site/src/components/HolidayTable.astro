@@ -1,9 +1,9 @@
 ---
 /** One What / Details / Source / Checked table for the holiday template (HolidayPage.astro). */
-import { formatIsoDate, type HolidayRow } from '../lib/holiday-page';
+import { formatIsoDate, type HolidayRow, type HolidayLocale } from '../lib/holiday-page';
 
-interface Props { rows: HolidayRow[]; year: number }
-const { rows: r_, year } = Astro.props;
+interface Props { rows: HolidayRow[]; year: number; locale?: HolidayLocale }
+const { rows: r_, year, locale = 'en-US' } = Astro.props;
 ---
       <div class="hp-scroll">
         <table class="hp-table">
@@ -34,7 +34,7 @@ const { rows: r_, year } = Astro.props;
                   {r.clarify && <span class="hp-line hp-clarify">{r.clarify}</span>}
                 </td>
                 <td><a href={r.source.url} rel="noopener">{r.source.name}</a></td>
-                <td><time datetime={r.checkedOn}>{formatIsoDate(r.checkedOn)}</time></td>
+                <td><time datetime={r.checkedOn}>{formatIsoDate(r.checkedOn, false, locale)}</time></td>
               </tr>
             ))}
           </tbody>

@@ -9,7 +9,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import HolidayTable from './HolidayTable.astro';
 import { siteConfig } from '../lib/site-config';
 import {
-  SECTION_ORDER, SECTION_HEADING, buildHolidayMeta, buildHolidayEventsJsonLd, lastChecked, formatIsoDate,
+  SECTION_ORDER, sectionHeading, buildHolidayMeta, buildHolidayEventsJsonLd, lastChecked, formatIsoDate,
   eventWhenWhere, regularHours, type HolidayPageData, type HolidayFact, type HolidayEvent, type HolidayRow,
 } from '../lib/holiday-page';
 
@@ -36,10 +36,12 @@ const webPage = {
 };
 
 const year = page.year;
+const ungrouped = page.linkOnly.filter((l) => !l.group);
+const groups = [...new Set(page.linkOnly.flatMap((l) => (l.group ? [l.group] : [])))];
 const hours = regularHours(page);
 const sections = SECTION_ORDER.map((id) => ({
   id,
-  heading: SECTION_HEADING[id],
+  heading: sectionHeading(id, page.locale),
   facts: id === 'events' ? [] : page.facts.filter((f) => f.section === id),
   events: id === 'events' ? page.events : [],
 })).filter((s) => s.facts.length > 0 || s.events.length > 0);
@@ -51,7 +53,7 @@ const factRow = (f: HolidayFact): HolidayRow => ({
   source: f.source, checkedOn: f.checkedOn,
 });
 const eventRow = (e: HolidayEvent): HolidayRow => ({
-  what: e.name, value: e.status === 'confirmed' ? eventWhenWhere(e) : null, clarify: e.clarify,
+  what: e.name, value: e.status === 'confirmed' ? eventWhenWhere(e, page.locale) : null, clarify: e.clarify,
   extra: e.status === 'confirmed' ? e.details : undefined,
   lastYear: e.status === 'unconfirmed' ? e.lastYear : undefined,
   checkAt: e.status === 'unconfirmed' ? e.checkAt : undefined,
@@ -64,13 +66,13 @@ const eventRow = (e: HolidayEvent): HolidayRow => ({
 
   <header class="hp-head">
     <h1>{meta.h1}</h1>
-    <p class="hp-checked">Last checked: <time datetime={checked}>{formatIsoDate(checked, true)}</time></p>
+    <p class="hp-checked">Last checked: <time datetime={checked}>{formatIsoDate(checked, true, page.locale)}</time></p>
   </header>
 
   {sections.map((s) => (
     <section aria-labelledby={`hp-${s.id}`}>
       <h2 id={`hp-${s.id}`}>{s.heading}</h2>
-      <HolidayTable rows={s.id === 'events' ? s.events.map(eventRow) : s.facts.map(factRow)} year={year} />
+      <HolidayTable rows={s.id === 'events' ? s.events.map(eventRow) : s.facts.map(factRow)} year={year} locale={page.locale} />
     </section>
   ))}
 
@@ -80,11 +82,19 @@ const eventRow = (e: HolidayEvent): HolidayRow => ({
       {hours.length > 0 && (
         <>
           <h3>Regular hours</h3>
-          <HolidayTable rows={hours.map(factRow)} year={year} />
+          <HolidayTable rows={hours.map(factRow)} year={year} locale={page.locale} />
         </>
       )}
+      {groups.map((g) => (
+        <>
+          <h3>{g}</h3>
+          <ul class="hp-links">
+            {page.linkOnly.filter((l) => l.group === g).map((l) => <li>{l.label}: <a href={l.url} rel="noopener">{l.linkText}</a></li>)}
+          </ul>
+        </>
+      ))}
       <ul class="hp-links">
-        {page.linkOnly.map((l) => <li>{l.label}: see the <a href={l.url} rel="noopener">{l.linkText}</a></li>)}
+        {ungrouped.map((l) => <li>{l.label}: see the <a href={l.url} rel="noopener">{l.linkText}</a></li>)}
         {page.related.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
         {hasClosures && <li><a href="/closures/">School closures</a></li>}
       </ul>

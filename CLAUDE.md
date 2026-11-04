@@ -41,6 +41,14 @@
     aldrig räknas som besökare: ändra inte qa/web/run.mjs så att
     samtyckes-/analysblockeringen försvinner.
 
+13. En 403 (eller en bot-/Cloudflare-utmaning) mot en källa är ett nej,
+    även när robots.txt tillåter sidan. Högst ETT nytt försök, med en ärlig,
+    identifierbar UA (t.ex. "BrookingsViewBot-robotscheck"). Aldrig
+    webbläsar-UA, rotation, headless-webbläsare eller något annat sätt att
+    ta sig förbi en blockering. Därefter är källan länk-bara (visas som
+    vanlig länk, hämtas aldrig) och raden blir unconfirmed med checkAt.
+    Gäller även WebFetch-verktyget: ge upp efter ett 403 + ett försök.
+
 ## Redaktionell grundregel
 
 Varje sida ska hjälpa en invånare att förstå eller göra något. Listor och
