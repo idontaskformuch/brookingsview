@@ -43,6 +43,7 @@ import {
 } from './db';
 import { buildEventFeed, todayUtcMidnight, selectBucketCandidates } from './events';
 import { computeHeatTier } from './heat-advisory';
+import { statusWeatherText } from './weather-format';
 import { siteConfig, type SiteConfig } from './site-config';
 import { getTicketmasterEventsForTown, distanceLabel, type TicketmasterFeedItem } from './ticketmaster';
 import { rankTicketmasterEvents, collapseMarqueeRuns } from './whats-on';
@@ -71,6 +72,8 @@ export interface CityStatusModule {
   /** Modules whose text depends on "now" (Tonight count) ship the underlying
    *  event instants instead; the browser computes the text and reveals the row. */
   clientEvents?: { start: string; end: string | null }[];
+  /** worker_pulse: the active alert titles behind the tier, so the browser can redo computeHeatTier with /api/weather's temperature. */
+  heatAlerts?: string[];
 }
 
 type ModuleResolver = () => Promise<CityStatusModule | null>;
@@ -109,8 +112,7 @@ const CLOSURE_LABEL: Record<'confirmed' | 'watch' | 'clear', string> = {
 // "High" on a genuine nighttime fallback period would be its own,
 // different overclaim.
 export function weatherValueLabel(current: { temp: number | null; unit: string; short: string; is_daytime: boolean }): string {
-  const qualifier = current.is_daytime ? 'High' : 'Low';
-  return `${qualifier} ${Math.round(current.temp!)}°${current.unit}, ${current.short}`;
+  return statusWeatherText({ temp: current.temp!, unit: current.unit, isDaytime: current.is_daytime, conditions: current.short });
 }
 
 async function resolveWeather(): Promise<CityStatusModule | null> {
@@ -208,6 +210,7 @@ async function resolveWorkerPulse(): Promise<CityStatusModule | null> {
   return {
     id: 'worker_pulse', icon: ICONS.worker_pulse, label: 'Worker Pulse',
     value: label, tone, href: '/workplace-watch/', asOf: new Date(),
+    heatAlerts: alerts.map((a) => a.title),
   };
 }
 

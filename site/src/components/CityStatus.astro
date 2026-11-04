@@ -49,7 +49,8 @@ const ctaLabel = `Full ${siteConfig.cityName} rundown →`;
         <li class="city-status__item" data-ends={mod.expiresAt}
             hidden={mod.clientEvents ? true : undefined}
             data-tonight-events={mod.clientEvents ? JSON.stringify(mod.clientEvents) : undefined}
-            data-swap-at={mod.swapAt?.at} data-swap-value={mod.swapAt?.value} data-swap-href={mod.swapAt?.href}>
+            data-swap-at={mod.swapAt?.at} data-swap-value={mod.swapAt?.value} data-swap-href={mod.swapAt?.href}
+            data-status-module={mod.id} data-heat-alerts={mod.heatAlerts ? JSON.stringify(mod.heatAlerts) : undefined}>
           {mod.href ? (
             <a class="city-status__link" href={mod.href}>
               <span class:list={['city-status__dot', `city-status__dot--${mod.tone}`]} aria-hidden="true"></span>
