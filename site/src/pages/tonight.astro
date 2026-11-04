@@ -89,7 +89,7 @@ const chipThings = countByRegion([...tonightEvents.map((e) => regionOf(e.area, r
 const plan = chipPlan(chipThings, regionOrder, null);
 if (cards) {
   const missing = unmappedAreas([...[...eveningOf.values()].flat().map((e) => e.area), ...[...lateBySection.values()].flat().map((p) => p.area)], regions);
-  if (missing.length > 0) console.warn(`[tonight] neighbourhoods in no chip region (shown under All only): ${missing.join(', ')}`);
+  if (missing.length > 0) console.warn(`[tonight] areas in no chip region (shown under All only): ${missing.join(', ')}`);
 }
 const pairs = cards ? pairNights(tonightEvents, lateBySection.get(tonight.day) ?? [], now, tz) : [];
 const tonightLate = openLateRows(osm, tonight.day, tz, Number.MAX_SAFE_INTEGER);

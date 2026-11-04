@@ -810,7 +810,7 @@ const CITIES: Record<string, SiteConfig> = {
   glasgow: {
     townId: 'glasgow',
     eveningLayer: { mode: 'threshold', maxMiles: 15, includeTicketmasterSports: true, openLate: true, register: true, indexApproved: true, cards: { regions: {
-      'City Centre': ['City Centre', 'Blythswood Hill', 'Blythswood Holm', 'Garnethill', 'Cowcaddens'],
+      'City Centre': ['City Centre', 'Blythswood Hill', 'Blythswood Holm', 'Garnethill', 'Cowcaddens'], // gb-spelling: OSM place names
       'Finnieston': ['Stobcross', 'Yorkhill', 'Kelvingrove', 'Sandyford'],
       'West End': ['Hillhead', 'Dowanhill', 'West End', 'Partick', 'Woodlands', 'Park District', 'North Woodside', 'Thornwood', "Queen's Cross", 'North Kelvinside'],
       'Merchant City': ['Merchant City', 'Glasgow Cross', 'Cathedral Precinct'],
