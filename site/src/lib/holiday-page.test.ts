@@ -1,0 +1,152 @@
+import { describe, expect, it } from 'vitest';
+import {
+  buildHolidayMeta, buildHolidayEventsJsonLd, lastChecked, localIso, formatIsoDate, formatClock, eventWhenWhere,
+  sectionsWithRows, isBlockedHost, BLOCKED_SOURCE_HOSTS, type HolidayFact, type HolidayPageData,
+} from './holiday-page';
+import { buildThanksgivingPage, THANKSGIVING_TOWN_IDS } from '../config/holiday-pages/thanksgiving';
+import { CHRISTMAS_EVENTS } from '../config/holiday-pages/christmas';
+
+const MOVES = { south: ['Thursday pickup moves to Friday'], north: [] };
+const pageFor = (townId: string) => buildThanksgivingPage(townId, MOVES)!;
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+describe('model types', () => {
+  it('rejects facts that lack a source, a check date, or a way to find the answer', () => {
+    const src = { name: 'x', url: 'https://example.org' };
+    // @ts-expect-error confirmed needs value + source
+    const noSource: HolidayFact = { section: 'closures', status: 'confirmed', label: 'a', value: 'v', checkedOn: '2026-11-04' };
+    // @ts-expect-error unconfirmed needs lastYear or checkAt
+    const noPointer: HolidayFact = { section: 'closures', status: 'unconfirmed', label: 'a', source: src, checkedOn: '2026-11-04' };
+    // @ts-expect-error checkAt needs a url or a phone
+    const emptyCheck: HolidayFact = { section: 'closures', status: 'unconfirmed', label: 'a', source: src, checkedOn: '2026-11-04', checkAt: { label: 'x' } };
+    const ok: HolidayFact = { section: 'closures', status: 'unconfirmed', label: 'a', source: src, checkedOn: '2026-11-04', lastYear: { value: 'v', source: src } };
+    expect([noSource, noPointer, emptyCheck, ok]).toHaveLength(4);
+  });
+});
+
+describe('every town page', () => {
+  for (const id of THANKSGIVING_TOWN_IDS) {
+    const page = pageFor(id);
+    it(`${id}: rows have an ISO check date, a http source, and no blocked host as a source or pointer`, () => {
+      for (const f of page.facts) {
+        expect(f.checkedOn).toMatch(ISO);
+        expect(f.source.url).toMatch(/^https:\/\//);
+        expect(isBlockedHost(f.source.url)).toBe(false);
+        if (f.status === 'confirmed') expect(f.value.trim().length).toBeGreaterThan(0);
+        if (f.status === 'unconfirmed') {
+          expect(f.lastYear || f.checkAt).toBeTruthy();
+          if (f.checkAt?.url) expect(isBlockedHost(f.checkAt.url)).toBe(false);
+          if (f.lastYear) expect(isBlockedHost(f.lastYear.source.url)).toBe(false);
+        }
+      }
+      for (const e of page.events) {
+        expect(e.checkedOn).toMatch(ISO);
+        expect(isBlockedHost(e.source.url)).toBe(false);
+      }
+    });
+    it(`${id}: every row is for this page's holiday week and has no employer name`, () => {
+      const text = JSON.stringify(page).toLowerCase();
+      expect(text).not.toMatch(/employer|vail resorts/);
+      expect(page.year).toBe(2026);
+    });
+  }
+  it('blocked hosts appear only as link-only pointers', () => {
+    const bf = pageFor('broomfield_co');
+    expect(bf.linkOnly.map((l) => new URL(l.url).hostname)).toEqual(['compass.broomfield.org']);
+    expect(BLOCKED_SOURCE_HOSTS).toContain('compass.broomfield.org');
+    for (const id of THANKSGIVING_TOWN_IDS) {
+      const text = JSON.stringify({ facts: pageFor(id).facts, events: pageFor(id).events });
+      expect(text).not.toContain('compass.broomfield.org');
+    }
+  });
+  it('returns null for a town without the page', () => {
+    expect(buildThanksgivingPage('glasgow')).toBeNull();
+  });
+});
+
+describe('Broomfield data as approved 2026-11-04', () => {
+  const page = pageFor('broomfield_co');
+  const byLabel = (l: string) => page.facts.find((f) => f.label.startsWith(l))!;
+  it('unconfirmed rows point where the owner ordered', () => {
+    const offices = byLabel('City offices');
+    expect(offices.status).toBe('unconfirmed');
+    expect((offices as { checkAt: { url: string } }).checkAt.url).toContain('/newsflash/home/detail/3155');
+    const trash = byLabel('Holiday collection');
+    expect((trash as { checkAt: { phone: string } }).checkAt.phone).toBe('303-288-2100 ext. 6');
+    expect((byLabel('RTD') as { checkAt: { url: string } }).checkAt.url).toBe('https://www.rtd-denver.com/community/news');
+    const meal = byLabel('Free Thanksgiving meal') as { checkAt: { url: string } };
+    expect(meal.checkAt.url).toBe('https://www.broomfieldfish.org/');
+  });
+  it('FISH closure is confirmed with the year caveat', () => {
+    const fish = byLabel('Broomfield FISH food bank') as { status: string; clarify: string };
+    expect(fish.status).toBe('confirmed');
+    expect(fish.clarify).toBe('Page lists no year; call 303-465-1600 to check.');
+  });
+  it('the race is a confirmed event on Thanksgiving Day, 9:00', () => {
+    const [race] = page.events;
+    expect(race.status).toBe('confirmed');
+    expect(race.date).toBe('2026-11-26');
+    expect(eventWhenWhere(race)).toBe('Thu, Nov 26 · 9:00 a.m. · Broomfield County Commons, 13200 Sheridan Blvd');
+  });
+});
+
+describe('deterministic meta', () => {
+  it('Broomfield names only sections with a confirmed row', () => {
+    const m = buildHolidayMeta(pageFor('broomfield_co'), 'Thanksgiving', 'Broomfield');
+    expect(m.title).toBe('Thanksgiving 2026 in Broomfield: closures, events, food help');
+    expect(m.h1).toBe('Thanksgiving 2026: closures, events, food help');
+    expect(m.description).toBe(
+      'Thanksgiving 2026 in Broomfield. Confirmed: closures (3), events (1), food help (3). Not yet confirmed: trash pickup, transit. Last checked Nov 4, 2026.',
+    );
+  });
+  it('Brookings and Moreno name trash pickup', () => {
+    expect(buildHolidayMeta(pageFor('brookings_sd'), 'Thanksgiving', 'Brookings').h1).toBe('Thanksgiving 2026: closures, trash pickup');
+    expect(buildHolidayMeta(pageFor('moreno_valley_ca'), 'Thanksgiving', 'Moreno Valley').title)
+      .toBe('Thanksgiving 2026 in Moreno Valley: closures, trash pickup');
+  });
+  it('lastChecked is the newest checkedOn; dates format without a time zone', () => {
+    expect(lastChecked(pageFor('broomfield_co'))).toBe('2026-11-04');
+    expect(lastChecked(pageFor('moreno_valley_ca'))).toBe('2026-10-24');
+    expect(formatIsoDate('2026-11-04')).toBe('Nov 4, 2026');
+    expect(formatIsoDate('2026-11-04', true)).toBe('November 4, 2026');
+    expect(formatClock('00:05')).toBe('12:05 a.m.');
+    expect(formatClock('17:30')).toBe('5:30 p.m.');
+  });
+  it('sections render in order and an empty one is skipped', () => {
+    expect(sectionsWithRows(pageFor('broomfield_co'))).toEqual(['closures', 'trash', 'transit', 'events', 'help']);
+    expect(sectionsWithRows(pageFor('moreno_valley_ca'))).toEqual(['closures', 'trash']);
+  });
+});
+
+describe('Event JSON-LD', () => {
+  it('is emitted for the confirmed race with the zone offset on that date', () => {
+    const [ld] = buildHolidayEventsJsonLd(pageFor('broomfield_co'), 'America/Denver');
+    expect(ld.startDate).toBe('2026-11-26T09:00:00-07:00');
+    expect(ld.name).toBe('Broomfield Turkey Day 5K/10K');
+    expect((ld.location as { address: { postalCode: string } }).address.postalCode).toBe('80020');
+  });
+  it('is never emitted for an unconfirmed event, and none exists where there are no events', () => {
+    const page: HolidayPageData = {
+      ...pageFor('broomfield_co'),
+      events: [{ status: 'unconfirmed', name: 'x', date: '2026-11-27', source: { name: 's', url: 'https://example.org' }, checkedOn: '2026-11-04', checkAt: { label: 'l', url: 'https://example.org' } }],
+    };
+    expect(buildHolidayEventsJsonLd(page, 'America/Denver')).toEqual([]);
+    expect(buildHolidayEventsJsonLd(pageFor('brookings_sd'), 'America/Chicago')).toEqual([]);
+  });
+  it('localIso uses winter and summer offsets', () => {
+    expect(localIso('2026-12-04', '17:30', 'America/Denver')).toBe('2026-12-04T17:30:00-07:00');
+    expect(localIso('2026-07-04', '09:00', 'America/Denver')).toBe('2026-07-04T09:00:00-06:00');
+  });
+});
+
+describe('Christmas data saved ahead of the page', () => {
+  it('keeps the Broomfield tree lighting as a confirmed event', () => {
+    const [e] = CHRISTMAS_EVENTS.broomfield_co;
+    expect(e.status).toBe('confirmed');
+    expect(e.date).toBe('2026-12-04');
+    const page: HolidayPageData = { ...pageFor('broomfield_co'), holiday: 'christmas', events: CHRISTMAS_EVENTS.broomfield_co };
+    const [ld] = buildHolidayEventsJsonLd(page, 'America/Denver');
+    expect(ld.startDate).toBe('2026-12-04T17:30:00-07:00');
+    expect(ld.endDate).toBe('2026-12-04T20:00:00-07:00');
+  });
+});

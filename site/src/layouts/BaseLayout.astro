@@ -56,6 +56,8 @@ interface Props {
    *  (recipes/reviews/science column). Omitted everywhere else -- the
    *  computed self-URL below is unchanged for every other page. */
   canonicalUrl?: string;
+  /** ISO date the page's data was last checked; emitted as article:modified_time (holiday pages). */
+  modified?: string;
 }
 
 const {
@@ -66,6 +68,7 @@ const {
   noindex = false,
   accentColor,
   canonicalUrl,
+  modified,
 } = Astro.props;
 
 await runBuildTimeChecks();
@@ -158,6 +161,7 @@ const footerGroups = FOOTER_GROUPS
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta property="og:locale" content={countryProfile(siteConfig.country).ogLocale} />
+{modified && <meta property="article:modified_time" content={modified} />}
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content={ogImage} />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -626,6 +630,7 @@ main { padding-block: 1.75rem 3.5rem; }
 .colophon__group-list a:hover { color: var(--navy); text-decoration: underline; }
 .colophon p { margin: 0; max-width: 44rem; font-size: 0.9375rem; }
 </style>
+<slot name="head" />
 </head>
 
 <body class:list={[accentColor && 'has-accent']} style={accentColor ? `--section-accent-l: ${accentColor}; --section-accent-d: ${accentColorDark}` : undefined}>

@@ -1,0 +1,146 @@
+---
+/** Shared template for the holiday pages (/thanksgiving/ now; /christmas/, /new-years/, /hogmanay/ later).
+ *  Rendered from data only (lib/holiday-page.ts): one table per section with What / Details / Source / Checked,
+ *  an empty section is not rendered, no introduction. Owner-ordered 2026-11-04, .claude/specs/holiday-layer.md.
+ *
+ *  Resident question it answers: what is open, closed or changed around this holiday, and where do I check
+ *  what is not confirmed yet? */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { siteConfig } from '../lib/site-config';
+import {
+  SECTION_ORDER, SECTION_HEADING, buildHolidayMeta, buildHolidayEventsJsonLd, lastChecked, formatIsoDate,
+  eventWhenWhere, type HolidayPageData, type HolidayFact, type HolidayEvent, type CheckAt, type LastYear,
+} from '../lib/holiday-page';
+
+interface Props {
+  page: HolidayPageData;
+  /** "Thanksgiving" */
+  holidayLabel: string;
+  noindex?: boolean;
+  /** Link to /closures/ (towns with a closure watch). */
+  hasClosures?: boolean;
+}
+const { page, holidayLabel, noindex = false, hasClosures = false } = Astro.props;
+
+const meta = buildHolidayMeta(page, holidayLabel, siteConfig.cityName);
+const checked = lastChecked(page);
+const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, siteConfig.country === 'gb' ? 'GB' : 'US');
+const pageUrl = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl).href;
+const webPage = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: meta.title,
+  url: pageUrl,
+  dateModified: checked,
+};
+
+const year = page.year;
+const sections = SECTION_ORDER.map((id) => ({
+  id,
+  heading: SECTION_HEADING[id],
+  facts: id === 'events' ? [] : page.facts.filter((f) => f.section === id),
+  events: id === 'events' ? page.events : [],
+})).filter((s) => s.facts.length > 0 || s.events.length > 0);
+
+type Row = {
+  what: string;
+  value: string | null;
+  clarify?: string;
+  lastYear?: LastYear;
+  checkAt?: CheckAt;
+  extra?: string[];
+  source: { name: string; url: string };
+  checkedOn: string;
+};
+const factRow = (f: HolidayFact): Row => ({
+  what: f.label, value: f.status === 'confirmed' ? f.value : null, clarify: f.clarify,
+  lastYear: f.status === 'unconfirmed' ? f.lastYear : undefined,
+  checkAt: f.status === 'unconfirmed' ? f.checkAt : undefined,
+  source: f.source, checkedOn: f.checkedOn,
+});
+const eventRow = (e: HolidayEvent): Row => ({
+  what: e.name, value: e.status === 'confirmed' ? eventWhenWhere(e) : null, clarify: e.clarify,
+  extra: e.status === 'confirmed' ? e.details : undefined,
+  lastYear: e.status === 'unconfirmed' ? e.lastYear : undefined,
+  checkAt: e.status === 'unconfirmed' ? e.checkAt : undefined,
+  source: e.source, checkedOn: e.checkedOn,
+});
+---
+<BaseLayout title={meta.title} description={meta.description} wide noindex={noindex} modified={checked}>
+  <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(webPage)} />
+  {jsonLd.map((ld) => <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(ld)} />)}
+
+  <header class="hp-head">
+    <h1>{meta.h1}</h1>
+    <p class="hp-checked">Last checked: <time datetime={checked}>{formatIsoDate(checked, true)}</time></p>
+  </header>
+
+  {sections.map((s) => (
+    <section aria-labelledby={`hp-${s.id}`}>
+      <h2 id={`hp-${s.id}`}>{s.heading}</h2>
+      <div class="hp-scroll">
+        <table class="hp-table">
+          <thead>
+            <tr><th scope="col">What</th><th scope="col">Details</th><th scope="col">Source</th><th scope="col">Checked</th></tr>
+          </thead>
+          <tbody>
+            {(s.id === 'events' ? s.events.map(eventRow) : s.facts.map(factRow)).map((r) => (
+              <tr>
+                <th scope="row">{r.what}</th>
+                <td>
+                  {r.value !== null ? (
+                    <>
+                      {r.value}
+                      {r.extra?.map((line) => <span class="hp-line">{line}</span>)}
+                    </>
+                  ) : (
+                    <>
+                      <span class="hp-unconfirmed">Not confirmed for {year}</span>
+                      {r.lastYear && (
+                        <span class="hp-line">Last year: {r.lastYear.value} (<a href={r.lastYear.source.url} rel="noopener">{r.lastYear.source.name}</a>)</span>
+                      )}
+                      {r.checkAt && (
+                        <span class="hp-line">Check: {r.checkAt.url ? <a href={r.checkAt.url} rel="noopener">{r.checkAt.label}</a> : r.checkAt.label}{r.checkAt.phone && <> · <a href={`tel:${r.checkAt.phone.replace(/[^0-9+]/g, '').replace(/^(\d{10})(\d+)$/, '$1,$2')}`}>{r.checkAt.phone}</a></>}</span>
+                      )}
+                    </>
+                  )}
+                  {r.clarify && <span class="hp-line hp-clarify">{r.clarify}</span>}
+                </td>
+                <td><a href={r.source.url} rel="noopener">{r.source.name}</a></td>
+                <td><time datetime={r.checkedOn}>{formatIsoDate(r.checkedOn)}</time></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  ))}
+
+  {(page.linkOnly.length > 0 || page.related.length > 0) && (
+    <section aria-labelledby="hp-more">
+      <h2 id="hp-more">More</h2>
+      <ul class="hp-links">
+        {page.linkOnly.map((l) => <li>{l.label}: see the <a href={l.url} rel="noopener">{l.linkText}</a></li>)}
+        {page.related.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
+        {hasClosures && <li><a href="/closures/">School closures</a></li>}
+      </ul>
+    </section>
+  )}
+</BaseLayout>
+
+<style>
+  .hp-head h1 { margin-bottom: 0.25rem; }
+  .hp-checked { margin: 0 0 1.25rem; font-size: 0.9rem; color: var(--ink-soft); }
+  section { margin: 0 0 1.75rem; }
+  .hp-scroll { overflow-x: auto; }
+  .hp-table { border-collapse: collapse; width: 100%; max-width: 62rem; font-size: 0.9375rem; }
+  .hp-table th, .hp-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--rule, #ddd); vertical-align: top; }
+  .hp-table thead th { font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ink-soft); }
+  .hp-table tbody th { font-weight: 600; min-width: 9rem; }
+  .hp-table td:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .hp-line { display: block; margin-top: 0.2rem; }
+  .hp-clarify { font-size: 0.875rem; color: var(--ink-soft); }
+  .hp-unconfirmed { font-weight: 600; }
+  .hp-links { padding-left: 1.1rem; }
+  .hp-links li { margin: 0.35rem 0; }
+</style>
