@@ -1,30 +1,27 @@
-# State (komprimerad 2026-11-05; all tidigare historik i .claude/state-archive.md, sök där på rubrikerna nedan)
+# State (komprimerad 2026-11-05; Fas 1+2 detaljer i .claude/state-archive.md, sök "Fas 1 KLAR" / "Fas 2 (väder)")
 
-## Nu: PREMIUM-PRESENTATION, Fas 1 (spec .claude/specs/premium-presentation.md, beslut .claude/specs/premium-decisions.md, regler .claude/standards.md)
-- Fas 0 klar (rapport .claude/specs/premium-phase0-report.md). Fas 1: 1a standards.md, 1b tokens+typsnitt, 1c ui/-bibliotek+galleri KLARA. 1d Tonight på biblioteket KLAR (949c40d + skärmdumpar); NÄSTA 1e. Sedan 1e standard-layout-test (lib/ui/standard-layout.test.ts), 1f defekter (hscroll Moreno /sports/ + Brookings /trash-recycling/, Moreno /home-sales/ "0 most recent", alla med QA-kontroll+fixtur, regel 12).
-- Ändrade filer 1b-1c: site/src/design/ui-tokens.css, site/src/components/ui/* (15), site/src/lib/ui/{ui-helpers,icons}.ts(+test), lib/ui-tokens.test.ts, pages/[design].astro (/_design/, bara BUILD_DESIGN=1, '/_design/' i astro.config noindexThinPageUrls), BaseLayout (--font-data = --font-ui, Plex Mono borta).
-- BESLUT (ägaren, galleri-granskning 2026-11-05): hjälte clamp(3.5rem,16vw,5.5rem); kategorifärger max 6 PER SIDTYP (CATEGORY_SETS; Tonight: music,nightlife,family,sports,food,arts; civic bara Meetings/City hall); temperaturskala i stadens enhet (TEMP_BOUNDS_F konverteras, Glasgow °C, testat); Card/ikoner/FallbackTile behålls men ska vara lätta att byta (storlekar=tokens, ikoner bara via lib/ui/icons.ts); Chips >=3 träffar/chip, >=2 chips, inga siffror; AboutThisPage hopfälld men "Updated" synlig.
-- Före/efter-skärmdumpar (390+1280, ljust+mörkt) för Fas 1 ska ligga committade i .claude/review/phase1/.
-- Lokala commits ej pushade (pusha aldrig utan ja, regel 6): 392b561..88b2c7d + ev. nyare. Kontrollera `git log origin/main..HEAD` (klonen kan släpa, se memory).
-## Fas 1 KLAR (väntar ägarens granskning, Fas 2 ej påbörjad)
-- 1e: lib/ui/standard-layout.test.ts (ingen townId/country-gren eller stadsnamn i layoutfiler); 3 country===-grenar flyttade till countryProfile (tonight-cards bucketLabel, tonight.astro, HolidayPage).
-- 1f (BESLUT: fix + QA-kontroll + fixtur, regel 12): home-sales "0 most recent" -> salesListLabel (lib/home-sales.ts), tom lista döljer filter/fotnot; QA web.zero-count (rubriker, ej tabellceller). Hscroll: web.hscroll i qa/web (elementkant vs screen.width, ej scrollWidth: mobil-emulering ger 980 överallt). Funna+fixade: Moreno /jobs/category/* (624 px), Brookings /trash-recycling/ (398, bara med fallback-typsnitt), Brookings /jackrabbits/ (397, med riktiga typsnitt). Moreno /sports/ reproducerades INTE. Fixturer tests/fixtures/qa_{zero_count,hscroll}_2026-11-05.json. KEY_PAGES +/sports/ /trash-recycling/ /home-sales/.
-- Batteri 2026-11-05: vitest site 2186 + cron-dispatcher 72, pytest 1237/11 skip, astro check 0 fel, bygge x4 (Brookings BUILD_DESIGN=1) OK + disjoint OK x4. Live /weather/ = 200 på alla fyra.
-- Skärmdumpar före/efter: .claude/review/phase1/defects/ (Moreno före = worktree på e8848e2). american-spelling-testet föll på "colours" i [design].astro (1c) -> fixat.
-- Batteri (2026-11-05): vitest 2090/2090, pytest 1229 pass/11 skip, astro check 0 fel, build x4 i sekvens OK (Brookings med BUILD_DESIGN=1), sitemap/noindex-disjoint OK x4, hscroll-svep 390 px rent på alla fyra (båda typsnittslägen). Broomfield/Glasgow/Moreno byggdes före de sista Brookings-only-ändringarna (trash/jackrabbits/[design]) som inte påverkar dem.
-- Kvar att besluta: Moreno kvällsevents datum en dag fel (tidszon) -- ej i 1f, senare.
-- Lokala commits ej pushade (regel 6).
-## Fas 2 (väder) KLAR, väntar ägarens granskning (Fas 1 pushad + live-smoke grön 2026-11-05, a4d3338). Fas 2 EJ pushad (regel 6), ingen Worker-deploy.
-- 2a payload i lockstep (TS cron-dispatcher/src/weather/{metoffice,nws,util}.ts + Python met_office_site_specific_v1.py/noaa.py): valfria pop/feels/gust/uv/precip_mm + fetched_at; paritetsfixturer via scripts/make_weather_parity_fixtures.py. 2b NWS gridpoints (best-effort): feels (F ur degC), gust (mph), precip_mm bara där källan ger EN timme (NWS QPF är 6-timmars -> nästan aldrig).
-- 2c lib/weather-model.ts (+test 71), sun-times.ts, weather-html.ts; 2d weather.astro på ui/* + nya HourStrip, DayRows; HeroStat/InsightLine/RangeBar/SectionHeader nu tunna wrappers över lib/ui/ui-html.ts (strängrenderare, CSS global i design/ui-components.css) så live-weather.ts ritar om SAMMA markup i webbläsaren.
-- BESLUT och SKÄL: temperaturtrösklar 2 C / 4 F (spec säger >=2 grader; 2 F är brus); "Dry until" <6 h annars "Rain from"; regn = pop >=50 %; "all week" först vid >=5 dygn; country profile fick `weather` {authority, officialLink} (US weather.gov/alerts, UK SEPA Floodline); H1 = "<stad> weather"; gårdagens high = gårdagens lagrade prognos (getWeatherSnapshot tar 3 rader).
-- Skärmdumpar `after-oldpayload` (DB som den är) och `after-fullpayload` (syntetiska nya fält, fixturer i review/phase2/fixtures) 390 ljust; före/efter (4 städer, 390+1280, ljust+mörkt): .claude/review/phase2/ (före: Glasgow 1280 ljust gav 500 i dev, ej omtaget). scripts/review-shots.mjs.
-- Kända luckor: lagrade payloads saknar de nya fälten tills Workern/scrapen körts med ny kod (Worker-deploy kräver ägarens ja) -> live visas ingen Updated/regnstaplar än; MetOfficeWarnings (Glasgow) behålls som varningsbanner (egen komponent).
-- Fas 2 GODKÄND i sin helhet (2026-11-05). Steg 1 Tonight före/efter 390 ljust x4 (före = live, efter = lokal dev; .claude/review/phase2-tonight/): SYNLIG SKILLNAD i vädersraden längst ned (Moreno ordning "Tonight/Today" -> "Today/Tonight" + "mostly cloudy"->"mostly clear"; Glasgow "cloudy"->"overcast"); övrigt bara "Next up in N min"-nedräkning (tidsdrift). Koden för forecastLine/tonight-raden är oförändrad i Fas 2 -> troligen data/tid (live byggd tidigare + API-uppdatering), ej bevisat. STANNAT enligt ordern: ej pushat, ej smoke, ej Worker-deploy.
-- Tonight-skillnaden godkänd som data/tid. Fas 2 PUSHAD (81d33fe), site live (ny markup på alla fyra). Live-smoke 390 px (riktig viewport, scrollWidth) /weather/ + /tonight/ x4: 200, ingen hscroll, 0 konsolfel. Worker DEPLOYAD 2026-11-05 (viewmedia-cron-dispatcher, version 3260ae2b-1b47-40f6-8be9-24732d7a6335), tsc 0 fel; cron kördes ej manuellt.
-## Nästa steg: kontrollera efter nästa Worker-körning (*/15 min-schemat; vädret skrivs ca varje timme): (1) `fetched_at` finns i weather_snapshots.payload för alla fyra städer; (2) NWS gridpoints ger inga fel i refreshen (Worker-loggar/cron-status, US-städer; fel ska vara best-effort-tysta); (3) "Updated" och regnstaplar syns live på /weather/ (regnstaplar: bara där pop/precip finns; US precip_mm nästan alltid tom enligt beslut). Därefter Fas 3 enligt premium-spec, efter ägarens ok.
-## Öppna spår (detaljer i state-archive.md)
-- MEETINGS: nästa lilla uppgift ej byggd. Fas 3 i premium-spec ersätter delvis.
+## Nu: PREMIUM-PRESENTATION. Fas 1 + 2 KLARA, pushade och live-verifierade. Fas 3 (möten) = FÖRSLAG skrivet, EJ byggt.
+- Spec .claude/specs/premium-presentation.md (Fas 3 rad 84-91), beslut .claude/specs/premium-decisions.md (punkt 11), regler .claude/standards.md.
+- Fas 3-förslag: .claude/specs/phase3-meetings-proposal.md (BODIES per stad, dedup-fall, exempelmöten, notiser). VÄNTAR på ägarens ja + svar på öppna frågor nedan. Ingen kod för Fas 3 skrivs förrän dess (regel 8).
+
+## Verifierat 2026-11-05 (Worker-uppgifter från förra steget)
+- Worker viewmedia-cron-dispatcher version 3260ae2b deployad 16:04 UTC; första hourly-tick efter deploy 17:00 UTC: outcome ok, inga exceptions, alla fyra städer ok (loggar via wrangler tail).
+- weather_snapshots.payload har fetched_at för alla fyra (17:00-17:01 UTC). US-städer: pop/feels/gust 24/24 timmar (gridpoints funkar), uv/precip_mm 0 (väntat). Glasgow: pop, feels, gust, uv, precip_mm 24/24.
+- Live /weather/ i 390 px x4: 200, scrollWidth 390, "Updated" syns, regnstaplar (ui-hr__rain/pop) renderas. Konsolfel: 1 ERR_FAILED på US-sidorna = mina egna avbrutna analytics-anrop (QA-trafik blockeras, regel 12), 0 på Glasgow.
+- BESLUT och SKÄL: weather_snapshots har EN rad per stad och UTC-dygn (upsert, created_at ändras aldrig) -> created_at säger inget om färskhet, använd payload.fetched_at.
+- PUSHAD: 4e0e9d8 (origin/main = HEAD).
+
+## Fas 3-fynd (detaljer i proposal-filen)
+- Moreno 0 kommande: scrapern OK (daglig, 14 poster/körning), källan tom: eSCRIBE publicerar bara 4-7 d före mötet. Nästa rådsmöte ca 2026-11-17. Tomt läge är normalläge.
+- Moreno: raw_data.Location har U+FFFD (tankstreck tappat), agenda_url = '' på alla 36 rader. Brookings BODIES saknar 6 organ som finns i databasen. Broomfield: enda publika agendavyn är sandbox (spärrad).
+- Dedup: Brookings 31 av 134 rader är Notice of Quorum; Joint Board of Adjustment 2026-11-04 slås ihop; Broomfield 2026-12-01 Regular + Transition samma tid slås INTE ihop (fråga).
+
+## Öppna frågor till ägaren (Fas 3)
+1. Broomfield officiell agenda-URL (sandbox får inte länkas). 2. Broomfield Transition Meeting 12-01: behåll eller dölj. 3. Glasgow: dölj Local Negotiating Committee for Teaching Staff? 4. Notiser: A (RSS) + B (.ics) i Fas 3, e-post senare? 5. Moreno Location-tecken och agenda_url ingår i Moreno-bygget.
+
+## Kvar / öppna spår
+- Moreno kvällsevents datum en dag fel (tidszon): beslut 10, ej gjord.
 - AI-prosa bort överallt (beslut 2026-11-05); Fas 5 = ny /this-week/.
 - Högtidssidor: omkontroll ca 2026-11-18 och 2026-11-23 (supervised).
-- AdSense-mål = Broomfield (GSC-export saknas). Prioritet: Broomfield verifieras först.
+- AdSense-mål = Broomfield (GSC-export saknas). Broomfield verifieras först.
+- Ingen Fas 3-kod, inga DB-skrivningar gjordes denna session.
