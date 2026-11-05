@@ -145,7 +145,7 @@ describe('chips never render a number', () => {
   it('the row itself is hidden when fewer than two chips qualify', async () => {
     const c = await AstroContainer.create();
     const html = await c.renderToString(TonightChips, { props: { order: ORDER, plan: chipPlan({ 'City Centre': 12 }, ORDER, null) } });
-    expect(html).toMatch(/<nav[^>]*data-tc-chips[^>]*hidden/);
+    expect(html).toMatch(/<nav(?=[^>]*data-tc-chips)(?=[^>]*\shidden)[^>]*>/); // attribute order is not part of the contract
   });
 });
 
@@ -345,5 +345,21 @@ describe('empty evening (owner 2026-11-05)', () => {
     expect(client).toMatch(/heroFor\(/); expect(client).toMatch(/dayView\(/);
     expect(page).toMatch(/heroFor\(/); expect(page).toMatch(/dayView\(/);
     expect(client).not.toMatch(/things on \$\{word\}/);
+  });
+});
+
+describe('library categories (Fas 1d)', () => {
+  it('every bucket maps into Tonight\'s category set or to neutral', async () => {
+    const { BUCKET_CATEGORY } = await import('./tonight-cards');
+    const { CATEGORY_SETS } = await import('./ui/ui-helpers');
+    for (const [bucket, cat] of Object.entries(BUCKET_CATEGORY)) {
+      if (cat !== null) expect(CATEGORY_SETS.tonight as readonly string[], bucket).toContain(cat);
+    }
+    expect(new Set(Object.values(BUCKET_CATEGORY).filter(Boolean)).size).toBe(4);
+  });
+  it('chips use the library thresholds', async () => {
+    const { CHIP_MIN_THINGS, CHIP_MIN_CHIPS } = await import('./tonight-cards');
+    const ui = await import('./ui/ui-helpers');
+    expect([CHIP_MIN_THINGS, CHIP_MIN_CHIPS]).toEqual([ui.CHIP_MIN_ITEMS, ui.CHIP_MIN_CHIPS]);
   });
 });

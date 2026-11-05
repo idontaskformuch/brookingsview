@@ -27,6 +27,8 @@ import TonightStyles from '../components/tonight/TonightStyles.astro';
 import { chipPlan, countByRegion, cityScope, dayView, heroFor, pairNights, regionOf, scopeLine, unmappedAreas, SOON_MAX_CARDS, type CardTown } from '../lib/tonight-cards';
 import { OPEN_LATE_MAX_ROWS } from '../lib/osm-open-late';
 import TonightChips from '../components/tonight/TonightChips.astro';
+import HeroStat from '../components/ui/HeroStat.astro';
+import InsightLine from '../components/ui/InsightLine.astro';
 import { showTimeGb } from '../lib/whats-on-dates';
 import { placesFromSnapshot, openLateRows, openLateCounts, decorateOpenLate } from '../lib/osm-open-late';
 import { areasFor, withAreas } from '../lib/areas';
@@ -133,10 +135,11 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
     <div class="tc" data-tc data-tz={tz}>
       <TonightStyles />
       <section class="tc-hero" aria-label="Tonight at a glance">
-        <p class="tc-count" data-tc-count-box hidden={hero.kind === 'empty' ? true : undefined}><span class="tc-big" data-tc-count>{hero.count ?? 0}</span> <span class="tc-count-label" data-tc-count-label>{hero.label ?? 'things on tonight'}</span></p>
+        <HeroStat value={hero.count ?? 0} unit={hero.label ?? 'things on tonight'}
+          rootAttrs={{ 'data-tc-count-box': '', hidden: hero.kind === 'empty' ? true : undefined }} valueAttrs={{ 'data-tc-count': '' }} unitAttrs={{ 'data-tc-count-label': '' }} />
         <p class="tc-empty" data-tc-empty hidden={hero.kind === 'empty' ? undefined : true}><span data-tc-empty-text>{hero.text}</span><span data-tc-empty-sep hidden={hero.tomorrow ? undefined : true}> · </span><a href="#tn-tomorrow-h" data-tc-tomorrow hidden={hero.tomorrow ? undefined : true}>{hero.tomorrow}</a></p>
-        {town.cityLabels && <p class="tc-scope" data-tc-scope data-home={town.homeCity} hidden={scopeText ? undefined : true}>{scopeText}</p>}
-        <p class="tc-next" data-tc-next hidden></p>
+        {town.cityLabels && <InsightLine class="tc-scope" attrs={{ 'data-tc-scope': '', 'data-home': town.homeCity, hidden: scopeText ? undefined : true }}>{scopeText}</InsightLine>}
+        <InsightLine class="tc-next" attrs={{ 'data-tc-next': '', hidden: true }} />
       </section>
 
       {upNext.length > 0 && (

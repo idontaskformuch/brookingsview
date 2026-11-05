@@ -3,12 +3,13 @@
 import Icon from './Icon.astro';
 import type { IconName } from '../../lib/ui/icons';
 
-interface Props { icon?: IconName }
-const { icon } = Astro.props;
+interface Props { icon?: IconName; attrs?: Record<string, unknown>; class?: string }
+const { icon, attrs = {}, class: extra } = Astro.props;
 ---
-<p class="ui-insight">{icon && <Icon name={icon} size={18} />}<span><slot /></span></p>
+<p class:list={['ui-insight', extra]} {...attrs}>{icon && <Icon name={icon} size={18} />}<span><slot /></span></p>
 <style>
   .ui-insight { margin: 0; display: flex; align-items: baseline; gap: var(--ui-2); font-family: var(--font-ui); font-size: var(--ui-primary);
     font-weight: var(--ui-primary-weight); color: var(--ink); font-variant-numeric: tabular-nums; }
+  .ui-insight[hidden] { display: none; }
   .ui-insight :global(.ui-icon) { color: var(--accent); align-self: center; }
 </style>

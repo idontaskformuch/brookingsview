@@ -4,14 +4,15 @@
 import type { EveningEntry } from '../../lib/evening-items';
 import { driveLabel, groupLabel } from '../../lib/evening-items';
 import { showTimeGb } from '../../lib/whats-on-dates';
-import { bucketOf, badgesFor, bucketLabel, cityLabel, cityScope, type CardTown } from '../../lib/tonight-cards';
+import { bucketOf, badgesFor, bucketLabel, cityLabel, cityScope, BUCKET_CATEGORY, type CardTown } from '../../lib/tonight-cards';
+import Card from '../ui/Card.astro';
+import Pill from '../ui/Pill.astro';
 import type { OpenLateRow } from '../../lib/osm-open-late';
 
 interface Props { e?: EveningEntry; place?: OpenLateRow; tz: string; lg?: boolean; /** Coarse area the chips filter by (lib/tonight-cards.ts regionOf); null = only under All. */ region?: string | null; town: CardTown }
 const { e, place, tz, lg = false, region = null, town } = Astro.props;
 const bucket = place ? 'late' : bucketOf(e!.group);
 const href = place ? place.website : e!.href;
-const external = !!href && /^https?:/i.test(href);
 const time = place ? place.closing : [e!.start, ...(e!.laterStarts ?? [])].map((t) => showTimeGb(t, tz)).filter(Boolean)[0] ?? '';
 const title = place ? place.name : e!.title;
 const city = !place && town.cityLabels ? cityLabel(e!, town.homeCity, town.center) : null;
@@ -20,18 +21,18 @@ const meta = metaParts.filter(Boolean).join(' · ');
 const tag = place ? bucketLabel('late', town.country) : (e!.group ? groupLabel(e!.group, town.country) : bucketLabel('other', town.country));
 const badges = place ? [] : badgesFor(e!, town.hidePrice);
 const scope = !place && town.cityLabels ? cityScope(e!.venueCity, town.homeCity) : undefined;
-const Tag = href ? 'a' : 'div';
+const cat = BUCKET_CATEGORY[bucket];
 ---
 <li class:list={['tc-card', { 'tc-card--lg': lg }]} data-card data-bucket={bucket} data-id={place ? place.osmId : e!.id}
   data-start={place ? place.start : e!.start} data-end={(place ? place.end : e!.end) ?? undefined} data-area={region ?? undefined}
   data-scope={scope} data-late={place ? '' : undefined} style={`--c: var(--tc-${bucket})`}>
-  <Tag class="tc-link" href={href ?? undefined} rel={external ? 'noopener' : undefined}>
+  <Card cat={cat ?? undefined} neutral={!cat} href={href ?? undefined} class="tc-link">
     <span class="tc-time" data-tc-time>{time}</span>
     <span class="tc-title">{title}</span>
     {(meta || city) && <span class="tc-meta">{meta}{meta && city && ' · '}{city && <span class="tc-city" title={city.title ?? undefined}>{city.text}</span>}</span>}
     <span class="tc-foot">
       <span class="tc-tag">{tag}</span>
-      {badges.map((b) => <span class={`tc-badge tc-badge--${b.kind}`}>{b.text}</span>)}
+      {badges.map((b) => <Pill cat={cat ?? undefined}>{b.text}</Pill>)}
     </span>
-  </Tag>
+  </Card>
 </li>

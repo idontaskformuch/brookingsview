@@ -4,9 +4,12 @@
 import type { EveningEntry, EveningGroup } from './evening-items';
 import { hasEnded } from './local-day';
 import { showTimeGb } from './whats-on-dates';
+import { CHIP_MIN_ITEMS, CHIP_MIN_CHIPS as UI_CHIP_MIN_CHIPS, type Category } from './ui/ui-helpers';
 
 /** Card colour buckets. The three event categories and Open late each have an accent; everything else is neutral "Also on". */
 export type Bucket = 'music' | 'comedy' | 'theatre' | 'late' | 'other';
+/** Library category colour per bucket (Tonight's set is CATEGORY_SETS.tonight); null = uncategorised, drawn neutral. */
+export const BUCKET_CATEGORY: Record<Bucket, Category | null> = { music: 'music', comedy: 'nightlife', theatre: 'arts', late: 'food', other: null };
 export const BUCKET_LABEL: Record<Bucket, string> = { music: 'Live music', comedy: 'Comedy & shows', theatre: 'Theatre', late: 'Open late', other: 'Also on' };
 /** The bucket's heading as the reader sees it: "Theater" in a US town. */
 export const bucketLabel = (bucket: Bucket, country: string): string => (bucket === 'theatre' && country === 'us' ? 'Theater' : BUCKET_LABEL[bucket]);
@@ -156,8 +159,9 @@ export function unmappedAreas(areas: Array<string | null | undefined>, regions: 
 }
 
 /** A chip needs this many things tonight (events + Open late places: what a tap actually shows); the row needs this many chips. */
-export const CHIP_MIN_THINGS = 3;
-export const CHIP_MIN_CHIPS = 2;
+/** One rule for chips sitewide: the library's (lib/ui/ui-helpers.ts planChips). */
+export const CHIP_MIN_THINGS = CHIP_MIN_ITEMS;
+export const CHIP_MIN_CHIPS = UI_CHIP_MIN_CHIPS;
 
 export interface ChipPlan { visible: string[]; showRow: boolean }
 
