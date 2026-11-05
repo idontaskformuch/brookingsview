@@ -15,7 +15,7 @@ export const DESCRIPTION_MIN = 70;
 export const DESCRIPTION_MAX = 160;
 
 /** Key pages for Pass B (kept only if they are in the town's sitemap). */
-export const KEY_PAGES = ['/', '/today/', '/events/', '/whats-on/', '/this-week/', '/city-hall/', '/weather/', '/traffic/', '/closures/', '/jobs/', '/about/'];
+export const KEY_PAGES = ['/', '/today/', '/events/', '/whats-on/', '/this-week/', '/city-hall/', '/weather/', '/traffic/', '/closures/', '/jobs/', '/about/', '/sports/', '/trash-recycling/', '/home-sales/'];
 /** Pass C: browser clock at these town-local times, on these pages. */
 export const CLOCK_TIMES = ['07:00', '19:00', '23:30'];
 export const CLOCK_PAGES = ['/today/', '/events/', '/'];
@@ -41,6 +41,9 @@ export function zonedInstant(day, hhmm, tz) {
  *  ")}" and "${" were added 2026-10-23 after a stray ")}" sat under the navigation on every page for two days
  *  (a leftover `</nav> )}` in BaseLayout.astro): the header is outside <main>, so the check also reads shellText. */
 export const LITERAL_RE = /\b(undefined|NaN|null)\b|\[object Object\]|Invalid Date|\{\{|\}\}|\$\{|\)\}/g;
+
+/** A heading that opens with "0 <word>". Prose like "0.5 miles" or "10 things" does not match. */
+export const ZERO_COUNT_RE = /^0\s+[a-z]+(?:\s+[a-z]+)?\b/i;
 
 export function finding(check, town, snap, message, extra = {}) {
   return { check, town, url: snap.url, path: snap.path, message, ...extra };
@@ -92,6 +95,11 @@ export function checkPage(snap, town, compiled) {
     else if (n > DESCRIPTION_MAX) f.push(finding('web.description', town, snap, `meta description is ${n} characters (maximum ${DESCRIPTION_MAX})`));
   }
 
+  // web.zero-count (owner 2026-11-05): a heading that announces a count of nothing ("0 most recent, through October 2025",
+  // "0 things") is never useful to a resident; the page must name the section or say plainly that there is nothing.
+  const zero = (snap.headingTexts ?? []).filter((l) => ZERO_COUNT_RE.test(l));
+  if (zero.length) f.push(finding('web.zero-count', town, snap, `announces a count of zero: "${zero[0].slice(0, 80)}"`));
+
   if (/noindex/i.test(snap.metaRobots ?? '') && snap.inSitemap) {
     f.push(finding('web.noindex-sitemap', town, snap, 'noindex page listed in sitemap'));
   }
@@ -111,6 +119,7 @@ export function checkDiag(snap, town) {
   if (cf && cf.items > 0 && !cf.tonight && !cf.tomorrow && !cf.none) {
     f.push(finding('web.clientfill', town, snap, `${cf.items} events in the template but Tonight/Tomorrow never filled and no "nothing scheduled" note${lab}`));
   }
+  if (snap.hscroll && /mobile/.test(snap.label ?? '')) f.push(finding('web.hscroll', town, snap, `page scrolls sideways at phone width (${snap.hscroll.scrollWidth}px wide in a ${snap.hscroll.clientWidth}px viewport); widest element: ${snap.hscroll.offender || 'unknown'}${lab}`));
   for (const a of snap.staleAlerts ?? []) f.push(finding('web.stale-alert', town, snap, `alert shown after its end: ${a}${lab}`));
   for (const e of snap.staleRecently ?? []) f.push(finding('web.stale-recently', town, snap, `"Recently" shows an event from more than 90 days ago: ${e}${lab}`));
   for (const e of snap.pastEvents ?? []) f.push(finding('web.past-event', town, snap, `${e}${lab}`));

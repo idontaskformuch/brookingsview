@@ -88,15 +88,15 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
       <tbody>
         {visible.map((job) => (
           <tr>
-            <td>
+            <td class="jobs__title">
               {job.redirect_url ? (
                 <a href={job.redirect_url} rel="noopener nofollow sponsored">{job.title}</a>
               ) : job.title}
               {job.location && <span class="loc">{job.location}</span>}
             </td>
-            <td>{job.company ?? '—'}</td>
-            <td class="data">{salaryText(job, siteConfig.country)}</td>
-            <td class="data">{job.posted_at ? formatDate(job.posted_at) : '—'}</td>
+            <td data-label="Company">{job.company ?? '—'}</td>
+            <td class="data" data-label="Salary">{salaryText(job, siteConfig.country)}</td>
+            <td class="data" data-label="Posted">{job.posted_at ? formatDate(job.posted_at) : '—'}</td>
           </tr>
         ))}
       </tbody>
@@ -112,14 +112,14 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
         <tbody>
           {extra.map((job) => (
             <tr>
-              <td>
+              <td class="jobs__title">
                 {job.redirect_url ? (
                   <a href={job.redirect_url} rel="noopener nofollow sponsored">{job.title}</a>
                 ) : job.title}
                 {job.location && <span class="loc">{job.location}</span>}
               </td>
-              <td class="data">{salaryText(job, siteConfig.country)}</td>
-              <td class="data">{job.posted_at ? formatDate(job.posted_at) : '—'}</td>
+              <td class="data" data-label="Salary">{salaryText(job, siteConfig.country)}</td>
+              <td class="data" data-label="Posted">{job.posted_at ? formatDate(job.posted_at) : '—'}</td>
             </tr>
           ))}
         </tbody>
@@ -173,4 +173,14 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
 .overflow { margin-top: 0.75rem; font-size: 0.9375rem; }
 .overflow summary { cursor: pointer; color: var(--ink-soft); padding: 0.5rem 0; }
 .source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }
+/* Phone: each listing is a short card (title, then labelled facts); a four-column table scrolled sideways at 390 px (QA web.hscroll). */
+@media (max-width: 40rem) {
+  .jobs thead { position: absolute; left: -9999px; }
+  .jobs, .jobs tbody, .jobs tr, .jobs td { display: block; }
+  .jobs tr { padding: 0.625rem 0; border-bottom: 1px solid var(--rule); }
+  .jobs td { padding: 0.125rem 0.875rem; border: 0; }
+  .jobs td[data-label]::before { content: attr(data-label) ": "; font-weight: 600; color: var(--ink-soft); }
+  .jobs__title { font-weight: 600; font-size: 1rem; }
+  .data { white-space: normal; }
+}
 </style>

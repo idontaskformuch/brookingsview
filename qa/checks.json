@@ -210,6 +210,16 @@
       "severity": "soft",
       "born_from": "Bing Webmaster Tools 2026-11-03: \"meta description too short\" on many pages (e.g. /contact/ 33 characters, /terms/ 35, /privacy/ 45). Regression fixture: tests/fixtures/qa_description_2026-11-03.json.",
       "what": "indexable page whose meta description is missing, under 70 or over 160 characters, or identical to another page's in the same town"
+    },
+    "web.zero-count": {
+      "severity": "soft",
+      "born_from": "Premium phase 1f 2026-11-05: Moreno /home-sales/ read \"0 most recent, through October 2025\" (render window left no sales to list). Regression fixture: tests/fixtures/qa_zero_count_2026-11-05.json.",
+      "what": "a heading or summary in <main> that opens with a count of zero (\"0 most recent\", \"0 things\"); table cells such as \"0 listings\" are data and not flagged"
+    },
+    "web.hscroll": {
+      "severity": "soft",
+      "born_from": "Premium phase 0 report 2026-11-05: horizontal scroll at 390 px on Moreno /sports/ and Brookings /trash-recycling/. Regression fixture: tests/fixtures/qa_hscroll_2026-11-05.json.",
+      "what": "on the mobile combos of Pass B the page is wider than the viewport (documentElement.scrollWidth > clientWidth); the message names the widest element"
     }
   }
 }

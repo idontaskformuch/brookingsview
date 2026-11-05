@@ -232,6 +232,10 @@ const fmtHoliday = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: '
   .tr-note { font-size: 0.9rem; max-width: 46rem; }
   .tr-table { border-collapse: collapse; width: 100%; max-width: 46rem; margin: 0 0 0.75rem; }
   .tr-table th, .tr-table td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--rule, #ddd); }
+  /* Phone: four columns of weekday names were 8 px wider than the screen with the fallback font (QA web.hscroll); tighter cells that may wrap. */
+  @media (max-width: 30rem) {
+    .tr-table th, .tr-table td { padding: 0.4rem 0.3rem; font-size: 0.875rem; overflow-wrap: anywhere; }
+  }
   .tr-cols { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); max-width: 62rem; }
   .tr-cols h3 { margin: 0 0 0.4rem; }
   .tr-dl dt { font-weight: 600; margin-top: 1rem; }

@@ -244,10 +244,26 @@ function pageProbe({ allowSel, wantLinks }) {
       c.querySelectorAll('main, script, style, noscript, template, svg, [data-qa-allow-sibling-sites]').forEach((e) => e.remove());
       return (c.textContent || '').replace(/\s+/g, ' ').trim();
     })(),
+    // headings and summaries in <main>: web.zero-count reads them (table cells like "0 listings" are data, not announcements)
+    headingTexts: [...document.querySelectorAll('main h1, main h2, main h3, main h4, main h5, main h6, main summary')].map((h) => (h.innerText || '').trim()).filter(Boolean),
     imgAlts: [...document.querySelectorAll('main img')].map((i) => i.alt || ''),
     loneDashNodes: lone,
     brokenImgs: [...document.images].filter((i) => i.complete && i.naturalWidth === 0 && i.currentSrc && !i.currentSrc.startsWith('data:')).map((i) => i.currentSrc),
     emptySections, staleRecently, clientfill, staleAlerts, pastEvents, allDayClock,
+    // sideways scroll: some element reaches past the phone viewport (web.hscroll reads it on the mobile combos). Measured by element edges
+    // against screen.width, not documentElement.scrollWidth: in mobile emulation the layout viewport is stretched to 980 on every page.
+    hscroll: (() => {
+      const cw = Math.min(document.documentElement.clientWidth, screen.width);
+      const offs = [...document.body.querySelectorAll('*')].filter((e) => { const r = e.getBoundingClientRect(); if (!(r.width > 0 && r.right > cw + 1) || getComputedStyle(e).position === 'fixed') return false;
+          // clipped or scrolled inside its own box (a table in an overflow-x wrapper) is fine
+          for (let a = e.parentElement; a && a !== document.body; a = a.parentElement) { if (getComputedStyle(a).overflowX !== 'visible' && a.getBoundingClientRect().right <= cw + 1) return false; }
+          return true; })
+        .sort((a, b) => b.getBoundingClientRect().right - a.getBoundingClientRect().right);
+      if (!offs.length) return null;
+      const off = offs[0];
+      const name = `${off.tagName.toLowerCase()}${off.className && typeof off.className === 'string' ? '.' + off.className.trim().split(/\s+/).slice(0, 2).join('.') : ''}`;
+      return { scrollWidth: Math.round(off.getBoundingClientRect().right), clientWidth: cw, offender: name };
+    })(),
     links: wantLinks ? [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute('href')) : [],
     // internal links inside <main>, collected on every page (no extra request) for web.duplicate-content
     outLinks: [...new Set([...document.querySelectorAll('main a[href^="/"]')].map((a) => a.getAttribute('href')))],

@@ -1,0 +1,57 @@
+{
+ "_doc": "Measured 2026-11-05 at 390 px on local builds (element right edge vs viewport, same probe as qa/web/run.mjs). Moreno /jobs/category/*: four-column table with no phone layout (fonts loaded). Brookings /trash-recycling/: 398 px with the fallback font (the phase-0 observation; fits with real fonts). Moreno /sports/ did NOT reproduce in either font mode. Bad entries must trip web.hscroll on a mobile combo; good must not (fits, or a desktop combo). Brookings /jackrabbits/: 397 px with real fonts (new find by the sweep; the Where header stayed visible while its cells were hidden on phones).",
+ "bad": [
+  {
+   "path": "/jobs/category/transportation-driving/",
+   "label": "mobile-light",
+   "hscroll": {
+    "scrollWidth": 624,
+    "clientWidth": 390,
+    "offender": "table.jobs"
+   }
+  },
+  {
+   "path": "/jobs/category/healthcare-nursing-jobs/",
+   "label": "mobile-dark",
+   "hscroll": {
+    "scrollWidth": 561,
+    "clientWidth": 390,
+    "offender": "table.jobs"
+   }
+  },
+  {
+   "path": "/trash-recycling/",
+   "label": "mobile-light",
+   "hscroll": {
+    "scrollWidth": 398,
+    "clientWidth": 390,
+    "offender": "table.tr-table"
+   }
+  },
+  {
+   "path": "/jackrabbits/",
+   "label": "mobile-dark",
+   "hscroll": {
+    "scrollWidth": 397,
+    "clientWidth": 390,
+    "offender": "table.sched"
+   }
+  }
+ ],
+ "good": [
+  {
+   "path": "/jobs/category/transportation-driving/",
+   "label": "mobile-light",
+   "hscroll": null
+  },
+  {
+   "path": "/jobs/category/transportation-driving/",
+   "label": "desktop-light",
+   "hscroll": {
+    "scrollWidth": 1500,
+    "clientWidth": 1280,
+    "offender": "table.jobs"
+   }
+  }
+ ]
+}

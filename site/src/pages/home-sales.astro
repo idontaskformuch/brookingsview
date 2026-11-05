@@ -19,7 +19,7 @@ import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getRecentPropertySales, getContentByType, formatPrice } from '../lib/db';
-import { titleCaseAddress as sharedTitleCaseAddress, extractZip as sharedExtractZip, slugifyAddress, isOutlierSale } from '../lib/home-sales';
+import { titleCaseAddress as sharedTitleCaseAddress, extractZip as sharedExtractZip, slugifyAddress, isOutlierSale, salesListLabel } from '../lib/home-sales';
 import { siteConfig } from '../lib/site-config';
 import { fitDescription, descriptionFillers } from '../lib/meta-description';
 import { placeAbbr } from '../lib/country-profile';
@@ -112,18 +112,16 @@ function monthYear(occursAt: string | null): string {
     </>
   )}
 
-  <SectionRule label={mostRecentSaleDate
-    ? `${sales.length} most recent, through ${monthYear(mostRecentSaleDate)}`
-    : `${sales.length} most recent`} />
-  <p class="footnote footnote--top">A † next to a price marks a likely non-market transfer (family transfer, partial interest, or a recording artifact); those are left out of the digests' median and range.</p>
+  <SectionRule label={salesListLabel(sales.length, mostRecentSaleDate ? monthYear(mostRecentSaleDate) : null)} />
+  {sales.length > 0 && <p class="footnote footnote--top">A † next to a price marks a likely non-market transfer (family transfer, partial interest, or a recording artifact); those are left out of the digests' median and range.</p>}
 
-  <p class="zip-links">
+  {sales.length > 0 && <p class="zip-links">
     Browse by ZIP: {zips.map((z, i) => (
       <>{i > 0 && ' · '}<a href={`/home-sales/zip/${z}/`}>{z}</a></>
     ))}
-  </p>
+  </p>}
 
-  <div class="controls">
+  {sales.length > 0 && <div class="controls">
     <label>
       ZIP
       <select id="zip-filter">
@@ -140,7 +138,7 @@ function monthYear(occursAt: string | null): string {
         <option value="99999">All</option>
       </select>
     </label>
-  </div>
+  </div>}
 
   {sales.length > 0 ? (
     <>

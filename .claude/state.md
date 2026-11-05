@@ -6,18 +6,17 @@
 - BESLUT (ägaren, galleri-granskning 2026-11-05): hjälte clamp(3.5rem,16vw,5.5rem); kategorifärger max 6 PER SIDTYP (CATEGORY_SETS; Tonight: music,nightlife,family,sports,food,arts; civic bara Meetings/City hall); temperaturskala i stadens enhet (TEMP_BOUNDS_F konverteras, Glasgow °C, testat); Card/ikoner/FallbackTile behålls men ska vara lätta att byta (storlekar=tokens, ikoner bara via lib/ui/icons.ts); Chips >=3 träffar/chip, >=2 chips, inga siffror; AboutThisPage hopfälld men "Updated" synlig.
 - Före/efter-skärmdumpar (390+1280, ljust+mörkt) för Fas 1 ska ligga committade i .claude/review/phase1/.
 - Lokala commits ej pushade (pusha aldrig utan ja, regel 6): 392b561..88b2c7d + ev. nyare. Kontrollera `git log origin/main..HEAD` (klonen kan släpa, se memory).
-## Kända buggar
-- Hscroll 390 px Moreno /sports/ och Brookings /trash-recycling/; Moreno /home-sales/ "0 most recent"; Moreno kvällsevents visar datum en dag fel (tidszon, fixtur kring 19-23 lokal tid) -- Fas 1f resp. senare.
+## Fas 1 KLAR (väntar ägarens granskning, Fas 2 ej påbörjad)
+- 1e: lib/ui/standard-layout.test.ts (ingen townId/country-gren eller stadsnamn i layoutfiler); 3 country===-grenar flyttade till countryProfile (tonight-cards bucketLabel, tonight.astro, HolidayPage).
+- 1f (BESLUT: fix + QA-kontroll + fixtur, regel 12): home-sales "0 most recent" -> salesListLabel (lib/home-sales.ts), tom lista döljer filter/fotnot; QA web.zero-count (rubriker, ej tabellceller). Hscroll: web.hscroll i qa/web (elementkant vs screen.width, ej scrollWidth: mobil-emulering ger 980 överallt). Funna+fixade: Moreno /jobs/category/* (624 px), Brookings /trash-recycling/ (398, bara med fallback-typsnitt), Brookings /jackrabbits/ (397, med riktiga typsnitt). Moreno /sports/ reproducerades INTE. Fixturer tests/fixtures/qa_{zero_count,hscroll}_2026-11-05.json. KEY_PAGES +/sports/ /trash-recycling/ /home-sales/.
+- Skärmdumpar före/efter: .claude/review/phase1/defects/ (Moreno före = worktree på e8848e2). american-spelling-testet föll på "colours" i [design].astro (1c) -> fixat.
+- Batteri (2026-11-05): vitest 2090/2090, pytest 1229 pass/11 skip, astro check 0 fel, build x4 i sekvens OK (Brookings med BUILD_DESIGN=1), sitemap/noindex-disjoint OK x4, hscroll-svep 390 px rent på alla fyra (båda typsnittslägen). Broomfield/Glasgow/Moreno byggdes före de sista Brookings-only-ändringarna (trash/jackrabbits/[design]) som inte påverkar dem.
+- Kvar att besluta: Moreno kvällsevents datum en dag fel (tidszon) -- ej i 1f, senare.
+- Lokala commits ej pushade (regel 6).
 ## Öppna spår (detaljer i state-archive.md)
-- MEETINGS: nästa lilla uppgift ej byggd (förväntade rådsmöten via council-schedule.ts bara i Coming up; tidskonflikt -> "Time: see agenda"). Fas 3 i premium-spec ersätter delvis (AI-text bort, BODIES per stad).
-- AI-prosa bort överallt (beslut 2026-11-05): mötesstories, whats-on-intro, veckoingresser; Fas 5 = ny /this-week/, gamla /this-week/YYYY-wNN/ 301.
-- Tonight-kort: spec .claude/specs/tonight-cards.md, lib/tonight-cards.ts(+test 48), components/tonight/*; Tonight US-utrullning (Broomfield/Moreno/Brookings) gjord 2026-11-04.
-- Högtidssidor (Thanksgiving/Veterans/Christmas): omkontroll ca 2026-11-18 och 2026-11-23 (supervised).
-- Glasgow lanserad 2026-10-28/29 (noindex borta). AdSense-mål = Broomfield (audit klar, GSC-export saknas).
-- Prioritet genom alla faser: Broomfield verifieras först och mest noggrant.
-## 1d-resultat (ägaren granskar)
-- Tonight bygger på ui/Card, Pill, HeroStat, InsightLine, Chips; tc-*-hooks/data-attribut oförändrade. BUCKET_CATEGORY (lib/tonight-cards.ts): music->music, comedy->nightlife, theatre->arts, late->food, other->neutral (ägaren bekräftar mappningen). Chip-regeln har en källa (ui-helpers CHIP_MIN_ITEMS/CHIP_MIN_CHIPS).
-- Före/efter /tonight/ för alla fyra städer: .claude/review/phase1/<stad>-<before|after>-<390|1280>-<light|dark>.png. Före = HEAD cf1e2ec byggt i worktree, efter = 949c40d; byggena gjordes vid olika tidpunkter så eventinnehåll kan skilja.
-- Ej körda än (fas-commit): hela vitest+pytest, build med BUILD_DESIGN för alla, sitemap/noindex-disjoint.
+- MEETINGS: nästa lilla uppgift ej byggd. Fas 3 i premium-spec ersätter delvis.
+- AI-prosa bort överallt (beslut 2026-11-05); Fas 5 = ny /this-week/.
+- Högtidssidor: omkontroll ca 2026-11-18 och 2026-11-23 (supervised).
+- AdSense-mål = Broomfield (GSC-export saknas). Prioritet: Broomfield verifieras först.
 ## Nästa steg
-1e standard-layout-test, 1f defekterna, sedan fas-batteriet och rapport; stanna för ägarens OK innan Fas 2.
+Ägaren granskar Fas 1 (galleri, Tonight, defekter); stanna för OK innan Fas 2.

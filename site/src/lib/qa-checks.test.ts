@@ -237,3 +237,28 @@ describe('web.description (Bing "too short", 2026-11-03)', () => {
     expect((checkRun([snap(fx.dup[0]), snap(fx.dup[0])], 'brookings_sd') as { check: string }[]).filter((f) => f.check === 'web.description')).toHaveLength(0);
   });
 });
+
+describe('web.zero-count (Moreno /home-sales/ "0 most recent", 2026-11-05)', () => {
+  const fx = JSON.parse(readFileSync(new URL('../../../tests/fixtures/qa_zero_count_2026-11-05.json', import.meta.url), 'utf8')) as {
+    bad: { path: string; headingTexts: string[] }[]; good: { path: string; headingTexts: string[] }[];
+  };
+  it('a heading that announces zero trips the check, real counts and decimals do not', () => {
+    for (const x of fx.bad) expect(ids(x), x.headingTexts.join('|')).toContain('web.zero-count');
+    for (const x of fx.good) expect(ids(x), x.headingTexts.join('|')).not.toContain('web.zero-count');
+  });
+});
+
+describe('web.hscroll (390 px sideways scroll, 2026-11-05)', () => {
+  const fx = JSON.parse(readFileSync(new URL('../../../tests/fixtures/qa_hscroll_2026-11-05.json', import.meta.url), 'utf8')) as {
+    bad: Record<string, unknown>[]; good: Record<string, unknown>[];
+  };
+  const diag = (x: object) => (checkDiag({ ...base, ...x }, 'brookings_sd') as { check: string }[]).map((f) => f.check);
+  it('a page wider than the phone viewport trips the check, one that fits (or a desktop combo) does not', () => {
+    for (const x of fx.bad) expect(diag(x), String(x.path)).toContain('web.hscroll');
+    for (const x of fx.good) expect(diag(x), String(x.path)).not.toContain('web.hscroll');
+  });
+  it('the message names the offender', () => {
+    const m = (checkDiag({ ...base, ...fx.bad[0] }, 'brookings_sd') as { message: string }[])[0].message;
+    expect(m).toContain('table.jobs');
+  });
+});

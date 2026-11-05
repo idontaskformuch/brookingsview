@@ -1,0 +1,53 @@
+{
+ "_doc": "Real heading text from Moreno /home-sales/ before the fix (2026-11-05). Every bad entry must trip web.zero-count; good must stay clean (post-fix heading, real counts, decimals, table cells are not headings).",
+ "bad": [
+  {
+   "path": "/home-sales/",
+   "headingTexts": [
+    "Home sales",
+    "Recent home sales",
+    "0 most recent, through October 2025",
+    "No sales recorded in the latest county report."
+   ]
+  },
+  {
+   "path": "/tonight/",
+   "headingTexts": [
+    "0 things on tonight"
+   ]
+  }
+ ],
+ "good": [
+  {
+   "path": "/home-sales/",
+   "headingTexts": [
+    "Home sales",
+    "Recent sales",
+    "No sales recorded in the latest county report."
+   ]
+  },
+  {
+   "path": "/home-sales/",
+   "headingTexts": [
+    "25 most recent, through October 2025",
+    "A row"
+   ]
+  },
+  {
+   "path": "/weather/",
+   "headingTexts": [
+    "0.5 inches of rain expected",
+    "10 things on tonight",
+    "Sunday 0 degrees is rare"
+   ]
+  },
+  {
+   "path": "/workplace-watch/",
+   "headingTexts": [
+    "Workplace watch",
+    "Employers"
+   ],
+   "_note": "Broomfield /workplace-watch/ table cells say '0 listings': data in cells, not headings"
+  }
+ ]
+}

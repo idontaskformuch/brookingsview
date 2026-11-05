@@ -92,7 +92,7 @@ const summaryBySport = new Map(
             <table class="sched">
               <thead>
                 <tr><th scope="col">Date</th><th scope="col">Opponent</th>
-                    <th scope="col">Where</th><th scope="col">Result</th></tr>
+                    <th scope="col" class="where">Where</th><th scope="col">Result</th></tr>
               </thead>
               <tbody>
                 {results.map((game) => (
@@ -113,7 +113,7 @@ const summaryBySport = new Map(
             <table class="sched">
               <thead>
                 <tr><th scope="col">Date</th><th scope="col">Opponent</th>
-                    <th scope="col">Where</th><th scope="col">Result</th></tr>
+                    <th scope="col" class="where">Where</th><th scope="col">Result</th></tr>
               </thead>
               <tbody>
                 {schedule.map((game) => (
@@ -171,4 +171,6 @@ const summaryBySport = new Map(
 .sched .t { display: block; font-size: 0.75rem; color: var(--ink-soft); }
 .where { color: var(--ink-soft); font-size: 0.875rem; }
 @media (max-width: 40rem) { .where { display: none; } }
+/* Phone: the table was 7 px wider than the screen (QA web.hscroll); tighter cells that may wrap. */
+@media (max-width: 30rem) { .sched th, .sched td { padding: 0.5rem 0.4rem; overflow-wrap: anywhere; } }
 </style>

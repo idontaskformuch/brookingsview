@@ -61,3 +61,11 @@ export function digestSlugForSaleDate(saleDate: string): string {
   const month = String(d.getUTCMonth() + 1).padStart(2, '0');
   return `home-sales-digest-${year}-${month}`;
 }
+
+/** The heading above the sales table. Never a count of zero: when the render window leaves nothing to list (the county's newest
+ *  record is older than the window) the heading names the table, and the page says why in the empty state (QA web.zero-count,
+ *  2026-11-05: "0 most recent, through <month>" on /home-sales/). */
+export function salesListLabel(shown: number, newestMonthYear: string | null): string {
+  if (shown <= 0) return 'Recent sales';
+  return newestMonthYear ? `${shown} most recent, through ${newestMonthYear}` : `${shown} most recent`;
+}

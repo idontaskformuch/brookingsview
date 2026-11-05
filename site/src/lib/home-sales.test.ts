@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  OUTLIER_PRICE_FLOOR, isOutlierSale, titleCaseAddress, extractZip, slugifyAddress, digestSlugForSaleDate,
+  OUTLIER_PRICE_FLOOR, isOutlierSale, titleCaseAddress, extractZip, slugifyAddress, digestSlugForSaleDate, salesListLabel,
 } from './home-sales';
 import { formatPrice } from './db';
 
@@ -82,5 +82,16 @@ describe('digestSlugForSaleDate', () => {
   });
   it('zero-pads single-digit months', () => {
     expect(digestSlugForSaleDate('2026-03-05')).toBe('home-sales-digest-2026-03');
+  });
+});
+
+describe('salesListLabel (QA web.zero-count, 2026-11-05)', () => {
+  it('never announces a count of zero', () => {
+    expect(salesListLabel(0, 'October 2025')).toBe('Recent sales');
+    expect(salesListLabel(0, null)).toBe('Recent sales');
+  });
+  it('keeps the count and month when there are sales', () => {
+    expect(salesListLabel(25, 'October 2025')).toBe('25 most recent, through October 2025');
+    expect(salesListLabel(25, null)).toBe('25 most recent');
   });
 });
