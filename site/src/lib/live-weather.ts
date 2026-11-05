@@ -79,7 +79,10 @@ function redrawRegion(doc: Document, region: HTMLElement, w: WeatherAnswer, now:
   region.dataset.markup = html;
   region.dataset.fetchedAt = view.fetchedAt ?? '';
   region.querySelectorAll('details').forEach((d, i) => { d.open = !!open[i]; });
-  if (view.updated) t(doc.querySelector('[data-wx-updated]'), view.updated);
+  if (view.updated) {
+    t(doc.querySelector('[data-wx-updated]'), view.updated);
+    doc.querySelector('[data-wx-updated-wrap]')?.removeAttribute('hidden'); // the page was built from a payload without fetched_at
+  }
 }
 
 export async function refreshLiveWeather(doc: Document, fetcher: typeof fetch = fetch, now: Date = new Date()): Promise<void> {

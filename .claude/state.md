@@ -9,18 +9,20 @@
 ## Fas 1 KLAR (väntar ägarens granskning, Fas 2 ej påbörjad)
 - 1e: lib/ui/standard-layout.test.ts (ingen townId/country-gren eller stadsnamn i layoutfiler); 3 country===-grenar flyttade till countryProfile (tonight-cards bucketLabel, tonight.astro, HolidayPage).
 - 1f (BESLUT: fix + QA-kontroll + fixtur, regel 12): home-sales "0 most recent" -> salesListLabel (lib/home-sales.ts), tom lista döljer filter/fotnot; QA web.zero-count (rubriker, ej tabellceller). Hscroll: web.hscroll i qa/web (elementkant vs screen.width, ej scrollWidth: mobil-emulering ger 980 överallt). Funna+fixade: Moreno /jobs/category/* (624 px), Brookings /trash-recycling/ (398, bara med fallback-typsnitt), Brookings /jackrabbits/ (397, med riktiga typsnitt). Moreno /sports/ reproducerades INTE. Fixturer tests/fixtures/qa_{zero_count,hscroll}_2026-11-05.json. KEY_PAGES +/sports/ /trash-recycling/ /home-sales/.
+- Batteri 2026-11-05: vitest site 2186 + cron-dispatcher 72, pytest 1237/11 skip, astro check 0 fel, bygge x4 (Brookings BUILD_DESIGN=1) OK + disjoint OK x4. Live /weather/ = 200 på alla fyra.
 - Skärmdumpar före/efter: .claude/review/phase1/defects/ (Moreno före = worktree på e8848e2). american-spelling-testet föll på "colours" i [design].astro (1c) -> fixat.
 - Batteri (2026-11-05): vitest 2090/2090, pytest 1229 pass/11 skip, astro check 0 fel, build x4 i sekvens OK (Brookings med BUILD_DESIGN=1), sitemap/noindex-disjoint OK x4, hscroll-svep 390 px rent på alla fyra (båda typsnittslägen). Broomfield/Glasgow/Moreno byggdes före de sista Brookings-only-ändringarna (trash/jackrabbits/[design]) som inte påverkar dem.
 - Kvar att besluta: Moreno kvällsevents datum en dag fel (tidszon) -- ej i 1f, senare.
 - Lokala commits ej pushade (regel 6).
-## Fas 2 (väder) PÅGÅR -- Fas 1 pushad+live-smoke grön 2026-11-05 (a4d3338; 4 städer 200, Bricolage, ingen Plex, ingen hscroll 390, /_design/ 404)
-- 2a KLAR: payload-utökning i lockstep (TS cron-dispatcher/src/weather/{metoffice,nws,util}.ts + Python met_office_site_specific_v1.py/noaa.py): valfria pop/feels/gust/uv/precip_mm + fetched_at; paritetsfixturer via scripts/make_weather_parity_fixtures.py (met_office_parity.json, nws_parity.json); /api/weather för fetched_at. Ingen Worker-deploy.
-- Plan: 2b NWS gridpoints (feels/gust/precip, separat steg) -> 2c lib/weather-model.ts+test (hjälte, insikter, sol-tider) -> 2d ui-komponenter (HourStrip, DayRows) + weather.astro + live-weather -> 2e skärmdumpar .claude/review/phase2/ + batteri. Pusha INTE Fas 2.
-- BESLUT: klientrendering delar strängrenderare (lib/ui/ui-html.ts) med Astro-komponenterna så live-uppdatering och bygge ger samma markup.
+## Fas 2 (väder) KLAR, väntar ägarens granskning (Fas 1 pushad + live-smoke grön 2026-11-05, a4d3338). Fas 2 EJ pushad (regel 6), ingen Worker-deploy.
+- 2a payload i lockstep (TS cron-dispatcher/src/weather/{metoffice,nws,util}.ts + Python met_office_site_specific_v1.py/noaa.py): valfria pop/feels/gust/uv/precip_mm + fetched_at; paritetsfixturer via scripts/make_weather_parity_fixtures.py. 2b NWS gridpoints (best-effort): feels (F ur degC), gust (mph), precip_mm bara där källan ger EN timme (NWS QPF är 6-timmars -> nästan aldrig).
+- 2c lib/weather-model.ts (+test 71), sun-times.ts, weather-html.ts; 2d weather.astro på ui/* + nya HourStrip, DayRows; HeroStat/InsightLine/RangeBar/SectionHeader nu tunna wrappers över lib/ui/ui-html.ts (strängrenderare, CSS global i design/ui-components.css) så live-weather.ts ritar om SAMMA markup i webbläsaren.
+- BESLUT och SKÄL: temperaturtrösklar 2 C / 4 F (spec säger >=2 grader; 2 F är brus); "Dry until" <6 h annars "Rain from"; regn = pop >=50 %; "all week" först vid >=5 dygn; country profile fick `weather` {authority, officialLink} (US weather.gov/alerts, UK SEPA Floodline); H1 = "<stad> weather"; gårdagens high = gårdagens lagrade prognos (getWeatherSnapshot tar 3 rader).
+- Skärmdumpar `after-oldpayload` (DB som den är) och `after-fullpayload` (syntetiska nya fält, fixturer i review/phase2/fixtures) 390 ljust; före/efter (4 städer, 390+1280, ljust+mörkt): .claude/review/phase2/ (före: Glasgow 1280 ljust gav 500 i dev, ej omtaget). scripts/review-shots.mjs.
+- Kända luckor: lagrade payloads saknar de nya fälten tills Workern/scrapen körts med ny kod (Worker-deploy kräver ägarens ja) -> live visas ingen Updated/regnstaplar än; MetOfficeWarnings (Glasgow) behålls som varningsbanner (egen komponent).
+## Nästa steg: ägaren granskar Fas 2 (granskningslista i svaret); pusha först efter ja.
 ## Öppna spår (detaljer i state-archive.md)
 - MEETINGS: nästa lilla uppgift ej byggd. Fas 3 i premium-spec ersätter delvis.
 - AI-prosa bort överallt (beslut 2026-11-05); Fas 5 = ny /this-week/.
 - Högtidssidor: omkontroll ca 2026-11-18 och 2026-11-23 (supervised).
 - AdSense-mål = Broomfield (GSC-export saknas). Prioritet: Broomfield verifieras först.
-## Nästa steg
-Ägaren granskar Fas 1 (galleri, Tonight, defekter); stanna för OK innan Fas 2.

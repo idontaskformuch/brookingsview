@@ -55,7 +55,7 @@ const official = profile.weather.officialLink;
 
   <header class="wx-head">
     <h1>{siteConfig.cityName} weather</h1>
-    <p class="wx-meta"><a href={authority.url} rel="noopener">{authority.name}</a>{view.updated && <> · Updated <span data-wx-updated>{view.updated}</span></>}</p>
+    <p class="wx-meta"><a href={authority.url} rel="noopener">{authority.name}</a><span data-wx-updated-wrap hidden={view.updated ? undefined : true}> · Updated <span data-wx-updated>{view.updated ?? ''}</span></span></p>
   </header>
 
   <div data-weather-region data-fetched-at={view.fetchedAt ?? ''}>

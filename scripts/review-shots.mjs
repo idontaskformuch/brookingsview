@@ -5,7 +5,7 @@
 // light and dark, full page. Consent is pre-declined and analytics hosts are aborted, so no screenshot run counts as a visitor.
 import { spawn, execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,6 +19,10 @@ const phase = arg('phase', 'phase2');
 const label = arg('label', 'after');
 const path = arg('path', '/weather/');
 const waitMs = Number(arg('wait-ms', '4000'));
+// --api-fixture <dir>: answer GET /api/weather with <dir>/<town>.json (what the page would get after the Worker has written a newer payload).
+const apiFixture = arg('api-fixture', '');
+const widths = arg('widths', '390,1280').split(',').map(Number);
+const schemes = arg('schemes', 'light,dark').split(',');
 const TOWNS = { broomfield_co: 'broomfield', brookings_sd: 'brookings', moreno_valley_ca: 'moreno', glasgow: 'glasgow' };
 const towns = arg('towns', Object.keys(TOWNS).join(',')).split(',');
 const out = resolve(root, '.claude', 'review', phase);
@@ -44,12 +48,16 @@ for (const town of towns) {
   const child = spawn(`npx astro dev --port ${p} --host 127.0.0.1`, { cwd: site, shell: true, env: { ...process.env, SITE_CITY: town, ASTRO_TELEMETRY_DISABLED: '1' }, stdio: 'ignore' });
   try {
     await waitFor(`http://127.0.0.1:${p}${path}`);
-    for (const width of [390, 1280]) {
-      for (const scheme of ['light', 'dark']) {
+    for (const width of widths) {
+      for (const scheme of schemes) {
         const ctx = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: scheme, deviceScaleFactor: 1, userAgent: 'ViewMediaQA/1.0 (review screenshots)' });
         await ctx.addInitScript(() => { try { localStorage.setItem('bv_cookie_consent', 'declined'); } catch { /* ignore */ } });
         const page = await ctx.newPage();
         await page.route(/google-analytics|googletagmanager|doubleclick|googlesyndication|cloudflareinsights/, (r) => r.abort());
+        if (apiFixture) {
+          const f = resolve(apiFixture, `${town}.json`);
+          if (existsSync(f)) await page.route('**/api/weather', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: readFileSync(f, 'utf8') }));
+        }
         const resp = await page.goto(`http://127.0.0.1:${p}${path}`, { waitUntil: 'networkidle', timeout: 120_000 });
         await page.addStyleTag({ content: 'astro-dev-toolbar,#cookie-banner{display:none!important}' });
         await page.evaluate(() => document.fonts.ready);

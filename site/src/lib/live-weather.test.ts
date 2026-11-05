@@ -49,7 +49,7 @@ describe.skipIf(!browser)('live weather in a real browser', { timeout: 30_000 },
     bundle: true, format: 'iife', globalName: 'LW', write: false,
   }).outputFiles[0].text;
   const config = { unit: 'F', lat: 41.88, lon: -87.63, tz: 'America/Chicago', country: 'us', yesterday: null };
-  const html = `<span data-weather-sign>High&nbsp;40&deg;F&nbsp;old</span><span data-wx-updated>old</span>
+  const html = `<span data-weather-sign>High&nbsp;40&deg;F&nbsp;old</span><span data-wx-updated-wrap hidden>Updated <span data-wx-updated>old</span></span>
     <div data-weather-region><p class="ui-hero__label">old</p><details open><summary>kept open?</summary></details></div>
     <script type="application/json" data-weather-config>${JSON.stringify(config)}</script>`;
   const answer = {
@@ -75,7 +75,7 @@ describe.skipIf(!browser)('live weather in a real browser', { timeout: 30_000 },
       return {
         calls, sign: document.querySelector('[data-weather-sign]')?.textContent ?? null,
         label: q('.ui-hero__label'), hero: q('.ui-hero__value > span:first-child'), hours: q('.ui-hr__time'), hourTemps: q('.ui-hr__temp'),
-        days: q('.ui-wd__name'), current: q('.ui-hr.is-current .ui-hr__time'), updated: q('[data-wx-updated]'), fetched: (document.querySelector('[data-weather-region]') as HTMLElement | null)?.dataset.fetchedAt ?? null,
+        days: q('.ui-wd__name'), current: q('.ui-hr.is-current .ui-hr__time'), updated: q('[data-wx-updated]'), wrapHidden: (document.querySelector('[data-wx-updated-wrap]') as HTMLElement | null)?.hidden ?? null, fetched: (document.querySelector('[data-weather-region]') as HTMLElement | null)?.dataset.fetchedAt ?? null,
       };
     }, [respond, answer, NOW.toISOString()] as const);
     await page.close();
@@ -92,6 +92,7 @@ describe.skipIf(!browser)('live weather in a real browser', { timeout: 30_000 },
     expect(r.hourTemps).toEqual(['43°', '44°', '45°']);
     expect(r.days).toEqual(['Tonight', 'Thu']);
     expect(r.updated).toEqual(['1:05 PM']);
+    expect(r.wrapHidden).toBe(false); // revealed: the built page had no fetched_at
     expect(r.fetched).toBe('2026-10-28T18:05:00Z');
   });
   it('a failed request, an offline browser or an empty answer leaves the built forecast alone', async () => {
