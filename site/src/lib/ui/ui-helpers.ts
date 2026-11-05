@@ -1,7 +1,15 @@
 /** Pure helpers behind the ui/ components, so the rules in .claude/standards.md are tested, not eyeballed. */
 
-export const CATEGORIES = ['civic', 'music', 'family', 'sports', 'food', 'arts'] as const;
+export const CATEGORIES = ['civic', 'music', 'family', 'sports', 'food', 'arts', 'nightlife'] as const;
 export type Category = (typeof CATEGORIES)[number];
+
+/** At most 6 categories per page type (not in total): a page picks its set here, the library knows all of them. */
+export const CATEGORY_SETS = {
+  tonight: ['music', 'nightlife', 'family', 'sports', 'food', 'arts'],
+  meetings: ['civic'],
+  cityHall: ['civic'],
+  events: ['music', 'family', 'sports', 'food', 'arts', 'civic'],
+} as const satisfies Record<string, readonly Category[]>;
 
 /** Chips rule (standards: Chips): a chip needs >= 3 items, at least 2 chips must qualify, and the label never carries a number
  *  (a count would disagree with whatever header counts something else). Fewer than 2 qualifying chips -> no chip row at all. */
@@ -27,14 +35,14 @@ export function pointPercent(scaleMin: number, scaleMax: number, v: number): num
   return s ? s.left : null;
 }
 
-/** Temperature (degrees F) to the 1-6 stop of the --temp-N scale. */
-export function tempStop(f: number): 1 | 2 | 3 | 4 | 5 | 6 {
-  if (f < 20) return 1;
-  if (f < 40) return 2;
-  if (f < 60) return 3;
-  if (f < 78) return 4;
-  if (f < 92) return 5;
-  return 6;
+export type TempUnit = 'F' | 'C';
+/** Upper bounds of stops 1-5 of the --temp-N scale, defined once in degrees F and converted for C (stop 6 = at or above the last bound). */
+export const TEMP_BOUNDS_F = [20, 40, 60, 78, 92] as const;
+const toDisplay = (f: number, unit: TempUnit) => (unit === 'F' ? f : ((f - 32) * 5) / 9);
+/** Temperature in the city's unit to the 1-6 stop of the --temp-N scale. */
+export function tempStop(value: number, unit: TempUnit = 'F'): 1 | 2 | 3 | 4 | 5 | 6 {
+  const i = TEMP_BOUNDS_F.findIndex((b) => value < toDisplay(b, unit));
+  return ((i === -1 ? 5 : i) + 1) as 1 | 2 | 3 | 4 | 5 | 6;
 }
 
 /** Minutes since midnight to a percentage of the shown window; null outside it. */

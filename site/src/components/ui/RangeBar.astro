@@ -1,22 +1,24 @@
 ---
-/** A span on a scale (low-high of the day), optionally with a "now" tick. Colour follows the temperature scale (degrees F).
+/** A span on a scale (low-high of the day), optionally with a "now" tick. Colour follows the temperature scale (the city's unit, from config).
  *  Not drawn at all if the numbers are missing (no data, no element). The text alternative carries the numbers. */
-import { spanPercent, pointPercent, tempStop } from '../../lib/ui/ui-helpers';
+import { spanPercent, pointPercent, tempStop, type TempUnit } from '../../lib/ui/ui-helpers';
+import { countryProfile } from '../../lib/country-profile';
+import { siteConfig } from '../../lib/site-config';
 
-interface Props { scaleMin: number; scaleMax: number; low: number; high: number; now?: number; unit?: string; label?: string }
-const { scaleMin, scaleMax, low, high, now, unit = '°', label } = Astro.props;
+interface Props { scaleMin: number; scaleMax: number; low: number; high: number; now?: number; unit?: TempUnit; label?: string }
+const { scaleMin, scaleMax, low, high, now, unit = countryProfile(siteConfig.country).temperatureUnit as TempUnit, label } = Astro.props;
 const span = spanPercent(scaleMin, scaleMax, low, high);
 const nowAt = now === undefined ? null : pointPercent(scaleMin, scaleMax, now);
-const text = `${label ? label + ': ' : ''}${Math.round(low)}${unit} to ${Math.round(high)}${unit}`;
+const text = `${label ? label + ': ' : ''}${Math.round(low)}° to ${Math.round(high)}°`;
 ---
 {span && (
   <div class="ui-range" role="img" aria-label={text}>
-    <span class="ui-range__lo">{Math.round(low)}{unit}</span>
+    <span class="ui-range__lo">{Math.round(low)}°</span>
     <span class="ui-range__track">
-      <span class="ui-range__fill" style={`left:${span.left}%;width:${span.width}%;background:linear-gradient(90deg,var(--temp-${tempStop(low)}),var(--temp-${tempStop(high)}))`}></span>
+      <span class="ui-range__fill" style={`left:${span.left}%;width:${span.width}%;background:linear-gradient(90deg,var(--temp-${tempStop(low, unit)}),var(--temp-${tempStop(high, unit)}))`}></span>
       {nowAt !== null && <span class="ui-range__now" style={`left:${nowAt}%`}></span>}
     </span>
-    <span class="ui-range__hi">{Math.round(high)}{unit}</span>
+    <span class="ui-range__hi">{Math.round(high)}°</span>
   </div>
 )}
 <style>

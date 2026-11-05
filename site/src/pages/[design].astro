@@ -19,6 +19,7 @@ import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import FallbackTile from '../components/ui/FallbackTile.astro';
 import Icon from '../components/ui/Icon.astro';
 import { ICONS } from '../lib/ui/icons';
+import { siteConfig } from '../lib/site-config';
 import { CATEGORIES } from '../lib/ui/ui-helpers';
 
 export function getStaticPaths() {
@@ -34,7 +35,7 @@ const days = [
   { label: 'Tue', value: '95°', sub: '70°', icon: 'sun' as const },
 ];
 const chipCounts = { Downtown: 7, Eastside: 4, 'Near campus': 3, Airport: 1 };
-const catLabel: Record<string, string> = { civic: 'Civic', music: 'Music', family: 'Family', sports: 'Sports', food: 'Food', arts: 'Arts' };
+const catLabel: Record<string, string> = { civic: 'Civic', music: 'Music', family: 'Family', sports: 'Sports', food: 'Food', arts: 'Arts', nightlife: 'Nightlife' };
 ---
 <BaseLayout title="Design gallery" description="Component gallery for the ui library. Not a public page." noindex>
   <main class="shell g">
@@ -60,6 +61,7 @@ const catLabel: Record<string, string> = { civic: 'Civic', music: 'Music', famil
       <RangeBar scaleMin={0} scaleMax={100} low={41} high={68} now={62} label="Today" />
       <RangeBar scaleMin={0} scaleMax={100} low={12} high={28} label="Monday" />
       <RangeBar scaleMin={0} scaleMax={100} low={70} high={95} label="Tuesday" />
+      <p class="g__cap">Unit follows the city config (this build: {siteConfig.country === 'gb' ? 'Celsius' : 'Fahrenheit'}); the sample numbers are in that unit.</p>
       <p class="g__cap">Missing data draws nothing:</p>
       <RangeBar scaleMin={0} scaleMax={100} low={NaN} high={68} />
     </div>

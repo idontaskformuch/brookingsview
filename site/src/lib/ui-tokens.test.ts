@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { contrastRatio } from './accent-contrast';
 import { MIN_TEXT } from './status-tokens.mjs';
+import { CATEGORY_SETS } from './ui/ui-helpers';
 
 const css = readFileSync(new URL('../design/ui-tokens.css', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const layout = readFileSync(new URL('../layouts/BaseLayout.astro', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -19,12 +20,16 @@ function block(start: string): string {
 const light = vars(block(':root {'));
 const media = vars(block(':root:not([data-theme="light"]) {'));
 const forced = vars(block(':root[data-theme="dark"] {'));
-const cats = ['--cat-civic', '--cat-music', '--cat-family', '--cat-sports', '--cat-food', '--cat-arts'];
+const cats = ['--cat-civic', '--cat-music', '--cat-family', '--cat-sports', '--cat-food', '--cat-arts', '--cat-nightlife'];
 const temps = ['--temp-1', '--temp-2', '--temp-3', '--temp-4', '--temp-5', '--temp-6'];
 
 describe('ui-tokens.css', () => {
-  it('has exactly six category colors', () => {
+  it('defines the category colors, and no page type uses more than six', () => {
     expect(Object.keys(light).filter((k) => k.startsWith('--cat-'))).toEqual(cats);
+    for (const [page, set] of Object.entries(CATEGORY_SETS)) expect(set.length, page).toBeLessThanOrEqual(6);
+  });
+  it('the hero is sized to dominate at 390 px', () => {
+    expect(light['--ui-hero']).toBe('clamp(3.5rem, 16vw, 5.5rem)');
   });
   it('dark media block and forced block are identical', () => {
     expect(media).toEqual(forced);

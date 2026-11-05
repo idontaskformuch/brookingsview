@@ -7,7 +7,7 @@
    that and AA contrast for every category color). */
 :root {
   /* Three type levels: hero, primary, meta. Sans + tabular-nums for data. */
-  --ui-hero: clamp(2.75rem, 12vw, 4.5rem);
+  --ui-hero: clamp(3.5rem, 16vw, 5.5rem);
   --ui-primary: 1.0625rem;
   --ui-meta: 0.8125rem;
   --ui-hero-weight: 600;
@@ -38,6 +38,7 @@
   --cat-sports: #2f6b2c;
   --cat-food: #9b3a48;
   --cat-arts: #7a5a12;
+  --cat-nightlife: #4a52a8;
 
   /* Temperature scale, cold to hot (fills and bars, not text). */
   --temp-1: #3b6fb6;
@@ -58,6 +59,7 @@
     --cat-sports: #8fcb88;
     --cat-food: #e59aa5;
     --cat-arts: #d9b866;
+    --cat-nightlife: #a9aef0;
     --temp-1: #6a9be0;
     --temp-2: #6dbad2;
     --temp-3: #98c985;
@@ -73,6 +75,7 @@
   --cat-sports: #8fcb88;
   --cat-food: #e59aa5;
   --cat-arts: #d9b866;
+  --cat-nightlife: #a9aef0;
   --temp-1: #6a9be0;
   --temp-2: #6dbad2;
   --temp-3: #98c985;
