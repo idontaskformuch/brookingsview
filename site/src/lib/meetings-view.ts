@@ -543,6 +543,17 @@ export function followableOrgans(ms: MeetingView[], cfg: MeetingsTownConfig): { 
 }
 
 /** The title a meeting carries in a calendar or a feed: "City Council", or "City Council · Study session" when the source names the kind. */
+/** The front page's "Worth knowing": the next real meetings, as data rows (no prose). A meeting is worth a line when its agenda is out (items
+ *  or an agenda link) and it is within `withinDays`; a quorum notice, a cancelled or postponed meeting is not something to plan around.
+ *  Folded organ groups (Glasgow's Area Partnerships) stay out; they have their own fold on /city-hall/. */
+export function selectWorthKnowingMeetings(ms: MeetingView[], todayYmd: string, max = 3, withinDays = 21): MeetingView[] {
+  return ms
+    .filter((m) => !m.quorumNotice && !m.cancelled && !m.postponed && !m.closed && !m.collapsedGroup)
+    .filter((m) => m.items.length > 0 || !!m.agendaUrl)
+    .filter((m) => daysBetween(todayYmd, m.ymd) <= withinDays)
+    .slice(0, max);
+}
+
 export const meetingTitle = (m: MeetingView): string =>
   m.quorumNotice ? `${m.bodyLabel} – quorum notice` : m.typeLabel ? `${m.bodyLabel} · ${m.typeLabel}` : m.bodyLabel;
 

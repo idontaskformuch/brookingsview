@@ -143,3 +143,69 @@ describe('body text that names the UTC day instead of the local one (the stored 
     expect(bodyNamesWrongDay('On December 8 at noon.', '2026-12-08T20:00:00Z', LA)).toBe(false);
   });
 });
+
+describe('dedupe: same title, same local day, start within 60 minutes is one event (owner 2026-11-05, born from the live Brookings duplicate)', () => {
+  const CHI = 'America/Chicago';
+  const NOW_B = new Date('2026-11-05T18:00:00Z');
+  const arts = (id: string, startIso: string, title = 'SDSU Concert Choir Fall Concert'): FeedItem => ({
+    sourceKind: 'arts', occurs_at: startIso,
+    event: { external_event_id: id, title, teaser: null, location: 'The Oscar Larson Performing Arts Center', starts_at: startIso, ends_at: null, categories: [], primary_category: null, event_url: `/events/${id}` } as any,
+  });
+  const f = (i: FeedItem): RowFacts => ({ title: i.sourceKind === 'arts' ? i.event.title : i.story.title, venue: null, area: null, free: false, kids: false });
+  const run = (items: FeedItem[]) => buildEventsView(items, { now: NOW_B, timezone: CHI, gb: false, facts: f });
+
+  it('the real pair: 19:00 and 19:30 on Nov 6 Central (both Nov 7 in UTC) become one row on Fri Nov 6', () => {
+    const v = run([arts('a#2026-11-06T19:00', '2026-11-07T01:00:00Z'), arts('b#2026-11-06T19:30', '2026-11-07T01:30:00Z')]);
+    const fri = v.days.find((d) => d.dayKey === '2026-11-06')!;
+    expect(fri.count).toBe(1);
+    expect(fri.rows[0].timeLabel).toBe('7 PM');
+    expect(fri.rows[0].merged).toHaveLength(1);
+    expect(v.total).toBe(1);
+  });
+  it('a story and an arts listing of the same event merge too, and the merged row keeps free/kids from either', () => {
+    const s = item({ slug: 's', title: 'SDSU Concert Choir Fall Concert', occurs_at: '2026-11-07T01:10:00Z' });
+    const v = buildEventsView([s, arts('b', '2026-11-07T01:30:00Z')], { now: NOW_B, timezone: CHI, gb: false, facts: (i) => ({ ...f(i), free: i.sourceKind === 'arts' }) });
+    expect(v.days[1].rows).toHaveLength(1);
+    expect(v.days[1].rows[0].free).toBe(true);
+  });
+  it('does not merge: 90 minutes apart, another local day, or another title', () => {
+    expect(run([arts('a', '2026-11-07T01:00:00Z'), arts('b', '2026-11-07T02:30:00Z')]).total).toBe(2);
+    expect(run([arts('a', '2026-11-07T01:00:00Z'), arts('b', '2026-11-08T01:00:00Z')]).total).toBe(2);
+    expect(run([arts('a', '2026-11-07T01:00:00Z'), arts('b', '2026-11-07T01:30:00Z', 'SDSU Wind Ensemble')]).total).toBe(2);
+  });
+  it('title match ignores case, punctuation and &', () => {
+    expect(run([arts('a', '2026-11-07T01:00:00Z', 'Rock & Roll Night!'), arts('b', '2026-11-07T01:20:00Z', 'rock and roll night')]).total).toBe(1);
+  });
+});
+
+describe('feature, caps and front-page blocks', () => {
+  const mkRow = (o: Partial<import('./event-day-view').DayRow>) => ({ item: null as any, dayKey: 'd', dateLabel: '', offset: 0, timeLabel: '', allDay: false, tonight: false, recurrence: 'one_off', title: 't', venue: null, area: null, free: false, kids: false, teens: false, cat: null, start: '', end: null, merged: [], ...o }) as import('./event-day-view').DayRow;
+  const grp = (offset: number, rows: import('./event-day-view').DayRow[]) => ({ offset, dayKey: `k${offset}`, label: 'x', dateLabel: 'x', count: rows.length, rows });
+  it('feature: photo first, then a non-civic category, else none', async () => {
+    const { pickFeature } = await import('./event-day-view');
+    const a = mkRow({ title: 'a', cat: 'civic' }), b = mkRow({ title: 'b', cat: 'music' }), c = mkRow({ title: 'c' });
+    expect(pickFeature([a, b, c], (r) => r.title === 'c')?.title).toBe('c');
+    expect(pickFeature([a, b, c], () => false)?.title).toBe('b');
+    expect(pickFeature([a, c], () => false)).toBeNull();
+  });
+  it('takeRows cuts in day order and reports what is hidden', async () => {
+    const { takeRows } = await import('./event-day-view');
+    const r = takeRows([grp(0, [mkRow({}), mkRow({})]), grp(1, [mkRow({}), mkRow({})]), grp(2, [mkRow({})])], 3);
+    expect(r.days.map((d) => d.rows.length)).toEqual([2, 1]);
+    expect(r.hidden).toBe(2);
+  });
+  it('homeBlocks puts each day in one block; today is never also in the weekend', async () => {
+    const { homeBlocks } = await import('./event-day-view');
+    const days = [0, 1, 2, 3, 4, 5, 6].map((o) => grp(o, [mkRow({ offset: o })]));
+    const view = { days, furtherOut: [], total: 7 } as any;
+    // a Saturday: anchor -1 -> weekend offsets -1..1: only tomorrow (Sunday) is still ahead
+    const sat = homeBlocks(view, -1);
+    expect(sat.today.map((d) => d.offset)).toEqual([0]);
+    expect(sat.weekend.map((d) => d.offset)).toEqual([1]);
+    expect(sat.week.map((d) => d.offset)).toEqual([2, 3, 4, 5, 6]);
+    // a Wednesday: Friday is +2
+    const wed = homeBlocks(view, 2);
+    expect(wed.weekend.map((d) => d.offset)).toEqual([2, 3, 4]);
+    expect(wed.week.map((d) => d.offset)).toEqual([1, 5, 6]);
+  });
+});

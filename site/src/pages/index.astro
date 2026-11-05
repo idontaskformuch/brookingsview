@@ -17,7 +17,6 @@ import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import LeadStory from '../components/LeadStory.astro';
 import SecondaryStory from '../components/SecondaryStory.astro';
-import WeeklyRoundup from '../components/WeeklyRoundup.astro';
 import GameCard from '../components/GameCard.astro';
 import RegionalGameCard from '../components/RegionalGameCard.astro';
 import SdsuEventCard from '../components/SdsuEventCard.astro';
@@ -47,12 +46,21 @@ import {
   getWorthKnowingCandidates, getRecentProjectUpdates, PROJECT_PENDING_OUTCOME_LABEL, formatDate,
   getFacilities, getLatestVailNewsItem, getEventDeckDigests,
 } from '../lib/db';
-import { selectWorthKnowing, selectFrontPageRhythm, excludedFromComingUp } from '../lib/homepage-curation';
+import { selectFrontPageRhythm } from '../lib/homepage-curation';
 import {
   todayUtcMidnight, buildEventFeed, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent, dayIndex,
-  buildWeekendSummary,
+  weekendAnchorOffset,
 } from '../lib/events';
-import WeekendModule from '../components/WeekendModule.astro';
+import SectionHeader from '../components/ui/SectionHeader.astro';
+import EventsGlance from '../components/events/EventsGlance.astro';
+import EventDayList from '../components/events/EventDayList.astro';
+import EventRow from '../components/events/EventRow.astro';
+import MeetingLine from '../components/meetings/MeetingLine.astro';
+import { buildTownEventsView } from '../lib/events-town-view';
+import { homeBlocks, takeRows } from '../lib/event-day-view';
+import { loadUpcomingMeetings } from '../lib/meetings-data';
+import { selectWorthKnowingMeetings } from '../lib/meetings-view';
+import { storyHref } from '../lib/content-slugs';
 import { resolveQuickLinks, type QuickLinkContext } from '../lib/quick-links';
 import { siteConfig } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
@@ -132,18 +140,6 @@ const quickLinkContext: QuickLinkContext = {
 };
 const { shown: quickLinks, omitted: omittedQuickLinks } = resolveQuickLinks(siteConfig.townId, quickLinkContext);
 
-// Phase 2, item 2b: homepage weekend module. Reuses `quickLinkFeed` --
-// already the exact same buildEventFeed(getUpcomingStories(['event'],120),
-// getUpcomingArtsEvents(40)) shape /events/'s own weekend hero uses (see
-// that fetch's own comment above) -- no second query, no second feed
-// build. `hasEventsSource` gates it the same way every other conditional
-// module on this page (Marquee/WeeklyRoundup/WorkplaceWatch/...) is gated
-// on its own siteConfig capability flag; buildWeekendSummary() itself
-// returns null on a quiet weekend even for a town that has it, so both
-// "no source" and "nothing this weekend" hide the module the same way.
-const weekendSummary = siteConfig.hasEventsSource
-  ? buildWeekendSummary(quickLinkFeed, facilities, siteConfig.townId, siteConfig.cityName, siteConfig.townCenter, siteConfig.timezone)
-  : null;
 
 // AdSense "low value content" remediation, Phase 0: the generic AI content
 // track (editorials/columns/reviews/recipes) stopped generating and was
@@ -190,7 +186,6 @@ const { fullWidthLead, secondary, usedSlugs } = selectFrontPageRhythm(upcoming, 
 // Phase 0 removed the "Latest from" content-track section this used to
 // dedupe against -- the theme-collision check has nothing left to compare
 // to, so this is now always [], not a second removed fetch.
-const worthKnowingSelection = selectWorthKnowing(worthKnowingCandidates, alertBannerSlugs, [], usedSlugs);
 
 // Real per-place/category photos (see NEEDS-HUMAN-REVIEW.md "Switch venue/
 // category images to real photos") replaced the old, much larger
@@ -248,32 +243,20 @@ const frontPageImages = dedupeConsecutiveImages(
 );
 const frontPageImageBySlug = new Map(frontPageImages.map(({ item, image }) => [item.slug, image]));
 
-// QA finding #8 (2026-10): see excludedFromComingUp()'s own doc comment --
-// usedSlugs alone (lead/secondary) let a Worth Knowing pick repeat as the
-// first card of Today/This week/Later below.
-const comingUpExcluded = excludedFromComingUp(usedSlugs, worthKnowingSelection);
-const rest = upcoming.filter((s) => !comingUpExcluded.has(s.slug));
-
-// Events correctness Phase 1 (2026-10-07): this used to bucket via
-// `new Date().setHours(0,0,0,0)`, which reads the BUILD MACHINE's local
-// time (always UTC in CI/Cloudflare) instead of siteConfig.timezone -- an
-// evening local event, once past its own town's sunset, is already
-// tomorrow in UTC and silently fell into "This week" instead of "Today."
-// dayOffsetOf() reuses the same timezone-correct day-bucketing primitive
-// quickLinkDate above (and events.astro/the /events/[facet] pages) already
-// use, so this river can't drift from what those pages consider "today"
-// again.
+// One pipeline for "what's on": the same one /events/ uses (lib/events-town-view.ts), so a count here and a count there agree. Each event is in
+// exactly one block below (today / this weekend / this week / coming up). Meetings are not in these blocks; they are the "Worth knowing" rows.
 const dayOffsetOf = (iso: string | null) => (iso === null ? null : dayIndex(iso, quickLinkDate, siteConfig.timezone));
-
-const todayStories = rest.filter((s) => dayOffsetOf(s.occurs_at) === 0);
-const weekStories = rest.filter((s) => {
-  const offset = dayOffsetOf(s.occurs_at);
-  return offset !== null && offset >= 1 && offset <= 7;
-});
-const laterStories = rest.filter((s) => {
-  const offset = dayOffsetOf(s.occurs_at);
-  return offset !== null && offset >= 8;
-});
+const townEvents = buildTownEventsView(quickLinkEvents, quickLinkArtsEvents, facilities);
+const blocks = homeBlocks(townEvents.view, weekendAnchorOffset(quickLinkDate));
+const todayBlock = takeRows(blocks.today, 5);
+const weekendBlock = takeRows(blocks.weekend, 6);
+const weekBlock = takeRows(blocks.week, 6);
+const comingUp = blocks.later.slice(0, 5);
+const meetingsData = await loadUpcomingMeetings();
+// A meeting already featured as the lead is not repeated as a Worth knowing row.
+const worthMeetings = meetingsData
+  ? selectWorthKnowingMeetings(meetingsData.meetings.filter((m) => !m.storySlug || !usedSlugs.has(m.storySlug)), meetingsData.todayYmd)
+  : [];
 
 const nextGame = games[0] ?? null;
 
@@ -464,6 +447,9 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   {siteConfig.safetyNotices && <SafetyNotices townId={siteConfig.townId} timezone={siteConfig.timezone} variant="compact" onlyWhenActive />}
   <QuickLinks links={quickLinks} omitted={omittedQuickLinks} />
 
+  {/* The answer first: how many things are on today and the days as counts, straight after the status strip. The day lists are further down. */}
+  <section class="home-glance"><EventsGlance view={townEvents.view} base="/events/" /></section>
+
   {/* Marquee module (sitewide presentation-layer pass): the single
       top-ranked What's On item with a real image, full-width, plus up to
       two "also on" rows -- see the const block above for the promotion
@@ -506,7 +492,6 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 
   <SchoolAlertBanner alerts={schoolAlerts} />
 
-  {weekly && <WeeklyRoundup story={weekly} />}
 
   {/* AdSense "low value content" remediation, Phase 0: the "Today's read"
       feature slot and the "Latest from <site>" grid both only ever showed
@@ -516,56 +501,25 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       Events weekend module (Phase 2, item 2b) -- omitted entirely (not a
       placeholder) when weekendSummary is null, same rule as every other
       conditional module above. */}
-  {weekendSummary && <WeekendModule summary={weekendSummary} cityName={siteConfig.cityName} facilities={facilities} />}
+  <section class="home-events" aria-label="What's on">
 
-  {/* Front-page orientation pass, Phase 3: "Today" and "This week" moved
-      up from well below the fold (they used to sit after Worth Knowing/
-      City hall project updates) to right after Phase F's own original-
-      content block -- as early as the page's hierarchy allows WITHOUT
-      violating Phase F's own "original content leads, ahead of the
-      scraped feed" rule (see that block's comment above): Today/This week
-      are themselves scraped-feed sections, so they can't go any higher
-      than immediately below Phase F without undoing that earlier,
-      deliberate fix. "Today" gets the same strong heading treatment as
-      "Right Now" (CityStatus) -- see SectionRule's own `strong` prop. */}
-  {(todayStories.length > 0 || todayHomeGame) && (
-    <section aria-label="Today" data-hide-ended data-hide-when-empty={todayHomeGame ? undefined : ''}>
-      <SectionRule label="Today" href="/events/" strong />
-      {todayHomeGame && (
-        <div class="river">
-          <GameCard game={todayHomeGame} feature />
-        </div>
-      )}
-      {todayStories.length > 0 && (
-        // Capped at 5 (see NEEDS-HUMAN-REVIEW.md "Homepage Curation") --
-        // previously unbounded, which is exactly what let a 30+ item
-        // events list dominate the homepage on a busy day. SectionRule's
-        // "All →" (added above) is the real complete view now, same
-        // pattern "This week"/"Coming up" already used.
-        <div class="river">
-          {todayStories.slice(0, 5).map((story) => <StoryCard story={story} facilities={facilities} />)}
-        </div>
-      )}
-    </section>
-  )}
-
-  <section aria-label="This week">
-    <SectionRule label="This week" href="/events/" />
-    <p class="event-teasers">
-      <a href={timelyEventTeaser.href}>{timelyEventTeaser.label}</a> ·
-      <a href="/events/free/">Free</a> ·
-      <a href="/events/kids/">Kids &amp; family</a>
-    </p>
-    {weekStories.length > 0 ? (
-      // Homepage/vertical redundancy (NEEDS-HUMAN-REVIEW.md "4.4"): a short
-      // teaser here, /events is the canonical complete view -- SectionRule's
-      // "All →" link (above) is where the rest lives, not a second copy of
-      // the full list on this page too.
-      <div class="river">
-        {weekStories.slice(0, 5).map((story) => <StoryCard story={story} facilities={facilities} />)}
+    {(todayBlock.days.length > 0 || todayHomeGame) && (
+      <div class="home-events__block">
+        {todayHomeGame && <div class="river"><GameCard game={todayHomeGame} feature /></div>}
+        <EventDayList days={todayBlock.days} facilities={facilities} level={3} feature={false} idPrefix="home-today" />
       </div>
-    ) : (
-      <p class="empty">Nothing scheduled in the next week yet.</p>
+    )}
+    {weekendBlock.days.length > 0 && (
+      <div class="home-events__block">
+        <SectionHeader title="This weekend" seeAllHref="/events/this-weekend/" seeAllLabel="All weekend events" />
+        <EventDayList days={weekendBlock.days} facilities={facilities} level={3} idPrefix="home-weekend" />
+      </div>
+    )}
+    {weekBlock.days.length > 0 && (
+      <div class="home-events__block">
+        <SectionHeader title="This week" seeAllHref="/events/" seeAllLabel="All events" />
+        <EventDayList days={weekBlock.days} facilities={facilities} level={3} idPrefix="home-week" />
+      </div>
     )}
   </section>
 
@@ -654,17 +608,14 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       <p class="rail__hint">Tap a panel for the full picture &rarr;</p>
   </aside>
 
-  {worthKnowingSelection.length > 0 && (
-    // Significance, not recency -- the slot that surfaces a civic decision
-    // (or hand-flagged item) that would otherwise be buried past the event
-    // list's cap below. See lib/homepage-curation.ts:selectWorthKnowing()
-    // for the rule-based selection (never AI-picked) and
-    // NEEDS-HUMAN-REVIEW.md "Homepage Curation".
+  {worthMeetings.length > 0 && (
+    // Data rows from the meetings view (organ, kind, date and time, agenda items, agenda link), picked by rule: real meetings with an agenda in the
+    // next three weeks. No prose; a meeting featured as the lead above is not repeated.
     <section aria-label="Worth knowing" class="worth-knowing">
-      <SectionRule label="Worth knowing" />
-      <div class="river">
-        {worthKnowingSelection.map((story) => <StoryCard story={story} facilities={facilities} />)}
-      </div>
+      <SectionHeader title="Worth knowing" seeAllHref="/city-hall/" seeAllLabel="All meetings" />
+      <ul class="plain-list">
+        {worthMeetings.map((m) => <MeetingLine m={m} todayYmd={meetingsData!.todayYmd} />)}
+      </ul>
     </section>
   )}
 
@@ -685,12 +636,12 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     </section>
   )}
 
-  {laterStories.length > 0 && (
+  {comingUp.length > 0 && (
     <section aria-label="Coming up">
-      <SectionRule label="Coming up" href="/events/" />
-      <div class="river">
-        {laterStories.slice(0, 5).map((story) => <StoryCard story={story} compact facilities={facilities} />)}
-      </div>
+      <SectionHeader title="Coming up" seeAllHref="/events/" seeAllLabel="All events" />
+      <ul class="plain-list" data-hide-ended data-tz={siteConfig.timezone}>
+        {comingUp.map((r) => <EventRow row={r} href={r.item.sourceKind === 'arts' ? r.item.event.event_url : storyHref(r.item.story.slug)} showDate />)}
+      </ul>
     </section>
   )}
 
@@ -853,7 +804,11 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
 
 /* Worth knowing: same StoryCard as the event rivers, with a left-border
    accent so a reader can tell these were curated, not just next in line. */
-.worth-knowing { border-left: 3px solid var(--navy); padding-left: 1.125rem; }
+.worth-knowing { margin-top: var(--ui-5); }
+.plain-list { list-style: none; margin: 0; padding: 0; }
+.home-glance { margin: var(--ui-4) 0; }
+.home-events { margin: var(--ui-4) 0; }
+.home-events__block { margin-top: var(--ui-5); }
 
 /* .latest-from__*/.more-to-read__* rules removed, AdSense "low value
    content" remediation Phase 0 -- both sections only ever rendered the

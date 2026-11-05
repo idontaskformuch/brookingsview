@@ -3,7 +3,7 @@ import cancelledFixture from './meetings-cancelled.fixture.json';
 import {
   normalizeBody, parseClock, zonedToInstant, meetingWhen, formatYmd, daysBetween, relativeDays,
   substantiveItems, itemsFromAgendaText, topicsFor, buildMeetings, isUpcoming, organChips,
-  buildMeetingIcs, buildMeetingJsonLd, canCalendar, agendaNote, meetingTitle, isCancelled, buildMeetingFeedItems, isPostponed, type MeetingRow, type DedupeNote,
+  buildMeetingIcs, buildMeetingJsonLd, canCalendar, agendaNote, meetingTitle, isCancelled, buildMeetingFeedItems, isPostponed, selectWorthKnowingMeetings, type MeetingRow, type DedupeNote,
 } from './meetings-view';
 
 const TZ = 'America/Chicago';
@@ -271,5 +271,20 @@ describe('ics and json-ld', () => {
     expect(ld['@type']).toBe('Event');
     expect(ld.startDate).toBe('2026-11-09T08:30:00-06:00');
     expect((ld.location as any).name).toBe('Council Chambers');
+  });
+});
+
+describe('selectWorthKnowingMeetings', () => {
+  const m = (o: Record<string, unknown>) => ({ id: 1, ymd: '2026-11-10', items: ['Item'], agendaUrl: null, quorumNotice: false, cancelled: false, postponed: false, closed: false, collapsedGroup: null, ...o }) as any;
+  it('keeps real meetings with an agenda inside the window, in order, capped', () => {
+    const out = selectWorthKnowingMeetings([m({ id: 1 }), m({ id: 2, ymd: '2026-11-12' }), m({ id: 3, ymd: '2026-11-13' }), m({ id: 4, ymd: '2026-11-14' })], '2026-11-05');
+    expect(out.map((x) => x.id)).toEqual([1, 2, 3]);
+  });
+  it('drops quorum notices, cancelled, postponed, folded groups, no agenda, and too far out', () => {
+    const out = selectWorthKnowingMeetings([
+      m({ id: 1, quorumNotice: true }), m({ id: 2, cancelled: true }), m({ id: 3, postponed: true }), m({ id: 4, collapsedGroup: 'Area Partnerships' }),
+      m({ id: 5, items: [] }), m({ id: 6, ymd: '2026-12-20' }), m({ id: 7, items: [], agendaUrl: 'https://x.test/a' }),
+    ], '2026-11-05');
+    expect(out.map((x) => x.id)).toEqual([7]);
   });
 });

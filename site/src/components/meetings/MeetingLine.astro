@@ -1,0 +1,39 @@
+---
+/** A meeting as one data row, for lists outside /city-hall/ (front page "Worth knowing"): date and time large on the left, then organ, the kind of
+ *  meeting as a Pill, how many agenda items the source lists, and the agenda link. Built only from the Phase 3 meeting fields; no prose. The row
+ *  links to the meeting's card on /city-hall/. */
+import CompactRow from '../ui/CompactRow.astro';
+import Pill from '../ui/Pill.astro';
+import Icon from '../ui/Icon.astro';
+import { daysBetween, relativeDays, type MeetingView } from '../../lib/meetings-view';
+
+interface Props { m: MeetingView; todayYmd: string }
+const { m, todayYmd } = Astro.props;
+const n = m.items.length;
+const [weekday, ...rest] = m.dateLabel.replace(',', '').split(' ');
+---
+<li class="mtl">
+  <CompactRow href={`/city-hall/#meeting-${m.id}`} cat="civic">
+    <span class="mtl__when">
+      <span class="mtl__day">{rest.join(' ')}</span>
+      <span class="mtl__wd">{weekday}{m.time && ` · ${m.time}`}</span>
+    </span>
+    <span class="mtl__main">
+      <span class="mtl__organ">{m.bodyLabel}{m.typeLabel && <Pill>{m.typeLabel}</Pill>}</span>
+      <span class="mtl__meta">{relativeDays(daysBetween(todayYmd, m.ymd))}{n > 0 && ` · ${n} agenda ${n === 1 ? 'item' : 'items'}`}</span>
+      {m.agendaUrl && <span class="mtl__agenda"><Icon name="external" size={14} /> Agenda</span>}
+    </span>
+  </CompactRow>
+</li>
+<style>
+  .mtl { list-style: none; border-bottom: var(--ui-hairline); }
+  .mtl :global(.ui-row__main) { display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: var(--ui-3); align-items: start; width: 100%; }
+  .mtl :global(.ui-row) { padding-block: var(--ui-3); }
+  .mtl__when { display: flex; flex-direction: column; gap: 0.125rem; font-variant-numeric: tabular-nums; }
+  .mtl__day { font-size: 1.375rem; line-height: 1.1; font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .mtl__wd { font-size: var(--ui-meta); color: var(--ink-soft); white-space: nowrap; }
+  .mtl__main { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
+  .mtl__organ { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-1) var(--ui-2); font-family: var(--font-head); font-size: 1.1875rem; line-height: 1.25; color: var(--ink); }
+  .mtl__meta { font-size: var(--ui-meta); color: var(--ink-soft); }
+  .mtl__agenda { font-size: var(--ui-meta); font-weight: 600; color: var(--accent); }
+</style>

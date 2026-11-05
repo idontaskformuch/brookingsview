@@ -5,6 +5,7 @@ import { isFreeEvent, isKidsEvent, type FeedItem } from './events';
 import { isFreeByCost, type RowFacts } from './event-day-view';
 import { buildNameAliasIndex, splitEventTitleAndVenue } from './images';
 import { buildVenueIndex, resolveVenue, type Facility } from './db';
+import { categoryOfEvent } from './event-category';
 import { nearestArea, normVenue, type AreaData } from './areas';
 
 export interface FactsContext {
@@ -19,7 +20,7 @@ export function makeRowFacts(ctx: FactsContext): (item: FeedItem) => RowFacts {
   return (item) => {
     if (item.sourceKind === 'arts') {
       const venue = item.event.location || null;
-      return { title: item.event.title, venue, area: null, free: false, kids: isKidsEvent(item) };
+      return { title: item.event.title, venue, area: null, free: false, kids: isKidsEvent(item), teens: false, cat: categoryOfEvent(item.event.title, item.event.primary_category) };
     }
     const { story } = item;
     const { displayTitle, venue: titleVenue } = splitEventTitleAndVenue(story.title, ctx.cityName, aliasIndex);
@@ -28,6 +29,7 @@ export function makeRowFacts(ctx: FactsContext): (item: FeedItem) => RowFacts {
     const byCoords = ctx.areas && facility?.lat != null && facility?.lon != null ? nearestArea(facility.lat, facility.lon, ctx.areas.areas) : null;
     const area = byCoords ?? (ctx.areas && venue ? ctx.areas.venues[normVenue(venue)] ?? null : null);
     const byCost = isFreeByCost(story.meta?.cost);
-    return { title: displayTitle, venue, area, free: byCost ?? isFreeEvent(item, ctx.facilities), kids: isKidsEvent(item) };
+    const teens = /(teens?|young adults?)/i.test(story.meta?.audience ?? '');
+    return { title: displayTitle, venue, area, free: byCost ?? isFreeEvent(item, ctx.facilities), kids: isKidsEvent(item), teens, cat: categoryOfEvent(displayTitle, story.meta?.category) };
   };
 }

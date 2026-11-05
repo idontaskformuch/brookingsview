@@ -2,9 +2,8 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import EventRow from '../components/events/EventRow.astro';
-import HeroStat from '../components/ui/HeroStat.astro';
-import DayStrip from '../components/ui/DayStrip.astro';
-import EmptyState from '../components/ui/EmptyState.astro';
+import EventDayList from '../components/events/EventDayList.astro';
+import EventsGlance from '../components/events/EventsGlance.astro';
 import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import StoryCard from '../components/StoryCard.astro';
 import RelatedContent from '../components/RelatedContent.astro';
@@ -12,16 +11,14 @@ import ShareButton from '../components/ShareButton.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getUpcomingStories, getPastStories, getUpcomingArtsEvents, getRegionalSports, getFacilities, calendarDateParts } from '../lib/db';
 import {
-  buildEventFeed, artsEventAsStory, localDateParts, utcMidnight, classifyEventLocality,
+  artsEventAsStory, localDateParts, utcMidnight,
   TOWN_EVENT_KICKER,
   type FeedItem,
 } from '../lib/events';
 import { siteConfig, isQuietSection } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
-import { withoutEnded } from '../lib/local-day';
 import { countryProfile, forCountry } from '../lib/country-profile';
 import { EVENT_FACETS } from '../lib/event-facets';
-import { EMPTY_STATES } from '../lib/empty-states';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildEventJsonLd } from '../lib/event-jsonld';
 import { storyHref } from '../lib/content-slugs';
@@ -29,9 +26,7 @@ import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
 import HolidayContextCard from '../components/HolidayContextCard.astro';
-import { buildEventsView, type DayRow } from '../lib/event-day-view';
-import { makeRowFacts } from '../lib/event-row-facts';
-import { areasFor } from '../lib/areas';
+import { buildTownEventsView } from '../lib/events-town-view';
 import { aboutSourcesFor } from '../lib/about-sources';
 
 const pageMeta = resolvePageMeta('events', siteConfig);
@@ -70,73 +65,10 @@ const [upcoming, past, artsEvents, facilities] = await Promise.all([
 // via calendarDateParts, ALDRIG genom en tidszonskonvertering.
 const regionalGames = siteConfig.townId === 'moreno_valley_ca' ? await getRegionalSports() : [];
 
-/**
- * Cross-source merge + dedup + timezone-correct date bucketing all live in
- * lib/events.ts now (see NEEDS-HUMAN-REVIEW.md, "Week 2 -- Event Landing
- * Pages") so this page and the new /events/[facet]/ landing pages compute
- * IDENTICAL results from IDENTICAL logic -- never two independently
- * maintained copies of timezone-sensitive date math (see that file's
- * module docstring for the real off-by-one-day bug this guards against).
- * This page's own "Today / This weekend / Coming up / Further out"
- * sequential bucket loop below is unchanged and stays page-local.
- */
-const { items, alsoListedBy } = buildEventFeed(withoutEnded(upcoming, new Date(), siteConfig.timezone), artsEvents, siteConfig.timezone);
-
-/**
- * Phase 2, item 2a: "In <Town>" vs "Nearby" -- see lib/town-boundary.ts's
- * module doc for the boundary/distance mechanics. `inTownItems` feeds every
- * section below that already existed (This weekend / Today / Coming up /
- * Further out); `nearbyItems` is a new, separate section (own real place,
- * just outside town, surfaced rather than silently dropped). An `unknown`
- * zone (resolved coordinates further than NEARBY_RADIUS_MILES, or a bare
- * fallback-text match that named neither town) is excluded from both --
- * in practice this almost never fires, since every source here is already
- * a town-scoped or adjacent calendar.
- */
-const localized = items.map((item) => ({
-  item,
-  ...classifyEventLocality(item, facilities, siteConfig.townId, siteConfig.cityName, siteConfig.townCenter),
-}));
-const inTownItems: FeedItem[] = localized.filter((l) => l.zone === 'in_town').map((l) => l.item);
-const nearbyItems = localized.filter((l) => l.zone === 'nearby');
-// Owner fix, 2026-10-08: an "unknown"-locality item (classifyEventLocality()
-// couldn't confirm in-town OR nearby) used to just be excluded here --
-// neither in `inTownItems` nor `nearbyItems`, so it silently vanished from
-// the whole page. See buildEventSections()'s own doc comment (lib/
-// events.ts) for how these are now folded into Today/Coming up/Further
-// out instead, unlabeled, never the weekend hero.
-const unknownItems: FeedItem[] = localized.filter((l) => l.zone === 'unknown').map((l) => l.item);
-
-// Owner request, 2026-10-08 (post-2a verification): visibility into how
-// much of this page's locality split rests on a real resolved coordinate
-// versus the weaker text fallback, per town, per build -- same plain
-// console.log convention as lib/noindex.ts's own `[build]` tally.
-// `'text'`-method results are never `nearby` any more (see
-// classifyLocalityByText()'s own doc comment), so a high `text` count here
-// is a prompt to go seed that venue into `places` with real coordinates,
-// not a sign anything is currently wrong.
-const localityMethodCounts = { coords: 0, text: 0, default: 0 };
-for (const l of localized) localityMethodCounts[l.method]++;
-console.log(
-  `[locality] ${siteConfig.cityName}: ${localized.length} event(s) -- ` +
-  `${localityMethodCounts.coords} via coords, ${localityMethodCounts.text} via text fallback, ` +
-  `${localityMethodCounts.default} default (arts/virtual/no-venue) -- ` +
-  `${inTownItems.length} in_town, ${nearbyItems.length} nearby, ` +
-  `${localized.length - inTownItems.length - nearbyItems.length} excluded (unknown)`
-);
-
-
-/**
- * The answer first (standards.md, Events): "N things on today", the seven local days with their counts, then one compact row per event
- * grouped by LOCAL day. Every date and clock below is the town's (lib/event-day-view.ts); the stored story text is never printed here,
- * because for an evening event it can name the UTC day (born from the owner's report 2026-11-05, qa/checks.json).
- */
-const rowFacts = makeRowFacts({ cityName: siteConfig.cityName, facilities, areas: areasFor(siteConfig.townId) });
-const viewOpts = { now: new Date(), timezone: siteConfig.timezone, gb: siteConfig.country === 'gb', facts: rowFacts };
-const view = buildEventsView([...inTownItems, ...unknownItems], viewOpts);
-const nearbyView = buildEventsView(nearbyItems.map((l) => l.item), viewOpts);
-const distanceOf = new Map(nearbyItems.map((l) => [l.item, l.distanceMiles]));
-const nearbyRows: DayRow[] = [...nearbyView.days.flatMap((d) => d.rows), ...nearbyView.furtherOut];
+/** Everything the page shows comes from the one pipeline the front page also uses (lib/events-town-view.ts), so a count here and a count there agree.
+ *  Every date and clock is the town's; the stored story text is never printed on this page, because for an evening event it can name the UTC day
+ *  (qa/checks.json events.text-names-utc-day). */
+const { view, nearbyRows, distanceOf, displayed: allDisplayedItems } = buildTownEventsView(upcoming, artsEvents, facilities);
 
 const today = utcMidnight(localDateParts(new Date(), siteConfig.timezone));
 const todaysHomeGame = regionalGames.find((g) => {
@@ -152,22 +84,11 @@ function hrefOf(item: FeedItem): string {
 }
 const FOLD = 7;
 const busyDays = view.days.filter((d) => d.count > 0);
-const heroSub = [
-  view.tonightCount > 0 && view.tonightCount < view.todayCount ? `${view.tonightCount} tonight` : null,
-  view.freeToday > 0 ? `${view.freeToday} free` : null,
-].filter(Boolean).join(' · ');
 
 const canonicalUrl = new URL('/events/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Home', href: '/' },
   { label: 'Events', href: canonicalUrl },
-];
-
-/** ItemList + dateModified for /events/: the displayed order (days, then further out, then nearby), so `position` means what it says. */
-const allDisplayedItems: FeedItem[] = [
-  ...view.days.flatMap((d) => d.rows.map((r) => r.item)),
-  ...view.furtherOut.map((r) => r.item),
-  ...nearbyRows.map((r) => r.item),
 ];
 
 function asStoryShape(item: FeedItem) {
@@ -236,27 +157,13 @@ const webPageJsonLd = dateModified ? {
     <ShareButton title={pageMeta.title} />
   </header>
 
-  <section class="ev-answer" aria-label="Events at a glance">
-    {view.todayCount > 0 ? (
-      <HeroStat value={view.todayCount} unit={view.todayCount === 1 ? 'thing on today' : 'things on today'} sub={heroSub || undefined} />
-    ) : view.nextDay ? (
-      <EmptyState href={`#day-${view.nextDay.dayKey}`} linkLabel={`${view.nextDay.label}: ${view.nextDay.count} ${view.nextDay.count === 1 ? 'thing' : 'things'}`}>Nothing else listed for today.</EmptyState>
-    ) : (
-      <EmptyState>{EMPTY_STATES.eventsAll}</EmptyState>
-    )}
-    {todaysHomeGame && (
-      <p class="game-note">
-        🏟️ {todaysHomeGame.team_name} play {todaysHomeGame.opponent_name} at home today{todaysHomeGame.venue && ` at ${todaysHomeGame.venue}`}.
-        <a href="/sports/">See the schedule</a>
-      </p>
-    )}
-    {view.showDayStrip && (
-      <DayStrip label="Events per day" days={view.days.map((d) => ({
-        label: d.offset < 2 ? d.label.slice(0, 3) : d.label,
-        value: String(d.count), sub: d.dateLabel, today: d.offset === 0, href: d.count > 0 ? `#day-${d.dayKey}` : undefined,
-      }))} />
-    )}
-  </section>
+  <EventsGlance view={view} />
+  {todaysHomeGame && (
+    <p class="game-note">
+      🏟️ {todaysHomeGame.team_name} play {todaysHomeGame.opponent_name} at home today{todaysHomeGame.venue && ` at ${todaysHomeGame.venue}`}.
+      <a href="/sports/">See the schedule</a>
+    </p>
+  )}
 
   <HolidayContextCard />
 
@@ -266,14 +173,7 @@ const webPageJsonLd = dateModified ? {
     ))}
   </nav>
 
-  {busyDays.map((d) => (
-    <section class="ev-day" id={`day-${d.dayKey}`} aria-labelledby={`h-${d.dayKey}`}>
-      <h2 class="ev-day__h" id={`h-${d.dayKey}`}>{d.label} <span class="ev-day__date">{d.dateLabel}</span></h2>
-      <ul class="ev-list" data-hide-ended data-hide-section data-tz={siteConfig.timezone}>
-        {d.rows.map((r) => <EventRow row={r} href={hrefOf(r.item)} />)}
-      </ul>
-    </section>
-  ))}
+  <EventDayList days={busyDays} facilities={facilities} />
 
   {view.furtherOut.length > 0 && (
     <section class="ev-day" aria-labelledby="h-later">
@@ -337,8 +237,7 @@ const webPageJsonLd = dateModified ? {
 <style>
 .ev-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-3); margin: var(--ui-3) 0; }
 .ev-head h1 { margin: 0; }
-.ev-answer { display: grid; gap: var(--ui-3); margin-bottom: var(--ui-3); }
-.game-note { margin: 0; padding: var(--ui-2) var(--ui-3); background: var(--ui-surface-2); border-radius: var(--ui-radius); font-family: var(--font-ui); font-size: var(--ui-meta); }
+.game-note { margin: var(--ui-3) 0 0; padding: var(--ui-2) var(--ui-3); background: var(--ui-surface-2); border-radius: var(--ui-radius); font-family: var(--font-ui); font-size: var(--ui-meta); }
 .game-note a { margin-left: var(--ui-1); }
 .facet-nav { display: flex; flex-wrap: wrap; gap: var(--ui-2); margin: var(--ui-3) 0 var(--ui-4); }
 .facet-nav a { font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: 600; color: var(--navy); background: var(--navy-tint); border-radius: 999px; padding: 0.35rem 0.8rem; }

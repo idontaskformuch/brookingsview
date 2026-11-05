@@ -1,0 +1,35 @@
+---
+/** The answer to "what's on": N things on today (the one hero), what is tonight / free, and the days as tappable counts. The strip links to
+ *  the day's heading on `base` (this page, or /events/ from the front page). No events today: one designed line pointing at the next day that has some. */
+import HeroStat from '../ui/HeroStat.astro';
+import EmptyState from '../ui/EmptyState.astro';
+import DayStrip from '../ui/DayStrip.astro';
+import { EMPTY_STATES } from '../../lib/empty-states';
+import type { EventsView } from '../../lib/event-day-view';
+
+interface Props { view: EventsView; base?: string; idPrefix?: string }
+const { view, base = '', idPrefix = 'day' } = Astro.props;
+const sub = [
+  view.tonightCount > 0 && view.tonightCount < view.todayCount ? `${view.tonightCount} tonight` : null,
+  view.freeToday > 0 ? `${view.freeToday} free` : null,
+].filter(Boolean).join(' · ');
+const link = (d: { dayKey: string }) => `${base}#${idPrefix}-${d.dayKey}`;
+---
+<section class="evg" aria-label="Events at a glance">
+  {view.todayCount > 0 ? (
+    <HeroStat value={view.todayCount} unit={view.todayCount === 1 ? 'thing on today' : 'things on today'} sub={sub || undefined} />
+  ) : view.nextDay ? (
+    <EmptyState href={link(view.nextDay)} linkLabel={`${view.nextDay.label}: ${view.nextDay.count} ${view.nextDay.count === 1 ? 'thing' : 'things'}`}>Nothing else listed for today.</EmptyState>
+  ) : (
+    <EmptyState>{EMPTY_STATES.eventsAll}</EmptyState>
+  )}
+  {view.showDayStrip && (
+    <DayStrip label="Events per day" days={view.days.map((d) => ({
+      label: d.offset < 2 ? d.label.slice(0, 3) : d.label,
+      value: d.count > 0 ? String(d.count) : '–', sub: d.dateLabel, today: d.offset === 0, href: d.count > 0 ? link(d) : undefined,
+    }))} />
+  )}
+</section>
+<style>
+  .evg { display: grid; gap: var(--ui-3); }
+</style>

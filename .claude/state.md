@@ -1,11 +1,12 @@
-# State (komprimerad 2026-11-05; Fas 1+2 detaljer i .claude/state-archive.md, sök "Fas 1 KLAR" / "Fas 2 (väder)")
+# State (komprimerad 2026-11-05; Fas 1+2 detaljer i .claude/state-archive.md)
 
-## Nu: PREMIUM-PRESENTATION Fas 3 (möten) KLAR, PUSHAD c746af4 (origin/main = HEAD), live-smokad. Nästa: Fas 4 väntar på ägarens go.
-- Ägarens tre ändringar gjorda i c746af4: (1) quorum utan riktig motsvarighet = "[Organ] – quorum notice" + Pill "Quorum notice", plats/tid, "Members may be present. No agenda posted."; hoppas över som "Next up" och i meta-description; testet för Brookings 9 nov uppdaterat. (2) Glasgow-grinden: Funding/Award/Awards i _PLACE_WORDS (uk_guardrails.py + uk-title-guard.gb.ts i lockstep), test + fixtur för båda titlarna; de 3 riktiga träffarna hålls fortfarande. (3) Cancelled: isCancelled(raw) i meetings-view.ts (dokumenttitel/status/kommentar från källan, aldrig fri agendatext), Pill "Cancelled" + överstruken tid, ingen .ics/JSON-LD/agenda, RSS "Cancelled meeting:"; fixtur site/src/lib/meetings-cancelled.fixture.json (Moreno 15129).
-- BESLUT och SKÄL: "postponed" ingår INTE i cancelled (ägaren sa cancelled). Cancelled-detektion läser bara källans strukturerade fält, annars false positives på agendatext om uppsägningar. Ingen qa/checks.json-rad: ägarbeställd funktion, inte manuellt funnet fel.
-- Batteri: vitest 2222, pytest 1239 (11 skipped), astro check 0, build x4 exit 0 (stadens id för Glasgow är "glasgow"), disjoint OK 88/116/39/25.
-- Live-smoke 390 px: alla fyra /city-hall/ 200, scrollWidth 390, RSS application/xml + .ics text/calendar 200. Broomfield deployade ca 10 min efter de andra (404 först, sedan 200). Brookings visar "quorum notice" live; ingen avbokad kommande rad finns live ännu (Moreno 3 nov är passerad).
-- Kvarstår från REVIEW.md: Fas 4 ej påbörjad. Granskningslistan punkt 1 och 3 är nu lösta.
+## Nu: PREMIUM-PRESENTATION Fas 4 (events + startsida) KLAR LOKALT, EJ PUSHAD. Lista: .claude/review/phase4/REVIEW.md. Nästa: ägarens granskning.
+- Pushat: 4b58b4c (Fas 3 docs). Lokala commits: de361c7 (/events/ + Postponed) + Fas 4-steg 2 (startsida, dedup, EventDayList, Worth knowing-meetings).
+- Byggt: lib/event-day-view.ts (lokal dag, dedup 60 min, free/kids/teens, recurrence-enum, feature/caps/homeBlocks), events-town-view.ts (delad pipeline /events/ + startsida), event-row-facts/-category, components/events/*, MeetingLine, isPostponed, selectWorthKnowingMeetings.
+- BESLUT OCH SKÄL: sidor skriver aldrig ut berättelsetexten (72/150 Moreno-rader med UTC-dygn i AI-texten, qa-rad events.text-names-utc-day); Free = meta.cost först (fältet heter cost, inte tickets), venueregel som reserv; WeeklyRoundup borta från startsidan (beslut 5); meetings bara i Worth knowing.
+- Batteri: vitest 2264, pytest 1239, astro check 0, build x4 OK, disjoint 39/88/116/25. Skärmdumpar i .claude/review/phase4/ och gaps/ (INVENTORY.md).
+- Kända luckor: Broomfield 0 event (tomt läge); marquee/lead/rail/QuickLinks kvar gamla; facettsidor och /today/ kvar på StoryCard.
+- Nästa steg: ägarens svar på REVIEW.md "Fynd" 1, 3, 4; sedan /today/ + facetter på EventDayList, väder-Tile -> HeroStat.
 
 ## Verifierat 2026-11-05 (Worker-uppgifter från förra steget)
 - Worker viewmedia-cron-dispatcher version 3260ae2b deployad 16:04 UTC; första hourly-tick efter deploy 17:00 UTC: outcome ok, inga exceptions, alla fyra städer ok (loggar via wrangler tail).

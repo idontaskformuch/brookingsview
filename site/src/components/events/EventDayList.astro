@@ -1,0 +1,69 @@
+---
+/** Events grouped under ONE heading per day (never a date badge per row). The day's top item (a real photo, else a categorised non-civic row)
+ *  leads as a Card with its photo or a FallbackTile; the rest are compact rows. Used by /events/ and the front page so both read the same.
+ *  Real photos only (the story's own image or its venue's): the generic category pool is not used, so two days never show the same stock picture. */
+import Card from '../ui/Card.astro';
+import FallbackTile from '../ui/FallbackTile.astro';
+import Pill from '../ui/Pill.astro';
+import EventRow from './EventRow.astro';
+import { resolveImage } from '../../lib/images';
+import { pickFeature, type DayGroup, type DayRow } from '../../lib/event-day-view';
+import { storyHref } from '../../lib/content-slugs';
+import { siteConfig } from '../../lib/site-config';
+import type { FeedItem } from '../../lib/events';
+import type { Facility } from '../../lib/db';
+
+interface Props { days: DayGroup[]; facilities: Facility[]; level?: 2 | 3; feature?: boolean; idPrefix?: string; tz?: string }
+const { days, facilities, level = 2, feature = true, idPrefix = 'day', tz = siteConfig.timezone } = Astro.props;
+const H = `h${level}` as 'h2' | 'h3';
+const hrefOf = (item: FeedItem) => (item.sourceKind === 'arts' ? item.event.event_url : storyHref(item.story.slug));
+const photoOf = (row: DayRow) =>
+  row.item.sourceKind === 'story'
+    ? resolveImage(row.item.story, { town: siteConfig.townId, cityName: siteConfig.cityName, facilities, categoryImages: {} })
+    : null;
+---
+{days.map((d) => {
+  const top = feature && d.rows.length >= 3 ? pickFeature(d.rows, (r) => photoOf(r) !== null) : null;
+  const photo = top ? photoOf(top) : null;
+  const rest = top ? d.rows.filter((r) => r !== top) : d.rows;
+  return (
+    <section class="evd" id={`${idPrefix}-${d.dayKey}`} aria-labelledby={`h-${idPrefix}-${d.dayKey}`}>
+      <H class="evd__h" id={`h-${idPrefix}-${d.dayKey}`}>{d.label} <span class="evd__date">{d.dateLabel}</span></H>
+      {top && (
+        <div data-hide-ended data-tz={tz}>
+          <div data-start={top.start} data-end={top.end ?? undefined}>
+            <Card cat={top.cat ?? undefined} neutral={!top.cat} href={hrefOf(top.item)}>
+              {photo
+                ? <img class="evd__photo" src={photo.path} alt={photo.alt} width={photo.width} height={photo.height} loading="lazy" decoding="async" />
+                : top.cat && <FallbackTile cat={top.cat} ratio="16 / 7" />}
+              <span class="evd__time">{top.timeLabel}</span>
+              <span class="evd__title">{top.title}</span>
+              {(top.venue || top.area) && <span class="evd__place">{[top.venue, top.area].filter(Boolean).join(' · ')}</span>}
+              {(top.free || top.kids || top.teens) && (
+                <span class="evd__pills">
+                  {top.free && <Pill tone="ok">Free</Pill>}
+                  {top.kids && <Pill>Kids &amp; families</Pill>}
+                  {top.teens && <Pill>Teens</Pill>}
+                </span>
+              )}
+            </Card>
+          </div>
+        </div>
+      )}
+      <ul class="evd__list" data-hide-ended data-hide-section data-tz={tz}>
+        {rest.map((r) => <EventRow row={r} href={hrefOf(r.item)} />)}
+      </ul>
+    </section>
+  );
+})}
+<style>
+  .evd { margin-bottom: var(--ui-5); scroll-margin-top: var(--ui-5); }
+  .evd__h { position: sticky; top: 0; z-index: 1; margin: 0 0 var(--ui-2); padding: var(--ui-2) 0; background: var(--surface); font-family: var(--font-head); font-size: 1.5rem; border-bottom: var(--ui-hairline); }
+  .evd__date { margin-left: var(--ui-2); font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: 400; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .evd__photo { width: 100%; height: auto; aspect-ratio: 16 / 7; object-fit: cover; border-radius: var(--ui-radius); display: block; }
+  .evd__time { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: var(--ui-2); }
+  .evd__title { font-family: var(--font-head); font-size: 1.375rem; line-height: 1.2; }
+  .evd__place { font-size: var(--ui-meta); color: var(--ink-soft); }
+  .evd__pills { display: flex; flex-wrap: wrap; gap: var(--ui-1); margin-top: var(--ui-1); }
+  .evd__list { list-style: none; margin: var(--ui-2) 0 0; padding: 0; }
+</style>
