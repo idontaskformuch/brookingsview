@@ -35,10 +35,11 @@ const portalLink = !m.agendaUrl && !m.closed && m.items.length > 0 ? portal : nu
           {m.quorumNotice ? `${m.bodyLabel} – quorum notice` : m.bodyLabel}
           {m.quorumNotice ? <Pill>Quorum notice</Pill> : m.typeLabel && <Pill>{m.typeLabel}</Pill>}
           {m.cancelled && <Pill tone="alert">Cancelled</Pill>}
+          {m.postponed && !m.cancelled && <Pill tone="warn">Postponed</Pill>}
           {m.jointWith && <span class="mtg__joint">Joint with {m.jointWith}</span>}
         </p>
         <h3 class="mtg__when">
-          <span class="mtg__date">{m.dateLabel}</span>{m.time && <span class:list={['mtg__time', { 'mtg__time--off': m.cancelled }]}> · {m.time}</span>}
+          <span class="mtg__date">{m.dateLabel}</span>{m.time && <span class:list={['mtg__time', { 'mtg__time--off': m.cancelled || m.postponed }]}> · {m.time}</span>}
         </h3>
         <p class="mtg__sub">
           <span class="mtg__rel" data-mtg-rel={m.ymd}>{relativeDays(days)}</span>{m.location && <> · <span class="mtg__where">{m.location}</span></>}

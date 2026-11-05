@@ -1,0 +1,183 @@
+/** /events/ as an answer: how many things are on today, which days are busy, what is on each day.
+ *
+ *  Pure functions of (items, now, timezone). Every date here is the TOWN's local calendar day, taken from the event's start instant;
+ *  nothing reads a date out of the story text (the stored AI text of a 19:00 Pacific event can name the UTC day, see
+ *  bodyNamesWrongDay). Day arithmetic goes through localDateParts/dayIndex in events.ts, the one primitive every events page shares. */
+import { localDateParts, utcMidnight, dayIndex, type FeedItem } from './events';
+import { isAllDay, localHourOf, TONIGHT_FROM_HOUR } from './local-day';
+import type { Story } from './db';
+
+/** Days listed one by one on the page; later items go to `furtherOut`. */
+export const DAY_WINDOW = 7;
+/** The day strip is a navigation aid; with fewer events in the window it is noise (standard layout: fewer than 5 hides it). */
+export const DAYSTRIP_MIN_EVENTS = 5;
+
+export type Recurrence = 'one_off' | 'weekly' | 'monthly' | 'regular';
+
+/** What the page needs to know about one item that does not come from its start time. Built by the page (venue registry, areas). */
+export interface RowFacts {
+  title: string;
+  venue: string | null;
+  area: string | null;
+  free: boolean;
+  kids: boolean;
+}
+
+export interface DayRow {
+  item: FeedItem;
+  dayKey: string;
+  /** "Nov 10". */
+  dateLabel: string;
+  offset: number;
+  timeLabel: string;
+  allDay: boolean;
+  tonight: boolean;
+  recurrence: Recurrence;
+  title: string;
+  venue: string | null;
+  area: string | null;
+  free: boolean;
+  kids: boolean;
+  start: string;
+  end: string | null;
+}
+
+export interface DayGroup {
+  offset: number;
+  dayKey: string;
+  /** "Today", "Tomorrow", then the short weekday ("Thu"). */
+  label: string;
+  /** "Nov 10". */
+  dateLabel: string;
+  count: number;
+  rows: DayRow[];
+}
+
+export interface EventsView {
+  days: DayGroup[];
+  furtherOut: DayRow[];
+  total: number;
+  todayCount: number;
+  tonightCount: number;
+  freeToday: number;
+  /** First day after today with events, for the "nothing today" line. */
+  nextDay: DayGroup | null;
+  showDayStrip: boolean;
+}
+
+interface Options {
+  now: Date;
+  timezone: string;
+  gb: boolean;
+  facts: (item: FeedItem) => RowFacts;
+}
+
+const iso = (v: string | Date) => new Date(v).toISOString();
+
+function dayKeyOf(day: { y: number; m: number; d: number }): string {
+  return `${day.y}-${String(day.m).padStart(2, '0')}-${String(day.d).padStart(2, '0')}`;
+}
+
+/** "7 PM" / "7:30 PM" (US), "7pm" / "7:30pm" (gb), local to `timezone`. All-day items: "All day" on the US sites, '' on gb
+ *  (Glasgow Life lists a date and no time for some events; the page shows the day only, owner 2026-10-27). */
+export function clockLabel(start: string | Date, end: string | Date | null | undefined, timezone: string, gb: boolean): string {
+  const s = iso(start);
+  if (isAllDay({ start: s, end: end ? iso(end) : null }, timezone)) return gb ? '' : 'All day';
+  const p = new Intl.DateTimeFormat('en-US', { timeZone: timezone, hourCycle: 'h23', hour: 'numeric', minute: 'numeric' }).formatToParts(new Date(s));
+  const hour = Number(p.find((x) => x.type === 'hour')!.value) % 24;
+  const minute = Number(p.find((x) => x.type === 'minute')!.value);
+  const h12 = hour % 12 || 12;
+  const ap = hour < 12 ? 'AM' : 'PM';
+  if (gb) return `${h12}${minute === 0 ? '' : `:${String(minute).padStart(2, '0')}`}${ap.toLowerCase()}`;
+  return `${h12}${minute === 0 ? '' : `:${String(minute).padStart(2, '0')}`} ${ap}`;
+}
+
+/** The structured cost line ("Free", "Free, ticket required", "£23.90 ...") decides when the source gave one: true / false.
+ *  No cost field -> null, so the caller falls back to the venue rule. "Freestyle workshop" is not free: the word must stand alone. */
+export function isFreeByCost(cost: string | null | undefined): boolean | null {
+  const c = (cost ?? '').trim();
+  if (!c) return null;
+  return /^free\b(?![-\w])/i.test(c);
+}
+
+export function recurrenceKind(story: Pick<Story, 'is_recurring_series'> & { meta?: { recurrence?: string | null } | null }): Recurrence {
+  if (!story.is_recurring_series) return 'one_off';
+  const r = (story.meta?.recurrence ?? '').toLowerCase();
+  if (/every\s+(\d+\s+)?weeks?|weekly/.test(r)) return 'weekly';
+  if (/month/.test(r)) return 'monthly';
+  return 'regular';
+}
+
+const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+const MONTH_RE = new RegExp(`\\b(${MONTHS.join('|')})\\s+(\\d{1,2})\\b`, 'gi');
+
+/** True when stored text names the event's UTC calendar day and not its local one (a 16:00 Pacific event written up as "December 8").
+ *  Same-day events (local day == UTC day) can never be wrong. Used by the QA check over live rows; the page does not print the text. */
+export function bodyNamesWrongDay(body: string, startIso: string, timezone: string): boolean {
+  const start = new Date(startIso);
+  const local = localDateParts(start, timezone);
+  const utc = { y: start.getUTCFullYear(), m: start.getUTCMonth() + 1, d: start.getUTCDate() };
+  if (local.m === utc.m && local.d === utc.d) return false;
+  const named = new Set<string>();
+  for (const m of body.matchAll(MONTH_RE)) named.add(`${MONTHS.indexOf(m[1].toLowerCase()) + 1}-${Number(m[2])}`);
+  return named.has(`${utc.m}-${utc.d}`) && !named.has(`${local.m}-${local.d}`);
+}
+
+function dayLabelFor(offset: number, day: Date): string {
+  if (offset === 0) return 'Today';
+  if (offset === 1) return 'Tomorrow';
+  return new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(day);
+}
+
+export function buildEventsView(items: FeedItem[], { now, timezone, gb, facts }: Options): EventsView {
+  const today = utcMidnight(localDateParts(now, timezone));
+  const days: DayGroup[] = Array.from({ length: DAY_WINDOW }, (_, offset) => {
+    const day = new Date(today.getTime() + offset * 86_400_000);
+    return {
+      offset,
+      dayKey: dayKeyOf({ y: day.getUTCFullYear(), m: day.getUTCMonth() + 1, d: day.getUTCDate() }),
+      label: dayLabelFor(offset, day),
+      dateLabel: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(day),
+      count: 0,
+      rows: [],
+    };
+  });
+  const furtherOut: DayRow[] = [];
+
+  const sorted = items
+    .filter((i) => i.occurs_at)
+    .sort((a, b) => new Date(a.occurs_at!).getTime() - new Date(b.occurs_at!).getTime());
+  for (const item of sorted) {
+    const start = iso(item.occurs_at!);
+    const offset = dayIndex(start, today, timezone);
+    if (offset < 0) continue;
+    const end = item.sourceKind === 'story' && item.story.ends_at ? iso(item.story.ends_at) : null;
+    const f = facts(item);
+    const local = localDateParts(new Date(start), timezone);
+    const row: DayRow = {
+      item, dayKey: dayKeyOf(local), offset,
+      dateLabel: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(utcMidnight(local)),
+      timeLabel: clockLabel(start, end, timezone, gb),
+      allDay: isAllDay({ start, end }, timezone),
+      tonight: offset === 0 && localHourOf(new Date(start), timezone) >= TONIGHT_FROM_HOUR,
+      recurrence: item.sourceKind === 'story' ? recurrenceKind(item.story) : 'one_off',
+      title: f.title, venue: f.venue, area: f.area, free: f.free, kids: f.kids,
+      start, end,
+    };
+    if (offset >= DAY_WINDOW) { furtherOut.push(row); continue; }
+    days[offset].rows.push(row);
+    days[offset].count++;
+  }
+
+  const todayRows = days[0].rows;
+  return {
+    days,
+    furtherOut,
+    total: days.reduce((n, d) => n + d.count, 0) + furtherOut.length,
+    todayCount: todayRows.length,
+    tonightCount: todayRows.filter((r) => r.tonight).length,
+    freeToday: todayRows.filter((r) => r.free).length,
+    nextDay: days.slice(1).find((d) => d.count > 0) ?? null,
+    showDayStrip: days.reduce((n, d) => n + d.count, 0) >= DAYSTRIP_MIN_EVENTS,
+  };
+}

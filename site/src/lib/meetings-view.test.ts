@@ -3,7 +3,7 @@ import cancelledFixture from './meetings-cancelled.fixture.json';
 import {
   normalizeBody, parseClock, zonedToInstant, meetingWhen, formatYmd, daysBetween, relativeDays,
   substantiveItems, itemsFromAgendaText, topicsFor, buildMeetings, isUpcoming, organChips,
-  buildMeetingIcs, buildMeetingJsonLd, canCalendar, agendaNote, meetingTitle, isCancelled, buildMeetingFeedItems, type MeetingRow, type DedupeNote,
+  buildMeetingIcs, buildMeetingJsonLd, canCalendar, agendaNote, meetingTitle, isCancelled, buildMeetingFeedItems, isPostponed, type MeetingRow, type DedupeNote,
 } from './meetings-view';
 
 const TZ = 'America/Chicago';
@@ -202,6 +202,18 @@ describe('buildMeetings: dedup', () => {
     expect(isCancelled({ EventId: 1, agenda_text: 'Item 4: Resolution on the cancellation of the 2019 contract' })).toBe(false);
     expect(isCancelled({ MeetingDocumentLink: [{ Title: 'Agenda', Type: 'Agenda' }] })).toBe(false);
     expect(isCancelled(null)).toBe(false);
+  });
+  it('a postponed meeting is flagged from the source fields only, and is treated like a cancelled one for agenda, .ics and feed', () => {
+    expect(isPostponed({ EventId: 1, EventAgendaStatusName: 'Postponed' })).toBe(true);
+    expect(isPostponed({ EventId: 1, EventComment: 'Meeting postponed to Dec 2' })).toBe(true);
+    expect(isPostponed({ MeetingDocumentLink: [{ Title: 'Notice of Postponement' }] })).toBe(true);
+    expect(isPostponed({ EventId: 1, agenda_text: 'Item 3: Consider postponing the road project' })).toBe(false);
+    expect(isPostponed(null)).toBe(false);
+    const row: MeetingRow = { id: 7, body: 'City Council', meeting_date: '2026-11-17T20:00:00.000Z', agenda_url: 'https://x.test/a', minutes_url: null, raw_data: { MeetingName: 'City Council', StartDate: '2026-11-17T12:00:00', MeetingDocumentLink: [{ Title: 'Notice of Postponement' }] }, created_at: '2026-11-05T12:00:00.000Z' };
+    const [m] = buildMeetings([row], 'America/Los_Angeles', true);
+    expect(m).toMatchObject({ postponed: true, cancelled: false, items: [] });
+    expect(canCalendar(m)).toBe(false);
+    expect(buildMeetingFeedItems([m], 'https://x.test/city-hall/')[0].title).toMatch(/^Postponed meeting:/);
   });
   it('a notice of quorum for another organ or another day does not replace anything', () => {
     const q = leg(3, 'City Council', '2026-11-09', '12:00 PM', { agenda_text: QUORUM });

@@ -4,7 +4,7 @@
 import Icon from './Icon.astro';
 import type { IconName } from '../../lib/ui/icons';
 
-interface Day { label: string; value: string; sub?: string; icon?: IconName; today?: boolean }
+interface Day { label: string; value: string; sub?: string; icon?: IconName; today?: boolean; href?: string }
 interface Props { days: Day[]; label?: string }
 const { days, label = 'Days' } = Astro.props;
 ---
@@ -12,10 +12,17 @@ const { days, label = 'Days' } = Astro.props;
   <ol class="ui-days" aria-label={label}>
     {days.map((d) => (
       <li class:list={['ui-day', { 'is-today': d.today }]} aria-current={d.today ? 'date' : undefined}>
-        <span class="ui-day__label">{d.label}</span>
-        {d.icon && <Icon name={d.icon} size={22} />}
-        <span class="ui-day__value">{d.value}</span>
-        {d.sub && <span class="ui-day__sub">{d.sub}</span>}
+        {d.href ? <a class="ui-day__link" href={d.href}>
+          <span class="ui-day__label">{d.label}</span>
+          {d.icon && <Icon name={d.icon} size={22} />}
+          <span class="ui-day__value">{d.value}</span>
+          {d.sub && <span class="ui-day__sub">{d.sub}</span>}
+        </a> : <>
+          <span class="ui-day__label">{d.label}</span>
+          {d.icon && <Icon name={d.icon} size={22} />}
+          <span class="ui-day__value">{d.value}</span>
+          {d.sub && <span class="ui-day__sub">{d.sub}</span>}
+        </>}
       </li>
     ))}
   </ol>
@@ -27,5 +34,7 @@ const { days, label = 'Days' } = Astro.props;
   .ui-day.is-today { background: var(--accent-tint); box-shadow: inset 0 -3px 0 var(--accent); }
   .ui-day__label { font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); color: var(--ink-soft); }
   .ui-day__value { font-size: var(--ui-primary); font-weight: var(--ui-primary-weight); }
+  .ui-day:has(.ui-day__link) { padding: 0; }
+  .ui-day__link { display: flex; flex-direction: column; align-items: center; gap: var(--ui-1); padding: var(--ui-2) var(--ui-1); width: 100%; min-height: 44px; color: inherit; text-decoration: none; }
   .ui-day__sub { font-size: var(--ui-meta); color: var(--ink-faint); }
 </style>

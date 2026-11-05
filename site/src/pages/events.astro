@@ -1,31 +1,38 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
-import EventBucket from '../components/EventBucket.astro';
+import EventRow from '../components/events/EventRow.astro';
+import HeroStat from '../components/ui/HeroStat.astro';
+import DayStrip from '../components/ui/DayStrip.astro';
+import EmptyState from '../components/ui/EmptyState.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import StoryCard from '../components/StoryCard.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getUpcomingStories, getPastStories, getUpcomingArtsEvents, getRegionalSports, getFacilities, calendarDateParts } from '../lib/db';
 import {
-  buildEventFeed, artsEventAsStory, withAttribution, localDateParts, utcMidnight, classifyEventLocality,
-  weekendAnchorOffset, buildEventSections, TOWN_EVENT_KICKER, ARTS_EVENT_KICKER,
+  buildEventFeed, artsEventAsStory, localDateParts, utcMidnight, classifyEventLocality,
+  TOWN_EVENT_KICKER,
   type FeedItem,
 } from '../lib/events';
 import { siteConfig, isQuietSection } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
 import { withoutEnded } from '../lib/local-day';
-import { placeLabel, countryProfile, forCountry } from '../lib/country-profile';
+import { countryProfile, forCountry } from '../lib/country-profile';
 import { EVENT_FACETS } from '../lib/event-facets';
-import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
-import { SECTION_THEME } from '../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildEventJsonLd } from '../lib/event-jsonld';
 import { storyHref } from '../lib/content-slugs';
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
+import HolidayContextCard from '../components/HolidayContextCard.astro';
+import { buildEventsView, type DayRow } from '../lib/event-day-view';
+import { makeRowFacts } from '../lib/event-row-facts';
+import { areasFor } from '../lib/areas';
+import { aboutSourcesFor } from '../lib/about-sources';
 
 const pageMeta = resolvePageMeta('events', siteConfig);
 const clusterNavItems = resolveHubNavItems('events', siteConfig);
@@ -118,27 +125,20 @@ console.log(
   `${localized.length - inTownItems.length - nearbyItems.length} excluded (unknown)`
 );
 
+
 /**
- * Bucket upcoming events by time horizon rather than showing one flat list.
- * "This weekend" is the bucket the whole feature exists for (see
- * news-aggregator return-visit reasoning) -- Fri/Sat/Sun relative to the
- * site's own local "today", not the visitor's, so the grouping matches the
- * dateline the site already prints on every story. localDateParts/
- * utcMidnight (imported from lib/events.ts) are the same primitives the
- * /events/[facet]/ landing pages use -- see that file's module docstring
- * for the real off-by-one-day timezone bug they guard against. This page's
- * OWN sequential "Today / Weekend / Coming up / Further out" bucketing
- * below is deliberately mutually-exclusive (unlike the standalone landing
- * pages' inclusive isToday()/isThisWeekend() predicates) since this is one
- * flat list being partitioned into non-overlapping sections.
+ * The answer first (standards.md, Events): "N things on today", the seven local days with their counts, then one compact row per event
+ * grouped by LOCAL day. Every date and clock below is the town's (lib/event-day-view.ts); the stored story text is never printed here,
+ * because for an evening event it can name the UTC day (born from the owner's report 2026-11-05, qa/checks.json).
  */
-function dayIndex(occursAt: string, today: Date): number {
-  const eventDay = utcMidnight(localDateParts(new Date(occursAt), siteConfig.timezone));
-  return Math.round((eventDay.getTime() - today.getTime()) / 86_400_000);
-}
+const rowFacts = makeRowFacts({ cityName: siteConfig.cityName, facilities, areas: areasFor(siteConfig.townId) });
+const viewOpts = { now: new Date(), timezone: siteConfig.timezone, gb: siteConfig.country === 'gb', facts: rowFacts };
+const view = buildEventsView([...inTownItems, ...unknownItems], viewOpts);
+const nearbyView = buildEventsView(nearbyItems.map((l) => l.item), viewOpts);
+const distanceOf = new Map(nearbyItems.map((l) => [l.item, l.distanceMiles]));
+const nearbyRows: DayRow[] = [...nearbyView.days.flatMap((d) => d.rows), ...nearbyView.furtherOut];
 
 const today = utcMidnight(localDateParts(new Date(), siteConfig.timezone));
-
 const todaysHomeGame = regionalGames.find((g) => {
   if (g.relevance_tier !== 'primary' || g.home_away !== 'home') return false;
   if (g.status !== 'scheduled' && g.status !== 'live') return false;
@@ -147,52 +147,15 @@ const todaysHomeGame = regionalGames.find((g) => {
   return parts.y === today.getUTCFullYear() && parts.m === today.getUTCMonth() && parts.d === today.getUTCDate();
 }) ?? null;
 
-// Events correctness Phase 2, item 2a verification (2026-10-08): was a
-// local `(5 - weekdayOfToday + 7) % 7` -- wrong on a real Saturday/Sunday
-// (jumped a full week ahead instead of recognizing the weekend already in
-// progress). Now the one shared primitive lib/events.ts's isThisWeekend()
-// also uses -- see that function's own doc comment for the full case
-// breakdown this fixes.
-const daysToFriday = weekendAnchorOffset(today);
-
-// Owner fix, 2026-10-08: now the shared buildEventSections() primitive
-// (lib/events.ts) instead of a page-local loop -- folds `unknownItems` in
-// (today/nextWeek/later only, never `weekend`) so an event with no
-// confirmed locality still shows up somewhere rather than disappearing.
-// See that function's own doc comment for the full reasoning.
-const buckets = buildEventSections(inTownItems, unknownItems, today, siteConfig.timezone);
-
-/**
- * Phase 2, item 2a: "This weekend in <Town>" split Fri/Sat/Sun with counts
- * -- replaces the old flat "This weekend" bucket (still computed above as
- * `buckets.weekend`, just no longer rendered as its own single-label
- * section) with a richer per-day breakdown, per the phase2 spec. `offset`
- * values reuse daysToFriday from above -- Friday/Saturday/Sunday are
- * exactly daysToFriday/+1/+2 regardless of which weekday "today" is.
- */
-const weekendDays = ([
-  ['Friday', daysToFriday],
-  ['Saturday', daysToFriday + 1],
-  ['Sunday', daysToFriday + 2],
-] as [string, number][]).map(([label, offset]) => ({
-  label,
-  offset,
-  // Counts include today's events (they sit in the Today bucket above); only the days after today
-  // are listed here, so nothing is printed twice.
-  items: [...buckets.today, ...buckets.weekend].filter((item) => item.occurs_at && dayIndex(item.occurs_at, today) === offset),
-}));
-const weekendTotal = weekendDays.reduce((n, d) => n + d.items.length, 0);
-
-const sections = (
-  [
-    ['Today', buckets.today],
-    ['Coming up', buckets.nextWeek],
-    ['Further out', buckets.later],
-  ] as [string, FeedItem[]][]
-// "Today" stays even with zero library/city events when there's still a
-// home game to surface (see todaysHomeGame below) -- every other bucket
-// keeps the original "hide if empty" rule.
-).filter(([label, list]) => list.length > 0 || (label === 'Today' && todaysHomeGame));
+function hrefOf(item: FeedItem): string {
+  return item.sourceKind === 'arts' ? item.event.event_url : storyHref(item.story.slug);
+}
+const FOLD = 7;
+const busyDays = view.days.filter((d) => d.count > 0);
+const heroSub = [
+  view.tonightCount > 0 && view.tonightCount < view.todayCount ? `${view.tonightCount} tonight` : null,
+  view.freeToday > 0 ? `${view.freeToday} free` : null,
+].filter(Boolean).join(' · ');
 
 const canonicalUrl = new URL('/events/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
@@ -200,22 +163,11 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Events', href: canonicalUrl },
 ];
 
-/**
- * Phase 2, item 2c: ItemList + an accurate dateModified for /events/ --
- * same real building blocks the /events/[facet]/ landing pages already use
- * (lib/event-jsonld.ts:buildEventJsonLd(), never a second copy of the
- * venue-resolution/eligibility rules), just assembled over THIS page's own
- * combined display order instead of one filtered facet: weekend hero items
- * first (day order), then Nearby, then Today/Coming up/Further out -- the
- * exact order a reader scrolling the real page sees them in, so `position`
- * means what it says.
- */
+/** ItemList + dateModified for /events/: the displayed order (days, then further out, then nearby), so `position` means what it says. */
 const allDisplayedItems: FeedItem[] = [
-  ...buckets.weekend,
-  ...nearbyItems.map((l) => l.item),
-  ...buckets.today,
-  ...buckets.nextWeek,
-  ...buckets.later,
+  ...view.days.flatMap((d) => d.rows.map((r) => r.item)),
+  ...view.furtherOut.map((r) => r.item),
+  ...nearbyRows.map((r) => r.item),
 ];
 
 function asStoryShape(item: FeedItem) {
@@ -275,38 +227,37 @@ const webPageJsonLd = dateModified ? {
   url: canonicalUrl,
   dateModified,
 } : null;
-import PageGuide from '../components/PageGuide.astro';
-import HolidayContextCard from '../components/HolidayContextCard.astro';
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-events" noindex={isQuietSection('events')}
-  description={metaDescription('events', siteConfig)}
-  accentColor={SECTION_THEME.events.accent}>
+  description={metaDescription('events', siteConfig)}>
   <Breadcrumbs trail={breadcrumbTrail} />
-  <SectionHero section="events" />
-  <header class="lede">
+  <header class="ev-head">
     <h1>{pageMeta.h1}</h1>
-    <p>Community events in {placeLabel(siteConfig)} —
-    library programs, city events and more, gathered from each {forCountry(siteConfig.country, 'organizer', 'organiser')}'s own
-    calendar. Times and registration details come straight from the source,
-    never guessed or rewritten. For a shorter list, see what's happening
-    <a href="/today/">today</a> or over <a href="/this-week/">the week ahead</a>.
-    Check back — this updates daily.</p>
-    <PageGuide
-      shows={`Upcoming events in and around ${siteConfig.cityName}, soonest first, with the date, time and venue the ${forCountry(siteConfig.country, 'organizer', 'organiser')} published.`}
-      use={`Scan by day, use the filters for a kind of event, and follow the link on any listing to the ${forCountry(siteConfig.country, 'organizer', 'organiser')} for tickets, registration or changes. Times can change: check with them before you go.`}
-    >
-      Each listing links to the {forCountry(siteConfig.country, 'organizer', 'organiser')}'s or venue's own page.
-      {siteConfig.townId === 'glasgow' && <> Many listings come from <a href="https://www.glasgowlife.org.uk/whats-on" rel="noopener">Glasgow Life</a>, the council's culture, libraries and sport trust.</>}
-      <a href="/how-we-gather-this/">How we gather this</a>.
-    </PageGuide>
-    {siteConfig.hasWhatsOn && (
-      // Front-page orientation pass, Phase 4: "a first-time reader can't
-      // tell Events and What's On apart" -- only one goes in primary nav
-      // per town, this line points to whichever one doesn't.
-      <p class="cross-link">Concerts and shows in the region: <a href="/whats-on/">What's On</a></p>
-    )}
     <ShareButton title={pageMeta.title} />
   </header>
+
+  <section class="ev-answer" aria-label="Events at a glance">
+    {view.todayCount > 0 ? (
+      <HeroStat value={view.todayCount} unit={view.todayCount === 1 ? 'thing on today' : 'things on today'} sub={heroSub || undefined} />
+    ) : view.nextDay ? (
+      <EmptyState href={`#day-${view.nextDay.dayKey}`} linkLabel={`${view.nextDay.label}: ${view.nextDay.count} ${view.nextDay.count === 1 ? 'thing' : 'things'}`}>Nothing else listed for today.</EmptyState>
+    ) : (
+      <EmptyState>{EMPTY_STATES.eventsAll}</EmptyState>
+    )}
+    {todaysHomeGame && (
+      <p class="game-note">
+        🏟️ {todaysHomeGame.team_name} play {todaysHomeGame.opponent_name} at home today{todaysHomeGame.venue && ` at ${todaysHomeGame.venue}`}.
+        <a href="/sports/">See the schedule</a>
+      </p>
+    )}
+    {view.showDayStrip && (
+      <DayStrip label="Events per day" days={view.days.map((d) => ({
+        label: d.offset < 2 ? d.label.slice(0, 3) : d.label,
+        value: String(d.count), sub: d.dateLabel, today: d.offset === 0, href: d.count > 0 ? `#day-${d.dayKey}` : undefined,
+      }))} />
+    )}
+  </section>
+
   <HolidayContextCard />
 
   <nav class="facet-nav" aria-label="Event filters">
@@ -315,69 +266,42 @@ import HolidayContextCard from '../components/HolidayContextCard.astro';
     ))}
   </nav>
 
-  {/* Owner 2026-10-24: Today leads the page (it used to sit below the weekend block, so on a Saturday
-      the first thing shown was Sunday). */}
-  {sections.filter(([label]) => label === 'Today').map(([label, list]) => (
-    <EventBucket label={label} list={list} alsoListedBy={alsoListedBy} kicker={townwideKicker} facilities={facilities} homeGame={todaysHomeGame} />
+  {busyDays.map((d) => (
+    <section class="ev-day" id={`day-${d.dayKey}`} aria-labelledby={`h-${d.dayKey}`}>
+      <h2 class="ev-day__h" id={`h-${d.dayKey}`}>{d.label} <span class="ev-day__date">{d.dateLabel}</span></h2>
+      <ul class="ev-list" data-hide-ended data-hide-section data-tz={siteConfig.timezone}>
+        {d.rows.map((r) => <EventRow row={r} href={hrefOf(r.item)} />)}
+      </ul>
+    </section>
   ))}
 
-  {/* Phase 2, item 2a: "This weekend in <Town>" split Fri/Sat/Sun with
-      counts -- the hero this whole restructure exists for (see
-      news-aggregator return-visit reasoning in this file's own history).
-      In-town events only; a weekend event at a nearby-but-out-of-town venue
-      shows in the Nearby section below instead, tagged with its distance. */}
-  {weekendTotal > 0 && (
-    <section class="weekend-hero">
-      <SectionRule label={`This weekend in ${siteConfig.cityName}`} />
-      <p class="weekend-counts">
-        {weekendDays.map(({ label, items: dayItems }, i) => (
-          <>
-            {i > 0 && <span class="sep"> · </span>}
-            <span class="weekend-count"><strong>{dayItems.length}</strong> {label.slice(0, 3)}</span>
-          </>
-        ))}
-      </p>
-      {weekendDays.filter((d) => d.items.length > 0 && d.offset > 0).map((day) => (
-        <div class="weekend-day">
-          <h3 class="weekend-day__label">{day.label}</h3>
-          <div class="grid" data-hide-ended data-hide-heading>
-            {day.items.map((item) => item.sourceKind === 'story'
-              ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={townwideKicker} facilities={facilities} />
-              : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker={ARTS_EVENT_KICKER} facilities={facilities} />
-            )}
-          </div>
-        </div>
-      ))}
+  {view.furtherOut.length > 0 && (
+    <section class="ev-day" aria-labelledby="h-later">
+      <h2 class="ev-day__h" id="h-later">Further out</h2>
+      <ul class="ev-list" data-hide-ended data-tz={siteConfig.timezone}>
+        {view.furtherOut.slice(0, FOLD).map((r) => <EventRow row={r} href={hrefOf(r.item)} showDate />)}
+      </ul>
+      {view.furtherOut.length > FOLD && (
+        <details class="ev-more">
+          <summary>{view.furtherOut.length - FOLD} more</summary>
+          <ul class="ev-list" data-hide-ended data-tz={siteConfig.timezone}>
+            {view.furtherOut.slice(FOLD).map((r) => <EventRow row={r} href={hrefOf(r.item)} showDate />)}
+          </ul>
+        </details>
+      )}
     </section>
   )}
 
-  {/* Phase 2, item 2a: "Nearby" -- real events at a real place just outside
-      town (within lib/town-boundary.ts's NEARBY_RADIUS_MILES), surfaced
-      rather than silently dropped. Distance is straight-line miles, never a
-      drive-time estimate -- see town-boundary.ts's own doc comment for why
-      (an owner decision, 2026-10-08, matching the site's existing
-      /whats-on/ precedent). Not day-bucketed like the in-town sections
-      above -- one flat, date-sorted list is enough at today's volume. */}
-  {nearbyItems.length > 0 && (
-    <section class="nearby">
-      <SectionRule label="Nearby" />
-      <div class="grid">
-        {nearbyItems.map(({ item, distanceMiles }) => (
-          <div class="event-cell">
-            {item.sourceKind === 'story'
-              ? <StoryCard story={{ ...item.story, body: withAttribution(item.story.body, item, alsoListedBy) }} kicker={townwideKicker} facilities={facilities} />
-              : <StoryCard story={{ ...artsEventAsStory(item.event), body: withAttribution(artsEventAsStory(item.event).body, item, alsoListedBy) }} href={item.event.event_url} kicker={ARTS_EVENT_KICKER} facilities={facilities} />}
-            {distanceMiles != null && <p class="distance">{Math.round(distanceMiles)} mi away</p>}
-          </div>
-        ))}
-      </div>
+  {nearbyRows.length > 0 && (
+    <section class="ev-day" aria-labelledby="h-nearby">
+      <h2 class="ev-day__h" id="h-nearby">Nearby</h2>
+      <ul class="ev-list" data-hide-ended data-tz={siteConfig.timezone}>
+        {nearbyRows.map((r) => {
+          const miles = distanceOf.get(r.item);
+          return <EventRow row={r} href={hrefOf(r.item)} showDate note={miles != null ? `${Math.round(miles)} mi away` : null} />;
+        })}
+      </ul>
     </section>
-  )}
-
-  {(sections.length > 0 || weekendTotal > 0 || nearbyItems.length > 0 || todaysHomeGame) ? sections.filter(([label]) => label !== 'Today').map(([label, list]) => (
-    <EventBucket label={label} list={list} alsoListedBy={alsoListedBy} kicker={townwideKicker} facilities={facilities} />
-  )) : (
-    <p class="empty">{EMPTY_STATES.eventsAll}</p>
   )}
 
   {past.length > 0 && (
@@ -402,57 +326,28 @@ import HolidayContextCard from '../components/HolidayContextCard.astro';
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
+
+  <AboutThisPage sources={aboutSourcesFor(siteConfig.townId).map((s) => ({ name: s.name, href: s.url }))}>
+    <p>Upcoming events in and around {siteConfig.cityName}, soonest first, with the date, time and venue as the {forCountry(siteConfig.country, 'organizer', 'organiser')} published them. Times and registration details come straight from the source, never guessed or rewritten.</p>
+    <p>Scan by day, use the filters for a kind of event, and follow a listing to the {forCountry(siteConfig.country, 'organizer', 'organiser')} for tickets, registration or changes. Times can change: check with them before you go. Updated daily. <a href="/how-we-gather-this/">How we gather this</a>.</p>
+    {siteConfig.hasWhatsOn && <p>Concerts and shows in the region: <a href="/whats-on/">What's On</a>. For a shorter list, see <a href="/today/">today</a> or <a href="/this-week/">the week ahead</a>.</p>}
+  </AboutThisPage>
 </BaseLayout>
 
 <style>
-.lede {
-  max-width: 40rem;
-  border-bottom: 3px solid var(--section-accent, var(--rule-strong));
-  padding-bottom: 1.125rem;
-}
-.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
-.cross-link { font-size: 0.875rem; }
-.cross-link a { color: var(--navy); }
-.facet-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0 1.5rem; }
-.facet-nav a {
-  font-family: var(--font-ui);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--navy);
-  background: var(--navy-tint);
-  border-radius: 999px;
-  padding: 0.35rem 0.8rem;
-}
+.ev-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-3); margin: var(--ui-3) 0; }
+.ev-head h1 { margin: 0; }
+.ev-answer { display: grid; gap: var(--ui-3); margin-bottom: var(--ui-3); }
+.game-note { margin: 0; padding: var(--ui-2) var(--ui-3); background: var(--ui-surface-2); border-radius: var(--ui-radius); font-family: var(--font-ui); font-size: var(--ui-meta); }
+.game-note a { margin-left: var(--ui-1); }
+.facet-nav { display: flex; flex-wrap: wrap; gap: var(--ui-2); margin: var(--ui-3) 0 var(--ui-4); }
+.facet-nav a { font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: 600; color: var(--navy); background: var(--navy-tint); border-radius: 999px; padding: 0.35rem 0.8rem; }
 .facet-nav a:hover, .facet-nav a:focus-visible { background: var(--navy); color: var(--surface); }
+.ev-day { margin-bottom: var(--ui-5); scroll-margin-top: var(--ui-5); }
+.ev-day__h { position: sticky; top: 0; z-index: 1; margin: 0; padding: var(--ui-2) 0; background: var(--surface); font-family: var(--font-head); font-size: 1.375rem; border-bottom: var(--ui-hairline); }
+.ev-day__date { font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: 400; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.ev-list { list-style: none; margin: 0; padding: 0; }
+.ev-more { margin-top: var(--ui-2); font-family: var(--font-ui); }
+.ev-more summary { cursor: pointer; padding: var(--ui-2) 0; font-size: var(--ui-meta); font-weight: 600; color: var(--navy); min-height: 44px; display: flex; align-items: center; }
 .grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
-.game-note {
-  margin: 0 0 0.75rem;
-  padding: 0.625rem 0.875rem;
-  background: var(--navy-tint);
-  border-left: 4px solid var(--navy);
-  font-size: 0.9375rem;
-}
-.game-note a { margin-left: 0.375rem; }
-.empty { color: var(--ink-soft); }
-.weekend-counts {
-  font-family: var(--font-ui);
-  font-size: 0.9375rem;
-  color: var(--ink-soft);
-  margin: 0 0 1rem;
-}
-.weekend-count strong { color: var(--ink); font-size: 1.0625rem; }
-.sep { opacity: 0.5; }
-.weekend-day { margin-top: 1rem; }
-.weekend-day:first-of-type { margin-top: 0; }
-.weekend-day__label {
-  font-family: var(--font-ui);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  margin: 0 0 0.5rem;
-}
-.event-cell { display: flex; flex-direction: column; gap: 0.375rem; }
-.distance { margin: 0; font-size: 0.8125rem; color: var(--ink-soft); }
 </style>
