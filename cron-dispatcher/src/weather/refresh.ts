@@ -39,7 +39,7 @@ export async function refreshWeather(
     try {
       let payload: WeatherPayload;
       if (town.kind === 'nws') {
-        payload = await fetchNwsForecast(town.lat, town.lon, deps.fetcher);
+        payload = await fetchNwsForecast(town.lat, town.lon, deps.fetcher, now());
       } else {
         if (!env.MET_OFFICE_API_KEY) throw new Error('MET_OFFICE_API_KEY is not set');
         payload = await fetchMetOfficeForecast(town.lat, town.lon, town.timezone, env.MET_OFFICE_API_KEY, deps.fetcher, now(), deps.retryDelaysMs);

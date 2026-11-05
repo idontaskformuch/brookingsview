@@ -13,6 +13,10 @@
 - Batteri (2026-11-05): vitest 2090/2090, pytest 1229 pass/11 skip, astro check 0 fel, build x4 i sekvens OK (Brookings med BUILD_DESIGN=1), sitemap/noindex-disjoint OK x4, hscroll-svep 390 px rent på alla fyra (båda typsnittslägen). Broomfield/Glasgow/Moreno byggdes före de sista Brookings-only-ändringarna (trash/jackrabbits/[design]) som inte påverkar dem.
 - Kvar att besluta: Moreno kvällsevents datum en dag fel (tidszon) -- ej i 1f, senare.
 - Lokala commits ej pushade (regel 6).
+## Fas 2 (väder) PÅGÅR -- Fas 1 pushad+live-smoke grön 2026-11-05 (a4d3338; 4 städer 200, Bricolage, ingen Plex, ingen hscroll 390, /_design/ 404)
+- 2a KLAR: payload-utökning i lockstep (TS cron-dispatcher/src/weather/{metoffice,nws,util}.ts + Python met_office_site_specific_v1.py/noaa.py): valfria pop/feels/gust/uv/precip_mm + fetched_at; paritetsfixturer via scripts/make_weather_parity_fixtures.py (met_office_parity.json, nws_parity.json); /api/weather för fetched_at. Ingen Worker-deploy.
+- Plan: 2b NWS gridpoints (feels/gust/precip, separat steg) -> 2c lib/weather-model.ts+test (hjälte, insikter, sol-tider) -> 2d ui-komponenter (HourStrip, DayRows) + weather.astro + live-weather -> 2e skärmdumpar .claude/review/phase2/ + batteri. Pusha INTE Fas 2.
+- BESLUT: klientrendering delar strängrenderare (lib/ui/ui-html.ts) med Astro-komponenterna så live-uppdatering och bygge ger samma markup.
 ## Öppna spår (detaljer i state-archive.md)
 - MEETINGS: nästa lilla uppgift ej byggd. Fas 3 i premium-spec ersätter delvis.
 - AI-prosa bort överallt (beslut 2026-11-05); Fas 5 = ny /this-week/.

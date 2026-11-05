@@ -13,12 +13,19 @@ describe('toPublicWeather', () => {
     expect(w.hourly).toHaveLength(24);
     expect(w).toMatchObject({ town: 'glasgow', issued: '2026-10-28T05:00Z', source: 'Met Office' });
   });
+  it('passes fetched_at and the optional per-point fields through; an older snapshot gives fetched_at null', () => {
+    const rich = { ...period(1), pop: 40, feels: 3, gust: 20, uv: 1, precip_mm: 0.2 };
+    const w = toPublicWeather('glasgow', { payload: { periods: [rich], hourly: [rich], fetched_at: '2026-11-05T10:00:00Z' } });
+    expect(w.fetched_at).toBe('2026-11-05T10:00:00Z');
+    expect(w.periods[0]).toMatchObject({ pop: 40, feels: 3, gust: 20, uv: 1, precip_mm: 0.2 });
+    expect(toPublicWeather('glasgow', { payload: { periods: [period(1)], hourly: [] } }).fetched_at).toBeNull();
+  });
   it('an NWS snapshot (no source/issued) is labelled National Weather Service and dated by when it was stored', () => {
     const w = toPublicWeather('brookings_sd', { payload: { periods: [period(1)], hourly: [] }, created_at: '2026-10-28T11:00:00Z' });
     expect(w).toMatchObject({ source: 'National Weather Service', issued: '2026-10-28T11:00:00.000Z' });
   });
   it('no snapshot is an honest empty answer, never invented', () => {
-    expect(toPublicWeather('brookings_sd', null)).toEqual({ town: 'brookings_sd', periods: [], hourly: [], issued: null, source: null });
+    expect(toPublicWeather('brookings_sd', null)).toEqual({ town: 'brookings_sd', periods: [], hourly: [], issued: null, source: null, fetched_at: null });
   });
 });
 

@@ -7,7 +7,7 @@ import { townFromHostname, type Env } from './_shared';
 
 const HEADERS = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=300' };
 
-export interface SnapshotRow { payload: { periods?: unknown[]; hourly?: unknown[]; issued?: string | null; source?: string } | null; created_at?: string | Date | null }
+export interface SnapshotRow { payload: { periods?: unknown[]; hourly?: unknown[]; issued?: string | null; source?: string; fetched_at?: string } | null; created_at?: string | Date | null }
 
 export interface WeatherDeps {
   loadSnapshot?: (databaseUrl: string, townId: string) => Promise<SnapshotRow | null>;
@@ -15,13 +15,15 @@ export interface WeatherDeps {
 
 export function toPublicWeather(townId: string, row: SnapshotRow | null) {
   const p = row?.payload ?? null;
-  if (!p || !Array.isArray(p.periods) || p.periods.length === 0) return { town: townId, periods: [], hourly: [], issued: null, source: null };
+  if (!p || !Array.isArray(p.periods) || p.periods.length === 0) return { town: townId, periods: [], hourly: [], issued: null, source: null, fetched_at: null };
   return {
     town: townId,
     periods: p.periods.slice(0, 14),
     hourly: Array.isArray(p.hourly) ? p.hourly.slice(0, 24) : [],
     issued: p.issued ?? (row?.created_at ? new Date(row.created_at).toISOString() : null),
     source: p.source ?? 'National Weather Service',
+    // When we fetched it (older snapshots have none: the page then prints no "Updated").
+    fetched_at: typeof p.fetched_at === 'string' ? p.fetched_at : null,
   };
 }
 

@@ -42,6 +42,18 @@ describe('Met Office payload equals the Python builder (met_office_site_specific
   });
 });
 
+describe('NWS payload equals the Python parser (noaa.py NoaaParser.parse)', () => {
+  const fx = JSON.parse(readFileSync(new URL('./fixtures/nws_parity.json', import.meta.url), 'utf8'));
+  it('periods, hourly, pop (kept, null, zero, missing, half-way) and fetched_at', () => {
+    expect(normalizeNws(fx.forecast, fx.forecastHourly, Date.parse(fx.now))).toEqual(fx.expected);
+  });
+  it('no pop key when the source has none, and no fetched_at when the caller gave no time', () => {
+    const p = normalizeNws({ properties: { periods: [{ name: 'A', startTime: 'x', temperature: 1, probabilityOfPrecipitation: { value: null } }] } }, { properties: { periods: [] } });
+    expect('pop' in p.periods[0]).toBe(false);
+    expect('fetched_at' in p).toBe(false);
+  });
+});
+
 describe('NWS', () => {
   const forecast = { properties: { periods: Array.from({ length: 16 }, (_, i) => ({ name: `P${i}`, startTime: `2026-10-28T${String(i).padStart(2, '0')}:00:00-05:00`, temperature: 40 + i, temperatureUnit: 'F', shortForecast: 'Cloudy', windSpeed: '10 mph', isDaytime: i % 2 === 0 })) } };
   const hourly = { properties: { periods: Array.from({ length: 30 }, (_, i) => ({ name: '', startTime: `h${i}`, temperature: 50, temperatureUnit: 'F', shortForecast: 'Fog', windSpeed: '5 mph', isDaytime: false })) } };

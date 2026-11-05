@@ -22,8 +22,9 @@ i env (t.ex. "brookingsview.com (hello@brookingsview.com)").
 from __future__ import annotations
 
 import json
+import math
 import os
-from datetime import date
+from datetime import date, datetime, timezone
 
 import requests
 
@@ -37,9 +38,20 @@ API = "https://api.weather.gov"
 _MAX_HOURLY_PERIODS = 24
 
 
+def _pop(period: dict) -> dict:
+    """Chance of precipitation in %: NWS sends {unitCode, value}; the value is null when it has none. Key left out then (cron-dispatcher/src/weather/nws.ts popOf)."""
+    value = (period.get("probabilityOfPrecipitation") or {}).get("value")
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        return {}
+    return {"pop": int(round(value))}
+
+
 class NoaaParser(BaseParser):
     table = "weather_snapshots"
     platform = "noaa"
+
+    #: tests replace this
+    _now = staticmethod(lambda: datetime.now(timezone.utc))
 
     def _headers(self) -> dict:
         ua = user_agent(self.town_id)
@@ -77,6 +89,7 @@ class NoaaParser(BaseParser):
                 "short": p.get("shortForecast"),
                 "wind": p.get("windSpeed"),
                 "is_daytime": p.get("isDaytime"),
+                **_pop(p),
             }
             for p in periods[:14]
         ]
@@ -88,10 +101,12 @@ class NoaaParser(BaseParser):
                 "short": p.get("shortForecast"),
                 "wind": p.get("windSpeed"),
                 "is_daytime": p.get("isDaytime"),
+                **_pop(p),
             }
             for p in hourly_periods[:_MAX_HOURLY_PERIODS]
         ]
         return [{
             "observed_for": date.today(),
-            "payload": {"periods": normalized, "hourly": normalized_hourly},
+            "payload": {"periods": normalized, "hourly": normalized_hourly,
+                        "fetched_at": self._now().astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")},
         }]

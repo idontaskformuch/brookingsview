@@ -10,28 +10,48 @@
        "screenTemperature": 6.91,
        "significantWeatherCode": 2,
        "windSpeed10m": 5.528,
-       "windDirectionFrom10m": 0
+       "windDirectionFrom10m": 0,
+       "probOfPrecipitation": 0,
+       "feelsLikeTemperature": -3.4,
+       "windGustSpeed10m": 0,
+       "uvIndex": 0,
+       "totalPrecipAmount": 0.0
       },
       {
        "time": "2026-10-28T04:00Z",
        "screenTemperature": 4.65,
        "significantWeatherCode": 15,
        "windSpeed10m": 1.318,
-       "windDirectionFrom10m": 359
+       "windDirectionFrom10m": 359,
+       "probOfPrecipitation": 12,
+       "feelsLikeTemperature": 0.5,
+       "windGustSpeed10m": 4.5,
+       "uvIndex": 1,
+       "totalPrecipAmount": 0.05
       },
       {
        "time": "2026-10-28T05:00Z",
        "screenTemperature": 4.52,
        "significantWeatherCode": 15,
        "windSpeed10m": 3.006,
-       "windDirectionFrom10m": 0
+       "windDirectionFrom10m": 0,
+       "probOfPrecipitation": 50,
+       "feelsLikeTemperature": 7.25,
+       "windGustSpeed10m": 8.62,
+       "uvIndex": 2.5,
+       "totalPrecipAmount": 0.25
       },
       {
        "time": "2026-10-28T06:00Z",
        "screenTemperature": 7.9,
        "significantWeatherCode": 1,
        "windSpeed10m": 3.369,
-       "windDirectionFrom10m": 359
+       "windDirectionFrom10m": 359,
+       "probOfPrecipitation": 49.5,
+       "feelsLikeTemperature": 10.5,
+       "windGustSpeed10m": 13.4,
+       "uvIndex": 3,
+       "totalPrecipAmount": 1.35
       },
       {
        "time": "2026-10-28T07:00Z",
@@ -45,28 +65,48 @@
        "screenTemperature": 10.18,
        "significantWeatherCode": 31,
        "windSpeed10m": 13.268,
-       "windDirectionFrom10m": 359
+       "windDirectionFrom10m": 359,
+       "probOfPrecipitation": 0,
+       "feelsLikeTemperature": -3.4,
+       "windGustSpeed10m": 0,
+       "uvIndex": 0,
+       "totalPrecipAmount": 0.0
       },
       {
        "time": "2026-10-28T09:00Z",
        "screenTemperature": 9.27,
        "significantWeatherCode": 0,
        "windSpeed10m": 13.668,
-       "windDirectionFrom10m": 0
+       "windDirectionFrom10m": 0,
+       "probOfPrecipitation": 12,
+       "feelsLikeTemperature": 0.5,
+       "windGustSpeed10m": 4.5,
+       "uvIndex": 1,
+       "totalPrecipAmount": 0.05
       },
       {
        "time": "2026-10-28T10:00Z",
        "screenTemperature": 9.01,
        "significantWeatherCode": 2,
        "windSpeed10m": 4.055,
-       "windDirectionFrom10m": 45
+       "windDirectionFrom10m": 45,
+       "probOfPrecipitation": 50,
+       "feelsLikeTemperature": 7.25,
+       "windGustSpeed10m": 8.62,
+       "uvIndex": 2.5,
+       "totalPrecipAmount": 0.25
       },
       {
        "time": "2026-10-28T11:00Z",
        "screenTemperature": 8.87,
        "significantWeatherCode": 31,
        "windSpeed10m": 4.319,
-       "windDirectionFrom10m": null
+       "windDirectionFrom10m": null,
+       "probOfPrecipitation": 49.5,
+       "feelsLikeTemperature": 10.5,
+       "windGustSpeed10m": 13.4,
+       "uvIndex": 3,
+       "totalPrecipAmount": 1.35
       },
       {
        "time": "2026-10-28T12:00Z",
@@ -80,28 +120,48 @@
        "screenTemperature": 7.35,
        "significantWeatherCode": 15,
        "windSpeed10m": 9.97,
-       "windDirectionFrom10m": 359
+       "windDirectionFrom10m": 359,
+       "probOfPrecipitation": 0,
+       "feelsLikeTemperature": -3.4,
+       "windGustSpeed10m": 0,
+       "uvIndex": 0,
+       "totalPrecipAmount": 0.0
       },
       {
        "time": "2026-10-28T14:00Z",
        "screenTemperature": 4.54,
        "significantWeatherCode": 3,
        "windSpeed10m": 6.95,
-       "windDirectionFrom10m": 359
+       "windDirectionFrom10m": 359,
+       "probOfPrecipitation": 12,
+       "feelsLikeTemperature": 0.5,
+       "windGustSpeed10m": 4.5,
+       "uvIndex": 1,
+       "totalPrecipAmount": 0.05
       },
       {
        "time": "2026-10-28T15:00Z",
        "screenTemperature": 7.85,
        "significantWeatherCode": 8,
        "windSpeed10m": 6.518,
-       "windDirectionFrom10m": 200
+       "windDirectionFrom10m": 200,
+       "probOfPrecipitation": 50,
+       "feelsLikeTemperature": 7.25,
+       "windGustSpeed10m": 8.62,
+       "uvIndex": 2.5,
+       "totalPrecipAmount": 0.25
       },
       {
        "time": "2026-10-28T16:00Z",
        "screenTemperature": 7.25,
        "significantWeatherCode": 3,
        "windSpeed10m": 11.121,
-       "windDirectionFrom10m": null
+       "windDirectionFrom10m": null,
+       "probOfPrecipitation": 49.5,
+       "feelsLikeTemperature": 10.5,
+       "windGustSpeed10m": 13.4,
+       "uvIndex": 3,
+       "totalPrecipAmount": 1.35
       },
       {
        "time": "2026-10-28T17:00Z",
@@ -115,28 +175,48 @@
        "screenTemperature": 8.46,
        "significantWeatherCode": 8,
        "windSpeed10m": 10.212,
-       "windDirectionFrom10m": 78.75
+       "windDirectionFrom10m": 78.75,
+       "probOfPrecipitation": 0,
+       "feelsLikeTemperature": -3.4,
+       "windGustSpeed10m": 0,
+       "uvIndex": 0,
+       "totalPrecipAmount": 0.0
       },
       {
        "time": "2026-10-28T19:00Z",
        "screenTemperature": 9.48,
        "significantWeatherCode": 1,
        "windSpeed10m": 1.653,
-       "windDirectionFrom10m": 200
+       "windDirectionFrom10m": 200,
+       "probOfPrecipitation": 12,
+       "feelsLikeTemperature": 0.5,
+       "windGustSpeed10m": 4.5,
+       "uvIndex": 1,
+       "totalPrecipAmount": 0.05
       },
       {
        "time": "2026-10-28T20:00Z",
        "screenTemperature": 5.48,
        "significantWeatherCode": 8,
        "windSpeed10m": 2.128,
-       "windDirectionFrom10m": 200
+       "windDirectionFrom10m": 200,
+       "probOfPrecipitation": 50,
+       "feelsLikeTemperature": 7.25,
+       "windGustSpeed10m": 8.62,
+       "uvIndex": 2.5,
+       "totalPrecipAmount": 0.25
       },
       {
        "time": "2026-10-28T21:00Z",
        "screenTemperature": 7.8,
        "significantWeatherCode": null,
        "windSpeed10m": 1.087,
-       "windDirectionFrom10m": 359
+       "windDirectionFrom10m": 359,
+       "probOfPrecipitation": 49.5,
+       "feelsLikeTemperature": 10.5,
+       "windGustSpeed10m": 13.4,
+       "uvIndex": 3,
+       "totalPrecipAmount": 1.35
       },
       {
        "time": "2026-10-28T22:00Z",
@@ -150,28 +230,48 @@
        "screenTemperature": 9.35,
        "significantWeatherCode": 31,
        "windSpeed10m": 11.156,
-       "windDirectionFrom10m": 0
+       "windDirectionFrom10m": 0,
+       "probOfPrecipitation": 0,
+       "feelsLikeTemperature": -3.4,
+       "windGustSpeed10m": 0,
+       "uvIndex": 0,
+       "totalPrecipAmount": 0.0
       },
       {
        "time": "2026-10-29T00:00Z",
        "screenTemperature": 11.56,
        "significantWeatherCode": 7,
        "windSpeed10m": 6.637,
-       "windDirectionFrom10m": null
+       "windDirectionFrom10m": null,
+       "probOfPrecipitation": 12,
+       "feelsLikeTemperature": 0.5,
+       "windGustSpeed10m": 4.5,
+       "uvIndex": 1,
+       "totalPrecipAmount": 0.05
       },
       {
        "time": "2026-10-29T01:00Z",
        "screenTemperature": 4.58,
        "significantWeatherCode": 24,
        "windSpeed10m": 9.821,
-       "windDirectionFrom10m": null
+       "windDirectionFrom10m": null,
+       "probOfPrecipitation": 50,
+       "feelsLikeTemperature": 7.25,
+       "windGustSpeed10m": 8.62,
+       "uvIndex": 2.5,
+       "totalPrecipAmount": 0.25
       },
       {
        "time": "2026-10-29T02:00Z",
        "screenTemperature": 9.2,
        "significantWeatherCode": null,
        "windSpeed10m": 11.507,
-       "windDirectionFrom10m": 78.75
+       "windDirectionFrom10m": 78.75,
+       "probOfPrecipitation": 49.5,
+       "feelsLikeTemperature": 10.5,
+       "windGustSpeed10m": 13.4,
+       "uvIndex": 3,
+       "totalPrecipAmount": 1.35
       },
       {
        "time": "2026-10-29T03:00Z",
@@ -185,28 +285,48 @@
        "screenTemperature": 7.2,
        "significantWeatherCode": 31,
        "windSpeed10m": 1.639,
-       "windDirectionFrom10m": 0
+       "windDirectionFrom10m": 0,
+       "probOfPrecipitation": 0,
+       "feelsLikeTemperature": -3.4,
+       "windGustSpeed10m": 0,
+       "uvIndex": 0,
+       "totalPrecipAmount": 0.0
       },
       {
        "time": "2026-10-29T05:00Z",
        "screenTemperature": 5.96,
        "significantWeatherCode": 7,
        "windSpeed10m": 1.811,
-       "windDirectionFrom10m": 45
+       "windDirectionFrom10m": 45,
+       "probOfPrecipitation": 12,
+       "feelsLikeTemperature": 0.5,
+       "windGustSpeed10m": 4.5,
+       "uvIndex": 1,
+       "totalPrecipAmount": 0.05
       },
       {
        "time": "2026-10-29T06:00Z",
        "screenTemperature": 7.58,
        "significantWeatherCode": 12,
        "windSpeed10m": 1.128,
-       "windDirectionFrom10m": 200
+       "windDirectionFrom10m": 200,
+       "probOfPrecipitation": 50,
+       "feelsLikeTemperature": 7.25,
+       "windGustSpeed10m": 8.62,
+       "uvIndex": 2.5,
+       "totalPrecipAmount": 0.25
       },
       {
        "time": "2026-10-29T07:00Z",
        "screenTemperature": 7.61,
        "significantWeatherCode": 7,
        "windSpeed10m": 12.367,
-       "windDirectionFrom10m": 200
+       "windDirectionFrom10m": 200,
+       "probOfPrecipitation": 49.5,
+       "feelsLikeTemperature": 10.5,
+       "windGustSpeed10m": 13.4,
+       "uvIndex": 3,
+       "totalPrecipAmount": 1.35
       },
       {
        "time": "2026-10-29T08:00Z",
@@ -220,28 +340,48 @@
        "screenTemperature": 10.14,
        "significantWeatherCode": 9,
        "windSpeed10m": 13.408,
-       "windDirectionFrom10m": 45
+       "windDirectionFrom10m": 45,
+       "probOfPrecipitation": 0,
+       "feelsLikeTemperature": -3.4,
+       "windGustSpeed10m": 0,
+       "uvIndex": 0,
+       "totalPrecipAmount": 0.0
       },
       {
        "time": "2026-10-29T10:00Z",
        "screenTemperature": 4.75,
        "significantWeatherCode": 2,
        "windSpeed10m": 3.247,
-       "windDirectionFrom10m": 45
+       "windDirectionFrom10m": 45,
+       "probOfPrecipitation": 12,
+       "feelsLikeTemperature": 0.5,
+       "windGustSpeed10m": 4.5,
+       "uvIndex": 1,
+       "totalPrecipAmount": 0.05
       },
       {
        "time": "2026-10-29T11:00Z",
        "screenTemperature": 4.11,
        "significantWeatherCode": 31,
        "windSpeed10m": 2.553,
-       "windDirectionFrom10m": 78.75
+       "windDirectionFrom10m": 78.75,
+       "probOfPrecipitation": 50,
+       "feelsLikeTemperature": 7.25,
+       "windGustSpeed10m": 8.62,
+       "uvIndex": 2.5,
+       "totalPrecipAmount": 0.25
       },
       {
        "time": "2026-10-29T12:00Z",
        "screenTemperature": 4.04,
        "significantWeatherCode": 9,
        "windSpeed10m": 7.484,
-       "windDirectionFrom10m": 359
+       "windDirectionFrom10m": 359,
+       "probOfPrecipitation": 49.5,
+       "feelsLikeTemperature": 10.5,
+       "windGustSpeed10m": 13.4,
+       "uvIndex": 3,
+       "totalPrecipAmount": 1.35
       },
       {
        "time": "2026-10-29T13:00Z",
@@ -255,28 +395,48 @@
        "screenTemperature": 12.55,
        "significantWeatherCode": null,
        "windSpeed10m": 9.467,
-       "windDirectionFrom10m": 0
+       "windDirectionFrom10m": 0,
+       "probOfPrecipitation": 0,
+       "feelsLikeTemperature": -3.4,
+       "windGustSpeed10m": 0,
+       "uvIndex": 0,
+       "totalPrecipAmount": 0.0
       },
       {
        "time": "2026-10-29T15:00Z",
        "screenTemperature": 8.11,
        "significantWeatherCode": null,
        "windSpeed10m": 11.17,
-       "windDirectionFrom10m": 200
+       "windDirectionFrom10m": 200,
+       "probOfPrecipitation": 12,
+       "feelsLikeTemperature": 0.5,
+       "windGustSpeed10m": 4.5,
+       "uvIndex": 1,
+       "totalPrecipAmount": 0.05
       },
       {
        "time": "2026-10-29T16:00Z",
        "screenTemperature": 7.58,
        "significantWeatherCode": 9,
        "windSpeed10m": 1.45,
-       "windDirectionFrom10m": null
+       "windDirectionFrom10m": null,
+       "probOfPrecipitation": 50,
+       "feelsLikeTemperature": 7.25,
+       "windGustSpeed10m": 8.62,
+       "uvIndex": 2.5,
+       "totalPrecipAmount": 0.25
       },
       {
        "time": "2026-10-29T17:00Z",
        "screenTemperature": 7.6,
        "significantWeatherCode": 3,
        "windSpeed10m": 0.943,
-       "windDirectionFrom10m": 45
+       "windDirectionFrom10m": 45,
+       "probOfPrecipitation": 49.5,
+       "feelsLikeTemperature": 10.5,
+       "windGustSpeed10m": 13.4,
+       "uvIndex": 3,
+       "totalPrecipAmount": 1.35
       },
       {
        "time": "2026-10-29T18:00Z",
@@ -290,28 +450,48 @@
        "screenTemperature": 4.92,
        "significantWeatherCode": 31,
        "windSpeed10m": 2.118,
-       "windDirectionFrom10m": 0
+       "windDirectionFrom10m": 0,
+       "probOfPrecipitation": 0,
+       "feelsLikeTemperature": -3.4,
+       "windGustSpeed10m": 0,
+       "uvIndex": 0,
+       "totalPrecipAmount": 0.0
       },
       {
        "time": "2026-10-29T20:00Z",
        "screenTemperature": 12.54,
        "significantWeatherCode": 31,
        "windSpeed10m": 0.357,
-       "windDirectionFrom10m": 45
+       "windDirectionFrom10m": 45,
+       "probOfPrecipitation": 12,
+       "feelsLikeTemperature": 0.5,
+       "windGustSpeed10m": 4.5,
+       "uvIndex": 1,
+       "totalPrecipAmount": 0.05
       },
       {
        "time": "2026-10-29T21:00Z",
        "screenTemperature": 9.53,
        "significantWeatherCode": 2,
        "windSpeed10m": 8.882,
-       "windDirectionFrom10m": 78.75
+       "windDirectionFrom10m": 78.75,
+       "probOfPrecipitation": 50,
+       "feelsLikeTemperature": 7.25,
+       "windGustSpeed10m": 8.62,
+       "uvIndex": 2.5,
+       "totalPrecipAmount": 0.25
       },
       {
        "time": "2026-10-29T22:00Z",
        "screenTemperature": 9.42,
        "significantWeatherCode": 12,
        "windSpeed10m": 1.72,
-       "windDirectionFrom10m": 200
+       "windDirectionFrom10m": 200,
+       "probOfPrecipitation": 49.5,
+       "feelsLikeTemperature": 10.5,
+       "windGustSpeed10m": 13.4,
+       "uvIndex": 3,
+       "totalPrecipAmount": 1.35
       },
       {
        "time": "2026-10-29T23:00Z",
@@ -325,28 +505,48 @@
        "screenTemperature": 4.77,
        "significantWeatherCode": 1,
        "windSpeed10m": 10.495,
-       "windDirectionFrom10m": null
+       "windDirectionFrom10m": null,
+       "probOfPrecipitation": 0,
+       "feelsLikeTemperature": -3.4,
+       "windGustSpeed10m": 0,
+       "uvIndex": 0,
+       "totalPrecipAmount": 0.0
       },
       {
        "time": "2026-10-30T01:00Z",
        "screenTemperature": 6.38,
        "significantWeatherCode": 24,
        "windSpeed10m": 2.26,
-       "windDirectionFrom10m": 0
+       "windDirectionFrom10m": 0,
+       "probOfPrecipitation": 12,
+       "feelsLikeTemperature": 0.5,
+       "windGustSpeed10m": 4.5,
+       "uvIndex": 1,
+       "totalPrecipAmount": 0.05
       },
       {
        "time": "2026-10-30T02:00Z",
        "screenTemperature": 5.85,
        "significantWeatherCode": 15,
        "windSpeed10m": 5.065,
-       "windDirectionFrom10m": null
+       "windDirectionFrom10m": null,
+       "probOfPrecipitation": 50,
+       "feelsLikeTemperature": 7.25,
+       "windGustSpeed10m": 8.62,
+       "uvIndex": 2.5,
+       "totalPrecipAmount": 0.25
       },
       {
        "time": "2026-10-30T03:00Z",
        "screenTemperature": 8.89,
        "significantWeatherCode": 0,
        "windSpeed10m": 10.614,
-       "windDirectionFrom10m": 78.75
+       "windDirectionFrom10m": 78.75,
+       "probOfPrecipitation": 49.5,
+       "feelsLikeTemperature": 10.5,
+       "windGustSpeed10m": 13.4,
+       "uvIndex": 3,
+       "totalPrecipAmount": 1.35
       }
      ]
     }
@@ -368,7 +568,14 @@
        "midday10MWindSpeed": 6.702,
        "midday10MWindDirection": 90,
        "midnight10MWindSpeed": 4.913,
-       "midnight10MWindDirection": 135
+       "midnight10MWindDirection": 135,
+       "dayProbabilityOfPrecipitation": 20,
+       "nightProbabilityOfPrecipitation": 5,
+       "dayMaxFeelsLikeTemp": 8.5,
+       "nightMinFeelsLikeTemp": -1.5,
+       "midday10MWindGust": 10.3,
+       "midnight10MWindGust": 14.7,
+       "maxUvIndex": 0
       },
       {
        "time": "2026-10-28T23:00Z",
@@ -379,7 +586,14 @@
        "midday10MWindSpeed": 7.746,
        "midday10MWindDirection": 90,
        "midnight10MWindSpeed": 9.867,
-       "midnight10MWindDirection": 315
+       "midnight10MWindDirection": 315,
+       "dayProbabilityOfPrecipitation": 30,
+       "nightProbabilityOfPrecipitation": 16,
+       "dayMaxFeelsLikeTemp": 9.5,
+       "nightMinFeelsLikeTemp": -0.5,
+       "midday10MWindGust": 11.3,
+       "midnight10MWindGust": 13.7,
+       "maxUvIndex": 1
       },
       {
        "time": "2026-10-29T23:00Z",
@@ -390,7 +604,14 @@
        "midday10MWindSpeed": 4.911,
        "midday10MWindDirection": 10,
        "midnight10MWindSpeed": 11.886,
-       "midnight10MWindDirection": 225
+       "midnight10MWindDirection": 225,
+       "dayProbabilityOfPrecipitation": 40,
+       "nightProbabilityOfPrecipitation": 27,
+       "dayMaxFeelsLikeTemp": 10.5,
+       "nightMinFeelsLikeTemp": 0.5,
+       "midday10MWindGust": 12.3,
+       "midnight10MWindGust": 12.7,
+       "maxUvIndex": 2
       },
       {
        "time": "2026-10-30T23:00Z",
@@ -412,7 +633,14 @@
        "midday10MWindSpeed": 4.715,
        "midday10MWindDirection": 270,
        "midnight10MWindSpeed": 7.865,
-       "midnight10MWindDirection": 45
+       "midnight10MWindDirection": 45,
+       "dayProbabilityOfPrecipitation": 60,
+       "nightProbabilityOfPrecipitation": 49,
+       "dayMaxFeelsLikeTemp": 12.5,
+       "nightMinFeelsLikeTemp": 2.5,
+       "midday10MWindGust": 14.3,
+       "midnight10MWindGust": 10.7,
+       "maxUvIndex": 0
       },
       {
        "time": "2026-11-01T23:00Z",
@@ -423,7 +651,14 @@
        "midday10MWindSpeed": 10.181,
        "midday10MWindDirection": 10,
        "midnight10MWindSpeed": 11.008,
-       "midnight10MWindDirection": 135
+       "midnight10MWindDirection": 135,
+       "dayProbabilityOfPrecipitation": 70,
+       "nightProbabilityOfPrecipitation": 60,
+       "dayMaxFeelsLikeTemp": 13.5,
+       "nightMinFeelsLikeTemp": 3.5,
+       "midday10MWindGust": 15.3,
+       "midnight10MWindGust": 9.7,
+       "maxUvIndex": 1
       },
       {
        "time": "2026-11-02T23:00Z",
@@ -434,7 +669,14 @@
        "midday10MWindSpeed": 1.954,
        "midday10MWindDirection": 270,
        "midnight10MWindSpeed": 6.095,
-       "midnight10MWindDirection": 45
+       "midnight10MWindDirection": 45,
+       "dayProbabilityOfPrecipitation": 80,
+       "nightProbabilityOfPrecipitation": 71,
+       "dayMaxFeelsLikeTemp": 14.5,
+       "nightMinFeelsLikeTemp": 4.5,
+       "midday10MWindGust": 16.3,
+       "midnight10MWindGust": 8.7,
+       "maxUvIndex": 2
       },
       {
        "time": "2026-11-03T23:00Z",
@@ -467,7 +709,11 @@
       "unit": "C",
       "short": "Cloudy",
       "wind": "17 mph E",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 30,
+      "feels": 10,
+      "gust": 25,
+      "uv": 1
      },
      {
       "name": "Tonight",
@@ -476,7 +722,10 @@
       "unit": "C",
       "short": "Partly cloudy",
       "wind": "22 mph NW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 16,
+      "feels": 0,
+      "gust": 31
      },
      {
       "name": "Thursday",
@@ -485,7 +734,11 @@
       "unit": "C",
       "short": "Light rain",
       "wind": "11 mph N",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 40,
+      "feels": 10,
+      "gust": 28,
+      "uv": 2
      },
      {
       "name": "Thursday Night",
@@ -494,7 +747,10 @@
       "unit": "C",
       "short": "Light rain showers",
       "wind": "27 mph SW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 27,
+      "feels": 0,
+      "gust": 28
      },
      {
       "name": "Friday",
@@ -521,7 +777,11 @@
       "unit": "C",
       "short": "Overcast",
       "wind": "11 mph W",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 60,
+      "feels": 12,
+      "gust": 32,
+      "uv": 0
      },
      {
       "name": "Saturday Night",
@@ -530,7 +790,10 @@
       "unit": "C",
       "short": "Partly cloudy",
       "wind": "18 mph NE",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 49,
+      "feels": 2,
+      "gust": 24
      },
      {
       "name": "Sunday",
@@ -539,7 +802,11 @@
       "unit": "C",
       "short": "Heavy rain",
       "wind": "23 mph N",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 70,
+      "feels": 14,
+      "gust": 34,
+      "uv": 1
      },
      {
       "name": "Sunday Night",
@@ -548,7 +815,10 @@
       "unit": "C",
       "short": "Clear",
       "wind": "25 mph SE",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 60,
+      "feels": 4,
+      "gust": 22
      },
      {
       "name": "Monday",
@@ -557,7 +827,11 @@
       "unit": "C",
       "short": "Heavy rain",
       "wind": "4 mph W",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 80,
+      "feels": 14,
+      "gust": 36,
+      "uv": 2
      },
      {
       "name": "Monday Night",
@@ -566,7 +840,10 @@
       "unit": "C",
       "short": "Cloudy",
       "wind": "14 mph NE",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 71,
+      "feels": 4,
+      "gust": 19
      },
      {
       "name": "Tuesday",
@@ -594,7 +871,12 @@
       "unit": "C",
       "short": "Clear",
       "wind": "31 mph N",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 12,
+      "feels": 0,
+      "gust": 10,
+      "uv": 1,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-28T10:00:00Z",
@@ -602,21 +884,31 @@
       "unit": "C",
       "short": "Partly cloudy",
       "wind": "9 mph NE",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 50,
+      "feels": 7,
+      "gust": 19,
+      "uv": 2,
+      "precip_mm": 0.2
      },
      {
       "start": "2026-10-28T11:00:00Z",
       "temp": 9,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "10 mph",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 50,
+      "feels": 10,
+      "gust": 30,
+      "uv": 3,
+      "precip_mm": 1.4
      },
      {
       "start": "2026-10-28T12:00:00Z",
       "temp": 6,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "18 mph NE",
       "is_daytime": true
      },
@@ -626,7 +918,12 @@
       "unit": "C",
       "short": "Heavy rain",
       "wind": "22 mph N",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 0,
+      "feels": -3,
+      "gust": 0,
+      "uv": 0,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-28T14:00:00Z",
@@ -634,7 +931,12 @@
       "unit": "C",
       "short": "Partly cloudy",
       "wind": "16 mph N",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 12,
+      "feels": 0,
+      "gust": 10,
+      "uv": 1,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-28T15:00:00Z",
@@ -642,7 +944,12 @@
       "unit": "C",
       "short": "Overcast",
       "wind": "15 mph SSW",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 50,
+      "feels": 7,
+      "gust": 19,
+      "uv": 2,
+      "precip_mm": 0.2
      },
      {
       "start": "2026-10-28T16:00:00Z",
@@ -650,7 +957,12 @@
       "unit": "C",
       "short": "Partly cloudy",
       "wind": "25 mph",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 50,
+      "feels": 10,
+      "gust": 30,
+      "uv": 3,
+      "precip_mm": 1.4
      },
      {
       "start": "2026-10-28T17:00:00Z",
@@ -666,7 +978,12 @@
       "unit": "C",
       "short": "Overcast",
       "wind": "23 mph E",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 0,
+      "feels": -3,
+      "gust": 0,
+      "uv": 0,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-28T19:00:00Z",
@@ -674,7 +991,12 @@
       "unit": "C",
       "short": "Sunny",
       "wind": "4 mph SSW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 12,
+      "feels": 0,
+      "gust": 10,
+      "uv": 1,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-28T20:00:00Z",
@@ -682,15 +1004,25 @@
       "unit": "C",
       "short": "Overcast",
       "wind": "5 mph SSW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 7,
+      "gust": 19,
+      "uv": 2,
+      "precip_mm": 0.2
      },
      {
       "start": "2026-10-28T21:00:00Z",
       "temp": 8,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "2 mph N",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 10,
+      "gust": 30,
+      "uv": 3,
+      "precip_mm": 1.4
      },
      {
       "start": "2026-10-28T22:00:00Z",
@@ -704,9 +1036,14 @@
       "start": "2026-10-28T23:00:00Z",
       "temp": 9,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "25 mph N",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 0,
+      "feels": -3,
+      "gust": 0,
+      "uv": 0,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-29T00:00:00Z",
@@ -714,7 +1051,12 @@
       "unit": "C",
       "short": "Cloudy",
       "wind": "15 mph",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 12,
+      "feels": 0,
+      "gust": 10,
+      "uv": 1,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-29T01:00:00Z",
@@ -722,21 +1064,31 @@
       "unit": "C",
       "short": "Light snow",
       "wind": "22 mph",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 7,
+      "gust": 19,
+      "uv": 2,
+      "precip_mm": 0.2
      },
      {
       "start": "2026-10-29T02:00:00Z",
       "temp": 9,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "26 mph E",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 10,
+      "gust": 30,
+      "uv": 3,
+      "precip_mm": 1.4
      },
      {
       "start": "2026-10-29T03:00:00Z",
       "temp": 10,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "11 mph SSW",
       "is_daytime": false
      },
@@ -744,9 +1096,14 @@
       "start": "2026-10-29T04:00:00Z",
       "temp": 7,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "4 mph N",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 0,
+      "feels": -3,
+      "gust": 0,
+      "uv": 0,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-29T05:00:00Z",
@@ -754,7 +1111,12 @@
       "unit": "C",
       "short": "Cloudy",
       "wind": "4 mph NE",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 12,
+      "feels": 0,
+      "gust": 10,
+      "uv": 1,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-29T06:00:00Z",
@@ -762,7 +1124,12 @@
       "unit": "C",
       "short": "Light rain",
       "wind": "3 mph SSW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 7,
+      "gust": 19,
+      "uv": 2,
+      "precip_mm": 0.2
      },
      {
       "start": "2026-10-29T07:00:00Z",
@@ -770,7 +1137,12 @@
       "unit": "C",
       "short": "Cloudy",
       "wind": "28 mph SSW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 10,
+      "gust": 30,
+      "uv": 3,
+      "precip_mm": 1.4
      },
      {
       "start": "2026-10-29T08:00:00Z",
@@ -782,7 +1154,8 @@
      }
     ],
     "issued": "2026-10-28T05:00Z",
-    "source": "Met Office"
+    "source": "Met Office",
+    "fetched_at": "2026-10-28T09:30:00Z"
    }
   },
   {
@@ -796,7 +1169,10 @@
       "unit": "C",
       "short": "Partly cloudy",
       "wind": "22 mph NW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 16,
+      "feels": 0,
+      "gust": 31
      },
      {
       "name": "Thursday",
@@ -805,7 +1181,11 @@
       "unit": "C",
       "short": "Light rain",
       "wind": "11 mph N",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 40,
+      "feels": 10,
+      "gust": 28,
+      "uv": 2
      },
      {
       "name": "Thursday Night",
@@ -814,7 +1194,10 @@
       "unit": "C",
       "short": "Light rain showers",
       "wind": "27 mph SW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 27,
+      "feels": 0,
+      "gust": 28
      },
      {
       "name": "Friday",
@@ -841,7 +1224,11 @@
       "unit": "C",
       "short": "Overcast",
       "wind": "11 mph W",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 60,
+      "feels": 12,
+      "gust": 32,
+      "uv": 0
      },
      {
       "name": "Saturday Night",
@@ -850,7 +1237,10 @@
       "unit": "C",
       "short": "Partly cloudy",
       "wind": "18 mph NE",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 49,
+      "feels": 2,
+      "gust": 24
      },
      {
       "name": "Sunday",
@@ -859,7 +1249,11 @@
       "unit": "C",
       "short": "Heavy rain",
       "wind": "23 mph N",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 70,
+      "feels": 14,
+      "gust": 34,
+      "uv": 1
      },
      {
       "name": "Sunday Night",
@@ -868,7 +1262,10 @@
       "unit": "C",
       "short": "Clear",
       "wind": "25 mph SE",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 60,
+      "feels": 4,
+      "gust": 22
      },
      {
       "name": "Monday",
@@ -877,7 +1274,11 @@
       "unit": "C",
       "short": "Heavy rain",
       "wind": "4 mph W",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 80,
+      "feels": 14,
+      "gust": 36,
+      "uv": 2
      },
      {
       "name": "Monday Night",
@@ -886,7 +1287,10 @@
       "unit": "C",
       "short": "Cloudy",
       "wind": "14 mph NE",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 71,
+      "feels": 4,
+      "gust": 19
      },
      {
       "name": "Tuesday",
@@ -914,7 +1318,12 @@
       "unit": "C",
       "short": "Sunny",
       "wind": "4 mph SSW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 12,
+      "feels": 0,
+      "gust": 10,
+      "uv": 1,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-28T20:00:00Z",
@@ -922,15 +1331,25 @@
       "unit": "C",
       "short": "Overcast",
       "wind": "5 mph SSW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 7,
+      "gust": 19,
+      "uv": 2,
+      "precip_mm": 0.2
      },
      {
       "start": "2026-10-28T21:00:00Z",
       "temp": 8,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "2 mph N",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 10,
+      "gust": 30,
+      "uv": 3,
+      "precip_mm": 1.4
      },
      {
       "start": "2026-10-28T22:00:00Z",
@@ -944,9 +1363,14 @@
       "start": "2026-10-28T23:00:00Z",
       "temp": 9,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "25 mph N",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 0,
+      "feels": -3,
+      "gust": 0,
+      "uv": 0,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-29T00:00:00Z",
@@ -954,7 +1378,12 @@
       "unit": "C",
       "short": "Cloudy",
       "wind": "15 mph",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 12,
+      "feels": 0,
+      "gust": 10,
+      "uv": 1,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-29T01:00:00Z",
@@ -962,21 +1391,31 @@
       "unit": "C",
       "short": "Light snow",
       "wind": "22 mph",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 7,
+      "gust": 19,
+      "uv": 2,
+      "precip_mm": 0.2
      },
      {
       "start": "2026-10-29T02:00:00Z",
       "temp": 9,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "26 mph E",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 10,
+      "gust": 30,
+      "uv": 3,
+      "precip_mm": 1.4
      },
      {
       "start": "2026-10-29T03:00:00Z",
       "temp": 10,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "11 mph SSW",
       "is_daytime": false
      },
@@ -984,9 +1423,14 @@
       "start": "2026-10-29T04:00:00Z",
       "temp": 7,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "4 mph N",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 0,
+      "feels": -3,
+      "gust": 0,
+      "uv": 0,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-29T05:00:00Z",
@@ -994,7 +1438,12 @@
       "unit": "C",
       "short": "Cloudy",
       "wind": "4 mph NE",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 12,
+      "feels": 0,
+      "gust": 10,
+      "uv": 1,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-29T06:00:00Z",
@@ -1002,7 +1451,12 @@
       "unit": "C",
       "short": "Light rain",
       "wind": "3 mph SSW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 7,
+      "gust": 19,
+      "uv": 2,
+      "precip_mm": 0.2
      },
      {
       "start": "2026-10-29T07:00:00Z",
@@ -1010,7 +1464,12 @@
       "unit": "C",
       "short": "Cloudy",
       "wind": "28 mph SSW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 10,
+      "gust": 30,
+      "uv": 3,
+      "precip_mm": 1.4
      },
      {
       "start": "2026-10-29T08:00:00Z",
@@ -1026,7 +1485,12 @@
       "unit": "C",
       "short": "Light rain showers",
       "wind": "30 mph NE",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 0,
+      "feels": -3,
+      "gust": 0,
+      "uv": 0,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-29T10:00:00Z",
@@ -1034,15 +1498,25 @@
       "unit": "C",
       "short": "Partly cloudy",
       "wind": "7 mph NE",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 12,
+      "feels": 0,
+      "gust": 10,
+      "uv": 1,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-29T11:00:00Z",
       "temp": 4,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "6 mph E",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 50,
+      "feels": 7,
+      "gust": 19,
+      "uv": 2,
+      "precip_mm": 0.2
      },
      {
       "start": "2026-10-29T12:00:00Z",
@@ -1050,7 +1524,12 @@
       "unit": "C",
       "short": "Light rain showers",
       "wind": "17 mph N",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 50,
+      "feels": 10,
+      "gust": 30,
+      "uv": 3,
+      "precip_mm": 1.4
      },
      {
       "start": "2026-10-29T13:00:00Z",
@@ -1064,17 +1543,27 @@
       "start": "2026-10-29T14:00:00Z",
       "temp": 13,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "21 mph N",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 0,
+      "feels": -3,
+      "gust": 0,
+      "uv": 0,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-29T15:00:00Z",
       "temp": 8,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "25 mph SSW",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 12,
+      "feels": 0,
+      "gust": 10,
+      "uv": 1,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-29T16:00:00Z",
@@ -1082,7 +1571,12 @@
       "unit": "C",
       "short": "Light rain showers",
       "wind": "3 mph",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 50,
+      "feels": 7,
+      "gust": 19,
+      "uv": 2,
+      "precip_mm": 0.2
      },
      {
       "start": "2026-10-29T17:00:00Z",
@@ -1090,7 +1584,12 @@
       "unit": "C",
       "short": "Partly cloudy",
       "wind": "2 mph NE",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 10,
+      "gust": 30,
+      "uv": 3,
+      "precip_mm": 1.4
      },
      {
       "start": "2026-10-29T18:00:00Z",
@@ -1102,7 +1601,8 @@
      }
     ],
     "issued": "2026-10-28T05:00Z",
-    "source": "Met Office"
+    "source": "Met Office",
+    "fetched_at": "2026-10-28T19:05:00Z"
    }
   },
   {
@@ -1116,7 +1616,11 @@
       "unit": "C",
       "short": "Heavy rain",
       "wind": "15 mph E",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 20,
+      "feels": 8,
+      "gust": 23,
+      "uv": 0
      },
      {
       "name": "Tuesday Night",
@@ -1125,7 +1629,10 @@
       "unit": "C",
       "short": "Cloudy",
       "wind": "11 mph SE",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 5,
+      "feels": -2,
+      "gust": 33
      },
      {
       "name": "Wednesday",
@@ -1134,7 +1641,11 @@
       "unit": "C",
       "short": "Cloudy",
       "wind": "17 mph E",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 30,
+      "feels": 10,
+      "gust": 25,
+      "uv": 1
      },
      {
       "name": "Wednesday Night",
@@ -1143,7 +1654,10 @@
       "unit": "C",
       "short": "Partly cloudy",
       "wind": "22 mph NW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 16,
+      "feels": 0,
+      "gust": 31
      },
      {
       "name": "Thursday",
@@ -1152,7 +1666,11 @@
       "unit": "C",
       "short": "Light rain",
       "wind": "11 mph N",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 40,
+      "feels": 10,
+      "gust": 28,
+      "uv": 2
      },
      {
       "name": "Thursday Night",
@@ -1161,7 +1679,10 @@
       "unit": "C",
       "short": "Light rain showers",
       "wind": "27 mph SW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 27,
+      "feels": 0,
+      "gust": 28
      },
      {
       "name": "Friday",
@@ -1188,7 +1709,11 @@
       "unit": "C",
       "short": "Overcast",
       "wind": "11 mph W",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 60,
+      "feels": 12,
+      "gust": 32,
+      "uv": 0
      },
      {
       "name": "Saturday Night",
@@ -1197,7 +1722,10 @@
       "unit": "C",
       "short": "Partly cloudy",
       "wind": "18 mph NE",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 49,
+      "feels": 2,
+      "gust": 24
      },
      {
       "name": "Sunday",
@@ -1206,7 +1734,11 @@
       "unit": "C",
       "short": "Heavy rain",
       "wind": "23 mph N",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 70,
+      "feels": 14,
+      "gust": 34,
+      "uv": 1
      },
      {
       "name": "Sunday Night",
@@ -1215,7 +1747,10 @@
       "unit": "C",
       "short": "Clear",
       "wind": "25 mph SE",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 60,
+      "feels": 4,
+      "gust": 22
      },
      {
       "name": "Monday",
@@ -1224,7 +1759,11 @@
       "unit": "C",
       "short": "Heavy rain",
       "wind": "4 mph W",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 80,
+      "feels": 14,
+      "gust": 36,
+      "uv": 2
      },
      {
       "name": "Monday Night",
@@ -1233,7 +1772,10 @@
       "unit": "C",
       "short": "Cloudy",
       "wind": "14 mph NE",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 71,
+      "feels": 4,
+      "gust": 19
      }
     ],
     "hourly": [
@@ -1243,7 +1785,12 @@
       "unit": "C",
       "short": "Partly cloudy",
       "wind": "12 mph N",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 0,
+      "feels": -3,
+      "gust": 0,
+      "uv": 0,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-28T04:00:00Z",
@@ -1251,7 +1798,12 @@
       "unit": "C",
       "short": "Heavy rain",
       "wind": "3 mph N",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 12,
+      "feels": 0,
+      "gust": 10,
+      "uv": 1,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-28T05:00:00Z",
@@ -1259,7 +1811,12 @@
       "unit": "C",
       "short": "Heavy rain",
       "wind": "7 mph N",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 7,
+      "gust": 19,
+      "uv": 2,
+      "precip_mm": 0.2
      },
      {
       "start": "2026-10-28T06:00:00Z",
@@ -1267,13 +1824,18 @@
       "unit": "C",
       "short": "Sunny",
       "wind": "8 mph N",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 10,
+      "gust": 30,
+      "uv": 3,
+      "precip_mm": 1.4
      },
      {
       "start": "2026-10-28T07:00:00Z",
       "temp": 8,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "4 mph NE",
       "is_daytime": false
      },
@@ -1281,9 +1843,14 @@
       "start": "2026-10-28T08:00:00Z",
       "temp": 10,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "30 mph N",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 0,
+      "feels": -3,
+      "gust": 0,
+      "uv": 0,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-28T09:00:00Z",
@@ -1291,7 +1858,12 @@
       "unit": "C",
       "short": "Clear",
       "wind": "31 mph N",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 12,
+      "feels": 0,
+      "gust": 10,
+      "uv": 1,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-28T10:00:00Z",
@@ -1299,21 +1871,31 @@
       "unit": "C",
       "short": "Partly cloudy",
       "wind": "9 mph NE",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 50,
+      "feels": 7,
+      "gust": 19,
+      "uv": 2,
+      "precip_mm": 0.2
      },
      {
       "start": "2026-10-28T11:00:00Z",
       "temp": 9,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "10 mph",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 50,
+      "feels": 10,
+      "gust": 30,
+      "uv": 3,
+      "precip_mm": 1.4
      },
      {
       "start": "2026-10-28T12:00:00Z",
       "temp": 6,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "18 mph NE",
       "is_daytime": true
      },
@@ -1323,7 +1905,12 @@
       "unit": "C",
       "short": "Heavy rain",
       "wind": "22 mph N",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 0,
+      "feels": -3,
+      "gust": 0,
+      "uv": 0,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-28T14:00:00Z",
@@ -1331,7 +1918,12 @@
       "unit": "C",
       "short": "Partly cloudy",
       "wind": "16 mph N",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 12,
+      "feels": 0,
+      "gust": 10,
+      "uv": 1,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-28T15:00:00Z",
@@ -1339,7 +1931,12 @@
       "unit": "C",
       "short": "Overcast",
       "wind": "15 mph SSW",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 50,
+      "feels": 7,
+      "gust": 19,
+      "uv": 2,
+      "precip_mm": 0.2
      },
      {
       "start": "2026-10-28T16:00:00Z",
@@ -1347,7 +1944,12 @@
       "unit": "C",
       "short": "Partly cloudy",
       "wind": "25 mph",
-      "is_daytime": true
+      "is_daytime": true,
+      "pop": 50,
+      "feels": 10,
+      "gust": 30,
+      "uv": 3,
+      "precip_mm": 1.4
      },
      {
       "start": "2026-10-28T17:00:00Z",
@@ -1363,7 +1965,12 @@
       "unit": "C",
       "short": "Overcast",
       "wind": "23 mph E",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 0,
+      "feels": -3,
+      "gust": 0,
+      "uv": 0,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-28T19:00:00Z",
@@ -1371,7 +1978,12 @@
       "unit": "C",
       "short": "Sunny",
       "wind": "4 mph SSW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 12,
+      "feels": 0,
+      "gust": 10,
+      "uv": 1,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-28T20:00:00Z",
@@ -1379,15 +1991,25 @@
       "unit": "C",
       "short": "Overcast",
       "wind": "5 mph SSW",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 7,
+      "gust": 19,
+      "uv": 2,
+      "precip_mm": 0.2
      },
      {
       "start": "2026-10-28T21:00:00Z",
       "temp": 8,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "2 mph N",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 10,
+      "gust": 30,
+      "uv": 3,
+      "precip_mm": 1.4
      },
      {
       "start": "2026-10-28T22:00:00Z",
@@ -1401,9 +2023,14 @@
       "start": "2026-10-28T23:00:00Z",
       "temp": 9,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "25 mph N",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 0,
+      "feels": -3,
+      "gust": 0,
+      "uv": 0,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-29T00:00:00Z",
@@ -1411,7 +2038,12 @@
       "unit": "C",
       "short": "Cloudy",
       "wind": "15 mph",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 12,
+      "feels": 0,
+      "gust": 10,
+      "uv": 1,
+      "precip_mm": 0.0
      },
      {
       "start": "2026-10-29T01:00:00Z",
@@ -1419,19 +2051,30 @@
       "unit": "C",
       "short": "Light snow",
       "wind": "22 mph",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 7,
+      "gust": 19,
+      "uv": 2,
+      "precip_mm": 0.2
      },
      {
       "start": "2026-10-29T02:00:00Z",
       "temp": 9,
       "unit": "C",
-      "short": "\u2014",
+      "short": "—",
       "wind": "26 mph E",
-      "is_daytime": false
+      "is_daytime": false,
+      "pop": 50,
+      "feels": 10,
+      "gust": 30,
+      "uv": 3,
+      "precip_mm": 1.4
      }
     ],
     "issued": "2026-10-28T05:00Z",
-    "source": "Met Office"
+    "source": "Met Office",
+    "fetched_at": "2026-10-25T23:30:00Z"
    }
   }
  ]

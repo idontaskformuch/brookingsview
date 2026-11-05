@@ -11,7 +11,9 @@ Output is the SAME normalised payload scrapers/parsers/noaa.py writes to weather
 weather page, the sign strip and the home page need no new data path:
     {"periods": [{name, start, temp, unit, short, wind, is_daytime}, ...],   # day/night periods
      "hourly":  [{start, temp, unit, short, wind, is_daytime}, ...],        # next 24 hours
-     "issued":  modelRunDate, "source": "Met Office"}
+     "issued":  modelRunDate, "source": "Met Office", "fetched_at": when we fetched it (UTC)}
+Optional per-point fields (only present when the source has a number): pop (chance of precipitation %), feels, gust (mph), uv,
+precip_mm (hourly only). The weather page copes with payloads that lack them.
 Differences from NWS: unit is "C" (the site prints payload.unit), wind is "N mph DIR" (UK speeds are
 in mph), and `short` is the Met Office significant-weather text. One row per local day
 (weather_snapshots is UNIQUE (town_id, observed_for)); update_columns refreshes the payload when the
@@ -109,6 +111,30 @@ def _temp(value):
     return None if value is None else int(round(float(value)))
 
 
+def _num(value):
+    """A real number or None (strings, bools, NaN and None are all "no value"); mirrors num() in cron-dispatcher/src/weather/util.ts."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        return None
+    return value
+
+
+def _extras(pop=None, feels=None, gust_ms=None, uv=None, precip=None) -> dict:
+    """Optional payload fields: a key is only present when the source has a number for it. pop = chance of precipitation %, feels = "feels
+    like" in the payload unit, gust = mph, uv = UV index, precip_mm = precipitation in the hour. Same rounding as extras() in metoffice.ts."""
+    out = {}
+    if _num(pop) is not None:
+        out["pop"] = int(round(pop))
+    if _num(feels) is not None:
+        out["feels"] = int(round(feels))
+    if _num(gust_ms) is not None:
+        out["gust"] = int(round(gust_ms * MS_TO_MPH))
+    if _num(uv) is not None:
+        out["uv"] = int(round(uv))
+    if _num(precip) is not None:
+        out["precip_mm"] = round(precip * 10) / 10
+    return out
+
+
 def _series(doc: dict) -> tuple[list[dict], str | None]:
     feature = (doc.get("features") or [{}])[0]
     props = feature.get("properties") or {}
@@ -132,6 +158,8 @@ def build_payload(hourly_doc: dict, daily_doc: dict, now: datetime, lat: float, 
             "short": weather_text(pt.get("significantWeatherCode")),
             "wind": wind_text(pt.get("windSpeed10m"), pt.get("windDirectionFrom10m")),
             "is_daytime": is_daytime(when, lat, lon),
+            **_extras(pop=pt.get("probOfPrecipitation"), feels=pt.get("feelsLikeTemperature"), gust_ms=pt.get("windGustSpeed10m"),
+                      uv=pt.get("uvIndex"), precip=pt.get("totalPrecipAmount")),
         })
         if len(hourly) == MAX_HOURLY:
             break
@@ -155,6 +183,8 @@ def build_payload(hourly_doc: dict, daily_doc: dict, now: datetime, lat: float, 
                 "short": weather_text(pt.get("daySignificantWeatherCode")),
                 "wind": wind_text(pt.get("midday10MWindSpeed"), pt.get("midday10MWindDirection")),
                 "is_daytime": True,
+                **_extras(pop=pt.get("dayProbabilityOfPrecipitation"), feels=pt.get("dayMaxFeelsLikeTemp"),
+                          gust_ms=pt.get("midday10MWindGust"), uv=pt.get("maxUvIndex")),
             })
         periods.append({
             "name": "Tonight" if day_date == today else f"{weekday} Night",
@@ -164,11 +194,14 @@ def build_payload(hourly_doc: dict, daily_doc: dict, now: datetime, lat: float, 
             "short": weather_text(pt.get("nightSignificantWeatherCode")),
             "wind": wind_text(pt.get("midnight10MWindSpeed"), pt.get("midnight10MWindDirection")),
             "is_daytime": False,
+            **_extras(pop=pt.get("nightProbabilityOfPrecipitation"), feels=pt.get("nightMinFeelsLikeTemp"),
+                      gust_ms=pt.get("midnight10MWindGust")),
         })
         if len(periods) >= MAX_PERIODS:
             break
 
-    return {"periods": periods[:MAX_PERIODS], "hourly": hourly, "issued": run_h or run_d, "source": "Met Office"}
+    return {"periods": periods[:MAX_PERIODS], "hourly": hourly, "issued": run_h or run_d, "source": "Met Office",
+            "fetched_at": _iso(now)}
 
 
 class MetOfficeSiteSpecificParser(BaseParser):

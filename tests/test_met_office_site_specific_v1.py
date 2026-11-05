@@ -33,12 +33,35 @@ def test_one_row_per_local_day_in_the_noaa_payload_shape():
     row = _payload()
     assert str(row["observed_for"]) == "2026-10-23"
     p = row["payload"]
-    assert set(p) == {"periods", "hourly", "issued", "source"}
+    assert set(p) == {"periods", "hourly", "issued", "source", "fetched_at"}
     assert p["source"] == "Met Office"
+    assert p["fetched_at"] == "2026-10-23T15:30:00Z"
+    base = {"start", "temp", "unit", "short", "wind", "is_daytime"}
+    optional = {"pop", "feels", "gust", "uv", "precip_mm"}
     for h in p["hourly"]:
-        assert set(h) == {"start", "temp", "unit", "short", "wind", "is_daytime"}
+        assert base <= set(h) <= base | optional
     for per in p["periods"]:
-        assert set(per) == {"name", "start", "temp", "unit", "short", "wind", "is_daytime"}
+        assert base | {"name"} <= set(per) <= base | optional | {"name"}
+
+
+def test_optional_fields_come_from_the_source_and_are_left_out_when_it_has_no_number():
+    p = _payload()["payload"]
+    h = {x["start"]: x for x in p["hourly"]}["2026-10-23T17:00:00Z"]
+    # probOfPrecipitation 6, feelsLikeTemperature 5.09, windGustSpeed10m 8.62 m/s, uvIndex 0, totalPrecipAmount 0.0
+    assert (h["pop"], h["feels"], h["gust"], h["uv"], h["precip_mm"]) == (6, 5, 19, 0, 0.0)
+    per = {x["name"]: x for x in p["periods"]}
+    assert (per["Saturday"]["pop"], per["Saturday"]["feels"], per["Saturday"]["gust"], per["Saturday"]["uv"]) == (98, 8, 38, 1)
+    assert (per["Saturday Night"]["pop"], per["Saturday Night"]["feels"], per["Saturday Night"]["gust"]) == (94, 4, 58)
+    assert "uv" not in per["Saturday Night"] and "precip_mm" not in per["Saturday"]    # night has no UV; periods carry no precipitation amount
+    # a point without the numbers gets no keys at all (not nulls)
+    docs = {k: json.loads((FIX / f"met_office_sitespecific_{k}_2026-10-23.json").read_text(encoding="utf-8")) for k in ("hourly", "daily")}
+    for pt in docs["hourly"]["features"][0]["properties"]["timeSeries"]:
+        for k in ("probOfPrecipitation", "feelsLikeTemperature", "windGustSpeed10m", "uvIndex", "totalPrecipAmount"):
+            pt.pop(k, None)
+    parser = MetOfficeSiteSpecificParser(CFG, {})
+    parser._now = lambda: NOW
+    bare = parser.parse(FetchResult(raw=json.dumps(docs).encode()))[0]["payload"]
+    assert all(set(x) == {"start", "temp", "unit", "short", "wind", "is_daytime"} for x in bare["hourly"])
 
 
 def test_hourly_is_the_next_24_hours_in_celsius_and_mph():

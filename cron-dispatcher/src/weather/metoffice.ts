@@ -1,11 +1,14 @@
 /** Met Office DataHub Site Specific forecast -- port of scrapers/parsers/met_office_site_specific_v1.py (same payload and rounding).
  *  tests/fixtures/met_office_payload.json is produced by the Python builder from the same input; test/weather.test.ts requires equality. */
 import type { WeatherPayload } from './nws';
+import { num, pyRound, round1 } from './util';
 
 export const API = 'https://data.hub.api.metoffice.gov.uk/sitespecific/v0/point';
 const MAX_HOURLY = 24;
 const MAX_PERIODS = 14;
 const MS_TO_MPH = 2.2369363;
+// Optional payload fields (older stored payloads lack them, and the page copes): pop = chance of precipitation in %, feels = "feels like" in the
+// payload unit, gust = gust speed in mph, uv = UV index, precip_mm = rain/snow water in the hour.
 
 const WEATHER_TEXT: Record<number, string> = {
   0: 'Clear', 1: 'Sunny', 2: 'Partly cloudy', 3: 'Partly cloudy', 5: 'Mist', 6: 'Fog', 7: 'Cloudy', 8: 'Overcast',
@@ -16,15 +19,6 @@ const WEATHER_TEXT: Record<number, string> = {
 };
 const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-/** Python's round(): half to even. */
-const pyRound = (x: number): number => {
-  const f = Math.floor(x);
-  const diff = x - f;
-  if (diff < 0.5) return f;
-  if (diff > 0.5) return f + 1;
-  return f % 2 === 0 ? f : f + 1;
-};
 
 export const weatherText = (code: unknown): string => {
   if (code == null) return '—'; // Python: int(None) fails -> the dash
@@ -69,6 +63,19 @@ const parseTime = (t: string): number => {
 const iso = (ms: number): string => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
 const temp = (v: unknown): number | null => (v == null ? null : pyRound(Number(v)));
 
+/** Optional fields: a key is only present when the source has a number for it. */
+type Extras = { pop?: number; feels?: number; gust?: number; uv?: number; precip_mm?: number };
+const extras = (o: { pop?: unknown; feels?: unknown; gustMs?: unknown; uv?: unknown; precip?: unknown }): Extras => {
+  const out: Extras = {};
+  const pop = num(o.pop), feels = num(o.feels), gust = num(o.gustMs), uv = num(o.uv), precip = num(o.precip);
+  if (pop !== null) out.pop = pyRound(pop);
+  if (feels !== null) out.feels = pyRound(feels);
+  if (gust !== null) out.gust = pyRound(gust * MS_TO_MPH);
+  if (uv !== null) out.uv = pyRound(uv);
+  if (precip !== null) out.precip_mm = round1(precip);
+  return out;
+};
+
 /** Offset (ms) of `tz` from UTC at an instant. */
 function tzOffsetMs(tz: string, atMs: number): number {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -104,6 +111,7 @@ export function buildPayload(hourlyDoc: Doc, dailyDoc: Doc, nowMs: number, lat: 
     hourly.push({
       start: iso(when), temp: temp(pt.screenTemperature), unit: 'C', short: weatherText(pt.significantWeatherCode),
       wind: windText(pt.windSpeed10m, pt.windDirectionFrom10m), is_daytime: isDaytime(when, lat, lon),
+      ...extras({ pop: pt.probOfPrecipitation, feels: pt.feelsLikeTemperature, gustMs: pt.windGustSpeed10m, uv: pt.uvIndex, precip: pt.totalPrecipAmount }),
     });
     if (hourly.length === MAX_HOURLY) break;
   }
@@ -123,15 +131,17 @@ export function buildPayload(hourlyDoc: Doc, dailyDoc: Doc, nowMs: number, lat: 
       periods.push({
         name: isToday ? 'Today' : weekday, start: iso(dayStart), temp: temp(pt.dayMaxScreenTemperature), unit: 'C',
         short: weatherText(pt.daySignificantWeatherCode), wind: windText(pt.midday10MWindSpeed, pt.midday10MWindDirection), is_daytime: true,
+        ...extras({ pop: pt.dayProbabilityOfPrecipitation, feels: pt.dayMaxFeelsLikeTemp, gustMs: pt.midday10MWindGust, uv: pt.maxUvIndex }),
       });
     }
     periods.push({
       name: isToday ? 'Tonight' : `${weekday} Night`, start: iso(nightStart), temp: temp(pt.nightMinScreenTemperature), unit: 'C',
       short: weatherText(pt.nightSignificantWeatherCode), wind: windText(pt.midnight10MWindSpeed, pt.midnight10MWindDirection), is_daytime: false,
+      ...extras({ pop: pt.nightProbabilityOfPrecipitation, feels: pt.nightMinFeelsLikeTemp, gustMs: pt.midnight10MWindGust }),
     });
     if (periods.length >= MAX_PERIODS) break;
   }
-  return { periods: periods.slice(0, MAX_PERIODS), hourly, issued: runH ?? runD, source: 'Met Office' };
+  return { periods: periods.slice(0, MAX_PERIODS), hourly, issued: runH ?? runD, source: 'Met Office', fetched_at: iso(nowMs) };
 }
 
 /** Waits between retries of a failed Met Office request (ms). Met Office answered HTTP 500 to the hourly request at 10:00 and 12:00 UTC on
