@@ -439,6 +439,7 @@ export function buildMeetings(
       notes?.push({ dropped: 1, kept: 0, why: `notice of quorum ${x.v.ymd} ${x.v.bodyLabel}: a real meeting of the same organ and day exists` });
     } else {
       x.v.quorumNotice = true;
+      x.v.agendaUrl = null; // the file behind a notice of quorum is the notice, not an agenda
       x.v.items = [];
       x.v.topics = [];
     }

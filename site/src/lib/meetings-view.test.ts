@@ -178,9 +178,10 @@ describe('buildMeetings: dedup', () => {
     expect(notes[0].why).toMatch(/notice of quorum 2026-09-08/);
   });
   it('shows a notice of quorum as the meeting when nothing real replaces it: Brookings City Council on 9 Nov', () => {
-    const q = leg(3, 'City Council', '2026-11-09', '12:00 PM', { agenda_text: QUORUM });
+    const q = leg(3, 'City Council', '2026-11-09', '12:00 PM', { agenda_text: QUORUM, EventAgendaFile: 'https://x.test/notice.pdf' });
     const out = buildMeetings([q], TZ, false);
     expect(out).toHaveLength(1);
+    expect(out[0].agendaUrl).toBeNull();
     expect(out[0]).toMatchObject({ id: 3, bodyLabel: 'City Council', ymd: '2026-11-09', dateLabel: 'Mon, Nov 9', quorumNotice: true, items: [] });
     expect(agendaNote(out[0])).toBe('Agenda not yet published');
     expect(canCalendar(out[0])).toBe(false);

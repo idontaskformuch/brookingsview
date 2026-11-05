@@ -1,7 +1,7 @@
 ---
 /** One upcoming meeting, straight from the meetings table: organ (and kind of meeting), when, where, the first agenda titles verbatim, links. No
  *  generated prose. `bare` is the body of the "Next up" block, whose organ, date and place the hero above already shows. A button shows only when
- *  its link exists; a meeting without an agenda link of its own gets the town's public agenda page (config), a closed session gets neither. */
+ *  its link exists; a meeting with agenda lines but no link of its own gets the town's public agenda page (config), a closed session gets neither. */
 import Card from '../ui/Card.astro';
 import Pill from '../ui/Pill.astro';
 import { storyHref } from '../../lib/content-slugs';
@@ -24,7 +24,8 @@ const days = daysBetween(todayYmd, m.ymd);
 const isPdf = !!m.agendaUrl && /\.pdf(\?|$)/i.test(m.agendaUrl);
 const endMs = m.startMs != null ? m.startMs + 3 * 3_600_000 : null;
 const note = agendaNote(m);
-const portalLink = !m.agendaUrl && !m.closed ? portal : null;
+// Only where there is an agenda to read but no link of its own to it; a meeting with nothing published says so instead of pointing at a page that has nothing either.
+const portalLink = !m.agendaUrl && !m.closed && m.items.length > 0 ? portal : null;
 ---
 <article class="mtg" data-organ={m.chipLabel} data-mtg-unknown={m.unknownOrgan ? m.bodyLabel : undefined} data-ymd={bare ? undefined : m.ymd} data-end={bare ? undefined : (endMs ?? undefined)}>
   <Card cat="civic">
