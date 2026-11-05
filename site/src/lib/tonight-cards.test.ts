@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   badgesFor, timeState, isStartingSoon, walkMinutes, pairNights, regionOf, unmappedAreas, chipPlan, countByRegion, matchesArea, surprisePick, surpriseCandidates,
-  nextUp, untilLabel, bucketOf, bucketLabel, cityLabel, cityScope, scopeLine, type SurpriseCard, type LatePlace,
+  nextUp, untilLabel, bucketOf, bucketLabel, heroFor, dayView, cityLabel, cityScope, scopeLine, type SurpriseCard, type LatePlace,
 } from './tonight-cards';
 import { groupForTicketmaster, groupLabel, cleanCity, type EveningEntry } from './evening-items';
 import { hasEnded } from './local-day';
@@ -290,5 +290,60 @@ describe('city of an own event from the venue registry', () => {
     expect(ownVenueCity(story('Somewhere Else'), facilities)).toBeNull();
     expect(ownVenueCity(story(null), facilities)).toBeNull();
     expect(ownVenueCity({ sourceKind: 'sdsu' } as unknown as FeedItem, facilities)).toBeNull();
+  });
+});
+
+describe('empty evening (owner 2026-11-05)', () => {
+  const world = { events: 0, late: 0, tomorrow: 0, word: 'tonight' };
+  it('never says "0 things", whatever the counts', () => {
+    for (const events of [0, 1, 2, 9]) for (const late of [0, 1, 4]) for (const tomorrow of [0, 1, 7]) {
+      const h = heroFor({ events, late, tomorrow, word: 'tonight' });
+      expect(`${h.count ?? ''} ${h.label ?? ''} ${h.text ?? ''}`).not.toMatch(/\b0 things?\b/);
+    }
+  });
+  it('events left: the count, singular for one', () => {
+    expect(heroFor({ ...world, events: 5 })).toMatchObject({ kind: 'count', count: 5, label: 'things on tonight' });
+    expect(heroFor({ ...world, events: 1 }).label).toBe('thing on tonight');
+  });
+  it('nothing left but Open late places: says so and counts them, no tomorrow link', () => {
+    expect(heroFor({ ...world, late: 3, tomorrow: 8 })).toEqual({ kind: 'empty', text: 'Nothing else scheduled tonight · 3 places open late', tomorrow: null });
+    expect(heroFor({ ...world, late: 1 }).text).toBe('Nothing else scheduled tonight · 1 place open late');
+  });
+  it('nothing at all: "Nothing else on tonight", and tomorrow when there is something there', () => {
+    expect(heroFor({ ...world, tomorrow: 4 })).toEqual({ kind: 'empty', text: 'Nothing else on tonight', tomorrow: 'Tomorrow: 4 things' });
+    expect(heroFor({ ...world, tomorrow: 1 }).tomorrow).toBe('Tomorrow: 1 thing');
+    expect(heroFor(world).tomorrow).toBeNull();
+  });
+  it('the evening heading and event rows hide when nothing is left; Open late alone keeps its row', () => {
+    expect(dayView({ events: 2, late: 0 })).toBe('full');
+    expect(dayView({ events: 0, late: 2 })).toBe('late-only');
+    expect(dayView({ events: 0, late: 0 })).toBe('hidden');
+  });
+  it('as the last event passes the same rule flips (what the browser does every minute)', () => {
+    const tz = 'America/Chicago';
+    const evts = [{ start: '2026-11-05T00:30:00.000Z', end: null }, { start: '2026-11-05T01:30:00.000Z', end: null }]; // 6:30pm and 7:30pm CST
+    const lateRows = [{ start: '2026-11-05T05:00:00.000Z', end: '2026-11-05T08:00:00.000Z' }];
+    const at = (iso: string) => {
+      const t = new Date(iso);
+      const events = evts.filter((e) => !hasEnded(e, t, tz)).length;
+      const late = lateRows.filter((e) => !hasEnded(e, t, tz)).length;
+      return { events, late, view: dayView({ events, late }), hero: heroFor({ events, late, tomorrow: 3, word: 'tonight' }) };
+    };
+    expect(at('2026-11-05T01:00:00Z').hero.kind).toBe('count');
+    expect(at('2026-11-05T01:00:00Z').events).toBe(2);
+    const after = at('2026-11-05T05:00:00Z'); // 11pm CST: both events over (start + 3 h), Open late still to come
+    expect(after.events).toBe(0);
+    expect(after.view).toBe('late-only');
+    expect(after.hero.text).toMatch(/1 place open late/);
+    const none = at('2026-11-05T08:30:00Z'); // Open late over too
+    expect(none.view).toBe('hidden');
+    expect(none.hero).toEqual({ kind: 'empty', text: 'Nothing else on tonight', tomorrow: 'Tomorrow: 3 things' });
+  });
+  it('the browser script and the page both use the shared rules (no second copy of the wording)', () => {
+    const client = readFileSync(new URL('./tonight-cards-client.ts', import.meta.url), 'utf8');
+    const page = readFileSync(new URL('../pages/tonight.astro', import.meta.url), 'utf8');
+    expect(client).toMatch(/heroFor\(/); expect(client).toMatch(/dayView\(/);
+    expect(page).toMatch(/heroFor\(/); expect(page).toMatch(/dayView\(/);
+    expect(client).not.toMatch(/things on \$\{word\}/);
   });
 });

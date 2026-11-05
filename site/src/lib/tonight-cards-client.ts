@@ -7,7 +7,7 @@ import { sectionState } from './evening-page';
 import { showTimeGb } from './whats-on-dates';
 import {
   timeState, isStartingSoon, matchesArea, nextUp, untilLabel, surprisePick, surpriseCandidates, chipPlan, countByRegion, SOON_MAX_CARDS,
-  scopeLine, type SurpriseCard, type Bucket,
+  scopeLine, dayView, heroFor, type SurpriseCard, type Bucket,
 } from './tonight-cards';
 
 const $$ = <T extends HTMLElement = HTMLElement>(root: ParentNode, sel: string) => Array.from(root.querySelectorAll<T>(sel));
@@ -64,6 +64,7 @@ export function initTonightCards(doc: Document): void {
       card.classList.toggle('is-soon', s.kind === 'soon');
     });
     applyFilter();
+    renderDayViews();
     renderSoon(now);
     renderHeader(now);
     renderChips(now);
@@ -124,13 +125,42 @@ export function initTonightCards(doc: Document): void {
     box.hidden = shown.length === 0;
   }
 
+  /** What is still to come in an evening: events and Open late places that have not ended, whatever the area filter says. */
+  const toCome = (sec: HTMLElement) => ({
+    events: $$(sec, '[data-tc-rows] [data-card]:not([data-late])').filter((c) => c.dataset.over !== '1').length,
+    late: $$(sec, '[data-tc-rows] [data-card][data-late]').filter((c) => c.dataset.over !== '1').length,
+  });
+
+  /** An evening with nothing left shows no heading and no empty rows; with only Open late places left it shows just that row. The section is not
+   *  `hidden` (that is the clock's job: it decides which evening is "first"), so the header can still speak for it. */
+  function renderDayViews(): void {
+    sections().forEach((sec) => { sec.dataset.tcView = dayView(toCome(sec)); });
+  }
+
   function renderHeader(now: Date): void {
     const live = liveCards(now).filter((c) => matchesArea(c.area, null));
     const count = doc.querySelector<HTMLElement>('[data-tc-count]');
     const label = doc.querySelector<HTMLElement>('[data-tc-count-label]');
     const word = (visibleSections()[0]?.querySelector('[data-evening-heading]')?.textContent ?? 'Tonight').toLowerCase();
-    if (count) count.textContent = String(live.length);
-    if (label) label.textContent = `${live.length === 1 ? 'thing' : 'things'} on ${word}`;
+    const first = visibleSections()[0];
+    const second = visibleSections()[1];
+    const hero = heroFor({
+      events: live.length, late: first ? toCome(first).late : 0, tomorrow: second ? toCome(second).events : 0, word,
+    });
+    const countBox = doc.querySelector<HTMLElement>('[data-tc-count-box]');
+    const emptyBox = doc.querySelector<HTMLElement>('[data-tc-empty]');
+    if (countBox) countBox.hidden = hero.kind !== 'count';
+    if (count) count.textContent = String(hero.count ?? 0);
+    if (label) label.textContent = hero.label ?? '';
+    if (emptyBox) {
+      emptyBox.hidden = hero.kind !== 'empty';
+      const text = emptyBox.querySelector<HTMLElement>('[data-tc-empty-text]');
+      const link = emptyBox.querySelector<HTMLAnchorElement>('[data-tc-tomorrow]');
+      if (text) text.textContent = hero.text ?? '';
+      const sep = emptyBox.querySelector<HTMLElement>('[data-tc-empty-sep]');
+      if (sep) sep.hidden = !hero.tomorrow;
+      if (link) { link.hidden = !hero.tomorrow; link.textContent = hero.tomorrow ?? ''; link.href = `#${second?.querySelector('h2')?.id ?? 'tn-tomorrow-h'}`; }
+    }
     const scope = doc.querySelector<HTMLElement>('[data-tc-scope]');
     if (scope) {
       const counts = { home: 0, near: 0, unknown: 0 };

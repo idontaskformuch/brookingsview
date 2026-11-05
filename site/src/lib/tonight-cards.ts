@@ -197,6 +197,32 @@ export function nextUp<T extends { start: string }>(cards: T[], now: Date): T | 
   return future[0] ?? null;
 }
 
+/** What an evening's section shows, from what is still to come in it: everything; only the Open late row (the heading and event rows would be
+ *  empty); or nothing. Counted on what has not ended, whatever the area filter says. */
+export type DayView = 'full' | 'late-only' | 'hidden';
+export function dayView(counts: { events: number; late: number }): DayView {
+  if (counts.events > 0) return 'full';
+  return counts.late > 0 ? 'late-only' : 'hidden';
+}
+
+export interface Hero {
+  kind: 'count' | 'empty';
+  /** kind 'count': the big number and the words after it. */
+  count?: number;
+  label?: string;
+  /** kind 'empty': the line, and the link to tomorrow night when there is something to point at. */
+  text?: string;
+  tomorrow?: string | null;
+}
+
+/** The header of /tonight. Never "0 things": with no event left it says so, and counts the Open late places still to come, or points at tomorrow. */
+export function heroFor(o: { events: number; late: number; tomorrow: number; word: string }): Hero {
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  if (o.events > 0) return { kind: 'count', count: o.events, label: `${o.events === 1 ? 'thing' : 'things'} on ${o.word}` };
+  if (o.late > 0) return { kind: 'empty', text: `Nothing else scheduled ${o.word} · ${plural(o.late, 'place', 'places')} open late`, tomorrow: null };
+  return { kind: 'empty', text: `Nothing else on ${o.word}`, tomorrow: o.tomorrow > 0 ? `Tomorrow: ${plural(o.tomorrow, 'thing', 'things')}` : null };
+}
+
 /** "in 12 min" / "in 1 h 5 min" for the header. */
 export function untilLabel(startIso: string, now: Date): string {
   const min = Math.max(1, Math.ceil((new Date(startIso).getTime() - now.getTime()) / 60_000));

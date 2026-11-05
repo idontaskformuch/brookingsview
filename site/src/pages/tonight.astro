@@ -24,7 +24,7 @@ import { buildEveningSections, eveningEntries } from '../lib/evening-page';
 import TonightCard from '../components/tonight/TonightCard.astro';
 import TonightRows from '../components/tonight/TonightRows.astro';
 import TonightStyles from '../components/tonight/TonightStyles.astro';
-import { chipPlan, countByRegion, cityScope, pairNights, regionOf, scopeLine, unmappedAreas, SOON_MAX_CARDS, type CardTown } from '../lib/tonight-cards';
+import { chipPlan, countByRegion, cityScope, dayView, heroFor, pairNights, regionOf, scopeLine, unmappedAreas, SOON_MAX_CARDS, type CardTown } from '../lib/tonight-cards';
 import { OPEN_LATE_MAX_ROWS } from '../lib/osm-open-late';
 import TonightChips from '../components/tonight/TonightChips.astro';
 import { showTimeGb } from '../lib/whats-on-dates';
@@ -32,7 +32,7 @@ import { placesFromSnapshot, openLateRows, openLateCounts, decorateOpenLate } fr
 import { areasFor, withAreas } from '../lib/areas';
 import { gettingHomeFor } from '../lib/getting-home';
 import { buildSummary, openAfterOneCount, lastSubwayTime } from '../lib/evening-summary';
-import { localDayNumber, localHourOf } from '../lib/local-day';
+import { hasEnded, localDayNumber, localHourOf } from '../lib/local-day';
 import { EVENING_LAST_START_HOUR } from '../lib/evening-threshold';
 import { forecastLine } from '../lib/weather-format';
 import { resolvePageMeta } from '../lib/page-meta';
@@ -87,6 +87,10 @@ const town: CardTown = { country: siteConfig.country, homeCity: siteConfig.cityN
 // "12 in Broomfield · 31 nearby": by the source's own venue city; events with no stated city are in neither count
 const scopeCounts = { home: 0, near: 0, unknown: 0 };
 if (town.cityLabels) for (const e of tonightEvents) scopeCounts[cityScope(e.venueCity, town.homeCity)]++;
+// what is still to come tonight / tomorrow night at build time (the browser recounts as events pass): drives the header and which sections show
+const liveEvents = (day: number) => (eveningOf.get(day) ?? []).filter((e) => !hasEnded({ start: e.start, end: e.end }, now, tz)).length;
+const liveLate = (day: number) => (lateBySection.get(day) ?? []).filter((p) => !hasEnded({ start: p.start, end: p.end }, now, tz)).length;
+const hero = heroFor({ events: liveEvents(tonight.day), late: liveLate(tonight.day), tomorrow: sections[1] ? (eveningOf.get(sections[1].day) ?? []).length : 0, word: 'tonight' });
 const scopeText = town.cityLabels ? scopeLine(scopeCounts, town.homeCity) : null;
 const regionOrder = Object.keys(regions);
 const tonightLateCards = (lateBySection.get(tonight.day) ?? []).slice(0, OPEN_LATE_MAX_ROWS);
@@ -129,7 +133,8 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
     <div class="tc" data-tc data-tz={tz}>
       <TonightStyles />
       <section class="tc-hero" aria-label="Tonight at a glance">
-        <p class="tc-count"><span class="tc-big" data-tc-count>{tonightEvents.length}</span> <span class="tc-count-label" data-tc-count-label>{tonightEvents.length === 1 ? 'thing' : 'things'} on tonight</span></p>
+        <p class="tc-count" data-tc-count-box hidden={hero.kind === 'empty' ? true : undefined}><span class="tc-big" data-tc-count>{hero.count ?? 0}</span> <span class="tc-count-label" data-tc-count-label>{hero.label ?? 'things on tonight'}</span></p>
+        <p class="tc-empty" data-tc-empty hidden={hero.kind === 'empty' ? undefined : true}><span data-tc-empty-text>{hero.text}</span><span data-tc-empty-sep hidden={hero.tomorrow ? undefined : true}> · </span><a href="#tn-tomorrow-h" data-tc-tomorrow hidden={hero.tomorrow ? undefined : true}>{hero.tomorrow}</a></p>
         {town.cityLabels && <p class="tc-scope" data-tc-scope data-home={town.homeCity} hidden={scopeText ? undefined : true}>{scopeText}</p>}
         <p class="tc-next" data-tc-next hidden></p>
       </section>
@@ -156,7 +161,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
 
       <div data-ev-page>
         {sections.map((s) => (
-          <section class="tc-day" aria-labelledby={`tn-${s.kind}-h`} data-evening-day={s.day} data-tz={tz} data-built-kind={s.kind}
+          <section class="tc-day" aria-labelledby={`tn-${s.kind}-h`} data-evening-day={s.day} data-tz={tz} data-built-kind={s.kind} data-tc-view={dayView({ events: liveEvents(s.day), late: liveLate(s.day) })}
             hidden={s.count === 0 && lateBySection.get(s.day)!.length === 0 && s.kind === 'tomorrow' ? true : undefined}>
             <h2 id={`tn-${s.kind}-h`} class="tc-day-h"><span data-evening-heading>{s.kind === 'tonight' ? 'Tonight' : 'Tomorrow night'}</span> <span class="ev-date">{dayLabelOf(s.day)}</span></h2>
             {s.kind === 'tonight' && pairs.length > 0 && (
