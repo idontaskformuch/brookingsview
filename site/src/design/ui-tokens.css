@@ -1,0 +1,89 @@
+/* Tokens for the ui/ component library (.claude/standards.md, Del A).
+   Palette (--paper, --ink, --accent, --rule ...) stays in BaseLayout.astro;
+   this file adds what the library needs on top: type levels, 8 px spacing,
+   surface tones, category colors (max 6, muted), temperature scale, motion.
+   Light and dark are written twice on purpose, as in BaseLayout (the dark
+   media block and the forced block must match; lib/ui-tokens.test.ts checks
+   that and AA contrast for every category color). */
+:root {
+  /* Three type levels: hero, primary, meta. Sans + tabular-nums for data. */
+  --ui-hero: clamp(2.75rem, 12vw, 4.5rem);
+  --ui-primary: 1.0625rem;
+  --ui-meta: 0.8125rem;
+  --ui-hero-weight: 600;
+  --ui-primary-weight: 600;
+  --ui-meta-weight: 500;
+
+  /* 8 px grid; more air between groups than between rows. */
+  --ui-1: 0.25rem;
+  --ui-2: 0.5rem;
+  --ui-3: 1rem;
+  --ui-4: 1.5rem;
+  --ui-5: 2rem;
+  --ui-6: 3rem;
+  --ui-row-gap: var(--ui-2);
+  --ui-group-gap: var(--ui-5);
+
+  --ui-radius: 0.5rem;
+  --ui-hairline: 1px solid var(--rule);
+
+  /* Raised surfaces instead of bordered boxes. */
+  --ui-surface-1: var(--paper-raised);
+  --ui-surface-2: color-mix(in srgb, var(--ink) 4%, var(--paper));
+
+  /* Category colors (text/edge AA on --paper and --surface). */
+  --cat-civic: #285a8f;
+  --cat-music: #7b3f93;
+  --cat-family: #0e6a63;
+  --cat-sports: #2f6b2c;
+  --cat-food: #9b3a48;
+  --cat-arts: #7a5a12;
+
+  /* Temperature scale, cold to hot (fills and bars, not text). */
+  --temp-1: #3b6fb6;
+  --temp-2: #4a9bb5;
+  --temp-3: #7fb069;
+  --temp-4: #e0b43a;
+  --temp-5: #e0782f;
+  --temp-6: #c23b22;
+
+  --ui-ease: cubic-bezier(0.2, 0, 0, 1);
+  --ui-dur: 160ms;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --cat-civic: #8db8e6;
+    --cat-music: #c79adb;
+    --cat-family: #5fc4b8;
+    --cat-sports: #8fcb88;
+    --cat-food: #e59aa5;
+    --cat-arts: #d9b866;
+    --temp-1: #6a9be0;
+    --temp-2: #6dbad2;
+    --temp-3: #98c985;
+    --temp-4: #e8c35a;
+    --temp-5: #f0924e;
+    --temp-6: #ee6a52;
+  }
+}
+:root[data-theme="dark"] {
+  --cat-civic: #8db8e6;
+  --cat-music: #c79adb;
+  --cat-family: #5fc4b8;
+  --cat-sports: #8fcb88;
+  --cat-food: #e59aa5;
+  --cat-arts: #d9b866;
+  --temp-1: #6a9be0;
+  --temp-2: #6dbad2;
+  --temp-3: #98c985;
+  --temp-4: #e8c35a;
+  --temp-5: #f0924e;
+  --temp-6: #ee6a52;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --ui-dur: 0ms; }
+}
+
+/* Data and meta text: sans with tabular figures (measured: Bricolage Grotesque
+   has tnum; its default figures are proportional). */
+.ui-num { font-family: var(--font-ui); font-variant-numeric: tabular-nums; }

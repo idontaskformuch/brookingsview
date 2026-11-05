@@ -26,6 +26,7 @@ import SectionNav from '../components/SectionNav.astro';
 import { runBuildTimeChecks } from '../lib/build-checks';
 import { assertAccentContrast } from '../lib/accent-contrast';
 import { assertStatusContrast } from '../lib/status-contrast';
+import '../design/ui-tokens.css';
 import { toDarkAccent } from '../lib/dark-color';
 import { buildOrganizationJsonLd } from '../lib/article-jsonld';
 import CookieBanner from '../components/CookieBanner.astro';
@@ -208,7 +209,7 @@ const footerGroups = FOOTER_GROUPS
     preconnecting to Ticketmaster's CDN no longer helps LCP at all. */}
 <link
   rel="stylesheet"
-  href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+  href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&display=swap"
 />
 
 {/* Local Accent Identity: one shared, unhashed static asset (astro.config.mjs
@@ -386,7 +387,9 @@ const footerGroups = FOOTER_GROUPS
 
   --font-head: 'Newsreader', Georgia, 'Times New Roman', serif;
   --font-ui: 'Bricolage Grotesque', system-ui, sans-serif;
-  --font-data: 'IBM Plex Mono', ui-monospace, monospace;
+  /* Data/meta: sans with tabular figures, not mono (standards.md #8). Kept as a
+     name so existing .data / .sign__inner rules follow without edits. */
+  --font-data: var(--font-ui);
 
   --measure: 74rem;
   --measure-narrow: 40rem;
