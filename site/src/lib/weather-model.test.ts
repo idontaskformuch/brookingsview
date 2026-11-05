@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildWeatherView, conditionOf, iconFor, rainInsight, uvBand, weekInsight, NEAR_HOURS, WET_POP, type WeatherEnv, type WxInput, type WxPoint } from './weather-model';
+import { buildWeatherView, conditionOf, iconFor, rainInsight, uvBand, weekInsight, yesterdayHighFrom, NEAR_HOURS, WET_POP, type WeatherEnv, type WxInput, type WxPoint } from './weather-model';
 
 const TZ = 'America/Denver';
 // Thursday 5 Nov 2026, 14:30 MST (21:30 UTC)
@@ -168,7 +168,8 @@ describe('rain timing insight', () => {
   });
   it('is part of the view only with an hourly forecast that covers now', () => {
     const v = buildWeatherView({ periods: WEEK, hourly: hourly(H0, 24, (i) => ({ pop: i < 3 ? 5 : 90, short: 'Rain' })) }, env());
-    expect(v.insights[0]).toEqual({ id: 'rain', icon: 'rain', text: 'Dry until 5pm' });
+    expect(v.insights[0]).toEqual({ id: 'rain', icon: 'sun', text: 'Dry until 5pm' });
+    expect(buildWeatherView({ periods: WEEK, hourly: hourly(H0, 24, () => ({ pop: 90, short: 'Rain' })) }, env()).insights[0].icon).toBe('rain');
     expect(buildWeatherView({ periods: WEEK, hourly: [] }, env()).insights.map((i) => i.id)).toEqual(['tomorrow']);
   });
 });
@@ -227,6 +228,21 @@ describe('same weather several days in a row', () => {
   it('is read from the day rows of the view', () => {
     const w = buildWeatherView({ periods: WEEK, hourly: [] }, env());
     expect(w.weekInsight).toBe('Cloudy all week');
+  });
+});
+
+describe('yesterdayHighFrom', () => {
+  const snap = (rows: Parameters<typeof periods>[0]) => periods(rows);
+  it('takes the daytime period of yesterday’s local date from the stored forecasts', () => {
+    expect(yesterdayHighFrom([snap([{ d: 4, hi: 47, lo: 30 }, { d: 5, hi: 50, lo: 31 }])], TZ, NOW)).toBe(47);
+  });
+  it('looks in the next stored forecast when the first does not reach yesterday’s day period', () => {
+    expect(yesterdayHighFrom([snap([{ d: 4, lo: 30 }, { d: 5, hi: 50, lo: 31 }]), snap([{ d: 4, hi: 44, lo: 30 }])], TZ, NOW)).toBe(44);
+  });
+  it('null when none reaches it, and a missing temperature is not a high', () => {
+    expect(yesterdayHighFrom([snap([{ d: 5, hi: 50, lo: 31 }])], TZ, NOW)).toBeNull();
+    expect(yesterdayHighFrom([], TZ, NOW)).toBeNull();
+    expect(yesterdayHighFrom([[{ start: '2026-11-04T06:00:00-07:00', temp: null, short: null, wind: null, is_daytime: true }]], TZ, NOW)).toBeNull();
   });
 });
 

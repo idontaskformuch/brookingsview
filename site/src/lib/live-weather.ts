@@ -1,32 +1,22 @@
 /** Browser side of /api/weather (server/weather.ts). The forecast built into the page is the fallback; the cron-dispatcher Worker writes a
- *  fresh one every hour. When the API answers, the sign strip and (on /weather/) the hourly strip and the day list are rewritten with it.
+ *  fresh one every hour. When the API answers, the sign strip and (on /weather/) the whole answer block (hero, insights, hourly strip, week
+ *  ahead: lib/weather-html.ts, the same markup the build wrote) are rewritten with it.
  *  CityStatus' Weather and Worker Pulse rows and the heat box (HeatAdvisoryWidget) follow too, redoing computeHeatTier with the newer
  *  temperature.
  *  A failed request, an empty answer or a page without these elements changes nothing. Lives here, not inline, so a test can run it
  *  in a real browser (live-weather.test.ts). All text is set with textContent. */
 import { computeHeatTier, heatTierLine } from './heat-advisory';
-import { currentPeriods, forecastLine, hourLabel, relabelPeriod, signWeather, signWeatherText, statusWeatherText, upcomingHours, type FPeriod } from './weather-format';
+import { forecastLine, signWeather, signWeatherText, statusWeatherText, type FPeriod } from './weather-format';
+import { viewFor, weatherRegionHtml, type WeatherConfig } from './weather-html';
+import type { WxPoint } from './weather-model';
 
 export interface WeatherAnswer {
   periods?: FPeriod[];
   hourly?: FPeriod[];
+  fetched_at?: string | null;
 }
 
 const t = (el: Element | null, text: string): void => { if (el) el.textContent = text; };
-const temp = (p: FPeriod): string => `${p.temp !== null && p.temp !== undefined ? Math.round(p.temp) : '—'}°${p.unit ?? ''}`;
-
-/** Clone the first server-rendered node (it carries the page's scoped-style attribute), then fill it. */
-function rebuild<T extends FPeriod>(list: Element, items: T[], fill: (node: HTMLElement, item: T) => void): void {
-  const proto = list.firstElementChild as HTMLElement | null;
-  if (!proto || items.length === 0) return;
-  const nodes = items.map((item) => {
-    const node = proto.cloneNode(true) as HTMLElement;
-    fill(node, item);
-    return node;
-  });
-  list.replaceChildren(...nodes);
-}
-
 const alertsOf = (el: HTMLElement): string[] => {
   try { const v = JSON.parse(el.dataset.heatAlerts || '[]'); return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []; } catch { return []; }
 };
@@ -71,29 +61,29 @@ export function applyWeather(doc: Document, w: WeatherAnswer, tz: string, countr
   const line = forecastLine(periods, tz, now);
   if (todayEl && line) { todayEl.textContent = line; todayEl.hidden = false; }
 
-  const hourlyEl = doc.querySelector('[data-weather-hourly]');
-  const hours = upcomingHours(w.hourly ?? [], now);
-  if (hourlyEl) {
-    rebuild(hourlyEl, hours, (node, h) => {
-      t(node.querySelector('.hour__time'), hourLabel(h.start as string, tz, country));
-      t(node.querySelector('.hour__temp'), temp(h));
-      t(node.querySelector('.hour__short'), h.short ?? '');
-    });
-  }
+  const regionEl = doc.querySelector<HTMLElement>('[data-weather-region]');
+  if (regionEl) redrawRegion(doc, regionEl, w, now);
+}
 
-  const listEl = doc.querySelector('[data-weather-forecast]');
-  if (listEl) {
-    rebuild(listEl, currentPeriods(periods, tz, now), (node, p) => {
-      t(node.querySelector('.forecast__name'), relabelPeriod(p, tz, now));
-      t(node.querySelector('.forecast__temp'), temp(p));
-      t(node.querySelector('.forecast__short'), p.short ?? '');
-      t(node.querySelector('.forecast__wind'), p.wind ?? '');
-    });
-  }
+/** Redraw the answer block of /weather/ from the newer forecast. The config (unit, coordinates, zone) was embedded by the page. Open day
+ *  rows stay open; an answer that gives the same markup as the one on the page changes nothing. */
+function redrawRegion(doc: Document, region: HTMLElement, w: WeatherAnswer, now: Date): void {
+  let cfg: WeatherConfig;
+  try { cfg = JSON.parse(doc.querySelector('[data-weather-config]')?.textContent || ''); } catch { return; }
+  if (!cfg || !cfg.tz) return;
+  const view = viewFor({ periods: (w.periods ?? []) as WxPoint[], hourly: (w.hourly ?? []) as WxPoint[], fetchedAt: w.fetched_at ?? null }, cfg, now);
+  const html = weatherRegionHtml(view);
+  if (!html || region.dataset.markup === html) return;
+  const open = [...region.querySelectorAll('details')].map((d) => d.open);
+  region.innerHTML = html;
+  region.dataset.markup = html;
+  region.dataset.fetchedAt = view.fetchedAt ?? '';
+  region.querySelectorAll('details').forEach((d, i) => { d.open = !!open[i]; });
+  if (view.updated) t(doc.querySelector('[data-wx-updated]'), view.updated);
 }
 
 export async function refreshLiveWeather(doc: Document, fetcher: typeof fetch = fetch, now: Date = new Date()): Promise<void> {
-  if (!doc.querySelector('[data-weather-sign], [data-weather-hourly], [data-weather-forecast], [data-weather-today], [data-status-module="weather"], [data-status-module="worker_pulse"], [data-heat-advisory]')) return;
+  if (!doc.querySelector('[data-weather-sign], [data-weather-region], [data-weather-today], [data-status-module="weather"], [data-status-module="worker_pulse"], [data-heat-advisory]')) return;
   const tz = doc.documentElement.dataset.timezone || 'America/Chicago';
   const country = doc.documentElement.lang === 'en-GB' ? 'gb' : 'us';
   let body: WeatherAnswer;

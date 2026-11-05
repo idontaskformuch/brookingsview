@@ -1959,6 +1959,31 @@ export async function getHourlyWeather(): Promise<HourlyWeatherPeriod[]> {
   return rows[0]?.payload?.hourly ?? [];
 }
 
+/** The latest stored forecast with what the weather page needs beyond periods/hourly: fetched_at (optional in older payloads) and the
+ *  daytime/night periods of the two snapshots before it, for "Warmer than yesterday". One query. */
+export interface WeatherSnapshot {
+  periods: WeatherPeriod[];
+  hourly: HourlyWeatherPeriod[];
+  fetchedAt: string | null;
+  earlierPeriods: WeatherPeriod[][];
+}
+export async function getWeatherSnapshot(): Promise<WeatherSnapshot> {
+  const rows = (await sql`
+    SELECT payload
+      FROM weather_snapshots
+     WHERE town_id = ${TOWN_ID}
+     ORDER BY observed_for DESC
+     LIMIT 3
+  `) as { payload: { periods?: WeatherPeriod[]; hourly?: HourlyWeatherPeriod[]; fetched_at?: string } | null }[];
+  const latest = rows[0]?.payload;
+  return {
+    periods: latest?.periods ?? [],
+    hourly: latest?.hourly ?? [],
+    fetchedAt: typeof latest?.fetched_at === 'string' ? latest.fetched_at : null,
+    earlierPeriods: rows.slice(1).map((r) => r.payload?.periods ?? []),
+  };
+}
+
 export async function getAgPrices(): Promise<AgPrice[]> {
   return (await sql`
     SELECT DISTINCT ON (commodity) commodity, price, unit, as_of

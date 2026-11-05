@@ -100,3 +100,9 @@ export function weekendForecastLine(periods: FPeriod[], tz: string, now: Date, d
   }).filter(Boolean);
   return parts.length ? `${parts.join('. ')}.` : '';
 }
+
+/** "7:12am" (gb) / "7:12 AM" (us): with minutes, for sunrise, sunset and "Updated". */
+export function clockLabel(d: Date, tz: string, country: string): string {
+  if (country === 'gb') return formatClockCompact(d, tz);
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: tz });
+}

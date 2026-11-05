@@ -1,0 +1,68 @@
+/* Styles of the ui components that are drawn from strings (lib/ui/ui-html.ts) so a page script can redraw them in the browser with the same look:
+   HeroStat, InsightLine, RangeBar, HourStrip, DayRows. Global, `ui-` prefixed. Tokens come from ui-tokens.css. */
+
+/* HeroStat */
+.ui-hero { font-family: var(--font-ui); }
+.ui-hero__label { margin: 0 0 var(--ui-1); font-size: var(--ui-meta); font-weight: var(--ui-meta-weight); color: var(--ink-soft); }
+.ui-hero__value { margin: 0; display: flex; align-items: baseline; gap: var(--ui-1) var(--ui-2); flex-wrap: wrap; font-size: var(--ui-hero); font-weight: var(--ui-hero-weight);
+  line-height: 0.95; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.ui-hero--accent .ui-hero__value { color: var(--accent); }
+.ui-hero__unit { font-size: 0.4em; font-weight: var(--ui-primary-weight); letter-spacing: 0; color: var(--ink-soft); }
+.ui-hero__icon { margin-left: auto; align-self: center; color: var(--accent); line-height: 0; }
+.ui-hero__sub { margin: var(--ui-2) 0 0; font-size: var(--ui-primary); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.ui-hero__meta { margin: var(--ui-1) 0 0; font-size: var(--ui-meta); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+
+/* InsightLine */
+.ui-insight { margin: 0; display: flex; align-items: baseline; gap: var(--ui-2); font-family: var(--font-ui); font-size: var(--ui-primary);
+  font-weight: var(--ui-primary-weight); color: var(--ink); font-variant-numeric: tabular-nums; }
+.ui-insight[hidden] { display: none; }
+.ui-insight .ui-icon { color: var(--accent); align-self: center; }
+
+/* RangeBar */
+.ui-range { display: flex; align-items: center; gap: var(--ui-2); font-family: var(--font-ui); font-size: var(--ui-meta); font-variant-numeric: tabular-nums; }
+.ui-range__lo { color: var(--ink-faint); min-width: 2.5ch; text-align: right; }
+.ui-range__hi { color: var(--ink); font-weight: var(--ui-primary-weight); min-width: 2.5ch; }
+.ui-range__track { position: relative; flex: 1; height: 6px; border-radius: 3px; background: var(--ui-surface-2); }
+.ui-range__fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.ui-range__now { position: absolute; top: -3px; width: 2px; height: 12px; margin-left: -1px; background: var(--ink); border-radius: 1px; }
+
+/* HourStrip: fixed row heights so the curve (an svg over the plot row) lines up with the columns. */
+.ui-hours { overflow-x: auto; font-family: var(--font-ui); font-variant-numeric: tabular-nums; border-radius: var(--ui-radius); background: var(--ui-surface-2); scrollbar-width: thin; }
+.ui-hours:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ui-hours__inner { position: relative; padding: var(--ui-2) 0; }
+.ui-hours__list { list-style: none; margin: 0; padding: 0; display: flex; }
+.ui-hr { flex: 0 0 56px; display: grid; grid-template-rows: 20px 28px 24px 44px auto auto; justify-items: center; align-items: center; text-align: center; }
+.ui-hr.is-current { background: var(--accent-tint); box-shadow: inset 0 3px 0 var(--accent); }
+.ui-hr__time { font-size: var(--ui-meta); color: var(--ink-soft); }
+.ui-hr__icon { line-height: 0; color: var(--ink-soft); }
+.ui-hr__temp { font-size: var(--ui-primary); font-weight: var(--ui-primary-weight); }
+.ui-hr__rain { align-self: end; width: 14px; height: 26px; display: flex; align-items: flex-end; }
+.ui-hr__bar { display: block; width: 100%; border-radius: 3px 3px 0 0; background: var(--ink-faint); opacity: 0.55; }
+.ui-hr__bar.is-wet { background: var(--accent); opacity: 1; }
+.ui-hr__pop { height: 16px; font-size: 0.6875rem; color: var(--ink-soft); }
+.ui-hours__curve { position: absolute; left: 0; top: calc(var(--ui-2) + 72px); pointer-events: none; }
+
+/* DayRows */
+.ui-weekdays { list-style: none; margin: 0; padding: 0; font-family: var(--font-ui); font-variant-numeric: tabular-nums; }
+.ui-wd { border-bottom: var(--ui-hairline); }
+.ui-wd.is-today { background: var(--accent-tint); box-shadow: inset 3px 0 0 var(--accent); }
+.ui-wd summary, .ui-wd__flat { display: grid; grid-template-columns: 3.25rem 1.5rem 1fr 3.25rem; align-items: center; gap: var(--ui-2); padding: var(--ui-3) var(--ui-2); min-height: 3rem; }
+.ui-wd summary { cursor: pointer; list-style: none; }
+.ui-wd summary::-webkit-details-marker { display: none; }
+.ui-wd summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ui-wd__name { font-size: var(--ui-primary); font-weight: var(--ui-primary-weight); }
+.ui-wd__icon { line-height: 0; color: var(--ink-soft); }
+.ui-wd__single { font-size: var(--ui-meta); color: var(--ink-soft); }
+.ui-wd__pop { display: inline-flex; align-items: center; justify-content: flex-end; gap: 2px; font-size: var(--ui-meta); color: var(--ink-soft); }
+.ui-wd__pop .ui-icon { color: var(--accent); }
+.ui-wd__more { margin: 0; padding: 0 var(--ui-2) var(--ui-3) calc(3.25rem + var(--ui-4)); display: grid; gap: var(--ui-1); font-size: var(--ui-meta); }
+.ui-wd__more > div { display: flex; gap: var(--ui-2); }
+.ui-wd__more dt { display: inline-flex; align-items: center; gap: var(--ui-1); min-width: 6rem; color: var(--ink-soft); }
+.ui-wd__more dd { margin: 0; color: var(--ink); }
+
+/* SectionHeader */
+.ui-sh { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--ui-3); margin: var(--ui-group-gap) 0 var(--ui-2); }
+.ui-sh__kicker { margin: 0 0 var(--ui-1); font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-soft); }
+.ui-sh__title { font-size: 1.25rem; }
+.ui-sh__all { flex: none; font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); padding: var(--ui-2) 0; }

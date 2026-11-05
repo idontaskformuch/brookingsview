@@ -48,12 +48,14 @@ describe.skipIf(!browser)('live weather in a real browser', { timeout: 30_000 },
     entryPoints: [new URL('./live-weather.ts', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')],
     bundle: true, format: 'iife', globalName: 'LW', write: false,
   }).outputFiles[0].text;
-  const html = `<span data-weather-sign>High&nbsp;40&deg;F&nbsp;old</span>
-    <div data-weather-hourly><div class="hour" data-astro-cid-x><p class="hour__time">old</p><p class="hour__temp">0</p><p class="hour__short">old</p></div></div>
-    <ul data-weather-forecast><li class="forecast__row" data-astro-cid-x><span class="forecast__name">old</span><span class="forecast__temp"></span><span class="forecast__short"></span><span class="forecast__wind"></span></li></ul>`;
+  const config = { unit: 'F', lat: 41.88, lon: -87.63, tz: 'America/Chicago', country: 'us', yesterday: null };
+  const html = `<span data-weather-sign>High&nbsp;40&deg;F&nbsp;old</span><span data-wx-updated>old</span>
+    <div data-weather-region><p class="ui-hero__label">old</p><details open><summary>kept open?</summary></details></div>
+    <script type="application/json" data-weather-config>${JSON.stringify(config)}</script>`;
   const answer = {
     periods: [p('2026-10-28T23:00:00Z', 41, false), p('2026-10-29T15:00:00Z', 55, true, { short: 'Sunny' })],
-    hourly: [p('2026-10-28T15:00:00Z', 9, true), p('2026-10-28T19:00:00Z', 44, true), p('2026-10-28T20:00:00Z', 45, true)],
+    hourly: [p('2026-10-28T15:00:00Z', 9, true), p('2026-10-28T18:00:00Z', 43, true), p('2026-10-28T19:00:00Z', 44, true), p('2026-10-28T20:00:00Z', 45, true)],
+    fetched_at: '2026-10-28T18:05:00Z',
   };
 
   async function run(respond: 'ok' | '500' | 'offline' | 'empty', page_html = html) {
@@ -72,28 +74,32 @@ describe.skipIf(!browser)('live weather in a real browser', { timeout: 30_000 },
       const q = (s: string) => Array.from(document.querySelectorAll(s)).map((e) => e.textContent);
       return {
         calls, sign: document.querySelector('[data-weather-sign]')?.textContent ?? null,
-        hours: q('.hour__time'), hourTemps: q('.hour__temp'), names: q('.forecast__name'), temps: q('.forecast__temp'),
-        cid: document.querySelectorAll('.hour[data-astro-cid-x]').length,
+        label: q('.ui-hero__label'), hero: q('.ui-hero__value > span:first-child'), hours: q('.ui-hr__time'), hourTemps: q('.ui-hr__temp'),
+        days: q('.ui-wd__name'), current: q('.ui-hr.is-current .ui-hr__time'), updated: q('[data-wx-updated]'), fetched: (document.querySelector('[data-weather-region]') as HTMLElement | null)?.dataset.fetchedAt ?? null,
       };
     }, [respond, answer, NOW.toISOString()] as const);
     await page.close();
     return out;
   }
 
-  it('rewrites the sign strip, the hourly strip and the day list from the answer', async () => {
+  it('rewrites the sign strip and the whole answer block (hero for this hour, hourly strip, day rows) from the answer', async () => {
     const r = await run('ok');
     expect(r.sign).toBe('High 55°F sunny');
-    expect(r.hours).toEqual(['2 PM', '3 PM']);
-    expect(r.hourTemps).toEqual(['44°F', '45°F']);
-    expect(r.names).toEqual(['Tonight', 'Tomorrow']);
-    expect(r.temps).toEqual(['41°F', '55°F']);
-    expect(r.cid).toBe(2); // clones keep the page's scoped-style attribute
+    expect(r.label).toEqual(['Forecast for 1 PM']);   // 13:30 in Chicago: the 18:00Z point covers now
+    expect(r.hero).toEqual(['43°']);
+    expect(r.hours).toEqual(['1 PM', '2 PM', '3 PM']);
+    expect(r.current).toEqual(['1 PM']);
+    expect(r.hourTemps).toEqual(['43°', '44°', '45°']);
+    expect(r.days).toEqual(['Tonight', 'Thu']);
+    expect(r.updated).toEqual(['1:05 PM']);
+    expect(r.fetched).toBe('2026-10-28T18:05:00Z');
   });
   it('a failed request, an offline browser or an empty answer leaves the built forecast alone', async () => {
     for (const r of ['500', 'offline', 'empty'] as const) {
       const out = await run(r);
       expect(out.sign, r).toBe('High 40°F old');
-      expect(out.hours, r).toEqual(['old']);
+      expect(out.label, r).toEqual(['old']);
+      expect(out.hours, r).toEqual([]);
     }
   });
   // Round 4 (2026-11-02): CityStatus' Weather/Worker Pulse rows and the heat box followed only the build's forecast.

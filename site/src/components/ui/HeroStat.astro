@@ -1,20 +1,10 @@
 ---
-/** The one dominant element of a view (principle 1): "62°", "in 26 min". 2-3x the size of anything near it. `sub` is the meta line under it. */
-/** `rootAttrs`/`valueAttrs`/`unitAttrs` are spread on the elements so a page's script can find and update them (data-* hooks, hidden). */
-interface Props { value: string | number; unit?: string; label?: string; sub?: string; tone?: 'ink' | 'accent'; rootAttrs?: Record<string, unknown>; valueAttrs?: Record<string, unknown>; unitAttrs?: Record<string, unknown> }
-const { value, unit, label, sub, tone = 'ink', rootAttrs = {}, valueAttrs = {}, unitAttrs = {} } = Astro.props;
+/** The one dominant element of a view (principle 1): "62°", "in 26 min". 2-3x the size of anything near it. `sub` is the meta line under it.
+ *  `rootAttrs`/`valueAttrs`/`unitAttrs` are spread on the elements so a page's script can find and update them (data-* hooks, hidden).
+ *  Markup is built by lib/ui/ui-html.ts (heroHtml) so a script can redraw it; styles: design/ui-components.css. */
+import { heroHtml, type HeroProps } from '../../lib/ui/ui-html';
+
+interface Props extends HeroProps {}
+const props = Astro.props;
 ---
-<div class:list={['ui-hero', `ui-hero--${tone}`]} {...rootAttrs}>
-  {label && <p class="ui-hero__label">{label}</p>}
-  <p class="ui-hero__value"><span {...valueAttrs}>{value}</span>{unit !== undefined && <span class="ui-hero__unit" {...unitAttrs}>{unit}</span>}</p>
-  {sub && <p class="ui-hero__sub">{sub}</p>}
-</div>
-<style>
-  .ui-hero { font-family: var(--font-ui); }
-  .ui-hero__label { margin: 0 0 var(--ui-1); font-size: var(--ui-meta); font-weight: var(--ui-meta-weight); color: var(--ink-soft); }
-  .ui-hero__value { margin: 0; display: flex; align-items: baseline; gap: var(--ui-1) var(--ui-2); flex-wrap: wrap; font-size: var(--ui-hero); font-weight: var(--ui-hero-weight);
-    line-height: 0.95; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-  .ui-hero--accent .ui-hero__value { color: var(--accent); }
-  .ui-hero__unit { font-size: 0.4em; font-weight: var(--ui-primary-weight); letter-spacing: 0; color: var(--ink-soft); }
-  .ui-hero__sub { margin: var(--ui-2) 0 0; font-size: var(--ui-primary); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-</style>
+<Fragment set:html={heroHtml(props)} />

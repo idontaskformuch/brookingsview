@@ -6,6 +6,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import HeroStat from '../components/ui/HeroStat.astro';
 import InsightLine from '../components/ui/InsightLine.astro';
 import RangeBar from '../components/ui/RangeBar.astro';
+import HourStrip from '../components/ui/HourStrip.astro';
+import DayRows from '../components/ui/DayRows.astro';
 import TimeStrip from '../components/ui/TimeStrip.astro';
 import Card from '../components/ui/Card.astro';
 import CompactRow from '../components/ui/CompactRow.astro';
@@ -65,6 +67,23 @@ const catLabel: Record<string, string> = { civic: 'Civic', music: 'Music', famil
       <p class="g__cap">Missing data draws nothing:</p>
       <RangeBar scaleMin={0} scaleMax={100} low={NaN} high={68} />
     </div>
+
+    <SectionHeader title="HourStrip" />
+    <HourStrip unit="F" hours={[
+      { time: '2 PM', temp: 62, icon: 'sun', short: 'Sunny', pop: 0, current: true }, { time: '3 PM', temp: 64, icon: 'cloudSun', short: 'Partly cloudy', pop: 10 },
+      { time: '4 PM', temp: 63, icon: 'cloud', short: 'Cloudy', pop: 30 }, { time: '5 PM', temp: 58, icon: 'rain', short: 'Rain', pop: 70 },
+      { time: '6 PM', temp: 54, icon: 'rain', short: 'Rain', pop: 85 }, { time: '7 PM', temp: 50, icon: 'moon', short: 'Clear', pop: 20 },
+      { time: '8 PM', temp: 47, icon: 'moon', short: 'Clear', pop: 0 }, { time: '9 PM', temp: 45, icon: 'cloudMoon', short: 'Partly cloudy', pop: 0 },
+    ]} />
+    <p class="g__cap">Chance-of-precipitation bars appear only when the forecast gives it; wet hours (50 % or more) use the accent.</p>
+
+    <SectionHeader title="DayRows" />
+    <DayRows unit="F" scale={{ min: 20, max: 80 }} days={[
+      { label: 'Today', fullLabel: 'Today', today: true, icon: 'sun', short: 'Sunny', high: 68, low: 41, pop: 20, details: [{ icon: 'wind', label: 'Wind', value: '8 mph NW' }, { label: 'Gusts', value: 'up to 21 mph' }, { label: 'UV index', value: '4 (moderate)' }, { icon: 'sunrise', label: 'Sunrise', value: '7:12 AM' }, { icon: 'sunset', label: 'Sunset', value: '4:58 PM' }] },
+      { label: 'Tue', fullLabel: 'Tuesday', icon: 'rain', short: 'Rain', high: 55, low: 38, pop: 80, details: [{ icon: 'wind', label: 'Wind', value: '12 mph S' }] },
+      { label: 'Wed', fullLabel: 'Wednesday', icon: 'snow', short: 'Snow', high: 30, low: 18 },
+      { label: 'Thu', fullLabel: 'Thursday', icon: 'thunder', short: 'Thunder', high: null, low: 33 },
+    ]} />
 
     <SectionHeader title="TimeStrip" />
     <TimeStrip fromMin={360} toMin={1440} nowAt={15 * 60 + 20}

@@ -1,31 +1,13 @@
 ---
 /** A span on a scale (low-high of the day), optionally with a "now" tick. Colour follows the temperature scale (the city's unit, from config).
- *  Not drawn at all if the numbers are missing (no data, no element). The text alternative carries the numbers. */
-import { spanPercent, pointPercent, tempStop, type TempUnit } from '../../lib/ui/ui-helpers';
+ *  Not drawn at all if the numbers are missing (no data, no element). The text alternative carries the numbers.
+ *  Markup is built by lib/ui/ui-html.ts (rangeBarHtml); styles: design/ui-components.css. */
+import { rangeBarHtml } from '../../lib/ui/ui-html';
+import type { TempUnit } from '../../lib/ui/ui-helpers';
 import { countryProfile } from '../../lib/country-profile';
 import { siteConfig } from '../../lib/site-config';
 
 interface Props { scaleMin: number; scaleMax: number; low: number; high: number; now?: number; unit?: TempUnit; label?: string }
 const { scaleMin, scaleMax, low, high, now, unit = countryProfile(siteConfig.country).temperatureUnit as TempUnit, label } = Astro.props;
-const span = spanPercent(scaleMin, scaleMax, low, high);
-const nowAt = now === undefined ? null : pointPercent(scaleMin, scaleMax, now);
-const text = `${label ? label + ': ' : ''}${Math.round(low)}° to ${Math.round(high)}°`;
 ---
-{span && (
-  <div class="ui-range" role="img" aria-label={text}>
-    <span class="ui-range__lo">{Math.round(low)}°</span>
-    <span class="ui-range__track">
-      <span class="ui-range__fill" style={`left:${span.left}%;width:${span.width}%;background:linear-gradient(90deg,var(--temp-${tempStop(low, unit)}),var(--temp-${tempStop(high, unit)}))`}></span>
-      {nowAt !== null && <span class="ui-range__now" style={`left:${nowAt}%`}></span>}
-    </span>
-    <span class="ui-range__hi">{Math.round(high)}°</span>
-  </div>
-)}
-<style>
-  .ui-range { display: flex; align-items: center; gap: var(--ui-2); font-family: var(--font-ui); font-size: var(--ui-meta); font-variant-numeric: tabular-nums; }
-  .ui-range__lo { color: var(--ink-faint); min-width: 2.5ch; text-align: right; }
-  .ui-range__hi { color: var(--ink); font-weight: var(--ui-primary-weight); min-width: 2.5ch; }
-  .ui-range__track { position: relative; flex: 1; height: 6px; border-radius: 3px; background: var(--ui-surface-2); }
-  .ui-range__fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
-  .ui-range__now { position: absolute; top: -3px; width: 2px; height: 12px; margin-left: -1px; background: var(--ink); border-radius: 1px; }
-</style>
+<Fragment set:html={rangeBarHtml({ scaleMin, scaleMax, low, high, now, unit, label })} />

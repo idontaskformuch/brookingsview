@@ -39,6 +39,8 @@ export interface CountryProfile {
   regionKind: 'state' | 'nation';
   regionRequired: boolean;
   holidays: string[];
+  /** The weather page: who issues the forecast, and where the official warnings live (shown when none is active). */
+  weather: { authority: { name: string; url: string }; officialLink: { note: string; label: string; url: string } };
   legal: { variant: 'us' | 'gb'; framework: string; consent: string };
   nations: Record<string, NationProfile>;
 }

@@ -205,7 +205,8 @@ export function buildWeatherView(input: WxInput, env: WeatherEnv): WeatherView {
     const cond = conditionOf(main.short);
     const dow = weekdayOf(g.ymd);
     const pops = [g.day?.pop, g.night?.pop].filter(isNum);
-    const pop = pops.length ? Math.max(...pops) : null;
+    const popMax = pops.length ? Math.max(...pops) : null;
+    const pop = popMax !== null && popMax >= POP_SHOWN ? popMax : null;
     const details: DetailView[] = [];
     const winds = [g.day?.wind, g.night?.wind].filter((w): w is string => !!w);
     if (winds.length === 2 && g.day?.wind !== g.night?.wind) details.push({ icon: 'wind', label: 'Wind', value: `${g.day!.wind} by day, ${g.night!.wind} overnight` });
@@ -254,7 +255,7 @@ export function buildWeatherView(input: WxInput, env: WeatherEnv): WeatherView {
   // insights
   const insights: Insight[] = [];
   const rain = covers ? rainInsight(hours, env) : null;
-  if (rain) insights.push({ id: 'rain', icon: 'rain', text: rain });
+  if (rain) insights.push({ id: 'rain', icon: rain.startsWith('Dry') ? 'sun' : 'rain', text: rain });
   const step = TEMP_DIFF[unit];
   const todayHigh = todayRow?.high ?? null;
   if (todayHigh !== null && isNum(env.yesterdayHigh)) {
@@ -292,4 +293,17 @@ function updatedLabel(fetchedAt: string | null | undefined, env: WeatherEnv): st
   if (Number.isNaN(d.getTime())) return null;
   const same = daysBetween(localYMD(env.now, env.tz), localYMD(d, env.tz)) === 0;
   return same ? env.clock(d) : `${SHORT[weekdayOf(localYMD(d, env.tz))]} ${env.clock(d)}`;
+}
+
+/** The high that a stored (older) forecast gave for yesterday's local date: the first daytime period of that date, in the stored unit.
+ *  null when the stored forecasts do not reach it (a snapshot taken after yesterday's day period was over has none). */
+export function yesterdayHighFrom(snapshots: WxPoint[][], tz: string, now: Date): number | null {
+  const today = localYMD(now, tz);
+  for (const periods of snapshots) {
+    for (const p of periods) {
+      if (!p.start || p.is_daytime !== true || !isNum(p.temp)) continue;
+      if (daysBetween(today, localYMD(new Date(p.start), tz)) === -1) return p.temp;
+    }
+  }
+  return null;
 }

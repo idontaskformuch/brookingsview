@@ -1,0 +1,10 @@
+---
+/** One row per day: name, icon, range bar on the week's shared scale, chance of precipitation; a tap opens the details (wind, gusts, UV, sun).
+ *  A day without details is a plain row. Merging identical days ("Cloudy all week") is the caller's job. Markup: lib/ui/ui-html.ts (dayRowsHtml); styles: design/ui-components.css. */
+import { dayRowsHtml, type DayCell } from '../../lib/ui/ui-html';
+import type { TempUnit } from '../../lib/ui/ui-helpers';
+
+interface Props { days: DayCell[]; scale: { min: number; max: number } | null; unit: TempUnit; label?: string; attrs?: Record<string, unknown> }
+const { days, scale, unit, label, attrs } = Astro.props;
+---
+<Fragment set:html={dayRowsHtml(days, scale, unit, label, attrs)} />

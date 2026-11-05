@@ -1,20 +1,8 @@
 ---
-/** Heading for a block: serif title, optional kicker above and a "See all" link at the right. Repeated labels become headings (principle 4). */
+/** Heading for a block: serif title, optional kicker above and a "See all" link at the right. Repeated labels become headings (principle 4).
+ *  Markup: lib/ui/ui-html.ts (sectionHeaderHtml); styles: design/ui-components.css. */
+import { sectionHeaderHtml } from '../../lib/ui/ui-html';
+
 interface Props { title: string; kicker?: string; seeAllHref?: string; seeAllLabel?: string; level?: 2 | 3 }
-const { title, kicker, seeAllHref, seeAllLabel = 'See all', level = 2 } = Astro.props;
-const H = `h${level}` as 'h2' | 'h3';
 ---
-<header class="ui-sh">
-  <div>
-    {kicker && <p class="ui-sh__kicker">{kicker}</p>}
-    <H class="ui-sh__title">{title}</H>
-  </div>
-  {seeAllHref && <a class="ui-sh__all" href={seeAllHref}>{seeAllLabel}</a>}
-</header>
-<style>
-  .ui-sh { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--ui-3); margin: var(--ui-group-gap) 0 var(--ui-2); }
-  .ui-sh__kicker { margin: 0 0 var(--ui-1); font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); letter-spacing: 0.08em;
-    text-transform: uppercase; color: var(--ink-soft); }
-  .ui-sh__title { font-size: 1.25rem; }
-  .ui-sh__all { flex: none; font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); padding: var(--ui-2) 0; }
-</style>
+<Fragment set:html={sectionHeaderHtml(Astro.props)} />

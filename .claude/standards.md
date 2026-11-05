@@ -32,7 +32,7 @@ Gäller alla fyra sajter. Källa: ägarens handoff 2026-11-05 (.claude/specs/pre
 Bricolage Grotesque (Google Fonts-bygget) har OpenType-featuren `tnum` (och `pnum`); standardsiffrorna är proportionella (advance 320-656), så `font-variant-numeric: tabular-nums` behövs och fungerar. Ingen ny sans behövs. Data och meta: `--font-ui` + tabular-nums. `--font-data` (Plex Mono) används inte längre i datarader. Rubriker: Newsreader.
 
 ## Komponentbiblioteket (site/src/components/ui/)
-HeroStat, InsightLine, RangeBar, TimeStrip, Card (toppkant 4 px i kategorifärg), CompactRow (vänsterkant 3 px), Chips (>=3 per chip, >=2 chips, inga siffror), DayStrip, Pill/Badge, SectionHeader, WarningBanner, EmptyState, AboutThisPage, FallbackTile, Icon. Tokens i site/src/design/ui-tokens.css; accent från site.config. Galleri: `/_design/` (pages/[design].astro, noindex, ej i sitemap, bara byggt med BUILD_DESIGN=1).
+HeroStat, InsightLine, RangeBar, HourStrip (timmar med temperaturkurva + regnstaplar), DayRows (en rad per dag, detaljer bakom tryck), TimeStrip, Card (toppkant 4 px i kategorifärg), CompactRow (vänsterkant 3 px), Chips (>=3 per chip, >=2 chips, inga siffror), DayStrip, Pill/Badge, SectionHeader, WarningBanner, EmptyState, AboutThisPage, FallbackTile, Icon. Tokens i site/src/design/ui-tokens.css; accent från site.config. Galleri: `/_design/` (pages/[design].astro, noindex, ej i sitemap, bara byggt med BUILD_DESIGN=1).
 
 Regel: ingen sida skriver egen CSS för något biblioteket redan har. Städer får inte ha kodvägar i layouten (`townId ===`, stadsnamn, `country ===`); skillnader ligger i config. Test: lib/ui/standard-layout.test.ts.
 
@@ -61,6 +61,15 @@ Format per layout: syfte (frågan den besvarar), komponent, config-fält, tomma 
 - Config: eveningLayer.cards (regions, maxChips, hidePrice, cityLabels), venue-register, osm_places.
 - Tomt läge: `dayView` (inget kvar -> rubrik + rader dolda, "Nothing else on tonight · Tomorrow: N things"); aldrig "0 things".
 - Tester: lib/tonight-cards.test.ts (48), qa-probe .tc-day/.tc-card.
+
+### Weather
+- Syfte: "Hur är vädret nu, vad gör det idag, vad ska jag planera för veckan?"
+- Komponent: pages/weather.astro på ui/* (WarningBanner, HeroStat, InsightLine, HourStrip, DayRows, SectionHeader, AboutThisPage). Svarsblocket (hjälte -> insikter -> 24 h -> vecka) är strängmarkup från lib/weather-html.ts; webbläsaren ritar om det med samma funktion (lib/live-weather.ts) när /api/weather ger nyare data.
+- Ordning: varning (bara aktiv) -> H1 "<stad> weather" + "Källa · Updated <tid>" -> hjälte (prognosen för aktuell timme, märkt "Forecast for 2pm"; känns som bara om ≥2° skillnad; dagens hög/låg) -> insiktsrader -> Next 24 hours -> Week ahead (rad per dygn, dag+natt ihopslagna, RangeBar på veckans gemensamma skala) -> "Cloudy all week" ovanför veckan -> About this page.
+- Insiktsregler (lib/weather-model.ts, trösklar som exporterade konstanter): regn/torrt ur nederbördssannolikhet >=50 % (annars källans ord, utan "chance"), "Dry until" om <6 h annars "Rain from", "Dry for the next N hours" kräver >=12 h data; "Warmer/Colder tomorrow" och "than yesterday" vid högst-skillnad >=2 °C / 4 °F; "<Väder> all week" = samma väderklass >=3 dygn (all week bara vid >=5 dygn); gårdagens värde är gårdagens lagrade prognos (prognos mot prognos).
+- Config: temperaturenhet (country profile), koordinater (townCenter) för sol-tider, auktoritet och officiell varningslänk (country profile `weather`), hasMetOfficeWarnings, hasHeatAdvisory. Payload: valfria pop/feels/gust/uv/precip_mm + fetched_at; saknas de visas de inte.
+- Tomt läge: ingen prognos -> EmptyState med länk till källan; ingen timdata -> hjälten faller tillbaka på dagens hög/låg, ingen 24 h-remsa, ingen regnrad.
+- Tester: lib/weather-model.test.ts, sun-times.test.ts, ui/ui-html.test.ts, live-weather.test.ts (riktig Chromium), cron-dispatcher/test/weather.test.ts + tests/test_noaa_payload.py (TS<->Python-paritet).
 
 ### Meetings
 - Syfte: "När är nästa möte, vad står på dagordningen och hur tar jag mig dit?"

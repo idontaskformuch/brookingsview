@@ -1,0 +1,10 @@
+---
+/** Next hours as a swipe strip: time, icon, temperature, a thin temperature curve through the card and rain bars (when chance of precipitation is given).
+ *  The current hour is marked. No hours, nothing drawn. Markup: lib/ui/ui-html.ts (hourStripHtml); styles: design/ui-components.css. */
+import { hourStripHtml, type HourCell } from '../../lib/ui/ui-html';
+import type { TempUnit } from '../../lib/ui/ui-helpers';
+
+interface Props { hours: HourCell[]; unit: TempUnit; label?: string }
+const { hours, unit, label } = Astro.props;
+---
+<Fragment set:html={hourStripHtml(hours, unit, label)} />

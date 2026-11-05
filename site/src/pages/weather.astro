@@ -1,180 +1,91 @@
 ---
 /**
- * Väder-sidan -- gör en statisk ruta till en riktig destination.
+ * Weather: the standard "forecast" layout (.claude/standards.md). Question it answers: what is it like now, what is it doing today and what
+ * should I plan for this week?
  *
- * Datan (flera dagars prognos) hämtades redan av getWeather() för
- * förstasidans ruta, men bara första perioden visades där. Att lägga upp
- * resten som en egen sida är i praktiken gratis -- ingen ny datakälla,
- * ingen ny hämtning -- och ger rutan på förstasidan en riktig plats att
- * leda till istället för att vara en död siffra.
- *
- * FAS 2:
- *  - Periodnamnen ("Today"/"Tonight"/veckodag) etiketteras nu HÄR, från
- *    varje periods egna `start`-tidsstämpel jämfört med sajtens lokala
- *    "idag" -- INTE NWS:s egen `name`-sträng, som kan bli fel om byggmiljön
- *    eller snapshoten inte matchar läsarens dag (samma landmina som
- *    husreglernas "ingen läckt UTC-sträng").
- *  - getActiveAlerts() (redan använd på förstasidan/Worker Pulse) hade
- *    ALDRIG kopplats hit -- den enda sidan om just väder saknade helt
- *    varningsmedvetenhet. Samma banner-mönster som SchoolAlertBanner.astro.
- *  - Timprognos (getHourlyWeather) är genuint ny data, se
- *    scrapers/parsers/noaa.py -- inget annat ställe på sajten visade
- *    timupplösning innan detta.
+ * Order: active warning (the only thing allowed above the answer) -> H1 + source/updated line -> hero (the forecast for the current hour,
+ * labelled as a forecast) with its insight lines -> next 24 hours -> week ahead (one row per day, details behind a tap) -> About this page.
+ * All numbers and sentences come from lib/weather-model.ts (pure, tested); the answer block is markup from lib/weather-html.ts, which the
+ * browser reruns with a newer forecast (lib/live-weather.ts), so a page refreshed in the browser reads exactly like the built one.
+ * Units, coordinates, authority and the official-warnings link come from config (site config + country profile), never from this file.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
-import SectionRule from '../components/SectionRule.astro';
-import { getWeather, getHourlyWeather, getActiveAlerts } from '../lib/db';
+import WarningBanner from '../components/ui/WarningBanner.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
+import EmptyState from '../components/ui/EmptyState.astro';
+import MetOfficeWarnings from '../components/MetOfficeWarnings.astro';
+import { getWeatherSnapshot, getActiveAlerts } from '../lib/db';
 import { siteConfig, isSectionDisabled } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
 if (isSectionDisabled('weather')) return Astro.redirect('/', 302);
-import { placeLabel, forCountry, formatClockCompact } from '../lib/country-profile';
+import { countryProfile } from '../lib/country-profile';
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubBacklink } from '../lib/clusters';
 import { storyHref } from '../lib/content-slugs';
-import { upcomingHours, currentPeriods, relabelPeriod, hourLabel } from '../lib/weather-format';
+import { localYMD } from '../lib/weather-format';
+import { yesterdayHighFrom } from '../lib/weather-model';
+import { viewFor, weatherRegionHtml, type WeatherConfig } from '../lib/weather-html';
 
 const pageMeta = resolvePageMeta('weather', siteConfig);
 const hubBacklink = resolveHubBacklink('weather', siteConfig);
+const profile = countryProfile(siteConfig.country);
 
-const [periodsRaw, hourlyRaw, alerts] = await Promise.all([
-  getWeather(),
-  getHourlyWeather(),
-  getActiveAlerts(),
-]);
+const [snapshot, alerts] = await Promise.all([getWeatherSnapshot(), getActiveAlerts()]);
 
-// The snapshot can be older than the build (and the build older than the reader): drop hours that are already over and
-// day-periods that started on an earlier local day, so the strip starts at "now" and "Tonight" is not listed twice.
-// The same helpers run in the browser (lib/live-weather.ts) when /api/weather answers with a newer forecast.
 const buildNow = new Date();
-const hourly = upcomingHours(hourlyRaw, buildNow);
-const periods = currentPeriods(periodsRaw, siteConfig.timezone, buildNow);
-const relabel = (p: (typeof periods)[number]) => relabelPeriod(p, siteConfig.timezone, buildNow);
-const hourLabelFor = (start: string) => hourLabel(start, siteConfig.timezone, siteConfig.country);
-const source = forCountry(siteConfig.country,
-  { name: 'National Weather Service', url: 'https://www.weather.gov' },
-  { name: 'Met Office', url: 'https://www.metoffice.gov.uk/weather/forecast' });
-import PageGuide from '../components/PageGuide.astro';
-import MetOfficeWarnings from '../components/MetOfficeWarnings.astro';
+const tz = siteConfig.timezone;
+const today = localYMD(buildNow, tz);
+const yesterdayHigh = yesterdayHighFrom(snapshot.earlierPeriods, tz, buildNow);
+const config: WeatherConfig = {
+  unit: profile.temperatureUnit, lat: siteConfig.townCenter.lat, lon: siteConfig.townCenter.lon, tz, country: siteConfig.country,
+  yesterday: yesterdayHigh === null ? null : { for: `${today.y}-${String(today.m).padStart(2, '0')}-${String(today.d).padStart(2, '0')}`, value: yesterdayHigh },
+};
+const view = viewFor({ periods: snapshot.periods, hourly: snapshot.hourly, fetchedAt: snapshot.fetchedAt }, config, buildNow);
+const region = weatherRegionHtml(view);
+const authority = profile.weather.authority;
+const official = profile.weather.officialLink;
 ---
-<BaseLayout title={pageMeta.title} ogSlug="section-weather"
-  description={metaDescription('weather', siteConfig)}>
-  <header class="lede">
-    <h1>{pageMeta.h1}</h1>
-    <p>{forCountry(siteConfig.country,
-      'Straight from the National Weather Service, updated every 6 hours along with the rest of the site.',
-      'Straight from the Met Office, updated every 6 hours along with the rest of the site. Check the Met Office for the latest.')}
-    {hubBacklink && <> Looking for a specific address instead? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
+<BaseLayout title={pageMeta.title} ogSlug="section-weather" description={metaDescription('weather', siteConfig)}>
+  {siteConfig.hasMetOfficeWarnings && <MetOfficeWarnings timezone={tz} variant="full" />}
+  {alerts.length > 0 && (
+    <div class="wx-warnings">
+      {alerts.map((alert) => <WarningBanner href={storyHref(alert.slug)} linkLabel="Details">{alert.title}</WarningBanner>)}
+    </div>
+  )}
+
+  <header class="wx-head">
+    <h1>{siteConfig.cityName} weather</h1>
+    <p class="wx-meta"><a href={authority.url} rel="noopener">{authority.name}</a>{view.updated && <> · Updated <span data-wx-updated>{view.updated}</span></>}</p>
   </header>
 
-  <PageGuide
-    shows={`The forecast for ${siteConfig.cityName}: hour by hour for the next day and day by day for the week${siteConfig.hasMetOfficeWarnings ? ', with any Met Office weather warning in force shown first' : ', plus any active weather alerts'}.`}
-    use={`Use the hourly view to time a commute or an outdoor plan, and open an alert for what it means and how long it lasts. Forecasts change: the ${source.name} page is the authority.`}
-  >
-    <a href={source.url} rel="noopener">{source.name}</a> forecast{siteConfig.country === 'gb' ? ' (weather warnings appear at the top of every page)' : ' and alerts'} for this location.
-  </PageGuide>
-
-  {siteConfig.hasMetOfficeWarnings && <MetOfficeWarnings timezone={siteConfig.timezone} variant="full" />}
-
-  {siteConfig.country === 'gb' && (
-    <p class="flood-link">Flood warnings: <a href="https://floodline.sepa.org.uk/live-flood-information/" rel="noopener">SEPA Floodline</a> (live flood alerts and warnings for Scotland).</p>
-  )}
-
-  {!siteConfig.hasMetOfficeWarnings && alerts.length === 0 && (
-    <p class="empty">No active weather alerts for {siteConfig.cityName} as of the last site update.</p>
-  )}
-
-  {alerts.length > 0 && (
-    <section aria-label="Active weather alerts" class="alerts">
-      {alerts.map((alert) => (
-        <div class="alert">
-          <p class="alert__kicker">Active alert</p>
-          <p class="alert__title"><a href={storyHref(alert.slug)}>{alert.title}</a></p>
-        </div>
-      ))}
-    </section>
-  )}
+  <div data-weather-region data-fetched-at={view.fetchedAt ?? ''}>
+    {region ? <Fragment set:html={region} /> : <EmptyState href={authority.url} linkLabel={`${authority.name} forecast`}>The forecast is not available right now.</EmptyState>}
+  </div>
+  <script type="application/json" data-weather-config set:html={JSON.stringify(config)}></script>
 
   {siteConfig.hasHeatAdvisory && alerts.some((a) => /heat/i.test(a.title)) && (
-    // Same heat-risk cross-link Worker Pulse already surfaces the other
-    // direction (HeatAdvisoryWidget, weather -> workplace-watch) --
-    // extended here so a reader who lands on /weather during an active
-    // heat alert also finds the outdoor/loading-dock work guidance, not
-    // just the other way around. See NEEDS-HUMAN-REVIEW.md "4.3 Internal
-    // linking pass".
-    <p class="heat-crosslink">
-      📦 Active heat alert — see <a href="/workplace-watch/">Worker Pulse</a> for
-      outdoor and loading-dock work risk guidance.
-    </p>
+    <p class="wx-note">Active heat alert: see <a href="/workplace-watch/">Worker Pulse</a> for outdoor and loading-dock work risk guidance.</p>
   )}
 
-  {hourly.length > 0 && (
-    <>
-      <SectionRule label="Next 24 hours" />
-      <div class="hourly" tabindex="0" role="region" aria-label="Hourly forecast, next 24 hours (scrollable)" data-weather-hourly>
-        {hourly.map((h) => (
-          <div class="hour">
-            <p class="hour__time data">{hourLabelFor(h.start)}</p>
-            <p class="hour__temp data">{h.temp !== null ? Math.round(h.temp) : '—'}&deg;{h.unit}</p>
-            <p class="hour__short">{h.short}</p>
-          </div>
-        ))}
-      </div>
-    </>
+  {alerts.length === 0 && (
+    <p class="wx-note">{siteConfig.hasMetOfficeWarnings ? '' : `No active weather alerts for ${siteConfig.cityName} as of the last site update. `}{official.note}: <a href={official.url} rel="noopener">{official.label}</a>.</p>
   )}
 
-  <SectionRule label="Forecast" />
-  {periods.length > 0 ? (
-    <ul class="forecast" data-weather-forecast>
-      {periods.map((p) => (
-        <li class="forecast__row">
-          <span class="forecast__name">{relabel(p)}</span>
-          <span class="forecast__temp data">
-            {p.temp !== null ? Math.round(p.temp) : '—'}&deg;{p.unit}
-          </span>
-          <span class="forecast__short">{p.short}</span>
-          <span class="forecast__wind data">{p.wind}</span>
-        </li>
-      ))}
-    </ul>
-  ) : (
-    <p class="empty">Forecast is not available right now.</p>
-  )}
+  <AboutThisPage sources={[{ name: `${authority.name} forecast`, href: authority.url }]}>
+    <p>The forecast for {siteConfig.cityName}: hour by hour for the next day and day by day for the week{siteConfig.hasMetOfficeWarnings ? ', with any Met Office weather warning in force shown first' : ', plus any active weather alerts'}.</p>
+    <p>Use the hourly view to time a commute or an outdoor plan, and open an alert for what it means and how long it lasts. Forecasts change: the {authority.name} page is the authority.</p>
+    <p>The large temperature is the forecast for the current hour, not a measurement. Sunrise and sunset are calculated from the location. Chance of precipitation, feels-like and gusts appear when the forecast gives them.</p>
+    {hubBacklink && <p>Looking for a specific address instead? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</p>}
+  </AboutThisPage>
 </BaseLayout>
 
 <style>
-.lede { max-width: 38rem; }
-.lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
-.alerts { display: grid; gap: 0.75rem; margin: 1rem 0; }
-.alert { border-left: 4px solid var(--alert); background: var(--alert-tint); padding: 0.875rem 1rem; }
-.alert__kicker { margin: 0 0 0.25rem; font-family: var(--font-ui); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--alert); }
-.alert__title { margin: 0; font-family: var(--font-head); font-weight: 700; font-size: 1.0625rem; }
-.heat-crosslink { margin: 0.75rem 0 1.25rem; padding: 0.75rem 1rem; border: 1px solid var(--rule); border-radius: 8px; font-size: 0.9375rem; }
-.hourly { display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem; margin-bottom: 0.5rem; }
-.hour { flex: 0 0 5.5rem; text-align: center; border: 1px solid var(--rule); padding: 0.625rem 0.5rem; }
-.hour__time { font-weight: 600; margin: 0 0 0.25rem; font-size: 0.8125rem; }
-.hour__temp { font-size: 1.0625rem; font-weight: 700; margin: 0 0 0.25rem; }
-.hour__short { margin: 0; font-size: 0.75rem; color: var(--ink-soft); line-height: 1.3; }
-.forecast { list-style: none; margin: 0; padding: 0; }
-.forecast__row {
-  display: grid;
-  grid-template-columns: 9rem 4rem 1fr 6rem;
-  gap: 1rem;
-  align-items: baseline;
-  padding-block: 0.625rem;
-  border-bottom: 1px solid var(--rule);
-  font-size: 0.9375rem;
-}
-.forecast__name { font-family: var(--font-ui); font-weight: 600; }
-.forecast__temp { font-weight: 500; }
-.forecast__short { color: var(--ink-soft); }
-.forecast__wind { color: var(--ink-soft); font-size: 0.8125rem; text-align: right; }
-.empty { color: var(--ink-soft); }
-.flood-link { margin: 0.75rem 0 1.25rem; font-size: 0.9375rem; }
-@media (max-width: 32rem) {
-  .forecast__row { grid-template-columns: 1fr auto; grid-template-areas: "name temp" "short wind"; }
-  .forecast__name { grid-area: name; }
-  .forecast__temp { grid-area: temp; text-align: right; }
-  .forecast__short { grid-area: short; }
-  .forecast__wind { grid-area: wind; }
-}
+  .wx-warnings { display: grid; gap: var(--ui-2); margin: var(--ui-3) 0; }
+  .wx-head { margin: var(--ui-4) 0 var(--ui-3); }
+  .wx-head h1 { margin: 0; }
+  .wx-meta { margin: var(--ui-1) 0 0; font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .wx-note { margin: var(--ui-4) 0 0; font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
+  [data-weather-region] :global(.wx-insights) { display: grid; gap: var(--ui-2); margin: var(--ui-3) 0 0; }
+  [data-weather-region] :global(.ui-hero) { margin-top: var(--ui-3); }
 </style>
+

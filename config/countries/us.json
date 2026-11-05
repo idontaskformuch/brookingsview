@@ -18,6 +18,10 @@
   "regionKind": "state",
   "regionRequired": true,
   "holidays": ["halloween", "thanksgiving", "christmas", "new_years", "valentines", "easter", "memorial_day", "july_4", "labor_day", "veterans_day"],
+  "weather": {
+    "authority": { "name": "National Weather Service", "url": "https://www.weather.gov" },
+    "officialLink": { "note": "Official alerts", "label": "weather.gov/alerts", "url": "https://www.weather.gov/alerts" }
+  },
   "legal": {
     "variant": "us",
     "framework": "US state privacy law; AdSense and Google Analytics opt-out wording",
