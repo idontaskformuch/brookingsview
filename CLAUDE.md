@@ -56,3 +56,9 @@ data är råmaterial, inte slutprodukt. Mönster: data -> vad betyder det ->
 vad kan läsaren göra. Ny funktion eller sida: ange vilken konkret fråga från
 en invånare den besvarar. Om den inte besvarar någon: bygg den inte, eller
 ge den noindex.
+
+## Design och standardlayouter
+
+Allt som presenteras på sajterna följer `.claude/standards.md` (designprinciper,
+komponentbibliotek, standardlayouter). Läs den före arbete på en sidtyp.
+Beslut för premium-presentationen: `.claude/specs/premium-decisions.md`.
