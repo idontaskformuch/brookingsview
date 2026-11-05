@@ -1,10 +1,15 @@
 ---
-/** The top of /city-hall/: the next meeting as one large card, then "This week" (the following 7 days) and "Coming up", with
- *  organ chips over the lists. The build knows "today" only as of the build, so a small script re-reads it from the clock:
- *  "in 5 days" stays right, a meeting that is over hides itself, and the chips filter the lists. Without JS everything shows. */
+/** The top of /city-hall/: the next meeting as a hero ("in 5 days") with its agenda under it, then "This week" (the following 7 days) and
+ *  "Coming up", with organ chips over the lists when there are enough meetings to filter. An organ group the town folds away (Glasgow's Area
+ *  Partnerships) sits in one fold under the lists. With no meeting ahead: one designed line and a link to the town's own agenda page.
+ *  The build knows "today" only as of the build, so a small script re-reads it from the clock: "in 5 days" stays right, a meeting that is over
+ *  hides itself, and the chips filter the lists. Without JS everything shows. */
 import SectionRule from '../SectionRule.astro';
+import HeroStat from '../ui/HeroStat.astro';
+import EmptyState from '../ui/EmptyState.astro';
+import Chips from '../ui/Chips.astro';
 import MeetingCard from './MeetingCard.astro';
-import { daysBetween, organChips, type MeetingView } from '../../lib/meetings-view';
+import { daysBetween, relativeDays, chipCounts, meetingTitle, type MeetingView } from '../../lib/meetings-view';
 
 interface Props {
   meetings: MeetingView[];
@@ -12,49 +17,60 @@ interface Props {
   timezone: string;
   commentBodyKeys: string[];
   commentHref: string | null;
+  portal: { href: string; label: string } | null;
+  emptyNote: string | null;
 }
-const { meetings, todayYmd, timezone, commentBodyKeys, commentHref } = Astro.props;
-const [next, ...others] = meetings;
-const week = others.filter((m) => daysBetween(todayYmd, m.ymd) <= 7);
-const later = others.filter((m) => daysBetween(todayYmd, m.ymd) > 7);
-const chips = organChips(others);
+const { meetings, todayYmd, timezone, commentBodyKeys, commentHref, portal, emptyNote } = Astro.props;
+const main = meetings.filter((m) => !m.collapsedGroup);
+const folded = meetings.filter((m) => m.collapsedGroup);
+const next = main[0] ?? folded[0];
+const others = meetings.filter((m) => m !== next);
+const week = others.filter((m) => !m.collapsedGroup && daysBetween(todayYmd, m.ymd) <= 7);
+const later = others.filter((m) => !m.collapsedGroup && daysBetween(todayYmd, m.ymd) > 7);
+const foldedOthers = others.filter((m) => m.collapsedGroup);
+const foldGroups = [...new Set(foldedOthers.map((m) => m.collapsedGroup!))];
 const hrefFor = (m: MeetingView) => (commentHref && commentBodyKeys.includes(m.bodyKey) ? commentHref : null);
+const nextEnd = next?.startMs != null ? next.startMs + 3 * 3_600_000 : null;
 ---
-<style is:global>
-  :root { --mtg-council: #0b2e55; --mtg-planning: #2f5f4a; --mtg-utilities: #7a5710; --mtg-school: #6a3f82; --mtg-other: #55554f; }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --mtg-council: #9bbbe3; --mtg-planning: #8fc7ac; --mtg-utilities: #dcb26a; --mtg-school: #cfa9e0; --mtg-other: #b8b5ab; }
-  }
-  :root[data-theme="dark"] { --mtg-council: #9bbbe3; --mtg-planning: #8fc7ac; --mtg-utilities: #dcb26a; --mtg-school: #cfa9e0; --mtg-other: #b8b5ab; }
-</style>
-
 <section class="up" data-mtg-root data-tz={timezone}>
   <SectionRule label="Next up" />
   {next ? (
-    <MeetingCard m={next} big todayYmd={todayYmd} commentHref={hrefFor(next)} />
+    <article class="up__next" data-ymd={next.ymd} data-end={nextEnd ?? undefined}>
+      <HeroStat
+        label={meetingTitle(next)}
+        value={relativeDays(daysBetween(todayYmd, next.ymd))}
+        sub={`${next.dateLabel}${next.time ? ` · ${next.time}` : ''}`}
+        meta={next.location ?? undefined}
+        valueAttrs={{ 'data-mtg-rel': next.ymd }}
+      />
+      <MeetingCard m={next} bare todayYmd={todayYmd} commentHref={hrefFor(next)} portal={portal} />
+    </article>
   ) : (
-    <p class="up__empty">No meetings scheduled at the moment.</p>
+    <EmptyState href={portal?.href} linkLabel={portal?.label}>
+      {`No meetings posted yet.${emptyNote ? ` ${emptyNote}` : ''}`}
+    </EmptyState>
   )}
 
-  {chips.length > 1 && (
-    <nav class="up__chips" aria-label="Filter upcoming meetings by organ" data-mtg-chips>
-      <button type="button" class="up__chip" data-mtg-chip="" aria-pressed="true">All</button>
-      {chips.map((c) => <button type="button" class="up__chip" data-mtg-chip={c.key} aria-pressed="false">{c.label}</button>)}
-    </nav>
-  )}
+  <Chips counts={chipCounts(others)} label="Filter upcoming meetings" dataKey="mtg-chip" navAttrs={{ 'data-mtg-chips': '' }} class="up__chips" />
 
   {week.length > 0 && (
     <>
       <SectionRule label="This week" />
-      <div class="up__stack" data-mtg-list>{week.map((m) => <MeetingCard m={m} todayYmd={todayYmd} commentHref={hrefFor(m)} />)}</div>
+      <div class="up__stack" data-mtg-list>{week.map((m) => <MeetingCard m={m} todayYmd={todayYmd} commentHref={hrefFor(m)} portal={portal} />)}</div>
     </>
   )}
   {later.length > 0 && (
     <>
       <SectionRule label="Coming up" />
-      <div class="up__stack" data-mtg-list>{later.map((m) => <MeetingCard m={m} todayYmd={todayYmd} commentHref={hrefFor(m)} />)}</div>
+      <div class="up__stack" data-mtg-list>{later.map((m) => <MeetingCard m={m} todayYmd={todayYmd} commentHref={hrefFor(m)} portal={portal} />)}</div>
     </>
   )}
+  {foldGroups.map((g) => (
+    <details class="up__fold" data-mtg-group={g}>
+      <summary>{g} · {foldedOthers.filter((m) => m.collapsedGroup === g).length} {foldedOthers.filter((m) => m.collapsedGroup === g).length === 1 ? 'meeting' : 'meetings'}</summary>
+      <div class="up__stack" data-mtg-list>{foldedOthers.filter((m) => m.collapsedGroup === g).map((m) => <MeetingCard m={m} todayYmd={todayYmd} commentHref={hrefFor(m)} portal={portal} />)}</div>
+    </details>
+  ))}
 </section>
 
 <script is:inline>
@@ -83,18 +99,22 @@ const hrefFor = (m: MeetingView) => (commentHref && commentBodyKeys.includes(m.b
       for (var j = 0; j < all.length; j++) all[j].setAttribute('aria-pressed', all[j] === b ? 'true' : 'false');
       var lists = root.querySelectorAll('[data-mtg-list] article');
       for (var k = 0; k < lists.length; k++) lists[k].classList.toggle('mtg--off', !!key && lists[k].getAttribute('data-organ') !== key);
+      var folds = root.querySelectorAll('details[data-mtg-group]');
+      for (var f = 0; f < folds.length; f++) {
+        var g = folds[f].getAttribute('data-mtg-group');
+        folds[f].classList.toggle('mtg--off', !!key && g !== key);
+        if (key) folds[f].open = g === key;
+      }
     });
   })();
 </script>
 
 <style>
-  .up__stack { display: grid; gap: 0.75rem; max-width: 44rem; }
-  .up__empty { color: var(--ink-soft); }
-  .up__chips { display: flex; gap: 0.5rem; overflow-x: auto; padding: 0.9rem 0 0.25rem; max-width: 44rem; }
-  .up__chip {
-    flex: none; font: inherit; font-size: 0.9375rem; font-weight: 600; color: var(--ink); background: var(--surface);
-    border: 1.5px solid var(--rule-strong); border-radius: 999px; padding: 0.45rem 0.9rem; min-height: 2.75rem; cursor: pointer; white-space: nowrap;
-  }
-  .up__chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .up__next { max-width: 44rem; display: grid; gap: var(--ui-3); }
+  .up__stack { display: grid; gap: var(--ui-row-gap); max-width: 44rem; }
+  .up__fold { margin-top: var(--ui-group-gap); max-width: 44rem; }
+  .up__fold > summary { cursor: pointer; font-family: var(--font-ui); font-size: var(--ui-primary); font-weight: var(--ui-primary-weight); padding: var(--ui-2) 0; min-height: 2.75rem; display: flex; align-items: center; }
+  .up__fold > .up__stack { margin-top: var(--ui-2); }
+  .up :global(.up__chips) { max-width: 44rem; margin-top: var(--ui-3); }
   .up :global(.mtg--off) { display: none; }
 </style>

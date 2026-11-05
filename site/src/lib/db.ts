@@ -1317,7 +1317,7 @@ export async function getUpcomingCouncilMeetings(limit = 6): Promise<CouncilMeet
  *  UTC-midnight anchor of a bare-date source; the caller decides what is still upcoming. */
 export async function getMeetingRowsForView(limit = 80): Promise<MeetingRow[]> {
   return (await sql`
-    SELECT m.id, m.body, m.meeting_date, m.agenda_url, m.minutes_url, m.raw_data,
+    SELECT m.id, m.body, m.meeting_date, m.agenda_url, m.minutes_url, m.raw_data, m.created_at,
            (SELECT s.slug FROM stories s
              WHERE s.town_id = m.town_id AND s.meeting_id = m.id AND s.source_type = 'meeting' AND s.superseded_by_slug IS NULL
              ORDER BY s.published_at DESC LIMIT 1) AS story_slug
@@ -3503,28 +3503,8 @@ export function formatMeetingWhen(meeting: NextMeeting): string {
   return `${weekday}, ${time}`;
 }
 
-/** Broomfield's AgendaLink `agendaUrl` (copied verbatim into meetings.agenda_url
- *  and, at publish time, into stories.source_url -- see publish.py's
- *  build_source_url()) comes back from the vendor's own API pointing at
- *  sandbox.agendalink.app, not a horizon.agendalink.app/production host --
- *  confirmed 2026-08-27 this is the API's OWN returned field, not something
- *  this codebase guesses or constructs. Whether that host is genuinely
- *  Broomfield's real public portal (oddly named) or a non-production
- *  environment couldn't be confirmed live (2026-09-30: the page is a
- *  JS-rendered SPA a text fetch can't evaluate) -- horizon.agendalink.app
- *  looks like the real production host (same meeting IDs are Google-indexed
- *  there), but that's one coincidental match, not a verified rewrite rule,
- *  so this doesn't guess at a replacement URL. Given the uncertainty, no
- *  outbound link on this site should point at sandbox.* -- see every call
- *  site of this function for the fallback used instead. */
-export function isSandboxUrl(url: string | null | undefined): boolean {
-  if (!url) return false;
-  try {
-    return new URL(url).hostname.startsWith('sandbox.');
-  } catch {
-    return false;
-  }
-}
+// isSandboxUrl lives in ./sandbox-url (pure, so lib/meetings-view.ts can use it without the database client); same name, same behaviour.
+export { isSandboxUrl } from './sandbox-url';
 
 /** Build-time safety net for isSandboxUrl() -- every render site that emits
  *  story.source_url (s/[slug].astro, article-jsonld.ts, city-hall/projects/

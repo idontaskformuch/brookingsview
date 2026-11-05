@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   normalizeBody, parseClock, zonedToInstant, meetingWhen, formatYmd, daysBetween, relativeDays,
   substantiveItems, itemsFromAgendaText, topicsFor, buildMeetings, isUpcoming, organChips,
-  buildMeetingIcs, buildMeetingJsonLd, canCalendar, type MeetingRow, type DedupeNote,
+  buildMeetingIcs, buildMeetingJsonLd, canCalendar, agendaNote, type MeetingRow, type DedupeNote,
 } from './meetings-view';
 
 const TZ = 'America/Chicago';
@@ -166,9 +166,35 @@ describe('buildMeetings: dedup', () => {
     expect(joint[0]).toMatchObject({ id: 15149, jointWith: 'County Commission' });
     expect(buildMeetings([jointCity, plainCounty], TZ, false)).toHaveLength(2);
   });
-  it('drops notice-of-quorum rows', () => {
-    const q = leg(3, 'City Council', '2026-11-09', '12:00 PM', { agenda_text: 'Notice of Quorum ... no official city business will be acted upon' });
-    expect(buildMeetings([q], TZ, false)).toEqual([]);
+  const QUORUM = 'Notice of Quorum ... no official city business will be acted upon';
+  it('drops a notice of quorum only when a real row has the same local date and organ', () => {
+    const notes: DedupeNote[] = [];
+    const out = buildMeetings([
+      leg(11874, 'City Council', '2026-09-08', '6:00 PM'),
+      leg(11875, 'City Council', '2026-09-08', '5:30 PM', { agenda_text: QUORUM }),
+    ], TZ, false, notes);
+    expect(out.map((m) => m.id)).toEqual([11874]);
+    expect(out[0].quorumNotice).toBe(false);
+    expect(notes[0].why).toMatch(/notice of quorum 2026-09-08/);
+  });
+  it('shows a notice of quorum as the meeting when nothing real replaces it: Brookings City Council on 9 Nov', () => {
+    const q = leg(3, 'City Council', '2026-11-09', '12:00 PM', { agenda_text: QUORUM });
+    const out = buildMeetings([q], TZ, false);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ id: 3, bodyLabel: 'City Council', ymd: '2026-11-09', dateLabel: 'Mon, Nov 9', quorumNotice: true, items: [] });
+    expect(agendaNote(out[0])).toBe('Agenda not yet published');
+    expect(canCalendar(out[0])).toBe(false);
+    expect(buildMeetingJsonLd(out[0], TZ, { locality: 'Brookings', region: 'SD', country: 'US' }, 'City of Brookings', 'https://x.test/city-hall/')).toBeNull();
+  });
+  it('a notice of quorum for another organ or another day does not replace anything', () => {
+    const q = leg(3, 'City Council', '2026-11-09', '12:00 PM', { agenda_text: QUORUM });
+    const other = [leg(4, 'Utility Board', '2026-11-09', '1:00 PM'), leg(5, 'City Council', '2026-11-10', '6:00 PM')];
+    expect(buildMeetings([q, ...other], TZ, false).map((m) => m.id)).toEqual([3, 4, 5]);
+  });
+  it('two notices of quorum on one day and organ are one meeting, not two', () => {
+    const a = leg(13999, 'Brookings Historic Preservation Commission', '2026-10-10', '11:00 AM', { agenda_text: QUORUM });
+    const b = leg(14000, 'Brookings Historic Preservation Commission', '2026-10-10', '1:30 PM', { agenda_text: QUORUM });
+    expect(buildMeetings([a, b], TZ, false)).toHaveLength(1);
   });
   it('fills topics from the kept items and sorts by start', () => {
     const out = buildMeetings([

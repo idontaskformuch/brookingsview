@@ -8,10 +8,10 @@ import ClusterNav from '../components/ClusterNav.astro';
 import SectionHero from '../components/SectionHero.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import MeetingsUpcoming from '../components/meetings/MeetingsUpcoming.astro';
-import { getUpcomingStories, getPastStories, getProjects, formatMeetingDate, getMeetingRowsForView } from '../lib/db';
-import {
-  MEETINGS_TOWNS, buildMeetings, isUpcoming, buildMeetingJsonLd, nextMeetingDescription,
-} from '../lib/meetings-view';
+import { getUpcomingStories, getPastStories, getProjects, formatMeetingDate } from '../lib/db';
+import MeetingsFollow from '../components/meetings/MeetingsFollow.astro';
+import { loadUpcomingMeetings } from '../lib/meetings-data';
+import { buildMeetingJsonLd, nextMeetingDescription, followableOrgans } from '../lib/meetings-view';
 import { siteConfig } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
 import { placeLabel, forCountry } from '../lib/country-profile';
@@ -19,8 +19,9 @@ import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-json
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubNavItems } from '../lib/clusters';
 
-// A town is on the structured meetings layout only when lib/meetings-view.ts lists it; every other town keeps the story list below.
-const meetingsTown = MEETINGS_TOWNS[siteConfig.townId] ?? null;
+// A town is on the structured meetings layout only when config/meetings.ts lists it; every other town keeps the story list below.
+const data = await loadUpcomingMeetings();
+const meetingsTown = data?.cfg ?? null;
 const upcoming = meetingsTown ? [] : await getUpcomingStories(['meeting'], 40);
 const pastAll = await getPastStories(['meeting', 'meeting_followup'], meetingsTown ? 40 : 30);
 // A notice of quorum is a story about a meeting that is not one (see StoryCard); it stays out of the recent list.
@@ -42,20 +43,24 @@ const pageMeta = resolvePageMeta('city-hall', siteConfig);
 const clusterNavItems = resolveHubNavItems('city-hall', siteConfig);
 
 const ledeText = `What ${siteConfig.cityName}'s ${forCountry(siteConfig.country, 'city council, county commission and committees', 'council and committees')} are deciding — ${forCountry(siteConfig.country, 'summarized', 'summarised')} from the published agendas, in plain language, without taking sides. Every summary is checked against its own agenda before publishing, and links back to the original document.`;
-const todayYmd = new Intl.DateTimeFormat('en-CA', { timeZone: siteConfig.timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-const upcomingMeetings = meetingsTown
-  ? buildMeetings(await getMeetingRowsForView(), siteConfig.timezone, siteConfig.meetingsHaveTime)
-      .filter((m) => isUpcoming(m, Date.now(), todayYmd))
-  : [];
+const todayYmd = data?.todayYmd ?? '';
+const upcomingMeetings = data?.meetings ?? [];
+const followOrgans = meetingsTown ? followableOrgans(upcomingMeetings, meetingsTown) : [];
 const description = (upcomingMeetings[0] && nextMeetingDescription(upcomingMeetings[0], siteConfig.cityName)) || metaDescription('city-hall', siteConfig);
 const eventJsonLd = meetingsTown
   ? upcomingMeetings.slice(0, 10)
-      .map((m) => buildMeetingJsonLd(m, siteConfig.timezone, meetingsTown.place, meetingsTown.organizer, canonicalUrl))
+      .map((m) => buildMeetingJsonLd(m, siteConfig.timezone, meetingsTown.place, meetingsTown.authority, canonicalUrl))
       .filter((x): x is Record<string, unknown> => x !== null)
   : [];
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-city-hall"
   description={description}>
+  {meetingsTown && (
+    <Fragment slot="head">
+      <link rel="alternate" type="application/rss+xml" title={`${siteConfig.cityName} meetings`} href="/city-hall/rss.xml" />
+      <link rel="alternate" type="text/calendar" title={`${siteConfig.cityName} meetings`} href="/city-hall/calendar.ics" />
+    </Fragment>
+  )}
   <Breadcrumbs trail={breadcrumbTrail} />
   {meetingsTown ? (
     <>
@@ -70,7 +75,11 @@ const eventJsonLd = meetingsTown
         timezone={siteConfig.timezone}
         commentHref={meetingsTown.comment?.href ?? null}
         commentBodyKeys={meetingsTown.comment?.bodyKeys ?? []}
+        portal={meetingsTown.portal}
+        emptyNote={meetingsTown.emptyNote}
       />
+
+      <MeetingsFollow domain={siteConfig.domain} organs={followOrgans} />
 
       {past.length > 0 && (
         <>
@@ -90,12 +99,9 @@ const eventJsonLd = meetingsTown
           touches it? See <a href="/city-hall/projects/">active city hall projects →</a>
         </p>
       )}
-      <p class="projects-teaser">
-        New to following the council? <a href="/how-city-council-works/">How it works, how to watch and how to speak →</a>
-      </p>
-      <p class="projects-teaser">
-        Garbage, recycling and yard waste: <a href="/trash-recycling/">pickup days and what goes where →</a>
-      </p>
+      {meetingsTown.extraLinks.map((l) => (
+        <p class="projects-teaser">{l.lead} <a href={l.href}>{l.label}</a></p>
+      ))}
     </>
   ) : (
     <>

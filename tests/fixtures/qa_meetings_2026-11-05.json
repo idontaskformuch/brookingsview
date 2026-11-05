@@ -1,0 +1,51 @@
+{
+ "_doc": "2026-11-05. bad: snapshots that must trip the named check; good: must not. Replacement-char text is the shape Moreno's meeting place once had; empty link is the shape of a meeting card built from agenda_url = ''; unknown organ is one of the six Brookings organs that were missing from BODIES before Phase 3.",
+ "replacementChar": {
+  "bad": [
+   {
+    "mainText": "Next up City Council City Hall Council Chamber � 14177 Frederick Street"
+   }
+  ],
+  "good": [
+   {
+    "mainText": "City Hall Council Chamber – 14177 Frederick Street"
+   }
+  ]
+ },
+ "emptyLink": {
+  "bad": [
+   {
+    "emptyLinks": [
+     "Agenda"
+    ]
+   }
+  ],
+  "good": [
+   {
+    "emptyLinks": []
+   },
+   {}
+  ]
+ },
+ "unknownOrgan": {
+  "bad": [
+   {
+    "unknownOrgans": [
+     "Weed & Pest Board"
+    ]
+   },
+   {
+    "unknownOrgans": [
+     "Extension Board",
+     "Extension Board"
+    ]
+   }
+  ],
+  "good": [
+   {
+    "unknownOrgans": []
+   },
+   {}
+  ]
+ }
+}

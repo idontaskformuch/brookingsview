@@ -250,6 +250,9 @@ function pageProbe({ allowSel, wantLinks }) {
     loneDashNodes: lone,
     brokenImgs: [...document.images].filter((i) => i.complete && i.naturalWidth === 0 && i.currentSrc && !i.currentSrc.startsWith('data:')).map((i) => i.currentSrc),
     emptySections, staleRecently, clientfill, staleAlerts, pastEvents, allDayClock,
+    // meetings pages: organ strings no BODIES table knows (data-mtg-unknown), and links with an empty href (meetings.unknown-organ, web.empty-link)
+    unknownOrgans: [...document.querySelectorAll('[data-mtg-unknown]')].map((e) => e.getAttribute('data-mtg-unknown')),
+    emptyLinks: [...document.querySelectorAll('main a[href]')].filter((a) => (a.getAttribute('href') ?? '').trim() === '').map((a) => (a.innerText || '').trim().slice(0, 60)),
     // sideways scroll: some element reaches past the phone viewport (web.hscroll reads it on the mobile combos). Measured by element edges
     // against screen.width, not documentElement.scrollWidth: in mobile emulation the layout viewport is stretched to 980 on every page.
     hscroll: (() => {

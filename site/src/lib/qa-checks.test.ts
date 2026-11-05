@@ -262,3 +262,12 @@ describe('web.hscroll (390 px sideways scroll, 2026-11-05)', () => {
     expect(m).toContain('table.jobs');
   });
 });
+
+describe('meetings checks (Phase 3, 2026-11-05)', () => {
+  const fx = JSON.parse(readFileSync(new URL('../../../tests/fixtures/qa_meetings_2026-11-05.json', import.meta.url), 'utf8')) as Record<string, { bad: object[]; good: object[] }>;
+  const page = (x: object) => (checkPage({ ...base, ...x }, 'brookings_sd', compiled) as { check: string }[]).map((f) => f.check);
+  it.each([['replacementChar', 'web.replacement-char'], ['emptyLink', 'web.empty-link'], ['unknownOrgan', 'meetings.unknown-organ']])('%s trips %s and the good snapshots do not', (key, check) => {
+    for (const x of fx[key].bad) expect(page(x), JSON.stringify(x)).toContain(check);
+    for (const x of fx[key].good) expect(page(x), JSON.stringify(x)).not.toContain(check);
+  });
+});

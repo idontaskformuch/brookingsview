@@ -100,6 +100,15 @@ export function checkPage(snap, town, compiled) {
   const zero = (snap.headingTexts ?? []).filter((l) => ZERO_COUNT_RE.test(l));
   if (zero.length) f.push(finding('web.zero-count', town, snap, `announces a count of zero: "${zero[0].slice(0, 80)}"`));
 
+  // web.replacement-char (Phase 3 meetings, 2026-11-05): U+FFFD in the page is a character lost between the source and us (Moreno's meeting place once
+  // read "City Hall Council Chamber � 14177 Frederick Street" where the source has an en dash).
+  const rc = /.{0,24}�.{0,24}/.exec(snap.mainText ?? '');
+  if (rc) f.push(finding('web.replacement-char', town, snap, `a replacement character (U+FFFD) in the text: "${rc[0]}"`));
+  // web.empty-link: an <a href=""> goes nowhere (Moreno's agenda_url is '' where no agenda exists; a button must not render for it)
+  if ((snap.emptyLinks ?? []).length) f.push(finding('web.empty-link', town, snap, `link with an empty href: "${snap.emptyLinks[0]}"`));
+  // meetings.unknown-organ: an organ string no BODIES table in config/meetings.ts lists (shown under its own name, so nothing vanishes, but the table is aging)
+  if ((snap.unknownOrgans ?? []).length) f.push(finding('meetings.unknown-organ', town, snap, `organ not in the BODIES table: ${[...new Set(snap.unknownOrgans)].slice(0, 5).join(' | ')}`));
+
   if (/noindex/i.test(snap.metaRobots ?? '') && snap.inSitemap) {
     f.push(finding('web.noindex-sitemap', town, snap, 'noindex page listed in sitemap'));
   }

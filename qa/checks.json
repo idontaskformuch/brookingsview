@@ -220,6 +220,21 @@
       "severity": "soft",
       "born_from": "Premium phase 0 report 2026-11-05: horizontal scroll at 390 px on Moreno /sports/ and Brookings /trash-recycling/. Regression fixture: tests/fixtures/qa_hscroll_2026-11-05.json.",
       "what": "on the mobile combos of Pass B the page is wider than the viewport (documentElement.scrollWidth > clientWidth); the message names the widest element"
+    },
+    "web.replacement-char": {
+      "severity": "soft",
+      "born_from": "Phase 3 meetings 2026-11-05 (owner: the Moreno Location character error). The source's en dash arrived as U+FFFD in Moreno's meeting place line. Regression fixture: tests/fixtures/qa_meetings_2026-11-05.json. Note: the stored data of 2026-11-05 held no U+FFFD (35 of 36 rows have the real en dash); the check guards the next occurrence, and the view repairs a dash between spaces.",
+      "what": "visible text in <main> containing the Unicode replacement character U+FFFD"
+    },
+    "web.empty-link": {
+      "severity": "soft",
+      "born_from": "Phase 3 meetings 2026-11-05 (owner: Moreno's empty agenda_url). 14 of 36 Moreno meeting rows hold agenda_url = '' (no agenda posted); a link built from it would go nowhere. Regression fixture: tests/fixtures/qa_meetings_2026-11-05.json.",
+      "what": "a link in <main> whose href is empty"
+    },
+    "meetings.unknown-organ": {
+      "severity": "soft",
+      "born_from": "Phase 3 meetings 2026-11-05: Brookings' BODIES table said \"all 134 rows checked\" yet six organs in the database were missing from it (they fell back to their own name). Built for every town. Regression fixture: tests/fixtures/qa_meetings_2026-11-05.json; the list itself is also printed by site/scripts/dump-meetings.ts.",
+      "what": "a meeting card whose organ string is in no BODIES table of its town (config/meetings.ts); the card still shows under the source's own name"
     }
   }
 }

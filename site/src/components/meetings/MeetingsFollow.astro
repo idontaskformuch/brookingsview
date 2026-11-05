@@ -1,0 +1,42 @@
+---
+/** "How do I hear about a new agenda without remembering to look?" Two files per scope, both static: an RSS feed (new meeting, agenda
+ *  published) and a calendar to subscribe to (upcoming meetings appear on their own). Nothing about the reader is stored. The whole town first;
+ *  one organ at a time behind a fold when the town has more than one. */
+import SectionHeader from '../ui/SectionHeader.astro';
+
+interface Props { domain: string; organs: { key: string; label: string }[] }
+const { domain, organs } = Astro.props;
+---
+<section class="fol">
+  <SectionHeader title="Follow these meetings" level={2} />
+  <p class="fol__row">
+    <a class="fol__link" href="/city-hall/rss.xml">RSS feed</a>
+    <a class="fol__link" href={`webcal://${domain}/city-hall/calendar.ics`}>Subscribe in your calendar</a>
+  </p>
+  {organs.length > 1 && (
+    <details class="fol__more">
+      <summary>One body at a time</summary>
+      <ul class="fol__list">
+        {organs.map((o) => (
+          <li>
+            <span class="fol__name">{o.label}</span>
+            <a class="fol__link" href={`/city-hall/organ/${o.key}/rss.xml`}>RSS</a>
+            <a class="fol__link" href={`webcal://${domain}/city-hall/calendar/organ/${o.key}.ics`}>Calendar</a>
+          </li>
+        ))}
+      </ul>
+    </details>
+  )}
+</section>
+
+<style>
+  .fol { margin-top: var(--ui-group-gap); max-width: 44rem; font-family: var(--font-ui); }
+  .fol__row { margin: var(--ui-2) 0 0; display: flex; flex-wrap: wrap; gap: var(--ui-2); }
+  .fol__link { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 0.9rem; font-size: 0.9375rem; font-weight: 600; color: var(--accent); background: var(--ui-surface-1); border: 1.5px solid var(--rule-strong); border-radius: 6px; text-decoration: none; }
+  .fol__link:hover { border-color: var(--accent); }
+  .fol__more { margin-top: var(--ui-2); }
+  .fol__more > summary { cursor: pointer; font-size: 0.9375rem; font-weight: 600; color: var(--accent); padding: 0.4rem 0; min-height: 2.75rem; display: flex; align-items: center; }
+  .fol__list { list-style: none; margin: var(--ui-2) 0 0; padding: 0; display: grid; gap: var(--ui-1); }
+  .fol__list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-2); padding: var(--ui-1) 0; border-bottom: var(--ui-hairline); }
+  .fol__name { flex: 1 1 14rem; font-size: 0.9375rem; overflow-wrap: anywhere; }
+</style>
