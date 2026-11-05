@@ -1,0 +1,13 @@
+---
+/** One inline-SVG icon set, one stroke width. Always with text next to it (decorative, aria-hidden) or with `label` (then role=img). */
+import { ICONS, type IconName } from '../../lib/ui/icons';
+
+interface Props { name: IconName; size?: number; label?: string }
+const { name, size = 20, label } = Astro.props;
+---
+<svg class="ui-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+  stroke-linejoin="round" role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : 'true'} focusable="false"
+  set:html={ICONS[name]} />
+<style>
+  .ui-icon { flex: none; vertical-align: -0.2em; }
+</style>

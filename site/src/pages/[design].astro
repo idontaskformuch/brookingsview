@@ -1,0 +1,133 @@
+---
+/** Component gallery for src/components/ui/ at /_design/. Not a public page: built only with BUILD_DESIGN=1 (otherwise getStaticPaths is empty and no file
+ *  exists), noindex, and kept out of the sitemap (astro.config.mjs noindexThinPageUrls). Fixed sample data; follows the site's light/dark toggle.
+ *  Underscore folders are not routes in Astro, hence a dynamic route with the single param "_design". */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import HeroStat from '../components/ui/HeroStat.astro';
+import InsightLine from '../components/ui/InsightLine.astro';
+import RangeBar from '../components/ui/RangeBar.astro';
+import TimeStrip from '../components/ui/TimeStrip.astro';
+import Card from '../components/ui/Card.astro';
+import CompactRow from '../components/ui/CompactRow.astro';
+import Chips from '../components/ui/Chips.astro';
+import DayStrip from '../components/ui/DayStrip.astro';
+import Pill from '../components/ui/Pill.astro';
+import SectionHeader from '../components/ui/SectionHeader.astro';
+import WarningBanner from '../components/ui/WarningBanner.astro';
+import EmptyState from '../components/ui/EmptyState.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
+import FallbackTile from '../components/ui/FallbackTile.astro';
+import Icon from '../components/ui/Icon.astro';
+import { ICONS } from '../lib/ui/icons';
+import { CATEGORIES } from '../lib/ui/ui-helpers';
+
+export function getStaticPaths() {
+  return process.env.BUILD_DESIGN === '1' ? [{ params: { design: '_design' } }] : [];
+}
+
+const days = [
+  { label: 'Today', value: '62°', sub: '41°', icon: 'sun' as const, today: true },
+  { label: 'Fri', value: '58°', sub: '39°', icon: 'cloud' as const },
+  { label: 'Sat', value: '49°', sub: '33°', icon: 'rain' as const },
+  { label: 'Sun', value: '31°', sub: '18°', icon: 'snow' as const },
+  { label: 'Mon', value: '28°', sub: '12°', icon: 'wind' as const },
+  { label: 'Tue', value: '95°', sub: '70°', icon: 'sun' as const },
+];
+const chipCounts = { Downtown: 7, Eastside: 4, 'Near campus': 3, Airport: 1 };
+const catLabel: Record<string, string> = { civic: 'Civic', music: 'Music', family: 'Family', sports: 'Sports', food: 'Food', arts: 'Arts' };
+---
+<BaseLayout title="Design gallery" description="Component gallery for the ui library. Not a public page." noindex>
+  <main class="shell g">
+    <p class="g__note">Gallery for src/components/ui/. Toggle light/dark in the header; resize to 390 px.</p>
+
+    <WarningBanner href="#top" linkLabel="Details">Dense fog advisory until 9 am. Allow extra travel time.</WarningBanner>
+
+    <SectionHeader title="HeroStat" kicker="One hero per view" />
+    <div class="g__pair">
+      <HeroStat value="62" unit="°F" label="Forecast for 2 pm" sub="High 68° · Low 41°" />
+      <HeroStat value="26" unit="min" label="Starting soon" sub="City Council · 6:00 pm" tone="accent" />
+    </div>
+
+    <SectionHeader title="InsightLine" />
+    <div class="g__stack">
+      <InsightLine icon="rain">Dry until 3 pm</InsightLine>
+      <InsightLine icon="calendar">Next: City Council in 5 days</InsightLine>
+      <InsightLine>3 free things tonight</InsightLine>
+    </div>
+
+    <SectionHeader title="RangeBar" />
+    <div class="g__stack">
+      <RangeBar scaleMin={0} scaleMax={100} low={41} high={68} now={62} label="Today" />
+      <RangeBar scaleMin={0} scaleMax={100} low={12} high={28} label="Monday" />
+      <RangeBar scaleMin={0} scaleMax={100} low={70} high={95} label="Tuesday" />
+      <p class="g__cap">Missing data draws nothing:</p>
+      <RangeBar scaleMin={0} scaleMax={100} low={NaN} high={68} />
+    </div>
+
+    <SectionHeader title="TimeStrip" />
+    <TimeStrip fromMin={360} toMin={1440} nowAt={15 * 60 + 20}
+      segments={[{ startMin: 540, endMin: 1020, label: 'Library open 9 am to 5 pm' }, { startMin: 1080, endMin: 1260, label: 'Council 6 to 9 pm', tone: 'soft' }]} />
+
+    <SectionHeader title="DayStrip" />
+    <DayStrip days={days} label="Six-day outlook" />
+
+    <SectionHeader title="Card + category colours" kicker="Six categories" />
+    <div class="g__grid">
+      {CATEGORIES.map((c) => (
+        <Card cat={c} href="#top">
+          <Pill cat={c}>{catLabel[c]}</Pill>
+          <p class="g__t">Sample title that may wrap onto two lines</p>
+          <p class="g__m">7:30 pm · Venue name</p>
+        </Card>
+      ))}
+    </div>
+
+    <SectionHeader title="CompactRow" />
+    <div class="g__stack">
+      <CompactRow cat="civic" href="#top">City Council<span slot="aside">Tue 6:00 pm</span></CompactRow>
+      <CompactRow cat="music">Jazz night at the library<span slot="aside">7:30 pm</span></CompactRow>
+      <CompactRow cat="sports">High school soccer, home<span slot="aside">5:00 pm</span></CompactRow>
+      <CompactRow>No category</CompactRow>
+    </div>
+
+    <SectionHeader title="Chips" />
+    <Chips counts={chipCounts} label="Filter by area" />
+    <p class="g__cap">Fewer than two qualifying chips draws nothing:</p>
+    <Chips counts={{ Downtown: 9, Eastside: 2 }} />
+
+    <SectionHeader title="Pill / Badge" />
+    <div class="g__row">
+      <Pill>Neutral</Pill><Pill tone="ok">Open</Pill><Pill tone="warn">Closes soon</Pill><Pill tone="alert">Closed</Pill><Pill cat="food">Free</Pill>
+    </div>
+
+    <SectionHeader title="FallbackTile" kicker="No image" />
+    <div class="g__grid g__grid--tiles">
+      {CATEGORIES.map((c) => <FallbackTile cat={c} />)}
+    </div>
+
+    <SectionHeader title="EmptyState" />
+    <EmptyState href="#top" linkLabel="See tomorrow">Nothing else on tonight</EmptyState>
+
+    <SectionHeader title="Icon" kicker="Stroke 1.75, one set" />
+    <ul class="g__icons">
+      {(Object.keys(ICONS) as (keyof typeof ICONS)[]).map((n) => <li><Icon name={n} size={24} /><span>{n}</span></li>)}
+    </ul>
+
+    <AboutThisPage updated="10:00 am" sources={[{ name: 'National Weather Service', href: 'https://www.weather.gov/' }, { name: 'City of Example' }]}>
+      <p>Sample method note. Short, only where it helps the reader understand the data.</p>
+    </AboutThisPage>
+  </main>
+</BaseLayout>
+<style>
+  .g { font-family: var(--font-ui); padding-block: var(--ui-4) var(--ui-6); }
+  .g__note, .g__cap { margin: 0; font-size: var(--ui-meta); color: var(--ink-faint); }
+  .g__pair { display: grid; gap: var(--ui-5); grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+  .g__stack { display: grid; gap: var(--ui-3); }
+  .g__row { display: flex; flex-wrap: wrap; gap: var(--ui-2); }
+  .g__grid { display: grid; gap: var(--ui-3); grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); }
+  .g__grid--tiles { grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); }
+  .g__t { margin: 0; font-size: var(--ui-primary); font-weight: var(--ui-primary-weight); }
+  .g__m { margin: 0; font-size: var(--ui-meta); color: var(--ink-soft); }
+  .g__icons { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ui-3); grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); }
+  .g__icons li { display: flex; align-items: center; gap: var(--ui-2); font-size: var(--ui-meta); color: var(--ink-soft); }
+</style>

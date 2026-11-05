@@ -1,0 +1,25 @@
+/** Path data of the ui/Icon set (24x24, stroke 1.75, round). One file so a test can check every name renders and category icons exist. */
+export const ICONS = {
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  cloud: '<path d="M7 18a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 8.5a4.75 4.75 0 0 1 0 9.5H7z"/>',
+  rain: '<path d="M7 14a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 4.5a4.75 4.75 0 0 1 0 9.5"/><path d="M8 17l-1 3M12 17l-1 3M16 17l-1 3"/>',
+  snow: '<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/>',
+  wind: '<path d="M3 9h10a3 3 0 1 0-3-3M3 15h14a3 3 0 1 1-3 3M3 12h7"/>',
+  thermometer: '<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/>',
+  civic: '<path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>',
+  music: '<path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>',
+  family: '<circle cx="8" cy="7" r="3"/><circle cx="17" cy="9" r="2.2"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M14.5 20a4.2 4.2 0 0 1 7 0"/>',
+  sports: '<circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6c3 3 3 10.8 0 12.8M18.4 5.6c-3 3-3 10.8 0 12.8"/>',
+  food: '<path d="M6 3v8a2 2 0 0 0 2 2v8M10 3v8a2 2 0 0 1-2 2M6 3v6M18 3c-2 1.5-3 4-3 7h3v11"/>',
+  arts: '<path d="M12 3a9 9 0 1 0 0 18 2 2 0 0 0 1.5-3.3A2 2 0 0 1 15 15h2a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1"/><circle cx="11" cy="7" r="1"/><circle cx="16" cy="8" r="1"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  pin: '<path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  external: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+  download: '<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>',
+  alert: '<path d="M12 3L2 20h20L12 3z"/><path d="M12 10v4M12 17.5v.5"/>',
+  check: '<path d="M4 12.5l5 5L20 6.5"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
+} as const;
+export type IconName = keyof typeof ICONS;

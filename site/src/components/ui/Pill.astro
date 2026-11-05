@@ -1,0 +1,16 @@
+---
+/** Small status/badge pill. Only from stated data. `cat` colours the text by category, `tone` by meaning (ok/warn/alert use the shared status tokens). */
+import { CATEGORIES, type Category } from '../../lib/ui/ui-helpers';
+
+interface Props { cat?: Category; tone?: 'neutral' | 'ok' | 'warn' | 'alert' }
+const { cat, tone = 'neutral' } = Astro.props;
+if (cat && !CATEGORIES.includes(cat)) throw new Error(`ui/Pill: unknown category ${cat}`);
+---
+<span class:list={['ui-pill', `ui-pill--${tone}`]} style={cat ? `--c: var(--cat-${cat})` : undefined}><slot /></span>
+<style>
+  .ui-pill { display: inline-block; font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); line-height: 1.3;
+    padding: 0.1rem 0.6rem; border-radius: 999px; background: var(--ui-surface-2); color: var(--c, var(--ink)); font-variant-numeric: tabular-nums; }
+  .ui-pill--ok { background: var(--status-ok-bg, var(--ui-surface-2)); color: var(--status-ok-text, var(--ink)); }
+  .ui-pill--warn { background: var(--status-warn-bg, var(--ui-surface-2)); color: var(--status-warn-text, var(--ink)); }
+  .ui-pill--alert { background: var(--status-alert-bg, var(--ui-surface-2)); color: var(--status-alert-text, var(--ink)); }
+</style>

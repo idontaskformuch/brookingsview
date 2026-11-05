@@ -429,7 +429,7 @@ async function buildLastmodMap(townId, databaseUrl) {
   // /tonight/ and /this-weekend/ (evening layer, step 7): NOT in this set. The pages decide (threshold verdict AND the owner's yes, lib/evening-verdict.ts),
   // write the answer to .evening-verdict.json and the sitemap filter below reads it, so tag and sitemap cannot disagree.
   const noindexThinPageUrls = new Set(['/reviews/', '/recipes/', '/editorials/', '/columns/', '/vail-resorts/',
-    '/jobs/', '/events/past/', '/offline/', '/university/weeks/',
+    '/jobs/', '/events/past/', '/offline/', '/university/weeks/', '/_design/',
     ...['today', 'this-weekend', 'free', 'kids', 'library', 'outdoor', 'campus'].map((f) => `/events/${f}/`)]);
   // Quiet sections (SiteConfig.quietSections, owner 2026-10-23): reachable, noindex in the page, out of the sitemap here. Mirrors
   // site-config.ts by hand; src/lib/quiet-sections.test.ts fails if the two disagree.

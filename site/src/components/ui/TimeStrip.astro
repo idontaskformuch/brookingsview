@@ -1,0 +1,34 @@
+---
+/** A day (or part of one) as a strip: segments are time ranges in minutes since midnight, `nowAt` marks now. Segments outside the window are
+ *  clipped; no segments draws nothing. */
+import { windowPercent } from '../../lib/ui/ui-helpers';
+
+interface Segment { startMin: number; endMin: number; label: string; tone?: 'accent' | 'soft' }
+interface Props { fromMin?: number; toMin?: number; segments: Segment[]; nowAt?: number }
+const { fromMin = 360, toMin = 1440, segments, nowAt } = Astro.props;
+const bars = segments.flatMap((s) => {
+  const l = windowPercent(fromMin, toMin, Math.max(s.startMin, fromMin));
+  const r = windowPercent(fromMin, toMin, Math.min(s.endMin, toMin));
+  return l !== null && r !== null && r > l ? [{ ...s, l, w: r - l }] : [];
+});
+const now = nowAt === undefined ? null : windowPercent(fromMin, toMin, nowAt);
+const hour = (m: number) => { const h = Math.floor(m / 60) % 24; return `${h % 12 || 12}${h < 12 ? 'am' : 'pm'}`; };
+---
+{bars.length > 0 && (
+  <div class="ui-ts">
+    <div class="ui-ts__track" role="img" aria-label={bars.map((b) => b.label).join(', ')}>
+      {bars.map((b) => <span class:list={['ui-ts__bar', `ui-ts__bar--${b.tone ?? 'accent'}`]} style={`left:${b.l}%;width:${b.w}%`}></span>)}
+      {now !== null && <span class="ui-ts__now" style={`left:${now}%`}></span>}
+    </div>
+    <div class="ui-ts__axis"><span>{hour(fromMin)}</span><span>{hour(Math.round((fromMin + toMin) / 2))}</span><span>{hour(toMin)}</span></div>
+  </div>
+)}
+<style>
+  .ui-ts { font-family: var(--font-ui); }
+  .ui-ts__track { position: relative; height: 12px; border-radius: 6px; background: var(--ui-surface-2); overflow: hidden; }
+  .ui-ts__bar { position: absolute; top: 0; bottom: 0; border-radius: 6px; }
+  .ui-ts__bar--accent { background: var(--accent); }
+  .ui-ts__bar--soft { background: var(--rule-strong); }
+  .ui-ts__now { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--ink); }
+  .ui-ts__axis { display: flex; justify-content: space-between; margin-top: var(--ui-1); font-size: var(--ui-meta); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+</style>

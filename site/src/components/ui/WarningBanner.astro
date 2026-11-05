@@ -1,0 +1,18 @@
+---
+/** Active warning at the top of the page: the only thing allowed above the answer (standards: svaret först). role=alert, shared alert colours. */
+import Icon from './Icon.astro';
+
+interface Props { href?: string; linkLabel?: string }
+const { href, linkLabel = 'Details' } = Astro.props;
+---
+<div class="ui-warn" role="alert">
+  <Icon name="alert" size={22} />
+  <p class="ui-warn__text"><slot /></p>
+  {href && <a class="ui-warn__link" href={href}>{linkLabel}</a>}
+</div>
+<style>
+  .ui-warn { display: flex; align-items: center; gap: var(--ui-3); padding: var(--ui-3); border-radius: var(--ui-radius); font-family: var(--font-ui);
+    background: var(--alert-tint); color: var(--alert); border-left: 4px solid var(--alert); }
+  .ui-warn__text { margin: 0; flex: 1; font-size: var(--ui-primary); font-weight: var(--ui-primary-weight); color: var(--ink); }
+  .ui-warn__link { flex: none; font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); color: var(--alert); }
+</style>

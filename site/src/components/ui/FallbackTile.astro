@@ -1,0 +1,15 @@
+---
+/** Stand-in where an item has no image: category colour wash + category icon. Replaces the empty grey box; hotlinked images are never used. */
+import Icon from './Icon.astro';
+import { CATEGORIES, type Category } from '../../lib/ui/ui-helpers';
+
+interface Props { cat: Category; label?: string; ratio?: string }
+const { cat, label, ratio = '16 / 9' } = Astro.props;
+if (!CATEGORIES.includes(cat)) throw new Error(`ui/FallbackTile: unknown category ${cat}`);
+---
+<div class="ui-fb" style={`--c: var(--cat-${cat}); aspect-ratio: ${ratio}`}>
+  <Icon name={cat} size={36} label={label} />
+</div>
+<style>
+  .ui-fb { display: grid; place-items: center; border-radius: var(--ui-radius); color: var(--c); background: color-mix(in srgb, var(--c) 14%, var(--paper)); }
+</style>

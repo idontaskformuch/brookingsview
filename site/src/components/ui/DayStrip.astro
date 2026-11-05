@@ -1,0 +1,31 @@
+---
+/** Row of days (7-day outlook): label ("Tue"), optional icon, a value and an optional sub line. Today is marked. Merging identical neighbours
+ *  ("Cloudy all week", principle 4) is the caller's job; this renders what it gets. */
+import Icon from './Icon.astro';
+import type { IconName } from '../../lib/ui/icons';
+
+interface Day { label: string; value: string; sub?: string; icon?: IconName; today?: boolean }
+interface Props { days: Day[]; label?: string }
+const { days, label = 'Days' } = Astro.props;
+---
+{days.length > 0 && (
+  <ol class="ui-days" aria-label={label}>
+    {days.map((d) => (
+      <li class:list={['ui-day', { 'is-today': d.today }]} aria-current={d.today ? 'date' : undefined}>
+        <span class="ui-day__label">{d.label}</span>
+        {d.icon && <Icon name={d.icon} size={22} />}
+        <span class="ui-day__value">{d.value}</span>
+        {d.sub && <span class="ui-day__sub">{d.sub}</span>}
+      </li>
+    ))}
+  </ol>
+)}
+<style>
+  .ui-days { list-style: none; margin: 0; padding: var(--ui-1) 0 var(--ui-2); display: flex; gap: var(--ui-2); overflow-x: auto; scroll-snap-type: x proximity; font-family: var(--font-ui); }
+  .ui-day { flex: 1 0 4.5rem; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center; gap: var(--ui-1); padding: var(--ui-2) var(--ui-1);
+    border-radius: var(--ui-radius); background: var(--ui-surface-2); font-variant-numeric: tabular-nums; }
+  .ui-day.is-today { background: var(--accent-tint); box-shadow: inset 0 -3px 0 var(--accent); }
+  .ui-day__label { font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); color: var(--ink-soft); }
+  .ui-day__value { font-size: var(--ui-primary); font-weight: var(--ui-primary-weight); }
+  .ui-day__sub { font-size: var(--ui-meta); color: var(--ink-faint); }
+</style>

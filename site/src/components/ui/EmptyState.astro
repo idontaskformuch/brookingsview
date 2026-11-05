@@ -1,0 +1,14 @@
+---
+/** Designed empty state (principle 14): one line and where to go instead. Never a heading with nothing under it, never "0 things". */
+interface Props { href?: string; linkLabel?: string }
+const { href, linkLabel } = Astro.props;
+---
+<div class="ui-empty">
+  <p class="ui-empty__line"><slot /></p>
+  {href && linkLabel && <a class="ui-empty__link" href={href}>{linkLabel}</a>}
+</div>
+<style>
+  .ui-empty { padding: var(--ui-4) var(--ui-3); border-radius: var(--ui-radius); background: var(--ui-surface-2); font-family: var(--font-ui); }
+  .ui-empty__line { margin: 0; font-size: var(--ui-primary); font-weight: var(--ui-primary-weight); }
+  .ui-empty__link { display: inline-block; margin-top: var(--ui-2); font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); }
+</style>

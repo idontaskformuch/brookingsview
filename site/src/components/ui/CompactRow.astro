@@ -1,0 +1,23 @@
+---
+/** Dense list row: 3 px left edge in the category colour, content in the slot, optional right-aligned `aside` slot (time, distance). */
+import { CATEGORIES, type Category } from '../../lib/ui/ui-helpers';
+
+interface Props { cat?: Category; href?: string }
+const { cat, href } = Astro.props;
+if (cat && !CATEGORIES.includes(cat)) throw new Error(`ui/CompactRow: unknown category ${cat}`);
+const Tag = href ? 'a' : 'div';
+const external = !!href && /^https?:/i.test(href);
+---
+<Tag class="ui-row" style={cat ? `--c: var(--cat-${cat})` : '--c: var(--rule-strong)'} href={href} rel={external ? 'noopener' : undefined}>
+  <span class="ui-row__main"><slot /></span>
+  {Astro.slots.has('aside') && <span class="ui-row__aside"><slot name="aside" /></span>}
+</Tag>
+<style>
+  .ui-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ui-3); padding: var(--ui-2) var(--ui-3);
+    border-left: 3px solid var(--c); color: inherit; text-decoration: none; font-family: var(--font-ui); font-size: var(--ui-primary);
+    font-variant-numeric: tabular-nums; transition: background var(--ui-dur) var(--ui-ease); }
+  .ui-row__main { min-width: 0; overflow-wrap: anywhere; }
+  .ui-row__aside { flex: none; font-size: var(--ui-meta); color: var(--ink-soft); }
+  a.ui-row:hover { background: var(--ui-surface-2); }
+  a.ui-row:focus-visible { outline: 2px solid var(--c); outline-offset: -2px; }
+</style>
