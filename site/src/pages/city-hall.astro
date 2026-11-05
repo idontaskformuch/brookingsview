@@ -7,7 +7,11 @@ import RelatedContent from '../components/RelatedContent.astro';
 import ClusterNav from '../components/ClusterNav.astro';
 import SectionHero from '../components/SectionHero.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
-import { getUpcomingStories, getPastStories, getProjects, formatMeetingDate } from '../lib/db';
+import MeetingsUpcoming from '../components/meetings/MeetingsUpcoming.astro';
+import { getUpcomingStories, getPastStories, getProjects, formatMeetingDate, getMeetingRowsForView } from '../lib/db';
+import {
+  MEETINGS_TOWNS, buildMeetings, isUpcoming, buildMeetingJsonLd, nextMeetingDescription,
+} from '../lib/meetings-view';
 import { siteConfig } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
 import { placeLabel, forCountry } from '../lib/country-profile';
@@ -15,8 +19,12 @@ import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-json
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubNavItems } from '../lib/clusters';
 
-const upcoming = await getUpcomingStories(['meeting'], 40);
-const past = await getPastStories(['meeting', 'meeting_followup'], 30);
+// A town is on the structured meetings layout only when lib/meetings-view.ts lists it; every other town keeps the story list below.
+const meetingsTown = MEETINGS_TOWNS[siteConfig.townId] ?? null;
+const upcoming = meetingsTown ? [] : await getUpcomingStories(['meeting'], 40);
+const pastAll = await getPastStories(['meeting', 'meeting_followup'], meetingsTown ? 40 : 30);
+// A notice of quorum is a story about a meeting that is not one (see StoryCard); it stays out of the recent list.
+const past = meetingsTown ? pastAll.filter((s) => !s.title.startsWith('Notice: possible quorum')).slice(0, 10) : pastAll;
 const projects = await getProjects();
 const canonicalUrl = new URL('/city-hall/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
@@ -32,48 +40,92 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 // content, not config).
 const pageMeta = resolvePageMeta('city-hall', siteConfig);
 const clusterNavItems = resolveHubNavItems('city-hall', siteConfig);
+
+const ledeText = `What ${siteConfig.cityName}'s ${forCountry(siteConfig.country, 'city council, county commission and committees', 'council and committees')} are deciding — ${forCountry(siteConfig.country, 'summarized', 'summarised')} from the published agendas, in plain language, without taking sides. Every summary is checked against its own agenda before publishing, and links back to the original document.`;
+const todayYmd = new Intl.DateTimeFormat('en-CA', { timeZone: siteConfig.timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const upcomingMeetings = meetingsTown
+  ? buildMeetings(await getMeetingRowsForView(), siteConfig.timezone, siteConfig.meetingsHaveTime)
+      .filter((m) => isUpcoming(m, Date.now(), todayYmd))
+  : [];
+const description = (upcomingMeetings[0] && nextMeetingDescription(upcomingMeetings[0], siteConfig.cityName)) || metaDescription('city-hall', siteConfig);
+const eventJsonLd = meetingsTown
+  ? upcomingMeetings.slice(0, 10)
+      .map((m) => buildMeetingJsonLd(m, siteConfig.timezone, meetingsTown.place, meetingsTown.organizer, canonicalUrl))
+      .filter((x): x is Record<string, unknown> => x !== null)
+  : [];
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-city-hall"
-  description={metaDescription('city-hall', siteConfig)}>
+  description={description}>
   <Breadcrumbs trail={breadcrumbTrail} />
-  <SectionHero section="city_hall" />
-  <header class="lede">
-    <h1>{pageMeta.h1}</h1>
-    <p>What {siteConfig.cityName}'s {forCountry(siteConfig.country, 'city council, county commission and committees', 'council and committees')}
-    are deciding — {forCountry(siteConfig.country, 'summarized', 'summarised')} from the published agendas, in plain language,
-    without taking sides. Every summary is checked against its own agenda
-    before publishing, and links back to the original document.
-    {past[0]?.occurs_at && <> Last updated {formatMeetingDate(past[0].occurs_at)}.</>}</p>
-    <ShareButton title={pageMeta.title} />
-  </header>
-
-  {projects.length > 0 && (
-    <p class="projects-teaser">
-      Tracking a real development or ordinance through every meeting that
-      touches it? See <a href="/city-hall/projects/">active city hall projects →</a>
-    </p>
-  )}
-
-  {siteConfig.townId === 'brookings_sd' && (
-    <p class="projects-teaser">
-      New to following the council? <a href="/how-city-council-works/">How it works, how to watch and how to speak →</a>
-    </p>
-    <p class="projects-teaser">
-      Garbage, recycling and yard waste: <a href="/trash-recycling/">pickup days and what goes where →</a>
-    </p>
-  )}
-
-  <SectionRule label="Coming up" />
-  {upcoming.length > 0 ? (
-    <div class="stack">{upcoming.map((story) => <StoryCard story={story} />)}</div>
-  ) : (
-    <p class="empty">No meetings scheduled at the moment.</p>
-  )}
-
-  {past.length > 0 && (
+  {meetingsTown ? (
     <>
-      <SectionRule label="Recent meetings" href="/city-hall/archive/" />
-      <div class="stack">{past.map((story) => <StoryCard story={story} />)}</div>
+      <header class="lede">
+        <h1>{pageMeta.h1}</h1>
+        <ShareButton title={pageMeta.title} />
+      </header>
+
+      <MeetingsUpcoming
+        meetings={upcomingMeetings}
+        todayYmd={todayYmd}
+        timezone={siteConfig.timezone}
+        commentHref={meetingsTown.comment?.href ?? null}
+        commentBodyKeys={meetingsTown.comment?.bodyKeys ?? []}
+      />
+
+      {past.length > 0 && (
+        <>
+          <SectionRule label="Recent meetings" />
+          <div class="stack">{past.map((story) => <StoryCard story={story} />)}</div>
+          <p class="all-past"><a href="/city-hall/archive/">All past meetings →</a></p>
+        </>
+      )}
+
+      <SectionRule label="About this page" />
+      <div class="lede">
+        <p>{ledeText}{past[0]?.occurs_at && <> Last updated {formatMeetingDate(past[0].occurs_at)}.</>}</p>
+      </div>
+      {projects.length > 0 && (
+        <p class="projects-teaser">
+          Tracking a real development or ordinance through every meeting that
+          touches it? See <a href="/city-hall/projects/">active city hall projects →</a>
+        </p>
+      )}
+      <p class="projects-teaser">
+        New to following the council? <a href="/how-city-council-works/">How it works, how to watch and how to speak →</a>
+      </p>
+      <p class="projects-teaser">
+        Garbage, recycling and yard waste: <a href="/trash-recycling/">pickup days and what goes where →</a>
+      </p>
+    </>
+  ) : (
+    <>
+      <SectionHero section="city_hall" />
+      <header class="lede">
+        <h1>{pageMeta.h1}</h1>
+        <p>{ledeText}{past[0]?.occurs_at && <> Last updated {formatMeetingDate(past[0].occurs_at)}.</>}</p>
+        <ShareButton title={pageMeta.title} />
+      </header>
+
+      {projects.length > 0 && (
+        <p class="projects-teaser">
+          Tracking a real development or ordinance through every meeting that
+          touches it? See <a href="/city-hall/projects/">active city hall projects →</a>
+        </p>
+      )}
+
+      <SectionRule label="Coming up" />
+      {upcoming.length > 0 ? (
+        <div class="stack">{upcoming.map((story) => <StoryCard story={story} />)}</div>
+      ) : (
+        <p class="empty">No meetings scheduled at the moment.</p>
+      )}
+
+      {past.length > 0 && (
+        <>
+          <SectionRule label="Recent meetings" href="/city-hall/archive/" />
+          <div class="stack">{past.map((story) => <StoryCard story={story} />)}</div>
+        </>
+      )}
     </>
   )}
 
@@ -84,6 +136,9 @@ const clusterNavItems = resolveHubNavItems('city-hall', siteConfig);
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
+  {eventJsonLd.length > 0 && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(eventJsonLd)} />
+  )}
 </BaseLayout>
 
 <style>
@@ -91,6 +146,7 @@ const clusterNavItems = resolveHubNavItems('city-hall', siteConfig);
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
 .stack { display: grid; gap: 0.75rem; max-width: 44rem; }
 .empty { color: var(--ink-soft); }
+.all-past { margin: 0.875rem 0 0; font-weight: 600; }
 .projects-teaser {
   margin: 0 0 1.25rem;
   padding: 0.625rem 0.875rem;

@@ -17,6 +17,7 @@
  * Alla frågor filtreras på town_id från configen, så samma kod betjänar nästa
  * ort utan ändring.
  */
+import type { MeetingRow } from './meetings-view';
 import { neon } from '@neondatabase/serverless';
 import { siteConfig, isSectionDisabled } from './site-config';
 import { forCountry, formatClockCompact } from './country-profile';
@@ -1309,6 +1310,24 @@ export async function getUpcomingCouncilMeetings(limit = 6): Promise<CouncilMeet
      ORDER BY meeting_date ASC
      LIMIT ${limit}
   `) as CouncilMeetingRow[];
+}
+
+/** Meeting rows for the structured /city-hall/ view, from `meetings` directly (see lib/meetings-view.ts), each with the slug of
+ *  its plain-language story when one exists. The window starts a day back so a meeting later today is never cut off by the
+ *  UTC-midnight anchor of a bare-date source; the caller decides what is still upcoming. */
+export async function getMeetingRowsForView(limit = 80): Promise<MeetingRow[]> {
+  return (await sql`
+    SELECT m.id, m.body, m.meeting_date, m.agenda_url, m.minutes_url, m.raw_data,
+           (SELECT s.slug FROM stories s
+             WHERE s.town_id = m.town_id AND s.meeting_id = m.id AND s.source_type = 'meeting' AND s.superseded_by_slug IS NULL
+             ORDER BY s.published_at DESC LIMIT 1) AS story_slug
+      FROM meetings m
+     WHERE m.town_id = ${TOWN_ID}
+       AND m.body IS NOT NULL
+       AND m.meeting_date >= now() - interval '1 day'
+     ORDER BY m.meeting_date ASC
+     LIMIT ${limit}
+  `) as MeetingRow[];
 }
 
 export async function getUpcomingGames(limit = 10): Promise<Game[]> {

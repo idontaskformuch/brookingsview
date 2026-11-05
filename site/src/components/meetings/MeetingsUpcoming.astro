@@ -1,0 +1,100 @@
+---
+/** The top of /city-hall/: the next meeting as one large card, then "This week" (the following 7 days) and "Coming up", with
+ *  organ chips over the lists. The build knows "today" only as of the build, so a small script re-reads it from the clock:
+ *  "in 5 days" stays right, a meeting that is over hides itself, and the chips filter the lists. Without JS everything shows. */
+import SectionRule from '../SectionRule.astro';
+import MeetingCard from './MeetingCard.astro';
+import { daysBetween, organChips, type MeetingView } from '../../lib/meetings-view';
+
+interface Props {
+  meetings: MeetingView[];
+  todayYmd: string;
+  timezone: string;
+  commentBodyKeys: string[];
+  commentHref: string | null;
+}
+const { meetings, todayYmd, timezone, commentBodyKeys, commentHref } = Astro.props;
+const [next, ...others] = meetings;
+const week = others.filter((m) => daysBetween(todayYmd, m.ymd) <= 7);
+const later = others.filter((m) => daysBetween(todayYmd, m.ymd) > 7);
+const chips = organChips(others);
+const hrefFor = (m: MeetingView) => (commentHref && commentBodyKeys.includes(m.bodyKey) ? commentHref : null);
+---
+<style is:global>
+  :root { --mtg-council: #0b2e55; --mtg-planning: #2f5f4a; --mtg-utilities: #7a5710; --mtg-school: #6a3f82; --mtg-other: #55554f; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --mtg-council: #9bbbe3; --mtg-planning: #8fc7ac; --mtg-utilities: #dcb26a; --mtg-school: #cfa9e0; --mtg-other: #b8b5ab; }
+  }
+  :root[data-theme="dark"] { --mtg-council: #9bbbe3; --mtg-planning: #8fc7ac; --mtg-utilities: #dcb26a; --mtg-school: #cfa9e0; --mtg-other: #b8b5ab; }
+</style>
+
+<section class="up" data-mtg-root data-tz={timezone}>
+  <SectionRule label="Next up" />
+  {next ? (
+    <MeetingCard m={next} big todayYmd={todayYmd} commentHref={hrefFor(next)} />
+  ) : (
+    <p class="up__empty">No meetings scheduled at the moment.</p>
+  )}
+
+  {chips.length > 1 && (
+    <nav class="up__chips" aria-label="Filter upcoming meetings by organ" data-mtg-chips>
+      <button type="button" class="up__chip" data-mtg-chip="" aria-pressed="true">All</button>
+      {chips.map((c) => <button type="button" class="up__chip" data-mtg-chip={c.key} aria-pressed="false">{c.label}</button>)}
+    </nav>
+  )}
+
+  {week.length > 0 && (
+    <>
+      <SectionRule label="This week" />
+      <div class="up__stack" data-mtg-list>{week.map((m) => <MeetingCard m={m} todayYmd={todayYmd} commentHref={hrefFor(m)} />)}</div>
+    </>
+  )}
+  {later.length > 0 && (
+    <>
+      <SectionRule label="Coming up" />
+      <div class="up__stack" data-mtg-list>{later.map((m) => <MeetingCard m={m} todayYmd={todayYmd} commentHref={hrefFor(m)} />)}</div>
+    </>
+  )}
+</section>
+
+<script is:inline>
+  (function () {
+    var root = document.querySelector('[data-mtg-root]');
+    if (!root) return;
+    var tz = root.getAttribute('data-tz') || 'UTC';
+    var now = Date.now();
+    var today;
+    try { today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(now)); } catch (e) { return; }
+    function days(a, b) { var x = a.split('-'), y = b.split('-'); return Math.round((Date.UTC(+y[0], +y[1] - 1, +y[2]) - Date.UTC(+x[0], +x[1] - 1, +x[2])) / 86400000); }
+    var cards = root.querySelectorAll('article[data-ymd]');
+    for (var i = 0; i < cards.length; i++) {
+      var c = cards[i], ymd = c.getAttribute('data-ymd'), end = c.getAttribute('data-end');
+      if (end ? now > +end : ymd < today) { c.hidden = true; continue; }
+      var n = days(today, ymd), rel = c.querySelector('[data-mtg-rel]');
+      if (rel) rel.textContent = n === 0 ? 'today' : n === 1 ? 'tomorrow' : 'in ' + n + ' days';
+    }
+    var chips = root.querySelector('[data-mtg-chips]');
+    if (!chips) return;
+    chips.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-mtg-chip]');
+      if (!b) return;
+      var key = b.getAttribute('data-mtg-chip');
+      var all = chips.querySelectorAll('[data-mtg-chip]');
+      for (var j = 0; j < all.length; j++) all[j].setAttribute('aria-pressed', all[j] === b ? 'true' : 'false');
+      var lists = root.querySelectorAll('[data-mtg-list] article');
+      for (var k = 0; k < lists.length; k++) lists[k].classList.toggle('mtg--off', !!key && lists[k].getAttribute('data-organ') !== key);
+    });
+  })();
+</script>
+
+<style>
+  .up__stack { display: grid; gap: 0.75rem; max-width: 44rem; }
+  .up__empty { color: var(--ink-soft); }
+  .up__chips { display: flex; gap: 0.5rem; overflow-x: auto; padding: 0.9rem 0 0.25rem; max-width: 44rem; }
+  .up__chip {
+    flex: none; font: inherit; font-size: 0.9375rem; font-weight: 600; color: var(--ink); background: var(--surface);
+    border: 1.5px solid var(--rule-strong); border-radius: 999px; padding: 0.45rem 0.9rem; min-height: 2.75rem; cursor: pointer; white-space: nowrap;
+  }
+  .up__chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .up :global(.mtg--off) { display: none; }
+</style>

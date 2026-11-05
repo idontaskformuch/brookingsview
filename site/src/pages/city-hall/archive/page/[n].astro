@@ -1,0 +1,17 @@
+---
+/** Pages 2.. of the meeting archive, only for towns on the structured meetings layout (everyone else's archive is one page). */
+import ArchivePage from '../../../../components/meetings/ArchivePage.astro';
+import { getContentByType } from '../../../../lib/db';
+import { MEETINGS_TOWNS, ARCHIVE_PAGE_SIZE } from '../../../../lib/meetings-view';
+import { siteConfig } from '../../../../lib/site-config';
+
+export async function getStaticPaths() {
+  if (!MEETINGS_TOWNS[siteConfig.townId]) return [];
+  const all = await getContentByType(['meeting', 'meeting_followup'], 5000);
+  const past = all.filter((m) => !m.occurs_at || new Date(m.occurs_at) < new Date());
+  const pages = Math.ceil(past.length / ARCHIVE_PAGE_SIZE);
+  return Array.from({ length: Math.max(0, pages - 1) }, (_, i) => ({ params: { n: String(i + 2) }, props: { page: i + 2 } }));
+}
+const { page } = Astro.props;
+---
+<ArchivePage page={page} />

@@ -1,0 +1,86 @@
+---
+/** One upcoming meeting, straight from the meetings table: organ, when, where, the first agenda titles verbatim, links. No
+ *  generated prose. `big` is the "Next up" card (same content, larger date). A button shows only when its link exists. */
+import { storyHref } from '../../lib/content-slugs';
+import { formatYmd, relativeDays, daysBetween, canCalendar, type MeetingView } from '../../lib/meetings-view';
+
+interface Props {
+  m: MeetingView;
+  big?: boolean;
+  todayYmd: string;
+  /** where the how-to-comment guide lives for this organ, when the town has one */
+  commentHref?: string | null;
+}
+const { m, big = false, todayYmd, commentHref = null } = Astro.props;
+const SHOWN = 3;
+const first = m.items.slice(0, SHOWN);
+const rest = m.items.slice(SHOWN);
+const days = daysBetween(todayYmd, m.ymd);
+const isPdf = !!m.agendaUrl && /\.pdf(\?|$)/i.test(m.agendaUrl);
+const endMs = m.startMs != null ? m.startMs + 3 * 3_600_000 : null;
+---
+<article class:list={['mtg', big && 'mtg--big']} data-tone={m.tone} data-organ={m.bodyKey} data-ymd={m.ymd} data-end={endMs ?? undefined}>
+  <p class="mtg__organ">
+    {m.bodyLabel}
+    {m.jointWith && <span class="mtg__joint">Joint with {m.jointWith}</span>}
+  </p>
+  <h3 class="mtg__when">
+    <span class="mtg__date">{formatYmd(m.ymd)}</span>{m.time && <span class="mtg__time"> · {m.time}</span>}
+  </h3>
+  <p class="mtg__sub">
+    <span class="mtg__rel" data-mtg-rel={m.ymd}>{relativeDays(days)}</span>{m.location && <> · <span class="mtg__where">{m.location}</span></>}
+  </p>
+
+  {first.length > 0 && (
+    <>
+      <ul class="mtg__items">{first.map((t) => <li>{t}</li>)}</ul>
+      {rest.length > 0 && (
+        <details class="mtg__more">
+          <summary>+ {rest.length} more</summary>
+          <ul class="mtg__items">{rest.map((t) => <li>{t}</li>)}</ul>
+        </details>
+      )}
+    </>
+  )}
+  {m.topics.length > 0 && <p class="mtg__topics" aria-label="Topics on the agenda">{m.topics.join(' · ')}</p>}
+
+  <p class="mtg__links">
+    {m.agendaUrl && <a class="mtg__btn" href={m.agendaUrl} rel="noopener">Agenda{isPdf ? ' (PDF)' : ''}</a>}
+    {m.videoUrl && <a class="mtg__btn" href={m.videoUrl} rel="noopener">Watch live</a>}
+    {commentHref && <a class="mtg__btn" href={commentHref}>How to comment</a>}
+    {canCalendar(m) && <a class="mtg__btn" href={`/city-hall/calendar/${m.id}.ics`} download>Add to calendar</a>}
+    {m.storySlug && <a class="mtg__text" href={storyHref(m.storySlug)}>Plain-language summary →</a>}
+  </p>
+</article>
+
+<style>
+  .mtg {
+    --tone: var(--mtg-other);
+    background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--tone);
+    border-radius: 6px; padding: 0.875rem 1rem 1rem; max-width: 44rem;
+  }
+  .mtg[data-tone="council"] { --tone: var(--mtg-council); }
+  .mtg[data-tone="planning"] { --tone: var(--mtg-planning); }
+  .mtg[data-tone="utilities"] { --tone: var(--mtg-utilities); }
+  .mtg[data-tone="school"] { --tone: var(--mtg-school); }
+  .mtg__organ { margin: 0; font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tone); }
+  .mtg__joint { margin-left: 0.5rem; font-weight: 600; letter-spacing: 0.02em; text-transform: none; color: var(--ink-soft); }
+  .mtg__when { margin: 0.25rem 0 0; font-family: var(--font-head); font-size: 1.375rem; line-height: 1.2; font-weight: 700; color: var(--ink); }
+  .mtg--big .mtg__when { font-size: 1.875rem; }
+  .mtg__time { font-weight: 600; }
+  .mtg__sub { margin: 0.25rem 0 0; font-size: 0.9375rem; color: var(--ink-soft); }
+  .mtg__rel { font-weight: 600; color: var(--ink); }
+  .mtg__items { margin: 0.75rem 0 0; padding-left: 1.1rem; font-size: 0.9375rem; line-height: 1.45; color: var(--ink); }
+  .mtg__items li { margin: 0.2rem 0; overflow-wrap: anywhere; }
+  .mtg__more { margin: 0.25rem 0 0; }
+  .mtg__more summary { cursor: pointer; font-size: 0.9375rem; font-weight: 600; color: var(--navy); padding: 0.4rem 0; min-height: 1.5rem; }
+  .mtg__topics { margin: 0.75rem 0 0; font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.02em; color: var(--ink-soft); }
+  .mtg__links { margin: 0.875rem 0 0; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+  .mtg__btn {
+    display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 0.9rem; font-size: 0.9375rem; font-weight: 600;
+    color: var(--navy); background: var(--surface); border: 1.5px solid var(--rule-strong); border-radius: 6px; text-decoration: none;
+  }
+  .mtg__btn:hover { border-color: var(--navy); }
+  .mtg__text { font-size: 0.9375rem; font-weight: 600; color: var(--navy); padding: 0.5rem 0.25rem; }
+  .mtg[hidden] { display: none; }
+</style>
