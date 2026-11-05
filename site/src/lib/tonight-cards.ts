@@ -2,6 +2,7 @@
  *  fallback and in the browser (lib/tonight-cards-client.ts) for the live parts, so the two can never disagree.
  *  Nothing here guesses: a price, a badge or a walk time exists only when the data states it. */
 import type { EveningEntry, EveningGroup } from './evening-items';
+import { countryProfile, type CountryId } from './country-profile';
 import { hasEnded } from './local-day';
 import { showTimeGb } from './whats-on-dates';
 import { CHIP_MIN_ITEMS, CHIP_MIN_CHIPS as UI_CHIP_MIN_CHIPS, type Category } from './ui/ui-helpers';
@@ -12,7 +13,7 @@ export type Bucket = 'music' | 'comedy' | 'theatre' | 'late' | 'other';
 export const BUCKET_CATEGORY: Record<Bucket, Category | null> = { music: 'music', comedy: 'nightlife', theatre: 'arts', late: 'food', other: null };
 export const BUCKET_LABEL: Record<Bucket, string> = { music: 'Live music', comedy: 'Comedy & shows', theatre: 'Theatre', late: 'Open late', other: 'Also on' };
 /** The bucket's heading as the reader sees it: "Theater" in a US town. */
-export const bucketLabel = (bucket: Bucket, country: string): string => (bucket === 'theatre' && country === 'us' ? 'Theater' : BUCKET_LABEL[bucket]);
+export const bucketLabel = (bucket: Bucket, country: string): string => (bucket === 'theatre' && countryProfile(country as CountryId).spelling === 'american' ? 'Theater' : BUCKET_LABEL[bucket]);
 /** Category rows in page order (Open late is its own row, placed by the page). */
 export const EVENT_BUCKETS: Bucket[] = ['music', 'comedy', 'theatre', 'other'];
 

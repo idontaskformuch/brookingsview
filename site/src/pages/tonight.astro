@@ -16,6 +16,7 @@ import EveningAbout from '../components/evening/EveningAbout.astro';
 import { getWeather, getActiveAlerts, getUpcomingStories, getUpcomingArtsEvents, getFacilities, getOsmSnapshot, getEveningRegister } from '../lib/db';
 import { buildEventFeed, isFreeEvent, ownVenueCity } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
+import { countryProfile } from '../lib/country-profile';
 import { metaDescription } from '../lib/meta-description';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
 import { buildEveningEntries, toThresholdItems } from '../lib/evening-items';
@@ -113,7 +114,7 @@ const summary = buildSummary({
 });
 const train = home && lastTrain ? { monSat: lastSubwayTime(home, false) ?? lastTrain, sunday: lastSubwayTime(home, true) ?? lastTrain, name: home.subway.name } : null;
 
-const dateLocale = siteConfig.country === 'us' ? 'en-US' : 'en-GB';
+const dateLocale = countryProfile(siteConfig.country).locale;
 const dayLabelOf = (day: number) => new Intl.DateTimeFormat(dateLocale, { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(day * 86_400_000));
 const updatedLabel = new Intl.DateTimeFormat(dateLocale, { timeZone: tz, day: 'numeric', month: 'long', year: 'numeric' }).format(now);
 

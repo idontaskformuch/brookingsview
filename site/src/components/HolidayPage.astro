@@ -8,6 +8,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import HolidayTable from './HolidayTable.astro';
 import { siteConfig } from '../lib/site-config';
+import { countryProfile } from '../lib/country-profile';
 import {
   SECTION_ORDER, sectionHeading, buildHolidayMeta, buildHolidayEventsJsonLd, lastChecked, formatIsoDate,
   eventWhenWhere, regularHours, localToday, isEventPast, type HolidayPageData, type HolidayFact, type HolidayEvent, type HolidayRow,
@@ -31,7 +32,7 @@ const today = localToday(Date.now(), siteConfig.timezone);
 
 const meta = buildHolidayMeta(page, holidayLabel, siteConfig.cityName, evergreen);
 const checked = lastChecked(page);
-const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, siteConfig.country === 'gb' ? 'GB' : 'US', today);
+const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, countryProfile(siteConfig.country).addressCountry, today);
 const pageUrl = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl).href;
 const webPage = {
   '@context': 'https://schema.org',
