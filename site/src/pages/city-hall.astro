@@ -79,8 +79,6 @@ const eventJsonLd = meetingsTown
         emptyNote={meetingsTown.emptyNote}
       />
 
-      <MeetingsFollow domain={siteConfig.domain} organs={followOrgans} />
-
       {past.length > 0 && (
         <>
           <SectionRule label="Recent meetings" />
@@ -88,6 +86,8 @@ const eventJsonLd = meetingsTown
           <p class="all-past"><a href="/city-hall/archive/">All past meetings →</a></p>
         </>
       )}
+
+      <MeetingsFollow domain={siteConfig.domain} organs={followOrgans} />
 
       <SectionRule label="About this page" />
       <div class="lede">

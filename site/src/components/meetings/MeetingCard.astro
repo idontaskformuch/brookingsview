@@ -27,7 +27,7 @@ const note = agendaNote(m);
 // Only where there is an agenda to read but no link of its own to it; a meeting with nothing published says so instead of pointing at a page that has nothing either.
 const portalLink = !m.agendaUrl && !m.closed && m.items.length > 0 ? portal : null;
 ---
-<article class="mtg" data-organ={m.chipLabel} data-mtg-unknown={m.unknownOrgan ? m.bodyLabel : undefined} data-ymd={bare ? undefined : m.ymd} data-end={bare ? undefined : (endMs ?? undefined)}>
+<article class="mtg" id={`meeting-${m.id}`} data-organ={m.chipLabel} data-mtg-unknown={m.unknownOrgan ? m.bodyLabel : undefined} data-ymd={bare ? undefined : m.ymd} data-end={bare ? undefined : (endMs ?? undefined)}>
   <Card cat="civic">
     {!bare && (
       <>

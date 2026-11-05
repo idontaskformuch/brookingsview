@@ -599,17 +599,18 @@ const whenLine = (m: MeetingView) => `${m.dateLabel}${m.time ? `, ${m.time}` : '
 
 /** One item per event that is new: a meeting we first stored ("New meeting"), and an agenda the source dates itself ("Agenda published";
  *  Legistar's EventAgendaLastPublishedUTC, Glasgow's agenda_published). AgendaLink and eSCRIBE give no publish date, so those towns get only
- *  the first item. Titles and descriptions are built from fields; nothing is written. Newest first. */
+ *  the first item. Titles and descriptions are built from fields; nothing is written. Newest first. Every item has its own link: the RSS library derives the item's guid from it, and
+ *  readers drop an item whose guid they have seen. */
 export function buildMeetingFeedItems(ms: MeetingView[], pageUrl: string): FeedItem[] {
   const out: FeedItem[] = [];
   for (const m of ms) {
     const facts = [whenLine(m), m.location].filter(Boolean).join(' · ');
     if (m.firstSeen) {
-      out.push({ guid: `meeting-${m.id}-scheduled`, title: `New meeting: ${meetingTitle(m)}, ${whenLine(m)}`, link: pageUrl, pubDate: new Date(m.firstSeen), description: facts });
+      out.push({ guid: `meeting-${m.id}-scheduled`, title: `New meeting: ${meetingTitle(m)}, ${whenLine(m)}`, link: `${pageUrl}#meeting-${m.id}`, pubDate: new Date(m.firstSeen), description: facts });
     }
     const published = m.agendaPublished ? new Date(m.agendaPublished) : null;
     if (published && !Number.isNaN(published.getTime()) && (m.items.length > 0 || m.agendaUrl) && !m.quorumNotice) {
-      out.push({ guid: `meeting-${m.id}-agenda`, title: `Agenda published: ${meetingTitle(m)}, ${whenLine(m)}`, link: m.agendaUrl ?? pageUrl, pubDate: published, description: facts });
+      out.push({ guid: `meeting-${m.id}-agenda`, title: `Agenda published: ${meetingTitle(m)}, ${whenLine(m)}`, link: m.agendaUrl ?? `${pageUrl}#meeting-${m.id}`, pubDate: published, description: facts });
     }
   }
   return out.filter((i) => !Number.isNaN(i.pubDate.getTime())).sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime());

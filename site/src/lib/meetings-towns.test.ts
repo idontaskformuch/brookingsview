@@ -214,6 +214,8 @@ describe('feeds', () => {
   it('one RSS item per new meeting, newest first; no agenda item where the source gives no publish date', () => {
     const items = buildMeetingFeedItems(ms, 'https://broomfieldview.com/city-hall/');
     expect(items.map((i) => i.guid)).toEqual(['meeting-2-scheduled', 'meeting-1-scheduled']);
+    // the RSS library derives each item's guid from its link: two items sharing a link would be read as one
+    expect(new Set(items.map((i) => i.link)).size).toBe(items.length);
     expect(items[0].title).toBe('New meeting: City Council · Study session, Tue, Nov 17, 6:00 PM');
     expect(items[0].description).toBe('Tue, Nov 17, 6:00 PM · Council Chambers, One DesCombes Drive');
   });
