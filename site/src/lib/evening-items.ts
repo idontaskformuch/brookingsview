@@ -175,6 +175,8 @@ export interface EveningEntryOptions {
   venueMiles?: Record<string, number>;
   /** Whether an own event is knowably free (venue registry, see events.ts isFreeEvent). */
   isFree?: (item: FeedItem) => boolean;
+  /** The city an own event's venue is in, when the venue registry's address states it (events.ts ownVenueCity); null = unknown. */
+  venueCity?: (item: FeedItem) => string | null;
   /** Ticketmaster shows further away than this are left out (siteConfig.eveningLayer.maxMiles). Default: in-town only. */
   ticketmasterMaxMiles?: number | 'in-town';
   /** Rows of the curated venue register (siteConfig has no switch: an empty or unreadable table gives no rows). */
@@ -205,6 +207,7 @@ function ownEntry(item: FeedItem, o: EveningEntryOptions): EveningEntry | null {
     group: settleGroup(groupForTitle(title), title, new Date(item.occurs_at).toISOString(), o.timezone),
     labels,
     venue: venueOf(itemVenue(item), o),
+    venueCity: cleanCity(o.venueCity?.(item)),
     href: story ? storyHref(story.slug) : itemUrl(item),
     source: 'own',
     distanceMiles: null,

@@ -6,6 +6,8 @@ import {
 import { groupForTicketmaster, groupLabel, cleanCity, type EveningEntry } from './evening-items';
 import { hasEnded } from './local-day';
 import { readFileSync } from 'node:fs';
+import { cityOfAddress, ownVenueCity, type FeedItem } from './events';
+import type { Facility } from './db';
 import { ALL_CONFIGS } from './site-config';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import TonightChips from '../components/tonight/TonightChips.astro';
@@ -244,10 +246,18 @@ describe('venueCity labels (US towns)', () => {
     expect(cleanCity(null)).toBeNull();
   });
   it('scopeLine: only with events outside town; home count only when above zero', () => {
-    expect(scopeLine({ home: 5, near: 0 }, 'Broomfield')).toBeNull();
-    expect(scopeLine({ home: 0, near: 0 }, 'Broomfield')).toBeNull();
-    expect(scopeLine({ home: 12, near: 31 }, 'Broomfield')).toBe('12 in Broomfield · 31 nearby');
-    expect(scopeLine({ home: 0, near: 2 }, 'Moreno Valley')).toBe('2 nearby');
+    expect(scopeLine({ home: 5, near: 0, unknown: 0 }, 'Broomfield')).toBeNull();
+    expect(scopeLine({ home: 0, near: 0, unknown: 0 }, 'Broomfield')).toBeNull();
+    expect(scopeLine({ home: 12, near: 31, unknown: 0 }, 'Broomfield')).toBe('12 in Broomfield · 31 nearby');
+    expect(scopeLine({ home: 0, near: 2, unknown: 0 }, 'Moreno Valley')).toBe('2 nearby');
+  });
+  it('one event with no known city hides "in <town>" but "nearby" still shows', () => {
+    expect(scopeLine({ home: 12, near: 31, unknown: 1 }, 'Broomfield')).toBe('31 nearby');
+    expect(scopeLine({ home: 2, near: 0, unknown: 1 }, 'Broomfield')).toBeNull();
+  });
+  it('the card shows no label for an event with no known city', () => {
+    expect(cityLabel({ venueCity: null, lat: 33.9, lon: -117.2 }, 'Moreno Valley', { lat: 33.9425, lon: -117.2297 })).toBeNull();
+    expect(cityScope(undefined, 'Moreno Valley')).toBe('unknown');
   });
 });
 
@@ -257,5 +267,28 @@ describe('Open late dot is fixed, never animated (owner 2026-11-04)', () => {
     expect(css).not.toMatch(/tc-pulse/);
     expect(css).toMatch(/\.tc-card\.is-now \.tc-time::before \{[^}]*background: var\(--c\)/);
     expect(css).not.toMatch(/\.is-now[^{]*\{[^}]*animation/);
+  });
+});
+
+describe('city of an own event from the venue registry', () => {
+  it('cityOfAddress reads the city a registry address names', () => {
+    expect(cityOfAddress('14075 Frederick St, Moreno Valley, CA 92553')).toBe('Moreno Valley');
+    expect(cityOfAddress('Brookings, SD 57006')).toBe('Brookings');
+    expect(cityOfAddress('515 3rd St, Brookings, SD 57006')).toBe('Brookings');
+    expect(cityOfAddress('22nd Ave, Brookings, SD')).toBe('Brookings');
+  });
+  it('no city named, no city: a street or nothing is refused', () => {
+    expect(cityOfAddress('22nd Ave, SD')).toBeNull();
+    expect(cityOfAddress('Main Street')).toBeNull();
+    expect(cityOfAddress(null)).toBeNull();
+    expect(cityOfAddress('')).toBeNull();
+  });
+  it('ownVenueCity: only registry-resolved story events; unknown venues and other sources have none', () => {
+    const facilities = [{ name: 'Brookings Public Library', aliases: [], address: '515 3rd St, Brookings, SD 57006' }] as unknown as Facility[];
+    const story = (venue: string | null) => ({ sourceKind: 'story', story: { venue_raw: venue } }) as unknown as FeedItem;
+    expect(ownVenueCity(story('Brookings Public Library'), facilities)).toBe('Brookings');
+    expect(ownVenueCity(story('Somewhere Else'), facilities)).toBeNull();
+    expect(ownVenueCity(story(null), facilities)).toBeNull();
+    expect(ownVenueCity({ sourceKind: 'sdsu' } as unknown as FeedItem, facilities)).toBeNull();
   });
 });

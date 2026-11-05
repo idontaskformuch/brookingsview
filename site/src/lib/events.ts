@@ -538,6 +538,24 @@ const PAID_LANGUAGE_RE = /\$\d|admission fee|cover charge|tickets?\s+(required|o
 // time, Python-side -- see that module's own comment on the tradeoff).
 export const FREE_VENUE_CATEGORIES = new Set(['library', 'park', 'community_center']);
 
+/** The city a registry address names ("14075 Frederick St, Moreno Valley, CA 92553", "Brookings, SD 57006"), null when the address names none
+ *  ("22nd Ave, SD": a street is not a city, so anything with a digit is refused). */
+export function cityOfAddress(address: string | null | undefined): string | null {
+  const m = /(?:^|,\s*)([^,]+),\s*[A-Z]{2}(?:\s+\d{5}(?:-\d{4})?)?\s*$/.exec((address ?? '').trim());
+  const city = m?.[1].trim() ?? '';
+  return city === '' || /\d/.test(city) ? null : city;
+}
+
+const venueIndexCache = new WeakMap<Facility[], ReturnType<typeof buildVenueIndex>>();
+
+/** The city of an own event's venue when the town registry resolves the venue and its address states a city; null otherwise (never assumed). */
+export function ownVenueCity(item: FeedItem, facilities: Facility[]): string | null {
+  if (item.sourceKind !== 'story') return null;
+  let index = venueIndexCache.get(facilities);
+  if (!index) { index = buildVenueIndex(facilities); venueIndexCache.set(facilities, index); }
+  return cityOfAddress(resolveVenue(index, item.story.venue_raw)?.address);
+}
+
 /**
  * Events genuinely knowable as free without guessing. `stories.meta.cost`
  * (db/migrations/027_story_meta.sql) is a structured per-event extraction

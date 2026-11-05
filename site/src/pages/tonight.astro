@@ -14,7 +14,7 @@ import EveningDay from '../components/evening/EveningDay.astro';
 import EveningSummary from '../components/evening/EveningSummary.astro';
 import EveningAbout from '../components/evening/EveningAbout.astro';
 import { getWeather, getActiveAlerts, getUpcomingStories, getUpcomingArtsEvents, getFacilities, getOsmSnapshot, getEveningRegister } from '../lib/db';
-import { buildEventFeed, isFreeEvent } from '../lib/events';
+import { buildEventFeed, isFreeEvent, ownVenueCity } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
@@ -56,6 +56,7 @@ const areaData = areasFor(siteConfig.townId);
 const entries = withAreas(buildEveningEntries({
   feed: items, ticketmaster: tm, register, now, timezone: tz, checked, cityName: siteConfig.cityName, townId: siteConfig.townId, venueMiles: areaData?.venueMiles,
   isFree: (i) => isFreeEvent(i, facilities),
+  venueCity: (i) => ownVenueCity(i, facilities),
   ticketmasterMaxMiles: layer.maxMiles,
   includeTicketmasterSports: layer.includeTicketmasterSports,
 }), areaData);
@@ -84,8 +85,8 @@ const upNext = tonightEvents.filter((e) => new Date(e.start).getTime() > now.get
 const regions = cards?.regions ?? {};
 const town: CardTown = { country: siteConfig.country, homeCity: siteConfig.cityName, center: siteConfig.townCenter, hidePrice: !!cards?.hidePrice, cityLabels: !!cards?.cityLabels };
 // "12 in Broomfield · 31 nearby": by the source's own venue city; events with no stated city are in neither count
-const scopeCounts = { home: 0, near: 0 };
-if (town.cityLabels) for (const e of tonightEvents) { const sc = cityScope(e.venueCity, town.homeCity); if (sc !== 'unknown') scopeCounts[sc]++; }
+const scopeCounts = { home: 0, near: 0, unknown: 0 };
+if (town.cityLabels) for (const e of tonightEvents) scopeCounts[cityScope(e.venueCity, town.homeCity)]++;
 const scopeText = town.cityLabels ? scopeLine(scopeCounts, town.homeCity) : null;
 const regionOrder = Object.keys(regions);
 const tonightLateCards = (lateBySection.get(tonight.day) ?? []).slice(0, OPEN_LATE_MAX_ROWS);

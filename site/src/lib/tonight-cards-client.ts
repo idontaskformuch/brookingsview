@@ -133,8 +133,8 @@ export function initTonightCards(doc: Document): void {
     if (label) label.textContent = `${live.length === 1 ? 'thing' : 'things'} on ${word}`;
     const scope = doc.querySelector<HTMLElement>('[data-tc-scope]');
     if (scope) {
-      const counts = { home: 0, near: 0 };
-      for (const c of live) { const sc = c.el.dataset.scope; if (sc === 'home' || sc === 'near') counts[sc]++; }
+      const counts = { home: 0, near: 0, unknown: 0 };
+      for (const c of live) { const sc = c.el.dataset.scope; counts[sc === 'home' || sc === 'near' ? sc : 'unknown']++; }
       const text = scopeLine(counts, scope.dataset.home ?? '');
       scope.hidden = !text;
       scope.textContent = text ?? '';

@@ -100,10 +100,11 @@ export function cityLabel(e: Pick<EveningEntry, 'venueCity' | 'lat' | 'lon'>, ho
   return { text: `${e.venueCity} · ${miles < 1 ? '<1' : miles} mi`, title: `About ${miles < 1 ? 'less than 1' : miles} ${miles === 1 ? 'mile' : 'miles'} in a straight line from the center of ${homeCity}, not a driving distance` };
 }
 
-/** The second header line: "12 in Broomfield · 31 nearby". Only shown when something is outside town; events with no stated city are in neither count. */
-export function scopeLine(counts: { home: number; near: number }, homeCity: string): string | null {
+/** The second header line: "12 in Broomfield · 31 nearby". Only shown when something is outside town. "In <town>" is only said when every event
+ *  tonight has a known city (a count that leaves unknowns out would claim less than is true); "nearby" counts what we know is outside. */
+export function scopeLine(counts: { home: number; near: number; unknown: number }, homeCity: string): string | null {
   if (counts.near === 0) return null;
-  return `${counts.home > 0 ? `${counts.home} in ${homeCity} · ` : ''}${counts.near} nearby`;
+  return `${counts.unknown === 0 && counts.home > 0 ? `${counts.home} in ${homeCity} · ` : ''}${counts.near} nearby`;
 }
 
 export interface LatePlace { osmId: string; name: string; closing: string; end: string; lat?: number | null; lon?: number | null }
