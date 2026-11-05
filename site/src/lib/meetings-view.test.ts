@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import cancelledFixture from './meetings-cancelled.fixture.json';
 import {
   normalizeBody, parseClock, zonedToInstant, meetingWhen, formatYmd, daysBetween, relativeDays,
   substantiveItems, itemsFromAgendaText, topicsFor, buildMeetings, isUpcoming, organChips,
-  buildMeetingIcs, buildMeetingJsonLd, canCalendar, agendaNote, type MeetingRow, type DedupeNote,
+  buildMeetingIcs, buildMeetingJsonLd, canCalendar, agendaNote, meetingTitle, isCancelled, buildMeetingFeedItems, type MeetingRow, type DedupeNote,
 } from './meetings-view';
 
 const TZ = 'America/Chicago';
@@ -183,9 +184,24 @@ describe('buildMeetings: dedup', () => {
     expect(out).toHaveLength(1);
     expect(out[0].agendaUrl).toBeNull();
     expect(out[0]).toMatchObject({ id: 3, bodyLabel: 'City Council', ymd: '2026-11-09', dateLabel: 'Mon, Nov 9', quorumNotice: true, items: [] });
-    expect(agendaNote(out[0])).toBe('Agenda not yet published');
+    expect(agendaNote(out[0])).toBe('Members may be present. No agenda posted.');
+    expect(meetingTitle(out[0])).toBe('City Council – quorum notice');
     expect(canCalendar(out[0])).toBe(false);
     expect(buildMeetingJsonLd(out[0], TZ, { locality: 'Brookings', region: 'SD', country: 'US' }, 'City of Brookings', 'https://x.test/city-hall/')).toBeNull();
+  });
+  it('a cancelled meeting is flagged from the source, not from its agenda text, in every source', () => {
+    const esc = cancelledFixture as any;
+    const row: MeetingRow = { id: 15129, body: esc.body, meeting_date: esc.meeting_date, agenda_url: '', minutes_url: null, raw_data: esc.raw_data, created_at: '2026-10-30T12:00:00.000Z' };
+    const [m] = buildMeetings([row], 'America/Los_Angeles', true);
+    expect(m).toMatchObject({ cancelled: true, items: [], agendaUrl: null });
+    expect(agendaNote(m)).toBeNull();
+    expect(canCalendar(m)).toBe(false);
+    expect(buildMeetingFeedItems([m], 'https://x.test/city-hall/')[0].title).toMatch(/^Cancelled meeting:/);
+    expect(isCancelled({ EventId: 1, EventAgendaStatusName: 'Cancelled' })).toBe(true);
+    expect(isCancelled({ EventId: 1, EventComment: 'Meeting cancelled' })).toBe(true);
+    expect(isCancelled({ EventId: 1, agenda_text: 'Item 4: Resolution on the cancellation of the 2019 contract' })).toBe(false);
+    expect(isCancelled({ MeetingDocumentLink: [{ Title: 'Agenda', Type: 'Agenda' }] })).toBe(false);
+    expect(isCancelled(null)).toBe(false);
   });
   it('a notice of quorum for another organ or another day does not replace anything', () => {
     const q = leg(3, 'City Council', '2026-11-09', '12:00 PM', { agenda_text: QUORUM });

@@ -297,6 +297,8 @@ export interface MeetingView {
   jointWith: string | null;
   /** a Legistar notice of quorum that no real meeting of the same organ and day replaces: shown as the meeting, agenda not yet published */
   quorumNotice: boolean;
+  /** the source says the meeting will not take place (a cancellation notice among its documents, or a cancelled status) */
+  cancelled: boolean;
   /** when the scraper first stored the row, and when the source says the agenda went out (RSS) */
   firstSeen: string | null;
   agendaPublished: string | null;
@@ -306,6 +308,17 @@ export interface MeetingView {
 export function isQuorumNoticeOnly(raw: Record<string, any> | null): boolean {
   const t = String(raw?.agenda_text ?? '');
   return /notice of quorum/i.test(t) && /no official city business/i.test(t);
+}
+
+/** A meeting the source itself marks as cancelled: a document titled as a notice of cancellation (eSCRIBE MeetingDocumentLink), a Legistar
+ *  status or comment, or a source's own status/title field. Free agenda text is not read: an agenda may discuss a cancellation. */
+export function isCancelled(raw: Record<string, any> | null): boolean {
+  if (!raw) return false;
+  const CANCEL = /cancell?ed|cancell?ation/i;
+  const docs: any[] = Array.isArray(raw.MeetingDocumentLink) ? raw.MeetingDocumentLink : [];
+  if (docs.some((d) => CANCEL.test(String(d?.Title ?? '')))) return true;
+  return [raw.EventAgendaStatusName, raw.EventComment, raw.status, raw.Status, raw.MeetingName, raw.meeting_name]
+    .some((v) => typeof v === 'string' && CANCEL.test(v));
 }
 
 const isLegistar = (r: MeetingRow) => r.raw_data != null && 'EventId' in r.raw_data;
@@ -403,10 +416,11 @@ function toView(r: MeetingRow, tz: string, hasTime: boolean, cfg: MeetingsTownCo
     ymd: when.ymd, dateLabel: formatYmd(when.ymd, false, cfg.locale), time: when.time, startMs: when.startMs,
     location, agendaUrl, minutesUrl, videoUrl, detailUrl,
     storySlug: r.story_slug ?? null,
-    items: b.closed ? [] : items,
+    items: b.closed || isCancelled(r.raw_data) ? [] : items,
     topics: [],
     jointWith: null,
     quorumNotice: false,
+    cancelled: isCancelled(r.raw_data),
     firstSeen: created,
     agendaPublished,
   };
@@ -482,8 +496,8 @@ export function buildMeetings(
 
 /** What a card says when it has no agenda lines. Closed sessions promise none; a quorum notice says the agenda is not out yet. */
 export function agendaNote(m: MeetingView): string | null {
-  if (m.closed || m.items.length > 0) return null;
-  if (m.quorumNotice) return 'Agenda not yet published';
+  if (m.closed || m.cancelled || m.items.length > 0) return null;
+  if (m.quorumNotice) return 'Members may be present. No agenda posted.';
   return m.agendaUrl ? null : 'No agenda published';
 }
 
@@ -516,12 +530,13 @@ export function followableOrgans(ms: MeetingView[], cfg: MeetingsTownConfig): { 
 }
 
 /** The title a meeting carries in a calendar or a feed: "City Council", or "City Council · Study session" when the source names the kind. */
-export const meetingTitle = (m: MeetingView): string => (m.typeLabel ? `${m.bodyLabel} · ${m.typeLabel}` : m.bodyLabel);
+export const meetingTitle = (m: MeetingView): string =>
+  m.quorumNotice ? `${m.bodyLabel} – quorum notice` : m.typeLabel ? `${m.bodyLabel} · ${m.typeLabel}` : m.bodyLabel;
 
 /* ------------------------------------------------------------- ics, ld */
 
 /** Meetings that can go in a calendar: a real start instant and a place. A quorum notice is not a verified meeting and stays out. */
-export const canCalendar = (m: MeetingView): boolean => m.startMs != null && !!m.location && !m.quorumNotice;
+export const canCalendar = (m: MeetingView): boolean => m.startMs != null && !!m.location && !m.quorumNotice && !m.cancelled;
 
 type IcsSite = { siteName: string; domain: string };
 
@@ -606,10 +621,10 @@ export function buildMeetingFeedItems(ms: MeetingView[], pageUrl: string): FeedI
   for (const m of ms) {
     const facts = [whenLine(m), m.location].filter(Boolean).join(' · ');
     if (m.firstSeen) {
-      out.push({ guid: `meeting-${m.id}-scheduled`, title: `New meeting: ${meetingTitle(m)}, ${whenLine(m)}`, link: `${pageUrl}#meeting-${m.id}`, pubDate: new Date(m.firstSeen), description: facts });
+      out.push({ guid: `meeting-${m.id}-scheduled`, title: `${m.cancelled ? 'Cancelled meeting' : 'New meeting'}: ${meetingTitle(m)}, ${whenLine(m)}`, link: `${pageUrl}#meeting-${m.id}`, pubDate: new Date(m.firstSeen), description: facts });
     }
     const published = m.agendaPublished ? new Date(m.agendaPublished) : null;
-    if (published && !Number.isNaN(published.getTime()) && (m.items.length > 0 || m.agendaUrl) && !m.quorumNotice) {
+    if (published && !Number.isNaN(published.getTime()) && (m.items.length > 0 || m.agendaUrl) && !m.quorumNotice && !m.cancelled) {
       out.push({ guid: `meeting-${m.id}-agenda`, title: `Agenda published: ${meetingTitle(m)}, ${whenLine(m)}`, link: m.agendaUrl ?? `${pageUrl}#meeting-${m.id}`, pubDate: published, description: facts });
     }
   }

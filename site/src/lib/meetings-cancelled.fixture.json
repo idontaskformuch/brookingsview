@@ -1,0 +1,11 @@
+{
+  "_note": "Trimmed from the live Moreno Valley eSCRIBE row for the 2026-11-03 Closed Session City Council Meeting (id 15129, read 2026-11-05): the source's own notice of cancellation is a document on the meeting.",
+  "body": "Closed Session City Council Meeting",
+  "meeting_date": "2026-11-04T00:00:00.000Z",
+  "raw_data": {
+    "ID": "23d8dc08-6569-49bc-81f8-300bc9db99ce", "StartDate": "2026/11/03 16:00:00", "EndDate": "2026/11/03 17:00:00",
+    "Location": "City Hall Council Chamber – 14177 Frederick Street", "MeetingName": "Closed Session City Council Meeting",
+    "MeetingType": "Closed Session City Council Meeting", "HasAgenda": false,
+    "MeetingDocumentLink": [{ "Url": "/FileStream.ashx?DocumentId=7802", "Type": "AdditionalDocuments", "Title": "NOTICE OF CANCELLATION ", "Format": ".pdf" }]
+  }
+}

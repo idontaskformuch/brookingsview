@@ -21,6 +21,8 @@ REAL_OK = [
     "2. 1 Dundas Street (Ward 10):-\n(a). Application for Listed Building Consent - 26/01535/LBA - Display of internally illuminated signage (retrospective)",
     "Hearing - Site To The South Of Titwood Bowling Club 77 Glencairn Drive (Ward 6) - 26/00379/FUL - Formation of 3no. padel courts",
     "Victoria Park Area Partnership, Barlanark Community Centre, 33 Burnmouth Road, Glasgow, G33 4RZ",
+    "Grant Funding for assistance to further the development the Egyptian Halls, 84-100 Union Street - Report by Depute Leader and City Convener for Housing and Development.",
+    "Grant Award to Green Action Trust - Report by Councillor Angus Millar, City Convener for Climate, Glasgow Green Deal, Transport and City Centre Recovery.",
     "Chief Executive's Department - Governance Review; Corporate Review - Freedom of Information Requests",
 ]
 

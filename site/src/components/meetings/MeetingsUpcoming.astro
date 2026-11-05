@@ -23,7 +23,9 @@ interface Props {
 const { meetings, todayYmd, timezone, commentBodyKeys, commentHref, portal, emptyNote } = Astro.props;
 const main = meetings.filter((m) => !m.collapsedGroup);
 const folded = meetings.filter((m) => m.collapsedGroup);
-const next = main[0] ?? folded[0];
+// A quorum notice or a cancelled meeting is shown in the lists but never as the meeting to plan around.
+const isReal = (m: MeetingView) => !m.quorumNotice && !m.cancelled;
+const next = main.find(isReal) ?? folded.find(isReal) ?? main[0] ?? folded[0];
 const others = meetings.filter((m) => m !== next);
 const week = others.filter((m) => !m.collapsedGroup && daysBetween(todayYmd, m.ymd) <= 7);
 const later = others.filter((m) => !m.collapsedGroup && daysBetween(todayYmd, m.ymd) > 7);

@@ -89,7 +89,7 @@ Street St Road Rd Park Drive Avenue Ave Place Lane Gardens Garden Square Hospita
 Bridge Cross Area Partnership Primary Secondary Academy Library Station Row Circus Brae Green Quay Wynd Close Hill Hills Gate Walk Path Grove
 Mews Brae Yard Wharf Port Loan Rise View Gait Cathedral Hotel Pub Bar Club Cafe Restaurant Shop Store Lodge House Mill Works Estate Campus
 University College Museum Gallery Theatre Cinema Arena Stadium Pool Baths Market Mall Retail Industrial Business Housing Association Trust Council
-Committee Board Group Foundation Fund Limited Ltd Plc Services Service Hub
+Committee Board Group Foundation Fund Funding Award Awards Limited Ltd Plc Services Service Hub
 """.split())
 
 

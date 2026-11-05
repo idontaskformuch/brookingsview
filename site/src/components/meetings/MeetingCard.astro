@@ -32,12 +32,13 @@ const portalLink = !m.agendaUrl && !m.closed && m.items.length > 0 ? portal : nu
     {!bare && (
       <>
         <p class="mtg__organ">
-          {m.bodyLabel}
-          {m.typeLabel && <Pill>{m.typeLabel}</Pill>}
+          {m.quorumNotice ? `${m.bodyLabel} – quorum notice` : m.bodyLabel}
+          {m.quorumNotice ? <Pill>Quorum notice</Pill> : m.typeLabel && <Pill>{m.typeLabel}</Pill>}
+          {m.cancelled && <Pill tone="alert">Cancelled</Pill>}
           {m.jointWith && <span class="mtg__joint">Joint with {m.jointWith}</span>}
         </p>
         <h3 class="mtg__when">
-          <span class="mtg__date">{m.dateLabel}</span>{m.time && <span class="mtg__time"> · {m.time}</span>}
+          <span class="mtg__date">{m.dateLabel}</span>{m.time && <span class:list={['mtg__time', { 'mtg__time--off': m.cancelled }]}> · {m.time}</span>}
         </h3>
         <p class="mtg__sub">
           <span class="mtg__rel" data-mtg-rel={m.ymd}>{relativeDays(days)}</span>{m.location && <> · <span class="mtg__where">{m.location}</span></>}
@@ -77,6 +78,7 @@ const portalLink = !m.agendaUrl && !m.closed && m.items.length > 0 ? portal : nu
   .mtg__joint { font-weight: 600; letter-spacing: 0.02em; text-transform: none; }
   .mtg__when { margin: var(--ui-1) 0 0; font-family: var(--font-head); font-size: 1.375rem; line-height: 1.2; font-weight: 700; color: var(--ink); }
   .mtg__time { font-weight: 600; }
+  .mtg__time--off { text-decoration: line-through; color: var(--ink-soft); }
   .mtg__sub { margin: var(--ui-1) 0 0; font-size: 0.9375rem; color: var(--ink-soft); }
   .mtg__rel { font-weight: 600; color: var(--ink); }
   .mtg__items { margin: var(--ui-3) 0 0; padding-left: 1.1rem; font-family: var(--font-ui); font-size: 0.9375rem; line-height: 1.45; color: var(--ink); }

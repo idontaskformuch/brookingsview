@@ -46,7 +46,8 @@ const ledeText = `What ${siteConfig.cityName}'s ${forCountry(siteConfig.country,
 const todayYmd = data?.todayYmd ?? '';
 const upcomingMeetings = data?.meetings ?? [];
 const followOrgans = meetingsTown ? followableOrgans(upcomingMeetings, meetingsTown) : [];
-const description = (upcomingMeetings[0] && nextMeetingDescription(upcomingMeetings[0], siteConfig.cityName)) || metaDescription('city-hall', siteConfig);
+const nextReal = upcomingMeetings.find((m) => !m.quorumNotice && !m.cancelled);
+const description = (nextReal && nextMeetingDescription(nextReal, siteConfig.cityName)) || metaDescription('city-hall', siteConfig);
 const eventJsonLd = meetingsTown
   ? upcomingMeetings.slice(0, 10)
       .map((m) => buildMeetingJsonLd(m, siteConfig.timezone, meetingsTown.place, meetingsTown.authority, canonicalUrl))
