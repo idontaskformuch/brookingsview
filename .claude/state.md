@@ -1,12 +1,12 @@
 # State (komprimerad 2026-11-05; Fas 1+2 detaljer i .claude/state-archive.md, sök "Fas 1 KLAR" / "Fas 2 (väder)")
 
-## Nu: PREMIUM-PRESENTATION Fas 3 (möten) BYGGS, ägaren godkände förslaget 2026-11-05 (+ändring dedup 1). Ej pushat.
+## Nu: PREMIUM-PRESENTATION Fas 3 (möten) BYGGD alla fyra städer, batteri grönt, väntar på ägarens granskning (.claude/review/phase3/REVIEW.md). Ej pushat.
 - Spec .claude/specs/premium-presentation.md (Fas 3), förslag .claude/specs/phase3-meetings-proposal.md, regler .claude/standards.md.
-- Ordning: Broomfield (KLAR, commit) -> Glasgow -> Moreno -> Brookings. Skärmdumpar .claude/review/phase3/ (390 px, ljust/mörkt, före tagna för alla fyra).
+- Alla fyra klara. Skärmdumpar före/efter .claude/review/phase3/ (390 px, ljust/mörkt). Batteri: vitest 2221, pytest 1237, astro check 0, build x4, disjoint OK.
 - Delat bygge (i Broomfield-commit): config/meetings.ts (+config/gb/meetings-glasgow.ts) per-stad BODIES/hidden/groupRules/portal; lib/meetings-view.ts (källor legistar/agendalink/escribe/coins, quorum-regeln, dedup-nyckel datum+organ+typ), lib/meetings-data.ts, uk-title-guard.gb.ts (port av uk_guardrails), sandbox-url.ts, MeetingCard/MeetingsUpcoming(HeroStat, Chips, EmptyState)/MeetingsFollow, RSS (/city-hall/rss.xml, /city-hall/organ/<k>/rss.xml), .ics (/city-hall/calendar.ics, calendar/organ/<k>.ics), QA-kontroller web.replacement-char, web.empty-link, meetings.unknown-organ (fixtur tests/fixtures/qa_meetings_2026-11-05.json).
 - BESLUT och SKÄL: Broomfield agenda-länk = https://broomfield.org/4079/Broomfield-Council-Meetings (verifierad med ett läsande anrop, pekar på stadens portal; sandbox länkas aldrig). Glasgow-titlar går genom TS-port av UK-grinden (5 av 166 hålls), listor låsta mot Python av test. Quorum utan riktig rad samma dag+organ visas som mötet ("Agenda not yet published"), utan .ics/JSON-LD.
 - FYND: Moreno U+FFFD finns INTE i databasen (35 av 36 har riktig tankstreck) och agenda_url är '' på 14 av 36, inte alla; bygget ändå försvarar båda (cleanLocation, tom länk = ingen länk) + QA-kontroll.
-- Kvar: Glasgow/Moreno/Brookings verifiering+skärmdumpar, hela batteriet (vitest+pytest, astro check, build x4, sitemap/noindex), granskningslista.
+- Nästa: ägaren granskar REVIEW.md (12 punkter), sedan push-beslut.
 
 ## Verifierat 2026-11-05 (Worker-uppgifter från förra steget)
 - Worker viewmedia-cron-dispatcher version 3260ae2b deployad 16:04 UTC; första hourly-tick efter deploy 17:00 UTC: outcome ok, inga exceptions, alla fyra städer ok (loggar via wrangler tail).
