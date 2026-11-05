@@ -145,13 +145,24 @@ const PROCEDURAL = new RegExp(
 
 export const MAX_ITEM_TITLE = 200;
 
+/** A line that opens with a known organ name and a colon is a roster ("Brookings City Council: <member names>",
+ *  "Brookings City Council Staff: ..."), not a thing to be decided. Built from BODIES (names and labels, with or without
+ *  "Brookings"), anchored at the start, so a title that only mentions an organ further in stays. */
+const ROSTER = (() => {
+  const names = new Set<string>();
+  for (const [raw, b] of Object.entries(BODIES)) for (const n of [raw, b.label]) { names.add(n); names.add(n.replace(/^Brookings\s+/i, '')); }
+  const escape = (n: string) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const alt = [...names].map(escape).sort((a, b) => b.length - a.length).join('|');
+  return new RegExp(`^(brookings\\s+)?(${alt})(\\s+staff)?\\s*:`, 'i');
+})();
+
 /** Titles worth showing: not procedural, 3-200 characters. Verbatim apart from collapsed whitespace and a number prefix. */
 export function substantiveItems(titles: string[]): string[] {
   const out: string[] = [];
   for (const raw of titles) {
     const t = raw.replace(/\s+/g, ' ').replace(/^\d+\.+\s*/, '').trim();
     if (t.length < 3 || t.length > MAX_ITEM_TITLE) continue;
-    if (PROCEDURAL.test(t)) continue;
+    if (PROCEDURAL.test(t) || ROSTER.test(t)) continue;
     out.push(t);
   }
   return out;

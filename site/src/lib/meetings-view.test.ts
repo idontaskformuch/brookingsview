@@ -79,6 +79,21 @@ describe('substantiveItems', () => {
   it('drops attendance records and breaks', () => {
     expect(substantiveItems(['Record of Brookings County Commission and Brookings City Council Attendance.', 'BREAK -- reconvene the County Commission Agenda', 'Election Canvass'])).toEqual(['Election Canvass']);
   });
+  it('drops rosters that open with an organ name and a colon, keeps titles that only mention the organ', () => {
+    expect(substantiveItems([
+      'Brookings City Council: Oepke G.Niemeyer, Mayor; Nick Wendell, Deputy Mayor Council Members Wayne Avery, Holly Tilton Byrne, Bonny Specker, Brianna Doran, Lisa Hager',
+      'Brookings City Council Staff: Paul M. Briseno, City Manager Bonnie Foster, City Clerk J. Vincent Jones, Attorney-at-Law, Woods, Fuller, Shultz and Smith P.C.',
+      'Brookings County Commission: Shawn Hostler, Larry Jensen, Dave Miller, Doug Post, Kelly VanderWal.',
+      'Planning Commission: Members present',
+      'Report from the Planning Commission: Brookings Mall Addition variance',
+      'Recommendation of the Utility Board on the 2027 Budget',
+      'Election Canvass',
+    ])).toEqual([
+      'Report from the Planning Commission: Brookings Mall Addition variance',
+      'Recommendation of the Utility Board on the 2027 Budget',
+      'Election Canvass',
+    ]);
+  });
   it('drops anything over 200 characters instead of cutting it', () => {
     expect(substantiveItems(['x'.repeat(201), 'Utility Rate Study'])).toEqual(['Utility Rate Study']);
   });
