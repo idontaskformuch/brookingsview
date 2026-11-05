@@ -56,7 +56,7 @@ def nws() -> None:
                 None, {"unitCode": "wmoUnit:percent", "value": 62.5}][i % 5]
 
     def period(i, hourly):
-        p = {"number": i + 1, "name": "" if hourly else f"P{i}", "startTime": f"2026-11-05T{(i + 14) % 24:02d}:00:00-07:00", "temperature": 40 + i,
+        p = {"number": i + 1, "name": "" if hourly else f"P{i}", "startTime": (f"2026-11-05T{i + 1:02d}:00:00-07:00" if hourly else f"2026-11-0{5 + i // 2}T{6 if i % 2 == 0 else 18}:00:00-07:00"), "temperature": 40 + i,
              "temperatureUnit": "F", "shortForecast": ["Mostly Cloudy", "Chance Rain Showers", "Sunny"][i % 3], "windSpeed": f"{5 + i} mph",
              "isDaytime": i % 2 == 0}
         pop = pops(i)
@@ -64,8 +64,10 @@ def nws() -> None:
             p["probabilityOfPrecipitation"] = pop
         return p
 
+    # a real gridpoints answer (Broomfield, 2026-11-05) trimmed to the three series we read; its first value starts 2026-11-05T00:00Z
+    grid = json.loads((FIX / "nws_gridpoints_broomfield_2026-11-05.json").read_text(encoding="utf-8"))
     combined = {"forecast": {"properties": {"periods": [period(i, False) for i in range(16)]}},
-                "forecastHourly": {"properties": {"periods": [period(i, True) for i in range(30)]}}}
+                "forecastHourly": {"properties": {"periods": [period(i, True) for i in range(30)]}}, "gridpoints": grid}
     parser = NoaaParser({"town_id": "broomfield_co", "timezone": "America/Denver", "coordinates": {"lat": 39.9205, "lon": -105.0866}}, {})
     parser._now = lambda: datetime(2026, 11, 5, 20, 30, 12, tzinfo=timezone.utc)
     payload = parser.parse(FetchResult(raw=json.dumps(combined).encode()))[0]["payload"]

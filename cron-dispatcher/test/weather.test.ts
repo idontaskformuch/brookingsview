@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { buildPayload, compass, windText, weatherText, fetchMetOfficeForecast, isAuthFailure, RETRY_DELAYS_MS } from '../src/weather/metoffice';
-import { normalizeNws, fetchNwsForecast } from '../src/weather/nws';
+import { normalizeNws, fetchNwsForecast, mergeGridpoints, isoHours } from '../src/weather/nws';
 import { refreshWeather, storeWeather } from '../src/weather/refresh';
 import { WEATHER_TOWNS, isWeatherTick } from '../src/weather/towns';
 
@@ -45,12 +45,64 @@ describe('Met Office payload equals the Python builder (met_office_site_specific
 describe('NWS payload equals the Python parser (noaa.py NoaaParser.parse)', () => {
   const fx = JSON.parse(readFileSync(new URL('./fixtures/nws_parity.json', import.meta.url), 'utf8'));
   it('periods, hourly, pop (kept, null, zero, missing, half-way) and fetched_at', () => {
-    expect(normalizeNws(fx.forecast, fx.forecastHourly, Date.parse(fx.now))).toEqual(fx.expected);
+    const p = normalizeNws(fx.forecast, fx.forecastHourly, Date.parse(fx.now));
+    p.hourly = mergeGridpoints(p.hourly, fx.gridpoints);
+    expect(p).toEqual(fx.expected);
+  });
+  it('gridpoints: feels (F from degC), gust (mph from km/h) on every covered hour; none are invented for uncovered hours', () => {
+    const h = fx.expected.hourly;
+    expect(h.filter((x: any) => 'feels' in x).length).toBeGreaterThan(20);
+    expect(h[0]).toMatchObject({ feels: 39, gust: 6 }); // feels in F from the degC series, gust in mph from the km/h series (08:00Z)
   });
   it('no pop key when the source has none, and no fetched_at when the caller gave no time', () => {
     const p = normalizeNws({ properties: { periods: [{ name: 'A', startTime: 'x', temperature: 1, probabilityOfPrecipitation: { value: null } }] } }, { properties: { periods: [] } });
     expect('pop' in p.periods[0]).toBe(false);
     expect('fetched_at' in p).toBe(false);
+  });
+});
+
+describe('gridpoints merge', () => {
+  const hourly = [
+    { start: '2026-11-05T10:00:00-07:00', temp: 50, unit: 'F', short: 'x', wind: null, is_daytime: true },
+    { start: '2026-11-05T11:00:00-07:00', temp: 52, unit: 'F', short: 'x', wind: null, is_daytime: true },
+    { start: '2026-11-05T12:00:00-07:00', temp: 54, unit: 'F', short: 'x', wind: null, is_daytime: true },
+  ];
+  const grid = { properties: {
+    apparentTemperature: { values: [{ validTime: '2026-11-05T17:00:00+00:00/PT2H', value: 10 }] },       // 17Z and 18Z = 10:00 and 11:00 -07:00
+    windGust: { values: [{ validTime: '2026-11-05T17:00:00+00:00/PT1H', value: 32.1869 }] },            // 20 mph
+    quantitativePrecipitation: { values: [{ validTime: '2026-11-05T17:00:00+00:00/PT1H', value: 0.25 }, { validTime: '2026-11-05T18:00:00+00:00/PT6H', value: 3 }] },
+  } };
+  it('every hour of an interval gets its value; an hour outside gets nothing', () => {
+    const out = mergeGridpoints(hourly, grid);
+    expect(out[0]).toMatchObject({ feels: 50, gust: 20, precip_mm: 0.2 });   // 10 degC = 50 F; 0.25 rounds half to even
+    expect(out[1].feels).toBe(50);
+    expect('gust' in out[1]).toBe(false);
+    expect('feels' in out[2]).toBe(false);
+  });
+  it('a 6-hour amount is not split into hours (no precip_mm), a Celsius payload keeps degC', () => {
+    expect('precip_mm' in mergeGridpoints(hourly, grid)[1]).toBe(false);
+    expect(mergeGridpoints([{ ...hourly[0], unit: 'C' }], grid)[0].feels).toBe(10);
+  });
+  it('no gridpoints, an empty answer or a point without a usable time changes nothing', () => {
+    expect(mergeGridpoints(hourly, null)).toEqual(hourly);
+    expect(mergeGridpoints(hourly, { properties: {} })).toEqual(hourly);
+    expect(mergeGridpoints([{ ...hourly[0], start: null }], grid)).toEqual([{ ...hourly[0], start: null }]);
+  });
+  it('ISO durations', () => {
+    expect([isoHours('PT1H'), isoHours('PT6H'), isoHours('P1DT6H'), isoHours('P1D'), isoHours('PT30M'), isoHours('')]).toEqual([1, 6, 30, 24, null, null]);
+  });
+  it('fetchNwsForecast asks forecastGridData too, and survives it failing', async () => {
+    const make = (gridStatus: number) => (async (u: any) => {
+      const url = String(u);
+      if (url.includes('/points/')) return new Response(JSON.stringify({ properties: { forecast: 'https://x/f', forecastHourly: 'https://x/h', forecastGridData: 'https://x/g' } }));
+      if (url.endsWith('/g')) return new Response(JSON.stringify(grid), { status: gridStatus });
+      return new Response(JSON.stringify({ properties: { periods: [{ name: 'A', startTime: '2026-11-05T10:00:00-07:00', temperature: 50, temperatureUnit: 'F', shortForecast: 'x', windSpeed: '5 mph', isDaytime: true }] } }));
+    }) as typeof fetch;
+    expect((await fetchNwsForecast(1, 2, make(200), Date.parse('2026-11-05T17:05:00Z'))).hourly[0]).toMatchObject({ feels: 50, gust: 20 });
+    const failed = await fetchNwsForecast(1, 2, make(500), Date.parse('2026-11-05T17:05:00Z'));
+    expect(failed.periods).toHaveLength(1);
+    expect('feels' in failed.hourly[0]).toBe(false);
+    expect(failed.fetched_at).toBe('2026-11-05T17:05:00Z');
   });
 });
 

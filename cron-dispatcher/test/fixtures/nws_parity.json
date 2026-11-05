@@ -6,7 +6,7 @@
     {
      "number": 1,
      "name": "P0",
-     "startTime": "2026-11-05T14:00:00-07:00",
+     "startTime": "2026-11-05T6:00:00-07:00",
      "temperature": 40,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -20,7 +20,7 @@
     {
      "number": 2,
      "name": "P1",
-     "startTime": "2026-11-05T15:00:00-07:00",
+     "startTime": "2026-11-05T18:00:00-07:00",
      "temperature": 41,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -34,7 +34,7 @@
     {
      "number": 3,
      "name": "P2",
-     "startTime": "2026-11-05T16:00:00-07:00",
+     "startTime": "2026-11-06T6:00:00-07:00",
      "temperature": 42,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -48,7 +48,7 @@
     {
      "number": 4,
      "name": "P3",
-     "startTime": "2026-11-05T17:00:00-07:00",
+     "startTime": "2026-11-06T18:00:00-07:00",
      "temperature": 43,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -58,7 +58,7 @@
     {
      "number": 5,
      "name": "P4",
-     "startTime": "2026-11-05T18:00:00-07:00",
+     "startTime": "2026-11-07T6:00:00-07:00",
      "temperature": 44,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -72,7 +72,7 @@
     {
      "number": 6,
      "name": "P5",
-     "startTime": "2026-11-05T19:00:00-07:00",
+     "startTime": "2026-11-07T18:00:00-07:00",
      "temperature": 45,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -86,7 +86,7 @@
     {
      "number": 7,
      "name": "P6",
-     "startTime": "2026-11-05T20:00:00-07:00",
+     "startTime": "2026-11-08T6:00:00-07:00",
      "temperature": 46,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -100,7 +100,7 @@
     {
      "number": 8,
      "name": "P7",
-     "startTime": "2026-11-05T21:00:00-07:00",
+     "startTime": "2026-11-08T18:00:00-07:00",
      "temperature": 47,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -114,7 +114,7 @@
     {
      "number": 9,
      "name": "P8",
-     "startTime": "2026-11-05T22:00:00-07:00",
+     "startTime": "2026-11-09T6:00:00-07:00",
      "temperature": 48,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -124,7 +124,7 @@
     {
      "number": 10,
      "name": "P9",
-     "startTime": "2026-11-05T23:00:00-07:00",
+     "startTime": "2026-11-09T18:00:00-07:00",
      "temperature": 49,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -138,7 +138,7 @@
     {
      "number": 11,
      "name": "P10",
-     "startTime": "2026-11-05T00:00:00-07:00",
+     "startTime": "2026-11-010T6:00:00-07:00",
      "temperature": 50,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -152,7 +152,7 @@
     {
      "number": 12,
      "name": "P11",
-     "startTime": "2026-11-05T01:00:00-07:00",
+     "startTime": "2026-11-010T18:00:00-07:00",
      "temperature": 51,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -166,7 +166,7 @@
     {
      "number": 13,
      "name": "P12",
-     "startTime": "2026-11-05T02:00:00-07:00",
+     "startTime": "2026-11-011T6:00:00-07:00",
      "temperature": 52,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -180,7 +180,7 @@
     {
      "number": 14,
      "name": "P13",
-     "startTime": "2026-11-05T03:00:00-07:00",
+     "startTime": "2026-11-011T18:00:00-07:00",
      "temperature": 53,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -190,7 +190,7 @@
     {
      "number": 15,
      "name": "P14",
-     "startTime": "2026-11-05T04:00:00-07:00",
+     "startTime": "2026-11-012T6:00:00-07:00",
      "temperature": 54,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -204,7 +204,7 @@
     {
      "number": 16,
      "name": "P15",
-     "startTime": "2026-11-05T05:00:00-07:00",
+     "startTime": "2026-11-012T18:00:00-07:00",
      "temperature": 55,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -224,7 +224,7 @@
     {
      "number": 1,
      "name": "",
-     "startTime": "2026-11-05T14:00:00-07:00",
+     "startTime": "2026-11-05T01:00:00-07:00",
      "temperature": 40,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -238,7 +238,7 @@
     {
      "number": 2,
      "name": "",
-     "startTime": "2026-11-05T15:00:00-07:00",
+     "startTime": "2026-11-05T02:00:00-07:00",
      "temperature": 41,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -252,7 +252,7 @@
     {
      "number": 3,
      "name": "",
-     "startTime": "2026-11-05T16:00:00-07:00",
+     "startTime": "2026-11-05T03:00:00-07:00",
      "temperature": 42,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -266,7 +266,7 @@
     {
      "number": 4,
      "name": "",
-     "startTime": "2026-11-05T17:00:00-07:00",
+     "startTime": "2026-11-05T04:00:00-07:00",
      "temperature": 43,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -276,7 +276,7 @@
     {
      "number": 5,
      "name": "",
-     "startTime": "2026-11-05T18:00:00-07:00",
+     "startTime": "2026-11-05T05:00:00-07:00",
      "temperature": 44,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -290,7 +290,7 @@
     {
      "number": 6,
      "name": "",
-     "startTime": "2026-11-05T19:00:00-07:00",
+     "startTime": "2026-11-05T06:00:00-07:00",
      "temperature": 45,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -304,7 +304,7 @@
     {
      "number": 7,
      "name": "",
-     "startTime": "2026-11-05T20:00:00-07:00",
+     "startTime": "2026-11-05T07:00:00-07:00",
      "temperature": 46,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -318,7 +318,7 @@
     {
      "number": 8,
      "name": "",
-     "startTime": "2026-11-05T21:00:00-07:00",
+     "startTime": "2026-11-05T08:00:00-07:00",
      "temperature": 47,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -332,7 +332,7 @@
     {
      "number": 9,
      "name": "",
-     "startTime": "2026-11-05T22:00:00-07:00",
+     "startTime": "2026-11-05T09:00:00-07:00",
      "temperature": 48,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -342,7 +342,7 @@
     {
      "number": 10,
      "name": "",
-     "startTime": "2026-11-05T23:00:00-07:00",
+     "startTime": "2026-11-05T10:00:00-07:00",
      "temperature": 49,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -356,7 +356,7 @@
     {
      "number": 11,
      "name": "",
-     "startTime": "2026-11-05T00:00:00-07:00",
+     "startTime": "2026-11-05T11:00:00-07:00",
      "temperature": 50,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -370,7 +370,7 @@
     {
      "number": 12,
      "name": "",
-     "startTime": "2026-11-05T01:00:00-07:00",
+     "startTime": "2026-11-05T12:00:00-07:00",
      "temperature": 51,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -384,7 +384,7 @@
     {
      "number": 13,
      "name": "",
-     "startTime": "2026-11-05T02:00:00-07:00",
+     "startTime": "2026-11-05T13:00:00-07:00",
      "temperature": 52,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -398,7 +398,7 @@
     {
      "number": 14,
      "name": "",
-     "startTime": "2026-11-05T03:00:00-07:00",
+     "startTime": "2026-11-05T14:00:00-07:00",
      "temperature": 53,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -408,7 +408,7 @@
     {
      "number": 15,
      "name": "",
-     "startTime": "2026-11-05T04:00:00-07:00",
+     "startTime": "2026-11-05T15:00:00-07:00",
      "temperature": 54,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -422,7 +422,7 @@
     {
      "number": 16,
      "name": "",
-     "startTime": "2026-11-05T05:00:00-07:00",
+     "startTime": "2026-11-05T16:00:00-07:00",
      "temperature": 55,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -436,7 +436,7 @@
     {
      "number": 17,
      "name": "",
-     "startTime": "2026-11-05T06:00:00-07:00",
+     "startTime": "2026-11-05T17:00:00-07:00",
      "temperature": 56,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -450,7 +450,7 @@
     {
      "number": 18,
      "name": "",
-     "startTime": "2026-11-05T07:00:00-07:00",
+     "startTime": "2026-11-05T18:00:00-07:00",
      "temperature": 57,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -464,7 +464,7 @@
     {
      "number": 19,
      "name": "",
-     "startTime": "2026-11-05T08:00:00-07:00",
+     "startTime": "2026-11-05T19:00:00-07:00",
      "temperature": 58,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -474,7 +474,7 @@
     {
      "number": 20,
      "name": "",
-     "startTime": "2026-11-05T09:00:00-07:00",
+     "startTime": "2026-11-05T20:00:00-07:00",
      "temperature": 59,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -488,7 +488,7 @@
     {
      "number": 21,
      "name": "",
-     "startTime": "2026-11-05T10:00:00-07:00",
+     "startTime": "2026-11-05T21:00:00-07:00",
      "temperature": 60,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -502,7 +502,7 @@
     {
      "number": 22,
      "name": "",
-     "startTime": "2026-11-05T11:00:00-07:00",
+     "startTime": "2026-11-05T22:00:00-07:00",
      "temperature": 61,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -516,7 +516,7 @@
     {
      "number": 23,
      "name": "",
-     "startTime": "2026-11-05T12:00:00-07:00",
+     "startTime": "2026-11-05T23:00:00-07:00",
      "temperature": 62,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -530,7 +530,7 @@
     {
      "number": 24,
      "name": "",
-     "startTime": "2026-11-05T13:00:00-07:00",
+     "startTime": "2026-11-05T24:00:00-07:00",
      "temperature": 63,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -540,7 +540,7 @@
     {
      "number": 25,
      "name": "",
-     "startTime": "2026-11-05T14:00:00-07:00",
+     "startTime": "2026-11-05T25:00:00-07:00",
      "temperature": 64,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -554,7 +554,7 @@
     {
      "number": 26,
      "name": "",
-     "startTime": "2026-11-05T15:00:00-07:00",
+     "startTime": "2026-11-05T26:00:00-07:00",
      "temperature": 65,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -568,7 +568,7 @@
     {
      "number": 27,
      "name": "",
-     "startTime": "2026-11-05T16:00:00-07:00",
+     "startTime": "2026-11-05T27:00:00-07:00",
      "temperature": 66,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -582,7 +582,7 @@
     {
      "number": 28,
      "name": "",
-     "startTime": "2026-11-05T17:00:00-07:00",
+     "startTime": "2026-11-05T28:00:00-07:00",
      "temperature": 67,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -596,7 +596,7 @@
     {
      "number": 29,
      "name": "",
-     "startTime": "2026-11-05T18:00:00-07:00",
+     "startTime": "2026-11-05T29:00:00-07:00",
      "temperature": 68,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -606,7 +606,7 @@
     {
      "number": 30,
      "name": "",
-     "startTime": "2026-11-05T19:00:00-07:00",
+     "startTime": "2026-11-05T30:00:00-07:00",
      "temperature": 69,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -620,11 +620,398 @@
    ]
   }
  },
+ "gridpoints": {
+  "properties": {
+   "apparentTemperature": {
+    "uom": "wmoUnit:degC",
+    "values": [
+     {
+      "validTime": "2026-11-05T00:00:00+00:00/PT1H",
+      "value": 10.555555555555555
+     },
+     {
+      "validTime": "2026-11-05T01:00:00+00:00/PT3H",
+      "value": 7.777777777777778
+     },
+     {
+      "validTime": "2026-11-05T04:00:00+00:00/PT1H",
+      "value": 7.222222222222222
+     },
+     {
+      "validTime": "2026-11-05T05:00:00+00:00/PT1H",
+      "value": 5
+     },
+     {
+      "validTime": "2026-11-05T06:00:00+00:00/PT1H",
+      "value": 4.444444444444445
+     },
+     {
+      "validTime": "2026-11-05T07:00:00+00:00/PT2H",
+      "value": 3.888888888888889
+     },
+     {
+      "validTime": "2026-11-05T09:00:00+00:00/PT1H",
+      "value": 3.3333333333333335
+     },
+     {
+      "validTime": "2026-11-05T10:00:00+00:00/PT1H",
+      "value": 2.2222222222222223
+     },
+     {
+      "validTime": "2026-11-05T11:00:00+00:00/PT1H",
+      "value": 3.3333333333333335
+     },
+     {
+      "validTime": "2026-11-05T12:00:00+00:00/PT2H",
+      "value": 2.7777777777777777
+     },
+     {
+      "validTime": "2026-11-05T14:00:00+00:00/PT1H",
+      "value": 1.1111111111111112
+     },
+     {
+      "validTime": "2026-11-05T15:00:00+00:00/PT1H",
+      "value": 2.7777777777777777
+     },
+     {
+      "validTime": "2026-11-05T16:00:00+00:00/PT1H",
+      "value": 6.666666666666667
+     },
+     {
+      "validTime": "2026-11-05T17:00:00+00:00/PT1H",
+      "value": 8.333333333333334
+     },
+     {
+      "validTime": "2026-11-05T18:00:00+00:00/PT1H",
+      "value": 11.11111111111111
+     },
+     {
+      "validTime": "2026-11-05T19:00:00+00:00/PT1H",
+      "value": 12.222222222222221
+     },
+     {
+      "validTime": "2026-11-05T20:00:00+00:00/PT2H",
+      "value": 13.333333333333334
+     },
+     {
+      "validTime": "2026-11-05T22:00:00+00:00/PT1H",
+      "value": 14.444444444444445
+     },
+     {
+      "validTime": "2026-11-05T23:00:00+00:00/PT1H",
+      "value": 13.333333333333334
+     },
+     {
+      "validTime": "2026-11-06T00:00:00+00:00/PT1H",
+      "value": 11.666666666666666
+     },
+     {
+      "validTime": "2026-11-06T01:00:00+00:00/PT1H",
+      "value": 10.555555555555555
+     },
+     {
+      "validTime": "2026-11-06T02:00:00+00:00/PT1H",
+      "value": 7.222222222222222
+     },
+     {
+      "validTime": "2026-11-06T03:00:00+00:00/PT1H",
+      "value": 5.555555555555555
+     },
+     {
+      "validTime": "2026-11-06T04:00:00+00:00/PT1H",
+      "value": 4.444444444444445
+     },
+     {
+      "validTime": "2026-11-06T05:00:00+00:00/PT1H",
+      "value": 3.3333333333333335
+     },
+     {
+      "validTime": "2026-11-06T06:00:00+00:00/PT1H",
+      "value": 2.7777777777777777
+     },
+     {
+      "validTime": "2026-11-06T07:00:00+00:00/PT1H",
+      "value": 2.2222222222222223
+     },
+     {
+      "validTime": "2026-11-06T08:00:00+00:00/PT4H",
+      "value": 3.3333333333333335
+     },
+     {
+      "validTime": "2026-11-06T12:00:00+00:00/PT1H",
+      "value": 2.7777777777777777
+     },
+     {
+      "validTime": "2026-11-06T13:00:00+00:00/PT1H",
+      "value": 3.3333333333333335
+     },
+     {
+      "validTime": "2026-11-06T14:00:00+00:00/PT2H",
+      "value": 3.888888888888889
+     },
+     {
+      "validTime": "2026-11-06T16:00:00+00:00/PT1H",
+      "value": 7.222222222222222
+     },
+     {
+      "validTime": "2026-11-06T17:00:00+00:00/PT1H",
+      "value": 8.88888888888889
+     },
+     {
+      "validTime": "2026-11-06T18:00:00+00:00/PT1H",
+      "value": 10.555555555555555
+     },
+     {
+      "validTime": "2026-11-06T19:00:00+00:00/PT1H",
+      "value": 11.666666666666666
+     },
+     {
+      "validTime": "2026-11-06T20:00:00+00:00/PT2H",
+      "value": 12.777777777777779
+     },
+     {
+      "validTime": "2026-11-06T22:00:00+00:00/PT1H",
+      "value": 13.88888888888889
+     },
+     {
+      "validTime": "2026-11-06T23:00:00+00:00/PT1H",
+      "value": 12.777777777777779
+     },
+     {
+      "validTime": "2026-11-07T00:00:00+00:00/PT1H",
+      "value": 11.666666666666666
+     },
+     {
+      "validTime": "2026-11-07T01:00:00+00:00/PT1H",
+      "value": 10
+     }
+    ]
+   },
+   "windGust": {
+    "uom": "wmoUnit:km_h-1",
+    "values": [
+     {
+      "validTime": "2026-11-05T00:00:00+00:00/PT1H",
+      "value": 14.816
+     },
+     {
+      "validTime": "2026-11-05T01:00:00+00:00/PT1H",
+      "value": 11.112
+     },
+     {
+      "validTime": "2026-11-05T02:00:00+00:00/PT3H",
+      "value": 9.26
+     },
+     {
+      "validTime": "2026-11-05T05:00:00+00:00/PT3H",
+      "value": 11.112
+     },
+     {
+      "validTime": "2026-11-05T08:00:00+00:00/PT3H",
+      "value": 9.26
+     },
+     {
+      "validTime": "2026-11-05T11:00:00+00:00/PT3H",
+      "value": 7.408
+     },
+     {
+      "validTime": "2026-11-05T14:00:00+00:00/PT1H",
+      "value": 9.26
+     },
+     {
+      "validTime": "2026-11-05T15:00:00+00:00/PT1H",
+      "value": 12.964
+     },
+     {
+      "validTime": "2026-11-05T16:00:00+00:00/PT3H",
+      "value": 9.26
+     },
+     {
+      "validTime": "2026-11-05T19:00:00+00:00/PT1H",
+      "value": 11.112
+     },
+     {
+      "validTime": "2026-11-05T20:00:00+00:00/PT1H",
+      "value": 12.964
+     },
+     {
+      "validTime": "2026-11-05T21:00:00+00:00/PT2H",
+      "value": 14.816
+     },
+     {
+      "validTime": "2026-11-05T23:00:00+00:00/PT6H",
+      "value": 9.26
+     },
+     {
+      "validTime": "2026-11-06T05:00:00+00:00/PT3H",
+      "value": 7.408
+     },
+     {
+      "validTime": "2026-11-06T08:00:00+00:00/PT6H",
+      "value": 5.556
+     },
+     {
+      "validTime": "2026-11-06T14:00:00+00:00/PT1H",
+      "value": 7.408
+     },
+     {
+      "validTime": "2026-11-06T15:00:00+00:00/PT1H",
+      "value": 11.112
+     },
+     {
+      "validTime": "2026-11-06T16:00:00+00:00/PT2H",
+      "value": 9.26
+     },
+     {
+      "validTime": "2026-11-06T18:00:00+00:00/PT1H",
+      "value": 11.112
+     },
+     {
+      "validTime": "2026-11-06T19:00:00+00:00/PT1H",
+      "value": 12.964
+     },
+     {
+      "validTime": "2026-11-06T20:00:00+00:00/PT1H",
+      "value": 14.816
+     },
+     {
+      "validTime": "2026-11-06T21:00:00+00:00/PT1H",
+      "value": 16.668
+     },
+     {
+      "validTime": "2026-11-06T22:00:00+00:00/PT1H",
+      "value": 12.964
+     },
+     {
+      "validTime": "2026-11-06T23:00:00+00:00/PT1H",
+      "value": 11.112
+     },
+     {
+      "validTime": "2026-11-07T00:00:00+00:00/PT3H",
+      "value": 9.26
+     },
+     {
+      "validTime": "2026-11-07T03:00:00+00:00/PT2H",
+      "value": 11.112
+     },
+     {
+      "validTime": "2026-11-07T05:00:00+00:00/PT3H",
+      "value": 9.26
+     },
+     {
+      "validTime": "2026-11-07T08:00:00+00:00/PT5H",
+      "value": 11.112
+     },
+     {
+      "validTime": "2026-11-07T13:00:00+00:00/PT1H",
+      "value": 14.816
+     },
+     {
+      "validTime": "2026-11-07T14:00:00+00:00/PT1H",
+      "value": 16.668
+     },
+     {
+      "validTime": "2026-11-07T15:00:00+00:00/PT1H",
+      "value": 18.52
+     },
+     {
+      "validTime": "2026-11-07T16:00:00+00:00/PT1H",
+      "value": 16.668
+     },
+     {
+      "validTime": "2026-11-07T17:00:00+00:00/PT1H",
+      "value": 12.964
+     },
+     {
+      "validTime": "2026-11-07T18:00:00+00:00/PT1H",
+      "value": 9.26
+     },
+     {
+      "validTime": "2026-11-07T19:00:00+00:00/PT1H",
+      "value": 11.112
+     },
+     {
+      "validTime": "2026-11-07T20:00:00+00:00/PT1H",
+      "value": 12.964
+     },
+     {
+      "validTime": "2026-11-07T21:00:00+00:00/PT1H",
+      "value": 14.816
+     },
+     {
+      "validTime": "2026-11-07T22:00:00+00:00/PT1H",
+      "value": 12.964
+     },
+     {
+      "validTime": "2026-11-07T23:00:00+00:00/PT1H",
+      "value": 9.26
+     },
+     {
+      "validTime": "2026-11-08T00:00:00+00:00/PT3H",
+      "value": 5.556
+     }
+    ]
+   },
+   "quantitativePrecipitation": {
+    "uom": "wmoUnit:mm",
+    "values": [
+     {
+      "validTime": "2026-11-05T00:00:00+00:00/PT6H",
+      "value": 0
+     },
+     {
+      "validTime": "2026-11-05T06:00:00+00:00/PT6H",
+      "value": 0
+     },
+     {
+      "validTime": "2026-11-05T12:00:00+00:00/PT6H",
+      "value": 0
+     },
+     {
+      "validTime": "2026-11-05T18:00:00+00:00/PT6H",
+      "value": 0
+     },
+     {
+      "validTime": "2026-11-06T00:00:00+00:00/PT6H",
+      "value": 0
+     },
+     {
+      "validTime": "2026-11-06T06:00:00+00:00/PT6H",
+      "value": 0
+     },
+     {
+      "validTime": "2026-11-06T12:00:00+00:00/PT6H",
+      "value": 0
+     },
+     {
+      "validTime": "2026-11-06T18:00:00+00:00/PT6H",
+      "value": 0
+     },
+     {
+      "validTime": "2026-11-07T00:00:00+00:00/PT6H",
+      "value": 0
+     },
+     {
+      "validTime": "2026-11-07T06:00:00+00:00/PT6H",
+      "value": 0
+     },
+     {
+      "validTime": "2026-11-07T12:00:00+00:00/PT6H",
+      "value": 0
+     },
+     {
+      "validTime": "2026-11-07T18:00:00+00:00/PT6H",
+      "value": 0
+     }
+    ]
+   }
+  }
+ },
  "expected": {
   "periods": [
    {
     "name": "P0",
-    "start": "2026-11-05T14:00:00-07:00",
+    "start": "2026-11-05T6:00:00-07:00",
     "temp": 40,
     "unit": "F",
     "short": "Mostly Cloudy",
@@ -634,7 +1021,7 @@
    },
    {
     "name": "P1",
-    "start": "2026-11-05T15:00:00-07:00",
+    "start": "2026-11-05T18:00:00-07:00",
     "temp": 41,
     "unit": "F",
     "short": "Chance Rain Showers",
@@ -643,7 +1030,7 @@
    },
    {
     "name": "P2",
-    "start": "2026-11-05T16:00:00-07:00",
+    "start": "2026-11-06T6:00:00-07:00",
     "temp": 42,
     "unit": "F",
     "short": "Sunny",
@@ -653,7 +1040,7 @@
    },
    {
     "name": "P3",
-    "start": "2026-11-05T17:00:00-07:00",
+    "start": "2026-11-06T18:00:00-07:00",
     "temp": 43,
     "unit": "F",
     "short": "Mostly Cloudy",
@@ -662,7 +1049,7 @@
    },
    {
     "name": "P4",
-    "start": "2026-11-05T18:00:00-07:00",
+    "start": "2026-11-07T6:00:00-07:00",
     "temp": 44,
     "unit": "F",
     "short": "Chance Rain Showers",
@@ -672,7 +1059,7 @@
    },
    {
     "name": "P5",
-    "start": "2026-11-05T19:00:00-07:00",
+    "start": "2026-11-07T18:00:00-07:00",
     "temp": 45,
     "unit": "F",
     "short": "Sunny",
@@ -682,7 +1069,7 @@
    },
    {
     "name": "P6",
-    "start": "2026-11-05T20:00:00-07:00",
+    "start": "2026-11-08T6:00:00-07:00",
     "temp": 46,
     "unit": "F",
     "short": "Mostly Cloudy",
@@ -691,7 +1078,7 @@
    },
    {
     "name": "P7",
-    "start": "2026-11-05T21:00:00-07:00",
+    "start": "2026-11-08T18:00:00-07:00",
     "temp": 47,
     "unit": "F",
     "short": "Chance Rain Showers",
@@ -701,7 +1088,7 @@
    },
    {
     "name": "P8",
-    "start": "2026-11-05T22:00:00-07:00",
+    "start": "2026-11-09T6:00:00-07:00",
     "temp": 48,
     "unit": "F",
     "short": "Sunny",
@@ -710,7 +1097,7 @@
    },
    {
     "name": "P9",
-    "start": "2026-11-05T23:00:00-07:00",
+    "start": "2026-11-09T18:00:00-07:00",
     "temp": 49,
     "unit": "F",
     "short": "Mostly Cloudy",
@@ -720,7 +1107,7 @@
    },
    {
     "name": "P10",
-    "start": "2026-11-05T00:00:00-07:00",
+    "start": "2026-11-010T6:00:00-07:00",
     "temp": 50,
     "unit": "F",
     "short": "Chance Rain Showers",
@@ -730,7 +1117,7 @@
    },
    {
     "name": "P11",
-    "start": "2026-11-05T01:00:00-07:00",
+    "start": "2026-11-010T18:00:00-07:00",
     "temp": 51,
     "unit": "F",
     "short": "Sunny",
@@ -739,7 +1126,7 @@
    },
    {
     "name": "P12",
-    "start": "2026-11-05T02:00:00-07:00",
+    "start": "2026-11-011T6:00:00-07:00",
     "temp": 52,
     "unit": "F",
     "short": "Mostly Cloudy",
@@ -749,7 +1136,7 @@
    },
    {
     "name": "P13",
-    "start": "2026-11-05T03:00:00-07:00",
+    "start": "2026-11-011T18:00:00-07:00",
     "temp": 53,
     "unit": "F",
     "short": "Chance Rain Showers",
@@ -759,210 +1146,258 @@
   ],
   "hourly": [
    {
-    "start": "2026-11-05T14:00:00-07:00",
+    "start": "2026-11-05T01:00:00-07:00",
     "temp": 40,
     "unit": "F",
     "short": "Mostly Cloudy",
     "wind": "5 mph",
     "is_daytime": true,
-    "pop": 40
+    "pop": 40,
+    "feels": 39,
+    "gust": 6
    },
    {
-    "start": "2026-11-05T15:00:00-07:00",
+    "start": "2026-11-05T02:00:00-07:00",
     "temp": 41,
     "unit": "F",
     "short": "Chance Rain Showers",
     "wind": "6 mph",
-    "is_daytime": false
+    "is_daytime": false,
+    "feels": 38,
+    "gust": 6
    },
    {
-    "start": "2026-11-05T16:00:00-07:00",
+    "start": "2026-11-05T03:00:00-07:00",
     "temp": 42,
     "unit": "F",
     "short": "Sunny",
     "wind": "7 mph",
     "is_daytime": true,
-    "pop": 0
+    "pop": 0,
+    "feels": 36,
+    "gust": 6
    },
    {
-    "start": "2026-11-05T17:00:00-07:00",
+    "start": "2026-11-05T04:00:00-07:00",
     "temp": 43,
     "unit": "F",
     "short": "Mostly Cloudy",
     "wind": "8 mph",
-    "is_daytime": false
+    "is_daytime": false,
+    "feels": 38,
+    "gust": 5
    },
    {
-    "start": "2026-11-05T18:00:00-07:00",
+    "start": "2026-11-05T05:00:00-07:00",
     "temp": 44,
     "unit": "F",
     "short": "Chance Rain Showers",
     "wind": "9 mph",
     "is_daytime": true,
-    "pop": 62
+    "pop": 62,
+    "feels": 37,
+    "gust": 5
    },
    {
-    "start": "2026-11-05T19:00:00-07:00",
+    "start": "2026-11-05T06:00:00-07:00",
     "temp": 45,
     "unit": "F",
     "short": "Sunny",
     "wind": "10 mph",
     "is_daytime": false,
-    "pop": 40
+    "pop": 40,
+    "feels": 37,
+    "gust": 5
    },
    {
-    "start": "2026-11-05T20:00:00-07:00",
+    "start": "2026-11-05T07:00:00-07:00",
     "temp": 46,
     "unit": "F",
     "short": "Mostly Cloudy",
     "wind": "11 mph",
-    "is_daytime": true
+    "is_daytime": true,
+    "feels": 34,
+    "gust": 6
    },
    {
-    "start": "2026-11-05T21:00:00-07:00",
+    "start": "2026-11-05T08:00:00-07:00",
     "temp": 47,
     "unit": "F",
     "short": "Chance Rain Showers",
     "wind": "12 mph",
     "is_daytime": false,
-    "pop": 0
+    "pop": 0,
+    "feels": 37,
+    "gust": 8
    },
    {
-    "start": "2026-11-05T22:00:00-07:00",
+    "start": "2026-11-05T09:00:00-07:00",
     "temp": 48,
     "unit": "F",
     "short": "Sunny",
     "wind": "13 mph",
-    "is_daytime": true
+    "is_daytime": true,
+    "feels": 44,
+    "gust": 6
    },
    {
-    "start": "2026-11-05T23:00:00-07:00",
+    "start": "2026-11-05T10:00:00-07:00",
     "temp": 49,
     "unit": "F",
     "short": "Mostly Cloudy",
     "wind": "14 mph",
     "is_daytime": false,
-    "pop": 62
+    "pop": 62,
+    "feels": 47,
+    "gust": 6
    },
    {
-    "start": "2026-11-05T00:00:00-07:00",
+    "start": "2026-11-05T11:00:00-07:00",
     "temp": 50,
     "unit": "F",
     "short": "Chance Rain Showers",
     "wind": "15 mph",
     "is_daytime": true,
-    "pop": 40
+    "pop": 40,
+    "feels": 52,
+    "gust": 6
    },
    {
-    "start": "2026-11-05T01:00:00-07:00",
+    "start": "2026-11-05T12:00:00-07:00",
     "temp": 51,
     "unit": "F",
     "short": "Sunny",
     "wind": "16 mph",
-    "is_daytime": false
+    "is_daytime": false,
+    "feels": 54,
+    "gust": 7
    },
    {
-    "start": "2026-11-05T02:00:00-07:00",
+    "start": "2026-11-05T13:00:00-07:00",
     "temp": 52,
     "unit": "F",
     "short": "Mostly Cloudy",
     "wind": "17 mph",
     "is_daytime": true,
-    "pop": 0
+    "pop": 0,
+    "feels": 56,
+    "gust": 8
    },
    {
-    "start": "2026-11-05T03:00:00-07:00",
+    "start": "2026-11-05T14:00:00-07:00",
     "temp": 53,
     "unit": "F",
     "short": "Chance Rain Showers",
     "wind": "18 mph",
-    "is_daytime": false
+    "is_daytime": false,
+    "feels": 56,
+    "gust": 9
    },
    {
-    "start": "2026-11-05T04:00:00-07:00",
+    "start": "2026-11-05T15:00:00-07:00",
     "temp": 54,
     "unit": "F",
     "short": "Sunny",
     "wind": "19 mph",
     "is_daytime": true,
-    "pop": 62
+    "pop": 62,
+    "feels": 58,
+    "gust": 9
    },
    {
-    "start": "2026-11-05T05:00:00-07:00",
+    "start": "2026-11-05T16:00:00-07:00",
     "temp": 55,
     "unit": "F",
     "short": "Mostly Cloudy",
     "wind": "20 mph",
     "is_daytime": false,
-    "pop": 40
+    "pop": 40,
+    "feels": 56,
+    "gust": 6
    },
    {
-    "start": "2026-11-05T06:00:00-07:00",
+    "start": "2026-11-05T17:00:00-07:00",
     "temp": 56,
     "unit": "F",
     "short": "Chance Rain Showers",
     "wind": "21 mph",
-    "is_daytime": true
+    "is_daytime": true,
+    "feels": 53,
+    "gust": 6
    },
    {
-    "start": "2026-11-05T07:00:00-07:00",
+    "start": "2026-11-05T18:00:00-07:00",
     "temp": 57,
     "unit": "F",
     "short": "Sunny",
     "wind": "22 mph",
     "is_daytime": false,
-    "pop": 0
+    "pop": 0,
+    "feels": 51,
+    "gust": 6
    },
    {
-    "start": "2026-11-05T08:00:00-07:00",
+    "start": "2026-11-05T19:00:00-07:00",
     "temp": 58,
     "unit": "F",
     "short": "Mostly Cloudy",
     "wind": "23 mph",
-    "is_daytime": true
+    "is_daytime": true,
+    "feels": 45,
+    "gust": 6
    },
    {
-    "start": "2026-11-05T09:00:00-07:00",
+    "start": "2026-11-05T20:00:00-07:00",
     "temp": 59,
     "unit": "F",
     "short": "Chance Rain Showers",
     "wind": "24 mph",
     "is_daytime": false,
-    "pop": 62
+    "pop": 62,
+    "feels": 42,
+    "gust": 6
    },
    {
-    "start": "2026-11-05T10:00:00-07:00",
+    "start": "2026-11-05T21:00:00-07:00",
     "temp": 60,
     "unit": "F",
     "short": "Sunny",
     "wind": "25 mph",
     "is_daytime": true,
-    "pop": 40
+    "pop": 40,
+    "feels": 40,
+    "gust": 6
    },
    {
-    "start": "2026-11-05T11:00:00-07:00",
+    "start": "2026-11-05T22:00:00-07:00",
     "temp": 61,
     "unit": "F",
     "short": "Mostly Cloudy",
     "wind": "26 mph",
-    "is_daytime": false
+    "is_daytime": false,
+    "feels": 38,
+    "gust": 5
    },
    {
-    "start": "2026-11-05T12:00:00-07:00",
+    "start": "2026-11-05T23:00:00-07:00",
     "temp": 62,
     "unit": "F",
     "short": "Chance Rain Showers",
     "wind": "27 mph",
     "is_daytime": true,
-    "pop": 0
+    "pop": 0,
+    "feels": 37,
+    "gust": 5
    },
    {
-    "start": "2026-11-05T13:00:00-07:00",
+    "start": "2026-11-05T24:00:00-07:00",
     "temp": 63,
     "unit": "F",
     "short": "Sunny",
     "wind": "28 mph",
-    "is_daytime": false
+    "is_daytime": false,
+    "feels": 36,
+    "gust": 5
    }
   ],
   "fetched_at": "2026-11-05T20:30:12Z"

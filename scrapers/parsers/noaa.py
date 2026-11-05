@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 from datetime import date, datetime, timezone
 
 import requests
@@ -44,6 +45,62 @@ def _pop(period: dict) -> dict:
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
         return {}
     return {"pop": int(round(value))}
+
+
+def _iso_hours(duration: str):
+    """"PT3H" / "P1DT6H" -> hours (whole hours only; anything else is not usable)."""
+    m = re.fullmatch(r"P(?:(\d+)D)?(?:T(?:(\d+)H)?)?", duration or "")
+    if not m or (m.group(1) is None and m.group(2) is None):
+        return None
+    return int(m.group(1) or 0) * 24 + int(m.group(2) or 0)
+
+
+def _per_hour(series, only_one_hour: bool = False) -> dict:
+    """One value per UTC hour (key = epoch seconds of the hour): every hour an interval covers gets the interval's value. only_one_hour keeps
+    just the intervals of exactly one hour (an amount over 6 hours cannot be split into hours without guessing)."""
+    out = {}
+    for v in (series or {}).get("values") or []:
+        value = v.get("value")
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+            continue
+        start, _, dur = (v.get("validTime") or "").partition("/")
+        hours = _iso_hours(dur)
+        try:
+            t = int(datetime.fromisoformat(start).timestamp())
+        except ValueError:
+            continue
+        if hours is None or hours < 1 or hours > 48 or (only_one_hour and hours != 1):
+            continue
+        for h in range(hours):
+            out[t // 3600 * 3600 + h * 3600] = value
+    return out
+
+
+def merge_gridpoints(hourly: list, grid) -> list:
+    """Adds feels (payload unit), gust (mph) and precip_mm (only where the source gives an hour's amount) to the hourly points the gridpoints
+    cover; the others stay as they are. Same arithmetic and rounding as mergeGridpoints in cron-dispatcher/src/weather/nws.ts."""
+    props = (grid or {}).get("properties")
+    if not props:
+        return hourly
+    feels = _per_hour(props.get("apparentTemperature"))
+    gust = _per_hour(props.get("windGust"))
+    rain = _per_hour(props.get("quantitativePrecipitation"), True)
+    out = []
+    for h in hourly:
+        try:
+            key = int(datetime.fromisoformat(h.get("start") or "").timestamp()) // 3600 * 3600
+        except ValueError:
+            out.append(h)
+            continue
+        h = dict(h)
+        if key in feels and h.get("unit") in ("F", "C"):
+            h["feels"] = int(round(feels[key] * 9 / 5 + 32 if h["unit"] == "F" else feels[key]))
+        if key in gust:
+            h["gust"] = int(round(gust[key] * 0.621371))
+        if key in rain:
+            h["precip_mm"] = round(rain[key] * 10) / 10
+        out.append(h)
+    return out
 
 
 class NoaaParser(BaseParser):
@@ -70,6 +127,15 @@ class NoaaParser(BaseParser):
         fc_hourly.raise_for_status()
 
         combined = {"forecast": fc.json(), "forecastHourly": fc_hourly.json()}
+        # Gridpoints (feels like, gusts) are a bonus: any failure leaves the forecast without them. Only the series we use are kept.
+        if isinstance(props.get("forecastGridData"), str):
+            try:
+                grid = requests.get(props["forecastGridData"], headers=self._headers(), timeout=20)
+                grid.raise_for_status()
+                gp = grid.json().get("properties") or {}
+                combined["gridpoints"] = {"properties": {k: gp.get(k) for k in ("apparentTemperature", "windGust", "quantitativePrecipitation")}}
+            except (requests.RequestException, ValueError):
+                pass
         raw = json.dumps(combined, default=str).encode("utf-8")
         return FetchResult(raw=raw, content_type="application/json",
                            url=props["forecast"], http_code=fc.status_code)
@@ -105,6 +171,7 @@ class NoaaParser(BaseParser):
             }
             for p in hourly_periods[:_MAX_HOURLY_PERIODS]
         ]
+        normalized_hourly = merge_gridpoints(normalized_hourly, combined.get("gridpoints"))
         return [{
             "observed_for": date.today(),
             "payload": {"periods": normalized, "hourly": normalized_hourly,
