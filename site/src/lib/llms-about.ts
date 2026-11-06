@@ -10,6 +10,6 @@ export interface LlmsAboutInput {
 export function llmsAboutLines(i: LlmsAboutInput): string[] {
   return [
     `> ${i.siteName} is an independent local information site for ${i.place}. It is not a government agency and not a newsroom; official decisions and notices are the ones published by the local authorities themselves.`,
-    `> ${i.sourceBlurb} Pages are drafted automatically by an AI model working only from those sources and checked by automated rules; no person reviews an individual item before it is published. Every news item and listing links back to its source. Refreshed every 6 hours.`,
+    `> ${i.sourceBlurb} Pages are assembled automatically from those sources and checked by automated rules; no person reviews an individual item before it is published. Text written by an AI model is not shown on the site. Every news item and listing links back to its source. Refreshed every 6 hours.`,
   ];
 }

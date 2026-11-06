@@ -10,6 +10,7 @@
  * Astro's component/build pipeline -- the .astro file only wires real props
  * into buildEventJsonLd() and renders the result.
  */
+import { publicBody } from './ai-text';
 import {
   buildVenueIndex, resolveVenue, hasResolvedAddress, isVirtualVenue, toZonedISOString,
   type Facility,
@@ -108,7 +109,7 @@ export function buildEventJsonLd(
     eventStatus: 'https://schema.org/EventScheduled',
     eventAttendanceMode,
     location,
-    description: story.body.slice(0, 300),
+    ...(publicBody(story) ? { description: publicBody(story).slice(0, 300) } : {}), // model-written text is withheld (lib/ai-text.ts)
     image: [heroUrl],
     // The resolved venue is the most defensible organizer we can state
     // without inventing a fact (a library/park/city-hall event is

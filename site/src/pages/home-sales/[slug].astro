@@ -21,6 +21,7 @@ import { buildPropertySaleJsonLd, buildBreadcrumbJsonLd, type BreadcrumbEntry } 
 import { titleCaseAddress, extractZip, slugifyAddress, isOutlierSale, digestSlugForSaleDate } from '../../lib/home-sales';
 import { siteConfig } from '../../lib/site-config';
 import { isWithinRenderWindow } from '../../lib/render-window';
+import { ownPageHref } from '../../lib/ai-text';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 
 export async function getStaticPaths() {
@@ -31,7 +32,7 @@ export async function getStaticPaths() {
     getContentByType(['home_sales_digest'], 999),
     getProjects(),
   ]);
-  const digestSlugs = new Set(digests.map((d) => d.slug));
+  const digestSlugs = new Set(digests.filter((d) => ownPageHref(d)).map((d) => d.slug)); // withheld text (lib/ai-text.ts) = empty page, not linked
 
   // Render-window handoff: a parcel whose most recent recorded sale is
   // outside the configured window doesn't get a page built at all -- the

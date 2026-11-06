@@ -27,7 +27,7 @@ import {
   getSeasonGames, getRegionalSports, getWorthKnowingCandidatesInRange, formatOccursAt,
 } from '../../lib/db';
 import type { Story } from '../../lib/db';
-import { publicBody } from '../../lib/ai-text';
+import { publicBody, linkTarget } from '../../lib/ai-text';
 import {
   weekInfoForInstant, currentWeekInfo, previousWeekInfo, buildWeekDays, selectWeeklyLead,
   buildDisplayRows, shouldNoindexWeekPage, recentWeekSlugs, type WeekInfo, type DayBucket, type Vertical,
@@ -149,7 +149,7 @@ const itemListJsonLd = hasAnyItems ? {
   {lead && (
     <aside class="lead-callout">
       <p class="lead-callout__kicker">Worth knowing this week</p>
-      <p class="lead-callout__title"><a href={storyHref(lead.slug)}>{lead.title}</a></p>
+      <p class="lead-callout__title">{linkTarget(lead) ? <a href={linkTarget(lead)!}>{lead.title}</a> : lead.title}</p>
       <p class="lead-callout__when">{formatOccursAt(lead)}</p>
     </aside>
   )}

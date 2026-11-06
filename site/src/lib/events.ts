@@ -29,6 +29,7 @@
  */
 import type { Story, SdsuEvent, Facility } from './db';
 import { siteConfig } from './site-config';
+import { linkTarget } from './ai-text';
 import { buildVenueIndex, resolveVenue, isVirtualVenue } from './db';
 import { classifyLocalityByCoords, classifyLocalityByText, type LocalityResult, type LocalityMethod } from './town-boundary';
 
@@ -45,6 +46,10 @@ export const ARTS_EVENT_KICKER = 'Arts & Culture';
 
 export function itemTitle(item: FeedItem): string {
   return item.sourceKind === 'story' ? item.story.title : item.event.title;
+}
+/** Where a list row links: the original source for an arts item, the story's own page when it has text, else its source (lib/ai-text.ts). */
+export function itemLink(item: FeedItem): string | null {
+  return item.sourceKind === 'arts' ? item.event.event_url : linkTarget(item.story);
 }
 export function itemUrl(item: FeedItem): string | null {
   return item.sourceKind === 'story' ? item.story.source_url : item.event.event_url;

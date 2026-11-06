@@ -49,7 +49,7 @@ import { getTicketmasterEventsForTown, distanceLabel, type TicketmasterFeedItem 
 import { rankTicketmasterEvents, collapseMarqueeRuns } from './whats-on';
 import { joinWithOr } from './status-line';
 import { normalizeSportTitle } from './week-groups';
-import { storyHref } from './content-slugs';
+import { ownPageHref } from './ai-text';
 import { ELECTION_BY_TOWN } from '../config/election';
 import { buildElectionStatus } from './election';
 
@@ -137,7 +137,7 @@ async function resolveAlerts(): Promise<CityStatusModule | null> {
   const value = alerts.length === 1 ? alerts[0].title : `${alerts.length} active alerts`;
   return {
     id: 'alerts', icon: ICONS.alerts, label: 'Alerts', value, tone: 'alert',
-    href: storyHref(alerts[0].slug), asOf: new Date(alerts[0].published_at),
+    href: ownPageHref(alerts[0]) ?? '/weather/', asOf: new Date(alerts[0].published_at),
     expiresAt: alerts.map((a) => a.ends_at).filter(Boolean).sort().at(-1) ?? undefined,
   };
 }

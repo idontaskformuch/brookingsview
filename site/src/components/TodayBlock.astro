@@ -59,7 +59,7 @@ import type { Story, TrafficIncident, StructuredHours, Facility } from '../lib/d
 import type { TodayShow } from '../lib/today-shows';
 import TodayShowItem from './TodayShowItem.astro';
 import type { ClosureWatchStatus } from '../lib/closure-watch';
-import { storyHref } from '../lib/content-slugs';
+import { ownPageHref } from '../lib/ai-text';
 import { formatAlertUntil } from '../lib/alerts';
 import { siteConfig } from '../lib/site-config';
 import { formatClockCompact } from '../lib/country-profile';
@@ -72,7 +72,7 @@ export interface Props {
    *  shown, not implied. */
   asOf: Date;
   temperature: number | null;
-  activeAlerts: Pick<Story, 'slug' | 'title' | 'ends_at'>[];
+  activeAlerts: Pick<Story, 'slug' | 'title' | 'ends_at' | 'generated_by'>[];
   /** null = Closure Watch not live for this town yet -- omit the row. */
   closureStatus: (ClosureWatchStatus & { prose: string | null }) | null;
   /** null = no real traffic source for this town -- omit the row. Present
@@ -130,7 +130,7 @@ const CLOSURE_LABEL: Record<ClosureWatchStatus['state'], string> = {
   clear: 'Schools open, no closures reported',
 };
 
-type AlertItem = Pick<Story, 'slug' | 'title' | 'ends_at'>;
+type AlertItem = Pick<Story, 'slug' | 'title' | 'ends_at' | 'generated_by'>;
 
 function toStory(item: FeedItem): { story: Story; href?: string; kicker?: string } {
   if (item.sourceKind === 'story') return { story: item.story };
@@ -194,7 +194,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
 
         {!consolidatedQuietLine && activeAlerts.length > 0 && activeAlerts.map((alert: AlertItem) => (
           <li data-ends={alert.ends_at ?? undefined} data-alert-slug={alert.slug}>
-            <a href={storyHref(alert.slug)}>{alert.title}</a>
+            <a href={ownPageHref(alert) ?? '/weather/'}>{alert.title}</a>
             {alert.ends_at && <span class="today-block__until"> · {formatAlertUntil(new Date(alert.ends_at), timezone)}</span>}
           </li>
         ))}

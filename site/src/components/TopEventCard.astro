@@ -5,7 +5,7 @@
  *  carries data-start/data-end and sits in a data-hide-ended container, so the
  *  browser removes it once the day has passed even on a stale static page. */
 import type { Story } from '../lib/db';
-import { storyHref } from '../lib/content-slugs';
+import { linkTarget } from '../lib/ai-text';
 import DateBadge from './DateBadge.astro';
 
 interface Props { story: Story; timezone: string }
@@ -13,18 +13,20 @@ const { story, timezone } = Astro.props;
 const when = story.occurs_at as string;
 const day = new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(when));
 const start = new Date(when).toISOString();
+const href = linkTarget(story); // an AI-text event has no page of its own: link the original source, or nothing
+const Card = href ? 'a' : 'div';
 const end = story.ends_at ? new Date(story.ends_at).toISOString() : undefined;
 ---
 <section class="top-event" aria-label="Featured event" data-hide-ended data-hide-when-empty>
-  <a class="top-event__card" href={storyHref(story.slug)} data-start={start} data-end={end}>
+  <Card class="top-event__card" href={href ?? undefined} data-start={start} data-end={end}>
     <DateBadge iso={when} timezone={timezone} color="var(--brand-accent-ink, var(--navy))" ink="var(--on-accent)" />
     <span class="top-event__text">
       <span class="top-event__kicker">Featured event</span>
       <span class="top-event__title">{story.title}</span>
       <span class="top-event__meta">{day}{story.venue_raw ? ` · ${story.venue_raw}` : ''}</span>
     </span>
-    <span class="top-event__cta" aria-hidden="true">Details →</span>
-  </a>
+    {href && <span class="top-event__cta" aria-hidden="true">{href.startsWith('/') ? 'Details' : 'Source'} →</span>}
+  </Card>
 </section>
 
 <style>

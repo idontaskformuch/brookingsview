@@ -12,12 +12,13 @@ import { categoryImagesFor } from '../config/category-images';
 import { siteConfig } from '../lib/site-config';
 import { relativeTime } from '../lib/time';
 import ImageAttribution from './ImageAttribution.astro';
-import { storyHref } from '../lib/content-slugs';
+import { linkTarget } from '../lib/ai-text';
 
 // See LeadStory.astro's identical Props comment -- same optional
 // pre-resolved override for index.astro's cross-card repeat suppression.
 interface Props { story: Story; facilities: Facility[]; image?: ImageRef | null; }
 const { story, facilities } = Astro.props;
+const href = linkTarget(story); // null when the story's text is withheld (lib/ai-text.ts): no link to an empty page
 const imageOverride = 'image' in Astro.props ? Astro.props.image : undefined;
 
 const isMeeting = story.source_type === 'meeting';
@@ -76,8 +77,8 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
 });
 ---
 <article class="secondary" data-ends={isAlert ? (story.ends_at ?? undefined) : undefined} data-alert-slug={isAlert ? story.slug : undefined}>
-  {heroImage && (
-    <a class="secondary__image-link" href={storyHref(story.slug)} tabindex="-1" aria-hidden="true">
+  {heroImage && href && (
+    <a class="secondary__image-link" href={href!} tabindex="-1" aria-hidden="true">
       <img
         class="secondary__image"
         src={heroImage.path}
@@ -100,7 +101,7 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
       {isQuorumNotice && <span class="secondary__notice-badge">Public notice</span>}
     </p>
   )}
-  <h3 class="secondary__title"><a href={storyHref(story.slug)}>{displayTitle}</a></h3>
+  <h3 class="secondary__title">{href ? <a href={href}>{displayTitle}</a> : displayTitle}</h3>
   {venue && <p class="secondary__venue data">{venue}</p>}
 </article>
 

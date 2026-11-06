@@ -49,7 +49,7 @@ import {
 import { selectFrontPageRhythm } from '../lib/homepage-curation';
 import {
   todayUtcMidnight, buildEventFeed, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent, dayIndex,
-  weekendAnchorOffset,
+  weekendAnchorOffset, itemLink,
 } from '../lib/events';
 import SectionHeader from '../components/ui/SectionHeader.astro';
 import EventsGlance from '../components/events/EventsGlance.astro';
@@ -60,7 +60,6 @@ import { buildTownEventsView } from '../lib/events-town-view';
 import { homeBlocks, takeRows } from '../lib/event-day-view';
 import { loadUpcomingMeetings } from '../lib/meetings-data';
 import { selectWorthKnowingMeetings } from '../lib/meetings-view';
-import { storyHref } from '../lib/content-slugs';
 import { resolveQuickLinks, type QuickLinkContext } from '../lib/quick-links';
 import { siteConfig } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
@@ -640,7 +639,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     <section aria-label="Coming up">
       <SectionHeader title="Coming up" seeAllHref="/events/" seeAllLabel="All events" />
       <ul class="plain-list" data-hide-ended data-tz={siteConfig.timezone}>
-        {comingUp.map((r) => <EventRow row={r} href={r.item.sourceKind === 'arts' ? r.item.event.event_url : storyHref(r.item.story.slug)} showDate />)}
+        {comingUp.map((r) => <EventRow row={r} href={itemLink(r.item)} showDate />)}
       </ul>
     </section>
   )}

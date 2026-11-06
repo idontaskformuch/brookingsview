@@ -18,7 +18,7 @@ import { fitDescription, descriptionFillers } from '../../lib/meta-description';
 import { placeAbbr } from '../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
-import { storyHref } from '../../lib/content-slugs';
+import { ownPageHref } from '../../lib/ai-text';
 import { listEligibleMonths, monthLabel, monthSlug } from '../../lib/month-in-review';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
@@ -28,7 +28,7 @@ if (siteConfig.townId !== 'moreno_valley_ca') {
 // Only months the county has released (a "data_pending" notice is not a digest), newest first by the month they cover -- the stored
 // order followed the day each page was last regenerated, which put 2025 months between 2026 ones (Q3 2026-10-23).
 const digests = (await getContentByType(['home_sales_digest'], 999))
-  .filter((d) => d.generated_by !== 'data_pending')
+  .filter((d) => d.generated_by !== 'data_pending' && ownPageHref(d)) // withheld text (lib/ai-text.ts) = empty page, not listed
   .sort((a, b) => new Date(b.occurs_at ?? 0).getTime() - new Date(a.occurs_at ?? 0).getTime());
 // Phase 8 teaser link (research section 3) -- plain link, not a cluster
 // membership.
@@ -53,7 +53,7 @@ const itemListJsonLd = digests.length > 0 ? {
     '@type': 'ListItem',
     position: i + 1,
     name: d.title,
-    url: new URL(storyHref(d.slug), Astro.site ?? siteConfig.siteUrl).href,
+    url: new URL(ownPageHref(d)!, Astro.site ?? siteConfig.siteUrl).href,
   })),
 } : null;
 ---
@@ -75,7 +75,7 @@ const itemListJsonLd = digests.length > 0 ? {
       {digests.map((d) => (
         <li>
           <span class="covering">{formatMonthYear(d.occurs_at)}</span>
-          <a href={storyHref(d.slug)}>{d.title}</a>
+          <a href={ownPageHref(d)!}>{d.title}</a>
         </li>
       ))}
     </ul>

@@ -9,7 +9,8 @@ describe('llmsAboutLines', () => {
   });
   it('says what is collected and how content is produced', () => {
     expect(lines[1]).toContain('City and County of Broomfield');
-    expect(lines[1]).toMatch(/AI model/);
+    expect(lines[1]).toMatch(/AI model is not shown/);
+    expect(lines[1]).not.toMatch(/drafted|written by an AI model working/);
     expect(lines[1]).toMatch(/links back to its source/);
   });
   it('names no person or employer', () => {

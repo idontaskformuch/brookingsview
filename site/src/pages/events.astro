@@ -21,7 +21,7 @@ import { countryProfile, forCountry } from '../lib/country-profile';
 import { EVENT_FACETS } from '../lib/event-facets';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildEventJsonLd } from '../lib/event-jsonld';
-import { storyHref } from '../lib/content-slugs';
+import { linkTarget } from '../lib/ai-text';
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
@@ -79,8 +79,8 @@ const todaysHomeGame = regionalGames.find((g) => {
   return parts.y === today.getUTCFullYear() && parts.m === today.getUTCMonth() && parts.d === today.getUTCDate();
 }) ?? null;
 
-function hrefOf(item: FeedItem): string {
-  return item.sourceKind === 'arts' ? item.event.event_url : storyHref(item.story.slug);
+function hrefOf(item: FeedItem): string | null {
+  return item.sourceKind === 'arts' ? item.event.event_url : linkTarget(item.story); // withheld text = no page of our own (lib/ai-text.ts)
 }
 const FOLD = 7;
 const busyDays = view.days.filter((d) => d.count > 0);
@@ -95,7 +95,7 @@ function asStoryShape(item: FeedItem) {
   return item.sourceKind === 'arts' ? artsEventAsStory(item.event) : item.story;
 }
 function displayItemUrl(item: FeedItem): string {
-  return item.sourceKind === 'arts' ? item.event.event_url : new URL(storyHref(item.story.slug), Astro.site ?? siteConfig.siteUrl).href;
+  return item.sourceKind === 'arts' ? item.event.event_url : new URL(linkTarget(item.story) ?? '/events/', Astro.site ?? siteConfig.siteUrl).href;
 }
 
 const itemListJsonLd = allDisplayedItems.length > 0 ? {

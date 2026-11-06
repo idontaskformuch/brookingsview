@@ -8,7 +8,7 @@ import Pill from '../ui/Pill.astro';
 import EventRow from './EventRow.astro';
 import { resolveImage } from '../../lib/images';
 import { pickFeature, type DayGroup, type DayRow } from '../../lib/event-day-view';
-import { storyHref } from '../../lib/content-slugs';
+import { itemLink } from '../../lib/events';
 import { siteConfig } from '../../lib/site-config';
 import type { FeedItem } from '../../lib/events';
 import type { Facility } from '../../lib/db';
@@ -16,7 +16,7 @@ import type { Facility } from '../../lib/db';
 interface Props { days: DayGroup[]; facilities: Facility[]; level?: 2 | 3; feature?: boolean; idPrefix?: string; tz?: string }
 const { days, facilities, level = 2, feature = true, idPrefix = 'day', tz = siteConfig.timezone } = Astro.props;
 const H = `h${level}` as 'h2' | 'h3';
-const hrefOf = (item: FeedItem) => (item.sourceKind === 'arts' ? item.event.event_url : storyHref(item.story.slug));
+const hrefOf = (item: FeedItem) => itemLink(item) ?? undefined;
 const photoOf = (row: DayRow) =>
   row.item.sourceKind === 'story'
     ? resolveImage(row.item.story, { town: siteConfig.townId, cityName: siteConfig.cityName, facilities, categoryImages: {} })

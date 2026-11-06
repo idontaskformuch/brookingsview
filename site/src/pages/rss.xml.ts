@@ -1,6 +1,6 @@
 import rss from '@astrojs/rss';
 import type { APIContext } from 'astro';
-import { publicBody } from '../lib/ai-text';
+import { publicBody, isAiText } from '../lib/ai-text';
 import { getAllStories, CONTENT_TRACK_TYPES } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { placeLabel } from '../lib/country-profile';
@@ -33,7 +33,8 @@ export async function GET(context: APIContext) {
     .filter((story) =>
       story.published_at !== null
       && !CONTENT_TRACK_TYPES.includes(story.source_type)
-      && !story.superseded_by_slug);
+      && !story.superseded_by_slug
+      && !isAiText(story)); // withheld text (lib/ai-text.ts): an item would link an empty page
   return rss({
     title: siteConfig.siteName,
     description: `What's happening in ${placeLabel(siteConfig)}.`,

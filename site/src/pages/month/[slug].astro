@@ -20,6 +20,7 @@ import ShareButton from '../../components/ShareButton.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { getContentByType } from '../../lib/db';
 import { storyHref } from '../../lib/content-slugs';
+import { ownPageHref } from '../../lib/ai-text';
 import {
   listEligibleMonths, monthBoundsUTC, monthLabel, monthSlug,
   buildDecisionsModule, buildProjectsModule, buildSalesModule, buildEventsModule,
@@ -72,7 +73,7 @@ const digestSlug = `home-sales-digest-${year}-${String(month).padStart(2, '0')}`
 // as "what sold" would be misleading. Only link when a REAL digest exists,
 // which in practice tracks `sales.status === 'full'` anyway, but checking
 // generated_by directly is the one source of truth, not a re-derived proxy.
-const digestExists = digests.some((d) => d.slug === digestSlug && d.generated_by !== 'data_pending');
+const digestExists = digests.some((d) => d.slug === digestSlug && d.generated_by !== 'data_pending' && ownPageHref(d)); // withheld text (lib/ai-text.ts) = empty page
 
 interface ModuleRow { key: string; label: string; text: string | null; href: string }
 const trafficSourceName = siteConfig.trafficSource?.name ?? 'our traffic coverage';

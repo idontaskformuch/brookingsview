@@ -16,6 +16,7 @@
  * the trust signal, not something to hide to look more human.
  */
 import { formatPrice, isSandboxUrl, type SourceType, type Story, type PropertySale } from './db';
+import { publicBody } from './ai-text';
 import { countryProfile, type CountryId } from './country-profile';
 
 const ARTICLE_TYPE_BY_SOURCE_TYPE: Partial<Record<SourceType, string>> = {
@@ -92,6 +93,7 @@ export function buildArticleJsonLd(
 export interface RecipeStory {
   title: string;
   body: string;
+  generated_by?: string | null;
   published_at: string;
   ingredients: string[] | null;
   instructions: string[] | null;
@@ -134,7 +136,7 @@ export function buildRecipeJsonLd(story: RecipeStory, images: string[], siteName
     '@context': 'https://schema.org',
     '@type': 'Recipe',
     name: story.title,
-    description: story.body.slice(0, 155),
+    ...(publicBody(story) ? { description: publicBody(story).slice(0, 155) } : {}), // model-written text is withheld (lib/ai-text.ts)
     image: images,
     datePublished: story.published_at,
     author: { '@type': 'Organization', name: siteName },
@@ -147,6 +149,7 @@ export function buildRecipeJsonLd(story: RecipeStory, images: string[], siteName
 export interface HomeSalesDigestStory {
   title: string;
   body: string;
+  generated_by?: string | null;
   // The Neon driver returns a TIMESTAMPTZ column as either a string or an
   // already-parsed Date depending on context (same caveat db.ts's own
   // calendarDateParts() already handles for occurs_at elsewhere) -- accept
@@ -172,7 +175,7 @@ export function buildDatasetJsonLd(
     '@context': 'https://schema.org',
     '@type': 'Dataset',
     name: story.title,
-    description: story.body.slice(0, 300),
+    ...(publicBody(story) ? { description: publicBody(story).slice(0, 300) } : {}),
     url: canonicalUrl,
     temporalCoverage: iso.slice(0, 7), // YYYY-MM
     spatialCoverage: { '@type': 'Place', name: cityName },

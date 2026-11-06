@@ -40,7 +40,7 @@ import { formatClock } from '../../lib/facility-hours';
 import { buildPlaceOpeningHoursSpecification, isPastStalenessThreshold } from '../../lib/place-hours';
 import { buildFacilityLede, facilityTitleElements, facilityMapLink, summarizeHours } from '../../lib/facility-lede';
 import { resolvePageMeta } from '../../lib/page-meta';
-import { storyHref } from '../../lib/content-slugs';
+import { linkTarget } from '../../lib/ai-text';
 
 export async function getStaticPaths() {
   const facilities = await getFacilities();
@@ -347,7 +347,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
         <ul class="events" data-hide-ended>
           {upcomingHere.map((s) => (
             <li data-start={s.occurs_at ? new Date(s.occurs_at).toISOString() : undefined} data-end={s.ends_at ? new Date(s.ends_at).toISOString() : undefined}>
-              <a href={storyHref(s.slug)}>{s.title}</a>
+              {linkTarget(s) ? <a href={linkTarget(s)!}>{s.title}</a> : s.title}
               <span class="when data">{formatOccursAt(s)}</span>
             </li>
           ))}

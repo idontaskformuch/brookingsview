@@ -42,7 +42,7 @@ import { getSdsuEventsBetween } from '../../lib/db';
 import { buildWeekDays } from '../../lib/this-week';
 import { groupWeekItems, isQuorumNotice, type WeekGroup } from '../../lib/week-groups';
 import WeekGroupList from '../../components/WeekGroupList.astro';
-import { publicBody, isAiText } from '../../lib/ai-text';
+import { publicBody, isAiText, linkTarget } from '../../lib/ai-text';
 
 export async function getStaticPaths() {
   // Fetched once for the whole build, not per-page -- the facilities set is
@@ -680,7 +680,7 @@ const eventJsonLdObject = buildEventJsonLd(
       <ul class="venue-events__list">
         {otherEventsHere.map((s) => (
           <li data-start={s.occurs_at ? new Date(s.occurs_at).toISOString() : undefined} data-end={s.ends_at ? new Date(s.ends_at).toISOString() : undefined}>
-            <a href={storyHref(s.slug)}>{s.title}</a>
+            {linkTarget(s) ? <a href={linkTarget(s)!}>{s.title}</a> : s.title}
             <span class="when data">{formatOccursAt(s)}</span>
           </li>
         ))}
@@ -700,11 +700,11 @@ const eventJsonLdObject = buildEventJsonLd(
           <ul class="venue-events__list">
             {weekendNearby.map(({ item, distanceMiles }) => {
               const s = item.sourceKind === 'story' ? item.story : artsEventAsStory(item.event);
-              const href = item.sourceKind === 'story' ? storyHref(s.slug) : item.event.event_url;
+              const href = item.sourceKind === 'story' ? linkTarget(s) : item.event.event_url;
               const endsAt = item.sourceKind === 'story' ? s.ends_at : item.event.ends_at;
               return (
                 <li data-start={s.occurs_at ? new Date(s.occurs_at).toISOString() : undefined} data-end={endsAt ? new Date(endsAt).toISOString() : undefined}>
-                  <a href={href}>{s.title}</a>
+                  {href ? <a href={href}>{s.title}</a> : s.title}
                   <span class="when data">{formatOccursAt({ ...s, ends_at: item.sourceKind === 'story' ? s.ends_at : item.event.ends_at })}{distanceMiles != null && ` · ${Math.round(distanceMiles)} mi away`}</span>
                 </li>
               );

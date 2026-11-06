@@ -32,7 +32,7 @@ import type { Story } from '../../lib/db';
 import { localDateParts } from '../../lib/events';
 import { siteConfig } from '../../lib/site-config';
 import { placeLabel } from '../../lib/country-profile';
-import { storyHref } from '../../lib/content-slugs';
+import { linkTarget } from '../../lib/ai-text';
 import { isPrunedEvent } from '../../lib/old-events';
 import { listEligibleMonths, monthLabel as monthInReviewLabel, monthSlug } from '../../lib/month-in-review';
 
@@ -81,11 +81,11 @@ const itemListJsonLd = events.length > 0 ? {
   '@context': 'https://schema.org',
   '@type': 'ItemList',
   name: title,
-  itemListElement: events.filter((e) => !isPrunedEvent(e)).map((e, i) => ({
+  itemListElement: events.filter((e) => !isPrunedEvent(e) && linkTarget(e)).map((e, i) => ({
     '@type': 'ListItem',
     position: i + 1,
     name: e.title,
-    url: new URL(storyHref(e.slug), Astro.site ?? siteConfig.siteUrl).href,
+    url: new URL(linkTarget(e)!, Astro.site ?? siteConfig.siteUrl).href,
   })),
 } : null;
 ---

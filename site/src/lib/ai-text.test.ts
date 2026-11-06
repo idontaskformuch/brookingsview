@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
-import { isAiText, publicBody } from './ai-text';
+import { isAiText, publicBody, ownPageHref, linkTarget } from './ai-text';
 import { shouldNoindexStory } from './noindex';
 
 describe('publicBody', () => {
@@ -48,6 +48,43 @@ describe('layouts never print model-written story text', () => {
     .filter(({ text }) => text.split('\n').some((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && READS_STORY_TEXT.test(l)))
     .filter(({ rel, text }) => !/publicBody\(/.test(text) && !(rel in ALLOWED_LOGIC_ONLY));
   it('every file reading story.body goes through publicBody()', () => {
+    expect(offenders.map((o) => o.rel)).toEqual([]);
+  });
+});
+
+describe('links to a story page', () => {
+  it('ownPageHref is null for withheld text, the /s/ path otherwise', () => {
+    expect(ownPageHref({ slug: 'meeting-1', generated_by: 'ai:claude-sonnet-4-5' })).toBeNull();
+    expect(ownPageHref({ slug: 'meeting-1', generated_by: 'template_fallback' })).toBe('/s/meeting-1/');
+  });
+  it('linkTarget falls back to the source, and to null without an http(s) source', () => {
+    const ai = { slug: 'e-1', generated_by: 'ai:claude-sonnet-4-5' };
+    expect(linkTarget({ ...ai, source_url: 'https://example.org/e' })).toBe('https://example.org/e');
+    expect(linkTarget({ ...ai, source_url: 'javascript:alert(1)' })).toBeNull();
+    expect(linkTarget({ ...ai, source_url: null })).toBeNull();
+    expect(linkTarget({ slug: 'e-2', generated_by: 'human', source_url: 'https://example.org/e' })).toBe('/s/e-2/');
+  });
+});
+
+// Regression guard (owner 2026-11-06): nothing links to /s/<slug>/ without asking whether that page has any text.
+// Layouts go through ownPageHref()/linkTarget(); the few files below build a /s/ URL for a reason that is safe.
+const MAY_BUILD_STORY_HREF: Record<string, string> = {
+  'lib/ai-text.ts': 'the helper itself',
+  'lib/content-slugs.ts': 'defines storyHref',
+  'pages/s/[slug].astro': "the story page's own canonical URL",
+  'pages/s/[slug].ics.ts': "the story page's own .ics file",
+  'lib/cross-site-canonical.ts': 'canonical of a noindex page on the origin town',
+  'lib/news-sitemap.ts': 'the caller filters out withheld text (news-sitemap.xml.ts)',
+  'pages/rss.xml.ts': 'filters out withheld text before building items',
+  'pages/this-week/[week].astro': 'only shown when the weekly intro (publicBody) is non-empty',
+  'components/meetings/MeetingCard.astro': 'storySlug comes from getMeetingRowsForView(), which only returns slugs of stories with public text',
+  'pages/month/[slug].astro': 'only shown when digestExists, which requires ownPageHref()',
+};
+describe('layouts never link an empty /s/ page', () => {
+  const offenders = walk(SRC)
+    .map((f) => ({ rel: relative(SRC, f).split(sep).join('/'), text: readFileSync(f, 'utf8') }))
+    .filter(({ rel, text }) => !(rel in MAY_BUILD_STORY_HREF) && text.split('\n').some((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && /\bstoryHref\(/.test(l)));
+  it('storyHref() is only used where the page is known to have text', () => {
     expect(offenders.map((o) => o.rel)).toEqual([]);
   });
 });

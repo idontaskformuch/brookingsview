@@ -6,7 +6,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getContentByType } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 import { currentWeekInfo, weekInfoForInstant } from '../../lib/this-week';
-import { storyHref } from '../../lib/content-slugs';
+import { ownPageHref } from '../../lib/ai-text';
 
 if (siteConfig.townId !== 'brookings_sd') {
   return Astro.redirect('/', 302);
@@ -15,6 +15,7 @@ if (siteConfig.townId !== 'brookings_sd') {
 const digests = await getContentByType(['university_digest'], 500);
 const currentSlug = currentWeekInfo(siteConfig.timezone).slug;
 const earlier = digests
+  .filter((d) => ownPageHref(d)) // text withheld (lib/ai-text.ts): its page is empty, so it is not listed
   .filter((d) => d.occurs_at && weekInfoForInstant(new Date(d.occurs_at), siteConfig.timezone).slug !== currentSlug)
   .sort((a, b) => new Date(b.occurs_at as string).getTime() - new Date(a.occurs_at as string).getTime());
 const canonicalUrl = new URL('/university/weeks/', Astro.site ?? siteConfig.siteUrl).href;
@@ -27,7 +28,7 @@ const canonicalUrl = new URL('/university/weeks/', Astro.site ?? siteConfig.site
   </header>
   {earlier.length > 0 ? (
     <ul class="weeks">
-      {earlier.map((d) => <li><a href={storyHref(d.slug)}>{d.title.replace(/^Brookings:\s*/, '')}</a></li>)}
+      {earlier.map((d) => <li><a href={ownPageHref(d)!}>{d.title.replace(/^Brookings:\s*/, '')}</a></li>)}
     </ul>
   ) : (
     <p class="empty">No earlier weeks yet.</p>

@@ -11,9 +11,8 @@ import { categoryForSourceType, splitEventTitleAndVenue, buildNameAliasIndex, ty
 import { eventPriceAgeLine, TOWN_EVENT_KICKER } from '../lib/events';
 import { SECTION_THEME } from '../lib/section-theme';
 import { relativeTime, dayTimeKicker, seriesKicker } from '../lib/time';
-import { storyHref } from '../lib/content-slugs';
 import { teaser } from '../lib/teaser';
-import { publicBody } from '../lib/ai-text';
+import { publicBody, ownPageHref, linkTarget } from '../lib/ai-text';
 
 // Dense card lists never render a per-item image (see NEEDS-HUMAN-REVIEW.md
 // "Venue & Category Image Identity", rendering-rules table) -- a small
@@ -72,7 +71,8 @@ interface Props {
 const {
   story, compact = false, href: hrefOverride, kicker: kickerOverride, facilities = [],
 } = Astro.props;
-const href = hrefOverride ?? storyHref(story.slug);
+const ownPage = ownPageHref(story); // null when the story's text is withheld (lib/ai-text.ts): never link an empty page
+const href = hrefOverride ?? linkTarget(story);
 // Q3 calibration 2026-10-23: a list shows the START of the story (the detail page shows all of it), so a whole summary is not
 // printed twice. The cross-source note "Also listed by ..." (lib/events.ts withAttribution) is kept whole.
 const storyText = publicBody(story); // model-written text is never printed (lib/ai-text.ts)
@@ -87,8 +87,8 @@ const listFacts = siteConfig.country === 'gb' && wholeTextInList
       .filter(Boolean).join(' · ')
   : '';
 const listBody = listFacts || listTeaser;
-const isExternal = Boolean(hrefOverride);
-const shareUrl = new URL(storyHref(story.slug), siteConfig.siteUrl).href;
+const isExternal = Boolean(hrefOverride) || (href !== null && !href.startsWith('/'));
+const shareUrl = ownPage ? new URL(ownPage, siteConfig.siteUrl).href : null;
 
 const isAlert = story.source_type === 'alert';
 const isMeeting = story.source_type === 'meeting' || story.source_type === 'meeting_followup';
@@ -220,11 +220,11 @@ const chip = kicker ? (CHIP[categoryForSourceType(story.source_type) as ImageCat
     {isAiWritten && <span class="item__ai-label">AI-written</span>}
     {isQuorumNotice && <span class="item__notice-badge">Public notice</span>}
   </p>
-  <h3 class="item__title"><a href={href} rel={isExternal ? 'noopener' : undefined}>{displayTitle}</a></h3>
+  <h3 class="item__title">{href ? <a href={href} rel={isExternal ? 'noopener' : undefined}>{displayTitle}</a> : displayTitle}</h3>
   {venue && <p class="item__venue data">{venue}</p>}
   {priceAge && <p class="item__price-age data">{priceAge}</p>}
   {!compact && <p class="item__body">{listBody}</p>}
-  {!compact && hasByline && !isExternal && (
+  {!compact && hasByline && !isExternal && shareUrl && (
     <ShareButtons url={shareUrl} title={story.title} />
   )}
 </article>

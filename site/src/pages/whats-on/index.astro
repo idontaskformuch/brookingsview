@@ -28,9 +28,8 @@ import ShareButton from '../../components/ShareButton.astro';
 import { siteConfig } from '../../lib/site-config';
 import { placeLabel } from '../../lib/country-profile';
 import { getTicketmasterEventsForTown } from '../../lib/ticketmaster';
-import { rankTicketmasterEvents, splitMarquee, isWhatsOnIntroFresh, ticketmasterResolvableImage, marqueeDigestKey, dropEnded, collapseSeriesRows } from '../../lib/whats-on';
-import { getWhatsOnIntro, getFacilities, getEventDeckDigests } from '../../lib/db';
-import { currentWeekInfo } from '../../lib/this-week';
+import { rankTicketmasterEvents, splitMarquee, ticketmasterResolvableImage, marqueeDigestKey, dropEnded, collapseSeriesRows } from '../../lib/whats-on';
+import { getFacilities, getEventDeckDigests } from '../../lib/db';
 import { EMPTY_STATES } from '../../lib/empty-states';
 import { SECTION_THEME } from '../../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
@@ -110,17 +109,8 @@ const marqueeDecks = await getEventDeckDigests(
   marqueeWithImages.map(({ entry }) => marqueeDigestKey(entry)),
 );
 
-// What's On Phase 6b: the optional weekly AI intro block, above Marquee.
-// getWhatsOnIntro() returns the MOST RECENT row regardless of week -- only
-// rendered when it's actually for the CURRENT ISO week (see
-// isWhatsOnIntroFresh()'s own comment for why "stale" is checked here as a
-// separate step rather than folded into the DB query). No row at all
-// (never generated, or a guardrail rejection this run wrote nothing for)
-// renders identically to a stale one: no block, not a placeholder.
-const introRow = await getWhatsOnIntro();
-const introText = introRow && isWhatsOnIntroFresh(introRow, currentWeekInfo(siteConfig.timezone))
-  ? introRow.body
-  : null;
+// The weekly AI intro block (What's On Phase 6b) is not printed: model-written text is withheld everywhere (lib/ai-text.ts, owner 2026-11-06).
+const introText: string | null = null;
 
 const canonicalUrl = new URL('/whats-on/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('whats-on', siteConfig, { label: "What's On", href: canonicalUrl });

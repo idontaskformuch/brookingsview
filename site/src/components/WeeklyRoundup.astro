@@ -9,7 +9,6 @@ import { seasonForMonth } from '../lib/this-week-images';
 import { thisWeekImagesFor } from '../config/this-week-images';
 import { siteConfig } from '../lib/site-config';
 import ImageAttribution from './ImageAttribution.astro';
-import { storyHref } from '../lib/content-slugs';
 import { publicBody } from '../lib/ai-text';
 
 // `facilities` is no longer a prop (This Week image rotation, 2026-10-03):
@@ -27,7 +26,7 @@ const standfirst = paragraphs[0] ?? '';
 // längre direkt till story-sidan -- se NEEDS-HUMAN-REVIEW.md "This Week".
 // story.occurs_at = veckans måndag (satt av ai_pipeline/weekly.py:s main()).
 const weekInfo = story.occurs_at ? weekInfoForInstant(new Date(story.occurs_at), siteConfig.timezone) : null;
-const weekHref = weekInfo ? `/this-week/${weekInfo.slug}/` : storyHref(story.slug);
+const weekHref = weekInfo ? `/this-week/${weekInfo.slug}/` : '/this-week/'; // never the story's own page: its text is withheld (lib/ai-text.ts)
 
 // getLatestWeekly() (lib/db.ts, 2026-10-07 Broomfield fix) now falls back to
 // the most recent weekly story when none exists within its own 8-day

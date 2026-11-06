@@ -30,7 +30,7 @@ import { EMPTY_STATES } from '../lib/empty-states';
 import { SECTION_THEME } from '../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
-import { storyHref } from '../lib/content-slugs';
+import { ownPageHref } from '../lib/ai-text';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
@@ -42,7 +42,7 @@ const [allRecentSales, allDigests] = await Promise.all([
 ]);
 // Q3 2026-10-23: a month the county has not released yet ("data_pending") is a notice page, not a digest -- it is never listed as a
 // card. The hub shows the two latest real digests and links the archive for the rest.
-const digests = allDigests.filter((d) => d.generated_by !== 'data_pending')
+const digests = allDigests.filter((d) => d.generated_by !== 'data_pending' && ownPageHref(d)) // a digest with withheld text (lib/ai-text.ts) has an empty page
   .sort((a, b) => new Date(b.occurs_at ?? 0).getTime() - new Date(a.occurs_at ?? 0).getTime())
   .slice(0, 2);
 // Render-window handoff, merged Phase 3+4: this table must never link to
@@ -103,7 +103,7 @@ function monthYear(occursAt: string | null): string {
       <SectionRule label="Monthly digest" href="/home-sales/archive/" />
       <div class="grid">
         {digests.map((story) => (
-          <a class="digest-card" href={storyHref(story.slug)}>
+          <a class="digest-card" href={ownPageHref(story)!}>
             <p class="digest-card__covering">Covering {monthYear(story.occurs_at)}</p>
             <p class="digest-card__title">{story.title}</p>
           </a>

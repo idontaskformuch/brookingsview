@@ -13,7 +13,7 @@ import { displayTitle, canonicalVenue } from './evening-names';
 import { normVenue } from './areas';
 import type { FeedItem } from './events';
 import { itemTitle, itemUrl, itemVenue } from './events';
-import { storyHref } from './content-slugs';
+import { linkTarget } from './ai-text';
 import { distanceLabel, type TicketmasterFeedItem } from './ticketmaster';
 import { ticketmasterSlug } from './whats-on';
 import { hasEnded, DEFAULT_EVENT_MS, localDayNumber, localHourOf, localInstantIso } from './local-day';
@@ -208,7 +208,7 @@ function ownEntry(item: FeedItem, o: EveningEntryOptions): EveningEntry | null {
     labels,
     venue: venueOf(itemVenue(item), o),
     venueCity: cleanCity(o.venueCity?.(item)),
-    href: story ? storyHref(story.slug) : itemUrl(item),
+    href: (story ? linkTarget(story) : null) ?? itemUrl(item),
     source: 'own',
     distanceMiles: null,
     driveMinutes: null,

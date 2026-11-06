@@ -32,7 +32,7 @@ import type { Story, Game, RegionalGame, SdsuEvent, ProjectUpdate } from './db';
 import { calendarDateParts } from './db';
 import { localDateParts, utcMidnight, todayUtcMidnight, buildEventFeed, itemTitle, itemUrl } from './events';
 import { selectWorthKnowing } from './homepage-curation';
-import { storyHref } from './content-slugs';
+import { linkTarget, ownPageHref, publicBody } from './ai-text';
 
 export interface DateParts { y: number; m: number; d: number; } // m is 1-12, unlike calendarDateParts()
 
@@ -275,9 +275,9 @@ export function buildWeekDays(
       items.push({
         vertical: item.sourceKind === 'arts' ? 'sdsu' : 'events',
         title: itemTitle(item),
-        href: item.sourceKind === 'story' ? storyHref(item.story.slug) : itemUrl(item),
-        external: item.sourceKind === 'arts',
-        detail: item.sourceKind === 'story' ? firstLine(item.story.body) : (item.event.teaser ?? ''),
+        href: (item.sourceKind === 'story' ? linkTarget(item.story) : null) ?? itemUrl(item),
+        external: item.sourceKind === 'arts' || (item.sourceKind === 'story' && !ownPageHref(item.story)),
+        detail: item.sourceKind === 'story' ? firstLine(publicBody(item.story)) : (item.event.teaser ?? ''),
         startsAt: item.occurs_at,
         endsAt: item.sourceKind === 'story' ? (item.story.ends_at ?? null) : item.event.ends_at,
         venue: item.sourceKind === 'story' ? (item.story.venue_raw ?? null) : item.event.location,
@@ -289,8 +289,8 @@ export function buildWeekDays(
       const md = bareDateParts(meeting.occurs_at);
       if (!md || !sameDate(md, date)) continue;
       items.push({
-        vertical: 'city_hall', title: meeting.title, href: storyHref(meeting.slug),
-        external: false, detail: firstLine(meeting.body),
+        vertical: 'city_hall', title: meeting.title, href: linkTarget(meeting) ?? '/city-hall/',
+        external: !ownPageHref(meeting), detail: firstLine(publicBody(meeting)),
       });
     }
 

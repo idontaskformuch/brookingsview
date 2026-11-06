@@ -21,7 +21,7 @@ if (isSectionDisabled('weather')) return Astro.redirect('/', 302);
 import { countryProfile } from '../lib/country-profile';
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubBacklink } from '../lib/clusters';
-import { storyHref } from '../lib/content-slugs';
+import { ownPageHref } from '../lib/ai-text';
 import { localYMD } from '../lib/weather-format';
 import { yesterdayHighFrom } from '../lib/weather-model';
 import { viewFor, weatherRegionHtml, type WeatherConfig } from '../lib/weather-html';
@@ -49,7 +49,7 @@ const official = profile.weather.officialLink;
   {siteConfig.hasMetOfficeWarnings && <MetOfficeWarnings timezone={tz} variant="full" />}
   {alerts.length > 0 && (
     <div class="wx-warnings">
-      {alerts.map((alert) => <WarningBanner href={storyHref(alert.slug)} linkLabel="Details">{alert.title}</WarningBanner>)}
+      {alerts.map((alert) => <WarningBanner href={ownPageHref(alert) ?? undefined} linkLabel="Details">{alert.title}</WarningBanner>)}
     </div>
   )}
 

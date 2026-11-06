@@ -12,12 +12,15 @@
  */
 import type { APIRoute } from 'astro';
 import { getStoriesForNewsSitemap } from '../lib/db';
+import { isAiText } from '../lib/ai-text';
+import { shouldNoindexStory } from '../lib/noindex';
 import { buildNewsSitemapXml } from '../lib/news-sitemap';
 import { siteConfig } from '../lib/site-config';
 
 export const GET: APIRoute = async ({ site }) => {
   const siteUrl = (site?.href ?? siteConfig.siteUrl).replace(/\/$/, '');
-  const stories = await getStoriesForNewsSitemap();
+  // A page whose text is withheld is an empty noindex shell (lib/ai-text.ts, lib/noindex.ts): it must not be offered to Google News.
+  const stories = (await getStoriesForNewsSitemap()).filter((s) => !isAiText(s) && !shouldNoindexStory(s));
 
   const xml = buildNewsSitemapXml(stories, {
     siteUrl,

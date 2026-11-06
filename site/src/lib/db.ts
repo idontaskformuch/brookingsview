@@ -29,7 +29,7 @@ import { pickSignGame } from './sign-game';
 import { computeClosureWatchState, type ClosureWatchStatus, type WeatherAlert } from './closure-watch';
 import { SHARED_CONTENT_SOURCE_TYPES } from './cross-site-canonical';
 import { resolveCluster } from './clusters';
-import { storyHref } from './content-slugs';
+import { ownPageHref, linkTarget, publicBody } from './ai-text';
 import { calendarDayDiff, seriesKicker } from './time';
 import type { RegisterRow } from './evening-items';
 import { isAllDay } from './local-day';
@@ -1010,21 +1010,23 @@ function isoWeekSlug(occursAt: string, timezone: string): string {
 
 async function latestStoryByType(sourceType: SourceType): Promise<RelatedItem | null> {
   const rows = (await sql`
-    SELECT title, slug, body, published_at
+    SELECT title, slug, body, generated_by, published_at
       FROM stories
      WHERE town_id = ${TOWN_ID} AND source_type = ${sourceType}
        AND published_at IS NOT NULL
        AND superseded_by_slug IS NULL
      ORDER BY published_at DESC
      LIMIT 1
-  `) as { title: string; slug: string; body: string }[];
+  `) as { title: string; slug: string; body: string; generated_by: string | null }[];
   const row = rows[0];
-  if (!row) return null;
+  const href = row ? ownPageHref(row) : null;
+  if (!row || !href) return null; // text withheld (lib/ai-text.ts): its page is an empty shell, so it is not offered
+  const text = publicBody(row);
   return {
-    href: storyHref(row.slug),
+    href,
     title: row.title,
     kicker: CATEGORY_LABELS[sourceType] ?? sourceType,
-    description: row.body.length > 90 ? row.body.slice(0, 90) + '…' : row.body,
+    description: text.length > 90 ? text.slice(0, 90) + '…' : text,
   };
 }
 
@@ -1066,8 +1068,9 @@ async function freshClusterSignal(clusterKey: string, currentPageType: RelatedPa
   switch (clusterKey) {
     case 'whats_happening': {
       const [nextEvent] = await getUpcomingStories(['event'], 1);
-      return nextEvent
-        ? { href: storyHref(nextEvent.slug), title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) }
+      const href = nextEvent ? linkTarget(nextEvent) : null;
+      return nextEvent && href
+        ? { href, title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) }
         : null;
     }
     case 'getting_around': {
@@ -1156,8 +1159,9 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
 
   if (pageType === 'traffic') {
     const [nextEvent] = await getUpcomingStories(['event'], 1);
-    if (nextEvent) {
-      items.push({ href: storyHref(nextEvent.slug), title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
+    const nextEventHref = nextEvent ? linkTarget(nextEvent) : null;
+    if (nextEvent && nextEventHref) {
+      items.push({ href: nextEventHref, title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
     }
     const [closure] = await getActiveSchoolAlerts();
     if (closure) {
@@ -1206,8 +1210,9 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
     }
   } else if (pageType === 'university') {
     const [nextEvent] = await getUpcomingStories(['event'], 1);
-    if (nextEvent) {
-      items.push({ href: storyHref(nextEvent.slug), title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
+    const nextEventHref = nextEvent ? linkTarget(nextEvent) : null;
+    if (nextEvent && nextEventHref) {
+      items.push({ href: nextEventHref, title: nextEvent.title, kicker: 'Events', description: formatOccursAt(nextEvent) });
     }
     items.push({ href: '/events/campus/', title: 'Arts & culture at SDSU', kicker: 'Events', description: 'Music, theater and special events on campus.' });
     items.push({ href: '/jackrabbits/', title: 'Jackrabbits', kicker: 'Sports', description: 'Schedule and results.' });
@@ -1313,13 +1318,14 @@ export async function getUpcomingCouncilMeetings(limit = 6): Promise<CouncilMeet
 }
 
 /** Meeting rows for the structured /city-hall/ view, from `meetings` directly (see lib/meetings-view.ts), each with the slug of
- *  its plain-language story when one exists. The window starts a day back so a meeting later today is never cut off by the
+ *  its plain-language story when one exists and its text may be shown. The window starts a day back so a meeting later today is never cut off by the
  *  UTC-midnight anchor of a bare-date source; the caller decides what is still upcoming. */
 export async function getMeetingRowsForView(limit = 80): Promise<MeetingRow[]> {
   return (await sql`
     SELECT m.id, m.body, m.meeting_date, m.agenda_url, m.minutes_url, m.raw_data, m.created_at,
            (SELECT s.slug FROM stories s
              WHERE s.town_id = m.town_id AND s.meeting_id = m.id AND s.source_type = 'meeting' AND s.superseded_by_slug IS NULL
+               AND COALESCE(s.generated_by, '') NOT LIKE 'ai:%' -- model-written text is withheld (lib/ai-text.ts): no link to an empty page
              ORDER BY s.published_at DESC LIMIT 1) AS story_slug
       FROM meetings m
      WHERE m.town_id = ${TOWN_ID}

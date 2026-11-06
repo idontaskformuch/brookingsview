@@ -18,7 +18,7 @@ import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
 import type { SdsuEvent } from '../lib/db';
-import { publicBody } from '../lib/ai-text';
+import { publicBody, ownPageHref } from '../lib/ai-text';
 import {
   getUpcomingSdsuEvents, getUpcomingArtsEvents, getUpcomingAcademicDates, getContentByType,
   formatCalendarDate, formatDate, formatTime, formatTimeOrAllDay,
@@ -29,7 +29,6 @@ import { siteConfig } from '../lib/site-config';
 import { resolveHubBacklink } from '../lib/clusters';
 import { resolvePageMeta } from '../lib/page-meta';
 import { currentWeekInfo, weekInfoForInstant } from '../lib/this-week';
-import { storyHref } from '../lib/content-slugs';
 
 if (siteConfig.townId !== 'brookings_sd') {
   return Astro.redirect('/', 302);
@@ -54,7 +53,9 @@ const [events, artsEvents, academicDates, digests] = await Promise.all([
 const currentWeekSlug = currentWeekInfo(siteConfig.timezone).slug;
 const digestWeekSlug = (s: { occurs_at: string | null }) => (s.occurs_at ? weekInfoForInstant(new Date(s.occurs_at), siteConfig.timezone).slug : null);
 const thisWeekDigest = digests.find((d) => digestWeekSlug(d) === currentWeekSlug) ?? null;
-const hasEarlierDigests = digests.some((d) => d !== thisWeekDigest);
+// a digest whose text is withheld (lib/ai-text.ts) has an empty page: it is neither linked nor listed
+const thisWeekHref = thisWeekDigest ? ownPageHref(thisWeekDigest) : null;
+const hasEarlierDigests = digests.some((d) => d !== thisWeekDigest && ownPageHref(d));
 // A digest written before the restructure is long prose: show only its first paragraph, cut to a short introduction.
 const digestIntro = (() => {
   const first = (thisWeekDigest ? publicBody(thisWeekDigest) : '').split('\n').find((p) => p.trim()) ?? '';
@@ -155,13 +156,13 @@ const sections = (
     <ShareButton title={pageMeta.title} />
   </header>
 
-  {(thisWeekDigest || hasEarlierDigests) && (
+  {(thisWeekHref || hasEarlierDigests || (thisWeekDigest && publicBody(thisWeekDigest))) && (
     <>
       <SectionRule label="The week at State" />
-      {thisWeekDigest && (
+      {thisWeekDigest && (digestIntro || thisWeekHref) && (
         <div class="digest">
           {digestIntro && <p class="digest__intro">{digestIntro}</p>}
-          <p class="digest__more"><a href={storyHref(thisWeekDigest.slug)}>See the full week →</a></p>
+          {thisWeekHref && <p class="digest__more"><a href={thisWeekHref}>See the full week →</a></p>}
         </div>
       )}
       {hasEarlierDigests && <p class="digest__earlier"><a href="/university/weeks/">Earlier weeks</a></p>}

@@ -22,6 +22,7 @@
  *  DTSTART is always DATE-TIME. If that ever changes, VALUE=DATE support
  *  would need to be added here deliberately, not assumed to already work.
  */
+import { publicBody } from './ai-text';
 import { buildVenueIndex, resolveVenue, hasResolvedAddress, type Facility } from './db';
 
 export interface IcsEventStory {
@@ -33,6 +34,7 @@ export interface IcsEventStory {
   venue_raw?: string | null;
   is_recurring_series?: boolean;
   source_url?: string | null;
+  generated_by?: string | null;
 }
 
 export interface IcsSite {
@@ -104,7 +106,9 @@ export function buildIcsEvent(
   }
   const location = locationParts.join(', ');
 
-  const descriptionText = story.source_url ? `${story.body}\n\nSource: ${story.source_url}` : story.body;
+  // model-written text is never printed (lib/ai-text.ts): the calendar entry then carries only the source link
+  const text = publicBody(story);
+  const descriptionText = story.source_url ? (text ? `${text}\n\nSource: ${story.source_url}` : `Source: ${story.source_url}`) : text;
 
   const lines: string[] = [
     'BEGIN:VCALENDAR',

@@ -32,7 +32,7 @@ import { withoutEnded } from '../../lib/local-day';
 import { countryProfile } from '../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
-import { storyHref } from '../../lib/content-slugs';
+import { linkTarget } from '../../lib/ai-text';
 
 export async function getStaticPaths() {
   const isBrookings = siteConfig.townId === 'brookings_sd';
@@ -113,7 +113,7 @@ const facilitiesItemListJsonLd = freeFacilities.length > 0 ? {
 
 function eventJsonLdFor(item: FeedItem): Record<string, unknown> | null {
   const asStory = item.sourceKind === 'arts' ? artsEventAsStory(item.event) : item.story;
-  const itemUrl = item.sourceKind === 'arts' ? item.event.event_url : new URL(storyHref(item.story.slug), Astro.site ?? siteConfig.siteUrl).href;
+  const itemUrl = item.sourceKind === 'arts' ? item.event.event_url : new URL(linkTarget(item.story) ?? '/events/', Astro.site ?? siteConfig.siteUrl).href;
   const heroUrl = new URL(asStory.image_path ?? `/og/${asStory.slug}.png`, Astro.site ?? siteConfig.siteUrl).href;
   return buildEventJsonLd(
     asStory, facilities,
@@ -123,7 +123,7 @@ function eventJsonLdFor(item: FeedItem): Record<string, unknown> | null {
 }
 
 function listItemUrl(item: FeedItem): string {
-  return item.sourceKind === 'arts' ? item.event.event_url : new URL(storyHref(item.story.slug), Astro.site ?? siteConfig.siteUrl).href;
+  return item.sourceKind === 'arts' ? item.event.event_url : new URL(linkTarget(item.story) ?? '/events/', Astro.site ?? siteConfig.siteUrl).href;
 }
 
 // Full Event JSON-LD nested per listed event where it's eligible (reusing

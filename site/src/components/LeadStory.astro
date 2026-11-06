@@ -9,8 +9,7 @@ import { categoryImagesFor } from '../config/category-images';
 import ImageAttribution from './ImageAttribution.astro';
 import { siteConfig } from '../lib/site-config';
 import { relativeTime } from '../lib/time';
-import { storyHref } from '../lib/content-slugs';
-import { publicBody } from '../lib/ai-text';
+import { publicBody, linkTarget } from '../lib/ai-text';
 
 // `image`: optional pre-resolved override -- undefined (the default, every
 // call site but index.astro's front-page cards) means self-resolve as
@@ -21,6 +20,7 @@ import { publicBody } from '../lib/ai-text';
 // plain `image?:` default would treat null and undefined the same.
 interface Props { story: Story; facilities: Facility[]; image?: ImageRef | null; }
 const { story, facilities } = Astro.props;
+const href = linkTarget(story); // null when the story's text is withheld (lib/ai-text.ts): no link to an empty page
 const imageOverride = 'image' in Astro.props ? Astro.props.image : undefined;
 
 const isMeeting = story.source_type === 'meeting';
@@ -86,8 +86,8 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
     {isAiWritten && <span class="lead__ai-label">AI-written</span>}
     {isQuorumNotice && <span class="lead__notice-badge">Public notice</span>}
   </p>
-  {heroImage && (
-    <a class="lead__image-link" href={storyHref(story.slug)} tabindex="-1" aria-hidden="true">
+  {heroImage && href && (
+    <a class="lead__image-link" href={href!} tabindex="-1" aria-hidden="true">
       <img
         class="lead__image"
         src={heroImage.path}
@@ -100,10 +100,10 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
     </a>
   )}
   {heroImage && <ImageAttribution image={heroImage} />}
-  <h2 class="lead__title"><a href={storyHref(story.slug)}>{displayTitle}</a></h2>
+  <h2 class="lead__title">{href ? <a href={href}>{displayTitle}</a> : displayTitle}</h2>
   {venue && <p class="lead__venue data">{venue}</p>}
   {publicBody(story) && <p class="lead__body">{publicBody(story)}</p>}
-  <a class="lead__more" href={storyHref(story.slug)}>Read more &rarr;</a>
+  {href && <a class="lead__more" href={href}>{href.startsWith('/') ? 'Read more' : 'Source'} &rarr;</a>}
 </article>
 
 <style>
