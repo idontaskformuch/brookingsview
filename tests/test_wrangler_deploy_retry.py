@@ -1,4 +1,4 @@
-"""Every deploy workflow goes through scripts/wrangler_deploy_retry.sh (2 retries with a pause), owner 2026-10-27."""
+"""Every deploy workflow goes through scripts/wrangler_deploy_retry.sh (up to 5 retries, backoff 30..480 s, only on 5xx/network errors), owner 2026-10-27, widened 2026-11-06."""
 import os
 import re
 import shutil
@@ -21,24 +21,63 @@ def test_no_workflow_calls_wrangler_deploy_directly():
     assert offenders == []
 
 
-def _run(tmp_path, fails_until):
+def _run(tmp_path, fails_until, msg="Service Unavailable [code: 503]"):
     counter = tmp_path / "n"
     counter.write_text("0")
     fake = tmp_path / "fake.sh"
-    fake.write_text(f'n=$(cat "{counter.as_posix()}"); n=$((n+1)); echo $n > "{counter.as_posix()}"; [ $n -ge {fails_until} ]\n')
+    fake.write_text(
+        f'n=$(cat "{counter.as_posix()}"); n=$((n+1)); echo $n > "{counter.as_posix()}"; '
+        f'[ $n -ge {fails_until} ] && exit 0; echo "{msg}"; exit 1\n'
+    )
     env = dict(os.environ, DEPLOY_RETRY_PAUSE="0", INDEXNOW_DELAY="0", DEPLOY_CMD=f"bash {fake.as_posix()}")
     r = subprocess.run([BASH, SCRIPT.as_posix(), "--env", "x"], env=env, capture_output=True, text=True)
-    return r.returncode, int(counter.read_text())
+    return r.returncode, int(counter.read_text()), r.stderr
 
 
 @pytest.mark.skipif(BASH is None, reason="bash not available")
-def test_succeeds_on_third_attempt(tmp_path):
-    assert _run(tmp_path, 3) == (0, 3)
+def test_succeeds_on_sixth_attempt_after_5xx(tmp_path):
+    rc, n, _ = _run(tmp_path, 6)
+    assert (rc, n) == (0, 6)
 
 
 @pytest.mark.skipif(BASH is None, reason="bash not available")
-def test_gives_up_after_three_attempts_with_the_exit_code(tmp_path):
-    assert _run(tmp_path, 4) == (1, 3)
+def test_gives_up_after_six_attempts_on_persistent_5xx(tmp_path):
+    rc, n, err = _run(tmp_path, 7)
+    assert (rc, n) == (1, 6)
+    assert "failed after 6 attempts" in err
+
+
+@pytest.mark.skipif(BASH is None, reason="bash not available")
+def test_backoff_doubles_from_30_to_480(tmp_path):
+    env_pause = dict(os.environ, DEPLOY_RETRY_PAUSE="30", INDEXNOW_DELAY="0")
+    fake = tmp_path / "fake.sh"
+    fake.write_text('echo "503 Service Unavailable"; exit 1\n')
+    stub = tmp_path / "sleep_stub.sh"
+    stub.write_text('echo "sleep $1" >> "$SLEEP_LOG"'+chr(10))
+    log = tmp_path / "sleeps"
+    env = dict(env_pause, DEPLOY_CMD=f"bash {fake.as_posix()}", DEPLOY_SLEEP_CMD=f"bash {stub.as_posix()}", SLEEP_LOG=log.as_posix())
+    subprocess.run([BASH, SCRIPT.as_posix(), "--env", "x"], env=env, capture_output=True, text=True)
+    assert log.read_text().split() == ["sleep", "30", "sleep", "60", "sleep", "120", "sleep", "240", "sleep", "480"]
+
+
+@pytest.mark.skipif(BASH is None, reason="bash not available")
+@pytest.mark.parametrize("msg", ["Authentication error [code: 10000] status 403", "HTTP 401 Unauthorized", "Bad Request status: 400"])
+def test_4xx_fails_at_once(tmp_path, msg):
+    rc, n, err = _run(tmp_path, 99, msg)
+    assert (rc, n) == (1, 1)
+    assert "not retrying" in err
+
+
+@pytest.mark.skipif(BASH is None, reason="bash not available")
+@pytest.mark.parametrize("msg", ["fetch failed: ECONNRESET", "Bad Gateway", "request to https://api.cloudflare.com failed, reason: ETIMEDOUT"])
+def test_network_errors_and_5xx_are_retried(tmp_path, msg):
+    assert _run(tmp_path, 2, msg)[:2] == (0, 2)
+
+
+@pytest.mark.skipif(BASH is None, reason="bash not available")
+def test_unrecognised_failure_is_not_retried(tmp_path):
+    rc, n, _ = _run(tmp_path, 99, "Could not resolve entry-point")
+    assert (rc, n) == (1, 1)
 
 
 @pytest.mark.skipif(BASH is None, reason="bash not available")

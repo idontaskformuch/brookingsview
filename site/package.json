@@ -28,6 +28,6 @@
     "typescript": "^5.9.3",
     "vite-node": "^6.0.0",
     "vitest": "^4.1.11",
-    "wrangler": "^4.0.0"
+    "wrangler": "^4.152.0"
   }
 }
