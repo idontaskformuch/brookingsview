@@ -6,7 +6,7 @@
     {
      "number": 1,
      "name": "P0",
-     "startTime": "2026-11-05T6:00:00-07:00",
+     "startTime": "2026-11-05T06:00:00-07:00",
      "temperature": 40,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -34,7 +34,7 @@
     {
      "number": 3,
      "name": "P2",
-     "startTime": "2026-11-06T6:00:00-07:00",
+     "startTime": "2026-11-06T06:00:00-07:00",
      "temperature": 42,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -58,7 +58,7 @@
     {
      "number": 5,
      "name": "P4",
-     "startTime": "2026-11-07T6:00:00-07:00",
+     "startTime": "2026-11-07T06:00:00-07:00",
      "temperature": 44,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -86,7 +86,7 @@
     {
      "number": 7,
      "name": "P6",
-     "startTime": "2026-11-08T6:00:00-07:00",
+     "startTime": "2026-11-08T06:00:00-07:00",
      "temperature": 46,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -114,7 +114,7 @@
     {
      "number": 9,
      "name": "P8",
-     "startTime": "2026-11-09T6:00:00-07:00",
+     "startTime": "2026-11-09T06:00:00-07:00",
      "temperature": 48,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -138,7 +138,7 @@
     {
      "number": 11,
      "name": "P10",
-     "startTime": "2026-11-010T6:00:00-07:00",
+     "startTime": "2026-11-10T06:00:00-07:00",
      "temperature": 50,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -152,7 +152,7 @@
     {
      "number": 12,
      "name": "P11",
-     "startTime": "2026-11-010T18:00:00-07:00",
+     "startTime": "2026-11-10T18:00:00-07:00",
      "temperature": 51,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -166,7 +166,7 @@
     {
      "number": 13,
      "name": "P12",
-     "startTime": "2026-11-011T6:00:00-07:00",
+     "startTime": "2026-11-11T06:00:00-07:00",
      "temperature": 52,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -180,7 +180,7 @@
     {
      "number": 14,
      "name": "P13",
-     "startTime": "2026-11-011T18:00:00-07:00",
+     "startTime": "2026-11-11T18:00:00-07:00",
      "temperature": 53,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -190,7 +190,7 @@
     {
      "number": 15,
      "name": "P14",
-     "startTime": "2026-11-012T6:00:00-07:00",
+     "startTime": "2026-11-12T06:00:00-07:00",
      "temperature": 54,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -204,7 +204,7 @@
     {
      "number": 16,
      "name": "P15",
-     "startTime": "2026-11-012T18:00:00-07:00",
+     "startTime": "2026-11-12T18:00:00-07:00",
      "temperature": 55,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -530,7 +530,7 @@
     {
      "number": 24,
      "name": "",
-     "startTime": "2026-11-05T24:00:00-07:00",
+     "startTime": "2026-11-06T00:00:00-07:00",
      "temperature": 63,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -540,7 +540,7 @@
     {
      "number": 25,
      "name": "",
-     "startTime": "2026-11-05T25:00:00-07:00",
+     "startTime": "2026-11-06T01:00:00-07:00",
      "temperature": 64,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -554,7 +554,7 @@
     {
      "number": 26,
      "name": "",
-     "startTime": "2026-11-05T26:00:00-07:00",
+     "startTime": "2026-11-06T02:00:00-07:00",
      "temperature": 65,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -568,7 +568,7 @@
     {
      "number": 27,
      "name": "",
-     "startTime": "2026-11-05T27:00:00-07:00",
+     "startTime": "2026-11-06T03:00:00-07:00",
      "temperature": 66,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -582,7 +582,7 @@
     {
      "number": 28,
      "name": "",
-     "startTime": "2026-11-05T28:00:00-07:00",
+     "startTime": "2026-11-06T04:00:00-07:00",
      "temperature": 67,
      "temperatureUnit": "F",
      "shortForecast": "Mostly Cloudy",
@@ -596,7 +596,7 @@
     {
      "number": 29,
      "name": "",
-     "startTime": "2026-11-05T29:00:00-07:00",
+     "startTime": "2026-11-06T05:00:00-07:00",
      "temperature": 68,
      "temperatureUnit": "F",
      "shortForecast": "Chance Rain Showers",
@@ -606,7 +606,7 @@
     {
      "number": 30,
      "name": "",
-     "startTime": "2026-11-05T30:00:00-07:00",
+     "startTime": "2026-11-06T06:00:00-07:00",
      "temperature": 69,
      "temperatureUnit": "F",
      "shortForecast": "Sunny",
@@ -1011,7 +1011,7 @@
   "periods": [
    {
     "name": "P0",
-    "start": "2026-11-05T6:00:00-07:00",
+    "start": "2026-11-05T06:00:00-07:00",
     "temp": 40,
     "unit": "F",
     "short": "Mostly Cloudy",
@@ -1030,7 +1030,7 @@
    },
    {
     "name": "P2",
-    "start": "2026-11-06T6:00:00-07:00",
+    "start": "2026-11-06T06:00:00-07:00",
     "temp": 42,
     "unit": "F",
     "short": "Sunny",
@@ -1049,7 +1049,7 @@
    },
    {
     "name": "P4",
-    "start": "2026-11-07T6:00:00-07:00",
+    "start": "2026-11-07T06:00:00-07:00",
     "temp": 44,
     "unit": "F",
     "short": "Chance Rain Showers",
@@ -1069,7 +1069,7 @@
    },
    {
     "name": "P6",
-    "start": "2026-11-08T6:00:00-07:00",
+    "start": "2026-11-08T06:00:00-07:00",
     "temp": 46,
     "unit": "F",
     "short": "Mostly Cloudy",
@@ -1088,7 +1088,7 @@
    },
    {
     "name": "P8",
-    "start": "2026-11-09T6:00:00-07:00",
+    "start": "2026-11-09T06:00:00-07:00",
     "temp": 48,
     "unit": "F",
     "short": "Sunny",
@@ -1107,7 +1107,7 @@
    },
    {
     "name": "P10",
-    "start": "2026-11-010T6:00:00-07:00",
+    "start": "2026-11-10T06:00:00-07:00",
     "temp": 50,
     "unit": "F",
     "short": "Chance Rain Showers",
@@ -1117,7 +1117,7 @@
    },
    {
     "name": "P11",
-    "start": "2026-11-010T18:00:00-07:00",
+    "start": "2026-11-10T18:00:00-07:00",
     "temp": 51,
     "unit": "F",
     "short": "Sunny",
@@ -1126,7 +1126,7 @@
    },
    {
     "name": "P12",
-    "start": "2026-11-011T6:00:00-07:00",
+    "start": "2026-11-11T06:00:00-07:00",
     "temp": 52,
     "unit": "F",
     "short": "Mostly Cloudy",
@@ -1136,7 +1136,7 @@
    },
    {
     "name": "P13",
-    "start": "2026-11-011T18:00:00-07:00",
+    "start": "2026-11-11T18:00:00-07:00",
     "temp": 53,
     "unit": "F",
     "short": "Chance Rain Showers",
@@ -1390,7 +1390,7 @@
     "gust": 5
    },
    {
-    "start": "2026-11-05T24:00:00-07:00",
+    "start": "2026-11-06T00:00:00-07:00",
     "temp": 63,
     "unit": "F",
     "short": "Sunny",

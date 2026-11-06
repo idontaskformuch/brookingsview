@@ -8,7 +8,7 @@ negative values; `expected` is rebuilt by the PYTHON builder. test/weather.test.
 cron-dispatcher/test/fixtures/nws_parity.json: the same for scrapers/parsers/noaa.py (forecast + hourly + gridpoints -> payload).
 """
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -55,8 +55,12 @@ def nws() -> None:
         return [{"unitCode": "wmoUnit:percent", "value": 40}, {"unitCode": "wmoUnit:percent", "value": None}, {"unitCode": "wmoUnit:percent", "value": 0},
                 None, {"unitCode": "wmoUnit:percent", "value": 62.5}][i % 5]
 
+    def hour_start(hours_after_midnight):
+        """A real local timestamp (2026-11-05T00:00 -07:00 plus N hours); never an hour 24+ or a day like 010, which only newer Pythons accept."""
+        return (datetime(2026, 11, 5, tzinfo=timezone(timedelta(hours=-7))) + timedelta(hours=hours_after_midnight)).isoformat()
+
     def period(i, hourly):
-        p = {"number": i + 1, "name": "" if hourly else f"P{i}", "startTime": (f"2026-11-05T{i + 1:02d}:00:00-07:00" if hourly else f"2026-11-0{5 + i // 2}T{6 if i % 2 == 0 else 18}:00:00-07:00"), "temperature": 40 + i,
+        p = {"number": i + 1, "name": "" if hourly else f"P{i}", "startTime": (hour_start(i + 1) if hourly else hour_start(i * 12 + 6)), "temperature": 40 + i,
              "temperatureUnit": "F", "shortForecast": ["Mostly Cloudy", "Chance Rain Showers", "Sunny"][i % 3], "windSpeed": f"{5 + i} mph",
              "isDaytime": i % 2 == 0}
         pop = pops(i)

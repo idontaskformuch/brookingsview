@@ -69,3 +69,13 @@ def test_no_gridpoints_or_a_point_without_a_usable_time_changes_nothing():
     assert merge_gridpoints(HOURLY, None) == HOURLY
     assert merge_gridpoints(HOURLY, {"properties": {}}) == HOURLY
     assert merge_gridpoints([{**HOURLY[0], "start": None}], GRID) == [{**HOURLY[0], "start": None}]
+
+
+def test_the_shared_fixture_has_only_timestamps_every_python_reads():
+    """Regression (CI on Python 3.12 was red from 2026-11-05): the fixture once held 'T24:00:00' and day '010', which 3.14 reads and 3.12 rejects."""
+    import re
+    stamps = re.findall(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}", json.dumps(FX))
+    assert stamps
+    assert not re.search(r"\d{4}-\d{2}-\d{3}|T2[4-9]:|T[3-9]\d:", json.dumps(FX["forecast"]) + json.dumps(FX["forecastHourly"]))
+    for s in stamps:
+        datetime.strptime(s[:19], "%Y-%m-%dT%H:%M:%S")
