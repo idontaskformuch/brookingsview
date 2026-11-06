@@ -49,6 +49,13 @@
     vanlig länk, hämtas aldrig) och raden blir unconfirmed med checkAt.
     Gäller även WebFetch-verktyget: ge upp efter ett 403 + ett försök.
 
+14. Raderingar, UPDATE och andra skrivningar mot live-DB utanför normal
+    scraperkörning kräver en egen fråga som bara gäller den åtgärden, och
+    ett uttryckligt ja som nämner åtgärden ("ja, radera"). Ett ja på en
+    sammansatt fråga räknas aldrig som godkännande. Backup till
+    `.claude/backups/` (JSON med raderade/ändrade rader) före varje sådan
+    skrivning.
+
 ## Redaktionell grundregel
 
 Varje sida ska hjälpa en invånare att förstå eller göra något. Listor och
