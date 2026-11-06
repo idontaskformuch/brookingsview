@@ -632,7 +632,8 @@ export function buildMeetingJsonLd(
 
 /* ------------------------------------------------------------------ rss */
 
-export interface FeedItem { guid: string; title: string; link: string; pubDate: Date; description: string }
+/** kind: 'new' = a meeting we first stored, 'agenda' = an agenda the source dates, 'cancelled' / 'postponed' = the source says so. */
+export interface FeedItem { guid: string; title: string; link: string; pubDate: Date; description: string; kind: 'new' | 'agenda' | 'cancelled' | 'postponed' }
 
 const whenLine = (m: MeetingView) => `${m.dateLabel}${m.time ? `, ${m.time}` : ''}`;
 
@@ -645,11 +646,11 @@ export function buildMeetingFeedItems(ms: MeetingView[], pageUrl: string): FeedI
   for (const m of ms) {
     const facts = [whenLine(m), m.location].filter(Boolean).join(' · ');
     if (m.firstSeen) {
-      out.push({ guid: `meeting-${m.id}-scheduled`, title: `${m.cancelled ? 'Cancelled meeting' : m.postponed ? 'Postponed meeting' : 'New meeting'}: ${meetingTitle(m)}, ${whenLine(m)}`, link: `${pageUrl}#meeting-${m.id}`, pubDate: new Date(m.firstSeen), description: facts });
+      out.push({ kind: m.cancelled ? 'cancelled' : m.postponed ? 'postponed' : 'new', guid: `meeting-${m.id}-scheduled`, title: `${m.cancelled ? 'Cancelled meeting' : m.postponed ? 'Postponed meeting' : 'New meeting'}: ${meetingTitle(m)}, ${whenLine(m)}`, link: `${pageUrl}#meeting-${m.id}`, pubDate: new Date(m.firstSeen), description: facts });
     }
     const published = m.agendaPublished ? new Date(m.agendaPublished) : null;
     if (published && !Number.isNaN(published.getTime()) && (m.items.length > 0 || m.agendaUrl) && !m.quorumNotice && !m.cancelled && !m.postponed) {
-      out.push({ guid: `meeting-${m.id}-agenda`, title: `Agenda published: ${meetingTitle(m)}, ${whenLine(m)}`, link: m.agendaUrl ?? `${pageUrl}#meeting-${m.id}`, pubDate: published, description: facts });
+      out.push({ kind: 'agenda', guid: `meeting-${m.id}-agenda`, title: `Agenda published: ${meetingTitle(m)}, ${whenLine(m)}`, link: m.agendaUrl ?? `${pageUrl}#meeting-${m.id}`, pubDate: published, description: facts });
     }
   }
   return out.filter((i) => !Number.isNaN(i.pubDate.getTime())).sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime());

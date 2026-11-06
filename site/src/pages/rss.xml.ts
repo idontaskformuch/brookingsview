@@ -1,52 +1,51 @@
 import rss from '@astrojs/rss';
 import type { APIContext } from 'astro';
-import { publicBody, isAiText } from '../lib/ai-text';
-import { getAllStories, CONTENT_TRACK_TYPES } from '../lib/db';
+import { getActiveSchoolAlerts, getFacilities, getUpcomingStories, getUpcomingArtsEvents } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { placeLabel } from '../lib/country-profile';
-import { storyHref } from '../lib/content-slugs';
-import { redactWorkerPulseBody } from '../lib/content-redaction';
+import { loadUpcomingMeetings } from '../lib/meetings-data';
+import { buildMeetingFeedItems } from '../lib/meetings-view';
+import { buildTownEventsView } from '../lib/events-town-view';
+import { itemLink } from '../lib/events';
+import { buildSiteFeed, type FeedEvent } from '../lib/site-feed';
+import { weekInfoForInstant } from '../lib/this-week';
 
-// Genererad vid build, precis som resten av sajten. Ingen story äldre än
-// occurs_at behöver filtreras bort här -- ett RSS-arkiv får gärna vara fullt.
-//
-// getAllStories() is intentionally unfiltered (it also feeds getStaticPaths,
-// which must keep building a page for every row so an already-indexed,
-// since-unpublished story degrades to noindex rather than a hard 404 -- see
-// lib/noindex.ts's published_at check). RSS has no such constraint: a feed
-// reader has no use for a row with published_at = NULL, and confirmed live
-// 2026-09-03 that unfiltered stories here were syndicating exactly the
-// contamination-quarantine rows from NEEDS-HUMAN-REVIEW.md.
-//
-// AdSense "low value content" remediation, Phase 0: CONTENT_TRACK_TYPES
-// (the generic AI content track -- editorials/columns/reviews/recipes)
-// also excluded here now -- generation stopped and the type was unlinked
-// from every other surface, so a feed reader subscribed before this
-// shouldn't keep getting old rows resurfaced forever either.
-//
-// Events correctness Phase 1: a superseded event (retroactively merged
-// into a recurring-series story, see Story's own superseded_by_slug doc
-// comment) is excluded the same way -- a feed reader doesn't need the old
-// per-occurrence duplicate once there's a canonical series item for it.
+// The sitewide feed is built from structured fields only (lib/site-feed.ts): agendas the source dates, cancelled / postponed meetings,
+// school closures, and at most five of the town's own events a week. Touring shows from outside the town are never in it. No model-written
+// text exists in this feed (owner 2026-11-06); the stories table is not read here.
+const DAYS_AHEAD = 14;
+
 export async function GET(context: APIContext) {
-  const stories = (await getAllStories())
-    .filter((story) =>
-      story.published_at !== null
-      && !CONTENT_TRACK_TYPES.includes(story.source_type)
-      && !story.superseded_by_slug
-      && !isAiText(story)); // withheld text (lib/ai-text.ts): an item would link an empty page
+  const site = context.site ?? new URL(siteConfig.siteUrl);
+  const tz = siteConfig.timezone;
+  const now = new Date();
+
+  const meetingData = await loadUpcomingMeetings();
+  const meetingItems = meetingData ? buildMeetingFeedItems(meetingData.meetings, new URL('/city-hall/', site).href) : [];
+  const closures = siteConfig.closureWatch ? await getActiveSchoolAlerts(14) : [];
+
+  const [stories, arts, facilities] = await Promise.all([getUpcomingStories(['event'], 200), getUpcomingArtsEvents(60), getFacilities()]);
+  const town = buildTownEventsView(stories, arts, facilities, now);
+  const horizon = now.getTime() + DAYS_AHEAD * 86_400_000;
+  const events: FeedEvent[] = [...town.view.days.flatMap((d) => d.rows), ...town.view.furtherOut]
+    .filter((r) => new Date(r.start).getTime() <= horizon)
+    .map((r) => ({
+      id: r.item.sourceKind === 'story' ? r.item.story.slug : `arts-${r.item.event.event_url ?? r.title}-${r.start}`,
+      title: r.title, startIso: r.start, dateLabel: r.dateLabel, timeLabel: r.timeLabel || null, venue: r.venue,
+      link: itemLink(r.item), publishedAt: r.item.sourceKind === 'story' ? r.item.story.published_at : null,
+    }));
+
+  const items = buildSiteFeed({
+    meetingItems, closures, events,
+    closuresPageUrl: siteConfig.closureWatch ? new URL('/closures/', site).href : null,
+    eventsPageUrl: new URL('/events/', site).href,
+    weekOf: (iso) => weekInfoForInstant(new Date(iso), tz).slug,
+    now,
+  });
   return rss({
     title: siteConfig.siteName,
-    description: `What's happening in ${placeLabel(siteConfig)}.`,
-    site: context.site!,
-    items: stories.map((story) => ({
-      title: story.title,
-      // 2026-10-02: redacted for workplace_watch_digest rows -- the raw
-      // body routinely states a specific Glassdoor/Indeed rating in prose,
-      // see lib/content-redaction.ts's own module docstring.
-      description: redactWorkerPulseBody(story.source_type, publicBody(story)),
-      link: storyHref(story.slug),
-      pubDate: new Date(story.published_at),
-    })),
+    description: `Meeting agendas, cancellations, school closures and a few events in ${placeLabel(siteConfig)}.`,
+    site,
+    items: items.map((i) => ({ title: i.title, description: i.description, link: i.link, pubDate: i.pubDate, guid: i.guid })),
   });
 }
