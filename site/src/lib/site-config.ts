@@ -382,6 +382,10 @@ export interface SiteConfig {
    *  value (same "fails loud" principle as assertAccentContrast()/
    *  validateStatusModules() elsewhere in this file's neighborhood). */
   ticketmaster?: { enabled: boolean; latitude: number; longitude: number; radiusMiles: number; marqueeSize: number };
+  /** "Big shows nearby" (owner 2026-11-06): a separate Ticketmaster module on /events/, never mixed into the town's own events, and on /tonight the
+   *  Ticketmaster rows are kept out of the "N things on tonight" count (a "+ N big shows nearby" line instead). Requires `ticketmaster.enabled`.
+   *  maxMiles = straight-line miles from townCenter; horizonDays defaults to 60. See lib/big-shows.ts. */
+  bigShows?: { enabled: boolean; maxMiles: number; horizonDays?: number };
   /** Phase 2 (2026-10-08), "In <Town> vs Nearby": the town's own centroid,
    *  for lib/town-boundary.ts's distance-from-center fallback when a venue
    *  resolves OUTSIDE the town's Census boundary polygon. Same real
@@ -757,6 +761,7 @@ const CITIES: Record<string, SiteConfig> = {
     // matching what a real Denver-metro suburb's events page should show.
     townCenter: { lat: 39.9205, lon: -105.0866 },
     ticketmaster: { enabled: true, latitude: 39.9205, longitude: -105.0866, radiusMiles: 20, marqueeSize: 6 },
+    bigShows: { enabled: true, maxMiles: 25 },
     hasWhatsOn: true,
     // 'whats_on' added alongside the enable above -- see Moreno Valley's
     // identical comment just above for why.

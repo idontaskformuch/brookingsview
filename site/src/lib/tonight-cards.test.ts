@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   badgesFor, timeState, isStartingSoon, walkMinutes, pairNights, regionOf, unmappedAreas, chipPlan, countByRegion, matchesArea, surprisePick, surpriseCandidates,
-  nextUp, untilLabel, bucketOf, bucketLabel, heroFor, dayView, cityLabel, cityScope, scopeLine, type SurpriseCard, type LatePlace,
+  nextUp, untilLabel, isBigShow, bigShowsLine, bigShowLabel, partitionBig, bucketOf, bucketLabel, heroFor, dayView, cityLabel, cityScope, scopeLine, type SurpriseCard, type LatePlace,
 } from './tonight-cards';
 import { groupForTicketmaster, groupLabel, cleanCity, type EveningEntry } from './evening-items';
 import { hasEnded } from './local-day';
@@ -361,5 +361,55 @@ describe('library categories (Fas 1d)', () => {
     const { CHIP_MIN_THINGS, CHIP_MIN_CHIPS } = await import('./tonight-cards');
     const ui = await import('./ui/ui-helpers');
     expect([CHIP_MIN_THINGS, CHIP_MIN_CHIPS]).toEqual([ui.CHIP_MIN_ITEMS, ui.CHIP_MIN_CHIPS]);
+  });
+});
+
+// Owner 2026-11-06: where bigShows is on, Ticketmaster rows on /tonight are kept but never counted in "N things on tonight".
+describe('big shows on /tonight', () => {
+  const BROOMFIELD = { lat: 39.9205, lon: -105.0866 };
+  const tmRow = entry({ id: 'tm:1', source: 'ticketmaster', venueCity: 'Denver', lat: 39.7487, lon: -105.0077 });
+  const ownRow = entry({ id: 'own:1', source: 'own' });
+  it('a Ticketmaster row is a big show only where bigShows is on', () => {
+    expect(isBigShow(tmRow, true)).toBe(true);
+    expect(isBigShow(tmRow, false)).toBe(false);
+    expect(isBigShow(tmRow, undefined)).toBe(false);
+    expect(isBigShow(ownRow, true)).toBe(false);
+  });
+  it('the header counts the local rows only; the big shows get their own line', () => {
+    const rows = [ownRow, ownRow, tmRow, tmRow, tmRow];
+    const { local, big } = partitionBig(rows, (r) => isBigShow(r, true));
+    expect(heroFor({ events: local.length, late: 0, tomorrow: 0, word: 'tonight' }).count).toBe(2);
+    expect(bigShowsLine(big.length)).toBe('+ 3 big shows nearby');
+  });
+  it('with only big shows tonight the hero is the empty line, never "3 things", and the big line still shows', () => {
+    const { local, big } = partitionBig([tmRow, tmRow, tmRow], (r) => isBigShow(r, true));
+    const hero = heroFor({ events: local.length, late: 0, tomorrow: 0, word: 'tonight' });
+    expect(hero.kind).toBe('empty');
+    expect(bigShowsLine(big.length)).toBe('+ 3 big shows nearby');
+  });
+  it('the line is singular for one and absent for none', () => {
+    expect(bigShowsLine(1)).toBe('+ 1 big show nearby');
+    expect(bigShowsLine(0)).toBeNull();
+  });
+  it('every big show reads "City · N mi", the home city included', () => {
+    expect(bigShowLabel(tmRow, 'Broomfield', BROOMFIELD)?.text).toMatch(/^Denver · \d+ mi$/);
+    expect(bigShowLabel(entry({ venueCity: 'Broomfield', lat: 39.9205, lon: -105.0866 }), 'Broomfield', BROOMFIELD)?.text).toBe('Broomfield · <1 mi');
+  });
+  it('without coordinates the stated distance is used; without a city only the miles; without either nothing', () => {
+    expect(bigShowLabel(entry({ venueCity: 'Denver', lat: null, lon: null, distanceMiles: 14.6 }), 'Broomfield', BROOMFIELD)?.text).toBe('Denver · 15 mi');
+    expect(bigShowLabel(entry({ venueCity: null, lat: null, lon: null, distanceMiles: 9 }), 'Broomfield', BROOMFIELD)?.text).toBe('9 mi');
+    expect(bigShowLabel(entry({ venueCity: null, lat: null, lon: null, distanceMiles: null }), 'Broomfield', BROOMFIELD)).toBeNull();
+  });
+  it('the page and the browser both split through partitionBig, and the card carries the label and data-big', () => {
+    const page = readFileSync(new URL('../pages/tonight.astro', import.meta.url), 'utf8');
+    const client = readFileSync(new URL('./tonight-cards-client.ts', import.meta.url), 'utf8');
+    const card = readFileSync(new URL('../components/tonight/TonightCard.astro', import.meta.url), 'utf8');
+    expect(page).toMatch(/partitionBig\(/); expect(client).toMatch(/partitionBig\(/);
+    expect(card).toMatch(/bigShowLabel\(/); expect(card).toMatch(/data-big/);
+    expect(client).not.toMatch(/events: liveAll\.length/);
+  });
+  it('Broomfield has bigShows on and Glasgow does not', () => {
+    expect(ALL_CONFIGS.find((c) => c.townId === 'broomfield_co')!.bigShows).toEqual({ enabled: true, maxMiles: 25 });
+    expect(ALL_CONFIGS.find((c) => c.townId === 'glasgow')!.bigShows).toBeUndefined();
   });
 });

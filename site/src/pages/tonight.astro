@@ -25,7 +25,7 @@ import { buildEveningSections, eveningEntries } from '../lib/evening-page';
 import TonightCard from '../components/tonight/TonightCard.astro';
 import TonightRows from '../components/tonight/TonightRows.astro';
 import TonightStyles from '../components/tonight/TonightStyles.astro';
-import { chipPlan, countByRegion, cityScope, dayView, heroFor, pairNights, regionOf, scopeLine, unmappedAreas, SOON_MAX_CARDS, type CardTown } from '../lib/tonight-cards';
+import { chipPlan, countByRegion, cityScope, dayView, heroFor, pairNights, regionOf, scopeLine, unmappedAreas, isBigShow, bigShowsLine, partitionBig, SOON_MAX_CARDS, type CardTown } from '../lib/tonight-cards';
 import { OPEN_LATE_MAX_ROWS } from '../lib/osm-open-late';
 import TonightChips from '../components/tonight/TonightChips.astro';
 import HeroStat from '../components/ui/HeroStat.astro';
@@ -86,14 +86,19 @@ const eveningOf = new Map(sections.map((s) => [s.day, eveningEntries(entries, s.
 const tonightEvents = [...(eveningOf.get(tonight.day) ?? [])].sort((a, b) => a.start.localeCompare(b.start));
 const upNext = tonightEvents.filter((e) => new Date(e.start).getTime() > now.getTime() - 3 * 3_600_000).slice(0, SOON_MAX_CARDS);
 const regions = cards?.regions ?? {};
-const town: CardTown = { country: siteConfig.country, homeCity: siteConfig.cityName, center: siteConfig.townCenter, hidePrice: !!cards?.hidePrice, cityLabels: !!cards?.cityLabels };
+const town: CardTown = { country: siteConfig.country, homeCity: siteConfig.cityName, center: siteConfig.townCenter, hidePrice: !!cards?.hidePrice, cityLabels: !!cards?.cityLabels, bigShows: !!siteConfig.bigShows?.enabled };
+// Big shows (Ticketmaster where bigShows is on) are shown but never counted in the hero, the scope line or "Next up"; their own line says how many
+const isBig = (e: { source: 'ticketmaster' | 'own' | 'register' }) => isBigShow(e, town.bigShows);
+const localOnly = <T extends { source: 'ticketmaster' | 'own' | 'register' }>(list: T[]) => partitionBig(list, isBig).local;
 // "12 in Broomfield · 31 nearby": by the source's own venue city; events with no stated city are in neither count
 const scopeCounts = { home: 0, near: 0, unknown: 0 };
-if (town.cityLabels) for (const e of tonightEvents) scopeCounts[cityScope(e.venueCity, town.homeCity)]++;
+if (town.cityLabels) for (const e of localOnly(tonightEvents)) scopeCounts[cityScope(e.venueCity, town.homeCity)]++;
 // what is still to come tonight / tomorrow night at build time (the browser recounts as events pass): drives the header and which sections show
-const liveEvents = (day: number) => (eveningOf.get(day) ?? []).filter((e) => !hasEnded({ start: e.start, end: e.end }, now, tz)).length;
+const liveEvents = (day: number) => localOnly(eveningOf.get(day) ?? []).filter((e) => !hasEnded({ start: e.start, end: e.end }, now, tz)).length;
+const liveBig = (day: number) => partitionBig((eveningOf.get(day) ?? []).filter((e) => !hasEnded({ start: e.start, end: e.end }, now, tz)), isBig).big.length;
 const liveLate = (day: number) => (lateBySection.get(day) ?? []).filter((p) => !hasEnded({ start: p.start, end: p.end }, now, tz)).length;
-const hero = heroFor({ events: liveEvents(tonight.day), late: liveLate(tonight.day), tomorrow: sections[1] ? (eveningOf.get(sections[1].day) ?? []).length : 0, word: 'tonight' });
+const hero = heroFor({ events: liveEvents(tonight.day), late: liveLate(tonight.day), tomorrow: sections[1] ? localOnly(eveningOf.get(sections[1].day) ?? []).length : 0, word: 'tonight' });
+const bigText = town.bigShows ? bigShowsLine(liveBig(tonight.day)) : null;
 const scopeText = town.cityLabels ? scopeLine(scopeCounts, town.homeCity) : null;
 const regionOrder = Object.keys(regions);
 const tonightLateCards = (lateBySection.get(tonight.day) ?? []).slice(0, OPEN_LATE_MAX_ROWS);
@@ -140,6 +145,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
           rootAttrs={{ 'data-tc-count-box': '', hidden: hero.kind === 'empty' ? true : undefined }} valueAttrs={{ 'data-tc-count': '' }} unitAttrs={{ 'data-tc-count-label': '' }} />
         <p class="tc-empty" data-tc-empty hidden={hero.kind === 'empty' ? undefined : true}><span data-tc-empty-text>{hero.text}</span><span data-tc-empty-sep hidden={hero.tomorrow ? undefined : true}> · </span><a href="#tn-tomorrow-h" data-tc-tomorrow hidden={hero.tomorrow ? undefined : true}>{hero.tomorrow}</a></p>
         {town.cityLabels && <InsightLine class="tc-scope" attrs={{ 'data-tc-scope': '', 'data-home': town.homeCity, hidden: scopeText ? undefined : true }}>{scopeText}</InsightLine>}
+        {town.bigShows && <InsightLine class="tc-big" attrs={{ 'data-tc-big': '', hidden: bigText ? undefined : true }}>{bigText}</InsightLine>}
         <InsightLine class="tc-next" attrs={{ 'data-tc-next': '', hidden: true }} />
       </section>
 

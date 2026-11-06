@@ -1,0 +1,39 @@
+---
+/** "Big shows nearby": Ticketmaster shows within a set number of miles, soonest first, as their own block under the town's own events. Never counted
+ *  in "N things on today" (lib/big-shows.ts). No price (hidden until we know what priceRanges contain). Renders nothing when there are none. */
+import SectionHeader from '../ui/SectionHeader.astro';
+import BigShowRow from './BigShowRow.astro';
+import type { BigShow } from '../../lib/big-shows';
+
+/** Soonest first. `fold` rows show, up to `cap` in all (the rest of the list is on What's On), so a 60-day window never becomes a page of hundreds. */
+interface Props { shows: BigShow[]; maxMiles: number; tz: string; fold?: number; cap?: number; moreHref?: string }
+const { shows, maxMiles, tz, fold = 10, cap = 40, moreHref } = Astro.props;
+const capped = shows.slice(0, cap);
+const first = capped.slice(0, fold);
+const rest = capped.slice(fold);
+---
+{shows.length > 0 && (
+  <section class="bs" id="big-shows" aria-label="Big shows nearby">
+    <SectionHeader title="Big shows nearby" />
+    <p class="bs__intro">Concerts, sports and touring shows at venues within {maxMiles} miles. These are not events in town.</p>
+    <ul class="bs__list" data-hide-ended data-tz={tz}>
+      {first.map((s) => <BigShowRow s={s} />)}
+    </ul>
+    {rest.length > 0 && (
+      <details class="bs__more">
+        <summary>{rest.length} more</summary>
+        <ul class="bs__list" data-hide-ended data-tz={tz}>
+          {rest.map((s) => <BigShowRow s={s} />)}
+        </ul>
+      </details>
+    )}
+    {moreHref && shows.length > capped.length && <p class="bs__all"><a href={moreHref}>More concerts and shows: What's On</a></p>}
+  </section>
+)}
+<style>
+  .bs { margin-top: var(--ui-5, 2rem); }
+  .bs__intro { margin: 0 0 var(--ui-2); font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
+  .bs__list { margin: 0; padding: 0; }
+  .bs__all { margin: var(--ui-3) 0 0; font-family: var(--font-ui); font-size: var(--ui-meta); }
+  .bs__more summary { cursor: pointer; padding: var(--ui-3) 0; font-family: var(--font-ui); font-size: var(--ui-meta); }
+</style>

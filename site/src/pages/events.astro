@@ -22,6 +22,8 @@ import { EVENT_FACETS } from '../lib/event-facets';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildEventJsonLd } from '../lib/event-jsonld';
 import { linkTarget } from '../lib/ai-text';
+import { getBigShows } from '../lib/big-shows';
+import BigShowsNearby from '../components/events/BigShowsNearby.astro';
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
@@ -78,6 +80,8 @@ const todaysHomeGame = regionalGames.find((g) => {
   if (!parts) return false;
   return parts.y === today.getUTCFullYear() && parts.m === today.getUTCMonth() && parts.d === today.getUTCDate();
 }) ?? null;
+
+const bigShows = await getBigShows(siteConfig);
 
 function hrefOf(item: FeedItem): string | null {
   return item.sourceKind === 'arts' ? item.event.event_url : linkTarget(item.story); // withheld text = no page of our own (lib/ai-text.ts)
@@ -210,6 +214,9 @@ const webPageJsonLd = dateModified ? {
       <div class="grid">{past.map((story) => <StoryCard story={story} compact kicker={townwideKicker} facilities={facilities} />)}</div>
     </>
   )}
+
+  {/* Ticketmaster shows within bigShows.maxMiles: its own block, never part of the local lists or counts above (lib/big-shows.ts) */}
+  <BigShowsNearby shows={bigShows} maxMiles={siteConfig.bigShows?.maxMiles ?? 0} tz={siteConfig.timezone} moreHref={siteConfig.hasWhatsOn ? '/whats-on/' : undefined} />
 
   <ClusterNav clusterLabel="What's happening" items={clusterNavItems} />
 

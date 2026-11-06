@@ -7,15 +7,15 @@ import { sectionState } from './evening-page';
 import { showTimeGb } from './whats-on-dates';
 import {
   timeState, isStartingSoon, matchesArea, nextUp, untilLabel, surprisePick, surpriseCandidates, chipPlan, countByRegion, SOON_MAX_CARDS,
-  scopeLine, dayView, heroFor, type SurpriseCard, type Bucket,
+  scopeLine, dayView, heroFor, bigShowsLine, partitionBig, type SurpriseCard, type Bucket,
 } from './tonight-cards';
 
 const $$ = <T extends HTMLElement = HTMLElement>(root: ParentNode, sel: string) => Array.from(root.querySelectorAll<T>(sel));
 
-interface Card { el: HTMLElement; id: string; start: string; end: string | null; area: string | null; bucket: Bucket }
+interface Card { el: HTMLElement; id: string; start: string; end: string | null; area: string | null; bucket: Bucket; big: boolean }
 
 function readCard(el: HTMLElement): Card {
-  return { el, id: el.dataset.id || '', start: el.dataset.start || '', end: el.dataset.end || null, area: el.dataset.area || null, bucket: (el.dataset.bucket || 'other') as Bucket };
+  return { el, id: el.dataset.id || '', start: el.dataset.start || '', end: el.dataset.end || null, area: el.dataset.area || null, bucket: (el.dataset.bucket || 'other') as Bucket, big: el.dataset.big === '1' };
 }
 
 export function initTonightCards(doc: Document): void {
@@ -131,6 +131,8 @@ export function initTonightCards(doc: Document): void {
     late: $$(sec, '[data-tc-rows] [data-card][data-late]').filter((c) => c.dataset.over !== '1').length,
   });
 
+  const toComeBig = (sec: HTMLElement) => $$(sec, '[data-tc-rows] [data-card][data-big="1"]').filter((c) => c.dataset.over !== '1').length;
+
   /** An evening with nothing left shows no heading and no empty rows; with only Open late places left it shows just that row. The section is not
    *  `hidden` (that is the clock's job: it decides which evening is "first"), so the header can still speak for it. */
   function renderDayViews(): void {
@@ -138,14 +140,16 @@ export function initTonightCards(doc: Document): void {
   }
 
   function renderHeader(now: Date): void {
-    const live = liveCards(now).filter((c) => matchesArea(c.area, null));
+    const liveAll = liveCards(now).filter((c) => matchesArea(c.area, null));
+    // big shows (Ticketmaster where bigShows is on) are never counted in the hero, the scope line or "Next up"; the "+ N big shows nearby" line counts them
+    const { local: live, big: liveBig } = partitionBig(liveAll, (c) => c.big);
     const count = doc.querySelector<HTMLElement>('[data-tc-count]');
     const label = doc.querySelector<HTMLElement>('[data-tc-count-label]');
     const word = (visibleSections()[0]?.querySelector('[data-evening-heading]')?.textContent ?? 'Tonight').toLowerCase();
     const first = visibleSections()[0];
     const second = visibleSections()[1];
     const hero = heroFor({
-      events: live.length, late: first ? toCome(first).late : 0, tomorrow: second ? toCome(second).events : 0, word,
+      events: live.length, late: first ? toCome(first).late : 0, tomorrow: second ? toCome(second).events - toComeBig(second) : 0, word,
     });
     const countBox = doc.querySelector<HTMLElement>('[data-tc-count-box]');
     const emptyBox = doc.querySelector<HTMLElement>('[data-tc-empty]');
@@ -160,6 +164,12 @@ export function initTonightCards(doc: Document): void {
       const sep = emptyBox.querySelector<HTMLElement>('[data-tc-empty-sep]');
       if (sep) sep.hidden = !hero.tomorrow;
       if (link) { link.hidden = !hero.tomorrow; link.textContent = hero.tomorrow ?? ''; link.href = `#${second?.querySelector('h2')?.id ?? 'tn-tomorrow-h'}`; }
+    }
+    const bigEl = doc.querySelector<HTMLElement>('[data-tc-big]');
+    if (bigEl) {
+      const text = bigShowsLine(liveBig.length);
+      bigEl.hidden = !text;
+      bigEl.textContent = text ?? '';
     }
     const scope = doc.querySelector<HTMLElement>('[data-tc-scope]');
     if (scope) {

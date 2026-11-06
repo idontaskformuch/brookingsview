@@ -80,7 +80,7 @@ export function walkMinutes(a: { lat: number; lon: number }, b: { lat: number; l
 }
 
 /** Town facts the card needs: country (spelling), and for the US towns the home city and center behind "Denver · 15 mi". */
-export interface CardTown { country: string; homeCity: string; center: { lat: number; lon: number }; hidePrice?: boolean; cityLabels?: boolean }
+export interface CardTown { country: string; homeCity: string; center: { lat: number; lon: number }; hidePrice?: boolean; cityLabels?: boolean; /** siteConfig.bigShows.enabled: Ticketmaster rows are "big shows" (see isBigShow). */ bigShows?: boolean }
 
 const METERS_PER_MILE = 1609.344;
 export type CityScope = 'home' | 'near' | 'unknown';
@@ -102,6 +102,32 @@ export function cityLabel(e: Pick<EveningEntry, 'venueCity' | 'lat' | 'lon'>, ho
   if (e.lat == null || e.lon == null) return { text: e.venueCity!, title: null };
   const miles = Math.round(distanceMetres(center, { lat: e.lat, lon: e.lon }) / METERS_PER_MILE);
   return { text: `${e.venueCity} · ${miles < 1 ? '<1' : miles} mi`, title: `About ${miles < 1 ? 'less than 1' : miles} ${miles === 1 ? 'mile' : 'miles'} in a straight line from the center of ${homeCity}, not a driving distance` };
+}
+
+/** Owner 2026-11-06 (Broomfield): where bigShows is on, a Ticketmaster row is a big show. It is shown on the page but never counted in the
+ *  header's "N things on tonight", the scope line or "Next up"; a separate line says "+ N big shows nearby". */
+export const isBigShow = (e: Pick<EveningEntry, 'source'>, bigShowsOn: boolean | undefined): boolean => !!bigShowsOn && e.source === 'ticketmaster';
+
+/** Splits rows into the ones the header counts and the big shows it only mentions. The ONE place that decision is made (page and browser both call it). */
+export function partitionBig<T>(items: T[], isBig: (item: T) => boolean): { local: T[]; big: T[] } {
+  return { local: items.filter((i) => !isBig(i)), big: items.filter(isBig) };
+}
+
+/** "+ 3 big shows nearby"; null for none. */
+export function bigShowsLine(n: number): string | null {
+  return n > 0 ? `+ ${n} big ${n === 1 ? 'show' : 'shows'} nearby` : null;
+}
+
+/** "Denver · 15 mi" for every big show, the home city included ("Broomfield · 2 mi"). Miles are straight-line from the town center, from the
+ *  venue's coordinates (else the distance Ticketmaster states). No city: the miles alone. Neither: null. */
+export function bigShowLabel(e: Pick<EveningEntry, 'venueCity' | 'lat' | 'lon' | 'distanceMiles'>, homeCity: string, center: { lat: number; lon: number }): CityLabel | null {
+  const raw = e.lat != null && e.lon != null ? distanceMetres(center, { lat: e.lat, lon: e.lon }) / METERS_PER_MILE : e.distanceMiles;
+  const miles = raw == null ? null : Math.round(raw);
+  const milesText = miles == null ? null : `${miles < 1 ? '<1' : miles} mi`;
+  const text = [e.venueCity, milesText].filter(Boolean).join(' · ');
+  if (!text) return null;
+  const title = miles == null ? null : `About ${miles < 1 ? 'less than 1' : miles} ${miles === 1 ? 'mile' : 'miles'} in a straight line from the center of ${homeCity}, not a driving distance.`;
+  return { text, title };
 }
 
 /** The second header line: "12 in Broomfield · 31 nearby". Only shown when something is outside town. "In <town>" is only said when every event
