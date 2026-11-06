@@ -7,6 +7,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
+import { forCountry } from '../lib/country-profile';
 
 const canonicalUrl = new URL('/editorial-policy/', Astro.site ?? siteConfig.siteUrl).href;
 const title = `Editorial Policy — ${siteConfig.siteName}`;
@@ -41,7 +42,7 @@ const webPageJsonLd = {
       <div class="check">
         <dt>The source's words stay the source's</dt>
         <dd>Meeting agenda items appear exactly as the agenda gives them.
-        Events keep the title, date, time and venue the organiser published,
+        Events keep the title, date, time and venue the {forCountry(siteConfig.country, 'organizer', 'organiser')} published,
         with a link back. We don't rewrite them.</dd>
       </div>
       <div class="check">
@@ -56,7 +57,7 @@ const webPageJsonLd = {
         <dd>Times are converted to {siteConfig.cityName}'s time zone, duplicates between sources are removed, events are
         sorted into groups from the source's own category or keywords in the
         title, and distances are measured in a straight line from the town
-        centre. These are rules, not a model, and they can be wrong; the
+        {forCountry(siteConfig.country, 'center', 'centre')}. These are rules, not a model, and they can be wrong; the
         original source is always one click away.</dd>
       </div>
       <div class="check">
