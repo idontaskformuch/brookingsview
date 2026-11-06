@@ -67,9 +67,11 @@ const webPageJsonLd = {
       </div>
       <div class="check">
         <dt>No arrests, court records, or obituaries</dt>
-        <dd>Covered on <a href="/about/">/about</a> too. Private individuals
-        are named by role, not by name, and a daily automated check flags crime
-        wording in fire and air-quality notices.</dd>
+        <dd>We don't collect arrest, jail-booking or obituary sources. Fire and
+        air-quality notices that contain crime wording are held back from the
+        page automatically, and a daily check of the pages for Brookings,
+        Moreno Valley and Broomfield reports any that slip through.
+        {siteConfig.country === 'gb' && 'In Glasgow, an agenda title that appears to name a private individual or a court proceeding is left out; the meeting itself stays.'}</dd>
       </div>
       <div class="check">
         <dt>Sources that say no</dt>

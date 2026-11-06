@@ -96,7 +96,7 @@ const ogImage = new URL(`/og/${ogSlug ?? 'default'}.png`, Astro.site ?? siteConf
 // Cloudflare's Workers Static Assets cache never invalidated.
 const buildSha = import.meta.env.GITHUB_SHA ?? 'local';
 if (siteConfig.country === 'gb' && siteConfig.ga4MeasurementId) {
-  throw new Error(`${siteConfig.townId}: a UK town cannot set ga4MeasurementId yet -- GA4 must not load before opt-in consent (PECR), and the opt-in-first banner is not built. See docs/uk-audit.md section 8.`);
+  throw new Error(`${siteConfig.townId}: a UK town cannot set ga4MeasurementId yet -- GA4 must not load before opt-in consent (PECR), and the opt-in-first banner is not built. `);
 }
 const siblingSiteUrls = ALL_SITES.filter((s) => s.townId !== siteConfig.townId).map((s) => s.siteUrl);
 const now = new Date();
@@ -800,8 +800,7 @@ main { padding-block: 1.75rem 3.5rem; }
     </nav>
     <p>
       {siteConfig.sourceBlurb} News and listings link to their original
-      sources; where a piece is AI-written, that's disclosed on the piece
-      itself. <a href="/corrections/">Corrections are welcome</a>.
+      sources. <a href="/corrections/">Corrections are welcome</a>.
     </p>
     <p class="data" style="margin-top:0.75rem; font-size:0.75rem;">&copy; {year} {siteConfig.siteName}</p>
   </div>

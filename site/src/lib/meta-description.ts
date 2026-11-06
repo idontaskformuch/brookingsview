@@ -62,7 +62,7 @@ const TEMPLATES: Record<string, (c: DescFields) => string> = {
   'this-weekend': (c) => `Things to do this weekend in ${c.cityName}: Friday night, Saturday and Sunday, with start times and venues for each, from official listings.`,
   projects: (c) => `Real development and civic projects in ${placeAbbr(c)}, tracked from proposal through the meetings that decide them, with the latest status of each.`,
   'month-index': (c) => `Every monthly recap of ${placeAbbr(c)}, oldest to newest: city decisions, projects, home sales and events for each month, from public data.`,
-  'workplace-watch': (c) => `Monthly review-trend digests for the major employers around ${c.cityName}, summarizing what workers and reviewers say, so you can check before a shift.`,
+  'workplace-watch': (c) => `Job postings counted each month for the major employers around ${c.cityName}, with the change since last month and the source of the count.`,
   'this-week-week': (c) => `A day-by-day look at ${placeAbbr(c)} for this week: council meetings, events and sports, so you can plan the days ahead.`,
 };
 
