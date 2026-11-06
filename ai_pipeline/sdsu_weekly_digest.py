@@ -46,6 +46,7 @@ load_dotenv()
 import psycopg
 from psycopg.rows import dict_row
 
+from ai_pipeline.generator_switch import generator_enabled
 from ai_pipeline import api_usage, guardrails
 from ai_pipeline.weekly import intro_format_violations
 from validation import pre_publish_check
@@ -285,6 +286,9 @@ def generate(events: list[dict], label: str, cfg: dict, tz: ZoneInfo, client=Non
     src = build_grounding_text(events, label, tz, academic_dates)
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
+
+    if not generator_enabled(cfg, "sdsu_weekly_digest"):
+        return template_fallback(events, label, tz, academic_dates), "template_fallback", True
 
     if _spent_this_month() >= cap:
         return template_fallback(events, label, tz, academic_dates), "template_fallback", True

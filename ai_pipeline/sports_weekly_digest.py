@@ -49,6 +49,7 @@ load_dotenv()
 import psycopg
 from psycopg.rows import dict_row
 
+from ai_pipeline.generator_switch import generator_enabled
 from ai_pipeline import api_usage, guardrails
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
@@ -207,6 +208,9 @@ def generate(team_stats: list[dict], label: str, cfg: dict, client=None) -> tupl
     src = build_grounding_text(team_stats, label)
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
+
+    if not generator_enabled(cfg, "sports_weekly_digest"):
+        return template_fallback(team_stats, label), "template_fallback", True
 
     if _spent_this_month() >= cap:
         return template_fallback(team_stats, label), "template_fallback", True

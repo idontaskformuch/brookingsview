@@ -51,6 +51,7 @@ load_dotenv()
 import psycopg
 from psycopg.rows import dict_row
 
+from ai_pipeline.generator_switch import generator_enabled
 from ai_pipeline import api_usage, guardrails
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
@@ -339,6 +340,9 @@ def generate(stats: dict, label: str, cfg: dict, client=None, mom_stats: dict | 
     fallback = template_fallback(stats, label, cfg, mom_stats, mom_label, yoy_stats, yoy_label)
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
+
+    if not generator_enabled(cfg, "home_sales_digest"):
+        return fallback, "template_fallback", True
 
     if _spent_this_month() >= cap:
         return fallback, "template_fallback", True

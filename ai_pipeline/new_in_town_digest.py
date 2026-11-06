@@ -48,6 +48,7 @@ load_dotenv()
 import psycopg
 from psycopg.rows import dict_row
 
+from ai_pipeline.generator_switch import generator_enabled
 from ai_pipeline import api_usage, guardrails, search_budget, search_client
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
@@ -361,6 +362,9 @@ def generate_roundup(newly_rendered: list[dict], cfg: dict, client=None,
     fallback = roundup_template_fallback(newly_rendered, cfg)
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
+    if not generator_enabled(cfg, "new_in_town_digest"):
+        return fallback, "template_fallback"
+
     if _spent_this_month() >= cap:
         return fallback, "template_fallback"
 

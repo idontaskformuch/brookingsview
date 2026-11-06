@@ -75,6 +75,7 @@ load_dotenv()
 import psycopg
 from psycopg.rows import dict_row
 
+from ai_pipeline.generator_switch import generator_enabled
 from ai_pipeline import api_usage, guardrails, search_client
 from ai_pipeline.guardrails import normalize_name
 from validation import pre_publish_check
@@ -234,6 +235,9 @@ def generate(employer_name: str, results: list[dict], cfg: dict, client=None,
     src = build_grounding_text(employer_name, results, cfg)
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
+
+    if not generator_enabled(cfg, "workplace_watch_digest"):
+        return template_fallback(employer_name, results), "template_fallback", True
 
     if _spent_this_month() >= cap:
         return template_fallback(employer_name, results), "template_fallback", True

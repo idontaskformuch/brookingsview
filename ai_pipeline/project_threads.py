@@ -360,6 +360,9 @@ def generate_rolling_summary(project_title: str, recent_entries_text: str, cfg: 
     knowledge about the project."""
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
+    if not generator_enabled(cfg, "project_thread_summary"):
+        return rolling_summary_template_fallback(project_title), "template_fallback", True
+
     if _spent_this_month() >= cap:
         return rolling_summary_template_fallback(project_title), "template_fallback", True
 

@@ -144,9 +144,6 @@ const itemListJsonLd = updates.length > 0 ? {
       )}
       <h1>{project.title}</h1>
       <p class="desc">{project.description}</p>
-      {project.rolling_summary && (
-        <p class="rolling-summary">{project.rolling_summary}</p>
-      )}
       {project.location_text && (
         <p class="location">
           📍 {project.location_text}
@@ -245,13 +242,6 @@ const itemListJsonLd = updates.length > 0 ? {
 }
 .activity-state[data-activity="resolved"] { color: var(--status-good-ink); background: var(--status-good-tint); }
 .desc { color: var(--ink-soft); margin: 0.5rem 0 0; }
-.rolling-summary {
-  margin: 0.75rem 0 0;
-  padding: 0.75rem 0.875rem;
-  background: var(--navy-tint);
-  border-left: 4px solid var(--navy);
-  font-size: 0.9375rem;
-}
 .location { color: var(--ink-soft); font-size: 0.9375rem; margin: 0.75rem 0 0; }
 .cross-link { color: var(--ink-soft); font-size: 0.9375rem; margin: 0.75rem 0 0; }
 .timeline-heading { margin-top: 2rem; }

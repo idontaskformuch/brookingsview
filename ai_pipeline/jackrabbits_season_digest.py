@@ -44,6 +44,7 @@ load_dotenv()
 import psycopg
 from psycopg.rows import dict_row
 
+from ai_pipeline.generator_switch import generator_enabled
 from ai_pipeline import api_usage, guardrails
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
@@ -175,6 +176,9 @@ def generate(stats: dict, cfg: dict, client=None) -> tuple[str, str, bool]:
     src = build_grounding_text(stats)
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
+
+    if not generator_enabled(cfg, "jackrabbits_season_digest"):
+        return template_fallback(stats), "template_fallback", True
 
     if _spent_this_month() >= cap:
         return template_fallback(stats), "template_fallback", True

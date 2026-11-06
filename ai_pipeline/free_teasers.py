@@ -57,6 +57,7 @@ load_dotenv()
 
 import psycopg
 
+from ai_pipeline.generator_switch import generator_enabled
 from ai_pipeline import api_usage, guardrails
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
@@ -172,6 +173,9 @@ def generate_facility_teaser(facility: dict, cfg: dict, client=None) -> tuple[st
     """Returns (text, generated_by)."""
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
+    if not generator_enabled(cfg, "free_teaser_facility"):
+        return facility_template_fallback(facility), "template_fallback"
+
     if _spent_this_month() >= cap:
         return facility_template_fallback(facility), "template_fallback"
 
@@ -268,6 +272,9 @@ def generate_event_teaser(title: str, body: str, cfg: dict, client=None) -> tupl
     source data or none) tries again while it's still upcoming."""
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
+    if not generator_enabled(cfg, "free_teaser_event"):
+        return None
+
     if _spent_this_month() >= cap:
         return None
 
