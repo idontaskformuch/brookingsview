@@ -12,36 +12,30 @@ firing for all three towns; every build that DID run was green, because
 identical exit code). No existing test looks at the LIVE, DEPLOYED site
 -- this does.
 
-Two checks, both against the real production URL (never localhost/dist/,
+Three checks, all against the real production URL (never localhost/dist/,
 so a Cloudflare deploy-hook failure or propagation delay is caught too,
 not just a code bug):
 
-  1. Of every /s/<slug>/ AND /this-week/<week>/ link actually present on
-     the homepage, at least one resolves (via the DB, the same source of
-     truth the build itself reads) to a story published within
-     DEFAULT_FRESHNESS_DAYS (or a town's own `freshness_check_days`
-     config override) -- not "the single newest DB row is linked" (the
-     homepage's own curation logic doesn't always surface the literal
-     newest item -- see check_homepage_freshness).
-  2. The town's own signature section returns real, town-specific content
-     -- checked against a literal marker string pulled from the DB for
-     that section, not a generic "page looks non-empty" heuristic.
+  1. The live homepage carries THIS deploy's build-sha (<meta name=
+     "build-sha">, set from GITHUB_SHA) -- proves the edge serves this
+     deploy and not a stale cached one.
+  2. The homepage's <meta name="data-built-at"> (ISO time of the build,
+     BaseLayout.astro) is newer than DEFAULT_BUILT_AT_MAX_HOURS (or a
+     town's own `freshness_check_hours` config override). This replaced
+     the old "newest /s/<slug>/ or /this-week/<week>/ story linked from the
+     homepage is recent" check on 2026-11-06: model-written stories are no
+     longer shown (lib/ai-text.ts), so no homepage links to /s/ or
+     /this-week/ any more, and Broomfield has no local events, so that
+     check failed on every healthy deploy. The signal now is the build
+     itself, which exists on every town regardless of content.
+  3. The town's own signature section returns real, town-specific content
+     -- checked against a literal marker string, not a generic "page looks
+     non-empty" heuristic.
 
-DEFAULT_FRESHNESS_DAYS=8 (overridable per town via configs/<town>.json's
-`freshness_check_days`): today's actual cadence has no single guaranteed-
-daily publish. The generic AI content track (editorials/columns/reviews/
-recipes) that used to publish one new, homepage-linked story every day --
-the assumption an earlier FRESHNESS_DAYS=2 relied on -- was switched off
-config-wide in scheduler/weekly_rotation.py as of the 2026-10-07 AdSense
-remediation (Phase 0) and is no longer linked from the homepage at all.
-What's left (meeting/event scrapers, the weekly roundup) runs on its own
-schedule and genuinely can go several days with nothing new for a given
-town -- confirmed live on Broomfield (2026-10-13): zero new /s/-linkable
-stories for 11 days straight, a real gap FRESHNESS_DAYS=2 could never
-have tolerated even on a perfectly healthy pipeline. 8 days comfortably
-covers the weekly roundup's own 7-day cycle (now counted towards
-freshness too, via its /this-week/ link -- see check_homepage_freshness)
-plus a day of slack, while still catching a real multi-day outage.
+DEFAULT_BUILT_AT_MAX_HOURS=14: the scrape cron runs twice a day (11:00 and
+23:00 UTC, 12 h apart) and every run rebuilds; 2 h of slack. A deploy
+check runs right after a build, so a stale value means the edge is serving
+an old page.
 
 Fails loud: non-zero exit (job failure) plus the same ALERT_WEBHOOK every
 scraper failure already posts to (see scrapers/runner.py's own _alert(),
@@ -64,53 +58,9 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 
-from ai_pipeline.daily_content import SLUG_PREFIX_OVERRIDES
-from db.db import get_conn
 from scrapers.user_agent import user_agent_for_domain
 
-# Reverse of SLUG_PREFIX_OVERRIDES (content_type -> public prefix), keyed by
-# the PUBLIC prefix instead, for matching a homepage-scraped /s/<slug>/ href
-# back to the DB's own slug prefix. Bug found 2026-10-02 (broomfield-deploy
-# failing its freshness check): this function originally compared scraped
-# hrefs against stories.slug DIRECTLY, which worked until 8a0a938 ("English
-# slugs for new content") made the public URL prefix diverge from the DB
-# slug column for these four content types -- every homepage link to one of
-# them could then never match a real row, however fresh, making this check
-# permanently fail for any town publishing them (exactly the failure mode
-# this script exists to catch, except the bug was in the checker itself).
-PUBLIC_PREFIX_TO_DB: dict[str, str] = {public: db for db, public in SLUG_PREFIX_OVERRIDES.items()}
-
-# Anchored at the start of the slug, prefix being one of PUBLIC_PREFIX_TO_DB's
-# keys -- NOT a naive split on the first "-", which would wrongly cut
-# "science-column-2026-10-02" into "science"/"column-..." (two of the four
-# public prefixes -- "science-column", "quick-essay" -- contain their own
-# internal hyphen). Longest-prefix-first so "quick-essay" can never be
-# mis-matched by a shorter prefix that happens to also start matching.
-_PUBLIC_PREFIX_RE = re.compile(
-    "^(" + "|".join(re.escape(p) for p in sorted(PUBLIC_PREFIX_TO_DB, key=len, reverse=True)) + ")-"
-)
-
-
-def resolve_homepage_slugs_to_db_slugs(homepage_slugs: list[str]) -> list[str]:
-    """Maps each homepage-scraped /s/<slug>/ value back to the slug it would
-    actually be stored under in stories.slug -- a pure inverse of site/src/
-    lib/content-slugs.ts's publicSlug(), kept in sync via SLUG_PREFIX_
-    OVERRIDES (the same dict daily_content.py uses to build the public
-    prefix in the first place) rather than a second hand-maintained mapping.
-    A slug with no recognized public prefix (every content type other than
-    the renamed four, e.g. "meeting-...", "event-...") passes through
-    unchanged, same as content-slugs.ts's own no-op case."""
-    out = []
-    for slug in homepage_slugs:
-        match = _PUBLIC_PREFIX_RE.match(slug)
-        if match is None:
-            out.append(slug)
-            continue
-        db_prefix = PUBLIC_PREFIX_TO_DB[match.group(1)]
-        out.append(db_prefix + slug[match.end(1):])
-    return out
-
-DEFAULT_FRESHNESS_DAYS = 8
+DEFAULT_BUILT_AT_MAX_HOURS = 14
 
 # NOT read from configs/<town>.json's own "domain" field -- found stale
 # live 2026-08-28 (brookings_sd's says "brookings311.com", the site has
@@ -211,26 +161,6 @@ def _alert(town_id: str, msg: str) -> None:
             pass
 
 
-def extract_story_slugs(html: str) -> list[str]:
-    """Every distinct /s/<slug>/ link in a page's HTML, sorted for
-    deterministic testing. Pure, no network/DB -- unit tested directly."""
-    return sorted(set(re.findall(r"/s/([a-z0-9][a-z0-9_-]*)/", html)))
-
-
-def extract_weekly_slugs(html: str) -> list[str]:
-    """Every distinct /this-week/<iso-week>/ link in a page's HTML, mapped
-    directly to the stories.slug it backs ('weekly-<iso-week>' -- see
-    ai_pipeline's weekly-roundup generator and site/src/pages/this-week/
-    [week].astro, the same convention lib/homepage-curation.ts's
-    getLatestWeekly() callers build that href from). A separate function
-    from extract_story_slugs() because this is a different URL path
-    (/this-week/, not /s/), not one of SLUG_PREFIX_OVERRIDES's renamed
-    /s/ prefixes -- see resolve_homepage_slugs_to_db_slugs() for those.
-    Pure, no network/DB -- unit tested directly."""
-    weeks = sorted(set(re.findall(r"/this-week/([0-9]{4}-w[0-9]{2})/", html)))
-    return [f"weekly-{week}" for week in weeks]
-
-
 _BUILD_SHA_RE = re.compile(r'<meta\s+name="build-sha"\s+content="([0-9a-f]+)"')
 
 
@@ -240,96 +170,62 @@ def extract_build_sha(html: str) -> str | None:
     None if the tag is absent entirely (shouldn't happen on a real build;
     BaseLayout.astro falls back to the literal string 'local' when
     GITHUB_SHA isn't set, which this regex deliberately does NOT match --
-    only a real hex SHA counts). Pure, no network -- unit tested directly,
-    same convention as extract_story_slugs/extract_weekly_slugs above."""
+    only a real hex SHA counts). Pure, no network -- unit tested directly."""
     match = _BUILD_SHA_RE.search(html)
     return match.group(1) if match else None
 
 
-def is_stale(newest_published_at, freshness_days: int, now: datetime) -> bool:
-    """True if `newest_published_at` (a tz-aware datetime, or None) is
-    older than `freshness_days` relative to `now`. None counts as stale
-    (nothing matched). Pure, `now` injectable -- unit tested directly."""
-    if newest_published_at is None:
-        return True
-    return newest_published_at < now - timedelta(days=freshness_days)
+_BUILT_AT_RE = re.compile(r'<meta\s+name="data-built-at"\s+content="([^"]+)"')
 
 
-def check_homepage_freshness(
-    conn,
+def extract_built_at(html: str) -> datetime | None:
+    """The build time from BaseLayout.astro's <meta name="data-built-at">
+    (tz-aware UTC), or None when the tag is missing or not an ISO time.
+    Pure, no network -- unit tested directly."""
+    match = _BUILT_AT_RE.search(html)
+    if match is None:
+        return None
+    try:
+        built = datetime.fromisoformat(match.group(1).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return built if built.tzinfo else built.replace(tzinfo=timezone.utc)
+
+
+def evaluate_built_at(html: str, max_hours: float, now: datetime) -> str | None:
+    """Error text when the page has no usable build time, or it is older
+    than `max_hours` (or in the future by more than an hour: a broken
+    clock), None when fine. Pure, `now` injectable. Depends on nothing but
+    the page itself -- no story links, no events, no DB."""
+    built = extract_built_at(html)
+    if built is None:
+        return 'homepage has no valid <meta name="data-built-at"> tag'
+    if built < now - timedelta(hours=max_hours):
+        return f"homepage was built {built.isoformat()}, older than the {max_hours:g}-hour window"
+    if built > now + timedelta(hours=1):
+        return f"homepage build time {built.isoformat()} is in the future"
+    return None
+
+
+def check_homepage_built_at(
     town_id: str,
     site_url: str,
-    freshness_days: int = DEFAULT_FRESHNESS_DAYS,
+    max_hours: float = DEFAULT_BUILT_AT_MAX_HOURS,
     reference_now: datetime | None = None,
 ) -> tuple[str, bool] | None:
     """Returns (error, is_transient) on failure, None on success.
-    `is_transient` is True for a fetch/DB blip a retry might resolve
-    (network error, non-200 status), False for a genuine content problem
-    (nothing linked, or nothing linked is fresh) that waiting a few more
-    minutes can never fix -- see run_with_retry's own docstring for how
-    that flag is used to decide whether to retry at all.
-
-    Checks that AT LEAST ONE of the homepage's OWN /s/<slug>/ OR
-    /this-week/<week>/ links points at a recent story -- not that the
-    single most-recent DB row by published_at specifically appears. First
-    version asserted the latter and false-failed immediately on real
-    production data: the homepage's curation logic (see lib/homepage-
-    curation.ts) deliberately doesn't always surface the literal newest
-    row (Moreno Valley's newest story that day wasn't selected as lead/
-    worth-knowing). /this-week/<week>/ links count towards freshness too
-    (added 2026-10-13, see the module docstring's DEFAULT_FRESHNESS_DAYS
-    paragraph) -- excluding the weekly roundup entirely was itself part of
-    why Broomfield's homepage had nothing fresh left to point at once the
-    generic AI content track was switched off.
-    """
+    `is_transient` is True for a fetch blip (network error, non-200) and
+    False for a settled content problem (missing or old build time) --
+    see _run_checks_once for how that interacts with the build-sha."""
     try:
         r = requests.get(site_url + "/", timeout=20, headers=_request_headers(site_url))
     except Exception as exc:
         return f"could not fetch homepage ({site_url}/): {exc}", True
     if r.status_code != 200:
         return f"homepage returned HTTP {r.status_code}, expected 200", True
-
-    slugs = extract_story_slugs(r.text)
-    weekly_db_slugs = extract_weekly_slugs(r.text)
-    if not slugs and not weekly_db_slugs:
-        # Transient, not a genuine freshness failure: a homepage that
-        # renders with ZERO story/weekly links at all is indistinguishable
-        # from the same propagation lag RETRY_TIMEOUT_SECONDS exists for
-        # (a page mid-deploy can legitimately come back incomplete) --
-        # unlike "links exist but are stale/unmatched" below, there's
-        # nothing here to conclude is a real, settled content problem yet.
-        return "homepage has no /s/<slug>/ or /this-week/<week>/ links at all", True
-
-    # Bug fix 2026-10-02: homepage hrefs are PUBLIC slugs (site/src/lib/
-    # content-slugs.ts's publicSlug()), which diverge from stories.slug for
-    # four content types since 8a0a938 ("English slugs for new content") --
-    # comparing the raw scraped slugs against the DB column directly made
-    # this check permanently unable to match any of those four types,
-    # however recently published (see resolve_homepage_slugs_to_db_slugs()'s
-    # own docstring for the live case this was caught on: broomfield_co's
-    # genuinely-fresh media_recension-2026-09-30 / public "review-2026-09-30"
-    # story, live and 200-ing, that this check reported as 29-day-stale).
-    db_slugs = resolve_homepage_slugs_to_db_slugs(slugs) + weekly_db_slugs
-
-    with conn.cursor() as cur:
-        cur.execute(
-            "SELECT max(published_at) FROM stories WHERE town_id=%s AND slug = ANY(%s)",
-            (town_id, db_slugs),
-        )
-        newest = cur.fetchone()[0]
-    if newest is None:
-        return (
-            f"none of the homepage's {len(slugs) + len(weekly_db_slugs)} story/weekly "
-            f"links matched a real DB row for this town"
-        ), False
-
     now = reference_now if reference_now is not None else datetime.now(timezone.utc)
-    if is_stale(newest, freshness_days, now):
-        return (
-            f"newest story linked from the homepage was published {newest}, "
-            f"older than the {freshness_days}-day freshness window"
-        ), False
-    return None
+    err = evaluate_built_at(r.text, max_hours, now)
+    return (err, False) if err else None
 
 
 def check_signature_section(town_id: str, site_url: str) -> str | None:
@@ -353,8 +249,8 @@ def check_signature_section(town_id: str, site_url: str) -> str | None:
 # stayed stale for 20+ minutes after a build+deploy that GitHub's own API
 # confirmed succeeded -- root cause was Cloudflare Workers Static Assets'
 # own edge cache, which has no automatic per-deploy invalidation. Neither
-# existing check above would have caught it: check_homepage_freshness only
-# cares whether a story is RECENT, not whether the exact bytes being
+# existing check above would have caught it: the build-time check only
+# cares whether the page was built recently, not whether the exact bytes being
 # served match this deploy, and check_signature_section never looks at
 # /closures/ (or any page outside each town's one fixed path) at all. This
 # check is the direct test instead: does the live homepage actually carry
@@ -397,7 +293,7 @@ def check_build_sha(town_id: str, site_url: str, expected_sha: str) -> str | Non
 # a few seconds to low tens of seconds behind a fresh deploy) and a fresh
 # Neon connection (this exact project has hit a transient "fetch failed"
 # from Neon's serverless driver before, see the astro build retries this
-# same day, and get_conn() here is the identical driver). Neither is a real
+# same day; the DB is no longer used here). Neither is a real
 # content/deploy problem -- a single failed attempt right after `wrangler
 # deploy` finishes is expected often enough that this used to fail the job
 # on it. Retrying for a few minutes before giving up tells apart "still
@@ -409,49 +305,55 @@ RETRY_INTERVAL_SECONDS = 20
 
 
 def _run_checks_once(
-    town_id: str, site_url: str, freshness_days: int, expected_sha: str | None = None,
+    town_id: str, site_url: str, max_hours: float, expected_sha: str | None = None,
 ) -> tuple[list[str], bool]:
-    """One attempt at all checks, each against a FRESH DB connection (not
-    reused across retries -- a connection that failed once is exactly the
-    kind of thing a retry shouldn't trust again). Returns (failures,
-    retryable): failures is the list of failure strings (empty on
-    success); retryable is False as soon as any failure is a genuine
-    content problem rather than a transient fetch/DB blip (currently only
-    check_homepage_freshness can report that -- see its own (message,
-    is_transient) return shape), so run_with_retry stops immediately
-    instead of burning its retry window on something that will look
-    identical five minutes from now. check_build_sha's own failures never
-    set retryable=False -- a build-sha mismatch right after a purge is
-    exactly the "still propagating" case this retry loop exists for,
-    same treatment as check_signature_section's failures."""
-    failures: list[str] = []
-    retryable = True
-    try:
-        with get_conn() as conn:
-            fresh_err = check_homepage_freshness(conn, town_id, site_url, freshness_days)
-            if fresh_err:
-                message, transient = fresh_err
-                failures.append(f"homepage freshness: {message}")
-                if not transient:
-                    retryable = False
-            else:
-                print(f"  [{town_id}] homepage freshness: ok")
+    """One attempt at all checks. Returns (failures, retryable): failures
+    is the list of failure strings (empty on success).
 
-            sig_err = check_signature_section(town_id, site_url)
-            if sig_err:
-                failures.append(f"signature section: {sig_err}")
-            else:
-                print(f"  [{town_id}] signature section: ok")
+    retryable follows the build-sha (owner 2026-11-06). A sha that does NOT
+    match (or cannot be read) means the edge may still be serving the old
+    deploy (cache / propagation), which is exactly what waiting fixes, so
+    the attempt is retryable. Once the live sha matches this deploy the
+    edge is serving our bytes, and a missing/old build time or an empty
+    signature section will look identical 5 minutes from now: not
+    retryable. A fetch blip (network error, non-200, an exception) stays
+    retryable. Without an expected sha (manual run) only a settled build-
+    time failure is non-retryable, as before."""
+    failures: list[str] = []
+    permanent = False
+    sig_failed = False
+    sha_matches: bool | None = None
+    try:
+        built_err = check_homepage_built_at(town_id, site_url, max_hours)
+        if built_err:
+            message, is_transient = built_err
+            failures.append(f"homepage build time: {message}")
+            permanent |= not is_transient
+        else:
+            print(f"  [{town_id}] homepage build time: ok")
+
+        sig_err = check_signature_section(town_id, site_url)
+        if sig_err:
+            failures.append(f"signature section: {sig_err}")
+            sig_failed = True
+        else:
+            print(f"  [{town_id}] signature section: ok")
 
         if expected_sha:
             sha_err = check_build_sha(town_id, site_url, expected_sha)
+            sha_matches = sha_err is None
             if sha_err:
                 failures.append(f"build-sha: {sha_err}")
             else:
                 print(f"  [{town_id}] build-sha: ok (matches {expected_sha})")
-    except Exception as exc:  # noqa: BLE001 -- a DB/network exception counts as a failed attempt, not a crash
+    except Exception as exc:  # noqa: BLE001 -- a network exception counts as a failed attempt, not a crash
         failures.append(f"attempt raised {type(exc).__name__}: {exc}")
-    return failures, retryable
+        return failures, True
+    if sha_matches is False:
+        return failures, True
+    if sha_matches:
+        permanent |= sig_failed
+    return failures, not permanent
 
 
 def run_with_retry(
@@ -471,8 +373,7 @@ def run_with_retry(
     retryable distinguishes a transient fetch/Neon blip (worth waiting out
     -- see this module's own RETRY_TIMEOUT_SECONDS comment for the original
     propagation-delay case this loop exists for) from a genuine content
-    problem such as homepage freshness (see check_homepage_freshness's
-    (message, is_transient) return shape): content that's stale right now
+    problem such as a stale build time (see _run_checks_once's retryable rule): content that's stale right now
     will still be exactly as stale 20 seconds, or 5 minutes, from now, so
     retrying it only burns CI time without ever changing the outcome --
     added 2026-10-13 after the Broomfield freshness outage spent its full
@@ -518,7 +419,7 @@ def main() -> int:
     if not site_url:
         print(f"no known site URL for town_id={town_id!r} -- add it to SITE_URLS", file=sys.stderr)
         return 1
-    freshness_days = cfg.get("freshness_check_days", DEFAULT_FRESHNESS_DAYS)
+    max_hours = cfg.get("freshness_check_hours", DEFAULT_BUILT_AT_MAX_HOURS)
     # Same real env var BaseLayout.astro reads at build time (see that
     # file's own comment) -- GitHub Actions already sets this in every
     # job, no workflow change needed. None on a manual/local run, which
@@ -527,7 +428,7 @@ def main() -> int:
     expected_sha = os.environ.get("GITHUB_SHA")
 
     failures = run_with_retry(
-        lambda: _run_checks_once(town_id, site_url, freshness_days, expected_sha), town_id,
+        lambda: _run_checks_once(town_id, site_url, max_hours, expected_sha), town_id,
     )
     if failures:
         for f in failures:

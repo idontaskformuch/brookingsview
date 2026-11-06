@@ -9,7 +9,7 @@ broken fetch can never turn into a mass ping. Only URLs listed in the sitemap ar
 are filtered out of the sitemap) are never submitted. Nothing here can fail a deploy: the shell wrapper ignores the exit code.
 
 The hash covers the visible HTML only: <script>, <style>, comments and whitespace are stripped, so a new build id or
-hashed asset name or the build-sha meta alone does not count as a change.
+hashed asset name or the build-sha / data-built-at metas alone do not count as a change.
 
 Usage (from the repo root; wrangler_deploy_retry.sh does this):
     python -m scripts.indexnow prepare --env glasgow [--dist site/dist]
@@ -46,7 +46,7 @@ SITES = {
     "glasgow": "https://glasgowloop.co.uk",
 }
 
-_STRIP = [re.compile(p, re.I | re.S) for p in (r"<script\b.*?</script>", r"<style\b.*?</style>", r"<!--.*?-->", r"<meta name=\"build-sha\"[^>]*>")]
+_STRIP = [re.compile(p, re.I | re.S) for p in (r"<script\b.*?</script>", r"<style\b.*?</style>", r"<!--.*?-->", r"<meta name=\"build-sha\"[^>]*>", r"<meta name=\"data-built-at\"[^>]*>")]
 
 
 def content_hash(html: str) -> str:

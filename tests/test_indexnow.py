@@ -91,3 +91,9 @@ def test_hash_ignores_build_sha_meta():
     a = '<head><meta name="build-sha" content="abc"></head><p>x</p>'
     b = '<head><meta name="build-sha" content="def"></head><p>x</p>'
     assert ix.content_hash(a) == ix.content_hash(b)
+
+
+def test_hash_ignores_the_data_built_at_meta():
+    a = '<head><meta name="data-built-at" content="2026-11-06T10:00:00Z"></head><p>x</p>'
+    b = '<head><meta name="data-built-at" content="2026-11-06T22:00:00Z"></head><p>x</p>'
+    assert ix.content_hash(a) == ix.content_hash(b)

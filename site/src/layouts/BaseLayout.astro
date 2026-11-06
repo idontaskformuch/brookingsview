@@ -95,6 +95,9 @@ const ogImage = new URL(`/og/${ogSlug ?? 'default'}.png`, Astro.site ?? siteConf
 // to prove the edge is actually serving THIS deploy and not a stale one
 // Cloudflare's Workers Static Assets cache never invalidated.
 const buildSha = import.meta.env.GITHUB_SHA ?? 'local';
+// ISO time of this build: scripts/check_deployed_content.py requires it to be recent. It exists on every page of every town,
+// whatever content they have (no dependence on story links or events).
+const builtAt = new Date().toISOString();
 if (siteConfig.country === 'gb' && siteConfig.ga4MeasurementId) {
   throw new Error(`${siteConfig.townId}: a UK town cannot set ga4MeasurementId yet -- GA4 must not load before opt-in consent (PECR), and the opt-in-first banner is not built. `);
 }
@@ -145,6 +148,7 @@ const footerGroups = FOOTER_GROUPS
 <title>{title}</title>
 <meta name="description" content={description} />
 <meta name="build-sha" content={buildSha} />
+<meta name="data-built-at" content={builtAt} />
 {/* max-image-preview:large -- Google Discover/News eligibility signal (see
     NEEDS-HUMAN-REVIEW.md "Image pipeline overhaul": confirmed absent from
     every page before this, direct source check, not an external re-fetch).

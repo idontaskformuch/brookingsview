@@ -1,8 +1,5 @@
-"""Tests for scripts/check_deployed_content.py's pure logic -- the
-network/DB-touching orchestration (check_homepage_freshness,
-check_signature_section) isn't unit tested directly, same convention as
-the rest of this codebase (test the extracted pure function, not the I/O
-wrapper around it).
+"""Tests for scripts/check_deployed_content.py: the pure logic, plus the build-time check and the
+retry decision with requests.get faked (no network, no DB).
 """
 from datetime import datetime, timedelta, timezone
 
@@ -13,52 +10,13 @@ from scripts.check_deployed_content import (
     SITE_URLS,
     _request_headers,
     _user_agent,
-    check_homepage_freshness,
+    _run_checks_once,
+    check_homepage_built_at,
+    evaluate_built_at,
     extract_build_sha,
-    extract_story_slugs,
-    extract_weekly_slugs,
-    is_stale,
-    resolve_homepage_slugs_to_db_slugs,
+    extract_built_at,
     run_with_retry,
 )
-
-
-def test_extract_story_slugs_finds_all_distinct_links():
-    html = '<a href="/s/meeting-2026-08-04/">x</a><a href="/s/recipe-2026-08-27/">y</a>'
-    assert extract_story_slugs(html) == ["meeting-2026-08-04", "recipe-2026-08-27"]
-
-
-def test_extract_story_slugs_dedupes():
-    html = '<a href="/s/foo/">a</a><a href="/s/foo/">b again</a>'
-    assert extract_story_slugs(html) == ["foo"]
-
-
-def test_extract_story_slugs_ignores_non_story_links():
-    html = '<a href="/university/">x</a><a href="/this-week/2026-w35/">y</a>'
-    assert extract_story_slugs(html) == []
-
-
-def test_extract_story_slugs_empty_page():
-    assert extract_story_slugs("<html><body>nothing here</body></html>") == []
-
-
-def test_extract_weekly_slugs_maps_to_the_backing_db_slug():
-    html = '<a href="/this-week/2026-w42/">This week</a>'
-    assert extract_weekly_slugs(html) == ["weekly-2026-w42"]
-
-
-def test_extract_weekly_slugs_dedupes_and_sorts():
-    html = (
-        '<a href="/this-week/2026-w42/">a</a>'
-        '<a href="/this-week/2026-w41/">b</a>'
-        '<a href="/this-week/2026-w42/">c again</a>'
-    )
-    assert extract_weekly_slugs(html) == ["weekly-2026-w41", "weekly-2026-w42"]
-
-
-def test_extract_weekly_slugs_ignores_story_links():
-    html = '<a href="/s/meeting-2026-10-02/">x</a>'
-    assert extract_weekly_slugs(html) == []
 
 
 def test_extract_build_sha_finds_the_meta_tag():
@@ -78,168 +36,121 @@ def test_extract_build_sha_none_for_the_local_dev_fallback_value():
     assert extract_build_sha(html) is None
 
 
-def test_resolve_homepage_slugs_to_db_slugs_maps_all_four_renamed_prefixes():
-    # Bug fix 2026-10-02: these four public prefixes (site/src/lib/content-
-    # slugs.ts's OLD_PREFIX_TO_PUBLIC) diverge from the DB's own slug column
-    # since 8a0a938 -- a direct `slug = ANY(homepage_slugs)` match against
-    # stories.slug can never match any of them, however fresh.
-    assert resolve_homepage_slugs_to_db_slugs(["recipe-2026-08-27"]) == ["vardagsmiddag-2026-08-27"]
-    assert resolve_homepage_slugs_to_db_slugs(["science-column-2026-09-01"]) == ["vetenskap_kronika-2026-09-01"]
-    assert resolve_homepage_slugs_to_db_slugs(["quick-essay-2026-09-15"]) == ["kvick_essa-2026-09-15"]
-    assert resolve_homepage_slugs_to_db_slugs(["review-2026-09-30"]) == ["media_recension-2026-09-30"]
+NOW = datetime(2026, 11, 6, 14, 0, tzinfo=timezone.utc)
 
 
-def test_resolve_homepage_slugs_to_db_slugs_passes_through_unrenamed_types():
-    # meeting/event/editorial/weekly/... slugs already match their DB column
-    # directly -- must stay byte-for-byte unchanged, not just "unbroken".
-    slugs = ["meeting-2026-10-14-11337", "event-9981", "editorial-2026-09-08", "weekly-2026-w40"]
-    assert resolve_homepage_slugs_to_db_slugs(slugs) == slugs
-
-
-def test_resolve_homepage_slugs_to_db_slugs_does_not_mis_split_hyphenated_public_prefixes():
-    # "science-column" and "quick-essay" each contain their own internal
-    # hyphen -- a naive split on the first "-" would wrongly cut
-    # "science-column-2026-10-02" into "science" / "column-2026-10-02".
-    # Confirms the regex matches the LONGEST known prefix, not the first
-    # hyphen-delimited token.
-    result = resolve_homepage_slugs_to_db_slugs(["science-column-2026-10-02", "quick-essay-2026-10-02"])
-    assert result == ["vetenskap_kronika-2026-10-02", "kvick_essa-2026-10-02"]
-
-
-def test_is_stale_none_counts_as_stale():
-    now = datetime(2026, 8, 28, tzinfo=timezone.utc)
-    assert is_stale(None, 2, now) is True
-
-
-def test_is_stale_within_window_is_fresh():
-    now = datetime(2026, 8, 28, tzinfo=timezone.utc)
-    published = now - timedelta(days=1)
-    assert is_stale(published, 2, now) is False
-
-
-def test_is_stale_exactly_on_boundary_is_still_fresh():
-    # strict "<" in is_stale -- exactly `freshness_days` old still counts
-    # as fresh, only OLDER than the window is stale.
-    now = datetime(2026, 8, 28, tzinfo=timezone.utc)
-    published = now - timedelta(days=2)
-    assert is_stale(published, 2, now) is False
-
-
-def test_is_stale_older_than_window_is_stale():
-    now = datetime(2026, 8, 28, tzinfo=timezone.utc)
-    published = now - timedelta(days=10)
-    assert is_stale(published, 2, now) is True
-
-
-# 2026-10-13: Broomfield freshness outage follow-up. check_homepage_
-# freshness() now has to query the DB for /this-week/ links too (not just
-# /s/ ones), which test_is_stale_* above can't exercise since they call the
-# pure is_stale() helper directly -- these use a minimal fake psycopg
-# connection/cursor instead of a real DB, and monkeypatch requests.get
-# instead of hitting a real site, same "test the pure/injectable seam, not
-# real I/O" convention the rest of this file already follows.
 class _FakeResponse:
-    def __init__(self, status_code: int, text: str):
+    def __init__(self, status_code: int, text: str, headers=None):
         self.status_code = status_code
         self.text = text
+        self.headers = headers or {}
 
 
-class _FakeCursor:
-    def __init__(self, result):
-        self._result = result
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc_info):
-        return False
-
-    def execute(self, *args, **kwargs):
-        pass
-
-    def fetchone(self):
-        return (self._result,)
+def _page(built_at: str | None = "2026-11-06T13:55:00.000Z", sha: str | None = "6573dcc1") -> str:
+    """A homepage with NO /s/ or /this-week/ links and no events -- what every town serves since the AI text was removed."""
+    head = ""
+    if sha:
+        head += f'<meta name="build-sha" content="{sha}">'
+    if built_at:
+        head += f'<meta name="data-built-at" content="{built_at}">'
+    return f"<html><head>{head}</head><body><h1>Broomfield View</h1><p>Nothing local this week.</p></body></html>"
 
 
-class _FakeConn:
-    """`result` is whatever max(published_at) should come back as."""
-    def __init__(self, result):
-        self._result = result
-
-    def cursor(self):
-        return _FakeCursor(self._result)
+def test_extract_built_at_reads_the_meta_tag():
+    assert extract_built_at(_page("2026-11-06T13:55:00.000Z")) == datetime(2026, 11, 6, 13, 55, tzinfo=timezone.utc)
 
 
-def test_check_homepage_freshness_accepts_a_fresh_weekly_link(monkeypatch):
-    now = datetime(2026, 10, 13, tzinfo=timezone.utc)
-    published = now - timedelta(days=1)
-    html = '<a href="/this-week/2026-w42/">This week in Broomfield</a>'
-    monkeypatch.setattr(
-        check_deployed_content.requests, "get",
-        lambda *args, **kwargs: _FakeResponse(200, html),
-    )
-    conn = _FakeConn(published)
-    result = check_homepage_freshness(
-        conn, "broomfield_co", "https://broomfieldview.com", 8, reference_now=now,
-    )
-    assert result is None
+def test_extract_built_at_none_when_missing_or_malformed():
+    assert extract_built_at(_page(None)) is None
+    assert extract_built_at(_page("yesterday")) is None
 
 
-def test_check_homepage_freshness_treats_zero_links_as_transient(monkeypatch):
-    # A homepage with NO /s/ or /this-week/ links at all is indistinguishable
-    # from mid-deploy propagation lag -- must stay retryable (is_transient
-    # True), unlike the two genuine-content-problem cases below.
-    now = datetime(2026, 10, 13, tzinfo=timezone.utc)
-    monkeypatch.setattr(
-        check_deployed_content.requests, "get",
-        lambda *args, **kwargs: _FakeResponse(200, "<html><body>nothing here</body></html>"),
-    )
-    conn = _FakeConn(None)  # never reached -- no links means no DB query
-    result = check_homepage_freshness(
-        conn, "broomfield_co", "https://broomfieldview.com", 8, reference_now=now,
-    )
-    assert result is not None
-    message, transient = result
-    assert "no /s/<slug>/ or /this-week/<week>/ links at all" in message
-    assert transient is True
+def test_a_homepage_without_story_links_passes_when_built_recently():
+    # Regression 2026-11-06: Broomfield deploy 14:04 UTC failed "homepage has no /s/<slug>/ or /this-week/<week>/ links at all"
+    # 16 times on a healthy deploy. The signal must not depend on /s/, /this-week/ or events.
+    html = _page("2026-11-06T13:55:00.000Z")
+    assert "/s/" not in html and "/this-week/" not in html
+    assert evaluate_built_at(html, 14, NOW) is None
 
 
-def test_check_homepage_freshness_treats_unmatched_links_as_non_transient(monkeypatch):
-    # Links are present but match no real DB row (e.g. the 2026-10-02
-    # slug-prefix bug this script already guards against) -- a genuine
-    # content/code problem, not something a retry can fix.
-    now = datetime(2026, 10, 13, tzinfo=timezone.utc)
-    html = '<a href="/this-week/2026-w42/">This week</a>'
-    monkeypatch.setattr(
-        check_deployed_content.requests, "get",
-        lambda *args, **kwargs: _FakeResponse(200, html),
-    )
-    conn = _FakeConn(None)  # max(published_at) finds nothing
-    result = check_homepage_freshness(
-        conn, "broomfield_co", "https://broomfieldview.com", 8, reference_now=now,
-    )
-    assert result is not None
-    message, transient = result
-    assert "matched a real DB row" in message
-    assert transient is False
+def test_build_time_older_than_the_window_fails():
+    err = evaluate_built_at(_page("2026-11-05T20:00:00Z"), 14, NOW)
+    assert err is not None and "older than the 14-hour window" in err
 
 
-def test_check_homepage_freshness_rejects_a_weekly_link_older_than_the_window(monkeypatch):
-    now = datetime(2026, 10, 13, tzinfo=timezone.utc)
-    published = now - timedelta(days=11)
-    html = '<a href="/this-week/2026-w40/">This week in Broomfield</a>'
-    monkeypatch.setattr(
-        check_deployed_content.requests, "get",
-        lambda *args, **kwargs: _FakeResponse(200, html),
-    )
-    conn = _FakeConn(published)
-    result = check_homepage_freshness(
-        conn, "broomfield_co", "https://broomfieldview.com", 8, reference_now=now,
-    )
-    assert result is not None
-    message, transient = result
-    assert "older than the 8-day freshness window" in message
-    assert transient is False
+def test_build_time_exactly_on_the_boundary_is_fine():
+    assert evaluate_built_at(_page("2026-11-06T00:00:00Z"), 14, NOW) is None
+
+
+def test_missing_build_time_fails():
+    assert "no valid" in evaluate_built_at(_page(None), 14, NOW)
+
+
+def test_build_time_in_the_future_fails():
+    assert "in the future" in evaluate_built_at(_page("2026-11-06T16:00:00Z"), 14, NOW)
+
+
+def test_check_homepage_built_at_marks_fetch_problems_transient(monkeypatch):
+    monkeypatch.setattr(check_deployed_content.requests, "get", lambda *a, **k: _FakeResponse(503, ""))
+    message, transient = check_homepage_built_at("broomfield_co", "https://broomfieldview.com", 14, NOW)
+    assert "503" in message and transient is True
+
+
+def test_check_homepage_built_at_marks_a_stale_page_settled(monkeypatch):
+    monkeypatch.setattr(check_deployed_content.requests, "get", lambda *a, **k: _FakeResponse(200, _page("2026-11-01T00:00:00Z")))
+    message, transient = check_homepage_built_at("broomfield_co", "https://broomfieldview.com", 14, NOW)
+    assert "older than" in message and transient is False
+
+
+def _fake_site(monkeypatch, *, home: str, signature: str = "<p>real content</p>", status: int = 200):
+    def get(url, *a, **k):
+        if url.endswith("/vail-resorts/") or url.endswith("/university/") or url.endswith("/workplace-watch/"):
+            return _FakeResponse(200, signature)
+        return _FakeResponse(status, home)
+    monkeypatch.setattr(check_deployed_content.requests, "get", get)
+    # the check compares against the real clock; freeze it by making the page fresh relative to now
+    return get
+
+
+def _fresh_page(sha="6573dcc1"):
+    return _page(datetime.now(timezone.utc).isoformat(), sha)
+
+
+def test_run_checks_once_passes_on_a_linkless_homepage_with_matching_sha(monkeypatch):
+    _fake_site(monkeypatch, home=_fresh_page())
+    assert _run_checks_once("broomfield_co", "https://broomfieldview.com", 14, "6573dcc1") == ([], True)
+
+
+def test_matching_sha_with_a_stale_build_time_is_not_retried(monkeypatch):
+    _fake_site(monkeypatch, home=_page("2026-11-01T00:00:00Z", "6573dcc1"))
+    failures, retryable = _run_checks_once("broomfield_co", "https://broomfieldview.com", 14, "6573dcc1")
+    assert failures and retryable is False
+
+
+def test_matching_sha_with_an_empty_signature_section_is_not_retried(monkeypatch):
+    empty = SIGNATURE_SECTIONS["broomfield_co"]["empty_state_text"]
+    _fake_site(monkeypatch, home=_fresh_page(), signature=empty)
+    failures, retryable = _run_checks_once("broomfield_co", "https://broomfieldview.com", 14, "6573dcc1")
+    assert failures and retryable is False
+
+
+def test_mismatching_sha_is_retried_even_when_the_build_time_is_stale(monkeypatch):
+    # edge still serving the previous deploy: old sha AND old build time -- wait for propagation
+    _fake_site(monkeypatch, home=_page("2026-11-01T00:00:00Z", "oldsha00"))
+    failures, retryable = _run_checks_once("broomfield_co", "https://broomfieldview.com", 14, "6573dcc1")
+    assert failures and retryable is True
+
+
+def test_a_503_on_the_homepage_is_retried(monkeypatch):
+    _fake_site(monkeypatch, home="", status=503)
+    failures, retryable = _run_checks_once("broomfield_co", "https://broomfieldview.com", 14, "6573dcc1")
+    assert failures and retryable is True
+
+
+def test_without_an_expected_sha_a_stale_build_time_is_still_final(monkeypatch):
+    _fake_site(monkeypatch, home=_page("2026-11-01T00:00:00Z", None))
+    failures, retryable = _run_checks_once("broomfield_co", "https://broomfieldview.com", 14, None)
+    assert failures and retryable is False
 
 
 def test_all_three_towns_have_a_site_url_and_signature_section():
