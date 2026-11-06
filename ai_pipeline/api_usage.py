@@ -111,7 +111,7 @@ def set_default_context(generator: str | None = None, town_id: str | None = None
 
 
 def _warn(msg: str) -> None:
-    print(f"  [api_usage] {msg}", file=sys.stderr)
+    print(f"  [api_usage] WARNING {msg}", file=sys.stderr)
 
 
 def log_usage(provider: str, *, model: str | None = None,
@@ -153,7 +153,7 @@ def log_usage(provider: str, *, model: str | None = None,
             row = cur.fetchone()
         usage_id = row[0] if row else None
     except Exception as exc:  # noqa: BLE001 -- see docstring, logging must never be fatal
-        _warn(f"failed to log usage ({provider}/{model}): {exc}")
+        _warn(f"failed to log usage ({provider}/{model}, generator={g}, town={t}): {type(exc).__name__}: {exc}")
         usage_id = None
     _set_last_usage_id(usage_id)
     return usage_id
@@ -183,7 +183,7 @@ def finalize_outcome(usage_id: int | None, outcome: str, reject_reason: str | li
             else:
                 cur.execute("UPDATE api_usage SET outcome = %s WHERE id = %s", (outcome, usage_id))
     except Exception as exc:  # noqa: BLE001
-        _warn(f"failed to finalize outcome for usage row {usage_id}: {exc}")
+        _warn(f"failed to finalize outcome for usage row {usage_id}: {type(exc).__name__}: {exc}")
 
 
 def finalize_generation(usage_ids: list[int], succeeded: bool, fallback_outcome: str = "template_fallback",

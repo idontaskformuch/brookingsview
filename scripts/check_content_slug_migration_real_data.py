@@ -1,3 +1,6 @@
+# MANUAL, READ-ONLY check against the LIVE database. Moved out of tests/ 2026-11-06 (owner): pytest in tests/ never gets a database URL
+# (tests/conftest.py). Run by hand:  .venv/Scripts/python.exe -m pytest scripts/check_content_slug_migration_real_data.py
+# It only SELECTs. A write here would need CLAUDE.md rule 14 like any other live-DB write.
 """Verifies the 2026-10-01 slug migration (item 4) against the REAL,
 live `stories` table -- not a fixture -- for the four content types that
 used to publish under a Swedish-word slug prefix (vardagsmiddag,
