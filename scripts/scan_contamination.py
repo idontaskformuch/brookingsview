@@ -222,7 +222,7 @@ def main() -> int:
             print(f"  {len(flagged)} flagged")
 
     report = render_report(all_flagged)
-    with open("CONTAMINATION_REPORT.md", "w", encoding="utf-8") as f:
+    with open(".claude/CONTAMINATION_REPORT.md", "w", encoding="utf-8") as f:
         f.write(report)
     print("\nWrote CONTAMINATION_REPORT.md")
     return 0

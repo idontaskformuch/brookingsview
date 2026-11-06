@@ -57,5 +57,8 @@ qa/out/
 site/indexnow-pending.json
 
 # Traffic exports (Search Console, GA4) are not committed
-.claude/gsc/
-.claude/ga4/
+
+# .claude/ is a separate PRIVATE git repo (own .git inside it): state, specs,
+# reports, review screenshots. Only the design standard is public.
+.claude/*
+!.claude/standards.md

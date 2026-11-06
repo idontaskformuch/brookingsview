@@ -134,7 +134,7 @@ def main() -> int:
                 flag = " <- DOMINANT" if s["dominant"] else ""
                 print(f"  {s['name']:<24} {s['count']:>5}  {s['share']:.0%}{flag}")
 
-    Path("EVENT_SOURCE_SHARE_REPORT.md").write_text(render_report(reports), encoding="utf-8")
+    Path(".claude/EVENT_SOURCE_SHARE_REPORT.md").write_text(render_report(reports), encoding="utf-8")
     print("\nWrote EVENT_SOURCE_SHARE_REPORT.md")
     return 0
 

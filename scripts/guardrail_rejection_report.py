@@ -132,7 +132,7 @@ def main() -> int:
         rows = fetch_rejections(conn, args.generator, args.days)
 
     report = render_report(rows, args.generator, args.days)
-    Path("GUARDRAIL_REJECTION_REPORT.md").write_text(report, encoding="utf-8")
+    Path(".claude/GUARDRAIL_REJECTION_REPORT.md").write_text(report, encoding="utf-8")
     print(report)
     print("\nWrote GUARDRAIL_REJECTION_REPORT.md")
     return 0
