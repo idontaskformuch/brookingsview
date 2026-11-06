@@ -42,7 +42,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 const pageMeta = resolvePageMeta('city-hall', siteConfig);
 const clusterNavItems = resolveHubNavItems('city-hall', siteConfig);
 
-const ledeText = `What ${siteConfig.cityName}'s ${forCountry(siteConfig.country, 'city council, county commission and committees', 'council and committees')} are deciding — ${forCountry(siteConfig.country, 'summarized', 'summarised')} from the published agendas, in plain language, without taking sides. Every summary is checked against its own agenda before publishing, and links back to the original document.`;
+const ledeText = `What ${siteConfig.cityName}'s ${forCountry(siteConfig.country, 'city council, county commission and committees', 'council and committees')} are deciding — the agenda items exactly as the published agendas give them, without taking sides, each linked to the original document.`;
 const todayYmd = data?.todayYmd ?? '';
 const upcomingMeetings = data?.meetings ?? [];
 const followOrgans = meetingsTown ? followableOrgans(upcomingMeetings, meetingsTown) : [];
