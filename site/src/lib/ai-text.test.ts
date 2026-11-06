@@ -88,3 +88,15 @@ describe('layouts never link an empty /s/ page', () => {
     expect(offenders.map((o) => o.rel)).toEqual([]);
   });
 });
+
+// Regression guard (owner 2026-11-06): the model-written text in the site's own tables (not stories) is not read at all.
+// No source file may query these tables/columns or print their values; the generators in ai_pipeline/ may keep writing.
+const AI_TABLES_AND_FIELDS = /\b(event_deck_digest|closure_watch_prose|whats_on_intro|free_teaser|getEventDeckDigests|getClosureWatchProse|getWhatsOnIntro|u\.synthesis|\.synthesis)\b/;
+describe('the site never reads the model-written tables', () => {
+  const offenders = walk(SRC)
+    .map((f) => ({ rel: relative(SRC, f).split(sep).join('/'), text: readFileSync(f, 'utf8') }))
+    .filter(({ text }) => text.split('\n').some((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*') && AI_TABLES_AND_FIELDS.test(l)));
+  it('no event_deck_digest / closure_watch_prose / whats_on_intro / free_teaser / project synthesis in src', () => {
+    expect(offenders.map((o) => o.rel)).toEqual([]);
+  });
+});

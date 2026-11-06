@@ -77,7 +77,7 @@ produced it. Two layers fix this:
     considered() correctly skips it on every later run too.
 
 Run-level cadence (owner decision 2026-10-14, revised): the scheduling
-workflow calls this script every 6h same as everything else in that job
+workflow calls this script twice a day, same as everything else in that job
 -- main() itself no-ops immediately (before touching meetings/projects/AI
 at all) unless at least MIN_HOURS_BETWEEN_RUNS have passed since the last
 SUCCESSFUL (non-dry-run) run for this town, per project_updates_runs.

@@ -102,7 +102,7 @@ _CANDIDATE_TRAFFIC_SEVERITIES = {"closure", "planned"}
 # same reasoning as the meeting side: a same-day blip isn't an "ongoing
 # story" yet, however it's classified.
 MIN_TRAFFIC_CANDIDATE_AGE_DAYS = 3
-# The scrape cycle runs every 6 hours (see scrape.yml) -- a day of slack
+# The scrape cycle runs twice a day (cron-dispatcher) -- a day of slack
 # comfortably covers a missed run without treating a genuinely-resolved
 # incident (no longer appearing in any recent scrape) as still ongoing.
 _RECENTLY_SEEN_WINDOW = timedelta(days=1)

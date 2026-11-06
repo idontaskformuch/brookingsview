@@ -20,8 +20,8 @@
  *  (localParts() below), which resolves DST and offset correctly in a
  *  browser exactly the same way it does in Node. The REAL problem with
  *  running this at build time is the opposite one: a static site rebuilt
- *  every 6h (scrape.yml) bakes in "now" at build time, so the badge can be
- *  stale for up to 6 hours after a place actually closes. facilities/
+ *  only when new data arrives bakes in "now" at build time, so the badge can be
+ *  stale for hours after a place actually closes. facilities/
  *  [slug].astro, facilities/index.astro and TodayBlock.astro now import
  *  this module from an inline client <script> instead (same pattern as
  *  components/ShareButton.astro) and call it with a freshly-made `now` on

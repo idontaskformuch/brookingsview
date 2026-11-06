@@ -9,17 +9,8 @@
  *  entirely in CSS (`object-fit: cover; object-position: top`) regardless
  *  of which resolveImage() tier actually supplied the image.
  *
- *  The deck sentence (marquee deck sentences follow-up) comes from
- *  ai_pipeline/event_deck_digest.py via lib/db.ts's getEventDeckDigests() --
- *  a real per-event generator, distinct from whats_on_intro.py's own shared
- *  WEEKLY paragraph (getWhatsOnIntro()), which this component never used.
- *  `deck` is the CALLER's lookup result, already resolved before this
- *  component renders (see index.astro/whats-on/index.astro's own batch
- *  fetch) -- absent (undefined) is the normal, common case (not yet
- *  generated, or the event's own record was too sparse to ground a
- *  sentence), and the line is simply omitted, never a placeholder.
+ *  No model-written deck line is shown (owner 2026-11-06): venue, date and Ticketmaster's own title only.
  *
-
  *  Image presence is the CALLER's decision (see index.astro's own
  *  promotion loop, which only ever calls this with `variant="hero"` for an
  *  entry it already confirmed has a real resolveImage() result) -- this
@@ -56,14 +47,9 @@ interface Props {
   priority?: boolean;
   runSize?: number;
   lastOccursAt?: string | null;
-  /** Marquee deck sentences follow-up -- see this file's own module
-   *  comment. Rendered on the hero variant only (the spec's "also on" rows
-   *  never show a deck); undefined/omitted renders nothing, same as
-   *  before this existed. */
-  deck?: string;
 }
 const {
-  item, image, cityName, timezone, variant = 'hero', priority = false, runSize = 1, lastOccursAt = null, deck,
+  item, image, cityName, timezone, variant = 'hero', priority = false, runSize = 1, lastOccursAt = null,
 } = Astro.props;
 const e = item.ticketmasterEvent;
 const href = `/whats-on/${ticketmasterSlug(e)}/`;
@@ -96,7 +82,6 @@ const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
       {dateLabel && <time class="marquee-card__when data" datetime={item.occurs_at ?? undefined}>{dateLabel}</time>}
     </p>
     <h3 class="marquee-card__title"><a href={href}>{e.title}</a></h3>
-    {variant === 'hero' && deck && <p class="marquee-card__deck">{deck}</p>}
     {distance && (
       <p class="marquee-card__distance">
         <svg class="marquee-card__distance-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
@@ -153,10 +138,6 @@ const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
 .marquee-card__title { margin: 0; font-family: var(--font-head); }
 .marquee-card__title a { color: var(--ink); text-decoration: none; }
 .marquee-card__title a:hover { text-decoration: underline; }
-.marquee-card__deck {
-  margin: 0.5rem 0 0; font-family: var(--font-head);
-  font-size: 1.0625rem; line-height: 1.55; color: var(--ink-soft);
-}
 .marquee-card__distance {
   display: flex; align-items: center; gap: 0.3rem;
   margin: 0.375rem 0 0; font-size: 0.8125rem; color: var(--ink-soft);

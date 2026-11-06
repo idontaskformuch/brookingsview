@@ -17,8 +17,8 @@
  *  `data-build-date`; a tiny inline script compares it against the
  *  VIEWER's current date in the same timezone and swaps line 1 to
  *  "Last updated <date>" if they differ. No JS -> the build date shows
- *  as-is, which is correct almost all the time (this site rebuilds every
- *  6 hours) and never actively wrong, just occasionally a few hours
+ *  as-is, which is correct almost all the time (this site is rebuilt when new
+ *  data arrives) and never actively wrong, just occasionally a few hours
  *  behind with no visible flag -- the script only IMPROVES on that
  *  baseline, so its absence never hides content or makes anything false. */
 import { orientationDateLabel, orientationDateIso } from '../lib/orientation-header';

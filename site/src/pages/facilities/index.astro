@@ -71,8 +71,8 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
     <>
       <SectionRule label={FACILITY_CATEGORY_LABELS[cat] ?? cat} />
       {/* Open/Closed badge client-side move (2026-10-15): no more
-          computeOpenStatus() call here -- a static hub page rebuilt every
-          6h (scrape.yml) baking "now" in at build time is exactly the
+          computeOpenStatus() call here -- a static hub page rebuilt only when new data arrives
+          (not on a fixed cycle) baking "now" in at build time is exactly the
           staleness bug facilities/[slug].astro's own script comment
           describes. data-tz on the <ul> (once per category list, not
           per-item) + data-hours per <li> that actually has structured

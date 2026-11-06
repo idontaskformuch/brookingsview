@@ -205,13 +205,6 @@ export interface Story {
   // hand. Optional av samma skäl som venue_raw/is_recurring_series ovan --
   // bara frågor som faktiskt behöver den selectar den.
   featured?: boolean;
-  // Endast source_type='event' rader som ai_pipeline/free_teasers.py har
-  // klassat som gratis (samma venue-kategori + pris-språk-regel som
-  // isFreeEvent() nedan) -- en förgenererad, en gång per event, cachad
-  // rad (db/migrations/036_free_teasers.sql). NULL för allt annat
-  // innehåll OCH för ett gratis-event som ännu inte hunnit genereras.
-  // Optional av samma skäl som venue_raw ovan.
-  free_teaser?: string | null;
   // Image pool rotation (Addendum 2, db/migrations/043) -- the durable
   // category-pool slot ai_pipeline/assign_category_image_rotation.py
   // assigned this story, an ever-incrementing counter NOT modded against
@@ -371,7 +364,7 @@ export async function getUpcomingStories(
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at, category_image_index, free_teaser, meta
+           venue_raw, is_recurring_series, ends_at, category_image_index, meta
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
@@ -1461,30 +1454,16 @@ async function closureHistoryCount(alertEvent: string): Promise<number> {
   return rows[0]?.n ?? 0;
 }
 
-/** The optional AI-generated Watch-state paragraph for a specific alert --
- *  see ai_pipeline/closure_watch_digest.py. A missing row (no guardrail-
- *  passing draft exists yet, or one was tried and rejected) is the expected,
- *  common case, not an error -- closures.astro falls back to a fully static
- *  Watch template in that case, see that page's own hardcoded copy. */
-async function getClosureWatchProse(alertUrl: string): Promise<string | null> {
-  const rows = (await sql`
-    SELECT body FROM closure_watch_prose
-     WHERE town_id = ${TOWN_ID} AND alert_url = ${alertUrl}
-     LIMIT 1
-  `) as { body: string }[];
-  return rows[0]?.body ?? null;
-}
-
 /**
  * Closure Watch's full page-render data: the state (Confirmed/Watch/Clear,
- * see lib/closure-watch.ts) plus the optional AI prose for a Watch alert.
+ * see lib/closure-watch.ts). No model-written prose is read (owner 2026-11-06).
  * Callers must already be town-gated (siteConfig.hasClosureWatch), same
  * pattern as getRelatedContent's 'university'/'workplace_watch' cases --
  * this throws if siteConfig.closureWatch is missing rather than silently
  * defaulting, since that would mean the two config systems drifted (see
  * tests/test_feature_flags.py, which should have already caught that).
  */
-export async function getClosureWatchStatus(): Promise<ClosureWatchStatus & { prose: string | null }> {
+export async function getClosureWatchStatus(): Promise<ClosureWatchStatus> {
   const feat = siteConfig.closureWatch;
   if (!feat) throw new Error('getClosureWatchStatus() called but siteConfig.closureWatch is not set');
 
@@ -1499,55 +1478,7 @@ export async function getClosureWatchStatus(): Promise<ClosureWatchStatus & { pr
     : 0;
   const status = computeClosureWatchState(closures, alert, historicalCount, minRequired);
 
-  const prose = status.state === 'watch' && status.alert ? await getClosureWatchProse(status.alert.url ?? '') : null;
-  return { ...status, prose };
-}
-
-export interface WhatsOnIntroRow {
-  body: string;
-  isoYear: number;
-  isoWeek: number;
-}
-
-/** The optional AI-generated weekly intro block for /whats-on (What's On
- *  Phase 6b) -- see ai_pipeline/whats_on_intro.py. Fetches the MOST RECENT
- *  row regardless of week (not an exact iso_year/iso_week match) so the
- *  freshness comparison is a separate, pure, testable step -- see
- *  lib/whats-on.ts's own isWhatsOnIntroFresh(), which the page calls against
- *  this row's isoYear/isoWeek and lib/this-week.ts's currentWeekInfo(). A
- *  missing row (never generated, or the only guardrail-passing draft is for
- *  an old week that was since cleared -- see that module's own "delete
- *  before regenerating" discipline) is the expected, common case: the page
- *  simply renders with no intro block at all, same "absence is a normal
- *  state, not an error" convention as getClosureWatchProse() above. */
-export async function getWhatsOnIntro(): Promise<WhatsOnIntroRow | null> {
-  const rows = (await sql`
-    SELECT body, iso_year AS "isoYear", iso_week AS "isoWeek" FROM whats_on_intro
-     WHERE town_id = ${TOWN_ID}
-     ORDER BY iso_year DESC, iso_week DESC
-     LIMIT 1
-  `) as WhatsOnIntroRow[];
-  return rows[0] ?? null;
-}
-
-/** The optional AI-generated one-sentence "deck" for a marquee-tier
- *  Ticketmaster event (marquee deck sentences follow-up) -- see
- *  ai_pipeline/event_deck_digest.py. Keyed on Ticketmaster's own event id,
- *  NOT persisted alongside the event itself (Ticketmaster events still
- *  aren't stored anywhere -- see that script's own module docstring), so
- *  this is a batch lookup by id, called once per build with every
- *  marquee-tier item's id at once rather than per-card. A missing entry
- *  for a given id (never generated yet, too sparse to ground a sentence,
- *  or a guardrail rejection) is the expected, common case -- the caller
- *  simply omits the deck line for that card, same "absence is a normal
- *  state, not an error" convention as getWhatsOnIntro() above. */
-export async function getEventDeckDigests(ticketmasterEventIds: string[]): Promise<Map<string, string>> {
-  if (ticketmasterEventIds.length === 0) return new Map();
-  const rows = (await sql`
-    SELECT ticketmaster_event_id AS "ticketmasterEventId", body FROM event_deck_digest
-     WHERE town_id = ${TOWN_ID} AND ticketmaster_event_id = ANY(${ticketmasterEventIds})
-  `) as { ticketmasterEventId: string; body: string }[];
-  return new Map(rows.map((r) => [r.ticketmasterEventId, r.body]));
+  return status;
 }
 
 /** En rad ur local_businesses -- se db/migrations/031_local_businesses.sql
@@ -2212,13 +2143,6 @@ export interface Facility {
   // directly (never render an unverified image, text-only instead) rather
   // than relying solely on image_path staying NULL for that case.
   image_needs_review: boolean;
-  // Added by db/migrations/036_free_teasers.sql for the /events/free/
-  // "Always free" facilities section -- a short, one-time-generated
-  // paragraph (see ai_pipeline/free_teasers.py) framing this facility for
-  // a free-family-outing reader. Only ever populated for the free-venue
-  // categories that page cares about (library/park/community_center);
-  // NULL for every other facility, and NULL until generation has run.
-  free_teaser: string | null;
   // Added by db/migrations/038_facility_hours_structured.sql (Recurring-
   // traffic layer, Phase 2) -- backfilled from hours_text by
   // ai_pipeline/facility_hours.py's deterministic parser (see
@@ -2286,7 +2210,7 @@ export async function getFacilities(): Promise<Facility[]> {
            hours_text, description, source_url, verified_date,
            aliases, street_address, postal_code, lat, lon,
            image_path, image_alt, name_aliases,
-           image_attribution_text, image_attribution_url, image_needs_review, free_teaser,
+           image_attribution_text, image_attribution_url, image_needs_review,
            hours_structured, hours_needs_review,
            is_free, fee_note, accessibility_note, services, verification_method, hours_confidence,
            parking_note, visit_notes
@@ -2387,7 +2311,7 @@ export async function getFacilityBySlug(slug: string): Promise<Facility | null> 
            hours_text, description, source_url, verified_date,
            aliases, street_address, postal_code, lat, lon,
            image_path, image_alt, name_aliases,
-           image_attribution_text, image_attribution_url, image_needs_review, free_teaser,
+           image_attribution_text, image_attribution_url, image_needs_review,
            hours_structured, hours_needs_review,
            is_free, fee_note, accessibility_note, services, verification_method, hours_confidence,
            parking_note, visit_notes
@@ -3244,10 +3168,6 @@ export interface ProjectUpdate {
   vote_abstain: number | null;
   vote_absent: number | null;
   source_url: string | null;
-  // The short, source-grounded "what changed" line (Story Threads) --
-  // null for older meeting-sourced rows that predate it and were never
-  // backfilled. Callers should fall back to agenda_title when absent.
-  synthesis: string | null;
   // A human-verified REAL outcome the automated pipeline has no path to
   // (no Action Summary/Legistar history record exists for this row) --
   // see db/migrations/052_project_update_outcome_override.sql's own
@@ -3325,7 +3245,7 @@ export async function getProjectUpdates(slug: string): Promise<ProjectUpdate[]> 
   return (await sql`
     SELECT u.source_type, u.entry_date, u.body, u.meeting_date, u.agenda_counter,
            u.agenda_title, u.agenda_url, u.outcome, u.vote_yes, u.vote_no,
-           u.vote_abstain, u.vote_absent, u.source_url, u.synthesis,
+           u.vote_abstain, u.vote_absent, u.source_url,
            u.outcome_override, u.outcome_override_source_url
       FROM project_updates u
       JOIN projects p ON p.id = u.project_id
@@ -3342,7 +3262,7 @@ export async function getRecentProjectUpdates(limit = 3): Promise<(ProjectUpdate
   return (await sql`
     SELECT u.source_type, u.entry_date, u.body, u.meeting_date, u.agenda_counter, u.agenda_title,
            u.agenda_url, u.outcome, u.vote_yes, u.vote_no, u.vote_abstain,
-           u.vote_absent, u.source_url, u.synthesis,
+           u.vote_absent, u.source_url,
            u.outcome_override, u.outcome_override_source_url,
            p.slug AS project_slug, p.title AS project_title
       FROM project_updates u
@@ -3366,7 +3286,7 @@ export async function getAllProjectUpdatesForWeekly(): Promise<(ProjectUpdate & 
   return (await sql`
     SELECT u.source_type, u.entry_date, u.body, u.meeting_date, u.agenda_counter, u.agenda_title,
            u.agenda_url, u.outcome, u.vote_yes, u.vote_no, u.vote_abstain,
-           u.vote_absent, u.source_url, u.synthesis, p.slug AS project_slug, p.title AS project_title
+           u.vote_absent, u.source_url, p.slug AS project_slug, p.title AS project_title
       FROM project_updates u
       JOIN projects p ON p.id = u.project_id
      WHERE p.town_id = ${TOWN_ID}

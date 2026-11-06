@@ -42,7 +42,7 @@
  *  fallback rule as the /facilities pages themselves.
  *
  *  Open/Closed badge client-side move (2026-10-15): the open/closed TEXT
- *  is no longer computed here. asOf can be up to 6h stale (static site,
+ *  is no longer computed here. asOf can be up to half a day stale (static site,
  *  scrape.yml cron), so a build-time computation would have the same
  *  staleness bug facilities/[slug].astro's own script comment describes.
  *  cityHallKnown only asks whether hours data exists at all (a
@@ -67,14 +67,14 @@ import { formatClockCompact } from '../lib/country-profile';
 export interface Props {
   cityName: string;
   timezone: string;
-  /** Real build/render timestamp -- see module docstring: the every-6-hours
-   *  deploy cadence means this can be up to 6 hours stale, so it must be
+  /** Real build/render timestamp -- see module docstring: the twice-a-day
+   *  collection means this can be up to half a day stale, so it must be
    *  shown, not implied. */
   asOf: Date;
   temperature: number | null;
   activeAlerts: Pick<Story, 'slug' | 'title' | 'ends_at' | 'generated_by'>[];
   /** null = Closure Watch not live for this town yet -- omit the row. */
-  closureStatus: (ClosureWatchStatus & { prose: string | null }) | null;
+  closureStatus: ClosureWatchStatus | null;
   /** null = no real traffic source for this town -- omit the row. Present
    *  (even with an empty `incidents` array) means the source exists. */
   traffic: { incidents: TrafficIncident[] } | null;

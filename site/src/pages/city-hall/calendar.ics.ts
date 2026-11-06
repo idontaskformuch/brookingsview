@@ -1,5 +1,5 @@
 /** Subscribable calendar of every upcoming meeting with a start and a place (webcal://<domain>/city-hall/calendar.ics). Static: rebuilt with the
- *  site every 6 hours; calendar apps re-read it on their own schedule (REFRESH-INTERVAL asks for 12 h). No personal data is kept or needed. */
+ *  site when new data arrives (sources are read twice a day); calendar apps re-read it on their own schedule (REFRESH-INTERVAL asks for 12 h). No personal data is kept or needed. */
 import type { APIRoute } from 'astro';
 import { loadUpcomingMeetings } from '../../lib/meetings-data';
 import { buildMeetingsFeedIcs } from '../../lib/meetings-view';

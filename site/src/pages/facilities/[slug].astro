@@ -86,7 +86,7 @@ const hasFullAddress = Boolean(facility.street_address && facility.postal_code);
 // null/null "confirmed closed that day" convention a real row can carry.
 //
 // Open/Closed badge client-side move (2026-10-15): computePlaceOpenStatus()
-// is no longer called here. A static site rebuilt every 6h (scrape.yml)
+// is no longer called here. A static site rebuilt only when new data arrives
 // baking "now" in at build time meant the badge could read "Open now"
 // for hours after a place actually closed. The exact same function now
 // runs from the inline <script> below, with a freshly-made `now` on every

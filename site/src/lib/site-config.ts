@@ -497,7 +497,7 @@ const CITIES: Record<string, SiteConfig> = {
     meetingsHaveTime: false,
     meetingDecisionsTracked: true,
     description:
-      'Meetings, events, Jackrabbits games, weather and market prices in Brookings, South Dakota. Updated every 6 hours.',
+      'Meetings, events, Jackrabbits games, weather and market prices in Brookings, South Dakota. Updated twice a day.',
     sourceBlurb:
       'Brookings View gathers public information from the City of Brookings, Brookings County, South Dakota State University, and Brookings Public Library.',
     removalEmail: 'hello@brookingsview.com',
@@ -658,7 +658,7 @@ const CITIES: Record<string, SiteConfig> = {
     // field's own doc comment.
     meetingDecisionsTracked: false,
     description:
-      'City council decisions, events, weather and local happenings in Moreno Valley, California. Updated every 6 hours.',
+      'City council decisions, events, weather and local happenings in Moreno Valley, California. Updated twice a day.',
     sourceBlurb:
       'Moreno Valley View gathers public information from the City of Moreno Valley, Riverside County, and the Moreno Valley Public Library.',
     removalEmail: 'hello@morenovalleyview.com',
@@ -791,7 +791,7 @@ const CITIES: Record<string, SiteConfig> = {
     meetingsHaveTime: true,
     meetingDecisionsTracked: true,
     description:
-      'City Council decisions, events, weather and local happenings in Broomfield, Colorado. Updated every 6 hours.',
+      'City Council decisions, events, weather and local happenings in Broomfield, Colorado. Updated twice a day.',
     sourceBlurb:
       'Broomfield View gathers public information from the City and County of Broomfield, the National Weather Service, and the Colorado Department of Transportation.',
     removalEmail: 'hello@broomfieldview.com',

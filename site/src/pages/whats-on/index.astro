@@ -28,8 +28,8 @@ import ShareButton from '../../components/ShareButton.astro';
 import { siteConfig } from '../../lib/site-config';
 import { placeLabel } from '../../lib/country-profile';
 import { getTicketmasterEventsForTown } from '../../lib/ticketmaster';
-import { rankTicketmasterEvents, splitMarquee, ticketmasterResolvableImage, marqueeDigestKey, dropEnded, collapseSeriesRows } from '../../lib/whats-on';
-import { getFacilities, getEventDeckDigests } from '../../lib/db';
+import { rankTicketmasterEvents, splitMarquee, ticketmasterResolvableImage, dropEnded, collapseSeriesRows } from '../../lib/whats-on';
+import { getFacilities } from '../../lib/db';
 import { EMPTY_STATES } from '../../lib/empty-states';
 import { SECTION_THEME } from '../../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
@@ -99,16 +99,6 @@ const allAlsoOnRows = collapseSeriesRows([...demotedToAlsoOn, ...alsoOn]).sort((
 const alsoOnRows = allAlsoOnRows.filter((r) => !r.primary.occurs_at || new Date(r.primary.occurs_at).getTime() <= buildNow.getTime() + ALSO_ON_HORIZON_MS);
 const laterCount = allAlsoOnRows.length - alsoOnRows.length;
 
-// Marquee deck sentences follow-up: one batch lookup for every Marquee
-// card's own key, rather than one query per card -- see
-// getEventDeckDigests()'s own "absence is normal" doc comment. Keyed by
-// marqueeDigestKey(), NOT the primary member's own event id -- see that
-// function's own doc comment for why (a real bug, caught live: a
-// multi-date run's "primary" member isn't stable across separate fetches).
-const marqueeDecks = await getEventDeckDigests(
-  marqueeWithImages.map(({ entry }) => marqueeDigestKey(entry)),
-);
-
 // The weekly AI intro block (What's On Phase 6b) is not printed: model-written text is withheld everywhere (lib/ai-text.ts, owner 2026-11-06).
 const introText: string | null = null;
 
@@ -170,7 +160,6 @@ const pageMeta = resolvePageMeta('whats-on', siteConfig);
                 timezone={siteConfig.timezone}
                 variant="hero"
                 priority={i === 0}
-                deck={marqueeDecks.get(marqueeDigestKey(entry))}
                 runSize={entry.members.length}
                 lastOccursAt={entry.members[entry.members.length - 1].occurs_at}
               />

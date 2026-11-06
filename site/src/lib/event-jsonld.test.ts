@@ -32,7 +32,6 @@ const MAIN_LIBRARY: Facility = {
   image_attribution_text: null,
   image_attribution_url: null,
   image_needs_review: false,
-  free_teaser: null,
   hours_structured: null,
   hours_needs_review: false,
   is_free: null,

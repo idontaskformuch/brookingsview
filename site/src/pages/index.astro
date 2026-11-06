@@ -44,7 +44,7 @@ import {
   getWeather, getAgPrices, getLatestWeekly,
   getEmployerJobStats, getUpcomingArtsEvents, getRecentJobs, getNextMeeting,
   getWorthKnowingCandidates, getRecentProjectUpdates, PROJECT_PENDING_OUTCOME_LABEL, formatDate,
-  getFacilities, getLatestVailNewsItem, getEventDeckDigests,
+  getFacilities, getLatestVailNewsItem,
 } from '../lib/db';
 import { selectFrontPageRhythm } from '../lib/homepage-curation';
 import {
@@ -67,7 +67,7 @@ import { placeAbbr, forCountry } from '../lib/country-profile';
 import { resolveImage, dedupeConsecutiveImages } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
-import { rankTicketmasterEvents, collapseMarqueeRuns, ticketmasterResolvableImage, marqueeDigestKey, type MarqueeEntry } from '../lib/whats-on';
+import { rankTicketmasterEvents, collapseMarqueeRuns, ticketmasterResolvableImage, type MarqueeEntry } from '../lib/whats-on';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
@@ -362,16 +362,6 @@ for (const entry of whatsOnEntries) {
     break;
   }
 }
-// Marquee deck sentences follow-up: only the hero card ever shows a deck
-// (see MarqueeCard.astro's own comment), so only its key needs a lookup --
-// still a batch call (of one) for consistency with whats-on/index.astro's
-// own multi-key lookup, and because getEventDeckDigests() already handles
-// an empty array cheaply when hasWhatsOn is off or nothing resolved a hero.
-// Looked up by marqueeDigestKey(), NOT the primary member's own event id --
-// see that function's own doc comment for why (a real bug, caught live).
-const marqueeDeck = marqueeHero
-  ? (await getEventDeckDigests([marqueeDigestKey(marqueeHero.entry)])).get(marqueeDigestKey(marqueeHero.entry))
-  : undefined;
 // 2026-10-01: the rating-derived topEmployer/biggestMover pair that used to
 // live here (getLatestEmployerRatings()[0], and a reduce() over
 // rating_delta_vs_last_month) was removed, along with the fetch itself
@@ -466,7 +456,6 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
         timezone={siteConfig.timezone}
         variant="hero"
         priority
-        deck={marqueeDeck}
         runSize={marqueeHero.entry.members.length}
         lastOccursAt={marqueeHero.entry.members[marqueeHero.entry.members.length - 1].occurs_at}
       />
@@ -526,7 +515,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     {fullWidthLead ? (
       <LeadStory story={fullWidthLead} facilities={facilities} image={frontPageImageBySlug.get(fullWidthLead.slug)} />
     ) : secondary.length === 0 && (
-      <p class="empty">Nothing scheduled right now. This page rebuilds every 6 hours.</p>
+      <p class="empty">Nothing scheduled right now. This page is rebuilt when new information arrives.</p>
     )}
 
     {secondary.length > 0 && (

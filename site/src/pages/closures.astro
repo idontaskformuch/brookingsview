@@ -9,11 +9,8 @@
  *                 own wording, rendered verbatim, NewsArticle JSON-LD).
  *    Watch     -- a relevant weather alert is active, no notice yet. The
  *                 "no closure has been announced" line below is HARDCODED,
- *                 outside any AI path, so a guardrail failure can never
- *                 remove it -- the optional AI paragraph (prose) is
- *                 decoration on top of that guarantee, never a replacement
- *                 for it. See lib/db.ts:getClosureWatchStatus() and
- *                 ai_pipeline/closure_watch_digest.py.
+ *                 outside any AI path. No model-written paragraph is shown
+ *                 (owner 2026-11-06). See lib/db.ts:getClosureWatchStatus().
  *    Clear     -- neither. Short, static, reassuring.
  *
  *  ABSOLUTE RULE: nothing on this page may assert or imply that school WILL
@@ -150,8 +147,6 @@ import PageGuide from '../components/PageGuide.astro';
       {status.alert.areaDesc && <p class="cw-area">Affected area: {status.alert.areaDesc}</p>}
       {status.alert.headline && <p class="cw-message">{status.alert.headline}</p>}
 
-      {status.prose && <p class="cw-prose">{status.prose}</p>}
-
       {status.historicalCount > 0 && (
         <p class="cw-history">
           A {status.alert.event} alert has preceded a confirmed closure here {status.historicalCount} time(s) on record.
@@ -242,7 +237,6 @@ import PageGuide from '../components/PageGuide.astro';
 .cw-panel h2 { margin: 0 0 0.75rem; font-size: 1.375rem; }
 .cw-message { line-height: 1.6; margin: 0 0 0.75rem; }
 .cw-area { font-size: 0.9375rem; color: var(--ink-soft); margin: 0 0 0.5rem; }
-.cw-prose { line-height: 1.6; margin: 0 0 0.75rem; }
 .cw-history { font-size: 0.875rem; color: var(--ink-soft); margin: 0 0 0.75rem; }
 .cw-source { font-size: 0.875rem; color: var(--ink-soft); margin: 0; }
 .cw-closure + .cw-closure { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--rule); }

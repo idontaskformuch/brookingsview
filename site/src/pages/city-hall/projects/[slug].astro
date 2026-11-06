@@ -51,12 +51,10 @@ function outcomeLabel(u: ProjectUpdate): string {
   return u.outcome;
 }
 
-/** The short "what changed" line takes priority when a story-threads
- *  synthesis exists; older/exact-matched rows fall back to the source's
- *  own agenda title, which is still real, sourced text, just not a
- *  purpose-written summary. */
+/** The entry's headline is the source's own agenda title; the model-written
+ *  "what changed" synthesis is not read or shown (owner 2026-11-06). */
 function entryHeadline(u: ProjectUpdate): string {
-  return u.synthesis ?? u.agenda_title ?? 'Update';
+  return u.agenda_title ?? 'Update';
 }
 
 /** Always ties the vote tally to what was actually decided (the real

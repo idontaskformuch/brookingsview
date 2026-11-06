@@ -17,10 +17,10 @@
  *      review queue (ai_pipeline/venue_registry.py) -- unrelated to content
  *      approval. There is no gate between generation and publish anywhere
  *      in the pipeline.
- *   2. The real cadence is every 6 hours, not hourly, for all three towns --
- *      confirmed via the "every 6 hours" cron in scrape.yml, moval-scrape.yml,
- *      and broomfield-scrape.yml alike (lowered from hourly 2026-08-28, per
- *      scrape.yml's own comment).
+ *   2. The real cadence is twice a day (11:00 and 23:00 UTC, the cron-dispatcher
+ *      Worker's "0 11,23 * * *"); weather is fetched every hour by the same Worker.
+ *      Text rewritten 2026-11-06 (owner-approved proposal): no model-written text is
+ *      shown anywhere, so the old "language model" / "AI summaries" sections are gone.
  *   3. /corrections exists, links from /contact, and honestly shows "No
  *      corrections have been logged yet" rather than being an empty stub.
  */
@@ -36,11 +36,12 @@ const sources = aboutSourcesFor(siteConfig.townId);
   description={metaDescription('how-we-gather', siteConfig)}>
   <article class="prose">
     <h1>How we gather this</h1>
-    <p>{siteConfig.siteName} doesn't have a newsroom. It has a set of public
-    data sources, refreshed every 6 hours, and a language model that turns
-    raw agendas, calendars, and public data into readable pages. No person
-    reviews an individual item before it goes live — the checks below run
-    automatically, every time. Here's exactly how that works.</p>
+    <p>{siteConfig.siteName} doesn't have a newsroom. It collects public
+    information from the sources listed below, checks them twice a day, and
+    shows what they publish: dates, times, places, agenda items, notices and
+    links. We don't write news stories, and no model-written text is shown on
+    the site. No person reviews an item before it appears; the checks
+    described below run automatically.</p>
 
     <h2>The sources</h2>
     {sources.length > 0 ? (
@@ -52,59 +53,65 @@ const sources = aboutSourcesFor(siteConfig.townId);
     ) : (
       <p>{siteConfig.sourceBlurb}</p>
     )}
-    <p>This list is generated from the same configuration the scrapers
-    themselves run from — if a source is turned off, it drops off this page
-    automatically, and nothing here is written by hand per town.</p>
+    <p>This list is generated from the same configuration the collectors
+    run from. If a source is switched off, it drops off this page on the next
+    build.</p>
 
-    <h2>News, meetings, and listings</h2>
-    <p>Meeting agendas, calendar listings, weather alerts, and similar
-    factual items are {forCountry(siteConfig.country, 'summarized', 'summarised')} by Claude, an AI model made by Anthropic,
-    working only from the source text — the actual agenda, the actual
-    listing. It's instructed to use only facts present in that source and
-    never to add names, numbers, or details that aren't there. A summary
-    that appears to contradict its own source is rewritten or held back
-    rather than published incomplete. Every one of these stories links back
-    to its original source, so you can always read the full agenda or
-    listing yourself.</p>
+    <h2>How often</h2>
+    <p>Event calendars, meeting agendas, school and public notices are
+    collected twice a day. Weather is updated every hour. Each page says when
+    it was last updated. A change at the source can take up to half a day to
+    show here; for anything time-critical, use the link to the source.</p>
 
-    {!siteConfig.contentTrackRetired && (
-    <>
-    <h2>Reviews, recipes, editorials, and columns</h2>
-    <p>Some of what's on this site isn't a summary of one source document at
-    all — film/TV reviews, recipes, editorials, and the science and
-    quick-read columns are written by the same AI model, grounded in real
-    facts (aggregate critic scores, a verified local venue, real civic
-    data) but composed, not extracted. These are clearly AI-written and
-    labeled as such on the page.</p>
-    <p>Before anything in this group publishes, it has to pass a set of
-    automatic checks: that it names the right town, state, and date; that
-    it doesn't contradict its own source material or the facts already on
-    this site; that editorials describe civic processes without endorsing a
-    candidate or ballot measure, or naming a private business or person as
-    a target of criticism; and, for reviews specifically, that it never
-    claims a confirmed local showtime or "now playing" status this site has
-    no actual data for. A draft that fails gets one rewrite attempt with the
-    specific problem pointed out; if it still fails, nothing is published —
-    there's no template fallback for a piece that fails these checks.</p>
+    <h2>What we show</h2>
+    <ul>
+      <li><strong>Meetings:</strong> the date, time and place, the agenda item
+      titles exactly as the agenda gives them, and links to the agenda, minutes
+      and video. A meeting is marked Cancelled or Postponed only when the
+      source itself says so in a status or notice field.</li>
+      <li><strong>Events:</strong> the title, date, time and venue as the
+      {forCountry(siteConfig.country, 'organizer', 'organiser')} published them, with a link back to the organiser. "Free" and
+      age labels appear only when the source states them.</li>
+      <li><strong>Weather and alerts:</strong> forecasts and warnings from {siteConfig.country === 'gb' ? 'the Met Office' : 'the National Weather Service'}, shown as published.</li>
+      <li><strong>Traffic, school closures and public notices:</strong> the
+      notices as the road authority or the school district posts them, with a
+      link.</li>
+      {siteConfig.bigShows?.enabled && (
+        <li><strong>Big shows nearby:</strong> concerts, sports and touring shows
+        from Ticketmaster at venues within {siteConfig.bigShows.maxMiles} miles. They are listed separately and are
+        never counted as events in town. Prices are not shown, and distance is
+        measured in a straight line from the town center (shown as "Denver · 13
+        mi"), not as a driving distance.</li>
+      )}
+    </ul>
 
-    </>
-    )}
+    <h2>What we work out ourselves</h2>
+    <p>Software, not a model, converts times to {siteConfig.cityName}'s time
+    zone, removes duplicates between sources, and sorts events into groups from
+    the source's own category or from keywords in the title. Where a source gives
+    no value, we show nothing rather than guess.</p>
 
     <h2>What we choose not to name</h2>
     <p>Meeting agendas sometimes include the names of private individuals —
     someone applying for a variance, say, or a permit. We refer to people by
     role instead ("an applicant for the variance") rather than by name.
     {forCountry(siteConfig.country, 'Organizations', 'Organisations')}, businesses, and public officials acting in their official
-    capacity are named normally.</p>
+    capacity are named normally. We don't cover arrests, court records or
+    obituaries.</p>
+
+    <h2>Sources we do not read</h2>
+    <p>If a source's robots.txt forbids automated reading, or it blocks us, we
+    don't collect from it. We show a plain link to it instead, and never try to
+    get around the block.</p>
 
     <h2>Photos</h2>
     <p>Illustrative photos on category and topic pages come from Pexels,
     each individually credited to its photographer where it appears. They
     represent the general subject, not a specific event pictured in the
-    story next to them.</p>
+    story next to them.{siteConfig.bigShows?.enabled && ' Ticketmaster images appear on its own listings.'}</p>
 
     <h2>Corrections</h2>
-    <p>If a summary gets something wrong, <a href="/contact/">tell us</a> and
+    <p>If something here is wrong, <a href="/contact/">tell us</a> and
     we'll fix it — usually within one refresh cycle, since the site rebuilds
     automatically. Logged corrections are public: see the
     <a href="/corrections/">corrections page</a>.</p>

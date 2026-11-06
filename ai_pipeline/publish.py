@@ -79,7 +79,7 @@ from db.db import content_hash
 # A record discarded this many consecutive scheduled runs (both AI attempts
 # rejected, no TEMPLATERS fallback for meeting/event/alert -- see the
 # SUBSTANSKRAV comment below) stops being retried at all. Without this, a
-# structurally-stuck record burns 2 real API calls every 6-hour run
+# structurally-stuck record burns 2 real API calls every scrape run (twice a day)
 # indefinitely -- found live via api_usage.reject_reason (NEEDS-HUMAN-
 # REVIEW.md #77/#78), not a hypothetical.
 MAX_CONSECUTIVE_DISCARDS = 3

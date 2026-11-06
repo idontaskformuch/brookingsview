@@ -9,7 +9,7 @@ function facility(overrides: Partial<Facility>): Facility {
     verified_date: null, aliases: [], street_address: null, postal_code: null,
     lat: null, lon: null, image_path: null, image_alt: null, name_aliases: [],
     image_attribution_text: null, image_attribution_url: null, image_needs_review: false,
-    free_teaser: null, hours_structured: null, hours_needs_review: false,
+    hours_structured: null, hours_needs_review: false,
     is_free: null, fee_note: null, accessibility_note: null, services: null,
     verification_method: null, hours_confidence: null,
     ...overrides,
