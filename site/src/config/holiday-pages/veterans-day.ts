@@ -23,15 +23,16 @@ const MUSEUM_POST = 'https://broomfieldveterans.org/uncategorized/annual-veteran
 
 const FACTS: HolidayFact[] = [
   {
-    section: 'closures', status: 'confirmed', label: 'City offices',
+    section: 'closures', status: 'confirmed', change: 'closed', label: 'City offices',
     value: 'Closed Nov 11: George Di Ciero City and County Building, Health and Human Services Building and Water Recovery Facility.',
     source: NOTICE, checkedOn: CHECKED,
   },
-  { section: 'closures', status: 'confirmed', label: 'Combined Courts', value: 'Closed Nov 11.', source: NOTICE, checkedOn: CHECKED },
-  { section: 'closures', status: 'confirmed', label: 'inventHQ', value: 'Closed Nov 11.', source: NOTICE, checkedOn: CHECKED },
-  { section: 'closures', status: 'confirmed', label: 'Library', value: 'Closed Nov 11.', source: NOTICE, checkedOn: CHECKED },
+  { section: 'closures', status: 'confirmed', change: 'closed', label: 'Combined Courts', value: 'Closed Nov 11.', source: NOTICE, checkedOn: CHECKED },
+  { section: 'closures', status: 'confirmed', change: 'closed', label: 'inventHQ', value: 'Closed Nov 11.', source: NOTICE, checkedOn: CHECKED },
+  { section: 'closures', status: 'confirmed', change: 'closed', label: 'Library', value: 'Closed Nov 11.', source: NOTICE, checkedOn: CHECKED },
   {
-    section: 'closures', status: 'confirmed', label: 'Police Department Building and Detention Center',
+    section: 'closures', status: 'confirmed', change: 'changed', label: 'Police Department Building and Detention Center',
+    insight: 'Police run 24/7 on Nov 11; the front desk is not staffed.',
     value: 'Operations run 24/7 on Nov 11. The front desk is not staffed; the vestibule phone connects to an officer 24/7.',
     source: NOTICE, checkedOn: CHECKED,
   },

@@ -75,7 +75,8 @@ describe('evergreen wording is per holiday and uses years, never "last year"', (
   });
   it('no relative year label anywhere in the page code or wording', () => {
     for (const d of HOLIDAY_PAGE_DEFS) expect(d.evergreenNote(2026, 2027)).not.toMatch(/last year/i);
-    expect(read('../components/HolidayTable.astro')).not.toMatch(/last year/i);
+    for (const f of ['HolidayRow', 'HolidayRows']) expect(read(`../components/${f}.astro`)).not.toMatch(/last year/i);
+    expect(read('../lib/holiday-view.ts')).not.toMatch(/last year/i);
     expect(read('../components/HolidayPage.astro')).not.toMatch(/last year/i);
   });
 });
@@ -124,7 +125,7 @@ describe('Event JSON-LD only for events that have not passed', () => {
     expect(buildHolidayEventsJsonLd(g, 'Europe/London', 'GB', '2027-01-04')).toHaveLength(0);
   });
   it('the page marks a passed event with its dated year', () => {
-    const src = read('../components/HolidayPage.astro');
+    const src = read('../lib/holiday-view.ts');
     expect(src).toContain('isEventPast(e, today)');
     expect(src).toContain('Held ');
   });

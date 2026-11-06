@@ -38,7 +38,7 @@ describe('en-GB locale', () => {
       expect(buildThanksgivingPage(id, { south: [], north: [] })!.locale).toBe('en-US');
     }
     expect(page.locale).toBe('en-GB');
-    for (const f of ['../components/HolidayPage.astro', '../components/HolidayTable.astro']) {
+    for (const f of ['../components/HolidayPage.astro', '../components/HolidayRow.astro', '../lib/holiday-view.ts']) {
       const src = read(f);
       for (const call of src.match(/(formatIsoDate|eventWhenWhere|sectionHeading)\([^)]*\)/g) ?? []) {
         expect(call, `${f}: ${call}`).toMatch(/locale/);
@@ -47,9 +47,9 @@ describe('en-GB locale', () => {
   });
 
   it('only US phone numbers get the extension comma in tel: links (a GB 11-digit number must stay intact)', () => {
-    const src = read('../components/HolidayTable.astro');
+    const src = read('../components/HolidayRow.astro');
     expect(src).toMatch(/loc === 'en-US' \? d\.replace\(/);
-    expect(src).toContain('telDigits(r.checkAt.phone, locale)');
+    expect(src).toContain('telDigits(r.check.phone, locale)');
   });
 
   it('formats a multi-day run and an event without a street', () => {

@@ -1,0 +1,29 @@
+---
+/** The rows of one group on a holiday page (HolidayPage.astro). No table. A group longer than FOLD_AFTER shows the first
+ *  rows and the rest behind a native <details> toggle (all of it stays in the HTML). */
+import HolidayRow from './HolidayRow.astro';
+import { FOLD_AFTER, type RowView } from '../lib/holiday-view';
+import type { HolidayLocale } from '../lib/holiday-page';
+
+interface Props { rows: RowView[]; locale?: HolidayLocale }
+const { rows, locale = 'en-US' } = Astro.props;
+const shown = rows.slice(0, FOLD_AFTER);
+const rest = rows.slice(FOLD_AFTER);
+---
+<ul class="hp-list">
+  {shown.map((r) => <HolidayRow row={r} locale={locale} />)}
+</ul>
+{rest.length > 0 && (
+  <details class="hp-fold">
+    <summary>Show {rest.length} more</summary>
+    <ul class="hp-list">
+      {rest.map((r) => <HolidayRow row={r} locale={locale} />)}
+    </ul>
+  </details>
+)}
+<style>
+  .hp-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ui-row-gap); }
+  .hp-fold { margin-top: var(--ui-row-gap); }
+  .hp-fold summary { cursor: pointer; padding: var(--ui-2) var(--ui-3); font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); }
+  .hp-fold[open] summary { margin-bottom: var(--ui-row-gap); }
+</style>

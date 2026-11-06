@@ -1,19 +1,25 @@
 ---
-/** Shared template for the holiday pages (/thanksgiving/, /veterans-day/, /christmas/; /hogmanay/ later).
- *  Rendered from data only (lib/holiday-page.ts): one table per section with What / Details / Source / Checked,
- *  an empty section is not rendered, no introduction. Owner-ordered 2026-11-04, .claude/specs/holiday-layer.md.
+/** Shared template for the holiday pages (/thanksgiving/, /veterans-day/, /christmas/), built on the ui/ library and rendered
+ *  from data only (lib/holiday-page.ts for the data, lib/holiday-view.ts for the view): hero "<Holiday> is <weekday>" with
+ *  the number of places closed, then the rows grouped Closed / Changed hours / Open as usual / Good to know / Events /
+ *  Not confirmed yet. No tables, no repeated source or check date per row; sources once at the bottom, "Last checked" once
+ *  under the heading. Owner-ordered 2026-11-04 (.claude/specs/holiday-layer.md), rebuilt 2026-11-06 (.claude/standards.md "Helgsidor").
  *
  *  Resident question it answers: what is open, closed or changed around this holiday, and where do I check
  *  what is not confirmed yet? */
 import BaseLayout from '../layouts/BaseLayout.astro';
-import HolidayTable from './HolidayTable.astro';
+import HolidayRows from './HolidayRows.astro';
+import HeroStat from './ui/HeroStat.astro';
+import InsightLine from './ui/InsightLine.astro';
+import SectionHeader from './ui/SectionHeader.astro';
+import AboutThisPage from './ui/AboutThisPage.astro';
 import { siteConfig } from '../lib/site-config';
 import { countryProfile } from '../lib/country-profile';
 import {
-  SECTION_ORDER, sectionHeading, buildHolidayMeta, buildHolidayEventsJsonLd, lastChecked, formatIsoDate,
-  eventWhenWhere, regularHours, localToday, isEventPast, type HolidayPageData, type HolidayFact, type HolidayEvent, type HolidayRow,
+  buildHolidayMeta, buildHolidayEventsJsonLd, lastChecked, formatIsoDate, localToday, type HolidayPageData,
 } from '../lib/holiday-page';
-import { evergreenLines, type HolidayPageState } from '../lib/holiday-calendar';
+import { buildGroups, regularHoursRows, holidayHero, holidayInsights, groupSources } from '../lib/holiday-view';
+import { evergreenLines, occurrenceDay, type HolidayPageState } from '../lib/holiday-calendar';
 import type { HolidayPageDef } from '../config/holiday-pages/calendar';
 
 interface Props {
@@ -25,12 +31,11 @@ interface Props {
   hasClosures?: boolean;
 }
 const { page, def, state, hasClosures = false } = Astro.props;
-const holidayLabel = def.label;
 const evergreen = state.kind === 'evergreen';
 const lines = state.kind === 'evergreen' ? evergreenLines(def, page.year, state, page.locale) : null;
 const today = localToday(Date.now(), siteConfig.timezone);
 
-const meta = buildHolidayMeta(page, holidayLabel, siteConfig.cityName, evergreen);
+const meta = buildHolidayMeta(page, def.label, siteConfig.cityName, evergreen);
 const checked = lastChecked(page);
 const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, countryProfile(siteConfig.country).addressCountry, today);
 const pageUrl = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl).href;
@@ -42,69 +47,51 @@ const webPage = {
   dateModified: page.dataUpdatedOn,
 };
 
-const year = page.year;
+const hero = holidayHero(page, def.label, occurrenceDay(def, page.year), today);
+const insights = holidayInsights(page);
+const groups = buildGroups(page, today);
+const hours = regularHoursRows(page);
 const ungrouped = page.linkOnly.filter((l) => !l.group);
-const groups = [...new Set(page.linkOnly.flatMap((l) => (l.group ? [l.group] : [])))];
-const hours = regularHours(page);
-const sections = SECTION_ORDER.map((id) => ({
-  id,
-  heading: sectionHeading(id, page.locale),
-  facts: id === 'events' ? [] : page.facts.filter((f) => f.section === id),
-  events: id === 'events' ? page.events : [],
-})).filter((s) => s.facts.length > 0 || s.events.length > 0);
-
-const factRow = (f: HolidayFact): HolidayRow => ({
-  what: f.label, value: f.status === 'confirmed' ? f.value : null, clarify: f.clarify,
-  usual: f.status === 'unconfirmed' ? f.usual : undefined,
-  lastYear: f.status === 'unconfirmed' ? f.lastYear : undefined,
-  checkAt: f.status === 'unconfirmed' ? f.checkAt : undefined,
-  source: f.source, checkedOn: f.checkedOn,
-});
-// A confirmed event whose last day has passed stays as text, dated with its year (no markup, see JSON-LD above).
-const eventRow = (e: HolidayEvent): HolidayRow => ({
-  what: e.name, value: e.status === 'confirmed' ? eventWhenWhere(e, page.locale) : null, clarify: e.clarify,
-  extra: e.status === 'confirmed'
-    ? [...(isEventPast(e, today) ? [`Held ${formatIsoDate(e.endDate ?? e.date, true, page.locale)}`] : []), ...(e.details ?? [])]
-    : undefined,
-  lastYear: e.status === 'unconfirmed' ? e.lastYear : undefined,
-  checkAt: e.status === 'unconfirmed' ? e.checkAt : undefined,
-  source: e.source, checkedOn: e.checkedOn,
-});
+const linkGroups = [...new Set(page.linkOnly.flatMap((l) => (l.group ? [l.group] : [])))];
+const sources = groupSources(page);
 ---
 <BaseLayout title={meta.title} description={meta.description} wide modified={page.dataUpdatedOn}>
   <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(webPage)} />
   {jsonLd.map((ld) => <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(ld)} />)}
 
-  <header class="hp-head">
+  <header class="hp-title">
     <h1>{meta.h1}</h1>
-    {lines && (
-      <p class="hp-state">
-        {lines.note && <>{lines.note}<br /></>}
-        {lines.next}
-      </p>
-    )}
-    <p class="hp-checked">Last checked: <time datetime={checked}>{formatIsoDate(checked, true, page.locale)}</time></p>
+    <p class="hp-checked">Last checked <time datetime={checked}>{formatIsoDate(checked, true, page.locale)}</time></p>
   </header>
 
-  {sections.map((s) => (
-    <section aria-labelledby={`hp-${s.id}`}>
-      <h2 id={`hp-${s.id}`}>{s.heading}</h2>
-      <HolidayTable rows={s.id === 'events' ? s.events.map(eventRow) : s.facts.map(factRow)} year={year} locale={page.locale} />
+  <HeroStat value={hero.value} unit={hero.unit} label={hero.label} sub={hero.sub} tone="accent" />
+  {insights.map((line) => <InsightLine>{line}</InsightLine>)}
+  {lines && (
+    <p class="hp-state">
+      {lines.note && <>{lines.note}<br /></>}
+      {lines.next}
+    </p>
+  )}
+
+  {groups.map((g) => (
+    <section class="hp-group" aria-label={g.heading}>
+      <SectionHeader title={g.heading} />
+      <HolidayRows rows={g.rows} locale={page.locale} />
     </section>
   ))}
 
-  {(page.linkOnly.length > 0 || page.related.length > 0 || hours.length > 0) && (
-    <section aria-labelledby="hp-more">
-      <h2 id="hp-more">More</h2>
+  {(page.linkOnly.length > 0 || page.related.length > 0 || hours.length > 0 || hasClosures) && (
+    <section class="hp-group" aria-label="More">
+      <SectionHeader title="More" />
       {hours.length > 0 && (
         <>
-          <h3>Regular hours</h3>
-          <HolidayTable rows={hours.map(factRow)} year={year} locale={page.locale} />
+          <SectionHeader title="Regular hours" level={3} />
+          <HolidayRows rows={hours} locale={page.locale} />
         </>
       )}
-      {groups.map((g) => (
+      {linkGroups.map((g) => (
         <>
-          <h3>{g}</h3>
+          <SectionHeader title={g} level={3} />
           <ul class="hp-links">
             {page.linkOnly.filter((l) => l.group === g).map((l) => <li>{l.label}: <a href={l.url} rel="noopener">{l.linkText}</a></li>)}
           </ul>
@@ -117,14 +104,15 @@ const eventRow = (e: HolidayEvent): HolidayRow => ({
       </ul>
     </section>
   )}
+
+  <AboutThisPage sources={sources} />
 </BaseLayout>
 
 <style>
-  .hp-head h1 { margin-bottom: 0.25rem; }
-  .hp-state { margin: 0 0 0.5rem; }
-  .hp-checked { margin: 0 0 1.25rem; font-size: 0.9rem; color: var(--ink-soft); }
-  section { margin: 0 0 1.75rem; }
-  h3 { font-size: 1.0625rem; margin: 0 0 0.4rem; }
-  .hp-links { padding-left: 1.1rem; }
+  .hp-title h1 { margin-bottom: 0.25rem; }
+  .hp-checked { margin: 0 0 var(--ui-3); font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .hp-state { margin: var(--ui-3) 0 0; font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
+  .hp-group { margin: var(--ui-group-gap) 0 0; }
+  .hp-links { padding-left: 1.1rem; font-family: var(--font-ui); }
   .hp-links li { margin: 0.35rem 0; }
 </style>

@@ -7,7 +7,7 @@ import { ALL_CONFIGS } from '../site-config';
  *  their pure rules) may not branch on which town or country it is; differences live in site.config / country profiles. */
 const SRC = join(__dirname, '..', '..');
 const LAYOUT_DIRS = ['components/ui', 'components/tonight', 'components/meetings', 'components/evening', 'components/events'];
-const LAYOUT_FILES = ['components/SectionNav.astro', 'components/HolidayPage.astro', 'lib/tonight-cards.ts', 'lib/tonight-cards-client.ts', 'lib/ui/ui-helpers.ts', 'lib/ui/ui-html.ts', 'lib/ui/icons.ts', 'lib/event-day-view.ts', 'lib/event-row-facts.ts', 'lib/weather-model.ts', 'lib/weather-html.ts', 'lib/sun-times.ts'];
+const LAYOUT_FILES = ['components/SectionNav.astro', 'components/HolidayPage.astro', 'components/HolidayRows.astro', 'components/HolidayRow.astro', 'lib/holiday-view.ts', 'lib/tonight-cards.ts', 'lib/tonight-cards-client.ts', 'lib/ui/ui-helpers.ts', 'lib/ui/ui-html.ts', 'lib/ui/icons.ts', 'lib/event-day-view.ts', 'lib/event-row-facts.ts', 'lib/weather-model.ts', 'lib/weather-html.ts', 'lib/sun-times.ts'];
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((f) => {

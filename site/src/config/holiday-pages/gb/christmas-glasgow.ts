@@ -52,13 +52,13 @@ function councilOfficeRows(): HolidayFact[] {
 const GLASGOW_FACTS: HolidayFact[] = [
   /* closures */
   {
-    section: 'closures', status: 'confirmed', label: 'Winter Wonderland, St Enoch Square',
+    section: 'closures', status: 'confirmed', change: 'changed', label: 'Winter Wonderland, St Enoch Square',
     value: 'Thu 24 Dec 10am–8pm. Closed Fri 25 Dec. Sat 26 and Sun 27 Dec 12 noon–8pm.',
     metaGroup: 'Winter Wonderland', meta: 'closed 25 Dec',
     source: WW_FAQ, checkedOn: CHECKED,
   },
   {
-    section: 'closures', status: 'confirmed', label: 'Winter Wonderland, Glasgow Green',
+    section: 'closures', status: 'confirmed', change: 'changed', label: 'Winter Wonderland, Glasgow Green',
     value: 'Thu 24 Dec closes at 8pm. Closed Fri 25 Dec. Sat 26 Dec 12 noon–10pm.',
     source: WW_FAQ, checkedOn: CHECKED,
   },
@@ -95,12 +95,12 @@ const GLASGOW_FACTS: HolidayFact[] = [
   },
   /* transit */
   {
-    section: 'transit', status: 'confirmed', label: 'ScotRail, Fri 25 Dec', value: 'No trains run on Christmas Day.',
+    section: 'transit', status: 'confirmed', change: 'closed', label: 'ScotRail, Fri 25 Dec', value: 'No trains run on Christmas Day.',
     meta: 'No ScotRail trains 25 Dec',
     source: SCOTRAIL, checkedOn: CHECKED,
   },
   {
-    section: 'transit', status: 'confirmed', label: 'ScotRail, Thu 24 Dec', value: 'The last trains leave earlier than normal.',
+    section: 'transit', status: 'confirmed', change: 'changed', label: 'ScotRail, Thu 24 Dec', value: 'The last trains leave earlier than normal.',
     source: SCOTRAIL, checkedOn: CHECKED,
   },
   {
@@ -121,7 +121,7 @@ const GLASGOW_FACTS: HolidayFact[] = [
   },
   /* help */
   {
-    section: 'help', status: 'confirmed', label: 'Samaritans',
+    section: 'help', status: 'confirmed', change: 'open', label: 'Samaritans',
     value: 'Call 116 123, free, 24 hours a day, every day of the year.',
     source: SAMARITANS, checkedOn: CHECKED,
   },

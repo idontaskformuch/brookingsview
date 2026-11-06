@@ -71,6 +71,11 @@ export function inCalendarOrder<T extends { def: HolidayPageDef }>(entries: T[],
 const WEEKDAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+/** "Wednesday" for a UTC-midnight day number. */
+export function weekdayLong(day: number): string {
+  return WEEKDAYS_LONG[new Date(day).getUTCDay()];
+}
+
 /** "Wednesday, Nov 11, 2027" (en-GB: "Wednesday 11 Nov 2027"). */
 export function formatDayLong(day: number, locale: 'en-US' | 'en-GB' = 'en-US'): string {
   const d = new Date(day);

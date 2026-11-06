@@ -33,30 +33,31 @@ export function computeBrookingsMoves(): BrookingsTrashMoves {
 
 function brookingsFacts(moves: BrookingsTrashMoves): HolidayFact[] {
   const row = (label: string, m: string[]): HolidayFact => ({
-    section: 'trash', status: 'confirmed', label, value: m.length > 0 ? m.join('; ') : 'Nothing moves',
+    section: 'trash', status: 'confirmed', change: m.length > 0 ? 'changed' : 'open', label, value: m.length > 0 ? m.join('; ') : 'Nothing moves',
     source: BK_COLLECTIONS, checkedOn: BK_CHECKED,
   });
   return [
     row('Pickup changes, south of 8th St. S.', moves.south),
     row('Pickup changes, north of 8th St. S.', moves.north),
     {
-      section: 'trash', status: 'confirmed', label: 'Holiday rule', value: 'Thanksgiving is a collection holiday: recycling and yard waste are picked up Wednesday.',
+      section: 'trash', status: 'confirmed', change: 'changed', label: 'Holiday rule', value: 'Thanksgiving is a collection holiday: recycling and yard waste are picked up Wednesday.',
+      insight: 'Recycling and yard waste are picked up Wed Nov 25.',
       meta: 'Recycling and yard waste move to Wed Nov 25',
       source: BK_COLLECTIONS, checkedOn: BK_CHECKED,
     },
     {
-      section: 'trash', status: 'confirmed', label: 'Yard waste season', value: 'Curbside yard waste collection ends for the season on Nov 24, 2026.',
+      section: 'trash', status: 'confirmed', change: 'changed', label: 'Yard waste season', value: 'Curbside yard waste collection ends for the season on Nov 24, 2026.',
       source: BK_COLLECTIONS, checkedOn: BK_CHECKED,
     },
     {
-      section: 'closures', status: 'confirmed', label: 'City offices',
+      section: 'closures', status: 'confirmed', change: 'closed', label: 'City offices',
       value: 'Closed on Thanksgiving Day in most cases. Some city facilities and recreation activities may have closures, changed schedules or special hours.',
       clarify: "The city posts those changes on its social media; its page does not mention the day after Thanksgiving.",
       meta: 'City offices mostly closed Nov 26',
       source: BK_HOLIDAYS, checkedOn: BK_CHECKED,
     },
     {
-      section: 'closures', status: 'confirmed', label: 'Landfill',
+      section: 'closures', status: 'confirmed', change: 'closed', label: 'Landfill',
       value: 'Closed all day Thu Nov 26. Sat Nov 28 is the last Saturday open for the season.',
       meta: 'Landfill closed Nov 26',
       source: BK_COLLECTIONS, checkedOn: BK_CHECKED,
@@ -83,7 +84,8 @@ const MV_CHECKED = '2026-10-24';
 
 const MORENO_FACTS: HolidayFact[] = [
   {
-    section: 'trash', status: 'confirmed', label: 'Trash, green waste and recycling',
+    section: 'trash', status: 'confirmed', change: 'changed', label: 'Trash, green waste and recycling',
+    insight: 'Trash pickup is one day late after Thanksgiving Day.',
     value: 'No collection on Thanksgiving Day. Pickups for the rest of that week run one day late.',
     clarify: "Thursday's pickup moves to Friday and Friday's to Saturday; Monday to Wednesday are unchanged.",
     meta: 'Trash pickup one day late after Nov 26',
@@ -137,7 +139,7 @@ const BROOMFIELD_FACTS: HolidayFact[] = [
     checkAt: BF_CLOSURES_NOTICE,
   },
   {
-    section: 'closures', status: 'confirmed', label: 'Tree Branch Recycle and RV Wastewater Disposal Facility',
+    section: 'closures', status: 'confirmed', change: 'closed', label: 'Tree Branch Recycle and RV Wastewater Disposal Facility',
     value: 'Closed Sat Nov 28. Regular hours Wed 1–5 p.m. and Sat 8 a.m.–5 p.m. at 2990 W 124th Ave.',
     meta: 'Tree Branch Recycle closed Nov 28',
     clarify: 'Call 303-464-5651 if unsure; it may also close when muddy or wet.',
@@ -166,7 +168,7 @@ const BROOMFIELD_FACTS: HolidayFact[] = [
     checkAt: { label: 'RTD news page', url: 'https://www.rtd-denver.com/community/news' },
   },
   {
-    section: 'help', status: 'confirmed', label: 'Broomfield FISH food bank: Thanksgiving closure',
+    section: 'help', status: 'confirmed', change: 'closed', label: 'Broomfield FISH food bank: Thanksgiving closure',
     value: 'Closed Thu Nov 26 and Fri Nov 27.',
     meta: 'FISH food bank closed Nov 26–27',
     clarify: 'Page lists no year; call 303-465-1600 to check.',

@@ -1,0 +1,32 @@
+---
+/** One row of a holiday page group (HolidayRows.astro): name in bold, a status pill, the detail under it. */
+import CompactRow from './ui/CompactRow.astro';
+import Pill from './ui/Pill.astro';
+import type { RowView } from '../lib/holiday-view';
+import type { HolidayLocale } from '../lib/holiday-page';
+
+interface Props { row: RowView; locale?: HolidayLocale }
+const { row: r, locale = 'en-US' } = Astro.props;
+/** US numbers written "3035551212 12345" carry an extension (dialled after a comma); GB numbers have no such form. */
+const telDigits = (phone: string, loc: HolidayLocale) => {
+  const d = phone.replace(/[^0-9+]/g, '');
+  return loc === 'en-US' ? d.replace(/^(\d{10})(\d+)$/, '$1,$2') : d;
+};
+---
+<li>
+  <CompactRow>
+    <span class="hp-head"><strong class="hp-name">{r.href ? <a href={r.href} rel="noopener">{r.name}</a> : r.name}</strong>{r.pill && <Pill tone={r.pill.tone}>{r.pill.text}</Pill>}</span>
+    {r.parts.map((p, n) => <span class:list={['hp-part', { 'hp-part--soft': n > 0 }]}>{p}</span>)}
+    {r.lastYear && <span class="hp-part hp-part--soft">{r.lastYear.text} (<a href={r.lastYear.source.url} rel="noopener">{r.lastYear.source.name}</a>)</span>}
+    {r.check && (
+      <span class="hp-part hp-part--soft">Check: {r.check.url ? <a href={r.check.url} rel="noopener">{r.check.label}</a> : r.check.label}{r.check.phone && <> · <a href={`tel:${telDigits(r.check.phone, locale)}`}>{r.check.phone}</a></>}</span>
+    )}
+    {r.checkedNote && <span class="hp-part hp-part--soft">{r.checkedNote}</span>}
+  </CompactRow>
+</li>
+<style>
+  .hp-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ui-2); }
+  .hp-name { font-family: var(--font-ui); font-weight: var(--ui-primary-weight); }
+  .hp-part { display: block; margin-top: var(--ui-1); }
+  .hp-part--soft { font-size: var(--ui-meta); color: var(--ink-soft); }
+</style>

@@ -71,10 +71,18 @@ interface FactBase {
   metaGroup?: string;
 }
 
+/** What a confirmed row means for a reader. Set in the data, never read out of the value text: `closed` (shut, no service),
+ *  `changed` (different hours, a moved pickup, reduced service), `open` (runs as usual). A row without it is "good to know". */
+export type HolidayChange = 'closed' | 'changed' | 'open';
+
 export interface ConfirmedFact extends FactBase {
   status: 'confirmed';
   value: string;
   source: Source;
+  change?: HolidayChange;
+  /** One short sentence for the line under the hero (lib/holiday-view.ts holidayInsights): only on a row that changes
+   *  something people plan around, such as a moved pickup. Written from the row's own value. */
+  insight?: string;
 }
 
 /** Not confirmed for this year. `source` is the page that was read (and said nothing, or not enough). */
