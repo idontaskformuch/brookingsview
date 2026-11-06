@@ -483,7 +483,8 @@ async function buildLastmodMap(townId, databaseUrl) {
     // sitemap as indexable just because it isn't thin. Confirmed live
     // 2026-09-03 this mirror had drifted from the page's own noindex logic
     // the same way the module comment above already warns about.
-    if (s.generated_by === 'data_pending' || s.published_at === null || isThinStory(s.source_type, s.body, s.ingredients, s.instructions)) {
+    // String(...).startsWith('ai:') mirrors lib/ai-text.ts isAiText(): model text is withheld, so the permalink is an empty shell
+    if (s.generated_by === 'data_pending' || String(s.generated_by ?? '').startsWith('ai:') || s.published_at === null || isThinStory(s.source_type, s.body, s.ingredients, s.instructions)) {
       noindexStoryUrls.add(storyPathname);
     }
     const canonicalOrigin = CROSS_SITE_CANONICAL_ORIGINS[s.source_type];

@@ -42,6 +42,7 @@ import { getSdsuEventsBetween } from '../../lib/db';
 import { buildWeekDays } from '../../lib/this-week';
 import { groupWeekItems, isQuorumNotice, type WeekGroup } from '../../lib/week-groups';
 import WeekGroupList from '../../components/WeekGroupList.astro';
+import { publicBody, isAiText } from '../../lib/ai-text';
 
 export async function getStaticPaths() {
   // Fetched once for the whole build, not per-page -- the facilities set is
@@ -218,7 +219,8 @@ const isNoindex = story.generated_by === 'data_pending' || shouldNoindexStory(st
 // excluded regardless of type, same as before.
 const isThinScrapedType = THIN_SCRAPED_SOURCE_TYPES.includes(story.source_type);
 const hasRealPublishedContent = story.generated_by !== 'data_pending' && story.published_at !== null;
-const emitArticleSchema = hasRealPublishedContent && (!isNoindex || isThinScrapedType);
+// No Article schema for a page whose model-written text is withheld: it would describe text the page does not show.
+const emitArticleSchema = hasRealPublishedContent && !isAiText(story) && (!isNoindex || isThinScrapedType);
 // City-hall development items often name a ZIP directly ("...in the 92553
 // area...") -- cross-link to the home-sales table pre-filtered to it, per
 // NEEDS-HUMAN-REVIEW.md "3.2 City hall". Deliberately scoped to Moreno
@@ -406,7 +408,7 @@ const comments = isWorkerPulseDigest ? await getWorkerPulseComments(story.slug) 
 // via this one shared displayBody, not three separate special cases (see
 // lib/content-redaction.ts for the full reasoning, shared with rss.xml.ts
 // and workplace-watch/index.astro).
-const displayBody = redactWorkerPulseBody(story.source_type, story.body);
+const displayBody = redactWorkerPulseBody(story.source_type, publicBody(story)); // model-written text is withheld (lib/ai-text.ts)
 // University digest in the new structure (owner 2026-10-23): a short AI introduction (<= 100 words) with the week's SDSU
 // events listed below it, grouped by theme and linked to SDSU's own event pages. Older digests (long prose) stay as written.
 let digestGroups: WeekGroup[] = [];

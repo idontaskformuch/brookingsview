@@ -30,6 +30,7 @@
  *  permalink, reason 1 above, just for a different kind of thinness
  *  (content-farm perception, not scraped-feed redundancy). */
 import type { SourceType, Story } from './db';
+import { isAiText } from './ai-text';
 
 export const THIN_SCRAPED_SOURCE_TYPES: SourceType[] = [
   'meeting', 'meeting_followup', 'event', 'alert',
@@ -95,6 +96,8 @@ export function getWordCountNoindexTally(): number {
 export function shouldNoindexStory(
   story: Pick<Story, 'source_type' | 'body'> & {
     published_at?: string | null;
+    // AI-written text is never printed (lib/ai-text.ts), so the permalink would be an empty shell: noindex it.
+    generated_by?: string | null;
     // Recipe SEO handoff: a vardagsmiddag row's real content isn't just
     // `body` -- content/recept/vardagsmiddag.py extracts ingredients and
     // instructions OUT of body into these separate structured arrays (see
@@ -122,5 +125,5 @@ export function shouldNoindexStory(
     wordCountNoindexTally += 1;
     scheduleWordCountSummaryLog();
   }
-  return isThinType || isThinByWordCount || isUnpublished;
+  return isThinType || isThinByWordCount || isUnpublished || isAiText(story);
 }

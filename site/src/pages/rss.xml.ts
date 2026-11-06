@@ -1,5 +1,6 @@
 import rss from '@astrojs/rss';
 import type { APIContext } from 'astro';
+import { publicBody } from '../lib/ai-text';
 import { getAllStories, CONTENT_TRACK_TYPES } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { placeLabel } from '../lib/country-profile';
@@ -42,7 +43,7 @@ export async function GET(context: APIContext) {
       // 2026-10-02: redacted for workplace_watch_digest rows -- the raw
       // body routinely states a specific Glassdoor/Indeed rating in prose,
       // see lib/content-redaction.ts's own module docstring.
-      description: redactWorkerPulseBody(story.source_type, story.body),
+      description: redactWorkerPulseBody(story.source_type, publicBody(story)),
       link: storyHref(story.slug),
       pubDate: new Date(story.published_at),
     })),

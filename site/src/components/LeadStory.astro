@@ -10,6 +10,7 @@ import ImageAttribution from './ImageAttribution.astro';
 import { siteConfig } from '../lib/site-config';
 import { relativeTime } from '../lib/time';
 import { storyHref } from '../lib/content-slugs';
+import { publicBody } from '../lib/ai-text';
 
 // `image`: optional pre-resolved override -- undefined (the default, every
 // call site but index.astro's front-page cards) means self-resolve as
@@ -101,7 +102,7 @@ const heroImage = imageOverride !== undefined ? imageOverride : resolveImage(sto
   {heroImage && <ImageAttribution image={heroImage} />}
   <h2 class="lead__title"><a href={storyHref(story.slug)}>{displayTitle}</a></h2>
   {venue && <p class="lead__venue data">{venue}</p>}
-  <p class="lead__body">{story.body}</p>
+  {publicBody(story) && <p class="lead__body">{publicBody(story)}</p>}
   <a class="lead__more" href={storyHref(story.slug)}>Read more &rarr;</a>
 </article>
 

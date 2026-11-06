@@ -9,6 +9,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import GameCard from '../components/GameCard.astro';
+import { publicBody } from '../lib/ai-text';
 import { getSeasonGames, getUpcomingGames, getContentByType, formatDate, formatTime } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { fitDescription } from '../lib/meta-description';
@@ -83,7 +84,7 @@ const summaryBySport = new Map(
         <SectionRule label={label(sport)} />
         {summary && (
           <div class="season-summary">
-            {summary.body.split(/\n\s*\n/).map((para) => <p>{para}</p>)}
+            {publicBody(summary).split(/\n\s*\n/).map((para) => <p>{para}</p>)}
           </div>
         )}
         {results.length > 0 && (

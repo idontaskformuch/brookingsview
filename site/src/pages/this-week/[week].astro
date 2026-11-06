@@ -27,6 +27,7 @@ import {
   getSeasonGames, getRegionalSports, getWorthKnowingCandidatesInRange, formatOccursAt,
 } from '../../lib/db';
 import type { Story } from '../../lib/db';
+import { publicBody } from '../../lib/ai-text';
 import {
   weekInfoForInstant, currentWeekInfo, previousWeekInfo, buildWeekDays, selectWeeklyLead,
   buildDisplayRows, shouldNoindexWeekPage, recentWeekSlugs, type WeekInfo, type DayBucket, type Vertical,
@@ -96,6 +97,9 @@ const { week, days, lead, weeklyStory, prevWeek, isCurrent, isRecent } = Astro.p
   weeklyStory: Story | null; prevWeek: WeekInfo | null; isCurrent: boolean;
 };
 
+// Model-written text is never printed (lib/ai-text.ts): an AI weekly story gives no intro, the generic line below shows instead.
+const weeklyParagraphs = (weeklyStory ? publicBody(weeklyStory) : '').split('\n').map((p) => p.trim()).filter(Boolean);
+const weeklyIntro = weeklyParagraphs[0] ?? '';
 const pageMeta = resolvePageMeta('this-week', siteConfig, { WeekLabel: week.label });
 const hubBacklink = resolveHubBacklink('this-week', siteConfig);
 const title = pageMeta.title;
@@ -130,11 +134,9 @@ const itemListJsonLd = hasAnyItems ? {
   <header class="lede">
     <p class="kicker">This week in {siteConfig.cityName}</p>
     <h1>{pageMeta.h1}</h1>
-    {weeklyStory ? (
-      <p class="intro">{weeklyStory.body.split('\n').map((p) => p.trim()).filter(Boolean)[0]}{' '}
-        {weeklyStory.body.split('\n').filter((p) => p.trim()).length > 1 && (
-          <a href={storyHref(weeklyStory.slug)}>Read the full week in review →</a>
-        )}</p>
+    {weeklyIntro ? (
+      <p class="intro">{weeklyIntro}{' '}
+        {weeklyParagraphs.length > 1 && <a href={storyHref(weeklyStory!.slug)}>Read the full week in review →</a>}</p>
     ) : (
       <p class="intro">{isCurrent
         ? `What's on this week in ${siteConfig.cityName}, day by day, built from real scheduled meetings, events${isBrookings ? ', SDSU listings' : ''} and games.`

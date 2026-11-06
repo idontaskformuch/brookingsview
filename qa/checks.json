@@ -239,7 +239,7 @@
     "events.text-names-utc-day": {
       "severity": "soft",
       "born_from": "Owner report 2026-11-05 (premium Phase 4): evening events on Moreno Valley showed a text date one day off. Measured in the live DB 2026-11-05: of 150 upcoming Moreno events whose local day differs from their UTC day, 72 have stored AI text naming only the UTC day (e.g. event-67503, 16:00 PST Dec 7, text says \"December 8\"). Regression fixture: site/src/lib/event-day-view.test.ts (event-327253, 19:00 PST) - fails with UTC day math, passes with local; bodyNamesWrongDay() is the detector.",
-      "what": "stored event text that names the UTC calendar day but not the local one. /events/ no longer prints the text (rows use occurs_at in the town zone); /s/<slug>/, /today/ and the facet pages still print it. NOT yet a run-time check: it needs a DB read in qa/ (owner decision: regenerate or stop printing the text on those pages)."
+      "what": "stored event text that names the UTC calendar day but not the local one. /events/ no longer prints the text (rows use occurs_at in the town zone); /s/<slug>/, /today/ and the facet pages still print it. RESOLVED 2026-11-06 by owner decision (stop printing, no regeneration): every layout prints story text only through publicBody() (site/src/lib/ai-text.ts); regression fixture site/src/lib/ai-text.test.ts (fails if a layout reads story.body without publicBody; it failed on LeadStory and WeeklyRoundup before they were fixed)."
     }
   }
 }
