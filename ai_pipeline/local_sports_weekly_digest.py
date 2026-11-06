@@ -48,6 +48,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+from db.db import connect as db_connect
 from psycopg.rows import dict_row
 
 from ai_pipeline.generator_switch import generator_enabled
@@ -224,7 +225,7 @@ def main() -> int:
     slug = slug.replace("sports-digest-", "local-sports-notes-")
     print(f"Vecka {label}  ({slug})")
 
-    with psycopg.connect(database_url) as conn:
+    with db_connect(database_url) as conn:
         mentions = gather_sports_mentions(conn, town_id, start, end)
         print(f"  underlag: {len(mentions)} sportrelaterade notiser i skoldistriktets flöde")
 

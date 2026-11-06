@@ -110,8 +110,22 @@ def set_default_context(generator: str | None = None, town_id: str | None = None
     _run_id_var.set(run_id or _run_id_var.get() or _default_run_id())
 
 
+_READ_ONLY_WARNED = False
+
+
 def _warn(msg: str) -> None:
     print(f"  [api_usage] WARNING {msg}", file=sys.stderr)
+
+
+def _warn_failed(what: str, exc: Exception) -> None:
+    """A local run without --prod has a read-only connection (db/db.py write guard): say so ONCE instead of once per API call."""
+    global _READ_ONLY_WARNED
+    if type(exc).__name__ == "ReadOnlySqlTransaction":
+        if not _READ_ONLY_WARNED:
+            _READ_ONLY_WARNED = True
+            _warn(f"{what} skipped: the database connection is read-only (no --prod + ALLOW_PROD_WRITE); further api_usage rows this run are not logged")
+        return
+    _warn(f"{what}: {type(exc).__name__}: {exc}")
 
 
 def log_usage(provider: str, *, model: str | None = None,
@@ -153,7 +167,7 @@ def log_usage(provider: str, *, model: str | None = None,
             row = cur.fetchone()
         usage_id = row[0] if row else None
     except Exception as exc:  # noqa: BLE001 -- see docstring, logging must never be fatal
-        _warn(f"failed to log usage ({provider}/{model}, generator={g}, town={t}): {type(exc).__name__}: {exc}")
+        _warn_failed(f"failed to log usage ({provider}/{model}, generator={g}, town={t})", exc)
         usage_id = None
     _set_last_usage_id(usage_id)
     return usage_id
@@ -183,7 +197,7 @@ def finalize_outcome(usage_id: int | None, outcome: str, reject_reason: str | li
             else:
                 cur.execute("UPDATE api_usage SET outcome = %s WHERE id = %s", (outcome, usage_id))
     except Exception as exc:  # noqa: BLE001
-        _warn(f"failed to finalize outcome for usage row {usage_id}: {type(exc).__name__}: {exc}")
+        _warn_failed(f"failed to finalize outcome for usage row {usage_id}", exc)
 
 
 def finalize_generation(usage_ids: list[int], succeeded: bool, fallback_outcome: str = "template_fallback",

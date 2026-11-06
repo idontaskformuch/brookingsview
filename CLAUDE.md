@@ -54,7 +54,10 @@
     ett uttryckligt ja som nämner åtgärden ("ja, radera"). Ett ja på en
     sammansatt fråga räknas aldrig som godkännande. Backup till
     `.claude/backups/` (JSON med raderade/ändrade rader) före varje sådan
-    skrivning.
+    skrivning. Mekanismen finns i db/db.py: lokal process är read-only utan
+    `--prod` + `ALLOW_PROD_WRITE=<åtgärd>`; backup via
+    `python -m scripts.prod_backup <åtgärd> "<SELECT>"`. Spärren ersätter
+    inte ägarens ja. CI (GITHUB_ACTIONS=true) är undantaget.
 
 ## Redaktionell grundregel
 

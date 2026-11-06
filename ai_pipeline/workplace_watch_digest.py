@@ -73,6 +73,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+from db.db import connect as db_connect
 from psycopg.rows import dict_row
 
 from ai_pipeline.generator_switch import generator_enabled
@@ -328,7 +329,7 @@ def main() -> int:
     period_label = period.strftime("%B %Y")
     print(f"Worker Pulse -- {period_label} ({town_id})")
 
-    with psycopg.connect(database_url) as conn:
+    with db_connect(database_url) as conn:
         employers = gather_employers(conn, town_id)
         if not employers:
             print("  inga employers registrerade -- kör 'python -m scripts.seed_employers "

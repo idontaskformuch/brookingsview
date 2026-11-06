@@ -34,6 +34,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+from db.db import connect as db_connect
 
 from ai_pipeline import api_usage
 from content import local_context, now_playing, seasonal_ingredients
@@ -185,7 +186,7 @@ def main() -> int:
     if not database_url:
         raise RuntimeError("DATABASE_URL saknas i .env")
 
-    with psycopg.connect(database_url) as conn:
+    with db_connect(database_url) as conn:
         local_input, source_desc = _build_local_input(conn, town_id, content_type, today, cfg)
         if local_input is None:
             print(f"  inget underlag ({source_desc}) -- hoppar över")

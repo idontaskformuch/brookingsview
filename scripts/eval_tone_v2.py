@@ -34,6 +34,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+from db.db import connect as db_connect
 from psycopg.rows import dict_row
 from datetime import datetime
 
@@ -199,7 +200,7 @@ def main() -> int:
     old_entries: list[dict] = []
     new_entries: list[dict] = []
 
-    with psycopg.connect(database_url) as conn:
+    with db_connect(database_url) as conn:
         buckets = _fetch_sample(conn, town_id, args.meetings, args.events, args.alerts, tz)
 
         for kind, rows in buckets.items():

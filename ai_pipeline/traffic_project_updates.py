@@ -41,6 +41,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+from db.db import connect as db_connect
 from psycopg.rows import dict_row
 
 from ai_pipeline import api_usage
@@ -110,7 +111,7 @@ def main() -> int:
     if not database_url:
         raise RuntimeError("DATABASE_URL saknas i .env")
 
-    with psycopg.connect(database_url) as conn:
+    with db_connect(database_url) as conn:
         incidents = find_unthreaded_candidate_incidents(conn, town_id)
         if not incidents:
             print("  inga otrådade trafikincidenter för den här orten")

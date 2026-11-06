@@ -46,6 +46,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+from db.db import connect as db_connect
 from psycopg.rows import dict_row
 
 from ai_pipeline.generator_switch import generator_enabled
@@ -478,7 +479,7 @@ def main() -> int:
 
     client = anthropic.Anthropic() if anthropic is not None else None
 
-    with psycopg.connect(database_url) as conn:
+    with db_connect(database_url) as conn:
         queries = build_queries(feat)
         all_results: list[dict] = []
         seen_urls: set[str] = set()

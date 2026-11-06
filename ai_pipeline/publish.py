@@ -67,6 +67,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+from db.db import connect as db_connect
 import requests
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
@@ -1171,7 +1172,7 @@ def main() -> int:
     if not database_url:
         raise RuntimeError("DATABASE_URL saknas i .env")
 
-    with psycopg.connect(database_url) as conn:
+    with db_connect(database_url) as conn:
         known = existing_slugs(conn, town_id)
         known_meetings = existing_meeting_ids(conn, town_id)
         print(f"{len(known)} stories finns redan för {town_id}\n")

@@ -90,6 +90,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+from db.db import connect as db_connect
 import requests
 from scrapers.user_agent import user_agent
 
@@ -280,7 +281,7 @@ def main() -> int:
     if not database_url:
         raise RuntimeError("DATABASE_URL saknas i .env")
 
-    with psycopg.connect(database_url) as conn:
+    with db_connect(database_url) as conn:
         meetings = find_candidate_meetings(conn, town_id)
 
         new_count = 0

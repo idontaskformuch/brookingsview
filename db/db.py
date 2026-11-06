@@ -12,12 +12,17 @@ Designad för att vara beroende-lätt och köra lika bra lokalt som i GitHub Act
 """
 from __future__ import annotations
 
+import atexit
 import hashlib
 import json
 import os
+import re
+import sys
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import urlparse
 
 import psycopg
 from dotenv import load_dotenv
@@ -33,9 +38,187 @@ def _database_url() -> str:
     return url
 
 
+# --- Skrivspärr mot prod-DB (ägaren 2026-11-06, efter att 3723 mock-rader raderades utan backup) ---------------------------------
+# Läsning är alltid tillåten. En lokal process får SKRIVA mot databasen bara om BÅDA är satta:
+#   --prod på kommandoraden (plockas bort ur sys.argv här, så argparse i skriptet aldrig ser den)
+#   ALLOW_PROD_WRITE=<åtgärdsnamn> i miljön (= skriptets filnamn utan .py, eller det namn skriptet själv ger med declare_action())
+# Utan båda öppnas anslutningen read-only (BEGIN READ ONLY): ett skrivförsök kastar. Inför varje prod-skrivning krävs dessutom en
+# backup-fil `.claude/backups/<datum>_<åtgärd>.json` (scripts/prod_backup.py), och alla INSERT:ade id:n loggas till
+# `.claude/backups/<datum>_<åtgärd>_inserted.json`. GITHUB_ACTIONS=true (schemalagda scrapers, AI-pipeline, deploy) är undantaget.
+# Spärren ersätter inte ägarens uttryckliga ja (CLAUDE.md regel 14), den gör bara misstag svårare.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+BACKUP_DIR = _REPO_ROOT / ".claude" / "backups"
+_INSERT_RE = re.compile(r"^\s*insert\s+into\s+([A-Za-z_][\w.]*)", re.I)
+_RETURNING_ID_RE = re.compile(r"\breturning\s+id\b", re.I)
+_RETURNING_RE = re.compile(r"\breturning\b", re.I)
+
+
+def _consume_prod_flag(argv: list[str] | None = None) -> bool:
+    argv = sys.argv if argv is None else argv
+    found = "--prod" in argv
+    while "--prod" in argv:
+        argv.remove("--prod")
+    return found
+
+
+_PROD_FLAG = _consume_prod_flag()
+_DECLARED_ACTION: str | None = None
+_ANNOUNCED: set[str] = set()
+_INSERTED: list[dict] = []
+_ID_TABLES: set[str] | None = None
+
+
+def declare_action(name: str) -> None:
+    """Ett skript som vill ha ett annat åtgärdsnamn än sitt filnamn anger det här, före första get_conn()."""
+    global _DECLARED_ACTION
+    _DECLARED_ACTION = name
+
+
+def _expected_action() -> str | None:
+    if _DECLARED_ACTION:
+        return _DECLARED_ACTION
+    arg0 = Path(sys.argv[0]) if sys.argv and sys.argv[0] else None
+    if arg0 is not None and arg0.suffix == ".py" and arg0.is_file() and arg0.stem != "__main__":
+        return arg0.stem
+    return None
+
+
+def write_mode() -> str:
+    """'ci' (spärren gäller inte), 'prod' (båda flaggor satta) eller 'read_only'."""
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        return "ci"
+    if _PROD_FLAG and os.environ.get("ALLOW_PROD_WRITE"):
+        return "prod"
+    return "read_only"
+
+
+def backup_path(action: str, inserted: bool = False) -> Path:
+    return BACKUP_DIR / f"{date.today().isoformat()}_{action}{'_inserted' if inserted else ''}.json"
+
+
+def _authorize_prod(url: str) -> str:
+    action = os.environ["ALLOW_PROD_WRITE"]
+    expected = _expected_action()
+    if expected and action != expected:
+        raise SystemExit(f"Avbryter: ALLOW_PROD_WRITE={action!r} matchar inte skriptets åtgärdsnamn {expected!r}.")
+    if not backup_path(action).is_file():
+        raise SystemExit(
+            f"Avbryter: ingen backup för åtgärden {action!r} från i dag ({backup_path(action)}). Kör först:\n"
+            f'  python -m scripts.prod_backup {action} "<SELECT för raderna som berörs>"')
+    if action not in _ANNOUNCED:
+        _ANNOUNCED.add(action)
+        print(f"[db] PROD-SKRIVNING TILLÅTEN  värd={urlparse(url).hostname or '?'}  åtgärd={action}  backup={backup_path(action).name}",
+              file=sys.stderr)
+        atexit.register(flush_inserted, action)
+    return action
+
+
+def flush_inserted(action: str) -> None:
+    if not _INSERTED:
+        return
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    path = backup_path(action, inserted=True)
+    previous = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else []
+    path.write_text(json.dumps(previous + _INSERTED, default=str, indent=1), encoding="utf-8")
+    _INSERTED.clear()
+
+
+def _tables_with_id(raw_conn) -> set[str]:
+    global _ID_TABLES
+    if _ID_TABLES is None:
+        with raw_conn.cursor() as cur:
+            cur.execute("SELECT table_name FROM information_schema.columns WHERE table_schema = 'public' AND column_name = 'id'")
+            _ID_TABLES = {r[0] for r in cur.fetchall()}
+    return _ID_TABLES
+
+
+class _GuardedCursor:
+    """Proxy runt en riktig cursor: loggar id:n (execute) eller parametrar (executemany) för varje INSERT."""
+
+    def __init__(self, cursor, conn):
+        self._cur, self._conn = cursor, conn
+
+    def __getattr__(self, name):
+        return getattr(self._cur, name)
+
+    def __iter__(self):
+        return iter(self._cur)
+
+    def __enter__(self):
+        self._cur.__enter__()
+        return self
+
+    def __exit__(self, *exc):
+        return self._cur.__exit__(*exc)
+
+    def execute(self, query, params=None, **kwargs):
+        sql = query if isinstance(query, str) else None
+        m = _INSERT_RE.match(sql) if sql else None
+        if not m:
+            self._cur.execute(query, params, **kwargs)
+            return self
+        table = m.group(1)
+        wants_id = bool(_RETURNING_ID_RE.search(sql))
+        if not wants_id and not _RETURNING_RE.search(sql) and table.split(".")[-1] in _tables_with_id(self._conn._raw):
+            sql, wants_id = sql.rstrip().rstrip(";") + " RETURNING id", True
+        self._cur.execute(sql, params, **kwargs)
+        if wants_id:
+            rows = self._cur.fetchall()
+            self._cur.scroll(0, mode="absolute")
+            _INSERTED.append({"table": table, "ids": [r["id"] if isinstance(r, dict) else r[0] for r in rows]})
+        else:
+            _INSERTED.append({"table": table, "ids": None, "statement": sql, "params": params})
+        return self
+
+    def executemany(self, query, params_seq, **kwargs):
+        params_seq = list(params_seq)
+        m = _INSERT_RE.match(query) if isinstance(query, str) else None
+        if m:
+            _INSERTED.append({"table": m.group(1), "ids": None, "statement": query, "params": params_seq})
+        self._cur.executemany(query, params_seq, **kwargs)
+        return self
+
+
+class _GuardedConnection:
+    def __init__(self, conn, action: str):
+        self._raw, self.action = conn, action
+
+    def __getattr__(self, name):
+        return getattr(self._raw, name)
+
+    def cursor(self, *args, **kwargs):
+        return _GuardedCursor(self._raw.cursor(*args, **kwargs), self)
+
+    def execute(self, query, params=None, **kwargs):
+        return self.cursor().execute(query, params, **kwargs)
+
+    def __enter__(self):
+        self._raw.__enter__()
+        return self
+
+    def __exit__(self, *exc):
+        return self._raw.__exit__(*exc)
+
+    def close(self):
+        flush_inserted(self.action)
+        self._raw.close()
+
+
+def connect(url: str | None = None, **kwargs):
+    """Den ENDA vägen till databasen (get_conn() och alla ai_pipeline-/scripts-anrop går hit). Se skrivspärren ovan."""
+    url = url or _database_url()
+    mode = write_mode()
+    action = _authorize_prod(url) if mode == "prod" else None
+    conn = psycopg.connect(url, **kwargs)
+    if mode == "read_only":
+        conn.read_only = True
+        return conn
+    return _GuardedConnection(conn, action) if mode == "prod" else conn
+
+
 @contextmanager
 def get_conn():
-    conn = psycopg.connect(_database_url())
+    conn = connect()
     try:
         yield conn
         conn.commit()

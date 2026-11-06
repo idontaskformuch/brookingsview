@@ -42,6 +42,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+from db.db import connect as db_connect
 from psycopg.rows import dict_row
 
 from ai_pipeline.generator_switch import generator_enabled
@@ -262,7 +263,7 @@ def main() -> int:
     if not database_url:
         raise RuntimeError("DATABASE_URL saknas i .env")
 
-    with psycopg.connect(database_url) as conn:
+    with db_connect(database_url) as conn:
         all_stats = gather_sport_stats(conn, town_id)
         if not all_stats:
             print("  inga spelade matcher ännu -- ingen sammanfattning att skriva")

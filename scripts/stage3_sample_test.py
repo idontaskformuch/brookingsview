@@ -23,6 +23,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+from db.db import connect as db_connect
 from psycopg.rows import dict_row
 
 from ai_pipeline.format_prompt import format_record, _spent_this_month
@@ -90,7 +91,7 @@ def main() -> int:
     print(f"AI-spend hittills denna månad: ${_spent_this_month():.4f} "
           f"(tak: ${cfg.get('ai', {}).get('monthly_budget_usd', 20)})\n")
 
-    with psycopg.connect(_env_database_url(), row_factory=dict_row) as conn:
+    with db_connect(_env_database_url(), row_factory=dict_row) as conn:
         for source_type, (sql, desc) in QUERIES.items():
             print("=" * 78)
             print(f"KÄLLTYP: {source_type}  ({desc})")

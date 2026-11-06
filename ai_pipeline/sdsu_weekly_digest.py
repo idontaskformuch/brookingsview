@@ -44,6 +44,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+from db.db import connect as db_connect
 from psycopg.rows import dict_row
 
 from ai_pipeline.generator_switch import generator_enabled
@@ -379,7 +380,7 @@ def main() -> int:
     start, end, slug, label = week_bounds(tz)
     print(f"Vecka {label}  ({slug})")
 
-    with psycopg.connect(database_url) as conn:
+    with db_connect(database_url) as conn:
         events = gather_events(conn, town_id, start, end)
         academic_dates = gather_academic_dates(conn, town_id, start, end)
         print(f"  underlag: {len(events)} events, {len(academic_dates)} academic dates")

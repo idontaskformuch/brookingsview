@@ -50,6 +50,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+from db.db import connect as db_connect
 
 from ai_pipeline import api_usage, guardrails
 from ai_pipeline.generator_switch import generator_enabled
@@ -373,7 +374,7 @@ def main() -> int:
     if not database_url:
         raise RuntimeError("DATABASE_URL saknas i .env")
 
-    with psycopg.connect(database_url) as conn:
+    with db_connect(database_url) as conn:
         # Prune rows for events no longer present anywhere in the live feed
         # at all (expired) -- NOT rows merely outside the current top
         # `marquee_size`, so a temporarily-demoted event doesn't need

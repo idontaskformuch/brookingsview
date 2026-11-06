@@ -49,6 +49,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+from db.db import connect as db_connect
 from psycopg.rows import dict_row
 
 from ai_pipeline.generator_switch import generator_enabled
@@ -440,7 +441,7 @@ def main() -> int:
     if not database_url:
         raise RuntimeError("DATABASE_URL saknas i .env")
 
-    with psycopg.connect(database_url) as conn:
+    with db_connect(database_url) as conn:
         all_months_with_data = months_with_sales(conn, town_id)
         if not all_months_with_data:
             print("  ingen property_sales-data för den här orten -- inget att sammanfatta")

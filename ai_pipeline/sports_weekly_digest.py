@@ -47,6 +47,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+from db.db import connect as db_connect
 from psycopg.rows import dict_row
 
 from ai_pipeline.generator_switch import generator_enabled
@@ -299,7 +300,7 @@ def main() -> int:
     start, end, slug, label = previous_week_bounds()
     print(f"Vecka {label}  ({slug})")
 
-    with psycopg.connect(database_url) as conn:
+    with db_connect(database_url) as conn:
         team_stats = gather_team_week_stats(conn, town_id, start, end)
         total_games = sum(len(t["games"]) for t in team_stats)
         print(f"  underlag: {len(team_stats)} lag, {total_games} avslutade matcher")

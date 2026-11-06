@@ -56,6 +56,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import psycopg
+from db.db import connect as db_connect
 
 from ai_pipeline.generator_switch import generator_enabled
 from ai_pipeline import api_usage, guardrails
@@ -417,7 +418,7 @@ def main() -> int:
     if not database_url:
         raise RuntimeError("DATABASE_URL saknas i .env")
 
-    with psycopg.connect(database_url) as conn:
+    with db_connect(database_url) as conn:
         if args.only in (None, "facilities"):
             print("Facilities:")
             n = run_facilities(conn, cfg, args.dry_run)
