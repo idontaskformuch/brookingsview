@@ -1,0 +1,18 @@
+{
+ "_doc": "2026-11-06. bad: a 390x170 FallbackTile in an events day list (the old top card); good: none, or a snapshot without the probe field.",
+ "eventBigTile": {
+  "bad": [
+   {
+    "eventBigTiles": [
+     "358x156 px"
+    ]
+   }
+  ],
+  "good": [
+   {
+    "eventBigTiles": []
+   },
+   {}
+  ]
+ }
+}

@@ -106,6 +106,8 @@ export function checkPage(snap, town, compiled) {
   if (rc) f.push(finding('web.replacement-char', town, snap, `a replacement character (U+FFFD) in the text: "${rc[0]}"`));
   // web.empty-link: an <a href=""> goes nowhere (Moreno's agenda_url is '' where no agenda exists; a button must not render for it)
   if ((snap.emptyLinks ?? []).length) f.push(finding('web.empty-link', town, snap, `link with an empty href: "${snap.emptyLinks[0]}"`));
+  // web.event-big-tile: a full-size FallbackTile inside an events day list (born 2026-11-06: a big coloured box with no image led the Moreno front page)
+  if ((snap.eventBigTiles ?? []).length) f.push(finding('web.event-big-tile', town, snap, `full-size placeholder tile in an events list: ${snap.eventBigTiles[0]}`));
   // meetings.unknown-organ: an organ string no BODIES table in config/meetings.ts lists (shown under its own name, so nothing vanishes, but the table is aging)
   if ((snap.unknownOrgans ?? []).length) f.push(finding('meetings.unknown-organ', town, snap, `organ not in the BODIES table: ${[...new Set(snap.unknownOrgans)].slice(0, 5).join(' | ')}`));
 

@@ -199,12 +199,6 @@ export function buildEventsView(items: FeedItem[], { now, timezone, gb, facts }:
   };
 }
 
-/** The day's top item: the first row (by time) that has a real photo; else the first with a category that is not civic (a meeting is not a
- *  picture); else none. A day with neither gets no feature rather than a tile that says nothing. */
-export function pickFeature(rows: DayRow[], hasPhoto: (row: DayRow) => boolean): DayRow | null {
-  return rows.find(hasPhoto) ?? rows.find((r) => r.cat && r.cat !== 'civic') ?? null;
-}
-
 /** Keep the first `max` rows over a list of days (day order, then time), dropping days that end up empty. `hidden` is what was cut. */
 export function takeRows(days: DayGroup[], max: number): { days: DayGroup[]; hidden: number } {
   let left = max;

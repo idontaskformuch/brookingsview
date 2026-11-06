@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   buildEventsView, recurrenceKind, isFreeByCost, clockLabel, bodyNamesWrongDay, DAYSTRIP_MIN_EVENTS,
@@ -178,16 +179,9 @@ describe('dedupe: same title, same local day, start within 60 minutes is one eve
   });
 });
 
-describe('feature, caps and front-page blocks', () => {
+describe('caps and front-page blocks', () => {
   const mkRow = (o: Partial<import('./event-day-view').DayRow>) => ({ item: null as any, dayKey: 'd', dateLabel: '', offset: 0, timeLabel: '', allDay: false, tonight: false, recurrence: 'one_off', title: 't', venue: null, area: null, free: false, kids: false, teens: false, cat: null, start: '', end: null, merged: [], ...o }) as import('./event-day-view').DayRow;
   const grp = (offset: number, rows: import('./event-day-view').DayRow[]) => ({ offset, dayKey: `k${offset}`, label: 'x', dateLabel: 'x', count: rows.length, rows });
-  it('feature: photo first, then a non-civic category, else none', async () => {
-    const { pickFeature } = await import('./event-day-view');
-    const a = mkRow({ title: 'a', cat: 'civic' }), b = mkRow({ title: 'b', cat: 'music' }), c = mkRow({ title: 'c' });
-    expect(pickFeature([a, b, c], (r) => r.title === 'c')?.title).toBe('c');
-    expect(pickFeature([a, b, c], () => false)?.title).toBe('b');
-    expect(pickFeature([a, c], () => false)).toBeNull();
-  });
   it('takeRows cuts in day order and reports what is hidden', async () => {
     const { takeRows } = await import('./event-day-view');
     const r = takeRows([grp(0, [mkRow({}), mkRow({})]), grp(1, [mkRow({}), mkRow({})]), grp(2, [mkRow({})])], 3);
@@ -207,5 +201,43 @@ describe('feature, caps and front-page blocks', () => {
     const wed = homeBlocks(view, 2);
     expect(wed.weekend.map((d) => d.offset)).toEqual([2, 3, 4]);
     expect(wed.week.map((d) => d.offset)).toEqual([1, 5, 6]);
+  });
+});
+
+describe('strict time order (owner 2026-11-06: no row is lifted above an earlier one)', () => {
+  const arts = (id: string, startIso: string): FeedItem => ({
+    sourceKind: 'arts', occurs_at: startIso,
+    event: { external_event_id: id, title: `Event ${id}`, teaser: null, location: 'Somewhere', starts_at: startIso, ends_at: null, categories: [], primary_category: null, event_url: `/events/${id}` } as any,
+  });
+  it('rows inside a day come out in start order whatever order they arrive in', () => {
+    const f = (i: FeedItem): RowFacts => ({ title: (i as any).event.title, venue: null, area: null, free: false, kids: false });
+    const v = buildEventsView(
+      [arts('c', '2026-11-11T03:00:00Z'), arts('a', '2026-11-10T17:00:00Z'), arts('b', '2026-11-10T22:00:00Z')],
+      { now: new Date('2026-11-10T16:00:00Z'), timezone: 'America/Chicago', gb: false, facts: f },
+    );
+    for (const d of v.days) {
+      const starts = d.rows.map((r) => r.start);
+      expect(starts, d.dayKey).toEqual([...starts].sort());
+    }
+    expect(v.days.flatMap((d) => d.rows.map((r) => r.title))).toEqual(['Event a', 'Event b', 'Event c']);
+  });
+});
+
+describe('events never show a big card or a full-size FallbackTile', () => {
+  const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  it('EventDayList and EventRow import neither Card nor FallbackTile, and nothing is pulled above its time', () => {
+    for (const f of ['../components/events/EventDayList.astro', '../components/events/EventRow.astro']) {
+      const src = read(f);
+      expect(src, f).not.toMatch(/FallbackTile|ui\/Card|<Card|pickFeature|feature/);
+    }
+  });
+  it('a thumbnail is 64 px and exists only for a real photo', () => {
+    const row = read('../components/events/EventRow.astro');
+    expect(row).toMatch(/\{photo && <img class="ev-thumb"[^>]*width="64" height="64"/);
+    const list = read('../components/events/EventDayList.astro');
+    expect(list).toMatch(/categoryImages: \{\}/); // the generic category pool is never used for a photo
+  });
+  it('no page passes the removed feature prop', () => {
+    for (const f of ['../pages/index.astro', '../pages/events.astro']) expect(readFileSync(new URL(f, import.meta.url), 'utf8')).not.toMatch(/<EventDayList[^>]*feature=/);
   });
 });

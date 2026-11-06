@@ -252,6 +252,8 @@ function pageProbe({ allowSel, wantLinks }) {
     emptySections, staleRecently, clientfill, staleAlerts, pastEvents, allDayClock,
     // meetings pages: organ strings no BODIES table knows (data-mtg-unknown), and links with an empty href (meetings.unknown-organ, web.empty-link)
     unknownOrgans: [...document.querySelectorAll('[data-mtg-unknown]')].map((e) => e.getAttribute('data-mtg-unknown')),
+    // events day lists must not hold a full-size FallbackTile (web.event-big-tile); a 64 px thumbnail is a photo, not a tile
+    eventBigTiles: [...document.querySelectorAll('.evd .ui-fb')].filter((e) => e.getBoundingClientRect().height > 80).map((e) => `${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)} px`),
     emptyLinks: [...document.querySelectorAll('main a[href]')].filter((a) => (a.getAttribute('href') ?? '').trim() === '').map((a) => (a.innerText || '').trim().slice(0, 60)),
     // sideways scroll: some element reaches past the phone viewport (web.hscroll reads it on the mobile combos). Measured by element edges
     // against screen.width, not documentElement.scrollWidth: in mobile emulation the layout viewport is stretched to 980 on every page.

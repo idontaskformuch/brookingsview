@@ -271,3 +271,12 @@ describe('meetings checks (Phase 3, 2026-11-05)', () => {
     for (const x of fx[key].good) expect(page(x), JSON.stringify(x)).not.toContain(check);
   });
 });
+
+describe('event tile check (2026-11-06)', () => {
+  const fx = JSON.parse(readFileSync(new URL('../../../tests/fixtures/qa_event_tiles_2026-11-06.json', import.meta.url), 'utf8')) as Record<string, { bad: object[]; good: object[] }>;
+  const page = (x: object) => (checkPage({ ...base, ...x }, 'moreno_valley_ca', compiled) as { check: string }[]).map((f) => f.check);
+  it('a full-size tile in an events list trips web.event-big-tile; none does not', () => {
+    for (const x of fx.eventBigTile.bad) expect(page(x), JSON.stringify(x)).toContain('web.event-big-tile');
+    for (const x of fx.eventBigTile.good) expect(page(x), JSON.stringify(x)).not.toContain('web.event-big-tile');
+  });
+});

@@ -494,7 +494,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     {(todayBlock.days.length > 0 || todayHomeGame) && (
       <div class="home-events__block">
         {todayHomeGame && <div class="river"><GameCard game={todayHomeGame} feature /></div>}
-        <EventDayList days={todayBlock.days} facilities={facilities} level={3} feature={false} idPrefix="home-today" />
+        <EventDayList days={todayBlock.days} facilities={facilities} level={3} idPrefix="home-today" />
       </div>
     )}
     {weekendBlock.days.length > 0 && (
