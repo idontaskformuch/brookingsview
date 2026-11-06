@@ -33,7 +33,7 @@ export interface GroupView { id: GroupId; heading: string; rows: RowView[] }
 export const GROUP_ORDER: GroupId[] = ['closed', 'changed', 'open', 'info', 'events', 'unconfirmed'];
 export const GROUP_HEADING: Record<GroupId, string> = {
   closed: 'Closed',
-  changed: 'Changed hours',
+  changed: 'Schedule changes',
   open: 'Open as usual',
   info: 'Good to know',
   events: 'Events',

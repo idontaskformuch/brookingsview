@@ -52,6 +52,7 @@ load_dotenv()
 import psycopg
 
 from ai_pipeline import api_usage, guardrails
+from ai_pipeline.generator_switch import generator_enabled
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
@@ -344,6 +345,9 @@ def main() -> int:
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
     town_id = cfg["town_id"]
     api_usage.set_default_context(generator="event_deck_digest", town_id=town_id)
+    if not generator_enabled(cfg, "event_deck_digest"):
+        print(f"event_deck_digest switched off for {town_id} (ai.generators) -- nothing to do")
+        return 0
     feat = cfg.get("features", {}).get("whats_on", {})
     tm = feat.get("ticketmaster", {})
 

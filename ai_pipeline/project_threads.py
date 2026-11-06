@@ -34,6 +34,7 @@ import re
 from datetime import datetime, timedelta, timezone
 
 from ai_pipeline import api_usage, guardrails
+from ai_pipeline.generator_switch import generator_enabled
 from ai_pipeline.project_registry import extract_case_numbers
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
@@ -288,6 +289,8 @@ def generate_synthesis(item_title: str, item_text: str, cfg: dict, client=None) 
     generate() in this pipeline. item_text is the full source text (agenda
     item title+description, or a traffic incident's title+description) fed
     as SOURCE DATA for the fact-in-source guardrail."""
+    if not generator_enabled(cfg, "project_thread_synthesis"):
+        return synthesis_template_fallback(item_title), "template_fallback", True
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
     if _spent_this_month() >= cap:

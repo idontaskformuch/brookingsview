@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  buildGroups, closedPlaces, detailFor, FOLD_AFTER, GROUP_ORDER, groupSources, holidayHero, holidayInsights, regularHoursRows,
+  buildGroups, closedPlaces, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayHero, holidayInsights, regularHoursRows,
 } from './holiday-view';
 import { occurrenceDay } from './holiday-calendar';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
@@ -36,6 +36,11 @@ describe('detailFor: the Closed pill already says Closed', () => {
 });
 
 describe('groups', () => {
+  it('the middle group is called "Schedule changes" (owner 2026-11-06): it holds moved pickups and trains, not only hours', () => {
+    expect(GROUP_HEADING.changed).toBe('Schedule changes');
+    expect(buildGroups(vet, '2026-11-06').find((g) => g.id === 'changed')!.heading).toBe('Schedule changes');
+  });
+
   it('Broomfield Veterans Day: Closed (4), Changed (police), Events, Not confirmed; no Open group without data', () => {
     const g = buildGroups(vet, '2026-11-06');
     expect(g.map((x) => x.id)).toEqual(['closed', 'changed', 'events', 'unconfirmed']);

@@ -51,6 +51,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ai_pipeline import api_usage, guardrails
+from ai_pipeline.generator_switch import generator_enabled
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
@@ -388,6 +389,11 @@ def main() -> int:
 
         status = determine_state(conn, cfg)
         print(f"Closure Watch state for {town_id}: {status['state']}")
+
+        # The accrual above (closure_history) is data and keeps running; only the model-written prose is switched off.
+        if not generator_enabled(cfg, "closure_watch_prose"):
+            print("  closure_watch_prose switched off (ai.generators) -- no prose generated")
+            return 0
 
         if status["state"] != "watch":
             return 0
