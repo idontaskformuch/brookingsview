@@ -48,7 +48,7 @@ jobs:
           cache-dependency-path: site/package-lock.json
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version-file: .python-version
       - run: pip install -r requirements.txt
       - run: npm ci
         working-directory: site

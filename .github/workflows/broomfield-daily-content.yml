@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version-file: .python-version
       - run: pip install -r requirements.txt
       - name: Generera dagens innehåll + illustration
         run: python -m ai_pipeline.daily_content --config configs/broomfield_co.json

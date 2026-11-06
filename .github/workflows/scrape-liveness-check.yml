@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version-file: .python-version
       - run: pip install -r requirements.txt
       - name: Kontrollera att varje stad har en lyckad scrape inom 26 h
         run: python -m scripts.check_scrape_liveness brookings_sd moreno_valley_ca broomfield_co glasgow

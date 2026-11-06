@@ -62,3 +62,6 @@ site/indexnow-pending.json
 # reports, review screenshots. Only the design standard is public.
 .claude/*
 !.claude/standards.md
+
+# local Python 3.12 environment (matches CI, see .python-version)
+.venv/

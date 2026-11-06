@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version-file: .python-version
       - run: pip install -r requirements.txt
       - name: Generera veckans SDSU-sammanfattning
         run: python -m ai_pipeline.sdsu_weekly_digest --config configs/brookings_sd.json
