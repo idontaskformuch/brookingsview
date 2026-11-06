@@ -61,7 +61,21 @@ def test_backoff_doubles_from_30_to_480(tmp_path):
 
 
 @pytest.mark.skipif(BASH is None, reason="bash not available")
-@pytest.mark.parametrize("msg", ["Authentication error [code: 10000] status 403", "HTTP 401 Unauthorized", "Bad Request status: 400"])
+def test_retry_after_raises_the_wait_but_never_lowers_it(tmp_path):
+    stub = tmp_path / "sleep_stub.sh"
+    stub.write_text('echo "sleep $1" >> "$SLEEP_LOG"'+chr(10))
+    log = tmp_path / "sleeps"
+    fake = tmp_path / "fake.sh"
+    fake.write_text('echo "HTTP 429 Too Many Requests; Retry-After: 100"; exit 1'+chr(10))
+    env = dict(os.environ, DEPLOY_RETRY_PAUSE="30", INDEXNOW_DELAY="0", DEPLOY_CMD=f"bash {fake.as_posix()}",
+               DEPLOY_SLEEP_CMD=f"bash {stub.as_posix()}", SLEEP_LOG=log.as_posix())
+    subprocess.run([BASH, SCRIPT.as_posix(), "--env", "x"], env=env, capture_output=True, text=True)
+    # backoff 30,60,120,240,480; Retry-After 100 lifts the first two, never lowers the rest
+    assert log.read_text().split()[1::2] == ["100", "100", "120", "240", "480"]
+
+
+@pytest.mark.skipif(BASH is None, reason="bash not available")
+@pytest.mark.parametrize("msg", ["Authentication error [code: 10000] status 403", "HTTP 401 Unauthorized", "Bad Request status: 400", "status 404 not found", "code: 409 conflict"])
 def test_4xx_fails_at_once(tmp_path, msg):
     rc, n, err = _run(tmp_path, 99, msg)
     assert (rc, n) == (1, 1)
@@ -69,7 +83,7 @@ def test_4xx_fails_at_once(tmp_path, msg):
 
 
 @pytest.mark.skipif(BASH is None, reason="bash not available")
-@pytest.mark.parametrize("msg", ["fetch failed: ECONNRESET", "Bad Gateway", "request to https://api.cloudflare.com failed, reason: ETIMEDOUT"])
+@pytest.mark.parametrize("msg", ["fetch failed: ECONNRESET", "Bad Gateway", "request to https://api.cloudflare.com failed, reason: ETIMEDOUT", "HTTP 429 Too Many Requests"])
 def test_network_errors_and_5xx_are_retried(tmp_path, msg):
     assert _run(tmp_path, 2, msg)[:2] == (0, 2)
 

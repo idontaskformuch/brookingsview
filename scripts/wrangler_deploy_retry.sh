@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # wrangler deploy with up to 5 retries (owner 2026-10-27, widened 2026-11-06): a Cloudflare API hiccup (e.g. 25 Oct 12:00Z, code
 # 10013 on assets-upload-session; 6 Nov 09:30Z, 503 on all 3 attempts) must not cost a whole scrape/build cycle.
-# Backoff 30, 60, 120, 240, 480 s (DEPLOY_RETRY_PAUSE is the first wait, doubled each time). Only a 5xx from the API or a
-# network error is retried; a 4xx (auth/config) or output we do not recognise fails at once, so a bad token is not retried
+# Backoff 30, 60, 120, 240, 480 s (DEPLOY_RETRY_PAUSE is the first wait, doubled each time; a printed Retry-After raises a wait, max 900 s). Only a 5xx or 429 from the API or a
+# network error is retried; any other 4xx (auth/config) or output we do not recognise fails at once, so a bad token is not retried
 # for 15 minutes. Usage: bash ../scripts/wrangler_deploy_retry.sh --env <name>
 # Run from site/. DEPLOY_RETRY_PAUSE (seconds, default 30) and DEPLOY_CMD (default "npx wrangler deploy") and DEPLOY_SLEEP_CMD (default "sleep") exist for the test.
 set -u
@@ -25,10 +25,10 @@ pause="${DEPLOY_RETRY_PAUSE:-30}"
 cmd="${DEPLOY_CMD:-npx wrangler deploy}"
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
-# 0 = the failure in $log is transient (5xx or network), 1 = anything else. A 4xx marker wins over a 5xx one.
+# 0 = the failure in $log is transient (5xx, 429 rate limit or network), 1 = anything else. A hard 4xx marker (not 429) wins.
 is_retryable() {
-  grep -Eiq '(status|http|code)[^0-9a-z]{1,3}4[0-9]{2}\b|\b4[0-9]{2} (bad request|unauthorized|forbidden|not found)|unauthorized|forbidden|authentication error|invalid (api )?token|invalid request' "$1" && return 1
-  grep -Eiq '(status|http|code)[^0-9a-z]{1,3}5[0-9]{2}\b|\b5[0-9]{2} (internal server error|bad gateway|service (temporarily )?unavailable|gateway time-?out)|internal server error|bad gateway|service (temporarily )?unavailable|gateway time-?out|ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE|ENETUNREACH|EHOSTUNREACH|socket hang up|fetch failed|network error|UND_ERR_|other side closed' "$1"
+  grep -Eiq '(status|http|code)[^0-9a-z]{1,3}4(0[0-9]|1[0-9]|2[0-8]|[3-9][0-9])\b|\b4(0[0-9]|1[0-9]|2[0-8]|[3-9][0-9]) (bad request|unauthorized|forbidden|not found)|unauthorized|forbidden|authentication error|invalid (api )?token|invalid request' "$1" && return 1
+  grep -Eiq '(status|http|code)[^0-9a-z]{1,3}5[0-9]{2}\b|\b5[0-9]{2} (internal server error|bad gateway|service (temporarily )?unavailable|gateway time-?out)|internal server error|bad gateway|service (temporarily )?unavailable|gateway time-?out|\b429\b|too many requests|rate limit|ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE|ENETUNREACH|EHOSTUNREACH|socket hang up|fetch failed|network error|UND_ERR_|other side closed' "$1"
 }
 attempt=1
 max=6   # 1 try + 5 retries
@@ -50,6 +50,12 @@ while true; do
     exit "$rc"
   fi
   wait_s=$((pause * (1 << (attempt - 1))))
+  # Respect a Retry-After wrangler prints (seconds), never waiting less than the backoff; capped at 15 min.
+  ra="$(grep -Eio 'retry-after[^0-9]{1,4}[0-9]+' "$log" | grep -Eo '[0-9]+$' | tail -1)"
+  if [ -n "$ra" ]; then
+    [ "$ra" -gt 900 ] && ra=900
+    [ "$ra" -gt "$wait_s" ] && wait_s="$ra"
+  fi
   echo "wrangler deploy failed (exit $rc, 5xx or network), attempt $attempt of $max; retrying in ${wait_s}s" >&2
   ${DEPLOY_SLEEP_CMD:-sleep} "$wait_s"
   attempt=$((attempt + 1))

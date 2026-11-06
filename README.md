@@ -4,6 +4,8 @@ En varm, positiv, config-driven lokalnyhetssajt för Brookings, SD — byggd fö
 besvara *"Vad händer i Brookings?"* och skala till 10+ orter där varje ny ort är en
 config-fil, inte kodändring.
 
+All rights reserved, see [LICENSE](LICENSE).
+
 **Aldrig:** jail-/arrest-/mugshot-/obituary-innehåll eller något anklagande om
 namngivna privatpersoner. Vi beskriver händelser, lag, platser och trender.
 
