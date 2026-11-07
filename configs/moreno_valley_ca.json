@@ -66,6 +66,7 @@
       "kvick_essa": { "enabled": false, "_reason": "Content track (columns) switched off since 2026-10-07; not scheduled." },
       "editorial": { "enabled": false, "_reason": "Content track (editorial) switched off since 2026-10-07; not scheduled." },
       "culture_essay": { "enabled": false, "_reason": "Content track (culture essay) switched off since 2026-10-07; not scheduled." },
+      "illustrations": { "enabled": false, "_reason": "Image generation (fal.ai flux) only ran from daily_content.py, whose workflows were removed 2026-10-07/47ccdb1; the only other caller is the manual backfill_content_track_image script. Off in production (owner 2026-11-07)." },
       "closure_watch_prose": { "enabled": false, "_reason": "Output (Watch prose) is no longer printed; /closures/ uses the fixed Watch template. closure_history accrual keeps running." },
       "project_thread_synthesis": { "enabled": false, "_reason": "Output (the 'what changed' synthesis on project updates) is not read or shown; a plain template restatement is stored instead." },
       "weekly": { "enabled": false, "_reason": "Digest text is model-written and withheld from the site (lib/ai-text.ts); the plain template body is stored instead (owner 2026-11-06)." },

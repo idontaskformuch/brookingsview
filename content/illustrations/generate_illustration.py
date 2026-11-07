@@ -36,6 +36,7 @@ import requests
 from PIL import Image
 
 from ai_pipeline import api_usage
+from ai_pipeline.generator_switch import generator_enabled
 from config import pricing
 from config.image_model import (
     DEFAULT_STYLE_PROMPT, IMAGE_API_PROVIDER, IMAGE_HEIGHT, IMAGE_MODEL, IMAGE_WIDTH,
@@ -218,7 +219,7 @@ def _generate_or_raise(theme: str, slug: str, out_dir: Path, content_type: str |
 
 
 def generate_illustration(
-    theme: str, slug: str, out_dir: Path = DEFAULT_OUT_DIR, content_type: str | None = None,
+    theme: str, slug: str, out_dir: Path = DEFAULT_OUT_DIR, content_type: str | None = None, cfg: dict | None = None,
 ) -> GeneratedImages | None:
     """Generate an illustration for `theme`, save the native 16:9 image plus
     4:3 and 1:1 crops to out_dir, return their paths.
@@ -230,7 +231,12 @@ def generate_illustration(
 
     Returns None on any failure (missing key, network/provider error, bad config)
     instead of raising -- callers should publish text-only rather than block.
+
+    `cfg` is the town config; ai.generators.illustrations.enabled must be exactly true or no
+    image is generated and no provider is called (fail closed, same as the text generators).
     """
+    if not generator_enabled(cfg or {}, "illustrations"):
+        return None
     try:
         return _generate_or_raise(theme, slug, out_dir, content_type)
     except Exception as exc:

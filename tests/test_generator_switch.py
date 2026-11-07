@@ -18,7 +18,7 @@ SWITCHED_OFF = ["closure_watch_prose", "project_thread_synthesis",
                 "project_thread_summary", "weekly", "sports_weekly_digest", "sdsu_weekly_digest", "jackrabbits_season_digest",
                 "local_sports_weekly_digest", "new_in_town_digest", "home_sales_digest", "workplace_watch_digest",
                 "free_teaser_facility", "free_teaser_event", "new_in_town_extraction", "meeting_followups",
-                "vardagsmiddag", "media_recension", "vetenskap_kronika", "kvick_essa", "editorial", "culture_essay"]
+                "vardagsmiddag", "media_recension", "vetenskap_kronika", "kvick_essa", "editorial", "culture_essay", "illustrations"]
 # The format_record() source types publish.py passes (SOURCES + alerts) and the content-track types generate_article() is called with.
 DYNAMIC_NAMES = {"meeting", "event", "alert", "vardagsmiddag", "media_recension", "vetenskap_kronika", "kvick_essa", "editorial", "culture_essay"}
 # Workflow steps and config keys removed by the owner 2026-11-07; modules remain, and fail-closed keeps them off without a key.
@@ -175,3 +175,40 @@ def test_switched_off_rolling_summary_makes_no_model_call():
     cfg = {"ai": {"generators": {"project_thread_summary": {"enabled": False}}}}
     text, by, _ = generate_rolling_summary("Drain basin", "- x", cfg, client=Boom())
     assert by == "template_fallback" and "Drain basin" in text
+
+
+def test_illustrations_with_no_switch_entry_or_off_make_no_provider_call(monkeypatch, tmp_path):
+    from content.illustrations import generate_illustration as gi
+
+    def boom(*a, **k):
+        raise AssertionError("the image provider must not be called")
+
+    monkeypatch.setattr(gi, "_PROVIDERS", {gi.IMAGE_API_PROVIDER: boom})
+    assert gi.generate_illustration("theme", "slug", out_dir=tmp_path) is None  # no cfg at all
+    assert gi.generate_illustration("theme", "slug", out_dir=tmp_path, cfg={"ai": {}}) is None
+    off = {"ai": {"generators": {"illustrations": {"enabled": False}}}}
+    assert gi.generate_illustration("theme", "slug", out_dir=tmp_path, cfg=off) is None
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_illustrations_on_reaches_the_provider(monkeypatch, tmp_path):
+    from content.illustrations import generate_illustration as gi
+
+    called = []
+
+    def fake(model_id, prompt):
+        called.append(prompt)
+        raise RuntimeError("stop here")  # past the switch; generate_illustration swallows it and returns None
+
+    monkeypatch.setattr(gi, "_PROVIDERS", {gi.IMAGE_API_PROVIDER: fake})
+    monkeypatch.setattr(gi.api_usage, "log_usage", lambda **k: None)
+    on = {"ai": {"generators": {"illustrations": {"enabled": True}}}}
+    assert gi.generate_illustration("theme", "slug", out_dir=tmp_path, cfg=on) is None
+    assert len(called) == 1
+
+
+def test_every_caller_of_generate_illustration_passes_cfg():
+    for rel in ["ai_pipeline/daily_content.py", "scripts/backfill_content_track_image.py"]:
+        src = (ROOT / rel).read_text(encoding="utf-8")
+        calls = re.findall(r"= generate_illustration\((.*)\)$", src, re.M)
+        assert calls and all("cfg=cfg" in c for c in calls), rel

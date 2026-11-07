@@ -106,7 +106,7 @@ def main() -> int:
         # illustration_image_theme(): see content/_base.py's own comment --
         # media_recension gets a fixed, title-agnostic theme for the actual
         # image call; image_alt (below) still stores the real `theme`.
-        saved = generate_illustration(illustration_image_theme(theme, source_type), image_slug, content_type=source_type)
+        saved = generate_illustration(illustration_image_theme(theme, source_type), image_slug, content_type=source_type, cfg=cfg)
         if saved is None:
             print("  generation failed -- see error above. Nothing written; story stays image-less.")
             return 1

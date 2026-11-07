@@ -256,7 +256,7 @@ def main() -> int:
         if content_type == "media_recension":
             image_alt = theme
         else:
-            saved = generate_illustration(illustration_image_theme(theme, content_type), image_slug, content_type=content_type)
+            saved = generate_illustration(illustration_image_theme(theme, content_type), image_slug, content_type=content_type, cfg=cfg)
             if saved is not None:
                 image_path = "/" + str(saved.native.relative_to(PUBLIC_DIR)).replace("\\", "/")
                 image_alt = theme
