@@ -49,7 +49,7 @@ jobs:
           SITE_CITY: broomfield_co
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
-        run: npx astro build
+        run: bash ../scripts/build_retry.sh
       - name: Verify no empty messages or explanation boxes (Broomfield)
         run: node scripts/verify_no_empty_messages.mjs site/dist
       - name: Deploy to Cloudflare Workers (Broomfield)

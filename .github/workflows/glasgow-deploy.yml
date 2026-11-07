@@ -41,7 +41,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           # What's On (Ticketmaster GB, 15 mi) is fetched at build time; without the key the page would be empty (the Moreno 2026-09 bug).
           TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
-        run: npx astro build
+        run: bash ../scripts/build_retry.sh
       - name: Verify no empty messages or explanation boxes (Glasgow)
         run: node scripts/verify_no_empty_messages.mjs site/dist
       - name: Deploy to Cloudflare Workers (Glasgow)

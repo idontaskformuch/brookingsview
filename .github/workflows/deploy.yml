@@ -61,7 +61,7 @@ jobs:
           SITE_CITY: brookings_sd
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
-        run: npx astro build
+        run: bash ../scripts/build_retry.sh
       - name: Verify no empty messages or explanation boxes (Brookings)
         run: node scripts/verify_no_empty_messages.mjs site/dist
       - name: Deploy to Cloudflare Workers (Brookings)
