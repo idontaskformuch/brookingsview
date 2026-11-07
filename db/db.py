@@ -44,7 +44,7 @@ def _database_url() -> str:
 #   ALLOW_PROD_WRITE=<åtgärdsnamn> i miljön (= skriptets filnamn utan .py, eller det namn skriptet själv ger med declare_action())
 # Utan båda öppnas anslutningen read-only (BEGIN READ ONLY): ett skrivförsök kastar. Inför varje prod-skrivning krävs dessutom en
 # backup-fil `.claude/backups/<datum>_<åtgärd>.json` (scripts/prod_backup.py), och alla INSERT:ade id:n loggas till
-# `.claude/backups/<datum>_<åtgärd>_inserted.json`. GITHUB_ACTIONS=true (schemalagda scrapers, AI-pipeline, deploy) är undantaget.
+# `.claude/backups/<datum>_<åtgärd>_inserted.json`. GITHUB_ACTIONS=true OCH GITHUB_RUN_ID satt (schemalagda scrapers, AI-pipeline, deploy) är undantaget.
 # Spärren ersätter inte ägarens uttryckliga ja (CLAUDE.md regel 14), den gör bara misstag svårare.
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 BACKUP_DIR = _REPO_ROOT / ".claude" / "backups"
@@ -85,7 +85,7 @@ def _expected_action() -> str | None:
 
 def write_mode() -> str:
     """'ci' (spärren gäller inte), 'prod' (båda flaggor satta) eller 'read_only'."""
-    if os.environ.get("GITHUB_ACTIONS") == "true":
+    if os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get("GITHUB_RUN_ID"):
         return "ci"
     if _PROD_FLAG and os.environ.get("ALLOW_PROD_WRITE"):
         return "prod"

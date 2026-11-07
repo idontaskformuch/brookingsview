@@ -74,6 +74,7 @@ def guard(monkeypatch, tmp_path):
     monkeypatch.setattr(dbmod, "_INSERTED", [])
     monkeypatch.setattr(dbmod, "_ID_TABLES", None)
     monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("GITHUB_RUN_ID", raising=False)
     monkeypatch.delenv("ALLOW_PROD_WRITE", raising=False)
     monkeypatch.setattr(dbmod.atexit, "register", lambda *a, **k: None)
     guard.conn = conn
@@ -129,8 +130,16 @@ def test_the_action_name_must_match_the_script(guard, monkeypatch):
         dbmod.connect()
 
 
+def test_github_actions_alone_locally_is_not_ci(guard, monkeypatch):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    assert dbmod.write_mode() == "read_only"
+    with dbmod.get_conn():
+        assert guard.conn.read_only is True
+
+
 def test_ci_is_exempt_even_without_flags(guard, monkeypatch):
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_RUN_ID", "123456789")
     assert dbmod.write_mode() == "ci"
     with dbmod.get_conn() as conn:
         assert conn is guard.conn and guard.conn.read_only is False
