@@ -37,7 +37,7 @@ def test_query_asks_for_named_places_with_hours_in_the_radius():
 
 
 def test_query_asks_for_a_center_so_ways_get_a_position():
-    assert r.overpass_query(55.8642, -4.2518, 5).endswith("out tags center;")
+    assert r.overpass_query(55.8642, -4.2518, 5).endswith("out tags center meta;")
 
 
 def test_slim_keeps_five_tags_and_drops_unnamed_or_hourless():
@@ -79,7 +79,7 @@ def test_one_run_per_town_per_week():
 
 def test_only_towns_with_open_late_in_config_are_fetched():
     ids = {t["town_id"] for t in r.towns_with_open_late()}
-    assert ids == {"glasgow", "broomfield_co"}
+    assert ids == {"glasgow", "broomfield_co", "brookings_sd", "moreno_valley_ca"}
     assert all(t["radius_km"] > 0 for t in r.towns_with_open_late())
 
 
@@ -104,3 +104,18 @@ def test_fetch_raises_after_three_failures_so_the_old_snapshot_stays():
     with pytest.raises(RuntimeError):
         r.fetch(TOWN, session=s, sleep=lambda _: None)
     assert len(s.calls) == 3
+
+
+def test_query_includes_cafes_and_asks_for_edit_metadata():
+    q = r.overpass_query(55.8642, -4.2518, 5)
+    assert "pub|bar|nightclub|restaurant|cafe" in q
+    assert q.endswith("out tags center meta;")
+
+
+def test_slim_keeps_check_date_and_the_elements_last_edit():
+    out = r.slim_elements([
+        {"type": "node", "id": 1, "timestamp": "2025-03-02T10:00:00Z", "tags": {"name": "A", "amenity": "cafe", "opening_hours": "Mo-Su 07:00-17:00", "check_date": "2025-01-10", "phone": "x"}},
+        {"type": "node", "id": 2, "tags": {"name": "B", "amenity": "pub", "opening_hours": "24/7"}},
+    ])
+    assert out[0]["timestamp"] == "2025-03-02T10:00:00Z" and out[0]["tags"]["check_date"] == "2025-01-10" and "phone" not in out[0]["tags"]
+    assert "timestamp" not in out[1]  # never invented

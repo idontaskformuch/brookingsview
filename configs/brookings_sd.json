@@ -11,6 +11,7 @@
     "lat": 44.3114,
     "lon": -96.7984
   },
+  "open_late": { "radius_km": 8, "_note": "Weekly OpenStreetMap opening-hours snapshot (scripts/refresh_osm_places.py -> osm_places), added 2026-11-07 for the planned Open tonight layer. Centre = coordinates above." },
   "_domain_note": "Rättad 2026-10-14: stod 'brookings311.com' (aldrig det riktiga domännamnet -- site/src/lib/site-config.ts och scripts/check_deployed_content.py har alltid använt brookingsview.com som sanningskälla). Fältet är write-only till towns.domain-kolumnen (db/db.py ensure_town()) -- ingenting i koden läser tillbaka från den, se check_deployed_content.py:s egen kommentar om detta. Synkad till det verkliga domännamnet mest för att undvika framtida förvirring, ingen funktionell effekt.",
   "identity": {
     "terms": [

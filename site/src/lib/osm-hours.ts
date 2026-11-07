@@ -19,12 +19,6 @@ const MAX_OVERNIGHT_END_MIN = 6 * 60;
 /** Past this many minutes after midnight a place counts as "open late" (past 11 pm). */
 export const OPEN_LATE_AFTER_MIN = 23 * 60;
 
-function minutes(t: string): number | null {
-  const [h, m] = t.split(':').map(Number);
-  if (m > 59 || h > 24 || (h === 24 && m > 0)) return null;
-  return h * 60 + m;
-}
-
 function daysOf(spec: string): number[] | null {
   const out: number[] = [];
   for (const token of spec.split(',')) {
@@ -41,6 +35,16 @@ function daysOf(spec: string): number[] | null {
   return out;
 }
 
+/** Hours beyond 24:00 on the same line mean "after midnight" ("11:00-25:00" closes at 01:00), believed only up to 06:00 like an overnight range. */
+const MAX_HOUR = 30;
+
+function minutes(t: string): number | null {
+  const [h, m] = t.split(':').map(Number);
+  if (m > 59 || h > MAX_HOUR) return null;
+  if (h >= 24 && h * 60 + m > 1440 + MAX_OVERNIGHT_END_MIN) return null;
+  return h * 60 + m;
+}
+
 function rangesOf(spec: string): HoursRange[] | null {
   const out: HoursRange[] = [];
   for (const part of spec.split(',')) {
@@ -48,7 +52,7 @@ function rangesOf(spec: string): HoursRange[] | null {
     if (!m) return null;
     const start = minutes(m[1]);
     let end = minutes(m[2]);
-    if (start === null || end === null) return null;
+    if (start === null || end === null || start >= 1440) return null;
     if (end <= start) {
       // 18:00-02:00 runs past midnight. One that closes after 06:00 ("12:00-10:00", a typo for 22:00) is a mapping error, not a night: skip the place.
       if (end > MAX_OVERNIGHT_END_MIN) return null;
@@ -60,34 +64,65 @@ function rangesOf(spec: string): HoursRange[] | null {
   return out;
 }
 
-/** Null when the string is empty or uses anything outside the supported subset. Later rules override earlier ones for the
- *  days they name, as OSM specifies; "off" empties the day. */
-export function parseOpeningHours(raw: string | null | undefined): WeekHours | null {
-  const text = (raw ?? '').trim();
-  if (!text) return null;
+/** Two ranges of the same day that touch or overlap become one ("Th-Su 16:00-22:00, Fr,Sa 16:00-22:30" -> Friday 16:00-22:30). */
+function union(ranges: HoursRange[]): HoursRange[] {
+  const sorted = [...ranges].sort((x, y) => x.start - y.start || x.end - y.end);
+  const out: HoursRange[] = [];
+  for (const r of sorted) {
+    const last = out[out.length - 1];
+    if (last && r.start <= last.end) last.end = Math.max(last.end, r.end);
+    else out.push({ ...r });
+  }
+  return out;
+}
+
+const DAY = '(?:Mo|Tu|We|Th|Fr|Sa|Su)';
+const DAY_LIST_RE = new RegExp(`^(${DAY}(?:-${DAY})?(?:,${DAY}(?:-${DAY})?)*) (.+)$`);
+
+/** What the string says. `week` is an exact reading; `closed` is "closed"/"off" for the whole place; `untimed` is a place whose hours we
+ *  deliberately do not turn into times (an open end "11:00+", a free-text comment, public/school holiday rules): show it without a time, never
+ *  guess one; `unparsed` is anything else outside the supported subset. */
+export type HoursParse =
+  | { kind: 'week'; week: WeekHours }
+  | { kind: 'closed' }
+  | { kind: 'untimed'; reason: 'open-end' | 'comment' | 'holiday' }
+  | { kind: 'unparsed' };
+
+/** OSM semantics: ";" starts a rule that overrides the days it names; "," between rules ("Su-Th 12:00-23:00, Fr,Sa 12:00-01:00") adds to them. */
+export function parseOpeningHoursDetailed(raw: string | null | undefined): HoursParse {
+  const original = (raw ?? '').trim();
+  if (!original) return { kind: 'unparsed' };
+  if (original === '24/7') return { kind: 'week', week: DAYS.map(() => [{ start: 0, end: 1440 }]) };
+  if (/^(closed|off)$/i.test(original)) return { kind: 'closed' };
+  if (/"/.test(original)) return { kind: 'untimed', reason: 'comment' };
+  if (/\+/.test(original)) return { kind: 'untimed', reason: 'open-end' };
+  if (/\b(PH|SH)\b/.test(original)) return { kind: 'untimed', reason: 'holiday' };
+  const text = original.replace(/\s*-\s*/g, '-').replace(/\s*,\s*/g, ',').replace(/\s+/g, ' ');
   const week: WeekHours = DAYS.map(() => []);
-  if (text === '24/7') return week.map(() => [{ start: 0, end: 1440 }]);
   for (const rule of text.split(';')) {
     const r = rule.trim();
     if (!r) continue;
-    const space = r.search(/\s/);
-    let dayPart = 'Mo-Su';
-    let timePart = r;
-    if (space !== -1 && /^[A-Z]/.test(r)) {
-      dayPart = r.slice(0, space);
-      timePart = r.slice(space + 1).trim();
+    const touched = new Set<number>();
+    for (const sub of r.split(/(?<=\d|off|[Cc]losed),(?=[A-Z][a-z])/)) {
+      const m = DAY_LIST_RE.exec(sub);
+      const days = m ? daysOf(m[1]) : daysOf('Mo-Su');
+      const timePart = m ? m[2] : sub;
+      if (!days) return { kind: 'unparsed' };
+      const ranges = /^(off|closed)$/i.test(timePart) ? [] : rangesOf(timePart);
+      if (!ranges) return { kind: 'unparsed' };
+      for (const d of days) {
+        week[d] = touched.has(d) ? union([...week[d], ...ranges]) : union(ranges);
+        touched.add(d);
+      }
     }
-    const days = daysOf(dayPart);
-    if (!days) return null;
-    if (timePart === 'off') {
-      for (const d of days) week[d] = [];
-      continue;
-    }
-    const ranges = rangesOf(timePart);
-    if (!ranges) return null;
-    for (const d of days) week[d] = ranges;
   }
-  return week;
+  return { kind: 'week', week };
+}
+
+/** The exact weekly hours, or null for everything else (the open-late block leaves such places out). */
+export function parseOpeningHours(raw: string | null | undefined): WeekHours | null {
+  const parsed = parseOpeningHoursDetailed(raw);
+  return parsed.kind === 'week' ? parsed.week : null;
 }
 
 /** The range that starts on `weekday` and ends latest, when that end is past 23:00; otherwise null. */

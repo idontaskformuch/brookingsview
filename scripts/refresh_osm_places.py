@@ -1,7 +1,7 @@
 """Weekly OpenStreetMap snapshot for the evening layer's "Open late" block (/tonight).
 
-For every town whose configs/<town>.json has `open_late: {radius_km}`, ask Overpass once for named pubs, bars, nightclubs and
-restaurants that carry `opening_hours`, and store the slimmed result in osm_places (one row per town, replaced). The site build reads
+For every town whose configs/<town>.json has `open_late: {radius_km}`, ask Overpass once for named pubs, bars, nightclubs,
+restaurants and cafes that carry `opening_hours`, and store the slimmed result in osm_places (one row per town, replaced). The site build reads
 that row and never calls Overpass itself (owner 2026-10-29); a missing row or one older than 14 days gives no Open late block.
 
 Overpass usage policy: identifiable User-Agent (ViewMediaBot, scrapers/user_agent.py), at most one run per town per week (a town whose
@@ -36,13 +36,13 @@ OVERPASS_ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpa
 MIN_DAYS_BETWEEN_RUNS = 6
 PAUSE_BETWEEN_TOWNS_S = 10
 ATTEMPTS = 3
-KEEP_TAGS = ("name", "amenity", "opening_hours", "website", "contact:website")
+KEEP_TAGS = ("name", "amenity", "opening_hours", "website", "contact:website", "check_date")
 
 
 def overpass_query(lat: float, lon: float, radius_km: float) -> str:
     return (
-        '[out:json][timeout:25];nwr["amenity"~"^(pub|bar|nightclub|restaurant)$"]["opening_hours"]["name"]'
-        f"(around:{round(radius_km * 1000)},{lat},{lon});out tags center;"
+        '[out:json][timeout:25];nwr["amenity"~"^(pub|bar|nightclub|restaurant|cafe)$"]["opening_hours"]["name"]'
+        f"(around:{round(radius_km * 1000)},{lat},{lon});out tags center meta;"
     )
 
 
@@ -56,13 +56,15 @@ def coordinates(el: dict[str, Any]) -> dict[str, float]:
 
 
 def slim_elements(elements: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Only what the site reads: type, id, position and five tags. Elements without a name or opening_hours are dropped."""
+    """Only what the site reads: type, id, position, last-edit timestamp and six tags. Elements without a name or opening_hours are dropped."""
     out = []
     for el in elements:
         tags = el.get("tags") or {}
         if not tags.get("name") or not tags.get("opening_hours"):
             continue
-        out.append({"type": el.get("type"), "id": el.get("id"), **coordinates(el), "tags": {k: tags[k] for k in KEEP_TAGS if k in tags}})
+        # `timestamp` (from `out meta`) is the element's last edit in OpenStreetMap; `check_date` is the mapper's own "I checked this" tag.
+        stamp = {"timestamp": el["timestamp"]} if el.get("timestamp") else {}
+        out.append({"type": el.get("type"), "id": el.get("id"), **coordinates(el), **stamp, "tags": {k: tags[k] for k in KEEP_TAGS if k in tags}})
     return out
 
 

@@ -11,6 +11,7 @@
     "lat": 33.9425,
     "lon": -117.2297
   },
+  "open_late": { "radius_km": 10, "_note": "Weekly OpenStreetMap opening-hours snapshot (scripts/refresh_osm_places.py -> osm_places), added 2026-11-07 for the planned Open tonight layer. Centre = coordinates above." },
   "_domain_note": "morenovalleyview.com — matchar 'View'-varumärket (Brookings View). Konsekvent med fleet-namngivningen.",
   "identity": {
     "terms": ["Inland Empire", "Alessandro", "Perris Blvd", "MoVal", "951"],

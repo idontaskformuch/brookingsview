@@ -1,0 +1,6 @@
+{
+  "_note": "Domains no page, config or data row may link to. verify_no_empty_messages.mjs fails a build whose HTML mentions one. Add a domain with the reason and the date; never fetch it.",
+  "domains": [
+    { "domain": "1stbankcenter.com", "reason": "Hijacked: the domain serves an unrelated gambling/spam page (found 2026-11-07).", "added": "2026-11-07" }
+  ]
+}

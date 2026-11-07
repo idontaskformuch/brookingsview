@@ -6,9 +6,13 @@
  * ("What this shows", "How to use it" as a box heading). /how-we-gather-this/ is the one page where the per-page
  * explanations now live, so the headings are allowed there.
  *
+ * Two more checks on the same real build:
+ *  - a town without a /traffic/ page (no dist/traffic/index.html: no traffic source) has no link to /traffic/ anywhere (owner 2026-11-07);
+ *  - no page mentions a domain on scripts/blocked-domains.json (a hijacked or unsafe domain).
+ *
  * Usage: node scripts/verify_no_empty_messages.mjs <dist-dir>
  */
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 const dist = process.argv[2];
@@ -20,6 +24,9 @@ const EMPTY = [
 ];
 const BOX = ['What this shows', 'How to use it'];
 const EXPLAINER_PAGE = '/how-we-gather-this/';
+const BLOCKED = JSON.parse(readFileSync(new URL('./blocked-domains.json', import.meta.url), 'utf8')).domains;
+const hasTrafficPage = existsSync(join(dist, 'traffic', 'index.html'));
+const TRAFFIC_LINK = /href=["']\/traffic\/?["'#?]/;
 
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
@@ -37,6 +44,8 @@ for (const file of walk(dist)) {
   const url = '/' + relative(dist, file).split(sep).join('/').replace(/index\.html$/, '');
   const html = readFileSync(file, 'utf8');
   for (const phrase of EMPTY) if (html.includes(phrase)) bad.push(`${url}: empty message "${phrase}"`);
+  if (!hasTrafficPage && TRAFFIC_LINK.test(html)) bad.push(`${url}: link to /traffic/ but this town has no traffic page`);
+  for (const b of BLOCKED) if (html.toLowerCase().includes(b.domain)) bad.push(`${url}: blocked domain ${b.domain} (${b.reason})`);
   if (url !== EXPLAINER_PAGE) for (const phrase of BOX) if (html.includes(phrase)) bad.push(`${url}: explanation box "${phrase}"`);
 }
 if (bad.length) { console.error(bad.join('\n')); console.error(`FAIL: ${bad.length} banned phrase(s) in ${pages} pages`); process.exit(1); }
