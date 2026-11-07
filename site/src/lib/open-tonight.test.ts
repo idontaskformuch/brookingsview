@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { placesFromOverpass, openLateRows, type OsmPlace } from './osm-open-late';
+import { placesFromOverpass, placesFromSnapshot, openLateRows, type OsmPlace } from './osm-open-late';
 import { parseOpeningHoursLoose } from './osm-hours';
 import {
-  timesTrusted, openUntilLabel, openTonightRows, openTonightSection, cafeRows, isHolidayDay, openLatePlaces, openLatePageIndexable, lateNights,
+  hoursFresh, openUntilLabel, openTonightRows, openTonightSection, cafeRows, isHolidayDay, openLatePlaces, openLatePageIndexable, lateNights,
 } from './open-tonight';
 
 const TZ = 'America/Denver';
@@ -23,28 +23,25 @@ const el = (name: string, amenity: string, hours: string, extra: { check_date?: 
 const places = (...els: ReturnType<typeof el>[]): OsmPlace[] => placesFromOverpass(els);
 const opts = (day: number, holiday = false, now = NOW) => ({ day, tz: TZ, now, holiday });
 
-describe('timesTrusted (check_date <= 12 months OR last edit <= 24 months)', () => {
-  const base = { checkDate: null, editedAt: null, holidayRule: false };
+describe('hoursFresh (check_date <= 12 months OR last edit <= 24 months)', () => {
+  const base = { checkDate: null, editedAt: null };
   it('trusts a check_date within 12 months, not older', () => {
-    expect(timesTrusted({ ...base, checkDate: '2025-12-01' }, NOW)).toBe(true);
-    expect(timesTrusted({ ...base, checkDate: '2025-11-01' }, NOW)).toBe(false);
+    expect(hoursFresh({ ...base, checkDate: '2025-12-01' }, NOW)).toBe(true);
+    expect(hoursFresh({ ...base, checkDate: '2025-11-01' }, NOW)).toBe(false);
   });
   it('trusts a last edit within 24 months, not older', () => {
-    expect(timesTrusted({ ...base, editedAt: '2024-12-01T00:00:00Z' }, NOW)).toBe(true);
-    expect(timesTrusted({ ...base, editedAt: '2024-10-01T00:00:00Z' }, NOW)).toBe(false);
+    expect(hoursFresh({ ...base, editedAt: '2024-12-01T00:00:00Z' }, NOW)).toBe(true);
+    expect(hoursFresh({ ...base, editedAt: '2024-10-01T00:00:00Z' }, NOW)).toBe(false);
   });
   it('either one is enough: an old check_date with a recent edit is trusted', () => {
-    expect(timesTrusted({ ...base, checkDate: '2020-01-01', editedAt: '2026-01-01T00:00:00Z' }, NOW)).toBe(true);
+    expect(hoursFresh({ ...base, checkDate: '2020-01-01', editedAt: '2026-01-01T00:00:00Z' }, NOW)).toBe(true);
   });
   it('trusts nothing when the snapshot has neither (written before the refresh asked for them)', () => {
-    expect(timesTrusted(base, NOW)).toBe(false);
-  });
-  it('never trusts a place read around a holiday rule', () => {
-    expect(timesTrusted({ ...base, checkDate: FRESH, holidayRule: true }, NOW)).toBe(false);
+    expect(hoursFresh(base, NOW)).toBe(false);
   });
   it('ignores an unreadable or future check_date', () => {
-    expect(timesTrusted({ ...base, checkDate: 'sometime' }, NOW)).toBe(false);
-    expect(timesTrusted({ ...base, checkDate: '2031-01-01' }, NOW)).toBe(false);
+    expect(hoursFresh({ ...base, checkDate: 'sometime' }, NOW)).toBe(false);
+    expect(hoursFresh({ ...base, checkDate: '2031-01-01' }, NOW)).toBe(false);
   });
 });
 
@@ -66,23 +63,26 @@ describe('openTonightRows', () => {
     el('Old Data Grill', 'restaurant', 'Mo-Su 11:00-22:00', { check_date: '2019-01-01' }),
     el('Morning Cafe', 'cafe', 'Mo-Su 06:00-20:00', { check_date: FRESH }),
   );
-  it('lists places open after 18:00, latest closing first, timed ones before untimed, with no cafe and no daytime-only place', () => {
+  it('lists places open after 18:00, latest closing first, with no cafe, no daytime-only place and no place with stale hours', () => {
     const rows = openTonightRows(set, opts(FRIDAY));
-    expect(rows.map((r) => r.name)).toEqual(['Late Bar', 'Diner', 'Early Pub', 'Old Data Grill']);
+    expect(rows.map((r) => r.name)).toEqual(['Late Bar', 'Diner', 'Early Pub']);
   });
-  it('shows "Open until HH:MM" only for recent data; old data is listed without a time', () => {
+  it('every row has "Open until HH:MM"', () => {
     const rows = openTonightRows(set, opts(FRIDAY));
-    expect(rows.map((r) => r.closing)).toEqual(['Open until 01:00', 'Open until 23:00', 'Open until 21:00', '']);
+    expect(rows.map((r) => r.closing)).toEqual(['Open until 01:00', 'Open until 23:00', 'Open until 21:00']);
+  });
+  it('a place with no date at all (old snapshot) is not listed', () => {
+    expect(openTonightRows(places(el('Undated', 'pub', 'Mo-Su 12:00-23:00')), opts(FRIDAY))).toEqual([]);
   });
   it('carries instants for the browser sweep (close time in town time)', () => {
     const [late] = openTonightRows(set, opts(FRIDAY));
     expect(late.end).toBe('2026-11-07T08:00:00.000Z'); // 01:00 MST on Saturday
   });
-  it('keeps a place with a holiday rule by its weekly pattern but never shows its time', () => {
+  it('a "PH off" place is fine on an ordinary day, with its time', () => {
     const p = places(el('PH Pub', 'pub', 'Mo-Sa 16:00-23:00; PH off', { check_date: FRESH }));
     const rows = openTonightRows(p, opts(FRIDAY));
     expect(rows).toHaveLength(1);
-    expect(rows[0].closing).toBe('');
+    expect(rows[0].closing).toBe('Open until 23:00');
     expect(openTonightRows(p, opts(dayOf(2026, 11, 8)))).toEqual([]); // Sunday: closed
   });
   it('leaves out hours it cannot read (unparsed, open end, comment)', () => {
@@ -118,14 +118,14 @@ describe('holidays', () => {
     expect(isHolidayDay('gb', CHRISTMAS)).toBe(true);
     expect(isHolidayDay('gb', dayOf(2026, 11, 11))).toBe(false); // not a UK holiday
   });
-  it('on a holiday: places listed, no time on any row and no instants (nothing is claimed open now)', () => {
-    const rows = openTonightRows(set, opts(CHRISTMAS, true, new Date('2026-12-25T20:00:00Z')));
-    expect(rows).toHaveLength(3);
-    for (const r of rows) {
-      expect(r.closing).toBe('');
-      expect(r.start).toBeUndefined();
-      expect(r.end).toBeUndefined();
-    }
+  it('on a holiday the whole Open tonight section is left out', () => {
+    const xmas = new Date('2026-12-25T20:00:00Z');
+    expect(openTonightRows(set, opts(CHRISTMAS, false, xmas))).toHaveLength(3); // same day, not flagged: would list
+    expect(openTonightRows(set, opts(CHRISTMAS, true, xmas))).toEqual([]);
+    expect(openTonightSection(openTonightRows(set, opts(CHRISTMAS, true, xmas)), xmas, TZ)).toEqual([]);
+  });
+  it('a holiday also empties the Open late list on /this-weekend (isHolidayDay gates openLateRows at the page)', () => {
+    expect(isHolidayDay('us', CHRISTMAS)).toBe(true);
   });
   it('no cafe "open now" list on a holiday', () => {
     const cafes = places(el('A', 'cafe', 'Mo-Su 07:00-17:00', { check_date: FRESH }), el('B', 'cafe', 'Mo-Su 07:00-17:00', { check_date: FRESH }), el('C', 'cafe', 'Mo-Su 07:00-17:00', { check_date: FRESH }));
@@ -194,5 +194,22 @@ describe('evergreen Open late page', () => {
   it('a place read around a holiday rule does not change the Open late (threshold) rows', () => {
     const p = places(el('PH Bar', 'bar', 'Mo-Su 18:00-02:00; PH off', { check_date: FRESH }));
     expect(openLateRows(p, FRIDAY, TZ)).toEqual([]);
+  });
+  it('only places with fresh, exactly read hours count toward the 5: stale and undated ones do not', () => {
+    const els = [
+      ...Array.from({ length: 4 }, (_, i) => el(`Fresh ${i}`, 'pub', 'Fr,Sa 18:00-01:00', { check_date: FRESH })),
+      el('Stale', 'pub', 'Fr,Sa 18:00-01:00', { check_date: '2019-01-01' }),
+      el('Undated', 'pub', 'Fr,Sa 18:00-01:00'),
+      el('Open end', 'pub', 'Fr,Sa 18:00+', { check_date: FRESH }),
+    ];
+    const snap = { fetchedAt: '2026-11-06T00:00:00Z', elements: els };
+    const fresh = placesFromSnapshot(snap, NOW)!;
+    expect(fresh).toHaveLength(4);
+    expect(openLatePageIndexable(fresh)).toBe(false); // noindex, out of the sitemap
+    const five = placesFromSnapshot({ ...snap, elements: [...els, el('Fresh 5', 'bar', 'Fr 20:00-02:00', { check_date: FRESH })] }, NOW)!;
+    expect(openLatePageIndexable(five)).toBe(true);
+  });
+  it('no places at all: nothing to list (the page redirects home)', () => {
+    expect(openLatePlaces(placesFromSnapshot({ fetchedAt: '2026-11-06T00:00:00Z', elements: [el('Undated', 'pub', 'Fr 18:00-01:00')] }, NOW)!)).toEqual([]);
   });
 });

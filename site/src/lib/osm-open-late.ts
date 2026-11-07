@@ -142,6 +142,25 @@ export function groupOpenLateByArea(rows: OpenLateRow[], maxRows = OPEN_LATE_MAX
   return elsewhere.length ? [...groups, { area: null, rows: elsewhere }] : groups;
 }
 
+const DAY_MS = 86_400_000;
+export const CHECK_DATE_MAX_MONTHS = 12;
+export const LAST_EDIT_MAX_MONTHS = 24;
+
+function monthsBefore(now: Date, months: number): number {
+  const d = new Date(now);
+  d.setUTCMonth(d.getUTCMonth() - months);
+  return d.getTime();
+}
+
+/** The freshness rule (owner 2026-11-07): the hours are believed only with a check_date <= 12 months old OR an OSM last edit <= 24 months old. A place
+ *  that fails it is not listed anywhere (Open tonight, Open late, cafes open now, /open-late/). */
+export function hoursFresh(p: Pick<OsmPlace, 'checkDate' | 'editedAt'>, now: Date): boolean {
+  const checked = p.checkDate ? Date.parse(p.checkDate) : NaN;
+  if (Number.isFinite(checked) && checked >= monthsBefore(now, CHECK_DATE_MAX_MONTHS) && checked <= now.getTime() + DAY_MS) return true;
+  const edited = p.editedAt ? Date.parse(p.editedAt) : NaN;
+  return Number.isFinite(edited) && edited >= monthsBefore(now, LAST_EDIT_MAX_MONTHS);
+}
+
 export interface OsmSnapshot { fetchedAt: string; elements: unknown[] }
 
 /** The stored snapshot as places, or null when there is none or it is older than SNAPSHOT_MAX_AGE_DAYS (then the page has no Open late block). */
@@ -156,5 +175,5 @@ export function placesFromSnapshot(snapshot: OsmSnapshot | null, now: Date): Osm
   if (!snapshot) return null;
   const age = now.getTime() - new Date(snapshot.fetchedAt).getTime();
   if (Number.isNaN(age) || age > SNAPSHOT_MAX_AGE_DAYS * 86_400_000) return null;
-  return placesFromOverpass(snapshot.elements as OverpassElement[]);
+  return placesFromOverpass(snapshot.elements as OverpassElement[]).filter((p) => hoursFresh(p, now));
 }

@@ -1,14 +1,13 @@
 ---
 /** /open-late/ -- "Open late in {Town}", an evergreen page from the weekly OpenStreetMap snapshot (owner 2026-11-07). Question it answers: where can I
- *  still get a drink or a meal after 11 pm, and on which nights? Nights and closing times are shown only for places whose hours were checked or edited
- *  recently (lib/open-tonight.ts timesTrusted); the rest are listed without them. Under 5 places the page is noindex and left out of the sitemap; with
+ *  still get a drink or a meal after 11 pm, and on which nights? Only places whose hours are exactly read and fresh (hoursFresh) are listed. Under 5 places the page is noindex and left out of the sitemap; with
  *  none it redirects home. No happy-hour page: OSM carries no such data. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { siteConfig } from '../lib/site-config';
 import { getOsmSnapshot } from '../lib/db';
 import { placesFromSnapshot, decorateOpenLate } from '../lib/osm-open-late';
-import { openLatePlaces, openLatePageIndexable, lateNights, timesTrusted } from '../lib/open-tonight';
+import { openLatePlaces, openLatePageIndexable, lateNights } from '../lib/open-tonight';
 import { areasFor } from '../lib/areas';
 import { writeOpenLateVerdict } from '../lib/open-late-verdict';
 
@@ -24,16 +23,15 @@ writeOpenLateVerdict(siteConfig.townId, indexable);
 const areaData = areasFor(siteConfig.townId);
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const hhmm = (end: number) => `${String(Math.floor((end % 1440) / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
-/** "Fri, Sat until 01:00 · Thu until 00:00": nights that close alike are named together; null when the hours are not recent enough to print. */
-function nightsText(p: (typeof places)[number]): string | null {
-  if (!timesTrusted(p, now)) return null;
+/** "Fri, Sat until 01:00 · Thu until 00:00": nights that close alike are named together. */
+function nightsText(p: (typeof places)[number]): string {
   const byEnd = new Map<number, string[]>();
   for (const n of lateNights(p)) byEnd.set(n.end, [...(byEnd.get(n.end) ?? []), WEEKDAYS[n.weekday]]);
   return [...byEnd].sort((a, b) => b[0] - a[0]).map(([end, days]) => `${days.join(', ')} until ${hhmm(end)}`).join(' · ');
 }
 const rows = decorateOpenLate(places.map((p) => ({ osmId: p.osmId, name: p.name, kind: p.kind, closing: '', website: p.website })), siteConfig.townId, areaData)
   .map((r, i) => ({ ...r, nights: nightsText(places[i]), latest: Math.max(...lateNights(places[i]).map((n) => n.end)) }))
-  .sort((a, b) => Number(!!b.nights) - Number(!!a.nights) || (a.nights ? b.latest - a.latest : 0) || a.name.localeCompare(b.name));
+  .sort((a, b) => b.latest - a.latest || a.name.localeCompare(b.name));
 const checked = snapshot ? snapshot.fetchedAt.slice(0, 10) : '';
 const canonicalUrl = new URL('/open-late/', Astro.site ?? siteConfig.siteUrl).href;
 const title = `Open late in ${siteConfig.cityName} — ${siteConfig.siteName}`;
@@ -44,7 +42,7 @@ const title = `Open late in ${siteConfig.cityName} — ${siteConfig.siteName}`;
   <article class="prose">
     <h1>Open late in {siteConfig.cityName}</h1>
     <p>Where you can still get a drink or a meal after 11 pm. These {rows.length} places have opening hours that run past 11 pm on at least one night of the week.
-    Nights and closing times are printed where the hours were checked or edited in the last year or two; the others are listed without them, so ask the place.</p>
+    Only places whose hours were checked in the last year or edited in the last two are listed.</p>
     <ul class="ol-list">
       {rows.map((r) => (
         <li>

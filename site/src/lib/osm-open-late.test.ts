@@ -51,13 +51,23 @@ describe('openLateRows', () => {
 
 describe('placesFromSnapshot', () => {
   const now = new Date('2026-11-02T12:00:00Z');
-  const elements = [el(1, { name: 'A', amenity: 'pub', opening_hours: '24/7' })];
+  const elements = [el(1, { name: 'A', amenity: 'pub', opening_hours: '24/7', check_date: '2026-09-01' })];
   it('reads a fresh snapshot', () => {
     expect(placesFromSnapshot({ fetchedAt: '2026-10-30T11:00:00Z', elements }, now)).toHaveLength(1);
   });
   it('accepts 14 days, refuses 15', () => {
     expect(placesFromSnapshot({ fetchedAt: '2026-10-19T12:00:00Z', elements }, now)).toHaveLength(1);
     expect(placesFromSnapshot({ fetchedAt: '2026-10-18T11:00:00Z', elements }, now)).toBeNull();
+  });
+  it('lists only places with fresh hours: check_date <= 12 months or last edit <= 24 months, others not at all', () => {
+    const mixed = [
+      el(1, { name: 'Fresh Check', amenity: 'pub', opening_hours: '24/7', check_date: '2026-01-01' }),
+      el(2, { name: 'Stale Check', amenity: 'pub', opening_hours: '24/7', check_date: '2025-01-01' }),
+      { ...el(3, { name: 'Fresh Edit', amenity: 'bar', opening_hours: '24/7' }), timestamp: '2025-06-01T00:00:00Z' },
+      { ...el(4, { name: 'Stale Edit', amenity: 'bar', opening_hours: '24/7' }), timestamp: '2024-01-01T00:00:00Z' },
+      el(5, { name: 'No Dates', amenity: 'bar', opening_hours: '24/7' }),
+    ];
+    expect(placesFromSnapshot({ fetchedAt: '2026-10-30T11:00:00Z', elements: mixed }, now)!.map((p) => p.name)).toEqual(['Fresh Check', 'Fresh Edit']);
   });
   it('gives null (no block) when there is no snapshot or the date is unreadable', () => {
     expect(placesFromSnapshot(null, now)).toBeNull();

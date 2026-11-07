@@ -114,7 +114,7 @@ if (cards && regionOrder.length > 0) {
 }
 // A pair names the place's closing time, so only places with a shown time and a sweep instant qualify.
 const pairs = cards ? pairNights(tonightEvents, (lateBySection.get(tonight.day) ?? []).flatMap((p) => (p.closing && p.end ? [{ ...p, end: p.end }] : [])), now, tz) : [];
-const tonightLate = openLateRows(osm, tonight.day, tz, Number.MAX_SAFE_INTEGER);
+const tonightLate = isHolidayDay(siteConfig.country, tonight.day) ? [] : openLateRows(osm, tonight.day, tz, Number.MAX_SAFE_INTEGER);
 const isSunday = new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'short' }).format(now) === 'Sun';
 const lastTrain = lastSubwayTime(home, isSunday);
 const summary = buildSummary({

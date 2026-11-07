@@ -20,6 +20,7 @@ import { getTicketmasterEventsForTown, IN_TOWN_THRESHOLD_MILES } from '../lib/ti
 import { buildEveningEntries } from '../lib/evening-items';
 import { buildWeekendSections, weekendDayHidden } from '../lib/evening-weekend';
 import { placesFromSnapshot, openLateRows, decorateOpenLate } from '../lib/osm-open-late';
+import { isHolidayDay } from '../lib/open-tonight';
 import { areasFor, withAreas } from '../lib/areas';
 import { indexingForTown } from '../lib/evening-verdict';
 import { gettingHomeFor } from '../lib/getting-home';
@@ -60,7 +61,7 @@ const sections = buildWeekendSections(entries, now, tz, undefined, layer.nearMil
 const anyFree = sections.some((s) => [...s.highlights, ...s.groups.flatMap((g) => g.entries), ...s.farGroups.flatMap((g) => g.entries)].some((e) => e.labels.includes('Free')));
 const saturday = sections[1];
 const nearbyDays = sections.filter((s) => s.farGroups.length > 0 && !weekendDayHidden(s.day, now, tz));
-const lateByDay = new Map(sections.map((s) => [s.day, s.kind === 'sunday' ? [] : decorateOpenLate(openLateRows(osm, s.day, tz, Number.MAX_SAFE_INTEGER), siteConfig.townId, areaData)]));
+const lateByDay = new Map(sections.map((s) => [s.day, s.kind === 'sunday' || isHolidayDay(siteConfig.country, s.day) ? [] : decorateOpenLate(openLateRows(osm, s.day, tz, Number.MAX_SAFE_INTEGER), siteConfig.townId, areaData)]));
 const anyLate = [...lateByDay.values()].some((r) => r.length > 0);
 const anyRows = sections.some((s) => s.count > 0) || anyLate;
 const home = gettingHomeFor(siteConfig.townId, now);
@@ -70,7 +71,7 @@ const forecast = weekendForecastLine(periods, tz, now, sections.map((s) => s.day
 const alertCount = alerts.length;
 
 const total = sections.filter((s) => !weekendDayHidden(s.day, now, tz)).reduce((n, s) => n + s.nearCount, 0); // in-town rows only; the regional ones are counted under "Nearby this weekend"
-const saturdayLate = openLateRows(osm, saturday.day, tz, Number.MAX_SAFE_INTEGER);
+const saturdayLate = isHolidayDay(siteConfig.country, saturday.day) ? [] : openLateRows(osm, saturday.day, tz, Number.MAX_SAFE_INTEGER);
 const monSat = lastSubwayTime(home, false);
 const summary = buildSummary({
   count: total, period: 'this weekend', openAfterOne: openAfterOneCount(saturdayLate, saturday.day, tz), lastTrain: monSat, subwayName: home?.subway.name,
