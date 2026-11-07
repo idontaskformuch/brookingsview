@@ -18,7 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL:      ${{ secrets.DATABASE_URL }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       USER_AGENT:        "ViewMediaBot (+https://brookingsview.com/contact)"
     steps:
       - uses: actions/checkout@v5
