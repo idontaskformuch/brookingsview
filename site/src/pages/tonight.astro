@@ -18,7 +18,7 @@ import { buildEventFeed, isFreeEvent, ownVenueCity } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { countryProfile } from '../lib/country-profile';
 import { metaDescription } from '../lib/meta-description';
-import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
+import { getTicketmasterEventsForTown, IN_TOWN_THRESHOLD_MILES } from '../lib/ticketmaster';
 import { buildEveningEntries, toThresholdItems } from '../lib/evening-items';
 import { indexingForTown } from '../lib/evening-verdict';
 import { buildEveningSections, eveningEntries } from '../lib/evening-page';
@@ -69,7 +69,7 @@ const osm = placesFromSnapshot(osmSnapshot, now) ?? [];
 const osmChecked = osmSnapshot ? osmSnapshot.fetchedAt.slice(0, 10) : checked;
 const indexing = await indexingForTown({ townId: siteConfig.townId, siteUrl: siteConfig.siteUrl, layer, entries, osm, now, tz });
 
-const sections = buildEveningSections(entries, now, tz, layer.nearMiles);
+const sections = buildEveningSections(entries, now, tz, layer.cards ? layer.nearMiles : (layer.nearMiles ?? IN_TOWN_THRESHOLD_MILES));
 const anyFree = sections.some((s) => [...s.highlights, ...s.groups.flatMap((g) => g.entries), ...s.farGroups.flatMap((g) => g.entries)].some((e) => e.labels.includes('Free')));
 const lateBySection = new Map(sections.map((s) => [s.day, decorateOpenLate(openLateRows(osm, s.day, tz, Number.MAX_SAFE_INTEGER), siteConfig.townId, areaData)]));
 const anyLate = [...lateBySection.values()].some((r) => r.length > 0);
@@ -114,7 +114,7 @@ const tonightLate = openLateRows(osm, tonight.day, tz, Number.MAX_SAFE_INTEGER);
 const isSunday = new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'short' }).format(now) === 'Sun';
 const lastTrain = lastSubwayTime(home, isSunday);
 const summary = buildSummary({
-  count: tonight.count, period: 'tonight', openAfterOne: openAfterOneCount(tonightLate, tonight.day, tz),
+  count: tonight.nearCount, period: 'tonight', openAfterOne: openAfterOneCount(tonightLate, tonight.day, tz),
   lastTrain, subwayName: home?.subway.name,
 });
 const train = home && lastTrain ? { monSat: lastSubwayTime(home, false) ?? lastTrain, sunday: lastSubwayTime(home, true) ?? lastTrain, name: home.subway.name } : null;
@@ -220,17 +220,14 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
     {sections.map((s) => (
       <EveningDay
         id={`tn-${s.kind}`} heading={s.kind === 'tonight' ? 'Tonight' : 'Tomorrow night'} dateLabel={dayLabelOf(s.day)}
-        highlights={s.highlights} groups={s.groups} farGroups={s.farGroups} count={s.count} late={lateBySection.get(s.day)!} tz={tz}
-        hidden={s.count === 0 && lateBySection.get(s.day)!.length === 0 && s.kind === 'tomorrow'}
+        highlights={s.highlights} groups={s.groups} farGroups={s.farGroups} farHeading={s.kind === 'tonight' ? 'Nearby tonight' : 'Nearby tomorrow night'} count={s.count} late={lateBySection.get(s.day)!} tz={tz}
+        hidden={s.nearCount === 0 && s.farGroups.length === 0 && lateBySection.get(s.day)!.length === 0 && s.kind === 'tomorrow'}
         attrs={{ 'data-evening-day': s.day, 'data-tz': tz, 'data-built-kind': s.kind }}
       />
     ))}
   </div>
   </>)}
 
-  {!anyRows && (
-    <p class="ev-empty">Nothing is listed for this evening or the next. The <a href="/events/">full events list</a>{siteConfig.hasWhatsOn && <span> and <a href="/whats-on/">bigger shows in the region</a></span>} show what is coming later.</p>
-  )}
 
   {home && (
     <section class="ev-home" aria-labelledby="ev-home-h">

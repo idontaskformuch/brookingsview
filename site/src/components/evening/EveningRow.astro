@@ -2,13 +2,14 @@
 /** One compact row of /tonight and /this-weekend: start time in its own column (so a title that wraps stays aligned), then the title
  *  (a link, underlined only on hover/focus), then "venue · neighbourhood · drive time", then the source's labels. */
 import type { EveningEntry } from '../../lib/evening-items';
-import { driveLabel } from '../../lib/evening-items';
+import { driveLabel, distanceText } from '../../lib/evening-items';
+import { siteConfig } from '../../lib/site-config';
 import { showTimeGb } from '../../lib/whats-on-dates';
 
 interface Props { e: EveningEntry; tz: string }
 const { e, tz } = Astro.props;
 const times = [e.start, ...(e.laterStarts ?? [])].map((t) => showTimeGb(t, tz));
-const meta = [e.venue, e.area, driveLabel(e.driveMinutes)].filter(Boolean).join(' · ');
+const meta = [e.venue, e.area, distanceText(e.distanceMiles, siteConfig.country), driveLabel(e.driveMinutes)].filter(Boolean).join(' · ');
 const external = !!e.href && /^https?:/i.test(e.href);
 ---
 <li class="ev-row" data-start={e.start} data-end={e.end ?? undefined}>

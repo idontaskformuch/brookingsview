@@ -1,23 +1,21 @@
 ---
-/** Trafikincidenter som TABELL, ingen AI -- se lib/db.ts (getActiveTrafficIncidents)
- *  och scrapers/parsers/traffic_v1.py.
+/** Traffic incidents as a TABLE, no AI -- see lib/db.ts (getActiveTrafficIncidents) and scrapers/parsers/traffic_v1.py.
  *
- *  Till skillnad från /sports eller /home-sales är den här sidan INTE
- *  ort-gated med en redirect -- traffic är konceptuellt en funktion som kan
- *  gälla vilken ort som helst, det är bara KÄLLAN som (ännu) saknas för
- *  Brookings (se traffic._notes i configs/brookings_sd.json). En redirect
- *  hade felaktigt sagt "den här funktionen finns inte för din ort" när det
- *  rätta är "ingen data ännu" -- samma princip som /facilities//weather,
- *  som också bara renderar vad som finns i DB:n utan att gissa bort orter. */
+ *  Built only for a town with a traffic source (owner 2026-11-07): without one the page does not exist at all, so it is not built, not in the
+ *  nav and not in the sitemap (the host answers a real 404, like the holiday pages). With a source but no current incidents the page shows the
+ *  data that exists (the source line) and no empty message. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getActiveTrafficIncidents, getTrafficLastChecked, formatTimeWithZone, plainLanguageTraffic } from '../lib/db';
-import { siteConfig, isSectionDisabled, isQuietSection } from '../lib/site-config';
+import { siteConfig, isQuietSection } from '../lib/site-config';
+
+export function getStaticPaths() {
+  return siteConfig.trafficSource ? [{ params: { traffic: 'traffic' } }] : [];
+}
 import { metaDescription } from '../lib/meta-description';
-if (isSectionDisabled('traffic')) return Astro.redirect('/', 302);
 import { placeAbbr } from '../lib/country-profile';
 import SectionHero from '../components/SectionHero.astro';
 import { SECTION_THEME } from '../lib/section-theme';
@@ -74,14 +72,10 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
         source and its real scope directly in the lede, not just in the
         page's own separate "Source:" line further down. */}
     <p>Current road incidents, closures and construction near {siteConfig.cityName} —
-    {siteConfig.trafficSource ? (
+    {siteConfig.trafficSource && (
       <> straight from <a href={siteConfig.trafficSource.url} rel="noopener">{siteConfig.trafficSource.name}</a>,
-      the state's own public incident feed. {siteConfig.trafficSource.scopeNote} The table below refreshes
+      the state's own public incident feed. {siteConfig.trafficSource.scopeNote} The list refreshes
       automatically as new incidents are reported, with no manual review in between.</>
-    ) : (
-      <> though no public live incident feed exists for this area that we can show. {siteConfig.trafficFallback
-        ? <>For current road conditions and closures, use <a href={siteConfig.trafficFallback.url} rel="noopener">{siteConfig.trafficFallback.name}</a>. </>
-        : null}Active weather alerts, which do cover this area, are on <a href="/weather/">the weather page</a>.</>
     )}</p>
     {latestMonth && (
       <p class="month-teaser">See the full <a href={`/month/${monthSlug(latestMonth.year, latestMonth.month)}/`}>month in review for {monthLabel(latestMonth.year, latestMonth.month)} →</a></p>
@@ -89,7 +83,7 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
     <ShareButton title={pageMeta.title} />
   </header>
 
-  <SectionRule label={incidents.length > 0 ? `${incidents.length} active` : 'Current incidents'} />
+  {incidents.length > 0 && <SectionRule label={`${incidents.length} active`} />}
 
   {incidents.length > 0 && (
     <div class="controls">
@@ -142,18 +136,7 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
         ))}
       </tbody>
     </table>
-  ) : siteConfig.trafficSource ? null : ( // a source with no incidents renders nothing (owner 2026-11-07); the source line below stays
-    // Never render "No active incidents" when there's no actual source
-    // behind it -- that reads as "roads are clear," not the true state
-    // ("we don't have a live feed for this area yet"). See
-    // NEEDS-HUMAN-REVIEW.md "Traffic wrong-state source fix".
-    <p class="empty no-source">
-      There is no live incident data to show for {siteConfig.cityName}, so this page cannot tell you the roads are clear.
-      {siteConfig.trafficFallback
-        ? <>Check <a href={siteConfig.trafficFallback.url} rel="noopener">{siteConfig.trafficFallback.name}</a> before you drive, and </>
-        : <>For closures and road-safety notices, </>}<a href="/weather/">see active weather alerts</a>, which do cover this area.
-    </p>
-  )}
+  ) : null}
 
   {siteConfig.trafficSource && (
     <p class="source">

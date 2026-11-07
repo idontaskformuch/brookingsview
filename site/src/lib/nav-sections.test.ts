@@ -3,15 +3,15 @@ import { enabledSections, resolveNav, SECTIONS, type NavConfig, type NavGate } f
 import { ALL_CONFIGS, ALL_SITES } from './site-config';
 
 const BROOKINGS: NavGate = { townId: 'brookings_sd', hasWhatsOn: true, hasClosureWatch: true };
-const MORENO: NavGate = { townId: 'moreno_valley_ca', hasWhatsOn: true, hasClosureWatch: true, hasWorkplaceWatch: true };
-const BROOMFIELD: NavGate = { townId: 'broomfield_co', hasWhatsOn: true, hasWorkplaceWatch: true };
+const MORENO: NavGate = { townId: 'moreno_valley_ca', hasWhatsOn: true, hasClosureWatch: true, hasWorkplaceWatch: true, trafficSource: { name: 'DOT', url: 'https://example.org', scopeNote: '' } };
+const BROOMFIELD: NavGate = { townId: 'broomfield_co', hasWhatsOn: true, hasWorkplaceWatch: true, trafficSource: { name: 'DOT', url: 'https://example.org', scopeNote: '' } };
 
 const BROOKINGS_NAV: NavConfig = {
-  tabs: ['today', 'events', 'university', 'jacks', 'cityhall', 'traffic', 'jobs'],
+  tabs: ['today', 'events', 'university', 'jacks', 'cityhall', 'jobs'],
   groups: {
     Now: ['today', 'events', 'whatson', 'thisweek', 'weather', 'vote'],
     Campus: ['gameday', 'university', 'jacks'],
-    City: ['cityhall', 'traffic', 'closures', 'facilities', 'holidays'],
+    City: ['cityhall', 'closures', 'facilities', 'holidays'],
     More: ['jobs', 'play', 'farm'],
   },
 };
@@ -19,7 +19,7 @@ const BROOKINGS_NAV: NavConfig = {
 describe('registry == the old nav array plus Holidays (footer links must not change: the footer lists its hrefs by hand)', () => {
   const hrefs = (c: NavGate) => enabledSections(c).map((s) => s.href);
   it('Brookings', () => expect(hrefs(BROOKINGS)).toEqual(['/today/', '/this-week/', '/events/', '/whats-on/', '/game-day/', '/university/', '/jackrabbits/', '/play/',
-    '/city-hall/', '/closures/', '/facilities/', '/farm-report/', '/traffic/', '/jobs/', '/weather/', '/holidays/', '/vote/']));
+    '/city-hall/', '/closures/', '/facilities/', '/farm-report/', '/jobs/', '/weather/', '/holidays/', '/vote/'])); // no traffic source, no /traffic/ (owner 2026-11-07)
   it('Moreno Valley', () => expect(hrefs(MORENO)).toEqual(['/today/', '/this-week/', '/events/', '/whats-on/', '/burro-bonanza/', '/city-hall/', '/closures/',
     '/facilities/', '/home-sales/', '/month/', '/sports/', '/workplace-watch/', '/traffic/', '/jobs/', '/weather/', '/holidays/', '/vote/']));
   it('Broomfield', () => expect(hrefs(BROOMFIELD)).toEqual(['/today/', '/this-week/', '/events/', '/whats-on/', '/city-hall/', '/facilities/',

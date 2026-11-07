@@ -3,7 +3,7 @@ import { resolveCluster, validateClusterConfig, computeTownGraph, buildClusterBr
 
 const BROOKINGS = { townId: 'brookings_sd', cityName: 'Brookings', siteName: 'Brookings View' } as any;
 const MORENO_VALLEY = { townId: 'moreno_valley_ca', cityName: 'Moreno Valley', siteName: 'Moreno Valley View', hasWorkplaceWatch: true, hasClosureWatch: true, hasWhatsOn: true, hasHousingMarket: true } as any;
-const BROOMFIELD = { townId: 'broomfield_co', cityName: 'Broomfield', siteName: 'Broomfield View', hasWorkplaceWatch: true, hasWhatsOn: true } as any;
+const BROOMFIELD = { townId: 'broomfield_co', cityName: 'Broomfield', siteName: 'Broomfield View', hasWorkplaceWatch: true, hasWhatsOn: true, trafficSource: { name: 'DOT', url: 'https://example.org', scopeNote: '' } } as any;
 
 describe('validateClusterConfig', () => {
   it('has no dangling references, duplicate primaries, or over-shared spokes', () => {

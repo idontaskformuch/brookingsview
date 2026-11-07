@@ -18,6 +18,7 @@ const TOWNS = [
 ];
 const BF = TOWNS[0];
 const BF_CFG = FRONT_PAGE_BY_TOWN.broomfield_co;
+const CITIES_WITH_TRAFFIC = new Set(['broomfield_co', 'moreno_valley_ca']); // the towns whose site-config has a trafficSource
 const dayOf = (ymd: string) => Date.parse(`${ymd}T00:00:00Z`) / 86_400_000;
 
 const entry = (id: string, title: string, start: string, venue: string | null = 'The Venue'): EveningEntry => ({
@@ -112,7 +113,7 @@ describe('priority and fallbacks', () => {
     expect(inWeekendWindow(new Date(fri.getTime() - 60_000), BF.tz)).toBe(false);
     const fp = selectFrontPage(input(BF, { evening: sat8pm, holidays: [] }, fri), fri);
     expect(fp.lead.type).toBe('weekend');
-    expect(fp.lead.deck[0]).toBe('2 events in and around Broomfield this weekend, including Jazz Night at The Venue and Comedy Hour at Mamas Hall.');
+    expect(fp.lead.deck[0]).toBe('2 events in Broomfield this weekend, including Jazz Night at The Venue and Comedy Hour at Mamas Hall.');
   });
   it('weekend window runs through Sunday 23:59 city time and ends Monday', () => {
     const sun = new Date('2026-11-09T06:59:00Z'); // Sun 23:59 Denver
@@ -238,7 +239,7 @@ describe('priority and fallbacks', () => {
     const one = [entry('c', 'Trivia', '2026-11-12T01:30:00Z', 'Pub 1')]; // Wed 18:30 Denver
     const fp = selectFrontPage(input(BF, { evening: one, holidays: [] }, wed), wed);
     expect(fp.lead.type).toBe('tonight');
-    expect(fp.lead.deck[0]).toBe('1 event in and around Broomfield tonight, including Trivia at Pub 1.');
+    expect(fp.lead.deck[0]).toBe('1 event in Broomfield tonight, including Trivia at Pub 1.');
     const sat = new Date('2026-11-07T21:00:00Z');
     expect(all(selectFrontPage(input(BF, { evening: [entry('d', 'X', '2026-11-08T02:00:00Z')], holidays: [] }, sat), sat)).some((x) => x.type === 'tonight')).toBe(false);
   });
@@ -306,14 +307,49 @@ describe('config', () => {
   it('every guide url is a page the site builds', () => {
     const exists = (u: string) => {
       const p = u.replace(/^\/|\/$/g, '');
-      return ['.astro', '/index.astro'].some((ext) => existsSync(new URL(`../pages/${p}${ext}`, import.meta.url)));
+      // /traffic/ is a dynamic route ([traffic].astro, built only for a town with a traffic source)
+      return ['.astro', '/index.astro'].some((ext) => existsSync(new URL(`../pages/${p}${ext}`, import.meta.url))) || existsSync(new URL(`../pages/[${p}].astro`, import.meta.url));
     };
     for (const [id, cfg] of Object.entries(FRONT_PAGE_BY_TOWN)) {
       expect(cfg.guides.length, id).toBeGreaterThan(0);
       for (const g of cfg.guides) expect(exists(g.url), `${id} ${g.url}`).toBe(true);
+      // a guide to /traffic/ only for a town that has a traffic source
+      if (cfg.guides.some((g) => g.url === '/traffic/')) expect(CITIES_WITH_TRAFFIC.has(id), `${id} lists /traffic/`).toBe(true);
     }
   });
   it('the holiday window is 7 / on the day / 0 for every town', () => {
     for (const cfg of Object.values(FRONT_PAGE_BY_TOWN)) expect(cfg.holiday).toEqual({ daysBefore: 7, showOnDay: true, daysAfter: 0, leadWithinDays: 3 });
+  });
+});
+
+describe('"in {Town}" is said only of in-town events (owner 2026-11-07), all four towns', () => {
+  // Friday 12:30-15:00 local, so the weekend window is open; Saturday 20:00Z is a Saturday afternoon/evening in all four zones.
+  const FRI: Record<string, string> = { broomfield_co: '2026-11-06T19:30:00Z', brookings_sd: '2026-11-06T18:30:00Z', moreno_valley_ca: '2026-11-06T20:30:00Z', glasgow: '2026-11-06T13:00:00Z' };
+  const regional = (id: string) => ({ ...entry(id, `Arena Show ${id}`, '2026-11-07T20:00:00Z', 'Big Arena'), source: 'ticketmaster' as const, distanceMiles: 13 });
+  for (const t of TOWNS) {
+    const now = new Date(FRI[t.id]);
+    const run = (evening: EveningEntry[]) => selectFrontPage(input(t, { evening, holidays: [] }, now), now).lead;
+    const km = t.locale === 'en-GB';
+    it(`${t.city}: only regional shows -> "This weekend near ${t.city}" with each distance`, () => {
+      const lead = run([regional('r1'), regional('r2')]);
+      expect(lead.type).toBe('weekend');
+      expect(lead.headline).toBe(`This weekend near ${t.city}`);
+      expect(lead.deck[0]).toContain(`2 events near ${t.city} this weekend`);
+      expect(lead.deck[0]).toContain(km ? '(~21 km away)' : '(~13 miles away)');
+      expect(lead.deck[0]).not.toContain(` in ${t.city}`);
+    });
+    it(`${t.city}: an in-town event -> "This weekend in ${t.city}", counting it alone`, () => {
+      const lead = run([regional('r1'), regional('r2'), entry('loc', 'Local Jazz', '2026-11-07T20:30:00Z', 'The Venue')]);
+      expect(lead.headline).toBe(`This weekend in ${t.city}`);
+      expect(lead.deck[0]).toBe(`1 event in ${t.city} this weekend, including Local Jazz at The Venue.`);
+    });
+  }
+  it('tonight: regional only -> "Tonight near", in-town present -> "Tonight in"', () => {
+    const wed = new Date('2026-11-11T21:00:00Z');
+    const far = { ...entry('t1', 'Arena Tour', '2026-11-12T02:00:00Z', 'Big Arena'), source: 'ticketmaster' as const, distanceMiles: 13 };
+    expect(selectFrontPage(input(BF, { evening: [far], holidays: [] }, wed), wed).lead.headline).toBe('Tonight near Broomfield');
+    const both = selectFrontPage(input(BF, { evening: [far, entry('t2', 'Trivia', '2026-11-12T01:30:00Z', 'Pub 1')], holidays: [] }, wed), wed).lead;
+    expect(both.headline).toBe('Tonight in Broomfield');
+    expect(both.deck[0]).toBe('1 event in Broomfield tonight, including Trivia at Pub 1.');
   });
 });

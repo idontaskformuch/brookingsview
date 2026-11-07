@@ -30,12 +30,21 @@ export function dateLong(day: number, locale: 'en-US' | 'en-GB'): string {
     : { month: 'long', day: 'numeric', timeZone: 'UTC' });
 }
 
-export interface ShowRef { title: string; venue: string | null }
+export interface ShowRef { title: string; venue: string | null; /** Straight-line miles from the town center; only a regional show is described with it. */ miles?: number | null }
 
-/** "{n} events in and around {City} {when}, including {top1} at {venue1} and {top2} at {venue2}." */
-export function eventsDeck(o: { n: number; city: string; when: string; tops: ShowRef[] }): string {
-  const lead = `${plural(o.n, 'event')} in and around ${o.city} ${o.when}`;
-  const named = o.tops.slice(0, 2).map((t) => (t.venue ? `${t.title} at ${t.venue}` : t.title));
+const KM_PER_MILE = 1.609344;
+const awayText = (miles: number, unit: 'miles' | 'km'): string => (unit === 'km' ? `~${Math.round(miles * KM_PER_MILE)} km away` : `~${Math.round(miles)} miles away`);
+
+/** In town:  "{n} events in {City} {when}, including {top1} at {venue1} and {top2} at {venue2}."
+ *  Regional: "{n} events near {City} {when}, including {top1} at {venue1} (~13 miles away) and ..." (km for Britain). Owner 2026-11-07: "in {City}" is
+ *  said only of events in the town; shows further out are "near", each with its distance. */
+export function eventsDeck(o: { n: number; city: string; when: string; tops: ShowRef[]; scope?: 'in' | 'near'; unit?: 'miles' | 'km' }): string {
+  const near = o.scope === 'near';
+  const lead = `${plural(o.n, 'event')} ${near ? 'near' : 'in'} ${o.city} ${o.when}`;
+  const named = o.tops.slice(0, 2).map((t) => {
+    const base = t.venue ? `${t.title} at ${t.venue}` : t.title;
+    return near && t.miles != null ? `${base} (${awayText(t.miles, o.unit ?? 'miles')})` : base;
+  });
   return named.length > 0 ? `${lead}, including ${joinList(named)}.` : `${lead}.`;
 }
 

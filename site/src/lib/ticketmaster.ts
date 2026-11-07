@@ -186,7 +186,7 @@ function parseCoordinate(value: string | undefined): number | null {
 /** Below this, a venue reads as "in town," not a real distance away --
  *  see this function's own doc comment for why a small threshold matters
  *  here specifically. */
-const IN_TOWN_THRESHOLD_MILES = 5;
+export const IN_TOWN_THRESHOLD_MILES = 5;
 
 /**
  * What's On Phase 5's anti-doorway-pattern transparency label -- the

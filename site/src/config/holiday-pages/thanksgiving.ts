@@ -216,7 +216,7 @@ export function buildThanksgivingPage(townId: string, brookingsMoves?: Brookings
   if (townId === 'brookings_sd' && !brookingsMoves) brookingsMoves = computeBrookingsMoves();
   const related = [
     { label: 'Forecast and weather alerts', href: '/weather/' },
-    { label: 'Road incidents', href: '/traffic/' },
+    ...(townId === 'brookings_sd' ? [] : [{ label: 'Road incidents', href: '/traffic/' }]), // Brookings has no traffic source, so no /traffic/ page
     { label: 'All upcoming events', href: '/events/' },
     { label: 'Today in town', href: '/today/' },
   ];

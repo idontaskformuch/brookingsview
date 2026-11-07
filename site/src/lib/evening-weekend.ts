@@ -36,9 +36,11 @@ export interface WeekendSection {
   kind: WeekendKind;
   highlights: EveningEntry[];
   groups: Array<EveningListGroup & { more: number }>;
-  /** Rows beyond nearMiles, under "Further afield" (same per-group cap). */
+  /** Rows beyond nearMiles, under "Nearby this weekend" (same per-group cap). */
   farGroups: Array<EveningListGroup & { more: number }>;
   count: number;
+  /** Rows within nearMiles (in the town): the number an "in {Town}" heading may use. */
+  nearCount: number;
 }
 
 export function buildWeekendSections(entries: EveningEntry[], now: Date, tz: string, perGroup = WEEKEND_ROWS_PER_GROUP, nearMiles?: number): WeekendSection[] {
@@ -52,7 +54,8 @@ export function buildWeekendSections(entries: EveningEntry[], now: Date, tz: str
       return localDayNumber(at, tz) === day && localHourOf(at, tz) >= from;
     });
     const near = dayEntries.filter((e) => isNearEntry(e, nearMiles));
-    const highlights = pickHighlights(near.length > 0 ? near : dayEntries);
+    // With a near/far split the highlights are in-town rows only: a regional show never headlines an "in {Town}" page.
+    const highlights = pickHighlights(nearMiles != null ? near : dayEntries);
     const groupsOf = (list: EveningEntry[]) => {
       const byName = new Map<string, EveningEntry[]>();
       for (const e of list) byName.set(weekendGroupOf(e), [...(byName.get(weekendGroupOf(e)) ?? []), e]);
@@ -62,7 +65,7 @@ export function buildWeekendSections(entries: EveningEntry[], now: Date, tz: str
       });
     };
     const rest = dayEntries.filter((e) => !highlights.includes(e));
-    return { day, kind, highlights, groups: groupsOf(rest.filter((e) => isNearEntry(e, nearMiles))), farGroups: groupsOf(rest.filter((e) => !isNearEntry(e, nearMiles))), count: dayEntries.length };
+    return { day, kind, highlights, groups: groupsOf(rest.filter((e) => isNearEntry(e, nearMiles))), farGroups: groupsOf(rest.filter((e) => !isNearEntry(e, nearMiles))), count: dayEntries.length, nearCount: near.length };
   });
 }
 

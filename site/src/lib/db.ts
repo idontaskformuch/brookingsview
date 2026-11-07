@@ -1174,7 +1174,7 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
     items.push({ href: '/city-hall/', title: 'City hall', kicker: 'City hall', description: 'Council and commission decisions on roads, permits and closures.' });
     if (gameItem) items.push(gameItem);
   } else if (pageType === 'closure_watch') {
-    items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
+    if (siteConfig.trafficSource) items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
     items.push({ href: '/events/', title: "What's on", kicker: 'Events', description: 'Community events this week.' });
     items.push({ href: '/city-hall/', title: 'City hall', kicker: 'City hall', description: 'Council and commission decisions, including school-district-adjacent items.' });
     if (gameItem) items.push(gameItem);
@@ -1183,10 +1183,10 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
     if (digest) items.push(digest);
     items.push({ href: '/jobs/', title: 'Jobs', kicker: 'Jobs', description: `Current listings in and near ${siteConfig.cityName}.` });
     items.push({ href: '/events/', title: "What's on", kicker: 'Events', description: 'Community events this week.' });
-    items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
+    if (siteConfig.trafficSource) items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
     if (gameItem) items.push(gameItem);
   } else if (pageType === 'events') {
-    items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
+    if (siteConfig.trafficSource) items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
     const weekly = await getLatestWeekly();
     if (weekly && weekly.occurs_at) {
       items.push({
@@ -1212,7 +1212,7 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
     }
     items.push({ href: '/events/campus/', title: 'Arts & culture at SDSU', kicker: 'Events', description: 'Music, theater and special events on campus.' });
     items.push({ href: '/jackrabbits/', title: 'Jackrabbits', kicker: 'Sports', description: 'Schedule and results.' });
-    items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
+    if (siteConfig.trafficSource) items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
     if (gameItem) items.push(gameItem);
   } else if (pageType === 'workplace_watch') {
     const homeSales = await latestStoryByType('home_sales_digest');
@@ -1249,7 +1249,7 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
     // next, not a generic "more sections" grab-bag.
     items.push({ href: '/workplace-watch/', title: 'Worker Pulse', kicker: 'Worker Pulse', description: "Review-trend digests for Broomfield's major employers, including Vail Resorts." });
     items.push({ href: '/jobs/', title: 'Jobs', kicker: 'Jobs', description: 'Current listings in and near Broomfield.' });
-    items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
+    if (siteConfig.trafficSource) items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
   } else if (pageType === 'facilities') {
     items.push({ href: '/events/free/', title: 'Free things to do', kicker: 'Free', description: 'Always-free facilities and free events, in one place.' });
     items.push({ href: '/facilities/', title: 'Venues & facilities', kicker: 'Facilities', description: 'Every park, library and civic building we track.' });

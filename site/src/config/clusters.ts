@@ -218,10 +218,8 @@ export const ROUTE_AVAILABILITY: Record<string, RouteAvailability> = {
   // page-meta.ts kept its own inert entry.
   'free-things-to-do': () => false,
 
-  // Getting around -- traffic.astro has no gate (a town with no known
-  // live incident source, Brookings, still renders an honest "no source
-  // found yet" state, per siteConfig.trafficSource's own doc comment).
-  traffic: () => true,
+  // Getting around -- /traffic/ exists only for a town with a trafficSource.
+  traffic: (c) => Boolean(c.trafficSource), // the page is built only for a town with a traffic source (owner 2026-11-07)
   // closures.astro DOES redirect on !hasClosureWatch -- false for
   // Broomfield today (no closureWatch block configured for it).
   closures: (c) => Boolean(c.hasClosureWatch),

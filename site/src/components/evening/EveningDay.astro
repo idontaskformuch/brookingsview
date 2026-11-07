@@ -15,8 +15,9 @@ interface Props {
   dateLabel: string;
   highlights: EveningEntry[];
   groups: Group[];
-  /** Rows beyond the town's near radius, shown under "Further afield" after the near groups and the Open late block. */
+  /** Rows beyond the town's near radius, shown under `farHeading` after the near groups and the Open late block. */
   farGroups?: Group[];
+  farHeading?: string;
   count: number;
   late?: OpenLateRow[];
   tz: string;
@@ -25,13 +26,16 @@ interface Props {
   moreHref?: string;
   moreLabel?: string;
 }
-const { id, heading, dateLabel, highlights, groups, farGroups = [], count, late = [], tz, attrs = {}, hidden = false, moreHref, moreLabel } = Astro.props;
+const { id, heading, dateLabel, highlights, groups, farGroups = [], farHeading = 'Nearby', count, late = [], tz, attrs = {}, hidden = false, moreHref, moreLabel } = Astro.props;
 const lateGroups = groupOpenLateByArea(late);
 const groupedLate = lateGroups.some((g) => g.area);
+// A day with nothing in town and nothing nearby renders nothing (owner 2026-11-07: no "Nothing listed" message); the town heading shows only
+// when something in town is listed, so a regional show never sits under an "in town" heading.
+const hasLocal = highlights.length > 0 || groups.length > 0 || late.length > 0;
 ---
-<section class="ev-day" aria-labelledby={`${id}-h`} hidden={hidden || undefined} {...attrs}>
-  <h2 id={`${id}-h`}><span data-evening-heading>{heading}</span> <span class="ev-date">{dateLabel}</span></h2>
-  {count === 0 && late.length === 0 && <p class="ev-empty">Nothing listed for this day yet.</p>}
+{(hasLocal || farGroups.length > 0) && (
+<section class="ev-day" aria-labelledby={hasLocal ? `${id}-h` : undefined} aria-label={hasLocal ? undefined : farHeading} hidden={hidden || undefined} {...attrs}>
+  {hasLocal && <h2 id={`${id}-h`}><span data-evening-heading>{heading}</span> <span class="ev-date">{dateLabel}</span></h2>}
   {highlights.length > 0 && (
     <ul class="ev-highlights" data-hide-ended>
       {highlights.map((e) => <EveningCard e={e} tz={tz} />)}
@@ -69,7 +73,7 @@ const groupedLate = lateGroups.some((g) => g.area);
   )}
   {farGroups.length > 0 && (
     <div class="ev-far">
-      <h3 class="ev-far-name">Further afield</h3>
+      <h3 class="ev-far-name">{farHeading}</h3>
       {farGroups.map((g) => (
         <div class="ev-group">
           <h4 class="ev-group-name">{g.name}</h4>
@@ -82,6 +86,7 @@ const groupedLate = lateGroups.some((g) => g.area);
     </div>
   )}
 </section>
+)}
 <style is:global>
   .ev-far { margin-top: 1.5rem; }
   .ev-far-name { margin: 0 0 0.25rem; font-size: 1.125rem; }

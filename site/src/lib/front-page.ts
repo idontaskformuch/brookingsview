@@ -13,6 +13,7 @@ import { buildWeekendSections } from './evening-weekend';
 import { hasEnded, localDayNumber, localHourOf } from './local-day';
 import { dateLong, eventsDeck, meetingDeck, plural, weekdayName, type ShowRef } from './front-page-decks';
 import type { FrontPageConfig } from '../config/front-page';
+import { IN_TOWN_THRESHOLD_MILES } from './ticketmaster';
 
 export type FrontPageType = 'alert' | 'holiday' | 'weekend' | 'game_day' | 'meeting' | 'tonight' | 'guide';
 
@@ -114,7 +115,10 @@ export function holidayVisible(today: number, holidayDay: number, w: FrontPageCo
 }
 
 const showsOf = (entries: EveningEntry[]): ShowRef[] =>
-  entries.map((e) => ({ title: e.title, venue: e.venue }));
+  entries.map((e) => ({ title: e.title, venue: e.venue, miles: e.distanceMiles }));
+
+/** In the town itself: an own or register row without a distance, or a venue closer than the in-town threshold (lib/ticketmaster.ts). */
+export const isInTown = (e: EveningEntry): boolean => e.distanceMiles == null || e.distanceMiles < IN_TOWN_THRESHOLD_MILES;
 
 function alertItem(i: FrontPageInput, now: Date): FrontPageItem | null {
   const live = i.alerts.filter((a) => {
@@ -140,14 +144,26 @@ function holidayItem(i: FrontPageInput, today: number): FrontPageItem | null {
   return { type: 'holiday', headline: h.label, deck, url: h.url };
 }
 
+/** "This weekend in {City}" is built from in-town events only; when only regional shows exist the lead says "near {City}" and gives each its
+ *  distance (owner 2026-11-07). */
 function weekendItem(i: FrontPageInput, now: Date): FrontPageItem | null {
   if (!inWeekendWindow(now, i.timezone)) return null;
   const live = i.evening.filter((e) => !hasEnded({ start: e.start, end: e.end }, now, i.timezone));
-  const sections = buildWeekendSections(live, now, i.timezone).filter((s) => s.day >= localDayNumber(now, i.timezone));
-  const n = sections.reduce((sum, s) => sum + s.count, 0);
-  if (n === 0) return null;
-  const tops = showsOf(sections.flatMap((s) => s.highlights.slice(0, 1)));
-  return { type: 'weekend', headline: `This weekend in ${i.cityName}`, deck: [eventsDeck({ n, city: i.cityName, when: 'this weekend', tops })], url: '/this-weekend/' };
+  const today = localDayNumber(now, i.timezone);
+  const count = (entries: EveningEntry[]) => {
+    const sections = buildWeekendSections(entries, now, i.timezone).filter((s) => s.day >= today);
+    return { n: sections.reduce((sum, s) => sum + s.count, 0), tops: showsOf(sections.flatMap((s) => s.highlights.slice(0, 1))) };
+  };
+  const inTown = count(live.filter(isInTown));
+  if (inTown.n > 0) {
+    return { type: 'weekend', headline: `This weekend in ${i.cityName}`, deck: [eventsDeck({ n: inTown.n, city: i.cityName, when: 'this weekend', tops: inTown.tops })], url: '/this-weekend/' };
+  }
+  const regional = count(live);
+  if (regional.n === 0) return null;
+  return {
+    type: 'weekend', headline: `This weekend near ${i.cityName}`, url: '/this-weekend/',
+    deck: [eventsDeck({ n: regional.n, city: i.cityName, when: 'this weekend', tops: regional.tops, scope: 'near', unit: i.locale === 'en-GB' ? 'km' : 'miles' })],
+  };
 }
 
 function gameItem(i: FrontPageInput, now: Date, today: number): FrontPageItem | null {
@@ -178,9 +194,16 @@ function meetingItem(i: FrontPageInput, today: number): FrontPageItem | null {
 function tonightItem(i: FrontPageInput, now: Date): FrontPageItem | null {
   if (inWeekendWindow(now, i.timezone)) return null;
   const live = i.evening.filter((e) => !hasEnded({ start: e.start, end: e.end }, now, i.timezone));
-  const tonight = buildEveningSections(live, now, i.timezone)[0];
-  if (!tonight || tonight.count === 0) return null;
-  return { type: 'tonight', headline: `Tonight in ${i.cityName}`, deck: [eventsDeck({ n: tonight.count, city: i.cityName, when: 'tonight', tops: showsOf(tonight.highlights) })], url: '/tonight/' };
+  const inTown = buildEveningSections(live.filter(isInTown), now, i.timezone)[0];
+  if (inTown && inTown.count > 0) {
+    return { type: 'tonight', headline: `Tonight in ${i.cityName}`, deck: [eventsDeck({ n: inTown.count, city: i.cityName, when: 'tonight', tops: showsOf(inTown.highlights) })], url: '/tonight/' };
+  }
+  const regional = buildEveningSections(live, now, i.timezone)[0];
+  if (!regional || regional.count === 0) return null;
+  return {
+    type: 'tonight', headline: `Tonight near ${i.cityName}`, url: '/tonight/',
+    deck: [eventsDeck({ n: regional.count, city: i.cityName, when: 'tonight', tops: showsOf(regional.highlights), scope: 'near', unit: i.locale === 'en-GB' ? 'km' : 'miles' })],
+  };
 }
 
 /** The evergreen guides, today's first: rotated by day of year so the fallback changes daily. */

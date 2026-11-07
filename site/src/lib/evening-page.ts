@@ -20,9 +20,11 @@ export interface EveningSection {
   kind: 'tonight' | 'tomorrow';
   highlights: EveningEntry[];
   groups: EveningListGroup[];
-  /** Groups of the rows beyond nearMiles, shown under "Further afield"; empty when no split is configured. */
+  /** Groups of the rows beyond nearMiles, shown under "Nearby tonight"; empty when no split is configured. */
   farGroups: EveningListGroup[];
   count: number;
+  /** Rows within nearMiles (in the town): the number an "in {Town}" heading may use. count - nearCount are the nearby/regional rows. */
+  nearCount: number;
 }
 
 const byStart = (a: EveningEntry, b: EveningEntry) => a.start.localeCompare(b.start);
@@ -69,10 +71,11 @@ export function buildSection(entries: EveningEntry[], day: number, kind: 'tonigh
   const evening = eveningEntries(entries, day, tz);
   const near = evening.filter((e) => isNearEntry(e, nearMiles));
   const far = evening.filter((e) => !isNearEntry(e, nearMiles));
-  const highlights = withHighlights ? pickHighlights(near.length > 0 ? near : evening) : [];
+  // With a near/far split the highlights are in-town rows only: a regional show never headlines an "in {Town}" page.
+  const highlights = withHighlights ? pickHighlights(nearMiles != null ? near : evening) : [];
   return {
     day, kind, highlights, groups: groupEntries(near.filter((e) => !highlights.includes(e))),
-    farGroups: groupEntries(far.filter((e) => !highlights.includes(e))), count: evening.length,
+    farGroups: groupEntries(far.filter((e) => !highlights.includes(e))), count: evening.length, nearCount: near.length,
   };
 }
 

@@ -14,7 +14,7 @@ import { normVenue } from './areas';
 import type { FeedItem } from './events';
 import { itemTitle, itemUrl, itemVenue } from './events';
 import { linkTarget } from './ai-text';
-import { distanceLabel, type TicketmasterFeedItem } from './ticketmaster';
+import { distanceLabel, IN_TOWN_THRESHOLD_MILES, type TicketmasterFeedItem } from './ticketmaster';
 import { ticketmasterSlug } from './whats-on';
 import { hasEnded, DEFAULT_EVENT_MS, localDayNumber, localHourOf, localInstantIso } from './local-day';
 import { ticketmasterImageProxyPath } from './images';
@@ -155,6 +155,13 @@ export function ageLabel(audience: string | null | undefined): EveningLabel | nu
 export function driveMinutes(miles: number): number {
   const mph = miles < 10 ? 25 : miles < 30 ? 35 : 50;
   return Math.max(5, Math.round(((miles * 1.3) / mph) * 12) * 5);
+}
+
+/** "~13 miles away" (km for Britain). Null inside the town and when the source gives no distance: a regional show is labelled with how far
+ *  it is, an in-town one is not (owner 2026-11-07). */
+export function distanceText(miles: number | null | undefined, country: string): string | null {
+  if (miles == null || miles < IN_TOWN_THRESHOLD_MILES) return null;
+  return country === 'gb' ? `~${Math.round(miles * 1.609344)} km away` : `~${Math.round(miles)} miles away`;
 }
 
 export function driveLabel(minutes: number | null): string | null {

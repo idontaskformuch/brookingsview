@@ -11,7 +11,7 @@ import type { SiteConfig } from './site-config';
 import { ELECTION_BY_TOWN } from '../config/election';
 import { townHasHolidayPages } from '../config/holiday-pages/registry';
 
-export type NavGate = Pick<SiteConfig, 'townId' | 'hasWhatsOn' | 'hasClosureWatch' | 'hasNewInTown' | 'hasWorkplaceWatch' | 'disabledSections' | 'quietSections' | 'navLabels' | 'eveningLayer' | 'safetyNotices'>;
+export type NavGate = Pick<SiteConfig, 'townId' | 'hasWhatsOn' | 'hasClosureWatch' | 'hasNewInTown' | 'hasWorkplaceWatch' | 'disabledSections' | 'quietSections' | 'navLabels' | 'eveningLayer' | 'safetyNotices' | 'trafficSource'>;
 
 export interface NavSection {
   id: string;
@@ -52,7 +52,7 @@ export const SECTIONS: NavSection[] = [
   { id: 'sports', href: '/sports/', label: 'Sports', enabled: MORENO },
   { id: 'workplace', href: '/workplace-watch/', label: 'Worker Pulse', enabled: (c) => !!c.hasWorkplaceWatch },
   { id: 'vail', href: '/vail-resorts/', label: 'Vail Resorts', enabled: BROOMFIELD },
-  { id: 'traffic', href: '/traffic/', label: 'Traffic', enabled: () => true },
+  { id: 'traffic', href: '/traffic/', label: 'Traffic', enabled: (c) => !!c.trafficSource }, // no source, no page (owner 2026-11-07)
   { id: 'jobs', href: '/jobs/', label: 'Jobs', enabled: () => true },
   { id: 'weather', href: '/weather/', label: 'Weather', enabled: () => true },
   // Wildfires near the town and the air-quality index (Moreno Valley, Broomfield; public-safety plan, owner 2026-10-29).

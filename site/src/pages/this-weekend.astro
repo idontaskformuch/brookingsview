@@ -9,13 +9,14 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import ShareButton from '../components/ShareButton.astro';
 import SectionHero from '../components/SectionHero.astro';
 import EveningDay from '../components/evening/EveningDay.astro';
+import EveningRow from '../components/evening/EveningRow.astro';
 import EveningSummary from '../components/evening/EveningSummary.astro';
 import EveningAbout from '../components/evening/EveningAbout.astro';
 import { getWeather, getActiveAlerts, getUpcomingStories, getUpcomingArtsEvents, getFacilities, getOsmSnapshot, getEveningRegister } from '../lib/db';
 import { buildEventFeed, isFreeEvent } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
-import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
+import { getTicketmasterEventsForTown, IN_TOWN_THRESHOLD_MILES } from '../lib/ticketmaster';
 import { buildEveningEntries } from '../lib/evening-items';
 import { buildWeekendSections, weekendDayHidden } from '../lib/evening-weekend';
 import { placesFromSnapshot, openLateRows, decorateOpenLate } from '../lib/osm-open-late';
@@ -55,9 +56,10 @@ const osmChecked = osmSnapshot ? osmSnapshot.fetchedAt.slice(0, 10) : checked;
 
 const indexing = await indexingForTown({ townId: siteConfig.townId, siteUrl: siteConfig.siteUrl, layer, entries, osm, now, tz });
 
-const sections = buildWeekendSections(entries, now, tz, undefined, layer.nearMiles);
+const sections = buildWeekendSections(entries, now, tz, undefined, layer.nearMiles ?? IN_TOWN_THRESHOLD_MILES);
 const anyFree = sections.some((s) => [...s.highlights, ...s.groups.flatMap((g) => g.entries), ...s.farGroups.flatMap((g) => g.entries)].some((e) => e.labels.includes('Free')));
 const saturday = sections[1];
+const nearbyDays = sections.filter((s) => s.farGroups.length > 0 && !weekendDayHidden(s.day, now, tz));
 const lateByDay = new Map(sections.map((s) => [s.day, s.kind === 'sunday' ? [] : decorateOpenLate(openLateRows(osm, s.day, tz, Number.MAX_SAFE_INTEGER), siteConfig.townId, areaData)]));
 const anyLate = [...lateByDay.values()].some((r) => r.length > 0);
 const anyRows = sections.some((s) => s.count > 0) || anyLate;
@@ -67,7 +69,7 @@ const anyArea = entries.some((e) => e.area);
 const forecast = weekendForecastLine(periods, tz, now, sections.map((s) => s.day));
 const alertCount = alerts.length;
 
-const total = sections.filter((s) => !weekendDayHidden(s.day, now, tz)).reduce((n, s) => n + s.count, 0);
+const total = sections.filter((s) => !weekendDayHidden(s.day, now, tz)).reduce((n, s) => n + s.nearCount, 0); // in-town rows only; the regional ones are counted under "Nearby this weekend"
 const saturdayLate = openLateRows(osm, saturday.day, tz, Number.MAX_SAFE_INTEGER);
 const monSat = lastSubwayTime(home, false);
 const summary = buildSummary({
@@ -110,16 +112,13 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
     {sections.map((s) => (
       <EveningDay
         id={`wk-${s.kind}`} heading={headingOf[s.kind]} dateLabel={dayLabelOf(s.day)}
-        highlights={s.highlights} groups={s.groups} farGroups={s.farGroups} count={s.count} late={lateByDay.get(s.day)!} tz={tz}
+        highlights={s.highlights} groups={s.groups} count={s.count} late={lateByDay.get(s.day)!} tz={tz}
         hidden={weekendDayHidden(s.day, now, tz)} moreHref="/events/" moreLabel="on the full events list"
         attrs={{ 'data-weekend-day': s.day, 'data-tz': tz }}
       />
     ))}
   </div>
 
-  {!anyRows && (
-    <p class="ev-empty">Nothing is listed for this weekend yet. The <a href="/events/">full events list</a>{siteConfig.hasWhatsOn && <span> and <a href="/whats-on/">bigger shows in the region</a></span>} show what is coming later.</p>
-  )}
 
   <p class="ev-more-links">Just tonight? See <a href="/tonight/">what is on tonight</a> · the <a href="/events/">full events list</a>.</p>
 
