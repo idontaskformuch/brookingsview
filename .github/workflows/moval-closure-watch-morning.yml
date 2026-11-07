@@ -26,8 +26,10 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Fingerprint before
         run: python -m scripts.ci_changed before moreno_valley_ca --preset data
-      - name: Refresh only weather_alerts + school_alerts
-        run: python -m scrapers.runner --config configs/moreno_valley_ca.json --only weather_alerts school_alerts
+      # weather_alerts removed 2026-11-07: NWS rows (CAZ048, CAZ248) in `events`
+      # are written live by the cron-dispatcher Worker and by moval-scrape.yml.
+      - name: Refresh only school_alerts
+        run: python -m scrapers.runner --config configs/moreno_valley_ca.json --only school_alerts
       - name: Closure Watch (history + Watch-state prose)
         run: python -m ai_pipeline.closure_watch_digest --config configs/moreno_valley_ca.json
       - name: Did the site content change?
