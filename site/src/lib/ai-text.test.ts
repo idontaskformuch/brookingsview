@@ -16,6 +16,21 @@ describe('publicBody', () => {
   });
 });
 
+describe('publicBody for a meta-only template body', () => {
+  const meta = { venue: 'Larson Ice Center', address: '924 32nd Ave, Brookings, SD' };
+  it('renders nothing when the body only repeats the title and the place shown in the fact row', () => {
+    const base = { generated_by: 'template', title: 'Jacks Club Hockey vs Creighton', meta };
+    expect(publicBody({ ...base, body: 'Jacks Club Hockey vs Creighton at Larson Ice Center.' })).toBe('');
+    expect(publicBody({ ...base, title: 'City Council — Tue, Oct 20, 2026', body: 'City Council — Tue, Oct 20, 2026. Location: 924 32nd Ave, Brookings, SD.' })).toBe('');
+  });
+  it('keeps a template body that says more than title + place, or that cannot be judged', () => {
+    const base = { generated_by: 'template', title: 'Jacks Club Hockey vs Creighton', meta };
+    expect(publicBody({ ...base, body: 'Jacks Club Hockey vs Creighton at Larson Ice Center. Doors open early.' })).toContain('Doors open early');
+    expect(publicBody({ generated_by: 'template', body: 'Plain template text.' })).toBe('Plain template text.'); // no title: unjudgeable
+    expect(publicBody({ ...base, generated_by: 'template_fallback', body: 'Jacks Club Hockey vs Creighton at Larson Ice Center.' })).not.toBe('');
+  });
+});
+
 describe('a permalink with withheld text', () => {
   it('is noindexed however long the stored text is', () => {
     const body = Array(500).fill('word').join(' ');

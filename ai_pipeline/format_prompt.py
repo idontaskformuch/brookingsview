@@ -19,6 +19,7 @@ import sys
 from dataclasses import dataclass
 
 from ai_pipeline import guardrails
+from ai_pipeline import meta_only
 from ai_pipeline import uk_guardrails
 from ai_pipeline import api_usage
 from ai_pipeline.generator_switch import generator_enabled
@@ -619,6 +620,10 @@ def format_record(record: dict, source_type: str, cfg: dict,
         text = TEMPLATERS[source_type](record.get("payload", record), cfg)
         return FormatResult(text=text, generated_by="template", verified=True)
 
+    # 1b. meta-only (owner 2026-11-07): alerts carry no meta the site reads, so they never reach the model
+    if source_type == "alert" and ai_cfg.get("meta_only"):
+        return FormatResult(text=_record_title(record), generated_by="template", verified=True, meta={})
+
     # 2. strömbrytare (fail closed: en typ utan `enabled: true` i ai.generators anropar aldrig modellen), sedan budgettak
     if not generator_enabled(cfg, source_type):
         return _fallback(record, source_type, cfg, reason="generator switched off")
@@ -633,6 +638,9 @@ def format_record(record: dict, source_type: str, cfg: dict,
         if anthropic is None:
             return _fallback(record, source_type, cfg, reason="anthropic-paket saknas")
         client = anthropic.Anthropic()  # läser ANTHROPIC_API_KEY
+
+    if ai_cfg.get("meta_only") and source_type in meta_only.META_KEYS:
+        return _format_meta_only(record, source_type, cfg, client)
 
     model = resolve_model(source_type, cfg)
     price_in, price_out = pricing_for(model)
@@ -785,6 +793,54 @@ def format_record(record: dict, source_type: str, cfg: dict,
                                   violations_by_attempt=violations_per_attempt)
     return _fallback(record, source_type, cfg,
                      reason=f"guardrail: {'; '.join(violations)}", violations=violations)
+
+
+def _record_title(record: dict) -> str:
+    return str(record.get("title") or record.get("body") or record.get("description") or "").strip()
+
+
+def _format_meta_only(record: dict, source_type: str, cfg: dict, client) -> FormatResult:
+    """One model call that copies reference facts out of the source (ai_pipeline/meta_only.py); no prose, no retry. Each value
+    is checked against the source text in code and dropped when it is not there. The row is stored as a template: a one-line
+    body from the source title plus the kept values, generated_by "template". The caller (format_record) has already passed the
+    generator switch, the budget cap and the client check."""
+    model = resolve_model(source_type, cfg)
+    price_in, price_out = pricing_for(model)
+    source_text = guardrails.source_to_text(record)
+    usage_ids: list[int] = []
+    try:
+        with api_usage.usage_context(generator=source_type, town_id=cfg.get("town_id")):
+            msg = safe_create(
+                client, model=model, max_tokens=400, system=meta_only.build_system_prompt(source_type), **no_thinking(model),
+                messages=[{"role": "user", "content": f"SOURCE DATA (source_type={source_type}):\n{source_text}"}],
+                attempt=1,
+            )
+            usage_id = api_usage.take_last_usage_id()
+            if usage_id is not None:
+                usage_ids.append(usage_id)
+            _record_spend(msg.usage.input_tokens * price_in + msg.usage.output_tokens * price_out)
+    except GenerationUnavailable as exc:
+        print(f"  AI-anrop misslyckades ({exc}) -- faller tillbaka på mall", file=sys.stderr)
+        api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="template_fallback", violations_by_attempt=[])
+        return _fallback(record, source_type, cfg, reason=f"AI ej tillgängligt: {exc}")
+
+    raw = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+    parsed = meta_only.parse_meta_response(raw)
+    violations = ["meta_only: response was not valid {meta} JSON"] if parsed is None else []
+    meta, dropped = meta_only.validate_meta(parsed or {}, source_type, source_text)
+    text = meta_only.template_body(_record_title(record), source_type, meta)
+    if not violations:
+        violations = pre_publish_check(
+            text, source_records=record, cfg=cfg, content_type=source_type, record_date=_record_date(record), meta=meta,
+        ).violations
+    if violations:
+        api_usage.finalize_generation(usage_ids, succeeded=False, fallback_outcome="template_fallback",
+                                      violations_by_attempt=[violations])
+        return _fallback(record, source_type, cfg, reason=f"guardrail: {'; '.join(violations)}", violations=violations)
+    for key, value, why in dropped:
+        print(f"    meta dropped: {key}={value!r} ({why})", file=sys.stderr)
+    api_usage.finalize_generation(usage_ids, succeeded=True)
+    return FormatResult(text=text, generated_by="template", verified=True, meta=meta)
 
 
 def _fallback(record: dict, source_type: str, cfg: dict, reason: str,

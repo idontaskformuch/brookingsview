@@ -9,9 +9,21 @@ export function isAiText(story: { generated_by?: string | null }): boolean {
   return /^ai:/.test(story.generated_by ?? '');
 }
 
-/** The story text a layout may print: '' for model-written rows, the stored text otherwise. */
-export function publicBody(story: { body: string; generated_by?: string | null }): string {
-  return isAiText(story) ? '' : story.body;
+const words = (t: string) => t.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+
+/** The meta-only template body (ai_pipeline/meta_only.py template_body: "<title> at <venue>." / "<title>. Location: <place>.") says
+ *  nothing the page does not already show in the title and the fact row. Stored, not printed. */
+function repeatsTitleAndPlace(story: { body: string; title?: string | null; meta?: { venue?: string; address?: string } | null }): boolean {
+  if (story.title == null) return false;
+  const known = new Set([...words(story.title), ...words(story.meta?.venue ?? ''), ...words(story.meta?.address ?? ''), 'at', 'location']);
+  return words(story.body).every((w) => known.has(w));
+}
+
+/** The story text a layout may print: '' for model-written rows and for a template body that only repeats title + place. */
+export function publicBody(story: { body: string; generated_by?: string | null; title?: string | null; meta?: { venue?: string; address?: string } | null }): string {
+  if (isAiText(story)) return '';
+  if (story.generated_by === 'template' && repeatsTitleAndPlace(story)) return '';
+  return story.body;
 }
 
 /** The story's own /s/ page, or null when its text is withheld: that page is an empty shell (noindex), so nothing may link to it. */

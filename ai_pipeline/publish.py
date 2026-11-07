@@ -72,7 +72,7 @@ import requests
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from ai_pipeline import guardrails, uk_guardrails
+from ai_pipeline import guardrails, meta_only, uk_guardrails
 from ai_pipeline.format_prompt import format_record, TEMPLATERS
 from ai_pipeline.venue_registry import load_registry, normalize_venue, queue_for_review, resolve_venue
 from db.db import content_hash
@@ -1017,6 +1017,8 @@ def publish_table(
             ai_record, source_type, cfg,
             recent_openings=recent_openings_by_type.get(source_type),
         )
+        if result.generated_by == "template" and cfg.get("ai", {}).get("meta_only") and source_type in meta_only.META_ONLY_TYPES:
+            result.text = meta_only.template_body(build_title(table, row, cfg), source_type, result.meta)  # same title the story gets
         raw_for_category = row.get("raw_data")
         site_category = raw_for_category.get("site_category") if source_type == "event" and isinstance(raw_for_category, dict) else None
         if site_category and isinstance(result.meta, dict):

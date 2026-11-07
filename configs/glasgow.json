@@ -195,6 +195,8 @@
     "mode": "batch",
     "monthly_budget_usd": 20,
     "tone_v2": true,
+    "meta_only": true,
+    "_meta_only_note": "Events/meetings: the model only copies meta (venue, address, ...) and every value is checked against the source in code; body is a template line, generated_by template, no retry; alerts never call the model (ai_pipeline/meta_only.py, owner 2026-11-07). false = the older tone_v2 path.",
     "max_new_per_run_per_table": 10,
     "tone_guidelines": "Plain, neutral, concrete. Explain what the council or committee is deciding or hearing, in everyday words. Facts from the source only.",
     "guardrails": {
