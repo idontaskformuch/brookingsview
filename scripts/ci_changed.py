@@ -13,7 +13,7 @@ Presets
 Never counted: traffic_incidents, weather_snapshots, scrape_runs, source_snapshots, api_usage, ai_crawler_hits, logs, and the
 warning rows (events.source nws_alert / met_office_warning, written every 15 minutes by the cron-dispatcher Worker and read
 through /api/ in the browser). Traffic and weather change on every scrape; counting them would build every time. The forecast on
-a page is only as fresh as the last build, which the daily workflows keep within a day.
+a page is only as fresh as the last build: the 11:00 and 23:00 UTC scrape runs, or a push (the daily-content workflows were removed 2026-11-07).
 
 Volatile columns are stripped from the row before hashing (ids, created/updated/seen timestamps, snapshot_id). If anything
 fails (no database, a table is missing) the answer is changed=true: a wasted build is cheaper than a stale site. When the answer
