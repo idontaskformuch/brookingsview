@@ -65,3 +65,6 @@ site/indexnow-pending.json
 
 # local Python 3.12 environment (matches CI, see .python-version)
 .venv/
+
+# local battery logs
+scratch_tmp/
