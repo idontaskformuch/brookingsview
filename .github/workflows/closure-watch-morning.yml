@@ -10,8 +10,8 @@ name: closure-watch-morning
 # might not land until noon. Rather than moving the whole site to a tighter
 # cadence (the cost/aggressiveness tradeoff in scrape.yml's comment still
 # applies to everything else), this is a narrow, cheap extra run: only the
-# two data sources Closure Watch actually reads (weather_alerts,
-# school_alerts via --only), the digest script, then a normal build+deploy
+# data source Closure Watch needs fresh (school_alerts via --only;
+# NWS weather rows come from the cron-dispatcher Worker), the digest script, then a normal build+deploy
 # of just this town. No ai_pipeline.publish (meetings/events/etc AI
 # formatting) -- not needed for this page and not worth the AI spend on a
 # second run per day.
@@ -42,8 +42,10 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Fingerprint before
         run: python -m scripts.ci_changed before brookings_sd --preset data
-      - name: Refresh only weather_alerts + school_alerts
-        run: python -m scrapers.runner --config configs/brookings_sd.json --only weather_alerts school_alerts
+      # weather_alerts removed 2026-11-07: NWS rows in `events` are written
+      # live by the cron-dispatcher Worker (alerts/store.ts) and by scrape.yml.
+      - name: Refresh only school_alerts
+        run: python -m scrapers.runner --config configs/brookings_sd.json --only school_alerts
       - name: Closure Watch (history + Watch-state prose)
         run: python -m ai_pipeline.closure_watch_digest --config configs/brookings_sd.json
       - name: Did the site content change?
