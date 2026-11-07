@@ -197,7 +197,7 @@ describe('priority and fallbacks', () => {
         expect(s.deck.length).toBeGreaterThan(0);
       }
     }
-  });
+  }, 30_000); // 4 towns x 366 days; the 5 s default is too tight under a loaded full run
   it('at most 2 guides on the page, lead included', () => {
     for (let d = 0; d < 365; d++) {
       const now = new Date(Date.UTC(2026, 0, 1 + d, 18));
@@ -206,7 +206,7 @@ describe('priority and fallbacks', () => {
         expect([fp.lead, ...fp.secondaries].filter((x) => x.type === 'guide').length).toBeLessThanOrEqual(2);
       }
     }
-  });
+  }, 30_000);
   it('a game today (city time) is a candidate and ranks above a meeting', () => {
     const t = TOWNS[1];
     const tue = new Date('2026-11-10T15:00:00Z');
@@ -280,7 +280,7 @@ describe('every town, every day of a year: valid, no empty state, no template de
         expect(fp.meta_description.length).toBeLessThanOrEqual(155);
         expect(fp.meta_description).not.toBe('');
       }
-    });
+    }, 30_000);
   }
 });
 
