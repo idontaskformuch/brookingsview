@@ -54,8 +54,6 @@
   },
   "ai": {
     "generators": {
-      "event_deck_digest": { "enabled": false, "_reason": "Output (marquee deck sentence) is no longer printed; getEventDeckDigests was removed from the site (owner 2026-11-06)." },
-      "whats_on_intro": { "enabled": false, "_reason": "Output (What's On intro) is no longer printed; getWhatsOnIntro was removed from the site (owner 2026-11-06)." },
       "closure_watch_prose": { "enabled": false, "_reason": "Output (Watch prose) is no longer printed; /closures/ uses the fixed Watch template. closure_history accrual keeps running." },
       "project_thread_synthesis": { "enabled": false, "_reason": "Output (the 'what changed' synthesis on project updates) is not read or shown; a plain template restatement is stored instead." },
       "weekly": { "enabled": false, "_reason": "Digest text is model-written and withheld from the site (lib/ai-text.ts); the plain template body is stored instead (owner 2026-11-06)." },

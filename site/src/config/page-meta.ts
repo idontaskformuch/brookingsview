@@ -96,7 +96,7 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     ledeRequirement: 'State the election date and days left; no commentary on contests.',
   },
   'election-results': {
-    titlePattern: 'Election Results in {Town}: Nov 3, 2026 (Unofficial)',
+    titlePattern: '2026 {Town} election results',
     h1Pattern: '{Town} Election Results: Unofficial Numbers From the Official Source',
     ledeRequirement: 'State that results are unofficial and name the source; no commentary on contests.',
   },

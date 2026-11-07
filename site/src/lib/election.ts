@@ -35,6 +35,8 @@ export interface VotePlace {
 
 export interface ElectionConfig {
   enabled: boolean;
+  /** Whether the election block (and the results banner) may appear on the front page. Off in every town since 2026-11-07: the results pages stay live and indexed, the front page does not carry them. */
+  homepage: boolean;
   /** YYYY-MM-DD */
   election_date: string;
   /** Local "HH:MM" the polls close; the CityStatus row and the results fetch both start here. */

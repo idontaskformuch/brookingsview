@@ -76,15 +76,6 @@ jobs:
       # here either. No-ops instantly if features.closure_watch is disabled.
       - name: Closure Watch (history + Watch-state prose)
         run: python -m ai_pipeline.closure_watch_digest --config configs/brookings_sd.json
-      # Marquee deck sentences follow-up: the one-sentence "deck" under a
-      # marquee-tier Ticketmaster event's hero card, cached per event id --
-      # see that script's own module docstring. Runs before the build below
-      # so a freshly-generated deck is available to it same-run. No-ops
-      # instantly if features.whats_on(.ticketmaster) is disabled.
-      - name: Marquee deck sentences (What's On)
-        env:
-          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
-        run: python -m ai_pipeline.event_deck_digest --config configs/brookings_sd.json
       # Image pool rotation (Addendum 2): assigns any story published since
       # the last run a durable, round-robin slot in its category's image
       # pool (site/src/lib/images.ts's resolveImage() reads it at build

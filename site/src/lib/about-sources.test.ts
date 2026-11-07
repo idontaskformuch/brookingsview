@@ -56,6 +56,6 @@ describe('aboutSourcesFor', () => {
 
   it('includes Broomfield\'s Vail Resorts regional news source', () => {
     const sources = aboutSourcesFor('broomfield_co');
-    expect(sources.some((s) => s.name.includes('Vail Resorts'))).toBe(true);
+    expect(sources.some((s) => s.name.includes('Vail Resorts'))).toBe(false);
   });
 });

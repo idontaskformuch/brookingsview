@@ -23,7 +23,6 @@ import SdsuEventCard from '../components/SdsuEventCard.astro';
 import JackrabbitWidget from '../components/JackrabbitWidget.astro';
 import JackrabbitGameDayLine from '../components/JackrabbitGameDayLine.astro';
 import WorkplaceWatchWidget from '../components/WorkplaceWatchWidget.astro';
-import VailNewsWidget from '../components/VailNewsWidget.astro';
 import BurroBonanzaWidget from '../components/BurroBonanzaWidget.astro';
 import SchoolAlertBanner from '../components/SchoolAlertBanner.astro';
 import TrafficWidget from '../components/TrafficWidget.astro';
@@ -41,10 +40,10 @@ import QuickLinks from '../components/QuickLinks.astro';
 import {
   getUpcomingStories, getActiveAlerts, getUpcomingGames, getNextRegionalGame,
   getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
-  getWeather, getAgPrices, getLatestWeekly,
+  getAgPrices, getLatestWeekly,
   getEmployerJobStats, getUpcomingArtsEvents, getRecentJobs, getNextMeeting,
   getWorthKnowingCandidates, getRecentProjectUpdates, PROJECT_PENDING_OUTCOME_LABEL, formatDate,
-  getFacilities, getLatestVailNewsItem,
+  getFacilities,
 } from '../lib/db';
 import { selectFrontPageRhythm } from '../lib/homepage-curation';
 import {
@@ -73,7 +72,7 @@ const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
 const isBroomfield = siteConfig.townId === 'broomfield_co';
 
-const [alerts, schoolAlerts, trafficIncidents, upcomingRaw, games, nextRegionalGame, nextSdsuEvent, periods, prices, weekly, worthKnowingCandidates, facilities, quickLinkEvents, quickLinkArtsEvents, quickLinkJobs, quickLinkNextMeeting] = await Promise.all([
+const [alerts, schoolAlerts, trafficIncidents, upcomingRaw, games, nextRegionalGame, nextSdsuEvent, prices, weekly, worthKnowingCandidates, facilities, quickLinkEvents, quickLinkArtsEvents, quickLinkJobs, quickLinkNextMeeting] = await Promise.all([
   getActiveAlerts(),
   getActiveSchoolAlerts(),
   getActiveTrafficIncidents(),
@@ -88,7 +87,6 @@ const [alerts, schoolAlerts, trafficIncidents, upcomingRaw, games, nextRegionalG
   getUpcomingGames(3),
   getNextRegionalGame(),
   getNextSdsuMarqueeEvent(),
-  getWeather(),
   getAgPrices(),
   getLatestWeekly(),
   getWorthKnowingCandidates(),
@@ -151,8 +149,6 @@ const { shown: quickLinks, omitted: omittedQuickLinks } = resolveQuickLinks(site
 // `feature` slot itself stays empty, unrelated to that module.
 const feature = null;
 const alertBannerSlugs = new Set(alerts.map((a) => a.slug));
-
-const today = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
 
 // Front-page rhythm (see NEEDS-HUMAN-REVIEW.md "Liveliness Spec" §1): a
 // rule-based lead + secondary selection, not just "closest upcoming item"
@@ -300,7 +296,6 @@ const todayHomeGame = isBrookings && nextGame && nextGame.home_away === 'home'
 const employerJobStats = siteConfig.hasWorkplaceWatch ? await getEmployerJobStats() : [];
 // Samma resonemang: bara hämtat för Broomfield, tabellen är alltid tom för
 // de andra två (town_id-scopad, se db/migrations/029_vail_news.sql).
-const latestVailNews = isBroomfield ? await getLatestVailNewsItem() : null;
 
 // Sitewide presentation-layer pass -- the marquee module. Same
 // rank/collapse pipeline lib/cityStatus.ts's buildWhatsOnStatus() already
@@ -526,17 +521,6 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   </div>
 
   <aside class="rail" aria-label="Conditions and numbers">
-      {today && (
-        <a class="rail__link" href="/weather/">
-          <Tile
-            label="Weather"
-            value={today.temp !== null
-              ? `${today.is_daytime ? 'High' : 'Low'} ${Math.round(today.temp)}°${today.unit}`
-              : '—'}
-            note={`${today.short} · 5-day forecast`}
-          />
-        </a>
-      )}
       {gameSlot === 'jackrabbits' && nextGame ? (
         <>
           <a class="rail__link rail__game" href="/jackrabbits/">
@@ -572,7 +556,6 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
           hiringDelta={biggestHiringMover.postings_change}
         />
       )}
-      {isBroomfield && latestVailNews && <VailNewsWidget item={latestVailNews} />}
       {trafficIncidents.length > 0 && (
         <a class="rail__link" href="/traffic/">
           <TrafficWidget incidents={trafficIncidents} />

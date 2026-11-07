@@ -20,6 +20,7 @@ const BF_Q = 'https://broomfield.org/4198/Broomfield-Specific-Ballot-Questions';
 
 const broomfield: ElectionConfig = {
   enabled: true,
+  homepage: false,
   election_date: '2026-11-03',
   polls_close_local: '19:00',
   results_banner: { from: '2026-11-03', until: '2026-11-10' }, // Election Day through 7 days after
@@ -106,6 +107,7 @@ const MV_VC = 'https://voteinfo.net/sites/g/files/aldnop371/files/2026-10/Nov%20
 
 const morenoValley: ElectionConfig = {
   enabled: true,
+  homepage: false,
   election_date: '2026-11-03',
   polls_close_local: '20:00',
   results_banner: { from: '2026-11-03', until: '2026-11-10' }, // Election Day through 7 days after
@@ -175,6 +177,7 @@ const SD_PP = 'https://sdsos.gov/elections-voting/upcoming-elections/general-inf
 
 const brookings: ElectionConfig = {
   enabled: true,
+  homepage: false,
   election_date: '2026-11-03',
   polls_close_local: '19:00',
   results_banner: { from: '2026-11-03', until: '2026-11-10' }, // Election Day through 7 days after

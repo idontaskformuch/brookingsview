@@ -8,7 +8,7 @@ from ai_pipeline.generator_switch import generator_enabled
 
 ROOT = Path(__file__).parent.parent
 TOWNS = ["brookings_sd", "moreno_valley_ca", "broomfield_co", "glasgow"]
-SWITCHED_OFF = ["event_deck_digest", "whats_on_intro", "closure_watch_prose", "project_thread_synthesis",
+SWITCHED_OFF = ["closure_watch_prose", "project_thread_synthesis",
                 "project_thread_summary", "weekly", "sports_weekly_digest", "sdsu_weekly_digest", "jackrabbits_season_digest",
                 "local_sports_weekly_digest", "new_in_town_digest", "home_sales_digest", "workplace_watch_digest",
                 "free_teaser_facility", "free_teaser_event"]
@@ -33,26 +33,6 @@ def test_every_town_has_the_unused_generators_switched_off_with_a_reason(town):
 def test_a_generator_that_stays_on_is_not_listed():
     cfg = json.loads((ROOT / "configs" / "moreno_valley_ca.json").read_text(encoding="utf-8"))
     assert generator_enabled(cfg, "project_thread_match") and generator_enabled(cfg, "event") and generator_enabled(cfg, "evening_register")
-
-
-def _whats_on_cfg(town="moreno_valley_ca"):
-    cfg = json.loads((ROOT / "configs" / f"{town}.json").read_text(encoding="utf-8"))
-    cfg.setdefault("features", {})["whats_on"] = {"enabled": True, "ticketmaster": {"enabled": True, "marquee_size": 6}}
-    return cfg
-
-
-@pytest.mark.parametrize("module", ["event_deck_digest", "whats_on_intro"])
-def test_a_switched_off_digest_returns_before_any_network_or_database_use(module, tmp_path, monkeypatch, capsys):
-    import importlib
-    mod = importlib.import_module(f"ai_pipeline.{module}")
-    cfg = _whats_on_cfg()
-    path = tmp_path / "cfg.json"
-    path.write_text(json.dumps(cfg), encoding="utf-8")
-    for var in ("TICKETMASTER_API_KEY", "ANTHROPIC_API_KEY", "DATABASE_URL"):
-        monkeypatch.delenv(var, raising=False)
-    monkeypatch.setattr("sys.argv", [module, "--config", str(path)])
-    assert mod.main() == 0
-    assert "switched off" in capsys.readouterr().out
 
 
 def test_switched_off_synthesis_makes_no_model_call_and_stores_the_plain_restatement():
