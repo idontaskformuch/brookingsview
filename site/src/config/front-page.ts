@@ -10,7 +10,10 @@ export interface FrontPageAlertRules {
   weatherEvents: string[];
   /** Met Office warning levels that count as severe (UK towns; the NWS list is then empty). */
   metOfficeLevels: string[];
-  /** Traffic counts only as a full closure of a motorway/arterial or a fatal crash. */
+  /** Traffic counts only as a full closure of a motorway/arterial or a fatal crash, and only when this is true. It is false in every town
+   *  (owner decision 2026-11-07): that needs a structured source field for a full closure / a fatality, and no traffic source has one today
+   *  (traffic_incidents.severity 'closure' is a keyword match, which also catches lane closures). The loader maps no traffic alert either.
+   *  Revisit if a source gains structured road-status fields. */
   traffic: boolean;
 }
 
@@ -31,7 +34,7 @@ const US_SEVERE_WEATHER = [
   'Tornado Warning', 'Blizzard Warning', 'Winter Storm Warning', 'Flash Flood Warning', 'Severe Thunderstorm Warning',
   'Extreme Cold Warning', 'Excessive Heat Warning', 'Red Flag Warning',
 ];
-const US_ALERTS: FrontPageAlertRules = { weatherEvents: US_SEVERE_WEATHER, metOfficeLevels: [], traffic: true };
+const US_ALERTS: FrontPageAlertRules = { weatherEvents: US_SEVERE_WEATHER, metOfficeLevels: [], traffic: false };
 
 const HOLIDAYS_GUIDE: FrontPageGuide = { title: 'Holiday hours and closures', url: '/holidays/', deck: 'Which places are closed or open on the next holiday, by place.' };
 const FACILITIES_GUIDE: FrontPageGuide = { title: 'Facilities and hours', url: '/facilities/', deck: 'Hours, addresses and phone numbers for libraries, recreation centers and city offices.' };

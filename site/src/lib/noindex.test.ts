@@ -105,6 +105,13 @@ describe('shouldNoindexStory', () => {
     shouldNoindexStory({ source_type: 'home_sales_digest', body: longBody(5) }); // tallied (safety net)
     expect(getWordCountNoindexTally()).toBe(2);
   });
+  it('substance is the printed text: a long model-written body counts as no words, and is not tallied as an unexpectedly thin page', () => {
+    const ai = { source_type: 'workplace_watch_digest' as SourceType, body: longBody(500), generated_by: 'ai:claude-haiku-4-5' };
+    expect(shouldNoindexStory(ai)).toBe(true);
+    expect(getWordCountNoindexTally()).toBe(0);
+    // the same long body from a template is printed in full and stays indexable
+    expect(shouldNoindexStory({ ...ai, generated_by: 'template_fallback' })).toBe(false);
+  });
   it('exactly at the threshold stays indexable (>= threshold, not >)', () => {
     expect(shouldNoindexStory({ source_type: 'workplace_watch_digest', body: longBody(THIN_CONTENT_WORD_THRESHOLD) })).toBe(false);
   });

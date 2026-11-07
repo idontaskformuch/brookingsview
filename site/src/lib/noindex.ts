@@ -30,7 +30,7 @@
  *  permalink, reason 1 above, just for a different kind of thinness
  *  (content-farm perception, not scraped-feed redundancy). */
 import type { SourceType, Story } from './db';
-import { isAiText } from './ai-text';
+import { isAiText, publicBody } from './ai-text';
 
 export const THIN_SCRAPED_SOURCE_TYPES: SourceType[] = [
   'meeting', 'meeting_followup', 'event', 'alert',
@@ -119,9 +119,11 @@ export function shouldNoindexStory(
   // University digest (owner 2026-10-23): the model writes only a short introduction; the week's events are listed
   // below it by the page itself (/s/university-digest-*), so the stored body is short by design.
   const listIsRenderedByThePage = story.source_type === 'university_digest';
-  const isThinByWordCount = !listIsRenderedByThePage && countWords(`${story.body} ${structuredText}`) < THIN_CONTENT_WORD_THRESHOLD;
+  // Substance is the text the page prints (publicBody: nothing for a model-written row), not the stored body.
+  const isThinByWordCount = !listIsRenderedByThePage && countWords(`${publicBody(story)} ${structuredText}`) < THIN_CONTENT_WORD_THRESHOLD;
   const isUnpublished = story.published_at === null;
-  if (isThinByWordCount && !isThinType) {
+  // A model-written row is noindexed for that reason (isAiText below), so it is no "unexpectedly thin" signal for the tally.
+  if (isThinByWordCount && !isThinType && !isAiText(story)) {
     wordCountNoindexTally += 1;
     scheduleWordCountSummaryLog();
   }

@@ -148,9 +148,17 @@ describe('priority and fallbacks', () => {
     expect(lead({ event: 'Tornado Warning' })).toBe('alert');
     for (const event of ['Freeze Warning', 'Frost Advisory', 'Wind Advisory', 'Tornado Watch']) expect(lead({ event })).toBe('weekend');
     const road: Partial<FrontPageAlert> = { kind: 'traffic', event: undefined };
-    expect(lead({ ...road, fullClosure: true })).toBe('alert');
-    expect(lead({ ...road, fatal: true })).toBe('alert');
-    expect(lead({ ...road })).toBe('weekend');
+    // traffic never leads in any town's real config (no structured source field), even when the caller says full closure / fatal
+    for (const t of TOWNS) {
+      expect(FRONT_PAGE_BY_TOWN[t.id].alerts.traffic, t.id).toBe(false);
+      expect(lead({ ...road, fullClosure: true })).toBe('weekend');
+    }
+    // the mechanism stays, switched on by config only
+    const on = { ...BF_CFG, alerts: { ...BF_CFG.alerts, traffic: true } };
+    const leadOn = (a: Partial<FrontPageAlert>) => selectFrontPage(input(BF, { evening: sat8pm, holidays: [], config: on, alerts: [{ ...alert, ...a }] }, fri), fri).lead.type;
+    expect(leadOn({ ...road, fullClosure: true })).toBe('alert');
+    expect(leadOn({ ...road, fatal: true })).toBe('alert');
+    expect(leadOn({ ...road })).toBe('weekend');
   });
   it('an alert without kind, event/level (weather) or fullClosure/fatal (traffic) never leads and is logged', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});

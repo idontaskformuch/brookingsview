@@ -3,7 +3,7 @@ import type { FrontPageConfig } from '../front-page';
 
 export const GLASGOW_FRONT_PAGE: FrontPageConfig = {
   holiday: { daysBefore: 7, showOnDay: true, daysAfter: 0, leadWithinDays: 3 },
-  alerts: { weatherEvents: [], metOfficeLevels: ['amber', 'red'], traffic: true },
+  alerts: { weatherEvents: [], metOfficeLevels: ['amber', 'red'], traffic: false }, // traffic never leads: no structured full-closure/fatality field in any source (see FrontPageAlertRules.traffic)
   meetingWithinDays: 2,
   guides: [
     { title: 'Facilities and hours', url: '/facilities/', deck: 'Opening hours, addresses and phone numbers for libraries, leisure centres and council offices.' },

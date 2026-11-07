@@ -484,7 +484,9 @@ async function buildLastmodMap(townId, databaseUrl) {
     // 2026-09-03 this mirror had drifted from the page's own noindex logic
     // the same way the module comment above already warns about.
     // String(...).startsWith('ai:') mirrors lib/ai-text.ts isAiText(): model text is withheld, so the permalink is an empty shell
-    if (s.generated_by === 'data_pending' || String(s.generated_by ?? '').startsWith('ai:') || s.published_at === null || isThinStory(s.source_type, s.body, s.ingredients, s.instructions)) {
+    // the word count is of the text the page prints (nothing for a model-written row), like lib/noindex.ts
+    const isAiRow = String(s.generated_by ?? '').startsWith('ai:');
+    if (s.generated_by === 'data_pending' || isAiRow || s.published_at === null || isThinStory(s.source_type, isAiRow ? '' : s.body, s.ingredients, s.instructions)) {
       noindexStoryUrls.add(storyPathname);
     }
     const canonicalOrigin = CROSS_SITE_CANONICAL_ORIGINS[s.source_type];
