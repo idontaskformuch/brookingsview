@@ -74,9 +74,17 @@ export function inWeekendWindow(now: Date, tz: string): boolean {
   return wd === 6 || wd === 7 || (wd === 5 && localHourOf(now, tz) >= WEEKEND_FROM_HOUR);
 }
 
+/** Why an alert cannot be judged at all (it then never leads, and is logged): the caller must supply `kind`, plus `event` or `level` for weather,
+ *  and `fullClosure`/`fatal` for traffic. Null when the alert is well-formed. */
+export function alertDefect(a: Partial<FrontPageAlert>): string | null {
+  if (a.kind !== 'weather' && a.kind !== 'traffic') return 'missing kind';
+  if (a.kind === 'weather') return (a.event ?? '').trim() === '' && (a.level ?? '').trim() === '' ? 'weather alert without event or level' : null;
+  return typeof a.fullClosure !== 'boolean' && typeof a.fatal !== 'boolean' ? 'traffic alert without fullClosure or fatal' : null;
+}
+
 /** Whether an alert may take the lead slot: it is on the town's allowlist and has not expired. */
 export function alertIsSevere(a: FrontPageAlert, rules: FrontPageConfig['alerts'], now: Date): boolean {
-  if (a.until !== null && new Date(a.until).getTime() <= now.getTime()) return false;
+  if (a.until != null && new Date(a.until).getTime() <= now.getTime()) return false;
   if (a.kind === 'traffic') return rules.traffic && (a.fullClosure === true || a.fatal === true);
   if (a.level) return rules.metOfficeLevels.includes(a.level.toLowerCase());
   const ev = (a.event ?? '').trim().toLowerCase();
@@ -109,7 +117,11 @@ const showsOf = (entries: EveningEntry[]): ShowRef[] =>
   entries.map((e) => ({ title: e.title, venue: e.venue }));
 
 function alertItem(i: FrontPageInput, now: Date): FrontPageItem | null {
-  const live = i.alerts.filter((a) => alertIsSevere(a, i.config.alerts, now));
+  const live = i.alerts.filter((a) => {
+    const defect = alertDefect(a);
+    if (defect) { console.warn(`front page: alert skipped (${defect}): ${a?.headline ?? '(no headline)'}`); return false; }
+    return alertIsSevere(a, i.config.alerts, now);
+  });
   const a = live[0];
   if (!a) return null;
   const until = a.until ? `In effect until ${weekdayName(localDayNumber(new Date(a.until), i.timezone), i.locale)} ${timeLabel(a.until, i.timezone, i.locale)}.` : 'Active now.';

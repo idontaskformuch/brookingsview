@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from ai_pipeline import guardrails
 from ai_pipeline import uk_guardrails
 from ai_pipeline import api_usage
+from ai_pipeline.generator_switch import generator_enabled
 from config import pricing
 from validation import pre_publish_check
 
@@ -618,7 +619,9 @@ def format_record(record: dict, source_type: str, cfg: dict,
         text = TEMPLATERS[source_type](record.get("payload", record), cfg)
         return FormatResult(text=text, generated_by="template", verified=True)
 
-    # 2. budgettak
+    # 2. strömbrytare (fail closed: en typ utan `enabled: true` i ai.generators anropar aldrig modellen), sedan budgettak
+    if not generator_enabled(cfg, source_type):
+        return _fallback(record, source_type, cfg, reason="generator switched off")
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
     if _spent_this_month() >= cap:
         return _fallback(record, source_type, cfg, reason="budget cap nådd")

@@ -121,7 +121,7 @@ SEARCH RESULTS:
 
 
 def extract_records(cfg: dict, results: list[dict], client) -> list[dict]:
-    if not results or client is None:
+    if not results or client is None or not generator_enabled(cfg, "new_in_town_extraction"):
         return []
     model = resolve_model(EXTRACTION_CONTENT_TYPE, cfg)
     price_in, price_out = pricing_for(model)

@@ -17,7 +17,7 @@ from ai_pipeline.project_threads import (
 )
 
 NOW = datetime(2026, 8, 29, tzinfo=timezone.utc)
-CFG = {"ai": {"monthly_budget_usd": 20}}
+CFG = {"ai": {"monthly_budget_usd": 20, "generators": {k: {"enabled": True} for k in ("project_thread_match", "project_thread_synthesis", "project_thread_summary")}}}
 OPEN_PROJECTS = [{"id": 1, "title": "Old 215 Truck Facility", "description": "9.1-acre plot plan east of Old 215 Frontage Road"}]
 
 

@@ -15,13 +15,14 @@ from types import SimpleNamespace
 
 from ai_pipeline.format_prompt import format_record
 
+_ON = {t: {"enabled": True} for t in ("meeting", "event", "alert")}
 BROOKINGS_CFG = {
     "town_id": "brookings_sd", "display_name": "Brookings", "state": "SD",
-    "timezone": "America/Chicago", "ai": {"monthly_budget_usd": 20, "tone_v2": False},
+    "timezone": "America/Chicago", "ai": {"monthly_budget_usd": 20, "tone_v2": False, "generators": _ON},
 }
 BROOKINGS_TONE_V2_CFG = {
     "town_id": "brookings_sd", "display_name": "Brookings", "state": "SD",
-    "timezone": "America/Chicago", "ai": {"monthly_budget_usd": 20, "tone_v2": True},
+    "timezone": "America/Chicago", "ai": {"monthly_budget_usd": 20, "tone_v2": True, "generators": _ON},
 }
 
 

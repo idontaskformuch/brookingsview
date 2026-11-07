@@ -226,6 +226,8 @@ def ai_match_candidate(candidate_text: str, open_projects: list[dict], cfg: dict
     if not open_projects:
         return {"match_project_id": None, "confidence": 0.0, "reasoning": "no open projects to match against"}
 
+    if not generator_enabled(cfg, "project_thread_match"):
+        return {"match_project_id": None, "confidence": 0.0, "reasoning": "generator switched off"}
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
     if _spent_this_month() >= cap:

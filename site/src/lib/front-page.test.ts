@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { existsSync } from 'node:fs';
 import {
   selectFrontPage, holidayVisible, inWeekendWindow, dayOfYear, metaDescriptionOf, FRONT_PAGE_PRIORITY,
@@ -152,6 +152,20 @@ describe('priority and fallbacks', () => {
     expect(lead({ ...road, fatal: true })).toBe('alert');
     expect(lead({ ...road })).toBe('weekend');
   });
+  it('an alert without kind, event/level (weather) or fullClosure/fatal (traffic) never leads and is logged', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const lead = (a: object) => selectFrontPage(input(BF, { evening: sat8pm, holidays: [], alerts: [a as FrontPageAlert] }, fri), fri).lead.type;
+    const base = { headline: 'X', url: '/weather/', until: null };
+    expect(lead({ ...base })).toBe('weekend');                                  // no kind
+    expect(lead({ ...base, kind: 'weather' })).toBe('weekend');                 // no event/level
+    expect(lead({ ...base, kind: 'weather', event: '  ' })).toBe('weekend');
+    expect(lead({ ...base, kind: 'traffic' })).toBe('weekend');                 // no fullClosure/fatal
+    expect(warn).toHaveBeenCalledTimes(4);
+    expect(String(warn.mock.calls[0][0])).toContain('missing kind');
+    expect(lead({ ...base, kind: 'traffic', fatal: false, fullClosure: false })).toBe('weekend'); // well-formed, not severe: not logged
+    expect(warn).toHaveBeenCalledTimes(4);
+    warn.mockRestore();
+  });
   it('Glasgow: Met Office amber/red leads, yellow and NWS-style names do not', () => {
     const g = TOWNS.find((t) => t.id === 'glasgow')!;
     const now = new Date('2026-11-10T12:00:00Z');
@@ -160,6 +174,21 @@ describe('priority and fallbacks', () => {
     expect(lead({ level: 'red' })).toBe('alert');
     expect(lead({ level: 'yellow' })).not.toBe('alert');
     expect(lead({ event: 'Tornado Warning' })).not.toBe('alert');
+  });
+  it('a guide lead with nothing else to show has exactly 1 secondary (a second guide), complete and distinct from the lead, in every town', () => {
+    for (const t of TOWNS) {
+      for (let d = 0; d < 366; d++) {
+        const now = new Date(Date.UTC(2026, 0, 1 + d, 18));
+        const fp = selectFrontPage(input(t, { holidays: [] }, now), now);
+        if (fp.lead.type !== 'guide') continue;
+        expect(fp.secondaries, `${t.id} day ${d}`).toHaveLength(1);
+        const [s] = fp.secondaries;
+        expect(s.type).toBe('guide');
+        expect(s.url).not.toBe(fp.lead.url);
+        for (const text of [s.headline, s.url, ...s.deck]) expect(text.trim().length).toBeGreaterThan(0);
+        expect(s.deck.length).toBeGreaterThan(0);
+      }
+    }
   });
   it('at most 2 guides on the page, lead included', () => {
     for (let d = 0; d < 365; d++) {

@@ -24,6 +24,7 @@ except ImportError:  # pragma: no cover
     anthropic = None
 
 from ai_pipeline import api_usage
+from ai_pipeline.generator_switch import generator_enabled
 from ai_pipeline.format_prompt import (
     TEXT_MODEL,
     GenerationUnavailable, _record_spend, _spent_this_month, pricing_for, resolve_model, safe_create,
@@ -159,6 +160,9 @@ def generate_article(
     ai_pipeline.town_guard) -- callers should log and skip publication for today
     rather than force out a weaker, duplicate, or wrong-town piece.
     """
+    # Fail closed: a content type without `enabled: true` in ai.generators makes no model call.
+    if not generator_enabled(cfg or {}, content_type or ""):
+        return None
     ai_cfg = (cfg or {}).get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
     if _spent_this_month() >= cap:

@@ -1,5 +1,7 @@
-"""ai.generators.<name>.enabled: model calls whose output the site no longer reads are switched off in config (owner 2026-11-06)."""
+"""ai.generators.<name>.enabled FAILS CLOSED (owner 2026-11-07): a generator that is not listed, or not listed as exactly true, makes no model call.
+Every generator that should run has an explicit `enabled: true` in every town config; this file checks both halves."""
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -8,31 +10,125 @@ from ai_pipeline.generator_switch import generator_enabled
 
 ROOT = Path(__file__).parent.parent
 TOWNS = ["brookings_sd", "moreno_valley_ca", "broomfield_co", "glasgow"]
+CONFIGS = {t: json.loads((ROOT / "configs" / f"{t}.json").read_text(encoding="utf-8")) for t in TOWNS}
+
+# Running in production (scrape workflows): must be an explicit true everywhere, or nothing is written.
+ON_EVERYWHERE = ["meeting", "event", "alert", "project_thread_match"]
 SWITCHED_OFF = ["closure_watch_prose", "project_thread_synthesis",
                 "project_thread_summary", "weekly", "sports_weekly_digest", "sdsu_weekly_digest", "jackrabbits_season_digest",
                 "local_sports_weekly_digest", "new_in_town_digest", "home_sales_digest", "workplace_watch_digest",
-                "free_teaser_facility", "free_teaser_event"]
+                "free_teaser_facility", "free_teaser_event", "new_in_town_extraction", "meeting_followups",
+                "vardagsmiddag", "media_recension", "vetenskap_kronika", "kvick_essa", "editorial", "culture_essay"]
+# The format_record() source types publish.py passes (SOURCES + alerts) and the content-track types generate_article() is called with.
+DYNAMIC_NAMES = {"meeting", "event", "alert", "vardagsmiddag", "media_recension", "vetenskap_kronika", "kvick_essa", "editorial", "culture_essay"}
+# Workflow steps and config keys removed by the owner 2026-11-07; modules remain, and fail-closed keeps them off without a key.
+REMOVED = {"event_deck_digest", "whats_on_intro"}
+CODE_DIRS = ["ai_pipeline", "content", "scripts", "scrapers"]
 
 
-def test_unlisted_generators_stay_on_and_a_false_switch_turns_one_off():
-    assert generator_enabled({}, "anything")
-    assert generator_enabled({"ai": {}}, "anything")
-    assert generator_enabled({"ai": {"generators": {"x": {"enabled": True}}}}, "x")
+class Boom:
+    def __getattr__(self, name):
+        raise AssertionError("the model must not be called")
+
+
+def _py_files():
+    for d in CODE_DIRS:
+        yield from (ROOT / d).rglob("*.py")
+
+
+def test_a_missing_or_not_true_entry_is_off_and_only_an_explicit_true_is_on():
+    assert not generator_enabled({}, "anything")
+    assert not generator_enabled({"ai": {}}, "anything")
+    assert not generator_enabled({"ai": {"generators": {}}}, "x")
+    assert not generator_enabled({"ai": {"generators": {"x": {}}}}, "x")
+    assert not generator_enabled({"ai": {"generators": {"x": {"_reason": "no enabled key"}}}}, "x")
     assert not generator_enabled({"ai": {"generators": {"x": {"enabled": False}}}}, "x")
+    assert not generator_enabled({"ai": {"generators": {"x": {"enabled": "true"}}}}, "x")
     assert not generator_enabled({"ai": {"generators": {"x": False}}}, "x")
+    assert generator_enabled({"ai": {"generators": {"x": {"enabled": True}}}}, "x")
+    assert generator_enabled({"ai": {"generators": {"x": True}}}, "x")
 
 
 @pytest.mark.parametrize("town", TOWNS)
-def test_every_town_has_the_unused_generators_switched_off_with_a_reason(town):
-    cfg = json.loads((ROOT / "configs" / f"{town}.json").read_text(encoding="utf-8"))
+def test_every_switch_name_used_in_code_is_listed_explicitly_in_every_town_with_a_reason(town):
+    used = set(DYNAMIC_NAMES)
+    for f in _py_files():
+        used |= set(re.findall(r'generator_enabled\(\s*cfg(?: or \{\})?,\s*"([a-z_]+)"', f.read_text(encoding="utf-8")))
+    used -= REMOVED
+    listed = CONFIGS[town]["ai"]["generators"]
+    missing = sorted(n for n in used if not isinstance(listed.get(n), dict) or "enabled" not in listed[n])
+    assert not missing, f"{town}: generators with no explicit enabled entry (they would be OFF): {missing}"
+    for n in used:
+        assert listed[n].get("_reason"), f"{town}: {n} has no _reason"
+
+
+@pytest.mark.parametrize("town", TOWNS)
+def test_the_generators_that_run_in_production_are_explicitly_true(town):
+    for name in ON_EVERYWHERE:
+        assert CONFIGS[town]["ai"]["generators"][name]["enabled"] is True, f"{town}: {name}"
+        assert generator_enabled(CONFIGS[town], name)
+
+
+@pytest.mark.parametrize("town", TOWNS)
+def test_removed_generators_have_no_key_and_are_off(town):
+    for name in REMOVED:
+        assert name not in CONFIGS[town]["ai"]["generators"]
+        assert not generator_enabled(CONFIGS[town], name)
+
+
+def test_evening_register_is_on_exactly_where_the_town_has_a_register():
+    for town, cfg in CONFIGS.items():
+        has = bool((cfg.get("evening_register") or {}).get("venues"))
+        assert generator_enabled(cfg, "evening_register") is has, town
+
+
+@pytest.mark.parametrize("town", TOWNS)
+def test_every_switched_off_generator_is_off_with_a_reason(town):
     for name in SWITCHED_OFF:
-        assert not generator_enabled(cfg, name), f"{town}: {name}"
-        assert cfg["ai"]["generators"][name]["_reason"], f"{town}: {name} has no reason"
+        assert not generator_enabled(CONFIGS[town], name), f"{town}: {name}"
+        assert CONFIGS[town]["ai"]["generators"][name]["_reason"], f"{town}: {name} has no reason"
 
 
-def test_a_generator_that_stays_on_is_not_listed():
-    cfg = json.loads((ROOT / "configs" / "moreno_valley_ca.json").read_text(encoding="utf-8"))
-    assert generator_enabled(cfg, "project_thread_match") and generator_enabled(cfg, "event") and generator_enabled(cfg, "evening_register")
+def test_every_module_that_calls_the_model_checks_a_switch():
+    callers = {"api_usage.py", "search_client.py"}  # logging only / Brave Search: no model call
+    offenders = []
+    for f in _py_files():
+        src = f.read_text(encoding="utf-8")
+        if f.name in callers or "def safe_create" in src and "format_record" not in src:
+            continue
+        if re.search(r"safe_create\(|anthropic\.Anthropic\(", src) and "generator_enabled(" not in src:
+            offenders.append(str(f.relative_to(ROOT)))
+    assert not offenders, f"model-calling modules with no generator_enabled check: {offenders}"
+
+
+def test_format_record_with_no_switch_entry_makes_no_model_call_and_falls_back():
+    from ai_pipeline.format_prompt import format_record
+    cfg = {"town_id": "brookings_sd", "display_name": "Brookings", "state": "SD", "timezone": "America/Chicago", "ai": {"monthly_budget_usd": 20}}
+    record = {"id": 1, "title": "City Council", "meeting_date": "2026-11-10", "agenda_text": "Item 1"}
+    result = format_record(record, "meeting", cfg, client=Boom())
+    assert result.generated_by != "ai"
+
+
+def test_project_thread_match_with_no_switch_entry_makes_no_model_call():
+    from ai_pipeline.project_threads import ai_match_candidate as match_candidate
+    out = match_candidate("Drain basin work", [{"id": 1, "title": "Drain basin", "summary": "x"}], {"ai": {}}, client=Boom())
+    assert out["match_project_id"] is None and out["reasoning"] == "generator switched off"
+
+
+def test_generate_article_with_no_switch_entry_makes_no_model_call():
+    from content._base import generate_article
+    assert generate_article("sys", "input", [], cfg={"ai": {}}, client=Boom(), content_type="editorial") is None
+
+
+def test_meeting_followups_with_no_switch_entry_makes_no_model_call():
+    from ai_pipeline.meeting_followups import generate
+    text, by, _ = generate({"ai": {}}, "City Council", "Nov 10", "minutes text", client=Boom())
+    assert by == "template_fallback"
+
+
+def test_new_in_town_extraction_with_no_switch_entry_makes_no_model_call():
+    from ai_pipeline.new_in_town_digest import extract_records
+    assert extract_records({"ai": {}}, [{"title": "t", "url": "u", "description": "d"}], Boom()) == []
 
 
 def test_switched_off_synthesis_makes_no_model_call_and_stores_the_plain_restatement():

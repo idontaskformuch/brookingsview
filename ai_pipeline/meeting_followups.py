@@ -45,6 +45,7 @@ from db.db import connect as db_connect
 from psycopg.rows import dict_row
 
 from ai_pipeline import api_usage, guardrails
+from ai_pipeline.generator_switch import generator_enabled
 from validation import pre_publish_check
 from ai_pipeline.format_prompt import (
     GenerationUnavailable, build_system_prompt, _spent_this_month, _record_spend,
@@ -111,6 +112,8 @@ def template_fallback(body: str, label: str) -> str:
 
 
 def generate(cfg: dict, body: str, label: str, minutes_text: str, client=None) -> tuple[str, str, bool]:
+    if not generator_enabled(cfg, "meeting_followups"):
+        return template_fallback(body, label), "template_fallback", True
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
     if _spent_this_month() >= cap:

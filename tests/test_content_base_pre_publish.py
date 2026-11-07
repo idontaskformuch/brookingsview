@@ -10,7 +10,8 @@ from types import SimpleNamespace
 
 from content._base import generate_article
 
-BROOKINGS_CFG = {"town_id": "brookings_sd", "display_name": "Brookings", "state": "SD"}
+BROOKINGS_CFG = {"town_id": "brookings_sd", "display_name": "Brookings", "state": "SD",
+                 "ai": {"generators": {"media_recension": {"enabled": True}, "editorial": {"enabled": True}}}}
 
 
 class _FakeUsage:

@@ -22,6 +22,7 @@ from typing import Any
 
 import requests
 
+from ai_pipeline.generator_switch import generator_enabled
 from scrapers.evening_register import VenueResult, check_venue, local_today
 from scrapers.user_agent import user_agent
 
@@ -37,7 +38,7 @@ def towns_with_register() -> list[dict[str, Any]]:
     for path in sorted(CONFIG_DIR.glob("*.json")):
         cfg = json.loads(path.read_text(encoding="utf-8"))
         reg = cfg.get("evening_register")
-        if reg and reg.get("venues"):
+        if reg and reg.get("venues") and generator_enabled(cfg, "evening_register"):
             out.append({"town_id": cfg["town_id"], "timezone": cfg.get("timezone", "UTC"), "venues": reg["venues"]})
     return out
 
