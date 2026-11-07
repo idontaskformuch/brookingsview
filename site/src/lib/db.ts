@@ -224,6 +224,8 @@ export interface Story {
   // exists because format_prompt.py's model output includes it, but
   // nothing reads it yet. Optional for the same reason venue_raw is.
   meta?: EventMeta | null;
+  /** getActiveAlerts() only: the source's own fields (events.title, source, raw_data.level), for the front page's allowlist. Never the story body. */
+  alert?: { source: string | null; title: string | null; level: string | null };
 }
 
 /** See Story.meta's own comment. All keys are free-text model output,
@@ -646,7 +648,8 @@ export async function getActiveAlerts(now: Date = new Date()): Promise<Story[]> 
            s.byline, s.image_path, s.rating, s.ingredients, s.instructions,
            e.ends_at AS event_ends_at, e.starts_at AS event_starts_at,
            e.title AS raw_title, e.raw_data->>'body' AS raw_body,
-           e.source AS event_source, e.raw_data->>'category' AS event_category
+           e.source AS event_source, e.raw_data->>'category' AS event_category,
+           e.raw_data->>'level' AS event_level
       FROM stories s
       LEFT JOIN events e ON e.town_id = s.town_id AND s.slug = 'alert-' || e.id
      WHERE s.town_id = ${TOWN_ID}
@@ -656,7 +659,7 @@ export async function getActiveAlerts(now: Date = new Date()): Promise<Story[]> 
   `) as (Story & {
     event_ends_at: string | null; event_starts_at: string | null;
     raw_title: string | null; raw_body: string | null;
-    event_source: string | null; event_category: string | null;
+    event_source: string | null; event_category: string | null; event_level: string | null;
   })[];
   const live = activeAlerts(
     rows.map((row) => ({
@@ -671,8 +674,8 @@ export async function getActiveAlerts(now: Date = new Date()): Promise<Story[]> 
     now, siteConfig.timezone,
   );
   return live.map(({ row, endsAt }) => {
-    const { event_ends_at: _a, event_starts_at: _b, raw_title: _c, raw_body: _d, event_source: _e, event_category: _f, ...story } = row;
-    return { ...story, ends_at: endsAt.toISOString() } as Story;
+    const { event_ends_at: _a, event_starts_at: _b, raw_title: _c, raw_body: _d, event_source: _e, event_category: _f, event_level: _g, ...story } = row;
+    return { ...story, ends_at: endsAt.toISOString(), alert: { source: row.event_source, title: row.raw_title, level: row.event_level } } as Story;
   });
 }
 

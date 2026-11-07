@@ -1,0 +1,55 @@
+---
+/** The front page's lead and its secondaries (lib/front-page.ts selectFrontPage). Text-only: headline and deck are templates over data fields.
+ *  The secondary grid has exactly as many columns as there are secondaries (1, 2 or 3), so there is never an empty slot. */
+import type { FrontPage, FrontPageType } from '../lib/front-page';
+
+interface Props { page: FrontPage }
+const { page } = Astro.props;
+const KICKER: Record<FrontPageType, string> = {
+  alert: 'Alert', holiday: 'Holiday', weekend: 'This weekend', game_day: 'Game day', meeting: 'Meeting', tonight: 'Tonight', guide: 'Guide',
+};
+const n = Math.min(Math.max(page.secondaries.length, 1), 3);
+---
+<div class="front" data-lead={page.lead.type}>
+  <article class="lead">
+    <p class="lead__kicker">{KICKER[page.lead.type]}</p>
+    <h2 class="lead__title"><a href={page.lead.url}>{page.lead.headline}</a></h2>
+    {page.lead.deck.map((d) => <p class="lead__deck">{d}</p>)}
+    <a class="lead__more" href={page.lead.url}>{page.lead.type === 'alert' ? 'Details' : 'See the details'} &rarr;</a>
+  </article>
+  {page.secondaries.length > 0 && (
+    <div class={`front__secondary front__secondary--${n}`} data-count={page.secondaries.length}>
+      {page.secondaries.map((s) => (
+        <article class="secondary">
+          <p class="secondary__kicker">{KICKER[s.type]}</p>
+          <h3 class="secondary__title"><a href={s.url}>{s.headline}</a></h3>
+          {s.deck[0] && <p class="secondary__deck">{s.deck[0]}</p>}
+        </article>
+      ))}
+    </div>
+  )}
+</div>
+
+<style>
+.front { margin-bottom: 1.75rem; }
+.lead { border-bottom: 2px solid var(--rule-strong); padding-bottom: 1.25rem; }
+.lead__kicker, .secondary__kicker {
+  margin: 0 0 0.5rem; font-size: 0.6875rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft);
+}
+.lead__title { font-size: clamp(1.75rem, 4.2vw, 2.625rem); line-height: 1.05; margin: 0 0 0.625rem; }
+.lead__title a, .secondary__title a { color: inherit; text-decoration: none; }
+.lead__title a:hover, .secondary__title a:hover { color: var(--navy); }
+.lead__deck { margin: 0 0 0.375rem; font-size: 1.125rem; line-height: 1.55; max-width: 38rem; }
+.lead__more {
+  display: inline-block; margin-top: 0.625rem; font-family: var(--font-ui); font-size: 0.75rem; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none; color: var(--accent);
+}
+.lead__more:hover { text-decoration: underline; }
+.front__secondary { display: grid; gap: 1.5rem; margin-top: 1.75rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 40rem) {
+  .front__secondary--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .front__secondary--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.secondary__title { font-size: 1.25rem; line-height: 1.2; margin: 0 0 0.375rem; }
+.secondary__deck { margin: 0; font-size: 0.9375rem; line-height: 1.45; color: var(--ink-soft); }
+</style>

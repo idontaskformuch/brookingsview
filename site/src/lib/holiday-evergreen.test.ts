@@ -174,9 +174,9 @@ describe('/holidays/ listing and the single context card', () => {
     expect(activeHoliday(entries, D(2026, 11, 5))?.def.slug).toBe('veterans-day');
     expect(activeHoliday(entries, D(2026, 12, 20))?.def.slug).toBe('christmas');
   });
-  it('the card renders one aside at most and is on the front page and /events/ only', () => {
+  it('the card renders one aside at most and is on /events/ only (the front page leads with the holiday itself, lib/front-page.ts)', () => {
     expect(read('../components/HolidayContextCard.astro').match(/<aside/g)).toHaveLength(1);
-    expect(read('../pages/index.astro').match(/<HolidayContextCard \/>/g)).toHaveLength(1);
+    expect(read('../pages/index.astro')).not.toContain('HolidayContextCard');
     expect(read('../pages/events.astro').match(/<HolidayContextCard \/>/g)).toHaveLength(1);
     expect(formatDayShort(D(2026, 11, 11, 0), 'en-US')).toBe('Nov 11');
     expect(formatDayShort(D(2026, 12, 25, 0), 'en-GB')).toBe('25 Dec');

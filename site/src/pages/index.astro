@@ -11,12 +11,10 @@
  * (väder, nästa match, råvarupriser -- tidningens väderruta och börstabell),
  * och därunder en spaltström avdelad med hårfina linjer.
  */
-import { withoutEnded } from '../lib/local-day';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
-import LeadStory from '../components/LeadStory.astro';
-import SecondaryStory from '../components/SecondaryStory.astro';
+import FrontPageLead from '../components/FrontPageLead.astro';
 import GameCard from '../components/GameCard.astro';
 import RegionalGameCard from '../components/RegionalGameCard.astro';
 import SdsuEventCard from '../components/SdsuEventCard.astro';
@@ -29,7 +27,6 @@ import TrafficWidget from '../components/TrafficWidget.astro';
 import Tile from '../components/Tile.astro';
 import CityStatus from '../components/CityStatus.astro';
 import ResultsBanner from '../components/ResultsBanner.astro';
-import HolidayContextCard from '../components/HolidayContextCard.astro';
 import { ELECTION_BY_TOWN } from '../config/election';
 import SafetyNotices from '../components/SafetyNotices.astro';
 import MarqueeCard from '../components/MarqueeCard.astro';
@@ -40,12 +37,17 @@ import QuickLinks from '../components/QuickLinks.astro';
 import {
   getUpcomingStories, getActiveAlerts, getUpcomingGames, getNextRegionalGame,
   getNextSdsuMarqueeEvent, getActiveSchoolAlerts, getActiveTrafficIncidents,
-  getAgPrices, getLatestWeekly,
+  getAgPrices,
   getEmployerJobStats, getUpcomingArtsEvents, getRecentJobs, getNextMeeting,
-  getWorthKnowingCandidates, getRecentProjectUpdates, PROJECT_PENDING_OUTCOME_LABEL, formatDate,
+  getRecentProjectUpdates, PROJECT_PENDING_OUTCOME_LABEL, formatDate,
   getFacilities,
 } from '../lib/db';
-import { selectFrontPageRhythm } from '../lib/homepage-curation';
+import { selectFrontPage } from '../lib/front-page';
+import { FRONT_PAGE_BY_TOWN } from '../config/front-page';
+import { frontPageAlerts } from '../lib/front-page-alerts';
+import { frontPageHolidays } from '../lib/front-page-holidays';
+import { loadEveningForFrontPage } from '../lib/front-page-load';
+import { localDayNumber } from '../lib/local-day';
 import {
   todayUtcMidnight, buildEventFeed, isToday, isThisWeekend, isFreeEvent, isLibraryEvent, isKidsEvent, dayIndex,
   weekendAnchorOffset, itemLink,
@@ -61,39 +63,27 @@ import { loadUpcomingMeetings } from '../lib/meetings-data';
 import { selectWorthKnowingMeetings } from '../lib/meetings-view';
 import { resolveQuickLinks, type QuickLinkContext } from '../lib/quick-links';
 import { siteConfig } from '../lib/site-config';
-import { metaDescription } from '../lib/meta-description';
 import { placeAbbr, forCountry } from '../lib/country-profile';
-import { resolveImage, dedupeConsecutiveImages } from '../lib/images';
+import { resolveImage } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
 import { rankTicketmasterEvents, collapseMarqueeRuns, ticketmasterResolvableImage, type MarqueeEntry } from '../lib/whats-on';
 
 const isBrookings = siteConfig.townId === 'brookings_sd';
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
-const isBroomfield = siteConfig.townId === 'broomfield_co';
 
-const [alerts, schoolAlerts, trafficIncidents, upcomingRaw, games, nextRegionalGame, nextSdsuEvent, prices, weekly, worthKnowingCandidates, facilities, quickLinkEvents, quickLinkArtsEvents, quickLinkJobs, quickLinkNextMeeting] = await Promise.all([
+const [alerts, schoolAlerts, trafficIncidents, games, nextRegionalGame, nextSdsuEvent, prices, facilities, quickLinkEvents, quickLinkArtsEvents, quickLinkJobs, quickLinkNextMeeting] = await Promise.all([
   getActiveAlerts(),
   getActiveSchoolAlerts(),
   getActiveTrafficIncidents(),
-  // 'announcement' (t.ex. spellanseringen) ska in i SAMMA Today/This week-
-  // ström som event/meeting -- inte en egen sektion för en enstaka
-  // handskriven post, se lib/db.ts:SourceType. 'new_in_town_digest'
-  // (Handoff: Information Hub Tier 1, Feature B) tillagd här av samma skäl
-  // -- utan detta skulle veckans New in Town-roundup vara osynlig på
-  // förstasidan trots att den publiceras korrekt i stories, EXAKT samma
-  // bugg som en gång hände med 'announcement' innan den lades till här.
-  getUpcomingStories(['event', 'meeting', 'announcement', 'new_in_town_digest'], 40),
   getUpcomingGames(3),
   getNextRegionalGame(),
   getNextSdsuMarqueeEvent(),
   getAgPrices(),
-  getLatestWeekly(),
-  getWorthKnowingCandidates(),
   getFacilities(),
   // Front-page orientation pass, Phase 2 ("Looking for something?" quick
-  // links) -- deliberately its OWN fetch, not a reuse of `upcoming` above:
-  // `upcoming` is capped at 40 items across FOUR mixed source_types, which
+  // links) -- deliberately its OWN fetch:
+  // a 40-item cap across FOUR mixed source_types would
   // would give an inaccurate (likely false-negative) content check against
   // the real /events/today|this-weekend|free|kids|library facet pages.
   // Mirrors events.astro's own exact fetch shape so the quick-link check
@@ -106,11 +96,8 @@ const [alerts, schoolAlerts, trafficIncidents, upcomingRaw, games, nextRegionalG
 
 // Front-page orientation pass, Phase 2: resolve "Looking for something?"
 // against the SAME predicates the real facet pages use (see the fetch
-// comment above for why this is its own feed, not a reuse of `upcoming`).
+// comment above for why this is its own fetch).
 const quickLinkDate = todayUtcMidnight(siteConfig.timezone);
-// The listing query keeps a 12 h grace window, so a page built in the evening led with this afternoon's finished events
-// (Glasgow Q3 2026-10-27: "this afternoon" at 19:12). Same build-time filter as /events/ and /today/.
-const upcoming = withoutEnded(upcomingRaw, new Date(), siteConfig.timezone);
 const { items: quickLinkFeed } = buildEventFeed(quickLinkEvents, quickLinkArtsEvents, siteConfig.timezone);
 const quickLinkContext: QuickLinkContext = {
   hasToday: quickLinkFeed.some((i) => isToday(i, quickLinkDate, siteConfig.timezone)),
@@ -138,105 +125,29 @@ const quickLinkContext: QuickLinkContext = {
 const { shown: quickLinks, omitted: omittedQuickLinks } = resolveQuickLinks(siteConfig.townId, quickLinkContext);
 
 
-// AdSense "low value content" remediation, Phase 0: the generic AI content
-// track (editorials/columns/reviews/recipes) stopped generating and was
-// pulled from the homepage entirely -- no "Today's read" feature slot, no
-// "Latest from"/"More to read" sections. `feature` stays a literal `null`
-// (not removed outright) so frontPageImageOrder just below and the
-// now-dead JSX guards elsewhere on the page don't need their own
-// follow-up edit. The freed slot became the Events weekend module in
-// Phase 2, item 2b (see weekendSummary/WeekendModule above) -- this
-// `feature` slot itself stays empty, unrelated to that module.
-const feature = null;
-const alertBannerSlugs = new Set(alerts.map((a) => a.slug));
-
-// Front-page rhythm (see NEEDS-HUMAN-REVIEW.md "Liveliness Spec" §1): a
-// rule-based lead + secondary selection, not just "closest upcoming item"
-// -- see lib/homepage-curation.ts's own docstring for the full fallback
-// chain (active alert -> substantial meeting -> announcement -> newest
-// imaged item -> newest, image or not). hasImage() reuses the SAME
-// resolveImage() tier the actual <img> rendering uses, so the selection
-// can never pick something LeadStory/SecondaryStory then fail to render an
-// image for.
-//
-// 2026-10-02, item D5: computed BEFORE Worth Knowing now (it used to run
-// after), specifically so usedSlugs exists in time to be passed into
-// selectWorthKnowing() below -- see that function's own comment for the
-// real duplicate-card bug this ordering fixes.
-const hasImage = (story: (typeof upcoming)[number]) => resolveImage(story, {
-  town: siteConfig.townId,
+// The daily front page (lib/front-page.ts): one lead and 1-3 secondaries chosen by rule from alerts, holidays, the weekend, game day, meetings,
+// tonight and the evergreen guides. Titles come from the stories' own titles (built by build_title) and the source fields; alert headlines come from the
+// source's event title, never from stories.body. Text-only: no model text and no photo, so there is nothing to dedupe.
+// FRONT_PAGE_NOW (an ISO instant) is only for checking the layout on a chosen day in a local build; CI never sets it.
+const now = process.env.FRONT_PAGE_NOW ? new Date(process.env.FRONT_PAGE_NOW) : new Date();
+const frontPageEvents = buildEventFeed(quickLinkEvents, quickLinkArtsEvents, siteConfig.timezone).items;
+const meetingsData = await loadUpcomingMeetings();
+const frontPage = selectFrontPage({
   cityName: siteConfig.cityName,
-  facilities,
-  categoryImages: categoryImagesFor(siteConfig.townId),
-}) !== null;
-
-// No story-based widget today overlaps the front-page candidate pool (the
-// rail's game/weather/traffic tiles all come from other tables, not
-// `stories`) -- kept as a real Set, not hardcoded empty, so the rule stays
-// enforced if that ever changes.
-const widgetSlugs = new Set<string>();
-
-const { fullWidthLead, secondary, usedSlugs } = selectFrontPageRhythm(upcoming, alerts, { hasImage, widgetSlugs });
-
-// Phase 0 removed the "Latest from" content-track section this used to
-// dedupe against -- the theme-collision check has nothing left to compare
-// to, so this is now always [], not a second removed fetch.
-
-// Real per-place/category photos (see NEEDS-HUMAN-REVIEW.md "Switch venue/
-// category images to real photos") replaced the old, much larger
-// Flux-generated set with ONE photo per category -- so two front-page
-// cards sharing a category (e.g. two "events" items) would otherwise
-// render the exact same photo twice, reading as a bug rather than a
-// deliberate choice. dedupeConsecutiveImages() (added with the original
-// image-identity feature but never actually called from any page until
-// this) is applied here to the front page's image-bearing cards IN THEIR
-// REAL VISUAL ORDER -- the "Today's read" feature (moved above the scraped
-// lead/secondary hero, Phase F: surface what's actually unique), then the
-// lead, then each secondary card -- so a repeat is suppressed (an honest
-// "no image" gap, same as any other resolveImage() miss) rather than shown
-// twice. Deliberately only consecutive-in-this-list repeats are
-// suppressed, not any-earlier-in-the-list ones -- see that function's own
-// docstring for why a repeat separated by other images isn't the same
-// "reads as broken" problem.
-//
-// `weekly` is deliberately NOT in this list (This Week image rotation,
-// 2026-10-03): WeeklyRoundup.astro now resolves its own image from a
-// dedicated, town+season-scoped pool (config/this-week-images.ts) with its
-// own real 60-day usage history, not the shared 'events' category pool --
-// it can no longer collide with another card's photo at all, so it has
-// nothing to participate in this same-page dedup pass for.
-const frontPageImageOrder = [feature, fullWidthLead, ...secondary]
-  .filter((s): s is NonNullable<typeof s> => s != null);
-
-// Image-rotation follow-up, Part 2 ("within-page variety") -- see
-// NEEDS-HUMAN-REVIEW.md's image-rotation report for the full pool-size
-// numbers this is scoped against (every category pool is 2-3 images, so
-// this reduces repeats, it doesn't eliminate them). Resolved in the SAME
-// visual order as the page renders them, threading a running set of
-// already-used category-pool paths into each resolveImage() call -- a
-// later item in a small pool then avoids an earlier item's exact photo
-// when an unused alternative exists, not just the immediately-preceding
-// one (dedupeConsecutiveImages() below still runs afterward as a safety
-// net for tiers 1-3's own, different, adjacent-repeat case -- see that
-// function's and usedImagePaths' own doc comments for why those tiers are
-// excluded from this pass).
-const usedCategoryImagePaths = new Set<string>();
-
-const frontPageImages = dedupeConsecutiveImages(
-  frontPageImageOrder,
-  (s) => {
-    const image = resolveImage(s, {
-      town: siteConfig.townId,
-      cityName: siteConfig.cityName,
-      facilities,
-      categoryImages: categoryImagesFor(siteConfig.townId),
-      usedImagePaths: usedCategoryImagePaths,
-    });
-    if (image) usedCategoryImagePaths.add(image.path);
-    return image;
-  },
-);
-const frontPageImageBySlug = new Map(frontPageImages.map(({ item, image }) => [item.slug, image]));
+  timezone: siteConfig.timezone,
+  locale: siteConfig.country === 'gb' ? 'en-GB' : 'en-US',
+  config: FRONT_PAGE_BY_TOWN[siteConfig.townId],
+  alerts: frontPageAlerts(alerts),
+  holidays: frontPageHolidays(siteConfig.townId, new Date(localDayNumber(now, siteConfig.timezone) * 86_400_000).getUTCFullYear()),
+  evening: await loadEveningForFrontPage(frontPageEvents, facilities, now),
+  // Home games only: an away game does not change anyone's day here.
+  games: games.filter((g) => g.starts_at && g.home_away === 'home').map((g) => ({
+    team: 'Jackrabbits', opponent: g.opponent, startsAt: g.starts_at!, home: true, url: '/jackrabbits/',
+  })),
+  meetings: meetingsData?.meetings ?? [],
+}, now);
+// A meeting featured on the front page is not repeated as a Worth knowing row.
+const featuredMeetingIds = new Set([frontPage.lead, ...frontPage.secondaries].flatMap((it) => (/^\/city-hall\/#meeting-(.+)$/.exec(it.url)?.[1] ?? [])));
 
 // One pipeline for "what's on": the same one /events/ uses (lib/events-town-view.ts), so a count here and a count there agree. Each event is in
 // exactly one block below (today / this weekend / this week / coming up). Meetings are not in these blocks; they are the "Worth knowing" rows.
@@ -247,10 +158,8 @@ const todayBlock = takeRows(blocks.today, 5);
 const weekendBlock = takeRows(blocks.weekend, 6);
 const weekBlock = takeRows(blocks.week, 6);
 const comingUp = blocks.later.slice(0, 5);
-const meetingsData = await loadUpcomingMeetings();
-// A meeting already featured as the lead is not repeated as a Worth knowing row.
 const worthMeetings = meetingsData
-  ? selectWorthKnowingMeetings(meetingsData.meetings.filter((m) => !m.storySlug || !usedSlugs.has(m.storySlug)), meetingsData.todayYmd)
+  ? selectWorthKnowingMeetings(meetingsData.meetings.filter((m) => !featuredMeetingIds.has(String(m.id))), meetingsData.todayYmd)
   : [];
 
 const nextGame = games[0] ?? null;
@@ -409,7 +318,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     : null;
 ---
 
-<BaseLayout title={`${siteConfig.siteName} — what's happening in ${placeAbbr(siteConfig)}`} wide description={metaDescription('home', siteConfig)}>
+<BaseLayout title={`${siteConfig.siteName} — what's happening in ${placeAbbr(siteConfig)}`} wide description={frontPage.meta_description}>
 
   {/* CityStatus: the front-page condensed status strip (lib/cityStatus.ts),
       mounted here at the top of the front page, above the Phase F original-
@@ -422,11 +331,10 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       expanded view. The two don't yet share one resolver layer (a real,
       deliberately deferred follow-up -- see cityStatus.ts's own module
       docstring), so `alerts`/`schoolAlerts` are still fetched independently
-      above for selectFrontPageRhythm/SchoolAlertBanner below, unrelated to
+      above for the front-page selector/SchoolAlertBanner below, unrelated to
       CityStatus's own alerts module. */}
   <OrientationHeader />
   {ELECTION_BY_TOWN[siteConfig.townId] && <ResultsBanner />}
-  <HolidayContextCard />
   <CityStatus />
   {siteConfig.safetyNotices && <SafetyNotices townId={siteConfig.townId} timezone={siteConfig.timezone} variant="compact" onlyWhenActive />}
   <QuickLinks links={quickLinks} omitted={omittedQuickLinks} />
@@ -506,19 +414,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     )}
   </section>
 
-  <div class="front">
-    {fullWidthLead ? (
-      <LeadStory story={fullWidthLead} facilities={facilities} image={frontPageImageBySlug.get(fullWidthLead.slug)} />
-    ) : secondary.length === 0 && (
-      <p class="empty">Nothing scheduled right now. This page is rebuilt when new information arrives.</p>
-    )}
-
-    {secondary.length > 0 && (
-      <div class="front__secondary">
-        {secondary.map((story) => <SecondaryStory story={story} facilities={facilities} image={frontPageImageBySlug.get(story.slug)} />)}
-      </div>
-    )}
-  </div>
+  <FrontPageLead page={frontPage} />
 
   <aside class="rail" aria-label="Conditions and numbers">
       {gameSlot === 'jackrabbits' && nextGame ? (
@@ -672,18 +568,6 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   font-family: var(--font-ui);
   font-size: 0.8125rem;
   font-weight: 600;
-}
-
-/* Front-page rhythm (Liveliness Spec §1): lead -> secondary -> widget row
-   -> dense rivers, all stacked full-width, not a lead-beside-rail grid. */
-.front { margin-bottom: 1.75rem; }
-.front__secondary {
-  display: grid;
-  gap: 1.5rem;
-  margin-top: 1.75rem;
-}
-@media (min-width: 40rem) {
-  .front__secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* Widget row -- a horizontal band of tiles below lead+secondary, not a
