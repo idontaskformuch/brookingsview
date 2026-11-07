@@ -5,12 +5,13 @@
  *
  *  Places whose hours we cannot read exactly (lib/osm-hours.ts) are left out. Open-late places are NOT events and never count toward the
  *  indexing threshold. */
-import { parseOpeningHours, lateRange, closingLabel, type WeekHours } from './osm-hours';
+import { parseOpeningHoursLoose, lateRange, closingLabel, type WeekHours } from './osm-hours';
 import { localMidnightIso } from './local-day';
 import { canonicalVenue } from './evening-names';
 import { normVenue, type AreaData } from './areas';
 
-export type OpenLateKind = 'Pub' | 'Bar' | 'Nightclub' | 'Restaurant';
+/** Cafe is in the snapshot for the daytime "open now" list on /today (lib/open-tonight.ts); it never joins Open late or Open tonight. */
+export type OpenLateKind = 'Pub' | 'Bar' | 'Nightclub' | 'Restaurant' | 'Cafe';
 
 export interface OsmPlace {
   /** `node/123`, `way/456`: links the row back to its OpenStreetMap page. */
@@ -22,12 +23,18 @@ export interface OsmPlace {
   /** From the snapshot's `center` (or `lat`/`lon` on a node); null in snapshots written before the refresh asked for coordinates. */
   lat: number | null;
   lon: number | null;
+  /** OSM `check_date` tag (YYYY-MM-DD, the mapper's own "I checked this") and the element's last edit in OSM (`out meta` timestamp); null when the snapshot predates them. */
+  checkDate: string | null;
+  editedAt: string | null;
+  /** The hours string carried a public/school-holiday rule we read around: the weekly pattern counts, the times are never shown. */
+  holidayRule: boolean;
 }
 
 export interface OpenLateRow {
   osmId: string;
   name: string;
   kind: OpenLateKind;
+  /** "until midnight" on Open late rows; "Open until 23:00" on Open tonight rows, empty when the time is not trusted or hidden. */
   closing: string;
   website: string | null;
   lat?: number | null;
@@ -35,8 +42,8 @@ export interface OpenLateRow {
   /** Neighbourhood from the static area file (lib/areas.ts), null when the place has none. */
   area?: string | null;
   /** ISO instants the browser sweep hides the row by: opening time and closing time of the late range. */
-  start: string;
-  end: string;
+  start?: string;
+  end?: string;
 }
 
 export const OPEN_LATE_MAX_ROWS = 24;
@@ -45,9 +52,9 @@ export const OPEN_LATE_MIN_PER_AREA = 2;
 export const OPEN_LATE_MAX_PER_AREA = 4;
 /** A snapshot older than this gives no Open late block (owner 2026-10-29). */
 export const SNAPSHOT_MAX_AGE_DAYS = 14;
-const KINDS: Record<string, OpenLateKind> = { pub: 'Pub', bar: 'Bar', nightclub: 'Nightclub', restaurant: 'Restaurant' };
+const KINDS: Record<string, OpenLateKind> = { pub: 'Pub', bar: 'Bar', nightclub: 'Nightclub', restaurant: 'Restaurant', cafe: 'Cafe' };
 
-interface OverpassElement { type: string; id: number; tags?: Record<string, string>; lat?: number; lon?: number; center?: { lat: number; lon: number } }
+interface OverpassElement { type: string; id: number; timestamp?: string; tags?: Record<string, string>; lat?: number; lon?: number; center?: { lat: number; lon: number } }
 
 function coordOf(el: OverpassElement): { lat: number | null; lon: number | null } {
   const lat = el.center?.lat ?? el.lat;
@@ -70,20 +77,21 @@ export function placesFromOverpass(elements: OverpassElement[]): OsmPlace[] {
   for (const el of elements) {
     const t = el.tags;
     if (!t?.name || !t.amenity || !KINDS[t.amenity]) continue;
-    const week = parseOpeningHours(t.opening_hours);
-    if (!week) continue;
+    const hours = parseOpeningHoursLoose(t.opening_hours);
+    if (!hours) continue;
     const key = `${t.name.toLowerCase()}|${t.amenity}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ osmId: `${el.type}/${el.id}`, name: t.name, kind: KINDS[t.amenity], week, website: safeWebsite(t.website ?? t['contact:website']), ...coordOf(el) });
+    out.push({ osmId: `${el.type}/${el.id}`, name: t.name, kind: KINDS[t.amenity], week: hours.week, website: safeWebsite(t.website ?? t['contact:website']), ...coordOf(el),
+      checkDate: /^\d{4}-\d{2}-\d{2}$/.test(t.check_date ?? '') ? (t.check_date ?? null) : null, editedAt: el.timestamp ?? null, holidayRule: hours.holidayRule });
   }
   return out;
 }
 
 /** Weekday of a day number (days since epoch) as 0 = Monday. 1970-01-01 was a Thursday. */
-const weekdayOf = (day: number) => (((day + 3) % 7) + 7) % 7;
+export const weekdayOf = (day: number) => (((day + 3) % 7) + 7) % 7;
 
-const KIND_RANK: Record<OpenLateKind, number> = { Nightclub: 0, Bar: 1, Pub: 2, Restaurant: 3 };
+export const KIND_RANK: Record<OpenLateKind, number> = { Nightclub: 0, Bar: 1, Pub: 2, Restaurant: 3, Cafe: 4 };
 
 /** Places open past 11 pm on the local calendar `day`, latest closing first (then nightclubs, bars, pubs, restaurants, then name). */
 export function openLateRows(places: OsmPlace[], day: number, tz: string, max = OPEN_LATE_MAX_ROWS): OpenLateRow[] {
@@ -91,6 +99,8 @@ export function openLateRows(places: OsmPlace[], day: number, tz: string, max = 
   const midnight = new Date(localMidnightIso({ y: date.getUTCFullYear(), m: date.getUTCMonth() + 1, d: date.getUTCDate() }, tz)).getTime();
   const rows: Array<OpenLateRow & { endMin: number }> = [];
   for (const p of places) {
+    // Open late is the exact-hours, no-cafe list the threshold has always counted: places read around a holiday rule and cafes belong to Open tonight only.
+    if (p.kind === 'Cafe' || p.holidayRule) continue;
     const r = lateRange(p.week, weekdayOf(day));
     if (!r) continue;
     rows.push({

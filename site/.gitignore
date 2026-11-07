@@ -33,3 +33,4 @@ pnpm-debug.log*
 
 # evening layer verdict written during the build (lib/evening-verdict.ts), read by the sitemap filter
 .evening-verdict.json
+.open-late-verdict.json

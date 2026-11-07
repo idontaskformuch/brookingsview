@@ -1,14 +1,14 @@
 ---
 /** The category rows of one evening: a swipe row per category (plain list with overflow-x, everything in the HTML), "See all" unfolds it
- *  into a vertical list (browser script), then the Open late row with its closing time as the big number. */
+ *  into a vertical list (browser script), then the Open tonight row (open after 18:00, "Open until 23:00" as the big line where the hours are recent enough, otherwise no time). */
 import TonightCard from './TonightCard.astro';
 import type { EveningEntry } from '../../lib/evening-items';
 import type { OpenLateRow } from '../../lib/osm-open-late';
 import { OPEN_LATE_MAX_ROWS } from '../../lib/osm-open-late';
 import { bucketOf, bucketLabel, EVENT_BUCKETS, regionOf, type Bucket, type CardTown, type Regions } from '../../lib/tonight-cards';
 
-interface Props { id: string; entries: EveningEntry[]; late: OpenLateRow[]; tz: string; regions?: Regions; town: CardTown }
-const { id, entries, late, tz, regions = {}, town } = Astro.props;
+interface Props { id: string; entries: EveningEntry[]; late: OpenLateRow[]; tz: string; regions?: Regions; town: CardTown; osmChecked: string; /** The first evening says "Open tonight", the next one "Open tomorrow night". */ tonight?: boolean }
+const { id, entries, late, tz, regions = {}, town, osmChecked, tonight = true } = Astro.props;
 const sorted = [...entries].sort((a, b) => a.start.localeCompare(b.start));
 const rows = EVENT_BUCKETS.map((bucket) => ({ bucket, cards: sorted.filter((e) => bucketOf(e.group) === bucket) })).filter((r) => r.cards.length > 0);
 const lateRows = late.slice(0, OPEN_LATE_MAX_ROWS);
@@ -28,11 +28,12 @@ const catHeading = (b: Bucket) => bucketLabel(b, town.country);
 {lateRows.length > 0 && (
   <section class="tc-cat" data-tc-cat data-bucket="late" style="--c: var(--tc-late)" aria-labelledby={`${id}-late`}>
     <header class="tc-cat-head">
-      <h3 id={`${id}-late`}>Open late <span class="tc-cat-count" data-tc-cat-count>{lateRows.length}</span></h3>
+      <h3 id={`${id}-late`}>{tonight ? 'Open tonight' : 'Open tomorrow night'} <span class="tc-cat-count" data-tc-cat-count>{lateRows.length}</span></h3>
       <button type="button" class="tc-all" data-tc-toggle aria-expanded="false" hidden>See all</button>
     </header>
     <ul class="tc-row tc-row--late" data-tc-rows data-hide-ended>
       {lateRows.map((p) => <TonightCard town={town} place={p} tz={tz} region={regionOf(p.area, regions)} />)}
     </ul>
+    <p class="tc-attr">Hours © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, read {osmChecked}.</p>
   </section>
 )}

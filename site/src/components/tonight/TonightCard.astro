@@ -28,7 +28,7 @@ const cat = BUCKET_CATEGORY[bucket];
   data-start={place ? place.start : e!.start} data-end={(place ? place.end : e!.end) ?? undefined} data-area={region ?? undefined}
   data-scope={scope} data-big={big ? '1' : undefined} data-late={place ? '' : undefined} style={`--c: var(--tc-${bucket})`}>
   <Card cat={cat ?? undefined} neutral={!cat} href={href ?? undefined} class="tc-link">
-    <span class="tc-time" data-tc-time>{time}</span>
+    {time && <span class="tc-time" data-tc-time>{time}</span>}
     <span class="tc-title">{title}</span>
     {(meta || city) && <span class="tc-meta">{meta}{meta && city && ' · '}{city && <span class="tc-city" title={city.title ?? undefined}>{city.text}</span>}</span>}
     <span class="tc-foot">

@@ -32,6 +32,7 @@ import HeroStat from '../components/ui/HeroStat.astro';
 import InsightLine from '../components/ui/InsightLine.astro';
 import { showTimeGb } from '../lib/whats-on-dates';
 import { placesFromSnapshot, openLateRows, openLateCounts, decorateOpenLate } from '../lib/osm-open-late';
+import { openTonightRows, openTonightSection, isHolidayDay } from '../lib/open-tonight';
 import { areasFor, withAreas } from '../lib/areas';
 import { gettingHomeFor } from '../lib/getting-home';
 import { buildSummary, openAfterOneCount, lastSubwayTime } from '../lib/evening-summary';
@@ -46,7 +47,8 @@ if (!layer) {
   return Astro.redirect('/', 302);
 }
 
-const now = new Date();
+// FRONT_PAGE_NOW (an ISO instant) is only for checking the layout on a chosen day in a local build; CI never sets it.
+const now = process.env.FRONT_PAGE_NOW ? new Date(process.env.FRONT_PAGE_NOW) : new Date();
 const tz = siteConfig.timezone;
 const [periods, alerts, stories, arts, facilities] = await Promise.all([
   getWeather(), getActiveAlerts(), getUpcomingStories(['event'], 200), getUpcomingArtsEvents(60), getFacilities(),
@@ -71,7 +73,8 @@ const indexing = await indexingForTown({ townId: siteConfig.townId, siteUrl: sit
 
 const sections = buildEveningSections(entries, now, tz, layer.cards ? layer.nearMiles : (layer.nearMiles ?? IN_TOWN_THRESHOLD_MILES));
 const anyFree = sections.some((s) => [...s.highlights, ...s.groups.flatMap((g) => g.entries), ...s.farGroups.flatMap((g) => g.entries)].some((e) => e.labels.includes('Free')));
-const lateBySection = new Map(sections.map((s) => [s.day, decorateOpenLate(openLateRows(osm, s.day, tz, Number.MAX_SAFE_INTEGER), siteConfig.townId, areaData)]));
+// Open tonight (owner 2026-11-07): open after 18:00, closing time shown only for recent data, no list at all under 3 places, no times on holidays.
+const lateBySection = new Map(sections.map((s) => [s.day, openTonightSection(decorateOpenLate(openTonightRows(osm, { day: s.day, tz, now, holiday: isHolidayDay(siteConfig.country, s.day) }), siteConfig.townId, areaData), now, tz)]));
 const anyLate = [...lateBySection.values()].some((r) => r.length > 0);
 const anyRows = sections.some((s) => s.count > 0) || anyLate;
 const home = gettingHomeFor(siteConfig.townId, now);
@@ -96,7 +99,7 @@ if (town.cityLabels) for (const e of localOnly(tonightEvents)) scopeCounts[cityS
 // what is still to come tonight / tomorrow night at build time (the browser recounts as events pass): drives the header and which sections show
 const liveEvents = (day: number) => localOnly(eveningOf.get(day) ?? []).filter((e) => !hasEnded({ start: e.start, end: e.end }, now, tz)).length;
 const liveBig = (day: number) => partitionBig((eveningOf.get(day) ?? []).filter((e) => !hasEnded({ start: e.start, end: e.end }, now, tz)), isBig).big.length;
-const liveLate = (day: number) => (lateBySection.get(day) ?? []).filter((p) => !hasEnded({ start: p.start, end: p.end }, now, tz)).length;
+const liveLate = (day: number) => (lateBySection.get(day) ?? []).filter((p) => !p.end || !hasEnded({ start: p.start ?? p.end, end: p.end }, now, tz)).length;
 const hero = heroFor({ events: liveEvents(tonight.day), late: liveLate(tonight.day), tomorrow: sections[1] ? localOnly(eveningOf.get(sections[1].day) ?? []).length : 0, word: 'tonight' });
 const bigText = town.bigShows ? bigShowsLine(liveBig(tonight.day)) : null;
 const scopeText = town.cityLabels ? scopeLine(scopeCounts, town.homeCity) : null;
@@ -109,7 +112,8 @@ if (cards && regionOrder.length > 0) {
   const missing = unmappedAreas([...[...eveningOf.values()].flat().map((e) => e.area), ...[...lateBySection.values()].flat().map((p) => p.area)], regions);
   if (missing.length > 0) console.warn(`[tonight] areas in no chip region (shown under All only): ${missing.join(', ')}`);
 }
-const pairs = cards ? pairNights(tonightEvents, lateBySection.get(tonight.day) ?? [], now, tz) : [];
+// A pair names the place's closing time, so only places with a shown time and a sweep instant qualify.
+const pairs = cards ? pairNights(tonightEvents, (lateBySection.get(tonight.day) ?? []).flatMap((p) => (p.closing && p.end ? [{ ...p, end: p.end }] : [])), now, tz) : [];
 const tonightLate = openLateRows(osm, tonight.day, tz, Number.MAX_SAFE_INTEGER);
 const isSunday = new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'short' }).format(now) === 'Sun';
 const lastTrain = lastSubwayTime(home, isSunday);
@@ -195,7 +199,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
                 </ul>
               </section>
             )}
-            <TonightRows id={`tn-${s.kind}`} entries={eveningOf.get(s.day) ?? []} late={lateBySection.get(s.day)!} tz={tz} regions={regions} town={town} />
+            <TonightRows id={`tn-${s.kind}`} entries={eveningOf.get(s.day) ?? []} late={lateBySection.get(s.day)!} tz={tz} regions={regions} town={town} osmChecked={osmChecked} tonight={s.kind === 'tonight'} />
           </section>
         ))}
       </div>
@@ -250,7 +254,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
   <EveningAbout>
     <Fragment slot="sources">{sourceNames}, read {checked}. <a href="/how-we-gather-this/">How we gather this</a>.</Fragment>
     {anyLate && (
-      <p class="ev-note">Open late lists pubs, bars, nightclubs and restaurants whose opening hours keep them open past 11 pm, latest closing first. Hours come from <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, read {osmChecked}. People edit them by hand, so check with the place before you go.</p>
+      <p class="ev-note">Open tonight lists pubs, bars, nightclubs and restaurants whose opening hours keep them open after 6 pm, latest closing first. A closing time is shown only where the hours were checked or edited recently; other places are listed without one. Hours come from <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, read {osmChecked}. People edit them by hand, so check with the place before you go.</p>
     )}
     {anyArea && areaData && <p class="ev-note">{areaData.attribution}. The area shown is the nearest mapped one to the venue, so treat it as a guide.</p>}
     {outside && (

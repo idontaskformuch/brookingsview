@@ -1,0 +1,69 @@
+---
+/** /open-late/ -- "Open late in {Town}", an evergreen page from the weekly OpenStreetMap snapshot (owner 2026-11-07). Question it answers: where can I
+ *  still get a drink or a meal after 11 pm, and on which nights? Nights and closing times are shown only for places whose hours were checked or edited
+ *  recently (lib/open-tonight.ts timesTrusted); the rest are listed without them. Under 5 places the page is noindex and left out of the sitemap; with
+ *  none it redirects home. No happy-hour page: OSM carries no such data. */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import { siteConfig } from '../lib/site-config';
+import { getOsmSnapshot } from '../lib/db';
+import { placesFromSnapshot, decorateOpenLate } from '../lib/osm-open-late';
+import { openLatePlaces, openLatePageIndexable, lateNights, timesTrusted } from '../lib/open-tonight';
+import { areasFor } from '../lib/areas';
+import { writeOpenLateVerdict } from '../lib/open-late-verdict';
+
+// FRONT_PAGE_NOW (an ISO instant) is only for checking the layout on a chosen day in a local build; CI never sets it.
+const now = process.env.FRONT_PAGE_NOW ? new Date(process.env.FRONT_PAGE_NOW) : new Date();
+const snapshot = await getOsmSnapshot();
+const all = placesFromSnapshot(snapshot, now) ?? [];
+const places = openLatePlaces(all);
+if (places.length === 0) return Astro.redirect('/', 302);
+
+const indexable = openLatePageIndexable(all);
+writeOpenLateVerdict(siteConfig.townId, indexable);
+const areaData = areasFor(siteConfig.townId);
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const hhmm = (end: number) => `${String(Math.floor((end % 1440) / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
+/** "Fri, Sat until 01:00 · Thu until 00:00": nights that close alike are named together; null when the hours are not recent enough to print. */
+function nightsText(p: (typeof places)[number]): string | null {
+  if (!timesTrusted(p, now)) return null;
+  const byEnd = new Map<number, string[]>();
+  for (const n of lateNights(p)) byEnd.set(n.end, [...(byEnd.get(n.end) ?? []), WEEKDAYS[n.weekday]]);
+  return [...byEnd].sort((a, b) => b[0] - a[0]).map(([end, days]) => `${days.join(', ')} until ${hhmm(end)}`).join(' · ');
+}
+const rows = decorateOpenLate(places.map((p) => ({ osmId: p.osmId, name: p.name, kind: p.kind, closing: '', website: p.website })), siteConfig.townId, areaData)
+  .map((r, i) => ({ ...r, nights: nightsText(places[i]), latest: Math.max(...lateNights(places[i]).map((n) => n.end)) }))
+  .sort((a, b) => Number(!!b.nights) - Number(!!a.nights) || (a.nights ? b.latest - a.latest : 0) || a.name.localeCompare(b.name));
+const checked = snapshot ? snapshot.fetchedAt.slice(0, 10) : '';
+const canonicalUrl = new URL('/open-late/', Astro.site ?? siteConfig.siteUrl).href;
+const title = `Open late in ${siteConfig.cityName} — ${siteConfig.siteName}`;
+---
+<BaseLayout title={title} noindex={!indexable}
+  description={`Pubs, bars, nightclubs and restaurants in and around ${siteConfig.cityName} that stay open past 11 pm, and on which nights.`}>
+  <Breadcrumbs trail={[{ label: 'Home', href: '/' }, { label: 'Open late', href: canonicalUrl }]} />
+  <article class="prose">
+    <h1>Open late in {siteConfig.cityName}</h1>
+    <p>Where you can still get a drink or a meal after 11 pm. These {rows.length} places have opening hours that run past 11 pm on at least one night of the week.
+    Nights and closing times are printed where the hours were checked or edited in the last year or two; the others are listed without them, so ask the place.</p>
+    <ul class="ol-list">
+      {rows.map((r) => (
+        <li>
+          <span class="ol-name">{r.website ? <a href={r.website} rel="noopener">{r.name}</a> : r.name}</span>
+          <span class="ol-meta">{[r.kind, r.area].filter(Boolean).join(' · ')}</span>
+          {r.nights && <span class="ol-nights">{r.nights}</span>}
+        </li>
+      ))}
+    </ul>
+    <p class="ol-note">Opening hours © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, read {checked}. People edit them by hand, so check with the place before you go.
+    For what is on tonight, see <a href="/today/">today</a>.</p>
+  </article>
+</BaseLayout>
+
+<style>
+  .ol-list { list-style: none; margin: 1rem 0; padding: 0; }
+  .ol-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.75rem; padding: 0.5rem 0; border-top: 1px solid var(--rule, rgba(0, 0, 0, 0.12)); }
+  .ol-name { font-weight: 600; }
+  .ol-meta { color: var(--ink-soft); font-size: 0.9375rem; }
+  .ol-nights { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .ol-note { color: var(--ink-soft); font-size: 0.9375rem; }
+</style>

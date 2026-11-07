@@ -14,7 +14,7 @@ export function plural(n: number, one: string, many: string): string {
 export function openAfterOneCount(rows: OpenLateRow[], day: number, tz: string): number {
   const d = new Date((day + 1) * 86_400_000);
   const cutoff = new Date(localInstantIso({ y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() }, 1, 0, tz)).getTime();
-  return rows.filter((r) => new Date(r.end).getTime() > cutoff).length;
+  return rows.filter((r) => r.end && new Date(r.end).getTime() > cutoff).length;
 }
 
 /** Latest last-train time across the Subway circles for the evening's weekday ('monSat' or 'sunday'), e.g. "23:30". */

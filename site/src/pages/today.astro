@@ -18,7 +18,7 @@ import TodayBlock from '../components/TodayBlock.astro';
 import SectionHero from '../components/SectionHero.astro';
 import {
   getWeather, getActiveAlerts, getClosureWatchStatus, getActiveTrafficIncidents,
-  getUpcomingStories, getUpcomingArtsEvents, getFacilities,
+  getUpcomingStories, getUpcomingArtsEvents, getFacilities, getOsmSnapshot,
 } from '../lib/db';
 import { buildEventFeed, todayUtcMidnight, selectWeekCandidates } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
@@ -31,6 +31,11 @@ import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
 import { selectTodayShows } from '../lib/today-shows';
 import { forecastLine } from '../lib/weather-format';
 import { enabledSections } from '../lib/nav-sections';
+import OpenTonight from '../components/OpenTonight.astro';
+import { placesFromSnapshot, decorateOpenLate } from '../lib/osm-open-late';
+import { openTonightRows, openTonightSection, cafeRows, isHolidayDay, openLatePageIndexable } from '../lib/open-tonight';
+import { localDayNumber } from '../lib/local-day';
+import { areasFor } from '../lib/areas';
 
 const [periods, alerts, upcomingEvents, artsEvents, trafficIncidents, closureStatus, facilities] = await Promise.all([
   getWeather(),
@@ -46,6 +51,8 @@ const cityHallFacility = facilities.find((f) => f.category === 'city_hall') ?? n
 const currentPeriod = periods.find((p) => p.is_daytime) ?? periods[0] ?? null;
 const temperature = currentPeriod?.temp ?? null;
 
+// FRONT_PAGE_NOW (an ISO instant) is only for checking the layout on a chosen day in a local build; CI never sets it.
+const now = process.env.FRONT_PAGE_NOW ? new Date(process.env.FRONT_PAGE_NOW) : new Date();
 const today = todayUtcMidnight(siteConfig.timezone);
 const { items } = buildEventFeed(upcomingEvents, artsEvents, siteConfig.timezone);
 // The week's non-recurring events: the browser buckets today / tonight / tomorrow from them and, when those are empty, lists the nearest as "Coming up".
@@ -56,6 +63,16 @@ const todayShows3 = siteConfig.country === 'gb' && siteConfig.hasWhatsOn
   : [];
 
 // Nothing in the next seven days (and no Ticketmaster show for Glasgow): the page has no events to offer, so it is not indexed (owner 2026-11-07).
+// Open tonight / cafes open now: from the weekly OpenStreetMap snapshot (no snapshot or an old one = no section). Places, not events: they never change the noindex rule below.
+const osmSnapshot = await getOsmSnapshot();
+const osm = placesFromSnapshot(osmSnapshot, now) ?? [];
+const osmDay = localDayNumber(now, siteConfig.timezone);
+const osmOpts = { day: osmDay, tz: siteConfig.timezone, now, holiday: isHolidayDay(siteConfig.country, osmDay) };
+const areaData = areasFor(siteConfig.townId);
+const openTonight = openTonightSection(decorateOpenLate(openTonightRows(osm, osmOpts), siteConfig.townId, areaData), now, siteConfig.timezone);
+const openCafes = openTonightSection(decorateOpenLate(cafeRows(osm, osmOpts), siteConfig.townId, areaData), now, siteConfig.timezone);
+const osmChecked = osmSnapshot ? osmSnapshot.fetchedAt.slice(0, 10) : '';
+
 const noEventsThisWeek = candidates.length === 0 && todayShows3.length === 0;
 const canonicalUrl = new URL('/today/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('today', siteConfig, { label: 'Today', href: canonicalUrl });
@@ -86,7 +103,7 @@ const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facili
   <TodayBlock
     cityName={siteConfig.cityName}
     timezone={siteConfig.timezone}
-    asOf={new Date()}
+    asOf={now}
     temperature={temperature}
     activeAlerts={alerts}
     closureStatus={closureStatus}
@@ -99,6 +116,8 @@ const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facili
     headingLevel="h1"
     headingText={pageMeta.h1}
   />
+  <OpenTonight rows={openTonight} cafes={openCafes} osmChecked={osmChecked} cityName={siteConfig.cityName}
+    lateHref={openLatePageIndexable(osm) ? '/open-late/' : null} />
   {siteConfig.safetyNotices && <SafetyNotices townId={siteConfig.townId} timezone={siteConfig.timezone} variant="compact" />}
   {siteConfig.eveningLayer && <p class="today-tonight">Planning the evening? <a href="/tonight/">Things to do tonight in {siteConfig.cityName}</a>.</p>}
   {siteConfig.country === 'gb' && siteConfig.townId === 'glasgow' && (

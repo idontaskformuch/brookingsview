@@ -125,6 +125,18 @@ export function parseOpeningHours(raw: string | null | undefined): WeekHours | n
   return parsed.kind === 'week' ? parsed.week : null;
 }
 
+/** Like parseOpeningHours, but a string whose only problem is a public/school-holiday rule ("Mo-Sa 11:00-22:00; PH off") is read without that rule and
+ *  flagged `holidayRule`: the weekly pattern is believed, the times are not shown (Open tonight, owner 2026-11-07). Everything else outside the subset is null. */
+export function parseOpeningHoursLoose(raw: string | null | undefined): { week: WeekHours; holidayRule: boolean } | null {
+  const d = parseOpeningHoursDetailed(raw);
+  if (d.kind === 'week') return { week: d.week, holidayRule: false };
+  if (d.kind !== 'untimed' || d.reason !== 'holiday') return null;
+  const stripped = (raw ?? '').replace(/(?:^|[;,])\s*(?:PH|SH)\b[^;,]*/g, '').replace(/^\s*[;,]\s*/, '').trim();
+  if (!stripped || /\b(PH|SH)\b/.test(stripped)) return null;
+  const again = parseOpeningHoursDetailed(stripped);
+  return again.kind === 'week' ? { week: again.week, holidayRule: true } : null;
+}
+
 /** The range that starts on `weekday` and ends latest, when that end is past 23:00; otherwise null. */
 export function lateRange(week: WeekHours, weekday: number): HoursRange | null {
   const late = week[weekday].filter((r) => r.end > OPEN_LATE_AFTER_MIN);

@@ -37,6 +37,15 @@ const activeCity = env.SITE_CITY ?? 'brookings_sd';
 // a missing or foreign file means "noindex".
 const EVENING_VERDICT_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '.evening-verdict.json');
 try { fs.rmSync(EVENING_VERDICT_PATH, { force: true }); } catch { /* nothing to remove */ }
+const OPEN_LATE_VERDICT_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '.open-late-verdict.json');
+try { fs.rmSync(OPEN_LATE_VERDICT_PATH, { force: true }); } catch { /* nothing to remove */ }
+// /open-late/ is indexable only with >= 5 late places (the page decides while building and writes the verdict; see lib/open-late-verdict.ts)
+function openLateIndexable(townId) {
+  try {
+    const v = JSON.parse(fs.readFileSync(OPEN_LATE_VERDICT_PATH, 'utf8'));
+    return v.townId === townId && v.indexable === true;
+  } catch { return false; }
+}
 function eveningIndexable(townId) {
   try {
     const v = JSON.parse(fs.readFileSync(EVENING_VERDICT_PATH, 'utf8'));
@@ -877,6 +886,7 @@ export default defineConfig({
         const isEveningNoindex = (pathname === '/tonight/' || pathname === '/this-weekend/') && !eveningIndexable(activeCity);
         return !noindexHomeSaleUrls.has(pathname)
           && !isEveningNoindex
+          && !(pathname === '/open-late/' && !openLateIndexable(activeCity))
           && !excludedGatedPages.has(pathname)
           && !noindexStoryUrls.has(pathname)
           && !noindexThinPageUrls.has(pathname)

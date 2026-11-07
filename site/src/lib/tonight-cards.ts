@@ -11,7 +11,7 @@ import { CHIP_MIN_ITEMS, CHIP_MIN_CHIPS as UI_CHIP_MIN_CHIPS, type Category } fr
 export type Bucket = 'music' | 'comedy' | 'theatre' | 'late' | 'other';
 /** Library category colour per bucket (Tonight's set is CATEGORY_SETS.tonight); null = uncategorised, drawn neutral. */
 export const BUCKET_CATEGORY: Record<Bucket, Category | null> = { music: 'music', comedy: 'nightlife', theatre: 'arts', late: 'food', other: null };
-export const BUCKET_LABEL: Record<Bucket, string> = { music: 'Live music', comedy: 'Comedy & shows', theatre: 'Theatre', late: 'Open late', other: 'Also on' };
+export const BUCKET_LABEL: Record<Bucket, string> = { music: 'Live music', comedy: 'Comedy & shows', theatre: 'Theatre', late: 'Open tonight', other: 'Also on' };
 /** The bucket's heading as the reader sees it: "Theater" in a US town. */
 export const bucketLabel = (bucket: Bucket, country: string): string => (bucket === 'theatre' && countryProfile(country as CountryId).spelling === 'american' ? 'Theater' : BUCKET_LABEL[bucket]);
 /** Category rows in page order (Open late is its own row, placed by the page). */
