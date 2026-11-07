@@ -9,24 +9,24 @@
  *
  *  RIGHT NOW / TONIGHT / TOMORROW, each independently omittable:
  *   - Active alerts: every town has this capability (weather_alerts is
- *     always on) -- 0 active is a real "quiet" state, shown as a calm line,
- *     never disappears entirely.
+ *     always on) -- 0 active renders nothing (owner 2026-11-07: no empty messages);
+ *     
  *   - Temperature + HeatAdvisoryWidget: shown together whenever a current
  *     temperature reading exists; omitted (not a misleading "Safe") if
  *     weather data itself is unavailable.
  *   - School status: `closureStatus` is null for a town without Closure
  *     Watch (Broomfield, until its own Phase 2 lands) -- omitted entirely,
- *     never a fake "no data" row. See rightNowIsEmpty below for what
+ *     never a fake "no data" row. See rightNowHasContent below for what
  *     happens if EVERY RIGHT NOW row is absent for a given town.
  *   - Traffic: `traffic` is null when the town has no real source
  *     (Brookings/Broomfield today) -- omitted entirely, never an empty or
  *     zeroed row. Present-but-quiet (Moreno Valley, no active incidents)
- *     renders as an honest "no active incidents" line via TrafficWidget's
+ *     renders nothing either (owner 2026-11-07), via TrafficWidget's
  *     own empty list, not a hidden section -- source presence and a quiet
  *     day are different states, and must read differently.
  *  TONIGHT/TOMORROW: event-scraping capability is universal across all three
  *  towns, so these are never "absent" -- but a bucket with no events is HIDDEN
- *  (no bare heading); if both are empty one quiet line links to What's On.
+ *  (no bare heading); if all are empty the nearest upcoming events of the week are listed under "Coming up".
  *  Decided in the browser, see the script at the bottom.
  *
  *  Phase 2 addition: City Hall open/closed. The one facility category
@@ -54,7 +54,6 @@ import StoryCard from './StoryCard.astro';
 import TrafficWidget from './TrafficWidget.astro';
 import HeatAdvisoryWidget from './HeatAdvisoryWidget.astro';
 import { artsEventAsStory, ARTS_EVENT_KICKER, type FeedItem } from '../lib/events';
-import { joinWithOr } from '../lib/status-line';
 import type { Story, TrafficIncident, StructuredHours, Facility } from '../lib/db';
 import type { TodayShow } from '../lib/today-shows';
 import TodayShowItem from './TodayShowItem.astro';
@@ -139,37 +138,15 @@ function toStory(item: FeedItem): { story: Story; href?: string; kicker?: string
 
 // A town with Met Office warnings always has a Right now line (filled in the browser from /api/weather-warnings).
 const metWarningsLine = siteConfig.hasMetOfficeWarnings === true;
-const rightNowIsEmpty = activeAlerts.length === 0 && temperature === null
-  && closureStatus === null && traffic === null && !cityHallKnown && !metWarningsLine;
 
-// R1 ("all-clear collapses to one line"): alerts/closures/traffic are the
-// same three CONDITIONAL modules cityStatus.ts's applyVisibilityRules()
-// already consolidates for the front page's status strip -- mirrored here so
-// /today gets the same "three quiet things read as one sentence, not three
-// blocks" behavior instead of always rendering its own line per module. Only
-// present modules (closureStatus/traffic non-null) participate; a module
-// absent for this town was never a candidate to begin with. City Hall stays
-// its own line unconditionally -- open/closed is never a "nothing to
-// report" state the way an absent alert/closure/incident is.
-//
-// Deliberately plain booleans + a plain array push, not an inline
-// conditional-spread array run through .every() -- that combination (built
-// and bisected while writing this) triggers an Astro type-checker cascade
-// that mistypes unrelated code elsewhere in this same file as `any` (a
-// checker bug, confirmed against plain tsc on the equivalent logic in
-// isolation -- not a real type error), even though it's never actually
-// unsound.
-const alertsQuiet = activeAlerts.length === 0 && !metWarningsLine;
-const closuresQuiet = !closureStatus || closureStatus.state === 'clear';
-const trafficQuiet = !traffic || traffic.incidents.length === 0;
-const allConditionalQuiet = alertsQuiet && closuresQuiet && trafficQuiet;
-const quietNouns: string[] = metWarningsLine ? [] : ['weather alerts'];
-if (closureStatus) quietNouns.push('closures');
-if (traffic) quietNouns.push('traffic incidents');
-const consolidatedQuietLine = allConditionalQuiet && quietNouns.length > 0 ? `No ${joinWithOr(quietNouns)}` : null;
+// Owner 2026-11-07: no empty messages. A quiet alert / closure / incident state renders nothing (the old consolidated "No weather alerts
+// or traffic incidents" line is gone), and "Right now" is drawn only when something in it has content.
+const trafficHasIncidents = !!traffic && traffic.incidents.length > 0;
+const rightNowHasContent = activeAlerts.length > 0 || metWarningsLine || (closureStatus !== null && closureStatus.state !== 'clear')
+  || cityHallKnown || temperature !== null || trafficHasIncidents;
 
 const closureState = closureStatus?.state;
-const showClosureLine = !consolidatedQuietLine && closureState !== undefined && closureState !== 'clear';
+const showClosureLine = closureState !== undefined && closureState !== 'clear';
 const activeClosureLabel = showClosureLine && closureState ? CLOSURE_LABEL[closureState] : null;
 const activeClosureClass = showClosureLine && closureState ? `today-block__closure--${closureState}` : null;
 ---
@@ -181,18 +158,14 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
 
   {forecastText !== undefined && <p class="today-block__forecast" data-weather-today hidden={!forecastText}>{forecastText}</p>}
 
-  {!rightNowIsEmpty && (
+  {rightNowHasContent && (
     <div class="today-block__right-now">
-      <p class="today-block__section-label" data-right-now-label data-asof={asOf.toISOString()} data-asof-label={asOfLabel}>Right now</p>
+      <p class="today-block__section-label" data-right-now-label data-asof={asOf.toISOString()}>Right now</p>
 
       <ul class="today-block__list">
-        {consolidatedQuietLine && (
-          <li class="today-block__quiet">{consolidatedQuietLine}</li>
-        )}
-
         {metWarningsLine && <li id="today-met-line" data-met-line hidden></li>}
 
-        {!consolidatedQuietLine && activeAlerts.length > 0 && activeAlerts.map((alert: AlertItem) => (
+        {activeAlerts.length > 0 && activeAlerts.map((alert: AlertItem) => (
           <li data-ends={alert.ends_at ?? undefined} data-alert-slug={alert.slug}>
             <a href={ownPageHref(alert) ?? '/weather/'}>{alert.title}</a>
             {alert.ends_at && <span class="today-block__until"> · {formatAlertUntil(new Date(alert.ends_at), timezone)}</span>}
@@ -225,7 +198,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
         <HeatAdvisoryWidget tempF={temperature} activeAlertTitles={activeAlerts.map((a: AlertItem) => a.title)} />
       )}
 
-      {traffic && !consolidatedQuietLine && traffic.incidents.length > 0 && (
+      {traffic && trafficHasIncidents && (
         <TrafficWidget incidents={traffic.incidents} limit={3} />
       )}
     </div>
@@ -252,7 +225,10 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
     <p class="today-block__section-label">Tomorrow</p>
     <div data-bucket-body></div>
   </div>
-  <p class="today-block__quiet" id="today-no-events" hidden>Nothing scheduled today or tomorrow. See <a href="/whats-on/">What's On</a> for what's coming up.</p>
+  <div class="today-block__bucket" id="today-later" hidden>
+    <p class="today-block__section-label">Coming up</p>
+    <div data-bucket-body></div>
+  </div>
   <noscript>
     <p class="today-block__quiet">Turn on JavaScript to see today's and tomorrow's events, or <a href="/events/">browse all events</a>.</p>
   </noscript>
@@ -318,7 +294,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
     const asOf = Date.parse(rn.dataset.asof);
     const sync = () => {
       const stale = Date.now() - asOf > 3_600_000;
-      rn.textContent = stale ? `As of ${rn.dataset.asofLabel}` : 'Right now';
+      rn.textContent = stale ? 'Latest check' : 'Right now'; // the one timestamp on the page is the heading's "Updated ..."
     };
     sync();
     setInterval(sync, 60_000);
@@ -337,8 +313,8 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
       const live = sortWarnings(got.filter((w) => isInForce(w, new Date())));
       line.replaceChildren();
       if (live.length === 0) {
-        line.textContent = 'No weather warnings in force';
-        line.className = 'today-block__quiet';
+        line.hidden = true; // no warnings: nothing is drawn (no "No weather warnings" message)
+        return;
       } else {
         line.className = 'today-block__met';
         for (const w of live) {

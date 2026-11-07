@@ -102,24 +102,9 @@ describe('applyVisibilityRules', () => {
     expect(result.map((r) => r.id)).toEqual(['traffic']);
   });
 
-  it('renders exactly one consolidated line when EVERY conditional module is quiet', () => {
-    const result = applyVisibilityRules([m('weather', 'quiet'), m('alerts', 'quiet'), m('traffic', 'quiet')]);
-    expect(result).toHaveLength(2);
-    expect(result[0].id).toBe('weather');
-    expect(result[1].id).toBe('consolidated');
-    expect(result[1].value).toBe('No alerts or traffic incidents');
-  });
-
-  it('the consolidated line never renders when no conditional module is present at all', () => {
-    const result = applyVisibilityRules([m('weather', 'quiet'), m('next_meeting', 'quiet')]);
-    expect(result.some((r) => r.id === 'consolidated')).toBe(false);
-  });
-
-  it('the consolidated line joins three quiet nouns with a final "or", not an Oxford comma', () => {
-    const result = applyVisibilityRules([
-      m('alerts', 'quiet'), m('closures', 'quiet'), m('traffic', 'quiet'),
-    ]);
-    expect(result[0].value).toBe('No alerts, closures or traffic incidents');
+  it('renders nothing for conditional modules when EVERY one is quiet (no "All clear" line, owner 2026-11-07)', () => {
+    const result = applyVisibilityRules([m('weather', 'quiet'), m('alerts', 'quiet'), m('closures', 'quiet'), m('traffic', 'quiet')]);
+    expect(result.map((r) => r.id)).toEqual(['weather']);
   });
 });
 

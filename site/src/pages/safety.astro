@@ -6,7 +6,6 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import ShareButton from '../components/ShareButton.astro';
-import PageGuide from '../components/PageGuide.astro';
 import SafetyNotices from '../components/SafetyNotices.astro';
 import { siteConfig } from '../lib/site-config';
 import { SAFETY_TOWNS } from '../lib/safety-towns';
@@ -36,13 +35,6 @@ const breadcrumbTrail: BreadcrumbEntry[] = [{ label: 'Home', href: '/' }, { labe
     </ul>
     <p class="safety-note">{info.evacuationNote} In an emergency call 911.</p>
   </section>
-
-  <PageGuide
-    shows={`Wildfires within ${info.radiusMiles} miles of ${siteConfig.cityName} and the current air-quality index, each with the source's own numbers and the time it was last updated.`}
-    use="Check here when you see smoke or hear about a fire. For a decision about leaving or staying, use the official evacuation pages above, not this list."
-  >
-    Fires: the <a href="https://data-nifc.opendata.arcgis.com/" rel="noopener">National Interagency Fire Center (NIFC)</a>. Air quality: <a href="https://www.airnow.gov/" rel="noopener">AirNow</a>, run by the US EPA.
-  </PageGuide>
 
   <SafetyNotices townId={siteConfig.townId} timezone={siteConfig.timezone} variant="full" />
   <noscript><p>This page loads the current fire and air notices with JavaScript. Without it, use the official links above and <a href="https://www.airnow.gov/" rel="noopener">AirNow</a>.</p></noscript>

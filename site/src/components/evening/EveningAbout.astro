@@ -1,13 +1,10 @@
 ---
-/** The full "what this is / how to use it / sources" text, at the bottom of the page. The top of the page carries only
- *  "Updated <date> · How we gather this" (EveningUpdated). */
-import PageGuide from '../PageGuide.astro';
-
-interface Props { shows: string; use: string }
-const { shows, use } = Astro.props;
+/** Bottom of /tonight/ and /this-weekend/: the attribution and caveat notes that must sit next to the data (OpenStreetMap, area names, drive
+ *  times) and one line of sources. The "what this shows / how to use it" text lives on /how-we-gather-this/ (lib/page-explainers.ts), not in
+ *  a box on the page (owner 2026-11-07). */
 ---
 <div id="about-this-page" class="ev-about">
-  <PageGuide shows={shows} use={use}><slot name="sources" /></PageGuide>
+  <p class="ev-note"><slot name="sources" /></p>
   <slot />
 </div>
 <style is:global>

@@ -2,7 +2,7 @@
  *  components/TodayBlock.astro's script). Lives here, not inline in the
  *  component, so a test can run the real code against a real <template> in a
  *  real browser (today-buckets.test.ts). */
-import { bucketOf, type TimedEvent } from './local-day';
+import { bucketOf, hasEnded, type TimedEvent } from './local-day';
 
 /** The <li> children of a template's content. NOT querySelectorAll(':scope > li'):
  *  :scope matches nothing on a template's DocumentFragment in Chromium, which
@@ -11,9 +11,11 @@ export function templateItems(tpl: { content: { children: ArrayLike<Element> } }
   return (Array.from(tpl.content.children) as HTMLLIElement[]).filter((el) => el.tagName === 'LI');
 }
 
-/** Fills #today-now / #today-tonight / #today-tomorrow from #today-event-items, unhides the
- *  buckets that have events, and shows #today-no-events only when both are
- *  empty. Returns the number of events shown. */
+/** Fills #today-now / #today-tonight / #today-tomorrow from #today-event-items and unhides the
+ *  buckets that have events. When all three are empty, #today-later lists the nearest upcoming
+ *  events from the rest of the template's week instead (owner 2026-11-07: no "nothing scheduled"
+ *  message). Returns the number of events shown in the three day buckets. */
+const LATER_LIMIT = 5;
 export function fillTodayBuckets(doc: Document, now: Date = new Date()): number {
   const tpl = doc.getElementById('today-event-items') as HTMLTemplateElement | null;
   if (!tpl) return 0;
@@ -49,7 +51,21 @@ export function fillTodayBuckets(doc: Document, now: Date = new Date()): number 
     return hits.length;
   };
   const shown = fill('today-now', 'today', 5) + fill('today-tonight', 'tonight', 5) + fill('today-tomorrow', 'tomorrow', 3);
-  const none = doc.getElementById('today-no-events');
-  if (none) none.hidden = shown > 0;
+  if (shown === 0) {
+    const later = doc.getElementById('today-later');
+    const body = later?.querySelector('[data-bucket-body]');
+    const upcoming = entries
+      .filter((e) => e.bucket === null && e.li.dataset.start && !hasEnded({ start: e.li.dataset.start, end: e.li.dataset.end || null }, now, tz))
+      .sort((a, b) => Date.parse(a.li.dataset.start!) - Date.parse(b.li.dataset.start!))
+      .slice(0, LATER_LIMIT);
+    if (later && body && upcoming.length > 0) {
+      body.textContent = '';
+      const ul = doc.createElement('ul');
+      ul.className = 'today-block__cards';
+      upcoming.forEach((e) => ul.appendChild(e.li.cloneNode(true)));
+      body.appendChild(ul);
+      later.hidden = false;
+    }
+  }
   return shown;
 }

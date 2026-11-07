@@ -45,7 +45,9 @@ describe('airLine and compactLine', () => {
   it('compact line: counts, nearest fire, air', () => {
     expect(compactLine(payload({ fires: [fire(), fire({ name: 'B', distanceMiles: 20 })], air: air() }), NOW, 25))
       .toBe('2 wildfires within 25 miles (nearest: SAGE, 9.4 miles away, 15% contained) · air quality index 54 (Moderate, preliminary)');
-    expect(compactLine(payload(), NOW, 25)).toBe('No wildfires listed within 25 miles');
+    // no fire: nothing is said about fires (owner 2026-11-07); the air reading stays; neither = no line
+    expect(compactLine(payload({ air: air() }), NOW, 25)).toBe('air quality index 54 (Moderate, preliminary)');
+    expect(compactLine(payload(), NOW, 25)).toBeNull();
   });
   it('fails closed: unavailable or an answer older than 15 minutes gives no line', () => {
     expect(compactLine(payload({ available: false }), NOW, 25)).toBeNull();

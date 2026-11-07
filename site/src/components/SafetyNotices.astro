@@ -15,16 +15,16 @@ const info = SAFETY_TOWNS[townId];
 ---
 {info && variant === 'compact' && (
   <p class="safety-compact" data-safety="compact" data-active-only={onlyWhenActive ? "1" : undefined} data-tz={timezone} data-radius={info.radiusMiles} hidden>
-    <strong>Fire and air:</strong> <span data-safety-line></span> <a href="/safety/">Details and evacuation links</a>
+    <strong>Fire and air:</strong>{' '}<span data-safety-line></span>{' '}<a href="/safety/">Details and evacuation links</a>
   </p>
 )}
 {info && variant === 'full' && (
   <section class="safety-full" data-safety="full" data-tz={timezone} data-radius={info.radiusMiles} aria-live="polite">
-    <h2>Wildfires within {info.radiusMiles} miles</h2>
-    <p class="safety-status" data-safety-status>Checking the latest notices…</p>
+    <h2 data-safety-fires-h hidden>Wildfires within {info.radiusMiles} miles</h2>
+    <p class="safety-status" data-safety-status hidden></p>
     <ul class="safety-list" data-safety-fires></ul>
-    <h2>Air quality</h2>
-    <p class="safety-air" data-safety-air>Checking the latest reading…</p>
+    <h2 data-safety-air-h hidden>Air quality</h2>
+    <p class="safety-air" data-safety-air hidden></p>
   </section>
 )}
 
@@ -56,18 +56,23 @@ const info = SAFETY_TOWNS[townId];
           if (line && target) { target.textContent = `${line}.`; root.hidden = false; } else root.hidden = true;
           continue;
         }
-        const status = root.querySelector('[data-safety-status]');
+        const status = root.querySelector<HTMLElement>('[data-safety-status]');
         const list = root.querySelector('[data-safety-fires]');
-        const air = root.querySelector('[data-safety-air]');
-        if (!status || !list || !air) continue;
+        const air = root.querySelector<HTMLElement>('[data-safety-air]');
+        const firesH = root.querySelector<HTMLElement>('[data-safety-fires-h]');
+        const airH = root.querySelector<HTMLElement>('[data-safety-air-h]');
+        if (!status || !list || !air || !firesH || !airH) continue;
         list.replaceChildren();
+        // Nothing is drawn for an empty result (owner 2026-11-07): no fires, no wildfire section; no reading, no air section. The air-quality
+        // reading is data and stays whenever there is one.
+        firesH.hidden = status.hidden = airH.hidden = air.hidden = true;
         if (!isFresh(payload, now)) {
-          status.textContent = 'We cannot reach the fire data right now, so nothing is listed. Use the official links below.';
-          air.textContent = 'We cannot reach the air-quality data right now.';
+          firesH.hidden = status.hidden = false;
+          status.textContent = 'We cannot reach the fire and air data right now, so nothing is listed. Use the official links on this page.';
           continue;
         }
-        if (payload.fires.length === 0) status.textContent = `No wildfires are listed within ${radius} miles right now.`;
-        else {
+        if (payload.fires.length > 0) {
+          firesH.hidden = status.hidden = false;
           status.textContent = `${payload.fires.length} wildfire${payload.fires.length === 1 ? '' : 's'} listed within ${radius} miles, nearest first:`;
           for (const f of payload.fires) {
             const li = document.createElement('li');
@@ -79,6 +84,7 @@ const info = SAFETY_TOWNS[townId];
         const text = a ? airLine(a, now) : null;
         air.replaceChildren();
         if (a && text) {
+          airH.hidden = air.hidden = false;
           const sw = document.createElement('span');
           sw.className = 'safety-air__swatch';
           sw.style.background = a.color;
@@ -88,7 +94,7 @@ const info = SAFETY_TOWNS[townId];
           l.rel = 'noopener';
           l.textContent = 'AirNow.gov';
           air.append('Source: ', l, '.');
-        } else air.textContent = 'No current air-quality reading is available.';
+        }
       }
     };
 

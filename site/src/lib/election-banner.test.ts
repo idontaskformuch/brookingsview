@@ -10,12 +10,12 @@ describe('buildResultsBanner window', () => {
   it('is hidden before Election Day, shown on it, and gone 7 days after (local midnight)', () => {
     expect(buildResultsBanner(bf, 'America/Denver', at('2026-11-02T20:00:00Z'))!.visible).toBe(false);
     expect(buildResultsBanner(bf, 'America/Denver', at('2026-11-03T08:00:00Z'))!.visible).toBe(true); // 01:00 MST Nov 3
-    expect(buildResultsBanner(bf, 'America/Denver', at('2026-11-11T06:59:00Z'))!.visible).toBe(true); // 23:59 MST Nov 10
-    expect(buildResultsBanner(bf, 'America/Denver', at('2026-11-11T07:00:00Z'))!.visible).toBe(false); // Nov 11 00:00 MST
+    expect(buildResultsBanner(bf, 'America/Denver', at('2026-11-07T06:59:00Z'))!.visible).toBe(true); // 23:59 MST Nov 6
+    expect(buildResultsBanner(bf, 'America/Denver', at('2026-11-07T07:00:00Z'))!.visible).toBe(false); // Nov 7 00:00 MST
   });
   it('the window is read in each site timezone, not the visitors (CT, MT, PT)', () => {
-    // until 2026-11-10 inclusive = local midnight into Nov 11 (standard time: CST UTC-6, MST UTC-7, PST UTC-8)
-    for (const [id, tz, endUtc] of [['brookings_sd', 'America/Chicago', '2026-11-11T06:00:00.000Z'], ['broomfield_co', 'America/Denver', '2026-11-11T07:00:00.000Z'], ['moreno_valley_ca', 'America/Los_Angeles', '2026-11-11T08:00:00.000Z']] as const) {
+    // until 2026-11-06 inclusive = local midnight into Nov 7 (standard time: CST UTC-6, MST UTC-7, PST UTC-8)
+    for (const [id, tz, endUtc] of [['brookings_sd', 'America/Chicago', '2026-11-07T06:00:00.000Z'], ['broomfield_co', 'America/Denver', '2026-11-07T07:00:00.000Z'], ['moreno_valley_ca', 'America/Los_Angeles', '2026-11-07T08:00:00.000Z']] as const) {
       const b = buildResultsBanner(ELECTION_BY_TOWN[id], tz, at('2026-11-05T00:00:00Z'))!;
       expect(b.showUntil).toBe(endUtc);
       expect(buildResultsBanner(ELECTION_BY_TOWN[id], tz, new Date(Date.parse(endUtc) - 60_000))!.visible).toBe(true);
@@ -24,13 +24,18 @@ describe('buildResultsBanner window', () => {
   });
   it('a build after the window ships no card (expired), a build before it does (hidden)', () => {
     const bf = ELECTION_BY_TOWN.broomfield_co;
-    expect(buildResultsBanner(bf, 'America/Denver', at('2026-11-11T07:00:00Z'))!.expired).toBe(true);
-    expect(buildResultsBanner(bf, 'America/Denver', at('2026-11-11T06:59:00Z'))!.expired).toBe(false);
+    expect(buildResultsBanner(bf, 'America/Denver', at('2026-11-07T07:00:00Z'))!.expired).toBe(true);
+    expect(buildResultsBanner(bf, 'America/Denver', at('2026-11-07T06:59:00Z'))!.expired).toBe(false);
     const early = buildResultsBanner(bf, 'America/Denver', at('2026-10-30T12:00:00Z'))!;
     expect([early.expired, early.visible]).toEqual([false, false]);
   });
   it('config window ends 7 days after Election Day for every town', () => {
-    for (const cfg of Object.values(ELECTION_BY_TOWN)) expect(cfg.results_banner).toEqual({ from: '2026-11-03', until: '2026-11-10' });
+    for (const cfg of Object.values(ELECTION_BY_TOWN)) expect(cfg.results_banner).toEqual({ from: '2026-11-03', until: '2026-11-06' });
+    // the banner ends 3 days after Election Day for every town (owner 2026-11-07)
+    for (const cfg of Object.values(ELECTION_BY_TOWN)) {
+      const end = new Date(Date.parse(`${cfg.election_date}T00:00:00Z`) + 3 * 86_400_000).toISOString().slice(0, 10);
+      expect(cfg.results_banner!.until).toBe(end);
+    }
   });
   it('has no card for a town without an election block (Glasgow)', () => {
     expect(ELECTION_BY_TOWN.glasgow).toBeUndefined();
@@ -66,7 +71,7 @@ describe('updateResultsBanner (browser re-check)', () => {
     expect([node.hidden, text.textContent]).toEqual([false, bf.before]);
     updateResultsBanner(doc, Date.parse('2026-11-04T03:00:00Z'));
     expect([node.hidden, text.textContent]).toEqual([false, bf.after]);
-    updateResultsBanner(doc, Date.parse('2026-11-11T07:00:00Z'));
+    updateResultsBanner(doc, Date.parse('2026-11-07T07:00:00Z'));
     expect(node.hidden).toBe(true);
   });
 });

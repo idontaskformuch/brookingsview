@@ -72,13 +72,12 @@ export function airLine(a: PublicAir, nowMs: number): string | null {
 export function compactLine(p: SafetyPayload | null, nowMs: number, radiusMiles: number): string | null {
   if (!isFresh(p, nowMs)) return null;
   const parts: string[] = [];
-  if (p.fires.length === 0) parts.push(`No wildfires listed within ${radiusMiles} miles`);
-  else {
+  if (p.fires.length > 0) { // no fires: nothing about fires is said (owner 2026-11-07)
     const n = p.fires[0];
     const near = `${n.name}${n.distanceMiles !== null ? `, ${n.distanceMiles} miles away` : ''}${n.percentContained !== null ? `, ${Math.round(n.percentContained)}% contained` : ''}`;
     parts.push(`${p.fires.length} wildfire${p.fires.length === 1 ? '' : 's'} within ${radiusMiles} miles (nearest: ${near})`);
   }
   const air = p.air && nowMs - new Date(p.air.observed).getTime() <= AIR_MAX_AGE_MS ? p.air : null;
   if (air) parts.push(`air quality index ${air.aqi} (${air.category}, preliminary)`);
-  return parts.join(' · ');
+  return parts.length > 0 ? parts.join(' · ') : null; // no fire and no reading: nothing to say
 }

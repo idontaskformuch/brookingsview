@@ -466,7 +466,7 @@ async function buildLastmodMap(townId, databaseUrl) {
   const noindexStoryUrls = new Set();
   const crossCanonicalStoryUrls = new Set();
   const stories = await sql`
-    SELECT slug, published_at, source_type, body, generated_by, ingredients, instructions, occurs_at, title, venue_raw, superseded_by_slug FROM stories WHERE town_id = ${townId}
+    SELECT slug, published_at, source_type, body, generated_by, ingredients, instructions, occurs_at, title, venue_raw, superseded_by_slug, is_recurring_series FROM stories WHERE town_id = ${townId}
   `;
   for (const s of stories) {
     const storyPathname = `/s/${publicSlugMirror(s.slug)}/`;
@@ -755,6 +755,7 @@ async function buildLastmodMap(townId, databaseUrl) {
   // against a real build before trusting this for a town/facet combination
   // that's actually close to the line.
   const eventFacetCounts = { today: 0, 'this-weekend': 0, kids: 0, library: 0, outdoor: 0 };
+  let eventsNextSevenDays = 0; // /today/ is noindex when this (plus arts/Ticketmaster on the page) is zero; this mirror may only undercount, never overcount
   const KIDS_RE_MIRROR = /\b(kids?|children|childrens?|toddler|preschool|storytime|story time|famil(?:y|ies)|youth|teens?|tween)\b/i;
   const facilityVenues = await sql`
     SELECT name, aliases, category FROM places WHERE town_id = ${townId} AND category IN ('library', 'park')
@@ -802,6 +803,7 @@ async function buildLastmodMap(townId, databaseUrl) {
     if (new Date(s.occurs_at) < new Date(Date.now() - 12 * 60 * 60 * 1000)) continue;
     const eventDay = utcMidnightMirror(localDatePartsMirror(new Date(s.occurs_at), thisWeekTz));
     const offset = Math.round((eventDay.getTime() - eventsToday.getTime()) / 86_400_000);
+    if (offset >= 0 && offset <= 6 && !s.is_recurring_series) eventsNextSevenDays++; // mirrors lib/events.ts selectWeekCandidates (stories only)
     if (offset <= 0) eventFacetCounts.today++;
     if (offset >= daysToFridayMirror && offset <= daysToFridayMirror + 2) eventFacetCounts['this-weekend']++;
     const haystack = `${s.title ?? ''} ${(s.body ?? '').slice(0, 200)}`;
@@ -810,6 +812,7 @@ async function buildLastmodMap(townId, databaseUrl) {
     if (venueNorm && libraryVenueNames.has(venueNorm)) eventFacetCounts.library++;
     if (venueNorm && parkVenueNames.has(venueNorm)) eventFacetCounts.outdoor++;
   }
+  if (eventsNextSevenDays === 0) noindexThinPageUrls.add('/today/'); // may leave an indexable page (arts events, Glasgow's Ticketmaster shows) out of the sitemap; never lists a noindex one
   for (const [facetSlug, count] of Object.entries(eventFacetCounts)) {
     if (count < MIN_TAG_PAGE_ITEMS) noindexThinPageUrls.add(`/events/${facetSlug}/`);
   }

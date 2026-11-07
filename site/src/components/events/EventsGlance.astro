@@ -4,8 +4,6 @@
 import HeroStat from '../ui/HeroStat.astro';
 import EmptyState from '../ui/EmptyState.astro';
 import DayStrip from '../ui/DayStrip.astro';
-import { EMPTY_STATES } from '../../lib/empty-states';
-import { siteConfig } from '../../lib/site-config';
 import type { EventsView } from '../../lib/event-day-view';
 
 interface Props { view: EventsView; base?: string; idPrefix?: string }
@@ -14,18 +12,16 @@ const sub = [
   view.tonightCount > 0 && view.tonightCount < view.todayCount ? `${view.tonightCount} tonight` : null,
   view.freeToday > 0 ? `${view.freeToday} free` : null,
 ].filter(Boolean).join(' · ');
-// Nothing local at all (Broomfield has no permitted local event source): the empty state sends the reader to What's On, not a dead end.
-const regionalLabel = "Concerts and shows in the region: What's On";
+// Nothing today and nothing later: the whole section is left out (owner 2026-11-07, no empty messages).
 const link = (d: { dayKey: string }) => `${base}#${idPrefix}-${d.dayKey}`;
 ---
+{(view.todayCount > 0 || view.nextDay) && (
 <section class="evg" aria-label="Events at a glance">
   {view.todayCount > 0 ? (
     <HeroStat value={view.todayCount} unit={view.todayCount === 1 ? 'thing on today' : 'things on today'} sub={sub || undefined} />
   ) : view.nextDay ? (
-    <EmptyState href={link(view.nextDay)} linkLabel={`${view.nextDay.label}: ${view.nextDay.count} ${view.nextDay.count === 1 ? 'thing' : 'things'}`}>Nothing else listed for today.</EmptyState>
-  ) : (
-    <EmptyState href={siteConfig.hasWhatsOn ? '/whats-on/' : undefined} linkLabel={siteConfig.hasWhatsOn ? regionalLabel : undefined}>{EMPTY_STATES.eventsAll}</EmptyState>
-  )}
+    <EmptyState href={link(view.nextDay)} linkLabel={`${view.nextDay.label}: ${view.nextDay.count} ${view.nextDay.count === 1 ? 'thing' : 'things'}`}>Next on the calendar:</EmptyState>
+  ) : null}
   {view.showDayStrip && (
     <DayStrip label="Events per day" days={view.days.map((d) => ({
       label: d.offset < 2 ? d.label.slice(0, 3) : d.label,
@@ -33,6 +29,7 @@ const link = (d: { dayKey: string }) => `${base}#${idPrefix}-${d.dayKey}`;
     }))} />
   )}
 </section>
+)}
 <style>
   .evg { display: grid; gap: var(--ui-3); }
 </style>

@@ -38,7 +38,7 @@ describe.skipIf(!browser)('fillTodayBuckets in a real browser', { timeout: 30_00
   const html = (items: string) => `<!doctype html><body>
     <div id="today-tonight" hidden><p>Tonight</p><div data-bucket-body></div></div>
     <div id="today-tomorrow" hidden><p>Tomorrow</p><div data-bucket-body></div></div>
-    <p id="today-no-events" hidden>Nothing scheduled</p>
+    <div id="today-later" hidden><p>Coming up</p><div data-bucket-body></div></div>
     <template id="today-event-items" data-tz="${TZ}">${items}</template></body>`;
 
   async function run(items: string, now: string) {
@@ -51,7 +51,7 @@ describe.skipIf(!browser)('fillTodayBuckets in a real browser', { timeout: 30_00
       return {
         shown,
         tonightHidden: q('#today-tonight').hidden, tomorrowHidden: q('#today-tomorrow').hidden,
-        noneHidden: q('#today-no-events').hidden,
+        laterHidden: q('#today-later').hidden, laterItems: q('#today-later').querySelectorAll('li').length,
         tonightItems: q('#today-tonight').querySelectorAll('li').length,
         tomorrowItems: q('#today-tomorrow').querySelectorAll('li').length,
       };
@@ -67,14 +67,25 @@ describe.skipIf(!browser)('fillTodayBuckets in a real browser', { timeout: 30_00
       '<li data-start="2026-10-22T01:00:00Z"><a href="/a/">tonight 7pm</a></li>' +
       '<li data-start="2026-10-22T18:00:00Z"><a href="/b/">tomorrow noon</a></li>' +
       '<li data-start="2026-10-22T23:00:00Z"><a href="/c/">tomorrow 5pm</a></li>', NOW);
-    expect(r).toMatchObject({ shown: 3, tonightHidden: false, tomorrowHidden: false, noneHidden: true, tonightItems: 1, tomorrowItems: 2 });
+    expect(r).toMatchObject({ shown: 3, tonightHidden: false, tomorrowHidden: false, laterHidden: true, tonightItems: 1, tomorrowItems: 2 });
   });
   it('hides an empty bucket and shows only the populated one', async () => {
     const r = await run('<li data-start="2026-10-22T18:00:00Z"><a href="/b/">tomorrow noon</a></li>', NOW);
-    expect(r).toMatchObject({ tonightHidden: true, tomorrowHidden: false, noneHidden: true });
+    expect(r).toMatchObject({ tonightHidden: true, tomorrowHidden: false, laterHidden: true });
   });
-  it('shows the single quiet line when there are no events at all', async () => {
+  it('shows no message when there are no events at all, and no Coming up list either', async () => {
     const r = await run('', NOW);
-    expect(r).toMatchObject({ shown: 0, tonightHidden: true, tomorrowHidden: true, noneHidden: false });
+    expect(r).toMatchObject({ shown: 0, tonightHidden: true, tomorrowHidden: true, laterHidden: true, laterItems: 0 });
+  });
+  it('with nothing today or tomorrow, lists the nearest upcoming events (soonest first, ended ones left out)', async () => {
+    const r = await run(
+      '<li data-start="2026-10-25T01:00:00Z"><a href="/late/">sat</a></li>' +
+      '<li data-start="2026-10-24T01:00:00Z"><a href="/soon/">fri</a></li>' +
+      '<li data-start="2026-10-21T15:00:00Z" data-end="2026-10-21T16:00:00Z"><a href="/over/">ended</a></li>', NOW);
+    expect(r).toMatchObject({ shown: 0, laterHidden: false, laterItems: 2 });
+  });
+  it('does not show Coming up when there is something today or tomorrow', async () => {
+    const r = await run('<li data-start="2026-10-22T18:00:00Z"><a href="/b/">tomorrow</a></li><li data-start="2026-10-26T18:00:00Z"><a href="/x/">next week</a></li>', NOW);
+    expect(r).toMatchObject({ shown: 1, laterHidden: true });
   });
 });

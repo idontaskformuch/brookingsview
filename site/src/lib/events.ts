@@ -350,6 +350,18 @@ export function selectBucketCandidates(
     .slice(0, limit);
 }
 
+/** The next seven local days (today included) of non-recurring items, date-sorted input stays sorted. /today lists the nearest of these under
+ *  "Coming up" when nothing is on today or tomorrow, and builds noindex from this list being empty (owner 2026-11-07). */
+export function selectWeekCandidates(
+  items: FeedItem[], today: Date, timezone: string, limit = 40,
+): FeedItem[] {
+  return items
+    .filter((item) => !(item.sourceKind === 'story' && item.story.is_recurring_series))
+    .filter((item) => item.occurs_at && dayIndex(item.occurs_at, today, timezone) >= 0
+      && dayIndex(item.occurs_at, today, timezone) <= 6)
+    .slice(0, limit);
+}
+
 export interface EventFeedResult {
   items: FeedItem[];
   alsoListedBy: Map<FeedItem, string[]>;

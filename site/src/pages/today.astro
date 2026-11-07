@@ -20,7 +20,7 @@ import {
   getWeather, getActiveAlerts, getClosureWatchStatus, getActiveTrafficIncidents,
   getUpcomingStories, getUpcomingArtsEvents, getFacilities,
 } from '../lib/db';
-import { buildEventFeed, todayUtcMidnight, selectBucketCandidates } from '../lib/events';
+import { buildEventFeed, todayUtcMidnight, selectWeekCandidates } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
 import { placeAbbr, forCountry } from '../lib/country-profile';
@@ -48,12 +48,15 @@ const temperature = currentPeriod?.temp ?? null;
 
 const today = todayUtcMidnight(siteConfig.timezone);
 const { items } = buildEventFeed(upcomingEvents, artsEvents, siteConfig.timezone);
-const candidates = selectBucketCandidates(items, today, siteConfig.timezone);
+// The week's non-recurring events: the browser buckets today / tonight / tomorrow from them and, when those are empty, lists the nearest as "Coming up".
+const candidates = selectWeekCandidates(items, today, siteConfig.timezone);
 // Glasgow: up to 3 Ticketmaster shows in the city itself join Tonight/Tomorrow (owner 2026-10-28).
 const todayShows3 = siteConfig.country === 'gb' && siteConfig.hasWhatsOn
   ? selectTodayShows(await getTicketmasterEventsForTown(siteConfig), new Date(), siteConfig.timezone, siteConfig.townId, siteConfig.cityName)
   : [];
 
+// Nothing in the next seven days (and no Ticketmaster show for Glasgow): the page has no events to offer, so it is not indexed (owner 2026-11-07).
+const noEventsThisWeek = candidates.length === 0 && todayShows3.length === 0;
 const canonicalUrl = new URL('/today/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('today', siteConfig, { label: 'Today', href: canonicalUrl });
 const breadcrumbJsonLd = buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl);
@@ -61,16 +64,14 @@ const breadcrumbJsonLd = buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl);
 const pageMeta = resolvePageMeta('today', siteConfig);
 const pageTitle = pageMeta.title;
 const hubBacklink = resolveHubBacklink('today', siteConfig);
-import PageGuide from '../components/PageGuide.astro';
 import SafetyNotices from '../components/SafetyNotices.astro';
 import ResultsBanner from '../components/ResultsBanner.astro';
 import { ELECTION_BY_TOWN } from '../config/election';
-import { todayDescription, todayShows, todaySources } from '../lib/today-copy';
 // Facilities, council/city hall and traffic are not tabs (owner 2026-10-29); they are linked from here and from the footer.
 const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facilities', 'traffic'].includes(s.id));
 ---
 
-<BaseLayout title={pageTitle} ogSlug="section-today"
+<BaseLayout title={pageTitle} ogSlug="section-today" noindex={noEventsThisWeek}
   description={metaDescription('today', siteConfig)}>
   <script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumbJsonLd)} />
   <Breadcrumbs trail={breadcrumbTrail} />
@@ -81,13 +82,6 @@ const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facili
 
   <SectionHero section="today" compact />
   {ELECTION_BY_TOWN[siteConfig.townId] && <ResultsBanner />}
-
-  <PageGuide
-    shows={todayShows(siteConfig, siteConfig.cityName)}
-    use="Check it before you leave the house or plan the evening. Anything with a warning or closure links to the official notice, which is the one to rely on."
-  >
-    {todaySources(siteConfig)}. <a href="/how-we-gather-this/">How we gather this</a>.
-  </PageGuide>
 
   <TodayBlock
     cityName={siteConfig.cityName}

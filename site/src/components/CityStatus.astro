@@ -90,8 +90,7 @@ const ctaLabel = `Full ${siteConfig.cityName} rundown →`;
       const events = JSON.parse(li.dataset.tonightEvents || '[]') as TimedEvent[];
       const n = countTonight(events, new Date(), tz);
       const value = li.querySelector('.city-status__value');
-      if (value) value.textContent = n === 0 ? 'Nothing scheduled tonight' : `${n} event${n === 1 ? '' : 's'} tonight`;
-      li.hidden = false;
+      if (value && n > 0) { value.textContent = `${n} event${n === 1 ? '' : 's'} tonight`; li.hidden = false; } // none: the row stays hidden
     } catch { /* stay hidden */ }
   });
 </script>

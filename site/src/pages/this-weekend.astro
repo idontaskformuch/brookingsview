@@ -123,10 +123,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
 
   <p class="ev-more-links">Just tonight? See <a href="/tonight/">what is on tonight</a> · the <a href="/events/">full events list</a>.</p>
 
-  <EveningAbout
-    shows={`Events in ${siteConfig.cityName} from Friday evening to Sunday night, grouped into nights out and live music, sport, markets and food and family${anyFree ? ', and free' : ''}, with the start time and the venue${anyFree ? ', and what is free' : ''}.`}
-    use={`Pick the day, then the group that fits. Open the listing for the source's own details before you go: times and tickets can change. Saturday and Sunday show the first ${8} per group; the rest are on the full events list.`}
-  >
+  <EveningAbout>
     <Fragment slot="sources">{sourceNames}, read {checked}. <a href="/how-we-gather-this/">How we gather this</a>.</Fragment>
     {anyLate && (
       <p class="ev-note">Open late lists pubs, bars, nightclubs and restaurants whose opening hours keep them open past 11 pm on Friday and Saturday, latest closing first. Hours come from <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>, read {osmChecked}. People edit them by hand, so check with the place before you go.</p>

@@ -29,8 +29,10 @@ import { siteConfig } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
 import { forCountry } from '../lib/country-profile';
 import { aboutSourcesFor } from '../lib/about-sources';
+import { pageExplainers } from '../lib/page-explainers';
 
 const sources = aboutSourcesFor(siteConfig.townId);
+const pages = pageExplainers(siteConfig);
 ---
 <BaseLayout title={`How we gather this — ${siteConfig.siteName}`}
   description={metaDescription('how-we-gather', siteConfig)}>
@@ -84,6 +86,16 @@ const sources = aboutSourcesFor(siteConfig.townId);
         mi"), not as a driving distance.</li>
       )}
     </ul>
+
+    <h2>What each page is for</h2>
+    {pages.map((p) => (
+      <section>
+        <h3><a href={p.href}>{p.name}</a></h3>
+        <p><strong>It shows:</strong> {p.shows}</p>
+        <p><strong>How to use it:</strong> {p.use}</p>
+        <p><strong>Where it comes from:</strong> {p.sources}</p>
+      </section>
+    ))}
 
     <h2>What we work out ourselves</h2>
     <p>Software, not a model, converts times to {siteConfig.cityName}'s time

@@ -68,7 +68,7 @@ const official = profile.weather.officialLink;
   )}
 
   {alerts.length === 0 && (
-    <p class="wx-note">{siteConfig.hasMetOfficeWarnings ? '' : `No active weather alerts for ${siteConfig.cityName} as of the last site update. `}{official.note}: <a href={official.url} rel="noopener">{official.label}</a>.</p>
+    <p class="wx-note">{official.note}: <a href={official.url} rel="noopener">{official.label}</a>.</p>
   )}
 
   <AboutThisPage sources={[{ name: `${authority.name} forecast`, href: authority.url }]}>

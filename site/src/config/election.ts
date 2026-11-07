@@ -23,7 +23,7 @@ const broomfield: ElectionConfig = {
   homepage: false,
   election_date: '2026-11-03',
   polls_close_local: '19:00',
-  results_banner: { from: '2026-11-03', until: '2026-11-10' }, // Election Day through 7 days after
+  results_banner: { from: '2026-11-03', until: '2026-11-06' }, // Election Day through 3 days after, then gone (owner 2026-11-07)
   results: {
     live: true,
     source_name: 'Colorado Secretary of State (statewide and federal contests; Broomfield turnout)',
@@ -110,7 +110,7 @@ const morenoValley: ElectionConfig = {
   homepage: false,
   election_date: '2026-11-03',
   polls_close_local: '20:00',
-  results_banner: { from: '2026-11-03', until: '2026-11-10' }, // Election Day through 7 days after
+  results_banner: { from: '2026-11-03', until: '2026-11-06' }, // Election Day through 3 days after, then gone (owner 2026-11-07)
   results: {
     live: false,
     source_name: 'Riverside County Registrar of Voters',
@@ -180,7 +180,7 @@ const brookings: ElectionConfig = {
   homepage: false,
   election_date: '2026-11-03',
   polls_close_local: '19:00',
-  results_banner: { from: '2026-11-03', until: '2026-11-10' }, // Election Day through 7 days after
+  results_banner: { from: '2026-11-03', until: '2026-11-06' }, // Election Day through 3 days after, then gone (owner 2026-11-07)
   results: {
     live: true,
     source_name: 'South Dakota Secretary of State (Brookings County results)',

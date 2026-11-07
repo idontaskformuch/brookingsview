@@ -340,7 +340,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   <QuickLinks links={quickLinks} omitted={omittedQuickLinks} />
 
   {/* The answer first: how many things are on today and the days as counts, straight after the status strip. The day lists are further down. */}
-  <section class="home-glance"><EventsGlance view={townEvents.view} base="/events/" /></section>
+  {(townEvents.view.todayCount > 0 || townEvents.view.nextDay) && <section class="home-glance"><EventsGlance view={townEvents.view} base="/events/" /></section>}
 
   {/* Marquee module (sitewide presentation-layer pass): the single
       top-ranked What's On item with a real image, full-width, plus up to

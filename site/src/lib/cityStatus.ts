@@ -47,7 +47,6 @@ import { statusWeatherText } from './weather-format';
 import { siteConfig, type SiteConfig } from './site-config';
 import { getTicketmasterEventsForTown, distanceLabel, type TicketmasterFeedItem } from './ticketmaster';
 import { rankTicketmasterEvents, collapseMarqueeRuns } from './whats-on';
-import { joinWithOr } from './status-line';
 import { normalizeSportTitle } from './week-groups';
 import { ownPageHref } from './ai-text';
 import { ELECTION_BY_TOWN } from '../config/election';
@@ -187,7 +186,7 @@ async function resolveEventsToday(): Promise<CityStatusModule | null> {
     id: 'events_today', icon: ICONS.events_today, label: 'Tonight',
     // Placeholder only: the browser replaces it with a count computed from
     // the real clock (clientEvents); the row stays hidden until then.
-    value: 'Nothing scheduled tonight', tone: 'quiet', href: '/today/', asOf: new Date(),
+    value: 'Events tonight', tone: 'quiet', href: '/today/', asOf: new Date(),
     clientEvents,
   };
 }
@@ -216,12 +215,7 @@ async function resolveWorkerPulse(): Promise<CityStatusModule | null> {
 
 async function resolveUniversity(): Promise<CityStatusModule | null> {
   const event = await getNextSdsuMarqueeEvent();
-  if (!event) {
-    return {
-      id: 'university', icon: ICONS.university, label: 'SDSU',
-      value: 'No marquee events this week', tone: 'quiet', href: '/university/', asOf: new Date(),
-    };
-  }
+  if (!event) return null; // no event, no row (owner 2026-11-07: no empty messages)
   return {
     id: 'university', icon: ICONS.university, label: 'SDSU',
     value: normalizeSportTitle(event.title), tone: 'quiet', href: '/university/',
@@ -235,7 +229,7 @@ async function resolveUniversity(): Promise<CityStatusModule | null> {
  *  produced a 180-character value -- roughly 2.3x this site's own longest
  *  existing CityStatus value (Weather's 77-character forecast string,
  *  itself already the outlier) -- visibly wrapping across several lines
- *  next to one-line siblings like "Nothing scheduled tonight". That's
+ *  next to one-line siblings like "Events tonight". That's
  *  exactly the failure mode the handoff named: "a marquee that visually
  *  outweighs the actual local news... would be the wrong outcome even if
  *  every individual element is correct." A single top pick lands at ~70
@@ -358,44 +352,11 @@ export function validateStatusModules(cfg: SiteConfig): void {
 // consolidate rather than nothing at all.
 const CONDITIONAL = new Set(['alerts', 'closures', 'traffic', 'worker_pulse']);
 
-// What to call each conditional module's absence in the consolidated line
-// -- not just its `label` lowercased ("Schools" -> "closures", not
-// "schools"; "Traffic" -> "traffic incidents", matching the handoff's own
-// "No alerts, closures or traffic incidents" example verbatim).
-const QUIET_NOUN: Record<string, string> = {
-  alerts: 'alerts',
-  closures: 'closures',
-  traffic: 'traffic incidents',
-  worker_pulse: 'heat/dust advisories',
-};
-
-/** Applies the handoff's "Visibility rules": always-rendered modules pass
- *  through untouched; conditional modules are dropped when quiet UNLESS
- *  every conditional module present is quiet, in which case they're
- *  replaced by one consolidated reassurance line (e.g. "No alerts,
- *  closures or traffic incidents") rather than disappearing entirely --
- *  "six lines of nothing reads deader than no component at all," but so
- *  does a blank space where the conditional modules used to be. A town
- *  configured with zero conditional modules (e.g. Broomfield's v1 lineup:
- *  weather, alerts, traffic, next_meeting -- alerts/traffic ARE
- *  conditional, so this only applies when NEITHER is configured at all)
- *  never triggers consolidation, since there's nothing to consolidate.
- *  Exported and pure (no I/O) so it's unit-testable without a live DB. */
+/** Applies the handoff's "Visibility rules": always-rendered modules pass through untouched; a conditional module is rendered only when
+ *  it is not quiet. When every conditional module is quiet nothing replaces them (owner 2026-11-07: no empty messages, a section
+ *  without data does not render; the "All clear / No alerts..." line is gone). Exported and pure (no I/O) so it is unit-testable. */
 export function applyVisibilityRules(modules: CityStatusModule[]): CityStatusModule[] {
-  const always = modules.filter((m) => !CONDITIONAL.has(m.id));
-  const conditional = modules.filter((m) => CONDITIONAL.has(m.id));
-  if (conditional.length === 0) return always;
-
-  const nonQuiet = conditional.filter((m) => m.tone !== 'quiet');
-  if (nonQuiet.length > 0) return [...always, ...nonQuiet];
-
-  const oldest = conditional.reduce((min, m) => (m.asOf < min ? m.asOf : min), conditional[0].asOf);
-  const consolidated: CityStatusModule = {
-    id: 'consolidated', icon: 'check', label: 'All clear',
-    value: `No ${joinWithOr(conditional.map((m) => QUIET_NOUN[m.id] ?? m.label.toLowerCase()))}`,
-    tone: 'quiet', asOf: oldest,
-  };
-  return [...always, consolidated];
+  return modules.filter((m) => !CONDITIONAL.has(m.id) || m.tone !== 'quiet');
 }
 
 /** The strip's "Updated 14:05" line -- the OLDEST asOf among the modules

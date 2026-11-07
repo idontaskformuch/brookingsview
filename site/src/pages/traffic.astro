@@ -61,7 +61,6 @@ const SEVERITY_LABELS: Record<string, string> = {
 };
 const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | null }) =>
   i.zone === 'in_town' ? `In ${siteConfig.cityName}` : `Approach roads · ${Math.round(i.distanceMiles ?? 0)} mi out`;
-import PageGuide from '../components/PageGuide.astro';
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-traffic" noindex={isQuietSection('traffic')}
   description={metaDescription('traffic', siteConfig)}
@@ -89,15 +88,6 @@ import PageGuide from '../components/PageGuide.astro';
     )}
     <ShareButton title={pageMeta.title} />
   </header>
-
-  <PageGuide
-    shows={`Road incidents, lane closures and construction reported near ${siteConfig.cityName}, with severity and location.`}
-    use="Look before you drive, filter by severity, and treat an empty table as 'nothing reported', not 'guaranteed clear'. For road conditions in snow or ice, check the official source too."
-  >
-    {siteConfig.trafficSource
-      ? <><a href={siteConfig.trafficSource.url} rel="noopener">{siteConfig.trafficSource.name}</a>, refreshed with each site update.</>
-      : <>No public live incident feed exists for this area that we can show; weather alerts are on the weather page.</>}
-  </PageGuide>
 
   <SectionRule label={incidents.length > 0 ? `${incidents.length} active` : 'Current incidents'} />
 
@@ -152,13 +142,7 @@ import PageGuide from '../components/PageGuide.astro';
         ))}
       </tbody>
     </table>
-  ) : siteConfig.trafficSource ? (
-    <p class="empty">
-      No incidents in {siteConfig.cityName} right now.{lastChecked
-        ? <> Last checked {formatTimeWithZone(lastChecked)}.</>
-        : null}
-    </p>
-  ) : (
+  ) : siteConfig.trafficSource ? null : ( // a source with no incidents renders nothing (owner 2026-11-07); the source line below stays
     // Never render "No active incidents" when there's no actual source
     // behind it -- that reads as "roads are clear," not the true state
     // ("we don't have a live feed for this area yet"). See
