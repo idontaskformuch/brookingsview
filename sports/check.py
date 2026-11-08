@@ -21,11 +21,11 @@ from urllib.parse import urlparse
 from scrapers import robots
 from scrapers.user_agent import user_agent
 from sports import adapters
+from sports.http import DEFAULT_MAX_CRAWL_DELAY, PoliteHttp, SourceSkipped, default_get
 from sports.config import validate_sports_config
 from sports.models import NormalizedEvent, NormalizedStanding
 
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "configs"
-MAX_CRAWL_DELAY_SECONDS = 10
 
 
 @dataclass
@@ -40,13 +40,17 @@ class SourceReport:
     last: str | None = None
     sports: list[str] = field(default_factory=list)
     error: str | None = None
+    crawl_delay: float | None = None    # seconds the source asks for between requests
+    waited: float = 0.0                 # seconds actually waited because of it
 
     def line(self) -> str:
         robots = "n/a" if self.robots_ok is None else ("ok" if self.robots_ok else f"BLOCKED ({self.robots_note})")
         if self.error:
-            return f"{self.label}: reachable={'yes' if self.reachable else 'no'} robots={robots} ERROR {self.error}"
+            delay = f" crawl-delay={self.crawl_delay:g}s" if self.crawl_delay else ""
+            return f"{self.label}: reachable={'yes' if self.reachable else 'no'} robots={robots}{delay} ERROR {self.error}"
         span = f"{self.first}..{self.last}" if self.first else "-"
-        return (f"{self.label}: reachable=yes robots={robots} events={self.events} standings={self.standings} "
+        delay = f" crawl-delay={self.crawl_delay:g}s waited={self.waited:.0f}s" if self.crawl_delay else ""
+        return (f"{self.label}: reachable=yes robots={robots}{delay} events={self.events} standings={self.standings} "
                 f"range={span} sports={','.join(self.sports) or '-'}")
 
 
@@ -55,39 +59,37 @@ def crawl_delay(robots_text: str) -> float | None:
     return robots.crawl_delay(robots_text)
 
 
-def _http_get(url: str, ua: str):
-    import requests
-    try:
-        res = requests.get(url, headers={"User-Agent": ua}, timeout=20)
-        return res.status_code, res.text
-    except requests.RequestException:
-        return None, ""
-
-
-def check_source(source: dict, town_id: str, *, get=_http_get, sleep=time.sleep) -> SourceReport:
+def check_source(source: dict, town_id: str, *, get=default_get, sleep=time.sleep) -> SourceReport:
     name = source.get("adapter", "?")
     label = f"{name}" + (f" [{source['program']}/{source.get('sport', '*')}]" if source.get("program") else "")
     report = SourceReport(label=label)
     params = adapters.merged_params(source)
     url = params.get("url")
-    ua = user_agent(town_id)
+    http = PoliteHttp(user_agent(town_id), mode=source.get("robots_mode", robots.DEFAULT_MODE),
+                      max_crawl_delay=source.get("max_crawl_delay", DEFAULT_MAX_CRAWL_DELAY), get=get, sleep=sleep)
+    params["_http"] = http
     if url:
-        parts = urlparse(url)
-        status, text = get(f"{parts.scheme}://{parts.netloc}/robots.txt", ua)
-        verdict = robots.verdict(status, text, url, mode=source.get("robots_mode", robots.DEFAULT_MODE))
-        report.robots_ok, report.robots_note = verdict.ok, verdict.reason
-        if not verdict.ok:
-            report.error = "skipped, adapter not called"
+        try:
+            http.preflight(url)
+            report.robots_ok = True
+            report.robots_note = "ok"
+        except SourceSkipped as exc:
+            report.robots_ok = exc.kind != "robots"
+            report.robots_note = str(exc)
+            report.crawl_delay = http.crawl_delay
+            report.error = f"skipped, adapter not called ({exc})"
             return report
-        delay = crawl_delay(text or "")
-        if delay:
-            sleep(min(delay, MAX_CRAWL_DELAY_SECONDS))
     try:
         rows = adapters.get(name)(params)
+    except SourceSkipped as exc:
+        report.error = f"skipped ({exc})"
+        report.crawl_delay, report.waited = http.crawl_delay, http.waited
+        return report
     except Exception as exc:  # a dry run reports every failure instead of stopping
         report.error = f"{type(exc).__name__}: {exc}"[:200]
         return report
     report.reachable = True
+    report.crawl_delay, report.waited = http.crawl_delay, http.waited
     events = [r for r in rows if isinstance(r, NormalizedEvent)]
     report.events = len(events)
     report.standings = sum(isinstance(r, NormalizedStanding) for r in rows)
@@ -98,7 +100,7 @@ def check_source(source: dict, town_id: str, *, get=_http_get, sleep=time.sleep)
     return report
 
 
-def check_town(cfg: dict, *, get=_http_get, sleep=time.sleep) -> tuple[list[str], list[SourceReport]]:
+def check_town(cfg: dict, *, get=default_get, sleep=time.sleep) -> tuple[list[str], list[SourceReport]]:
     problems = validate_sports_config(cfg)
     if problems:
         return problems, []

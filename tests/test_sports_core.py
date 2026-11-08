@@ -233,13 +233,25 @@ def test_check_skips_adapter_when_robots_blocks(fake_adapter):
         assert reports[0].robots_ok is False and reports[0].error and not called
 
 
-def test_check_honours_crawl_delay_and_caps_it(fake_adapter):
-    slept = []
-    robots = "User-agent: *\nCrawl-delay: 60\nDisallow: /private\n"
-    check.check_town(block(), get=lambda url, ua: (200, robots), sleep=slept.append)
-    assert slept == [check.MAX_CRAWL_DELAY_SECONDS]
+def test_check_skips_source_whose_crawl_delay_is_above_the_limit(fake_adapter):
+    called, slept = [], []
+    adapters._ADAPTERS[fake_adapter] = lambda p: called.append(1) or []
+    robots = "User-agent: *\nCrawl-delay: 90\nDisallow: /private\n"
+    _, reports = check.check_town(block(), get=lambda url, ua: (200, robots), sleep=slept.append)
+    r = reports[0]
+    assert not called and not slept                      # no fetch at all, certainly no faster one
+    assert r.robots_ok is True and r.crawl_delay == 90 and "max_crawl_delay" in r.error
     assert check.crawl_delay("User-agent: bot\nCrawl-delay: 5\nUser-agent: *\nCrawl-delay: 2") == 2.0
     assert check.crawl_delay("User-agent: *\nDisallow:") is None
+
+
+def test_max_crawl_delay_is_validated(fake_adapter):
+    cfg = block()
+    cfg["sports"]["sources"][0]["max_crawl_delay"] = 120
+    assert validate_sports_config(cfg) == []
+    for bad in (0, -1, "60", True):
+        cfg["sports"]["sources"][0]["max_crawl_delay"] = bad
+        assert any("max_crawl_delay" in m for m in validate_sports_config(cfg))
 
 
 def test_check_reports_adapter_failure_without_stopping(fake_adapter):

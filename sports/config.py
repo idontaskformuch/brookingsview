@@ -9,7 +9,7 @@ from sports import adapters, registry
 NON_ADAPTER_SOURCES = ("manual_verified", "submissions")
 _TOP = {"enabled", "nearby_radius_miles", "programs", "rivalries", "sources", "source_priority", "submissions"}
 _PROGRAM = {"id", "name", "short", "nickname", "colors", "home_venue", "level_default"}
-_SOURCE = {"adapter", "program", "sport", "level", "gender", "url", "params", "robots_mode"}
+_SOURCE = {"adapter", "program", "sport", "level", "gender", "url", "params", "robots_mode", "max_crawl_delay", "note"}
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
@@ -89,6 +89,11 @@ def validate_sports_config(cfg: dict) -> list[str]:
             bad(f"{where}.gender: unknown gender {src['gender']!r}")
         if "robots_mode" in src and src["robots_mode"] not in robots.MODES:
             bad(f"{where}.robots_mode: expected one of {', '.join(robots.MODES)}")
+        mcd = src.get("max_crawl_delay")
+        if "max_crawl_delay" in src and (isinstance(mcd, bool) or not isinstance(mcd, (int, float)) or mcd <= 0):
+            bad(f"{where}.max_crawl_delay: must be a positive number of seconds")
+        if "note" in src and not isinstance(src["note"], str):
+            bad(f"{where}.note: must be text")
         if "params" in src and not isinstance(src["params"], dict):
             bad(f"{where}.params: must be an object")
 

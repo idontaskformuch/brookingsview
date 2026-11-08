@@ -146,50 +146,55 @@ class GoJacksParser(BaseParser):
         return out
 
     def _parse_sport_page(self, html: str, sport: str) -> list[dict]:
-        soup = BeautifulSoup(html, "html.parser")
-        page_text = soup.get_text()
+        return parse_schedule_page(html, sport)
 
-        base_year, spans_two_years = _season_year(page_text)
 
-        table = soup.find("table")
-        if not table:
-            return []
+def parse_schedule_page(html: str, sport: str) -> list[dict]:
+    """One SIDEARM text schedule page -> game dicts (module level so sports/adapters/internal.py reuses the very same parsing)."""
+    soup = BeautifulSoup(html, "html.parser")
+    page_text = soup.get_text()
 
-        header_cells = table.find_all("th")
-        headers = [th.get_text(strip=True).lower() for th in header_cells]
-        if not headers:
-            return []
+    base_year, spans_two_years = _season_year(page_text)
 
-        records = []
-        for row in table.find_all("tr"):
-            cells = row.find_all("td")
-            if not cells or len(cells) < len(headers):
-                continue
-            vals = {headers[i]: cells[i].get_text(strip=True) for i in range(len(headers))}
+    table = soup.find("table")
+    if not table:
+        return []
 
-            opponent = vals.get("opponent")
-            if not opponent:
-                continue
+    header_cells = table.find_all("th")
+    headers = [th.get_text(strip=True).lower() for th in header_cells]
+    if not headers:
+        return []
 
-            starts_at = _parse_datetime(
-                vals.get("date", ""), vals.get("time", ""), base_year, spans_two_years
-            )
-            result_raw = (vals.get("result") or "").strip()
-            result = None if result_raw in ("", "-") else result_raw
+    records = []
+    for row in table.find_all("tr"):
+        cells = row.find_all("td")
+        if not cells or len(cells) < len(headers):
+            continue
+        vals = {headers[i]: cells[i].get_text(strip=True) for i in range(len(headers))}
 
-            records.append({
-                "sport": sport,
-                "opponent": opponent,
-                "home_away": (vals.get("at") or "").lower() or None,
-                "starts_at": starts_at,
-                "venue": vals.get("location"),
-                "result": result,
-                "raw_data": vals,
-                "content_hash": content_hash(
-                    "gojacks", sport, normalize_opponent(opponent), vals.get("date"), base_year
-                ),
-            })
-        return records
+        opponent = vals.get("opponent")
+        if not opponent:
+            continue
+
+        starts_at = _parse_datetime(
+            vals.get("date", ""), vals.get("time", ""), base_year, spans_two_years
+        )
+        result_raw = (vals.get("result") or "").strip()
+        result = None if result_raw in ("", "-") else result_raw
+
+        records.append({
+            "sport": sport,
+            "opponent": opponent,
+            "home_away": (vals.get("at") or "").lower() or None,
+            "starts_at": starts_at,
+            "venue": vals.get("location"),
+            "result": result,
+            "raw_data": vals,
+            "content_hash": content_hash(
+                "gojacks", sport, normalize_opponent(opponent), vals.get("date"), base_year
+            ),
+        })
+    return records
 
 
 def _season_year(page_text: str) -> tuple[int, bool]:
