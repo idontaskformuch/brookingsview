@@ -10,8 +10,10 @@ interface Props {
   kicker?: string;
   /** A small label after the title ("Exhibition", "In progress"). */
   tag?: string;
+  /** Always render an empty tag the page script can fill ("In progress") when the game starts after the build. */
+  tagSlot?: boolean;
 }
-const { game, feature = false, kicker, tag } = Astro.props;
+const { game, feature = false, kicker, tag, tagSlot = false } = Astro.props;
 const legacy = game !== undefined;
 const home = legacy ? game.home_away === 'home' : Astro.props.prefix === 'vs';
 const sportName = legacy
@@ -25,7 +27,7 @@ const timeText = Astro.props.timeTba ? 'TBA' : (startsAt ? formatTime(startsAt) 
 ---
 <div class:list={['game', feature && 'game--feature']}>
   <p class="game__meta"><span class="kicker">{kicker ?? (home ? 'Home' : 'Away')} &middot; {sportName}</span></p>
-  <p class="game__title">Jackrabbits {home ? 'vs' : 'at'} {opponent}{tag && <span class="game__tag"> · {tag}</span>}</p>
+  <p class="game__title">Jackrabbits {home ? 'vs' : 'at'} {opponent}{tag ? <span class="game__tag" data-next-tag> · {tag}</span> : tagSlot ? <span class="game__tag" data-next-tag hidden></span> : null}</p>
   <p class="game__when data">
     {formatDate(startsAt)}{timeText && ` · ${timeText}`}
     {venue && <><br />{venue}</>}

@@ -111,3 +111,13 @@ export function resultLine(ev: SportEventLike, programId: string): string | null
   const theirs = homeSide ? ev.scoreAway : ev.scoreHome;
   return `${ours > theirs ? "W" : ours < theirs ? "L" : "T"} ${ours}-${theirs}`;
 }
+
+export type RowNote = "in_progress" | "result_pending" | "no_result" | "postponed" | "cancelled" | null;
+
+/** The word shown in a result cell that has no result. Server and browser both use this one function. */
+export function rowNote(status: SportEventLike["status"], phase: SportPhase, hasResult: boolean): RowNote {
+  if (hasResult) return null;
+  if (status === "postponed") return "postponed";
+  if (status === "cancelled") return "cancelled";
+  return phase === "inProgress" ? "in_progress" : phase === "pending" ? "result_pending" : phase === "history" ? "no_result" : null;
+}

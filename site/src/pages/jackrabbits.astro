@@ -62,19 +62,20 @@ const summaryBySport = new Map(
   </header>
 
   {featured && (
-    <>
+    <div data-next-up data-sport={featured.row.sport} data-start={featured.row.startAt.toISOString()} data-tz={featured.row.tz}
+         data-status={featured.row.status} data-tba={featured.row.timeTba ? '1' : '0'} data-result="0">
       <SectionRule label="Next up" />
-      <GameCard feature sport={featured.group.label} opponent={featured.row.opponent} prefix={featured.row.prefix}
+      <GameCard feature tagSlot sport={featured.group.label} opponent={featured.row.opponent} prefix={featured.row.prefix}
         startAt={featured.row.startAt.toISOString()} timeTba={featured.row.timeTba} venue={featured.row.venue}
         kicker={featured.row.neutralSite ? terms.neutral_site : undefined}
         tag={featured.row.exhibition ? terms.exhibition : featured.row.phase === 'inProgress' ? terms.in_progress : undefined} />
-    </>
+    </div>
   )}
 
   {groups.map((group) => {
     const summary = summaryBySport.get(group.key);
     return (
-      <>
+      <section data-group>
         <SectionRule label={group.label} />
         {group.record && (
           <p class="record">{terms.record} <strong>{recordText(group.record)}</strong>{group.hasExhibition && <span class="note"> · {terms.exhibition_note}</span>}</p>
@@ -87,21 +88,28 @@ const summaryBySport = new Map(
         {group.results.length > 0 && (
           <>
             <h3 class="sched-label">Results</h3>
-            <GameTable rows={group.results} terms={terms} />
+            <div data-results><GameTable rows={group.results} terms={terms} section="results" /></div>
           </>
         )}
         {group.schedule.length > 0 && (
-          <>
+          <div data-schedule>
             <h3 class="sched-label">Schedule</h3>
-            <GameTable rows={group.schedule} terms={terms} />
-          </>
+            <GameTable rows={group.schedule} terms={terms} section="schedule" />
+          </div>
         )}
-      </>
+      </section>
     );
   })}
 
+  <span data-sport-terms={JSON.stringify(terms)} hidden></span>
   <ClusterNav clusterLabel="Local life" items={clusterNavItems} />
 </BaseLayout>
+
+<script>
+  // Brings "In progress" / "Result pending" / history up to date when the page is opened; the build-time phase stays without JavaScript.
+  import { refreshSportPhases } from '../lib/sport-phase-dom';
+  refreshSportPhases(document);
+</script>
 
 <style>
 .lede {

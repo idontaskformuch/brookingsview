@@ -1,11 +1,14 @@
 /** /jackrabbits as data: sport_events rows -> one group per team, each with its record, results (newest first) and schedule (soonest
  *  first). Every state decision is made by lib/sport-events.ts; this file only arranges. Pure, so it is testable without a database. */
-import { isOpen, recordFor, resultLine, sportPhase, type SportEventRow, type SportPhase } from './sport-events';
+import { isOpen, recordFor, resultLine, rowNote, sportPhase, type RowNote, type SportEventRow, type SportPhase } from './sport-events';
 
-export type RowNote = 'in_progress' | 'result_pending' | 'no_result' | 'postponed' | 'cancelled' | null;
+export type { RowNote };
 
 export interface GameRow {
   id: number;
+  sport: string;
+  tz: string;
+  status: SportEventRow['status'];
   startAt: Date;
   timeTba: boolean;
   prefix: 'vs' | 'at';
@@ -46,15 +49,9 @@ export function toRow(ev: SportEventRow, programId: string, now: Date): GameRow 
   const away = ev.awayProgramId === programId;
   const opponent = (away ? ev.homeName : ev.awayName) ?? '';
   const result = resultLine(ev, programId);
-  const note: RowNote = result ? null
-    : ev.status === 'postponed' ? 'postponed'
-    : ev.status === 'cancelled' ? 'cancelled'
-    : phase === 'inProgress' ? 'in_progress'
-    : phase === 'pending' ? 'result_pending'
-    : phase === 'history' ? 'no_result'
-    : null;
+  const note = rowNote(ev.status, phase, result !== null);
   return {
-    id: ev.id, startAt: ev.startAt, timeTba: ev.timeTba, prefix: away && !ev.neutralSite ? 'at' : 'vs', opponent, venue: ev.venue,
+    id: ev.id, sport: ev.sport, tz: ev.tz, status: ev.status, startAt: ev.startAt, timeTba: ev.timeTba, prefix: away && !ev.neutralSite ? 'at' : 'vs', opponent, venue: ev.venue,
     neutralSite: ev.neutralSite, exhibition: ev.exhibition, phase, result, note,
   };
 }
