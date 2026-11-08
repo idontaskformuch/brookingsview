@@ -54,7 +54,7 @@
     "ops.scrape-liveness": {
       "severity": "hard",
       "born_from": "GitHub cron started scrapes 4.5-9.5 h late; Cloudflare cron-dispatcher + watchdog (Kö 9 Steg 1, 2026-10-21)",
-      "what": "a town has had no successful scrape_runs row for 18 h"
+      "what": "a town has had no successful scrape_runs row for 26 h"
     },
     "ops.qa-liveness": {
       "severity": "hard",
