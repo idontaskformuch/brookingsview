@@ -1,0 +1,12 @@
+{
+  "terms": {"schedule": "Fixtures", "results": "Results", "standings": "Table", "fixture": "fixture", "fixtures": "fixtures"},
+  "date_format": "%a %-d %b",
+  "time_format": "%H:%M",
+  "templates": {
+    "score_final": "{winner} beat {loser} {score}",
+    "score_tied": "{home} and {away} drew {hs}–{as}",
+    "score_line": "{home} {hs}–{as} {away}",
+    "placing": "{ordinal} of {field}",
+    "week_record": "{program}: {wins}–{losses} this week"
+  }
+}

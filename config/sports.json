@@ -1,0 +1,30 @@
+{
+  "_note": "Single source for the sport registry. Python reads this file; site/src/lib/sports-registry.generated.ts is generated from it by scripts/gen_sports_registry.py (a test fails if they drift). Unknown sport ids fail the build.",
+  "resultTypes": ["score", "placing", "time", "none"],
+  "levels": ["pro", "minor", "college", "varsity", "jv", "amateur", "youth"],
+  "genders": ["boys", "girls", "men", "women", "mixed"],
+  "sports": [
+    {"id": "football", "us": "Football", "uk": "American football", "icon": "football", "result_type": "score"},
+    {"id": "soccer", "us": "Soccer", "uk": "Football", "icon": "soccer", "result_type": "score"},
+    {"id": "basketball", "us": "Basketball", "uk": "Basketball", "icon": "basketball", "result_type": "score"},
+    {"id": "hockey", "us": "Hockey", "uk": "Ice hockey", "icon": "hockey", "result_type": "score"},
+    {"id": "baseball", "us": "Baseball", "uk": "Baseball", "icon": "baseball", "result_type": "score"},
+    {"id": "softball", "us": "Softball", "uk": "Softball", "icon": "softball", "result_type": "score"},
+    {"id": "volleyball", "us": "Volleyball", "uk": "Volleyball", "icon": "volleyball", "result_type": "score"},
+    {"id": "lacrosse", "us": "Lacrosse", "uk": "Lacrosse", "icon": "lacrosse", "result_type": "score"},
+    {"id": "rugby", "us": "Rugby", "uk": "Rugby", "icon": "rugby", "result_type": "score"},
+    {"id": "shinty", "us": "Shinty", "uk": "Shinty", "icon": "shinty", "result_type": "score"},
+    {"id": "roller_derby", "us": "Roller derby", "uk": "Roller derby", "icon": "roller-derby", "result_type": "score"},
+    {"id": "wrestling", "us": "Wrestling", "uk": "Wrestling", "icon": "wrestling", "result_type": "score"},
+    {"id": "tennis", "us": "Tennis", "uk": "Tennis", "icon": "tennis", "result_type": "score"},
+    {"id": "track", "us": "Track and field", "uk": "Athletics", "icon": "track", "result_type": "placing"},
+    {"id": "swimming", "us": "Swimming", "uk": "Swimming", "icon": "swimming", "result_type": "placing"},
+    {"id": "cross_country", "us": "Cross country", "uk": "Cross country", "icon": "cross-country", "result_type": "placing"},
+    {"id": "golf", "us": "Golf", "uk": "Golf", "icon": "golf", "result_type": "placing"},
+    {"id": "rodeo", "us": "Rodeo", "uk": "Rodeo", "icon": "rodeo", "result_type": "placing"},
+    {"id": "speedway", "us": "Speedway", "uk": "Speedway", "icon": "speedway", "result_type": "time"},
+    {"id": "motorsport", "us": "Racing", "uk": "Motorsport", "icon": "motorsport", "result_type": "time"},
+    {"id": "equestrian", "us": "Equestrian", "uk": "Equestrian", "icon": "equestrian", "result_type": "none"},
+    {"id": "curling", "us": "Curling", "uk": "Curling", "icon": "curling", "result_type": "none"}
+  ]
+}
