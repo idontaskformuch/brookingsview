@@ -155,7 +155,7 @@ def collect(conn, town_id: str, start: datetime, end: datetime) -> dict:
             """, (town_id, start, end))
         events = [dict(r) for r in cur.fetchall()]
 
-        # sport_events, not the legacy sports_games: the same rows /jackrabbits and the page's own list read. Postponed/cancelled are left out
+        # sport_events: the same rows /jackrabbits and the page's own list read. Postponed/cancelled are left out
         # (nothing says when they are played); an exhibition stays, flagged, and only that week's rows are read, so no other season leaks in.
         cur.execute(
             """

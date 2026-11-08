@@ -38,7 +38,7 @@ const BROOKINGS_CURATED: CuratedSource[] = [
   { configKey: 'events', name: 'Brookings Area Chamber of Commerce events (GrowthZone)', url: 'https://brookingsareachamberofcommerce.growthzoneapp.com/events/Search' },
   { configKey: 'events', name: 'Visit Brookings events calendar', url: 'https://visitbrookingssd.com/events/' },
   { configKey: 'sdsu_events', name: 'SDSU campus events calendar', url: 'https://www.sdstate.edu/event-calendar' },
-  { configKey: 'sdsu_athletics', name: 'SDSU Jackrabbits athletics', url: 'https://gojacks.com' },
+  { configKey: 'sports', name: 'SDSU Jackrabbits athletics', url: 'https://gojacks.com' },
   { configKey: 'weather', name: 'National Weather Service forecast', url: 'https://www.weather.gov' },
   { configKey: 'weather_alerts', name: 'National Weather Service alerts', url: 'https://alerts.weather.gov' },
   { configKey: 'county_alerts', name: 'Brookings County alerts', url: 'https://www.brookingscountysd.gov' },
@@ -112,6 +112,8 @@ function isEnabled(config: any, configKey: string): boolean {
   if (configKey === 'whats_on_ticketmaster') {
     return config.features?.whats_on?.ticketmaster?.enabled === true;
   }
+  // Local sports (sports/runner.py -> sport_events) are gated by the top-level sports block, not by data_sources.
+  if (configKey === 'sports') return config.sports?.enabled === true;
   return config.data_sources?.[configKey]?.enabled === true;
 }
 

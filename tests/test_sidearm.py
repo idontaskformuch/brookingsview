@@ -1,4 +1,4 @@
-"""Regression tests for scrapers/parsers/gojacks_v1.py -- see
+"""Regression tests for sports/adapters/sidearm.py -- see
 NEEDS-HUMAN-REVIEW.md "University Coverage Rebuild" for the timezone bug
 this guards against (games stored as naive datetimes, silently treated as
 UTC on insert, ~5-6h off from real Central time for every game)."""
@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from scrapers.parsers.gojacks_v1 import _parse_datetime, normalize_opponent, parse_time_cell
+from sports.adapters.sidearm import _parse_datetime, normalize_opponent, parse_time_cell
 
 CENTRAL = ZoneInfo("America/Chicago")
 
@@ -76,16 +76,14 @@ def test_normalize_opponent_leaves_unranked_name_unchanged():
     assert normalize_opponent("Second Line Showcase") == "Second Line Showcase"
 
 
-def test_ranking_change_does_not_change_content_hash_identity():
+def test_ranking_change_does_not_change_identity():
     # The actual bug: "Nebraska" and "#1 Nebraska" on the same date used to
-    # hash differently and duplicate. normalize_opponent() is what
-    # content_hash is now keyed on for the opponent field -- confirm both
-    # variants normalize identically.
+    # hash differently and duplicate. Identity is built from normalize_opponent() -- confirm both variants normalize identically.
     assert normalize_opponent("Nebraska") == normalize_opponent("#1 Nebraska")
     assert normalize_opponent("Villanova") == normalize_opponent("RV Villanova")
 
 
-# Every time-cell shape seen in sports_games and the 2026 schedule fixtures (2026-11-08) -> Central (hour, minute), None = no usable time.
+# Every time-cell shape seen in the old games table and the 2026 schedule fixtures (2026-11-08) -> Central (hour, minute), None = no usable time.
 @pytest.mark.parametrize("cell,expected", [
     ("7 p.m.", (19, 0)), ("7:00 p.m.", (19, 0)), ("1:30 PM", (13, 30)), ("11:00 a.m.", (11, 0)), ("9 p.m.", (21, 0)),
     ("Noon", (12, 0)), ("noon", (12, 0)), ("Approximately 2:30 p.m.", (14, 30)),
@@ -101,6 +99,6 @@ def test_parse_time_cell(cell, expected):
     assert parse_time_cell(cell) == expected
 
 
-def test_legacy_datetime_keeps_noon_placeholder_for_tba_and_fixes_pt_ct():
+def test_datetime_keeps_noon_placeholder_for_tba_and_fixes_pt_ct():
     noon = lambda cell: datetime.fromisoformat(_parse_datetime("Aug 30 (Sun)", cell, 2026, False)).astimezone(CENTRAL).hour
     assert noon("10 a.m. PT / noon CT") == 12 and noon("TBD") == 12 and noon("") == 12 and noon("Noon") == 12

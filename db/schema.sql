@@ -123,6 +123,8 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_town_start ON events (town_id, starts_at);
 
+-- Legacy (gojacks_v1, removed 2026-11-08): nothing writes or reads this table any more; Jackrabbits games live in sport_events (migration 066).
+-- The table and its rows are left in place on purpose (no DROP without the owner's approval, CLAUDE.md rule 14).
 CREATE TABLE IF NOT EXISTS sports_games (
     id            BIGSERIAL PRIMARY KEY,
     town_id       TEXT NOT NULL REFERENCES towns(town_id),

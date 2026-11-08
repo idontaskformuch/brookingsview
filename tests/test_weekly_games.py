@@ -1,4 +1,4 @@
-"""The weekly roundup reads games from sport_events (not sports_games): our side, result line, neutral/exhibition/TBA wording."""
+"""The weekly roundup reads games from sport_events (sport_events): our side, result line, neutral/exhibition/TBA wording."""
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 

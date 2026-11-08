@@ -9,8 +9,8 @@
  * fix, the Legistar _date_only_noon_utc() fix): two different kinds of
  * "when" exist in this schema, and they are NEVER interchangeable.
  *
- *   REAL TIMESTAMPS   stories.occurs_at for source_type='event', sports_games
- *                      .starts_at, sdsu_events.starts_at. These carry a true
+ *   REAL TIMESTAMPS   stories.occurs_at for source_type='event', sport_events
+ *                      .start_at, sdsu_events.starts_at. These carry a true
  *                      instant -- bucket them by the town's LOCAL calendar
  *                      day via localDateParts() (lib/events.ts).
  *
@@ -218,7 +218,7 @@ export interface DayItem {
   title: string;
   /** Internal story/project page when one exists; external URL for SDSU
    *  (no local page, see artsEventAsStory's own comment); null when neither
-   *  applies (a game -- sports_games/regional_sports_games are
+   *  applies (a game -- sport_events/regional_sports_games are
    *  deliberately never their own pages, see db.ts's module docstring). */
   href: string | null;
   external: boolean;

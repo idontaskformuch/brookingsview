@@ -92,7 +92,7 @@ describe('Brookings sports fetch', () => {
     expect(fired).toEqual([SPORTS_WORKFLOW]);
     expect(dueWorkflows(ALERTS_CRON, at('2026-11-09T17:00:00Z'))).toEqual([SPORTS_WORKFLOW]);
   });
-  it('never shares an hour with the scrape ticks (gojacks_v1 runs there until step 4)', () => {
+  it('never shares an hour with the scrape ticks (a sports run never overlaps a scrape)', () => {
     const scrapeHours = SCRAPE_CRON.split(' ')[1].split(',').map(Number);
     expect(scrapeHours).not.toContain(SPORTS_UTC_HOUR);
   });

@@ -11,6 +11,11 @@ describe('aboutSourcesFor', () => {
     }
   });
 
+  it('still credits SDSU athletics for Brookings, gated by the sports block (not data_sources), and for no other town', () => {
+    expect(aboutSourcesFor('brookings_sd').map((s) => s.name)).toContain('SDSU Jackrabbits athletics');
+    for (const t of ['moreno_valley_ca', 'broomfield_co', 'glasgow']) expect(aboutSourcesFor(t).map((s) => s.name)).not.toContain('SDSU Jackrabbits athletics');
+  });
+
   it('returns a non-empty, real source list for Moreno Valley', () => {
     const sources = aboutSourcesFor('moreno_valley_ca');
     expect(sources.length).toBeGreaterThan(0);

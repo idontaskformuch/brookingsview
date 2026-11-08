@@ -1,6 +1,6 @@
 /** Which game the sign strip names, and how it words it.
  *
- *  The strip used to show the first row of sports_games whatever the sport, so a
+ *  The strip used to show the first game row whatever the sport, so a
  *  Friday volleyball match beat Saturday's Hobo Day football game, and the text
  *  never said which sport ("Jacks vs South Dakota"). Now:
  *   1. a football game within the next 7 calendar days wins (the town's main

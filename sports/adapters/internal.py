@@ -1,7 +1,7 @@
 """`internal`: schedules the project already knows how to read, normalised into sport_events. First provider: `gojacks` (SDSU Jackrabbits).
 
 provider `gojacks` -- gojacks.com runs on SIDEARM Sports; every sport has a text-only schedule table at /sports/{slug}/schedule/text, parsed
-by the very same function the legacy sports_games scraper uses (scrapers.parsers.gojacks_v1.parse_schedule_page).
+by sports.adapters.sidearm.parse_schedule_page.
 
 params: provider, url (site root, e.g. https://gojacks.com), program (sport_programs id), level (default college),
         sports: {slug: {"sport": <registry sport id>, "gender": <registry gender>}}, optional tz (default America/Chicago).
@@ -24,9 +24,9 @@ import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from scrapers.parsers.gojacks_v1 import normalize_opponent, parse_schedule_page, parse_time_cell
 from sports import adapters
 from sports.http import PoliteHttp
+from sports.adapters.sidearm import normalize_opponent, parse_schedule_page, parse_time_cell
 from sports.models import NormalizedEvent
 
 NAME = "internal"

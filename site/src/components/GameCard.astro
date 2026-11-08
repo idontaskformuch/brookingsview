@@ -4,7 +4,7 @@ import { formatDate, formatTime } from '../lib/db';
 import { sportTerms } from '../lib/sport-strings';
 import { siteConfig } from '../lib/site-config';
 
-/** Either a legacy `game` (sports_games row) or the sport_events fields passed one by one (/jackrabbits). */
+/** Either a `game` (a sport_events row seen through lib/sport-games.ts) or the sport_events fields passed one by one (/jackrabbits). */
 interface Props {
   game?: Game; feature?: boolean;
   sport?: string; opponent?: string; prefix?: 'vs' | 'at'; startAt?: string; timeTba?: boolean; venue?: string | null;

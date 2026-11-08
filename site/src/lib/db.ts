@@ -337,11 +337,11 @@ export interface PropertySale {
 }
 
 /** En rad ur regional_sports_games -- se db/migrations/009_regional_sports.sql.
- *  Namnet skiljer sig medvetet från Game/sports_games ovan: det är ett annat
+ *  Namnet skiljer sig medvetet från Game (Jackrabbits, ur sport_events) ovan: det är ett annat
  *  bord med annan form (flera lag, status/resultat som ÄNDRAS över tid) för
  *  städer utan ett eget lokalt lag att bevaka, t.ex. Moreno Valleys
  *  Inland Empire 66ers/Angels/Dodgers via /sports. Blandas aldrig ihop med
- *  Jackrabbits/sports_games/jackrabbits.astro. */
+ *  Jackrabbits/sport_events/jackrabbits.astro. */
 export interface RegionalGame {
   league: string;
   team_name: string;

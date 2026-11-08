@@ -35,8 +35,7 @@ export const OSM_WORKFLOW = 'osm-open-late.yml';
 export const REGISTER_WORKFLOW = 'evening-register.yml';
 
 // Brookings sports (local sports Phase 1): SDSU schedules -> sport_events, once a day at 17:00 UTC. Rides the 15-minute alerts tick (the one
-// whose minute is 0-14), so no extra cron trigger is needed. NOT 11:00/23:00 UTC: scrape.yml runs gojacks_v1 then, and the two must not
-// overlap until gojacks_v1 is switched off.
+// whose minute is 0-14), so no extra cron trigger is needed. Kept off the 11:00/23:00 UTC scrape ticks so a sports run never overlaps a scrape.
 export const SPORTS_WORKFLOW = 'brookings-sports.yml';
 export const SPORTS_UTC_HOUR = 17;
 

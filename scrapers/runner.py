@@ -7,7 +7,7 @@ Ingen ort-specifik logik här — allt kommer från configen. Ny ort = ny config
 
 Körning:
     python -m scrapers.runner --config configs/brookings_sd.json
-    python -m scrapers.runner --config configs/brookings_sd.json --only weather sdsu_athletics
+    python -m scrapers.runner --config configs/brookings_sd.json --only weather weather_alerts
 """
 from __future__ import annotations
 
@@ -43,10 +43,7 @@ REGISTRY: dict[str, str] = {
     "coins":           "scrapers.parsers.glasgow_coins_v1:GlasgowCoinsParser",
     "jobs":            "scrapers.parsers.jobs_v1:JobsParser",
     "rivco_assessor":  "scrapers.parsers.rivco_property_sales_v1:PropertySalesParser",
-    # OBS: "pro_sports" är MEDVETET en annan nyckel än "sports" (=gojacks_v1,
-    # SDSU Jackrabbits/Brookings) -- olika tabell (regional_sports_games vs
-    # sports_games), olika form. Att återanvända "sports" hade tyst skrivit
-    # över Jackrabbits registrering i den här dicten.
+    # Local sports (SDSU Jackrabbits and later programs) run through sports/runner.py into sport_events, not through this registry.
     "pro_sports":      "scrapers.parsers.regional_sports_v1:RegionalSportsParser",
     "school_alerts":   "scrapers.parsers.school_alerts_v1:SchoolAlertsParser",
     "sdsu_events":     "scrapers.parsers.sdsu_events_v1:SdsuEventsParser",
@@ -57,7 +54,6 @@ REGISTRY: dict[str, str] = {
     # stubbar (väntar på Stage 0-verifiering av källstruktur)
     "smartgov":        "scrapers.parsers.smartgov_v1:SmartGovParser",
     "civicengage_agenda_center": "scrapers.parsers.civicengage_pdf_v1:CivicEngageParser",
-    "sports":          "scrapers.parsers.gojacks_v1:GoJacksParser",
     "sd_dot_511":      "scrapers.parsers.sd511:SD511Parser",
     "county_alerts":   "scrapers.parsers.county_alerts:CountyAlertsParser",
     "events":          "scrapers.parsers.events:EventsParser",

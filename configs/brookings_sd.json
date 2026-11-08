@@ -137,30 +137,6 @@
     "submissions": { "enabled": false }
   },
   "data_sources": {
-    "sdsu_athletics": {
-      "type": "sports",
-      "enabled": true,
-      "providers": {
-        "schedule_scrape": {
-          "url": "https://gojacks.com",
-          "parser": "gojacks_v1"
-        },
-        "ncaa_data": {
-          "leagues": [
-            "ncaafb",
-            "ncaamb",
-            "ncaawb"
-          ]
-        }
-      },
-      "refresh_minutes": 180,
-      "output": {
-        "format": "digest_plus_gameday",
-        "voice": "celebratory"
-      },
-      "_notes": "Din bästa återbesöks-motor. Fotboll spelas på Dana J. Dykhouse Stadium i Brookings (topp-FCS, slutspel, nationell TV). Höj refresh på matchdagar. Lägg till fler sporter (basket, volleyball, friidrott) i takt med säsong.",
-      "_return_driver": true
-    },
     "city_permits": {
       "type": "html_scrape",
       "enabled": false,

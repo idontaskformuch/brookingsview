@@ -30,7 +30,7 @@ from pathlib import Path
 
 CONTENT_TABLES = ["stories", "whats_on_intro", "event_deck_digest", "closure_watch_prose"]
 DATA_TABLES = CONTENT_TABLES + [
-    "events", "meetings", "jobs", "property_sales", "school_alerts", "sdsu_events", "regional_sports_games", "sports_games",
+    "events", "meetings", "jobs", "property_sales", "school_alerts", "sdsu_events", "regional_sports_games",
     "vail_news", "projects", "places", "ag_prices", "academic_calendar_dates", "employer_job_stats",
     "sport_events",
 ]

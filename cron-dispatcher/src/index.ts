@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { refreshAlerts } from './alerts/refresh';
 import { refreshSafety } from './safety/refresh';
+import { checkSportHealth } from './sports/health';
 import type { Sql } from './alerts/store';
 import { ALERTS_CRON } from './alerts/towns';
 import { dueWorkflows } from './schedule';
@@ -69,6 +70,9 @@ export default {
       const safety = await refreshSafety(env, { sql: neon(env.DATABASE_URL) as unknown as Sql });
       console.log(JSON.stringify(safety));
       failed.push(...safety.filter((r) => !r.ok).map((r) => ({ townId: `${r.townId}/${r.part}`, ok: false, error: r.error })));
+      // Sports sources (sport_sources_health): an active source with no successful run in 36 h is raised like any other failure.
+      const sportsHealth = await checkSportHealth({ sql: neon(env.DATABASE_URL) as unknown as Sql });
+      failed.push(...sportsHealth.filter((r) => !r.ok));
       if (dispatchFailed.length) throw new Error(`${dispatchFailed.length}/${dueSports.length} dispatches failed`);
       if (failed.length) throw new Error(`${failed.length} failed: ${failed.map((f) => `${f.townId}: ${f.error}`).join('; ')}`);
       return;

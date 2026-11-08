@@ -28,7 +28,7 @@ Python-scrapers (GitHub Actions cron)
 - `scrapers/runner.py` — config-driven orkestrering + händelsestyrt larm.
 - **Riktiga parsers** (dokumenterade API:er): `noaa`, `nws_alerts`, `legistar_v1`, `usda`.
 - **Dokumenterade stubbar** (väntar på Stage 0): `smartgov_v1`, `civicengage_pdf_v1`,
-  `gojacks_v1`, `sd511`, `county_alerts`, `events`.
+  `sd511`, `county_alerts`, `events`.
 - `ai_pipeline/guardrails.py` — extraktiv validering mot hallucination + förbjudet innehåll.
 - `ai_pipeline/format_prompt.py` — varm/faktastrikt formatering, mall-fallback, budgettak.
 - `.github/workflows/scrape.yml` — schemalagd körning + deploy-hook-trigger.

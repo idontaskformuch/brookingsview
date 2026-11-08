@@ -367,7 +367,7 @@
         "format": "structured_data_no_ai",
         "voice": "n/a (fakta, ingen AI-generering -- samma princip som property_sales/facilities)"
       },
-      "_notes": "VERIFIERAD 2026-08-10: MLB Stats API (statsapi.mlb.com) är en riktig, offentligt dokumenterad API, ingen robots.txt-begränsning, fungerar med sajtens vanliga User-Agent-konvention. Täcker bara MLB-affilierade lag (66ers/Angels/Dodgers) -- ESPN:s motsvarande scoreboard-JSON för NHL/NBA/NFL sitter bakom Akamai-botskydd som blockerar identifierade anrop, se _note per lag ovan. 5 av 8 konfigurerade lag är därför 'unconfirmed' tills en icke-blockerad källa hittas per liga. MEDVETET annan tabell (regional_sports_games) och annan REGISTRY-nyckel (pro_sports) än den befintliga sports_games/'sports'-nyckeln som SDSU Jackrabbits (Brookings) använder -- olika form, ingen kollision."
+      "_notes": "VERIFIERAD 2026-08-10: MLB Stats API (statsapi.mlb.com) är en riktig, offentligt dokumenterad API, ingen robots.txt-begränsning, fungerar med sajtens vanliga User-Agent-konvention. Täcker bara MLB-affilierade lag (66ers/Angels/Dodgers) -- ESPN:s motsvarande scoreboard-JSON för NHL/NBA/NFL sitter bakom Akamai-botskydd som blockerar identifierade anrop, se _note per lag ovan. 5 av 8 konfigurerade lag är därför 'unconfirmed' tills en icke-blockerad källa hittas per liga. MEDVETET egen tabell (regional_sports_games) och egen REGISTRY-nyckel (pro_sports); SDSU Jackrabbits (Brookings) går via sports/runner.py till sport_events."
     },
     "school_alerts": {
       "type": "school_alerts",
