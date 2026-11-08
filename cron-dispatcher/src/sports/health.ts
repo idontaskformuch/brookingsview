@@ -9,6 +9,7 @@ export interface SportSource { townId: string; sourceId: string }
  *  (test/sports-health.test.ts fails when they drift apart). */
 export const SPORT_SOURCES: SportSource[] = [
   { townId: 'brookings_sd', sourceId: 'internal:sdsu' },
+  { townId: 'brookings_sd', sourceId: 'internal:sdsu-club-hockey' },
 ];
 
 export const STALE_HOURS = 36;

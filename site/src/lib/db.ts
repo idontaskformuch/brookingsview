@@ -1358,6 +1358,29 @@ export async function getSportEvents(programId: string, now: Date = new Date()):
   }));
 }
 
+/** A club team's games with the link back to where the schedule comes from (sport_events.url). Same season window as getSportEvents;
+ *  a club program is never read by the pages that count the Jackrabbits record. */
+export interface ClubGame extends SportEventRow { url: string | null }
+export async function getClubGames(programId: string, now: Date = new Date()): Promise<{ name: string; games: ClubGame[] } | null> {
+  const season = currentSeason(now, siteConfig.timezone);
+  const prog = (await sql`SELECT name FROM sport_programs WHERE town_id = ${TOWN_ID} AND id = ${programId}`) as Record<string, any>[];
+  if (!prog.length) return null;
+  const rows = (await sql`
+    SELECT id, sport, gender, start_at, tz, status, time_tba, neutral_site, exhibition, venue, url,
+           home_program_id, home_name, away_program_id, away_name, score_home, score_away
+      FROM sport_events
+     WHERE town_id = ${TOWN_ID} AND program_id = ${programId}
+       AND start_at >= ${season.start.toISOString()} AND start_at < ${season.end.toISOString()}
+     ORDER BY start_at ASC, id ASC
+  `) as Record<string, any>[];
+  return { name: prog[0].name, games: rows.map((r) => ({
+    id: Number(r.id), sport: r.sport, gender: r.gender, startAt: new Date(r.start_at), tz: r.tz, status: r.status,
+    timeTba: r.time_tba, neutralSite: r.neutral_site, exhibition: r.exhibition, venue: r.venue, url: r.url,
+    homeProgramId: r.home_program_id, homeName: r.home_name, awayProgramId: r.away_program_id, awayName: r.away_name,
+    scoreHome: r.score_home, scoreAway: r.score_away,
+  })) };
+}
+
 /** Jackrabbits games for the pages that list games next to other things. Read from sport_events through the shared rule in
  *  lib/sport-events.ts (lib/sport-games.ts only reshapes): current season only, upcoming = not started or in progress, exhibitions flagged. */
 export async function getUpcomingGames(limit = 10): Promise<Game[]> {

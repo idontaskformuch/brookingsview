@@ -8,7 +8,7 @@ from sports import adapters, registry
 
 NON_ADAPTER_SOURCES = ("manual_verified", "submissions")
 _TOP = {"enabled", "nearby_radius_miles", "programs", "rivalries", "sources", "source_priority", "submissions"}
-_PROGRAM = {"id", "name", "short", "nickname", "colors", "home_venue", "level_default"}
+_PROGRAM = {"id", "name", "short", "nickname", "colors", "home_venue", "level_default", "kind"}
 _SOURCE = {"adapter", "program", "sport", "level", "gender", "url", "params", "robots_mode", "max_crawl_delay", "note"}
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -54,6 +54,8 @@ def validate_sports_config(cfg: dict) -> list[str]:
         colors = prog.get("colors")
         if colors is not None and not (isinstance(colors, list) and len(colors) == 2 and all(isinstance(c, str) and _HEX.match(c) for c in colors)):
             bad(f"{where}.colors: need two #rrggbb values")
+        if "kind" in prog and prog["kind"] != "club":
+            bad(f"{where}.kind: only \"club\" is defined")
         level = prog.get("level_default")
         if level is not None and level not in registry.levels():
             bad(f"{where}.level_default: unknown level {level!r}")

@@ -1,5 +1,5 @@
 {
-  "terms": {"schedule": "Schedule", "results": "Scores", "standings": "Standings", "fixture": "game", "fixtures": "games", "time_tba": "TBA", "neutral_site": "Neutral site", "exhibition": "Exhibition", "in_progress": "In progress", "result_pending": "Result pending", "no_result": "No result listed", "postponed": "Postponed", "cancelled": "Canceled", "record": "Record", "exhibition_note": "Exhibitions are shown but not counted in the record."},
+  "terms": {"schedule": "Schedule", "results": "Scores", "standings": "Standings", "fixture": "game", "fixtures": "games", "time_tba": "TBA", "neutral_site": "Neutral site", "exhibition": "Exhibition", "club": "Club", "club_source": "Schedule from Visit Brookings", "in_progress": "In progress", "result_pending": "Result pending", "no_result": "No result listed", "postponed": "Postponed", "cancelled": "Canceled", "record": "Record", "exhibition_note": "Exhibitions are shown but not counted in the record."},
   "date_format": "%a, %b %-d",
   "time_format": "%-I:%M %p",
   "templates": {

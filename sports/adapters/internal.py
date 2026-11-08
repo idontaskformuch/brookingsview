@@ -1,4 +1,5 @@
-"""`internal`: schedules the project already knows how to read, normalised into sport_events. First provider: `gojacks` (SDSU Jackrabbits).
+"""`internal`: schedules the project already knows how to read, normalised into sport_events. Providers: `gojacks` (SDSU Jackrabbits) and
+`visitbrookings` (club teams in the Visit Brookings events feed, see sports/adapters/visitbrookings.py).
 
 provider `gojacks` -- gojacks.com runs on SIDEARM Sports; every sport has a text-only schedule table at /sports/{slug}/schedule/text, parsed
 by sports.adapters.sidearm.parse_schedule_page.
@@ -26,6 +27,7 @@ from zoneinfo import ZoneInfo
 
 from sports import adapters
 from sports.http import PoliteHttp
+from sports.adapters import visitbrookings
 from sports.adapters.sidearm import normalize_opponent, parse_schedule_page, parse_time_cell
 from sports.models import NormalizedEvent
 
@@ -80,9 +82,12 @@ def _event(rec: dict, slug: str, spec: dict, params: dict) -> NormalizedEvent | 
 
 @adapters.register(NAME)
 def fetch(params: dict) -> list[NormalizedEvent]:
-    if params.get("provider") != "gojacks":
-        raise ValueError(f"internal: unknown provider {params.get('provider')!r}")
+    provider = params.get("provider")
+    if provider not in ("gojacks", "visitbrookings"):
+        raise ValueError(f"internal: unknown provider {provider!r}")
     http = params.get("_http") or PoliteHttp(mode=params.get("robots_mode", "standard"), max_crawl_delay=params.get("max_crawl_delay", 60))
+    if provider == "visitbrookings":
+        return visitbrookings.fetch(params, http)
     root = params["url"].rstrip("/")
     out: list[NormalizedEvent] = []
     for slug, spec in params["sports"].items():

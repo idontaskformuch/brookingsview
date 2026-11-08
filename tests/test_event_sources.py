@@ -370,3 +370,17 @@ def test_civicplus_identity_is_the_feeds_own_uid():
     a = _parse_ical_civicplus("s", _ics(_civicplus_vevent("U1", "Holiday Cheer", dtstart="20261114T100000")), "America/Denver")[0]
     b = _parse_ical_civicplus("s", _ics(_civicplus_vevent("U1", "Holiday Cheer", dtstart="20261115T110000")), "America/Denver")[0]
     assert a["content_hash"] == b["content_hash"]
+
+
+def test_parse_ical_keeps_the_feeds_own_categories_in_raw_data():
+    """2026-11-08: the sports source filters on the feed's CATEGORIES, so the events table keeps them too (only when the feed has any)."""
+    from pathlib import Path
+    ics = (Path(__file__).parent / "fixtures" / "sports" / "visitbrookings_events.ics").read_bytes()
+    recs = {r["title"]: r for r in _parse_ical("chamber", ics, "America/Chicago")}
+    assert recs["Jacks Club Hockey vs Creighton"]["raw_data"]["categories"] == ["Sports", "University"]
+    assert "categories" not in recs["Trivia Tuesday"]["raw_data"]  # that listing has no CATEGORIES line in the feed
+    plain = _parse_ical("library", _ics(_vevent("u1", "No categories here")), "America/Chicago")[0]
+    assert "categories" not in plain["raw_data"]
+    # identity is untouched: the hash still comes from (source, uid) alone
+    again = _parse_ical("chamber", ics.replace(b"CATEGORIES:Sports,University", b"CATEGORIES:Sports"), "America/Chicago")
+    assert {r["title"]: r["content_hash"] for r in again} == {t: r["content_hash"] for t, r in recs.items()}

@@ -1,0 +1,42 @@
+---
+/** A club team's coming games on /jackrabbits: its own heading with a "Club" tag, no record, no results; every game links back to Visit
+ *  Brookings. Not a GameTable: the table's data-* attributes drive the Jackrabbits phase script, and a club team is not part of that program. */
+import { formatDate, formatTime } from '../lib/db';
+import type { ClubRow } from '../lib/club-games';
+import type { SportTerms } from '../lib/sport-strings';
+import SectionRule from './SectionRule.astro';
+
+interface Props { name: string; rows: ClubRow[]; terms: SportTerms; sourceUrl: string; }
+const { name, rows, terms, sourceUrl } = Astro.props;
+---
+{rows.length > 0 && (
+  <section data-club-games>
+    <SectionRule label={name} />
+    <p class="club-note"><span class="tag">{terms.club}</span> <a href={sourceUrl}>{terms.club_source}</a></p>
+    <table class="sched">
+      <thead><tr><th scope="col">Date</th><th scope="col">Opponent</th><th scope="col" class="where">Where</th></tr></thead>
+      <tbody>
+        {rows.map((g) => (
+          <tr>
+            <td class="data">{formatDate(g.startAt.toISOString())} <span class="t">{g.timeTba ? terms.time_tba : formatTime(g.startAt.toISOString())}</span></td>
+            <td>{g.prefix} {g.url ? <a href={g.url}>{g.opponent}</a> : g.opponent}</td>
+            <td class="where">{g.venue ?? '—'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+)}
+
+<style>
+.club-note { margin: 0 0 0.5rem; font-size: 0.875rem; color: var(--ink-soft); }
+.sched { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 0.9375rem; }
+.sched th { text-align: left; font-family: var(--font-ui); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--rule); }
+.sched td { padding: 0.625rem 0.875rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.sched tr:last-child td { border-bottom: 0; }
+.sched .t { display: block; font-size: 0.75rem; color: var(--ink-soft); }
+.tag { display: inline-block; padding: 0 0.375rem; font-family: var(--font-ui); font-size: 0.6875rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); border: 1px solid var(--rule); border-radius: 2px; vertical-align: 0.05em; }
+.where { color: var(--ink-soft); font-size: 0.875rem; }
+@media (max-width: 40rem) { .where { display: none; } }
+@media (max-width: 30rem) { .sched th, .sched td { padding: 0.5rem 0.4rem; overflow-wrap: anywhere; } }
+</style>

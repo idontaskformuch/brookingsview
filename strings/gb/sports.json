@@ -1,5 +1,5 @@
 {
-  "terms": {"schedule": "Fixtures", "results": "Results", "standings": "Table", "fixture": "fixture", "fixtures": "fixtures", "time_tba": "TBA", "neutral_site": "Neutral venue", "exhibition": "Exhibition", "in_progress": "In progress", "result_pending": "Result pending", "no_result": "No result listed", "postponed": "Postponed", "cancelled": "Cancelled", "record": "Record", "exhibition_note": "Exhibitions are shown but not counted in the record."},
+  "terms": {"schedule": "Fixtures", "results": "Results", "standings": "Table", "fixture": "fixture", "fixtures": "fixtures", "time_tba": "TBA", "neutral_site": "Neutral venue", "exhibition": "Exhibition", "club": "Club", "club_source": "Schedule from Visit Brookings", "in_progress": "In progress", "result_pending": "Result pending", "no_result": "No result listed", "postponed": "Postponed", "cancelled": "Cancelled", "record": "Record", "exhibition_note": "Exhibitions are shown but not counted in the record."},
   "date_format": "%a %-d %b",
   "time_format": "%H:%M",
   "templates": {

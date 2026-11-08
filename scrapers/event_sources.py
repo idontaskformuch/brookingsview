@@ -123,6 +123,18 @@ def _fetch_ical(source_cfg: dict, headers: dict) -> bytes | None:
     return r.content
 
 
+def _categories(component) -> list[str]:
+    """The feed's own CATEGORIES (e.g. The Events Calendar: "Sports,University"), in feed order, no repeats; [] when the feed has none."""
+    out: list[str] = []
+    raw = component.get("CATEGORIES")
+    for prop in (raw if isinstance(raw, list) else [raw]) if raw is not None else []:
+        for cat in getattr(prop, "cats", None) or []:
+            name = str(cat).strip()
+            if name and name not in out:
+                out.append(name)
+    return out
+
+
 def _parse_ical(source_name: str, ics_bytes: bytes, tzname: str) -> list[dict]:
     try:
         from icalendar import Calendar
@@ -164,6 +176,7 @@ def _parse_ical(source_name: str, ics_bytes: bytes, tzname: str) -> list[dict]:
         location = str(component.get("LOCATION", "")).strip() or None
         description = str(component.get("DESCRIPTION", "")).strip() or None
         url = str(component.get("URL", "")).strip() or None
+        categories = _categories(component)
 
         if is_suspicious(location):
             print(f"    [events:{source_name}] misstänkt text i plats (uid={uid}), nollar fältet")
@@ -182,7 +195,7 @@ def _parse_ical(source_name: str, ics_bytes: bytes, tzname: str) -> list[dict]:
             "venue": location,
             "source": source_name,
             "url": url,
-            "raw_data": {"uid": uid, "description": description},
+            "raw_data": {"uid": uid, "description": description, **({"categories": categories} if categories else {})},
             # 2026-10-02, item D3: content_hash used to include starts_at and
             # title -- found live (a real, user-reported duplicate):
             # "BPN October Meetup - Fly Boy Donuts" (Brookings chamber_business)

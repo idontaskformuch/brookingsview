@@ -113,6 +113,16 @@
         "colors": ["#0033A0", "#FFD100"],
         "home_venue": "Dana J. Dykhouse Stadium",
         "level_default": "college"
+      },
+      {
+        "id": "sdsu-club-hockey",
+        "name": "SDSU Club Hockey",
+        "short": "SDSU Club Hockey",
+        "nickname": "Jacks",
+        "kind": "club",
+        "colors": ["#0033A0", "#FFD100"],
+        "home_venue": "Larson Ice Center",
+        "level_default": "amateur"
       }
     ],
     "sources": [
@@ -130,6 +140,20 @@
             "womens-basketball": { "sport": "basketball", "gender": "women" },
             "womens-volleyball": { "sport": "volleyball", "gender": "women" }
           }
+        }
+      },
+      {
+        "adapter": "internal",
+        "program": "sdsu-club-hockey",
+        "level": "amateur",
+        "url": "https://visitbrookingssd.com/events/?ical=1",
+        "note": "Visit Brookings events feed, filtered on the feed's own CATEGORIES 'Sports'; only the configured team names are read, so SDSU Football (also 'Sports') is left to internal:sdsu. Crawl-delay 2 s. No ToS published (privacy policy only). Club team, not part of the Jackrabbits record. See .claude/state.md 2026-11-08.",
+        "params": {
+          "provider": "visitbrookings",
+          "category": "Sports",
+          "teams": [
+            { "name": "Jacks Club Hockey", "sport": "hockey", "gender": null }
+          ]
         }
       }
     ],
