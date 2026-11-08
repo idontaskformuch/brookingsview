@@ -1,4 +1,5 @@
 name: brookings-jackrabbits-season-digest
+# PENSIONERAD 2026-11-08 (ägaren): ingen schemakörning, /jackrabbits visar ingen säsongssammanfattning längre. Bara workflow_dispatch.
 # Kör jackrabbits_season_digest.py: ETT standing "season so far"-sammandrag
 # per sport i sports_games (SDSU Jackrabbits, se scrapers/parsers/gojacks_v1.py),
 # uppdaterat i samma slug i stället för en ny story per körning -- se den
@@ -10,8 +11,6 @@ name: brookings-jackrabbits-season-digest
 # underlaget (vilka matcher som spelats) inte ändrats.
 
 on:
-  schedule:
-    - cron: "0 12 * * *"   # varje dag 12:00 UTC (07:00 Central)
   workflow_dispatch: {}
 
 jobs:

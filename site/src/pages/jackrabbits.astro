@@ -10,8 +10,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import GameCard from '../components/GameCard.astro';
 import GameTable from '../components/GameTable.astro';
-import { publicBody } from '../lib/ai-text';
-import { getSportEvents, getContentByType } from '../lib/db';
+import { getSportEvents } from '../lib/db';
 import { buildGroups, nextUp, recordText } from '../lib/jackrabbits-view';
 import { sportTerms } from '../lib/sport-strings';
 import { siteConfig } from '../lib/site-config';
@@ -34,18 +33,9 @@ const clusterNavItems = resolveHubNavItems('jackrabbits', siteConfig);
 const PROGRAM = 'sdsu';
 const now = new Date();
 const terms = sportTerms(siteConfig.country);
-const [events, summaries] = await Promise.all([getSportEvents(PROGRAM, now), getContentByType(['jackrabbits_season_summary'], 20)]);
+const events = await getSportEvents(PROGRAM, now);
 const groups = buildGroups(events, PROGRAM, now);
 const featured = nextUp(groups);
-
-// Latest AI-written summary per sport -- see ai_pipeline/jackrabbits_season_digest.py
-// (source_type "jackrabbits_season_summary", one standing story per sport,
-// slug "jackrabbits-season-summary-<sport>", updated in place as the season
-// progresses rather than one story per week). Map keyed by sport (pulled out
-// of the slug -- the only place that identity lives) for O(1) lookup below.
-const summaryBySport = new Map(
-  summaries.map((s) => [s.slug.replace(/^jackrabbits-season-summary-/, ''), s])
-);
 ---
 <BaseLayout title={pageMeta.title} wide
   description={fitDescription("Full SDSU Jackrabbits schedules and results for football, basketball and volleyball, with dates, opponents and scores for each game in Brookings.")}
@@ -56,8 +46,7 @@ const summaryBySport = new Map(
     <p>Schedules and results for SDSU football, basketball and volleyball, straight
     from the athletics department's own listings. Final scores are posted here
     once the athletics department publishes them — never estimated or reported
-    ahead of the official result — and each sport gets its own season summary
-    once its schedule wraps for the year. Going to a football home game? Read the
+    ahead of the official result. Going to a football home game? Read the
     <a href="/game-day/">game day guide</a> for parking, tailgating and bag rules.</p>
   </header>
 
@@ -73,17 +62,11 @@ const summaryBySport = new Map(
   )}
 
   {groups.map((group) => {
-    const summary = summaryBySport.get(group.key);
     return (
       <section data-group>
         <SectionRule label={group.label} />
         {group.record && (
           <p class="record">{terms.record} <strong>{recordText(group.record)}</strong>{group.hasExhibition && <span class="note"> · {terms.exhibition_note}</span>}</p>
-        )}
-        {summary && (
-          <div class="season-summary">
-            {publicBody(summary).split(/\n\s*\n/).map((para) => <p>{para}</p>)}
-          </div>
         )}
         {group.results.length > 0 && (
           <>
@@ -118,8 +101,6 @@ const summaryBySport = new Map(
   padding-bottom: 1.125rem;
 }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
-.season-summary { max-width: 42rem; margin: 0 0 1.25rem; }
-.season-summary p { margin: 0 0 0.75rem; line-height: 1.5; }
 .sched-label {
   font-family: var(--font-ui);
   font-size: 0.8125rem;
