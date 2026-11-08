@@ -7,9 +7,8 @@ name: moval-sports-digest
 # det här körs -- en enda måndagskörning räcker. content_hash-kollen i
 # skriptet skippar ändå AI-anropet om något manuellt kört om samma vecka.
 
+# 2026-11-08: ingen cron och ingen ANTHROPIC_API_KEY (switchen i configen är AV; Phase 4 för Moreno är inte byggd). Endast manuell körning.
 on:
-  schedule:
-    - cron: "0 15 * * 1"   # måndag 15:00 UTC (08:00 PDT) -- efter helgens matcher
   workflow_dispatch: {}
 
 jobs:
@@ -17,7 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL:      ${{ secrets.DATABASE_URL }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       USER_AGENT:        "ViewMediaBot (+https://morenovalleyview.com/contact)"
       AI_BUDGET_STATE:   ".ai_budget_moreno_valley_ca.json"
     steps:

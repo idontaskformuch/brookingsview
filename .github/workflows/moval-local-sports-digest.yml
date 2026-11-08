@@ -6,9 +6,8 @@ name: moval-local-sports-digest
 # moval-sports-digest.yml (den regionala 66ers/Angels/Dodgers-sammanfattningen)
 # -- den här är ett komplement, inte en ersättning.
 
+# 2026-11-08: ingen cron och ingen ANTHROPIC_API_KEY (switchen i configen är AV; Phase 4 för Moreno är inte byggd). Endast manuell körning.
 on:
-  schedule:
-    - cron: "15 15 * * 1"   # måndag 15:15 UTC -- efter moval-sports-digest, samma dag
   workflow_dispatch: {}
 
 jobs:
@@ -16,7 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL:      ${{ secrets.DATABASE_URL }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       USER_AGENT:        "ViewMediaBot (+https://morenovalleyview.com/contact)"
       AI_BUDGET_STATE:   ".ai_budget_moreno_valley_ca.json"
     steps:
