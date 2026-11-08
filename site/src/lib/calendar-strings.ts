@@ -19,3 +19,9 @@ export const shortDate = (month: number, day: number, country: Country): string 
 export const shortDateOfDay = (day: Date, country: Country): string => shortDate(day.getUTCMonth() + 1, day.getUTCDate(), country);
 
 export const shortWeekdayOfDay = (day: Date, country: Country): string => shortWeekday(day.getUTCDay(), country);
+
+/** The month (1..12) and day of an instant on the calendar of `timeZone`. */
+export function localMonthDay(instant: Date, timeZone: string): { m: number; d: number } {
+  const [, m, d] = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(instant).split('-').map(Number);
+  return { m, d };
+}

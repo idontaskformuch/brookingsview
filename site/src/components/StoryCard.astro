@@ -154,7 +154,7 @@ const now = new Date();
 // below (non-event, non-meeting, non-alert rows with an occurs_at, e.g.
 // announcements) -- story.ends_at is threaded through there too.
 const timeLabel = hasByline
-  ? (story.published_at ? relativeTime(story.published_at, now, siteConfig.timezone) : '')
+  ? (story.published_at ? relativeTime(story.published_at, now, siteConfig.timezone, null, siteConfig.country) : '')
   : !when
     ? ''
     : isMeeting
@@ -165,7 +165,7 @@ const timeLabel = hasByline
           ? (siteConfig.country === 'gb' && story.is_recurring_series
               ? seriesKicker(story.meta?.recurrence, when, siteConfig.timezone, seriesClockText(when))
               : dayTimeKicker(when, siteConfig.timezone, story.ends_at, allDayWord(), siteConfig.country === 'gb'))
-          : relativeTime(when, now, siteConfig.timezone, story.ends_at);
+          : relativeTime(when, now, siteConfig.timezone, story.ends_at, siteConfig.country);
 // .toISOString(), not a raw passthrough of the source value: the DB driver
 // returns a real Date object for timestamptz columns at runtime despite
 // the `string` type annotation in db.ts. Passed straight into

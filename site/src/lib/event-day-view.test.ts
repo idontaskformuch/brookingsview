@@ -263,3 +263,16 @@ describe('day boxes and date order per country (owner 2026-11-08: Glasgow showed
     expect(src).not.toMatch(/slice\(0, 3\)/);
   });
 });
+
+describe('"N things on today": big number only from hero_min_count (owner 2026-11-08)', () => {
+  it('the threshold and the wording live in strings/<country>/events.json, and EventsGlance branches on it', async () => {
+    const { eventsStrings, thingsOnToday } = await import('./events-strings');
+    expect(eventsStrings('us').hero_min_count).toBe(5);
+    expect(eventsStrings('gb').hero_min_count).toBe(5);
+    expect(thingsOnToday(1, 'gb')).toBe('thing on today');
+    expect(thingsOnToday(4, 'us')).toBe('things on today');
+    const src = readFileSync(new URL('../components/events/EventsGlance.astro', import.meta.url), 'utf8');
+    expect(src).toMatch(/view\.todayCount >= strings\.hero_min_count \?/);
+    expect(src).toContain('<h2 class="evg__title">');
+  });
+});

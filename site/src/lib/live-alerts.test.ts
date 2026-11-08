@@ -88,3 +88,11 @@ describe.skipIf(!browser)('live alerts in a real browser', { timeout: 30_000 }, 
     expect(r.barText).toContain('<img');
   });
 });
+
+describe('alertUntilLabel per country (owner 2026-11-08)', () => {
+  it('us keeps Intl order, gb is day first with the 9am clock', async () => {
+    const { alertUntilLabel } = await import('./live-alerts');
+    expect(alertUntilLabel(new Date('2026-10-24T14:00:00Z'), 'America/Chicago', 'us')).toBe('Sat, Oct 24, 9:00 AM');
+    expect(alertUntilLabel(new Date('2026-11-14T09:00:00Z'), 'Europe/London', 'gb')).toBe('Sat 14 Nov, 9am');
+  });
+});

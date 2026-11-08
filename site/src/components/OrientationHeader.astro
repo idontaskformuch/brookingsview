@@ -25,7 +25,7 @@ import { orientationDateLabel, orientationDateIso } from '../lib/orientation-hea
 import { siteConfig } from '../lib/site-config';
 
 const now = new Date();
-const dateLabel = orientationDateLabel(now, siteConfig.timezone);
+const dateLabel = orientationDateLabel(now, siteConfig.timezone, siteConfig.country);
 const buildDateIso = orientationDateIso(now, siteConfig.timezone);
 ---
 

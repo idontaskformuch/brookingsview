@@ -8,7 +8,7 @@ import { getKnownAlertEventIds } from '../lib/db';
 const known = (await getKnownAlertEventIds()).join(',');
 ---
 <section id="live-alerts" class="live-alerts" aria-label="Weather alerts issued since this page was built" aria-live="polite"
-  data-tz={siteConfig.timezone} data-known={known} hidden></section>
+  data-tz={siteConfig.timezone} data-country={siteConfig.country ?? 'us'} data-known={known} hidden></section>
 
 <style is:global>
   .live-alerts { background: var(--status-warn-bg); color: var(--status-warn-text); border-left: 6px solid var(--status-warn); padding: 0.5rem 0.875rem; }

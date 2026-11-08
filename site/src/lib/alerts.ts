@@ -15,6 +15,8 @@
  *  neither may leak into a result.
  */
 
+import { shortDate, localMonthDay } from './calendar-strings';
+import { formatClockCompact } from './country-profile';
 export interface AlertRow {
   /** events.ends_at (ISO) -- authoritative when present. */
   ends_at: string | null;
@@ -156,9 +158,14 @@ export function activeAlerts<T extends AlertRow>(
   return out;
 }
 
-/** "until 9 AM Sat Oct 24" in the town's own zone (weekday + date always, so
+/** "until 9 AM Sat Oct 24" (us) / "until 9am Sat 24 Oct" (gb) in the town's own zone (weekday + date always, so
  *  a Tuesday reader can't mistake Saturday's end for today's). */
-export function formatAlertUntil(end: Date, timezone: string): string {
+export function formatAlertUntil(end: Date, timezone: string, country: 'us' | 'gb' | undefined): string {
+  if (country === 'gb') {
+    const { m, d } = localMonthDay(end, timezone);
+    const weekday = new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'short' }).format(end);
+    return `until ${formatClockCompact(end, timezone)} ${weekday} ${shortDate(m, d, country)}`;
+  }
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone, hour: 'numeric', minute: '2-digit', hour12: true,
     weekday: 'short', month: 'short', day: 'numeric',

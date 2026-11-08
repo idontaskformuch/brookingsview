@@ -64,6 +64,9 @@ export function calendarDayDiff(date: Date, now: Date, timeZone: string): number
   return Math.round((zonedMidnightUtc(date, timeZone) - zonedMidnightUtc(now, timeZone)) / oneDayMs);
 }
 
+/** Which country's date order a label uses. Required on relativeTime so a caller cannot forget it (owner 2026-11-08). */
+export type TimeCountry = 'us' | 'gb' | undefined;
+
 function formatClockTime(hour24: number, minute: number): string {
   const period = hour24 < 12 ? 'am' : 'pm';
   const hour12 = hour24 % 12 || 12;
@@ -74,13 +77,14 @@ function weekdayName(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone }).format(date);
 }
 
-function monthDay(date: Date, timeZone: string, withYear: boolean): string {
-  return new Intl.DateTimeFormat('en-US', {
+/** "November 12" (us) / "12 November" (gb): the long month name is stable across ICU versions, only the order differs. */
+function monthDay(date: Date, timeZone: string, withYear: boolean, country: TimeCountry): string {
+  return new Intl.DateTimeFormat(country === 'gb' ? 'en-GB' : 'en-US', {
     timeZone, month: 'long', day: 'numeric', ...(withYear ? { year: 'numeric' as const } : {}),
   }).format(date);
 }
 
-function pastText(date: Date, now: Date, timeZone: string, allDay = false): string {
+function pastText(date: Date, now: Date, timeZone: string, country: TimeCountry, allDay = false): string {
   const diffMinutes = (now.getTime() - date.getTime()) / 60_000;
   if (diffMinutes < 60 && !allDay) return 'just now';
 
@@ -97,10 +101,10 @@ function pastText(date: Date, now: Date, timeZone: string, allDay = false): stri
   if (dayDiff >= -6) return weekdayName(date, timeZone);
 
   const sameYear = year === zonedParts(now, timeZone).year;
-  return monthDay(date, timeZone, !sameYear);
+  return monthDay(date, timeZone, !sameYear, country);
 }
 
-function futureText(date: Date, now: Date, timeZone: string, allDay = false): string {
+function futureText(date: Date, now: Date, timeZone: string, country: TimeCountry, allDay = false): string {
   const dayDiff = calendarDayDiff(date, now, timeZone); // positive: date is after now
   const { hour, minute, year } = zonedParts(date, timeZone);
   // An all-day item has no clock: "tomorrow", not "tomorrow at 12am".
@@ -112,7 +116,7 @@ function futureText(date: Date, now: Date, timeZone: string, allDay = false): st
   if (dayDiff <= 13) return `next ${weekdayName(date, timeZone)}`;
 
   const sameYear = year === zonedParts(now, timeZone).year;
-  return monthDay(date, timeZone, !sameYear);
+  return monthDay(date, timeZone, !sameYear, country);
 }
 
 /** Human, town-timezone-aware relative time for `date` relative to `now`.
@@ -131,7 +135,7 @@ function futureText(date: Date, now: Date, timeZone: string, allDay = false): st
  *  instead of the coarser time-since-start heuristic -- a real in-progress
  *  check, not a proxy for one. */
 export function relativeTime(
-  date: Date | string, now: Date, timeZone: string, endsAt?: Date | string | null,
+  date: Date | string, now: Date, timeZone: string, endsAt: Date | string | null | undefined, country: TimeCountry,
 ): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   if (endsAt != null) {
@@ -139,7 +143,7 @@ export function relativeTime(
     if (d.getTime() <= now.getTime() && now.getTime() < end.getTime()) return 'now';
   }
   const allDay = allDayOf(d, endsAt, timeZone);
-  return d.getTime() <= now.getTime() ? pastText(d, now, timeZone, allDay) : futureText(d, now, timeZone, allDay);
+  return d.getTime() <= now.getTime() ? pastText(d, now, timeZone, country, allDay) : futureText(d, now, timeZone, country, allDay);
 }
 
 /** 2026-10-02, item C1: a compact "{DAY} · {TIME}" kicker for an event's

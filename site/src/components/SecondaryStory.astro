@@ -41,14 +41,14 @@ const now = new Date();
 // published_at is typed as always-set but isn't in real data -- see
 // StoryCard.astro's own comment for the confirmed live count.
 const timeLabel = hasByline
-  ? (story.published_at ? relativeTime(story.published_at, now, siteConfig.timezone) : '')
+  ? (story.published_at ? relativeTime(story.published_at, now, siteConfig.timezone, null, siteConfig.country) : '')
   : !when
     ? ''
     : isMeeting
       ? formatMeetingKicker(when)
       : isAlert
         ? `${formatDate(when)}${formatTime(when) ? ` · ${formatTime(when)}` : ''}`
-        : relativeTime(when, now, siteConfig.timezone, story.ends_at);
+        : relativeTime(when, now, siteConfig.timezone, story.ends_at, siteConfig.country);
 // .toISOString(), not a raw passthrough -- see StoryCard.astro's own
 // comment for why (the DB driver returns a real Date object at runtime
 // despite db.ts's `string` type annotation; passed raw into

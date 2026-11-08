@@ -1,13 +1,16 @@
 ---
-/** The answer to "what's on": N things on today (the one hero), what is tonight / free, and the days as tappable counts. The strip links to
+/** The answer to "what's on": N things on today (the big hero number from `hero_min_count` things, a plain heading below it), what is tonight / free, and the days as tappable counts. The strip links to
  *  the day's heading on `base` (this page, or /events/ from the front page). No events today: one designed line pointing at the next day that has some. */
 import HeroStat from '../ui/HeroStat.astro';
 import EmptyState from '../ui/EmptyState.astro';
 import DayStrip from '../ui/DayStrip.astro';
 import type { EventsView } from '../../lib/event-day-view';
+import { eventsStrings, thingsOnToday } from '../../lib/events-strings';
+import { siteConfig } from '../../lib/site-config';
 
 interface Props { view: EventsView; base?: string; idPrefix?: string }
 const { view, base = '', idPrefix = 'day' } = Astro.props;
+const strings = eventsStrings(siteConfig.country);
 const sub = [
   view.tonightCount > 0 && view.tonightCount < view.todayCount ? `${view.tonightCount} tonight` : null,
   view.freeToday > 0 ? `${view.freeToday} free` : null,
@@ -18,7 +21,14 @@ const link = (d: { dayKey: string }) => `${base}#${idPrefix}-${d.dayKey}`;
 {(view.todayCount > 0 || view.nextDay) && (
 <section class="evg" aria-label="Events at a glance">
   {view.todayCount > 0 ? (
-    <HeroStat value={view.todayCount} unit={view.todayCount === 1 ? 'thing on today' : 'things on today'} sub={sub || undefined} />
+    view.todayCount >= strings.hero_min_count ? (
+      <HeroStat value={view.todayCount} unit={thingsOnToday(view.todayCount, siteConfig.country)} sub={sub || undefined} />
+    ) : (
+      <div class="evg__plain">
+        <h2 class="evg__title">{view.todayCount} {thingsOnToday(view.todayCount, siteConfig.country)}</h2>
+        {sub && <p class="evg__sub">{sub}</p>}
+      </div>
+    )
   ) : view.nextDay ? (
     <EmptyState href={link(view.nextDay)} linkLabel={`${view.nextDay.label}: ${view.nextDay.count} ${view.nextDay.count === 1 ? 'thing' : 'things'}`}>Next on the calendar:</EmptyState>
   ) : null}
@@ -32,4 +42,6 @@ const link = (d: { dayKey: string }) => `${base}#${idPrefix}-${d.dayKey}`;
 )}
 <style>
   .evg { display: grid; gap: var(--ui-3); }
+  .evg__title { margin: 0; font-family: var(--font-head); font-size: 1.5rem; }
+  .evg__sub { margin: var(--ui-1) 0 0; font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
 </style>

@@ -102,9 +102,12 @@ describe('county_alert filtering (owner decision 2026-10-20)', () => {
 
 describe('formatAlertUntil', () => {
   it('uses the town zone with weekday and date', () => {
-    expect(formatAlertUntil(new Date('2026-10-24T14:00:00Z'), CHI)).toBe('until 9 AM Sat Oct 24');
-    expect(formatAlertUntil(new Date('2026-10-24T14:30:00Z'), CHI)).toBe('until 9:30 AM Sat Oct 24');
-    expect(formatAlertUntil(new Date('2026-10-24T14:00:00Z'), 'America/Los_Angeles')).toBe('until 7 AM Sat Oct 24');
-    expect(formatAlertUntil(new Date('2026-10-25T05:30:00Z'), 'America/Denver')).toBe('until 11:30 PM Sat Oct 24');
+    expect(formatAlertUntil(new Date('2026-10-24T14:00:00Z'), CHI, 'us')).toBe('until 9 AM Sat Oct 24');
+    expect(formatAlertUntil(new Date('2026-10-24T14:30:00Z'), CHI, 'us')).toBe('until 9:30 AM Sat Oct 24');
+    expect(formatAlertUntil(new Date('2026-10-24T14:00:00Z'), 'America/Los_Angeles', 'us')).toBe('until 7 AM Sat Oct 24');
+    expect(formatAlertUntil(new Date('2026-10-25T05:30:00Z'), 'America/Denver', 'us')).toBe('until 11:30 PM Sat Oct 24');
+  });
+  it('gb: 7pm clock and day first', () => {
+    expect(formatAlertUntil(new Date('2026-11-14T09:00:00Z'), 'Europe/London', 'gb')).toBe('until 9am Sat 14 Nov');
   });
 });

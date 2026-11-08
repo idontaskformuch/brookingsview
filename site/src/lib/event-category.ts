@@ -3,14 +3,19 @@
  *  (principle 6). The story text is never read. */
 import type { Category } from './ui/ui-helpers';
 
+/** Alternatives (regex fragments, plural written out where it is wanted) -> one word-bounded pattern. "game" stays singular on purpose: "Table Top
+ *  Role Playing Games Club" is not sport. */
+const words = (alts: string[]) => new RegExp(String.raw`\b(?:${alts.join('|')})\b`, 'i');
+
 const RULES: Array<[Category, RegExp]> = [
-  ['civic', /\b(council|commission|committee|board|hearing|city hall|public meeting|town hall|election|voting|ballot)\b/i],
-  ['sports', /\b(game|match|football|basketball|volleyball|soccer|baseball|hockey|tournament|5k|10k|marathon|race|run\/walk|swim|golf|pickleball|jackrabbits|rugby|athletics)\b/i],
-  ['music', /\b(concert|choir|band|orchestra|symphony|jazz|music|musical|recital|singer|songwriter|gig|live music|dj|carols?)\b/i],
-  ['nightlife', /\b(comedy|stand-?up|karaoke|open mic|trivia|pub quiz|club night|bingo|drag)\b/i],
-  ['family', /\b(kids?|children|toddler|preschool|storytime|story time|family|families|youth|teens?|tween|baby|babies)\b/i],
-  ['food', /\b(farmers? market|market|tasting|dinner|brunch|lunch|supper|food|brew|beer|wine|cooking|bake|bbq|potluck|pancake|chili)\b/i],
-  ['arts', /\b(art|arts|theatre|theater|gallery|exhibit|exhibition|film|movie|screening|craft|crafts|painting|pottery|dance|ballet|poetry|reading|book|author|museum|workshop)\b/i],
+  // "board" alone is a game, not a body ("Board Games More Games" was filed as civic): it needs "board meeting" / "board of ...".
+  ['civic', words(['council', 'commissions?', 'committees?', 'board meetings?', 'board of', 'hearings?', 'city hall', 'public meetings?', 'town hall', 'elections?', 'voting', 'ballots?'])],
+  ['sports', words(['game', 'match(?:es)?', 'football', 'basketball', 'volleyball', 'soccer', 'baseball', 'hockey', 'tournaments?', '5k', '10k', 'marathons?', 'races?', 'run/walk', 'swim', 'golf', 'pickleball', 'jackrabbits', 'rugby', 'athletics'])],
+  ['music', words(['concerts?', 'choirs?', 'bands?', 'orchestras?', 'symphon(?:y|ies)', 'jazz', 'music', 'musical', 'recitals?', 'singers?', 'songwriters?', 'gigs?', 'live music', 'djs?', 'carols?'])],
+  ['nightlife', words(['comedy', 'stand-?up', 'karaoke', 'open mic', 'trivia', 'pub quiz', 'club nights?', 'bingo', 'drag'])],
+  ['family', words(['kids?', 'children', 'toddlers?', 'preschool', 'storytime', 'story time', 'famil(?:y|ies)', 'youth', 'teens?', 'tweens?', 'bab(?:y|ies)'])],
+  ['food', words(['farmers? market', 'markets?', 'tastings?', 'dinners?', 'brunch', 'lunch', 'suppers?', 'food', 'brew', 'beer', 'wine', 'cooking', 'bake', 'bbq', 'potlucks?', 'pancake', 'chili'])],
+  ['arts', words(['arts?', 'theatre', 'theater', 'galler(?:y|ies)', 'exhibits?', 'exhibitions?', 'films?', 'movies?', 'screenings?', 'crafts?', 'painting', 'pottery', 'dance', 'ballet', 'poetry', 'reading', 'books?', 'authors?', 'museums?', 'workshops?'])],
 ];
 
 export function categoryOfEvent(title: string, sourceCategory?: string | null): Category | null {

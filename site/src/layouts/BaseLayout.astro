@@ -767,7 +767,7 @@ main { padding-block: 1.75rem 3.5rem; }
         const when = el.getAttribute('datetime');
         if (!when) return;
         try {
-          el.textContent = relativeTime(when, new Date(), el.dataset.tz || 'America/Chicago', el.dataset.relEnd || null);
+          el.textContent = relativeTime(when, new Date(), el.dataset.tz || 'America/Chicago', el.dataset.relEnd || null, document.documentElement.lang === 'en-GB' ? 'gb' : 'us');
         } catch { /* keep the build-time text */ }
       });
     </script>

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { relativeTime, dayTimeKicker, hasEventPassed, seriesKicker } from './time';
+import { relativeTime as relativeTimeIn, dayTimeKicker, hasEventPassed, seriesKicker } from './time';
+
+/** The existing cases are US towns. */
+const relativeTime = (d: Date | string, now: Date, tz: string, endsAt?: Date | string | null) => relativeTimeIn(d, now, tz, endsAt, 'us');
 
 const LA = 'America/Los_Angeles';
 const CHI = 'America/Chicago';
@@ -291,5 +294,17 @@ describe('dayTimeKicker -- custom all-day label', () => {
   it('uses the label given for a midnight start with no end', () => {
     expect(dayTimeKicker('2026-10-30T00:00:00.000Z', 'Europe/London', null, '')).toBe('Fri');
     expect(dayTimeKicker('2026-10-30T00:00:00.000Z', 'Europe/London')).toBe('Fri · All day');
+  });
+});
+
+describe('relativeTime -- date order per country (owner 2026-11-08)', () => {
+  const now = new Date('2026-11-08T12:00:00Z');
+  it('far-out dates: us month first, gb day first', () => {
+    expect(relativeTimeIn('2026-12-25T12:00:00Z', now, 'Europe/London', null, 'gb')).toBe('25 December');
+    expect(relativeTimeIn('2026-12-25T12:00:00Z', now, 'America/Chicago', null, 'us')).toBe('December 25');
+  });
+  it('past dates and other years follow the same order', () => {
+    expect(relativeTimeIn('2026-10-01T12:00:00Z', now, 'Europe/London', null, 'gb')).toBe('1 October');
+    expect(relativeTimeIn('2027-03-05T12:00:00Z', now, 'Europe/London', null, 'gb')).toBe('5 March 2027');
   });
 });

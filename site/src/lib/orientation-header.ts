@@ -12,13 +12,14 @@
  * than inventing a second one.
  */
 import { localDateParts } from './events';
+import { shortDate, localMonthDay } from './calendar-strings';
 
-/** "Wednesday, Sep 9" -- short month, no year (the year is redundant on a
+/** "Wednesday, Sep 9" (us) / "Wednesday, 9 Sep" (gb) -- short month, no year (the year is redundant on a
  *  page that's rebuilt within hours of "today"). */
-export function orientationDateLabel(instant: Date, timezone: string): string {
-  return instant.toLocaleDateString('en-US', {
-    weekday: 'long', month: 'short', day: 'numeric', timeZone: timezone,
-  });
+export function orientationDateLabel(instant: Date, timezone: string, country: 'us' | 'gb' | undefined): string {
+  const weekday = instant.toLocaleDateString('en-US', { weekday: 'long', timeZone: timezone });
+  const { m, d } = localMonthDay(instant, timezone);
+  return `${weekday}, ${shortDate(m, d, country)}`;
 }
 
 /** "2026-09-09" -- the town's own local calendar date, embedded as a data

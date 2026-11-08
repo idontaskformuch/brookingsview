@@ -3,6 +3,8 @@
  *  no longer in force (cancelled early). The server-rendered alerts stay as the fallback: with no JavaScript, or when the API is down, nothing
  *  changes. Lives here, not inline, so a test can run it (live-alerts.test.ts). */
 
+import { shortDate, localMonthDay } from './calendar-strings';
+import { formatClockCompact } from './country-profile';
 export interface LiveAlert {
   id: number;
   source: string;
@@ -34,7 +36,15 @@ export function planAlertUpdate(knownIds: Set<number>, active: LiveAlert[]): Ale
 }
 
 /** The line shown in the bar: event, until when, the first sentence of the official text, source link. All set with textContent. */
-export function renderAlertBar(doc: Document, bar: HTMLElement, alerts: LiveAlert[], tz: string): void {
+/** "Sat, Oct 24, 9:00 AM" (us) / "Sat 24 Oct, 9:00am" (gb). */
+export function alertUntilLabel(end: Date, tz: string, country: 'us' | 'gb'): string {
+  if (country !== 'gb') return new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(end);
+  const { m, d } = localMonthDay(end, tz);
+  const weekday = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' }).format(end);
+  return `${weekday} ${shortDate(m, d, country)}, ${formatClockCompact(end, tz)}`;
+}
+
+export function renderAlertBar(doc: Document, bar: HTMLElement, alerts: LiveAlert[], tz: string, country: 'us' | 'gb' = 'us'): void {
   bar.replaceChildren();
   for (const a of alerts) {
     const p = doc.createElement('p');
@@ -42,7 +52,7 @@ export function renderAlertBar(doc: Document, bar: HTMLElement, alerts: LiveAler
     const strong = doc.createElement('strong');
     strong.textContent = a.event;
     p.appendChild(strong);
-    const until = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(a.endsAt));
+    const until = alertUntilLabel(new Date(a.endsAt), tz, country);
     p.append(` · until ${until}`);
     const first = a.description.split(/(?<=[.!?])\s/)[0];
     if (first) p.append(` · ${first.slice(0, 220)}`);
@@ -59,13 +69,13 @@ export function renderAlertBar(doc: Document, bar: HTMLElement, alerts: LiveAler
   bar.hidden = alerts.length === 0;
 }
 
-export function applyAlertPlan(doc: Document, plan: AlertPlan, tz: string): void {
+export function applyAlertPlan(doc: Document, plan: AlertPlan, tz: string, country: 'us' | 'gb' = 'us'): void {
   doc.querySelectorAll<HTMLElement>('[data-alert-slug]').forEach((el) => {
     const id = eventIdFromSlug(el.dataset.alertSlug);
     if (id !== null && plan.toHide.has(id)) el.hidden = true;
   });
   const bar = doc.getElementById('live-alerts');
-  if (bar) renderAlertBar(doc, bar, plan.toShow, tz);
+  if (bar) renderAlertBar(doc, bar, plan.toShow, tz, country);
 }
 
 /** One refresh: fetch, plan, apply. A failed request changes nothing (the build's own markup stays). */
@@ -73,6 +83,7 @@ export async function refreshLiveAlerts(doc: Document, fetcher: typeof fetch = f
   const bar = doc.getElementById('live-alerts');
   if (!bar) return;
   const tz = bar.dataset.tz || 'America/Chicago';
+  const country = bar.dataset.country === 'gb' ? 'gb' : 'us';
   const known = new Set<number>();
   doc.querySelectorAll<HTMLElement>('[data-alert-slug]').forEach((el) => { const id = eventIdFromSlug(el.dataset.alertSlug); if (id !== null) known.add(id); });
   for (const id of (bar.dataset.known || '').split(',').map(Number)) if (id) known.add(id);
@@ -85,5 +96,5 @@ export async function refreshLiveAlerts(doc: Document, fetcher: typeof fetch = f
     return;
   }
   if (!Array.isArray(body.alerts)) return;
-  applyAlertPlan(doc, planAlertUpdate(known, body.alerts), tz);
+  applyAlertPlan(doc, planAlertUpdate(known, body.alerts), tz, country);
 }

@@ -320,3 +320,17 @@ def test_channel_pages_tag_and_merge_into_one_record_per_event():
     assert recs[0]["raw_data"]["channels"] == ["Libraries", "Sport"]
     
 
+
+
+# --- "Clip n� Climb" (owner 2026-11-08): the apostrophe is U+2019, not a broken character --------------------------------------
+def test_curly_apostrophe_survives_and_no_replacement_character_anywhere():
+    """The stored title and the built page carry U+2019 (the source sends `&#x2019;`); the `�` in the owner's terminal was the console's
+    code page, not the data. Guards both the entity form (the fixture) and raw UTF-8 bytes in a card."""
+    recs = parse_listing("glasgow_life", PAGE, TZ)
+    clip = next(r for r in recs if "Clip n" in r["title"])
+    assert clip["title"] == "Autism Friendly sessions for Clip n’ Climb and Soft Play"
+    assert not any("�" in str(v) for r in recs for v in (r["title"], r.get("venue"), r["raw_data"].get("category")))
+    raw = PAGE.replace("Clip n&#x2019; Climb".encode(), "Clip n’ Climb".encode("utf-8"))
+    assert raw != PAGE
+    again = next(r for r in parse_listing("glasgow_life", raw, TZ) if "Clip n" in r["title"])
+    assert again["title"] == clip["title"]

@@ -168,7 +168,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
         {activeAlerts.length > 0 && activeAlerts.map((alert: AlertItem) => (
           <li data-ends={alert.ends_at ?? undefined} data-alert-slug={alert.slug}>
             <a href={ownPageHref(alert) ?? '/weather/'}>{alert.title}</a>
-            {alert.ends_at && <span class="today-block__until"> · {formatAlertUntil(new Date(alert.ends_at), timezone)}</span>}
+            {alert.ends_at && <span class="today-block__until"> · {formatAlertUntil(new Date(alert.ends_at), timezone, siteConfig.country)}</span>}
           </li>
         ))}
 
