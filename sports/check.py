@@ -3,6 +3,7 @@
     python -m sports.check --town broomfield_co
     python -m sports.check --validate-all        # config validation only, for every town (exit 1 on any problem)
 
+robots_mode per source: "standard" (default, RFC 9309 group for our user-agent, else `*`) or "strict" (also excluded when an AI crawler is named).
 A source whose robots.txt disallows us (or answers 403/anything but 200/404) is reported as skipped and its adapter is NOT called.
 Per CLAUDE.md rule 13 a 403 is a no; there is no retry with another identity.
 """
@@ -17,7 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
 
-from scrapers.evening_register import robots_verdict
+from scrapers import robots
 from scrapers.user_agent import user_agent
 from sports import adapters
 from sports.config import validate_sports_config
@@ -50,22 +51,8 @@ class SourceReport:
 
 
 def crawl_delay(robots_text: str) -> float | None:
-    """Crawl-delay of the `*` group, if any."""
-    in_star = False
-    for raw in robots_text.splitlines():
-        line = raw.split("#", 1)[0].strip()
-        if ":" not in line:
-            continue
-        key, value = (p.strip() for p in line.split(":", 1))
-        key = key.lower()
-        if key == "user-agent":
-            in_star = value == "*"
-        elif key == "crawl-delay" and in_star:
-            try:
-                return float(value)
-            except ValueError:
-                return None
-    return None
+    """Crawl-delay of the group that applies to us (our own product token, else `*`)."""
+    return robots.crawl_delay(robots_text)
 
 
 def _http_get(url: str, ua: str):
@@ -87,7 +74,7 @@ def check_source(source: dict, town_id: str, *, get=_http_get, sleep=time.sleep)
     if url:
         parts = urlparse(url)
         status, text = get(f"{parts.scheme}://{parts.netloc}/robots.txt", ua)
-        verdict = robots_verdict(status, text, url)
+        verdict = robots.verdict(status, text, url, mode=source.get("robots_mode", robots.DEFAULT_MODE))
         report.robots_ok, report.robots_note = verdict.ok, verdict.reason
         if not verdict.ok:
             report.error = "skipped, adapter not called"
@@ -145,6 +132,8 @@ def main(argv: list[str] | None = None) -> int:
     problems, reports = check_town(configs[args.town])
     for m in problems:
         print(m)
+    if reports:
+        print(f"user-agent: {user_agent(args.town)}")
     for r in reports:
         print(r.line())
     failed = bool(problems) or any(r.error for r in reports)

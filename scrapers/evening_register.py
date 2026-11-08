@@ -19,11 +19,11 @@ from datetime import date, datetime, timedelta
 from html.parser import HTMLParser
 from typing import Any, Callable
 from urllib.parse import urljoin, urlparse
-from urllib.robotparser import RobotFileParser
+
+from scrapers import robots as _robots
+from scrapers.robots import AI_BOT_TOKENS, Verdict  # noqa: F401  (re-exported)
 
 BOT_TOKEN = "ViewMediaBot"
-AI_BOT_TOKENS = ("gptbot", "chatgpt-user", "oai-searchbot", "claudebot", "claude-searchbot", "claude-user", "anthropic-ai",
-                 "ccbot", "google-extended", "perplexitybot", "bytespider", "cohere-ai")
 MAX_PAGE_CHARS = 14_000
 MAX_BYTES = 1_500_000
 EVENING_FROM_HOUR = 17  # same bar as the site's "tonight" (TONIGHT_FROM_HOUR)
@@ -34,49 +34,9 @@ GROUPS = ("Live music", "Comedy & shows", "Quiz & pub nights", "Clubs & late")
 
 # --- robots -----------------------------------------------------------------------------------------------------------------
 
-@dataclass
-class Verdict:
-    ok: bool
-    reason: str = ""
-
-
 def robots_verdict(status: int | None, text: str | None, url: str) -> Verdict:
-    """`status` None = no answer at all (timeout, DNS). 404 = no robots.txt = allowed."""
-    if status is None:
-        return Verdict(False, "robots.txt unreachable (no answer): skipped")
-    if status == 404:
-        return Verdict(True, "no robots.txt (404)")
-    if status != 200:
-        return Verdict(False, f"robots.txt answered {status}: skipped")
-    body = text or ""
-    group_agents: list[str] = []
-    in_rules = False
-    star_disallows_all = False
-    for raw in body.splitlines():
-        line = raw.split("#", 1)[0].strip()
-        if ":" not in line:
-            continue
-        key, value = (p.strip() for p in line.split(":", 1))
-        key = key.lower()
-        if key == "user-agent":
-            if in_rules:
-                group_agents, in_rules = [], False
-            token = value.lower()
-            group_agents.append(token)
-            hit = next((b for b in AI_BOT_TOKENS if b in token), None)
-            if hit:
-                return Verdict(False, f"robots.txt names the AI crawler {value}")
-        elif key in ("disallow", "allow", "crawl-delay", "sitemap"):
-            in_rules = True
-            if key == "disallow" and value == "/" and "*" in group_agents:
-                star_disallows_all = True
-    if star_disallows_all:
-        return Verdict(False, "robots.txt: User-agent * has Disallow: /")
-    parser = RobotFileParser()
-    parser.parse(body.splitlines())
-    if not parser.can_fetch(BOT_TOKEN, url):
-        return Verdict(False, f"robots.txt disallows {urlparse(url).path or '/'} for {BOT_TOKEN}")
-    return Verdict(True, "robots.txt ok")
+    """The evening register keeps the owner's strict rule (2026-10-28): a venue naming any AI crawler is excluded."""
+    return _robots.verdict(status, text, url, mode="strict")
 
 
 # --- page text + identity ---------------------------------------------------------------------------------------------------

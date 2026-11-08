@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import re
 
+from scrapers import robots
 from sports import adapters, registry
 
 NON_ADAPTER_SOURCES = ("manual_verified", "submissions")
 _TOP = {"enabled", "nearby_radius_miles", "programs", "rivalries", "sources", "source_priority", "submissions"}
 _PROGRAM = {"id", "name", "short", "nickname", "colors", "home_venue", "level_default"}
-_SOURCE = {"adapter", "program", "sport", "level", "gender", "url", "params"}
+_SOURCE = {"adapter", "program", "sport", "level", "gender", "url", "params", "robots_mode"}
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
@@ -86,6 +87,8 @@ def validate_sports_config(cfg: dict) -> list[str]:
             bad(f"{where}.level: unknown level {src['level']!r}")
         if "gender" in src and src["gender"] not in registry.genders():
             bad(f"{where}.gender: unknown gender {src['gender']!r}")
+        if "robots_mode" in src and src["robots_mode"] not in robots.MODES:
+            bad(f"{where}.robots_mode: expected one of {', '.join(robots.MODES)}")
         if "params" in src and not isinstance(src["params"], dict):
             bad(f"{where}.params: must be an object")
 

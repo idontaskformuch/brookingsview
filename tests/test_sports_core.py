@@ -275,3 +275,11 @@ def test_sports_migration_is_additive_and_creates_the_four_tables():
 @pytest.mark.parametrize("stmt", ["DROP TABLE x", "ALTER TABLE x ADD COLUMN y int", "DELETE FROM x", "UPDATE x SET a=1", "INSERT INTO x VALUES (1)"])
 def test_apply_migration_refuses_non_additive(stmt):
     assert apply_migration.check_additive(stmt + ";")
+
+
+def test_robots_mode_is_validated(fake_adapter):
+    cfg = block()
+    cfg["sports"]["sources"][0]["robots_mode"] = "strict"
+    assert validate_sports_config(cfg) == []
+    cfg["sports"]["sources"][0]["robots_mode"] = "loose"
+    assert any("robots_mode" in m for m in validate_sports_config(cfg))

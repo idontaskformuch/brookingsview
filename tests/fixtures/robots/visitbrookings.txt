@@ -1,0 +1,14 @@
+User-agent: GPTBot
+Disallow: /events/
+
+# START YOAST BLOCK
+# ---------------------------
+User-agent: *
+Disallow: /events/*/page/
+Disallow: /?eventDate=
+Disallow: /?paged=
+Crawl-delay: 2
+
+Sitemap: https://visitbrookingssd.com/sitemap_index.xml
+# ---------------------------
+# END YOAST BLOCK
