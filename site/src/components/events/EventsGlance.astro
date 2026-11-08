@@ -24,7 +24,7 @@ const link = (d: { dayKey: string }) => `${base}#${idPrefix}-${d.dayKey}`;
   ) : null}
   {view.showDayStrip && (
     <DayStrip label="Events per day" days={view.days.map((d) => ({
-      label: d.offset < 2 ? d.label.slice(0, 3) : d.label,
+      label: d.weekday,
       value: d.count > 0 ? String(d.count) : '–', sub: d.dateLabel, today: d.offset === 0, href: d.count > 0 ? link(d) : undefined,
     }))} />
   )}

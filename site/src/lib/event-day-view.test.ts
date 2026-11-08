@@ -181,7 +181,7 @@ describe('dedupe: same title, same local day, start within 60 minutes is one eve
 
 describe('caps and front-page blocks', () => {
   const mkRow = (o: Partial<import('./event-day-view').DayRow>) => ({ item: null as any, dayKey: 'd', dateLabel: '', offset: 0, timeLabel: '', allDay: false, tonight: false, recurrence: 'one_off', title: 't', venue: null, area: null, free: false, kids: false, teens: false, cat: null, start: '', end: null, merged: [], ...o }) as import('./event-day-view').DayRow;
-  const grp = (offset: number, rows: import('./event-day-view').DayRow[]) => ({ offset, dayKey: `k${offset}`, label: 'x', dateLabel: 'x', count: rows.length, rows });
+  const grp = (offset: number, rows: import('./event-day-view').DayRow[]) => ({ offset, dayKey: `k${offset}`, label: 'x', weekday: 'x', dateLabel: 'x', count: rows.length, rows });
   it('takeRows cuts in day order and reports what is hidden', async () => {
     const { takeRows } = await import('./event-day-view');
     const r = takeRows([grp(0, [mkRow({}), mkRow({})]), grp(1, [mkRow({}), mkRow({})]), grp(2, [mkRow({})])], 3);
@@ -239,5 +239,27 @@ describe('events never show a big card or a full-size FallbackTile', () => {
   });
   it('no page passes the removed feature prop', () => {
     for (const f of ['../pages/index.astro', '../pages/events.astro']) expect(readFileSync(new URL(f, import.meta.url), 'utf8')).not.toMatch(/<EventDayList[^>]*feature=/);
+  });
+});
+
+describe('day boxes and date order per country (owner 2026-11-08: Glasgow showed "Tod"/"Tom" and month-first dates)', () => {
+  const glasgow = buildEventsView([], { now: new Date('2026-11-08T13:00:00Z'), timezone: 'Europe/London', gb: true, facts: facts() });
+  const brookings = buildEventsView([], { now: new Date('2026-11-08T13:00:00Z'), timezone: 'America/Chicago', gb: false, facts: facts() });
+  it('every box carries the short weekday, today and tomorrow included (Sun, Mon, Tue ...)', () => {
+    expect(glasgow.days.map((d) => d.weekday)).toEqual(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
+    expect(brookings.days.map((d) => d.weekday)).toEqual(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
+  });
+  it('gb is day-first, us month-first, on the day groups', () => {
+    expect(glasgow.days[0].dateLabel).toBe('8 Nov');
+    expect(brookings.days[0].dateLabel).toBe('Nov 8');
+  });
+  it('gb is day-first on a row', () => {
+    const v = buildEventsView([item({ slug: 'a', title: 'A', occurs_at: '2026-11-12T19:00:00Z' })], { now: new Date('2026-11-08T13:00:00Z'), timezone: 'Europe/London', gb: true, facts: facts() });
+    expect(v.days[4].rows[0].dateLabel).toBe('12 Nov');
+  });
+  it('the glance strip uses the weekday, never a cut-down "Today"/"Tomorrow"', () => {
+    const src = readFileSync(new URL('../components/events/EventsGlance.astro', import.meta.url), 'utf8');
+    expect(src).toContain('label: d.weekday');
+    expect(src).not.toMatch(/slice\(0, 3\)/);
   });
 });

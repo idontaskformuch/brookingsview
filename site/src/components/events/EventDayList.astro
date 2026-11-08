@@ -31,7 +31,8 @@ const photoOf = (row: DayRow) =>
 ))}
 <style>
   .evd { margin-bottom: var(--ui-5); scroll-margin-top: var(--ui-5); }
-  .evd__h { position: sticky; top: 0; z-index: 1; margin: 0 0 var(--ui-2); padding: var(--ui-2) 0; background: var(--surface); font-family: var(--font-head); font-size: 1.5rem; border-bottom: var(--ui-hairline); }
+  /* The heading sits straight on the page background; each event below is its own white card (EventRow). */
+  .evd__h { margin: 0 0 var(--ui-2); font-family: var(--font-head); font-size: 1.5rem; }
   .evd__date { margin-left: var(--ui-2); font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: 400; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-  .evd__list { list-style: none; margin: var(--ui-2) 0 0; padding: 0; }
+  .evd__list { list-style: none; margin: 0; padding: 0; }
 </style>

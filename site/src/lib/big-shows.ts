@@ -7,7 +7,7 @@ import type { TicketmasterFeedItem } from './ticketmaster';
 import { getTicketmasterEventsForTown } from './ticketmaster';
 import { distanceMetres } from './tonight-cards';
 import { hasEnded, localDayNumber } from './local-day';
-import { showTimeGb } from './whats-on-dates';
+import { showDate, showTimeGb } from './whats-on-dates';
 import type { Category } from './ui/ui-helpers';
 
 export interface BigShowsConfig { enabled: boolean; maxMiles: number; horizonDays?: number }
@@ -48,11 +48,12 @@ export function bigShowWhere(s: Pick<BigShow, 'venue' | 'city' | 'miles'>): stri
 
 export function buildBigShows(
   items: TicketmasterFeedItem[],
-  o: { center: { lat: number; lon: number }; maxMiles: number; now: Date; timezone: string; locale?: string; horizonDays?: number },
+  o: { center: { lat: number; lon: number }; maxMiles: number; now: Date; timezone: string; country?: 'us' | 'gb'; horizonDays?: number },
 ): BigShow[] {
   const today = localDayNumber(o.now, o.timezone);
   const horizon = o.horizonDays ?? BIG_SHOWS_HORIZON_DAYS;
-  const dayFmt = new Intl.DateTimeFormat(o.locale ?? 'en-US', { timeZone: o.timezone, weekday: 'short', month: 'short', day: 'numeric' });
+  // now = the show's own date, so no year is ever added (big shows run a few weeks ahead)
+  const dayLabel = (d: Date) => showDate(d.toISOString(), o.timezone, d, true, o.country);
   const rows: BigShow[] = [];
   for (const item of items) {
     const e = item.ticketmasterEvent;
@@ -66,7 +67,7 @@ export function buildBigShows(
       : e.venueDistanceMiles;
     if (miles == null || miles > o.maxMiles) continue;
     rows.push({
-      id: e.id, title: e.title, start: item.occurs_at, dateLabel: dayFmt.format(start), timeLabel: showTimeGb(item.occurs_at, o.timezone),
+      id: e.id, title: e.title, start: item.occurs_at, dateLabel: dayLabel(start), timeLabel: showTimeGb(item.occurs_at, o.timezone),
       venue: e.venueName, city: e.venueCity, miles: Math.round(miles), href: e.ticketUrl, cat: bigShowCategory(e.segment), moreDates: 0,
     });
   }
@@ -86,10 +87,10 @@ export function buildBigShows(
 
 /** Loads Ticketmaster at the module's own radius (a second request per build: the town's `ticketmaster.radiusMiles` serves What's On and /tonight). */
 export async function getBigShows(
-  site: { bigShows?: BigShowsConfig; ticketmaster?: { enabled: boolean; latitude: number; longitude: number; radiusMiles: number }; townCenter: { lat: number; lon: number }; timezone: string },
+  site: { bigShows?: BigShowsConfig; ticketmaster?: { enabled: boolean; latitude: number; longitude: number; radiusMiles: number }; townCenter: { lat: number; lon: number }; timezone: string; country?: 'us' | 'gb' },
   now = new Date(),
 ): Promise<BigShow[]> {
   if (!site.bigShows?.enabled || !site.ticketmaster?.enabled) return [];
   const items = await getTicketmasterEventsForTown({ ticketmaster: { ...site.ticketmaster, radiusMiles: site.bigShows.maxMiles } }, { includeSports: true });
-  return buildBigShows(items, { center: site.townCenter, maxMiles: site.bigShows.maxMiles, now, timezone: site.timezone, horizonDays: site.bigShows.horizonDays });
+  return buildBigShows(items, { center: site.townCenter, maxMiles: site.bigShows.maxMiles, now, timezone: site.timezone, country: site.country, horizonDays: site.bigShows.horizonDays });
 }

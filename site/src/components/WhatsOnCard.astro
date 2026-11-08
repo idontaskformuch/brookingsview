@@ -35,14 +35,14 @@ const distance = distanceLabel(e.venueDistanceMiles, siteConfig.cityName);
 
 const buildNow = new Date();
 const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
-  ? runLabel(runSize, item.occurs_at, lastOccursAt, siteConfig.timezone, buildNow)
+  ? runLabel(runSize, item.occurs_at, lastOccursAt, siteConfig.timezone, buildNow, siteConfig.country)
   : null;
 // R5's left-rail column: a SHORT label (fits a 46px column), not the full
 // weekday+month+day string dateLabel uses for the multi-date-run case --
 // that longer string still renders, but as ordinary meta text, not
 // squeezed into the rail.
 const clock = runSize <= 1 && item.occurs_at && siteConfig.country === 'gb' ? showTimeGb(item.occurs_at, siteConfig.timezone) : '';
-const railLabel = item.occurs_at ? showDate(item.occurs_at, siteConfig.timezone, buildNow, false) : null;
+const railLabel = item.occurs_at ? showDate(item.occurs_at, siteConfig.timezone, buildNow, false, siteConfig.country) : null;
 ---
 <article class="whats-on-row">
   <div class="whats-on-row__rail">

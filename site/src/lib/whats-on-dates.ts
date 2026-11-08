@@ -1,5 +1,7 @@
 /** Date labels for What's On (Q3 2026-10-23): the list runs a year and a half ahead ("Jul 17" next to "Nov 17" with no year looked like
  *  one season), so the YEAR is shown whenever the date is not in the current local year. Pure: `now` and the zone are arguments. */
+import { shortDate, shortWeekday } from './calendar-strings';
+
 function localYear(d: Date, timeZone: string): number {
   return Number(new Intl.DateTimeFormat('en-US', { year: 'numeric', timeZone }).format(d));
 }
@@ -14,13 +16,17 @@ export function showTimeGb(iso: string, timeZone: string): string {
   return `${hour % 12 || 12}${minute ? `:${String(minute).padStart(2, '0')}` : ''}${hour < 12 ? 'am' : 'pm'}`;
 }
 
-/** "Tue, Oct 27" this year, "Sun, Jul 17, 2027" in another year. `withWeekday` false gives "Oct 27" / "Jul 17, 2027". */
-export function showDate(iso: string, timeZone: string, now: Date, withWeekday = true): string {
+/** "Tue, Oct 27" this year, "Sun, Jul 17, 2027" in another year (us); "Tue 27 Oct" / "Sun 17 Jul 2027" (gb, no commas, as the sports dates).
+ *  `withWeekday` false gives "Oct 27" / "Jul 17, 2027" (us), "27 Oct" / "17 Jul 2027" (gb). Names and order come from strings/<country>/calendar.json. */
+export function showDate(iso: string, timeZone: string, now: Date, withWeekday = true, country?: 'us' | 'gb'): string {
   const d = new Date(iso);
   const otherYear = localYear(d, timeZone) !== localYear(now, timeZone);
-  return d.toLocaleDateString('en-US', {
-    ...(withWeekday ? { weekday: 'short' as const } : {}), month: 'short', day: 'numeric', ...(otherYear ? { year: 'numeric' as const } : {}), timeZone,
-  });
+  const [y, m, day] = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d).split('-').map(Number);
+  const gb = country === 'gb';
+  const date = shortDate(m, day, country);
+  const year = otherYear ? `${gb ? ' ' : ', '}${y}` : '';
+  const weekday = withWeekday ? `${shortWeekday(new Date(Date.UTC(y, m - 1, day)).getUTCDay(), country)}${gb ? ' ' : ', '}` : '';
+  return `${weekday}${date}${year}`;
 }
 
 function sameLocalDay(a: string, b: string, timeZone: string): boolean {
@@ -30,8 +36,8 @@ function sameLocalDay(a: string, b: string, timeZone: string): boolean {
 
 /** Label for a collapsed run of the same production: "6 dates, Sat, Nov 14 – Sun, Nov 15" or, when every date is the same day,
  *  "2 shows on Tue, Oct 27" (the old label printed "Tue, Oct 27 – Tue, Oct 27"). null for a single date. */
-export function runLabel(runSize: number, firstIso: string, lastIso: string, timeZone: string, now: Date): string | null {
+export function runLabel(runSize: number, firstIso: string, lastIso: string, timeZone: string, now: Date, country?: 'us' | 'gb'): string | null {
   if (runSize <= 1) return null;
-  if (sameLocalDay(firstIso, lastIso, timeZone)) return `${runSize} shows on ${showDate(firstIso, timeZone, now)}`;
-  return `${runSize} dates, ${showDate(firstIso, timeZone, now)} – ${showDate(lastIso, timeZone, now)}`;
+  if (sameLocalDay(firstIso, lastIso, timeZone)) return `${runSize} shows on ${showDate(firstIso, timeZone, now, true, country)}`;
+  return `${runSize} dates, ${showDate(firstIso, timeZone, now, true, country)} – ${showDate(lastIso, timeZone, now, true, country)}`;
 }

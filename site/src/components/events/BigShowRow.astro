@@ -22,7 +22,7 @@ const { s } = Astro.props;
   </CompactRow>
 </li>
 <style>
-  .bs-li { list-style: none; border-bottom: var(--ui-hairline); }
+  .bs-li { list-style: none; background: var(--paper-raised); border: var(--ui-hairline); border-radius: var(--ui-radius); overflow: hidden; margin-bottom: var(--ui-2); }
   .bs-li :global(.ui-row__main) { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: var(--ui-3); align-items: start; width: 100%; }
   .bs-li :global(.ui-row) { padding-block: var(--ui-3); }
   .bs-when { display: flex; flex-direction: column; gap: var(--ui-1); font-variant-numeric: tabular-nums; color: var(--c, var(--ink-soft)); }

@@ -35,3 +35,18 @@ describe('showTimeGb (owner 2026-10-28: a clock time on every Glasgow show row)'
     expect(showTimeGb('2026-07-01T23:00:00Z', 'Europe/London')).toBe('');
   });
 });
+
+describe('gb order (owner 2026-11-08): day first, no commas', () => {
+  const gbNow = new Date('2026-11-08T12:00:00Z');
+  it('weekday + day + month; year only in another year', () => {
+    expect(showDate('2026-11-16T19:00:00Z', 'Europe/London', gbNow, true, 'gb')).toBe('Mon 16 Nov');
+    expect(showDate('2027-07-17T19:00:00Z', 'Europe/London', gbNow, true, 'gb')).toBe('Sat 17 Jul 2027');
+    expect(showDate('2027-07-17T19:00:00Z', 'Europe/London', gbNow, false, 'gb')).toBe('17 Jul 2027');
+  });
+  it('us is unchanged', () => {
+    expect(showDate('2026-11-17T01:00:00Z', TZ, now, true, 'us')).toBe('Mon, Nov 16');
+  });
+  it('a run label follows the same order', () => {
+    expect(runLabel(3, '2026-11-14T19:00:00Z', '2026-11-15T19:00:00Z', 'Europe/London', gbNow, 'gb')).toBe('3 dates, Sat 14 Nov – Sun 15 Nov');
+  });
+});

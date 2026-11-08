@@ -7,6 +7,7 @@ import { localDateParts, utcMidnight, dayIndex, type FeedItem } from './events';
 import { isAllDay, localHourOf, TONIGHT_FROM_HOUR } from './local-day';
 import type { Story } from './db';
 import type { Category } from './ui/ui-helpers';
+import { shortDateOfDay, shortWeekdayOfDay } from './calendar-strings';
 
 /** Days listed one by one on the page; later items go to `furtherOut`. */
 export const DAY_WINDOW = 7;
@@ -34,7 +35,7 @@ export interface RowFacts {
 export interface DayRow {
   item: FeedItem;
   dayKey: string;
-  /** "Nov 10". */
+  /** "Nov 10" (us) / "10 Nov" (gb). */
   dateLabel: string;
   offset: number;
   timeLabel: string;
@@ -57,9 +58,11 @@ export interface DayRow {
 export interface DayGroup {
   offset: number;
   dayKey: string;
-  /** "Today", "Tomorrow", then the short weekday ("Thu"). */
+  /** "Today", "Tomorrow", then the short weekday ("Thu"): the heading above the day's list. */
   label: string;
-  /** "Nov 10". */
+  /** The short weekday ("Thu") for every day, today included: the day strip uses this, never "Today"/"Tomorrow" cut to three letters. */
+  weekday: string;
+  /** "Nov 10" (us) / "10 Nov" (gb). */
   dateLabel: string;
   count: number;
   rows: DayRow[];
@@ -135,21 +138,23 @@ export function bodyNamesWrongDay(body: string, startIso: string, timezone: stri
   return named.has(`${utc.m}-${utc.d}`) && !named.has(`${local.m}-${local.d}`);
 }
 
-function dayLabelFor(offset: number, day: Date): string {
+function dayLabelFor(offset: number, day: Date, country: 'us' | 'gb'): string {
   if (offset === 0) return 'Today';
   if (offset === 1) return 'Tomorrow';
-  return new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(day);
+  return shortWeekdayOfDay(day, country);
 }
 
 export function buildEventsView(items: FeedItem[], { now, timezone, gb, facts }: Options): EventsView {
   const today = utcMidnight(localDateParts(now, timezone));
+  const country = gb ? 'gb' : 'us';
   const days: DayGroup[] = Array.from({ length: DAY_WINDOW }, (_, offset) => {
     const day = new Date(today.getTime() + offset * 86_400_000);
     return {
       offset,
       dayKey: dayKeyOf({ y: day.getUTCFullYear(), m: day.getUTCMonth() + 1, d: day.getUTCDate() }),
-      label: dayLabelFor(offset, day),
-      dateLabel: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(day),
+      label: dayLabelFor(offset, day, country),
+      weekday: shortWeekdayOfDay(day, country),
+      dateLabel: shortDateOfDay(day, country),
       count: 0,
       rows: [],
     };
@@ -169,7 +174,7 @@ export function buildEventsView(items: FeedItem[], { now, timezone, gb, facts }:
     const local = localDateParts(new Date(start), timezone);
     const row: DayRow = {
       item, dayKey: dayKeyOf(local), offset,
-      dateLabel: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(utcMidnight(local)),
+      dateLabel: shortDateOfDay(utcMidnight(local), country),
       timeLabel: clockLabel(start, end, timezone, gb),
       allDay: isAllDay({ start, end }, timezone),
       tonight: offset === 0 && localHourOf(new Date(start), timezone) >= TONIGHT_FROM_HOUR,

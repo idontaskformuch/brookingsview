@@ -36,7 +36,8 @@ const hasPills = row.free || row.kids || row.teens;
   </CompactRow>
 </li>
 <style>
-  .ev-li { list-style: none; border-bottom: var(--ui-hairline); }
+  /* A card: white (raised) on the page background, thin border, rounded; the category edge is clipped by the radius. */
+  .ev-li { list-style: none; background: var(--paper-raised); border: var(--ui-hairline); border-radius: var(--ui-radius); overflow: hidden; margin-bottom: var(--ui-2); }
   .ev-li :global(.ui-row__main) { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: var(--ui-3); align-items: start; width: 100%; }
   .ev-li :global(.ui-row) { padding-block: var(--ui-3); }
   .ev-li--photo :global(.ui-row__main) { grid-template-columns: 5.5rem minmax(0, 1fr) 64px; }

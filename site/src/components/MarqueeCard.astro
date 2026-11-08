@@ -57,9 +57,9 @@ const distance = distanceLabel(e.venueDistanceMiles, cityName);
 
 const buildNow = new Date();
 const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
-  ? runLabel(runSize, item.occurs_at, lastOccursAt, timezone, buildNow)
+  ? runLabel(runSize, item.occurs_at, lastOccursAt, timezone, buildNow, siteConfig.country)
   : item.occurs_at
-    ? [showDate(item.occurs_at, timezone, buildNow), siteConfig.country === 'gb' ? showTimeGb(item.occurs_at, timezone) : ''].filter(Boolean).join(' · ')
+    ? [showDate(item.occurs_at, timezone, buildNow, true, siteConfig.country), siteConfig.country === 'gb' ? showTimeGb(item.occurs_at, timezone) : ''].filter(Boolean).join(' · ')
     : null;
 ---
 <article class:list={['marquee-card', `marquee-card--${variant}`]}>
