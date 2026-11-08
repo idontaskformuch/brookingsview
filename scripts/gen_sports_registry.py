@@ -21,10 +21,11 @@ def render() -> str:
 export type SportResultType = {" | ".join(json.dumps(t) for t in doc["resultTypes"])};
 export type SportLevel = {" | ".join(json.dumps(t) for t in doc["levels"])};
 export type SportGender = {" | ".join(json.dumps(t) for t in doc["genders"])};
-export interface SportDef {{ id: string; us: string; uk: string; icon: string; result_type: SportResultType }}
+export interface SportDef {{ id: string; us: string; uk: string; icon: string; result_type: SportResultType; typical_duration_hours?: number }}
 
 export const SPORT_LEVELS: readonly SportLevel[] = {json.dumps(doc["levels"])};
 export const SPORT_GENDERS: readonly SportGender[] = {json.dumps(doc["genders"])};
+export const DEFAULT_DURATION_HOURS = {json.dumps(doc["defaultDurationHours"])};
 export const SPORTS: readonly SportDef[] = {sports};
 
 const BY_ID = new Map(SPORTS.map((s) => [s.id, s]));
@@ -34,6 +35,11 @@ export function sportById(id: string): SportDef {{
   const found = BY_ID.get(id);
   if (!found) throw new Error(`unknown sport id "${{id}}"; known: ${{[...BY_ID.keys()].join(", ")}}`);
   return found;
+}}
+
+/** How long a game of this sport counts as "upcoming" after it starts (the table has no end time). */
+export function sportDurationHours(id: string): number {{
+  return sportById(id).typical_duration_hours ?? DEFAULT_DURATION_HOURS;
 }}
 
 export function sportLabel(id: string, country: string): string {{

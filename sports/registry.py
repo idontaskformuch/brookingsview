@@ -46,3 +46,8 @@ def sport_label(sport_id: str, country: str = "us") -> str:
 
 def result_type(sport_id: str) -> str:
     return sport(sport_id)["result_type"]
+
+
+def duration_hours(sport_id: str) -> float:
+    """How long a game of this sport counts as upcoming after it starts; mirrors sportDurationHours in the TS registry."""
+    return sport(sport_id).get("typical_duration_hours", _doc()["defaultDurationHours"])

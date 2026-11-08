@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { countsInRecord, localDayEnd, recordFor, sportPhase, type SportEventLike } from "./sport-events";
 
 const ev = (o: Partial<SportEventLike>): SportEventLike => ({
-  startAt: new Date("2026-11-08T01:00:00Z"), tz: "America/Chicago", status: "scheduled", timeTba: false, exhibition: false,
+  sport: "football", startAt: new Date("2026-11-08T01:00:00Z"), tz: "America/Chicago", status: "scheduled", timeTba: false, exhibition: false,
   scoreHome: null, scoreAway: null, homeProgramId: "sdsu", awayProgramId: null, ...o,
 });
 const at = (iso: string) => new Date(iso);
@@ -17,6 +17,14 @@ describe("sportPhase", () => {
     expect(sportPhase(game, at("2026-11-07T23:30:00Z"))).toBe("pending");
     expect(sportPhase(game, at("2026-11-08T05:59:00Z"))).toBe("pending"); // 23:59 CST
     expect(sportPhase(game, at("2026-11-08T06:01:00Z"))).toBe("history"); // 00:01 CST next day
+  });
+  it("the window is per sport: basketball (2.5 h) is pending where football (3.5 h) is still upcoming", () => {
+    const start = at("2026-11-07T19:00:00Z"), now = at("2026-11-07T22:45:00Z"); // 3 h 45 after the start
+    expect(sportPhase(ev({ sport: "football", startAt: start }), at("2026-11-07T22:00:00Z"))).toBe("upcoming");
+    expect(sportPhase(ev({ sport: "football", startAt: start }), now)).toBe("pending");
+    expect(sportPhase(ev({ sport: "basketball", startAt: start }), at("2026-11-07T21:45:00Z"))).toBe("pending");
+    expect(sportPhase(ev({ sport: "golf", startAt: start }), at("2026-11-07T22:45:00Z"))).toBe("upcoming"); // golf: default 4 h, ends 23:00Z
+    expect(sportPhase(ev({ sport: "golf", startAt: start }), at("2026-11-07T23:10:00Z"))).toBe("pending");
   });
   it("a time_tba game stays upcoming through its local day and is history after", () => {
     const tba = ev({ startAt: at("2026-11-28T06:00:00Z"), timeTba: true });

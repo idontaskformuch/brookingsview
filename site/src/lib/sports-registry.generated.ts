@@ -2,17 +2,19 @@
 export type SportResultType = "score" | "placing" | "time" | "none";
 export type SportLevel = "pro" | "minor" | "college" | "varsity" | "jv" | "amateur" | "youth";
 export type SportGender = "boys" | "girls" | "men" | "women" | "mixed";
-export interface SportDef { id: string; us: string; uk: string; icon: string; result_type: SportResultType }
+export interface SportDef { id: string; us: string; uk: string; icon: string; result_type: SportResultType; typical_duration_hours?: number }
 
 export const SPORT_LEVELS: readonly SportLevel[] = ["pro", "minor", "college", "varsity", "jv", "amateur", "youth"];
 export const SPORT_GENDERS: readonly SportGender[] = ["boys", "girls", "men", "women", "mixed"];
+export const DEFAULT_DURATION_HOURS = 4;
 export const SPORTS: readonly SportDef[] = [
   {
     "id": "football",
     "us": "Football",
     "uk": "American football",
     "icon": "football",
-    "result_type": "score"
+    "result_type": "score",
+    "typical_duration_hours": 3.5
   },
   {
     "id": "soccer",
@@ -26,7 +28,8 @@ export const SPORTS: readonly SportDef[] = [
     "us": "Basketball",
     "uk": "Basketball",
     "icon": "basketball",
-    "result_type": "score"
+    "result_type": "score",
+    "typical_duration_hours": 2.5
   },
   {
     "id": "hockey",
@@ -54,7 +57,8 @@ export const SPORTS: readonly SportDef[] = [
     "us": "Volleyball",
     "uk": "Volleyball",
     "icon": "volleyball",
-    "result_type": "score"
+    "result_type": "score",
+    "typical_duration_hours": 2.5
   },
   {
     "id": "lacrosse",
@@ -170,6 +174,11 @@ export function sportById(id: string): SportDef {
   const found = BY_ID.get(id);
   if (!found) throw new Error(`unknown sport id "${id}"; known: ${[...BY_ID.keys()].join(", ")}`);
   return found;
+}
+
+/** How long a game of this sport counts as "upcoming" after it starts (the table has no end time). */
+export function sportDurationHours(id: string): number {
+  return sportById(id).typical_duration_hours ?? DEFAULT_DURATION_HOURS;
 }
 
 export function sportLabel(id: string, country: string): string {

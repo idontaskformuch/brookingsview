@@ -1,15 +1,16 @@
 /** The ONE rule for what a sport_events row is "right now" and what counts towards a record. Used by /jackrabbits and the front page;
  *  nothing else decides upcoming / pending / history (owner 2026-11-08).
  *
- *  - upcoming: status 'scheduled' and its end is after now. A timed game ends GAME_WINDOW_HOURS after it starts (the table has no end
+ *  - upcoming: status 'scheduled' and its end is after now. A timed game ends typical_duration_hours (config/sports.json, default 4) after it starts (the table has no end
  *    time); a time_tba game ends at the end of its local day.
  *  - pending:  'scheduled', past its end, still the same local day, no result -> "Result pending" until the local day ends.
  *  - history:  everything else. A 'scheduled' row that has outlived its day is history and is never shown as upcoming.
  *  - record:   only status 'final' AND NOT exhibition. An exhibition keeps its score on screen but is never counted. */
 
-export const GAME_WINDOW_HOURS = 4;
+import { sportDurationHours } from "./sports-registry.generated";
 
 export interface SportEventLike {
+  sport: string;
   startAt: Date;
   tz: string;
   status: "scheduled" | "final" | "postponed" | "cancelled";
@@ -42,8 +43,8 @@ export function localDayEnd(d: Date, tz: string): Date {
   return new Date(guess);
 }
 
-export function sportEventEnd(ev: Pick<SportEventLike, "startAt" | "tz" | "timeTba">): Date {
-  return ev.timeTba ? localDayEnd(ev.startAt, ev.tz) : new Date(ev.startAt.getTime() + GAME_WINDOW_HOURS * 3600_000);
+export function sportEventEnd(ev: Pick<SportEventLike, "sport" | "startAt" | "tz" | "timeTba">): Date {
+  return ev.timeTba ? localDayEnd(ev.startAt, ev.tz) : new Date(ev.startAt.getTime() + sportDurationHours(ev.sport) * 3600_000);
 }
 
 export function sportPhase(ev: SportEventLike, now: Date): SportPhase {

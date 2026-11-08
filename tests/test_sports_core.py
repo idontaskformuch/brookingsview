@@ -334,3 +334,11 @@ def test_exhibition_migration_is_additive_and_store_writes_the_flag():
     cur = Cur()
     store.upsert_events(cur, "t", [ev(exhibition=True)])
     assert "exhibition" in cur.calls[0][0] and cur.calls[0][1][-1] is True
+
+
+def test_duration_hours_per_sport_with_a_default_of_four():
+    from sports import registry
+    assert registry.duration_hours("football") == 3.5 and registry.duration_hours("basketball") == 2.5
+    assert registry.duration_hours("golf") == 4
+    assert all(isinstance(s.get("typical_duration_hours", 4), (int, float)) and 0 < s.get("typical_duration_hours", 4) <= 12
+               for s in registry.sports().values())
