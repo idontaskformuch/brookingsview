@@ -81,6 +81,11 @@
       "born_from": "2026-11-08: the cron-dispatcher's weather/warnings/sports jobs failed only in Cloudflare's logs, which nobody reads; scripts/check_freshness.py on GitHub's own schedule opens an issue instead",
       "what": "a town's wildfire/air-quality fetch (dispatcher_heartbeat job 'safety') has not succeeded for 3 h"
     },
+    "ops.evening-register-freshness": {
+      "severity": "hard",
+      "born_from": "2026-11-08: the register's dated rules lapsed on 11-05 (first run on a Thursday, the Monday run skipped its venues as checked <6 days ago) and Broomfield's register has valid rules for 1 of 7 venues; nothing watched it. Owner minimums: Glasgow 4, Broomfield 1",
+      "what": "a town's evening register has fewer venues with a valid rule than its minimum (dated 8 days, recurring 36), or no venue check for 9 days"
+    },
     "ops.token-expiry": {
       "severity": "hard",
       "born_from": "2026-11-08: the cron-dispatcher's weather/warnings/sports jobs failed only in Cloudflare's logs, which nobody reads; scripts/check_freshness.py on GitHub's own schedule opens an issue instead",

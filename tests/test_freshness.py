@@ -156,3 +156,65 @@ def test_migration_069_has_the_columns_the_worker_and_the_check_use():
     sql = (ROOT / "db" / "migrations" / "069_dispatcher_heartbeat.sql").read_text(encoding="utf-8")
     for col in ("town_id", "job", "last_ok", "last_error", "last_error_at", "PRIMARY KEY (town_id, job)"):
         assert col in sql
+
+
+# ---------------------------------------------------------------- evening register (owner 2026-11-08)
+
+def conf(days: float) -> datetime:
+    return NOW - timedelta(days=days)
+
+
+def test_register_minimums_margins_and_towns_are_the_agreed_ones():
+    assert cf.REGISTER_MIN_VENUES == {"glasgow": 4, "broomfield_co": 1}
+    assert (cf.REGISTER_DATED_DAYS, cf.REGISTER_RECURRING_DAYS, cf.REGISTER_CHECK_MAX_DAYS) == (8, 36, 9)
+    assert cf.CHECK_ID["register"] == "ops.evening-register-freshness"
+
+
+def test_register_towns_are_exactly_the_configs_with_venues_and_all_have_a_minimum():
+    assert set(cf.register_towns()) == set(cf.REGISTER_MIN_VENUES)
+
+
+def test_dated_rule_counts_eight_days_recurring_thirty_six():
+    assert cf.valid_register_venues([("a", "dated", conf(8))], NOW) == {"a"}
+    assert cf.valid_register_venues([("a", "dated", conf(8.01))], NOW) == set()
+    assert cf.valid_register_venues([("b", "recurring", conf(36))], NOW) == {"b"}
+    assert cf.valid_register_venues([("b", "recurring", conf(36.01))], NOW) == set()
+    # the state of 2026-11-08: dated rules confirmed 10-29 (10 days) are out, the recurring one (10 days) is in
+    assert cf.valid_register_venues([("citizens", "dated", conf(10)), ("nns", "recurring", conf(10))], NOW) == {"nns"}
+
+
+def test_a_venue_counts_once_however_many_rules_it_has_and_unknown_kinds_never_count():
+    rows = [("a", "dated", conf(1)), ("a", "dated", conf(2)), ("a", "recurring", conf(3)), ("z", "other", conf(1)), ("n", "dated", None)]
+    assert cf.valid_register_venues(rows, NOW) == {"a"}
+
+
+def test_glasgow_alarms_below_four_not_at_four():
+    assert cf.register_findings("glasgow", 4, conf(1), NOW) == []
+    f = cf.register_findings("glasgow", 3, conf(1), NOW)
+    assert len(f) == 1 and f[0]["check"] == "ops.evening-register-freshness" and "only 3" in f[0]["message"] and "minimum 4" in f[0]["message"]
+
+
+def test_broomfield_alarms_only_at_zero():
+    assert cf.register_findings("broomfield_co", 1, conf(1), NOW) == []
+    assert len(cf.register_findings("broomfield_co", 0, conf(1), NOW)) == 1
+
+
+def test_last_check_alarm_at_more_than_nine_days_or_never():
+    assert cf.register_findings("glasgow", 7, conf(9), NOW) == []
+    old = cf.register_findings("glasgow", 7, conf(9.01), NOW)
+    assert len(old) == 1 and "last venue check" in old[0]["message"]
+    assert "never" in cf.register_findings("glasgow", 7, None, NOW)[0]["message"]
+
+
+def test_both_register_alarms_of_a_town_land_in_one_issue_a_different_town_in_another():
+    both = cf.register_findings("glasgow", 0, None, NOW)
+    assert len(both) == 2 and len({fingerprint(x) for x in both}) == 1
+    assert len(group(both)) == 1
+    assert fingerprint(both[0]) != fingerprint(cf.register_findings("broomfield_co", 0, None, NOW)[0])
+
+
+def test_register_issue_is_in_the_freshness_scope_and_never_closed_by_other_runs():
+    f = cf.register_findings("glasgow", 0, None, NOW)[0]
+    stale = issue_for(f, comments=[CLEAN_MARK])
+    assert [a["op"] for a in plan_actions([], [stale], clean_to_close=2, scope_towns=ALL_TOWNS_SCOPE, scope_checks=lambda c: c in cf.FRESHNESS_CHECKS)] == ["close"]
+    assert plan_actions([], [stale], clean_to_close=2, scope_towns=ALL_TOWNS_SCOPE, scope_checks=lambda c: c == "ops.scrape-liveness") == []

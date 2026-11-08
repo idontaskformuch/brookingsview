@@ -9,17 +9,69 @@
 
 const DISCOVERY_API_BASE = 'https://app.ticketmaster.com/discovery/v2/events.json';
 
-/** Discovery API's documented limits: 5 requests/sec, 5000 calls/day. A
- *  single town fetch realistically needs 1-2 pages (size=200 per page), but
- *  this paces sequential page requests and hard-caps the page count so a
- *  future town with an unexpectedly large result set can't accidentally
- *  burst past the per-second limit or run away fetching pages forever. */
+/** Discovery API's default quota for a Public API key is 2 requests/sec and 5000 calls/day (developer.ticketmaster.com/support/faq/, checked
+ *  2026-11-08; an older version of this comment named a higher per-second figure that no longer applies). A single town fetch realistically needs 1-2 pages (size=200 per
+ *  page), but every request goes through discoveryFetch() below: one shared limiter spaces ALL requests of the process at most
+ *  MAX_REQUESTS_PER_SECOND apart (also when two towns' fetches run concurrently), the page count is hard-capped, and a daily counter stops
+ *  fetching at DAILY_CALL_LIMIT so a runaway build can't use up the key for every other build that day. */
 const PAGE_SIZE = 200;
 const MAX_PAGES = 5;
-const PACING_DELAY_MS = 250; // 4 req/sec, under the 5/sec documented ceiling
+export const MAX_REQUESTS_PER_SECOND = 1.8; // owner 2026-11-08, under the 2/sec quota
+export const DAILY_CALL_LIMIT = 4500; // owner 2026-11-08, under the 5000/day quota
+const PACING_DELAY_MS = Math.ceil(1000 / MAX_REQUESTS_PER_SECOND); // 556 ms
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Thrown by discoveryFetch() instead of making a request once the daily limit is reached. */
+class TicketmasterQuotaStop extends Error {}
+
+// Limiter and counter state, module-level like _eventsCache: one `astro build` is one process. The API's own `Rate-Limit` /
+// `Rate-Limit-Available` response headers (verified live 2026-11-08: 5000 / 4687) count every call made with the key today, by every build and
+// town, so that is the number the daily limit is judged against; processCalls is the backstop when the headers are missing.
+let paceMs = PACING_DELAY_MS;
+let nextSlotAt = 0;
+let processCalls = 0;
+let accountCallsToday: number | null = null;
+
+function quotaBlock(): string | null {
+  if (processCalls >= DAILY_CALL_LIMIT) return `${processCalls} calls made by this build`;
+  if (accountCallsToday !== null && accountCallsToday >= DAILY_CALL_LIMIT) return `${accountCallsToday} calls used today according to the API's Rate-Limit headers`;
+  return null;
+}
+
+function noteQuota(res: Response): void {
+  const header = (name: string) => {
+    const raw = res.headers?.get?.(name);
+    return raw == null || raw === '' ? NaN : Number(raw);
+  };
+  const limit = header('rate-limit');
+  const available = header('rate-limit-available');
+  if (Number.isFinite(limit) && Number.isFinite(available)) accountCallsToday = limit - available;
+}
+
+/** The only place this module calls the Discovery API: refuses past the daily limit, otherwise waits for its slot (slots are reserved
+ *  synchronously, so concurrent callers queue instead of bursting) and counts the call. */
+async function discoveryFetch(url: string): Promise<Response> {
+  const blocked = quotaBlock();
+  if (blocked) throw new TicketmasterQuotaStop(blocked);
+  const now = Date.now();
+  const slot = Math.max(now, nextSlotAt);
+  nextSlotAt = slot + paceMs;
+  if (slot > now) await sleep(slot - now);
+  processCalls++;
+  const res = await fetch(url);
+  noteQuota(res);
+  return res;
+}
+
+/** Test-only -- resets the limiter and the counters; `paceMs` 0 keeps the tests fast. */
+export function _resetTicketmasterLimiterForTests(o: { paceMs?: number; processCalls?: number; accountCallsToday?: number | null } = {}): void {
+  paceMs = o.paceMs ?? PACING_DELAY_MS;
+  nextSlotAt = 0;
+  processCalls = o.processCalls ?? 0;
+  accountCallsToday = o.accountCallsToday ?? null;
 }
 
 /** Minimal shape of what this adapter reads from a Discovery API event --
@@ -395,8 +447,6 @@ export async function fetchTicketmasterEvents(
   const results: RawTicketmasterEvent[] = [];
   try {
     for (let page = 0; page < MAX_PAGES; page++) {
-      if (page > 0) await sleep(PACING_DELAY_MS);
-
       const url = new URL(DISCOVERY_API_BASE);
       url.searchParams.set('apikey', apiKey);
       url.searchParams.set('latlong', `${latitude},${longitude}`);
@@ -408,21 +458,21 @@ export async function fetchTicketmasterEvents(
       // near-term shows (Glasgow: 159 events in the next 14 days at the API, ~85 reached the site, 1483 in all).
       url.searchParams.set('sort', 'date,asc');
 
-      let res = await fetch(url.toString());
+      let res = await discoveryFetch(url.toString());
 
       // One retry, 429 (rate limit) only -- see this function's own module
       // comment on the 2026-09-08 incident: three independent call sites
       // per build (getTicketmasterEventsForTown() below now memoizes
       // against that, but a transient collision with ANOTHER town's
       // overlapping build, or a future new call site, is still possible)
-      // can burst past Discovery API's 5 req/sec ceiling. A single retry
+      // can burst past Discovery API's 2 req/sec ceiling. A single retry
       // after a real pause is enough to ride out a momentary collision
       // without turning a genuine outage into a long hang -- never looped
       // or exponential, on purpose.
       if (res.status === 429) {
         console.warn(`::warning::[ticketmaster] Discovery API rate-limited (HTTP 429) for ${geoLabel}, page ${page} -- retrying once after a pause.`);
         await sleep(PACING_DELAY_MS * 4);
-        res = await fetch(url.toString());
+        res = await discoveryFetch(url.toString());
       }
 
       if (!res.ok) {
@@ -461,8 +511,12 @@ export async function fetchTicketmasterEvents(
       if (page + 1 >= totalPages) break;
     }
   } catch (err) {
-    console.warn(`::warning::[ticketmaster] fetch failed (network error) for ${geoLabel}: ${err instanceof Error ? err.message : String(err)} -- returning no events.`);
-    return [];
+    if (!(err instanceof TicketmasterQuotaStop)) {
+      console.warn(`::warning::[ticketmaster] fetch failed (network error) for ${geoLabel}: ${err instanceof Error ? err.message : String(err)} -- returning no events.`);
+      return [];
+    }
+    // The daily limit: no request was made. Like an HTTP error mid-way, keep what earlier pages already returned.
+    console.warn(`::warning::[ticketmaster] daily call limit (${DAILY_CALL_LIMIT}) reached for ${geoLabel}: ${err.message} -- not calling the Discovery API, returning ${results.length} event(s) from earlier pages.`);
   }
 
   const normalized = results

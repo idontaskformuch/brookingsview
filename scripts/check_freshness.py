@@ -7,6 +7,8 @@ issues are independent (qa/report.py `scope_checks`: a run of this script only e
   ops.weather-freshness  weather_snapshots, newest row per town, payload->>'fetched_at' (written every whole hour)    3 h
   ops.alerts-freshness   dispatcher_heartbeat job 'alerts' per town (written by the Worker after each good 15-min fetch) 2 h
   ops.safety-freshness   dispatcher_heartbeat job 'safety' per safety town (wildfire + air quality)                    3 h
+  ops.evening-register-freshness  evening_register_* per town with a register: too few venues with a valid rule, or no venue check for 9 days
+                         (owner 2026-11-08: Glasgow < 4, Broomfield < 1; a dated rule counts 8 days, a recurring one 36)
   ops.token-expiry       the cron-dispatcher's GITHUB_TOKEN runs out: an issue opens TOKEN_WARN_DAYS before TOKEN_EXPIRES
 
 Runs on GitHub's own schedule (.github/workflows/freshness-check.yml), not from the Worker: a dead Worker must not silence its own alarm.
@@ -37,7 +39,7 @@ TOKEN_WARN_DAYS = 30  # the issue opens on 2027-09-21
 
 LIMIT_HOURS = {"sport": 36, "weather": 3, "alerts": 2, "safety": 3}
 CHECK_ID = {"sport": "ops.sport-freshness", "weather": "ops.weather-freshness", "alerts": "ops.alerts-freshness",
-            "safety": "ops.safety-freshness", "token": "ops.token-expiry"}
+            "safety": "ops.safety-freshness", "register": "ops.evening-register-freshness", "token": "ops.token-expiry"}
 FRESHNESS_CHECKS = set(CHECK_ID.values())
 
 # Which towns the Worker runs each job for. Mirrors cron-dispatcher/src/{alerts,weather,safety}/towns.ts
@@ -47,6 +49,15 @@ ALERT_TOWNS = ["brookings_sd", "moreno_valley_ca", "broomfield_co", "glasgow"]
 SAFETY_TOWNS = ["moreno_valley_ca", "broomfield_co"]
 ALL_TOWNS = ["brookings_sd", "moreno_valley_ca", "broomfield_co", "glasgow"]
 TOKEN_TOWN = "dispatcher"  # the token finding belongs to no town
+
+# Evening register (scripts/refresh_evening_register.py, weekly Monday 11:00 UTC). The site shows a dated rule while it was confirmed <= 7 days
+# ago and a recurring one <= 35 (migration 064); the check adds a day of margin to each, because the Monday run lands exactly on the 7-day edge
+# and would otherwise open an issue every week. Minimums are the owner's (2026-11-08); baseline then: Glasgow 7 venues with rules, Broomfield 1.
+REGISTER_MIN_VENUES = {"glasgow": 4, "broomfield_co": 1}
+REGISTER_DATED_DAYS = 8
+REGISTER_RECURRING_DAYS = 36
+REGISTER_CHECK_MAX_DAYS = 9
+REGISTER_PATTERN = "evening-register"  # both findings of a town share it, so they land in one issue
 
 
 def is_stale(last: datetime | None, now: datetime, max_hours: float) -> bool:
@@ -65,6 +76,31 @@ def sport_sources(configs_dir: Path = ROOT / "configs") -> list[tuple[str, str]]
         block = json.loads((configs_dir / f"{town}.json").read_text(encoding="utf-8")).get("sports") or {}
         if block.get("enabled") is True:
             out += [(town, f"{s['adapter']}:{s.get('program', '*')}") for s in block.get("sources", [])]
+    return out
+
+
+def register_towns(configs_dir: Path = ROOT / "configs") -> list[str]:
+    """Towns whose config has a venue register (evening_register.venues), in ALL_TOWNS order."""
+    return [t for t in ALL_TOWNS if (json.loads((configs_dir / f"{t}.json").read_text(encoding="utf-8")).get("evening_register") or {}).get("venues")]
+
+
+def valid_register_venues(rows: list[tuple], now: datetime) -> set[str]:
+    """venue_id of every venue with at least one rule (venue_id, kind, last_confirmed_at) inside its margin. Pure, so it is tested without a DB."""
+    days = {"dated": REGISTER_DATED_DAYS, "recurring": REGISTER_RECURRING_DAYS}
+    return {venue for venue, kind, confirmed in rows if kind in days and confirmed is not None and now - confirmed <= timedelta(days=days[kind])}
+
+
+def register_findings(town: str, valid: int, last_check: datetime | None, now: datetime) -> list[dict]:
+    """Up to two findings (too few venues with a valid rule; no venue check lately) with the same check id and pattern, so one issue."""
+    base = {"check": CHECK_ID["register"], "town": town, "pattern": REGISTER_PATTERN, "path": f"/{town}/{REGISTER_PATTERN}"}
+    out: list[dict] = []
+    minimum = REGISTER_MIN_VENUES[town]
+    if valid < minimum:
+        out.append({**base, "message": f"only {valid} venue(s) have a valid register rule (minimum {minimum}; a dated rule counts {REGISTER_DATED_DAYS} days, "
+                                       f"a recurring one {REGISTER_RECURRING_DAYS}). Check the evening-register workflow run and evening_register_venues.status_reason."})
+    if last_check is None or now - last_check > timedelta(days=REGISTER_CHECK_MAX_DAYS):
+        out.append({**base, "message": f"last venue check {age_text(last_check, now)} (limit {REGISTER_CHECK_MAX_DAYS} days). The weekly evening-register "
+                                       "workflow (Mondays 11:00 UTC, started by the dispatcher) has not written evening_register_venues."})
     return out
 
 
@@ -119,6 +155,18 @@ def collect(conn, now: datetime, only: set[str], today: date) -> tuple[list[dict
             for town in towns:
                 row = conn.execute("SELECT last_ok FROM dispatcher_heartbeat WHERE town_id = %s AND job = %s", (town, kind)).fetchone()
                 judge(kind, town, kind, row[0] if row else None)
+    if "register" in only:
+        for town in register_towns():
+            rows = conn.execute("SELECT e.venue_id, e.kind, e.last_confirmed_at FROM evening_register_entries e "
+                                "JOIN evening_register_venues v ON v.town_id = e.town_id AND v.venue_id = e.venue_id "
+                                "WHERE e.town_id = %s AND v.status = 'ok' AND e.active", (town,)).fetchall()
+            row = conn.execute("SELECT max(checked_at) FROM evening_register_venues WHERE town_id = %s", (town,)).fetchone()
+            last = row[0] if row else None
+            valid = len(valid_register_venues(rows, now))
+            found = register_findings(town, valid, last, now)
+            lines.append(f"  [freshness] register {town}: {'STALE' if found else 'ok'} -- {valid} venue(s) with a valid rule (min {REGISTER_MIN_VENUES[town]}), "
+                         f"last check {age_text(last, now)}")
+            findings += found
     if "token" in only:
         t = token_findings(today)
         lines.append(f"  [freshness] token: {'ISSUE' if t else 'ok'} -- expires {TOKEN_EXPIRES.isoformat()}")

@@ -1,10 +1,16 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   normalizeTicketmasterEvent, cleanTicketmasterTitle, fetchTicketmasterEvents, getTicketmasterEventsForTown, isSportsEvent,
-  isNonEventListing, isUpgradeProductTitle, distanceLabel, _resetTicketmasterCacheForTests,
+  isNonEventListing, isUpgradeProductTitle, distanceLabel, _resetTicketmasterCacheForTests, _resetTicketmasterLimiterForTests,
+  MAX_REQUESTS_PER_SECOND, DAILY_CALL_LIMIT,
   type RawTicketmasterEvent,
 } from './ticketmaster';
 import { siteConfig } from './site-config';
+
+// The limiter spaces real requests 556 ms apart; every test but the limiter's own runs with no spacing so the suite stays fast.
+beforeEach(() => _resetTicketmasterLimiterForTests({ paceMs: 0 }));
 
 /** Trimmed from a real Discovery API response, fetched live for a
  *  75-mile-radius Brookings search on 2026-09-07 (SDSU football vs. Murray
@@ -688,5 +694,93 @@ describe('Ticketmaster placeholders and tours (owner 2026-10-29)', () => {
   it('cleanTicketmasterTitle leaves unknown patterns untouched', () => {
     expect(cleanTicketmasterTitle('D??a de Muertos Festival / Day of the Dead')).toBe('D??a de Muertos Festival / Day of the Dead');
     expect(cleanTicketmasterTitle('Caf?? Tacvba')).toBe('Caf?? Tacvba');
+  });
+});
+
+describe('Discovery API pacing and daily call limit (owner 2026-11-08: max 1.8 requests/s, stop at 4500 calls/day)', () => {
+  const ok = (totalPages: number, headers?: Record<string, string>) => ({
+    ok: true, status: 200, json: async () => ({ _embedded: { events: [] }, page: { totalPages } }),
+    headers: { get: (n: string) => headers?.[n.toLowerCase()] ?? null },
+  });
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
+
+  it('the agreed numbers', () => {
+    expect(MAX_REQUESTS_PER_SECOND).toBe(1.8);
+    expect(DAILY_CALL_LIMIT).toBe(4500);
+  });
+
+  it('no comment or constant still claims a 5 requests/second ceiling', () => {
+    const src = readFileSync(join(__dirname, 'ticketmaster.ts'), 'utf8');
+    expect(src).not.toMatch(/\b5\s*(req|requests)\w*\s*\/\s*sec|5\/sec|4 req\/sec/i);
+  });
+
+  it('spaces consecutive requests at least 1000/1.8 ms apart', async () => {
+    vi.useFakeTimers();
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    _resetTicketmasterLimiterForTests(); // the real spacing
+    const times: number[] = [];
+    vi.stubGlobal('fetch', vi.fn(async () => { times.push(Date.now()); return ok(4); }));
+    const run = fetchTicketmasterEvents(55.8, -4.2, 15);
+    await vi.advanceTimersByTimeAsync(5000);
+    await run;
+    expect(times).toHaveLength(4);
+    for (let i = 1; i < times.length; i++) expect(times[i] - times[i - 1]).toBeGreaterThanOrEqual(Math.ceil(1000 / 1.8));
+    expect(1000 / (times[3] - times[0]) * 3).toBeLessThanOrEqual(1.8);
+  });
+
+  it('two fetches running at the same time still share one limiter (no burst)', async () => {
+    vi.useFakeTimers();
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    _resetTicketmasterLimiterForTests();
+    const times: number[] = [];
+    vi.stubGlobal('fetch', vi.fn(async () => { times.push(Date.now()); return ok(1); }));
+    const both = Promise.all([fetchTicketmasterEvents(55.8, -4.2, 15), fetchTicketmasterEvents(39.9, -105.0, 20)]);
+    await vi.advanceTimersByTimeAsync(3000);
+    await both;
+    expect(times).toHaveLength(2);
+    expect(times[1] - times[0]).toBeGreaterThanOrEqual(556);
+  });
+
+  it('makes no request once this build has used the daily limit, warns, and returns what it has', async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    _resetTicketmasterLimiterForTests({ paceMs: 0, processCalls: DAILY_CALL_LIMIT });
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(await fetchTicketmasterEvents(55.8, -4.2, 15)).toEqual([]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(warn.mock.calls.some((c) => String(c[0]).includes('daily call limit (4500)'))).toBe(true);
+  });
+
+  it('call number 4500 is still made, number 4501 is not', async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    _resetTicketmasterLimiterForTests({ paceMs: 0, processCalls: DAILY_CALL_LIMIT - 1 });
+    const fetchSpy = vi.fn(async () => ok(3));
+    vi.stubGlobal('fetch', fetchSpy);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await fetchTicketmasterEvents(55.8, -4.2, 15); // wants 3 pages, gets the 4500th call only
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("the API's own Rate-Limit headers count calls from every build: 4500 used today stops, 4499 does not", async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    const run = async (available: string) => {
+      _resetTicketmasterLimiterForTests({ paceMs: 0 });
+      const fetchSpy = vi.fn(async () => ok(3, { 'rate-limit': '5000', 'rate-limit-available': available }));
+      vi.stubGlobal('fetch', fetchSpy);
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      await fetchTicketmasterEvents(55.8, -4.2, 15);
+      return fetchSpy.mock.calls.length;
+    };
+    expect(await run('500')).toBe(1); // 4500 used after page 0 -> page 1 is refused
+    expect(await run('501')).toBe(3); // 4499 used -> all three pages
+  });
+
+  it('a response without rate-limit headers (as in every other test) does not disturb anything', async () => {
+    vi.stubEnv('TICKETMASTER_API_KEY', 'fake-key-for-test');
+    const fetchSpy = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ _embedded: { events: [] }, page: { totalPages: 2 } }) }));
+    vi.stubGlobal('fetch', fetchSpy);
+    await fetchTicketmasterEvents(55.8, -4.2, 15);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 });
