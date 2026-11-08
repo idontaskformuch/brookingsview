@@ -1,6 +1,6 @@
 """scrapers/evening_register.py: robots rule, identity check, extraction validation, one-venue flow (no network, no model)."""
 import json
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -225,9 +225,18 @@ def test_flow_unreachable_or_error_page_is_skipped():
 def test_due_guard():
     now = datetime(2026, 11, 9, 11, tzinfo=timezone.utc)
     assert refresh.due(None, now)
-    assert not refresh.due(datetime(2026, 11, 5, tzinfo=timezone.utc), now)
     assert refresh.due(datetime(2026, 11, 2, tzinfo=timezone.utc), now)
     assert refresh.due(datetime(2026, 11, 8, tzinfo=timezone.utc), now, force=True)
+    assert not refresh.due(now - timedelta(hours=19, minutes=59), now)  # a double run the same day
+    assert not refresh.due(now - timedelta(hours=1), now)
+
+
+def test_a_venue_checked_four_days_ago_is_not_skipped():
+    # 2026-11-02 regression: checked Thu 10-29, the Monday tick 4 days later skipped every venue and the dated rules lapsed
+    assert refresh.MIN_HOURS_BETWEEN_RUNS == 20
+    assert refresh.due(datetime(2026, 10, 29, 11, tzinfo=timezone.utc), datetime(2026, 11, 2, 11, tzinfo=timezone.utc))
+    assert refresh.due(datetime(2026, 11, 2, 11, tzinfo=timezone.utc), datetime(2026, 11, 9, 11, tzinfo=timezone.utc))
+    assert refresh.due(datetime(2026, 11, 2, 11, 3, tzinfo=timezone.utc), datetime(2026, 11, 3, 7, 3, tzinfo=timezone.utc))  # exactly 20 h
 
 
 def test_configs_register_is_well_formed():

@@ -1,7 +1,7 @@
 """Weekly refresh of the curated venue register behind /tonight (owner decisions 2026-10-28/29, .claude/specs/weekend-layer.md).
 
-For every venue in configs/<town>.json "evening_register": robots.txt check, one page fetch (ViewMediaBot, at most one per venue per
-week), IDENTITY CHECK, then Haiku reads the page text and returns structured rules that scrapers/evening_register.py validates against
+For every venue in configs/<town>.json "evening_register": robots.txt check, one page fetch (ViewMediaBot, one per venue per run; the run is
+weekly, started by the dispatcher on Mondays), IDENTITY CHECK, then Haiku reads the page text and returns structured rules that scrapers/evening_register.py validates against
 the page itself. A venue that fails robots is 'skipped'; one that fails the identity check is 'flagged' (no extraction, no link on the
 site, reported loudly) and is left alone on later runs until the owner unflags it with --unflag <venue_id>.
 
@@ -27,7 +27,10 @@ from scrapers.evening_register import VenueResult, check_venue, local_today
 from scrapers.user_agent import user_agent
 
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "configs"
-MIN_DAYS_BETWEEN_RUNS = 6
+# Only a guard against running twice the same day (a manual run plus the Monday tick, a re-dispatch). The weekly rhythm is the dispatcher's
+# Monday 11:00 UTC tick, NOT this value: it was 6 days until 2026-11-08, and a manual first run on Thu 10-29 made the Mon 11-02 run skip every
+# venue (4 days), leaving an 11-day gap against the 8 days a dated rule stays valid (owner 2026-11-08).
+MIN_HOURS_BETWEEN_RUNS = 20
 PAUSE_BETWEEN_VENUES_S = 5
 INACTIVE_AFTER_DAYS = 60  # entries not confirmed for this long are set inactive, never deleted (owner 2026-10-29)
 MODEL = "claude-haiku-4-5-20251001"
@@ -44,7 +47,7 @@ def towns_with_register() -> list[dict[str, Any]]:
 
 
 def due(checked_at: datetime | None, now: datetime, force: bool = False) -> bool:
-    return force or checked_at is None or now - checked_at >= timedelta(days=MIN_DAYS_BETWEEN_RUNS)
+    return force or checked_at is None or now - checked_at >= timedelta(hours=MIN_HOURS_BETWEEN_RUNS)
 
 
 def make_extractor(town_id: str, log_usage: bool):
@@ -156,7 +159,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  [held   ] {town['town_id']}/{venue['venue_id']}: flagged, waiting for the owner (--unflag)")
                     continue
                 if prev and not due(prev[1], now, args.force):
-                    print(f"  [skip   ] {town['town_id']}/{venue['venue_id']}: checked {prev[1]:%Y-%m-%d}, younger than {MIN_DAYS_BETWEEN_RUNS} days")
+                    print(f"  [skip   ] {town['town_id']}/{venue['venue_id']}: checked {prev[1]:%Y-%m-%d}, younger than {MIN_HOURS_BETWEEN_RUNS} hours")
                     continue
                 if not first:
                     time.sleep(PAUSE_BETWEEN_VENUES_S)
