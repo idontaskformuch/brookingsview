@@ -239,7 +239,7 @@ export interface DayBucket {
 }
 
 function gameHomeAway(g: { home_away: string | null }): string {
-  return g.home_away === 'home' ? 'vs' : 'at';
+  return g.home_away === 'home' || g.home_away === 'neutral' ? 'vs' : 'at'; // 'neutral' (sport_events neutral_site) reads as "vs"
 }
 
 /**

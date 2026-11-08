@@ -723,8 +723,14 @@ async function buildLastmodMap(townId, databaseUrl) {
   for (const u of projectUpdates) bumpWeek(isoWeekSlugMirror(utcDatePartsMirror(u.meeting_date)));
 
   if (townId === 'brookings_sd') {
-    const games = await sql`SELECT starts_at FROM sports_games WHERE town_id = ${townId} AND starts_at IS NOT NULL`;
-    for (const g of games) bumpWeek(isoWeekSlugMirror(localDatePartsMirror(new Date(g.starts_at), thisWeekTz)));
+    // Mirrors getSeasonGames (lib/db.ts): sport_events of program 'sdsu', current season (1 Aug - 31 Jul in the town's zone), scheduled or final.
+    const nowParts = localDatePartsMirror(new Date(), thisWeekTz);
+    const seasonYear = nowParts.m >= 8 ? nowParts.y : nowParts.y - 1;
+    const games = await sql`SELECT start_at FROM sport_events
+      WHERE town_id = ${townId} AND program_id = 'sdsu' AND status IN ('scheduled', 'final')
+        AND start_at >= make_timestamptz(${seasonYear}, 8, 1, 0, 0, 0, ${thisWeekTz})
+        AND start_at < make_timestamptz(${seasonYear + 1}, 8, 1, 0, 0, 0, ${thisWeekTz})`;
+    for (const g of games) bumpWeek(isoWeekSlugMirror(localDatePartsMirror(new Date(g.start_at), thisWeekTz)));
   } else {
     const regionalGames = await sql`SELECT game_date FROM regional_sports_games WHERE town_id = ${townId} AND game_date IS NOT NULL`;
     for (const g of regionalGames) bumpWeek(isoWeekSlugMirror(utcDatePartsMirror(g.game_date)));

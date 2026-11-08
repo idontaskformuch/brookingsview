@@ -17,6 +17,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
 import SectionHero from '../components/SectionHero.astro';
 import { getSeasonGames, getWeather, getUpcomingStories } from '../lib/db';
+import { isComing } from '../lib/sport-games';
+import { sportTerms } from '../lib/sport-strings';
 import { siteConfig } from '../lib/site-config';
 import { fitDescription } from '../lib/meta-description';
 import { resolvePageMeta } from '../lib/page-meta';
@@ -43,13 +45,12 @@ const [games, periods, eventStories] = await Promise.all([
   getSeasonGames('football'), getWeather(), getUpcomingStories(['event'], 200),
 ]);
 
-const nowMs = Date.now();
+const terms = sportTerms(siteConfig.country);
+// Season, phase (upcoming / in progress / over) and the exhibition flag come from lib/sport-events.ts via getSeasonGames; nothing is decided here.
 const home = games
   .filter((g) => g.home_away === 'home' && g.starts_at)
-  .map((g) => ({ ...g, start: new Date(g.starts_at as string) }))
-  .filter((g) => g.start.getTime() > Date.UTC(new Date().getUTCFullYear(), 6, 1)); // this season only
-const upcoming = home.filter((g) => g.start.getTime() > nowMs - 4 * 3_600_000);
-const next = upcoming[0] ?? null;
+  .map((g) => ({ ...g, start: new Date(g.starts_at as string) }));
+const next = home.find(isComing) ?? null;
 
 const fmtTime = (d: Date) => {
   const s = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: TZ }).format(d);
@@ -98,10 +99,14 @@ const nextHobo = next ? isHoboDay(next.start) : false;
   {next ? (
     <section class="gd-next" aria-labelledby="gd-next-h">
       <p class="gd-kicker">Next home game</p>
-      <h2 id="gd-next-h">{next.opponent}: {fmtDay(next.start)}, {fmtTime(next.start)} kickoff</h2>
+      <h2 id="gd-next-h">{next.opponent}: {fmtDay(next.start)}{next.time_tba ? ', kickoff time not announced yet' : `, ${fmtTime(next.start)} kickoff`}</h2>
       <ul class="gd-plan">
-        <li><strong>Tailgating starts about {fmtTime(hoursBefore(next.start, 5))}</strong>. SDSU says it begins five hours before kickoff for most games.</li>
-        <li><strong>Gates open 90 minutes before kickoff</strong>, about {fmtTime(hoursBefore(next.start, 1.5))}.</li>
+        {next.time_tba ? (
+          <li><strong>Kickoff time is not set yet.</strong> SDSU says tailgating begins five hours before kickoff for most games and gates open 90 minutes before; check the <a href={SOURCES.schedule.url} rel="noopener">schedule</a> for the time.</li>
+        ) : (<>
+          <li><strong>Tailgating starts about {fmtTime(hoursBefore(next.start, 5))}</strong>. SDSU says it begins five hours before kickoff for most games.</li>
+          <li><strong>Gates open 90 minutes before kickoff</strong>, about {fmtTime(hoursBefore(next.start, 1.5))}.</li>
+        </>)}
         <li><strong>Be on campus early.</strong> Parking is spread over several lots; open the season's parking map first (see Parking below).</li>
         <li><strong>Allow extra time to leave.</strong> See "After the game".</li>
         {nextForecast && (
@@ -141,10 +146,10 @@ const nextHobo = next ? isHoboDay(next.start) : false;
       {home.map((g) => (
         <tr>
           <th scope="row">{fmtDayShort(g.start)}</th>
-          <td>{g.opponent}</td>
-          <td>{fmtTime(g.start)}</td>
-          <td>{g.start.getTime() > nowMs ? fmtTime(hoursBefore(g.start, 5)) : '—'}</td>
-          <td>{g.result ?? (g.start.getTime() > nowMs ? 'Upcoming' : '—')}</td>
+          <td>{g.opponent}{g.exhibition ? ` (${terms.exhibition})` : ''}</td>
+          <td>{g.time_tba ? 'TBA' : fmtTime(g.start)}</td>
+          <td>{g.phase === 'upcoming' && !g.time_tba ? fmtTime(hoursBefore(g.start, 5)) : '—'}</td>
+          <td>{g.result ?? (g.phase === 'upcoming' ? 'Upcoming' : g.phase === 'inProgress' ? terms.in_progress : g.phase === 'pending' ? terms.result_pending : '—')}</td>
         </tr>
       ))}
     </tbody>

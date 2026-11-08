@@ -1,6 +1,8 @@
 ---
 import type { Game } from '../lib/db';
 import { formatDate, formatTime } from '../lib/db';
+import { sportTerms } from '../lib/sport-strings';
+import { siteConfig } from '../lib/site-config';
 
 /** Either a legacy `game` (sports_games row) or the sport_events fields passed one by one (/jackrabbits). */
 interface Props {
@@ -13,9 +15,13 @@ interface Props {
   /** Always render an empty tag the page script can fill ("In progress") when the game starts after the build. */
   tagSlot?: boolean;
 }
-const { game, feature = false, kicker, tag, tagSlot = false } = Astro.props;
+const { game, feature = false, tagSlot = false } = Astro.props;
 const legacy = game !== undefined;
-const home = legacy ? game.home_away === 'home' : Astro.props.prefix === 'vs';
+const terms = sportTerms(siteConfig.country);
+// A sport_events game carries its own neutral-site and exhibition flags; callers can still override both.
+const kicker = Astro.props.kicker ?? (legacy && game.home_away === 'neutral' ? terms.neutral_site : undefined);
+const tag = Astro.props.tag ?? (legacy && game.exhibition ? terms.exhibition : legacy && game.phase === 'inProgress' ? terms.in_progress : undefined);
+const home = legacy ? game.home_away !== 'away' : Astro.props.prefix === 'vs';
 const sportName = legacy
   ? (game.sport === 'mbb' ? "men's basketball" : game.sport === 'wbb' ? "women's basketball" : game.sport.replace(/_/g, ' '))
   : (Astro.props.sport ?? '').toLowerCase();
@@ -23,7 +29,7 @@ const opponent = legacy ? game.opponent : Astro.props.opponent;
 const startsAt = legacy ? game.starts_at : (Astro.props.startAt ?? null);
 const venue = legacy ? game.venue : Astro.props.venue;
 const result = legacy ? game.result : null;
-const timeText = Astro.props.timeTba ? 'TBA' : (startsAt ? formatTime(startsAt) : '');
+const timeText = (legacy ? game.time_tba : Astro.props.timeTba) ? 'TBA' : (startsAt ? formatTime(startsAt) : '');
 ---
 <div class:list={['game', feature && 'game--feature']}>
   <p class="game__meta"><span class="kicker" data-nx="kicker">{kicker ?? (home ? 'Home' : 'Away')} &middot; {sportName}</span></p>

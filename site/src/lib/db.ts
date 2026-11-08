@@ -21,7 +21,8 @@ import type { MeetingRow } from './meetings-view';
 import { neon } from '@neondatabase/serverless';
 import { siteConfig, isSectionDisabled } from './site-config';
 import { forCountry, formatClockCompact } from './country-profile';
-import { currentSeason, type SportEventRow } from './sport-events';
+import { currentSeason, type SportEventRow, type SportPhase } from './sport-events';
+import { gamesFromEvents, upcomingGames } from './sport-games';
 
 /** Locale for calendar-date text ("Tue, October 27" vs "Tue 27 October"). Times still en-US. */
 const DATE_LOCALE = forCountry(siteConfig.country, 'en-US', 'en-GB');
@@ -257,6 +258,10 @@ export interface Game {
   starts_at: string | null;
   venue: string | null;
   result: string | null;
+  /** Set when the row comes from sport_events (lib/sport-games.ts). */
+  time_tba?: boolean;
+  exhibition?: boolean;
+  phase?: SportPhase;
 }
 
 export interface WeatherPeriod {
@@ -1353,41 +1358,17 @@ export async function getSportEvents(programId: string, now: Date = new Date()):
   }));
 }
 
+/** Jackrabbits games for the pages that list games next to other things. Read from sport_events through the shared rule in
+ *  lib/sport-events.ts (lib/sport-games.ts only reshapes): current season only, upcoming = not started or in progress, exhibitions flagged. */
 export async function getUpcomingGames(limit = 10): Promise<Game[]> {
-  return (await sql`
-    SELECT id, sport, opponent, home_away, starts_at, venue, result
-      FROM sports_games
-     WHERE town_id = ${TOWN_ID} AND starts_at >= now()
-     ORDER BY starts_at ASC
-     LIMIT ${limit}
-  `) as Game[];
+  const now = new Date();
+  return upcomingGames(await getSportEvents('sdsu', now), 'sdsu', now, limit);
 }
 
-export async function getRecentResults(limit = 5): Promise<Game[]> {
-  return (await sql`
-    SELECT id, sport, opponent, home_away, starts_at, venue, result
-      FROM sports_games
-     WHERE town_id = ${TOWN_ID} AND starts_at < now() AND result IS NOT NULL
-     ORDER BY starts_at DESC
-     LIMIT ${limit}
-  `) as Game[];
-}
-
+/** Every scheduled or final game of the current season, soonest first; `sport` is a team key (football, mbb, wbb, volleyball). */
 export async function getSeasonGames(sport?: string): Promise<Game[]> {
-  if (sport) {
-    return (await sql`
-      SELECT id, sport, opponent, home_away, starts_at, venue, result
-        FROM sports_games
-       WHERE town_id = ${TOWN_ID} AND sport = ${sport}
-       ORDER BY starts_at ASC
-    `) as Game[];
-  }
-  return (await sql`
-    SELECT id, sport, opponent, home_away, starts_at, venue, result
-      FROM sports_games
-     WHERE town_id = ${TOWN_ID}
-     ORDER BY starts_at ASC
-  `) as Game[];
+  const now = new Date();
+  return gamesFromEvents(await getSportEvents('sdsu', now), 'sdsu', now, sport);
 }
 
 /** Alla matcher för orten, primary-lag (t.ex. 66ers för Moreno Valley) före
