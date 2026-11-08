@@ -44,3 +44,29 @@ def run_town(cur, cfg: dict, *, http_factory=None) -> dict[str, str]:
     store.sync_programs(cur, cfg["town_id"], block)
     return {source_id(s): run_source(cur, cfg["town_id"], s, http=http_factory(s) if http_factory else None)
             for s in block.get("sources") or []}
+
+
+def main(argv: list[str] | None = None) -> int:
+    """python -m sports.runner --town brookings_sd [--even-if-disabled] [--prod]   (--prod is read by db.db, not here)."""
+    import argparse
+    import json
+    from pathlib import Path
+
+    from db.db import declare_action, get_conn
+
+    ap = argparse.ArgumentParser(prog="sports.runner")
+    ap.add_argument("--town", required=True)
+    ap.add_argument("--even-if-disabled", action="store_true", help="run a town whose sports.enabled is still false (one manual run)")
+    args = ap.parse_args(argv)
+    cfg = json.loads((Path(__file__).resolve().parent.parent / "configs" / f"{args.town}.json").read_text(encoding="utf-8"))
+    if args.even_if_disabled:
+        cfg = {**cfg, "sports": {**(cfg.get("sports") or {}), "enabled": True}}
+    declare_action("sports_runner")
+    with get_conn() as conn, conn.cursor() as cur:
+        outcome = run_town(cur, cfg)
+    print(json.dumps(outcome, indent=1))
+    return 0 if outcome and all(v == "ok" for v in outcome.values()) else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

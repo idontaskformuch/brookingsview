@@ -210,3 +210,9 @@ def test_recorded_schedules_flag_only_games_the_source_names(events):
     assert {"Iowa State", "Southwest Minnesota State", "St. Cloud State", "Yellow & Blue Scrimmage"} <= set(names)
     assert not any("exhibition" in n.lower() for n in names)
     assert not any(e.exhibition for e in events if e.away_name == "Villanova")
+
+
+def test_st_cloud_state_exhibition_keeps_its_result_and_is_flagged(events):
+    e = next(e for e in events if e.away_name == "St. Cloud State")
+    assert e.exhibition and e.status == "final" and (e.score_home, e.score_away) == (91, 62)
+    assert e.start_at.astimezone(ZoneInfo("America/Chicago")).date().isoformat() == "2026-10-28"
