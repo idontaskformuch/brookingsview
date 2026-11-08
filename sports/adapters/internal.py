@@ -8,9 +8,7 @@ params: provider, url (site root, e.g. https://gojacks.com), program (sport_prog
 
 Robots: through sports.http.PoliteHttp -- robots.txt per host (our user-agent group, else `*`), Crawl-delay honoured in full between
 every request (gojacks.com: 30 s), source skipped above max_crawl_delay, a 403 is a no and is not retried.
-ToS (checked 2026-11-08): SIDEARM Terms of Service (sidearmsports.com/terms-of-service) give NO explicit permission for automated
-retrieval; 2.1-2.3 limit the content to personal, noncommercial use. Decision (owner 2026-11-08): FACTS ONLY -- opponent, local date and
-time, venue, home/away and the score. No prose, no images, no logos, no media URLs; permission is requested from SDSU Athletics.
+Facts only: opponent, local date and time, venue, home/away and the score; see notes: sources/gojacks.
 
 A neutral-site game sets neutral_site (we are listed on the home side so the score stays on the right side); a time cell with no
 usable time ("TBD", empty) sets time_tba and start_at is local midnight.
