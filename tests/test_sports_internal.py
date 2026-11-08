@@ -216,3 +216,16 @@ def test_st_cloud_state_exhibition_keeps_its_result_and_is_flagged(events):
     e = next(e for e in events if e.away_name == "St. Cloud State")
     assert e.exhibition and e.status == "final" and (e.score_home, e.score_away) == (91, 62)
     assert e.start_at.astimezone(ZoneInfo("America/Chicago")).date().isoformat() == "2026-10-28"
+
+
+@pytest.mark.parametrize("var", ["GITHUB_ACTIONS", "GITHUB_RUN_ID", "CI"])
+def test_even_if_disabled_is_refused_in_ci(monkeypatch, var):
+    monkeypatch.setenv(var, "true")
+    with pytest.raises(SystemExit, match="vägras i CI"):
+        runner.main(["--town", "brookings_sd", "--even-if-disabled"])
+
+
+def test_no_workflow_uses_even_if_disabled():
+    root = Path(__file__).parent.parent
+    hits = [p.name for p in (root / ".github" / "workflows").glob("*.y*ml") if "even-if-disabled" in p.read_text(encoding="utf-8")]
+    assert hits == []

@@ -193,3 +193,31 @@ def test_prod_backup_refuses_anything_but_a_select(guard):
         prod_backup.backup("fix_things", "DELETE FROM stories")
     with pytest.raises(SystemExit):
         prod_backup.backup("../evil", "SELECT 1")
+
+
+def test_prod_backup_appends_to_the_same_days_file_and_never_overwrites(guard, monkeypatch):
+    class Desc:
+        def __init__(self, name):
+            self.name = name
+
+    class Cur(FakeCursor):
+        description = [Desc("n")]
+
+        def fetchall(self):
+            return [(1,)]
+
+    class Conn(FakeConn):
+        def cursor(self, *a, **kw):
+            return Cur(self)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(prod_backup, "get_conn", lambda: Conn())
+    prod_backup.backup("same_day", "SELECT 1 AS n")
+    prod_backup.backup("same_day", "SELECT 2 AS n")
+    doc = json.loads((guard.dir / f"{date.today().isoformat()}_same_day.json").read_text(encoding="utf-8"))
+    assert [s["select"] for s in doc["selects"]] == ["SELECT 1 AS n", "SELECT 2 AS n"]

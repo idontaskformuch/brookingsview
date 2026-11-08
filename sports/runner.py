@@ -50,6 +50,7 @@ def main(argv: list[str] | None = None) -> int:
     """python -m sports.runner --town brookings_sd [--even-if-disabled] [--prod]   (--prod is read by db.db, not here)."""
     import argparse
     import json
+    import os
     from pathlib import Path
 
     from db.db import declare_action, get_conn
@@ -58,6 +59,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--town", required=True)
     ap.add_argument("--even-if-disabled", action="store_true", help="run a town whose sports.enabled is still false (one manual run)")
     args = ap.parse_args(argv)
+    if args.even_if_disabled and (os.environ.get("GITHUB_ACTIONS") or os.environ.get("GITHUB_RUN_ID") or os.environ.get("CI")):
+        raise SystemExit("--even-if-disabled är en lokal engångskörning och vägras i CI/workflows; slå på sports.enabled i configen i stället.")
     cfg = json.loads((Path(__file__).resolve().parent.parent / "configs" / f"{args.town}.json").read_text(encoding="utf-8"))
     if args.even_if_disabled:
         cfg = {**cfg, "sports": {**(cfg.get("sports") or {}), "enabled": True}}
