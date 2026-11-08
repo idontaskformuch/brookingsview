@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { refreshAlerts } from './alerts/refresh';
 import { refreshSafety } from './safety/refresh';
+import { recordHeartbeats, safetyTownResults } from './heartbeat';
 import { checkSportHealth } from './sports/health';
 import type { Sql } from './alerts/store';
 import { ALERTS_CRON } from './alerts/towns';
@@ -58,6 +59,8 @@ export default {
       // NWS (US towns) and Met Office (Glasgow) warnings -> the events table; no GitHub Actions minutes involved.
       const results = await refreshAlerts(env, { sql: neon(env.DATABASE_URL) as unknown as Sql });
       console.log(JSON.stringify(results));
+      // Heartbeat per town (dispatcher_heartbeat): scripts/check_freshness.py reads it. Never throws, so it cannot stop the jobs below.
+      await recordHeartbeats(neon(env.DATABASE_URL) as unknown as Sql, 'alerts', results);
       const failed = results.filter((r) => !r.ok);
       // Forecasts (NWS, Met Office) -> weather_snapshots, on the whole-hour ticks only. Independent of the warnings above: one failing
       // must not hide the other, so both run and the errors are raised together.
@@ -69,6 +72,7 @@ export default {
       // Wildfires (NIFC WFIGS) and air quality (AirNow) -> public_safety_notices; independent of the above, errors raised together.
       const safety = await refreshSafety(env, { sql: neon(env.DATABASE_URL) as unknown as Sql });
       console.log(JSON.stringify(safety));
+      await recordHeartbeats(neon(env.DATABASE_URL) as unknown as Sql, 'safety', safetyTownResults(safety));
       failed.push(...safety.filter((r) => !r.ok).map((r) => ({ townId: `${r.townId}/${r.part}`, ok: false, error: r.error })));
       // Sports sources (sport_sources_health): an active source with no successful run in 36 h is raised like any other failure.
       const sportsHealth = await checkSportHealth({ sql: neon(env.DATABASE_URL) as unknown as Sql });

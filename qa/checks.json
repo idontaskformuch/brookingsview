@@ -61,6 +61,31 @@
       "born_from": "2026-10-28: qa/web/run.mjs had a syntax error from 2026-10-24 and no QA ran for four days without anything complaining; watchdog scripts/check_qa_liveness.py on GitHub's own schedule",
       "what": "qa-daily has not finished green for 30 h"
     },
+    "ops.sport-freshness": {
+      "severity": "hard",
+      "born_from": "2026-11-08: the cron-dispatcher's weather/warnings/sports jobs failed only in Cloudflare's logs, which nobody reads; scripts/check_freshness.py on GitHub's own schedule opens an issue instead",
+      "what": "an active sports source has had no successful run in sport_sources_health for 36 h"
+    },
+    "ops.weather-freshness": {
+      "severity": "hard",
+      "born_from": "2026-11-08: the cron-dispatcher's weather/warnings/sports jobs failed only in Cloudflare's logs, which nobody reads; scripts/check_freshness.py on GitHub's own schedule opens an issue instead",
+      "what": "a town's newest weather_snapshots payload.fetched_at is older than 3 h"
+    },
+    "ops.alerts-freshness": {
+      "severity": "hard",
+      "born_from": "2026-11-08: the cron-dispatcher's weather/warnings/sports jobs failed only in Cloudflare's logs, which nobody reads; scripts/check_freshness.py on GitHub's own schedule opens an issue instead",
+      "what": "a town's NWS/Met Office warnings fetch (dispatcher_heartbeat job 'alerts') has not succeeded for 2 h"
+    },
+    "ops.safety-freshness": {
+      "severity": "hard",
+      "born_from": "2026-11-08: the cron-dispatcher's weather/warnings/sports jobs failed only in Cloudflare's logs, which nobody reads; scripts/check_freshness.py on GitHub's own schedule opens an issue instead",
+      "what": "a town's wildfire/air-quality fetch (dispatcher_heartbeat job 'safety') has not succeeded for 3 h"
+    },
+    "ops.token-expiry": {
+      "severity": "hard",
+      "born_from": "2026-11-08: the cron-dispatcher's weather/warnings/sports jobs failed only in Cloudflare's logs, which nobody reads; scripts/check_freshness.py on GitHub's own schedule opens an issue instead",
+      "what": "the cron-dispatcher's GITHUB_TOKEN expires within 30 days (TOKEN_EXPIRES in scripts/check_freshness.py)"
+    },
     "qa.tracking": {
       "severity": "soft",
       "born_from": "QA must never count as a visitor (owner requirement 2026-10-21)",

@@ -27,6 +27,7 @@ import re
 import sys
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 
 REGISTRY = json.loads((Path(__file__).parent / "checks.json").read_text(encoding="utf-8"))["checks"]
@@ -94,11 +95,13 @@ def trailing_clean(comments: list[str]) -> int:
 
 
 def plan_actions(findings: list[dict], open_issues: list[dict], clean_to_close: int = 3,
-                 scope_towns: set[str] | None = None) -> list[dict]:
+                 scope_towns: set[str] | None = None, scope_checks: Callable[[str], bool] | None = None) -> list[dict]:
     """open_issues: [{number, body, comments: [str]}] already labelled qa-auto.
     scope_towns: only auto-close issues whose body names these fingerprints' towns -- the caller
     passes the set of towns that were actually checked this run, so a run for one town never
-    closes another town's issue (fingerprint bodies carry the town)."""
+    closes another town's issue (fingerprint bodies carry the town).
+    scope_checks: the same for checks -- only issues whose check id the predicate accepts may be commented "clean" or closed. A run that does not
+    produce a check's findings (qa-daily has no ops.* findings; the freshness check has no web.* findings) must never close that check's issue."""
     groups = group(findings)
     by_fp = {fp_of_body(i["body"]): i for i in open_issues if fp_of_body(i["body"])}
     actions: list[dict] = []
@@ -115,6 +118,9 @@ def plan_actions(findings: list[dict], open_issues: list[dict], clean_to_close: 
         town_m = re.search(r"\*\*Stad:\*\* (\S+)", issue["body"])
         town = town_m.group(1) if town_m else ""
         if scope_towns is not None and town not in scope_towns:
+            continue
+        check_m = re.search(r"\*\*Kontroll:\*\* `([^`]+)`", issue["body"])
+        if scope_checks is not None and not scope_checks(check_m.group(1) if check_m else ""):
             continue
         n = trailing_clean(issue.get("comments", [])) + 1
         if n >= clean_to_close:
@@ -162,15 +168,15 @@ def apply_actions(actions: list[dict], token: str, repo: str, run_url: str = "")
 
 
 def report(findings: list[dict], *, report_only: bool, scope_towns: set[str] | None = None,
-           clean_to_close: int = 3, run_url: str = "") -> list[dict]:
+           clean_to_close: int = 3, run_url: str = "", scope_checks: Callable[[str], bool] | None = None) -> list[dict]:
     token, repo = os.environ.get("GITHUB_TOKEN"), os.environ.get("GITHUB_REPOSITORY")
     if report_only or not (token and repo):
-        actions = plan_actions(findings, [], clean_to_close, scope_towns)
+        actions = plan_actions(findings, [], clean_to_close, scope_towns, scope_checks)
         why = "QA_REPORT_ONLY" if report_only else "no GITHUB_TOKEN/GITHUB_REPOSITORY"
         for a in actions:
             print(f"  [qa-report] ({why}) would {a['op']}: {a.get('title') or a.get('body')}")
         return actions
-    actions = plan_actions(findings, load_open_issues(token, repo), clean_to_close, scope_towns)
+    actions = plan_actions(findings, load_open_issues(token, repo), clean_to_close, scope_towns, scope_checks)
     apply_actions(actions, token, repo, run_url)
     return actions
 
@@ -203,7 +209,8 @@ def main() -> int:
     if args.summary_file:
         with open(args.summary_file, "a", encoding="utf-8") as fh:
             fh.write(md + "\n")
-    report(res["findings"], report_only=report_only, scope_towns={res["town"]}, run_url=run_url)
+    report(res["findings"], report_only=report_only, scope_towns={res["town"]}, run_url=run_url,
+           scope_checks=lambda c: not c.startswith("ops."))  # the web QA never closes a watchdog's issue
     return 0
 
 

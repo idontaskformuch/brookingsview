@@ -1,0 +1,158 @@
+"""scripts/check_freshness.py: limits, the token date, which jobs are active, and (qa/report.py) that the watchdogs never close each other's issues."""
+import json
+import re
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
+
+import pytest
+
+from qa.report import CLEAN_MARK, REGISTRY, fingerprint, group, plan_actions, render_issue
+from scripts import check_freshness as cf
+
+ROOT = Path(__file__).resolve().parent.parent
+NOW = datetime(2026, 11, 8, 12, 0, tzinfo=timezone.utc)
+
+
+# ---------------------------------------------------------------- limits
+
+@pytest.mark.parametrize("kind,hours", [("sport", 36), ("weather", 3), ("alerts", 2), ("safety", 3)])
+def test_limits_are_the_agreed_ones(kind, hours):
+    assert cf.LIMIT_HOURS[kind] == hours
+
+
+@pytest.mark.parametrize("kind", ["sport", "weather", "alerts", "safety"])
+def test_exactly_at_limit_is_fresh_just_over_is_stale(kind):
+    h = cf.LIMIT_HOURS[kind]
+    assert not cf.is_stale(NOW - timedelta(hours=h), NOW, h)
+    assert cf.is_stale(NOW - timedelta(hours=h, minutes=1), NOW, h)
+
+
+def test_never_succeeded_is_stale():
+    assert cf.is_stale(None, NOW, 36)
+    f = cf.stale_finding("alerts", "glasgow", "alerts", None, NOW)
+    assert f["check"] == "ops.alerts-freshness" and "never" in f["message"] and "2 h" in f["message"]
+
+
+def test_weather_timestamp_parses_the_workers_z_suffix():
+    assert cf._parse_ts("2026-11-08T13:00:51Z") == datetime(2026, 11, 8, 13, 0, 51, tzinfo=timezone.utc)
+    assert cf._parse_ts(None) is None and cf._parse_ts("") is None
+
+
+# ---------------------------------------------------------------- token
+
+def test_token_issue_opens_from_2027_09_21_and_not_a_day_earlier():
+    assert cf.TOKEN_EXPIRES == date(2027, 10, 21)
+    assert cf.token_findings(date(2027, 9, 20)) == []
+    first = cf.token_findings(date(2027, 9, 21))
+    assert len(first) == 1 and first[0]["check"] == "ops.token-expiry" and "expires in 30 days" in first[0]["message"]
+    assert "expires today" in cf.token_findings(date(2027, 10, 21))[0]["message"]
+    assert "has expired" in cf.token_findings(date(2027, 11, 1))[0]["message"]
+    assert cf.token_findings(date(2026, 11, 8)) == []
+
+
+# ---------------------------------------------------------------- active jobs mirror the Worker and the configs
+
+def towns_in(ts_path: str) -> list[str]:
+    return re.findall(r"townId: '([a-z_]+)'", (ROOT / ts_path).read_text(encoding="utf-8"))
+
+
+def test_town_lists_mirror_the_worker():
+    assert cf.ALERT_TOWNS == towns_in("cron-dispatcher/src/alerts/towns.ts")
+    assert cf.WEATHER_TOWNS == towns_in("cron-dispatcher/src/weather/towns.ts")
+    assert cf.SAFETY_TOWNS == towns_in("cron-dispatcher/src/safety/towns.ts")
+
+
+def test_sport_sources_are_exactly_the_enabled_ones_in_the_configs():
+    got = cf.sport_sources()
+    assert ("brookings_sd", "internal:sdsu") in got
+    for town in cf.ALL_TOWNS:
+        block = json.loads((ROOT / "configs" / f"{town}.json").read_text(encoding="utf-8")).get("sports") or {}
+        mine = [s for t, s in got if t == town]
+        assert bool(mine) == (block.get("enabled") is True)
+
+
+def test_sport_sources_skip_a_disabled_town(tmp_path):
+    for town in cf.ALL_TOWNS:
+        (tmp_path / f"{town}.json").write_text(json.dumps({"sports": {"enabled": False, "sources": [{"adapter": "internal", "program": "x"}]}}), encoding="utf-8")
+    assert cf.sport_sources(tmp_path) == []
+
+
+def test_every_check_id_is_in_the_qa_registry_as_hard():
+    for cid in cf.FRESHNESS_CHECKS:
+        assert REGISTRY[cid]["severity"] == "hard" and REGISTRY[cid]["born_from"] and REGISTRY[cid]["what"]
+
+
+# ---------------------------------------------------------------- issues do not close each other
+
+def issue_for(finding: dict, comments=None) -> dict:
+    fp = fingerprint(finding)
+    _, body = render_issue(fp, group([finding])[fp])
+    return {"number": 1, "body": body, "comments": comments if comments is not None else [CLEAN_MARK] * 5}
+
+
+ALL_TOWNS_SCOPE = set(cf.ALL_TOWNS) | {cf.TOKEN_TOWN}
+
+
+def test_each_freshness_check_has_its_own_fingerprint_for_the_same_town():
+    fps = {fingerprint(cf.stale_finding(k, "moreno_valley_ca", k, None, NOW)) for k in ("weather", "alerts", "safety")}
+    assert len(fps) == 3
+    assert fingerprint(cf.stale_finding("alerts", "moreno_valley_ca", "alerts", None, NOW)) != fingerprint(
+        {"check": "ops.scrape-liveness", "town": "moreno_valley_ca", "pattern": "moreno_valley_ca"})
+
+
+def test_freshness_run_never_closes_scrape_liveness_or_web_qa_issues():
+    scrape = issue_for({"check": "ops.scrape-liveness", "town": "brookings_sd", "pattern": "brookings_sd"})
+    web = issue_for({"check": "web.noindex-sitemap", "town": "brookings_sd", "pattern": "/s/*", "path": "/s/a/"})
+    in_scope = lambda c: c in cf.FRESHNESS_CHECKS  # noqa: E731
+    assert plan_actions([], [scrape, web], clean_to_close=2, scope_towns=ALL_TOWNS_SCOPE, scope_checks=in_scope) == []
+
+
+def test_scrape_and_qa_runs_never_close_a_freshness_issue():
+    stale = issue_for(cf.stale_finding("weather", "brookings_sd", "weather", None, NOW))
+    assert plan_actions([], [stale], clean_to_close=2, scope_towns={"brookings_sd"}, scope_checks=lambda c: c == "ops.scrape-liveness") == []
+    assert plan_actions([], [stale], clean_to_close=3, scope_towns={"brookings_sd"}, scope_checks=lambda c: not c.startswith("ops.")) == []
+
+
+def test_a_freshness_issue_does_close_after_two_clean_runs_in_its_own_scope():
+    stale = issue_for(cf.stale_finding("weather", "brookings_sd", "weather", None, NOW), comments=[CLEAN_MARK])
+    acts = plan_actions([], [stale], clean_to_close=2, scope_towns=ALL_TOWNS_SCOPE, scope_checks=lambda c: c in cf.FRESHNESS_CHECKS)
+    assert [a["op"] for a in acts] == ["close"]
+
+
+def test_a_run_with_only_some_checks_leaves_the_others_issues_alone():
+    # --only sport weather: the open alerts issue must not be commented clean just because alerts were not checked
+    alerts = issue_for(cf.stale_finding("alerts", "glasgow", "alerts", None, NOW), comments=[])
+    only = {cf.CHECK_ID[k] for k in ("sport", "weather")}
+    assert plan_actions([], [alerts], clean_to_close=2, scope_towns=ALL_TOWNS_SCOPE, scope_checks=lambda c: c in only) == []
+
+
+def test_the_token_issue_is_in_scope_for_its_own_run_and_closes_itself():
+    tok = issue_for(cf.token_findings(date(2027, 9, 25))[0], comments=[CLEAN_MARK])
+    acts = plan_actions([], [tok], clean_to_close=2, scope_towns=ALL_TOWNS_SCOPE, scope_checks=lambda c: c in cf.FRESHNESS_CHECKS)
+    assert [a["op"] for a in acts] == ["close"]
+
+
+def test_existing_callers_keep_their_old_behaviour_without_scope_checks():
+    stale = issue_for(cf.stale_finding("weather", "brookings_sd", "weather", None, NOW), comments=[CLEAN_MARK])
+    assert [a["op"] for a in plan_actions([], [stale], clean_to_close=2, scope_towns={"brookings_sd"})] == ["close"]
+
+
+def test_workflow_runs_every_third_hour_on_an_odd_minute_and_only_the_freshness_script():
+    yml = (ROOT / ".github" / "workflows" / "freshness-check.yml").read_text(encoding="utf-8")
+    m = re.search(r'cron: "(\d+) \*/3 \* \* \*"', yml)
+    assert m and int(m.group(1)) % 2 == 1
+    assert "python -m scripts.check_freshness" in yml and "issues: write" in yml
+
+
+def test_heartbeat_job_names_match_the_worker():
+    ts = (ROOT / "cron-dispatcher" / "src" / "heartbeat.ts").read_text(encoding="utf-8")
+    jobs = re.search(r"HEARTBEAT_JOBS = \[([^\]]*)\]", ts).group(1)
+    assert re.findall(r"'([a-z]+)'", jobs) == ["alerts", "safety"]
+    sql = (ROOT / "scripts" / "check_freshness.py").read_text(encoding="utf-8")
+    assert '(("alerts", ALERT_TOWNS), ("safety", SAFETY_TOWNS))' in sql
+
+
+def test_migration_069_has_the_columns_the_worker_and_the_check_use():
+    sql = (ROOT / "db" / "migrations" / "069_dispatcher_heartbeat.sql").read_text(encoding="utf-8")
+    for col in ("town_id", "job", "last_ok", "last_error", "last_error_at", "PRIMARY KEY (town_id, job)"):
+        assert col in sql

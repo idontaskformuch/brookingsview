@@ -3,7 +3,7 @@
 Why (2026-10-21, .claude/state.md Kö 9): scrape + closure-watch scheduling
 moves from GitHub's own `schedule:` (4.5-9.5 h late) to a Cloudflare Worker
 (cron-dispatcher/) that calls workflow_dispatch. If that Worker, its GitHub
-token (90-day expiry) or the dispatch itself breaks, nothing would run and
+token (expires 2027-10-21, see scripts/check_freshness.py) or the dispatch itself breaks, nothing would run and
 nothing would complain -- source-staleness-check only notices after DAYS
 (events: 2 d). This check is deliberately NOT dispatched by the Worker: it
 runs on GitHub's own schedule (.github/workflows/scrape-liveness-check.yml)
@@ -82,7 +82,7 @@ def main() -> int:
                 print(f"  [liveness] {town}: ok -- {(now - last_ok).total_seconds() / 3600:.1f} h ago")
     try:  # always called (also with no findings) so a fixed town's issue can close itself
         report(findings, report_only=False, scope_towns=set(args.towns), clean_to_close=2,
-               run_url=_run_url())
+               run_url=_run_url(), scope_checks=lambda c: c == "ops.scrape-liveness")
     except Exception as exc:  # pragma: no cover -- the red X below must never depend on GitHub's API
         print(f"  [liveness] issue reporting failed: {exc}", file=sys.stderr)
     if stale:

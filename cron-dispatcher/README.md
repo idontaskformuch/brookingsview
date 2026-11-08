@@ -20,7 +20,7 @@ Fine-grained personal access token, created by the owner:
 
 - Resource owner: the repo owner. Repository access: **Only select repositories** -> `idontaskformuch/brookingsview`.
 - Permissions: **Actions: Read and write**. Metadata: Read-only is added automatically. Nothing else.
-- Expiration: 90 days. The date is recorded in `.claude/state.md` under "Gällande beslut".
+- Expiration: 2027-10-21 (one year). The date is also a constant in `scripts/check_freshness.py` (`TOKEN_EXPIRES`); a GitHub issue opens from 2027-09-21.
 
 ```
 cd cron-dispatcher

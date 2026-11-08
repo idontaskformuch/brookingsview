@@ -6,7 +6,7 @@ name: scrape-liveness-check
 # e-mail on); closes itself after 2 clean runs. ALERT_WEBHOOK is optional.
 #
 # DELIBERATELY on GitHub's own `schedule:` and NOT dispatched by the Worker:
-# if the Worker, its 90-day GitHub token or the dispatch breaks, this must
+# if the Worker, its GitHub token or the dispatch breaks, this must
 # still fire. GitHub's schedule runs late (hours) but that only delays the
 # alarm; the 26 h limit plus twice-daily checks still catches an outage within
 # about a day. See scripts/check_scrape_liveness.py.

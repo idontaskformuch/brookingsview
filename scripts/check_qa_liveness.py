@@ -67,7 +67,8 @@ def main() -> int:
     else:
         print(f"  [qa-liveness] ok -- {(now - last_ok).total_seconds() / 3600:.1f} h ago")
     try:  # always called so a fixed state closes its own issue
-        report(findings, report_only=False, scope_towns={"qa"}, clean_to_close=2, run_url=_run_url())
+        report(findings, report_only=False, scope_towns={"qa"}, clean_to_close=2, run_url=_run_url(),
+               scope_checks=lambda c: c == "ops.qa-liveness")
     except Exception as exc:  # pragma: no cover -- the red X below must not depend on the issue API
         print(f"  [qa-liveness] issue reporting failed: {exc}", file=sys.stderr)
     return 1 if stale else 0
