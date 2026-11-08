@@ -42,8 +42,9 @@
     samtyckes-/analysblockeringen försvinner.
 
 13. En 403 (eller en bot-/Cloudflare-utmaning) mot en källa är ett nej,
-    även när robots.txt tillåter sidan. Högst ETT nytt försök, med en ärlig,
-    identifierbar UA (t.ex. "BrookingsViewBot-robotscheck"). Aldrig
+    även när robots.txt tillåter sidan. Högst ETT nytt försök, med samma enda
+    UA som allt annat (ViewMediaBot (+https://<stadens domän>/contact),
+    scrapers/user_agent.py). Aldrig
     webbläsar-UA, rotation, headless-webbläsare eller något annat sätt att
     ta sig förbi en blockering. Därefter är källan länk-bara (visas som
     vanlig länk, hämtas aldrig) och raden blir unconfirmed med checkAt.
