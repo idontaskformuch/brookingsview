@@ -6,6 +6,8 @@ import { rowNote, sportPhase, isOpen, type RowNote, type SportEventLike, type Sp
 /** The data-* attributes a row carries (GameTable.astro writes them). */
 export interface RowData {
   sport?: string; start?: string; tz?: string; status?: string; tba?: string; result?: string; section?: string;
+  /** What the Next up card shows, formatted at build time (GameTable.astro). */
+  label?: string; prefix?: string; opp?: string; venue?: string; date?: string; clock?: string; neutral?: string; exh?: string;
 }
 
 const STATUSES = ['scheduled', 'final', 'postponed', 'cancelled'] as const;
@@ -35,8 +37,38 @@ export function updateFor(d: RowData, now: Date): RowUpdate | null {
 
 const data = (el: HTMLElement): RowData => ({
   sport: el.dataset.sport, start: el.dataset.start, tz: el.dataset.tz, status: el.dataset.status, tba: el.dataset.tba,
-  result: el.dataset.result, section: el.dataset.section,
+  result: el.dataset.result, section: el.dataset.section, label: el.dataset.label, prefix: el.dataset.prefix, opp: el.dataset.opp,
+  venue: el.dataset.venue, date: el.dataset.date, clock: el.dataset.clock, neutral: el.dataset.neutral, exh: el.dataset.exh,
 });
+
+/** The earliest game still to come (upcoming or in progress; a pending one has no "next" left in it), or null when there is none. */
+export function pickNext(rows: RowData[], now: Date): number | null {
+  let best: number | null = null;
+  let bestStart = Infinity;
+  rows.forEach((d, i) => {
+    const u = updateFor(d, now);
+    if (!u || (u.phase !== 'upcoming' && u.phase !== 'inProgress')) return;
+    const t = Date.parse(d.start ?? '');
+    if (t < bestStart) { bestStart = t; best = i; }
+  });
+  return best;
+}
+
+export interface CardText { kicker: string; prefix: string; opponent: string; tag: string; when: string; venue: string }
+
+/** The texts of the Next up card for one row. */
+export function cardText(d: RowData, phase: SportPhase, terms: Record<string, string>): CardText {
+  const tba = d.tba === '1';
+  const clock = tba ? terms.time_tba : d.clock;
+  return {
+    kicker: `${d.neutral === '1' ? terms.neutral_site : d.prefix === 'vs' ? 'Home' : 'Away'} · ${(d.label ?? '').toLowerCase()}`,
+    prefix: d.prefix === 'at' ? 'at' : 'vs',
+    opponent: d.opp ?? '',
+    tag: d.exh === '1' ? terms.exhibition : phase === 'inProgress' ? terms.in_progress : '',
+    when: `${d.date ?? ''}${clock ? ` · ${clock}` : ''}`,
+    venue: d.venue ?? '',
+  };
+}
 
 export function refreshSportPhases(root: ParentNode, now: Date = new Date()): void {
   const holder = root.querySelector<HTMLElement>('[data-sport-terms]');
@@ -57,10 +89,22 @@ export function refreshSportPhases(root: ParentNode, now: Date = new Date()): vo
   }
   const next = root.querySelector<HTMLElement>('[data-next-up]');
   if (next) {
-    const u = updateFor(data(next), now);
-    if (u && u.phase !== 'upcoming' && u.phase !== 'inProgress') next.hidden = true;
-    const tag = next.querySelector<HTMLElement>('[data-next-tag]');
-    if (u && tag && u.phase === 'inProgress') { tag.textContent = ` · ${terms.in_progress}`; tag.hidden = false; }
+    const rows = Array.from(root.querySelectorAll<HTMLElement>('tr[data-start]'));
+    const i = pickNext(rows.map(data), now);
+    if (i === null) {
+      next.hidden = true;
+    } else {
+      const tr = rows[i];
+      const t = cardText(data(tr), updateFor(data(tr), now)!.phase, terms);
+      const put = (key: string, text: string) => {
+        const el = next.querySelector<HTMLElement>(`[data-nx="${key}"]`);
+        if (el) { el.textContent = text; el.hidden = text === ''; }
+      };
+      put('kicker', t.kicker); put('prefix', t.prefix); put('opp', t.opponent); put('when', t.when); put('venue', t.venue);
+      const tag = next.querySelector<HTMLElement>('[data-next-tag]');
+      if (tag) { tag.textContent = t.tag ? ` · ${t.tag}` : ''; tag.hidden = t.tag === ''; }
+      next.hidden = false;
+    }
   }
 }
 

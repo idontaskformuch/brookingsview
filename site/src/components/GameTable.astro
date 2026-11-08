@@ -4,8 +4,8 @@ import { formatDate, formatTime } from '../lib/db';
 import type { GameRow } from '../lib/jackrabbits-view';
 import type { SportTerms } from '../lib/sport-strings';
 
-interface Props { rows: GameRow[]; terms: SportTerms; section: 'results' | 'schedule'; }
-const { rows, terms, section } = Astro.props;
+interface Props { rows: GameRow[]; terms: SportTerms; section: 'results' | 'schedule'; label: string; }
+const { rows, terms, section, label } = Astro.props;
 ---
 <table class="sched">
   <thead>
@@ -15,7 +15,10 @@ const { rows, terms, section } = Astro.props;
   <tbody>
     {rows.map((game) => (
       <tr data-sport={game.sport} data-start={game.startAt.toISOString()} data-tz={game.tz} data-status={game.status}
-          data-tba={game.timeTba ? '1' : '0'} data-result={game.result ? '1' : '0'} data-section={section}>
+          data-tba={game.timeTba ? '1' : '0'} data-result={game.result ? '1' : '0'} data-section={section}
+          data-label={label} data-prefix={game.prefix} data-opp={game.opponent} data-venue={game.venue ?? ''}
+          data-date={formatDate(game.startAt.toISOString())} data-clock={game.timeTba ? '' : formatTime(game.startAt.toISOString())}
+          data-neutral={game.neutralSite ? '1' : '0'} data-exh={game.exhibition ? '1' : '0'}>
         <td class="data">{formatDate(game.startAt.toISOString())} <span class="t">{game.timeTba ? terms.time_tba : formatTime(game.startAt.toISOString())}</span></td>
         <td>{game.prefix} {game.opponent}
           {game.exhibition && <span class="tag">{terms.exhibition}</span>}

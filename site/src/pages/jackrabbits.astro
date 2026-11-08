@@ -88,13 +88,13 @@ const summaryBySport = new Map(
         {group.results.length > 0 && (
           <>
             <h3 class="sched-label">Results</h3>
-            <div data-results><GameTable rows={group.results} terms={terms} section="results" /></div>
+            <div data-results><GameTable rows={group.results} terms={terms} section="results" label={group.label} /></div>
           </>
         )}
         {group.schedule.length > 0 && (
           <div data-schedule>
             <h3 class="sched-label">Schedule</h3>
-            <GameTable rows={group.schedule} terms={terms} section="schedule" />
+            <GameTable rows={group.schedule} terms={terms} section="schedule" label={group.label} />
           </div>
         )}
       </section>

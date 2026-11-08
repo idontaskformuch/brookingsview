@@ -122,7 +122,7 @@
         "program": "sdsu",
         "level": "college",
         "url": "https://gojacks.com",
-        "note": "SIDEARM ToS ger inget uttryckligt tillstånd; fakta-bara; tillstånd begärt från SDSU Athletics",
+        "note": "see notes: sources/gojacks",
         "params": {
           "provider": "gojacks",
           "sports": {
