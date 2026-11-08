@@ -1,7 +1,7 @@
 name: freshness-check
 # Watchdog for the jobs the Cloudflare cron-dispatcher Worker runs by itself (warnings, forecasts, safety notices) and for the sports run:
 # opens one GitHub issue per stale item (qa/report.py; GitHub mails it through the owner's notification settings, closes itself after 2 clean
-# runs) and fails this workflow. Limits: sport 36 h, weather 3 h, alerts 2 h, safety 3 h; plus the dispatcher token's expiry from 2027-09-21.
+# runs) and fails this workflow. Limits: sport 26 h, weather 3 h, alerts 2 h, safety 3 h; plus the dispatcher token's expiry from 2027-09-21.
 # See scripts/check_freshness.py.
 #
 # DELIBERATELY on GitHub's own `schedule:` and NOT dispatched by the Worker: a dead Worker must not silence its own alarm. GitHub's schedule

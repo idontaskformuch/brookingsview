@@ -64,7 +64,7 @@
     "ops.sport-freshness": {
       "severity": "hard",
       "born_from": "2026-11-08: the cron-dispatcher's weather/warnings/sports jobs failed only in Cloudflare's logs, which nobody reads; scripts/check_freshness.py on GitHub's own schedule opens an issue instead",
-      "what": "an active sports source has had no successful run in sport_sources_health for 36 h"
+      "what": "an active sports source has had no successful run in sport_sources_health for 26 h"
     },
     "ops.weather-freshness": {
       "severity": "hard",

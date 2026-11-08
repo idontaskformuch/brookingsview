@@ -3,7 +3,7 @@
 The scrape watchdog (check_scrape_liveness.py) covers the twice-daily scrape. This one covers the rest, each with its own check id so the
 issues are independent (qa/report.py `scope_checks`: a run of this script only ever opens/closes ops.*-freshness / token issues):
 
-  ops.sport-freshness    sport_sources_health.last_success per ACTIVE sports source (configs sports.enabled)        36 h  (one daily run)
+  ops.sport-freshness    sport_sources_health.last_success per ACTIVE sports source (configs sports.enabled)        26 h  (one daily run, 17:00 UTC)
   ops.weather-freshness  weather_snapshots, newest row per town, payload->>'fetched_at' (written every whole hour)    3 h
   ops.alerts-freshness   dispatcher_heartbeat job 'alerts' per town (written by the Worker after each good 15-min fetch) 2 h
   ops.safety-freshness   dispatcher_heartbeat job 'safety' per safety town (wildfire + air quality)                    3 h
@@ -37,7 +37,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TOKEN_EXPIRES = date(2027, 10, 21)
 TOKEN_WARN_DAYS = 30  # the issue opens on 2027-09-21
 
-LIMIT_HOURS = {"sport": 36, "weather": 3, "alerts": 2, "safety": 3}
+LIMIT_HOURS = {"sport": 26, "weather": 3, "alerts": 2, "safety": 3}
 CHECK_ID = {"sport": "ops.sport-freshness", "weather": "ops.weather-freshness", "alerts": "ops.alerts-freshness",
             "safety": "ops.safety-freshness", "register": "ops.evening-register-freshness", "token": "ops.token-expiry"}
 FRESHNESS_CHECKS = set(CHECK_ID.values())

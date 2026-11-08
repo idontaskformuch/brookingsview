@@ -15,7 +15,7 @@ NOW = datetime(2026, 11, 8, 12, 0, tzinfo=timezone.utc)
 
 # ---------------------------------------------------------------- limits
 
-@pytest.mark.parametrize("kind,hours", [("sport", 36), ("weather", 3), ("alerts", 2), ("safety", 3)])
+@pytest.mark.parametrize("kind,hours", [("sport", 26), ("weather", 3), ("alerts", 2), ("safety", 3)])
 def test_limits_are_the_agreed_ones(kind, hours):
     assert cf.LIMIT_HOURS[kind] == hours
 
