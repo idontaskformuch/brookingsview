@@ -12,6 +12,9 @@ ToS (checked 2026-11-08): SIDEARM Terms of Service (sidearmsports.com/terms-of-s
 retrieval; 2.1-2.3 limit the content to personal, noncommercial use. Decision (owner 2026-11-08): FACTS ONLY -- opponent, local date and
 time, venue, home/away and the score. No prose, no images, no logos, no media URLs; permission is requested from SDSU Athletics.
 
+A neutral-site game sets neutral_site (we are listed on the home side so the score stays on the right side); a time cell with no
+usable time ("TBD", empty) sets time_tba and start_at is local midnight.
+
 Facts only also means no `raw_data`, no tournament/notes text, no links: the event's `url` stays empty.
 """
 from __future__ import annotations
@@ -20,7 +23,7 @@ import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from scrapers.parsers.gojacks_v1 import normalize_opponent, parse_schedule_page
+from scrapers.parsers.gojacks_v1 import normalize_opponent, parse_schedule_page, parse_time_cell
 from sports import adapters
 from sports.http import PoliteHttp
 from sports.models import NormalizedEvent
@@ -48,10 +51,15 @@ def _event(rec: dict, slug: str, spec: dict, params: dict) -> NormalizedEvent | 
     if not rec.get("starts_at"):
         return None
     start = datetime.fromisoformat(rec["starts_at"]).astimezone(ZoneInfo(tz))
+    cells = rec.get("raw_data") or {}
+    time_tba = parse_time_cell(cells.get("time")) is None
+    if time_tba:  # the legacy parser's 12:00 is a placeholder; here the day is known and the time is not
+        start = datetime(start.year, start.month, start.day, tzinfo=ZoneInfo(tz))
     opponent = normalize_opponent(rec["opponent"])
     status, ours, theirs = parse_result(rec.get("result"))
     program = params["program"]
     away = (rec.get("home_away") or "") == "away"
+    neutral = (rec.get("home_away") or "") == "neutral"
     us = {"home_program_id": program} if not away else {"away_program_id": program}
     them = {"away_name": opponent} if not away else {"home_name": opponent}
     scores: dict = {}
@@ -61,6 +69,7 @@ def _event(rec: dict, slug: str, spec: dict, params: dict) -> NormalizedEvent | 
         source=NAME, source_uid=f"gojacks:{slug}:{start.date().isoformat()}:{opponent.lower()}",
         sport=spec["sport"], level=params.get("level", "college"), gender=spec.get("gender"),
         start_at=start, tz=tz, program_id=program, venue=(rec.get("venue") or None), status=status,
+        time_tba=time_tba, neutral_site=neutral,
         **us, **them, **scores)
 
 

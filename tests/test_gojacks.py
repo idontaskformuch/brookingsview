@@ -5,7 +5,9 @@ UTC on insert, ~5-6h off from real Central time for every game)."""
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from scrapers.parsers.gojacks_v1 import _parse_datetime, normalize_opponent
+import pytest
+
+from scrapers.parsers.gojacks_v1 import _parse_datetime, normalize_opponent, parse_time_cell
 
 CENTRAL = ZoneInfo("America/Chicago")
 
@@ -81,3 +83,24 @@ def test_ranking_change_does_not_change_content_hash_identity():
     # variants normalize identically.
     assert normalize_opponent("Nebraska") == normalize_opponent("#1 Nebraska")
     assert normalize_opponent("Villanova") == normalize_opponent("RV Villanova")
+
+
+# Every time-cell shape seen in sports_games and the 2026 schedule fixtures (2026-11-08) -> Central (hour, minute), None = no usable time.
+@pytest.mark.parametrize("cell,expected", [
+    ("7 p.m.", (19, 0)), ("7:00 p.m.", (19, 0)), ("1:30 PM", (13, 30)), ("11:00 a.m.", (11, 0)), ("9 p.m.", (21, 0)),
+    ("Noon", (12, 0)), ("noon", (12, 0)), ("Approximately 2:30 p.m.", (14, 30)),
+    ("10 a.m. PT / noon CT", (12, 0)),            # was read as 10:00: the CT figure is a word, not digits
+    ("6 p.m. MT / 7 p.m. CT", (19, 0)), ("2 p.m. MT / 3 p.m. CT", (15, 0)), ("3 p.m. PT / 5 p.m. CT", (17, 0)),
+    ("5 p.m. PT / 7 p.m. CT", (19, 0)), ("6 p.m. PT / 8 p.m. CT", (20, 0)),
+    ("6 p.m. CT / 7 p.m. ET", (18, 0)), ("10 a.m. CT / 11 a.m. ET", (10, 0)), ("12:15 p.m. CT / 1 p.m. ET", (12, 15)),
+    ("7 p.m. ET", (18, 0)), ("5 p.m. MT", (18, 0)), ("5 p.m. PT", (19, 0)),   # only another zone labeled: converted to Central
+    ("11:30 p.m. PT", None),                      # would cross midnight: not guessed
+    ("TBD", None), ("TBA", None), ("", None), (None, None), ("   ", None), ("Postponed", None),
+])
+def test_parse_time_cell(cell, expected):
+    assert parse_time_cell(cell) == expected
+
+
+def test_legacy_datetime_keeps_noon_placeholder_for_tba_and_fixes_pt_ct():
+    noon = lambda cell: datetime.fromisoformat(_parse_datetime("Aug 30 (Sun)", cell, 2026, False)).astimezone(CENTRAL).hour
+    assert noon("10 a.m. PT / noon CT") == 12 and noon("TBD") == 12 and noon("") == 12 and noon("Noon") == 12

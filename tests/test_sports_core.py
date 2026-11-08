@@ -191,7 +191,7 @@ def test_upsert_events_updates_in_place_and_never_deletes():
     sql, params = cur.calls[0]
     assert "ON CONFLICT (town_id, source, source_uid) DO UPDATE" in sql and "first_seen" not in sql.split("DO UPDATE")[1]
     assert "DELETE" not in sql.upper()
-    assert params[:3] == ["t", "ics", "1"] and params[-5] == "score"  # result_type comes from the registry, not the adapter
+    assert params[:3] == ["t", "ics", "1"] and params[3 + store._EVENT_COLS.index("result_type")] == "score"  # result_type comes from the registry, not the adapter
 
 
 def test_upsert_events_refuses_invalid_event():
@@ -295,3 +295,33 @@ def test_robots_mode_is_validated(fake_adapter):
     assert validate_sports_config(cfg) == []
     cfg["sports"]["sources"][0]["robots_mode"] = "loose"
     assert any("robots_mode" in m for m in validate_sports_config(cfg))
+
+
+def test_flags_migration_is_additive_and_adds_both_columns():
+    sql = (ROOT / "db" / "migrations" / "067_sport_events_flags.sql").read_text(encoding="utf-8")
+    assert apply_migration.check_additive(sql) == []
+    assert "ADD COLUMN IF NOT EXISTS time_tba boolean NOT NULL DEFAULT false" in sql
+    assert "ADD COLUMN IF NOT EXISTS neutral_site boolean NOT NULL DEFAULT false" in sql
+    assert len(apply_migration.statements(sql)) == 2
+
+
+@pytest.mark.parametrize("stmt", [
+    "ALTER TABLE x DROP COLUMN y", "ALTER TABLE x ADD COLUMN IF NOT EXISTS y int REFERENCES z(id)",
+    "ALTER TABLE x ADD COLUMN IF NOT EXISTS y boolean; DROP TABLE x", "ALTER TABLE x RENAME COLUMN a TO b",
+    "ALTER TABLE x ALTER COLUMN a TYPE text", "ALTER TABLE x ADD COLUMN IF NOT EXISTS y text DEFAULT (select 1)",
+])
+def test_add_column_allowance_is_narrow(stmt):
+    assert apply_migration.check_additive(stmt + ";")
+
+
+def test_store_writes_the_two_flags():
+    assert "time_tba" in store._EVENT_COLS and "neutral_site" in store._EVENT_COLS
+    cur = Cur()
+    store.upsert_events(cur, "t", [ev(time_tba=True, neutral_site=True)])
+    sql, params = cur.calls[0]
+    assert "time_tba" in sql and "neutral_site" in sql and params[-2:] == [True, True]
+
+
+def test_tba_and_neutral_strings_exist_in_both_countries():
+    assert strings.term("us", "time_tba") == strings.term("gb", "time_tba") == "TBA"
+    assert strings.term("us", "neutral_site") == "Neutral site"

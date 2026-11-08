@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from sports.models import NormalizedEvent
 
 _EVENT_COLS = ("program_id", "sport", "level", "gender", "competition", "home_program_id", "home_name", "away_program_id", "away_name",
-               "start_at", "tz", "venue", "status", "result_type", "score_home", "score_away", "placing_text", "url")
+               "start_at", "tz", "venue", "status", "result_type", "score_home", "score_away", "placing_text", "url", "time_tba", "neutral_site")
 
 
 def sync_programs(cur, town_id: str, block: dict) -> None:

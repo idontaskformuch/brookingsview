@@ -151,3 +151,33 @@ def test_runner_does_nothing_for_a_disabled_sports_block():
     cur = Cur()
     assert runner.run_town(cur, {"town_id": "brookings_sd", "sports": {"enabled": False}}) == {}
     assert cur.calls == []
+
+
+# --- time_tba / neutral_site ---------------------------------------------------------------------------------------------------
+
+def test_tbd_and_empty_time_cells_become_time_tba_at_local_midnight(events):
+    tba = [e for e in events if e.time_tba]
+    assert tba, "the recorded 2026-27 schedules contain TBD / empty time cells"
+    for e in tba:
+        local = e.start_at.astimezone(ZoneInfo("America/Chicago"))
+        assert (local.hour, local.minute) == (0, 0)
+    assert all(not e.time_tba for e in events if e.start_at.astimezone(ZoneInfo("America/Chicago")).hour != 0)
+
+
+def test_tba_event_is_built_from_the_cell_not_from_the_placeholder():
+    rec = {"starts_at": "2026-11-28T12:00:00-06:00", "opponent": "Second Line Showcase", "home_away": "neutral", "venue": "New Orleans, La.",
+           "result": "", "raw_data": {"time": "TBD", "at": "Neutral"}}
+    ev = internal._event(rec, "mens-basketball", {"sport": "basketball", "gender": "men"}, {"program": "sdsu"})
+    assert ev.time_tba and ev.neutral_site and ev.start_at.hour == 0 and ev.problems() == []
+    assert ev.home_program_id == "sdsu" and ev.away_name == "Second Line Showcase"
+
+
+def test_known_time_is_not_tba_and_home_is_not_neutral(events):
+    stetson = next(e for e in events if e.away_name == "Stetson")
+    assert not stetson.time_tba and not stetson.neutral_site
+    assert any(e.neutral_site for e in events) and not any(e.neutral_site for e in events if e.venue and "Brookings" in e.venue)
+
+
+def test_pt_ct_listing_lands_at_noon_central(events):
+    e = next(e for e in events if e.away_name == "Villanova")
+    assert e.start_at.astimezone(ZoneInfo("America/Chicago")).hour == 12

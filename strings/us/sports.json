@@ -1,5 +1,5 @@
 {
-  "terms": {"schedule": "Schedule", "results": "Scores", "standings": "Standings", "fixture": "game", "fixtures": "games"},
+  "terms": {"schedule": "Schedule", "results": "Scores", "standings": "Standings", "fixture": "game", "fixtures": "games", "time_tba": "TBA", "neutral_site": "Neutral site"},
   "date_format": "%a, %b %-d",
   "time_format": "%-I:%M %p",
   "templates": {

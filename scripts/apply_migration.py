@@ -1,10 +1,10 @@
-"""Apply one ADDITIVE migration file (CREATE TABLE / CREATE INDEX ... IF NOT EXISTS only) through the prod write guard.
+"""Apply one ADDITIVE migration file (CREATE TABLE / CREATE INDEX ... IF NOT EXISTS, or ALTER TABLE ... ADD COLUMN IF NOT EXISTS, only) through the prod write guard.
 
     python -m scripts.prod_backup apply_migration "SELECT 'new tables only, no existing rows touched' AS note"
     ALLOW_PROD_WRITE=apply_migration python -m scripts.apply_migration 066_local_sports --prod
 
 Without --prod and ALLOW_PROD_WRITE the connection is read-only and the script stops at the first statement.
-Anything that is not a plain CREATE ... IF NOT EXISTS (DROP, ALTER, UPDATE, DELETE, INSERT, TRUNCATE) is refused: those need their own approval and backup (CLAUDE.md rule 14).
+Anything else (DROP, ALTER, UPDATE, DELETE, INSERT, TRUNCATE) is refused: those need their own approval and backup (CLAUDE.md rule 14).
 """
 from __future__ import annotations
 
@@ -17,6 +17,10 @@ from db.db import declare_action, get_conn
 MIGRATIONS = Path(__file__).resolve().parent.parent / "db" / "migrations"
 _FORBIDDEN = re.compile(r"\b(drop|alter|update|delete|insert|truncate|grant|revoke)\b", re.I)
 _CREATE = re.compile(r"^create\s+(table|index)\s+if\s+not\s+exists\b", re.I)
+# The one ALTER that is allowed: adding a plain column that is not there yet (nothing existing is changed or removed).
+_ADD_COLUMN = re.compile(
+    r"^alter\s+table\s+\w+\s+add\s+column\s+if\s+not\s+exists\s+\w+\s+(boolean|integer|text|timestamptz)"
+    r"(\s+not\s+null)?(\s+default\s+(true|false|-?\d+|'[^']*'|now\(\)))?$", re.I)
 
 
 def statements(sql: str) -> list[str]:
@@ -27,8 +31,10 @@ def statements(sql: str) -> list[str]:
 def check_additive(sql: str) -> list[str]:
     problems = []
     for stmt in statements(sql):
+        if _ADD_COLUMN.match(stmt):
+            continue
         if not _CREATE.match(stmt):
-            problems.append(f"not a CREATE ... IF NOT EXISTS: {stmt[:60]!r}")
+            problems.append(f"not a CREATE ... IF NOT EXISTS or ADD COLUMN IF NOT EXISTS: {stmt[:60]!r}")
         elif _FORBIDDEN.search(re.sub(r"'[^']*'", "''", stmt)):
             problems.append(f"forbidden keyword in: {stmt[:60]!r}")
     return problems

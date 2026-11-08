@@ -53,13 +53,40 @@ DEFAULT_SPORTS = {
 # "2026 Football Schedule" ELLER "2025-26 Men's Basketball Schedule"
 _HEADER_YEAR_RE = re.compile(r"(\d{4})(?:-(\d{2}))?\s+\S.*Schedule", re.IGNORECASE)
 _DATE_RE = re.compile(r"([A-Za-z]{3})\s+(\d{1,2})")           # "Aug 29 (Sat)"
-_TIME_RE = re.compile(r"(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)", re.IGNORECASE)
-# Some neutral-site games list two zones ("6 p.m. MT / 7 p.m. CT") -- prefer
-# the explicitly-labeled Central figure over whichever comes first in the
-# string (see NEEDS-HUMAN-REVIEW.md "University Coverage Rebuild": a plain
-# time with no zone label is Central by the program's own convention, but a
-# dual-zone listing must not silently grab the Mountain figure).
-_CT_TIME_RE = re.compile(r"(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)\s*CT", re.IGNORECASE)
+# One clock token: "7 p.m.", "7:00 p.m.", "1:30 PM", "noon", with an optional zone label right after it ("... CT", "... MT").
+_CLOCK_RE = re.compile(r"(noon|midnight|(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m\b\.?)(?:\s+([cmep])[sd]?t\b)?", re.IGNORECASE)
+# Minutes to add to a labeled zone's clock to get Central time (the program's own zone).
+_ZONE_TO_CENTRAL = {"c": 0, "e": -60, "m": 60, "p": 120}
+
+
+def parse_time_cell(time_str: str | None) -> tuple[int, int] | None:
+    """Central (hour, minute) from a schedule's time cell, or None when the cell names no usable time ("TBD", "TBA", "").
+
+    A plain time is Central by the program's convention. A dual-zone listing ("10 a.m. PT / noon CT", "6 p.m. MT / 7 p.m. CT")
+    uses the figure labeled CT; if only another zone is labeled it is converted to Central. A conversion that would cross
+    midnight is not guessed: None. "noon" and "midnight" are times; "Approximately 2:30 p.m." is 2:30 p.m.
+    """
+    found = []
+    for m in _CLOCK_RE.finditer(time_str or ""):
+        word = m.group(1).lower()
+        if word == "noon":
+            minutes = 12 * 60
+        elif word == "midnight":
+            minutes = 0
+        else:
+            hour = int(m.group(2))
+            if not 1 <= hour <= 12:
+                continue
+            minutes = (hour % 12 + (12 if m.group(4).lower() == "p" else 0)) * 60 + int(m.group(3) or 0)
+        found.append((minutes, (m.group(5) or "").lower()))
+    if not found:
+        return None
+    pick = next((f for f in found if f[1] == "c"), None) or next((f for f in found if not f[1]), None) or found[0]
+    minutes = pick[0] + (_ZONE_TO_CENTRAL[pick[1]] if pick[1] else 0)
+    if not 0 <= minutes < 24 * 60:
+        return None
+    return minutes // 60, minutes % 60
+
 
 # Ranking-prefix tokens gojacks.com prepends to a ranked opponent's name
 # ("#1 Nebraska", "RV Villanova", "-/RV No. 1 North Dakota State", "No. 3
@@ -223,17 +250,8 @@ def _parse_datetime(date_str: str, time_str: str, base_year: int,
     # säsong över årsskiftet: jan-jun hör till basår+1, jul-dec till basår.
     year = base_year + 1 if (spans_two_years and month <= 6) else base_year
 
-    hour, minute = 12, 0  # rimlig default när tiden är "TBA"
-    # Prefer an explicit "... CT" figure over the first time token found --
-    # a dual-zone listing ("6 p.m. MT / 7 p.m. CT") would otherwise grab the
-    # Mountain figure. A single, unlabeled time is Central by convention.
-    tm = _CT_TIME_RE.search(time_str or "") or _TIME_RE.search(time_str or "")
-    if tm:
-        hour = int(tm.group(1)) % 12
-        minute = int(tm.group(2) or 0)
-        if tm.group(3).lower().startswith("p"):
-            hour += 12
-
+    # Legacy sports_games keeps its 12:00 placeholder for "TBD"/empty (unchanged on purpose); sport_events marks those time_tba instead.
+    hour, minute = parse_time_cell(time_str) or (12, 0)
     try:
         return datetime(year, month, day, hour, minute, tzinfo=_CENTRAL).isoformat()
     except ValueError:

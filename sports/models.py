@@ -30,6 +30,8 @@ class NormalizedEvent:
     score_away: int | None = None
     placing_text: str | None = None
     url: str | None = None
+    time_tba: bool = False            # the source gives no time: start_at is local midnight and must never be shown as a clock time
+    neutral_site: bool = False        # neither side is at home; home/away only orders the two sides and the score
 
     @property
     def result_type(self) -> str:
