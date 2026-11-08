@@ -1,5 +1,5 @@
 {
-  "terms": {"schedule": "Fixtures", "results": "Results", "standings": "Table", "fixture": "fixture", "fixtures": "fixtures", "time_tba": "TBA", "neutral_site": "Neutral venue"},
+  "terms": {"schedule": "Fixtures", "results": "Results", "standings": "Table", "fixture": "fixture", "fixtures": "fixtures", "time_tba": "TBA", "neutral_site": "Neutral venue", "exhibition": "Exhibition"},
   "date_format": "%a %-d %b",
   "time_format": "%H:%M",
   "templates": {

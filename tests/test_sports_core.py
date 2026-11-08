@@ -319,9 +319,18 @@ def test_store_writes_the_two_flags():
     cur = Cur()
     store.upsert_events(cur, "t", [ev(time_tba=True, neutral_site=True)])
     sql, params = cur.calls[0]
-    assert "time_tba" in sql and "neutral_site" in sql and params[-2:] == [True, True]
+    assert "time_tba" in sql and "neutral_site" in sql and params[-3:] == [True, True, False]
 
 
 def test_tba_and_neutral_strings_exist_in_both_countries():
     assert strings.term("us", "time_tba") == strings.term("gb", "time_tba") == "TBA"
     assert strings.term("us", "neutral_site") == "Neutral site"
+
+
+def test_exhibition_migration_is_additive_and_store_writes_the_flag():
+    sql = (ROOT / "db" / "migrations" / "068_sport_events_exhibition.sql").read_text(encoding="utf-8")
+    assert apply_migration.check_additive(sql) == []
+    assert len(apply_migration.statements(sql)) == 1 and "exhibition boolean NOT NULL DEFAULT false" in sql
+    cur = Cur()
+    store.upsert_events(cur, "t", [ev(exhibition=True)])
+    assert "exhibition" in cur.calls[0][0] and cur.calls[0][1][-1] is True

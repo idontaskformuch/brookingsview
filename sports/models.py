@@ -32,6 +32,7 @@ class NormalizedEvent:
     url: str | None = None
     time_tba: bool = False            # the source gives no time: start_at is local midnight and must never be shown as a clock time
     neutral_site: bool = False        # neither side is at home; home/away only orders the two sides and the score
+    exhibition: bool = False          # the source says "(Exhibition)" or "Scrimmage" outright; shown, never counted in a record or standings
 
     @property
     def result_type(self) -> str:

@@ -181,3 +181,32 @@ def test_known_time_is_not_tba_and_home_is_not_neutral(events):
 def test_pt_ct_listing_lands_at_noon_central(events):
     e = next(e for e in events if e.away_name == "Villanova")
     assert e.start_at.astimezone(ZoneInfo("America/Chicago")).hour == 12
+
+
+# --- exhibition ----------------------------------------------------------------------------------------------------------------
+
+def _ev(name, result="N -"):
+    rec = {"starts_at": "2026-08-30T12:00:00-05:00", "opponent": name, "home_away": "home", "venue": "Frost Arena", "result": result,
+           "raw_data": {"time": "7 p.m."}}
+    return internal._event(rec, "womens-volleyball", {"sport": "volleyball", "gender": "women"}, {"program": "sdsu"})
+
+
+def test_exhibition_tag_sets_the_flag_and_leaves_the_name():
+    ev = _ev("Iowa State (Exhibition)")
+    assert ev.exhibition and ev.away_name == "Iowa State"
+
+
+def test_scrimmage_sets_the_flag_and_keeps_its_name():
+    ev = _ev("Yellow & Blue Scrimmage")
+    assert ev.exhibition and ev.away_name == "Yellow & Blue Scrimmage"
+
+
+def test_missing_result_alone_is_not_an_exhibition():
+    assert not _ev("Villanova").exhibition and not _ev("Villanova", "N -").exhibition
+
+
+def test_recorded_schedules_flag_only_games_the_source_names(events):
+    names = sorted((e.away_name or e.home_name) for e in events if e.exhibition)
+    assert {"Iowa State", "Southwest Minnesota State", "St. Cloud State", "Yellow & Blue Scrimmage"} <= set(names)
+    assert not any("exhibition" in n.lower() for n in names)
+    assert not any(e.exhibition for e in events if e.away_name == "Villanova")
