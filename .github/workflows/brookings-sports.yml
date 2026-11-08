@@ -1,0 +1,64 @@
+name: brookings-sports
+# Local sports (Phase 1): SDSU Jackrabbits schedules and results -> sport_events, once a day. Started by the Cloudflare cron Worker
+# (workflow_dispatch, 17:00 UTC), never by GitHub's own schedule. 17:00 UTC is deliberately not 11:00/23:00 UTC, the hours scrape.yml
+# runs gojacks_v1 (sports_games), so the two never overlap in time; gojacks_v1 is switched off in the next step of the sports plan.
+#
+# gojacks.com asks for Crawl-delay 30, which the runner honours in full between every request, so the fetch alone takes a couple of
+# minutes. The runner has a local-only override flag that it refuses in CI; here the town's own sports.enabled flag decides.
+# Rebuilds and deploys Brookings only when sport_events changed (ci_changed), so a quiet day costs no build.
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: brookings-sports
+  cancel-in-progress: false
+
+jobs:
+  sports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      USER_AGENT:   "ViewMediaBot (+https://brookingsview.com/contact)"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - run: pip install -r requirements.txt
+      - name: Fingerprint before
+        run: python -m scripts.ci_changed before brookings_sd --preset data
+      - name: Fetch SDSU schedules into sport_events
+        run: python -m sports.runner --town brookings_sd
+      - name: Did the site content change?
+        id: changed
+        run: python -m scripts.ci_changed after brookings_sd --preset data
+      - uses: actions/setup-node@v4
+        if: steps.changed.outputs.changed == 'true'
+      - name: Install site deps
+        if: steps.changed.outputs.changed == 'true'
+        working-directory: site
+        run: npm ci
+      - name: Build (Brookings)
+        if: steps.changed.outputs.changed == 'true'
+        working-directory: site
+        env:
+          SITE_CITY: brookings_sd
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
+        run: bash ../scripts/build_retry.sh
+      - name: Deploy to Cloudflare Workers (Brookings)
+        if: steps.changed.outputs.changed == 'true'
+        working-directory: site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: bash ../scripts/wrangler_deploy_retry.sh --env brookings
+      - name: Purge Cloudflare cache
+        if: success() && steps.changed.outputs.changed == 'true'
+        continue-on-error: true
+        env:
+          CLOUDFLARE_CACHE_PURGE_TOKEN: ${{ secrets.CLOUDFLARE_CACHE_PURGE_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID_BROOKINGS }}
+        run: python -m scripts.purge_cloudflare_cache --town brookings_sd

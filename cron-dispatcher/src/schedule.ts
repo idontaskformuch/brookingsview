@@ -6,6 +6,8 @@
 // started 15:09-19:53Z), which makes a "05:30 local" run pointless.
 // Cloudflare cron triggers fire on the minute.
 
+import { ALERTS_CRON } from './alerts/towns';
+
 // Twice a day (owner 2026-10-28, Actions minutes): 11:00 UTC = early morning in the US towns, 23:00 UTC = evening. Warnings no longer
 // depend on this: the 15-minute alerts cron (src/alerts/) writes them. Deploy order matters -- see cron-dispatcher/README.md.
 export const SCRAPE_CRON = '0 11,23 * * *';
@@ -31,6 +33,12 @@ export const OSM_WORKFLOW = 'osm-open-late.yml';
 
 // Curated venue register for /tonight (steg 6): same Monday 11:00 UTC tick, one fetch per venue per week.
 export const REGISTER_WORKFLOW = 'evening-register.yml';
+
+// Brookings sports (local sports Phase 1): SDSU schedules -> sport_events, once a day at 17:00 UTC. Rides the 15-minute alerts tick (the one
+// whose minute is 0-14), so no extra cron trigger is needed. NOT 11:00/23:00 UTC: scrape.yml runs gojacks_v1 then, and the two must not
+// overlap until gojacks_v1 is switched off.
+export const SPORTS_WORKFLOW = 'brookings-sports.yml';
+export const SPORTS_UTC_HOUR = 17;
 
 // Broomfield is deliberately absent: its school_alerts sources are disabled
 // (zero runs/rows ever, Adams 12 bot-challenge, BVSD app-only), so a morning
@@ -76,6 +84,10 @@ export function dueWorkflows(cron: string, scheduledTime: number): string[] {
         weekday !== 'Sun'
       );
     }).map((t) => t.workflow);
+  }
+  if (cron === ALERTS_CRON) {
+    const at = new Date(scheduledTime);
+    return at.getUTCHours() === SPORTS_UTC_HOUR && at.getUTCMinutes() < 15 ? [SPORTS_WORKFLOW] : [];
   }
   return [];
 }

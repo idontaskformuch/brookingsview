@@ -2,21 +2,35 @@
 import type { Game } from '../lib/db';
 import { formatDate, formatTime } from '../lib/db';
 
-interface Props { game: Game; feature?: boolean; }
-const { game, feature = false } = Astro.props;
-const home = game.home_away === 'home';
-const sportName = game.sport === 'mbb' ? "men's basketball"
-  : game.sport === 'wbb' ? "women's basketball"
-  : game.sport.replace(/_/g, ' ');
+/** Either a legacy `game` (sports_games row) or the sport_events fields passed one by one (/jackrabbits). */
+interface Props {
+  game?: Game; feature?: boolean;
+  sport?: string; opponent?: string; prefix?: 'vs' | 'at'; startAt?: string; timeTba?: boolean; venue?: string | null;
+  /** Replaces "Home"/"Away" in the kicker (e.g. "Neutral site"). */
+  kicker?: string;
+  /** A small label after the title ("Exhibition", "In progress"). */
+  tag?: string;
+}
+const { game, feature = false, kicker, tag } = Astro.props;
+const legacy = game !== undefined;
+const home = legacy ? game.home_away === 'home' : Astro.props.prefix === 'vs';
+const sportName = legacy
+  ? (game.sport === 'mbb' ? "men's basketball" : game.sport === 'wbb' ? "women's basketball" : game.sport.replace(/_/g, ' '))
+  : (Astro.props.sport ?? '').toLowerCase();
+const opponent = legacy ? game.opponent : Astro.props.opponent;
+const startsAt = legacy ? game.starts_at : (Astro.props.startAt ?? null);
+const venue = legacy ? game.venue : Astro.props.venue;
+const result = legacy ? game.result : null;
+const timeText = Astro.props.timeTba ? 'TBA' : (startsAt ? formatTime(startsAt) : '');
 ---
 <div class:list={['game', feature && 'game--feature']}>
-  <p class="game__meta"><span class="kicker">{home ? 'Home' : 'Away'} &middot; {sportName}</span></p>
-  <p class="game__title">Jackrabbits {home ? 'vs' : 'at'} {game.opponent}</p>
+  <p class="game__meta"><span class="kicker">{kicker ?? (home ? 'Home' : 'Away')} &middot; {sportName}</span></p>
+  <p class="game__title">Jackrabbits {home ? 'vs' : 'at'} {opponent}{tag && <span class="game__tag"> · {tag}</span>}</p>
   <p class="game__when data">
-    {formatDate(game.starts_at)}{game.starts_at && ` · ${formatTime(game.starts_at)}`}
-    {game.venue && <><br />{game.venue}</>}
+    {formatDate(startsAt)}{timeText && ` · ${timeText}`}
+    {venue && <><br />{venue}</>}
   </p>
-  {game.result && <p class="game__result data">Final: {game.result}</p>}
+  {result && <p class="game__result data">Final: {result}</p>}
 </div>
 
 <style>
@@ -36,6 +50,7 @@ const sportName = game.sport === 'mbb' ? "men's basketball"
   letter-spacing: -0.01em;
   line-height: 1.15;
 }
+.game__tag { font-weight: 500; font-size: 0.875rem; color: var(--ink-soft); }
 .game__when { margin: 0; font-size: 0.75rem; color: var(--ink-soft); line-height: 1.45; }
 .game__result { margin: 0.375rem 0 0; font-size: 0.8125rem; font-weight: 500; }
 </style>

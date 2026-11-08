@@ -35,3 +35,9 @@ def test_live_warnings_never_count_as_a_site_change():
     sql = cc.table_sql("events")
     assert "source NOT IN ('nws_alert', 'met_office_warning')" in sql
     assert "source NOT IN" not in cc.table_sql("meetings")
+
+
+def test_sport_events_counts_but_its_last_seen_touch_does_not():
+    assert "sport_events" in cc.DATA_TABLES and "sport_events" not in cc.CONTENT_TABLES
+    assert "last_seen" in cc.VOLATILE and "first_seen" not in cc.VOLATILE
+    assert "- 'last_seen'" in cc.table_sql("sport_events")

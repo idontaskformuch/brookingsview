@@ -21,6 +21,7 @@ import type { MeetingRow } from './meetings-view';
 import { neon } from '@neondatabase/serverless';
 import { siteConfig, isSectionDisabled } from './site-config';
 import { forCountry, formatClockCompact } from './country-profile';
+import { currentSeason, type SportEventRow } from './sport-events';
 
 /** Locale for calendar-date text ("Tue, October 27" vs "Tue 27 October"). Times still en-US. */
 const DATE_LOCALE = forCountry(siteConfig.country, 'en-US', 'en-GB');
@@ -1330,6 +1331,26 @@ export async function getMeetingRowsForView(limit = 80): Promise<MeetingRow[]> {
      ORDER BY m.meeting_date ASC
      LIMIT ${limit}
   `) as MeetingRow[];
+}
+
+/** The sport_events rows of one program in the current season (see lib/sport-events.ts), soonest first. Local sports Phase 1: replaces
+ *  getSeasonGames for /jackrabbits. Rows are never deleted, so the season window is applied here, not left to the table. */
+export async function getSportEvents(programId: string, now: Date = new Date()): Promise<SportEventRow[]> {
+  const season = currentSeason(now, siteConfig.timezone);
+  const rows = (await sql`
+    SELECT id, sport, gender, start_at, tz, status, time_tba, neutral_site, exhibition, venue,
+           home_program_id, home_name, away_program_id, away_name, score_home, score_away
+      FROM sport_events
+     WHERE town_id = ${TOWN_ID} AND program_id = ${programId}
+       AND start_at >= ${season.start.toISOString()} AND start_at < ${season.end.toISOString()}
+     ORDER BY start_at ASC, id ASC
+  `) as Record<string, any>[];
+  return rows.map((r) => ({
+    id: Number(r.id), sport: r.sport, gender: r.gender, startAt: new Date(r.start_at), tz: r.tz, status: r.status,
+    timeTba: r.time_tba, neutralSite: r.neutral_site, exhibition: r.exhibition, venue: r.venue,
+    homeProgramId: r.home_program_id, homeName: r.home_name, awayProgramId: r.away_program_id, awayName: r.away_name,
+    scoreHome: r.score_home, scoreAway: r.score_away,
+  }));
 }
 
 export async function getUpcomingGames(limit = 10): Promise<Game[]> {

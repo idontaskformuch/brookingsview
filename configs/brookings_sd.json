@@ -104,7 +104,7 @@
     "_note": "Undvik en tunn indexerad sida per post (permit/arrest/etc). Väv ihop till läsbara digests med kontext – bättre för läsaren OCH för AdSense (information gain istället för scaled content)."
   },
   "sports": {
-    "enabled": false,
+    "enabled": true,
     "programs": [
       {
         "id": "sdsu",

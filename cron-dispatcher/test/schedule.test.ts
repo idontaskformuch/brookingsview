@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ALERTS_CRON } from '../src/alerts/towns';
-import { MORNING_CRON, OSM_WORKFLOW, REGISTER_WORKFLOW, SCRAPE_CRON, SCRAPE_WORKFLOWS, dueWorkflows } from '../src/schedule';
+import { MORNING_CRON, OSM_WORKFLOW, REGISTER_WORKFLOW, SCRAPE_CRON, SCRAPE_WORKFLOWS, SPORTS_UTC_HOUR, SPORTS_WORKFLOW, dueWorkflows } from '../src/schedule';
 
 const at = (iso: string) => Date.parse(iso);
 
@@ -82,5 +82,24 @@ describe('morning closure-watch', () => {
   it('Broomfield has no morning workflow (school_alerts sources disabled)', () => {
     const all = ['10', '11', '12', '13'].flatMap((h) => dueWorkflows(MORNING_CRON, at(`2026-10-21T${h}:30:00Z`)));
     expect(all.some((w) => w.includes('broomfield'))).toBe(false);
+  });
+});
+
+describe('Brookings sports fetch', () => {
+  it('fires once a day, on the first alerts tick of 17:00 UTC', () => {
+    const fired = [];
+    for (let h = 0; h < 24; h++) for (const m of ['00', '15', '30', '45']) fired.push(...dueWorkflows(ALERTS_CRON, at(`2026-11-09T${String(h).padStart(2, '0')}:${m}:00Z`)));
+    expect(fired).toEqual([SPORTS_WORKFLOW]);
+    expect(dueWorkflows(ALERTS_CRON, at('2026-11-09T17:00:00Z'))).toEqual([SPORTS_WORKFLOW]);
+  });
+  it('never shares an hour with the scrape ticks (gojacks_v1 runs there until step 4)', () => {
+    const scrapeHours = SCRAPE_CRON.split(' ')[1].split(',').map(Number);
+    expect(scrapeHours).not.toContain(SPORTS_UTC_HOUR);
+  });
+  it('the workflow file exists, is dispatchable, and does not use --even-if-disabled', () => {
+    const yml = readFileSync(new URL(`../../.github/workflows/${SPORTS_WORKFLOW}`, import.meta.url), 'utf8');
+    expect(yml).toContain('workflow_dispatch');
+    expect(yml).toContain('python -m sports.runner --town brookings_sd');
+    expect(yml).not.toContain('even-if-disabled');
   });
 });

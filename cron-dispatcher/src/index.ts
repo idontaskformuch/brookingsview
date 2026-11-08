@@ -49,6 +49,11 @@ async function dispatch(token: string, workflow: string): Promise<void> {
 export default {
   async scheduled(controller: ScheduledController, env: Env): Promise<void> {
     if (controller.cron === ALERTS_CRON) {
+      // The once-a-day Brookings sports fetch rides this tick (schedule.ts); a failed dispatch must not stop the warnings below.
+      const dueSports = dueWorkflows(controller.cron, controller.scheduledTime);
+      const dispatched = await Promise.allSettled(dueSports.map((w) => dispatch(env.GITHUB_TOKEN, w)));
+      const dispatchFailed = dispatched.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+      dispatchFailed.forEach((f) => console.error(String(f.reason)));
       // NWS (US towns) and Met Office (Glasgow) warnings -> the events table; no GitHub Actions minutes involved.
       const results = await refreshAlerts(env, { sql: neon(env.DATABASE_URL) as unknown as Sql });
       console.log(JSON.stringify(results));
@@ -64,6 +69,7 @@ export default {
       const safety = await refreshSafety(env, { sql: neon(env.DATABASE_URL) as unknown as Sql });
       console.log(JSON.stringify(safety));
       failed.push(...safety.filter((r) => !r.ok).map((r) => ({ townId: `${r.townId}/${r.part}`, ok: false, error: r.error })));
+      if (dispatchFailed.length) throw new Error(`${dispatchFailed.length}/${dueSports.length} dispatches failed`);
       if (failed.length) throw new Error(`${failed.length} failed: ${failed.map((f) => `${f.townId}: ${f.error}`).join('; ')}`);
       return;
     }
