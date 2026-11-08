@@ -103,6 +103,40 @@
     "prefer_digests_over_single_item_pages": true,
     "_note": "Undvik en tunn indexerad sida per post (permit/arrest/etc). Väv ihop till läsbara digests med kontext – bättre för läsaren OCH för AdSense (information gain istället för scaled content)."
   },
+  "sports": {
+    "enabled": false,
+    "programs": [
+      {
+        "id": "sdsu",
+        "name": "South Dakota State",
+        "short": "SDSU",
+        "nickname": "Jackrabbits",
+        "colors": ["#0033A0", "#FFD100"],
+        "home_venue": "Dana J. Dykhouse Stadium",
+        "level_default": "college"
+      }
+    ],
+    "sources": [
+      {
+        "adapter": "internal",
+        "program": "sdsu",
+        "level": "college",
+        "url": "https://gojacks.com",
+        "note": "SIDEARM ToS ger inget uttryckligt tillstånd; fakta-bara; tillstånd begärt från SDSU Athletics",
+        "params": {
+          "provider": "gojacks",
+          "sports": {
+            "football": { "sport": "football", "gender": "men" },
+            "mens-basketball": { "sport": "basketball", "gender": "men" },
+            "womens-basketball": { "sport": "basketball", "gender": "women" },
+            "womens-volleyball": { "sport": "volleyball", "gender": "women" }
+          }
+        }
+      }
+    ],
+    "source_priority": ["internal"],
+    "submissions": { "enabled": false }
+  },
   "data_sources": {
     "sdsu_athletics": {
       "type": "sports",

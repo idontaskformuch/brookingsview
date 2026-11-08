@@ -39,3 +39,6 @@ def merged_params(source: dict) -> dict:
     out = {k: v for k, v in source.items() if k not in ("adapter", "params")}
     out.update(source.get("params") or {})
     return out
+
+
+from sports.adapters import internal  # noqa: E402,F401  (registers "internal"; imported last because it uses register())
