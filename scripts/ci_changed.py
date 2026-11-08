@@ -35,7 +35,7 @@ DATA_TABLES = CONTENT_TABLES + [
     "sport_events",
 ]
 PRESETS = {"content": CONTENT_TABLES, "data": DATA_TABLES}
-VOLATILE = ["id", "snapshot_id", "created_at", "updated_at", "first_seen_at", "last_seen_at", "fetched_at", "scraped_at", "checked_at", "last_seen"]
+VOLATILE = ["id", "snapshot_id", "created_at", "updated_at", "first_seen_at", "last_seen_at", "fetched_at", "scraped_at", "checked_at", "last_seen", "missed_runs"]
 # Warnings are written every 15 minutes by the cron-dispatcher Worker and read through /api/ in the browser; they never cause a build.
 EXTRA_WHERE = {"events": " AND source NOT IN ('nws_alert', 'met_office_warning')"}
 FILE = Path(".ci_fingerprint")

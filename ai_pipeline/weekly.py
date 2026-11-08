@@ -162,7 +162,7 @@ def collect(conn, town_id: str, start: datetime, end: datetime) -> dict:
             SELECT id, sport, gender, program_id, start_at AS starts_at, venue, status, time_tba, neutral_site, exhibition,
                    home_program_id, home_name, away_program_id, away_name, score_home, score_away
               FROM sport_events
-             WHERE town_id = %s AND start_at >= %s AND start_at < %s AND status IN ('scheduled', 'final')
+             WHERE town_id = %s AND start_at >= %s AND start_at < %s AND status IN ('scheduled', 'final') AND withdrawn_at IS NULL
              ORDER BY start_at, id
             """, (town_id, start, end))
         games = [_game(dict(r)) for r in cur.fetchall()]

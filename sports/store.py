@@ -29,7 +29,7 @@ def sync_programs(cur, town_id: str, block: dict) -> None:
 def upsert_events(cur, town_id: str, events: list[NormalizedEvent]) -> int:
     """Insert or update by (town_id, source, source_uid). first_seen is kept, last_seen moves. Rows are never deleted."""
     placeholders = ",".join(["%s"] * (len(_EVENT_COLS) + 3))
-    updates = ",".join(f"{c}=EXCLUDED.{c}" for c in _EVENT_COLS) + ",last_seen=now()"
+    updates = ",".join(f"{c}=EXCLUDED.{c}" for c in _EVENT_COLS) + ",last_seen=now(),withdrawn_at=NULL,missed_runs=0"  # listed again = no longer withdrawn (sports/withdraw.py)
     for ev in events:
         bad = ev.problems()
         if bad:
@@ -42,13 +42,15 @@ def upsert_events(cur, town_id: str, events: list[NormalizedEvent]) -> int:
     return len(events)
 
 
-def record_health(cur, town_id: str, source_id: str, *, event_count: int | None = None, error: str | None = None) -> None:
+def record_health(cur, town_id: str, source_id: str, *, event_count: int | None = None, error: str | None = None, warning: str | None = None) -> None:
+    """A success may carry a `warning` (sports/withdraw.py guards that held something back); a clean success clears the previous one."""
     now = datetime.now(timezone.utc)
     if error is None:
         cur.execute(
-            """INSERT INTO sport_sources_health (town_id, source_id, last_success, event_count) VALUES (%s,%s,%s,%s)
-               ON CONFLICT (town_id, source_id) DO UPDATE SET last_success=EXCLUDED.last_success, event_count=EXCLUDED.event_count""",
-            (town_id, source_id, now, event_count or 0))
+            """INSERT INTO sport_sources_health (town_id, source_id, last_success, event_count, last_error, last_error_at) VALUES (%s,%s,%s,%s,%s,%s)
+               ON CONFLICT (town_id, source_id) DO UPDATE SET last_success=EXCLUDED.last_success, event_count=EXCLUDED.event_count,
+                 last_error=EXCLUDED.last_error, last_error_at=EXCLUDED.last_error_at""",
+            (town_id, source_id, now, event_count or 0, warning[:500] if warning else None, now if warning else None))
     else:
         cur.execute(
             """INSERT INTO sport_sources_health (town_id, source_id, last_error, last_error_at) VALUES (%s,%s,%s,%s)

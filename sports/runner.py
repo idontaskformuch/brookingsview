@@ -5,7 +5,9 @@ one failing source never stops the others. Writes go through the caller's cursor
 """
 from __future__ import annotations
 
-from sports import adapters, store
+from datetime import datetime, timezone
+
+from sports import adapters, store, withdraw
 from sports.http import DEFAULT_MAX_CRAWL_DELAY, PoliteHttp, SourceSkipped
 from sports.models import NormalizedEvent
 from scrapers.user_agent import user_agent
@@ -26,14 +28,22 @@ def run_source(cur, town_id: str, source: dict, *, http: PoliteHttp | None = Non
             params["_http"].preflight(params["url"])
         rows = adapters.get(source["adapter"])(params)
         events = [r for r in rows if isinstance(r, NormalizedEvent)]
+        programs = [source["program"]] if source.get("program") else sorted({e.program_id for e in events if e.program_id})
+        known = withdraw.load_known(cur, town_id, source["adapter"], programs)  # before the upsert: "new to the table" is judged against it
         store.upsert_events(cur, town_id, events)
+        decision = withdraw.plan(known, events, datetime.now(timezone.utc))
+        withdraw.apply(cur, decision)
     except SourceSkipped as exc:
         store.record_health(cur, town_id, sid, error=f"skipped: {exc}")
         return "skipped"
     except Exception as exc:
         store.record_health(cur, town_id, sid, error=f"{type(exc).__name__}: {exc}")
         return "error"
-    store.record_health(cur, town_id, sid, event_count=len(events))
+    if decision.withdraw:
+        print(f"    [sports:{sid}] withdrew {len(decision.withdraw)} upcoming game(s) the source no longer lists")
+    for w in decision.warnings:
+        print(f"    [sports:{sid}] warning: {w}")
+    store.record_health(cur, town_id, sid, event_count=len(events), warning="warning: " + "; ".join(decision.warnings) if decision.warnings else None)
     return "ok"
 
 

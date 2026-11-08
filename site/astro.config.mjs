@@ -727,7 +727,7 @@ async function buildLastmodMap(townId, databaseUrl) {
     const nowParts = localDatePartsMirror(new Date(), thisWeekTz);
     const seasonYear = nowParts.m >= 8 ? nowParts.y : nowParts.y - 1;
     const games = await sql`SELECT start_at FROM sport_events
-      WHERE town_id = ${townId} AND program_id = 'sdsu' AND status IN ('scheduled', 'final')
+      WHERE town_id = ${townId} AND program_id = 'sdsu' AND status IN ('scheduled', 'final') AND withdrawn_at IS NULL
         AND start_at >= make_timestamptz(${seasonYear}, 8, 1, 0, 0, 0, ${thisWeekTz})
         AND start_at < make_timestamptz(${seasonYear + 1}, 8, 1, 0, 0, 0, ${thisWeekTz})`;
     for (const g of games) bumpWeek(isoWeekSlugMirror(localDatePartsMirror(new Date(g.start_at), thisWeekTz)));

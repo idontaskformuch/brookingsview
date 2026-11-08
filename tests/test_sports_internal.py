@@ -116,6 +116,9 @@ class Cur:
     def execute(self, sql, params=()):
         self.calls.append((sql, params))
 
+    def fetchall(self):  # sports/withdraw.load_known: the table holds nothing yet
+        return []
+
 
 def health_rows(cur):
     return [p for sql, p in cur.calls if "sport_sources_health" in sql]

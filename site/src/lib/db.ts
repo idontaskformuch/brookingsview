@@ -1346,7 +1346,7 @@ export async function getSportEvents(programId: string, now: Date = new Date()):
     SELECT id, sport, gender, start_at, tz, status, time_tba, neutral_site, exhibition, venue,
            home_program_id, home_name, away_program_id, away_name, score_home, score_away
       FROM sport_events
-     WHERE town_id = ${TOWN_ID} AND program_id = ${programId}
+     WHERE town_id = ${TOWN_ID} AND program_id = ${programId} AND withdrawn_at IS NULL
        AND start_at >= ${season.start.toISOString()} AND start_at < ${season.end.toISOString()}
      ORDER BY start_at ASC, id ASC
   `) as Record<string, any>[];
@@ -1369,7 +1369,7 @@ export async function getClubGames(programId: string, now: Date = new Date()): P
     SELECT id, sport, gender, start_at, tz, status, time_tba, neutral_site, exhibition, venue, url,
            home_program_id, home_name, away_program_id, away_name, score_home, score_away
       FROM sport_events
-     WHERE town_id = ${TOWN_ID} AND program_id = ${programId}
+     WHERE town_id = ${TOWN_ID} AND program_id = ${programId} AND withdrawn_at IS NULL
        AND start_at >= ${season.start.toISOString()} AND start_at < ${season.end.toISOString()}
      ORDER BY start_at ASC, id ASC
   `) as Record<string, any>[];
