@@ -51,15 +51,6 @@ QUERIES: dict[str, tuple[str, str]] = {
         """,
         "bibliotekshändelser (LibCal, riktig ICS-data)",
     ),
-    "sports": (
-        """
-        SELECT sport, opponent, home_away, starts_at, venue, result
-        FROM sports_games
-        ORDER BY starts_at ASC
-        LIMIT 2
-        """,
-        "SDSU-matcher (går via MALL, ingen AI -- kontroll att pipelinen fortfarande fungerar)",
-    ),
     "weather": (
         """
         SELECT observed_for, payload

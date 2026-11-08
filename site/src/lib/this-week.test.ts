@@ -175,6 +175,17 @@ describe('buildWeekDays', () => {
     expect(days[4].items[0].href).toBe('/sports/');
   });
 
+  it('labels an exhibition game with the given word and a neutral-site game reads "vs"', () => {
+    const base = { id: 1, sport: 'wbb', opponent: 'Augustana', home_away: 'home', starts_at: '2026-08-25T00:00:00Z', venue: null, result: 'W 90-54' };
+    const days = buildWeekDays(WEEK, CHICAGO, {
+      eventStories: [], meetingStories: [], artsEvents: [], projectUpdates: [], regionalGames: [], exhibitionLabel: 'Exhibition',
+      games: [{ ...base, exhibition: true }, { ...base, id: 2, opponent: 'Kansas', home_away: 'neutral' }],
+    });
+    const titles = days.flatMap((d) => d.items.map((i) => i.title));
+    expect(titles).toContain('wbb vs Augustana (Exhibition)');
+    expect(titles).toContain('wbb vs Kansas');
+  });
+
   it('a quiet day with real data elsewhere in the week gets no items, never a fabricated one', () => {
     const eventStories: Story[] = [story({
       slug: 'only-event', source_type: 'event', occurs_at: '2026-08-24T18:00:00Z', title: 'Monday Only',

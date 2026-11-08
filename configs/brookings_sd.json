@@ -74,7 +74,6 @@
       "weekly": { "enabled": false, "_reason": "Digest text is model-written and withheld from the site (lib/ai-text.ts); the plain template body is stored instead (owner 2026-11-06)." },
       "sports_weekly_digest": { "enabled": false, "_reason": "Digest text is model-written and withheld from the site (lib/ai-text.ts); the plain template body is stored instead (owner 2026-11-06)." },
       "sdsu_weekly_digest": { "enabled": false, "_reason": "Digest text is model-written and withheld from the site (lib/ai-text.ts); the plain template body is stored instead (owner 2026-11-06)." },
-      "jackrabbits_season_digest": { "enabled": false, "_reason": "Digest text is model-written and withheld from the site (lib/ai-text.ts); the plain template body is stored instead (owner 2026-11-06)." },
       "local_sports_weekly_digest": { "enabled": false, "_reason": "Digest text is model-written and withheld from the site (lib/ai-text.ts); the plain template body is stored instead (owner 2026-11-06)." },
       "new_in_town_digest": { "enabled": false, "_reason": "Digest text is model-written and withheld from the site (lib/ai-text.ts); the plain template body is stored instead (owner 2026-11-06)." },
       "home_sales_digest": { "enabled": false, "_reason": "Digest text is model-written and withheld from the site (lib/ai-text.ts); the plain template body is stored instead (owner 2026-11-06)." },

@@ -33,6 +33,7 @@ import {
   buildDisplayRows, shouldNoindexWeekPage, recentWeekSlugs, type WeekInfo, type DayBucket, type Vertical,
 } from '../../lib/this-week';
 import { siteConfig } from '../../lib/site-config';
+import { sportTerms } from '../../lib/sport-strings';
 import { weekDescription } from '../../lib/meta-description';
 import { placeAbbr } from '../../lib/country-profile';
 import { resolvePageMeta } from '../../lib/page-meta';
@@ -71,7 +72,7 @@ export async function getStaticPaths() {
 
   return Promise.all([...weekInfos.values()].map(async (week) => {
     const days = buildWeekDays(week, siteConfig.timezone, {
-      eventStories, meetingStories, artsEvents, projectUpdates, games, regionalGames,
+      eventStories, meetingStories, artsEvents, projectUpdates, games, regionalGames, exhibitionLabel: sportTerms(siteConfig.country).exhibition,
     });
     const leadCandidates = await getWorthKnowingCandidatesInRange(week.start, week.end);
     const lead = selectWeeklyLead(leadCandidates);

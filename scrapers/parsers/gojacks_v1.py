@@ -93,8 +93,7 @@ def parse_time_cell(time_str: str | None) -> tuple[int, int] | None:
 # South Dakota") -- these change week to week as polls update, which
 # previously fed straight into content_hash and produced a duplicate row
 # every time an opponent's ranking changed (see normalize_opponent() below
-# and scripts/dedupe_sports_games.py for the one-time cleanup of rows this
-# already produced).
+# for the one-time cleanup of rows this already produced, scripts/dedupe_sports_games.py, deleted 2026-11-08: see git history).
 _RANK_TOKEN_RE = re.compile(r"^(?:-/RV|RV|#\d+(?:/\d+)?|No\.\s*\d+)\s+", re.IGNORECASE)
 
 

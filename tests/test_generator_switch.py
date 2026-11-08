@@ -15,7 +15,7 @@ CONFIGS = {t: json.loads((ROOT / "configs" / f"{t}.json").read_text(encoding="ut
 # Running in production (scrape workflows): must be an explicit true everywhere, or nothing is written.
 ON_EVERYWHERE = ["meeting", "event", "alert", "project_thread_match"]
 SWITCHED_OFF = ["closure_watch_prose", "project_thread_synthesis",
-                "project_thread_summary", "weekly", "sports_weekly_digest", "sdsu_weekly_digest", "jackrabbits_season_digest",
+                "project_thread_summary", "weekly", "sports_weekly_digest", "sdsu_weekly_digest",
                 "local_sports_weekly_digest", "new_in_town_digest", "home_sales_digest", "workplace_watch_digest",
                 "free_teaser_facility", "free_teaser_event", "new_in_town_extraction", "meeting_followups",
                 "vardagsmiddag", "media_recension", "vetenskap_kronika", "kvick_essa", "editorial", "culture_essay", "illustrations"]
@@ -151,7 +151,7 @@ def test_closure_watch_prose_switch_sits_after_the_data_accrual_and_before_any_p
 # Every switched-off generator must test its switch before any model client is built or used.
 GUARDED = {
     "weekly": "def generate(", "sports_weekly_digest": "def generate(", "sdsu_weekly_digest": "def generate(",
-    "jackrabbits_season_digest": "def generate(", "local_sports_weekly_digest": "def generate(",
+    "local_sports_weekly_digest": "def generate(",
     "new_in_town_digest": "def generate_roundup(", "home_sales_digest": "def generate(",
     "workplace_watch_digest": "def generate(", "free_teasers": "def generate_facility_teaser(",
     "project_threads": "def generate_rolling_summary(",

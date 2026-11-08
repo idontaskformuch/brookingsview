@@ -261,6 +261,8 @@ export function buildWeekDays(
     projectUpdates: (ProjectUpdate & { project_slug: string; project_title: string })[];
     games: Game[];
     regionalGames: RegionalGame[];
+    /** The country's word for an exhibition (strings/<cc>/sports.json terms.exhibition); a game flagged exhibition gets it after the opponent. */
+    exhibitionLabel?: string;
   },
 ): DayBucket[] {
   const { items: feedItems } = buildEventFeed(data.eventStories, data.artsEvents, timezone);
@@ -308,7 +310,7 @@ export function buildWeekDays(
       if (!game.starts_at) continue;
       if (!sameDate(localDateParts(new Date(game.starts_at), timezone), date)) continue;
       items.push({
-        vertical: 'sports', title: `${game.sport} ${gameHomeAway(game)} ${game.opponent}`,
+        vertical: 'sports', title: `${game.sport} ${gameHomeAway(game)} ${game.opponent}${game.exhibition && data.exhibitionLabel ? ` (${data.exhibitionLabel})` : ''}`,
         href: '/jackrabbits/', external: false,
         detail: game.result ?? (game.venue ?? ''),
         startsAt: game.starts_at, venue: game.venue,

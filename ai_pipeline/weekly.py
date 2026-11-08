@@ -105,6 +105,23 @@ def week_bounds(tz: ZoneInfo, offset_weeks: int = 0) -> tuple[datetime, datetime
     return monday, end, slug, label
 
 
+def _game(r: dict) -> dict:
+    """A sport_events row in the shape source_text() and template_fallback() use. Our side is the row's program."""
+    ours = r["program_id"]
+    away = r["away_program_id"] == ours
+    sport = ("wbb" if r["gender"] == "women" else "mbb") if r["sport"] == "basketball" else r["sport"]
+    result = None
+    if r["status"] == "final" and r["score_home"] is not None and r["score_away"] is not None:
+        mine, theirs = (r["score_away"], r["score_home"]) if away else (r["score_home"], r["score_away"])
+        result = f"{'W' if mine > theirs else 'L' if mine < theirs else 'T'} {mine}-{theirs}"
+    return {
+        "id": r["id"], "sport": sport, "opponent": (r["home_name"] if away else r["away_name"]) or "",
+        "home_away": "neutral" if r["neutral_site"] else "away" if away else "home",
+        "starts_at": r["starts_at"], "venue": r["venue"], "result": result,
+        "time_tba": r["time_tba"], "exhibition": r["exhibition"],
+    }
+
+
 def collect(conn, town_id: str, start: datetime, end: datetime) -> dict:
     """Hämta veckans underlag ur källtabellerna.
 
@@ -138,14 +155,17 @@ def collect(conn, town_id: str, start: datetime, end: datetime) -> dict:
             """, (town_id, start, end))
         events = [dict(r) for r in cur.fetchall()]
 
+        # sport_events, not the legacy sports_games: the same rows /jackrabbits and the page's own list read. Postponed/cancelled are left out
+        # (nothing says when they are played); an exhibition stays, flagged, and only that week's rows are read, so no other season leaks in.
         cur.execute(
             """
-            SELECT id, sport, opponent, home_away, starts_at, venue, result
-              FROM sports_games
-             WHERE town_id = %s AND starts_at >= %s AND starts_at < %s
-             ORDER BY starts_at
+            SELECT id, sport, gender, program_id, start_at AS starts_at, venue, status, time_tba, neutral_site, exhibition,
+                   home_program_id, home_name, away_program_id, away_name, score_home, score_away
+              FROM sport_events
+             WHERE town_id = %s AND start_at >= %s AND start_at < %s AND status IN ('scheduled', 'final')
+             ORDER BY start_at, id
             """, (town_id, start, end))
-        games = [dict(r) for r in cur.fetchall()]
+        games = [_game(dict(r)) for r in cur.fetchall()]
 
     return {"meetings": meetings, "events": events, "games": games}
 
@@ -197,13 +217,12 @@ def source_text(data: dict, label: str, tz: ZoneInfo) -> str:
     if data["games"]:
         parts.append("\nSDSU JACKRABBITS THIS WEEK:")
         for g in data["games"]:
-            where = "at home" if g.get("home_away") == "home" else "away"
+            where = {"home": "at home", "neutral": "at a neutral site"}.get(g.get("home_away"), "away")
             venue = f" at {g['venue']}" if g.get("venue") else ""
             result = f" Result: {g['result']}." if g.get("result") else ""
-            parts.append(
-                f"- {g.get('sport')} vs {g.get('opponent')} ({where}) "
-                f"on {_fmt(g.get('starts_at'), tz=tz)}{venue}.{result}"
-            )
+            when = f"{_fmt(g.get('starts_at'), False, tz)}, time to be announced" if g.get("time_tba") else _fmt(g.get("starts_at"), tz=tz)
+            tag = " (exhibition, not counted in the record)" if g.get("exhibition") else ""
+            parts.append(f"- {g.get('sport')} vs {g.get('opponent')} ({where}){tag} on {when}{venue}.{result}")
 
     return "\n".join(parts)
 
