@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayTile, isOverToday, relativeDayLabel, relativeDayLabelForDate } from './event-pop';
+import { dayTile, isOver, relativeDayLabel, relativeDayLabelForDate } from './event-pop';
 import { applyEventPop } from './event-pop-client';
 import { academicKind } from './academic-kind';
 
@@ -52,36 +52,58 @@ describe('relative day label', () => {
   });
 });
 
-describe('isOverToday', () => {
+describe('isOver', () => {
   const NOW = new Date('2026-11-09T22:00:00Z'); // 16:00 Chicago
-  it('dims an item that started and ended earlier today only', () => {
-    expect(isOverToday({ start: '2026-11-09T15:00:00Z', end: '2026-11-09T17:00:00Z' }, NOW, CHI)).toBe(true);
-    expect(isOverToday({ start: '2026-11-09T15:00:00Z', end: '2026-11-09T23:30:00Z' }, NOW, CHI)).toBe(false); // still on
-    expect(isOverToday({ start: '2026-11-10T15:00:00Z', end: '2026-11-10T17:00:00Z' }, NOW, CHI)).toBe(false); // another day
-    expect(isOverToday({ start: '2026-11-08T15:00:00Z', end: '2026-11-08T17:00:00Z' }, NOW, CHI)).toBe(false); // yesterday is not listed at all
+  it('an item that ended earlier today is over; one still on is not', () => {
+    expect(isOver({ start: '2026-11-09T15:00:00Z', end: '2026-11-09T17:00:00Z' }, NOW, CHI)).toBe(true);
+    expect(isOver({ start: '2026-11-09T15:00:00Z', end: '2026-11-09T23:30:00Z' }, NOW, CHI)).toBe(false);
+    expect(isOver({ start: '2026-11-10T15:00:00Z', end: '2026-11-10T17:00:00Z' }, NOW, CHI)).toBe(false);
+  });
+  it('a multi-day item that has started but not ended is on; one that has ended is over', () => {
+    expect(isOver({ start: '2026-11-07T15:00:00Z', end: '2026-11-12T23:00:00Z' }, NOW, CHI)).toBe(false);
+    expect(isOver({ start: '2026-11-03T15:00:00Z', end: '2026-11-08T23:00:00Z' }, NOW, CHI)).toBe(true);
   });
 });
 
-/** The smallest Document the client function needs: rows with a dataset, a class list and one label slot. */
+/** The smallest Document the client function needs: rows with a dataset, a hidden flag, one label slot and one tile box. */
 function row(dataset: Record<string, string>) {
   const slot = { textContent: '', hidden: true };
-  const classes = new Set<string>();
-  return { el: { dataset, querySelector: () => slot, classList: { toggle: (c: string, on: boolean) => (on ? classes.add(c) : classes.delete(c)) } }, slot, classes };
+  const tileClasses = new Set<string>();
+  const tile = { classList: { toggle: (c: string, on: boolean) => (on ? tileClasses.add(c) : tileClasses.delete(c)) } };
+  const el = { dataset, hidden: false, querySelector: (sel: string) => (sel === '[data-pop-rel]' ? slot : sel === '[data-pop-tile]' ? tile : null) };
+  return { el, slot, tileClasses };
 }
 const docOf = (...rows: ReturnType<typeof row>[]) => ({ querySelectorAll: () => rows.map((r) => r.el) }) as unknown as Document;
 
 describe('applyEventPop', () => {
-  const NOW = new Date('2026-11-09T22:00:00Z');
-  it('writes the label, shows the slot, dims what is over today and leaves its label empty', () => {
-    const soon = row({ start: '2026-11-11T15:00:00Z' });
+  const NOW = new Date('2026-11-09T22:00:00Z'); // Mon 16:00 Chicago
+  it('writes the label, hides what is over, keeps a multi-day item that is on, and leaves far-off rows without a label', () => {
+    const soon = row({ start: '2026-11-11T15:00:00Z', dayKey: '2026-11-11' });
     const over = row({ start: '2026-11-09T15:00:00Z', end: '2026-11-09T17:00:00Z' });
+    const ongoing = row({ start: '2026-11-07T15:00:00Z', end: '2026-11-12T23:00:00Z' });
     const far = row({ start: '2026-12-01T15:00:00Z' });
     const dated = row({ day: '2026-11-10' });
-    applyEventPop(docOf(soon, over, far, dated), NOW, CHI);
-    expect([soon.slot.textContent, soon.slot.hidden]).toEqual(['In 2 days', false]);
-    expect([over.slot.textContent, over.slot.hidden, [...over.classes]]).toEqual(['', true, ['is-over']]);
-    expect([far.slot.textContent, far.slot.hidden]).toEqual(['', true]);
-    expect([dated.slot.textContent]).toEqual(['Tomorrow']);
+    applyEventPop(docOf(soon, over, ongoing, far, dated), NOW, CHI);
+    expect([soon.slot.textContent, soon.slot.hidden, soon.el.hidden]).toEqual(['In 2 days', false, false]);
+    expect([over.el.hidden, over.slot.textContent, over.slot.hidden]).toEqual([true, '', true]);
+    expect([ongoing.el.hidden, ongoing.slot.textContent]).toEqual([false, '']);
+    expect([far.el.hidden, far.slot.textContent, far.slot.hidden]).toEqual([false, '', true]);
+    expect(dated.slot.textContent).toBe('Tomorrow');
+  });
+  it('the date tile moves to the first row of a day that is still shown', () => {
+    // server: tile on the first row of 2026-11-09, hidden on the others. The first row (15:00-17:00) is over at 16:00 Chicago... make it over at 22:00 UTC
+    const first = row({ start: '2026-11-09T15:00:00Z', end: '2026-11-09T17:00:00Z' });
+    first.el.dataset.dayKey = '2026-11-09';
+    const second = row({ start: '2026-11-10T01:00:00Z', end: '2026-11-10T03:00:00Z' });
+    second.el.dataset.dayKey = '2026-11-09'; // 19:00 Chicago the same local day
+    const third = row({ start: '2026-11-10T02:00:00Z', end: '2026-11-10T04:00:00Z' });
+    third.el.dataset.dayKey = '2026-11-09';
+    second.tileClasses.add('tile--dup');
+    third.tileClasses.add('tile--dup');
+    applyEventPop(docOf(first, second, third), NOW, CHI);
+    expect(first.el.hidden).toBe(true);
+    expect([...second.tileClasses]).toEqual([]);       // now carries the tile
+    expect([...third.tileClasses]).toEqual(['tile--dup']);
   });
 });
 

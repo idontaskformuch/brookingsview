@@ -64,12 +64,14 @@ describe('ui-tokens.css', () => {
     expect(contrastRatio(base.soft, surface)).toBeGreaterThanOrEqual(MIN_TEXT);
     for (const c of CATEGORY_SETS.events) expect(contrastRatio(v[`--cat-${c}`], surface), `${c}`).toBeGreaterThanOrEqual(MIN_TEXT);
   });
-  it('every town accent (date number, "Today" label) clears 4.5:1 on --surface-raised in light and dark', () => {
-    const brands = [...readFileSync(new URL('./site-config.ts', import.meta.url), 'utf8').matchAll(/brand: \{ accent: '(#\w+)', accentInk: '#\w+', accentDark: '(#\w+)'/g)];
+  it('per town: the "Today / In N days" label (accent ink) clears 4.5:1 and the large date number (accent) clears 3:1 on --surface-raised, light and dark', () => {
+    const brands = [...readFileSync(new URL('./site-config.ts', import.meta.url), 'utf8').matchAll(/brand: \{ accent: '(#\w+)', accentInk: '(#\w+)', accentDark: '(#\w+)', accentInkDark: '(#\w+)' \}/g)];
     expect(brands.length).toBe(4);
-    for (const [, accent, accentDark] of brands) {
-      expect(contrastRatio(accent, '#ffffff'), accent).toBeGreaterThanOrEqual(MIN_TEXT);
-      expect(contrastRatio(accentDark, '#1f1f1b'), accentDark).toBeGreaterThanOrEqual(MIN_TEXT);
+    for (const [, accent, ink, accentDark, inkDark] of brands) {
+      expect(contrastRatio(ink, '#ffffff'), `label ${ink} light`).toBeGreaterThanOrEqual(MIN_TEXT);
+      expect(contrastRatio(inkDark, '#1f1f1b'), `label ${inkDark} dark`).toBeGreaterThanOrEqual(MIN_TEXT);
+      expect(contrastRatio(accent, '#ffffff'), `number ${accent} light`).toBeGreaterThanOrEqual(3);
+      expect(contrastRatio(accentDark, '#1f1f1b'), `number ${accentDark} dark`).toBeGreaterThanOrEqual(3);
     }
   });
   it('BaseLayout no longer loads or uses a monospace face for data', () => {

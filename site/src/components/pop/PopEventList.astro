@@ -1,7 +1,7 @@
 ---
 /** Event list with a date tile on the left of each day's first row; the following rows of the same day line up under it without a tile. One flat
  *  list in time order across days (no heading per day: the tile is the day). Each row is a card on --surface-raised (a step lighter than the page; no
- *  border in dark). Relative words ("Today", "In 3 days") and the dimming of rows that are over today are set in the browser from the town's clock
+ *  border in dark). Relative words ("Today", "In 3 days") and the removal of rows that are over (as the old lists did) are set in the browser from the town's clock
  *  (lib/event-pop-client.ts); without JavaScript there is neither. The first row of each day keeps id="day-YYYY-MM-DD" for the day strip's anchors. */
 import DayTile from './DayTile.astro';
 import CategoryDot from './CategoryDot.astro';
@@ -27,9 +27,9 @@ const rows = days.flatMap((d) => d.rows.map((r, i) => ({ r, first: i === 0, key:
     const cat = popCategory(r.cat);
     const Tag = href ? 'a' : 'div';
     return (
-      <li class="pl__li" data-pop-row data-start={r.start} data-end={r.end ?? undefined} data-tz={tz} id={first ? `${idPrefix}-${key}` : undefined}>
+      <li class="pl__li" data-pop-row data-day-key={key} data-start={r.start} data-end={r.end ?? undefined} data-tz={tz} id={first ? `${idPrefix}-${key}` : undefined}>
         <Tag class="pl__card" href={href}>
-          <DayTile model={dayTile(r.start, r.end, tz, country)} blank={!first} />
+          <DayTile model={dayTile(r.start, r.end, tz, country)} dup={!first} />
           <span class="pl__main">
             <span class="pl__top">
               {cat.name ? <CategoryDot name={cat.name} token={cat.token} /> : <span></span>}
@@ -66,11 +66,10 @@ const rows = days.flatMap((d) => d.rows.map((r, i) => ({ r, first: i === 0, key:
   a.pl__card:hover .pl__title { text-decoration: underline; }
   .pl__main { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; flex: 1; }
   .pl__top { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-2); min-height: 1.125rem; }
-  .pl__rel { font-family: var(--font-ui); font-size: 0.75rem; font-weight: 700; color: var(--brand-accent, var(--accent)); white-space: nowrap; }
+  .pl__rel { font-family: var(--font-ui); font-size: 0.75rem; font-weight: 700; color: var(--brand-accent-ink, var(--accent)); white-space: nowrap; }
   .pl__title { font-family: var(--font-head); font-size: 1.1875rem; line-height: 1.25; color: var(--ink); }
   .pl__rep { color: var(--ink-soft); }
   .pl__meta { font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
   .pl__pills { display: flex; flex-wrap: wrap; gap: var(--ui-1); margin-top: var(--ui-1); }
-  .pl__li.is-over .pl__card { opacity: 0.55; }
   @media (max-width: 26rem) { .pl__card { padding: var(--ui-3) 0.75rem; gap: 0.625rem; } }
 </style>

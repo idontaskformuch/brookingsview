@@ -21,9 +21,9 @@ const rows = dates.map((d, i) => ({ d, first: i === 0 || day(dates[i - 1].starts
 ---
 <ul class="pl" data-pop-list data-tz={tz}>
   {rows.map(({ d, first, kind }) => (
-    <li class="pl__li" data-pop-row data-day={day(d.starts_on)} data-tz={tz}>
+    <li class="pl__li" data-pop-row data-day={day(d.starts_on)} data-day-key={day(d.starts_on)} data-tz={tz}>
       <div class="pl__card">
-        <DayTile model={dayTile(noon(d.starts_on), d.ends_on ? noon(d.ends_on) : null, 'UTC', country)} blank={!first} />
+        <DayTile model={dayTile(noon(d.starts_on), d.ends_on ? noon(d.ends_on) : null, 'UTC', country)} dup={!first} />
         <span class="pl__main">
           <span class="pl__top">
             {kind ? <CategoryDot name={ACADEMIC_KIND_LABEL[kind]} token={TOKEN[kind]} /> : <span></span>}
@@ -47,7 +47,7 @@ const rows = dates.map((d, i) => ({ d, first: i === 0 || day(dates[i - 1].starts
   .pl__card { display: flex; gap: var(--ui-3); align-items: flex-start; padding: var(--ui-3); background: var(--surface-raised); border: var(--card-border-w, 1px) solid var(--rule); border-radius: var(--ui-radius); }
   .pl__main { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; flex: 1; }
   .pl__top { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-2); min-height: 1.125rem; }
-  .pl__rel { font-family: var(--font-ui); font-size: 0.75rem; font-weight: 700; color: var(--brand-accent, var(--accent)); white-space: nowrap; }
+  .pl__rel { font-family: var(--font-ui); font-size: 0.75rem; font-weight: 700; color: var(--brand-accent-ink, var(--accent)); white-space: nowrap; }
   .pl__title { font-family: var(--font-head); font-size: 1.1875rem; line-height: 1.25; color: var(--ink); }
   .pl__meta { font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
   @media (max-width: 26rem) { .pl__card { padding: var(--ui-3) 0.75rem; gap: 0.625rem; } }

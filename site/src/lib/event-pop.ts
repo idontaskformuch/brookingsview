@@ -66,8 +66,8 @@ function labelForDays(n: number): string | null {
   return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : `In ${n} days`;
 }
 
-/** An item that starts today (town time) and is already over: dimmed in place instead of removed, so the day still reads in order.
- *  Items on other days are never past in this sense (older days are not listed at all). */
-export function isOverToday(e: TimedEvent, now: Date, tz: string): boolean {
-  return localDayNumber(new Date(e.start), tz) === localDayNumber(now, tz) && hasEnded(e, now, tz);
+/** An item that is over: it has ended (its end, or the default length when none is given; an all-day item lasts to local midnight). Dropped from the
+ *  list in the browser, as the older lists did. A multi-day item that has started but not ended is NOT over and stays. */
+export function isOver(e: TimedEvent, now: Date, tz: string): boolean {
+  return hasEnded(e, now, tz);
 }

@@ -1,14 +1,14 @@
 ---
 /** The date tile on the left of an event or calendar row: weekday and month in small capitals, the day large and bold in the town's accent.
  *  A range inside one month is "25–29" under the month; a range over a month boundary is "DEC 31 – JAN 2" in a smaller size. Fixed width, so the
- *  texts of every row start in one column. `blank` is the same box without content, for the 2nd, 3rd... row of a day. The model comes from
+ *  texts of every row start in one column. `dup` keeps the box but hides it, for the 2nd, 3rd... row of a day. The model comes from
  *  lib/event-pop.ts dayTile(); this component prints it and decides nothing. */
 import type { DayTileModel } from '../../lib/event-pop';
-interface Props { model?: DayTileModel; blank?: boolean }
-const { model, blank = false } = Astro.props;
+interface Props { model?: DayTileModel; dup?: boolean }
+const { model, dup = false } = Astro.props;
 ---
-{blank || !model ? <span class="tile tile--blank" aria-hidden="true"></span> : (
-  <span class={`tile tile--${model.kind}`} title={model.label}>
+{!model ? <span class="tile tile--dup" aria-hidden="true"></span> : (
+  <span class={`tile tile--${model.kind}${dup ? ' tile--dup' : ''}`} title={dup ? undefined : model.label} data-pop-tile>
     <span class="tile__sr">{model.label}</span>
     {model.kind === 'cross'
       ? <span class="tile__span" aria-hidden="true">{model.span}</span>
@@ -21,7 +21,8 @@ const { model, blank = false } = Astro.props;
 <style>
   .tile { flex: 0 0 var(--tile-w, 3.75rem); width: var(--tile-w, 3.75rem); display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
           text-align: center; font-family: var(--font-ui); font-variant-numeric: tabular-nums; line-height: 1; }
-  .tile--blank { min-height: 1px; }
+  /* The 2nd, 3rd... row of a day keeps the box (so the texts line up) but not the content; the browser moves the tile to the first row still shown. */
+  .tile--dup { visibility: hidden; min-height: 1px; }
   .tile__kicker { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.06em; color: var(--ink-soft); white-space: nowrap; }
   .tile__day { margin-top: 0.1875rem; font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; color: var(--brand-accent, var(--accent)); white-space: nowrap; }
   .tile--range .tile__day { font-size: 1.375rem; }
