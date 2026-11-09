@@ -120,3 +120,13 @@ describe('academicKind (every title in academic_calendar_dates on 2026-11-09)', 
     expect(academicKind('Last day of classes before Thanksgiving recess')).toBeNull();
   });
 });
+
+import { groupRowsByDay } from './pop-days';
+describe('groupRowsByDay', () => {
+  it('groups neighbouring rows of one local day, keeps the order, drops and adds nothing', () => {
+    const r = (dayKey: string, title: string) => ({ dayKey, title, offset: 0, dateLabel: 'Nov 9' }) as never;
+    const g = groupRowsByDay([r('2026-11-09', 'a'), r('2026-11-09', 'b'), r('2026-11-10', 'c'), r('2026-11-09', 'd')]);
+    expect(g.map((d) => [d.dayKey, d.count])).toEqual([['2026-11-09', 2], ['2026-11-10', 1], ['2026-11-09', 1]]);
+    expect(groupRowsByDay([])).toEqual([]);
+  });
+});

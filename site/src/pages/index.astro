@@ -54,8 +54,8 @@ import {
 } from '../lib/events';
 import SectionHeader from '../components/ui/SectionHeader.astro';
 import EventsGlance from '../components/events/EventsGlance.astro';
-import EventDayList from '../components/events/EventDayList.astro';
-import EventRow from '../components/events/EventRow.astro';
+import PopEventList from '../components/pop/PopEventList.astro';
+import { groupRowsByDay } from '../lib/pop-days';
 import MeetingLine from '../components/meetings/MeetingLine.astro';
 import { buildTownEventsView } from '../lib/events-town-view';
 import { homeBlocks, takeRows } from '../lib/event-day-view';
@@ -397,19 +397,19 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     {(todayBlock.days.length > 0 || todayHomeGame) && (
       <div class="home-events__block">
         {todayHomeGame && <div class="river"><GameCard game={todayHomeGame} feature /></div>}
-        <EventDayList days={todayBlock.days} facilities={facilities} level={3} idPrefix="home-today" />
+        <PopEventList days={todayBlock.days} idPrefix="home-today" />
       </div>
     )}
     {weekendBlock.days.length > 0 && (
       <div class="home-events__block">
         <SectionHeader title="This weekend" seeAllHref="/events/this-weekend/" seeAllLabel="All weekend events" />
-        <EventDayList days={weekendBlock.days} facilities={facilities} level={3} idPrefix="home-weekend" />
+        <PopEventList days={weekendBlock.days} idPrefix="home-weekend" />
       </div>
     )}
     {weekBlock.days.length > 0 && (
       <div class="home-events__block">
         <SectionHeader title="This week" seeAllHref="/events/" seeAllLabel="All events" />
-        <EventDayList days={weekBlock.days} facilities={facilities} level={3} idPrefix="home-week" />
+        <PopEventList days={weekBlock.days} idPrefix="home-week" />
       </div>
     )}
   </section>
@@ -506,9 +506,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   {comingUp.length > 0 && (
     <section aria-label="Coming up">
       <SectionHeader title="Coming up" seeAllHref="/events/" seeAllLabel="All events" />
-      <ul class="plain-list" data-hide-ended data-tz={siteConfig.timezone}>
-        {comingUp.map((r) => <EventRow row={r} href={itemLink(r.item)} showDate />)}
-      </ul>
+      <PopEventList days={groupRowsByDay(comingUp)} idPrefix="coming" />
     </section>
   )}
 

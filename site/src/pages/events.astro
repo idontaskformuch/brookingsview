@@ -1,8 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SectionRule from '../components/SectionRule.astro';
-import EventRow from '../components/events/EventRow.astro';
-import EventDayList from '../components/events/EventDayList.astro';
+import PopEventList from '../components/pop/PopEventList.astro';
 import EventsGlance from '../components/events/EventsGlance.astro';
 import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import StoryCard from '../components/StoryCard.astro';
@@ -29,6 +28,7 @@ import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
 import HolidayContextCard from '../components/HolidayContextCard.astro';
 import { buildTownEventsView } from '../lib/events-town-view';
+import { groupRowsByDay } from '../lib/pop-days';
 import { aboutSourcesFor } from '../lib/about-sources';
 
 const pageMeta = resolvePageMeta('events', siteConfig);
@@ -177,20 +177,16 @@ const webPageJsonLd = dateModified ? {
     ))}
   </nav>
 
-  <EventDayList days={busyDays} facilities={facilities} />
+  <PopEventList days={busyDays} />
 
   {view.furtherOut.length > 0 && (
     <section class="ev-day" aria-labelledby="h-later">
       <h2 class="ev-day__h" id="h-later">Further out</h2>
-      <ul class="ev-list" data-hide-ended data-tz={siteConfig.timezone}>
-        {view.furtherOut.slice(0, FOLD).map((r) => <EventRow row={r} href={hrefOf(r.item)} showDate />)}
-      </ul>
+      <PopEventList days={groupRowsByDay(view.furtherOut.slice(0, FOLD))} idPrefix="later" />
       {view.furtherOut.length > FOLD && (
         <details class="ev-more">
           <summary>{view.furtherOut.length - FOLD} more</summary>
-          <ul class="ev-list" data-hide-ended data-tz={siteConfig.timezone}>
-            {view.furtherOut.slice(FOLD).map((r) => <EventRow row={r} href={hrefOf(r.item)} showDate />)}
-          </ul>
+          <PopEventList days={groupRowsByDay(view.furtherOut.slice(FOLD))} idPrefix="later-more" />
         </details>
       )}
     </section>
@@ -199,12 +195,7 @@ const webPageJsonLd = dateModified ? {
   {nearbyRows.length > 0 && (
     <section class="ev-day" aria-labelledby="h-nearby">
       <h2 class="ev-day__h" id="h-nearby">Nearby</h2>
-      <ul class="ev-list" data-hide-ended data-tz={siteConfig.timezone}>
-        {nearbyRows.map((r) => {
-          const miles = distanceOf.get(r.item);
-          return <EventRow row={r} href={hrefOf(r.item)} showDate note={miles != null ? `${Math.round(miles)} mi away` : null} />;
-        })}
-      </ul>
+      <PopEventList days={groupRowsByDay(nearbyRows)} idPrefix="nearby" noteOf={(r) => { const m = distanceOf.get(r.item); return m != null ? `${Math.round(m)} mi away` : null; }} />
     </section>
   )}
 

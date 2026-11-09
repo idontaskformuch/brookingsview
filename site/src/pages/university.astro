@@ -14,6 +14,7 @@
  *  eventbeskrivningar -- se scrapers/parsers/sdsu_events_v1.py:s
  *  moduldocstring för upphovsrättsresonemanget. */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import PopAcademicList from '../components/pop/PopAcademicList.astro';
 import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
@@ -210,16 +211,7 @@ const sections = (
   {academicDates.length > 0 && (
     <>
       <SectionRule label="Academic calendar" />
-      <ul class="academic-list">
-        {academicDates.map((d) => (
-          <li>
-            <span class="academic-list__date data">
-              {formatCalendarDate(d.starts_on)}{d.ends_on && `–${formatCalendarDate(d.ends_on)}`}
-            </span>
-            <span class="academic-list__label">{d.label}</span>
-          </li>
-        ))}
-      </ul>
+      <PopAcademicList dates={academicDates} />
     </>
   )}
 
@@ -288,17 +280,6 @@ const sections = (
 .hero-card__loc { margin: 0; font-size: 0.8125rem; color: var(--ink-soft); }
 .hero-card__teaser { margin: 0.375rem 0 0; font-size: 0.875rem; line-height: 1.4; }
 
-.academic-list {
-  list-style: none; margin: 0 0 1.25rem; padding: 0;
-  background: var(--surface); border: 1px solid var(--rule); border-radius: 3px;
-}
-.academic-list li {
-  display: flex; gap: 0.75rem; align-items: baseline;
-  padding: 0.5rem 0.875rem; border-bottom: 1px solid var(--rule); font-size: 0.9375rem;
-}
-.academic-list li:last-child { border-bottom: 0; }
-.academic-list__date { flex: 0 0 auto; color: var(--ink-soft); font-size: 0.8125rem; white-space: nowrap; }
-.academic-list__label { flex: 1; }
 
 .jackrabbits-card {
   display: block;

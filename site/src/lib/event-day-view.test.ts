@@ -225,20 +225,19 @@ describe('strict time order (owner 2026-11-06: no row is lifted above an earlier
 
 describe('events never show a big card or a full-size FallbackTile', () => {
   const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-  it('EventDayList and EventRow import neither Card nor FallbackTile, and nothing is pulled above its time', () => {
-    for (const f of ['../components/events/EventDayList.astro', '../components/events/EventRow.astro']) {
+  it('the event and calendar lists import neither Card nor FallbackTile and carry no images', () => {
+    for (const f of ['../components/pop/PopEventList.astro', '../components/pop/PopAcademicList.astro', '../components/pop/DayTile.astro']) {
       const src = read(f);
-      expect(src, f).not.toMatch(/FallbackTile|ui\/Card|<Card|pickFeature|feature/);
+      expect(src, f).not.toMatch(/FallbackTile|ui\/Card|<Card|pickFeature|feature|<img/);
     }
   });
-  it('a thumbnail is 64 px and exists only for a real photo', () => {
-    const row = read('../components/events/EventRow.astro');
-    expect(row).toMatch(/\{photo && <img class="ev-thumb"[^>]*width="64" height="64"/);
-    const list = read('../components/events/EventDayList.astro');
-    expect(list).toMatch(/categoryImages: \{\}/); // the generic category pool is never used for a photo
+  it('the old per-day list and row components are gone and no page uses them', () => {
+    for (const f of ['../pages/index.astro', '../pages/events.astro']) expect(readFileSync(new URL(f, import.meta.url), 'utf8'), f).not.toMatch(/EventDayList|events\/EventRow/);
   });
-  it('no page passes the removed feature prop', () => {
-    for (const f of ['../pages/index.astro', '../pages/events.astro']) expect(readFileSync(new URL(f, import.meta.url), 'utf8')).not.toMatch(/<EventDayList[^>]*feature=/);
+  it('events.astro, the front page and /university/ print their lists with the date-tile components', () => {
+    expect(readFileSync(new URL('../pages/events.astro', import.meta.url), 'utf8')).toMatch(/<PopEventList days=\{busyDays\}/);
+    expect(readFileSync(new URL('../pages/index.astro', import.meta.url), 'utf8')).toMatch(/<PopEventList days=\{todayBlock\.days\}/);
+    expect(readFileSync(new URL('../pages/university.astro', import.meta.url), 'utf8')).toMatch(/<PopAcademicList dates=\{academicDates\}/);
   });
 });
 
