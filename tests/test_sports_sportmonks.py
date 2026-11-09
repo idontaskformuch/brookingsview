@@ -196,3 +196,32 @@ def test_runner_writes_events_and_health_through_the_normal_path():
 def test_sportmonks_is_on_the_no_redistribution_list():
     assert "sportmonks" in registry.no_redistribution()
     assert registry.redistributable("sportmonks") is False and registry.redistributable("internal") is True
+
+
+def test_dry_run_calls_the_api_prints_what_would_be_written_and_touches_no_database(monkeypatch, capsys):
+    import db.db as dbmod
+
+    def no_db(*a, **k):
+        raise AssertionError("--dry-run must not open a database connection")
+
+    monkeypatch.setattr(dbmod, "get_conn", no_db)
+    monkeypatch.setattr(dbmod, "declare_action", no_db)
+    net = Net([UPCOMING])
+    lines: list[str] = []
+    outcome = runner.dry_run_town(CFG, http_factory=lambda s: net.http(), out=lines.append)  # the town is still sports.enabled=false
+    assert outcome == {"sportmonks:scottish-premiership": "ok"}
+    assert len(net.calls) == 1  # it did call the API
+    text = "\n".join(lines)
+    assert f"WOULD WRITE {len(UPCOMING['data'])} sport_events row(s)" in text and "nothing was written" in text
+    assert "uid=sportmonks:" in text and SECRET not in text
+    # the CLI path: same, and never reaches get_conn/declare_action
+    monkeypatch.setattr(runner, "dry_run_town", lambda cfg: {"sportmonks:scottish-premiership": "ok"})
+    assert runner.main(["--town", "glasgow", "--dry-run"]) == 0
+    assert "ok" in capsys.readouterr().out
+
+
+def test_dry_run_reports_a_refusal_without_retrying_and_still_writes_nothing():
+    net = Net([UPCOMING], status=403)
+    lines: list[str] = []
+    assert runner.dry_run_town(CFG, http_factory=lambda s: net.http(), out=lines.append) == {"sportmonks:scottish-premiership": "skipped"}
+    assert len(net.calls) == 1 and "skipped" in lines[0]
