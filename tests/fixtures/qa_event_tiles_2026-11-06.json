@@ -1,5 +1,5 @@
 {
- "_doc": "2026-11-06, extended 2026-11-09. bad: a 358x156 FallbackTile in an events list (the old top card); a picture in a date-tile list; an oversized date tile. good: none, or a snapshot without the probe field.",
+ "_doc": "2026-11-06, extended 2026-11-09 (twice). bad: a 358x156 FallbackTile in an events list (the old top card); a picture in a date-tile list; an oversized date tile; (rollout) a Ticketmaster picture in /tonight or /this-weekend, and the pre-rollout list markup (.ev-card, .ev-row, .wk-row) still present. good: none, or a snapshot without the probe field.",
  "eventBigTile": {
   "bad": [
    {
@@ -15,6 +15,26 @@
    {
     "eventBigTiles": [
      "date tile 60x120 px (over 80)"
+    ]
+   },
+   {
+    "eventBigTiles": [
+     "picture in an event list on /tonight, /this-weekend or a week/digest page: 400x225 px"
+    ]
+   },
+   {
+    "eventBigTiles": [
+     "old event list markup (.ev-card) where the date-tile list belongs"
+    ]
+   },
+   {
+    "eventBigTiles": [
+     "old event list markup (.wk-row) where the date-tile list belongs"
+    ]
+   },
+   {
+    "eventBigTiles": [
+     "tile 60x120 px (over 80)"
     ]
    }
   ],

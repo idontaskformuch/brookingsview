@@ -6,6 +6,8 @@
 //          brokenImgs: string[], consoleErrors: string[], failedRequests: string[],
 //          blockedAttempts: string[] }
 
+import { isoWeekSlug } from '../../site/src/lib/week-count.mjs';
+
 /** Elements carrying this attribute are hidden before the page text is read, so deliberate,
  *  disclosed cross-town references (about page: sister sites, Phase H) never trip web.leak. */
 export const ALLOW_SIBLING_SELECTOR = '[data-qa-allow-sibling-sites]';
@@ -21,6 +23,15 @@ export const CLOCK_TIMES = ['07:00', '19:00', '23:30'];
 export const CLOCK_PAGES = ['/today/', '/events/', '/'];
 /** Evening layer (/tonight, /this-weekend): noindex, so never in the sitemap and never crawled by Pass A; Pass E loads them by name. */
 export const EVENING_PAGES = ['/tonight/', '/this-weekend/'];
+
+/** The other places that print the date-tile event list (rollout 2026-11-09): this week's roundup page, and where there is one (Brookings) the newest
+ *  university digest. Pass E loads them too, so the tile/picture probe (snap.eventBigTiles) sees every place, noindex ones included. */
+export function weekPagePath(tz, now = new Date()) {
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+  const get = (t) => Number(p.find((x) => x.type === t).value);
+  return `/this-week/${isoWeekSlug({ y: get('year'), m: get('month'), d: get('day') })}/`;
+}
+export const DIGEST_LINK_RE = /href="(\/s\/university-digest-[^"/]+\/)"/;
 
 /** The UTC instant at which `tz` shows `day` ('YYYY-MM-DD') at `hhmm`. */
 export function zonedInstant(day, hhmm, tz) {

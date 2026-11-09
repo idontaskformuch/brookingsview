@@ -14,24 +14,26 @@ import { itemLink } from '../../lib/events';
 import { siteConfig } from '../../lib/site-config';
 
 /** `noteOf` replaces the area on a row's meta line (e.g. "4 mi away" in the Nearby list). A row's `note` is an extra line under the meta line. */
-/** `tile` 'time' (single-day lists: /tonight, /this-weekend) prints the start time in the tile slot, and no relative-day label. */
-interface Props { days: PopDay[]; tz?: string; idPrefix?: string; noteOf?: (r: PopRow) => string | null; tile?: 'date' | 'time' }
-const { days, tz = siteConfig.timezone, idPrefix = 'day', noteOf, tile = 'date' } = Astro.props;
+/** `tile` 'time' (single-day lists: /tonight, /this-weekend) prints the start time in the tile slot, and no relative-day label.
+ *  `listAttrs` go on the <ul> (the pages' own hooks, e.g. data-hide-ended); a row's `attrs` go on its <li>. `keepOver` is for archive lists (a past week
+ *  keeps every row): the rows then carry no start/end, so nothing in the browser removes them. */
+interface Props { days: PopDay[]; tz?: string; idPrefix?: string; noteOf?: (r: PopRow) => string | null; tile?: 'date' | 'time'; listAttrs?: Record<string, string | undefined>; keepOver?: boolean }
+const { days, tz = siteConfig.timezone, idPrefix = 'day', noteOf, tile = 'date', listAttrs = {}, keepOver = false } = Astro.props;
 const country = siteConfig.country === 'gb' ? 'gb' : 'us';
 const hrefOf = (r: PopRow) => r.href ?? (r.item ? itemLink(r.item) ?? undefined : undefined);
 const place = (r: PopRow) => [r.venue, noteOf?.(r) ?? r.area].filter(Boolean).join(' · ');
 const repeats = (r: PopRow) => (r.recurrence === 'weekly' ? 'Repeats weekly' : r.recurrence === 'monthly' ? 'Repeats monthly' : null);
 const rows = days.flatMap((d) => d.rows.map((r, i) => ({ r, first: i === 0, key: d.dayKey })));
 ---
-<ul class="pl" data-pop-list data-tz={tz}>
+<ul class="pl" data-pop-list data-tz={tz} {...listAttrs}>
   {rows.map(({ r, first, key }) => {
     const href = hrefOf(r);
     const cat = popCategory(r.cat);
     const Tag = href ? 'a' : 'div';
     return (
-      <li class="pl__li" data-pop-row data-day-key={key} data-start={r.start} data-end={r.end ?? undefined} data-tz={tz} id={first ? `${idPrefix}-${key}` : undefined}>
+      <li class="pl__li" data-pop-row data-day-key={key} data-start={keepOver ? undefined : r.start} data-end={keepOver ? undefined : (r.end ?? undefined)} data-tz={tz} id={first ? `${idPrefix}-${key}` : undefined} {...r.attrs}>
         <Tag class="pl__card" href={href}>
-          {tile === 'time' ? <TimeTile model={timeTile(r.start, tz)} /> : <DayTile model={dayTile(r.start, r.end, tz, country)} dup={!first} />}
+          {tile === 'time' ? <TimeTile model={timeTile(r.start, tz)} /> : <DayTile model={r.tileFrom ? dayTile(r.tileFrom, r.end ?? r.start, tz, country) : dayTile(r.start, r.end, tz, country)} dup={!first} />}
           <span class="pl__main">
             <span class="pl__top">
               {cat.name ? <CategoryDot name={cat.name} token={cat.token} /> : <span></span>}

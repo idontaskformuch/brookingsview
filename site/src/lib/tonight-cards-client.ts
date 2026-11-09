@@ -116,8 +116,8 @@ export function initTonightCards(doc: Document): void {
     const shown = (soon.length > 0 ? soon : cards).slice(0, SOON_MAX_CARDS);
     row.replaceChildren(...shown.map((c) => {
       const clone = c.el.cloneNode(true) as HTMLElement;
-      clone.classList.add('tc-card--lg');
       clone.removeAttribute('hidden');
+      clone.removeAttribute('id'); // the original row keeps the anchor
       return clone;
     }));
     const head = box.querySelector<HTMLElement>('[data-tc-soon-h]');
@@ -184,7 +184,7 @@ export function initTonightCards(doc: Document): void {
       const n = nextUp(live, now);
       next.hidden = !n;
       if (n) {
-        const title = n.el.querySelector('.tc-title')?.textContent ?? '';
+        const title = n.el.querySelector('.tc-title, .pl__title')?.textContent ?? '';
         next.textContent = `Next up ${untilLabel(n.start, now)}`;
         const t = doc.createElement('span');
         t.className = 'tc-next-title';

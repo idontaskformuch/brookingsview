@@ -24,7 +24,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   checkPage, checkDiag, checkRun, compileBlocklist, applyWaivers, zonedInstant, ALLOW_SIBLING_SELECTOR,
-  KEY_PAGES, CLOCK_TIMES, CLOCK_PAGES, routeFindings, EVENING_PAGES, eveningFindings, safetyFindings,
+  KEY_PAGES, CLOCK_TIMES, CLOCK_PAGES, routeFindings, EVENING_PAGES, weekPagePath, DIGEST_LINK_RE, eveningFindings, safetyFindings,
 } from './checks.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -206,14 +206,13 @@ function pageProbe({ allowSel, wantLinks }) {
     const hourIn = (iso, z) => Number(new Intl.DateTimeFormat('en-GB', { timeZone: z, hour: '2-digit', hourCycle: 'h23' }).format(new Date(iso)));
     const days = [...evRoot.querySelectorAll('.ev-day, .tc-day')].map((d, i) => {
       const z = d.dataset.tz || pageTz;
-      const entries = [...d.querySelectorAll('.ev-card, .ev-row:not([data-late]), [data-tc-rows] .tc-card:not([data-late])')].map((el) => {
-        const a = el.querySelector('a.ev-title, .ev-card-title a, a.tc-link');
-        const isCard = el.classList.contains('ev-card');
-        const isTc = el.classList.contains('tc-card');
-        const group = isTc ? (el.querySelector('.tc-tag')?.innerText ?? '').trim() : isCard ? (el.querySelector('.ev-card-group')?.innerText ?? '').replace(/^[\s·]+/, '').trim() : (el.closest('.ev-group')?.querySelector('.ev-group-name')?.innerText ?? '').trim();
-        return { list: isCard ? 'cards' : 'rows', start: el.dataset.start, end: el.dataset.end ?? null, visible: visible(el), group,
-          title: (isTc ? el.querySelector('.tc-title') : (a ?? el.querySelector('.ev-title, .ev-card-title')))?.innerText.trim() ?? '', href: a?.getAttribute('href') ?? '',
-          venue: (el.querySelector('.ev-meta, .tc-meta')?.innerText ?? '').split(' · ')[0].trim(),
+      // every event is a row of the date-tile list (components/pop/PopEventList.astro); the "Up next" copies in [data-tc-soon] are left out (same events again)
+      const entries = [...d.querySelectorAll('[data-pop-row]')].filter((el) => !el.closest('[data-tc-soon]')).map((el) => {
+        const a = el.querySelector('a.pl__card');
+        const group = (el.dataset.group ?? '').trim();
+        return { list: 'rows', start: el.dataset.start, end: el.dataset.end ?? null, visible: visible(el), group,
+          title: (el.querySelector('.pl__title')?.innerText ?? '').replace(/\s*↻\s*$/, '').trim(), href: a?.getAttribute('href') ?? '',
+          venue: (el.querySelector('.pl__meta')?.innerText ?? '').split(' · ')[0].trim(),
           localHour: el.dataset.start ? hourIn(el.dataset.start, z) : -1 };
       });
       const late = [...d.querySelectorAll('.ev-row[data-late], .tc-card[data-late]')].map((el) => ({ name: el.querySelector('.ev-title, .tc-title')?.innerText.trim() ?? '', meta: el.querySelector('.ev-meta, .tc-meta')?.innerText.trim() ?? '' }));
@@ -226,7 +225,7 @@ function pageProbe({ allowSel, wantLinks }) {
     evening = { nowIso: now.toISOString(), days, summaryCount: sumMatch ? Number(sumMatch[1].replace(/,/g, '')) : null, period: sumMatch ? sumMatch[2] : '',
       aboutText: document.getElementById('about-this-page')?.innerText ?? '',
       weatherText: document.querySelector('.ev-weather')?.innerText ?? '',
-      freeCount: [...evRoot.querySelectorAll('.ev-label, .tc-badge--free')].filter((l) => visible(l) && l.innerText.trim() === 'Free').length + [...evRoot.querySelectorAll('.ev-group-name')].filter((h) => visible(h) && /^free/i.test(h.innerText.trim())).length };
+      freeCount: [...evRoot.querySelectorAll('.ev-label, .tc-badge--free, [data-pop-row] .ui-pill--ok')].filter((l) => !l.closest('[data-tc-soon]')).filter((l) => visible(l) && l.innerText.trim() === 'Free').length + [...evRoot.querySelectorAll('.ev-group-name')].filter((h) => visible(h) && /^free/i.test(h.innerText.trim())).length };
   }
   // public-safety notices (/today line, /safety/): the text the browser built from /api/safety, null on pages without them
   const safetyEls = [...document.querySelectorAll('[data-safety]')];
@@ -253,13 +252,20 @@ function pageProbe({ allowSel, wantLinks }) {
     // meetings pages: organ strings no BODIES table knows (data-mtg-unknown), and links with an empty href (meetings.unknown-organ, web.empty-link)
     unknownOrgans: [...document.querySelectorAll('[data-mtg-unknown]')].map((e) => e.getAttribute('data-mtg-unknown')),
     // the date-tile event lists ([data-pop-list], components/pop/PopEventList.astro) hold no picture or placeholder at all (owner 2026-11-09: no thumbnails) and
-    // their date tile stays small (web.event-big-tile; born 2026-11-06 when a full-size FallbackTile led a day list). The old .evd selector no longer matches anything.
+    // their tile (date or start time) stays small (web.event-big-tile; born 2026-11-06 when a full-size FallbackTile led a day list). The old .evd selector no longer matches anything.
+    // Rollout 2026-11-09: the same lists now also carry /tonight, /this-weekend, the week roundup (/this-week/<week>/) and the university digest, so (a) a picture
+    // anywhere in those places and (b) the markup they used before (.ev-card highlight cards, .ev-row event rows, .wk-row, the /tonight category swipe rows)
+    // are findings too: the Open late / Open tonight PLACE rows (data-late) are not events and keep their own markup.
     eventBigTiles: [
       ...[...document.querySelectorAll('[data-pop-list] img, [data-pop-list] picture, [data-pop-list] video, [data-pop-list] .ui-fb')]
         .map((e) => `picture or placeholder in a date-tile list: ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)} px`),
-      ...[...document.querySelectorAll('[data-pop-list] [data-pop-tile]')]
+      ...[...document.querySelectorAll('[data-ev-page] img, [data-ev-page] picture, .wk-groups img, .wk-groups picture, .ev-card-img')]
+        .map((e) => `picture in an event list on /tonight, /this-weekend or a week/digest page: ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)} px`),
+      ...[...document.querySelectorAll('.ev-card, .ev-highlights, .wk-row, .wk-list, .ev-row:not([data-late]), .tc-cat:not([data-bucket="late"])')]
+        .map((e) => `old event list markup (.${[...e.classList][0] ?? e.tagName.toLowerCase()}) where the date-tile list belongs`),
+      ...[...document.querySelectorAll('[data-pop-list] [data-pop-tile], [data-pop-list] [data-pop-time-tile]')]
         .filter((e) => e.getBoundingClientRect().height > 80)
-        .map((e) => `date tile ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)} px (over 80)`),
+        .map((e) => `tile ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)} px (over 80)`),
     ],
     emptyLinks: [...document.querySelectorAll('main a[href]')].filter((a) => (a.getAttribute('href') ?? '').trim() === '').map((a) => (a.innerText || '').trim().slice(0, 60)),
     // sideways scroll: some element reaches past the phone viewport (web.hscroll reads it on the mobile combos). Measured by element edges
@@ -434,9 +440,16 @@ async function main() {
     curPass = 'E';
     counts.E = 0;
     const day = new Intl.DateTimeFormat('en-CA', { timeZone: cfg.timezone }).format(new Date());
+    // + the places that print the same event list: this week's roundup and (Brookings) the newest university digest
+    const listPages = [...EVENING_PAGES, weekPagePath(cfg.timezone)];
+    try {
+      const uni = await fetch(`${base}/university/`, { headers: firstPartyHeaders(), signal: AbortSignal.timeout(20000) });
+      const digest = uni.status === 200 ? DIGEST_LINK_RE.exec(await uni.text())?.[1] : null;
+      if (digest) listPages.push(digest);
+    } catch { /* no digest to visit */ }
     for (const clock of [null, '19:00', '23:30']) {
       const ctx = await newContext(browser, clock ? { clockAt: zonedInstant(day, clock, cfg.timezone) } : { blockHeavy: true });
-      await pool(EVENING_PAGES, 2, async (p) => {
+      await pool(listPages, 2, async (p) => {
         const sn = await snapshot(ctx, p, { inSitemap: false, label: clock ? `@${clock}` : 'evening', blockHeavy: true });
         if (sn.status === 200) { snapsBC.push(sn); counts.E++; }
       });

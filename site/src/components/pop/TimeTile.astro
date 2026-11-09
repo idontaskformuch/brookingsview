@@ -7,7 +7,7 @@ interface Props { model: TimeTileModel | null }
 const { model } = Astro.props;
 ---
 {!model ? <span class="tt tt--none" aria-hidden="true"></span> : (
-  <span class="tt" title={model.label}>
+  <span class="tt" title={model.label} data-pop-time-tile>
     <span class="tt__sr">{model.label}</span>
     <span class="tt__kicker" aria-hidden="true">{model.kicker}</span>
     <span class="tt__main" aria-hidden="true">{model.main}</span>

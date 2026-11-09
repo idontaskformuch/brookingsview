@@ -283,6 +283,29 @@ describe('event tile probe aims at the date-tile list (2026-11-09)', () => {
     expect(read('../components/pop/PopEventList.astro')).toMatch(/data-pop-list/);
     expect(read('../components/pop/DayTile.astro')).toMatch(/data-pop-tile/);
   });
+  it('the probe also covers the rollout places: pictures in /tonight, /this-weekend and week/digest lists, the old list markup, and the time tile', () => {
+    expect(probe).toMatch(/\[data-ev-page\] img/);
+    expect(probe).toMatch(/\.wk-groups img/);
+    expect(probe).toMatch(/\.ev-card/);
+    expect(probe).toMatch(/\.wk-row/);
+    expect(probe).toMatch(/\.ev-row:not\(\[data-late\]\)/);
+    expect(probe).toMatch(/\[data-pop-time-tile\]/);
+    expect(read('../components/pop/TimeTile.astro')).toMatch(/data-pop-time-tile/);
+  });
+  it('every place that prints event rows uses the date-tile list, and Pass E loads them (/tonight, /this-weekend, this week, the digest)', () => {
+    expect(read('../components/evening/EveningDay.astro')).toMatch(/<PopEventList/);
+    expect(read('../components/tonight/TonightRows.astro')).toMatch(/<PopEventList/);
+    expect(read('../pages/tonight.astro')).toMatch(/<PopEventList/);
+    expect(read('../components/WeekGroupList.astro')).toMatch(/<PopEventList/);
+    expect(read('../pages/this-week/[week].astro')).toMatch(/<WeekGroupList/);
+    expect(read('../pages/s/[slug].astro')).toMatch(/<WeekGroupList/);
+    for (const f of ['../components/evening/EveningDay.astro', '../components/tonight/TonightRows.astro', '../components/WeekGroupList.astro', '../pages/tonight.astro', '../pages/this-weekend.astro', '../pages/this-week/[week].astro']) {
+      expect(read(f), f).not.toMatch(/class="(ev-card|ev-highlights|wk-row|wk-list)"|<EveningCard|<EveningRow/);
+    }
+    const run = read('../../../qa/web/run.mjs');
+    expect(run).toMatch(/\[\.\.\.EVENING_PAGES, weekPagePath\(/);
+    expect(run).toMatch(/DIGEST_LINK_RE/);
+  });
   it('nothing in the site prints the old .evd day list any more', () => {
     for (const f of ['../pages/events.astro', '../pages/index.astro', '../components/pop/PopEventList.astro', '../components/events/BigShowsNearby.astro']) {
       expect(read(f), f).not.toMatch(/class="evd|class=\{`evd/);

@@ -52,12 +52,20 @@ describe('eveningPopDays', () => {
 });
 
 describe('weekPopDays', () => {
-  const row = (o: Partial<WeekRow>): WeekRow => ({ when: 'Fri 7pm', title: 'Volleyball', href: 'https://x.test/', external: true, venue: 'Frost Arena', start: '2026-11-14T01:00:00Z', end: null, ...o });
+  const row = (o: Partial<WeekRow>): WeekRow => ({ when: 'Fri 7pm', title: 'Volleyball', href: 'https://x.test/', external: true, venue: 'Frost Arena', start: '2026-11-14T01:00:00Z', end: null, firstStart: o.firstStart ?? o.start ?? '2026-11-14T01:00:00Z', ...o });
   it('takes the clock time out of "Fri 7pm", keeps the link and venue, groups by local day', () => {
     const days = weekPopDays([row({}), row({ when: 'Fri', title: 'Council', start: '2026-11-13T06:00:00Z' }), row({ when: 'Sat all day', title: 'Fair', start: '2026-11-14T06:00:00Z' })], CHI);
     expect(days.map((d) => d.dayKey)).toEqual(['2026-11-13', '2026-11-13', '2026-11-14'].filter((v, i, a) => a.indexOf(v) === i));
     const rows = days.flatMap((d) => d.rows);
     expect(rows.map((r) => r.timeLabel)).toEqual(['7pm', '', 'all day']);
     expect(rows[0]).toMatchObject({ href: 'https://x.test/', venue: 'Frost Arena', title: 'Volleyball' });
+  });
+  it('a row repeating over several days: the tile starts on the FIRST day, the row is over only after the LAST (start/end stay the last occurrence)', () => {
+    const [day] = weekPopDays([row({ when: 'Fri–Sun 8am', title: 'Craft show', start: '2026-11-15T14:00:00Z', end: '2026-11-15T22:00:00Z', firstStart: '2026-11-13T14:00:00Z' })], CHI);
+    expect(day.dayKey).toBe('2026-11-13');
+    expect(day.rows[0]).toMatchObject({ tileFrom: '2026-11-13T14:00:00Z', start: '2026-11-15T14:00:00Z', end: '2026-11-15T22:00:00Z' });
+  });
+  it('a one-day row has no tileFrom', () => {
+    expect(weekPopDays([row({})], CHI)[0].rows[0].tileFrom).toBeUndefined();
   });
 });

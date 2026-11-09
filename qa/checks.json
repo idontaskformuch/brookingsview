@@ -279,7 +279,7 @@
     "web.event-big-tile": {
         "severity": "soft",
         "born_from": "Owner report 2026-11-06 (Moreno Valley front page, 390 px): the top event of a day was a large card with a full-size coloured FallbackTile and no real image, and it was lifted above earlier events. Regression fixture: tests/fixtures/qa_event_tiles_2026-11-06.json (driven by site/src/lib/qa-checks.test.ts); source-level guards in site/src/lib/event-day-view.test.ts.",
-        "what": "inside a date-tile events list ([data-pop-list]): any picture or FallbackTile, or a date tile taller than 80 px. The lists show text and a date tile only. (Until 2026-11-09 the probe looked at .evd day lists, which no longer exist, and passed trivially.)"
+        "what": "inside a date-tile events list ([data-pop-list]): any picture or FallbackTile, or a date/time tile taller than 80 px; a picture in the event lists of /tonight, /this-weekend, the week roundup or the university digest; or the markup those pages used before the 2026-11-09 rollout (.ev-card highlight cards, .ev-row event rows, .wk-row, the /tonight category swipe rows). The lists show text and a tile only. Pass E loads /tonight, /this-weekend, this week's roundup and the newest university digest, noindex ones included. (Until 2026-11-09 the probe looked at .evd day lists, which no longer exist, and passed trivially.)"
     }
   }
 }

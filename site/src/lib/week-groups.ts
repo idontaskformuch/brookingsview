@@ -73,6 +73,8 @@ export interface WeekRow {
    *  A date-only item (a meeting) starts at local midnight of its day and lasts the day. */
   start: string;
   end: string | null;
+  /** When the FIRST occurrence behind this row starts (ISO): the date tile begins on this day (a row spanning Fri to Sun reads FRI-SUN). Equal to `start` for a one-day row. */
+  firstStart: string;
 }
 
 export interface WeekGroup { id: ThemeId; label: string; rows: WeekRow[] }
@@ -247,6 +249,7 @@ export function groupWeekItems(
       title: first.title, href: first.item.href, external: first.item.external, venue: first.venue,
       start: last.item.startsAt ?? localMidnightIso(allDays[last.dayIndex].date, timezone),
       end: last.item.endsAt ?? null,
+      firstStart: first.item.startsAt ?? localMidnightIso(allDays[first.dayIndex].date, timezone),
     };
     const list = byTheme.get(theme) ?? [];
     list.push({ sort: Math.min(...merged.days) * 1e14 + (first.startMs % 1e14), row });

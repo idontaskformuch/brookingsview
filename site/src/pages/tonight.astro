@@ -22,7 +22,8 @@ import { getTicketmasterEventsForTown, IN_TOWN_THRESHOLD_MILES } from '../lib/ti
 import { buildEveningEntries, toThresholdItems } from '../lib/evening-items';
 import { indexingForTown } from '../lib/evening-verdict';
 import { buildEveningSections, eveningEntries } from '../lib/evening-page';
-import TonightCard from '../components/tonight/TonightCard.astro';
+import PopEventList from '../components/pop/PopEventList.astro';
+import { eveningPopDays } from '../lib/pop-days';
 import TonightRows from '../components/tonight/TonightRows.astro';
 import TonightStyles from '../components/tonight/TonightStyles.astro';
 import { chipPlan, countByRegion, cityScope, dayView, heroFor, pairNights, regionOf, scopeLine, unmappedAreas, isBigShow, bigShowsLine, partitionBig, SOON_MAX_CARDS, type CardTown } from '../lib/tonight-cards';
@@ -156,9 +157,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
       {upNext.length > 0 && (
         <section class="tc-soon" data-tc-soon-box aria-labelledby="tc-soon-h">
           <h2 id="tc-soon-h" data-tc-soon-h>Up next</h2>
-          <ul class="tc-row tc-row--lg" data-tc-soon>
-            {upNext.map((e) => <TonightCard town={town} e={e} tz={tz} lg region={regionOf(e.area, regions)} />)}
-          </ul>
+          <PopEventList days={eveningPopDays(upNext, tz, siteConfig.country)} tile="time" idPrefix="tn-soon" listAttrs={{ 'data-tc-soon': '' }} />
         </section>
       )}
 

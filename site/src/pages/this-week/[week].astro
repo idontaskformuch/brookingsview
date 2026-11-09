@@ -22,6 +22,7 @@
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ShareButton from '../../components/ShareButton.astro';
+import WeekGroupList from '../../components/WeekGroupList.astro';
 import {
   getAllWeeklyStories, getStoriesForWeekly, getAllArtsEvents, getAllProjectUpdatesForWeekly,
   getSeasonGames, getRegionalSports, getWorthKnowingCandidatesInRange, formatOccursAt,
@@ -162,25 +163,7 @@ const itemListJsonLd = hasAnyItems ? {
     </aside>
   )}
 
-  <div class="wk-groups">
-    {weekGroups.map((group) => (
-      <section class="wk-group" aria-labelledby={`wk-${group.id}`}>
-        <h2 class="wk-group__heading" id={`wk-${group.id}`}>{group.label}</h2>
-        <ul class="wk-list">
-          {group.rows.map((row) => (
-            <li class="wk-row">
-              <span class="wk-when">{row.when}</span>
-              <span class="wk-sep" aria-hidden="true"> · </span>
-              {row.href ? (
-                <a href={row.href} target={row.external ? '_blank' : undefined} rel={row.external ? 'noopener' : undefined}>{row.title}</a>
-              ) : <span>{row.title}</span>}
-              {row.venue && <span class="wk-venue"> · {row.venue}</span>}
-            </li>
-          ))}
-        </ul>
-      </section>
-    ))}
-  </div>
+  <WeekGroupList groups={weekGroups} idPrefix="wk" keepOver />
 
   {!hasAnyItems && (
     <p class="empty">A quiet week — no meetings, events or games recorded for {siteConfig.cityName} this week.</p>
@@ -246,12 +229,6 @@ const itemListJsonLd = hasAnyItems ? {
 .lead-callout__title a { color: var(--ink); }
 .lead-callout__when { font-size: 0.8125rem; color: var(--ink-soft); margin: 0.25rem 0 0; }
 
-.wk-groups { margin-top: 2rem; display: grid; gap: 1.75rem; max-width: 42rem; }
-.wk-group__heading { font-size: 1.0625rem; margin: 0 0 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--rule); }
-.wk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
-.wk-row { font-size: 0.9375rem; line-height: 1.4; }
-.wk-when { font-family: var(--font-ui); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.wk-venue { color: var(--ink-soft); font-size: 0.875rem; }
 .days { margin-top: 2rem; display: grid; gap: 0; }
 .day { padding: 1rem 0; border-top: 1px solid var(--rule); }
 .day:last-child { border-bottom: 1px solid var(--rule); }

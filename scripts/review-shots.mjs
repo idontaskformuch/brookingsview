@@ -21,6 +21,8 @@ const path = arg('path', '/weather/');
 const waitMs = Number(arg('wait-ms', '4000'));
 // --api-fixture <dir>: answer GET /api/weather with <dir>/<town>.json (what the page would get after the Worker has written a newer payload).
 const apiFixture = arg('api-fixture', '');
+// --clock <ISO instant>: the page's browser clock (an archive page whose rows are all over by today still shows its list as it did that week).
+const clockAt = arg('clock', '');
 const widths = arg('widths', '390,1280').split(',').map(Number);
 const schemes = arg('schemes', 'light,dark').split(',');
 const TOWNS = { broomfield_co: 'broomfield', brookings_sd: 'brookings', moreno_valley_ca: 'moreno', glasgow: 'glasgow' };
@@ -52,6 +54,7 @@ for (const town of towns) {
       for (const scheme of schemes) {
         const ctx = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: scheme, deviceScaleFactor: 1, userAgent: 'ViewMediaQA/1.0 (review screenshots)' });
         await ctx.addInitScript(() => { try { localStorage.setItem('bv_cookie_consent', 'declined'); } catch { /* ignore */ } });
+        if (clockAt) await ctx.clock.install({ time: new Date(clockAt) });
         const page = await ctx.newPage();
         await page.route(/google-analytics|googletagmanager|doubleclick|googlesyndication|cloudflareinsights/, (r) => r.abort());
         if (apiFixture) {
