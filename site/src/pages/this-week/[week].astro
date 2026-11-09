@@ -30,7 +30,7 @@ import type { Story } from '../../lib/db';
 import { publicBody, linkTarget } from '../../lib/ai-text';
 import {
   weekInfoForInstant, currentWeekInfo, previousWeekInfo, buildWeekDays, selectWeeklyLead,
-  buildDisplayRows, shouldNoindexWeekPage, recentWeekSlugs, type WeekInfo, type DayBucket, type Vertical,
+  buildDisplayRows, recentWeekSlugs, type WeekInfo, type DayBucket, type Vertical,
 } from '../../lib/this-week';
 import { siteConfig } from '../../lib/site-config';
 import { sportTerms } from '../../lib/sport-strings';
@@ -40,6 +40,7 @@ import { resolvePageMeta } from '../../lib/page-meta';
 import { resolveHubBacklink } from '../../lib/clusters';
 import { groupWeekItems } from '../../lib/week-groups';
 import { storyHref } from '../../lib/content-slugs';
+import { countWeekItems, isThinWeek } from '../../lib/week-count.mjs';
 
 const VERTICAL_LABELS: Record<Vertical, string> = {
   events: 'Events', city_hall: 'City Hall', sdsu: 'SDSU', sports: 'Sports',
@@ -69,6 +70,11 @@ export async function getStaticPaths() {
   const current = currentWeekInfo(siteConfig.timezone);
   weekInfos.set(current.slug, current); // "week ahead" -- real data, narrative may not exist yet
   const recentSlugs = recentWeekSlugs(weekInfos.keys(), siteConfig.recentWeeksIndexed);
+  // Same count the sitemap filter uses (lib/week-count.mjs), so a week's noindex and its sitemap entry cannot disagree.
+  const weekCounts = countWeekItems({
+    stories: [...eventStories, ...meetingStories], artsEvents, projectUpdates,
+    gameStarts: games.map((g) => g.starts_at), regionalGameDates: regionalGames.map((g) => g.game_date),
+  }, siteConfig.timezone);
 
   return Promise.all([...weekInfos.values()].map(async (week) => {
     const days = buildWeekDays(week, siteConfig.timezone, {
@@ -87,13 +93,14 @@ export async function getStaticPaths() {
         prevWeek: hasPrev ? prev : null,
         isCurrent: week.slug === current.slug,
         isRecent: recentSlugs.has(week.slug),
+        isThin: isThinWeek(weekCounts.get(week.slug) ?? 0),
       },
     };
   }));
 }
 
-const { week, days, lead, weeklyStory, prevWeek, isCurrent, isRecent } = Astro.props as {
-  isRecent: boolean;
+const { week, days, lead, weeklyStory, prevWeek, isCurrent, isRecent, isThin } = Astro.props as {
+  isRecent: boolean; isThin: boolean;
   week: WeekInfo; days: DayBucket[]; lead: Story | null;
   weeklyStory: Story | null; prevWeek: WeekInfo | null; isCurrent: boolean;
 };
@@ -131,7 +138,7 @@ const itemListJsonLd = hasAnyItems ? {
   })),
 } : null;
 ---
-<BaseLayout title={title} wide ogSlug={`this-week-${week.slug}`} description={description} noindex={shouldNoindexWeekPage(days) || !isRecent}>
+<BaseLayout title={title} wide ogSlug={`this-week-${week.slug}`} description={description} noindex={isThin || !isRecent}>
   <header class="lede">
     <p class="kicker">This week in {siteConfig.cityName}</p>
     <h1>{pageMeta.h1}</h1>

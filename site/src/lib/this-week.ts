@@ -386,15 +386,9 @@ export function buildDisplayRows(days: DayBucket[], timezone: string, dropPastDa
   return rows;
 }
 
-/** Broomfield handoff (2026-09-30), Issue 3: a week with fewer than this
- *  many real items across the whole week isn't worth its own indexed page
- *  -- reuses astro.config.mjs's existing MIN_TAG_PAGE_ITEMS threshold
- *  (jobs/category, home-sales/zip already use the same "3" for the same
- *  kind of thin-listing-page judgment), not a new number invented for this
- *  page type. Keep in sync with astro.config.mjs's own copy of this value
- *  -- see that file's THIS_WEEK_TIMEZONES comment for why it can't import
- *  this one directly. */
-export const THIS_WEEK_MIN_ITEMS = 3;
+/** Broomfield handoff (2026-09-30), Issue 3: a week with fewer than THIS_WEEK_MIN_ITEMS real items isn't worth its own indexed page.
+ *  The count itself (superseded rows out, cross-source dedup in) is lib/week-count.mjs, shared with the sitemap filter in astro.config.mjs. */
+export { THIS_WEEK_MIN_ITEMS } from './week-count.mjs';
 
 /** Only the newest N weeks stay indexable (owner, 2026-10-22, Brookings AdSense review): older
  *  /this-week/<week>/ pages and their /s/weekly-* stories are noindex,follow. Slugs are
@@ -403,11 +397,6 @@ export const RECENT_WEEKS_INDEXED = 8;
 
 export function recentWeekSlugs(weekSlugs: Iterable<string>, n: number = RECENT_WEEKS_INDEXED): Set<string> {
   return new Set([...new Set(weekSlugs)].sort().reverse().slice(0, n));
-}
-
-export function shouldNoindexWeekPage(days: DayBucket[]): boolean {
-  const totalItems = days.reduce((n, d) => n + d.items.length, 0);
-  return totalItems < THIS_WEEK_MIN_ITEMS;
 }
 
 function firstLine(body: string): string {

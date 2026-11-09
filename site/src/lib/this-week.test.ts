@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   weekInfoForInstant, weekInfoForSlug, currentWeekInfo, isoWeekInfo,
   formatWeekLabel, buildWeekDays, selectWeeklyLead, weekDays, addDays,
-  buildDisplayRows, shouldNoindexWeekPage, type DayBucket,
+  buildDisplayRows, type DayBucket,
 } from './this-week';
 import type { Story, RegionalGame, SdsuEvent, ProjectUpdate } from './db';
 
@@ -279,18 +279,6 @@ describe('buildDisplayRows', () => {
     const future = day('Tuesday', 1, { y: 2099, m: 1, d: 1 });
     const rows = buildDisplayRows([past, future], CHICAGO, true);
     expect(rows).toEqual([{ kind: 'day', day: future }]);
-  });
-});
-
-describe('shouldNoindexWeekPage', () => {
-  it('flags a week with fewer than 3 total items', () => {
-    const days = [day('Monday', 1), day('Tuesday', 0), day('Wednesday', 0)];
-    expect(shouldNoindexWeekPage(days)).toBe(true);
-  });
-
-  it('does not flag a week with 3 or more total items', () => {
-    const days = [day('Monday', 1), day('Tuesday', 1), day('Wednesday', 1)];
-    expect(shouldNoindexWeekPage(days)).toBe(false);
   });
 });
 

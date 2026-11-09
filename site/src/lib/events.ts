@@ -44,24 +44,15 @@ export type FeedItem =
 export const TOWN_EVENT_KICKER = 'Around Town';
 export const ARTS_EVENT_KICKER = 'Arts & Culture';
 
-export function itemTitle(item: FeedItem): string {
-  return item.sourceKind === 'story' ? item.story.title : item.event.title;
-}
+// itemTitle/itemUrl/itemVenue, the dedup and localDateParts live in event-dedup.mjs (no imports) so astro.config.mjs runs the same code.
+export { itemTitle, itemUrl, itemVenue, localDateParts, findCrossSourceMatch, EVENT_SOURCES } from './event-dedup.mjs';
+export type { EventSourceConfig } from './event-dedup.mjs';
+import { buildEventFeedCore, itemTitle, itemUrl, itemVenue, localDateParts } from './event-dedup.mjs';
 /** Where a list row links: the original source for an arts item, the story's own page when it has text, else its source (lib/ai-text.ts). */
 export function itemLink(item: FeedItem): string | null {
   return item.sourceKind === 'arts' ? item.event.event_url : linkTarget(item.story);
 }
-export function itemUrl(item: FeedItem): string | null {
-  return item.sourceKind === 'story' ? item.story.source_url : item.event.event_url;
-}
 
-/** What's On Phase 2: the item's own venue string, whatever field the
- *  source happens to carry it in -- a Story's `venue_raw` or a SdsuEvent's
- *  `location`. Both are nullable in real data; feeds lib/venue-tiers.ts's
- *  venueTierFor(), which already treats null/empty as "unranked." */
-export function itemVenue(item: FeedItem): string | null {
-  return item.sourceKind === 'story' ? (item.story.venue_raw ?? null) : item.event.location;
-}
 
 /** SDSU arts_culture events have no own /s/[slug] page (their link is
  *  event_url, out to sdstate.edu) -- adapted to the Story shape just so
@@ -86,26 +77,6 @@ export function artsEventAsStory(event: SdsuEvent): Story {
     ingredients: null,
     instructions: null,
   };
-}
-
-/** "Downtown @ Sundown" (Chamber) / "Downtown at Sundown" (SDSU) -- "@" is
- *  common shorthand for "at," so it's expanded BEFORE punctuation is
- *  stripped, or the two titles diverge instead of converging. */
-function normalizeTitle(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/@/g, ' at ')
-    .replace(/[^\w\s]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-export function localDateParts(instant: Date, timezone: string): { y: number; m: number; d: number } {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
-  }).formatToParts(instant);
-  const get = (t: string) => Number(parts.find((p) => p.type === t)!.value);
-  return { y: get('year'), m: get('month'), d: get('day') };
 }
 
 export function utcMidnight({ y, m, d }: { y: number; m: number; d: number }): Date {
@@ -367,159 +338,11 @@ export interface EventFeedResult {
   alsoListedBy: Map<FeedItem, string[]>;
 }
 
-/** Per-source participation in cross-source dedup matching (see
- *  findCrossSourceMatch() below) -- encoded as data rather than a hardcoded
- *  if/else so a future source (What's On Phase 3: Ticketmaster) is a new map
- *  entry, not a new branch. `story` and `arts` both participate today. */
-export interface EventSourceConfig {
-  crossMatch: boolean;
-}
-
-/** `ticketmaster` (What's On Phase 3) is registered here even though it
- *  never actually reaches buildEventFeed() yet -- see lib/ticketmaster.ts's
- *  own module comment for why the adapter stays standalone this phase.
- *  Enabled for cross-matching per real data: 14 live Brookings Discovery
- *  API results (2026-09-07, all SDSU Athletics + one commercial wrestling
- *  event) share zero titles with any current arts_culture/story item, so
- *  there's no live evidence of a false-positive risk. Ticketmaster's own
- *  title convention ("South Dakota State Jackrabbits Football vs. Murray
- *  State Racers Football") is far more formal/verbose than how a city
- *  calendar or SDSU's arts_culture feed would describe the same real event,
- *  so in practice this is more likely to MISS a genuine duplicate (a safe
- *  failure -- two cards instead of one) than to wrongly merge two different
- *  events -- the failure mode Phase 1's own same-source exclusion rule
- *  exists to prevent. */
-export const EVENT_SOURCES: Record<string, EventSourceConfig> = {
-  story: { crossMatch: true },
-  arts: { crossMatch: true },
-  ticketmaster: { crossMatch: true },
-};
-
-/** Same calendar date + exact normalized-title match, cross-SOURCE only
- *  (never within the same source -- the library legitimately lists the same
- *  class title twice for two different session times, and SDSU legitimately
- *  lists the same show twice for a matinee/evening pair; a same-source match
- *  would wrongly collapse those). Generic over the number of participating
- *  sources -- not hardcoded to exactly two -- and independently unit-tested
- *  with synthetic 3+-source data (see events.test.ts) to prove that, without
- *  requiring a real third production source to exist yet. `dateKey` is
- *  `null` for an undated item (never matches anything). */
-export function findCrossSourceMatch<T>(
-  sourceKind: string,
-  dateKey: string | null,
-  normalizedTitle: string,
-  canonicalByKey: Map<string, T>,
-  sources: Record<string, EventSourceConfig>,
-): T | undefined {
-  if (!dateKey || !sources[sourceKind]?.crossMatch) return undefined;
-  for (const otherKind of Object.keys(sources)) {
-    if (otherKind === sourceKind || !sources[otherKind].crossMatch) continue;
-    const found = canonicalByKey.get(`${dateKey}|${otherKind}|${normalizedTitle}`);
-    if (found) return found;
-  }
-  return undefined;
-}
-
-/**
- * Cross-source duplicate reconciliation -- e.g. "Downtown at Sundown" listed
- * independently by both SDSU's calendar and the Chamber's calendar. Narrow
- * and deterministic on purpose -- see findCrossSourceMatch() above for the
- * matching rule itself.
- */
-const TITLE_STOPWORDS = new Set(['the', 'a', 'an', 'at', 'of', 'and', 'for', 'in', 'on', 'to', 'with']);
-
-function titleTokens(title: string): Set<string> {
-  return new Set(normalizeTitle(title).split(' ').filter((w) => w && !TITLE_STOPWORDS.has(w)));
-}
-
-function hostOf(item: FeedItem): string {
-  const url = itemUrl(item);
-  try { return url ? new URL(url).hostname.replace(/^www\./, '') : ''; } catch { return ''; }
-}
-
-/** The same real event listed by two calendars under differently worded titles
- *  ("The Yule Market" / "The Yule Market Opening Day" / "Museum Shop Yule Market
- *  Opens", all 10 AM on Oct 24). Second pass of buildEventFeed(), narrower than
- *  the exact-title rule on purpose: SAME start instant, DIFFERENT calendar
- *  (link host), and the shorter title's words (stopwords dropped, at least two)
- *  all appear in the longer one. Two sessions on one calendar never merge. The
- *  survivor is the one that names a venue (a page of its own beats an outbound
- *  link), then the first in list order. */
-function mergeSameStartTitleContainment(items: FeedItem[], alsoListedBy: Map<FeedItem, string[]>): FeedItem[] {
-  const byStart = new Map<string, FeedItem[]>();
-  for (const it of items) {
-    if (!it.occurs_at) continue;
-    const key = new Date(it.occurs_at).toISOString();
-    byStart.set(key, [...(byStart.get(key) ?? []), it]);
-  }
-  const dropped = new Set<FeedItem>();
-  for (const group of byStart.values()) {
-    if (group.length < 2) continue;
-    const tokens = group.map((it) => titleTokens(itemTitle(it)));
-    // union-find over "one title contains the other" (C and A may only be linked through B)
-    const parent = group.map((_, i) => i);
-    const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
-    for (let i = 0; i < group.length; i++) {
-      for (let j = i + 1; j < group.length; j++) {
-        if (hostOf(group[i]) === hostOf(group[j])) continue;
-        const [small, large] = tokens[i].size <= tokens[j].size ? [tokens[i], tokens[j]] : [tokens[j], tokens[i]];
-        if (small.size >= 2 && [...small].every((w) => large.has(w))) parent[find(i)] = find(j);
-      }
-    }
-    const clusters = new Map<number, FeedItem[]>();
-    group.forEach((it, i) => clusters.set(find(i), [...(clusters.get(find(i)) ?? []), it]));
-    for (const members of clusters.values()) {
-      if (members.length < 2) continue;
-      const keep = members.find((m) => itemVenue(m)) ?? members[0];
-      const hosts = new Set(alsoListedBy.get(keep) ?? []);
-      for (const m of members) {
-        if (m === keep) continue;
-        dropped.add(m);
-        for (const h of [hostOf(m), ...(alsoListedBy.get(m) ?? [])]) if (h && h !== hostOf(keep)) hosts.add(h);
-      }
-      if (hosts.size > 0) alsoListedBy.set(keep, [...hosts]);
-    }
-  }
-  return items.filter((it) => !dropped.has(it));
-}
-
 export function buildEventFeed(stories: Story[], artsEvents: SdsuEvent[], timezone: string): EventFeedResult {
-  const rawItems: FeedItem[] = [
+  return buildEventFeedCore<FeedItem>([
     ...stories.map((story): FeedItem => ({ sourceKind: 'story', occurs_at: story.occurs_at, story })),
     ...artsEvents.map((event): FeedItem => ({ sourceKind: 'arts', occurs_at: event.starts_at, event })),
-  ];
-
-  const canonicalByKey = new Map<string, FeedItem>();
-  const alsoListedBy = new Map<FeedItem, string[]>();
-  const items: FeedItem[] = [];
-  for (const item of rawItems) {
-    const dateParts = item.occurs_at ? localDateParts(new Date(item.occurs_at), timezone) : null;
-    const dateKey = dateParts ? `${dateParts.y}-${dateParts.m}-${dateParts.d}` : null;
-    const normalizedTitle = normalizeTitle(itemTitle(item));
-    const ownKey = dateKey ? `${dateKey}|${item.sourceKind}|${normalizedTitle}` : null;
-    const canonical = findCrossSourceMatch(item.sourceKind, dateKey, normalizedTitle, canonicalByKey, EVENT_SOURCES);
-
-    if (canonical) {
-      const url = itemUrl(item);
-      if (url) {
-        const host = new URL(url).hostname.replace(/^www\./, '');
-        const list = alsoListedBy.get(canonical) ?? [];
-        if (!list.includes(host)) list.push(host);
-        alsoListedBy.set(canonical, list);
-      }
-      continue; // already covered by the canonical entry -- no separate card
-    }
-    if (ownKey) canonicalByKey.set(ownKey, item);
-    items.push(item);
-  }
-  const deduped = mergeSameStartTitleContainment(items, alsoListedBy);
-
-  deduped.sort((a, b) => {
-    if (!a.occurs_at) return 1;
-    if (!b.occurs_at) return -1;
-    return new Date(a.occurs_at).getTime() - new Date(b.occurs_at).getTime();
-  });
-  return { items: deduped, alsoListedBy };
+  ], timezone);
 }
 
 export function withAttribution(body: string, item: FeedItem, alsoListedBy: Map<FeedItem, string[]>): string {

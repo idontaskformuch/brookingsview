@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { statusTokensCss } from './src/lib/status-tokens.mjs';
 import { holidayLastmodEntries } from './src/config/holiday-pages/lastmod.mjs';
+import { countWeekItems, isThinWeek } from './src/lib/week-count.mjs';
 import { checkNewIndexable, fetchLiveSitemapPaths, sitemapPaths } from './scripts/new-indexable.mjs';
 
 // Statiskt bygge: all data hämtas från Neon vid build-time, sedan serveras rena
@@ -222,7 +223,7 @@ function isThinStory(sourceType, body, ingredients, instructions) {
 
 // Broomfield handoff (2026-09-30), Issue 3: /this-week/<slug>/ pages with
 // fewer than MIN_TAG_PAGE_ITEMS real items are noindexed in the page itself
-// (this-week/[week].astro, via lib/this-week.ts's shouldNoindexWeekPage())
+// (this-week/[week].astro, via lib/week-count.mjs's isThinWeek())
 // -- mirrored here so the sitemap agrees, same MIN_TAG_PAGE_ITEMS threshold
 // already used for jobs/category and home-sales/zip above. Same
 // duplication tradeoff as slugifyAddress/BRAND_TOKENS: site-config.ts's
@@ -231,16 +232,8 @@ function isThinStory(sourceType, body, ingredients, instructions) {
 // DB/site-config dependency, so it's safe to copy verbatim rather than
 // reimport.
 //
-// DELIBERATE SIMPLIFICATION, disclosed rather than silently attempted:
-// this counts raw per-table rows and does NOT run them through
-// buildEventFeed()'s cross-source dedup (an event double-listed by, say,
-// both SDSU and the Chamber collapses to one item on the real page). That
-// means this mirror's count is always >= the real page's count, so in the
-// rare case a week sits exactly at the dedup boundary, this could list a
-// genuinely-thin week as indexable when the page itself noindexes it --
-// the one direction scripts/verify_sitemap_noindex_disjoint.mjs actually
-// checks for. Verified against live 2026-09-30 data that no such
-// disagreement currently exists; revisit if that script ever catches one.
+// The per-week item count is NOT a simplified mirror any more: lib/week-count.mjs (no imports) counts superseded rows out and runs the
+// events through the same cross-source dedup (lib/event-dedup.mjs) as the page, and both this file and this-week/[week].astro call it.
 const THIS_WEEK_TIMEZONES = {
   brookings_sd: 'America/Chicago',
   moreno_valley_ca: 'America/Los_Angeles',
@@ -475,7 +468,7 @@ async function buildLastmodMap(townId, databaseUrl) {
   const noindexStoryUrls = new Set();
   const crossCanonicalStoryUrls = new Set();
   const stories = await sql`
-    SELECT slug, published_at, source_type, body, generated_by, ingredients, instructions, occurs_at, title, venue_raw, superseded_by_slug, is_recurring_series FROM stories WHERE town_id = ${townId}
+    SELECT slug, published_at, source_type, body, generated_by, ingredients, instructions, occurs_at, title, venue_raw, source_url, superseded_by_slug, is_recurring_series FROM stories WHERE town_id = ${townId}
   `;
   for (const s of stories) {
     const storyPathname = `/s/${publicSlugMirror(s.slug)}/`;
@@ -701,27 +694,21 @@ async function buildLastmodMap(townId, databaseUrl) {
   // [week].astro's own getStaticPaths) if a real 'weekly' story exists for
   // it, or it's the current week -- so those are the only slugs checked.
   const thisWeekTz = THIS_WEEK_TIMEZONES[townId] ?? THIS_WEEK_TIMEZONES.brookings_sd;
-  const weekItemCounts = new Map();
-  const bumpWeek = (slug) => weekItemCounts.set(slug, (weekItemCounts.get(slug) ?? 0) + 1);
-
   const pageWeekSlugs = new Set([isoWeekSlugMirror(localDatePartsMirror(new Date(), thisWeekTz))]);
   for (const s of stories) {
-    if (!s.occurs_at) continue;
-    if (s.source_type === 'weekly') {
-      pageWeekSlugs.add(isoWeekSlugMirror(localDatePartsMirror(new Date(s.occurs_at), thisWeekTz)));
-    } else if (s.source_type === 'event') {
-      bumpWeek(isoWeekSlugMirror(localDatePartsMirror(new Date(s.occurs_at), thisWeekTz)));
-    } else if (s.source_type === 'meeting' || s.source_type === 'meeting_followup') {
-      bumpWeek(isoWeekSlugMirror(utcDatePartsMirror(s.occurs_at)));
-    }
+    if (s.occurs_at && s.source_type === 'weekly') pageWeekSlugs.add(isoWeekSlugMirror(localDatePartsMirror(new Date(s.occurs_at), thisWeekTz)));
   }
 
   const projectUpdates = await sql`
     SELECT u.meeting_date FROM project_updates u JOIN projects p ON p.id = u.project_id
      WHERE p.town_id = ${townId} AND u.meeting_date IS NOT NULL
   `;
-  for (const u of projectUpdates) bumpWeek(isoWeekSlugMirror(utcDatePartsMirror(u.meeting_date)));
-
+  // The same arts query as lib/db.ts getAllArtsEvents() (Brookings only, like the page)
+  const artsEvents = townId === 'brookings_sd' ? await sql`
+    SELECT title, starts_at, event_url, location FROM sdsu_events
+     WHERE town_id = ${townId} AND bucket = 'arts_culture' AND NOT is_filtered ORDER BY starts_at ASC LIMIT 1000` : [];
+  let gameStarts = [];
+  let regionalGameDates = [];
   if (townId === 'brookings_sd') {
     // Mirrors getSeasonGames (lib/db.ts): sport_events of program 'sdsu', current season (1 Aug - 31 Jul in the town's zone), scheduled or final.
     const nowParts = localDatePartsMirror(new Date(), thisWeekTz);
@@ -730,11 +717,13 @@ async function buildLastmodMap(townId, databaseUrl) {
       WHERE town_id = ${townId} AND program_id = 'sdsu' AND status IN ('scheduled', 'final') AND withdrawn_at IS NULL
         AND start_at >= make_timestamptz(${seasonYear}, 8, 1, 0, 0, 0, ${thisWeekTz})
         AND start_at < make_timestamptz(${seasonYear + 1}, 8, 1, 0, 0, 0, ${thisWeekTz})`;
-    for (const g of games) bumpWeek(isoWeekSlugMirror(localDatePartsMirror(new Date(g.start_at), thisWeekTz)));
+    gameStarts = games.map((g) => g.start_at);
   } else {
     const regionalGames = await sql`SELECT game_date FROM regional_sports_games WHERE town_id = ${townId} AND game_date IS NOT NULL`;
-    for (const g of regionalGames) bumpWeek(isoWeekSlugMirror(utcDatePartsMirror(g.game_date)));
+    regionalGameDates = regionalGames.map((g) => g.game_date);
   }
+  // One counting function for this filter and for this-week/[week].astro's own noindex (lib/week-count.mjs): superseded rows out, cross-source dedup in.
+  const weekItemCounts = countWeekItems({ stories, artsEvents, projectUpdates, gameStarts, regionalGameDates }, thisWeekTz);
 
   // Only the newest RECENT_WEEKS_INDEXED weeks stay indexable -- mirrors lib/this-week.ts's
   // recentWeekSlugs(): older /this-week/<week>/ pages AND their /s/weekly-* stories are noindex.
@@ -743,7 +732,7 @@ async function buildLastmodMap(townId, databaseUrl) {
   const RECENT_WEEKS_INDEXED = RECENT_WEEKS_OVERRIDE[townId] ?? 8;
   const recentWeekSlugsMirror = new Set([...pageWeekSlugs].sort().reverse().slice(0, RECENT_WEEKS_INDEXED));
   for (const slug of pageWeekSlugs) {
-    if ((weekItemCounts.get(slug) ?? 0) < MIN_TAG_PAGE_ITEMS || !recentWeekSlugsMirror.has(slug)) noindexThinPageUrls.add(`/this-week/${slug}/`);
+    if (isThinWeek(weekItemCounts.get(slug) ?? 0) || !recentWeekSlugsMirror.has(slug)) noindexThinPageUrls.add(`/this-week/${slug}/`);
   }
   for (const s of stories) {
     if ((s.source_type !== 'weekly' && s.source_type !== 'university_digest') || !s.occurs_at) continue;
