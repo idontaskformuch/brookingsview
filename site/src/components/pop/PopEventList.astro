@@ -43,6 +43,7 @@ const rows = days.flatMap((d) => d.rows.map((r, i) => ({ r, first: i === 0, key:
             </span>
             <span class="pl__title">{r.title}{repeats(r) && <span class="pl__rep" title={repeats(r) ?? ''}> ↻</span>}</span>
             <span class="pl__meta">{[r.timeLabel, place(r)].filter(Boolean).join(' · ')}</span>
+            {r.label && <span class="pl__meta pl__city" title={r.label.title ?? undefined}>{r.label.text}</span>}
             {r.note && <span class="pl__meta">{r.note}</span>}
             {(r.free || r.kids || r.teens || (r.tags?.length ?? 0) > 0) && (
               <span class="pl__pills">

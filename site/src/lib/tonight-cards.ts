@@ -130,6 +130,12 @@ export function bigShowLabel(e: Pick<EveningEntry, 'venueCity' | 'lat' | 'lon' |
   return { text, title };
 }
 
+/** The city label of one /tonight event row: big shows get bigShowLabel (home city included), other events cityLabel (null in the home town); null on towns without cityLabels. */
+export function eventCityLabel(e: Pick<EveningEntry, 'source' | 'venueCity' | 'lat' | 'lon' | 'distanceMiles'>, town: CardTown): CityLabel | null {
+  if (!town.cityLabels) return null;
+  return isBigShow(e, town.bigShows) ? bigShowLabel(e, town.homeCity, town.center) : cityLabel(e, town.homeCity, town.center);
+}
+
 /** The second header line: "12 in Broomfield · 31 nearby". Only shown when something is outside town. "In <town>" is only said when every event
  *  tonight has a known city (a count that leaves unknowns out would claim less than is true); "nearby" counts what we know is outside. */
 export function scopeLine(counts: { home: number; near: number; unknown: number }, homeCity: string): string | null {

@@ -10,7 +10,7 @@ import { groupLabel } from '../../lib/evening-items';
 import type { OpenLateRow } from '../../lib/osm-open-late';
 import { OPEN_LATE_MAX_ROWS } from '../../lib/osm-open-late';
 import { eveningPopDays } from '../../lib/pop-days';
-import { bucketOf, isBigShow, cityScope, regionOf, type CardTown, type Regions } from '../../lib/tonight-cards';
+import { bucketOf, isBigShow, cityScope, eventCityLabel, regionOf, type CardTown, type Regions } from '../../lib/tonight-cards';
 
 interface Props { id: string; entries: EveningEntry[]; late: OpenLateRow[]; tz: string; regions?: Regions; town: CardTown; osmChecked: string; /** The first evening says "Open tonight", the next one "Open tomorrow night". */ tonight?: boolean }
 const { id, entries, late, tz, regions = {}, town, osmChecked, tonight = true } = Astro.props;
@@ -20,7 +20,7 @@ const attrsOf = (e: EveningEntry) => ({
   'data-scope': town.cityLabels ? cityScope(e.venueCity, town.homeCity) : undefined, 'data-big': isBigShow(e, town.bigShows) ? '1' : undefined,
   'data-group': e.group ? groupLabel(e.group, town.country) : '',
 });
-const days = eveningPopDays(entries, tz, town.country, attrsOf);
+const days = eveningPopDays(entries, tz, town.country, attrsOf, town.cityLabels ? (e) => eventCityLabel(e, town) : undefined);
 ---
 {entries.length > 0 && (
   <section class="tc-events" aria-label="Events">

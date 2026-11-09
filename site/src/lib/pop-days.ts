@@ -6,10 +6,11 @@ import { driveLabel, distanceText, type EveningEntry } from './evening-items';
 import { eveningCategory } from './pop-categories';
 import { showTimeGb } from './whats-on-dates';
 import type { WeekRow } from './week-groups';
+import type { CityLabel } from './tonight-cards';
 
 /** What the date-tile list prints for one row. A DayRow is one (its link comes from `item`); a big show is built straight into one (its link is `href`). */
 export type PopRow = Pick<DayRow, 'dayKey' | 'timeLabel' | 'title' | 'venue' | 'area' | 'free' | 'kids' | 'teens' | 'cat' | 'start' | 'end' | 'recurrence'>
-  & { /** Where the date tile starts when that is earlier than `start` (a week row that repeats over several days; `start`/`end` stay the LAST occurrence, which is what decides when the row is over). */ tileFrom?: string; item?: FeedItem; href?: string; note?: string; tags?: string[]; /** Extra attributes on the row's <li> (the page's own hooks, e.g. data-group, data-card for /tonight's filters). */ attrs?: Record<string, string | undefined> };
+  & { /** Where the date tile starts when that is earlier than `start` (a week row that repeats over several days; `start`/`end` stay the LAST occurrence, which is what decides when the row is over). */ tileFrom?: string; item?: FeedItem; href?: string; note?: string; /** "Denver · 15 mi" on its own line under the meta line (/tonight on towns with cityLabels; the title is the tooltip saying it is a straight-line distance). */ label?: CityLabel; tags?: string[]; /** Extra attributes on the row's <li> (the page's own hooks, e.g. data-group, data-card for /tonight's filters). */ attrs?: Record<string, string | undefined> };
 export interface PopDay { dayKey: string; rows: PopRow[] }
 
 export function groupRowsByDay(rows: DayRow[]): DayGroup[] {
@@ -22,18 +23,19 @@ export function groupRowsByDay(rows: DayRow[]): DayGroup[] {
   return out;
 }
 
-/** /tonight and /this-weekend entries as rows of the time-tile list: one day, so one group; "venue · neighbourhood · distance · about N min" as on the old rows. */
-export function eveningPopDays(entries: EveningEntry[], tz: string, country: string, attrsOf?: (e: EveningEntry) => Record<string, string | undefined>): PopDay[] {
+/** /tonight and /this-weekend entries as rows of the time-tile list: one day, so one group; "venue · neighbourhood · distance · about N min" as on the old rows.
+ *  With `labelOf` (/tonight on towns with cityLabels) the distance and drive time are left out of the meta line and the city label takes their place on its own line, as on the old cards. */
+export function eveningPopDays(entries: EveningEntry[], tz: string, country: string, attrsOf?: (e: EveningEntry) => Record<string, string | undefined>, labelOf?: (e: EveningEntry) => CityLabel | null): PopDay[] {
   const key = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
   const days: PopDay[] = [];
   for (const e of [...entries].sort((a, b) => a.start.localeCompare(b.start))) {
     const dayKey = key.format(new Date(e.start));
     const row: PopRow = {
-      dayKey, timeLabel: '', title: e.title, venue: e.venue, area: [e.area, distanceText(e.distanceMiles, country), driveLabel(e.driveMinutes)].filter(Boolean).join(' · ') || null,
+      dayKey, timeLabel: '', title: e.title, venue: e.venue, area: (labelOf ? e.area : [e.area, distanceText(e.distanceMiles, country), driveLabel(e.driveMinutes)].filter(Boolean).join(' · ')) || null,
       free: e.labels.includes('Free'), kids: false, teens: false, cat: eveningCategory(e.group), start: e.start, end: e.end, recurrence: 'one_off',
       href: e.href ?? undefined, tags: e.labels.filter((l) => l !== 'Free'),
       note: e.laterStarts?.length ? `Also ${e.laterStarts.map((t) => showTimeGb(t, tz)).join(', ')}` : undefined,
-      attrs: attrsOf?.(e),
+      attrs: attrsOf?.(e), label: labelOf?.(e) ?? undefined,
     };
     const last = days[days.length - 1];
     if (last && last.dayKey === dayKey) last.rows.push(row); else days.push({ dayKey, rows: [row] });
