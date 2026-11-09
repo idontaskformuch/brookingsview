@@ -89,3 +89,9 @@ function labelForDays(n: number): string | null {
 export function isOver(e: TimedEvent, now: Date, tz: string): boolean {
   return hasEnded(e, now, tz);
 }
+
+/** A link that leaves the site: an absolute http(s) URL whose host is not the town's own domain (www or not). Relative links and own-domain URLs are internal. */
+export function isExternalHref(href: string | undefined | null, domain: string): boolean {
+  if (!href || !/^https?:\/\//i.test(href)) return false;
+  try { return new URL(href).hostname.replace(/^www\./i, '').toLowerCase() !== domain.replace(/^www\./i, '').toLowerCase(); } catch { return false; }
+}

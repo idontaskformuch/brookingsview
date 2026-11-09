@@ -65,6 +65,14 @@ describe('weekPopDays', () => {
     expect(day.dayKey).toBe('2026-11-13');
     expect(day.rows[0]).toMatchObject({ tileFrom: '2026-11-13T14:00:00Z', start: '2026-11-15T14:00:00Z', end: '2026-11-15T22:00:00Z' });
   });
+  it('a row on several days says so on the meta line: "8am · through Sun", a day list as written, nothing for a one-day row', () => {
+    const t = (when: string) => weekPopDays([row({ when, firstStart: '2026-11-13T14:00:00Z', start: '2026-11-15T14:00:00Z' })], CHI)[0].rows[0].timeLabel;
+    expect(t('Fri–Sun 8am')).toBe('8am · through Sun');
+    expect(t('Fri–Sun all day')).toBe('all day · through Sun');
+    expect(t('Mon, Wed, Fri 7:30pm')).toBe('7:30pm · Mon, Wed, Fri');
+    expect(t('Fri 7pm')).toBe('7pm');
+    expect(t('Fri')).toBe('');
+  });
   it('a one-day row has no tileFrom', () => {
     expect(weekPopDays([row({})], CHI)[0].rows[0].tileFrom).toBeUndefined();
   });

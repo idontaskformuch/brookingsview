@@ -43,11 +43,19 @@ export function eveningPopDays(entries: EveningEntry[], tz: string, country: str
   return days;
 }
 
+/** What the old "when" text said about a row on several days: "Fri–Sun 8am" -> "through Sun", "Mon, Wed, Fri 8am" -> "Mon, Wed, Fri"; nothing for a one-day row. */
+export function daysNote(when: string): string {
+  const days = when.replace(/\s*(\d{1,2}(?::\d{2})?\s?(?:am|pm)|all day)\s*$/i, '').trim();
+  const range = /[–-]\s*([A-Z][a-z]{2})$/.exec(days);
+  if (range) return `through ${range[1]}`;
+  return days.includes(',') ? days : '';
+}
+
 /** A theme group of the week roundup / university digest as rows of the date-tile list (the tile carries the day, the meta line the clock time). */
 export function weekPopDays(rows: WeekRow[], tz: string): PopDay[] {
   const key = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
   return groupPop(rows.map((r) => {
-    const time = /\b\d{1,2}(?::\d{2})?\s?(?:am|pm)\b|\ball day\b/i.exec(r.when)?.[0] ?? '';
+    const time = [/\b\d{1,2}(?::\d{2})?\s?(?:am|pm)\b|\ball day\b/i.exec(r.when)?.[0] ?? '', daysNote(r.when)].filter(Boolean).join(' · ');
     return {
       dayKey: key.format(new Date(r.firstStart)), timeLabel: time, tileFrom: r.firstStart !== r.start ? r.firstStart : undefined, title: r.title, venue: r.venue, area: null, free: false, kids: false, teens: false, cat: null,
       start: r.start, end: r.end, recurrence: 'one_off' as const, href: r.href ?? undefined,

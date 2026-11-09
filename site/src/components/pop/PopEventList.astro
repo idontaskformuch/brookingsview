@@ -7,7 +7,7 @@ import DayTile from './DayTile.astro';
 import TimeTile from './TimeTile.astro';
 import CategoryDot from './CategoryDot.astro';
 import Pill from '../ui/Pill.astro';
-import { dayTile, timeTile } from '../../lib/event-pop';
+import { dayTile, timeTile, isExternalHref } from '../../lib/event-pop';
 import { popCategory } from '../../lib/pop-categories';
 import type { PopDay, PopRow } from '../../lib/pop-days';
 import { itemLink } from '../../lib/events';
@@ -34,7 +34,7 @@ const rows = days.flatMap((d) => d.rows.map((r, i) => ({ r, first: i === 0, key:
     const Tag = href ? 'a' : 'div';
     return (
       <li class="pl__li" data-pop-row data-day-key={key} data-start={keepOver ? undefined : r.start} data-end={keepOver ? undefined : (r.end ?? undefined)} data-tz={tz} id={first ? `${idPrefix}-${key}` : undefined} {...r.attrs}>
-        <Tag class="pl__card" href={href}>
+        <Tag class="pl__card" href={href} target={isExternalHref(href, siteConfig.domain) ? '_blank' : undefined} rel={isExternalHref(href, siteConfig.domain) ? 'noopener' : undefined}>
           {tile === 'time' ? <TimeTile model={timeTile(r.start, tz)} /> : <DayTile model={r.tileFrom ? dayTile(r.tileFrom, r.end ?? r.start, tz, country) : dayTile(r.start, r.end, tz, country)} dup={!first} />}
           <span class="pl__main">
             <span class="pl__top">
