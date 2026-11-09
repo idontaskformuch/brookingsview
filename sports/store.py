@@ -43,13 +43,17 @@ def upsert_events(cur, town_id: str, events: list[NormalizedEvent]) -> int:
 
 
 def record_health(cur, town_id: str, source_id: str, *, event_count: int | None = None, error: str | None = None, warning: str | None = None) -> None:
-    """A success may carry a `warning` (sports/withdraw.py guards that held something back); a clean success clears the previous one."""
+    """A success may carry a `warning` (a page that was skipped, a withdraw guard that held something back); a clean success clears the previous one.
+    last_error_at keeps the time the SAME warning first appeared (scripts/check_freshness.py opens an issue when one has lasted more than 3 days);
+    a different warning text, or an error, starts the clock again."""
     now = datetime.now(timezone.utc)
     if error is None:
         cur.execute(
             """INSERT INTO sport_sources_health (town_id, source_id, last_success, event_count, last_error, last_error_at) VALUES (%s,%s,%s,%s,%s,%s)
                ON CONFLICT (town_id, source_id) DO UPDATE SET last_success=EXCLUDED.last_success, event_count=EXCLUDED.event_count,
-                 last_error=EXCLUDED.last_error, last_error_at=EXCLUDED.last_error_at""",
+                 last_error_at=CASE WHEN EXCLUDED.last_error IS NOT NULL AND sport_sources_health.last_error IS NOT DISTINCT FROM EXCLUDED.last_error
+                                    THEN COALESCE(sport_sources_health.last_error_at, EXCLUDED.last_error_at) ELSE EXCLUDED.last_error_at END,
+                 last_error=EXCLUDED.last_error""",
             (town_id, source_id, now, event_count or 0, warning[:500] if warning else None, now if warning else None))
     else:
         cur.execute(

@@ -218,3 +218,57 @@ def test_register_issue_is_in_the_freshness_scope_and_never_closed_by_other_runs
     stale = issue_for(f, comments=[CLEAN_MARK])
     assert [a["op"] for a in plan_actions([], [stale], clean_to_close=2, scope_towns=ALL_TOWNS_SCOPE, scope_checks=lambda c: c in cf.FRESHNESS_CHECKS)] == ["close"]
     assert plan_actions([], [stale], clean_to_close=2, scope_towns=ALL_TOWNS_SCOPE, scope_checks=lambda c: c == "ops.scrape-liveness") == []
+
+
+# ---------------------------------------------------------------- ops.sport-warning: the same `warning:` for more than 3 days
+
+WARN = "warning: mens-basketball: not read (RuntimeError: /sports/mens-basketball/schedule/text answered None (after one retry)); its rows were left as they were"
+
+
+def test_a_warning_older_than_three_days_opens_a_finding_that_names_the_source_and_the_warning():
+    f = cf.sport_warning_finding("brookings_sd", "internal:sdsu", WARN, NOW - timedelta(days=3, minutes=1), NOW)
+    assert f["check"] == "ops.sport-warning" == cf.CHECK_ID["sportwarn"] and f["town"] == "brookings_sd" and f["pattern"] == "internal:sdsu"
+    assert "mens-basketball" in f["message"] and "3.0 days" in f["message"]
+
+
+def test_three_days_exactly_and_younger_warnings_are_quiet():
+    assert cf.sport_warning_finding("t", "s", WARN, NOW - timedelta(days=3), NOW) is None
+    assert cf.sport_warning_finding("t", "s", WARN, NOW - timedelta(hours=5), NOW) is None
+
+
+def test_errors_clean_runs_and_missing_data_are_not_warnings():
+    old = NOW - timedelta(days=9)
+    for text in (None, "", "RuntimeError: x answered None", "skipped: robots.txt disallows"):
+        assert cf.sport_warning_finding("t", "s", text, old, NOW) is None
+    assert cf.sport_warning_finding("t", "s", WARN, None, NOW) is None
+
+
+def test_collect_checks_every_active_source_and_the_issue_closes_when_the_warning_is_gone(monkeypatch):
+    monkeypatch.setattr(cf, "sport_sources", lambda: [("brookings_sd", "internal:sdsu"), ("brookings_sd", "internal:sdsu-club-hockey")])
+    rows = {"internal:sdsu": (WARN, NOW - timedelta(days=4)), "internal:sdsu-club-hockey": (None, None)}
+
+    class Conn:
+        def execute(self, sql, params):
+            self.row = rows.get(params[1])
+            return self
+
+        def fetchone(self):
+            return self.row
+
+    findings, lines = cf.collect(Conn(), NOW, {"sportwarn"}, NOW.date())
+    assert [(f["check"], f["pattern"]) for f in findings] == [("ops.sport-warning", "internal:sdsu")] and len(lines) == 2
+    # once the warning is gone the next run reports nothing for it: the existing close rule (two clean runs) then closes the issue
+    rows["internal:sdsu"] = (None, None)
+    assert cf.collect(Conn(), NOW, {"sportwarn"}, NOW.date())[0] == []
+    open_issue = issue_for(findings[0], comments=[CLEAN_MARK])  # the earlier clean run plus this one = two clean runs
+    acts = plan_actions([], [open_issue], clean_to_close=2, scope_towns=ALL_TOWNS_SCOPE, scope_checks=lambda c: c in cf.FRESHNESS_CHECKS)
+    assert [a["op"] for a in acts] == ["close"]
+    # and a run that checks only the sport freshness leaves the warning issue alone
+    assert plan_actions([], [open_issue], clean_to_close=2, scope_towns=ALL_TOWNS_SCOPE, scope_checks=lambda c: c == cf.CHECK_ID["sport"]) == []
+
+
+def test_the_store_keeps_the_time_of_the_first_identical_warning():
+    import inspect
+    from sports import store
+    sql = inspect.getsource(store.record_health)
+    assert "IS NOT DISTINCT FROM EXCLUDED.last_error" in sql and "COALESCE(sport_sources_health.last_error_at, EXCLUDED.last_error_at)" in sql

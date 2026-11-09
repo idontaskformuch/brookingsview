@@ -4,6 +4,8 @@ The scrape watchdog (check_scrape_liveness.py) covers the twice-daily scrape. Th
 issues are independent (qa/report.py `scope_checks`: a run of this script only ever opens/closes ops.*-freshness / token issues):
 
   ops.sport-freshness    sport_sources_health.last_success per ACTIVE sports source (configs sports.enabled)        26 h  (one daily run, 17:00 UTC)
+  ops.sport-warning      a `warning:` in sport_sources_health.last_error (a page skipped, a guard that held rows back) that has lasted > 3 days
+                         unchanged; the source still counts as fresh, so only this check shows a sport page that fails every day
   ops.weather-freshness  weather_snapshots, newest row per town, payload->>'fetched_at' (written every whole hour)    3 h
   ops.alerts-freshness   dispatcher_heartbeat job 'alerts' per town (written by the Worker after each good 15-min fetch) 2 h
   ops.safety-freshness   dispatcher_heartbeat job 'safety' per safety town (wildfire + air quality)                    3 h
@@ -38,7 +40,8 @@ TOKEN_EXPIRES = date(2027, 10, 21)
 TOKEN_WARN_DAYS = 30  # the issue opens on 2027-09-21
 
 LIMIT_HOURS = {"sport": 26, "weather": 3, "alerts": 2, "safety": 3}
-CHECK_ID = {"sport": "ops.sport-freshness", "weather": "ops.weather-freshness", "alerts": "ops.alerts-freshness",
+SPORT_WARNING_DAYS = 3
+CHECK_ID = {"sport": "ops.sport-freshness", "sportwarn": "ops.sport-warning", "weather": "ops.weather-freshness", "alerts": "ops.alerts-freshness",
             "safety": "ops.safety-freshness", "register": "ops.evening-register-freshness", "token": "ops.token-expiry"}
 FRESHNESS_CHECKS = set(CHECK_ID.values())
 
@@ -104,6 +107,18 @@ def register_findings(town: str, valid: int, last_check: datetime | None, now: d
     return out
 
 
+def sport_warning_finding(town: str, source_id: str, last_error: str | None, since: datetime | None, now: datetime) -> dict | None:
+    """A finding when the source's last_error is a `warning:` that first appeared more than SPORT_WARNING_DAYS ago (the store keeps the time of the
+    first identical warning). Pure, so it is tested without a DB. An error ('RuntimeError: ...', 'skipped: ...') is not a warning: a failed run is
+    already the freshness check's business."""
+    if not last_error or not last_error.startswith("warning:") or since is None or now - since <= timedelta(days=SPORT_WARNING_DAYS):
+        return None
+    days = (now - since).total_seconds() / 86400
+    return {"check": CHECK_ID["sportwarn"], "town": town, "pattern": source_id, "path": f"/{town}/{source_id}",
+            "message": f"{source_id}: the same warning has been in sport_sources_health.last_error for {days:.1f} days (limit {SPORT_WARNING_DAYS}): "
+                       f"{last_error[:300]} Part of the schedule is not being read; check the brookingsview sports workflow log."}
+
+
 def token_findings(today: date) -> list[dict]:
     left = (TOKEN_EXPIRES - today).days
     if left > TOKEN_WARN_DAYS:
@@ -146,6 +161,13 @@ def collect(conn, now: datetime, only: set[str], today: date) -> tuple[list[dict
         for town, source_id in sport_sources():
             row = conn.execute("SELECT last_success FROM sport_sources_health WHERE town_id = %s AND source_id = %s", (town, source_id)).fetchone()
             judge("sport", town, source_id, row[0] if row else None)
+    if "sportwarn" in only:
+        for town, source_id in sport_sources():
+            row = conn.execute("SELECT last_error, last_error_at FROM sport_sources_health WHERE town_id = %s AND source_id = %s", (town, source_id)).fetchone()
+            found = sport_warning_finding(town, source_id, row[0] if row else None, row[1] if row else None, now)
+            lines.append(f"  [freshness] sportwarn {town}/{source_id}: {'ISSUE' if found else 'ok'}")
+            if found:
+                findings.append(found)
     if "weather" in only:
         for town in WEATHER_TOWNS:
             row = conn.execute("SELECT payload->>'fetched_at' FROM weather_snapshots WHERE town_id = %s ORDER BY observed_for DESC LIMIT 1", (town,)).fetchone()
