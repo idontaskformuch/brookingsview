@@ -403,9 +403,9 @@ describe('big shows on /tonight', () => {
   it('the page and the browser both split through partitionBig, and the card carries the label and data-big', () => {
     const page = readFileSync(new URL('../pages/tonight.astro', import.meta.url), 'utf8');
     const client = readFileSync(new URL('./tonight-cards-client.ts', import.meta.url), 'utf8');
-    const card = readFileSync(new URL('../components/tonight/TonightCard.astro', import.meta.url), 'utf8');
+    const rows = readFileSync(new URL('../components/tonight/TonightRows.astro', import.meta.url), 'utf8');
     expect(page).toMatch(/partitionBig\(/); expect(client).toMatch(/partitionBig\(/);
-    expect(card).toMatch(/bigShowLabel\(/); expect(card).toMatch(/data-big/);
+    expect(rows).toMatch(/data-big/); // the event rows carry it (the date-tile list); TonightCard is the Open tonight place card only
     expect(client).not.toMatch(/events: liveAll\.length/);
   });
   it('Broomfield has bigShows on and Glasgow does not', () => {

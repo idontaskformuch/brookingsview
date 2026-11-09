@@ -1,39 +1,23 @@
 ---
-/** One card of /tonight (spec .claude/specs/tonight-cards.md). The whole card is the link. The big line is the time; the category colour is
- *  the top edge and the tag. Badges only from stated data (lib/tonight-cards.ts badgesFor). */
-import type { EveningEntry } from '../../lib/evening-items';
-import { driveLabel, groupLabel } from '../../lib/evening-items';
-import { showTimeGb } from '../../lib/whats-on-dates';
-import { bucketOf, badgesFor, bucketLabel, cityLabel, cityScope, bigShowLabel, isBigShow, BUCKET_CATEGORY, type CardTown } from '../../lib/tonight-cards';
+/** One Open tonight card of /tonight (spec .claude/specs/tonight-cards.md): a place, not an event (events are rows of the date-tile list, see TonightRows).
+ *  The whole card is the link. The big line is the closing time; the category colour is the top edge and the tag. */
+import { bucketLabel, BUCKET_CATEGORY, type CardTown } from '../../lib/tonight-cards';
 import Card from '../ui/Card.astro';
-import Pill from '../ui/Pill.astro';
 import type { OpenLateRow } from '../../lib/osm-open-late';
 
-interface Props { e?: EveningEntry; place?: OpenLateRow; tz: string; /** Coarse area the chips filter by (lib/tonight-cards.ts regionOf); null = only under All. */ region?: string | null; town: CardTown }
-const { e, place, tz, region = null, town } = Astro.props;
-const bucket = place ? 'late' : bucketOf(e!.group);
-const href = place ? place.website : e!.href;
-const time = place ? place.closing : [e!.start, ...(e!.laterStarts ?? [])].map((t) => showTimeGb(t, tz)).filter(Boolean)[0] ?? '';
-const title = place ? place.name : e!.title;
-const big = !place && isBigShow(e!, town.bigShows);
-const city = !place && town.cityLabels ? (big ? bigShowLabel(e!, town.homeCity, town.center) : cityLabel(e!, town.homeCity, town.center)) : null;
-const metaParts = place ? [place.kind, place.area] : [e!.venue, e!.area, town.cityLabels ? null : driveLabel(e!.driveMinutes)];
-const meta = metaParts.filter(Boolean).join(' · ');
-const tag = place ? bucketLabel('late', town.country) : (e!.group ? groupLabel(e!.group, town.country) : bucketLabel('other', town.country));
-const badges = place ? [] : badgesFor(e!, town.hidePrice);
-const scope = !place && town.cityLabels ? cityScope(e!.venueCity, town.homeCity) : undefined;
-const cat = BUCKET_CATEGORY[bucket];
+interface Props { place: OpenLateRow; tz: string; /** Coarse area the chips filter by (lib/tonight-cards.ts regionOf); null = only under All. */ region?: string | null; town: CardTown }
+const { place, region = null, town } = Astro.props;
+const meta = [place.kind, place.area].filter(Boolean).join(' · ');
+const cat = BUCKET_CATEGORY.late;
 ---
-<li class="tc-card" data-card data-bucket={bucket} data-id={place ? place.osmId : e!.id}
-  data-start={place ? place.start : e!.start} data-end={(place ? place.end : e!.end) ?? undefined} data-area={region ?? undefined}
-  data-scope={scope} data-big={big ? '1' : undefined} data-late={place ? '' : undefined} style={`--c: var(--tc-${bucket})`}>
-  <Card cat={cat ?? undefined} neutral={!cat} href={href ?? undefined} class="tc-link">
-    {time && <span class="tc-time" data-tc-time>{time}</span>}
-    <span class="tc-title">{title}</span>
-    {(meta || city) && <span class="tc-meta">{meta}{meta && city && ' · '}{city && <span class="tc-city" title={city.title ?? undefined}>{city.text}</span>}</span>}
+<li class="tc-card" data-card data-bucket="late" data-id={place.osmId} data-start={place.start} data-end={place.end ?? undefined} data-area={region ?? undefined}
+  data-late="" style="--c: var(--tc-late)">
+  <Card cat={cat ?? undefined} neutral={!cat} href={place.website ?? undefined} class="tc-link">
+    {place.closing && <span class="tc-time" data-tc-time>{place.closing}</span>}
+    <span class="tc-title">{place.name}</span>
+    {meta && <span class="tc-meta">{meta}</span>}
     <span class="tc-foot">
-      <span class="tc-tag">{tag}</span>
-      {badges.map((b) => <Pill cat={cat ?? undefined}>{b.text}</Pill>)}
+      <span class="tc-tag">{bucketLabel('late', town.country)}</span>
     </span>
   </Card>
 </li>

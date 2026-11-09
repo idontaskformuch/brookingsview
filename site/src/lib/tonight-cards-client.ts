@@ -58,7 +58,10 @@ export function initTonightCards(doc: Document): void {
     $$(doc, '[data-tc-rows] [data-card]:not([data-late]) [data-tc-time]').forEach((t) => {
       const card = t.closest<HTMLElement>('[data-card]')!;
       const s = timeState(card.dataset.start || '', card.dataset.end || null, now, tz);
-      t.textContent = s.text;
+      // an event row's label (data-tc-live-only) shows only "On now" / "in N min": the clock time is already in its tile
+      const liveOnly = t.hasAttribute('data-tc-live-only');
+      t.textContent = liveOnly && s.kind === 'clock' ? '' : s.text;
+      if (liveOnly) t.hidden = t.textContent === '';
       card.classList.toggle('is-now', s.kind === 'now');
       card.classList.toggle('is-soon', s.kind === 'soon');
     });

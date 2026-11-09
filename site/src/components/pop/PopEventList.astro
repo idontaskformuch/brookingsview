@@ -16,9 +16,11 @@ import { siteConfig } from '../../lib/site-config';
 /** `noteOf` replaces the area on a row's meta line (e.g. "4 mi away" in the Nearby list). A row's `note` is an extra line under the meta line. */
 /** `tile` 'time' (single-day lists: /tonight, /this-weekend) prints the start time in the tile slot, and no relative-day label.
  *  `listAttrs` go on the <ul> (the pages' own hooks, e.g. data-hide-ended); a row's `attrs` go on its <li>. `keepOver` is for archive lists (a past week
- *  keeps every row): the rows then carry no start/end, so nothing in the browser removes them. */
-interface Props { days: PopDay[]; tz?: string; idPrefix?: string; noteOf?: (r: PopRow) => string | null; tile?: 'date' | 'time'; listAttrs?: Record<string, string | undefined>; keepOver?: boolean }
-const { days, tz = siteConfig.timezone, idPrefix = 'day', noteOf, tile = 'date', listAttrs = {}, keepOver = false } = Astro.props;
+ *  keeps every row): the rows then carry no start/end, so nothing in the browser removes them.
+ *  `live` (/tonight): each row gets an empty [data-tc-time] label in the top-right slot of the time-tile list; lib/tonight-cards-client.ts fills it every minute
+ *  with "On now" or "in N min" (nothing otherwise) and sets .is-now / .is-soon on the row. Same slot the date list uses for "Today", so the layout does not move. */
+interface Props { days: PopDay[]; tz?: string; idPrefix?: string; noteOf?: (r: PopRow) => string | null; tile?: 'date' | 'time'; listAttrs?: Record<string, string | undefined>; keepOver?: boolean; live?: boolean }
+const { days, tz = siteConfig.timezone, idPrefix = 'day', noteOf, tile = 'date', listAttrs = {}, keepOver = false, live = false } = Astro.props;
 const country = siteConfig.country === 'gb' ? 'gb' : 'us';
 const hrefOf = (r: PopRow) => r.href ?? (r.item ? itemLink(r.item) ?? undefined : undefined);
 const place = (r: PopRow) => [r.venue, noteOf?.(r) ?? r.area].filter(Boolean).join(' · ');
@@ -37,7 +39,7 @@ const rows = days.flatMap((d) => d.rows.map((r, i) => ({ r, first: i === 0, key:
           <span class="pl__main">
             <span class="pl__top">
               {cat.name ? <CategoryDot name={cat.name} token={cat.token} /> : <span></span>}
-              {tile === 'date' ? <span class="pl__rel" data-pop-rel hidden></span> : <span></span>}
+              {tile === 'date' ? <span class="pl__rel" data-pop-rel hidden></span> : live ? <span class="pl__live" data-tc-time data-tc-live-only hidden></span> : <span></span>}
             </span>
             <span class="pl__title">{r.title}{repeats(r) && <span class="pl__rep" title={repeats(r) ?? ''}> ↻</span>}</span>
             <span class="pl__meta">{[r.timeLabel, place(r)].filter(Boolean).join(' · ')}</span>
@@ -73,6 +75,10 @@ const rows = days.flatMap((d) => d.rows.map((r, i) => ({ r, first: i === 0, key:
   .pl__main { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; flex: 1; }
   .pl__top { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-2); min-height: 1.125rem; }
   .pl__rel { font-family: var(--font-ui); font-size: 0.75rem; font-weight: 700; color: var(--brand-accent-ink, var(--accent)); white-space: nowrap; }
+  .pl__live { font-family: var(--font-ui); font-size: 0.75rem; font-weight: 700; color: var(--brand-accent-ink, var(--accent)); white-space: nowrap; }
+  .pl__li.is-now .pl__live::before { content: ''; display: inline-block; width: 0.55em; height: 0.55em; margin-right: 0.35em; border-radius: 50%; background: currentColor; vertical-align: 0.04em; }
+  /* "On now": a thin bar on the card's left edge, drawn inside (inset shadow), so nothing is resized */
+  .pl__li.is-now .pl__card { box-shadow: inset 3px 0 0 var(--brand-accent-ink, var(--accent)); }
   .pl__title { font-family: var(--font-head); font-size: 1.1875rem; line-height: 1.25; color: var(--ink); }
   .pl__rep { color: var(--ink-soft); }
   .pl__meta { font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); font-variant-numeric: tabular-nums; }

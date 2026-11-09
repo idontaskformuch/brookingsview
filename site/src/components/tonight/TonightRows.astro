@@ -24,7 +24,7 @@ const days = eveningPopDays(entries, tz, town.country, attrsOf);
 ---
 {entries.length > 0 && (
   <section class="tc-events" aria-label="Events">
-    <PopEventList days={days} tile="time" idPrefix={id} listAttrs={{ 'data-tc-rows': '', 'data-hide-ended': '' }} />
+    <PopEventList days={days} tile="time" live idPrefix={id} listAttrs={{ 'data-tc-rows': '', 'data-hide-ended': '' }} />
   </section>
 )}
 {lateRows.length > 0 && (
