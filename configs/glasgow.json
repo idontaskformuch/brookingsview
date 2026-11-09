@@ -235,7 +235,7 @@
         "gender": "men",
         "url": "https://api.sportmonks.com/v3/football/fixtures/between",
         "note": "Sportmonks Football Free Plan (Scottish Premiership, league 501; 180 requests/hour). Written answer 2026-11-08 (ticket Sportmonks-114845), see notes: sources/sportmonks: ad-funded display and caching OK, no attribution required (footer line kept by the owner), raw data must NOT be redistributed (never in ICS/JSON/RSS: config/sports.json noRedistribution), no logos or photos. Needs SPORTMONKS_API_KEY. enabled stays false until the first approved live run and a scheduled workflow exist.",
-        "params": { "league_id": 501, "competition": "Scottish Premiership", "tz": "Europe/London", "days_back": 30, "days_forward": 90 }
+        "params": { "league_id": 501, "competition": "Scottish Premiership", "tz": "Europe/London", "days_back": 30, "days_forward": 60 }
       }
     ],
     "source_priority": ["sportmonks"],

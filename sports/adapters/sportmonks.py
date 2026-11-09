@@ -2,7 +2,7 @@
 
 params: url (https://api.sportmonks.com/v3/football/fixtures/between, preflighted by the runner), program (sport_programs id, the league),
         league_id (default 501), competition (shown name), sport (default "soccer"), level (default "pro"), gender (default "men"),
-        tz (default Europe/London), days_back (30), days_forward (90).
+        tz (default Europe/London), days_back (30), days_forward (60); the window may be at most MAX_WINDOW_DAYS (100, Sportmonks' limit for fixtures/between, else a 422).
 
 One request per page of `fixtures/between/{from}/{to}?include=participants;venue;scores;state&filters=fixtureLeagues:{league}`, 50 fixtures a page,
 at most MAX_PAGES pages per run. The free plan allows 180 requests an hour per entity (`rate_limit.remaining` in every answer); the run stops
@@ -34,6 +34,7 @@ from sports.models import Fetched, NormalizedEvent
 NAME = "sportmonks"
 PER_PAGE = 50
 MAX_PAGES = 12
+MAX_WINDOW_DAYS = 100  # Sportmonks answers 422 for a fixtures/between range longer than this
 RATE_RESERVE = 30  # of the 180 requests an hour; other jobs share the entity
 INCLUDES = "participants;venue;scores;state"
 
@@ -122,7 +123,9 @@ def _page(http: PoliteHttp, params: dict, start: date, end: date, page: int) -> 
 def fetch(params: dict, today: date | None = None) -> Fetched:
     http = params.get("_http") or PoliteHttp()
     today = today or datetime.now(timezone.utc).date()
-    start, end = today - timedelta(days=params.get("days_back", 30)), today + timedelta(days=params.get("days_forward", 90))
+    start, end = today - timedelta(days=params.get("days_back", 30)), today + timedelta(days=params.get("days_forward", 60))
+    if (end - start).days > MAX_WINDOW_DAYS:
+        raise RuntimeError(f"Sportmonks: the window {start}..{end} is {(end - start).days} days; fixtures/between allows at most {MAX_WINDOW_DAYS}. Lower days_back/days_forward")
     scope = {"program": params["program"], "sport": params.get("sport", "soccer"), "gender": params.get("gender", "men"), "slug": "fixtures"}
     seen: dict = {}
     out = Fetched()

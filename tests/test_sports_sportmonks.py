@@ -125,7 +125,7 @@ def test_token_goes_in_the_header_only_never_in_a_url_or_an_error():
     net, _ = fetch([UPCOMING])
     url, headers = net.calls[0]
     assert headers["Authorization"] == SECRET and SECRET not in url
-    assert "/fixtures/between/2026-09-28/2027-01-26?" in url and "fixtureLeagues:501" in url
+    assert "/fixtures/between/2026-09-28/2026-12-27?" in url and "fixtureLeagues:501" in url
     bad = Net([], status=500)
     with pytest.raises(RuntimeError) as err:
         sportmonks.fetch(params(bad), today=date(2026, 10, 28))
@@ -225,3 +225,22 @@ def test_dry_run_reports_a_refusal_without_retrying_and_still_writes_nothing():
     lines: list[str] = []
     assert runner.dry_run_town(CFG, http_factory=lambda s: net.http(), out=lines.append) == {"sportmonks:scottish-premiership": "skipped"}
     assert len(net.calls) == 1 and "skipped" in lines[0]
+
+
+def test_the_configured_window_is_30_back_60_forward_and_the_call_is_one_league_50_a_page():
+    net, _ = fetch([UPCOMING])
+    url = net.calls[0][0]
+    assert "per_page=50" in url and "filters=fixtureLeagues:501" in url
+    assert params(net)["days_back"] == 30 and params(net)["days_forward"] == 60
+
+
+def test_a_window_over_100_days_stops_with_a_clear_error_before_any_request():
+    net = Net([UPCOMING])
+    p = params(net)
+    p["days_forward"] = 71  # 30 + 71 = 101 days: Sportmonks answers 422
+    with pytest.raises(RuntimeError, match="at most 100"):
+        sportmonks.fetch(p, today=date(2026, 10, 28))
+    assert net.calls == []
+    p["days_forward"] = 70  # exactly 100 is allowed
+    sportmonks.fetch(p, today=date(2026, 10, 28))
+    assert len(net.calls) == 1
