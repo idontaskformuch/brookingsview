@@ -1,8 +1,9 @@
 {
-  "_note": "Single source for the sport registry. Python reads this file; site/src/lib/sports-registry.generated.ts is generated from it by scripts/gen_sports_registry.py (a test fails if they drift). Unknown sport ids fail the build.",
+  "_note": "Single source for the sport registry. Python reads this file; site/src/lib/sports-registry.generated.ts is generated from it by scripts/gen_sports_registry.py (a test fails if they drift). Unknown sport ids fail the build. noRedistribution = sport_events sources whose terms forbid passing the raw data on (ICS, JSON, RSS, any feed or public API): they are shown on pages only; see .claude/sources/.",
   "resultTypes": ["score", "placing", "time", "none"],
   "levels": ["pro", "minor", "college", "varsity", "jv", "amateur", "youth"],
   "defaultDurationHours": 4,
+  "noRedistribution": ["sportmonks"],
   "genders": ["boys", "girls", "men", "women", "mixed"],
   "sports": [
     {"id": "football", "us": "Football", "uk": "American football", "icon": "football", "result_type": "score", "typical_duration_hours": 3.5},

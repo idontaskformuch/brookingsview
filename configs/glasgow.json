@@ -216,6 +216,31 @@
   "output": {
     "prefer_digests_over_single_item_pages": true
   },
+  "sports": {
+    "enabled": false,
+    "programs": [
+      {
+        "id": "scottish-premiership",
+        "name": "Scottish Premiership",
+        "short": "Premiership",
+        "level_default": "pro"
+      }
+    ],
+    "sources": [
+      {
+        "adapter": "sportmonks",
+        "program": "scottish-premiership",
+        "sport": "soccer",
+        "level": "pro",
+        "gender": "men",
+        "url": "https://api.sportmonks.com/v3/football/fixtures/between",
+        "note": "Sportmonks Football Free Plan (Scottish Premiership, league 501; 180 requests/hour). Written answer 2026-11-08 (ticket Sportmonks-114845), see notes: sources/sportmonks: ad-funded display and caching OK, no attribution required (footer line kept by the owner), raw data must NOT be redistributed (never in ICS/JSON/RSS: config/sports.json noRedistribution), no logos or photos. Needs SPORTMONKS_API_KEY. enabled stays false until the first approved live run and a scheduled workflow exist.",
+        "params": { "league_id": 501, "competition": "Scottish Premiership", "tz": "Europe/London", "days_back": 30, "days_forward": 90 }
+      }
+    ],
+    "source_priority": ["sportmonks"],
+    "submissions": { "enabled": false }
+  },
   "data_sources": {
     "city_meetings": { "type": "coins", "enabled": true, "meetings_have_time": true, "refresh_minutes": 1440, "exclude_bodies": ["Personnel Appeals Committee"], "public_viewer": "https://onlineservices.glasgow.gov.uk/councillorsandcommittees/", "_notes": "Phase 3.1 DONE 2026-10-22: CoInS (Northgate) via scrapers/parsers/glasgow_coins_v1.py. No robots.txt (404), no ToS found, no bot challenge on this host; www.glasgow.gov.uk is behind a Cloudflare challenge and is never touched. 49 meetings incl. 18 Area Partnerships + Licensing Board; agenda item titles only (papers are PDFs, not fetched). Personnel Appeals Committee (dismissal appeals) excluded. enabled:true only means the scraper CAN run: no scrape workflow/cron exists for glasgow yet and nothing has been written to the live DB." },
     "weather": { "type": "api", "enabled": true, "provider": "met_office_datahub", "refresh_minutes": 120, "_notes": "Met Office DataHub Site Specific (Global Spot, free tier), MET_OFFICE_API_KEY, scrapers/parsers/met_office_site_specific_v1.py. 2 calls per run (hourly + daily). Writes the same weather_snapshots payload as NOAA, in degC and mph." },
@@ -228,12 +253,6 @@
           "_note": "Phase 3.4a, built 2026-10-22: Glasgow Life (council culture/libraries/sport trust) what's-on cards, scrapers/glasgow_life_events.py. robots.txt allows the paths, no bot challenge, no terms page found; the listing page (1 request/day; the per-channel pages were dropped 2026-10-28) + since 2026-10-24 each distinct event page once a day (~40 requests, 2 s apart; description, tickets and age lines only) because the listing alone gave the writer nothing to summarise -- set detail_pages to false to stop; facts + link back, no images. About 41 distinct events (curated slice, no pagination). Dry-run verified; enabled 2026-10-22 after the owner approved the first events write." }
       ],
       "_notes": "Ticketmaster GB is NOT a scraper source: it is fetched at build time by site/src/lib/ticketmaster.ts (latlong search, see site-config ticketmaster block) and is verified separately (phase 3.4b)." },
-    "sports": { "type": "sportmonks", "enabled": false, "league_id": 501, "league_label": "premiership", "refresh_minutes": 600, "days_back": 7, "days_forward": 14, "allow_empty": false,
-      "tracked_teams": [
-        { "team_id": 53, "team_name": "Celtic", "team_abbr": "CEL", "relevance_tier": "primary" },
-        { "team_id": 62, "team_name": "Rangers", "team_abbr": "RAN", "relevance_tier": "primary" }
-      ],
-      "_notes": "Sportmonks Football Free Plan (verified 2026-10-28: Scottish Premiership 501 + Play-Offs 513 + Danish Superliga; 180 calls/hour/entity). scrapers/parsers/sportmonks_v1.py, spec .claude/specs/glasgow-sportmonks.md. KEPT DISABLED until the owner has confirmed in the Sportmonks account that the free plan's licence covers a site with ads (the docs list public football sites as a use case but do not say whether commercial use or attribution is required) and the sports pages are built. Credit when shown: Data: Sportmonks. First live write needs the owner's yes (CLAUDE.md rule 7)." },
     "jobs": { "type": "jobs", "enabled": true, "country": "gb", "where": "Glasgow", "results_per_page": 50, "max_pages": 1, "parser": "jobs_v1", "refresh_minutes": 1440, "_notes": "Phase 3.6, verified 2026-10-22: the existing ADZUNA_APP_ID/ADZUNA_APP_KEY work for the gb endpoint (5 336 Glasgow results; dry run of the parser 50 rows, 46 with salary, 24 predicted = flagged est.). GBP, so the site renders pound signs for country gb (lib/jobs.ts) and the parser uses UK title keywords for gb only. One call/day (free tier). enabled 2026-10-22 after the owner approved the first jobs write; the jobs section is still in disabledSections for glasgow, so nothing is shown yet." },
     "school_closures": { "type": "school_alerts", "enabled": false, "_notes": "Phase 3.7: find a Glasgow City Council closure source or report that none exists." },
     "food_hygiene": { "type": "fhis", "enabled": false, "_notes": "Phase 3.8: Scotland uses FHIS Pass / Improvement Required, not FSA 0-5 stars." }

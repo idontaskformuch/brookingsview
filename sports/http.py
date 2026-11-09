@@ -28,10 +28,10 @@ class SourceSkipped(Exception):
         self.kind = kind
 
 
-def default_get(url: str, ua: str) -> tuple[int | None, str]:
+def default_get(url: str, ua: str, headers: dict | None = None) -> tuple[int | None, str]:
     import requests
     try:
-        res = requests.get(url, headers={"User-Agent": ua}, timeout=20)
+        res = requests.get(url, headers={**(headers or {}), "User-Agent": ua}, timeout=20)
         return res.status_code, res.text
     except requests.RequestException:
         return None, ""
@@ -74,13 +74,14 @@ class PoliteHttp:
                 raise SourceSkipped(f"robots.txt Crawl-delay {verdict.crawl_delay:g}s is above max_crawl_delay {self.max_crawl_delay:g}s", "delay")
         return verdict
 
-    def get_text(self, url: str) -> str:
+    def get_text(self, url: str, headers: dict | None = None) -> str:
+        """`headers` (an API token, Accept) go on the page request only, never on robots.txt, and are never part of an error text."""
         verdict = self.preflight(url)
         host = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
         path = urlparse(url).path or "/"
         for attempt in (1, 2):
             self._wait(host, verdict.crawl_delay or 0.0 if attempt == 1 else max(verdict.crawl_delay or 0.0, RETRY_PAUSE))
-            status, text = self._get(url, self.ua)
+            status, text = self._get(url, self.ua, headers) if headers else self._get(url, self.ua)
             if status in REFUSED:
                 raise SourceSkipped(f"{path} answered {status}: treated as a no, not retried", "refused")
             if status == 200:

@@ -21,6 +21,7 @@ import { getTodayInstants } from '../lib/today-instants';
 import { signGameText } from '../lib/sign-game';
 import { siteConfig, ALL_SITES } from '../lib/site-config';
 import { placeLabel, countryProfile } from '../lib/country-profile';
+import { footerCredits } from '../lib/footer-credits';
 import { enabledSections, resolveNav } from '../lib/nav-sections';
 import SectionNav from '../components/SectionNav.astro';
 import { runBuildTimeChecks } from '../lib/build-checks';
@@ -135,6 +136,7 @@ const FOOTER_GROUPS: { label: string; hrefs: string[] }[] = [
   // longer exist in `nav` to match against.
   { label: 'Read', hrefs: ['/weather/'] },
 ];
+const creditLines = footerCredits(siteConfig.townId);
 const footerGroups = FOOTER_GROUPS
   .map((group) => ({ label: group.label, items: nav.filter((item) => group.hrefs.includes(item.href)) }))
   .filter((group) => group.items.length > 0);
@@ -806,6 +808,7 @@ main { padding-block: 1.75rem 3.5rem; }
       {siteConfig.sourceBlurb} News and listings link to their original
       sources. <a href="/corrections/">Corrections are welcome</a>.
     </p>
+    {creditLines.length > 0 && <p class="data" style="margin-top:0.75rem; font-size:0.75rem;">{creditLines.join(' · ')}</p>}
     <p class="data" style="margin-top:0.75rem; font-size:0.75rem;">&copy; {year} {siteConfig.siteName}</p>
   </div>
 </footer>

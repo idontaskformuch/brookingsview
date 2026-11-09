@@ -44,6 +44,15 @@ def sport_label(sport_id: str, country: str = "us") -> str:
     return sport(sport_id)["uk" if country == "gb" else "us"]
 
 
+def no_redistribution() -> tuple[str, ...]:
+    """Sources (sport_events.source) whose terms forbid redistributing the raw data: pages only, never an ICS/JSON/RSS export."""
+    return tuple(_doc().get("noRedistribution", ()))
+
+
+def redistributable(source: str) -> bool:
+    return source not in no_redistribution()
+
+
 def result_type(sport_id: str) -> str:
     return sport(sport_id)["result_type"]
 

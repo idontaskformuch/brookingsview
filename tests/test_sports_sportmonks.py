@@ -1,0 +1,198 @@
+"""sports/adapters/sportmonks.py (Glasgow, Scottish Premiership) against recorded Sportmonks answers (tests/fixtures/sports/sportmonks_*.json)."""
+import json
+from datetime import date
+from pathlib import Path
+
+import pytest
+
+from sports import adapters, registry, runner
+from sports.config import validate_sports_config
+from sports.adapters import sportmonks
+from sports.http import PoliteHttp, SourceSkipped
+
+ROOT = Path(__file__).parent.parent
+FIX = Path(__file__).parent / "fixtures" / "sports"
+UPCOMING = json.loads((FIX / "sportmonks_upcoming.json").read_text(encoding="utf-8"))
+RECENT = json.loads((FIX / "sportmonks_recent.json").read_text(encoding="utf-8"))
+CFG = json.loads((ROOT / "configs" / "glasgow.json").read_text(encoding="utf-8"))
+SOURCE = CFG["sports"]["sources"][0]
+ROBOTS_ALLOW_ALL = "User-agent: *\nDisallow:\n"
+SECRET = "SECRET-TOKEN-123"
+
+
+class Net:
+    """Fake network: `pages` is the list of JSON answers handed out in order; records URLs and the headers of every page request."""
+
+    def __init__(self, pages, status=200):
+        self.pages, self.status, self.calls, self.now = list(pages), status, [], 0.0
+
+    def get(self, url, ua, headers=None):
+        if url.endswith("/robots.txt"):
+            return 200, ROBOTS_ALLOW_ALL
+        self.calls.append((url, headers))
+        return (self.status, json.dumps(self.pages[len(self.calls) - 1])) if self.status == 200 else (self.status, "")
+
+    def http(self):
+        return PoliteHttp("UA-test", get=self.get, sleep=lambda s: None, clock=lambda: self.now)
+
+
+@pytest.fixture(autouse=True)
+def token(monkeypatch):
+    monkeypatch.setenv("SPORTMONKS_API_KEY", SECRET)
+
+
+def params(net):
+    p = adapters.merged_params(SOURCE)
+    p["_http"] = net.http()
+    return p
+
+
+def fetch(pages, **kw):
+    net = Net(pages, **kw)
+    return net, sportmonks.fetch(params(net), today=date(2026, 10, 28))
+
+
+def fixture_with(**changes):
+    fx = json.loads(json.dumps(UPCOMING["data"][0]))
+    fx.update(changes)
+    return fx
+
+
+def page(*fixtures, has_more=False, remaining=170):
+    return {"data": list(fixtures), "pagination": {"has_more": has_more}, "rate_limit": {"remaining": remaining}}
+
+
+def test_config_validates_and_the_adapter_is_registered():
+    assert "sportmonks" in adapters.names()
+    assert validate_sports_config(CFG) == []
+    assert CFG["sports"]["enabled"] is False
+
+
+def test_kickoff_is_converted_from_utc_to_europe_london_across_the_clock_change():
+    summer = fixture_with(id=1, starting_at="2026-10-24 14:00:00")  # BST until 2026-10-25 01:00 UTC
+    winter = fixture_with(id=2, starting_at="2026-10-28 19:45:00")  # GMT
+    _, out = fetch([page(summer, winter)])
+    by_uid = {e.source_uid: e for e in out}
+    assert by_uid["sportmonks:1"].start_at.isoformat() == "2026-10-24T15:00:00+01:00"
+    assert by_uid["sportmonks:2"].start_at.isoformat() == "2026-10-28T19:45:00+00:00"
+    assert {e.tz for e in out} == {"Europe/London"}
+
+
+def test_upcoming_fixture_maps_to_a_scheduled_event_with_facts_only():
+    net, out = fetch([UPCOMING])
+    assert len(out) == len(UPCOMING["data"]) and out.unread == []
+    ev = next(e for e in out if e.source_uid == "sportmonks:19722758")
+    assert (ev.home_name, ev.away_name, ev.venue) == ("St. Mirren", "Hibernian", "The Smisa Stadium")
+    assert (ev.status, ev.score_home, ev.score_away) == ("scheduled", None, None)
+    assert (ev.sport, ev.level, ev.gender, ev.competition, ev.program_id) == ("soccer", "pro", "men", "Scottish Premiership", "scottish-premiership")
+    assert (ev.url, ev.time_tba, ev.neutral_site, ev.exhibition) == (None, False, False, False)
+    assert ev.problems() == []
+    assert "image_path" not in json.dumps(ev.__dict__, default=str)
+
+
+def test_finished_fixture_gets_the_full_time_score_home_first():
+    _, out = fetch([RECENT])
+    ev = next(e for e in out if e.source_uid == "sportmonks:19722764")
+    assert (ev.home_name, ev.away_name, ev.status, ev.score_home, ev.score_away) == ("St. Mirren", "Dundee", "final", 2, 1)
+
+
+def test_states_postponed_cancelled_live_and_unknown():
+    def mk(i, state):
+        return fixture_with(id=i, state={"developer_name": state})
+
+    _, out = fetch([page(mk(1, "POSTPONED"), mk(2, "CANCELLED"), mk(3, "INPLAY_1ST_HALF"), mk(4, "WHO_KNOWS"))])
+    by = {e.source_uid: e.status for e in out}
+    assert by == {"sportmonks:1": "postponed", "sportmonks:2": "cancelled", "sportmonks:3": "scheduled"}
+    assert [u["slug"] for u in out.unread] == ["fixture 4"] and "unknown state" in out.unread[0]["reason"]
+
+
+def test_state_tba_has_no_clock_time():
+    _, out = fetch([page(fixture_with(id=9, state={"developer_name": "TBA"}, starting_at="2026-11-21 12:30:00"))])
+    assert out[0].time_tba is True and out[0].start_at.isoformat() == "2026-11-21T00:00:00+00:00"
+
+
+def test_fixtures_not_to_be_guessed_are_left_out_and_reported():
+    final_without_score = fixture_with(id=5, state={"developer_name": "FT"}, scores=[])
+    placeholder = fixture_with(id=6, placeholder=True)
+    one_team = fixture_with(id=7, participants=fixture_with()["participants"][:1])
+    _, out = fetch([page(final_without_score, placeholder, one_team)])
+    assert list(out) == []
+    assert sorted(u["slug"] for u in out.unread) == ["fixture 5", "fixture 6", "fixture 7"]
+    assert all(u["program"] == "scottish-premiership" and u["sport"] == "soccer" and u["gender"] == "men" for u in out.unread)
+
+
+def test_token_goes_in_the_header_only_never_in_a_url_or_an_error():
+    net, _ = fetch([UPCOMING])
+    url, headers = net.calls[0]
+    assert headers["Authorization"] == SECRET and SECRET not in url
+    assert "/fixtures/between/2026-09-28/2027-01-26?" in url and "fixtureLeagues:501" in url
+    bad = Net([], status=500)
+    with pytest.raises(RuntimeError) as err:
+        sportmonks.fetch(params(bad), today=date(2026, 10, 28))
+    assert SECRET not in str(err.value)
+
+
+def test_missing_key_is_an_error(monkeypatch):
+    monkeypatch.delenv("SPORTMONKS_API_KEY")
+    with pytest.raises(RuntimeError, match="SPORTMONKS_API_KEY"):
+        fetch([UPCOMING])
+
+
+def test_a_403_is_a_no_without_retry():
+    net = Net([], status=403)
+    with pytest.raises(SourceSkipped):
+        sportmonks.fetch(params(net), today=date(2026, 10, 28))
+    assert len(net.calls) == 1
+
+
+def test_unknown_answer_shape_fails_closed_but_a_plain_no_results_answer_is_empty():
+    with pytest.raises(RuntimeError, match="unknown answer shape"):
+        fetch([{"oops": 1}])
+    _, out = fetch([{"message": "No result(s) found matching your request.", "rate_limit": {"remaining": 100}}])
+    assert list(out) == [] and out.unread == []
+
+
+def test_paging_follows_has_more_and_dedups_by_fixture_id():
+    a, b = fixture_with(id=1), fixture_with(id=2)
+    net, out = fetch([page(a, has_more=True), page(a, b)])
+    assert len(net.calls) == 2 and sorted(e.source_uid for e in out) == ["sportmonks:1", "sportmonks:2"] and out.unread == []
+    assert "page=1" in net.calls[0][0] and "page=2" in net.calls[1][0]
+
+
+def test_stops_asking_at_the_request_reserve_and_reports_the_league_as_not_read():
+    pages = [page(fixture_with(id=1), has_more=True, remaining=sportmonks.RATE_RESERVE), page(fixture_with(id=2))]
+    net, out = fetch(pages)
+    assert len(net.calls) == 1 and [e.source_uid for e in out] == ["sportmonks:1"]
+    assert out.unread and out.unread[0]["slug"] == "fixtures" and "request budget" in out.unread[0]["reason"]
+
+
+def test_a_run_never_uses_more_than_max_pages_requests_far_below_180_an_hour():
+    pages = [page(fixture_with(id=i), has_more=True, remaining=170) for i in range(1, sportmonks.MAX_PAGES + 1)]
+    net, out = fetch(pages)
+    assert len(net.calls) == sportmonks.MAX_PAGES <= 12 and "page limit" in out.unread[0]["reason"]
+
+
+class Cur:
+    def __init__(self):
+        self.sql = []
+
+    def execute(self, sql, args=()):
+        self.sql.append((" ".join(sql.split()), args))
+
+    def fetchall(self):
+        return []
+
+
+def test_runner_writes_events_and_health_through_the_normal_path():
+    net = Net([UPCOMING])
+    cur = Cur()
+    assert runner.run_source(cur, "glasgow", SOURCE, http=net.http()) == "ok"
+    inserts = [a for s, a in cur.sql if s.startswith("INSERT INTO sport_events")]
+    assert len(inserts) == len(UPCOMING["data"]) and all(a[0] == "glasgow" and a[1] == "sportmonks" for a in inserts)
+    health = [a for s, a in cur.sql if s.startswith("INSERT INTO sport_sources_health")]
+    assert health and health[0][1] == "sportmonks:scottish-premiership"
+
+
+def test_sportmonks_is_on_the_no_redistribution_list():
+    assert "sportmonks" in registry.no_redistribution()
+    assert registry.redistributable("sportmonks") is False and registry.redistributable("internal") is True

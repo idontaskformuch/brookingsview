@@ -25,6 +25,7 @@ export interface SportDef {{ id: string; us: string; uk: string; icon: string; r
 
 export const SPORT_LEVELS: readonly SportLevel[] = {json.dumps(doc["levels"])};
 export const SPORT_GENDERS: readonly SportGender[] = {json.dumps(doc["genders"])};
+export const NO_REDISTRIBUTION: readonly string[] = {json.dumps(doc.get("noRedistribution", []))};
 export const DEFAULT_DURATION_HOURS = {json.dumps(doc["defaultDurationHours"])};
 export const SPORTS: readonly SportDef[] = {sports};
 
@@ -40,6 +41,11 @@ export function sportById(id: string): SportDef {{
 /** How long a game of this sport counts as "upcoming" after it starts (the table has no end time). */
 export function sportDurationHours(id: string): number {{
   return sportById(id).typical_duration_hours ?? DEFAULT_DURATION_HOURS;
+}}
+
+/** False for a sport_events source whose terms forbid passing the raw data on. Any ICS/JSON/RSS/feed built from sport_events must filter on this. */
+export function isRedistributable(source: string): boolean {{
+  return !NO_REDISTRIBUTION.includes(source);
 }}
 
 export function sportLabel(id: string, country: string): string {{
