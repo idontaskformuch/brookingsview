@@ -1,0 +1,54 @@
+---
+/** Academic Calendar rows in the same shape as the event list: date tile (a single date or a range), the title, a dot for the kind (day off /
+ *  deadline, from the title: lib/academic-kind.ts; unknown = neutral and unlabelled) and "Today / In N days" from the town's clock. Dates are plain
+ *  calendar dates, so the tile is built from noon UTC of the day and read in UTC. Only the first row of a date has a tile. */
+import DayTile from './DayTile.astro';
+import CategoryDot from './CategoryDot.astro';
+import { dayTile } from '../../lib/event-pop';
+import { academicKind, ACADEMIC_KIND_LABEL } from '../../lib/academic-kind';
+import { calendarDateParts } from '../../lib/calendar-date';
+import { siteConfig } from '../../lib/site-config';
+import type { AcademicDate } from '../../lib/db';
+
+interface Props { dates: AcademicDate[]; tz?: string }
+const { dates, tz = siteConfig.timezone } = Astro.props;
+const country = siteConfig.country === 'gb' ? 'gb' : 'us';
+// A DATE column reaches the page as a string or as a Date (lib/calendar-date.ts): read it through the one helper, never String(value).
+const day = (v: string | Date): string => { const p = calendarDateParts(v); return p ? `${p.y}-${String(p.m + 1).padStart(2, '0')}-${String(p.d).padStart(2, '0')}` : ''; };
+const noon = (d: string | Date) => `${day(d)}T12:00:00Z`;
+const TOKEN = { free: '--cat-family', deadline: '--cat-arts' } as const;
+const rows = dates.map((d, i) => ({ d, first: i === 0 || day(dates[i - 1].starts_on) !== day(d.starts_on), kind: academicKind(d.label) }));
+---
+<ul class="pl" data-pop-list data-tz={tz}>
+  {rows.map(({ d, first, kind }) => (
+    <li class="pl__li" data-pop-row data-day={day(d.starts_on)} data-tz={tz}>
+      <div class="pl__card">
+        <DayTile model={dayTile(noon(d.starts_on), d.ends_on ? noon(d.ends_on) : null, 'UTC', country)} blank={!first} />
+        <span class="pl__main">
+          <span class="pl__top">
+            {kind ? <CategoryDot name={ACADEMIC_KIND_LABEL[kind]} token={TOKEN[kind]} /> : <span></span>}
+            <span class="pl__rel" data-pop-rel hidden></span>
+          </span>
+          <span class="pl__title">{d.label}</span>
+          {d.term && <span class="pl__meta">{d.term}</span>}
+        </span>
+      </div>
+    </li>
+  ))}
+</ul>
+<script>
+  import { applyEventPop } from '../../lib/event-pop-client';
+  const root = document.querySelector<HTMLElement>('[data-pop-list]');
+  applyEventPop(document, new Date(), root?.dataset.tz || 'America/Chicago');
+</script>
+<style>
+  .pl { list-style: none; margin: 0; padding: 0; }
+  .pl__li { margin-bottom: var(--ui-2); }
+  .pl__card { display: flex; gap: var(--ui-3); align-items: flex-start; padding: var(--ui-3); background: var(--surface-raised); border: var(--card-border-w, 1px) solid var(--rule); border-radius: var(--ui-radius); }
+  .pl__main { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; flex: 1; }
+  .pl__top { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-2); min-height: 1.125rem; }
+  .pl__rel { font-family: var(--font-ui); font-size: 0.75rem; font-weight: 700; color: var(--brand-accent, var(--accent)); white-space: nowrap; }
+  .pl__title { font-family: var(--font-head); font-size: 1.1875rem; line-height: 1.25; color: var(--ink); }
+  .pl__meta { font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
+  @media (max-width: 26rem) { .pl__card { padding: var(--ui-3) 0.75rem; gap: 0.625rem; } }
+</style>

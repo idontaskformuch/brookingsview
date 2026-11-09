@@ -47,6 +47,31 @@ describe('ui-tokens.css', () => {
       }
     }
   });
+  it('--surface-raised is a step lighter than the page in dark, white in light, and dark cards carry no border', () => {
+    expect(light['--surface-raised']).toBe('#ffffff');
+    expect(light['--card-border-w']).toBe('1px');
+    expect(forced['--surface-raised']).toBe('#1f1f1b');
+    expect(forced['--card-border-w']).toBe('0px');
+    const lum = (hex: string) => contrastRatio(hex, '#000000');
+    expect(lum(forced['--surface-raised'])).toBeGreaterThan(lum('#121210'));
+  });
+  it.each([
+    ['light', light, '#ffffff'],
+    ['dark', forced, '#1f1f1b'],
+  ])('text on --surface-raised clears 4.5:1 in %s: ink, ink-soft, the six events categories', (_m, v, surface) => {
+    const base = _m === 'light' ? { ink: '#161614', soft: '#55554f' } : { ink: '#ece9e1', soft: '#b8b5ab' };
+    expect(contrastRatio(base.ink, surface)).toBeGreaterThanOrEqual(MIN_TEXT);
+    expect(contrastRatio(base.soft, surface)).toBeGreaterThanOrEqual(MIN_TEXT);
+    for (const c of CATEGORY_SETS.events) expect(contrastRatio(v[`--cat-${c}`], surface), `${c}`).toBeGreaterThanOrEqual(MIN_TEXT);
+  });
+  it('every town accent (date number, "Today" label) clears 4.5:1 on --surface-raised in light and dark', () => {
+    const brands = [...readFileSync(new URL('./site-config.ts', import.meta.url), 'utf8').matchAll(/brand: \{ accent: '(#\w+)', accentInk: '#\w+', accentDark: '(#\w+)'/g)];
+    expect(brands.length).toBe(4);
+    for (const [, accent, accentDark] of brands) {
+      expect(contrastRatio(accent, '#ffffff'), accent).toBeGreaterThanOrEqual(MIN_TEXT);
+      expect(contrastRatio(accentDark, '#1f1f1b'), accentDark).toBeGreaterThanOrEqual(MIN_TEXT);
+    }
+  });
   it('BaseLayout no longer loads or uses a monospace face for data', () => {
     expect(layout).not.toMatch(/IBM\+Plex|IBM Plex/);
     expect(layout).toMatch(/--font-data:\s*var\(--font-ui\)/);

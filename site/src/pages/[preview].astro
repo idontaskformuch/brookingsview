@@ -1,0 +1,61 @@
+---
+/** Preview of the "popping" event and calendar lists (date tile, raised cards, relative day, category dot) on the town's REAL data, for the owner's
+ *  review before the components replace the ones on /events/ and /university/. Not a public page: built only with BUILD_DESIGN=1 (otherwise
+ *  getStaticPaths is empty and no file exists), noindex, out of the sitemap like the component gallery ([design].astro). */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PopEventList from '../components/pop/PopEventList.astro';
+import PopAcademicList from '../components/pop/PopAcademicList.astro';
+import SectionHeader from '../components/ui/SectionHeader.astro';
+import { getUpcomingStories, getUpcomingArtsEvents, getFacilities, getUpcomingAcademicDates } from '../lib/db';
+import { buildTownEventsView } from '../lib/events-town-view';
+import DayTile from '../components/pop/DayTile.astro';
+import { dayTile } from '../lib/event-pop';
+import { siteConfig } from '../lib/site-config';
+import type { DayGroup } from '../lib/event-day-view';
+
+export function getStaticPaths() {
+  return process.env.BUILD_DESIGN === '1' ? [{ params: { preview: '_preview-events' } }] : [];
+}
+
+const [upcoming, artsEvents, facilities] = await Promise.all([getUpcomingStories(['event'], 120), getUpcomingArtsEvents(40), getFacilities()]);
+const { view } = buildTownEventsView(upcoming, artsEvents, facilities);
+// Day groups with events, then the items further out grouped by their own local day (the tile carries the date, so they need no separate layout).
+const busy = view.days.filter((d) => d.count > 0);
+const further = new Map<string, DayGroup>();
+for (const r of view.furtherOut) {
+  const g = further.get(r.dayKey) ?? { offset: r.offset, dayKey: r.dayKey, label: '', weekday: '', dateLabel: r.dateLabel, count: 0, rows: [] };
+  g.rows.push(r);
+  g.count++;
+  further.set(r.dayKey, g);
+}
+const days = [...busy, ...further.values()].slice(0, 12);
+const country = siteConfig.country === 'gb' ? 'gb' : 'us';
+const academic = await getUpcomingAcademicDates(10);
+---
+<BaseLayout title="Preview: event lists" description="Preview of the event and calendar lists. Not a public page." noindex>
+  <main class="shell pv">
+    <p class="pv__note">Preview on {siteConfig.cityName}'s real data. Light/dark follows the header toggle; resize to 390 px.</p>
+
+    <SectionHeader title="Tile shapes" kicker="synthetic dates, only to show the three shapes" />
+    <div class="pv__tiles">
+      <DayTile model={dayTile('2026-11-12T19:00:00-06:00', null, 'America/Chicago', country)} />
+      <DayTile model={dayTile('2026-11-25T12:00:00Z', '2026-11-29T12:00:00Z', 'America/Chicago', country)} />
+      <DayTile model={dayTile('2026-12-31T12:00:00Z', '2027-01-02T12:00:00Z', 'America/Chicago', country)} />
+    </div>
+
+    <SectionHeader title="Events" />
+    <PopEventList days={days} />
+
+    {academic.length > 0 && (
+      <>
+        <SectionHeader title="Academic Calendar" />
+        <PopAcademicList dates={academic} />
+      </>
+    )}
+  </main>
+</BaseLayout>
+<style>
+  .pv { padding-block: var(--ui-4) var(--ui-6); }
+  .pv__tiles { display: flex; gap: var(--ui-3); padding: var(--ui-3); background: var(--surface-raised); border: var(--card-border-w, 1px) solid var(--rule); border-radius: var(--ui-radius); margin-bottom: var(--ui-5); }
+  .pv__note { font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); margin: 0 0 var(--ui-4); }
+</style>

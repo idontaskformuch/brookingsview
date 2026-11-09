@@ -1,0 +1,76 @@
+---
+/** Event list with a date tile on the left of each day's first row; the following rows of the same day line up under it without a tile. One flat
+ *  list in time order across days (no heading per day: the tile is the day). Each row is a card on --surface-raised (a step lighter than the page; no
+ *  border in dark). Relative words ("Today", "In 3 days") and the dimming of rows that are over today are set in the browser from the town's clock
+ *  (lib/event-pop-client.ts); without JavaScript there is neither. The first row of each day keeps id="day-YYYY-MM-DD" for the day strip's anchors. */
+import DayTile from './DayTile.astro';
+import CategoryDot from './CategoryDot.astro';
+import Pill from '../ui/Pill.astro';
+import { dayTile } from '../../lib/event-pop';
+import { popCategory } from '../../lib/pop-categories';
+import type { DayGroup, DayRow } from '../../lib/event-day-view';
+import { itemLink } from '../../lib/events';
+import { siteConfig } from '../../lib/site-config';
+import type { FeedItem } from '../../lib/events';
+
+interface Props { days: DayGroup[]; tz?: string; idPrefix?: string }
+const { days, tz = siteConfig.timezone, idPrefix = 'day' } = Astro.props;
+const country = siteConfig.country === 'gb' ? 'gb' : 'us';
+const hrefOf = (item: FeedItem) => itemLink(item) ?? undefined;
+const place = (r: DayRow) => [r.venue, r.area].filter(Boolean).join(' · ');
+const repeats = (r: DayRow) => (r.recurrence === 'weekly' ? 'Repeats weekly' : r.recurrence === 'monthly' ? 'Repeats monthly' : null);
+const rows = days.flatMap((d) => d.rows.map((r, i) => ({ r, first: i === 0, key: d.dayKey })));
+---
+<ul class="pl" data-pop-list data-tz={tz}>
+  {rows.map(({ r, first, key }) => {
+    const href = hrefOf(r.item);
+    const cat = popCategory(r.cat);
+    const Tag = href ? 'a' : 'div';
+    return (
+      <li class="pl__li" data-pop-row data-start={r.start} data-end={r.end ?? undefined} data-tz={tz} id={first ? `${idPrefix}-${key}` : undefined}>
+        <Tag class="pl__card" href={href}>
+          <DayTile model={dayTile(r.start, r.end, tz, country)} blank={!first} />
+          <span class="pl__main">
+            <span class="pl__top">
+              {cat.name ? <CategoryDot name={cat.name} token={cat.token} /> : <span></span>}
+              <span class="pl__rel" data-pop-rel hidden></span>
+            </span>
+            <span class="pl__title">{r.title}{repeats(r) && <span class="pl__rep" title={repeats(r) ?? ''}> ↻</span>}</span>
+            <span class="pl__meta">{[r.timeLabel, place(r)].filter(Boolean).join(' · ')}</span>
+            {(r.free || r.kids || r.teens) && (
+              <span class="pl__pills">
+                {r.free && <Pill tone="ok">Free</Pill>}
+                {r.kids && <Pill>Kids &amp; families</Pill>}
+                {r.teens && <Pill>Teens</Pill>}
+              </span>
+            )}
+          </span>
+        </Tag>
+      </li>
+    );
+  })}
+</ul>
+<script>
+  import { applyEventPop } from '../../lib/event-pop-client';
+  const root = document.querySelector<HTMLElement>('[data-pop-list]');
+  const tick = () => applyEventPop(document, new Date(), root?.dataset.tz || 'America/Chicago');
+  tick();
+  setInterval(tick, 60_000);
+</script>
+<style>
+  .pl { list-style: none; margin: 0; padding: 0; }
+  .pl__li { margin-bottom: var(--ui-2); }
+  /* A card: --surface-raised, thin hairline in light, none in dark (the lighter surface carries it). */
+  .pl__card { display: flex; gap: var(--ui-3); align-items: flex-start; padding: var(--ui-3); background: var(--surface-raised); border: var(--card-border-w, 1px) solid var(--rule);
+              border-radius: var(--ui-radius); color: inherit; text-decoration: none; }
+  a.pl__card:hover .pl__title { text-decoration: underline; }
+  .pl__main { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; flex: 1; }
+  .pl__top { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-2); min-height: 1.125rem; }
+  .pl__rel { font-family: var(--font-ui); font-size: 0.75rem; font-weight: 700; color: var(--brand-accent, var(--accent)); white-space: nowrap; }
+  .pl__title { font-family: var(--font-head); font-size: 1.1875rem; line-height: 1.25; color: var(--ink); }
+  .pl__rep { color: var(--ink-soft); }
+  .pl__meta { font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .pl__pills { display: flex; flex-wrap: wrap; gap: var(--ui-1); margin-top: var(--ui-1); }
+  .pl__li.is-over .pl__card { opacity: 0.55; }
+  @media (max-width: 26rem) { .pl__card { padding: var(--ui-3) 0.75rem; gap: 0.625rem; } }
+</style>

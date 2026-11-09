@@ -30,6 +30,10 @@
   /* Raised surfaces instead of bordered boxes. */
   --ui-surface-1: var(--paper-raised);
   --ui-surface-2: color-mix(in srgb, var(--ink) 4%, var(--paper));
+  /* Cards on a list sit on a surface a step lighter than the page. Light keeps the white card with its hairline; dark has no border (the lighter
+     surface carries the card). The dark media block and the forced block below must match (lib/ui-tokens.test.ts). */
+  --surface-raised: #ffffff;
+  --card-border-w: 1px;
 
   /* Category colors (text/edge AA on --paper and --surface). */
   --cat-civic: #285a8f;
@@ -53,6 +57,8 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    --surface-raised: #1f1f1b;
+    --card-border-w: 0px;
     --cat-civic: #8db8e6;
     --cat-music: #c79adb;
     --cat-family: #5fc4b8;
@@ -69,6 +75,8 @@
   }
 }
 :root[data-theme="dark"] {
+  --surface-raised: #1f1f1b;
+  --card-border-w: 0px;
   --cat-civic: #8db8e6;
   --cat-music: #c79adb;
   --cat-family: #5fc4b8;

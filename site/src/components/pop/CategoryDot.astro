@@ -1,0 +1,14 @@
+---
+/** A small coloured dot and the category name, in place of an icon or emoji prefix. The colour is a --cat-* token (AA on the card surface in light and
+ *  dark, lib/ui-tokens.test.ts); a category outside the page type's set (CATEGORY_SETS) or none at all gets the neutral dot, and no name when there is
+ *  no category. `color` overrides the token for the academic calendar (day off / deadline). */
+interface Props { name: string | null; token?: string | null }
+const { name, token = null } = Astro.props;
+---
+{name && (
+  <span class="cat"><i class="cat__dot" style={token ? `--c: var(${token})` : undefined} aria-hidden="true"></i>{name}</span>
+)}
+<style>
+  .cat { display: inline-flex; align-items: center; gap: 0.375rem; font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: 600; color: var(--ink-soft); white-space: nowrap; }
+  .cat__dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--c, var(--ink-faint)); flex: 0 0 auto; }
+</style>
