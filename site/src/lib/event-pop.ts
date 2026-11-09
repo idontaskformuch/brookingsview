@@ -5,6 +5,7 @@
  *  Day keys are the TOWN's local calendar days ("2026-11-12"); an instant is turned into one with the town's timezone, never the browser's. */
 import { localDayNumber, hasEnded, type TimedEvent } from './local-day';
 import { shortMonth, shortWeekday } from './calendar-strings';
+import { showTimeGb } from './whats-on-dates';
 
 type Country = 'us' | 'gb' | undefined;
 
@@ -44,6 +45,23 @@ export function dayTile(start: Date | string, end: Date | string | null, tz: str
   }
   return { kind: 'cross', kicker: null, day: '', span: `${date(s.m, s.d, country)} – ${date(e.m, e.d, country)}`,
            label: `${plain(s.m, s.d, country)} to ${plain(e.m, e.d, country)}` };
+}
+
+export interface TimeTileModel {
+  /** "7:30" (the big line), "All day" has no tile at all: a row with no time returns null */
+  main: string;
+  /** "PM" / "AM", small, above the time */
+  kicker: string;
+  /** "7:30pm" for assistive technology */
+  label: string;
+}
+
+/** The tile of a single-day list (/tonight, /this-weekend: the day is the section, so the tile carries the START TIME instead of the date).
+ *  Same clock as the old rows (whats-on-dates showTimeGb); null when the source has no time (local midnight). */
+export function timeTile(start: Date | string, tz: string): TimeTileModel | null {
+  const label = showTimeGb(new Date(start).toISOString(), tz);
+  const m = /^(\d{1,2}(?::\d{2})?)(am|pm)$/.exec(label);
+  return m ? { main: m[1], kicker: m[2].toUpperCase(), label } : null;
 }
 
 export const RELATIVE_MAX_DAYS = 6;

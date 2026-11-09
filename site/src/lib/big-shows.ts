@@ -9,6 +9,7 @@ import { distanceMetres } from './tonight-cards';
 import { hasEnded, localDayNumber } from './local-day';
 import { showDate, showTimeGb } from './whats-on-dates';
 import type { Category } from './ui/ui-helpers';
+import type { PopDay } from './pop-days';
 
 export interface BigShowsConfig { enabled: boolean; maxMiles: number; horizonDays?: number }
 
@@ -44,6 +45,25 @@ export function bigShowCategory(segment: string | null | undefined): Category | 
 /** "Denver · 13 mi": the venue's own city and straight-line miles. Without a stated city only the miles. */
 export function bigShowWhere(s: Pick<BigShow, 'venue' | 'city' | 'miles'>): string {
   return [s.venue, [s.city, `${s.miles < 1 ? '<1' : s.miles} mi`].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');
+}
+
+/** The shows grouped by their local day for the date-tile list (components/pop/PopEventList.astro). Same order as given; a show is one row that links to
+ *  Ticketmaster, with "Venue · City · N mi" on its meta line and "+ N more dates" under it. */
+export function bigShowDays(shows: BigShow[], timezone: string): PopDay[] {
+  const dayKey = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' });
+  const out: PopDay[] = [];
+  for (const s of shows) {
+    const key = dayKey.format(new Date(s.start));
+    const row = {
+      dayKey: key, timeLabel: s.timeLabel, title: s.title, venue: s.venue, area: [s.city, `${s.miles < 1 ? '<1' : s.miles} mi`].filter(Boolean).join(' · '),
+      free: false, kids: false, teens: false, cat: s.cat, start: s.start, end: null, recurrence: 'one_off' as const, href: s.href,
+      note: s.moreDates > 0 ? `+ ${s.moreDates} more ${s.moreDates === 1 ? 'date' : 'dates'}` : undefined,
+    };
+    const last = out[out.length - 1];
+    if (last && last.dayKey === key) last.rows.push(row);
+    else out.push({ dayKey: key, rows: [row] });
+  }
+  return out;
 }
 
 export function buildBigShows(

@@ -279,7 +279,7 @@
     "web.event-big-tile": {
         "severity": "soft",
         "born_from": "Owner report 2026-11-06 (Moreno Valley front page, 390 px): the top event of a day was a large card with a full-size coloured FallbackTile and no real image, and it was lifted above earlier events. Regression fixture: tests/fixtures/qa_event_tiles_2026-11-06.json (driven by site/src/lib/qa-checks.test.ts); source-level guards in site/src/lib/event-day-view.test.ts.",
-        "what": "a full-size FallbackTile (taller than 80 px) inside an events day list (.evd); events show a normal row or a 64 px photo thumbnail only"
+        "what": "inside a date-tile events list ([data-pop-list]): any picture or FallbackTile, or a date tile taller than 80 px. The lists show text and a date tile only. (Until 2026-11-09 the probe looked at .evd day lists, which no longer exist, and passed trivially.)"
     }
   }
 }

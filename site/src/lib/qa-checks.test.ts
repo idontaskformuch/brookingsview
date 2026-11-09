@@ -272,6 +272,24 @@ describe('meetings checks (Phase 3, 2026-11-05)', () => {
   });
 });
 
+describe('event tile probe aims at the date-tile list (2026-11-09)', () => {
+  const read = (f: string) => readFileSync(new URL(f, import.meta.url), 'utf8');
+  const probe = /eventBigTiles:[\s\S]*?emptyLinks:/.exec(read('../../../qa/web/run.mjs'))?.[0] ?? '';
+  it('the probe in qa/web/run.mjs selects what the date-tile components really print, not the removed .evd lists', () => {
+    expect(probe).not.toBe('');
+    expect(probe).not.toMatch(/\.evd/);
+    expect(probe).toMatch(/\[data-pop-list\]/);
+    expect(probe).toMatch(/\[data-pop-tile\]/);
+    expect(read('../components/pop/PopEventList.astro')).toMatch(/data-pop-list/);
+    expect(read('../components/pop/DayTile.astro')).toMatch(/data-pop-tile/);
+  });
+  it('nothing in the site prints the old .evd day list any more', () => {
+    for (const f of ['../pages/events.astro', '../pages/index.astro', '../components/pop/PopEventList.astro', '../components/events/BigShowsNearby.astro']) {
+      expect(read(f), f).not.toMatch(/class="evd|class=\{`evd/);
+    }
+  });
+});
+
 describe('event tile check (2026-11-06)', () => {
   const fx = JSON.parse(readFileSync(new URL('../../../tests/fixtures/qa_event_tiles_2026-11-06.json', import.meta.url), 'utf8')) as Record<string, { bad: object[]; good: object[] }>;
   const page = (x: object) => (checkPage({ ...base, ...x }, 'moreno_valley_ca', compiled) as { check: string }[]).map((f) => f.check);

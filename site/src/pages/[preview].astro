@@ -12,6 +12,16 @@ import DayTile from '../components/pop/DayTile.astro';
 import { dayTile } from '../lib/event-pop';
 import { siteConfig } from '../lib/site-config';
 import type { DayGroup } from '../lib/event-day-view';
+import { buildEventFeed, isFreeEvent, ownVenueCity } from '../lib/events';
+import { areasFor, withAreas } from '../lib/areas';
+import { buildEveningEntries } from '../lib/evening-items';
+import { buildEveningSections, eveningEntries } from '../lib/evening-page';
+import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
+import { getEveningRegister, getStoriesForWeekly } from '../lib/db';
+import { weekInfoForInstant, buildWeekDays } from '../lib/this-week';
+import { groupWeekItems } from '../lib/week-groups';
+import { eveningPopDays, weekPopDays } from '../lib/pop-days';
+
 
 export function getStaticPaths() {
   return process.env.BUILD_DESIGN === '1' ? [{ params: { preview: '_preview-events' } }] : [];
@@ -31,6 +41,30 @@ for (const r of view.furtherOut) {
 const days = [...busy, ...further.values()].slice(0, 12);
 const country = siteConfig.country === 'gb' ? 'gb' : 'us';
 const academic = await getUpcomingAcademicDates(10);
+
+// /tonight and /this-weekend: the town's real evening entries (the same builder as the pages), one day each, rows in the time-tile list.
+const tz = siteConfig.timezone;
+const now = process.env.FRONT_PAGE_NOW ? new Date(process.env.FRONT_PAGE_NOW) : new Date();
+const layer = siteConfig.eveningLayer;
+const { items: feedItems } = buildEventFeed(upcoming, artsEvents, tz);
+const tmItems = layer && siteConfig.hasWhatsOn ? await getTicketmasterEventsForTown(siteConfig, { includeSports: layer.includeTicketmasterSports }) : [];
+const register = layer?.register ? await getEveningRegister() : [];
+const areaData = areasFor(siteConfig.townId);
+const evening = layer ? withAreas(buildEveningEntries({
+  feed: feedItems, ticketmaster: tmItems, register, now, timezone: tz, checked: new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(now), cityName: siteConfig.cityName,
+  townId: siteConfig.townId, venueMiles: areaData?.venueMiles, isFree: (i) => isFreeEvent(i, facilities), venueCity: (i) => ownVenueCity(i, facilities),
+  ticketmasterMaxMiles: layer.maxMiles, includeTicketmasterSports: layer.includeTicketmasterSports,
+}), areaData) : [];
+const sections = layer ? buildEveningSections(evening, now, tz, layer.nearMiles) : [];
+// the first evening that has anything (tonight, else tomorrow)
+const eveningSection = sections.find((s) => eveningEntries(evening, s.day, tz).length > 0);
+const eveningList = eveningSection ? eveningEntries(evening, eveningSection.day, tz).slice(0, 8) : [];
+
+// The week roundup / university digest: theme groups with "Fri 7pm" rows, here as date-tile rows.
+const week = weekInfoForInstant(now, tz);
+const weekDays = buildWeekDays(week, tz, { eventStories: await getStoriesForWeekly(['event']), meetingStories: await getStoriesForWeekly(['meeting', 'meeting_followup']),
+  artsEvents, projectUpdates: [], games: [], regionalGames: [] });
+const weekGroups = groupWeekItems(weekDays, weekDays, tz, siteConfig.topEvents?.patterns ?? []).map((g) => ({ ...g, rows: g.rows.slice(0, 4) })).slice(0, 3);
 ---
 <BaseLayout title="Preview: event lists" description="Preview of the event and calendar lists. Not a public page." noindex>
   <main class="shell pv">
@@ -46,6 +80,25 @@ const academic = await getUpcomingAcademicDates(10);
     <SectionHeader title="Events" />
     <PopEventList days={days} />
 
+    {eveningList.length > 0 && (
+      <>
+        <SectionHeader title="/tonight and /this-weekend" kicker="proposal: the start time in the tile slot (the day is the section); category dot, venue, area and drive time as before" />
+        <PopEventList days={eveningPopDays(eveningList, tz, siteConfig.country)} tile="time" idPrefix="pv-ev" />
+      </>
+    )}
+
+    {weekGroups.length > 0 && (
+      <>
+        <SectionHeader title="Week roundup and university digest" kicker="proposal: theme headings stay; each row gets the date tile and the clock time on its meta line" />
+        {weekGroups.map((g) => (
+          <>
+            <h3 class="pv__group">{g.label}</h3>
+            <PopEventList days={weekPopDays(g.rows, tz)} idPrefix={`pv-wk-${g.id}`} />
+          </>
+        ))}
+      </>
+    )}
+
     {academic.length > 0 && (
       <>
         <SectionHeader title="Academic Calendar" />
@@ -57,5 +110,6 @@ const academic = await getUpcomingAcademicDates(10);
 <style>
   .pv { padding-block: var(--ui-4) var(--ui-6); }
   .pv__tiles { display: flex; gap: var(--ui-3); padding: var(--ui-3); background: var(--surface-raised); border: var(--card-border-w, 1px) solid var(--rule); border-radius: var(--ui-radius); margin-bottom: var(--ui-5); }
+  .pv__group { margin: var(--ui-4) 0 var(--ui-2); font-size: 1.0625rem; }
   .pv__note { font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); margin: 0 0 var(--ui-4); }
 </style>

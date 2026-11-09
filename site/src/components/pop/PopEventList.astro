@@ -4,45 +4,48 @@
  *  border in dark). Relative words ("Today", "In 3 days") and the removal of rows that are over (as the old lists did) are set in the browser from the town's clock
  *  (lib/event-pop-client.ts); without JavaScript there is neither. The first row of each day keeps id="day-YYYY-MM-DD" for the day strip's anchors. */
 import DayTile from './DayTile.astro';
+import TimeTile from './TimeTile.astro';
 import CategoryDot from './CategoryDot.astro';
 import Pill from '../ui/Pill.astro';
-import { dayTile } from '../../lib/event-pop';
+import { dayTile, timeTile } from '../../lib/event-pop';
 import { popCategory } from '../../lib/pop-categories';
-import type { DayGroup, DayRow } from '../../lib/event-day-view';
+import type { PopDay, PopRow } from '../../lib/pop-days';
 import { itemLink } from '../../lib/events';
 import { siteConfig } from '../../lib/site-config';
-import type { FeedItem } from '../../lib/events';
 
-/** `noteOf` replaces the area on a row's meta line (e.g. "4 mi away" in the Nearby list). */
-interface Props { days: DayGroup[]; tz?: string; idPrefix?: string; noteOf?: (r: DayRow) => string | null }
-const { days, tz = siteConfig.timezone, idPrefix = 'day', noteOf } = Astro.props;
+/** `noteOf` replaces the area on a row's meta line (e.g. "4 mi away" in the Nearby list). A row's `note` is an extra line under the meta line. */
+/** `tile` 'time' (single-day lists: /tonight, /this-weekend) prints the start time in the tile slot, and no relative-day label. */
+interface Props { days: PopDay[]; tz?: string; idPrefix?: string; noteOf?: (r: PopRow) => string | null; tile?: 'date' | 'time' }
+const { days, tz = siteConfig.timezone, idPrefix = 'day', noteOf, tile = 'date' } = Astro.props;
 const country = siteConfig.country === 'gb' ? 'gb' : 'us';
-const hrefOf = (item: FeedItem) => itemLink(item) ?? undefined;
-const place = (r: DayRow) => [r.venue, noteOf?.(r) ?? r.area].filter(Boolean).join(' · ');
-const repeats = (r: DayRow) => (r.recurrence === 'weekly' ? 'Repeats weekly' : r.recurrence === 'monthly' ? 'Repeats monthly' : null);
+const hrefOf = (r: PopRow) => r.href ?? (r.item ? itemLink(r.item) ?? undefined : undefined);
+const place = (r: PopRow) => [r.venue, noteOf?.(r) ?? r.area].filter(Boolean).join(' · ');
+const repeats = (r: PopRow) => (r.recurrence === 'weekly' ? 'Repeats weekly' : r.recurrence === 'monthly' ? 'Repeats monthly' : null);
 const rows = days.flatMap((d) => d.rows.map((r, i) => ({ r, first: i === 0, key: d.dayKey })));
 ---
 <ul class="pl" data-pop-list data-tz={tz}>
   {rows.map(({ r, first, key }) => {
-    const href = hrefOf(r.item);
+    const href = hrefOf(r);
     const cat = popCategory(r.cat);
     const Tag = href ? 'a' : 'div';
     return (
       <li class="pl__li" data-pop-row data-day-key={key} data-start={r.start} data-end={r.end ?? undefined} data-tz={tz} id={first ? `${idPrefix}-${key}` : undefined}>
         <Tag class="pl__card" href={href}>
-          <DayTile model={dayTile(r.start, r.end, tz, country)} dup={!first} />
+          {tile === 'time' ? <TimeTile model={timeTile(r.start, tz)} /> : <DayTile model={dayTile(r.start, r.end, tz, country)} dup={!first} />}
           <span class="pl__main">
             <span class="pl__top">
               {cat.name ? <CategoryDot name={cat.name} token={cat.token} /> : <span></span>}
-              <span class="pl__rel" data-pop-rel hidden></span>
+              {tile === 'date' ? <span class="pl__rel" data-pop-rel hidden></span> : <span></span>}
             </span>
             <span class="pl__title">{r.title}{repeats(r) && <span class="pl__rep" title={repeats(r) ?? ''}> ↻</span>}</span>
             <span class="pl__meta">{[r.timeLabel, place(r)].filter(Boolean).join(' · ')}</span>
-            {(r.free || r.kids || r.teens) && (
+            {r.note && <span class="pl__meta">{r.note}</span>}
+            {(r.free || r.kids || r.teens || (r.tags?.length ?? 0) > 0) && (
               <span class="pl__pills">
                 {r.free && <Pill tone="ok">Free</Pill>}
                 {r.kids && <Pill>Kids &amp; families</Pill>}
                 {r.teens && <Pill>Teens</Pill>}
+                {r.tags?.map((t) => <Pill>{t}</Pill>)}
               </span>
             )}
           </span>

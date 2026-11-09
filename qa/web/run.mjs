@@ -252,8 +252,15 @@ function pageProbe({ allowSel, wantLinks }) {
     emptySections, staleRecently, clientfill, staleAlerts, pastEvents, allDayClock,
     // meetings pages: organ strings no BODIES table knows (data-mtg-unknown), and links with an empty href (meetings.unknown-organ, web.empty-link)
     unknownOrgans: [...document.querySelectorAll('[data-mtg-unknown]')].map((e) => e.getAttribute('data-mtg-unknown')),
-    // events day lists must not hold a full-size FallbackTile (web.event-big-tile); a 64 px thumbnail is a photo, not a tile
-    eventBigTiles: [...document.querySelectorAll('.evd .ui-fb')].filter((e) => e.getBoundingClientRect().height > 80).map((e) => `${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)} px`),
+    // the date-tile event lists ([data-pop-list], components/pop/PopEventList.astro) hold no picture or placeholder at all (owner 2026-11-09: no thumbnails) and
+    // their date tile stays small (web.event-big-tile; born 2026-11-06 when a full-size FallbackTile led a day list). The old .evd selector no longer matches anything.
+    eventBigTiles: [
+      ...[...document.querySelectorAll('[data-pop-list] img, [data-pop-list] picture, [data-pop-list] video, [data-pop-list] .ui-fb')]
+        .map((e) => `picture or placeholder in a date-tile list: ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)} px`),
+      ...[...document.querySelectorAll('[data-pop-list] [data-pop-tile]')]
+        .filter((e) => e.getBoundingClientRect().height > 80)
+        .map((e) => `date tile ${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)} px (over 80)`),
+    ],
     emptyLinks: [...document.querySelectorAll('main a[href]')].filter((a) => (a.getAttribute('href') ?? '').trim() === '').map((a) => (a.innerText || '').trim().slice(0, 60)),
     // sideways scroll: some element reaches past the phone viewport (web.hscroll reads it on the mobile combos). Measured by element edges
     // against screen.width, not documentElement.scrollWidth: in mobile emulation the layout viewport is stretched to 980 on every page.

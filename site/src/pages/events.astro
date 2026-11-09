@@ -195,7 +195,7 @@ const webPageJsonLd = dateModified ? {
   {nearbyRows.length > 0 && (
     <section class="ev-day" aria-labelledby="h-nearby">
       <h2 class="ev-day__h" id="h-nearby">Nearby</h2>
-      <PopEventList days={groupRowsByDay(nearbyRows)} idPrefix="nearby" noteOf={(r) => { const m = distanceOf.get(r.item); return m != null ? `${Math.round(m)} mi away` : null; }} />
+      <PopEventList days={groupRowsByDay(nearbyRows)} idPrefix="nearby" noteOf={(r) => { const m = r.item ? distanceOf.get(r.item) : undefined; return m != null ? `${Math.round(m)} mi away` : null; }} />
     </section>
   )}
 

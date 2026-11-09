@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { buildBigShows, bigShowWhere, bigShowCategory } from './big-shows';
+import { buildBigShows, bigShowWhere, bigShowCategory, bigShowDays } from './big-shows';
 import type { TicketmasterFeedItem } from './ticketmaster';
 
 const CENTER = { lat: 39.9205, lon: -105.0866 }; // Broomfield
@@ -65,6 +65,33 @@ describe('buildBigShows', () => {
     expect(bigShowCategory('Music')).toBe('music');
     expect(bigShowCategory('Arts & Theatre')).toBe('arts');
     expect(bigShowCategory('Miscellaneous')).toBeNull();
+  });
+});
+
+describe('bigShowDays (the date-tile list)', () => {
+  const shows = build([
+    tm('a', 'Early', '2026-11-20T02:00:00Z'), tm('b', 'Late', '2026-11-20T04:00:00Z'), tm('c', 'Next day', '2026-11-22T02:00:00Z'),
+    tm('d', 'Tour', '2026-12-01T02:00:00Z'), tm('e', 'Tour', '2026-12-02T02:00:00Z'),
+  ]);
+  it('groups by the local day of the town (02:00Z on the 20th is the evening of the 19th in Denver) and keeps the order', () => {
+    const days = bigShowDays(shows, TZ);
+    expect(days.map((d) => [d.dayKey, d.rows.map((r) => r.title)])).toEqual([
+      ['2026-11-19', ['Early', 'Late']], ['2026-11-21', ['Next day']], ['2026-11-30', ['Tour']],
+    ]);
+  });
+  it('a row links to Ticketmaster, reads "Venue · City · N mi" with the time first, and carries the folded dates and no price', () => {
+    const [row] = bigShowDays(shows, TZ).flatMap((d) => d.rows).filter((r) => r.title === 'Tour');
+    expect(row.href).toBe('https://www.ticketmaster.com/e/d');
+    expect(row.venue).toBe('Ball Arena');
+    expect(row.area).toMatch(/^Denver · \d+ mi$/);
+    expect(row.note).toBe('+ 1 more date');
+    expect(row.start).toBe('2026-12-01T02:00:00Z');
+    expect(JSON.stringify(row)).not.toMatch(/\$40|price/i);
+  });
+  it('BigShowsNearby prints the shared date-tile list, not its own row component (BigShowRow is gone)', () => {
+    const src = readFileSync(join(__dirname, '..', 'components/events/BigShowsNearby.astro'), 'utf8');
+    expect(src).toMatch(/PopEventList/);
+    expect(src).not.toMatch(/BigShowRow|data-hide-ended/);
   });
 });
 

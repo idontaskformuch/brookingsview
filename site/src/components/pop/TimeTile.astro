@@ -1,0 +1,23 @@
+---
+/** The tile of a single-day list (/tonight, /this-weekend): the START TIME where the other lists show the date, because the day is already the section.
+ *  Same box (width, type scale, accent) as DayTile so the two read as one family; no tile at all for a row with no time. The model comes from
+ *  lib/event-pop.ts timeTile(); this component prints it and decides nothing. */
+import type { TimeTileModel } from '../../lib/event-pop';
+interface Props { model: TimeTileModel | null }
+const { model } = Astro.props;
+---
+{!model ? <span class="tt tt--none" aria-hidden="true"></span> : (
+  <span class="tt" title={model.label}>
+    <span class="tt__sr">{model.label}</span>
+    <span class="tt__kicker" aria-hidden="true">{model.kicker}</span>
+    <span class="tt__main" aria-hidden="true">{model.main}</span>
+  </span>
+)}
+<style>
+  .tt { flex: 0 0 var(--tile-w, 3.75rem); width: var(--tile-w, 3.75rem); display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+        text-align: center; font-family: var(--font-ui); font-variant-numeric: tabular-nums; line-height: 1; }
+  .tt--none { min-height: 1px; }
+  .tt__kicker { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.06em; color: var(--ink-soft); }
+  .tt__main { margin-top: 0.1875rem; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; color: var(--brand-accent, var(--accent)); white-space: nowrap; }
+  .tt__sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
