@@ -26,10 +26,10 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from sports import adapters
-from sports.http import PoliteHttp
+from sports.http import PoliteHttp, SourceSkipped
 from sports.adapters import visitbrookings
 from sports.adapters.sidearm import normalize_opponent, parse_schedule_page, parse_time_cell
-from sports.models import NormalizedEvent
+from sports.models import Fetched, NormalizedEvent
 
 NAME = "internal"
 _EXHIBITION = re.compile(r"\(\s*exhibition\s*\)|\bscrimmage\b", re.I)
@@ -89,11 +89,20 @@ def fetch(params: dict) -> list[NormalizedEvent]:
     if provider == "visitbrookings":
         return visitbrookings.fetch(params, http)
     root = params["url"].rstrip("/")
-    out: list[NormalizedEvent] = []
+    out = Fetched()
+    last_error: Exception | None = None
     for slug, spec in params["sports"].items():
-        html = http.get_text(f"{root}/sports/{slug}/schedule/text")
-        for rec in parse_schedule_page(html, spec["sport"]):
-            ev = _event(rec, slug, spec, params)
-            if ev is not None:
-                out.append(ev)
+        try:
+            html = http.get_text(f"{root}/sports/{slug}/schedule/text")
+            events = [ev for rec in parse_schedule_page(html, spec["sport"]) if (ev := _event(rec, slug, spec, params)) is not None]
+        except SourceSkipped:
+            raise  # robots, a 401/403/429 or a Crawl-delay above the limit is a no for the whole source
+        except Exception as exc:  # one page that still fails after http's single retry (or does not parse) is skipped; its scope counts as not read
+            last_error = exc
+            out.unread.append({"program": params["program"], "sport": spec["sport"], "gender": spec.get("gender"), "slug": slug,
+                               "reason": f"{type(exc).__name__}: {exc}"})
+            continue
+        out.extend(events)
+    if len(out.unread) == len(params["sports"]) and last_error is not None:
+        raise last_error  # nothing was read at all: the source is an error, as before
     return out

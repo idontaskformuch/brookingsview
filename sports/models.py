@@ -59,6 +59,16 @@ class NormalizedEvent:
         return out
 
 
+class Fetched(list):
+    """What an adapter may return instead of a plain list: the events it read, plus `unread` -- the scopes (program, sport, gender) whose page or
+    file it could not read this time, each with a short reason. The runner writes the events, warns about the unread scopes and leaves their
+    rows exactly as they were (no missed_runs, no withdrawal; sports/withdraw.py). An adapter that reads nothing at all raises instead."""
+
+    def __init__(self, events=(), unread=()):
+        super().__init__(events)
+        self.unread: list[dict] = list(unread)
+
+
 @dataclass
 class NormalizedStanding:
     source: str

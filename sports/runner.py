@@ -31,7 +31,9 @@ def run_source(cur, town_id: str, source: dict, *, http: PoliteHttp | None = Non
         programs = [source["program"]] if source.get("program") else sorted({e.program_id for e in events if e.program_id})
         known = withdraw.load_known(cur, town_id, source["adapter"], programs)  # before the upsert: "new to the table" is judged against it
         store.upsert_events(cur, town_id, events)
-        decision = withdraw.plan(known, events, datetime.now(timezone.utc))
+        unread = list(getattr(rows, "unread", []))
+        decision = withdraw.plan(known, events, datetime.now(timezone.utc), {(u["program"], u["sport"], u["gender"]) for u in unread})
+        decision.warnings += [f"{u.get('slug') or u['sport']}: not read ({u['reason'][:120]}); its rows were left as they were" for u in unread]
         withdraw.apply(cur, decision)
     except SourceSkipped as exc:
         store.record_health(cur, town_id, sid, error=f"skipped: {exc}")

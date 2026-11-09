@@ -4,6 +4,8 @@
 * A Crawl-delay applies in full between any two requests to the same host (the robots.txt fetch counts as one). It is never shortened.
   A delay above `max_crawl_delay` (seconds, default 60) skips the source (SourceSkipped); there is no faster fetch instead.
 * A 401/403/429 answer is a no (CLAUDE.md rule 13): SourceSkipped, no second attempt, no other identity.
+* No answer at all (status None: a dropped connection or timeout) or a 5xx gets ONE more attempt, after the Crawl-delay (at least RETRY_PAUSE
+  seconds when the host sets none). Any other status (404, 400, ...) is an error at once. A second failure raises RuntimeError.
 """
 from __future__ import annotations
 
@@ -15,6 +17,7 @@ from scrapers.user_agent import user_agent
 
 DEFAULT_MAX_CRAWL_DELAY = 60.0
 REFUSED = (401, 403, 429)
+RETRY_PAUSE = 2.0
 
 
 class SourceSkipped(Exception):
@@ -74,10 +77,14 @@ class PoliteHttp:
     def get_text(self, url: str) -> str:
         verdict = self.preflight(url)
         host = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
-        self._wait(host, verdict.crawl_delay or 0.0)
-        status, text = self._get(url, self.ua)
-        if status in REFUSED:
-            raise SourceSkipped(f"{urlparse(url).path or '/'} answered {status}: treated as a no, not retried", "refused")
-        if status != 200:
-            raise RuntimeError(f"{urlparse(url).path or '/'} answered {status}")
-        return text
+        path = urlparse(url).path or "/"
+        for attempt in (1, 2):
+            self._wait(host, verdict.crawl_delay or 0.0 if attempt == 1 else max(verdict.crawl_delay or 0.0, RETRY_PAUSE))
+            status, text = self._get(url, self.ua)
+            if status in REFUSED:
+                raise SourceSkipped(f"{path} answered {status}: treated as a no, not retried", "refused")
+            if status == 200:
+                return text
+            if attempt == 1 and (status is None or status >= 500):
+                continue
+            raise RuntimeError(f"{path} answered {status}" + (" (after one retry)" if attempt == 2 else ""))

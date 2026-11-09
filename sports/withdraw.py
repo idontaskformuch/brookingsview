@@ -7,6 +7,8 @@ A successful run of a source (no exception, no SourceSkipped) is compared with w
   missing one (each new game replaces at most one missing one);
 * the upsert (sports/store.py) clears withdrawn_at and resets missed_runs when the source lists the game again.
 
+A scope the adapter reports as unread (its page failed, see models.Fetched) is skipped altogether.
+
 Guards, per scope (program, sport, gender) -- a scope with nothing to compare against changes nothing and says so:
 * the source returned no game of the scope while the table has upcoming ones: broken or empty answer, nothing is touched;
 * from MIN_SCOPE_ROWS (8) upcoming rows, more than MASS_MISS (50 %) of them missing: looks like a broken source, nothing is touched;
@@ -74,7 +76,8 @@ def _event_key(e: NormalizedEvent) -> tuple:
     return _key(e.program_id, e.sport, e.gender, e.home_program_id, e.home_name, e.away_program_id, e.away_name)
 
 
-def plan(known: list[Known], returned: list[NormalizedEvent], now: datetime) -> Plan:
+def plan(known: list[Known], returned: list[NormalizedEvent], now: datetime, unread: frozenset | set = frozenset()) -> Plan:
+    """`unread`: scopes (program, sport, gender) the source could not read this run. They count as not read: no missed_runs, no withdrawal, no warning here."""
     out = Plan()
     seen = {e.source_uid for e in returned}
     table_uids = {k.source_uid for k in known}
@@ -85,6 +88,8 @@ def plan(known: list[Known], returned: list[NormalizedEvent], now: datetime) -> 
         scopes.setdefault((k.program_id, k.sport, k.gender), []).append(k)
 
     for (program, sport, gender), rows in sorted(scopes.items(), key=lambda kv: str(kv[0])):
+        if (program, sport, gender) in unread:
+            continue
         label = f"{program}/{sport}/{gender or '-'}"
         missing = sorted((k for k in rows if k.source_uid not in seen), key=lambda k: (k.start_at, k.id))
         if not missing:
