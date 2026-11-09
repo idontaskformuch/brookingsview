@@ -4,7 +4,6 @@
  *  in lib/tonight-cards.ts (tested); this file only reads data-* attributes and writes text and `hidden`. No network, no dependencies. */
 import { hasEnded } from './local-day';
 import { sectionState } from './evening-page';
-import { showTimeGb } from './whats-on-dates';
 import {
   timeState, isStartingSoon, matchesArea, nextUp, untilLabel, surprisePick, surpriseCandidates, chipPlan, countByRegion, SOON_MAX_CARDS,
   scopeLine, dayView, heroFor, bigShowsLine, partitionBig, type SurpriseCard, type Bucket,
@@ -84,26 +83,8 @@ export function initTonightCards(doc: Document): void {
       if (n) n.textContent = String(shown.length);
       const btn = cat.querySelector<HTMLButtonElement>('[data-tc-toggle]');
       if (btn) btn.hidden = shown.length < 3;
-      renderTimeHeads(cat);
     });
     $$(doc, '[data-tc-pairs]').forEach((box) => { box.hidden = $$(box, '[data-pair]').every((p) => p.hidden); });
-  }
-
-  /** In an unfolded vertical list the start time is a heading once, not repeated on every card. */
-  function renderTimeHeads(cat: HTMLElement): void {
-    $$(cat, '.tc-timehead').forEach((h) => h.remove());
-    if (!cat.classList.contains('is-open') || cat.dataset.bucket === 'late') return;
-    let last = '';
-    $$(cat, '[data-card]').filter((c) => !c.hidden).forEach((c) => {
-      const label = showTimeGb(c.dataset.start || '', tz);
-      if (!label || label === last) return;
-      last = label;
-      const li = doc.createElement('li');
-      li.className = 'tc-timehead';
-      li.setAttribute('aria-hidden', 'true');
-      li.textContent = label;
-      c.before(li);
-    });
   }
 
   function renderSoon(now: Date): void {
@@ -236,7 +217,6 @@ export function initTonightCards(doc: Document): void {
       const open = cat.classList.toggle('is-open');
       toggle.setAttribute('aria-expanded', String(open));
       toggle.textContent = open ? 'Show less' : 'See all';
-      renderTimeHeads(cat);
       return;
     }
     if (target.closest('[data-tc-surprise]')) {

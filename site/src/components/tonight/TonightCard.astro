@@ -1,6 +1,6 @@
 ---
 /** One card of /tonight (spec .claude/specs/tonight-cards.md). The whole card is the link. The big line is the time; the category colour is
- *  the top edge and the tag. Badges only from stated data (lib/tonight-cards.ts badgesFor). `lg` = the large Starting soon size. */
+ *  the top edge and the tag. Badges only from stated data (lib/tonight-cards.ts badgesFor). */
 import type { EveningEntry } from '../../lib/evening-items';
 import { driveLabel, groupLabel } from '../../lib/evening-items';
 import { showTimeGb } from '../../lib/whats-on-dates';
@@ -9,8 +9,8 @@ import Card from '../ui/Card.astro';
 import Pill from '../ui/Pill.astro';
 import type { OpenLateRow } from '../../lib/osm-open-late';
 
-interface Props { e?: EveningEntry; place?: OpenLateRow; tz: string; lg?: boolean; /** Coarse area the chips filter by (lib/tonight-cards.ts regionOf); null = only under All. */ region?: string | null; town: CardTown }
-const { e, place, tz, lg = false, region = null, town } = Astro.props;
+interface Props { e?: EveningEntry; place?: OpenLateRow; tz: string; /** Coarse area the chips filter by (lib/tonight-cards.ts regionOf); null = only under All. */ region?: string | null; town: CardTown }
+const { e, place, tz, region = null, town } = Astro.props;
 const bucket = place ? 'late' : bucketOf(e!.group);
 const href = place ? place.website : e!.href;
 const time = place ? place.closing : [e!.start, ...(e!.laterStarts ?? [])].map((t) => showTimeGb(t, tz)).filter(Boolean)[0] ?? '';
@@ -24,7 +24,7 @@ const badges = place ? [] : badgesFor(e!, town.hidePrice);
 const scope = !place && town.cityLabels ? cityScope(e!.venueCity, town.homeCity) : undefined;
 const cat = BUCKET_CATEGORY[bucket];
 ---
-<li class:list={['tc-card', { 'tc-card--lg': lg }]} data-card data-bucket={bucket} data-id={place ? place.osmId : e!.id}
+<li class="tc-card" data-card data-bucket={bucket} data-id={place ? place.osmId : e!.id}
   data-start={place ? place.start : e!.start} data-end={(place ? place.end : e!.end) ?? undefined} data-area={region ?? undefined}
   data-scope={scope} data-big={big ? '1' : undefined} data-late={place ? '' : undefined} style={`--c: var(--tc-${bucket})`}>
   <Card cat={cat ?? undefined} neutral={!cat} href={href ?? undefined} class="tc-link">

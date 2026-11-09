@@ -17,7 +17,6 @@ import { linkTarget } from './ai-text';
 import { distanceLabel, IN_TOWN_THRESHOLD_MILES, type TicketmasterFeedItem } from './ticketmaster';
 import { ticketmasterSlug } from './whats-on';
 import { hasEnded, DEFAULT_EVENT_MS, localDayNumber, localHourOf, localInstantIso } from './local-day';
-import { ticketmasterImageProxyPath } from './images';
 import type { EveningItem } from './evening-threshold';
 
 export type EveningGroup = 'Live music' | 'Comedy & shows' | 'Quiz & pub nights' | 'Clubs & late' | 'Theatre' | 'Sport' | 'Family' | 'Festivals & fairs' | 'Film';
@@ -45,8 +44,6 @@ export interface EveningEntry {
   checked: string;
   /** Later start times the same night for the same title (a film with several screenings); register rows only. */
   laterStarts?: string[];
-  /** Licensed Ticketmaster picture (proxied through our own route), shown on highlight cards only. null/absent = no picture. */
-  image?: { src: string; alt: string; width: number; height: number } | null;
   /** Neighbourhood ("Merchant City") from OpenStreetMap place data, see lib/areas.ts; null/absent when unknown. */
   area?: string | null;
   lat?: number | null;
@@ -244,7 +241,6 @@ function ticketmasterEntry(item: TicketmasterFeedItem, o: EveningEntryOptions): 
     distanceMiles: e.venueDistanceMiles,
     driveMinutes: distanceLabel(e.venueDistanceMiles, o.cityName) === `In ${o.cityName}` || e.venueDistanceMiles == null ? null : driveMinutes(e.venueDistanceMiles),
     checked: o.checked,
-    image: e.imageUrl ? { src: ticketmasterImageProxyPath(e.imageUrl), alt: `Photo for "${e.title}"`, width: e.imageWidth ?? 1600, height: e.imageHeight ?? 900 } : null,
     lat: e.venueLatitude, lon: e.venueLongitude,
     priceMin: e.priceMin ?? null, priceCurrency: e.priceCurrency ?? null, venueCity: cleanCity(e.venueCity),
   };

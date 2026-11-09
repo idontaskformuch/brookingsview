@@ -15,8 +15,7 @@
   .tc-hero { margin: 0.5rem 0 1rem; }
   .tc-empty { margin: 0; font-size: 1.25rem; font-weight: 600; }
   .tc-empty a { font-weight: 600; }
-  .tc-day[data-tc-view='hidden'], .tc-day[data-tc-view='late-only'] > .tc-day-h, .tc-day[data-tc-view='late-only'] > [data-tc-pairs],
-  .tc-day[data-tc-view='late-only'] [data-tc-cat]:not([data-bucket='late']) { display: none; }
+  .tc-day[data-tc-view='hidden'], .tc-day[data-tc-view='late-only'] > .tc-day-h, .tc-day[data-tc-view='late-only'] > [data-tc-pairs] { display: none; }
   p.tc-scope.ui-insight { margin: 0.2rem 0 0; font-size: 1rem; color: var(--ink-soft); }
   p.tc-big.ui-insight { margin: 0.2rem 0 0; font-size: 1rem; color: var(--ink-soft); }
   p.tc-next.ui-insight { margin: 0.4rem 0 0; font-size: 1.0625rem; font-weight: 600; color: var(--tc-music); }
@@ -34,22 +33,17 @@
   .tc-all { font: inherit; font-size: 0.9375rem; font-weight: 600; color: var(--ink); background: none; border: 0; padding: 0.4rem 0; cursor: pointer; text-decoration: underline; text-underline-offset: 0.2em; min-height: 2.75rem; }
 
   .tc-card { flex: 0 0 15.5rem; scroll-snap-align: start; position: relative; display: flex; }
-  .tc-card--lg { flex-basis: min(82vw, 19rem); }
   .tc-time { color: var(--c); font-size: 1.625rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
-  .tc-card--lg .tc-time { font-size: 2.25rem; }
   .tc-card.is-now .tc-time::before { content: ''; display: inline-block; width: 0.55em; height: 0.55em; margin-right: 0.35em; border-radius: 50%; background: var(--c); vertical-align: 0.08em; }
   .tc-title { font-size: 1.1875rem; font-weight: 700; line-height: 1.22; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-  .tc-card--lg .tc-title { font-size: 1.3125rem; }
   .tc-meta { font-size: 0.9375rem; color: var(--ink-soft); }
   .tc-attr { margin: 0.4rem 0 0; color: var(--ink-soft); font-size: 0.8125rem; }
   .tc-foot { margin-top: auto; padding-top: 0.45rem; display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
   .tc-tag { font-size: 0.8125rem; font-weight: 700; color: var(--c); text-transform: uppercase; letter-spacing: 0.04em; }
 
-  /* unfolded: a vertical list, the time once as a heading */
+  /* unfolded: a vertical list (the Open tonight row) */
   .tc-cat.is-open .tc-row { flex-direction: column; overflow: visible; }
   .tc-cat.is-open .tc-card { flex-basis: auto; }
-  .tc-cat.is-open:not([data-bucket="late"]) .tc-time { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .tc-timehead { margin: 0.75rem 0 0.1rem; font-size: 1.375rem; font-weight: 800; color: var(--c); font-variant-numeric: tabular-nums; list-style: none; }
 
   /* area chips, sticky under the header */
   .tc-chips { position: sticky; top: 0; z-index: 5; display: flex; gap: 0.5rem; overflow-x: auto; padding: 0.6rem 0; margin: 0 0 1.25rem; background: var(--paper); border-bottom: 1px solid var(--rule); }
@@ -68,8 +62,8 @@
   /* surprise me */
   .tc-surprise { position: fixed; right: 1rem; bottom: 1rem; z-index: 10; font: inherit; font-weight: 700; font-size: 1rem; padding: 0.8rem 1.15rem; min-height: 3rem; border-radius: 999px; border: 0; background: var(--ink); color: var(--paper); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3); cursor: pointer; }
   .tc-surprise[hidden] { display: none; }
-  .tc-card.tc-hit { animation: tc-hit 0.7s ease-out; z-index: 1; }
-  .tc-card.tc-enter { animation: tc-enter 0.22s ease-out; }
+  .tc-card.tc-hit, .pl__li.tc-hit { animation: tc-hit 0.7s ease-out; z-index: 1; }
+  .tc-card.tc-enter, .pl__li.tc-enter { animation: tc-enter 0.22s ease-out; }
   .tc-chips[hidden], .tc-card[hidden], .tc-pair[hidden], .tc-cat[hidden], .tc-soon[hidden], .tc-chip[hidden], .tc-next[hidden], .tc-scope[hidden], .tc-big[hidden], .ui-hero[hidden], .tc-count[hidden], .tc-empty[hidden], .tc-empty a[hidden], .tc-empty span[hidden] { display: none; }
 
   @keyframes tc-hit { 0% { transform: scale(1); } 20% { transform: scale(1.06) rotate(-1.2deg); } 40% { transform: scale(1.06) rotate(1.2deg); } 60% { transform: scale(1.04) rotate(-0.6deg); } 100% { transform: scale(1); } }
@@ -79,7 +73,7 @@
     .tc-pairs { grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); }
   }
   @media (prefers-reduced-motion: reduce) {
-    .tc-card, .ui-chip { animation: none !important; transition: none !important; }
+    .tc-card, .pl__li, .ui-chip { animation: none !important; transition: none !important; }
     .tc-row { scroll-behavior: auto; }
   }
 </style>
