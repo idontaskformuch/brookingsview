@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ALERTS_CRON } from '../src/alerts/towns';
-import { MORNING_CRON, OSM_WORKFLOW, REGISTER_WORKFLOW, SCRAPE_CRON, SCRAPE_WORKFLOWS, SPORTS_UTC_HOUR, SPORTS_WORKFLOW, dueWorkflows } from '../src/schedule';
+import { GLASGOW_SPORTS_WORKFLOW, MORNING_CRON, OSM_WORKFLOW, REGISTER_WORKFLOW, SCRAPE_CRON, SCRAPE_WORKFLOWS, SPORTS_UTC_HOUR, SPORTS_WORKFLOW, dueWorkflows } from '../src/schedule';
 
 const at = (iso: string) => Date.parse(iso);
 
@@ -89,8 +89,8 @@ describe('Brookings sports fetch', () => {
   it('fires once a day, on the first alerts tick of 17:00 UTC', () => {
     const fired = [];
     for (let h = 0; h < 24; h++) for (const m of ['00', '15', '30', '45']) fired.push(...dueWorkflows(ALERTS_CRON, at(`2026-11-09T${String(h).padStart(2, '0')}:${m}:00Z`)));
-    expect(fired).toEqual([SPORTS_WORKFLOW]);
-    expect(dueWorkflows(ALERTS_CRON, at('2026-11-09T17:00:00Z'))).toEqual([SPORTS_WORKFLOW]);
+    expect(fired).toEqual([SPORTS_WORKFLOW, GLASGOW_SPORTS_WORKFLOW]);
+    expect(dueWorkflows(ALERTS_CRON, at('2026-11-09T17:00:00Z'))).toEqual([SPORTS_WORKFLOW, GLASGOW_SPORTS_WORKFLOW]);
   });
   it('never shares an hour with the scrape ticks (a sports run never overlaps a scrape)', () => {
     const scrapeHours = SCRAPE_CRON.split(' ')[1].split(',').map(Number);
@@ -101,5 +101,14 @@ describe('Brookings sports fetch', () => {
     expect(yml).toContain('workflow_dispatch');
     expect(yml).toContain('python -m sports.runner --town brookings_sd');
     expect(yml).not.toContain('even-if-disabled');
+  });
+  it('the Glasgow sports workflow is dispatchable, runs the runner for glasgow, takes the key from the secret and never prints it', () => {
+    const yml = readFileSync(new URL(`../../.github/workflows/${GLASGOW_SPORTS_WORKFLOW}`, import.meta.url), 'utf8');
+    expect(yml).toContain('workflow_dispatch');
+    expect(yml).toContain('python -m sports.runner --town glasgow');
+    expect(yml).toContain('SPORTMONKS_API_KEY: ${{ secrets.SPORTMONKS_API_KEY }}');
+    expect(yml).not.toContain('even-if-disabled');
+    expect(yml).not.toMatch(/--dry-run|set -x|echo[^\n]*SPORTMONKS/);
+    expect(yml).not.toMatch(/run:[^\n]*\$\{\{\s*secrets/); // a secret is only ever passed through env:, never spliced into a command line
   });
 });

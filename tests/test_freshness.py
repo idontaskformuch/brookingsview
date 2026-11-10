@@ -68,13 +68,19 @@ def test_sport_sources_are_exactly_the_enabled_ones_in_the_configs():
     for town in cf.ALL_TOWNS:
         block = json.loads((ROOT / "configs" / f"{town}.json").read_text(encoding="utf-8")).get("sports") or {}
         mine = [s for t, s in got if t == town]
-        assert bool(mine) == (block.get("enabled") is True)
+        assert bool(mine) == (block.get("enabled") is True or block.get("collect") is True)
 
 
 def test_sport_sources_skip_a_disabled_town(tmp_path):
     for town in cf.ALL_TOWNS:
         (tmp_path / f"{town}.json").write_text(json.dumps({"sports": {"enabled": False, "sources": [{"adapter": "internal", "program": "x"}]}}), encoding="utf-8")
     assert cf.sport_sources(tmp_path) == []
+
+
+def test_sport_sources_include_a_collect_only_town(tmp_path):
+    for town in cf.ALL_TOWNS:
+        (tmp_path / f"{town}.json").write_text(json.dumps({"sports": {"enabled": False, "collect": True, "sources": [{"adapter": "sportmonks", "program": "p"}]}}), encoding="utf-8")
+    assert {s for _, s in cf.sport_sources(tmp_path)} == {"sportmonks:p"}
 
 
 def test_every_check_id_is_in_the_qa_registry_as_hard():

@@ -7,6 +7,7 @@ const sm = (enabled?: boolean) => ({ x: { sports: { ...(enabled === undefined ? 
 describe('footerCredits', () => {
   it('shows nothing while sports.enabled is not true (Glasgow today: false), for every town', () => {
     expect(glasgow.sports.enabled).toBe(false);
+    expect((glasgow.sports as { collect?: boolean }).collect).toBe(true); // collecting is on, showing is not
     for (const town of ['glasgow', 'brookings_sd', 'moreno_valley_ca', 'broomfield_co']) expect(footerCredits(town)).toEqual([]);
   });
   it('credits Sportmonks (text only) once sports.enabled is true and the town has a sportmonks source', () => {

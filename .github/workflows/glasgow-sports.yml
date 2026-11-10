@@ -1,0 +1,32 @@
+name: glasgow-sports
+# Glasgow sport (Scottish Premiership, Sportmonks) -> sport_events, once a day. Started by the Cloudflare cron Worker
+# (workflow_dispatch, 17:00 UTC, the same tick as brookings-sports), never by GitHub's own schedule.
+# COLLECTION ONLY: configs/glasgow.json has sports.collect=true and sports.enabled=false, so nothing is shown on the site (no footer
+# credit, no page reads the program) and there is deliberately no build or deploy here. When the owner turns sports.enabled on, a
+# site rebuild is needed for it to appear.
+# Two requests a day against the free plan's 180 an hour. SPORTMONKS_API_KEY reaches the runner through env only; the adapter sends it
+# in the Authorization header and never logs it, and Actions masks the secret value in the log on top of that.
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: glasgow-sports
+  cancel-in-progress: false
+
+jobs:
+  sports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SPORTMONKS_API_KEY: ${{ secrets.SPORTMONKS_API_KEY }}
+      USER_AGENT:   "ViewMediaBot (+https://glasgowloop.co.uk/contact)"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - run: pip install -r requirements.txt
+      - name: Fetch Sportmonks fixtures into sport_events
+        run: python -m sports.runner --town glasgow

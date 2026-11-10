@@ -218,6 +218,7 @@
   },
   "sports": {
     "enabled": false,
+    "collect": true,
     "programs": [
       {
         "id": "scottish-premiership",
@@ -234,7 +235,7 @@
         "level": "pro",
         "gender": "men",
         "url": "https://api.sportmonks.com/v3/football/fixtures/between",
-        "note": "Sportmonks Football Free Plan (Scottish Premiership, league 501; 180 requests/hour). Written answer 2026-11-08 (ticket Sportmonks-114845), see notes: sources/sportmonks: ad-funded display and caching OK, no attribution required (footer line kept by the owner), raw data must NOT be redistributed (never in ICS/JSON/RSS: config/sports.json noRedistribution), no logos or photos. Needs SPORTMONKS_API_KEY. enabled stays false until the first approved live run and a scheduled workflow exist.",
+        "note": "Sportmonks Football Free Plan (Scottish Premiership, league 501; 180 requests/hour). Written answer 2026-11-08 (ticket Sportmonks-114845), see notes: sources/sportmonks: ad-funded display and caching OK, no attribution required (footer line kept by the owner), raw data must NOT be redistributed (never in ICS/JSON/RSS: config/sports.json noRedistribution), no logos or photos. Needs SPORTMONKS_API_KEY. collect=true lets the daily glasgow-sports workflow gather rows into sport_events; enabled stays false (nothing is shown: no footer credit, no about-sources line, no page reads the scottish-premiership program) until the owner decides to show it.",
         "params": { "league_id": 501, "competition": "Scottish Premiership", "tz": "Europe/London", "days_back": 30, "days_forward": 60 }
       }
     ],

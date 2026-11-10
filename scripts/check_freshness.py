@@ -3,7 +3,7 @@
 The scrape watchdog (check_scrape_liveness.py) covers the twice-daily scrape. This one covers the rest, each with its own check id so the
 issues are independent (qa/report.py `scope_checks`: a run of this script only ever opens/closes ops.*-freshness / token issues):
 
-  ops.sport-freshness    sport_sources_health.last_success per ACTIVE sports source (configs sports.enabled)        26 h  (one daily run, 17:00 UTC)
+  ops.sport-freshness    sport_sources_health.last_success per ACTIVE sports source (configs sports.enabled or sports.collect)        26 h  (one daily run, 17:00 UTC)
   ops.sport-warning      a `warning:` in sport_sources_health.last_error (a page skipped, a guard that held rows back) that has lasted > 3 days
                          unchanged; the source still counts as fresh, so only this check shows a sport page that fails every day
   ops.weather-freshness  weather_snapshots, newest row per town, payload->>'fetched_at' (written every whole hour)    3 h
@@ -73,11 +73,11 @@ def age_text(last: datetime | None, now: datetime) -> str:
 
 
 def sport_sources(configs_dir: Path = ROOT / "configs") -> list[tuple[str, str]]:
-    """(town_id, source_id) for every source of every town whose config has sports.enabled; source_id as sports/runner.py names it."""
+    """(town_id, source_id) for every source of every town whose config has sports.enabled or sports.collect; source_id as sports/runner.py names it."""
     out: list[tuple[str, str]] = []
     for town in ALL_TOWNS:
         block = json.loads((configs_dir / f"{town}.json").read_text(encoding="utf-8")).get("sports") or {}
-        if block.get("enabled") is True:
+        if block.get("enabled") is True or block.get("collect") is True:
             out += [(town, f"{s['adapter']}:{s.get('program', '*')}") for s in block.get("sources", [])]
     return out
 

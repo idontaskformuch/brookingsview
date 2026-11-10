@@ -59,7 +59,7 @@ def run_source(cur, town_id: str, source: dict, *, http: PoliteHttp | None = Non
 
 def run_town(cur, cfg: dict, *, http_factory=None) -> dict[str, str]:
     block = cfg.get("sports") or {}
-    if not block.get("enabled"):
+    if not (block.get("enabled") or block.get("collect")):  # `collect` = gather into sport_events; `enabled` = also show it on the site
         return {}
     store.sync_programs(cur, cfg["town_id"], block)
     return {source_id(s): run_source(cur, cfg["town_id"], s, http=http_factory(s) if http_factory else None)

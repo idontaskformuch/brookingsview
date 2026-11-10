@@ -7,7 +7,7 @@ from scrapers import robots
 from sports import adapters, registry
 
 NON_ADAPTER_SOURCES = ("manual_verified", "submissions")
-_TOP = {"enabled", "nearby_radius_miles", "programs", "rivalries", "sources", "source_priority", "submissions"}
+_TOP = {"enabled", "collect", "nearby_radius_miles", "programs", "rivalries", "sources", "source_priority", "submissions"}
 _PROGRAM = {"id", "name", "short", "nickname", "colors", "home_venue", "level_default", "kind"}
 _SOURCE = {"adapter", "program", "sport", "level", "gender", "url", "params", "robots_mode", "max_crawl_delay", "note"}
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
@@ -30,6 +30,8 @@ def validate_sports_config(cfg: dict) -> list[str]:
         bad(f"{key}: unknown key")
     if not isinstance(block.get("enabled"), bool):
         bad("enabled: required, true or false")
+    if "collect" in block and not isinstance(block["collect"], bool):
+        bad("collect: true or false (collect = the runner gathers rows; enabled = the site shows them)")
     radius = block.get("nearby_radius_miles", 30)
     if isinstance(radius, bool) or not isinstance(radius, (int, float)) or radius <= 0:
         bad("nearby_radius_miles: must be a positive number")

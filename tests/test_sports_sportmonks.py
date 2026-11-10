@@ -274,3 +274,24 @@ def test_dry_run_line_names_the_right_weekday_for_the_london_date():
     runner.dry_run_town(CFG, http_factory=lambda s: net.http(), out=lines.append)
     rows = [l.strip() for l in lines if "uid=sportmonks:" in l]
     assert [r.split(" ")[0] + " " + r.split(" ")[1] for r in rows] == ["Sun 2026-10-25", "Sat 2026-10-31", "Sat 2026-11-21"]
+
+
+def test_glasgow_collects_but_does_not_show():
+    sports = CFG["sports"]
+    assert sports["collect"] is True and sports["enabled"] is False
+    assert validate_sports_config(CFG) == []
+
+
+def test_collect_alone_runs_the_sources_enabled_false_without_collect_does_not():
+    net = Net([UPCOMING])
+    cur = Cur()
+    out = runner.run_town(cur, {**CFG, "sports": {**CFG["sports"], "collect": True, "enabled": False}}, http_factory=lambda s: net.http())
+    assert out == {"sportmonks:scottish-premiership": "ok"} and any(s.startswith("INSERT INTO sport_events") for s, _ in cur.sql)
+    idle = Cur()
+    assert runner.run_town(idle, {**CFG, "sports": {**CFG["sports"], "collect": False, "enabled": False}}) == {} and idle.sql == []
+    assert runner.run_town(idle, {**CFG, "sports": {k: v for k, v in CFG["sports"].items() if k != "collect"}}) == {} and idle.sql == []
+
+
+def test_collect_must_be_a_boolean():
+    bad = {**CFG, "sports": {**CFG["sports"], "collect": "yes"}}
+    assert any("collect" in p for p in validate_sports_config(bad))

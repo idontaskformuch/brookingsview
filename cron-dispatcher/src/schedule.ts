@@ -38,6 +38,8 @@ export const REGISTER_WORKFLOW = 'evening-register.yml';
 // whose minute is 0-14), so no extra cron trigger is needed. Kept off the 11:00/23:00 UTC scrape ticks so a sports run never overlaps a scrape.
 export const SPORTS_WORKFLOW = 'brookings-sports.yml';
 export const SPORTS_UTC_HOUR = 17;
+// Glasgow sport (Sportmonks, collection only; sports.enabled stays false so nothing is shown): same daily tick, its own workflow.
+export const GLASGOW_SPORTS_WORKFLOW = 'glasgow-sports.yml';
 
 // Broomfield is deliberately absent: its school_alerts sources are disabled
 // (zero runs/rows ever, Adams 12 bot-challenge, BVSD app-only), so a morning
@@ -86,7 +88,7 @@ export function dueWorkflows(cron: string, scheduledTime: number): string[] {
   }
   if (cron === ALERTS_CRON) {
     const at = new Date(scheduledTime);
-    return at.getUTCHours() === SPORTS_UTC_HOUR && at.getUTCMinutes() < 15 ? [SPORTS_WORKFLOW] : [];
+    return at.getUTCHours() === SPORTS_UTC_HOUR && at.getUTCMinutes() < 15 ? [SPORTS_WORKFLOW, GLASGOW_SPORTS_WORKFLOW] : [];
   }
   return [];
 }
