@@ -17,9 +17,12 @@ def source_id(source: dict) -> str:
     return f"{source['adapter']}:{source.get('program', '*')}"
 
 
-def read_source(town_id: str, source: dict, *, http: PoliteHttp | None = None):
-    """The network half of a run, shared with --dry-run: robots preflight, then the adapter's rows (a list, or Fetched with `.unread`)."""
+def read_source(town_id: str, source: dict, *, http: PoliteHttp | None = None, log=None):
+    """The network half of a run, shared with --dry-run: robots preflight, then the adapter's rows (a list, or Fetched with `.unread`).
+    `log(text)` receives one line per API call from adapters that report them (never a URL or header)."""
     params = adapters.merged_params(source)
+    if log:
+        params["_log"] = log
     params["_http"] = http or PoliteHttp(user_agent(town_id), mode=source.get("robots_mode", "standard"),
                                          max_crawl_delay=source.get("max_crawl_delay", DEFAULT_MAX_CRAWL_DELAY))
     if params.get("url"):
@@ -64,7 +67,7 @@ def run_town(cur, cfg: dict, *, http_factory=None) -> dict[str, str]:
 
 
 def _describe(e: NormalizedEvent) -> str:
-    when = e.start_at.strftime("%Y-%m-%d") + (" (time TBA)" if e.time_tba else e.start_at.strftime(" %H:%M %Z"))
+    when = e.start_at.strftime("%a %Y-%m-%d") + (" (time TBA)" if e.time_tba else e.start_at.strftime(" %H:%M %Z"))
     score = f" {e.score_home}-{e.score_away}" if e.score_home is not None and e.score_away is not None else ""
     return f"{when}  {e.home_name} v {e.away_name}{score}  [{e.status}]" + (f"  @ {e.venue}" if e.venue else "")
 
@@ -76,7 +79,8 @@ def dry_run_town(cfg: dict, *, http_factory=None, out=print) -> dict[str, str]:
     for source in (cfg.get("sports") or {}).get("sources") or []:
         sid = source_id(source)
         try:
-            rows = read_source(cfg["town_id"], source, http=http_factory(source) if http_factory else None)
+            rows = read_source(cfg["town_id"], source, http=http_factory(source) if http_factory else None,
+                               log=lambda line, sid=sid: out(f"[dry-run {sid}] {line}"))
         except SourceSkipped as exc:
             out(f"[dry-run {sid}] skipped: {exc}")
             outcome[sid] = "skipped"

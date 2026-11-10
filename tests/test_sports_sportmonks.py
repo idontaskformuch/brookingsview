@@ -244,3 +244,33 @@ def test_a_window_over_100_days_stops_with_a_clear_error_before_any_request():
     p["days_forward"] = 70  # exactly 100 is allowed
     sportmonks.fetch(p, today=date(2026, 10, 28))
     assert len(net.calls) == 1
+
+
+def test_dry_run_prints_every_api_call_with_rate_limit_remaining_and_the_total_and_never_the_token():
+    a, b = fixture_with(id=1), fixture_with(id=2)
+    net = Net([page(a, has_more=True, remaining=150), page(b, remaining=149)])
+    lines: list[str] = []
+    runner.dry_run_town(CFG, http_factory=lambda s: net.http(), out=lines.append)
+    text = "\n".join(lines)
+    sid = "[dry-run sportmonks:scottish-premiership]"
+    assert f"{sid} API call 1: 1 fixture(s), rate_limit.remaining=150" in lines
+    assert f"{sid} API call 2: 1 fixture(s), rate_limit.remaining=149" in lines
+    assert f"{sid} 2 API call(s) in total" in lines and len(net.calls) == 2
+    assert SECRET not in text and "Authorization" not in text and "api.sportmonks.com" not in text
+
+
+def test_dry_run_says_unknown_when_the_answer_carries_no_rate_limit():
+    net = Net([{"data": [fixture_with(id=1)], "pagination": {"has_more": False}}])
+    lines: list[str] = []
+    runner.dry_run_town(CFG, http_factory=lambda s: net.http(), out=lines.append)
+    assert any("API call 1:" in l and "rate_limit.remaining=unknown" in l for l in lines)
+
+
+def test_dry_run_line_names_the_right_weekday_for_the_london_date():
+    # 31 Oct 2026 is a Saturday, 25 Oct a Sunday, 21 Nov a Saturday (UTC -> Europe/London does not move these dates)
+    net = Net([page(fixture_with(id=1, starting_at="2026-10-31 15:00:00"), fixture_with(id=2, starting_at="2026-10-25 12:00:00"),
+                    fixture_with(id=3, starting_at="2026-11-21 15:00:00"))])
+    lines: list[str] = []
+    runner.dry_run_town(CFG, http_factory=lambda s: net.http(), out=lines.append)
+    rows = [l.strip() for l in lines if "uid=sportmonks:" in l]
+    assert [r.split(" ")[0] + " " + r.split(" ")[1] for r in rows] == ["Sun 2026-10-25", "Sat 2026-10-31", "Sat 2026-11-21"]

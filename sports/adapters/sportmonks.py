@@ -130,18 +130,23 @@ def fetch(params: dict, today: date | None = None) -> Fetched:
     seen: dict = {}
     out = Fetched()
     unread = out.unread
+    log = params.get("_log")  # --dry-run hands in print; never given the URL or a header, so the token cannot reach it
     for page in range(1, MAX_PAGES + 1):
         doc = _page(http, params, start, end, page)
         for fx in doc["data"]:
             if isinstance(fx, dict) and "id" in fx:
                 seen[fx["id"]] = fx
+        remaining = (doc.get("rate_limit") or {}).get("remaining")
+        if log:
+            log(f"API call {page}: {len(doc['data'])} fixture(s), rate_limit.remaining={'unknown' if remaining is None else remaining}")
         pagination = doc.get("pagination") or {}
         if not pagination.get("has_more"):
             break
-        remaining = (doc.get("rate_limit") or {}).get("remaining")
         if page == MAX_PAGES or (isinstance(remaining, int) and remaining <= RATE_RESERVE):
             unread.append({**scope, "reason": f"stopped after {page} page(s): " + ("request budget" if page < MAX_PAGES else "page limit")})
             break
+    if log:
+        log(f"{page} API call(s) in total")
     for fx_id, fx in seen.items():
         try:
             out.append(to_event(fx, params))
