@@ -55,3 +55,14 @@ def test_served_pages_fail_on_the_old_ai_statement():
     assert r.returncode == 1
     for msg in ('/advertising/: old AI statement', '/how-we-gather-this/: old AI statement', '/llms.txt: old AI statement'):
         assert msg in r.stderr
+
+
+TIMELESS = ROOT / "tests" / "fixtures" / "qa_holiday_timeless_2026-11-12"
+
+
+def test_standing_holiday_page_fails_on_past_tense():
+    # QA build.holiday-timeless (owner 2026-11-11): the standing page never says that something happened.
+    r = run("verify_no_empty_messages.mjs", TIMELESS / "before")
+    assert r.returncode == 1 and '/veterans-day/: standing holiday page says "was" (past tense)' in r.stderr
+    r = run("verify_no_empty_messages.mjs", TIMELESS / "after")
+    assert r.returncode == 0, r.stderr

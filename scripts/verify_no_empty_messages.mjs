@@ -60,6 +60,19 @@ function emptyAboutBox(html) {
   return !!m && m[1].replace(/<[^>]+>/g, ' ').replace(/&nbsp;|\s+/g, '').length === 0;
 }
 
+/** Owner 2026-11-11: a holiday page in its standing (timeless) mode (data-holiday-mode="timeless", components/HolidayPage.astro)
+ *  says what the day is, what is normally closed and the next date -- never that something happened. Returns the first
+ *  past-tense word between the H1 and the About box, or null. */
+const PAST_TENSE = /\b(was|were|ran|held|provided|took place|happened)\b/i;
+function timelessPastTense(html) {
+  if (!html.includes('data-holiday-mode="timeless"')) return null;
+  const start = html.search(/<h1[\s>]/);
+  const end = html.indexOf('data-about-this-page');
+  const text = html.slice(Math.max(0, start), end > start ? end : undefined)
+    .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ');
+  return text.match(PAST_TENSE)?.[0] ?? null;
+}
+
 const bad = [];
 let pages = 0;
 for (const file of walk(dist)) {
@@ -73,6 +86,8 @@ for (const file of walk(dist)) {
   for (const phrase of UNCONFIRMED) if (html.includes(phrase)) bad.push(`${url}: status text "${phrase}"`);
   for (const phrase of STALE_AI_CLAIMS) if (html.includes(phrase)) bad.push(`${url}: old AI statement "${phrase}"`);
   if (emptyAboutBox(html)) bad.push(`${url}: "About this page" heading with no text under it`);
+  const past = timelessPastTense(html);
+  if (past) bad.push(`${url}: standing holiday page says "${past}" (past tense)`);
 }
 const llms = join(dist, 'llms.txt');
 if (existsSync(llms)) {

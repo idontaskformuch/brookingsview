@@ -1,14 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  buildGroups, closedPlaces, countHeld, holidayOverviewLine, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayHero, holidayInsights, regularHoursRows,
+  buildGroups, closedPlaces, countHeld, holidayOverviewLine, isTimeless, timelessGroups, timelessHero, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayHero, holidayInsights, regularHoursRows,
 } from './holiday-view';
 import { occurrenceDay } from './holiday-calendar';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
 import { buildVeteransDayPage } from '../config/holiday-pages/veterans-day';
 import { buildThanksgivingPage } from '../config/holiday-pages/thanksgiving';
 import { buildChristmasPage } from '../config/holiday-pages/christmas';
-import type { HolidayPageData } from './holiday-page';
+import { buildTimelessHolidayMeta, type HolidayPageData } from './holiday-page';
 
 const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 const MOVES = { south: [], north: [] };
@@ -200,5 +200,41 @@ describe('holidayOverviewLine', () => {
   });
   it('no confirmed closure, no sentence', () => {
     expect(holidayOverviewLine(xmas, holidayPageDef('christmas')!, day('christmas', xmas))).toBeNull();
+  });
+});
+
+/** Owner 2026-11-11: the standing page (outside the window, last season's facts) is timeless -- what the day is, what is normally
+ *  closed according to the source, the next date -- and says nothing in the past tense. */
+describe('standing (timeless) page', () => {
+  const PAST = /\b(was|were|ran|held|provided|took place|happened)\b/i;
+  const next = occurrenceDay(holidayPageDef('veterans-day')!, vet.year + 1);
+  it('is timeless only when the facts are for an earlier season than the next date', () => {
+    expect(isTimeless(vet, 2027)).toBe(true);
+    expect(isTimeless(vet, 2026)).toBe(false);
+    expect(isTimeless(vet, null)).toBe(false);
+  });
+  it('Veterans Day after Nov 11: next date in the hero, normally closed/different rows without dates, no events', () => {
+    const hero = timelessHero('Veterans Day', next);
+    expect(hero).toEqual({ value: 'Thursday', label: 'Veterans Day is', sub: 'Thursday, Nov 11, 2027' });
+    const g = timelessGroups(vet);
+    expect(g.map((x) => x.heading)).toEqual(['Normally closed', 'Normally different']);
+    expect(g[0].rows.map((r) => r.name)).toEqual(['City offices', 'Combined Courts', 'inventHQ', 'Library']);
+    const text = [hero.label, hero.sub, ...g.flatMap((x) => [x.heading, ...x.rows.flatMap((r) => [r.name, r.pill?.text ?? '', ...r.parts])])].join(' ');
+    expect(text).not.toMatch(PAST);
+    expect(text).not.toMatch(/Nov 11\b(?!, 2027)/);
+  });
+  it('regression: the dated view the standing page used to show reads as past events', () => {
+    const old = [holidayHero(vet, 'Veterans Day', day('veterans-day', vet), '2026-11-12').label,
+      ...buildGroups(vet, '2026-11-12', '2026-11-11').flatMap((x) => x.rows.flatMap((r) => [r.pill?.text ?? '', ...r.parts]))].join(' ');
+    expect(old).toMatch(PAST);
+  });
+});
+
+describe('buildTimelessHolidayMeta', () => {
+  it('names what is normally closed and the next date; no year in the title, no past tense', () => {
+    const m = buildTimelessHolidayMeta(vet, 'Veterans Day', 'Broomfield', occurrenceDay(holidayPageDef('veterans-day')!, 2027));
+    expect(m.title).toBe('Veterans Day in Broomfield: closures');
+    expect(m.description).toBe('What is normally closed or different in Broomfield on Veterans Day. Next Veterans Day: Thursday, November 11, 2027.');
+    expect(m.description).not.toMatch(/\b(was|were|ran|held)\b/);
   });
 });

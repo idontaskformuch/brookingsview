@@ -152,6 +152,35 @@ export function holidayInsights(page: HolidayPageData, over = false): string[] {
 }
 
 export interface HeroView { value: string | number; unit?: string; label: string; sub: string }
+
+/** The standing (timeless) page (owner 2026-11-11): the page is outside its window and its facts are for an earlier season
+ *  than the next occurrence, so it must not say that anything happened. It shows what the day is, what is normally closed or
+ *  different according to the source, and the next date: no past tense, no dated values, no events, no "Check before you go". */
+export function isTimeless(page: HolidayPageData, nextYear: number | null): boolean {
+  return nextYear !== null && nextYear > page.year;
+}
+
+export const TIMELESS_HEADING: Record<HolidayChange, string> = {
+  closed: 'Normally closed',
+  changed: 'Normally different',
+  open: 'Normally open',
+};
+
+/** Groups of the standing page: confirmed closed / changed / open rows, each with its `standing` text or only its name. */
+export function timelessGroups(page: HolidayPageData): GroupView[] {
+  const order: HolidayChange[] = ['closed', 'changed', 'open'];
+  const rows: Record<HolidayChange, RowView[]> = { closed: [], changed: [], open: [] };
+  for (const f of page.facts) {
+    if (f.status !== 'confirmed' || !f.change || f.section === 'hours') continue;
+    rows[f.change].push({ name: f.label, pill: PILL[f.change], parts: f.standing ? [f.standing] : [] });
+  }
+  return order.filter((c) => rows[c].length > 0).map((c) => ({ id: c, heading: TIMELESS_HEADING[c], rows: rows[c] }));
+}
+
+/** "Veterans Day is Thursday" over the next date with its year; no count (a count belongs to one day). */
+export function timelessHero(label: string, nextDay: number, locale: HolidayLocale = 'en-US'): HeroView {
+  return { value: weekdayLong(nextDay), label: `${label} is`, sub: formatDayLong(nextDay, locale) };
+}
 /** "<Holiday> is <weekday>" with the number of places closed as the hero value. With no confirmed closed place the weekday
  *  itself is the hero (never "0 places closed"). `dayMs` is the holiday in the page's year (UTC midnight), `today` the
  *  local ISO date; a holiday before today reads "was" and carries its year. */

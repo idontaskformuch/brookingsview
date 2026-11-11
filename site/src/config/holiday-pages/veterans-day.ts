@@ -25,6 +25,7 @@ const FACTS: HolidayFact[] = [
   {
     section: 'closures', status: 'confirmed', change: 'closed', label: 'City offices',
     value: 'Closed Nov 11: George Di Ciero City and County Building, Health and Human Services Building and Water Recovery Facility.',
+    standing: 'George Di Ciero City and County Building, Health and Human Services Building and Water Recovery Facility.',
     source: NOTICE, checkedOn: CHECKED,
   },
   { section: 'closures', status: 'confirmed', change: 'closed', label: 'Combined Courts', value: 'Closed Nov 11.', source: NOTICE, checkedOn: CHECKED },
@@ -35,6 +36,7 @@ const FACTS: HolidayFact[] = [
     insight: 'Police run 24/7 on Nov 11; the front desk is not staffed.',
     value: 'Operations run 24/7 on Nov 11. The front desk is not staffed; the vestibule phone connects to an officer 24/7.',
     past: 'Operations ran 24/7 on Nov 11. The front desk was not staffed; the vestibule phone connected to an officer 24/7.',
+    standing: 'Operations run 24/7; the front desk is not staffed and the vestibule phone connects to an officer.',
     source: NOTICE, checkedOn: CHECKED,
   },
   {

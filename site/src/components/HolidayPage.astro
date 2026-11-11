@@ -16,9 +16,9 @@ import AboutThisPage from './ui/AboutThisPage.astro';
 import { siteConfig } from '../lib/site-config';
 import { countryProfile } from '../lib/country-profile';
 import {
-  buildHolidayMeta, buildHolidayEventsJsonLd, lastChecked, formatIsoDate, localToday, type HolidayPageData,
+  buildHolidayMeta, buildTimelessHolidayMeta, buildHolidayEventsJsonLd, lastChecked, formatIsoDate, localToday, type HolidayPageData,
 } from '../lib/holiday-page';
-import { buildGroups, regularHoursRows, holidayHero, holidayInsights, groupSources } from '../lib/holiday-view';
+import { buildGroups, regularHoursRows, holidayHero, holidayInsights, groupSources, isTimeless, timelessGroups, timelessHero } from '../lib/holiday-view';
 import { evergreenLines, occurrenceDay, type HolidayPageState } from '../lib/holiday-calendar';
 import type { HolidayPageDef } from '../config/holiday-pages/calendar';
 
@@ -35,7 +35,11 @@ const evergreen = state.kind === 'evergreen';
 const lines = state.kind === 'evergreen' ? evergreenLines(def, page.year, state, page.locale) : null;
 const today = localToday(Date.now(), siteConfig.timezone);
 
-const meta = buildHolidayMeta(page, def.label, siteConfig.cityName, evergreen);
+// Standing (timeless) page: outside the window with an earlier season's facts -- nothing may read as if it happened (owner 2026-11-11).
+const timeless = state.kind === 'evergreen' && isTimeless(page, state.nextYear);
+const meta = timeless && state.kind === 'evergreen'
+  ? buildTimelessHolidayMeta(page, def.label, siteConfig.cityName, state.nextDay)
+  : buildHolidayMeta(page, def.label, siteConfig.cityName, evergreen);
 const checked = lastChecked(page);
 const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, countryProfile(siteConfig.country).addressCountry, today);
 const pageUrl = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl).href;
@@ -47,11 +51,13 @@ const webPage = {
   dateModified: page.dataUpdatedOn,
 };
 
-const hero = holidayHero(page, def.label, occurrenceDay(def, page.year), today);
+const hero = timeless && state.kind === 'evergreen'
+  ? timelessHero(def.label, state.nextDay, page.locale)
+  : holidayHero(page, def.label, occurrenceDay(def, page.year), today);
 const dayIso = new Date(occurrenceDay(def, page.year)).toISOString().slice(0, 10);
 const over = today > dayIso; // the season's day has passed: no present tense about it (owner 2026-11-11)
-const insights = holidayInsights(page, over);
-const groups = buildGroups(page, today, dayIso);
+const insights = timeless ? [] : holidayInsights(page, over);
+const groups = timeless ? timelessGroups(page) : buildGroups(page, today, dayIso);
 const hours = regularHoursRows(page);
 const ungrouped = page.linkOnly.filter((l) => !l.group);
 const linkGroups = [...new Set(page.linkOnly.flatMap((l) => (l.group ? [l.group] : [])))];
@@ -61,7 +67,7 @@ const sources = groupSources(page);
   <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(webPage)} />
   {jsonLd.map((ld) => <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(ld)} />)}
 
-  <header class="hp-title">
+  <header class="hp-title" data-holiday-mode={timeless ? 'timeless' : undefined}>
     <h1>{meta.h1}</h1>
     <p class="hp-checked">Last checked <time datetime={checked}>{formatIsoDate(checked, true, page.locale)}</time></p>
   </header>
@@ -70,8 +76,8 @@ const sources = groupSources(page);
   {insights.map((line) => <InsightLine>{line}</InsightLine>)}
   {lines && (
     <p class="hp-state">
-      {lines.note && <>{lines.note}<br /></>}
-      {lines.next}
+      {lines.note && <>{lines.note}{!timeless && <br />}</>}
+      {!timeless && lines.next}
     </p>
   )}
 

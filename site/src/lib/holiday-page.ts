@@ -90,6 +90,9 @@ export interface ConfirmedFact extends FactBase {
   /** The value in the past tense, shown once the holiday is over when `value` speaks of the day in the present
    *  ("Operations run 24/7 on Nov 11" -> "ran"). Owner 2026-11-11: no present tense about the day after it. */
   past?: string;
+  /** What the row says on the standing (timeless) page, once its season is over: no date, no tense about a day that has
+   *  passed ("George Di Ciero City and County Building, ..."). Without it the standing page shows only the row's name. */
+  standing?: string;
   /** One short sentence for the line under the hero (lib/holiday-view.ts holidayInsights): only on a row that changes
    *  something people plan around, such as a moved pickup. Written from the row's own value. */
   insight?: string;
@@ -262,6 +265,21 @@ const DESCRIPTION_ORDER: HolidaySection[] = ['events', 'closures', 'help', 'tras
 /** "a", "a and b", "a, b and c". */
 export function listWords(words: string[]): string {
   return words.length <= 1 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`;
+}
+
+/** Title, H1 and description of the standing (timeless) page (lib/holiday-view isTimeless): what is normally closed or
+ *  different, by name, and the next date; no year in the title, no dated item, nothing in the past tense. */
+export function buildTimelessHolidayMeta(page: HolidayPageData, holidayLabel: string, cityName: string, nextDay: number): HolidayMeta {
+  const names = page.facts.flatMap((f) => (f.status === 'confirmed' && (f.change === 'closed' || f.change === 'changed') && f.section !== 'hours' ? [f.label] : []));
+  const words = names.length ? ': closures' : '';
+  const next = new Date(nextDay);
+  const nextLabel = `${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][next.getUTCDay()]}, ${formatIsoDate(next.toISOString().slice(0, 10), true, page.locale)}`;
+  const closedLine = names.length ? `What is normally closed or different in ${cityName} on ${holidayLabel}. ` : '';
+  return {
+    title: `${holidayLabel} in ${cityName}${words}`,
+    h1: `${holidayLabel}${words}`,
+    description: `${closedLine}Next ${holidayLabel}: ${nextLabel}.`,
+  };
 }
 
 /** Deterministic title, H1 and description. Title and H1 name only sections with a confirmed row, so they never
