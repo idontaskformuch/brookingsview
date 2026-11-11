@@ -5,10 +5,11 @@
  *  Question it answers for a resident: what is closed, what changed, what runs as usual on <holiday>, and what is not
  *  confirmed yet. Layout: .claude/standards.md "Helgsidor". */
 import {
-  eventWhenWhere, formatIsoDate, isEventPast, lastChecked, regularHours,
-  type CheckAt, type HolidayChange, type HolidayEvent, type HolidayFact, type HolidayLocale, type HolidayPageData, type LastYear, type Source,
+  eventWhenWhere, formatIsoDate, isEventPast, lastChecked, listWords, regularHours,
+  type CheckAt, type ConfirmedFact, type HolidayChange, type HolidayEvent, type HolidayFact, type HolidayLocale, type HolidayPageData, type LastYear, type Source,
 } from './holiday-page';
-import { formatDayLong, formatDayShort, weekdayLong } from './holiday-calendar';
+import { formatDayLong, formatDayShort, occurrenceDay, weekdayLong } from './holiday-calendar';
+import type { HolidayPageDef } from '../config/holiday-pages/calendar';
 
 export type PillTone = 'alert' | 'warn' | 'ok' | 'neutral';
 export interface PillView { tone: PillTone; text: string }
@@ -22,6 +23,8 @@ export interface RowView {
   parts: string[];
   lastYear?: { text: string; source: Source };
   check?: CheckAt;
+  /** A phone number for a row whose name already links to the place's page. */
+  phone?: string;
   /** Only when this row was read before the page's newest check ("Checked Oct 24, 2026"). */
   checkedNote?: string;
 }
@@ -37,7 +40,7 @@ export const GROUP_HEADING: Record<GroupId, string> = {
   open: 'Open as usual',
   info: 'Good to know',
   events: 'Events',
-  unconfirmed: 'Not confirmed yet',
+  unconfirmed: 'Check before you go',
 };
 /** A group longer than this shows the first FOLD_AFTER rows and the rest behind a "Show N more" toggle. */
 export const FOLD_AFTER = 8;
@@ -47,7 +50,6 @@ const PILL: Record<HolidayChange, PillView> = {
   changed: { tone: 'warn', text: 'Changed' },
   open: { tone: 'ok', text: 'Open' },
 };
-const PILL_UNCONFIRMED: PillView = { tone: 'neutral', text: 'Not confirmed' };
 
 /** The Closed pill already says "Closed", so a value that starts "Closed Nov 11: ..." or "Closed on Thu Nov 26" shows
  *  "Nov 11: ..." / "Thu Nov 26". Only when what follows is a date (weekday, month or digit); anything else is left whole. */
@@ -63,12 +65,16 @@ function olderNote(checkedOn: string, newest: string, locale: HolidayLocale): st
 function unconfirmedRow(
   name: string, x: { clarify?: string; usual?: string; lastYear?: LastYear; checkAt?: CheckAt; checkedOn: string }, page: HolidayPageData, newest: string,
 ): RowView {
+  // A plain link to the place's own page, no status pill (Broomfield AdSense plan F9, 2026-11-11): the row names where
+  // this year's hours will be posted, it does not announce that they are missing.
   return {
     name,
-    pill: PILL_UNCONFIRMED,
+    href: x.checkAt?.url,
+    pill: null,
     parts: [...(x.clarify ? [x.clarify] : []), ...(x.usual ? [`Usual hours: ${x.usual}`] : [])],
     lastYear: x.lastYear ? { text: `${x.lastYear.season ?? page.year - 1}: ${x.lastYear.value}`, source: x.lastYear.source } : undefined,
-    check: x.checkAt,
+    check: x.checkAt?.url ? undefined : x.checkAt,
+    phone: x.checkAt?.url ? x.checkAt.phone : undefined,
     checkedNote: olderNote(x.checkedOn, newest, page.locale),
   };
 }
@@ -116,10 +122,15 @@ export function regularHoursRows(page: HolidayPageData): RowView[] {
   return regularHours(page).map((f) => factRow(f, page, newest));
 }
 
-/** Places that are shut: confirmed "closed" rows about a place or service people visit (closures, help). A pickup that does
- *  not run, or a train that does not run, is not a place. */
-export function closedPlaces(page: HolidayPageData): number {
-  return page.facts.filter((f) => f.status === 'confirmed' && f.change === 'closed' && (f.section === 'closures' || f.section === 'help')).length;
+/** Places shut ON the holiday: confirmed "closed" rows about a place or service people visit (closures, help) whose
+ *  `closedOn` (if any) includes `dayIso`. A pickup or a train that does not run is not a place. Built from the rows, never
+ *  written by hand: Broomfield's Thanksgiving hero said "2 places closed" while Tree Branch closes Sat Nov 28 (F9). */
+export function closedPlaceRows(page: HolidayPageData, dayIso?: string): ConfirmedFact[] {
+  return page.facts.filter((f): f is ConfirmedFact => f.status === 'confirmed' && f.change === 'closed' && (f.section === 'closures' || f.section === 'help')
+    && (!dayIso || !f.closedOn || f.closedOn.includes(dayIso)));
+}
+export function closedPlaces(page: HolidayPageData, dayIso?: string): number {
+  return closedPlaceRows(page, dayIso).length;
 }
 
 export const MAX_INSIGHTS = 2;
@@ -137,7 +148,7 @@ export function holidayHero(page: HolidayPageData, label: string, dayMs: number,
   const named = past ? `${label} ${page.year}` : label;
   const verb = past ? 'was' : 'is';
   const weekday = weekdayLong(dayMs);
-  const n = closedPlaces(page);
+  const n = closedPlaces(page, new Date(dayMs).toISOString().slice(0, 10));
   const sub = formatDayShort(dayMs, page.locale);
   if (n > 0) return { value: n, unit: n === 1 ? 'place closed' : 'places closed', label: `${named} ${verb} ${weekday}`, sub };
   return { value: weekday, label: `${named} ${verb}`, sub: past ? formatDayLong(dayMs, page.locale) : sub };
@@ -152,4 +163,15 @@ export function groupSources(page: HolidayPageData): { name: string; href: strin
   for (const e of page.events) { add(e.source); if (e.status === 'unconfirmed') add(e.lastYear?.source); }
   const org = (s: Source) => s.name.split(':')[0].trim();
   return all.map((s) => ({ name: all.filter((x) => org(x) === org(s)).length > 1 ? s.name : org(s), href: s.url }));
+}
+
+/** /holidays/ (F9, 2026-11-11): one sentence per holiday saying what is shut on the day, from the confirmed rows of the
+ *  page's own season. `nextDay` is the next occurrence; when it is in a later year than the data, the sentence names
+ *  the season it describes. Null when no place is confirmed closed on the day (no filler sentence). */
+export function holidayOverviewLine(page: HolidayPageData, def: HolidayPageDef, nextDay: number): string | null {
+  const day = new Date(occurrenceDay(def, page.year)).toISOString().slice(0, 10);
+  const names = closedPlaceRows(page, day).map((f) => f.label);
+  if (names.length === 0) return null;
+  const sameSeason = new Date(nextDay).getUTCFullYear() === page.year;
+  return `${sameSeason ? 'Closed' : `Closed in ${page.year}`}: ${listWords(names)}.`;
 }

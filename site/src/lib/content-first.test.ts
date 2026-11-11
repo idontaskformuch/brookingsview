@@ -19,6 +19,11 @@ describe('findIntroText', () => {
     expect(findIntroText(html, '/facilities/')).toEqual([]);
   });
 
+  it('a holiday page\'s "Last checked" stamp is a data row, also with a two-digit day (2026-11-11: 30 chars tripped MIN_CHARS)', () => {
+    const html = page(`<header class="hp-title"><h1>Thanksgiving 2026</h1><p class="hp-checked">Last checked <time datetime="2026-11-11">November 11, 2026</time></p></header><section class="hp-group"><ul><li>a</li></ul></section>`);
+    expect(findIntroText(html, '/thanksgiving/')).toEqual([]);
+  });
+
   it('flags a "Looking for X? See Y" link line too', () => {
     const html = page(`<h1>Past events</h1><p>Looking for what's coming up? See <a href="/events/">What's on</a>, updated every day.</p><h2>May</h2>`);
     expect(findIntroText(html, '/events/past/')).toHaveLength(1);

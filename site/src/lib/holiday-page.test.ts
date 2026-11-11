@@ -70,17 +70,18 @@ describe('Broomfield data as approved 2026-11-04', () => {
   it('unconfirmed rows point where the owner ordered', () => {
     const offices = byLabel('City offices');
     expect(offices.status).toBe('unconfirmed');
-    expect((offices as { checkAt: { url: string } }).checkAt.url).toContain('/newsflash/home/detail/3155');
+    expect((offices as { checkAt: { url: string } }).checkAt.url).toBe('https://www.broomfield.org/CivicAlerts.aspx?CID=-1'); // News Flash: no Thanksgiving notice yet on 2026-11-11
     const trash = byLabel('Holiday collection');
     expect((trash as { checkAt: { phone: string } }).checkAt.phone).toBe('303-288-2100 ext. 6');
     expect((byLabel('RTD') as { checkAt: { url: string } }).checkAt.url).toBe('https://www.rtd-denver.com/community/news');
     const meal = byLabel('Free Thanksgiving meal') as { checkAt: { url: string } };
     expect(meal.checkAt.url).toBe('https://www.broomfieldfish.org/');
   });
-  it('FISH closure is confirmed with the year caveat', () => {
-    const fish = byLabel('Broomfield FISH food bank') as { status: string; clarify: string };
+  it('FISH closure is confirmed (weekdays match 2026, read 2026-11-11) and closed on the holiday and the day after', () => {
+    const fish = byLabel('Broomfield FISH food bank') as { status: string; clarify: string; closedOn: string[] };
     expect(fish.status).toBe('confirmed');
-    expect(fish.clarify).toBe('Page lists no year; call 303-465-1600 to check.');
+    expect(fish.clarify).not.toMatch(/no year/i);
+    expect(fish.closedOn).toEqual(['2026-11-26', '2026-11-27']);
   });
   it('the race is a confirmed event on Thanksgiving Day, 9:00', () => {
     const [race] = page.events;
@@ -91,12 +92,12 @@ describe('Broomfield data as approved 2026-11-04', () => {
 });
 
 describe('deterministic meta', () => {
-  it('Broomfield description names the confirmed items, then what is not confirmed', () => {
+  it('Broomfield description names only the confirmed items, then the check date (F9: nothing announced as not confirmed)', () => {
     const m = buildHolidayMeta(pageFor('broomfield_co'), 'Thanksgiving', 'Broomfield');
     expect(m.title).toBe('Thanksgiving 2026 in Broomfield: closures, events, food help');
     expect(m.h1).toBe('Thanksgiving 2026: closures, events, food help');
     expect(m.description).toBe(
-      'Turkey Day 5K/10K Nov 26 · Tree Branch Recycle closed Nov 28 · FISH food bank closed Nov 26–27. Trash and RTD not yet confirmed. Checked Nov 4, 2026.',
+      'Turkey Day 5K/10K Nov 26 · Tree Branch Recycle closed Nov 28 · FISH food bank closed Nov 26–27. Checked Nov 11, 2026.',
     );
   });
   it('Brookings and Moreno: title names only sections with a confirmed row', () => {
@@ -104,7 +105,7 @@ describe('deterministic meta', () => {
     expect(buildHolidayMeta(pageFor('moreno_valley_ca'), 'Thanksgiving', 'Moreno Valley').title)
       .toBe('Thanksgiving 2026 in Moreno Valley: trash pickup');
     expect(buildHolidayMeta(pageFor('moreno_valley_ca'), 'Thanksgiving', 'Moreno Valley').description)
-      .toBe('Trash pickup one day late after Nov 26. City offices, Landfill and Library not yet confirmed. Checked Oct 24, 2026.');
+      .toBe('Trash pickup one day late after Nov 26. Checked Oct 24, 2026.');
   });
   it('every description is at most 155 characters, with no digits-free filler', () => {
     for (const id of THANKSGIVING_TOWN_IDS) {
@@ -115,10 +116,10 @@ describe('deterministic meta', () => {
   });
   it('regression: the three US descriptions are exactly what they were before the metaGroup change', () => {
     expect(buildHolidayMeta(pageFor('brookings_sd'), 'Thanksgiving', 'Brookings').description).toBe(
-      'City offices mostly closed Nov 26 · Landfill closed Nov 26 · Recycling and yard waste move to Wed Nov 25. Library not yet confirmed. Checked Oct 24, 2026.',
+      'City offices mostly closed Nov 26 · Landfill closed Nov 26 · Recycling and yard waste move to Wed Nov 25. Checked Oct 24, 2026.',
     );
   });
-  it('phrases with the same metaGroup merge into one, at the position of the first; an upper-case pending name is untouched', () => {
+  it('phrases with the same metaGroup merge into one, at the position of the first; the pending row is not named', () => {
     const base = pageFor('broomfield_co');
     const src = { name: 'x', url: 'https://example.org' };
     const page: HolidayPageData = {
@@ -132,7 +133,7 @@ describe('deterministic meta', () => {
       ],
     };
     expect(buildHolidayMeta(page, 'Thanksgiving', 'X').description)
-      .toBe('Fair: north site from 6 Nov, closed 25 Dec · Office closed. Trash not yet confirmed. Checked Nov 4, 2026.');
+      .toBe('Fair: north site from 6 Nov, closed 25 Dec · Office closed. Checked Nov 4, 2026.');
   });
   it('drops whole phrases from the end of the confirmed list to fit, events first in priority', () => {
     const base = pageFor('broomfield_co');
@@ -143,8 +144,7 @@ describe('deterministic meta', () => {
     const d = buildHolidayMeta(long, 'Thanksgiving', 'Broomfield').description;
     expect(d.length).toBeLessThanOrEqual(DESCRIPTION_MAX);
     expect(d.startsWith('Turkey Day 5K/10K Nov 26')).toBe(true);
-    expect(d).not.toContain('FISH');
-    expect(d).toContain('Trash and RTD not yet confirmed.');
+    expect(d).not.toMatch(/confirmed/i);
   });
   it('standing hours are not closures: the closures table holds only closure facts', () => {
     for (const id of THANKSGIVING_TOWN_IDS) {
@@ -159,7 +159,7 @@ describe('deterministic meta', () => {
     ]);
   });
   it('lastChecked is the newest checkedOn; dates format without a time zone', () => {
-    expect(lastChecked(pageFor('broomfield_co'))).toBe('2026-11-04');
+    expect(lastChecked(pageFor('broomfield_co'))).toBe('2026-11-11');
     expect(lastChecked(pageFor('moreno_valley_ca'))).toBe('2026-10-24');
     expect(formatIsoDate('2026-11-04')).toBe('Nov 4, 2026');
     expect(formatIsoDate('2026-11-04', true)).toBe('November 4, 2026');

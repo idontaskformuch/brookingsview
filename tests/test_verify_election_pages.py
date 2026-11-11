@@ -33,3 +33,14 @@ def test_fixed_build_passes_both():
 
 def test_before_election_day_nothing_is_checked():
     assert run("verify_election_pages.mjs", FIX / "before", "--today", "2026-11-03").returncode == 0
+
+
+HOLIDAY = ROOT / "tests" / "fixtures" / "qa_holiday_unconfirmed_2026-11-11"
+
+
+def test_served_holiday_pages_fail_on_unconfirmed_status_text():
+    # QA build.holiday-unconfirmed (F9, 2026-11-11): /thanksgiving/ and /veterans-day/ as served on broomfieldview.com.
+    r = run("verify_no_empty_messages.mjs", HOLIDAY)
+    assert r.returncode == 1
+    for msg in ('/thanksgiving/: status text "Not confirmed"', '/thanksgiving/: status text "Page lists no year"', '/veterans-day/: status text "Not confirmed"'):
+        assert msg in r.stderr

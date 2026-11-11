@@ -123,25 +123,31 @@ const MORENO_FACTS: HolidayFact[] = [
 
 /* ------------------------------------------------------------ Broomfield */
 const BF_CHECKED = '2026-11-04';
+/** Second read (Broomfield AdSense plan F9): the city, RTD and waste pages had no Thanksgiving notice yet, FISH's page did. */
+const BF_RECHECKED = '2026-11-11';
 const BF_LIBRARY: Source = { name: 'City and County of Broomfield: Library', url: 'https://www.broomfield.org/276/Library-Home' };
 const BF_REC: Source = { name: 'City and County of Broomfield: Recreation Facilities Hours', url: 'https://www.broomfield.org/1452/Recreation-Facilities-Hours' };
 const BF_NEWS: Source = { name: 'City and County of Broomfield: News Flash', url: 'https://www.broomfield.org/CivicAlerts.aspx?CID=-1' };
 const BF_WASTE: Source = { name: 'City and County of Broomfield: Residential waste services', url: 'https://www.broomfield.org/3980/Residential-Waste-Services-in-Broomfield' };
 const BF_TREE_BRANCH: Source = { name: 'City and County of Broomfield: Tree Branch Recycling Program', url: 'https://broomfield.org/1031/Tree-Branch-Recycling-Program' };
 const BF_FISH: Source = { name: 'Broomfield FISH', url: 'https://www.broomfieldfish.org/' };
-const BF_CLOSURES_NOTICE = { label: 'City closures notice (CCOB Closures and Adjusted Hours)', url: 'https://www.broomfield.org/m/newsflash/home/detail/3155' };
+// The city posts a "CCOB Closures and Adjusted Hours for <holiday>" notice in its News Flash (Veterans Day 2026: Nov 2,
+// detail/3155); the Thanksgiving one was not up on 2026-11-11, so the row points at the News Flash list.
+const BF_CLOSURES_NOTICE = { label: 'City and County of Broomfield News Flash', url: 'https://www.broomfield.org/CivicAlerts.aspx?CID=-1' };
 const BF_RACE = 'https://runsignup.com/Race/CO/Broomfield/BroomfieldTurkeyDay';
 
 const BROOMFIELD_FACTS: HolidayFact[] = [
   {
     section: 'closures', status: 'unconfirmed', label: 'City offices, courts, library and recreation centers',
-    source: BF_NEWS, checkedOn: BF_CHECKED,
+    clarify: 'The city posts its holiday closures and adjusted hours in its News Flash.',
+    source: BF_NEWS, checkedOn: BF_RECHECKED,
     checkAt: BF_CLOSURES_NOTICE,
   },
   {
     section: 'closures', status: 'confirmed', change: 'closed', label: 'Tree Branch Recycle and RV Wastewater Disposal Facility',
     value: 'Closed Sat Nov 28. Regular hours Wed 1–5 p.m. and Sat 8 a.m.–5 p.m. at 2990 W 124th Ave.',
     meta: 'Tree Branch Recycle closed Nov 28',
+    closedOn: ['2026-11-28'],
     clarify: 'Call 303-464-5651 if unsure; it may also close when muddy or wet.',
     source: BF_TREE_BRANCH, checkedOn: BF_CHECKED,
   },
@@ -159,20 +165,23 @@ const BROOMFIELD_FACTS: HolidayFact[] = [
   {
     section: 'trash', status: 'unconfirmed', label: 'Holiday collection (Waste Connections)', meta: 'Trash',
     clarify: "The city's waste page lists no holiday shift; delay alerts come through the WasteConnect app.",
-    source: BF_WASTE, checkedOn: BF_CHECKED,
+    source: BF_WASTE, checkedOn: BF_RECHECKED,
     checkAt: { label: 'WasteConnect app (link on the city waste page)', url: BF_WASTE.url, phone: '303-288-2100 ext. 6' },
   },
   {
     section: 'transit', status: 'unconfirmed', label: 'RTD Thanksgiving Day service', meta: 'RTD',
-    source: { name: 'RTD: News', url: 'https://www.rtd-denver.com/community/news' }, checkedOn: BF_CHECKED,
+    source: { name: 'RTD: News', url: 'https://www.rtd-denver.com/community/news' }, checkedOn: BF_RECHECKED,
     checkAt: { label: 'RTD news page', url: 'https://www.rtd-denver.com/community/news' },
   },
   {
-    section: 'help', status: 'confirmed', change: 'closed', label: 'Broomfield FISH food bank: Thanksgiving closure',
+    // FISH's page gives weekdays, not a year: "Thursday, November 26th", "Friday, November 27th", then Dec 24 (Thu),
+    // Dec 25 (Fri) and Jan 1 (Fri) -- the 2026/27 calendar (read 2026-11-11).
+    section: 'help', status: 'confirmed', change: 'closed', label: 'Broomfield FISH food bank',
     value: 'Closed Thu Nov 26 and Fri Nov 27.',
     meta: 'FISH food bank closed Nov 26–27',
-    clarify: 'Page lists no year; call 303-465-1600 to check.',
-    source: BF_FISH, checkedOn: BF_CHECKED,
+    closedOn: ['2026-11-26', '2026-11-27'],
+    clarify: 'Questions about access to food: 303-465-1600 or help@broomfieldfish.org.',
+    source: BF_FISH, checkedOn: BF_RECHECKED,
   },
   {
     section: 'hours', status: 'confirmed', label: 'Broomfield FISH marketplace (regular hours)',
@@ -186,7 +195,7 @@ const BROOMFIELD_FACTS: HolidayFact[] = [
   },
   {
     section: 'help', status: 'unconfirmed', label: 'Free Thanksgiving meal',
-    source: { name: 'Salvation Army Broomfield Corps', url: 'https://broomfieldcorps.my.canva.site' }, checkedOn: BF_CHECKED,
+    source: { name: 'Salvation Army Broomfield Corps', url: 'https://broomfieldcorps.my.canva.site' }, checkedOn: BF_RECHECKED,
     checkAt: { label: 'Broomfield FISH', url: BF_FISH.url, phone: '303-465-1600' },
   },
 ];

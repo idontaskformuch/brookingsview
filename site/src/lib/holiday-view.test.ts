@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  buildGroups, closedPlaces, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayHero, holidayInsights, regularHoursRows,
+  buildGroups, closedPlaces, holidayOverviewLine, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayHero, holidayInsights, regularHoursRows,
 } from './holiday-view';
 import { occurrenceDay } from './holiday-calendar';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
@@ -41,7 +41,7 @@ describe('groups', () => {
     expect(buildGroups(vet, '2026-11-06').find((g) => g.id === 'changed')!.heading).toBe('Schedule changes');
   });
 
-  it('Broomfield Veterans Day: Closed (4), Changed (police), Events, Not confirmed; no Open group without data', () => {
+  it('Broomfield Veterans Day: Closed (4), Changed (police), Events, Check before you go; no Open group without data', () => {
     const g = buildGroups(vet, '2026-11-06');
     expect(g.map((x) => x.id)).toEqual(['closed', 'changed', 'events', 'unconfirmed']);
     expect(g[0].rows.map((r) => r.name)).toEqual(['City offices', 'Combined Courts', 'inventHQ', 'Library']);
@@ -49,7 +49,9 @@ describe('groups', () => {
     expect(g[0].rows[1].parts[0]).toBe('Nov 11.');
     expect(g[1].rows[0].name).toMatch(/^Police Department/);
     expect(g[1].rows[0].pill).toEqual({ tone: 'warn', text: 'Changed' });
-    expect(g[3].rows.every((r) => r.pill?.text === 'Not confirmed')).toBe(true);
+    // F9 (2026-11-11): a not-yet-posted row is a plain link to the place's page, with no "Not confirmed" pill.
+    expect(g[3].heading).toBe('Check before you go');
+    expect(g[3].rows.every((r) => r.pill === null && !!r.href)).toBe(true);
   });
 
   it('groups come in the fixed order and are never empty; standing hours are not a group', () => {
@@ -92,7 +94,7 @@ describe('groups', () => {
     expect(rows.length).toBeGreaterThan(FOLD_AFTER);
     const lib = rows.find((r) => r.name.startsWith('Libraries'))!;
     expect(lib.lastYear?.text).toMatch(/^2025\/26: /);
-    expect(lib.check?.url).toBeTruthy();
+    expect(lib.href ?? lib.check?.url).toBeTruthy();
   });
 
   it('a long group folds after FOLD_AFTER rows (8), in the component, not by cutting data', () => {
@@ -121,7 +123,10 @@ describe('hero and insights', () => {
   });
   it('counts places that are shut, not pickups or trains that do not run', () => {
     expect(closedPlaces(bkThanks)).toBe(2); // City offices, Landfill
-    expect(closedPlaces(bfThanks)).toBe(2); // Tree Branch Recycle, FISH food bank
+    // F9 (2026-11-11): the hero said "2 places closed" for Thanksgiving, but Tree Branch closes Sat Nov 28.
+    expect(closedPlaces(bfThanks)).toBe(2); // any day: Tree Branch Recycle, FISH food bank
+    expect(closedPlaces(bfThanks, '2026-11-26')).toBe(1); // on Thanksgiving: FISH food bank only
+    expect(holidayHero(bfThanks, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-11').value).toBe(1);
     expect(closedPlaces(mvThanks)).toBe(0); // trash only
   });
   it('insight lines come from the data and exist only where the data has one', () => {
@@ -162,5 +167,19 @@ describe('the template', () => {
   });
   it('"Last checked" appears once, under the heading', () => {
     expect((read('../components/HolidayPage.astro').replace(/\/\*[\s\S]*?\*\//g, '').match(/Last checked/g) ?? []).length).toBe(1);
+  });
+});
+
+/** /holidays/ (F9, 2026-11-11): one sentence of what is shut on the day, from the confirmed rows; none without a closure. */
+describe('holidayOverviewLine', () => {
+  it('Thanksgiving: only what is shut on Nov 26 (Tree Branch closes Nov 28)', () => {
+    expect(holidayOverviewLine(bfThanks, holidayPageDef('thanksgiving')!, day('thanksgiving', bfThanks))).toBe('Closed: Broomfield FISH food bank.');
+  });
+  it('a holiday whose next date is in a later year names the season the rows describe', () => {
+    const next = occurrenceDay(holidayPageDef('veterans-day')!, vet.year + 1);
+    expect(holidayOverviewLine(vet, holidayPageDef('veterans-day')!, next)).toBe('Closed in 2026: City offices, Combined Courts, inventHQ and Library.');
+  });
+  it('no confirmed closure, no sentence', () => {
+    expect(holidayOverviewLine(xmas, holidayPageDef('christmas')!, day('christmas', xmas))).toBeNull();
   });
 });

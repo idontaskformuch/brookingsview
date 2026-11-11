@@ -201,12 +201,11 @@ describe('Glasgow meta', () => {
     expect(meta.h1).toBe('Christmas 2026: closures, transit, events, support');
     expect(meta.title).not.toMatch(/bin|trash/i);
   });
-  it('description merges the Winter Wonderland items, keeps the confirmed ScotRail row before the pending part, and starts the pending sentence with a capital', () => {
+  it('description merges the Winter Wonderland items, keeps the confirmed ScotRail row and names no pending row', () => {
     expect(meta.description).toBe(
-      'Winter Wonderland: St Enoch from 6 Nov, Glasgow Green from 20 Nov, closed 25 Dec · No ScotRail trains 25 Dec. Bins not yet confirmed. Checked 4 Nov 2026.',
+      'Winter Wonderland: St Enoch from 6 Nov, Glasgow Green from 20 Nov, closed 25 Dec · No ScotRail trains 25 Dec. Checked 4 Nov 2026.',
     );
     expect(meta.description.length).toBeLessThanOrEqual(DESCRIPTION_MAX);
-    expect(meta.description.indexOf('No ScotRail trains 25 Dec')).toBeLessThan(meta.description.indexOf('not yet confirmed'));
     expect(meta.description.match(/Winter Wonderland/g)).toHaveLength(1);
   });
   it('running text uses the lower-case section words; the H2 label is unchanged', () => {

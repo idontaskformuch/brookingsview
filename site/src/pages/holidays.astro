@@ -1,13 +1,17 @@
 ---
-/** /holidays/: the town's holiday pages in calendar order, the next one first. A name, a date and a link per row,
- *  no body text. It is the one way in (the "Holidays" entry of the All sheet); holiday pages never get a tab.
- *  Built only for a town that has at least one holiday page, so elsewhere it is a real 404.
+/** /holidays/: the town's holiday pages in calendar order, the next one first. Per row: the name, the next date, one
+ *  sentence of what is shut on the day (holidayOverviewLine, from the page's confirmed rows) and the link. It is the one
+ *  way in (the "Holidays" entry of the All sheet); holiday pages never get a tab. Built only for a town that has at least
+ *  one holiday page, so elsewhere it is a real 404. Always indexable (owner 2026-11-04, evergreen-holidays.md); the plan's
+ *  "noindex with a single holiday page" (F9) waits for the owner because it contradicts that decision.
  *
- *  Resident question it answers: which holidays does this town have local closures and hours for, and when is the next one? */
+ *  Resident question it answers: which holidays does this town have local closures and hours for, when is the next one,
+ *  and what is closed on it? */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
 import { holidayListing, townHasHolidayPages } from '../config/holiday-pages/registry';
 import { formatDayLong } from '../lib/holiday-calendar';
+import { holidayOverviewLine } from '../lib/holiday-view';
 
 export function getStaticPaths() {
   return townHasHolidayPages(siteConfig.townId) ? [{ params: {} }] : [];
@@ -15,12 +19,14 @@ export function getStaticPaths() {
 
 const now = Date.now();
 const locale = siteConfig.country === 'gb' ? 'en-GB' : 'en-US';
-const rows = holidayListing(siteConfig.townId, now).map((e) => ({
+const listing = holidayListing(siteConfig.townId, now);
+const rows = listing.map((e) => ({
   slug: e.def.slug,
   label: e.def.label,
   when: formatDayLong(e.day, locale),
+  line: holidayOverviewLine(e.page, e.def, e.day),
 }));
-const modified = holidayListing(siteConfig.townId, now).map((e) => e.page.dataUpdatedOn).sort().pop();
+const modified = listing.map((e) => e.page.dataUpdatedOn).sort().pop();
 ---
 <BaseLayout title={`Holidays in ${siteConfig.cityName}: closures and hours`} description={`${siteConfig.cityName} holiday pages: what is closed or changed, with the next date for each.`} modified={modified}>
   <h1>Holidays in {siteConfig.cityName}</h1>
@@ -31,6 +37,7 @@ const modified = holidayListing(siteConfig.townId, now).map((e) => e.page.dataUp
           <span class="holiday-name">{r.label}</span>
           <span class="holiday-when">{r.when}</span>
         </a>
+        {r.line && <p class="holiday-line">{r.line}</p>}
       </li>
     ))}
   </ul>
@@ -38,7 +45,9 @@ const modified = holidayListing(siteConfig.townId, now).map((e) => e.page.dataUp
 
 <style>
   .holiday-list { list-style: none; padding: 0; margin: 1rem 0; display: grid; gap: 0.5rem; }
-  .holiday-list a { display: flex; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem; border: 1px solid var(--rule, #ccc); border-radius: 8px; text-decoration: none; }
+  .holiday-list li { border: 1px solid var(--rule, #ccc); border-radius: 8px; }
+  .holiday-list a { display: flex; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem; text-decoration: none; }
   .holiday-name { font-weight: 600; }
   .holiday-when { color: var(--ink-soft); }
+  .holiday-line { margin: -0.25rem 1rem 0.75rem; color: var(--ink-soft); font-size: 0.9375rem; }
 </style>

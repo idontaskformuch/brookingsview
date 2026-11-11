@@ -21,6 +21,7 @@ const telDigits = (phone: string, loc: HolidayLocale) => {
     {r.check && (
       <span class="hp-part hp-part--soft">Check: {r.check.url ? <a href={r.check.url} rel="noopener">{r.check.label}</a> : r.check.label}{r.check.phone && <> · <a href={`tel:${telDigits(r.check.phone, locale)}`}>{r.check.phone}</a></>}</span>
     )}
+    {r.phone && <span class="hp-part hp-part--soft">Phone <a href={`tel:${telDigits(r.phone, locale)}`}>{r.phone}</a></span>}
     {r.checkedNote && <span class="hp-part hp-part--soft">{r.checkedNote}</span>}
   </CompactRow>
 </li>

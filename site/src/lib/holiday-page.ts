@@ -64,7 +64,8 @@ interface FactBase {
   /** One sentence at most, only to make the value understandable. */
   clarify?: string;
   /** Meta description: for a confirmed fact the short phrase that names it ("FISH food bank closed Nov 26–27"),
-   *  for an unconfirmed one the short name ("Trash"). A fact without one is left out of the description. */
+   *  for an unconfirmed one the short name ("Trash", no longer used in the description since 2026-11-11). A fact without
+   *  one is left out of the description. */
   meta?: string;
   /** Confirmed phrases (facts and events) with the same `metaGroup` are merged into one description phrase,
    *  "<group>: <meta>, <meta>", placed where the first of them would have been. */
@@ -80,6 +81,9 @@ export interface ConfirmedFact extends FactBase {
   value: string;
   source: Source;
   change?: HolidayChange;
+  /** A `closed` row that is not shut on the holiday itself (ISO dates it is shut, e.g. a facility closed the Saturday after):
+   *  it stays in the Closed group with its own date but is not counted as closed on the day (holiday-view closedPlaces). */
+  closedOn?: string[];
   /** One short sentence for the line under the hero (lib/holiday-view.ts holidayInsights): only on a row that changes
    *  something people plan around, such as a moved pickup. Written from the row's own value. */
   insight?: string;
@@ -247,18 +251,14 @@ export const DESCRIPTION_MAX = 155;
 /** Priority for naming confirmed items in the description: events, closures, help, then the rest. */
 const DESCRIPTION_ORDER: HolidaySection[] = ['events', 'closures', 'help', 'trash', 'transit'];
 
-/** A common-noun name written in lower case in the data ("bins") starts the sentence with a capital. */
-function upperFirst(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function listWords(words: string[]): string {
+/** "a", "a and b", "a, b and c". */
+export function listWords(words: string[]): string {
   return words.length <= 1 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`;
 }
 
 /** Deterministic title, H1 and description. Title and H1 name only sections with a confirmed row, so they never
  *  promise what the page does not yet have. The description names the confirmed items themselves (their `meta`
- *  phrases, in DESCRIPTION_ORDER), then what is not yet confirmed, then the check date, and drops whole phrases
+ *  phrases, in DESCRIPTION_ORDER), then the check date, and drops whole phrases
  *  from the end of the confirmed list to stay within DESCRIPTION_MAX. `holidayLabel` is e.g. "Thanksgiving". */
 export function buildHolidayMeta(page: HolidayPageData, holidayLabel: string, cityName: string, evergreen = false): HolidayMeta {
   if (evergreen ? page.metaOverrideEvergreen : page.metaOverride) return (evergreen ? page.metaOverrideEvergreen : page.metaOverride) as HolidayMeta;
@@ -286,11 +286,8 @@ export function buildHolidayMeta(page: HolidayPageData, holidayLabel: string, ci
     seen.add(it.group);
     phrases.push(`${it.group}: ${items.filter((x) => x.group === it.group).map((x) => x.text).join(', ')}`);
   }
-  const pendingNames = page.facts.flatMap((f) => (f.status === 'unconfirmed' && f.meta ? [f.meta] : []));
-  const tail = [
-    pendingNames.length ? ` ${upperFirst(listWords(pendingNames))} not yet confirmed.` : '',
-    ` Checked ${formatIsoDate(lastChecked(page), false, page.locale)}.`,
-  ].join('');
+  // Only what is confirmed: rows still waiting for this year's notice are not announced as missing (F9, 2026-11-11).
+  const tail = ` Checked ${formatIsoDate(lastChecked(page), false, page.locale)}.`;
 
   const kept = [...phrases];
   while (kept.length > 0 && seasonPrefix.length + kept.join(' · ').length + 1 + tail.length > DESCRIPTION_MAX) kept.pop();
