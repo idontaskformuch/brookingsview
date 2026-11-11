@@ -14,6 +14,7 @@ import { hasEnded, localDayNumber, localHourOf } from './local-day';
 import { dateLong, eventsDeck, meetingDeck, plural, weekdayName, type ShowRef } from './front-page-decks';
 import type { FrontPageConfig } from '../config/front-page';
 import { IN_TOWN_THRESHOLD_MILES } from './ticketmaster';
+import { fitDescription } from './meta-description';
 
 export type FrontPageType = 'alert' | 'holiday' | 'weekend' | 'game_day' | 'meeting' | 'tonight' | 'guide';
 
@@ -60,7 +61,6 @@ export interface FrontPageInput {
   meetings: MeetingView[];
 }
 
-export const META_DESCRIPTION_MAX = 155;
 export const WEEKEND_FROM_HOUR = 12;
 export const MAX_GUIDES = 2;
 const DAY_MS = 86_400_000;
@@ -214,13 +214,10 @@ export function guideItems(i: Pick<FrontPageInput, 'config' | 'timezone'>, now: 
   return gs.map((_, k) => gs[(start + k) % gs.length]).map((g) => ({ type: 'guide' as const, headline: g.title, deck: [g.deck], url: g.url }));
 }
 
-/** Build a meta description from the lead's first deck sentence: at most 155 characters, cut at a sentence or word boundary. */
+/** Build a meta description from the lead's first deck sentence, through the same fitDescription() as every page (whole sentences,
+ *  at most 160 characters; 2026-11-11: Glasgow's read "...including Automatic"). */
 export function metaDescriptionOf(lead: FrontPageItem): string {
-  const s = (lead.deck[0] ?? lead.headline).replace(/\s+/g, ' ').trim();
-  if (s.length <= META_DESCRIPTION_MAX) return s;
-  const cut = s.slice(0, META_DESCRIPTION_MAX + 1);
-  const at = cut.lastIndexOf(' ');
-  return (at > 0 ? cut.slice(0, at) : s.slice(0, META_DESCRIPTION_MAX)).replace(/[\s,;:\-–—]+$/, '');
+  return fitDescription(lead.deck[0] ?? lead.headline);
 }
 
 export function selectFrontPage(i: FrontPageInput, now: Date): FrontPage {

@@ -7,18 +7,22 @@
 export const PATTERNS = [
   { name: 'NEEDS-HUMAN-REVIEW', re: /NEEDS-HUMAN-REVIEW/i },
   { name: '.md file name', re: /\b[\w-]+\.md\b/ },
+  // 2026-11-11 scan of data/facilities: "see lib/town-boundary.ts", "configs/moreno_valley_ca.json's own events.sources", "re-verify this address"
+  { name: 'code file name', re: /\b(lib|scripts|configs|data|src|site)\/[\w/.-]+\.(ts|tsx|py|mjs|js|astro|json)\b/ },
+  { name: 're-verify', re: /\bre-?verify\b/i },
   // capitals only: "Pending" in running text is ordinary English, "PENDING"/"TODO"/"FIXME" are a developer's markers
   { name: 'TODO', re: /\bTODO\b/ },
   { name: 'FIXME', re: /\bFIXME\b/ },
   { name: 'PENDING', re: /\bPENDING\b/ },
 ];
 
-const decode = (s) => s.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+const decode = (s) => s.replace(/&nbsp;/g, ' ').replace(/&#38;/g, '&').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
 
 /** The text a reader or a search result sees: the page's visible text, its <title> and its meta description. */
 export function readableParts(html) {
   const title = decode((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? '').trim());
-  const description = decode(html.match(/<meta\s+name=["']description["']\s+content=["']([^"']*)["']/i)?.[1] ?? '');
+  // the attribute's own quote ends it: an apostrophe inside "..." is text ("Children's Museum")
+  const description = decode(html.match(/<meta\s+name=["']description["']\s+content=(["'])([\s\S]*?)\1/i)?.[2] ?? '');
   const body = decode(
     (html.match(/<body[\s\S]*<\/body>/i)?.[0] ?? html)
       .replace(/<!--[\s\S]*?-->/g, ' ')

@@ -25,12 +25,33 @@ function trimTo(text: string, max: number, min: number): string {
   if (sentence + 1 >= min) return head.slice(0, sentence + 1);
   const space = room.lastIndexOf(' ');
   const cut = (space > 0 ? room.slice(0, space) : room).replace(/[\s,;:–—-]+$/, '');
-  return END.test(cut) ? cut : `${cut}.`;
+  // A word cut is marked as one ("…"), never dressed up as a sentence with a period (2026-11-11).
+  return END.test(cut) ? cut : `${cut}…`;
 }
 
-/** 120-160 characters: trims a long text, and appends the first filler sentences that fit when it is short. */
+// A period after these is not a sentence end ("225 Commerce St. in", "J. Smith").
+const ABBREVIATIONS = /(?:^|\s)(?:[A-Z]|St|Ave|Blvd|Rd|Dr|Mt|Ft|Inc|Co|Corp|Ltd|Jr|Sr|No|U\.S|vs|approx|e\.g|i\.e)\.$/;
+
+/** The longest run of whole sentences from the start of `text` that fits in `max` characters, or null when even the first sentence
+ *  is longer (Broomfield AdSense plan F6, 2026-11-11: descriptions were cut mid-sentence and given a period, "...Manager George Di."). */
+export function wholeSentences(text: string, max: number): string | null {
+  let best: string | null = null;
+  const end = /[.!?]["')]?(?=\s|$)/g;
+  for (let m = end.exec(text); m && m.index < max; m = end.exec(text)) {
+    const candidate = text.slice(0, m.index + m[0].length);
+    if (candidate.length > max) break;
+    if (m[0] === '.' && ABBREVIATIONS.test(candidate)) continue;
+    best = candidate;
+  }
+  return best;
+}
+
+/** 120-160 characters: a long text keeps its whole sentences that fit, a short one gets the first filler sentences that fit; only a
+ *  text with no sentence end inside 160 characters is cut at a word. */
 export function fitDescription(raw: string, fillers: string[] = []): string {
-  let t = raw.replace(/\s+/g, ' ').trim();
+  // " -- " is a typewriter stand-in for a dash (style rule; source texts still carry it)
+  let t = raw.replace(/\s+/g, ' ').replace(/ -- /g, ' — ').trim();
+  if (t.length > DESCRIPTION_MAX) t = wholeSentences(t, DESCRIPTION_MAX) ?? t;
   for (const f of fillers) {
     if (t.length >= DESCRIPTION_MIN) break;
     const joined = `${END.test(t) ? t : `${t}.`} ${f}`;
@@ -40,7 +61,7 @@ export function fitDescription(raw: string, fillers: string[] = []): string {
 }
 
 const TEMPLATES: Record<string, (c: DescFields) => string> = {
-  home: (c) => `${c.siteName} is a local news and information site for ${placeLabel(c)}: what is on, council meetings, weather, closures and public facilities, with sources linked.`,
+  home: (c) => `${c.siteName} is a local news site for ${placeLabel(c)}: events, council meetings, weather, closures and public places, with sources linked.`,
   about: (c) => `About ${c.siteName}: who runs this local site for ${placeLabel(c)}, how its pages are made and checked, the sources it uses and how to reach us.`,
   contact: (c) => `Contact ${c.siteName}: report a correction, tell us about an event we missed, or get in touch with the team behind the local pages for ${c.cityName}.`,
   privacy: (c) => `What ${c.siteName} collects about visitors, how comments and polls, advertising and analytics work, and what happens to anything you email us.`,
@@ -53,9 +74,9 @@ const TEMPLATES: Record<string, (c: DescFields) => string> = {
   today: (c) => `What is happening today in ${placeAbbr(c)}: the weather, ${forCountry(c.country, 'school and road alerts', 'travel and weather warnings')}, events and anything that changes your day.`,
   events: (c) => `Events in ${placeLabel(c)} this week and beyond: library programs, city events and community happenings, with dates, times and where to go.`,
   facilities: (c) => `Addresses, phone numbers and opening hours for libraries, parks, city offices and other public places in ${placeAbbr(c)}, with a page for each.`,
-  'city-hall': (c) => `${forCountry(c.country, 'City council, county commission and committee', 'Council and committee')} meetings in ${placeLabel(c)}, in plain language: what is on the agenda, what was decided and what comes next.`,
+  'city-hall': (c) => `${forCountry(c.country, 'City council and committee', 'Council and committee')} meetings in ${placeLabel(c)}: what is on the agenda, what was decided and what comes next.`,
   'city-hall-archive': (c) => `Every past council and committee meeting covered in ${placeLabel(c)}, grouped by month, each with its agenda items and a link to the agenda.`,
-  weather: (c) => `The latest forecast, active weather alerts and current conditions for ${placeLabel(c)}, taken from the official weather source and updated through the day.`,
+  weather: (c) => `The forecast, weather alerts and current conditions for ${placeLabel(c)}, from the official weather source and updated through the day.`,
   closures: (c) => `Official school and weather closure status for ${c.cityName}, taken from the source and never a prediction, with the time it was last checked.`,
   traffic: (c) => `Road incidents, lane closures and construction affecting ${placeAbbr(c)}, from the official road-condition source, with the time it was last updated.`,
   tonight: (c) => `Things to do tonight and tomorrow night in ${c.cityName}: live music, comedy, quiz nights and more, with start times and venues for each.`,
@@ -81,14 +102,39 @@ export function facilityDescription(c: DescFields, f: { name: string; descriptio
   const where = f.street_address ?? f.address;
   const curated = f.description?.trim();
   // Curated texts are sometimes identical across facilities of one kind ("Fire station ..."): lead with the name so each page is unique.
-  const base = curated
-    ? (curated.toLowerCase().includes(f.name.toLowerCase()) ? curated : `${f.name}: ${curated}`)
-    : `${f.name} in ${placeAbbr(c)}${where ? `, ${where}` : ''}: address, phone number and opening hours, with upcoming events and a link to the official page where there is one.`;
+  // Longest first; the first that fits whole is used, so a long name or address gets a shorter sentence instead of a word cut.
+  const template = [
+    `${f.name} in ${placeAbbr(c)}${where ? `, ${where}` : ''}: address, phone number and opening hours, with upcoming events and a link to the official page where there is one.`,
+    `${f.name} in ${placeAbbr(c)}${where ? `, ${where}` : ''}: address, phone number and opening hours, with a link to the official page.`,
+    `${f.name} in ${placeAbbr(c)}${where ? `, ${where}` : ''}: address, phone number and opening hours.`,
+    `${f.name}, ${placeAbbr(c)}: address, phone number and opening hours.`,
+    `${f.name}: address, phone number and opening hours.`,
+  ].find((s) => s.length <= DESCRIPTION_MAX) ?? `${f.name}.`;
+  const named = curated ? (curated.toLowerCase().includes(f.name.toLowerCase()) ? curated : `${f.name}: ${curated}`) : null;
+  // A curated text whose first sentence alone is too long would only come out as a fragment: the template is a whole sentence.
+  const base = named && (named.length <= DESCRIPTION_MAX || wholeSentences(named, DESCRIPTION_MAX)) ? named : template;
   return fitDescription(base, [
     `Address, phone number and hours for ${f.name} in ${placeAbbr(c)}.`,
     `Address, phone number and hours in ${placeAbbr(c)}.`,
     'Hours and address.',
   ]);
+}
+
+/** True when fitDescription() could only cut `text` at a word (no sentence end within 160 characters). */
+export function isWordCut(text: string): boolean {
+  return text.endsWith('…');
+}
+
+/** Development project page: the project's own text when whole sentences of it fit, else a whole-sentence template (2026-11-11:
+ *  planning texts whose first sentence alone runs past 160 characters ended in a word cut). */
+export function projectDescription(c: DescFields, p: { title: string; description?: string | null }): string {
+  const own = p.description ? fitDescription(p.description) : '';
+  if (own && !isWordCut(own)) return own;
+  return [
+    `${p.title} in ${placeAbbr(c)}: what is proposed, where it stands and what was decided, from city records.`,
+    `${p.title}: what is proposed, where it stands and what was decided.`,
+    `${p.title}.`,
+  ].find((s) => s.length <= DESCRIPTION_MAX) ?? fitDescription(p.title);
 }
 
 /** Default fillers for a hand-written description that came out short. */
@@ -99,7 +145,7 @@ export function descriptionFillers(c: DescFields): string[] {
 /** Monthly recap page: the label ("August 2026") is the page's own period. */
 export function monthDescription(c: DescFields, label: string): string {
   return fitDescription(
-    `A month-in-review recap of ${placeAbbr(c)} for ${label}: city hall decisions, development projects, home sales, events, traffic and jobs, from public data.`,
+    `A recap of ${placeAbbr(c)} for ${label}: city hall decisions, development projects, home sales, events, traffic and jobs, from public data.`,
     descriptionFillers(c),
   );
 }

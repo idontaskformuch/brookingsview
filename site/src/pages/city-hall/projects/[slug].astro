@@ -17,6 +17,7 @@ import {
 import type { ProjectUpdate } from '../../../lib/db';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../../lib/article-jsonld';
 import { siteConfig } from '../../../lib/site-config';
+import { projectDescription } from '../../../lib/meta-description';
 import { shouldNoindexProject } from '../../../lib/project-noindex';
 
 export async function getStaticPaths() {
@@ -130,7 +131,7 @@ const itemListJsonLd = updates.length > 0 ? {
 } : null;
 ---
 <BaseLayout title={`${project.title} — ${siteConfig.siteName}`} ogSlug="section-city-hall"
-  description={project.description.slice(0, 155)} noindex={noindexThisProject}>
+  description={projectDescription(siteConfig, project)} noindex={noindexThisProject}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <article class="project">
     <header class="lede">

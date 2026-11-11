@@ -48,7 +48,7 @@ const holidayRows = southShifts.map((h, i) => ({ name: h.name, date: h.date, sou
 const fmtHoliday = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(t));
 ---
 <BaseLayout title={pageMeta.title} wide
-  description={fitDescription("Brookings garbage, recycling and yard waste: which day is yours, what goes in each cart, holiday changes, and what to do with big items, branches, electronics and paint.")}
+  description={fitDescription("Brookings garbage, recycling and yard waste: which day is yours, what goes in each cart, holiday changes, and what to do with big items, branches and paint.")}
   >
   <header class="lede">
     <h1>{pageMeta.h1}</h1>

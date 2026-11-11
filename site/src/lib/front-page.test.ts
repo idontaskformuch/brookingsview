@@ -278,7 +278,7 @@ describe('every town, every day of a year: valid, no empty state, no template de
         }
         expect(fp.secondaries.length).toBeGreaterThanOrEqual(fp.lead.type === "guide" ? 1 : 2); // a guide lead leaves room for one more guide only
         expect(fp.secondaries.length).toBeLessThanOrEqual(3);
-        expect(fp.meta_description.length).toBeLessThanOrEqual(155);
+        expect(fp.meta_description.length).toBeLessThanOrEqual(160);
         expect(fp.meta_description).not.toBe('');
       }
     }, 30_000);
@@ -290,12 +290,13 @@ describe('helpers', () => {
     expect(dayOfYear(new Date('2026-01-01T07:00:00Z'), 'America/Denver')).toBe(1);
     expect(dayOfYear(new Date('2026-01-01T06:59:00Z'), 'America/Denver')).toBe(365); // still 31 Dec 2025 there
   });
-  it('meta description is the first deck sentence, at most 155 characters, cut at a word', () => {
-    const long = Array.from({ length: 40 }, (_, i) => `word${i}`).join(' ');
-    const m = metaDescriptionOf({ type: 'guide', headline: 'H', deck: [long], url: '/x/' });
-    expect(m.length).toBeLessThanOrEqual(155);
-    expect(long.startsWith(m)).toBe(true);
-    expect(long[m.length]).toBe(' ');
+  it('meta description is the first deck text, at most 160 characters, cut after a whole sentence (2026-11-11)', () => {
+    // Glasgow's front page read "... with 5 items on the agenda, including Automatic" (a word cut with no end)
+    const deck = 'Wellbeing, Equalities, Communities, Culture and Engagement City Policy Committee meets Thursday at 13:30. It has 5 items on the agenda, including Automatic Enrolment.';
+    const m = metaDescriptionOf({ type: 'guide', headline: 'H', deck: [deck], url: '/x/' });
+    expect(m).toBe('Wellbeing, Equalities, Communities, Culture and Engagement City Policy Committee meets Thursday at 13:30.');
+    const noSentence = Array.from({ length: 40 }, (_, i) => `word${i}`).join(' ');
+    expect(metaDescriptionOf({ type: 'guide', headline: 'H', deck: [noSentence], url: '/x/' }).endsWith('…')).toBe(true);
     expect(metaDescriptionOf({ type: 'guide', headline: 'H', deck: ['Short.'], url: '/x/' })).toBe('Short.');
   });
 });

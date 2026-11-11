@@ -441,7 +441,7 @@ const eventJsonLdObject = buildEventJsonLd(
 );
 ---
 
-<BaseLayout title={`${pageTitle} — ${siteConfig.siteName}`} description={displayBody.slice(0, 155)} ogSlug={story.slug} noindex={isNoindex} canonicalUrl={pageCanonicalUrl}>
+<BaseLayout title={`${pageTitle} — ${siteConfig.siteName}`} description={displayBody} ogSlug={story.slug} noindex={isNoindex} canonicalUrl={pageCanonicalUrl}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <article class="story">
     {!hasByline && <p class="story__kind data">{kind}</p>}

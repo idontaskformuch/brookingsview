@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { ALL_CONFIGS } from './site-config';
-import { DESCRIPTION_KINDS, DESCRIPTION_MAX, DESCRIPTION_MIN, facilityDescription, fitDescription, metaDescription, weekDescription } from './meta-description';
+import { DESCRIPTION_KINDS, DESCRIPTION_MAX, DESCRIPTION_MIN, facilityDescription, fitDescription, isWordCut, metaDescription, monthDescription, projectDescription, weekDescription, wholeSentences } from './meta-description';
 
 describe('fitDescription', () => {
   it('trims at a sentence end, else a word, and never past 160', () => {
@@ -34,6 +34,10 @@ describe('every template, every town', () => {
         const all = DESCRIPTION_KINDS.map((k) => metaDescription(k, d));
         expect(new Set(all).size).toBe(all.length);
       });
+      it('no template needs a word cut (2026-11-11: weather and month descriptions ended "...updated through the…")', () => {
+        const all = [...DESCRIPTION_KINDS.map((k) => metaDescription(k, d)), monthDescription(d, 'September 2026'), weekDescription(d, 'Oct 19 to Oct 25', true)];
+        for (const s of all) expect(s, s).toMatch(/[.!?]$/);
+      });
       it('no digits (no daily numbers)', () => {
         for (const k of DESCRIPTION_KINDS) expect(metaDescription(k, d), k).not.toMatch(/\d/);
       });
@@ -51,25 +55,53 @@ describe('every template, every town', () => {
   }
 });
 
+describe('wholeSentences / word cuts', () => {
+  it('keeps whole sentences and skips abbreviations', () => {
+    expect(wholeSentences('One two. Three four five.', 12)).toBe('One two.');
+    expect(wholeSentences('At 225 Commerce St. in town. Next one.', 30)).toBe('At 225 Commerce St. in town.');
+    expect(wholeSentences('A sentence far too long for the room', 10)).toBeNull();
+  });
+  it('a text without a sentence end is cut with an ellipsis, never a fake period', () => {
+    const out = fitDescription('word '.repeat(60));
+    expect(out.endsWith('…')).toBe(true);
+    expect(out.length).toBeLessThanOrEqual(DESCRIPTION_MAX);
+  });
+});
+
+describe('projectDescription and dashes', () => {
+  const c = ALL_CONFIGS.find((x) => x.townId === 'moreno_valley_ca')!;
+  it('a planning text whose first sentence runs past 160 characters gets the whole-sentence template (Moreno 2026-11-11)', () => {
+    const p = { title: 'Edgemont Commerce Center', description: 'Change of Zone (PEN23-0076) from Business Park to Light Industrial, Plot Plan (PEN23-0074) for a 142,797 square-foot light industrial building, Tentative Parcel Map and more on a site.' };
+    const d = projectDescription(c, p);
+    expect(d).toMatch(/^Edgemont Commerce Center in .*\.$/);
+    expect(isWordCut(d)).toBe(false);
+  });
+  it('a short project text is kept as it is', () => {
+    expect(projectDescription(c, { title: 'X', description: 'A small park upgrade.' })).toBe('A small park upgrade.');
+  });
+  it('" -- " becomes a real dash', () => {
+    expect(fitDescription('SDSU\'s public garden -- part of the South Dakota Arboretum.')).toBe('SDSU\'s public garden — part of the South Dakota Arboretum.');
+  });
+});
+
 describe('facilityDescription on the real facility data', () => {
   // Broomfield AdSense plan F6 (2026-11-11): the recycling center's meta description ended "... Two official City of Broomfield pages."
-  // -- a word cut dressed up with a period. Its curated description must be cut at one of its own sentence ends. (23 other facilities
-  // still get a word cut; widening this to every facility waits for the owner, see .claude/state.md.)
-  const CHECKED = new Set(['broomfield-recycling-center']);
+  // -- a word cut dressed up with a period; 23 more facilities in all four towns did the same. Every curated description must be cut
+  // at one of its own sentence ends, or give way to the whole-sentence template.
   for (const c of ALL_CONFIGS) {
     const file = join(__dirname, '../../../data/facilities', `${c.townId}.json`);
     if (!existsSync(file)) continue;
     const facilities: { name: string; slug: string; description?: string | null }[] = JSON.parse(readFileSync(file, 'utf8')).facilities;
-    if (!facilities.some((f) => CHECKED.has(f.slug))) continue;
-    it(`${c.townId}: the meta description ends where a sentence of the description ends`, () => {
-      const bad = facilities.filter((f) => CHECKED.has(f.slug) && f.description?.trim()).filter((f) => {
+    it(`${c.townId}: every meta description is whole sentences of the description, or the template`, () => {
+      const bad = facilities.filter((f) => f.description?.trim()).filter((f) => {
         const meta = facilityDescription(c, f);
+        if (meta.includes('address, phone number and opening hours')) return false; // the template
         const body = meta.startsWith(`${f.name}: `) ? meta.slice(f.name.length + 2) : meta;
         const src = f.description!.replace(/\s+/g, ' ').trim();
-        // whole text (perhaps with a filler sentence after it), or cut right after one of its own sentence ends
-        const wholeText = body.startsWith(src);
-        const sentenceCut = src.startsWith(body) && /[.!?]$/.test(body) && src[body.length] === ' ';
-        return !(wholeText || sentenceCut);
+        // whole text, or cut right after one of its own sentence ends -- either perhaps followed by a filler sentence
+        if (body.startsWith(src)) return false;
+        const ends = [...src.matchAll(/[.!?](?= )/g)].map((m) => src.slice(0, m.index + 1));
+        return !ends.some((p) => body === p || (body.startsWith(`${p} `) && !src.startsWith(body)));
       }).map((f) => `${f.slug}: ${facilityDescription(c, f)}`);
       expect(bad).toEqual([]);
     });

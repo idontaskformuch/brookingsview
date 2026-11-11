@@ -284,7 +284,12 @@
     "build.internal-note": {
         "severity": "hard",
         "born_from": "Broomfield AdSense audit 2026-11-11 (F6): /facilities/broomfield-recycling-center/ showed \"see NEEDS-HUMAN-REVIEW.md for the open discrepancy\" in its lede and a cut-off meta description (data/facilities/broomfield_co.json). Regression fixture: tests/fixtures/qa_internal_note_recycling_2026-11-11.html (site/src/lib/internal-notes.test.ts); meta description: site/src/lib/meta-description.test.ts.",
-        "what": "a built page whose visible text, <title> or meta description contains NEEDS-HUMAN-REVIEW, a .md file name, TODO, PENDING or FIXME (scripts/verify_no_internal_notes.mjs on dist/ in every deploy workflow)"
+        "what": "a built page whose visible text, <title> or meta description contains NEEDS-HUMAN-REVIEW, a .md file name, a code path (lib/... .ts, configs/... .json), re-verify, TODO, PENDING or FIXME (scripts/verify_no_internal_notes.mjs on dist/ in every deploy workflow). Extended 2026-11-11 after a scan of data/facilities found 'see lib/town-boundary.ts' (Moreno farm-house-collective) and 're-verify this address in ~6 months' (Broomfield station 68)."
+    },
+    "build.meta-description": {
+        "severity": "hard",
+        "born_from": "Broomfield AdSense audit 2026-11-11 (F6): 24 facility meta descriptions in all four towns were cut mid-sentence and given a period (\"...named for former City and County Manager George Di.\"); owner: rule it out for every meta description. Fixed in meta-description.ts (wholeSentences, template fallback, a word cut ends in an ellipsis). Regression: site/src/lib/meta-description.test.ts (every facility in data/facilities; it failed on 23 before the fix).",
+        "what": "an indexable page whose meta description is missing, ends in a word cut, has no sentence end, or contains ' -- ' (scripts/report_meta_descriptions.mjs, which also writes every description to a TSV for reading)"
     },
     "build.town-games": {
         "severity": "hard",

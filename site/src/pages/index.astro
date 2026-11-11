@@ -63,6 +63,7 @@ import { loadUpcomingMeetings } from '../lib/meetings-data';
 import { selectWorthKnowingMeetings } from '../lib/meetings-view';
 import { resolveQuickLinks, type QuickLinkContext } from '../lib/quick-links';
 import { siteConfig } from '../lib/site-config';
+import { isWordCut, metaDescription } from '../lib/meta-description';
 import { placeAbbr, forCountry } from '../lib/country-profile';
 import { resolveImage } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
@@ -318,7 +319,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     : null;
 ---
 
-<BaseLayout title={`${siteConfig.siteName} — what's happening in ${placeAbbr(siteConfig)}`} wide description={frontPage.meta_description}>
+<BaseLayout title={`${siteConfig.siteName} — what's happening in ${placeAbbr(siteConfig)}`} wide description={isWordCut(frontPage.meta_description) ? metaDescription('home', siteConfig) : frontPage.meta_description}>
 
   {/* CityStatus: the front-page condensed status strip (lib/cityStatus.ts),
       mounted here at the top of the front page, above the Phase F original-

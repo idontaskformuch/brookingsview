@@ -23,6 +23,13 @@ describe('findInternalNotes', () => {
     expect(findInternalNotes(page('<p>ok</p>', 'see README.md'))[0].where).toBe('description');
   });
 
+  it('flags code paths and re-verify notes (Moreno farm-house-collective, Broomfield station 68, 2026-11-11 texts)', () => {
+    const farm = "A private event venue in central Riverside (not inside Moreno Valley's own town limits -- see lib/town-boundary.ts) hosting live music; configs/moreno_valley_ca.json's own events.sources already includes it.";
+    expect(findInternalNotes(page(`<p>${farm}</p>`)).map((f) => f.name)).toEqual(['code file name']);
+    const st68 = "The district's own listing labels this a temporary structure as of 2026 -- re-verify this address in ~6 months.";
+    expect(findInternalNotes(page(`<p>${st68}</p>`)).map((f) => f.name)).toEqual(['re-verify']);
+  });
+
   it('passes ordinary text, scripts, styles and comments', () => {
     const html = page('<p>The outcome is pending. We still have to do it.</p><script>// TODO later</script><style>.x{}</style><!-- FIXME -->');
     expect(findInternalNotes(html)).toEqual([]);
