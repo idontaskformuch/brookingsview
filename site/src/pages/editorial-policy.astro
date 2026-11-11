@@ -3,11 +3,13 @@
  *  /how-we-gather-this (which sources feed it). This page's job is
  *  narrower: what the software shows, leaves out and works out itself,
  *  now that no model-written text is shown (owner 2026-11-05/06). Every
- *  statement here must stay true to the code -- see lib/ai-text.ts. */
+ *  statement here must stay true to the code -- see lib/ai-text.ts. Exception (owner B6, 2026-11-11):
+ *  place/project descriptions, disclosed via lib/ai-disclosure.ts. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
 import { forCountry } from '../lib/country-profile';
+import { aiDisclosure } from '../lib/ai-disclosure';
 
 const canonicalUrl = new URL('/editorial-policy/', Astro.site ?? siteConfig.siteUrl).href;
 const title = `Editorial Policy — ${siteConfig.siteName}`;
@@ -33,7 +35,7 @@ const webPageJsonLd = {
     <p>{siteConfig.siteName} has no newsroom and writes no news stories. It
     collects public information from the sources listed on
     <a href="/how-we-gather-this/">/how-we-gather-this</a> and shows what they
-    publish. No model-written text is shown, and no person reviews an item
+    publish. {aiDisclosure(siteConfig.country !== 'gb')} No person reviews an item
     before it appears. This page says what the software does and doesn't do
     in place of that review.</p>
 

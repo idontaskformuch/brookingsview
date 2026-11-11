@@ -3,6 +3,7 @@
  *  (the operator is one individual, see /about). Governing law is stated only as the owner will
  *  confirm it -- left out here on purpose. Not legal advice. */
 import { siteConfig } from '../../../lib/site-config';
+import { aiDisclosure } from '../../../lib/ai-disclosure';
 ---
 <article class="prose">
   <h1>Terms of Use</h1>
@@ -14,8 +15,8 @@ import { siteConfig } from '../../../lib/site-config';
   <h2>What this site is</h2>
   <p>{siteConfig.siteName} is an automated local information site. Public information, such as council meeting
   papers, calendars and official alerts, is collected by software and shown as the source published it, without
-  a person reviewing each item first. We do not write news stories, and no model-written text is shown on the
-  site. Items link back to their original source. See
+  a person reviewing each item first. We do not write news stories. {aiDisclosure(false)}
+  Items link back to their original source. See
   <a href="/how-we-gather-this/">how we gather this</a> and our
   <a href="/editorial-policy/">editorial policy</a> for the specifics.</p>
 

@@ -5,6 +5,7 @@
  *  governing-law jurisdiction) that /about doesn't actually claim -- see
  *  that page's "Who built it" section for the real, disclosed operator. */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { aiDisclosure } from '../lib/ai-disclosure';
 import { siteConfig } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
 import TermsGb from '../components/legal/gb/TermsBody.astro';
@@ -42,8 +43,7 @@ const webPageJsonLd = {
     information — meeting agendas, calendars, official alerts, and similar
     sources — collected by software and shown as the source published it,
     without a person reviewing each item first. Listings link back to their
-    original source. We don't write news stories, and no model-written text
-    is shown on the site.
+    original source. We don't write news stories. {aiDisclosure()}
     See <a href="/how-we-gather-this/">how we gather this</a> and
     our <a href="/editorial-policy/">editorial policy</a> for the
     specifics.</p>

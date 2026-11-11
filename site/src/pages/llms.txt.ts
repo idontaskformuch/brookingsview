@@ -46,7 +46,7 @@ export const GET: APIRoute = async () => {
   const lines: string[] = [
     `# ${siteConfig.siteName}`,
     '',
-    ...llmsAboutLines({ siteName: siteConfig.siteName, place: placeAbbr(siteConfig), sourceBlurb: siteConfig.sourceBlurb }),
+    ...llmsAboutLines({ siteName: siteConfig.siteName, place: placeAbbr(siteConfig), sourceBlurb: siteConfig.sourceBlurb, projects: siteConfig.country !== 'gb' }),
     '',
     // AI-written text is never printed (lib/ai-text.ts, owner 2026-11-06), so the old "summaries are written by an AI model" and
     // "AI-written reviews, recipes, editorials" lines are gone: llms.txt may only describe what the pages actually contain.

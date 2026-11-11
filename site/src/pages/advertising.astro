@@ -15,6 +15,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig, isSectionDisabled } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
+import { aiDisclosure } from '../lib/ai-disclosure';
 if (isSectionDisabled('advertising')) return Astro.redirect('/', 302);
 
 const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
@@ -91,8 +92,7 @@ const webPageJsonLd = {
       <li>We don't accept advertising that promotes misinformation,
       discrimination, or content that conflicts with our editorial
       values.</li>
-      <li>No text on this site is written by an AI model, as explained on
-      <a href="/how-we-gather-this/">how we gather this</a>. Any sponsored content is labeled as sponsored.</li>
+      <li>{aiDisclosure(siteConfig.country !== 'gb')} More on <a href="/how-we-gather-this/">how we gather this</a>. Any sponsored content is labeled as sponsored.</li>
     </ul>
 
     <h2>Pricing &amp; placements</h2>

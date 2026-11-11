@@ -21,6 +21,7 @@
  *      Worker's "0 11,23 * * *"); weather is fetched every hour by the same Worker.
  *      Text rewritten 2026-11-06 (owner-approved proposal): no model-written text is
  *      shown anywhere, so the old "language model" / "AI summaries" sections are gone.
+ *      Exception (owner B6, 2026-11-11): place/project descriptions, see lib/ai-disclosure.ts.
  *   3. /corrections exists, links from /contact, and honestly shows "No
  *      corrections have been logged yet" rather than being an empty stub.
  */
@@ -30,6 +31,7 @@ import { metaDescription } from '../lib/meta-description';
 import { forCountry } from '../lib/country-profile';
 import { aboutSourcesFor } from '../lib/about-sources';
 import { pageExplainers } from '../lib/page-explainers';
+import { aiDisclosure } from '../lib/ai-disclosure';
 
 const sources = aboutSourcesFor(siteConfig.townId);
 const pages = pageExplainers(siteConfig);
@@ -41,8 +43,7 @@ const pages = pageExplainers(siteConfig);
     <p>{siteConfig.siteName} doesn't have a newsroom. It collects public
     information from the sources listed below, checks them twice a day, and
     shows what they publish: dates, times, places, agenda items, notices and
-    links. We don't write news stories, and no model-written text is shown on
-    the site. No person reviews an item before it appears; the checks
+    links. We don't write news stories. {aiDisclosure(siteConfig.country !== 'gb')} No person reviews an item before it appears; the checks
     described below run automatically.</p>
 
     <h2>The sources</h2>
