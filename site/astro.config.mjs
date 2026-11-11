@@ -48,6 +48,15 @@ function openLateIndexable(townId) {
     return v.townId === townId && v.indexable === true;
   } catch { return false; }
 }
+// /traffic/ is indexable only while it lists incidents (the page decides while building; see lib/traffic-verdict.ts)
+const TRAFFIC_VERDICT_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '.traffic-verdict.json');
+try { fs.rmSync(TRAFFIC_VERDICT_PATH, { force: true }); } catch { /* nothing to remove */ }
+function trafficIndexable(townId) {
+  try {
+    const v = JSON.parse(fs.readFileSync(TRAFFIC_VERDICT_PATH, 'utf8'));
+    return v.townId === townId && v.indexable === true;
+  } catch { return false; }
+}
 function eveningIndexable(townId) {
   try {
     const v = JSON.parse(fs.readFileSync(EVENING_VERDICT_PATH, 'utf8'));
@@ -885,6 +894,7 @@ export default defineConfig({
         return !noindexHomeSaleUrls.has(pathname)
           && !isEveningNoindex
           && !(pathname === '/open-late/' && !openLateIndexable(activeCity))
+          && !(pathname === '/traffic/' && !trafficIndexable(activeCity))
           && !excludedGatedPages.has(pathname)
           && !noindexStoryUrls.has(pathname)
           && !noindexThinPageUrls.has(pathname)

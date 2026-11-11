@@ -1616,6 +1616,15 @@ export async function getTrafficLastChecked(): Promise<string | null> {
   return (rows[0] as { last_checked: string | null })?.last_checked ?? null;
 }
 
+/** When the traffic feed was last read successfully (scrape_runs, source 'traffic'). Unlike getTrafficLastChecked() this moves on a run
+ *  that found nothing, so "No crashes or closures reported ... as of <time>" names the real time of the latest read (AdSense plan F4). */
+export async function getTrafficLastRun(): Promise<string | null> {
+  const rows = await sql`
+    SELECT MAX(finished_at) AS last_run FROM scrape_runs WHERE town_id = ${TOWN_ID} AND source_key = 'traffic' AND status = 'ok'
+  `;
+  return (rows[0] as { last_run: string | null })?.last_run ?? null;
+}
+
 /** Month in Review: every incident whose `created_at` -- the real "first
  *  seen" timestamp, see TrafficIncident's own comment -- falls in
  *  [start, end). Counts each incident exactly once, in the month it was

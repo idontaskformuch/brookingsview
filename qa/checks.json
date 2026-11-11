@@ -290,6 +290,11 @@
         "severity": "hard",
         "born_from": "Broomfield AdSense audit 2026-11-11 (F7): public/games/ was copied into every build, so broomfieldview.com served Brookings' /games/jackrabbit.html (200, indexable) and Moreno Valley's /games/burro-bonanza.html. Owners in site/src/lib/game-owners.mjs. Regression fixture: site/src/lib/game-owners.test.ts (the live 2026-11-11 listing fails).",
         "what": "dist/games/ holds a file the building town does not own (scripts/verify_town_games.mjs in every deploy workflow)"
+    },
+    "build.traffic-empty": {
+        "severity": "hard",
+        "born_from": "Broomfield AdSense audit 2026-11-11 (F4): /traffic/ was indexable and in the sitemap with only an H1 and a source line while the CDOT feed had nothing near Broomfield. Regression fixture: site/src/lib/traffic-verdict.test.ts (zero incidents -> noindex, one status line with the time of the latest read, no section rule/filters/source line); the sitemap follows the page's verdict (.traffic-verdict.json) and scripts/verify_sitemap_noindex_disjoint.mjs fails if they disagree.",
+        "what": "/traffic/ with zero listed incidents that is indexable, in the sitemap, or shows a heading or filter without content"
     }
   }
 }

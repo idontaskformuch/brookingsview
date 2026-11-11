@@ -665,7 +665,7 @@ const CITIES: Record<string, SiteConfig> = {
     trafficSource: {
       name: 'Caltrans QuickMap',
       url: 'https://quickmap.dot.ca.gov',
-      scopeNote: 'State highways, freeways, and CHP-logged incidents -- not city or county streets.',
+      scopeNote: 'State highways, freeways and CHP-logged incidents, not city or county streets.',
     },
     // Traffic Phase 5 (2026-10-09): the scraper's own bounding box was
     // storing SR-38/I-10/I-210/SR-91 incidents too (San Bernardino/
@@ -798,7 +798,7 @@ const CITIES: Record<string, SiteConfig> = {
     trafficSource: {
       name: 'CDOT / COtrip',
       url: 'https://www.cotrip.org',
-      scopeNote: 'State highways and CDOT-logged incidents -- not city or county streets.',
+      scopeNote: 'State highways and CDOT-logged incidents, not city or county streets.',
     },
     // Traffic Phase 5 (2026-10-09): the scraper's own bounding box was
     // storing Denver-area I-70/I-76/I-270/CO-35 incidents too (not roads

@@ -2,15 +2,17 @@
 /** Traffic incidents as a TABLE, no AI -- see lib/db.ts (getActiveTrafficIncidents) and scrapers/parsers/traffic_v1.py.
  *
  *  Built only for a town with a traffic source (owner 2026-11-07): without one the page does not exist at all, so it is not built, not in the
- *  nav and not in the sitemap (the host answers a real 404, like the holiday pages). With a source but no current incidents the page shows the
- *  data that exists (the source line) and no empty message. */
+ *  nav and not in the sitemap (the host answers a real 404, like the holiday pages). With a source but no current incidents the page is
+ *  noindex and out of the sitemap, and says in one line that nothing is reported as of the latest read (AdSense plan F4, 2026-11-11;
+ *  lib/traffic-verdict.ts). */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
-import { getActiveTrafficIncidents, getTrafficLastChecked, formatTimeWithZone, plainLanguageTraffic } from '../lib/db';
+import { getActiveTrafficIncidents, getTrafficLastRun, formatTimeWithZone, plainLanguageTraffic } from '../lib/db';
+import { trafficPageState, writeTrafficVerdict } from '../lib/traffic-verdict';
 import { siteConfig, isQuietSection } from '../lib/site-config';
 
 export function getStaticPaths() {
@@ -45,7 +47,12 @@ const incidents = rawIncidents
     return c ? { ...incident, zone: c.zone, distanceMiles: c.distanceMiles } : null;
   })
   .filter((i): i is NonNullable<typeof i> => i !== null);
-const lastChecked = siteConfig.trafficSource ? await getTrafficLastChecked() : null;
+const lastRun = siteConfig.trafficSource ? await getTrafficLastRun() : null;
+const lastRunLabel = lastRun
+  ? new Date(lastRun).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: siteConfig.timezone, timeZoneName: 'short' })
+  : null;
+const pageState = trafficPageState(incidents.length, siteConfig.cityName, lastRunLabel, isQuietSection('traffic'));
+writeTrafficVerdict(siteConfig.townId, !pageState.noindex);
 const canonicalUrl = new URL('/traffic/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Home', href: '/' },
@@ -60,18 +67,20 @@ const SEVERITY_LABELS: Record<string, string> = {
 const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | null }) =>
   i.zone === 'in_town' ? `In ${siteConfig.cityName}` : `Approach roads · ${Math.round(i.distanceMiles ?? 0)} mi out`;
 ---
-<BaseLayout title={pageMeta.title} wide ogSlug="section-traffic" noindex={isQuietSection('traffic')}
+<BaseLayout title={pageMeta.title} wide ogSlug="section-traffic" noindex={pageState.noindex}
   description={metaDescription('traffic', siteConfig)}
   accentColor={SECTION_THEME.traffic.accent}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    {/* Answer-engine-visibility handoff, Section 5: closes the TODO the
-        title/H1/lede migration left open -- now names the actual DOT
-        source and its real scope directly in the lede, not just in the
-        page's own separate "Source:" line further down. */}
     <ShareButton title={pageMeta.title} />
   </header>
+
+  {pageState.statusLine && siteConfig.trafficSource && (
+    <p class="traffic-status">
+      {pageState.statusLine} <a href={siteConfig.trafficSource.url} rel="noopener">Check live road conditions on {siteConfig.trafficSource.name}</a>.
+    </p>
+  )}
 
   {incidents.length > 0 && <SectionRule label={`${incidents.length} active`} />}
 
@@ -128,7 +137,7 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
     </table>
   ) : null}
 
-  {siteConfig.trafficSource && (
+  {siteConfig.trafficSource && incidents.length > 0 && (
     <p class="source">
       Source: <a href={siteConfig.trafficSource.url} rel="noopener">{siteConfig.trafficSource.name}</a>, refreshed regularly. {siteConfig.trafficSource.scopeNote}
     </p>
@@ -145,8 +154,9 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
     <p>Current road incidents, closures and construction near {siteConfig.cityName} —
     {siteConfig.trafficSource && (
     <> straight from <a href={siteConfig.trafficSource.url} rel="noopener">{siteConfig.trafficSource.name}</a>,
-    the state's own public incident feed. {siteConfig.trafficSource.scopeNote} The list refreshes
-    automatically as new incidents are reported, with no manual review in between.</>
+    the state's own public incident feed. {siteConfig.trafficSource.scopeNote} The feed is read on a schedule,
+    not continuously, and the list shows what the latest read found, with no manual review in between.
+    For conditions right now, use the state's own map.</>
     )}</p>
     {latestMonth && (
       <p>See the full <a href={`/month/${monthSlug(latestMonth.year, latestMonth.month)}/`}>month in review for {monthLabel(latestMonth.year, latestMonth.month)} →</a></p>
@@ -205,6 +215,7 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
 .raw { margin-top: 0.375rem; font-size: 0.8125rem; }
 .raw summary { cursor: pointer; color: var(--ink-soft); }
 .raw p { margin: 0.25rem 0 0; color: var(--ink-soft); }
-.empty { color: var(--ink-soft); }
+.traffic-status { margin: 1.25rem 0 0; font-size: 1rem; }
+.traffic-status a { color: var(--section-accent, var(--navy)); }
 .source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }
 </style>
