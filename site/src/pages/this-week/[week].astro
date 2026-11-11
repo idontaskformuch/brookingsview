@@ -21,6 +21,7 @@
  *  empty placeholder for a week nothing happened.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import AboutThisPage from '../../components/ui/AboutThisPage.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import WeekGroupList from '../../components/WeekGroupList.astro';
 import {
@@ -143,15 +144,10 @@ const itemListJsonLd = hasAnyItems ? {
   <header class="lede">
     <p class="kicker">This week in {siteConfig.cityName}</p>
     <h1>{pageMeta.h1}</h1>
-    {weeklyIntro ? (
+    {weeklyIntro && (
       <p class="intro">{weeklyIntro}{' '}
         {weeklyParagraphs.length > 1 && <a href={storyHref(weeklyStory!.slug)}>Read the full week in review →</a>}</p>
-    ) : (
-      <p class="intro">{isCurrent
-        ? `What's on this week in ${siteConfig.cityName}, day by day, built from real scheduled meetings, events${isBrookings ? ', SDSU listings' : ''} and games.`
-        : `A day-by-day record of what happened in ${siteConfig.cityName} this week.`}</p>
     )}
-    {hubBacklink && <p class="intro">Want just today, or a broader view? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</p>}
     <ShareButton title={title} url={canonicalUrl} />
   </header>
 
@@ -192,6 +188,14 @@ const itemListJsonLd = hasAnyItems ? {
   {itemListJsonLd && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
   )}
+  <AboutThisPage slot="about">
+    {!weeklyIntro && (
+      <p>{isCurrent
+        ? `What's on this week in ${siteConfig.cityName}, day by day, built from real scheduled meetings, events${isBrookings ? ', SDSU listings' : ''} and games.`
+        : `A day-by-day record of what happened in ${siteConfig.cityName} this week.`}</p>
+    )}
+    {hubBacklink && <p>Want just today, or a broader view? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</p>}
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

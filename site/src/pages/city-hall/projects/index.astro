@@ -3,6 +3,7 @@
  *  NEEDS-HUMAN-REVIEW.md, "Week 3 -- City Hall Project Pages". The
  *  discovery/crawl path into every individual project page. */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import AboutThisPage from '../../../components/ui/AboutThisPage.astro';
 import SectionRule from '../../../components/SectionRule.astro';
 import ShareButton from '../../../components/ShareButton.astro';
 import { getProjects, PROJECT_STATUS_LABELS } from '../../../lib/db';
@@ -28,10 +29,6 @@ const statuses = [...byStatus.keys()].sort((a, b) => STATUS_ORDER.indexOf(a) - S
   description={metaDescription('projects', siteConfig)}>
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>Real developments, ordinances and civic projects in {siteConfig.cityName} —
-    each one tracked through every meeting that touches it, from first review
-    to a final vote. Updated as new meetings happen.
-    {hubBacklink && <> Looking for a specific meeting instead? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
     <ShareButton title={pageMeta.title} />
   </header>
 
@@ -52,6 +49,12 @@ const statuses = [...byStatus.keys()].sort((a, b) => STATUS_ORDER.indexOf(a) - S
   )}
 
   <p class="back"><a href="/city-hall/">← City hall</a></p>
+  <AboutThisPage slot="about">
+    <p>Real developments, ordinances and civic projects in {siteConfig.cityName} —
+    each one tracked through every meeting that touches it, from first review
+    to a final vote. Updated as new meetings happen.
+    {hubBacklink && <> Looking for a specific meeting instead? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

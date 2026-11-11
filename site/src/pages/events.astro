@@ -225,7 +225,7 @@ const webPageJsonLd = dateModified ? {
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
 
-  <AboutThisPage sources={aboutSourcesFor(siteConfig.townId).map((s) => ({ name: s.name, href: s.url }))}>
+  <AboutThisPage slot="about" sources={aboutSourcesFor(siteConfig.townId).map((s) => ({ name: s.name, href: s.url }))}>
     <p>Upcoming events in and around {siteConfig.cityName}, soonest first, with the date, time and venue as the {forCountry(siteConfig.country, 'organizer', 'organiser')} published them. Times and registration details come straight from the source, never guessed or rewritten.</p>
     <p>Scan by day, use the filters for a kind of event, and follow a listing to the {forCountry(siteConfig.country, 'organizer', 'organiser')} for tickets, registration or changes. Times can change: check with them before you go. Updated daily. <a href="/how-we-gather-this/">How we gather this</a>.</p>
     {siteConfig.hasWhatsOn && <p>Concerts and shows in the region: <a href="/whats-on/">What's On</a>. For a shorter list, see <a href="/today/">today</a> or <a href="/this-week/">the week ahead</a>.</p>}

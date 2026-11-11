@@ -5,6 +5,7 @@
  *  nav and not in the sitemap (the host answers a real 404, like the holiday pages). With a source but no current incidents the page shows the
  *  data that exists (the source line) and no empty message. */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
@@ -17,7 +18,6 @@ export function getStaticPaths() {
 }
 import { metaDescription } from '../lib/meta-description';
 import { placeAbbr } from '../lib/country-profile';
-import SectionHero from '../components/SectionHero.astro';
 import { SECTION_THEME } from '../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { resolvePageMeta } from '../lib/page-meta';
@@ -64,22 +64,12 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
   description={metaDescription('traffic', siteConfig)}
   accentColor={SECTION_THEME.traffic.accent}>
   <Breadcrumbs trail={breadcrumbTrail} />
-  <SectionHero section="traffic" />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
     {/* Answer-engine-visibility handoff, Section 5: closes the TODO the
         title/H1/lede migration left open -- now names the actual DOT
         source and its real scope directly in the lede, not just in the
         page's own separate "Source:" line further down. */}
-    <p>Current road incidents, closures and construction near {siteConfig.cityName} —
-    {siteConfig.trafficSource && (
-      <> straight from <a href={siteConfig.trafficSource.url} rel="noopener">{siteConfig.trafficSource.name}</a>,
-      the state's own public incident feed. {siteConfig.trafficSource.scopeNote} The list refreshes
-      automatically as new incidents are reported, with no manual review in between.</>
-    )}</p>
-    {latestMonth && (
-      <p class="month-teaser">See the full <a href={`/month/${monthSlug(latestMonth.year, latestMonth.month)}/`}>month in review for {monthLabel(latestMonth.year, latestMonth.month)} →</a></p>
-    )}
     <ShareButton title={pageMeta.title} />
   </header>
 
@@ -151,6 +141,17 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
+  <AboutThisPage slot="about">
+    <p>Current road incidents, closures and construction near {siteConfig.cityName} —
+    {siteConfig.trafficSource && (
+    <> straight from <a href={siteConfig.trafficSource.url} rel="noopener">{siteConfig.trafficSource.name}</a>,
+    the state's own public incident feed. {siteConfig.trafficSource.scopeNote} The list refreshes
+    automatically as new incidents are reported, with no manual review in between.</>
+    )}</p>
+    {latestMonth && (
+      <p>See the full <a href={`/month/${monthSlug(latestMonth.year, latestMonth.month)}/`}>month in review for {monthLabel(latestMonth.year, latestMonth.month)} →</a></p>
+    )}
+  </AboutThisPage>
 </BaseLayout>
 
 <script>

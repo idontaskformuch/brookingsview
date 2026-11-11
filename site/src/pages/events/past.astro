@@ -25,6 +25,7 @@
  *  upcoming sections, not duplicated here).
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import AboutThisPage from '../../components/ui/AboutThisPage.astro';
 import StoryCard from '../../components/StoryCard.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import { getContentByType, getFacilities } from '../../lib/db';
@@ -92,11 +93,6 @@ const itemListJsonLd = events.length > 0 ? {
 <BaseLayout title={title} wide ogSlug="section-events" description={description} noindex>
   <header class="lede">
     <h1>Past events</h1>
-    <p>Every community event covered on this site, oldest to newest within
-    each month. Looking for what's coming up? See <a href="/events/">What's on →</a>.</p>
-    {latestMonth && (
-      <p class="month-teaser">See the full <a href={`/month/${monthSlug(latestMonth.year, latestMonth.month)}/`}>month in review for {monthInReviewLabel(latestMonth.year, latestMonth.month)} →</a></p>
-    )}
     <ShareButton title={title} url={canonicalUrl} />
   </header>
 
@@ -116,6 +112,13 @@ const itemListJsonLd = events.length > 0 ? {
   {itemListJsonLd && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
   )}
+  <AboutThisPage slot="about">
+    <p>Every community event covered on this site, oldest to newest within
+    each month. Looking for what's coming up? See <a href="/events/">What's on →</a>.</p>
+    {latestMonth && (
+      <p>See the full <a href={`/month/${monthSlug(latestMonth.year, latestMonth.month)}/`}>month in review for {monthInReviewLabel(latestMonth.year, latestMonth.month)} →</a></p>
+    )}
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

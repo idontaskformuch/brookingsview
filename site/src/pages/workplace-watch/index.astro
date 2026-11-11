@@ -14,6 +14,7 @@
  *  WORKER_PULSE_WITHHELD_NOTE för samma sak på den enskilda digest-sidan.
  *  Endast hiring-kolumnen (Adzuna, en separat källa) visas fortfarande. */
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import AboutThisPage from '../../components/ui/AboutThisPage.astro';
 import HeatAdvisoryWidget from '../../components/HeatAdvisoryWidget.astro';
 import ShiftPollWidget from '../../components/ShiftPollWidget.astro';
 import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
@@ -27,7 +28,6 @@ import {
 import { siteConfig, isQuietSection } from '../../lib/site-config';
 import { metaDescription } from '../../lib/meta-description';
 import { resolvePageMeta } from '../../lib/page-meta';
-import SectionHero from '../../components/SectionHero.astro';
 import { EMPTY_STATES } from '../../lib/empty-states';
 import { SECTION_THEME } from '../../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
@@ -105,37 +105,11 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
   accentColor={SECTION_THEME.workplace_watch.accent}
 >
   <Breadcrumbs trail={breadcrumbTrail} />
-  <SectionHero section="workplace_watch" />
   <header class="wp-hero">
     <h1>{pageMeta.h1}</h1>
-    <p class="tagline">
-      A monthly look at hiring activity for {siteConfig.cityName}'s
-      major employers{employers.length > 0 ? ` — ${employers.map((e) => e.name).join(', ')}` : ''}.
-      Review-theme summaries and star ratings are temporarily withheld (see below).
-    </p>
     <ShareButton title={pageMeta.title} />
   </header>
 
-  <p class="wp-methodology">
-    <strong>How this works:</strong> this page used to summarize recurring
-    themes from public Glassdoor/Indeed search-result snippets (never a
-    verbatim quote, always attributed to what reviews say). Both the
-    <strong>review-theme summaries and star ratings/rankings are temporarily
-    withheld</strong> while we review Glassdoor's and Indeed's own terms of
-    use on republishing their content -- the search-result text itself
-    routinely restates a specific numeric rating, so hiding the rating
-    column alone wasn't enough. Hiring data below (sourced from Adzuna, a
-    separate, unrelated source) is unaffected.
-  </p>
-  {hasJobStats && (
-    <p class="wp-methodology">
-      <strong>Hiring column:</strong> a count of job postings for that employer
-      observed via the Adzuna job board in the last 30 days — not a real-time
-      "openings now" figure, and never a hiring, headcount, or growth claim.
-      Some employers show 0: that's a real absence of Adzuna listings for
-      that company today, not a missing measurement.
-    </p>
-  )}
 
   {siteConfig.hasHeatAdvisory && (
     <HeatAdvisoryWidget
@@ -218,6 +192,33 @@ const hasJobStats = jobStatsList.some((s) => s.postings_now !== null);
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
+  <AboutThisPage slot="about">
+    <p>
+    A monthly look at hiring activity for {siteConfig.cityName}'s
+    major employers{employers.length > 0 ? ` — ${employers.map((e) => e.name).join(', ')}` : ''}.
+    Review-theme summaries and star ratings are temporarily withheld (see below).
+    </p>
+  <p>
+    <strong>How this works:</strong> this page used to summarize recurring
+    themes from public Glassdoor/Indeed search-result snippets (never a
+    verbatim quote, always attributed to what reviews say). Both the
+    <strong>review-theme summaries and star ratings/rankings are temporarily
+    withheld</strong> while we review Glassdoor's and Indeed's own terms of
+    use on republishing their content -- the search-result text itself
+    routinely restates a specific numeric rating, so hiding the rating
+    column alone wasn't enough. Hiring data below (sourced from Adzuna, a
+    separate, unrelated source) is unaffected.
+  </p>
+  {hasJobStats && (
+    <p>
+      <strong>Hiring column:</strong> a count of job postings for that employer
+      observed via the Adzuna job board in the last 30 days — not a real-time
+      "openings now" figure, and never a hiring, headcount, or growth claim.
+      Some employers show 0: that's a real absence of Adzuna listings for
+      that company today, not a missing measurement.
+    </p>
+  )}
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

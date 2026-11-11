@@ -10,6 +10,7 @@
  *  Every fact below is from the City of Brookings' own pages (SOURCES), read 2026-11-03. Nothing is predicted.
  *  Facts the city does not post (fine amounts, plow timing, trash delays) are said to be unposted, not guessed. */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import SectionRule from '../components/SectionRule.astro';
 import { siteConfig } from '../lib/site-config';
 import { resolvePageMeta } from '../lib/page-meta';
@@ -37,7 +38,7 @@ const ROUTES_URL = SOURCES[1].url;
     <h1>{pageMeta.h1}</h1>
     <p><strong>The short version:</strong> when the city announces a snow parking ban, move your car off every street, avenue and alley until the plows have cleared it curb to curb.
     Clear your own sidewalk within 48 hours after the snow stops. Sign up for the city's text alert so you hear about a ban before the plows come.
-    This guide puts the city's snow rules in one place, in the order you will need them. Everything comes from the city's own pages, last checked {CHECKED}.</p>
+    </p>
   </header>
 
   <SectionRule label="Get the alert first" />
@@ -103,6 +104,9 @@ const ROUTES_URL = SOURCES[1].url;
   </ul>
   <p class="wg-note">Unofficial guide by {siteConfig.siteName}, summarizing the City of Brookings' published rules; the city's pages are the authority and can change. Last checked {CHECKED}.
   Found a mistake? See <a href="/corrections/">corrections</a> or <a href="/contact/">contact us</a>. Related: <a href="/closures/">closures</a>, <a href="/weather/">weather</a>, <a href="/city-hall/">City Hall</a>.</p>
+  <AboutThisPage slot="about">
+    <p>This guide puts the city's snow rules in one place, in the order you will need them. Everything comes from the city's own pages, last checked {CHECKED}.</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

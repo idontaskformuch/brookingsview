@@ -14,8 +14,8 @@
  *  that SDSU changes (prices, lot rules) are labelled "recent seasons" and point to the live page.
  *  No SDSU logos or marks are used -- names and facts only. */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import SectionRule from '../components/SectionRule.astro';
-import SectionHero from '../components/SectionHero.astro';
 import { getSeasonGames, getWeather, getUpcomingStories } from '../lib/db';
 import { isComing } from '../lib/sport-games';
 import { sportTerms } from '../lib/sport-strings';
@@ -86,14 +86,8 @@ const nextHobo = next ? isHoboDay(next.start) : false;
 <BaseLayout title={pageMeta.title} wide
   description={fitDescription("When to arrive, where to park, what you can bring and how to get home after a South Dakota State football game in Brookings, with the home schedule and the game day forecast.")}
   >
-  <SectionHero section="sports" />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>Football Saturdays bring thousands of people to the north side of Brookings. This guide turns
-    South Dakota State's own game day rules into a plan: when to leave, where to park, what you can
-    bring through the gate and how long to allow to get home. Every rule links to the official page it comes from,
-    and was last checked {CHECKED}. Rules and prices can change from season to season, so use the links
-    before you go.</p>
   </header>
 
   {next ? (
@@ -218,6 +212,13 @@ const nextHobo = next ? isHoboDay(next.start) : false;
   <p class="gd-note">Unofficial guide by {siteConfig.siteName}. We are not affiliated with South Dakota State University or its athletics department.
   Weather from the National Weather Service. Home schedule from the athletics department's published schedule. Updated with each site refresh;
   rules last checked {CHECKED}. See also <a href="/jackrabbits/">Jackrabbits schedules and results</a>, <a href="/sdsu-campus-open-to-public/">what is open to the public on campus</a>, <a href="/university/">SDSU news and events</a> and <a href="/corrections/">corrections</a>.</p>
+  <AboutThisPage slot="about">
+    <p>Football Saturdays bring thousands of people to the north side of Brookings. This guide turns
+    South Dakota State's own game day rules into a plan: when to leave, where to park, what you can
+    bring through the gate and how long to allow to get home. Every rule links to the official page it comes from,
+    and was last checked {CHECKED}. Rules and prices can change from season to season, so use the links
+    before you go.</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

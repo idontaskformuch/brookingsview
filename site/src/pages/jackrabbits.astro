@@ -7,6 +7,7 @@
  * så en redirect-stub är det närmaste. Nav-länken är redan isBrookings-gated
  * i BaseLayout, så den här sidan nås annars bara via en gammal länk/bokmärke. */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import SectionRule from '../components/SectionRule.astro';
 import GameCard from '../components/GameCard.astro';
 import GameTable from '../components/GameTable.astro';
@@ -18,7 +19,6 @@ import { sportTerms } from '../lib/sport-strings';
 import { siteConfig } from '../lib/site-config';
 import { fitDescription } from '../lib/meta-description';
 import { resolvePageMeta } from '../lib/page-meta';
-import SectionHero from '../components/SectionHero.astro';
 import { SECTION_THEME } from '../lib/section-theme';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
@@ -46,14 +46,8 @@ const clubList = club ? clubRows(club.games, CLUB_PROGRAM, now) : [];
 <BaseLayout title={pageMeta.title} wide
   description={fitDescription("Full SDSU Jackrabbits schedules and results for football, basketball and volleyball, with dates, opponents and scores for each game in Brookings.")}
   accentColor={SECTION_THEME.university.accent}>
-  <SectionHero section="sports" />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>Schedules and results for SDSU football, basketball and volleyball, straight
-    from the athletics department's own listings. Final scores are posted here
-    once the athletics department publishes them — never estimated or reported
-    ahead of the official result. Going to a football home game? Read the
-    <a href="/game-day/">game day guide</a> for parking, tailgating and bag rules.</p>
   </header>
 
   {featured && (
@@ -94,6 +88,13 @@ const clubList = club ? clubRows(club.games, CLUB_PROGRAM, now) : [];
 
   <span data-sport-terms={JSON.stringify(terms)} hidden></span>
   <ClusterNav clusterLabel="Local life" items={clusterNavItems} />
+  <AboutThisPage slot="about">
+    <p>Schedules and results for SDSU football, basketball and volleyball, straight
+    from the athletics department's own listings. Final scores are posted here
+    once the athletics department publishes them — never estimated or reported
+    ahead of the official result. Going to a football home game? Read the
+    <a href="/game-day/">game day guide</a> for parking, tailgating and bag rules.</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <script>

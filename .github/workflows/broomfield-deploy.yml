@@ -52,6 +52,8 @@ jobs:
         run: bash ../scripts/build_retry.sh
       - name: Verify no empty messages or explanation boxes (Broomfield)
         run: node scripts/verify_no_empty_messages.mjs site/dist
+      - name: Content first (no explanations between H1 and content)
+        run: node scripts/verify_content_first.mjs site/dist
       - name: Deploy to Cloudflare Workers (Broomfield)
         working-directory: site
         env:

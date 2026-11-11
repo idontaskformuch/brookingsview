@@ -32,6 +32,7 @@
  *  simply has no top illustration rather than reaching for that.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
@@ -56,12 +57,6 @@ const pageMeta = resolvePageMeta('vail-resorts', siteConfig);
   accentColor={SECTION_THEME.vail_news.accent}>
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>
-      Vail Resorts is headquartered here in Broomfield. Below is the company's own
-      newsroom listing — announcements, leadership changes, and resort news from across
-      its mountains — for the many Broomfield residents who work there, invest there, or
-      just want to keep up. Each item is a headline and date with a link to the original release.
-    </p>
     <ShareButton title={pageMeta.title} />
   </header>
 
@@ -94,6 +89,14 @@ const pageMeta = resolvePageMeta('vail-resorts', siteConfig);
   <ClusterNav clusterLabel="Local life" items={clusterNavItems} />
 
   <RelatedContent pageType="vail_news" />
+  <AboutThisPage slot="about">
+    <p>
+    Vail Resorts is headquartered here in Broomfield. Below is the company's own
+    newsroom listing — announcements, leadership changes, and resort news from across
+    its mountains — for the many Broomfield residents who work there, invest there, or
+    just want to keep up. Each item is a headline and date with a link to the original release.
+    </p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

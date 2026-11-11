@@ -5,6 +5,7 @@
  *  browser, so a new snapshot appears without a site rebuild. Static fallback text and the official
  *  link are in the HTML for crawlers and for visitors whose script/endpoint fails (fail closed). */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { siteConfig } from '../lib/site-config';
 import { fitDescription } from '../lib/meta-description';
@@ -43,7 +44,6 @@ const electionLabel = formatYmd(election.election_date, true);
   <header class="er-hero">
     <h1>{pageMeta.h1}</h1>
     <p class="er-unofficial"><strong>Unofficial results.</strong> Final results are the ones the election authority certifies.</p>
-    {results.notice && <p class="er-notice">{results.notice.text}</p>}
   </header>
 
   <section class="er-live" aria-labelledby="er-heading" data-live={results.live ? 'true' : 'false'} data-town={siteConfig.townId}
@@ -69,6 +69,9 @@ const electionLabel = formatYmd(election.election_date, true);
   </section>
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl))} />
+  <AboutThisPage slot="about">
+    {results.notice && <p>{results.notice.text}</p>}
+  </AboutThisPage>
 </BaseLayout>
 
 <script>

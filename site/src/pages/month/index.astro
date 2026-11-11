@@ -5,6 +5,7 @@
  *  with no MONTH_IN_REVIEW_START entry, same pattern home-sales/archive.
  *  astro and home-sales.astro already use. */
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import AboutThisPage from '../../components/ui/AboutThisPage.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { listEligibleMonths, monthLabel, monthSlug, MONTH_IN_REVIEW_START } from '../../lib/month-in-review';
@@ -42,10 +43,6 @@ const itemListJsonLd = months.length > 0 ? {
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>Month in review</h1>
-    <p>A numbers-only monthly recap of {placeAbbr(siteConfig)}: city hall
-    decisions, development projects, home sales, events, traffic and jobs, compiled from public
-    data sources. {hubBacklink && <>See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a> for
-    the full meeting-by-meeting record.</>}</p>
     <ShareButton title={title} url={canonicalUrl} />
   </header>
 
@@ -67,6 +64,12 @@ const itemListJsonLd = months.length > 0 ? {
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
+  <AboutThisPage slot="about">
+    <p>A numbers-only monthly recap of {placeAbbr(siteConfig)}: city hall
+    decisions, development projects, home sales, events, traffic and jobs, compiled from public
+    data sources. {hubBacklink && <>See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a> for
+    the full meeting-by-meeting record.</>}</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

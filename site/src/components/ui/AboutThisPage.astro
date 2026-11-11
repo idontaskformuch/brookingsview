@@ -1,31 +1,30 @@
 ---
-/** Bottom of every page (replaces PageGuide at the top, decision 2026-11-05): sources, freshness, short method notes. Collapsed by default (all text stays in the HTML),
- *  except the `Updated` line, which is always visible. `updated` is the already formatted fetched_at label. A missing prop means its line is not drawn; nothing at all -> no element. */
+/** Bottom of every page, before the footer (decision 2026-11-11, replaces PageGuide at the top and the earlier collapsed disclosure box): sources, freshness,
+ *  how the page works. Open, small muted text under an "About this page" heading; all of it stays in the HTML. Pages pass it to BaseLayout's
+ *  `about` slot (`<AboutThisPage slot="about" ...>`), so it renders after the content on every page type.
+ *  `updated` is the already formatted fetched_at label. A missing prop means its line is not drawn; nothing at all -> no element. */
 interface Source { name: string; href?: string }
 interface Props { sources?: Source[]; updated?: string; title?: string }
 const { sources = [], updated, title = 'About this page' } = Astro.props;
 const hasBody = Astro.slots.has('default');
 ---
 {(sources.length > 0 || updated || hasBody) && (
-  <section class="ui-about" aria-label={title}>
-  {updated && <p class="ui-about__updated">Updated {updated}</p>}
-  {(sources.length > 0 || hasBody) && (
-  <details>
-    <summary>{title}</summary>
+  <section class="ui-about" aria-labelledby="ui-about-title" data-about-this-page>
+    <h2 id="ui-about-title" class="ui-about__title">{title}</h2>
     <div class="ui-about__body">
+      {updated && <p class="ui-about__updated">Updated {updated}</p>}
       {sources.length > 0 && (
         <p class="ui-about__line">Sources: {sources.map((s, i) => <>{i > 0 && ', '}{s.href ? <a href={s.href} rel="noopener">{s.name}</a> : s.name}</>)}</p>
       )}
       <slot />
     </div>
-  </details>
-  )}
   </section>
 )}
 <style>
-  .ui-about { margin: var(--ui-6) 0 var(--ui-4); padding-top: var(--ui-3); border-top: var(--ui-hairline); font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
-  .ui-about__updated { margin: 0 0 var(--ui-1); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-  .ui-about summary { cursor: pointer; font-weight: var(--ui-primary-weight); color: var(--ink); padding: var(--ui-2) 0; }
-  .ui-about__body { display: grid; gap: var(--ui-2); padding-top: var(--ui-2); }
-  .ui-about__line, .ui-about__body :global(p) { margin: 0; }
+  .ui-about { margin: var(--ui-6) 0 var(--ui-4); padding-top: var(--ui-3); border-top: var(--ui-hairline); font-family: var(--font-ui); font-size: var(--ui-meta); line-height: 1.5; color: var(--ink-soft); }
+  .ui-about__title { margin: 0 0 var(--ui-2); font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); letter-spacing: 0; color: var(--ink-soft); }
+  .ui-about__body { display: grid; gap: var(--ui-2); }
+  .ui-about__updated { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .ui-about__line, .ui-about__body :global(p) { margin: 0; font-size: inherit; color: inherit; max-width: 46rem; }
+  .ui-about a { color: inherit; text-decoration: underline; }
 </style>

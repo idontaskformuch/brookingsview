@@ -5,6 +5,7 @@
  *  URL (assertElectionValid() throws -- failing the build -- otherwise). No API calls at view time;
  *  the browser script below only recomputes "days left" and passed/upcoming in the town's timezone. */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import ShareButton from '../components/ShareButton.astro';
 import { siteConfig } from '../lib/site-config';
@@ -49,15 +50,6 @@ const checked = formatYmd(election.checked_on, true);
     <p class="vote-lead" id="vote-lead" data-date={election.election_date} data-city={siteConfig.cityName} data-tz={siteConfig.timezone}>
       {leadSentence(today, election.election_date, siteConfig.cityName)}
     </p>
-    <p class="vote-meta">
-      Run by {election.authority.name}.
-      {election.authority.phone && (<>
-        Phone <a href={`tel:${election.authority.phone.replace(/[^\d]/g, '')}`}>{election.authority.phone}</a>
-        {election.authority.phone_note && <> ({election.authority.phone_note})</>}.
-      </>)}
-      <a href={election.authority.url} rel="noopener">Official election page</a>.
-    </p>
-    {election.results && <p class="vote-meta"><a href="/election-results/">Election results</a> (unofficial, after polls close).</p>}
     <ShareButton title={pageMeta.title} />
   </header>
 
@@ -164,6 +156,17 @@ const checked = formatYmd(election.checked_on, true);
   </section>
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl))} />
+  <AboutThisPage slot="about">
+    <p>
+    Run by {election.authority.name}.
+    {election.authority.phone && (<>
+    Phone <a href={`tel:${election.authority.phone.replace(/[^\d]/g, '')}`}>{election.authority.phone}</a>
+    {election.authority.phone_note && <> ({election.authority.phone_note})</>}.
+    </>)}
+    <a href={election.authority.url} rel="noopener">Official election page</a>.
+    </p>
+    {election.results && <p><a href="/election-results/">Election results</a> (unofficial, after polls close).</p>}
+  </AboutThisPage>
 </BaseLayout>
 
 <script>

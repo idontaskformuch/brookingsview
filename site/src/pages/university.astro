@@ -14,6 +14,7 @@
  *  eventbeskrivningar -- se scrapers/parsers/sdsu_events_v1.py:s
  *  moduldocstring för upphovsrättsresonemanget. */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import PopAcademicList from '../components/pop/PopAcademicList.astro';
 import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
@@ -24,7 +25,6 @@ import {
   getUpcomingSdsuEvents, getUpcomingArtsEvents, getUpcomingAcademicDates, getContentByType,
   formatCalendarDate, formatDate, formatTime, formatTimeOrAllDay,
 } from '../lib/db';
-import SectionHero from '../components/SectionHero.astro';
 import { SECTION_THEME } from '../lib/section-theme';
 import { siteConfig } from '../lib/site-config';
 import { resolveHubBacklink } from '../lib/clusters';
@@ -147,13 +147,8 @@ const sections = (
 <BaseLayout title={pageMeta.title} wide
   description="What's happening at South Dakota State University -- athletics, music, theater and campus events, plus key academic dates."
   accentColor={SECTION_THEME.university.accent}>
-  <SectionHero section="university" />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>What's on at South Dakota State University this week — games, concerts, shows
-    and campus happenings, straight from SDSU's own event calendar.
-    {hubBacklink && <> For Jackrabbits schedules and results, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}
-    Not a student? See what is <a href="/sdsu-campus-open-to-public/">open to the public on campus</a>, and the football <a href="/game-day/">game day guide</a>.</p>
     <ShareButton title={pageMeta.title} />
   </header>
 
@@ -247,6 +242,12 @@ const sections = (
   </p>
 
   <RelatedContent pageType="university" />
+  <AboutThisPage slot="about">
+    <p>What's on at South Dakota State University this week — games, concerts, shows
+    and campus happenings, straight from SDSU's own event calendar.
+    {hubBacklink && <> For Jackrabbits schedules and results, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}
+    Not a student? See what is <a href="/sdsu-campus-open-to-public/">open to the public on campus</a>, and the football <a href="/game-day/">game day guide</a>.</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

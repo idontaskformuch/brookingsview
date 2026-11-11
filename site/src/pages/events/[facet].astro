@@ -15,6 +15,7 @@
  *  independent filtered views of the SAME underlying list, not separate
  *  queries that could silently drift apart. */
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import AboutThisPage from '../../components/ui/AboutThisPage.astro';
 import SectionRule from '../../components/SectionRule.astro';
 import StoryCard from '../../components/StoryCard.astro';
 import ShareButton from '../../components/ShareButton.astro';
@@ -159,8 +160,6 @@ const hubBacklink = resolveHubBacklink('events/facet', siteConfig);
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>{facet.heading}</h1>
-    <p>{facet.intro(siteConfig.cityName)}
-    {hubBacklink && <> Looking for the full calendar? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
     <ShareButton title={title} url={canonicalUrl} />
   </header>
 
@@ -230,6 +229,10 @@ const hubBacklink = resolveHubBacklink('events/facet', siteConfig);
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
+  <AboutThisPage slot="about">
+    <p>{facet.intro(siteConfig.cityName)}
+    {hubBacklink && <> Looking for the full calendar? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

@@ -16,6 +16,7 @@
  *  needed" pattern as home-sales/[slug].astro's own getStaticPaths.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import AboutThisPage from '../../components/ui/AboutThisPage.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import { getContentByType } from '../../lib/db';
@@ -101,8 +102,6 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   <article class="month-review">
     <header class="lede">
       <h1>{h1}</h1>
-      <p>A numbers-only recap of {placeAbbr(siteConfig)} for {label},
-      compiled from public data sources. <a href="/month/">See all months</a>.</p>
       <ShareButton title={title} url={canonicalUrl} />
     </header>
 
@@ -131,6 +130,10 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
+  <AboutThisPage slot="about">
+    <p>A numbers-only recap of {placeAbbr(siteConfig)} for {label},
+    compiled from public data sources. <a href="/month/">See all months</a>.</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

@@ -14,6 +14,7 @@
  *  site's own /university/ section, not the game claiming an SDSU
  *  affiliation. */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import { siteConfig } from '../lib/site-config';
 import { resolveHubBacklink } from '../lib/clusters';
 
@@ -30,12 +31,7 @@ const hubBacklink = resolveHubBacklink('play', siteConfig);
 >
   <section class="play-hero">
     <h1>Arcade</h1>
-    <p class="tagline">
-      A little side project: <strong>Prairie Hopper</strong>, a Flappy-Bird-style
-      game starring a jackrabbit hopping through Brookings. Clear 20 on
-      Prairie to unlock Campus Hill, clear 30 there to unlock Main Street.
-      {hubBacklink && <> For the real Jackrabbits, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}
-    </p>
+    
 
     <div class="game-frame">
       <iframe
@@ -50,6 +46,14 @@ const hubBacklink = resolveHubBacklink('play', siteConfig);
       More mini-games are on the way. Got a suggestion? Let us know.
     </p>
   </section>
+  <AboutThisPage slot="about">
+    <p>
+    A little side project: <strong>Prairie Hopper</strong>, a Flappy-Bird-style
+    game starring a jackrabbit hopping through Brookings. Clear 20 on
+    Prairie to unlock Campus Hill, clear 30 there to unlock Main Street.
+    {hubBacklink && <> For the real Jackrabbits, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}
+    </p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

@@ -691,6 +691,9 @@ main { padding-block: 1.75rem 3.5rem; }
 <main id="main">
   <div class:list={['shell', !wide && 'shell--narrow']}>
     <slot />
+    {/* Content first, explanations last (owner 2026-11-11): every page type puts its sources / method / "how this page works" text in
+        <AboutThisPage slot="about">, which lands here, after the content and before the footer. */}
+    <slot name="about" />
     <script is:inline>
       /* Dark-mode toggle (sun/moon in the masthead). Hidden until this runs, so
          a visitor without JS just gets prefers-color-scheme. The choice is

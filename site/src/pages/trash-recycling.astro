@@ -11,6 +11,7 @@
  *  Nothing is predicted: the next-pickup picker only applies the weekly schedule and says plainly
  *  that holiday weeks shift. Dates and fees are the 2026 ones and are labelled as such. */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import SectionRule from '../components/SectionRule.astro';
 import { siteConfig } from '../lib/site-config';
 import { fitDescription } from '../lib/meta-description';
@@ -51,9 +52,6 @@ const fmtHoliday = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: '
   >
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>The City of Brookings picks up garbage, recycling and yard waste every week, and the day depends on which side of 8th Street South you live on.
-    This guide puts the city's rules in one place: find your day, see what goes in each cart, and learn what to do with the things that do not fit,
-    like couches, branches, old computers and paint. Everything comes from the city's own pages, last checked {CHECKED}; fees and dates are the 2026 ones.</p>
   </header>
 
   <SectionRule label="Find your pickup day" />
@@ -183,6 +181,11 @@ const fmtHoliday = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: '
   </ul>
   <p class="tr-note">Unofficial guide by {siteConfig.siteName}, summarizing the City of Brookings' published rules; the city's pages are the authority and can change. Last checked {CHECKED}.
   Found a mistake? See <a href="/corrections/">corrections</a> or <a href="/contact/">contact us</a>. Related: <a href="/city-hall/">City Hall</a>, <a href="/closures/">closures</a>.</p>
+  <AboutThisPage slot="about">
+    <p>The City of Brookings picks up garbage, recycling and yard waste every week, and the day depends on which side of 8th Street South you live on.
+    This guide puts the city's rules in one place: find your day, see what goes in each cart, and learn what to do with the things that do not fit,
+    like couches, branches, old computers and paint. Everything comes from the city's own pages, last checked {CHECKED}; fees and dates are the 2026 ones.</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <script>

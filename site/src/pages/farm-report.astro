@@ -15,10 +15,10 @@
  * hitta på innehåll. Loggad som pending i NEEDS-HUMAN-REVIEW.md, inte
  * tystad. */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import { getAgPriceSeries, formatMonthYear } from '../lib/db';
 import { buildSeriesDisplay } from '../lib/farm-report';
 import { siteConfig } from '../lib/site-config';
-import SectionHero from '../components/SectionHero.astro';
 import { resolveHubBacklink } from '../lib/clusters';
 
 if (siteConfig.townId !== 'brookings_sd') {
@@ -36,14 +36,8 @@ const cards = series
   description={`Corn, soybean, wheat, sunflower, oat, cattle and hog prices for ${siteConfig.stateName} from USDA National Agricultural Statistics Service.`}>
   <header class="lede">
     <h1>Farm report</h1>
-    <p>Prices received, from the USDA National Agricultural Statistics Service.
-    Corn, soybeans, wheat, sunflowers, and oats are South Dakota figures.
-    Cattle and hogs are national series — South Dakota doesn't get its own
-    price-received series for those in USDA's data.
-    {hubBacklink && <> For Jackrabbits schedules and results, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
   </header>
 
-  <SectionHero section="farm_report" />
 
   {cards.length > 0 ? (
     <div class="grid">
@@ -98,6 +92,13 @@ const cards = series
     today. Always check the <a href="https://quickstats.nass.usda.gov/" rel="noopener">USDA
     Quick Stats database</a> before making a decision that depends on the number.
   </p>
+  <AboutThisPage slot="about">
+    <p>Prices received, from the USDA National Agricultural Statistics Service.
+    Corn, soybeans, wheat, sunflowers, and oats are South Dakota figures.
+    Cattle and hogs are national series — South Dakota doesn't get its own
+    price-received series for those in USDA's data.
+    {hubBacklink && <> For Jackrabbits schedules and results, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

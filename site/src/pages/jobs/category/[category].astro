@@ -9,6 +9,7 @@
  *  site-wide (verified live), so there's no real SDSU job data to build
  *  that facet from -- see the doc above for the full finding. */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import AboutThisPage from '../../../components/ui/AboutThisPage.astro';
 import ShareButton from '../../../components/ShareButton.astro';
 import Breadcrumbs from '../../../components/Breadcrumbs.astro';
 import { getRecentJobs, formatDate } from '../../../lib/db';
@@ -66,13 +67,6 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>{category} in {siteConfig.cityName}</h1>
-    <p>{jobs.length} recent listing{jobs.length === 1 ? '' : 's'}, pulled daily from
-    <a href="https://www.adzuna.com" rel="noopener">Adzuna</a>'s job search — some
-    are in surrounding towns, not {siteConfig.cityName} itself; each listing's
-    location is shown alongside it. We earn a small commission if you apply
-    through a listing here — it never affects which jobs are shown or how
-    they're ordered.
-    {hubBacklink && <> Curious what employees actually say about local employers? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
     <ShareButton title={title} url={canonicalUrl} />
   </header>
 
@@ -138,6 +132,15 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
+  <AboutThisPage slot="about">
+    <p>{jobs.length} recent listing{jobs.length === 1 ? '' : 's'}, pulled daily from
+    <a href="https://www.adzuna.com" rel="noopener">Adzuna</a>'s job search — some
+    are in surrounding towns, not {siteConfig.cityName} itself; each listing's
+    location is shown alongside it. We earn a small commission if you apply
+    through a listing here — it never affects which jobs are shown or how
+    they're ordered.
+    {hubBacklink && <> Curious what employees actually say about local employers? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

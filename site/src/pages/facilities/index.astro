@@ -8,6 +8,7 @@
  *  men gav noll klick -- ingen sida besvarade frågan direkt. Se
  *  lib/db.ts (getFacilities) för det fullständiga resonemanget. */
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import AboutThisPage from '../../components/ui/AboutThisPage.astro';
 import SectionRule from '../../components/SectionRule.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
@@ -60,10 +61,6 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>Public places in {siteConfig.cityName}{placeKinds ? ` (${placeKinds})` : ''}, with
-    the address and whether it is open right now. Open a place for its phone number, full hours
-    and how to get there. Every fact is checked against the facility's own official page, and
-    each place page shows the date it was last confirmed, so you know how current it is.</p>
     <ShareButton title={pageMeta.title} />
   </header>
 
@@ -121,6 +118,12 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
       badge.textContent = status.isOpen ? 'Open now' : `Closed — opens ${status.opensAt} ${status.opensLabel}`;
     });
   </script>
+  <AboutThisPage slot="about">
+    <p>Public places in {siteConfig.cityName}{placeKinds ? ` (${placeKinds})` : ''}, with
+    the address and whether it is open right now. Open a place for its phone number, full hours
+    and how to get there. Every fact is checked against the facility's own official page, and
+    each place page shows the date it was last confirmed, so you know how current it is.</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

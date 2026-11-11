@@ -17,9 +17,9 @@
  *  close. If that ever reads uncertain, treat it as a bug, not a style note.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
-import SectionHero from '../components/SectionHero.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getClosureWatchStatus } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
@@ -94,7 +94,6 @@ const newsArticleJsonLd = status.state === 'confirmed'
       photos of schools for Brookings/Moreno Valley) -- closure_watch isn't
       its own ImageCategory, and this page's subject is schools, not a new
       concept that needs its own pool (see lib/images.ts's ImageCategory). */}
-  <SectionHero section="closures" />
   <header class="cw-hero">
     <h1>{pageMeta.h1}</h1>
     {/* TODO (sitewide title/H1/lede handoff): must include the existing
@@ -102,12 +101,7 @@ const newsArticleJsonLd = status.state === 'confirmed'
         page-meta.ts's 'closures' entry -- the tagline below already says
         "not a guess," which arguably satisfies it, flagged not rewritten
         in this title/H1-only pass. */}
-    <p class="tagline">
-      Official school-closure status for {siteConfig.cityName} -- what's actually
-      been announced, not a guess at what might happen.
-    </p>
     <p class="cw-checked">Last checked {lastChecked}, {lastCheckedDate}</p>
-    {hubBacklink && <p class="cw-checked">Checking road conditions too? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</p>}
     <ShareButton title={pageTitle} />
   </header>
 
@@ -202,6 +196,13 @@ const newsArticleJsonLd = status.state === 'confirmed'
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
+  <AboutThisPage slot="about">
+    <p>
+    Official school-closure status for {siteConfig.cityName} -- what's actually
+    been announced, not a guess at what might happen.
+    </p>
+    {hubBacklink && <p>Checking road conditions too? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</p>}
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

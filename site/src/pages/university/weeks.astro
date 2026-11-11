@@ -3,6 +3,7 @@
  *  links, no digest text, so nothing here repeats a digest page. Kept out of the sitemap and noindex (astro.config.mjs):
  *  it exists so that older digest pages are reachable and not orphaned, not to rank. Brookings only. */
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import AboutThisPage from '../../components/ui/AboutThisPage.astro';
 import { getContentByType } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 import { currentWeekInfo, weekInfoForInstant } from '../../lib/this-week';
@@ -24,7 +25,6 @@ const canonicalUrl = new URL('/university/weeks/', Astro.site ?? siteConfig.site
   <header class="lede">
     <p class="kicker"><a href="/university/">← SDSU</a></p>
     <h1>Earlier weeks at SDSU</h1>
-    <p>One page per week, from the university's own calendar. This week is on <a href="/university/">the SDSU page</a>.</p>
   </header>
   {earlier.length > 0 ? (
     <ul class="weeks">
@@ -33,6 +33,9 @@ const canonicalUrl = new URL('/university/weeks/', Astro.site ?? siteConfig.site
   ) : (
     <p class="empty">No earlier weeks yet.</p>
   )}
+  <AboutThisPage slot="about">
+    <p>One page per week, from the university's own calendar. This week is on <a href="/university/">the SDSU page</a>.</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

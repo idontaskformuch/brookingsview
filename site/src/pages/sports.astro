@@ -9,14 +9,16 @@
  * redirectar till förstasidan, samma mönster som home-sales.astro/
  * jackrabbits.astro använder för ort-specifikt innehåll. */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import { getRegionalSports, getContentByType, formatCalendarDate, formatTime } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
 import { resolvePageMeta } from '../lib/page-meta';
-import SectionHero from '../components/SectionHero.astro';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
+import { todayIn } from '../lib/election';
+import { OFF_SEASON_DAYS, seasonStatus, ageLabel, splitTeamGames } from '../lib/sports-season';
 
 if (siteConfig.townId !== 'moreno_valley_ca') {
   return Astro.redirect('/', 302);
@@ -42,6 +44,16 @@ for (const game of games) {
   byTeam.get(game.team_name)!.push(game);
 }
 
+const teamTables = [...byTeam.entries()].map(([team, teamGames]) => ({ team, ...splitTeamGames(teamGames) }));
+
+// Off-season (owner 2026-11-11): inga matcher de närmaste 14 dagarna -> en statusrad i stället för tomma "Next up"-hål,
+// bara senaste recap (med ålder) och bara de 10 senaste avgjorda matcherna per lag; resten ligger hopvikt, kvar i HTML.
+const today = todayIn(siteConfig.timezone);
+const { offSeason, next: nextAnyGame } = seasonStatus(games, today);
+const latestDigest = digests[0] ?? null;
+const earlierDigests = digests.slice(1);
+const recapAge = latestDigest ? ageLabel(today, todayIn(siteConfig.timezone, new Date(latestDigest.published_at))) : '';
+
 // Nästa ospelade/pågående match bland primary-lagen (66ers) -- games är redan
 // sorterad relevance_tier, team_name, game_date så första träffen räcker.
 const nextGame = games.find(
@@ -59,20 +71,29 @@ const leagueLabel = (l: string) => l.toUpperCase();
 ---
 <BaseLayout title={pageMeta.title} wide
   description={`Schedules and results for pro and minor-league teams that matter in ${siteConfig.cityName}: the Inland Empire 66ers, Angels and Dodgers.`}>
-  <SectionHero section="sports" />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>Schedules and results for the Inland Empire 66ers, plus the Angels and
-    Dodgers — straight from MLB's own stats feed. Scores post here once the
-    league confirms them, never guessed ahead of the official result, and a
-    weekly recap rounds up the games from the previous week once they're
-    final.</p>
   </header>
 
-  {digests.length > 0 && (
+  {offSeason && (
+    <p class="season-status">
+      {nextAnyGame
+        ? <>Off-season: no games in the next {OFF_SEASON_DAYS} days. Next game: {formatCalendarDate(nextAnyGame.game_date)}, {nextAnyGame.team_name} {nextAnyGame.home_away === 'home' ? 'vs' : 'at'} {nextAnyGame.opponent_name}.</>
+        : <>Off-season: no games are scheduled yet. Results from the last season are below.</>}
+    </p>
+  )}
+
+  {latestDigest && (
     <>
-      <SectionRule label="Weekly recap" />
-      <div class="grid">{digests.map((story) => <StoryCard story={story} />)}</div>
+      <SectionRule label="Latest weekly recap" />
+      <p class="recap-age">Posted {recapAge}</p>
+      <div class="grid"><StoryCard story={latestDigest} /></div>
+      {earlierDigests.length > 0 && (
+        <details class="earlier">
+          <summary>Earlier recaps ({earlierDigests.length})</summary>
+          <div class="grid">{earlierDigests.map((story) => <StoryCard story={story} />)}</div>
+        </details>
+      )}
     </>
   )}
 
@@ -102,7 +123,7 @@ const leagueLabel = (l: string) => l.toUpperCase();
     </>
   )}
 
-  {byTeam.size > 0 ? [...byTeam.entries()].map(([team, teamGames]) => (
+  {teamTables.length > 0 ? teamTables.map(({ team, shown, earlier }) => (
     <>
       <SectionRule label={team} />
       <table class="sched">
@@ -111,7 +132,7 @@ const leagueLabel = (l: string) => l.toUpperCase();
               <th scope="col">Where</th><th scope="col">Result</th></tr>
         </thead>
         <tbody>
-          {teamGames.map((game) => (
+          {shown.map((game) => (
             <tr>
               <td class="data">{formatCalendarDate(game.game_date)}</td>
               <td>{game.home_away === 'home' ? 'vs' : 'at'} {game.opponent_name}</td>
@@ -121,6 +142,23 @@ const leagueLabel = (l: string) => l.toUpperCase();
           ))}
         </tbody>
       </table>
+      {earlier.length > 0 && (
+        <details class="earlier">
+          <summary>Earlier games ({earlier.length})</summary>
+          <table class="sched">
+            <tbody>
+              {earlier.map((game) => (
+                <tr>
+                  <td class="data">{formatCalendarDate(game.game_date)}</td>
+                  <td>{game.home_away === 'home' ? 'vs' : 'at'} {game.opponent_name}</td>
+                  <td class="where">{game.venue ?? '—'}</td>
+                  <td class="data">{resultText(game)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
+      )}
     </>
   )) : (
     <p class="empty">No games scheduled right now.</p>
@@ -131,12 +169,23 @@ const leagueLabel = (l: string) => l.toUpperCase();
   </p>
 
   <ClusterNav clusterLabel="Local life" items={clusterNavItems} />
+  <AboutThisPage slot="about">
+    <p>Schedules and results for the Inland Empire 66ers, plus the Angels and
+    Dodgers — straight from MLB's own stats feed. Scores post here once the
+    league confirms them, never guessed ahead of the official result, and a
+    weekly recap rounds up the games from the previous week once they're
+    final.</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>
 .lede { max-width: 40rem; }
 .lede p { color: var(--ink-soft); margin: 0.75rem 0 0; }
 .grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); margin-bottom: 0.5rem; }
+.season-status { margin: 0 0 1rem; font-weight: 600; }
+.recap-age { margin: -0.25rem 0 0.5rem; font-size: 0.875rem; color: var(--ink-soft); }
+.earlier { margin: 0.5rem 0 1rem; }
+.earlier summary { cursor: pointer; font-size: 0.875rem; color: var(--ink-soft); padding: 0.375rem 0; }
 .local-note { margin: -0.25rem 0 0.75rem; font-size: 0.875rem; color: var(--ink-soft); }
 .next {
   border: 0;

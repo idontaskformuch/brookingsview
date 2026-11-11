@@ -10,6 +10,7 @@
  *  SDSU logos or marks. Where SDSU's page did not state something (a fee, a weekend rule, public access),
  *  the page says so and points to the number to call; nothing is guessed. */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import SectionRule from '../components/SectionRule.astro';
 import { siteConfig } from '../lib/site-config';
 import { fitDescription } from '../lib/meta-description';
@@ -40,9 +41,6 @@ const SOURCES = [
   >
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>South Dakota State University is a big part of Brookings, and much of it is open to everyone: a free art museum, a 25-acre garden, a dairy bar, concerts and performances. This guide
-    lists what is open to the public, what each place costs and when it is open, and how to park when you are not a student or employee. Everything comes from SDSU's own pages, last checked
-    {CHECKED}; hours change by season, so use the links before you go.</p>
   </header>
 
   <SectionRule label="What is open to the public" />
@@ -128,6 +126,11 @@ const SOURCES = [
   </ul>
   <p class="cp-note">Unofficial guide by {siteConfig.siteName}. We are not affiliated with South Dakota State University; SDSU's own pages are the authority and can change. Last checked {CHECKED}.
   Found a mistake? See <a href="/corrections/">corrections</a> or <a href="/contact/">contact us</a>.</p>
+  <AboutThisPage slot="about">
+    <p>South Dakota State University is a big part of Brookings, and much of it is open to everyone: a free art museum, a 25-acre garden, a dairy bar, concerts and performances. This guide
+    lists what is open to the public, what each place costs and when it is open, and how to park when you are not a student or employee. Everything comes from SDSU's own pages, last checked
+    {CHECKED}; hours change by season, so use the links before you go.</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

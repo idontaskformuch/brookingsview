@@ -134,7 +134,7 @@ const catLabel: Record<string, string> = { civic: 'Civic', music: 'Music', famil
       {(Object.keys(ICONS) as (keyof typeof ICONS)[]).map((n) => <li><Icon name={n} size={24} /><span>{n}</span></li>)}
     </ul>
 
-    <AboutThisPage updated="10:00 am" sources={[{ name: 'National Weather Service', href: 'https://www.weather.gov/' }, { name: 'City of Example' }]}>
+    <AboutThisPage slot="about" updated="10:00 am" sources={[{ name: 'National Weather Service', href: 'https://www.weather.gov/' }, { name: 'City of Example' }]}>
       <p>Sample method note. Short, only where it helps the reader understand the data.</p>
     </AboutThisPage>
   </main>

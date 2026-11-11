@@ -5,6 +5,7 @@
  *  mening på brookingsview.com. Ersätter det aldrig-ihopkopplade
  *  HopBox Rush-försöket (site/public/games/hopbox-rush.html, borttagen). */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import { siteConfig } from '../lib/site-config';
 import { resolveHubBacklink } from '../lib/clusters';
 
@@ -21,22 +22,9 @@ const hubBacklink = resolveHubBacklink('burro-bonanza', siteConfig);
 >
   <section class="play-hero">
     <h1>Burro Bonanza</h1>
-    <p class="tagline">
-      A little side project: <strong>Burro Bonanza</strong>, a match-3 puzzle
-      game starring Dusty the burro and 20 levels along a desert trail.
-      Match three (or more) to clear the board, unlock special tiles, and
-      chain cascades for bonus points.
-      {hubBacklink && <> For the region's real pro and minor-league teams, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}
-    </p>
+    
 
-    <p class="local-note">
-      The burro theme isn't random: wild burros have roamed the hills
-      between {siteConfig.cityName} and Colton — Reche Canyon, San Timoteo
-      Canyon, and the Pigeon Pass Road area — for more than 70 years,
-      likely descendants of pack burros left behind by miners in the early
-      1900s. They're a genuine local fixture, protected under state law,
-      with a rescue and sanctuary (DonkeyLand) operating in Reche Canyon.
-    </p>
+    
 
     <div class="game-frame">
       <iframe
@@ -51,6 +39,23 @@ const hubBacklink = resolveHubBacklink('burro-bonanza', siteConfig);
       Got a suggestion for the game? <a href="/contact/">Let us know</a>.
     </p>
   </section>
+  <AboutThisPage slot="about">
+    <p>
+    A little side project: <strong>Burro Bonanza</strong>, a match-3 puzzle
+    game starring Dusty the burro and 20 levels along a desert trail.
+    Match three (or more) to clear the board, unlock special tiles, and
+    chain cascades for bonus points.
+    {hubBacklink && <> For the region's real pro and minor-league teams, see <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}
+    </p>
+    <p>
+    The burro theme isn't random: wild burros have roamed the hills
+    between {siteConfig.cityName} and Colton — Reche Canyon, San Timoteo
+    Canyon, and the Pigeon Pass Road area — for more than 70 years,
+    likely descendants of pack burros left behind by miners in the early
+    1900s. They're a genuine local fixture, protected under state law,
+    with a rescue and sanctuary (DonkeyLand) operating in Reche Canyon.
+    </p>
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

@@ -25,6 +25,7 @@
  *  up," not duplicated here) -- but null-date and already-past rows both
  *  belong in an archive. */
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import AboutThisPage from '../ui/AboutThisPage.astro';
 import StoryCard from '../../components/StoryCard.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import { getContentByType, formatMonthYear, calendarDateParts } from '../../lib/db';
@@ -96,11 +97,6 @@ const itemListJsonLd = shown.length > 0 ? {
 <BaseLayout title={title} wide ogSlug="section-city-hall" description={description}>
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>Every city hall meeting covered on this site, oldest to newest within
-    each month. Looking for what's coming up? See <a href="/city-hall/">City hall →</a>.</p>
-    {latestMonth && (
-      <p class="month-teaser">See the full <a href={`/month/${monthSlug(latestMonth.year, latestMonth.month)}/`}>month in review for {monthLabel(latestMonth.year, latestMonth.month)} →</a></p>
-    )}
     <ShareButton title={title} url={canonicalUrl} />
   </header>
 
@@ -126,6 +122,13 @@ const itemListJsonLd = shown.length > 0 ? {
   {itemListJsonLd && (
     <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
   )}
+  <AboutThisPage slot="about">
+    <p>Every city hall meeting covered on this site, oldest to newest within
+    each month. Looking for what's coming up? See <a href="/city-hall/">City hall →</a>.</p>
+    {latestMonth && (
+      <p>See the full <a href={`/month/${monthSlug(latestMonth.year, latestMonth.month)}/`}>month in review for {monthLabel(latestMonth.year, latestMonth.month)} →</a></p>
+    )}
+  </AboutThisPage>
 </BaseLayout>
 
 <style>

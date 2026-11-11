@@ -15,6 +15,7 @@
  * StoryCard:s delade logik för detta -- andra innehållstyper (kåserier,
  * recept) vill genuint ha published_at. Ett litet eget kort här i stället. */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
@@ -25,7 +26,6 @@ import { fitDescription, descriptionFillers } from '../lib/meta-description';
 import { placeAbbr } from '../lib/country-profile';
 import { resolvePageMeta } from '../lib/page-meta';
 import { isWithinRenderWindow } from '../lib/render-window';
-import SectionHero from '../components/SectionHero.astro';
 import { EMPTY_STATES } from '../lib/empty-states';
 import { SECTION_THEME } from '../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
@@ -87,15 +87,8 @@ function monthYear(occursAt: string | null): string {
   description={fitDescription("Recently recorded home sales in Moreno Valley: address, price, and date, from Riverside County's public assessor data.", descriptionFillers(siteConfig))}
   accentColor={SECTION_THEME.home_sales.accent}>
   <Breadcrumbs trail={breadcrumbTrail} />
-  <SectionHero section="home_sales" />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>Recently recorded home sales in {placeAbbr(siteConfig)},
-    straight from Riverside County's public assessor data. County records
-    lag behind actual sales{mostRecentSaleDate && <> — the most recent
-    recorded sale currently available is from {new Date(mostRecentSaleDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</>}.
-    {recordsAreStale && <> The county has not published newer records, so this page stops there: sales recorded since then are not shown, and the monthly digests below cover only the months the county has released.</>}
-    {hubBacklink && <> Wondering what local employers pay? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
   </header>
 
   {digests.length > 0 && (
@@ -183,6 +176,14 @@ function monthYear(occursAt: string | null): string {
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
+  <AboutThisPage slot="about">
+    <p>Recently recorded home sales in {placeAbbr(siteConfig)},
+    straight from Riverside County's public assessor data. County records
+    lag behind actual sales{mostRecentSaleDate && <> — the most recent
+    recorded sale currently available is from {new Date(mostRecentSaleDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</>}.
+    {recordsAreStale && <> The county has not published newer records, so this page stops there: sales recorded since then are not shown, and the monthly digests below cover only the months the county has released.</>}
+    {hubBacklink && <> Wondering what local employers pay? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
+  </AboutThisPage>
 </BaseLayout>
 
 <script>

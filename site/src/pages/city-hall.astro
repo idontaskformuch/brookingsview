@@ -5,7 +5,6 @@ import StoryCard from '../components/StoryCard.astro';
 import ShareButton from '../components/ShareButton.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ClusterNav from '../components/ClusterNav.astro';
-import SectionHero from '../components/SectionHero.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import MeetingsUpcoming from '../components/meetings/MeetingsUpcoming.astro';
 import { getUpcomingStories, getPastStories, getProjects, formatMeetingDate } from '../lib/db';
@@ -106,7 +105,6 @@ const eventJsonLd = meetingsTown
     </>
   ) : (
     <>
-      <SectionHero section="city_hall" />
       <header class="lede">
         <h1>{pageMeta.h1}</h1>
         <p>{ledeText}{past[0]?.occurs_at && <> Last updated {formatMeetingDate(past[0].occurs_at)}.</>}</p>

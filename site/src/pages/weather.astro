@@ -71,7 +71,7 @@ const official = profile.weather.officialLink;
     <p class="wx-note">{official.note}: <a href={official.url} rel="noopener">{official.label}</a>.</p>
   )}
 
-  <AboutThisPage sources={[{ name: `${authority.name} forecast`, href: authority.url }]}>
+  <AboutThisPage slot="about" sources={[{ name: `${authority.name} forecast`, href: authority.url }]}>
     <p>The forecast for {siteConfig.cityName}: hour by hour for the next day and day by day for the week{siteConfig.hasMetOfficeWarnings ? ', with any Met Office weather warning in force shown first' : ', plus any active weather alerts'}.</p>
     <p>Use the hourly view to time a commute or an outdoor plan, and open an alert for what it means and how long it lasts. Forecasts change: the {authority.name} page is the authority.</p>
     <p>The large temperature is the forecast for the current hour, not a measurement. Sunrise and sunset are calculated from the location. Chance of precipitation, feels-like and gusts appear when the forecast gives them.</p>

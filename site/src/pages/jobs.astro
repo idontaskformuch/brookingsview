@@ -13,6 +13,7 @@
  *  resultat rätt (salaryText nedan hanterar ensidiga intervall) och
  *  (b) begränsa en enskild arbetsgivares andel av listan, se EMPLOYER_CAP. */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
@@ -22,7 +23,6 @@ import { siteConfig, isSectionDisabled } from '../lib/site-config';
 if (isSectionDisabled('jobs')) return Astro.redirect('/', 302);
 import { placeAbbr } from '../lib/country-profile';
 import { resolvePageMeta } from '../lib/page-meta';
-import SectionHero from '../components/SectionHero.astro';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
 import { listEligibleMonths, monthLabel, monthSlug } from '../lib/month-in-review';
@@ -47,20 +47,8 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
 <BaseLayout title={pageMeta.title} wide ogSlug="section-jobs"
   description={`Recent job listings in and near ${placeAbbr(siteConfig)}.`} noindex>
   <Breadcrumbs trail={breadcrumbTrail} />
-  <SectionHero section="jobs" />
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
-    <p>Recent listings in and near {siteConfig.cityName}, pulled daily from
-    <a href="https://www.adzuna.com" rel="noopener">Adzuna</a>'s job search — some
-    are in surrounding towns, not {siteConfig.cityName} itself; each listing's
-    location is shown alongside it. Salaries marked "est." are Adzuna's own
-    estimate, not the employer's listed figure. We earn a small commission if
-    you apply through a listing here — it never affects which jobs are shown
-    or how they're ordered.
-    {hubBacklink && <> Curious what employees actually say about local employers? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
-    {latestMonth && (
-      <p class="month-teaser">See the full <a href={`/month/${monthSlug(latestMonth.year, latestMonth.month)}/`}>month in review for {monthLabel(latestMonth.year, latestMonth.month)} →</a></p>
-    )}
   </header>
 
   <SectionRule label={jobs.length > 0 ? `${jobs.length} listings` : 'Listings'} />
@@ -165,6 +153,19 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
+  <AboutThisPage slot="about">
+    <p>Recent listings in and near {siteConfig.cityName}, pulled daily from
+    <a href="https://www.adzuna.com" rel="noopener">Adzuna</a>'s job search — some
+    are in surrounding towns, not {siteConfig.cityName} itself; each listing's
+    location is shown alongside it. Salaries marked "est." are Adzuna's own
+    estimate, not the employer's listed figure. We earn a small commission if
+    you apply through a listing here — it never affects which jobs are shown
+    or how they're ordered.
+    {hubBacklink && <> Curious what employees actually say about local employers? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</>}</p>
+    {latestMonth && (
+      <p>See the full <a href={`/month/${monthSlug(latestMonth.year, latestMonth.month)}/`}>month in review for {monthLabel(latestMonth.year, latestMonth.month)} →</a></p>
+    )}
+  </AboutThisPage>
 </BaseLayout>
 
 <script>
