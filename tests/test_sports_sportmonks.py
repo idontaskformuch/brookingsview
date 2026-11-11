@@ -295,3 +295,11 @@ def test_collect_alone_runs_the_sources_enabled_false_without_collect_does_not()
 def test_collect_must_be_a_boolean():
     bad = {**CFG, "sports": {**CFG["sports"], "collect": "yes"}}
     assert any("collect" in p for p in validate_sports_config(bad))
+
+
+def test_a_real_run_prints_each_api_call_with_rate_limit_remaining_and_never_the_token(capsys):
+    net = Net([page(fixture_with(id=1), has_more=True, remaining=170), page(fixture_with(id=2), remaining=169)])
+    assert runner.run_source(Cur(), "glasgow", SOURCE, http=net.http()) == "ok"
+    out = capsys.readouterr().out
+    assert "API call 1: 1 fixture(s), rate_limit.remaining=170" in out and "API call 2: 1 fixture(s), rate_limit.remaining=169" in out
+    assert "2 API call(s) in total" in out and SECRET not in out and "Authorization" not in out

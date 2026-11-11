@@ -34,7 +34,7 @@ def run_source(cur, town_id: str, source: dict, *, http: PoliteHttp | None = Non
     """Returns 'ok', 'skipped' or 'error'."""
     sid = source_id(source)
     try:
-        rows = read_source(town_id, source, http=http)
+        rows = read_source(town_id, source, http=http, log=lambda line: print(f"    [sports:{sid}] {line}"))
         events = [r for r in rows if isinstance(r, NormalizedEvent)]
         programs = [source["program"]] if source.get("program") else sorted({e.program_id for e in events if e.program_id})
         known = withdraw.load_known(cur, town_id, source["adapter"], programs)  # before the upsert: "new to the table" is judged against it
