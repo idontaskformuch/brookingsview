@@ -14,7 +14,9 @@
  *  index page don't all read identically.
  */
 
-const ADDRESS_CONNECTORS = ["It's located at", 'Find it at', "You'll find it at", 'Address:'];
+import { isRoundTheClock } from './facility-hours';
+
+const ADDRESS_CONNECTORS =["It's located at", 'Find it at', "You'll find it at", 'Address:'];
 
 function hashString(value: string): number {
   let hash = 0;
@@ -76,9 +78,11 @@ function clockWord(hhmm: string): string {
 export function summarizeHours(rows: { day_of_week: number; opens: string | null; closes: string | null }[]): string | null {
   const byDay = new Map<number, string>();
   for (const r of rows) {
-    if (r.opens && r.closes) byDay.set(r.day_of_week, `${clockWord(r.opens.slice(0, 5))}–${clockWord(r.closes.slice(0, 5))}`);
+    if (!r.opens || !r.closes) continue;
+    byDay.set(r.day_of_week, isRoundTheClock(r.opens, r.closes) ? '24 hours' : `${clockWord(r.opens.slice(0, 5))}–${clockWord(r.closes.slice(0, 5))}`);
   }
   if (byDay.size === 0) return null;
+  if (byDay.size === 7 && [...byDay.values()].every((w) => w === '24 hours')) return '24 hours, 7 days a week';
   const order = [1, 2, 3, 4, 5, 6, 0]; // Monday first
   const parts: string[] = [];
   let i = 0;

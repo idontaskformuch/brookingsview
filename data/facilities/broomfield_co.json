@@ -220,10 +220,10 @@
       "postal_code": "80020",
       "phone": "(720) 887-2141",
       "website": "https://www.broomfield.org/310/Recycling-Center",
-      "hours_text": "Drop-off available 24/7 (Broomfield residents only, no commercial use); staff on site Mon-Fri 7:30am-4pm",
-      "description": "Self-serve recycling drop-off for Broomfield residents (not open to commercial haulers). Two official City of Broomfield pages list different phone numbers for this facility ((720) 887-2141 vs (303) 438-6329) -- the number above is from the recycling center's own dedicated page; see NEEDS-HUMAN-REVIEW.md for the open discrepancy.",
+      "hours_text": "Open 24 hours a day, 7 days a week. Staff can be reached by phone or email Monday to Friday, 7:30am to 4pm.",
+      "description": "Self-serve recycling drop-off, open only to Broomfield residents and closed to commercial and business use. It takes curbside-type recycling such as cardboard, newspaper, plastic containers and aluminum cans.",
       "source_url": "https://www.broomfield.org/310/Recycling-Center",
-      "verified_date": "2026-09-10"
+      "verified_date": "2026-11-11"
     }
   ]
 }

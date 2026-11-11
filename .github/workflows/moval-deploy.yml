@@ -54,6 +54,10 @@ jobs:
         run: node scripts/verify_no_empty_messages.mjs site/dist
       - name: Content first (no explanations between H1 and content)
         run: node scripts/verify_content_first.mjs site/dist
+      - name: No internal notes (NEEDS-HUMAN-REVIEW, .md, TODO, PENDING, FIXME) on any page
+        run: node scripts/verify_no_internal_notes.mjs site/dist
+      - name: Only this town's games in the build
+        run: node scripts/verify_town_games.mjs site/dist moreno_valley_ca
       - name: Deploy to Cloudflare Workers (Moreno Valley)
         working-directory: site
         env:

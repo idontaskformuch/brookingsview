@@ -280,6 +280,16 @@
         "severity": "soft",
         "born_from": "Owner report 2026-11-06 (Moreno Valley front page, 390 px): the top event of a day was a large card with a full-size coloured FallbackTile and no real image, and it was lifted above earlier events. Regression fixture: tests/fixtures/qa_event_tiles_2026-11-06.json (driven by site/src/lib/qa-checks.test.ts); source-level guards in site/src/lib/event-day-view.test.ts.",
         "what": "inside a date-tile events list ([data-pop-list]): any picture or FallbackTile, or a date/time tile taller than 80 px; a picture in the event lists of /tonight, /this-weekend, the week roundup or the university digest; or the markup those pages used before the 2026-11-09 rollout (.ev-card highlight cards, .ev-row event rows, .wk-row, the /tonight category swipe rows). The lists show text and a tile only. Pass E loads /tonight, /this-weekend, this week's roundup and the newest university digest, noindex ones included. (Until 2026-11-09 the probe looked at .evd day lists, which no longer exist, and passed trivially.)"
+    },
+    "build.internal-note": {
+        "severity": "hard",
+        "born_from": "Broomfield AdSense audit 2026-11-11 (F6): /facilities/broomfield-recycling-center/ showed \"see NEEDS-HUMAN-REVIEW.md for the open discrepancy\" in its lede and a cut-off meta description (data/facilities/broomfield_co.json). Regression fixture: tests/fixtures/qa_internal_note_recycling_2026-11-11.html (site/src/lib/internal-notes.test.ts); meta description: site/src/lib/meta-description.test.ts.",
+        "what": "a built page whose visible text, <title> or meta description contains NEEDS-HUMAN-REVIEW, a .md file name, TODO, PENDING or FIXME (scripts/verify_no_internal_notes.mjs on dist/ in every deploy workflow)"
+    },
+    "build.town-games": {
+        "severity": "hard",
+        "born_from": "Broomfield AdSense audit 2026-11-11 (F7): public/games/ was copied into every build, so broomfieldview.com served Brookings' /games/jackrabbit.html (200, indexable) and Moreno Valley's /games/burro-bonanza.html. Owners in site/src/lib/game-owners.mjs. Regression fixture: site/src/lib/game-owners.test.ts (the live 2026-11-11 listing fails).",
+        "what": "dist/games/ holds a file the building town does not own (scripts/verify_town_games.mjs in every deploy workflow)"
     }
   }
 }

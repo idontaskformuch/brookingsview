@@ -180,6 +180,15 @@ describe('summarizeHours / buildFacilityLede: the lede hours come from the same 
       row(4, '09:30:00', '20:00:00'), row(5, '09:30:00', '17:30:00'), row(6, '09:30:00', '17:30:00')];
     expect(summarizeHours(library)).toBe('Mon–Thu 9:30am–8pm, Fri–Sat 9:30am–5:30pm, Sun 1pm–5pm');
   });
+  it('says 24 hours for a midnight-to-11:59pm window, never "midnight–11:59pm" (Broomfield Recycling Center, F6 2026-11-11)', () => {
+    const allWeek = [0, 1, 2, 3, 4, 5, 6].map((d) => row(d, '00:00:00', '23:59:00'));
+    expect(summarizeHours(allWeek)).toBe('24 hours, 7 days a week');
+    const weekdays = [1, 2, 3, 4, 5].map((d) => row(d, '00:00', '24:00'));
+    expect(summarizeHours([...weekdays, row(6, '08:00', '17:00')])).toBe('Mon–Fri 24 hours, Sat 8am–5pm');
+    const lede = buildFacilityLede('Self-serve recycling drop-off.', '225 Commerce St', 'broomfield-recycling-center', null, null, summarizeHours(allWeek));
+    expect(lede).toMatch(/24 hours, 7 days a week\.$/);
+    expect(lede).not.toMatch(/11:59|midnight/);
+  });
   it('is null when nothing is open or there are no rows', () => {
     expect(summarizeHours([])).toBeNull();
     expect(summarizeHours([row(1, null, null)])).toBeNull();

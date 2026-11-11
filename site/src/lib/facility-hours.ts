@@ -36,6 +36,12 @@ export function formatClock(hhmm: string, gb = false): string {
   return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
 }
 
+/** A window from midnight to the end of the day (00:00-23:59, -24:00 or -00:00) is the whole day: shown as "Open 24 hours", never
+ *  "12:00 AM–11:59 PM" (Broomfield AdSense plan F6, 2026-11-11: the recycling center read "midnight–11:59pm"). */
+export function isRoundTheClock(opens: string, closes: string): boolean {
+  return opens.slice(0, 5) === '00:00' && ['23:59', '24:00', '00:00'].includes(closes.slice(0, 5));
+}
+
 function localParts(instant: Date, timezone: string): { weekday: number; minutesOfDay: number } {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone, weekday: 'short', hour: 'numeric', minute: '2-digit', hour12: false,

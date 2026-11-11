@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { ALL_CONFIGS } from './site-config';
 import { DESCRIPTION_KINDS, DESCRIPTION_MAX, DESCRIPTION_MIN, facilityDescription, fitDescription, metaDescription, weekDescription } from './meta-description';
@@ -45,6 +47,31 @@ describe('every template, every town', () => {
           expect(s.length, s).toBeLessThanOrEqual(DESCRIPTION_MAX);
         }
       });
+    });
+  }
+});
+
+describe('facilityDescription on the real facility data', () => {
+  // Broomfield AdSense plan F6 (2026-11-11): the recycling center's meta description ended "... Two official City of Broomfield pages."
+  // -- a word cut dressed up with a period. Its curated description must be cut at one of its own sentence ends. (23 other facilities
+  // still get a word cut; widening this to every facility waits for the owner, see .claude/state.md.)
+  const CHECKED = new Set(['broomfield-recycling-center']);
+  for (const c of ALL_CONFIGS) {
+    const file = join(__dirname, '../../../data/facilities', `${c.townId}.json`);
+    if (!existsSync(file)) continue;
+    const facilities: { name: string; slug: string; description?: string | null }[] = JSON.parse(readFileSync(file, 'utf8')).facilities;
+    if (!facilities.some((f) => CHECKED.has(f.slug))) continue;
+    it(`${c.townId}: the meta description ends where a sentence of the description ends`, () => {
+      const bad = facilities.filter((f) => CHECKED.has(f.slug) && f.description?.trim()).filter((f) => {
+        const meta = facilityDescription(c, f);
+        const body = meta.startsWith(`${f.name}: `) ? meta.slice(f.name.length + 2) : meta;
+        const src = f.description!.replace(/\s+/g, ' ').trim();
+        // whole text (perhaps with a filler sentence after it), or cut right after one of its own sentence ends
+        const wholeText = body.startsWith(src);
+        const sentenceCut = src.startsWith(body) && /[.!?]$/.test(body) && src[body.length] === ' ';
+        return !(wholeText || sentenceCut);
+      }).map((f) => `${f.slug}: ${facilityDescription(c, f)}`);
+      expect(bad).toEqual([]);
     });
   }
 });

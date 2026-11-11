@@ -37,7 +37,7 @@ import { siteConfig } from '../../lib/site-config';
 import { facilityDescription } from '../../lib/meta-description';
 import { placeAbbr, countryProfile } from '../../lib/country-profile';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
-import { formatClock } from '../../lib/facility-hours';
+import { formatClock, isRoundTheClock } from '../../lib/facility-hours';
 import { buildPlaceOpeningHoursSpecification, isPastStalenessThreshold } from '../../lib/place-hours';
 import { buildFacilityLede, facilityTitleElements, facilityMapLink, summarizeHours } from '../../lib/facility-lede';
 import { resolvePageMeta } from '../../lib/page-meta';
@@ -313,7 +313,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
               <tr>
                 <th scope="row">{name}</th>
                 <td>{windows.length > 0
-                  ? windows.map((r) => `${formatClock(r.opens!, siteConfig.country === 'gb')}–${formatClock(r.closes!, siteConfig.country === 'gb')}`).join(', ')
+                  ? windows.map((r) => isRoundTheClock(r.opens!, r.closes!) ? 'Open 24 hours' : `${formatClock(r.opens!, siteConfig.country === 'gb')}–${formatClock(r.closes!, siteConfig.country === 'gb')}`).join(', ')
                   : 'Closed'}</td>
               </tr>
             );
