@@ -148,6 +148,25 @@ def test_runner_two_runs_withdraw_then_a_returning_game_is_cleared(monkeypatch):
     assert db.health[-1][4] is None  # a clean run leaves the warning slot empty
 
 
+class TupleDb(Db):
+    """psycopg's default cursor (db.get_conn() sets no row_factory) returns tuples, not dicts."""
+
+    def fetchall(self):
+        return [tuple(r[c] for c in withdraw._COLS) if isinstance(r, dict) else r for r in self._result]
+
+
+def test_load_known_reads_plain_tuple_rows(monkeypatch):
+    # 2026-11-11: every brookings-sports and glasgow-sports run since 2026-11-08 failed with
+    # "TypeError: tuple indices must be integers or slices, not str" once the table held rows for the source.
+    soon = datetime.now(timezone.utc) + timedelta(days=30)
+    a, b = known(1, "Alpha", start=soon), known(2, "Beta", start=soon + timedelta(days=7))
+    db = TupleDb([row(a), row(b)])
+    assert [k.id for k in withdraw.load_known(db, "t", "fake_wd", [P])] == [1, 2]
+    monkeypatch.setitem(adapters._ADAPTERS, "fake_wd", lambda params: params["_events"])
+    assert runner.run_source(db, "t", {"adapter": "fake_wd", "program": P, "params": {"_events": [event(a)]}}, http=object()) == "ok"
+    assert db.rows[1]["missed_runs"] == 1
+
+
 def test_a_run_that_returns_nothing_records_the_warning_and_changes_no_row(monkeypatch):
     soon = datetime.now(timezone.utc) + timedelta(days=30)
     a, b = known(1, "Alpha", start=soon, missed=1), known(2, "Beta", start=soon + timedelta(days=7), missed=1)

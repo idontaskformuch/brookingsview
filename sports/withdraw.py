@@ -130,10 +130,11 @@ def load_known(cur, town_id: str, source: str, program_ids: list[str]) -> list[K
         return []
     cur.execute(f"SELECT {', '.join(_COLS)} FROM sport_events WHERE town_id = %s AND source = %s AND program_id = ANY(%s)",
                 (town_id, source, list(program_ids)))
+    rows = [r if isinstance(r, dict) else dict(zip(_COLS, r)) for r in cur.fetchall()]  # db.get_conn() gives plain tuples
     return [Known(id=r["id"], source_uid=r["source_uid"], program_id=r["program_id"], sport=r["sport"], gender=r["gender"], start_at=r["start_at"],
                   status=r["status"], withdrawn=r["withdrawn_at"] is not None, missed_runs=r["missed_runs"],
                   home_program_id=r["home_program_id"], home_name=r["home_name"], away_program_id=r["away_program_id"], away_name=r["away_name"])
-            for r in cur.fetchall()]
+            for r in rows]
 
 
 def apply(cur, p: Plan) -> None:
