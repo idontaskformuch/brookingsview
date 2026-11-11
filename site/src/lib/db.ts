@@ -23,6 +23,7 @@ import { siteConfig, isSectionDisabled } from './site-config';
 import { forCountry, formatClockCompact } from './country-profile';
 import { currentSeason, type SportEventRow, type SportPhase } from './sport-events';
 import { gamesFromEvents, upcomingGames } from './sport-games';
+import { exportableSportEvents } from './sport-export';
 
 /** Locale for calendar-date text ("Tue, October 27" vs "Tue 27 October"). Times still en-US. */
 const DATE_LOCALE = forCountry(siteConfig.country, 'en-US', 'en-GB');
@@ -1379,6 +1380,28 @@ export async function getClubGames(programId: string, now: Date = new Date()): P
     homeProgramId: r.home_program_id, homeName: r.home_name, awayProgramId: r.away_program_id, awayName: r.away_name,
     scoreHome: r.score_home, scoreAway: r.score_away,
   })) };
+}
+
+/** sport_events rows for an export or feed (ICS, JSON, RSS, API route), already filtered: rows from a source whose terms forbid redistribution
+ *  (Sportmonks) are dropped here and nowhere else decides it. Export builders must call THIS, never getSportEvents/getClubGames
+ *  (no-redistribution.test.ts enforces it). Same season window as getSportEvents. */
+export interface ExportableSportEvent extends SportEventRow { source: string; sourceUid: string }
+export async function getExportableSportEvents(programId: string, now: Date = new Date()): Promise<ExportableSportEvent[]> {
+  const season = currentSeason(now, siteConfig.timezone);
+  const rows = (await sql`
+    SELECT id, source, source_uid, sport, gender, start_at, tz, status, time_tba, neutral_site, exhibition, venue,
+           home_program_id, home_name, away_program_id, away_name, score_home, score_away
+      FROM sport_events
+     WHERE town_id = ${TOWN_ID} AND program_id = ${programId} AND withdrawn_at IS NULL
+       AND start_at >= ${season.start.toISOString()} AND start_at < ${season.end.toISOString()}
+     ORDER BY start_at ASC, id ASC
+  `) as Record<string, any>[];
+  return exportableSportEvents(rows.map((r) => ({
+    id: Number(r.id), source: r.source as string, sourceUid: r.source_uid as string, sport: r.sport, gender: r.gender,
+    startAt: new Date(r.start_at), tz: r.tz, status: r.status, timeTba: r.time_tba, neutralSite: r.neutral_site,
+    exhibition: r.exhibition, venue: r.venue, homeProgramId: r.home_program_id, homeName: r.home_name,
+    awayProgramId: r.away_program_id, awayName: r.away_name, scoreHome: r.score_home, scoreAway: r.score_away,
+  })));
 }
 
 /** Jackrabbits games for the pages that list games next to other things. Read from sport_events through the shared rule in
