@@ -1,8 +1,9 @@
-/** The one sentence on model-written text, shared by /advertising/, /editorial-policy/, /how-we-gather-this/, /about/,
- *  /terms/ (US and GB) and llms.txt (owner B6, 2026-11-11): the place and project descriptions in data/facilities and
- *  data/projects were written with an AI model, so "no text is written by an AI model" was not true. Fas 5 checks each
- *  description on an indexable page against its source and removes what cannot be backed up. `projects` is false for a
- *  town without city project pages (Glasgow). */
+/** The one statement on AI, shared by /advertising/, /editorial-policy/, /how-we-gather-this/, /about/, /terms/ (US and GB)
+ *  and llms.txt. Owner wording 2026-11-11 (B6, second version): it says what the model does and makes no promise of a
+ *  source check until Fas 5 is done and the old ai:* rows are validated. `projects` is false for a town without city
+ *  project pages (Glasgow). scripts/verify_no_empty_messages.mjs fails on the earlier wordings (STALE_AI_CLAIMS). */
 export function aiDisclosure(projects = true): string {
-  return `Some descriptions of places${projects ? ' and city projects' : ''} were written with an AI model from the official pages they cite; we check them against those pages and remove what we cannot back up. No other text on the site is written by an AI model.`;
+  const described = projects ? 'Descriptions of places and city projects, and' : 'Descriptions of places, and';
+  return 'This site is built and maintained with the help of AI models. Event and meeting details are extracted from official sources by a model. '
+    + `${described} the explanatory text on our pages, were written with an AI model from the sources they cite. If something is wrong, tell us and we will fix it.`;
 }

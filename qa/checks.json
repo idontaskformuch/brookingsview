@@ -311,6 +311,11 @@
         "born_from": "Broomfield AdSense audit 2026-11-11 (F9): the /thanksgiving/ hero said \"2 places closed\" on Thanksgiving, counting Tree Branch Recycle, which closes Sat Nov 28. Regression fixture: site/src/lib/holiday-view.test.ts 'counts places that are shut' (the hero value 1 fails on the old count).",
         "what": "the holiday hero's places-closed number is not the count of confirmed closed rows whose closedOn includes the holiday (closedPlaces in lib/holiday-view.ts; vitest in every deploy's test job)"
     },
+    "build.ai-statement": {
+        "severity": "hard",
+        "born_from": "Owner B6, 2026-11-11: /advertising/ said \"No text on this site is written by an AI model\" and the other policy pages and llms.txt said no model-written text is shown, while place/project descriptions, page text and event/meeting details come from a model; the first replacement still promised a source check that Fas 5 has not done. Regression fixture: tests/fixtures/qa_ai_statement_2026-11-11 (the served pages), tests/test_verify_election_pages.py.",
+        "what": "a built page or llms.txt carries one of the earlier AI statements (STALE_AI_CLAIMS in scripts/verify_no_empty_messages.mjs, every deploy workflow); the statement is site/src/lib/ai-disclosure.ts"
+    },
     "build.about-empty": {
         "severity": "hard",
         "born_from": "Broomfield AdSense audit 2026-11-11 (F5): /election-results/ showed an \"About this page\" heading with nothing under it (its slot held only an optional notice Broomfield does not have). Regression fixture: tests/fixtures/qa_election_pages_2026-11-11/before/election-results, tests/test_verify_election_pages.py.",

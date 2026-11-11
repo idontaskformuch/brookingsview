@@ -1,0 +1,90 @@
+# Broomfield View
+
+> Broomfield View is an independent local information site for Broomfield, CO. It is not a government agency and not a newsroom; official decisions and notices are the ones published by the local authorities themselves.
+> Broomfield View gathers public information from the City and County of Broomfield, the National Weather Service, and the Colorado Department of Transportation. Pages are assembled automatically from those sources and checked by automated rules; no person reviews an individual item before it is published. Some descriptions of places and city projects were written with an AI model from the official pages they cite; we check them against those pages and remove what we cannot back up. No other text on the site is written by an AI model. Every news item and listing links back to its source. Collected twice a day; weather hourly.
+
+Titles, dates, places and links on listings are taken from the named source above; each listing links back to it.
+
+## City hall
+
+- [City hall](https://broomfieldview.com/city-hall/): City council, county commission and committee meetings in Broomfield, in plain language.
+- [Meeting archive](https://broomfieldview.com/city-hall/archive/): Every council and commission meeting we've covered, sorted by month.
+- [Active projects](https://broomfieldview.com/city-hall/projects/): Track a real development or ordinance through every meeting that touches it.
+
+## What's happening
+
+- [Events](https://broomfieldview.com/events/): What's on in Broomfield -- library programs, city events and community happenings.
+- [Today](https://broomfieldview.com/today/): What's actually happening right now -- weather, events and any open closures, in one glance.
+- [This week](https://broomfieldview.com/this-week/): A day-by-day look at the week ahead: meetings, events and games, all in one place.
+- [Concerts & shows](https://broomfieldview.com/whats-on/): Touring concerts, theater and festivals within driving distance, ranked by how big they actually are.
+
+## Getting around
+
+- [Traffic](https://broomfieldview.com/traffic/): Current road incidents and lane closures affecting Broomfield.
+
+## Work and money
+
+- [Workplace Watch](https://broomfieldview.com/workplace-watch/): Monthly review-trend digests for Broomfield's major employers -- check before your shift.
+- [Jobs](https://broomfieldview.com/jobs/): Local job listings pulled daily, filterable by category.
+
+## Public facilities
+
+- [Facilities index](https://broomfieldview.com/facilities/): Addresses, phone numbers and hours for libraries, parks, city hall and other public facilities in Broomfield.
+- [George Di Ciero City and County Building](https://broomfieldview.com/facilities/city-hall/): City hall, One DesCombes Drive, Broomfield, CO 80020.
+- [Broomfield Community Center](https://broomfieldview.com/facilities/broomfield-community-center/): Community centers, 280 Spader Way, Broomfield, CO 80020.
+- [Paul Derda Recreation Center](https://broomfieldview.com/facilities/paul-derda-recreation-center/): Community centers, 13201 Lowell Blvd, Broomfield, CO 80020.
+- [The Bay Aquatic Park](https://broomfieldview.com/facilities/the-bay-aquatic-park/): Community centers, 250 Spader Way, Broomfield, CO 80020.
+- [North Metro Fire Rescue District Headquarters](https://broomfieldview.com/facilities/north-metro-fire-headquarters/): Fire stations, 101 Spader Way, Broomfield, CO 80020.
+- [North Metro Fire Rescue Station 61](https://broomfieldview.com/facilities/north-metro-fire-station-61/): Fire stations, 1275 Midway Blvd, Broomfield, CO.
+- [North Metro Fire Rescue Station 64](https://broomfieldview.com/facilities/north-metro-fire-station-64/): Fire stations, 13515 Lowell Blvd, Broomfield, CO.
+- [North Metro Fire Rescue Station 65](https://broomfieldview.com/facilities/north-metro-fire-station-65/): Fire stations, 9900 W 120th Ave, Broomfield, CO.
+- [North Metro Fire Rescue Station 66](https://broomfieldview.com/facilities/north-metro-fire-station-66/): Fire stations, 1750 W 160th Ave, Broomfield, CO.
+- [North Metro Fire Rescue Station 67](https://broomfieldview.com/facilities/north-metro-fire-station-67/): Fire stations, 13975 S 96th St, Broomfield, CO.
+- [North Metro Fire Rescue Station 68 (temporary)](https://broomfieldview.com/facilities/north-metro-fire-station-68/): Fire stations, 12400 W 112th Ave, Broomfield, CO.
+- [Mamie Doud Eisenhower Public Library](https://broomfieldview.com/facilities/library/): Libraries, 3 Community Park Road, Broomfield, CO 80020.
+- [UCHealth Broomfield Hospital](https://broomfieldview.com/facilities/uchealth-broomfield-hospital/): Medical, 11820 Destination Dr, Broomfield, CO 80021.
+- [Broomfield Depot Museum](https://broomfieldview.com/facilities/broomfield-depot-museum/): Museums, 2201 W. 10th Ave, Broomfield, CO 80020.
+- [Broomfield Veterans Museum](https://broomfieldview.com/facilities/broomfield-veterans-museum/): Museums, 12 Garden Center, Broomfield, CO 80020.
+- [Broomfield Auditorium](https://broomfieldview.com/facilities/broomfield-auditorium/): Other, 3 Community Park Road, Broomfield, CO 80020.
+- [Broomfield Combined Court & Municipal Court](https://broomfieldview.com/facilities/broomfield-court-services/): Other, 17 DesCombes Drive, Broomfield, CO 80020.
+- [Broomfield Health and Human Services](https://broomfieldview.com/facilities/broomfield-health-human-services/): Other, 100 Spader Way, Broomfield, CO 80020.
+- [Broomfield Workforce Center](https://broomfieldview.com/facilities/broomfield-workforce-center/): Other, 100 Spader Way, Broomfield, CO 80020.
+- [Anthem Community Park](https://broomfieldview.com/facilities/anthem-community-park/): Parks, 15663 Sheridan Pkwy, Broomfield, CO 80021.
+- [Brandywine Parks](https://broomfieldview.com/facilities/brandywine-parks/): Parks, Fern Avenue and Perry Street, Broomfield, CO 80020.
+- [Broadlands East Park](https://broomfieldview.com/facilities/broadlands-east-park/): Parks, Shannon Drive and Broadlands Drive, Broomfield, CO 80020.
+- [Broadlands West Park](https://broomfieldview.com/facilities/broadlands-west-park/): Parks, Meadow Mountain Road and Sheridan Boulevard, Broomfield, CO 80021.
+- [Bronco Park](https://broomfieldview.com/facilities/bronco-park/): Parks, 3100 Westlake Dr, Broomfield, CO 80021.
+- [Broomfield County Commons](https://broomfieldview.com/facilities/county-commons-park/): Parks, 13200 Sheridan Blvd, Broomfield, CO 80021.
+- [Broomfield Skate Park](https://broomfieldview.com/facilities/broomfield-skate-park/): Parks, 150 Spader Way, Broomfield, CO 80020.
+- [Columbine Meadows Parks](https://broomfieldview.com/facilities/columbine-meadows-parks/): Parks, Hazel Street and Meadow Avenue, Broomfield, CO 80021.
+- [Community Park](https://broomfieldview.com/facilities/community-park/): Parks, Second Avenue and Main Street, Broomfield, CO 80021.
+- [Country Vista Park](https://broomfieldview.com/facilities/country-vista-park/): Parks, 123rd Place and Sheridan Boulevard, Broomfield, CO 80021.
+- [Greenway Park](https://broomfieldview.com/facilities/greenway-park/): Parks, Greenway East Drive and Ponderosa Place, Broomfield, CO 80021.
+- [Highland Park](https://broomfieldview.com/facilities/highland-park/): Parks, Highland Park Drive and Kirkwall Street, Broomfield, CO 80021.
+- [Interlocken East Park](https://broomfieldview.com/facilities/interlocken-east-park/): Parks, Interlocken Parkway and Interlocken Boulevard, Broomfield, CO 80020.
+- [Lac Amora Park](https://broomfieldview.com/facilities/lac-amora-park/): Parks, West 10th Avenue and Oak Circle North, Broomfield, CO 80021.
+- [Midway Park](https://broomfieldview.com/facilities/midway-park/): Parks, Midway Boulevard and Kohl Street, Broomfield, CO 80021.
+- [Miramonte Park](https://broomfieldview.com/facilities/miramonte-park/): Parks, Daphne Street, Broomfield, CO 80021.
+- [Northmoor Park](https://broomfieldview.com/facilities/northmoor-park/): Parks, 13th Avenue and Birch Street, Broomfield, CO 80021.
+- [Quail Creek Park](https://broomfieldview.com/facilities/quail-creek-park/): Parks, 138th Avenue and Zuni Street, Broomfield, CO 80021.
+- [Westlake Park and Greenbelt](https://broomfieldview.com/facilities/westlake-park-and-greenbelt/): Parks, Westlake Drive and 134th Street, Broomfield, CO 80021.
+- [Willow Park](https://broomfieldview.com/facilities/willow-park/): Parks, Midway Boulevard and Vrain Street, Broomfield, CO 80021.
+- [Zang Spur Park](https://broomfieldview.com/facilities/zang-spur-park/): Parks, West 10th Avenue and Depot Hill Road, Broomfield, CO 80021.
+- [Broomfield Police Department](https://broomfieldview.com/facilities/broomfield-police-department/): Public safety, 7 DesCombes Drive, Broomfield, CO 80020.
+- [USPS Post Office - Broomfield](https://broomfieldview.com/facilities/usps-broomfield/): Post offices, 280 E 1st Ave, Broomfield, CO 80020.
+- [USPS Post Office - Broomfield Eagle View](https://broomfieldview.com/facilities/usps-broomfield-eagle-view/): Post offices, 8800 W 116th Cir, Broomfield, CO 80021.
+- [Broomfield Recycling Center](https://broomfieldview.com/facilities/broomfield-recycling-center/): Recycling, 225 Commerce St, Broomfield, CO 80020.
+- [US 36 & Broomfield Station Park-n-Ride](https://broomfieldview.com/facilities/us-36-broomfield-station/): Transit, 8010 Transit Way, Broomfield, CO.
+- [US 36 & Flatiron Station Park-n-Ride](https://broomfieldview.com/facilities/us-36-flatiron-station/): Transit, 398 East Flatiron Circle, Broomfield, CO.
+- [Weather](https://broomfieldview.com/weather/): Hourly forecast and any active weather alerts for the area.
+
+## Local life
+
+- [Vail Resorts newsroom](https://broomfieldview.com/vail-resorts/): Vail Resorts' own newsroom feed, collected here for Broomfield residents who work there, invest there, or just want to keep up.
+- [Reviews](https://broomfieldview.com/reviews/): Reviews of what's currently playing locally.
+
+## Optional
+
+- [How we gather this](https://broomfieldview.com/how-we-gather-this/): Sources and method.
+- [Editorial policy](https://broomfieldview.com/editorial-policy/)
+- [Corrections](https://broomfieldview.com/corrections/)

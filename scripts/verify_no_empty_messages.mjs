@@ -14,6 +14,7 @@
  *  - a town without a /traffic/ page (no dist/traffic/index.html: no traffic source) has no link to /traffic/ anywhere (owner 2026-11-07);
  *  - no page mentions a domain on scripts/blocked-domains.json (a hijacked or unsafe domain);
  *  - no "Not confirmed" / "Page lists no year" status text (holiday rows, F9 2026-11-11);
+ *  - none of the earlier AI statements (STALE_AI_CLAIMS, owner B6 2026-11-11), also in llms.txt;
  *  - no "About this page" box is a heading with nothing under it (Broomfield AdSense plan F5, 2026-11-11: /election-results/'s slot held
  *    only an optional notice that Broomfield does not have).
  *
@@ -32,6 +33,12 @@ const EMPTY = [
 // Broomfield AdSense plan F9 (2026-11-11): a holiday row whose notice is not out yet is a plain link to the place's page
 // (lib/holiday-view.ts), never a "Not confirmed" status, and no row says its source "lists no year".
 const UNCONFIRMED = ['Not confirmed', 'Page lists no year'];
+// Owner B6 (2026-11-11): the site's AI statement is site/src/lib/ai-disclosure.ts. These earlier wordings were false (place and
+// project descriptions, page text and event/meeting details come from a model) or promised a source check that is not done yet.
+const STALE_AI_CLAIMS = [
+  'No other text on the site is written by an AI model', 'No text on this site is written by an AI model',
+  'no model-written text', 'No model-written text', 'Text written by an AI model is not shown', 'we check them against those pages',
+];
 const BOX = ['What this shows', 'How to use it'];
 const EXPLAINER_PAGE = '/how-we-gather-this/';
 const BLOCKED = JSON.parse(readFileSync(new URL('./blocked-domains.json', import.meta.url), 'utf8')).domains;
@@ -64,7 +71,13 @@ for (const file of walk(dist)) {
   for (const b of BLOCKED) if (html.toLowerCase().includes(b.domain)) bad.push(`${url}: blocked domain ${b.domain} (${b.reason})`);
   if (url !== EXPLAINER_PAGE) for (const phrase of BOX) if (html.includes(phrase)) bad.push(`${url}: explanation box "${phrase}"`);
   for (const phrase of UNCONFIRMED) if (html.includes(phrase)) bad.push(`${url}: status text "${phrase}"`);
+  for (const phrase of STALE_AI_CLAIMS) if (html.includes(phrase)) bad.push(`${url}: old AI statement "${phrase}"`);
   if (emptyAboutBox(html)) bad.push(`${url}: "About this page" heading with no text under it`);
+}
+const llms = join(dist, 'llms.txt');
+if (existsSync(llms)) {
+  const txt = readFileSync(llms, 'utf8');
+  for (const phrase of STALE_AI_CLAIMS) if (txt.includes(phrase)) bad.push(`/llms.txt: old AI statement "${phrase}"`);
 }
 if (bad.length) { console.error(bad.join('\n')); console.error(`FAIL: ${bad.length} banned phrase(s) in ${pages} pages`); process.exit(1); }
 console.log(`OK: no empty messages or explanation boxes in ${pages} pages.`);

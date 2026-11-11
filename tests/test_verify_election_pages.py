@@ -44,3 +44,14 @@ def test_served_holiday_pages_fail_on_unconfirmed_status_text():
     assert r.returncode == 1
     for msg in ('/thanksgiving/: status text "Not confirmed"', '/thanksgiving/: status text "Page lists no year"', '/veterans-day/: status text "Not confirmed"'):
         assert msg in r.stderr
+
+
+AI_STATEMENT = ROOT / "tests" / "fixtures" / "qa_ai_statement_2026-11-11"
+
+
+def test_served_pages_fail_on_the_old_ai_statement():
+    # QA build.ai-statement (owner B6, 2026-11-11): /advertising/, /how-we-gather-this/ and llms.txt as served on broomfieldview.com.
+    r = run("verify_no_empty_messages.mjs", AI_STATEMENT)
+    assert r.returncode == 1
+    for msg in ('/advertising/: old AI statement', '/how-we-gather-this/: old AI statement', '/llms.txt: old AI statement'):
+        assert msg in r.stderr
