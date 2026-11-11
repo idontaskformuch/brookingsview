@@ -72,3 +72,10 @@ def test_trailing_clean_counts_only_the_unbroken_tail():
 def test_liveness_check_is_registered_hard():
     assert severity("ops.scrape-liveness") == "hard"
     assert severity("web.title-dup") == "soft"
+
+
+def test_new_issue_and_recurrence_mention_the_owner():
+    # Issues #6/#7 (2026-11-10) reached nobody: the @-mention makes GitHub send a participating notification.
+    fp = fingerprint(f())
+    _, body = render_issue(fp, group([f()])[fp])
+    assert body.rstrip().endswith("cc @idontaskformuch")

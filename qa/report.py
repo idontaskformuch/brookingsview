@@ -69,6 +69,12 @@ def fp_of_body(body: str) -> str | None:
     return m.group(1) if m else None
 
 
+# The owner is @-mentioned in every new issue and every "recurred" comment, so GitHub sends a "participating" notification
+# (e-mail by default) even when the repo is not watched: issues #6/#7 (ops.sport-freshness, 2026-11-10) sat unread for a day.
+# QA_NOTIFY overrides it; an empty value mentions nobody.
+NOTIFY = os.environ.get("QA_NOTIFY", "@idontaskformuch")
+
+
 def render_issue(fp: str, g: dict, run_url: str = "") -> tuple[str, str]:
     title = f"[QA] {g['check']} — {g['town'] or 'all'} {g['pattern']} ({len(g['items'])} träff)"
     lines = [f"<!-- qa-fp:{fp} -->", f"**Kontroll:** `{g['check']}`  ", f"**Stad:** {g['town'] or '-'}  ",
@@ -81,6 +87,8 @@ def render_issue(fp: str, g: dict, run_url: str = "") -> tuple[str, str]:
     if run_url:
         lines += ["", f"Körning: {run_url}"]
     lines += ["", "Stängs automatiskt efter 3 rena körningar i rad. Waiver: `qa/known-issues.json`."]
+    if NOTIFY:
+        lines += ["", f"cc {NOTIFY}"]
     return title, "\n".join(lines)
 
 
@@ -111,7 +119,7 @@ def plan_actions(findings: list[dict], open_issues: list[dict], clean_to_close: 
             title, body = render_issue(fp, g)
             actions.append({"op": "create", "fp": fp, "title": title, "body": body})
         elif trailing_clean(issue.get("comments", [])) > 0:
-            actions.append({"op": "comment", "number": issue["number"], "body": f"{RECUR_MARK}Felet är tillbaka ({len(g['items'])} träff)."})
+            actions.append({"op": "comment", "number": issue["number"], "body": f"{RECUR_MARK}Felet är tillbaka ({len(g['items'])} träff).{f' cc {NOTIFY}' if NOTIFY else ''}"})
     for fp, issue in by_fp.items():
         if fp in groups:
             continue
