@@ -50,6 +50,11 @@ import type { MeetingDecision } from './meeting-decisions';
 
 const sql = neon(import.meta.env.DATABASE_URL);
 
+/** AI_META_GATE (owner 2026-11-11): the meta of an old model-written story (generated_by 'ai:*', from before meta_only) is shown
+ *  only when scripts/validate_ai_meta.py has checked it against the source row and marked it "_checked": true; otherwise the
+ *  query returns NULL for it (fail closed). The marker itself is never handed to a page. Every story query that selects
+ *  `meta` uses the same CASE expression; ai-meta-gate.test.ts holds them to it. */
+
 // Härleds från siteConfig (SITE_CITY), inte en egen env-variabel -- en separat
 // TOWN_ID att komma ihåg att sätta i synk med SITE_CITY är precis den sortens
 // fallgrop som gör att en stads build visar en annan stads branding över en
@@ -376,7 +381,8 @@ export async function getUpcomingStories(
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at, category_image_index, meta
+           venue_raw, is_recurring_series, ends_at, category_image_index,
+           CASE WHEN generated_by LIKE 'ai:%' AND (meta->>'_checked') IS DISTINCT FROM 'true' THEN NULL ELSE meta - '_checked' END AS meta -- see AI_META_GATE
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
@@ -620,7 +626,8 @@ export async function getStoryBySlug(slug: string): Promise<Story | null> {
   const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at, category_image_index, meta
+           venue_raw, is_recurring_series, ends_at, category_image_index,
+           CASE WHEN generated_by LIKE 'ai:%' AND (meta->>'_checked') IS DISTINCT FROM 'true' THEN NULL ELSE meta - '_checked' END AS meta -- see AI_META_GATE
       FROM stories
      WHERE town_id = ${TOWN_ID} AND slug = ${slug}
      LIMIT 1
@@ -633,7 +640,8 @@ export async function getAllStories(): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
-           venue_raw, is_recurring_series, ends_at, category_image_index, superseded_by_slug, meta
+           venue_raw, is_recurring_series, ends_at, category_image_index, superseded_by_slug,
+           CASE WHEN generated_by LIKE 'ai:%' AND (meta->>'_checked') IS DISTINCT FROM 'true' THEN NULL ELSE meta - '_checked' END AS meta -- see AI_META_GATE
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type != ALL(${RETIRED_TYPES})
