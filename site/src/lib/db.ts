@@ -1616,6 +1616,27 @@ export async function getTrafficLastChecked(): Promise<string | null> {
   return (rows[0] as { last_checked: string | null })?.last_checked ?? null;
 }
 
+/** /traffic/: the incidents the LATEST successful read of the feed reported (last_seen_at stamped during that run), not yet cleared.
+ *  The page is static and the feed is read on a schedule, so the 3-hour window of getActiveTrafficIncidents() -- counted at build time
+ *  -- emptied the list on any build more than 3 h after a read, while the "as of <latest read>" line said nothing was reported
+ *  (2026-11-11). List and line now describe the same read. A read older than 26 h lists nothing; the line still names its time. */
+export async function getTrafficIncidentsFromLatestRead(): Promise<TrafficIncident[]> {
+  return (await sql`
+    WITH latest AS (
+      SELECT MAX(started_at) AS at FROM scrape_runs WHERE town_id = ${TOWN_ID} AND source_key = 'traffic' AND status = 'ok'
+    )
+    SELECT incident_type, title, description, road, severity, lat, lon, ends_at, last_seen_at
+      FROM traffic_incidents, latest
+     WHERE town_id = ${TOWN_ID}
+       AND latest.at IS NOT NULL AND latest.at >= now() - interval '26 hours'
+       AND last_seen_at >= latest.at
+       AND (ends_at IS NULL OR ends_at >= now())
+     ORDER BY
+       CASE severity WHEN 'closure' THEN 0 WHEN 'injury' THEN 1 WHEN 'incident' THEN 2 WHEN 'planned' THEN 3 ELSE 4 END,
+       last_seen_at DESC
+  `) as TrafficIncident[];
+}
+
 /** When the traffic feed was last read successfully (scrape_runs, source 'traffic'). Unlike getTrafficLastChecked() this moves on a run
  *  that found nothing, so "No crashes or closures reported ... as of <time>" names the real time of the latest read (AdSense plan F4). */
 export async function getTrafficLastRun(): Promise<string | null> {

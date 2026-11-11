@@ -6,6 +6,10 @@
  * ("What this shows", "How to use it" as a box heading). /how-we-gather-this/ is the one page where the per-page
  * explanations now live, so the headings are allowed there.
  *
+ * Not an empty message: /traffic/'s "No crashes or closures reported on state highways in or near <town> as of <date, time>" (Broomfield
+ * AdSense plan F4, owner-approved 2026-11-11). It states a checked fact with the time of the read, links to the live state map, and the
+ * page is noindex while it shows (lib/traffic-verdict.ts). Do not add its wording to EMPTY.
+ *
  * Two more checks on the same real build:
  *  - a town without a /traffic/ page (no dist/traffic/index.html: no traffic source) has no link to /traffic/ anywhere (owner 2026-11-07);
  *  - no page mentions a domain on scripts/blocked-domains.json (a hijacked or unsafe domain).

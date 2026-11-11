@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { trafficPageState } from './traffic-verdict';
+import { TRAFFIC_READ_MAX_AGE_HOURS, trafficPageState } from './traffic-verdict';
 import { ALL_CONFIGS } from './site-config';
 
 describe('trafficPageState', () => {
@@ -14,6 +14,23 @@ describe('trafficPageState', () => {
 
   it('zero incidents and no successful read: still noindex, and the line claims no time', () => {
     expect(trafficPageState(0, 'Broomfield', null)).toEqual({ noindex: true, statusLine: 'No crashes or closures reported on state highways in or near Broomfield.' });
+  });
+
+  it('a read older than the limit: says the feed was not read since then, never "nothing reported"', () => {
+    expect(trafficPageState(0, 'Broomfield', 'Nov 9, 4:02 AM MST', false, true)).toEqual({
+      noindex: true, statusLine: "The state's road feed has not been read since Nov 9, 4:02 AM MST.",
+    });
+  });
+
+  it('list and status line describe the same read: /traffic/ lists what the latest ok run saw, not a build-time 3 h window', () => {
+    // 2026-11-11: a build more than 3 h after a read dropped that read's incidents while the line said "nothing reported as of <read>"
+    const page = readFileSync(join(__dirname, '../pages/[traffic].astro'), 'utf8');
+    expect(page).toContain('await getTrafficIncidentsFromLatestRead()');
+    expect(page).not.toContain('getActiveTrafficIncidents(');
+    const db = readFileSync(join(__dirname, 'db.ts'), 'utf8');
+    const fn = db.slice(db.indexOf('export async function getTrafficIncidentsFromLatestRead'), db.indexOf('export async function getTrafficLastRun'));
+    expect(fn).toContain('last_seen_at >= latest.at');
+    expect(fn).toContain(`interval '${TRAFFIC_READ_MAX_AGE_HOURS} hours'`);
   });
 
   it('incidents: indexable with no status line, unless the town keeps the section quiet', () => {

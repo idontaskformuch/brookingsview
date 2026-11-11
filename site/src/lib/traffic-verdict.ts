@@ -12,9 +12,14 @@ export interface TrafficPageState {
   statusLine: string | null;
 }
 
-/** `lastReadLabel` is the formatted time of the latest successful read ("4:02 AM MST"), or null when there is none. */
-export function trafficPageState(incidentCount: number, cityName: string, lastReadLabel: string | null, quiet = false): TrafficPageState {
+/** A read older than this lists nothing (db.ts getTrafficIncidentsFromLatestRead) and the page says the feed was not read since. */
+export const TRAFFIC_READ_MAX_AGE_HOURS = 26;
+
+/** `lastReadLabel` is the formatted time of the latest successful read ("Nov 11, 4:02 AM MST"), or null when there is none;
+ *  `readIsStale` is true when that read is older than TRAFFIC_READ_MAX_AGE_HOURS. */
+export function trafficPageState(incidentCount: number, cityName: string, lastReadLabel: string | null, quiet = false, readIsStale = false): TrafficPageState {
   if (incidentCount > 0) return { noindex: quiet, statusLine: null };
+  if (readIsStale && lastReadLabel) return { noindex: true, statusLine: `The state's road feed has not been read since ${lastReadLabel}.` };
   const when = lastReadLabel ? ` as of ${lastReadLabel}` : '';
   return { noindex: true, statusLine: `No crashes or closures reported on state highways in or near ${cityName}${when}.` };
 }
