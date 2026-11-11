@@ -50,6 +50,8 @@ jobs:
         run: node scripts/verify_no_internal_notes.mjs site/dist
       - name: Only this town's games in the build
         run: node scripts/verify_town_games.mjs site/dist glasgow
+      - name: Meta descriptions are whole sentences (indexable pages)
+        run: node scripts/report_meta_descriptions.mjs site/dist "$RUNNER_TEMP/meta-descriptions.tsv"
       - name: Deploy to Cloudflare Workers (Glasgow)
         working-directory: site
         env:
