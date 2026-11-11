@@ -46,6 +46,50 @@ export function viewState(payload: ResultsPayload | null): ViewState {
   return { kind: 'waiting', text: 'No validated results yet. Numbers appear here once the official source has published a complete count.' };
 }
 
+export interface StaticView {
+  /** The status line in the server-rendered HTML. */
+  text: string;
+  /** The browser keeps asking /api/election-results: only while the build is from before the end of election night. */
+  poll: boolean;
+  /** The build's own numbers are rendered in the HTML. */
+  showNumbers: boolean;
+}
+
+/** What the server-rendered page says (owner B4, 2026-11-11): from the morning after Election Day the page is the
+ *  build's numbers, frozen, and never says "live" or that counting continues; the daily build picks up a newer
+ *  snapshot until the Worker stops fetching (fetchUntil). `p` null = a link-only town. */
+export function staticView(p: ResultsPayload | null, sourceName: string, siteName: string): StaticView {
+  if (!p) return { text: `${siteName} does not copy these numbers. The official results are published by ${sourceName}.`, poll: false, showNumbers: false };
+  const hasNumbers = viewState(p).kind === 'results';
+  if (p.phase === 'before' || p.phase === 'night') {
+    return {
+      text: `Live results load in your browser from ${sourceName} and change as counting continues. If nothing appears here, the official numbers are linked under Official source below.`,
+      poll: true, showNumbers: hasNumbers,
+    };
+  }
+  if (!hasNumbers) return { text: `No validated results were published here. The official results are linked under Official source below.`, poll: false, showNumbers: false };
+  return {
+    text: 'These are the unofficial numbers from the latest update we read. The final numbers are the ones the election authority certifies; the official source below has them.',
+    poll: false, showNumbers: true,
+  };
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** The one line above the frozen numbers: when the source last updated them (its own stamp, "Nov 10, 5:52 PM MT"; the
+ *  time we read them when the source gives none), then the count rows. The hero already says "Unofficial results". */
+export function staticMetaLine(p: ResultsPayload, timezone: string): string {
+  const day = /^(\d{1,2})\/(\d{1,2})\/\d{4}/.exec(p.sourceUpdatedAt ?? '');
+  const clock = lastUpdatedLabel(p.sourceUpdatedAt);
+  const when = day
+    ? `Last updated by the source ${MONTHS[Number(day[1]) - 1]} ${Number(day[2])}${clock && clock !== p.sourceUpdatedAt ? `, ${clock}` : ''}`
+    : p.fetchedAt
+      ? `Numbers as read ${new Date(p.fetchedAt).toLocaleString('en-US', { timeZone: timezone, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}`
+      : null;
+  const counts = p.town === 'broomfield_co' ? [turnoutLine(p)] : [precinctsLine(p), turnoutLine(p)];
+  return [when, ...counts].filter(Boolean).join(' · ');
+}
+
 export function precinctsLine(p: ResultsPayload): string | null {
   const r = p.precincts;
   if (!r || r.reported == null || r.total == null) return null;

@@ -187,10 +187,23 @@ export function leadSentence(today: string, electionDate: string, cityName: stri
   return `The ${electionDate.slice(0, 4)} election in ${cityName} was held ${when}. It is over.`;
 }
 
-/** Days after the election when /vote becomes noindex (spec: 30). */
+/** Days after the election when a page becomes noindex (spec: 30). */
 export const NOINDEX_AFTER_DAYS = 30;
 export function isPastNoindexWindow(today: string, electionDate: string): boolean {
   return daysBetween(electionDate, today) > NOINDEX_AFTER_DAYS;
+}
+
+/** /vote is a how-to-vote guide: once Election Day is over it answers nothing, so it is noindex and out of the
+ *  nav and footer from the next local day (owner B4, 2026-11-11). astro.config.mjs mirrors this for the sitemap. */
+export function isVoteOver(today: string, electionDate: string): boolean {
+  return daysBetween(today, electionDate) < 0;
+}
+
+/** /election-results stays indexable with the frozen unofficial numbers until 1 December (Election Day + 28), then
+ *  noindex (owner B4, 2026-11-11). astro.config.mjs mirrors this for the sitemap. */
+export const RESULTS_INDEX_DAYS = 28;
+export function isPastResultsIndexWindow(today: string, electionDate: string): boolean {
+  return daysBetween(electionDate, today) >= RESULTS_INDEX_DAYS;
 }
 
 /** The UTC instant at which local wall-clock `hhmm` occurs on `ymd` in `timezone`. */

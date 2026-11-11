@@ -29,6 +29,9 @@ const broomfield: ElectionConfig = {
     source_name: 'Colorado Secretary of State (statewide and federal contests; Broomfield turnout)',
     link: { label: 'Colorado election night results (Secretary of State)', url: BF_RES, source_url: BF_RES },
     local_link: { label: 'Broomfield-specific contests and ballot questions (City and County of Broomfield)', url: BF_Q, source_url: BF_Q },
+    // The state event carries statewide totals only (election-results/src/adapters/clarity.ts); Broomfield's own
+    // Clarity event never took over, so the vote counts are Colorado's, the ballots-counted line is Broomfield's.
+    notice: { text: "The vote counts cover all of Colorado, or the whole congressional district, as the Secretary of State publishes them; they are not Broomfield's own votes. The ballots-counted line is Broomfield's. Broomfield's own contests and ballot questions are on the City and County of Broomfield page under Official source.", source_url: BF_RES },
   },
   checked_on: '2026-10-21',
   officialHosts: ['broomfield.org', 'coloradosos.gov', 'sos.state.co.us'],

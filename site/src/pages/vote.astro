@@ -13,7 +13,7 @@ import { ELECTION_BY_TOWN } from '../config/election';
 import { resolvePageMeta } from '../lib/page-meta';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import {
-  assertElectionValid, todayIn, statusFor, daysBetween, formatYmd, leadSentence, isPastNoindexWindow,
+  assertElectionValid, todayIn, statusFor, formatYmd, leadSentence, isVoteOver,
 } from '../lib/election';
 
 const election = ELECTION_BY_TOWN[siteConfig.townId];
@@ -29,8 +29,8 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Home', href: '/' },
   { label: 'How to vote', href: canonicalUrl },
 ];
-const noindex = isPastNoindexWindow(today, election.election_date);
-const electionOver = daysBetween(today, election.election_date) < 0;
+const electionOver = isVoteOver(today, election.election_date);
+const noindex = electionOver; // a how-to-vote guide answers nothing once the election is over (owner B4, 2026-11-11)
 
 const dates = [...election.key_dates].sort((a, b) => a.date.localeCompare(b.date));
 const earlyPlaces = election.places.filter((p) => p.kind === 'early');
@@ -158,7 +158,8 @@ const checked = formatYmd(election.checked_on, true);
   <script type="application/ld+json" is:inline set:html={JSON.stringify(buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl))} />
   <AboutThisPage slot="about">
     <p>
-    Run by {election.authority.name}.
+    {siteConfig.siteName} made this page from the official election pages listed under Sources. We are not an election authority.
+    The election is run by {election.authority.name}.
     {election.authority.phone && (<>
     Phone <a href={`tel:${election.authority.phone.replace(/[^\d]/g, '')}`}>{election.authority.phone}</a>
     {election.authority.phone_note && <> ({election.authority.phone_note})</>}.

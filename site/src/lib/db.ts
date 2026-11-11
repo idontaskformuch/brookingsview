@@ -37,6 +37,9 @@ import { calendarDayDiff, seriesKicker } from './time';
 import type { RegisterRow } from './evening-items';
 import { isAllDay } from './local-day';
 import { ELECTION_BY_TOWN } from '../config/election';
+import { readLastValid } from '../../../election-results/src/read';
+import { toPublic, type PublicResults } from '../../../election-results/src/api';
+import { TOWNS as ELECTION_TOWNS } from '../../../election-results/src/towns';
 import { daysBetween, todayIn } from './election';
 import { calendarDateParts } from './calendar-date';
 import { selectThisWeekImage, type Season } from './this-week-images';
@@ -3609,4 +3612,14 @@ export async function getProjectForMatterId(matterId: number): Promise<{ slug: s
      LIMIT 1
   `) as { slug: string; title: string }[];
   return rows[0] ?? null;
+}
+
+/** /election-results at build time: the same public payload /api/election-results serves (latest VALID snapshot,
+ *  contestsInScope, percentages from votes), so the numbers are in the static HTML (owner B4, 2026-11-11). Null for a
+ *  town without a results feed (Moreno Valley is link-only) -- the page then shows the official link only. */
+export async function getElectionResults(now: Date = new Date()): Promise<PublicResults | null> {
+  const town = ELECTION_TOWNS[TOWN_ID];
+  if (!town || town.source.kind === 'link_only') return null;
+  const snapshot = await readLastValid((text, params) => sql(text, params) as unknown as Promise<Array<Record<string, unknown>>>, TOWN_ID, town.cadence.electionDate);
+  return toPublic(town, snapshot, now);
 }

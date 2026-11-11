@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { enabledSections, resolveNav, SECTIONS, type NavConfig, type NavGate } from './nav-sections';
+import { enabledSections, resolveNav, SECTIONS, voteInNav, type NavConfig, type NavGate } from './nav-sections';
 import { ALL_CONFIGS, ALL_SITES } from './site-config';
 
-const BROOKINGS: NavGate = { townId: 'brookings_sd', hasWhatsOn: true, hasClosureWatch: true };
-const MORENO: NavGate = { townId: 'moreno_valley_ca', hasWhatsOn: true, hasClosureWatch: true, hasWorkplaceWatch: true, trafficSource: { name: 'DOT', url: 'https://example.org', scopeNote: '' } };
-const BROOMFIELD: NavGate = { townId: 'broomfield_co', hasWhatsOn: true, hasWorkplaceWatch: true, trafficSource: { name: 'DOT', url: 'https://example.org', scopeNote: '' } };
+// Pinned before Election Day 2026 so /vote/ is still in the nav (voteInNav); its removal is tested below.
+const BEFORE = '2026-11-01';
+const BROOKINGS: NavGate = { today: BEFORE, townId: 'brookings_sd', hasWhatsOn: true, hasClosureWatch: true };
+const MORENO: NavGate = { today: BEFORE, townId: 'moreno_valley_ca', hasWhatsOn: true, hasClosureWatch: true, hasWorkplaceWatch: true, trafficSource: { name: 'DOT', url: 'https://example.org', scopeNote: '' } };
+const BROOMFIELD: NavGate = { today: BEFORE, townId: 'broomfield_co', hasWhatsOn: true, hasWorkplaceWatch: true, trafficSource: { name: 'DOT', url: 'https://example.org', scopeNote: '' } };
 
 const BROOKINGS_NAV: NavConfig = {
   tabs: ['today', 'events', 'university', 'jacks', 'cityhall', 'jobs'],
@@ -110,5 +112,20 @@ describe('tabs by intent (all towns)', () => {
   });
   it('facilities, council/city hall and traffic are never tabs', () => {
     for (const c of ALL_CONFIGS) for (const id of ['facilities', 'cityhall', 'traffic']) expect(c.nav?.tabs ?? []).not.toContain(id);
+  });
+});
+
+/** Owner B4 (2026-11-11): /vote/ leaves the nav and the footer the day after Election Day, and no town's real nav lists it any more. */
+describe('Election 2026 in the nav', () => {
+  it('is on through Election Day and off from the next local day', () => {
+    expect(voteInNav({ ...BROOMFIELD, today: '2026-11-03' })).toBe(true);
+    expect(voteInNav({ ...BROOMFIELD, today: '2026-11-04' })).toBe(false);
+    expect(enabledSections({ ...BROOMFIELD, today: '2026-11-11' }).map((s) => s.href)).not.toContain('/vote/');
+  });
+  it('no real town config lists vote and every one resolves after the election', () => {
+    for (const c of ALL_CONFIGS) {
+      expect(Object.values(c.nav!.groups).flat()).not.toContain('vote');
+      expect(() => resolveNav(c.nav!, { ...c, today: '2026-11-11' })).not.toThrow();
+    }
   });
 });

@@ -56,6 +56,8 @@ jobs:
         run: node scripts/verify_content_first.mjs site/dist
       - name: No internal notes (NEEDS-HUMAN-REVIEW, .md, TODO, PENDING, FIXME) on any page
         run: node scripts/verify_no_internal_notes.mjs site/dist
+      - name: After Election Day, no live wording on /election-results/ and /vote/ noindex and unlinked
+        run: node scripts/verify_election_pages.mjs site/dist
       - name: Only this town's games in the build
         run: node scripts/verify_town_games.mjs site/dist broomfield_co
       - name: Meta descriptions are whole sentences (indexable pages)

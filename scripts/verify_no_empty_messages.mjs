@@ -12,7 +12,9 @@
  *
  * Two more checks on the same real build:
  *  - a town without a /traffic/ page (no dist/traffic/index.html: no traffic source) has no link to /traffic/ anywhere (owner 2026-11-07);
- *  - no page mentions a domain on scripts/blocked-domains.json (a hijacked or unsafe domain).
+ *  - no page mentions a domain on scripts/blocked-domains.json (a hijacked or unsafe domain);
+ *  - no "About this page" box is a heading with nothing under it (Broomfield AdSense plan F5, 2026-11-11: /election-results/'s slot held
+ *    only an optional notice that Broomfield does not have).
  *
  * Usage: node scripts/verify_no_empty_messages.mjs <dist-dir>
  */
@@ -41,6 +43,12 @@ function walk(dir, out = []) {
   return out;
 }
 
+/** The body of components/ui/AboutThisPage.astro (div.ui-about__body) has no visible text. */
+function emptyAboutBox(html) {
+  const m = html.match(/<section[^>]*data-about-this-page[^>]*>[\s\S]*?<div[^>]*class="ui-about__body[^"]*"[^>]*>([\s\S]*?)<\/section>/);
+  return !!m && m[1].replace(/<[^>]+>/g, ' ').replace(/&nbsp;|\s+/g, '').length === 0;
+}
+
 const bad = [];
 let pages = 0;
 for (const file of walk(dist)) {
@@ -51,6 +59,7 @@ for (const file of walk(dist)) {
   if (!hasTrafficPage && TRAFFIC_LINK.test(html)) bad.push(`${url}: link to /traffic/ but this town has no traffic page`);
   for (const b of BLOCKED) if (html.toLowerCase().includes(b.domain)) bad.push(`${url}: blocked domain ${b.domain} (${b.reason})`);
   if (url !== EXPLAINER_PAGE) for (const phrase of BOX) if (html.includes(phrase)) bad.push(`${url}: explanation box "${phrase}"`);
+  if (emptyAboutBox(html)) bad.push(`${url}: "About this page" heading with no text under it`);
 }
 if (bad.length) { console.error(bad.join('\n')); console.error(`FAIL: ${bad.length} banned phrase(s) in ${pages} pages`); process.exit(1); }
 console.log(`OK: no empty messages or explanation boxes in ${pages} pages.`);

@@ -10,8 +10,16 @@
 import type { SiteConfig } from './site-config';
 import { ELECTION_BY_TOWN } from '../config/election';
 import { townHasHolidayPages } from '../config/holiday-pages/registry';
+import { isVoteOver, todayIn } from './election';
 
-export type NavGate = Pick<SiteConfig, 'townId' | 'hasWhatsOn' | 'hasClosureWatch' | 'hasNewInTown' | 'hasWorkplaceWatch' | 'disabledSections' | 'quietSections' | 'navLabels' | 'eveningLayer' | 'safetyNotices' | 'trafficSource'>;
+export type NavGate = Pick<SiteConfig, 'townId' | 'hasWhatsOn' | 'hasClosureWatch' | 'hasNewInTown' | 'hasWorkplaceWatch' | 'disabledSections' | 'quietSections' | 'navLabels' | 'eveningLayer' | 'safetyNotices' | 'trafficSource'>
+  & Partial<Pick<SiteConfig, 'timezone'>> & { /** YYYY-MM-DD; tests pin it, the build uses the town's today. */ today?: string };
+
+/** Election 2026 (/vote) is in the nav until Election Day is over in the town (owner B4, 2026-11-11). */
+export function voteInNav(c: NavGate): boolean {
+  const election = ELECTION_BY_TOWN[c.townId];
+  return !!election?.enabled && !isVoteOver(c.today ?? todayIn(c.timezone ?? 'UTC'), election.election_date);
+}
 
 export interface NavSection {
   id: string;
@@ -57,12 +65,13 @@ export const SECTIONS: NavSection[] = [
   { id: 'weather', href: '/weather/', label: 'Weather', enabled: () => true },
   // Wildfires near the town and the air-quality index (Moreno Valley, Broomfield; public-safety plan, owner 2026-10-29).
   { id: 'safety', href: '/safety/', label: 'Fire & air', enabled: (c) => !!c.safetyNotices },
-  // Election 2026 (/vote): temporary. Turning election.enabled off removes it, and resolveNav() then fails the
-  // build until 'vote' is also removed from the town's nav groups -- deliberate, so it can't be forgotten.
+  // Election 2026 (/vote): temporary, see voteInNav. Once it is off, resolveNav() fails the build while 'vote' is
+  // still in a town's nav groups -- deliberate, so it can't be forgotten. For the next election: add 'vote' back to
+  // the groups in site-config.ts when the new election block goes in.
   // Holiday pages (/thanksgiving/, /veterans-day/, ...): one entry in the All sheet, never a tab (owner 2026-11-04).
   // On only for a town with at least one holiday page (a confirmed row from an official source).
   { id: 'holidays', href: '/holidays/', label: 'Holidays', enabled: (c) => townHasHolidayPages(c.townId) },
-  { id: 'vote', href: '/vote/', label: 'Election 2026', footerLabel: 'How to vote', enabled: (c) => !!ELECTION_BY_TOWN[c.townId]?.enabled },
+  { id: 'vote', href: '/vote/', label: 'Election 2026', footerLabel: 'How to vote', enabled: voteInNav },
 ];
 
 export interface NavConfig {

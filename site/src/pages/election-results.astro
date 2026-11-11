@@ -1,9 +1,9 @@
 ---
 /** /election-results -- unofficial results for the 3 Nov 2026 election (election 2026, phase 2).
- *  Spec: .claude/specs/election-2026.md. No AI text; numbers come from the Worker's JSON
- *  (/api/election-results, latest VALID snapshot read from the database) and are rendered in the
- *  browser, so a new snapshot appears without a site rebuild. Static fallback text and the official
- *  link are in the HTML for crawlers and for visitors whose script/endpoint fails (fail closed). */
+ *  Spec: .claude/specs/election-2026.md. No AI text. The build renders the latest VALID snapshot (the same payload
+ *  /api/election-results serves) into the HTML; only a build from before the end of election night also polls that
+ *  endpoint in the browser. From the morning after, the page is the build's frozen numbers (owner B4, 2026-11-11),
+ *  indexable until 1 December (isPastResultsIndexWindow). The official link is always in the HTML. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
@@ -12,8 +12,9 @@ import { fitDescription } from '../lib/meta-description';
 import { ELECTION_BY_TOWN } from '../config/election';
 import { resolvePageMeta } from '../lib/page-meta';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
-import { assertElectionValid, todayIn, isPastNoindexWindow, formatYmd } from '../lib/election';
-import { endpointFor } from '../lib/election-results';
+import { assertElectionValid, todayIn, isPastResultsIndexWindow, isVoteOver, formatYmd } from '../lib/election';
+import { endpointFor, staticMetaLine, staticView } from '../lib/election-results';
+import { getElectionResults } from '../lib/db';
 
 const election = ELECTION_BY_TOWN[siteConfig.townId];
 if (!election || !election.enabled || !election.results) {
@@ -25,12 +26,17 @@ const results = election.results;
 const today = todayIn(siteConfig.timezone);
 const pageMeta = resolvePageMeta('election-results', siteConfig);
 const canonicalUrl = new URL('/election-results/', Astro.site ?? siteConfig.siteUrl).href;
+// /vote/ is noindex once Election Day is over, so nothing here links to it after that (owner B4, 2026-11-11).
+const voteOver = isVoteOver(today, election.election_date);
 const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Home', href: '/' },
-  { label: 'How to vote', href: '/vote/' },
+  ...(voteOver ? [] : [{ label: 'How to vote', href: '/vote/' }]),
   { label: 'Election results', href: canonicalUrl },
 ];
-const noindex = isPastNoindexWindow(today, election.election_date);
+const noindex = isPastResultsIndexWindow(today, election.election_date);
+const payload = results.live ? await getElectionResults() : null;
+const view = staticView(payload, results.source_name, siteConfig.siteName);
+const shown = view.showNumbers && payload ? payload : null;
 const hostOf = (u: string) => new URL(u).hostname.replace(/^www\./, '');
 const electionLabel = formatYmd(election.election_date, true);
 ---
@@ -46,16 +52,28 @@ const electionLabel = formatYmd(election.election_date, true);
     <p class="er-unofficial"><strong>Unofficial results.</strong> Final results are the ones the election authority certifies.</p>
   </header>
 
-  <section class="er-live" aria-labelledby="er-heading" data-live={results.live ? 'true' : 'false'} data-town={siteConfig.townId}
+  <section class="er-live" aria-labelledby="er-heading" data-live={view.poll ? 'true' : 'false'} data-town={siteConfig.townId}
            data-endpoint={endpointFor()} data-source={results.source_name} data-tz={siteConfig.timezone}>
     <h2 id="er-heading">Results</h2>
-    {results.live
-      ? <p class="er-status" id="er-status" role="status">Live results for the {electionLabel} election load in your browser from {results.source_name} and change as counting continues. If nothing appears here, the official numbers are linked under Official source below.</p>
-      : <p class="er-status" id="er-status">{siteConfig.siteName} does not copy these numbers. The official results are published by {results.source_name}.</p>}
-    <p class="er-meta" id="er-meta" hidden></p>
+    <p class="er-status" id="er-status" role={view.poll ? 'status' : undefined}>{view.text}</p>
+    <p class="er-meta" id="er-meta" hidden={!shown}>{shown ? staticMetaLine(shown, siteConfig.timezone) : ''}</p>
     <p class="er-progress" id="er-progress" hidden></p>
-    <div id="er-contests"></div>
-    <noscript><p class="er-status">Live results need JavaScript. The official numbers from {results.source_name} are under Official source below.</p></noscript>
+    <div id="er-contests">
+      {shown?.contests?.map((c) => (
+        <article class="er-card">
+          <h3 class="er-contest">{c.name}</h3>
+          <ul class="er-choices">
+            {c.choices.map((ch) => (
+              <li class="er-choice">
+                <div class="er-choice-head"><span class="er-name">{ch.name}</span><span class="er-votes">{ch.votes.toLocaleString('en-US')} · {ch.pct.toFixed(1)}%</span></div>
+                <div class="er-bar"><div class="er-fill" style={`width:${Math.min(100, Math.max(0, ch.pct))}%`}></div></div>
+              </li>
+            ))}
+          </ul>
+        </article>
+      ))}
+    </div>
+    {view.poll && <noscript><p class="er-status">Newer numbers need JavaScript. The official numbers from {results.source_name} are under Official source below.</p></noscript>}
   </section>
 
   <section class="er-official" aria-labelledby="er-official-h">
@@ -65,12 +83,16 @@ const electionLabel = formatYmd(election.election_date, true);
       {results.local_link && <li><a href={results.local_link.url} rel="noopener">{results.local_link.label}</a> <span class="er-host">({hostOf(results.local_link.url)})</span></li>}
     </ul>
     {results.local_link && <p class="er-note">Local Broomfield contests and ballot questions are not in the state's results feed, so they are linked, not copied.</p>}
-    <p class="er-note">How to vote, key dates and drop-off locations: <a href="/vote/">{siteConfig.cityName} voter guide</a>.</p>
+    {!voteOver && <p class="er-note">How to vote, key dates and drop-off locations: <a href="/vote/">{siteConfig.cityName} voter guide</a>.</p>}
   </section>
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl))} />
   <AboutThisPage slot="about">
     {results.notice && <p>{results.notice.text}</p>}
+    <p>{results.live
+      ? `The numbers are copied from ${results.source_name}. Percentages are worked out from the votes, choices are listed in the source's order, and nobody is called a winner here.`
+      : `This page links to ${results.source_name} for the ${electionLabel} election results and does not copy the numbers.`}
+      {' '}{siteConfig.siteName} is not an election authority; the election is run by {election.authority.name}.</p>
   </AboutThisPage>
 </BaseLayout>
 

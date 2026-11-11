@@ -454,9 +454,15 @@ async function buildLastmodMap(townId, databaseUrl) {
   // /safety/ exists only where siteConfig.safetyNotices is set (mirror, checked by src/lib/safety-view.test.ts); elsewhere it is a redirect stub and stays out of the sitemap.
   const SAFETY_TOWNS_MIRROR = ['moreno_valley_ca', 'broomfield_co'];
   if (!SAFETY_TOWNS_MIRROR.includes(townId)) noindexThinPageUrls.add('/safety/');
-  // /vote/ (election 2026): the page itself sets noindex 30 days after the election (lib/election.ts
-  // isPastNoindexWindow); mirror that here so the sitemap and the noindex tag never disagree.
-  if (Date.now() > Date.parse('2026-11-03T00:00:00Z') + 30 * 86_400_000) { noindexThinPageUrls.add('/vote/'); noindexThinPageUrls.add('/election-results/'); }
+  // Election 2026, owner B4 (2026-11-11), mirrors lib/election.ts so the sitemap and the noindex tag never disagree:
+  // /vote/ is noindex from the day after Election Day (isVoteOver), /election-results/ from 1 December
+  // (isPastResultsIndexWindow, Election Day + 28), both by the town's own calendar date.
+  {
+    const { y, m, d } = localDatePartsMirror(new Date(), THIS_WEEK_TIMEZONES[townId] ?? 'UTC');
+    const localToday = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    if (localToday > '2026-11-03') noindexThinPageUrls.add('/vote/');
+    if (localToday >= '2026-12-01') noindexThinPageUrls.add('/election-results/');
+  }
   // Holiday pages (/thanksgiving/, /veterans-day/, /christmas/, /holidays/) are never noindex (owner 2026-11-04, evergreen pages), so there is
   // nothing to mirror here; a town without one gets no file at all (pages/[holiday].astro), hence no sitemap entry.
   // Town/feature-gated stub pages excluded for THIS build's town -- see
