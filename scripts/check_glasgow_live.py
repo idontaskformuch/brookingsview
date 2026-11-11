@@ -5,7 +5,9 @@ needs a signature section and homepage links), so this checks the two things the
 automated build must get right, on the real deployed pages:
 
   1. /weather/ shows today AND tomorrow in degC (a stale snapshot would show
-     neither, or degF if the wrong provider ran).
+     neither, or degF if the wrong provider ran). The day rows (ui-wd, since
+     3cf39ba) are named "Today" then the weekday ("Thu"); the unit is printed
+     once, in the hero (ui-hero__unit).
   2. /events/ has no card that has already ended inside a data-hide-ended
      container (those lists are filtered at build time; a card that is over at
      check time means the build used stale data). "Recently" lists are not
@@ -37,6 +39,7 @@ class _Collector(HTMLParser):
         super().__init__()
         self.forecast_names: list[str] = []
         self.forecast_temps: list[str] = []
+        self.units: list[str] = []
         self.cards: list[tuple[str, str]] = []  # (data-start, data-end)
         self._stack: list[bool] = []  # per open element: is it a hide-ended box?
         self._capture: str | None = None
@@ -48,10 +51,12 @@ class _Collector(HTMLParser):
             self._stack.append("data-hide-ended" in a)
         if "data-start" in a and any(self._stack[:-1]):
             self.cards.append((a["data-start"] or "", a.get("data-end") or ""))
-        if "forecast__name" in cls:
+        if "ui-wd__name" in cls:
             self._capture = "name"
-        elif "forecast__temp" in cls:
+        elif {"ui-range__hi", "ui-range__lo"} & set(cls):
             self._capture = "temp"
+        elif "ui-hero__unit" in cls:
+            self._capture = "unit"
 
     def handle_endtag(self, tag):
         if self._stack:
@@ -63,6 +68,8 @@ class _Collector(HTMLParser):
             self.forecast_names.append(data.strip())
         elif self._capture == "temp":
             self.forecast_temps.append(data.strip())
+        elif self._capture == "unit":
+            self.units.append(data.strip())
 
 
 def parse(html: str) -> _Collector:
@@ -71,21 +78,23 @@ def parse(html: str) -> _Collector:
     return c
 
 
-def check_weather(html: str) -> list[str]:
+def check_weather(html: str, now: datetime | None = None) -> list[str]:
     c = parse(html)
     problems = []
-    names = set(c.forecast_names)
-    if not names & {"Today", "Tonight"}:
-        problems.append(f"/weather/: no 'Today'/'Tonight' row (rows: {sorted(names)[:6]})")
-    if not names & {"Tomorrow", "Tomorrow Night"}:
-        problems.append("/weather/: no 'Tomorrow' row")
+    names = c.forecast_names
+    tomorrow = ((now or datetime.now(timezone.utc)).astimezone(TZ) + timedelta(days=1)).strftime("%a")
+    if not names or names[0] != "Today":
+        problems.append(f"/weather/: first day row is not 'Today' (rows: {names[:6]})")
+    if len(names) < 2 or names[1] not in (tomorrow, "Tomorrow"):
+        problems.append(f"/weather/: second day row is not tomorrow ({tomorrow}) (rows: {names[:6]})")
     temps = " ".join(c.forecast_temps)
-    if not temps:
-        problems.append("/weather/: no temperatures in the forecast list")
-    elif "°F" in temps or "°F" in temps:
+    if not re.search(r"-?\d+\s*°", temps):
+        problems.append("/weather/: no temperatures in the day rows")
+    unit = " ".join(c.units)
+    if unit == "F":
         problems.append("/weather/: temperatures in degF")
-    elif not re.search(r"\d\s*°C", temps):
-        problems.append("/weather/: temperatures not in degC")
+    elif unit != "C":
+        problems.append(f"/weather/: temperatures not in degC (unit: {unit!r})")
     return problems
 
 
@@ -128,7 +137,7 @@ def main() -> int:
         if r.status_code != 200:
             problems.append(f"{path}: HTTP {r.status_code}")
             continue
-        problems += fn(r.text)
+        problems += fn(r.content.decode("utf-8", errors="replace"))  # served as bare text/html, so r.text would guess Latin-1
     for p in problems:
         print(f"FAIL: {p}", file=sys.stderr)
     if not problems:
