@@ -24,7 +24,8 @@ const HOURS_NOTE = (season: number, nextYear: number) =>
   `These are the ${season} hours. ${nextYear} hours will be added when they're announced.`;
 
 export const HOLIDAY_PAGE_DEFS: HolidayPageDef[] = [
-  { slug: 'veterans-day', label: 'Veterans Day', holidayId: 'veterans_day', daysBefore: 10, daysAfter: 1, evergreenNote: HOURS_NOTE },
+  // Closes on the day itself (owner 2026-11-11): from Nov 12 the page is the standing one, with no card on /events/.
+  { slug: 'veterans-day', label: 'Veterans Day', holidayId: 'veterans_day', daysBefore: 10, daysAfter: 0, evergreenNote: HOURS_NOTE },
   { slug: 'thanksgiving', label: 'Thanksgiving', holidayId: 'thanksgiving', daysBefore: 10, daysAfter: 1, evergreenNote: HOURS_NOTE },
   // Glasgow's Christmas window opens six weeks before its first confirmed event (Nov 6) and closes Jan 3 (owner 2026-11-04).
   {

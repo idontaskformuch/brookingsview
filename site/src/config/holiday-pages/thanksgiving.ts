@@ -140,6 +140,7 @@ const BROOMFIELD_FACTS: HolidayFact[] = [
   {
     section: 'closures', status: 'unconfirmed', label: 'City offices, courts, library and recreation centers',
     clarify: 'The city posts its holiday closures and adjusted hours in its News Flash.',
+    holdsCount: true,
     source: BF_NEWS, checkedOn: BF_RECHECKED,
     checkAt: BF_CLOSURES_NOTICE,
   },
@@ -193,11 +194,9 @@ const BROOMFIELD_FACTS: HolidayFact[] = [
     value: 'Bring 5 items for Broomfield FISH on race day to be entered in a raffle.',
     source: { name: 'RunSignup: Broomfield Turkey Day 5K/10K', url: BF_RACE }, checkedOn: BF_CHECKED,
   },
-  {
-    section: 'help', status: 'unconfirmed', label: 'Free Thanksgiving meal',
-    source: { name: 'Salvation Army Broomfield Corps', url: 'https://broomfieldcorps.my.canva.site' }, checkedOn: BF_RECHECKED,
-    checkAt: { label: 'Broomfield FISH', url: BF_FISH.url, phone: '303-465-1600' },
-  },
+  // "Free Thanksgiving meal" removed 2026-11-11 (owner): FISH's pages name no meal or distribution for Thanksgiving, and the
+  // Salvation Army Broomfield Corps page (read once headless, owner yes) offers "Thanksgiving Meals for Seniors" at two
+  // care centers, with no date and not open to the public.
 ];
 
 const BROOMFIELD_EVENTS: HolidayEvent[] = [

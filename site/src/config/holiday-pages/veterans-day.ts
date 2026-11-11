@@ -34,6 +34,7 @@ const FACTS: HolidayFact[] = [
     section: 'closures', status: 'confirmed', change: 'changed', label: 'Police Department Building and Detention Center',
     insight: 'Police run 24/7 on Nov 11; the front desk is not staffed.',
     value: 'Operations run 24/7 on Nov 11. The front desk is not staffed; the vestibule phone connects to an officer 24/7.',
+    past: 'Operations ran 24/7 on Nov 11. The front desk was not staffed; the vestibule phone connected to an officer 24/7.',
     source: NOTICE, checkedOn: CHECKED,
   },
   {
@@ -75,6 +76,10 @@ const EVENTS: HolidayEvent[] = [
       'Music by Rocky Mountain Brassworks, Mile High Fife and Drum and the Broomfield Civic Chorus. Keynote: Grady Birdsong (USMC retired).',
       'The Broomfield Police Department and Fraternal Order of Police Lodge 45 provide refreshments.',
       'The museum lists no cost.',
+    ],
+    pastDetails: [
+      'Music by Rocky Mountain Brassworks, Mile High Fife and Drum and the Broomfield Civic Chorus. Keynote: Grady Birdsong (USMC retired).',
+      'The Broomfield Police Department and Fraternal Order of Police Lodge 45 provided refreshments.',
     ],
     source: { name: 'Broomfield Veterans Memorial Museum: ceremony announcement (posted Oct 27, 2026)', url: MUSEUM_POST },
     checkedOn: CHECKED,

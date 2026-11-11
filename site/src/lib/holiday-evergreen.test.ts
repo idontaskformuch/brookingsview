@@ -20,11 +20,12 @@ const TOWNS = ['brookings_sd', 'moreno_valley_ca', 'broomfield_co', 'glasgow'];
 type Evergreen = Extract<ReturnType<typeof pageState>, { kind: 'evergreen' }>;
 
 describe('page windows (owner 2026-11-04)', () => {
-  it('Veterans Day: Nov 1 through Nov 12 2026 active, then evergreen with the next day in 2027', () => {
+  it('Veterans Day: Nov 1 through Nov 11 2026 active (owner 2026-11-11: closes on the day), then evergreen with the next day in 2027', () => {
     expect(pageState(vet, D(2026, 10, 31, 23)).kind).toBe('evergreen');
     expect(pageState(vet, D(2026, 11, 1, 0)).kind).toBe('active');
-    expect(pageState(vet, D(2026, 11, 12, 23)).kind).toBe('active');
-    const after = pageState(vet, D(2026, 11, 13, 0)) as Evergreen;
+    expect(pageState(vet, D(2026, 11, 11, 23)).kind).toBe('active');
+    expect(pageState(vet, D(2026, 11, 12, 0)).kind).toBe('evergreen');
+    const after = pageState(vet, D(2026, 11, 12, 0)) as Evergreen;
     expect(after.kind).toBe('evergreen');
     expect(after.nextYear).toBe(2027);
     expect(formatDayLong(after.nextDay)).toBe('Thursday, Nov 11, 2027'); // Nov 11 2027 is a Thursday

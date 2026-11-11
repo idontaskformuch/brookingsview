@@ -74,8 +74,9 @@ describe('Broomfield data as approved 2026-11-04', () => {
     const trash = byLabel('Holiday collection');
     expect((trash as { checkAt: { phone: string } }).checkAt.phone).toBe('303-288-2100 ext. 6');
     expect((byLabel('RTD') as { checkAt: { url: string } }).checkAt.url).toBe('https://www.rtd-denver.com/community/news');
-    const meal = byLabel('Free Thanksgiving meal') as { checkAt: { url: string } };
-    expect(meal.checkAt.url).toBe('https://www.broomfieldfish.org/');
+    // Owner 2026-11-11: no row without a dated meal or distribution from FISH or the Salvation Army itself.
+    expect(page.facts.find((f) => f.label === 'Free Thanksgiving meal')).toBeUndefined();
+    expect((offices as { holdsCount?: boolean }).holdsCount).toBe(true);
   });
   it('FISH closure is confirmed (weekdays match 2026, read 2026-11-11) and closed on the holiday and the day after', () => {
     const fish = byLabel('Broomfield FISH food bank') as { status: string; clarify: string; closedOn: string[] };

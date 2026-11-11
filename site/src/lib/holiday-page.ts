@@ -70,6 +70,9 @@ interface FactBase {
   /** Confirmed phrases (facts and events) with the same `metaGroup` are merged into one description phrase,
    *  "<group>: <meta>, <meta>", placed where the first of them would have been. */
   metaGroup?: string;
+  /** While this row is unconfirmed the page shows no "N places closed" number (hero, front page, /holidays/): owner
+   *  2026-11-11, the city's own closures row -- without it, "1 place closed" reads as if only that place shuts. */
+  holdsCount?: boolean;
 }
 
 /** What a confirmed row means for a reader. Set in the data, never read out of the value text: `closed` (shut, no service),
@@ -84,6 +87,9 @@ export interface ConfirmedFact extends FactBase {
   /** A `closed` row that is not shut on the holiday itself (ISO dates it is shut, e.g. a facility closed the Saturday after):
    *  it stays in the Closed group with its own date but is not counted as closed on the day (holiday-view closedPlaces). */
   closedOn?: string[];
+  /** The value in the past tense, shown once the holiday is over when `value` speaks of the day in the present
+   *  ("Operations run 24/7 on Nov 11" -> "ran"). Owner 2026-11-11: no present tense about the day after it. */
+  past?: string;
   /** One short sentence for the line under the hero (lib/holiday-view.ts holidayInsights): only on a row that changes
    *  something people plan around, such as a moved pickup. Written from the row's own value. */
   insight?: string;
@@ -139,6 +145,8 @@ export interface ConfirmedEvent extends EventBase {
   url: string;
   /** Extra facts such as prices, one short line each. */
   details?: string[];
+  /** `details` once the event is over, when they speak in the present tense ("provide refreshments"). */
+  pastDetails?: string[];
 }
 
 export type UnconfirmedEvent = EventBase & {

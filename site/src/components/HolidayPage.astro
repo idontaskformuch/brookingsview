@@ -48,8 +48,10 @@ const webPage = {
 };
 
 const hero = holidayHero(page, def.label, occurrenceDay(def, page.year), today);
-const insights = holidayInsights(page);
-const groups = buildGroups(page, today);
+const dayIso = new Date(occurrenceDay(def, page.year)).toISOString().slice(0, 10);
+const over = today > dayIso; // the season's day has passed: no present tense about it (owner 2026-11-11)
+const insights = holidayInsights(page, over);
+const groups = buildGroups(page, today, dayIso);
 const hours = regularHoursRows(page);
 const ungrouped = page.linkOnly.filter((l) => !l.group);
 const linkGroups = [...new Set(page.linkOnly.flatMap((l) => (l.group ? [l.group] : [])))];

@@ -79,12 +79,12 @@ function unconfirmedRow(
   };
 }
 
-function factRow(f: HolidayFact, page: HolidayPageData, newest: string): RowView {
+function factRow(f: HolidayFact, page: HolidayPageData, newest: string, over = false): RowView {
   if (f.status === 'unconfirmed') return unconfirmedRow(f.label, f, page, newest);
   return {
     name: f.label,
     pill: f.change ? PILL[f.change] : null,
-    parts: [detailFor(f.change, f.value), ...(f.clarify ? [f.clarify] : [])],
+    parts: [detailFor(f.change, over && f.past ? f.past : f.value), ...(f.clarify ? [f.clarify] : [])],
     checkedNote: olderNote(f.checkedOn, newest, page.locale),
   };
 }
@@ -99,21 +99,26 @@ function eventRow(e: HolidayEvent, page: HolidayPageData, newest: string, today:
     name: e.name,
     href: e.url,
     pill: past ? { tone: 'neutral', text: `Held ${formatIsoDate(e.endDate ?? e.date, true, page.locale)}` } : null,
-    parts: [eventWhenWhere(e, page.locale), ...(e.details ?? []), ...(e.clarify ? [e.clarify] : [])],
+    parts: [eventWhenWhere(e, page.locale), ...((past && e.pastDetails) || e.details || []), ...(e.clarify ? [e.clarify] : [])],
     checkedNote: olderNote(e.checkedOn, newest, page.locale),
   };
 }
 
-/** The rows of the page, grouped. Standing opening hours (section "hours") are not here; see regularHoursRows. */
-export function buildGroups(page: HolidayPageData, today: string): GroupView[] {
+/** The rows of the page, grouped. Standing opening hours (section "hours") are not here; see regularHoursRows.
+ *  `dayIso` is the holiday in the page's season: once `today` is after it the rows speak in the past tense (`past`,
+ *  `pastDetails`) and the "Check before you go" group is dropped -- nothing is left to check for a day that is over
+ *  (owner 2026-11-11). */
+export function buildGroups(page: HolidayPageData, today: string, dayIso?: string): GroupView[] {
   const newest = lastChecked(page);
+  const over = !!dayIso && today > dayIso;
   const rows: Record<GroupId, RowView[]> = { closed: [], changed: [], open: [], info: [], events: [], unconfirmed: [] };
   for (const f of page.facts) {
     if (f.section === 'hours') continue;
     const id: GroupId = f.status === 'unconfirmed' ? 'unconfirmed' : (f.change ?? 'info');
-    rows[id].push(factRow(f, page, newest));
+    rows[id].push(factRow(f, page, newest, over));
   }
   for (const e of page.events) rows[e.status === 'confirmed' ? 'events' : 'unconfirmed'].push(eventRow(e, page, newest, today));
+  if (over) rows.unconfirmed = [];
   return GROUP_ORDER.filter((id) => rows[id].length > 0).map((id) => ({ id, heading: GROUP_HEADING[id], rows: rows[id] }));
 }
 
@@ -133,9 +138,16 @@ export function closedPlaces(page: HolidayPageData, dayIso?: string): number {
   return closedPlaceRows(page, dayIso).length;
 }
 
+/** The count (and the /holidays/ "Closed: ..." line) waits for a `holdsCount` row that is still unconfirmed. */
+export function countHeld(page: HolidayPageData): boolean {
+  return page.facts.some((f) => f.holdsCount && f.status === 'unconfirmed');
+}
+
 export const MAX_INSIGHTS = 2;
-/** Lines under the hero, written in the data on the rows that change what people plan around (a moved pickup). */
-export function holidayInsights(page: HolidayPageData): string[] {
+/** Lines under the hero, written in the data on the rows that change what people plan around (a moved pickup).
+ *  They speak of the day, so none once it is over (`over`). */
+export function holidayInsights(page: HolidayPageData, over = false): string[] {
+  if (over) return [];
   return page.facts.flatMap((f) => (f.status === 'confirmed' && f.insight ? [f.insight] : [])).slice(0, MAX_INSIGHTS);
 }
 
@@ -148,7 +160,7 @@ export function holidayHero(page: HolidayPageData, label: string, dayMs: number,
   const named = past ? `${label} ${page.year}` : label;
   const verb = past ? 'was' : 'is';
   const weekday = weekdayLong(dayMs);
-  const n = closedPlaces(page, new Date(dayMs).toISOString().slice(0, 10));
+  const n = countHeld(page) ? 0 : closedPlaces(page, new Date(dayMs).toISOString().slice(0, 10));
   const sub = formatDayShort(dayMs, page.locale);
   if (n > 0) return { value: n, unit: n === 1 ? 'place closed' : 'places closed', label: `${named} ${verb} ${weekday}`, sub };
   return { value: weekday, label: `${named} ${verb}`, sub: past ? formatDayLong(dayMs, page.locale) : sub };
@@ -170,7 +182,7 @@ export function groupSources(page: HolidayPageData): { name: string; href: strin
  *  the season it describes. Null when no place is confirmed closed on the day (no filler sentence). */
 export function holidayOverviewLine(page: HolidayPageData, def: HolidayPageDef, nextDay: number): string | null {
   const day = new Date(occurrenceDay(def, page.year)).toISOString().slice(0, 10);
-  const names = closedPlaceRows(page, day).map((f) => f.label);
+  const names = countHeld(page) ? [] : closedPlaceRows(page, day).map((f) => f.label);
   if (names.length === 0) return null;
   const sameSeason = new Date(nextDay).getUTCFullYear() === page.year;
   return `${sameSeason ? 'Closed' : `Closed in ${page.year}`}: ${listWords(names)}.`;

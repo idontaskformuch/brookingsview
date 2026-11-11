@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  buildGroups, closedPlaces, holidayOverviewLine, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayHero, holidayInsights, regularHoursRows,
+  buildGroups, closedPlaces, countHeld, holidayOverviewLine, detailFor, FOLD_AFTER, GROUP_HEADING, GROUP_ORDER, groupSources, holidayHero, holidayInsights, regularHoursRows,
 } from './holiday-view';
 import { occurrenceDay } from './holiday-calendar';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
@@ -126,7 +126,11 @@ describe('hero and insights', () => {
     // F9 (2026-11-11): the hero said "2 places closed" for Thanksgiving, but Tree Branch closes Sat Nov 28.
     expect(closedPlaces(bfThanks)).toBe(2); // any day: Tree Branch Recycle, FISH food bank
     expect(closedPlaces(bfThanks, '2026-11-26')).toBe(1); // on Thanksgiving: FISH food bank only
-    expect(holidayHero(bfThanks, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-11').value).toBe(1);
+    // Owner 2026-11-11: no number while the city's own closures row is unconfirmed (holdsCount); the weekday is the hero.
+    expect(countHeld(bfThanks)).toBe(true);
+    expect(holidayHero(bfThanks, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-11').value).toBe('Thursday');
+    const cityConfirmed: HolidayPageData = { ...bfThanks, facts: bfThanks.facts.filter((f) => !f.holdsCount) };
+    expect(holidayHero(cityConfirmed, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-11').value).toBe(1);
     expect(closedPlaces(mvThanks)).toBe(0); // trash only
   });
   it('insight lines come from the data and exist only where the data has one', () => {
@@ -172,8 +176,23 @@ describe('the template', () => {
 
 /** /holidays/ (F9, 2026-11-11): one sentence of what is shut on the day, from the confirmed rows; none without a closure. */
 describe('holidayOverviewLine', () => {
-  it('Thanksgiving: only what is shut on Nov 26 (Tree Branch closes Nov 28)', () => {
-    expect(holidayOverviewLine(bfThanks, holidayPageDef('thanksgiving')!, day('thanksgiving', bfThanks))).toBe('Closed: Broomfield FISH food bank.');
+  it('Thanksgiving: no line while the city row is unconfirmed; then only what is shut on Nov 26 (Tree Branch closes Nov 28)', () => {
+    expect(holidayOverviewLine(bfThanks, holidayPageDef('thanksgiving')!, day('thanksgiving', bfThanks))).toBeNull();
+    const cityConfirmed: HolidayPageData = { ...bfThanks, facts: bfThanks.facts.filter((f) => !f.holdsCount) };
+    expect(holidayOverviewLine(cityConfirmed, holidayPageDef('thanksgiving')!, day('thanksgiving', bfThanks))).toBe('Closed: Broomfield FISH food bank.');
+  });
+
+  it('Veterans Day after the day (owner 2026-11-11): no insight line, no "Check before you go", past tense in rows and event', () => {
+    const dayIso = '2026-11-11';
+    expect(holidayInsights(vet, true)).toEqual([]);
+    const g = buildGroups(vet, '2026-11-12', dayIso);
+    expect(g.map((x) => x.id)).not.toContain('unconfirmed');
+    const text = g.flatMap((x) => x.rows.flatMap((r) => r.parts)).join(' ');
+    expect(text).toContain('Operations ran 24/7 on Nov 11. The front desk was not staffed');
+    expect(text).toContain('provided refreshments');
+    expect(text).not.toMatch(/\b(run|is|are|connects|provide)\b 24\/7|front desk is not|provide refreshments/);
+    // On the day itself nothing changes.
+    expect(buildGroups(vet, dayIso, dayIso).map((x) => x.id)).toContain('unconfirmed');
   });
   it('a holiday whose next date is in a later year names the season the rows describe', () => {
     const next = occurrenceDay(holidayPageDef('veterans-day')!, vet.year + 1);
