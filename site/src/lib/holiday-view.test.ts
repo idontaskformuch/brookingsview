@@ -129,6 +129,10 @@ describe('hero and insights', () => {
     // Owner 2026-11-11: no number while the city's own closures row is unconfirmed (holdsCount); the weekday is the hero.
     expect(countHeld(bfThanks)).toBe(true);
     expect(holidayHero(bfThanks, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-11').value).toBe('Thursday');
+    // after the day, still the weekday once (owner 2026-11-11): "Thanksgiving 2026 was / Thursday / Nov 26"
+    expect(holidayHero(bfThanks, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-27')).toEqual({
+      value: 'Thursday', label: 'Thanksgiving 2026 was', sub: 'Nov 26',
+    });
     const cityConfirmed: HolidayPageData = { ...bfThanks, facts: bfThanks.facts.filter((f) => !f.holdsCount) };
     expect(holidayHero(cityConfirmed, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-11').value).toBe(1);
     expect(closedPlaces(mvThanks)).toBe(0); // trash only
@@ -215,7 +219,8 @@ describe('standing (timeless) page', () => {
   });
   it('Veterans Day after Nov 11: next date in the hero, normally closed/different rows without dates, no events', () => {
     const hero = timelessHero('Veterans Day', next);
-    expect(hero).toEqual({ value: 'Thursday', label: 'Veterans Day is', sub: 'Thursday, Nov 11, 2027' });
+    expect(hero).toEqual({ value: 'Thursday, Nov 11, 2027', label: 'Veterans Day is', sub: '' });
+    expect(`${hero.label} ${hero.value} ${hero.sub}`.match(/Thursday/g)).toHaveLength(1);
     const g = timelessGroups(vet);
     expect(g.map((x) => x.heading)).toEqual(['Normally closed', 'Normally different']);
     expect(g[0].rows.map((r) => r.name)).toEqual(['City offices', 'Combined Courts', 'inventHQ', 'Library']);

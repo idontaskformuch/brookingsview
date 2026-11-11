@@ -66,3 +66,14 @@ def test_standing_holiday_page_fails_on_past_tense():
     assert r.returncode == 1 and '/veterans-day/: standing holiday page says "was" (past tense)' in r.stderr
     r = run("verify_no_empty_messages.mjs", TIMELESS / "after")
     assert r.returncode == 0, r.stderr
+
+
+HERO_WEEKDAY = ROOT / "tests" / "fixtures" / "qa_holiday_hero_weekday_2026-11-11"
+
+
+def test_holiday_hero_fails_on_repeated_weekday():
+    # QA build.holiday-hero-weekday (owner 2026-11-11): "Veterans Day is Thursday, Nov 11, 2027", the weekday once.
+    r = run("verify_no_empty_messages.mjs", HERO_WEEKDAY / "before")
+    assert r.returncode == 1 and '/veterans-day/: holiday hero says "Thursday" twice' in r.stderr
+    r = run("verify_no_empty_messages.mjs", HERO_WEEKDAY / "after")
+    assert r.returncode == 0, r.stderr

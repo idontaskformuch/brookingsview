@@ -177,13 +177,15 @@ export function timelessGroups(page: HolidayPageData): GroupView[] {
   return order.filter((c) => rows[c].length > 0).map((c) => ({ id: c, heading: TIMELESS_HEADING[c], rows: rows[c] }));
 }
 
-/** "Veterans Day is Thursday" over the next date with its year; no count (a count belongs to one day). */
+/** "Veterans Day is Thursday, Nov 11, 2027": the next date with its year as the value, said once (owner 2026-11-11: the
+ *  weekday must not repeat under it); no count (a count belongs to one day). */
 export function timelessHero(label: string, nextDay: number, locale: HolidayLocale = 'en-US'): HeroView {
-  return { value: weekdayLong(nextDay), label: `${label} is`, sub: formatDayLong(nextDay, locale) };
+  return { value: formatDayLong(nextDay, locale), label: `${label} is`, sub: '' };
 }
 /** "<Holiday> is <weekday>" with the number of places closed as the hero value. With no confirmed closed place the weekday
  *  itself is the hero (never "0 places closed"). `dayMs` is the holiday in the page's year (UTC midnight), `today` the
- *  local ISO date; a holiday before today reads "was" and carries its year. */
+ *  local ISO date; a holiday before today reads "was" and carries its year (in the label, so the sub line stays "Nov 26":
+ *  the weekday is said once, owner 2026-11-11). */
 export function holidayHero(page: HolidayPageData, label: string, dayMs: number, today: string): HeroView {
   const past = new Date(dayMs).toISOString().slice(0, 10) < today;
   const named = past ? `${label} ${page.year}` : label;
@@ -192,7 +194,7 @@ export function holidayHero(page: HolidayPageData, label: string, dayMs: number,
   const n = countHeld(page) ? 0 : closedPlaces(page, new Date(dayMs).toISOString().slice(0, 10));
   const sub = formatDayShort(dayMs, page.locale);
   if (n > 0) return { value: n, unit: n === 1 ? 'place closed' : 'places closed', label: `${named} ${verb} ${weekday}`, sub };
-  return { value: weekday, label: `${named} ${verb}`, sub: past ? formatDayLong(dayMs, page.locale) : sub };
+  return { value: weekday, label: `${named} ${verb}`, sub };
 }
 
 /** One entry per distinct source page, in order of first use, named by the organization ("City and County of Broomfield");

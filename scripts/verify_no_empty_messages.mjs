@@ -73,6 +73,21 @@ function timelessPastTense(html) {
   return text.match(PAST_TENSE)?.[0] ?? null;
 }
 
+/** Owner 2026-11-11: the hero of a holiday page says its weekday once ("Veterans Day is Thursday, Nov 11, 2027", not
+ *  "Thursday" over "Thursday, Nov 11, 2027"). Returns the repeated weekday, or null. */
+const WEEKDAY = /\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b/g;
+function heroRepeatsWeekday(html) {
+  if (!html.includes('class="hp-title"')) return null;
+  const m = html.match(/<div class="ui-hero[^"]*"[^>]*>([\s\S]*?)<\/div>/);
+  if (!m) return null;
+  const seen = new Set();
+  for (const [day] of m[1].replace(/<[^>]+>/g, ' ').matchAll(WEEKDAY)) {
+    if (seen.has(day)) return day;
+    seen.add(day);
+  }
+  return null;
+}
+
 const bad = [];
 let pages = 0;
 for (const file of walk(dist)) {
@@ -88,6 +103,8 @@ for (const file of walk(dist)) {
   if (emptyAboutBox(html)) bad.push(`${url}: "About this page" heading with no text under it`);
   const past = timelessPastTense(html);
   if (past) bad.push(`${url}: standing holiday page says "${past}" (past tense)`);
+  const twice = heroRepeatsWeekday(html);
+  if (twice) bad.push(`${url}: holiday hero says "${twice}" twice`);
 }
 const llms = join(dist, 'llms.txt');
 if (existsSync(llms)) {
