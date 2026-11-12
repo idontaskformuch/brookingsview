@@ -14,9 +14,10 @@ describe('factsDescription (QA build.meta-missing, 2026-11-12)', () => {
   });
 
   it('Glasgow event: title at venue, local day', () => {
+    // glasgow stories event-331533 (events 331533: "Sunday 15th Nov 2026 7:00pm")
     expect(factsDescription({
-      title: 'Bonnie "Prince" Billy', source_type: 'event', occurs_at: '2026-11-14T19:30:00Z', meta: { venue: 'Old Fruitmarket' },
-    }, GB)).toBe('Bonnie "Prince" Billy at Old Fruitmarket, Saturday 14 Nov 2026.');
+      title: 'Bonnie "Prince" Billy', source_type: 'event', occurs_at: '2026-11-15T19:00:00Z', meta: { venue: 'Old Fruitmarket' },
+    }, GB)).toBe('Bonnie "Prince" Billy at Old Fruitmarket, Sunday 15 Nov 2026.');
   });
 
   it("an evening meeting is on the town's day, not UTC's", () => {

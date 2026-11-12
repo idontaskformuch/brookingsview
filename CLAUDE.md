@@ -60,6 +60,13 @@
     `python -m scripts.prod_backup <åtgärd> "<SELECT>"`. Spärren ersätter
     inte ägarens ja. CI (GITHUB_ACTIONS=true) är undantaget.
 
+15. Exempel i förslag och värden i testfixturer kommer från riktiga rader i
+    datan (titel, datum, plats ordagrant ur en namngiven rad: slug/id),
+    aldrig skrivna för hand. Kantfall som saknar en riktig rad: en riktig
+    rad med det enda ändrade fältet utpekat i testet. (2026-11-12: ett
+    handskrivet "Saturday 14 Nov" för Bonnie "Prince" Billy, som är söndag
+    15 nov i källan, stod i både förslag och test.)
+
 ## Redaktionell grundregel
 
 Varje sida ska hjälpa en invånare att förstå eller göra något. Listor och
