@@ -48,6 +48,13 @@ export function wholeSentences(text: string, max: number): string | null {
 
 /** 120-160 characters: a long text keeps its whole sentences that fit, a short one gets the first filler sentences that fit; only a
  *  text with no sentence end inside 160 characters is cut at a word. */
+/** QA build.meta-missing (2026-11-12): a page whose description comes out empty fails the build instead of shipping
+ *  content="" (every /s/ page with withheld text did). A failed build deploys nothing; the town's last good deploy stays live. */
+export function requireDescription(description: string, path: string): string {
+  if (!description.trim()) throw new Error(`${path}: empty meta description (pass the page's own text or facts; QA build.meta-missing)`);
+  return description;
+}
+
 export function fitDescription(raw: string, fillers: string[] = []): string {
   // " -- " is a typewriter stand-in for a dash (style rule; source texts still carry it)
   let t = raw.replace(/\s+/g, ' ').replace(/ -- /g, ' — ').trim();

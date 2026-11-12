@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { ALL_CONFIGS } from './site-config';
-import { DESCRIPTION_KINDS, DESCRIPTION_MAX, DESCRIPTION_MIN, facilityDescription, fitDescription, isWordCut, metaDescription, monthDescription, projectDescription, weekDescription, wholeSentences } from './meta-description';
+import { DESCRIPTION_KINDS, DESCRIPTION_MAX, DESCRIPTION_MIN, facilityDescription, fitDescription, isWordCut, requireDescription, metaDescription, monthDescription, projectDescription, weekDescription, wholeSentences } from './meta-description';
 
 describe('fitDescription', () => {
   it('trims at a sentence end, else a word, and never past 160', () => {
@@ -106,4 +106,16 @@ describe('facilityDescription on the real facility data', () => {
       expect(bad).toEqual([]);
     });
   }
+});
+
+describe('requireDescription (QA build.meta-missing, 2026-11-12)', () => {
+  it('an empty or blank description fails the build, naming the page', () => {
+    expect(() => requireDescription('', '/s/meeting-2026-11-17-15082/')).toThrow('/s/meeting-2026-11-17-15082/: empty meta description');
+    expect(() => requireDescription('   ', '/x/')).toThrow('empty meta description');
+    expect(requireDescription('Planning Applications Committee.', '/x/')).toBe('Planning Applications Committee.');
+  });
+  it('BaseLayout passes every description through it', () => {
+    const src = readFileSync(new URL('../layouts/BaseLayout.astro', import.meta.url), 'utf8');
+    expect(src).toContain('requireDescription(fitDescription(');
+  });
 });

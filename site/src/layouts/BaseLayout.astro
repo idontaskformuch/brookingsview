@@ -20,7 +20,7 @@ import { getSignData } from '../lib/db';
 import { getTodayInstants } from '../lib/today-instants';
 import { signGameText } from '../lib/sign-game';
 import { siteConfig, ALL_SITES } from '../lib/site-config';
-import { fitDescription } from '../lib/meta-description';
+import { fitDescription, requireDescription } from '../lib/meta-description';
 import { placeLabel, countryProfile } from '../lib/country-profile';
 import { footerCredits } from '../lib/footer-credits';
 import { enabledSections, resolveNav } from '../lib/nav-sections';
@@ -76,7 +76,7 @@ const {
 } = Astro.props;
 // Every meta description passes here (owner 2026-11-11): one line, at most 160 characters, cut only after a whole sentence. Pages hand
 // over the whole text; a page's own slice(0, 155) cut words in half ("...Utility Board meets Tu").
-const description = fitDescription(rawDescription);
+const description = requireDescription(fitDescription(rawDescription ?? ''), Astro.url.pathname);
 
 await runBuildTimeChecks();
 assertAccentContrast(siteConfig.townId, siteConfig.brand);
