@@ -38,11 +38,11 @@ export function townHasHolidayPages(townId: string): boolean {
 
 /** The one holiday whose window is open (the nearest if two are), for the context card; null otherwise. A window
  *  that is open for a season the data does not cover counts as closed, so the card never promises stale facts. */
-export function activeHolidayCard(townId: string, nowMs: number) {
-  const covered = holidayPagesForTown(townId).filter((e) => resolvePageState(e.def, e.page.year, nowMs).kind === 'active');
-  return activeHoliday(covered, nowMs);
+export function activeHolidayCard(townId: string, nowMs: number, timezone: string) {
+  const covered = holidayPagesForTown(townId).filter((e) => resolvePageState(e.def, e.page.year, nowMs, timezone).kind === 'active');
+  return activeHoliday(covered, nowMs, timezone);
 }
 
-export function holidayListing(townId: string, nowMs: number) {
-  return inCalendarOrder(holidayPagesForTown(townId), nowMs);
+export function holidayListing(townId: string, nowMs: number, timezone: string) {
+  return inCalendarOrder(holidayPagesForTown(townId), nowMs, timezone);
 }

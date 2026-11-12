@@ -345,6 +345,11 @@
         "severity": "hard",
         "born_from": "Owner 2026-11-12: /this-week/2026-w46/ listed Broomfield's \"City Council Regular Meeting — Tue, Nov 10, 2026\" under \"Wed Nov 11\" and Moreno Valley's \"Planning Commission — Thu, Nov 12, 2026\" under \"Fri Nov 13\" (lib/this-week.ts read meeting instants as UTC dates despite meetingsHaveTime). Regression fixture: tests/fixtures/qa_this_week_meeting_day_2026-11-12 (before = the live pages), tests/test_verify_this_week_days.py; logic: site/src/lib/meeting-day.test.ts, this-week.test.ts, week-count.test.ts.",
         "what": "a meeting row on a /this-week/ page whose data-day-key or day tile is not the date its title ends with (scripts/verify_this_week_days.mjs, every deploy workflow)"
+    },
+    "logic.holiday-window-local-day": {
+        "severity": "hard",
+        "born_from": "Investigation 2026-11-12: lib/holiday-calendar.ts opened and closed holiday windows at UTC midnight, so Veterans Day's page and card went evergreen at 5pm MST on Nov 11 itself (and Thanksgiving's 'was' state ran on to 11:00 UTC Nov 28). No built page shows it on a fixed date, so the regression fixture is the vitest: site/src/lib/holiday-evergreen.test.ts 'each town's window opens and closes at the town's own midnight', the Glasgow New Year/summer-time case and 'the old UTC cut' (all three fail on a7f1b8d's holiday-calendar.ts).",
+        "what": "a holiday window (pageState/activeHoliday/nextOccurrence) that does not open and close at the town's own local midnight, in any of the four towns' zones (vitest)"
     }
   }
 }

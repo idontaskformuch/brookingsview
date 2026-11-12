@@ -5,7 +5,7 @@ import { siteConfig } from '../lib/site-config';
 import { activeHolidayCard } from '../config/holiday-pages/registry';
 import { formatDayShort } from '../lib/holiday-calendar';
 
-const card = activeHolidayCard(siteConfig.townId, Date.now());
+const card = activeHolidayCard(siteConfig.townId, Date.now(), siteConfig.timezone);
 const locale = siteConfig.country === 'gb' ? 'en-GB' : 'en-US';
 ---
 {card && (

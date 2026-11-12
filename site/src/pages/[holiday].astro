@@ -17,6 +17,6 @@ export function getStaticPaths() {
 
 const entry = holidayPageFor(Astro.params.holiday as string, siteConfig.townId);
 if (!entry) throw new Error(`no holiday page for ${Astro.params.holiday} / ${siteConfig.townId}`);
-const state = resolvePageState(entry.def, entry.page.year, Date.now());
+const state = resolvePageState(entry.def, entry.page.year, Date.now(), siteConfig.timezone);
 ---
 <HolidayPage page={entry.page} def={entry.def} state={state} hasClosures={!!siteConfig.hasClosureWatch} />

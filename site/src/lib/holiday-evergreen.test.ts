@@ -16,36 +16,38 @@ const vet = holidayPageDef('veterans-day')!;
 const thx = holidayPageDef('thanksgiving')!;
 const xmas = holidayPageDef('christmas')!;
 const TOWNS = ['brookings_sd', 'moreno_valley_ca', 'broomfield_co', 'glasgow'];
+const UTC = 'UTC';
+const TOWN_TZ = Object.fromEntries(ALL_CONFIGS.map((c) => [c.townId, c.timezone])) as Record<string, string>;
 
 type Evergreen = Extract<ReturnType<typeof pageState>, { kind: 'evergreen' }>;
 
 describe('page windows (owner 2026-11-04)', () => {
   it('Veterans Day: Nov 1 through Nov 11 2026 active (owner 2026-11-11: closes on the day), then evergreen with the next day in 2027', () => {
-    expect(pageState(vet, D(2026, 10, 31, 23)).kind).toBe('evergreen');
-    expect(pageState(vet, D(2026, 11, 1, 0)).kind).toBe('active');
-    expect(pageState(vet, D(2026, 11, 11, 23)).kind).toBe('active');
-    expect(pageState(vet, D(2026, 11, 12, 0)).kind).toBe('evergreen');
-    const after = pageState(vet, D(2026, 11, 12, 0)) as Evergreen;
+    expect(pageState(vet, D(2026, 10, 31, 23), UTC).kind).toBe('evergreen');
+    expect(pageState(vet, D(2026, 11, 1, 0), UTC).kind).toBe('active');
+    expect(pageState(vet, D(2026, 11, 11, 23), UTC).kind).toBe('active');
+    expect(pageState(vet, D(2026, 11, 12, 0), UTC).kind).toBe('evergreen');
+    const after = pageState(vet, D(2026, 11, 12, 0), UTC) as Evergreen;
     expect(after.kind).toBe('evergreen');
     expect(after.nextYear).toBe(2027);
     expect(formatDayLong(after.nextDay)).toBe('Thursday, Nov 11, 2027'); // Nov 11 2027 is a Thursday
   });
   it('Thanksgiving: Nov 16 through Nov 27 2026', () => {
-    expect(pageState(thx, D(2026, 11, 15, 23)).kind).toBe('evergreen');
-    expect(pageState(thx, D(2026, 11, 16, 0)).kind).toBe('active');
-    expect(pageState(thx, D(2026, 11, 27, 23)).kind).toBe('active');
-    expect(pageState(thx, D(2026, 11, 28, 0)).kind).toBe('evergreen');
+    expect(pageState(thx, D(2026, 11, 15, 23), UTC).kind).toBe('evergreen');
+    expect(pageState(thx, D(2026, 11, 16, 0), UTC).kind).toBe('active');
+    expect(pageState(thx, D(2026, 11, 27, 23), UTC).kind).toBe('active');
+    expect(pageState(thx, D(2026, 11, 28, 0), UTC).kind).toBe('evergreen');
   });
   it('Christmas (Glasgow): Sep 25 2026 through Jan 3 2027, across New Year', () => {
-    expect(pageState(xmas, D(2026, 9, 24, 23)).kind).toBe('evergreen');
-    expect(pageState(xmas, D(2026, 9, 25, 0)).kind).toBe('active');
-    expect(pageState(xmas, D(2027, 1, 3, 23))).toMatchObject({ kind: 'active', year: 2026 });
-    expect(pageState(xmas, D(2027, 1, 4, 0)).kind).toBe('evergreen');
+    expect(pageState(xmas, D(2026, 9, 24, 23), UTC).kind).toBe('evergreen');
+    expect(pageState(xmas, D(2026, 9, 25, 0), UTC).kind).toBe('active');
+    expect(pageState(xmas, D(2027, 1, 3, 23), UTC)).toMatchObject({ kind: 'active', year: 2026 });
+    expect(pageState(xmas, D(2027, 1, 4, 0), UTC).kind).toBe('evergreen');
     expect(new Date(pageWindow(xmas, 2026).start).toISOString().slice(0, 10)).toBe('2026-09-25');
   });
   it('a window open for a season the data does not cover is evergreen, never stale facts under a fresh title', () => {
-    expect(resolvePageState(vet, 2026, D(2026, 11, 5)).kind).toBe('active');
-    expect(resolvePageState(vet, 2026, D(2027, 11, 5)).kind).toBe('evergreen');
+    expect(resolvePageState(vet, 2026, D(2026, 11, 5), UTC).kind).toBe('active');
+    expect(resolvePageState(vet, 2026, D(2027, 11, 5), UTC).kind).toBe('evergreen');
   });
   it('the photo pool window is a separate field and is untouched', async () => {
     const { HOLIDAYS } = await import('../config/holidays');
@@ -53,26 +55,73 @@ describe('page windows (owner 2026-11-04)', () => {
     expect(HOLIDAYS.find((h) => h.id === 'christmas')!.windowDays).toBe(14);
     expect(HOLIDAYS.find((h) => h.id === 'veterans_day')!.windowDays).toBe(3);
   });
+  it("each town's window opens and closes at the town's own midnight, not UTC's (2026-11-12)", () => {
+    const zones = ['America/Chicago', 'America/Los_Angeles', 'America/Denver', 'Europe/London'];
+    expect(new Set(Object.values(TOWN_TZ))).toEqual(new Set(zones));
+    // Local wall-clock time in `tz` as a UTC instant (two passes, right across the Nov 1 US summer-time end).
+    const L = (tz: string, y: number, m: number, d: number, h: number, min = 0) => {
+      const want = Date.UTC(y, m - 1, d, h, min);
+      const offset = (t: number) => {
+        const p = new Intl.DateTimeFormat('en-CA', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+          .formatToParts(new Date(t));
+        const g = (k: string) => Number(p.find((x) => x.type === k)!.value);
+        return Date.UTC(g('year'), g('month') - 1, g('day'), g('hour'), g('minute')) - t;
+      };
+      const first = want - offset(want);
+      return want - offset(first);
+    };
+    for (const tz of zones) {
+      // Veterans Day (Nov 1 - Nov 11): open all of the 11th locally, closed at the town's midnight
+      expect(pageState(vet, L(tz, 2026, 10, 31, 23, 59), tz).kind).toBe('evergreen');
+      expect(pageState(vet, L(tz, 2026, 11, 1, 0, 0), tz).kind).toBe('active');
+      expect(pageState(vet, L(tz, 2026, 11, 11, 18, 0), tz).kind).toBe('active');
+      expect(pageState(vet, L(tz, 2026, 11, 11, 23, 59), tz).kind).toBe('active');
+      expect(pageState(vet, L(tz, 2026, 11, 12, 0, 0), tz).kind).toBe('evergreen');
+      // Thanksgiving (Nov 16 - Nov 27)
+      expect(pageState(thx, L(tz, 2026, 11, 15, 23, 59), tz).kind).toBe('evergreen');
+      expect(pageState(thx, L(tz, 2026, 11, 16, 0, 0), tz).kind).toBe('active');
+      expect(pageState(thx, L(tz, 2026, 11, 27, 23, 59), tz).kind).toBe('active');
+      expect(pageState(thx, L(tz, 2026, 11, 28, 0, 0), tz).kind).toBe('evergreen');
+      // the day the window holds is the town's day: on the evening of Nov 11 the next Veterans Day is still today
+      expect(nextOccurrence(vet, L(tz, 2026, 11, 11, 23, 0), tz).year).toBe(2026);
+      expect(nextOccurrence(vet, L(tz, 2026, 11, 12, 0, 30), tz).year).toBe(2027);
+    }
+  });
+  it('Glasgow: Christmas window across New Year and the summer-time switch, at local midnight', () => {
+    const tz = 'Europe/London';
+    // Sep 25 opens at 00:00 BST = Sep 24 23:00 UTC
+    expect(pageState(xmas, Date.UTC(2026, 8, 24, 22, 59), tz).kind).toBe('evergreen');
+    expect(pageState(xmas, Date.UTC(2026, 8, 24, 23, 0), tz).kind).toBe('active');
+    // Jan 3 closes at 00:00 GMT on Jan 4
+    expect(pageState(xmas, Date.UTC(2027, 0, 3, 23, 59), tz)).toMatchObject({ kind: 'active', year: 2026 });
+    expect(pageState(xmas, Date.UTC(2027, 0, 4, 0, 0), tz).kind).toBe('evergreen');
+    // New Year's Eve 23:30 is still the 2026 window on the town's day
+    expect(pageState(xmas, Date.UTC(2026, 11, 31, 23, 30), tz)).toMatchObject({ kind: 'active', year: 2026 });
+  });
+  it('the old UTC cut: at 6pm MST on Nov 11 (01:00 UTC Nov 12) Broomfield still shows Veterans Day', () => {
+    expect(activeHolidayCard('broomfield_co', Date.UTC(2026, 10, 12, 1), TOWN_TZ.broomfield_co)?.def.slug).toBe('veterans-day');
+    expect(activeHolidayCard('broomfield_co', Date.UTC(2026, 10, 12, 7), TOWN_TZ.broomfield_co)).toBeNull();
+  });
   it('next occurrence: today counts, the day after rolls to next year', () => {
-    expect(nextOccurrence(vet, D(2026, 11, 11, 20)).year).toBe(2026);
-    expect(nextOccurrence(vet, D(2026, 11, 12, 1)).year).toBe(2027);
+    expect(nextOccurrence(vet, D(2026, 11, 11, 20), UTC).year).toBe(2026);
+    expect(nextOccurrence(vet, D(2026, 11, 12, 1), UTC).year).toBe(2027);
   });
 });
 
 describe('evergreen wording is per holiday and uses years, never "last year"', () => {
   it('Veterans Day and Thanksgiving use the hours sentence', () => {
-    const v = evergreenLines(vet, 2026, pageState(vet, D(2026, 12, 20)) as Evergreen);
+    const v = evergreenLines(vet, 2026, pageState(vet, D(2026, 12, 20), UTC) as Evergreen);
     expect(v.note).toBe("These are the 2026 hours. 2027 hours will be added when they're announced.");
     expect(v.next).toBe('Next Veterans Day: Thursday, Nov 11, 2027');
-    expect(evergreenLines(thx, 2026, pageState(thx, D(2026, 12, 20)) as Evergreen).note).toContain('2027 hours will be added');
+    expect(evergreenLines(thx, 2026, pageState(thx, D(2026, 12, 20), UTC) as Evergreen).note).toContain('2027 hours will be added');
   });
   it('Christmas has its own sentence and en-GB date', () => {
-    const l = evergreenLines(xmas, 2026, pageState(xmas, D(2027, 2, 1)) as Evergreen, 'en-GB');
+    const l = evergreenLines(xmas, 2026, pageState(xmas, D(2027, 2, 1), UTC) as Evergreen, 'en-GB');
     expect(l.note).toBe("These are the 2026 festive dates and times. 2027 festive dates and times will be added when they're announced.");
     expect(l.next).toBe('Next Christmas: Saturday 25 Dec 2027');
   });
   it('before the window, while the data is already the coming season, there is no "will be added" line', () => {
-    expect(evergreenLines(vet, 2026, pageState(vet, D(2026, 10, 20)) as Evergreen).note).toBeNull();
+    expect(evergreenLines(vet, 2026, pageState(vet, D(2026, 10, 20), UTC) as Evergreen).note).toBeNull();
   });
   it('no relative year label anywhere in the page code or wording', () => {
     for (const d of HOLIDAY_PAGE_DEFS) expect(d.evergreenNote(2026, 2027)).not.toMatch(/last year/i);
@@ -159,21 +208,21 @@ describe('which towns get which pages (confirmed row required, otherwise no page
 
 describe('/holidays/ listing and the single context card', () => {
   it('lists the next holiday first, in calendar order', () => {
-    expect(holidayListing('broomfield_co', D(2026, 11, 5)).map((e) => e.def.slug)).toEqual(['veterans-day', 'thanksgiving']);
-    expect(holidayListing('broomfield_co', D(2026, 11, 14)).map((e) => e.def.slug)).toEqual(['thanksgiving', 'veterans-day']);
+    expect(holidayListing('broomfield_co', D(2026, 11, 5), TOWN_TZ.broomfield_co).map((e) => e.def.slug)).toEqual(['veterans-day', 'thanksgiving']);
+    expect(holidayListing('broomfield_co', D(2026, 11, 14), TOWN_TZ.broomfield_co).map((e) => e.def.slug)).toEqual(['thanksgiving', 'veterans-day']);
   });
   it('the card shows only inside a window, and only one', () => {
-    expect(activeHolidayCard('broomfield_co', D(2026, 11, 5))?.def.slug).toBe('veterans-day');
-    expect(activeHolidayCard('broomfield_co', D(2026, 11, 14))).toBeNull(); // between the two windows
-    expect(activeHolidayCard('broomfield_co', D(2026, 11, 20))?.def.slug).toBe('thanksgiving');
-    expect(activeHolidayCard('brookings_sd', D(2026, 7, 1))).toBeNull();
-    expect(activeHolidayCard('glasgow', D(2026, 12, 20))?.def.slug).toBe('christmas');
-    expect(activeHolidayCard('glasgow', D(2027, 1, 10))).toBeNull();
+    expect(activeHolidayCard('broomfield_co', D(2026, 11, 5), TOWN_TZ.broomfield_co)?.def.slug).toBe('veterans-day');
+    expect(activeHolidayCard('broomfield_co', D(2026, 11, 14), TOWN_TZ.broomfield_co)).toBeNull(); // between the two windows
+    expect(activeHolidayCard('broomfield_co', D(2026, 11, 20), TOWN_TZ.broomfield_co)?.def.slug).toBe('thanksgiving');
+    expect(activeHolidayCard('brookings_sd', D(2026, 7, 1), TOWN_TZ.brookings_sd)).toBeNull();
+    expect(activeHolidayCard('glasgow', D(2026, 12, 20), TOWN_TZ.glasgow)?.def.slug).toBe('christmas');
+    expect(activeHolidayCard('glasgow', D(2027, 1, 10), TOWN_TZ.glasgow)).toBeNull();
   });
   it('with two open windows the nearest holiday wins', () => {
     const entries = [{ def: xmas }, { def: vet }];
-    expect(activeHoliday(entries, D(2026, 11, 5))?.def.slug).toBe('veterans-day');
-    expect(activeHoliday(entries, D(2026, 12, 20))?.def.slug).toBe('christmas');
+    expect(activeHoliday(entries, D(2026, 11, 5), UTC)?.def.slug).toBe('veterans-day');
+    expect(activeHoliday(entries, D(2026, 12, 20), UTC)?.def.slug).toBe('christmas');
   });
   it('the card renders one aside at most and is on /events/ only (the front page leads with the holiday itself, lib/front-page.ts)', () => {
     expect(read('../components/HolidayContextCard.astro').match(/<aside/g)).toHaveLength(1);
