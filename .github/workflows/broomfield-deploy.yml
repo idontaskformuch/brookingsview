@@ -62,6 +62,8 @@ jobs:
         run: node scripts/verify_town_games.mjs site/dist broomfield_co
       - name: Meetings on /this-week/ sit on the day their title names
         run: node scripts/verify_this_week_days.mjs site/dist
+      - name: Meeting times come from AgendaLink scheduleIso, never scheduleTime
+        run: node scripts/verify_no_schedule_time.mjs
       - name: Meta descriptions are whole sentences (indexable pages)
         run: node scripts/report_meta_descriptions.mjs site/dist "$RUNNER_TEMP/meta-descriptions.tsv"
       - name: Deploy to Cloudflare Workers (Broomfield)
