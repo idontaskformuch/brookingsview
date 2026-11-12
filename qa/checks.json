@@ -350,6 +350,11 @@
         "severity": "hard",
         "born_from": "Investigation 2026-11-12: lib/holiday-calendar.ts opened and closed holiday windows at UTC midnight, so Veterans Day's page and card went evergreen at 5pm MST on Nov 11 itself (and Thanksgiving's 'was' state ran on to 11:00 UTC Nov 28). No built page shows it on a fixed date, so the regression fixture is the vitest: site/src/lib/holiday-evergreen.test.ts 'each town's window opens and closes at the town's own midnight', the Glasgow New Year/summer-time case and 'the old UTC cut' (all three fail on a7f1b8d's holiday-calendar.ts).",
         "what": "a holiday window (pageState/activeHoliday/nextOccurrence) that does not open and close at the town's own local midnight, in any of the four towns' zones (vitest)"
+    },
+    "build.no-agendalink-schedule-time": {
+        "severity": "hard",
+        "born_from": "Investigation 2026-11-12: Broomfield story 3447 said 7 PM for the 6 p.m. council meeting of Oct 27; AgendaLink's scheduleTime carries a one-hour error, scheduleIso is correct (agendalink_v1.py). Regression fixture: tests/test_verify_no_schedule_time.py (a .get(\"scheduleTime\"), a .scheduleTime and a SQL ->>'scheduleTime' read each fail; prose naming the field passes).",
+        "what": "code in scrapers/, ai_pipeline/, scripts/ or site/src/ that reads AgendaLink's scheduleTime (scripts/verify_no_schedule_time.mjs, every deploy workflow)"
     }
   }
 }
