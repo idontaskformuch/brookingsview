@@ -79,6 +79,17 @@ export function formatDateLong(date: Date, timeZone: string, country: CountryId 
   }).format(date);
 }
 
+const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "Sun 15 Nov 2026" (gb) / "Sun, Nov 15, 2026" (us) for a calendar day -- the form publish.py writes into meeting titles, so a
+ *  meta description names a meeting's and an event's day alike. The one day format of /s/ and /whats-on/ descriptions. */
+export function formatWeekdayDate(day: { y: number; m: number; d: number }, country: CountryId | undefined): string {
+  const wd = WEEKDAYS_SHORT[new Date(Date.UTC(day.y, day.m - 1, day.d)).getUTCDay()];
+  const mon = MONTHS_SHORT[day.m - 1];
+  return country === 'gb' ? `${wd} ${day.d} ${mon} ${day.y}` : `${wd}, ${mon} ${day.d}, ${day.y}`;
+}
+
 /** "7pm" / "7:30pm" (decided by the owner for gb 2026-10-22; the same shape
  *  lib/time.ts already produces for US towns), in the given IANA zone. */
 export function formatClockCompact(date: Date, timeZone: string): string {

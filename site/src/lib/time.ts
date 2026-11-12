@@ -175,16 +175,32 @@ export function dayTimeKicker(date: Date | string, timeZone: string, endsAt?: Da
  *  time, so no clock time is claimed. `recurrence` is the source's own text ("Every week on Tuesday"); anything not
  *  recognised reads "Regular". */
 export function seriesKicker(recurrence: string | null | undefined, date: Date | string, timeZone: string, timeText = ''): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  const day = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(d);
+  const p = seriesPattern(recurrence, date, timeZone);
   const at = timeText ? ` ${timeText}` : '';
+  if (p.kind === 'daily') return `Daily${at}`;
+  const day = p.weekday.slice(0, 3);
+  if (p.kind === 'every-n-weeks') return `Every ${p.weeks} weeks · ${day}${at}`;
+  if (p.kind === 'weekly') return `Weekly · ${day}${at}`;
+  if (p.kind === 'monthly') return `Monthly · ${day}${at}`;
+  return `Regular · ${day}${at}`;
+}
+
+export type SeriesPattern =
+  | { kind: 'every-n-weeks'; weeks: number; weekday: string }
+  | { kind: 'weekly' | 'monthly' | 'regular'; weekday: string }
+  | { kind: 'daily' };
+
+/** The cadence and weekday ("Tuesday") seriesKicker() shows; the meta description words the same pattern (story-description.ts). */
+export function seriesPattern(recurrence: string | null | undefined, date: Date | string, timeZone: string): SeriesPattern {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone }).format(d);
   const r = (recurrence ?? '').toLowerCase();
   const n = r.match(/every\s+(\d+)\s+weeks?/);
-  if (n) return `Every ${n[1]} weeks · ${day}${at}`;
-  if (/every\s+week|weekly/.test(r)) return `Weekly · ${day}${at}`;
-  if (/every\s+day|daily/.test(r)) return `Daily${at}`;
-  if (/month/.test(r)) return `Monthly · ${day}${at}`;
-  return `Regular · ${day}${at}`;
+  if (n) return { kind: 'every-n-weeks', weeks: Number(n[1]), weekday };
+  if (/every\s+week|weekly/.test(r)) return { kind: 'weekly', weekday };
+  if (/every\s+day|daily/.test(r)) return { kind: 'daily' };
+  if (/month/.test(r)) return { kind: 'monthly', weekday };
+  return { kind: 'regular', weekday };
 }
 
 /** Item D2: whether a single event instance is over, for the detail page's

@@ -33,6 +33,9 @@ import { buildTicketmasterEventJsonLd } from '../../lib/ticketmaster-jsonld';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
 import { SECTION_THEME } from '../../lib/section-theme';
+import { formatTime } from '../../lib/db';
+import { countryProfile, formatWeekdayDate } from '../../lib/country-profile';
+import { meetingDayParts } from '../../lib/meeting-day.mjs';
 
 export async function getStaticPaths() {
   if (!siteConfig.hasWhatsOn) return [];
@@ -54,14 +57,16 @@ const heroImage = resolveImage(ticketmasterResolvableImage(item), {
 });
 
 const distance = distanceLabel(e.venueDistanceMiles, siteConfig.cityName);
+// The town's country decides the format (Glasgow printed "Thursday, November 26, 2026 · 7:30 PM" until 2026-11-12).
 const dateLabel = item.occurs_at
-  ? new Date(item.occurs_at).toLocaleDateString('en-US', {
+  ? new Date(item.occurs_at).toLocaleDateString(countryProfile(siteConfig.country).locale, {
       weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: siteConfig.timezone,
     })
   : null;
-const timeLabel = item.occurs_at
-  ? new Date(item.occurs_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: siteConfig.timezone })
-  : null;
+const timeLabel = item.occurs_at ? formatTime(item.occurs_at) : null;
+// The meta description names the day as /s/ descriptions do: formatWeekdayDate() ("Thu 26 Nov 2026" / "Thu, Nov 26, 2026").
+const dayParts = meetingDayParts(item.occurs_at, siteConfig.timezone, true);
+const descriptionDay = dayParts ? formatWeekdayDate(dayParts, siteConfig.country) : null;
 
 const canonicalUrl = new URL(`/whats-on/${ticketmasterSlug(e)}/`, Astro.site ?? siteConfig.siteUrl).href;
 // One level deeper than buildClusterBreadcrumbTrail's own 3-crumb model --
@@ -74,7 +79,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
 const eventJsonLd = buildTicketmasterEventJsonLd(item, canonicalUrl, siteConfig.siteName);
 ---
 <BaseLayout title={`${e.title} — ${siteConfig.siteName}`} ogSlug="default"
-  description={`${e.title}${e.venueName ? ` at ${e.venueName}` : ''}${dateLabel ? `, ${dateLabel}` : ''}.`}
+  description={`${e.title}${e.venueName ? ` at ${e.venueName}` : ''}${descriptionDay ? `, ${descriptionDay}` : ''}.`}
   noindex accentColor={SECTION_THEME.events.accent}>
   <Breadcrumbs trail={breadcrumbTrail} />
 

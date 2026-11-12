@@ -3084,9 +3084,14 @@ export function formatMeetingKicker(value: string | Date | null): string {
 
 /** Rätt formatering av story.occurs_at givet KÄLLTYP -- enda stället den
  *  distinktionen behöver göras, så inget anropsställe kan glömma den. */
+/** Whether a story's date line is the series kicker ("Regular · Sat 10:30am") rather than one date. */
+export function showsSeriesKicker(story: Pick<Story, 'source_type'> & { is_recurring_series?: boolean }): boolean {
+  return siteConfig.country === 'gb' && story.source_type === 'event' && Boolean(story.is_recurring_series);
+}
+
 export function formatOccursAt(story: Pick<Story, 'source_type' | 'occurs_at'> & { ends_at?: string | null; is_recurring_series?: boolean; meta?: { recurrence?: string } | null }): string {
   if (!story.occurs_at) return '';
-  if (siteConfig.country === 'gb' && story.source_type === 'event' && story.is_recurring_series) {
+  if (showsSeriesKicker(story)) {
     return seriesKicker(story.meta?.recurrence, story.occurs_at, TZ, seriesClockText(story.occurs_at));
   }
   if (story.source_type === 'meeting' || story.source_type === 'meeting_followup') return formatMeetingDate(story.occurs_at);

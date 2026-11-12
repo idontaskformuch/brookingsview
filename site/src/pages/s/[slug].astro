@@ -9,7 +9,7 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Byline from '../../components/Byline.astro';
 import WorkerPulseComments from '../../components/WorkerPulseComments.astro';
 import {
-  getAllStories, getRelatedStories, formatOccursAt, formatDate, formatTime, formatMeetingDate, formatDateTime, seriesClockText, titleTagForStory, CATEGORY_LABELS, CATEGORY_HREFS,
+  getAllStories, getRelatedStories, formatOccursAt, showsSeriesKicker, formatDate, formatTime, formatMeetingDate, formatDateTime, seriesClockText, titleTagForStory, CATEGORY_LABELS, CATEGORY_HREFS,
   getWorkerPulseComments, getFacilities, buildVenueIndex, resolveVenue, getProjectForMeetingId,
   isSandboxUrl, getUpcomingStories, getAllWeeklyStories, getUpcomingArtsEvents, getMeetingDecisions, getProjectForMatterId,
 } from '../../lib/db';
@@ -442,9 +442,10 @@ const eventJsonLdObject = buildEventJsonLd(
   canonicalUrl, ogImageUrl,
 );
 // A withheld text (displayBody '') still gets a description: the facts the page shows (QA build.meta-missing, 2026-11-12).
+// Its day follows the date line above (`when`): one day, the series kicker's pattern, or none (QA build.description-day).
 const metaDescriptionText = displayBody.trim() || factsDescription(story, {
-  timezone: siteConfig.timezone, meetingsHaveTime: siteConfig.meetingsHaveTime,
-  locale: siteConfig.country === 'gb' ? 'en-GB' : 'en-US',
+  timezone: siteConfig.timezone, meetingsHaveTime: siteConfig.meetingsHaveTime, country: siteConfig.country,
+  dateLine: hasByline ? 'none' : showsSeriesKicker(story) ? 'series' : 'date',
 });
 ---
 
