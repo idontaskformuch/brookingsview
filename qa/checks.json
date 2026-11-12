@@ -365,6 +365,11 @@
         "severity": "hard",
         "born_from": "Investigation 2026-11-12: a hand-written proposal example put Bonnie \"Prince\" Billy (glasgow event-331533) on Saturday 14 Nov; source, page and description all say Sunday 15 Nov. Checking every page found 9 Glasgow series pages (event-series-*) whose description fixed one date (\"Saturday 14 Nov 2026\", two already past) while the page says \"Regular · Sat 10:30am\". The first run of the check also found 20 Moreno /s/home-sales-digest-* pages naming the day before the covered month (occurs_at = month's UTC first read in Los Angeles: \"Saturday, Aug 31, 2024\" on \"Covering September 2024\"); fixed by giving pages without a date line no day (story-description.test.ts). Regression fixture: tests/fixtures/qa_description_day_2026-11-12 (before = /s/event-series-2e15f0f2497a5f8f/ built locally on 416b535), tests/test_verify_description_days.py.",
         "what": "a /s/ or /whats-on/ page whose meta description names a day other than its date line's, or names a day while the date line has none (scripts/verify_description_days.mjs, every deploy workflow)"
+    },
+    "build.description-venue": {
+        "severity": "hard",
+        "born_from": "Owner 2026-11-12: Moreno /s/event-163864/ \"MAIN LIBRARY: Pijama y Cuentos ~ Pajamas & Stories\" had the description \"... at Main Library,25480 Alessandro Blvd, Moreno Valley, CA 92553, USA, Wed, Dec 16, 2026.\". factsDescription() compared only the whole venue_raw (name + street address) with the title; the name alone was left out only when the address was cut for length. The first run found 89 of 795 Moreno /s/ pages (Main Library, Shadow Mountain Park, Lasselle Sports Park, Celebration Park). Regression fixture: tests/fixtures/qa_description_venue_2026-11-12 (before = /s/event-163864/ built locally on 2261bb6), tests/test_verify_description_venue.py.",
+        "what": "a /s/ page whose meta description adds \"at <place>\" when the headline already names that place (scripts/verify_description_venue.mjs, every deploy workflow)"
     }
   }
 }
