@@ -2,7 +2,8 @@
 /**
  * Every meta description of a built town, for reading (owner 2026-11-11: the mid-sentence cut on facility pages should be ruled out
  * for every meta description in the repo, and the whole set read later). Writes a TSV, one row per page: path, indexable, length,
- * flags, description. Exits 1 when an INDEXABLE page has a hard flag (missing, word cut, no sentence end, internal " -- ").
+ * flags, description. Exits 1 when an INDEXABLE page has a hard flag (missing, word cut, no sentence end, internal " -- "), and when
+ * ANY page, noindex too, has no description (QA build.meta-missing, 2026-11-12: every /s/ page whose text is withheld had content="").
  *
  * Flags: missing, short(<70), long(>160), word-cut (ends in "…"), no-end (no . ! ? at the end), dash (" -- "), dup (same text on
  * another page of this town).
@@ -57,14 +58,14 @@ for (const r of rows.sort((a, b) => a.path.localeCompare(b.path))) {
     if (d.includes(' -- ')) flags.push('dash');
     if (seen.get(d) > 1) flags.push('dup');
   }
-  if (r.indexable && flags.some((f) => HARD.has(f))) bad.push(`${r.path} [${flags.join(',')}] ${d}`);
+  if ((r.indexable && flags.some((f) => HARD.has(f))) || flags.includes('missing')) bad.push(`${r.path} [${flags.join(',')}] ${d}`);
   lines.push([r.path, r.indexable ? 'yes' : 'no', d.length, flags.join(','), d.replace(/\t/g, ' ')].join('\t'));
 }
 writeFileSync(out, `${lines.join('\n')}\n`, 'utf8');
 const indexableCount = rows.filter((r) => r.indexable).length;
 console.log(`report_meta_descriptions: ${rows.length} pages (${indexableCount} indexable) -> ${out}`);
 if (bad.length) {
-  console.error(`report_meta_descriptions: ${bad.length} indexable page(s) with a hard flag:`);
+  console.error(`report_meta_descriptions: ${bad.length} page(s) with no description or an indexable page with a hard flag:`);
   for (const b of bad.slice(0, 40)) console.error(`  ${b}`);
   process.exit(1);
 }

@@ -355,6 +355,11 @@
         "severity": "hard",
         "born_from": "Investigation 2026-11-12: Broomfield story 3447 said 7 PM for the 6 p.m. council meeting of Oct 27; AgendaLink's scheduleTime carries a one-hour error, scheduleIso is correct (agendalink_v1.py). Regression fixture: tests/test_verify_no_schedule_time.py (a .get(\"scheduleTime\"), a .scheduleTime and a SQL ->>'scheduleTime' read each fail; prose naming the field passes; a line marked `verify_no_schedule_time: strip` passes). The model-facing record has the field removed from raw_data (ai_pipeline/publish.py _without_model_hidden_raw_fields): tests/test_publish_model_hidden_fields.py.",
         "what": "code in scrapers/, ai_pipeline/, scripts/ or site/src/ that reads AgendaLink's scheduleTime (scripts/verify_no_schedule_time.mjs, every deploy workflow)"
+    },
+    "build.meta-missing": {
+        "severity": "hard",
+        "born_from": "Investigation 2026-11-12: every /s/ page whose story text is withheld (ai:* rows, meta-only template bodies that only repeat title + place) was built with <meta name=\"description\" content> -- Brookings 278, Broomfield 38, Glasgow 95, Moreno Valley 748 pages, all noindex, so the indexable-only report never failed. Regression fixture: tests/fixtures/qa_meta_missing_2026-11-12 (before = glasgowloop.co.uk/s/meeting-2026-11-17-15082/ as served on 49e7892), tests/test_report_meta_missing.py.",
+        "what": "any built page, noindex included, without a meta description (scripts/report_meta_descriptions.mjs, every deploy workflow)"
     }
   }
 }
