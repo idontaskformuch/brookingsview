@@ -16,10 +16,12 @@ describe('scrape cron', () => {
   it('dispatches all four scrape workflows (Glasgow included)', () => {
     expect(dueWorkflows(SCRAPE_CRON, at('2026-10-21T06:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
   });
-  it('adds the OpenStreetMap snapshot on Monday 11:00 UTC only (once a week)', () => {
+  it('adds the OpenStreetMap snapshot on Monday and Thursday 11:00 UTC, the venue register on Monday only', () => {
     expect(dueWorkflows(SCRAPE_CRON, at('2026-11-02T11:00:00Z'))).toEqual([...SCRAPE_WORKFLOWS, OSM_WORKFLOW, REGISTER_WORKFLOW]);
     expect(dueWorkflows(SCRAPE_CRON, at('2026-11-02T23:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
     expect(dueWorkflows(SCRAPE_CRON, at('2026-11-03T11:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
+    expect(dueWorkflows(SCRAPE_CRON, at('2026-11-05T11:00:00Z'))).toEqual([...SCRAPE_WORKFLOWS, OSM_WORKFLOW]);
+    expect(dueWorkflows(SCRAPE_CRON, at('2026-11-05T23:00:00Z'))).toEqual(SCRAPE_WORKFLOWS);
   });
   it('the OpenStreetMap workflow file exists and can be dispatched', () => {
     const yml = readFileSync(new URL(`../../.github/workflows/${OSM_WORKFLOW}`, import.meta.url), 'utf8');

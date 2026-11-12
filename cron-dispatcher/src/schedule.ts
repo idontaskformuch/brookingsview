@@ -27,8 +27,9 @@ export const SCRAPE_WORKFLOWS = [
   'glasgow-scrape.yml',
 ];
 
-// Weekly OpenStreetMap snapshot for /tonight's "Open late" (owner 2026-10-29): rides the Monday 11:00 UTC scrape tick, so no extra cron
-// trigger is needed (Cloudflare's free plan caps them). Overpass policy: one run per town per week.
+// Weekly OpenStreetMap snapshot for /tonight's "Open late" (owner 2026-10-29): rides the Monday and Thursday 11:00 UTC scrape ticks, so no
+// extra cron trigger is needed (Cloudflare's free plan caps them). Overpass policy: one run per town per week -- the script's 6-day guard
+// skips a town on Thursday unless Monday missed it (owner 2026-11-12: one failed Monday must not age a snapshot past the 14-day limit).
 export const OSM_WORKFLOW = 'osm-open-late.yml';
 
 // Curated venue register for /tonight (steg 6): same Monday 11:00 UTC tick, one fetch per venue per week.
@@ -71,8 +72,10 @@ export function localParts(scheduledTime: number, timeZone: string) {
 export function dueWorkflows(cron: string, scheduledTime: number): string[] {
   if (cron === SCRAPE_CRON) {
     const at = new Date(scheduledTime);
-    const mondayMorning = at.getUTCDay() === 1 && at.getUTCHours() === 11;
-    return mondayMorning ? [...SCRAPE_WORKFLOWS, OSM_WORKFLOW, REGISTER_WORKFLOW] : [...SCRAPE_WORKFLOWS];
+    const morning = at.getUTCHours() === 11;
+    if (morning && at.getUTCDay() === 1) return [...SCRAPE_WORKFLOWS, OSM_WORKFLOW, REGISTER_WORKFLOW];
+    if (morning && at.getUTCDay() === 4) return [...SCRAPE_WORKFLOWS, OSM_WORKFLOW];
+    return [...SCRAPE_WORKFLOWS];
   }
   if (cron === MORNING_CRON) {
     return MORNING_TOWNS.filter(({ timeZone }) => {

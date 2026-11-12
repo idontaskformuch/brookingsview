@@ -1,5 +1,5 @@
 name: osm-open-late
-# Weekly OpenStreetMap snapshot for /tonight's "Open late" block. Started by the cron dispatcher on Mondays (11:00 UTC tick), or by hand.
+# Weekly OpenStreetMap snapshot for /tonight's "Open late" block. Started by the cron dispatcher on Mondays and Thursdays (11:00 UTC tick), or by hand.
 # Writes osm_places only; the site builds read that row and never call Overpass. One Overpass request per town per week
 # (scripts/refresh_osm_places.py skips a town whose snapshot is younger than 6 days unless --force).
 
