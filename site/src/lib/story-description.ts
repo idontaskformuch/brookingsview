@@ -3,7 +3,7 @@
  *  never from model text (2026-11-12: these pages shipped <meta name="description" content>; QA build.meta-missing).
  *
  *  "<title> at <venue>, <day>." -- a part that is missing is left out with its separator, a day the title already names is not
- *  repeated. The day is formatWeekdayDate() (the town's country), the form meeting titles carry. A title ending in "?" or "!"
+ *  repeated, and neither is a venue whose name the title already carries (QA build.description-venue). The day is formatWeekdayDate() (the town's country), the form meeting titles carry. A title ending in "?" or "!"
  *  keeps it and the rest is its own sentence: "<title>? At <venue>, <day>.". A recurring series whose date line is the
  *  "Regular · Sat" kicker gets that kicker's pattern ("every Saturday"), never one occurrence's date, and a page with no date
  *  line gets no day (QA build.description-day).
@@ -72,9 +72,12 @@ export function factsDescription(
     if (parts) when = formatWeekdayDate(parts, opts.country);
   }
 
+  // A title that names the place ("MAIN LIBRARY: Pijama y Cuentos") gets no venue, its street address included.
+  const name = venue.split(',')[0].trim();
+  const titleNamesPlace = name !== '' && title.toLowerCase().includes(name.toLowerCase());
   const build = (place: string) => {
     const rest: string[] = [];
-    if (place && !title.toLowerCase().includes(place.toLowerCase())) {
+    if (place && !titleNamesPlace) {
       rest.push(NOT_A_LOCATION.test(place) ? `${place[0].toLowerCase()}${place.slice(1)}` : `at ${place}`);
     }
     if (when) rest.push(when);
@@ -91,5 +94,5 @@ export function factsDescription(
   };
   const full = build(venue);
   if (full.length <= DESCRIPTION_CAP) return full;
-  return capAtWord(build(venue.split(',')[0].trim()));
+  return capAtWord(build(name));
 }

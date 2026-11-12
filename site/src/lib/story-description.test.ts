@@ -36,6 +36,14 @@ describe('factsDescription (QA build.meta-missing, build.description-day, 2026-1
     }, MORENO)).toBe('Moreno Valley: MV MALL Library: Game On! At Moreno Valley Public Library Iris Plaza Branch, Fri, Dec 18, 2026.');
   });
 
+  it('a venue whose name the title carries is left out with its street address (QA build.description-venue)', () => {
+    // moreno_valley_ca event-163864: 02:00Z is 6pm the evening before in Moreno Valley
+    expect(factsDescription({
+      title: 'Moreno Valley: MAIN LIBRARY: Pijama y Cuentos ~ Pajamas & Stories', source_type: 'event',
+      occurs_at: '2026-12-17T02:00:00Z', venue_raw: 'Main Library,25480 Alessandro Blvd, Moreno Valley, CA 92553, USA', meta: null,
+    }, MORENO)).toBe('Moreno Valley: MAIN LIBRARY: Pijama y Cuentos ~ Pajamas & Stories, Wed, Dec 16, 2026.');
+  });
+
   it('a missing place or day is left out with its separator, never a dangling comma', () => {
     // brookings_sd event-316626: no venue (23:30Z = 5:30pm CST, same day)
     expect(factsDescription({
