@@ -41,3 +41,8 @@ def test_a_sql_key_fails(tmp_path):
 
 def test_prose_naming_the_field_passes(tmp_path):
     assert run(_tree(tmp_path, "scrapers/x.py", "# scheduleTime has its own one-hour error (`scheduleTime`)\n")).returncode == 0
+
+
+def test_a_marked_strip_line_passes(tmp_path):
+    r = run(_tree(tmp_path, "ai_pipeline/x.py", '_HIDDEN = ("scheduleTime",)  # verify_no_schedule_time: strip\n'))
+    assert r.returncode == 0, r.stderr

@@ -865,6 +865,26 @@ def _localize_datetime_fields(record: dict, tz: ZoneInfo) -> dict:
     return out
 
 
+# raw_data fields the model must never see. AgendaLink's scheduleTime has its own one-hour error ("7:00 PM" for a 6 p.m.
+# meeting, Broomfield story 3447, 2026-11-12); the meeting's time is meeting_date, read from scheduleIso
+# (scrapers/parsers/agendalink_v1.py). Left in, source_to_text() hands it to the model AND to the meta source check, so a
+# wrong time is copied and then "found in the source".
+_MODEL_HIDDEN_RAW_FIELDS = ("scheduleTime",)  # verify_no_schedule_time: strip
+
+
+def _without_model_hidden_raw_fields(record: dict) -> dict:
+    """The record with _MODEL_HIDDEN_RAW_FIELDS removed from raw_data (a dict, or JSON text); the row itself is untouched."""
+    raw = record.get("raw_data")
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except ValueError:
+            return record
+    if not isinstance(raw, dict) or not any(k in raw for k in _MODEL_HIDDEN_RAW_FIELDS):
+        return record
+    return {**record, "raw_data": {k: v for k, v in raw.items() if k not in _MODEL_HIDDEN_RAW_FIELDS}}
+
+
 def _refresh_series_occurs_at(conn, town_id: str, slug: str, next_start) -> int:
     """1 if the published series story's occurs_at was moved to `next_start`, else 0.
     Only a story that is flagged as a series and whose date actually differs."""
@@ -1003,6 +1023,7 @@ def publish_table(
         # Ren brus för modellen, och gör outputen mindre förutsägbar.
         ai_record = {k: v for k, v in row.items() if k not in _INTERNAL_FIELDS}
         ai_record = _localize_datetime_fields(ai_record, tz)
+        ai_record = _without_model_hidden_raw_fields(ai_record)
         # UK gate (Glasgow spec phase 5), BEFORE any AI spend: contempt of
         # court + no names of private individuals. A hold is not remembered
         # (not in known_slugs, no discard streak) so it is re-judged each run.

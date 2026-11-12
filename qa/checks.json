@@ -353,7 +353,7 @@
     },
     "build.no-agendalink-schedule-time": {
         "severity": "hard",
-        "born_from": "Investigation 2026-11-12: Broomfield story 3447 said 7 PM for the 6 p.m. council meeting of Oct 27; AgendaLink's scheduleTime carries a one-hour error, scheduleIso is correct (agendalink_v1.py). Regression fixture: tests/test_verify_no_schedule_time.py (a .get(\"scheduleTime\"), a .scheduleTime and a SQL ->>'scheduleTime' read each fail; prose naming the field passes).",
+        "born_from": "Investigation 2026-11-12: Broomfield story 3447 said 7 PM for the 6 p.m. council meeting of Oct 27; AgendaLink's scheduleTime carries a one-hour error, scheduleIso is correct (agendalink_v1.py). Regression fixture: tests/test_verify_no_schedule_time.py (a .get(\"scheduleTime\"), a .scheduleTime and a SQL ->>'scheduleTime' read each fail; prose naming the field passes; a line marked `verify_no_schedule_time: strip` passes). The model-facing record has the field removed from raw_data (ai_pipeline/publish.py _without_model_hidden_raw_fields): tests/test_publish_model_hidden_fields.py.",
         "what": "code in scrapers/, ai_pipeline/, scripts/ or site/src/ that reads AgendaLink's scheduleTime (scripts/verify_no_schedule_time.mjs, every deploy workflow)"
     }
   }
