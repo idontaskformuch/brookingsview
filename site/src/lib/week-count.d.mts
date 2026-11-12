@@ -9,5 +9,6 @@ export function countWeekItems(
     regionalGameDates?: (string | Date | null)[];
   },
   timezone: string,
+  meetingsHaveTime: boolean,
 ): Map<string, number>;
 export function isThinWeek(count: number): boolean;

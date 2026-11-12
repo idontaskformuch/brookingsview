@@ -119,7 +119,7 @@ describe('buildWeekDays', () => {
       title: 'Downtown at Sundown',
     })];
     const days = buildWeekDays(WEEK, CHICAGO, {
-      eventStories, meetingStories: [], artsEvents: [], projectUpdates: [], games: [], regionalGames: [],
+      meetingsHaveTime: false, eventStories, meetingStories: [], artsEvents: [], projectUpdates: [], games: [], regionalGames: [],
     });
     const tuesday = days[1];
     const wednesday = days[2];
@@ -136,12 +136,33 @@ describe('buildWeekDays', () => {
       title: 'City Council',
     })];
     const days = buildWeekDays(WEEK, CHICAGO, {
-      eventStories: [], meetingStories, artsEvents: [], projectUpdates: [], games: [], regionalGames: [],
+      meetingsHaveTime: false, eventStories: [], meetingStories, artsEvents: [], projectUpdates: [], games: [], regionalGames: [],
     });
     const tuesday = days[1];
     const wednesday = days[2];
     expect(wednesday.items.map((i) => i.title)).toContain('City Council');
     expect(tuesday.items.map((i) => i.title)).not.toContain('City Council');
+  });
+
+  it('a town whose meetings carry a time buckets an evening meeting and its project update on the LOCAL day (2026-11-12)', () => {
+    // Live: Broomfield's council meeting Tue Nov 10 6pm MST (2026-11-11T01:00Z) sat under "Wed Nov 11".
+    const denver = 'America/Denver';
+    const week = weekInfoForSlug('2026-w46', denver)!; // Mon 2026-11-09
+    const meetingStories: Story[] = [story({
+      slug: 'council', source_type: 'meeting', occurs_at: '2026-11-11T01:00:00Z',
+      title: 'City Council Regular Meeting — Tue, Nov 10, 2026',
+    })];
+    const projectUpdates = [{
+      source_type: 'meeting', entry_date: '2026-11-11T01:00:00Z', body: '', meeting_date: '2026-11-11T01:00:00Z',
+      agenda_counter: '1', agenda_title: 'Rezoning', agenda_url: null, outcome: null,
+      vote_yes: null, vote_no: null, vote_abstain: null, vote_absent: null, source_url: null,
+      outcome_override: null, outcome_override_source_url: null, project_slug: 'p', project_title: 'P',
+    }] as unknown as (ProjectUpdate & { project_slug: string; project_title: string })[];
+    const days = buildWeekDays(week, denver, {
+      meetingsHaveTime: true, eventStories: [], meetingStories, artsEvents: [], projectUpdates, games: [], regionalGames: [],
+    });
+    expect(days[1].items).toHaveLength(2); // Tuesday
+    expect(days[2].items).toHaveLength(0);
   });
 
   it('buckets a project update by its bare meeting_date the same way', () => {
@@ -154,7 +175,7 @@ describe('buildWeekDays', () => {
       project_slug: 'sixth-street-corridor', project_title: '6th Street Corridor',
     }];
     const days = buildWeekDays(WEEK, CHICAGO, {
-      eventStories: [], meetingStories: [], artsEvents: [], projectUpdates, games: [], regionalGames: [],
+      meetingsHaveTime: false, eventStories: [], meetingStories: [], artsEvents: [], projectUpdates, games: [], regionalGames: [],
     });
     expect(days[2].items[0].href).toBe('/city-hall/projects/sixth-street-corridor/');
   });
@@ -168,7 +189,7 @@ describe('buildWeekDays', () => {
       venue: 'San Manuel Stadium', relevance_tier: 'primary',
     }];
     const days = buildWeekDays(WEEK, LOS_ANGELES, {
-      eventStories: [], meetingStories: [], artsEvents: [], projectUpdates: [], games: [], regionalGames,
+      meetingsHaveTime: false, eventStories: [], meetingStories: [], artsEvents: [], projectUpdates: [], games: [], regionalGames,
     });
     // 2026-08-28 is a Friday -- index 4.
     expect(days[4].items.map((i) => i.title)).toContain('Inland Empire 66ers vs Lake Elsinore Storm');
@@ -178,7 +199,7 @@ describe('buildWeekDays', () => {
   it('labels an exhibition game with the given word and a neutral-site game reads "vs"', () => {
     const base = { id: 1, sport: 'wbb', opponent: 'Augustana', home_away: 'home', starts_at: '2026-08-25T00:00:00Z', venue: null, result: 'W 90-54' };
     const days = buildWeekDays(WEEK, CHICAGO, {
-      eventStories: [], meetingStories: [], artsEvents: [], projectUpdates: [], regionalGames: [], exhibitionLabel: 'Exhibition',
+      meetingsHaveTime: false, eventStories: [], meetingStories: [], artsEvents: [], projectUpdates: [], regionalGames: [], exhibitionLabel: 'Exhibition',
       games: [{ ...base, exhibition: true }, { ...base, id: 2, opponent: 'Kansas', home_away: 'neutral' }],
     });
     const titles = days.flatMap((d) => d.items.map((i) => i.title));
@@ -191,7 +212,7 @@ describe('buildWeekDays', () => {
       slug: 'only-event', source_type: 'event', occurs_at: '2026-08-24T18:00:00Z', title: 'Monday Only',
     })];
     const days = buildWeekDays(WEEK, CHICAGO, {
-      eventStories, meetingStories: [], artsEvents: [], projectUpdates: [], games: [], regionalGames: [],
+      meetingsHaveTime: false, eventStories, meetingStories: [], artsEvents: [], projectUpdates: [], games: [], regionalGames: [],
     });
     expect(days[0].items).toHaveLength(1);
     for (const quiet of days.slice(1)) expect(quiet.items).toHaveLength(0);
@@ -208,7 +229,7 @@ describe('buildWeekDays', () => {
       event_url: 'https://sdstate.edu/event/1',
     }];
     const days = buildWeekDays(WEEK, CHICAGO, {
-      eventStories, meetingStories: [], artsEvents, projectUpdates: [], games: [], regionalGames: [],
+      meetingsHaveTime: false, eventStories, meetingStories: [], artsEvents, projectUpdates: [], games: [], regionalGames: [],
     });
     const allTitles = days.flatMap((d) => d.items.map((i) => i.title));
     expect(allTitles.filter((t) => t === 'Downtown at Sundown')).toHaveLength(1);

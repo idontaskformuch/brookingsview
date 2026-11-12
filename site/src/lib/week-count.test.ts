@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { countWeekItems, isThinWeek, THIS_WEEK_MIN_ITEMS } from './week-count.mjs';
 import { THIS_WEEK_MIN_ITEMS as FROM_THIS_WEEK, weekInfoForInstant, buildWeekDays } from './this-week';
 import type { Story, SdsuEvent } from './db';
+import { ALL_CONFIGS } from './site-config';
 
 const TZ = 'America/Chicago';
 // Monday 2026-11-09 .. Sunday 2026-11-15 (2026-w46)
@@ -38,13 +39,13 @@ describe('countWeekItems', () => {
 
   it('near the threshold: a superseded row and a cross-source duplicate do not count (3 items, not 5)', () => {
     const data = { stories: [...unique, superseded, kept], artsEvents: [dupArts] };
-    const counts = countWeekItems(data, TZ);
+    const counts = countWeekItems(data, TZ, false);
     expect(counts.get(WEEK.slug)).toBe(3);
     expect(isThinWeek(counts.get(WEEK.slug) ?? 0)).toBe(false);
   });
 
   it('one more drop puts the week under the threshold', () => {
-    const counts = countWeekItems({ stories: [...unique, superseded], artsEvents: [dupArts] }, TZ);
+    const counts = countWeekItems({ stories: [...unique, superseded], artsEvents: [dupArts] }, TZ, false);
     expect(counts.get(WEEK.slug)).toBe(2);
     expect(isThinWeek(counts.get(WEEK.slug) ?? 0)).toBe(true);
   });
@@ -54,11 +55,11 @@ describe('countWeekItems', () => {
       { stories: [...unique, superseded, kept], artsEvents: [dupArts] },
       { stories: [...unique, superseded], artsEvents: [dupArts] },
     ]) {
-      const counted = countWeekItems(data, TZ).get(WEEK.slug) ?? 0;
+      const counted = countWeekItems(data, TZ, false).get(WEEK.slug) ?? 0;
       // the page's own data comes from getStoriesForWeekly(), which already leaves superseded rows out
       const pageStories = data.stories.filter((s) => !s.superseded_by_slug);
       const days = buildWeekDays(WEEK, TZ, {
-        eventStories: pageStories, meetingStories: [], artsEvents: data.artsEvents, projectUpdates: [], games: [], regionalGames: [],
+        meetingsHaveTime: false, eventStories: pageStories, meetingStories: [], artsEvents: data.artsEvents, projectUpdates: [], games: [], regionalGames: [],
       });
       expect(counted).toBe(days.reduce((n, d) => n + d.items.length, 0));
     }
@@ -70,8 +71,22 @@ describe('countWeekItems', () => {
       projectUpdates: [{ meeting_date: '2026-11-10' }],
       gameStarts: ['2026-11-14T00:30:00Z'],
       regionalGameDates: ['2026-11-15'],
-    }, TZ);
+    }, TZ, false);
     expect(counts.get(WEEK.slug)).toBe(4);
+  });
+
+  it('a town whose meetings carry a time counts a Sunday-evening meeting in its own week, like the page (2026-11-12)', () => {
+    // Sun Nov 15 6pm MST = 2026-11-16T01:00Z: a raw UTC read puts it on Monday of the next week.
+    const denver = 'America/Denver';
+    const meeting = story({ id: 9, slug: 'm', title: 'City Council', source_type: 'meeting', occurs_at: '2026-11-16T01:00:00Z' });
+    const week = weekInfoForInstant(new Date('2026-11-11T18:00:00Z'), denver);
+    const counts = countWeekItems({ stories: [meeting], projectUpdates: [{ meeting_date: '2026-11-16T01:00:00Z' }] }, denver, true);
+    expect(counts.get(week.slug)).toBe(2);
+    const days = buildWeekDays(week, denver, {
+      meetingsHaveTime: true, eventStories: [], meetingStories: [meeting], artsEvents: [], games: [], regionalGames: [],
+      projectUpdates: [{ meeting_date: '2026-11-16T01:00:00Z', project_slug: 'p', project_title: 'P', agenda_title: 'A', body: '' } as never],
+    });
+    expect(days[6].items).toHaveLength(2);
   });
 });
 
@@ -84,5 +99,12 @@ describe('the sitemap filter and the page use the shared count', () => {
       expect(src).toMatch(/isThinWeek\(/);
       expect(src).toContain('week-count.mjs');
     }
+  });
+
+  it("astro.config.mjs's THIS_WEEK_MEETINGS_HAVE_TIME mirrors every town's siteConfig.meetingsHaveTime", () => {
+    const cfg = readFileSync(new URL('../../astro.config.mjs', import.meta.url), 'utf8');
+    const block = cfg.match(/const THIS_WEEK_MEETINGS_HAVE_TIME = \{([^}]*)\}/)![1];
+    const mirror = Object.fromEntries([...block.matchAll(/(\w+): (true|false)/g)].map((m) => [m[1], m[2] === 'true']));
+    expect(mirror).toEqual(Object.fromEntries(ALL_CONFIGS.map((c) => [c.townId, c.meetingsHaveTime])));
   });
 });

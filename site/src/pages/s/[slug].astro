@@ -417,6 +417,7 @@ if (story.source_type === 'university_digest' && story.occurs_at && displayBody.
   const sdsuEvents = await getSdsuEventsBetween(digestWeek.start, digestWeek.end);
   const digestDays = buildWeekDays(digestWeek, siteConfig.timezone, {
     eventStories: [], meetingStories: [], artsEvents: sdsuEvents, projectUpdates: [], games: [], regionalGames: [],
+    meetingsHaveTime: siteConfig.meetingsHaveTime,
   });
   digestGroups = groupWeekItems(digestDays, digestDays, siteConfig.timezone, []);
 }

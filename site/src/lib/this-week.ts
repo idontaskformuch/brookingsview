@@ -14,9 +14,14 @@
  *                      instant -- bucket them by the town's LOCAL calendar
  *                      day via localDateParts() (lib/events.ts).
  *
- *   BARE CALENDAR DATES  stories.occurs_at for source_type IN ('meeting',
- *                      'meeting_followup'), project_updates.meeting_date,
- *                      regional_sports_games.game_date. These are stored as
+ *   MEETING DATES      stories.occurs_at for source_type IN ('meeting',
+ *                      'meeting_followup') and project_updates.meeting_date:
+ *                      a bare date (Brookings) or a real instant (towns with
+ *                      siteConfig.meetingsHaveTime) -- lib/meeting-day.mjs
+ *                      decides, never a raw UTC read (2026-11-12: every
+ *                      Broomfield/Moreno evening meeting sat a day late).
+ *
+ *   BARE CALENDAR DATES  regional_sports_games.game_date. These are stored as
  *                      UTC midnight of a plain calendar date with NO real
  *                      time-of-day (Legistar/CivicEngage only ever give a
  *                      date) -- bucket them by comparing UTC Y/M/D directly,
@@ -30,6 +35,7 @@
  */
 import type { Story, Game, RegionalGame, SdsuEvent, ProjectUpdate } from './db';
 import { calendarDateParts } from './db';
+import { meetingDayParts } from './meeting-day.mjs';
 import { localDateParts, utcMidnight, todayUtcMidnight, buildEventFeed, itemTitle, itemUrl } from './events';
 import { selectWorthKnowing } from './homepage-curation';
 import { linkTarget, ownPageHref, publicBody } from './ai-text';
@@ -263,6 +269,8 @@ export function buildWeekDays(
     regionalGames: RegionalGame[];
     /** The country's word for an exhibition (strings/<cc>/sports.json terms.exhibition); a game flagged exhibition gets it after the opponent. */
     exhibitionLabel?: string;
+    /** siteConfig.meetingsHaveTime: meeting dates are real instants read in `timezone` (lib/meeting-day.mjs). */
+    meetingsHaveTime: boolean;
   },
 ): DayBucket[] {
   const { items: feedItems } = buildEventFeed(data.eventStories, data.artsEvents, timezone);
@@ -288,7 +296,7 @@ export function buildWeekDays(
     }
 
     for (const meeting of data.meetingStories) {
-      const md = bareDateParts(meeting.occurs_at);
+      const md = meetingDayParts(meeting.occurs_at, timezone, data.meetingsHaveTime);
       if (!md || !sameDate(md, date)) continue;
       items.push({
         vertical: 'city_hall', title: meeting.title, href: linkTarget(meeting) ?? '/city-hall/',
@@ -297,7 +305,7 @@ export function buildWeekDays(
     }
 
     for (const update of data.projectUpdates) {
-      const md = bareDateParts(update.meeting_date);
+      const md = meetingDayParts(update.meeting_date, timezone, data.meetingsHaveTime);
       if (!md || !sameDate(md, date)) continue;
       items.push({
         vertical: 'city_hall', title: `${update.project_title} — ${update.agenda_title}`,

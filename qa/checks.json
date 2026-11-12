@@ -340,6 +340,11 @@
         "severity": "hard",
         "born_from": "Broomfield AdSense audit 2026-11-11 (F4): /traffic/ was indexable and in the sitemap with only an H1 and a source line while the CDOT feed had nothing near Broomfield. Regression fixture: site/src/lib/traffic-verdict.test.ts (zero incidents -> noindex, one status line with the time of the latest read, no section rule/filters/source line); the sitemap follows the page's verdict (.traffic-verdict.json) and scripts/verify_sitemap_noindex_disjoint.mjs fails if they disagree.",
         "what": "/traffic/ with zero listed incidents that is indexable, in the sitemap, or shows a heading or filter without content"
+    },
+    "build.this-week-meeting-day": {
+        "severity": "hard",
+        "born_from": "Owner 2026-11-12: /this-week/2026-w46/ listed Broomfield's \"City Council Regular Meeting — Tue, Nov 10, 2026\" under \"Wed Nov 11\" and Moreno Valley's \"Planning Commission — Thu, Nov 12, 2026\" under \"Fri Nov 13\" (lib/this-week.ts read meeting instants as UTC dates despite meetingsHaveTime). Regression fixture: tests/fixtures/qa_this_week_meeting_day_2026-11-12 (before = the live pages), tests/test_verify_this_week_days.py; logic: site/src/lib/meeting-day.test.ts, this-week.test.ts, week-count.test.ts.",
+        "what": "a meeting row on a /this-week/ page whose data-day-key or day tile is not the date its title ends with (scripts/verify_this_week_days.mjs, every deploy workflow)"
     }
   }
 }

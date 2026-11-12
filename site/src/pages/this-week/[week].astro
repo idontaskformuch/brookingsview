@@ -76,11 +76,12 @@ export async function getStaticPaths() {
   const weekCounts = countWeekItems({
     stories: [...eventStories, ...meetingStories], artsEvents, projectUpdates,
     gameStarts: games.map((g) => g.starts_at), regionalGameDates: regionalGames.map((g) => g.game_date),
-  }, siteConfig.timezone);
+  }, siteConfig.timezone, siteConfig.meetingsHaveTime);
 
   return Promise.all([...weekInfos.values()].map(async (week) => {
     const days = buildWeekDays(week, siteConfig.timezone, {
       eventStories, meetingStories, artsEvents, projectUpdates, games, regionalGames, exhibitionLabel: sportTerms(siteConfig.country).exhibition,
+      meetingsHaveTime: siteConfig.meetingsHaveTime,
     });
     const leadCandidates = await getWorthKnowingCandidatesInRange(week.start, week.end);
     const lead = selectWeeklyLead(leadCandidates);

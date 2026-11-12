@@ -250,6 +250,14 @@ const THIS_WEEK_TIMEZONES = {
   broomfield_co: 'America/Denver',
   glasgow: 'Europe/London',
 };
+// Mirrors siteConfig.meetingsHaveTime (lib/meeting-day.mjs): meeting dates are real instants read in the town's zone, except
+// Brookings' bare Legistar dates. week-count.test.ts fails if this disagrees with site-config.ts.
+const THIS_WEEK_MEETINGS_HAVE_TIME = {
+  brookings_sd: false,
+  moreno_valley_ca: true,
+  broomfield_co: true,
+  glasgow: true,
+};
 
 function localDatePartsMirror(instant, timeZone) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -739,7 +747,8 @@ async function buildLastmodMap(townId, databaseUrl) {
     regionalGameDates = regionalGames.map((g) => g.game_date);
   }
   // One counting function for this filter and for this-week/[week].astro's own noindex (lib/week-count.mjs): superseded rows out, cross-source dedup in.
-  const weekItemCounts = countWeekItems({ stories, artsEvents, projectUpdates, gameStarts, regionalGameDates }, thisWeekTz);
+  const weekItemCounts = countWeekItems({ stories, artsEvents, projectUpdates, gameStarts, regionalGameDates }, thisWeekTz,
+    THIS_WEEK_MEETINGS_HAVE_TIME[townId] ?? false);
 
   // Only the newest RECENT_WEEKS_INDEXED weeks stay indexable -- mirrors lib/this-week.ts's
   // recentWeekSlugs(): older /this-week/<week>/ pages AND their /s/weekly-* stories are noindex.
