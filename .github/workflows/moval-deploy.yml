@@ -62,6 +62,8 @@ jobs:
         run: node scripts/verify_town_games.mjs site/dist moreno_valley_ca
       - name: Meetings on /this-week/ sit on the day their title names
         run: node scripts/verify_this_week_days.mjs site/dist
+      - name: A meta description names the day the page shows
+        run: node scripts/verify_description_days.mjs site/dist
       - name: Meeting times come from AgendaLink scheduleIso, never scheduleTime
         run: node scripts/verify_no_schedule_time.mjs
       - name: Meta descriptions are whole sentences (indexable pages)

@@ -360,6 +360,11 @@
         "severity": "hard",
         "born_from": "Investigation 2026-11-12: every /s/ page whose story text is withheld (ai:* rows, meta-only template bodies that only repeat title + place) was built with <meta name=\"description\" content> -- Brookings 278, Broomfield 38, Glasgow 95, Moreno Valley 748 pages, all noindex, so the indexable-only report never failed. Regression fixture: tests/fixtures/qa_meta_missing_2026-11-12 (before = glasgowloop.co.uk/s/meeting-2026-11-17-15082/ as served on 49e7892), tests/test_report_meta_missing.py.",
         "what": "any built page, noindex included, without a meta description (scripts/report_meta_descriptions.mjs, every deploy workflow)"
+    },
+    "build.description-day": {
+        "severity": "hard",
+        "born_from": "Investigation 2026-11-12: a hand-written proposal example put Bonnie \"Prince\" Billy (glasgow event-331533) on Saturday 14 Nov; source, page and description all say Sunday 15 Nov. Checking every page found 9 Glasgow series pages (event-series-*) whose description fixed one date (\"Saturday 14 Nov 2026\", two already past) while the page says \"Regular · Sat 10:30am\". The first run of the check also found 20 Moreno /s/home-sales-digest-* pages naming the day before the covered month (occurs_at = month's UTC first read in Los Angeles: \"Saturday, Aug 31, 2024\" on \"Covering September 2024\"); fixed by giving pages without a date line no day (story-description.test.ts). Regression fixture: tests/fixtures/qa_description_day_2026-11-12 (before = /s/event-series-2e15f0f2497a5f8f/ built locally on 416b535), tests/test_verify_description_days.py.",
+        "what": "a /s/ or /whats-on/ page whose meta description names a day other than its date line's, or names a day while the date line has none (scripts/verify_description_days.mjs, every deploy workflow)"
     }
   }
 }
