@@ -58,6 +58,15 @@ function trafficIndexable(townId) {
     return v.townId === townId && v.indexable === true;
   } catch { return false; }
 }
+// /today/ of a town with SiteConfig.todayPage decides its own indexing while building (lib/today-page.ts); null = no verdict written.
+const TODAY_VERDICT_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '.today-verdict.json');
+try { fs.rmSync(TODAY_VERDICT_PATH, { force: true }); } catch { /* nothing to remove */ }
+function todayVerdict(townId) {
+  try {
+    const v = JSON.parse(fs.readFileSync(TODAY_VERDICT_PATH, 'utf8'));
+    return v.townId === townId ? v.indexable === true : null;
+  } catch { return null; }
+}
 function eveningIndexable(townId) {
   try {
     const v = JSON.parse(fs.readFileSync(EVENING_VERDICT_PATH, 'utf8'));
@@ -912,6 +921,8 @@ export default defineConfig({
         // keep them out of the sitemap the same way the HTML event pages
         // they belong to are already noindexed (see lib/noindex.ts).
         const isIcsFile = pathname.endsWith('.ics');
+        // The page's own verdict wins for /today/ where it writes one (it can be indexable with no events this week).
+        if (pathname === '/today/' && todayVerdict(activeCity) !== null) return todayVerdict(activeCity);
         const isEveningNoindex = (pathname === '/tonight/' || pathname === '/this-weekend/') && !eveningIndexable(activeCity);
         return !noindexHomeSaleUrls.has(pathname)
           && !isEveningNoindex

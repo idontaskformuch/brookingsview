@@ -62,6 +62,7 @@ import { ownPageHref } from '../lib/ai-text';
 import { formatAlertUntil } from '../lib/alerts';
 import { siteConfig } from '../lib/site-config';
 import { formatClockCompact } from '../lib/country-profile';
+import { bucketOf } from '../lib/local-day';
 
 export interface Props {
   cityName: string;
@@ -101,12 +102,28 @@ export interface Props {
    *  to the handoff's rules. Optional, defaults to the pre-existing text
    *  so the homepage mount (which never passes this) is unaffected. */
   headingText?: string;
+  /** /today/ of a town with SiteConfig.todayPage (lib/today-page.ts): the build instant. Today's and tonight's events are then written into
+   *  the HTML (the browser re-sorts them from a fresh clock as before) and there is no "Turn on JavaScript" line. */
+  serverNow?: Date;
+  /** The town's date, shown under the heading ("Thursday, November 12"). */
+  dateLine?: { iso: string; label: string };
 }
 
 const {
   cityName, timezone, asOf, temperature, activeAlerts, closureStatus, traffic,
-  cityHallFacility, facilities = [], candidates, tmShows = [], forecastText, headingLevel = 'h2', headingText,
+  cityHallFacility, facilities = [], candidates, tmShows = [], forecastText, headingLevel = 'h2', headingText, serverNow, dateLine,
 } = Astro.props;
+
+// Server-written buckets (serverNow): the same split the browser makes (lib/today-buckets.ts), from the build instant.
+const BUCKET_LIMIT = 5;
+const inBucket = (start: string | null | undefined, end: string | null | undefined, which: 'today' | 'tonight') =>
+  !!serverNow && !!start && bucketOf({ start, end: end ?? null }, serverNow, timezone) === which;
+const serverBucket = (which: 'today' | 'tonight') => ({
+  items: candidates.filter((item) => inBucket(item.occurs_at, item.sourceKind === 'story' ? item.story.ends_at : item.event.ends_at, which)),
+  shows: tmShows.filter((s) => inBucket(s.start, s.end, which)),
+});
+const serverToday = serverBucket('today');
+const serverTonight = serverBucket('tonight');
 
 const Heading = headingLevel;
 const resolvedHeadingText = headingText ?? `Today in ${cityName}`;
@@ -155,6 +172,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
   <Heading class="today-block__heading">
     {resolvedHeadingText} <span class="today-block__asof">Updated {asOfLabel}</span>
   </Heading>
+  {dateLine && <p class="today-block__date"><time datetime={dateLine.iso}>{dateLine.label}</time></p>}
 
   {forecastText !== undefined && <p class="today-block__forecast" data-weather-today hidden={!forecastText}>{forecastText}</p>}
 
@@ -211,15 +229,29 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
       and the two days after it; nothing is visible until the script runs. A
       bucket with no events stays hidden (no empty heading); when both are
       empty one quiet line links to What's On instead. */}
-  <div class="today-block__bucket" id="today-now" hidden>
-    <p class="today-block__section-label">Today</p>
-    <div data-bucket-body></div>
-  </div>
-
-  <div class="today-block__bucket" id="today-tonight" hidden>
-    <p class="today-block__section-label">Tonight</p>
-    <div data-bucket-body></div>
-  </div>
+  {[{ id: 'today-now', label: 'Today', more: 'today', b: serverToday }, { id: 'today-tonight', label: 'Tonight', more: 'tonight', b: serverTonight }].map(({ id, label, more, b }) => {
+    const total = b.items.length + b.shows.length;
+    const items = b.items.slice(0, BUCKET_LIMIT);
+    const shows = b.shows.slice(0, BUCKET_LIMIT - items.length);
+    return (
+      <div class="today-block__bucket" id={id} hidden={total === 0}>
+        <p class="today-block__section-label">{label}</p>
+        <div data-bucket-body>
+          {total > 0 && (
+            <ul class="today-block__cards">
+              {items.map((item) => {
+                const { story, href, kicker } = toStory(item);
+                const end = item.sourceKind === 'story' ? item.story.ends_at : item.event.ends_at;
+                return <li data-start={item.occurs_at ?? undefined} data-end={end ?? undefined}><StoryCard story={story} compact href={href} kicker={kicker} facilities={facilities} /></li>;
+              })}
+              {shows.map((s) => <li data-start={s.start} data-end={s.end}><TodayShowItem show={s} cityName={cityName} /></li>)}
+            </ul>
+          )}
+          {total > BUCKET_LIMIT && <p class="today-block__more">+{total - BUCKET_LIMIT} more {more}</p>}
+        </div>
+      </div>
+    );
+  })}
 
   <div class="today-block__bucket" id="today-tomorrow" hidden>
     <p class="today-block__section-label">Tomorrow</p>
@@ -229,9 +261,9 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
     <p class="today-block__section-label">Coming up</p>
     <div data-bucket-body></div>
   </div>
-  <noscript>
+  {!serverNow && <noscript>
     <p class="today-block__quiet">Turn on JavaScript to see today's and tomorrow's events, or <a href="/events/">browse all events</a>.</p>
-  </noscript>
+  </noscript>}
   <template id="today-event-items" data-tz={timezone}>
     {candidates.map((item) => {
       const { story, href, kicker } = toStory(item);
@@ -346,6 +378,7 @@ const activeClosureClass = showClosureLine && closureState ? `today-block__closu
     display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap;
     font-family: var(--font-head); margin: 0 0 0.75rem;
   }
+  .today-block__date { margin: -0.5rem 0 0.75rem; font-family: var(--font-ui); font-size: 0.9375rem; font-weight: 600; }
   .today-block__asof {
     font-family: var(--font-ui); font-size: 0.75rem; font-weight: 400;
     color: var(--ink-soft);

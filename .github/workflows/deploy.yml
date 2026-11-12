@@ -74,6 +74,8 @@ jobs:
         run: node scripts/verify_town_games.mjs site/dist brookings_sd
       - name: Menu and footer link only to built, indexable pages
         run: node scripts/verify_nav_links.mjs site/dist brookings_sd
+      - name: /today/ is written into the page and shows its date
+        run: node scripts/verify_today_page.mjs site/dist brookings_sd
       - name: Meetings on /this-week/ sit on the day their title names
         run: node scripts/verify_this_week_days.mjs site/dist
       - name: A meta description names the day the page shows

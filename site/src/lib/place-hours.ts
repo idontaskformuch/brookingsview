@@ -120,6 +120,18 @@ function windowsForDate(
     .map((h) => ({ opens: h.opens as string, closes: h.closes as string }));
 }
 
+/** One calendar date's hours for /today/ (Broomfield AdSense plan F3, 2026-11-12): the windows, 'closed' when a sourced row or exception
+ *  says closed that day, or null when nothing is known for that weekday (never shown as closed). */
+export function hoursOnDate(
+  isoDate: string, weekday: number, hours: PlaceHoursRow[], exceptions: PlaceHoursException[],
+): { opens: string; closes: string }[] | 'closed' | null {
+  const windows = windowsForDate(isoDate, weekday, hours, exceptions);
+  if (windows.length > 0) return windows;
+  const known = exceptions.some((e) => sameCalendarDate(e.date, isoDate)) || hours.some((h) => h.day_of_week === weekday
+    && (!h.valid_from || compareCalendarDates(h.valid_from, isoDate) <= 0) && (!h.valid_to || compareCalendarDates(h.valid_to, isoDate) >= 0));
+  return known ? 'closed' : null;
+}
+
 /** hours.length === 0 is the caller's own signal for "no structured data at
  *  all" (hours_confidence !== 'structured') -- returns `known: false`
  *  before ever touching exceptions, same "absent data is not evidence"

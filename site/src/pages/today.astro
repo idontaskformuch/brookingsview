@@ -18,8 +18,14 @@ import TodayBlock from '../components/TodayBlock.astro';
 import SectionHero from '../components/SectionHero.astro';
 import {
   getWeather, getActiveAlerts, getClosureWatchStatus, getActiveTrafficIncidents,
-  getUpcomingStories, getUpcomingArtsEvents, getFacilities, getOsmSnapshot,
+  getUpcomingStories, getUpcomingArtsEvents, getFacilities, getOsmSnapshot, getAllPlaceHoursForTown, getUpcomingPlaceHoursExceptions,
 } from '../lib/db';
+import { todayDate, weatherToday, hoursToday, todayIndexVerdict, writeTodayVerdict } from '../lib/today-page';
+import { loadUpcomingMeetings } from '../lib/meetings-data';
+import { meetingTitle } from '../lib/meetings-view';
+import { bucketOf } from '../lib/local-day';
+import SectionHeader from '../components/ui/SectionHeader.astro';
+import CompactRow from '../components/ui/CompactRow.astro';
 import { buildEventFeed, todayUtcMidnight, selectWeekCandidates } from '../lib/events';
 import { siteConfig } from '../lib/site-config';
 import { metaDescription } from '../lib/meta-description';
@@ -74,6 +80,44 @@ const openCafes = openTonightSection(decorateOpenLate(cafeRows(osm, osmOpts), si
 const osmChecked = osmSnapshot ? osmSnapshot.fetchedAt.slice(0, 10) : '';
 
 const noEventsThisWeek = candidates.length === 0 && todayShows3.length === 0;
+
+// SiteConfig.todayPage (Broomfield, owner 2026-11-12): today's date, forecast, meetings and hours are written into the page, and the page
+// is indexable only with enough of them filled (lib/today-page.ts). Other towns keep the rule above.
+const todayCfg = siteConfig.todayPage;
+const gb = siteConfig.country === 'gb';
+const dateLine = todayCfg ? todayDate(now, siteConfig.timezone, gb) : undefined;
+const weatherLines = todayCfg ? weatherToday(periods, now, siteConfig.timezone) : [];
+const meetingsToday = todayCfg
+  ? ((await loadUpcomingMeetings())?.meetings ?? []).filter((m) => m.ymd === dateLine!.iso && !m.quorumNotice)
+  : [];
+let hoursLines: { slug: string; name: string; text: string }[] = [];
+if (todayCfg) {
+  const rows = await getAllPlaceHoursForTown();
+  const withHours = facilities.filter((f) => f.hours_confidence === 'structured' && rows.some((r) => r.place_id === f.id));
+  const places = await Promise.all(withHours.map(async (f) => ({
+    slug: f.slug, name: f.name, verified_date: f.verified_date, hours: rows.filter((r) => r.place_id === f.id), exceptions: await getUpcomingPlaceHoursExceptions(f.id),
+  })));
+  hoursLines = hoursToday(places, now, siteConfig.timezone, (siteConfig.placeStaleness ?? { hoursDays: 45 }).hoursDays, osmOpts.holiday, gb);
+}
+const inTodayOrTonight = (start: string | null | undefined, end: string | null | undefined) => {
+  const b = start ? bucketOf({ start, end: end ?? null }, now, siteConfig.timezone) : null;
+  return b === 'today' || b === 'tonight';
+};
+const eventsToday = candidates.some((i) => inTodayOrTonight(i.occurs_at, i.sourceKind === 'story' ? i.story.ends_at : i.event.ends_at))
+  || todayShows3.some((s) => inTodayOrTonight(s.start, s.end));
+const verdict = todayCfg ? todayIndexVerdict(todayCfg, {
+  weather: weatherLines.length > 0,
+  meetings: meetingsToday.some((m) => !m.cancelled && !m.postponed),
+  hours: hoursLines.length > 0,
+  traffic: (trafficIncidents?.length ?? 0) > 0,
+  events: eventsToday,
+  openTonight: openTonight.length > 0,
+}, osm.length > 0, dateLine!.iso) : null;
+if (verdict) {
+  writeTodayVerdict(siteConfig.townId, verdict.indexable);
+  console.log(`[build] /today/: ${verdict.indexable ? 'indexable' : `noindex (${verdict.reason})`}, filled: ${verdict.filled.join(', ') || 'none'}`);
+}
+const pageNoindex = verdict ? !verdict.indexable : noEventsThisWeek;
 const canonicalUrl = new URL('/today/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('today', siteConfig, { label: 'Today', href: canonicalUrl });
 const breadcrumbJsonLd = buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl);
@@ -88,7 +132,7 @@ import { ELECTION_BY_TOWN } from '../config/election';
 const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facilities', 'traffic'].includes(s.id));
 ---
 
-<BaseLayout title={pageTitle} ogSlug="section-today" noindex={noEventsThisWeek}
+<BaseLayout title={pageTitle} ogSlug="section-today" noindex={pageNoindex}
   description={metaDescription('today', siteConfig)}>
   <script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumbJsonLd)} />
   <Breadcrumbs trail={breadcrumbTrail} />
@@ -115,7 +159,34 @@ const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facili
     forecastText={siteConfig.country === 'gb' ? forecastLine(periods, siteConfig.timezone, new Date()) : undefined}
     headingLevel="h1"
     headingText={pageMeta.h1}
+    serverNow={todayCfg ? now : undefined}
+    dateLine={dateLine}
   />
+  {weatherLines.length > 0 && (
+    <section class="today-day" aria-label="Weather today">
+      <SectionHeader title="Weather today" seeAllHref="/weather/" seeAllLabel="Full forecast" />
+      {weatherLines.map((w) => <CompactRow>{w}</CompactRow>)}
+    </section>
+  )}
+  {meetingsToday.length > 0 && (
+    <section class="today-day" aria-label="Meetings today">
+      <SectionHeader title="Meetings today" seeAllHref="/city-hall/" seeAllLabel="All meetings" />
+      {meetingsToday.map((m) => (
+        <CompactRow cat="civic" href={m.agendaUrl ?? '/city-hall/'}>
+          {meetingTitle(m)}{m.cancelled ? ' (canceled)' : m.postponed ? ' (postponed)' : ''}{m.location && <> · {m.location.split('\n')[0]}</>}
+          {m.time && <Fragment slot="aside">{m.time}</Fragment>}
+        </CompactRow>
+      ))}
+    </section>
+  )}
+  {hoursLines.length > 0 && (
+    <section class="today-day" aria-label="Hours today">
+      <SectionHeader title="Hours today" seeAllHref="/facilities/" seeAllLabel="All places" />
+      {hoursLines.map((h) => (
+        <CompactRow href={`/facilities/${h.slug}/`}>{h.name}<Fragment slot="aside">{h.text}</Fragment></CompactRow>
+      ))}
+    </section>
+  )}
   <OpenTonight rows={openTonight} cafes={openCafes} osmChecked={osmChecked} cityName={siteConfig.cityName}
     lateHref={openLatePageIndexable(osm) ? '/open-late/' : null} />
   {siteConfig.safetyNotices && <SafetyNotices townId={siteConfig.townId} timezone={siteConfig.timezone} variant="compact" />}
@@ -130,6 +201,7 @@ const moreLinks = enabledSections(siteConfig).filter((s) => ['cityhall', 'facili
 
 <style>
   .today-more { margin: 0.5rem 0 0; }
+  .today-day { margin: 0 0 1.5rem; }
   .lede { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.5rem; }
   .today-tonight { margin: 1rem 0 0; }
   .today-official { margin: 1rem 0 0; font-size: 0.9375rem; color: var(--ink-soft); max-width: 46rem; }

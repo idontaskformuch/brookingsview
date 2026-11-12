@@ -11,6 +11,7 @@
  */
 
 import type { NavConfig } from './nav-sections';
+import type { TodayPageConfig } from './today-page';
 import { validatePlaceConfig, type CountryId, type NationId } from './country-profile';
 
 export interface SiteConfig {
@@ -273,6 +274,9 @@ export interface SiteConfig {
    *  hours go stale exactly as fast as a library's. Present only when
    *  hasPlaces is true. */
   placeStaleness?: { hoursDays: number; addressPhoneDays: number };
+  /** /today/ written into the HTML with its own index rule (lib/today-page.ts; Broomfield AdSense plan F3, owner 2026-11-12). Absent: the
+   *  page fills its events in the browser and is noindex only when the week has no events. */
+  todayPage?: TodayPageConfig;
   /** CityStatus (front-page condensed strip, lib/cityStatus.ts) -- which
    *  modules render, in render order. An id with no matching resolver, or
    *  an always-rendered module configured for a town with no real source
@@ -738,6 +742,8 @@ const CITIES: Record<string, SiteConfig> = {
     hasWorkplaceWatch: true,
     hasPlaces: true,
     placeStaleness: { hoursDays: 45, addressPhoneDays: 180 },
+    // Owner 2026-11-12: noindex until 19 Nov whatever the data (a week to watch the blocks), then OpenStreetMap data + >= 3 filled blocks.
+    todayPage: { minBlocks: 3, requireOpenTonightData: true, indexFrom: '2026-11-19' },
     // What's On Phase 7 radius calibration (2026-09-07, real live data):
     // 20/30/45mi return nearly IDENTICAL event counts (877/875/869) --
     // Broomfield sits close enough to central Denver that 20mi already

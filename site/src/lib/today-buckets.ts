@@ -30,6 +30,8 @@ export function fillTodayBuckets(doc: Document, now: Date = new Date()): number 
     if (!bucket || !body) return 0;
     const hits = entries.filter((e) => e.bucket === which);
     body.textContent = '';
+    // A bucket the server filled (SiteConfig.todayPage) is hidden again once its events are over.
+    bucket.hidden = hits.length === 0;
     if (hits.length === 0) return 0;
     bucket.hidden = false;
     if (which === 'tomorrow') {

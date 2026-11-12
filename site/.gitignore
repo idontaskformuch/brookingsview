@@ -35,4 +35,6 @@ pnpm-debug.log*
 .evening-verdict.json
 # /traffic/ indexing verdict written during the build (lib/traffic-verdict.ts), read by the sitemap filter
 .traffic-verdict.json
+# /today/ indexing verdict (lib/today-page.ts), read by the sitemap filter
+.today-verdict.json
 .open-late-verdict.json

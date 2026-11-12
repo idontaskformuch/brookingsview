@@ -35,15 +35,16 @@ describe.skipIf(!browser)('fillTodayBuckets in a real browser', { timeout: 30_00
     bundle: true, format: 'iife', globalName: 'TB', write: false,
   }).outputFiles[0].text;
   const TZ = 'America/Denver';
-  const html = (items: string) => `<!doctype html><body>
-    <div id="today-tonight" hidden><p>Tonight</p><div data-bucket-body></div></div>
+  // `tonightFromServer`: the bucket as pages/today.astro writes it for a town with SiteConfig.todayPage (visible, already filled).
+  const html = (items: string, tonightFromServer = '') => `<!doctype html><body>
+    <div id="today-tonight"${tonightFromServer ? '' : ' hidden'}><p>Tonight</p><div data-bucket-body>${tonightFromServer}</div></div>
     <div id="today-tomorrow" hidden><p>Tomorrow</p><div data-bucket-body></div></div>
     <div id="today-later" hidden><p>Coming up</p><div data-bucket-body></div></div>
     <template id="today-event-items" data-tz="${TZ}">${items}</template></body>`;
 
-  async function run(items: string, now: string) {
+  async function run(items: string, now: string, tonightFromServer = '') {
     const page = await browser!.newPage();
-    await page.setContent(html(items));
+    await page.setContent(html(items, tonightFromServer));
     await page.addScriptTag({ content: bundle });
     const out = await page.evaluate((n) => {
       const shown = (window as any).TB.fillTodayBuckets(document, new Date(n));
@@ -87,5 +88,11 @@ describe.skipIf(!browser)('fillTodayBuckets in a real browser', { timeout: 30_00
   it('does not show Coming up when there is something today or tomorrow', async () => {
     const r = await run('<li data-start="2026-10-22T18:00:00Z"><a href="/b/">tomorrow</a></li><li data-start="2026-10-26T18:00:00Z"><a href="/x/">next week</a></li>', NOW);
     expect(r).toMatchObject({ shown: 1, laterHidden: true });
+  });
+  it('hides a Tonight bucket the server filled once its events are over (todayPage, 2026-11-12)', async () => {
+    const li = '<li data-start="2026-10-22T01:00:00Z" data-end="2026-10-22T03:00:00Z"><a href="/a/">tonight 7-9pm</a></li>';
+    // 23:30 Denver: the 7-9 PM event the 4 PM build wrote under Tonight has ended
+    const r = await run(li, '2026-10-22T05:30:00Z', `<ul>${li}</ul>`);
+    expect(r).toMatchObject({ tonightHidden: true, tonightItems: 0 });
   });
 });
