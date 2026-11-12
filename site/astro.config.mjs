@@ -9,6 +9,7 @@ import { statusTokensCss } from './src/lib/status-tokens.mjs';
 import { holidayLastmodEntries } from './src/config/holiday-pages/lastmod.mjs';
 import { countWeekItems, isThinWeek } from './src/lib/week-count.mjs';
 import { stripForeignGames } from './src/lib/game-owners.mjs';
+import { NAV_ONLY_INDEXABLE_TOWNS, pruneNavInDist } from './src/lib/nav-prune.mjs';
 import { checkNewIndexable, fetchLiveSitemapPaths, sitemapPaths } from './scripts/new-indexable.mjs';
 
 // Statiskt bygge: all data hämtas från Neon vid build-time, sedan serveras rena
@@ -453,7 +454,7 @@ async function buildLastmodMap(townId, databaseUrl) {
     ...['today', 'this-weekend', 'free', 'kids', 'library', 'outdoor', 'campus'].map((f) => `/events/${f}/`)]);
   // Quiet sections (SiteConfig.quietSections, owner 2026-10-23): reachable, noindex in the page, out of the sitemap here. Mirrors
   // site-config.ts by hand; src/lib/quiet-sections.test.ts fails if the two disagree.
-  const QUIET_PAGES = { brookings_sd: ['/traffic/'], broomfield_co: ['/events/', '/workplace-watch/'] };
+  const QUIET_PAGES = { brookings_sd: ['/traffic/'], broomfield_co: ['/events/', '/workplace-watch/', '/jobs/', '/vail-resorts/'] };
   for (const p of QUIET_PAGES[townId] ?? []) noindexThinPageUrls.add(p);
   // Sections a town has switched off (SiteConfig.disabledSections) still build a stub page that redirects home and carries noindex;
   // keep those out of the sitemap. Mirrors site-config.ts by hand; src/lib/disabled-sections-sitemap.test.ts fails if the two disagree.
@@ -876,6 +877,12 @@ export default defineConfig({
           if (activeCity !== 'moreno_valley_ca') fs.rmSync(path.join(root, 'ads.txt'), { force: true });
           // Each game only on the site it belongs to (src/lib/game-owners.mjs).
           stripForeignGames(root, activeCity);
+          // Main menu and footer: an entry stays only when its target is built and indexable (src/lib/nav-prune.mjs).
+          if (NAV_ONLY_INDEXABLE_TOWNS.has(activeCity)) {
+            const { removed, rewritten } = pruneNavInDist(root);
+            for (const r of rewritten) console.log(`[build] nav: ${r.from} -> ${r.to} (redirect stub)`);
+            for (const r of removed) console.log(`[build] nav: dropped ${r.href} (${r.reason})`);
+          }
           if (!NOINDEX_SITE_TOWNS.has(activeCity)) return;
           for (const rel of ['games', 'google1f70310a17e1b00a.html', '1fdbd9a2782398d4ca47d6c335de0ecf.txt', 'ads.txt', 'llms.txt', 'news-sitemap.xml']) {
             fs.rmSync(path.join(root, rel), { recursive: true, force: true });

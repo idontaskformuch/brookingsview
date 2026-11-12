@@ -794,7 +794,7 @@ main { padding-block: 1.75rem 3.5rem; }
         <div class="colophon__group">
           <p class="colophon__group-label">{group.label}</p>
           <ul class="colophon__group-list">
-            {group.items.map((item) => <li><a href={item.href}>{item.label}</a></li>)}
+            {group.items.map((item) => <li><a href={item.href} data-nav-id={item.id}>{item.label}</a></li>)}
           </ul>
         </div>
       ))}

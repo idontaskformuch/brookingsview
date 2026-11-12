@@ -60,6 +60,8 @@ jobs:
         run: node scripts/verify_election_pages.mjs site/dist
       - name: Only this town's games in the build
         run: node scripts/verify_town_games.mjs site/dist moreno_valley_ca
+      - name: Menu and footer link only to built, indexable pages
+        run: node scripts/verify_nav_links.mjs site/dist moreno_valley_ca
       - name: Meetings on /this-week/ sit on the day their title names
         run: node scripts/verify_this_week_days.mjs site/dist
       - name: A meta description names the day the page shows

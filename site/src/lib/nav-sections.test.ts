@@ -80,7 +80,8 @@ describe('real town configs', () => {
     const hrefs = (id: string) => ALL_CONFIGS.filter((c) => resolveNav(c.nav, c).groups.some((g) => g.items.some((i) => i.id === id))).map((c) => c.townId);
     expect(hrefs('university')).toEqual(['brookings_sd']);
     expect(hrefs('jacks')).toEqual(['brookings_sd']);
-    expect(hrefs('vail')).toEqual(['broomfield_co']);
+    // Vail Resorts is Broomfield's only, and quiet there since owner B3 (2026-11-11): in no town's nav
+    expect(hrefs('vail')).toEqual([]);
     expect(hrefs('homesales')).toEqual(['moreno_valley_ca']);
     // Broomfield's Worker Pulse is quiet (2026-10-23, SiteConfig.quietSections): out of the nav until it has content
     expect(hrefs('workplace').sort()).toEqual(['moreno_valley_ca']);

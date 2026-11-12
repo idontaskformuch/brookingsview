@@ -725,13 +725,11 @@ const CITIES: Record<string, SiteConfig> = {
       groups: {
         Now: ['today', 'tonight', 'whatson', 'thisweek', 'weather', 'safety'],
         City: ['cityhall', 'traffic', 'facilities', 'holidays'],
-        Community: ['jobs'],
-        More: ['vail'],
       },
     },
     // /events/ has no events (the city calendar feed is empty) and Workplace Watch shows only withheld summaries and 0 listings:
-    // noindex and out of the nav until they have content.
-    quietSections: ['events', 'workplace'],
+    // noindex and out of the nav until they have content. Jobs and Vail Resorts (already noindex) left the nav too (owner B3, 2026-11-11).
+    quietSections: ['events', 'workplace', 'jobs', 'vail'],
     renderWindow: NO_RENDER_WINDOW,
     cityName: 'Broomfield',
     country: 'us',
