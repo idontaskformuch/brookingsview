@@ -43,6 +43,7 @@ import { buildWeekDays } from '../../lib/this-week';
 import { groupWeekItems, isQuorumNotice, type WeekGroup } from '../../lib/week-groups';
 import WeekGroupList from '../../components/WeekGroupList.astro';
 import { publicBody, isAiText, linkTarget } from '../../lib/ai-text';
+import { factsDescription } from '../../lib/story-description';
 
 export async function getStaticPaths() {
   // Fetched once for the whole build, not per-page -- the facilities set is
@@ -440,9 +441,14 @@ const eventJsonLdObject = buildEventJsonLd(
     siteName: siteConfig.siteName, timezone: siteConfig.timezone },
   canonicalUrl, ogImageUrl,
 );
+// A withheld text (displayBody '') still gets a description: the facts the page shows (QA build.meta-missing, 2026-11-12).
+const metaDescriptionText = displayBody.trim() || factsDescription(story, {
+  timezone: siteConfig.timezone, meetingsHaveTime: siteConfig.meetingsHaveTime,
+  locale: siteConfig.country === 'gb' ? 'en-GB' : 'en-US',
+});
 ---
 
-<BaseLayout title={`${pageTitle} — ${siteConfig.siteName}`} description={displayBody} ogSlug={story.slug} noindex={isNoindex} canonicalUrl={pageCanonicalUrl}>
+<BaseLayout title={`${pageTitle} — ${siteConfig.siteName}`} description={metaDescriptionText} ogSlug={story.slug} noindex={isNoindex} canonicalUrl={pageCanonicalUrl}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <article class="story">
     {!hasByline && <p class="story__kind data">{kind}</p>}
