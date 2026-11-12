@@ -43,6 +43,10 @@ python -m scrapers.runner --config configs/brookings_sd.json --only weather
 ```
 `--only weather` kör bara den nyckelfria NOAA-källan — bra första rök-test.
 
+Python-beroenden: ändra bara `requirements.in`; `requirements.txt` är en genererad låsfil (exakta versioner + hashar, gäller Linux och Windows).
+Uppdatera låsfilen med kommandot överst i `requirements.txt`, med `--exclude-newer` satt till dagens datum minus 14 dagar.
+Kör sedan `pip-audit -r requirements.txt --require-hashes` och hela pytest i en ren venv innan commit.
+
 ## Stage 0 — verifiera INNAN parsers färdigställs
 Aktiverade källor beror på riktiga endpoints. Status (2026-07-16), detaljer i
 `configs/brookings_sd.json` → `_verify_before_launch`:
