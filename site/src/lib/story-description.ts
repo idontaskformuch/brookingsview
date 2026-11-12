@@ -3,7 +3,8 @@
  *  never from model text (2026-11-12: these pages shipped <meta name="description" content>; QA build.meta-missing).
  *
  *  "<title> at <venue>, <day>." -- a part that is missing is left out with its separator, a day the title already names is not
- *  repeated, and anything over DESCRIPTION_CAP is cut at a word boundary. */
+ *  repeated. Over DESCRIPTION_CAP the venue shrinks to its name (the part before the first comma: Moreno's venue_raw carries the
+ *  full street address), and only then is the text cut at a word boundary. */
 import { meetingDayParts } from './meeting-day.mjs';
 import { formatDayLong } from './holiday-calendar';
 
@@ -43,10 +44,15 @@ export function factsDescription(
     : null;
   const day = parts && !TITLE_HAS_DAY.test(title) ? formatDayLong(Date.UTC(parts.y, parts.m - 1, parts.d), opts.locale) : '';
 
-  let sentence = title;
-  if (venue && !title.toLowerCase().includes(venue.toLowerCase())) {
-    sentence += NOT_A_LOCATION.test(venue) ? `, ${venue[0].toLowerCase()}${venue.slice(1)}` : ` at ${venue}`;
-  }
-  if (day) sentence += `, ${day}`;
-  return capAtWord(`${sentence}.`);
+  const build = (place: string) => {
+    let sentence = title;
+    if (place && !title.toLowerCase().includes(place.toLowerCase())) {
+      sentence += NOT_A_LOCATION.test(place) ? `, ${place[0].toLowerCase()}${place.slice(1)}` : ` at ${place}`;
+    }
+    if (day) sentence += `, ${day}`;
+    return `${sentence}.`;
+  };
+  const full = build(venue);
+  if (full.length <= DESCRIPTION_CAP) return full;
+  return capAtWord(build(venue.split(',')[0].trim()));
 }

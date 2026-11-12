@@ -55,6 +55,17 @@ describe('factsDescription (QA build.meta-missing, 2026-11-12)', () => {
     expect(d).not.toMatch(/[\s,]…$/);
   });
 
+  it('over the cap the venue shrinks to its name before anything is cut (Moreno venue_raw carries the street address)', () => {
+    expect(factsDescription({
+      title: 'Moreno Valley: Free Food Giveaway (Every Sunday)', source_type: 'event', occurs_at: '2026-05-17T18:00:00Z',
+      venue_raw: 'Building Up Lives Foundation (Suite A),23185 Hemlock Ave, Moreno Valley, CA 92557, USA',
+    }, { timezone: 'America/Los_Angeles', meetingsHaveTime: true, locale: 'en-US' }))
+      .toBe('Moreno Valley: Free Food Giveaway (Every Sunday) at Building Up Lives Foundation (Suite A), Sunday, May 17, 2026.');
+    // short enough: the full venue stays
+    expect(factsDescription({ title: 'Council', source_type: 'meeting', occurs_at: null, meta: { venue: 'City Chambers, Glasgow' } }, GB))
+      .toBe('Council at City Chambers, Glasgow.');
+  });
+
   it('capAtWord leaves short text alone', () => {
     expect(capAtWord('Short.')).toBe('Short.');
   });
