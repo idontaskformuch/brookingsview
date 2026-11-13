@@ -81,32 +81,36 @@ def report(town_id: str, venue: dict, res: VenueResult, show: bool) -> None:
         print(f"      note: {note}")
     if show:
         for r in res.rules:
-            when = ",".join(map(str, r.weekdays)) if r.kind == "recurring" else r.on_date
+            when = (",".join(map(str, r.weekdays)) + (f" weeks {r.weeks_of_month}" if r.weeks_of_month else "")
+                    + (f" until {r.valid_until}" if r.valid_until else "")) if r.kind == "recurring" else r.on_date
             print(f"      + {r.kind:9} {r.title!r} {when} {r.times} price={r.price} age={r.age}\n          quote: {r.quote!r}")
         for rej in res.rejected:
             print(f"      - rejected ({rej.why}): {json.dumps(rej.entry, ensure_ascii=False)[:200]}")
 
 
 def write_result(cur, town_id: str, venue: dict, res: VenueResult) -> None:
+    # place_id from the config's "place_slug" (migration 071); NULL while the venue has no places row.
     cur.execute(
-        "INSERT INTO evening_register_venues (town_id, venue_id, name, url, status, status_reason, checked_at, last_ok_at) "
-        "VALUES (%s, %s, %s, %s, %s, %s, now(), CASE WHEN %s = 'ok' THEN now() END) "
+        "INSERT INTO evening_register_venues (town_id, venue_id, name, url, status, status_reason, checked_at, last_ok_at, place_id) "
+        "VALUES (%s, %s, %s, %s, %s, %s, now(), CASE WHEN %s = 'ok' THEN now() END, "
+        "(SELECT id FROM places WHERE town_id = %s AND slug = %s)) "
         "ON CONFLICT (town_id, venue_id) DO UPDATE SET name = EXCLUDED.name, url = EXCLUDED.url, status = EXCLUDED.status, "
-        "status_reason = EXCLUDED.status_reason, checked_at = now(), "
+        "status_reason = EXCLUDED.status_reason, checked_at = now(), place_id = EXCLUDED.place_id, "
         "last_ok_at = CASE WHEN EXCLUDED.status = 'ok' THEN now() ELSE evening_register_venues.last_ok_at END",
-        (town_id, venue["venue_id"], venue["name"], venue["url"], res.status, res.reason, res.status),
+        (town_id, venue["venue_id"], venue["name"], venue["url"], res.status, res.reason, res.status, town_id, venue.get("place_slug")),
     )
     if res.status != "ok":
         return
     for r in res.rules:
         cur.execute(
             "INSERT INTO evening_register_entries (town_id, venue_id, entry_key, kind, title, weekdays, on_date, times, price, age, "
-            "default_group, source_url, evidence) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+            "default_group, source_url, evidence, weeks_of_month, valid_until) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
             "ON CONFLICT (town_id, venue_id, entry_key) DO UPDATE SET title = EXCLUDED.title, weekdays = EXCLUDED.weekdays, "
             "on_date = EXCLUDED.on_date, times = EXCLUDED.times, price = EXCLUDED.price, age = EXCLUDED.age, "
-            "default_group = EXCLUDED.default_group, source_url = EXCLUDED.source_url, evidence = EXCLUDED.evidence, last_confirmed_at = now(), active = true",
+            "default_group = EXCLUDED.default_group, source_url = EXCLUDED.source_url, evidence = EXCLUDED.evidence, "
+            "weeks_of_month = EXCLUDED.weeks_of_month, valid_until = EXCLUDED.valid_until, last_confirmed_at = now(), active = true",
             (town_id, venue["venue_id"], r.key, r.kind, r.title, r.weekdays, r.on_date, r.times, r.price, r.age,
-             venue["default_group"], r.source_url or res.final_url or venue["url"], r.quote),
+             venue["default_group"], r.source_url or res.final_url or venue["url"], r.quote, r.weeks_of_month, r.valid_until),
         )
     for durl in res.detail_urls:
         cur.execute("INSERT INTO evening_register_detail_fetches (url, town_id, fetched_at) VALUES (%s, %s, now()) "

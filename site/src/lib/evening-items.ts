@@ -72,6 +72,19 @@ export interface RegisterRow {
   defaultGroup: string;
   sourceUrl: string;
   lastConfirmedAt: string;
+  /** Recurring only (migration 071): [] or absent = every week; [1, 3] = 1st and 3rd; [-1] = last of the month. */
+  weeksOfMonth?: number[];
+  /** Recurring only: the last date (YYYY-MM-DD) the venue's page gives; no evenings after it. */
+  validUntil?: string | null;
+}
+
+/** Whether `day` (a local day number) is in one of the month's weeks: 1..5 = the nth such weekday, -1 = the last one. */
+export function inWeeksOfMonth(day: number, weeks: number[] | undefined): boolean {
+  if (!weeks || weeks.length === 0) return true;
+  const d = new Date(day * 86_400_000);
+  const dom = d.getUTCDate();
+  const daysInMonth = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  return weeks.includes(Math.ceil(dom / 7)) || (weeks.includes(-1) && dom + 7 > daysInMonth);
 }
 
 /** Owner 2026-10-29: a dated event is dropped unless the venue's page still showed it within 7 days, a recurring rule within 35. */
@@ -272,6 +285,7 @@ export function registerEntries(rows: RegisterRow[], o: EveningEntryOptions): Ev
       const ymd = { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() };
       const iso = `${ymd.y}-${String(ymd.m).padStart(2, '0')}-${String(ymd.d).padStart(2, '0')}`;
       if (r.kind === 'dated' ? r.onDate !== iso : !r.weekdays.includes(isoWeekday(day))) continue;
+      if (r.kind === 'recurring' && (!inWeeksOfMonth(day, r.weeksOfMonth) || (r.validUntil && iso > r.validUntil))) continue;
       const starts = r.times.map((t) => localInstantIso(ymd, Number(t.slice(0, 2)), Number(t.slice(3, 5)), o.timezone));
       out.push({
         id: `reg:${r.venueName}|${r.title}|${iso}`, title: displayTitle(r.title), start: starts[0],

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { EveningEntry } from './evening-items';
-import { buildEveningSections, buildSection, groupEntries, pickHighlights, sectionState } from './evening-page';
+import { buildEveningSections, buildSection, eveningEntries, groupEntries, pickHighlights, sectionState } from './evening-page';
 import { localDayNumber } from './local-day';
 
 const TZ = 'Europe/London';
@@ -70,5 +70,16 @@ describe('near / further afield (owner 2026-10-29, Broomfield 5 mi)', () => {
     expect(s.highlights.map((x) => x.distanceMiles)).toEqual([1]);
     const all = buildSection([at(30), at(1)], localDayNumber(NOW, TZ), 'tonight', TZ, false);
     expect(all.farGroups).toEqual([]);
+  });
+});
+
+describe('eveningEntries: a happy hour from 15:00 (owner 2026-11-13)', () => {
+  it('keeps "Happy Hour" at 15:00 and still drops any other 15:00 start', () => {
+    // The Old Man Bar: "Happy Hour | 3-6pm" and "Burger Mondays All Day" (specials page, 2026-11-13), Monday 16 Nov in Denver.
+    const tz = 'America/Denver';
+    const happy = { ...e('2026-11-16T22:00:00Z', 'Quiz & pub nights'), title: 'Happy Hour' };
+    const burger = { ...e('2026-11-16T22:00:00Z', 'Quiz & pub nights'), title: 'Burger Mondays' };
+    const day = localDayNumber(new Date('2026-11-16T22:00:00Z'), tz);
+    expect(eveningEntries([happy, burger], day, tz)).toEqual([happy]);
   });
 });

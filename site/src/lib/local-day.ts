@@ -17,6 +17,10 @@ export interface TimedEvent {
 }
 
 export const TONIGHT_FROM_HOUR = 17;
+/** Owner 2026-11-13: a happy hour may start at 15:00 (the register job accepts it from then, /tonight shows it); every other entry keeps
+ *  TONIGHT_FROM_HOUR. Mirrors scrapers/evening_register.py HAPPY_HOUR_FROM_HOUR. */
+export const HAPPY_HOUR_FROM_HOUR = 15;
+export const HAPPY_HOUR_RE = /\bhappy hours?\b/i;
 /** An event with a known start but no end is treated as over this long after it
  *  starts (owner rule: a passed event must never sit under Today/Tonight). */
 export const DEFAULT_EVENT_MS = 3 * 3_600_000;

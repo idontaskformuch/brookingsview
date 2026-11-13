@@ -2,7 +2,7 @@
  *  Server-rendered for the build's "tonight" and "tomorrow night"; the browser then hides what has ended and flips the headings
  *  with sectionState() (the build can be hours old). Spec: .claude/specs/weekend-layer.md T2. */
 import type { EveningEntry, EveningGroup } from './evening-items';
-import { localDayNumber, localHourOf, TONIGHT_FROM_HOUR } from './local-day';
+import { localDayNumber, localHourOf, TONIGHT_FROM_HOUR, HAPPY_HOUR_FROM_HOUR, HAPPY_HOUR_RE } from './local-day';
 import { EVENING_LAST_START_HOUR } from './evening-threshold';
 
 export const GROUP_ORDER: EveningGroup[] = ['Live music', 'Comedy & shows', 'Theatre', 'Quiz & pub nights', 'Clubs & late', 'Sport', 'Family', 'Festivals & fairs', 'Film'];
@@ -59,11 +59,12 @@ export function groupEntries(entries: EveningEntry[]): EveningListGroup[] {
     .map((name) => ({ name, entries: byName.get(name)!.sort(byStart) }));
 }
 
-/** The evening of `day`: entries starting at/after 17:00 local that day. Highlights come out of the compact rows (no row twice). */
+/** The evening of `day`: entries starting at/after 17:00 local that day, a happy hour from 15:00 (owner 2026-11-13). Highlights come
+ *  out of the compact rows (no row twice). */
 export function eveningEntries(entries: EveningEntry[], day: number, tz: string): EveningEntry[] {
   return entries.filter((e) => {
     const at = new Date(e.start);
-    return localDayNumber(at, tz) === day && localHourOf(at, tz) >= TONIGHT_FROM_HOUR;
+    return localDayNumber(at, tz) === day && localHourOf(at, tz) >= (HAPPY_HOUR_RE.test(e.title) ? HAPPY_HOUR_FROM_HOUR : TONIGHT_FROM_HOUR);
   });
 }
 

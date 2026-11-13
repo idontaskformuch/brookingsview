@@ -230,3 +230,23 @@ describe('display names (owner 2026-10-29)', () => {
     expect(e[0]).toMatchObject({ title: 'Mama Terra', venue: 'Òran Mór' });
   });
 });
+
+// Broomfield register rows as the job would store them from the pages fetched 2026-11-13 (.claude/evidence/venues-2026-11/broomfield,
+// feeds-2026-11/broomfield): Rails End "1st & 3rd Monday from 6:00-9:00PM", 4 Noses "TRIVIA EVERY MONDAY 6:30PM-8:30PM Nov 1 to Nov 24".
+describe('registerEntries: weeks of the month and an end date (migration 071, owner 2026-11-13)', () => {
+  const BF = { ...OPTS, feed: [], timezone: 'America/Denver', cityName: 'Broomfield', now: new Date('2026-11-13T18:00:00Z') };
+  const row = (o: Partial<import('./evening-items').RegisterRow>) => ({
+    venueName: 'Rails End Beer Company', kind: 'recurring' as const, title: 'Open Jam', weekdays: [1], onDate: null, times: ['18:00'], price: null, age: null,
+    defaultGroup: 'Live music', sourceUrl: 'https://railsendbeerco.com/live-music/', lastConfirmedAt: '2026-11-13T11:00:00Z', ...o,
+  });
+  it('1st & 3rd Monday: of the Mondays 16 and 23 Nov only the 16th (the 3rd Monday) is kept', () => {
+    expect(registerEntries([row({ weeksOfMonth: [1, 3] })], BF).map((e: { start: string }) => e.start)).toEqual(['2026-11-17T01:00:00.000Z']);
+    expect(registerEntries([row({})], BF)).toHaveLength(2); // every week, the rows stored before migration 071
+  });
+  it('no evenings after valid_until', () => {
+    const trivia = row({ venueName: '4 Noses Brewing', title: 'Trivia', times: ['18:30'], validUntil: '2026-11-24' });
+    expect(registerEntries([trivia], BF)).toHaveLength(2); // 16 and 23 Nov
+    // the one changed field: valid_until
+    expect(registerEntries([{ ...trivia, validUntil: '2026-11-20' }], BF)).toHaveLength(1);
+  });
+});

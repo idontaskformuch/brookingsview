@@ -323,3 +323,66 @@ def test_detail_pages_capped_at_ten():
     rejected = [er.Rejected({"title": f"Event number {i} show", "times": []}, "times must be HH:MM") for i in range(15)]
     p, _ = er.parse_page(page_html)
     assert len(er.detail_links(rejected, p.links, URL)) == er.MAX_DETAIL_PAGES
+
+
+# --- weeks of the month, an end date, happy hour, opening-hours notices (owner 2026-11-13) ------------------------------------
+# Verbatim page text from .claude/evidence/venues-2026-11/broomfield/ (Rails End /live-music/, The Old Man Bar specials) and
+# .claude/evidence/feeds-2026-11/broomfield/ (4 Noses /broomfield-events), fetched 2026-11-13.
+NOV13 = date(2026, 11, 13)
+RAILS_END = ("LIVE MUSIC\nOPEN MIC NIGHT\n3rd Thursday of every month\nThursday, Nov 19th 6:00-10:00PM\nCome enjoy the show!\n"
+             "LIVE MUSIC\nOPEN JAM\n1st & 3rd Monday from 6:00-9:00PM.")
+FOUR_NOSES = ("TRIVIA EVERY MONDAY 6:30PM-8:30PM Nov 1 to Nov 24\nClosed For Thanksgiving Thursday, November 26, 2026\n"
+              "Black Friday Hours Friday, November 27, 2026 11:00 AM 9:00 PM")
+OLD_MAN = ("Monday November 16th\nBurger Mondays All Day | $9.00 Pub Burger\n11:00 AM - 10:00 PM\n"
+           "Happy Hour | 3-6pm & 10pm-Close | $4.00 - Wells | $1.00 OFF - Wine | $1.00 OFF - Micro Drafts\n03:00 PM - 02:00 AM")
+
+
+def test_first_and_third_monday_is_kept_with_its_weeks_and_its_own_key():
+    e = entry(title="Open Jam", weekdays=["mon"], weeks_of_month=[1, 3], times=["18:00"], quote="1st & 3rd Monday from 6:00-9:00PM")
+    kept, rej = er.validate_extraction(reply(e), RAILS_END, NOV13)
+    assert not rej and kept[0].weeks_of_month == [1, 3] and kept[0].times == ["18:00"]
+    assert kept[0].key.endswith("|w1,3")
+    # an every-week rule keeps the key it had before weeks_of_month existed
+    plain, _ = er.validate_extraction(reply(entry()), PAGE, TODAY)
+    assert plain[0].key == "recurring|comedy night|2|"
+
+
+def test_third_thursday_from_a_range_with_the_pm_on_the_end():
+    e = entry(title="Open Mic Night", weekdays=["thu"], weeks_of_month=[3], times=["18:00"],
+              quote="3rd Thursday of every month\nThursday, Nov 19th 6:00-10:00PM")
+    kept, rej = er.validate_extraction(reply(e), RAILS_END, NOV13)
+    assert not rej and kept[0].weeks_of_month == [3]
+
+
+def test_a_week_of_the_month_the_quote_does_not_say_is_rejected():
+    e = entry(title="Open Jam", weekdays=["mon"], weeks_of_month=[2], times=["18:00"], quote="1st & 3rd Monday from 6:00-9:00PM")
+    kept, rej = er.validate_extraction(reply(e), RAILS_END, NOV13)
+    assert not kept and "week of the month" in rej[0].why
+
+
+def test_valid_until_from_the_quote():
+    e = entry(title="Trivia", weekdays=["mon"], times=["18:30"], valid_until="2026-11-24", quote="TRIVIA EVERY MONDAY 6:30PM-8:30PM Nov 1 to Nov 24")
+    kept, rej = er.validate_extraction(reply(e), FOUR_NOSES, NOV13)
+    assert not rej and kept[0].valid_until == date(2026, 11, 24)
+    wrong = dict(e, valid_until="2026-11-30")
+    kept, rej = er.validate_extraction(reply(wrong), FOUR_NOSES, NOV13)
+    assert not kept and "valid_until" in rej[0].why
+
+
+@pytest.mark.parametrize("title,day,time,quote", [
+    ("Closed For Thanksgiving", "2026-11-26", "17:00", "Closed For Thanksgiving Thursday, November 26, 2026"),
+    ("Black Friday Hours", "2026-11-27", "21:00", "Black Friday Hours Friday, November 27, 2026 11:00 AM 9:00 PM"),
+])
+def test_opening_hours_notices_are_not_events(title, day, time, quote):
+    e = {"kind": "dated", "title": title, "weekdays": [], "date": day, "times": [time], "quote": quote}
+    kept, rej = er.validate_extraction(reply(e), FOUR_NOSES, NOV13)
+    assert not kept and "opening-hours notice" in rej[0].why
+
+
+def test_happy_hour_may_start_at_15_and_nothing_else_may():
+    e = entry(title="Happy Hour", weekdays=["mon"], times=["15:00"], quote="Monday November 16th\nBurger Mondays All Day | $9.00 Pub Burger\n11:00 AM - 10:00 PM\nHappy Hour | 3-6pm")
+    kept, rej = er.validate_extraction(reply(e), OLD_MAN, NOV13)
+    assert not rej and kept[0].times == ["15:00"]
+    burger = dict(e, title="Burger Mondays", times=["11:00"])
+    kept, rej = er.validate_extraction(reply(burger), OLD_MAN, NOV13)
+    assert not kept and "before 17:00" in rej[0].why

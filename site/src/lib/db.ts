@@ -2349,7 +2349,7 @@ export async function getEveningRegister(): Promise<RegisterRow[]> {
   try {
     const rows = (await sql`
       SELECT v.name AS venue_name, e.kind, e.title, e.weekdays, e.on_date::text AS on_date, e.times, e.price, e.age,
-             e.default_group, e.source_url, e.last_confirmed_at
+             e.default_group, e.source_url, e.last_confirmed_at, e.weeks_of_month, e.valid_until::text AS valid_until
         FROM evening_register_entries e
         JOIN evening_register_venues v ON v.town_id = e.town_id AND v.venue_id = e.venue_id
        WHERE e.town_id = ${TOWN_ID} AND v.status = 'ok' AND e.active
@@ -2359,6 +2359,7 @@ export async function getEveningRegister(): Promise<RegisterRow[]> {
       weekdays: ((r.weekdays as number[] | null) ?? []).map(Number), onDate: (r.on_date as string | null) ?? null,
       times: (r.times as string[]) ?? [], price: (r.price as string | null) ?? null, age: (r.age as string | null) ?? null,
       defaultGroup: String(r.default_group), sourceUrl: String(r.source_url), lastConfirmedAt: new Date(r.last_confirmed_at as string).toISOString(),
+      weeksOfMonth: ((r.weeks_of_month as number[] | null) ?? []).map(Number), validUntil: (r.valid_until as string | null) ?? null,
     }));
   } catch (e) {
     console.warn(`[evening] venue register left out, unreadable (${e instanceof Error ? e.message : String(e)})`);

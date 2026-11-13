@@ -20,7 +20,8 @@
         "name": "Wonderland Brewing",
         "type": "brewery",
         "url": "https://www.wonderlandbrewing.com/events",
-        "default_group": "Quiz & pub nights"
+        "default_group": "Quiz & pub nights",
+        "place_slug": "wonderland-brewing"
       },
       {
         "venue_id": "big-choice",
@@ -63,6 +64,24 @@
         "type": "bar/live music",
         "url": "https://www.trailsidesaloon.com/events-calendar",
         "default_group": "Live music"
+      },
+      {
+        "venue_id": "rails-end",
+        "name": "Rails End Beer Company",
+        "type": "brewery/live music",
+        "url": "https://railsendbeerco.com/live-music/",
+        "default_group": "Live music",
+        "place_slug": "rails-end-beer-company",
+        "_added": "owner 2026-11-13 (open mic 3rd Thursday, open jam 1st & 3rd Monday)"
+      },
+      {
+        "venue_id": "the-old-man",
+        "name": "The Old Man Bar",
+        "type": "bar",
+        "url": "https://theoldmanbar.com/broomfield-broomfield-the-old-man-bar-happy-hours-specials",
+        "default_group": "Quiz & pub nights",
+        "place_slug": "the-old-man-bar",
+        "_added": "owner 2026-11-13 (happy hour 3-6pm, from 15:00)"
       }
     ]
   },
