@@ -24,7 +24,41 @@ def _vevent(uid: str, title: str, dtstart: str = "20260101T100000Z") -> str:
 def test_registry_has_the_known_kinds():
     # "blocked"/"unconfirmed" are inert markers handled in events.py before
     # the registry is even consulted -- see event_sources.py's own comment.
-    assert set(EVENT_SOURCE_KINDS) == {"ical", "ical_civicplus", "html_listing_ics", "glasgow_life"}
+    assert set(EVENT_SOURCE_KINDS) == {"ical", "ical_civicplus", "html_listing_ics", "glasgow_life", "tribe_rest"}
+
+
+def _tribe_blob() -> bytes:
+    """Chipper's Lanes' REST answer of 2026-11-13 (14 events, all four sites), wrapped the way _fetch_tribe_rest() hands it over."""
+    import json
+    from pathlib import Path
+    response = json.loads((Path(__file__).parent / "fixtures" / "chippers_tribe_rest_2026-11-13.json").read_text(encoding="utf-8"))
+    return json.dumps({"venue_city": "Broomfield", "venue_label": "100 Nickel at Chipper's Lanes", "response": response}).encode()
+
+
+def test_tribe_rest_keeps_only_the_broomfield_site():
+    from scrapers.event_sources import _parse_tribe_rest
+    recs = _parse_tribe_rest("chippers_100_nickel", _tribe_blob(), "America/Denver")
+    assert [r["title"] for r in recs] == ["Workingman’s Wednesdays ft. Aoxomoxoa", "Polysanto w/ The Risky Bets",
+                                         "Lionel Young Blues Band (2 sets!)", "Colorado Rocks w/ Electric Flannel"]
+    first = recs[0]
+    assert first["starts_at"] == "2026-12-02T18:30:00-07:00" and first["ends_at"] == "2026-12-02T21:30:00-07:00"
+    assert first["venue"] == "100 Nickel at Chipper's Lanes, 100 Nickel St, Broomfield, CO 80020"
+    assert first["url"] == "https://chipperslanes.com/event/free-workingmans-wednesdays-ft-aoxomoxoa-11/2026-12-02/"
+    # "**FREE**" becomes a flag, the thundertix ticket page stays a link that is never fetched
+    assert first["raw_data"]["free"] is True
+    assert first["raw_data"]["ticket_url"] == "https://chipperslanes.thundertix.com/events/257878"
+    assert len({r["content_hash"] for r in recs}) == 4
+
+
+def test_tribe_rest_drops_unpublished_and_hidden_events():
+    import json
+    from scrapers.event_sources import _parse_tribe_rest
+    blob = json.loads(_tribe_blob())
+    # the one changed field per event: status / hide_from_listings on two real Broomfield rows
+    blob["response"]["events"][4]["status"] = "draft"
+    blob["response"]["events"][10]["hide_from_listings"] = True
+    recs = _parse_tribe_rest("chippers_100_nickel", json.dumps(blob).encode(), "America/Denver")
+    assert [r["title"] for r in recs] == ["Lionel Young Blues Band (2 sets!)", "Colorado Rocks w/ Electric Flannel"]
 
 
 def test_decode_ics_prefers_utf8():

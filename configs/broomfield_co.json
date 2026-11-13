@@ -220,7 +220,8 @@
     },
     "events": {
       "type": "multi",
-      "enabled": false,
+      "enabled": true,
+      "_enabled_2026_11_13": "Back on (owner 2026-11-13) for ONE source, chippers_100_nickel (tribe_rest). Every other source below stays kind 'blocked' and is never fetched.",
       "_enabled_note": "Set back to false 2026-10-08 (owner decision, post-2d review): all three known sources are now documented dead ends (see each one's own _note below) -- no scheduled job will fetch any of them while this stays false (scrapers/runner.py's own run loop skips a disabled data_sources entry before ever consulting its sources[]). Broomfield gets zero events until a real one is found. Flipping this back to true alone is NOT enough to resume scraping -- the 'chamber' source below must also have its kind changed back from 'blocked' to 'ical' first.",
       "sources": [
         {
@@ -268,6 +269,15 @@
           "kind": "blocked",
           "url": "https://old-events.bizwest.com/events/category/broomfield/?ical=1",
           "_note": "Broomfield Chamber of Commerce's own events, organizer andrea.warren@broomfieldchamber.com, found 2026-10-08 (Phase 2, item 2d). Hosted on BizWest's (the regional business journal covering Boulder Valley/Northern Colorado) events platform -- a real The Events Calendar (WordPress/ECPv6-style) export, same pattern as Brookings' chamber/chamber_business sources, well-formed REFRESH-INTERVAL (PT1H, has the T designator) and VTIMEZONE (America/Denver). events.bizwest.com permanently 302-redirects every /events/ path to this old-events. subdomain (X-Robots-Tag: noindex) -- fetches the redirect target directly, not the alias. robots.txt on old-events.bizwest.com is permissive (only GPTBot/Amazonbot disallowed; Crawl-delay: 10 for everyone else, respected via refresh_minutes same as other sources). Initially wired in as 'ical' and owner-approved despite its caveats (dry-run verified clean: 1 real record, correct timezone), but on review of the dry-run findings the OWNER DECLINED to run it live, 2026-10-08: only 1 event in the broomfield category, that event's own venue (Delta Hotels, Northglenn CO) is roughly a Swedish mil (~6-10mi) outside Broomfield proper, and the 'old-events.bizwest.com' naming/noindex strongly suggests a platform migration that could vanish without notice. Not a policy or technical block like webtrac/compass above -- a thin-value judgment call. kind changed back to 'blocked' (never fetched) rather than deleted, so this research isn't lost if a stronger case (more events, or a real Broomfield-addressed one) shows up later. Re-check this same URL if revisited; don't re-derive it from scratch."
+        },
+        {
+          "name": "chippers_100_nickel",
+          "kind": "tribe_rest",
+          "enabled": true,
+          "url": "https://chipperslanes.com/wp-json/tribe/events/v1/events",
+          "venue_city": "Broomfield",
+          "venue_label": "100 Nickel at Chipper's Lanes",
+          "_note": "Owner yes 2026-11-13: Chipper's Lanes' own The Events Calendar REST feed, at most one fetch a day (refresh_minutes 1440 above), robots.txt checked each run. The feed covers all four Chipper's sites; only public, listed events with venue city Broomfield and the 'Broomfield' category are kept (13 Nov: 4 of 14). Ticket links go to chipperslanes.thundertix.com, which answered 403 + a Cloudflare challenge on 13 Nov: kept as a link only (raw_data.ticket_url), never fetched. Evidence: .claude/evidence/feeds-2026-11/broomfield/chippers-events-rest.json."
         }
       ],
       "refresh_minutes": 1440,

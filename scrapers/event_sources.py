@@ -344,6 +344,75 @@ def _parse_html_listing_ical(source_name: str, combined: bytes, tzname: str) -> 
     return records
 
 
+# The Events Calendar's REST API (WordPress plugin "tribe"), e.g. Chipper's Lanes, whose Broomfield site hosts 100 Nickel (owner
+# 2026-11-13): one GET of /wp-json/tribe/events/v1/events per run from yesterday, after a robots.txt check; the events data source's
+# refresh_minutes (1440) keeps it to once a day. The feed covers every location of the chain, so only PUBLIC events at the configured
+# city are kept: status 'publish', not hide_from_listings, venue.city == source_cfg["venue_city"] and that city among the event's
+# categories (13 Nov: 4 of 14). The ticket link ("website", thundertix -- 403 to us) is kept as a link only, never fetched.
+TRIBE_PER_PAGE = 50
+_FREE_MARK_RE = re.compile(r"^\s*\*\*\s*free\s*\*\*\s*", re.IGNORECASE)
+
+
+def _fetch_tribe_rest(source_cfg: dict, headers: dict) -> bytes | None:
+    import json
+    from urllib.parse import urlparse
+
+    from scrapers import robots as _robots
+
+    url = source_cfg.get("url")
+    if not url:
+        return None
+    parts = urlparse(url)
+    rob = requests.get(f"{parts.scheme}://{parts.netloc}/robots.txt", headers=headers, timeout=20)
+    verdict = _robots.verdict(rob.status_code, rob.text, url)
+    if not verdict.ok:
+        print(f"    [events:{source_cfg.get('name')}] robots.txt: {verdict.reason} -- hämtas inte")
+        return None
+    # From yesterday (UTC): the sub-source has no timezone, and a UTC "today" is already tomorrow on a Colorado evening.
+    since = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+    r = requests.get(url, params={"per_page": TRIBE_PER_PAGE, "start_date": since}, headers=headers, timeout=20)
+    r.raise_for_status()
+    return json.dumps({"venue_city": source_cfg["venue_city"], "venue_label": source_cfg.get("venue_label"),
+                       "response": r.json()}).encode()
+
+
+def _parse_tribe_rest(source_name: str, raw: bytes, tzname: str) -> list[dict]:
+    import html as _html
+    import json
+
+    blob = json.loads(raw)
+    city = blob["venue_city"]
+    out: list[dict] = []
+    for e in blob["response"].get("events", []):
+        venue = e.get("venue") if isinstance(e.get("venue"), dict) else {}
+        cats = {c.get("name") for c in e.get("categories", [])}
+        if e.get("status") != "publish" or e.get("hide_from_listings") or venue.get("city") != city or city not in cats:
+            continue
+        title = _html.unescape(_strip_html(str(e.get("title", ""))))
+        free = bool(_FREE_MARK_RE.match(title))
+        title = _FREE_MARK_RE.sub("", title).strip()
+        if not title or is_suspicious(title):
+            continue
+        tz = ZoneInfo(e.get("timezone") or tzname)
+        starts = datetime.fromisoformat(e["start_date"]).replace(tzinfo=tz).isoformat() if e.get("start_date") else None
+        ends = datetime.fromisoformat(e["end_date"]).replace(tzinfo=tz).isoformat() if e.get("end_date") else None
+        place = ", ".join(p for p in (blob.get("venue_label") or venue.get("venue"), venue.get("address"), venue.get("city"),
+                                      " ".join(p for p in (venue.get("state"), venue.get("zip")) if p)) if p)
+        out.append({
+            "title": title,
+            "starts_at": starts,
+            "ends_at": ends,
+            "venue": place or None,
+            "source": source_name,
+            "url": e.get("url"),
+            "raw_data": {"uid": str(e.get("id")), "description": _strip_html(str(e.get("description") or "")) or None,
+                         "categories": sorted(c for c in cats if c), "ticket_url": e.get("website") or None,
+                         "cost": e.get("cost") or None, **({"free": True} if free else {})},
+            "content_hash": content_hash("events", source_name, str(e.get("id"))),
+        })
+    return out
+
+
 @dataclass(frozen=True)
 class EventSourceKind:
     """One recognized `kind` value for an events.sources[] entry.
@@ -370,4 +439,6 @@ EVENT_SOURCE_KINDS: dict[str, EventSourceKind] = {
     "html_listing_ics": EventSourceKind(fetch=_fetch_html_listing_ical, parse=_parse_html_listing_ical),
     # Glasgow Life what's-on cards (see scrapers/glasgow_life_events.py)
     "glasgow_life": EventSourceKind(fetch=glasgow_life_events.fetch_pages, parse=glasgow_life_events.parse_pages),
+    # The Events Calendar REST API, one city's public events (Chipper's Lanes / 100 Nickel, Broomfield)
+    "tribe_rest": EventSourceKind(fetch=_fetch_tribe_rest, parse=_parse_tribe_rest),
 }
