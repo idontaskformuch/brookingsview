@@ -44,6 +44,7 @@ import { categoryImagesFor } from '../config/category-images';
 import { assertCategoryImagesComplete, assertImageExists, findContentTrackRowsMissingImage } from './images';
 import { PAGE_META_PATTERNS } from '../config/page-meta';
 import { isPastStalenessThreshold } from './place-hours';
+import { calendarDateIso } from './calendar-date';
 import { resolvePageMeta } from './page-meta';
 import { facilityTitleElements } from './facility-lede';
 import { weekInfoForInstant, currentWeekInfo } from './this-week';
@@ -385,10 +386,10 @@ async function assertPlaceLayerConsistent(): Promise<void> {
     // for a place that actually claims structured hours; a place with no
     // hours data at all has nothing hours-specific to go stale.
     if (row.hours_confidence === 'structured' && isPastStalenessThreshold(row.verified_date, staleness.hoursDays, now)) {
-      staleHours.push(`${row.slug}: hours last verified ${row.verified_date ?? 'never'} (> ${staleness.hoursDays} days)`);
+      staleHours.push(`${row.slug}: hours last verified ${calendarDateIso(row.verified_date) ?? 'never'} (> ${staleness.hoursDays} days)`);
     }
     if (isPastStalenessThreshold(row.verified_date, staleness.addressPhoneDays, now)) {
-      staleAddress.push(`${row.slug}: address/phone last verified ${row.verified_date ?? 'never'} (> ${staleness.addressPhoneDays} days)`);
+      staleAddress.push(`${row.slug}: address/phone last verified ${calendarDateIso(row.verified_date) ?? 'never'} (> ${staleness.addressPhoneDays} days)`);
     }
   }
 

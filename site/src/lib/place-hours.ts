@@ -208,17 +208,18 @@ export function buildPlaceOpeningHoursSpecification(hours: PlaceHoursRow[]): Rec
     }));
 }
 
-/** Handoff Section 4: staleness. `verifiedDate` is a bare "YYYY-MM-DD"
- *  string (places.verified_date is DATE, not TIMESTAMPTZ -- see
+/** Handoff Section 4: staleness. `verifiedDate` is places.verified_date, a DATE (not TIMESTAMPTZ -- see
  *  NEEDS-HUMAN-REVIEW.md #68 for why that's the real, existing field this
  *  reads, not a separately-added last_verified_at). Compares in UTC calendar
  *  days, not town-local time -- a staleness THRESHOLD measured in whole
  *  days doesn't need town-timezone precision the open/closed check above
  *  does; a day's difference either way at a 45- or 180-day threshold
  *  changes nothing real. */
-export function isPastStalenessThreshold(verifiedDate: string | null, thresholdDays: number, now: Date): boolean {
-  if (!verifiedDate) return true; // never verified is at least as stale as "too old"
-  const verified = new Date(`${verifiedDate}T00:00:00Z`);
-  const ageDays = (now.getTime() - verified.getTime()) / 86_400_000;
+export function isPastStalenessThreshold(verifiedDate: string | Date | null, thresholdDays: number, now: Date): boolean {
+  // The Neon driver hands a DATE over as a Date at local midnight, not a "YYYY-MM-DD" string; `${date}T00:00:00Z` of that was
+  // an Invalid Date, so nothing was ever stale (found 2026-11-12 on Broomfield's /today/). calendarDateParts reads either.
+  const parts = calendarDateParts(verifiedDate);
+  if (!parts) return true; // never verified is at least as stale as "too old"
+  const ageDays = (now.getTime() - Date.UTC(parts.y, parts.m, parts.d)) / 86_400_000;
   return ageDays > thresholdDays;
 }

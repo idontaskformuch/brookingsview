@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { ALL_CONFIGS } from './site-config';
 import { computePlaceOpenStatus, isPastStalenessThreshold, buildPlaceOpeningHoursSpecification } from './place-hours';
 import type { PlaceHoursRow, PlaceHoursException } from './db';
 
@@ -177,5 +179,20 @@ describe('isPastStalenessThreshold', () => {
 
   it('past the threshold is stale', () => {
     expect(isPastStalenessThreshold('2026-01-01', 45, new Date('2026-09-13T00:00:00Z'))).toBe(true);
+  });
+  // places.verified_date as the Neon driver hands it over: a Date at local midnight. Broomfield's library (places slug 'library',
+  // verified_date 2026-09-13) was never stale because new Date(`${Date}T00:00:00Z`) is Invalid Date (found 2026-11-12).
+  it('reads a DATE handed over as a Date object', () => {
+    const verified = new Date(2026, 8, 13);
+    expect(isPastStalenessThreshold(verified, 45, new Date('2026-11-13T12:00:00Z'))).toBe(true);
+    expect(isPastStalenessThreshold(verified, 45, new Date('2026-10-01T12:00:00Z'))).toBe(false);
+  });
+});
+
+describe('QA build.hours-schema-fresh mirror', () => {
+  it('scripts/verify_hours_schema_fresh.mjs uses the hours limit of every town', () => {
+    const src = readFileSync(new URL('../../../scripts/verify_hours_schema_fresh.mjs', import.meta.url), 'utf8');
+    const mirror = Number(src.match(/HOURS_STALE_DAYS = (\d+)/)![1]);
+    for (const c of ALL_CONFIGS) expect(c.placeStaleness?.hoursDays ?? 45, c.townId).toBe(mirror);
   });
 });

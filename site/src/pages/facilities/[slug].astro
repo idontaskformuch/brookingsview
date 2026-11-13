@@ -39,6 +39,7 @@ import { placeAbbr, countryProfile } from '../../lib/country-profile';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../lib/clusters';
 import { formatClock, isRoundTheClock } from '../../lib/facility-hours';
 import { buildPlaceOpeningHoursSpecification, isPastStalenessThreshold } from '../../lib/place-hours';
+import { calendarDateIso } from '../../lib/calendar-date';
 import { buildFacilityLede, facilityTitleElements, facilityMapLink, summarizeHours } from '../../lib/facility-lede';
 import { resolvePageMeta } from '../../lib/page-meta';
 import { linkTarget } from '../../lib/ai-text';
@@ -273,7 +274,7 @@ const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('faciliti
               <a href={facility.source_url} rel="noopener">{siteConfig.cityName} official site</a>
             )}
             {facility.verified_date && (
-              <>{facility.source_url ? ' — ' : ''}checked {formatCalendarDate(facility.verified_date)}</>
+              <>{facility.source_url ? ' — ' : ''}checked <time datetime={calendarDateIso(facility.verified_date)}>{formatCalendarDate(facility.verified_date)}</time></>
             )}
           </dd>
         </div>

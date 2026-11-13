@@ -10,7 +10,6 @@ import { resolve } from 'node:path';
 import type { WeatherPeriod, PlaceHoursRow, PlaceHoursException } from './db';
 import { hoursOnDate, isPastStalenessThreshold } from './place-hours';
 import { formatClock, isRoundTheClock } from './facility-hours';
-import { calendarDateParts } from './calendar-date';
 
 export interface TodayPageConfig {
   /** Blocks with content needed before the page is indexable. */
@@ -76,9 +75,7 @@ export function hoursToday(places: TodayHoursPlace[], now: Date, timezone: strin
   const weekday = new Date(`${iso}T12:00:00Z`).getUTCDay();
   const out: { slug: string; name: string; text: string }[] = [];
   for (const p of places) {
-    const v = calendarDateParts(p.verified_date);
-    const verified = v ? `${v.y}-${String(v.m + 1).padStart(2, '0')}-${String(v.d).padStart(2, '0')}` : null;
-    if (p.hours.length === 0 || isPastStalenessThreshold(verified, staleDays, now)) continue;
+    if (p.hours.length === 0 || isPastStalenessThreshold(p.verified_date, staleDays, now)) continue;
     const day = hoursOnDate(iso, weekday, p.hours, p.exceptions);
     if (day === null) continue;
     const text = day === 'closed'

@@ -22,3 +22,9 @@ export function calendarDateParts(value: string | Date | null): { y: number; m: 
   const [y, m, d] = value.slice(0, 10).split('-').map(Number);
   return { y, m: m - 1, d };
 }
+
+/** "YYYY-MM-DD" of a DATE column, string or Date alike (for <time datetime>). */
+export function calendarDateIso(value: string | Date | null): string | null {
+  const p = calendarDateParts(value);
+  return p ? `${p.y}-${String(p.m + 1).padStart(2, '0')}-${String(p.d).padStart(2, '0')}` : null;
+}

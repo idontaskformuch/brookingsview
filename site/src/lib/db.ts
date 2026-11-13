@@ -2484,7 +2484,8 @@ export async function getUpcomingPlaceHoursExceptions(placeId: number): Promise<
 export interface PlaceGuardrailRow {
   slug: string;
   source_url: string | null;
-  verified_date: string | null;
+  /** DATE: the Neon driver hands it over as a Date, see isPastStalenessThreshold. */
+  verified_date: string | Date | null;
   hours_confidence: string | null;
   place_hours_count: number;
 }
