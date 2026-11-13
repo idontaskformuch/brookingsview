@@ -91,7 +91,7 @@ const MAY_BUILD_STORY_HREF: Record<string, string> = {
   'lib/cross-site-canonical.ts': 'canonical of a noindex page on the origin town',
   'lib/news-sitemap.ts': 'the caller filters out withheld text (news-sitemap.xml.ts)',
   'pages/rss.xml.ts': 'filters out withheld text before building items',
-  'pages/this-week/[week].astro': 'only shown when the weekly intro (publicBody) is non-empty',
+  'components/ThisWeekView.astro': 'only shown when the weekly intro (publicBody) is non-empty (the /this-week/ pages, 631f800)',
   'components/meetings/MeetingCard.astro': 'storySlug comes from getMeetingRowsForView(), which only returns slugs of stories with public text',
   'pages/month/[slug].astro': 'only shown when digestExists, which requires ownPageHref()',
 };
