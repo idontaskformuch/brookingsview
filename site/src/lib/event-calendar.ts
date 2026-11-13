@@ -7,8 +7,16 @@ import type { Story } from './db';
 import { hasEnded } from './local-day';
 import { siteConfig } from './site-config';
 
-/** Upcoming events read for .ics files. No town is near it (2026-11-13: 52 at most); one past it loses the link, not a file. */
+/** Upcoming dated events read for .ics files. No town is near it (2026-11-13: 28 at most); one past it loses the link, not a file,
+ *  and the build warns when the read fills it. */
 export const EVENT_ICS_LIMIT = 500;
+
+/** The build warning when the read hit the cap (owner 2026-11-13: the cap must never cut events silently), else null. */
+export function icsLimitWarning(read: number, townId: string): string | null {
+  return read >= EVENT_ICS_LIMIT
+    ? `[event-calendar] ${townId}: read ${read} upcoming events = EVENT_ICS_LIMIT; the latest-starting ones get no "Add to calendar" link -- raise the cap.`
+    : null;
+}
 
 /** True when a calendar file is worth building for this event at `now`: one dated, non-recurring event that has not ended. */
 export function canCalendarEvent(story: Story, now: Date, timeZone: string): boolean {
@@ -21,8 +29,12 @@ let calendarEvents: Promise<Story[]> | null = null;
 /** The events that get a .ics file in this build (read once per build). */
 export function getCalendarEvents(): Promise<Story[]> {
   const now = new Date();
-  calendarEvents ??= getUpcomingStories(['event'], EVENT_ICS_LIMIT)
-    .then((events) => events.filter((e) => canCalendarEvent(e, now, siteConfig.timezone)));
+  calendarEvents ??= getUpcomingStories(['event'], EVENT_ICS_LIMIT, { excludeRecurring: true })
+    .then((events) => {
+      const warning = icsLimitWarning(events.length, siteConfig.townId);
+      if (warning) console.warn(warning);
+      return events.filter((e) => canCalendarEvent(e, now, siteConfig.timezone));
+    });
   return calendarEvents;
 }
 

@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('./db', () => ({ getUpcomingStories: vi.fn() }));
-import { canCalendarEvent } from './event-calendar';
+import { canCalendarEvent, getCalendarEvents, icsLimitWarning, EVENT_ICS_LIMIT } from './event-calendar';
+import { getUpcomingStories } from './db';
 import type { Story } from './db';
 
 const TZ = 'America/Los_Angeles';
@@ -23,5 +24,17 @@ describe('canCalendarEvent (one rule for the .ics file and its link, F18 2026-11
   });
   it('an undated event has none either (only occurs_at changed from the real row)', () => {
     expect(canCalendarEvent({ ...EVAN_HONER, occurs_at: null } as unknown as Story, new Date('2026-11-14T20:00:00Z'), TZ)).toBe(false);
+  });
+});
+
+describe('the .ics cap (owner 2026-11-13)', () => {
+  it('the read leaves recurring series out before the cap, so the cap counts only dated events', async () => {
+    vi.mocked(getUpcomingStories).mockResolvedValue([]);
+    await getCalendarEvents();
+    expect(getUpcomingStories).toHaveBeenCalledWith(['event'], EVENT_ICS_LIMIT, { excludeRecurring: true });
+  });
+  it('a read that fills the cap warns, one under it does not', () => {
+    expect(icsLimitWarning(EVENT_ICS_LIMIT, 'moreno_valley_ca')).toContain('moreno_valley_ca: read 500 upcoming events = EVENT_ICS_LIMIT');
+    expect(icsLimitWarning(EVENT_ICS_LIMIT - 1, 'moreno_valley_ca')).toBeNull();
   });
 });

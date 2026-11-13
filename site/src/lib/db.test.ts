@@ -187,6 +187,13 @@ describe('every reader-facing stories listing excludes superseded rows', () => {
     }
   });
 
+  it('getUpcomingStories can leave recurring series out before the LIMIT (.ics cap, owner 2026-11-13)', () => {
+    const start = dbSource.indexOf('function getUpcomingStories(');
+    const body = dbSource.slice(start, dbSource.indexOf('export ', start + 1));
+    expect(body.indexOf('NOT COALESCE(is_recurring_series, false)')).toBeGreaterThan(-1);
+    expect(body.indexOf('NOT COALESCE(is_recurring_series, false)')).toBeLessThan(body.indexOf('LIMIT'));
+  });
+
   it('getStoryBySlug and getAllStories are deliberately NOT in the list above', () => {
     expect(LISTING_FUNCTIONS).not.toContain('getStoryBySlug');
     expect(LISTING_FUNCTIONS).not.toContain('getAllStories');

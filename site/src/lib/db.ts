@@ -375,10 +375,12 @@ export interface RegionalGame {
  *  old individually-published event row once it's been retroactively
  *  merged into a recurring-series story (see Story's own doc comment on
  *  that column) -- a no-op filter for every other source_type, which
- *  never sets the column. */
+ *  never sets the column. `excludeRecurring` leaves recurring series out before the LIMIT, so a cap counts only dated events
+ *  (the .ics list, owner 2026-11-13: series took 37 of Moreno's 52 rows read and never get a file). */
 export async function getUpcomingStories(
   sourceTypes: SourceType[],
   limit = 20,
+  { excludeRecurring = false }: { excludeRecurring?: boolean } = {},
 ): Promise<Story[]> {
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
@@ -391,6 +393,7 @@ export async function getUpcomingStories(
        -- A meeting with a real start time counts as held 2 h after it starts (everything else keeps 12 h; date-only meetings are midnight anchors).
        AND occurs_at >= now() - CASE WHEN source_type = 'meeting' AND ${siteConfig.meetingsHaveTime ?? false}::boolean THEN interval '2 hours' ELSE interval '12 hours' END
        AND superseded_by_slug IS NULL
+       AND (NOT ${excludeRecurring}::boolean OR NOT COALESCE(is_recurring_series, false))
      ORDER BY occurs_at ASC
      LIMIT ${limit}
   `) as Story[];
