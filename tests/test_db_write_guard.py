@@ -221,3 +221,35 @@ def test_prod_backup_appends_to_the_same_days_file_and_never_overwrites(guard, m
     prod_backup.backup("same_day", "SELECT 2 AS n")
     doc = json.loads((guard.dir / f"{date.today().isoformat()}_same_day.json").read_text(encoding="utf-8"))
     assert [s["select"] for s in doc["selects"]] == ["SELECT 1 AS n", "SELECT 2 AS n"]
+
+
+def test_an_insert_that_starts_with_with_logs_its_ids(guard, monkeypatch):
+    # owner 2026-11-13 (proposal 5): a top-level INSERT behind a CTE was invisible to the log
+    conn = _prod_conn(guard, monkeypatch)
+    sql = ("WITH v AS (SELECT id FROM places WHERE slug = %s) "
+           "INSERT INTO stories (title) SELECT 'a (b)' FROM v")
+    with conn.cursor() as cur:
+        cur.execute(sql, ("x",))
+    assert guard.conn.cursors[0].executed[-1] == sql + " RETURNING id"
+    assert dbmod._INSERTED == [{"table": "stories", "ids": [101, 102]}]
+    conn.close()
+
+
+def test_an_insert_inside_a_cte_logs_the_statement_without_rewriting_it(guard, monkeypatch):
+    conn = _prod_conn(guard, monkeypatch)
+    sql = "WITH ins AS (INSERT INTO stories (title) VALUES (%s) RETURNING id) SELECT count(*) FROM ins"
+    with conn.cursor() as cur:
+        cur.execute(sql, ("a",))
+    assert guard.conn.cursors[0].executed == [sql]
+    assert dbmod._INSERTED == [{"table": "stories", "ids": None, "statement": sql, "params": ("a",)}]
+    conn.close()
+
+
+def test_a_with_select_is_not_an_insert(guard, monkeypatch):
+    conn = _prod_conn(guard, monkeypatch)
+    sql = "WITH v AS (SELECT 'insert into stories' AS t) SELECT t FROM v"
+    with conn.cursor() as cur:
+        cur.execute(sql)
+    assert guard.conn.cursors[0].executed == [sql]
+    assert dbmod._INSERTED == []
+    conn.close()

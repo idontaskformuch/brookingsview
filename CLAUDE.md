@@ -67,6 +67,11 @@
     handskrivet "Saturday 14 Nov" för Bonnie "Prince" Billy, som är söndag
     15 nov i källan, stod i både förslag och test.)
 
+16. När en spärr, ett test eller ett skript vägrar en åtgärd: stanna,
+    rapportera och vänta på ägarens ja. Gå aldrig runt spärren en annan
+    väg. (2026-11-13: migration 071 kördes som engångsskript förbi
+    apply_migration:s tillåtlista.)
+
 ## Redaktionell grundregel
 
 Varje sida ska hjälpa en invånare att förstå eller göra något. Listor och

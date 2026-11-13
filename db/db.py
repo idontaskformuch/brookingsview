@@ -49,6 +49,8 @@ def _database_url() -> str:
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 BACKUP_DIR = _REPO_ROOT / ".claude" / "backups"
 _INSERT_RE = re.compile(r"^\s*insert\s+into\s+([A-Za-z_][\w.]*)", re.I)
+_WITH_RE = re.compile(r"^\s*with\b", re.I)
+_ANY_INSERT_RE = re.compile(r"\binsert\s+into\s+([A-Za-z_][\w.]*)", re.I)
 _RETURNING_ID_RE = re.compile(r"\breturning\s+id\b", re.I)
 _RETURNING_RE = re.compile(r"\breturning\b", re.I)
 
@@ -123,6 +125,24 @@ def flush_inserted(action: str) -> None:
     _INSERTED.clear()
 
 
+def _match_insert(sql: str) -> tuple[str, bool] | None:
+    """(tabell, toppnivå) för en INSERT, även en som börjar med WITH (ägaren 2026-11-13). Toppnivå = INSERT:en står utanför
+    parenteser och citat, så RETURNING id kan läggas till sist; en INSERT inuti en CTE loggas som sats + parametrar."""
+    m = _INSERT_RE.match(sql)
+    if m:
+        return m.group(1), True
+    if not _WITH_RE.match(sql):
+        return None
+    masked = re.sub(r"'[^']*'", lambda q: " " * len(q.group(0)), sql)
+    found = None
+    for m in _ANY_INSERT_RE.finditer(masked):
+        depth = masked[:m.start()].count("(") - masked[:m.start()].count(")")
+        if depth == 0:
+            return m.group(1), True
+        found = found or (m.group(1), False)
+    return found
+
+
 def _tables_with_id(raw_conn) -> set[str]:
     global _ID_TABLES
     if _ID_TABLES is None:
@@ -153,11 +173,15 @@ class _GuardedCursor:
 
     def execute(self, query, params=None, **kwargs):
         sql = query if isinstance(query, str) else None
-        m = _INSERT_RE.match(sql) if sql else None
+        m = _match_insert(sql) if sql else None
         if not m:
             self._cur.execute(query, params, **kwargs)
             return self
-        table = m.group(1)
+        table, top_level = m
+        if not top_level:
+            self._cur.execute(query, params, **kwargs)
+            _INSERTED.append({"table": table, "ids": None, "statement": sql, "params": params})
+            return self
         wants_id = bool(_RETURNING_ID_RE.search(sql))
         if not wants_id and not _RETURNING_RE.search(sql) and table.split(".")[-1] in _tables_with_id(self._conn._raw):
             sql, wants_id = sql.rstrip().rstrip(";") + " RETURNING id", True
@@ -172,9 +196,9 @@ class _GuardedCursor:
 
     def executemany(self, query, params_seq, **kwargs):
         params_seq = list(params_seq)
-        m = _INSERT_RE.match(query) if isinstance(query, str) else None
+        m = _match_insert(query) if isinstance(query, str) else None
         if m:
-            _INSERTED.append({"table": m.group(1), "ids": None, "statement": query, "params": params_seq})
+            _INSERTED.append({"table": m[0], "ids": None, "statement": query, "params": params_seq})
         self._cur.executemany(query, params_seq, **kwargs)
         return self
 

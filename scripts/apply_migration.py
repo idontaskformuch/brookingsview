@@ -1,4 +1,5 @@
 """Apply one ADDITIVE migration file (CREATE TABLE / CREATE INDEX ... IF NOT EXISTS, or ALTER TABLE ... ADD COLUMN IF NOT EXISTS, only) through the prod write guard.
+If it refuses a statement: stop and ask the owner. Never run the migration another way around the check (CLAUDE.md rule 16).
 
     python -m scripts.prod_backup apply_migration "SELECT 'new tables only, no existing rows touched' AS note"
     ALLOW_PROD_WRITE=apply_migration python -m scripts.apply_migration 066_local_sports --prod
@@ -17,10 +18,16 @@ from db.db import declare_action, get_conn
 MIGRATIONS = Path(__file__).resolve().parent.parent / "db" / "migrations"
 _FORBIDDEN = re.compile(r"\b(drop|alter|update|delete|insert|truncate|grant|revoke)\b", re.I)
 _CREATE = re.compile(r"^create\s+(table|index)\s+if\s+not\s+exists\b", re.I)
-# The one ALTER that is allowed: adding a plain column that is not there yet (nothing existing is changed or removed).
+# The one ALTER that is allowed: adding a column that is not there yet (nothing existing is changed or removed). Extended
+# 2026-11-13 (owner, proposal 5, after 071 had to go round this check): any of these types, optionally an array; a bare
+# REFERENCES <table> (<col>) with no ON DELETE/ON UPDATE action (the new column is all NULL, nothing to validate); NOT NULL only
+# together with a DEFAULT (without one it fails on any table that has rows). CHECK stays refused: it validates existing rows.
+_TYPE = r"(boolean|smallint|integer|int|bigint|numeric(\(\d+(,\s*\d+)?\))?|text|date|timestamptz|jsonb)(\[\])?"
+_DEFAULT = r"\s+default\s+(true|false|-?\d+(\.\d+)?|'[^']*'(::\w+(\[\])?)?|now\(\))"
 _ADD_COLUMN = re.compile(
-    r"^alter\s+table\s+\w+\s+add\s+column\s+if\s+not\s+exists\s+\w+\s+(boolean|integer|text|timestamptz)"
-    r"(\s+not\s+null)?(\s+default\s+(true|false|-?\d+|'[^']*'|now\(\)))?$", re.I)
+    r"^alter\s+table\s+\w+\s+add\s+column\s+if\s+not\s+exists\s+\w+\s+" + _TYPE +
+    r"(\s+references\s+\w+\s*\(\s*\w+\s*\))?"
+    r"(\s+not\s+null" + _DEFAULT + r"|" + _DEFAULT + r"\s+not\s+null|" + _DEFAULT + r")?$", re.I)
 
 
 def statements(sql: str) -> list[str]:
