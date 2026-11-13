@@ -20,6 +20,7 @@
 import type { MeetingRow } from './meetings-view';
 import { neon } from '@neondatabase/serverless';
 import { siteConfig } from './site-config';
+import { PRUNE_EVENT_AFTER_DAYS } from './old-events';
 import { isSectionBuilt, linksToBuiltSection } from './sections';
 import { forCountry, formatClockCompact } from './country-profile';
 import { currentSeason, type SportEventRow, type SportPhase } from './sport-events';
@@ -946,6 +947,9 @@ export async function getRelatedStories(
        -- link on any live page nearby in time -- confirmed live 2026-09-03.
        AND published_at IS NOT NULL
        AND superseded_by_slug IS NULL
+       -- An event whose page is not built (lib/old-events.ts isPrunedEvent, same day count) is never linked (F18 2026-11-13).
+       AND NOT (source_type = 'event' AND is_recurring_series IS NOT TRUE
+                AND coalesce(ends_at, occurs_at) < now() - make_interval(days => ${PRUNE_EVENT_AFTER_DAYS}))
      ORDER BY abs(extract(epoch FROM (occurs_at - ${anchor}::timestamptz)))
      LIMIT ${limit}
   `) as Story[];
@@ -964,6 +968,9 @@ export async function getRelatedStories(
        AND occurs_at IS NOT NULL
        AND published_at IS NOT NULL
        AND superseded_by_slug IS NULL
+       -- An event whose page is not built (lib/old-events.ts isPrunedEvent, same day count) is never linked (F18 2026-11-13).
+       AND NOT (source_type = 'event' AND is_recurring_series IS NOT TRUE
+                AND coalesce(ends_at, occurs_at) < now() - make_interval(days => ${PRUNE_EVENT_AFTER_DAYS}))
      ORDER BY abs(extract(epoch FROM (occurs_at - ${anchor}::timestamptz)))
      LIMIT ${limit - sameType.length}
   `) as Story[];

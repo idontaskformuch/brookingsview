@@ -32,3 +32,15 @@ def test_stub_pages_are_not_sources():
     r = run(FIX / "before")
     assert "linked from 1 page(s): /sports/" not in r.stderr
     assert "across 4 page(s)" in r.stderr
+
+
+GLASGOW = ROOT / "tests" / "fixtures" / "qa_internal_links_glasgow_2026-11-13"
+
+
+def test_related_link_to_pruned_event_fails():
+    """before/ = /s/event-318275/ from the Glasgow build of 275ae5c (2026-11-13): its related list linked /s/event-331655/
+    (Chatterbooks Book Group for Children, 15 Sep), an event older than PRUNE_EVENT_AFTER_DAYS whose page is not built.
+    Fixed in lib/db.ts getRelatedStories (same day count as lib/old-events.ts)."""
+    r = run(GLASGOW / "before")
+    assert r.returncode == 1
+    assert "/s/event-331655/ (missing) linked from 1 page(s): /s/event-318275/" in r.stderr
