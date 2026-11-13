@@ -20,7 +20,10 @@ def test_city_feeds_are_inert_because_robots_txt_blocks_them():
     for s in CITY:
         assert s["kind"] == "blocked", s["name"]
         assert s.get("enabled") is False, s["name"]
-    assert EVENTS["enabled"] is False
+    # The events source is on again for Chipper's Lanes only (owner 2026-11-13): every source that can be fetched is elsewhere.
+    for s in EVENTS["sources"]:
+        if s["kind"] not in ("blocked", "unconfirmed"):
+            assert "broomfield.org" not in s.get("url", "").lower(), s["name"]
 
 
 def test_no_forbidden_or_non_feed_url():
