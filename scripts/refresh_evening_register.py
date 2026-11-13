@@ -5,7 +5,7 @@ weekly, started by the dispatcher on Mondays), IDENTITY CHECK, then Haiku reads 
 the page itself. A venue that fails robots is 'skipped'; one that fails the identity check is 'flagged' (no extraction, no link on the
 site, reported loudly) and is left alone on later runs until the owner unflags it with --unflag <venue_id>.
 
-    python -m scripts.refresh_evening_register                     # dry run: fetch + extract, report, write NOTHING (no DB, no usage log)
+    python -m scripts.refresh_evening_register                     # dry run: fetch + extract, report, no DB, no usage log (the fetch log + day copy still: scrapers/polite_fetch.py)
     python -m scripts.refresh_evening_register --apply             # write venues + entries (what the evening-register workflow runs)
     python -m scripts.refresh_evening_register --town glasgow --venue gft --show   # one venue, print every rule and every rejection
     python -m scripts.refresh_evening_register --apply --unflag the-stand          # owner decided a flagged venue is fine again
@@ -20,11 +20,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-import requests
-
 from ai_pipeline.generator_switch import generator_enabled
 from scrapers.evening_register import VenueResult, check_venue, local_today
-from scrapers.user_agent import user_agent
+from scrapers.polite_fetch import PoliteFetcher
 
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "configs"
 # Only a guard against running twice the same day (a manual run plus the Monday tick, a re-dispatch). The weekly rhythm is the dispatcher's
@@ -136,7 +134,6 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     now = datetime.now(timezone.utc)
-    session = requests.Session()
     state: dict[tuple[str, str], tuple[str, datetime]] = {}
     recent_details: set[str] = set()
     conn = None
@@ -155,6 +152,8 @@ def main(argv: list[str] | None = None) -> int:
             if args.town and town["town_id"] != args.town:
                 continue
             extract = None
+            # every request through polite_fetch: strict robots (a model reads the page text), the fetch log, one fetch per URL per UTC day (owner 2026-11-13)
+            fetcher = PoliteFetcher("register" if args.apply else "dryrun", town["town_id"], robots_mode="strict")
             for venue in town["venues"]:
                 if args.venue and venue["venue_id"] != args.venue:
                     continue
@@ -169,7 +168,7 @@ def main(argv: list[str] | None = None) -> int:
                     time.sleep(PAUSE_BETWEEN_VENUES_S)
                 first = False
                 extract = extract or make_extractor(town["town_id"], log_usage=args.apply)
-                res = check_venue(venue, session, user_agent(town["town_id"]), extract, local_today(now, town["timezone"]),
+                res = check_venue(venue, fetcher, extract, local_today(now, town["timezone"]),
                                   detail_allowed=lambda u: u not in recent_details)
                 recent_details.update(res.detail_urls)
                 report(town["town_id"], venue, res, args.show)

@@ -36,6 +36,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import time
 from io import BytesIO
 from pathlib import Path
 
@@ -151,11 +152,18 @@ VENUE_SEARCHES: dict[tuple[str, str], dict] = {
 }
 
 
+def _commons_pause() -> None:
+    # Commons API etiquette (https://www.mediawiki.org/wiki/API:Etiquette): serial requests, maxlag on every query. 1 s apart, the
+    # same pace as source_glasgow_commons_images.py (owner 2026-11-13: the API terms apply, scrapers/polite_fetch.py API_TERMS).
+    time.sleep(1.0)
+
+
 def commons_search(query: str, limit: int = 5) -> list[dict]:
+    _commons_pause()
     resp = requests.get(
         COMMONS_API,
         params={"action": "query", "list": "search", "srsearch": query,
-                "srnamespace": 6, "format": "json", "srlimit": limit},
+                "srnamespace": 6, "format": "json", "srlimit": limit, "maxlag": "5"},
         headers=HEADERS, timeout=REQUEST_TIMEOUT,
     )
     resp.raise_for_status()
@@ -164,10 +172,11 @@ def commons_search(query: str, limit: int = 5) -> list[dict]:
 
 def commons_imageinfo(file_title: str) -> dict | None:
     """`file_title` like 'BrookingsCityHall.jpg' (no 'File:' prefix needed)."""
+    _commons_pause()
     resp = requests.get(
         COMMONS_API,
         params={"action": "query", "titles": f"File:{file_title}", "prop": "imageinfo",
-                "iiprop": "url|extmetadata|size", "format": "json"},
+                "iiprop": "url|extmetadata|size", "format": "json", "maxlag": "5"},
         headers=HEADERS, timeout=REQUEST_TIMEOUT,
     )
     resp.raise_for_status()

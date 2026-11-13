@@ -171,6 +171,12 @@ class FakeSession:
         return R()
 
 
+def fx(session):
+    """The venue check's fetcher: no log file, no saved copies, no waiting."""
+    from scrapers.polite_fetch import MemoryLedger, PoliteFetcher
+    return PoliteFetcher("register", "glasgow", session=session, ledger=MemoryLedger(), cache_dir=None, sleep=lambda s: None)
+
+
 VENUE = {"venue_id": "stand", "name": "The Stand", "url": URL, "default_group": "Comedy & shows"}
 LONG = "<p>" + ("Welcome to the venue. " * 20) + "</p>" + "<p>" + PAGE.replace("\n", "</p><p>") + "</p>"
 
@@ -182,7 +188,7 @@ def run(routes, raw_reply=None):
         calls.append(text)
         return raw_reply if raw_reply is not None else reply(entry())
 
-    res = er.check_venue(VENUE, FakeSession(routes), "ViewMediaBot", extract, TODAY)
+    res = er.check_venue(VENUE, fx(FakeSession(routes)), extract, TODAY)
     return res, calls
 
 
@@ -193,7 +199,7 @@ def test_flow_ok_extracts_and_keeps_rules():
 
 def test_flow_robots_names_ai_bot_skips_without_fetching_page():
     sess = FakeSession({"https://venue.example/robots.txt": (200, "User-agent: GPTBot\nDisallow: /", None)})
-    res = er.check_venue(VENUE, sess, "ViewMediaBot", lambda s, t: pytest.fail("model must not run"), TODAY)
+    res = er.check_venue(VENUE, fx(sess), lambda s, t: pytest.fail("model must not run"), TODAY)
     assert res.status == "skipped" and sess.calls == ["https://venue.example/robots.txt"]
 
 
@@ -213,6 +219,17 @@ def test_flow_www_redirect_is_fine_and_script_rendered_page_extracts_nothing():
     routes = {"https://venue.example/robots.txt": (404, "", None), URL: (200, page("The Stand", "<p>Loading</p>"), "https://www.venue.example/whats-on")}
     res, calls = run(routes)
     assert res.status == "ok" and not res.rules and not calls
+
+
+def test_a_second_dry_run_the_same_day_reads_the_saved_copy(tmp_path):
+    # 2026-11-13: every dry run refetched (the 7-day/24 h guards were read only with --apply); now polite_fetch's day limit holds
+    from scrapers.polite_fetch import MemoryLedger, PoliteFetcher
+    routes = {"https://venue.example/robots.txt": (404, "", None), URL: (200, page("The Stand Comedy Club", LONG), None)}
+    ledger, sessions = MemoryLedger(), [FakeSession(routes), FakeSession(routes)]
+    for sess in sessions:
+        f = PoliteFetcher("dryrun", "glasgow", session=sess, ledger=ledger, cache_dir=tmp_path, sleep=lambda s: None)
+        assert er.check_venue(VENUE, f, lambda s, t: reply(entry()), TODAY).status == "ok"
+    assert URL in sessions[0].calls and URL not in sessions[1].calls
 
 
 def test_flow_unreachable_or_error_page_is_skipped():
@@ -299,7 +316,7 @@ def detail_extract(system, text):
 
 def test_detail_page_read_only_for_entries_without_time_and_same_domain():
     sess = FakeSession(detail_routes())
-    res = er.check_venue(VENUE, sess, "ViewMediaBot", detail_extract, TODAY)
+    res = er.check_venue(VENUE, fx(sess), detail_extract, TODAY)
     assert [r.title for r in res.rules] == ["Idlewild"] and res.rules[0].times == ["19:00"] and res.rules[0].price == "£25"
     assert res.rules[0].source_url == "https://venue.example/event/idlewild"
     assert res.detail_urls == ["https://venue.example/event/idlewild"]
@@ -307,13 +324,13 @@ def test_detail_page_read_only_for_entries_without_time_and_same_domain():
 
 
 def test_detail_page_skipped_when_fetched_today_or_blocked_by_robots_or_identity():
-    res = er.check_venue(VENUE, FakeSession(detail_routes()), "ViewMediaBot", detail_extract, TODAY, detail_allowed=lambda u: False)
+    res = er.check_venue(VENUE, fx(FakeSession(detail_routes())), detail_extract, TODAY, detail_allowed=lambda u: False)
     assert not res.rules and not res.detail_urls and any("24 h" in n for n in res.notes)
     robots = detail_routes({"https://venue.example/robots.txt": (200, "User-agent: *\nDisallow: /event/\n", None)})
-    res = er.check_venue(VENUE, FakeSession(robots), "ViewMediaBot", detail_extract, TODAY)
+    res = er.check_venue(VENUE, fx(FakeSession(robots)), detail_extract, TODAY)
     assert not res.rules and any("robots" in n for n in res.notes)
     hijacked = detail_routes({"https://venue.example/event/idlewild": (200, DETAIL.replace("The Stand", "Best Online Casino"), None)})
-    res = er.check_venue(VENUE, FakeSession(hijacked), "ViewMediaBot", detail_extract, TODAY)
+    res = er.check_venue(VENUE, fx(FakeSession(hijacked)), detail_extract, TODAY)
     assert not res.rules and any("identity" in n for n in res.notes)
 
 

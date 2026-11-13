@@ -32,10 +32,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Callable
 from zoneinfo import ZoneInfo
 
-import requests
-
 from db.db import content_hash
 from scrapers import glasgow_life_events
+from scrapers.polite_fetch import PoliteFetcher, Refused
+from scrapers.user_agent import SITE_DOMAINS
 from scrapers.text_sanity import is_suspicious
 
 # Events correctness Phase 1 (2026-10-08): confirmed live -- a Brookings
@@ -114,13 +114,31 @@ def _to_iso(dt, tzname: str) -> str | None:
     return datetime(dt.year, dt.month, dt.day, tzinfo=tz).isoformat()
 
 
+# Every request through scrapers/polite_fetch.py (owner 2026-11-13, proposal 4): purpose "source", so the runner's refresh_minutes keeps
+# the cadence, but each request is logged and a 403/challenge makes the feed link-only (rule 13). robots.txt in STANDARD mode: these are
+# structured feeds the code parses (iCal, REST), no model reads them; a disallow for us or for `*` always stops (owner 2026-11-13).
+def _fetcher(source_cfg: dict, headers: dict) -> PoliteFetcher:
+    ua = headers["User-Agent"]
+    town_id = next((t for t, d in SITE_DOMAINS.items() if f"//{d}/" in ua), None)
+    return PoliteFetcher("source", town_id, ua=ua, robots_mode="standard")
+
+
+def _get(fetcher: PoliteFetcher, source_cfg: dict, url: str, params: dict | None = None) -> bytes | None:
+    """The body of a 200, None when polite_fetch refuses (printed, not an error), an exception for any other answer."""
+    got = fetcher.get(url, params=params)
+    if isinstance(got, Refused):
+        print(f"    [events:{source_cfg.get('name')}] {got.reason} -- hämtas inte")
+        return None
+    if got.status != 200:
+        raise RuntimeError(f"{url} answered {got.status if got.status else 'nothing'}")
+    return got.body
+
+
 def _fetch_ical(source_cfg: dict, headers: dict) -> bytes | None:
     url = source_cfg.get("url")
     if not url:
         return None
-    r = requests.get(url, headers=headers, timeout=20)
-    r.raise_for_status()
-    return r.content
+    return _get(_fetcher(source_cfg, headers), source_cfg, url)
 
 
 def _categories(component) -> list[str]:
@@ -317,16 +335,18 @@ def _fetch_html_listing_ical(source_cfg: dict, headers: dict) -> bytes | None:
         "to": until.strftime("%m/%d/%Y"),
         "mode": "0",
     }
-    r = requests.get(listing_url, params=params, headers=headers, timeout=20)
-    r.raise_for_status()
-    slugs = _extract_event_slugs(r.text)[:MAX_DETAIL_FETCHES]
+    fetcher = _fetcher(source_cfg, headers)
+    listing = _get(fetcher, source_cfg, listing_url, params)
+    if listing is None:
+        return None
+    slugs = _extract_event_slugs(listing.decode("utf-8", errors="replace"))[:MAX_DETAIL_FETCHES]
 
     blobs: dict[str, bytes] = {}
     for slug in slugs:
         try:
-            ir = requests.get(f"{ical_base_url}{slug}.ics", headers=headers, timeout=20)
-            ir.raise_for_status()
-            blobs[slug] = ir.content
+            blob = _get(fetcher, source_cfg, f"{ical_base_url}{slug}.ics")
+            if blob is not None:
+                blobs[slug] = blob
         except Exception as exc:  # noqa: BLE001 -- ett trasigt event ska inte fälla de andra
             print(f"    [events:chamber_business] fel vid hämtning av {slug}: {exc}")
         time.sleep(FETCH_DELAY_SECONDS)
@@ -355,25 +375,16 @@ _FREE_MARK_RE = re.compile(r"^\s*\*\*\s*free\s*\*\*\s*", re.IGNORECASE)
 
 def _fetch_tribe_rest(source_cfg: dict, headers: dict) -> bytes | None:
     import json
-    from urllib.parse import urlparse
-
-    from scrapers import robots as _robots
-
     url = source_cfg.get("url")
     if not url:
         return None
-    parts = urlparse(url)
-    rob = requests.get(f"{parts.scheme}://{parts.netloc}/robots.txt", headers=headers, timeout=20)
-    verdict = _robots.verdict(rob.status_code, rob.text, url)
-    if not verdict.ok:
-        print(f"    [events:{source_cfg.get('name')}] robots.txt: {verdict.reason} -- hämtas inte")
-        return None
     # From yesterday (UTC): the sub-source has no timezone, and a UTC "today" is already tomorrow on a Colorado evening.
     since = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
-    r = requests.get(url, params={"per_page": TRIBE_PER_PAGE, "start_date": since}, headers=headers, timeout=20)
-    r.raise_for_status()
+    body = _get(_fetcher(source_cfg, headers), source_cfg, url, {"per_page": TRIBE_PER_PAGE, "start_date": since})
+    if body is None:
+        return None
     return json.dumps({"venue_city": source_cfg["venue_city"], "venue_label": source_cfg.get("venue_label"),
-                       "response": r.json()}).encode()
+                       "response": json.loads(body)}).encode()
 
 
 def _parse_tribe_rest(source_name: str, raw: bytes, tzname: str) -> list[dict]:

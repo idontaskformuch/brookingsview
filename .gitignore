@@ -68,3 +68,6 @@ site/indexnow-pending.json
 
 # local battery logs
 scratch_tmp/
+
+# polite_fetch day copies (scrapers/polite_fetch.py), never committed
+.cache/

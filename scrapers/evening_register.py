@@ -8,7 +8,7 @@ Owner decisions 2026-10-28/29 (.claude/specs/weekend-layer.md, "Registret"):
   * Haiku only reads the page text and returns structured rules (title, weekdays or date, times, a verbatim quote). Everything the
     site shows (price, age label, times) is validated against that quote in code; nothing the model writes is shown as prose.
 
-Pure functions plus one thin network layer (`fetch_text`), so tests run without HTTP or a model.
+Pure functions; every request goes through scrapers/polite_fetch.py (owner 2026-11-13), so tests run without HTTP or a model.
 """
 from __future__ import annotations
 
@@ -21,11 +21,11 @@ from typing import Any, Callable
 from urllib.parse import urljoin, urlparse
 
 from scrapers import robots as _robots
+from scrapers.polite_fetch import PoliteFetcher, Refused
 from scrapers.robots import AI_BOT_TOKENS, Verdict  # noqa: F401  (re-exported)
 
 BOT_TOKEN = "ViewMediaBot"
 MAX_PAGE_CHARS = 14_000
-MAX_BYTES = 1_500_000
 EVENING_FROM_HOUR = 17  # same bar as the site's "tonight" (TONIGHT_FROM_HOUR)
 HAPPY_HOUR_FROM_HOUR = 15  # owner 2026-11-13: a happy hour may start at 15:00; every other kind keeps EVENING_FROM_HOUR
 HORIZON_DAYS = 60
@@ -542,37 +542,22 @@ def _registrable(host: str) -> str:
     return ".".join(parts[-3:] if len(parts) > 2 and parts[-2] in ("co", "org", "com", "ac") else parts[-2:])
 
 
-def fetch_text(session, url: str, ua: str) -> tuple[int | None, str, str]:
-    """(status or None, body, final url). Size-capped; one request, redirects followed."""
-    try:
-        res = session.get(url, headers={"User-Agent": ua}, timeout=25, allow_redirects=True, stream=True)
-        body = res.raw.read(MAX_BYTES, decode_content=True) if hasattr(res, "raw") and res.raw is not None else res.content[:MAX_BYTES]
-        try:
-            text = body.decode("utf-8")
-        except UnicodeDecodeError:
-            text = body.decode(res.encoding or "latin-1", errors="replace")
-        return res.status_code, text, res.url
-    except Exception:  # noqa: BLE001 -- any network failure is "no answer"
-        return None, "", url
-
-
-def check_venue(venue: dict, session, ua: str, extract: Callable[[str, str], str], today: date,
+def check_venue(venue: dict, fetcher: PoliteFetcher, extract: Callable[[str, str], str], today: date,
                 detail_allowed: Callable[[str], bool] = lambda url: True) -> VenueResult:
     """robots -> fetch -> identity -> extract -> validate. `extract(system, page_text)` returns the model's raw reply.
+    Every request goes through `fetcher` (scrapers/polite_fetch.py: strict robots, the fetch log, one fetch per URL per day).
 
     Detail pages (owner 2026-10-29): only for list entries that lack a time, at most MAX_DETAIL_PAGES per venue, one fetch per URL per
     day (`detail_allowed(url)` says whether it may be fetched), robots and the identity check apply to each."""
     vid, url = venue["venue_id"], venue["url"]
-    origin = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
-    robots_status, robots_body, _ = fetch_text(session, f"{origin}/robots.txt", ua)
-    verdict = robots_verdict(robots_status, robots_body, url)
-    if not verdict.ok:
-        return VenueResult(vid, "skipped", verdict.reason)
-    status, html, final = fetch_text(session, url, ua)
+    got = fetcher.get(url)
+    if isinstance(got, Refused):
+        if got.reason.startswith("redirected to another domain"):
+            return VenueResult(vid, "flagged", got.reason)
+        return VenueResult(vid, "skipped", got.reason)
+    status, html, final = got.status, got.text, got.final_url
     if status != 200:
         return VenueResult(vid, "skipped", f"page answered {status if status else 'nothing'}", final_url=final)
-    if _registrable(urlparse(final).netloc) != _registrable(urlparse(url).netloc):
-        return VenueResult(vid, "flagged", f"redirected to another domain ({urlparse(final).netloc})", final_url=final)
     aliases = tuple(venue.get("aliases", ()))
     ident = identity_check(venue["name"], html, aliases)
     if not ident.ok:
@@ -584,15 +569,16 @@ def check_venue(venue: dict, session, ua: str, extract: Callable[[str, str], str
     res = VenueResult(vid, "ok", "", rules, rejected, final)
     seen = {r.key for r in rules}
     for durl in detail_links(rejected, page.links, final):
-        if not robots_verdict(robots_status, robots_body, durl).ok:
-            res.notes.append(f"detail page not allowed by robots: {durl}")
-            continue
         if not detail_allowed(durl):
             res.notes.append(f"detail page fetched within 24 h, skipped: {durl}")
             continue
-        dstatus, dhtml, dfinal = fetch_text(session, durl, ua)
+        dgot = fetcher.get(durl)
+        if isinstance(dgot, Refused):
+            res.notes.append(f"detail page refused ({dgot.reason}): {durl}")
+            continue
+        dstatus, dhtml, dfinal = dgot.status, dgot.text, dgot.final_url
         res.detail_urls.append(durl)
-        if dstatus != 200 or _registrable(urlparse(dfinal).netloc) != _registrable(urlparse(url).netloc):
+        if dstatus != 200:
             res.notes.append(f"detail page unusable ({dstatus}): {durl}")
             continue
         dident = identity_check(venue["name"], dhtml, aliases)
