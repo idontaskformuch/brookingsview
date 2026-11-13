@@ -2557,8 +2557,21 @@ export const FACILITY_CATEGORY_LABELS: Record<string, string> = {
   museum: 'Museums',
   // Glasgow Club gyms, pools and pitches fit neither community centre nor museum.
   leisure: 'Sport and leisure',
+  // Venue categories (owner 2026-11-13): see VENUE_CATEGORIES below.
+  bar_brewery: 'Breweries and bars',
+  music_venue: 'Music venues',
+  shopping: 'Shopping',
   other: 'Other',
 };
+
+/** Private businesses kept as place rows so events resolve to a real venue ("100 Nickel" -> Chipper's Lanes) and a regular night
+ *  can link to its place -- NOT public facilities (owner 2026-11-13). They never reach the /facilities/ hub, Today's "Hours today",
+ *  llms.txt or the sitemap; their own page builds but is always noindex. astro.config.mjs mirrors this list (venue-category.test.ts). */
+export const VENUE_CATEGORIES: ReadonlySet<string> = new Set(['bar_brewery', 'music_venue', 'shopping']);
+
+export function isPublicPlace(f: { category: string }): boolean {
+  return !VENUE_CATEGORIES.has(f.category);
+}
 
 // schema.org @type per facility category, for JSON-LD on the facility's own
 // page (site/src/pages/facilities/[slug].astro). Deliberately conservative
@@ -2587,6 +2600,9 @@ export const FACILITY_SCHEMA_TYPE: Record<string, string> = {
   // Step 5: also a real, dedicated schema.org type, not a fallback.
   museum: 'Museum',
   leisure: 'SportsActivityLocation',
+  bar_brewery: 'BarOrPub',
+  music_venue: 'MusicVenue',
+  shopping: 'ShoppingCenter',
   other: 'CivicStructure',
 };
 

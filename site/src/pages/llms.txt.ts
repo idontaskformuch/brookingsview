@@ -29,7 +29,7 @@ import { placeAbbr } from '../lib/country-profile';
 import { llmsAboutLines } from '../lib/llms-about';
 import { computeTownGraph } from '../lib/clusters';
 import { HUB_HREF, HUB_NAV_COPY, SPOKE_NAV_COPY } from '../config/clusters';
-import { getFacilities, FACILITY_CATEGORY_LABELS } from '../lib/db';
+import { getFacilities, isPublicPlace, FACILITY_CATEGORY_LABELS } from '../lib/db';
 
 function interpolate(text: string): string {
   return text.replaceAll('{Town}', siteConfig.cityName);
@@ -41,7 +41,7 @@ function absoluteUrl(path: string): string {
 
 export const GET: APIRoute = async () => {
   const graph = computeTownGraph(siteConfig);
-  const facilities = await getFacilities();
+  const facilities = (await getFacilities()).filter(isPublicPlace); // "Public facilities": no bars, music venues or shopping
 
   const lines: string[] = [
     `# ${siteConfig.siteName}`,

@@ -12,7 +12,7 @@ import AboutThisPage from '../../components/ui/AboutThisPage.astro';
 import SectionRule from '../../components/SectionRule.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
-import { getFacilities, FACILITY_CATEGORY_LABELS } from '../../lib/db';
+import { getFacilities, isPublicPlace, FACILITY_CATEGORY_LABELS } from '../../lib/db';
 import { siteConfig } from '../../lib/site-config';
 import { isSectionBuilt } from '../../lib/sections';
 import { metaDescription } from '../../lib/meta-description';
@@ -25,7 +25,8 @@ import ClusterNav from '../../components/ClusterNav.astro';
 
 const pageMeta = resolvePageMeta('facilities', siteConfig);
 const clusterNavItems = resolveHubNavItems('facilities', siteConfig);
-const facilities = await getFacilities();
+// Venue categories (bars, music venues, shopping) are place rows for event matching, not public facilities (lib/db.ts).
+const facilities = (await getFacilities()).filter(isPublicPlace);
 
 const byCategory = new Map<string, typeof facilities>();
 for (const f of facilities) {

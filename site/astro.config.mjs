@@ -569,8 +569,10 @@ async function buildLastmodMap(townId, databaseUrl) {
   // hours check (place_hours rows), no overcounting needed here.
   // Mirrors SiteConfig.thinFacilityMinOwnWords (site-config.ts); src/lib/thin-facility-mirror.test.ts fails if they disagree.
   const THIN_FACILITY_MIN_OWN_WORDS = { glasgow: 25, broomfield_co: 25 };
+  // Mirrors VENUE_CATEGORIES (lib/db.ts; src/lib/venue-category.test.ts fails if they disagree): always noindex, never in the sitemap.
+  const VENUE_CATEGORIES = ['bar_brewery', 'music_venue', 'shopping'];
   const thinFacilities = await sql`
-    SELECT p.slug,
+    SELECT p.slug, p.category,
            (p.address IS NULL OR p.address = '') AS no_address,
            (p.phone IS NULL OR p.phone = '') AS no_phone,
            (p.hours_text IS NULL OR p.hours_text = '') AS no_hours_text,
@@ -582,6 +584,7 @@ async function buildLastmodMap(townId, databaseUrl) {
      WHERE p.town_id = ${townId}
   `;
   for (const f of thinFacilities) {
+    if (VENUE_CATEGORIES.includes(f.category)) noindexThinPageUrls.add(`/facilities/${f.slug}/`);
     // Second condition mirrors facilities/[slug].astro's added stub rule (2026-10-23): no street address,
     // phone, hours or services.
     if ((f.no_address && f.no_phone && f.no_hours_text && f.no_structured_hours)

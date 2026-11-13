@@ -18,7 +18,7 @@ import TodayBlock from '../components/TodayBlock.astro';
 import SectionHero from '../components/SectionHero.astro';
 import {
   getWeather, getActiveAlerts, getClosureWatchStatus, getActiveTrafficIncidents,
-  getUpcomingStories, getUpcomingArtsEvents, getFacilities, getOsmSnapshot, getAllPlaceHoursForTown, getUpcomingPlaceHoursExceptions,
+  getUpcomingStories, getUpcomingArtsEvents, getFacilities, getOsmSnapshot, getAllPlaceHoursForTown, getUpcomingPlaceHoursExceptions, isPublicPlace,
 } from '../lib/db';
 import { todayDate, weatherToday, hoursToday, todayIndexVerdict, writeTodayVerdict } from '../lib/today-page';
 import { loadUpcomingMeetings } from '../lib/meetings-data';
@@ -93,7 +93,8 @@ const meetingsToday = todayCfg
 let hoursLines: { slug: string; name: string; text: string }[] = [];
 if (todayCfg) {
   const rows = await getAllPlaceHoursForTown();
-  const withHours = facilities.filter((f) => f.hours_confidence === 'structured' && rows.some((r) => r.place_id === f.id));
+  // Public places only: a bar's hours never sit next to the library's (venue categories, lib/db.ts).
+  const withHours = facilities.filter((f) => isPublicPlace(f) && f.hours_confidence === 'structured' && rows.some((r) => r.place_id === f.id));
   const places = await Promise.all(withHours.map(async (f) => ({
     slug: f.slug, name: f.name, verified_date: f.verified_date, hours: rows.filter((r) => r.place_id === f.id), exceptions: await getUpcomingPlaceHoursExceptions(f.id),
   })));
