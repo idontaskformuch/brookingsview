@@ -13,20 +13,17 @@
  *  nothing at a real URL.
  */
 import type { APIRoute } from 'astro';
-import { getUpcomingStories, getFacilities } from '../../lib/db';
+import { getFacilities } from '../../lib/db';
+import { getCalendarEvents } from '../../lib/event-calendar';
 import type { Story, Facility } from '../../lib/db';
 import { buildIcsEvent } from '../../lib/ics';
 import { siteConfig } from '../../lib/site-config';
 import { publicSlug, storyHref } from '../../lib/content-slugs';
 
 export async function getStaticPaths() {
-  const [events, facilities] = await Promise.all([
-    getUpcomingStories(['event'], 500),
-    getFacilities(),
-  ]);
-  return events
-    .filter((e) => !e.is_recurring_series)
-    .map((story) => ({ params: { slug: publicSlug(story.slug) }, props: { story, facilities } }));
+  // The same list s/[slug].astro asks before it shows the link (lib/event-calendar.ts).
+  const [events, facilities] = await Promise.all([getCalendarEvents(), getFacilities()]);
+  return events.map((story) => ({ params: { slug: publicSlug(story.slug) }, props: { story, facilities } }));
 }
 
 export const GET: APIRoute = ({ props, site }) => {
