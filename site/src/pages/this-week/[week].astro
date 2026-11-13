@@ -39,7 +39,7 @@ import { sportTerms } from '../../lib/sport-strings';
 import { weekDescription } from '../../lib/meta-description';
 import { placeAbbr } from '../../lib/country-profile';
 import { resolvePageMeta } from '../../lib/page-meta';
-import { resolveHubBacklink } from '../../lib/clusters';
+import { resolveHubBacklink, isAvailable } from '../../lib/clusters';
 import { groupWeekItems } from '../../lib/week-groups';
 import { storyHref } from '../../lib/content-slugs';
 import { countWeekItems, isThinWeek } from '../../lib/week-count.mjs';
@@ -117,6 +117,8 @@ const title = pageMeta.title;
 const description = weekDescription(siteConfig, week.label, siteConfig.townId === 'brookings_sd');
 const canonicalUrl = new URL(`/this-week/${week.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
 const isBrookings = siteConfig.townId === 'brookings_sd';
+// Only a sports page this town builds (F18, 2026-11-13: Broomfield's weeks linked /sports/, a redirect to /).
+const sportsHref = ['jackrabbits', 'sports'].filter((k) => isAvailable(k, siteConfig)).map((k) => `/${k}/`)[0] ?? null;
 
 const hasAnyItems = days.some((d) => d.items.length > 0);
 // Past-day omission only makes sense for the still-in-progress current
@@ -179,7 +181,7 @@ const itemListJsonLd = hasAnyItems ? {
     {isBrookings
       ? <a href="/events/campus/">SDSU</a>
       : null}
-    <a href={isBrookings ? '/jackrabbits/' : '/sports/'}>Sports</a>
+    {sportsHref && <a href={sportsHref}>Sports</a>}
   </nav>
 
   {prevWeek && (

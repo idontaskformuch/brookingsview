@@ -62,6 +62,8 @@ jobs:
         run: node scripts/verify_town_games.mjs site/dist broomfield_co
       - name: Menu and footer link only to built, indexable pages
         run: node scripts/verify_nav_links.mjs site/dist broomfield_co
+      - name: Every internal link reaches a built page, not a redirect stub
+        run: node scripts/verify_internal_links.mjs site/dist
       - name: /today/ is written into the page and shows its date
         run: node scripts/verify_today_page.mjs site/dist broomfield_co
       - name: Facility hours in JSON-LD only while checked within the hours limit

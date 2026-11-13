@@ -13,12 +13,17 @@
  *  doesn't happen today but costs nothing to handle).
  */
 import type { SpokeNavCopy } from '../config/clusters';
+import { currentWeekInfo } from '../lib/this-week';
+import { siteConfig } from '../lib/site-config';
 
 interface Props {
   clusterLabel: string;
   items: SpokeNavCopy[];
 }
-const { clusterLabel, items } = Astro.props;
+const { clusterLabel } = Astro.props;
+// /this-week/ only redirects to the current week's page; link that page itself (F18, 2026-11-13).
+const thisWeekHref = `/this-week/${currentWeekInfo(siteConfig.timezone).slug}/`;
+const items = Astro.props.items.map((item) => item.href === '/this-week/' ? { ...item, href: thisWeekHref } : item);
 ---
 {items.length > 0 && (
   <nav class="cluster-nav" aria-label={`More on ${clusterLabel}`}>

@@ -43,7 +43,7 @@ function hubRouteFor(cluster: ClusterDefinition, townConfig: SiteConfig): string
   return CLUSTER_TOWN_OVERRIDES[townConfig.townId]?.[cluster.key]?.hubRoute ?? cluster.hubRoute;
 }
 
-function isAvailable(routeKey: string, townConfig: SiteConfig): boolean {
+export function isAvailable(routeKey: string, townConfig: SiteConfig): boolean {
   const predicate = ROUTE_AVAILABILITY[routeKey];
   // An unregistered key is never "available" -- see
   // assertClusterConfigConsistency() in the graph script for where a

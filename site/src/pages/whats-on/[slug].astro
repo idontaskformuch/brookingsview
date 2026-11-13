@@ -39,7 +39,9 @@ import { meetingDayParts } from '../../lib/meeting-day.mjs';
 
 export async function getStaticPaths() {
   if (!siteConfig.hasWhatsOn) return [];
-  const items = await getTicketmasterEventsForTown(siteConfig);
+  // /tonight/, /this-weekend/ and the front page link Ticketmaster sport here where eveningLayer.includeTicketmasterSports is on,
+  // so its detail pages are built too (F18, 2026-11-13: Broomfield's /tonight/ linked two sport pages that were never built).
+  const items = await getTicketmasterEventsForTown(siteConfig, { includeSports: siteConfig.eveningLayer?.includeTicketmasterSports ?? false });
   return items.map((item) => ({
     params: { slug: ticketmasterSlug(item.ticketmasterEvent) },
     props: { item },

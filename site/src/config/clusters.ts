@@ -288,8 +288,10 @@ export const ROUTE_AVAILABILITY: Record<string, RouteAvailability> = {
   columns: () => false,
   // reviews.astro redirects (301) to /columns/ for Moreno Valley
   // specifically -- an editorial merge, not a missing feature, but the
-  // route itself genuinely doesn't exist independently there.
-  reviews: (c) => c.townId !== 'moreno_valley_ca',
+  // route itself genuinely doesn't exist independently there. Elsewhere it
+  // redirects to / when the town lists it in disabledSections (reviews.astro's
+  // own gate; F18 2026-11-13: /vail-resorts/ linked the redirect).
+  reviews: (c) => c.townId !== 'moreno_valley_ca' && !c.disabledSections?.includes('reviews'),
 };
 
 /** Phase 2 (breadcrumbs): the real, canonical URL for every route key that
