@@ -12,8 +12,9 @@ import SectionRule from '../components/SectionRule.astro';
 import StoryCard from '../components/StoryCard.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getContentByType } from '../lib/db';
-import { siteConfig, isSectionDisabled } from '../lib/site-config';
-if (isSectionDisabled('recipes')) return Astro.redirect('/', 302);
+import { siteConfig } from '../lib/site-config';
+import { isSectionBuilt } from '../lib/sections';
+if (!isSectionBuilt('recipes', siteConfig)) return Astro.redirect('/', 302);
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../lib/clusters';
 

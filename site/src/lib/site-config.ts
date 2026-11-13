@@ -23,7 +23,7 @@ export interface SiteConfig {
   /** Visningsnamn, t.ex. "Moreno Valley" */
   cityName: string;
   /** Section ids (lib/nav-sections.ts SECTIONS) switched off for this town: they leave the
-   *  nav/footer, and their page redirects to / (see isSectionDisabled). Used by towns whose
+   *  nav/footer, and their page redirects to / (lib/sections.ts isSectionBuilt). Used by towns whose
    *  data source for that section does not exist yet (Glasgow skeleton). */
   disabledSections?: string[];
   /** Sections that exist but have no real content yet (owner 2026-10-23): the page stays reachable by URL but is noindex, out of the
@@ -884,11 +884,6 @@ export const siteConfig: SiteConfig = CITIES[active] ?? CITIES.brookings_sd;
 const placeProblems = Object.values(CITIES).flatMap((c) => validatePlaceConfig(c));
 if (placeProblems.length > 0) {
   throw new Error(['Invalid town place config:', ...placeProblems].join(String.fromCharCode(10)));
-}
-
-/** True when the active town has switched this nav section off (see SiteConfig.disabledSections). */
-export function isSectionDisabled(id: string): boolean {
-  return siteConfig.disabledSections?.includes(id) ?? false;
 }
 
 /** True when the section is "quiet" for the active town (see SiteConfig.quietSections): reachable, but noindex and out of the nav. */

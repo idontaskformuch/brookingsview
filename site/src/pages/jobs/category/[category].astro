@@ -15,11 +15,13 @@ import Breadcrumbs from '../../../components/Breadcrumbs.astro';
 import { getRecentJobs, formatDate } from '../../../lib/db';
 import { salaryText, capByEmployer, slugifyCategory, dedupeJobs } from '../../../lib/jobs';
 import { siteConfig } from '../../../lib/site-config';
+import { isSectionBuilt } from '../../../lib/sections';
 import { placeAbbr } from '../../../lib/country-profile';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../../lib/article-jsonld';
 import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../../lib/clusters';
 
 export async function getStaticPaths() {
+  if (!isSectionBuilt('jobs', siteConfig)) return []; // no detail pages under a section the town does not build (lib/sections.ts)
   const jobs = dedupeJobs(await getRecentJobs());
   const categories = [...new Set(jobs.map((j) => j.category).filter((c): c is string => Boolean(c)))];
 

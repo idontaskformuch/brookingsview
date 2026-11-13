@@ -38,12 +38,13 @@ import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
 import { getVailNews } from '../lib/db';
 import { siteConfig } from '../lib/site-config';
+import { isSectionBuilt } from '../lib/sections';
 import { SECTION_THEME } from '../lib/section-theme';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
 import { resolvePageMeta } from '../lib/page-meta';
 
-if (siteConfig.townId !== 'broomfield_co') {
+if (!isSectionBuilt('vail-resorts', siteConfig)) {
   return Astro.redirect('/', 302);
 }
 

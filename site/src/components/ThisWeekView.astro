@@ -13,7 +13,8 @@ import type { ThisWeekProps } from '../lib/this-week-pages';
 import { siteConfig } from '../lib/site-config';
 import { weekDescription } from '../lib/meta-description';
 import { resolvePageMeta } from '../lib/page-meta';
-import { resolveHubBacklink, isAvailable } from '../lib/clusters';
+import { resolveHubBacklink } from '../lib/clusters';
+import { sportsHref as townSportsHref } from '../lib/sections';
 import { groupWeekItems } from '../lib/week-groups';
 import { storyHref } from '../lib/content-slugs';
 
@@ -30,7 +31,7 @@ const description = weekDescription(siteConfig, week.label, siteConfig.townId ==
 const canonicalUrl = new URL(`/this-week/${week.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
 const isBrookings = siteConfig.townId === 'brookings_sd';
 // Only a sports page this town builds (F18, 2026-11-13: Broomfield's weeks linked /sports/, a redirect to /).
-const sportsHref = ['jackrabbits', 'sports'].filter((k) => isAvailable(k, siteConfig)).map((k) => `/${k}/`)[0] ?? null;
+const sportsHref = townSportsHref(siteConfig);
 
 const hasAnyItems = days.some((d) => d.items.length > 0);
 // Past-day omission only makes sense for the still-in-progress current

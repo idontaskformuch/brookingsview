@@ -15,6 +15,7 @@ import {
   type FeedItem,
 } from '../lib/events';
 import { siteConfig, isQuietSection } from '../lib/site-config';
+import { isSectionBuilt } from '../lib/sections';
 import { metaDescription } from '../lib/meta-description';
 import { countryProfile, forCountry } from '../lib/country-profile';
 import { EVENT_FACETS } from '../lib/event-facets';
@@ -65,7 +66,8 @@ const [upcoming, past, artsEvents, facilities] = await Promise.all([
 // getUpcomingArtsEvents). game_date är ett rent kalenderdatum (samma
 // meeting_date-landmina som formatCalendarDate skyddar mot) -- jämförs här
 // via calendarDateParts, ALDRIG genom en tidszonskonvertering.
-const regionalGames = siteConfig.townId === 'moreno_valley_ca' ? await getRegionalSports() : [];
+// The home-game note links /sports/, so it is read only where that page is built (lib/sections.ts).
+const regionalGames = isSectionBuilt('sports', siteConfig) ? await getRegionalSports() : [];
 
 /** Everything the page shows comes from the one pipeline the front page also uses (lib/events-town-view.ts), so a count here and a count there agree.
  *  Every date and clock is the town's; the stored story text is never printed on this page, because for an evening event it can name the UTC day

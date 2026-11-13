@@ -63,6 +63,7 @@ import { loadUpcomingMeetings } from '../lib/meetings-data';
 import { selectWorthKnowingMeetings } from '../lib/meetings-view';
 import { resolveQuickLinks, type QuickLinkContext } from '../lib/quick-links';
 import { siteConfig } from '../lib/site-config';
+import { isSectionBuilt } from '../lib/sections';
 import { isWordCut, metaDescription } from '../lib/meta-description';
 import { placeAbbr, forCountry } from '../lib/country-profile';
 import { resolveImage } from '../lib/images';
@@ -109,7 +110,7 @@ const quickLinkContext: QuickLinkContext = {
   hasLibrary: quickLinkFeed.some((i) => isLibraryEvent(i, facilities)),
   // "Has a real season/schedule to show" -- games already fetched above
   // for the rail's own game-card tile, reused here rather than re-queried.
-  hasJackrabbits: games.length > 0,
+  hasJackrabbits: games.length > 0 && isSectionBuilt('jackrabbits', siteConfig),
   hasMeetings: quickLinkNextMeeting !== null,
   // Evergreen reference pages (traffic, closures, facilities): gated on
   // the town actually having the underlying capability/data, not on a
@@ -118,10 +119,10 @@ const quickLinkContext: QuickLinkContext = {
   // the handoff's own "Evergreen reference pages ... pass the check if
   // the page exists and has current data").
   hasClosures: !!siteConfig.hasClosureWatch,
-  hasJobs: quickLinkJobs.length > 0,
-  hasTraffic: !!siteConfig.trafficSource,
+  hasJobs: quickLinkJobs.length > 0 && isSectionBuilt('jobs', siteConfig),
+  hasTraffic: isSectionBuilt('traffic', siteConfig),
   hasWhatsOn: !!siteConfig.hasWhatsOn,
-  hasFacilities: facilities.length > 0,
+  hasFacilities: facilities.length > 0 && isSectionBuilt('facilities', siteConfig),
 };
 const { shown: quickLinks, omitted: omittedQuickLinks } = resolveQuickLinks(siteConfig.townId, quickLinkContext);
 
@@ -310,12 +311,15 @@ const biggestHiringMover =
 // båda finns (en Jackrabbits-match ÄR ofta redan med i SDSU:s egen
 // Athletics-kategori), så tidsordning är den enda regeln som inte kräver
 // att gissa vilken källa som "äger" sanningen.
+// A game card links the town's sports page, so it shows only where that page is built (lib/sections.ts, F18 2026-11-13).
+const railGame = isSectionBuilt('jackrabbits', siteConfig) ? nextGame : null;
+const railRegionalGame = isSectionBuilt('sports', siteConfig) ? nextRegionalGame : null;
 const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
-  nextGame && nextSdsuEvent
-    ? (new Date(nextGame.starts_at ?? 0) <= new Date(nextSdsuEvent.starts_at ?? 0) ? 'jackrabbits' : 'sdsu')
-    : nextGame ? 'jackrabbits'
+  railGame && nextSdsuEvent
+    ? (new Date(railGame.starts_at ?? 0) <= new Date(nextSdsuEvent.starts_at ?? 0) ? 'jackrabbits' : 'sdsu')
+    : railGame ? 'jackrabbits'
     : nextSdsuEvent ? 'sdsu'
-    : nextRegionalGame ? 'regional'
+    : railRegionalGame ? 'regional'
     : null;
 ---
 
@@ -453,7 +457,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
           hiringDelta={biggestHiringMover.postings_change}
         />
       )}
-      {trafficIncidents.length > 0 && (
+      {trafficIncidents.length > 0 && isSectionBuilt('traffic', siteConfig) && (
         <a class="rail__link" href="/traffic/">
           <TrafficWidget incidents={trafficIncidents} />
         </a>

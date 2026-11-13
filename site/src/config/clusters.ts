@@ -20,6 +20,7 @@
  *  own comment below for what those mean.
  */
 import type { SiteConfig } from '../lib/site-config';
+import { isSectionBuilt } from '../lib/sections';
 
 export interface ClusterDefinition {
   key: string;
@@ -219,7 +220,7 @@ export const ROUTE_AVAILABILITY: Record<string, RouteAvailability> = {
   'free-things-to-do': () => false,
 
   // Getting around -- /traffic/ exists only for a town with a trafficSource.
-  traffic: (c) => Boolean(c.trafficSource), // the page is built only for a town with a traffic source (owner 2026-11-07)
+  traffic: (c) => isSectionBuilt('traffic', c),
   // closures.astro DOES redirect on !hasClosureWatch -- false for
   // Broomfield today (no closureWatch block configured for it).
   closures: (c) => Boolean(c.hasClosureWatch),
@@ -235,8 +236,8 @@ export const ROUTE_AVAILABILITY: Record<string, RouteAvailability> = {
   // town whose workplace-watch hub is dark still gets a real /jobs/ page,
   // which the graph script's orphan check should surface plainly rather
   // than silently accepting as "part of a disabled cluster."
-  jobs: () => true,
-  'jobs/category': () => true,
+  jobs: (c) => isSectionBuilt('jobs', c),
+  'jobs/category': (c) => isSectionBuilt('jobs', c),
   // home-sales.astro hard-gates on townId === 'moreno_valley_ca';
   // hasHousingMarket mirrors that exactly (only Moreno Valley sets it) --
   // reading the flag here rather than re-deriving the townId check a
@@ -254,19 +255,19 @@ export const ROUTE_AVAILABILITY: Record<string, RouteAvailability> = {
   month: (c) => c.townId === 'moreno_valley_ca',
   'month/detail': (c) => c.townId === 'moreno_valley_ca',
 
-  // Places -- facilities/index.astro and weather.astro have no gate.
-  facilities: () => true,
-  'facilities/detail': () => true,
-  weather: () => true,
+  // Places -- built unless the town switched them off (lib/sections.ts).
+  facilities: (c) => isSectionBuilt('facilities', c),
+  'facilities/detail': (c) => isSectionBuilt('facilities', c),
+  weather: (c) => isSectionBuilt('weather', c),
 
   // Local life -- three separate, mutually-exclusive per-town hub pages,
   // each a hard townId gate in its own file. Never a spoke anywhere else
   // (each is exclusively its own town's hub) -- not listed in any
   // cluster's primarySpokes/secondarySpokes above, only reachable via
   // CLUSTER_TOWN_OVERRIDES.
-  jackrabbits: (c) => c.townId === 'brookings_sd',
-  sports: (c) => c.townId === 'moreno_valley_ca',
-  'vail-resorts': (c) => c.townId === 'broomfield_co',
+  jackrabbits: (c) => isSectionBuilt('jackrabbits', c),
+  sports: (c) => isSectionBuilt('sports', c),
+  'vail-resorts': (c) => isSectionBuilt('vail-resorts', c),
   // Brookings-only spokes (each its own hard townId gate).
   university: (c) => c.townId === 'brookings_sd',
   play: (c) => c.townId === 'brookings_sd',
@@ -286,12 +287,8 @@ export const ROUTE_AVAILABILITY: Record<string, RouteAvailability> = {
   recipes: () => false,
   editorials: () => false,
   columns: () => false,
-  // reviews.astro redirects (301) to /columns/ for Moreno Valley
-  // specifically -- an editorial merge, not a missing feature, but the
-  // route itself genuinely doesn't exist independently there. Elsewhere it
-  // redirects to / when the town lists it in disabledSections (reviews.astro's
-  // own gate; F18 2026-11-13: /vail-resorts/ linked the redirect).
-  reviews: (c) => c.townId !== 'moreno_valley_ca' && !c.disabledSections?.includes('reviews'),
+  // Section pages: the same rule the page gates on (lib/sections.ts, F18 2026-11-13: /vail-resorts/ linked the /reviews/ redirect).
+  reviews: (c) => isSectionBuilt('reviews', c),
 };
 
 /** Phase 2 (breadcrumbs): the real, canonical URL for every route key that

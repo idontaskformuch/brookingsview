@@ -14,9 +14,10 @@ import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getTrafficIncidentsFromLatestRead, getTrafficLastRun, formatTimeWithZone, plainLanguageTraffic } from '../lib/db';
 import { TRAFFIC_READ_MAX_AGE_HOURS, trafficPageState, writeTrafficVerdict } from '../lib/traffic-verdict';
 import { siteConfig, isQuietSection } from '../lib/site-config';
+import { isSectionBuilt } from '../lib/sections';
 
 export function getStaticPaths() {
-  return siteConfig.trafficSource ? [{ params: { traffic: 'traffic' } }] : [];
+  return isSectionBuilt('traffic', siteConfig) ? [{ params: { traffic: 'traffic' } }] : [];
 }
 import { metaDescription } from '../lib/meta-description';
 import { placeAbbr } from '../lib/country-profile';

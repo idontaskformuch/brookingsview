@@ -271,6 +271,8 @@ export function buildWeekDays(
     exhibitionLabel?: string;
     /** siteConfig.meetingsHaveTime: meeting dates are real instants read in `timezone` (lib/meeting-day.mjs). */
     meetingsHaveTime: boolean;
+    /** Where a game row links: the town's sports page (lib/sections.ts sportsHref); none where the town builds none. */
+    sportsHref?: string | null;
   },
 ): DayBucket[] {
   const { items: feedItems } = buildEventFeed(data.eventStories, data.artsEvents, timezone);
@@ -319,7 +321,7 @@ export function buildWeekDays(
       if (!sameDate(localDateParts(new Date(game.starts_at), timezone), date)) continue;
       items.push({
         vertical: 'sports', title: `${game.sport} ${gameHomeAway(game)} ${game.opponent}${game.exhibition && data.exhibitionLabel ? ` (${data.exhibitionLabel})` : ''}`,
-        href: '/jackrabbits/', external: false,
+        href: data.sportsHref ?? null, external: false,
         detail: game.result ?? (game.venue ?? ''),
         startsAt: game.starts_at, venue: game.venue,
       });
@@ -332,7 +334,7 @@ export function buildWeekDays(
         ? `${game.team_score}–${game.opponent_score}` : null;
       items.push({
         vertical: 'sports', title: `${game.team_name} ${gameHomeAway(game)} ${game.opponent_name}`,
-        href: '/sports/', external: false,
+        href: data.sportsHref ?? null, external: false,
         detail: score ?? (game.status === 'scheduled' ? (game.venue ?? '') : game.status),
         startsAt: game.game_time_utc, venue: game.venue,
       });

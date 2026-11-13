@@ -24,6 +24,7 @@ import { fitDescription, requireDescription } from '../lib/meta-description';
 import { placeLabel, countryProfile } from '../lib/country-profile';
 import { footerCredits } from '../lib/footer-credits';
 import { enabledSections, resolveNav } from '../lib/nav-sections';
+import { isSectionBuilt } from '../lib/sections';
 import SectionNav from '../components/SectionNav.astro';
 import { runBuildTimeChecks } from '../lib/build-checks';
 import { assertAccentContrast } from '../lib/accent-contrast';
@@ -805,7 +806,7 @@ main { padding-block: 1.75rem 3.5rem; }
       <a href="/editorial-policy/">Editorial policy</a>
       <a href="/corrections/">Corrections</a>
       <a href="/contact/">Contact</a>
-      <a href="/advertising/">Advertising</a>
+      {isSectionBuilt('advertising', siteConfig) && <a href="/advertising/">Advertising</a>}
       <a href="/privacy/">Privacy</a>
       <a href="/cookies/">Cookies</a>
       <a href="/terms/">Terms</a>

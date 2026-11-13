@@ -11,6 +11,7 @@ import type { SiteConfig } from './site-config';
 import { ELECTION_BY_TOWN } from '../config/election';
 import { townHasHolidayPages } from '../config/holiday-pages/registry';
 import { isVoteOver, todayIn } from './election';
+import { isSectionBuilt } from './sections';
 
 export type NavGate = Pick<SiteConfig, 'townId' | 'hasWhatsOn' | 'hasClosureWatch' | 'hasNewInTown' | 'hasWorkplaceWatch' | 'disabledSections' | 'quietSections' | 'navLabels' | 'eveningLayer' | 'safetyNotices' | 'trafficSource'>
   & Partial<Pick<SiteConfig, 'timezone'>> & { /** YYYY-MM-DD; tests pin it, the build uses the town's today. */ today?: string };
@@ -31,12 +32,12 @@ export interface NavSection {
   enabled: (c: NavGate) => boolean;
 }
 
-/** A section is on when its own gate passes and the town has not switched it off (SiteConfig.disabledSections). */
+/** A section is on when its own gate passes and the town has not switched it off (SiteConfig.disabledSections). A section with
+ *  a page of its own gates on lib/sections.ts's isSectionBuilt, the rule its page uses. */
 const isOn = (s: NavSection, c: NavGate) => s.enabled(c) && !c.disabledSections?.includes(s.id) && !c.quietSections?.includes(s.id);
 
 const BROOKINGS = (c: NavGate) => c.townId === 'brookings_sd';
 const MORENO = (c: NavGate) => c.townId === 'moreno_valley_ca';
-const BROOMFIELD = (c: NavGate) => c.townId === 'broomfield_co';
 
 /** Order = the order the old nav array (and so the footer) listed them. */
 export const SECTIONS: NavSection[] = [
@@ -48,21 +49,21 @@ export const SECTIONS: NavSection[] = [
   { id: 'whatson', href: '/whats-on/', label: "What's On", enabled: (c) => !!c.hasWhatsOn },
   { id: 'gameday', href: '/game-day/', label: 'Game day', enabled: BROOKINGS },
   { id: 'university', href: '/university/', label: 'University', enabled: BROOKINGS },
-  { id: 'jacks', href: '/jackrabbits/', label: 'Jackrabbits', enabled: BROOKINGS },
+  { id: 'jacks', href: '/jackrabbits/', label: 'Jackrabbits', enabled: (c) => isSectionBuilt('jackrabbits', c) },
   { id: 'play', href: (c) => (MORENO(c) ? '/burro-bonanza/' : '/play/'), label: 'Play', enabled: (c) => BROOKINGS(c) || MORENO(c) },
   { id: 'cityhall', href: '/city-hall/', label: 'City Hall', footerLabel: 'City hall', enabled: () => true },
   { id: 'closures', href: '/closures/', label: 'Closure Watch', enabled: (c) => !!c.hasClosureWatch },
   { id: 'newintown', href: '/new-in-town/', label: 'New in Town', enabled: (c) => !!c.hasNewInTown },
-  { id: 'facilities', href: '/facilities/', label: 'Facilities', enabled: () => true },
+  { id: 'facilities', href: '/facilities/', label: 'Facilities', enabled: (c) => isSectionBuilt('facilities', c) },
   { id: 'farm', href: '/farm-report/', label: 'Farm Report', footerLabel: 'Farm report', enabled: BROOKINGS },
   { id: 'homesales', href: '/home-sales/', label: 'Home sales', enabled: MORENO },
   { id: 'month', href: '/month/', label: 'Month in review', enabled: MORENO },
-  { id: 'sports', href: '/sports/', label: 'Sports', enabled: MORENO },
+  { id: 'sports', href: '/sports/', label: 'Sports', enabled: (c) => isSectionBuilt('sports', c) },
   { id: 'workplace', href: '/workplace-watch/', label: 'Worker Pulse', enabled: (c) => !!c.hasWorkplaceWatch },
-  { id: 'vail', href: '/vail-resorts/', label: 'Vail Resorts', enabled: BROOMFIELD },
-  { id: 'traffic', href: '/traffic/', label: 'Traffic', enabled: (c) => !!c.trafficSource }, // no source, no page (owner 2026-11-07)
-  { id: 'jobs', href: '/jobs/', label: 'Jobs', enabled: () => true },
-  { id: 'weather', href: '/weather/', label: 'Weather', enabled: () => true },
+  { id: 'vail', href: '/vail-resorts/', label: 'Vail Resorts', enabled: (c) => isSectionBuilt('vail-resorts', c) },
+  { id: 'traffic', href: '/traffic/', label: 'Traffic', enabled: (c) => isSectionBuilt('traffic', c) }, // no source, no page (owner 2026-11-07)
+  { id: 'jobs', href: '/jobs/', label: 'Jobs', enabled: (c) => isSectionBuilt('jobs', c) },
+  { id: 'weather', href: '/weather/', label: 'Weather', enabled: (c) => isSectionBuilt('weather', c) },
   // Wildfires near the town and the air-quality index (Moreno Valley, Broomfield; public-safety plan, owner 2026-10-29).
   { id: 'safety', href: '/safety/', label: 'Fire & air', enabled: (c) => !!c.safetyNotices },
   // Election 2026 (/vote): temporary, see voteInNav. Once it is off, resolveNav() fails the build while 'vote' is

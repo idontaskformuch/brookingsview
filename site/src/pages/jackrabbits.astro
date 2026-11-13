@@ -17,13 +17,14 @@ import { clubRows } from '../lib/club-games';
 import { buildGroups, nextUp, recordText } from '../lib/jackrabbits-view';
 import { sportTerms } from '../lib/sport-strings';
 import { siteConfig } from '../lib/site-config';
+import { isSectionBuilt } from '../lib/sections';
 import { fitDescription } from '../lib/meta-description';
 import { resolvePageMeta } from '../lib/page-meta';
 import { SECTION_THEME } from '../lib/section-theme';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
 
-if (siteConfig.townId !== 'brookings_sd') {
+if (!isSectionBuilt('jackrabbits', siteConfig)) {
   return Astro.redirect('/', 302);
 }
 

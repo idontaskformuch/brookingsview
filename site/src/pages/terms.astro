@@ -7,6 +7,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { aiDisclosure } from '../lib/ai-disclosure';
 import { siteConfig } from '../lib/site-config';
+import { isSectionBuilt } from '../lib/sections';
 import { metaDescription } from '../lib/meta-description';
 import TermsGb from '../components/legal/gb/TermsBody.astro';
 
@@ -75,8 +76,8 @@ const webPageJsonLd = {
 
     <h2>Advertising</h2>
     <p>This site may show advertising, including through Google AdSense.
-    Ads are always distinguishable from editorial content — see our
-    <a href="/advertising/">advertising policy</a>.</p>
+    Ads are always distinguishable from editorial content{isSectionBuilt('advertising', siteConfig)
+      ? <> — see our <a href="/advertising/">advertising policy</a>.</> : '.'}</p>
 
     <h2>Links to other sites</h2>
     <p>News and listing summaries link to their original public source. We

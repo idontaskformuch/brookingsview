@@ -12,6 +12,7 @@ import {
 import { siteConfig } from './site-config';
 import { sportTerms } from './sport-strings';
 import { countWeekItems, isThinWeek } from './week-count.mjs';
+import { sportsHref } from './sections';
 
 export interface ThisWeekProps {
   week: WeekInfo; days: DayBucket[]; lead: Story | null;
@@ -65,7 +66,7 @@ async function loadThisWeekPages(): Promise<ThisWeekProps[]> {
   return Promise.all([...weekInfos.values()].map(async (week) => {
     const days = buildWeekDays(week, siteConfig.timezone, {
       eventStories, meetingStories, artsEvents, projectUpdates, games, regionalGames, exhibitionLabel: sportTerms(siteConfig.country).exhibition,
-      meetingsHaveTime: siteConfig.meetingsHaveTime,
+      meetingsHaveTime: siteConfig.meetingsHaveTime, sportsHref: sportsHref(siteConfig),
     });
     const leadCandidates = await getWorthKnowingCandidatesInRange(week.start, week.end);
     const prev = previousWeekInfo(week, siteConfig.timezone);

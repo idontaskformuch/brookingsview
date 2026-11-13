@@ -7,6 +7,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { aiDisclosure } from '../lib/ai-disclosure';
 import { siteConfig, ALL_SITES } from '../lib/site-config';
+import { isSectionBuilt } from '../lib/sections';
 import { metaDescription } from '../lib/meta-description';
 import AboutGb from '../components/legal/gb/AboutBody.astro';
 import { aboutSourcesFor } from '../lib/about-sources';
@@ -112,7 +113,7 @@ const siblingSites = ALL_SITES.filter((s) => s.townId !== siteConfig.townId);
     corrected as soon as they're reported -- <a href="/contact/">use the
     contact form</a> to flag one.{isBrookings && <> What has been corrected is
     listed on the <a href="/corrections/">corrections page</a>.</>}</p>
-    {isBrookings && (
+    {isBrookings && isSectionBuilt('advertising', siteConfig) && (
       <>
         <h2>Advertising</h2>
         <p>How sponsorship and advertising are kept apart from the news is set out in

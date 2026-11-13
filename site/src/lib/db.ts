@@ -19,7 +19,8 @@
  */
 import type { MeetingRow } from './meetings-view';
 import { neon } from '@neondatabase/serverless';
-import { siteConfig, isSectionDisabled } from './site-config';
+import { siteConfig } from './site-config';
+import { isSectionBuilt, linksToBuiltSection } from './sections';
 import { forCountry, formatClockCompact } from './country-profile';
 import { currentSeason, type SportEventRow, type SportPhase } from './sport-events';
 import { gamesFromEvents, upcomingGames } from './sport-games';
@@ -1219,7 +1220,7 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
         title: weekly.title, kicker: 'This week', description: null,
       });
     }
-    if (!isSectionDisabled('facilities')) {
+    if (isSectionBuilt('facilities', siteConfig)) {
       items.push({ href: '/facilities/', title: 'Venues & facilities', kicker: 'Facilities', description: `Parks, libraries and ${forCountry(siteConfig.country, 'community centers', 'community centres')} that host these events.` });
     }
     items.push({ href: '/events/free/', title: 'Free things to do', kicker: 'Free', description: 'Always-free facilities and free events, in one place.' });
@@ -1302,7 +1303,7 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
       && daysBetween(todayIn(siteConfig.timezone), election.election_date) >= 0) {
     merged.unshift({ href: '/vote/', title: 'How to vote', kicker: 'Election 2026', description: 'Key dates, where to vote and what is on the ballot, from official sources.' });
   }
-  return merged;
+  return merged.filter((item) => linksToBuiltSection(item.href, siteConfig)); // lib/sections.ts (F18 2026-11-13)
 }
 
 /* -------------------------------------------------- strukturerad data ------ */

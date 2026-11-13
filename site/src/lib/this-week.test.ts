@@ -189,7 +189,7 @@ describe('buildWeekDays', () => {
       venue: 'San Manuel Stadium', relevance_tier: 'primary',
     }];
     const days = buildWeekDays(WEEK, LOS_ANGELES, {
-      meetingsHaveTime: false, eventStories: [], meetingStories: [], artsEvents: [], projectUpdates: [], games: [], regionalGames,
+      meetingsHaveTime: false, eventStories: [], meetingStories: [], artsEvents: [], projectUpdates: [], games: [], regionalGames, sportsHref: '/sports/',
     });
     // 2026-08-28 is a Friday -- index 4.
     expect(days[4].items.map((i) => i.title)).toContain('Inland Empire 66ers vs Lake Elsinore Storm');
