@@ -172,12 +172,15 @@
           "name": "city_events",
           "kind": "ical",
           "url": "https://tockify.com/api/feeds/ics/city.of.moreno.valley",
+          "frozen": {"since": "2026-11-13", "show_days": 14},
+          "_frozen_note": "2026-11-13: tockify robots.txt disallows /api/ for us (notes/tockify-robots-and-frozen-filter-2026-11-13.md); no fetch. Published rows dated through since + show_days stay visible, later ones are hidden (site/src/lib/frozen-sources.mjs mirrors this).",
           "_note": "VERIFIERAD 2026-07-22: moval.org/mymoval/calendar.html embeddar Tockify (data-tockify-calendar=\"city.of.moreno.valley\"). ICS-feed testad live, HTTP 200, riktiga events (t.ex. 'Free Food Giveaway'). robots.txt på moval.org har ingen Disallow som träffar kalendersidor; Tockifys /api/feeds/ics/ är en avsedd publik exportendpoint, inte ett skrap-workaround."
         },
         {
           "name": "library",
           "kind": "ical",
           "url": "https://tockify.com/api/feeds/ics/moreno.valley.library",
+          "frozen": {"since": "2026-11-13", "show_days": 14},
           "_note": "VERIFIERAD 2026-07-22: moval.org/mv-library/library-calendar.html embeddar samma plattform, egen kalender (data-tockify-calendar=\"moreno.valley.library\"). ICS-feed testad live, HTTP 200, riktiga events (t.ex. 'IRIS PLAZA: Toddler Time'). Inte LibCal som i Brookings -- staden kör hela kalenderutbudet på Tockify."
         },
         {

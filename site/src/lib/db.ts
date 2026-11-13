@@ -49,6 +49,7 @@ import type { ThisWeekImage } from '../config/this-week-images';
 import { resolveActiveHoliday, selectHolidayImage, type DateYMD } from './holidays';
 import { HOLIDAYS, holidayImagesFor, type HolidayImage } from '../config/holidays';
 import type { MeetingDecision } from './meeting-decisions';
+import { FROZEN_EVENT_SOURCES, hiddenFrozenSlugs } from './frozen-sources.mjs';
 
 const sql = neon(import.meta.env.DATABASE_URL);
 
@@ -62,6 +63,26 @@ const sql = neon(import.meta.env.DATABASE_URL);
 // fallgrop som gör att en stads build visar en annan stads branding över en
 // tredje stads data. Ett enda reglage (SITE_CITY) styr både identitet och data.
 export const TOWN_ID = siteConfig.townId;
+
+/** FROZEN_FILTER (owner 2026-11-13, lib/frozen-sources.mjs): stories from a frozen events source dated after its window are left out of
+ *  every story query that can return an event, so they are neither built nor linked. One lookup per build; every such query carries
+ *  `slug != ALL(${hidden}::text[])` (frozen-filter.test.ts holds them to it). The same lookup runs in astro.config.mjs for the sitemap. */
+let frozenHiddenPromise: Promise<string[]> | null = null;
+export function frozenHidden(): Promise<string[]> {
+  const frozen = FROZEN_EVENT_SOURCES[TOWN_ID];
+  if (!frozen) return Promise.resolve([]);
+  frozenHiddenPromise ??= (async () => {
+    const rows = (await sql`
+      SELECT DISTINCT s.slug, s.occurs_at, ev.source
+        FROM stories s
+        JOIN events ev ON ev.town_id = s.town_id
+         AND (s.slug = 'event-' || ev.id::text OR (s.slug LIKE 'event-series-%' AND ev.url = s.source_url))
+       WHERE s.town_id = ${TOWN_ID} AND s.source_type = 'event' AND ev.source = ANY(${Object.keys(frozen)}::text[])
+    `) as { slug: string; occurs_at: string | null; source: string }[];
+    return hiddenFrozenSlugs(rows, frozen, siteConfig.timezone);
+  })();
+  return frozenHiddenPromise;
+}
 
 export type SourceType =
   | 'meeting' | 'meeting_followup' | 'event' | 'alert' | 'weekly'
@@ -382,6 +403,7 @@ export async function getUpcomingStories(
   limit = 20,
   { excludeRecurring = false }: { excludeRecurring?: boolean } = {},
 ): Promise<Story[]> {
+  const hidden = await frozenHidden();
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
@@ -393,6 +415,7 @@ export async function getUpcomingStories(
        -- A meeting with a real start time counts as held 2 h after it starts (everything else keeps 12 h; date-only meetings are midnight anchors).
        AND occurs_at >= now() - CASE WHEN source_type = 'meeting' AND ${siteConfig.meetingsHaveTime ?? false}::boolean THEN interval '2 hours' ELSE interval '12 hours' END
        AND superseded_by_slug IS NULL
+       AND slug != ALL(${hidden}::text[]) -- FROZEN_FILTER
        AND (NOT ${excludeRecurring}::boolean OR NOT COALESCE(is_recurring_series, false))
      ORDER BY occurs_at ASC
      LIMIT ${limit}
@@ -413,6 +436,7 @@ export async function getUpcomingStories(
  *  just gathers real, town-scoped candidates.
  */
 export async function getWorthKnowingCandidates(limit = 12): Promise<Story[]> {
+  const hidden = await frozenHidden();
   const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at,
            generated_by, byline, image_path, image_alt, rating, ingredients, instructions, featured
@@ -432,6 +456,7 @@ export async function getWorthKnowingCandidates(limit = 12): Promise<Story[]> {
              OR (occurs_at IS NULL AND published_at >= now() - interval '24 hours')
            )
        AND superseded_by_slug IS NULL
+       AND slug != ALL(${hidden}::text[]) -- FROZEN_FILTER
      ORDER BY featured DESC, occurs_at ASC NULLS LAST
      LIMIT ${limit}
   `) as Story[];
@@ -509,6 +534,7 @@ export async function getPastStories(
   sourceTypes: SourceType[],
   limit = 20,
 ): Promise<Story[]> {
+  const hidden = await frozenHidden();
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
@@ -517,6 +543,7 @@ export async function getPastStories(
      WHERE town_id = ${TOWN_ID}
        AND source_type = ANY(${sourceTypes})
        AND source_type != ALL(${RETIRED_TYPES})
+       AND slug != ALL(${hidden}::text[]) -- FROZEN_FILTER
        AND occurs_at < now() - CASE WHEN source_type = 'meeting' AND ${siteConfig.meetingsHaveTime ?? false}::boolean THEN interval '2 hours' ELSE interval '12 hours' END
        -- "Recently" is what has ENDED. A recurring programme is not a past event
        -- (its occurs_at is just the date it was first seen), and a multi-week
@@ -614,6 +641,7 @@ export async function getEarliestPublishedDate(sourceTypes: SourceType[]): Promi
  *  build -- no reason to fetch the whole stories table just to throw away
  *  everything older than 2 days. */
 export async function getStoriesForNewsSitemap(): Promise<Story[]> {
+  const hidden = await frozenHidden();
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
@@ -623,6 +651,7 @@ export async function getStoriesForNewsSitemap(): Promise<Story[]> {
        AND source_type != ALL(${CONTENT_TRACK_TYPES})
        AND published_at >= now() - interval '48 hours'
        AND superseded_by_slug IS NULL
+       AND slug != ALL(${hidden}::text[]) -- FROZEN_FILTER
      ORDER BY published_at DESC
   `) as Story[];
 }
@@ -642,6 +671,7 @@ export async function getStoryBySlug(slug: string): Promise<Story | null> {
 
 /** Alla slugs -- används av getStaticPaths för att generera storysidorna. */
 export async function getAllStories(): Promise<Story[]> {
+  const hidden = await frozenHidden();
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
@@ -650,6 +680,7 @@ export async function getAllStories(): Promise<Story[]> {
       FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type != ALL(${RETIRED_TYPES})
+       AND slug != ALL(${hidden}::text[]) -- FROZEN_FILTER
      ORDER BY occurs_at DESC NULLS LAST
   `) as Story[];
 }
@@ -881,6 +912,7 @@ export async function resolveThisWeekImage(
  *  once, filter in TS" pattern as getSeasonGames/getRegionalSports/
  *  getAllArtsEvents above. */
 export async function getStoriesForWeekly(sourceTypes: SourceType[]): Promise<Story[]> {
+  const hidden = await frozenHidden();
   return (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
@@ -890,6 +922,7 @@ export async function getStoriesForWeekly(sourceTypes: SourceType[]): Promise<St
        AND source_type = ANY(${sourceTypes})
        AND occurs_at IS NOT NULL
        AND superseded_by_slug IS NULL
+       AND slug != ALL(${hidden}::text[]) -- FROZEN_FILTER
      ORDER BY occurs_at ASC
   `) as Story[];
 }
@@ -927,6 +960,7 @@ export async function getRelatedStories(
   limit = 3,
 ): Promise<Story[]> {
   const anchor = story.occurs_at ?? new Date().toISOString();
+  const hidden = await frozenHidden();
 
   const sameType = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
@@ -950,6 +984,7 @@ export async function getRelatedStories(
        -- link on any live page nearby in time -- confirmed live 2026-09-03.
        AND published_at IS NOT NULL
        AND superseded_by_slug IS NULL
+       AND slug != ALL(${hidden}::text[]) -- FROZEN_FILTER
        -- An event whose page is not built (lib/old-events.ts isPrunedEvent, same day count) is never linked (F18 2026-11-13).
        AND NOT (source_type = 'event' AND is_recurring_series IS NOT TRUE
                 AND coalesce(ends_at, occurs_at) < now() - make_interval(days => ${PRUNE_EVENT_AFTER_DAYS}))
@@ -971,6 +1006,7 @@ export async function getRelatedStories(
        AND occurs_at IS NOT NULL
        AND published_at IS NOT NULL
        AND superseded_by_slug IS NULL
+       AND slug != ALL(${hidden}::text[]) -- FROZEN_FILTER
        -- An event whose page is not built (lib/old-events.ts isPrunedEvent, same day count) is never linked (F18 2026-11-13).
        AND NOT (source_type = 'event' AND is_recurring_series IS NOT TRUE
                 AND coalesce(ends_at, occurs_at) < now() - make_interval(days => ${PRUNE_EVENT_AFTER_DAYS}))
@@ -2893,6 +2929,7 @@ export interface SignData {
  *  comment on that column) so a merged-away duplicate doesn't inflate
  *  the count. */
 export async function getSignData(): Promise<SignData> {
+  const hidden = await frozenHidden();
   const [periods, alerts, games, todayRows] = await Promise.all([
     getWeather(),
     getActiveAlerts(),
@@ -2903,6 +2940,7 @@ export async function getSignData(): Promise<SignData> {
        WHERE town_id = ${TOWN_ID}
          AND source_type = 'event'
          AND superseded_by_slug IS NULL
+         AND slug != ALL(${hidden}::text[]) -- FROZEN_FILTER
          AND NOT COALESCE(is_recurring_series, false)
          AND occurs_at >= now() - interval '1 day'
          AND occurs_at < now() + interval '3 days'

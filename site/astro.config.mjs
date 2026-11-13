@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { statusTokensCss } from './src/lib/status-tokens.mjs';
 import { holidayLastmodEntries } from './src/config/holiday-pages/lastmod.mjs';
 import { countWeekItems, isThinWeek } from './src/lib/week-count.mjs';
+import { FROZEN_EVENT_SOURCES, hiddenFrozenSlugs } from './src/lib/frozen-sources.mjs';
 import { stripForeignGames } from './src/lib/game-owners.mjs';
 import { NAV_ONLY_INDEXABLE_TOWNS, pruneNavInDist } from './src/lib/nav-prune.mjs';
 import { checkNewIndexable, fetchLiveSitemapPaths, sitemapPaths } from './scripts/new-indexable.mjs';
@@ -500,8 +501,18 @@ async function buildLastmodMap(townId, databaseUrl) {
 
   const noindexStoryUrls = new Set();
   const crossCanonicalStoryUrls = new Set();
+  // Frozen sources (lib/frozen-sources.mjs, the same lookup as lib/db.ts frozenHidden()): those stories are not built, so never listed or counted.
+  const frozen = FROZEN_EVENT_SOURCES[townId];
+  const frozenHiddenSlugs = frozen ? hiddenFrozenSlugs(await sql`
+    SELECT DISTINCT s.slug, s.occurs_at, ev.source
+      FROM stories s
+      JOIN events ev ON ev.town_id = s.town_id
+       AND (s.slug = 'event-' || ev.id::text OR (s.slug LIKE 'event-series-%' AND ev.url = s.source_url))
+     WHERE s.town_id = ${townId} AND s.source_type = 'event' AND ev.source = ANY(${Object.keys(frozen)}::text[])
+  `, frozen, THIS_WEEK_TIMEZONES[townId]) : [];
   const stories = await sql`
-    SELECT slug, published_at, source_type, body, generated_by, ingredients, instructions, occurs_at, title, venue_raw, source_url, superseded_by_slug, is_recurring_series FROM stories WHERE town_id = ${townId}
+    SELECT slug, published_at, source_type, body, generated_by, ingredients, instructions, occurs_at, title, venue_raw, source_url, superseded_by_slug, is_recurring_series FROM stories
+     WHERE town_id = ${townId} AND slug != ALL(${frozenHiddenSlugs}::text[])
   `;
   for (const s of stories) {
     const storyPathname = `/s/${publicSlugMirror(s.slug)}/`;

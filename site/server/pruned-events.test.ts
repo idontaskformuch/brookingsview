@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isEventPermalink, withPrunedEventRedirect } from './pruned-events';
+import { isEventPermalink, isSeriesPermalink, mergedOccurrenceRedirect, withPrunedEventRedirect } from './pruned-events';
 
 const req = (path: string, method = 'GET') => new Request(`https://morenovalleyview.com${path}`, { method });
 
@@ -26,5 +26,40 @@ describe('withPrunedEventRedirect', () => {
   it('leaves other paths and methods alone', async () => {
     expect(await withPrunedEventRedirect(req('/s/other/'), async () => new Response('', { status: 404 }))).toBeNull();
     expect(await withPrunedEventRedirect(req('/s/event-1/', 'POST'), async () => new Response('', { status: 404 }))).toBeNull();
+  });
+});
+
+// Frozen sources (owner 2026-11-13): a hidden series and a merged occurrence whose series is hidden go to /events/ with a 302.
+// event-series-646343abc31524a1 ("Moreno Valley: IRIS PLAZA: Family Fun", library, next date 2 Dec) is hidden after the window;
+// event-6230 is a merged occurrence of event-series-c58028a9cbe64a93 (event-series-redirects.json).
+describe('hidden series (frozen source)', () => {
+  it('matches series permalinks only', () => {
+    expect(isSeriesPermalink('/s/event-series-646343abc31524a1/')).toBe(true);
+    expect(isSeriesPermalink('/s/event-6230/')).toBe(false);
+  });
+  it('302s a missing series page to /events/, serves one that exists', async () => {
+    const gone = await withPrunedEventRedirect(req('/s/event-series-646343abc31524a1/'), async () => new Response('nf', { status: 404 }));
+    expect(gone!.status).toBe(302);
+    expect(gone!.headers.get('location')).toBe('https://morenovalleyview.com/events/');
+    const ok = await withPrunedEventRedirect(req('/s/event-series-646343abc31524a1/'), async () => new Response('ok', { status: 200 }));
+    expect(ok!.status).toBe(200);
+  });
+  it('a merged occurrence keeps its 301 to a built series, and 302s to /events/ when the series is hidden', async () => {
+    const seen: string[] = [];
+    const built = await mergedOccurrenceRedirect(req('/s/event-6230/?a=1'), '/s/event-series-c58028a9cbe64a93/',
+      async (r) => { seen.push(new URL(r.url).pathname); return new Response('ok', { status: 200 }); });
+    expect(built.status).toBe(301);
+    expect(built.headers.get('location')).toBe('https://morenovalleyview.com/s/event-series-c58028a9cbe64a93/?a=1');
+    expect(seen).toEqual(['/s/event-series-c58028a9cbe64a93/']);
+    const hidden = await mergedOccurrenceRedirect(req('/s/event-6230/'), '/s/event-series-c58028a9cbe64a93/',
+      async () => new Response('nf', { status: 404 }));
+    expect(hidden.status).toBe(302);
+    expect(hidden.headers.get('location')).toBe('https://morenovalleyview.com/events/');
+  });
+  it('a merged duplicate that points to a dated event (not a series) is the plain 301, no lookup', async () => {
+    let looked = false;
+    const res = await mergedOccurrenceRedirect(req('/s/event-1/'), '/s/event-2/', async () => { looked = true; return new Response('', { status: 404 }); });
+    expect(res.status).toBe(301);
+    expect(looked).toBe(false);
   });
 });
