@@ -386,3 +386,82 @@ def test_happy_hour_may_start_at_15_and_nothing_else_may():
     burger = dict(e, title="Burger Mondays", times=["11:00"])
     kept, rej = er.validate_extraction(reply(burger), OLD_MAN, NOV13)
     assert not kept and "before 17:00" in rej[0].why
+
+
+# Proposal 6 (owner 2026-11-13): The Old Man Bar's specials page, lines 25-60 verbatim of
+# .claude/evidence/venues-2026-11/broomfield/the-old-man-happy-hours.txt (fetched 2026-11-13 10:40 UTC): a week, Fri 13 - Thu 19 Nov,
+# one date heading per day and the day's own lines under it.
+from pathlib import Path  # noqa: E402
+
+OLD_MAN_WEEK = (Path(__file__).parent / "fixtures" / "old_man_specials_2026-11-13.txt").read_text(encoding="utf-8")
+HAPPY_LINE = "Happy Hour | 3-6pm & 10pm-Close | $4.00 - Wells | $1.00 OFF - Wine | $1.00 OFF - Micro Drafts"
+TUESDAY_LINE = "Tuesday Specials | $2 Tuesday! $2 WELL drinks and Bud Light from 6:30p-2a"
+
+
+def test_bare_p_and_a_suffixes_are_times():
+    assert er._time_in_quote(TUESDAY_LINE, "18:30")
+    assert er._time_in_quote("3-6p", "15:00") and er._time_in_quote("from 6p", "18:00")
+    assert not er._time_in_quote("6 people", "18:00") and not er._time_in_quote("6pax", "18:00")
+
+
+def test_two_part_quote_two_dollar_tuesday_is_kept_for_tuesday_at_1830():
+    e = {"kind": "dated", "title": "$2 Tuesday", "weekdays": [], "date": "2026-11-17", "times": ["18:30"],
+         "quote": TUESDAY_LINE, "date_quote": "Tuesday November 17th"}
+    kept, rej = er.validate_extraction(reply(e), OLD_MAN_WEEK, NOV13)
+    assert not rej
+    # the page shows 7 consecutive days, so a line under one Tuesday is the Tuesday rule
+    assert [(r.kind, r.weekdays, r.times) for r in kept] == [("recurring", [2], ["18:30"])]
+    assert kept[0].quote == f"Tuesday November 17th / {TUESDAY_LINE}" and kept[0].price == "$2"
+
+
+def test_happy_hour_under_all_seven_days_is_one_daily_rule_at_15_and_its_own_rule_at_22():
+    e = {"kind": "dated", "title": "Happy Hour", "weekdays": [], "date": "2026-11-14", "times": ["15:00"],
+         "quote": HAPPY_LINE, "date_quote": "Saturday November 14th"}
+    kept, rej = er.validate_extraction(reply(e), OLD_MAN_WEEK, NOV13)
+    assert not rej
+    assert [(r.kind, r.weekdays, r.times) for r in kept] == [("recurring", [1, 2, 3, 4, 5, 6, 7], ["15:00"]),
+                                                             ("recurring", [1, 2, 3, 4, 5, 6, 7], ["22:00"])]
+    assert kept[0].quote == f"{HAPPY_LINE} (listed under each day Nov 13-Nov 19)"
+    assert kept[0].key == "recurring|happy hour|1,2,3,4,5,6,7|" and kept[1].key == "recurring|happy hour|1,2,3,4,5,6,7||22:00"
+
+
+def test_the_model_listing_happy_hour_once_per_day_still_gives_two_rules():
+    days = [("Friday November 13th", "2026-11-13"), ("Saturday November 14th", "2026-11-14"), ("Monday November 16th", "2026-11-16")]
+    entries = [{"kind": "dated", "title": "Happy Hour", "weekdays": [], "date": d, "times": ["15:00", "22:00"],
+                "quote": HAPPY_LINE, "date_quote": h} for h, d in days]
+    kept, rej = er.validate_extraction(reply(*entries), OLD_MAN_WEEK, NOV13)
+    assert not rej and [r.times for r in kept] == [["15:00"], ["22:00"]]
+
+
+def test_a_date_heading_after_the_rule_line_or_another_heading_between_is_rejected():
+    after = {"kind": "dated", "title": "$2 Tuesday", "weekdays": [], "date": "2026-11-18", "times": ["18:30"],
+             "quote": TUESDAY_LINE, "date_quote": "Wednesday November 18th"}
+    between = dict(after, date="2026-11-16", date_quote="Monday November 16th")
+    for e in (after, between):
+        kept, rej = er.validate_extraction(reply(e), OLD_MAN_WEEK, NOV13)
+        assert not kept and rej[0].why == "date_quote is not the date heading directly above the quote"
+
+
+def test_the_time_must_stand_in_the_rule_line_not_on_the_next_line():
+    e = {"kind": "dated", "title": "Fireball Friday", "weekdays": [], "date": "2026-11-13", "times": ["17:00"],
+         "quote": "Fireball Friday! $4 all day", "date_quote": "Friday November 13th"}
+    kept, rej = er.validate_extraction(reply(e), OLD_MAN_WEEK, NOV13)
+    assert not kept and rej[0].why == "no listed time appears in the quote"
+
+
+def test_without_seven_consecutive_days_a_line_under_some_days_stays_dated_per_date():
+    # The same page cut to Fri 13 - Mon 16 (the one changed field: the week is shorter)
+    short = OLD_MAN_WEEK.split("Tuesday November 17th")[0]
+    e = {"kind": "dated", "title": "Happy Hour", "weekdays": [], "date": "2026-11-13", "times": ["15:00"],
+         "quote": HAPPY_LINE, "date_quote": "Friday November 13th"}
+    kept, rej = er.validate_extraction(reply(e), short, NOV13)
+    assert not rej
+    assert sorted({(r.kind, r.on_date) for r in kept}) == [("dated", date(2026, 11, d)) for d in (13, 14, 15, 16)]
+    assert {tuple(r.times) for r in kept} == {("15:00",), ("22:00",)}
+    assert kept[0].quote == f"Friday November 13th / {HAPPY_LINE}"
+
+
+def test_a_heading_whose_weekday_does_not_fit_its_date_is_ignored():
+    # "Saturday November 15th": the one changed field is the weekday (Nov 15 2026 is a Sunday)
+    assert er._heading_date("Saturday November 15th", NOV13) is None
+    assert er._heading_date("Sunday November 15th", NOV13) == date(2026, 11, 15)
