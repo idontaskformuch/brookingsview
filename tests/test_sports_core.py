@@ -306,12 +306,18 @@ def test_flags_migration_is_additive_and_adds_both_columns():
 
 
 @pytest.mark.parametrize("stmt", [
-    "ALTER TABLE x DROP COLUMN y", "ALTER TABLE x ADD COLUMN IF NOT EXISTS y int REFERENCES z(id)",
+    "ALTER TABLE x DROP COLUMN y", "ALTER TABLE x ADD COLUMN IF NOT EXISTS y int REFERENCES z(id) ON DELETE CASCADE",
     "ALTER TABLE x ADD COLUMN IF NOT EXISTS y boolean; DROP TABLE x", "ALTER TABLE x RENAME COLUMN a TO b",
     "ALTER TABLE x ALTER COLUMN a TYPE text", "ALTER TABLE x ADD COLUMN IF NOT EXISTS y text DEFAULT (select 1)",
 ])
 def test_add_column_allowance_is_narrow(stmt):
     assert apply_migration.check_additive(stmt + ";")
+
+
+# A bare REFERENCES (no ON DELETE/ON UPDATE action) is allowed since 2026-11-13 (owner, proposal 5; this test changed with the owner's yes).
+@pytest.mark.parametrize("stmt", ["ALTER TABLE x ADD COLUMN IF NOT EXISTS y int REFERENCES z(id)"])
+def test_add_column_allowance_takes_a_bare_reference(stmt):
+    assert apply_migration.check_additive(stmt + ";") == []
 
 
 def test_store_writes_the_two_flags():
