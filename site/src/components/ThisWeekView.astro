@@ -1,0 +1,207 @@
+---
+/** The body of a "This Week in <Town>" page (see pages/this-week/[week].astro's docstring). Rendered at the week's own dated URL
+ *  and, for the current week, at the rolling /this-week/ URL, whose canonical is the dated page and whose robots follow it
+ *  (F18, owner 2026-11-13: menu, footer, /events/ and the "This week" card link /this-week/, which must be a built page). */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import AboutThisPage from './ui/AboutThisPage.astro';
+import ShareButton from './ShareButton.astro';
+import WeekGroupList from './WeekGroupList.astro';
+import { formatOccursAt } from '../lib/db';
+import { publicBody, linkTarget } from '../lib/ai-text';
+import { buildDisplayRows } from '../lib/this-week';
+import type { ThisWeekProps } from '../lib/this-week-pages';
+import { siteConfig } from '../lib/site-config';
+import { weekDescription } from '../lib/meta-description';
+import { resolvePageMeta } from '../lib/page-meta';
+import { resolveHubBacklink, isAvailable } from '../lib/clusters';
+import { groupWeekItems } from '../lib/week-groups';
+import { storyHref } from '../lib/content-slugs';
+
+type Props = ThisWeekProps;
+const { week, days, lead, weeklyStory, prevWeek, isCurrent, isRecent, isThin } = Astro.props;
+
+// Model-written text is never printed (lib/ai-text.ts): an AI weekly story gives no intro, the generic line below shows instead.
+const weeklyParagraphs = (weeklyStory ? publicBody(weeklyStory) : '').split('\n').map((p) => p.trim()).filter(Boolean);
+const weeklyIntro = weeklyParagraphs[0] ?? '';
+const pageMeta = resolvePageMeta('this-week', siteConfig, { WeekLabel: week.label });
+const hubBacklink = resolveHubBacklink('this-week', siteConfig);
+const title = pageMeta.title;
+const description = weekDescription(siteConfig, week.label, siteConfig.townId === 'brookings_sd');
+const canonicalUrl = new URL(`/this-week/${week.slug}/`, Astro.site ?? siteConfig.siteUrl).href;
+const isBrookings = siteConfig.townId === 'brookings_sd';
+// Only a sports page this town builds (F18, 2026-11-13: Broomfield's weeks linked /sports/, a redirect to /).
+const sportsHref = ['jackrabbits', 'sports'].filter((k) => isAvailable(k, siteConfig)).map((k) => `/${k}/`)[0] ?? null;
+
+const hasAnyItems = days.some((d) => d.items.length > 0);
+// Past-day omission only makes sense for the still-in-progress current
+// week -- a completed historical week keeps all 7 days as its own record.
+const displayRows = buildDisplayRows(days, siteConfig.timezone, isCurrent);
+// 2026-10-23 restructure: the body of the page is a deterministic theme-grouped list (lib/week-groups.ts),
+// with the day and time on each line; the model only writes the short introduction above it.
+const weekGroups = groupWeekItems(
+  displayRows.flatMap((r) => (r.kind === 'day' ? [r.day] : [])), days, siteConfig.timezone,
+  siteConfig.topEvents?.patterns ?? [],
+);
+
+const itemListJsonLd = hasAnyItems ? {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: title,
+  itemListElement: days.flatMap((d) => d.items).map((item, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: item.title,
+    url: item.href ? new URL(item.href, Astro.site ?? siteConfig.siteUrl).href : canonicalUrl,
+  })),
+} : null;
+---
+<BaseLayout title={title} wide ogSlug={`this-week-${week.slug}`} description={description} canonicalUrl={canonicalUrl} noindex={isThin || !isRecent}>
+  <header class="lede">
+    <p class="kicker">This week in {siteConfig.cityName}</p>
+    <h1>{pageMeta.h1}</h1>
+    {weeklyIntro && (
+      <p class="intro">{weeklyIntro}{' '}
+        {weeklyParagraphs.length > 1 && <a href={storyHref(weeklyStory!.slug)}>Read the full week in review →</a>}</p>
+    )}
+    <ShareButton title={title} url={canonicalUrl} />
+  </header>
+
+  {lead && (
+    <aside class="lead-callout">
+      <p class="lead-callout__kicker">Worth knowing this week</p>
+      <p class="lead-callout__title">{linkTarget(lead) ? <a href={linkTarget(lead)!}>{lead.title}</a> : lead.title}</p>
+      <p class="lead-callout__when">{formatOccursAt(lead)}</p>
+    </aside>
+  )}
+
+  <WeekGroupList groups={weekGroups} idPrefix="wk" keepOver />
+
+  {!hasAnyItems && (
+    <p class="empty">A quiet week — no meetings, events or games recorded for {siteConfig.cityName} this week.</p>
+  )}
+  {!hasAnyItems && prevWeek && (
+    <p class="empty-prev-week">
+      <a href={`/this-week/${prevWeek.slug}/`}>See last week instead: week of {prevWeek.label} →</a>
+    </p>
+  )}
+
+  <nav class="cross-links" aria-label="Related sections">
+    <a href="/events/">All events →</a>
+    <a href="/events/free/">Free events</a>
+    <a href="/events/kids/">Kids &amp; family</a>
+    <a href="/city-hall/">City hall</a>
+    {isBrookings
+      ? <a href="/events/campus/">SDSU</a>
+      : null}
+    {sportsHref && <a href={sportsHref}>Sports</a>}
+  </nav>
+
+  {prevWeek && (
+    <p class="prev-week"><a href={`/this-week/${prevWeek.slug}/`}>← Week of {prevWeek.label}</a></p>
+  )}
+
+  {itemListJsonLd && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(itemListJsonLd)} />
+  )}
+  <AboutThisPage slot="about">
+    {!weeklyIntro && (
+      <p>{isCurrent
+        ? `What's on this week in ${siteConfig.cityName}, day by day, built from real scheduled meetings, events${isBrookings ? ', SDSU listings' : ''} and games.`
+        : `A day-by-day record of what happened in ${siteConfig.cityName} this week.`}</p>
+    )}
+    {hubBacklink && <p>Want just today, or a broader view? See <a href={hubBacklink.hubHref}>{hubBacklink.clusterLabel}</a>.</p>}
+  </AboutThisPage>
+</BaseLayout>
+
+<style>
+.lede { max-width: 42rem; }
+.kicker {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--alert);
+  margin: 0 0 0.25rem;
+}
+.intro { color: var(--ink-soft); margin: 0.75rem 0 0; font-size: 1.0625rem; line-height: 1.55; }
+.intro a { white-space: nowrap; }
+
+.lead-callout {
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--rule-strong);
+  border-left: 4px solid var(--navy);
+  background: var(--navy-tint);
+  max-width: 42rem;
+}
+.lead-callout__kicker {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--navy);
+  margin: 0 0 0.375rem;
+}
+.lead-callout__title { font-size: 1.125rem; font-weight: 600; margin: 0; }
+.lead-callout__title a { color: var(--ink); }
+.lead-callout__when { font-size: 0.8125rem; color: var(--ink-soft); margin: 0.25rem 0 0; }
+
+.days { margin-top: 2rem; display: grid; gap: 0; }
+.day { padding: 1rem 0; border-top: 1px solid var(--rule); }
+.day:last-child { border-bottom: 1px solid var(--rule); }
+.day__heading {
+  font-size: 1.0625rem;
+  margin: 0 0 0.625rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.day__date { font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 400; color: var(--ink-soft); }
+.day__items { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.625rem; }
+.day__item { font-size: 0.9375rem; line-height: 1.4; }
+.day__vertical {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--navy);
+  background: var(--navy-tint);
+  border-radius: 999px;
+  padding: 0.125rem 0.5rem;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+.day__item a { font-weight: 600; }
+.day__detail { display: block; color: var(--ink-soft); font-size: 0.875rem; margin-top: 0.125rem; }
+.day__quiet { color: var(--ink-soft); font-size: 0.9375rem; margin: 0; }
+.day__quiet--range { padding: 1rem 0; border-top: 1px solid var(--rule); }
+.day__quiet--range:last-child { border-bottom: 1px solid var(--rule); }
+
+.empty { color: var(--ink-soft); margin-top: 1.5rem; }
+
+.empty-prev-week {
+  margin-top: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.empty-prev-week a { color: var(--navy); }
+.empty-prev-week a:hover, .empty-prev-week a:focus-visible { text-decoration: underline; }
+
+.cross-links { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 2rem 0 1rem; }
+.cross-links a {
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--navy-tint);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+}
+.cross-links a:hover, .cross-links a:focus-visible { background: var(--navy); color: var(--surface); }
+
+.prev-week { font-size: 0.9375rem; margin-top: 0.5rem; }
+</style>

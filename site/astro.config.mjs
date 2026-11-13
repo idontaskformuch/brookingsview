@@ -394,9 +394,8 @@ const TOWN_GATED_PAGES = [
   // there -- see reviews.astro's own comment); real content for the other
   // two towns.
   { path: '/reviews/', activeFor: ['brookings_sd', 'broomfield_co'] },
-  // Always redirects to the current ISO week's own page
-  // (/this-week/<slug>/, already indexed separately) -- not town-gated at
-  // all, a rolling pointer for every town (see this-week/index.astro).
+  // The current week's page again, canonical on /this-week/<slug>/ (indexed separately), in every town since F18
+  // (2026-11-13; it was a redirect before): out of the sitemap because its canonical is another URL.
   { path: '/this-week/', activeFor: [] },
   // Feature-flag-gated (not town-gated) -- mirrors CITIES' hasClosureWatch/
   // hasWorkplaceWatch/hasNewInTown booleans in site-config.ts exactly.

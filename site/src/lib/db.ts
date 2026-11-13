@@ -1022,6 +1022,13 @@ function isoWeekSlug(occursAt: string, timezone: string): string {
   return `${isoYear}-w${String(isoWeek).padStart(2, '0')}`;
 }
 
+/** Where a link to a 'weekly' story's week goes: the rolling /this-week/ page for the current week (F18, owner 2026-11-13),
+ *  the week's own dated page for an earlier week (getLatestWeekly() can fall back to one; its title names that week). */
+export function weekPageHref(occursAt: string): string {
+  const slug = isoWeekSlug(occursAt, siteConfig.timezone);
+  return slug === isoWeekSlug(new Date().toISOString(), siteConfig.timezone) ? '/this-week/' : `/this-week/${slug}/`;
+}
+
 async function latestStoryByType(sourceType: SourceType): Promise<RelatedItem | null> {
   const rows = (await sql`
     SELECT title, slug, body, generated_by, published_at
@@ -1208,7 +1215,7 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
     const weekly = await getLatestWeekly();
     if (weekly && weekly.occurs_at) {
       items.push({
-        href: `/this-week/${isoWeekSlug(weekly.occurs_at, siteConfig.timezone)}/`,
+        href: weekPageHref(weekly.occurs_at),
         title: weekly.title, kicker: 'This week', description: null,
       });
     }

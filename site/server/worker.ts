@@ -36,7 +36,7 @@ import { withPrunedEventRedirect } from './pruned-events';
 import { handleAlerts } from './alerts';
 import { handleWeather } from './weather';
 import {
-  type Env, townFromHostname, timezoneForTown, currentIsoWeekSlug, previousIsoWeekSlug,
+  type Env, townFromHostname,
   resolveLegacyMeetingRedirect, resolveFacilityRedirect, resolveStaticGateRedirect, isGoneSection,
 } from './_shared';
 import legacyMeetingRedirects from './legacy-meeting-redirects.json';
@@ -249,62 +249,8 @@ export default {
       return Response.redirect(target.toString(), 301);
     }
 
-    // /this-week/ -- rolling redirect to the current ISO week's permanent
-    // archive URL (see site/src/pages/this-week/index.astro's own
-    // Astro.redirect()). Handled HERE, at the real HTTP layer, not just in
-    // Astro: `output: 'static'` can't emit a real 301/302 status code from
-    // a prerendered page -- Astro.redirect() there only produces a static
-    // HTML fallback with a 2-second <meta http-equiv="refresh">, which is
-    // exactly the bug this fixes (reported live on mobile Safari: the
-    // fallback page's own plain, unstyled "Redirecting from ... to ..."
-    // text was visible instead of an instant navigation). A real
-    // Response.redirect() here returns before ever reaching ASSETS, so
-    // that static fallback page is never actually served in production
-    // (still built and deployed as a defensive no-op if this ever fails
-    // to match). Town-agnostic: this Worker script is deployed twice (see
-    // wrangler.jsonc's env.brookings/env.moreno_valley), so the town
-    // (and therefore the correct week-boundary timezone) is resolved from
-    // the request's own hostname at request time, exactly like
-    // handleComment/handleShiftPollVote already do -- never assumed from
-    // a build-time SITE_CITY, which this Worker's own separate wrangler
-    // bundle doesn't have.
-    if (url.pathname === '/this-week' || url.pathname === '/this-week/') {
-      const townId = townFromHostname(request.url, env.DEV_TOWN_ID);
-      const slug = currentIsoWeekSlug(timezoneForTown(townId));
-
-      // [week].astro's getStaticPaths() always includes the current ISO
-      // week (see that file's own weekInfos.set(current.slug, current)),
-      // but only as of the LAST hourly rebuild -- this Worker computes
-      // "current" fresh on every request. Cross a Monday-midnight rollover
-      // between rebuilds and this redirect would otherwise point at a slug
-      // the last build never generated -- a genuine 404, worse than the
-      // meta-refresh page this whole fix replaced (that one could never
-      // disagree with the static build, since both were computed in the
-      // SAME build). Probe before committing to the redirect, and fall
-      // back to last week's page -- guaranteed to already be built, since
-      // it was itself "current" (and therefore in getStaticPaths()) at
-      // some point during its own 7-day span -- rather than ever sending
-      // someone to a dead end.
-      const primary = `/this-week/${slug}/`;
-      const exists = await env.ASSETS.fetch(new Request(new URL(primary, url.origin), { method: 'HEAD' }))
-        .then((r) => r.status === 200)
-        .catch(() => false);
-      const finalSlug = exists ? slug : (previousIsoWeekSlug(slug) ?? slug);
-
-      // 302, not 301 -- the target changes every Monday, and a 301 gets
-      // pinned in browser caches indefinitely. Cache-Control is explicit
-      // (Response.redirect() doesn't accept custom headers, hence the
-      // manual Response below) so neither Cloudflare's edge nor the
-      // browser ever serves a stale week -- this run_worker_first-gated
-      // path already proved that exact failure mode is easy to hit
-      // silently (see wrangler.jsonc's own comment).
-      const target = new URL(`/this-week/${finalSlug}/`, url.origin);
-      target.search = url.search;
-      return new Response(null, {
-        status: 302,
-        headers: { Location: target.toString(), 'Cache-Control': 'no-store' },
-      });
-    }
+    // /this-week/ is a built page since F18 (owner 2026-11-13): the current week's content with its canonical on the dated
+    // /this-week/<week>/ page (pages/this-week/index.astro). The 302 to the dated page that lived here is gone.
 
     // Static town-gate redirects (QA finding #6, 2026-10) -- the SAME
     // root cause as the /this-week/ block just above (see

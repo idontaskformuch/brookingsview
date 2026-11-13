@@ -77,7 +77,7 @@ const PAGE_REGISTRY: PageRegistryEntry[] = [
   { file: 'sports.astro', routeKey: 'sports' },
   { file: 'terms.astro', routeKey: null, expectedOrphanReason: 'trust page' },
   { file: 'this-week/[week].astro', routeKey: 'this-week' },
-  { file: 'this-week/index.astro', routeKey: null, expectedOrphanReason: 'pure redirect stub, zero rendered content (correctly excluded from the metadata handoff too)' },
+  { file: 'this-week/index.astro', routeKey: null, expectedOrphanReason: 'renders this-week/[week] for the current week, canonical on the dated URL (F18 2026-11-13), which carries the metadata' },
   { file: 'today.astro', routeKey: 'today' },
   { file: 'traffic.astro', routeKey: 'traffic' },
   { file: 'university.astro', routeKey: 'university' },

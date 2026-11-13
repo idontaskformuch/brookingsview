@@ -1,14 +1,10 @@
 ---
-/** Rolling "latest week" URL -- always redirects to the current ISO week's
- *  permanent archive page (/this-week/<iso-week>/), which [week].astro
- *  always generates a static path for (see that file's getStaticPaths).
- *  This URL itself is never indexed as the canonical home for any one
- *  week's content -- Google should land on and index the dated archive
- *  URL, never this one, per the brief's own "rolling /this-week/ points at
- *  current week; dated archive is what's indexed" requirement. */
-import { currentWeekInfo } from '../../lib/this-week';
-import { siteConfig } from '../../lib/site-config';
+/** Rolling "this week" URL: the current ISO week's page, rendered here as well (F18, owner 2026-11-13: menu, footer, /events/
+ *  and the "This week" card link /this-week/, so it is a built page, not a redirect stub). Its canonical is the dated
+ *  /this-week/<iso-week>/ page, which is what Google indexes; its robots meta is that page's (components/ThisWeekView.astro). */
+import ThisWeekView from '../../components/ThisWeekView.astro';
+import { getCurrentThisWeekPage } from '../../lib/this-week-pages';
 
-const week = currentWeekInfo(siteConfig.timezone);
-return Astro.redirect(`/this-week/${week.slug}/`, 302);
+const props = await getCurrentThisWeekPage();
 ---
+<ThisWeekView {...props} />
