@@ -196,3 +196,36 @@ describe('QA build.hours-schema-fresh mirror', () => {
     for (const c of ALL_CONFIGS) expect(c.placeStaleness?.hoursDays ?? 45, c.townId).toBe(mirror);
   });
 });
+
+// The Old Man Bar, Broomfield: "Mon-Sun 11:00 AM - 2:00 AM" (.claude/evidence/venues-2026-11/broomfield/the-old-man.txt, fetched
+// 2026-11-13); Chipper's Lanes Broomfield "Fri & Sat: 10 am-midnight" (chipperslanes-broomfield). Denver is UTC-7 in November.
+const OLD_MAN: PlaceHoursRow[] = [0, 1, 2, 3, 4, 5, 6].map((day_of_week) => ({
+  day_of_week, opens: '11:00:00', closes: '02:00:00', valid_from: null, valid_to: null,
+}));
+
+describe('computePlaceOpenStatus: a window that closes after midnight (2026-11-13)', () => {
+  it('is open late in the evening, until 2:00 AM', () => {
+    expect(computePlaceOpenStatus(OLD_MAN, [], new Date('2026-11-18T06:30:00Z'), TZ)) // Tue 23:30
+      .toEqual({ known: true, isOpen: true, closesAt: '2:00 AM' });
+  });
+  it("is still open at 1:30 AM on yesterday's window", () => {
+    expect(computePlaceOpenStatus(OLD_MAN, [], new Date('2026-11-18T08:30:00Z'), TZ)) // Wed 01:30
+      .toEqual({ known: true, isOpen: true, closesAt: '2:00 AM' });
+  });
+  it('is closed at 3:00 AM and opens at 11:00 AM today', () => {
+    expect(computePlaceOpenStatus(OLD_MAN, [], new Date('2026-11-18T10:00:00Z'), TZ)) // Wed 03:00
+      .toEqual({ known: true, isOpen: false, opensAt: '11:00 AM', opensLabel: 'today' });
+  });
+  it('a midnight close is open until midnight and not after it', () => {
+    const fri: PlaceHoursRow[] = [{ day_of_week: 5, opens: '10:00:00', closes: '00:00:00', valid_from: null, valid_to: null }];
+    expect(computePlaceOpenStatus(fri, [], new Date('2026-11-21T06:30:00Z'), TZ)) // Fri 23:30
+      .toEqual({ known: true, isOpen: true, closesAt: '12:00 AM' });
+    expect(computePlaceOpenStatus(fri, [], new Date('2026-11-21T07:30:00Z'), TZ)) // Sat 00:30
+      .toMatchObject({ known: true, isOpen: false });
+  });
+  it('JSON-LD keeps 11:00-02:00 as written (schema.org: closes before opens spans into the next day)', () => {
+    expect(buildPlaceOpeningHoursSpecification(OLD_MAN)[1]).toEqual({
+      '@type': 'OpeningHoursSpecification', dayOfWeek: 'https://schema.org/Monday', opens: '11:00', closes: '02:00',
+    });
+  });
+});

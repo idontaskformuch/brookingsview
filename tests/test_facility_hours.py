@@ -121,3 +121,19 @@ def test_reversed_day_range_is_flagged_not_guessed():
     result = parse_hours_text("Fri-Mon 9am-5pm")
     assert result.structured is None
     assert result.needs_review is True
+
+
+def test_closing_after_midnight_round_trips_through_check_hours_consistency():
+    # The Old Man Bar, Broomfield: "Mon-Sun 11:00 AM - 2:00 AM" (.claude/evidence/venues-2026-11/broomfield/the-old-man.txt,
+    # 2026-11-13). hours_text, hours_structured and place_hours must agree with closes < opens, or the invariant flags the row.
+    from scripts.check_hours_consistency import compare, table_to_structured
+    import datetime as dt
+
+    parsed = parse_hours_text("Mon-Sun 11am-2am")
+    assert parsed.structured["monday"] == ("11:00", "02:00")
+    rows = [(d, dt.time(11, 0), dt.time(2, 0)) for d in range(7)]
+    assert compare(parsed.structured, table_to_structured(rows)) == []
+    # Chipper's Lanes Broomfield: "Sun-Thurs: 10 am-11 pm Fri & Sat: 10 am-midnight", written without the wrap-around range
+    # the parser does not read ("Sun-Thu" is unrecognized).
+    chippers = parse_hours_text("Mon-Thu 10am-11pm, Fri-Sat 10am-midnight, Sun 10am-11pm")
+    assert chippers.structured["friday"] == ("10:00", "00:00") and chippers.structured["sunday"] == ("10:00", "23:00")

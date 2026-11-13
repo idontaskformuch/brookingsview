@@ -32,7 +32,7 @@
  *  that into the client bundle. */
 import type { PlaceHoursRow, PlaceHoursException } from './db';
 import { calendarDateParts } from './calendar-date';
-import { formatClock } from './facility-hours';
+import { formatClock, isRoundTheClock } from './facility-hours';
 
 export type PlaceOpenStatus =
   | { known: false }
@@ -43,6 +43,12 @@ export type PlaceOpenStatus =
 function toMinutes(hhmmss: string): number {
   const [h, m] = hhmmss.split(':').map(Number);
   return h * 60 + m;
+}
+
+/** A window that closes at or before its opening time ends the next day: 11:00-02:00, or 10:00-00:00 for "midnight" (The Old Man Bar
+ *  and Chipper's Lanes, Broomfield, 2026-11-13). A round-the-clock window is one whole day, as before. */
+function endsNextDay(w: { opens: string; closes: string }): boolean {
+  return toMinutes(w.closes) <= toMinutes(w.opens) && !isRoundTheClock(w.opens, w.closes);
 }
 
 function localParts(instant: Date, timezone: string): { weekday: number; isoDate: string; minutesOfDay: number } {
@@ -157,8 +163,15 @@ export function computePlaceOpenStatus(
   const { weekday, isoDate, minutesOfDay } = localParts(now, timezone);
   const todayWindows = windowsForDate(isoDate, weekday, hours, exceptions);
 
+  // Yesterday's window that runs past midnight is still open in the small hours.
+  const yesterday = localParts(new Date(now.getTime() - 86_400_000), timezone);
+  for (const w of windowsForDate(yesterday.isoDate, yesterday.weekday, hours, exceptions)) {
+    if (endsNextDay(w) && minutesOfDay < toMinutes(w.closes)) {
+      return { known: true, isOpen: true, closesAt: formatClock(w.closes, gb) };
+    }
+  }
   for (const w of todayWindows) {
-    if (minutesOfDay >= toMinutes(w.opens) && minutesOfDay < toMinutes(w.closes)) {
+    if (minutesOfDay >= toMinutes(w.opens) && (endsNextDay(w) || minutesOfDay < toMinutes(w.closes))) {
       return { known: true, isOpen: true, closesAt: formatClock(w.closes, gb) };
     }
   }

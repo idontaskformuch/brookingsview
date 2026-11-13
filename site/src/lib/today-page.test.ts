@@ -73,6 +73,11 @@ describe('hoursToday', () => {
     expect(hoursToday([closed], NOW, TZ, 45, false)[0].text).toBe('Closed today');
     expect(hoursToday([RECYCLING], NOW, TZ, 45, true)).toEqual([]);
   });
+  it('a window past midnight reads as written (The Old Man Bar, "Mon-Sun 11:00 AM - 2:00 AM", evidence 2026-11-13)', () => {
+    const oldMan: TodayHoursPlace = { slug: 'the-old-man-bar', name: 'The Old Man Bar', verified_date: '2026-11-13', exceptions: [],
+      hours: [4].map((day_of_week) => ({ day_of_week, opens: '11:00:00', closes: '02:00:00', valid_from: null, valid_to: null })) };
+    expect(hoursToday([oldMan], NOW, TZ, 45, false)[0].text).toBe('11:00 AM–2:00 AM');
+  });
 });
 
 describe('todayIndexVerdict (owner 2026-11-12)', () => {

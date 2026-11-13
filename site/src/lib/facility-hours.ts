@@ -65,10 +65,16 @@ export function computeOpenStatus(hours: StructuredHours | null, now: Date, time
 
   const { weekday, minutesOfDay } = localParts(now, timezone);
   const todayWindow = hours[DAY_KEYS[weekday]];
+  // A window that closes at or before it opens ends the next day (11:00-02:00, 10:00-00:00; The Old Man Bar, 2026-11-13).
+  const endsNextDay = (open: string, close: string) => toMinutes(close) <= toMinutes(open) && !isRoundTheClock(open, close);
 
+  const yesterdayWindow = hours[DAY_KEYS[(weekday + 6) % 7]];
+  if (yesterdayWindow && endsNextDay(...yesterdayWindow) && minutesOfDay < toMinutes(yesterdayWindow[1])) {
+    return { known: true, isOpen: true, closesAt: formatClock(yesterdayWindow[1], gb) };
+  }
   if (todayWindow) {
     const [open, close] = todayWindow;
-    if (minutesOfDay >= toMinutes(open) && minutesOfDay < toMinutes(close)) {
+    if (minutesOfDay >= toMinutes(open) && (endsNextDay(open, close) || minutesOfDay < toMinutes(close))) {
       return { known: true, isOpen: true, closesAt: formatClock(close, gb) };
     }
   }

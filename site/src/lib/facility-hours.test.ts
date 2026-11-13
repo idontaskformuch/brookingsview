@@ -94,3 +94,16 @@ describe('formatClock gb (owner 2026-10-28: Glasgow shows 10am-5pm, not 10:00 AM
     expect(formatClock('17:00')).toBe('5:00 PM');
   });
 });
+
+// The Old Man Bar, Broomfield: "Mon-Sun 11:00 AM - 2:00 AM" (.claude/evidence/venues-2026-11/broomfield/the-old-man.txt, 2026-11-13).
+describe('computeOpenStatus: a window that closes after midnight (2026-11-13)', () => {
+  const day: [string, string] = ['11:00', '02:00'];
+  const oldMan = { sunday: day, monday: day, tuesday: day, wednesday: day, thursday: day, friday: day, saturday: day } as StructuredHours;
+  it('is open at 23:30 and, on the previous day\'s window, at 1:30', () => {
+    expect(computeOpenStatus(oldMan, new Date('2026-11-18T06:30:00Z'), 'America/Denver')).toEqual({ known: true, isOpen: true, closesAt: '2:00 AM' });
+    expect(computeOpenStatus(oldMan, new Date('2026-11-18T08:30:00Z'), 'America/Denver')).toEqual({ known: true, isOpen: true, closesAt: '2:00 AM' });
+  });
+  it('is closed at 3:00 and opens at 11:00 today', () => {
+    expect(computeOpenStatus(oldMan, new Date('2026-11-18T10:00:00Z'), 'America/Denver')).toEqual({ known: true, isOpen: false, opensAt: '11:00 AM', opensLabel: 'today' });
+  });
+});
