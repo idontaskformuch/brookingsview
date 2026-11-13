@@ -91,9 +91,9 @@ describe('countWeekItems', () => {
 });
 
 describe('the sitemap filter and the page use the shared count', () => {
-  it('astro.config.mjs and this-week/[week].astro both call countWeekItems/isThinWeek', () => {
+  it('astro.config.mjs and lib/this-week-pages.ts (props of the /this-week/ pages) both call countWeekItems/isThinWeek', () => {
     const cfg = readFileSync(new URL('../../astro.config.mjs', import.meta.url), 'utf8');
-    const page = readFileSync(new URL('../pages/this-week/[week].astro', import.meta.url), 'utf8');
+    const page = readFileSync(new URL('./this-week-pages.ts', import.meta.url), 'utf8');
     for (const src of [cfg, page]) {
       expect(src).toMatch(/countWeekItems\(/);
       expect(src).toMatch(/isThinWeek\(/);
