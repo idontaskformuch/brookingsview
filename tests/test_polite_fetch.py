@@ -260,6 +260,40 @@ def test_api_terms_cover_only_their_path_and_the_gaps_match_the_terms():
     assert all(t.attribution and t.terms_url.startswith("https://") for t in pf.API_TERMS)
 
 
+# --- Crawl-delay above the cap (owner 2026-11-14, QA logic.crawl-delay-over-cap) ---------------------------------------------------
+
+def _business_center(slept):
+    # tests/fixtures/robots/morenovalleybusiness.txt verbatim (fetched 2026-11-14): "Crawl-delay: 600" in its `*` group. The probe of
+    # 14 Nov sent robots + 3 requests about a minute apart because the 600 s were cut to MAX_CRAWL_DELAY_S.
+    robots = "https://morenovalleybusiness.com/robots.txt"
+    pages = ["https://morenovalleybusiness.com/events/", "https://morenovalleybusiness.com/events/?ical=1"]
+    sess = FakeSession({robots: (200, (ROBOTS / "morenovalleybusiness.txt").read_text(encoding="utf-8")),
+                        pages[0]: (200, "a"), pages[1]: (200, "b")})
+    f = pf.PoliteFetcher("source", "moreno_valley_ca", session=sess, ledger=pf.MemoryLedger(), cache_dir=None, sleep=slept.append)
+    return f, sess, robots, pages
+
+
+def test_a_crawl_delay_above_the_cap_is_never_shortened_one_request_per_host_and_run():
+    slept = []
+    f, sess, robots, pages = _business_center(slept)
+    assert f.get(pages[0]).status == 200
+    second = f.get(pages[1])
+    assert isinstance(second, pf.Refused) and "600" in second.reason and "one request per host" in second.reason
+    assert urls(sess) == [robots, pages[0]]  # the second page is never requested
+    assert all(s < pf.MAX_CRAWL_DELAY_S for s in slept)  # nothing waited a shortened delay instead
+    again, sess2, _, _ = _business_center([])  # a new run (a new fetcher) gets its one request
+    assert again.get(pages[1]).status == 200 and len(sess2.calls) == 2
+
+
+def test_a_crawl_delay_under_the_cap_is_still_waited_between_requests():
+    body = (ROBOTS / "morenovalleybusiness.txt").read_text(encoding="utf-8").replace("Crawl-delay: 600", "Crawl-delay: 10")  # the one changed field
+    slept = []
+    sess = FakeSession({ROBOTS_URL: (200, body), URL: (200, "a"), URL + "/2": (200, "b")})
+    f = pf.PoliteFetcher("source", "broomfield_co", session=sess, ledger=pf.MemoryLedger(), cache_dir=None, sleep=slept.append)
+    assert f.get(URL).status == 200 and f.get(URL + "/2").status == 200
+    assert max(slept) > 9
+
+
 def test_unknown_robots_mode_raises():
     with pytest.raises(ValueError):
         pf.PoliteFetcher("source", session=FakeSession({}), ledger=pf.MemoryLedger(), robots_mode="lenient")

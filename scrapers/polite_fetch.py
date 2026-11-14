@@ -18,7 +18,8 @@ Every fetch, the robots.txt fetches included, goes through here:
    same host (on any day) the host is refused without a request. Per host, not per domain: services2/services5.arcgis.com, tockify.com
    and libcal.com are platforms shared by many organisations.
 4. One UA (scrapers/user_agent.py), MAX_BYTES cap, a redirect to another domain = Refused, at least MIN_GAP_S (or the robots
-   Crawl-delay) between two requests to one domain.
+   Crawl-delay) between two requests to one domain. A Crawl-delay above MAX_CRAWL_DELAY_S is never shortened (owner 2026-11-14):
+   that host gets one request per run (per PoliteFetcher), the robots.txt read aside; a second one is Refused.
 
 The log is local for now (FileLedger: .claude/fetch-ledger/<YYYY-MM-DD>.jsonl). How local runs and CI share one log is a proposal
 waiting for the owner (state.md); a shared Ledger plugs in here without changing callers.
@@ -192,6 +193,8 @@ class PoliteFetcher:
         self._robots: dict[str, tuple[int | None, str]] = {}
         self._last: dict[str, float] = {}
         self._delay: dict[str, float] = {}
+        self._over_cap: dict[str, float] = {}  # host -> its Crawl-delay above MAX_CRAWL_DELAY_S
+        self._used: set[str] = set()  # over-cap hosts that already had their one request this run
         self._where = "ci" if os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get("GITHUB_RUN_ID") else "local"
 
     # --- the one public call ------------------------------------------------------------------------------------------------
@@ -219,6 +222,12 @@ class PoliteFetcher:
                     return cached
                 return Refused(url, f"already fetched today at {earlier['utc'][11:16]} UTC ({earlier['purpose']}, {earlier['where']}), "
                                     "no saved copy here: use the saved copy")
+        host = parts.netloc.lower()
+        if host in self._over_cap:
+            if host in self._used:
+                return Refused(url, f"robots.txt Crawl-delay {self._over_cap[host]:g} s is above the {MAX_CRAWL_DELAY_S:g} s cap and is "
+                                    "never shortened: one request per host per run, already made")
+            self._used.add(host)
         return self._request(url, domain, self.purpose)
 
     # --- robots -------------------------------------------------------------------------------------------------------------
@@ -233,8 +242,10 @@ class PoliteFetcher:
                 self._robots[origin] = (got.status, got.text if got.status == 200 else "")
         status, body = self._robots[origin]
         verdict = _robots.verdict(status, body, url, mode=self.robots_mode)
-        if verdict.crawl_delay:
-            self._delay[registrable(parts.netloc)] = min(verdict.crawl_delay, MAX_CRAWL_DELAY_S)
+        if verdict.crawl_delay and verdict.crawl_delay > MAX_CRAWL_DELAY_S:
+            self._over_cap[parts.netloc.lower()] = verdict.crawl_delay
+        elif verdict.crawl_delay:
+            self._delay[registrable(parts.netloc)] = verdict.crawl_delay
         return verdict
 
     # --- ledger -------------------------------------------------------------------------------------------------------------

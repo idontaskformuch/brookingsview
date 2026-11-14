@@ -1,0 +1,30 @@
+# START YOAST BLOCK
+# ---------------------------
+User-agent: *
+Disallow:
+
+User-agent: AdsBot
+Disallow: /
+
+Sitemap: https://www.morenovalleybusiness.com/sitemap_index.xml
+# ---------------------------
+# END YOAST BLOCK
+
+# Searle Creative Rate Limit Crawlers
+User-agent: *
+Disallow: /wp-login.php
+Disallow: /wp-admin/
+Crawl-delay: 600
+
+# Searle Creative Disallow Cralwers
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: facebookexternalhit
+Disallow: /
+
+User-agent: dataaccessd
+Disallow: /
