@@ -138,9 +138,10 @@ export function closedPlaces(page: HolidayPageData, dayIso?: string): number {
   return closedPlaceRows(page, dayIso).length;
 }
 
-/** The count (and the /holidays/ "Closed: ..." line) waits for a `holdsCount` row that is still unconfirmed. */
+/** The count (and the /holidays/ "Closed: ..." line) waits for a `holdsCount` row that is still unconfirmed; a page marked
+ *  `noClosedCount` never shows one. */
 export function countHeld(page: HolidayPageData): boolean {
-  return page.facts.some((f) => f.holdsCount && f.status === 'unconfirmed');
+  return !!page.noClosedCount || page.facts.some((f) => f.holdsCount && f.status === 'unconfirmed');
 }
 
 export const MAX_INSIGHTS = 2;
@@ -172,6 +173,8 @@ export function timelessGroups(page: HolidayPageData): GroupView[] {
   const rows: Record<HolidayChange, RowView[]> = { closed: [], changed: [], open: [] };
   for (const f of page.facts) {
     if (f.status !== 'confirmed' || !f.change || f.section === 'hours') continue;
+    // A place with one row per day (season pages, `on`) is named once per group.
+    if (rows[f.change].some((r) => r.name === f.label)) continue;
     rows[f.change].push({ name: f.label, pill: PILL[f.change], parts: f.standing ? [f.standing] : [] });
   }
   return order.filter((c) => rows[c].length > 0).map((c) => ({ id: c, heading: TIMELESS_HEADING[c], rows: rows[c] }));

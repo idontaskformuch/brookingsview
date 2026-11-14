@@ -47,6 +47,8 @@ jobs:
         run: bash ../scripts/build_retry.sh
       - name: Verify no empty messages or explanation boxes (Glasgow)
         run: node scripts/verify_no_empty_messages.mjs site/dist
+      - name: Christmas and New Year page shows no passed day or event, and every card has its source
+        run: node scripts/verify_holiday_season.mjs site/dist
       - name: Content first (no explanations between H1 and content)
         run: node scripts/verify_content_first.mjs site/dist
       - name: No internal notes (NEEDS-HUMAN-REVIEW, .md, TODO, PENDING, FIXME) on any page

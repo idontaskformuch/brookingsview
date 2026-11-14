@@ -4,16 +4,18 @@
  *  not_found_handling), not a redirect. A page exists for a town only with at least one confirmed row from an
  *  official source (config/holiday-pages/registry.ts). Never noindex: inside the window the title carries the
  *  year, outside it the page is a standing page with last season's facts labelled by year
- *  (.claude/specs/evergreen-holidays.md). Rows from the town's own event calendars are added here, at build time
- *  (lib/holiday-calendar-events.ts); every match is printed to the build log. */
+ *  (.claude/specs/evergreen-holidays.md). Rows from the town's own event calendars and venue register are added here, at build
+ *  time (lib/holiday-calendar-events.ts); every match is printed to the build log. A page with day-by-day data (`season`) is
+ *  rendered by HolidaySeasonPage while its window is open (Glasgow's Christmas and New Year, owner 2026-11-14). */
 import HolidayPage from '../components/HolidayPage.astro';
+import HolidaySeasonPage from '../components/HolidaySeasonPage.astro';
 import { siteConfig } from '../lib/site-config';
 import { HOLIDAY_PAGE_DEFS } from '../config/holiday-pages/calendar';
 import { calendarExcludesFor, holidayPageFor } from '../config/holiday-pages/registry';
 import { resolvePageState } from '../lib/holiday-calendar';
-import { getFacilities, getUpcomingStories } from '../lib/db';
+import { getEveningRegister, getFacilities, getUpcomingStories } from '../lib/db';
 import { buildTownEventsView } from '../lib/events-town-view';
-import { formatCalendarReport, matchCalendarEvents } from '../lib/holiday-calendar-events';
+import { formatCalendarReport, matchCalendarEvents, matchRegisterRows } from '../lib/holiday-calendar-events';
 
 export function getStaticPaths() {
   return HOLIDAY_PAGE_DEFS.flatMap((d) => (holidayPageFor(d.slug, siteConfig.townId) ? [{ params: { holiday: d.slug } }] : []));
@@ -35,8 +37,17 @@ if (exclude) {
     displayed.map((item) => (nearby.has(item) ? { item, nearbyMiles: distanceOf.get(item) ?? null } : { item })),
     siteConfig.timezone, exclude,
   );
-  for (const line of formatCalendarReport(entry.def.slug, siteConfig.townId, report)) console.log(line);
-  if (events.length > 0) page = { ...page, events: [...page.events, ...events] };
+  const reg = page.season
+    ? matchRegisterRows(entry.def, entry.page.year, await getEveningRegister(), Date.now(), siteConfig.timezone, siteConfig.cityName, exclude)
+    : { events: [], report: [] };
+  // A row the page already has by hand (same organizer page) is not listed twice.
+  const handUrls = new Set(page.events.flatMap((e) => (e.status === 'confirmed' ? [e.url] : [])));
+  const added = [...events, ...reg.events].filter((e) => !handUrls.has(e.url));
+  for (const line of formatCalendarReport(entry.def.slug, siteConfig.townId, [...report, ...reg.report])) console.log(line);
+  if (added.length > 0) page = { ...page, events: [...page.events, ...added] };
 }
+const season = !!page.season && state.kind === 'active';
 ---
-<HolidayPage page={page} def={entry.def} state={state} hasClosures={!!siteConfig.hasClosureWatch} />
+{season
+  ? <HolidaySeasonPage page={page} def={entry.def} />
+  : <HolidayPage page={page} def={entry.def} state={state} hasClosures={!!siteConfig.hasClosureWatch} />}

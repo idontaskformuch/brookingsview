@@ -38,12 +38,14 @@ describe('page windows (owner 2026-11-04)', () => {
     expect(pageState(thx, D(2026, 11, 27, 23), UTC).kind).toBe('active');
     expect(pageState(thx, D(2026, 11, 28, 0), UTC).kind).toBe('evergreen');
   });
-  it('Christmas (Glasgow): Sep 25 2026 through Jan 3 2027, across New Year', () => {
+  it('Christmas (Glasgow): Sep 25 2026 through Mon Jan 4 2027, the substitute 2 January bank holiday (GOV.UK, owner 2026-11-14)', () => {
     expect(pageState(xmas, D(2026, 9, 24, 23), UTC).kind).toBe('evergreen');
     expect(pageState(xmas, D(2026, 9, 25, 0), UTC).kind).toBe('active');
-    expect(pageState(xmas, D(2027, 1, 3, 23), UTC)).toMatchObject({ kind: 'active', year: 2026 });
-    expect(pageState(xmas, D(2027, 1, 4, 0), UTC).kind).toBe('evergreen');
+    expect(pageState(xmas, D(2027, 1, 4, 23), UTC)).toMatchObject({ kind: 'active', year: 2026 });
+    expect(pageState(xmas, D(2027, 1, 5, 0), UTC).kind).toBe('evergreen');
     expect(new Date(pageWindow(xmas, 2026).start).toISOString().slice(0, 10)).toBe('2026-09-25');
+    // A season without a later bank holiday keeps daysAfter (Jan 3): 2025/26 ended Fri 2 Jan.
+    expect(new Date(pageWindow(xmas, 2025).endExclusive).toISOString().slice(0, 10)).toBe('2026-01-04');
   });
   it('a window open for a season the data does not cover is evergreen, never stale facts under a fresh title', () => {
     expect(resolvePageState(vet, 2026, D(2026, 11, 5), UTC).kind).toBe('active');
@@ -92,9 +94,9 @@ describe('page windows (owner 2026-11-04)', () => {
     // Sep 25 opens at 00:00 BST = Sep 24 23:00 UTC
     expect(pageState(xmas, Date.UTC(2026, 8, 24, 22, 59), tz).kind).toBe('evergreen');
     expect(pageState(xmas, Date.UTC(2026, 8, 24, 23, 0), tz).kind).toBe('active');
-    // Jan 3 closes at 00:00 GMT on Jan 4
-    expect(pageState(xmas, Date.UTC(2027, 0, 3, 23, 59), tz)).toMatchObject({ kind: 'active', year: 2026 });
-    expect(pageState(xmas, Date.UTC(2027, 0, 4, 0, 0), tz).kind).toBe('evergreen');
+    // Mon Jan 4 (substitute bank holiday) closes at 00:00 GMT on Jan 5
+    expect(pageState(xmas, Date.UTC(2027, 0, 4, 23, 59), tz)).toMatchObject({ kind: 'active', year: 2026 });
+    expect(pageState(xmas, Date.UTC(2027, 0, 5, 0, 0), tz).kind).toBe('evergreen');
     // New Year's Eve 23:30 is still the 2026 window on the town's day
     expect(pageState(xmas, Date.UTC(2026, 11, 31, 23, 30), tz)).toMatchObject({ kind: 'active', year: 2026 });
   });

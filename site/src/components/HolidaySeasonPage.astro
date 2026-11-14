@@ -1,0 +1,204 @@
+---
+/** A holiday page that spans a season, day by day (Glasgow's Christmas and New Year, owner 2026-11-14,
+ *  .claude/specs/glasgow-christmas-2026.md). Same data and meta as HolidayPage.astro (lib/holiday-page.ts), laid out with /tonight's
+ *  cards: a section per day still to come (anchored, "dec-24"; which days are bank holidays comes from GOV.UK, lib/holiday-season.ts)
+ *  with the places that close or change hours that day as swipe cards and that day's events as the time-tile list, then the season's
+ *  other events as the date-tile list, then support and links. Every card links to the page its fact was read from; nothing is
+ *  shown for a day that has passed (built out, and hidden in the browser from the town's clock). No model text.
+ *
+ *  Resident question it answers: what is on, what is open or closed, and how do trains run on each day from Christmas Eve to the
+ *  last New Year bank holiday in Glasgow? */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Card from './ui/Card.astro';
+import Pill from './ui/Pill.astro';
+import HeroStat from './ui/HeroStat.astro';
+import SectionHeader from './ui/SectionHeader.astro';
+import AboutThisPage from './ui/AboutThisPage.astro';
+import PopEventList from './pop/PopEventList.astro';
+import TonightStyles from './tonight/TonightStyles.astro';
+import { siteConfig } from '../lib/site-config';
+import { countryProfile } from '../lib/country-profile';
+import {
+  buildHolidayMeta, buildHolidayEventsJsonLd, checkedSpan, formatCheckedSpan, formatIsoDate, localToday,
+  type ConfirmedEvent, type ConfirmedFact, type HolidayChange, type HolidayPageData,
+} from '../lib/holiday-page';
+import { groupSources } from '../lib/holiday-view';
+import { eventPopDays, eventsOn, factsOn, seasonEvents, seasonHero, upcomingDays } from '../lib/holiday-season';
+import { BANK_HOLIDAYS_SOURCE } from '../config/holiday-pages/gb/bank-holidays';
+import type { HolidayPageDef } from '../config/holiday-pages/calendar';
+
+interface Props { page: HolidayPageData; def: HolidayPageDef }
+const { page, def } = Astro.props;
+if (!page.season) throw new Error('HolidaySeasonPage needs page.season');
+const tz = siteConfig.timezone;
+const today = localToday(Date.now(), tz);
+const meta = buildHolidayMeta(page, def.label, siteConfig.cityName);
+const span = checkedSpan(page);
+const jsonLd = buildHolidayEventsJsonLd(page, tz, countryProfile(siteConfig.country).addressCountry, today);
+const pageUrl = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl).href;
+const webPage = { '@context': 'https://schema.org', '@type': 'WebPage', name: meta.title, url: pageUrl, dateModified: page.dataUpdatedOn };
+
+const confirmedEvents = page.events.filter((e): e is ConfirmedEvent => e.status === 'confirmed');
+const days = upcomingDays(page.season.days, today).map((d) => ({ ...d, facts: factsOn(page, d.date), events: eventsOn(confirmedEvents, d.date) }));
+const hero = seasonHero(page.season.days, today);
+const later = seasonEvents(confirmedEvents, page.season.days, today);
+const help = page.facts.filter((f): f is ConfirmedFact => f.status === 'confirmed' && f.section === 'help');
+const pending = [...page.facts.filter((f) => f.status === 'unconfirmed'), ...page.events.filter((e) => e.status === 'unconfirmed')];
+const hours = page.facts.filter((f): f is ConfirmedFact => f.status === 'confirmed' && f.section === 'hours');
+const linkGroups = [...new Set(page.linkOnly.flatMap((l) => (l.group ? [l.group] : [])))];
+const ungrouped = page.linkOnly.filter((l) => !l.group);
+const sources = [...groupSources(page), { name: BANK_HOLIDAYS_SOURCE.name.split(':')[0], href: BANK_HOLIDAYS_SOURCE.url }];
+const org = (name: string) => name.split(':')[0].trim();
+const PILL: Record<HolidayChange, { tone: 'alert' | 'warn' | 'ok'; text: string }> = {
+  closed: { tone: 'alert', text: 'Closed' }, changed: { tone: 'warn', text: 'Changed' }, open: { tone: 'ok', text: 'Open' },
+};
+---
+<BaseLayout title={meta.title} description={meta.description} wide modified={page.dataUpdatedOn}>
+  <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(webPage)} />
+  {jsonLd.map((ld) => <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(ld)} />)}
+  <TonightStyles />
+
+  <header class="hp-title" data-holiday-season={page.holiday}>
+    <h1>{meta.h1}</h1>
+    {span.first === span.last
+      ? <p class="hp-checked">Last checked <time datetime={span.last}>{formatIsoDate(span.last, true, page.locale)}</time></p>
+      : <p class="hp-checked">Checked <time datetime={span.first}>{formatCheckedSpan(span, true, page.locale).split(' – ')[0]}</time> – <time datetime={span.last}>{formatIsoDate(span.last, true, page.locale)}</time></p>}
+  </header>
+
+  {hero && <HeroStat value={hero.value} label={hero.label} sub={hero.sub} tone="accent" />}
+
+  {days.length > 0 && (
+    <nav class="hs-days" aria-label="Days">
+      {days.map((d) => <a class="hs-chip" href={`#${d.anchor}`} data-hp-day={d.date}>{d.heading}</a>)}
+    </nav>
+  )}
+
+  {days.map((d) => (
+    <section class="hs-day" id={d.anchor} data-hp-day={d.date} aria-labelledby={`${d.anchor}-h`}>
+      <h2 class="tc-day-h" id={`${d.anchor}-h`}>{d.heading}</h2>
+      <p class="hs-label" data-hp-item data-source={BANK_HOLIDAYS_SOURCE.url}>{d.label}</p>
+      {d.facts.length > 0 && (
+        <ul class="tc-row">
+          {d.facts.map((f) => (
+            <li class="tc-card" data-hp-item data-source={f.source.url}>
+              <Card href={f.source.url} class="tc-link">
+                <span class="tc-time">{f.value}</span>
+                <span class="tc-title">{f.label}</span>
+                <span class="tc-meta">{org(f.source.name)}</span>
+                {f.change && <span class="tc-foot"><Pill tone={PILL[f.change].tone}>{PILL[f.change].text}</Pill></span>}
+              </Card>
+            </li>
+          ))}
+        </ul>
+      )}
+      {d.events.length > 0 && <PopEventList days={eventPopDays(d.events, tz)} tile={d.events.every((e) => e.startTime) ? 'time' : 'date'} idPrefix={d.anchor} />}
+    </section>
+  ))}
+
+  {later.length > 0 && (
+    <section class="hp-group" aria-label="Events">
+      <SectionHeader title="Events" />
+      <PopEventList days={eventPopDays(later, tz)} idPrefix="hs-events" />
+    </section>
+  )}
+
+  {help.length > 0 && (
+    <section class="hp-group" aria-label="Support">
+      <SectionHeader title="Support" />
+      <ul class="hs-grid">
+        {help.map((f) => (
+          <li data-hp-item data-source={f.source.url}>
+            <Card href={f.source.url}>
+              <span class="tc-title">{f.label}</span>
+              <span class="tc-meta">{f.value}</span>
+            </Card>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  {pending.length > 0 && (
+    <section class="hp-group" aria-label="Check before you go">
+      <SectionHeader title="Check before you go" />
+      <ul class="hs-grid">
+        {pending.map((r) => {
+          const name = 'label' in r ? r.label : r.name;
+          const href = r.status === 'unconfirmed' ? r.checkAt?.url ?? r.source.url : r.source.url;
+          const phone = r.status === 'unconfirmed' ? r.checkAt?.phone : undefined;
+          const lastYear = r.status === 'unconfirmed' ? r.lastYear : undefined;
+          const usual = 'usual' in r ? r.usual : undefined;
+          return (
+            <li data-hp-item data-source={href}>
+              <Card>
+                <a class="tc-title hs-link" href={href} rel="noopener">{name}</a>
+                {lastYear && <span class="tc-meta">{lastYear.season ?? page.year - 1}: {lastYear.value}</span>}
+                {usual && <span class="tc-meta">Usual hours: {usual}</span>}
+                {phone && <span class="tc-meta">Phone <a href={`tel:${phone.replace(/[^0-9+]/g, '')}`}>{phone}</a></span>}
+              </Card>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  )}
+
+  <section class="hp-group" aria-label="More">
+    <SectionHeader title="More" />
+    {hours.length > 0 && (
+      <>
+        <SectionHeader title="Regular hours" level={3} />
+        <ul class="hs-grid">
+          {hours.map((f) => (
+            <li data-hp-item data-source={f.source.url}>
+              <Card href={f.source.url}>
+                <span class="tc-title">{f.label.replace(/ \(regular hours\)$/, '')}</span>
+                <span class="tc-meta">{f.value}</span>
+              </Card>
+            </li>
+          ))}
+        </ul>
+      </>
+    )}
+    {linkGroups.map((g) => (
+      <>
+        <SectionHeader title={g} level={3} />
+        <ul class="hp-links">
+          {page.linkOnly.filter((l) => l.group === g).map((l) => <li>{l.label}: <a href={l.url} rel="noopener">{l.linkText}</a></li>)}
+        </ul>
+      </>
+    ))}
+    <ul class="hp-links">
+      {ungrouped.map((l) => <li>{l.label}: see the <a href={l.url} rel="noopener">{l.linkText}</a></li>)}
+      {page.related.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
+    </ul>
+  </section>
+
+  <AboutThisPage slot="about" sources={sources} />
+</BaseLayout>
+
+<script is:inline define:vars={{ tz }}>
+  // A day that has passed since the build is hidden (the next build leaves it out).
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  document.querySelectorAll('[data-hp-day]').forEach((el) => { if (el.getAttribute('data-hp-day') < today) el.hidden = true; });
+</script>
+
+<style>
+  .hp-title h1 { margin-bottom: 0.25rem; }
+  .hp-checked { margin: 0 0 var(--ui-3); font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .hs-days { display: flex; flex-wrap: wrap; gap: var(--ui-2); margin: var(--ui-4) 0 0; }
+  .hs-chip { font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); color: var(--ink); background: var(--ui-surface-2);
+    border-radius: 999px; padding: 0.45rem 0.9rem; min-height: 2.75rem; display: inline-flex; align-items: center; white-space: nowrap; text-decoration: none; }
+  .hs-chip:hover { background: var(--ink); color: var(--paper); }
+  .hs-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .hs-days a[hidden], .hs-day[hidden] { display: none; }
+  .hs-day { scroll-margin-top: var(--ui-5); }
+  .hs-day .tc-day-h { margin-bottom: 0.25rem; }
+  .hs-label { margin: 0 0 var(--ui-3); font-family: var(--font-ui); font-weight: 600; color: var(--ink-soft); }
+  .hp-group { margin: var(--ui-group-gap) 0 0; }
+  .hs-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ui-3); grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+  .hs-grid > li { display: flex; }
+  .hs-link { color: inherit; }
+  .hp-links { padding-left: 1.1rem; font-family: var(--font-ui); }
+  .hp-links li { margin: 0.35rem 0; }
+</style>

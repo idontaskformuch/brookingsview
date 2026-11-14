@@ -34,6 +34,14 @@ export const CHRISTMAS_EVENTS: Record<string, HolidayEvent[]> = {
 
 export const CHRISTMAS_TOWN_IDS = ['glasgow'] as const;
 
+/** Glasgow's event calendars (Glasgow Life rows) and its venue register take part in the Events group (owner 2026-11-14, G7).
+ *  Excluded by key, with the reason. The owner also excluded "Magic on Main Street Trail" and "Kids' Arts and Crafts Sessions"
+ *  (Glasgow Life's winter page, not Christmas themed): neither is in the events table and neither title matches the pattern, so
+ *  there is no key to list; add one here if the scraper ever stores them under a matching title. */
+export const CHRISTMAS_CALENDAR_EXCLUDES: Record<string, Record<string, string>> = {
+  glasgow: {},
+};
+
 /** The Christmas page, or null for a town without one (Broomfield's tree lighting stays saved, not rendered). */
 export function buildChristmasPage(townId: string): HolidayPageData | null {
   return townId === 'glasgow' ? buildGlasgowChristmasPage() : null;

@@ -46,7 +46,14 @@ export interface FrontPageAlert {
   /** traffic: a full closure of a motorway/arterial, or a fatal crash */
   fullClosure?: boolean; fatal?: boolean;
 }
-export interface FrontPageHoliday { slug: string; label: string; /** local day number (days since epoch) of the holiday */ day: number; url: string; closed?: number | null }
+export interface FrontPageHoliday {
+  slug: string; label: string; /** local day number (days since epoch) of the holiday */ day: number; url: string; closed?: number | null;
+  /** Own visible days (local day numbers, inclusive) instead of the town's holiday window: "Hogmanay and New Year" 27 Dec to the last
+   *  bank holiday (owner 2026-11-14). */
+  window?: { from: number; to: number };
+  /** The days the deck counts down to: it names the first one on or after today ("Hogmanay is Thursday, 31 December."). */
+  deckDays?: { label: string; day: number }[];
+}
 export interface FrontPageGame { team: string; opponent: string; startsAt: string; home: boolean; url: string }
 
 export interface FrontPageInput {
@@ -114,6 +121,16 @@ export function holidayVisible(today: number, holidayDay: number, w: FrontPageCo
   return today <= holidayDay + w.daysAfter;
 }
 
+/** Whether a post is on the front page today: its own window when it has one, otherwise the town's holiday window. */
+export function postVisible(today: number, h: FrontPageHoliday, w: FrontPageConfig['holiday']): boolean {
+  return h.window ? today >= h.window.from && today <= h.window.to : holidayVisible(today, h.day, w);
+}
+
+/** The day a post is about today: the first deck day on or after today, else the holiday itself. */
+function dayOf(h: FrontPageHoliday, today: number): { label: string; day: number } {
+  return h.deckDays?.find((d) => d.day >= today) ?? { label: h.label, day: h.day };
+}
+
 const showsOf = (entries: EveningEntry[]): ShowRef[] =>
   entries.map((e) => ({ title: e.title, venue: e.venue, miles: e.distanceMiles }));
 
@@ -134,12 +151,13 @@ function alertItem(i: FrontPageInput, now: Date): FrontPageItem | null {
 
 function holidayItem(i: FrontPageInput, today: number): FrontPageItem | null {
   const open = i.holidays
-    .filter((h) => holidayVisible(today, h.day, i.config.holiday))
-    .sort((a, b) => Math.abs(a.day - today) - Math.abs(b.day - today) || a.day - b.day);
+    .filter((h) => postVisible(today, h, i.config.holiday))
+    .sort((a, b) => Math.abs(dayOf(a, today).day - today) - Math.abs(dayOf(b, today).day - today) || dayOf(a, today).day - dayOf(b, today).day);
   const h = open[0];
   if (!h) return null;
-  const verb = h.day < today ? 'was' : 'is';
-  const deck = [`${h.label} ${verb} ${weekdayName(h.day, i.locale)}, ${dateLong(h.day, i.locale)}.`];
+  const about = dayOf(h, today);
+  const verb = about.day < today ? 'was' : 'is';
+  const deck = [`${about.label} ${verb} ${weekdayName(about.day, i.locale)}, ${dateLong(about.day, i.locale)}.`];
   if (h.closed && h.closed > 0) deck.push(`${plural(h.closed, 'place')} in ${i.cityName} ${h.closed === 1 ? 'is' : 'are'} closed.`);
   return { type: 'holiday', headline: h.label, deck, url: h.url };
 }
@@ -234,8 +252,8 @@ export function selectFrontPage(i: FrontPageInput, now: Date): FrontPage {
   if (guides[0]) byType.guide = guides[0];
 
   const order = [...FRONT_PAGE_PRIORITY];
-  const hol = i.holidays.filter((h) => holidayVisible(today, h.day, i.config.holiday));
-  if (byType.holiday && byType.weekend && !hol.some((h) => holidayLeads(today, h.day, i.config.holiday))) {
+  const hol = i.holidays.filter((h) => postVisible(today, h, i.config.holiday));
+  if (byType.holiday && byType.weekend && !hol.some((h) => holidayLeads(today, dayOf(h, today).day, i.config.holiday))) {
     order.splice(order.indexOf('holiday'), 1);
     order.splice(order.indexOf('weekend') + 1, 0, 'holiday');
   }

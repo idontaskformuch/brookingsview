@@ -6,7 +6,7 @@ import { activeHoliday, inCalendarOrder, resolvePageState } from '../../lib/holi
 import { HOLIDAY_PAGE_DEFS, holidayPageDef, type HolidayPageDef } from './calendar';
 import { buildVeteransDayPage } from './veterans-day';
 import { buildThanksgivingPage, THANKSGIVING_CALENDAR_EXCLUDES } from './thanksgiving';
-import { buildChristmasPage } from './christmas';
+import { buildChristmasPage, CHRISTMAS_CALENDAR_EXCLUDES } from './christmas';
 
 export interface HolidayPageEntry { def: HolidayPageDef; page: HolidayPageData }
 
@@ -19,6 +19,7 @@ const BUILDERS: Record<HolidayPageDef['slug'], (townId: string) => HolidayPageDa
 /** Per holiday, the towns whose event calendars feed its Events group and the rows each excludes (by key). */
 const CALENDAR_EXCLUDES: Partial<Record<HolidayPageDef['slug'], Record<string, Record<string, string>>>> = {
   thanksgiving: THANKSGIVING_CALENDAR_EXCLUDES,
+  christmas: CHRISTMAS_CALENDAR_EXCLUDES,
 };
 
 /** The excluded keys of a town's calendar rows for a holiday, or null when the town's calendars take no part. */

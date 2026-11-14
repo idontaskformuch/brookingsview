@@ -299,13 +299,18 @@ export function registerEntries(rows: RegisterRow[], o: EveningEntryOptions): Ev
   return out;
 }
 
-const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+/** A title reduced for comparing shows: lower case, punctuation and the articles "the", "a", "an" dropped. Cottiers listed the same
+ *  night twice, "Frankie Mack Ultimate Christmas Cracker" and "Frankie Mack – The Ultimate Christmas Cracker" (owner 2026-11-14:
+ *  merged in code, the register table is not changed). */
+export function showTitleKey(t: string): string {
+  return t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\b(the|a|an)\b/g, ' ').replace(/\s+/g, ' ').trim();
+}
 
 /** The same show listed by two sources ("DF Concerts Presents: NOAHFINNCE" from the venue's calendar and "NOAHFINNCE" from
  *  Ticketmaster): same start instant and one title contains the other. */
 function sameShow(a: EveningEntry, b: EveningEntry): boolean {
   if (a.start !== b.start) return false;
-  const x = norm(a.title), y = norm(b.title);
+  const x = showTitleKey(a.title), y = showTitleKey(b.title);
   return x.length > 0 && y.length > 0 && (x === y || x.includes(y) || y.includes(x));
 }
 

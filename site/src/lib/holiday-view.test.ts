@@ -92,9 +92,14 @@ describe('groups', () => {
   it('an unconfirmed row keeps its pointer: last season\'s value and source, and where to check', () => {
     const rows = buildGroups(xmas, '2026-11-06').find((g) => g.id === 'unconfirmed')!.rows;
     expect(rows.length).toBeGreaterThan(FOLD_AFTER);
+    const reg = rows.find((r) => r.name === 'Registrars')!;
+    expect(reg.lastYear?.text).toMatch(/^2025\/26: /);
+    expect(reg.href ?? reg.check?.url).toBeTruthy();
+    // Glasgow Life's festive hours are still 2025/26: a plain link, no times (owner 2026-11-14).
     const lib = rows.find((r) => r.name.startsWith('Libraries'))!;
-    expect(lib.lastYear?.text).toMatch(/^2025\/26: /);
-    expect(lib.href ?? lib.check?.url).toBeTruthy();
+    expect(lib.lastYear).toBeUndefined();
+    expect(lib.parts).toEqual([]);
+    expect(lib.href).toBe('https://www.glasgowlife.org.uk/festive-opening-hours/libraries-and-community-venues-festive-opening-hours');
   });
 
   it('a long group folds after FOLD_AFTER rows (8), in the component, not by cutting data', () => {
@@ -115,8 +120,11 @@ describe('hero and insights', () => {
     expect(holidayHero(one, 'Veterans Day', day('veterans-day', one), '2026-11-06').unit).toBe('place closed');
     expect(holidayHero(vet, 'Veterans Day', day('veterans-day', vet), '2026-11-12').label).toBe('Veterans Day 2026 was Wednesday');
   });
-  it('without a confirmed closed place the weekday is the hero, never "0 places closed"', () => {
-    expect(closedPlaces(xmas)).toBe(0);
+  it('without a count the weekday is the hero, never "0 places closed"', () => {
+    // Glasgow: Winter Wonderland is confirmed closed on 25 Dec at both sites, but the page has no count (noClosedCount, owner
+    // 2026-11-14: two places would read as if little else shuts).
+    expect(closedPlaces(xmas, '2026-12-25')).toBe(2);
+    expect(countHeld(xmas)).toBe(true);
     const h = holidayHero(xmas, 'Christmas', day('christmas', xmas), '2026-11-06');
     expect(h).toEqual({ value: 'Friday', label: 'Christmas is', sub: '25 Dec' });
     expect(JSON.stringify(h)).not.toMatch(/\b0\b/);

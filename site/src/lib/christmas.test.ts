@@ -112,11 +112,11 @@ describe('Glasgow /christmas/ data as approved 2026-11-04', () => {
     expect(swfOnline.status === 'unconfirmed' && swfOnline.lastYear?.source.url).toBe('https://www.glasgow.gov.uk/article/992/Scottish-Welfare-Fund');
   });
 
-  it('recycling centres: no festive hours on the page, so unconfirmed with the Easter Queenslie note and no last-year value; bins: address lookup, no last-year value', () => {
+  it('recycling centres and bins: plain links, no last-year value and no explanation (owner G4, 2026-11-14)', () => {
     const rc = page.facts.find((f) => f.label === 'Recycling centres')!;
     expect(rc.status).toBe('unconfirmed');
     expect(rc.status === 'unconfirmed' && rc.lastYear).toBeUndefined();
-    expect(rc.clarify).toBe('Easter Queenslie HWRC closed from 20 Apr 2026 for redevelopment; reopening was expected late summer or early autumn 2026.');
+    expect(rc.clarify).toBeUndefined();
     expect(rc.status === 'unconfirmed' && rc.checkAt?.url).toBe('https://www.glasgow.gov.uk/article/1529/Household-Waste-Recycling-Centres');
     const bins = page.facts.find((f) => f.section === 'trash')!;
     expect(bins.status).toBe('unconfirmed');
@@ -128,14 +128,15 @@ describe('Glasgow /christmas/ data as approved 2026-11-04', () => {
     expect(gs.status).toBe('unconfirmed');
   });
 
-  it('keeps the 403 coach operators link-only, grouped, and out of the rows', () => {
-    expect(page.linkOnly.map((l) => l.label)).toEqual(["McGill's", 'Stagecoach', 'Citylink', 'SEIN Glasgow']);
+  it('ScotRail timetable, SPT and every bus operator are links only, grouped, and out of the rows (owner 2026-11-14)', () => {
+    expect(page.linkOnly.map((l) => l.label)).toEqual(['ScotRail', 'Glasgow Subway (SPT)', 'First Bus Glasgow', "McGill's", 'Stagecoach', 'Citylink', 'SEIN Glasgow']);
     for (const l of page.linkOnly) {
-      expect(l.group).toBe(l.label === 'SEIN Glasgow' ? undefined : 'Other bus and coach operators');
-      expect(isBlockedHost(l.url)).toBe(true);
+      expect(l.group).toBe(l.label === 'SEIN Glasgow' ? undefined : 'Trains, Subway and buses');
+      // ScotRail and SPT allow us (the owner wants links); the rest answer 403 or disallow.
+      expect(isBlockedHost(l.url)).toBe(!['ScotRail', 'Glasgow Subway (SPT)'].includes(l.label));
     }
     const urls = [...page.facts, ...page.events].flatMap((r) => [r.source.url, r.status === 'unconfirmed' ? r.checkAt?.url ?? '' : '']);
-    expect(urls.some((u) => /mcgills|stagecoach|citylink|seinglasgow/.test(u))).toBe(false);
+    expect(urls.some((u) => /mcgills|stagecoach|citylink|seinglasgow|firstbus|spt\.co\.uk/.test(u))).toBe(false);
   });
 
   it('help: three food banks (owner-approved 2026-11-04) with usual hours on their own row, Christmas hours unconfirmed; no meal row beyond Social Bite', () => {
@@ -147,7 +148,7 @@ describe('Glasgow /christmas/ data as approved 2026-11-04', () => {
     for (const f of help.filter((x) => x.label.endsWith('Foodbank'))) {
       expect(f.status).toBe('unconfirmed');
       if (f.status !== 'unconfirmed') continue;
-      expect(f.clarify).toBe('Christmas hours not yet published; call before you go.');
+      expect(f.clarify).toBeUndefined(); // no "not yet published" (owner G4, 2026-11-14)
       expect(f.usual).toMatch(/voucher/);
       expect(f.checkAt?.url).toMatch(/^https:\/\/glasgow(sw|ne|nw)\.foodbank\.org\.uk\/locations\/$/);
       expect(f.checkAt?.phone).toMatch(/^0\d{4} ?\d{6}$/);
@@ -156,31 +157,45 @@ describe('Glasgow /christmas/ data as approved 2026-11-04', () => {
     expect(page.facts.some((f) => f.section === 'hours' && /foodbank/i.test(f.label))).toBe(false);
   });
 
-  it('ScotRail Christmas Day is confirmed (owner 2026-11-04); the full timetable is not', () => {
-    const day = page.facts.find((f) => f.label === 'ScotRail, Fri 25 Dec')!;
-    expect(day.status).toBe('confirmed');
-    const full = page.facts.find((f) => f.label.startsWith('ScotRail timetable'))!;
-    expect(full.status).toBe('unconfirmed');
+  it('ScotRail: what its page confirms (read 2026-11-14), per day: earlier last trains 24 and 31 Dec, no trains 25 Dec and 1 Jan', () => {
+    const rail = page.facts.filter((f) => f.label === 'ScotRail');
+    expect(rail.map((f) => [f.status, f.status === 'confirmed' && f.change, f.status === 'confirmed' && f.on])).toEqual([
+      ['confirmed', 'changed', ['2026-12-24', '2026-12-31']],
+      ['confirmed', 'closed', ['2026-12-25', '2027-01-01']],
+    ]);
+    for (const f of rail) expect(f.checkedOn).toBe('2026-11-14');
+    expect(page.facts.some((f) => /timetable|Subway|First Bus/.test(f.label))).toBe(false);
   });
 
-  it('Winter Wonderland is closed on 25 Dec at both sites, from the organizer', () => {
+  it('Winter Wonderland is closed on 25 Dec at both sites, from the organizer, one row per day value', () => {
     for (const label of ['Winter Wonderland, St Enoch Square', 'Winter Wonderland, Glasgow Green']) {
-      const f = page.facts.find((x) => x.label === label)!;
+      const f = page.facts.find((x) => x.label === label && x.status === 'confirmed' && x.on?.includes('2026-12-25'))!;
       expect(f.section).toBe('closures');
-      expect(f.status === 'confirmed' && f.value).toMatch(/Closed Fri 25 Dec/);
+      expect(f.status === 'confirmed' && [f.change, f.value]).toEqual(['closed', 'Closed']);
       expect(f.source.url.startsWith('https://www.glasgowswinterwonderland.com/')).toBe(true);
+    }
+    const green1Jan = page.facts.find((x) => x.label === 'Winter Wonderland, Glasgow Green' && x.status === 'confirmed' && x.on?.includes('2027-01-01'));
+    expect(green1Jan?.status === 'confirmed' && green1Jan.value).toBe('2pm–10pm');
+  });
+
+  it("Glasgow Life's festive hours are a link only, never a time (still 2025/26 on 2026-11-14, owner)", () => {
+    for (const f of page.facts.filter((x) => x.source.url.includes('festive-opening-hours'))) {
+      expect(f.status).toBe('unconfirmed');
+      expect(f.status === 'unconfirmed' && f.lastYear).toBeUndefined();
+      expect(f.clarify).toBeUndefined();
+      expect('usual' in f && f.usual).toBeFalsy();
     }
   });
 
   it('regular hours are under More, not in the closures table', () => {
     const hours = page.facts.filter((f) => f.section === 'hours').map((f) => f.label);
-    expect(hours).toHaveLength(3);
+    expect(hours).toHaveLength(2);
     expect(page.facts.filter((f) => f.section === 'closures').some((f) => /regular hours/i.test(f.label))).toBe(false);
   });
 
   it('all dated rows sit inside the approved window and events are in date order', () => {
     const start = '2026-11-06';
-    const end = '2027-01-03';
+    const end = '2027-01-04';
     const dated = page.events.flatMap((e) => (e.status === 'confirmed' ? [e] : []));
     for (const e of dated) {
       expect(e.date >= start && (e.endDate ?? e.date) <= end).toBe(true);
@@ -196,14 +211,14 @@ describe('Glasgow /christmas/ data as approved 2026-11-04', () => {
 
 describe('Glasgow meta', () => {
   const meta = buildHolidayMeta(page, 'Christmas', 'Glasgow');
-  it('names only sections with a confirmed row, with the en-GB words', () => {
-    expect(meta.title).toBe('Christmas 2026 in Glasgow: closures, transit, events, support');
-    expect(meta.h1).toBe('Christmas 2026: closures, transit, events, support');
+  it('names only sections with a confirmed row, with the en-GB words; the H1 is the owner\'s (G1, 2026-11-14)', () => {
+    expect(meta.title).toBe('Christmas and New Year 2026 in Glasgow: closures, transit, events, support');
+    expect(meta.h1).toBe('Christmas and New Year in Glasgow');
     expect(meta.title).not.toMatch(/bin|trash/i);
   });
   it('description merges the Winter Wonderland items, keeps the confirmed ScotRail row and names no pending row', () => {
     expect(meta.description).toBe(
-      'Winter Wonderland: St Enoch from 6 Nov, Glasgow Green from 20 Nov, closed 25 Dec · No ScotRail trains 25 Dec. Checked 4 Nov 2026.',
+      'Winter Wonderland: St Enoch from 6 Nov, Glasgow Green from 20 Nov, closed 25 Dec · No ScotRail trains 25 Dec or 1 Jan. Checked 4 Nov – 14 Nov 2026.',
     );
     expect(meta.description.length).toBeLessThanOrEqual(DESCRIPTION_MAX);
     expect(meta.description.match(/Winter Wonderland/g)).toHaveLength(1);
@@ -219,10 +234,16 @@ describe('Glasgow Event JSON-LD', () => {
   const ld = buildHolidayEventsJsonLd(page, TZ, 'GB');
   const byName = (n: string) => ld.find((x) => String(x.name).includes(n))!;
 
-  it('one Event per Winter Wonderland site (season dates) plus Toyland and Home Alone 2; nothing else', () => {
+  it('one Event per Winter Wonderland site (season dates) plus every timed event; nothing else', () => {
     expect(ld.map((x) => x.name)).toEqual([
       "Glasgow's Winter Wonderland, St Enoch Square",
       "Glasgow's Winter Wonderland, Glasgow Green",
+      'Meet the Grinch at Riverside Christmas Market',
+      "Disney's The Muppet Christmas Carol in Concert",
+      'Christmas Nature Crafts (RSPB)',
+      'Big Phat Brunch',
+      'Dance into Christmas',
+      'RSNO Christmas Concert featuring The Snowman',
       'RSNO: Home Alone 2 in Concert',
       'The McDougalls: Christmas in Toyland',
     ]);
@@ -233,9 +254,10 @@ describe('Glasgow Event JSON-LD', () => {
     expect(byName('Home Alone')).toMatchObject({ startDate: '2026-12-23T14:30:00+00:00' });
     expect(byName('Toyland')).toMatchObject({ startDate: '2026-12-24T13:00:00+00:00' });
   });
-  it('has no per-day events and none for rows without a time (Riverside, Hansel & Gretel, George Square)', () => {
-    const names = ld.map((x) => String(x.name)).join('|');
-    expect(names).not.toMatch(/Riverside|Hansel|George Square/);
+  it('none for rows without a time (the Riverside market itself, Hansel & Gretel, George Square)', () => {
+    const names = ld.map((x) => String(x.name));
+    expect(names).not.toContain('Riverside Christmas Market');
+    expect(names.join('|')).not.toMatch(/Hansel|George Square/);
   });
   it('uses GB and leaves out address parts the organizer does not give', () => {
     const loc = byName('Toyland').location as { address: Record<string, unknown> };

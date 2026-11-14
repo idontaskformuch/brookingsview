@@ -5,6 +5,7 @@
  *  from and the date it was last checked. The types make a fact without a source or a check date a compile error,
  *  and an unconfirmed fact without either last year's value or a "check here" pointer likewise. No LLM text. */
 import { toZonedISOString } from './db';
+import type { SeasonDay } from './holiday-season';
 
 export type HolidaySection = 'closures' | 'trash' | 'transit' | 'events' | 'help';
 /** Render order of the sections. A section without rows is not rendered. */
@@ -96,6 +97,9 @@ export interface ConfirmedFact extends FactBase {
   /** One short sentence for the line under the hero (lib/holiday-view.ts holidayInsights): only on a row that changes
    *  something people plan around, such as a moved pickup. Written from the row's own value. */
   insight?: string;
+  /** Season pages (lib/holiday-season.ts): the days (YYYY-MM-DD) this row is about; it is shown as a card under each of them,
+   *  with `value` as its big line. A row about one place on several days is one row per distinct value. */
+  on?: string[];
 }
 
 /** Not confirmed for this year. `source` is the page that was read (and said nothing, or not enough). */
@@ -168,7 +172,8 @@ export type UnconfirmedEvent = EventBase & {
 
 export type HolidayEvent = ConfirmedEvent | UnconfirmedEvent;
 
-/** A source we must not fetch (robots.txt). Rendered as a plain pointer to the public page. */
+/** A source we must not fetch (robots.txt, a 403), or one the owner wants only linked (ScotRail's timetable, SPT, 2026-11-14).
+ *  Rendered as a plain pointer to the public page. */
 export interface LinkOnly {
   label: string;
   linkText: string;
@@ -196,13 +201,24 @@ export interface HolidayPageData {
   dataUpdatedOn: string;
   /** Plain navigation to other pages of the site. */
   related: { label: string; href: string }[];
+  /** The page's name in the title and description when it is wider than the holiday ("Christmas and New Year"). */
+  label?: string;
+  /** Fixed H1 (owner-approved wording, "Christmas and New Year in Glasgow"). */
+  h1?: string;
+  /** No "N places closed" anywhere (hero, front page, /holidays/): the confirmed rows are a small part of what closes (Glasgow). */
+  noClosedCount?: boolean;
+  /** Day-by-day sections (lib/holiday-season.ts), rendered by components/HolidaySeasonPage.astro while the window is open. */
+  season?: { days: SeasonDay[] };
+  /** Extra front-page posts with their own visible days (local, inclusive) and the days the deck counts down to, e.g.
+   *  "Hogmanay and New Year" 27 Dec to the last bank holiday (owner 2026-11-14). */
+  frontPage?: { label: string; from: string; to: string; anchor: string; deckDays: { label: string; date: string }[] }[];
 }
 
 /** Hosts whose robots.txt blocks us: they may appear in `linkOnly`, never as a fact source or check pointer. */
 export const BLOCKED_SOURCE_HOSTS = [
   'compass.broomfield.org',
   // 403 to a plain client even though robots.txt allows (owner rule 2026-11-04, CLAUDE.md #13): link-only.
-  'www.mcgillsbuses.co.uk', 'www.stagecoachbus.com', 'www.citylink.co.uk',
+  'www.mcgillsbuses.co.uk', 'www.stagecoachbus.com', 'www.citylink.co.uk', 'www.firstbus.co.uk',
   // robots.txt disallows AI crawlers (ClaudeBot, anthropic-ai) site-wide.
   'seinglasgow.org.uk',
 ];
@@ -301,8 +317,8 @@ export function buildTimelessHolidayMeta(page: HolidayPageData, holidayLabel: st
   const nextLabel = `${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][next.getUTCDay()]}, ${formatIsoDate(next.toISOString().slice(0, 10), true, page.locale)}`;
   const closedLine = names.length ? `What is normally closed or different in ${cityName} on ${holidayLabel}. ` : '';
   return {
-    title: `${holidayLabel} in ${cityName}${words}`,
-    h1: `${holidayLabel}${words}`,
+    title: `${page.label ?? holidayLabel} in ${cityName}${words}`,
+    h1: page.h1 ?? `${holidayLabel}${words}`,
     description: `${closedLine}Next ${holidayLabel}: ${nextLabel}.`,
   };
 }
@@ -315,9 +331,10 @@ export function buildHolidayMeta(page: HolidayPageData, holidayLabel: string, ci
   if (evergreen ? page.metaOverrideEvergreen : page.metaOverride) return (evergreen ? page.metaOverrideEvergreen : page.metaOverride) as HolidayMeta;
   const confirmed = confirmedSections(page);
   const words = joinWords(confirmed.map((s) => sectionMetaWord(s, page.locale)));
+  const label = page.label ?? holidayLabel;
   // Outside the window the title and H1 carry no year (the page is a standing page); the description does, because it names the season's facts.
-  const h1 = evergreen ? `${holidayLabel}${words ? `: ${words}` : ''}` : `${holidayLabel} ${page.year}${words ? `: ${words}` : ''}`;
-  const title = evergreen ? `${holidayLabel} in ${cityName}${words ? `: ${words}` : ''}` : `${holidayLabel} ${page.year} in ${cityName}${words ? `: ${words}` : ''}`;
+  const h1 = page.h1 ?? (evergreen ? `${label}${words ? `: ${words}` : ''}` : `${label} ${page.year}${words ? `: ${words}` : ''}`);
+  const title = evergreen ? `${label} in ${cityName}${words ? `: ${words}` : ''}` : `${label} ${page.year} in ${cityName}${words ? `: ${words}` : ''}`;
   const seasonPrefix = evergreen ? `${page.year}: ` : '';
 
   const items: { text: string; group?: string }[] = [];

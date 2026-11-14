@@ -6,6 +6,8 @@
  *  The window here is the PAGE window. The photo pool's window (config/holidays.ts HOLIDAYS.windowDays) is a
  *  separate field and is not touched; only the date rule is shared. */
 import { HOLIDAYS, UK_HOLIDAYS, type HolidayDefinition, type HolidayId } from '../holidays';
+import { lastSeasonBankHoliday } from '../../lib/holiday-season';
+import { SCOTLAND_BANK_HOLIDAYS } from './gb/bank-holidays';
 
 export interface HolidayPageDef {
   /** URL path segment: /<slug>/ */
@@ -22,6 +24,9 @@ export interface HolidayPageDef {
    *  from `daysBefore` before the holiday to `daysAfter` after it are listed under Events (owner 2026-11-14, B2). Plain
    *  regex on the title, no model. A town takes part only with an entry in registry.ts CALENDAR_EXCLUDES. */
   calendarMatch?: { pattern: RegExp; daysBefore: number; daysAfter: number };
+  /** The last day (YYYY-MM-DD) the window must still cover for the season starting in `year`, when that is later than
+   *  `daysAfter` (a substitute bank holiday, owner 2026-11-14); null = `daysAfter` only. */
+  extendTo?: (year: number) => string | null;
 }
 
 const HOURS_NOTE = (season: number, nextYear: number) =>
@@ -35,10 +40,14 @@ export const HOLIDAY_PAGE_DEFS: HolidayPageDef[] = [
     slug: 'thanksgiving', label: 'Thanksgiving', holidayId: 'thanksgiving', daysBefore: 10, daysAfter: 1, evergreenNote: HOURS_NOTE,
     calendarMatch: { pattern: /thanksgiving|turkey (?:trot|day)|gobble|tree lighting/i, daysBefore: 7, daysAfter: 3 },
   },
-  // Glasgow's Christmas window opens six weeks before its first confirmed event (Nov 6) and closes Jan 3 (owner 2026-11-04).
+  // Glasgow's Christmas window opens six weeks before its first confirmed event (Nov 6) and closes Jan 3 (owner 2026-11-04), or
+  // later when GOV.UK's Scotland list has a later bank holiday in the season: 2026/27 ends Mon 4 Jan, gone 5 Jan (owner 2026-11-14).
+  // Calendar rows: from a month before (the festive concerts start early December) to the last day of the window.
   {
     slug: 'christmas', label: 'Christmas', holidayId: 'christmas', daysBefore: 91, daysAfter: 9,
     evergreenNote: (season, nextYear) => `These are the ${season} festive dates and times. ${nextYear} festive dates and times will be added when they're announced.`,
+    calendarMatch: { pattern: /christmas|xmas|festive|santa|panto|carol|hogmanay|new year/i, daysBefore: 30, daysAfter: 9 },
+    extendTo: (year) => lastSeasonBankHoliday(SCOTLAND_BANK_HOLIDAYS, year),
   },
 ];
 

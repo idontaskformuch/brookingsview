@@ -16,7 +16,9 @@ export function occurrenceDay(def: HolidayPageDef, year: number): number {
 /** First day of the page window, and the first day after it. */
 export function pageWindow(def: HolidayPageDef, year: number): { start: number; endExclusive: number } {
   const day = occurrenceDay(def, year);
-  return { start: day - def.daysBefore * DAY, endExclusive: day + (def.daysAfter + 1) * DAY };
+  const extend = def.extendTo?.(year);
+  const extendEx = extend ? Date.parse(`${extend}T00:00:00Z`) + DAY : 0;
+  return { start: day - def.daysBefore * DAY, endExclusive: Math.max(day + (def.daysAfter + 1) * DAY, extendEx) };
 }
 
 export type HolidayPageState =
