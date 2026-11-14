@@ -94,6 +94,8 @@ const MV_WASTE: Source = { name: 'City of Moreno Valley: Holiday schedule (waste
 const MV_LANDFILL: Source = { name: 'City of Moreno Valley: Landfill and transfer stations', url: 'https://www.moreno-valley.ca.us/resident_services/waste/recycle-landfill.html' };
 const MV_LIBRARY: Source = { name: 'Moreno Valley Public Library', url: 'https://moval.gov/mv-library/' };
 const MV_CITY: Source = { name: 'City of Moreno Valley', url: 'https://www.moreno-valley.ca.us/' };
+const MV_LIBRARY_CALENDAR: Source = { name: 'Moreno Valley Public Library calendar', url: 'https://moval.gov/mv-library/' };
+const MV_LIBRARY_CALENDAR_READ = '2026-10-03';
 const MV_CHECKED = '2026-10-24';
 const MV_RECHECKED = '2026-11-14';
 // RTA press release dated Nov 12, 2026 (linked from riversidetransit.com's front page "Latest News", read 2026-11-14).
@@ -137,13 +139,21 @@ const MORENO_FACTS: HolidayFact[] = [
     value: 'Main Library Mon–Thu 9 a.m.–8 p.m., Fri 9 a.m.–6 p.m., Sat 9 a.m.–5 p.m., Sun noon–5 p.m. MV Mall and Iris Plaza branches Mon–Fri 10 a.m.–8 p.m., Sat 10 a.m.–6 p.m.',
     source: MV_LIBRARY, checkedOn: MV_RECHECKED,
   },
+  // The library's own calendar (Tockify), events 304267 "LIBRARY CLOSED: Thanksgiving" and 304264 "Libraries Close Early at
+  // 5PM", read 2026-10-03 (snapshot 7970): "locations are closed Thursday, November 26th, and Friday, November 27th" and
+  // "close early at 5:00 pm, Wednesday, November 25th". Shown on the owner's word 2026-11-14 (no new fetch); the link is the
+  // library's own page.
   {
-    // The library's Tockify rows (events 6228/303372/304267, 6225/303369/304264) say closed Nov 26-27 and closing at 5 p.m.
-    // Nov 25; the owner's condition (B2) was a confirmation on moval.gov/mv-library, which on 2026-11-14 links only the 2025 PDF.
-    section: 'closures', status: 'unconfirmed', label: 'Library on Thanksgiving', meta: 'Library',
-    clarify: "The library's page links its 2025 holiday schedule; the 2026 schedule was not posted.",
-    source: MV_LIBRARY, checkedOn: MV_RECHECKED,
-    checkAt: { label: 'Moreno Valley Public Library', url: MV_LIBRARY.url },
+    section: 'closures', status: 'confirmed', change: 'closed', label: 'Library (all locations)',
+    value: 'Closed Thu Nov 26 and Fri Nov 27.',
+    meta: 'Library closed Nov 26–27',
+    closedOn: ['2026-11-26', '2026-11-27'],
+    source: MV_LIBRARY_CALENDAR, checkedOn: MV_LIBRARY_CALENDAR_READ,
+  },
+  {
+    section: 'closures', status: 'confirmed', change: 'changed', label: 'Library (all locations)',
+    value: 'Closes at 5 p.m. Wed Nov 25.',
+    source: MV_LIBRARY_CALENDAR, checkedOn: MV_LIBRARY_CALENDAR_READ,
   },
 ];
 

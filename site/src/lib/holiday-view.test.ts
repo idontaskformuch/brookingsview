@@ -123,8 +123,6 @@ describe('hero and insights', () => {
   });
   it('counts places that are shut, not pickups or trains that do not run', () => {
     expect(closedPlaces(bkThanks)).toBe(3); // City offices, Landfill, McCrory Gardens (SDSU calendar, added 2026-11-14)
-    // Moreno's RTA row is closed, but a bus that does not run is not a place.
-    expect(closedPlaces(buildThanksgivingPage('moreno_valley_ca')!)).toBe(0);
     // F9 (2026-11-11): the hero said "2 places closed" for Thanksgiving, but Tree Branch closes Sat Nov 28.
     expect(closedPlaces(bfThanks)).toBe(2); // any day: Tree Branch Recycle, FISH food bank
     expect(closedPlaces(bfThanks, '2026-11-26')).toBe(1); // on Thanksgiving: FISH food bank only
@@ -137,7 +135,8 @@ describe('hero and insights', () => {
     });
     const cityConfirmed: HolidayPageData = { ...bfThanks, facts: bfThanks.facts.filter((f) => !f.holdsCount) };
     expect(holidayHero(cityConfirmed, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-11').value).toBe(1);
-    expect(closedPlaces(mvThanks)).toBe(0); // trash only
+    // Moreno: the library (calendar rows, 2026-11-14); the RTA row is closed too, but a bus that does not run is not a place.
+    expect(closedPlaces(mvThanks)).toBe(1);
   });
   it('insight lines come from the data and exist only where the data has one', () => {
     expect(holidayInsights(vet)).toEqual(['Police run 24/7 on Nov 11; the front desk is not staffed.']);
@@ -156,6 +155,29 @@ describe('sources', () => {
     const bf = s.filter((x) => x.name.startsWith('City and County of Broomfield'));
     expect(bf.length).toBe(3);
     expect(new Set(bf.map((x) => x.name)).size).toBe(3);
+  });
+  it('two pages that would show the same name are one entry, linked to the first (owner 2026-11-14)', () => {
+    // Moreno's two Farm House Collective calendar rows (events 329806 and 332324), each with its own event page.
+    const mv = buildThanksgivingPage('moreno_valley_ca')!;
+    const fh = (url: string, name: string, date: string) => ({
+      status: 'confirmed' as const, name, date, venue: { name: 'Farm House Collective', locality: 'Riverside' }, url,
+      source: { name: 'Farm House Collective', url }, checkedOn: '2026-11-13',
+    });
+    const page = { ...mv, events: [
+      fh('https://farmhousecollective.com/event/a-charlie-brown-thanksgiving-fantastic-mr-fox-outdoor-screening/', 'A Charlie Brown Thanksgiving + Fantastic Mr. Fox Outdoor Screening', '2026-11-24'),
+      fh('https://farmhousecollective.com/event/christmas-tree-lighting/', 'Christmas Tree Lighting', '2026-11-28'),
+    ] };
+    const farm = groupSources(page).filter((s) => s.name === 'Farm House Collective');
+    expect(farm).toEqual([{ name: 'Farm House Collective', href: 'https://farmhousecollective.com/event/a-charlie-brown-thanksgiving-fantastic-mr-fox-outdoor-screening/' }]);
+  });
+  it('Moreno library: the library calendar rows are Closed Nov 26-27 and Changed (5 p.m.) Nov 25, nothing left to check', () => {
+    const mv = buildThanksgivingPage('moreno_valley_ca')!;
+    const lib = mv.facts.filter((f) => f.source.name === 'Moreno Valley Public Library calendar');
+    expect(lib.map((f) => [f.status, f.status === 'confirmed' ? f.change : null, f.status === 'confirmed' ? f.value : null, f.checkedOn, f.source.url])).toEqual([
+      ['confirmed', 'closed', 'Closed Thu Nov 26 and Fri Nov 27.', '2026-10-03', 'https://moval.gov/mv-library/'],
+      ['confirmed', 'changed', 'Closes at 5 p.m. Wed Nov 25.', '2026-10-03', 'https://moval.gov/mv-library/'],
+    ]);
+    expect(mv.facts.some((f) => f.status === 'unconfirmed' && /library/i.test(f.label))).toBe(false);
   });
   it('every source on every page is listed exactly once', () => {
     for (const [name, page] of ALL) {

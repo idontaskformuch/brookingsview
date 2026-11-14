@@ -16,7 +16,7 @@ import AboutThisPage from './ui/AboutThisPage.astro';
 import { siteConfig } from '../lib/site-config';
 import { countryProfile } from '../lib/country-profile';
 import {
-  buildHolidayMeta, buildTimelessHolidayMeta, buildHolidayEventsJsonLd, lastChecked, formatIsoDate, localToday, type HolidayPageData,
+  buildHolidayMeta, buildTimelessHolidayMeta, buildHolidayEventsJsonLd, checkedSpan, formatCheckedSpan, formatIsoDate, localToday, type HolidayPageData,
 } from '../lib/holiday-page';
 import { buildGroups, regularHoursRows, holidayHero, holidayInsights, groupSources, isTimeless, timelessGroups, timelessHero } from '../lib/holiday-view';
 import { evergreenLines, occurrenceDay, type HolidayPageState } from '../lib/holiday-calendar';
@@ -40,7 +40,8 @@ const timeless = state.kind === 'evergreen' && isTimeless(page, state.nextYear);
 const meta = timeless && state.kind === 'evergreen'
   ? buildTimelessHolidayMeta(page, def.label, siteConfig.cityName, state.nextDay)
   : buildHolidayMeta(page, def.label, siteConfig.cityName, evergreen);
-const checked = lastChecked(page);
+// Oldest to newest row check, one date when they are all the same (owner 2026-11-14).
+const span = checkedSpan(page);
 const jsonLd = buildHolidayEventsJsonLd(page, siteConfig.timezone, countryProfile(siteConfig.country).addressCountry, today);
 const pageUrl = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl).href;
 const webPage = {
@@ -69,7 +70,9 @@ const sources = groupSources(page);
 
   <header class="hp-title" data-holiday-mode={timeless ? 'timeless' : undefined}>
     <h1>{meta.h1}</h1>
-    <p class="hp-checked">Last checked <time datetime={checked}>{formatIsoDate(checked, true, page.locale)}</time></p>
+    {span.first === span.last
+      ? <p class="hp-checked">Last checked <time datetime={span.last}>{formatIsoDate(span.last, true, page.locale)}</time></p>
+      : <p class="hp-checked">Checked <time datetime={span.first}>{formatCheckedSpan(span, true, page.locale).split(' – ')[0]}</time> – <time datetime={span.last}>{formatIsoDate(span.last, true, page.locale)}</time></p>}
   </header>
 
   <HeroStat value={hero.value} unit={hero.unit} label={hero.label} sub={hero.sub} tone="accent" />

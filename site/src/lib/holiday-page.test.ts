@@ -1,6 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  buildHolidayMeta, buildHolidayEventsJsonLd, lastChecked, localIso, formatIsoDate, formatClock, eventWhenWhere,
+  buildHolidayMeta, buildHolidayEventsJsonLd, checkedSpan, formatCheckedSpan, lastChecked, localIso, formatIsoDate, formatClock, eventWhenWhere,
   sectionsWithRows, regularHours, DESCRIPTION_MAX, isBlockedHost, BLOCKED_SOURCE_HOSTS, type HolidayFact, type HolidayPageData,
 } from './holiday-page';
 import { buildThanksgivingPage, THANKSGIVING_TOWN_IDS } from '../config/holiday-pages/thanksgiving';
@@ -98,26 +99,26 @@ describe('deterministic meta', () => {
     expect(m.title).toBe('Thanksgiving 2026 in Broomfield: closures, events, food help');
     expect(m.h1).toBe('Thanksgiving 2026: closures, events, food help');
     expect(m.description).toBe(
-      'Turkey Day 5K/10K Nov 26 · Tree Branch Recycle closed Nov 28 · FISH food bank closed Nov 26–27. Checked Nov 14, 2026.',
+      'Turkey Day 5K/10K Nov 26 · Tree Branch Recycle closed Nov 28 · FISH food bank closed Nov 26–27. Checked Nov 4 – Nov 14, 2026.',
     );
   });
   it('Brookings and Moreno: title names only sections with a confirmed row', () => {
     expect(buildHolidayMeta(pageFor('brookings_sd'), 'Thanksgiving', 'Brookings').h1).toBe('Thanksgiving 2026: closures, trash pickup');
     expect(buildHolidayMeta(pageFor('moreno_valley_ca'), 'Thanksgiving', 'Moreno Valley').title)
-      .toBe('Thanksgiving 2026 in Moreno Valley: trash pickup, transit'); // RTA row read 2026-11-14
+      .toBe('Thanksgiving 2026 in Moreno Valley: closures, trash pickup, transit'); // RTA row read 2026-11-14, library calendar rows
     expect(buildHolidayMeta(pageFor('moreno_valley_ca'), 'Thanksgiving', 'Moreno Valley').description)
-      .toBe('Trash pickup one day late after Nov 26 · No RTA buses Nov 26. Checked Nov 14, 2026.');
+      .toBe('Library closed Nov 26–27 · Trash pickup one day late after Nov 26 · No RTA buses Nov 26. Checked Oct 3 – Nov 14, 2026.');
   });
   it('every description is at most 155 characters, with no digits-free filler', () => {
     for (const id of THANKSGIVING_TOWN_IDS) {
       const d = buildHolidayMeta(pageFor(id), 'Thanksgiving', 'X').description;
       expect(d.length).toBeLessThanOrEqual(DESCRIPTION_MAX);
-      expect(d).toMatch(/Checked [A-Z][a-z]{2} \d+, 2026\.$/);
+      expect(d).toMatch(/Checked (?:[A-Z][a-z]{2} \d+(?:, \d{4})? – )?[A-Z][a-z]{2} \d+, 2026\.$/);
     }
   });
   it('regression: the three US descriptions are exactly what they were before the metaGroup change', () => {
     expect(buildHolidayMeta(pageFor('brookings_sd'), 'Thanksgiving', 'Brookings').description).toBe(
-      'City offices mostly closed Nov 26 · Landfill closed Nov 26 · Recycling and yard waste move to Wed Nov 25. Checked Nov 14, 2026.',
+      'City offices mostly closed Nov 26 · Landfill closed Nov 26 · Recycling and yard waste move to Wed Nov 25. Checked Oct 23 – Nov 14, 2026.',
     );
   });
   it('phrases with the same metaGroup merge into one, at the position of the first; the pending row is not named', () => {
@@ -166,6 +167,19 @@ describe('deterministic meta', () => {
     expect(formatIsoDate('2026-11-04', true)).toBe('November 4, 2026');
     expect(formatClock('00:05')).toBe('12:05 a.m.');
     expect(formatClock('17:30')).toBe('5:30 p.m.');
+  });
+  it('the check date is the span from the oldest to the newest row, one date when they are equal (owner 2026-11-14)', () => {
+    // Broomfield: Tree Branch and the race were read Nov 4, FISH Nov 14 -- the page must not read as all checked Nov 14.
+    expect(checkedSpan(pageFor('broomfield_co'))).toEqual({ first: '2026-11-04', last: '2026-11-14' });
+    expect(formatCheckedSpan({ first: '2026-11-04', last: '2026-11-14' })).toBe('Nov 4 – Nov 14, 2026');
+    expect(formatCheckedSpan({ first: '2026-11-04', last: '2026-11-14' }, true)).toBe('November 4 – November 14, 2026');
+    expect(formatCheckedSpan({ first: '2025-12-30', last: '2026-01-02' })).toBe('Dec 30, 2025 – Jan 2, 2026');
+    expect(formatCheckedSpan({ first: '2026-11-04', last: '2026-11-14' }, false, 'en-GB')).toBe('4 Nov – 14 Nov 2026');
+    expect(formatCheckedSpan({ first: '2026-11-14', last: '2026-11-14' })).toBe('Nov 14, 2026');
+    const one = { ...pageFor('broomfield_co'), facts: pageFor('broomfield_co').facts.map((f) => ({ ...f, checkedOn: '2026-11-14' })), events: [] };
+    expect(buildHolidayMeta(one, 'Thanksgiving', 'Broomfield').description).toMatch(/ Checked Nov 14, 2026\.$/);
+    const src = readFileSync(new URL('../components/HolidayPage.astro', import.meta.url), 'utf8');
+    expect(src).toContain('checkedSpan(page)');
   });
   it('sections render in order and an empty one is skipped', () => {
     expect(sectionsWithRows(pageFor('broomfield_co'))).toEqual(['closures', 'trash', 'transit', 'events', 'help']);

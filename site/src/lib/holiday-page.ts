@@ -244,7 +244,27 @@ export function lastChecked(page: HolidayPageData): string {
   return dates.reduce((a, b) => (a > b ? a : b));
 }
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+/** Oldest and newest checkedOn over the rows of the page (YYYY-MM-DD; equal when every row was read the same day).
+ *  The heading and the description show the span, not only the newest date, so a page where one row was reread
+ *  does not read as if all of it was (owner 2026-11-14). */
+export function checkedSpan(page: HolidayPageData): { first: string; last: string } {
+  const dates = [...page.facts.map((f) => f.checkedOn), ...page.events.map((e) => e.checkedOn)];
+  if (dates.length === 0) throw new Error('holiday page has no facts');
+  return { first: dates.reduce((a, b) => (a < b ? a : b)), last: dates.reduce((a, b) => (a > b ? a : b)) };
+}
+
+/** "Nov 14, 2026", or a span: "Oct 23 – Nov 14, 2026" (a year only at the end when both are in it), "Dec 30, 2025 –
+ *  Jan 2, 2026"; en-GB "23 Oct – 14 Nov 2026". `long` writes the month in full. */
+export function formatCheckedSpan(span: { first: string; last: string }, long = false, locale: HolidayLocale = 'en-US'): string {
+  const last = formatIsoDate(span.last, long, locale);
+  if (span.first === span.last) return last;
+  const first = formatIsoDate(span.first, long, locale);
+  const sameYear = span.first.slice(0, 4) === span.last.slice(0, 4);
+  const firstShort = sameYear ? first.replace(locale === 'en-GB' ? / \d{4}$/ : /, \d{4}$/, '') : first;
+  return `${firstShort} – ${last}`;
+}
+
+const MONTHS = ['January','February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 /** "2026-11-04" -> "Nov 4, 2026" (en-GB: "4 Nov 2026"). Pure string arithmetic, no time zone. */
 export function formatIsoDate(iso: string, long = false, locale: HolidayLocale = 'en-US'): string {
@@ -318,7 +338,7 @@ export function buildHolidayMeta(page: HolidayPageData, holidayLabel: string, ci
     phrases.push(`${it.group}: ${items.filter((x) => x.group === it.group).map((x) => x.text).join(', ')}`);
   }
   // Only what is confirmed: rows still waiting for this year's notice are not announced as missing (F9, 2026-11-11).
-  const tail = ` Checked ${formatIsoDate(lastChecked(page), false, page.locale)}.`;
+  const tail = ` Checked ${formatCheckedSpan(checkedSpan(page), false, page.locale)}.`;
 
   const kept = [...phrases];
   while (kept.length > 0 && seasonPrefix.length + kept.join(' · ').length + 1 + tail.length > DESCRIPTION_MAX) kept.pop();

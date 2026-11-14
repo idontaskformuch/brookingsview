@@ -198,14 +198,16 @@ export function holidayHero(page: HolidayPageData, label: string, dayMs: number,
 }
 
 /** One entry per distinct source page, in order of first use, named by the organization ("City and County of Broomfield");
- *  two pages of the same organization keep their page title so the entries stay apart. */
+ *  two pages of the same organization keep their page title so the entries stay apart. Pages that would still show the
+ *  same name (two event pages of one venue, "Farm House Collective") are one entry, linked to the first (owner 2026-11-14). */
 export function groupSources(page: HolidayPageData): { name: string; href: string }[] {
   const all: Source[] = [];
   const add = (s: Source | undefined) => { if (s && !all.some((x) => x.url === s.url)) all.push(s); };
   for (const f of page.facts) { add(f.source); if (f.status === 'unconfirmed') add(f.lastYear?.source); }
   for (const e of page.events) { add(e.source); if (e.status === 'unconfirmed') add(e.lastYear?.source); }
   const org = (s: Source) => s.name.split(':')[0].trim();
-  return all.map((s) => ({ name: all.filter((x) => org(x) === org(s)).length > 1 ? s.name : org(s), href: s.url }));
+  const named = all.map((s) => ({ name: all.filter((x) => org(x) === org(s)).length > 1 ? s.name : org(s), href: s.url }));
+  return named.filter((s, i) => named.findIndex((x) => x.name === s.name) === i);
 }
 
 /** /holidays/ (F9, 2026-11-11): one sentence per holiday saying what is shut on the day, from the confirmed rows of the
