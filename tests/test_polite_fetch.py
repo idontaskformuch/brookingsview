@@ -98,12 +98,19 @@ def test_the_next_day_fetches_again_and_source_has_no_day_limit(tmp_path):
     assert s.get(URL).text == "c" and URL in urls(sess)
 
 
-def test_every_request_is_logged_with_purpose_status_and_hash():
+# "where" is read from the environment (GITHUB_ACTIONS=true AND GITHUB_RUN_ID set = "ci"), so each case sets it itself:
+# without that the test said "local" on a laptop and failed in GitHub Actions (owner 2026-11-14).
+@pytest.mark.parametrize("env, where", [({}, "local"), ({"GITHUB_ACTIONS": "true", "GITHUB_RUN_ID": "123456789"}, "ci")])
+def test_every_request_is_logged_with_purpose_status_and_hash(monkeypatch, env, where):
+    for var in ("GITHUB_ACTIONS", "GITHUB_RUN_ID"):
+        monkeypatch.delenv(var, raising=False)
+    for var, value in env.items():
+        monkeypatch.setenv(var, value)
     ledger = pf.MemoryLedger()
     fetcher({ROBOTS_URL: (404, ""), URL: (200, "page")}, "register", ledger)[0].get(URL)
     rows = ledger.entries()
     assert [(r["url"], r["purpose"], r["status"]) for r in rows] == [(ROBOTS_URL, "robots", 404), (URL, "register", 200)]
-    assert rows[1]["domain"] == "venue.example" and rows[1]["town_id"] == "broomfield_co" and rows[1]["where"] == "local"
+    assert rows[1]["domain"] == "venue.example" and rows[1]["town_id"] == "broomfield_co" and rows[1]["where"] == where
     assert rows[1]["sha256"] == pf._sha(b"page") and rows[1]["utc"] == "2026-11-13T12:00:00+00:00"
 
 
