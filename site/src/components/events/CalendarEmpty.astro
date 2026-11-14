@@ -1,0 +1,15 @@
+---
+/** An empty event list in a town with its own calendars (siteConfig.eventCalendars, owner 2026-11-13): one short sentence and a plain
+ *  link to the city's or the library's calendar. Without eventCalendars the caller's own empty text (`fallback`) is shown. */
+import { siteConfig } from '../../lib/site-config';
+
+interface Props { lead: string; calendar?: 'city' | 'library'; fallback?: string; id?: string; hidden?: boolean }
+const { lead, calendar = 'city', fallback, id, hidden } = Astro.props;
+const cal = siteConfig.eventCalendars?.[calendar] ?? siteConfig.eventCalendars?.city;
+---
+{cal
+  ? <p class="empty" id={id} hidden={hidden}>{lead}. See the <a href={cal.url}>{cal.label}</a>.</p>
+  : fallback && <p class="empty" id={id} hidden={hidden}>{fallback}</p>}
+<style>
+  .empty { color: var(--ink-soft); }
+</style>

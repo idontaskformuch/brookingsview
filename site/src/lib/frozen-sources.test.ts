@@ -33,6 +33,20 @@ describe('frozen sources (owner 2026-11-13)', () => {
   });
 });
 
+// Empty lists in a town with its own calendars: one sentence and a link to the city's or the library's calendar.
+describe('empty-list calendar links', () => {
+  it('library and kids point to the library calendar, the rest to the city calendar', () => {
+    const src = readFileSync(new URL('./event-facets.ts', import.meta.url), 'utf8');
+    const calendarOf = (slug: string) => src.split(`slug: '${slug}'`)[1].split('slug:')[0].match(/calendar: '(\w+)'/)?.[1];
+    expect(['today', 'this-weekend', 'kids', 'library', 'outdoor'].map(calendarOf)).toEqual(['city', 'city', 'library', 'library', 'city']);
+  });
+  it('the sentence ends before the link: "<lead>. See the <calendar>." (owner 2026-11-14)', () => {
+    const comp = readFileSync(new URL('../components/events/CalendarEmpty.astro', import.meta.url), 'utf8');
+    expect(comp).toContain('{lead}. See the <a href={cal.url}>{cal.label}</a>.');
+    expect(comp).not.toContain('— see the');
+  });
+});
+
 // The rule sits in every story query that can return an event (lib/db.ts), and the sitemap mirror runs the same lookup.
 describe('FROZEN_FILTER in the queries', () => {
   const db = readFileSync(new URL('./db.ts', import.meta.url), 'utf8');

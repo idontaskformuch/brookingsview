@@ -35,6 +35,9 @@ export interface EventFacet {
   intro: (cityName: string) => string;
   /** Shown when the filtered list is empty -- never a blank/broken page. */
   emptyMessage: string;
+  /** With siteConfig.eventCalendars: the sentence shown instead of emptyMessage, followed by a link to that calendar (CalendarEmpty). */
+  calendarLead?: string;
+  calendar?: 'city' | 'library';
   matches: (item: FeedItem, ctx: FacetContext) => boolean;
   /** Only Brookings has a campus facet -- gated at getStaticPaths, not
    *  forced onto Moreno Valley (which has no SDSU equivalent). */
@@ -51,6 +54,8 @@ export const EVENT_FACETS: EventFacet[] = [
       `What's happening today in ${cityName} — library programs, city events and community happenings, updated daily.`,
     intro: (cityName) => `Everything on the calendar today in ${cityName}, updated daily.`,
     emptyMessage: EMPTY_STATES.eventsToday,
+    calendarLead: 'Nothing is listed for today',
+    calendar: 'city',
     matches: (item, ctx) => isToday(item, ctx.today, ctx.timezone),
   },
   {
@@ -62,6 +67,8 @@ export const EVENT_FACETS: EventFacet[] = [
       `What's on this weekend in ${cityName} — Friday through Sunday, updated daily.`,
     intro: (cityName) => `What's on Friday through Sunday in ${cityName}, updated daily.`,
     emptyMessage: EMPTY_STATES.eventsWeekend,
+    calendarLead: 'Nothing is listed for this weekend',
+    calendar: 'city',
     matches: (item, ctx) => isThisWeekend(item, ctx.today, ctx.timezone),
   },
   {
@@ -86,6 +93,8 @@ export const EVENT_FACETS: EventFacet[] = [
       `Family-friendly and kids' events in ${cityName} — storytimes, family nights and youth programs, updated daily.`,
     intro: (cityName) => `Storytimes, family nights and youth programs in ${cityName}, updated daily.`,
     emptyMessage: EMPTY_STATES.eventsKids,
+    calendarLead: 'No kids or family events are listed right now',
+    calendar: 'library',
     matches: (item) => isKidsEvent(item),
   },
   {
@@ -97,6 +106,8 @@ export const EVENT_FACETS: EventFacet[] = [
       `What's on at the ${cityName} public library — classes, storytimes and programs, updated daily.`,
     intro: (cityName) => `Everything on the calendar at the ${cityName} public library, updated daily.`,
     emptyMessage: EMPTY_STATES.eventsLibrary,
+    calendarLead: 'No library events are listed right now',
+    calendar: 'library',
     matches: (item, ctx) => isLibraryEvent(item, ctx.facilities),
   },
   {
@@ -108,6 +119,8 @@ export const EVENT_FACETS: EventFacet[] = [
       `Park programs and other outdoor events in ${cityName}, updated daily.`,
     intro: (cityName) => `Park programs and other events in ${cityName}'s outdoor spaces, updated daily.`,
     emptyMessage: EMPTY_STATES.eventsOutdoor,
+    calendarLead: 'No outdoor events are listed right now',
+    calendar: 'city',
     matches: (item, ctx) => isOutdoorEvent(item, ctx.facilities),
   },
   {

@@ -19,6 +19,7 @@ import AboutThisPage from '../../components/ui/AboutThisPage.astro';
 import SectionRule from '../../components/SectionRule.astro';
 import StoryCard from '../../components/StoryCard.astro';
 import ShareButton from '../../components/ShareButton.astro';
+import CalendarEmpty from '../../components/events/CalendarEmpty.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import {
   getUpcomingStories, getUpcomingArtsEvents, getFacilities, FACILITY_CATEGORY_LABELS, type Facility,
@@ -188,12 +189,14 @@ const hubBacklink = resolveHubBacklink('events/facet', siteConfig);
           </div>
         ))}
       </div>
+    ) : facet.calendarLead ? (
+      <CalendarEmpty lead={facet.calendarLead} calendar={facet.calendar} fallback={facet.emptyMessage} />
     ) : (
       <p class="empty">{facet.emptyMessage}</p>
     )
   )}
   {(facet.slug === 'today' || facet.slug === 'this-weekend') && items.length > 0 && (
-    <p class="empty" id="facet-empty-fallback" hidden>{facet.emptyMessage}</p>
+    <CalendarEmpty lead={facet.calendarLead!} calendar={facet.calendar} fallback={facet.emptyMessage} id="facet-empty-fallback" hidden />
   )}
 
   {facilityGroups.length > 0 && (

@@ -240,6 +240,9 @@ export interface SiteConfig {
    *  sync with that config file by hand, same convention as
    *  hasClosureWatch above. */
   hasEventsSource?: boolean;
+  /** The town's own event calendars (owner 2026-11-13, frozen sources): an event list that comes up empty shows one sentence with a
+   *  plain link to the city's or the library's calendar instead of the generic empty text (components/events/CalendarEmpty.astro). */
+  eventCalendars?: { city: { label: string; url: string }; library?: { label: string; url: string } };
   /** Broomfield place-layer handoff, Section 7: gates /place/[slug],
    *  /places/ and their nav link -- a per-town test, not a permanent
    *  platform feature (see the handoff's own "this is a test, not a
@@ -600,6 +603,11 @@ const CITIES: Record<string, SiteConfig> = {
     hasWorkplaceWatch: true,
     hasClosureWatch: true,
     hasEventsSource: true,
+    // The town's own calendars (configs/moreno_valley_ca.json events sources' _note, verified 2026-07-22): an empty event list links here.
+    eventCalendars: {
+      city: { label: 'City of Moreno Valley calendar', url: 'https://www.moval.org/mymoval/calendar.html' },
+      library: { label: 'Moreno Valley Public Library calendar', url: 'https://www.moval.org/mv-library/library-calendar.html' },
+    },
     // What's On Phase 7 radius calibration (2026-09-07, real live data, not
     // guessed): 25/35/50mi all return a genuinely regional Inland Empire
     // mix (Riverside, San Bernardino, Ontario, Corona, Temecula, Pechanga/

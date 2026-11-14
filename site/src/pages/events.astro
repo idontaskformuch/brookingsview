@@ -24,6 +24,7 @@ import { buildEventJsonLd } from '../lib/event-jsonld';
 import { linkTarget } from '../lib/ai-text';
 import { getBigShows } from '../lib/big-shows';
 import BigShowsNearby from '../components/events/BigShowsNearby.astro';
+import CalendarEmpty from '../components/events/CalendarEmpty.astro';
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
@@ -180,6 +181,9 @@ const webPageJsonLd = dateModified ? {
   </nav>
 
   <PopEventList days={busyDays} />
+  {busyDays.length === 0 && view.furtherOut.length === 0 && (
+    <CalendarEmpty lead={`No events in ${siteConfig.cityName} are listed right now`} />
+  )}
 
   {view.furtherOut.length > 0 && (
     <section class="ev-day" aria-labelledby="h-later">
