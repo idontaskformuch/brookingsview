@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { statusTokensCss } from './src/lib/status-tokens.mjs';
 import { holidayLastmodEntries } from './src/config/holiday-pages/lastmod.mjs';
 import { countWeekItems, isThinWeek } from './src/lib/week-count.mjs';
-import { FROZEN_EVENT_SOURCES, hiddenFrozenSlugs } from './src/lib/frozen-sources.mjs';
+import { FROZEN_EVENT_SOURCES, FROZEN_HIDDEN_EVENTS_ASSET, hiddenFrozenSlugs } from './src/lib/frozen-sources.mjs';
 import { stripForeignGames } from './src/lib/game-owners.mjs';
 import { NAV_ONLY_INDEXABLE_TOWNS, pruneNavInDist } from './src/lib/nav-prune.mjs';
 import { checkNewIndexable, fetchLiveSitemapPaths, sitemapPaths } from './scripts/new-indexable.mjs';
@@ -871,13 +871,13 @@ async function buildLastmodMap(townId, databaseUrl) {
 
   return {
     map, noindexHomeSaleUrls, excludedGatedPages, noindexStoryUrls, noindexThinPageUrls,
-    crossCanonicalStoryUrls,
+    crossCanonicalStoryUrls, frozenHiddenSlugs,
   };
 }
 
 const {
   map: lastmodMap, noindexHomeSaleUrls, excludedGatedPages, noindexStoryUrls, noindexThinPageUrls,
-  crossCanonicalStoryUrls,
+  crossCanonicalStoryUrls, frozenHiddenSlugs,
 } = await buildLastmodMap(activeCity, env.DATABASE_URL);
 // Holiday pages: lastmod = the day a row last changed (data-updated.json), never the build date.
 for (const [pathname, date] of holidayLastmodEntries(activeCity)) lastmodMap.set(pathname, date);
@@ -897,6 +897,10 @@ export default defineConfig({
           // /ads.txt exists only for a town with a real AdSense publisher id (src/pages/ads.txt.ts serves one for Moreno Valley
           // only). Everywhere else the route's placeholder body is removed so the host answers a real 404, not a 200 "Not found".
           if (activeCity !== 'moreno_valley_ca') fs.rmSync(path.join(root, 'ads.txt'), { force: true });
+          // Dated events from a frozen source past its window (lib/frozen-sources.mjs): the Worker 302s these to /events/ instead of
+          // the archive 301 (server/pruned-events.ts, owner 2026-11-14). Series are told apart by their path and are not listed.
+          fs.writeFileSync(path.join(root, FROZEN_HIDDEN_EVENTS_ASSET),
+            JSON.stringify(frozenHiddenSlugs.filter((s) => /^event-\d+$/.test(s))));
           // Each game only on the site it belongs to (src/lib/game-owners.mjs).
           stripForeignGames(root, activeCity);
           // Main menu and footer: an entry stays only when its target is built and indexable (src/lib/nav-prune.mjs).

@@ -12,6 +12,9 @@ export const FROZEN_EVENT_SOURCES = {
   },
 };
 
+/** Written by astro.config.mjs into dist: a JSON array of the hidden dated event slugs (event-N), read by the Worker. */
+export const FROZEN_HIDDEN_EVENTS_ASSET = 'frozen-hidden-events.json';
+
 function localParts(instant, timeZone) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',

@@ -56,6 +56,19 @@ describe('hidden series (frozen source)', () => {
     expect(hidden.status).toBe(302);
     expect(hidden.headers.get('location')).toBe('https://morenovalleyview.com/events/');
   });
+  // event-197946 ("Moreno Valley: Library Closed - Christmas / Biblioteca cerrada - Navidad", library, 24 Dec) is hidden after the window.
+  it('302s a missing dated event listed in frozen-hidden-events.json to /events/, 301s any other to the archive', async () => {
+    const assets = (list: Response) => async (r: Request) =>
+      new URL(r.url).pathname === '/frozen-hidden-events.json' ? list : new Response('nf', { status: 404 });
+    const hidden = await withPrunedEventRedirect(req('/s/event-197946/'), assets(Response.json(['event-197946', 'event-204322'])));
+    expect(hidden!.status).toBe(302);
+    expect(hidden!.headers.get('location')).toBe('https://morenovalleyview.com/events/');
+    const old = await withPrunedEventRedirect(req('/s/event-5639/'), assets(Response.json(['event-197946'])));
+    expect(old!.status).toBe(301);
+    expect(old!.headers.get('location')).toBe('https://morenovalleyview.com/events/past/');
+    const noList = await withPrunedEventRedirect(req('/s/event-197946/'), assets(new Response('nf', { status: 404 })));
+    expect(noList!.status).toBe(301);
+  });
   it('a merged duplicate that points to a dated event (not a series) is the plain 301, no lookup', async () => {
     let looked = false;
     const res = await mergedOccurrenceRedirect(req('/s/event-1/'), '/s/event-2/', async () => { looked = true; return new Response('', { status: 404 }); });
