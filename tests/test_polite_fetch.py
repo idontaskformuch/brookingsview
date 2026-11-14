@@ -294,6 +294,27 @@ def test_a_crawl_delay_under_the_cap_is_still_waited_between_requests():
     assert max(slept) > 9
 
 
+# --- a higher size cap for one call (owner's one-off yes 2026-11-14: main.withapps.io's _app bundle was cut at MAX_BYTES) -------------
+
+def test_max_bytes_raises_the_cap_for_one_call_and_the_default_cap_is_unchanged(tmp_path):
+    big = "x" * (pf.MAX_BYTES + 500_000)  # only the size matters here: the real bundle was cut at exactly MAX_BYTES on 14 Nov
+    f, sess = fetcher({ROBOTS_URL: (404, ""), URL: (200, big)}, purpose="evidence", tmp=tmp_path)
+    assert len(f.get(URL).body) == pf.MAX_BYTES  # the default call is still cut
+    assert len(f.get(URL).body) == pf.MAX_BYTES and urls(sess) == [ROBOTS_URL, URL]  # same day, default cap: the saved copy
+    full = f.get(URL, max_bytes=5_000_000)  # the saved copy was cut at the cap, so a higher cap fetches once more
+    assert len(full.body) == len(big) and urls(sess) == [ROBOTS_URL, URL, URL]
+    assert f.get(URL, max_bytes=5_000_000).from_cache and len(sess.calls) == 3  # now the full copy is the day's copy
+
+
+def test_max_bytes_never_lowers_the_cap_and_an_uncut_copy_is_reused():
+    f, sess = fetcher({ROBOTS_URL: (404, ""), URL: (200, "small")}, purpose="source")
+    assert f.get(URL, max_bytes=2).body == b"small"
+    g, sess2 = fetcher({ROBOTS_URL: (404, ""), URL: (200, "small")}, purpose="evidence", tmp=None)
+    g.cache_dir = None
+    assert g.get(URL).status == 200
+    assert isinstance(g.get(URL, max_bytes=5_000_000), pf.Refused)  # already fetched today, no cut copy: the day limit holds
+
+
 def test_unknown_robots_mode_raises():
     with pytest.raises(ValueError):
         pf.PoliteFetcher("source", session=FakeSession({}), ledger=pf.MemoryLedger(), robots_mode="lenient")

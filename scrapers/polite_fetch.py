@@ -91,6 +91,7 @@ class Fetched:
     body: bytes = b""
     encoding: str | None = None
     from_cache: bool = False
+    cut: bool = False  # the body stopped at the size cap of its request
 
     @property
     def text(self) -> str:
@@ -198,8 +199,11 @@ class PoliteFetcher:
         self._where = "ci" if os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get("GITHUB_RUN_ID") else "local"
 
     # --- the one public call ------------------------------------------------------------------------------------------------
-    def get(self, url: str, params: dict | None = None) -> Fetched | Refused:
+    def get(self, url: str, params: dict | None = None, *, max_bytes: int | None = None) -> Fetched | Refused:
+        """max_bytes: a higher size cap for this one call (owner's one-off yes 2026-11-14 for a JS bundle cut at MAX_BYTES). A saved
+        copy from today that was cut at the cap it was fetched with is not a full copy for a call with a higher cap."""
         url = _with_params(url, params)
+        cap = max(max_bytes or MAX_BYTES, MAX_BYTES)
         parts = urlparse(url)
         if parts.scheme not in ("http", "https") or not parts.netloc:
             return Refused(url, "not an http(s) URL")
@@ -218,17 +222,19 @@ class PoliteFetcher:
             earlier = self._fetched_today(url)
             if earlier is not None:
                 cached = self._cached(url)
-                if cached is not None:
+                cut = cached is not None and cached.cut and cap > len(cached.body)
+                if cached is not None and not cut:
                     return cached
-                return Refused(url, f"already fetched today at {earlier['utc'][11:16]} UTC ({earlier['purpose']}, {earlier['where']}), "
-                                    "no saved copy here: use the saved copy")
+                if not cut:
+                    return Refused(url, f"already fetched today at {earlier['utc'][11:16]} UTC ({earlier['purpose']}, {earlier['where']}), "
+                                        "no saved copy here: use the saved copy")
         host = parts.netloc.lower()
         if host in self._over_cap:
             if host in self._used:
                 return Refused(url, f"robots.txt Crawl-delay {self._over_cap[host]:g} s is above the {MAX_CRAWL_DELAY_S:g} s cap and is "
                                     "never shortened: one request per host per run, already made")
             self._used.add(host)
-        return self._request(url, domain, self.purpose)
+        return self._request(url, domain, self.purpose, max_bytes=cap)
 
     # --- robots -------------------------------------------------------------------------------------------------------------
     def _robots_verdict(self, url: str) -> _robots.Verdict:
@@ -281,7 +287,9 @@ class PoliteFetcher:
         if path is None or not path.with_suffix(".json").is_file():
             return None
         meta = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
-        return Fetched(url, meta["final_url"], meta["status"], path.with_suffix(".body").read_bytes(), meta.get("encoding"), True)
+        body = path.with_suffix(".body").read_bytes()
+        # copies saved before `cut` existed: one that stopped at exactly MAX_BYTES was cut (the 14 Nov _app bundle)
+        return Fetched(url, meta["final_url"], meta["status"], body, meta.get("encoding"), True, meta.get("cut", len(body) == MAX_BYTES))
 
     def _save(self, got: Fetched) -> None:
         path = self._cache_path(got.url)
@@ -290,10 +298,10 @@ class PoliteFetcher:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.with_suffix(".body").write_bytes(got.body)
         path.with_suffix(".json").write_text(json.dumps({"url": got.url, "final_url": got.final_url, "status": got.status,
-                                                         "encoding": got.encoding}), encoding="utf-8")
+                                                         "encoding": got.encoding, "cut": got.cut}), encoding="utf-8")
 
     # --- the request --------------------------------------------------------------------------------------------------------
-    def _request(self, url: str, domain: str, purpose: str, same_domain: bool = True) -> Fetched | Refused:
+    def _request(self, url: str, domain: str, purpose: str, same_domain: bool = True, max_bytes: int = MAX_BYTES) -> Fetched | Refused:
         gap = max(MIN_GAP_S, self._delay.get(domain, 0.0))
         wait = self._last.get(domain, -1e9) + gap - time.monotonic()
         if wait > 0:
@@ -302,7 +310,7 @@ class PoliteFetcher:
         try:
             res = self.session.get(url, headers={"User-Agent": self.ua}, timeout=TIMEOUT_S, allow_redirects=True, stream=True)
             raw = getattr(res, "raw", None)
-            body = raw.read(MAX_BYTES, decode_content=True) if raw is not None else (res.content or b"")[:MAX_BYTES]
+            body = raw.read(max_bytes, decode_content=True) if raw is not None else (res.content or b"")[:max_bytes]
         except Exception as exc:  # noqa: BLE001 -- any network failure is "no answer"
             self._log(url, domain, purpose, None, b"", f"no answer: {type(exc).__name__}")
             return Fetched(url, url, None)
@@ -315,7 +323,7 @@ class PoliteFetcher:
         self._log(url, domain, purpose, res.status_code, body, f"API terms, not robots.txt: {terms.terms_url}" if terms else "")
         if same_domain and registrable(urlparse(final).netloc) != domain:
             return Refused(url, f"redirected to another domain ({urlparse(final).netloc})")
-        got = Fetched(url, final, res.status_code, body, getattr(res, "encoding", None))
+        got = Fetched(url, final, res.status_code, body, getattr(res, "encoding", None), cut=len(body) >= max_bytes)
         if purpose in DAY_LIMITED and res.status_code == 200:
             self._save(got)
         return got
