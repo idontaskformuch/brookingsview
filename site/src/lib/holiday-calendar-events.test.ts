@@ -8,7 +8,7 @@ import type { Story } from './db';
 import { buildHolidayEventsJsonLd, eventWhenWhere, type HolidayPageData } from './holiday-page';
 import { formatCalendarReport, matchCalendarEvents, venueFromRaw, type CalendarCandidate } from './holiday-calendar-events';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
-import { calendarExcludesFor } from '../config/holiday-pages/registry';
+import { calendarExcludesFor, calendarIncludesFor } from '../config/holiday-pages/registry';
 import { buildThanksgivingPage } from '../config/holiday-pages/thanksgiving';
 
 const TZ = 'America/Los_Angeles';
@@ -68,6 +68,20 @@ describe('calendar rows on a holiday page', () => {
     expect(calendarExcludesFor('thanksgiving', 'brookings_sd')).toBeNull();
     expect(calendarExcludesFor('thanksgiving', 'broomfield_co')).toEqual({});
     expect(calendarExcludesFor('veterans-day', 'broomfield_co')).toBeNull();
+  });
+  it('a row named by key is taken without a title match; the pattern is unchanged (Glasgow "Elf Academy", owner 2026-11-14)', () => {
+    // Glasgow story 4138 (event-325682), fields copied from the database on 2026-11-14.
+    const ELF = story(4138, 'event-325682', "Children's Classic Concerts: Elf Academy", '2026-12-12T13:00:00Z', '2026-11-02T11:04:16Z',
+      'https://www.glasgowlife.org.uk/event/1/childrens-classic-concerts-elf-academy', 'Glasgow Royal Concert Hall');
+    const xmas = holidayPageDef('christmas')!;
+    expect(xmas.calendarMatch!.pattern.test("Children's Classic Concerts: Elf Academy")).toBe(false);
+    expect(matchCalendarEvents(xmas, 2026, [{ item: ELF }], 'Europe/London', {}).events).toEqual([]);
+    const include = calendarIncludesFor('christmas', 'glasgow');
+    expect(include).toEqual({ 'event-325682': 'by id, owner 2026-11-14' });
+    const { events: got, report: rep } = matchCalendarEvents(xmas, 2026, [{ item: ELF }], 'Europe/London', {}, include);
+    expect(got.map((e) => [e.fromCalendar, e.date, e.startTime, e.venue.name])).toEqual([['event-325682', '2026-12-12', '13:00', 'Glasgow Royal Concert Hall']]);
+    expect(formatCalendarReport('christmas', 'glasgow', rep)[1]).toContain('shown    event-325682 2026-12-12 "Children\'s Classic Concerts: Elf Academy" (by id');
+    expect(calendarIncludesFor('christmas', 'broomfield_co')).toEqual({});
   });
   it('the route adds the rows and logs them', () => {
     const src = readFileSync(new URL('../pages/[holiday].astro', import.meta.url), 'utf8');

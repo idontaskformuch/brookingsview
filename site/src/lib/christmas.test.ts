@@ -88,28 +88,25 @@ describe('Glasgow /christmas/ data as approved 2026-11-04', () => {
     }
   });
 
-  it('council rows are unconfirmed with a check pointer (glasgow.gov.uk is never fetched); the office rows carry 2025/26 values with the year in every line', () => {
+  it('council rows are unconfirmed with a check pointer (glasgow.gov.uk is never fetched); the six office rows are plain links with no 2025/26 times (owner 2026-11-14)', () => {
     const council = [...page.facts, ...page.events].filter((r) => new URL(r.source.url).hostname.endsWith('glasgow.gov.uk'));
     expect(council).toHaveLength(9);
     for (const r of council) {
       expect(r.status).toBe('unconfirmed');
       expect(r.status === 'unconfirmed' && r.checkAt?.url).toBeTruthy();
+      expect(r.status === 'unconfirmed' && r.lastYear, 'label' in r ? r.label : r.name).toBeUndefined();
     }
-    const offices = page.facts.filter((f) => f.section === 'closures' && f.status === 'unconfirmed' && f.lastYear?.season === '2025/26' && f.source.url.endsWith('/article/11458'));
+    const offices = page.facts.filter((f) => f.section === 'closures' && f.status === 'unconfirmed' && f.source.url.endsWith('/article/11458'));
     expect(offices.map((f) => f.label)).toEqual([
       'Registrars', 'Housing Benefit and Council Tax', 'Scottish Welfare Fund, phone', 'Scottish Welfare Fund, online', 'Social work offices', 'Home care',
     ]);
     for (const f of offices) {
       if (f.status !== 'unconfirmed') continue;
-      expect(f.checkAt?.url).toBe('https://www.glasgow.gov.uk/article/11458');
-      const v = f.lastYear!.value;
-      if (f.label !== 'Scottish Welfare Fund, online') expect(v, f.label).toMatch(/202[56]/);
-      // 2025/26 values only: no 2026 festive weekday is ever stated
-      expect(v, f.label).not.toMatch(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} Dec 2026/);
-      expect(v, f.label).not.toMatch(/2027/);
+      expect(f.clarify, f.label).toBeUndefined();
+      expect(f.usual, f.label).toBeUndefined();
+      expect(f.checkAt?.url).toBe(f.label === 'Scottish Welfare Fund, online'
+        ? 'https://www.glasgow.gov.uk/article/992/Scottish-Welfare-Fund' : 'https://www.glasgow.gov.uk/article/11458');
     }
-    const swfOnline = offices.find((f) => f.label === 'Scottish Welfare Fund, online')!;
-    expect(swfOnline.status === 'unconfirmed' && swfOnline.lastYear?.source.url).toBe('https://www.glasgow.gov.uk/article/992/Scottish-Welfare-Fund');
   });
 
   it('recycling centres and bins: plain links, no last-year value and no explanation (owner G4, 2026-11-14)', () => {

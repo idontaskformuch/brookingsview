@@ -44,9 +44,12 @@ export function venueFromRaw(raw: string | null): EventVenue | null {
   return { name: parts[0], ...(street ? { street } : {}), locality: (street ? parts[2] : parts[1]) ?? '' };
 }
 
-/** The matched rows as confirmed events, and one report line per title match (excluded ones included). */
+/** The matched rows as confirmed events, and one report line per title match (excluded ones included). A key in `include` is
+ *  taken without a title match (still inside the window), with its reason in the report: a row the owner named by id whose title
+ *  the pattern does not cover ("Elf Academy", 2026-11-14), so the pattern itself is not widened. */
 export function matchCalendarEvents(
   def: HolidayPageDef, year: number, candidates: CalendarCandidate[], timeZone: string, exclude: Record<string, string>,
+  include: Record<string, string> = {},
 ): { events: ConfirmedEvent[]; report: CalendarMatchLine[] } {
   const rule = def.calendarMatch;
   if (!rule) return { events: [], report: [] };
@@ -61,14 +64,15 @@ export function matchCalendarEvents(
     const key = calendarKey(item);
     if (!key || item.sourceKind !== 'story' || !item.occurs_at) continue;
     const title = itemTitle(item);
-    if (!rule.pattern.test(title)) continue;
+    const byId = !rule.pattern.test(title) && key in include;
+    if (!byId && !rule.pattern.test(title)) continue; // neither a title match nor named by key
     const { date, time } = localParts(item.occurs_at, timeZone);
     if (date < first || date > last) continue;
     if (key in exclude) { report.push({ key, date, title, included: false, reason: exclude[key] }); continue; }
     const venue = venueFromRaw(itemVenue(item));
     const link = itemLink(item);
     if (!venue || !link) { report.push({ key, date, title, included: false, reason: !venue ? 'no venue' : 'no link' }); continue; }
-    report.push({ key, date, title, included: true });
+    report.push({ key, date, title, included: true, ...(byId ? { reason: include[key] } : {}) });
     const sourceUrl = item.story.source_url ?? link;
     events.push({
       status: 'confirmed', name: title, date, venue, url: link,

@@ -4,7 +4,9 @@
  * data-holiday-season) never shows a day or an event that has passed, and every fact on it has a source link. Reads the real `dist/`:
  *  - a day section or day chip (data-hp-day="YYYY-MM-DD") before today fails;
  *  - an event row (data-pop-row) whose end (or start) date is before today fails;
- *  - a card or row (li.tc-card, li.pl__li) without data-hp-item, or a data-hp-item without an http(s) data-source, fails.
+ *  - a card or row (li.tc-card, li.pl__li) without data-hp-item, or a data-hp-item without an http(s) data-source, fails;
+ *  - a day section without a card fails (owner 2026-11-14: no card, no section; Mon 4 Jan was built empty);
+ *  - the same card (title and value) with different status pills on different days fails (owner 2026-11-14: one fact, one marking).
  * "Today" is the town's date (Europe/London unless --tz), or --today YYYY-MM-DD.
  *
  * Usage: node scripts/verify_holiday_season.mjs <dist-dir> [--today YYYY-MM-DD] [--tz Area/City]
@@ -47,6 +49,17 @@ export function checkSeasonPage(html, url, day) {
   for (const [tag] of html.matchAll(/<[a-z]+\b[^>]*\sdata-hp-item\b[^>]*>/g)) {
     if (!/^https?:\/\//.test(attr(tag, 'data-source') ?? '')) bad.push(`${url}: an item without a source link (${tag.slice(0, 80)})`);
   }
+  for (const [, tag, body] of html.matchAll(/(<section\b[^>]*class="hs-day\b[^"]*"[^>]*>)([\s\S]*?)<\/section>/g)) {
+    if (!/<li\b[^>]*class="[^"]*\b(?:tc-card|pl__li)\b/.test(body)) bad.push(`${url}: the day ${attr(tag, 'data-hp-day')} has no card`);
+  }
+  // The same card (place and value) carries the same status pill on every day it is shown.
+  const text = (body, cls) => body.match(new RegExp(`class="${cls}\\b[^"]*"[^>]*>([^<]*)<`))?.[1].trim() ?? '';
+  const pills = new Map();
+  for (const [, body] of html.matchAll(/<li\b[^>]*class="tc-card\b[^"]*"[^>]*>([\s\S]*?)<\/li>/g)) {
+    const key = `${text(body, 'tc-title')} · ${text(body, 'tc-time')}`;
+    pills.set(key, new Set([...(pills.get(key) ?? []), text(body, 'ui-pill')]));
+  }
+  for (const [key, set] of pills) if (set.size > 1) bad.push(`${url}: "${key}" is marked ${[...set].map((p) => `"${p}"`).join(' and ')} on different days`);
   return bad;
 }
 
@@ -59,4 +72,4 @@ for (const file of walk(dist)) {
   bad.push(...checkSeasonPage(html, '/' + relative(dist, file).split(sep).join('/').replace(/index\.html$/, ''), today));
 }
 if (bad.length) { console.error(bad.join('\n')); console.error(`FAIL: ${bad.length} problem(s) on ${pages} season page(s), today ${today}`); process.exit(1); }
-console.log(`OK: ${pages} season page(s), no passed day or event and every item has a source (today ${today}).`);
+console.log(`OK: ${pages} season page(s), no passed or empty day, no passed event, every item has a source and one marking (today ${today}).`);

@@ -42,6 +42,12 @@ export const CHRISTMAS_CALENDAR_EXCLUDES: Record<string, Record<string, string>>
   glasgow: {},
 };
 
+/** Rows taken by key although their title does not match the pattern (owner 2026-11-14: "Elf Academy" by id, the pattern is not
+ *  changed). */
+export const CHRISTMAS_CALENDAR_INCLUDES: Record<string, Record<string, string>> = {
+  glasgow: { 'event-325682': 'by id, owner 2026-11-14' },
+};
+
 /** The Christmas page, or null for a town without one (Broomfield's tree lighting stays saved, not rendered). */
 export function buildChristmasPage(townId: string): HolidayPageData | null {
   return townId === 'glasgow' ? buildGlasgowChristmasPage() : null;

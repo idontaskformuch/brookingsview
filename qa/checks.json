@@ -328,8 +328,8 @@
     },
     "build.holiday-season": {
         "severity": "hard",
-        "born_from": "Glasgow /christmas/ day-by-day page (owner 2026-11-14, .claude/specs/glasgow-christmas-2026.md: \"helgsidan får inte visa passerade datum eller påståenden utan källa\"). New page, no incident; regression fixture: tests/fixtures/qa_holiday_season_2026-11-14 (the page as built 2026-11-14; checked as of 25 Dec it fails on the passed days, and with one card's source removed it fails on the source), tests/test_verify_holiday_season.py.",
-        "what": "a built season page (data-holiday-season) shows a day section or chip before today, an event row that ended before today, a card without data-hp-item, or an item without an http(s) data-source (scripts/verify_holiday_season.mjs on dist/ in glasgow-deploy.yml)"
+        "born_from": "Glasgow /christmas/ day-by-day page (owner 2026-11-14, .claude/specs/glasgow-christmas-2026.md: \"helgsidan får inte visa passerade datum eller påståenden utan källa\"). New page, no incident; regression fixture: tests/fixtures/qa_holiday_season_2026-11-14 (the page as built 2026-11-14; checked as of 25 Dec it fails on the passed days, and with one card's source removed it fails on the source), tests/test_verify_holiday_season.py. Extended 2026-11-14 after the owner's review: Mon 4 Jan was built as a section with no card (built/ fails on it; fixed/ is the page after the fix), and one fact must carry one marking on every day (pill/ = fixed/ with ScotRail \"No trains\" on 1 Jan marked Changed fails).",
+        "what": "a built season page (data-holiday-season) shows a day section or chip before today, an event row that ended before today, a card without data-hp-item, an item without an http(s) data-source, a day section without a card, or the same card (title and value) with different status pills on different days (scripts/verify_holiday_season.mjs on dist/ in glasgow-deploy.yml)"
     },
     "data.holiday-closed-count": {
         "severity": "hard",

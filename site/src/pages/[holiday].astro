@@ -11,7 +11,7 @@ import HolidayPage from '../components/HolidayPage.astro';
 import HolidaySeasonPage from '../components/HolidaySeasonPage.astro';
 import { siteConfig } from '../lib/site-config';
 import { HOLIDAY_PAGE_DEFS } from '../config/holiday-pages/calendar';
-import { calendarExcludesFor, holidayPageFor } from '../config/holiday-pages/registry';
+import { calendarExcludesFor, calendarIncludesFor, holidayPageFor } from '../config/holiday-pages/registry';
 import { resolvePageState } from '../lib/holiday-calendar';
 import { getEveningRegister, getFacilities, getUpcomingStories } from '../lib/db';
 import { buildTownEventsView } from '../lib/events-town-view';
@@ -35,7 +35,7 @@ if (exclude) {
   const { events, report } = matchCalendarEvents(
     entry.def, entry.page.year,
     displayed.map((item) => (nearby.has(item) ? { item, nearbyMiles: distanceOf.get(item) ?? null } : { item })),
-    siteConfig.timezone, exclude,
+    siteConfig.timezone, exclude, calendarIncludesFor(entry.def.slug, siteConfig.townId),
   );
   const reg = page.season
     ? matchRegisterRows(entry.def, entry.page.year, await getEveningRegister(), Date.now(), siteConfig.timezone, siteConfig.cityName, exclude)

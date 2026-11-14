@@ -89,13 +89,14 @@ describe('groups', () => {
     expect(rows.filter((r) => r.checkedNote).map((r) => r.checkedNote)).toEqual(['Checked Oct 30, 2026']);
   });
 
-  it('an unconfirmed row keeps its pointer: last season\'s value and source, and where to check', () => {
+  it('an unconfirmed row keeps its pointer: where to check, and no 2025/26 times', () => {
     const rows = buildGroups(xmas, '2026-11-06').find((g) => g.id === 'unconfirmed')!.rows;
     expect(rows.length).toBeGreaterThan(FOLD_AFTER);
+    // Glasgow Life's festive hours and the council's office hours are still 2025/26: plain links, no times (owner 2026-11-14).
     const reg = rows.find((r) => r.name === 'Registrars')!;
-    expect(reg.lastYear?.text).toMatch(/^2025\/26: /);
-    expect(reg.href ?? reg.check?.url).toBeTruthy();
-    // Glasgow Life's festive hours are still 2025/26: a plain link, no times (owner 2026-11-14).
+    expect(reg.lastYear).toBeUndefined();
+    expect(reg.parts).toEqual([]);
+    expect(reg.href).toBe('https://www.glasgow.gov.uk/article/11458');
     const lib = rows.find((r) => r.name.startsWith('Libraries'))!;
     expect(lib.lastYear).toBeUndefined();
     expect(lib.parts).toEqual([]);

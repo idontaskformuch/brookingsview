@@ -6,7 +6,7 @@ import { SCOTLAND_BANK_HOLIDAYS } from '../config/holiday-pages/gb/bank-holidays
 import { buildChristmasPage } from '../config/holiday-pages/christmas';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
 import {
-  eventPopDays, eventsOn, factsOn, lastSeasonBankHoliday, seasonBankHolidays, seasonDays, seasonEvents, seasonHero, upcomingDays,
+  daysWithCards, eventPopDays, eventsOn, factsOn, lastSeasonBankHoliday, seasonBankHolidays, seasonDays, seasonEvents, seasonHero, upcomingDays,
 } from './holiday-season';
 import { matchRegisterRows } from './holiday-calendar-events';
 import { buildEveningEntries, showTitleKey, type RegisterRow } from './evening-items';
@@ -70,6 +70,27 @@ describe('cards per day', () => {
     ]);
     expect(factsOn(page, '2027-01-01').map((f) => [f.label, f.value])).toEqual([['Winter Wonderland, Glasgow Green', '2pm–10pm'], ['ScotRail', 'No trains']]);
     expect(factsOn(page, '2027-01-04')).toEqual([]);
+  });
+
+  it('no card, no section: Mon 4 Jan is left out while it has none and comes back with one (owner 2026-11-14)', () => {
+    const events = page.events.filter((e): e is ConfirmedEvent => e.status === 'confirmed');
+    expect(daysWithCards(page, events, '2026-11-14').map((d) => d.anchor)).toEqual(['dec-24', 'dec-25', 'dec-26', 'dec-28', 'dec-31', 'jan-01', 'jan-02']);
+    // The real Toyland row with one changed field: date 2027-01-04 (it is 2026-12-24 in the data).
+    const toyland = events.find((e) => e.name === 'The McDougalls: Christmas in Toyland')!;
+    const moved = [...events, { ...toyland, date: '2027-01-04' }];
+    expect(daysWithCards(page, moved, '2026-11-14').map((d) => d.anchor)).toContain('jan-04');
+  });
+
+  it('one fact, one marking: a place with the same value has the same status on every day (owner 2026-11-14, ScotRail "No trains")', () => {
+    const seen = new Map<string, string | undefined>();
+    for (const d of days) {
+      for (const f of factsOn(page, d.date)) {
+        const key = `${f.label} · ${f.value}`;
+        if (seen.has(key)) expect(f.change, `${key} on ${d.date}`).toBe(seen.get(key));
+        seen.set(key, f.change);
+      }
+    }
+    expect(seen.get('ScotRail · No trains')).toBe('closed');
   });
 
   it('a one-day event sits under its day; runs and other days are in the season list, past ones left out', () => {

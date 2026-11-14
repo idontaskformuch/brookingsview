@@ -1,7 +1,7 @@
 ---
 /** A holiday page that spans a season, day by day (Glasgow's Christmas and New Year, owner 2026-11-14,
  *  .claude/specs/glasgow-christmas-2026.md). Same data and meta as HolidayPage.astro (lib/holiday-page.ts), laid out with /tonight's
- *  cards: a section per day still to come (anchored, "dec-24"; which days are bank holidays comes from GOV.UK, lib/holiday-season.ts)
+ *  cards: a section per day still to come that has a card (anchored, "dec-24"; which days are bank holidays comes from GOV.UK, lib/holiday-season.ts)
  *  with the places that close or change hours that day as swipe cards and that day's events as the time-tile list, then the season's
  *  other events as the date-tile list, then support and links. Every card links to the page its fact was read from; nothing is
  *  shown for a day that has passed (built out, and hidden in the browser from the town's clock). No model text.
@@ -23,7 +23,7 @@ import {
   type ConfirmedEvent, type ConfirmedFact, type HolidayChange, type HolidayPageData,
 } from '../lib/holiday-page';
 import { groupSources } from '../lib/holiday-view';
-import { eventPopDays, eventsOn, factsOn, seasonEvents, seasonHero, upcomingDays } from '../lib/holiday-season';
+import { daysWithCards, eventPopDays, seasonEvents, seasonHero } from '../lib/holiday-season';
 import { BANK_HOLIDAYS_SOURCE } from '../config/holiday-pages/gb/bank-holidays';
 import type { HolidayPageDef } from '../config/holiday-pages/calendar';
 
@@ -39,7 +39,7 @@ const pageUrl = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl).hr
 const webPage = { '@context': 'https://schema.org', '@type': 'WebPage', name: meta.title, url: pageUrl, dateModified: page.dataUpdatedOn };
 
 const confirmedEvents = page.events.filter((e): e is ConfirmedEvent => e.status === 'confirmed');
-const days = upcomingDays(page.season.days, today).map((d) => ({ ...d, facts: factsOn(page, d.date), events: eventsOn(confirmedEvents, d.date) }));
+const days = daysWithCards(page, confirmedEvents, today);
 const hero = seasonHero(page.season.days, today);
 const later = seasonEvents(confirmedEvents, page.season.days, today);
 const help = page.facts.filter((f): f is ConfirmedFact => f.status === 'confirmed' && f.section === 'help');

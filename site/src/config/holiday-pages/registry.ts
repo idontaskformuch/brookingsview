@@ -6,7 +6,7 @@ import { activeHoliday, inCalendarOrder, resolvePageState } from '../../lib/holi
 import { HOLIDAY_PAGE_DEFS, holidayPageDef, type HolidayPageDef } from './calendar';
 import { buildVeteransDayPage } from './veterans-day';
 import { buildThanksgivingPage, THANKSGIVING_CALENDAR_EXCLUDES } from './thanksgiving';
-import { buildChristmasPage, CHRISTMAS_CALENDAR_EXCLUDES } from './christmas';
+import { buildChristmasPage, CHRISTMAS_CALENDAR_EXCLUDES, CHRISTMAS_CALENDAR_INCLUDES } from './christmas';
 
 export interface HolidayPageEntry { def: HolidayPageDef; page: HolidayPageData }
 
@@ -27,6 +27,17 @@ export function calendarExcludesFor(slug: string, townId: string): Record<string
   const def = holidayPageDef(slug);
   if (!def?.calendarMatch) return null;
   return CALENDAR_EXCLUDES[def.slug]?.[townId] ?? null;
+}
+
+/** Per holiday, rows a town takes by key without a title match. */
+const CALENDAR_INCLUDES: Partial<Record<HolidayPageDef['slug'], Record<string, Record<string, string>>>> = {
+  christmas: CHRISTMAS_CALENDAR_INCLUDES,
+};
+
+/** The keys a town's calendar rows are taken by without a title match ({} when none). */
+export function calendarIncludesFor(slug: string, townId: string): Record<string, string> {
+  const def = holidayPageDef(slug);
+  return (def && CALENDAR_INCLUDES[def.slug]?.[townId]) ?? {};
 }
 
 /** The page of one holiday for a town, or null when there is none (or no confirmed row). */

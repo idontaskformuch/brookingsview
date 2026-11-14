@@ -97,6 +97,15 @@ export function factsOn(page: HolidayPageData, date: string): ConfirmedFact[] {
   return page.facts.filter((f): f is ConfirmedFact => f.status === 'confirmed' && f.section !== 'hours' && !!f.on?.includes(date));
 }
 
+/** The day sections to build: the days still to come that have at least one card (a fact or an event). No card, no section and no
+ *  day chip (owner 2026-11-14, Mon 4 Jan); the day comes back by itself once a row for it exists. */
+export function daysWithCards(page: HolidayPageData, events: ConfirmedEvent[], today: string): (SeasonDay & { facts: ConfirmedFact[]; events: ConfirmedEvent[] })[] {
+  if (!page.season) return [];
+  return upcomingDays(page.season.days, today)
+    .map((d) => ({ ...d, facts: factsOn(page, d.date), events: eventsOn(events, d.date) }))
+    .filter((d) => d.facts.length > 0 || d.events.length > 0);
+}
+
 /** Confirmed one-day events on `date` (a run over several days is listed with the season's events, not per day). */
 export function eventsOn(events: ConfirmedEvent[], date: string): ConfirmedEvent[] {
   return events.filter((e) => e.date === date && (!e.endDate || e.endDate === e.date));

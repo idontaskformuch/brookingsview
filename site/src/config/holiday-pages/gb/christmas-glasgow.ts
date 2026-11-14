@@ -4,8 +4,8 @@
  *
  *  2026-11-14 (owner): rows read again through scrapers/polite_fetch.py (evidence .claude/evidence/glasgow-christmas-2026-11/).
  *  A row about one place on several days is one row per distinct value, with `on` = its days. Rows whose answer is not out are
- *  plain links with no explanation; Glasgow Life's festive hours are still the 2025/26 ones and are not shown as times at all, only
- *  linked; ScotRail shows what it confirms plus a link, SPT and First Bus are links only. Bank holidays come from GOV.UK. */
+ *  plain links with no explanation; Glasgow Life's festive hours and the council's office hours are still the 2025/26 ones and are
+ *  not shown as times at all, only linked; ScotRail shows what it confirms plus a link, SPT and First Bus are links only. Bank holidays come from GOV.UK. */
 import type { HolidayEvent, HolidayFact, HolidayPageData, Source } from '../../../lib/holiday-page';
 import { seasonDays, lastSeasonBankHoliday, type NamedDay } from '../../../lib/holiday-season';
 import { dataUpdatedOn } from '../data-updated';
@@ -45,22 +45,21 @@ const NAMED_DAYS: NamedDay[] = [
 /** The second front-page post starts here (owner 2026-11-14) and runs to the season's last bank holiday. */
 const HOGMANAY_POST_FROM = '12-27';
 
-/** Council office rows: read by the owner on glasgow.gov.uk 2026-11-04, all of it the 2025/26 festive period, so every
- *  row is unconfirmed for 2026 with last year's value (source: the council page). No 2026 weekdays are stated. */
+/** Council office rows: the owner read glasgow.gov.uk on 2026-11-04 and found only the 2025/26 festive period. Plain link rows
+ *  with no times (owner 2026-11-14: no 2025/26 values on the page), like Glasgow Life's festive hours. */
 function councilOfficeRows(): HolidayFact[] {
-  const row = (label: string, value: string, source: Source = COUNCIL_HOURS): HolidayFact => ({
+  const row = (label: string, at: Source = COUNCIL_HOURS): HolidayFact => ({
     section: 'closures', status: 'unconfirmed', label,
-    lastYear: { value, source, season: '2025/26' },
-    checkAt: { label: COUNCIL_HOURS.name, url: COUNCIL_HOURS.url },
+    checkAt: { label: at.name, url: at.url },
     source: COUNCIL_HOURS, checkedOn: CHECKED,
   });
   return [
-    row('Registrars', 'Closed 4pm Wed 24 Dec 2025, reopened Mon 29 Dec 2025 at 9am. Closed again 12.30pm Wed 31 Dec 2025, reopened Mon 5 Jan 2026 at 9am.'),
-    row('Housing Benefit and Council Tax', 'Priority phone line closed 12pm Tue 23 Dec 2025, reopened Mon 5 Jan 2026 at 9am. Council Tax live chat closed 12pm Wed 24 Dec 2025.'),
-    row('Scottish Welfare Fund, phone', 'Phone service closed 4pm Wed 24 Dec 2025, reopened Mon 5 Jan 2026.'),
-    row('Scottish Welfare Fund, online', 'Online applications were open 24 hours a day.', COUNCIL_SWF),
-    row('Social work offices', 'Open 8.45am–4.45pm Mon–Thu and 8.45am–3.55pm Fri. Closed 25 and 26 Dec 2025 and 1 and 2 Jan 2026, and from 12 noon on 31 Dec 2025 (Alcohol and Drug Recovery Services open until 5pm). Castlemilk (10 Ardencraig Place) and Mercat2 (35 Hecla Avenue) closed 4.45pm Wed 24 Dec 2025 and reopened 3 Jan 2026. Emergency Social Work Service 0300 343 1505. Homelessness out of hours 0800 838 502.'),
-    row('Home care', 'Limited service on 25 and 26 Dec 2025, the afternoon of 31 Dec 2025, and 1 and 2 Jan 2026.'),
+    row('Registrars'),
+    row('Housing Benefit and Council Tax'),
+    row('Scottish Welfare Fund, phone'),
+    row('Scottish Welfare Fund, online', COUNCIL_SWF),
+    row('Social work offices'),
+    row('Home care'),
   ];
 }
 
