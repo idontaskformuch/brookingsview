@@ -150,6 +150,11 @@ export interface ConfirmedEvent extends EventBase {
   details?: string[];
   /** `details` once the event is over, when they speak in the present tense ("provide refreshments"). */
   pastDetails?: string[];
+  /** Outside the town (the /events/ pipeline's "nearby" zone): shown as "Nearby" with the distance when it is known. */
+  nearby?: { miles: number | null };
+  /** Key of the calendar row it was matched from (lib/holiday-calendar-events.ts), e.g. "event-329806". Such a row has
+   *  its own page with its own markup, so the holiday page emits no Event JSON-LD for it. */
+  fromCalendar?: string;
 }
 
 export type UnconfirmedEvent = EventBase & {
@@ -344,7 +349,7 @@ export function isEventPast(e: HolidayEvent, today: string): boolean {
  *  (local date), an event whose last day has passed gets none: markup is only for events still ahead. */
 export function buildHolidayEventsJsonLd(page: HolidayPageData, timeZone: string, country = 'US', today?: string): Record<string, unknown>[] {
   return page.events.flatMap((e) => {
-    if (e.status !== 'confirmed') return [];
+    if (e.status !== 'confirmed' || e.fromCalendar) return [];
     if (today !== undefined && isEventPast(e, today)) return [];
     const season = e.seasonJsonLd === true && e.endDate !== undefined;
     if (!e.startTime && !season) return [];
@@ -404,7 +409,9 @@ export function eventWhenWhere(e: HolidayEvent, locale: HolidayLocale = 'en-US')
     ? e.endTime ? `${formatClock(e.startTime, locale)}–${formatClock(e.endTime, locale)}` : formatClock(e.startTime, locale)
     : null;
   const place = e.venue.street ? `${e.venue.name}, ${e.venue.street}` : e.venue.name;
-  return [day, time, place].filter((p): p is string => p !== null).join(' · ');
+  // Same wording as the Nearby list on /events/ ("13 mi away").
+  const nearby = e.nearby ? (e.nearby.miles != null ? `Nearby, ${Math.round(e.nearby.miles)} mi away` : 'Nearby') : null;
+  return [day, time, place, nearby].filter((p): p is string => p !== null).join(' · ');
 }
 
 /** One rendered table row (fact or event), see components/HolidayTable.astro. */

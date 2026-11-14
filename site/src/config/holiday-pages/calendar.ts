@@ -18,6 +18,10 @@ export interface HolidayPageDef {
   daysAfter: number;
   /** Shown outside the window under the heading. `season` = year of the facts, `nextYear` = the coming occurrence. */
   evergreenNote: (season: number, nextYear: number) => string;
+  /** Rows from the town's own event calendars (the /events/ pipeline) whose title matches `pattern` and whose local day is
+   *  from `daysBefore` before the holiday to `daysAfter` after it are listed under Events (owner 2026-11-14, B2). Plain
+   *  regex on the title, no model. A town takes part only with an entry in registry.ts CALENDAR_EXCLUDES. */
+  calendarMatch?: { pattern: RegExp; daysBefore: number; daysAfter: number };
 }
 
 const HOURS_NOTE = (season: number, nextYear: number) =>
@@ -26,7 +30,11 @@ const HOURS_NOTE = (season: number, nextYear: number) =>
 export const HOLIDAY_PAGE_DEFS: HolidayPageDef[] = [
   // Closes on the day itself (owner 2026-11-11): from Nov 12 the page is the standing one, with no card on /events/.
   { slug: 'veterans-day', label: 'Veterans Day', holidayId: 'veterans_day', daysBefore: 10, daysAfter: 0, evergreenNote: HOURS_NOTE },
-  { slug: 'thanksgiving', label: 'Thanksgiving', holidayId: 'thanksgiving', daysBefore: 10, daysAfter: 1, evergreenNote: HOURS_NOTE },
+  // Calendar rows: the week before through the Sunday after, so a tree lighting the same weekend is included (owner 2026-11-14).
+  {
+    slug: 'thanksgiving', label: 'Thanksgiving', holidayId: 'thanksgiving', daysBefore: 10, daysAfter: 1, evergreenNote: HOURS_NOTE,
+    calendarMatch: { pattern: /thanksgiving|turkey (?:trot|day)|gobble|tree lighting/i, daysBefore: 7, daysAfter: 3 },
+  },
   // Glasgow's Christmas window opens six weeks before its first confirmed event (Nov 6) and closes Jan 3 (owner 2026-11-04).
   {
     slug: 'christmas', label: 'Christmas', holidayId: 'christmas', daysBefore: 91, daysAfter: 9,

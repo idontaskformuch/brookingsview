@@ -98,15 +98,15 @@ describe('deterministic meta', () => {
     expect(m.title).toBe('Thanksgiving 2026 in Broomfield: closures, events, food help');
     expect(m.h1).toBe('Thanksgiving 2026: closures, events, food help');
     expect(m.description).toBe(
-      'Turkey Day 5K/10K Nov 26 · Tree Branch Recycle closed Nov 28 · FISH food bank closed Nov 26–27. Checked Nov 11, 2026.',
+      'Turkey Day 5K/10K Nov 26 · Tree Branch Recycle closed Nov 28 · FISH food bank closed Nov 26–27. Checked Nov 14, 2026.',
     );
   });
   it('Brookings and Moreno: title names only sections with a confirmed row', () => {
     expect(buildHolidayMeta(pageFor('brookings_sd'), 'Thanksgiving', 'Brookings').h1).toBe('Thanksgiving 2026: closures, trash pickup');
     expect(buildHolidayMeta(pageFor('moreno_valley_ca'), 'Thanksgiving', 'Moreno Valley').title)
-      .toBe('Thanksgiving 2026 in Moreno Valley: trash pickup');
+      .toBe('Thanksgiving 2026 in Moreno Valley: trash pickup, transit'); // RTA row read 2026-11-14
     expect(buildHolidayMeta(pageFor('moreno_valley_ca'), 'Thanksgiving', 'Moreno Valley').description)
-      .toBe('Trash pickup one day late after Nov 26. Checked Oct 24, 2026.');
+      .toBe('Trash pickup one day late after Nov 26 · No RTA buses Nov 26. Checked Nov 14, 2026.');
   });
   it('every description is at most 155 characters, with no digits-free filler', () => {
     for (const id of THANKSGIVING_TOWN_IDS) {
@@ -117,7 +117,7 @@ describe('deterministic meta', () => {
   });
   it('regression: the three US descriptions are exactly what they were before the metaGroup change', () => {
     expect(buildHolidayMeta(pageFor('brookings_sd'), 'Thanksgiving', 'Brookings').description).toBe(
-      'City offices mostly closed Nov 26 · Landfill closed Nov 26 · Recycling and yard waste move to Wed Nov 25. Checked Oct 24, 2026.',
+      'City offices mostly closed Nov 26 · Landfill closed Nov 26 · Recycling and yard waste move to Wed Nov 25. Checked Nov 14, 2026.',
     );
   });
   it('phrases with the same metaGroup merge into one, at the position of the first; the pending row is not named', () => {
@@ -160,8 +160,8 @@ describe('deterministic meta', () => {
     ]);
   });
   it('lastChecked is the newest checkedOn; dates format without a time zone', () => {
-    expect(lastChecked(pageFor('broomfield_co'))).toBe('2026-11-11');
-    expect(lastChecked(pageFor('moreno_valley_ca'))).toBe('2026-10-24');
+    expect(lastChecked(pageFor('broomfield_co'))).toBe('2026-11-14');
+    expect(lastChecked(pageFor('moreno_valley_ca'))).toBe('2026-11-14');
     expect(formatIsoDate('2026-11-04')).toBe('Nov 4, 2026');
     expect(formatIsoDate('2026-11-04', true)).toBe('November 4, 2026');
     expect(formatClock('00:05')).toBe('12:05 a.m.');
@@ -169,7 +169,7 @@ describe('deterministic meta', () => {
   });
   it('sections render in order and an empty one is skipped', () => {
     expect(sectionsWithRows(pageFor('broomfield_co'))).toEqual(['closures', 'trash', 'transit', 'events', 'help']);
-    expect(sectionsWithRows(pageFor('moreno_valley_ca'))).toEqual(['closures', 'trash']);
+    expect(sectionsWithRows(pageFor('moreno_valley_ca'))).toEqual(['closures', 'trash', 'transit']);
   });
 });
 

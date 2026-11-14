@@ -3,7 +3,11 @@
  *  predicted or paraphrased from memory. Refresh every year (THANKSGIVING_PAGE_YEAR below, and data-updated.json).
  *
  *  Brookings and Moreno Valley: rewritten 2026-11-04 from the 2026-10-24 read (checkedOn stays 2026-10-24).
- *  Broomfield: read 2026-11-04. compass.broomfield.org is blocked by robots.txt, so it appears only in `linkOnly`. */
+ *  Broomfield: read 2026-11-04. compass.broomfield.org is blocked by robots.txt, so it appears only in `linkOnly`.
+ *
+ *  Reread 2026-11-14 (owner B4, .claude/specs/thanksgiving-2026.md; copies in .claude/evidence/thanksgiving-2026-11/):
+ *  cityofbrookings-sd.gov and broomfield.org refused in strict robots mode (an AI crawler named), so their rows keep the
+ *  earlier read; brookingslibrary.org, moreno-valley.ca.us, moval.gov, riversidetransit.com and broomfieldfish.org read. */
 import type { HolidayFact, HolidayEvent, HolidayPageData, Source } from '../../lib/holiday-page';
 import { dataUpdatedOn } from './data-updated';
 import { occurrenceDay } from '../../lib/holiday-calendar';
@@ -19,6 +23,9 @@ const BK_COLLECTIONS: Source = { name: 'City of Brookings: Landfill and Collecti
 const BK_HOLIDAYS: Source = { name: 'City of Brookings: City Holidays', url: 'https://www.cityofbrookings-sd.gov/89/City-Holidays' };
 const BK_LIBRARY: Source = { name: 'Brookings Public Library', url: 'https://www.brookingslibrary.org/' };
 const BK_CHECKED = '2026-10-24';
+const BK_RECHECKED = '2026-11-14';
+// SDSU events calendar rows sdsu_events 21522/21523 (scraped 2026-10-23): "McCrory Gardens Closed - Thanksgiving Break", Nov 26 and 27.
+const BK_MCCRORY: Source = { name: 'South Dakota State University: Events', url: 'https://www.sdstate.edu/events/2026/11/mccrory-gardens-closed-thanksgiving-break' };
 
 /** What the Thursday-holiday rule moves for each side of town (lib/trash-schedule.ts upcomingHolidayShifts). */
 export interface BrookingsTrashMoves { south: string[]; north: string[] }
@@ -63,13 +70,20 @@ function brookingsFacts(moves: BrookingsTrashMoves): HolidayFact[] {
       source: BK_COLLECTIONS, checkedOn: BK_CHECKED,
     },
     {
+      section: 'closures', status: 'confirmed', change: 'closed', label: 'McCrory Gardens',
+      value: 'Closed Thu Nov 26 and Fri Nov 27.',
+      // No meta: the description's 155 characters keep the recycling move instead.
+      closedOn: ['2026-11-26', '2026-11-27'],
+      source: BK_MCCRORY, checkedOn: '2026-10-23',
+    },
+    {
       section: 'hours', status: 'confirmed', label: 'Library (regular hours)',
       value: 'Mon–Thu 9:30 a.m.–8 p.m., Fri–Sat 9:30 a.m.–5:30 p.m., Sun 1–5 p.m.',
-      source: BK_LIBRARY, checkedOn: BK_CHECKED,
+      source: BK_LIBRARY, checkedOn: BK_RECHECKED,
     },
     {
       section: 'closures', status: 'unconfirmed', label: 'Library on Thanksgiving', meta: 'Library',
-      source: BK_LIBRARY, checkedOn: BK_CHECKED,
+      source: BK_LIBRARY, checkedOn: BK_RECHECKED,
       checkAt: { label: 'Brookings Public Library calendar', url: 'https://www.brookingslibrary.org/calendar.php', phone: '605-692-9407' },
     },
   ];
@@ -81,6 +95,9 @@ const MV_LANDFILL: Source = { name: 'City of Moreno Valley: Landfill and transfe
 const MV_LIBRARY: Source = { name: 'Moreno Valley Public Library', url: 'https://moval.gov/mv-library/' };
 const MV_CITY: Source = { name: 'City of Moreno Valley', url: 'https://www.moreno-valley.ca.us/' };
 const MV_CHECKED = '2026-10-24';
+const MV_RECHECKED = '2026-11-14';
+// RTA press release dated Nov 12, 2026 (linked from riversidetransit.com's front page "Latest News", read 2026-11-14).
+const MV_RTA: Source = { name: 'Riverside Transit Agency: 2026-2027 Holiday Schedule', url: 'https://www.riversidetransit.com/index.php/news-a-publications/latest-news/1102-2026-2027-holiday-schedule' };
 
 const MORENO_FACTS: HolidayFact[] = [
   {
@@ -89,7 +106,14 @@ const MORENO_FACTS: HolidayFact[] = [
     value: 'No collection on Thanksgiving Day. Pickups for the rest of that week run one day late.',
     clarify: "Thursday's pickup moves to Friday and Friday's to Saturday; Monday to Wednesday are unchanged.",
     meta: 'Trash pickup one day late after Nov 26',
-    source: MV_WASTE, checkedOn: MV_CHECKED,
+    source: MV_WASTE, checkedOn: MV_RECHECKED,
+  },
+  {
+    section: 'transit', status: 'confirmed', change: 'closed', label: 'RTA buses',
+    value: 'No bus service Thu Nov 26. Buses run on a regular schedule Wed Nov 25 and Fri Nov 27.',
+    clarify: 'The Customer Information Center, (951) 565-5002, is closed Thu Nov 26.',
+    meta: 'No RTA buses Nov 26',
+    source: MV_RTA, checkedOn: MV_RECHECKED,
   },
   {
     section: 'closures', status: 'unconfirmed', label: 'City offices', meta: 'City offices',
@@ -99,24 +123,26 @@ const MORENO_FACTS: HolidayFact[] = [
   {
     section: 'closures', status: 'unconfirmed', label: 'Badlands Sanitary Landfill', meta: 'Landfill',
     clarify: 'Regular hours 6 a.m.–4:30 p.m. Mon–Sat; the city page lists it closed Sundays and holidays without naming them.',
-    source: MV_LANDFILL, checkedOn: MV_CHECKED,
+    source: MV_LANDFILL, checkedOn: MV_RECHECKED,
     checkAt: { label: 'Call the landfill', url: MV_LANDFILL.url, phone: '951-486-3200' },
   },
   {
     section: 'closures', status: 'unconfirmed', label: 'Waste Management Transfer Station',
     clarify: 'Regular hours 7 a.m.–2 p.m. Mon–Fri and 7 a.m.–1 p.m. Sat; the city page lists it closed holidays without naming them.',
-    source: MV_LANDFILL, checkedOn: MV_CHECKED,
+    source: MV_LANDFILL, checkedOn: MV_RECHECKED,
     checkAt: { label: 'Call the transfer station', url: MV_LANDFILL.url, phone: '800-774-0222' },
   },
   {
     section: 'hours', status: 'confirmed', label: 'Library (regular hours)',
     value: 'Main Library Mon–Thu 9 a.m.–8 p.m., Fri 9 a.m.–6 p.m., Sat 9 a.m.–5 p.m., Sun noon–5 p.m. MV Mall and Iris Plaza branches Mon–Fri 10 a.m.–8 p.m., Sat 10 a.m.–6 p.m.',
-    source: MV_LIBRARY, checkedOn: MV_CHECKED,
+    source: MV_LIBRARY, checkedOn: MV_RECHECKED,
   },
   {
+    // The library's Tockify rows (events 6228/303372/304267, 6225/303369/304264) say closed Nov 26-27 and closing at 5 p.m.
+    // Nov 25; the owner's condition (B2) was a confirmation on moval.gov/mv-library, which on 2026-11-14 links only the 2025 PDF.
     section: 'closures', status: 'unconfirmed', label: 'Library on Thanksgiving', meta: 'Library',
-    clarify: 'The library publishes its holiday schedule as a PDF; the 2026 schedule was not posted.',
-    source: MV_LIBRARY, checkedOn: MV_CHECKED,
+    clarify: "The library's page links its 2025 holiday schedule; the 2026 schedule was not posted.",
+    source: MV_LIBRARY, checkedOn: MV_RECHECKED,
     checkAt: { label: 'Moreno Valley Public Library', url: MV_LIBRARY.url },
   },
 ];
@@ -125,6 +151,8 @@ const MORENO_FACTS: HolidayFact[] = [
 const BF_CHECKED = '2026-11-04';
 /** Second read (Broomfield AdSense plan F9): the city, RTD and waste pages had no Thanksgiving notice yet, FISH's page did. */
 const BF_RECHECKED = '2026-11-11';
+/** broomfieldfish.org reread 2026-11-14 (B4); broomfield.org was refused (strict robots), so the city rows keep 2026-11-11. */
+const BF_FISH_CHECKED = '2026-11-14';
 const BF_LIBRARY: Source = { name: 'City and County of Broomfield: Library', url: 'https://www.broomfield.org/276/Library-Home' };
 const BF_REC: Source = { name: 'City and County of Broomfield: Recreation Facilities Hours', url: 'https://www.broomfield.org/1452/Recreation-Facilities-Hours' };
 const BF_NEWS: Source = { name: 'City and County of Broomfield: News Flash', url: 'https://www.broomfield.org/CivicAlerts.aspx?CID=-1' };
@@ -182,12 +210,12 @@ const BROOMFIELD_FACTS: HolidayFact[] = [
     meta: 'FISH food bank closed Nov 26–27',
     closedOn: ['2026-11-26', '2026-11-27'],
     clarify: 'Questions about access to food: 303-465-1600 or help@broomfieldfish.org.',
-    source: BF_FISH, checkedOn: BF_RECHECKED,
+    source: BF_FISH, checkedOn: BF_FISH_CHECKED,
   },
   {
     section: 'hours', status: 'confirmed', label: 'Broomfield FISH marketplace (regular hours)',
     value: 'Mon 12–4:30 p.m., Tue 10 a.m.–3:30 p.m., Wed 1–6 p.m., Fri 12–4:30 p.m.; closed Thursdays. 6 Garden Center.',
-    source: BF_FISH, checkedOn: BF_CHECKED,
+    source: BF_FISH, checkedOn: BF_FISH_CHECKED,
   },
   {
     section: 'help', status: 'confirmed', label: 'Food drive at the Turkey Day race',
@@ -218,6 +246,18 @@ const BROOMFIELD_EVENTS: HolidayEvent[] = [
 ];
 
 export const THANKSGIVING_TOWN_IDS = ['brookings_sd', 'moreno_valley_ca', 'broomfield_co'] as const;
+
+/** Towns whose event calendars feed the Events group (lib/holiday-calendar-events.ts), each with the rows it leaves out:
+ *  key (story slug) -> reason, shown in the build log. Brookings takes no part (owner 2026-11-14: no events section). */
+export const THANKSGIVING_CALENDAR_EXCLUDES: Record<string, Record<string, string>> = {
+  moreno_valley_ca: {
+    'event-330656': 'raw_data has no description; not confirmed as an event (owner 2026-11-14)',
+    'event-6228': 'library closure, not an event; see the Library on Thanksgiving row',
+    'event-303372': 'library closure, not an event; see the Library on Thanksgiving row',
+    'event-304267': 'library closure, not an event; see the Library on Thanksgiving row',
+  },
+  broomfield_co: {},
+};
 
 /** Page data for a town, or null where there is no Thanksgiving page. Brookings needs the computed pickup moves. */
 export function buildThanksgivingPage(townId: string, brookingsMoves?: BrookingsTrashMoves): HolidayPageData | null {

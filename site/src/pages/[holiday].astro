@@ -4,12 +4,16 @@
  *  not_found_handling), not a redirect. A page exists for a town only with at least one confirmed row from an
  *  official source (config/holiday-pages/registry.ts). Never noindex: inside the window the title carries the
  *  year, outside it the page is a standing page with last season's facts labelled by year
- *  (.claude/specs/evergreen-holidays.md). */
+ *  (.claude/specs/evergreen-holidays.md). Rows from the town's own event calendars are added here, at build time
+ *  (lib/holiday-calendar-events.ts); every match is printed to the build log. */
 import HolidayPage from '../components/HolidayPage.astro';
 import { siteConfig } from '../lib/site-config';
 import { HOLIDAY_PAGE_DEFS } from '../config/holiday-pages/calendar';
-import { holidayPageFor } from '../config/holiday-pages/registry';
+import { calendarExcludesFor, holidayPageFor } from '../config/holiday-pages/registry';
 import { resolvePageState } from '../lib/holiday-calendar';
+import { getFacilities, getUpcomingStories } from '../lib/db';
+import { buildTownEventsView } from '../lib/events-town-view';
+import { formatCalendarReport, matchCalendarEvents } from '../lib/holiday-calendar-events';
 
 export function getStaticPaths() {
   return HOLIDAY_PAGE_DEFS.flatMap((d) => (holidayPageFor(d.slug, siteConfig.townId) ? [{ params: { holiday: d.slug } }] : []));
@@ -18,5 +22,21 @@ export function getStaticPaths() {
 const entry = holidayPageFor(Astro.params.holiday as string, siteConfig.townId);
 if (!entry) throw new Error(`no holiday page for ${Astro.params.holiday} / ${siteConfig.townId}`);
 const state = resolvePageState(entry.def, entry.page.year, Date.now(), siteConfig.timezone);
+
+let page = entry.page;
+const exclude = calendarExcludesFor(entry.def.slug, siteConfig.townId);
+if (exclude) {
+  // The same rows /events/ shows (frozen filter, merge, in-town / nearby), with room for the whole window.
+  const [stories, facilities] = await Promise.all([getUpcomingStories(['event'], 600), getFacilities()]);
+  const { displayed, distanceOf, nearbyRows } = buildTownEventsView(stories, [], facilities);
+  const nearby = new Set(nearbyRows.map((r) => r.item));
+  const { events, report } = matchCalendarEvents(
+    entry.def, entry.page.year,
+    displayed.map((item) => (nearby.has(item) ? { item, nearbyMiles: distanceOf.get(item) ?? null } : { item })),
+    siteConfig.timezone, exclude,
+  );
+  for (const line of formatCalendarReport(entry.def.slug, siteConfig.townId, report)) console.log(line);
+  if (events.length > 0) page = { ...page, events: [...page.events, ...events] };
+}
 ---
-<HolidayPage page={entry.page} def={entry.def} state={state} hasClosures={!!siteConfig.hasClosureWatch} />
+<HolidayPage page={page} def={entry.def} state={state} hasClosures={!!siteConfig.hasClosureWatch} />

@@ -122,7 +122,9 @@ describe('hero and insights', () => {
     expect(JSON.stringify(h)).not.toMatch(/\b0\b/);
   });
   it('counts places that are shut, not pickups or trains that do not run', () => {
-    expect(closedPlaces(bkThanks)).toBe(2); // City offices, Landfill
+    expect(closedPlaces(bkThanks)).toBe(3); // City offices, Landfill, McCrory Gardens (SDSU calendar, added 2026-11-14)
+    // Moreno's RTA row is closed, but a bus that does not run is not a place.
+    expect(closedPlaces(buildThanksgivingPage('moreno_valley_ca')!)).toBe(0);
     // F9 (2026-11-11): the hero said "2 places closed" for Thanksgiving, but Tree Branch closes Sat Nov 28.
     expect(closedPlaces(bfThanks)).toBe(2); // any day: Tree Branch Recycle, FISH food bank
     expect(closedPlaces(bfThanks, '2026-11-26')).toBe(1); // on Thanksgiving: FISH food bank only
