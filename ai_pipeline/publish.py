@@ -56,7 +56,7 @@ import json
 import os
 import re
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
@@ -508,7 +508,19 @@ _MIN_RECURRING_OCCURRENCES = 3
 _MAX_SERIES_DATES_SHOWN = 8
 
 
-def group_recurring_events(rows: list[dict], tz: ZoneInfo, now: datetime | None = None) -> list[dict]:
+def frozen_show_until(cfg: dict) -> dict[str, date]:
+    """Frysta eventkällor (ägaren 2026-11-13, configs data_sources.events.sources[].frozen): källnamn -> sista lokala datum
+    som visas (since + show_days). site/src/lib/frozen-sources.mjs döljer senare rader; seriens datumlista får inte nämna dem."""
+    sources = ((cfg.get("data_sources") or {}).get("events") or {}).get("sources") or []
+    return {
+        s["name"]: date.fromisoformat(s["frozen"]["since"]) + timedelta(days=int(s["frozen"]["show_days"]))
+        for s in sources if isinstance(s, dict) and s.get("frozen")
+    }
+
+
+def group_recurring_events(
+    rows: list[dict], tz: ZoneInfo, now: datetime | None = None, show_until: dict[str, date] | None = None,
+) -> list[dict]:
     """Kollapsa ett återkommande programs många nästan identiska instanser
     till EN kanonisk serie-rad. Körs EFTER group_event_slots (som bara
     slår ihop tidsluckor SAMMA DAG) -- den här grupperar över HELA
@@ -520,6 +532,10 @@ def group_recurring_events(rows: list[dict], tz: ZoneInfo, now: datetime | None 
     under "Recently" med sitt startdatum (Glasgow, 2026-10-24).
     series_has_upcoming säger om det fanns någon; finns ingen (alla passerade)
     behålls det gamla beteendet och publish_table rör inte en publicerad serie.
+
+    show_until (frozen_show_until): för en fryst källa listar series_dates/series_count bara datum t.o.m. källans
+    sista visade dag (ägaren 2026-11-14). Nästa förekomst (occurs_at) räknas som förut, så en serie vars nästa
+    datum ligger efter gränsen döljs av sajtens frozen-filter i stället för att hamna under "Recently".
     """
     now = now or datetime.now(timezone.utc)
     today_local = now.astimezone(tz).date()
@@ -555,10 +571,14 @@ def group_recurring_events(rows: list[dict], tz: ZoneInfo, now: datetime | None 
         base_row["title"], _ = strip_slot(base_row.get("title") or "")
         base_row["is_recurring_series"] = True
         base_row["series_has_upcoming"] = bool(upcoming)
-        base_row["series_dates"] = [
-            fmt_dt(m.get("starts_at"), with_time=True, tz=tz) for m in shown[:_MAX_SERIES_DATES_SHOWN]
+        limit = (show_until or {}).get(key[1])
+        listed = shown if limit is None else [
+            m for m in shown if isinstance(m.get("starts_at"), datetime) and m["starts_at"].astimezone(tz).date() <= limit
         ]
-        base_row["series_count"] = len(shown)
+        base_row["series_dates"] = [
+            fmt_dt(m.get("starts_at"), with_time=True, tz=tz) for m in listed[:_MAX_SERIES_DATES_SHOWN]
+        ]
+        base_row["series_count"] = len(listed)
         merged.append(base_row)
     return merged
 
@@ -942,7 +962,7 @@ def publish_table(
 
     if table == "events":
         rows = group_event_slots(rows, tz)
-        rows = group_recurring_events(rows, tz)
+        rows = group_recurring_events(rows, tz, show_until=frozen_show_until(cfg))
         rows = dedupe_cross_source_events(rows, tz, venue_registry)
 
     # Summary Tone Prompts (see NEEDS-HUMAN-REVIEW.md): the opening-diversity

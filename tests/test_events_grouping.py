@@ -4,10 +4,12 @@
 - group_recurring_events() collapses a program repeated 3+ times into one
   canonical series instead of one near-duplicate page per occurrence.
 """
-from datetime import datetime, timezone
+import json
+from datetime import date, datetime, timezone
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from ai_pipeline.publish import group_recurring_events, has_substance
+from ai_pipeline.publish import frozen_show_until, group_recurring_events, has_substance
 
 UTC = timezone.utc
 PACIFIC = ZoneInfo("America/Los_Angeles")
@@ -118,6 +120,37 @@ def test_a_fully_past_series_keeps_the_old_behaviour_and_is_flagged():
     [series] = group_recurring_events(rows, LONDON, now=datetime(2026, 12, 1, tzinfo=UTC))
     assert series["starts_at"] == datetime(2026, 10, 2, tzinfo=UTC)
     assert series["series_has_upcoming"] is False and series["series_count"] == 3
+
+
+# Frozen sources (owner 2026-11-14): a series from a frozen feed lists no date after the source's last shown day.
+# Real rows: events 6206, 24447, 99683, 175535 (moreno_valley_ca, source library, "IRIS PLAZA: Talk MoVal", one per date).
+def _talk_moval():
+    return [
+        {"id": i, "title": "IRIS PLAZA: Talk MoVal", "source": "library", "starts_at": datetime(2026, 12, d, 1, 0, tzinfo=UTC), "raw_data": {}}
+        for i, d in ((24447, 4), (99683, 11), (175535, 18))
+    ] + [{"id": 6206, "title": "IRIS PLAZA: Talk MoVal", "source": "library", "starts_at": datetime(2026, 11, 20, 1, 0, tzinfo=UTC), "raw_data": {}}]
+
+
+def test_frozen_show_until_reads_the_town_config():
+    cfg = json.loads((Path(__file__).resolve().parent.parent / "configs" / "moreno_valley_ca.json").read_text(encoding="utf-8"))
+    assert frozen_show_until(cfg) == {"city_events": date(2026, 11, 27), "library": date(2026, 11, 27)}
+    assert frozen_show_until({}) == {}
+
+
+def test_a_frozen_series_lists_no_date_after_the_show_limit():
+    now = datetime(2026, 11, 14, 14, 0, tzinfo=UTC)
+    [series] = group_recurring_events(_talk_moval(), PACIFIC, now=now, show_until={"library": date(2026, 11, 27)})
+    assert series["series_dates"] == ["Thu, Nov 19, 2026 at 5:00 PM"] and series["series_count"] == 1
+    assert series["starts_at"] == datetime(2026, 11, 20, 1, 0, tzinfo=UTC)  # the next occurrence itself is unchanged
+    [unfrozen] = group_recurring_events(_talk_moval(), PACIFIC, now=now)
+    assert unfrozen["series_count"] == 4
+
+
+def test_a_frozen_series_whose_next_date_is_past_the_limit_lists_nothing():
+    now = datetime(2026, 11, 28, 14, 0, tzinfo=UTC)
+    [series] = group_recurring_events(_talk_moval(), PACIFIC, now=now, show_until={"library": date(2026, 11, 27)})
+    assert series["series_dates"] == [] and series["series_count"] == 0
+    assert series["starts_at"] == datetime(2026, 12, 4, 1, 0, tzinfo=UTC)  # hidden by the site's frozen filter, not "Recently"
 
 
 class _Cur:
