@@ -55,7 +55,7 @@ import {
 } from './this-week-images';
 import { THIS_WEEK_IMAGES } from '../config/this-week-images';
 import { holidayPoolSizesDueSoon, holidayPoolSizeForWeek as _holidayPoolSizeForWeek, type DateYMD } from './holidays';
-import { HOLIDAYS, HOLIDAY_IMAGES } from '../config/holidays';
+import { townHolidays, HOLIDAY_IMAGES } from '../config/holidays';
 import { sectionsFor } from './section-hero';
 
 let checked = false;
@@ -446,7 +446,7 @@ function describeCoverage(coverage: WeekCoverage[]): string {
   return coverage.map((w) => `${w.isoYearWeek} (${w.season}): ${w.poolSize} image(s)`).join(', ');
 }
 
-/** `holidayPoolSizeForWeek()` bound to this town's HOLIDAYS/HOLIDAY_IMAGES --
+/** `holidayPoolSizeForWeek()` bound to this town's townHolidays()/HOLIDAY_IMAGES --
  *  the actual logic (and its 2026-10-07 "holiday-blind" backstory) lives in
  *  lib/holidays.ts, tested directly there (holidays.test.ts) since
  *  build-checks.ts itself can't be imported under vitest (db.ts calls
@@ -456,7 +456,7 @@ function describeCoverage(coverage: WeekCoverage[]): string {
  *  pool never gets blamed on an empty season pool it was never going to
  *  use. */
 function holidayPoolSizeForWeek(monday: DateYMD, sunday: DateYMD): number {
-  return _holidayPoolSizeForWeek(HOLIDAYS, HOLIDAY_IMAGES, TOWN_ID, monday, sunday);
+  return _holidayPoolSizeForWeek(townHolidays(TOWN_ID), HOLIDAY_IMAGES, TOWN_ID, monday, sunday);
 }
 
 /** "This week" image pool, forward-looking coverage guardrail -- see
@@ -628,7 +628,7 @@ const HOLIDAY_MIN_POOL_SIZE = 3;
  *  holiday's pool either. */
 function assertHolidayPoolSizes(now: Date): void {
   const today = localDateParts(now, siteConfig.timezone);
-  const dueSoon = holidayPoolSizesDueSoon(HOLIDAYS, HOLIDAY_IMAGES, TOWN_ID, today, HOLIDAY_WINDOW_WARNING_DAYS);
+  const dueSoon = holidayPoolSizesDueSoon(townHolidays(TOWN_ID), HOLIDAY_IMAGES, TOWN_ID, today, HOLIDAY_WINDOW_WARNING_DAYS);
   const tooSmall = dueSoon.filter((c) => c.poolSize < HOLIDAY_MIN_POOL_SIZE);
   if (tooSmall.length === 0) return;
 

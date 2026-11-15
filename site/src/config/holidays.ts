@@ -21,6 +21,8 @@
 import type { Town } from './category-images';
 import { GLASGOW_HOLIDAY_IMAGES } from './gb/glasgow-images';
 import { notDenied } from './gb/image-denylist';
+import { ALL_CONFIGS } from '../lib/site-config';
+import { holidayIdsFor } from '../lib/country-profile';
 
 export type HolidayId =
   | 'halloween' | 'thanksgiving' | 'christmas'
@@ -90,6 +92,16 @@ export function holidayDefinitionsFor(ids: string[]): HolidayDefinition[] {
     if (!def) throw new Error(`Unknown holiday id in country profile: ${id}`);
     return def;
   });
+}
+
+/** The holiday definitions a town's photo pool rotates on: its country (+ nation)
+ *  profile resolved through holidayDefinitionsFor(). US towns get exactly
+ *  HOLIDAYS; Glasgow gets the gb + scotland list (Bonfire Night, St Andrew's
+ *  Day, Hogmanay, ...), not the US one. */
+export function townHolidays(town: string): HolidayDefinition[] {
+  const cfg = ALL_CONFIGS.find((c) => c.townId === town);
+  if (!cfg) throw new Error(`townHolidays: unknown town "${town}"`);
+  return holidayDefinitionsFor(holidayIdsFor(cfg.country, cfg.nation));
 }
 
 export interface HolidayImage {

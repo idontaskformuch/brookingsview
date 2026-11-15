@@ -27,7 +27,7 @@ import type { ImageRef } from './images';
 import { stableHash, seasonForMonth, type Season } from './this-week-images';
 import { weekInfoForInstant } from './this-week';
 import { resolveActiveHoliday } from './holidays';
-import { HOLIDAYS, holidayImagesFor } from '../config/holidays';
+import { townHolidays, holidayImagesFor } from '../config/holidays';
 import { thisWeekImagesFor } from '../config/this-week-images';
 import { categoryImagesFor } from '../config/category-images';
 import type { ImageCategory } from './images';
@@ -128,7 +128,7 @@ export function getSectionHero(
 
   const seasonPool: PoolImage[] = opts.seasonPool
     ?? thisWeekImagesFor(town).filter((img) => img.seasons.includes(season));
-  const match = resolveActiveHoliday(HOLIDAYS, week.monday, week.sunday);
+  const match = resolveActiveHoliday(townHolidays(town), week.monday, week.sunday);
   const holidayPool = opts.holidayPool ?? (match ? holidayImagesFor(town, match.holiday) : []);
 
   const seen = new Set<string>();

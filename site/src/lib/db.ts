@@ -47,7 +47,7 @@ import { calendarDateParts } from './calendar-date';
 import { selectThisWeekImage, type Season } from './this-week-images';
 import type { ThisWeekImage } from '../config/this-week-images';
 import { resolveActiveHoliday, selectHolidayImage, type DateYMD } from './holidays';
-import { HOLIDAYS, holidayImagesFor, type HolidayImage } from '../config/holidays';
+import { townHolidays, holidayImagesFor, type HolidayImage } from '../config/holidays';
 import type { MeetingDecision } from './meeting-decisions';
 import { FROZEN_EVENT_SOURCES, hiddenFrozenSlugs } from './frozen-sources.mjs';
 
@@ -841,7 +841,7 @@ export async function resolveThisWeekImage(
   // town's pool for it is empty -- same "never silently degrade, but never
   // hard-fail over a thin holiday pool either" reasoning a thin season
   // pool already gets via the build-time warning instead of a throw.
-  const holidayMatch = resolveActiveHoliday(HOLIDAYS, weekMonday, weekSunday);
+  const holidayMatch = resolveActiveHoliday(townHolidays(TOWN_ID), weekMonday, weekSunday);
   const holidayPool = holidayMatch ? holidayImagesFor(TOWN_ID, holidayMatch.holiday) : [];
 
   const existing = (await sql`

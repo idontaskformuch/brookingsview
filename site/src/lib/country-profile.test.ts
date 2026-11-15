@@ -3,8 +3,8 @@ import {
   countryProfile, formatClockCompact, formatDateLong, holidayIdsFor, nationProfile,
   placeAbbr, placeLabel, temperatureForDisplay, validatePlaceConfig,
 } from './country-profile';
-import { HOLIDAYS, holidayDefinitionsFor } from '../config/holidays';
-import { computeHolidayDate } from './holidays';
+import { HOLIDAYS, holidayDefinitionsFor, townHolidays } from '../config/holidays';
+import { computeHolidayDate, resolveActiveHoliday } from './holidays';
 import { ALL_CONFIGS } from './site-config';
 import { localDayNumber, localHourOf } from './local-day';
 
@@ -44,6 +44,22 @@ describe('country profiles', () => {
 describe('holidays per country', () => {
   it('us profile resolves to exactly HOLIDAYS, same order', () => {
     expect(holidayDefinitionsFor(holidayIdsFor('us'))).toEqual(HOLIDAYS);
+  });
+
+  it('townHolidays: every US town gets exactly HOLIDAYS (unchanged list and order)', () => {
+    const us = ALL_CONFIGS.filter((c) => c.country === 'us');
+    expect(us.map((c) => c.townId).sort()).toEqual(['brookings_sd', 'broomfield_co', 'moreno_valley_ca']);
+    for (const c of us) expect(townHolidays(c.townId)).toEqual(HOLIDAYS);
+  });
+
+  it('townHolidays: Glasgow rotates on gb + scotland, so the St Andrew week is a holiday week', () => {
+    const glasgow = townHolidays('glasgow');
+    expect(glasgow.map((d) => d.id)).toEqual([...holidayIdsFor('gb', 'scotland')]);
+    expect(glasgow.map((d) => d.id)).not.toContain('thanksgiving');
+    const week = [{ y: 2026, m: 11, d: 30 }, { y: 2026, m: 12, d: 6 }] as const;
+    expect(resolveActiveHoliday(glasgow, ...week)?.holiday).toBe('st_andrews_day');
+    expect(resolveActiveHoliday(HOLIDAYS, ...week)).toBeNull();
+    expect(() => townHolidays('nowhere')).toThrow(/unknown town/);
   });
 
   it('scotland adds 2 Jan, Burns Night, St Andrew day, Hogmanay; england does not', () => {
