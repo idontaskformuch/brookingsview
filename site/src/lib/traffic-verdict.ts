@@ -8,6 +8,11 @@
  *    TRAFFIC_GRACE_HOURS and at least TRAFFIC_GRACE_READS reads. Reads are counted, not builds: a rebuild of the same read counts once.
  *    The count is published as /traffic-state.json and read back from the live site by the next build (like /evening-state.json).
  *
+ *  What counts (owner 2026-11-15, second ruling): the rows the page shows, current incidents plus "Earlier this week"
+ *  (lib/traffic-earlier.ts, the last 7 days). An indexed page is never without rows under its heading: with nothing to show the page is
+ *  noindex whatever the inertia says (the inertia then only matters after 7 days without any incident, and only as a count; QA
+ *  build.traffic-empty checks the built page).
+ *
  *  Both: the page never shows an empty message or an explanation line. A town whose latest read is older than
  *  TRAFFIC_READ_MAX_AGE_HOURS keeps the tag it has (nothing is counted). Unknown state (the live robots tag or the live state file cannot
  *  be read twice) stops the build, so the town is not deployed and the live page keeps its tag. The page writes its verdict for the
@@ -86,7 +91,7 @@ export function writeTrafficVerdict(townId: string, indexable: boolean, state?: 
   try { writeFileSync(resolve(dir, TRAFFIC_VERDICT_FILE), JSON.stringify({ townId, indexable, state })); } catch { /* read-only dist: the filter then treats the page as noindex */ }
 }
 
-/** What the page calls. `readAt` = the latest ok read's finish time, null when it is older than TRAFFIC_READ_MAX_AGE_HOURS or missing.
+/** What the page calls. `incidentCount` = the rows the page shows (current + earlier). `readAt` = the latest ok read's finish time, null when it is older than TRAFFIC_READ_MAX_AGE_HOURS or missing.
  *  Throws (stops the build, nothing is deployed) when an 'inertia' town's live tag or state cannot be read twice. `fetchImpl`, `retryMs`
  *  and `dir` exist for the test. */
 export async function trafficIndexingForTown(o: {
@@ -94,7 +99,7 @@ export async function trafficIndexingForTown(o: {
   fetchImpl?: typeof fetch; retryMs?: number; dir?: string;
 }): Promise<{ indexable: boolean }> {
   if (o.quiet || o.rule === 'standing') {
-    const indexable = !o.quiet;
+    const indexable = !o.quiet && o.incidentCount > 0;
     console.log(`[traffic] ${o.townId}: rule ${o.quiet ? 'quiet section' : 'standing'}, ${o.incidentCount} listed => indexable=${indexable}`);
     writeTrafficVerdict(o.townId, indexable, undefined, o.dir);
     return { indexable };
@@ -108,8 +113,15 @@ export async function trafficIndexingForTown(o: {
     throw new Error(`[traffic] ${o.townId}: could not read the live indexing state from ${o.siteUrl} (tried twice): ${failed.join('; ')}. `
       + `Build stopped: ${o.townId} is not deployed, so the live /traffic/ keeps its robots tag.`);
   }
-  const i = applyTrafficInertia({ townId: o.townId, hasIncidents: o.incidentCount > 0, readAt: o.readAt, wasIndexed: tag.value, state: st.value });
-  const held = o.readAt === null
+  const inertia = applyTrafficInertia({ townId: o.townId, hasIncidents: o.incidentCount > 0, readAt: o.readAt, wasIndexed: tag.value, state: st.value });
+  // Never an indexed page with nothing under its heading: the hard rule wins over a hold.
+  const emptyHeld = inertia.indexable && o.incidentCount === 0;
+  const i: TrafficInertia = emptyHeld
+    ? { indexable: false, state: { townId: o.townId, emptySince: null, emptyReads: 0, lastRead: o.readAt ?? inertia.state.lastRead }, hoursLeft: null, readsLeft: null }
+    : inertia;
+  const held = emptyHeld
+    ? 'nothing to show (no current or earlier incident): noindex, an indexed page is never empty'
+    : o.readAt === null
     ? `no read within ${TRAFFIC_READ_MAX_AGE_HOURS} h: tag kept, nothing counted`
     : i.hoursLeft !== null
       ? i.indexable

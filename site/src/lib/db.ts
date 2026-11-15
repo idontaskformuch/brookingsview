@@ -1637,6 +1637,8 @@ export interface TrafficIncident {
   lon: number | null;
   ends_at: string | null;
   last_seen_at: string;
+  /** The source's own start time, when it gives one. Optional: only getTrafficIncidentsStartedSince() below reads it. */
+  starts_at?: string | null;
   // Set once on insert, never touched by the ON CONFLICT DO UPDATE re-scrape
   // (see migration 011 and scrapers/parsers/traffic_v1.py's update_columns) --
   // the real "first seen" timestamp, unlike last_seen_at. Optional: only
@@ -1700,6 +1702,26 @@ export async function getTrafficIncidentsFromLatestRead(): Promise<TrafficIncide
        CASE severity WHEN 'closure' THEN 0 WHEN 'injury' THEN 1 WHEN 'incident' THEN 2 WHEN 'planned' THEN 3 ELSE 4 END,
        last_seen_at DESC
   `) as TrafficIncident[];
+}
+
+/** /traffic/ "Earlier this week" (lib/traffic-earlier.ts): every incident that started (the source's start time, else when a read first
+ *  saw it) within the last `days` days, active or not; the page drops the ones still listed and the ones outside town. */
+export async function getTrafficIncidentsStartedSince(days: number): Promise<TrafficIncident[]> {
+  return (await sql`
+    SELECT incident_type, title, description, road, severity, lat, lon, starts_at, ends_at, last_seen_at, created_at
+      FROM traffic_incidents
+     WHERE town_id = ${TOWN_ID}
+       AND COALESCE(starts_at, created_at) >= now() - (${days} || ' days')::interval
+  `) as TrafficIncident[];
+}
+
+/** When the latest successful read of the traffic feed started: the incidents it listed have last_seen_at at or after this time
+ *  (same cut as getTrafficIncidentsFromLatestRead()). */
+export async function getTrafficLatestReadStart(): Promise<string | null> {
+  const rows = await sql`
+    SELECT MAX(started_at) AS at FROM scrape_runs WHERE town_id = ${TOWN_ID} AND source_key = 'traffic' AND status = 'ok'
+  `;
+  return (rows[0] as { at: string | null })?.at ?? null;
 }
 
 /** When the traffic feed was last read successfully (scrape_runs, source 'traffic'). Unlike getTrafficLastChecked() this moves on a run

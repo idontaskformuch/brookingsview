@@ -14,6 +14,8 @@
  *  - no page mentions a domain on scripts/blocked-domains.json (a hijacked or unsafe domain);
  *  - no "Not confirmed" / "Page lists no year" status text (holiday rows, F9 2026-11-11);
  *  - none of the earlier AI statements (STALE_AI_CLAIMS, owner B6 2026-11-11), also in llms.txt;
+ *  - an indexed /traffic/ has at least one incident row (data-traffic-row: current or "Earlier this week") under its heading
+ *    (QA build.traffic-empty, owner 2026-11-15: an indexed page is never without content under the heading);
  *  - no "About this page" box is a heading with nothing under it (Broomfield AdSense plan F5, 2026-11-11: /election-results/'s slot held
  *    only an optional notice that Broomfield does not have).
  *
@@ -100,6 +102,9 @@ for (const file of walk(dist)) {
   if (url !== EXPLAINER_PAGE) for (const phrase of BOX) if (html.includes(phrase)) bad.push(`${url}: explanation box "${phrase}"`);
   for (const phrase of UNCONFIRMED) if (html.includes(phrase)) bad.push(`${url}: status text "${phrase}"`);
   for (const phrase of STALE_AI_CLAIMS) if (html.includes(phrase)) bad.push(`${url}: old AI statement "${phrase}"`);
+  if (url === '/traffic/' && !/<meta\s+name="robots"\s+content="noindex/i.test(html) && !html.includes('data-traffic-row=')) {
+    bad.push(`${url}: indexed with no incident row under the heading`);
+  }
   if (emptyAboutBox(html)) bad.push(`${url}: "About this page" heading with no text under it`);
   const past = timelessPastTense(html);
   if (past) bad.push(`${url}: standing holiday page says "${past}" (past tense)`);

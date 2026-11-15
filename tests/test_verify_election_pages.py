@@ -42,6 +42,14 @@ def test_traffic_status_line_is_an_empty_message():
     assert r.returncode == 1 and '/traffic/: empty message "No crashes or closures reported"' in r.stderr
 
 
+def test_indexed_traffic_page_without_rows_fails():
+    # QA build.traffic-empty (owner 2026-11-15, "Earlier this week"): an indexed /traffic/ is never without content under its heading.
+    # Fixture = broomfieldview.com/traffic/ as served 2026-11-15 15:34 UTC (build 048329a, robots index) with its one incident row and the
+    # lines that only come with rows removed: what 048329a's inertia built from the empty read of 14 Nov 23:01 UTC.
+    r = run("verify_no_empty_messages.mjs", ROOT / "tests" / "fixtures" / "qa_traffic_indexed_empty_2026-11-15")
+    assert r.returncode == 1 and "/traffic/: indexed with no incident row under the heading" in r.stderr
+
+
 HOLIDAY = ROOT / "tests" / "fixtures" / "qa_holiday_unconfirmed_2026-11-11"
 
 

@@ -107,15 +107,23 @@ describe('trafficIndexingForTown', () => {
   });
 
   it('404 state (first deploy of the rule) = a fresh count: the indexed page is held, the verdict and state are written', async () => {
-    const o = base(live('max-image-preview:large', null, 404));
+    // incidentCount = the rows the page shows (current + earlier, owner 2026-11-15): one earlier row, nothing current
+    const o = base(live('max-image-preview:large', null, 404), { incidentCount: 1 });
     expect(await trafficIndexingForTown(o)).toEqual({ indexable: true });
     const v = JSON.parse(readFileSync(join(o.dir!, '.traffic-verdict.json'), 'utf8'));
-    expect(v).toEqual({ townId: 'broomfield_co', indexable: true, state: { townId: 'broomfield_co', emptySince: READS[3].at, emptyReads: 1, lastRead: READS[3].at, indexed: true } });
+    expect(v).toEqual({ townId: 'broomfield_co', indexable: true, state: { townId: 'broomfield_co', emptySince: null, emptyReads: 0, lastRead: READS[3].at, indexed: true } });
   });
 
-  it('standing towns are indexed with no live read, even with nothing listed; a quiet section is never indexed', async () => {
+  it('nothing to show: noindex even while the inertia would hold (an indexed page is never empty, owner 2026-11-15)', async () => {
+    const o = base(live('max-image-preview:large', null, 404));
+    expect(await trafficIndexingForTown(o)).toEqual({ indexable: false });
+    const v = JSON.parse(readFileSync(join(o.dir!, '.traffic-verdict.json'), 'utf8'));
+    expect(v.state).toEqual({ townId: 'broomfield_co', emptySince: null, emptyReads: 0, lastRead: READS[3].at, indexed: false });
+  });
+
+  it('standing towns are indexed with no live read while the page shows rows; a quiet section is never indexed', async () => {
     const never = (() => { throw new Error('no live read expected'); }) as unknown as typeof fetch;
-    expect(await trafficIndexingForTown(base(never, { townId: 'moreno_valley_ca', rule: 'standing' }))).toEqual({ indexable: true });
+    expect(await trafficIndexingForTown(base(never, { townId: 'moreno_valley_ca', rule: 'standing', incidentCount: 3 }))).toEqual({ indexable: true });
     expect(await trafficIndexingForTown(base(never, { quiet: true, incidentCount: 2 }))).toEqual({ indexable: false });
   });
 
@@ -140,7 +148,9 @@ describe('/traffic/ page and config', () => {
     expect(page).toContain('noindex={!indexing.indexable}');
     expect(page).toMatch(/\{incidents\.length > 0 && <SectionRule/);
     expect(page).toMatch(/\{incidents\.length > 0 && \(\s*<div class="controls">/);
-    expect(page).toMatch(/\{siteConfig\.trafficSource && incidents\.length > 0 && \(\s*<p class="source">/);
+    expect(page).toMatch(/\{siteConfig\.trafficSource && shown > 0 && \(\s*<p class="source">/);
+    expect(page).toMatch(/\{siteConfig\.trafficSource && earlier\.length > 0 && \(\s*<section class="earlier"/);
+    expect(page).toContain('incidentCount: shown,');
   });
 
   it('the build publishes the inertia count as /traffic-state.json', () => {
