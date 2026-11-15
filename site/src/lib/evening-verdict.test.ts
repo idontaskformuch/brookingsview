@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { applyEveningInertia, decideEveningIndexing, type EveningState } from './evening-verdict';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { applyEveningInertia, decideEveningIndexing, indexingForTown, EVENING_VERDICT_FILE, type EveningState } from './evening-verdict';
 
 const tz = 'Europe/London';
 const now = new Date('2026-10-29T10:00:00Z');
@@ -78,5 +81,57 @@ describe('inertia (owner 2026-11-15): an indexed page goes noindex after >= 72 h
       indexable: true, verdict: { indexable: false, reason: 'below-items' }, inertia: { state: { belowBuilds: 2 } },
     });
     expect(decideEveningIndexing({ ...base, items: items(4, 3), approved: false, previouslyIndexable: true, townId: 'glasgow', state }).indexable).toBe(false);
+  });
+});
+
+describe('unknown state (owner 2026-11-15): a failed live read stops the build, it never flips the robots tag', () => {
+  // What glasgowloop.co.uk served on 2026-11-15: /tonight/'s robots meta and /evening-state.json, verbatim.
+  const LIVE_TAG = '<meta name="robots" content="noindex,follow,max-image-preview:large">';
+  const LIVE_STATE = '{"townId":"glasgow","belowSince":null,"belowBuilds":0}';
+  const ok = (url: string) => (url.endsWith('/evening-state.json')
+    ? new Response(LIVE_STATE, { status: 200 })
+    : new Response(`<html><head>${LIVE_TAG}</head></html>`, { status: 200 }));
+  const town = { townId: 'glasgow', siteUrl: 'https://glasgowloop.co.uk', layer: { mode: 'threshold' as const, indexApproved: true }, entries: [], osm: [], now, tz, retryMs: 0 };
+  const tmp = () => mkdtempSync(join(tmpdir(), 'evening-'));
+
+  it('robots tag unreadable twice (HTTP 503): the build throws, writes no verdict, and the state file is never published', async () => {
+    const dir = tmp();
+    const calls: string[] = [];
+    const fetchImpl = (async (u: URL) => { calls.push(u.pathname); return u.pathname === '/tonight/' ? new Response('', { status: 503 }) : ok(u.href); }) as unknown as typeof fetch;
+    const err = (await indexingForTown({ ...town, fetchImpl, dir }).catch((e: Error) => e)) as Error;
+    expect(err.message).toContain('/tonight/ answered HTTP 503');
+    expect(err.message).toContain('glasgow is not deployed, so the live /tonight/ and /this-weekend/ keep their robots tag');
+    expect(calls.filter((p) => p === '/tonight/')).toHaveLength(2); // one retry, no more
+    expect(existsSync(join(dir, EVENING_VERDICT_FILE))).toBe(false); // no verdict: no sitemap change, no evening-state.json in dist
+  });
+
+  it('state file unreadable twice (network error): the build throws', async () => {
+    const fetchImpl = (async (u: URL) => { if (u.pathname === '/evening-state.json') throw new TypeError('fetch failed'); return ok(u.href); }) as unknown as typeof fetch;
+    const err = await indexingForTown({ ...town, fetchImpl, dir: tmp() }).catch((e: Error) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toContain('/evening-state.json could not be read (TypeError)');
+    // the message must not look transient to scripts/build_retry.sh, or the whole build would be run again
+    expect((err as Error).message).not.toMatch(/fetch failed|ECONN|ETIMEDOUT|socket hang up/i);
+  });
+
+  it('a page with no robots meta is a failed read, not "indexable"', async () => {
+    const fetchImpl = (async (u: URL) => (u.pathname === '/tonight/' ? new Response('<html></html>', { status: 200 }) : ok(u.href))) as unknown as typeof fetch;
+    await expect(indexingForTown({ ...town, fetchImpl, dir: tmp() })).rejects.toThrow('/tonight/ has no robots meta');
+  });
+
+  it('first read fails, the retry succeeds: the build goes on, the tag stays as it was, and the state records indexed', async () => {
+    const dir = tmp();
+    let n = 0;
+    const fetchImpl = (async (u: URL) => (u.pathname === '/tonight/' && n++ === 0 ? new Response('', { status: 502 }) : ok(u.href))) as unknown as typeof fetch;
+    expect(await indexingForTown({ ...town, fetchImpl, dir })).toEqual({ indexable: false });
+    const v = JSON.parse(readFileSync(join(dir, EVENING_VERDICT_FILE), 'utf8'));
+    expect(v.state).toEqual({ townId: 'glasgow', belowSince: null, belowBuilds: 0, indexed: false });
+  });
+
+  it('a town that does not read the live site (not approved) is built as before', async () => {
+    const fetchImpl = (async () => { throw new Error('must not be called'); }) as unknown as typeof fetch;
+    const dir = tmp();
+    expect(await indexingForTown({ ...town, layer: { mode: 'threshold', indexApproved: false }, fetchImpl, dir })).toEqual({ indexable: false });
+    expect(JSON.parse(readFileSync(join(dir, EVENING_VERDICT_FILE), 'utf8')).state.indexed).toBe(false);
   });
 });
