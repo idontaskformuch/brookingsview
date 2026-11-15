@@ -79,3 +79,25 @@ jobs:
           name: qa-${{ matrix.town }}
           path: qa/out/${{ matrix.town }}.json
           retention-days: 14
+
+  # Owner 2026-11-15 (part 3, option A): the live sitemap and the robots tags of the data-driven pages, once a day per town, kept 90 days,
+  # so the next inventory can count index switches (scripts/snapshot_live_index.mjs). Glasgow: only the sitemap and the addresses its
+  # Cloudflare challenge already lets through. Plain reads with the builds' user agent: no browser, no analytics, never deploys.
+  index-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        town: [brookings_sd, moreno_valley_ca, broomfield_co, glasgow]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - run: node scripts/snapshot_live_index.mjs --town ${{ matrix.town }} --out qa/out/index-snapshot-${{ matrix.town }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: index-snapshot-${{ matrix.town }}-${{ github.run_id }}
+          path: qa/out/index-snapshot-${{ matrix.town }}.json
+          retention-days: 90
