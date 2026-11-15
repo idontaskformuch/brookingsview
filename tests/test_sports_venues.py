@@ -78,6 +78,9 @@ def mutated(fn):
     (lambda b: b["programs"][1].update(status="link"), "go in sports.register"),
     (lambda b: b.update(venues={"George Square": {"lat": 55.86, "lon": -4.25}}), "needs exactly"),
     (lambda b: b.update(venues={}, distance_origin="George Square"), "distance_origin"),
+    (lambda b: b["venues"]["Braehead Arena"].update(lat=None), "both null"),
+    (lambda b: b["venues"]["Braehead Arena"].update(town=""), "town: required"),
+    (lambda b: b.update(distance_origin="the Arena at Playsport"), "has no coordinates"),
     (lambda b: program_in(b, "glasgow-clan")["venue_overrides"][1].pop("quote"), "quote: required"),
 ])
 def test_config_mistakes_fail(fn, needle):
@@ -87,6 +90,22 @@ def test_config_mistakes_fail(fn, needle):
 
 def program_in(block, pid):
     return next(p for p in block["programs"] if p["id"] == pid)
+
+
+def test_venues_match_the_owner_approved_readings():
+    # Owner 2026-11-15: George Square + Braehead coordinates approved, shown as "about 5 miles from the city centre";
+    # Playsport gave 0 Nominatim hits twice -> town only, no distance. No street address is stored.
+    from math import asin, cos, radians, sin, sqrt
+    v = GLASGOW["sports"]["venues"]
+    o, b = v[GLASGOW["sports"]["distance_origin"]], v["Braehead Arena"]
+    dlat, dlon = radians(b["lat"] - o["lat"]), radians(b["lon"] - o["lon"])
+    h = sin(dlat / 2) ** 2 + cos(radians(o["lat"])) * cos(radians(b["lat"])) * sin(dlon / 2) ** 2
+    assert round(2 * 3958.8 * asin(sqrt(h))) == 5
+    assert (b["town"], v["the Arena at Playsport"]["town"]) == ("Renfrew", "East Kilbride")
+    assert v["the Arena at Playsport"]["lat"] is None and v["the Arena at Playsport"]["lon"] is None
+    for p in GLASGOW["sports"]["programs"]:
+        if p.get("home_venue"):
+            assert p["home_venue"] in v, p["id"]
 
 
 def test_seven_teams_have_a_source_and_the_rest_are_register_rows():

@@ -286,6 +286,15 @@
       { "id": "glasgow-tigers", "name": "Glasgow Tigers", "sport": "speedway", "group": "town", "status": "register_only", "note": "March-October; glasgowtigers.co.uk not read (owner)." },
       { "id": "west-of-scotland-rugby", "name": "West of Scotland", "sport": "rugby", "gender": "men", "group": "around", "status": "link", "link": "https://westofscotlandfc.co.uk/", "home_venue": "Burnbrae, Milngavie", "note": "Owner answer 6 F5 + 7 F10: out of the Glasgow list, link in 'around Glasgow'. Club site found by web search, not read. Scottish Rugby answer pending as for the other clubs." }
     ],
+    "distance_origin": "George Square",
+    "venues": {
+      "George Square": { "lat": 55.8611567, "lon": -4.2502189, "town": "Glasgow",
+        "source": "https://nominatim.openstreetmap.org/search?q=George+Square%2C+Glasgow", "fetched": "2026-11-15" },
+      "Braehead Arena": { "lat": 55.8767812, "lon": -4.3649192, "town": "Renfrew",
+        "source": "https://nominatim.openstreetmap.org/search?q=Braehead+Arena", "fetched": "2026-11-15" },
+      "the Arena at Playsport": { "lat": null, "lon": null, "town": "East Kilbride",
+        "source": "https://www.caledoniagladiators.com/mens-fixtures/ (\"PLAYSPORT STEWARTFIELD WAY, EAST KILBRIDE G74 4GT\"); Nominatim 0 hits twice, no more lookups (owner 2026-11-15)", "fetched": "2026-11-15" }
+    },
     "sources": [
       {
         "adapter": "sportmonks",

@@ -111,13 +111,19 @@ def validate_sports_config(cfg: dict) -> list[str]:
             if not isinstance(v, dict) or set(v) != _VENUE:
                 bad(f"venues[{name!r}]: needs exactly {', '.join(sorted(_VENUE))}")
                 continue
-            if not all(isinstance(v[k], (int, float)) and not isinstance(v[k], bool) for k in ("lat", "lon")):
-                bad(f"venues[{name!r}]: lat and lon must be numbers")
+            # null/null = no coordinates found (owner 2026-11-15): the town is shown, no distance.
+            if not (v["lat"] is None and v["lon"] is None) and not all(
+                    isinstance(v[k], (int, float)) and not isinstance(v[k], bool) for k in ("lat", "lon")):
+                bad(f"venues[{name!r}]: lat and lon must both be numbers, or both null")
+            if not (isinstance(v["town"], str) and v["town"].strip()):
+                bad(f"venues[{name!r}].town: required")
             if not (isinstance(v["fetched"], str) and _DATE.match(v["fetched"])):
                 bad(f"venues[{name!r}].fetched: YYYY-MM-DD")
     origin = block.get("distance_origin")
     if origin is not None and origin not in (places or {}):
         bad(f"distance_origin: {origin!r} is not in sports.venues")
+    elif origin is not None and isinstance(places[origin], dict) and places[origin].get("lat") is None:
+        bad(f"distance_origin: {origin!r} has no coordinates")
 
     for i, pair in enumerate(block.get("rivalries") or []):
         if not (isinstance(pair, list) and len(pair) == 2):
