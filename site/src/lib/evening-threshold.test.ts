@@ -75,8 +75,34 @@ describe('evaluateEveningThreshold', () => {
     expect(evaluateEveningThreshold({ ...base, openLateByDay: late(2) })).toMatchObject({ indexable: false, medianGroups: 2 });
     expect(evaluateEveningThreshold({ items: [], now: NOW, timezone: TZ, openLateByDay: late(50) })).toMatchObject({ indexable: false, reason: 'below-items', medianItems: 0 });
   });
-  it('hysteresis does not relax the group bar', () => {
+  it('groups (owner 2026-11-15): 3 to enter, an indexable town stays at 2.5 and goes at 2', () => {
     expect(evaluateEveningThreshold({ items: every(12, 2), now: NOW, timezone: TZ, previouslyIndexable: true })).toMatchObject({ indexable: false, reason: 'below-groups' });
+    const half = [...Array.from({ length: 7 }, (_, i) => night(i, 12, 2)), ...Array.from({ length: 7 }, (_, i) => night(7 + i, 12, 3))].flat();
+    expect(evaluateEveningThreshold({ items: half, now: NOW, timezone: TZ, previouslyIndexable: true })).toMatchObject({ indexable: true, reason: 'stay', medianGroups: 2.5 });
+    expect(evaluateEveningThreshold({ items: half, now: NOW, timezone: TZ, previouslyIndexable: false })).toMatchObject({ indexable: false, reason: 'below-groups' });
+  });
+
+  it('Glasgow as built 2026-11-15 09:06 UTC (median 9 items / 2.5 groups): an indexed page stays, a new one does not get in', () => {
+    // The 14 evenings of the 303ba14 battery build, per group as the read-only dump of that build's data gave them (evening_register,
+    // Ticketmaster, events; .claude/notes/evening-noindex-glasgow-2026-11-15.md), and the Open late places per evening.
+    const at = new Date('2026-11-15T09:06:00Z');
+    const nights: [Record<string, number>, number][] = [
+      [{ 'Comedy & shows': 3, Theatre: 1, '': 2, 'Live music': 6 }, 57], [{ 'Live music': 4 }, 52],
+      [{ '': 2, 'Comedy & shows': 2, 'Live music': 5 }, 52], [{ 'Live music': 9 }, 56],
+      [{ '': 1, 'Live music': 12 }, 62], [{ 'Live music': 14 }, 94],
+      [{ 'Live music': 11, 'Clubs & late': 1 }, 94], [{ 'Live music': 12, 'Comedy & shows': 2 }, 57],
+      [{ 'Live music': 4 }, 52], [{ 'Live music': 5, 'Comedy & shows': 2 }, 52],
+      [{ Film: 1, 'Comedy & shows': 1, 'Live music': 4 }, 56], [{ '': 1, 'Comedy & shows': 3, 'Live music': 11 }, 62],
+      [{ 'Live music': 8 }, 94], [{ 'Live music': 8, '': 1 }, 94],
+    ];
+    const first = Math.round(Date.UTC(2026, 10, 15) / 86_400_000);
+    const items = nights.flatMap(([groups], i) => Object.entries(groups).flatMap(([g, n]) =>
+      Array.from({ length: n }, () => ({ start: new Date(Date.UTC(2026, 10, 15 + i, 19)).toISOString(), group: g || null }))));
+    const openLateByDay = Object.fromEntries(nights.map(([, late], i) => [first + i, late]));
+    const v = evaluateEveningThreshold({ items, now: at, timezone: TZ, openLateByDay, previouslyIndexable: true });
+    expect(v.nights.map((n) => `${n.items}/${n.groups}`).join(' ')).toBe('12/4 4/2 9/3 9/2 13/2 14/2 12/3 14/3 4/2 7/3 6/4 15/3 8/2 9/2');
+    expect(v).toMatchObject({ indexable: true, reason: 'stay', medianItems: 9, medianGroups: 2.5 });
+    expect(evaluateEveningThreshold({ items, now: at, timezone: TZ, openLateByDay, previouslyIndexable: false })).toMatchObject({ indexable: false, reason: 'below-groups' });
   });
   it('mode never stays noindex whatever the data says', () => {
     expect(evaluateEveningThreshold({ items: every(30, 5), now: NOW, timezone: TZ, mode: 'never' })).toMatchObject({ indexable: false, reason: 'config' });

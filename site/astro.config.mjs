@@ -887,6 +887,19 @@ export default defineConfig({
   output: 'static',
   integrations: [
     {
+      // Evening-layer inertia (lib/evening-verdict.ts, owner 2026-11-15): the count the pages decided on is published as
+      // /evening-state.json, which the next build reads from the live site. No verdict file (no evening page built) = no state file.
+      name: 'evening-state',
+      hooks: {
+        'astro:build:done': async ({ dir }) => {
+          try {
+            const v = JSON.parse(fs.readFileSync(EVENING_VERDICT_PATH, 'utf8'));
+            if (v.townId === activeCity && v.state) fs.writeFileSync(path.join(fileURLToPath(dir), 'evening-state.json'), JSON.stringify(v.state));
+          } catch { /* no verdict this build */ }
+        },
+      },
+    },
+    {
       // Pre-launch towns (SiteConfig.noindexSite): public/ is copied into every build, so strip what belongs to the
       // LIVE sites (their games, Google/IndexNow verification files) and what advertises a site to crawlers/LLMs
       // (llms.txt, the news sitemap). Nothing here is needed for the pages themselves.

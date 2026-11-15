@@ -5,8 +5,9 @@
  *   - Measure: the MEDIAN over the next 14 evenings of (a) items and (b) distinct
  *     groups on that evening. A single big night (a stadium show) cannot carry a town.
  *   - Enter at a median of >= 6 items and >= 3 groups; once indexable, stay until the median falls
- *     below 5 items or 3 groups (hysteresis, so a town does not flap in and out of the
- *     sitemap on a quiet week).
+ *     below 5 items or 2.5 groups (hysteresis, so a town does not flap in and out of the
+ *     sitemap on a quiet week; the group exit bar from owner 2026-11-15). How long a page stays
+ *     indexed below the exit bar before it goes noindex is lib/evening-verdict.ts (72 h, 3 builds).
  *   - Config-driven: a town whose `eveningLayer.mode` is 'never' stays noindex whatever
  *     the data says (Brookings).
  *
@@ -22,7 +23,9 @@ export const EVENING_ENTER_ITEMS = 6;
 export const EVENING_EXIT_ITEMS = 5;
 /** Owner 2026-10-29: "Open late" counts as ONE group on an evening with at least this many places open late. Never as items. */
 export const EVENING_OPEN_LATE_MIN_PLACES = 3;
-export const EVENING_MIN_GROUPS = 3;
+/** Owner 2026-11-15: groups have an exit bar too -- in at a median of 3, an indexable town stays at 2.5, out at 2 or lower. */
+export const EVENING_ENTER_GROUPS = 3;
+export const EVENING_EXIT_GROUPS = 2.5;
 /** From this local hour "tonight" is as good as over and the window starts tomorrow. */
 export const EVENING_LAST_START_HOUR = 23;
 
@@ -94,7 +97,8 @@ export function evaluateEveningThreshold(opts: {
   if ((opts.mode ?? 'threshold') === 'never') return { ...base, indexable: false, reason: 'config' };
   const was = opts.previouslyIndexable === true;
   const itemsBar = was ? EVENING_EXIT_ITEMS : EVENING_ENTER_ITEMS;
+  const groupsBar = was ? EVENING_EXIT_GROUPS : EVENING_ENTER_GROUPS;
   if (medianItems < itemsBar) return { ...base, indexable: false, reason: 'below-items' };
-  if (medianGroups < EVENING_MIN_GROUPS) return { ...base, indexable: false, reason: 'below-groups' };
+  if (medianGroups < groupsBar) return { ...base, indexable: false, reason: 'below-groups' };
   return { ...base, indexable: true, reason: was ? 'stay' : 'enter' };
 }
