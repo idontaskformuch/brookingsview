@@ -6,7 +6,7 @@ import { SCOTLAND_BANK_HOLIDAYS } from '../config/holiday-pages/gb/bank-holidays
 import { buildChristmasPage } from '../config/holiday-pages/christmas';
 import { holidayPageDef } from '../config/holiday-pages/calendar';
 import {
-  daysWithCards, eventPopDays, eventsOn, factsOn, lastSeasonBankHoliday, seasonBankHolidays, seasonDays, seasonEvents, seasonHero, upcomingDays,
+  daysWithCards, eventPopDays, eventsOn, hoursRowsMissingRunStart, factsOn, lastSeasonBankHoliday, seasonBankHolidays, seasonDays, seasonEvents, seasonHero, upcomingDays,
 } from './holiday-season';
 import { matchRegisterRows, matchTicketmasterEvents } from './holiday-calendar-events';
 import { calendarExcludesFor } from '../config/holiday-pages/registry';
@@ -268,5 +268,16 @@ describe('front page: "Hogmanay and New Year" from 27 Dec to the last bank holid
     expect(lead('2026-12-29')).toMatchObject({ type: 'holiday', headline: 'Hogmanay and New Year', url: '/christmas/#dec-31' });
     expect(lead('2026-12-29').deck[0]).toBe('Hogmanay is Thursday, 31 December.');
     expect(lead('2027-01-02').deck[0]).toBe('2 January bank holiday is Monday, 4 January.');
+  });
+});
+
+describe("QA data.holiday-hours-dates (owner 2026-11-15): a run's standing-hours row names the run's first day", () => {
+  it('the page as it is: both Winter Wonderland rows name their first day (6 November, 20 Nov)', () => {
+    expect(hoursRowsMissingRunStart(page)).toEqual([]);
+  });
+  it("St Enoch Square's row as committed before the fix (\"6 to 20 Dec\", the only changed field) fails", () => {
+    const before = '6 to 20 Dec: Sun–Wed 12 noon–9pm, Thu–Fri 12 noon–10pm, Sat 10am–10pm. 21 to 23 Dec: 10am–10pm.';
+    const old = { ...page, facts: page.facts.map((f) => (f.status === 'confirmed' && f.label === 'Winter Wonderland, St Enoch Square (regular hours)' ? { ...f, value: before } : f)) };
+    expect(hoursRowsMissingRunStart(old)).toEqual([`Winter Wonderland, St Enoch Square (regular hours): does not name the run's first day 6 November ("${before}")`]);
   });
 });

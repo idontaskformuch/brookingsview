@@ -92,6 +92,26 @@ export function seasonHero(days: SeasonDay[], today: string): { label: string; v
   return { label: `${next.name} is`, value: long[weekday], sub: rest.join(' ') };
 }
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/** QA data.holiday-hours-dates (owner 2026-11-15): a run with opening hours (openHours) and a standing-hours row for the same place
+ *  (an `hours` fact whose label names the run's venue): that row must name the run's first day with its month ("6 November" or "6 Nov").
+ *  St Enoch Square's row said "6 to 20 Dec" for a run from 6 November. One line per row that does not. */
+export function hoursRowsMissingRunStart(page: HolidayPageData): string[] {
+  const out: string[] = [];
+  for (const e of page.events) {
+    if (e.status !== 'confirmed' || !e.openHours) continue;
+    const day = Number(e.date.slice(8, 10));
+    const month = MONTH_NAMES[Number(e.date.slice(5, 7)) - 1];
+    const named = new RegExp(`\\b${day} (${month}|${month.slice(0, 3)})\\b`);
+    for (const f of page.facts) {
+      if (f.status !== 'confirmed' || f.section !== 'hours' || !f.label.includes(e.venue.name)) continue;
+      if (!named.test(f.value)) out.push(`${f.label}: does not name the run's first day ${day} ${month} ("${f.value}")`);
+    }
+  }
+  return out;
+}
+
 /** Confirmed facts that apply on `date` (their `on` list), in data order. */
 export function factsOn(page: HolidayPageData, date: string): ConfirmedFact[] {
   return page.facts.filter((f): f is ConfirmedFact => f.status === 'confirmed' && f.section !== 'hours' && !!f.on?.includes(date));

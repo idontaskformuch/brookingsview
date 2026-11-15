@@ -336,6 +336,11 @@
         "born_from": "Broomfield AdSense audit 2026-11-11 (F9): the /thanksgiving/ hero said \"2 places closed\" on Thanksgiving, counting Tree Branch Recycle, which closes Sat Nov 28. Regression fixture: site/src/lib/holiday-view.test.ts 'counts places that are shut' (the hero value 1 fails on the old count).",
         "what": "the holiday hero's places-closed number is not the count of confirmed closed rows whose closedOn includes the holiday (closedPlaces in lib/holiday-view.ts; vitest in every deploy's test job)"
     },
+    "data.holiday-hours-dates": {
+        "severity": "hard",
+        "born_from": "Found 2026-11-15 while transcribing Glasgow's Winter Wonderland hours (owner: fix with a QA check and fixture): the St Enoch Square regular-hours row on /christmas/ said \"6 to 20 Dec\" for a run the FAQ gives as 6 November to 20 December (evidence .claude/evidence/glasgow-christmas-2026-11/ww-faq.txt line 60). Regression fixture: site/src/lib/holiday-season.test.ts 'QA data.holiday-hours-dates' (the row as committed before the fix fails; the page as it is passes).",
+        "what": "a run with opening hours (ConfirmedEvent.openHours) whose standing-hours row for the same venue does not name the run's first day with its month (hoursRowsMissingRunStart in lib/holiday-season.ts; vitest in every deploy's test job)"
+    },
     "build.ai-statement": {
         "severity": "hard",
         "born_from": "Owner B6, 2026-11-11: /advertising/ said \"No text on this site is written by an AI model\" and the other policy pages and llms.txt said no model-written text is shown, while place/project descriptions, page text and event/meeting details come from a model; the first replacement still promised a source check that Fas 5 has not done. Regression fixture: tests/fixtures/qa_ai_statement_2026-11-11 (the served pages), tests/test_verify_election_pages.py.",

@@ -146,7 +146,7 @@ const GLASGOW_FACTS: HolidayFact[] = [
   /* standing hours (rendered under More) */
   {
     section: 'hours', status: 'confirmed', label: 'Winter Wonderland, St Enoch Square (regular hours)',
-    value: '6 to 20 Dec: Sun–Wed 12 noon–9pm, Thu–Fri 12 noon–10pm, Sat 10am–10pm. 21 to 23 Dec: 10am–10pm.',
+    value: '6 November – 20 December: Sun–Wed 12 noon–9pm, Thu–Fri 12 noon–10pm, Sat 10am–10pm. 21 to 23 Dec: 10am–10pm.',
     source: WW_FAQ, checkedOn: READ,
   },
   {
