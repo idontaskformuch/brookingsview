@@ -34,12 +34,18 @@ export const CHRISTMAS_EVENTS: Record<string, HolidayEvent[]> = {
 
 export const CHRISTMAS_TOWN_IDS = ['glasgow'] as const;
 
-/** Glasgow's event calendars (Glasgow Life rows) and its venue register take part in the Events group (owner 2026-11-14, G7).
+/** Glasgow's event calendars (Glasgow Life rows), its venue register (owner 2026-11-14, G7) and Ticketmaster (keys "tm:<id>", owner
+ *  2026-11-15) take part in the Events group.
  *  Excluded by key, with the reason. The owner also excluded "Magic on Main Street Trail" and "Kids' Arts and Crafts Sessions"
  *  (Glasgow Life's winter page, not Christmas themed): neither is in the events table and neither title matches the pattern, so
  *  there is no key to list; add one here if the scraper ever stores them under a matching title. */
 export const CHRISTMAS_CALENDAR_EXCLUDES: Record<string, Record<string, string>> = {
-  glasgow: {},
+  glasgow: {
+    // Ticketmaster rows (owner 2026-11-15).
+    'tm:LvZ18Qng1UQXTa27BbRcF': 'RED, the universe.com duplicate of tm:1AUZkfgGkdqKIxW (owner 2026-11-15)',
+    'tm:1kuOv0x_GAuOV5u': 'Muppet: the Glasgow Life row by hand is already on the page (owner 2026-11-15)',
+    'tm:LvZ18QmN5TaNuM3aFzl_h': "King Tut's Golden Ticket: a festival pass, not an event (owner 2026-11-15)",
+  },
 };
 
 /** Rows taken by key although their title does not match the pattern (owner 2026-11-14: "Elf Academy" by id, the pattern is not

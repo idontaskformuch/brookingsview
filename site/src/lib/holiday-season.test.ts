@@ -8,7 +8,10 @@ import { holidayPageDef } from '../config/holiday-pages/calendar';
 import {
   daysWithCards, eventPopDays, eventsOn, factsOn, lastSeasonBankHoliday, seasonBankHolidays, seasonDays, seasonEvents, seasonHero, upcomingDays,
 } from './holiday-season';
-import { matchRegisterRows } from './holiday-calendar-events';
+import { matchRegisterRows, matchTicketmasterEvents } from './holiday-calendar-events';
+import { calendarExcludesFor } from '../config/holiday-pages/registry';
+import type { TicketmasterFeedItem } from './ticketmaster';
+const buildExcludes = () => calendarExcludesFor('christmas', 'glasgow')!;
 import { buildEveningEntries, showTitleKey, type RegisterRow } from './evening-items';
 import { postVisible, selectFrontPage, type FrontPageInput } from './front-page';
 import { frontPageHolidays } from './front-page-holidays';
@@ -111,6 +114,70 @@ describe('cards per day', () => {
     });
     const [toy] = eventPopDays(eventsOn(events, '2026-12-24'), TZ);
     expect(toy.rows[0].timeLabel).toBe('1pm');
+  });
+});
+
+describe('Ticketmaster rows and series (owner 2026-11-15)', () => {
+  // Real rows from the Glasgow build of 2026-11-14 (dist/whats-on/<slug>-<id>/, its JSON-LD and ticket link), no field changed.
+  const PANTO = 'Òran Mór Christmas Panto: The Wonderful Wizard of Partick Cross';
+  const PANTO_URL = 'https://www.universe.com/events/oran-mor-christmas-panto-the-wonderful-wizard-of-partick-cross-tickets-3KMLCY?ref=ticketmaster';
+  const tm = (id: string, title: string, at: string, venueName: string, venueAddress: string, ticketUrl: string): TicketmasterFeedItem => ({
+    sourceKind: 'ticketmaster', occurs_at: at,
+    ticketmasterEvent: {
+      id, title, attractionId: null, venueId: null, venueName, venueLatitude: null, venueLongitude: null, venueAddress, venueCity: 'Glasgow',
+      venueStateCode: null, venuePostalCode: null, venueDistanceMiles: null, ticketUrl, imageUrl: null, imageWidth: null, imageHeight: null,
+      priceRangeText: null, priceMin: null, priceMax: null, priceCurrency: null,
+    },
+  });
+  const panto = (id: string, at: string) => tm(id, PANTO, at, 'Oran Mor', 'Byres Road', PANTO_URL);
+  const items = [
+    panto('LvZ18QJdQPF2Fw5aEYENS', '2026-11-25T12:00:00Z'),
+    panto('LvZ18QJdQPF2Fw5aEYE0c', '2026-12-24T12:00:00Z'),
+    panto('LvZ18QJdQPF2Fw5aEYE0g', '2026-12-28T12:00:00Z'),
+    panto('LvZ18QJdQPF2Fw5aEYE0U', '2026-12-28T14:00:00Z'),
+    panto('LvZ18QJdQPF2Fw5aEYEPe', '2027-01-03T14:00:00Z'),
+    tm('LvZ18Qng1UQXTa27BbRcF', 'DF Concerts Presents: RED (A Red Christmas)', '2026-12-20T19:00:00Z', "Saint Luke's", '17 Bain Street',
+      'https://www.universe.com/events/df-concerts-presents-red-a-red-christmas-tickets-P37FGS?ref=ticketmaster'),
+    tm('1AUZkfgGkdqKIxW', 'RED (A Red Christmas)', '2026-12-20T19:00:00Z', "Saint Luke's", '17 Bain Street',
+      'https://www.ticketmaster.co.uk/red-a-red-christmas-glasgow-20-12-2026/event/36006535DD4E88BD'),
+  ];
+  const exclude = buildExcludes();
+  const now = Date.parse('2026-11-15T09:00:00Z');
+  const { events, report } = matchTicketmasterEvents(xmas, 2026, items, now, TZ, exclude);
+
+  it('excluded by id with the reason in the build log; the rest link to their ticket page and get no JSON-LD of their own', () => {
+    expect(report.filter((r) => !r.included).map((r) => r.key)).toEqual(['tm:LvZ18Qng1UQXTa27BbRcF']);
+    const red = events.find((e) => e.name === 'RED (A Red Christmas)')!;
+    expect(red).toMatchObject({ date: '2026-12-20', startTime: '19:00', url: 'https://www.ticketmaster.co.uk/red-a-red-christmas-glasgow-20-12-2026/event/36006535DD4E88BD', fromCalendar: 'tm:1AUZkfgGkdqKIxW', checkedOn: '2026-11-15' });
+    expect(red.venue).toEqual({ name: "Saint Luke's", street: '17 Bain Street', locality: 'Glasgow' });
+  });
+
+  it('the panto: one season row 25 Nov – 3 Jan linking to the next performance, one card per day with that day\'s times', () => {
+    const later = seasonEvents(events, days, '2026-11-15').filter((e) => e.name === PANTO);
+    expect(later.map((e) => [e.date, e.endDate, e.startTime, e.url])).toEqual([['2026-11-25', '2027-01-03', undefined, PANTO_URL]]);
+    const [row] = eventPopDays(later, TZ)[0].rows;
+    expect([row.start, row.end, row.timeLabel]).toEqual(['2026-11-25T00:00:00+00:00', '2027-01-03T23:59:00+00:00', '']);
+    // Once 25 Nov is over the row starts at the next performance.
+    expect(seasonEvents(events, days, '2026-11-26').find((e) => e.name === PANTO)?.date).toBe('2026-12-24');
+    const dec28 = eventsOn(events, '2026-12-28');
+    expect(dec28.map((e) => [e.name, e.startTime])).toEqual([[PANTO, '12:00']]);
+    expect(eventPopDays(dec28, TZ)[0].rows[0].timeLabel).toBe('12 noon and 2pm');
+    expect(eventPopDays(eventsOn(events, '2026-12-24'), TZ)[0].rows[0].timeLabel).toBe('12 noon');
+  });
+
+  it('a series on one day only is one card under that day and no season row', () => {
+    // The two 28 Dec performances alone (the other three left out of the input).
+    const one = events.filter((e) => e.name === PANTO && e.date === '2026-12-28');
+    expect(eventsOn(one, '2026-12-28')).toHaveLength(1);
+    expect(seasonEvents(one, days, '2026-11-15')).toEqual([]);
+  });
+
+  it('every season page: no title and venue twice under a day or in the season list', () => {
+    const all = [...page.events.filter((e): e is ConfirmedEvent => e.status === 'confirmed'), ...events];
+    const keys = (list: ConfirmedEvent[]) => list.map((e) => `${e.name}|${e.venue.name}`);
+    for (const d of daysWithCards(page, all, '2026-11-15')) expect(new Set(keys(d.events)).size).toBe(d.events.length);
+    const later = seasonEvents(all, days, '2026-11-15');
+    expect(new Set(keys(later)).size).toBe(later.length);
   });
 });
 

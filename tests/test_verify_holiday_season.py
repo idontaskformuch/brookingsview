@@ -5,7 +5,10 @@ every day.
 built/ = the Glasgow /christmas/ page as built 2026-11-14 (first build of the day-by-day page; Mon 4 Jan was built with no card).
 The same page checked as if it were 25 Dec is the passed-dates case. nosource/ = that page with one change: the source of the first
 ScotRail card removed. fixed/ = the page as built 2026-11-14 after the owner's changes (no empty day). pill/ = fixed/ with one change:
-the ScotRail "No trains" card on 1 Jan marked "Changed" instead of "Closed"."""
+the ScotRail "No trains" card on 1 Jan marked "Changed" instead of "Closed".
+series/ = the page as built 2026-11-15 with Ticketmaster rows (owner 2026-11-15: same title and venue = one series card). dup/ = series/
+with one change: the Òran Mór panto's real 2pm performance on 28 Dec as a card of its own ("2pm" instead of "12 noon and 2pm").
+duplist/ = series/ with one change: the panto's season row listed twice."""
 import subprocess
 from pathlib import Path
 
@@ -41,6 +44,28 @@ def test_a_card_without_its_source_link_fails():
     r = run(FIX / "nosource", "--today", "2026-11-14")
     assert r.returncode == 1
     assert "an item without a source link" in r.stderr
+
+
+PANTO = '"Òran Mór Christmas Panto: The Wonderful Wizard of Partick Cross" at Oran Mor'
+
+
+def test_the_page_with_ticketmaster_series_passes():
+    r = run(FIX / "series", "--today", "2026-11-15")
+    assert r.returncode == 0, r.stderr
+
+
+def test_a_performance_as_its_own_card_under_a_day_fails():
+    r = run(FIX / "dup", "--today", "2026-11-15")
+    assert r.returncode == 1
+    assert f"/christmas/: {PANTO} is listed more than once in the day 2026-12-28" in r.stderr
+    assert "FAIL: 1 problem(s)" in r.stderr
+
+
+def test_a_series_twice_in_the_season_list_fails():
+    r = run(FIX / "duplist", "--today", "2026-11-15")
+    assert r.returncode == 1
+    assert f"/christmas/: {PANTO} is listed more than once in the season list" in r.stderr
+    assert "FAIL: 1 problem(s)" in r.stderr
 
 
 def test_one_card_with_two_markings_fails():

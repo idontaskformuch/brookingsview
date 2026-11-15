@@ -11,6 +11,7 @@ import { formatClock, type ConfirmedEvent, type EventVenue } from './holiday-pag
 import { occurrenceDay } from './holiday-calendar';
 import type { HolidayPageDef } from '../config/holiday-pages/calendar';
 import { REGISTER_MAX_AGE_DAYS, showTitleKey, type RegisterRow } from './evening-items';
+import type { TicketmasterFeedItem } from './ticketmaster';
 
 const DAY = 86_400_000;
 
@@ -125,6 +126,42 @@ export function matchRegisterRows(
       ...(details.length ? { details } : {}),
       source: { name: r.venueName, url: r.sourceUrl },
       checkedOn: localParts(r.lastConfirmedAt, timeZone).date,
+      fromCalendar: key,
+    });
+  }
+  events.sort((a, b) => (a.date + (a.startTime ?? '')).localeCompare(b.date + (b.startTime ?? '')));
+  return { events, report };
+}
+
+/** Ticketmaster events (the build's one memoised fetch, the rows /tonight and /whats-on read; no extra call) whose title matches the
+ *  holiday's pattern and whose local day is in the same window as the calendar rows (owner 2026-11-15). Keys "tm:<Ticketmaster id>"
+ *  for the report and the excludes. Each row links to its own ticket page (ticketmaster.co.uk or universe.com, as /whats-on does);
+ *  the row has its own /whats-on/ page with its markup, so it is marked `fromCalendar` and the holiday page emits no JSON-LD for it. */
+export function matchTicketmasterEvents(
+  def: HolidayPageDef, year: number, items: TicketmasterFeedItem[], nowMs: number, timeZone: string, exclude: Record<string, string>,
+): { events: ConfirmedEvent[]; report: CalendarMatchLine[] } {
+  const rule = def.calendarMatch;
+  if (!rule) return { events: [], report: [] };
+  const day = occurrenceDay(def, year);
+  const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  const first = iso(day - rule.daysBefore * DAY);
+  const last = [iso(day + rule.daysAfter * DAY), def.extendTo?.(year) ?? ''].sort().pop()!;
+  const events: ConfirmedEvent[] = [];
+  const report: CalendarMatchLine[] = [];
+  for (const { occurs_at, ticketmasterEvent: e } of items) {
+    if (!occurs_at || !rule.pattern.test(e.title)) continue;
+    const { date, time } = localParts(occurs_at, timeZone);
+    if (date < first || date > last) continue;
+    const key = `tm:${e.id}`;
+    if (key in exclude) { report.push({ key, date, title: e.title, included: false, reason: exclude[key] }); continue; }
+    if (!e.venueName) { report.push({ key, date, title: e.title, included: false, reason: 'no venue' }); continue; }
+    report.push({ key, date, title: e.title, included: true });
+    const venue: EventVenue = { name: e.venueName, ...(e.venueAddress ? { street: e.venueAddress } : {}), locality: e.venueCity ?? '' };
+    events.push({
+      status: 'confirmed', name: e.title, date, venue, url: e.ticketUrl,
+      ...(time !== '00:00' ? { startTime: time } : {}),
+      source: { name: 'Ticketmaster', url: e.ticketUrl },
+      checkedOn: localParts(new Date(nowMs).toISOString(), timeZone).date, // read at this build
       fromCalendar: key,
     });
   }

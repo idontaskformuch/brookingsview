@@ -145,6 +145,8 @@ export interface ConfirmedEvent extends EventBase {
   /** Local 24-hour times, HH:MM. Without a start time the event is shown but gets no JSON-LD, unless `seasonJsonLd`. */
   startTime?: string;
   endTime?: string;
+  /** Every start time of the day when one card stands for several performances (lib/holiday-season.ts, a series), HH:MM. */
+  times?: string[];
   /** Emit date-only JSON-LD (startDate/endDate) for a run whose hours vary by day. Needs `endDate`. */
   seasonJsonLd?: boolean;
   venue: EventVenue;
