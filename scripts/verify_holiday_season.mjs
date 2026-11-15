@@ -8,7 +8,9 @@
  *  - a day section without a card fails (owner 2026-11-14: no card, no section; Mon 4 Jan was built empty);
  *  - the same card (title and value) with different status pills on different days fails (owner 2026-11-14: one fact, one marking);
  *  - the same title at the same venue (data-hp-venue, else the row's place) twice in one day section or twice in the season list fails (owner 2026-11-15:
- *    several performances are one series card).
+ *    several performances are one series card);
+ *  - a heading whose "Checked" ends on another date than the newest read row (feed rows left out, data-hp-rows-checked) fails
+ *    (owner 2026-11-15: a Ticketmaster row read at the build moved it to the build day).
  * "Today" is the town's date (Europe/London unless --tz), or --today YYYY-MM-DD.
  *
  * Usage: node scripts/verify_holiday_season.mjs <dist-dir> [--today YYYY-MM-DD] [--tz Area/City]
@@ -80,6 +82,16 @@ export function checkSeasonPage(html, url, day) {
       seen.add(key);
     }
   }
+  // The heading's "Checked" ends on the newest date a row was read, feed rows (Ticketmaster, read again at every build) left out
+  // (owner 2026-11-15). The rows' dates come from the header (data-hp-rows-checked, "YYYY-MM-DD" or "YYYY-MM-DD:feed").
+  const rows = attr(html.match(/<header\b[^>]*\sdata-hp-rows-checked="[^"]*"[^>]*>/)?.[0] ?? '', 'data-hp-rows-checked');
+  if (rows !== undefined) {
+    const all = rows.split(' ').filter(Boolean);
+    const read = all.filter((r) => !r.endsWith(':feed'));
+    const newest = (read.length ? read : all).map((r) => r.slice(0, 10)).sort().pop();
+    const heading = [...(html.match(/<p\b[^>]*class="hp-checked\b[^"]*"[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? '').matchAll(/<time\b[^>]*\sdatetime="([^"]*)"/g)].map((m) => m[1]).pop();
+    if (heading !== newest) bad.push(`${url}: "Checked" ends ${heading ?? '(none)'}, the newest read row is ${newest ?? '(none)'}`);
+  }
   return bad;
 }
 
@@ -92,4 +104,4 @@ for (const file of walk(dist)) {
   bad.push(...checkSeasonPage(html, '/' + relative(dist, file).split(sep).join('/').replace(/index\.html$/, ''), today));
 }
 if (bad.length) { console.error(bad.join('\n')); console.error(`FAIL: ${bad.length} problem(s) on ${pages} season page(s), today ${today}`); process.exit(1); }
-console.log(`OK: ${pages} season page(s), no passed or empty day, no passed event, every item has a source and one marking, one card per title and venue (today ${today}).`);
+console.log(`OK: ${pages} season page(s), no passed or empty day, no passed event, every item has a source and one marking, one card per title and venue, "Checked" ends on a read row (today ${today}).`);

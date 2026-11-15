@@ -8,7 +8,9 @@ ScotRail card removed. fixed/ = the page as built 2026-11-14 after the owner's c
 the ScotRail "No trains" card on 1 Jan marked "Changed" instead of "Closed".
 series/ = the page as built 2026-11-15 with Ticketmaster rows (owner 2026-11-15: same title and venue = one series card). dup/ = series/
 with one change: the Òran Mór panto's real 2pm performance on 28 Dec as a card of its own ("2pm" instead of "12 noon and 2pm").
-duplist/ = series/ with one change: the panto's season row listed twice."""
+duplist/ = series/ with one change: the panto's season row listed twice.
+checked/ = the page as built 2026-11-15 after Ticketmaster rows became feed rows ("Checked 2 November – 14 November 2026"). checkedtm/ =
+checked/ with one change: the heading's end date 15 November 2026, what the build before the fix showed (owner 2026-11-15)."""
 import subprocess
 from pathlib import Path
 
@@ -65,6 +67,18 @@ def test_a_series_twice_in_the_season_list_fails():
     r = run(FIX / "duplist", "--today", "2026-11-15")
     assert r.returncode == 1
     assert f"/christmas/: {PANTO} is listed more than once in the season list" in r.stderr
+    assert "FAIL: 1 problem(s)" in r.stderr
+
+
+def test_checked_ending_on_the_newest_read_row_passes():
+    r = run(FIX / "checked", "--today", "2026-11-15")
+    assert r.returncode == 0, r.stderr
+
+
+def test_checked_ending_on_the_ticketmaster_build_day_fails():
+    r = run(FIX / "checkedtm", "--today", "2026-11-15")
+    assert r.returncode == 1
+    assert '/christmas/: "Checked" ends 2026-11-15, the newest read row is 2026-11-14' in r.stderr
     assert "FAIL: 1 problem(s)" in r.stderr
 
 

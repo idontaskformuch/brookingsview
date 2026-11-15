@@ -34,6 +34,8 @@ const tz = siteConfig.timezone;
 const today = localToday(Date.now(), tz);
 const meta = buildHolidayMeta(page, def.label, siteConfig.cityName);
 const span = checkedSpan(page);
+// Every row's checkedOn, feed rows marked ":feed", for the QA check (scripts/verify_holiday_season.mjs) that the heading ends on a read date.
+const rowsChecked = [...new Set([...page.facts, ...page.events].map((r) => `${r.checkedOn}${'feed' in r && r.feed ? ':feed' : ''}`))].sort().join(' ');
 const jsonLd = buildHolidayEventsJsonLd(page, tz, countryProfile(siteConfig.country).addressCountry, today);
 const pageUrl = new URL(Astro.url.pathname, Astro.site ?? siteConfig.siteUrl).href;
 const webPage = { '@context': 'https://schema.org', '@type': 'WebPage', name: meta.title, url: pageUrl, dateModified: page.dataUpdatedOn };
@@ -58,7 +60,7 @@ const PILL: Record<HolidayChange, { tone: 'alert' | 'warn' | 'ok'; text: string 
   {jsonLd.map((ld) => <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(ld)} />)}
   <TonightStyles />
 
-  <header class="hp-title" data-holiday-season={page.holiday}>
+  <header class="hp-title" data-holiday-season={page.holiday} data-hp-rows-checked={rowsChecked}>
     <h1>{meta.h1}</h1>
     {span.first === span.last
       ? <p class="hp-checked">Last checked <time datetime={span.last}>{formatIsoDate(span.last, true, page.locale)}</time></p>

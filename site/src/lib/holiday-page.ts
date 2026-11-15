@@ -161,6 +161,9 @@ export interface ConfirmedEvent extends EventBase {
   /** Key of the calendar row it was matched from (lib/holiday-calendar-events.ts), e.g. "event-329806". Such a row has
    *  its own page with its own markup, so the holiday page emits no Event JSON-LD for it. */
   fromCalendar?: string;
+  /** A row from a feed read again at every build (Ticketmaster): its checkedOn is the build day, so the page's checked dates leave it out
+   *  (owner 2026-11-15) and a build alone never moves "Checked". Calendar and venue-register rows are not feed rows. */
+  feed?: true;
 }
 
 export type UnconfirmedEvent = EventBase & {
@@ -255,19 +258,24 @@ function confirmedSections(page: HolidayPageData): HolidaySection[] {
       : page.facts.some((f) => f.section === s && f.status === 'confirmed'));
 }
 
-/** Latest checkedOn over every fact and event (YYYY-MM-DD). */
-export function lastChecked(page: HolidayPageData): string {
-  const dates = [...page.facts.map((f) => f.checkedOn), ...page.events.map((e) => e.checkedOn)];
-  if (dates.length === 0) throw new Error('holiday page has no facts');
-  return dates.reduce((a, b) => (a > b ? a : b));
+/** checkedOn of every fact and event except feed rows (ConfirmedEvent.feed); a page made only of feed rows keeps their dates. */
+export function checkedDates(page: HolidayPageData): string[] {
+  const all = [...page.facts, ...page.events];
+  if (all.length === 0) throw new Error('holiday page has no facts');
+  const read = all.filter((r) => !('feed' in r && r.feed));
+  return (read.length ? read : all).map((r) => r.checkedOn);
 }
 
-/** Oldest and newest checkedOn over the rows of the page (YYYY-MM-DD; equal when every row was read the same day).
+/** Latest checkedOn over the page's rows, feed rows left out (YYYY-MM-DD). */
+export function lastChecked(page: HolidayPageData): string {
+  return checkedDates(page).reduce((a, b) => (a > b ? a : b));
+}
+
+/** Oldest and newest checkedOn over the rows of the page, feed rows left out (YYYY-MM-DD; equal when every row was read the same day).
  *  The heading and the description show the span, not only the newest date, so a page where one row was reread
  *  does not read as if all of it was (owner 2026-11-14). */
 export function checkedSpan(page: HolidayPageData): { first: string; last: string } {
-  const dates = [...page.facts.map((f) => f.checkedOn), ...page.events.map((e) => e.checkedOn)];
-  if (dates.length === 0) throw new Error('holiday page has no facts');
+  const dates = checkedDates(page);
   return { first: dates.reduce((a, b) => (a < b ? a : b)), last: dates.reduce((a, b) => (a > b ? a : b)) };
 }
 

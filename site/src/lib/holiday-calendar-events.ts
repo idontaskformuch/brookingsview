@@ -162,7 +162,7 @@ export function matchTicketmasterEvents(
       ...(time !== '00:00' ? { startTime: time } : {}),
       source: { name: 'Ticketmaster', url: e.ticketUrl },
       checkedOn: localParts(new Date(nowMs).toISOString(), timeZone).date, // read at this build
-      fromCalendar: key,
+      fromCalendar: key, feed: true,
     });
   }
   events.sort((a, b) => (a.date + (a.startTime ?? '')).localeCompare(b.date + (b.startTime ?? '')));

@@ -15,7 +15,7 @@ const buildExcludes = () => calendarExcludesFor('christmas', 'glasgow')!;
 import { buildEveningEntries, showTitleKey, type RegisterRow } from './evening-items';
 import { postVisible, selectFrontPage, type FrontPageInput } from './front-page';
 import { frontPageHolidays } from './front-page-holidays';
-import type { ConfirmedEvent } from './holiday-page';
+import { buildHolidayMeta, checkedSpan, lastChecked, type ConfirmedEvent } from './holiday-page';
 import { FRONT_PAGE_BY_TOWN } from '../config/front-page';
 const frontPageConfigFor = (id: string) => FRONT_PAGE_BY_TOWN[id];
 
@@ -172,6 +172,18 @@ describe('Ticketmaster rows and series (owner 2026-11-15)', () => {
     expect(seasonEvents(one, days, '2026-11-15')).toEqual([]);
   });
 
+  it('a Ticketmaster row is a feed row: it keeps its build-day checkedOn but never moves the page\'s "Checked" (owner 2026-11-15)', () => {
+    const red = events.find((e) => e.fromCalendar === 'tm:1AUZkfgGkdqKIxW')!;
+    const scotrail = page.facts.find((f) => f.status === 'confirmed' && f.label === 'ScotRail' && f.value === 'Last trains leave earlier than normal')!;
+    expect([red.checkedOn, red.feed, scotrail.checkedOn]).toEqual(['2026-11-15', true, '2026-11-14']);
+    const two = { ...page, facts: [scotrail], events: [red] };
+    expect(checkedSpan(two)).toEqual({ first: '2026-11-14', last: '2026-11-14' });
+    expect(lastChecked(two)).toBe('2026-11-14');
+    expect(buildHolidayMeta(two, 'Christmas', 'Glasgow').description).toMatch(/Checked 14 Nov 2026\.$/);
+    // The whole page with the Ticketmaster rows ends where it ends without them.
+    expect(checkedSpan({ ...page, events: [...page.events, ...events] }).last).toBe(checkedSpan(page).last);
+  });
+
   it('every season page: no title and venue twice under a day or in the season list', () => {
     const all = [...page.events.filter((e): e is ConfirmedEvent => e.status === 'confirmed'), ...events];
     const keys = (list: ConfirmedEvent[]) => list.map((e) => `${e.name}|${e.venue.name}`);
@@ -203,6 +215,7 @@ describe('venue register rows on the page (G7) and the Frankie Mack night merged
       ['2026-11-29', '19:00', 'Frankie Mack – The Ultimate Christmas Cracker', 'Cottiers', '2026-11-09'],
       ['2026-12-31', '21:00', 'Hogmanay 2027', 'Cottiers', '2026-11-09'],
     ]);
+    expect(events.filter((e) => e.feed)).toEqual([]); // register rows count toward "Checked" as before
     expect(report.filter((r) => !r.included).map((r) => r.reason)).toEqual(['same night listed twice']);
   });
 
