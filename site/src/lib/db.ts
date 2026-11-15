@@ -1703,7 +1703,7 @@ export async function getTrafficIncidentsFromLatestRead(): Promise<TrafficIncide
 }
 
 /** When the traffic feed was last read successfully (scrape_runs, source 'traffic'). Unlike getTrafficLastChecked() this moves on a run
- *  that found nothing, so "No crashes or closures reported ... as of <time>" names the real time of the latest read (AdSense plan F4). */
+ *  that found nothing: /traffic/ counts each read once for its inertia and labels the list with this time (lib/traffic-verdict.ts). */
 export async function getTrafficLastRun(): Promise<string | null> {
   const rows = await sql`
     SELECT MAX(finished_at) AS last_run FROM scrape_runs WHERE town_id = ${TOWN_ID} AND source_key = 'traffic' AND status = 'ok'

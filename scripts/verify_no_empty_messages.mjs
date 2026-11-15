@@ -6,9 +6,8 @@
  * ("What this shows", "How to use it" as a box heading). /how-we-gather-this/ is the one page where the per-page
  * explanations now live, so the headings are allowed there.
  *
- * Not an empty message: /traffic/'s "No crashes or closures reported on state highways in or near <town> as of <date, time>" (Broomfield
- * AdSense plan F4, owner-approved 2026-11-11). It states a checked fact with the time of the read, links to the live state map, and the
- * page is noindex while it shows (lib/traffic-verdict.ts). Do not add its wording to EMPTY.
+ * /traffic/'s former "No crashes or closures reported ..." line (F4, 2026-11-11) is gone: the owner ruled 2026-11-15 that the page shows
+ * no empty message in any town (lib/traffic-verdict.ts), so its wording is in EMPTY.
  *
  * Two more checks on the same real build:
  *  - a town without a /traffic/ page (no dist/traffic/index.html: no traffic source) has no link to /traffic/ anywhere (owner 2026-11-07);
@@ -29,6 +28,7 @@ if (!dist) { console.error('Usage: node scripts/verify_no_empty_messages.mjs <di
 const EMPTY = [
   'Nothing scheduled', 'No weather alerts', 'No weather warnings', 'No wildfires', 'No active weather alerts', 'No incidents in',
   'Nothing on the calendar', 'No marquee events', 'Nothing else listed', 'No alerts or traffic incidents', 'No current air-quality reading',
+  'No crashes or closures reported', 'road feed has not been read since',
 ];
 // Broomfield AdSense plan F9 (2026-11-11): a holiday row whose notice is not out yet is a plain link to the place's page
 // (lib/holiday-view.ts), never a "Not confirmed" status, and no row says its source "lists no year".

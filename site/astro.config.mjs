@@ -50,7 +50,7 @@ function openLateIndexable(townId) {
     return v.townId === townId && v.indexable === true;
   } catch { return false; }
 }
-// /traffic/ is indexable only while it lists incidents (the page decides while building; see lib/traffic-verdict.ts)
+// /traffic/ decides its own indexing while building (standing content or 72 h / 3-read inertia; see lib/traffic-verdict.ts)
 const TRAFFIC_VERDICT_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '.traffic-verdict.json');
 try { fs.rmSync(TRAFFIC_VERDICT_PATH, { force: true }); } catch { /* nothing to remove */ }
 function trafficIndexable(townId) {
@@ -896,6 +896,11 @@ export default defineConfig({
             const v = JSON.parse(fs.readFileSync(EVENING_VERDICT_PATH, 'utf8'));
             if (v.townId === activeCity && v.state) fs.writeFileSync(path.join(fileURLToPath(dir), 'evening-state.json'), JSON.stringify(v.state));
           } catch { /* no verdict this build */ }
+          // /traffic/ inertia (lib/traffic-verdict.ts, owner 2026-11-15): same hand-off, only for a town with the 'inertia' rule.
+          try {
+            const t = JSON.parse(fs.readFileSync(TRAFFIC_VERDICT_PATH, 'utf8'));
+            if (t.townId === activeCity && t.state) fs.writeFileSync(path.join(fileURLToPath(dir), 'traffic-state.json'), JSON.stringify(t.state));
+          } catch { /* no traffic page this build */ }
         },
       },
     },

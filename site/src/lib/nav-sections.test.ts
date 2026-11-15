@@ -5,8 +5,8 @@ import { ALL_CONFIGS, ALL_SITES } from './site-config';
 // Pinned before Election Day 2026 so /vote/ is still in the nav (voteInNav); its removal is tested below.
 const BEFORE = '2026-11-01';
 const BROOKINGS: NavGate = { today: BEFORE, townId: 'brookings_sd', hasWhatsOn: true, hasClosureWatch: true };
-const MORENO: NavGate = { today: BEFORE, townId: 'moreno_valley_ca', hasWhatsOn: true, hasClosureWatch: true, hasWorkplaceWatch: true, trafficSource: { name: 'DOT', url: 'https://example.org', scopeNote: '' } };
-const BROOMFIELD: NavGate = { today: BEFORE, townId: 'broomfield_co', hasWhatsOn: true, hasWorkplaceWatch: true, trafficSource: { name: 'DOT', url: 'https://example.org', scopeNote: '' } };
+const MORENO: NavGate = { today: BEFORE, townId: 'moreno_valley_ca', hasWhatsOn: true, hasClosureWatch: true, hasWorkplaceWatch: true, trafficSource: { name: 'DOT', url: 'https://example.org', scopeNote: '', indexing: 'standing' } };
+const BROOMFIELD: NavGate = { today: BEFORE, townId: 'broomfield_co', hasWhatsOn: true, hasWorkplaceWatch: true, trafficSource: { name: 'DOT', url: 'https://example.org', scopeNote: '', indexing: 'inertia' } };
 
 const BROOKINGS_NAV: NavConfig = {
   tabs: ['today', 'events', 'university', 'jacks', 'cityhall', 'jobs'],

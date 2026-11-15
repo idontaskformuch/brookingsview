@@ -12,6 +12,7 @@
 
 import type { NavConfig } from './nav-sections';
 import type { TodayPageConfig } from './today-page';
+import type { TrafficIndexingRule } from './traffic-verdict';
 import { validatePlaceConfig, type CountryId, type NationId } from './country-profile';
 
 export interface SiteConfig {
@@ -156,8 +157,10 @@ export interface SiteConfig {
    *  yet" state in that case, never a silent/misattributed empty table --
    *  same "never render a silent gap" principle as home-sales.astro.
    *  scopeNote: what the source does/doesn't cover (e.g. state highways
-   *  only, not city streets) -- shown on the page, not left implicit. */
-  trafficSource?: { name: string; url: string; scopeNote: string };
+   *  only, not city streets) -- shown on the page, not left implicit.
+   *  indexing (owner 2026-11-15, lib/traffic-verdict.ts): 'standing' = the source lists planned closures in every read, the page is
+   *  always indexed; 'inertia' = the page is often empty, an indexed page goes noindex only after >= 72 h and >= 3 empty reads. */
+  trafficSource?: { name: string; url: string; scopeNote: string; indexing: TrafficIndexingRule };
   /** Traffic Phase 5 (2026-10-09): named highways that count as an
    *  "approach corridor" into this town, e.g. I-215 and SR-60 for Moreno
    *  Valley -- confirmed against real stored incidents, not every highway
@@ -678,6 +681,8 @@ const CITIES: Record<string, SiteConfig> = {
       name: 'Caltrans QuickMap',
       url: 'https://quickmap.dot.ca.gov',
       scopeNote: 'State highways, freeways and CHP-logged incidents, not city or county streets.',
+      // Planned Caltrans lane closures on I-215/SR-60 were on the page in every read 31 Oct - 15 Nov 2026 (2 to 7 per read).
+      indexing: 'standing',
     },
     // Traffic Phase 5 (2026-10-09): the scraper's own bounding box was
     // storing SR-38/I-10/I-210/SR-91 incidents too (San Bernardino/
@@ -811,6 +816,8 @@ const CITIES: Record<string, SiteConfig> = {
       name: 'CDOT / COtrip',
       url: 'https://www.cotrip.org',
       scopeNote: 'State highways and CDOT-logged incidents, not city or county streets.',
+      // Nothing near Broomfield in 18 of 30 reads 31 Oct - 15 Nov 2026; no CDOT closure stayed on the page from one read to the next.
+      indexing: 'inertia',
     },
     // Traffic Phase 5 (2026-10-09): the scraper's own bounding box was
     // storing Denver-area I-70/I-76/I-270/CO-35 incidents too (not roads

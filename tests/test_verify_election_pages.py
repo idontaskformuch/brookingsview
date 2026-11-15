@@ -35,6 +35,13 @@ def test_before_election_day_nothing_is_checked():
     assert run("verify_election_pages.mjs", FIX / "before", "--today", "2026-11-03").returncode == 0
 
 
+def test_traffic_status_line_is_an_empty_message():
+    # QA build.traffic-empty (owner 2026-11-15): Broomfield's /traffic/ built 2026-11-13 05:25 from the empty read of 12 Nov 23:01 UTC,
+    # with F4's "No crashes or closures reported ... as of Nov 12, 4:01 PM MST"; no town shows a message without incidents any more.
+    r = run("verify_no_empty_messages.mjs", ROOT / "tests" / "fixtures" / "qa_traffic_status_line_2026-11-13")
+    assert r.returncode == 1 and '/traffic/: empty message "No crashes or closures reported"' in r.stderr
+
+
 HOLIDAY = ROOT / "tests" / "fixtures" / "qa_holiday_unconfirmed_2026-11-11"
 
 

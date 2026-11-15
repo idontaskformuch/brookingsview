@@ -2,9 +2,9 @@
 /** Traffic incidents as a TABLE, no AI -- see lib/db.ts (getActiveTrafficIncidents) and scrapers/parsers/traffic_v1.py.
  *
  *  Built only for a town with a traffic source (owner 2026-11-07): without one the page does not exist at all, so it is not built, not in the
- *  nav and not in the sitemap (the host answers a real 404, like the holiday pages). With a source but no current incidents the page is
- *  noindex and out of the sitemap, and says in one line that nothing is reported as of the latest read (AdSense plan F4, 2026-11-11;
- *  lib/traffic-verdict.ts). */
+ *  nav and not in the sitemap (the host answers a real 404, like the holiday pages). Indexing per town (owner 2026-11-15,
+ *  lib/traffic-verdict.ts): always indexed where the source lists standing closures, otherwise with 72 h / 3-read inertia before noindex.
+ *  Without incidents the page shows no message and no explanation line. */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import SectionRule from '../components/SectionRule.astro';
@@ -12,7 +12,7 @@ import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getTrafficIncidentsFromLatestRead, getTrafficLastRun, formatTimeWithZone, plainLanguageTraffic } from '../lib/db';
-import { TRAFFIC_READ_MAX_AGE_HOURS, trafficPageState, writeTrafficVerdict } from '../lib/traffic-verdict';
+import { TRAFFIC_READ_MAX_AGE_HOURS, trafficIndexingForTown } from '../lib/traffic-verdict';
 import { siteConfig, isQuietSection } from '../lib/site-config';
 import { isSectionBuilt } from '../lib/sections';
 
@@ -53,8 +53,10 @@ const lastRunLabel = lastRun
   ? new Date(lastRun).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: siteConfig.timezone, timeZoneName: 'short' })
   : null;
 const readIsStale = lastRun != null && Date.now() - new Date(lastRun).getTime() > TRAFFIC_READ_MAX_AGE_HOURS * 3_600_000;
-const pageState = trafficPageState(incidents.length, siteConfig.cityName, lastRunLabel, isQuietSection('traffic'), readIsStale);
-writeTrafficVerdict(siteConfig.townId, !pageState.noindex);
+const indexing = await trafficIndexingForTown({
+  townId: siteConfig.townId, siteUrl: siteConfig.siteUrl, rule: siteConfig.trafficSource?.indexing ?? 'inertia', quiet: isQuietSection('traffic'),
+  incidentCount: incidents.length, readAt: lastRun && !readIsStale ? new Date(lastRun).toISOString() : null,
+});
 const canonicalUrl = new URL('/traffic/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Home', href: '/' },
@@ -69,7 +71,7 @@ const SEVERITY_LABELS: Record<string, string> = {
 const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | null }) =>
   i.zone === 'in_town' ? `In ${siteConfig.cityName}` : `Approach roads · ${Math.round(i.distanceMiles ?? 0)} mi out`;
 ---
-<BaseLayout title={pageMeta.title} wide ogSlug="section-traffic" noindex={pageState.noindex}
+<BaseLayout title={pageMeta.title} wide ogSlug="section-traffic" noindex={!indexing.indexable}
   description={metaDescription('traffic', siteConfig)}
   accentColor={SECTION_THEME.traffic.accent}>
   <Breadcrumbs trail={breadcrumbTrail} />
@@ -77,12 +79,6 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
     <h1>{pageMeta.h1}</h1>
     <ShareButton title={pageMeta.title} />
   </header>
-
-  {pageState.statusLine && siteConfig.trafficSource && (
-    <p class="traffic-status">
-      {pageState.statusLine} <a href={siteConfig.trafficSource.url} rel="noopener">Check live road conditions on {siteConfig.trafficSource.name}</a>.
-    </p>
-  )}
 
   {incidents.length > 0 && <SectionRule label={`${incidents.length} reported${lastRunLabel ? ` as of ${lastRunLabel}` : ''}`} />}
 
@@ -217,7 +213,5 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
 .raw { margin-top: 0.375rem; font-size: 0.8125rem; }
 .raw summary { cursor: pointer; color: var(--ink-soft); }
 .raw p { margin: 0.25rem 0 0; color: var(--ink-soft); }
-.traffic-status { margin: 1.25rem 0 0; font-size: 1rem; }
-.traffic-status a { color: var(--section-accent, var(--navy)); }
 .source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }
 </style>

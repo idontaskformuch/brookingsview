@@ -801,7 +801,7 @@ describe('requiredCategoriesFor', () => {
 
     const allEnabled = requiredCategoriesFor({
       townId: 'broomfield_co', hasWorkplaceWatch: true, hasClosureWatch: true,
-      hasHousingMarket: true, trafficSource: { name: 'x', url: 'x', scopeNote: 'x' },
+      hasHousingMarket: true, trafficSource: { name: 'x', url: 'x', scopeNote: 'x', indexing: 'inertia' },
     });
     expect(allEnabled).toEqual(expect.arrayContaining(['workplace_watch', 'school_alerts', 'home_sales', 'traffic']));
   });

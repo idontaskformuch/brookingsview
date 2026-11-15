@@ -17,7 +17,6 @@ export const MIN_CHARS = 30;
 export const ALLOWED_CLASSES = new Set([
   'cw-checked', 'wx-meta', 'vote-lead', 'season-status', 'er-unofficial', 'story__passed-notice', 'byline', 'ui-insight', 'hp-state',
   'lede__meta', 'desc', 'location', 'description', 'kicker', 'empty', 'ui-hero__meta', 'today-block__forecast', 'intro',
-  'traffic-status',
   // holiday pages' "Last checked <date>" stamp: passed only while the date was one digit (29 chars < MIN_CHARS), 2026-11-11
   'hp-checked',
 ]);
