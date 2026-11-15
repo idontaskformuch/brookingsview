@@ -4,11 +4,20 @@ from __future__ import annotations
 import re
 
 from scrapers import robots
-from sports import adapters, registry
+from sports import adapters, registry, venues
 
 NON_ADAPTER_SOURCES = ("manual_verified", "submissions")
-_TOP = {"enabled", "collect", "nearby_radius_miles", "programs", "rivalries", "sources", "source_priority", "submissions"}
-_PROGRAM = {"id", "name", "short", "nickname", "colors", "home_venue", "level_default", "kind"}
+_TOP = {"enabled", "collect", "nearby_radius_miles", "programs", "rivalries", "sources", "source_priority", "submissions",
+        "register", "venues", "distance_origin"}
+_PROGRAM = {"id", "name", "short", "nickname", "colors", "home_venue", "level_default", "kind",
+            "group", "status", "sport", "gender", "link", "venue_overrides"}
+# sports-deep (owner 2026-11-15): programs are teams WITH a source; `register` holds the rest (shown as a link or not at all, never
+# written to sport_programs). group "around" = played outside the town and the team does not carry its name.
+GROUPS = ("town", "around")
+REGISTER_STATUSES = ("link", "awaiting_written_answer", "register_only")
+_REGISTER = {"id", "name", "sport", "gender", "group", "status", "link", "waiting_on", "home_venue", "note"}
+_VENUE = {"lat", "lon", "town", "source", "fetched"}
+_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _SOURCE = {"adapter", "program", "sport", "level", "gender", "url", "params", "robots_mode", "max_crawl_delay", "note"}
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -61,6 +70,54 @@ def validate_sports_config(cfg: dict) -> list[str]:
         level = prog.get("level_default")
         if level is not None and level not in registry.levels():
             bad(f"{where}.level_default: unknown level {level!r}")
+        _check_team_fields(prog, where, bad)
+        if "status" in prog and prog["status"] != "source":
+            bad(f"{where}.status: a program has a source; link-only teams go in sports.register")
+        if "venue_overrides" in prog:
+            p.extend(f"{town}: sports.{m}" for m in venues.validate_overrides(prog["venue_overrides"], f"{where}.venue_overrides"))
+
+    for i, entry in enumerate(block.get("register") or []):
+        where = f"register[{i}]"
+        if not isinstance(entry, dict):
+            bad(f"{where}: must be an object")
+            continue
+        for key in sorted(set(entry) - _REGISTER):
+            bad(f"{where}.{key}: unknown key")
+        rid = entry.get("id")
+        if not isinstance(rid, str) or not _SLUG.match(rid):
+            bad(f"{where}.id: required lowercase slug")
+        elif rid in ids:
+            bad(f"{where}.id: duplicate {rid!r}")
+        else:
+            ids.add(rid)
+        if not entry.get("name"):
+            bad(f"{where}.name: required")
+        if entry.get("status") not in REGISTER_STATUSES:
+            bad(f"{where}.status: expected one of {', '.join(REGISTER_STATUSES)}")
+        if entry.get("status") in ("link", "awaiting_written_answer") and not entry.get("link"):
+            bad(f"{where}.link: required for status {entry.get('status')}")
+        if entry.get("status") == "awaiting_written_answer" and not entry.get("waiting_on"):
+            bad(f"{where}.waiting_on: say whose written answer")
+        if not entry.get("sport"):
+            bad(f"{where}.sport: required")
+        _check_team_fields(entry, where, bad)
+
+    places = block.get("venues")
+    if places is not None:
+        if not isinstance(places, dict):
+            bad("venues: must be an object {name: {lat, lon, town, source, fetched}}")
+            places = {}
+        for name, v in places.items():
+            if not isinstance(v, dict) or set(v) != _VENUE:
+                bad(f"venues[{name!r}]: needs exactly {', '.join(sorted(_VENUE))}")
+                continue
+            if not all(isinstance(v[k], (int, float)) and not isinstance(v[k], bool) for k in ("lat", "lon")):
+                bad(f"venues[{name!r}]: lat and lon must be numbers")
+            if not (isinstance(v["fetched"], str) and _DATE.match(v["fetched"])):
+                bad(f"venues[{name!r}].fetched: YYYY-MM-DD")
+    origin = block.get("distance_origin")
+    if origin is not None and origin not in (places or {}):
+        bad(f"distance_origin: {origin!r} is not in sports.venues")
 
     for i, pair in enumerate(block.get("rivalries") or []):
         if not (isinstance(pair, list) and len(pair) == 2):
@@ -117,3 +174,14 @@ def validate_sports_config(cfg: dict) -> list[str]:
     if subs is not None and not (isinstance(subs, dict) and set(subs) <= {"enabled"} and isinstance(subs.get("enabled"), bool)):
         bad("submissions: must be {enabled: true|false}")
     return p
+
+
+def _check_team_fields(entry: dict, where: str, bad) -> None:
+    if "group" in entry and entry["group"] not in GROUPS:
+        bad(f"{where}.group: expected one of {', '.join(GROUPS)}")
+    if "sport" in entry and entry["sport"] not in registry.sports():
+        bad(f"{where}.sport: unknown sport {entry['sport']!r}")
+    if "gender" in entry and entry["gender"] not in registry.genders():
+        bad(f"{where}.gender: unknown gender {entry['gender']!r}")
+    if "link" in entry and not str(entry["link"]).startswith("https://"):
+        bad(f"{where}.link: must be an https URL")

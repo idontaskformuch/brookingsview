@@ -165,6 +165,21 @@ export const SPORTS: readonly SportDef[] = [
     "uk": "Curling",
     "icon": "curling",
     "result_type": "none"
+  },
+  {
+    "id": "field_hockey",
+    "us": "Field hockey",
+    "uk": "Hockey",
+    "icon": "field-hockey",
+    "result_type": "score"
+  },
+  {
+    "id": "cricket",
+    "us": "Cricket",
+    "uk": "Cricket",
+    "icon": "cricket",
+    "result_type": "none",
+    "typical_duration_hours": 7
   }
 ];
 

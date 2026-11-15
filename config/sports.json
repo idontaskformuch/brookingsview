@@ -27,6 +27,8 @@
     {"id": "speedway", "us": "Speedway", "uk": "Speedway", "icon": "speedway", "result_type": "time"},
     {"id": "motorsport", "us": "Racing", "uk": "Motorsport", "icon": "motorsport", "result_type": "time"},
     {"id": "equestrian", "us": "Equestrian", "uk": "Equestrian", "icon": "equestrian", "result_type": "none"},
-    {"id": "curling", "us": "Curling", "uk": "Curling", "icon": "curling", "result_type": "none"}
+    {"id": "curling", "us": "Curling", "uk": "Curling", "icon": "curling", "result_type": "none"},
+    {"id": "field_hockey", "us": "Field hockey", "uk": "Hockey", "icon": "field-hockey", "result_type": "score"},
+    {"id": "cricket", "us": "Cricket", "uk": "Cricket", "icon": "cricket", "result_type": "none", "typical_duration_hours": 7}
   ]
 }
