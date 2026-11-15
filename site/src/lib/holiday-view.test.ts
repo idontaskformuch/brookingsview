@@ -151,7 +151,7 @@ describe('hero and insights', () => {
     expect(holidayInsights(vet)).toEqual(['Police run 24/7 on Nov 11; the front desk is not staffed.']);
     expect(holidayInsights(mvThanks)).toEqual(['Trash pickup is one day late after Thanksgiving Day.']);
     expect(holidayInsights(bfThanks)).toEqual([]);
-    expect(holidayInsights(bkThanks)).toEqual(['Recycling and yard waste are picked up Wed Nov 25.']);
+    expect(holidayInsights(bkThanks)).toEqual(['Thursday recycling is picked up Wed Nov 25.']); // no yard waste after Nov 24 (owner 2026-11-15)
   });
 });
 

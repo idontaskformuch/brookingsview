@@ -341,6 +341,11 @@
         "born_from": "Found 2026-11-15 while transcribing Glasgow's Winter Wonderland hours (owner: fix with a QA check and fixture): the St Enoch Square regular-hours row on /christmas/ said \"6 to 20 Dec\" for a run the FAQ gives as 6 November to 20 December (evidence .claude/evidence/glasgow-christmas-2026-11/ww-faq.txt line 60). Regression fixture: site/src/lib/holiday-season.test.ts 'QA data.holiday-hours-dates' (the row as committed before the fix fails; the page as it is passes).",
         "what": "a run with opening hours (ConfirmedEvent.openHours) whose standing-hours row for the same venue does not name the run's first day with its month (hoursRowsMissingRunStart in lib/holiday-season.ts; vitest in every deploy's test job)"
     },
+    "data.holiday-yard-waste": {
+        "severity": "hard",
+        "born_from": "Found 2026-11-15 in the Thanksgiving inventory (owner: fix with a QA check and fixture): Brookings /thanksgiving/ said \"Recycling and yard waste are picked up Wed Nov 25\" (Holiday rule value, insight line and meta description) while the same page and lib/trash-schedule.ts YARD_SEASON_2026 end curbside yard waste on Nov 24. Regression fixture: site/src/lib/thanksgiving.test.ts 'QA data.holiday-yard-waste' (the row as committed before the fix fails; the page as it is passes).",
+        "what": "a Brookings holiday trash row whose value, insight or meta says yard waste is picked up or moves in a week where the computed pickup moves have no yard waste (yardWasteClaimsWithoutMove in config/holiday-pages/thanksgiving.ts; vitest in every deploy's test job)"
+    },
     "build.ai-statement": {
         "severity": "hard",
         "born_from": "Owner B6, 2026-11-11: /advertising/ said \"No text on this site is written by an AI model\" and the other policy pages and llms.txt said no model-written text is shown, while place/project descriptions, page text and event/meeting details come from a model; the first replacement still promised a source check that Fas 5 has not done. Regression fixture: tests/fixtures/qa_ai_statement_2026-11-11 (the served pages), tests/test_verify_election_pages.py.",

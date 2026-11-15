@@ -38,6 +38,15 @@ export function computeBrookingsMoves(): BrookingsTrashMoves {
   return { south: movesFor('south'), north: movesFor('north') };
 }
 
+/** QA data.holiday-yard-waste: trash rows whose value, insight or meta says yard waste is picked up or moves while the computed
+ *  moves for the week have no yard waste (its season is over). Empty = consistent. */
+export function yardWasteClaimsWithoutMove(page: HolidayPageData, moves: BrookingsTrashMoves): string[] {
+  if ([...moves.south, ...moves.north].some((m) => m.startsWith('Yard waste'))) return [];
+  return page.facts.flatMap((f) => (f.section === 'trash' && f.status === 'confirmed'
+    ? [f.value, f.insight, f.meta].filter((t): t is string => !!t && /yard waste/i.test(t) && /picked up|move/i.test(t)).map((t) => `${f.label}: "${t}"`)
+    : []));
+}
+
 function brookingsFacts(moves: BrookingsTrashMoves): HolidayFact[] {
   const row = (label: string, m: string[]): HolidayFact => ({
     section: 'trash', status: 'confirmed', change: m.length > 0 ? 'changed' : 'open', label, value: m.length > 0 ? m.join('; ') : 'Nothing moves',
@@ -47,9 +56,10 @@ function brookingsFacts(moves: BrookingsTrashMoves): HolidayFact[] {
     row('Pickup changes, south of 8th St. S.', moves.south),
     row('Pickup changes, north of 8th St. S.', moves.north),
     {
-      section: 'trash', status: 'confirmed', change: 'changed', label: 'Holiday rule', value: 'Thanksgiving is a collection holiday: recycling and yard waste are picked up Wednesday.',
-      insight: 'Recycling and yard waste are picked up Wed Nov 25.',
-      meta: 'Recycling and yard waste move to Wed Nov 25',
+      // Yard waste is left out: its season ends Nov 24 (row below), so nothing of it moves to Wed Nov 25 (owner 2026-11-15).
+      section: 'trash', status: 'confirmed', change: 'changed', label: 'Holiday rule', value: 'Thanksgiving is a collection holiday: Thursday recycling is picked up Wednesday.',
+      insight: 'Thursday recycling is picked up Wed Nov 25.',
+      meta: 'Thursday recycling moves to Wed Nov 25',
       source: BK_COLLECTIONS, checkedOn: BK_CHECKED,
     },
     {
@@ -57,10 +67,11 @@ function brookingsFacts(moves: BrookingsTrashMoves): HolidayFact[] {
       source: BK_COLLECTIONS, checkedOn: BK_CHECKED,
     },
     {
+      // Only what the page says about the day itself (owner 2026-11-15): administrative offices closed on the holiday.
       section: 'closures', status: 'confirmed', change: 'closed', label: 'City offices',
-      value: 'Closed on Thanksgiving Day in most cases. Some city facilities and recreation activities may have closures, changed schedules or special hours.',
-      clarify: "The city posts those changes on its social media; its page does not mention the day after Thanksgiving.",
-      meta: 'City offices mostly closed Nov 26',
+      value: 'Closed Thu Nov 26.',
+      meta: 'City offices closed Nov 26',
+      closedOn: ['2026-11-26'],
       source: BK_HOLIDAYS, checkedOn: BK_CHECKED,
     },
     {
@@ -93,10 +104,8 @@ function brookingsFacts(moves: BrookingsTrashMoves): HolidayFact[] {
 const MV_WASTE: Source = { name: 'City of Moreno Valley: Holiday schedule (waste)', url: 'https://www.moreno-valley.ca.us/resident_services/waste/trash-holiday.html' };
 const MV_LANDFILL: Source = { name: 'City of Moreno Valley: Landfill and transfer stations', url: 'https://www.moreno-valley.ca.us/resident_services/waste/recycle-landfill.html' };
 const MV_LIBRARY: Source = { name: 'Moreno Valley Public Library', url: 'https://moval.gov/mv-library/' };
-const MV_CITY: Source = { name: 'City of Moreno Valley', url: 'https://www.moreno-valley.ca.us/' };
 const MV_LIBRARY_CALENDAR: Source = { name: 'Moreno Valley Public Library calendar', url: 'https://moval.gov/mv-library/' };
 const MV_LIBRARY_CALENDAR_READ = '2026-10-03';
-const MV_CHECKED = '2026-10-24';
 const MV_RECHECKED = '2026-11-14';
 // RTA press release dated Nov 12, 2026 (linked from riversidetransit.com's front page "Latest News", read 2026-11-14).
 const MV_RTA: Source = { name: 'Riverside Transit Agency: 2026-2027 Holiday Schedule', url: 'https://www.riversidetransit.com/index.php/news-a-publications/latest-news/1102-2026-2027-holiday-schedule' };
@@ -117,20 +126,17 @@ const MORENO_FACTS: HolidayFact[] = [
     meta: 'No RTA buses Nov 26',
     source: MV_RTA, checkedOn: MV_RECHECKED,
   },
-  {
-    section: 'closures', status: 'unconfirmed', label: 'City offices', meta: 'City offices',
-    source: MV_CITY, checkedOn: MV_CHECKED,
-    checkAt: { label: 'City of Moreno Valley website and social media', url: 'https://www.moreno-valley.ca.us/' },
-  },
+  // City offices row removed 2026-11-15 (owner): it linked to the city's front page, and the city hours page
+  // (moval.gov/city_hall/city-hours.html, read 2026-11-15) names no holiday.
   {
     section: 'closures', status: 'unconfirmed', label: 'Badlands Sanitary Landfill', meta: 'Landfill',
-    clarify: 'Regular hours 6 a.m.–4:30 p.m. Mon–Sat; the city page lists it closed Sundays and holidays without naming them.',
+    clarify: 'Closed Sundays and holidays. Regular hours 6 a.m.–4:30 p.m. Mon–Sat.',
     source: MV_LANDFILL, checkedOn: MV_RECHECKED,
     checkAt: { label: 'Call the landfill', url: MV_LANDFILL.url, phone: '951-486-3200' },
   },
   {
     section: 'closures', status: 'unconfirmed', label: 'Waste Management Transfer Station',
-    clarify: 'Regular hours 7 a.m.–2 p.m. Mon–Fri and 7 a.m.–1 p.m. Sat; the city page lists it closed holidays without naming them.',
+    clarify: 'Closed holidays. Regular hours 7 a.m.–2 p.m. Mon–Fri and 7 a.m.–1 p.m. Sat.',
     source: MV_LANDFILL, checkedOn: MV_RECHECKED,
     checkAt: { label: 'Call the transfer station', url: MV_LANDFILL.url, phone: '800-774-0222' },
   },
@@ -166,7 +172,6 @@ const BF_FISH_CHECKED = '2026-11-14';
 const BF_LIBRARY: Source = { name: 'City and County of Broomfield: Library', url: 'https://www.broomfield.org/276/Library-Home' };
 const BF_REC: Source = { name: 'City and County of Broomfield: Recreation Facilities Hours', url: 'https://www.broomfield.org/1452/Recreation-Facilities-Hours' };
 const BF_NEWS: Source = { name: 'City and County of Broomfield: News Flash', url: 'https://www.broomfield.org/CivicAlerts.aspx?CID=-1' };
-const BF_WASTE: Source = { name: 'City and County of Broomfield: Residential waste services', url: 'https://www.broomfield.org/3980/Residential-Waste-Services-in-Broomfield' };
 const BF_TREE_BRANCH: Source = { name: 'City and County of Broomfield: Tree Branch Recycling Program', url: 'https://broomfield.org/1031/Tree-Branch-Recycling-Program' };
 const BF_FISH: Source = { name: 'Broomfield FISH', url: 'https://www.broomfieldfish.org/' };
 // The city posts a "CCOB Closures and Adjusted Hours for <holiday>" notice in its News Flash (Veterans Day 2026: Nov 2,
@@ -176,8 +181,8 @@ const BF_RACE = 'https://runsignup.com/Race/CO/Broomfield/BroomfieldTurkeyDay';
 
 const BROOMFIELD_FACTS: HolidayFact[] = [
   {
+    // A link to the News Flash only, no text (owner 2026-11-15); the owner pastes the notice when it is posted.
     section: 'closures', status: 'unconfirmed', label: 'City offices, courts, library and recreation centers',
-    clarify: 'The city posts its holiday closures and adjusted hours in its News Flash.',
     holdsCount: true,
     source: BF_NEWS, checkedOn: BF_RECHECKED,
     checkAt: BF_CLOSURES_NOTICE,
@@ -198,20 +203,11 @@ const BROOMFIELD_FACTS: HolidayFact[] = [
   {
     section: 'hours', status: 'confirmed', label: 'Recreation centers (regular hours)',
     value: 'Broomfield Community Center: Mon–Thu 5 a.m.–10 p.m., Fri 5 a.m.–8 p.m., Sat 7 a.m.–8 p.m., Sun 8 a.m.–6 p.m. Paul Derda Recreation Center: same, except Fri 5 a.m.–6:30 p.m. The Bay Aquatic Park: open weather permitting.',
-    clarify: 'The city says all open hours are subject to change.',
+    clarify: 'All open hours are subject to change.',
     source: BF_REC, checkedOn: BF_CHECKED,
   },
-  {
-    section: 'trash', status: 'unconfirmed', label: 'Holiday collection (Waste Connections)', meta: 'Trash',
-    clarify: "The city's waste page lists no holiday shift; delay alerts come through the WasteConnect app.",
-    source: BF_WASTE, checkedOn: BF_RECHECKED,
-    checkAt: { label: 'WasteConnect app (link on the city waste page)', url: BF_WASTE.url, phone: '303-288-2100 ext. 6' },
-  },
-  {
-    section: 'transit', status: 'unconfirmed', label: 'RTD Thanksgiving Day service', meta: 'RTD',
-    source: { name: 'RTD: News', url: 'https://www.rtd-denver.com/community/news' }, checkedOn: BF_RECHECKED,
-    checkAt: { label: 'RTD news page', url: 'https://www.rtd-denver.com/community/news' },
-  },
+  // Trash row removed 2026-11-15 (owner). RTD row removed the same day: rtd-denver.com/community/news (read 2026-11-15) has no
+  // Thanksgiving notice and links no holiday-service page, and a general news page does not answer the question.
   {
     // FISH's page gives weekdays, not a year: "Thursday, November 26th", "Friday, November 27th", then Dec 24 (Thu),
     // Dec 25 (Fri) and Jan 1 (Fri) -- the 2026/27 calendar (read 2026-11-11).

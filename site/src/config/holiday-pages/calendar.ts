@@ -35,10 +35,11 @@ const HOURS_NOTE = (season: number, nextYear: number) =>
 export const HOLIDAY_PAGE_DEFS: HolidayPageDef[] = [
   // Closes on the day itself (owner 2026-11-11): from Nov 12 the page is the standing one, with no card on /events/.
   { slug: 'veterans-day', label: 'Veterans Day', holidayId: 'veterans_day', daysBefore: 10, daysAfter: 0, evergreenNote: HOURS_NOTE },
-  // Calendar rows: the week before through the Sunday after, so a tree lighting the same weekend is included (owner 2026-11-14).
+  // Calendar rows: the week before through the Sunday after, so a tree lighting the same weekend is included (owner 2026-11-14);
+  // "friendsgiving" added 2026-11-15 (owner).
   {
     slug: 'thanksgiving', label: 'Thanksgiving', holidayId: 'thanksgiving', daysBefore: 10, daysAfter: 1, evergreenNote: HOURS_NOTE,
-    calendarMatch: { pattern: /thanksgiving|turkey (?:trot|day)|gobble|tree lighting/i, daysBefore: 7, daysAfter: 3 },
+    calendarMatch: { pattern: /thanksgiving|friendsgiving|turkey (?:trot|day)|gobble|tree lighting/i, daysBefore: 7, daysAfter: 3 },
   },
   // Glasgow's Christmas window opens six weeks before its first confirmed event (Nov 6) and closes Jan 3 (owner 2026-11-04), or
   // later when GOV.UK's Scotland list has a later bank holiday in the season: 2026/27 ends Mon 4 Jan, gone 5 Jan (owner 2026-11-14).

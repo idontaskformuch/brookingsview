@@ -72,9 +72,10 @@ describe('Broomfield data as approved 2026-11-04', () => {
     const offices = byLabel('City offices');
     expect(offices.status).toBe('unconfirmed');
     expect((offices as { checkAt: { url: string } }).checkAt.url).toBe('https://www.broomfield.org/CivicAlerts.aspx?CID=-1'); // News Flash: no Thanksgiving notice yet on 2026-11-11
-    const trash = byLabel('Holiday collection');
-    expect((trash as { checkAt: { phone: string } }).checkAt.phone).toBe('303-288-2100 ext. 6');
-    expect((byLabel('RTD') as { checkAt: { url: string } }).checkAt.url).toBe('https://www.rtd-denver.com/community/news');
+    expect((offices as { clarify?: string }).clarify).toBeUndefined(); // a link only, no text (owner 2026-11-15)
+    // Owner 2026-11-15: the trash row is gone, and the RTD row with it (its link was RTD's general news page).
+    expect(page.facts.find((f) => f.label.startsWith('Holiday collection'))).toBeUndefined();
+    expect(page.facts.find((f) => f.label.startsWith('RTD'))).toBeUndefined();
     // Owner 2026-11-11: no row without a dated meal or distribution from FISH or the Salvation Army itself.
     expect(page.facts.find((f) => f.label === 'Free Thanksgiving meal')).toBeUndefined();
     expect((offices as { holdsCount?: boolean }).holdsCount).toBe(true);
@@ -117,8 +118,9 @@ describe('deterministic meta', () => {
     }
   });
   it('regression: the three US descriptions are exactly what they were before the metaGroup change', () => {
+    // City offices and the recycling move reworded 2026-11-15 (owner: no "mostly", no yard waste after its season ends Nov 24).
     expect(buildHolidayMeta(pageFor('brookings_sd'), 'Thanksgiving', 'Brookings').description).toBe(
-      'City offices mostly closed Nov 26 · Landfill closed Nov 26 · Recycling and yard waste move to Wed Nov 25. Checked Oct 23 – Nov 14, 2026.',
+      'City offices closed Nov 26 · Landfill closed Nov 26 · Thursday recycling moves to Wed Nov 25. Checked Oct 23 – Nov 14, 2026.',
     );
   });
   it('phrases with the same metaGroup merge into one, at the position of the first; the pending row is not named', () => {
@@ -182,7 +184,8 @@ describe('deterministic meta', () => {
     expect(src).toContain('checkedSpan(page)');
   });
   it('sections render in order and an empty one is skipped', () => {
-    expect(sectionsWithRows(pageFor('broomfield_co'))).toEqual(['closures', 'trash', 'transit', 'events', 'help']);
+    // Broomfield's trash and RTD rows removed 2026-11-15 (owner), so those sections are skipped.
+    expect(sectionsWithRows(pageFor('broomfield_co'))).toEqual(['closures', 'events', 'help']);
     expect(sectionsWithRows(pageFor('moreno_valley_ca'))).toEqual(['closures', 'trash', 'transit']);
   });
 });
