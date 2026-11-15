@@ -12,12 +12,9 @@ import HolidayPage from '../components/HolidayPage.astro';
 import HolidaySeasonPage from '../components/HolidaySeasonPage.astro';
 import { siteConfig } from '../lib/site-config';
 import { HOLIDAY_PAGE_DEFS } from '../config/holiday-pages/calendar';
-import { calendarExcludesFor, calendarIncludesFor, holidayPageFor } from '../config/holiday-pages/registry';
+import { holidayPageFor } from '../config/holiday-pages/registry';
 import { resolvePageState } from '../lib/holiday-calendar';
-import { getEveningRegister, getFacilities, getUpcomingStories } from '../lib/db';
-import { buildTownEventsView } from '../lib/events-town-view';
-import { formatCalendarReport, matchCalendarEvents, matchRegisterRows, matchTicketmasterEvents } from '../lib/holiday-calendar-events';
-import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
+import { holidayPageWithRows } from '../lib/holiday-page-build';
 
 export function getStaticPaths() {
   return HOLIDAY_PAGE_DEFS.flatMap((d) => (holidayPageFor(d.slug, siteConfig.townId) ? [{ params: { holiday: d.slug } }] : []));
@@ -27,31 +24,8 @@ const entry = holidayPageFor(Astro.params.holiday as string, siteConfig.townId);
 if (!entry) throw new Error(`no holiday page for ${Astro.params.holiday} / ${siteConfig.townId}`);
 const state = resolvePageState(entry.def, entry.page.year, Date.now(), siteConfig.timezone);
 
-let page = entry.page;
-const exclude = calendarExcludesFor(entry.def.slug, siteConfig.townId);
-if (exclude) {
-  // The same rows /events/ shows (frozen filter, merge, in-town / nearby), with room for the whole window.
-  const [stories, facilities] = await Promise.all([getUpcomingStories(['event'], 600), getFacilities()]);
-  const { displayed, distanceOf, nearbyRows } = buildTownEventsView(stories, [], facilities);
-  const nearby = new Set(nearbyRows.map((r) => r.item));
-  const { events, report } = matchCalendarEvents(
-    entry.def, entry.page.year,
-    displayed.map((item) => (nearby.has(item) ? { item, nearbyMiles: distanceOf.get(item) ?? null } : { item })),
-    siteConfig.timezone, exclude, calendarIncludesFor(entry.def.slug, siteConfig.townId),
-  );
-  const reg = page.season
-    ? matchRegisterRows(entry.def, entry.page.year, await getEveningRegister(), Date.now(), siteConfig.timezone, siteConfig.cityName, exclude)
-    : { events: [], report: [] };
-  // Ticketmaster: the build's shared fetch (no extra call), on a season page only (owner 2026-11-15).
-  const tm = page.season && siteConfig.hasWhatsOn
-    ? matchTicketmasterEvents(entry.def, entry.page.year, await getTicketmasterEventsForTown(siteConfig), Date.now(), siteConfig.timezone, exclude)
-    : { events: [], report: [] };
-  // A row the page already has by hand (same organizer page) is not listed twice.
-  const handUrls = new Set(page.events.flatMap((e) => (e.status === 'confirmed' ? [e.url] : [])));
-  const added = [...events, ...reg.events, ...tm.events].filter((e) => !handUrls.has(e.url));
-  for (const line of formatCalendarReport(entry.def.slug, siteConfig.townId, [...report, ...reg.report, ...tm.report])) console.log(line);
-  if (added.length > 0) page = { ...page, events: [...page.events, ...added] };
-}
+// Calendar, venue-register and Ticketmaster rows (lib/holiday-page-build.ts, the same rows the evening layer's holiday group reads).
+const page = await holidayPageWithRows(entry, Date.now(), true);
 const season = !!page.season && state.kind === 'active';
 ---
 {season

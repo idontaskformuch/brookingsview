@@ -10,7 +10,8 @@ import { siteConfig } from '../../lib/site-config';
 import type { EveningEntry } from '../../lib/evening-items';
 import { groupOpenLateByArea, type OpenLateRow } from '../../lib/osm-open-late';
 
-interface Group { name: string; entries: EveningEntry[]; more?: number }
+/** `href`: a holiday group's heading links to its holiday page, and so does its "more" line. */
+interface Group { name: string; entries: EveningEntry[]; more?: number; href?: string }
 interface Props {
   id: string;
   heading: string;
@@ -45,9 +46,9 @@ const hasLocal = highlights.length > 0 || groups.length > 0 || late.length > 0;
   {highlights.length > 0 && <PopEventList days={popDays(highlights, '')} tile="time" idPrefix={`${id}-hl`} listAttrs={{ 'data-hide-ended': '' }} />}
   {groups.map((g) => (
     <div class="ev-group">
-      <h3 class="ev-group-name">{groupLabel(g.name, siteConfig.country)}</h3>
+      <h3 class="ev-group-name">{g.href ? <a href={g.href}>{g.name}</a> : groupLabel(g.name, siteConfig.country)}</h3>
       <PopEventList days={popDays(g.entries, g.name)} tile="time" idPrefix={`${id}-${slug(g.name)}`} listAttrs={listAttrs} />
-      {g.more ? <p class="ev-more">{g.more} more {moreHref ? <a href={moreHref}>{moreLabel ?? 'on the full list'}</a> : 'on the full list'}</p> : null}
+      {g.more ? <p class="ev-more">{g.more} more {g.href ? <a href={g.href}>on the {g.name} page</a> : moreHref ? <a href={moreHref}>{moreLabel ?? 'on the full list'}</a> : 'on the full list'}</p> : null}
     </div>
   ))}
   {late.length > 0 && (

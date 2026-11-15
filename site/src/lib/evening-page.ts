@@ -3,14 +3,22 @@
  *  with sectionState() (the build can be hours old). Spec: .claude/specs/weekend-layer.md T2. */
 import type { EveningEntry, EveningGroup } from './evening-items';
 import { localDayNumber, localHourOf, TONIGHT_FROM_HOUR, HAPPY_HOUR_FROM_HOUR, HAPPY_HOUR_RE } from './local-day';
-import { EVENING_LAST_START_HOUR } from './evening-threshold';
+import { EVENING_LAST_START_HOUR, onEveningFrom } from './evening-threshold';
 
 export const GROUP_ORDER: EveningGroup[] = ['Live music', 'Comedy & shows', 'Theatre', 'Quiz & pub nights', 'Clubs & late', 'Sport', 'Family', 'Festivals & fairs', 'Film'];
 export const FREE_GROUP = 'Free tonight';
 export const OTHER_GROUP = 'Also on';
 export const MAX_HIGHLIGHTS = 3;
 
-export interface EveningListGroup { name: string; entries: EveningEntry[] }
+/** `href`: a holiday group links to its holiday page. */
+export interface EveningListGroup { name: string; entries: EveningEntry[]; href?: string }
+
+/** The holiday groups among `entries` (lib/evening-season.ts), in first-seen order: name and the page they link to. */
+export function seasonGroups(entries: EveningEntry[]): { name: string; href: string }[] {
+  const out = new Map<string, string>();
+  for (const e of entries) if (e.season && !out.has(e.season.label)) out.set(e.season.label, e.season.href);
+  return [...out].map(([name, href]) => ({ name, href }));
+}
 /** Near / far split (siteConfig.eveningLayer.nearMiles): a row with no distance (own events, register rows without one) counts as near. */
 export const isNearEntry = (e: EveningEntry, nearMiles: number | undefined) => nearMiles == null || e.distanceMiles == null || e.distanceMiles <= nearMiles;
 
@@ -34,37 +42,43 @@ export function pickHighlights(entries: EveningEntry[], max = MAX_HIGHLIGHTS): E
   const sorted = [...entries].sort(byStart);
   const out: EveningEntry[] = [];
   const seen = new Set<string>();
-  for (const e of sorted) {
+  // holiday rows stay in their holiday's group, never in the highlights
+  const pool = sorted.filter((e) => !e.season);
+  for (const e of pool) {
     if (!e.group || seen.has(e.group)) continue;
     seen.add(e.group);
     out.push(e);
     if (out.length === max) return out.sort(byStart);
   }
-  for (const e of sorted) {
+  for (const e of pool) {
     if (out.length === max) break;
     if (!out.includes(e)) out.push(e);
   }
   return out.sort(byStart);
 }
 
-/** Compact rows by group: the five groups in order, then "Free tonight" (free, no group of its own), then "Also on". Empty groups are left out. */
+/** Compact rows by group: the fixed groups in order, then the holiday groups (each linking to its page), then "Free tonight" (free, no group
+ *  of its own), then "Also on". Empty groups are left out. */
 export function groupEntries(entries: EveningEntry[]): EveningListGroup[] {
   const byName = new Map<string, EveningEntry[]>();
   for (const e of entries) {
-    const name = e.group ?? (e.labels.includes('Free') ? FREE_GROUP : OTHER_GROUP);
+    const name = e.season?.label ?? e.group ?? (e.labels.includes('Free') ? FREE_GROUP : OTHER_GROUP);
     byName.set(name, [...(byName.get(name) ?? []), e]);
   }
-  return [...GROUP_ORDER, FREE_GROUP, OTHER_GROUP]
+  const seasons = seasonGroups(entries);
+  const hrefOf = new Map(seasons.map((s) => [s.name, s.href]));
+  return [...GROUP_ORDER, ...seasons.map((s) => s.name), FREE_GROUP, OTHER_GROUP]
     .filter((n) => byName.has(n))
-    .map((name) => ({ name, entries: byName.get(name)!.sort(byStart) }));
+    .map((name) => ({ name, entries: byName.get(name)!.sort(byStart), ...(hrefOf.has(name) ? { href: hrefOf.get(name) } : {}) }));
 }
 
-/** The evening of `day`: entries starting at/after 17:00 local that day, a happy hour from 15:00 (owner 2026-11-13). Highlights come
- *  out of the compact rows (no row twice). */
+/** The evening of `day`: entries starting at/after 17:00 local that day, a happy hour from 15:00 (owner 2026-11-13), an opening-hours row
+ *  while it is still open after 17:00. Highlights come out of the compact rows (no row twice). */
 export function eveningEntries(entries: EveningEntry[], day: number, tz: string): EveningEntry[] {
   return entries.filter((e) => {
     const at = new Date(e.start);
-    return localDayNumber(at, tz) === day && localHourOf(at, tz) >= (HAPPY_HOUR_RE.test(e.title) ? HAPPY_HOUR_FROM_HOUR : TONIGHT_FROM_HOUR);
+    const from = HAPPY_HOUR_RE.test(e.title) ? HAPPY_HOUR_FROM_HOUR : TONIGHT_FROM_HOUR;
+    return localDayNumber(at, tz) === day && onEveningFrom({ start: e.start, end: e.end, open: !!e.hours }, tz, from);
   });
 }
 

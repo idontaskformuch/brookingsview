@@ -31,7 +31,7 @@ export function eveningPopDays(entries: EveningEntry[], tz: string, country: str
   for (const e of [...entries].sort((a, b) => a.start.localeCompare(b.start))) {
     const dayKey = key.format(new Date(e.start));
     const row: PopRow = {
-      dayKey, timeLabel: '', title: e.title, venue: e.venue, area: (labelOf ? e.area : [e.area, distanceText(e.distanceMiles, country), driveLabel(e.driveMinutes)].filter(Boolean).join(' · ')) || null,
+      dayKey, timeLabel: e.hours ?? '', title: e.title, venue: e.venue, area: (labelOf ? e.area : [e.area, distanceText(e.distanceMiles, country), driveLabel(e.driveMinutes)].filter(Boolean).join(' · ')) || null,
       free: e.labels.includes('Free'), kids: false, teens: false, cat: eveningCategory(e.group), start: e.start, end: e.end, recurrence: 'one_off',
       href: e.href ?? undefined, tags: e.labels.filter((l) => l !== 'Free'),
       note: e.laterStarts?.length ? `Also ${e.laterStarts.map((t) => showTimeGb(t, tz)).join(', ')}` : undefined,

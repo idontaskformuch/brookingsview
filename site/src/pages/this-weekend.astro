@@ -22,6 +22,7 @@ import { placesFromSnapshot, openLateRows, decorateOpenLate } from '../lib/osm-o
 import { isHolidayDay } from '../lib/open-tonight';
 import { areasFor, withAreas } from '../lib/areas';
 import { indexingForTown } from '../lib/evening-verdict';
+import { withSeasonEntries } from '../lib/holiday-page-build';
 import { gettingHomeFor } from '../lib/getting-home';
 import { buildSummary, openAfterOneCount, lastSubwayTime } from '../lib/evening-summary';
 import { weekendForecastLine } from '../lib/weather-format';
@@ -43,12 +44,13 @@ const tm = siteConfig.hasWhatsOn ? await getTicketmasterEventsForTown(siteConfig
 const register = layer.register ? await getEveningRegister() : [];
 const checked = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
 const areaData = areasFor(siteConfig.townId);
-const entries = withAreas(buildEveningEntries({
+// plus the holiday group while a holiday page's window is open (lib/evening-season.ts)
+const entries = await withSeasonEntries(withAreas(buildEveningEntries({
   feed: items, ticketmaster: tm, register, now, timezone: tz, checked, cityName: siteConfig.cityName, townId: siteConfig.townId, venueMiles: areaData?.venueMiles,
   isFree: (i) => isFreeEvent(i, facilities),
   ticketmasterMaxMiles: layer.maxMiles,
   includeTicketmasterSports: layer.includeTicketmasterSports,
-}), areaData);
+}), areaData), now, tz);
 
 const osmSnapshot = layer.openLate ? await getOsmSnapshot() : null;
 const osm = placesFromSnapshot(osmSnapshot, now) ?? [];

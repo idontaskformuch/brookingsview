@@ -136,6 +136,9 @@ interface EventBase {
   metaGroup?: string;
 }
 
+/** Hours from `from` to `to` (YYYY-MM-DD, inclusive), on the ISO weekdays in `days` (1 = Monday; absent = every day). `open` null = closed. */
+export interface OpenHoursRule { from: string; to: string; days?: number[]; open: string | null; close?: string }
+
 export interface ConfirmedEvent extends EventBase {
   status: 'confirmed';
   /** Local calendar date, YYYY-MM-DD (the first day of a run). */
@@ -149,6 +152,9 @@ export interface ConfirmedEvent extends EventBase {
   times?: string[];
   /** Emit date-only JSON-LD (startDate/endDate) for a run whose hours vary by day. Needs `endDate`. */
   seasonJsonLd?: boolean;
+  /** A run's opening hours day by day, as the organizer's page gives them (the evening layer shows the run on the evenings it is open,
+   *  with that day's hours, lib/evening-season.ts). The last rule that covers a day wins. */
+  openHours?: OpenHoursRule[];
   venue: EventVenue;
   /** The organizer's own page. */
   url: string;

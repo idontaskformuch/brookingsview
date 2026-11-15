@@ -21,7 +21,7 @@ import type { EveningItem } from './evening-threshold';
 
 export type EveningGroup = 'Live music' | 'Comedy & shows' | 'Quiz & pub nights' | 'Clubs & late' | 'Theatre' | 'Sport' | 'Family' | 'Festivals & fairs' | 'Film';
 export type EveningLabel = 'Free' | '18+' | 'All ages';
-export type EveningSource = 'ticketmaster' | 'own' | 'register';
+export type EveningSource = 'ticketmaster' | 'own' | 'register' | 'season';
 
 export interface EveningEntry {
   id: string;
@@ -54,6 +54,11 @@ export interface EveningEntry {
   priceCurrency?: string | null;
   /** City the venue is in, as Ticketmaster states it ("Denver"); null/absent when the source gives none (own events, register). Never inferred. */
   venueCity?: string | null;
+  /** A row of an open holiday page (lib/evening-season.ts): listed under the holiday's own group, which links to the page. */
+  season?: { label: string; href: string };
+  /** An opening-hours row (a run such as Winter Wonderland): that day's hours, "12 noon–10pm". It is on in the evening while it is
+   *  still open after the evening starts, not only when it opens then. */
+  hours?: string;
 }
 
 /** One row of the curated venue register (db.getEveningRegister): a rule the weekly job read off the venue's own page. */
@@ -308,7 +313,7 @@ export function showTitleKey(t: string): string {
 
 /** The same show listed by two sources ("DF Concerts Presents: NOAHFINNCE" from the venue's calendar and "NOAHFINNCE" from
  *  Ticketmaster): same start instant and one title contains the other. */
-function sameShow(a: EveningEntry, b: EveningEntry): boolean {
+export function sameShow(a: EveningEntry, b: EveningEntry): boolean {
   if (a.start !== b.start) return false;
   const x = showTitleKey(a.title), y = showTitleKey(b.title);
   return x.length > 0 && y.length > 0 && (x === y || x.includes(y) || y.includes(x));
@@ -334,7 +339,7 @@ export function buildEveningEntries(o: EveningEntryOptions): EveningEntry[] {
   return out.sort((a, b) => a.start.localeCompare(b.start));
 }
 
-/** The shape the threshold engine reads. */
+/** The shape the threshold engine reads. A holiday row counts under its holiday's group, like any other group. */
 export function toThresholdItems(entries: EveningEntry[]): EveningItem[] {
-  return entries.map((e) => ({ start: e.start, group: e.group }));
+  return entries.map((e) => ({ start: e.start, group: e.season?.label ?? e.group, ...(e.hours ? { end: e.end, open: true } : {}) }));
 }

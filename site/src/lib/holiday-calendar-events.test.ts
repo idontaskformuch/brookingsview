@@ -84,7 +84,10 @@ describe('calendar rows on a holiday page', () => {
     expect(calendarIncludesFor('christmas', 'broomfield_co')).toEqual({});
   });
   it('the route adds the rows and logs them', () => {
-    const src = readFileSync(new URL('../pages/[holiday].astro', import.meta.url), 'utf8');
+    // the route calls the shared build step (also read by the evening layer's holiday group) with logging on
+    const route = readFileSync(new URL('../pages/[holiday].astro', import.meta.url), 'utf8');
+    expect(route).toContain('holidayPageWithRows(entry, Date.now(), true)');
+    const src = readFileSync(new URL('./holiday-page-build.ts', import.meta.url), 'utf8');
     expect(src).toContain('matchCalendarEvents(');
     expect(src).toContain('formatCalendarReport(');
   });

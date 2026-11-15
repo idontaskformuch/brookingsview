@@ -36,6 +36,21 @@ export interface EveningItem {
   start: string;
   /** Group label (Live music, Comedy & shows, ...). Items without one count toward no group. */
   group: string | null;
+  /** An opening-hours row (Winter Wonderland's hours that day): `end` is its closing instant. */
+  end?: string | null;
+  open?: boolean;
+}
+
+/** Whether an item belongs to the evening of its own day that starts at `fromHour`: it starts then or later, or it is an opening-hours
+ *  row still open after that hour on the same day (Winter Wonderland open 12 noon to 10pm is on tonight; closed or shut by 5pm, it is not). */
+export function onEveningFrom(item: { start: string; end?: string | null; open?: boolean }, timezone: string, fromHour: number): boolean {
+  const at = new Date(item.start);
+  if (localHourOf(at, timezone) >= fromHour) return true;
+  if (!item.open || !item.end) return false;
+  const end = new Date(item.end);
+  if (localDayNumber(end, timezone) !== localDayNumber(at, timezone)) return false;
+  const h = localHourOf(end, timezone);
+  return h > fromHour || (h === fromHour && end.getUTCMinutes() > 0);
 }
 
 export interface EveningNight {
@@ -66,7 +81,7 @@ export function eveningNights(items: EveningItem[], now: Date, timezone: string,
   const byDay = new Map<number, { items: number; groups: Set<string> }>();
   for (const it of items) {
     const at = new Date(it.start);
-    if (Number.isNaN(at.getTime()) || localHourOf(at, timezone) < TONIGHT_FROM_HOUR) continue;
+    if (Number.isNaN(at.getTime()) || !onEveningFrom(it, timezone, TONIGHT_FROM_HOUR)) continue;
     const day = localDayNumber(at, timezone);
     if (day < first || day >= first + nights) continue;
     const slot = byDay.get(day) ?? { items: 0, groups: new Set<string>() };

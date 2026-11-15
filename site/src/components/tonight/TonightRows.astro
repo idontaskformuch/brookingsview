@@ -10,6 +10,7 @@ import { groupLabel } from '../../lib/evening-items';
 import type { OpenLateRow } from '../../lib/osm-open-late';
 import { OPEN_LATE_MAX_ROWS } from '../../lib/osm-open-late';
 import { eveningPopDays } from '../../lib/pop-days';
+import { seasonGroups } from '../../lib/evening-page';
 import { bucketOf, isBigShow, cityScope, eventCityLabel, regionOf, type CardTown, type Regions } from '../../lib/tonight-cards';
 
 interface Props { id: string; entries: EveningEntry[]; late: OpenLateRow[]; tz: string; regions?: Regions; town: CardTown; osmChecked: string; /** The first evening says "Open tonight", the next one "Open tomorrow night". */ tonight?: boolean }
@@ -20,13 +21,25 @@ const attrsOf = (e: EveningEntry) => ({
   'data-scope': town.cityLabels ? cityScope(e.venueCity, town.homeCity) : undefined, 'data-big': isBigShow(e, town.bigShows) ? '1' : undefined,
   'data-group': e.group ? groupLabel(e.group, town.country) : '',
 });
-const days = eveningPopDays(entries, tz, town.country, attrsOf, town.cityLabels ? (e) => eventCityLabel(e, town) : undefined);
+const labelOf = town.cityLabels ? (e: EveningEntry) => eventCityLabel(e, town) : undefined;
+// holiday rows (lib/evening-season.ts) get their own group after the events, headed by the holiday's name and linking to its page
+const main = entries.filter((e) => !e.season);
+const seasons = seasonGroups(entries).map((s) => ({ ...s, slug: s.href.replace(/\//g, ''), entries: entries.filter((e) => e.season?.label === s.name) }));
+const days = eveningPopDays(main, tz, town.country, attrsOf, labelOf);
 ---
-{entries.length > 0 && (
+{main.length > 0 && (
   <section class="tc-events" aria-label="Events">
     <PopEventList days={days} tile="time" live idPrefix={id} listAttrs={{ 'data-tc-rows': '', 'data-hide-ended': '' }} />
   </section>
 )}
+{seasons.map((g) => (
+  <section class="tc-cat" data-tc-cat data-bucket="season" aria-labelledby={`${id}-${g.slug}`}>
+    <header class="tc-cat-head">
+      <h3 id={`${id}-${g.slug}`}><a href={g.href}>{g.name}</a> <span class="tc-cat-count" data-tc-cat-count>{g.entries.length}</span></h3>
+    </header>
+    <PopEventList days={eveningPopDays(g.entries, tz, town.country, attrsOf, labelOf)} tile="time" live idPrefix={`${id}-${g.slug}`} listAttrs={{ 'data-tc-rows': '', 'data-hide-ended': '' }} />
+  </section>
+))}
 {lateRows.length > 0 && (
   <section class="tc-cat" data-tc-cat data-bucket="late" style="--c: var(--tc-late)" aria-labelledby={`${id}-late`}>
     <header class="tc-cat-head">

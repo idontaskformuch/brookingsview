@@ -19,8 +19,9 @@ import { siteConfig } from '../lib/site-config';
 import { countryProfile } from '../lib/country-profile';
 import { metaDescription } from '../lib/meta-description';
 import { getTicketmasterEventsForTown, IN_TOWN_THRESHOLD_MILES } from '../lib/ticketmaster';
-import { buildEveningEntries, toThresholdItems } from '../lib/evening-items';
+import { buildEveningEntries, toThresholdItems, type EveningSource } from '../lib/evening-items';
 import { indexingForTown } from '../lib/evening-verdict';
+import { withSeasonEntries } from '../lib/holiday-page-build';
 import { buildEveningSections, eveningEntries } from '../lib/evening-page';
 import PopEventList from '../components/pop/PopEventList.astro';
 import { eveningPopDays } from '../lib/pop-days';
@@ -59,13 +60,14 @@ const tm = siteConfig.hasWhatsOn ? await getTicketmasterEventsForTown(siteConfig
 const register = layer.register ? await getEveningRegister() : [];
 const checked = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
 const areaData = areasFor(siteConfig.townId);
-const entries = withAreas(buildEveningEntries({
+// plus the holiday group while a holiday page's window is open (lib/evening-season.ts)
+const entries = await withSeasonEntries(withAreas(buildEveningEntries({
   feed: items, ticketmaster: tm, register, now, timezone: tz, checked, cityName: siteConfig.cityName, townId: siteConfig.townId, venueMiles: areaData?.venueMiles,
   isFree: (i) => isFreeEvent(i, facilities),
   venueCity: (i) => ownVenueCity(i, facilities),
   ticketmasterMaxMiles: layer.maxMiles,
   includeTicketmasterSports: layer.includeTicketmasterSports,
-}), areaData);
+}), areaData), now, tz);
 
 const osmSnapshot = layer.openLate ? await getOsmSnapshot() : null;
 const osm = placesFromSnapshot(osmSnapshot, now) ?? [];
@@ -92,8 +94,8 @@ const upNext = tonightEvents.filter((e) => new Date(e.start).getTime() > now.get
 const regions = cards?.regions ?? {};
 const town: CardTown = { country: siteConfig.country, homeCity: siteConfig.cityName, center: siteConfig.townCenter, hidePrice: !!cards?.hidePrice, cityLabels: !!cards?.cityLabels, bigShows: !!siteConfig.bigShows?.enabled };
 // Big shows (Ticketmaster where bigShows is on) are shown but never counted in the hero, the scope line or "Next up"; their own line says how many
-const isBig = (e: { source: 'ticketmaster' | 'own' | 'register' }) => isBigShow(e, town.bigShows);
-const localOnly = <T extends { source: 'ticketmaster' | 'own' | 'register' }>(list: T[]) => partitionBig(list, isBig).local;
+const isBig = (e: { source: EveningSource }) => isBigShow(e, town.bigShows);
+const localOnly = <T extends { source: EveningSource }>(list: T[]) => partitionBig(list, isBig).local;
 // "12 in Broomfield · 31 nearby": by the source's own venue city; events with no stated city are in neither count
 const scopeCounts = { home: 0, near: 0, unknown: 0 };
 if (town.cityLabels) for (const e of localOnly(tonightEvents)) scopeCounts[cityScope(e.venueCity, town.homeCity)]++;

@@ -169,6 +169,16 @@ const GLASGOW_EVENTS: HolidayEvent[] = [
     venue: { name: 'St Enoch Square', locality: 'Glasgow' },
     url: WW_ENOCH.url, source: WW_ENOCH, checkedOn: READ,
     metaGroup: 'Winter Wonderland', meta: 'St Enoch from 6 Nov',
+    // the FAQ's St Enoch table (read 2026-11-14), the same hours as the regular-hours row and the per-day rows above
+    openHours: [
+      { from: '2026-11-06', to: '2026-12-20', days: [7, 1, 2, 3], open: '12:00', close: '21:00' },
+      { from: '2026-11-06', to: '2026-12-20', days: [4, 5], open: '12:00', close: '22:00' },
+      { from: '2026-11-06', to: '2026-12-20', days: [6], open: '10:00', close: '22:00' },
+      { from: '2026-12-21', to: '2026-12-23', open: '10:00', close: '22:00' },
+      { from: '2026-12-24', to: '2026-12-24', open: '10:00', close: '20:00' },
+      { from: '2026-12-25', to: '2026-12-25', open: null },
+      { from: '2026-12-26', to: '2026-12-27', open: '12:00', close: '20:00' },
+    ],
     details: [
       'Entry is free; you pay for the attractions, including the solar-powered observation wheel.',
       'The main entrance is from Argyle Street.',
@@ -180,6 +190,15 @@ const GLASGOW_EVENTS: HolidayEvent[] = [
     venue: { name: 'Glasgow Green', locality: 'Glasgow' },
     url: WW_GREEN.url, source: WW_GREEN, checkedOn: READ,
     metaGroup: 'Winter Wonderland', meta: 'Glasgow Green from 20 Nov',
+    // the FAQ's Glasgow Green table and notes (read 2026-11-14): closes 8pm on 24 Dec, closed 25 Dec, 2pm to 10pm on 1 Jan
+    openHours: [
+      { from: '2026-11-20', to: '2026-12-20', days: [1, 2, 3, 4, 5], open: '15:00', close: '22:00' },
+      { from: '2026-11-20', to: '2026-12-20', days: [6, 7], open: '12:00', close: '22:00' },
+      { from: '2026-12-21', to: '2027-01-03', open: '12:00', close: '22:00' },
+      { from: '2026-12-24', to: '2026-12-24', open: '12:00', close: '20:00' },
+      { from: '2026-12-25', to: '2026-12-25', open: null },
+      { from: '2027-01-01', to: '2027-01-01', open: '14:00', close: '22:00' },
+    ],
     details: [
       'Entry is free; the ice rink, circus and Santa’s Grotto are ticketed.',
       'Santa’s Grotto runs to Thu 24 Dec: £16.75 per child plus fees. A Very Merry Circus: £12.50 plus fees.',

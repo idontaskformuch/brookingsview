@@ -2,8 +2,9 @@
  *  components as /tonight. Pure functions. Groups follow the spec (Nights out & live music, Sport, Markets & food, Family, Free) and are
  *  derived from the entry's own group, so no source is classified twice. Saturday and Sunday run all day, Friday from 17:00. */
 import type { EveningEntry } from './evening-items';
-import { localDayNumber, localHourOf, TONIGHT_FROM_HOUR } from './local-day';
-import { pickHighlights, isNearEntry, type EveningListGroup } from './evening-page';
+import { localDayNumber, TONIGHT_FROM_HOUR } from './local-day';
+import { pickHighlights, isNearEntry, seasonGroups, type EveningListGroup } from './evening-page';
+import { onEveningFrom } from './evening-threshold';
 
 export type WeekendKind = 'friday' | 'saturday' | 'sunday';
 export const WEEKEND_GROUP_ORDER = ['Nights out & live music', 'Sport', 'Markets & food', 'Family', 'Free', 'Also on'] as const;
@@ -11,6 +12,7 @@ export const WEEKEND_GROUP_ORDER = ['Nights out & live music', 'Sport', 'Markets
 export const WEEKEND_ROWS_PER_GROUP = 8;
 
 export function weekendGroupOf(e: EveningEntry): string {
+  if (e.season) return e.season.label;
   switch (e.group) {
     case 'Sport': return 'Sport';
     case 'Festivals & fairs': return 'Markets & food';
@@ -49,19 +51,20 @@ export function buildWeekendSections(entries: EveningEntry[], now: Date, tz: str
   return kinds.map((kind, i) => {
     const day = friday + i;
     const from = kind === 'friday' ? TONIGHT_FROM_HOUR : 0;
-    const dayEntries = entries.filter((e) => {
-      const at = new Date(e.start);
-      return localDayNumber(at, tz) === day && localHourOf(at, tz) >= from;
-    });
+    const dayEntries = entries.filter((e) => localDayNumber(new Date(e.start), tz) === day && onEveningFrom({ start: e.start, end: e.end, open: !!e.hours }, tz, from));
     const near = dayEntries.filter((e) => isNearEntry(e, nearMiles));
     // With a near/far split the highlights are in-town rows only: a regional show never headlines an "in {Town}" page.
     const highlights = pickHighlights(nearMiles != null ? near : dayEntries);
+    // holiday groups (lib/evening-season.ts) after the fixed ones and before Free, each linking to its holiday page
+    const seasons = seasonGroups(dayEntries);
+    const order = [...WEEKEND_GROUP_ORDER.slice(0, -2), ...seasons.map((s) => s.name), ...WEEKEND_GROUP_ORDER.slice(-2)];
     const groupsOf = (list: EveningEntry[]) => {
       const byName = new Map<string, EveningEntry[]>();
       for (const e of list) byName.set(weekendGroupOf(e), [...(byName.get(weekendGroupOf(e)) ?? []), e]);
-      return WEEKEND_GROUP_ORDER.filter((n) => byName.has(n)).map((name) => {
+      return order.filter((n) => byName.has(n)).map((name) => {
         const all = byName.get(name)!.sort((a, b) => a.start.localeCompare(b.start));
-        return { name, entries: all.slice(0, perGroup), more: Math.max(0, all.length - perGroup) };
+        const href = seasons.find((s) => s.name === name)?.href;
+        return { name, entries: all.slice(0, perGroup), more: Math.max(0, all.length - perGroup), ...(href ? { href } : {}) };
       });
     };
     const rest = dayEntries.filter((e) => !highlights.includes(e));
