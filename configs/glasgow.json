@@ -293,7 +293,9 @@
       "Braehead Arena": { "lat": 55.8767812, "lon": -4.3649192, "town": "Renfrew",
         "source": "https://nominatim.openstreetmap.org/search?q=Braehead+Arena", "fetched": "2026-11-15" },
       "the Arena at Playsport": { "lat": null, "lon": null, "town": "East Kilbride",
-        "source": "https://www.caledoniagladiators.com/mens-fixtures/ (\"PLAYSPORT STEWARTFIELD WAY, EAST KILBRIDE G74 4GT\"); Nominatim 0 hits twice, no more lookups (owner 2026-11-15)", "fetched": "2026-11-15" }
+        "source": "https://www.caledoniagladiators.com/mens-fixtures/ (\"PLAYSPORT STEWARTFIELD WAY, EAST KILBRIDE G74 4GT\"); Nominatim 0 hits twice, no more lookups (owner 2026-11-15)", "fetched": "2026-11-15" },
+      "Kirkintilloch Community Sport Complex": { "lat": null, "lon": null, "town": "Kirkintilloch",
+        "source": "https://queensparkfc.co.uk/calendar/womens-combined-26-27/ (venue name, Queen's Park Women home games); Nominatim q=Kirkintilloch+Community+Sport+Complex 0 hits (owner 2026-11-15: one lookup as for Braehead)", "fetched": "2026-11-15" }
     },
     "sources": [
       {
@@ -323,7 +325,7 @@
         "level": "amateur",
         "gender": "women",
         "url": "https://queensparkfc.co.uk/calendar/womens-combined-26-27/",
-        "note": "sports-deep S2 (owner 2026-11-15): as queens-park; first read 2026-11-15 (24 games, SWPL 2, Sky Sports Cup, Women's Scottish Cup).",
+        "note": "sports-deep S2 (owner 2026-11-15): as queens-park; first read 2026-11-15 (24 games, SWPL 2, Sky Sports Cup, Women's Scottish Cup). level 'amateur' is wrong (owner: SWPL is at least semi-pro) but config/sports.json has no semi-pro and sport_events.level is NOT NULL (migration 066): empty needs a migration, awaiting the owner.",
         "params": { "team": "Queen's Park Women", "tz": "Europe/London" }
       }
     ],
