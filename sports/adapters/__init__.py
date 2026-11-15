@@ -43,3 +43,4 @@ def merged_params(source: dict) -> dict:
 
 from sports.adapters import internal  # noqa: E402,F401  (registers "internal"; imported last because it uses register())
 from sports.adapters import sportmonks  # noqa: E402,F401  (registers "sportmonks")
+from sports.adapters import sportspress_calendar  # noqa: E402,F401  (registers "sportspress_calendar")

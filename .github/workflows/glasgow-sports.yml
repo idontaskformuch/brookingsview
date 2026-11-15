@@ -4,7 +4,8 @@ name: glasgow-sports
 # COLLECTION ONLY: configs/glasgow.json has sports.collect=true and sports.enabled=false, so nothing is shown on the site (no footer
 # credit, no page reads the program) and there is deliberately no build or deploy here. When the owner turns sports.enabled on, a
 # site rebuild is needed for it to appear.
-# Two requests a day against the free plan's 180 an hour. SPORTMONKS_API_KEY reaches the runner through env only; the adapter sends it
+# Sportmonks: two requests a day against the free plan's 180 an hour.
+# Queen's Park men + women (sportspress_calendar, sports-deep S2): one read a day of each calendar page on queensparkfc.co.uk. SPORTMONKS_API_KEY reaches the runner through env only; the adapter sends it
 # in the Authorization header and never logs it, and Actions masks the secret value in the log on top of that.
 
 on:
