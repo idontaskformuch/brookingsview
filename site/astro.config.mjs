@@ -352,8 +352,7 @@ const CROSS_SITE_CANONICAL_ORIGINS = {
 // top-level pages unconditionally or conditionally redirects via
 // `Astro.redirect(...)` in its own frontmatter (grep `Astro\.redirect\(`
 // under site/src/pages to re-verify this list is complete -- most redirect
-// to `/` when a town/feature is inactive, but a couple redirect elsewhere:
-// reviews.astro folds into /columns/ for Moreno Valley, this-week/index.astro
+// to `/` when a town/feature is inactive, but this-week/index.astro
 // always bounces to the current week's own page). Astro's static output
 // still builds a real stub HTML file for every such redirect -- confirmed
 // live TWICE: Brookings' own sitemap carried `/home-sales/` and
@@ -398,9 +397,8 @@ const TOWN_GATED_PAGES = [
   { path: '/vote/', activeFor: ['brookings_sd', 'moreno_valley_ca', 'broomfield_co'] },
   // /election-results/ (election 2026 phase 2): same three towns as /vote/ (each has an `election.results` block).
   { path: '/election-results/', activeFor: ['brookings_sd', 'moreno_valley_ca', 'broomfield_co'] },
-  // 301s to /columns/ for Moreno Valley only (media_recension folded in
-  // there -- see reviews.astro's own comment); real content for the other
-  // two towns.
+  // reviews.astro is gone (SPEC Fas 13c, 2026-11-16; the Worker answers 410 via GONE_SECTIONS). The entry stays as a
+  // guard so a returning stub never reaches the sitemap.
   { path: '/reviews/', activeFor: ['brookings_sd', 'broomfield_co'] },
   // The current week's page again, canonical on /this-week/<slug>/ (indexed separately), in every town since F18
   // (2026-11-13; it was a redirect before): out of the sitemap because its canonical is another URL.
@@ -446,8 +444,8 @@ async function buildLastmodMap(townId, databaseUrl) {
   // MIN_TAG_PAGE_ITEMS' own comment above.
   //
   // AdSense "low value content" remediation, Phase 0 (2026-10-07): the four
-  // content-track archive index pages carry an unconditional `noindex` prop
-  // now (see reviews.astro/recipes.astro/editorials.astro/columns.astro) --
+  // content-track archive index pages carried an unconditional `noindex` prop
+  // (the page files were removed in SPEC Fas 13c, 2026-11-16; the entries stay as a guard) --
   // a path-shape check, not a DB query, same reasoning as the
   // isWhatsOnDetailPage check in the sitemap filter below: these are
   // top-level static pages with no per-row data to query, always noindexed,

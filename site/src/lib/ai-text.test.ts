@@ -44,7 +44,6 @@ describe('a permalink with withheld text', () => {
 // say so in ALLOWED_LOGIC_ONLY below).
 const SRC = join(__dirname, '..');
 const ALLOWED_LOGIC_ONLY: Record<string, string> = {
-  'components/EventBucket.astro': 'passes body on to StoryCard, which applies publicBody()',
   'pages/events/[facet].astro': 'passes body on to StoryCard, which applies publicBody()',
 };
 function walk(dir: string, out: string[] = []): string[] {

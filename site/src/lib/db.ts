@@ -2821,8 +2821,8 @@ export async function getEmployerJobStats(): Promise<EmployerJobStats[]> {
 }
 
 /**
- * Vail Resorts corporate newsroom feed -- Broomfield only (/vail-resorts,
- * VailNewsWidget.astro). See db/migrations/029_vail_news.sql and
+ * Vail Resorts corporate newsroom feed -- Broomfield only (/vail-resorts).
+ * See db/migrations/029_vail_news.sql and
  * scrapers/parsers/vail_news_v1.py -- a mirrored feed of the company's own
  * newsroom, NOT hyperlocal Broomfield reporting (Vail Resorts is
  * Broomfield's HQ employer-brand, hence the section existing at all).
@@ -3161,7 +3161,7 @@ export { calendarDateParts };
  *  raw UTC date is Oct 14 -- a Wednesday). A real tz-aware day-read is
  *  needed for those two towns instead. Shared by formatOccursAt() below
  *  and every direct meeting-date display call site (StoryCard.astro,
- *  LeadStory.astro, SecondaryStory.astro, city-hall.astro). */
+ *  city-hall.astro). */
 export function formatMeetingDate(value: string | Date | null): string {
   if (!siteConfig.meetingsHaveTime) return formatCalendarDate(value);
   if (!value) return '';
