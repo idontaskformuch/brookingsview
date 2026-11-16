@@ -322,10 +322,10 @@
         "adapter": "sportspress_calendar",
         "program": "queens-park-women",
         "sport": "soccer",
-        "level": "amateur",
+        "level": "semi-pro",
         "gender": "women",
         "url": "https://queensparkfc.co.uk/calendar/womens-combined-26-27/",
-        "note": "sports-deep S2 (owner 2026-11-15): as queens-park; first read 2026-11-15 (24 games, SWPL 2, Sky Sports Cup, Women's Scottish Cup). level 'amateur' is wrong (owner: SWPL is at least semi-pro) but config/sports.json has no semi-pro and sport_events.level is NOT NULL (migration 066): empty needs a migration, awaiting the owner.",
+        "note": "sports-deep S2 (owner 2026-11-15): as queens-park; first read 2026-11-15 (24 games, SWPL 2, Sky Sports Cup, Women's Scottish Cup).",
         "params": { "team": "Queen's Park Women", "tz": "Europe/London" }
       }
     ],

@@ -43,6 +43,49 @@ def test_changes_to_existing_rows_are_refused(stmt):
     assert check_additive(stmt) != []
 
 
+# Widening a CHECK IN list (owner 2026-11-16, 072). LIVE is verbatim pg_get_constraintdef for sport_events on 2026-11-16.
+LIVE = {
+    "sport_events_level_check": ("sport_events", "CHECK ((level = ANY (ARRAY['pro'::text, 'minor'::text, 'college'::text, 'varsity'::text, 'jv'::text, 'amateur'::text, 'youth'::text])))"),
+    "sport_events_status_check": ("sport_events", "CHECK ((status = ANY (ARRAY['scheduled'::text, 'final'::text, 'postponed'::text, 'cancelled'::text])))"),
+}
+DROP = "ALTER TABLE sport_events DROP CONSTRAINT sport_events_level_check;\n"
+WIDER = "('pro','minor','semi-pro','college','varsity','jv','amateur','youth')"
+
+
+def test_widening_pair_passes():
+    assert check_additive(DROP + f"ALTER TABLE sport_events ADD CONSTRAINT sport_events_level_check CHECK (level IN {WIDER})", LIVE) == []
+
+
+@pytest.mark.parametrize("sql", [
+    # another constraint name in the ADD
+    DROP + f"ALTER TABLE sport_events ADD CONSTRAINT sport_events_level_check2 CHECK (level IN {WIDER})",
+    # a value removed ('youth')
+    DROP + "ALTER TABLE sport_events ADD CONSTRAINT sport_events_level_check CHECK (level IN ('pro','minor','semi-pro','college','varsity','jv','amateur'))",
+    # another column
+    DROP + f"ALTER TABLE sport_events ADD CONSTRAINT sport_events_level_check CHECK (status IN {WIDER})",
+    # not a plain IN list
+    DROP + f"ALTER TABLE sport_events ADD CONSTRAINT sport_events_level_check CHECK (level IN {WIDER} OR level IS NULL)",
+    DROP + "ALTER TABLE sport_events ADD CONSTRAINT sport_events_level_check CHECK (length(level) > 0)",
+    DROP + "ALTER TABLE sport_events ADD CONSTRAINT sport_events_level_check CHECK (level IN (select level from x))",
+    # another table, a DROP alone, a DROP not directly followed by its ADD, an ADD alone, a constraint not in the live list
+    DROP + f"ALTER TABLE sport_programs ADD CONSTRAINT sport_events_level_check CHECK (level IN {WIDER})",
+    DROP,
+    DROP + "ALTER TABLE x ADD COLUMN IF NOT EXISTS y INTEGER;\n"
+         + f"ALTER TABLE sport_events ADD CONSTRAINT sport_events_level_check CHECK (level IN {WIDER})",
+    f"ALTER TABLE sport_events ADD CONSTRAINT sport_events_level_check CHECK (level IN {WIDER})",
+    "ALTER TABLE sport_events DROP CONSTRAINT sport_events_gender_check;\n"
+    + f"ALTER TABLE sport_events ADD CONSTRAINT sport_events_gender_check CHECK (gender IN {WIDER})",
+    "ALTER TABLE sport_events DROP CONSTRAINT IF EXISTS sport_events_level_check;\n"
+    + f"ALTER TABLE sport_events ADD CONSTRAINT sport_events_level_check CHECK (level IN {WIDER})",
+])
+def test_widening_allowance_is_narrow(sql):
+    assert check_additive(sql, LIVE) != []
+
+
+def test_widening_without_live_checks_is_refused():
+    assert check_additive(DROP + f"ALTER TABLE sport_events ADD CONSTRAINT sport_events_level_check CHECK (level IN {WIDER})") != []
+
+
 def test_single_add_column_lines_from_committed_migrations_pass():
     # verbatim from 024, 053, 032, 026 (all applied long ago): INT, INT DEFAULT, REFERENCES without a space, TEXT[] NOT NULL DEFAULT
     for stmt in [

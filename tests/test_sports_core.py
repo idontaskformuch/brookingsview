@@ -1,5 +1,6 @@
 """Local sports Phase 0: registry, config schema, adapter registry, dedup, strings, store SQL, check command, migration safety."""
 import json
+import re
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -318,6 +319,31 @@ def test_add_column_allowance_is_narrow(stmt):
 @pytest.mark.parametrize("stmt", ["ALTER TABLE x ADD COLUMN IF NOT EXISTS y int REFERENCES z(id)"])
 def test_add_column_allowance_takes_a_bare_reference(stmt):
     assert apply_migration.check_additive(stmt + ";") == []
+
+
+# 072 (owner 2026-11-16): both CHECK lists from 066 widened by 'semi-pro'. The two live definitions are verbatim from
+# pg_get_constraintdef on 2026-11-16 (before 072).
+LIVE_066_LEVEL_CHECKS = {
+    "sport_events_level_check": ("sport_events", "CHECK ((level = ANY (ARRAY['pro'::text, 'minor'::text, 'college'::text, 'varsity'::text, 'jv'::text, 'amateur'::text, 'youth'::text])))"),
+    "sport_programs_level_default_check": ("sport_programs", "CHECK ((level_default = ANY (ARRAY['pro'::text, 'minor'::text, 'college'::text, 'varsity'::text, 'jv'::text, 'amateur'::text, 'youth'::text])))"),
+}
+
+
+def test_semi_pro_migration_passes_against_the_live_066_checks():
+    sql = (ROOT / "db" / "migrations" / "072_sport_level_semi_pro.sql").read_text(encoding="utf-8")
+    assert apply_migration.check_additive(sql, LIVE_066_LEVEL_CHECKS) == []
+    assert len(apply_migration.statements(sql)) == 4
+    assert "NOT NULL" not in "".join(apply_migration.statements(sql)).upper()
+
+
+def test_level_check_lists_equal_the_registry():
+    """Every CHECK on a level column in the newest migration that sets it equals config/sports.json "levels", in order."""
+    sql = (ROOT / "db" / "migrations" / "072_sport_level_semi_pro.sql").read_text(encoding="utf-8")
+    lists = [m.group(2) for m in re.finditer(r"CHECK \((level|level_default) IN \(([^)]*)\)\)", sql)]
+    assert len(lists) == 2
+    for found in lists:
+        assert tuple(v.strip().strip("'") for v in found.split(",")) == registry.levels()
+    assert "semi-pro" in registry.levels()
 
 
 def test_store_writes_the_two_flags():

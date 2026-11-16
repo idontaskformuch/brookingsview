@@ -15,8 +15,8 @@ describe("sports registry mirror", () => {
   it("fails loudly on an unknown sport id", () => {
     expect(() => sportById("quidditch")).toThrow(/unknown sport id/);
   });
-  it("has unique ids and the seven levels", () => {
+  it("has unique ids and the eight levels", () => {
     expect(new Set(SPORTS.map((s) => s.id)).size).toBe(SPORTS.length);
-    expect(SPORT_LEVELS).toHaveLength(7);
+    expect(SPORT_LEVELS).toHaveLength(8);
   });
 });
