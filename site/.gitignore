@@ -38,5 +38,3 @@ pnpm-debug.log*
 # /today/ indexing verdict (lib/today-page.ts), read by the sitemap filter
 .today-verdict.json
 .open-late-verdict.json
-# /holidays/ indexing verdict (lib/holidays-index.ts), read by the sitemap filter
-.holidays-verdict.json

@@ -158,8 +158,7 @@ describe('titles: year inside the window, none outside; always indexable', () =>
       expect(cfg).not.toContain(`noindexThinPageUrls.add('/${slug}/')`);
       expect(cfg).not.toContain(`{ path: '/${slug}/'`);
     }
-    // /holidays/ (the overview) left this rule in audit Fas 1 (2026-11-16): word threshold, lib/holidays-index.ts.
-    for (const f of ['../pages/[holiday].astro', '../components/HolidayPage.astro']) {
+    for (const f of ['../pages/[holiday].astro', '../pages/holidays.astro', '../components/HolidayPage.astro']) {
       expect(read(f), f).not.toMatch(/noindex=|noindex\b.*true/);
     }
   });

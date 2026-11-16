@@ -50,15 +50,6 @@ function openLateIndexable(townId) {
     return v.townId === townId && v.indexable === true;
   } catch { return false; }
 }
-// /holidays/ is indexable only at >= HOLIDAYS_MIN_WORDS words (the page decides while building; see lib/holidays-index.ts)
-const HOLIDAYS_VERDICT_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '.holidays-verdict.json');
-try { fs.rmSync(HOLIDAYS_VERDICT_PATH, { force: true }); } catch { /* nothing to remove */ }
-function holidaysIndexable(townId) {
-  try {
-    const v = JSON.parse(fs.readFileSync(HOLIDAYS_VERDICT_PATH, 'utf8'));
-    return v.townId === townId && v.indexable === true;
-  } catch { return false; }
-}
 // /traffic/ decides its own indexing while building (standing content or 72 h / 3-read inertia; see lib/traffic-verdict.ts)
 const TRAFFIC_VERDICT_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '.traffic-verdict.json');
 try { fs.rmSync(TRAFFIC_VERDICT_PATH, { force: true }); } catch { /* nothing to remove */ }
@@ -972,7 +963,6 @@ export default defineConfig({
           && !isEveningNoindex
           && !(pathname === '/open-late/' && !openLateIndexable(activeCity))
           && !(pathname === '/traffic/' && !trafficIndexable(activeCity))
-          && !(pathname === '/holidays/' && !holidaysIndexable(activeCity))
           && !excludedGatedPages.has(pathname)
           && !noindexStoryUrls.has(pathname)
           && !noindexThinPageUrls.has(pathname)

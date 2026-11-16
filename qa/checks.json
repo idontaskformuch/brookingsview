@@ -301,11 +301,6 @@
         "born_from": "Audit pass 1 (2026-11-16, .claude/audit/01-built-pages.md 6.1): Brookings /games/jackrabbit.html (the iframe embed behind /play/) was indexable with 22 words, no canonical, in no sitemap. Regression: site/src/lib/game-owners.test.ts 'every game file ... noindex' (failed before the meta tag was added).",
         "what": "a file in site/public/games/ without <meta name=\"robots\" content=\"noindex\"> (vitest)"
     },
-    "build.holidays-threshold": {
-        "severity": "hard",
-        "born_from": "Audit pass 1 (2026-11-16, .claude/audit/01-built-pages.md avsnitt 2 / 6.2, P1-4): /holidays/ was indexable and in the sitemap with 8-24 words in all four towns. Rule: lib/holidays-index.ts (noindex + out of sitemap under HOLIDAYS_MIN_WORDS). Regression: site/src/lib/holidays-index.test.ts (the four listings of 2026-11-16 must read noindex); sitemap/tag agreement by scripts/verify_sitemap_noindex_disjoint.mjs.",
-        "what": "/holidays/ indexable or in the sitemap with fewer words than HOLIDAYS_MIN_WORDS (vitest + disjoint check)"
-    },
     "build.stub-redirects": {
         "severity": "hard",
         "born_from": "Audit pass 1 (2026-11-16, .claude/audit/01-built-pages.md 5.2): Glasgow had no STATIC_GATE_REDIRECTS entry, so all 24 of its redirect stubs (/safety/, /advertising/, /vote/ ...) were served as 200 meta refreshes; /safety/ (Brookings), /open-late/ (Moreno) and /university/weeks/ etc. were missing in the other towns. Regression fixture: tests/fixtures/qa_stub_redirects_2026-11-16 (stubs from the Glasgow build of d76bdd3), tests/test_verify_stub_redirects.py; it failed before the table was extended.",
