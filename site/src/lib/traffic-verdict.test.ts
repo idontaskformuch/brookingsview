@@ -142,11 +142,13 @@ describe('/traffic/ page and config', () => {
     expect(BF.trafficSource!.indexing).toBe('inertia');
   });
 
-  it('no status line or explanation without incidents; section rule, filters and source line only with incidents', () => {
+  it('no status line or explanation without incidents; hero, filters and source line only with incidents', () => {
     expect(page).not.toContain('traffic-status');
     expect(page).not.toContain('statusLine');
     expect(page).toContain('noindex={!indexing.indexable}');
-    expect(page).toMatch(/\{incidents\.length > 0 && <SectionRule/);
+    // The hero (lib/traffic-hero.ts) replaced the "N reported as of" rule (audit Fas 6a); it is null when nothing is shown.
+    expect(page).not.toContain('<SectionRule');
+    expect(page).toMatch(/\{hero && \(\s*<section class="answer"/);
     expect(page).toMatch(/\{incidents\.length > 0 && \(\s*<div class="controls">/);
     expect(page).toMatch(/\{siteConfig\.trafficSource && shown > 0 && \(\s*<p class="source">/);
     expect(page).toMatch(/\{siteConfig\.trafficSource && earlier\.length > 0 && \(\s*<section class="earlier"/);

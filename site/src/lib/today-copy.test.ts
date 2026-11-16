@@ -13,7 +13,7 @@ describe('/today copy only promises what the town has', () => {
     expect(todaySources(g)).toBe('Met Office warnings, Ticketmaster and event organisers\' own calendars');
   });
   it('a US town with closure watch and a traffic source keeps all four promises', () => {
-    const us = { country: 'us', hasClosureWatch: true, trafficSource: { name: 'x', url: 'https://x.test', scopeNote: '', indexing: 'inertia' } } as const;
+    const us = { country: 'us', hasClosureWatch: true, trafficSource: { name: 'x', url: 'https://x.test', scopeNote: '', heroScope: '', indexing: 'inertia' } } as const;
     expect(todayModules(us)).toEqual(['weather alerts', 'school status', 'road conditions', 'events today and tomorrow']);
     expect(todaySources(us)).toBe("National Weather Service alerts, local school and road-condition sources and event organizers' own calendars");
     expect(todaySources({ country: 'us', hasClosureWatch: true })).toBe("National Weather Service alerts, local school sources and event organizers' own calendars");
