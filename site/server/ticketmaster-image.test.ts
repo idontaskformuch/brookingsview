@@ -119,6 +119,32 @@ describe('handleTicketmasterImage', () => {
     const requestedPath = new URL(assetsFetch.mock.calls[0][0].url).pathname;
     expect(requestedPath).toBe('/assets/images/categories/moreno_valley_ca-events-1.png');
   });
+
+  // Audit Fas 1 (2026-11-16): Broomfield and Glasgow fell back to Brookings' photo.
+  it.each([
+    ['broomfieldview.com', '/assets/images/categories/broomfield_co-events-1.png'],
+    ['glasgowloop.co.uk', '/assets/images/categories/glasgow-events-01.jpg'],
+  ])('%s gets its own placeholder, never Brookings\'', async (host, expected) => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('x', { status: 500 })));
+    const assetsFetch = vi.fn(async (_request: Request) =>
+      new Response('placeholder-bytes', { status: 200, headers: { 'Content-Type': 'image/jpeg' } }));
+    const env = { ...fakeEnv(), DEV_TOWN_ID: undefined, ASSETS: { fetch: assetsFetch } };
+    const req = new Request(`https://${host}/img/ticketmaster?u=${encodeURIComponent(REAL_URL)}`);
+    await handleTicketmasterImage(req, env as never, fakeCtx(), fakeCacheStorage());
+
+    expect(new URL(assetsFetch.mock.calls[0][0].url).pathname).toBe(expected);
+  });
+
+  it('an unknown town gets no placeholder rather than another town\'s photo', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('x', { status: 500 })));
+    const assetsFetch = vi.fn();
+    const env = { ...fakeEnv(), DEV_TOWN_ID: undefined, ASSETS: { fetch: assetsFetch } };
+    const req = new Request(`https://unknown.example/img/ticketmaster?u=${encodeURIComponent(REAL_URL)}`);
+    const res = await handleTicketmasterImage(req, env as never, fakeCtx(), fakeCacheStorage());
+
+    expect(res.status).toBe(404);
+    expect(assetsFetch).not.toHaveBeenCalled();
+  });
 });
 
 // 2026-10-02 follow-up: Ticketmaster's Developer Terms of Use require

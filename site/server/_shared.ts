@@ -283,6 +283,7 @@ const STATIC_GATE_REDIRECTS: Record<string, Record<string, StaticGateRedirect>> 
     '/workplace-watch/': { to: '/', status: 302 },
     '/new-in-town/': { to: '/', status: 302 },
     '/month/': { to: '/', status: 302 },
+    '/safety/': { to: '/', status: 302 },
   },
   moreno_valley_ca: {
     '/jackrabbits/': { to: '/', status: 302 },
@@ -291,6 +292,16 @@ const STATIC_GATE_REDIRECTS: Record<string, Record<string, StaticGateRedirect>> 
     '/play/': { to: '/', status: 302 },
     '/farm-report/': { to: '/', status: 302 },
     '/new-in-town/': { to: '/', status: 302 },
+    '/game-day/': { to: '/', status: 302 },
+    '/trash-recycling/': { to: '/', status: 302 },
+    '/winter-guide/': { to: '/', status: 302 },
+    '/how-city-council-works/': { to: '/', status: 302 },
+    '/sdsu-campus-open-to-public/': { to: '/', status: 302 },
+    // open-late.astro redirects on an empty OSM snapshot, not a flag: Moreno
+    // has no OSM snapshot today. Remove this line when it gets one, or the
+    // Worker hides the real page.
+    '/open-late/': { to: '/', status: 302 },
+    '/university/weeks/': { to: '/', status: 302 },
   },
   broomfield_co: {
     '/jackrabbits/': { to: '/', status: 302 },
@@ -304,6 +315,40 @@ const STATIC_GATE_REDIRECTS: Record<string, Record<string, StaticGateRedirect>> 
     '/closures/': { to: '/', status: 302 },
     '/new-in-town/': { to: '/', status: 302 },
     '/month/': { to: '/', status: 302 },
+    '/game-day/': { to: '/', status: 302 },
+    '/trash-recycling/': { to: '/', status: 302 },
+    '/winter-guide/': { to: '/', status: 302 },
+    '/how-city-council-works/': { to: '/', status: 302 },
+    '/sdsu-campus-open-to-public/': { to: '/', status: 302 },
+    '/university/weeks/': { to: '/', status: 302 },
+  },
+  // Audit Fas 1 (2026-11-16, 01-built-pages.md 5.2): every Glasgow stub was
+  // served as a 200 meta refresh. Temporary hand list; Fas 4 derives it.
+  glasgow: {
+    '/advertising/': { to: '/', status: 302 },
+    '/burro-bonanza/': { to: '/', status: 302 },
+    '/closures/': { to: '/', status: 302 },
+    '/election-results/': { to: '/', status: 302 },
+    '/farm-report/': { to: '/', status: 302 },
+    '/game-day/': { to: '/', status: 302 },
+    '/home-sales/': { to: '/', status: 302 },
+    '/home-sales/archive/': { to: '/', status: 302 },
+    '/how-city-council-works/': { to: '/', status: 302 },
+    '/jackrabbits/': { to: '/', status: 302 },
+    '/jobs/': { to: '/', status: 302 },
+    '/month/': { to: '/', status: 302 },
+    '/new-in-town/': { to: '/', status: 302 },
+    '/play/': { to: '/', status: 302 },
+    '/safety/': { to: '/', status: 302 },
+    '/sdsu-campus-open-to-public/': { to: '/', status: 302 },
+    '/sports/': { to: '/', status: 302 },
+    '/trash-recycling/': { to: '/', status: 302 },
+    '/university/': { to: '/', status: 302 },
+    '/university/weeks/': { to: '/', status: 302 },
+    '/vail-resorts/': { to: '/', status: 302 },
+    '/vote/': { to: '/', status: 302 },
+    '/winter-guide/': { to: '/', status: 302 },
+    '/workplace-watch/': { to: '/', status: 302 },
   },
 };
 

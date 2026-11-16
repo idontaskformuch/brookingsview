@@ -51,22 +51,24 @@ const CACHE_TTL_SECONDS = 60 * 60 * 24;
 // image (site/src/config/category-images.ts's first entry per town) rather
 // than commissioning a separate generic placeholder graphic -- served via
 // the ASSETS binding, so it's just as real a file as any other page image,
-// not a synthesized/blank graphic. Broomfield's own events pool reuses
-// Brookings' same two images (see category-images.ts), so the fallback
-// mirrors that existing choice rather than inventing a third option.
+// not a synthesized/blank graphic. Every town has its own; a town missing
+// from this table gets no image (404), never another town's photo
+// (audit Fas 1, 2026-11-16: Broomfield and Glasgow used to fall back to
+// Brookings').
 const PLACEHOLDER_PATH_BY_TOWN: Record<string, string> = {
   brookings_sd: '/assets/images/categories/brookings_sd-events-1.png',
   moreno_valley_ca: '/assets/images/categories/moreno_valley_ca-events-1.png',
-  broomfield_co: '/assets/images/categories/brookings_sd-events-1.png',
+  broomfield_co: '/assets/images/categories/broomfield_co-events-1.png',
+  glasgow: '/assets/images/categories/glasgow-events-01.jpg',
 };
-const DEFAULT_PLACEHOLDER_PATH = PLACEHOLDER_PATH_BY_TOWN.brookings_sd;
 
 interface AssetsBinding { fetch(request: Request): Promise<Response>; }
 interface TicketmasterImageEnv extends Env { ASSETS: AssetsBinding; }
 
 async function servePlaceholder(request: Request, env: TicketmasterImageEnv): Promise<Response> {
   const townId = townFromHostname(request.url, env.DEV_TOWN_ID);
-  const path = (townId && PLACEHOLDER_PATH_BY_TOWN[townId]) ?? DEFAULT_PLACEHOLDER_PATH;
+  const path = townId ? PLACEHOLDER_PATH_BY_TOWN[townId] : undefined;
+  if (!path) return new Response('No placeholder for this town', { status: 404 });
   const assetUrl = new URL(path, request.url);
   const response = await env.ASSETS.fetch(new Request(assetUrl.toString(), request));
   // A placeholder is a normal, expected outcome (an expired/removed
@@ -74,7 +76,7 @@ async function servePlaceholder(request: Request, env: TicketmasterImageEnv): Pr
   // through to the <img> tag.
   return new Response(response.body, {
     status: 200,
-    headers: { 'Content-Type': response.headers.get('Content-Type') ?? 'image/png' },
+    headers: { 'Content-Type': response.headers.get('Content-Type') ?? 'application/octet-stream' },
   });
 }
 

@@ -2,8 +2,8 @@
 /** /holidays/: the town's holiday pages in calendar order, the next one first. Per row: the name, the next date, one
  *  sentence of what is shut on the day (holidayOverviewLine, from the page's confirmed rows) and the link. It is the one
  *  way in (the "Holidays" entry of the All sheet); holiday pages never get a tab. Built only for a town that has at least
- *  one holiday page, so elsewhere it is a real 404. Always indexable (owner 2026-11-04, evergreen-holidays.md; confirmed
- *  2026-11-11 over the plan's "noindex with a single holiday page").
+ *  one holiday page, so elsewhere it is a real 404. Was always indexable (owner 2026-11-04 / 2026-11-11); since the audit
+ *  (Fas 1, 2026-11-16) it is noindex and out of the sitemap under HOLIDAYS_MIN_WORDS words (lib/holidays-index.ts).
  *
  *  Resident question it answers: which holidays does this town have local closures and hours for, when is the next one,
  *  and what is closed on it? */
@@ -12,6 +12,7 @@ import { siteConfig } from '../lib/site-config';
 import { holidayListing, townHasHolidayPages } from '../config/holiday-pages/registry';
 import { formatDayLong } from '../lib/holiday-calendar';
 import { holidayOverviewLine } from '../lib/holiday-view';
+import { holidaysIndexable, writeHolidaysVerdict } from '../lib/holidays-index';
 
 export function getStaticPaths() {
   return townHasHolidayPages(siteConfig.townId) ? [{ params: {} }] : [];
@@ -27,9 +28,12 @@ const rows = listing.map((e) => ({
   line: holidayOverviewLine(e.page, e.def, e.day),
 }));
 const modified = listing.map((e) => e.page.dataUpdatedOn).sort().pop();
+const h1 = `Holidays in ${siteConfig.cityName}`;
+const indexable = holidaysIndexable([h1, ...rows.flatMap((r) => [r.label, r.when, r.line])]);
+writeHolidaysVerdict(siteConfig.townId, indexable);
 ---
-<BaseLayout title={`Holidays in ${siteConfig.cityName}: closures and hours`} description={`${siteConfig.cityName} holiday pages: what is closed or changed, with the next date for each.`} modified={modified}>
-  <h1>Holidays in {siteConfig.cityName}</h1>
+<BaseLayout title={`Holidays in ${siteConfig.cityName}: closures and hours`} description={`${siteConfig.cityName} holiday pages: what is closed or changed, with the next date for each.`} modified={modified} noindex={!indexable}>
+  <h1>{h1}</h1>
   <ul class="holiday-list">
     {rows.map((r) => (
       <li>

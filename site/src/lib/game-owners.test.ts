@@ -20,6 +20,13 @@ describe('game owners', () => {
     expect(PUBLIC_GAMES.filter((f) => !GAME_OWNERS[f as keyof typeof GAME_OWNERS])).toEqual([]);
   });
 
+  // Audit pass 1 (2026-11-16, QA build.game-noindex): /games/jackrabbit.html was indexable (22 words, no canonical).
+  it('every game file is an iframe embed with noindex, never its own indexable page', () => {
+    const indexable = PUBLIC_GAMES.filter((f) =>
+      !/<meta name="robots" content="noindex">/.test(fs.readFileSync(path.join(__dirname, '../../public/games', f), 'utf8')));
+    expect(indexable).toEqual([]);
+  });
+
   it('a build that keeps every game (the live Broomfield site of 2026-11-11) fails the check', () => {
     expect(foreignGames(PUBLIC_GAMES, 'broomfield_co').sort()).toEqual(['burro-bonanza.html', 'jackrabbit.html']);
   });

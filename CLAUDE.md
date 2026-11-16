@@ -10,7 +10,7 @@
    master-specen (inte hela filen). Kör git status; stoppa om trädet är smutsigt
    av något som inte står i state.md.
 3. Tester: under arbetet kör bara berörd testfil. Före fas-commit kör
-   en gång: hela vitest + pytest, astro check, build för alla tre städer,
+   en gång: hela vitest + pytest, astro check, build för alla fyra städer,
    sitemap/noindex-disjoint-kontrollen.
 4. Sökning: riktade sökningar (rg med filändelse/mapp). Visa diff eller
    ändrad funktion, aldrig hela filer.

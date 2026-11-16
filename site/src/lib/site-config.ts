@@ -234,10 +234,12 @@ export interface SiteConfig {
   /** Whether this town has at least one ENABLED events source in
    *  configs/<town_id>.json's data_sources.events (see scrapers/
    *  event_sources.py's registry) -- gates CityStatus's `events_today`
-   *  module (lib/cityStatus.ts). Broomfield's events source is still
-   *  enabled:false (WebTrac blocked by an active Cloudflare challenge, see
-   *  that config's own _notes) -- undefined/false here, not true, since
-   *  "no source" and "quiet day" are different states and events_today is
+   *  module (lib/cityStatus.ts). Rule (audit PROGRESS.md decision 1,
+   *  2026-11-16): true only once a source covering the town's general
+   *  calendar is enabled. Broomfield stays unset: its one enabled source
+   *  is a bowling alley (Chipper's Lanes), so "0 events tonight" would be a
+   *  claim about the town the data does not carry. Undefined/false, not
+   *  true, since "no source" and "quiet day" are different states and events_today is
    *  an always-rendered module (getCityStatus() fails the build if a town
    *  configures it without this flag, see CITY_STATUS_MODULES). Keep in
    *  sync with that config file by hand, same convention as
@@ -870,7 +872,10 @@ const CITIES: Record<string, SiteConfig> = {
     nation: 'scotland',
     region: 'Scotland',
     townCenter: { lat: 55.8642, lon: -4.2518 },
-    statusModules: [],
+    // Glasgow Life is a town-wide events source (configs/glasgow.json), so "Tonight" may say 0 (audit decision 1, 2026-11-16).
+    hasEventsSource: true,
+    // No 'alerts': resolveAlerts reads the US warnings table and would say "No active alerts" next to a Met Office warning.
+    statusModules: ['events_today', 'next_meeting', 'whats_on'],
     // Local Accent Identity: an indigo-violet (H~255), far in hue from the shared navy (H212), the CTA
     // orange and the three US accents (olive, sage, teal). Contrast verified with lib/accent-contrast.ts.
     // Mirror this exactly in astro.config.mjs BRAND_TOKENS.

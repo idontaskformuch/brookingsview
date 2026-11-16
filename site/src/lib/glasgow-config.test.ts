@@ -31,13 +31,15 @@ describe('Glasgow skeleton config', () => {
   });
 
   it("has every feature off except What's On", () => {
-    for (const k of ['hasClosureWatch', 'hasNewInTown', 'hasWorkplaceWatch', 'hasPlaces', 'hasHeatAdvisory', 'hasEventsSource'] as const) {
+    for (const k of ['hasClosureWatch', 'hasNewInTown', 'hasWorkplaceWatch', 'hasPlaces', 'hasHeatAdvisory'] as const) {
       expect(!!(glasgow as unknown as Record<string, unknown>)[k], k).toBe(false);
     }
+    // Audit decision 1 (2026-11-16): Glasgow Life is a town-wide events source; no 'alerts' (US warnings table).
+    expect(glasgow.hasEventsSource).toBe(true);
+    expect(glasgow.statusModules).toEqual(['events_today', 'next_meeting', 'whats_on']);
     // What's On is the one feature switched on (owner 2026-10-28)
     expect(glasgow.hasWhatsOn).toBe(true);
     expect(glasgow.ticketmaster).toMatchObject({ enabled: true, radiusMiles: 15 });
-    expect(glasgow.statusModules ?? []).toEqual([]);
   });
 
   it('resolves its nav; sections with no source yet are off; cityhall is labelled Council', () => {

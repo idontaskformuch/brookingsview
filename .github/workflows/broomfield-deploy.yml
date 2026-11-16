@@ -63,6 +63,8 @@ jobs:
         run: node scripts/verify_election_pages.mjs site/dist
       - name: Only this town's games in the build
         run: node scripts/verify_town_games.mjs site/dist broomfield_co
+      - name: Every redirect stub has a Worker redirect
+        run: node scripts/verify_stub_redirects.mjs site/dist broomfield_co
       - name: Menu and footer link only to built, indexable pages
         run: node scripts/verify_nav_links.mjs site/dist broomfield_co
       - name: Every internal link reaches a built page, not a redirect stub

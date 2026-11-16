@@ -7,6 +7,7 @@
  */
 import type { APIRoute } from 'astro';
 import { siteConfig } from '../lib/site-config';
+import { countryProfile } from '../lib/country-profile';
 
 export const GET: APIRoute = () => {
   const manifest = {
@@ -24,7 +25,7 @@ export const GET: APIRoute = () => {
     // with --paper/--navy. theme_color already matched --navy.
     background_color: '#fbfaf7',
     theme_color: '#0b2e55',
-    lang: 'en-US',
+    lang: countryProfile(siteConfig.country).locale,
     orientation: 'portrait-primary',
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
