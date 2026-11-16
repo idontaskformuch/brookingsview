@@ -136,7 +136,7 @@ export function matchRegisterRows(
 /** Ticketmaster events (the build's one memoised fetch, the rows /tonight and /whats-on read; no extra call) whose title matches the
  *  holiday's pattern and whose local day is in the same window as the calendar rows (owner 2026-11-15). Keys "tm:<Ticketmaster id>"
  *  for the report and the excludes. Each row links to its own ticket page (ticketmaster.co.uk or universe.com, as /whats-on does);
- *  the row has its own /whats-on/ page with its markup, so it is marked `fromCalendar` and the holiday page emits no JSON-LD for it. */
+ *  its Event markup is on /whats-on/ (SPEC Fas 13a: no detail page), so it is marked `fromCalendar` and the holiday page emits no JSON-LD for it. */
 export function matchTicketmasterEvents(
   def: HolidayPageDef, year: number, items: TicketmasterFeedItem[], nowMs: number, timeZone: string, exclude: Record<string, string>,
 ): { events: ConfirmedEvent[]; report: CalendarMatchLine[] } {

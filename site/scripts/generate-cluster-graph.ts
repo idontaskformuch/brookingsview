@@ -83,7 +83,6 @@ const PAGE_REGISTRY: PageRegistryEntry[] = [
   { file: 'university.astro', routeKey: 'university' },
   { file: 'vail-resorts.astro', routeKey: 'vail-resorts' },
   { file: 'weather.astro', routeKey: 'weather' },
-  { file: 'whats-on/[slug].astro', routeKey: 'whats-on/detail' },
   { file: 'whats-on/index.astro', routeKey: 'whats-on' },
   { file: 'workplace-watch/index.astro', routeKey: 'workplace-watch' },
 ];

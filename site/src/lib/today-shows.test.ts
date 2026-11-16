@@ -26,7 +26,8 @@ describe('selectTodayShows (/today, Glasgow)', () => {
     expect(r.map((s) => s.title)).toEqual(['Tonight Band', 'Tomorrow Band']);
     expect(r[0].clock).toBe('7pm');
     expect(r[1].clock).toBe('7:30pm');
-    expect(r[0].href).toMatch(/^\/whats-on\/.+\/$/);
+    // SPEC Fas 13a: the ticket page, not a /whats-on/<id>/ page (no longer built).
+    expect(r[0].href).toBe('https://t.test');
   });
   it('counts the same title at the same venue once and never returns more than 3', () => {
     const items = [

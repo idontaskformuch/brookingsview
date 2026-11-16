@@ -5,6 +5,7 @@
  *  and the day off itself. Pure: no clock, no model text. */
 import { formatClock, formatEventDay, listWords, localIso, type ConfirmedEvent, type ConfirmedFact, type HolidayPageData } from './holiday-page';
 import type { PopDay, PopRow } from './pop-days';
+import { TICKET_LINK_REL } from './whats-on';
 
 /** One row of GOV.UK's bank-holidays.json, as published. */
 export interface BankHoliday { title: string; date: string; notes: string }
@@ -183,7 +184,7 @@ export function eventPopDays(events: ConfirmedEvent[], timeZone: string): PopDay
     const row: PopRow = {
       dayKey: e.date, timeLabel: time, title: e.name, venue: e.venue.name, area: null,
       free: false, kids: false, teens: false, cat: null, start, end, recurrence: 'one_off',
-      href: e.url, note: [...(e.details ?? []), ...(e.clarify ? [e.clarify] : [])].join(' ') || undefined,
+      href: e.url, rel: e.fromCalendar?.startsWith('tm:') ? TICKET_LINK_REL : undefined, note: [...(e.details ?? []), ...(e.clarify ? [e.clarify] : [])].join(' ') || undefined,
       attrs: { 'data-hp-item': '', 'data-source': e.source.url, 'data-hp-venue': e.venue.name },
     };
     const last = days[days.length - 1];

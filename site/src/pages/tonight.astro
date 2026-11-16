@@ -42,6 +42,7 @@ import { hasEnded, localDayNumber, localHourOf } from '../lib/local-day';
 import { EVENING_LAST_START_HOUR } from '../lib/evening-threshold';
 import { forecastLine } from '../lib/weather-format';
 import { resolvePageMeta } from '../lib/page-meta';
+import { TICKET_LINK_REL } from '../lib/whats-on';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-jsonld';
 
 const layer = siteConfig.eveningLayer;
@@ -187,7 +188,7 @@ const sourceNames = (siteConfig.hasWhatsOn ? 'Local event calendars and Ticketma
                     <li class="tc-pair" data-pair data-start={p.event.start} data-end={p.event.end ?? undefined} data-area={regionOf(p.event.area, regions) ?? undefined}>
                       <span class="tc-pair-time">{showTimeGb(p.event.start, tz)}</span>
                       <span class="tc-pair-main">
-                        <a class="tc-pair-event" href={p.event.href ?? undefined}>{p.event.title}</a>
+                        <a class="tc-pair-event" href={p.event.href ?? undefined} rel={p.event.source === 'ticketmaster' ? TICKET_LINK_REL : undefined}>{p.event.title}</a>
                         <span class="tc-meta">{[p.event.venue, p.event.area].filter(Boolean).join(' · ')}</span>
                       </span>
                       <span class="tc-pair-arrow" aria-hidden="true">→</span>

@@ -2,12 +2,13 @@
 /** One Ticketmaster show in /today's Tonight/Tomorrow list (gb; lib/today-shows.ts). A component of its own because Astro mis-compiles plain
  *  HTML elements with expressions inside the <template> in TodayBlock.astro (only components work there). */
 import type { TodayShow } from '../lib/today-shows';
+import { TICKET_LINK_REL } from '../lib/whats-on';
 interface Props { show: TodayShow; cityName: string }
 const { show, cityName } = Astro.props;
 ---
 <article class="today-show">
   <p class="today-show__meta">{show.venue}{show.clock && ` · ${show.clock}`} · In {cityName}</p>
-  <h3 class="today-show__title"><a href={show.href}>{show.title}</a></h3>
+  <h3 class="today-show__title">{show.href ? <a href={show.href} rel={TICKET_LINK_REL}>{show.title}</a> : show.title}</h3>
   <p class="today-show__all"><a href="/whats-on/">More shows on What's On</a></p>
 </article>
 

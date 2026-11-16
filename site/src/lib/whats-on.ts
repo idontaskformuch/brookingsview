@@ -39,6 +39,15 @@ export function ticketmasterSlug(event: Pick<TicketmasterEvent, 'id' | 'title'>)
   return `${base}-${event.id}`;
 }
 
+/** Where a Ticketmaster card links: the event's own ticket page (SPEC Fas 13a, owner B8 2026-11-16). There is no /whats-on/<id>/ page;
+ *  it only repeated the card. Null when Discovery gave no URL: the card then shows its title without a link. */
+export function ticketmasterHref(event: Pick<TicketmasterEvent, 'ticketUrl'>): string | null {
+  return /^https?:\/\//i.test(event.ticketUrl) ? event.ticketUrl : null;
+}
+
+/** rel for every link to a ticket page: it leaves the site and is a seller's page, not a source. */
+export const TICKET_LINK_REL = 'noopener nofollow';
+
 /** Adapts a TicketmasterFeedItem into resolveImage()'s ResolvableStory
  *  shape -- source_type: 'event' is a real, already-meaningful SourceType
  *  (see lib/db.ts), used here only as a plausible fallback category if the

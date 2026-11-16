@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   isoWeekSlugForInstant, previousIsoWeekSlug, timezoneForTown, townFromHostname,
-  resolveStaticGateRedirect, isGoneSection,
+  resolveStaticGateRedirect, isGoneSection, resolveWhatsOnDetailRedirect,
 } from './_shared';
 
 // Mirrors site/src/lib/this-week.test.ts's own isoWeekInfo coverage --
@@ -183,5 +183,19 @@ describe('isGoneSection', () => {
     expect(isGoneSection('/recipes/x/', 'broomfield_co')).toBe(false);
     expect(isGoneSection('/recipes/', null)).toBe(false);
     expect(isGoneSection('/recipes/', 'unknown_town')).toBe(false);
+  });
+});
+
+describe('resolveWhatsOnDetailRedirect (SPEC Fas 13a)', () => {
+  // A real detail path from the Brookings build of 2026-11-16 (Casey Donahew, Ticketmaster id Z7r9jZ1A7q3eb), before the pages were removed.
+  it('sends an old Ticketmaster detail address to the listing, with or without the trailing slash', () => {
+    expect(resolveWhatsOnDetailRedirect('/whats-on/casey-donahew-Z7r9jZ1A7q3eb/')).toBe('/whats-on/');
+    expect(resolveWhatsOnDetailRedirect('/whats-on/casey-donahew-Z7r9jZ1A7q3eb')).toBe('/whats-on/');
+  });
+  it('leaves the listing itself and anything deeper alone', () => {
+    expect(resolveWhatsOnDetailRedirect('/whats-on/')).toBeNull();
+    expect(resolveWhatsOnDetailRedirect('/whats-on')).toBeNull();
+    expect(resolveWhatsOnDetailRedirect('/whats-on/a/b/')).toBeNull();
+    expect(resolveWhatsOnDetailRedirect('/events/')).toBeNull();
   });
 });

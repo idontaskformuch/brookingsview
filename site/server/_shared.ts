@@ -369,6 +369,14 @@ export const GONE_SECTIONS_BY_TOWN: Record<string, string[]> = {
   glasgow: GONE_SECTIONS,
 };
 
+/** The Ticketmaster detail pages /whats-on/<title>-<id>/ are no longer built (SPEC Fas 13a, owner B8 2026-11-16): the cards
+ *  link straight to the ticket page. An old address answers 302 to the /whats-on/ listing, where the show is still listed while
+ *  it is ahead; a shared link lands somewhere useful (the home-sales precedent, owner 2026-10-28). Every town: none builds them.
+ *  One path segment only, so nothing deeper and not the listing itself. */
+export function resolveWhatsOnDetailRedirect(pathname: string): string | null {
+  return /^\/whats-on\/[^/]+\/?$/.test(pathname) ? '/whats-on/' : null;
+}
+
 /** True when `pathname` (with or without a trailing slash) is a section this
  *  town has retired. Unknown town = false, same convention as the resolvers here. */
 export function isGoneSection(pathname: string, townId: string | null): boolean {

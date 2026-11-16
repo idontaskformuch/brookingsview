@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildTicketmasterEventJsonLd } from './ticketmaster-jsonld';
+import { buildTicketmasterEventJsonLd, buildTicketmasterListJsonLd } from './ticketmaster-jsonld';
 import type { TicketmasterFeedItem, TicketmasterEvent } from './ticketmaster';
 
 function tmEvent(overrides: Partial<TicketmasterEvent> = {}): TicketmasterEvent {
@@ -18,7 +18,8 @@ function tmItem(occurs_at: string | null, overrides: Partial<TicketmasterEvent> 
   return { sourceKind: 'ticketmaster', occurs_at, ticketmasterEvent: tmEvent(overrides) };
 }
 
-const CANONICAL = 'https://brookingsview.com/whats-on/a-touring-band-live-in-sioux-falls/';
+// The /whats-on/ listing: since SPEC Fas 13a the events' markup lives there (no detail page).
+const CANONICAL = 'https://brookingsview.com/whats-on/';
 
 describe('buildTicketmasterEventJsonLd', () => {
   it('returns null when there is no date to anchor an Event on', () => {
@@ -37,8 +38,8 @@ describe('buildTicketmasterEventJsonLd', () => {
     expect(result).toMatchObject({
       '@context': 'https://schema.org',
       '@type': 'Event',
-      '@id': CANONICAL,
-      url: CANONICAL,
+      '@id': `${CANONICAL}#tm-tm-1`,
+      url: 'https://ticketmaster.com/event/tm-1',
       name: 'A Touring Band Live in Sioux Falls',
       startDate: '2026-12-13T01:30:00Z',
       eventStatus: 'https://schema.org/EventScheduled',
@@ -120,5 +121,25 @@ describe('buildTicketmasterEventJsonLd', () => {
       venueName: 'X', venueAddress: '1 Main', venueCity: 'Town', venueStateCode: null, venuePostalCode: '57104',
     }), CANONICAL, 'Brookings View');
     expect(r?.location).toBeUndefined();
+  });
+});
+
+describe('buildTicketmasterListJsonLd (SPEC Fas 13a)', () => {
+  it('lists the dated events in page order as one ItemList, each Event without its own @context', () => {
+    const a = tmItem('2026-12-13T01:30:00Z');
+    const b = tmItem('2026-12-14T01:30:00Z', { id: 'tm-2', ticketUrl: 'https://ticketmaster.com/event/tm-2' });
+    const r = buildTicketmasterListJsonLd([a, tmItem(null), b], CANONICAL, 'Brookings View') as any;
+    expect(r).toMatchObject({ '@context': 'https://schema.org', '@type': 'ItemList', url: CANONICAL, numberOfItems: 2 });
+    expect(r.itemListElement.map((x: any) => [x.position, x.item['@id'], x.item.url])).toEqual([
+      [1, `${CANONICAL}#tm-tm-1`, 'https://ticketmaster.com/event/tm-1'],
+      [2, `${CANONICAL}#tm-tm-2`, 'https://ticketmaster.com/event/tm-2'],
+    ]);
+    expect(r.itemListElement[0].item['@context']).toBeUndefined();
+  });
+
+  it('is null when nothing has a date, and an event without a ticket URL points at the listing', () => {
+    expect(buildTicketmasterListJsonLd([tmItem(null)], CANONICAL, 'Brookings View')).toBeNull();
+    const r = buildTicketmasterEventJsonLd(tmItem('2026-12-13T01:30:00Z', { ticketUrl: '' }), CANONICAL, 'Brookings View');
+    expect(r?.url).toBe(CANONICAL);
   });
 });

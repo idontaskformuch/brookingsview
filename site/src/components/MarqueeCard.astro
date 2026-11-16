@@ -16,7 +16,7 @@
  *  entry it already confirmed has a real resolveImage() result) -- this
  *  component never renders a 16:9 placeholder itself. */
 import { distanceLabel, type TicketmasterFeedItem } from '../lib/ticketmaster';
-import { ticketmasterSlug } from '../lib/whats-on';
+import { ticketmasterHref, TICKET_LINK_REL } from '../lib/whats-on';
 import type { ImageRef } from '../lib/images';
 import ImageAttribution from './ImageAttribution.astro';
 import { runLabel, showDate, showTimeGb } from '../lib/whats-on-dates';
@@ -52,7 +52,9 @@ const {
   item, image, cityName, timezone, variant = 'hero', priority = false, runSize = 1, lastOccursAt = null,
 } = Astro.props;
 const e = item.ticketmasterEvent;
-const href = `/whats-on/${ticketmasterSlug(e)}/`;
+const href = ticketmasterHref(e);
+// No ticket URL: the image sits in a span with the same class, so the layout is the same without a link.
+const ImageLink = href ? 'a' : 'span';
 const distance = distanceLabel(e.venueDistanceMiles, cityName);
 
 const buildNow = new Date();
@@ -63,7 +65,7 @@ const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
     : null;
 ---
 <article class:list={['marquee-card', `marquee-card--${variant}`]}>
-  <a class="marquee-card__image-link" href={href} tabindex="-1" aria-hidden="true">
+  <ImageLink class="marquee-card__image-link" href={href ?? undefined} rel={href ? TICKET_LINK_REL : undefined} tabindex={href ? '-1' : undefined} aria-hidden="true">
     <img
       class="marquee-card__image"
       src={image.path}
@@ -74,14 +76,14 @@ const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
       decoding="async"
       fetchpriority={priority ? 'high' : undefined}
     />
-  </a>
+  </ImageLink>
   <div class="marquee-card__body">
     {variant === 'hero' && <ImageAttribution image={image} />}
     <p class="marquee-card__meta">
       <span class="kicker">{e.venueName ?? 'Venue TBA'}</span>
       {dateLabel && <time class="marquee-card__when data" datetime={item.occurs_at ?? undefined}>{dateLabel}</time>}
     </p>
-    <h3 class="marquee-card__title"><a href={href}>{e.title}</a></h3>
+    <h3 class="marquee-card__title">{href ? <a href={href} rel={TICKET_LINK_REL}>{e.title}</a> : e.title}</h3>
     {distance && (
       <p class="marquee-card__distance">
         <svg class="marquee-card__distance-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">

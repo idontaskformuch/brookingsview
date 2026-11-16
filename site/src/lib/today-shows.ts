@@ -1,7 +1,7 @@
 /** Ticketmaster shows on /today (owner 2026-10-28, Glasgow Q3: the page listed only organisers' calendars, so a sold-out arena night was missing).
  *  At most MAX_TODAY_SHOWS shows in the city itself (no regional away-shows), the same title at the same venue counted once, best venue
  *  tier first. The browser still decides Tonight/Tomorrow from data-start/data-end, like every other candidate. */
-import { rankTicketmasterEvents, dropEnded, ticketmasterSlug } from './whats-on';
+import { rankTicketmasterEvents, dropEnded, ticketmasterHref } from './whats-on';
 import { distanceLabel, type TicketmasterFeedItem } from './ticketmaster';
 import { bucketOf } from './local-day';
 import { showTimeGb } from './whats-on-dates';
@@ -12,7 +12,8 @@ const SHOW_LENGTH_MS = 3 * 3_600_000;
 
 export interface TodayShow {
   title: string;
-  href: string;
+  /** The ticket page; null when Ticketmaster gave none (the title is then shown without a link). */
+  href: string | null;
   venue: string;
   start: string;
   end: string;
@@ -30,7 +31,7 @@ export function selectTodayShows(items: TicketmasterFeedItem[], now: Date, timeZ
     const key = `${e.title}|${e.venueName}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    picked.push({ title: e.title, href: `/whats-on/${ticketmasterSlug(e)}/`, venue: e.venueName ?? 'Venue TBA', start: item.occurs_at, end, clock: showTimeGb(item.occurs_at, timeZone) });
+    picked.push({ title: e.title, href: ticketmasterHref(e), venue: e.venueName ?? 'Venue TBA', start: item.occurs_at, end, clock: showTimeGb(item.occurs_at, timeZone) });
     if (picked.length === max) break;
   }
   return picked.sort((a, b) => a.start.localeCompare(b.start));

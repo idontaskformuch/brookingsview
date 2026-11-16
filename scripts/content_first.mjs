@@ -27,7 +27,7 @@ export const ALLOWED_PAGES = [
   '/how-city-council-works/', '/contact/', '/offline/', '/winter-guide/', '/404.html',
 ];
 /** Detail pages (story, event, project, facility): the text under the H1 is the item's own description or notice. The index pages are still checked. */
-export const ALLOWED_DETAIL_PREFIXES = ['/s/', '/whats-on/', '/city-hall/projects/', '/facilities/'];
+export const ALLOWED_DETAIL_PREFIXES = ['/s/', '/city-hall/projects/', '/facilities/'];
 
 const BLOCK_TAGS = new Set(['h2', 'h3', 'table', 'ul', 'ol', 'dl', 'form', 'details', 'nav', 'article', 'section', 'figure', 'svg', 'button', 'img', 'iframe', 'canvas', 'aside']);
 const BLOCK_CLASS = /(grid|card|list|row|tile|strip|banner|widget)/;

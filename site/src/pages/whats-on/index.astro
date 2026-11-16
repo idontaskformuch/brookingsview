@@ -3,8 +3,9 @@
  *  see site-config.ts) -- same redirect pattern as closures.astro/
  *  workplace-watch/index.astro. Indexable (not noindex): this is the one
  *  new page in the feature meant to attract search traffic, per the
- *  original What's On spec's intent -- detail pages stay noindex (see
- *  [slug].astro).
+ *  original What's On spec's intent. There are no detail pages (SPEC Fas 13a,
+ *  owner B8 2026-11-16): every card links to its ticket page, and the Event
+ *  JSON-LD for the listed cards is on this page as one ItemList.
  *
  *  Marquee (larger cards, real images via lib/images.ts's Ticketmaster
  *  tier) vs. Also-on-this-day (dense, no image) -- see lib/whats-on.ts's
@@ -34,6 +35,7 @@ import { getFacilities } from '../../lib/db';
 import { EMPTY_STATES } from '../../lib/empty-states';
 import { SECTION_THEME } from '../../lib/section-theme';
 import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../../lib/article-jsonld';
+import { buildTicketmasterListJsonLd } from '../../lib/ticketmaster-jsonld';
 import { buildClusterBreadcrumbTrail } from '../../lib/clusters';
 import { resolveImage } from '../../lib/images';
 import { categoryImagesFor } from '../../config/category-images';
@@ -107,6 +109,9 @@ const canonicalUrl = new URL('/whats-on/', Astro.site ?? siteConfig.siteUrl).hre
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('whats-on', siteConfig, { label: "What's On", href: canonicalUrl });
 const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
 const pageMeta = resolvePageMeta('whats-on', siteConfig);
+// One Event per card the page shows, in page order (a collapsed run is its next date, as the card says).
+const eventsJsonLd = buildTicketmasterListJsonLd(
+  [...marqueeWithImages.map(({ entry }) => entry.primary), ...alsoOnRows.map((r) => r.primary)], canonicalUrl, siteConfig.siteName);
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-whats-on"
   description={`Concerts, theater and touring shows within ${radiusMiles ?? 75} miles of ${placeLabel(siteConfig)} — with real distance shown, never a hidden away-game.`}
@@ -175,6 +180,7 @@ const pageMeta = resolvePageMeta('whats-on', siteConfig);
   <script type="application/ld+json" is:inline set:html={JSON.stringify(
     buildBreadcrumbJsonLd(breadcrumbTrail, canonicalUrl)
   )} />
+  {eventsJsonLd && <script type="application/ld+json" is:inline set:html={JSON.stringify(eventsJsonLd)} />}
   <AboutThisPage slot="about">
     {siteConfig.country === 'gb' ? (
       // Q3 live 2026-10-28: "every listing shows how far" contradicted the rows that just say "In Glasgow".

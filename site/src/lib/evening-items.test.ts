@@ -70,7 +70,7 @@ describe('buildEveningEntries', () => {
     expect(entries.map((e) => e.title)).toEqual(['Pub Quiz', 'Open Mic', 'Big Band']);
     expect(entries[0]).toMatchObject({ group: 'Quiz & pub nights', labels: ['18+'], href: '/s/pub-quiz/', source: 'own', checked: '2026-10-28' });
     expect(entries[1].labels).toEqual(['Free']);
-    expect(entries[2]).toMatchObject({ group: 'Live music', source: 'ticketmaster', href: expect.stringMatching(/^\/whats-on\//) });
+    expect(entries[2]).toMatchObject({ group: 'Live music', source: 'ticketmaster', href: 'https://tm/x' }); // the ticket page (SPEC Fas 13a)
   });
 
   it('counts the same title, venue and start once; a wider radius admits regional shows', () => {

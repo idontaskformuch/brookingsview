@@ -13,7 +13,7 @@
  *  inventing a new visual language. */
 import { siteConfig } from '../lib/site-config';
 import { distanceLabel, type TicketmasterFeedItem } from '../lib/ticketmaster';
-import { ticketmasterSlug } from '../lib/whats-on';
+import { ticketmasterHref, TICKET_LINK_REL } from '../lib/whats-on';
 import { runLabel, showDate, showTimeGb } from '../lib/whats-on-dates';
 
 interface Props {
@@ -30,7 +30,7 @@ interface Props {
 const { item, runSize = 1, lastOccursAt = null } = Astro.props;
 const e = item.ticketmasterEvent;
 
-const href = `/whats-on/${ticketmasterSlug(e)}/`;
+const href = ticketmasterHref(e);
 const distance = distanceLabel(e.venueDistanceMiles, siteConfig.cityName);
 
 const buildNow = new Date();
@@ -49,7 +49,7 @@ const railLabel = item.occurs_at ? showDate(item.occurs_at, siteConfig.timezone,
     {railLabel && <time class="whats-on-row__when data" datetime={item.occurs_at ?? undefined}>{railLabel}</time>}
   </div>
   <div class="whats-on-row__body">
-    <h3 class="whats-on-row__title"><a href={href}>{e.title}</a></h3>
+    <h3 class="whats-on-row__title">{href ? <a href={href} rel={TICKET_LINK_REL}>{e.title}</a> : e.title}</h3>
     <p class="whats-on-row__meta">
       <span class="kicker">{e.venueName ?? 'Venue TBA'}</span>
       {clock && <span class="whats-on-row__clock data">{clock}</span>}

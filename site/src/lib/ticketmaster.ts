@@ -537,8 +537,8 @@ export async function fetchTicketmasterEvents(
 /** Memoizes fetchTicketmasterEvents() by (lat,lon,radius) for the lifetime
  *  of one build process -- see fetchTicketmasterEvents()'s own module
  *  comment on the 2026-09-08 production incident. Three independent call
- *  sites (pages/whats-on/index.astro, pages/whats-on/[slug].astro's
- *  getStaticPaths(), lib/cityStatus.ts's resolveWhatsOn()) each called
+ *  sites (pages/whats-on/index.astro, the since-removed (SPEC Fas 13a) detail
+ *  page's getStaticPaths(), lib/cityStatus.ts's resolveWhatsOn()) each called
  *  getTicketmasterEventsForTown() fresh, TRIPLING real Discovery API
  *  traffic per build with zero coordination between them -- confirmed as a
  *  real, concrete contributor to the momentary rate-limit collisions that

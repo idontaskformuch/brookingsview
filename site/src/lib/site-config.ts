@@ -216,7 +216,7 @@ export interface SiteConfig {
   /** Mirrors configs/<town_id>.json's features.housing_market.enabled. See
    *  hasClosureWatch above for the sync requirement. */
   hasHousingMarket?: boolean;
-  /** What's On Phase 5: gates the /whats-on/ listing + detail pages and
+  /** What's On Phase 5: gates the /whats-on/ listing (no detail pages since SPEC Fas 13a) and
    *  their nav link. Mirrors configs/<town_id>.json's
    *  features.whats_on.enabled -- see hasClosureWatch above for the sync
    *  requirement (tests/test_feature_flags.py checks this pairing for

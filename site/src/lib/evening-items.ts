@@ -15,7 +15,7 @@ import type { FeedItem } from './events';
 import { itemTitle, itemUrl, itemVenue } from './events';
 import { linkTarget } from './ai-text';
 import { distanceLabel, IN_TOWN_THRESHOLD_MILES, type TicketmasterFeedItem } from './ticketmaster';
-import { ticketmasterSlug } from './whats-on';
+import { ticketmasterHref } from './whats-on';
 import { hasEnded, DEFAULT_EVENT_MS, localDayNumber, localHourOf, localInstantIso } from './local-day';
 import type { EveningItem } from './evening-threshold';
 
@@ -33,7 +33,7 @@ export interface EveningEntry {
   group: EveningGroup | null;
   labels: EveningLabel[];
   venue: string | null;
-  /** Site-relative page (own events, Ticketmaster detail) or the source's external link. */
+  /** Site-relative page (own events) or the source's external link (a Ticketmaster row: its ticket page). */
   href: string | null;
   source: EveningSource;
   /** Straight-line miles from the town centre when the source says (Ticketmaster); null for own events. */
@@ -254,7 +254,7 @@ function ticketmasterEntry(item: TicketmasterFeedItem, o: EveningEntryOptions): 
     group: settleGroup(groupForTicketmaster(e.segment, e.genre, e.title), e.title, new Date(item.occurs_at).toISOString(), o.timezone),
     labels: [],
     venue: venueOf(e.venueName, o),
-    href: `/whats-on/${ticketmasterSlug(e)}/`,
+    href: ticketmasterHref(e),
     source: 'ticketmaster',
     distanceMiles: e.venueDistanceMiles,
     driveMinutes: distanceLabel(e.venueDistanceMiles, o.cityName) === `In ${o.cityName}` || e.venueDistanceMiles == null ? null : driveMinutes(e.venueDistanceMiles),

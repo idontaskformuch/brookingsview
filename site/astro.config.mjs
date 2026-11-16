@@ -416,12 +416,7 @@ const TOWN_GATED_PAGES = [
   // What's On: hasWhatsOn is true for all three towns as of the Phase 7
   // venue-curation follow-up (Moreno Valley/Broomfield needed their own
   // venue curation before enabling -- see site-config.ts's own ticketmaster
-  // comments for each). Only the LISTING page (a single static path) needs
-  // an entry here -- /whats-on/[slug]/ detail pages are excluded from this
-  // list on purpose, same reasoning as city-hall/projects/[slug].astro
-  // etc.'s own dynamic-route exclusion above: that page's own
-  // getStaticPaths() returns [] when the flag is off, so no detail-page
-  // stub file is ever produced to need excluding.
+  // comments for each). There are no detail pages (SPEC Fas 13a).
   { path: '/whats-on/', activeFor: ['brookings_sd', 'moreno_valley_ca', 'broomfield_co', 'glasgow'] },
 ];
 
@@ -964,17 +959,7 @@ export default defineConfig({
         // Towns with SiteConfig.noindexSite (Glasgow until real data flows): nothing is advertised.
         if (NOINDEX_SITE_TOWNS.has(activeCity)) return false;
         const pathname = new URL(page).pathname;
-        // Pre-existing bug, unrelated to the recipe/front-page work this
-        // build was actually verifying -- found by scripts/verify_sitemap_
-        // noindex_disjoint.mjs against a real build with live Ticketmaster
-        // data: every /whats-on/<slug>/ DETAIL page carries noindex
-        // unconditionally, by design (see that page's own doc comment --
-        // only the /whats-on/ LISTING page is meant to be indexable), but
-        // nothing in this filter ever excluded them, since they're built
-        // from live Ticketmaster data, not a `stories` row, so none of the
-        // existing noindex*Urls sets above ever see them. Path-shape check,
-        // not a DB query, since noindex here doesn't depend on any per-item
-        // data -- EVERY detail page is noindexed, always.
+        // The noindex /whats-on/<slug>/ detail pages are no longer built (SPEC Fas 13a); the guard stays so one can never reach the sitemap.
         const isWhatsOnDetailPage = pathname.startsWith('/whats-on/') && pathname !== '/whats-on/';
         // Phase 4, "Add to calendar" (2026-10-09): per-event .ics files
         // (site/src/pages/s/[slug].ics.ts) are a download, not a page --

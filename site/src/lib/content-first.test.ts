@@ -43,7 +43,7 @@ describe('findIntroText', () => {
 
   it('allows pages whose opening text is the content (policy pages, detail pages) but still checks index pages', () => {
     const html = page(`<h1>T</h1><p>${LONG}</p><h2>Next</h2>`);
-    for (const path of ['/about/', '/terms/', '/offline/', '/winter-guide/', '/s/some-story/', '/whats-on/some-show-abc123/', '/facilities/arrowhead-park/', '/city-hall/projects/rezoning/']) {
+    for (const path of ['/about/', '/terms/', '/offline/', '/winter-guide/', '/s/some-story/', '/facilities/arrowhead-park/', '/city-hall/projects/rezoning/']) {
       expect(findIntroText(html, path), path).toEqual([]);
     }
     for (const path of ['/whats-on/', '/facilities/', '/city-hall/projects/']) expect(findIntroText(html, path), path).toHaveLength(1);

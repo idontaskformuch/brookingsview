@@ -92,7 +92,7 @@ export const CLUSTERS: Record<string, ClusterDefinition> = {
     label: "What's happening",
     hubRoute: 'events',
     primarySpokes: [
-      'today', 'this-week', 'whats-on', 'whats-on/detail', 'story:weekly',
+      'today', 'this-week', 'whats-on', 'story:weekly',
       'free-things-to-do', 'story:event', 'events/facet', 'events/past',
     ],
     secondarySpokes: [],
@@ -185,7 +185,7 @@ export type RouteAvailability = (config: SiteConfig) => boolean;
  *  route-file question. The "detail" keys (e.g. `facilities/detail`) are
  *  similarly one dynamic route file generating many real pages
  *  (facilities/[slug], home-sales/[slug],
- *  city-hall/projects/[slug], whats-on/[slug]) -- gated the same way their
+ *  city-hall/projects/[slug]) -- gated the same way their
  *  parent section is, since none of them has an independent gate of its
  *  own.
  */
@@ -212,7 +212,6 @@ export const ROUTE_AVAILABILITY: Record<string, RouteAvailability> = {
   // !hasWhatsOn) -- true for all three towns today, but this must keep
   // reading the flag, not assume that permanently.
   'whats-on': (c) => Boolean(c.hasWhatsOn),
-  'whats-on/detail': (c) => Boolean(c.hasWhatsOn),
   // Confirmed nowhere in the codebase (see page-meta.ts's own identical
   // finding) -- always false, so this key vanishes from every town's
   // resolved graph. Kept registered, not deleted, for the same reason

@@ -37,7 +37,7 @@ import { handleAlerts } from './alerts';
 import { handleWeather } from './weather';
 import {
   type Env, townFromHostname,
-  resolveLegacyMeetingRedirect, resolveFacilityRedirect, resolveStaticGateRedirect, isGoneSection,
+  resolveLegacyMeetingRedirect, resolveFacilityRedirect, resolveStaticGateRedirect, isGoneSection, resolveWhatsOnDetailRedirect,
 } from './_shared';
 import legacyMeetingRedirects from './legacy-meeting-redirects.json';
 import eventSeriesRedirects from './event-series-redirects.json';
@@ -267,6 +267,10 @@ export default {
         { status: 410, headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex', 'Cache-Control': 'no-store' } },
       );
     }
+
+    // The removed Ticketmaster detail pages (SPEC Fas 13a): 302 to the listing (resolveWhatsOnDetailRedirect in _shared.ts).
+    const whatsOnRedirect = resolveWhatsOnDetailRedirect(url.pathname);
+    if (whatsOnRedirect) return Response.redirect(new URL(whatsOnRedirect, url.origin).toString(), 302);
 
     const staticGateRedirect = resolveStaticGateRedirect(
       url.pathname, townFromHostname(request.url, env.DEV_TOWN_ID),
