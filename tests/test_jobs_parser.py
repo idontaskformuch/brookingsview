@@ -4,7 +4,7 @@ Adzuna's own category regularly landed listings under a generic bucket, and
 salary_min=0 rows read as "the job pays nothing" instead of "no floor was
 given". Both are corrected at parse time, before the row is written.
 """
-from scrapers.parsers.jobs_v1 import _classify_category, _sanitize_salary
+from scrapers.parsers.jobs_v1 import _ADZUNA_LABEL_ALIASES, _CATEGORY_KEYWORDS, _classify_category, _sanitize_salary
 
 
 def test_classify_prefers_keyword_match_over_generic_adzuna_label():
@@ -13,6 +13,19 @@ def test_classify_prefers_keyword_match_over_generic_adzuna_label():
 
 def test_classify_falls_back_to_specific_adzuna_label():
     assert _classify_category("Regional Account Executive", "Sales Jobs") == "Sales Jobs"
+
+
+def test_classify_maps_adzuna_label_onto_our_own_name_for_the_same_category():
+    # P6-10 (audit 2026-11-16): Moreno had /jobs/category/healthcare-nursing/ AND /healthcare-nursing-jobs/ -- a keyword
+    # hit stored "Healthcare & Nursing", the Adzuna fallback stored "Healthcare & Nursing Jobs". Title and label from the
+    # real Moreno row in the test above ("... Reconstruction Fellowship", no keyword hit).
+    assert _classify_category(
+        "Advanced Head & Neck Oncologic Surgery and Microvascular "
+        "Reconstruction Fellowship", "Healthcare & Nursing Jobs",
+    ) == "Healthcare & Nursing"
+    for label, ours in _ADZUNA_LABEL_ALIASES.items():
+        assert ours in _CATEGORY_KEYWORDS, label
+        assert _classify_category("Regional Account Executive", label) == ours
 
 
 def test_classify_returns_none_for_generic_label_and_no_keyword_match():
@@ -30,7 +43,7 @@ def test_classify_does_not_substring_match_inside_a_longer_word():
     assert _classify_category(
         "Advanced Head & Neck Oncologic Surgery and Microvascular "
         "Reconstruction Fellowship", "Healthcare & Nursing Jobs",
-    ) == "Healthcare & Nursing Jobs"
+    ) == "Healthcare & Nursing"
 
 
 def test_classify_short_keyword_rn_only_matches_whole_word():

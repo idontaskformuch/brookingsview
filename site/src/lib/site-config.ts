@@ -36,10 +36,6 @@ export interface SiteConfig {
   /** Site-wide noindex until the town has real data (Glasgow Phase 2): every page carries
    *  noindex, robots.txt advertises no sitemap, and the sitemap is empty. */
   noindexSite?: boolean;
-  /** A facility page whose OWN text (description + services) is shorter than this many words is noindex: it is only fact rows (address, phone,
-   *  hours). Unset = the older rule only (no address/phone/hours at all). Glasgow 25 (owner 2026-10-28). Mirrored in astro.config.mjs
-   *  THIN_FACILITY_MIN_OWN_WORDS; src/lib/thin-facility-mirror.test.ts fails if the two disagree. */
-  thinFacilityMinOwnWords?: number;
   /** The AI content track (recipes, reviews, editorials, columns, essays) is retired for this town (owner 2026-11-04, Broomfield): its stories are
    *  not built (no /s/ page, 404), not listed on the front page, and the pages that described the track as live drop that text. Rows stay in the database. */
   contentTrackRetired?: boolean;
@@ -731,11 +727,10 @@ const CITIES: Record<string, SiteConfig> = {
   broomfield_co: {
     townId: 'broomfield_co',
     safetyNotices: true,
-    // Owner 2026-11-04 (Broomfield AdSense audit #2, #4, #5): AI essays/recipes/reviews retired; facility pages with under 25 own words are
-    // noindex until real data is added; only the current week page stays indexable.
+    // Owner 2026-11-04 (Broomfield AdSense audit #2, #4, #5): AI essays/recipes/reviews retired; only the current week page stays
+    // indexable. (The 25-own-words facility rule from the same audit is every town's now: lib/noindex.ts THIN_FACILITY_MIN_OWN_WORDS.)
     contentTrackRetired: true,
     disabledSections: ['reviews', 'recipes', 'editorials', 'columns'],
-    thinFacilityMinOwnWords: 25,
     recentWeeksIndexed: 1,
     eveningLayer: { mode: 'threshold', maxMiles: 20, includeTicketmasterSports: true, openLate: true, register: true, nearMiles: 5, h1: 'Tonight in and around Broomfield', indexApproved: true, cards: { regions: {}, hidePrice: true, cityLabels: true } },
     // Owner-approved 2026-10-21: six tabs for now, a seventh to be chosen (events / workplace / vail / weather).
@@ -858,9 +853,8 @@ const CITIES: Record<string, SiteConfig> = {
     },
     disabledSections: ['traffic', 'jobs', 'advertising', 'reviews', 'recipes', 'editorials', 'columns'],
     contentTrackRetired: true,
-    // Launched 2026-10-28/29 (owner's yes): indexable, sitemap on; thin facility pages keep noindex via thinFacilityMinOwnWords.
+    // Launched 2026-10-28/29 (owner's yes): indexable, sitemap on; thin facility pages keep noindex (lib/noindex.ts THIN_FACILITY_MIN_OWN_WORDS).
     noindexSite: false,
-    thinFacilityMinOwnWords: 25,
     hasMetOfficeWarnings: true,
     // What's On (owner 2026-10-28): Ticketmaster GB within 15 miles of the centre; venue tiers in lib/venue-tiers.ts. Mirrors configs/glasgow.json.
     hasWhatsOn: true,

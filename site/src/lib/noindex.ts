@@ -37,6 +37,10 @@ export const THIN_SCRAPED_SOURCE_TYPES: SourceType[] = [
   'culture_essay', 'editorial', 'vetenskap_kronika', 'kvick_essa', 'media_recension', 'vardagsmiddag',
 ];
 export const THIN_CONTENT_WORD_THRESHOLD = 250;
+/** A facility page whose OWN text (description + services) is shorter than this is noindex: it is only fact rows (address, phone, hours).
+ *  Every town (owner B9, 2026-11-16; Glasgow 28 Oct and Broomfield 4 Nov before that). Mirrored in astro.config.mjs
+ *  THIN_FACILITY_MIN_OWN_WORDS; src/lib/thin-facility-mirror.test.ts fails if the two disagree. */
+export const THIN_FACILITY_MIN_OWN_WORDS = 25;
 
 export function countWords(body: string): number {
   return body.split(/\s+/).filter(Boolean).length;

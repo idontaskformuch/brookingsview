@@ -33,6 +33,22 @@ export function jobZone(location: string | null, cityName: string): 'in_town' | 
   return place === cityName.trim().toLowerCase() ? 'in_town' : 'nearby';
 }
 
+/** Adzuna's label for a category we also name ourselves (scrapers/parsers/jobs_v1.py _ADZUNA_LABEL_ALIASES): one category, one page
+ *  (P6-10, 2026-11-16 -- Moreno had both /jobs/category/healthcare-nursing/ and /healthcare-nursing-jobs/). Rows stored before the
+ *  parser fix keep the Adzuna label, so the site maps on read. Mirrored in astro.config.mjs; jobs.test.ts compares all three copies. */
+export const JOB_CATEGORY_ALIASES: Record<string, string> = {
+  'Healthcare & Nursing Jobs': 'Healthcare & Nursing',
+  'Logistics & Warehouse Jobs': 'Warehouse & Logistics',
+  'Retail Jobs': 'Retail',
+  'Customer Services Jobs': 'Customer Service',
+  'Trade & Construction Jobs': 'Construction & Trades',
+  'Admin Jobs': 'Administrative & Office',
+};
+
+export function canonicalJobCategory(category: string | null): string | null {
+  return category === null ? null : (JOB_CATEGORY_ALIASES[category] ?? category);
+}
+
 export function slugifyCategory(category: string): string {
   return category
     .toLowerCase()

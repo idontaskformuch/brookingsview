@@ -19,6 +19,14 @@
  *  catches drift between the page's own noindex and the sitemap. */
 export const MIN_INDEXABLE_PROJECT_UPDATES = 2;
 
+/** /city-hall/projects/ (the hub) is noindex while it lists fewer projects than this: a near-empty list answers nothing (SPEC Fas 13b
+ *  punkt 2, owner 2026-11-16; Glasgow had 0, Broomfield 1, Brookings 2). Mirrored in astro.config.mjs; thin-pages-13b.test.ts. */
+export const MIN_INDEXABLE_PROJECTS_HUB = 3;
+
+export function shouldNoindexProjectsHub(projectCount: number): boolean {
+  return projectCount < MIN_INDEXABLE_PROJECTS_HUB;
+}
+
 export function shouldNoindexProject(updates: { outcome: string }[]): boolean {
   if (updates.length >= MIN_INDEXABLE_PROJECT_UPDATES) return false;
   return !updates.some((u) => u.outcome !== 'pending');

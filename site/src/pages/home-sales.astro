@@ -20,7 +20,7 @@ import SectionRule from '../components/SectionRule.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import { getRecentPropertySales, getContentByType, formatPrice } from '../lib/db';
-import { titleCaseAddress as sharedTitleCaseAddress, extractZip as sharedExtractZip, slugifyAddress, isOutlierSale, salesListLabel } from '../lib/home-sales';
+import { titleCaseAddress as sharedTitleCaseAddress, extractZip as sharedExtractZip, slugifyAddress, isOutlierSale, salesListLabel, homeSalesStale } from '../lib/home-sales';
 import { siteConfig } from '../lib/site-config';
 import { fitDescription, descriptionFillers } from '../lib/meta-description';
 import { placeAbbr } from '../lib/country-profile';
@@ -62,8 +62,9 @@ const sales = allRecentSales.filter((s) => isWithinRenderWindow(s.sale_date, 'ho
 // page, not to describe the data itself) so its first row's date is the
 // real max -- computed from the data, never a guessed/rounded figure.
 const mostRecentSaleDate = allRecentSales[0]?.sale_date ?? null;
-// County records are quarterly; when the newest sale is more than 4 months old at build time, say plainly that nothing newer exists.
-const recordsAreStale = mostRecentSaleDate !== null && Date.now() - new Date(mostRecentSaleDate).getTime() > 120 * 86_400_000;
+// County records are quarterly; when the newest sale is more than 4 months old at build time, say plainly that nothing newer exists,
+// and keep the page out of the index until there is (owner B6).
+const recordsAreStale = homeSalesStale(mostRecentSaleDate);
 
 const pageMeta = resolvePageMeta('home-sales', siteConfig);
 const canonicalUrl = new URL('/home-sales/', Astro.site ?? siteConfig.siteUrl).href;
@@ -83,7 +84,7 @@ function monthYear(occursAt: string | null): string {
   return new Date(occursAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
 ---
-<BaseLayout title={pageMeta.title} wide ogSlug="section-home-sales"
+<BaseLayout title={pageMeta.title} wide ogSlug="section-home-sales" noindex={recordsAreStale}
   description={fitDescription("Recently recorded home sales in Moreno Valley: address, price, and date, from Riverside County's public assessor data.", descriptionFillers(siteConfig))}
   accentColor={SECTION_THEME.home_sales.accent}>
   <Breadcrumbs trail={breadcrumbTrail} />

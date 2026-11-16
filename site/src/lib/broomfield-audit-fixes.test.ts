@@ -14,9 +14,8 @@ describe('Broomfield audit fixes', () => {
     expect(broomfield.contentTrackRetired).toBe(true);
     for (const s of ['reviews', 'recipes', 'editorials', 'columns']) expect(broomfield.disabledSections).toContain(s);
   });
-  it('only the current week page stays indexable; thin facility pages are noindex under 25 own words', () => {
+  it('only the current week page stays indexable (the 25-own-words facility rule is every town\'s: thin-facility-mirror.test.ts)', () => {
     expect(broomfield.recentWeeksIndexed).toBe(1);
-    expect(broomfield.thinFacilityMinOwnWords).toBe(25);
   });
   it('every story read-back in db.ts that can return the content track filters on RETIRED_TYPES', () => {
     const db = read('./db.ts');

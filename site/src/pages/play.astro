@@ -23,9 +23,11 @@ if (siteConfig.townId !== 'brookings_sd') {
 }
 
 const hubBacklink = resolveHubBacklink('play', siteConfig);
+// A game answers no resident's question: noindex, out of the sitemap (SPEC Fas 13b, owner 2026-11-16; mirrored in astro.config.mjs).
 ---
 
 <BaseLayout
+  noindex
   title={`Play Prairie Hopper — ${siteConfig.siteName}`}
   description="A free retro arcade game starring a jackrabbit, built for Brookings, SD. Play Prairie, unlock Campus Hill and Main Street."
 >

@@ -13,7 +13,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import AboutThisPage from '../../components/ui/AboutThisPage.astro';
 import ShareButton from '../../components/ShareButton.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
-import { getContentByType, formatMonthYear } from '../../lib/db';
+import { getContentByType, formatMonthYear, getRecentPropertySales } from '../../lib/db';
+import { homeSalesStale } from '../../lib/home-sales';
 import { siteConfig } from '../../lib/site-config';
 import { fitDescription, descriptionFillers } from '../../lib/meta-description';
 import { placeAbbr } from '../../lib/country-profile';
@@ -34,6 +35,8 @@ const digests = (await getContentByType(['home_sales_digest'], 999))
 // Phase 8 teaser link (research section 3) -- plain link, not a cluster
 // membership.
 const latestMonth = listEligibleMonths(siteConfig.townId, siteConfig.timezone)[0];
+// Same staleness rule as /home-sales/ (owner B6): noindex while the county has released nothing newer.
+const recordsAreStale = homeSalesStale((await getRecentPropertySales(1))[0]?.sale_date);
 
 const title = `Home Sales Digest Archive — ${siteConfig.cityName}`;
 const description = fitDescription(`Every monthly home-sales digest for ${placeAbbr(siteConfig)} that the county has released, newest first.`, descriptionFillers(siteConfig));
@@ -58,7 +61,7 @@ const itemListJsonLd = digests.length > 0 ? {
   })),
 } : null;
 ---
-<BaseLayout title={title} wide ogSlug="section-home-sales" description={description}>
+<BaseLayout title={title} wide ogSlug="section-home-sales" description={description} noindex={recordsAreStale}>
   <Breadcrumbs trail={breadcrumbTrail} />
   <header class="lede">
     <h1>Home sales digest archive</h1>

@@ -465,8 +465,9 @@ async function buildLastmodMap(townId, databaseUrl) {
   // /events/past/ and /offline/ are noindex in the page itself -- mirrored here.
   // /tonight/ and /this-weekend/ (evening layer, step 7): NOT in this set. The pages decide (threshold verdict AND the owner's yes, lib/evening-verdict.ts),
   // write the answer to .evening-verdict.json and the sitemap filter below reads it, so tag and sitemap cannot disagree.
+  // /play/ (Brookings) and /burro-bonanza/ (Moreno) are games, noindex in the page (SPEC Fas 13b, owner 2026-11-16).
   const noindexThinPageUrls = new Set(['/reviews/', '/recipes/', '/editorials/', '/columns/', '/vail-resorts/',
-    '/jobs/', '/events/past/', '/offline/', '/university/weeks/', '/_design/',
+    '/jobs/', '/events/past/', '/offline/', '/university/weeks/', '/_design/', '/play/', '/burro-bonanza/',
     ...['today', 'this-weekend', 'free', 'kids', 'library', 'outdoor', 'campus'].map((f) => `/events/${f}/`)]);
   // Quiet sections (SiteConfig.quietSections, owner 2026-10-23): reachable, noindex in the page, out of the sitemap here. Mirrors
   // site-config.ts by hand; src/lib/quiet-sections.test.ts fails if the two disagree.
@@ -487,6 +488,10 @@ async function buildLastmodMap(townId, databaseUrl) {
     const localToday = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     if (localToday > '2026-11-03') noindexThinPageUrls.add('/vote/');
     if (localToday >= '2026-12-01') noindexThinPageUrls.add('/election-results/');
+    // Towns whose results block is link-only (config/election.ts results.live false): the page copies no numbers and is always noindex
+    // (SPEC Fas 13b punkt 6). src/lib/thin-pages-13b.test.ts fails if this list and the config disagree.
+    const ELECTION_RESULTS_LINK_ONLY = ['moreno_valley_ca'];
+    if (ELECTION_RESULTS_LINK_ONLY.includes(townId)) noindexThinPageUrls.add('/election-results/');
   }
   // Holiday pages (/thanksgiving/, /veterans-day/, /christmas/, /holidays/) are never noindex (owner 2026-11-04, evergreen pages), so there is
   // nothing to mirror here; a town without one gets no file at all (pages/[holiday].astro), hence no sitemap entry.
@@ -550,6 +555,9 @@ async function buildLastmodMap(townId, databaseUrl) {
 
   const projects = await sql`SELECT slug, updated_at FROM projects WHERE town_id = ${townId}`;
   for (const p of projects) map.set(`/city-hall/projects/${p.slug}/`, p.updated_at);
+  // Mirrors lib/project-noindex.ts MIN_INDEXABLE_PROJECTS_HUB (getProjects() has the same WHERE): the hub is noindex under 3 projects.
+  const MIN_INDEXABLE_PROJECTS_HUB = 3;
+  if (projects.length < MIN_INDEXABLE_PROJECTS_HUB) noindexThinPageUrls.add('/city-hall/projects/');
 
   // Phase 6: mirrors site/src/lib/project-noindex.ts's shouldNoindexProject()
   // exactly -- noindex until >=2 updates or a real confirmed (non-'pending')
@@ -585,8 +593,8 @@ async function buildLastmodMap(townId, databaseUrl) {
   // simplified approximation like the events-facet mirror above -- the
   // EXISTS subquery gives exact parity with the real page's structured-
   // hours check (place_hours rows), no overcounting needed here.
-  // Mirrors SiteConfig.thinFacilityMinOwnWords (site-config.ts); src/lib/thin-facility-mirror.test.ts fails if they disagree.
-  const THIN_FACILITY_MIN_OWN_WORDS = { glasgow: 25, broomfield_co: 25 };
+  // Mirrors lib/noindex.ts THIN_FACILITY_MIN_OWN_WORDS (every town, owner B9 2026-11-16); src/lib/thin-facility-mirror.test.ts fails if they disagree.
+  const THIN_FACILITY_MIN_OWN_WORDS = 25;
   // Mirrors VENUE_CATEGORIES (lib/db.ts; src/lib/venue-category.test.ts fails if they disagree): always noindex, never in the sitemap.
   const VENUE_CATEGORIES = ['bar_brewery', 'music_venue', 'shopping'];
   const thinFacilities = await sql`
@@ -609,12 +617,9 @@ async function buildLastmodMap(townId, databaseUrl) {
       || (f.no_street && f.no_phone && f.no_hours_text && f.no_structured_hours && f.no_services)) {
       noindexThinPageUrls.add(`/facilities/${f.slug}/`);
     }
-    // Text-thin rule (owner 2026-10-28): only where the town sets a minimum for the facility's own text (description + services).
-    const minOwn = THIN_FACILITY_MIN_OWN_WORDS[townId];
-    if (minOwn !== undefined) {
-      const words = (t) => String(t ?? '').split(/\s+/).filter(Boolean).length;
-      if (words(f.description) + words((f.services ?? []).join(' ')) < minOwn) noindexThinPageUrls.add(`/facilities/${f.slug}/`);
-    }
+    // Text-thin rule (owner 2026-10-28, every town since B9 2026-11-16): the facility's own text (description + services) under the minimum.
+    const words = (t) => String(t ?? '').split(/\s+/).filter(Boolean).length;
+    if (words(f.description) + words((f.services ?? []).join(' ')) < THIN_FACILITY_MIN_OWN_WORDS) noindexThinPageUrls.add(`/facilities/${f.slug}/`);
   }
 
   // property_sales only exists for Moreno Valley (Riverside County's
@@ -627,6 +632,15 @@ async function buildLastmodMap(townId, databaseUrl) {
        WHERE town_id = ${townId} AND pin IS NOT NULL
        ORDER BY pin, sale_date DESC
     `;
+    // Mirrors lib/home-sales.ts homeSalesStale() (HOME_SALES_STALE_DAYS 120, owner B6): the hub and the digest archive are noindex
+    // while the newest recorded sale is older than that. src/lib/thin-pages-13b.test.ts fails if the two numbers disagree.
+    const HOME_SALES_STALE_DAYS = 120;
+    // Same row as getRecentPropertySales()[0] (newest sale_date over all rows, pin or not).
+    const [{ newest }] = await sql`SELECT max(sale_date) AS newest FROM property_sales WHERE town_id = ${townId}`;
+    if (newest && Date.now() - new Date(newest).getTime() > HOME_SALES_STALE_DAYS * 86_400_000) {
+      noindexThinPageUrls.add('/home-sales/');
+      noindexThinPageUrls.add('/home-sales/archive/');
+    }
     for (const p of parcels) {
       if (!p.address) continue;
       const pathname = `/home-sales/${slugifyAddress(p.address)}/`;
@@ -645,10 +659,14 @@ async function buildLastmodMap(townId, databaseUrl) {
      ORDER BY posted_at DESC NULLS LAST
      LIMIT 100
   `;
+  // Mirrors lib/jobs.ts JOB_CATEGORY_ALIASES / canonicalJobCategory() (P6-10): an Adzuna label for one of our own categories is that
+  // category's page. src/lib/jobs.test.ts fails if this copy, lib/jobs.ts and the parser disagree.
+  const JOB_CATEGORY_ALIASES = { 'Healthcare & Nursing Jobs': 'Healthcare & Nursing', 'Logistics & Warehouse Jobs': 'Warehouse & Logistics', 'Retail Jobs': 'Retail', 'Customer Services Jobs': 'Customer Service', 'Trade & Construction Jobs': 'Construction & Trades', 'Admin Jobs': 'Administrative & Office' };
   const jobCategoryCounts = new Map();
   for (const j of jobs) {
     if (!j.category) continue;
-    jobCategoryCounts.set(j.category, (jobCategoryCounts.get(j.category) ?? 0) + 1);
+    const category = JOB_CATEGORY_ALIASES[j.category] ?? j.category;
+    jobCategoryCounts.set(category, (jobCategoryCounts.get(category) ?? 0) + 1);
   }
   for (const category of jobCategoryCounts.keys()) {
     noindexThinPageUrls.add(`/jobs/category/${slugifyCategory(category)}/`); // all job categories noindex (2026-10-22)
@@ -963,6 +981,8 @@ export default defineConfig({
         // keep them out of the sitemap the same way the HTML event pages
         // they belong to are already noindexed (see lib/noindex.ts).
         const isIcsFile = pathname.endsWith('.ics');
+        // Paginated archive pages over page 1 are noindex in the page (components/meetings/ArchivePage.astro, SPEC Fas 13b punkt 4).
+        const isArchivePageN = pathname.startsWith('/city-hall/archive/page/');
         // The page's own verdict wins for /today/ where it writes one (it can be indexable with no events this week).
         if (pathname === '/today/' && todayVerdict(activeCity) !== null) return todayVerdict(activeCity);
         const isEveningNoindex = (pathname === '/tonight/' || pathname === '/this-weekend/') && !eveningIndexable(activeCity);
@@ -975,6 +995,7 @@ export default defineConfig({
           && !noindexThinPageUrls.has(pathname)
           && !crossCanonicalStoryUrls.has(pathname)
           && !isWhatsOnDetailPage
+          && !isArchivePageN
           && !isIcsFile;
       },
       serialize(item) {

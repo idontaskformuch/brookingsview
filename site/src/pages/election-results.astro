@@ -33,7 +33,9 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   ...(voteOver ? [] : [{ label: 'How to vote', href: '/vote/' }]),
   { label: 'Election results', href: canonicalUrl },
 ];
-const noindex = isPastResultsIndexWindow(today, election.election_date);
+// A link-only page (results.live false: Moreno Valley) carries no results of its own, so it is never indexable (SPEC Fas 13b punkt 6,
+// owner 2026-11-16). Mirrored in astro.config.mjs ELECTION_RESULTS_LINK_ONLY.
+const noindex = !results.live || isPastResultsIndexWindow(today, election.election_date);
 const payload = results.live ? await getElectionResults() : null;
 const view = staticView(payload, results.source_name, siteConfig.siteName);
 const shown = view.showNumbers && payload ? payload : null;

@@ -15,6 +15,15 @@ export const OUTLIER_PRICE_FLOOR = 150_000;
  *  attribution can never drift from the listing page's wording. */
 export const PROPERTY_SALES_SOURCE_NAME = "Riverside County Assessor's Property Sales Report";
 
+/** County records are quarterly: when the newest recorded sale is more than this many days old at build time, nothing newer exists.
+ *  /home-sales/ says so in its text, and /home-sales/ and /home-sales/archive/ are noindex until new data arrives (owner B6, 2026-11-16;
+ *  mirrored in astro.config.mjs). No sale at all is not "stale" here. */
+export const HOME_SALES_STALE_DAYS = 120;
+
+export function homeSalesStale(mostRecentSaleDate: string | Date | null | undefined, now: number = Date.now()): boolean {
+  return mostRecentSaleDate != null && now - new Date(mostRecentSaleDate).getTime() > HOME_SALES_STALE_DAYS * 86_400_000;
+}
+
 export function isOutlierSale(price: number | null): boolean {
   return price != null && price > 0 && price < OUTLIER_PRICE_FLOOR;
 }

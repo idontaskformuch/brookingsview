@@ -44,6 +44,7 @@ import { calendarDateIso } from '../../lib/calendar-date';
 import { buildFacilityLede, facilityTitleElements, facilityMapLink, summarizeHours } from '../../lib/facility-lede';
 import { resolvePageMeta } from '../../lib/page-meta';
 import { linkTarget } from '../../lib/ai-text';
+import { THIN_FACILITY_MIN_OWN_WORDS } from '../../lib/noindex';
 
 export async function getStaticPaths() {
   if (!isSectionBuilt('facilities', siteConfig)) return []; // no detail pages under a section the town does not build (lib/sections.ts)
@@ -150,11 +151,11 @@ const canonicalUrl = new URL(`/facilities/${facility.slug}/`, Astro.site ?? site
 // astro.config.mjs's thin-facility query; pages with real facts (services, a street address, a phone) are unaffected.
 const isThinFacility = (!facility.address && !facility.phone && !facility.hours_text && hours.length === 0)
   || (!facility.street_address && !facility.phone && !facility.hours_text && hours.length === 0 && !(facility.services && facility.services.length > 0));
-// Own text = the description plus the services list. A page of only fact rows (address, phone, hours) is noindex where the town sets
-// thinFacilityMinOwnWords (Glasgow, owner 2026-10-28); mirrored in astro.config.mjs.
+// Own text = the description plus the services list. A page of only fact rows (address, phone, hours) is noindex in every town
+// (THIN_FACILITY_MIN_OWN_WORDS, owner B9 2026-11-16); mirrored in astro.config.mjs.
 const wordsIn = (text: string) => text.split(/\s+/).filter(Boolean).length;
 const ownWords = wordsIn(facility.description ?? '') + wordsIn((facility.services ?? []).join(' '));
-const isTextThinFacility = siteConfig.thinFacilityMinOwnWords !== undefined && ownWords < siteConfig.thinFacilityMinOwnWords;
+const isTextThinFacility = ownWords < THIN_FACILITY_MIN_OWN_WORDS;
 // A bar, music venue or shop is built (regular nights, events here, hours) but never indexed (owner 2026-11-13; mirrored in astro.config.mjs).
 const isVenue = !isPublicPlace(facility);
 // Phase 2, item 2f, part 2 (2026-10-09): the title names only the real

@@ -78,6 +78,20 @@ _CATEGORY_KEYWORDS: dict[str, tuple[str, ...]] = {
 }
 _GENERIC_ADZUNA_LABELS = {"Other/General Jobs", "Unknown"}
 
+# P6-10 (revision 2026-11-16): Adzunas etikett för samma kategori som en av
+# våra egna ovan sparades som den var, så sajten fick två kategorisidor
+# ("Healthcare & Nursing" och "Healthcare & Nursing Jobs"). Bara rena
+# motsvarigheter; övriga Adzuna-etiketter behålls oförändrade. Speglas i
+# site/src/lib/jobs.ts och site/astro.config.mjs (jobs.test.ts jämför alla tre).
+_ADZUNA_LABEL_ALIASES: dict[str, str] = {
+    "Healthcare & Nursing Jobs": "Healthcare & Nursing",
+    "Logistics & Warehouse Jobs": "Warehouse & Logistics",
+    "Retail Jobs": "Retail",
+    "Customer Services Jobs": "Customer Service",
+    "Trade & Construction Jobs": "Construction & Trades",
+    "Admin Jobs": "Administrative & Office",
+}
+
 # UK-only title words (Adzuna gb), checked BEFORE the shared US list and only
 # when the source's country is "gb", so US classification is untouched.
 _UK_CATEGORY_KEYWORDS: dict[str, tuple[str, ...]] = {
@@ -105,7 +119,7 @@ def _classify_category(title: str, adzuna_label: str | None, country: str = "us"
             if re.search(r"\b" + re.escape(kw) + r"\b", lowered):
                 return category
     if adzuna_label and adzuna_label not in _GENERIC_ADZUNA_LABELS:
-        return adzuna_label
+        return _ADZUNA_LABEL_ALIASES.get(adzuna_label, adzuna_label)
     return None
 
 

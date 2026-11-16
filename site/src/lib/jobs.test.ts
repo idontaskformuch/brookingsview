@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { slugifyCategory, salaryText, capByEmployer, jobZone, dedupeJobs } from './jobs';
+import { slugifyCategory, salaryText, capByEmployer, jobZone, dedupeJobs, canonicalJobCategory, JOB_CATEGORY_ALIASES } from './jobs';
 
 describe('jobZone', () => {
   // Real stored location.display_name values (last 60 days, all 3 towns).
@@ -17,6 +18,38 @@ describe('jobZone', () => {
 
   it('is nearby (not in_town) for a null location -- never the benefit of the doubt', () => {
     expect(jobZone(null, 'Brookings')).toBe('nearby');
+  });
+});
+
+describe('canonicalJobCategory (P6-10: one page per category, not "X" and "X Jobs")', () => {
+  // Real category values from the jobs table (all four towns, last 45 days, read 2026-11-16).
+  it('maps an Adzuna label onto our own name for the same category', () => {
+    expect(canonicalJobCategory('Healthcare & Nursing Jobs')).toBe('Healthcare & Nursing');
+    expect(canonicalJobCategory('Logistics & Warehouse Jobs')).toBe('Warehouse & Logistics');
+    expect(canonicalJobCategory('Retail Jobs')).toBe('Retail');
+    expect(canonicalJobCategory('Customer Services Jobs')).toBe('Customer Service');
+    expect(canonicalJobCategory('Trade & Construction Jobs')).toBe('Construction & Trades');
+    expect(canonicalJobCategory('Admin Jobs')).toBe('Administrative & Office');
+  });
+  it('leaves every other label alone, and null stays null', () => {
+    expect(canonicalJobCategory('Teaching Jobs')).toBe('Teaching Jobs');
+    expect(canonicalJobCategory('Healthcare & Nursing')).toBe('Healthcare & Nursing');
+    expect(canonicalJobCategory(null)).toBeNull();
+  });
+  it('the alias table is the same in the parser, lib/jobs.ts and the astro.config.mjs mirror', () => {
+    const py = readFileSync(new URL('../../../scrapers/parsers/jobs_v1.py', import.meta.url), 'utf8');
+    const pyBlock = py.slice(py.indexOf('_ADZUNA_LABEL_ALIASES'), py.indexOf('}', py.indexOf('_ADZUNA_LABEL_ALIASES')));
+    const pyMap = Object.fromEntries([...pyBlock.matchAll(/"([^"]+)":\s*"([^"]+)"/g)].map((m) => [m[1], m[2]]));
+    expect(pyMap).toEqual(JOB_CATEGORY_ALIASES);
+    const cfg = readFileSync(new URL('../../astro.config.mjs', import.meta.url), 'utf8');
+    const m = cfg.match(/const JOB_CATEGORY_ALIASES = (\{[^}]*\});/);
+    expect(m).not.toBeNull();
+    expect(Function(`return ${m![1]}`)()).toEqual(JOB_CATEGORY_ALIASES);
+  });
+  it('getRecentJobs hands every page the canonical name', () => {
+    const db = readFileSync(new URL('./db.ts', import.meta.url), 'utf8');
+    const fn = db.slice(db.indexOf('export async function getRecentJobs'), db.indexOf('export async function getJobsFirstScrapedInMonth'));
+    expect(fn).toContain('canonicalJobCategory(');
   });
 });
 

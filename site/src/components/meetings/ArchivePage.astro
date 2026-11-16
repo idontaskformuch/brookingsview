@@ -61,6 +61,7 @@ const ordered = [...meetings].sort((a, b) => {
 const pageCount = paginated ? Math.max(1, Math.ceil(ordered.length / ARCHIVE_PAGE_SIZE)) : 1;
 const shown = paginated ? ordered.slice((page - 1) * ARCHIVE_PAGE_SIZE, page * ARCHIVE_PAGE_SIZE) : ordered;
 const pageHref = (n: number) => (n <= 1 ? '/city-hall/archive/' : `/city-hall/archive/page/${n}/`);
+// Pages 2.. are a list of older links, not an answer: noindex, out of the sitemap (SPEC Fas 13b punkt 4; astro.config.mjs isArchivePageN).
 
 const groups = new Map<string, Story[]>();
 for (const m of shown) {
@@ -93,7 +94,7 @@ const itemListJsonLd = shown.length > 0 ? {
   })),
 } : null;
 ---
-<BaseLayout title={title} wide ogSlug="section-city-hall" description={description}>
+<BaseLayout title={title} wide ogSlug="section-city-hall" description={description} noindex={page > 1}>
   <header class="lede">
     <h1>{pageMeta.h1}</h1>
     <ShareButton title={title} url={canonicalUrl} />

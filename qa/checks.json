@@ -420,6 +420,11 @@
         "severity": "hard",
         "born_from": "Moreno source probe 2026-11-14: morenovalleybusiness.com's robots.txt asks \"Crawl-delay: 600\"; polite_fetch cut it to MAX_CRAWL_DELAY_S (60), so robots + 3 requests went out about a minute apart. No built page shows it, so the regression fixture is the pytest: tests/test_polite_fetch.py 'a crawl delay above the cap is never shortened' with tests/fixtures/robots/morenovalleybusiness.txt verbatim (fails on 1dc35be's polite_fetch.py).",
         "what": "a host whose robots.txt Crawl-delay is above MAX_CRAWL_DELAY_S getting a second request in one run, or any request after a shortened wait (pytest)"
+    },
+    "logic.job-category-alias": {
+        "severity": "soft",
+        "born_from": "Audit pass 6 (P6-10, 2026-11-16): Moreno built /jobs/category/healthcare-nursing/ (783 words) and /jobs/category/healthcare-nursing-jobs/ (583 words) for the same category -- a title keyword stored \"Healthcare & Nursing\", the Adzuna fallback stored Adzuna's \"Healthcare & Nursing Jobs\". The jobs table (last 45 days, read 2026-11-16) had six such pairs in all four towns. Regression fixtures: tests/test_jobs_parser.py 'maps adzuna label onto our own name' (real Moreno row, \"... Reconstruction Fellowship\") and site/src/lib/jobs.test.ts 'canonicalJobCategory', both fail on 69dab30.",
+        "what": "an Adzuna category label that names one of our own keyword categories stored or shown under its own name, or the alias table differing between jobs_v1.py, lib/jobs.ts and astro.config.mjs (pytest + vitest)"
     }
   }
 }

@@ -14,9 +14,11 @@ if (siteConfig.townId !== 'moreno_valley_ca') {
 }
 
 const hubBacklink = resolveHubBacklink('burro-bonanza', siteConfig);
+// A game answers no resident's question: noindex, out of the sitemap (SPEC Fas 13b, owner 2026-11-16; mirrored in astro.config.mjs).
 ---
 
 <BaseLayout
+  noindex
   title={`Play Burro Bonanza — ${siteConfig.siteName}`}
   description="A free match-3 puzzle game starring Moreno Valley's wild burros. 20 hand-tuned levels, special tiles, and a trail map to clear."
 >

@@ -38,6 +38,7 @@ import { ownPageHref, linkTarget, publicBody } from './ai-text';
 import { calendarDayDiff, seriesKicker } from './time';
 import type { RegisterRow } from './evening-items';
 import { isAllDay } from './local-day';
+import { canonicalJobCategory } from './jobs';
 import { ELECTION_BY_TOWN } from '../config/election';
 import { readLastValid } from '../../../election-results/src/read';
 import { toPublic, type PublicResults } from '../../../election-results/src/api';
@@ -1834,7 +1835,7 @@ const JOBS_MAX_AGE_DAYS = 45;
  *  ovan). posted_at IS NULL hålls kvar (Adzuna anger nästan alltid created,
  *  men om den saknas är det hellre synlig-utan-datum än tyst borttagen). */
 export async function getRecentJobs(limit = 100): Promise<Job[]> {
-  return (await sql`
+  const rows = (await sql`
     SELECT external_job_id, title, company, location, category,
            salary_min, salary_max, salary_is_predicted, description,
            redirect_url, posted_at
@@ -1844,6 +1845,7 @@ export async function getRecentJobs(limit = 100): Promise<Job[]> {
      ORDER BY posted_at DESC NULLS LAST
      LIMIT ${limit}
   `) as Job[];
+  return rows.map((j) => ({ ...j, category: canonicalJobCategory(j.category) }));
 }
 
 /** Month in Review: distinct postings grouped by OUR OWN first-scrape
