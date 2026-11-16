@@ -150,7 +150,7 @@ describe('/traffic/ page and config', () => {
     expect(page).not.toContain('<SectionRule');
     expect(page).toMatch(/\{hero && \(\s*<section class="answer"/);
     expect(page).toMatch(/\{incidents\.length > 0 && \(\s*<div class="controls">/);
-    expect(page).toMatch(/\{siteConfig\.trafficSource && shown > 0 && \(\s*<p class="source">/);
+    expect(page).toMatch(/\{siteConfig\.trafficSource && \(shown > 0 \|\| lastListed\.length > 0\) && \(\s*<p class="source">/);
     expect(page).toMatch(/\{siteConfig\.trafficSource && earlier\.length > 0 && \(\s*<section class="earlier"/);
     expect(page).toContain('incidentCount: shown,');
   });
@@ -160,14 +160,22 @@ describe('/traffic/ page and config', () => {
     expect(cfg).toContain("'traffic-state.json'");
   });
 
-  it('list and read time describe the same read: /traffic/ lists what the latest ok run saw', () => {
-    // 2026-11-11: a build more than 3 h after a read dropped that read's incidents
-    expect(page).toContain('await getTrafficIncidentsFromLatestRead()');
+  it('list and read time describe the same read: /traffic/ lists what the latest finished ok run saw', () => {
+    // 2026-11-11: a build more than 3 h after a read dropped that read's incidents. 2026-11-16 (audit Fas 6a): one scrape_runs row
+    // gives the cut, the out-of-date decision and the clock; the list query has no read lookup of its own.
+    expect(page).toContain('trafficReadState(siteConfig.trafficSource ? await getTrafficLatestRead() : null, now)');
+    expect(page).toContain('await getTrafficIncidentsListedAt(readStart)');
+    expect(page).toContain('latestReadStart: readStart,');
     expect(page).not.toContain('getActiveTrafficIncidents(');
     const db = readFileSync(join(__dirname, 'db.ts'), 'utf8');
-    const fn = db.slice(db.indexOf('export async function getTrafficIncidentsFromLatestRead'), db.indexOf('export async function getTrafficLastRun'));
-    expect(fn).toContain('last_seen_at >= latest.at');
-    expect(fn).toContain(`interval '${TRAFFIC_READ_MAX_AGE_HOURS} hours'`);
+    const read = db.slice(db.indexOf('export async function getTrafficLatestRead'), db.indexOf('export async function getTrafficIncidentsListedAt'));
+    expect(read).toContain("status = 'ok' AND finished_at IS NOT NULL");
+    expect(read).toContain('ORDER BY started_at DESC LIMIT 1');
+    const list = db.slice(db.indexOf('export async function getTrafficIncidentsListedAt'), db.indexOf('export async function getTrafficIncidentsStartedSince'));
+    expect(list).toContain('last_seen_at >= ${readStart}');
+    expect(list).not.toContain('scrape_runs');
+    expect(list).not.toContain('interval');
+    expect(TRAFFIC_READ_MAX_AGE_HOURS).toBe(26);
   });
 
   it('the source scope notes shown on the page use real punctuation, not " -- "', () => {

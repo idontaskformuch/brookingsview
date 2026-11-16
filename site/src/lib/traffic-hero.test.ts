@@ -84,6 +84,10 @@ describe('read time', () => {
   it('a read from an earlier local day carries the weekday', () => {
     expect(trafficReadClock('2026-11-15 23:01:40+00:00', new Date('2026-11-16T09:00:00Z'), MV_TZ, 'en-US')).toBe('Sun 3:01 PM PST');
   });
+  it('six local days back still a weekday, seven days back the date', () => {
+    expect(trafficReadClock(MV_READ, new Date('2026-11-22T20:00:00Z'), MV_TZ, 'en-US')).toBe('Mon 3:25 AM PST');
+    expect(trafficReadClock(MV_READ, new Date('2026-11-23T20:00:00Z'), MV_TZ, 'en-US')).toBe('Nov 16, 3:25 AM PST');
+  });
 });
 
 const hero = (current: TrafficIncident[], earlierCount: number, o: { read?: string | null; stale?: boolean; tz?: string; city?: string } = {}) => trafficHero({

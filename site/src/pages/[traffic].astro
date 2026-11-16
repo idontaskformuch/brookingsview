@@ -7,7 +7,8 @@
  *  Under the current list, "Earlier this week" (lib/traffic-earlier.ts): incidents of the last 7 days that are no longer active, each with
  *  its date, under its own heading. Without either the page shows no message and no explanation line, and it is noindex.
  *  Top block (audit Fas 6a, owner 2026-11-16, lib/traffic-hero.ts): hero + "most affected road" + "listed until"; duplicate rows are
- *  shown once (display only). */
+ *  shown once (display only). A read older than 26 h, or no finished read at all, gets the out-of-date line and "Last listed" instead
+ *  of the hero (lib/traffic-read.ts). */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import AboutThisPage from '../components/ui/AboutThisPage.astro';
 import HeroStat from '../components/ui/HeroStat.astro';
@@ -15,9 +16,10 @@ import InsightLine from '../components/ui/InsightLine.astro';
 import RelatedContent from '../components/RelatedContent.astro';
 import ShareButton from '../components/ShareButton.astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
-import { getTrafficIncidentsFromLatestRead, getTrafficIncidentsStartedSince, getTrafficLatestReadStart, getTrafficLastRun, formatTimeWithZone, plainLanguageTraffic } from '../lib/db';
+import { getTrafficLatestRead, getTrafficIncidentsListedAt, getTrafficIncidentsStartedSince, formatTimeWithZone, plainLanguageTraffic } from '../lib/db';
 import { TRAFFIC_EARLIER_DAYS, earlierTrafficIncidents } from '../lib/traffic-earlier';
-import { TRAFFIC_READ_MAX_AGE_HOURS, trafficIndexingForTown } from '../lib/traffic-verdict';
+import { trafficIndexingForTown } from '../lib/traffic-verdict';
+import { lastListedRows, trafficReadState, trafficStaleLead } from '../lib/traffic-read';
 import { siteConfig, isQuietSection } from '../lib/site-config';
 import { isSectionBuilt } from '../lib/sections';
 
@@ -32,7 +34,7 @@ import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
 import { classifyTrafficIncident } from '../lib/traffic';
-import { dedupeTrafficIncidents, listedUntil, mostAffectedRoad, sentenceCase, trafficCause, trafficHero, withoutCurrent } from '../lib/traffic-hero';
+import { dedupeTrafficIncidents, listedUntil, mostAffectedRoad, sentenceCase, trafficCause, trafficHero, trafficReadClock, withoutCurrent } from '../lib/traffic-hero';
 import { listEligibleMonths, monthLabel, monthSlug } from '../lib/month-in-review';
 
 // Phase 8 teaser link (research section 3) -- plain link, not a cluster
@@ -40,7 +42,11 @@ import { listEligibleMonths, monthLabel, monthSlug } from '../lib/month-in-revie
 const latestMonth = listEligibleMonths(siteConfig.townId, siteConfig.timezone)[0];
 const pageMeta = resolvePageMeta('traffic', siteConfig);
 const clusterNavItems = resolveHubNavItems('traffic', siteConfig);
-const rawIncidents = await getTrafficIncidentsFromLatestRead();
+const now = new Date();
+// One read gives every time on the page (lib/traffic-read.ts): its start cuts the list and decides "out of date", its finish is the clock.
+const read = trafficReadState(siteConfig.trafficSource ? await getTrafficLatestRead() : null, now);
+const readStart = read.kind === 'none' ? null : read.start;
+const listedRaw = readStart ? await getTrafficIncidentsListedAt(readStart) : [];
 // Traffic Phase 5 (2026-10-09): the scraper's own bounding box is looser
 // than "this town" -- see lib/traffic.ts's own module doc for the real
 // stored-data audit that found it storing other towns'/other cities'
@@ -48,33 +54,33 @@ const rawIncidents = await getTrafficIncidentsFromLatestRead();
 // town boundary + a named corridor list before it's allowed on the page;
 // anything that's neither in town nor on a configured corridor within
 // range is dropped, never shown as if it were town-relevant.
-const incidents = dedupeTrafficIncidents(rawIncidents
+const listed = dedupeTrafficIncidents(listedRaw
   .map((incident) => {
     const c = classifyTrafficIncident(incident, siteConfig.townId, siteConfig.trafficCorridors, siteConfig.trafficCorridorMaxMiles);
     return c ? { ...incident, zone: c.zone, distanceMiles: c.distanceMiles } : null;
   })
   .filter((i): i is NonNullable<typeof i> => i !== null));
-const [lastRun, latestReadStart, startedThisWeek] = siteConfig.trafficSource
-  ? await Promise.all([getTrafficLastRun(), getTrafficLatestReadStart(), getTrafficIncidentsStartedSince(TRAFFIC_EARLIER_DAYS)])
-  : [null, null, []];
-const now = new Date();
+const incidents = read.kind === 'fresh' ? listed : [];
+const lastListed = read.kind === 'stale' && read.showLastListed ? lastListedRows(listed) : [];
+const startedThisWeek = siteConfig.trafficSource ? await getTrafficIncidentsStartedSince(TRAFFIC_EARLIER_DAYS) : [];
 const earlier = withoutCurrent(dedupeTrafficIncidents(earlierTrafficIncidents(startedThisWeek, {
-  latestReadStart: latestReadStart ? new Date(latestReadStart).toISOString() : null, now,
+  latestReadStart: readStart, now,
   townId: siteConfig.townId, corridors: siteConfig.trafficCorridors, corridorMaxMiles: siteConfig.trafficCorridorMaxMiles,
-})), incidents);
+})), listed);
 const shown = incidents.length + earlier.length;
-const readIsStale = lastRun != null && now.getTime() - new Date(lastRun).getTime() > TRAFFIC_READ_MAX_AGE_HOURS * 3_600_000;
 const locale = siteConfig.country === 'gb' ? 'en-GB' : 'en-US';
 const hero = siteConfig.trafficSource ? trafficHero({
-  current: incidents, earlierCount: earlier.length, readAt: lastRun ? new Date(lastRun).toISOString() : null, readIsStale,
+  current: incidents, earlierCount: earlier.length, readAt: read.kind === 'none' ? null : read.finish, readIsStale: read.kind !== 'fresh',
   now, tz: siteConfig.timezone, locale, scope: siteConfig.trafficSource.heroScope, cityName: siteConfig.cityName,
 }) : null;
+const staleLead = siteConfig.trafficSource ? trafficStaleLead(read, now, siteConfig.timezone, locale) : null;
+const lastListedLabel = read.kind === 'stale' ? trafficReadClock(read.finish, now, siteConfig.timezone, locale) : null;
 const roadLine = hero ? mostAffectedRoad([...incidents, ...earlier], siteConfig.trafficCorridors) : null;
 const untilLine = hero ? listedUntil(incidents, now, siteConfig.timezone, locale) : null;
 const causeOf = (description: string | null) => { const c = trafficCause(description); return c ? sentenceCase(c) : null; };
 const indexing = await trafficIndexingForTown({
   townId: siteConfig.townId, siteUrl: siteConfig.siteUrl, rule: siteConfig.trafficSource?.indexing ?? 'inertia', quiet: isQuietSection('traffic'),
-  incidentCount: shown, readAt: lastRun && !readIsStale ? new Date(lastRun).toISOString() : null,
+  incidentCount: shown, readAt: read.kind === 'fresh' ? read.finish : null,
 });
 const canonicalUrl = new URL('/traffic/', Astro.site ?? siteConfig.siteUrl).href;
 const breadcrumbTrail: BreadcrumbEntry[] = [
@@ -107,6 +113,32 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
       <HeroStat value={hero.value} sub={hero.sub} meta={hero.meta} tone="accent" />
       {roadLine && <InsightLine attrs={{ 'data-traffic-insight': 'road' }}>{roadLine}</InsightLine>}
       {untilLine && <InsightLine attrs={{ 'data-traffic-insight': 'until' }}>{untilLine}</InsightLine>}
+    </section>
+  )}
+
+  {staleLead && (
+    <section class="answer" data-traffic-stale>
+      <InsightLine>{staleLead} For conditions now, see <a href={siteConfig.trafficSource!.url} rel="noopener">{siteConfig.trafficSource!.name}</a>.</InsightLine>
+    </section>
+  )}
+
+  {lastListed.length > 0 && (
+    <section class="earlier" aria-labelledby="last-listed-heading" data-traffic-last-listed>
+      <h2 id="last-listed-heading">Last listed {lastListedLabel}</h2>
+      <table class="incidents incidents--earlier">
+        <thead>
+          <tr><th scope="col">Where</th><th scope="col">Type</th><th scope="col">Source</th></tr>
+        </thead>
+        <tbody>
+          {lastListed.map((incident) => (
+            <tr data-traffic-row="last-listed">
+              <td data-label="Where">{incident.road ?? '—'}<span class="where-zone">{whereLabel(incident)}</span></td>
+              <td class="details">{plainLanguageTraffic(incident.title)}{causeOf(incident.description) && <span class="cause">{causeOf(incident.description)}</span>}</td>
+              <td data-label="Source"><a href={siteConfig.trafficSource!.url} rel="noopener">{siteConfig.trafficSource!.name}</a></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </section>
   )}
 
@@ -185,9 +217,9 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
     </section>
   )}
 
-  {siteConfig.trafficSource && shown > 0 && (
+  {siteConfig.trafficSource && (shown > 0 || lastListed.length > 0) && (
     <p class="source">
-      Source: <a href={siteConfig.trafficSource.url} rel="noopener">{siteConfig.trafficSource.name}</a>, refreshed regularly. {siteConfig.trafficSource.scopeNote}
+      Source: <a href={siteConfig.trafficSource.url} rel="noopener">{siteConfig.trafficSource.name}</a>{read.kind === 'fresh' ? ', refreshed regularly' : ''}. {siteConfig.trafficSource.scopeNote}
     </p>
   )}
 

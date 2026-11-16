@@ -27,7 +27,7 @@ export const TRAFFIC_STATE_PATH = 'traffic-state.json';
 export const TRAFFIC_GRACE_HOURS = 72;
 export const TRAFFIC_GRACE_READS = 3;
 
-/** A read older than this lists nothing (db.ts getTrafficIncidentsFromLatestRead) and is not counted. */
+/** A read that started longer ago than this is out of date: no current list, not counted (lib/traffic-read.ts). */
 export const TRAFFIC_READ_MAX_AGE_HOURS = 26;
 
 export type TrafficIndexingRule = 'standing' | 'inertia';

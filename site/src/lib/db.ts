@@ -1684,20 +1684,29 @@ export async function getTrafficLastChecked(): Promise<string | null> {
   return (rows[0] as { last_checked: string | null })?.last_checked ?? null;
 }
 
-/** /traffic/: the incidents the LATEST successful read of the feed reported (last_seen_at stamped during that run), not yet cleared.
+/** /traffic/: the latest FINISHED successful read of the traffic feed (scrape_runs). A run still in progress ('running', no
+ *  finished_at) or one that failed is never the latest read. The page takes every time from this one row (lib/traffic-read.ts):
+ *  started_at cuts the list and decides "out of date", finished_at is the clock shown. */
+export interface TrafficReadRun { status: string; started_at: string; finished_at: string | null }
+export async function getTrafficLatestRead(): Promise<TrafficReadRun | null> {
+  const rows = await sql`
+    SELECT status, started_at, finished_at FROM scrape_runs
+     WHERE town_id = ${TOWN_ID} AND source_key = 'traffic' AND status = 'ok' AND finished_at IS NOT NULL
+     ORDER BY started_at DESC LIMIT 1
+  `;
+  return (rows[0] as TrafficReadRun | undefined) ?? null;
+}
+
+/** /traffic/: the incidents the read that started at `readStart` reported (last_seen_at stamped during that run), not yet cleared.
  *  The page is static and the feed is read on a schedule, so the 3-hour window of getActiveTrafficIncidents() -- counted at build time
- *  -- emptied the list on any build more than 3 h after a read, while the "as of <latest read>" line said nothing was reported
- *  (2026-11-11). List and line now describe the same read. A read older than 26 h lists nothing; the line still names its time. */
-export async function getTrafficIncidentsFromLatestRead(): Promise<TrafficIncident[]> {
+ *  -- emptied the list on any build more than 3 h after a read (2026-11-11). Whether the read is too old to call "current" is the
+ *  page's decision (lib/traffic-read.ts), on the same readStart. */
+export async function getTrafficIncidentsListedAt(readStart: string): Promise<TrafficIncident[]> {
   return (await sql`
-    WITH latest AS (
-      SELECT MAX(started_at) AS at FROM scrape_runs WHERE town_id = ${TOWN_ID} AND source_key = 'traffic' AND status = 'ok'
-    )
     SELECT incident_type, title, description, road, severity, lat, lon, ends_at, last_seen_at
-      FROM traffic_incidents, latest
+      FROM traffic_incidents
      WHERE town_id = ${TOWN_ID}
-       AND latest.at IS NOT NULL AND latest.at >= now() - interval '26 hours'
-       AND last_seen_at >= latest.at
+       AND last_seen_at >= ${readStart}
        AND (ends_at IS NULL OR ends_at >= now())
      ORDER BY
        CASE severity WHEN 'closure' THEN 0 WHEN 'injury' THEN 1 WHEN 'incident' THEN 2 WHEN 'planned' THEN 3 ELSE 4 END,
@@ -1714,24 +1723,6 @@ export async function getTrafficIncidentsStartedSince(days: number): Promise<Tra
      WHERE town_id = ${TOWN_ID}
        AND COALESCE(starts_at, created_at) >= now() - (${days} || ' days')::interval
   `) as TrafficIncident[];
-}
-
-/** When the latest successful read of the traffic feed started: the incidents it listed have last_seen_at at or after this time
- *  (same cut as getTrafficIncidentsFromLatestRead()). */
-export async function getTrafficLatestReadStart(): Promise<string | null> {
-  const rows = await sql`
-    SELECT MAX(started_at) AS at FROM scrape_runs WHERE town_id = ${TOWN_ID} AND source_key = 'traffic' AND status = 'ok'
-  `;
-  return (rows[0] as { at: string | null })?.at ?? null;
-}
-
-/** When the traffic feed was last read successfully (scrape_runs, source 'traffic'). Unlike getTrafficLastChecked() this moves on a run
- *  that found nothing: /traffic/ counts each read once for its inertia and labels the list with this time (lib/traffic-verdict.ts). */
-export async function getTrafficLastRun(): Promise<string | null> {
-  const rows = await sql`
-    SELECT MAX(finished_at) AS last_run FROM scrape_runs WHERE town_id = ${TOWN_ID} AND source_key = 'traffic' AND status = 'ok'
-  `;
-  return (rows[0] as { last_run: string | null })?.last_run ?? null;
 }
 
 /** Month in Review: every incident whose `created_at` -- the real "first

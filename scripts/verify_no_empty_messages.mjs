@@ -16,6 +16,8 @@
  *  - none of the earlier AI statements (STALE_AI_CLAIMS, owner B6 2026-11-11), also in llms.txt;
  *  - an indexed /traffic/ has at least one incident row (data-traffic-row: current or "Earlier this week") under its heading
  *    (QA build.traffic-empty, owner 2026-11-15: an indexed page is never without content under the heading);
+ *  - an indexed /traffic/ has the hero (a fresh read) or the out-of-date line (no fresh read): its rows never stand without saying
+ *    which read they come from (audit Fas 6a, owner 2026-11-16);
  *  - no "About this page" box is a heading with nothing under it (Broomfield AdSense plan F5, 2026-11-11: /election-results/'s slot held
  *    only an optional notice that Broomfield does not have).
  *
@@ -104,6 +106,10 @@ for (const file of walk(dist)) {
   for (const phrase of STALE_AI_CLAIMS) if (html.includes(phrase)) bad.push(`${url}: old AI statement "${phrase}"`);
   if (url === '/traffic/' && !/<meta\s+name="robots"\s+content="noindex/i.test(html) && !html.includes('data-traffic-row=')) {
     bad.push(`${url}: indexed with no incident row under the heading`);
+  }
+  if (url === '/traffic/' && !/<meta\s+name="robots"\s+content="noindex/i.test(html)
+    && !html.includes('data-traffic-hero') && !html.includes('data-traffic-stale')) {
+    bad.push(`${url}: indexed with neither the hero nor the out-of-date line`);
   }
   if (emptyAboutBox(html)) bad.push(`${url}: "About this page" heading with no text under it`);
   const past = timelessPastTense(html);

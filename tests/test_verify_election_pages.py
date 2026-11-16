@@ -50,6 +50,18 @@ def test_indexed_traffic_page_without_rows_fails():
     assert r.returncode == 1 and "/traffic/: indexed with no incident row under the heading" in r.stderr
 
 
+TRAFFIC_READ_TIME = ROOT / "tests" / "fixtures" / "qa_traffic_no_read_time_2026-11-16"
+
+
+def test_indexed_traffic_page_without_hero_or_stale_line_fails():
+    # QA build.traffic-empty (audit Fas 6a, owner 2026-11-16): an indexed /traffic/ says which read its rows come from, with the hero
+    # (fresh read) or the out-of-date line. after = Moreno Valley's /traffic/ as built by 607824a on 16 Nov (hero "2 closures · As of
+    # 3:25 AM PST"); before = the same page with the hero section removed, i.e. rows with no read time, as 607824a showed a read > 26 h old.
+    r = run("verify_no_empty_messages.mjs", TRAFFIC_READ_TIME / "before")
+    assert r.returncode == 1 and "/traffic/: indexed with neither the hero nor the out-of-date line" in r.stderr
+    assert run("verify_no_empty_messages.mjs", TRAFFIC_READ_TIME / "after").returncode == 0
+
+
 HOLIDAY = ROOT / "tests" / "fixtures" / "qa_holiday_unconfirmed_2026-11-11"
 
 

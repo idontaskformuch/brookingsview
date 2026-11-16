@@ -5,7 +5,8 @@
  *  position are one incident, shown once with the latest ends_at. A row without a start or a position is never merged: Caltrans gives
  *  no start, and two different closures on the same stretch (K-rail installation / slide removal) share title, road and position.
  *
- *  Read time: scrape_runs.finished_at of the latest successful traffic read (getTrafficLastRun), floored to the minute. */
+ *  Read time: scrape_runs.finished_at of the latest finished successful traffic read (getTrafficLatestRead, lib/traffic-read.ts),
+ *  floored to the minute. */
 import type { TrafficIncident } from './db';
 import { extractRouteNumber } from './traffic';
 
@@ -58,12 +59,16 @@ export function trafficCause(description: string | null | undefined): string | n
 }
 export const sentenceCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-/** "3:25 AM PST" for a read on the same local day as `now`, otherwise "Sun 11:02 PM MST". Seconds are dropped (floor). */
+/** "3:25 AM PST" for a read on the same local day as `now`, "Sun 11:02 PM MST" within the past six days, "Nov 5, 3:25 AM PST" from
+ *  seven days back (a weekday alone would point at this week). Seconds are dropped (floor). */
 export function trafficReadClock(readAt: string | Date, now: Date, tz: string, locale: string): string {
   const d = new Date(Math.floor(ms(readAt) / 60_000) * 60_000);
-  const day = (x: Date) => x.toLocaleDateString('en-CA', { timeZone: tz });
+  const day = (x: Date) => Date.parse(`${x.toLocaleDateString('en-CA', { timeZone: tz })}T00:00:00Z`);
+  const days = Math.round((day(now) - day(d)) / 86_400_000);
   const clock = d.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', timeZone: tz, timeZoneName: 'short' });
-  return day(d) === day(now) ? clock : `${d.toLocaleDateString(locale, { weekday: 'short', timeZone: tz })} ${clock}`;
+  if (days === 0) return clock;
+  if (days < 7) return `${d.toLocaleDateString(locale, { weekday: 'short', timeZone: tz })} ${clock}`;
+  return `${d.toLocaleDateString(locale, { month: 'short', day: 'numeric', timeZone: tz })}, ${clock}`;
 }
 
 const isClosure = (severity: string | null) => severity === 'closure' || severity === 'planned';
