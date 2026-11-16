@@ -27,7 +27,6 @@ import { ticketmasterHref } from './whats-on';
 export function buildTicketmasterEventJsonLd(
   item: TicketmasterFeedItem,
   pageUrl: string,
-  siteName: string,
 ): Record<string, unknown> | null {
   if (!item.occurs_at) return null;
   const e = item.ticketmasterEvent;
@@ -75,10 +74,7 @@ export function buildTicketmasterEventJsonLd(
     ...(location ? { location } : {}),
     ...(e.imageUrl ? { image: [e.imageUrl] } : {}),
     ...(offers ? { offers } : {}),
-    // The venue is the most defensible organizer without inventing a fact
-    // (same reasoning buildEventJsonLd() already applies) -- falls back to
-    // the site itself when even the venue name is unknown.
-    organizer: { '@type': 'Organization', name: e.venueName ?? siteName },
+    // No organizer (owner 2026-11-16): Discovery does not name one, and the venue repeated as organizer is not the organiser.
   };
 }
 
@@ -91,13 +87,12 @@ export const LIST_JSON_LD_DAYS = 14;
 export function buildTicketmasterListJsonLd(
   items: TicketmasterFeedItem[],
   pageUrl: string,
-  siteName: string,
   now: Date,
 ): Record<string, unknown> | null {
   const last = now.getTime() + LIST_JSON_LD_DAYS * 86_400_000;
   const events = items.flatMap((item) => {
     if (!item.occurs_at || new Date(item.occurs_at).getTime() > last) return [];
-    const ld = buildTicketmasterEventJsonLd(item, pageUrl, siteName);
+    const ld = buildTicketmasterEventJsonLd(item, pageUrl);
     if (!ld) return [];
     const { '@context': _context, ...event } = ld;
     return [event];

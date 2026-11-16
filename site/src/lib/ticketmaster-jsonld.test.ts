@@ -24,7 +24,7 @@ const CANONICAL = 'https://brookingsview.com/whats-on/';
 describe('buildTicketmasterEventJsonLd', () => {
   it('returns null when there is no date to anchor an Event on', () => {
     const item = tmItem(null);
-    expect(buildTicketmasterEventJsonLd(item, CANONICAL, 'Brookings View')).toBeNull();
+    expect(buildTicketmasterEventJsonLd(item, CANONICAL)).toBeNull();
   });
 
   it('builds a full Event object with real venue address/geo (Denny Sanford PREMIER Center, real captured shape)', () => {
@@ -34,7 +34,7 @@ describe('buildTicketmasterEventJsonLd', () => {
       venueLatitude: 43.5581, venueLongitude: -96.7422,
       imageUrl: 'https://s1.ticketm.net/dam/real.jpg',
     });
-    const result = buildTicketmasterEventJsonLd(item, CANONICAL, 'Brookings View');
+    const result = buildTicketmasterEventJsonLd(item, CANONICAL);
     expect(result).toMatchObject({
       '@context': 'https://schema.org',
       '@type': 'Event',
@@ -58,25 +58,24 @@ describe('buildTicketmasterEventJsonLd', () => {
         geo: { '@type': 'GeoCoordinates', latitude: 43.5581, longitude: -96.7422 },
       },
       image: ['https://s1.ticketm.net/dam/real.jpg'],
-      organizer: { '@type': 'Organization', name: 'Denny Sanford PREMIER Center' },
     });
   });
 
   it('omits location entirely when address data is incomplete -- never ships a placeholder address', () => {
     const item = tmItem('2026-12-13T01:30:00Z', { venueName: 'Some Venue' }); // no address/city/state
-    const result = buildTicketmasterEventJsonLd(item, CANONICAL, 'Brookings View');
+    const result = buildTicketmasterEventJsonLd(item, CANONICAL);
     expect(result?.location).toBeUndefined();
   });
 
   it('omits image when none was resolved', () => {
     const item = tmItem('2026-12-13T01:30:00Z');
-    const result = buildTicketmasterEventJsonLd(item, CANONICAL, 'Brookings View');
+    const result = buildTicketmasterEventJsonLd(item, CANONICAL);
     expect(result?.image).toBeUndefined();
   });
 
   it('includes offers when a real price is known', () => {
     const item = tmItem('2026-12-13T01:30:00Z', { priceMin: 25, priceMax: 75, priceCurrency: 'USD' });
-    const result = buildTicketmasterEventJsonLd(item, CANONICAL, 'Brookings View');
+    const result = buildTicketmasterEventJsonLd(item, CANONICAL);
     expect(result?.offers).toEqual({
       '@type': 'Offer',
       url: 'https://ticketmaster.com/event/tm-1',
@@ -88,28 +87,27 @@ describe('buildTicketmasterEventJsonLd', () => {
 
   it('omits offers when no price is known -- never fabricates a price', () => {
     const item = tmItem('2026-12-13T01:30:00Z');
-    const result = buildTicketmasterEventJsonLd(item, CANONICAL, 'Brookings View');
+    const result = buildTicketmasterEventJsonLd(item, CANONICAL);
     expect(result?.offers).toBeUndefined();
   });
 
-  it('falls back to the site name as organizer when even the venue name is unknown', () => {
-    const item = tmItem('2026-12-13T01:30:00Z');
-    const result = buildTicketmasterEventJsonLd(item, CANONICAL, 'Brookings View');
-    expect(result?.organizer).toEqual({ '@type': 'Organization', name: 'Brookings View' });
+  it('has no organizer: Discovery names none, and the venue is not the organiser (owner 2026-11-16)', () => {
+    const item = tmItem('2026-12-13T01:30:00Z', { venueName: 'Denny Sanford PREMIER Center' });
+    expect(buildTicketmasterEventJsonLd(item, CANONICAL)).not.toHaveProperty('organizer');
   });
 
   it('keeps addressCountry US for a US venue and does not require a state for a GB one', () => {
     const us = buildTicketmasterEventJsonLd(tmItem('2026-12-13T01:30:00Z', {
       venueName: 'Denny Sanford PREMIER Center', venueAddress: '1201 N West Ave', venueCity: 'Sioux Falls',
       venueStateCode: 'SD', venuePostalCode: '57104',
-    }), CANONICAL, 'Brookings View');
+    }), CANONICAL);
     expect((us?.location as any).address.addressCountry).toBe('US');
 
     // Real Discovery shape for Celtic Park, Glasgow: state is null, country GB
     const gb = buildTicketmasterEventJsonLd(tmItem('2026-10-22T19:00:00Z', {
       venueName: 'Celtic Park', venueAddress: '18 Kerrydale Street', venueCity: 'Glasgow',
       venueStateCode: null, venueCountryCode: 'GB', venuePostalCode: 'G40 3RE',
-    }), CANONICAL, 'Glasgow Loop');
+    }), CANONICAL);
     expect((gb?.location as any).address).toMatchObject({
       streetAddress: '18 Kerrydale Street', addressLocality: 'Glasgow', postalCode: 'G40 3RE', addressCountry: 'GB',
     });
@@ -119,7 +117,7 @@ describe('buildTicketmasterEventJsonLd', () => {
   it('still omits location for a US venue without a state (unchanged behaviour)', () => {
     const r = buildTicketmasterEventJsonLd(tmItem('2026-12-13T01:30:00Z', {
       venueName: 'X', venueAddress: '1 Main', venueCity: 'Town', venueStateCode: null, venuePostalCode: '57104',
-    }), CANONICAL, 'Brookings View');
+    }), CANONICAL);
     expect(r?.location).toBeUndefined();
   });
 });
@@ -145,7 +143,7 @@ describe('buildTicketmasterListJsonLd (SPEC Fas 13a)', () => {
   const NOW = new Date('2026-11-16T12:00:00Z');
 
   it('lists the dated events in page order as one ItemList, each Event without its own @context', () => {
-    const r = buildTicketmasterListJsonLd([shinedown, tmItem(null), shimmy], CANONICAL, 'Glasgow Loop', NOW) as any;
+    const r = buildTicketmasterListJsonLd([shinedown, tmItem(null), shimmy], CANONICAL, NOW) as any;
     expect(r).toMatchObject({ '@context': 'https://schema.org', '@type': 'ItemList', url: CANONICAL, numberOfItems: 2 });
     expect(r.itemListElement.map((x: any) => [x.position, x.item['@id'], x.item.url])).toEqual([
       [1, `${CANONICAL}#tm-1AdbZ_7GkslloZ0`, 'https://www.ticketmaster.co.uk/shinedown-dance-kid-dance-act-ii-glasgow-16-11-2026/event/3600644C6BAD1024'],
@@ -158,15 +156,15 @@ describe('buildTicketmasterListJsonLd (SPEC Fas 13a)', () => {
   it('covers the next 14 days only (owner 2026-11-16: the full list added 210-290 kB)', () => {
     // The real Shimmy row with ONE field changed: occurs_at moved past the 14-day edge.
     const later = { ...shimmy, occurs_at: '2026-11-30T12:00:01Z' };
-    const r = buildTicketmasterListJsonLd([shinedown, later], CANONICAL, 'Glasgow Loop', NOW) as any;
+    const r = buildTicketmasterListJsonLd([shinedown, later], CANONICAL, NOW) as any;
     expect(r.itemListElement.map((x: any) => x.item.name)).toEqual(['Shinedown: Dance, Kid, Dance Act II']);
-    expect(buildTicketmasterListJsonLd([later], CANONICAL, 'Glasgow Loop', NOW)).toBeNull();
+    expect(buildTicketmasterListJsonLd([later], CANONICAL, NOW)).toBeNull();
   });
 
   it('is null when nothing has a date, and an event without a ticket URL points at the listing', () => {
-    expect(buildTicketmasterListJsonLd([tmItem(null)], CANONICAL, 'Glasgow Loop', NOW)).toBeNull();
+    expect(buildTicketmasterListJsonLd([tmItem(null)], CANONICAL, NOW)).toBeNull();
     // The real Shinedown row with ONE field changed: no ticket URL.
-    const r = buildTicketmasterEventJsonLd({ ...shinedown, ticketmasterEvent: { ...shinedown.ticketmasterEvent, ticketUrl: '' } }, CANONICAL, 'Glasgow Loop');
+    const r = buildTicketmasterEventJsonLd({ ...shinedown, ticketmasterEvent: { ...shinedown.ticketmasterEvent, ticketUrl: '' } }, CANONICAL);
     expect(r?.url).toBe(CANONICAL);
   });
 });

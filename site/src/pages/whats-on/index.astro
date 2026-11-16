@@ -111,7 +111,7 @@ const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
 const pageMeta = resolvePageMeta('whats-on', siteConfig);
 // One Event per card the page shows in the next 14 days, in page order (a collapsed run is its next date, as the card says).
 const eventsJsonLd = buildTicketmasterListJsonLd(
-  [...marqueeWithImages.map(({ entry }) => entry.primary), ...alsoOnRows.map((r) => r.primary)], canonicalUrl, siteConfig.siteName, buildNow);
+  [...marqueeWithImages.map(({ entry }) => entry.primary), ...alsoOnRows.map((r) => r.primary)], canonicalUrl, buildNow);
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-whats-on"
   description={`Concerts, theater and touring shows within ${radiusMiles ?? 75} miles of ${placeLabel(siteConfig)} — with real distance shown, never a hidden away-game.`}
