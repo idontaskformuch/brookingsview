@@ -31,7 +31,8 @@ def _remove_stub_kind():
 
 
 def _parser(sources):
-    cfg = {"town_id": "test_town", "timezone": "America/Chicago"}
+    # a real town: user_agent() has no fallback town since audit Fas 2
+    cfg = {"town_id": "brookings_sd", "timezone": "America/Chicago"}
     source_cfg = {"sources": sources}
     return EventsParser(cfg, source_cfg)
 

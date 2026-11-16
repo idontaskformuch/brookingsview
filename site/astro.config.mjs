@@ -18,7 +18,7 @@ import { checkNewIndexable, fetchLiveSitemapPaths, sitemapPaths } from './script
 // varje scrape+publish-körning, så innehållet är som mest en timme gammalt.
 //
 // site: väljs per SITE_CITY, samma variabel som site/src/lib/site-config.ts
-// läser. Utelämnad -> Brookings, så befintliga byggen är oförändrade.
+// läser. Saknad eller okänd -> bygget stoppas (audit Fas 2, P4-3).
 const SITE_URLS = {
   brookings_sd: 'https://brookingsview.com',
   moreno_valley_ca: 'https://morenovalleyview.com',
@@ -35,7 +35,10 @@ const SITE_URLS = {
 // there too. loadEnv() is Vite's own documented way to read `.env` from
 // inside a config file specifically because of this timing gap.
 const env = { ...loadEnv('', process.cwd(), ''), ...process.env };
-const activeCity = env.SITE_CITY ?? 'brookings_sd';
+const activeCity = env.SITE_CITY;
+if (!activeCity || !Object.hasOwn(SITE_URLS, activeCity)) {
+  throw new Error(`astro.config: unknown SITE_CITY ${JSON.stringify(activeCity ?? null)} (known: ${Object.keys(SITE_URLS).join(', ')})`);
+}
 
 // Evening layer verdict written by the pages during the build (lib/evening-verdict.ts). A stale file from an earlier build is removed here;
 // a missing or foreign file means "noindex".
@@ -261,6 +264,10 @@ const THIS_WEEK_TIMEZONES = {
   broomfield_co: 'America/Denver',
   glasgow: 'Europe/London',
 };
+function townTimezone(townId) {
+  if (!Object.hasOwn(THIS_WEEK_TIMEZONES, townId)) throw new Error(`astro.config: no timezone for town ${JSON.stringify(townId)}`);
+  return THIS_WEEK_TIMEZONES[townId];
+}
 // Mirrors siteConfig.meetingsHaveTime (lib/meeting-day.mjs): meeting dates are real instants read in the town's zone, except
 // Brookings' bare Legistar dates. week-count.test.ts fails if this disagrees with site-config.ts.
 const THIS_WEEK_MEETINGS_HAVE_TIME = {
@@ -689,7 +696,7 @@ async function buildLastmodMap(townId, databaseUrl) {
   // <meta robots> tag.
   const MONTH_IN_REVIEW_START_MIRROR = { moreno_valley_ca: { year: 2026, month: 8 } };
   if (townId in MONTH_IN_REVIEW_START_MIRROR) {
-    const monthTz = THIS_WEEK_TIMEZONES[townId] ?? THIS_WEEK_TIMEZONES.brookings_sd;
+    const monthTz = townTimezone(townId);
     const today = localDatePartsMirror(new Date(), monthTz);
     const { year: startYear, month: startMonth } = MONTH_IN_REVIEW_START_MIRROR[townId];
 
@@ -740,7 +747,7 @@ async function buildLastmodMap(townId, databaseUrl) {
   // comment above for the counting caveat. A week only gets a page (per
   // [week].astro's own getStaticPaths) if a real 'weekly' story exists for
   // it, or it's the current week -- so those are the only slugs checked.
-  const thisWeekTz = THIS_WEEK_TIMEZONES[townId] ?? THIS_WEEK_TIMEZONES.brookings_sd;
+  const thisWeekTz = townTimezone(townId);
   const pageWeekSlugs = new Set([isoWeekSlugMirror(localDatePartsMirror(new Date(), thisWeekTz))]);
   for (const s of stories) {
     if (s.occurs_at && s.source_type === 'weekly') pageWeekSlugs.add(isoWeekSlugMirror(localDatePartsMirror(new Date(s.occurs_at), thisWeekTz)));
@@ -883,7 +890,7 @@ const {
 for (const [pathname, date] of holidayLastmodEntries(activeCity)) lastmodMap.set(pathname, date);
 
 export default defineConfig({
-  site: SITE_URLS[activeCity] ?? SITE_URLS.brookings_sd,
+  site: SITE_URLS[activeCity],
   output: 'static',
   integrations: [
     {
@@ -986,7 +993,7 @@ export default defineConfig({
           const file = path.join(fileURLToPath(dir), 'sitemap-0.xml');
           if (!fs.existsSync(file)) return;
           const built = sitemapPaths(fs.readFileSync(file, 'utf8'));
-          const live = await fetchLiveSitemapPaths(SITE_URLS[activeCity] ?? SITE_URLS.brookings_sd);
+          const live = await fetchLiveSitemapPaths(SITE_URLS[activeCity]);
           if (live === null) {
             console.warn(`[build] new-indexable guard: live sitemap unreadable, ${built.length} indexable page(s) built, nothing to compare with`);
             return;

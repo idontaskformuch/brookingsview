@@ -20,6 +20,14 @@ def test_default_user_agent_is_neutral_and_per_town(town, domain, monkeypatch):
     assert BOT_NAME in user_agent(town) and "@" not in user_agent(town)
 
 
+@pytest.mark.parametrize("town", [None, "", "finns_inte"])
+def test_missing_or_unknown_town_raises_instead_of_brookings(town, monkeypatch):
+    # audit Fas 2 (P4-3): used to fall back to brookingsview.com
+    monkeypatch.delenv("USER_AGENT", raising=False)
+    with pytest.raises(ValueError, match=re.escape(repr(town))):
+        user_agent(town)
+
+
 def test_env_override_wins(monkeypatch):
     monkeypatch.setenv("USER_AGENT", "ViewMediaBot (+https://example.test/contact)")
     assert user_agent("broomfield_co") == "ViewMediaBot (+https://example.test/contact)"

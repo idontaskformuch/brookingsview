@@ -42,7 +42,7 @@ def block(**kw):
          "sources": [{"adapter": "fake_test_adapter", "program": "legacy", "sport": "soccer", "level": "varsity", "gender": "boys", "url": "https://x.test/cal.ics"}],
          "source_priority": ["manual_verified", "fake_test_adapter", "submissions"], "submissions": {"enabled": True}}
     b.update(kw)
-    return {"town_id": "t", "sports": b}
+    return {"town_id": "brookings_sd", "sports": b}  # a real town: user_agent() has no fallback town since audit Fas 2
 
 
 # --- registry -------------------------------------------------------------------------------------------------------------

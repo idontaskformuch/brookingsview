@@ -35,12 +35,6 @@ from db.db import content_hash
 from scrapers.base_parser import BaseParser, FetchResult
 from scrapers.user_agent import user_agent
 
-# CivicPlus-sajter (Akamai) 404:ar på requests default User-Agent
-# ("python-requests/x.x") — kräver en webbläsarliknande UA för att släppa igenom.
-_PDF_HEADERS = {
-    "User-Agent": user_agent()
-}
-
 # hur långt bak/fram vi hämtar möten. County-möten är sällan superfärska, så vi
 # tar ett generöst fönster jämfört med Legistar (som redan är strömmande färskt).
 DAYS_BACK = 14
@@ -102,11 +96,15 @@ class CivicEngageParser(BaseParser):
             elif a.get("asset_type") == "minutes" and not rec["minutes_url"]:
                 rec["minutes_url"] = a.get("url")
 
+        # CivicPlus-sajter (Akamai) 404:ar på requests default User-Agent
+        # ("python-requests/x.x"). Stadens egen UA; okänd stad kastar här, utanför
+        # _try_extract_pdf_text:s tysta except.
+        pdf_headers = {"User-Agent": user_agent(self.town_id)}
         out = []
         for (committee, meeting_date, meeting_id), rec in meetings.items():
             # extraktiv PDF-text: bästa möjliga underlag för AI-lagret, extraktivt.
             if rec["agenda_url"]:
-                text = _try_extract_pdf_text(rec["agenda_url"])
+                text = _try_extract_pdf_text(rec["agenda_url"], pdf_headers)
                 if text:
                     rec["raw_data"]["agenda_text"] = text[:MAX_AGENDA_TEXT_CHARS]
 
@@ -129,7 +127,7 @@ def _asset_to_dict(asset) -> dict:
     return {f: getattr(asset, f, None) for f in fields}
 
 
-def _try_extract_pdf_text(pdf_url: str) -> str | None:
+def _try_extract_pdf_text(pdf_url: str, headers: dict) -> str | None:
     """Ladda ner + extrahera text ur en agenda. Misslyckas tyst (returnerar None)
     — en trasig/otillgänglig agenda ska inte fälla hela mötesposten, bara sakna extratext.
 
@@ -142,7 +140,7 @@ def _try_extract_pdf_text(pdf_url: str) -> str | None:
         säger text/html istället för att blint anta PDF utifrån filändelsen.
     """
     try:
-        r = requests.get(pdf_url, timeout=30, headers=_PDF_HEADERS)
+        r = requests.get(pdf_url, timeout=30, headers=headers)
         r.raise_for_status()
     except Exception:  # noqa: BLE001 — nätverksfel är best-effort, inte kritiskt
         return None

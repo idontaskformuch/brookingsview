@@ -63,12 +63,12 @@ export interface MeetingsTownConfig {
   emptyNote: string | null;
 }
 
-const DEFAULT_CONFIG: MeetingsTownConfig = MEETINGS_TOWNS.brookings_sd;
+// No default town (audit Fas 2, P4-3): every caller passes its town's MEETINGS_TOWNS entry.
 const collapse = (s: string) => s.replace(/\s+/g, ' ').trim();
 
 /** Organ for a source string: listed -> as listed; Area-Partnership-style rule -> grouped; otherwise its own name, so a new organ shows up
  *  rather than vanishing. */
-export function normalizeBody(raw: string | null | undefined, cfg: MeetingsTownConfig = DEFAULT_CONFIG): BodyInfo {
+export function normalizeBody(raw: string | null | undefined, cfg: MeetingsTownConfig): BodyInfo {
   const name = collapse(raw ?? '');
   const hit = cfg.bodies[name];
   if (hit) return hit;
@@ -206,7 +206,7 @@ function rosterFor(cfg: MeetingsTownConfig): RegExp {
 }
 
 /** Titles worth showing: not procedural, 3-200 characters. Verbatim apart from collapsed whitespace and a number prefix. */
-export function substantiveItems(titles: string[], cfg: MeetingsTownConfig = DEFAULT_CONFIG): string[] {
+export function substantiveItems(titles: string[], cfg: MeetingsTownConfig): string[] {
   const roster = rosterFor(cfg);
   const out: string[] = [];
   for (const raw of titles) {
@@ -451,7 +451,7 @@ export interface DedupeNote { dropped: number; kept: number; why: string }
  *     stays and is marked joint.
  *  Organs the town hides (cfg.hidden) are removed first. */
 export function buildMeetings(
-  rows: MeetingRow[], tz: string, hasTime: boolean, notes?: DedupeNote[], cfg: MeetingsTownConfig = DEFAULT_CONFIG,
+  rows: MeetingRow[], tz: string, hasTime: boolean, notes: DedupeNote[] | undefined, cfg: MeetingsTownConfig,
 ): MeetingView[] {
   const shown = rows.filter((r) => !cfg.hidden.includes(collapse(rawBodyOf(r) ?? '')));
   const all = shown.map((r) => ({ row: r, quorum: isQuorumNoticeOnly(r.raw_data), v: toView(r, tz, hasTime, cfg) }));

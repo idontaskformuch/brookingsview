@@ -63,7 +63,7 @@ BACKUP_DIR = Path(__file__).resolve().parent.parent / "backups"
 def _headers() -> dict:
     return {
         "Accept": "application/json",
-        "User-Agent": user_agent(),
+        "User-Agent": user_agent(TOWN_ID),
     }
 
 

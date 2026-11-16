@@ -1,12 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import cancelledFixture from './meetings-cancelled.fixture.json';
 import {
-  normalizeBody, parseClock, zonedToInstant, meetingWhen, formatYmd, daysBetween, relativeDays,
-  substantiveItems, itemsFromAgendaText, topicsFor, buildMeetings, isUpcoming, organChips,
-  buildMeetingIcs, buildMeetingJsonLd, canCalendar, agendaNote, meetingTitle, isCancelled, buildMeetingFeedItems, isPostponed, selectWorthKnowingMeetings, type MeetingRow, type DedupeNote,
+  normalizeBody as normalizeBodyFor, parseClock, zonedToInstant, meetingWhen, formatYmd, daysBetween, relativeDays,
+  substantiveItems as substantiveItemsFor, itemsFromAgendaText, topicsFor, buildMeetings as buildMeetingsFor, isUpcoming, organChips,
+  buildMeetingIcs, buildMeetingJsonLd, canCalendar, agendaNote, meetingTitle, isCancelled, buildMeetingFeedItems, isPostponed, selectWorthKnowingMeetings,
+  MEETINGS_TOWNS, type MeetingRow, type DedupeNote,
 } from './meetings-view';
 
 const TZ = 'America/Chicago';
+// These cases are Brookings rows. The town used to be the module's silent default; it is passed explicitly since audit Fas 2.
+const BROOKINGS = MEETINGS_TOWNS.brookings_sd;
+const normalizeBody = (raw: string | null | undefined) => normalizeBodyFor(raw, BROOKINGS);
+const substantiveItems = (titles: string[]) => substantiveItemsFor(titles, BROOKINGS);
+const buildMeetings = (rows: MeetingRow[], tz: string, hasTime: boolean, notes?: DedupeNote[]) => buildMeetingsFor(rows, tz, hasTime, notes, BROOKINGS);
 
 const leg = (id: number, body: string, ymd: string, time: string | null, extra: Record<string, any> = {}): MeetingRow => ({
   id, body, meeting_date: `${ymd}T00:00:00+00:00`, agenda_url: extra.EventAgendaFile ?? null, minutes_url: null,

@@ -18,11 +18,18 @@ import { getViteConfig } from 'astro/config';
 // never execute a query, and CI shouldn't need a real DATABASE_URL secret
 // just to run them -- same "no DB access needed" principle as the Python
 // test suite (see .github/workflows/tests.yml).
+//
+// SITE_CITY is set explicitly too: astro.config.mjs and lib/site-config.ts
+// throw on a missing town (audit Fas 2), and the suite's town-neutral tests
+// were written against Brookings, the old silent default. An explicit
+// SITE_CITY in the shell still wins.
+process.env.SITE_CITY ??= 'brookings_sd';
 export default getViteConfig({
   test: {
     environment: 'node',
     env: {
       DATABASE_URL: 'postgresql://test:test@localhost/test',
+      SITE_CITY: process.env.SITE_CITY,
     },
   },
 });

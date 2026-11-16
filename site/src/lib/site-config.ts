@@ -895,10 +895,14 @@ const CITIES: Record<string, SiteConfig> = {
 };
 
 // Astro exposer env via import.meta.env vid byggtid. SITE_CITY sätts i varje
-// stads byggmiljö (GitHub Action / Cloudflare Pages). Utelämnad -> Brookings.
-const active = (import.meta.env.SITE_CITY as string | undefined) ?? 'brookings_sd';
+// stads byggmiljö (GitHub Action / Cloudflare Pages). Saknad eller okänd -> fel
+// (audit Fas 2, P4-3: tidigare tyst reserv till Brookings).
+const active = import.meta.env.SITE_CITY as string | undefined;
+if (!active || !Object.hasOwn(CITIES, active)) {
+  throw new Error(`site-config: unknown SITE_CITY ${JSON.stringify(active ?? null)} (known: ${Object.keys(CITIES).join(', ')})`);
+}
 
-export const siteConfig: SiteConfig = CITIES[active] ?? CITIES.brookings_sd;
+export const siteConfig: SiteConfig = CITIES[active];
 
 // Config gate (Glasgow Phase 1): us towns must carry a state, gb towns a region + nation.
 const placeProblems = Object.values(CITIES).flatMap((c) => validatePlaceConfig(c));

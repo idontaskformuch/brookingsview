@@ -61,7 +61,10 @@ jobs:
         with:
           node-version: "24"
       - run: npm ci
+      # astro.config.mjs throws without a town (audit Fas 2); type-checking is the same for every town.
       - run: npm run check
+        env:
+          SITE_CITY: brookings_sd
       # Structural fixture tests for Event JSON-LD emission (see
       # NEEDS-HUMAN-REVIEW.md, "JSON-LD CI test gap"): one resolvable
       # physical event, one unresolved venue, one virtual event -- asserts

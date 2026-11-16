@@ -21,7 +21,6 @@ SITE_DOMAINS: dict[str, str] = {
     "broomfield_co": "broomfieldview.com",
     "glasgow": "glasgowloop.co.uk",
 }
-DEFAULT_TOWN = "brookings_sd"
 
 
 def user_agent_for_domain(domain: str) -> str:
@@ -30,8 +29,14 @@ def user_agent_for_domain(domain: str) -> str:
 
 
 def user_agent(town_id: str | None = None) -> str:
-    """USER_AGENT env override, else the town's neutral bot string."""
+    """USER_AGENT env override, else the town's neutral bot string.
+
+    A missing or unknown town id raises (audit Fas 2, P4-3): there is no fallback town, so a
+    request is never sent with another town's contact page by accident.
+    """
     override = os.environ.get("USER_AGENT")
     if override:
         return override
-    return user_agent_for_domain(SITE_DOMAINS.get(town_id or DEFAULT_TOWN, SITE_DOMAINS[DEFAULT_TOWN]))
+    if town_id not in SITE_DOMAINS:
+        raise ValueError(f"user_agent: unknown town id {town_id!r} (known: {', '.join(SITE_DOMAINS)}); set USER_AGENT or pass the town")
+    return user_agent_for_domain(SITE_DOMAINS[town_id])
