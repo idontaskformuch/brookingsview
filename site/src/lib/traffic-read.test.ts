@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { TRAFFIC_LAST_LISTED_MAX_DAYS, lastListedRows, trafficReadState, trafficStaleLead } from './traffic-read';
 import { TRAFFIC_READ_MAX_AGE_HOURS } from './traffic-verdict';
-import { trafficReadClock } from './traffic-hero';
+import { trafficHero, trafficReadClock } from './traffic-hero';
+import { trafficKind, trafficLabelKey } from './traffic';
+import FIX from './fixtures/traffic-rows-2026-11-16.json';
+
+const MV = FIX.moreno_valley_ca;
+const BF = FIX.broomfield_co;
 
 /** Real scrape_runs rows (source 'traffic', SELECT 2026-11-16). */
 const RUN_14981 = { status: 'ok', started_at: '2026-11-16T11:24:39.853982+00:00', finished_at: '2026-11-16T11:25:00.759806+00:00' }; // Moreno Valley
@@ -68,10 +73,37 @@ describe('the out-of-date line', () => {
   });
 });
 
-describe('"Last listed" rows', () => {
-  it('keeps closure and planned, drops incident and injury', () => {
-    // Severities of real rows #4448, #4638, #4565; no stored row has 'planned' yet, so the fourth is #4449 with severity changed to it.
-    const rows = [{ severity: 'closure', id: 4448 }, { severity: 'incident', id: 4638 }, { severity: 'injury', id: 4565 }, { severity: 'planned', id: 4449 }];
-    expect(lastListedRows(rows).map((r) => r.id)).toEqual([4448, 4449]);
+describe('closure or incident (one rule: lib/traffic.ts trafficKind)', () => {
+  it('#4648: a CDOT crash whose message says a lane is closed is an incident, though its severity is "closure"', () => {
+    expect(BF['4648'].severity).toBe('closure');
+    expect(trafficKind(BF['4648'])).toBe('incident');
+    expect(trafficLabelKey(BF['4648'])).toBe('incident');
+  });
+  it('#4622: a CHP collision whose log mentions a closure is an incident, though its severity is "closure"', () => {
+    expect(MV['4622'].severity).toBe('closure');
+    expect(trafficKind(MV['4622'])).toBe('incident');
+    expect(trafficLabelKey(MV['4622'])).toBe('incident');
+  });
+  it('#4448 and #4449 (Caltrans lane closures) are still closures', () => {
+    for (const r of [MV['4448'], MV['4449']]) {
+      expect(trafficKind(r)).toBe('closure');
+      expect(trafficLabelKey(r)).toBe('closure');
+    }
+  });
+  it('CDOT road work (#4538 Maintenance Operations) is a closure; an injury crash (#4537) keeps its injury label', () => {
+    expect(trafficKind(BF['4538'])).toBe('closure');
+    expect(trafficLabelKey(BF['4537'])).toBe('injury');
+  });
+  it('"planned" refines a closure only (#4449 with severity planned; #4648 with severity planned stays an incident)', () => {
+    expect(trafficLabelKey({ ...MV['4449'], severity: 'planned' })).toBe('planned');
+    expect(trafficLabelKey({ ...BF['4648'], severity: 'planned' })).toBe('incident');
+  });
+  it('"Last listed" keeps the closures: #4448, #4449 stay, #4648 and #4622 go', () => {
+    expect(lastListedRows([MV['4448'], BF['4648'], MV['4449'], MV['4622']])).toEqual([MV['4448'], MV['4449']]);
+  });
+  it('the hero counts #4622 as an incident: "1 closure, 1 incident"', () => {
+    const h = trafficHero({ current: [MV['4448'], MV['4622']], earlierCount: 0, readAt: RUN_14981.finished_at, readIsStale: false,
+      now: new Date('2026-11-16T20:00:00Z'), tz: MV_TZ, locale: 'en-US', scope: 'state highways', cityName: 'Moreno Valley' });
+    expect(h!.sub).toBe('1 closure, 1 incident on state highways in and near Moreno Valley');
   });
 });

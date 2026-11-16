@@ -8,19 +8,21 @@
  *  "ingen ruta", inte en tom ruta, samma mönster som övriga rail-widgets. */
 import type { TrafficIncident } from '../lib/db';
 import { formatTime } from '../lib/db';
+import { trafficKind } from '../lib/traffic';
 
 interface Props { incidents: TrafficIncident[]; limit?: number; }
 const { incidents, limit = 3 } = Astro.props;
 const shown = incidents.slice(0, limit);
 
-const typeLabel = (t: string) => (t === 'lane_closure' ? 'Closure' : 'Incident');
+// The shared closure/incident rule (lib/traffic.ts trafficKind), same as /traffic/.
+const KIND_LABELS = { closure: 'Closure', incident: 'Incident' } as const;
 ---
 <div class="traffic">
   <p class="traffic__label">Traffic</p>
   <ul class="traffic__list">
     {shown.map((incident) => (
       <li class="traffic__item">
-        <span class="traffic__type">{typeLabel(incident.incident_type)}</span>
+        <span class="traffic__type">{KIND_LABELS[trafficKind(incident)]}</span>
         <span class="traffic__title">{incident.road ? `${incident.road}: ` : ''}{incident.title}</span>
         <span class="traffic__when data">{formatTime(incident.last_seen_at)}</span>
       </li>

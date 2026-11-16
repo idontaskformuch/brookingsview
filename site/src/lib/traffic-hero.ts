@@ -8,7 +8,7 @@
  *  Read time: scrape_runs.finished_at of the latest finished successful traffic read (getTrafficLatestRead, lib/traffic-read.ts),
  *  floored to the minute. */
 import type { TrafficIncident } from './db';
-import { extractRouteNumber } from './traffic';
+import { extractRouteNumber, trafficKind } from './traffic';
 
 /** "Most affected road" needs at least this many rows on one road, and strictly more than any other road. */
 export const ROAD_MIN_ROWS = 2;
@@ -71,14 +71,13 @@ export function trafficReadClock(readAt: string | Date, now: Date, tz: string, l
   return `${d.toLocaleDateString(locale, { month: 'short', day: 'numeric', timeZone: tz })}, ${clock}`;
 }
 
-const isClosure = (severity: string | null) => severity === 'closure' || severity === 'planned';
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
 export interface TrafficHero { value: string; sub: string; meta: string }
 
 /** null when the read is missing or too old (nothing is known about now) or when the page shows no rows at all. */
 export function trafficHero(o: {
-  current: Pick<TrafficIncident, 'severity'>[]; earlierCount: number; readAt: string | null; readIsStale: boolean;
+  current: Pick<TrafficIncident, 'incident_type'>[]; earlierCount: number; readAt: string | null; readIsStale: boolean;
   now: Date; tz: string; locale: string; scope: string; cityName: string;
 }): TrafficHero | null {
   if (!o.readAt || o.readIsStale) return null;
@@ -86,7 +85,7 @@ export function trafficHero(o: {
   const where = `on ${o.scope} in and near ${o.cityName}`;
   const asOf = `As of ${trafficReadClock(o.readAt, o.now, o.tz, o.locale)}`;
   if (o.current.length === 0) return { value: 'None listed', sub: where, meta: `${asOf} · ${o.earlierCount} earlier this week` };
-  const closures = o.current.filter((r) => isClosure(r.severity)).length;
+  const closures = o.current.filter((r) => trafficKind(r) === 'closure').length;
   const incidents = o.current.length - closures;
   const kinds = [closures ? plural(closures, 'closure') : '', incidents ? plural(incidents, 'incident') : ''].filter(Boolean).join(', ');
   return { value: String(o.current.length), sub: `${kinds} ${where}`, meta: asOf };

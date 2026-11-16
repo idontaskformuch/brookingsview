@@ -6,11 +6,12 @@
  *
  *  Out of date: no hero and no current list. The page says "Not updated since <clock>. For conditions now, see <source>." and, while
  *  the read is at most TRAFFIC_LAST_LISTED_MAX_DAYS old, lists the closures that read last listed under "Last listed <clock>"
- *  (closures and planned closures only: a crash from days ago says nothing about now). Never read: "No data yet. For conditions now,
+ *  (closures only, lib/traffic.ts trafficKind: a crash from days ago says nothing about now). Never read: "No data yet. For conditions now,
  *  see <source>." */
 import type { TrafficIncident, TrafficReadRun } from './db';
 import { TRAFFIC_READ_MAX_AGE_HOURS } from './traffic-verdict';
 import { trafficReadClock } from './traffic-hero';
+import { trafficKind } from './traffic';
 
 export const TRAFFIC_LAST_LISTED_MAX_DAYS = 7;
 
@@ -37,7 +38,7 @@ export function trafficStaleLead(state: TrafficReadState, now: Date, tz: string,
   return null;
 }
 
-/** "Last listed" keeps closures and planned closures only. */
-export function lastListedRows<T extends Pick<TrafficIncident, 'severity'>>(rows: T[]): T[] {
-  return rows.filter((r) => r.severity === 'closure' || r.severity === 'planned');
+/** "Last listed" keeps closures only (lib/traffic.ts trafficKind: a crash with a lane closed is an incident). */
+export function lastListedRows<T extends Pick<TrafficIncident, 'incident_type'>>(rows: T[]): T[] {
+  return rows.filter((r) => trafficKind(r) === 'closure');
 }

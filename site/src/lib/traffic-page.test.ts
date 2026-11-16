@@ -22,6 +22,8 @@ afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
 
 const MV = FIX.moreno_valley_ca;
 const BF = FIX.broomfield_co;
+// The first case loads the page and the whole layout cold: ~2 s alone, over 5 s under the full parallel battery (16 Nov).
+const RENDER_TIMEOUT_MS = 30_000;
 
 async function render(town: string, at: string, run: unknown, listed: unknown[], started: unknown[]) {
   Object.assign(db, { run, listed, started, listedCalls: [] });
@@ -38,7 +40,7 @@ async function render(town: string, at: string, run: unknown, listed: unknown[],
 }
 const rows = (html: string, kind: string) => (html.match(new RegExp(`data-traffic-row="${kind}"`, 'g')) ?? []).length;
 
-describe('/traffic/ when the latest read is out of date', () => {
+describe('/traffic/ when the latest read is out of date', { timeout: RENDER_TIMEOUT_MS }, () => {
   it('Moreno Valley, built 17 Nov 20:00 UTC on read #14981 (16 Nov): line, "Last listed" with closures only, no hero', async () => {
     // #4638 (incident) with last_seen_at moved into read #14981, so the read listed an incident next to the two closures.
     const r4638 = { ...MV['4638'], last_seen_at: '2026-11-16 11:25:00.700000+00:00' };
@@ -58,16 +60,25 @@ describe('/traffic/ when the latest read is out of date', () => {
     expect(text).toContain('Source: Caltrans QuickMap. State highways');
   });
 
-  it('Broomfield, built 16 Nov 20:00 UTC on read #14912 (15 Nov): line, #4648 last listed, the rest earlier this week', async () => {
+  it('Broomfield, built 16 Nov 20:00 UTC on read #14912 (15 Nov): line, no "Last listed" (#4648 is a crash = incident), 4 earlier', async () => {
     const { html, text } = await render('broomfield_co', '2026-11-16T20:00:00Z', FIX.runs['14912'], [BF['4648']],
       [BF['4537'], BF['4538'], BF['4539'], BF['4598'], BF['4648']]);
     expect(html).not.toContain('data-traffic-hero');
     expect(text).toContain('Not updated since Sun 4:02 AM MST. For conditions now, see CDOT / COtrip.');
     expect(html).toMatch(/data-traffic-stale[\s\S]*?<a href="https:\/\/www\.cotrip\.org"/);
-    expect(text).toContain('Last listed Sun 4:02 AM MST');
-    expect(rows(html, 'last-listed')).toBe(1);
+    expect(html).not.toContain('data-traffic-last-listed');
+    expect(text).not.toContain('US-36W');
     expect(rows(html, 'earlier')).toBe(4);
     expect(text).not.toContain('refreshed regularly');
+  });
+
+  it('Broomfield on read #14912 with #4539 (road work) also in it: only #4539 is last listed', async () => {
+    // #4539 with last_seen_at moved into read #14912.
+    const r4539 = { ...BF['4539'], last_seen_at: '2026-11-15 11:02:00.000000+00:00' };
+    const { html, text } = await render('broomfield_co', '2026-11-16T20:00:00Z', FIX.runs['14912'], [BF['4648'], r4539], []);
+    expect(rows(html, 'last-listed')).toBe(1);
+    expect(text).toContain('Maintenance Operations on I-25S');
+    expect(text).not.toContain('2 Vehicle Crash on US-36W');
   });
 
   it('more than 7 days after the read: only the line, with the date', async () => {
@@ -78,7 +89,7 @@ describe('/traffic/ when the latest read is out of date', () => {
   });
 });
 
-describe('/traffic/ without a finished read', () => {
+describe('/traffic/ without a finished read', { timeout: RENDER_TIMEOUT_MS }, () => {
   it('no run: "No data yet", the list query is never asked', async () => {
     const { html, text } = await render('moreno_valley_ca', '2026-11-16T20:00:00Z', null, [MV['4448']], []);
     expect(text).toContain('No data yet. For conditions now, see Caltrans QuickMap.');
@@ -95,7 +106,7 @@ describe('/traffic/ without a finished read', () => {
   });
 });
 
-describe('/traffic/ with a fresh read (unchanged)', () => {
+describe('/traffic/ with a fresh read (unchanged)', { timeout: RENDER_TIMEOUT_MS }, () => {
   it('Moreno Valley, built 16 Nov 20:00 UTC on read #14981: hero, no out-of-date line, "refreshed regularly"', async () => {
     const { html, text } = await render('moreno_valley_ca', '2026-11-16T20:00:00Z', FIX.runs['14981'], [MV['4448'], MV['4449']], []);
     expect(html).toContain('data-traffic-hero');
@@ -104,5 +115,14 @@ describe('/traffic/ with a fresh read (unchanged)', () => {
     expect(html).not.toContain('data-traffic-last-listed');
     expect(text).toContain('refreshed regularly');
     expect(rows(html, 'current')).toBe(2);
+  });
+  it('Moreno Valley with #4622 (CHP collision, severity "closure") on the read: labelled Incident and listed after the closures', async () => {
+    // #4622 with last_seen_at moved into read #14981, listed first by the query (its severity sorts with the closures).
+    const r4622 = { ...MV['4622'], last_seen_at: '2026-11-16 11:25:00.700000+00:00' };
+    const { html, text } = await render('moreno_valley_ca', '2026-11-16T20:00:00Z', FIX.runs['14981'], [r4622, MV['4448'], MV['4449']], []);
+    expect(text).toContain('3 2 closures, 1 incident on state highways in and near Moreno Valley');
+    const labels = [...html.matchAll(/data-label="Type"[^>]*>\s*([^<]+?)\s*</g)].map((m) => m[1]);
+    expect(labels).toEqual(['Closure', 'Closure', 'Incident']);
+    expect(html).toMatch(/<option value="incident"[^>]*>Incident<\/option>/);
   });
 });

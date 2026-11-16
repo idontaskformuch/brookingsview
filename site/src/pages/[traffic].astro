@@ -33,7 +33,7 @@ import { buildBreadcrumbJsonLd, type BreadcrumbEntry } from '../lib/article-json
 import { resolvePageMeta } from '../lib/page-meta';
 import { resolveHubNavItems } from '../lib/clusters';
 import ClusterNav from '../components/ClusterNav.astro';
-import { classifyTrafficIncident } from '../lib/traffic';
+import { TRAFFIC_LABELS, classifyTrafficIncident, trafficKind, trafficLabelKey } from '../lib/traffic';
 import { dedupeTrafficIncidents, listedUntil, mostAffectedRoad, sentenceCase, trafficCause, trafficHero, trafficReadClock, withoutCurrent } from '../lib/traffic-hero';
 import { listEligibleMonths, monthLabel, monthSlug } from '../lib/month-in-review';
 
@@ -60,7 +60,8 @@ const listed = dedupeTrafficIncidents(listedRaw
     return c ? { ...incident, zone: c.zone, distanceMiles: c.distanceMiles } : null;
   })
   .filter((i): i is NonNullable<typeof i> => i !== null));
-const incidents = read.kind === 'fresh' ? listed : [];
+// Closures first (lib/traffic.ts trafficKind); within each kind the query's own order stands (Array.prototype.sort is stable).
+const incidents = read.kind === 'fresh' ? [...listed].sort((a, b) => Number(trafficKind(b) === 'closure') - Number(trafficKind(a) === 'closure')) : [];
 const lastListed = read.kind === 'stale' && read.showLastListed ? lastListedRows(listed) : [];
 const startedThisWeek = siteConfig.trafficSource ? await getTrafficIncidentsStartedSince(TRAFFIC_EARLIER_DAYS) : [];
 const earlier = withoutCurrent(dedupeTrafficIncidents(earlierTrafficIncidents(startedThisWeek, {
@@ -88,11 +89,6 @@ const breadcrumbTrail: BreadcrumbEntry[] = [
   { label: 'Traffic', href: canonicalUrl },
 ];
 
-const typeLabel = (t: string) => (t === 'lane_closure' ? 'Lane closure / construction' : 'Incident');
-
-const SEVERITY_LABELS: Record<string, string> = {
-  closure: 'Closure', injury: 'Injury reported', incident: 'Incident', planned: 'Planned closure',
-};
 const earlierWhen = (at: string) => new Date(at).toLocaleString(siteConfig.country === 'gb' ? 'en-GB' : 'en-US', {
   weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: siteConfig.timezone, timeZoneName: 'short',
 });
@@ -145,11 +141,11 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
   {incidents.length > 0 && (
     <div class="controls">
       <label>
-        Severity
+        Type
         <select id="severity-filter">
           <option value="">All</option>
-          {[...new Set(incidents.map((i) => i.severity ?? 'incident'))].map((s) => (
-            <option value={s}>{SEVERITY_LABELS[s] ?? s}</option>
+          {[...new Set(incidents.map(trafficLabelKey))].map((s) => (
+            <option value={s}>{TRAFFIC_LABELS[s]}</option>
           ))}
         </select>
       </label>
@@ -168,13 +164,13 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
   {incidents.length > 0 ? (
     <table class="incidents" id="incidents-table">
       <thead>
-        <tr><th scope="col">Severity</th><th scope="col">Where</th><th scope="col">Road</th><th scope="col">Details</th><th scope="col">Last updated</th></tr>
+        <tr><th scope="col">Type</th><th scope="col">Where</th><th scope="col">Road</th><th scope="col">Details</th><th scope="col">Last updated</th></tr>
       </thead>
       <tbody>
         {incidents.map((incident) => (
-          <tr data-severity={incident.severity ?? 'incident'} data-zone={incident.zone} data-traffic-row="current">
-            <td class={`sev sev--${incident.severity ?? 'incident'}`} data-label="Severity">
-              {SEVERITY_LABELS[incident.severity ?? 'incident']}
+          <tr data-severity={trafficLabelKey(incident)} data-zone={incident.zone} data-traffic-row="current">
+            <td class={`sev sev--${trafficLabelKey(incident)}`} data-label="Type">
+              {TRAFFIC_LABELS[trafficLabelKey(incident)]}
             </td>
             <td class="data" data-label="Where">{whereLabel(incident)}</td>
             <td data-label="Road">{incident.road ?? '—'}</td>
@@ -184,7 +180,7 @@ const whereLabel = (i: { zone: 'in_town' | 'approach'; distanceMiles: number | n
               {incident.description && <p class="plain desc">{plainLanguageTraffic(incident.description)}</p>}
               <details class="raw">
                 <summary>View source detail</summary>
-                <p class="type">{typeLabel(incident.incident_type)}</p>
+                <p class="type">{TRAFFIC_LABELS[trafficLabelKey(incident)]}</p>
                 <p>{incident.title}</p>
                 {incident.description && <p>{incident.description}</p>}
               </details>
