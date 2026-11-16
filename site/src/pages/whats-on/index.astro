@@ -5,7 +5,7 @@
  *  new page in the feature meant to attract search traffic, per the
  *  original What's On spec's intent. There are no detail pages (SPEC Fas 13a,
  *  owner B8 2026-11-16): every card links to its ticket page, and the Event
- *  JSON-LD for the listed cards is on this page as one ItemList.
+ *  JSON-LD for the cards of the next 14 days is on this page as one ItemList.
  *
  *  Marquee (larger cards, real images via lib/images.ts's Ticketmaster
  *  tier) vs. Also-on-this-day (dense, no image) -- see lib/whats-on.ts's
@@ -109,9 +109,9 @@ const canonicalUrl = new URL('/whats-on/', Astro.site ?? siteConfig.siteUrl).hre
 const breadcrumbTrail: BreadcrumbEntry[] = buildClusterBreadcrumbTrail('whats-on', siteConfig, { label: "What's On", href: canonicalUrl });
 const radiusMiles = siteConfig.ticketmaster?.radiusMiles;
 const pageMeta = resolvePageMeta('whats-on', siteConfig);
-// One Event per card the page shows, in page order (a collapsed run is its next date, as the card says).
+// One Event per card the page shows in the next 14 days, in page order (a collapsed run is its next date, as the card says).
 const eventsJsonLd = buildTicketmasterListJsonLd(
-  [...marqueeWithImages.map(({ entry }) => entry.primary), ...alsoOnRows.map((r) => r.primary)], canonicalUrl, siteConfig.siteName);
+  [...marqueeWithImages.map(({ entry }) => entry.primary), ...alsoOnRows.map((r) => r.primary)], canonicalUrl, siteConfig.siteName, buildNow);
 ---
 <BaseLayout title={pageMeta.title} wide ogSlug="section-whats-on"
   description={`Concerts, theater and touring shows within ${radiusMiles ?? 75} miles of ${placeLabel(siteConfig)} — with real distance shown, never a hidden away-game.`}

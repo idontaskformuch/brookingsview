@@ -125,21 +125,48 @@ describe('buildTicketmasterEventJsonLd', () => {
 });
 
 describe('buildTicketmasterListJsonLd (SPEC Fas 13a)', () => {
+  // Two real rows, field for field as the 2026-11-16 builds printed them on /whats-on/ (Discovery fields not in the markup left null).
+  // Glasgow: Shinedown at OVO Hydro, Ticketmaster id 1AdbZ_7GkslloZ0.
+  const shinedown = tmItem('2026-11-16T18:30:00Z', {
+    id: '1AdbZ_7GkslloZ0', title: 'Shinedown: Dance, Kid, Dance Act II', venueName: 'OVO Hydro',
+    venueAddress: 'Exhibition Way', venueCity: 'Glasgow', venueStateCode: null, venueCountryCode: 'GB', venuePostalCode: 'G3 8YW',
+    venueLatitude: 55.86087, venueLongitude: -4.288154,
+    ticketUrl: 'https://www.ticketmaster.co.uk/shinedown-dance-kid-dance-act-ii-glasgow-16-11-2026/event/3600644C6BAD1024',
+    imageUrl: 'https://s1.ticketm.net/dam/a/9f7/ed689da7-8216-4ecc-bc2d-8284c69e99f7_SOURCE',
+  });
+  // Broomfield: Shimmy Shakin' Blues at La Rumba, Denver, Ticketmaster id rZ7HnEZ1A4Za-N.
+  const shimmy = tmItem('2026-11-19T02:00:00Z', {
+    id: 'rZ7HnEZ1A4Za-N', title: "Shimmy Shakin' Blues", venueName: 'La Rumba',
+    venueAddress: '99 W 9th Ave', venueCity: 'Denver', venueStateCode: 'CO', venueCountryCode: 'US', venuePostalCode: '80204',
+    venueLatitude: 39.73059, venueLongitude: -104.98857,
+    ticketUrl: 'https://www.ticketweb.com/event/shimmy-shakin-blues-la-rumba-tickets/15009863',
+    imageUrl: 'https://i.ticketweb.com/i/00/13/61/18/83_Edp.jpg?v=4', priceMin: 20.03, priceCurrency: 'USD',
+  });
+  const NOW = new Date('2026-11-16T12:00:00Z');
+
   it('lists the dated events in page order as one ItemList, each Event without its own @context', () => {
-    const a = tmItem('2026-12-13T01:30:00Z');
-    const b = tmItem('2026-12-14T01:30:00Z', { id: 'tm-2', ticketUrl: 'https://ticketmaster.com/event/tm-2' });
-    const r = buildTicketmasterListJsonLd([a, tmItem(null), b], CANONICAL, 'Brookings View') as any;
+    const r = buildTicketmasterListJsonLd([shinedown, tmItem(null), shimmy], CANONICAL, 'Glasgow Loop', NOW) as any;
     expect(r).toMatchObject({ '@context': 'https://schema.org', '@type': 'ItemList', url: CANONICAL, numberOfItems: 2 });
     expect(r.itemListElement.map((x: any) => [x.position, x.item['@id'], x.item.url])).toEqual([
-      [1, `${CANONICAL}#tm-tm-1`, 'https://ticketmaster.com/event/tm-1'],
-      [2, `${CANONICAL}#tm-tm-2`, 'https://ticketmaster.com/event/tm-2'],
+      [1, `${CANONICAL}#tm-1AdbZ_7GkslloZ0`, 'https://www.ticketmaster.co.uk/shinedown-dance-kid-dance-act-ii-glasgow-16-11-2026/event/3600644C6BAD1024'],
+      [2, `${CANONICAL}#tm-rZ7HnEZ1A4Za-N`, 'https://www.ticketweb.com/event/shimmy-shakin-blues-la-rumba-tickets/15009863'],
     ]);
     expect(r.itemListElement[0].item['@context']).toBeUndefined();
+    expect(r.itemListElement[1].item.offers).toMatchObject({ price: 20.03, priceCurrency: 'USD' });
+  });
+
+  it('covers the next 14 days only (owner 2026-11-16: the full list added 210-290 kB)', () => {
+    // The real Shimmy row with ONE field changed: occurs_at moved past the 14-day edge.
+    const later = { ...shimmy, occurs_at: '2026-11-30T12:00:01Z' };
+    const r = buildTicketmasterListJsonLd([shinedown, later], CANONICAL, 'Glasgow Loop', NOW) as any;
+    expect(r.itemListElement.map((x: any) => x.item.name)).toEqual(['Shinedown: Dance, Kid, Dance Act II']);
+    expect(buildTicketmasterListJsonLd([later], CANONICAL, 'Glasgow Loop', NOW)).toBeNull();
   });
 
   it('is null when nothing has a date, and an event without a ticket URL points at the listing', () => {
-    expect(buildTicketmasterListJsonLd([tmItem(null)], CANONICAL, 'Brookings View')).toBeNull();
-    const r = buildTicketmasterEventJsonLd(tmItem('2026-12-13T01:30:00Z', { ticketUrl: '' }), CANONICAL, 'Brookings View');
+    expect(buildTicketmasterListJsonLd([tmItem(null)], CANONICAL, 'Glasgow Loop', NOW)).toBeNull();
+    // The real Shinedown row with ONE field changed: no ticket URL.
+    const r = buildTicketmasterEventJsonLd({ ...shinedown, ticketmasterEvent: { ...shinedown.ticketmasterEvent, ticketUrl: '' } }, CANONICAL, 'Glasgow Loop');
     expect(r?.url).toBe(CANONICAL);
   });
 });

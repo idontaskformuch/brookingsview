@@ -82,14 +82,21 @@ export function buildTicketmasterEventJsonLd(
   };
 }
 
-/** The /whats-on/ listing's events as one ItemList, in the order the page shows them. Items without a date get no Event and
- *  are left out; null when none is left. */
+/** Days ahead the /whats-on/ ItemList covers. Every listed card (30-60 days) added 210-290 kB to the page in Glasgow and
+ *  Broomfield (2026-11-16 builds); the owner's limit was 100 kB, so the markup covers the next 14 days only. */
+export const LIST_JSON_LD_DAYS = 14;
+
+/** The /whats-on/ listing's events as one ItemList, in the order the page shows them: only those starting from `now` to
+ *  LIST_JSON_LD_DAYS ahead. Items without a date get no Event and are left out; null when none is left. */
 export function buildTicketmasterListJsonLd(
   items: TicketmasterFeedItem[],
   pageUrl: string,
   siteName: string,
+  now: Date,
 ): Record<string, unknown> | null {
+  const last = now.getTime() + LIST_JSON_LD_DAYS * 86_400_000;
   const events = items.flatMap((item) => {
+    if (!item.occurs_at || new Date(item.occurs_at).getTime() > last) return [];
     const ld = buildTicketmasterEventJsonLd(item, pageUrl, siteName);
     if (!ld) return [];
     const { '@context': _context, ...event } = ld;
