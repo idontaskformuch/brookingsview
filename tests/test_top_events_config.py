@@ -17,8 +17,8 @@ def _json(town):
 
 
 def _ts_blocks():
-    """town_id -> text of its block in CITIES (split on the `townId:` markers)."""
-    parts = re.split(r"townId: '(\w+)'", SITE_CONFIG)
+    """town_id -> text of its block in CITIES (split on the `...TOWN_REGISTRY.<id>` markers, audit Fas 3a)."""
+    parts = re.split(r"\.\.\.TOWN_REGISTRY\.(\w+)", SITE_CONFIG)
     return {parts[i]: parts[i + 1] for i in range(1, len(parts) - 1, 2)}
 
 

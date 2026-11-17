@@ -7,7 +7,8 @@ describe('hasHeatAdvisory flag', () => {
     const enabled = [...src.matchAll(/hasHeatAdvisory:\s*true,/g)];
     expect(enabled).toHaveLength(1);
     const before = src.slice(0, enabled[0].index!);
-    expect(before.lastIndexOf("townId: 'moreno_valley_ca'")).toBeGreaterThan(before.lastIndexOf("townId: 'brookings_sd'"));
-    expect(before.lastIndexOf("townId: 'moreno_valley_ca'")).toBeGreaterThan(before.lastIndexOf("townId: 'broomfield_co'"));
+    // Town blocks start with ...TOWN_REGISTRY.<id> (audit Fas 3a).
+    expect(before.lastIndexOf('...TOWN_REGISTRY.moreno_valley_ca')).toBeGreaterThan(before.lastIndexOf('...TOWN_REGISTRY.brookings_sd'));
+    expect(before.lastIndexOf('...TOWN_REGISTRY.moreno_valley_ca')).toBeGreaterThan(before.lastIndexOf('...TOWN_REGISTRY.broomfield_co'));
   });
 });

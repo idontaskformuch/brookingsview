@@ -57,15 +57,16 @@ def _load_cfg(town_id: str) -> dict:
 
 def _extract_ts_town_blocks() -> dict[str, str]:
     """Split site-config.ts's CITIES object into one text chunk per town,
-    from its `townId: '...'` line up to the next town's (or EOF). Good
+    from its `...TOWN_REGISTRY.<id>` line (audit Fas 3a; before that a
+    `townId: '...'` line) up to the next town's (or EOF). Good
     enough for a flat, hand-written config object -- not a real TS parser."""
     text = SITE_CONFIG_TS.read_text(encoding="utf-8")
-    matches = list(re.finditer(r"townId:\s*'([a-z_]+)'", text))
+    matches = list(re.finditer(r"\.\.\.TOWN_REGISTRY\.([a-z_]+)|townId:\s*'([a-z_]+)'", text))
     blocks = {}
     for i, m in enumerate(matches):
         start = m.start()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        blocks[m.group(1)] = text[start:end]
+        blocks[m.group(1) or m.group(2)] = text[start:end]
     return blocks
 
 
