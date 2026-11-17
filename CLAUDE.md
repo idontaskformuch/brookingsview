@@ -72,6 +72,9 @@
     väg. (2026-11-13: migration 071 kördes som engångsskript förbi
     apply_migration:s tillåtlista.)
 
+17. dist-kopior i scratch_tmp/ tas bort av samma session som skapade dem,
+    senast innan sessionen avslutas.
+
 ## Redaktionell grundregel
 
 Varje sida ska hjälpa en invånare att förstå eller göra något. Listor och
