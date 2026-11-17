@@ -165,29 +165,65 @@ const MORENO_FACTS: HolidayFact[] = [
 
 /* ------------------------------------------------------------ Broomfield */
 const BF_CHECKED = '2026-11-04';
-/** Second read (Broomfield AdSense plan F9): the city, RTD and waste pages had no Thanksgiving notice yet, FISH's page did. */
-const BF_RECHECKED = '2026-11-11';
-/** broomfieldfish.org reread 2026-11-14 (B4); broomfield.org was refused (strict robots), so the city rows keep 2026-11-11. */
+/** broomfieldfish.org reread 2026-11-14 (B4). The city closures come from its Nov 16 notice (BF_NOTICE below). */
 const BF_FISH_CHECKED = '2026-11-14';
 const BF_LIBRARY: Source = { name: 'City and County of Broomfield: Library', url: 'https://www.broomfield.org/276/Library-Home' };
 const BF_REC: Source = { name: 'City and County of Broomfield: Recreation Facilities Hours', url: 'https://www.broomfield.org/1452/Recreation-Facilities-Hours' };
 const BF_NEWS: Source = { name: 'City and County of Broomfield: News Flash', url: 'https://www.broomfield.org/CivicAlerts.aspx?CID=-1' };
 const BF_TREE_BRANCH: Source = { name: 'City and County of Broomfield: Tree Branch Recycling Program', url: 'https://broomfield.org/1031/Tree-Branch-Recycling-Program' };
 const BF_FISH: Source = { name: 'Broomfield FISH', url: 'https://www.broomfieldfish.org/' };
-// The city posts a "CCOB Closures and Adjusted Hours for <holiday>" notice in its News Flash (Veterans Day 2026: Nov 2,
-// detail/3155); the Thanksgiving one was not up on 2026-11-11, so the row points at the News Flash list.
-const BF_CLOSURES_NOTICE = { label: 'City and County of Broomfield News Flash', url: 'https://www.broomfield.org/CivicAlerts.aspx?CID=-1' };
+// The city's "CCOB Closures and Adjusted Hours for Thanksgiving" notice, posted Nov 16 in its News Flash. broomfield.org is
+// refused in strict robots mode, so the owner pasted the text on 2026-11-17; its own address was not given, so the source is
+// the News Flash list it was posted in.
+const BF_NOTICE: Source = { name: 'City and County of Broomfield: CCOB Closures and Adjusted Hours for Thanksgiving', url: BF_NEWS.url };
+const BF_NOTICE_READ = '2026-11-17';
 const BF_RACE = 'https://runsignup.com/Race/CO/Broomfield/BroomfieldTurkeyDay';
 
 const BROOMFIELD_FACTS: HolidayFact[] = [
   {
-    // A link to the News Flash only, no text (owner 2026-11-15); the owner pastes the notice when it is posted.
-    section: 'closures', status: 'unconfirmed', label: 'City offices, courts, library and recreation centers',
-    holdsCount: true,
-    source: BF_NEWS, checkedOn: BF_RECHECKED,
-    checkAt: BF_CLOSURES_NOTICE,
+    section: 'closures', status: 'confirmed', change: 'closed', label: 'City offices',
+    value: 'Closed Thu Nov 26 and Fri Nov 27: George Di Ciero City and County Building, Health and Human Services Building and Water Recovery Facility.',
+    meta: 'City offices closed Nov 26–27',
+    standing: 'George Di Ciero City and County Building, Health and Human Services Building and Water Recovery Facility.',
+    source: BF_NOTICE, checkedOn: BF_NOTICE_READ,
+  },
+  { section: 'closures', status: 'confirmed', change: 'closed', label: 'Combined Courts', value: 'Closed Thu Nov 26 and Fri Nov 27.', source: BF_NOTICE, checkedOn: BF_NOTICE_READ },
+  { section: 'closures', status: 'confirmed', change: 'closed', label: 'inventHQ', value: 'Closed Thu Nov 26 and Fri Nov 27.', source: BF_NOTICE, checkedOn: BF_NOTICE_READ },
+  {
+    section: 'closures', status: 'confirmed', change: 'closed', label: 'Library',
+    value: 'Open 9 a.m.–5 p.m. Wed Nov 25. Closed Thu Nov 26 and Fri Nov 27.',
+    source: BF_NOTICE, checkedOn: BF_NOTICE_READ,
   },
   {
+    section: 'closures', status: 'confirmed', change: 'closed', label: 'Broomfield Community Center',
+    value: 'Closed Thu Nov 26, open for 8 a.m. group fitness classes only. Open 8 a.m.–2 p.m. Fri Nov 27.',
+    source: BF_NOTICE, checkedOn: BF_NOTICE_READ,
+  },
+  {
+    section: 'closures', status: 'confirmed', change: 'closed', label: 'Paul Derda Recreation Center',
+    value: 'Closed Thu Nov 26. Open 12–6:30 p.m. Fri Nov 27.',
+    source: BF_NOTICE, checkedOn: BF_NOTICE_READ,
+  },
+  {
+    section: 'closures', status: 'confirmed', change: 'closed', label: 'Depot Museum',
+    value: 'Closed Fri Nov 27.',
+    closedOn: ['2026-11-27'],
+    source: BF_NOTICE, checkedOn: BF_NOTICE_READ,
+  },
+  {
+    section: 'closures', status: 'confirmed', change: 'closed', label: 'RV Waste Disposal Station',
+    value: 'Closed Thu Nov 26.',
+    source: BF_NOTICE, checkedOn: BF_NOTICE_READ,
+  },
+  {
+    section: 'closures', status: 'confirmed', change: 'changed', label: 'Police Department Building and Detention Center',
+    value: 'Operations run 24/7. On Nov 26 and 27 the front desk is not staffed; the vestibule phone connects to an officer 24/7.',
+    past: 'Operations ran 24/7. On Nov 26 and 27 the front desk was not staffed; the vestibule phone connected to an officer 24/7.',
+    standing: 'Operations run 24/7; the front desk is not staffed and the vestibule phone connects to an officer.',
+    source: BF_NOTICE, checkedOn: BF_NOTICE_READ,
+  },
+  {
+    // The city notice (2026-11-17) also says "Tree Branch Recycling Facility: Closed Nov. 28".
     section: 'closures', status: 'confirmed', change: 'closed', label: 'Tree Branch Recycle and RV Wastewater Disposal Facility',
     value: 'Closed Sat Nov 28. Regular hours Wed 1–5 p.m. and Sat 8 a.m.–5 p.m. at 2990 W 124th Ave.',
     meta: 'Tree Branch Recycle closed Nov 28',

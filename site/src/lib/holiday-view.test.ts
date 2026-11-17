@@ -17,6 +17,19 @@ const bfThanks = buildThanksgivingPage('broomfield_co', MOVES)!;
 const bkThanks = buildThanksgivingPage('brookings_sd', MOVES)!;
 const mvThanks = buildThanksgivingPage('moreno_valley_ca', MOVES)!;
 const xmas = buildChristmasPage('glasgow')!;
+/** Broomfield's Thanksgiving page as it stood until 2026-11-17: the city's closures row exactly as in thanksgiving.ts at
+ *  a27a273 (unconfirmed, holdsCount, a link to the News Flash), in place of the rows its notice then confirmed. */
+const bfCityPending: HolidayPageData = {
+  ...bfThanks,
+  facts: [
+    {
+      section: 'closures', status: 'unconfirmed', label: 'City offices, courts, library and recreation centers', holdsCount: true,
+      source: { name: 'City and County of Broomfield: News Flash', url: 'https://www.broomfield.org/CivicAlerts.aspx?CID=-1' }, checkedOn: '2026-11-11',
+      checkAt: { label: 'City and County of Broomfield News Flash', url: 'https://www.broomfield.org/CivicAlerts.aspx?CID=-1' },
+    },
+    ...bfThanks.facts.filter((f) => f.source.name !== 'City and County of Broomfield: CCOB Closures and Adjusted Hours for Thanksgiving'),
+  ],
+};
 const ALL: [string, HolidayPageData][] = [['veterans', vet], ['broomfield', bfThanks], ['brookings', bkThanks], ['moreno', mvThanks], ['glasgow', xmas]];
 const day = (slug: string, page: HolidayPageData) => occurrenceDay(holidayPageDef(slug)!, page.year);
 
@@ -132,18 +145,26 @@ describe('hero and insights', () => {
   });
   it('counts places that are shut, not pickups or trains that do not run', () => {
     expect(closedPlaces(bkThanks)).toBe(3); // City offices, Landfill, McCrory Gardens (SDSU calendar, added 2026-11-14)
-    // F9 (2026-11-11): the hero said "2 places closed" for Thanksgiving, but Tree Branch closes Sat Nov 28.
-    expect(closedPlaces(bfThanks)).toBe(2); // any day: Tree Branch Recycle, FISH food bank
-    expect(closedPlaces(bfThanks, '2026-11-26')).toBe(1); // on Thanksgiving: FISH food bank only
-    // Owner 2026-11-11: no number while the city's own closures row is unconfirmed (holdsCount); the weekday is the hero.
-    expect(countHeld(bfThanks)).toBe(true);
-    expect(holidayHero(bfThanks, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-11').value).toBe('Thursday');
-    // after the day, still the weekday once (owner 2026-11-11): "Thanksgiving 2026 was / Thursday / Nov 26"
-    expect(holidayHero(bfThanks, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-27')).toEqual({
+    // F9 (2026-11-11): the hero said "2 places closed" for Thanksgiving, but Tree Branch closes Sat Nov 28. The city notice
+    // (pasted 2026-11-17) adds its offices, courts, inventHQ, library, two rec centers, the Depot Museum and the RV station.
+    expect(closedPlaces(bfThanks)).toBe(10); // any day: the 8 below + Depot Museum (Nov 27) + Tree Branch Recycle (Nov 28)
+    // on Thanksgiving: City offices, Combined Courts, inventHQ, Library, Broomfield Community Center, Paul Derda Recreation
+    // Center, RV Waste Disposal Station, FISH food bank. The police row is `changed` (runs 24/7), not closed.
+    expect(closedPlaces(bfThanks, '2026-11-26')).toBe(8);
+    // Owner 2026-11-11: no number while the city's own closures row is unconfirmed (holdsCount); with the notice in, the count shows.
+    expect(countHeld(bfThanks)).toBe(false);
+    expect(holidayHero(bfThanks, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-11')).toEqual({
+      value: 8, unit: 'places closed', label: 'Thanksgiving is Thursday', sub: 'Nov 26',
+    });
+    expect(holidayHero(bfCityPending, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-11').value).toBe('Thursday');
+    // after the day, still the weekday once (owner 2026-11-11): "Thanksgiving 2026 was / Thursday / Nov 26"; with the count,
+    // the weekday moves into the label.
+    expect(holidayHero(bfCityPending, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-27')).toEqual({
       value: 'Thursday', label: 'Thanksgiving 2026 was', sub: 'Nov 26',
     });
-    const cityConfirmed: HolidayPageData = { ...bfThanks, facts: bfThanks.facts.filter((f) => !f.holdsCount) };
-    expect(holidayHero(cityConfirmed, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-11').value).toBe(1);
+    expect(holidayHero(bfThanks, 'Thanksgiving', day('thanksgiving', bfThanks), '2026-11-27')).toEqual({
+      value: 8, unit: 'places closed', label: 'Thanksgiving 2026 was Thursday', sub: 'Nov 26',
+    });
     // Moreno: the library (calendar rows, 2026-11-14); the RTA row is closed too, but a bus that does not run is not a place.
     expect(closedPlaces(mvThanks)).toBe(1);
   });
@@ -213,10 +234,11 @@ describe('the template', () => {
 
 /** /holidays/ (F9, 2026-11-11): one sentence of what is shut on the day, from the confirmed rows; none without a closure. */
 describe('holidayOverviewLine', () => {
-  it('Thanksgiving: no line while the city row is unconfirmed; then only what is shut on Nov 26 (Tree Branch closes Nov 28)', () => {
-    expect(holidayOverviewLine(bfThanks, holidayPageDef('thanksgiving')!, day('thanksgiving', bfThanks))).toBeNull();
-    const cityConfirmed: HolidayPageData = { ...bfThanks, facts: bfThanks.facts.filter((f) => !f.holdsCount) };
-    expect(holidayOverviewLine(cityConfirmed, holidayPageDef('thanksgiving')!, day('thanksgiving', bfThanks))).toBe('Closed: Broomfield FISH food bank.');
+  it('Thanksgiving: no line while the city row is unconfirmed; then only what is shut on Nov 26 (Depot Nov 27, Tree Branch Nov 28)', () => {
+    expect(holidayOverviewLine(bfCityPending, holidayPageDef('thanksgiving')!, day('thanksgiving', bfThanks))).toBeNull();
+    expect(holidayOverviewLine(bfThanks, holidayPageDef('thanksgiving')!, day('thanksgiving', bfThanks))).toBe(
+      'Closed: City offices, Combined Courts, inventHQ, Library, Broomfield Community Center, Paul Derda Recreation Center, RV Waste Disposal Station and Broomfield FISH food bank.',
+    );
   });
 
   it('Veterans Day after the day (owner 2026-11-11): no insight line, no "Check before you go", past tense in rows and event', () => {

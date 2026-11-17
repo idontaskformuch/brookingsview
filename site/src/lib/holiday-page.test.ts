@@ -68,17 +68,22 @@ describe('every town page', () => {
 describe('Broomfield data as approved 2026-11-04', () => {
   const page = pageFor('broomfield_co');
   const byLabel = (l: string) => page.facts.find((f) => f.label.startsWith(l))!;
-  it('unconfirmed rows point where the owner ordered', () => {
-    const offices = byLabel('City offices');
-    expect(offices.status).toBe('unconfirmed');
-    expect((offices as { checkAt: { url: string } }).checkAt.url).toBe('https://www.broomfield.org/CivicAlerts.aspx?CID=-1'); // News Flash: no Thanksgiving notice yet on 2026-11-11
-    expect((offices as { clarify?: string }).clarify).toBeUndefined(); // a link only, no text (owner 2026-11-15)
+  it('the city closures come from its Nov 16 notice (text pasted by the owner 2026-11-17), so nothing holds the count', () => {
+    const offices = byLabel('City offices') as { status: string; value: string; checkedOn: string; source: { name: string; url: string } };
+    expect(offices.status).toBe('confirmed');
+    expect(offices.value).toBe('Closed Thu Nov 26 and Fri Nov 27: George Di Ciero City and County Building, Health and Human Services Building and Water Recovery Facility.');
+    expect(offices.source).toEqual({ name: 'City and County of Broomfield: CCOB Closures and Adjusted Hours for Thanksgiving', url: 'https://www.broomfield.org/CivicAlerts.aspx?CID=-1' });
+    expect(offices.checkedOn).toBe('2026-11-17');
+    expect(page.facts.filter((f) => f.status === 'unconfirmed')).toEqual([]);
+    expect(page.facts.some((f) => f.holdsCount)).toBe(false);
+    // The notice names the RV station (Nov 26) apart from the Tree Branch facility (Nov 28).
+    expect((byLabel('RV Waste Disposal Station') as { value: string }).value).toBe('Closed Thu Nov 26.');
+    expect((byLabel('Depot Museum') as { closedOn: string[] }).closedOn).toEqual(['2026-11-27']);
     // Owner 2026-11-15: the trash row is gone, and the RTD row with it (its link was RTD's general news page).
     expect(page.facts.find((f) => f.label.startsWith('Holiday collection'))).toBeUndefined();
     expect(page.facts.find((f) => f.label.startsWith('RTD'))).toBeUndefined();
     // Owner 2026-11-11: no row without a dated meal or distribution from FISH or the Salvation Army itself.
     expect(page.facts.find((f) => f.label === 'Free Thanksgiving meal')).toBeUndefined();
-    expect((offices as { holdsCount?: boolean }).holdsCount).toBe(true);
   });
   it('FISH closure is confirmed (weekdays match 2026, read 2026-11-11) and closed on the holiday and the day after', () => {
     const fish = byLabel('Broomfield FISH food bank') as { status: string; clarify: string; closedOn: string[] };
@@ -100,7 +105,8 @@ describe('deterministic meta', () => {
     expect(m.title).toBe('Thanksgiving 2026 in Broomfield: closures, events, food help');
     expect(m.h1).toBe('Thanksgiving 2026: closures, events, food help');
     expect(m.description).toBe(
-      'Turkey Day 5K/10K Nov 26 · Tree Branch Recycle closed Nov 28 · FISH food bank closed Nov 26–27. Checked Nov 4 – Nov 14, 2026.',
+      // City offices added 2026-11-17 (the notice); FISH no longer fits in the 155 characters and is dropped from the end.
+      'Turkey Day 5K/10K Nov 26 · City offices closed Nov 26–27 · Tree Branch Recycle closed Nov 28. Checked Nov 4 – Nov 17, 2026.',
     );
   });
   it('Brookings and Moreno: title names only sections with a confirmed row', () => {
@@ -157,13 +163,17 @@ describe('deterministic meta', () => {
       expect(regularHours(page).every((f) => /regular hours/i.test(f.label))).toBe(true);
     }
     const confirmedClosures = pageFor('broomfield_co').facts.filter((f) => f.section === 'closures' && f.status === 'confirmed');
-    expect(confirmedClosures.map((f) => f.label)).toEqual(['Tree Branch Recycle and RV Wastewater Disposal Facility']);
+    expect(confirmedClosures.map((f) => f.label)).toEqual([
+      'City offices', 'Combined Courts', 'inventHQ', 'Library', 'Broomfield Community Center', 'Paul Derda Recreation Center',
+      'Depot Museum', 'RV Waste Disposal Station', 'Police Department Building and Detention Center',
+      'Tree Branch Recycle and RV Wastewater Disposal Facility',
+    ]);
     expect(regularHours(pageFor('broomfield_co')).map((f) => f.label)).toEqual([
       'Library (regular hours)', 'Recreation centers (regular hours)', 'Broomfield FISH marketplace (regular hours)',
     ]);
   });
   it('lastChecked is the newest checkedOn; dates format without a time zone', () => {
-    expect(lastChecked(pageFor('broomfield_co'))).toBe('2026-11-14');
+    expect(lastChecked(pageFor('broomfield_co'))).toBe('2026-11-17'); // the city notice
     expect(lastChecked(pageFor('moreno_valley_ca'))).toBe('2026-11-14');
     expect(formatIsoDate('2026-11-04')).toBe('Nov 4, 2026');
     expect(formatIsoDate('2026-11-04', true)).toBe('November 4, 2026');
@@ -171,8 +181,8 @@ describe('deterministic meta', () => {
     expect(formatClock('17:30')).toBe('5:30 p.m.');
   });
   it('the check date is the span from the oldest to the newest row, one date when they are equal (owner 2026-11-14)', () => {
-    // Broomfield: Tree Branch and the race were read Nov 4, FISH Nov 14 -- the page must not read as all checked Nov 14.
-    expect(checkedSpan(pageFor('broomfield_co'))).toEqual({ first: '2026-11-04', last: '2026-11-14' });
+    // Broomfield: Tree Branch and the race were read Nov 4, the city notice Nov 17 -- the page must not read as all checked Nov 17.
+    expect(checkedSpan(pageFor('broomfield_co'))).toEqual({ first: '2026-11-04', last: '2026-11-17' });
     expect(formatCheckedSpan({ first: '2026-11-04', last: '2026-11-14' })).toBe('Nov 4 – Nov 14, 2026');
     expect(formatCheckedSpan({ first: '2026-11-04', last: '2026-11-14' }, true)).toBe('November 4 – November 14, 2026');
     expect(formatCheckedSpan({ first: '2025-12-30', last: '2026-01-02' })).toBe('Dec 30, 2025 – Jan 2, 2026');
