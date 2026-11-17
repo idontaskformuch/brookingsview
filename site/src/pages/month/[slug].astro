@@ -27,7 +27,7 @@ import {
   buildDecisionsModule, buildProjectsModule, buildSalesModule, buildEventsModule,
   buildTrafficModule, buildJobsModule,
   decisionsSentence, projectsSentence, salesSentence, eventsSentence, trafficSentence, jobsSentence,
-  clearedModuleCount, MIN_MODULES_FOR_INDEX, type MonthContext,
+  clearedModuleCount, clearedModuleKinds, MIN_MODULES_FOR_INDEX, type MonthContext,
 } from '../../lib/month-in-review';
 import { siteConfig } from '../../lib/site-config';
 import { monthDescription } from '../../lib/meta-description';
@@ -62,6 +62,8 @@ const [decisions, projects, sales, events, traffic, jobs, digests] = await Promi
 ]);
 
 const cleared = clearedModuleCount({ decisions, projects, sales, events, traffic, jobs });
+// A module under its minimum (0 rows included) is neither counted nor shown (owner 2026-11-17).
+const shownKinds = new Set<string>(clearedModuleKinds({ decisions, projects, sales, events, traffic, jobs }));
 // Owner condition 7 + Fas 7a: noindex until >=4 of 6 modules reach their
 // minimum row count for this town's local month (lib/month-gate.mjs). The
 // page is built either way -- never a 404 (owner 2026-11-17).
@@ -86,7 +88,7 @@ const rows = ([
   { key: 'events', label: 'Events', text: eventsSentence(events, label, siteConfig.cityName, siteConfig.siteName), href: '/events/' },
   { key: 'traffic', label: 'Traffic', text: trafficSentence(traffic, label, siteConfig.cityName, trafficSourceName), href: '/traffic/' },
   { key: 'jobs', label: 'Jobs', text: jobsSentence(jobs, label, siteConfig.cityName), href: '/jobs/' },
-] satisfies ModuleRow[]).filter((r): r is ModuleRow & { text: string } => r.text !== null);
+] satisfies ModuleRow[]).filter((r): r is ModuleRow & { text: string } => r.text !== null && shownKinds.has(r.key));
 
 const title = `${siteConfig.cityName} in ${label} — ${siteConfig.siteName}`;
 const h1 = `${siteConfig.cityName} in ${label}`;

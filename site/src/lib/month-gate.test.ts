@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MONTH_GATE_MINIMUMS, MIN_MODULES_FOR_INDEX, localMonthOf, rowsInMonth, gateCount, floorStatus, moduleClears,
-  clearedModuleCount, monthGate, monthsFromStart, monthQueryWindow,
+  clearedModuleCount, clearedModuleKinds, monthGate, monthsFromStart, monthQueryWindow,
 } from './month-gate.mjs';
 import { trafficModuleFromRows, type MonthContext } from './month-in-review';
 
@@ -142,5 +142,21 @@ describe('month gate: the whole verdict', () => {
     expect(gate.cleared).toBe(2);
     expect(gate.indexable).toBe(false);
     expect(clearedModuleCount(gate.modules)).toBe(2);
+  });
+
+  it('a module under its minimum is neither shown nor counted: 0 rows and under the minimum alike (owner 2026-11-17)', () => {
+    const data = {
+      projects: { rows: MORENO_PROJECT_UPDATES, floor: MORENO_PROJECTS_FLOOR },
+      traffic: { rows: MORENO_TRAFFIC_SEP30_DROPPED.slice(0, MONTH_GATE_MINIMUMS.traffic - 1), floor: MORENO_TRAFFIC_FLOOR },
+    };
+    // October: projects source running, 0 updates -> hidden.
+    const october = monthGate(data, 2026, 10, LA, true);
+    expect(october.modules.projects).toEqual({ status: 'full', gateCount: 0 });
+    expect(clearedModuleKinds(october.modules)).not.toContain('projects');
+    // September: projects 2 (shown); traffic 9 rows, one under the minimum (hidden).
+    const september = monthGate(data, 2026, 9, LA, true);
+    expect(september.modules.traffic).toEqual({ status: 'full', gateCount: 9 });
+    expect(clearedModuleKinds(september.modules)).toEqual(['projects']);
+    expect(clearedModuleKinds(september.modules)).toHaveLength(september.cleared);
   });
 });

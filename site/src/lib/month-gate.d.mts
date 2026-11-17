@@ -21,6 +21,9 @@ export function floorStatus(
   kind: MonthModuleKind, floor: DateValue, year: number, month: number, timezone: string, meetingsHaveTime: boolean,
 ): ModuleStatus;
 export function moduleClears(kind: MonthModuleKind, status: ModuleStatus, count: number): boolean;
+export function clearedModuleKinds(
+  modules: Partial<Record<MonthModuleKind, { status: ModuleStatus; gateCount: number }>>,
+): MonthModuleKind[];
 export function clearedModuleCount(
   modules: Partial<Record<MonthModuleKind, { status: ModuleStatus; gateCount: number }>>,
 ): number;

@@ -96,7 +96,9 @@ export function jobDistinctKey(title, company) {
   return `${title.trim().toLowerCase()}|${(company ?? '').trim().toLowerCase()}`;
 }
 
-/** What the gate counts for a module's rows in the month (decision 2: before classification). */
+/** What the gate counts for a module's rows in the month (decision 2: before classification). Decisions keep their
+ *  'pending' rows because the module's own SQL (lib/db.ts getMeetingDecisionsInMonth, mirrored in astro.config.mjs) fetches
+ *  every meeting_decisions row with no outcome filter -- pending is dropped only by the sentence's outcome split. */
 export function gateCount(kind, monthRows) {
   if (kind === 'projects') return new Set(monthRows.map((r) => r.project_slug)).size;
   if (kind === 'jobs') return new Set(monthRows.map((r) => jobDistinctKey(r.title, r.company))).size;
@@ -119,10 +121,15 @@ export function moduleClears(kind, status, count) {
   return status !== 'none' && count >= MONTH_GATE_MINIMUMS[kind];
 }
 
-/** Every module that counts toward the gate, for one town + month.
+/** The modules that reach their minimum, for one town + month: the ones the page shows AND the gate counts. A module under
+ *  its minimum, 0 rows included, is neither shown nor counted (owner 2026-11-17).
  *  @param {Record<string, { status: string, gateCount: number }>} modules keyed by MONTH_MODULE_KINDS */
+export function clearedModuleKinds(modules) {
+  return MONTH_MODULE_KINDS.filter((k) => modules[k] && moduleClears(k, modules[k].status, modules[k].gateCount));
+}
+
 export function clearedModuleCount(modules) {
-  return MONTH_MODULE_KINDS.filter((k) => modules[k] && moduleClears(k, modules[k].status, modules[k].gateCount)).length;
+  return clearedModuleKinds(modules).length;
 }
 
 /** Whole gate from raw rows -- what astro.config.mjs's sitemap filter calls. `data[kind]` = { rows, floor } for every kind

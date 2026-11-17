@@ -47,11 +47,11 @@ import { classifyEventLocality, type FeedItem } from './events';
 import { isOutlierSale, PROPERTY_SALES_SOURCE_NAME } from './home-sales';
 import {
   MONTH_IN_REVIEW_START, MIN_MODULES_FOR_INDEX, monthQueryWindow, monthsFromStart, rowsInMonth, gateCount, floorStatus,
-  jobDistinctKey, clearedModuleCount as gateClearedModuleCount, type ModuleStatus,
+  jobDistinctKey, clearedModuleCount as gateClearedModuleCount, clearedModuleKinds, type ModuleStatus,
 } from './month-gate.mjs';
 
 export type { ModuleStatus };
-export { MONTH_IN_REVIEW_START, MIN_MODULES_FOR_INDEX };
+export { MONTH_IN_REVIEW_START, MIN_MODULES_FOR_INDEX, clearedModuleKinds };
 
 /** The town + month every module is built for. */
 export interface MonthContext {
