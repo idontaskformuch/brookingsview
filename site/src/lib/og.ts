@@ -81,7 +81,9 @@ export async function renderOgImage({ title, sourceType = 'event', dateline, kic
       type: 'div',
       props: {
         style: {
-          width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
+          // border-box: since satori 0.63 sizes boxes like a browser (content-box by default), 100% plus the padding
+          // would push the sender row below the 630 px edge.
+          width: '100%', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column',
           backgroundColor: NAVY, padding: '64px 72px', justifyContent: 'space-between',
           fontFamily: 'Lora',
         },
