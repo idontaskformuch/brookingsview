@@ -31,5 +31,10 @@
     "vite-node": "^6.0.0",
     "vitest": "^4.1.11",
     "wrangler": "^4.152.0"
+  },
+  "overrides": {
+    "satori": {
+      "fflate": "0.7.5"
+    }
   }
 }
