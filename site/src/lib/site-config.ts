@@ -8,8 +8,11 @@
  * = lägg till en post här + sätt SITE_CITY i den stadens byggmiljö.
  *
  * OBS: håll värdena i synk med configs/<town_id>.json (samma town_id).
+ * Identiteten (townId, cityName, siteName, domain, siteUrl, timezone, country, nation, noindexSite) kommer ur
+ * town-registry.mjs (audit Fas 3a) och sprids in först i varje stads post.
  */
 
+import { TOWN_REGISTRY } from './town-registry.mjs';
 import type { NavConfig } from './nav-sections';
 import type { TodayPageConfig } from './today-page';
 import type { TrafficIndexingRule } from './traffic-verdict';
@@ -437,13 +440,12 @@ const NO_RENDER_WINDOW: RenderWindow = { homeSales: null, meetings: null, events
 
 const CITIES: Record<string, SiteConfig> = {
   brookings_sd: {
-    townId: 'brookings_sd',
+    ...TOWN_REGISTRY.brookings_sd,
     // Owner 2026-11-05: the AI content track (essays, recipes, reviews, columns) is retired here too: no /s/ pages (404), sections redirect to /.
     contentTrackRetired: true,
     disabledSections: ['reviews', 'recipes', 'editorials', 'columns'],
     eveningLayer: { mode: 'never', maxMiles: 75, includeTicketmasterSports: false, cards: { regions: {}, hidePrice: true, cityLabels: true } },
     renderWindow: NO_RENDER_WINDOW,
-    cityName: 'Brookings',
     // Spec example + the sections it left out (This week, What's On, Closure Watch are enabled here and
     // must be in a group; phase 2 merges them later).
     nav: {
@@ -457,7 +459,6 @@ const CITIES: Record<string, SiteConfig> = {
     },
     // /traffic/ has no live incident feed (and nothing but a pointer to SD511): noindex and out of the nav until it has content.
     quietSections: ['traffic'],
-    country: 'us',
     stateName: 'South Dakota',
     stateAbbr: 'SD',
     hasClosureWatch: true,
@@ -496,11 +497,7 @@ const CITIES: Record<string, SiteConfig> = {
     },
     brandLead: 'Brookings',
     brandTail: 'View',
-    siteName: 'Brookings View',
-    domain: 'brookingsview.com',
-    siteUrl: 'https://brookingsview.com',
     ga4MeasurementId: 'G-0K3RL2H501',
-    timezone: 'America/Chicago',
     // Legistar's EventDate has no time component (EventTime not fetched
     // yet, see legistar_v1.py) -- meeting_date is a bare calendar date.
     meetingsHaveTime: false,
@@ -551,7 +548,7 @@ const CITIES: Record<string, SiteConfig> = {
   },
 
   moreno_valley_ca: {
-    townId: 'moreno_valley_ca',
+    ...TOWN_REGISTRY.moreno_valley_ca,
     // Owner 2026-11-05: the AI content track (essays, recipes, reviews, columns) is retired here too: no /s/ pages (404), sections redirect to /.
     contentTrackRetired: true,
     disabledSections: ['reviews', 'recipes', 'editorials', 'columns'],
@@ -598,8 +595,6 @@ const CITIES: Record<string, SiteConfig> = {
     // gets a 301 to /home-sales/ from the Worker (server/worker.ts), not a 410.
     renderWindow: { homeSales: 12, meetings: null, events: null },
     hasHeatAdvisory: true,
-    cityName: 'Moreno Valley',
-    country: 'us',
     stateName: 'California',
     stateAbbr: 'CA',
     hasWorkplaceWatch: true,
@@ -659,11 +654,7 @@ const CITIES: Record<string, SiteConfig> = {
     hasHousingMarket: true,
     brandLead: 'Moreno Valley',
     brandTail: 'View',
-    siteName: 'Moreno Valley View',
-    domain: 'morenovalleyview.com',
-    siteUrl: 'https://morenovalleyview.com',
     ga4MeasurementId: 'G-5KH1S9H8SB',
-    timezone: 'America/Los_Angeles',
     // eSCRIBE's StartDate is a real per-meeting clock time (see
     // escribe_v1.py's _parse_escribe_date()), localized to this zone at
     // scrape time as of the 2026-09-30 timezone fix.
@@ -727,7 +718,7 @@ const CITIES: Record<string, SiteConfig> = {
   },
 
   broomfield_co: {
-    townId: 'broomfield_co',
+    ...TOWN_REGISTRY.broomfield_co,
     safetyNotices: true,
     // Owner 2026-11-04 (Broomfield AdSense audit #2, #4, #5): AI essays/recipes/reviews retired; only the current week page stays
     // indexable. (The 25-own-words facility rule from the same audit is every town's now: lib/noindex.ts THIN_FACILITY_MIN_OWN_WORDS.)
@@ -747,8 +738,6 @@ const CITIES: Record<string, SiteConfig> = {
     // noindex and out of the nav until they have content. Jobs and Vail Resorts (already noindex) left the nav too (owner B3, 2026-11-11).
     quietSections: ['events', 'workplace', 'jobs', 'vail'],
     renderWindow: NO_RENDER_WINDOW,
-    cityName: 'Broomfield',
-    country: 'us',
     stateName: 'Colorado',
     stateAbbr: 'CO',
     hasWorkplaceWatch: true,
@@ -793,11 +782,7 @@ const CITIES: Record<string, SiteConfig> = {
     brand: { accent: '#2d7980', accentInk: '#124549', accentDark: '#3897a0', accentInkDark: '#30b9c4' },
     brandLead: 'Broomfield',
     brandTail: 'View',
-    siteName: 'Broomfield View',
-    domain: 'broomfieldview.com',
-    siteUrl: 'https://broomfieldview.com',
     ga4MeasurementId: 'G-L7JGXKQVNV',
-    timezone: 'America/Denver',
     // AgendaLink's own `scheduleIso` field is a real, correct UTC instant
     // -- verified DIRECTLY against broomfield.org's own CivicEngage
     // calendar (independent of AgendaLink), not just cross-checked against
@@ -838,7 +823,7 @@ const CITIES: Record<string, SiteConfig> = {
   // Everything is off: no sources scrape, no feature is enabled, the whole site is noindex and not
   // yet listed in the US towns' network disclosure. Phase 3 enables sources one by one.
   glasgow: {
-    townId: 'glasgow',
+    ...TOWN_REGISTRY.glasgow,
     eveningLayer: { mode: 'threshold', maxMiles: 15, includeTicketmasterSports: true, openLate: true, register: true, indexApproved: true, cards: { regions: {
       'City Centre': ['City Centre', 'Blythswood Hill', 'Blythswood Holm', 'Garnethill', 'Cowcaddens'], // gb-spelling: OSM place names
       'Finnieston': ['Stobcross', 'Yorkhill', 'Kelvingrove', 'Sandyford'],
@@ -856,17 +841,13 @@ const CITIES: Record<string, SiteConfig> = {
     },
     disabledSections: ['traffic', 'jobs', 'advertising', 'reviews', 'recipes', 'editorials', 'columns'],
     contentTrackRetired: true,
-    // Launched 2026-10-28/29 (owner's yes): indexable, sitemap on; thin facility pages keep noindex (lib/noindex.ts THIN_FACILITY_MIN_OWN_WORDS).
-    noindexSite: false,
+    // Launched 2026-10-28/29 (owner's yes): indexable, sitemap on (noindexSite in town-registry.mjs); thin facility pages keep noindex (lib/noindex.ts THIN_FACILITY_MIN_OWN_WORDS).
     hasMetOfficeWarnings: true,
     // What's On (owner 2026-10-28): Ticketmaster GB within 15 miles of the centre; venue tiers in lib/venue-tiers.ts. Mirrors configs/glasgow.json.
     hasWhatsOn: true,
     ticketmaster: { enabled: true, latitude: 55.8642, longitude: -4.2518, radiusMiles: 15, marqueeSize: 6 },
     navLabels: { cityhall: 'Council' },
     renderWindow: NO_RENDER_WINDOW,
-    cityName: 'Glasgow',
-    country: 'gb',
-    nation: 'scotland',
     region: 'Scotland',
     townCenter: { lat: 55.8642, lon: -4.2518 },
     // Glasgow Life is a town-wide events source (configs/glasgow.json), so "Tonight" may say 0 (audit decision 1, 2026-11-16).
@@ -879,10 +860,6 @@ const CITIES: Record<string, SiteConfig> = {
     brand: { accent: '#5a4a9a', accentInk: '#352b63', accentDark: '#8a79d1', accentInkDark: '#b0a2ee' },
     brandLead: 'Glasgow',
     brandTail: 'Loop',
-    siteName: 'Glasgow Loop',
-    domain: 'glasgowloop.co.uk',
-    siteUrl: 'https://glasgowloop.co.uk',
-    timezone: 'Europe/London',
     meetingsHaveTime: true,
     meetingDecisionsTracked: false,
     description: 'Council decisions, events and local happenings in Glasgow, Scotland.',
