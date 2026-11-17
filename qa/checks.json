@@ -435,6 +435,11 @@
         "severity": "soft",
         "born_from": "Audit Fas 6b survey 2026-11-17: dedupe and the employer cap compared the raw company string, so \"CompHealth Inc.\" / \"CompHealth\" (Moreno 7021 / 9039) were two employers in dedupe, and \"UCHealth \" / \"UCHealth\" (Broomfield 7500 / 9865) two employers in capByEmployer. Whole table: 7 / 6 / 11 such groups in Brookings / Broomfield / Moreno. Regression fixtures: site/src/lib/jobs.test.ts 'merges a legal-form spelling of the same employer' and jobs-hero.test.ts 'visible + folded \"more from X\" = rows', fail on 16967c3's lib/jobs.ts.",
         "what": "one employer split by case, spaces, punctuation or a trailing legal form (Inc, LLC, Corp, ...) in /jobs/ dedupe, the employer cap or the first-posting count, or two employers merged on a prefix (vitest)"
+    },
+    "logic.month-gate-rows": {
+        "severity": "soft",
+        "born_from": "Audit P1-10 / Fas 7a 2026-11-17: the /month/ noindex gate counted a module as soon as its source had started (status != 'none'), so Moreno October 2026 was indexable with projects at 0 updates (\"No tracked development projects ... were updated\"), and months were cut in UTC (Moreno traffic 3510-3515, created 2026-10-01T02:46Z = 30 Sep 7:46 PM PDT, counted in October). Owner minimums: decisions 5, projects 2 distinct, sales 15, events 10, traffic 10, jobs 20 distinct, local month, rows before classification. Regression fixtures: site/src/lib/month-gate.test.ts (real rows: Moreno traffic 3465-3515, project_updates 26-57, jobs 4652, Brookings meeting 13337, Broomfield traffic 2361); the old gate had no row count at all, so 'source exists, 0 rows' and 'one row under the minimum' cleared it.",
+        "what": "/month/<yyyy-mm>/ counted toward index by a module below its minimum row count, by UTC instead of the town's local month, or by the page and astro.config.mjs's sitemap filter disagreeing (both call lib/month-gate.mjs; vitest + verify_sitemap_noindex_disjoint)"
     }
   }
 }

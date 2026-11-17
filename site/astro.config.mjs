@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { statusTokensCss } from './src/lib/status-tokens.mjs';
 import { holidayLastmodEntries } from './src/config/holiday-pages/lastmod.mjs';
 import { countWeekItems, isThinWeek } from './src/lib/week-count.mjs';
+import { MONTH_IN_REVIEW_START, monthsFromStart, monthGate, monthQueryWindow } from './src/lib/month-gate.mjs';
 import { FROZEN_EVENT_SOURCES, FROZEN_HIDDEN_EVENTS_ASSET, hiddenFrozenSlugs } from './src/lib/frozen-sources.mjs';
 import { stripForeignGames } from './src/lib/game-owners.mjs';
 import { NAV_ONLY_INDEXABLE_TOWNS, pruneNavInDist } from './src/lib/nav-prune.mjs';
@@ -283,13 +284,6 @@ function localDatePartsMirror(instant, timeZone) {
   }).formatToParts(instant);
   const get = (t) => Number(parts.find((p) => p.type === t).value);
   return { y: get('year'), m: get('month'), d: get('day') };
-}
-
-// UTC-read, no timezone conversion -- for bare-calendar-date fields
-// (meeting_date-style), exactly like lib/this-week.ts's bareDateParts().
-function utcDatePartsMirror(value) {
-  const d = new Date(value);
-  return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() };
 }
 
 // Mirrors lib/this-week.ts's utcMidnight() -- UTC midnight of the given
@@ -687,70 +681,42 @@ async function buildLastmodMap(townId, databaseUrl) {
     }
   }
 
-  // Phase 8 ("Month in <Town>") noindex mirror -- owner condition 7 (noindex
-  // until >=4 of 6 modules have real data for a given town+month). Mirrors
-  // lib/month-in-review.ts's coverageFromFloor() rule exactly: a module's
-  // status for a given month depends ONLY on its town-wide "first ever"
-  // floor date vs that month's own boundaries -- it never depends on
-  // whether that specific month itself has any rows (see that lib's own
-  // module doc). That means this mirror needs just ONE floor-date query per
-  // module (not one per month) for five of the six; home sales is the one
-  // exception (a real per-month count, no floor rule -- see
-  // buildSalesModule()'s own comment on why a floor date doesn't fit a
-  // gappy quarterly county import). Classification (in-town/approach,
-  // in-town/nearby) is deliberately NOT replicated here -- the gate only
-  // needs each module's status, never its exact count, so the real page's
-  // own geo-filtering (classifyTrafficIncident/classifyEventLocality) has
-  // nothing this mirror could drift against. Keep in sync by hand, same
-  // tradeoff as every other mirror in this file -- scripts/verify_sitemap_
-  // noindex_disjoint.mjs catches drift against the real page's own
-  // <meta robots> tag.
-  const MONTH_IN_REVIEW_START_MIRROR = { moreno_valley_ca: { year: 2026, month: 8 } };
-  if (townId in MONTH_IN_REVIEW_START_MIRROR) {
+  // /month/<yyyy-mm>/ noindex (owner condition 7, rows per module since audit Fas 7a): the SAME gate function as the page
+  // (lib/month-gate.mjs monthGate()), fed the same rows -- the WHEREs below match lib/db.ts getMeetingDecisionsInMonth,
+  // getProjectUpdatesInMonth, getPropertySalesInMonth, getEventStoriesOccurringBetween, getTrafficIncidentsFirstSeenInMonth,
+  // getJobsFirstScrapedInMonth and their first-ever floors, fetched once from the first page month's window onwards.
+  // Only the SQL is a hand-kept copy; scripts/verify_sitemap_noindex_disjoint.mjs catches drift against the page's robots tag.
+  if (townId in MONTH_IN_REVIEW_START) {
     const monthTz = townTimezone(townId);
-    const today = localDatePartsMirror(new Date(), monthTz);
-    const { year: startYear, month: startMonth } = MONTH_IN_REVIEW_START_MIRROR[townId];
-
-    const [[decisionsFloor], [projectsFloor], [eventsFloor], [trafficFloor], [jobsFloor], salesRows] = await Promise.all([
-      sql`SELECT MIN(m.meeting_date) AS floor FROM meeting_decisions md JOIN meetings m ON m.id = md.meeting_id WHERE m.town_id = ${townId}`,
-      sql`SELECT MIN(u.entry_date) AS floor FROM project_updates u JOIN projects p ON p.id = u.project_id WHERE p.town_id = ${townId}`,
-      sql`SELECT MIN(published_at) AS floor FROM stories WHERE town_id = ${townId} AND source_type = 'event' AND superseded_by_slug IS NULL`,
-      sql`SELECT MIN(created_at) AS floor FROM traffic_incidents WHERE town_id = ${townId}`,
-      sql`SELECT MIN(created_at) AS floor FROM jobs WHERE town_id = ${townId}`,
-      sql`SELECT sale_date FROM property_sales WHERE town_id = ${townId} AND sale_date IS NOT NULL`,
-    ]);
-    const salesCountByMonth = new Map();
-    for (const s of salesRows) {
-      const { y, m } = utcDatePartsMirror(s.sale_date);
-      const key = `${y}-${String(m).padStart(2, '0')}`;
-      salesCountByMonth.set(key, (salesCountByMonth.get(key) ?? 0) + 1);
-    }
-    const floorStatus = (floor, monthStart, monthEnd) => {
-      if (!floor) return 'none';
-      const f = new Date(floor);
-      if (f < monthStart) return 'full';
-      if (f < monthEnd) return 'partial';
-      return 'none';
-    };
-
-    let y = startYear;
-    let m = startMonth;
-    while (y < today.y || (y === today.y && m < today.m)) {
-      const monthStart = new Date(Date.UTC(y, m - 1, 1));
-      const monthEnd = new Date(Date.UTC(m === 12 ? y + 1 : y, m === 12 ? 0 : m, 1));
-      const monthKey = `${y}-${String(m).padStart(2, '0')}`;
-      const statuses = [
-        floorStatus(decisionsFloor.floor, monthStart, monthEnd),
-        floorStatus(projectsFloor.floor, monthStart, monthEnd),
-        (salesCountByMonth.get(monthKey) ?? 0) > 0 ? 'full' : 'none',
-        floorStatus(eventsFloor.floor, monthStart, monthEnd),
-        floorStatus(trafficFloor.floor, monthStart, monthEnd),
-        floorStatus(jobsFloor.floor, monthStart, monthEnd),
-      ];
-      const cleared = statuses.filter((s) => s !== 'none').length;
-      if (cleared < 4) noindexThinPageUrls.add(`/month/${monthKey}/`);
-      m += 1;
-      if (m > 12) { m = 1; y += 1; }
+    const months = monthsFromStart(townId, monthTz);
+    if (months.length > 0) {
+      const from = monthQueryWindow(months[0].year, months[0].month).start.toISOString();
+      const [decisionRows, projectRows, salesRows, eventRows, trafficRows, jobRows,
+        [decisionsFloor], [projectsFloor], [eventsFloor], [trafficFloor], [jobsFloor]] = await Promise.all([
+        sql`SELECT m.meeting_date FROM meeting_decisions md JOIN meetings m ON m.id = md.meeting_id WHERE m.town_id = ${townId} AND m.meeting_date >= ${from}`,
+        sql`SELECT u.entry_date, p.slug AS project_slug FROM project_updates u JOIN projects p ON p.id = u.project_id WHERE p.town_id = ${townId} AND u.entry_date >= ${from}`,
+        sql`SELECT sale_date FROM property_sales WHERE town_id = ${townId} AND sale_date >= ${from.slice(0, 10)}`,
+        sql`SELECT occurs_at FROM stories WHERE town_id = ${townId} AND source_type = 'event' AND published_at IS NOT NULL AND superseded_by_slug IS NULL AND occurs_at >= ${from}`,
+        sql`SELECT created_at FROM traffic_incidents WHERE town_id = ${townId} AND created_at >= ${from}`,
+        sql`SELECT created_at, title, company FROM jobs WHERE town_id = ${townId} AND created_at >= ${from}`,
+        sql`SELECT MIN(m.meeting_date) AS floor FROM meeting_decisions md JOIN meetings m ON m.id = md.meeting_id WHERE m.town_id = ${townId}`,
+        sql`SELECT MIN(u.entry_date) AS floor FROM project_updates u JOIN projects p ON p.id = u.project_id WHERE p.town_id = ${townId}`,
+        sql`SELECT MIN(published_at) AS floor FROM stories WHERE town_id = ${townId} AND source_type = 'event' AND superseded_by_slug IS NULL`,
+        sql`SELECT MIN(created_at) AS floor FROM traffic_incidents WHERE town_id = ${townId}`,
+        sql`SELECT MIN(created_at) AS floor FROM jobs WHERE town_id = ${townId}`,
+      ]);
+      const data = {
+        decisions: { rows: decisionRows, floor: decisionsFloor.floor },
+        projects: { rows: projectRows, floor: projectsFloor.floor },
+        sales: { rows: salesRows },
+        events: { rows: eventRows, floor: eventsFloor.floor },
+        traffic: { rows: trafficRows, floor: trafficFloor.floor },
+        jobs: { rows: jobRows, floor: jobsFloor.floor },
+      };
+      const meetingsHaveTime = THIS_WEEK_MEETINGS_HAVE_TIME[townId] ?? false;
+      for (const { year, month } of months) {
+        if (!monthGate(data, year, month, monthTz, meetingsHaveTime).indexable) noindexThinPageUrls.add(`/month/${year}-${String(month).padStart(2, '0')}/`);
+      }
     }
   }
 

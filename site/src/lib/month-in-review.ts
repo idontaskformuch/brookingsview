@@ -20,49 +20,45 @@
  *  own comment for why a generic floor-date rule doesn't fit a quarterly,
  *  occasionally-gappy county import the way it fits an always-on scraper.
  *
- *  'full' and 'partial' both count as "this module cleared" for owner
- *  condition 7's >=4-of-6 noindex gate -- a scraper's own first, partial
- *  month still clears the bar (matches the research file's own worked Aug
- *  2026 example, where traffic/jobs are both counted ✅ despite probably
- *  starting mid-month).
+ *  The month is the town's LOCAL calendar month (audit Fas 7a): every
+ *  module fetches lib/month-gate.mjs's widened monthQueryWindow() and keeps
+ *  the rows rowsInMonth() accepts, and the coverage floor is compared by
+ *  local month the same way (floorStatus()).
+ *
+ *  NOINDEX GATE (Fas 7a, owner 2026-11-17, replaces "status != none"): a
+ *  module counts toward MIN_MODULES_FOR_INDEX only when its rows in the
+ *  month, before classification, reach MONTH_GATE_MINIMUMS -- see
+ *  lib/month-gate.mjs, which astro.config.mjs's sitemap filter calls too.
+ *  Each module below carries that number as `gateCount`.
  */
 import {
   TOWN_ID,
   getMeetingDecisionsInMonth, getMeetingDecisionsFirstEverDate,
   getProjectUpdatesInMonth, getProjectUpdatesFirstEntryDate,
   getPropertySalesInMonth, getMostRecentPropertySaleDate,
-  getContentByType, getEarliestPublishedDate,
+  getEventStoriesOccurringBetween, getEarliestPublishedDate,
   getTrafficIncidentsFirstSeenInMonth, getTrafficIncidentsFirstEverSeen,
   getJobsFirstScrapedInMonth, getJobsFirstEverScraped,
   getFacilities, formatPrice, calendarDateParts, type Job,
 } from './db';
 import { classifyTrafficIncident } from './traffic';
 import { jobZone, JOBS_SOURCE_NAME } from './jobs';
-import { classifyEventLocality, localDateParts, type FeedItem } from './events';
+import { classifyEventLocality, type FeedItem } from './events';
 import { isOutlierSale, PROPERTY_SALES_SOURCE_NAME } from './home-sales';
+import {
+  MONTH_IN_REVIEW_START, MIN_MODULES_FOR_INDEX, monthQueryWindow, monthsFromStart, rowsInMonth, gateCount, floorStatus,
+  jobDistinctKey, clearedModuleCount as gateClearedModuleCount, type ModuleStatus,
+} from './month-gate.mjs';
 
-export type ModuleStatus = 'full' | 'partial' | 'none';
+export type { ModuleStatus };
+export { MONTH_IN_REVIEW_START, MIN_MODULES_FOR_INDEX };
 
-/** Earliest month each town's own data clears owner condition 7's >=4-of-6
- *  noindex gate -- see .claude/phase8-research.md section 1. Pages are
- *  never generated for an earlier month: before this, at most 2 of 6
- *  modules have anything real to show (property_sales' own Jan 2024 floor
- *  would otherwise drag the hub back through 2.5 years of near-empty
- *  noindexed stub pages for no reader benefit -- the same "low value
- *  content" reasoning already applied sitewide, see astro.config.mjs's
- *  MIN_TAG_PAGE_ITEMS). Add an entry here -- never move Moreno Valley's --
- *  when another town's own feeds mature enough to support a start month of
- *  its own. moreno_valley_ca is the only entry today per owner condition 6
- *  (no Brookings/Broomfield pages yet).
- */
-export const MONTH_IN_REVIEW_START: Record<string, { year: number; month: number }> = {
-  moreno_valley_ca: { year: 2026, month: 8 },
-};
-
-export function monthBoundsUTC(year: number, month: number): { start: Date; end: Date } {
-  const start = new Date(Date.UTC(year, month - 1, 1));
-  const end = new Date(Date.UTC(month === 12 ? year + 1 : year, month === 12 ? 0 : month, 1));
-  return { start, end };
+/** The town + month every module is built for. */
+export interface MonthContext {
+  year: number;
+  month: number;
+  timezone: string;
+  meetingsHaveTime: boolean;
 }
 
 export function monthSlug(year: number, month: number): string {
@@ -88,33 +84,13 @@ function formatDisclosureDate(value: string): string {
     .format(new Date(Date.UTC(y, m, d)));
 }
 
-/** A calendar month is eligible once it's strictly before the CURRENT
- *  local month in the town's own timezone -- matches calendarDayDiff's own
- *  "today never counts as past" discipline used elsewhere, just at month
- *  granularity. getStaticPaths must never generate a path for the current
- *  or a future month (owner condition: "only fully completed calendar
- *  months are eligible"). */
-export function isMonthComplete(year: number, month: number, timezone: string, now: Date = new Date()): boolean {
-  const today = localDateParts(now, timezone); // today.m is 1-12, matching this module's own month params
-  if (year !== today.y) return year < today.y;
-  return month < today.m;
-}
-
-/** Every eligible month for this town, newest first -- from
- *  MONTH_IN_REVIEW_START through the latest COMPLETE month. Empty for a
+/** Every month for this town, newest first -- from MONTH_IN_REVIEW_START
+ *  through the latest COMPLETE month (lib/month-gate.mjs monthsFromStart(),
+ *  the same list astro.config.mjs's sitemap filter walks). Each one gets a
+ *  page; the gate only decides noindex (owner 2026-11-17). Empty for a
  *  town with no start entry (owner condition 6). */
 export function listEligibleMonths(townId: string, timezone: string, now: Date = new Date()): { year: number; month: number }[] {
-  const start = MONTH_IN_REVIEW_START[townId];
-  if (!start) return [];
-  const months: { year: number; month: number }[] = [];
-  let y = start.year;
-  let m = start.month;
-  while (isMonthComplete(y, m, timezone, now)) {
-    months.push({ year: y, month: m });
-    m += 1;
-    if (m > 12) { m = 1; y += 1; }
-  }
-  return months.reverse();
+  return monthsFromStart(townId, timezone, now).reverse();
 }
 
 interface Coverage {
@@ -125,12 +101,9 @@ interface Coverage {
 /** Shared coverage test for the five modules that use the "global first-
  *  seen floor" rule -- see this file's own module doc. Home sales does not
  *  use this (see buildSalesModule()). */
-function coverageFromFloor(firstEverDate: string | null, monthStart: Date, monthEnd: Date): Coverage {
-  if (!firstEverDate) return { status: 'none', firstEverDate: null };
-  const first = new Date(firstEverDate);
-  if (first < monthStart) return { status: 'full', firstEverDate: null };
-  if (first < monthEnd) return { status: 'partial', firstEverDate };
-  return { status: 'none', firstEverDate: null };
+function coverageFromFloor(kind: 'decisions' | 'projects' | 'events' | 'traffic' | 'jobs', firstEverDate: string | null, ctx: MonthContext): Coverage {
+  const status = floorStatus(kind, firstEverDate, ctx.year, ctx.month, ctx.timezone, ctx.meetingsHaveTime);
+  return { status, firstEverDate: status === 'partial' ? firstEverDate : null };
 }
 
 function pluralize(n: number, word: string, pluralWord = `${word}s`): string {
@@ -148,18 +121,22 @@ export interface DecisionsModule {
   approved: number;
   denied: number;
   continued: number;
+  gateCount: number;
 }
 
-export async function buildDecisionsModule(start: Date, end: Date): Promise<DecisionsModule> {
-  const [rows, firstEverDate] = await Promise.all([
+export async function buildDecisionsModule(ctx: MonthContext): Promise<DecisionsModule> {
+  const { start, end } = monthQueryWindow(ctx.year, ctx.month);
+  const [windowRows, firstEverDate] = await Promise.all([
     getMeetingDecisionsInMonth(start, end),
     getMeetingDecisionsFirstEverDate(),
   ]);
-  const coverage = coverageFromFloor(firstEverDate, start, end);
+  const rows = rowsInMonth('decisions', windowRows, ctx.year, ctx.month, ctx.timezone, ctx.meetingsHaveTime);
+  const coverage = coverageFromFloor('decisions', firstEverDate, ctx);
   const nonPending = rows.filter((r) => r.outcome !== 'pending');
   return {
     status: coverage.status,
     firstEverDate: coverage.firstEverDate,
+    gateCount: gateCount('decisions', rows), // pending included: the gate counts before the outcome split
     total: nonPending.length,
     approved: nonPending.filter((r) => r.outcome === 'approved').length,
     denied: nonPending.filter((r) => r.outcome === 'denied').length,
@@ -187,18 +164,23 @@ export interface ProjectsModule {
   status: ModuleStatus;
   firstEverDate: string | null;
   count: number;
+  gateCount: number;
 }
 
-export async function buildProjectsModule(start: Date, end: Date): Promise<ProjectsModule> {
-  const [rows, firstEverDate] = await Promise.all([
+export async function buildProjectsModule(ctx: MonthContext): Promise<ProjectsModule> {
+  const { start, end } = monthQueryWindow(ctx.year, ctx.month);
+  const [windowRows, firstEverDate] = await Promise.all([
     getProjectUpdatesInMonth(start, end),
     getProjectUpdatesFirstEntryDate(),
   ]);
-  const coverage = coverageFromFloor(firstEverDate, start, end);
+  const rows = rowsInMonth('projects', windowRows, ctx.year, ctx.month, ctx.timezone, ctx.meetingsHaveTime);
+  const coverage = coverageFromFloor('projects', firstEverDate, ctx);
+  const count = gateCount('projects', rows); // distinct projects, same number the sentence shows
   return {
     status: coverage.status,
     firstEverDate: coverage.firstEverDate,
-    count: new Set(rows.map((r) => r.project_slug)).size,
+    count,
+    gateCount: count,
   };
 }
 
@@ -223,6 +205,7 @@ export interface SalesModule {
   count: number;
   medianPrice: number | null;
   smallSample: boolean;
+  gateCount: number;
 }
 
 function median(values: number[]): number {
@@ -244,13 +227,15 @@ function median(values: number[]): number {
  *  (the two are indistinguishable from this data alone, so neither is
  *  asserted). mostRecentSaleDate is returned anyway for an optional lag
  *  note, mirroring home-sales.astro's own disclosure. */
-export async function buildSalesModule(start: Date, end: Date): Promise<SalesModule> {
-  const [rows, mostRecent] = await Promise.all([
+export async function buildSalesModule(ctx: MonthContext): Promise<SalesModule> {
+  const { start, end } = monthQueryWindow(ctx.year, ctx.month);
+  const [windowRows, mostRecent] = await Promise.all([
     getPropertySalesInMonth(start, end),
     getMostRecentPropertySaleDate(),
   ]);
+  const rows = rowsInMonth('sales', windowRows, ctx.year, ctx.month, ctx.timezone, ctx.meetingsHaveTime);
   if (rows.length === 0) {
-    return { status: 'none', mostRecentSaleDate: mostRecent, count: 0, medianPrice: null, smallSample: false };
+    return { status: 'none', mostRecentSaleDate: mostRecent, count: 0, medianPrice: null, smallSample: false, gateCount: 0 };
   }
   // Matches home_sales_digest.py's compute_stats(): the headline count
   // includes outliers (len(sales)); only the median excludes them.
@@ -264,6 +249,7 @@ export async function buildSalesModule(start: Date, end: Date): Promise<SalesMod
     count: rows.length,
     medianPrice: smallSample || priced.length === 0 ? null : median(priced),
     smallSample,
+    gateCount: gateCount('sales', rows), // every row, outliers included, like the headline count
   };
 }
 
@@ -287,36 +273,27 @@ export interface EventsModule {
   firstEverDate: string | null;
   inTown: number;
   nearby: number;
+  gateCount: number;
 }
 
 export async function buildEventsModule(
-  year: number, month: number, timezone: string, townId: string, cityName: string,
-  townCenter: { lat: number; lon: number },
+  ctx: MonthContext, townId: string, cityName: string, townCenter: { lat: number; lon: number },
 ): Promise<EventsModule> {
-  const { start, end } = monthBoundsUTC(year, month);
-  const [allEvents, facilities, firstEverDate] = await Promise.all([
-    // 5000, same ceiling events/past.astro already uses for its own
-    // full-archive month grouping -- see that page's own comment on why
-    // getContentByType() (not getPastStories()) is the right source: it
-    // has no occurs_at filter, so undated/launch-day rows aren't silently
-    // dropped, and it already filters superseded_by_slug IS NULL.
-    getContentByType(['event'], 5000),
+  const { start, end } = monthQueryWindow(ctx.year, ctx.month);
+  const [windowEvents, facilities, firstEverDate] = await Promise.all([
+    getEventStoriesOccurringBetween(start, end),
     getFacilities(),
     getEarliestPublishedDate(['event']),
   ]);
-  const coverage = coverageFromFloor(firstEverDate, start, end);
+  const coverage = coverageFromFloor('events', firstEverDate, ctx);
   if (coverage.status === 'none') {
-    return { status: 'none', firstEverDate: null, inTown: 0, nearby: 0 };
+    return { status: 'none', firstEverDate: null, inTown: 0, nearby: 0, gateCount: 0 };
   }
   // Timezone-aware month bucketing, like events/past.astro's own
   // monthKey() -- occurs_at is a real instant, so a UTC calendar-date
   // bucket would misfile anything near local midnight (see that page's own
   // comment on the off-by-one-day bug this avoids).
-  const inMonth = allEvents.filter((e) => {
-    if (!e.occurs_at) return false;
-    const parts = localDateParts(new Date(e.occurs_at), timezone);
-    return parts.y === year && parts.m === month;
-  });
+  const inMonth = rowsInMonth('events', windowEvents, ctx.year, ctx.month, ctx.timezone, ctx.meetingsHaveTime);
   const localized = inMonth.map((story) => classifyEventLocality(
     { sourceKind: 'story', occurs_at: story.occurs_at, story } as FeedItem,
     facilities, townId, cityName, townCenter,
@@ -324,6 +301,7 @@ export async function buildEventsModule(
   return {
     status: coverage.status,
     firstEverDate: coverage.firstEverDate,
+    gateCount: gateCount('events', inMonth), // before the in-town/nearby split
     inTown: localized.filter((l) => l.zone === 'in_town').length,
     nearby: localized.filter((l) => l.zone === 'nearby').length,
   };
@@ -347,20 +325,20 @@ export interface TrafficModule {
   firstEverDate: string | null;
   inTown: number;
   approach: number;
+  gateCount: number;
 }
 
-export async function buildTrafficModule(
-  start: Date, end: Date, townId: string,
+/** Pure part of buildTrafficModule (testable without a DB): `windowRows` are the rows of monthQueryWindow(). */
+export function trafficModuleFromRows(
+  windowRows: (Parameters<typeof classifyTrafficIncident>[0] & { created_at?: string | Date })[],
+  firstEverDate: string | null, ctx: MonthContext, townId: string,
   corridors: { label: string; numbers: string[] }[] | undefined, corridorMaxMiles: number | undefined,
-): Promise<TrafficModule> {
-  const [rows, firstEverDate] = await Promise.all([
-    getTrafficIncidentsFirstSeenInMonth(start, end),
-    getTrafficIncidentsFirstEverSeen(),
-  ]);
-  const coverage = coverageFromFloor(firstEverDate, start, end);
+): TrafficModule {
+  const coverage = coverageFromFloor('traffic', firstEverDate, ctx);
   if (coverage.status === 'none') {
-    return { status: 'none', firstEverDate: null, inTown: 0, approach: 0 };
+    return { status: 'none', firstEverDate: null, inTown: 0, approach: 0, gateCount: 0 };
   }
+  const rows = rowsInMonth('traffic', windowRows, ctx.year, ctx.month, ctx.timezone, ctx.meetingsHaveTime);
   // Same classifyTrafficIncident() call, same corridors/maxMiles, as
   // traffic.astro -- owner condition 2 ("same boundary/corridor filters as
   // the traffic page"). Counting created_at (first-seen), not
@@ -373,9 +351,26 @@ export async function buildTrafficModule(
   return {
     status: coverage.status,
     firstEverDate: coverage.firstEverDate,
+    // Owner 2026-11-17 (a): the rows the SQL gives for the month, before
+    // classifyTrafficIncident() drops the ones outside town and corridors --
+    // so a month can clear the gate while the sentence says "No traffic
+    // incidents in <Town>" (month-gate.test.ts pins this case).
+    gateCount: gateCount('traffic', rows),
     inTown: classified.filter((c) => c.zone === 'in_town').length,
     approach: classified.filter((c) => c.zone === 'approach').length,
   };
+}
+
+export async function buildTrafficModule(
+  ctx: MonthContext, townId: string,
+  corridors: { label: string; numbers: string[] }[] | undefined, corridorMaxMiles: number | undefined,
+): Promise<TrafficModule> {
+  const { start, end } = monthQueryWindow(ctx.year, ctx.month);
+  const [windowRows, firstEverDate] = await Promise.all([
+    getTrafficIncidentsFirstSeenInMonth(start, end),
+    getTrafficIncidentsFirstEverSeen(),
+  ]);
+  return trafficModuleFromRows(windowRows, firstEverDate, ctx, townId, corridors, corridorMaxMiles);
 }
 
 export function trafficSentence(mod: TrafficModule, label: string, cityName: string, sourceName: string): string | null {
@@ -397,12 +392,8 @@ export function trafficSentence(mod: TrafficModule, label: string, cityName: str
 // against the same role being re-posted by the same employer, so a raw
 // row count can overstate how many actually distinct openings existed;
 // simplest honest number is always the distinct one.
-function dedupeKey(title: string, company: string | null): string {
-  return `${title.trim().toLowerCase()}|${(company ?? '').trim().toLowerCase()}`;
-}
-
 function countDistinctJobs(rows: Pick<Job, 'title' | 'company'>[]): number {
-  return new Set(rows.map((r) => dedupeKey(r.title, r.company))).size;
+  return new Set(rows.map((r) => jobDistinctKey(r.title, r.company))).size;
 }
 
 export interface JobsModule {
@@ -410,17 +401,20 @@ export interface JobsModule {
   firstEverDate: string | null;
   inTown: number;
   nearby: number;
+  gateCount: number;
 }
 
-export async function buildJobsModule(start: Date, end: Date, cityName: string): Promise<JobsModule> {
-  const [rows, firstEverDate] = await Promise.all([
+export async function buildJobsModule(ctx: MonthContext, cityName: string): Promise<JobsModule> {
+  const { start, end } = monthQueryWindow(ctx.year, ctx.month);
+  const [windowRows, firstEverDate] = await Promise.all([
     getJobsFirstScrapedInMonth(start, end),
     getJobsFirstEverScraped(),
   ]);
-  const coverage = coverageFromFloor(firstEverDate, start, end);
+  const coverage = coverageFromFloor('jobs', firstEverDate, ctx);
   if (coverage.status === 'none') {
-    return { status: 'none', firstEverDate: null, inTown: 0, nearby: 0 };
+    return { status: 'none', firstEverDate: null, inTown: 0, nearby: 0, gateCount: 0 };
   }
+  const rows = rowsInMonth('jobs', windowRows, ctx.year, ctx.month, ctx.timezone, ctx.meetingsHaveTime);
   // Counting by created_at (our own first-scrape date), never Adzuna's
   // posted_at, is what makes this "after first scrape month", not a
   // re-count of an old posting we only happened to scrape this month
@@ -433,6 +427,7 @@ export async function buildJobsModule(start: Date, end: Date, cityName: string):
   return {
     status: coverage.status,
     firstEverDate: coverage.firstEverDate,
+    gateCount: gateCount('jobs', rows), // distinct, before the in-town/nearby split
     inTown: countDistinctJobs(inTownRows),
     nearby: countDistinctJobs(nearbyRows),
   };
@@ -450,13 +445,16 @@ export function jobsSentence(mod: JobsModule, label: string, cityName: string): 
 }
 
 // ---------------------------------------------------------------------------
-// Noindex gate (owner condition 7)
+// Noindex gate (owner condition 7, rows per module since Fas 7a)
 // ---------------------------------------------------------------------------
 
-export const MIN_MODULES_FOR_INDEX = 4;
+type GateModule = { status: ModuleStatus; gateCount: number };
 
-export function clearedModuleCount(modules: { status: ModuleStatus }[]): number {
-  return modules.filter((m) => m.status !== 'none').length;
+/** Modules that reach their MONTH_GATE_MINIMUMS row count -- lib/month-gate.mjs, same function astro.config.mjs uses. */
+export function clearedModuleCount(modules: {
+  decisions: GateModule; projects: GateModule; sales: GateModule; events: GateModule; traffic: GateModule; jobs: GateModule;
+}): number {
+  return gateClearedModuleCount(modules);
 }
 
 export { TOWN_ID };

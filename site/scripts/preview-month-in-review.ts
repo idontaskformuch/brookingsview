@@ -10,12 +10,13 @@
  *   SITE_CITY=moreno_valley_ca npx vite-node --config vite-node.config.ts scripts/preview-month-in-review.ts 2026-09
  */
 import {
-  monthBoundsUTC, monthLabel, parseMonthSlug, listEligibleMonths,
+  monthLabel, parseMonthSlug, listEligibleMonths,
   buildDecisionsModule, buildProjectsModule, buildSalesModule, buildEventsModule,
   buildTrafficModule, buildJobsModule,
   decisionsSentence, projectsSentence, salesSentence, eventsSentence, trafficSentence, jobsSentence,
-  clearedModuleCount, MIN_MODULES_FOR_INDEX,
+  clearedModuleCount, MIN_MODULES_FOR_INDEX, type MonthContext,
 } from '../src/lib/month-in-review';
+import { MONTH_GATE_MINIMUMS, moduleClears } from '../src/lib/month-gate.mjs';
 import { siteConfig } from '../src/lib/site-config';
 
 async function main() {
@@ -34,19 +35,19 @@ async function main() {
     return;
   }
   const { year, month } = parsed;
-  const { start, end } = monthBoundsUTC(year, month);
+  const ctx: MonthContext = { year, month, timezone: siteConfig.timezone, meetingsHaveTime: siteConfig.meetingsHaveTime };
   const label = monthLabel(year, month);
 
   const [decisions, projects, sales, events, traffic, jobs] = await Promise.all([
-    buildDecisionsModule(start, end),
-    buildProjectsModule(start, end),
-    buildSalesModule(start, end),
-    buildEventsModule(year, month, siteConfig.timezone, siteConfig.townId, siteConfig.cityName, siteConfig.townCenter),
-    buildTrafficModule(start, end, siteConfig.townId, siteConfig.trafficCorridors, siteConfig.trafficCorridorMaxMiles),
-    buildJobsModule(start, end, siteConfig.cityName),
+    buildDecisionsModule(ctx),
+    buildProjectsModule(ctx),
+    buildSalesModule(ctx),
+    buildEventsModule(ctx, siteConfig.townId, siteConfig.cityName, siteConfig.townCenter),
+    buildTrafficModule(ctx, siteConfig.townId, siteConfig.trafficCorridors, siteConfig.trafficCorridorMaxMiles),
+    buildJobsModule(ctx, siteConfig.cityName),
   ]);
 
-  const cleared = clearedModuleCount([decisions, projects, sales, events, traffic, jobs]);
+  const cleared = clearedModuleCount({ decisions, projects, sales, events, traffic, jobs });
   const noindex = cleared < MIN_MODULES_FOR_INDEX;
   const trafficSourceName = siteConfig.trafficSource?.name ?? 'our traffic coverage';
 
@@ -61,17 +62,18 @@ async function main() {
     + `compiled from public data sources. See all months.`);
   console.log();
 
-  const rows: [string, unknown, string | null][] = [
-    ['Decisions', decisions, decisionsSentence(decisions, label, siteConfig.cityName, siteConfig.siteName)],
-    ['Projects', projects, projectsSentence(projects, label, siteConfig.cityName, siteConfig.siteName)],
-    ['Home sales', sales, salesSentence(sales, label, siteConfig.cityName)],
-    ['Events', events, eventsSentence(events, label, siteConfig.cityName, siteConfig.siteName)],
-    ['Traffic', traffic, trafficSentence(traffic, label, siteConfig.cityName, trafficSourceName)],
-    ['Jobs', jobs, jobsSentence(jobs, label, siteConfig.cityName)],
+  const rows: [string, keyof typeof MONTH_GATE_MINIMUMS, { status: typeof decisions.status; gateCount: number }, string | null][] = [
+    ['Decisions', 'decisions', decisions, decisionsSentence(decisions, label, siteConfig.cityName, siteConfig.siteName)],
+    ['Projects', 'projects', projects, projectsSentence(projects, label, siteConfig.cityName, siteConfig.siteName)],
+    ['Home sales', 'sales', sales, salesSentence(sales, label, siteConfig.cityName)],
+    ['Events', 'events', events, eventsSentence(events, label, siteConfig.cityName, siteConfig.siteName)],
+    ['Traffic', 'traffic', traffic, trafficSentence(traffic, label, siteConfig.cityName, trafficSourceName)],
+    ['Jobs', 'jobs', jobs, jobsSentence(jobs, label, siteConfig.cityName)],
   ];
 
-  for (const [name, mod, sentence] of rows) {
+  for (const [name, kind, mod, sentence] of rows) {
     console.log(`--- ${name} ---`);
+    console.log(`  gate: ${mod.gateCount} rows (min ${MONTH_GATE_MINIMUMS[kind]}) -> ${moduleClears(kind, mod.status, mod.gateCount) ? 'counts' : 'does not count'}`);
     console.log('  raw:', JSON.stringify(mod));
     console.log('  rendered:', sentence ?? '(module omitted -- no sentence rendered)');
     console.log();

@@ -11,7 +11,7 @@
  *  its own page, never a story" reasoning as /traffic or /home-sales.
  *
  *  getStaticPaths naturally returns [] for any town with no
- *  MONTH_IN_REVIEW_START entry (today: every town except moreno_valley_ca)
+ *  MONTH_IN_REVIEW_START entry (lib/month-gate.mjs; today: every town except moreno_valley_ca)
  *  -- owner condition 6, same "gracefully empty elsewhere, no redirect
  *  needed" pattern as home-sales/[slug].astro's own getStaticPaths.
  */
@@ -23,11 +23,11 @@ import { getContentByType } from '../../lib/db';
 import { storyHref } from '../../lib/content-slugs';
 import { ownPageHref } from '../../lib/ai-text';
 import {
-  listEligibleMonths, monthBoundsUTC, monthLabel, monthSlug,
+  listEligibleMonths, monthLabel, monthSlug,
   buildDecisionsModule, buildProjectsModule, buildSalesModule, buildEventsModule,
   buildTrafficModule, buildJobsModule,
   decisionsSentence, projectsSentence, salesSentence, eventsSentence, trafficSentence, jobsSentence,
-  clearedModuleCount, MIN_MODULES_FOR_INDEX,
+  clearedModuleCount, MIN_MODULES_FOR_INDEX, type MonthContext,
 } from '../../lib/month-in-review';
 import { siteConfig } from '../../lib/site-config';
 import { monthDescription } from '../../lib/meta-description';
@@ -44,26 +44,27 @@ export async function getStaticPaths() {
 }
 
 const { year, month } = Astro.props as { year: number; month: number };
-const { start, end } = monthBoundsUTC(year, month);
+const ctx: MonthContext = { year, month, timezone: siteConfig.timezone, meetingsHaveTime: siteConfig.meetingsHaveTime };
 const label = monthLabel(year, month);
 const slug = monthSlug(year, month);
 
 const [decisions, projects, sales, events, traffic, jobs, digests] = await Promise.all([
-  buildDecisionsModule(start, end),
-  buildProjectsModule(start, end),
-  buildSalesModule(start, end),
-  buildEventsModule(year, month, siteConfig.timezone, siteConfig.townId, siteConfig.cityName, siteConfig.townCenter),
-  buildTrafficModule(start, end, siteConfig.townId, siteConfig.trafficCorridors, siteConfig.trafficCorridorMaxMiles),
-  buildJobsModule(start, end, siteConfig.cityName),
+  buildDecisionsModule(ctx),
+  buildProjectsModule(ctx),
+  buildSalesModule(ctx),
+  buildEventsModule(ctx, siteConfig.townId, siteConfig.cityName, siteConfig.townCenter),
+  buildTrafficModule(ctx, siteConfig.townId, siteConfig.trafficCorridors, siteConfig.trafficCorridorMaxMiles),
+  buildJobsModule(ctx, siteConfig.cityName),
   // Bidirectional link with the existing AI home-sales digest (research
   // section 2: "link, don't replace" -- the digest is the only real
   // editorial content for this topic, Phase 8 itself is numbers-only).
   getContentByType(['home_sales_digest'], 999),
 ]);
 
-const cleared = clearedModuleCount([decisions, projects, sales, events, traffic, jobs]);
-// Owner condition 7: noindex until >=4 of 6 modules have real data for
-// this town+month.
+const cleared = clearedModuleCount({ decisions, projects, sales, events, traffic, jobs });
+// Owner condition 7 + Fas 7a: noindex until >=4 of 6 modules reach their
+// minimum row count for this town's local month (lib/month-gate.mjs). The
+// page is built either way -- never a 404 (owner 2026-11-17).
 const isNoindex = cleared < MIN_MODULES_FOR_INDEX;
 
 const digestSlug = `home-sales-digest-${year}-${String(month).padStart(2, '0')}`;

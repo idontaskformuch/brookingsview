@@ -611,6 +611,24 @@ export async function getContentByType(sourceTypes: SourceType[], limit = 40): P
   `) as Story[];
 }
 
+/** Month in Review (Fas 7a): published event stories whose occurs_at falls in
+ *  [start, end) -- lib/month-gate.mjs monthQueryWindow(), which the module
+ *  narrows to the local month. Same filters as getContentByType(), without
+ *  its LIMIT; astro.config.mjs's /month/ sitemap mirror runs the same WHERE. */
+export async function getEventStoriesOccurringBetween(start: Date, end: Date): Promise<Story[]> {
+  return (await sql`
+    SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
+           byline, image_path, image_alt, rating, ingredients, instructions,
+           venue_raw, is_recurring_series, ends_at, category_image_index
+      FROM stories
+     WHERE town_id = ${TOWN_ID}
+       AND source_type = 'event'
+       AND published_at IS NOT NULL
+       AND superseded_by_slug IS NULL
+       AND occurs_at >= ${start.toISOString()} AND occurs_at < ${end.toISOString()}
+  `) as Story[];
+}
+
 /** Month in Review: earliest published_at for a given source_type -- a
  *  proxy for "when our own scraper/pipeline started covering this town",
  *  used as the coverage floor the same way getTrafficIncidentsFirstEverSeen()
@@ -3706,14 +3724,14 @@ export async function getMeetingDecisions(meetingId: number): Promise<MeetingDec
  *  sourced body that town also has (e.g. Riverside County), not city
  *  council votes. City council outcomes for such a town live in
  *  project_updates.outcome instead -- see getProjectUpdatesInMonth(). */
-export async function getMeetingDecisionsInMonth(start: Date, end: Date): Promise<Pick<MeetingDecision, 'outcome'>[]> {
+export async function getMeetingDecisionsInMonth(start: Date, end: Date): Promise<(Pick<MeetingDecision, 'outcome'> & { meeting_date: string })[]> {
   return (await sql`
-    SELECT md.outcome
+    SELECT md.outcome, m.meeting_date
       FROM meeting_decisions md
       JOIN meetings m ON m.id = md.meeting_id
      WHERE m.town_id = ${TOWN_ID}
        AND m.meeting_date >= ${start.toISOString()} AND m.meeting_date < ${end.toISOString()}
-  `) as Pick<MeetingDecision, 'outcome'>[];
+  `) as (Pick<MeetingDecision, 'outcome'> & { meeting_date: string })[];
 }
 
 /** Earliest meeting_date with at least one decision recorded for this
