@@ -39,6 +39,6 @@ export function trafficStaleLead(state: TrafficReadState, now: Date, tz: string,
 }
 
 /** "Last listed" keeps closures only (lib/traffic.ts trafficKind: a crash with a lane closed is an incident). */
-export function lastListedRows<T extends Pick<TrafficIncident, 'incident_type'>>(rows: T[]): T[] {
+export function lastListedRows<T extends Pick<TrafficIncident, 'incident_type' | 'title'>>(rows: T[]): T[] {
   return rows.filter((r) => trafficKind(r) === 'closure');
 }

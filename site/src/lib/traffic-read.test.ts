@@ -98,6 +98,23 @@ describe('closure or incident (one rule: lib/traffic.ts trafficKind)', () => {
     expect(trafficLabelKey({ ...MV['4449'], severity: 'planned' })).toBe('planned');
     expect(trafficLabelKey({ ...BF['4648'], severity: 'planned' })).toBe('incident');
   });
+  it('#4447: a CHP "CLOSURE of a Road" is a closure (owner 2026-11-17)', () => {
+    expect(trafficKind(MV['4447'])).toBe('closure');
+    expect(trafficLabelKey(MV['4447'])).toBe('closure');
+  });
+  it('#4519: CHP assisting road work ("CZP-Assist with Construction") stays an incident, though its severity is "closure"', () => {
+    expect(MV['4519'].severity).toBe('closure');
+    expect(trafficKind(MV['4519'])).toBe('incident');
+    expect(trafficLabelKey(MV['4519'])).toBe('incident');
+  });
+  it('the CHP rule is the title start: "CLOSURE of a Road" on a CDOT row (#4648 with only its title changed) is still an incident', () => {
+    expect(trafficKind({ ...BF['4648'], title: MV['4447'].title })).toBe('incident');
+  });
+  it('the hero counts #4447 as a closure and #4519 as an incident: "1 closure, 1 incident"', () => {
+    const h = trafficHero({ current: [MV['4447'], MV['4519']], earlierCount: 0, readAt: RUN_14981.finished_at, readIsStale: false,
+      now: new Date('2026-11-16T20:00:00Z'), tz: MV_TZ, locale: 'en-US', scope: 'state highways', cityName: 'Moreno Valley' });
+    expect(h!.sub).toBe('1 closure, 1 incident on state highways in and near Moreno Valley');
+  });
   it('"Last listed" keeps the closures: #4448, #4449 stay, #4648 and #4622 go', () => {
     expect(lastListedRows([MV['4448'], BF['4648'], MV['4449'], MV['4622']])).toEqual([MV['4448'], MV['4449']]);
   });

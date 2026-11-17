@@ -41,10 +41,14 @@ export function extractRouteNumber(road: string | null): string | null {
 /** Closure or incident (owner 2026-11-16, audit Fas 6a): the source's own type decides, never the severity keyword match. Only
  *  `lane_closure` is a closure: Caltrans lane closures, and CDOT's own road-work types (Maintenance Operations, Safety Closure; cdot_v1
  *  _is_closure_type). A crash or stalled vehicle is an incident even when its message says a lane is closed (`severity` is 'closure'
- *  for those: the parsers' keyword match, left as it is). Every place that shows the type uses this. */
+ *  for those: the parsers' keyword match, left as it is). Every place that shows the type uses this.
+ *  One CHP type is a closure too (owner 2026-11-17): "CLOSURE of a Road" (#4447 "EB CLOSED RIDER TO LAKEVIEW"). CHP assisting road
+ *  work ("CZP-Assist with Construction", "MZP-Assist CT with Maintenance") stays an incident: the closure itself is Caltrans'
+ *  `lane_closure`, and counting both would count one closure twice. */
 export type TrafficKind = 'closure' | 'incident';
-export function trafficKind(r: { incident_type: string }): TrafficKind {
-  return r.incident_type === 'lane_closure' ? 'closure' : 'incident';
+export function trafficKind(r: { incident_type: string; title: string }): TrafficKind {
+  if (r.incident_type === 'lane_closure') return 'closure';
+  return r.incident_type === 'chp_incident' && r.title.startsWith('CLOSURE of a Road') ? 'closure' : 'incident';
 }
 
 /** The /traffic/ table's type label: the kind, refined only where the source says more (a planned closure, an injury). */
@@ -52,7 +56,7 @@ export type TrafficLabelKey = 'closure' | 'planned' | 'injury' | 'incident';
 export const TRAFFIC_LABELS: Record<TrafficLabelKey, string> = {
   closure: 'Closure', planned: 'Planned closure', injury: 'Injury reported', incident: 'Incident',
 };
-export function trafficLabelKey(r: { incident_type: string; severity: string | null }): TrafficLabelKey {
+export function trafficLabelKey(r: { incident_type: string; title: string; severity: string | null }): TrafficLabelKey {
   if (trafficKind(r) === 'closure') return r.severity === 'planned' ? 'planned' : 'closure';
   return r.severity === 'injury' ? 'injury' : 'incident';
 }

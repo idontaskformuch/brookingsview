@@ -77,7 +77,7 @@ export interface TrafficHero { value: string; sub: string; meta: string }
 
 /** null when the read is missing or too old (nothing is known about now) or when the page shows no rows at all. */
 export function trafficHero(o: {
-  current: Pick<TrafficIncident, 'incident_type'>[]; earlierCount: number; readAt: string | null; readIsStale: boolean;
+  current: Pick<TrafficIncident, 'incident_type' | 'title'>[]; earlierCount: number; readAt: string | null; readIsStale: boolean;
   now: Date; tz: string; locale: string; scope: string; cityName: string;
 }): TrafficHero | null {
   if (!o.readAt || o.readIsStale) return null;
