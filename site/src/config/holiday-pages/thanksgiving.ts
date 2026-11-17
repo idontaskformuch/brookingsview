@@ -169,13 +169,11 @@ const BF_CHECKED = '2026-11-04';
 const BF_FISH_CHECKED = '2026-11-14';
 const BF_LIBRARY: Source = { name: 'City and County of Broomfield: Library', url: 'https://www.broomfield.org/276/Library-Home' };
 const BF_REC: Source = { name: 'City and County of Broomfield: Recreation Facilities Hours', url: 'https://www.broomfield.org/1452/Recreation-Facilities-Hours' };
-const BF_NEWS: Source = { name: 'City and County of Broomfield: News Flash', url: 'https://www.broomfield.org/CivicAlerts.aspx?CID=-1' };
 const BF_TREE_BRANCH: Source = { name: 'City and County of Broomfield: Tree Branch Recycling Program', url: 'https://broomfield.org/1031/Tree-Branch-Recycling-Program' };
 const BF_FISH: Source = { name: 'Broomfield FISH', url: 'https://www.broomfieldfish.org/' };
 // The city's "CCOB Closures and Adjusted Hours for Thanksgiving" notice, posted Nov 16 in its News Flash. broomfield.org is
-// refused in strict robots mode, so the owner pasted the text on 2026-11-17; its own address was not given, so the source is
-// the News Flash list it was posted in.
-const BF_NOTICE: Source = { name: 'City and County of Broomfield: CCOB Closures and Adjusted Hours for Thanksgiving', url: BF_NEWS.url };
+// refused in strict robots mode, so the owner pasted the text on 2026-11-17 and gave its address the same day (not fetched).
+const BF_NOTICE: Source = { name: 'City and County of Broomfield: CCOB Closures and Adjusted Hours for Thanksgiving', url: 'https://www.broomfield.org/CivicAlerts.aspx?AID=3155' };
 const BF_NOTICE_READ = '2026-11-17';
 const BF_RACE = 'https://runsignup.com/Race/CO/Broomfield/BroomfieldTurkeyDay';
 

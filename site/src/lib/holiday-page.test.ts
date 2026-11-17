@@ -72,7 +72,7 @@ describe('Broomfield data as approved 2026-11-04', () => {
     const offices = byLabel('City offices') as { status: string; value: string; checkedOn: string; source: { name: string; url: string } };
     expect(offices.status).toBe('confirmed');
     expect(offices.value).toBe('Closed Thu Nov 26 and Fri Nov 27: George Di Ciero City and County Building, Health and Human Services Building and Water Recovery Facility.');
-    expect(offices.source).toEqual({ name: 'City and County of Broomfield: CCOB Closures and Adjusted Hours for Thanksgiving', url: 'https://www.broomfield.org/CivicAlerts.aspx?CID=-1' });
+    expect(offices.source).toEqual({ name: 'City and County of Broomfield: CCOB Closures and Adjusted Hours for Thanksgiving', url: 'https://www.broomfield.org/CivicAlerts.aspx?AID=3155' }); // the notice itself (owner 2026-11-17)
     expect(offices.checkedOn).toBe('2026-11-17');
     expect(page.facts.filter((f) => f.status === 'unconfirmed')).toEqual([]);
     expect(page.facts.some((f) => f.holdsCount)).toBe(false);
