@@ -11,7 +11,12 @@
    av något som inte står i state.md.
 3. Tester: under arbetet kör bara berörd testfil. Före fas-commit kör
    en gång: hela vitest + pytest, astro check, build för alla fyra städer,
-   sitemap/noindex-disjoint-kontrollen.
+   sitemap/noindex-disjoint-kontrollen. Det enda sättet att köra det är
+   `bash scripts/battery.sh` (loggar i scratch_tmp/battery/, exit 0 = grönt).
+   Kör inte stegen för hand och inga egna kopior i scratch_tmp/. Skriptet
+   kör astro check med SITE_CITY satt, kör om ett bygge EN gång vid
+   nätverksfel mot databasen (loggas), och skriver ut section-nav-ui-flaken
+   (afterAll-timeout, alla tester gröna) som känd flake utan rött.
 4. Sökning: riktade sökningar (rg med filändelse/mapp). Visa diff eller
    ändrad funktion, aldrig hela filer.
 5. Avslut av delmål (tester gröna): "Uppgift klar. Status sparad i
