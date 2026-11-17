@@ -2,6 +2,8 @@
 # Batteriet före fas-commit (CLAUDE.md regel 3). Det enda sättet att köra det:
 #   bash scripts/battery.sh [loggkatalog]     (standard: scratch_tmp/battery)
 # Kör allt även när ett steg faller; exit 0 bara om alla steg är gröna.
+#   - DIST_SNAPSHOT=<mapp utanför repot> kopierar dist till <mapp>/<stad> efter
+#     varje grönt bygge (underlag för scripts/dist_compare.mjs).
 #   - astro check körs med SITE_CITY satt (CHECK_CITY, standard brookings_sd).
 #   - Ett bygge som faller på nätverksfel mot databasen ("fetch failed" m.fl.)
 #     körs om EN gång och omkörningen loggas. Andra byggfel körs aldrig om.
@@ -60,6 +62,10 @@ for t in $TOWNS; do
   fi
   step "build $t" $rc
   [ $rc -eq 0 ] || { echo "  hoppar över kontrollerna för $t (bygget föll)"; continue; }
+  if [ -n "$DIST_SNAPSHOT" ]; then  # valfritt: spara dist per stad (dist-jämförelse)
+    rm -rf "$DIST_SNAPSHOT/$t" && mkdir -p "$DIST_SNAPSHOT" && cp -r dist "$DIST_SNAPSHOT/$t"
+    step "snapshot $t" $?
+  fi
 
   node ../scripts/verify_sitemap_noindex_disjoint.mjs dist 2>&1 | tail -2; step "disjoint $t" "${PIPESTATUS[0]}"
   node ../scripts/verify_no_empty_messages.mjs dist 2>&1 | tail -1; step "empty-messages $t" "${PIPESTATUS[0]}"
