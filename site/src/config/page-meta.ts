@@ -225,8 +225,8 @@ export const PAGE_META_PATTERNS: Record<string, PageMetaPattern> = {
     ledeRequirement: 'Must carry the existing attribution hedge -- everything is from reviews, nothing stated as fact.',
   },
   jobs: {
-    titlePattern: 'Jobs Hiring Now in {Town} | {Site}',
-    h1Pattern: 'Current Job Openings in and Around {Town}',
+    titlePattern: 'Recent Job Listings in {Town} | {Site}',
+    h1Pattern: 'Recent Job Listings in and Around {Town}',
   },
   // CORRECTION to the handoff's own assumption: it describes "/sports/"
   // as one shared route needing per-town H1 framing ("Brookings gets the

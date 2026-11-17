@@ -1254,7 +1254,7 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
   } else if (pageType === 'new_in_town') {
     const digest = await latestStoryByType('new_in_town_digest');
     if (digest) items.push(digest);
-    items.push({ href: '/jobs/', title: 'Jobs', kicker: 'Jobs', description: `Current listings in and near ${siteConfig.cityName}.` });
+    items.push({ href: '/jobs/', title: 'Jobs', kicker: 'Jobs', description: `Recent listings in and near ${siteConfig.cityName}.` });
     items.push({ href: '/events/', title: "What's on", kicker: 'Events', description: 'Community events this week.' });
     if (siteConfig.trafficSource) items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
     if (gameItem) items.push(gameItem);
@@ -1296,7 +1296,7 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
     // leftover from when Worker Pulse was Moreno-Valley-only, never
     // updated when it was extended). siteConfig.cityName is correct for
     // every town this branch can ever run for.
-    items.push({ href: '/jobs/', title: 'Jobs', kicker: 'Jobs', description: `Current listings in and near ${siteConfig.cityName}.` });
+    items.push({ href: '/jobs/', title: 'Jobs', kicker: 'Jobs', description: `Recent listings in and near ${siteConfig.cityName}.` });
     items.push({ href: '/events/', title: "What's on", kicker: 'Events', description: `This week in ${siteConfig.cityName}.` });
     if (gameItem) items.push(gameItem);
   } else if (pageType === 'city_hall') {
@@ -1321,7 +1321,7 @@ export async function getRelatedContent(pageType: RelatedPageType): Promise<Rela
     // a Vail Resorts employee/investor/local reader would plausibly want
     // next, not a generic "more sections" grab-bag.
     items.push({ href: '/workplace-watch/', title: 'Worker Pulse', kicker: 'Worker Pulse', description: "Review-trend digests for Broomfield's major employers, including Vail Resorts." });
-    items.push({ href: '/jobs/', title: 'Jobs', kicker: 'Jobs', description: 'Current listings in and near Broomfield.' });
+    items.push({ href: '/jobs/', title: 'Jobs', kicker: 'Jobs', description: 'Recent listings in and near Broomfield.' });
     if (siteConfig.trafficSource) items.push({ href: '/traffic/', title: 'Traffic', kicker: 'Traffic', description: 'Current road incidents and closures.' });
   } else if (pageType === 'facilities') {
     items.push({ href: '/events/free/', title: 'Free things to do', kicker: 'Free', description: 'Always-free facilities and free events, in one place.' });
