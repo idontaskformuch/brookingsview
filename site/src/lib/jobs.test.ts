@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { slugifyCategory, salaryText, capByEmployer, jobZone, dedupeJobs, canonicalJobCategory, JOB_CATEGORY_ALIASES } from './jobs';
+import { slugifyCategory, salaryText, capByEmployer, jobZone, dedupeJobs, canonicalJobCategory, JOB_CATEGORY_ALIASES, employerKey, employerSpellings } from './jobs';
 
 describe('jobZone', () => {
   // Real stored location.display_name values (last 60 days, all 3 towns).
@@ -89,7 +89,7 @@ describe('capByEmployer', () => {
     const { visible, overflowByCompany } = capByEmployer(jobs);
     // cap = max(3, ceil(9 * 0.3)) = 3
     expect(visible.filter((j) => j.company === 'BigStaffCo')).toHaveLength(3);
-    expect(overflowByCompany.get('BigStaffCo')).toHaveLength(5);
+    expect(overflowByCompany.get('bigstaffco')).toHaveLength(5);
     expect(visible.filter((j) => j.company === 'SmallCo')).toHaveLength(1);
   });
 
@@ -116,5 +116,44 @@ describe('dedupeJobs (Q3 2026-10-23: identical Uber Eats ads filled most of the 
   });
   it('never merges a job with no company or no title, nor different titles', () => {
     expect(dedupeJobs([job(null, 'Driver'), job(null, 'Driver'), job('A', null), job('A', null), job('A', 'Driver'), job('A', 'Driver II')])).toHaveLength(6);
+  });
+  it('merges a legal-form spelling of the same employer (audit Fas 6b)', () => {
+    // real Moreno row 7021 ("CompHealth Inc.", "Travel Physical Therapist - $2,492 per week", 2026-10-14); second copy: only company changed
+    // to "CompHealth", the spelling Moreno row 9039 uses
+    const t = 'Travel Physical Therapist - $2,492 per week';
+    expect(dedupeJobs([job('CompHealth Inc.', t, '2026-10-14'), job('CompHealth', t, '2026-10-14')])).toHaveLength(1);
+  });
+});
+
+describe('employerKey (decision 5: case, spaces, punctuation, legal form -- never a prefix)', () => {
+  // real spellings from the jobs table, read 2026-11-17
+  it('one employer however it is spelled', () => {
+    expect(employerKey('Headway.')).toBe(employerKey('Headway'));                 // Brookings 8466 / 8793
+    expect(employerKey('UCHealth ')).toBe(employerKey('UCHealth'));               // Broomfield 7500 / 9865
+    expect(employerKey('Uber eats')).toBe(employerKey('Uber Eats'));              // Brookings 9376 / 9728
+    expect(employerKey('CompHealth Inc.')).toBe(employerKey('CompHealth'));       // Moreno 7021 / 9039
+    expect(employerKey('Barber-Nichols, Inc.')).toBe(employerKey('Barber-Nichols LLC'));
+    expect(employerKey("Southern Glazer's Wine&Spirits")).toBe(employerKey("Southern Glazer's Wine & Spirits")); // Moreno 6129 / 9948
+  });
+  it('a prefix is a different employer, and a legal-form word mid-name stays', () => {
+    expect(employerKey('AMN Healthcare Allied')).not.toBe(employerKey('AMN Healthcare'));
+    expect(employerKey('Avera Health')).not.toBe(employerKey('Avera'));
+    expect(employerKey("Lowe's Companies")).toBe('lowe s companies');
+    expect(employerKey(null)).toBe('');
+  });
+});
+
+describe('employerSpellings (decision 5: show the most common spelling)', () => {
+  it('most rows wins; a tie goes to the newest posting', () => {
+    const m = employerSpellings([
+      { company: 'Headway', posted_at: '2026-11-03T10:32:17Z' }, { company: 'Headway', posted_at: '2026-10-30T00:00:00Z' },
+      { company: 'Headway.', posted_at: '2026-11-01T13:50:27Z' },
+      { company: "Southern Glazer's Wine & Spirits", posted_at: '2026-11-14T02:04:47Z' },
+      { company: "Southern Glazer's Wine&Spirits", posted_at: '2026-10-03T07:42:54Z' },
+      { company: 'UCHealth ', posted_at: '2026-10-20T03:01:36Z' },
+    ]);
+    expect(m.get('headway')).toBe('Headway');
+    expect(m.get(employerKey("Southern Glazer's Wine & Spirits"))).toBe("Southern Glazer's Wine & Spirits");
+    expect(m.get('uchealth')).toBe('UCHealth');
   });
 });

@@ -643,14 +643,14 @@ async function buildLastmodMap(townId, databaseUrl) {
   }
 
   // jobs isn't town-restricted (see jobs.astro's own "no town redirect"
-  // reasoning) -- built for all three towns. Mirrors getRecentJobs()'s
-  // default call shape exactly (limit=100, JOBS_MAX_AGE_DAYS=45).
+  // reasoning) -- built for all three towns. Mirrors getJobsInWindow()
+  // (JOBS_MAX_AGE_DAYS=45, no LIMIT): category pages are built from the
+  // whole deduped window since audit Fas 6b, and every category in the
+  // window is a superset of the ones dedupe leaves.
   const jobs = await sql`
     SELECT category FROM jobs
      WHERE town_id = ${townId}
        AND (posted_at IS NULL OR posted_at >= now() - interval '45 days')
-     ORDER BY posted_at DESC NULLS LAST
-     LIMIT 100
   `;
   // Mirrors lib/jobs.ts JOB_CATEGORY_ALIASES / canonicalJobCategory() (P6-10): an Adzuna label for one of our own categories is that
   // category's page. src/lib/jobs.test.ts fails if this copy, lib/jobs.ts and the parser disagree.

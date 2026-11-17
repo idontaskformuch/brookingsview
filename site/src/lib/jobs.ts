@@ -57,7 +57,7 @@ export function slugifyCategory(category: string): string {
 }
 
 /** Whole-unit money in the country's own currency and locale ($ for us, £ for gb). */
-function salaryMoney(value: number, country: CountryId | undefined): string {
+export function salaryMoney(value: number, country: CountryId | undefined): string {
   const p = countryProfile(country);
   return new Intl.NumberFormat(p.locale, { style: 'currency', currency: p.currency, maximumFractionDigits: 0 }).format(value);
 }
@@ -89,19 +89,58 @@ function normaliseForKey(s: string | null): string {
   return (s ?? '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+/** Legal-form words dropped from the END of an employer name only ("CompHealth Inc." = "CompHealth"). Never a prefix match:
+ *  "AMN Healthcare" and "AMN Healthcare Allied" stay two employers (audit Fas 6b, owner 2026-11-17, decision 5). */
+const EMPLOYER_SUFFIXES = new Set(['inc', 'llc', 'corp', 'corporation', 'co', 'company', 'ltd', 'limited', 'plc', 'lp', 'llp']);
+
+/** One employer however Adzuna spelled it: case, spaces, punctuation and a trailing legal form do not count
+ *  ("Headway." = "Headway", "UCHealth " = "UCHealth", "CompHealth Inc." = "CompHealth"). '' when there is no company. */
+export function employerKey(company: string | null): string {
+  const words = normaliseForKey(company).split(' ').filter(Boolean);
+  while (words.length > 1 && EMPLOYER_SUFFIXES.has(words[words.length - 1])) words.pop();
+  return words.join(' ');
+}
+
+/** The dedupe key every /jobs/ number uses (table, hero, insight lines, category pages); null = never merged. */
+export function jobKey(job: { company: string | null; title: string | null }): string | null {
+  const company = employerKey(job.company);
+  const title = normaliseForKey(job.title);
+  return company && title ? `${company}|${title}` : null;
+}
+
+/** employerKey -> the spelling most rows in `jobs` use; a tie goes to the spelling on the newest posting (owner 2026-11-17). */
+export function employerSpellings(jobs: { company: string | null; posted_at?: string | null }[]): Map<string, string> {
+  const counts = new Map<string, Map<string, { n: number; newest: string }>>();
+  for (const j of jobs) {
+    const key = employerKey(j.company);
+    if (!key || !j.company) continue;
+    const spelling = j.company.trim();
+    const byKey = counts.get(key) ?? new Map<string, { n: number; newest: string }>();
+    const c = byKey.get(spelling) ?? { n: 0, newest: '' };
+    c.n += 1;
+    if ((j.posted_at ?? '') > c.newest) c.newest = j.posted_at ?? '';
+    byKey.set(spelling, c);
+    counts.set(key, byKey);
+  }
+  const out = new Map<string, string>();
+  for (const [key, byKey] of counts) {
+    const [best] = [...byKey.entries()].sort((a, b) => b[1].n - a[1].n || (a[1].newest < b[1].newest ? 1 : a[1].newest > b[1].newest ? -1 : 0));
+    out.set(key, best[0]);
+  }
+  return out;
+}
+
 /** One row per company + title (Q3 2026-10-23: dozens of identical "Earn with Uber Eats" ads filled most of the 100 slots).
  *  Keeps the newest listing (jobs arrive newest first, so the first one seen) and counts the rest in `duplicateCount`.
- *  A job with no company or no title is never merged. */
+ *  A job with no company or no title is never merged. Company compared by employerKey(). */
 export function dedupeJobs<T extends { company: string | null; title: string | null; posted_at?: string | null }>(
   jobs: T[],
 ): (T & { duplicateCount: number })[] {
   const seen = new Map<string, number>();
   const out: (T & { duplicateCount: number })[] = [];
   for (const job of jobs) {
-    const company = normaliseForKey(job.company);
-    const title = normaliseForKey(job.title);
-    if (!company || !title) { out.push({ ...job, duplicateCount: 1 }); continue; }
-    const key = `${company}|${title}`;
+    const key = jobKey(job);
+    if (!key) { out.push({ ...job, duplicateCount: 1 }); continue; }
     const at = seen.get(key);
     if (at === undefined) { seen.set(key, out.length); out.push({ ...job, duplicateCount: 1 }); continue; }
     const kept = out[at];
@@ -112,6 +151,8 @@ export function dedupeJobs<T extends { company: string | null; title: string | n
   return out;
 }
 
+/** Nothing is dropped: visible + every overflow list = `jobs`, so a count of `jobs` is what the page shows (audit Fas 6b, tillägg 2).
+ *  overflowByCompany is keyed by employerKey(); show it through employerSpellings(). */
 export function capByEmployer<T extends { company: string | null }>(
   jobs: T[],
 ): { visible: T[]; overflowByCompany: Map<string, T[]> } {
@@ -120,7 +161,7 @@ export function capByEmployer<T extends { company: string | null }>(
   const overflowByCompany = new Map<string, T[]>();
   const seenCount = new Map<string, number>();
   for (const job of jobs) {
-    const key = job.company ?? '';
+    const key = employerKey(job.company);
     const count = seenCount.get(key) ?? 0;
     seenCount.set(key, count + 1);
     if (!key || count < employerCap) {

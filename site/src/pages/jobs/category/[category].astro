@@ -12,8 +12,8 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import AboutThisPage from '../../../components/ui/AboutThisPage.astro';
 import ShareButton from '../../../components/ShareButton.astro';
 import Breadcrumbs from '../../../components/Breadcrumbs.astro';
-import { getRecentJobs, formatDate } from '../../../lib/db';
-import { salaryText, capByEmployer, slugifyCategory, dedupeJobs } from '../../../lib/jobs';
+import { getJobsInWindow, formatDate } from '../../../lib/db';
+import { salaryText, capByEmployer, slugifyCategory, dedupeJobs, employerSpellings, employerKey } from '../../../lib/jobs';
 import { siteConfig } from '../../../lib/site-config';
 import { isSectionBuilt } from '../../../lib/sections';
 import { placeAbbr } from '../../../lib/country-profile';
@@ -22,16 +22,23 @@ import { buildClusterBreadcrumbTrail, resolveHubBacklink } from '../../../lib/cl
 
 export async function getStaticPaths() {
   if (!isSectionBuilt('jobs', siteConfig)) return []; // no detail pages under a section the town does not build (lib/sections.ts)
-  const jobs = dedupeJobs(await getRecentJobs());
+  // Audit Fas 6b: the same deduped 45-day window as /jobs/'s category line, so "X of N" there is the X listings here.
+  const windowJobs = await getJobsInWindow();
+  const jobs = dedupeJobs(windowJobs);
+  const spellings = [...employerSpellings(windowJobs)];
   const categories = [...new Set(jobs.map((j) => j.category).filter((c): c is string => Boolean(c)))];
 
   return categories.map((category) => ({
     params: { category: slugifyCategory(category) },
-    props: { category, jobs: jobs.filter((j) => j.category === category) },
+    props: { category, jobs: jobs.filter((j) => j.category === category), spellings },
   }));
 }
 
-const { category, jobs } = Astro.props as { category: string; jobs: ReturnType<typeof dedupeJobs<Awaited<ReturnType<typeof getRecentJobs>>[number]>> };
+const { category, jobs, spellings } = Astro.props as {
+  category: string; jobs: ReturnType<typeof dedupeJobs<Awaited<ReturnType<typeof getJobsInWindow>>[number]>>; spellings: [string, string][];
+};
+const spellingMap = new Map(spellings);
+const companyName = (company: string | null) => (company ? spellingMap.get(employerKey(company)) ?? company.trim() : null);
 const { visible, overflowByCompany } = capByEmployer(jobs);
 
 const canonicalUrl = new URL(`/jobs/category/${slugifyCategory(category)}/`, Astro.site ?? siteConfig.siteUrl).href;
@@ -45,7 +52,7 @@ const itemListJsonLd = jobs.length > 0 ? {
   itemListElement: jobs.map((j, i) => ({
     '@type': 'ListItem',
     position: i + 1,
-    name: j.company ? `${j.title} — ${j.company}` : j.title,
+    name: j.company ? `${j.title} — ${companyName(j.company)}` : j.title,
     url: j.redirect_url ?? canonicalUrl,
   })),
 } : null;
@@ -76,6 +83,8 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
     <a href="/jobs/">All jobs →</a>
   </nav>
 
+  {jobs.length > 0 && <p class="count" data-jobs-count={jobs.length}>{jobs.length} listing{jobs.length === 1 ? '' : 's'} posted in the last 45 days</p>}
+
   {jobs.length > 0 ? (
     <table class="jobs" id="jobs-table">
       <thead>
@@ -90,7 +99,7 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
               ) : job.title}
               {job.location && <span class="loc">{job.location}</span>}
             </td>
-            <td data-label="Company">{job.company ?? '—'}</td>
+            <td data-label="Company">{companyName(job.company) ?? '—'}</td>
             <td class="data" data-label="Salary">{salaryText(job, siteConfig.country)}</td>
             <td class="data" data-label="Posted">{job.posted_at ? formatDate(job.posted_at) : '—'}</td>
           </tr>
@@ -103,7 +112,7 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
 
   {[...overflowByCompany.entries()].map(([company, extra]) => (
     <details class="overflow">
-      <summary>{extra.length} more from {company}</summary>
+      <summary>{extra.length} more from {companyName(extra[0].company) ?? company}</summary>
       <table class="jobs">
         <tbody>
           {extra.map((job) => (
@@ -124,7 +133,7 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
   ))}
 
   <p class="source">
-    Source: <a href="https://www.adzuna.com" rel="noopener">Adzuna</a>, refreshed daily. Listings older than 45 days are removed automatically.
+    Source: <a href="https://www.adzuna.com" rel="noopener">Adzuna</a>, refreshed daily. Listings posted in the last 45 days; older ones are removed automatically.
   </p>
 
   {itemListJsonLd && (
@@ -178,6 +187,7 @@ const hubBacklink = resolveHubBacklink('jobs', siteConfig);
 .overflow { margin-top: 0.75rem; font-size: 0.9375rem; }
 .overflow summary { cursor: pointer; color: var(--ink-soft); padding: 0.5rem 0; }
 .source { margin-top: 1.5rem; font-size: 0.875rem; color: var(--ink-soft); }
+.count { margin: 0 0 0.75rem; font-size: 0.875rem; color: var(--ink-soft); }
 /* Phone: each listing is a short card (title, then labelled facts); a four-column table scrolled sideways at 390 px (QA web.hscroll). */
 @media (max-width: 40rem) {
   .jobs thead { position: absolute; left: -9999px; }

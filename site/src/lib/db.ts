@@ -1839,6 +1839,29 @@ export async function getRecentJobs(limit = 100): Promise<Job[]> {
   return rows.map((j) => ({ ...j, category: canonicalJobCategory(j.category) }));
 }
 
+/** /jobs/ and /jobs/category/ (audit Fas 6b): every listing posted in the last JOBS_MAX_AGE_DAYS, newest first, no LIMIT -- the page
+ *  dedupes first and takes its 100 rows after (decision 7), and the category and pay lines count the whole window (decision 2). */
+export async function getJobsInWindow(): Promise<Omit<Job, 'description'>[]> {
+  const rows = (await sql`
+    SELECT external_job_id, title, company, location, category,
+           salary_min, salary_max, salary_is_predicted,
+           redirect_url, posted_at
+      FROM jobs
+     WHERE town_id = ${TOWN_ID}
+       AND (posted_at IS NULL OR posted_at >= now() - (${JOBS_MAX_AGE_DAYS} || ' days')::interval)
+     ORDER BY posted_at DESC NULLS LAST
+  `) as Omit<Job, 'description'>[];
+  return rows.map((j) => ({ ...j, category: canonicalJobCategory(j.category) }));
+}
+
+/** /jobs/ hero: every posting this town has ever stored (not only the 45-day window), so a repost of an older ad is known as one.
+ *  lib/jobs-hero.ts firstPostedByKey() takes the earliest posted_at per town + jobKey(). */
+export async function getJobFirstPostings(): Promise<{ town_id: string; company: string | null; title: string | null; posted_at: string | null }[]> {
+  return (await sql`
+    SELECT town_id, company, title, posted_at FROM jobs WHERE town_id = ${TOWN_ID} AND posted_at IS NOT NULL
+  `) as { town_id: string; company: string | null; title: string | null; posted_at: string | null }[];
+}
+
 /** Month in Review: distinct postings grouped by OUR OWN first-scrape
  *  month (created_at), never Adzuna's own posted_at -- see
  *  .claude/phase8-research.md section 1's "Important nuance for Jobs".

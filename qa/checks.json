@@ -425,6 +425,16 @@
         "severity": "soft",
         "born_from": "Audit pass 6 (P6-10, 2026-11-16): Moreno built /jobs/category/healthcare-nursing/ (783 words) and /jobs/category/healthcare-nursing-jobs/ (583 words) for the same category -- a title keyword stored \"Healthcare & Nursing\", the Adzuna fallback stored Adzuna's \"Healthcare & Nursing Jobs\". The jobs table (last 45 days, read 2026-11-16) had six such pairs in all four towns. Regression fixtures: tests/test_jobs_parser.py 'maps adzuna label onto our own name' (real Moreno row, \"... Reconstruction Fellowship\") and site/src/lib/jobs.test.ts 'canonicalJobCategory', both fail on 69dab30.",
         "what": "an Adzuna category label that names one of our own keyword categories stored or shown under its own name, or the alias table differing between jobs_v1.py, lib/jobs.ts and astro.config.mjs (pytest + vitest)"
+    },
+    "logic.jobs-dedupe-before-limit": {
+        "severity": "soft",
+        "born_from": "Audit Fas 6b survey 2026-11-17 (.claude/notes/jobs-6b-underlag-2026-11-17.md): getRecentJobs() took LIMIT 100 raw rows and jobs.astro deduped after, so Brookings /jobs/ showed 60 listings (40 merged: United Parcel Service \"Driver Helper\" x6, Solutions by Sanford \"Registered Nurse\" x7, ...) while 177 distinct ones were in the 45-day window. Regression fixtures: site/src/lib/jobs-hero.test.ts 'jobs.astro reads the whole window and dedupes before jobsTable' and 'the old order ... showed fewer' (real rows 10151 + 10176), fail on 16967c3's jobs.astro/db.ts.",
+        "what": "/jobs/ (or a category page) taking its rows before dedupe, or its count line, hero or category line counting different listings than the table shows (vitest)"
+    },
+    "logic.jobs-employer-key": {
+        "severity": "soft",
+        "born_from": "Audit Fas 6b survey 2026-11-17: dedupe and the employer cap compared the raw company string, so \"CompHealth Inc.\" / \"CompHealth\" (Moreno 7021 / 9039) were two employers in dedupe, and \"UCHealth \" / \"UCHealth\" (Broomfield 7500 / 9865) two employers in capByEmployer. Whole table: 7 / 6 / 11 such groups in Brookings / Broomfield / Moreno. Regression fixtures: site/src/lib/jobs.test.ts 'merges a legal-form spelling of the same employer' and jobs-hero.test.ts 'visible + folded \"more from X\" = rows', fail on 16967c3's lib/jobs.ts.",
+        "what": "one employer split by case, spaces, punctuation or a trailing legal form (Inc, LLC, Corp, ...) in /jobs/ dedupe, the employer cap or the first-posting count, or two employers merged on a prefix (vitest)"
     }
   }
 }
