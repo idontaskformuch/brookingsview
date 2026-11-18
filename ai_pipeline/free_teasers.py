@@ -170,7 +170,15 @@ def facility_template_fallback(facility: dict) -> str:
     return " ".join(sentences)
 
 
-def generate_facility_teaser(facility: dict, cfg: dict, client=None) -> tuple[str, str]:
+def _gate_blocks(cfg: dict, gate, table: str, row: dict) -> str | None:
+    """Model gate (owner 2026-11-18, G3): the reason this row's source may not reach the model, or None."""
+    if gate is None:
+        from scrapers.llm_gate import LlmGate
+        gate = LlmGate(cfg)
+    return gate.blocked_reason(table, row)
+
+
+def generate_facility_teaser(facility: dict, cfg: dict, client=None, gate=None) -> tuple[str, str]:
     """Returns (text, generated_by)."""
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
@@ -184,6 +192,11 @@ def generate_facility_teaser(facility: dict, cfg: dict, client=None) -> tuple[st
         if anthropic is None:
             return facility_template_fallback(facility), "template_fallback"
         client = anthropic.Anthropic()
+
+    blocked = _gate_blocks(cfg, gate, "places", facility)
+    if blocked:
+        print(f"  NO MODEL facility {facility.get('id')} ({blocked})")
+        return facility_template_fallback(facility), "template_fallback"
 
     model = resolve_model("free_teaser_facility", cfg)
     price_in, price_out = pricing_for(model)
@@ -266,7 +279,8 @@ Return ONLY the paragraph. No preamble, no quotation marks, no bullet points."""
     return facility_template_fallback(facility), "template_fallback"
 
 
-def generate_event_teaser(title: str, body: str, cfg: dict, client=None) -> tuple[str, str] | None:
+def generate_event_teaser(title: str, body: str, cfg: dict, client=None, *, source: str | None = None,
+                          gate=None) -> tuple[str, str] | None:
     """Returns (text, generated_by), or None if generation failed and no
     safe template fallback applies -- unlike a facility, a transient event
     with no teaser this run just shows without one; the next run (new
@@ -283,6 +297,12 @@ def generate_event_teaser(title: str, body: str, cfg: dict, client=None) -> tupl
         if anthropic is None:
             return None
         client = anthropic.Anthropic()
+
+    # `source` = the events row's source name; a series story (event-series-*) has none, so it stays away from the model.
+    blocked = _gate_blocks(cfg, gate, "events", {"source": source})
+    if blocked:
+        print(f"  NO MODEL event {title!r} ({blocked})")
+        return None
 
     model = resolve_model("free_teaser_event", cfg)
     price_in, price_out = pricing_for(model)
@@ -344,7 +364,7 @@ def run_facilities(conn, cfg: dict, dry_run: bool) -> int:
     with conn.cursor() as cur:
         cur.execute(
             f"""
-            SELECT id, name, category, address, hours_text, description
+            SELECT id, name, category, address, hours_text, description, source_url
               FROM places
              WHERE town_id = %s AND category IN ({placeholders}) AND free_teaser IS NULL
             """,
@@ -354,9 +374,9 @@ def run_facilities(conn, cfg: dict, dry_run: bool) -> int:
 
     print(f"  {len(rows)} facility(ies) need a teaser")
     updated = 0
-    for fid, name, category, address, hours_text, description in rows:
+    for fid, name, category, address, hours_text, description, source_url in rows:
         facility = {"id": fid, "name": name, "category": category, "address": address,
-                     "hours_text": hours_text, "description": description}
+                     "hours_text": hours_text, "description": description, "source_url": source_url}
         text, generated_by = generate_facility_teaser(facility, cfg)
         print(f"  [{category}] {name}: {text!r} ({generated_by})")
         if not dry_run:
@@ -374,22 +394,23 @@ def run_events(conn, cfg: dict, dry_run: bool) -> int:
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT id, title, body, venue_raw, meta
-              FROM stories
-             WHERE town_id = %s AND source_type = 'event'
-               AND occurs_at >= now() AND free_teaser IS NULL
+            SELECT s.id, s.title, s.body, s.venue_raw, s.meta, e.source
+              FROM stories s
+              LEFT JOIN events e ON s.slug = 'event-' || e.id::text
+             WHERE s.town_id = %s AND s.source_type = 'event'
+               AND s.occurs_at >= now() AND s.free_teaser IS NULL
             """,
             (town_id,),
         )
         rows = cur.fetchall()
 
-    candidates = [(sid, title, body, venue_raw) for sid, title, body, venue_raw, meta in rows
+    candidates = [(sid, title, body, venue_raw, source) for sid, title, body, venue_raw, meta, source in rows
                   if is_free_event(registry, venue_raw, body, meta)]
     print(f"  {len(rows)} upcoming event(s) without a teaser, {len(candidates)} classify as free")
 
     updated = 0
-    for sid, title, body, venue_raw in candidates:
-        result = generate_event_teaser(title, body, cfg)
+    for sid, title, body, venue_raw, source in candidates:
+        result = generate_event_teaser(title, body, cfg, source=source)
         if result is None:
             print(f"  {title!r}: no teaser this run (will retry next run)")
             continue

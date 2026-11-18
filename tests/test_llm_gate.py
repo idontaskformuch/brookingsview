@@ -41,6 +41,8 @@ class FakeFetcher:
         host = url.split("/")[2]
         if host not in self.by_host:
             raise ConnectionError(f"no robots.txt for {host} in this test")
+        if self.by_host[host] is None:  # the host answers 404 for robots.txt (live: webapi.legistar.com, 2026-11-18)
+            return robots.verdict(404, None, url)
         return robots.verdict(200, (FX / f"{self.by_host[host]}.txt").read_text(encoding="utf-8"), url)
 
 

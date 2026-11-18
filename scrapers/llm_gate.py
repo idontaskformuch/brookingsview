@@ -16,6 +16,7 @@ list, or a row the gate cannot place. Such rows may still be shown in template-b
 from __future__ import annotations
 
 import json
+from collections import Counter
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -67,6 +68,19 @@ class LlmGate:
         if kind == "meetings":
             block = ds.get(name) or {}
             return next((block[f] for f in _MEETING_URL_FIELDS if isinstance(block.get(f), str) and block[f].startswith("http")), None)
+        if kind == "sport":
+            adapter, _, program = name.partition(":")
+            sources = [s for s in (self.cfg.get("sports") or {}).get("sources", []) if s.get("adapter") == adapter and s.get("url")]
+            exact = [s["url"] for s in sources if s.get("program") == program]
+            if exact:
+                return exact[0]
+            hosts = {urlparse(s["url"]).netloc.lower() for s in sources}
+            return sources[0]["url"] if len(hosts) == 1 else None  # one host for the adapter: its verdict covers every program
+        if kind == "sdsu_events":
+            from scrapers.parsers.sdsu_events_v1 import _BASE_URL
+            return _BASE_URL
+        if kind == "url":
+            return name if name.startswith("http") else None
         return None
 
     def key_for(self, table: str, row: dict) -> str | None:
@@ -80,6 +94,12 @@ class LlmGate:
                     if name.endswith("meetings") and isinstance(block, dict) and block.get("enabled") is not False
                     and _MEETING_FORMAT_MARKERS.get(block.get("type", "")) in raw]
             return f"meetings:{hits[0]}" if len(hits) == 1 else None
+        if table == "sport_events":
+            return f"sport:{row['source']}:{row.get('program_id') or ''}" if row.get("source") else None
+        if table == "sdsu_events":
+            return "sdsu_events"
+        if table in ("academic_calendar_dates", "places"):
+            return f"url:{row['source_url']}" if row.get("source_url") else None
         return None
 
     # --- verdict -----------------------------------------------------------------------------------------------------------------
@@ -120,3 +140,20 @@ class LlmGate:
 
     def blocked_reason(self, table: str, row: dict) -> str | None:
         return self.key_blocked_reason(self.key_for(table, row))
+
+    def model_rows(self, table: str, rows: list[dict]) -> tuple[list[dict], Counter]:
+        """(rows the model may see, Counter of reasons for the rest). Template-built parts of a page keep using all rows."""
+        kept: list[dict] = []
+        dropped: Counter = Counter()
+        for row in rows:
+            reason = self.blocked_reason(table, row)
+            if reason:
+                dropped[reason] += 1
+            else:
+                kept.append(row)
+        return kept, dropped
+
+
+def report_dropped(path: str, dropped: Counter) -> None:
+    for reason, n in sorted(dropped.items()):
+        print(f"  NO MODEL {path}: {n} row(s) ({reason})")

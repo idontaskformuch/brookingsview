@@ -119,6 +119,7 @@ def _game(r: dict) -> dict:
         "home_away": "neutral" if r["neutral_site"] else "away" if away else "home",
         "starts_at": r["starts_at"], "venue": r["venue"], "result": result,
         "time_tba": r["time_tba"], "exhibition": r["exhibition"],
+        "source": r.get("source"), "program_id": ours,  # for the model gate (scrapers/llm_gate.py)
     }
 
 
@@ -159,7 +160,7 @@ def collect(conn, town_id: str, start: datetime, end: datetime) -> dict:
         # (nothing says when they are played); an exhibition stays, flagged, and only that week's rows are read, so no other season leaks in.
         cur.execute(
             """
-            SELECT id, sport, gender, program_id, start_at AS starts_at, venue, status, time_tba, neutral_site, exhibition,
+            SELECT id, source, sport, gender, program_id, start_at AS starts_at, venue, status, time_tba, neutral_site, exhibition,
                    home_program_id, home_name, away_program_id, away_name, score_home, score_away
               FROM sport_events
              WHERE town_id = %s AND start_at >= %s AND start_at < %s AND status IN ('scheduled', 'final') AND withdrawn_at IS NULL
@@ -307,7 +308,22 @@ def template_fallback(data: dict, label: str, cfg: dict) -> str:
             "with the day and time on each line.")
 
 
-def generate(data: dict, label: str, cfg: dict, client=None, dry_run: bool = False) -> tuple[str, str, bool]:
+# data key -> the table its rows come from, for the model gate.
+_GATE_TABLES = {"meetings": "meetings", "events": "events", "games": "sport_events"}
+
+
+def model_data(data: dict, gate) -> dict:
+    """The part of the week's data the model may see (owner 2026-11-18, G3): rows from llm_excluded, refused or unknown sources
+    are left out of the prompt. The template intro and the page's own lists keep every row."""
+    from scrapers.llm_gate import report_dropped
+    out = {}
+    for key, rows in data.items():
+        out[key], dropped = gate.model_rows(_GATE_TABLES.get(key, key), rows)
+        report_dropped(f"weekly/{key}", dropped)
+    return out
+
+
+def generate(data: dict, label: str, cfg: dict, client=None, dry_run: bool = False, gate=None) -> tuple[str, str, bool]:
     """Returnerar (text, generated_by, verified).
 
     `dry_run`: --dry-run still makes a real AI call (see main()'s own
@@ -318,7 +334,6 @@ def generate(data: dict, label: str, cfg: dict, client=None, dry_run: bool = Fal
     unable to tell a real publish apart from a --dry-run test run.
     """
     tz = ZoneInfo(cfg.get("timezone", "America/Chicago"))
-    src = source_text(data, label, tz)
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
 
@@ -332,6 +347,15 @@ def generate(data: dict, label: str, cfg: dict, client=None, dry_run: bool = Fal
         if anthropic is None:
             return template_fallback(data, label, cfg), "template_fallback", True
         client = anthropic.Anthropic()
+
+    if gate is None:
+        from scrapers.llm_gate import LlmGate
+        gate = LlmGate(cfg)
+    for_model = model_data(data, gate)
+    if not any(for_model.values()):
+        print("  inget underlag som modellen får se -- mall")
+        return template_fallback(data, label, cfg), "template_fallback", True
+    src = source_text(for_model, label, tz)
 
     model = resolve_model("weekly", cfg)
     price_in, price_out = pricing_for(model)
@@ -361,7 +385,7 @@ def generate(data: dict, label: str, cfg: dict, client=None, dry_run: bool = Fal
         violations = list(result.violations) + intro_format_violations(candidate)
         if not violations:
             violations = pre_publish_check(
-                candidate, source_records=data, cfg=cfg, content_type="weekly",
+                candidate, source_records=for_model, cfg=cfg, content_type="weekly",
             ).violations
         return not violations, violations
 

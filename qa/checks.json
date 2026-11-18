@@ -510,6 +510,11 @@
       "severity": "hard",
       "born_from": "Steg 2 inventory 2026-11-18 (.claude/notes/llm-excluded-step2-proposal-2026-11-18.md): publish.py's meta_only extraction sent event rows from llm_excluded sources to the model (Brookings library + chamber, 2 calls in 14 days to claude-sonnet-5), although the owner's rule is that llm_excluded content never goes through a model. Fixed (owner G4): scrapers/llm_gate.py in publish_table, closed when unsure, structured meta from the source's own fields (ai_pipeline/structured_meta.py). Regression fixtures: tests/test_llm_gate.py 'llm_excluded event never reaches format_record' (real row event 330024, live visitbrookings robots fixture) fails on 0f6ba94's publish.py.",
       "what": "an event or meeting row whose source is llm_excluded, refused by robots.txt, unreadable or unknown reaches format_record's model call, or a gated row's meta holds a value not in its source's structured fields (pytest)"
+    },
+    "ai.llm-gate-model-paths": {
+      "severity": "hard",
+      "born_from": "Steg 2 inventory 2026-11-18 (.claude/notes/llm-excluded-step2-proposal-2026-11-18.md): weekly.py, sdsu_weekly_digest.py and free_teasers.py put every row of the week into the prompt, whatever its source's robots.txt said (Brookings: chamber, library, sdstate.edu and gojacks.com are llm_excluded). The generators are switched off since ee7f39c, so no call was made; the owner (G3) wants the filter and its tests in place before they are switched on. Regression fixtures: tests/test_llm_gate_paths.py (real rows 330024, 287184, meeting 15218, sport_events 12, sdsu_events 17743, place 85), all five fail on df574d3's three modules.",
+      "what": "a weekly, SDSU digest or free-teaser prompt holds a row from an llm_excluded, refused, unreadable or unknown source, or the template part of the same page loses such a row (pytest)"
     }
   }
 }

@@ -137,7 +137,7 @@ def gather_academic_dates(conn, town_id: str, start: datetime, end: datetime) ->
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
             """
-            SELECT label, category, starts_on, ends_on
+            SELECT label, category, starts_on, ends_on, source_url
               FROM academic_calendar_dates
              WHERE town_id = %s AND starts_on >= %s AND starts_on < %s
              ORDER BY starts_on
@@ -282,9 +282,8 @@ def template_fallback(events: list[dict], label: str, tz: ZoneInfo,
 
 
 def generate(events: list[dict], label: str, cfg: dict, tz: ZoneInfo, client=None,
-             academic_dates: list[dict] | None = None) -> tuple[str, str, bool]:
+             academic_dates: list[dict] | None = None, gate=None) -> tuple[str, str, bool]:
     """Returnerar (text, generated_by, verified)."""
-    src = build_grounding_text(events, label, tz, academic_dates)
     ai_cfg = cfg.get("ai", {})
     cap = float(ai_cfg.get("monthly_budget_usd", 20))
 
@@ -298,6 +297,18 @@ def generate(events: list[dict], label: str, cfg: dict, tz: ZoneInfo, client=Non
         if anthropic is None:
             return template_fallback(events, label, tz, academic_dates), "template_fallback", True
         client = anthropic.Anthropic()
+
+    # Model gate (owner 2026-11-18, G3): sdstate.edu is llm_excluded, so its rows stay out of the prompt; the template keeps them.
+    from scrapers.llm_gate import LlmGate, report_dropped
+    gate = gate if gate is not None else LlmGate(cfg)
+    model_events, dropped = gate.model_rows("sdsu_events", events)
+    report_dropped("sdsu_weekly_digest/events", dropped)
+    model_dates, dropped = gate.model_rows("academic_calendar_dates", academic_dates or [])
+    report_dropped("sdsu_weekly_digest/academic_dates", dropped)
+    if not model_events and not model_dates:
+        print("  inget underlag som modellen får se -- mall")
+        return template_fallback(events, label, tz, academic_dates), "template_fallback", True
+    src = build_grounding_text(model_events, label, tz, model_dates)
 
     model = resolve_model(SOURCE_TYPE, cfg)
     price_in, price_out = pricing_for(model)
@@ -325,7 +336,7 @@ def generate(events: list[dict], label: str, cfg: dict, tz: ZoneInfo, client=Non
         violations = list(result.violations) + intro_format_violations(candidate)
         if not violations:
             violations = pre_publish_check(
-                candidate, source_records=events, cfg=cfg, content_type=SOURCE_TYPE,
+                candidate, source_records=model_events, cfg=cfg, content_type=SOURCE_TYPE,
             ).violations
         return not violations, violations
 
