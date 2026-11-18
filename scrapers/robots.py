@@ -126,6 +126,17 @@ def ai_disallowed(text: str | None, url: str) -> tuple[str, str] | None:
     return None
 
 
+def names_ai_bot(text: str | None) -> str | None:
+    """The first AI crawler a robots.txt names in any user-agent line, else None. This was the old strict mode's whole test
+    ("names an AI crawler -> no", removed 2026-11-18); it decides nothing now and is only reported (the discovery pilot's
+    "would have been refused under the old strict mode" column)."""
+    for g in _groups(text or ""):
+        hit = next((a for a in g.agents if any(b in a for b in AI_BOT_TOKENS)), None)
+        if hit:
+            return hit
+    return None
+
+
 def verdict(status: int | None, text: str | None, url: str, *, token: str = BOT_NAME) -> Verdict:
     """`status` None = no answer at all (timeout, DNS)."""
     if status is None:

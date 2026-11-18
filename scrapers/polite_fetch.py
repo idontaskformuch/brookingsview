@@ -247,6 +247,14 @@ class PoliteFetcher:
         scrapers/llm_gate.py to decide, at run time, whether a source's rows may reach a model."""
         return self._robots_verdict(url)
 
+    def robots_text(self, url: str) -> tuple[int | None, str]:
+        """(status, body) of the robots.txt that decides `url` (read once per origin and run, as robots_verdict reads it)."""
+        parts = urlparse(url)
+        origin = f"{parts.scheme}://{parts.netloc}"
+        if origin not in self._robots:
+            self._robots_verdict(url)
+        return self._robots[origin]
+
     def _robots_verdict(self, url: str) -> _robots.Verdict:
         parts = urlparse(url)
         origin = f"{parts.scheme}://{parts.netloc}"

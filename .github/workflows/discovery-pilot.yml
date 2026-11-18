@@ -1,0 +1,114 @@
+name: discovery-pilot
+# Source discovery pilot (.claude/specs/source-discovery-engine.md, owner 2026-11-18): Fas 1-3 in read mode for all four towns,
+# scripts/discovery_pilot.py. Once a day on the dates in configs/shared/discovery_pilot.json ("run_dates"); on any other UTC date
+# the gate job says run=false and nothing else runs, so the workflow switches itself off after the last date.
+# No database: no DATABASE_URL in this workflow. Results are artifacts (JSON per town and day + the report so far).
+# Each day starts from the earlier days' artifacts (candidates, probes, geocode cache, fetch log: a host that answered 403 or a
+# bot challenge on an earlier day is not asked again, CLAUDE.md rule 13). Towns run one after another (shared hosts such as
+# Overpass, Nominatim and calendar.google.com get one client at a time). UA = scrapers/user_agent.py for the job's town.
+
+on:
+  schedule:
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - id: gate
+        run: python -m scripts.discovery_pilot gate
+
+  day:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        include:
+          - town: brookings_sd
+          - town: moreno_valley_ca
+          - town: broomfield_co
+          - town: glasgow
+    env:
+      BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - run: pip install -r requirements.txt
+      - name: Earlier days' artifacts for this town
+        run: |
+          set -euo pipefail
+          mkdir -p state .claude/fetch-ledger
+          for id in $(gh run list --workflow discovery-pilot.yml --json databaseId,conclusion,event \
+                        --jq '.[] | select(.databaseId != ${{ github.run_id }}) | .databaseId' --limit 20); do
+            gh run download "$id" --pattern "discovery-${{ matrix.town }}-*" --dir "state/$id" 2>/dev/null || true
+          done
+          find state -name '*.jsonl' -exec sh -c 'cat "$1" >> ".claude/fetch-ledger/$(basename "$1")"' _ {} \;
+          echo "earlier day files: $(find state -name 'day-*.json' | wc -l)"
+      - name: Discover, probe, fetch (read mode)
+        run: python -m scripts.discovery_pilot day --town ${{ matrix.town }} --state state --out out
+      - name: Today's date
+        id: today
+        if: always()
+        run: echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: discovery-${{ matrix.town }}-${{ steps.today.outputs.date }}
+          path: |
+            out/
+            .claude/fetch-ledger/
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 30
+
+  report:
+    needs: [gate, day]
+    if: always() && needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: discovery-*
+          path: all/current
+      - name: Earlier days
+        run: |
+          set -euo pipefail
+          mkdir -p all
+          for id in $(gh run list --workflow discovery-pilot.yml --json databaseId                         --jq '.[] | select(.databaseId != ${{ github.run_id }}) | .databaseId' --limit 20); do
+            gh run download "$id" --pattern "discovery-*" --dir "all/$id" 2>/dev/null || true
+          done
+          echo "day files: $(find all -name 'day-*.json' | wc -l)"
+      - name: Report
+        run: |
+          python -m scripts.discovery_pilot report --state all --out report
+          cat report/report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: discovery-report-${{ github.run_id }}
+          path: report/
+          retention-days: 30
