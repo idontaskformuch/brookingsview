@@ -11,6 +11,8 @@
 #     alla tester är gröna. Skrivs ut som känd flake och ger inte rött. Varje
 #     annat vitest-fel (eller ett fallerat test i samma fil) ger rött.
 set -o pipefail
+# Lokala byggen skriver aldrig till live-DB (Fas 0.5, 2026-11-18): flaggan sätts bara i CI:s produktionsbyggen.
+unset IMAGE_HISTORY_WRITE
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # Windows (Git Bash): ett ärvt "c:\..." (liten enhetsbokstav) gör att node laddar vitest från c:/ men Vite
 # (realpath.native) från C:/ -> två instanser av @vitest/runner, varje test faller (astro 6). pwd -W ger C:/...

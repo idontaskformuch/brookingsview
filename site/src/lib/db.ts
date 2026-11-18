@@ -893,11 +893,7 @@ export async function resolveThisWeekImage(
       holidayPool, TOWN_ID, holidayMatch.holiday, historyRecords, isoYearWeek, new Date(),
     );
     if (holidayChosenId) {
-      await sql`
-        INSERT INTO this_week_image_usage (town_id, iso_year_week, image_id)
-        VALUES (${TOWN_ID}, ${isoYearWeek}, ${holidayChosenId})
-        ON CONFLICT (town_id, iso_year_week) DO NOTHING
-      `;
+      await recordThisWeekImageUse(isoYearWeek, holidayChosenId);
       return holidayPool.find((img) => img.id === holidayChosenId)!;
     }
     console.warn(
@@ -917,12 +913,27 @@ export async function resolveThisWeekImage(
     );
   }
 
+  await recordThisWeekImageUse(isoYearWeek, chosenId);
+  return pool.find((img) => img.id === chosenId)!;
+}
+
+/** True only in a production build: the CI build step that is followed by a wrangler deploy sets
+ *  IMAGE_HISTORY_WRITE=1 (owner 2026-11-18, Fas 0.5). Everywhere else (local build, astro dev, review-shots,
+ *  battery, tests) the build never writes to the live database. */
+export function historyWriteEnabled(): boolean {
+  return process.env.IMAGE_HISTORY_WRITE === '1';
+}
+
+/** The ONLY database write the site makes (build-write-gate.test.ts holds every other file to zero writes).
+ *  Without the flag the same pick is still returned by the caller, just not persisted: a later production
+ *  build that week computes it from the same history and records it. */
+async function recordThisWeekImageUse(isoYearWeek: string, imageId: string): Promise<void> {
+  if (!historyWriteEnabled()) return;
   await sql`
     INSERT INTO this_week_image_usage (town_id, iso_year_week, image_id)
-    VALUES (${TOWN_ID}, ${isoYearWeek}, ${chosenId})
+    VALUES (${TOWN_ID}, ${isoYearWeek}, ${imageId})
     ON CONFLICT (town_id, iso_year_week) DO NOTHING
   `;
-  return pool.find((img) => img.id === chosenId)!;
 }
 
 /** Every story of the given source_type(s), oldest first, no date window --

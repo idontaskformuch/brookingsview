@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Before/after screenshots of one page on all four towns, for the owner's review (.claude/review/<phase>/).
 //   node scripts/review-shots.mjs --phase phase2 --label before --path /weather/ [--towns brookings_sd,glasgow] [--wait-ms 4000]
-// Each town is served by `astro dev` (SITE_CITY=<town>, reads the database like a build does, writes nothing), shot at 390 and 1280 px,
+// Each town is served by `astro dev` (SITE_CITY=<town>, reads the database like a build does). It writes nothing: the only write the
+// site makes (this_week_image_usage, site/src/lib/db.ts) needs IMAGE_HISTORY_WRITE=1, which is cleared for the dev server below. Shot at 390 and 1280 px,
 // light and dark, full page. Consent is pre-declined and analytics hosts are aborted, so no screenshot run counts as a visitor.
 import { spawn, execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -47,7 +48,7 @@ let port = 4400;
 for (const town of towns) {
   const p = port++;
   console.log(`== ${town} on :${p}`);
-  const child = spawn(`npx astro dev --port ${p} --host 127.0.0.1`, { cwd: site, shell: true, env: { ...process.env, SITE_CITY: town, ASTRO_TELEMETRY_DISABLED: '1' }, stdio: 'ignore' });
+  const child = spawn(`npx astro dev --port ${p} --host 127.0.0.1`, { cwd: site, shell: true, env: { ...process.env, SITE_CITY: town, ASTRO_TELEMETRY_DISABLED: '1', IMAGE_HISTORY_WRITE: '' }, stdio: 'ignore' });
   try {
     await waitFor(`http://127.0.0.1:${p}${path}`);
     for (const width of widths) {

@@ -72,6 +72,7 @@ jobs:
         env:
           SITE_CITY: moreno_valley_ca
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          IMAGE_HISTORY_WRITE: '1'  # production build: may record this week's image (site/src/lib/db.ts)
           # What's On: threaded through so getTicketmasterEventsForTown()
           # actually has a key to call with, now that hasWhatsOn/
           # ticketmaster.enabled are true for Moreno Valley (Phase 7

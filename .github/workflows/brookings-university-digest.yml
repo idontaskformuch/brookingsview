@@ -40,6 +40,7 @@ jobs:
         env:
           SITE_CITY: brookings_sd
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          IMAGE_HISTORY_WRITE: '1'  # production build: may record this week's image (site/src/lib/db.ts)
           TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
         run: npx astro build
       - name: Deploy to Cloudflare Workers (Brookings)

@@ -47,6 +47,7 @@ jobs:
         env:
           SITE_CITY: moreno_valley_ca
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          IMAGE_HISTORY_WRITE: '1'  # production build: may record this week's image (site/src/lib/db.ts)
           # See closure-watch-morning.yml's identical fix/comment -- same
           # missing-key bug, same fix, same reasoning.
           TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}

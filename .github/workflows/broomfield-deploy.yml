@@ -51,6 +51,7 @@ jobs:
         env:
           SITE_CITY: broomfield_co
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          IMAGE_HISTORY_WRITE: '1'  # production build: may record this week's image (site/src/lib/db.ts)
           TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
         run: bash ../scripts/build_retry.sh
       - name: Verify no empty messages or explanation boxes (Broomfield)
