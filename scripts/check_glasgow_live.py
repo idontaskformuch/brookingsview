@@ -6,7 +6,7 @@ automated build must get right, on the real deployed pages:
 
   1. /weather/ shows today AND tomorrow in degC (a stale snapshot would show
      neither, or degF if the wrong provider ran). The day rows (ui-wd, since
-     3cf39ba) are named "Today" then the weekday ("Thu"); the unit is printed
+     3cf39ba) are named "Today" (late evening "Tonight") then the weekday ("Thu"); the unit is printed
      once, in the hero (ui-hero__unit).
   2. /events/ has no card that has already ended inside a data-hide-ended
      container (those lists are filtered at build time; a card that is over at
@@ -83,9 +83,13 @@ def check_weather(html: str, now: datetime | None = None) -> list[str]:
     problems = []
     names = c.forecast_names
     tomorrow = ((now or datetime.now(timezone.utc)).astimezone(TZ) + timedelta(days=1)).strftime("%a")
-    if not names or names[0] != "Today":
-        problems.append(f"/weather/: first day row is not 'Today' (rows: {names[:6]})")
-    if len(names) < 2 or names[1] not in (tomorrow, "Tomorrow"):
+    # Late in the day only the night period of today is left and the site names that row "Tonight"
+    # (site/src/lib/weather-model.ts); the next row must then be tomorrow's weekday. QA weather.glasgow-tonight-row.
+    first = names[0] if names else None
+    if first not in ("Today", "Tonight"):
+        problems.append(f"/weather/: first day row is not 'Today' or 'Tonight' (rows: {names[:6]})")
+    allowed_second = (tomorrow,) if first == "Tonight" else (tomorrow, "Tomorrow")
+    if len(names) < 2 or names[1] not in allowed_second:
         problems.append(f"/weather/: second day row is not tomorrow ({tomorrow}) (rows: {names[:6]})")
     temps = " ".join(c.forecast_temps)
     if not re.search(r"-?\d+\s*°", temps):

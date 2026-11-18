@@ -65,3 +65,32 @@ def test_no_end_means_three_hours():
 def test_past_events_outside_hide_ended_box_are_ignored():
     outside = '<article data-start="2026-10-01T09:00:00Z" data-end=""></article>'
     assert check_events(_events([], outside), NOW) == []
+
+
+# 2026-11-17 23:05 UTC (= 23:05 Europe/London): glasgow-scrape run 44195502796 failed with
+# "first day row is not 'Today' (rows: ['Tonight', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])" -- the site names
+# today's row "Tonight" once only the night period is left (lib/weather-model.ts). Same on 2026-11-16 23:04.
+# QA weather.glasgow-tonight-row.
+TUE_2305 = datetime(2026, 11, 17, 23, 5, 50, tzinfo=timezone.utc)
+ROWS_2026_11_17_2305 = ["Tonight", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+def test_weather_tonight_first_row_2026_11_17_passes():
+    assert check_weather(_weather(ROWS_2026_11_17_2305), now=TUE_2305) == []
+
+
+def test_weather_live_page_2026_11_11_with_tonight_passes():
+    # The real 2026-11-11 page; the ONLY changed field is the first row name, Today -> Tonight (as on 17 Nov 23:05),
+    # checked late that evening.
+    html = FIXTURE.read_text(encoding="utf-8").replace('ui-wd__name">Today<', 'ui-wd__name">Tonight<', 1)
+    assert 'ui-wd__name">Tonight<' in html
+    assert check_weather(html, now=datetime(2026, 11, 11, 23, 5, tzinfo=timezone.utc)) == []
+
+
+def test_weather_tonight_needs_tomorrows_weekday_next():
+    assert any("second day row" in p for p in check_weather(_weather(["Tonight", "Thu", "Fri"]), now=TUE_2305))
+    assert any("second day row" in p for p in check_weather(_weather(["Tonight", "Tomorrow", "Thu"]), now=TUE_2305))
+
+
+def test_weather_other_first_row_still_fails():
+    assert any("first day row" in p for p in check_weather(_weather(ROWS_2026_11_17_2305[1:]), now=TUE_2305))
