@@ -109,5 +109,5 @@ def parse_calendar(html: str, params: dict) -> list[NormalizedEvent]:
 
 @adapters.register(NAME)
 def fetch(params: dict) -> list[NormalizedEvent]:
-    http = params.get("_http") or PoliteHttp(mode=params.get("robots_mode", "standard"), max_crawl_delay=params.get("max_crawl_delay", 60))
+    http = params.get("_http") or PoliteHttp(max_crawl_delay=params.get("max_crawl_delay", 60))
     return parse_calendar(http.get_text(params["url"]), params)

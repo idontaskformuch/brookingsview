@@ -120,7 +120,7 @@ def _to_iso(dt, tzname: str) -> str | None:
 def _fetcher(source_cfg: dict, headers: dict) -> PoliteFetcher:
     ua = headers["User-Agent"]
     town_id = next((t for t, d in SITE_DOMAINS.items() if f"//{d}/" in ua), None)
-    return PoliteFetcher("source", town_id, ua=ua, robots_mode="standard")
+    return PoliteFetcher("source", town_id, ua=ua)
 
 
 def _get(fetcher: PoliteFetcher, source_cfg: dict, url: str, params: dict | None = None) -> bytes | None:

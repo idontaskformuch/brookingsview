@@ -23,7 +23,7 @@ def read_source(town_id: str, source: dict, *, http: PoliteHttp | None = None, l
     params = adapters.merged_params(source)
     if log:
         params["_log"] = log
-    params["_http"] = http or PoliteHttp(user_agent(town_id), mode=source.get("robots_mode", "standard"),
+    params["_http"] = http or PoliteHttp(user_agent(town_id),
                                          max_crawl_delay=source.get("max_crawl_delay", DEFAULT_MAX_CRAWL_DELAY))
     if params.get("url"):
         params["_http"].preflight(params["url"])

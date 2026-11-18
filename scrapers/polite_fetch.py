@@ -1,15 +1,16 @@
 """One way to fetch a third-party page (owner 2026-11-13, proposal 4 in .claude/notes/proposals-fetch-migration-register-2026-11-13.md).
 
     from scrapers.polite_fetch import PoliteFetcher, Refused
-    got = PoliteFetcher("register", "broomfield_co", robots_mode="strict").get(url)
+    got = PoliteFetcher("register", "broomfield_co").get(url)
     if isinstance(got, Refused): ...          # robots, a 403/challenge, another domain, or already fetched today
+    if got.llm_excluded: ...                  # robots.txt names an AI crawler: facts only, never through a model
 
     python -m scrapers.polite_fetch evidence <url> --town broomfield_co --out .claude/evidence/<dir>/<name>.html
 
 Every fetch, the robots.txt fetches included, goes through here:
-1. robots.txt, read once per origin per process, in the mode the caller gives per source (owner 2026-11-13):
-   strict   (default) = page text that a model reads (the evening register): a robots.txt naming an AI crawler anywhere = no;
-   standard = structured feeds the code parses (iCal, REST, RSS): our own group, else `*`. A disallow in standard mode always stops.
+1. robots.txt, read once per origin per process, one mode for every caller (owner 2026-11-18, scrapers/robots.py): our own group,
+   else `*`; a Disallow there = no. A URL whose path an AI crawler's own group disallows is llm_excluded (Fetched.llm_excluded, and
+   "llm_excluded": {"bot", "rule"} in the fetch log): facts may be used, the content never goes through a language model.
    Exception: the public APIs in API_TERMS follow their published API terms instead of robots.txt (owner 2026-11-13).
 2. A fetch log (Ledger): one line per request. purpose evidence, dryrun and register: one fetch per URL per UTC day; a second request the
    same day gets the saved copy from that day (cache), or Refused when there is none. purpose source (feeds with refresh_minutes in the
@@ -92,6 +93,7 @@ class Fetched:
     encoding: str | None = None
     from_cache: bool = False
     cut: bool = False  # the body stopped at the size cap of its request
+    llm_excluded: bool = False  # robots.txt names an AI crawler: never send this body (or anything parsed from it) to a model
 
     @property
     def text(self) -> str:
@@ -176,12 +178,9 @@ def _with_params(url: str, params: dict | None) -> str:
 
 class PoliteFetcher:
     def __init__(self, purpose: str, town_id: str | None = None, *, session=None, ledger: Ledger | None = None,
-                 cache_dir: Path | None = CACHE_DIR, ua: str | None = None, clock=None, sleep=time.sleep, robots_mode: str = "strict"):
+                 cache_dir: Path | None = CACHE_DIR, ua: str | None = None, clock=None, sleep=time.sleep):
         if purpose not in PURPOSES:
             raise ValueError(f"purpose {purpose!r}: expected one of {', '.join(PURPOSES)}")
-        if robots_mode not in _robots.MODES:
-            raise ValueError(f"robots_mode {robots_mode!r}: expected one of {', '.join(_robots.MODES)}")
-        self.robots_mode = robots_mode
         if session is None:
             import requests
             session = requests.Session()
@@ -196,6 +195,7 @@ class PoliteFetcher:
         self._delay: dict[str, float] = {}
         self._over_cap: dict[str, float] = {}  # host -> its Crawl-delay above MAX_CRAWL_DELAY_S
         self._used: set[str] = set()  # over-cap hosts that already had their one request this run
+        self._llm_excluded: dict[str, dict] = {}  # url -> {"bot", "rule"}: an AI crawler's group disallows its path
         self._where = "ci" if os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get("GITHUB_RUN_ID") else "local"
 
     # --- the one public call ------------------------------------------------------------------------------------------------
@@ -218,12 +218,14 @@ class PoliteFetcher:
             verdict = self._robots_verdict(url)
             if not verdict.ok:
                 return Refused(url, verdict.reason)
+        excluded = url in self._llm_excluded
         if self.purpose in DAY_LIMITED:
             earlier = self._fetched_today(url)
             if earlier is not None:
                 cached = self._cached(url)
                 cut = cached is not None and cached.cut and cap > len(cached.body)
                 if cached is not None and not cut:
+                    cached.llm_excluded = excluded
                     return cached
                 if not cut:
                     return Refused(url, f"already fetched today at {earlier['utc'][11:16]} UTC ({earlier['purpose']}, {earlier['where']}), "
@@ -234,7 +236,10 @@ class PoliteFetcher:
                 return Refused(url, f"robots.txt Crawl-delay {self._over_cap[host]:g} s is above the {MAX_CRAWL_DELAY_S:g} s cap and is "
                                     "never shortened: one request per host per run, already made")
             self._used.add(host)
-        return self._request(url, domain, self.purpose, max_bytes=cap)
+        got = self._request(url, domain, self.purpose, max_bytes=cap)
+        if isinstance(got, Fetched):
+            got.llm_excluded = excluded
+        return got
 
     # --- robots -------------------------------------------------------------------------------------------------------------
     def _robots_verdict(self, url: str) -> _robots.Verdict:
@@ -247,7 +252,9 @@ class PoliteFetcher:
             else:
                 self._robots[origin] = (got.status, got.text if got.status == 200 else "")
         status, body = self._robots[origin]
-        verdict = _robots.verdict(status, body, url, mode=self.robots_mode)
+        verdict = _robots.verdict(status, body, url)
+        if verdict.llm_excluded:
+            self._llm_excluded[url] = {"bot": verdict.ai_bot, "rule": verdict.ai_rule}
         if verdict.crawl_delay and verdict.crawl_delay > MAX_CRAWL_DELAY_S:
             self._over_cap[parts.netloc.lower()] = verdict.crawl_delay
         elif verdict.crawl_delay:
@@ -274,7 +281,8 @@ class PoliteFetcher:
     def _log(self, url: str, domain: str, purpose: str, status, body: bytes, note: str = "") -> None:
         self.ledger.append({"utc": self._clock().isoformat(timespec="seconds"), "url": url, "domain": domain, "purpose": purpose,
                             "town_id": self.town_id, "where": self._where, "status": status, "bytes": len(body),
-                            "sha256": _sha(body) if body else None, **({"note": note} if note else {})})
+                            "sha256": _sha(body) if body else None, **({"note": note} if note else {}),
+                            **({"llm_excluded": self._llm_excluded[url]} if url in self._llm_excluded else {})})
 
     # --- day cache ----------------------------------------------------------------------------------------------------------
     def _cache_path(self, url: str) -> Path | None:

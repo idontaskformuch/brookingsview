@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import re
 
-from scrapers import robots
 from sports import adapters, registry, venues
 
 NON_ADAPTER_SOURCES = ("manual_verified", "submissions")
@@ -18,7 +17,7 @@ REGISTER_STATUSES = ("link", "awaiting_written_answer", "register_only")
 _REGISTER = {"id", "name", "sport", "gender", "group", "status", "link", "waiting_on", "home_venue", "note"}
 _VENUE = {"lat", "lon", "town", "source", "fetched"}
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-_SOURCE = {"adapter", "program", "sport", "level", "gender", "url", "params", "robots_mode", "max_crawl_delay", "note"}
+_SOURCE = {"adapter", "program", "sport", "level", "gender", "url", "params", "max_crawl_delay", "note"}
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
@@ -154,8 +153,6 @@ def validate_sports_config(cfg: dict) -> list[str]:
             bad(f"{where}.level: unknown level {src['level']!r}")
         if "gender" in src and src["gender"] not in registry.genders():
             bad(f"{where}.gender: unknown gender {src['gender']!r}")
-        if "robots_mode" in src and src["robots_mode"] not in robots.MODES:
-            bad(f"{where}.robots_mode: expected one of {', '.join(robots.MODES)}")
         mcd = src.get("max_crawl_delay")
         if "max_crawl_delay" in src and (isinstance(mcd, bool) or not isinstance(mcd, (int, float)) or mcd <= 0):
             bad(f"{where}.max_crawl_delay: must be a positive number of seconds")

@@ -152,8 +152,9 @@ def main(argv: list[str] | None = None) -> int:
             if args.town and town["town_id"] != args.town:
                 continue
             extract = None
-            # every request through polite_fetch: strict robots (a model reads the page text), the fetch log, one fetch per URL per UTC day (owner 2026-11-13)
-            fetcher = PoliteFetcher("register" if args.apply else "dryrun", town["town_id"], robots_mode="strict")
+            # every request through polite_fetch: robots (an llm_excluded page never reaches the model, check_venue), the fetch log,
+            # one fetch per URL per UTC day (owner 2026-11-13, one robots mode 2026-11-18)
+            fetcher = PoliteFetcher("register" if args.apply else "dryrun", town["town_id"])
             for venue in town["venues"]:
                 if args.venue and venue["venue_id"] != args.venue:
                     continue

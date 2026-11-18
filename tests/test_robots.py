@@ -1,7 +1,8 @@
-"""scrapers/robots.py: standard (RFC 9309, our user-agent group else `*`) vs strict (also excluded when an AI crawler is named).
+"""scrapers/robots.py: one mode (owner 2026-11-18): RFC 9309, our user-agent group else `*`. A URL is llm_excluded when an AI crawler's own
+group disallows its path; merely naming an AI crawler is not enough (owner 2026-11-18, second decision). Neither stops the fetch.
 
-Fixtures are the live robots.txt files fetched 2026-11-08 with our own user-agent. The strict column is the verdict the old
-robots_verdict gave (it refused on any AI-crawler mention); the standard column is the new default.
+Fixtures are live robots.txt files fetched with our own user-agent (2026-11-08; downtownbrookings 2026-11-18). The `old_strict` column
+is the verdict of the removed strict mode (it refused on any AI-crawler mention), kept so the difference stays visible.
 """
 from pathlib import Path
 
@@ -18,20 +19,44 @@ def read(name: str) -> str:
     return (FX / f"{name}.txt").read_text(encoding="utf-8")
 
 
-@pytest.mark.parametrize("fixture,url,standard,strict", [
-    ("gojacks", "https://gojacks.com/sports/football/schedule/text", True, False),   # names CCBot etc.; `*` allows
-    ("gojacks", "https://gojacks.com/services/schedule.ashx", False, False),         # `*` disallows /services/
-    ("gojacks", "https://gojacks.com/images/logo.jpg", False, False),
-    ("sdstate", "https://sdstate.edu/event-calendar", True, False),                  # names GPTBot; `*` allows
-    ("visitbrookings", "https://visitbrookingssd.com/events/?ical=1", True, False),  # names GPTBot; ?ical=1 not blocked
-    ("visitbrookings", "https://visitbrookingssd.com/events/x/page/2", False, False),
-    ("sdhsaa", "https://www.sdhsaa.com/sports/football", True, True),
-    ("sdhsaa", "https://www.sdhsaa.com/sports/football?year=2026", False, False),    # Disallow: /*? (wildcard)
+def _old_strict(text: str, url: str) -> bool:
+    """The removed strict mode: refused whenever an AI crawler was named anywhere, else the same verdict."""
+    named = any(any(b in a for b in robots.AI_BOT_TOKENS) for g in robots._groups(text) for a in g.agents)
+    return not named and robots.verdict(200, text, url).ok
+
+
+@pytest.mark.parametrize("fixture,url,ok,ai_bot,ai_rule,old_strict", [
+    ("gojacks", "https://gojacks.com/sports/football/schedule/text", True, "ccbot", "Disallow: /", False),   # `*` allows
+    ("gojacks", "https://gojacks.com/services/schedule.ashx", False, "ccbot", "Disallow: /", False),         # `*` disallows /services/
+    ("gojacks", "https://gojacks.com/images/logo.jpg", False, "ccbot", "Disallow: /", False),
+    # sdstate.edu (refetched 2026-11-18, unchanged): GPTBot and ClaudeBot/anthropic-ai only get /admissions/ /academics/ /news/
+    # /programs/ ..., Disallow: / for the rest; Bytespider Disallow: /. The events are open to us and llm_excluded.
+    ("sdstate", "https://sdstate.edu/event-calendar", True, "gptbot", "Disallow: /", False),
+    ("sdstate", "https://www.sdstate.edu/events/2026/12/santa-visits-mccrory-gardens", True, "gptbot", "Disallow: /", False),
+    ("sdstate", "https://www.sdstate.edu/news/x", True, "bytespider", "Disallow: /", False),  # GPTBot may read /news/, Bytespider not
+    # visitbrookingssd.com: only GPTBot is kept off /events/ (owner 2026-11-18)
+    ("visitbrookings", "https://visitbrookingssd.com/events/?ical=1", True, "gptbot", "Disallow: /events/", False),
+    ("visitbrookings", "https://visitbrookingssd.com/event/festival-of-lights-pre-parade-party-3/", True, None, None, False),  # /event/ != /events/
+    ("visitbrookings", "https://visitbrookingssd.com/events/x/page/2", False, "gptbot", "Disallow: /events/", False),
+    # downtownbrookings.com (Squarespace default): the AI crawlers share the `*` rules, so a content page is NOT llm_excluded
+    ("downtownbrookings", "https://www.downtownbrookings.com/festival-of-lights", True, None, None, False),
+    ("downtownbrookings", "https://www.downtownbrookings.com/search", False, "anthropic-ai", "Disallow: /search", False),
+    ("sdhsaa", "https://www.sdhsaa.com/sports/football", True, None, None, True),
+    ("sdhsaa", "https://www.sdhsaa.com/sports/football?year=2026", False, None, None, False),    # Disallow: /*? (wildcard)
 ])
-def test_live_fixtures_before_and_after(fixture, url, standard, strict):
+def test_live_fixtures_one_mode_and_the_old_strict_column(fixture, url, ok, ai_bot, ai_rule, old_strict):
     text = read(fixture)
-    assert robots.verdict(200, text, url).ok is standard
-    assert robots.verdict(200, text, url, mode="strict").ok is strict
+    v = robots.verdict(200, text, url)
+    assert v.ok is ok
+    assert (v.ai_bot, v.ai_rule) == (ai_bot, ai_rule)
+    assert v.llm_excluded is (ai_bot is not None)
+    assert robots.ai_disallowed(text, url) == ((ai_bot, ai_rule) if ai_bot else None)
+    assert _old_strict(text, url) is old_strict
+
+
+def test_there_is_no_mode_argument_any_more():
+    with pytest.raises(TypeError):
+        robots.verdict(200, "", "https://x.example/a", mode="strict")  # type: ignore[call-arg]
 
 
 def test_standard_names_the_group_that_applies_to_us():
@@ -40,10 +65,13 @@ def test_standard_names_the_group_that_applies_to_us():
     assert not robots.verdict(200, text, "https://x.example/private/a").ok
 
 
-def test_other_bots_named_gives_no_verdict_in_standard():
+def test_other_bots_give_no_verdict_and_only_an_ai_disallow_marks_llm_excluded():
     for bot in ("GPTBot", "ClaudeBot", "CCBot", "Google-Extended", "Googlebot"):
         assert robots.verdict(200, f"User-agent: {bot}\nDisallow: /\n", "https://x.example/a").ok
-    assert not robots.verdict(200, "User-agent: GPTBot\nAllow: /\n", "https://x.example/a", mode="strict").ok
+    assert robots.verdict(200, "User-agent: GPTBot\nDisallow: /\n", "https://x.example/a").llm_excluded
+    assert not robots.verdict(200, "User-agent: GPTBot\nAllow: /\n", "https://x.example/a").llm_excluded       # named, not disallowed
+    assert not robots.verdict(200, "User-agent: GPTBot\nDisallow: /b\n", "https://x.example/a").llm_excluded  # other path
+    assert not robots.verdict(200, "User-agent: Googlebot\nDisallow: /\n", "https://x.example/a").llm_excluded
 
 
 def test_star_disallow_all_blocks_and_ours_overrides():
@@ -66,11 +94,10 @@ def test_wildcard_and_end_anchor():
     assert not robots.verdict(200, text, "https://x.example/tmp123/x").ok
 
 
-def test_status_handling_is_unchanged_in_both_modes():
-    for mode in robots.MODES:
-        assert robots.verdict(404, None, "https://x.example/", mode=mode).ok
-        for status in (401, 403, 429, 500, None):
-            assert not robots.verdict(status, "", "https://x.example/", mode=mode).ok
+def test_status_handling():
+    assert robots.verdict(404, None, "https://x.example/").ok
+    for status in (401, 403, 429, 500, None):
+        assert not robots.verdict(status, "", "https://x.example/").ok
 
 
 def test_crawl_delay_comes_from_the_applicable_group():
@@ -81,10 +108,6 @@ def test_crawl_delay_comes_from_the_applicable_group():
     assert robots.crawl_delay(read("gojacks")) == 30.0
     assert check.crawl_delay(read("sdhsaa")) == 3.0
 
-
-def test_unknown_mode_is_an_error():
-    with pytest.raises(ValueError):
-        robots.verdict(200, "", "https://x.example/", mode="loose")
 
 
 def test_user_agent_identifies_site_and_contact_and_is_not_an_ai_crawler(monkeypatch):

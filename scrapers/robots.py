@@ -1,10 +1,12 @@
 """robots.txt verdicts (RFC 9309 semantics) for every pipeline that fetches a third-party page.
 
-`standard` (default): pick the group that names our product token (`ViewMediaBot`), else the `*` group, and test the URL path against that
-group's rules (longest matching pattern wins, Allow wins a tie, `*` and trailing `$` work in patterns). Other crawlers being named, AI
-crawlers included, says nothing about us and gives no verdict.
-`strict` (opt-in per source, e.g. `robots_mode: "strict"` in a sports source; always used by the evening register by owner decision
-2026-10-28): standard, plus the source is excluded when its robots.txt names an AI crawler anywhere.
+One mode for the whole codebase (owner 2026-11-18; the old opt-in `strict` mode is gone): pick the group that names our product token
+(`ViewMediaBot`), else the `*` group, and test the URL path against that group's rules (longest matching pattern wins, Allow wins a tie,
+`*` and trailing `$` work in patterns). A Disallow in that group is a no; Crawl-delay is respected (polite_fetch).
+When the URL is allowed for us but an AI crawler's own group DISALLOWS its path, the URL is `llm_excluded` (owner 2026-11-18): its
+structured facts (title, time, place, link) may be used, its content must NEVER go through a language model. Merely naming an AI crawler
+is not enough (downtownbrookings.com names them all with the same rules as `*`). polite_fetch carries the mark, with the bot and the rule,
+on every Fetched and in the fetch log; the evening register refuses to send such a page to its model.
 
 An unreachable robots.txt, 401/403/5xx is a no (never worked around, CLAUDE.md rule 13); 404 = no robots.txt = allowed.
 """
@@ -18,8 +20,6 @@ from scrapers.user_agent import BOT_NAME
 
 AI_BOT_TOKENS = ("gptbot", "chatgpt-user", "oai-searchbot", "claudebot", "claude-searchbot", "claude-user", "anthropic-ai",
                  "ccbot", "google-extended", "perplexitybot", "bytespider", "cohere-ai")
-MODES = ("standard", "strict")
-DEFAULT_MODE = "standard"
 
 
 @dataclass
@@ -27,6 +27,14 @@ class Verdict:
     ok: bool
     reason: str = ""
     crawl_delay: float | None = None
+    # The AI crawler whose own group disallows this URL's path (lower case), and that group's deciding rule ("Disallow: /events/").
+    # Set even when `ok`: this URL's content must never reach a model. None when no AI crawler's group disallows the path.
+    ai_bot: str | None = None
+    ai_rule: str | None = None
+
+    @property
+    def llm_excluded(self) -> bool:
+        return self.ai_bot is not None
 
 
 @dataclass
@@ -75,14 +83,25 @@ def _pattern(path_pattern: str) -> re.Pattern[str]:
     return re.compile("".join(".*" if c == "*" else re.escape(c) for c in body) + ("$" if anchored else ""))
 
 
-def _allowed(rules: list[tuple[bool, str]], target: str) -> bool:
-    best: tuple[int, bool] | None = None  # (pattern length, allow)
+def _deciding(rules: list[tuple[bool, str]], target: str) -> tuple[bool, str] | None:
+    """The rule that decides `target` (longest match, Allow wins a tie): (allow, pattern), or None when no rule matches."""
+    best: tuple[int, bool, str] | None = None  # (pattern length, allow, pattern)
     for allow, pat in rules:
         if _pattern(pat).match(target):
-            cand = (len(pat), allow)
+            cand = (len(pat), allow, pat)
             if best is None or cand[0] > best[0] or (cand[0] == best[0] and allow):
                 best = cand
-    return True if best is None else best[1]
+    return None if best is None else (best[1], best[2])
+
+
+def _allowed(rules: list[tuple[bool, str]], target: str) -> bool:
+    d = _deciding(rules, target)
+    return True if d is None else d[0]
+
+
+def _target(url: str) -> str:
+    parts = urlparse(url)
+    return (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
 
 
 def crawl_delay(text: str, token: str = BOT_NAME) -> float | None:
@@ -93,10 +112,22 @@ def crawl_delay(text: str, token: str = BOT_NAME) -> float | None:
     return None
 
 
-def verdict(status: int | None, text: str | None, url: str, *, mode: str = DEFAULT_MODE, token: str = BOT_NAME) -> Verdict:
+def ai_disallowed(text: str | None, url: str) -> tuple[str, str] | None:
+    """(AI crawler token, deciding rule) when an AI crawler's own group in this robots.txt disallows `url`'s path, else None.
+    Groups are read as RFC 9309 says a crawler reads them: the group(s) naming that crawler, not `*`."""
+    target = _target(url)
+    for g in _groups(text or ""):
+        for agent in g.agents:
+            if not any(b in agent for b in AI_BOT_TOKENS):
+                continue
+            d = _deciding(g.rules, target)
+            if d is not None and not d[0]:
+                return agent, f"Disallow: {d[1]}"
+    return None
+
+
+def verdict(status: int | None, text: str | None, url: str, *, token: str = BOT_NAME) -> Verdict:
     """`status` None = no answer at all (timeout, DNS)."""
-    if mode not in MODES:
-        raise ValueError(f"robots mode {mode!r}: expected one of {', '.join(MODES)}")
     if status is None:
         return Verdict(False, "robots.txt unreachable (no answer): skipped")
     if status == 404:
@@ -105,15 +136,12 @@ def verdict(status: int | None, text: str | None, url: str, *, mode: str = DEFAU
         return Verdict(False, f"robots.txt answered {status}: skipped")
     body = text or ""
     groups = _groups(body)
-    if mode == "strict":
-        for g in groups:
-            hit = next((a for a in g.agents if any(b in a for b in AI_BOT_TOKENS)), None)
-            if hit:
-                return Verdict(False, f"robots.txt names the AI crawler {hit} (strict mode)")
+    hit = ai_disallowed(body, url)
+    ai_bot, ai_rule = hit if hit else (None, None)
     parts = urlparse(url)
-    target = (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
+    target = _target(url)
     selected = _select(groups, token.lower())
     delay = next((g.delay for g in selected if g.delay is not None), None)
     if not _allowed([r for g in selected for r in g.rules], target):
-        return Verdict(False, f"robots.txt disallows {parts.path or '/'} for {token}", delay)
-    return Verdict(True, "robots.txt ok", delay)
+        return Verdict(False, f"robots.txt disallows {parts.path or '/'} for {token}", delay, ai_bot, ai_rule)
+    return Verdict(True, "robots.txt ok" + (f" ({ai_bot}: {ai_rule}, llm_excluded)" if ai_bot else ""), delay, ai_bot, ai_rule)

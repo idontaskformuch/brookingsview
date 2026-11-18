@@ -290,11 +290,11 @@ def test_apply_migration_refuses_non_additive(stmt):
     assert apply_migration.check_additive(stmt + ";")
 
 
-def test_robots_mode_is_validated(fake_adapter):
+def test_robots_mode_is_no_longer_a_source_key(fake_adapter):
+    """One robots mode for the whole codebase (owner 2026-11-18): a source that still sets one is a config error."""
     cfg = block()
-    cfg["sports"]["sources"][0]["robots_mode"] = "strict"
     assert validate_sports_config(cfg) == []
-    cfg["sports"]["sources"][0]["robots_mode"] = "loose"
+    cfg["sports"]["sources"][0]["robots_mode"] = "strict"
     assert any("robots_mode" in m for m in validate_sports_config(cfg))
 
 

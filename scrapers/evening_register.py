@@ -36,8 +36,12 @@ GROUPS = ("Live music", "Comedy & shows", "Quiz & pub nights", "Clubs & late")
 # --- robots -----------------------------------------------------------------------------------------------------------------
 
 def robots_verdict(status: int | None, text: str | None, url: str) -> Verdict:
-    """The evening register keeps the owner's strict rule (2026-10-28): a venue naming any AI crawler is excluded."""
-    return _robots.verdict(status, text, url, mode="strict")
+    """The one robots mode (scrapers/robots.py). The register reads page text with a model, so a venue whose robots.txt names an AI
+    crawler is still skipped: check_venue never sends an llm_excluded page to the model (owner 2026-10-28 and 2026-11-18)."""
+    return _robots.verdict(status, text, url)
+
+
+LLM_EXCLUDED_REASON = "robots.txt names an AI crawler (llm_excluded): the page is never sent to a model"
 
 
 # --- page text + identity ---------------------------------------------------------------------------------------------------
@@ -545,7 +549,8 @@ def _registrable(host: str) -> str:
 def check_venue(venue: dict, fetcher: PoliteFetcher, extract: Callable[[str, str], str], today: date,
                 detail_allowed: Callable[[str], bool] = lambda url: True) -> VenueResult:
     """robots -> fetch -> identity -> extract -> validate. `extract(system, page_text)` returns the model's raw reply.
-    Every request goes through `fetcher` (scrapers/polite_fetch.py: strict robots, the fetch log, one fetch per URL per day).
+    Every request goes through `fetcher` (scrapers/polite_fetch.py: robots, the fetch log, one fetch per URL per day). A page from an
+    llm_excluded host is skipped before the model sees it, the main page and every detail page alike.
 
     Detail pages (owner 2026-10-29): only for list entries that lack a time, at most MAX_DETAIL_PAGES per venue, one fetch per URL per
     day (`detail_allowed(url)` says whether it may be fetched), robots and the identity check apply to each."""
@@ -556,6 +561,8 @@ def check_venue(venue: dict, fetcher: PoliteFetcher, extract: Callable[[str, str
             return VenueResult(vid, "flagged", got.reason)
         return VenueResult(vid, "skipped", got.reason)
     status, html, final = got.status, got.text, got.final_url
+    if got.llm_excluded:
+        return VenueResult(vid, "skipped", LLM_EXCLUDED_REASON, final_url=final)
     if status != 200:
         return VenueResult(vid, "skipped", f"page answered {status if status else 'nothing'}", final_url=final)
     aliases = tuple(venue.get("aliases", ()))
@@ -578,6 +585,9 @@ def check_venue(venue: dict, fetcher: PoliteFetcher, extract: Callable[[str, str
             continue
         dstatus, dhtml, dfinal = dgot.status, dgot.text, dgot.final_url
         res.detail_urls.append(durl)
+        if dgot.llm_excluded:
+            res.notes.append(f"detail page skipped ({LLM_EXCLUDED_REASON}): {durl}")
+            continue
         if dstatus != 200:
             res.notes.append(f"detail page unusable ({dstatus}): {durl}")
             continue

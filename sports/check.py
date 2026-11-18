@@ -3,7 +3,7 @@
     python -m sports.check --town broomfield_co
     python -m sports.check --validate-all        # config validation only, for every town (exit 1 on any problem)
 
-robots_mode per source: "standard" (default, RFC 9309 group for our user-agent, else `*`) or "strict" (also excluded when an AI crawler is named).
+robots: one mode for every source (scrapers/robots.py: RFC 9309 group for our user-agent, else `*`; owner 2026-11-18).
 A source whose robots.txt disallows us (or answers 403/anything but 200/404) is reported as skipped and its adapter is NOT called.
 Per CLAUDE.md rule 13 a 403 is a no; there is no retry with another identity.
 """
@@ -65,7 +65,7 @@ def check_source(source: dict, town_id: str, *, get=default_get, sleep=time.slee
     report = SourceReport(label=label)
     params = adapters.merged_params(source)
     url = params.get("url")
-    http = PoliteHttp(user_agent(town_id), mode=source.get("robots_mode", robots.DEFAULT_MODE),
+    http = PoliteHttp(user_agent(town_id),
                       max_crawl_delay=source.get("max_crawl_delay", DEFAULT_MAX_CRAWL_DELAY), get=get, sleep=sleep)
     params["_http"] = http
     if url:

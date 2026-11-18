@@ -85,7 +85,7 @@ def fetch(params: dict) -> list[NormalizedEvent]:
     provider = params.get("provider")
     if provider not in ("gojacks", "visitbrookings"):
         raise ValueError(f"internal: unknown provider {provider!r}")
-    http = params.get("_http") or PoliteHttp(mode=params.get("robots_mode", "standard"), max_crawl_delay=params.get("max_crawl_delay", 60))
+    http = params.get("_http") or PoliteHttp(max_crawl_delay=params.get("max_crawl_delay", 60))
     if provider == "visitbrookings":
         return visitbrookings.fetch(params, http)
     root = params["url"].rstrip("/")

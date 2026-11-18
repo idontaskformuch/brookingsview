@@ -43,23 +43,29 @@ def urls(sess):
     return [u for u, _ in sess.calls]
 
 
-def test_strict_robots_a_real_robots_txt_naming_gptbot_refuses_the_whole_site():
-    # tests/fixtures/robots/visitbrookings.txt verbatim: GPTBot is only kept off /events/, strict mode excludes the site
-    f, sess = fetcher({ROBOTS_URL: (200, (ROBOTS / "visitbrookings.txt").read_text(encoding="utf-8")), URL: (200, "<p>x</p>")})
-    got = f.get(URL)
-    assert isinstance(got, pf.Refused) and "gptbot" in got.reason.lower()
-    assert urls(sess) == [ROBOTS_URL]
+def test_a_real_robots_txt_naming_gptbot_lets_us_in_and_marks_only_the_disallowed_path():
+    # tests/fixtures/robots/visitbrookings.txt verbatim: GPTBot is only kept off /events/; our group is `*` (owner 2026-11-18)
+    body = (ROBOTS / "visitbrookings.txt").read_text(encoding="utf-8")
+    events = "https://venue.example/events/?ical=1"
+    f, sess = fetcher({ROBOTS_URL: (200, body), URL: (200, "<p>x</p>"), events: (200, "BEGIN:VCALENDAR")})
+    got = f.get(URL)  # /whats-on: GPTBot is named but not kept off it
+    assert isinstance(got, pf.Fetched) and not got.llm_excluded
+    ev = f.get(events)
+    assert isinstance(ev, pf.Fetched) and ev.llm_excluded
+    assert urls(sess) == [ROBOTS_URL, URL, events]
 
 
-def test_strict_robots_anthropic_ai_refuses():
+def test_an_anthropic_ai_group_marks_llm_excluded_and_a_disallow_for_us_still_stops():
     # tests/fixtures/robots/sdhsaa.txt verbatim + ONE changed field: an anthropic-ai group (the token 4 Noses' robots.txt named, 13 Nov)
     body = (ROBOTS / "sdhsaa.txt").read_text(encoding="utf-8") + "\nUser-agent: anthropic-ai\nDisallow: /\n"
-    f, sess = fetcher({ROBOTS_URL: (200, body), URL: (200, "<p>x</p>")})
+    f, _ = fetcher({ROBOTS_URL: (200, body), URL: (200, "<p>x</p>")})
     got = f.get(URL)
-    assert isinstance(got, pf.Refused) and "anthropic-ai" in got.reason
-    assert urls(sess) == [ROBOTS_URL]
+    assert isinstance(got, pf.Fetched) and got.llm_excluded
     ok, _ = fetcher({ROBOTS_URL: (200, (ROBOTS / "sdhsaa.txt").read_text(encoding="utf-8")), URL: (200, "<p>x</p>")})
-    assert isinstance(ok.get(URL), pf.Fetched)
+    plain = ok.get(URL)
+    assert isinstance(plain, pf.Fetched) and not plain.llm_excluded
+    no, sess = fetcher({ROBOTS_URL: (200, "User-agent: anthropic-ai\nDisallow:\n\nUser-agent: *\nDisallow: /\n"), URL: (200, "<p>x</p>")})
+    assert isinstance(no.get(URL), pf.Refused) and urls(sess) == [ROBOTS_URL]
 
 
 def test_robots_is_read_once_per_origin_and_every_request_uses_the_one_ua():
@@ -193,7 +199,7 @@ UA_BROOKINGS = {"User-Agent": "ViewMediaBot (+https://brookingsview.com/contact)
 
 
 def _patch(monkeypatch, routes, ledger):
-    """event_sources' own _fetcher (its robots_mode included), with a fake session, an in-memory log and no waiting."""
+    """event_sources' own _fetcher, with a fake session, an in-memory log and no waiting."""
     from scrapers import event_sources as es
     sess = FakeSession(routes)
     real = pf.PoliteFetcher
@@ -202,11 +208,11 @@ def _patch(monkeypatch, routes, ledger):
     return es, sess
 
 
-def test_event_sources_use_standard_mode_and_the_register_strict(monkeypatch):
+def test_one_robots_mode_for_every_caller(monkeypatch):
     es, _ = _patch(monkeypatch, {}, pf.MemoryLedger())
-    assert es._fetcher(CHAMBER, UA_BROOKINGS).robots_mode == "standard"
     assert es._fetcher(CHAMBER, UA_BROOKINGS).town_id == "brookings_sd"
-    assert pf.PoliteFetcher("register", "glasgow", session=FakeSession({}), ledger=pf.MemoryLedger()).robots_mode == "strict"
+    assert not hasattr(es._fetcher(CHAMBER, UA_BROOKINGS), "robots_mode")
+    assert not hasattr(pf.PoliteFetcher("register", "glasgow", session=FakeSession({}), ledger=pf.MemoryLedger()), "robots_mode")
 
 
 def test_a_feed_whose_robots_names_an_ai_crawler_is_still_read_in_standard_mode(monkeypatch):
@@ -215,6 +221,25 @@ def test_a_feed_whose_robots_names_an_ai_crawler_is_still_read_in_standard_mode(
     es, sess = _patch(monkeypatch, {"https://visitbrookingssd.com/robots.txt": (200, body), CHAMBER["url"]: (200, "BEGIN:VCALENDAR")}, pf.MemoryLedger())
     assert es._fetch_ical(CHAMBER, UA_BROOKINGS) == b"BEGIN:VCALENDAR"
     assert CHAMBER["url"] in urls(sess)
+
+
+def test_llm_excluded_is_carried_on_the_fetch_and_in_the_log_with_bot_and_rule():
+    """visitbrookings.txt verbatim: /events/?ical=1 is llm_excluded (GPTBot, "Disallow: /events/"), on the Fetched and in the fetch log.
+    downtownbrookings.txt verbatim: the AI crawlers share the `*` rules, so /festival-of-lights is fetched and NOT marked."""
+    vb = (ROBOTS / "visitbrookings.txt").read_text(encoding="utf-8")
+    dtb = (ROBOTS / "downtownbrookings.txt").read_text(encoding="utf-8")
+    ical = "https://visitbrookingssd.com/events/?ical=1"
+    page = "https://www.downtownbrookings.com/festival-of-lights"
+    ledger = pf.MemoryLedger()
+    sess = FakeSession({"https://visitbrookingssd.com/robots.txt": (200, vb), ical: (200, "BEGIN:VCALENDAR"),
+                        "https://www.downtownbrookings.com/robots.txt": (200, dtb), page: (200, "<h1>Festival of Lights</h1>")})
+    f = pf.PoliteFetcher("evidence", "brookings_sd", session=sess, ledger=ledger, cache_dir=None, sleep=lambda s: None)
+    got = f.get(ical)
+    assert isinstance(got, pf.Fetched) and got.status == 200 and got.llm_excluded
+    assert [e.get("llm_excluded") for e in ledger.entries() if e["url"] == ical] == [{"bot": "gptbot", "rule": "Disallow: /events/"}]
+    other = f.get(page)
+    assert isinstance(other, pf.Fetched) and other.status == 200 and not other.llm_excluded
+    assert all("llm_excluded" not in e for e in ledger.entries() if "downtownbrookings" in e["url"])
 
 
 def test_a_disallow_in_standard_mode_always_stops_a_feed(monkeypatch):
@@ -322,6 +347,6 @@ def test_max_bytes_never_lowers_the_cap_and_an_uncut_copy_is_reused():
     assert isinstance(g.get(URL, max_bytes=5_000_000), pf.Refused)  # already fetched today, no cut copy: the day limit holds
 
 
-def test_unknown_robots_mode_raises():
-    with pytest.raises(ValueError):
-        pf.PoliteFetcher("source", session=FakeSession({}), ledger=pf.MemoryLedger(), robots_mode="lenient")
+def test_robots_mode_argument_is_gone():
+    with pytest.raises(TypeError):
+        pf.PoliteFetcher("source", session=FakeSession({}), ledger=pf.MemoryLedger(), robots_mode="strict")  # type: ignore[call-arg]

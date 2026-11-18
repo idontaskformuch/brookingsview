@@ -13,24 +13,29 @@ URL = "https://venue.example/whats-on"
 
 # --- robots ---------------------------------------------------------------------------------------------------------------
 
-@pytest.mark.parametrize("status,text,ok", [
-    (404, None, True),
-    (200, "User-agent: *\nDisallow: /admin\n", True),
-    (200, "", True),
-    (200, "User-agent: *\nDisallow: /\n", False),
-    (200, "User-agent: GPTBot\nDisallow: /\n\nUser-agent: *\nDisallow:\n", False),
-    (200, "User-agent: *\nDisallow:\n\nUser-agent: anthropic-ai\nDisallow: /\n", False),
-    (200, "User-agent: ClaudeBot\nAllow: /\n", False),  # naming the crawler at all excludes the venue
-    (200, "User-agent: Google-Extended\nDisallow: /\n", False),
-    (200, "User-agent: ViewMediaBot\nDisallow: /\n", False),
-    (200, "User-agent: *\nDisallow: /whats-on\n", False),
-    (200, "User-agent: Googlebot\nDisallow: /\n\nUser-agent: *\nDisallow: /private\n", True),
-    (403, "forbidden", False),
-    (500, "", False),
-    (None, None, False),
+@pytest.mark.parametrize("status,text,ok,llm_excluded", [
+    (404, None, True, False),
+    (200, "User-agent: *\nDisallow: /admin\n", True, False),
+    (200, "", True, False),
+    (200, "User-agent: *\nDisallow: /\n", False, False),
+    # One robots mode (owner 2026-11-18): an AI crawler's own Disallow of the path no longer stops the fetch; it marks the URL
+    # llm_excluded, and
+    # check_venue never sends such a page to the model (test_flow_llm_excluded_page_never_reaches_the_model).
+    (200, "User-agent: GPTBot\nDisallow: /\n\nUser-agent: *\nDisallow:\n", True, True),
+    (200, "User-agent: *\nDisallow:\n\nUser-agent: anthropic-ai\nDisallow: /\n", True, True),
+    (200, "User-agent: ClaudeBot\nAllow: /\n", True, False),  # named but not disallowed: not llm_excluded (owner 2026-11-18)
+    (200, "User-agent: Google-Extended\nDisallow: /\n", True, True),
+    (200, "User-agent: ViewMediaBot\nDisallow: /\n", False, False),
+    (200, "User-agent: *\nDisallow: /whats-on\n", False, False),
+    (200, "User-agent: Googlebot\nDisallow: /\n\nUser-agent: *\nDisallow: /private\n", True, False),
+    (403, "forbidden", False, False),
+    (500, "", False, False),
+    (None, None, False, False),
 ])
-def test_robots_verdict(status, text, ok):
-    assert er.robots_verdict(status, text, URL).ok is ok
+def test_robots_verdict(status, text, ok, llm_excluded):
+    v = er.robots_verdict(status, text, URL)
+    assert v.ok is ok
+    assert v.llm_excluded is llm_excluded
 
 
 def test_star_group_disallow_all_only_counts_for_star():
@@ -197,10 +202,12 @@ def test_flow_ok_extracts_and_keeps_rules():
     assert res.status == "ok" and len(res.rules) == 1 and calls
 
 
-def test_flow_robots_names_ai_bot_skips_without_fetching_page():
-    sess = FakeSession({"https://venue.example/robots.txt": (200, "User-agent: GPTBot\nDisallow: /", None)})
+def test_flow_llm_excluded_page_never_reaches_the_model():
+    """robots.txt names an AI crawler (and lets us in): the page may be fetched, but its text never goes to the model."""
+    sess = FakeSession({"https://venue.example/robots.txt": (200, "User-agent: GPTBot\nDisallow: /", None),
+                        URL: (200, page("The Stand Comedy Club", LONG), None)})
     res = er.check_venue(VENUE, fx(sess), lambda s, t: pytest.fail("model must not run"), TODAY)
-    assert res.status == "skipped" and sess.calls == ["https://venue.example/robots.txt"]
+    assert res.status == "skipped" and res.reason == er.LLM_EXCLUDED_REASON and not res.rules
 
 
 def test_flow_identity_failure_flags_and_never_calls_the_model():

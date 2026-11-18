@@ -1,6 +1,6 @@
 """Polite fetching for sports adapters: robots.txt per host, Crawl-delay honoured in full, no retries around a refusal.
 
-* The robots verdict comes from scrapers.robots (mode per source: "standard" | "strict").
+* The robots verdict comes from scrapers.robots (one mode for the whole codebase, owner 2026-11-18).
 * A Crawl-delay applies in full between any two requests to the same host (the robots.txt fetch counts as one). It is never shortened.
   A delay above `max_crawl_delay` (seconds, default 60) skips the source (SourceSkipped); there is no faster fetch instead.
 * A 401/403/429 answer is a no (CLAUDE.md rule 13): SourceSkipped, no second attempt, no other identity.
@@ -38,10 +38,9 @@ def default_get(url: str, ua: str, headers: dict | None = None) -> tuple[int | N
 
 
 class PoliteHttp:
-    def __init__(self, ua: str | None = None, *, mode: str = robots.DEFAULT_MODE, max_crawl_delay: float = DEFAULT_MAX_CRAWL_DELAY,
+    def __init__(self, ua: str | None = None, *, max_crawl_delay: float = DEFAULT_MAX_CRAWL_DELAY,
                  get=default_get, sleep=time.sleep, clock=time.monotonic) -> None:
         self.ua = ua or user_agent()
-        self.mode = mode
         self.max_crawl_delay = max_crawl_delay
         self._get, self._sleep, self._clock = get, sleep, clock
         self._robots: dict[str, tuple[int | None, str]] = {}
@@ -65,7 +64,7 @@ class PoliteHttp:
             self._robots[host] = self._get(f"{host}/robots.txt", self.ua)
             self._last[host] = self._clock()
         status, text = self._robots[host]
-        verdict = robots.verdict(status, text, url, mode=self.mode)
+        verdict = robots.verdict(status, text, url)
         if not verdict.ok:
             raise SourceSkipped(verdict.reason)
         if verdict.crawl_delay:
