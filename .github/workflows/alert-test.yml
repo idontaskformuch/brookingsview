@@ -1,0 +1,26 @@
+name: alert-test
+# Manual end-to-end test of ALERT_WEBHOOK: sends one alert through the same
+# scrapers/alerts.py send_alert() every scraper/check uses (ntfy plain text,
+# or Slack JSON for any other URL). Red X when the secret is missing or the
+# webhook did not answer 2xx, so a broken alert path is visible here instead
+# of during a real incident. Spec: .claude/specs/alerts-send-alert.md.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    env:
+      ALERT_WEBHOOK:  ${{ secrets.ALERT_WEBHOOK }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+      - run: pip install -r requirements.txt
+      - name: Skicka testlarm
+        run: python -m scrapers.alerts "Testlarm från alert-test.yml" --title "[alla] alert-test"

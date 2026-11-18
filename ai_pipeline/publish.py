@@ -74,6 +74,7 @@ from psycopg.types.json import Jsonb
 
 from ai_pipeline import guardrails, meta_only, uk_guardrails
 from ai_pipeline.format_prompt import format_record, TEMPLATERS
+from scrapers.alerts import send_alert
 from ai_pipeline.venue_registry import load_registry, normalize_venue, queue_for_review, resolve_venue
 from db.db import content_hash
 
@@ -751,21 +752,12 @@ def already_has_a_story(source_type: str, row_id: int, known_meeting_ids: set[in
 
 
 def _alert(town_id: str, msg: str) -> None:
-    """Same fire-and-forget pattern as scrapers/runner.py's and scripts/
-    check_deployed_content.py's own _alert() -- duplicated, not imported,
-    matching this codebase's existing convention of a small per-module
-    helper over a shared one (see e.g. site/server/content-slug-redirects.ts's
-    own comment on the same tradeoff). ALERT_WEBHOOK is already wired into
-    all three *-scrape.yml workflows' env (used by check_source_staleness.py
-    in the same job), so no workflow change is needed for this to fire."""
-    hook = os.environ.get("ALERT_WEBHOOK")
+    """Fire-and-forget via the shared scrapers.alerts.send_alert (ntfy plain
+    text or Slack JSON, never raises). ALERT_WEBHOOK is mapped in every
+    *-scrape.yml workflow's env."""
     full_msg = f"[{town_id}] publish.py gave up retrying a record: {msg}"
     print(f"ALERT: {full_msg}", file=sys.stderr)
-    if hook:
-        try:
-            requests.post(hook, json={"text": full_msg}, timeout=10)
-        except Exception:  # pragma: no cover
-            pass
+    send_alert(full_msg, title=f"[{town_id}] publish gave up on a record")
 
 
 def load_given_up_records(conn, town_id: str) -> dict[tuple[str, str], str | None]:

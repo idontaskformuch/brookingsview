@@ -37,6 +37,8 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from scrapers.alerts import send_alert
+
 # source_key (as used in configs/<town>.json's data_sources) -> (table,
 # column measuring "how recently did this source find something NEW").
 #
@@ -134,7 +136,6 @@ def check_all_sources(conn, cfg: dict) -> list[StalenessResult]:
 
 
 def _alert(stale: list[StalenessResult]) -> None:
-    hook = os.environ.get("ALERT_WEBHOOK")
     lines = []
     for r in stale:
         age = f"{r.age_days:.1f}d" if r.newest is not None else "no rows at all"
@@ -142,12 +143,8 @@ def _alert(stale: list[StalenessResult]) -> None:
                      f"(threshold {r.threshold_days}d)")
     msg = "Source staleness detected:\n" + "\n".join(lines)
     print(f"ALERT: {msg}", file=sys.stderr)
-    if hook:
-        try:
-            import requests
-            requests.post(hook, json={"text": msg}, timeout=10)
-        except Exception:  # pragma: no cover
-            pass
+    towns = ",".join(sorted({r.town_id for r in stale}))
+    send_alert(msg, title=f"[{towns}] source staleness")
 
 
 def report_and_alert(conn, cfg: dict) -> bool:

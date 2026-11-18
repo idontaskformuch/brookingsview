@@ -59,6 +59,7 @@ from datetime import datetime, timedelta, timezone
 import requests
 
 from scrapers.user_agent import user_agent_for_domain
+from scrapers.alerts import send_alert
 
 DEFAULT_BUILT_AT_MAX_HOURS = 14
 
@@ -150,15 +151,9 @@ SIGNATURE_SECTIONS = {
 
 
 def _alert(town_id: str, msg: str) -> None:
-    import os
-    hook = os.environ.get("ALERT_WEBHOOK")
     full_msg = f"[{town_id}] post-deploy content check FAILED: {msg}"
     print(f"ALERT: {full_msg}", file=sys.stderr)
-    if hook:
-        try:
-            requests.post(hook, json={"text": full_msg}, timeout=10)
-        except Exception:  # pragma: no cover
-            pass
+    send_alert(full_msg, title=f"[{town_id}] post-deploy check failed", priority="high")
 
 
 _BUILD_SHA_RE = re.compile(r'<meta\s+name="build-sha"\s+content="([0-9a-f]+)"')

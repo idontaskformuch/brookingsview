@@ -27,6 +27,7 @@ from datetime import datetime, timedelta, timezone
 
 from db.db import get_conn
 from qa.report import report
+from scrapers.alerts import send_alert
 
 MAX_HOURS = 26  # scrape runs twice a day (11:00 and 23:00 UTC): one missed slot is 13 h late, two missed is 26 h
 
@@ -39,15 +40,9 @@ def is_stale(last_ok: datetime | None, now: datetime, max_hours: float = MAX_HOU
     return now - last_ok > timedelta(hours=max_hours)
 
 
-def _alert(msg: str) -> None:
+def _alert(msg: str, towns: list[str]) -> None:
     print(f"ALERT: {msg}", file=sys.stderr)
-    hook = os.environ.get("ALERT_WEBHOOK")
-    if hook:
-        try:
-            import requests
-            requests.post(hook, json={"text": msg}, timeout=10)
-        except Exception:  # pragma: no cover
-            pass
+    send_alert(msg, title=f"[{','.join(towns)}] no recent scrape", priority="high")
 
 
 def _run_url() -> str:
@@ -87,7 +82,8 @@ def main() -> int:
         print(f"  [liveness] issue reporting failed: {exc}", file=sys.stderr)
     if stale:
         _alert("No recent successful scrape:\n  " + "\n  ".join(stale)
-               + "\nCheck the Cloudflare cron-dispatcher Worker and its GITHUB_TOKEN expiry.")
+               + "\nCheck the Cloudflare cron-dispatcher Worker and its GITHUB_TOKEN expiry.",
+               [f["town"] for f in findings])
         return 1
     return 0
 

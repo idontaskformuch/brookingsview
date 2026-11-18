@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from db import db  # noqa: E402
 from scrapers.base_parser import BaseParser, StubParser  # noqa: E402
+from scrapers.alerts import send_alert  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Registry: mappar config-fältet "type" (eller "parser") → parser-klass.
@@ -176,19 +177,10 @@ def run_source(conn, cfg: dict, source_key: str, source_cfg: dict) -> None:
 
 
 def _alert(town_id: str, source_key: str, fails: int, err: str) -> None:
-    """Enkelt händelsestyrt larm. Kopplas till valfri mejl/webhook via env.
-
-    Lämnad som en tunn krok med flit: skriv hit din SMTP/Resend/Slack-integration.
-    """
-    hook = os.environ.get("ALERT_WEBHOOK")
+    """Enkelt händelsestyrt larm via scrapers.alerts.send_alert (ALERT_WEBHOOK)."""
     msg = f"[{town_id}] scraper '{source_key}' failat {fails} ggr i rad: {err}"
     print(f"ALERT: {msg}", file=sys.stderr)
-    if hook:
-        try:
-            import requests
-            requests.post(hook, json={"text": msg}, timeout=10)
-        except Exception:  # pragma: no cover
-            pass
+    send_alert(msg, title=f"[{town_id}] scraper {source_key}")
 
 
 def main() -> int:

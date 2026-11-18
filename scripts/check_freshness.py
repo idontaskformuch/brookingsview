@@ -31,6 +31,7 @@ from pathlib import Path
 
 from db.db import get_conn
 from qa.report import report
+from scrapers.alerts import send_alert
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -196,15 +197,9 @@ def collect(conn, now: datetime, only: set[str], today: date) -> tuple[list[dict
     return findings, lines
 
 
-def _alert(msg: str) -> None:
+def _alert(msg: str, towns: list[str]) -> None:
     print(f"ALERT: {msg}", file=sys.stderr)
-    hook = os.environ.get("ALERT_WEBHOOK")
-    if hook:
-        try:
-            import requests
-            requests.post(hook, json={"text": msg}, timeout=10)
-        except Exception:  # pragma: no cover
-            pass
+    send_alert(msg, title=f"[{','.join(towns)}] stale data jobs")
 
 
 def _run_url() -> str:
@@ -228,7 +223,8 @@ def main() -> int:
     except Exception as exc:  # pragma: no cover -- the red X below must never depend on GitHub's API
         print(f"  [freshness] issue reporting failed: {exc}", file=sys.stderr)
     if findings:
-        _alert("Stale data jobs:\n  " + "\n  ".join(f"{f['check']} {f['town']}: {f['message']}" for f in findings))
+        _alert("Stale data jobs:\n  " + "\n  ".join(f"{f['check']} {f['town']}: {f['message']}" for f in findings),
+               sorted({f["town"] for f in findings}))
         return 1
     return 0
 
