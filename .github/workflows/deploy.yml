@@ -75,6 +75,8 @@ jobs:
         run: node scripts/verify_election_pages.mjs site/dist
       - name: Only this town's games in the build
         run: node scripts/verify_town_games.mjs site/dist brookings_sd
+      - name: Local images resolved from site/public (astro 6 .prerender path)
+        run: node scripts/verify_local_images.mjs site/dist brookings_sd
       - name: Every redirect stub has a Worker redirect
         run: node scripts/verify_stub_redirects.mjs site/dist brookings_sd
       - name: Menu and footer link only to built, indexable pages

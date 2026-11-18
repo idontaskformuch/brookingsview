@@ -63,6 +63,8 @@ jobs:
         run: node scripts/verify_election_pages.mjs site/dist
       - name: Only this town's games in the build
         run: node scripts/verify_town_games.mjs site/dist moreno_valley_ca
+      - name: Local images resolved from site/public (astro 6 .prerender path)
+        run: node scripts/verify_local_images.mjs site/dist moreno_valley_ca
       - name: Every redirect stub has a Worker redirect
         run: node scripts/verify_stub_redirects.mjs site/dist moreno_valley_ca
       - name: Menu and footer link only to built, indexable pages

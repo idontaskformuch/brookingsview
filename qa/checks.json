@@ -291,6 +291,16 @@
         "born_from": "Broomfield AdSense audit 2026-11-11 (F6): 24 facility meta descriptions in all four towns were cut mid-sentence and given a period (\"...named for former City and County Manager George Di.\"); owner: rule it out for every meta description. Fixed in meta-description.ts (wholeSentences, template fallback, a word cut ends in an ellipsis). Regression: site/src/lib/meta-description.test.ts (every facility in data/facilities; it failed on 23 before the fix).",
         "what": "an indexable page whose meta description is missing, ends in a word cut, has no sentence end, or contains ' -- ' (scripts/report_meta_descriptions.mjs, which also writes every description to a TSV for reading)"
     },
+    "build.local-images": {
+        "severity": "hard",
+        "born_from": "astro 6.4.8 upgrade 2026-11-18 (.claude/specs/astro-7.md session 2, owner decision (a) 2026-11-18): site/src/lib/images.ts resolved public/ as new URL('../../public', import.meta.url); astro 6 moved the bundled module to dist/.prerender/chunks/, so it pointed at site/dist/public. assertImageExists crashed 3 of 4 builds, and imageExistsOnDisk/contentTrackCropPaths silently reported every local image missing. Fixed: PUBLIC_DIR from process.cwd(), hard error when missing. The owner asked for a 4x3/1x1 crop check; no published page uses crops since Fas 13c (0 references on main), so this counts local images instead. Regression fixture: tests/fixtures/qa_local_images_2026-11-18 (before = real page with the hero src removed), tests/test_verify_local_images.py.",
+        "what": "a Brookings, Moreno Valley or Broomfield build whose dist references no /assets/images/ file that exists in site/public while site/public has category images for the town (scripts/verify_local_images.mjs in battery.sh and the three deploy workflows)"
+    },
+    "build.astro-attr-entities": {
+        "severity": "hard",
+        "born_from": "astro 7.4.12 upgrade 2026-11-18 (.claude/specs/astro-7.md session 3): the old compiler decoded HTML entities in static attribute values before they became props; the Rust compiler passes them literally and the component escapes them again. Brookings /university/ showed the section label 'Arts &amp; culture at SDSU' (site/src/pages/university.astro:189, SectionRule label=\"Arts &amp; culture at SDSU\"). Found by getComputedStyle compare (h2.sec__label width 195.938px -> 234.688px). Fixed: label=\"Arts & culture at SDSU\". A dist check for '&amp;amp;' was not chosen because scraped text may legitimately contain it and would block deploys. Regression fixture: site/src/lib/astro-attr-entities.test.ts (the real line from f72bacd, and the source scan that failed before the fix).",
+        "what": "a .astro file under site/src has an HTML entity (&amp;, &#39;, ...) inside a static attribute value (site/src/lib/astro-attr-entities.test.ts, vitest in battery.sh and tests.yml)"
+    },
     "build.town-games": {
         "severity": "hard",
         "born_from": "Broomfield AdSense audit 2026-11-11 (F7): public/games/ was copied into every build, so broomfieldview.com served Brookings' /games/jackrabbit.html (200, indexable) and Moreno Valley's /games/burro-bonanza.html. Owners in site/src/lib/game-owners.mjs. Regression fixture: site/src/lib/game-owners.test.ts (the live 2026-11-11 listing fails).",

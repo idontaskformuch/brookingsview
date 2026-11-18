@@ -2,6 +2,8 @@
 # Batteriet före fas-commit (CLAUDE.md regel 3). Det enda sättet att köra det:
 #   bash scripts/battery.sh [loggkatalog]     (standard: scratch_tmp/battery)
 # Kör allt även när ett steg faller; exit 0 bara om alla steg är gröna.
+#   - DIST_SNAPSHOT=<mapp utanför repot> kopierar dist till <mapp>/<stad> efter
+#     varje grönt bygge (underlag för scripts/dist_compare.mjs).
 #   - astro check körs med SITE_CITY satt (CHECK_CITY, standard brookings_sd).
 #   - Ett bygge som faller på nätverksfel mot databasen ("fetch failed" m.fl.)
 #     körs om EN gång och omkörningen loggas. Andra byggfel körs aldrig om.
@@ -10,6 +12,9 @@
 #     annat vitest-fel (eller ett fallerat test i samma fil) ger rött.
 set -o pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Windows (Git Bash): ett ärvt "c:\..." (liten enhetsbokstav) gör att node laddar vitest från c:/ men Vite
+# (realpath.native) från C:/ -> två instanser av @vitest/runner, varje test faller (astro 6). pwd -W ger C:/...
+ROOT="$(cd "$ROOT" && { pwd -W 2>/dev/null || pwd; })"
 LOG="$(cd "$ROOT" && mkdir -p "${1:-scratch_tmp/battery}" && cd "${1:-scratch_tmp/battery}" && pwd)"
 CHECK_CITY="${CHECK_CITY:-brookings_sd}"
 TOWNS="brookings_sd moreno_valley_ca broomfield_co glasgow"
@@ -60,12 +65,17 @@ for t in $TOWNS; do
   fi
   step "build $t" $rc
   [ $rc -eq 0 ] || { echo "  hoppar över kontrollerna för $t (bygget föll)"; continue; }
+  if [ -n "$DIST_SNAPSHOT" ]; then  # valfritt: spara dist per stad (dist-jämförelse)
+    rm -rf "$DIST_SNAPSHOT/$t" && mkdir -p "$DIST_SNAPSHOT" && cp -r dist "$DIST_SNAPSHOT/$t"
+    step "snapshot $t" $?
+  fi
 
   node ../scripts/verify_sitemap_noindex_disjoint.mjs dist 2>&1 | tail -2; step "disjoint $t" "${PIPESTATUS[0]}"
   node ../scripts/verify_no_empty_messages.mjs dist 2>&1 | tail -1; step "empty-messages $t" "${PIPESTATUS[0]}"
   node ../scripts/verify_content_first.mjs dist 2>&1 | tail -1; step "content-first $t" "${PIPESTATUS[0]}"
   node ../scripts/verify_no_internal_notes.mjs dist 2>&1 | tail -5; step "internal-notes $t" "${PIPESTATUS[0]}"
   node ../scripts/verify_town_games.mjs dist "$t"; step "town-games $t" $?
+  node ../scripts/verify_local_images.mjs dist "$t"; step "local-images $t" $?
   node ../scripts/verify_nav_links.mjs dist "$t"; step "nav-links $t" $?
   node ../scripts/verify_internal_links.mjs dist > "$LOG/internal-links-$t.log" 2>&1; step "internal-links $t" $?
   tail -1 "$LOG/internal-links-$t.log"
