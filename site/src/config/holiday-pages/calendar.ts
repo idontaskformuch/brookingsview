@@ -27,6 +27,9 @@ export interface HolidayPageDef {
   /** The last day (YYYY-MM-DD) the window must still cover for the season starting in `year`, when that is later than
    *  `daysAfter` (a substitute bank holiday, owner 2026-11-14); null = `daysAfter` only. */
   extendTo?: (year: number) => string | null;
+  /** The page window in US towns when it differs (owner 2026-11-18, B1: US Christmas Nov 28 – Jan 3, Glasgow keeps its own).
+   *  `extendTo` (GOV.UK Scotland) does not apply there. See defForCountry. */
+  usWindow?: { daysBefore: number; daysAfter: number };
 }
 
 const HOURS_NOTE = (season: number, nextYear: number) =>
@@ -49,11 +52,22 @@ export const HOLIDAY_PAGE_DEFS: HolidayPageDef[] = [
     evergreenNote: (season, nextYear) => `These are the ${season} festive dates and times. ${nextYear} festive dates and times will be added when they're announced.`,
     calendarMatch: { pattern: /christmas|xmas|festive|santa|panto|carol|hogmanay|new year/i, daysBefore: 30, daysAfter: 9 },
     extendTo: (year) => lastSeasonBankHoliday(SCOTLAND_BANK_HOLIDAYS, year),
+    // US: from the day after the Thanksgiving window (Nov 28 = 27 days before) to Jan 3 (owner 2026-11-18, B1).
+    usWindow: { daysBefore: 27, daysAfter: 9 },
   },
 ];
 
 export function holidayPageDef(slug: string): HolidayPageDef | undefined {
   return HOLIDAY_PAGE_DEFS.find((d) => d.slug === slug);
+}
+
+/** The def as it applies in a country: in the US a `usWindow` replaces the window, and `extendTo` (Scotland's bank holidays)
+ *  is dropped. Unchanged elsewhere. */
+export function defForCountry(def: HolidayPageDef, country: string): HolidayPageDef {
+  if (country !== 'us' || !def.usWindow) return def;
+  const { extendTo: _dropped, ...rest } = def;
+  void _dropped;
+  return { ...rest, daysBefore: def.usWindow.daysBefore, daysAfter: def.usWindow.daysAfter };
 }
 
 /** The date rule of a def, from the photo pool's definitions (US and UK lists). */

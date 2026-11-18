@@ -495,6 +495,11 @@
         "severity": "soft",
         "born_from": "Audit P1-10 / Fas 7a 2026-11-17: the /month/ noindex gate counted a module as soon as its source had started (status != 'none'), so Moreno October 2026 was indexable with projects at 0 updates (\"No tracked development projects ... were updated\"), and months were cut in UTC (Moreno traffic 3510-3515, created 2026-10-01T02:46Z = 30 Sep 7:46 PM PDT, counted in October). Owner minimums: decisions 5, projects 2 distinct, sales 15, events 10, traffic 10, jobs 20 distinct, local month, rows before classification. Regression fixtures: site/src/lib/month-gate.test.ts (real rows: Moreno traffic 3465-3515, project_updates 26-57, jobs 4652, Brookings meeting 13337, Broomfield traffic 2361); the old gate had no row count at all, so 'source exists, 0 rows' and 'one row under the minimum' cleared it.",
         "what": "/month/<yyyy-mm>/ counted toward index -- or shown on the page (owner 2026-11-17, lib/month-gate.mjs clearedModuleKinds) -- a module below its minimum row count, 0 rows included; counted by UTC instead of the town's local month, or by the page and astro.config.mjs's sitemap filter disagreeing (both call lib/month-gate.mjs; vitest + verify_sitemap_noindex_disjoint)"
+    },
+    "front.orientation-date-follows-now": {
+      "severity": "soft",
+      "born_from": "Review of Fas 1 (2026-11-18): OrientationHeader read its own new Date(), so a local build with FRONT_PAGE_NOW showed the build machine's date above a front page built for another day. Owner 2026-11-18: the date follows FRONT_PAGE_NOW. Regression fixture: site/src/components/OrientationHeader.test.ts 'follows the `now` it is given', fails on badd3ab's OrientationHeader.astro.",
+      "what": "the front page's date line (OrientationHeader) names a different local day than the instant index.astro builds the page for (vitest)"
     }
   }
 }

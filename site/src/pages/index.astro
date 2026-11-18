@@ -367,7 +367,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   )}
   {/* Fas 1a (owner 2026-11-18): the lead first, under the page header and any active warning banner; Right Now straight under it (it
       moves to the rail in Fas 2); the What's On marquee is a compact card after those. At most one photo above the fold at 390 px. */}
-  <OrientationHeader />
+  <OrientationHeader now={now} />
   {ELECTION_BY_TOWN[siteConfig.townId] && <ResultsBanner />}
   {siteConfig.safetyNotices && <SafetyNotices townId={siteConfig.townId} timezone={siteConfig.timezone} variant="compact" onlyWhenActive />}
   <FrontPageLead page={frontPage} cityImage={cityImage} holidayThumb={holidayThumb} />

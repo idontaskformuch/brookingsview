@@ -112,7 +112,7 @@ describe('deterministic meta', () => {
   it('Brookings and Moreno: title names only sections with a confirmed row', () => {
     expect(buildHolidayMeta(pageFor('brookings_sd'), 'Thanksgiving', 'Brookings').h1).toBe('Thanksgiving 2026: closures, trash pickup');
     expect(buildHolidayMeta(pageFor('moreno_valley_ca'), 'Thanksgiving', 'Moreno Valley').title)
-      .toBe('Thanksgiving 2026 in Moreno Valley: closures, trash pickup, transit'); // RTA row read 2026-11-14, library calendar rows
+      .toBe('Thanksgiving 2026 in Moreno Valley: closures, trash pickup'); // "transit" struck: 67 > 65 (title rule B, owner 2026-11-18)
     expect(buildHolidayMeta(pageFor('moreno_valley_ca'), 'Thanksgiving', 'Moreno Valley').description)
       .toBe('Library closed Nov 26–27 · Trash pickup one day late after Nov 26 · No RTA buses Nov 26. Checked Oct 3 – Nov 14, 2026.');
   });

@@ -3,7 +3,8 @@
  *  anything else is simply not built, so the host answers a real 404. */
 import { hasConfirmedRow, type HolidayPageData } from '../../lib/holiday-page';
 import { activeHoliday, inCalendarOrder, resolvePageState } from '../../lib/holiday-calendar';
-import { HOLIDAY_PAGE_DEFS, holidayPageDef, type HolidayPageDef } from './calendar';
+import { HOLIDAY_PAGE_DEFS, defForCountry, holidayPageDef, type HolidayPageDef } from './calendar';
+import { TOWN_REGISTRY } from '../../lib/town-registry.mjs';
 import { buildVeteransDayPage } from './veterans-day';
 import { buildThanksgivingPage, THANKSGIVING_CALENDAR_EXCLUDES } from './thanksgiving';
 import { buildChristmasPage, CHRISTMAS_CALENDAR_EXCLUDES, CHRISTMAS_CALENDAR_INCLUDES } from './christmas';
@@ -40,10 +41,12 @@ export function calendarIncludesFor(slug: string, townId: string): Record<string
   return (def && CALENDAR_INCLUDES[def.slug]?.[townId]) ?? {};
 }
 
-/** The page of one holiday for a town, or null when there is none (or no confirmed row). */
+/** The page of one holiday for a town, or null when there is none (or no confirmed row). `def` is the town's country's
+ *  version (calendar.ts defForCountry: the US Christmas window). */
 export function holidayPageFor(slug: string, townId: string): HolidayPageEntry | null {
-  const def = holidayPageDef(slug);
-  if (!def) return null;
+  const generic = holidayPageDef(slug);
+  if (!generic) return null;
+  const def = defForCountry(generic, TOWN_REGISTRY[townId]?.country ?? '');
   const page = BUILDERS[def.slug](townId);
   return page && hasConfirmedRow(page) ? { def, page } : null;
 }

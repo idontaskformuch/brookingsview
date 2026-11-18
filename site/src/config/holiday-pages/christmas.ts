@@ -1,6 +1,6 @@
-/** Christmas 2026. `CHRISTMAS_EVENTS` are events saved ahead per town (Broomfield's tree lighting, not rendered: no
- *  US /christmas/ yet, owner 2026-11-04). `buildChristmasPage` is the page itself, Glasgow only (session 2, table
- *  approved 2026-11-04). Same model as thanksgiving.ts; nothing is predicted or paraphrased from memory.
+/** Christmas 2026. `CHRISTMAS_EVENTS` are events saved ahead per town (Broomfield's tree lighting, read 2026-11-04; on
+ *  Broomfield's page since the US pages, owner 2026-11-18). `buildChristmasPage` is the page itself: Glasgow (session 2, table
+ *  approved 2026-11-04) and the three US towns (christmas-us.ts, owner 2026-11-18). Same model as thanksgiving.ts; nothing is predicted or paraphrased from memory.
  *
  *  Glasgow City Council (glasgow.gov.uk) answers automated clients with a Cloudflare challenge, so robots.txt is
  *  unreadable and none of its pages is fetched (CLAUDE.md #13). Its rows stay `unconfirmed` with a `checkAt`
@@ -9,6 +9,7 @@
  *  until the owner approves them. */
 import type { HolidayEvent, HolidayPageData } from '../../lib/holiday-page';
 import { buildGlasgowChristmasPage } from './gb/christmas-glasgow';
+import { buildUsChristmasPage } from './christmas-us';
 
 export const CHRISTMAS_EVENTS: Record<string, HolidayEvent[]> = {
   broomfield_co: [
@@ -28,11 +29,12 @@ export const CHRISTMAS_EVENTS: Record<string, HolidayEvent[]> = {
       source: { name: 'City and County of Broomfield: Holiday Tree Lighting Ceremony', url: 'https://broomfield.org/index.aspx?NID=2468' },
       checkedOn: '2026-11-04',
       clarify: 'The page lists no cost.',
+      meta: 'Tree lighting Dec 4',
     },
   ],
 };
 
-export const CHRISTMAS_TOWN_IDS = ['glasgow'] as const;
+export const CHRISTMAS_TOWN_IDS = ['glasgow', 'brookings_sd', 'moreno_valley_ca', 'broomfield_co'] as const;
 
 /** Glasgow's event calendars (Glasgow Life rows), its venue register (owner 2026-11-14, G7) and Ticketmaster (keys "tm:<id>", owner
  *  2026-11-15) take part in the Events group.
@@ -46,6 +48,16 @@ export const CHRISTMAS_CALENDAR_EXCLUDES: Record<string, Record<string, string>>
     'tm:1kuOv0x_GAuOV5u': 'Muppet: the Glasgow Life row by hand is already on the page (owner 2026-11-15)',
     'tm:LvZ18QmN5TaNuM3aFzl_h': "King Tut's Golden Ticket: a festival pass, not an event (owner 2026-11-15)",
   },
+  // US towns (owner 2026-11-18). Brookings takes no part (its SDSU and library rows are on the page by hand).
+  moreno_valley_ca: {
+    'event-197946': 'library closure, not an event; see the Library rows',
+    'event-303459': 'library closure, not an event; see the Library rows',
+    'event-304354': 'library closure, not an event; see the Library rows',
+    'event-204322': 'library closure, not an event; see the Library rows',
+    'event-303461': 'library closure, not an event; see the Library rows',
+    'event-304356': 'library closure, not an event; see the Library rows',
+  },
+  broomfield_co: {},
 };
 
 /** Rows taken by key although their title does not match the pattern (owner 2026-11-14: "Elf Academy" by id, the pattern is not
@@ -54,7 +66,7 @@ export const CHRISTMAS_CALENDAR_INCLUDES: Record<string, Record<string, string>>
   glasgow: { 'event-325682': 'by id, owner 2026-11-14' },
 };
 
-/** The Christmas page, or null for a town without one (Broomfield's tree lighting stays saved, not rendered). */
+/** The Christmas page, or null for a town without one. */
 export function buildChristmasPage(townId: string): HolidayPageData | null {
-  return townId === 'glasgow' ? buildGlasgowChristmasPage() : null;
+  return townId === 'glasgow' ? buildGlasgowChristmasPage() : buildUsChristmasPage(townId, CHRISTMAS_EVENTS[townId] ?? []);
 }

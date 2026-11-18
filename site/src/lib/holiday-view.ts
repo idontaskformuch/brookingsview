@@ -9,6 +9,7 @@ import {
   type CheckAt, type ConfirmedFact, type HolidayChange, type HolidayEvent, type HolidayFact, type HolidayLocale, type HolidayPageData, type LastYear, type Source,
 } from './holiday-page';
 import { formatDayLong, formatDayShort, occurrenceDay, weekdayLong } from './holiday-calendar';
+import { driveLabel, driveMinutes } from './evening-items';
 import type { HolidayPageDef } from '../config/holiday-pages/calendar';
 
 export type PillTone = 'alert' | 'warn' | 'ok' | 'neutral';
@@ -29,17 +30,18 @@ export interface RowView {
   checkedNote?: string;
 }
 
-export type GroupId = 'closed' | 'changed' | 'open' | 'info' | 'events' | 'unconfirmed';
+export type GroupId = 'closed' | 'changed' | 'open' | 'info' | 'events' | 'nearby' | 'unconfirmed';
 export interface GroupView { id: GroupId; heading: string; rows: RowView[] }
 
 /** Render order of the groups; a group without rows is not rendered. */
-export const GROUP_ORDER: GroupId[] = ['closed', 'changed', 'open', 'info', 'events', 'unconfirmed'];
+export const GROUP_ORDER: GroupId[] = ['closed', 'changed', 'open', 'info', 'events', 'nearby', 'unconfirmed'];
 export const GROUP_HEADING: Record<GroupId, string> = {
   closed: 'Closed',
   changed: 'Schedule changes',
   open: 'Open as usual',
   info: 'Good to know',
   events: 'Events',
+  nearby: 'Nearby',
   unconfirmed: 'Check before you go',
 };
 /** A group longer than this shows the first FOLD_AFTER rows and the rest behind a "Show N more" toggle. */
@@ -89,6 +91,11 @@ function factRow(f: HolidayFact, page: HolidayPageData, newest: string, over = f
   };
 }
 
+/** The Nearby group's distance text: "about N min drive" (NB1), or null for a row that does not belong there. */
+export function nearbyDrive(e: HolidayEvent, page: HolidayPageData): string | null {
+  return page.nearbySection && e.status === 'confirmed' && e.nearby?.miles != null ? driveLabel(driveMinutes(e.nearby.miles)) : null;
+}
+
 function eventRow(e: HolidayEvent, page: HolidayPageData, newest: string, today: string): RowView {
   if (e.status === 'unconfirmed') {
     const row = unconfirmedRow(e.name, e, page, newest);
@@ -99,7 +106,7 @@ function eventRow(e: HolidayEvent, page: HolidayPageData, newest: string, today:
     name: e.name,
     href: e.url,
     pill: past ? { tone: 'neutral', text: `Held ${formatIsoDate(e.endDate ?? e.date, true, page.locale)}` } : null,
-    parts: [eventWhenWhere(e, page.locale), ...((past && e.pastDetails) || e.details || []), ...(e.clarify ? [e.clarify] : [])],
+    parts: [eventWhenWhere(e, page.locale, nearbyDrive(e, page) ?? undefined), ...((past && e.pastDetails) || e.details || []), ...(e.clarify ? [e.clarify] : [])],
     checkedNote: olderNote(e.checkedOn, newest, page.locale),
   };
 }
@@ -111,13 +118,16 @@ function eventRow(e: HolidayEvent, page: HolidayPageData, newest: string, today:
 export function buildGroups(page: HolidayPageData, today: string, dayIso?: string): GroupView[] {
   const newest = lastChecked(page);
   const over = !!dayIso && today > dayIso;
-  const rows: Record<GroupId, RowView[]> = { closed: [], changed: [], open: [], info: [], events: [], unconfirmed: [] };
+  const rows: Record<GroupId, RowView[]> = { closed: [], changed: [], open: [], info: [], events: [], nearby: [], unconfirmed: [] };
   for (const f of page.facts) {
     if (f.section === 'hours') continue;
     const id: GroupId = f.status === 'unconfirmed' ? 'unconfirmed' : (f.change ?? 'info');
     rows[id].push(factRow(f, page, newest, over));
   }
-  for (const e of page.events) rows[e.status === 'confirmed' ? 'events' : 'unconfirmed'].push(eventRow(e, page, newest, today));
+  for (const e of page.events) {
+    const id: GroupId = e.status !== 'confirmed' ? 'unconfirmed' : nearbyDrive(e, page) ? 'nearby' : 'events';
+    rows[id].push(eventRow(e, page, newest, today));
+  }
   if (over) rows.unconfirmed = [];
   return GROUP_ORDER.filter((id) => rows[id].length > 0).map((id) => ({ id, heading: GROUP_HEADING[id], rows: rows[id] }));
 }

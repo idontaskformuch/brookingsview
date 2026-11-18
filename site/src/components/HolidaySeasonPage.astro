@@ -19,7 +19,7 @@ import TonightStyles from './tonight/TonightStyles.astro';
 import { siteConfig } from '../lib/site-config';
 import { countryProfile } from '../lib/country-profile';
 import {
-  buildHolidayMeta, buildHolidayEventsJsonLd, checkedSpan, formatCheckedSpan, formatIsoDate, localToday,
+  buildHolidayMeta, buildHolidayEventsJsonLd, checkedSpan, checkTitleLength, formatCheckedSpan, formatIsoDate, localToday,
   type ConfirmedEvent, type ConfirmedFact, type HolidayChange, type HolidayPageData,
 } from '../lib/holiday-page';
 import { groupSources } from '../lib/holiday-view';
@@ -33,6 +33,8 @@ if (!page.season) throw new Error('HolidaySeasonPage needs page.season');
 const tz = siteConfig.timezone;
 const today = localToday(Date.now(), tz);
 const meta = buildHolidayMeta(page, def.label, siteConfig.cityName);
+// Title length rule (owner 2026-11-18, config/holiday-pages/title-rules.ts), the same check as HolidayPage.
+checkTitleLength(meta.title);
 const span = checkedSpan(page);
 // Every row's checkedOn, feed rows marked ":feed", for the QA check (scripts/verify_holiday_season.mjs) that the heading ends on a read date.
 const rowsChecked = [...new Set([...page.facts, ...page.events].map((r) => `${r.checkedOn}${'feed' in r && r.feed ? ':feed' : ''}`))].sort().join(' ');

@@ -186,9 +186,10 @@ describe('Event JSON-LD only for events that have not passed', () => {
 describe('which towns get which pages (confirmed row required, otherwise no page at all)', () => {
   const slugs = (t: string) => holidayPagesForTown(t).map((e) => e.def.slug).sort();
   it('matches the approved scope', () => {
-    expect(slugs('brookings_sd')).toEqual(['thanksgiving']);
-    expect(slugs('moreno_valley_ca')).toEqual(['thanksgiving']);
-    expect(slugs('broomfield_co')).toEqual(['thanksgiving', 'veterans-day']);
+    // US /christmas/ since 2026-11-18 (owner, .claude/specs/us-christmas-2026.md).
+    expect(slugs('brookings_sd')).toEqual(['christmas', 'thanksgiving']);
+    expect(slugs('moreno_valley_ca')).toEqual(['christmas', 'thanksgiving']);
+    expect(slugs('broomfield_co')).toEqual(['christmas', 'thanksgiving', 'veterans-day']);
     expect(slugs('glasgow')).toEqual(['christmas']);
     expect(holidayPageFor('veterans-day', 'brookings_sd')).toBeNull();
   });
@@ -210,13 +211,16 @@ describe('which towns get which pages (confirmed row required, otherwise no page
 
 describe('/holidays/ listing and the single context card', () => {
   it('lists the next holiday first, in calendar order', () => {
-    expect(holidayListing('broomfield_co', D(2026, 11, 5), TOWN_TZ.broomfield_co).map((e) => e.def.slug)).toEqual(['veterans-day', 'thanksgiving']);
-    expect(holidayListing('broomfield_co', D(2026, 11, 14), TOWN_TZ.broomfield_co).map((e) => e.def.slug)).toEqual(['thanksgiving', 'veterans-day']);
+    expect(holidayListing('broomfield_co', D(2026, 11, 5), TOWN_TZ.broomfield_co).map((e) => e.def.slug)).toEqual(['veterans-day', 'thanksgiving', 'christmas']);
+    expect(holidayListing('broomfield_co', D(2026, 11, 14), TOWN_TZ.broomfield_co).map((e) => e.def.slug)).toEqual(['thanksgiving', 'christmas', 'veterans-day']);
   });
   it('the card shows only inside a window, and only one', () => {
     expect(activeHolidayCard('broomfield_co', D(2026, 11, 5), TOWN_TZ.broomfield_co)?.def.slug).toBe('veterans-day');
     expect(activeHolidayCard('broomfield_co', D(2026, 11, 14), TOWN_TZ.broomfield_co)).toBeNull(); // between the two windows
     expect(activeHolidayCard('broomfield_co', D(2026, 11, 20), TOWN_TZ.broomfield_co)?.def.slug).toBe('thanksgiving');
+    // US Christmas window (owner 2026-11-18, B1): the card hands over from Thanksgiving to Christmas on Nov 28.
+    expect(activeHolidayCard('broomfield_co', D(2026, 11, 27), TOWN_TZ.broomfield_co)?.def.slug).toBe('thanksgiving');
+    expect(activeHolidayCard('broomfield_co', D(2026, 11, 28), TOWN_TZ.broomfield_co)?.def.slug).toBe('christmas');
     expect(activeHolidayCard('brookings_sd', D(2026, 7, 1), TOWN_TZ.brookings_sd)).toBeNull();
     expect(activeHolidayCard('glasgow', D(2026, 12, 20), TOWN_TZ.glasgow)?.def.slug).toBe('christmas');
     expect(activeHolidayCard('glasgow', D(2027, 1, 10), TOWN_TZ.glasgow)).toBeNull();
@@ -273,7 +277,7 @@ describe('sitemap lastmod = the day a row last changed, never the build', () => 
   });
   it("/holidays/ takes the newest date of the town's pages; a town without pages has none", () => {
     const m = holidayLastmodEntries('broomfield_co');
-    expect(m.get('/holidays/')).toBe([m.get('/veterans-day/')!, m.get('/thanksgiving/')!].sort().pop());
+    expect(m.get('/holidays/')).toBe([m.get('/veterans-day/')!, m.get('/thanksgiving/')!, m.get('/christmas/')!].sort().pop());
     expect(holidayLastmodEntries('nowhere').size).toBe(0);
   });
   it('data-updated.json lists exactly the pages that exist, and each page carries its date', () => {

@@ -65,9 +65,9 @@ describe('en-GB locale', () => {
 });
 
 describe('Glasgow /christmas/ data as approved 2026-11-04', () => {
-  it('exists only for Glasgow', () => {
-    expect(CHRISTMAS_TOWN_IDS).toEqual(['glasgow']);
-    for (const id of ['brookings_sd', 'moreno_valley_ca', 'broomfield_co']) expect(buildChristmasPage(id)).toBeNull();
+  it('exists for Glasgow (the US towns since 2026-11-18: christmas-us.test.ts)', () => {
+    expect(CHRISTMAS_TOWN_IDS).toContain('glasgow');
+    expect(buildChristmasPage('nowhere')).toBeNull();
     expect(page.year).toBe(2026);
     expect(page.townId).toBe('glasgow');
   });
@@ -209,7 +209,7 @@ describe('Glasgow /christmas/ data as approved 2026-11-04', () => {
 describe('Glasgow meta', () => {
   const meta = buildHolidayMeta(page, 'Christmas', 'Glasgow');
   it('names only sections with a confirmed row, with the en-GB words; the H1 is the owner\'s (G1, 2026-11-14)', () => {
-    expect(meta.title).toBe('Christmas and New Year 2026 in Glasgow: closures, transit, events, support');
+    expect(meta.title).toBe('Christmas and New Year 2026 in Glasgow: closures, transit, events'); // "support" struck: 74 > 65 (title rule B, owner 2026-11-18)
     expect(meta.h1).toBe('Christmas and New Year in Glasgow');
     expect(meta.title).not.toMatch(/bin|trash/i);
   });
@@ -221,7 +221,7 @@ describe('Glasgow meta', () => {
     expect(meta.description.match(/Winter Wonderland/g)).toHaveLength(1);
   });
   it('running text uses the lower-case section words; the H2 label is unchanged', () => {
-    expect(meta.title).toContain('closures, transit, events, support');
+    expect(meta.title).toContain('closures, transit, events');
     expect(sectionMetaWord('trash', 'en-GB')).toBe('bin collections');
     expect(sectionHeading('trash', 'en-GB')).toBe('Bin collections');
   });

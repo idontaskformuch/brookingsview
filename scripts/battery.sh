@@ -30,6 +30,8 @@ step() {  # step <namn> <exit>
 
 cd "$ROOT" || exit 2
 echo "battery start $(date '+%F %T') logs=$LOG"
+# Gamla omkörningsloggar från en tidigare körning tas bort, så build-<stad>.try1.log bara finns när DENNA körning körde om (ägaren 18 nov).
+rm -f "$LOG"/build-*.try1.log
 
 .venv/Scripts/python.exe -m pytest tests/ -q > "$LOG/pytest.log" 2>&1
 step pytest $?

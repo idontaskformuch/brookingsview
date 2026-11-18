@@ -6,6 +6,7 @@
  *  and an unconfirmed fact without either last year's value or a "check here" pointer likewise. No LLM text. */
 import { toZonedISOString } from './db';
 import type { SeasonDay } from './holiday-season';
+import { TITLE_OK_MAX, TITLE_SECTION_PRIORITY, TITLE_WARN_MAX } from '../config/holiday-pages/title-rules';
 
 export type HolidaySection = 'closures' | 'trash' | 'transit' | 'events' | 'help';
 /** Render order of the sections. A section without rows is not rendered. */
@@ -216,6 +217,16 @@ export interface HolidayPageData {
   label?: string;
   /** Fixed H1 (owner-approved wording, "Christmas and New Year in Glasgow"). */
   h1?: string;
+  /** Title topics in the owner's order (US Christmas, owner 2026-11-18): "<titleLabel> [<year>] in <Town>: <topics>". A topic with
+   *  `event` needs a confirmed event of that exact name, `closed` any confirmed `closed` row, `events` any confirmed event; a topic whose
+   *  condition fails is left out. When an `event` topic (the headline) is not confirmed, the title falls back to the derived section
+   *  words ("closures, trash pickup, events"). See titleTopicsFor. */
+  titleTopics?: { text: string; event?: string; closed?: true; events?: true }[];
+  /** The holiday name in the title, the fallback title included ("Christmas"); the page label (`label`) stays for the H1 and elsewhere. */
+  titleLabel?: string;
+  /** Confirmed events outside the town with a known distance get their own "Nearby" group after Events, each with "about N min drive"
+   *  (US Christmas pages, owner 2026-11-18, NB1; the same estimate as What's On, lib/evening-items.ts driveMinutes). */
+  nearbySection?: true;
   /** No "N places closed" anywhere (hero, front page, /holidays/): the confirmed rows are a small part of what closes (Glasgow). */
   noClosedCount?: boolean;
   /** Day-by-day sections (lib/holiday-season.ts), rendered by components/HolidaySeasonPage.astro while the window is open. */
@@ -343,6 +354,45 @@ export function buildTimelessHolidayMeta(page: HolidayPageData, holidayLabel: st
  *  promise what the page does not yet have. The description names the confirmed items themselves (their `meta`
  *  phrases, in DESCRIPTION_ORDER), then the check date, and drops whole phrases
  *  from the end of the confirmed list to stay within DESCRIPTION_MAX. `holidayLabel` is e.g. "Thanksgiving". */
+/** The title words from `titleTopics`, in their order, or null when the page has none or its headline event is not confirmed (then
+ *  the derived section words are used). Only confirmed rows count. */
+export function titleTopicsFor(page: HolidayPageData): string[] | null {
+  if (!page.titleTopics) return null;
+  const confirmedEvents = page.events.filter((e) => e.status === 'confirmed');
+  const hasEvent = (name: string) => confirmedEvents.some((e) => e.name === name);
+  if (page.titleTopics.some((t) => t.event && !hasEvent(t.event))) return null;
+  const closed = page.facts.some((f) => f.status === 'confirmed' && f.change === 'closed');
+  const kept = page.titleTopics.filter((t) => (!t.closed || closed) && (!t.events || confirmedEvents.length > 0));
+  return kept.length ? kept.map((t) => t.text) : null;
+}
+
+/** The section words in the fixed title priority (config/holiday-pages/title-rules.ts), only sections with a confirmed row. */
+export function titleSectionWords(page: HolidayPageData): string[] {
+  const confirmed = new Set(confirmedSections(page));
+  return TITLE_SECTION_PRIORITY.filter((s) => confirmed.has(s)).map((s) => sectionMetaWord(s, page.locale));
+}
+
+/** "<prefix>: <words>", striking words from the end (lowest priority first) while over TITLE_OK_MAX; at least one word stays. */
+export function fitTitle(prefix: string, words: string[]): string {
+  const kept = [...words];
+  const make = () => (kept.length ? `${prefix}: ${kept.join(', ')}` : prefix);
+  while (make().length > TITLE_OK_MAX && kept.length > 1) kept.pop();
+  return make();
+}
+
+/** Title length rule for every town (owner 2026-11-18): <=65 characters ok, 66-70 a build warning, >70 a build error. After fitTitle a
+ *  title is only over 70 with one word left (or none and the prefix alone too long). */
+export function titleLengthVerdict(title: string): 'ok' | 'warn' | 'error' {
+  return title.length <= TITLE_OK_MAX ? 'ok' : title.length <= TITLE_WARN_MAX ? 'warn' : 'error';
+}
+
+/** The build check both page templates run on their title: throws on an error, logs "[holiday-title]" on a warning. */
+export function checkTitleLength(title: string): void {
+  const v = titleLengthVerdict(title);
+  if (v === 'error') throw new Error(`holiday title over ${TITLE_WARN_MAX} characters (${title.length}) even with one word left: ${title}`);
+  if (v === 'warn') console.warn(`[holiday-title] ${title.length} characters (${TITLE_OK_MAX + 1}-${TITLE_WARN_MAX} = warning): ${title}`);
+}
+
 export function buildHolidayMeta(page: HolidayPageData, holidayLabel: string, cityName: string, evergreen = false): HolidayMeta {
   if (evergreen ? page.metaOverrideEvergreen : page.metaOverride) return (evergreen ? page.metaOverrideEvergreen : page.metaOverride) as HolidayMeta;
   const confirmed = confirmedSections(page);
@@ -350,7 +400,11 @@ export function buildHolidayMeta(page: HolidayPageData, holidayLabel: string, ci
   const label = page.label ?? holidayLabel;
   // Outside the window the title and H1 carry no year (the page is a standing page); the description does, because it names the season's facts.
   const h1 = page.h1 ?? (evergreen ? `${label}${words ? `: ${words}` : ''}` : `${label} ${page.year}${words ? `: ${words}` : ''}`);
-  const title = evergreen ? `${label} in ${cityName}${words ? `: ${words}` : ''}` : `${label} ${page.year} in ${cityName}${words ? `: ${words}` : ''}`;
+  const titleLabel = page.titleLabel ?? label;
+  const title = fitTitle(
+    evergreen ? `${titleLabel} in ${cityName}` : `${titleLabel} ${page.year} in ${cityName}`,
+    titleTopicsFor(page) ?? titleSectionWords(page),
+  );
   const seasonPrefix = evergreen ? `${page.year}: ` : '';
 
   const items: { text: string; group?: string }[] = [];
@@ -453,8 +507,9 @@ export function formatEventDay(iso: string, locale: HolidayLocale = 'en-US'): st
   return locale === 'en-GB' ? `${weekday} ${Number(m[3])} ${month}` : `${weekday}, ${month} ${Number(m[3])}`;
 }
 
-/** One-line "when and where" for a confirmed event; an unconfirmed one has only its (reference) day, if any. */
-export function eventWhenWhere(e: HolidayEvent, locale: HolidayLocale = 'en-US'): string {
+/** One-line "when and where" for a confirmed event; an unconfirmed one has only its (reference) day, if any. `distance` replaces the
+ *  "Nearby, N mi away" part (the Nearby group's "about N min drive"). */
+export function eventWhenWhere(e: HolidayEvent, locale: HolidayLocale = 'en-US', distance?: string): string {
   if (e.status !== 'confirmed') return e.date ? formatEventDay(e.date, locale) : '';
   const first = formatEventDay(e.date, locale);
   const day = e.endDate && e.endDate !== e.date ? `${first} – ${formatEventDay(e.endDate, locale)}` : first;
@@ -463,7 +518,7 @@ export function eventWhenWhere(e: HolidayEvent, locale: HolidayLocale = 'en-US')
     : null;
   const place = e.venue.street ? `${e.venue.name}, ${e.venue.street}` : e.venue.name;
   // Same wording as the Nearby list on /events/ ("13 mi away").
-  const nearby = e.nearby ? (e.nearby.miles != null ? `Nearby, ${Math.round(e.nearby.miles)} mi away` : 'Nearby') : null;
+  const nearby = distance ?? (e.nearby ? (e.nearby.miles != null ? `Nearby, ${Math.round(e.nearby.miles)} mi away` : 'Nearby') : null);
   return [day, time, place, nearby].filter((p): p is string => p !== null).join(' · ');
 }
 

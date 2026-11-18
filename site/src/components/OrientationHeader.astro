@@ -24,7 +24,12 @@
 import { orientationDateLabel, orientationDateIso } from '../lib/orientation-header';
 import { siteConfig } from '../lib/site-config';
 
-const now = new Date();
+interface Props {
+  /** The instant the page is built for: index.astro's `now` (FRONT_PAGE_NOW in a local build, owner 2026-11-18), so this date
+   *  and the rest of the front page always speak of the same day. Without it, the build's clock. */
+  now?: Date;
+}
+const now = Astro.props.now ?? new Date();
 const dateLabel = orientationDateLabel(now, siteConfig.timezone, siteConfig.country);
 const buildDateIso = orientationDateIso(now, siteConfig.timezone);
 ---
