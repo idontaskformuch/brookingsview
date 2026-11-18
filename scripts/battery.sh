@@ -12,6 +12,9 @@
 #     annat vitest-fel (eller ett fallerat test i samma fil) ger rött.
 set -o pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Windows (Git Bash): ett ärvt "c:\..." (liten enhetsbokstav) gör att node laddar vitest från c:/ men Vite
+# (realpath.native) från C:/ -> två instanser av @vitest/runner, varje test faller (astro 6). pwd -W ger C:/...
+ROOT="$(cd "$ROOT" && { pwd -W 2>/dev/null || pwd; })"
 LOG="$(cd "$ROOT" && mkdir -p "${1:-scratch_tmp/battery}" && cd "${1:-scratch_tmp/battery}" && pwd)"
 CHECK_CITY="${CHECK_CITY:-brookings_sd}"
 TOWNS="brookings_sd moreno_valley_ca broomfield_co glasgow"
