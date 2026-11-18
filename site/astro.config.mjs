@@ -13,6 +13,7 @@ import { FROZEN_EVENT_SOURCES, FROZEN_HIDDEN_EVENTS_ASSET, hiddenFrozenSlugs } f
 import { stripForeignGames } from './src/lib/game-owners.mjs';
 import { NAV_ONLY_INDEXABLE_TOWNS, pruneNavInDist } from './src/lib/nav-prune.mjs';
 import { checkNewIndexable, fetchLiveSitemapPaths, sitemapPaths } from './scripts/new-indexable.mjs';
+import imageVariants from './integrations/image-variants.mjs';
 
 // Statiskt bygge: all data hämtas från Neon vid build-time, sedan serveras rena
 // HTML-filer från Cloudflares edge. GitHub Actions pingar deploy-hooken efter
@@ -122,8 +123,10 @@ const brand = BRAND_TOKENS[activeCity];
 const accentVars = (a, ink) => `  --brand-accent: ${a};\n  --brand-accent-ink: ${ink};\n`;
 const accentLight = brand ? accentVars(brand.accent, brand.accentInk) : accentVars('#0b2e55', '#0b2e55');
 const accentDark = brand ? accentVars(brand.accentDark, brand.accentInkDark) : accentVars('#9bbbe3', '#9bbbe3');
+// --brand-accent-on-dark: text over the photo scrim (lib/city-face.ts, Fas 1a), which is dark in both themes, so it is the dark-mode ink in both.
+const accentOnDark = `  --brand-accent-on-dark: ${brand ? brand.accentInkDark : '#9bbbe3'};\n`;
 const accentTokensCss =
-  `:root {\n${accentLight}}\n` +
+  `:root {\n${accentLight}${accentOnDark}}\n` +
   `@media (prefers-color-scheme: dark) {\n  :root:not([data-theme="light"]) {\n${accentDark.replace(/^/gm, '  ')}  }\n}\n` +
   `:root[data-theme="dark"] {\n${accentDark}}\n`;
 fs.writeFileSync(path.join(process.cwd(), 'public', 'accent-tokens.css'), accentTokensCss);
@@ -873,6 +876,8 @@ export default defineConfig({
   // and can glue words together. true keeps the v5/v6 behaviour: collapse whitespace, never remove it.
   compressHTML: true,
   integrations: [
+    // WebP variants of the photo pools + the dead-image-URL check (integrations/image-variants.mjs, Fas 1a 2026-11-18).
+    imageVariants(),
     {
       // Evening-layer inertia (lib/evening-verdict.ts, owner 2026-11-15): the count the pages decided on is published as
       // /evening-state.json, which the next build reads from the live site. No verdict file (no evening page built) = no state file.

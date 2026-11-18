@@ -19,6 +19,12 @@ export const ALLOWED_CLASSES = new Set([
   'lede__meta', 'desc', 'location', 'description', 'kicker', 'empty', 'ui-hero__meta', 'today-block__forecast', 'intro',
   // holiday pages' "Last checked <date>" stamp: passed only while the date was one digit (29 chars < MIN_CHARS), 2026-11-11
   'hp-checked',
+  // the photo credit line under the holiday page's band photo, whose scrim carries the H1 (Fas 1b 2026-11-18): a required licence
+  // credit (components/ImageAttribution.astro), not an explanation of the page
+  'image-attribution',
+  // the front page's active fire/air warning line (components/SafetyNotices.astro compact, hidden unless a notice is active), which sits
+  // above the lead since Fas 1a 2026-11-18: an active warning is the one thing allowed above the content (standards.md "Svaret först")
+  'safety-compact',
 ]);
 
 /** Pages whose opening text is the content itself (exact paths). */

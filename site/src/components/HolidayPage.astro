@@ -21,6 +21,12 @@ import {
 import { buildGroups, regularHoursRows, holidayHero, holidayInsights, groupSources, isTimeless, timelessGroups, timelessHero } from '../lib/holiday-view';
 import { evergreenLines, occurrenceDay, type HolidayPageState } from '../lib/holiday-calendar';
 import type { HolidayPageDef } from '../config/holiday-pages/calendar';
+import CityPhoto from './CityPhoto.astro';
+import { resolveThisWeekImage } from '../lib/db';
+import { weekInfoForInstant } from '../lib/this-week';
+import { seasonForMonth } from '../lib/this-week-images';
+import { thisWeekImagesFor } from '../config/this-week-images';
+import { holidayBandImage, responsiveSrc, CITY_PHOTO_SIZES } from '../lib/city-face';
 
 interface Props {
   page: HolidayPageData;
@@ -63,13 +69,26 @@ const hours = regularHoursRows(page);
 const ungrouped = page.linkOnly.filter((l) => !l.group);
 const linkGroups = [...new Set(page.linkOnly.flatMap((l) => (l.group ? [l.group] : [])))];
 const sources = groupSources(page);
+// Photo band (Fas 1b, owner 2026-11-18): the photo reserved for this holiday's page while its window is open, else a season photo; never
+// the front page's photo of the week. The H1 sits on the band's scrim; HeroStat below stays the page's hero.
+const photoWeek = weekInfoForInstant(new Date(), siteConfig.timezone);
+const photoPool = thisWeekImagesFor(siteConfig.townId);
+const frontPhoto = siteConfig.noindexSite && photoPool.length === 0
+  ? null
+  : await resolveThisWeekImage(photoWeek.slug, seasonForMonth(photoWeek.monday.m), photoPool, photoWeek.monday, photoWeek.sunday);
+const [ty, tm, td] = today.split('-').map(Number);
+const band = holidayBandImage(siteConfig.townId, def.holidayId, { y: ty, m: tm, d: td }, photoWeek.slug, frontPhoto?.id ?? null);
+const bandSrc = band ? responsiveSrc(band.path) : null;
 ---
 <BaseLayout title={meta.title} description={meta.description} wide modified={page.dataUpdatedOn}>
   <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(webPage)} />
   {jsonLd.map((ld) => <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(ld)} />)}
 
+  {bandSrc && <link slot="head" rel="preload" as="image" href={bandSrc.src} imagesrcset={bandSrc.srcset} imagesizes={bandSrc.srcset ? CITY_PHOTO_SIZES.band : undefined} fetchpriority="high" />}
   <header class="hp-title" data-holiday-mode={timeless ? 'timeless' : undefined}>
-    <h1>{meta.h1}</h1>
+    {band ? (
+      <CityPhoto image={band} variant="band" priority><h1 class="hp-title__h1--photo">{meta.h1}</h1></CityPhoto>
+    ) : <h1>{meta.h1}</h1>}
     {span.first === span.last
       ? <p class="hp-checked">Last checked <time datetime={span.last}>{formatIsoDate(span.last, true, page.locale)}</time></p>
       : <p class="hp-checked">Checked <time datetime={span.first}>{formatCheckedSpan(span, true, page.locale).split(' – ')[0]}</time> – <time datetime={span.last}>{formatIsoDate(span.last, true, page.locale)}</time></p>}
@@ -121,6 +140,8 @@ const sources = groupSources(page);
 
 <style>
   .hp-title h1 { margin-bottom: 0.25rem; }
+  .hp-title .hp-title__h1--photo { margin: 0; color: #fff; font-size: clamp(1.5rem, 4vw, 2.5rem); line-height: 1.1; }
+  .hp-title :global(.city-photo--band) { margin-bottom: 0.5rem; }
   .hp-checked { margin: 0 0 var(--ui-3); font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
   .hp-state { margin: var(--ui-3) 0 0; font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); }
   .hp-group { margin: var(--ui-group-gap) 0 0; }

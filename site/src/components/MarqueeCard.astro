@@ -21,6 +21,7 @@ import type { ImageRef } from '../lib/images';
 import ImageAttribution from './ImageAttribution.astro';
 import { runLabel, showDate, showTimeGb } from '../lib/whats-on-dates';
 import { siteConfig } from '../lib/site-config';
+import { forCountry } from '../lib/country-profile';
 
 interface Props {
   item: TicketmasterFeedItem;
@@ -33,7 +34,8 @@ interface Props {
    *  entries reach this component at all; an entry with no image never
    *  reaches MarqueeCard, hero or row -- it just isn't shown as a marquee
    *  item, per the "no placeholder" rule). */
-  variant?: 'hero' | 'row';
+  /** "card": the front page's compact marquee card under the lead (Fas 1a 2026-11-18): a 3:2 thumbnail beside the text. */
+  variant?: 'hero' | 'row' | 'card';
   /** LCP fix: `variant === 'hero'` does NOT uniquely identify "the one
    *  above-the-fold image" -- true on index.astro (exactly one hero call),
    *  false on /whats-on/'s own marquee grid, which renders SEVERAL
@@ -61,7 +63,7 @@ const buildNow = new Date();
 const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
   ? runLabel(runSize, item.occurs_at, lastOccursAt, timezone, buildNow, siteConfig.country)
   : item.occurs_at
-    ? [showDate(item.occurs_at, timezone, buildNow, true, siteConfig.country), siteConfig.country === 'gb' ? showTimeGb(item.occurs_at, timezone) : ''].filter(Boolean).join(' · ')
+    ? [showDate(item.occurs_at, timezone, buildNow, true, siteConfig.country), forCountry(siteConfig.country, '', showTimeGb(item.occurs_at, timezone))].filter(Boolean).join(' · ')
     : null;
 ---
 <article class:list={['marquee-card', `marquee-card--${variant}`]}>
@@ -72,13 +74,13 @@ const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
       alt={image.alt}
       width={image.width}
       height={image.height}
-      loading={variant === 'hero' ? 'eager' : 'lazy'}
+      loading={variant === 'hero' || priority ? 'eager' : 'lazy'}
       decoding="async"
       fetchpriority={priority ? 'high' : undefined}
     />
   </ImageLink>
   <div class="marquee-card__body">
-    {variant === 'hero' && <ImageAttribution image={image} />}
+    {variant !== 'row' && <ImageAttribution image={image} />}
     <p class="marquee-card__meta">
       <span class="kicker">{e.venueName ?? 'Venue TBA'}</span>
       {dateLabel && <time class="marquee-card__when data" datetime={item.occurs_at ?? undefined}>{dateLabel}</time>}
@@ -113,6 +115,16 @@ const dateLabel = runSize > 1 && item.occurs_at && lastOccursAt
 .marquee-card--hero .marquee-card__body { padding-top: 0.875rem; }
 .marquee-card--hero .marquee-card__title { font-size: 1.5rem; line-height: 1.2; }
 
+.marquee-card--card {
+  gap: 0.875rem; align-items: flex-start;
+  border-bottom: 0.5px solid var(--rule); padding-bottom: 1rem; margin-bottom: 0.25rem;
+}
+.marquee-card--card .marquee-card__image-link { flex: 0 0 9rem; width: 9rem; border-radius: 0.25rem; overflow: hidden; }
+.marquee-card--card .marquee-card__image { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; object-position: top; }
+.marquee-card--card .marquee-card__body { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
+.marquee-card--card .marquee-card__body :global(.image-attribution) { order: 9; text-align: left; }
+.marquee-card--card .marquee-card__title { font-size: 1.125rem; line-height: 1.25; }
+@media (min-width: 40rem) { .marquee-card--card .marquee-card__image-link { flex-basis: 13.5rem; width: 13.5rem; } }
 .marquee-card--row {
   align-items: flex-start;
   gap: 0.75rem;

@@ -1,0 +1,62 @@
+---
+/** The town's photo (lib/city-face.ts): the front-page lead's surface, the holiday page's band, a secondary's photo on an alert day, and
+ *  the holiday card's thumbnail. Width and height are always set (no layout shift); the pool photos are served as WebP variants
+ *  (integrations/image-variants.mjs). Text passed as the default slot sits on a dark scrim at the bottom of the photo; the scrim is opaque
+ *  enough under the text for AA in both themes (city-face.test.ts measures it). The credit line sits under the photo. */
+import ImageAttribution from './ImageAttribution.astro';
+import { responsiveSrc, CITY_PHOTO_SIZES } from '../lib/city-face';
+import type { ImageRef } from '../lib/images';
+
+interface Props {
+  image: Pick<ImageRef, 'path' | 'alt' | 'width' | 'height' | 'attributionText' | 'attributionUrl' | 'attributionHtml'>;
+  /** lead: 3:2, 16:9 from 62rem. band: 3:2, 21:9 from 62rem. card: 3:2 at the card's width. thumb: a 3:2 thumbnail. */
+  variant: 'lead' | 'band' | 'card' | 'thumb';
+  /** The one LCP candidate on the page: eager + fetchpriority high (the page preloads the same srcset). */
+  priority?: boolean;
+}
+const { image, variant, priority = false } = Astro.props;
+const r = responsiveSrc(image.path);
+const hasText = Astro.slots.has('default');
+---
+<figure class:list={['city-photo', `city-photo--${variant}`]}>
+  <div class="city-photo__frame">
+    <img
+      class="city-photo__img"
+      src={r.src}
+      srcset={r.srcset}
+      sizes={r.srcset ? CITY_PHOTO_SIZES[variant] : undefined}
+      alt={image.alt}
+      width={image.width}
+      height={image.height}
+      loading={priority ? 'eager' : 'lazy'}
+      decoding={priority ? undefined : 'async'}
+      fetchpriority={priority ? 'high' : undefined}
+    />
+    {hasText && <div class="city-photo__scrim"><slot /></div>}
+  </div>
+  {variant !== 'thumb' && <figcaption class="city-photo__credit"><ImageAttribution image={image} /></figcaption>}
+</figure>
+
+<style>
+.city-photo { margin: 0; }
+.city-photo__frame { position: relative; overflow: hidden; border-radius: 0.375rem; background: var(--surface-2, #ddd); }
+.city-photo__img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.city-photo--lead .city-photo__frame, .city-photo--band .city-photo__frame, .city-photo--card .city-photo__frame { aspect-ratio: 3 / 2; }
+.city-photo--thumb .city-photo__frame { aspect-ratio: 3 / 2; width: 7.5rem; }
+@media (min-width: 62rem) {
+  /* 16:9, but never taller than leaves the headline (on the scrim) on the first screen at 1440x900: the photo is cropped (cover). */
+  .city-photo--lead .city-photo__frame { width: 100%; aspect-ratio: 16 / 9; max-height: min(30rem, 55vh); }
+  /* 21:9, capped so HeroStat (the page's hero) stays on the first screen at 1440x900. */
+  .city-photo--band .city-photo__frame { width: 100%; aspect-ratio: 21 / 9; max-height: min(22rem, 40vh); }
+}
+/* The scrim: transparent at its top edge, then a flat dark layer under every line of text (the text starts below SCRIM_FADE), so the
+   contrast is measured against the flat part (city-face.test.ts SCRIM_ALPHA). */
+.city-photo__scrim {
+  position: absolute; inset: auto 0 0 0;
+  padding: 2.75rem 1rem 0.875rem;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.78) 0, rgb(0 0 0 / 0.78) calc(100% - 2.75rem), rgb(0 0 0 / 0) 100%);
+  color: #fff;
+}
+@media (min-width: 40rem) { .city-photo__scrim { padding-inline: 1.5rem; padding-bottom: 1.25rem; } }
+.city-photo__credit :global(.image-attribution) { margin-top: 0.375rem; }
+</style>

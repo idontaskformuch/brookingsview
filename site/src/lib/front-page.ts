@@ -27,6 +27,13 @@ export interface FrontPageItem {
   deck: string[];
   url: string;
   image?: { src: string; alt: string; width: number; height: number };
+  /** Replaces the type's kicker: a holiday's "Thanksgiving · in 8 days". */
+  kicker?: string;
+  /** Holiday only: the holiday page this item links to (config/holiday-pages slug), for its photo. */
+  pageSlug?: string;
+  /** Holiday only: at most MAX_CARD_INSIGHTS lines from the page's data, for the compact card when the holiday is a secondary (Fas 1c).
+   *  Empty: no card, the item stays text-only. */
+  insights?: string[];
 }
 
 export interface FrontPage {
@@ -53,6 +60,8 @@ export interface FrontPageHoliday {
   window?: { from: number; to: number };
   /** The days the deck counts down to: it names the first one on or after today ("Hogmanay is Thursday, 31 December."). */
   deckDays?: { label: string; day: number }[];
+  /** The page's own insight lines for this season (lib/holiday-view.ts holidayInsights: confirmed rows that change a plan). */
+  insights?: string[];
 }
 export interface FrontPageGame { team: string; opponent: string; startsAt: string; home: boolean; url: string }
 
@@ -70,6 +79,14 @@ export interface FrontPageInput {
 
 export const WEEKEND_FROM_HOUR = 12;
 export const MAX_GUIDES = 2;
+/** Insight lines on the compact holiday card (Fas 1c). */
+export const MAX_CARD_INSIGHTS = 2;
+
+/** "Thanksgiving · in 8 days" / "· tomorrow" / "· today" / "· 2 days ago". */
+export function holidayKicker(label: string, daysAway: number): string {
+  const when = daysAway === 0 ? 'today' : daysAway === 1 ? 'tomorrow' : daysAway > 1 ? `in ${daysAway} days` : daysAway === -1 ? 'yesterday' : `${-daysAway} days ago`;
+  return `${label} · ${when}`;
+}
 const DAY_MS = 86_400_000;
 
 const isoWeekday = (day: number) => ((((day + 3) % 7) + 7) % 7) + 1; // 1 = Monday
@@ -158,8 +175,14 @@ function holidayItem(i: FrontPageInput, today: number): FrontPageItem | null {
   const about = dayOf(h, today);
   const verb = about.day < today ? 'was' : 'is';
   const deck = [`${about.label} ${verb} ${weekdayName(about.day, i.locale)}, ${dateLong(about.day, i.locale)}.`];
-  if (h.closed && h.closed > 0) deck.push(`${plural(h.closed, 'place')} in ${i.cityName} ${h.closed === 1 ? 'is' : 'are'} closed.`);
-  return { type: 'holiday', headline: h.label, deck, url: h.url };
+  const closedLine = h.closed && h.closed > 0 ? `${plural(h.closed, 'place')} in ${i.cityName} ${h.closed === 1 ? 'is' : 'are'} closed.` : null;
+  if (closedLine) deck.push(closedLine);
+  // Card lines (Fas 1c): the closed count, then the page's own insight rows; none once the day is past.
+  const insights = about.day < today ? [] : [...(closedLine ? [closedLine] : []), ...(h.insights ?? [])].slice(0, MAX_CARD_INSIGHTS);
+  return {
+    type: 'holiday', headline: h.label, deck, url: h.url, kicker: holidayKicker(about.label, about.day - today),
+    pageSlug: h.url.replace(/^\/|\/.*$/g, ''), insights,
+  };
 }
 
 /** "This weekend in {City}" is built from in-town events only; when only regional shows exist the lead says "near {City}" and gives each its

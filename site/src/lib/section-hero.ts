@@ -29,6 +29,7 @@ import { weekInfoForInstant } from './this-week';
 import { resolveActiveHoliday } from './holidays';
 import { townHolidays, holidayImagesFor } from '../config/holidays';
 import { thisWeekImagesFor } from '../config/this-week-images';
+import { reservedIdsForWeek } from './city-face';
 import { categoryImagesFor } from '../config/category-images';
 import type { ImageCategory } from './images';
 
@@ -129,7 +130,9 @@ export function getSectionHero(
   const seasonPool: PoolImage[] = opts.seasonPool
     ?? thisWeekImagesFor(town).filter((img) => img.seasons.includes(season));
   const match = resolveActiveHoliday(townHolidays(town), week.monday, week.sunday);
-  const holidayPool = opts.holidayPool ?? (match ? holidayImagesFor(town, match.holiday) : []);
+  // The photo reserved for the holiday's page (lib/city-face.ts) is never a section hero.
+  const reserved = reservedIdsForWeek(town, week.monday, week.sunday);
+  const holidayPool = opts.holidayPool ?? (match ? holidayImagesFor(town, match.holiday).filter((img) => !reserved.has(img.id)) : []);
 
   const seen = new Set<string>();
   const candidates = [...holidayPool, ...seasonPool].filter((img) => (seen.has(img.id) ? false : (seen.add(img.id), true)));
@@ -174,14 +177,17 @@ const EVENING_ALT = /\b(night|evening|dusk|twilight|sunset|illuminated|lights?)\
 /** Hero for /tonight and /this-weekend: an evening picture ("... at night", "Christmas lights") from the town's own licensed pools when one
  *  exists (events category + seasonal pool, alt text names the evening), one stable pick per calendar month; null when the pools hold none,
  *  and the caller falls back to the ordinary section hero. Credit and licence travel with the ImageRef (attributionText/Url). */
-export function getEveningHero(town: string, date: Date, opts: { timezone?: string; events?: ImageRef[]; seasonPool?: ImageRef[] } = {}): ImageRef | null {
+export function getEveningHero(
+  town: string, date: Date,
+  opts: { timezone?: string; events?: ImageRef[]; seasonPool?: ImageRef[]; /** The front page's photo this week: never the evening hero too. */ homepageImagePath?: string } = {},
+): ImageRef | null {
   const timezone = opts.timezone ?? TOWN_TIMEZONE[town] ?? 'America/Chicago';
   const week = weekInfoForInstant(date, timezone);
   const season: Season = seasonForMonth(week.monday.m);
   const events = opts.events ?? categoryImagesFor(town).events ?? [];
   const seasonal = opts.seasonPool ?? thisWeekImagesFor(town).filter((img) => img.seasons.includes(season));
   const seen = new Set<string>();
-  const pool = [...events, ...seasonal].filter((img) => EVENING_ALT.test(img.alt) && !seen.has(img.path) && (seen.add(img.path), true));
+  const pool = [...events, ...seasonal].filter((img) => EVENING_ALT.test(img.alt) && img.path !== opts.homepageImagePath && !seen.has(img.path) && (seen.add(img.path), true));
   if (pool.length === 0) return null;
   const ordered = [...pool].sort((a, b) => a.path.localeCompare(b.path));
   return ordered[stableHash(`${town}:evening:${week.monday.y}-${week.monday.m}`) % ordered.length];

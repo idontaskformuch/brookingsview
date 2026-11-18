@@ -45,10 +45,11 @@ import { toPublic, type PublicResults } from '../../../election-results/src/api'
 import { TOWNS as ELECTION_TOWNS } from '../../../election-results/src/towns';
 import { daysBetween, todayIn } from './election';
 import { calendarDateParts } from './calendar-date';
-import { selectThisWeekImage, type Season } from './this-week-images';
+import type { Season } from './this-week-images';
+import { pickWeekImage, recordedWeekImage } from './city-face';
 import type { ThisWeekImage } from '../config/this-week-images';
-import { resolveActiveHoliday, selectHolidayImage, type DateYMD } from './holidays';
-import { townHolidays, holidayImagesFor, type HolidayImage } from '../config/holidays';
+import type { DateYMD } from './holidays';
+import type { HolidayImage } from '../config/holidays';
 import type { MeetingDecision } from './meeting-decisions';
 import { FROZEN_EVENT_SOURCES, hiddenFrozenSlugs } from './frozen-sources.mjs';
 
@@ -850,26 +851,14 @@ export async function resolveThisWeekImage(
   weekMonday: DateYMD,
   weekSunday: DateYMD,
 ): Promise<ThisWeekImage | HolidayImage> {
-  // Holiday overlay (2026-10-06): if this week's own date range overlaps an
-  // ACTIVE holiday's window (lib/holidays.ts's resolveActiveHoliday()), the
-  // holiday pool is tried FIRST, same 60-day/history rule and this exact
-  // table -- image_id is a plain string column, not scoped to season vs
-  // holiday, so a holiday pick's own id (e.g. "brookings_sd-halloween-01")
-  // lives in the SAME row shape as a season pick's. Falls back to the
-  // season pool (warn, never throw) when a holiday is active but this
-  // town's pool for it is empty -- same "never silently degrade, but never
-  // hard-fail over a thin holiday pool either" reasoning a thin season
-  // pool already gets via the build-time warning instead of a throw.
-  const holidayMatch = resolveActiveHoliday(townHolidays(TOWN_ID), weekMonday, weekSunday);
-  const holidayPool = holidayMatch ? holidayImagesFor(TOWN_ID, holidayMatch.holiday) : [];
-
+  // The pick itself is lib/city-face.ts's pickWeekImage() (pure, simulated over a whole year in city-face.test.ts): an active holiday's
+  // pool first, minus the photo reserved for the holiday's page; the season pool otherwise or when the holiday pool has nothing eligible.
   const existing = (await sql`
     SELECT image_id FROM this_week_image_usage
      WHERE town_id = ${TOWN_ID} AND iso_year_week = ${isoYearWeek}
   `) as { image_id: string }[];
   if (existing.length > 0) {
-    const found = pool.find((img) => img.id === existing[0].image_id)
-      ?? holidayPool.find((img) => img.id === existing[0].image_id);
+    const found = recordedWeekImage(TOWN_ID, existing[0].image_id, weekMonday, weekSunday, pool);
     if (!found) {
       throw new Error(
         `resolveThisWeekImage: town "${TOWN_ID}" week "${isoYearWeek}" already recorded image_id ` +
@@ -886,25 +875,18 @@ export async function resolveThisWeekImage(
   const history = (await sql`
     SELECT image_id, shown_at FROM this_week_image_usage WHERE town_id = ${TOWN_ID}
   `) as { image_id: string; shown_at: string }[];
-  const historyRecords = history.map((h) => ({ imageId: h.image_id, shownAt: new Date(h.shown_at) }));
-
-  if (holidayMatch) {
-    const holidayChosenId = selectHolidayImage(
-      holidayPool, TOWN_ID, holidayMatch.holiday, historyRecords, isoYearWeek, new Date(),
-    );
-    if (holidayChosenId) {
-      await recordThisWeekImageUse(isoYearWeek, holidayChosenId);
-      return holidayPool.find((img) => img.id === holidayChosenId)!;
-    }
+  const pick = pickWeekImage({
+    town: TOWN_ID, isoYearWeek, monday: weekMonday, sunday: weekSunday, seasonPool: pool,
+    history: history.map((h) => ({ imageId: h.image_id, shownAt: new Date(h.shown_at) })), now: new Date(),
+  });
+  if (pick.holidayFellBack) {
     console.warn(
-      `resolveThisWeekImage: active holiday "${holidayMatch.holiday}" for town "${TOWN_ID}" week ` +
+      `resolveThisWeekImage: active holiday "${pick.holiday!.holiday}" for town "${TOWN_ID}" week ` +
       `"${isoYearWeek}" has no eligible image -- falling back to the season pool ("${season}"). Add curated ` +
-      `images via scripts/source_this_week_images.py --holiday ${holidayMatch.holiday}.`,
+      `images via scripts/source_this_week_images.py --holiday ${pick.holiday!.holiday}.`,
     );
   }
-
-  const chosenId = selectThisWeekImage(pool, TOWN_ID, season, historyRecords, isoYearWeek, new Date());
-  if (!chosenId) {
+  if (!pick.image) {
     throw new Error(
       `resolveThisWeekImage: no eligible "This week" image for town "${TOWN_ID}", week "${isoYearWeek}", ` +
       `season "${season}" -- every candidate for this town+season was shown within the last 60 days, or ` +
@@ -912,9 +894,8 @@ export async function resolveThisWeekImage(
       '(see that file\'s own module comment) rather than letting this fall back to a stale or wrong-season pick.',
     );
   }
-
-  await recordThisWeekImageUse(isoYearWeek, chosenId);
-  return pool.find((img) => img.id === chosenId)!;
+  await recordThisWeekImageUse(isoYearWeek, pick.image.id);
+  return pick.image;
 }
 
 /** True only in a production build: the CI build step that is followed by a wrangler deploy sets

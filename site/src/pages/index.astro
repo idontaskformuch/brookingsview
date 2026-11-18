@@ -65,14 +65,20 @@ import { resolveQuickLinks, type QuickLinkContext } from '../lib/quick-links';
 import { siteConfig } from '../lib/site-config';
 import { isSectionBuilt } from '../lib/sections';
 import { isWordCut, metaDescription } from '../lib/meta-description';
-import { placeAbbr, forCountry } from '../lib/country-profile';
+import { placeAbbr, countryProfile } from '../lib/country-profile';
+import { resolveThisWeekImage } from '../lib/db';
+import { weekInfoForInstant } from '../lib/this-week';
+import { seasonForMonth } from '../lib/this-week-images';
+import { thisWeekImagesFor } from '../config/this-week-images';
+import { holidayBandImage, cityImageSlot, responsiveSrc, CITY_PHOTO_SIZES } from '../lib/city-face';
+import { holidayPageDef } from '../config/holiday-pages/calendar';
+import { homeLayoutFor } from '../config/home-layout';
 import { resolveImage } from '../lib/images';
 import { categoryImagesFor } from '../config/category-images';
 import { getTicketmasterEventsForTown } from '../lib/ticketmaster';
 import { rankTicketmasterEvents, collapseMarqueeRuns, ticketmasterResolvableImage, type MarqueeEntry } from '../lib/whats-on';
 
-const isBrookings = siteConfig.townId === 'brookings_sd';
-const isMorenoValley = siteConfig.townId === 'moreno_valley_ca';
+const homeLayout = homeLayoutFor(siteConfig.townId);
 
 const [alerts, schoolAlerts, trafficIncidents, games, nextRegionalGame, nextSdsuEvent, prices, facilities, quickLinkEvents, quickLinkArtsEvents, quickLinkJobs, quickLinkNextMeeting] = await Promise.all([
   getActiveAlerts(),
@@ -137,7 +143,7 @@ const meetingsData = await loadUpcomingMeetings();
 const frontPage = selectFrontPage({
   cityName: siteConfig.cityName,
   timezone: siteConfig.timezone,
-  locale: siteConfig.country === 'gb' ? 'en-GB' : 'en-US',
+  locale: countryProfile(siteConfig.country).locale as 'en-US' | 'en-GB',
   config: FRONT_PAGE_BY_TOWN[siteConfig.townId],
   alerts: frontPageAlerts(alerts),
   holidays: frontPageHolidays(siteConfig.townId, new Date(localDayNumber(now, siteConfig.timezone) * 86_400_000).getUTCFullYear()),
@@ -148,6 +154,24 @@ const frontPage = selectFrontPage({
   })),
   meetings: meetingsData?.meetings ?? [],
 }, now);
+// The town's photo of the week (lib/city-face.ts, Fas 1a): the same pick SectionHero excludes, for the week of `now` (FRONT_PAGE_NOW
+// included: a week with no recorded row is computed in memory, nothing is written outside a production build). A pre-launch town with no
+// pool yet has none. On an alert day it goes to the first secondary (holiday/weekend) or is not shown (cityImageSlot).
+const photoWeek = weekInfoForInstant(now, siteConfig.timezone);
+const photoPool = thisWeekImagesFor(siteConfig.townId);
+const cityImage = siteConfig.noindexSite && photoPool.length === 0
+  ? null
+  : await resolveThisWeekImage(photoWeek.slug, seasonForMonth(photoWeek.monday.m), photoPool, photoWeek.monday, photoWeek.sunday);
+const photoSlot = cityImage ? cityImageSlot(frontPage) : null;
+const leadPhoto = photoSlot === 'lead' && cityImage ? responsiveSrc(cityImage.path) : null;
+// The holiday card's thumbnail is the linked holiday page's own band photo (never the front page's photo).
+const holidayItem = frontPage.secondaries.find((s) => s.type === 'holiday' && s.pageSlug);
+const holidayDef = holidayItem ? holidayPageDef(holidayItem.pageSlug!) : undefined;
+const todayParts = new Date(localDayNumber(now, siteConfig.timezone) * 86_400_000);
+const holidayThumb = holidayDef
+  ? holidayBandImage(siteConfig.townId, holidayDef.holidayId, { y: todayParts.getUTCFullYear(), m: todayParts.getUTCMonth() + 1, d: todayParts.getUTCDate() }, photoWeek.slug, cityImage?.id ?? null)
+  : null;
+
 // A meeting featured on the front page is not repeated as a Worth knowing row.
 const featuredMeetingIds = new Set([frontPage.lead, ...frontPage.secondaries].flatMap((it) => (/^\/city-hall\/#meeting-(.+)$/.exec(it.url)?.[1] ?? [])));
 
@@ -194,7 +218,7 @@ const timelyEventTeaser = isEventTeaserWeekend
 // an away game doesn't affect anyone's day in Brookings the way a home game
 // does (traffic, parking, foot draw), and the rail widget already covers
 // "next game" regardless of home/away.
-const todayHomeGame = isBrookings && nextGame && nextGame.home_away === 'home'
+const todayHomeGame = isSectionBuilt('jackrabbits', siteConfig) && nextGame && nextGame.home_away === 'home'
   && dayOffsetOf(nextGame.starts_at) === 0 ? nextGame : null;
 
 // 2026-10-01: getLatestEmployerRatings() (rating-derived) is no longer
@@ -338,14 +362,17 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       docstring), so `alerts`/`schoolAlerts` are still fetched independently
       above for the front-page selector/SchoolAlertBanner below, unrelated to
       CityStatus's own alerts module. */}
+  {leadPhoto && (
+    <link slot="head" rel="preload" as="image" href={leadPhoto.src} imagesrcset={leadPhoto.srcset} imagesizes={leadPhoto.srcset ? CITY_PHOTO_SIZES.lead : undefined} fetchpriority="high" />
+  )}
+  {/* Fas 1a (owner 2026-11-18): the lead first, under the page header and any active warning banner; Right Now straight under it (it
+      moves to the rail in Fas 2); the What's On marquee is a compact card after those. At most one photo above the fold at 390 px. */}
   <OrientationHeader />
   {ELECTION_BY_TOWN[siteConfig.townId] && <ResultsBanner />}
-  <CityStatus />
   {siteConfig.safetyNotices && <SafetyNotices townId={siteConfig.townId} timezone={siteConfig.timezone} variant="compact" onlyWhenActive />}
-  <QuickLinks links={quickLinks} omitted={omittedQuickLinks} />
+  <FrontPageLead page={frontPage} cityImage={cityImage} holidayThumb={holidayThumb} />
+  <CityStatus />
 
-  {/* The answer first: how many things are on today and the days as counts, straight after the status strip. The day lists are further down. */}
-  {(townEvents.view.todayCount > 0 || townEvents.view.nextDay) && <section class="home-glance"><EventsGlance view={townEvents.view} base="/events/" /></section>}
 
   {/* Marquee module (sitewide presentation-layer pass): the single
       top-ranked What's On item with a real image, full-width, plus up to
@@ -362,8 +389,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
         image={marqueeHero.image}
         cityName={siteConfig.cityName}
         timezone={siteConfig.timezone}
-        variant="hero"
-        priority
+        variant="card"
         runSize={marqueeHero.entry.members.length}
         lastOccursAt={marqueeHero.entry.members[marqueeHero.entry.members.length - 1].occurs_at}
       />
@@ -385,6 +411,11 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
       <a class="marquee-module__link" href="/whats-on/">See everything on this week &rarr;</a>
     </section>
   )}
+
+  {/* The answer first: how many things are on today and the days as counts, straight after the status strip. The day lists are further down. */}
+  {(townEvents.view.todayCount > 0 || townEvents.view.nextDay) && <section class="home-glance"><EventsGlance view={townEvents.view} base="/events/" /></section>}
+
+  <QuickLinks links={quickLinks} omitted={omittedQuickLinks} />
 
   <SchoolAlertBanner alerts={schoolAlerts} />
 
@@ -419,7 +450,6 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
     )}
   </section>
 
-  <FrontPageLead page={frontPage} />
 
   <aside class="rail" aria-label="Conditions and numbers">
       {gameSlot === 'jackrabbits' && nextGame ? (
@@ -441,8 +471,7 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
           <RegionalGameCard game={nextRegionalGame} />
         </a>
       )}
-      {isBrookings && <JackrabbitWidget />}
-      {isMorenoValley && <BurroBonanzaWidget />}
+      {homeLayout.railWidgets.map((w) => (w === 'jackrabbits' ? <JackrabbitWidget /> : <BurroBonanzaWidget />))}
       {/* 2026-10-01: gated on biggestHiringMover (Adzuna-sourced), not
           topEmployer (rating-sourced) -- rating/ranking is hidden pending
           a Glassdoor/Indeed ToS review, see WorkplaceWatchWidget.astro's
@@ -523,28 +552,12 @@ const gameSlot: 'jackrabbits' | 'sdsu' | 'regional' | null =
   <section aria-label="Sections">
     <SectionRule label={`More from ${siteConfig.cityName}`} />
     <div class="panels">
-      {isBrookings && (
-        <a class="panel" href="/university/">
-          <h3>University</h3>
-          <p>Games, concerts, shows and campus events at South Dakota State.</p>
+      {homeLayout.panels.map((p) => (
+        <a class="panel" href={p.href}>
+          <h3>{p.title}</h3>
+          <p>{p.text}</p>
         </a>
-      )}
-      {isBrookings && (
-        <a class="panel" href="/jackrabbits/">
-          <h3>Jackrabbits</h3>
-          <p>Full schedules and results for SDSU football, basketball and volleyball.</p>
-        </a>
-      )}
-      <a class="panel" href="/city-hall/">
-        <h3>City hall</h3>
-        <p>What the {forCountry(siteConfig.country, 'council, county commission and committees', 'council and committees')} are deciding.</p>
-      </a>
-      {isBrookings && (
-        <a class="panel" href="/farm-report/">
-          <h3>Farm report</h3>
-          <p>Corn, soybean and cattle prices from USDA.</p>
-        </a>
-      )}
+      ))}
     </div>
   </section>
 

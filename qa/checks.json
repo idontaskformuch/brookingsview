@@ -316,6 +316,26 @@
         "born_from": "Fylliga sidor Fas 0 2026-11-18 (.claude/specs/full-pages-phase0-inventory.md): site/src/lib/db.ts resolveThisWeekImage INSERTed into the live this_week_image_usage table from any build that rendered SectionHero (/today, /tonight, /this-weekend) in a week with no row -- local builds, battery.sh, astro dev and review-shots (whose header said 'writes nothing') included; the site's neon() client has no read-only lock. Regression fixtures: site/src/lib/build-write-gate.test.ts (mocked neon counts write queries; 5 of 8 fail on 28dcd07) and tests/test_image_history_write_flag.py (2 of 4 fail on the workflows at 28dcd07).",
         "what": "the site build sends any write SQL without IMAGE_HISTORY_WRITE=1, any write SQL exists in site/src outside db.ts recordThisWeekImageUse, a workflow that deploys lacks IMAGE_HISTORY_WRITE: '1' on its build step, or anything outside the deploying workflows sets it (vitest + pytest in battery.sh and tests.yml)"
     },
+    "front.city-photo-rotation": {
+        "severity": "hard",
+        "born_from": "Fylliga sidor Fas 1a 2026-11-18 (.claude/specs/full-pages-no-ai-prose.md, owner decisions after Fas 0): the front page had no town photo since 4b91a7f while the weekly rotation kept recording an unseen pick. Fixture: site/src/lib/city-face.test.ts simulates every day 7 Sep 2026 - 28 Feb 2027 for all four towns (pickWeekImage, the same function db.ts resolveThisWeekImage uses).",
+        "what": "a week with no front-page photo, a photo without alt or credit, the same photo on the front page twice within 60 days, a holiday photo outside the weeks overlapping its window, or the holiday page's reserved photo used on the front page (vitest)"
+    },
+    "front.alert-lead-no-photo": {
+        "severity": "hard",
+        "born_from": "Owner decision 2026-11-18 (spec, Beslut 2): no festive photo next to a warning. Fixture: city-face.test.ts with the real alert row events.id 333038 (broomfield_co, Red Flag Warning) with only ends_at changed, FRONT_PAGE_NOW 2026-11-24T18:00Z inside the Thanksgiving window.",
+        "what": "an alert lead rendered with a photo, or the week's photo not on the first secondary when that is a holiday or the weekend, or shown at all otherwise on an alert day (vitest, FrontPageLead rendered in the Astro container)"
+    },
+    "holiday.band-photo": {
+        "severity": "hard",
+        "born_from": "Fylliga sidor Fas 1b 2026-11-18: HolidayPage had no photo. Fixture: city-face.test.ts (reservation rule, band photo in and outside the window, Veterans Day without a pool, a reserved photo equal to the week's front-page photo).",
+        "what": "the holiday page band shows the front page's photo of the week, a photo other than the reserved one inside the window, a holiday photo outside it, or a reservation from a pool smaller than the window's weeks + 1 (vitest)"
+    },
+    "build.no-dead-image-urls": {
+        "severity": "hard",
+        "born_from": "Fylliga sidor Fas 1a 2026-11-18: the WebP variants (640/960/1200) are made at build time from the pools' JPGs, so a renamed or removed pool file would otherwise ship a dead <img>. Fixture: site/src/lib/image-variants.test.ts (a real pool photo and two URLs with no file).",
+        "what": "any /assets/images/ URL in the built HTML with no file in dist after the variants are written: integrations/image-variants.mjs fails the build (every build, CI and battery)"
+    },
     "ops.alert-plain-text": {
         "severity": "hard",
         "born_from": "ALERT_WEBHOOK 2026-11-18 (.claude/state.md, .claude/specs/alerts-send-alert.md): the owner set the repo secret to an ntfy.sh topic; the test post arrived, but all six senders (runner.py, publish.py, staleness.py, check_scrape_liveness.py, check_freshness.py, check_deployed_content.py) posted json={\"text\": msg}, so ntfy showed the JSON shell instead of the message, and a non-2xx answer or exception was swallowed without a log line. Fixed: shared scrapers/alerts.py send_alert. Regression fixtures: tests/test_alerts.py (the ntfy body/header test and the per-sender test fail on the old json body; the repo scan fails on any module reading ALERT_WEBHOOK itself).",

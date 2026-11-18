@@ -27,7 +27,7 @@ const noPool = !!siteConfig.noindexSite && thisWeekImagesFor(siteConfig.townId).
 const homepage = noPool ? null : await resolveThisWeekImage(
   week.slug, seasonForMonth(week.monday.m), thisWeekImagesFor(siteConfig.townId), week.monday, week.sunday,
 );
-const eveningImage = evening ? getEveningHero(siteConfig.townId, now, { timezone: siteConfig.timezone }) : null;
+const eveningImage = evening ? getEveningHero(siteConfig.townId, now, { timezone: siteConfig.timezone, homepageImagePath: homepage?.path }) : null;
 const image = eveningImage ?? (homepage
   ? getSectionHero(siteConfig.townId, section, now, { timezone: siteConfig.timezone, homepageImageId: homepage.id }).image
   : null);

@@ -24,6 +24,18 @@ describe('findIntroText', () => {
     expect(findIntroText(html, '/thanksgiving/')).toEqual([]);
   });
 
+  it('the photo credit under the holiday band (H1 on the photo) is not an explanation (Fas 1b 2026-11-18)', () => {
+    // The real Broomfield /thanksgiving/ markup from the 2026-11-18 Fas 1 build: band photo broomfield_co-autumn credit line.
+    const html = page(`<header class="hp-title"><figure class="city-photo city-photo--band"><div class="city-photo__frame"><img src="/x-960.webp" alt="a"><div class="city-photo__scrim"><h1 class="hp-title__h1--photo">Thanksgiving 2026: closures, events, food help</h1></div></div><figcaption class="city-photo__credit"><p class="image-attribution"><a href="https://www.pexels.com/@elijah-pilchard">Photo by Elijah Pilchard on Pexels</a></p></figcaption></figure><p class="hp-checked">Checked November 4 – November 17, 2026</p></header><section class="hp-group"><ul><li>a</li></ul></section>`);
+    expect(findIntroText(html, '/thanksgiving/')).toEqual([]);
+  });
+
+  it('the active-warning line above the front-page lead is allowed (standards: active warnings are the banner on top, Fas 1a 2026-11-18)', () => {
+    // The real markup from the Broomfield front page built 2026-11-18 (SafetyNotices compact), followed by the lead.
+    const html = page(`<header class="orientation"><h1>What's happening in Broomfield today</h1></header><p class="safety-compact" data-safety="compact" data-active-only="1" data-tz="America/Denver" data-radius="25" hidden> <strong>Fire and air:</strong> <span data-safety-line></span> <a href="/safety/">Details and evacuation links</a> </p><div class="front"><article class="lead"><h2>Thanksgiving</h2></article></div>`);
+    expect(findIntroText(html, '/')).toEqual([]);
+  });
+
   it('flags a "Looking for X? See Y" link line too', () => {
     const html = page(`<h1>Past events</h1><p>Looking for what's coming up? See <a href="/events/">What's on</a>, updated every day.</p><h2>May</h2>`);
     expect(findIntroText(html, '/events/past/')).toHaveLength(1);
