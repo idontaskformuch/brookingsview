@@ -83,6 +83,8 @@ const extra = process.env.EXTRA_PAGES && fs.existsSync(process.env.EXTRA_PAGES)
   : [];
 const list = [...new Set([...extra, ...pages(B)])].slice(0, MAX + extra.length);
 let pagesDiff = 0;
+const customPairs = new Set();
+const stdPairs = new Map(); // "egenskap: före -> efter" -> { antal element, första förekomst } (alla sidor/lägen)
 let elemsChecked = 0;
 const examples = [];
 for (const mode of MODES) {
@@ -107,7 +109,12 @@ for (const mode of MODES) {
       const [ida, va] = xa.rows[i].split('\u0002');
       const vb = xb.rows[i].split('\u0002')[1].split('\u0001');
       va.split('\u0001').forEach((v, j) => {
-        if (v !== vb[j]) { diffs++; if (first.length < 3) first.push(`${ida} ${xa.keys[j]}: ${v} -> ${vb[j]}`); }
+        if (v === vb[j]) return;
+        // Egna egenskaper (--x) är den skrivna texten, inte ett beräknat värde: "#fff" och "#ffffff" skiljer som text
+        // men ritas lika. De listas en gång per värdepar; det läsaren ser fångas i de vanliga egenskaperna som använder dem.
+        if (xa.keys[j].startsWith('--')) { customPairs.add(`${xa.keys[j]}: ${v.trim()} -> ${vb[j].trim()}`); return; }
+        { const k = `${xa.keys[j]}: ${v} -> ${vb[j]}`; const o = stdPairs.get(k) ?? { n: 0, at: `${mode.name} ${u} ${ida}` }; o.n++; stdPairs.set(k, o); }
+        diffs++; if (first.length < 3) first.push(`${ida} ${xa.keys[j]}: ${v} -> ${vb[j]}`);
       });
     }
     if (diffs) { pagesDiff++; examples.push(`${mode.name} ${u}: ${diffs} egenskaper skiljer; ${first.join(' | ')}`); }
@@ -118,3 +125,7 @@ await browser.close();
 sa.close(); sb.close();
 console.log(`## ${town}: ${list.length} sidor x ${MODES.length} lägen, ${elemsChecked} element jämförda, ${pagesDiff} sida/läge med skillnad`);
 for (const e of examples.slice(0, 20)) console.log(`  * ${e}`);
+console.log(`  vanliga egenskaper, unika värdepar: ${stdPairs.size}`);
+for (const [k, n] of [...stdPairs].sort((a, b) => b[1].n - a[1].n).slice(0, 80)) console.log(`    - ${n.n} x ${k}  (först: ${n.at})`);
+console.log(`  egna egenskaper (--x) med annan skriven text: ${customPairs.size} värdepar`);
+for (const c of [...customPairs].sort()) console.log(`    - ${c}`);
