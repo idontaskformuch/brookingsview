@@ -500,6 +500,11 @@
       "severity": "soft",
       "born_from": "Review of Fas 1 (2026-11-18): OrientationHeader read its own new Date(), so a local build with FRONT_PAGE_NOW showed the build machine's date above a front page built for another day. Owner 2026-11-18: the date follows FRONT_PAGE_NOW. Regression fixture: site/src/components/OrientationHeader.test.ts 'follows the `now` it is given', fails on badd3ab's OrientationHeader.astro.",
       "what": "the front page's date line (OrientationHeader) names a different local day than the instant index.astro builds the page for (vitest)"
+    },
+    "holiday.band-own-photo": {
+      "severity": "soft",
+      "born_from": "Owner 2026-11-18, correcting Fas 1b: outside its window a holiday page's band fell back to the season pool, so /christmas/ showed an autumn photo on Nov 18, and Glasgow's /christmas/ (HolidaySeasonPage) had no band at all. Regression fixtures: site/src/lib/city-face.test.ts 'outside the window: still the holiday's own photo' and '/christmas/ on Nov 18 2026 shows a Christmas photo in all four towns', fail on cbdcf26's lib/city-face.ts; 'both page templates render the band' fails on cbdcf26's HolidaySeasonPage.astro.",
+      "what": "a holiday page band (HolidayPage or HolidaySeasonPage) shows a season photo while the town has a pool for that holiday, or a template renders no band (vitest)"
     }
   }
 }

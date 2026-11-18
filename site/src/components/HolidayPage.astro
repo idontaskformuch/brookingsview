@@ -72,8 +72,8 @@ const hours = regularHoursRows(page);
 const ungrouped = page.linkOnly.filter((l) => !l.group);
 const linkGroups = [...new Set(page.linkOnly.flatMap((l) => (l.group ? [l.group] : [])))];
 const sources = groupSources(page);
-// Photo band (Fas 1b, owner 2026-11-18): the photo reserved for this holiday's page while its window is open, else a season photo; never
-// the front page's photo of the week. The H1 sits on the band's scrim; HeroStat below stays the page's hero.
+// Photo band (Fas 1b, owner 2026-11-18, corrected the same day): always the holiday's own photo, inside the window and outside it; a season
+// photo only for a holiday with no pool (lib/city-face.ts holidayBandImage); never the front page's photo of the week. The H1 sits on the band's scrim; HeroStat below stays the page's hero.
 const photoWeek = weekInfoForInstant(new Date(), siteConfig.timezone);
 const photoPool = thisWeekImagesFor(siteConfig.townId);
 const frontPhoto = siteConfig.noindexSite && photoPool.length === 0

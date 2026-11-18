@@ -110,19 +110,40 @@ describe('holiday page band photo', () => {
     const r = reservedHolidayImage('broomfield_co', 'thanksgiving', 2026)!;
     for (let d = 19; d <= 26; d++) expect(holidayBandImage('broomfield_co', 'thanksgiving', { y: 2026, m: 11, d }, '2026-w48', null)?.id).toBe(r.id);
   });
-  it('outside the window, and for a holiday with no pool (Veterans Day): a season photo, never the front page photo', () => {
+  it('outside the window: still the holiday\'s own photo (owner 2026-11-18); a holiday with no pool (Veterans Day): a season photo', () => {
     const front = thisWeekImagesFor('broomfield_co').find((i) => i.seasons.includes('autumn'))!;
-    for (const [h, day] of [['thanksgiving', { y: 2026, m: 11, d: 10 }], ['veterans_day', { y: 2026, m: 11, d: 10 }]] as const) {
-      const b = holidayBandImage('broomfield_co', h, day, '2026-w46', front.id)!;
-      expect('seasons' in b && b.seasons.includes('autumn')).toBe(true);
-      expect(b.id).not.toBe(front.id);
-    }
+    const tg = holidayBandImage('broomfield_co', 'thanksgiving', { y: 2026, m: 11, d: 10 }, '2026-w46', front.id)!;
+    expect('holiday' in tg && tg.holiday).toBe('thanksgiving');
+    expect(tg.id).toBe(reservedHolidayImage('broomfield_co', 'thanksgiving', 2026)!.id);
+    const vd = holidayBandImage('broomfield_co', 'veterans_day', { y: 2026, m: 11, d: 10 }, '2026-w46', front.id)!;
+    expect('seasons' in vd && vd.seasons.includes('autumn')).toBe(true);
+    expect(vd.id).not.toBe(front.id);
   });
-  it('a reserved photo that equals the week\'s front-page photo gives way to a season photo', () => {
+  it('a reserved photo that equals the week\'s front-page photo gives way to another photo of the same holiday pool', () => {
     const r = reservedHolidayImage('broomfield_co', 'thanksgiving', 2026)!;
     const b = holidayBandImage('broomfield_co', 'thanksgiving', nov24, '2026-w48', r.id)!;
     expect(b.id).not.toBe(r.id);
-    expect('seasons' in b).toBe(true);
+    expect('holiday' in b && b.holiday).toBe('thanksgiving');
+  });
+  it('/christmas/ on Nov 18 2026 shows a Christmas photo in all four towns (owner 2026-11-18)', () => {
+    const nov18: DateYMD = { y: 2026, m: 11, d: 18 };
+    for (const town of ['brookings_sd', 'moreno_valley_ca', 'broomfield_co', 'glasgow']) {
+      const front = thisWeekImagesFor(town).find((i) => i.seasons.includes('autumn'))?.id ?? null;
+      const b = holidayBandImage(town, 'christmas', nov18, '2026-w47', front)!;
+      expect(b, town).not.toBeNull();
+      expect('holiday' in b && b.holiday, town).toBe('christmas');
+    }
+  });
+  it('both page templates render the band (HolidaySeasonPage carries Glasgow\'s /christmas/)', () => {
+    for (const f of ['HolidayPage.astro', 'HolidaySeasonPage.astro']) {
+      const src = readFileSync(join(__dirname, '..', 'components', f), 'utf8');
+      expect(src, f).toContain('holidayBandImage(siteConfig.townId, def.holidayId');
+      expect(src, f).toContain('<CityPhoto image={band} variant="band" priority>');
+    }
+  });
+  it('after the window the band takes next year\'s Christmas photo, never a season photo', () => {
+    const b = holidayBandImage('brookings_sd', 'christmas', { y: 2027, m: 2, d: 1 }, '2027-w05', null)!;
+    expect('holiday' in b && b.holiday).toBe('christmas');
   });
 });
 

@@ -5,7 +5,8 @@
  *  - The week's front-page photo: an active holiday's pool first (the town's own holidays, lib/holidays.ts), else the season pool; never a
  *    photo shown on the front page in the last 60 days (selectThisWeekImage / selectHolidayImage).
  *  - The holiday page's band: one photo per holiday and window, reserved out of the holiday pool by a hash (no DB), so the front page
- *    rotates only among the rest. A pool smaller than the window's weeks + 1 reserves nothing and the page takes a season photo.
+ *    rotates only among the rest. The band always shows a photo from the holiday's pool, outside the window too (owner 2026-11-18); a
+ *    pool smaller than the window's weeks + 1 reserves nothing for the front page, and the band takes a pool photo by hash.
  *  - An alert lead gets no photo (no festive picture next to a warning); the photo then goes to the first secondary when that is a holiday
  *    or the weekend, otherwise it is not shown above the fold that day. */
 import { thisWeekImagesFor, type ThisWeekImage } from '../config/this-week-images';
@@ -91,21 +92,23 @@ export function recordedWeekImage(town: string, id: string, monday: DateYMD, sun
   return seasonPool.find((img) => img.id === id) ?? (match ? holidayImagesFor(town, match.holiday).find((img) => img.id === id) : undefined) ?? null;
 }
 
-/** The holiday page's band photo on local day `today`: the reserved photo while `today` is inside the holiday's own window, else (outside
- *  the window, a holiday with no pool, a pool too small to reserve from) a season photo chosen by a stable hash per page and week. Never the
- *  front page's photo of the week (`frontImageId`): a reserved photo that equals it (a week recorded before the reservation existed) gives
- *  way to the season photo. Null only when the town has no season photo at all. */
+/** The holiday page's band photo on local day `today`: ALWAYS a photo from the holiday's own pool, inside the window and outside it (owner
+ *  2026-11-18, correcting Fas 1b: a season photo on /christmas/ looked wrong). The year is the window that holds `today`, else the next
+ *  occurrence. The reserved photo first; when the pool is too small to reserve from, or the reserved photo is the week's front-page photo
+ *  (`frontImageId`, a week recorded before the reservation existed), another photo of the same pool by a stable hash. The season pool only
+ *  when the town has no pool for the holiday (Veterans Day), by a stable hash per page and week. Null only when there is no photo at all. */
 export function holidayBandImage(town: string, holiday: string, today: DateYMD, weekSlug: string, frontImageId: string | null): CityImage | null {
   const def = townHolidays(town).find((h) => h.id === holiday && h.active);
-  if (def) {
-    for (const y of [today.y - 1, today.y, today.y + 1]) {
+  const own = def ? holidayImagesFor(town, def.id).filter((img) => img.id !== frontImageId).sort((a, b) => a.id.localeCompare(b.id)) : [];
+  if (def && own.length > 0) {
+    const inWindow = [today.y - 1, today.y, today.y + 1].find((y) => {
       const w = holidayWindow(def, y);
-      if (dayNum(today) >= dayNum(w.start) && dayNum(today) <= dayNum(w.end)) {
-        const reserved = reservedHolidayImage(town, holiday, y);
-        if (reserved && reserved.id !== frontImageId) return reserved;
-        break;
-      }
-    }
+      return dayNum(today) >= dayNum(w.start) && dayNum(today) <= dayNum(w.end);
+    });
+    const year = inWindow ?? [today.y, today.y + 1].find((y) => dayNum(holidayWindow(def, y).end) >= dayNum(today))!;
+    const reserved = reservedHolidayImage(town, holiday, year);
+    if (reserved && reserved.id !== frontImageId) return reserved;
+    return own[stableHash(`${town}:${holiday}:${year}:band`) % own.length];
   }
   const season = seasonForMonth(today.m);
   const pool = thisWeekImagesFor(town)

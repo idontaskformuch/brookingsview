@@ -16,6 +16,7 @@ import SectionHeader from './ui/SectionHeader.astro';
 import AboutThisPage from './ui/AboutThisPage.astro';
 import PopEventList from './pop/PopEventList.astro';
 import TonightStyles from './tonight/TonightStyles.astro';
+import CityPhoto from './CityPhoto.astro';
 import { siteConfig } from '../lib/site-config';
 import { countryProfile } from '../lib/country-profile';
 import {
@@ -26,6 +27,11 @@ import { groupSources } from '../lib/holiday-view';
 import { daysWithCards, eventPopDays, seasonEvents, seasonHero } from '../lib/holiday-season';
 import { BANK_HOLIDAYS_SOURCE } from '../config/holiday-pages/gb/bank-holidays';
 import type { HolidayPageDef } from '../config/holiday-pages/calendar';
+import { resolveThisWeekImage } from '../lib/db';
+import { weekInfoForInstant } from '../lib/this-week';
+import { seasonForMonth } from '../lib/this-week-images';
+import { thisWeekImagesFor } from '../config/this-week-images';
+import { holidayBandImage, responsiveSrc, CITY_PHOTO_SIZES } from '../lib/city-face';
 
 interface Props { page: HolidayPageData; def: HolidayPageDef }
 const { page, def } = Astro.props;
@@ -53,6 +59,15 @@ const linkGroups = [...new Set(page.linkOnly.flatMap((l) => (l.group ? [l.group]
 const ungrouped = page.linkOnly.filter((l) => !l.group);
 const sources = [...groupSources(page), { name: BANK_HOLIDAYS_SOURCE.name.split(':')[0], href: BANK_HOLIDAYS_SOURCE.url }];
 const org = (name: string) => name.split(':')[0].trim();
+// Photo band, the same as HolidayPage (owner 2026-11-18): always the holiday's own photo; never the front page's photo of the week.
+const photoWeek = weekInfoForInstant(new Date(), tz);
+const photoPool = thisWeekImagesFor(siteConfig.townId);
+const frontPhoto = siteConfig.noindexSite && photoPool.length === 0
+  ? null
+  : await resolveThisWeekImage(photoWeek.slug, seasonForMonth(photoWeek.monday.m), photoPool, photoWeek.monday, photoWeek.sunday);
+const [ty, tm, td] = today.split('-').map(Number);
+const band = holidayBandImage(siteConfig.townId, def.holidayId, { y: ty, m: tm, d: td }, photoWeek.slug, frontPhoto?.id ?? null);
+const bandSrc = band ? responsiveSrc(band.path) : null;
 const PILL: Record<HolidayChange, { tone: 'alert' | 'warn' | 'ok'; text: string }> = {
   closed: { tone: 'alert', text: 'Closed' }, changed: { tone: 'warn', text: 'Changed' }, open: { tone: 'ok', text: 'Open' },
 };
@@ -62,8 +77,11 @@ const PILL: Record<HolidayChange, { tone: 'alert' | 'warn' | 'ok'; text: string 
   {jsonLd.map((ld) => <script type="application/ld+json" is:inline slot="head" set:html={JSON.stringify(ld)} />)}
   <TonightStyles />
 
+  {bandSrc && <link slot="head" rel="preload" as="image" href={bandSrc.src} imagesrcset={bandSrc.srcset} imagesizes={bandSrc.srcset ? CITY_PHOTO_SIZES.band : undefined} fetchpriority="high" />}
   <header class="hp-title" data-holiday-season={page.holiday} data-hp-rows-checked={rowsChecked}>
-    <h1>{meta.h1}</h1>
+    {band ? (
+      <CityPhoto image={band} variant="band" priority><h1 class="hp-title__h1--photo">{meta.h1}</h1></CityPhoto>
+    ) : <h1>{meta.h1}</h1>}
     {span.first === span.last
       ? <p class="hp-checked">Last checked <time datetime={span.last}>{formatIsoDate(span.last, true, page.locale)}</time></p>
       : <p class="hp-checked">Checked <time datetime={span.first}>{formatCheckedSpan(span, true, page.locale).split(' – ')[0]}</time> – <time datetime={span.last}>{formatIsoDate(span.last, true, page.locale)}</time></p>}
@@ -189,6 +207,8 @@ const PILL: Record<HolidayChange, { tone: 'alert' | 'warn' | 'ok'; text: string 
 
 <style>
   .hp-title h1 { margin-bottom: 0.25rem; }
+  .hp-title .hp-title__h1--photo { margin: 0; color: #fff; font-size: clamp(1.5rem, 4vw, 2.5rem); line-height: 1.1; }
+  .hp-title :global(.city-photo--band) { margin-bottom: 0.5rem; }
   .hp-checked { margin: 0 0 var(--ui-3); font-family: var(--font-ui); font-size: var(--ui-meta); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
   .hs-days { display: flex; flex-wrap: wrap; gap: var(--ui-2); margin: var(--ui-4) 0 0; }
   .hs-chip { font-family: var(--font-ui); font-size: var(--ui-meta); font-weight: var(--ui-primary-weight); color: var(--ink); background: var(--ui-surface-2);
