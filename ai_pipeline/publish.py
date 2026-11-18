@@ -72,8 +72,9 @@ import requests
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from ai_pipeline import guardrails, meta_only, uk_guardrails
-from ai_pipeline.format_prompt import format_record, TEMPLATERS
+from ai_pipeline import guardrails, meta_only, structured_meta, uk_guardrails
+from ai_pipeline.format_prompt import FormatResult, format_record, TEMPLATERS
+from scrapers.llm_gate import LlmGate
 from scrapers.alerts import send_alert
 from ai_pipeline.venue_registry import load_registry, normalize_venue, queue_for_review, resolve_venue
 from db.db import content_hash
@@ -85,6 +86,9 @@ from db.db import content_hash
 # indefinitely -- found live via api_usage.reject_reason (NEEDS-HUMAN-
 # REVIEW.md #77/#78), not a hypothetical.
 MAX_CONSECUTIVE_DISCARDS = 3
+
+# Source types format_record can send to a model (alerts never do: meta_only); these pass the model gate first.
+GATED_TYPES = frozenset({"meeting", "event"})
 
 SOURCES: dict[str, str] = {
     "meetings": "meeting",
@@ -934,9 +938,12 @@ def log_uk_gate(cfg: dict, source_type: str, record_id: str, title, stage: str, 
 
 def publish_table(
     conn, cfg: dict, table: str, known_slugs: set[str], max_new: int = DEFAULT_MAX_NEW_PER_RUN,
-    known_meeting_ids: set[int] | None = None, verbose: bool = False,
+    known_meeting_ids: set[int] | None = None, verbose: bool = False, gate: LlmGate | None = None,
 ) -> tuple[int, int, int, int, int, int]:
     known_meeting_ids = known_meeting_ids if known_meeting_ids is not None else set()
+    # Model gate (owner 2026-11-18, G4): a row whose source is llm_excluded, refused or unknown never reaches format_record's
+    # model call; it gets the template body and meta from its own structured fields (ai_pipeline/structured_meta.py).
+    gate = gate if gate is not None else LlmGate(cfg)
     town_id = cfg["town_id"]
     given_up = load_given_up_records(conn, town_id)
     tz = ZoneInfo(cfg.get("timezone", "America/Chicago"))
@@ -1046,10 +1053,18 @@ def publish_table(
             print(f"    HOLD     {source_type}-{record_id}  ({'; '.join(held[:4])})")
             thin += 1
             continue
-        result = format_record(
-            ai_record, source_type, cfg,
-            recent_openings=recent_openings_by_type.get(source_type),
-        )
+        blocked = gate.blocked_reason(table, row) if source_type in GATED_TYPES else None
+        if blocked:
+            meta = (structured_meta.meta_from_source(row, structured_meta.source_kind(cfg, row.get("source")), tz)
+                    if source_type == "event" else {})
+            result = FormatResult(text=meta_only.template_body(build_title(table, row, cfg), source_type, meta),
+                                  generated_by="template", verified=True, meta=meta)
+            print(f"    NO MODEL {source_type}-{record_id}  ({blocked})")
+        else:
+            result = format_record(
+                ai_record, source_type, cfg,
+                recent_openings=recent_openings_by_type.get(source_type),
+            )
         if result.generated_by == "template" and cfg.get("ai", {}).get("meta_only") and source_type in meta_only.META_ONLY_TYPES:
             result.text = meta_only.template_body(build_title(table, row, cfg), source_type, result.meta)  # same title the story gets
         raw_for_category = row.get("raw_data")

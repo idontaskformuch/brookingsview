@@ -36,4 +36,4 @@ def test_json_text_raw_data_and_rows_without_the_field():
 def test_publish_strips_before_the_model_call():
     src = open("ai_pipeline/publish.py", encoding="utf-8").read()
     i = src.index("ai_record = _without_model_hidden_raw_fields(ai_record)")
-    assert i < src.index("uk_guardrails.evaluate(cfg, guardrails.source_to_text(ai_record") < src.index("result = format_record(\n            ai_record")
+    assert i < src.index("uk_guardrails.evaluate(cfg, guardrails.source_to_text(ai_record") < src.index("result = format_record(")

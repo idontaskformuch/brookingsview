@@ -1,0 +1,9 @@
+{
+  "_note": "Owner 2026-11-18 (specs/us-christmas-2026.md 'Beslut steg 2', G2): sources under their own API terms count as ok for the model gate (scrapers/llm_gate.py) and are listed here, not in code. Any other source is checked against its robots.txt at run time; a source the gate cannot place, or whose robots.txt cannot be read, stays away from the model.",
+  "api_terms_sources": [
+    {"name": "Ticketmaster Discovery API", "host": "app.ticketmaster.com", "path": "/discovery/", "used_by": "scrapers (Ticketmaster events)"},
+    {"name": "Adzuna API", "host": "api.adzuna.com", "path": "/v1/api/jobs", "used_by": "jobs scraper"},
+    {"name": "MLB Stats API", "host": "statsapi.mlb.com", "path": "/api/v1", "used_by": "pro_sports"},
+    {"name": "Sportmonks Football API", "host": "api.sportmonks.com", "path": "/v3/", "used_by": "Glasgow sport (.claude/sources/sportmonks.md)"}
+  ]
+}

@@ -242,6 +242,11 @@ class PoliteFetcher:
         return got
 
     # --- robots -------------------------------------------------------------------------------------------------------------
+    def robots_verdict(self, url: str) -> _robots.Verdict:
+        """The robots.txt verdict for `url` without fetching the page itself (robots.txt read once per origin and run). Used by
+        scrapers/llm_gate.py to decide, at run time, whether a source's rows may reach a model."""
+        return self._robots_verdict(url)
+
     def _robots_verdict(self, url: str) -> _robots.Verdict:
         parts = urlparse(url)
         origin = f"{parts.scheme}://{parts.netloc}"

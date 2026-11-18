@@ -505,6 +505,11 @@
       "severity": "soft",
       "born_from": "Owner 2026-11-18, correcting Fas 1b: outside its window a holiday page's band fell back to the season pool, so /christmas/ showed an autumn photo on Nov 18, and Glasgow's /christmas/ (HolidaySeasonPage) had no band at all. Regression fixtures: site/src/lib/city-face.test.ts 'outside the window: still the holiday's own photo' and '/christmas/ on Nov 18 2026 shows a Christmas photo in all four towns', fail on cbdcf26's lib/city-face.ts; 'both page templates render the band' fails on cbdcf26's HolidaySeasonPage.astro.",
       "what": "a holiday page band (HolidayPage or HolidaySeasonPage) shows a season photo while the town has a pool for that holiday, or a template renders no band (vitest)"
+    },
+    "ai.llm-gate-publish": {
+      "severity": "hard",
+      "born_from": "Steg 2 inventory 2026-11-18 (.claude/notes/llm-excluded-step2-proposal-2026-11-18.md): publish.py's meta_only extraction sent event rows from llm_excluded sources to the model (Brookings library + chamber, 2 calls in 14 days to claude-sonnet-5), although the owner's rule is that llm_excluded content never goes through a model. Fixed (owner G4): scrapers/llm_gate.py in publish_table, closed when unsure, structured meta from the source's own fields (ai_pipeline/structured_meta.py). Regression fixtures: tests/test_llm_gate.py 'llm_excluded event never reaches format_record' (real row event 330024, live visitbrookings robots fixture) fails on 0f6ba94's publish.py.",
+      "what": "an event or meeting row whose source is llm_excluded, refused by robots.txt, unreadable or unknown reaches format_record's model call, or a gated row's meta holds a value not in its source's structured fields (pytest)"
     }
   }
 }

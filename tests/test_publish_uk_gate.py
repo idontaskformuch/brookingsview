@@ -43,8 +43,10 @@ def test_us_town_is_not_gated(monkeypatch):
     calls = []
     _patch(monkeypatch, calls)
     cfg = {"town_id": "brookings_sd", "country": "us", "timezone": "America/Chicago"}
+    open_gate = MagicMock()  # this test is about the UK gate; the model gate (tests/test_llm_gate.py) lets the row through here
+    open_gate.blocked_reason.return_value = None
     try:
-        publish.publish_table(_conn([_row("Application by John Smith for 12 High Street")]), cfg, "meetings", set())
+        publish.publish_table(_conn([_row("Application by John Smith for 12 High Street")]), cfg, "meetings", set(), gate=open_gate)
     except RuntimeError as e:
         assert str(e) == "AI called"
     assert calls == [1]
