@@ -869,6 +869,9 @@ for (const [pathname, date] of holidayLastmodEntries(activeCity)) lastmodMap.set
 export default defineConfig({
   site: SITE_URLS[activeCity],
   output: 'static',
+  // Astro 7 changed the default to 'jsx', which drops whitespace between inline elements ("a <b>b</b>" -> "a<b>b</b>")
+  // and can glue words together. true keeps the v5/v6 behaviour: collapse whitespace, never remove it.
+  compressHTML: true,
   integrations: [
     {
       // Evening-layer inertia (lib/evening-verdict.ts, owner 2026-11-15): the count the pages decided on is published as
