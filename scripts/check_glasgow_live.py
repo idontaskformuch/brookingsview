@@ -19,6 +19,7 @@ Exit 1 on any failure, with the reasons on stderr.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from datetime import datetime, timedelta, timezone
@@ -27,9 +28,22 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+from scripts.check_deployed_content import DEPLOY_CHECK_HEADER
+
 SITE_URL = "https://glasgowloop.co.uk"
 TZ = ZoneInfo("Europe/London")
 USER_AGENT = "ViewMediaBot (+https://glasgowloop.co.uk/contact)"
+
+
+def request_headers() -> dict[str, str]:
+    """Same named bypass as Broomfield's check (scripts/check_deployed_content.py): with DEPLOY_CHECK_SECRET set,
+    send X-BV-Deploy-Check so a Cloudflare WAF Custom Rule on the Glasgow zone can skip bot management for this
+    checker. GitHub runner IPs got HTTP 403 on 15 + 16 Nov 11:00 (QA ci.glasgow-live-check-403). Unset = UA only."""
+    headers = {"User-Agent": USER_AGENT}
+    secret = os.environ.get("DEPLOY_CHECK_SECRET")
+    if secret:
+        headers[DEPLOY_CHECK_HEADER] = secret
+    return headers
 
 
 class _Collector(HTMLParser):
@@ -137,7 +151,7 @@ def main() -> int:
     args = ap.parse_args()
     problems: list[str] = []
     for path, fn in (("/weather/", check_weather), ("/events/", check_events)):
-        r = requests.get(args.url + path, headers={"User-Agent": USER_AGENT}, timeout=30)
+        r = requests.get(args.url + path, headers=request_headers(), timeout=30)
         if r.status_code != 200:
             problems.append(f"{path}: HTTP {r.status_code}")
             continue

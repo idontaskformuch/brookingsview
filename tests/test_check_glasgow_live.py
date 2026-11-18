@@ -94,3 +94,22 @@ def test_weather_tonight_needs_tomorrows_weekday_next():
 
 def test_weather_other_first_row_still_fails():
     assert any("first day row" in p for p in check_weather(_weather(ROWS_2026_11_17_2305[1:]), now=TUE_2305))
+
+
+# 2026-11-15 + 2026-11-16 11:00 UTC: runs 43706825306 / 43853943044 failed with "/weather/: HTTP 403" and
+# "/events/: HTTP 403" -- Cloudflare bot management on GitHub runner IPs; the check sent only the User-Agent.
+# QA ci.glasgow-live-check-403.
+def test_deploy_check_header_sent_only_with_secret(monkeypatch):
+    from scripts.check_deployed_content import DEPLOY_CHECK_HEADER
+    from scripts.check_glasgow_live import USER_AGENT, request_headers
+
+    monkeypatch.delenv("DEPLOY_CHECK_SECRET", raising=False)
+    assert request_headers() == {"User-Agent": USER_AGENT}
+    monkeypatch.setenv("DEPLOY_CHECK_SECRET", "test-value")
+    assert request_headers() == {"User-Agent": USER_AGENT, DEPLOY_CHECK_HEADER: "test-value"}
+
+
+def test_glasgow_workflow_check_step_maps_the_secret():
+    wf = (Path(__file__).resolve().parent.parent / ".github" / "workflows" / "glasgow-scrape.yml").read_text(encoding="utf-8")
+    step = wf.split("- name: Kontrollera den deployade Glasgow-sajten", 1)[1]
+    assert "DEPLOY_CHECK_SECRET: ${{ secrets.DEPLOY_CHECK_SECRET }}" in step.split("python -m scripts.check_glasgow_live", 1)[0]

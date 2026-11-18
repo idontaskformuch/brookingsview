@@ -80,6 +80,10 @@ jobs:
       # inga passerade event ligger kvar i listorna (se scripts/check_glasgow_live.py).
       - name: Kontrollera den deployade Glasgow-sajten
         if: success() && steps.changed.outputs.changed == 'true'
+        env:
+          # Named bypass for Cloudflare's bot management on GitHub runner IPs (403 on 15 + 16 Nov 11:00), same
+          # header + secret as Broomfield's check; needs the matching WAF Custom Rule in the Glasgow zone.
+          DEPLOY_CHECK_SECRET: ${{ secrets.DEPLOY_CHECK_SECRET }}
         run: |
           sleep 15
           python -m scripts.check_glasgow_live
