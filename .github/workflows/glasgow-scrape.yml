@@ -24,6 +24,9 @@ jobs:
       SPORTMONKS_API_KEY: ${{ secrets.SPORTMONKS_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       USER_AGENT:   "ViewMediaBot (+https://glasgowloop.co.uk/contact)"
+      ADZUNA_APP_ID:      ${{ secrets.ADZUNA_APP_ID }}
+      ADZUNA_APP_KEY:     ${{ secrets.ADZUNA_APP_KEY }}
+      ALERT_WEBHOOK:      ${{ secrets.ALERT_WEBHOOK }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
