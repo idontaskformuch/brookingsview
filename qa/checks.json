@@ -515,6 +515,11 @@
       "severity": "hard",
       "born_from": "Steg 2 inventory 2026-11-18 (.claude/notes/llm-excluded-step2-proposal-2026-11-18.md): weekly.py, sdsu_weekly_digest.py and free_teasers.py put every row of the week into the prompt, whatever its source's robots.txt said (Brookings: chamber, library, sdstate.edu and gojacks.com are llm_excluded). The generators are switched off since ee7f39c, so no call was made; the owner (G3) wants the filter and its tests in place before they are switched on. Regression fixtures: tests/test_llm_gate_paths.py (real rows 330024, 287184, meeting 15218, sport_events 12, sdsu_events 17743, place 85), all five fail on df574d3's three modules.",
       "what": "a weekly, SDSU digest or free-teaser prompt holds a row from an llm_excluded, refused, unreadable or unknown source, or the template part of the same page loses such a row (pytest)"
+    },
+    "ai.digest-no-ai-label": {
+      "severity": "soft",
+      "born_from": "G5 2026-11-18: sdsu_weekly_digest.py stored byline 'AI-generated' on every digest, also the template_fallback ones (the normal case since ee7f39c), and /s/university-digest-2026-w47/ showed that label over text no model wrote. Owner G5: no AI label on the template digest. Regression fixtures: tests/test_llm_gate_paths.py 'sdsu digest byline only for model text' fails on 82ea516's sdsu_weekly_digest.py; the page hides an 'AI-generated' byline when generated_by is not ai:* (pages/s/[slug].astro hasByline). Digest rules: site/src/lib/university-digest.test.ts.",
+      "what": "a story no model wrote (generated_by not ai:*) is stored or shown with the 'AI-generated' byline, or a university digest insight line appears without its rule firing (pytest + vitest)"
     }
   }
 }

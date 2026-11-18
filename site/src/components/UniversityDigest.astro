@@ -1,0 +1,81 @@
+---
+/** University digest, template-built (owner 2026-11-18, G5): insight lines, Games (sport_events), Open to the public, Campus calendar,
+ *  Academic dates. Everything comes from lib/university-digest.ts (rules + tests); a section without rows is not rendered. */
+import InsightLine from './ui/InsightLine.astro';
+import SectionHeader from './ui/SectionHeader.astro';
+import CompactRow from './ui/CompactRow.astro';
+import WeekGroupList from './WeekGroupList.astro';
+import type { WeekGroup } from '../lib/week-groups';
+import { teamLabel } from '../lib/jackrabbits-view';
+import { formatClockCompact } from '../lib/country-profile';
+import { dayLabel, type Digest } from '../lib/university-digest';
+import type { AcademicDate } from '../lib/db';
+
+/** openGroups / campusGroups: digest.open / digest.campus through lib/week-groups (the date-tile list every event row uses). */
+interface Props { digest: Digest; timezone: string; openGroups: WeekGroup[]; campusGroups: WeekGroup[] }
+const { digest, timezone, openGroups, campusGroups } = Astro.props;
+
+const when = (iso: string | null, tba = false) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return tba ? `${dayLabel(d, timezone)}, time TBA` : `${dayLabel(d, timezone)}, ${formatClockCompact(d, timezone)}`;
+};
+const dateSpan = (a: AcademicDate) => {
+  const day = (s: string) => dayLabel(new Date(`${s.slice(0, 10)}T12:00:00Z`), 'UTC');
+  return a.ends_on && a.ends_on.slice(0, 10) !== a.starts_on.slice(0, 10) ? `${day(a.starts_on)} – ${day(a.ends_on)}` : day(a.starts_on);
+};
+---
+<div class="ud">
+  {digest.insights.length > 0 && (
+    <div class="ud__insights">
+      {digest.insights.map((line) => <InsightLine>{line}</InsightLine>)}
+    </div>
+  )}
+
+  {digest.games.length > 0 && (
+    <section class="ud__section">
+      <SectionHeader title="Games" level={2} />
+      {digest.games.map((g) => (
+        <CompactRow cat="sports">
+          <strong>{teamLabel(g.sport)}</strong>{` ${g.home_away === 'away' ? 'at' : 'vs'} ${g.opponent}${g.exhibition ? ' (exhibition)' : ''}`}
+          <span class="ud__meta">{[g.venue, g.result].filter(Boolean).join(' · ')}</span>
+          <Fragment slot="aside">{when(g.starts_at, g.time_tba)}</Fragment>
+        </CompactRow>
+      ))}
+    </section>
+  )}
+
+  {openGroups.length > 0 && (
+    <section class="ud__section">
+      <SectionHeader title="Open to the public" level={2} />
+      <WeekGroupList groups={openGroups} idPrefix="ud-open" />
+    </section>
+  )}
+
+  {campusGroups.length > 0 && (
+    <section class="ud__section">
+      <SectionHeader title="Campus calendar" level={2} />
+      <WeekGroupList groups={campusGroups} idPrefix="ud-campus" />
+    </section>
+  )}
+
+  {digest.academic.length > 0 && (
+    <section class="ud__section">
+      <SectionHeader title="Academic dates" level={2} />
+      {digest.academic.map((a) => (
+        <CompactRow cat="civic">
+          {a.label}
+          <Fragment slot="aside">{dateSpan(a)}</Fragment>
+        </CompactRow>
+      ))}
+    </section>
+  )}
+</div>
+
+<style>
+  .ud { display: grid; gap: var(--ui-5, 2rem); margin: var(--ui-4, 1.5rem) 0; }
+  .ud__insights { display: grid; gap: var(--ui-2, 0.5rem); }
+  .ud__section { display: grid; gap: var(--ui-1, 0.25rem); }
+  .ud__section :global(.wk-groups) { margin-top: 0; }
+  .ud__meta { display: block; font-size: var(--ui-meta); color: var(--ink-soft); }
+</style>

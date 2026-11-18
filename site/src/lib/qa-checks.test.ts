@@ -298,7 +298,9 @@ describe('event tile probe aims at the date-tile list (2026-11-09)', () => {
     expect(read('../pages/tonight.astro')).toMatch(/<PopEventList/);
     expect(read('../components/WeekGroupList.astro')).toMatch(/<PopEventList/);
     expect(read('../components/ThisWeekView.astro')).toMatch(/<WeekGroupList/);
-    expect(read('../pages/s/[slug].astro')).toMatch(/<WeekGroupList/);
+    // The digest's event rows moved into components/UniversityDigest.astro (template-built digest, owner 2026-11-18 G5).
+    expect(read('../pages/s/[slug].astro')).toMatch(/<UniversityDigest/);
+    expect(read('../components/UniversityDigest.astro')).toMatch(/<WeekGroupList/);
     for (const f of ['../components/evening/EveningDay.astro', '../components/tonight/TonightRows.astro', '../components/WeekGroupList.astro', '../pages/tonight.astro', '../pages/this-weekend.astro', '../components/ThisWeekView.astro']) {
       expect(read(f), f).not.toMatch(/class="(ev-card|ev-highlights|wk-row|wk-list)"|<EveningCard|<EveningRow/);
     }

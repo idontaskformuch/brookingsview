@@ -1970,10 +1970,10 @@ export async function getUpcomingArtsEvents(limit = 40): Promise<SdsuEvent[]> {
  *  cap: confirmed live at 122 rows for Brookings' whole ~5-month feed. */
 /** SDSU calendar events (athletics, campus and arts buckets) starting in [start, end): the deterministic list under a
  *  university digest's short introduction (/s/university-digest-*, grouped by lib/week-groups.ts). */
-export async function getSdsuEventsBetween(start: Date, end: Date): Promise<SdsuEvent[]> {
+export async function getSdsuEventsBetween(start: Date, end: Date): Promise<(SdsuEvent & { bucket: string })[]> {
   return (await sql`
     SELECT external_event_id, title, teaser, location, starts_at, ends_at,
-           categories, primary_category, event_url
+           categories, primary_category, event_url, bucket
       FROM sdsu_events
      WHERE town_id = ${TOWN_ID}
        AND bucket IN ('university', 'arts_culture')
@@ -1981,7 +1981,7 @@ export async function getSdsuEventsBetween(start: Date, end: Date): Promise<Sdsu
        AND starts_at >= ${start.toISOString()}
        AND starts_at < ${end.toISOString()}
      ORDER BY starts_at ASC
-  `) as SdsuEvent[];
+  `) as (SdsuEvent & { bucket: string })[];
 }
 
 export async function getAllArtsEvents(limit = 1000): Promise<SdsuEvent[]> {
@@ -2020,6 +2020,19 @@ export async function getUpcomingAcademicDates(limit = 2): Promise<AcademicDate[
        AND COALESCE(ends_on, starts_on) >= CURRENT_DATE
      ORDER BY starts_on ASC
      LIMIT ${limit}
+  `) as AcademicDate[];
+}
+
+/** Academic dates overlapping [startDay, endDay] (YYYY-MM-DD, inclusive), for the university digest (lib/university-digest.ts
+ *  narrows them to the week + its lookahead). */
+export async function getAcademicDatesBetween(startDay: string, endDay: string): Promise<AcademicDate[]> {
+  return (await sql`
+    SELECT label, term, category, starts_on::text AS starts_on, ends_on::text AS ends_on
+      FROM academic_calendar_dates
+     WHERE town_id = ${TOWN_ID}
+       AND starts_on <= ${endDay}::date
+       AND COALESCE(ends_on, starts_on) >= ${startDay}::date
+     ORDER BY starts_on ASC
   `) as AcademicDate[];
 }
 

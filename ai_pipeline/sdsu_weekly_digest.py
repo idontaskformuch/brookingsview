@@ -281,6 +281,11 @@ def template_fallback(events: list[dict], label: str, tz: ZoneInfo,
             "with the day and time on each line.")
 
 
+def story_byline(generated_by: str) -> str | None:
+    """"AI-generated" only when a model wrote the text; the template digest carries no AI label (owner 2026-11-18, G5)."""
+    return "AI-generated" if generated_by.startswith("ai:") else None
+
+
 def generate(events: list[dict], label: str, cfg: dict, tz: ZoneInfo, client=None,
              academic_dates: list[dict] | None = None, gate=None) -> tuple[str, str, bool]:
     """Returnerar (text, generated_by, verified)."""
@@ -433,17 +438,18 @@ def main() -> int:
                 INSERT INTO stories
                     (town_id, title, slug, body, source_type, occurs_at,
                      generated_by, verified, content_hash, published_at, byline)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,now(),'AI-generated')
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,now(),%s)
                 ON CONFLICT (town_id, slug) DO UPDATE SET
                     title = EXCLUDED.title,
                     body = EXCLUDED.body,
                     generated_by = EXCLUDED.generated_by,
                     verified = EXCLUDED.verified,
                     content_hash = EXCLUDED.content_hash,
+                    byline = EXCLUDED.byline,
                     published_at = now()
                 """,
                 (town_id, title, slug, text, SOURCE_TYPE, start,
-                 generated_by, verified, new_hash))
+                 generated_by, verified, new_hash, story_byline(generated_by)))
         conn.commit()
 
         action = "uppdaterad" if row else "skapad"

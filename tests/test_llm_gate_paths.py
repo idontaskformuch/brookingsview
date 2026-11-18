@@ -112,3 +112,11 @@ def test_free_teaser_facility_with_unreadable_robots_gets_the_template(prompts):
             "source_url": "https://brookingsopendata-brookingscosd.hub.arcgis.com/apps/2ee88e2cc9ec45b1bf36e18aa2fff5b2"}
     text, by = free_teasers.generate_facility_teaser(park, cfg, client=object(), gate=_gate(cfg))  # no fixture for the host
     assert prompts == [] and by == "template_fallback" and text == free_teasers.facility_template_fallback(park)
+
+
+def test_sdsu_digest_byline_only_for_model_text():
+    # G5: the template digest carries no "AI-generated" label; the old INSERT set it on every row.
+    assert sdsu_weekly_digest.story_byline("template_fallback") is None
+    assert sdsu_weekly_digest.story_byline("ai:claude-haiku-4-5-20251001") == "AI-generated"
+    src = (ROOT / "ai_pipeline" / "sdsu_weekly_digest.py").read_text(encoding="utf-8")
+    assert "'AI-generated')" not in src and "byline = EXCLUDED.byline" in src
