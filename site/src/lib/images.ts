@@ -38,7 +38,7 @@
  * as it is; this is a separate, image-only resolution path.
  */
 import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import type { Story, Facility, SourceType } from './db';
 import type { SiteConfig } from './site-config';
 
@@ -415,10 +415,24 @@ export function resolveVenueSlugForImage(
  *  function's own comment) -- this change only affects the RENDER-time
  *  fallback behavior, not whether the build ultimately fails for a real
  *  gap. */
+/** site/public, resolved ONCE from the working directory. Every build (CI `working-directory: site`, battery.sh,
+ *  `npm run build`) and vitest run from site/. NOT relative to import.meta.url: the bundled module's location
+ *  moved under astro 6 (dist/.prerender/chunks/), and "../../public" then pointed at site/dist/public -- every
+ *  local image was reported missing and pages silently fell back to category images. A missing public/ dir is
+ *  therefore a hard error here, never a quiet "file not found". */
+export const PUBLIC_DIR = path.resolve(process.cwd(), 'public');
+if (!existsSync(PUBLIC_DIR)) {
+  throw new Error(`images.ts: public/ hittas inte från cwd=${process.cwd()} (letade i ${PUBLIC_DIR}); bygg från site/.`);
+}
+
+/** Absolute filesystem path of a root-relative public path ("/assets/images/x.png"). */
+export function publicFilePath(rootRelative: string): string {
+  return path.join(PUBLIC_DIR, rootRelative);
+}
+
 export function imageExistsOnDisk(imagePath: string): boolean {
   if (isHotlinkedImage(imagePath)) return true;
-  const absolute = fileURLToPath(new URL(`../../public${imagePath}`, import.meta.url));
-  return existsSync(absolute);
+  return existsSync(publicFilePath(imagePath));
 }
 
 /** Build-time guard: `image_path` values are root-relative public paths
@@ -443,7 +457,7 @@ export function assertImageExists(imagePath: string, itemSlug: string): void {
   // no local file to check -- their existence is the external CDN's
   // problem, not this build's.
   if (isHotlinkedImage(imagePath)) return;
-  const absolute = fileURLToPath(new URL(`../../public${imagePath}`, import.meta.url));
+  const absolute = publicFilePath(imagePath);
   if (!existsSync(absolute)) {
     throw new Error(
       `resolveImage: "${itemSlug}" resolved to image_path "${imagePath}", but no file exists at ${absolute}. ` +
@@ -475,7 +489,7 @@ export function contentTrackCropPaths(imagePath: string): string[] {
   const base = imagePath.slice(0, -'.png'.length);
   return ['-4x3.png', '-1x1.png']
     .map((suffix) => `${base}${suffix}`)
-    .filter((candidate) => existsSync(fileURLToPath(new URL(`../../public${candidate}`, import.meta.url))));
+    .filter((candidate) => existsSync(publicFilePath(candidate)));
 }
 
 /** Swaps in the smaller 4:3 crop of an already-resolved image, for list/
