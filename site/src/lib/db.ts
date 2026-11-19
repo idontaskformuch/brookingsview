@@ -639,6 +639,8 @@ export async function getEventArchiveStories(): Promise<Story[]> {
  *  mirror runs the same WHERE and the same filter. */
 export async function getEventStoriesOccurringBetween(start: Date, end: Date): Promise<Story[]> {
   // Occurrences, not stories (lib/event-occurrence.mjs, owner 2026-11-19): a past occurrence superseded by its series still counts.
+  // FROZEN_FILTER (owner 2026-11-19 "grinden ska räkna exakt det som visas"): a row the site does not build is not counted either.
+  const hidden = await frozenHidden();
   const rows = (await sql`
     SELECT id, title, slug, body, source_type, source_url, occurs_at, published_at, generated_by,
            byline, image_path, image_alt, rating, ingredients, instructions,
@@ -648,6 +650,7 @@ export async function getEventStoriesOccurringBetween(start: Date, end: Date): P
        AND source_type = 'event'
        AND published_at IS NOT NULL
        AND occurs_at >= ${start.toISOString()} AND occurs_at < ${end.toISOString()}
+       AND slug != ALL(${hidden}::text[]) -- FROZEN_FILTER
   `) as (Story & { superseded_by_slug: string | null })[];
   return rows.filter(isCountedOccurrence);
 }
@@ -3815,12 +3818,14 @@ export async function getOkReadStarts(sourceKey: string, since: Date): Promise<{
 
 /** occurs_at of every event occurrence in [start, end): the same WHERE and filter as getEventStoriesOccurringBetween(), only the date. */
 export async function getEventOccurrencesBetween(start: Date, end: Date): Promise<string[]> {
+  const hidden = await frozenHidden();
   const rows = (await sql`
     SELECT slug, superseded_by_slug, occurs_at FROM stories
      WHERE town_id = ${TOWN_ID}
        AND source_type = 'event'
        AND published_at IS NOT NULL
        AND occurs_at >= ${start.toISOString()} AND occurs_at < ${end.toISOString()}
+       AND slug != ALL(${hidden}::text[]) -- FROZEN_FILTER
   `) as { slug: string; superseded_by_slug: string | null; occurs_at: string }[];
   return rows.filter(isCountedOccurrence).map((r) => r.occurs_at);
 }

@@ -531,6 +531,11 @@
       "born_from": "Beslut 9/10 2026-11-19: the owner approved a 6-hour traffic schedule on condition that the reads go through PoliteFetcher; scrapers/parsers/traffic_v1.py (Caltrans QuickMap) and cdot_v1.py (CDOT COtrip) called requests.get themselves (no robots check, no fetch log). CDOT's apiKey sits in the query string, so PoliteFetcher got secret_params (never logged). Regression fixture: tests/test_traffic_polite_fetch.py (source scan, size cap, refusal, key never written), fails on eb9dfedb.",
       "what": "a traffic scraper fetches outside scrapers/polite_fetch.py, parses a feed cut at the 1.5 MB cap instead of failing the run, or writes CDOT's apiKey to the fetch log, a Fetched URL or an error (pytest)"
     },
+    "logic.month-gate-frozen": {
+      "severity": "soft",
+      "born_from": "Tockify report 2026-11-19: the /month/ events module and gate (getEventStoriesOccurringBetween + the astro.config.mjs mirror) and the rail's 'Events last week' (getEventOccurrencesBetween) had no FROZEN_FILTER, so Moreno November 2026 counted 129 events while the site builds 120 (9 Tockify rows dated 28-30 Nov hidden). Owner 2026-11-19: the gate counts exactly what is shown. Regression fixture: site/src/lib/frozen-sources.test.ts 'FROZEN_FILTER in the queries' (3 cases fail on 23ad475d).",
+      "what": "a month or rail event count includes a frozen-source row the site does not build (vitest source scan of lib/db.ts + astro.config.mjs)"
+    },
     "logic.event-occurrence-lists": {
       "severity": "soft",
       "born_from": "Beslut 8 punkt 2 report 2026-11-19 (owner: rätta /this-week/ och /events/past/): getStoriesForWeekly, lib/week-count.mjs (+ the astro.config sitemap mirror) and /events/past/ (getContentByType) left out every superseded row, so a past occurrence of a recurring event vanished from its day and its week's thin count. Moreno Valley archive weeks counted 4-27 items, 31-54 after (e.g. event-6187 16 Nov -> event-series-420a9ebc7c2214bd). Rule: lib/event-occurrence.mjs listedEventRows() (occurrences + a series row only where none of its occurrences falls on its date; Brookings event-series-bab905fc30a08cc1 has none and stays). Regression fixture: site/src/lib/event-occurrence-lists.test.ts, fails on 1d0d1b8f.",

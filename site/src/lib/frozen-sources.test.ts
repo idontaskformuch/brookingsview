@@ -60,6 +60,8 @@ describe('FROZEN_FILTER in the queries', () => {
   for (const name of [
     'getUpcomingStories', 'getAllStories', 'getPastStories', 'getStoriesForWeekly', 'getRelatedStories',
     'getWorthKnowingCandidates', 'getStoriesForNewsSitemap', 'getSignData',
+    // /month/ events module + gate and the rail's "Events last week" count exactly what is shown (owner 2026-11-19)
+    'getEventStoriesOccurringBetween', 'getEventOccurrencesBetween', 'getEventArchiveStories',
   ]) {
     it(`${name}: every FROM stories query leaves the hidden slugs out`, () => {
       const blocks = fnBody(name).split(/\bFROM stories\b/).slice(1);
@@ -72,5 +74,8 @@ describe('FROZEN_FILTER in the queries', () => {
     const cfg = readFileSync(new URL('../../astro.config.mjs', import.meta.url), 'utf8');
     expect(cfg).toContain('hiddenFrozenSlugs(');
     expect(cfg).toContain('slug != ALL(${frozenHiddenSlugs}::text[])');
+    // the /month/ gate mirror too (owner 2026-11-19): its events query leaves the hidden slugs out, like getEventStoriesOccurringBetween
+    const monthEvents = cfg.split('\n').find((l) => l.includes("source_type = 'event' AND published_at IS NOT NULL AND occurs_at >= ${from}"));
+    expect(monthEvents).toContain('slug != ALL(${frozenHiddenSlugs}::text[])');
   });
 });
